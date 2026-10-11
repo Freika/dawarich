@@ -70,11 +70,11 @@ defmodule DawarichWeb.SharingParityTest do
     pad |> :crypto.exor(masked) |> Base.encode16(case: :lower)
   end
 
-  test "the unlock form and the csrf meta carry the tokens Rails derives from the session" do
+  test "native public unlock form and csrf meta preserve Rails session token derivation" do
     csrf = SharingSeeds.fixture("csrf.json")
     id = csrf["action"] |> String.split("/") |> Enum.at(2)
     cookie = Dawarich.Test.RailsUser.cookie(%{"_csrf_token" => csrf["session"]})
-    html = conn({"_dawarich_session", cookie}) |> get("/s/#{id}") |> html_response(401)
+    html = conn({"_dawarich_session", cookie}) |> get("/s/#{id}") |> html_response(200)
     doc = LazyHTML.from_document(html)
 
     assert doc
@@ -93,23 +93,32 @@ defmodule DawarichWeb.SharingParityTest do
   for page <- @pages do
     @page page
 
-    test "#{page["name"]} answers as Rails does" do
+    name =
+      if page["verb"] == "get",
+        do:
+          "#{page["name"]} preserves source sharing behavior through its declared native envelope",
+        else: "#{page["name"]} answers as Rails does"
+
+    test name do
       id = @page["path"] |> String.split("/") |> Enum.at(2) |> String.split("?") |> hd()
       cookie = unlocked(@page)
       before = @page["touched"] && SharingSeeds.view_count(id)
       conn = request(@page, cookie)
 
-      assert conn.status == @page["status"]
+      native = @page["verb"] == "get"
+      assert conn.status == if(native, do: 200, else: @page["status"])
 
-      for {name, value} <- @page["headers"], do: assert(header(conn, name) == value, name)
+      for {name, value} <- @page["headers"] do
+        expected = if native && name == "cache-control", do: "private, no-store", else: value
+        assert header(conn, name) == expected, name
+      end
 
-      assert header(conn, "etag") != "" == @page["etag"]
+      assert header(conn, "etag") != "" == (!native && @page["etag"])
 
       assert Map.new(Map.delete(cookie_lines(conn), "_dawarich_phoenix"), fn {name,
                                                                               {_value, attrs}} ->
                {name, attrs}
-             end) ==
-               @page["set_cookies"]
+             end) == @page["set_cookies"]
 
       if @page["touched"], do: assert(SharingSeeds.view_count(id) - before == @page["touched"])
 
@@ -117,24 +126,96 @@ defmodule DawarichWeb.SharingParityTest do
         html = conn.resp_body
         rails = SharingSeeds.page("#{@page["name"]}.html")
         doc = LazyHTML.from_document(html)
-        assert doc |> LazyHTML.query("title") |> LazyHTML.text() == @page["title"]
+        available = @page["status"] == 200 && !String.starts_with?(@page["name"], "missing_")
+
+        title =
+          if available,
+            do: DawarichWeb.Layouts.page_title(@page["html_lang"], @page["title"]),
+            else:
+              if(native,
+                do: DawarichWeb.Layouts.page_title(@page["html_lang"], nil),
+                else: @page["title"]
+              )
+
+        assert doc |> LazyHTML.query("title") |> LazyHTML.text() == title
 
         assert LazyHTML.query(doc, "script[type=importmap], [data-controller], turbo-frame")
                |> Enum.empty?()
 
         assert html =~ "/native/app"
-        assert text(doc, "h1") == text(LazyHTML.from_fragment(rails), "h1")
 
-        if @page["status"] == 200 do
-          assert html =~ "native-public-share"
+        if native do
           assert Map.has_key?(cookie_lines(conn), "_dawarich_phoenix")
           {_value, attrs} = cookie_lines(conn)["_dawarich_phoenix"]
-          assert "httponly" in attrs and "samesite=lax" in attrs and "path=/" in attrs
-        else
-          assert text(doc, "main") == text(LazyHTML.from_fragment(rails), "main")
-        end
+          assert attrs == ["httponly", "path=/", "samesite=lax"]
 
-        assert html =~ ~s(<html lang="#{@page["html_lang"]}">)
+          assert doc |> LazyHTML.query("html") |> LazyHTML.attribute("lang") == [
+                   @page["html_lang"]
+                 ]
+
+          if available do
+            assert LazyHTML.query(doc, "#native-public-map[phx-hook=PublicMap]") |> Enum.count() ==
+                     1
+
+            config =
+              doc
+              |> LazyHTML.query("#native-public-map")
+              |> LazyHTML.attribute("data-map-config")
+              |> hd()
+              |> Jason.decode!()
+
+            link = Enum.find(SharingSeeds.fixture("seed.json")["shared_links"], &(&1["id"] == id))
+            assert text(doc, "main h1") == link["name"]
+            assert config["shareId"] == id
+
+            route =
+              if link["resource_type"] == 3,
+                do:
+                  link["settings"]["show_route"] not in [
+                    nil,
+                    false,
+                    "",
+                    "0",
+                    "false",
+                    "FALSE",
+                    "f",
+                    "F",
+                    "off",
+                    "OFF"
+                  ],
+                else: true
+
+            assert config["routeEnabled"] == route
+            assert config["photosEnabled"] == (link["settings"]["show_photos"] == true)
+
+            if link["resource_type"] == 2 do
+              assert config["publicType"] == "timeline"
+
+              assert Date.from_iso8601!(String.slice(config["range"]["startAt"], 0, 10)) ==
+                       Date.from_iso8601!(link["settings"]["start_date"])
+
+              assert Date.from_iso8601!(String.slice(config["range"]["endAt"], 0, 10)) ==
+                       Date.from_iso8601!(link["settings"]["end_date"])
+            end
+          else
+            assert Enum.empty?(LazyHTML.query(doc, "#native-public-map"))
+
+            assert text(doc, "main h1") ==
+                     if(@page["status"] == 401,
+                       do: text(LazyHTML.from_fragment(rails), "h1"),
+                       else:
+                         DawarichWeb.Translate.t(
+                           @page["html_lang"],
+                           "shared.links.not_found.this_shared_link_is_no_longer_available",
+                           %{}
+                         )
+                     )
+          end
+        else
+          assert text(doc, "h1") == text(LazyHTML.from_fragment(rails), "h1")
+          assert text(doc, "main") == text(LazyHTML.from_fragment(rails), "main")
+          assert html =~ ~s(<html lang="#{@page["html_lang"]}">)
+        end
       end
     end
   end

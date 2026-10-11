@@ -135,7 +135,7 @@ defmodule DawarichWeb.NotificationSubscriptionTest do
              DawarichWeb.NotificationSession.Native.subscribe_family(socket)
   end
 
-  test "family invalidations refresh job navbars while notification delivery remains independent",
+  test "family and notification producers refresh job and native map navbars independently",
        c do
     scope = Dawarich.Accounts.Scope.for_user(c.user, "en")
 

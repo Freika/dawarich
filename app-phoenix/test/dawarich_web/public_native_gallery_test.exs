@@ -59,18 +59,18 @@ defmodule DawarichWeb.PublicNativeGalleryTest do
     :ok
   end
 
-  test "native public gallery retains authorized photos while private and disabled photos never render" do
+  test "native public map gallery retains authorized photos and clears private or disabled photo delivery" do
     conn = get(build_conn(), "/s/" <> @id)
     assert conn.status == 200
     result = live(put_private(conn, :live_view_connect_info, %{session: get_session(conn)}))
     assert elem(result, 0) == :ok
     {:ok, view, html} = result
-    page = :sys.get_state(view.pid).socket.assigns.page
-    assert Enum.map(page.map.photos, & &1["id"]) == ["visible-photo"]
+    page = :sys.get_state(view.pid).socket.assigns.public_presentation
+    assert Enum.map(page.resource.photos, & &1["id"]) == ["visible-photo"]
 
     assert has_element?(
              view,
-             "details[data-public-gallery-day='2026-05-10'] [data-public-gallery-content]"
+             "details[data-public-day='2026-05-10'] img[src*='visible-photo']"
            )
 
     assert !String.contains?(html, "private-photo")
@@ -84,12 +84,12 @@ defmodule DawarichWeb.PublicNativeGalleryTest do
 
     send(view.pid, {:share_changed, @id, :disabled})
     render(view)
-    assert :sys.get_state(view.pid).socket.assigns.page == nil
+    assert :sys.get_state(view.pid).socket.assigns.public_presentation == nil
     conn = get(build_conn(), "/s/" <> @id)
     result = live(put_private(conn, :live_view_connect_info, %{session: get_session(conn)}))
     assert elem(result, 0) == :ok
     {:ok, disabled, _} = result
-    assert :sys.get_state(disabled.pid).socket.assigns.page.map.photos == []
-    refute has_element?(disabled, "details[data-public-gallery]")
+    assert :sys.get_state(disabled.pid).socket.assigns.public_presentation.resource.photos == []
+    refute has_element?(disabled, "#native-public-resource img")
   end
 end
