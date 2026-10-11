@@ -1,3 +1,4 @@
+const finiteNumber = Number.isFinite
 function visitHaloFilter(layer) {
   const filter = layer.filter
   if (
@@ -47,7 +48,7 @@ const geometryTypes = new Set([
 function paintValue(value, budget, depth = 0) {
   if (depth > 8 || budget.left-- <= 0) return undefined
   if (typeof value === "string") return value.slice(0, 256)
-  if (typeof value === "boolean" || Number.isFinite(value)) return value
+  if (typeof value === "boolean" || finiteNumber(value)) return value
   if (Array.isArray(value) && value.length <= 128) {
     const copy = value.map((entry) => paintValue(entry, budget, depth + 1))
     if (copy.every((entry) => entry !== undefined)) return copy
@@ -59,7 +60,7 @@ function coordinates(value, depth = 0) {
   if (depth > 6) return []
   if (Array.isArray(value))
     return value.slice(0, 1000).map((item) => coordinates(item, depth + 1))
-  return Number.isFinite(value) ? value : null
+  return finiteNumber(value) ? value : null
 }
 function feature(value) {
   const data = typeof value.toJSON === "function" ? value.toJSON() : value
@@ -100,7 +101,7 @@ function hitCoordinates(geometry) {
         (point) =>
           !Array.isArray(point) ||
           point.length !== 2 ||
-          !point.every(Number.isFinite),
+          !point.every(finiteNumber),
       )
     )
       return null
@@ -114,22 +115,19 @@ function hitCoordinates(geometry) {
   return null
 }
 function hitPosition(map, geometry) {
-  const single = {
-    MultiPoint: "Point",
-    MultiLineString: "LineString",
-    MultiPolygon: "Polygon",
-  }[geometry?.type]
-  if (single)
+  if (geometry?.type?.startsWith("Multi"))
     return (
       geometry.coordinates
-        ?.map((coordinates) => hitPosition(map, { type: single, coordinates }))
+        ?.map((coordinates) =>
+          hitPosition(map, { type: geometry.type.slice(5), coordinates }),
+        )
         .find(Boolean) ?? null
     )
   const coordinate = hitCoordinates(geometry)
   if (
     !coordinate ||
     coordinate.length !== 2 ||
-    !coordinate.every(Number.isFinite) ||
+    !coordinate.every(finiteNumber) ||
     Math.abs(coordinate[0]) > 180 ||
     Math.abs(coordinate[1]) > 90
   )
@@ -138,8 +136,8 @@ function hitPosition(map, geometry) {
     const point = map.project?.(coordinate)
     const bounds = map.getContainer?.().getBoundingClientRect()
     if (
-      Number.isFinite(point?.x) &&
-      Number.isFinite(point?.y) &&
+      finiteNumber(point?.x) &&
+      finiteNumber(point?.y) &&
       point.x >= 0 &&
       point.y >= 0 &&
       point.x <= bounds?.width &&
@@ -158,7 +156,7 @@ function viewportBounds(map) {
     east: box.getEast(),
     north: box.getNorth(),
   }
-  return Object.values(result).every(Number.isFinite) ? result : null
+  return Object.values(result).every(finiteNumber) ? result : null
 }
 
 export function installMapDiagnostics({ element, map, getConfig }) {
@@ -166,6 +164,7 @@ export function installMapDiagnostics({ element, map, getConfig }) {
   const snapshot = ({ sourceId, sourceLayer } = {}) => {
     if (!active) return null
     const style = map.getStyle?.() ?? {}
+    const styleLayers = style.layers ?? []
     const sources = Object.keys(style.sources ?? {}).slice(0, 128)
     let rows = []
     if (sources.includes(sourceId)) {
@@ -183,25 +182,16 @@ export function installMapDiagnostics({ element, map, getConfig }) {
     const paintBudget = { left: 4096 }
     let rendered
     if (sourceId && map.queryRenderedFeatures) {
-      rendered = new Map()
-      const layers = (style.layers ?? [])
+      rendered = Object.create(null)
+      const layers = styleLayers
         .filter((layer) => layer.source === sourceId)
         .map((layer) => layer.id)
       try {
-        const bounds = map.getContainer?.().getBoundingClientRect()
-        const area = bounds
-          ? [
-              [0, 0],
-              [bounds.width, bounds.height],
-            ]
-          : undefined
         for (const row of (layers.length
-          ? map.queryRenderedFeatures(area, { layers })
+          ? map.queryRenderedFeatures({ layers })
           : []
         ).slice(0, 1000)) {
-          const id = String(row.properties?.id)
-          if (!rendered.has(id)) rendered.set(id, [])
-          rendered.get(id).push(row.geometry)
+          ;(rendered[row.properties?.id] ??= []).push(row.geometry)
         }
       } catch {}
     }
@@ -222,7 +212,7 @@ export function installMapDiagnostics({ element, map, getConfig }) {
         timezone: config.range?.timezone,
       },
       sources,
-      layers: (style.layers ?? []).slice(0, 512).map((layer) => ({
+      layers: styleLayers.slice(0, 512).map((layer) => ({
         id: layer.id,
         type: layer.type,
         source: layer.source,
@@ -240,7 +230,7 @@ export function installMapDiagnostics({ element, map, getConfig }) {
       features: rows.slice(0, 500).map((row) => {
         const data = feature(row)
         const geometries = rendered
-          ? (rendered.get(String(data.properties.id)) ?? [])
+          ? (rendered[data.properties.id] ?? [])
           : [data.geometry]
         const screen =
           geometries

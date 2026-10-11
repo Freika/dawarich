@@ -68,7 +68,7 @@ export function createPhotoLoader({
           return "cancelled"
         if (error.status === 401 && error.code === "photos_unconfigured") {
           onData?.(photosToGeoJSON([]))
-          onError?.("photos_unconfigured")
+          onError?.(error.code)
           return "unconfigured"
         }
         onError?.("photos_load_failed")

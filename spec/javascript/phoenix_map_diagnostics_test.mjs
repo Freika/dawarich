@@ -427,7 +427,7 @@ test("diagnostic hit positions require rendered source geometry instead of hidde
     },
   ]
   let rendered = []
-  f.map.queryRenderedFeatures = (_area, options) => {
+  f.map.queryRenderedFeatures = (options) => {
     assert.deepEqual(options.layers, ["points"])
     return rendered
   }
