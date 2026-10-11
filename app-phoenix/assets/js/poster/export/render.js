@@ -4,7 +4,6 @@ import { drawOverlay } from "../render/overlay.js"
 import { aborted, captureBounds } from "./capture.js"
 import { pdfBlob, pngBlob } from "./download.js"
 import { encodePdf } from "./pdf_encoder.js"
-import { encodePng } from "./png_encoder.js"
 
 const check = (signal) => {
   if (signal?.aborted) throw aborted()
@@ -54,6 +53,8 @@ export async function exportPoster({
     const { data } = canvas
       .getContext("2d")
       .getImageData(0, 0, canvas.width, canvas.height)
+    const { encodePng } = await import("./png_encoder.js")
+    check(signal)
     const bytes = encodePng(
       new Uint8Array(data.buffer),
       canvas.width,

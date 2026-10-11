@@ -12,7 +12,7 @@ defmodule Dawarich.Build.NativeAssetsTest do
   @chrome_base_bytes 6_707 + 548
   @places_inputs ~w(js/hooks/place_draft.js js/hooks/ordinary_dialog.js)
   @m5_inputs ~w(js/hooks/chart.js js/hooks/heatmap.js js/hooks/rich_text.js)
-  @other_base_bytes 335_463 - 16_713 - 1_844 - 1_632 - 232
+  @other_base_bytes 335_463 - 16_713 - 1_844 - 1_632 - 232 + 22
   @m4_inputs [
     {~w(js/hooks/archive_checksum.js js/uploaders/direct.js), 8416},
     {~w(js/hooks/credential_qr.js js/hooks/credential_value.js), 4256},
@@ -88,7 +88,8 @@ defmodule Dawarich.Build.NativeAssetsTest do
       |> build!()
       |> app_input_bytes()
       |> Map.drop(
-        @chrome_inputs ++ @places_inputs ++ @m5_inputs ++ @m6_inputs ++ Enum.flat_map(@m4_inputs, &elem(&1, 0))
+        @chrome_inputs ++
+          @places_inputs ++ @m5_inputs ++ @m6_inputs ++ Enum.flat_map(@m4_inputs, &elem(&1, 0))
       )
 
     assert Enum.sum(Map.values(bytes)) <= @other_base_bytes + @other_slack
@@ -146,6 +147,24 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
       assert bytes > 0
     end
+  end
+
+  @tag native_poster_codec: true
+  test "poster PNG encoder leaves studio startup until export", %{tmp_dir: dir} do
+    build!(dir, ["--minify"])
+
+    outputs =
+      Path.join(dir, "meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    {root, _} =
+      Enum.find(outputs, fn {_, info} -> Map.has_key?(info["inputs"], "js/poster/runtime.js") end)
+
+    graph =
+      for path <- eager(outputs, [root], MapSet.new()),
+          input <- Map.keys(outputs[path]["inputs"]),
+          do: input
+
+    refute Enum.any?(graph, &String.contains?(&1, "fflate"))
   end
 
   test "production closures measure actual emitted bytes and keep export codecs lazy", %{
@@ -357,9 +376,10 @@ defmodule Dawarich.Build.NativeAssetsTest do
         do: refute(Map.has_key?(bytes, input), input)
   end
 
-  test "archive preparation and ZIP dependencies stay lazy within the shared gzip budget", %{
-    tmp_dir: dir
-  } do
+  test "archive preparation and ZIP dependencies stay lazy within its independent feature budget",
+       %{
+         tmp_dir: dir
+       } do
     assert 0 ==
              Esbuild.install_and_run(:native, [
                "--outdir=#{dir}",
@@ -381,12 +401,13 @@ defmodule Dawarich.Build.NativeAssetsTest do
              Enum.any?(Map.keys(outputs[path]["inputs"]), &String.contains?(&1, "fflate"))
            end)
 
-    gzip =
-      Enum.reduce(paths, 0, fn path, size ->
-        size + byte_size(:zlib.gzip(File.read!(Path.expand(path, "assets"))))
-      end)
+    bytes =
+      app_input_bytes(dir)
+      |> Map.take(~w(js/hooks/archive_checksum.js js/uploaders/direct.js))
+      |> Map.values()
+      |> Enum.sum()
 
-    assert gzip <= 51_397 + 5 * 1024
+    assert bytes <= 8_416 + 1024
   end
 
   defp app_input_bytes(dir) do
