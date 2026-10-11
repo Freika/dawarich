@@ -19,6 +19,13 @@ defmodule DawarichWeb.NativeSegmentEditor do
 
     ~H"""
     <section id="native-segment-drawer" class="track-segments-list min-w-0" aria-live="polite">
+      <p
+        :if={Map.get(@drawer, :notice) == :updated and is_nil(@drawer.error)}
+        role="status"
+        class="text-sm [overflow-wrap:anywhere]"
+      >
+        {t(@locale, "controllers.tracks.segments.segment_updated", %{})}
+      </p>
       <p :if={@drawer.error} class="alert alert-error text-sm" role="alert">
         {error(@locale, @drawer.error)}
       </p>

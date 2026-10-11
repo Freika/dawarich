@@ -38,7 +38,7 @@ defmodule DawarichWeb.MapLive.SegmentCommands do
 
             {:noreply,
              socket
-             |> assign(:segment_drawer, drawer)
+             |> assign(:segment_drawer, Map.put(drawer, :notice, :updated))
              |> push_event("map:invalidate", %{resource: "tracks", id: track_id})}
 
           {:error, reason} ->

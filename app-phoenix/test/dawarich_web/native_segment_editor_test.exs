@@ -72,6 +72,27 @@ defmodule DawarichWeb.NativeSegmentEditorTest do
     assert has_element?(view, "#native-segment-drawer [role=alert]")
   end
 
+  test "native segment correction keeps persisted feedback without replacing the map", c do
+    view = open(c.id)
+    render_hook(view, "segments:open", %{"track_id" => to_string(c.track)})
+
+    view
+    |> form("#native-segment-#{c.track * 10} form", %{"mode" => "walking"})
+    |> render_change()
+
+    assert has_element?(view, "#native-segment-drawer [role=status]", "Segment updated")
+    assert has_element?(view, "#native-segment-#{c.track * 10} [data-corrected]")
+    assert rows("SELECT source FROM track_segments WHERE id=$1", [c.track * 10]) == [["user"]]
+
+    render_hook(view, "segment:mode", %{
+      "segment_id" => to_string(c.track * 10),
+      "mode" => "flying"
+    })
+
+    assert has_element?(view, "#native-segment-drawer [role=alert]")
+    refute has_element?(view, "#native-segment-drawer [role=status]")
+  end
+
   defp open(id) do
     {:ok, view, _} =
       RailsUser.signed_in(id)
