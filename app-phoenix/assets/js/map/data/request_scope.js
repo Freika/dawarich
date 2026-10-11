@@ -22,7 +22,6 @@ export function createRequestScope(timers = globalThis) {
             throw cancelled()
         },
         async wait(promise) {
-          this.check()
           let rejectOnAbort
           const aborted = new Promise((_, reject) => {
             rejectOnAbort = () => reject(cancelled())
@@ -31,6 +30,7 @@ export function createRequestScope(timers = globalThis) {
             once: true,
           })
           try {
+            if (controller.signal.aborted) rejectOnAbort()
             return await Promise.race([promise, aborted])
           } finally {
             controller.signal.removeEventListener("abort", rejectOnAbort)
