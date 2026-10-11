@@ -4,6 +4,8 @@ set -euo pipefail
 : "${RAILS_FALLBACK_IMAGE:?separate Rails image required}"
 : "${NATIVE_PLAYWRIGHT_ROOT:?installed Playwright package root required}"
 : "${NATIVE_SMOKE_OUT:?evidence directory required}"
+: "${NATIVE_SMOKE_DATABASE:?private database name required}"
+[[ $NATIVE_SMOKE_DATABASE =~ ^[a-zA-Z0-9_]{1,63}$ ]] || exit 64
 CONTEXT=${NATIVE_DOCKER_CONTEXT:-orbstack}
 case "$CONTEXT" in orbstack|colima) ;; *) exit 64;; esac
 RUN=${NATIVE_SMOKE_RUN:-$(date +%Y%m%d%H%M%S)-$$}
@@ -63,10 +65,10 @@ DATABASE_HOST=$PG
 DATABASE_PORT=5432
 DATABASE_USERNAME=postgres
 DATABASE_PASSWORD=$PASSWORD
-DATABASE_NAME=x4_smoke
+DATABASE_NAME=$NATIVE_SMOKE_DATABASE
 REDIS_URL=redis://$REDIS:6379/0
 PHOENIX_TEST_REDIS_URL=redis://$REDIS:6379/1
-PHOENIX_TEST_DATABASE=x4_smoke
+PHOENIX_TEST_DATABASE=$NATIVE_SMOKE_DATABASE
 RAILS_ENV=test
 RAILS_PORT=3000
 SECRET_KEY_BASE=$(openssl rand -hex 64)

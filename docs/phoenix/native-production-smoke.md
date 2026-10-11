@@ -26,6 +26,7 @@ Install `@playwright/test` and Chromium in a private package/cache directory and
 ```sh
 : "${NATIVE_PLAYWRIGHT_ROOT:?private Playwright package root required}"
 : "${NATIVE_SMOKE_OUT:?private evidence directory required}"
+: "${NATIVE_SMOKE_DATABASE:?private database name required}"
 bash app-phoenix/scripts/native_smoke.sh
 ```
 

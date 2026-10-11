@@ -78,7 +78,7 @@ esac
     const result = spawnSync('bash', ['app-phoenix/scripts/native_smoke.sh'], { env: {
       ...process.env, PATH: `${root}:${process.env.PATH}`, COLLISION: collision, COMMANDS: commands,
       NATIVE_DOCKER_CONTEXT: 'colima', NATIVE_IMAGE: 'synthetic-native', RAILS_FALLBACK_IMAGE: 'synthetic-rails',
-      NATIVE_PLAYWRIGHT_ROOT: root, NATIVE_SMOKE_OUT: join(root, 'out'), NATIVE_SMOKE_RUN: 'synthetic-test',
+      NATIVE_PLAYWRIGHT_ROOT: root, NATIVE_SMOKE_DATABASE: 'synthetic_database', NATIVE_SMOKE_OUT: join(root, 'out'), NATIVE_SMOKE_RUN: 'synthetic-test',
     }});
     assert.equal(result.status, 64, `${collision} collision refuses`);
     assert.doesNotMatch(readFileSync(commands, 'utf8'), /\b(create|run|rm)\b/, 'no resource mutation');
