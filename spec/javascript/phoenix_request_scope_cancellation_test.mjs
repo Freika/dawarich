@@ -35,3 +35,18 @@ for (const reason of ["reset", "destroy"]) {
     }
   })
 }
+
+
+for (const reason of ["reset", "destroy"]) {
+  test(`a closed ${reason} scope refuses stale fulfilled work`, async () => {
+    const scope = createRequestScope()
+    const operation = scope.begin()
+    operation.close()
+    scope[reason]()
+    try {
+      await assert.rejects(operation.wait(Promise.resolve("obsolete")), { name: "AbortError" })
+    } finally {
+      scope.destroy()
+    }
+  })
+}

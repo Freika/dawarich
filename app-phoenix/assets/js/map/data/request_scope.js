@@ -30,7 +30,8 @@ export function createRequestScope(timers = globalThis) {
             once: true,
           })
           try {
-            if (controller.signal.aborted) rejectOnAbort()
+            if (destroyed || revision !== generation || controller.signal.aborted)
+              rejectOnAbort()
             return await Promise.race([aborted, promise])
           } finally {
             controller.signal.removeEventListener("abort", rejectOnAbort)
