@@ -41,6 +41,32 @@ defmodule Dawarich.Digests.PagesTest do
              Pages.get(scope, %{"year" => []}, now: @now, self_hosted: true)
   end
 
+  @tag acceptance_strings: true
+  test "yearly digest reads source decimal strings and native zero-filled month strings", %{
+    scope: scope
+  } do
+    monthly =
+      Map.merge(Map.new(1..12, &{to_string(&1), "0"}), %{"3" => "38400.5", "4" => "11600"})
+
+    digest!(scope.user.id, %{year: 2025, distance: 50000, monthly_distances: monthly})
+    assert {:ok, digest} = Pages.get(scope, %{"year" => "2025"}, now: @now, self_hosted: true)
+    assert length(digest.monthly_distances) == 12
+    assert Enum.at(digest.monthly_distances, 2) == {"3", 38400}
+    assert Enum.at(digest.monthly_distances, 3) == {"4", 11600}
+    assert Enum.at(digest.monthly_distances, 0) == {"1", 0}
+
+    for invalid <- ["no-distance", %{}, "1 trailing", String.duplicate("1", 129)] do
+      Dawarich.Repo.query!(
+        "UPDATE digests SET monthly_distances=$1 WHERE user_id=$2",
+        [%{"3" => invalid}, scope.user.id],
+        log: false
+      )
+
+      assert {:error, :invalid_input} =
+               Pages.get(scope, %{"year" => "2025"}, now: @now, self_hosted: true)
+    end
+  end
+
   test "digest index retains count-only cards with exact large location totals", %{scope: scope} do
     places =
       for country <- 1..61,

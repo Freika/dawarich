@@ -75,7 +75,11 @@ defmodule DawarichWeb.NativeAchievementsLive do
   end
 
   def handle_event("close_card", _, socket),
-    do: {:noreply, assign(socket, selected: nil, share_url: nil)}
+    do:
+      {:noreply,
+       socket
+       |> assign(selected: nil, share_url: nil)
+       |> push_event("close-dialog", %{id: "achievement-dialog"})}
 
   def handle_event("share_card", %{"enabled" => enabled}, socket) do
     with selected when not is_nil(selected) <- socket.assigns.selected,

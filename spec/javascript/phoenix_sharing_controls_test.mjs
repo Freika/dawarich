@@ -154,7 +154,11 @@ test("generated phrases stay in transient input DOM and failed submissions or di
       release = resolve
     })
   }
-  const el = { value: "", dataset: { url: "/native/sharing/phrase" } }
+  const el = {
+    ...button(),
+    value: "",
+    dataset: { url: "/native/sharing/phrase" },
+  }
   const instance = hook(SharingPhrase, el)
   await tick()
   release({
@@ -175,6 +179,7 @@ test("generated phrases stay in transient input DOM and failed submissions or di
   instance.destroyed()
   assert.equal(instance.events.size, 0)
   const second = hook(SharingPhrase, {
+    ...button(),
     value: "",
     dataset: { url: "/native/sharing/phrase" },
   })
@@ -189,4 +194,37 @@ test("generated phrases stay in transient input DOM and failed submissions or di
   await tick()
   assert.equal(second.el.value, "")
   second.destroyed()
+})
+
+test("editing the phrase cancels a pending generator without erasing the user's choice", async () => {
+  setup()
+  let release, signal
+  globalThis.fetch = (_url, options) => {
+    signal = options.signal
+    return new Promise((resolve) => {
+      release = resolve
+    })
+  }
+  const el = {
+    ...button(),
+    value: "",
+    dataset: { url: "/native/sharing/phrase" },
+  }
+  const instance = hook(SharingPhrase, el)
+  const input = el.listeners.get("input")
+  assert.equal(typeof input, "function")
+  el.value = "owner-chosen-phrase"
+  input()
+  assert.ok(signal.aborted)
+  release({
+    ok: true,
+    redirected: false,
+    headers: { get: () => "text/plain" },
+    text: async () => "late-generated-phrase",
+  })
+  await tick()
+  assert.equal(el.value, "owner-chosen-phrase")
+  instance.destroyed()
+  assert.equal(el.value, "")
+  assert.equal(el.listeners.size, 0)
 })

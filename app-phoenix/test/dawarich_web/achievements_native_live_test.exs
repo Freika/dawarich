@@ -63,6 +63,19 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
              render_patch(view, "/achievements/continent_europe?q=France")
   end
 
+  @tag acceptance_close: true
+  test "closing a selected card closes the browser dialog after its server patch", %{user: user} do
+    {:ok, view, _} =
+      live(NativeAchievementsUI.conn(user, "/achievements/continent_europe?q=France"))
+
+    render_click(view, "select_card", %{"key" => "country_fr"})
+    assert_push_event(view, "close-dialog", %{id: "achievement-dialog"})
+    assert has_element?(view, "#achievement-dialog [data-selected-key='country_fr']")
+    render_click(view, "close_card", %{})
+    assert_push_event(view, "close-dialog", %{id: "achievement-dialog"})
+    refute has_element?(view, "#achievement-dialog [data-selected-key]")
+  end
+
   test "card dialog Escape and close return focus to the chosen card", %{user: user} do
     {:ok, view, html} =
       live(NativeAchievementsUI.conn(user, "/achievements/continent_europe?q=France"))

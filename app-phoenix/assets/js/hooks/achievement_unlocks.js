@@ -17,11 +17,12 @@ const canReveal = () =>
   !document.hidden && !document.querySelector("dialog[open]")
 
 export class AchievementUnlocksLifecycle {
-  constructor(el) {
+  constructor(el, material = () => import("../achievements/material.js")) {
     this.el = el
+    this.material = material
   }
   start() {
-    this.generation = (this.generation || 0) + 1
+    this.epoch = (this.epoch || 0) + 1
     this.ackPromise = null
     this.stopped = false
     this.current = null
@@ -53,8 +54,9 @@ export class AchievementUnlocksLifecycle {
   }
 
   stop() {
-    this.generation += 1
+    this.epoch += 1
     this.stopped = true
+    this.release()
     clearTimeout(this.ackTimer)
     clearTimeout(this.retryTimer)
     clearTimeout(this.transitionTimer)
@@ -72,13 +74,13 @@ export class AchievementUnlocksLifecycle {
       return
     }
     this.loading = true
-    const generation = this.generation
+    const epoch = this.epoch
     try {
       const response = await post(this.el.dataset.nextUrl, {
         claim_token: this.saved?.token,
         batch_end_id: this.batchEndId,
       })
-      if (this.stopped || generation !== this.generation) return
+      if (!this.active(epoch)) return
       if (response.status === 409) {
         this.saved = null
         this.saveClaim()
@@ -97,7 +99,7 @@ export class AchievementUnlocksLifecycle {
         throw new Error(`Unlock request failed: ${response.status}`)
 
       const item = await response.json()
-      if (this.stopped || generation !== this.generation) return
+      if (!this.active(epoch)) return
       this.current = item
       this.batchEndId = item.batch_end_id
       this.saved = {
@@ -110,7 +112,10 @@ export class AchievementUnlocksLifecycle {
         this.retryTimer = this.later(() => this.load(), 1000)
         return
       }
+      this.release()
       this.el.innerHTML = item.html
+      await this.decorate(epoch)
+      if (!this.active(epoch)) return
       if (this.focusAfterLoad) {
         this.el
           .querySelector(".ach-unlock-front")
@@ -122,22 +127,32 @@ export class AchievementUnlocksLifecycle {
         matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1100,
       )
     } catch (error) {
-      if (!this.stopped && generation === this.generation) {
+      if (this.active(epoch)) {
         console.error(error)
         this.retryTimer = this.later(() => this.load(), 5000)
       }
     } finally {
-      if (generation === this.generation) this.loading = false
+      if (epoch === this.epoch) this.loading = false
     }
+  }
+
+  release() {
+    this.dispose?.()
+    this.dispose = null
+  }
+
+  async decorate(epoch) {
+    const { initializeAchievementMaterials: initialize } = await this.material()
+    if (this.active(epoch)) this.dispose = initialize(this.el)
   }
 
   async nextCard() {
     if (this.stopped || !this.current || this.transitioning) return
-    const generation = this.generation
+    const epoch = this.epoch
     this.transitioning = true
     clearTimeout(this.ackTimer)
     const acknowledged = await this.acknowledge()
-    if (!this.active(generation)) return
+    if (!this.active(epoch)) return
     if (!acknowledged) {
       this.transitioning = false
       return
@@ -151,11 +166,11 @@ export class AchievementUnlocksLifecycle {
         this.finishTransition = resolve
         this.transitionTimer = setTimeout(resolve, 170)
       })
-      if (!this.active(generation)) return
+      if (!this.active(epoch)) return
       this.finishTransition = null
       this.focusAfterLoad = true
       await this.load()
-      if (!this.active(generation)) return
+      if (!this.active(epoch)) return
       if (!this.current) this.restoreFocus()
     }
     this.transitioning = false
@@ -163,22 +178,22 @@ export class AchievementUnlocksLifecycle {
 
   async dismiss() {
     if (this.stopped || !this.current || this.transitioning) return
-    const generation = this.generation
+    const epoch = this.epoch
     this.transitioning = true
     clearTimeout(this.ackTimer)
     try {
       const response = await post(this.el.dataset.dismissUrl, {
         batch_end_id: this.batchEndId,
       })
-      if (!this.active(generation)) return
+      if (!this.active(epoch)) return
       if (!response.ok)
         throw new Error(`Unlock dismiss failed: ${response.status}`)
       this.hide()
       this.restoreFocus()
     } catch (error) {
-      if (this.active(generation)) console.error(error)
+      if (this.active(epoch)) console.error(error)
     } finally {
-      if (this.active(generation)) this.transitioning = false
+      if (this.active(epoch)) this.transitioning = false
     }
   }
 
@@ -190,12 +205,12 @@ export class AchievementUnlocksLifecycle {
       return Promise.resolve(false)
     }
     if (this.ackPromise) return this.ackPromise
-    const generation = this.generation
+    const epoch = this.epoch
     const item = this.current
     const url = this.el.dataset.seenUrl.replace("__ID__", String(item.id))
     this.ackPromise = post(url, { claim_token: item.token })
       .then((response) => {
-        if (!this.active(generation)) return false
+        if (!this.active(epoch)) return false
         if (!response.ok && response.status !== 409)
           throw new Error(`Unlock acknowledgement failed: ${response.status}`)
         item.token = null
@@ -204,30 +219,31 @@ export class AchievementUnlocksLifecycle {
         return true
       })
       .catch((error) => {
-        if (!this.active(generation)) return false
+        if (!this.active(epoch)) return false
         console.error(error)
         if (!this.stopped)
           this.retryTimer = this.later(() => this.acknowledge(), 5000)
         return false
       })
       .finally(() => {
-        if (this.active(generation)) this.ackPromise = null
+        if (this.active(epoch)) this.ackPromise = null
       })
     return this.ackPromise
   }
 
-  active(generation) {
-    return !this.stopped && generation === this.generation
+  active(epoch) {
+    return !this.stopped && epoch === this.epoch
   }
 
   later(action, delay) {
-    const generation = this.generation
+    const epoch = this.epoch
     return setTimeout(() => {
-      if (this.active(generation)) action()
+      if (this.active(epoch)) action()
     }, delay)
   }
 
   hide() {
+    this.release()
     clearTimeout(this.ackTimer)
     clearTimeout(this.retryTimer)
     this.current = null
