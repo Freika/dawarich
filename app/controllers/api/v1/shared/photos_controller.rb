@@ -61,7 +61,9 @@ module Api
         end
 
         def allowed_ids_cache_key
-          "shared_link/#{link.id}/photo_ids/v2/#{privacy_zones_fingerprint}"
+          scope = [link.user_id, link.resource_type, link.resource_id, photo_range]
+          fingerprint = Digest::SHA256.hexdigest(scope.to_json)
+          "shared_link/#{link.id}/photo_ids/v3/#{fingerprint}/#{privacy_zones_fingerprint}"
         end
 
         def privacy_zones_fingerprint
@@ -78,6 +80,12 @@ module Api
         end
 
         def photo_range
+          return @photo_range if defined?(@photo_range)
+
+          @photo_range = resolve_photo_range
+        end
+
+        def resolve_photo_range
           case link.resource_type.to_sym
           when :trip
             trip = link.resource
