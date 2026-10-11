@@ -88,11 +88,12 @@ defmodule Dawarich.A12f3bE123Test do
   end
 
   @tag a12f3b_case: "E123b"
-  test "E123 accepted children prevent premature completion" do
+  test "E123 accepted children and durable notification delivery prevent premature completion" do
     f = load_visits!("full_history_redetect_pl")
     uid = user_id(f)
     place = stale_place(uid)
     args = args(f)
+    :ok = Dawarich.Notifications.Events.subscribe(uid)
     root = Oban.insert!(@oban, RedetectWorker.new(args))
     assert RedetectWorker.perform(%{root | conf: Oban.config(@oban)}) == :ok
     complete(root.id)
@@ -138,6 +139,21 @@ defmodule Dawarich.A12f3bE123Test do
       assert Dawarich.Points.VisitMonthsWorker.run(ScratchRepo, child) == :ok
       complete(id)
     end
+
+    status = Drain.status(ScratchRepo)
+    assert status.counts.incomplete_oban == 1
+    assert "incomplete_oban" in status.shutdown_reasons
+
+    assert [[%{"user_id" => ^uid} = notification]] =
+             rows("SELECT args FROM oban.oban_jobs WHERE state='available' AND worker=$1", [
+               inspect(Dawarich.Notifications.EventsWorker)
+             ])
+
+    refute_received {:domain_changed, ^uid, :notifications}
+    assert %{success: 1, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
+    assert_received {:domain_changed, ^uid, :notifications}
+    assert Dawarich.Notifications.EventsWorker.run(ScratchRepo, notification) == :ok
+    refute_received {:domain_changed, ^uid, :notifications}
 
     status = Drain.status(ScratchRepo)
     assert status.counts.pending_outbox == 0
