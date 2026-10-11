@@ -168,14 +168,8 @@ export function installHostReplay({
   owner.update = async (next) => {
     const changed = active && range !== JSON.stringify(next.range)
     if (changed) owner.replay.close()
-    if (next.panel && next.panel !== "replay") owner.replay.close()
     const result = await update.call(owner, next)
-    if (
-      changed &&
-      result === "ready" &&
-      (!next.panel || next.panel === "replay")
-    )
-      await owner.replay.open(next.range)
+    if (changed && result === "ready") await owner.replay.open(next.range)
     return result
   }
   owner.reconnect = async () => {

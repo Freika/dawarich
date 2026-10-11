@@ -47,3 +47,36 @@ test("native replay replaces its profile clock when the range timezone changes",
   assert.equal(f.owner.replay.manager.getCurrentDayLengthMinutes(), 1440)
   f.owner.destroy()
 })
+
+test("native replay remains active while reopening other panels and refreshes a changed range", async () => {
+  const f = fixture()
+  await f.owner.mount()
+  let reads = 0
+  f.owner.source.snapshot = async () => {
+    reads++
+    return { points: [{ timestamp: 1774861200, longitude: 13, latitude: 52 }] }
+  }
+  try {
+    await f.owner.replay.open()
+    f.owner.replay.seek(321)
+    const manager = f.owner.replay.manager
+    const marker = structuredClone(f.sources.get("native-replay-marker").data)
+    for (const panel of ["timeline", "layers", "settings", ""]) {
+      await f.owner.update({ ...f.owner.config, panel })
+      assert.equal(f.owner.replay.active, true)
+      assert.equal(f.owner.replay.manager, manager)
+      assert.deepEqual(f.sources.get("native-replay-marker").data, marker)
+      assert.equal(reads, 1)
+    }
+    await f.owner.update({
+      ...f.owner.config,
+      revision: 2,
+      panel: "timeline",
+      range: { ...f.owner.config.range, endAt: "2026-03-30T23:59" },
+    })
+    assert.equal(f.owner.replay.active, true)
+    assert.equal(reads, 2)
+  } finally {
+    f.owner.destroy()
+  }
+})
