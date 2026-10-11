@@ -1369,6 +1369,7 @@ An account with an array-valued settings container cannot open the Rails Places 
 - Test: `unsupported persisted Place settings render alert before and after join`, including zero-effect command refusal and unchanged malformed settings after an explicit native locale query.
 - Ledger: ED-NATIVE-M3D-OPAQUE-SETTINGS; no DRB added. Distinct from FRB-051 NULL/default handling: this preserves a malformed non-object container as unsupported for Places.
 - Evidence: milestone 3d implementation report; RED, restored GREEN and decoder mutation. No all-page support claim for corrupt settings.
+- Stage-2 integration extends the explicit unsupported-container refusal to native map, Family, public-map and Trip-form document admission: `app-phoenix/lib/dawarich_web/native_m6_auth.ex:11`, `app-phoenix/lib/dawarich_web/native_data_request.ex:41`. These documents return 422 before locale/page/retained-preflight effects. Tests: `native document authentication refuses malformed persisted settings before loading a page` and `native data documents reject malformed settings before retained Trip preflight`; omitted guard mutations fail. The Rails navbar root cause and ED-NATIVE-M3D-OPAQUE-SETTINGS are unchanged.
 
 ### FRB-NATIVE-M5-FAMILY-INDICATOR — Duplicate family navbar IDs
 
@@ -1533,7 +1534,7 @@ Versioned timers independently expire silent consent and access grants.
 Rails admits a public link once when connecting and subscribes to its coordinate stream. An already connected reader can retain old content after revocation, expiry, phrase rotation or audience loss. Native public readers re-admit before each snapshot and clear silent expiry with a versioned deadline timer. Native browser hooks abort pending loads and erase maps, markers, images, replay timers and data on refusal/disconnect. Snapshot construction repeats admission and privacy checks after loading, preventing queued revoked data from being published; independent wire adapters retain their external protocol.
 
 - Rails: `app/channels/application_cable/connection.rb:27,29`; `app/channels/shared_location_channel.rb:5,8`.
-- Phoenix: `app-phoenix/lib/dawarich/sharing/public.ex:20`; integrated host `app-phoenix/lib/dawarich_web/public_map_auth.ex:20`, `:88`, and `app-phoenix/lib/dawarich_web/public_map_deadline.ex:12`. The immutable M4 grant is bounded by unlock and browser-session cookie deadlines; the native host consumes hashed session signout before publishing another snapshot.
+- Phoenix: `app-phoenix/lib/dawarich/sharing/public.ex:20`; integrated host `app-phoenix/lib/dawarich_web/public_map_auth.ex:20`, `:94`, and `app-phoenix/lib/dawarich_web/public_map_deadline.ex:12`. The immutable M4 grant is bounded by unlock and browser-session cookie deadlines; the native host consumes hashed session signout before publishing another snapshot.
 - Tests: “queued public update after revoke or phrase rotation clears old content before delivery”; “public expiry clears a silent connection and reconnect cannot revive it”; admission/cache/timer mutations fail.
 - Ledger: ED-NATIVE-M4-PUBLIC-ADMISSION; no DRB added. Rails production code unchanged.
 
