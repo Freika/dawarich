@@ -88,6 +88,9 @@ defmodule DawarichWeb.StatsParityTest do
             )
           end
 
+          if rails =~ "/assets/backgrounds/months/",
+            do: assert(phoenix =~ "/native/backgrounds/months/")
+
           assert normalized(phoenix) == normalized(rails)
 
           assert ParityHTML.stimulus(Dawarich.Test.NativeM4Corpus.reports(phoenix)) ==
@@ -336,6 +339,7 @@ defmodule DawarichWeb.StatsParityTest do
       html
       |> Dawarich.Test.NativeM4Corpus.reports()
       |> ChartkickHTML.without_charts()
+      |> String.replace("/native/backgrounds/months/", "/assets/backgrounds/months/")
       |> then(&Regex.replace(@sampled, &1, "\\1 text-SAMPLED\""))
       |> ParityHTML.normalize()
 
