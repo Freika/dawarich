@@ -28,6 +28,18 @@ cleanup() {
   done
   [ "$NETWORK" = 0 ] || dk network rm "$NET" >/dev/null
   [ "$VOLUME" = 0 ] || dk volume rm "$VOL" >/dev/null
+  python3 - "$PRIVATE" "$NATIVE_SMOKE_OUT" <<'REDACT'
+import pathlib,sys
+secrets=[]
+for env in pathlib.Path(sys.argv[1]).glob('*.env'):
+    for line in env.read_text().splitlines():
+        key,sep,value=line.partition('=')
+        if sep and value and any(word in key for word in ['PASSWORD','SECRET','API_KEY']): secrets.append(value)
+for log in pathlib.Path(sys.argv[2]).glob('*.log'):
+    text=log.read_text(errors='replace')
+    for value in secrets: text=text.replace(value,'[REDACTED]')
+    log.write_text(text)
+REDACT
   rm -rf "$PRIVATE"
   printf '%s\n' "$result" >"$NATIVE_SMOKE_OUT/exit.status"
   exit "$result"
