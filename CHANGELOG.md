@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Reserve transportation reclassification while its worker is queued, preventing duplicate runs from repeated requests and allowing retry after enqueue failure.
 - Import progress no longer moves backwards when an older Google Takeout continuation finishes late or publishes a stale status.
 - Public monthly statistics and yearly digest links show an unavailable-share message after their owner is deleted.
 - Area creation and editing reject unsupported response formats before saving changes or scheduling visit relabeling.
