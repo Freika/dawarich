@@ -40,3 +40,22 @@ test("layer settings preserve the active style and selected overlays", async () 
   assert.equal(f.owner.config.tracksEnabled, true)
   f.owner.destroy()
 })
+
+test("an unconfigured photo layer leaves the map and base layers usable", async () => {
+  const f = fixture({ photosEnabled: true, pointsEnabled: true })
+  f.map.querySourceFeatures = () => []
+  f.reader.pages = async () => {
+    throw Object.assign(new Error("unconfigured"), {
+      status: 401,
+      code: "photos_unconfigured",
+    })
+  }
+  assert.equal(await f.owner.mount(), "ready")
+  assert.equal(f.layers.has("points-mvt"), true)
+  assert.equal(f.sources.get("photos-source").data.features.length, 0)
+  assert.equal(
+    f.pushed.some(({ payload }) => payload.code === "photos_unconfigured"),
+    true,
+  )
+  f.owner.destroy()
+})

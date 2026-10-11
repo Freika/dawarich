@@ -28,7 +28,7 @@ defmodule DawarichWeb.BrowserMapPhotos do
             %{"source" => source && String.capitalize(source)}
           )
 
-        Respond.json(conn, 401, %{error: message})
+        Respond.json(conn, 401, %{error: message, code: "photos_unconfigured"})
 
       {:error, _} ->
         Respond.json(conn, 502, %{

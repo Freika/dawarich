@@ -231,3 +231,21 @@ test("cookie track reads unwrap exactly one admitted FeatureCollection and refus
     reader.destroy()
   }
 })
+
+test("reader forwards only the typed unconfigured photo outcome", async () => {
+  for (const code of ["photos_unconfigured", "unauthorized"]) {
+    const reader = createReader({
+      origin: "https://map.test",
+      fetch: async () => response({ code }, {}, 401),
+    })
+    await assert.rejects(reader.read("photos"), (error) => {
+      assert.equal(error.status, 401)
+      assert.equal(
+        error.code,
+        code === "photos_unconfigured" ? code : undefined,
+      )
+      return true
+    })
+    reader.destroy()
+  }
+})
