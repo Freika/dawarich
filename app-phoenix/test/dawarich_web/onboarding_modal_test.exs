@@ -8,8 +8,8 @@ defmodule DawarichWeb.OnboardingModalTest do
   alias DawarichWeb.RailsCsrf
 
   @endpoint DawarichWeb.Endpoint
-  @modal "div#onboarding-modal[phx-hook='RailsStimulus'][phx-update='ignore'][data-controller='onboarding-modal'][data-onboarding-modal-auto-value='false'] > dialog#getting_started"
-  @host "div#achievement-unlocks[phx-hook='RailsStimulus'][phx-update='ignore'][data-controller='achievement-unlocks'][data-achievement-unlocks-user-id-value='5470']"
+  @modal "dialog#getting_started[phx-hook=Onboarding][data-auto=false]"
+  @host "#achievement-unlocks[phx-hook=AchievementUnlocks]"
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
@@ -33,36 +33,40 @@ defmodule DawarichWeb.OnboardingModalTest do
       |> LazyHTML.to_tree()
       |> length()
 
-  test "a deferred hybrid page renders the modal and the unlock host as LiveView-ignored Rails Stimulus islands, before and after the socket joins",
+  test "native data pages connect the onboarding dialog and unlock host without credential islands",
        %{user: user} do
     html = dead(user)
-    assert count(html, "#onboarding-modal a[href='/imports/new']") == 1
-    assert count(html, "#onboarding-modal form[data-controller='upload']") == 0
+    assert count(html, "#getting_started a[href='/imports/new']") == 1
+    assert count(html, "#getting_started form[data-controller='upload']") == 0
     assert count(html, @modal) == 1
     assert count(html, @host) == 1
 
     {:ok, view, _html} = live_as(user)
     assert has_element?(view, @modal)
     assert has_element?(view, @host)
-    assert has_element?(view, "#onboarding-modal a[href='/imports/new']")
-    refute has_element?(view, "#onboarding-modal form[data-controller='upload']")
+    assert has_element?(view, "#getting_started a[href='/imports/new']")
+    refute has_element?(view, "#getting_started form[data-controller='upload']")
   end
 
-  test "the track screen's QR code is api_key_qr_code(current_user, size: 3) for Rails' root URL",
+  test "native onboarding reveals the exact source QR only through fresh CSRF protected HTTP",
        %{user: user} do
     html = dead(user)
     expected = Dawarich.QrSvg.api_key("http://www.example.com/", "a51b-k-5470", 3)
 
-    rendered =
-      html
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("#getting_started .bg-white > svg")
-      |> LazyHTML.to_tree()
+    assert count(html, "#onboarding-api-qr[phx-hook=CredentialQr]") == 1
+    assert count(html, "#onboarding-api-qr svg") == 0
+    refute html =~ "a51b-k-5470"
+    session = RailsUser.session(user.id)
 
-    assert rendered ==
-             expected |> LazyHTML.from_fragment() |> LazyHTML.query("svg") |> LazyHTML.to_tree()
+    conn =
+      RailsUser.signed_in(user.id, session)
+      |> Plug.Conn.put_req_header("x-csrf-token", RailsCsrf.masked_token(session))
+      |> get("/native/account/qr")
 
-    assert html =~ ~s|transform="translate(5,5) scale(3)"|
+    assert response(conn, 200) == expected
+    assert Plug.Conn.get_resp_header(conn, "content-type") == ["image/svg+xml; charset=utf-8"]
+    assert Plug.Conn.get_resp_header(conn, "cache-control") == ["no-store"]
+    assert get(RailsUser.signed_in(user.id), "/native/account/qr").status == 403
   end
 
   test "the LiveView state holds neither the API key nor the QR code", %{user: user} do
