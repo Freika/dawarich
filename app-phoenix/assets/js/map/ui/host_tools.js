@@ -3,10 +3,14 @@ import { createEntityEditor } from "./entity_editor.js"
 import { installHostShortcuts } from "./shortcuts.js"
 
 export function bindTool(root, selector, callback, lifetime) {
-  const button = root?.querySelector(selector)
-  if (!button) return
-  button.addEventListener("click", callback)
-  lifetime.own(() => button.removeEventListener("click", callback))
+  if (!root) return
+  const click = (event) => {
+    const button = event.target?.closest?.(selector)
+    if (button && root.contains(button) && button.closest("[data-native-map-root]") === root)
+      callback(event)
+  }
+  root.addEventListener("click", click)
+  lifetime.own(() => root.removeEventListener("click", click))
 }
 
 export function createHostTools({ map, root, pushEvent, lifetime }) {
