@@ -9,8 +9,9 @@ defmodule DawarichWeb.StatsLive.NativeMonthMap do
     first = Date.new!(assigns.data.year, assigns.data.month, 1)
     last = Date.end_of_month(first)
     zone = assigns.data.period.zone
-    {from, _} = Dawarich.LocalTime.day_bounds(zone, first)
-    {_, until} = Dawarich.LocalTime.day_bounds(zone, last)
+    {first_epoch, last_epoch} = Dawarich.Spatial.CalendarWindow.days(zone, first, last)
+    from = first_epoch |> DateTime.from_unix!() |> DateTime.to_iso8601()
+    until = last_epoch |> DateTime.from_unix!() |> DateTime.to_iso8601()
 
     assigns =
       assign(assigns, :config, %{
