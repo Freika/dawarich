@@ -83,14 +83,15 @@ defmodule DawarichWeb.SharingEndpointTest do
   defp phoenix(port, request) do
     client = connect(port)
     send_raw(client, request)
-    read_response(client)
+    method = request |> String.split(" ") |> hd()
+    read_response(client, method: method)
   end
 
   defp counters,
     do: List.flatten(rows("SELECT key FROM phoenix.counters WHERE value <> 0 ORDER BY key"))
 
-  test "requests Phoenix cannot answer as Rails would go to Puma before the view is counted",
-       ctx do
+  test "public request envelopes resolve locally and unsupported transports never count views",
+       _ctx do
     TripsSeeds.trip!(%{id: 990_001, user_id: 9901})
     port = serve()
     signed_in = "Cookie: _dawarich_session=#{RailsUser.cookie(RailsUser.session(9901))}\r\n"
@@ -126,20 +127,31 @@ defmodule DawarichWeb.SharingEndpointTest do
           ) <>
             "locale=de"
         ] do
-      {line, _body} = puma(port, ctx.upstream, request)
-      assert line =~ ~r{\A(GET|HEAD) /s/}i
+      before = SharingSeeds.view_count(@live)
+      {status, _headers, body} = phoenix(port, request)
+
+      transport =
+        String.contains?(request, ["format=json", "X-Requested-With", "Accept: application/json"])
+
+      assert status == if(transport, do: 422, else: 200)
+      refute body == "puma"
+      refute body =~ "turbo-frame"
+      if transport, do: assert(SharingSeeds.view_count(@live) == before)
+      if String.starts_with?(request, "HEAD"), do: assert(body == "")
     end
 
-    assert SharingSeeds.view_count(@live) == 0
-    assert SharingSeeds.view_count(@gone_trip) == 0
+    assert SharingSeeds.view_count(@gone_trip) == 1
   end
 
-  test "Cloud hands the shared-link page and its unlock to Puma", ctx do
+  test "Cloud public page stays native while its external unlock contract is retained", ctx do
     System.put_env("SELF_HOSTED", "false")
     on_exit(fn -> System.delete_env("SELF_HOSTED") end)
     port = serve()
 
-    assert {"GET /s/#{@live} HTTP/1.1", ""} == puma(port, ctx.upstream, get("/s/#{@live}"))
+    {status, _headers, body} = phoenix(port, get("/s/#{@live}"))
+    assert status == 200
+    assert body =~ "/native/app"
+    refute body == "puma"
 
     assert {"POST /s/#{@live}/unlock HTTP/1.1", "phrase=x"} ==
              puma(port, ctx.upstream, post("/s/#{@live}/unlock", "phrase=x"))
@@ -251,43 +263,34 @@ defmodule DawarichWeb.SharingEndpointTest do
              puma(port, ctx.upstream, post("/s/#{@protected}/unlock", "phrase=falsch"))
   end
 
-  test "a page that stops being native after the gate reaches Puma without Phoenix's session cookie",
-       ctx do
+  test "public named-date range stays native and records its admitted source visit once" do
     Dawarich.Repo.query!(
       "UPDATE shared_links SET settings = $2 WHERE id = $1::text::uuid",
       [@timeline, %{"start_date" => "9 May 2026", "end_date" => "2026-05-12"}]
     )
 
-    rails =
-      Task.async(fn ->
-        puma = accept(ctx.upstream)
-        read_head(puma)
-
-        reply(
-          puma,
-          "HTTP/1.1 200 OK\r\nSet-Cookie: _dawarich_session=rails\r\nContent-Length: 4\r\n\r\npuma"
-        )
-      end)
-
     conn =
-      Phoenix.ConnTest.build_conn(:get, "/s/#{@timeline}")
-      |> DawarichWeb.Router.call(DawarichWeb.Router.init([]))
+      Phoenix.ConnTest.build_conn()
+      |> Phoenix.ConnTest.dispatch(DawarichWeb.Endpoint, :get, "/s/#{@timeline}", nil)
 
-    Task.await(rails)
+    assert conn.status == 200
+    assert conn.resp_body =~ "id=\"native-public-map\""
+    refute conn.resp_body =~ "puma"
 
-    assert for({"set-cookie", value} <- conn.resp_headers, do: value) == [
-             "_dawarich_session=rails"
-           ]
+    refute Enum.any?(conn.resp_headers, fn {name, value} ->
+             name == "set-cookie" and value == "_dawarich_session=rails"
+           end)
 
-    assert SharingSeeds.view_count(@timeline) == 0
+    assert SharingSeeds.view_count(@timeline) == 1
   end
 
-  test "a Turbo visit gets the reload stub and does not count the view" do
+  test "a legacy Turbo header receives the standalone native public graph" do
     port = serve()
     {status, _headers, body} = phoenix(port, get("/s/#{@live}", "X-Turbo-Request-Id: 1\r\n"))
 
     assert status == 200
-    assert body =~ ~s(<meta name="turbo-visit-control" content="reload">)
-    assert SharingSeeds.view_count(@live) == 0
+    assert body =~ "/native/app"
+    refute body =~ "turbo-visit-control"
+    refute body =~ "turbo-frame"
   end
 end

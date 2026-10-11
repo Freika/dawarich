@@ -240,9 +240,10 @@ defmodule DawarichWeb.A8RemainingParityTest do
     {entry, user} = seed_trip("show_nil_path_sidekiq")
     path = entry["request"]["path"]
     before = snapshot()
-    {{line, _}, conn} = forwarded(upstream, fn -> RailsUser.signed_in(user.id) |> get(path) end)
-    assert conn.status == 204
-    assert line == "GET #{path} HTTP/1.1"
+    conn = RailsUser.signed_in(user.id) |> get(path)
+    assert conn.status == 200
+    refute conn.resp_body =~ "puma"
+    refute conn.resp_body =~ "data-native-trip-map"
     assert snapshot() == before
     Ownership.put!(Repo, "command:trips.calculate", :oban)
 

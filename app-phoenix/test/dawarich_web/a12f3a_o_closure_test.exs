@@ -471,7 +471,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       {"/imports/42/edit", "imports", DawarichWeb.ImportsLive.Edit},
       {"/imports/42/download", "imports", DawarichWeb.ImportsDownload},
       {"/exports", "exports", DawarichWeb.ExportsLive.Index},
-      {"/trips", "trips", DawarichWeb.TripsLive.Index},
+      {"/trips", "trips", DawarichWeb.TripsLive.NativeIndex},
       {"/trips/new", "trips", DawarichWeb.TripsLive.Form},
       {"/trips/42", "trips", DawarichWeb.TripsLive.NativeMap},
       {"/trips/42/edit", "trips", DawarichWeb.TripsLive.Form},
@@ -566,7 +566,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   defp adopted?(method, path) do
     path = hd(String.split(path, "?"))
 
-    if path in ~w(/map /map/v2 /map/v1 /maps/v2 /trips/42) do
+    if path in ~w(/map /map/v2 /map/v1 /maps/v2 /trips /trips/42) do
       method in ~w(GET HEAD)
     else
       path in ~w(/map/timeline_feeds /map/timeline_feeds/calendar /map/timeline_feeds/42/track_info /points/42/address /tracks/41/segments /tracks/41/segments/42)
@@ -602,8 +602,12 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
                assert response.status in expected
 
                if expected == [200] and method == "GET" do
-                 hook = if String.starts_with?(path, "/trips/"), do: "Trip", else: "Map"
-                 assert String.contains?(response.resp_body, "phx-hook=\"#{hook}\"")
+                 if hd(String.split(path, "?")) == "/trips" do
+                   assert String.contains?(response.resp_body, "id=\"trips\"")
+                 else
+                   hook = if String.starts_with?(path, "/trips/"), do: "Trip", else: "Map"
+                   assert String.contains?(response.resp_body, "phx-hook=\"#{hook}\"")
+                 end
                end
 
                assert response.private[:dawarich_method] == method
