@@ -82,6 +82,12 @@ defmodule DawarichWeb.Api.Respond do
     conn = frame(conn, type || "")
     conn = rate_headers(conn, status)
     conn = if is_nil(type), do: delete_resp_header(conn, "content-type"), else: conn
+
+    conn =
+      if conn.private[:dawarich_method] == "HEAD" and status not in [204, 304],
+        do: put_resp_header(conn, "content-length", "0"),
+        else: conn
+
     log(conn, status)
     {status, cache(conn, status, "", []), ""}
   end

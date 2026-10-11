@@ -91,6 +91,13 @@ defmodule DawarichWeb.Api.RespondTest do
              {header(missing, "cache-control"), header(missing, "etag"), header(missing, "vary")}
   end
 
+  test "native HEAD refusals retain Rails zero-length framing" do
+    sent = authed() |> put_private(:dawarich_method, "HEAD") |> Respond.head(401)
+
+    assert {sent.status, sent.resp_body, get_resp_header(sent, "content-length")} ==
+             {401, "", ["0"]}
+  end
+
   test "Accounts.settings/1 returns the raw settings JSON", %{id: id} do
     assert %{"maps" => %{"distance_unit" => "mi"}, "timezone" => "UTC"} = Accounts.settings(id)
   end
