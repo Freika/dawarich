@@ -25,20 +25,6 @@ defmodule DawarichWeb.MapLive.TrackCommands do
     end
   end
 
-  def resume(socket) do
-    pending = socket.assigns[:pending_track]
-    socket = assign(socket, :pending_track, nil)
-
-    if pending && socket.assigns.map_url["panel"] == "timeline" &&
-         pending.range == socket.assigns.map_range &&
-         pending.date == socket.assigns.map_url["date"] do
-      {:noreply, socket} = handle_event("track:toggle", %{"id" => pending.id}, socket)
-      socket
-    else
-      socket
-    end
-  end
-
   def handle_event("track:toggle", %{"id" => id}, socket) do
     case Timeline.track(socket.assigns.current_scope, id) do
       {:ok, track} ->
@@ -84,6 +70,20 @@ defmodule DawarichWeb.MapLive.TrackCommands do
 
   def handle_event("track:close", _, socket), do: {:noreply, clear(socket)}
   def handle_event(_, _, socket), do: {:noreply, socket}
+
+  def resume(socket) do
+    pending = socket.assigns[:pending_track]
+    socket = assign(socket, :pending_track, nil)
+
+    if pending && socket.assigns.map_url["panel"] == "timeline" &&
+         pending.range == socket.assigns.map_range &&
+         pending.date == socket.assigns.map_url["date"] do
+      {:noreply, socket} = handle_event("track:toggle", %{"id" => pending.id}, socket)
+      socket
+    else
+      socket
+    end
+  end
 
   def clear(socket) do
     socket
