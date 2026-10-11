@@ -436,31 +436,56 @@ defmodule DawarichWeb.StandaloneActivationTest do
   defp guard(routes, session) do
     System.delete_env("DAWARICH_RAILS")
     upstream = RailsFormRequests.upstream!()
+    before = Repo.query!("SELECT to_jsonb(u) FROM users u ORDER BY id", [], log: false).rows
+
+    jobs =
+      Repo.query!("SELECT to_jsonb(j) FROM oban.oban_jobs j ORDER BY id", [], log: false).rows
 
     for {method, path, params} <- routes do
-      {{line, body}, response} =
-        RailsFormRequests.forwarded(upstream, fn -> request(method, path, session, params) end)
+      expected =
+        cond do
+          method == :get and String.starts_with?(path, "/users/password/") -> 200
+          method == :get or String.ends_with?(path, "/callback") -> 302
+          path == "/users" -> 302
+          true -> 422
+        end
 
-      assert response.status == 204
-      assert String.starts_with?(line, String.upcase(to_string(method)) <> " " <> path <> " ")
-      assert body == if(method == :get, do: "", else: URI.encode_query(params))
+      refused = Map.put(params, "authenticity_token", "invalid")
+      response = request(method, path, session, refused)
+      assert response.status == expected, "#{method} #{path}"
+
+      assert Repo.query!("SELECT to_jsonb(u) FROM users u ORDER BY id", [], log: false).rows ==
+               before
+
+      assert Repo.query!("SELECT to_jsonb(j) FROM oban.oban_jobs j ORDER BY id", [], log: false).rows ==
+               jobs
+
+      assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
     end
 
+    :gen_tcp.close(upstream.listen)
     System.put_env("DAWARICH_RAILS", "off")
   end
 
-  defp guard_api(method, path, user, params) do
+  defp guard_api(method, path, _user, params) do
     System.delete_env("DAWARICH_RAILS")
     previous = Application.get_env(:dawarich, :rails_routes, [])
     Application.put_env(:dawarich, :rails_routes, ["api"])
     upstream = RailsFormRequests.upstream!()
+    before = Repo.query!("SELECT to_jsonb(u) FROM users u ORDER BY id", [], log: false).rows
+    points = Repo.query!("SELECT to_jsonb(p) FROM points p ORDER BY id", [], log: false).rows
+    response = api(method, path, nil, params)
+    assert response.status == 401
+    assert response.resp_body == ""
 
-    {{line, body}, response} =
-      RailsFormRequests.forwarded(upstream, fn -> api(method, path, user, params) end)
+    assert Repo.query!("SELECT to_jsonb(u) FROM users u ORDER BY id", [], log: false).rows ==
+             before
 
-    assert response.status == 204
-    assert String.starts_with?(line, String.upcase(to_string(method)) <> " " <> path <> " ")
-    assert body == if(method == :get, do: "", else: Jason.encode!(params))
+    assert Repo.query!("SELECT to_jsonb(p) FROM points p ORDER BY id", [], log: false).rows ==
+             points
+
+    assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
+    :gen_tcp.close(upstream.listen)
     Application.put_env(:dawarich, :rails_routes, previous)
     System.put_env("DAWARICH_RAILS", "off")
   end

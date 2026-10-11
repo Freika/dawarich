@@ -357,7 +357,7 @@ defmodule DawarichWeb.MapLiveTest do
              ~w(inter-400 inter-700 oswald-400 oswald-700 playfair-display-400 playfair-display-700 jetbrains-mono-400 jetbrains-mono-700)
 
     assert config(view, "#native-poster-studio", "data-poster-config")["fonts"]["oswald-700"] =~
-             ~r{\A/assets/poster/oswald-700(-[0-9a-f]+)?\.woff2\z}
+             ~r{\A/native/poster/oswald-700(-[0-9a-f]+)?\.woff2\z}
 
     refute html =~ "/rails/active_storage/direct_uploads"
 

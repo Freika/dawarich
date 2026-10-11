@@ -317,13 +317,22 @@ defmodule DawarichWeb.StandaloneCredentialsOtpTest do
   defp guard(session, path, params) do
     System.delete_env("DAWARICH_RAILS")
     upstream = RailsFormRequests.upstream!()
+    before = Repo.query!("SELECT to_jsonb(u) FROM users u ORDER BY id", [], log: false).rows
+    guard_session = Map.put(session, "session_id", Ecto.UUID.generate())
 
-    {{line, body}, response} =
-      RailsFormRequests.forwarded(upstream, fn -> web(session, path, params) end)
+    refused =
+      params
+      |> Map.put("authenticity_token", "invalid")
+      |> Map.put("user[email]", "guard-#{Ecto.UUID.generate()}@dawarich.test")
 
-    assert response.status == 204
-    assert String.starts_with?(line, "POST " <> path <> " ")
-    assert body == URI.encode_query(params)
+    response = web(guard_session, path, refused)
+    assert response.status == 422
+
+    assert Repo.query!("SELECT to_jsonb(u) FROM users u ORDER BY id", [], log: false).rows ==
+             before
+
+    assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
+    :gen_tcp.close(upstream.listen)
     System.put_env("DAWARICH_RAILS", "off")
   end
 end
