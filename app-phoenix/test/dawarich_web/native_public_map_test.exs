@@ -85,6 +85,36 @@ defmodule DawarichWeb.NativePublicMapTest do
     assert has_element?(view, "[data-map-ready=true]")
   end
 
+  test "public map retains the M4 grant version after a share edit" do
+    {view, _, _} = open()
+
+    Repo.query!(
+      "UPDATE shared_links SET settings=jsonb_set(settings,'{show_route}','false'),updated_at=updated_at+interval '1 second' WHERE id=$1::text::uuid",
+      [@id],
+      log: false
+    )
+
+    send(view.pid, :public_refresh)
+    render(view)
+    refute has_element?(view, "#native-public-map")
+    assert_push_event(view, "map:clear", %{code: "not_found"})
+  end
+
+  test "public map advances the M5 bounded day window" do
+    Repo.query!("UPDATE trips SET ended_at='2026-11-10 00:00:00' WHERE id=$1", [8_813_211],
+      log: false
+    )
+
+    {view, _, _} = open()
+    assert has_element?(view, "[data-public-day='2026-10-08']")
+    refute has_element?(view, "[data-public-day='2026-11-08']")
+    assert has_element?(view, "[phx-click='public:more']")
+    render_click(view, "public:more", %{})
+    assert has_element?(view, "[data-public-day='2026-11-08']")
+    refute has_element?(view, "[data-public-day='2026-10-08']")
+    refute has_element?(view, "[phx-click='public:more']")
+  end
+
   test "stale public ready callback cannot acknowledge the current host" do
     {view, _, _} = open()
     render_hook(view, "map:ready", %{"revision" => 0})

@@ -69,16 +69,21 @@ defmodule DawarichWeb.NativeM6PublicRoutesTest do
       )
     )
 
+    rows("UPDATE users SET plan=2,active_until=$2 WHERE id=$1", [
+      id,
+      DateTime.utc_now() |> DateTime.add(30, :day)
+    ])
+
     rows("UPDATE shared_links SET settings=$2 WHERE id=$1::text::uuid", [
       uuid,
       %{"audience" => "family", "family_id" => to_string(id)}
     ])
 
     scope = Dawarich.Maps.principal(Dawarich.Accounts.get(viewer), "en")
-    assert {:ok, _} = Dawarich.Maps.Dependencies.Public.config(%{id: uuid, viewer_scope: scope})
+    assert {:ok, _} = Dawarich.Maps.Public.config(%{id: uuid, viewer_scope: scope})
 
     assert {:ok, _} =
-             Dawarich.Maps.Dependencies.Public.presentation(%{id: uuid, viewer_scope: scope})
+             Dawarich.Maps.Public.presentation(%{id: uuid, viewer_scope: scope})
 
     conn = RailsUser.signed_in(viewer) |> RailsUser.connecting_as(viewer) |> get("/s/#{uuid}")
     assert conn.status == 200

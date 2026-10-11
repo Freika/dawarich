@@ -5,7 +5,7 @@ defmodule DawarichWeb.PublicMapLive do
 
   def mount(_, session, socket) do
     if socket.assigns.public_config && !connected?(socket),
-      do: Dawarich.Maps.Dependencies.Public.record_visit(socket.assigns.public_capability)
+      do: Dawarich.Maps.Public.record_visit(socket.assigns.public_capability)
 
     socket =
       assign(socket,
@@ -42,6 +42,18 @@ defmodule DawarichWeb.PublicMapLive do
 
     {_, socket} = DawarichWeb.PublicMapAuth.authorize(socket)
     {:noreply, socket}
+  end
+
+  def handle_event("public:more", _, socket) do
+    resource = socket.assigns.public_presentation && socket.assigns.public_presentation.resource
+
+    if resource && is_binary(resource[:next_cursor]) do
+      socket = assign(socket, public_cursor: resource.next_cursor, public_selected_day: nil)
+      {_, socket} = DawarichWeb.PublicMapAuth.authorize(socket)
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("public:day", %{"day" => day}, socket) when is_binary(day) do

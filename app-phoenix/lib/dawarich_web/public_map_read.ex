@@ -2,7 +2,7 @@ defmodule DawarichWeb.PublicMapRead do
   @moduledoc false
   @behaviour Plug
   import Plug.Conn
-  alias Dawarich.Maps.Dependencies.Public
+  alias Dawarich.Maps.Public
   alias DawarichWeb.{RailsAuth, SharedLinkCookie}
   alias DawarichWeb.Api.Respond
 

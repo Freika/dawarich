@@ -5,7 +5,7 @@ defmodule DawarichWeb.PublicMapAuth do
   import Phoenix.LiveView,
     only: [attach_hook: 4, connected?: 1, get_connect_info: 2, push_event: 3]
 
-  alias Dawarich.Maps.Dependencies.Public
+  alias Dawarich.Maps.Public
   alias DawarichWeb.{RailsAuth, SharedLinkCookie}
 
   @layout ~w(locale suggested_locale self_hosted request_path query_params base_url notification_session rails_csrf_token)a
@@ -17,6 +17,12 @@ defmodule DawarichWeb.PublicMapAuth do
       proof: SharedLinkCookie.proofs(conn)[conn.path_params["id"]],
       viewer_scope: user && Dawarich.Maps.principal(user, conn.assigns[:locale] || "en")
     }
+
+    capability =
+      case Dawarich.Maps.PublicGrant.bind(capability, []) do
+        {:ok, bound} -> bound
+        _ -> capability
+      end
 
     RailsAuth.live_session(conn)
     |> Map.put("public_map_capability", capability)
@@ -50,6 +56,7 @@ defmodule DawarichWeb.PublicMapAuth do
       |> assign(for key <- @layout, do: {key, session[Atom.to_string(key)]})
       |> assign(
         public_capability: capability,
+        public_cursor: nil,
         public_config: nil,
         public_presentation: nil,
         public_error: nil,
@@ -85,7 +92,14 @@ defmodule DawarichWeb.PublicMapAuth do
     socket = navigation(socket)
 
     with {:ok, config} <- Public.config(socket.assigns.public_capability),
-         {:ok, presentation} <- Public.presentation(socket.assigns.public_capability) do
+         {:ok, presentation} <-
+           Public.presentation(socket.assigns.public_capability,
+             params:
+               if(socket.assigns.public_cursor,
+                 do: %{"cursor" => socket.assigns.public_cursor},
+                 else: %{}
+               )
+           ) do
       old = socket.assigns.public_config
 
       revision =

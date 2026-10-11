@@ -53,7 +53,7 @@ defmodule DawarichWeb.NativePublicResource do
         class="prose max-w-none min-w-0 [overflow-wrap:anywhere]"
       >
         <h2>{t(@locale, "shared.links.trip.trip_notes", %{})}</h2>
-        {Phoenix.HTML.raw(Dawarich.TripDescription.html(@data.description))}
+        {Phoenix.HTML.raw(@data.description)}
       </div>
       <details
         :for={day <- @data.days}
@@ -91,6 +91,14 @@ defmodule DawarichWeb.NativePublicResource do
           />
         </div>
       </details>
+      <button
+        :if={@data[:next_cursor]}
+        type="button"
+        phx-click="public:more"
+        class="btn btn-sm max-w-full whitespace-normal"
+      >
+        {Phoenix.HTML.raw(t(@locale, "views.pagination.next", %{}))}
+      </button>
     </section>
     """
   end

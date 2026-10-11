@@ -4,7 +4,7 @@ defmodule DawarichWeb.NativePublicCapabilityTest do
   alias Dawarich.{Accounts, Repo, RailsCookies}
   alias Dawarich.Test.TripsSeeds
   alias DawarichWeb.SharedLinkCookie
-  alias Dawarich.Maps.Dependencies.Public
+  alias Dawarich.Maps.Public
   @id "a1300000-0000-4000-8000-000000000001"
   @now ~U[2026-10-10 12:00:00Z]
   @secret "synthetic-public-cookie-secret"
@@ -142,7 +142,16 @@ defmodule DawarichWeb.NativePublicCapabilityTest do
       )
     )
 
+    Repo.query!(
+      "UPDATE users SET plan=2,active_until=$2 WHERE id=$1",
+      [881_301, DateTime.add(@now, 30, :day)],
+      log: false
+    )
+
     assert {:ok, _} = Public.config(%{capability | proof: nil}, now: @now, self_hosted: true)
+    assert {:ok, bound} = Dawarich.Maps.PublicGrant.bind(%{capability | proof: nil}, now: @now)
+    assert {:error, :not_found} = Public.config(%{bound | viewer_scope: nil}, now: @now)
+
     Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [881_302])
     assert {:error, :not_found} = Public.config(capability, now: @now, self_hosted: true)
   end

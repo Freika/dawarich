@@ -1,4 +1,4 @@
-defmodule Dawarich.Maps.Dependencies.Public do
+defmodule Dawarich.Maps.Public do
   @moduledoc false
   alias Dawarich.{Accounts, Maps, SharedLinks, TripSettings, UserTimeZone, Repo}
   alias Dawarich.SharedLinks.FamilyAudience
@@ -6,34 +6,20 @@ defmodule Dawarich.Maps.Dependencies.Public do
   alias DawarichWeb.SharedLinkCookie
   @false_flags [nil, false, "", "0", "false", "FALSE", "f", "F", "off", "OFF"]
 
-  def config(capability, opts \\ []), do: with_link(capability, opts, &project(&1, capability))
+  def config(capability, opts \\ []) do
+    with {:ok, bound} <- Dawarich.Maps.PublicGrant.bind(capability, opts),
+         do: with_link(bound, opts, &project(&1, bound))
+  end
 
-  def presentation(capability, opts \\ []), do: with_link(capability, opts, &present/1)
+  def presentation(capability, opts \\ []) do
+    opts = delivery_options(opts)
 
-  defp present(link) do
-    resource =
-      if link.type in ["trip", "track"] do
-        data = Dawarich.SharedLinks.ResourcePage.load(link)
-
-        days =
-          Enum.map(data.days, fn day ->
-            %{day | photos: Enum.map(day.photos, &Map.take(&1, ~w(id source thumbnail_url)))}
-          end)
-
-        %{data | days: days}
-      end
-
-    safe_link =
-      Map.take(link, [:id, :type, :name])
-      |> Map.put(
-        :settings,
-        Map.take(
-          link.settings,
-          ~w(show_route show_stats show_description show_days show_day_notes show_photos)
-        )
-      )
-
-    {:ok, %{link: safe_link, resource: resource}}
+    with {:ok, bound} <- Dawarich.Maps.PublicGrant.bind(capability, opts),
+         {:ok, link} <- admitted(bound, opts, true),
+         {:ok, page} <-
+           Dawarich.Sharing.Pages.resource(bound.grant, Keyword.get(opts, :params, %{}), opts) do
+      {:ok, Dawarich.Maps.PublicPresentation.project(page, FamilyAudience.family_only?(link))}
+    end
   end
 
   def navigation(capability, opts \\ []) do
@@ -111,18 +97,18 @@ defmodule Dawarich.Maps.Dependencies.Public do
   defp with_link(capability, opts, fun, resource? \\ true)
 
   defp with_link(capability, opts, fun, resource?) when is_map(capability) do
-    with {:ok, link} <- admitted(capability, opts, resource?) do
-      result = fun.(link)
-      if callback = opts[:after_read], do: callback.()
+    opts = delivery_options(opts)
 
-      with {:ok, fresh} <- admitted(capability, opts, resource?),
-           true <-
-             Map.take(link, [:id, :user_id, :type, :resource_id, :settings, :magic_phrase]) ==
-               Map.take(fresh, [:id, :user_id, :type, :resource_id, :settings, :magic_phrase]) do
-        result
-      else
-        {:error, _} = error -> error
-        _ -> {:error, :changed}
+    with {:ok, bound} <- Dawarich.Maps.PublicGrant.bind(capability, opts),
+         {:ok, link} <- admitted(bound, opts, resource?),
+         {:ok, admission} <-
+           Dawarich.Sharing.Public.admit(bound.grant, Dawarich.Sharing.Delivery.now(opts)) do
+      snapshot = Dawarich.Sharing.Delivery.resource_snapshot({:ok, admission})
+      result = fun.(link)
+
+      case Dawarich.Sharing.Delivery.deliver({:resource, bound.grant}, snapshot, result, opts) do
+        {:ok, result} -> result
+        error -> error
       end
     end
   rescue
@@ -131,76 +117,14 @@ defmodule Dawarich.Maps.Dependencies.Public do
 
   defp with_link(_, _, _, _), do: {:error, :not_found}
 
-  defp admitted(%{id: id} = capability, opts, resource?) do
-    now = Keyword.get(opts, :now, DateTime.utc_now())
-
-    with true <- SharedLinks.canonical?(id),
-         %{type: type} = link when type in ["trip", "track", "timeline", "live"] <-
-           SharedLinks.active(id, now),
-         true <- SharedLinks.api_owner_available?(id),
-         {:ok, viewer} <-
-           if(FamilyAudience.family_only?(link),
-             do: viewer(capability[:viewer_scope], now),
-             else: {:ok, nil}
-           ),
-         true <-
-           FamilyAudience.accessible?(
-             link,
-             viewer,
-             now,
-             Keyword.get(opts, :self_hosted, DawarichWeb.LayoutAssigns.self_hosted?())
-           ),
-         :ok <-
-           if(FamilyAudience.family_only?(link),
-             do: :ok,
-             else: phrase(link, capability[:proof], now)
-           ),
-         :ok <- if(resource?, do: resource(link), else: :ok) do
-      {:ok, link}
-    else
-      {:error, _} = error -> error
-      _ -> {:error, :not_found}
-    end
+  defp delivery_options(opts) do
+    Keyword.put_new_lazy(opts, :clock, fn ->
+      Dawarich.Families.Clock.ticking(Keyword.get_lazy(opts, :now, &DateTime.utc_now/0))
+    end)
   end
 
-  defp viewer(nil, _now), do: {:ok, nil}
-
-  defp viewer(scope, now) do
-    case Maps.admit(scope, now: now) do
-      {:ok, fresh} -> {:ok, fresh.user}
-      _ -> {:error, :not_found}
-    end
-  end
-
-  defp phrase(link, proof, now) do
-    case SharedLinkCookie.unlock_token(link.id, link.magic_phrase) do
-      nil ->
-        :ok
-
-      token ->
-        with %{"identity" => identity, "expires_at" => expiry} <- proof,
-             true <- valid_expiry?(expiry, now),
-             true <- Plug.Crypto.secure_compare(identity, SharedLinkCookie.proof_identity(token)) do
-          :ok
-        else
-          _ -> {:error, :locked}
-        end
-    end
-  end
-
-  defp valid_expiry?(nil, _), do: true
-
-  defp valid_expiry?(expiry, now) do
-    case DateTime.from_iso8601(expiry) do
-      {:ok, at, _} -> DateTime.compare(now, at) == :lt
-      _ -> false
-    end
-  end
-
-  defp resource(%{type: type, resource_present: false}) when type in ["trip", "track"],
-    do: {:error, :missing_resource}
-
-  defp resource(_), do: :ok
+  defp admitted(capability, opts, resource?),
+    do: Dawarich.Maps.PublicGrant.admit(capability, opts, resource?)
 
   defp route?(link),
     do:
@@ -215,7 +139,11 @@ defmodule Dawarich.Maps.Dependencies.Public do
            SharedLinkCookie.unlock_token(link.id, link.magic_phrase),
          do: (capability[:proof] || %{})["expires_at"]
 
-    [link.expires_at, cookie]
+    [
+      link.expires_at,
+      cookie,
+      capability[:grant] && DateTime.from_unix!(capability.grant.expires_at)
+    ]
     |> Enum.map(fn
       %NaiveDateTime{} = value ->
         DateTime.from_naive!(value, "Etc/UTC")
