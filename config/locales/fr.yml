@@ -4226,6 +4226,7 @@ fr:
         an_error_occurred_while_starting_the_import_please_try_again: Une erreur est
           survenue lors du démarrage de l'importation. Veuillez réessayer.
         please_upload_a_valid_zip_file: Veuillez téléverser une archive ZIP valide.
+        cannot_delete_yourself_or_last_admin: Impossible de supprimer votre propre compte ou le dernier administrateur actif.
         cannot_remove_last_admin_role: Impossible de supprimer le rôle administrateur
           de l'utilisateur administrateur restant.
         cannot_disable_last_admin: Impossible de désactiver l'utilisateur administrateur
