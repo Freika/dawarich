@@ -35,28 +35,37 @@ defmodule DawarichWeb.NativeM5RoutesTest do
     end
   end
 
-  test "mixed Trip routes use one host adapter while map and storage callers stay owned" do
-    for {path, view, action} <- [
-          {"/trips", DawarichWeb.TripsLive.Index, :index},
-          {"/trips/new", DawarichWeb.TripsLive.Form, :new},
-          {"/trips/1/edit", DawarichWeb.TripsLive.Form, :edit},
-          {"/trips/1", DawarichWeb.TripsLive.Show, :show}
+  test "native trip editor routes precede the M6 trip resource and use M5 admission" do
+    for {path, action} <- [{"/trips/new", :new}, {"/trips/1/edit", :edit}] do
+      route = Phoenix.Router.route_info(Router, "GET", path, "example.invalid")
+
+      assert {DawarichWeb.NativeTripsLive.Form, ^action, _, %{name: :native_trips}} =
+               route.phoenix_live_view
+
+      assert route[:native_page]
+      refute route[:rails_gate]
+    end
+  end
+
+  test "integrated trip map routes and external protocols retain their native owners" do
+    for {path, view} <- [
+          {"/trips", DawarichWeb.TripsLive.NativeIndex},
+          {"/trips/1", DawarichWeb.TripsLive.NativeMap}
         ] do
       route = Phoenix.Router.route_info(Router, "GET", path, "example.invalid")
-      assert {^view, ^action, _, %{name: :trips_map_dependency}} = route.phoenix_live_view
-      assert route[:rails_gate]
+      assert {^view, _, _, %{name: :native_m6}} = route.phoenix_live_view
+      refute route[:rails_gate]
     end
 
     for {method, path, owner} <- [
           {"POST", "/trips/1/notes", DawarichWeb.TripNoteActions},
           {"POST", "/visits/merge", DawarichWeb.VisitActions},
-          {"GET", "/map/timeline_feeds", DawarichWeb.MapFrames},
+          {"GET", "/map/timeline_feeds", DawarichWeb.NativeMapRetired},
           {"GET", "/rails/active_storage/blobs/synthetic/file", DawarichWeb.StorageRoutes}
         ] do
       assert %{plug: ^owner} = Phoenix.Router.route_info(Router, method, path, "example.invalid")
     end
 
-    routes = for %{verb: :get, path: "/trips"} = route <- Router.__routes__(), do: route
-    assert length(routes) == 1
+    assert Enum.count(Router.__routes__(), &(&1.verb == :get and &1.path == "/trips")) == 1
   end
 end

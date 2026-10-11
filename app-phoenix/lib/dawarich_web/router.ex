@@ -136,6 +136,8 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsHeaders
   end
 
+  native_data_routes()
+  DawarichWeb.TripsNativeRoutes.trips_routes()
   page_routes()
 
   pipeline :stats_request do
@@ -179,8 +181,6 @@ defmodule DawarichWeb.Router do
   a10_routes()
   native_public_routes()
   native_upload_routes()
-  native_data_routes()
-  DawarichWeb.TripsNativeRoutes.trips_routes()
   native_admin_routes()
   trial_home_routes()
   settings_misc_routes()

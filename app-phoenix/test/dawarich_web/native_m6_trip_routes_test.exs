@@ -74,7 +74,7 @@ defmodule DawarichWeb.NativeM6TripRoutesTest do
     for p <- ["/trips/new", path <> "/edit"] do
       route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", p, "www.example.com")
       assert route.plug_opts == :new or route.plug_opts == :edit
-      assert {DawarichWeb.TripsLive.Form, _, _, _} = route.phoenix_live_view
+      assert {DawarichWeb.NativeTripsLive.Form, _, _, _} = route.phoenix_live_view
     end
 
     conn = RailsUser.signed_in(id) |> get("/trips/#{id * 10 + 1}")

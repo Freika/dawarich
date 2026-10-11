@@ -1,7 +1,6 @@
 defmodule Dawarich.Test.TripsNativeRouter do
   use Phoenix.Router
   import Phoenix.LiveView.Router
-  require DawarichWeb.TripsNativeRoutes
 
   pipeline :native_trips do
     plug :fetch_query_params
@@ -15,7 +14,16 @@ defmodule Dawarich.Test.TripsNativeRouter do
 
   scope "/" do
     pipe_through :native_trips
-    DawarichWeb.TripsNativeRoutes.trips_native_routes()
+    live_session :native_trips,
+      session: {DawarichWeb.NativeAuth, :live_session, []},
+      on_mount: {DawarichWeb.TripsNative.Access, :require_user},
+      root_layout: {DawarichWeb.Layouts, :native_root},
+      layout: {DawarichWeb.Layouts, :app} do
+      live "/trips", DawarichWeb.NativeTripsLive.Index, :index
+      live "/trips/new", DawarichWeb.NativeTripsLive.Form, :new
+      live "/trips/:id/edit", DawarichWeb.NativeTripsLive.Form, :edit
+      live "/trips/:id", DawarichWeb.NativeTripsLive.Show, :show
+    end
   end
 end
 
