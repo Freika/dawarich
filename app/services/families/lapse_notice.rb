@@ -7,7 +7,7 @@ module Families
     module_function
 
     def notified?(user)
-      user.settings.dig('family', KEY).present?
+      user.settings_hash.dig('family', KEY).present?
     end
 
     def mark(user)

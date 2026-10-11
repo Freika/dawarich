@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Keep notification badges, read states and deleted items current in other open tabs.
 
+- Use safe defaults for missing user settings and refuse unsupported settings writes without replacing malformed data.
+
 - Shared tracks hide their map and route coordinates when the owner disables route sharing, while enabled statistics remain visible.
 
 - Only administrators can request test email, and queued test messages are discarded after the recipient loses administrator access.

@@ -14,11 +14,15 @@ module Users
     def initialize(user, settings_params)
       @user = user
       @settings_params = settings_params
-      @old_enabled_modes = user.settings[MODES_KEY]&.dup
-      @old_city_threshold = normalized_city_threshold(user.settings[CITY_THRESHOLD_KEY])
+      @old_enabled_modes = user.settings_hash[MODES_KEY]&.dup
+      @old_city_threshold = normalized_city_threshold(user.settings_hash[CITY_THRESHOLD_KEY])
     end
 
     def call
+      unless @user.settings.is_a?(Hash)
+        @user.errors.add(:settings, :invalid)
+        return failure_result
+      end
       return locked_result if recalculation_in_progress?
       return invalid_allowlist_result if invalid_allowlist?
 
@@ -96,7 +100,7 @@ module Users
 
     def trigger_mode_reclassification
       return unless modes_param_present?
-      return if @old_enabled_modes == @user.settings[MODES_KEY]
+      return if @old_enabled_modes == @user.settings_hash[MODES_KEY]
 
       TransportationModes::UserReclassifyJob.perform_later(@user.id)
       @recalculation_triggered = true
@@ -104,7 +108,7 @@ module Users
 
     def trigger_city_stats_recalculation
       return unless city_threshold_param_present?
-      return if @old_city_threshold == normalized_city_threshold(@user.settings[CITY_THRESHOLD_KEY])
+      return if @old_city_threshold == normalized_city_threshold(@user.settings_hash[CITY_THRESHOLD_KEY])
 
       Stats::RecalculationDebouncer.new(@user.id).trigger
       Achievements::CheckJob.schedule(@user.id)

@@ -6,6 +6,7 @@ class Settings::GeneralController < ApplicationController
   self.page_refresh_morphing = true
 
   before_action :authenticate_user!
+  before_action :ensure_supported_settings, only: %i[update verify_supporter]
   before_action :authenticate_self_hosted!, only: :test_email
   before_action :authenticate_admin!, only: :test_email
 
@@ -68,6 +69,13 @@ class Settings::GeneralController < ApplicationController
   end
 
   private
+
+  def ensure_supported_settings
+    return if current_user.settings.is_a?(Hash)
+
+    redirect_to settings_general_index_path,
+                alert: I18n.t('controllers.settings.general.failed_to_update_settings'), status: :see_other
+  end
 
   def run_email_test
     return [:alert, t('controllers.settings.general.smtp_not_configured')] unless DawarichSettings.email_configured?
