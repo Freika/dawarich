@@ -31,7 +31,12 @@ export function createHostEditing({
     translate: mapTranslate(getConfig),
     distanceUnit: getConfig().distanceUnit ?? "km",
     readTrack: (id, options) => reads("track", id, options),
-    readPoints: (id, options) => reads("track_points", id, options),
+    readPoints: (id, options) =>
+      reader.pages(
+        "track_points",
+        { id, import_id: scope().importId },
+        options,
+      ),
     move: transport.move,
     historyScope: scope,
     editable: enabled(),
