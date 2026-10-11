@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
+
+
+- Update both mobile and desktop family-sharing indicators after changing location-sharing settings.
+
+- Keep signed storage capabilities and private filenames out of request path logs.
+
+- Prevent legacy or restored export URLs from deleting unrelated files; retain unproven legacy files after export removal or migration.
+
+- Refuse location-sharing consent when family access expires while waiting for the request lock.
+
+- Keep saved ZIP member imports processing when a later archive member fails validation.
+
+- Keep notification badges, read states and deleted items current in other open tabs.
 
 - Use safe defaults for missing user settings and refuse unsupported settings writes without replacing malformed data.
 

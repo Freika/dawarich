@@ -17,6 +17,7 @@ class NotificationsController < ApplicationController
 
   def mark_as_read
     current_user.notifications.unread.update_all(read_at: Time.zone.now)
+    Notification.broadcast_read_all_for(current_user)
     redirect_to notifications_url, notice: I18n.t('controllers.notifications.all_notifications_marked_as_read'),
 status: :see_other
   end
