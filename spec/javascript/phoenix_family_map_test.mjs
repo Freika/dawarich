@@ -301,13 +301,16 @@ test("family empty guidance follows admitted locations and clears on withdrawal"
   try {
     await f.owner.mount()
     assert.equal(f.empty.hidden, true)
+    const admittedRead = f.reader.read
     f.reader.read = async (resource) => ({
       data:
         resource === "family_locations" ? { locations: [] } : { members: [] },
     })
     await f.owner.reconnect()
     assert.equal(f.empty.hidden, false)
-    f.empty.hidden = true
+    f.reader.read = admittedRead
+    await f.owner.reconnect()
+    assert.equal(f.empty.hidden, true)
     f.owner.clear()
     assert.equal(f.empty.hidden, false)
   } finally {

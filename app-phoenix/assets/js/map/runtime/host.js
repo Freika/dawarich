@@ -205,7 +205,7 @@ export function mountHost({
           })
         }
         if (entities) await operation.wait(entities.update(config, { signal }))
-        await operation.wait(aux.update(config, { operation, signal }))
+        if (aux) await operation.wait(aux.update(config, { operation, signal }))
       }),
     events: {
       refreshed(receipt) {
