@@ -378,3 +378,12 @@ The controller authorized implementation against the current domain interfaces a
 Deferred to the dependency-adapter switch task: accepted m4/m5 identities; populated unlocked public/family and DST data variants; decoded/transferred per-route and studio graphs; host-owned map/listener/worker/rAF/object URL counts; repeated-navigation post-GC memory; controller-approved eager wrapper and preview concurrency limits. Final production/resource acceptance remains X4/controller X5. Existing hybrid browser journeys are baseline evidence only.
 
 The dependency-adapter ledger will live in `docs/phoenix/native-m6-contracts.md`; the assigned plan records its corresponding dependency tasks in a Deviations section. No hybrid UI fallback or duplicate domain implementation is authorized.
+
+
+## Integrated implementation verification (2026-10-11)
+
+Tracks C and D and the ten Track A handoffs are integrated; A15 and X1–X4 implementation are complete. The selected m6, direct caller and register corpus passes with 3,092 cases, two existing skips and one existing exclusion. Strict forced compile and format pass; the requested Phoenix Node corpus passes all 684 tests. The standalone browser corpus collects 419 tests in 78 files; execution remains controller acceptance.
+
+The production bundle and digest pass. Actual eager static closures are measured from emitted files: app 176,695 raw / 53,871 gzip bytes; map 127,858 / 44,395; poster 50,623 / 21,873; video 88,071 / 30,408. All frozen caps, lazy chunk boundaries, worker/static packaging and 22 artifact gate cases pass. The controller scope cut excludes browser resource and memory/performance measurements, superseding that part of the historical A0 disposition above.
+
+The approved plan and integration report contain the named RED/GREEN/unwiring evidence, source-case retarget ledger, 20 Rails bug changelog entries and outstanding dependency adapter switches. X5 FULL GATE, actual browser file/locale behavior and accepted m4/m5 domain switches remain controller work; no full-suite or G44 result is claimed here.
