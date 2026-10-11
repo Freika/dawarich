@@ -1950,6 +1950,6 @@ Rails Family map markers and cached popups can remain visible indefinitely after
 Rails renders Get started as an anchor without href, so keyboard users cannot activate it normally and closing onboarding cannot return focus to that control. Native navbar variants use a button for the existing dialog dispatch; the browser restores focus after Escape.
 
 - Rails: `app/views/shared/_navbar.html.erb:138` and `:228`.
-- Phoenix: `app-phoenix/lib/dawarich_web/components/navbar_end.ex:175`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/navbar_end.ex:178`.
 - Test: `automatic native onboarding dismisses persistently and manual reopening restores focus`; desktop and German mobile openings use `openNativeOnboarding`.
-- ED: ED-NATIVE-S2E4-ONBOARDING-FOCUS. No DRB. Browser verification pending in the assigned fix report.
+- ED: ED-NATIVE-S2E4-ONBOARDING-FOCUS. No DRB. Native browser focus restoration passes; replacing the opener with the Rails-style anchor fails the named focus assertion. Restored evidence is recorded in the assigned group-4 fix report.
