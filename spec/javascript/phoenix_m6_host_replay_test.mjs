@@ -139,3 +139,53 @@ test("native replay survives a replaced launcher and releases root click ownersh
     f.owner.destroy()
   }
 })
+
+test("native replay survives superseded range refreshes without overriding explicit close", async () => {
+  for (const close of [false, true]) {
+    const f = fixture()
+    f.map.fitBounds = () => {}
+    const panel = new Element()
+    f.nodes.set("[data-map-replay-panel]", panel)
+    try {
+      await f.owner.mount()
+      let snapshots = 0
+      f.owner.source.snapshot = async () => {
+        snapshots++
+        return {
+          points: [{ timestamp: 1774861200, longitude: 13, latitude: 52 }],
+        }
+      }
+      await f.owner.replay.open()
+      const read = f.reader.read.bind(f.reader)
+      const pending = []
+      f.reader.read = (resource, params) =>
+        resource === "bounds"
+          ? new Promise((resolve) =>
+              pending.push(() => resolve(read(resource, params))),
+            )
+          : read(resource, params)
+      const next = {
+        ...f.owner.config,
+        revision: 2,
+        range: { ...f.owner.config.range, endAt: "2026-03-30T23:59" },
+      }
+      const first = f.owner.update(next)
+      await new Promise((resolve) => setImmediate(resolve))
+      assert.equal(pending.length, 1)
+      const second = f.owner.update({ ...next, revision: 3 })
+      await new Promise((resolve) => setImmediate(resolve))
+      assert.equal(pending.length, 2)
+      if (close) f.owner.replay.close()
+      pending[1]()
+      assert.equal(await second, "ready")
+      pending[0]()
+      assert.equal(await first, "cancelled")
+      assert.equal(f.owner.replay.active, !close)
+      assert.equal(panel.hidden, close)
+      assert.equal(f.sources.has("native-replay-marker"), !close)
+      assert.equal(snapshots, close ? 1 : 2)
+    } finally {
+      f.owner.destroy()
+    }
+  }
+})

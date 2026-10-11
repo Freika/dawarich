@@ -21,7 +21,8 @@ export function installHostReplay({
     range = null,
     active = false,
     latest = {},
-    generation = 0
+    generation = 0,
+    reopening = false
   const translate = mapTranslate(() => owner.config)
   const keys = [
     "play",
@@ -126,6 +127,7 @@ export function installHostReplay({
       }
     },
     close() {
+      reopening = false
       generation++
       active = false
       if (!lifetime.destroyed) onActive(false)
@@ -166,10 +168,14 @@ export function installHostReplay({
   const update = owner.update,
     reconnect = owner.reconnect
   owner.update = async (next) => {
-    const changed = active && range !== JSON.stringify(next.range)
-    if (changed) owner.replay.close()
+    const changed =
+      (active || reopening) && range !== JSON.stringify(next.range)
+    if (changed) {
+      owner.replay.close()
+      reopening = true
+    }
     const result = await update.call(owner, next)
-    if (changed && result === "ready") await owner.replay.open(next.range)
+    if (reopening && result === "ready") await owner.replay.open(next.range)
     return result
   }
   owner.reconnect = async (receipt) => {
