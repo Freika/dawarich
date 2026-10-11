@@ -15,7 +15,8 @@ export function createEnrichmentTool({
 }) {
   let results,
     loading,
-    generation = 0
+    generation = 0,
+    matchRows = []
   function renderResults(rows) {
     if (results) {
       results.replace(rows)
@@ -35,6 +36,12 @@ export function createEnrichmentTool({
           timers,
           pushEvent,
           onSubmitted: clear,
+          onAdjust: (id, position) => {
+            matchRows = matchRows.map((row) =>
+              row.immich_asset_id === id ? { ...row, ...position } : row,
+            )
+            map.getSource(SOURCE)?.setData(geometry(matchRows))
+          },
         })
         results.replace(rows)
       })
@@ -63,6 +70,7 @@ export function createEnrichmentTool({
 
   function clear() {
     generation++
+    matchRows = []
     results?.clear()
     closePopup()
     if (map.getLayer(LAYER)) {
@@ -83,10 +91,7 @@ export function createEnrichmentTool({
     }, debounceMs)
   }
 
-  function matches({ matches: rows = [] }) {
-    if (destroyed) return
-    clear()
-    const rendered = renderResults(rows)
+  function geometry(rows) {
     const features = rows
       .filter(
         (row) =>
@@ -101,10 +106,15 @@ export function createEnrichmentTool({
         },
         properties: { id: row.immich_asset_id },
       }))
-    map.addSource(SOURCE, {
-      type: "geojson",
-      data: { type: "FeatureCollection", features },
-    })
+    return { type: "FeatureCollection", features }
+  }
+
+  function matches({ matches: rows = [] }) {
+    if (destroyed) return
+    clear()
+    const rendered = renderResults(rows)
+    matchRows = rows
+    map.addSource(SOURCE, { type: "geojson", data: geometry(rows) })
     map.addLayer({
       id: LAYER,
       type: "circle",

@@ -273,3 +273,104 @@ test("accepted enrichment retires selection markers and popups until a new scan 
     f.owner.destroy()
   }
 })
+
+test("enrichment draggable markers submit current selected positions and release drag and selection resources", async () => {
+  const markers = []
+  class Marker {
+    constructor(options) {
+      this.options = options
+      this.handlers = new Map()
+      markers.push(this)
+    }
+    setLngLat([lng, lat]) {
+      this.position = { lng, lat }
+      return this
+    }
+    getLngLat() {
+      return this.position
+    }
+    addTo() {
+      return this
+    }
+    on(event, fn) {
+      this.handlers.set(event, fn)
+      return this
+    }
+    off(event) {
+      this.handlers.delete(event)
+      return this
+    }
+    setDraggable(value) {
+      this.draggable = value
+      return this
+    }
+    remove() {
+      this.removed = true
+    }
+    drag(latitude, longitude) {
+      this.position = { lat: latitude, lng: longitude }
+      this.handlers.get("dragend")?.()
+    }
+  }
+  const f = fixture({}, { library: { Marker } }),
+    ui = resultUI(f)
+  const original = globalThis.confirm
+  globalThis.confirm = () => true
+  try {
+    await f.owner.mount()
+    await f.owner.enrichment.matches({ matches: rows })
+    assert.equal(markers.length, 2)
+    assert.equal(markers[0].options.draggable, true)
+    markers[0].drag(52.75, 13.75)
+    markers[1].drag(53.75, 14.75)
+    const checkbox = ui.list.children[1].children[0]
+    checkbox.checked = false
+    checkbox.emit("change")
+    assert.equal(markers[1].options.element.textContent, "📷")
+    assert.equal(markers[0].options.element.textContent, "📷✓")
+    assert.match(
+      ui.list.children[0].children[3].textContent,
+      /52.7500.*13.7500/,
+    )
+    assert.deepEqual(
+      f.sources.get("native-enrichment-matches").data.features[0].geometry
+        .coordinates,
+      [13.75, 52.75],
+    )
+    ui.submit.emit("click")
+    const command = f.pushed.at(-1)
+    assert.deepEqual(command.payload.assets, [
+      { immich_asset_id: "one", latitude: 52.75, longitude: 13.75 },
+    ])
+    assert.equal(
+      markers.every((marker) => marker.draggable === false),
+      true,
+    )
+    command.reply({ error: "refused" })
+    assert.equal(markers[0].draggable, true)
+    ui.all.checked = true
+    ui.all.emit("change")
+    assert.equal(markers[1].options.element.textContent, "📷✓")
+    const retiredDrag = markers[0].handlers.get("dragend")
+    await f.owner.update({ ...f.owner.config, revision: 2 })
+    assert.equal(
+      markers.every((marker) => marker.removed && marker.handlers.size === 0),
+      true,
+    )
+    assert.equal(markers[0].options.element.listeners.get("click").size, 0)
+    retiredDrag()
+    assert.equal(ui.list.children.length, 0)
+    await f.owner.enrichment.matches({ matches: [rows[0]] })
+    assert.equal(markers.length, 3)
+    ui.submit.emit("click")
+    f.pushed.at(-1).reply({ ok: true, result: { pending: 1 } })
+    assert.equal(markers[2].removed, true)
+    await f.owner.enrichment.matches({ matches: [rows[0]] })
+    f.owner.destroy()
+    assert.equal(markers[3].removed, true)
+    assert.equal(markers[3].handlers.size, 0)
+  } finally {
+    globalThis.confirm = original
+    f.owner.destroy()
+  }
+})

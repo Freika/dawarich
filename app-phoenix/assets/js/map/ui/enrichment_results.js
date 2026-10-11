@@ -1,3 +1,4 @@
+import { createEnrichmentMarkers } from "./enrichment_markers.js"
 export function createEnrichmentResults({
   root,
   reader,
@@ -8,6 +9,7 @@ export function createEnrichmentResults({
   confirm = (message) => globalThis.confirm(message),
   urls = globalThis.URL,
   onSubmitted,
+  onAdjust,
 }) {
   let host,
     list,
@@ -30,6 +32,25 @@ export function createEnrichmentResults({
     submit?.addEventListener("click", enrich)
   }
   const document = root?.ownerDocument
+  const coordinates = new Map()
+  const markers = createEnrichmentMarkers({
+    map,
+    library,
+    document,
+    onAdjust: (row, position) => {
+      const label = coordinates.get(row.immich_asset_id)
+      if (label)
+        label.textContent = `${position.latitude.toFixed(4)}, ${position.longitude.toFixed(4)}`
+      closePopup()
+      onAdjust?.(row.immich_asset_id, position)
+    },
+    onFocus: (row, position) => {
+      map.flyTo?.({ center: [position.longitude, position.latitude], zoom: 15 })
+      coordinates
+        .get(row.immich_asset_id)
+        ?.parentElement?.scrollIntoView?.({ block: "nearest" })
+    },
+  })
   let generation = 0,
     destroyed = false,
     busy = false,
@@ -51,6 +72,7 @@ export function createEnrichmentResults({
     )
   const selected = () => rows.filter((_row, index) => checks[index]?.checked)
   function update() {
+    markers.update(selected(), busy)
     if (!submit) return
     submit.disabled = busy || selected().length === 0
     submit.textContent = translate("enrich_photos", {
@@ -76,6 +98,8 @@ export function createEnrichmentResults({
     timers.clearTimeout(deadline)
     deadline = null
     closePopup()
+    markers.clear()
+    coordinates.clear()
     for (const controller of thumbnails) controller.abort()
     thumbnails.clear()
     for (const url of objectURLs) urls.revokeObjectURL(url)
@@ -123,8 +147,9 @@ export function createEnrichmentResults({
     image.className = "max-w-full max-h-48"
     content.append(image, title)
     thumbnail(image, row, generation, true)
+    const position = markers.position(row)
     popup = new library.Popup()
-      .setLngLat([row.longitude, row.latitude])
+      .setLngLat([position.longitude, position.latitude])
       .setDOMContent(content)
       .addTo(map)
     popup.on?.("close", closePopup)
@@ -138,7 +163,8 @@ export function createEnrichmentResults({
       const item = document.createElement("label"),
         check = document.createElement("input"),
         image = document.createElement("img"),
-        title = document.createElement("span")
+        title = document.createElement("span"),
+        coordinate = document.createElement("span")
       item.className = "flex flex-wrap items-center gap-2 min-w-0 rounded p-2"
       check.type = "checkbox"
       check.checked = true
@@ -149,7 +175,10 @@ export function createEnrichmentResults({
       image.className = "w-10 h-10 object-cover rounded"
       title.textContent = row.filename ?? row.immich_asset_id
       title.className = "min-w-0 flex-1 [overflow-wrap:anywhere]"
-      item.append(check, image, title)
+      coordinate.className = "text-xs [overflow-wrap:anywhere]"
+      coordinate.textContent = `${Number(row.latitude).toFixed(4)}, ${Number(row.longitude).toFixed(4)}`
+      coordinates.set(row.immich_asset_id, coordinate)
+      item.append(check, image, title, coordinate)
       item.title = `${row.photo_timestamp ?? ""} (${row.time_delta_seconds ?? 0}s)`
       item.addEventListener("mouseenter", () => showPopup(row.immich_asset_id))
       item.addEventListener("mouseleave", closePopup)
@@ -157,6 +186,7 @@ export function createEnrichmentResults({
       thumbnail(image, row, generation)
       return check
     })
+    markers.replace(rows)
     update()
   }
   const selectAll = () => {
@@ -164,13 +194,10 @@ export function createEnrichmentResults({
     update()
   }
   const enrich = () => {
-    const assets = selected().map(
-      ({ immich_asset_id, latitude, longitude }) => ({
-        immich_asset_id,
-        latitude,
-        longitude,
-      }),
-    )
+    const assets = selected().map((row) => ({
+      immich_asset_id: row.immich_asset_id,
+      ...markers.position(row),
+    }))
     if (
       destroyed ||
       busy ||
