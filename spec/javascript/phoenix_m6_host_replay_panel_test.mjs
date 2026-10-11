@@ -44,3 +44,32 @@ test("native map host replay binds day scrubber and speed then unbinds panel on 
   assert.equal(controls.scrubber.listeners.get("input").size, 0)
   f.owner.destroy()
 })
+
+test("native replay wrapper forwards the admitted reconnect receipt", async () => {
+  const { installHostReplay } = await import(
+    "../../app-phoenix/assets/js/map/replay/host.js"
+  )
+  let received, dispose
+  const owner = {
+    config: { range: {} },
+    update: async () => "ready",
+    reconnect: async (receipt) => {
+      received = receipt
+      return "ready"
+    },
+  }
+  installHostReplay({
+    owner,
+    map: {},
+    root: { querySelector: () => null },
+    lifetime: {
+      own: (callback) => {
+        dispose = callback
+      },
+    },
+  })
+  const receipt = { kinds: ["points"] }
+  assert.equal(await owner.reconnect(receipt), "ready")
+  assert.equal(received, receipt)
+  dispose()
+})

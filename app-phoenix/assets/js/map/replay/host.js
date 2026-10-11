@@ -173,8 +173,8 @@ export function installHostReplay({
     if (changed && result === "ready") await owner.replay.open(next.range)
     return result
   }
-  owner.reconnect = async () => {
-    const result = await reconnect.call(owner)
+  owner.reconnect = async (receipt) => {
+    const result = await reconnect.call(owner, receipt)
     runtime?.reconnect()
     return result
   }
