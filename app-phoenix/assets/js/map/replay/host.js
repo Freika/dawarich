@@ -154,7 +154,8 @@ export function installHostReplay({
     },
   }
   const open = () => {
-    owner.replay.open().catch(() => owner.replay.close())
+    if (active) owner.replay.close()
+    else owner.replay.open().catch(() => owner.replay.close())
   }
   const close = () => {
     owner.replay.close()

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { fixture } from "./support/native_m6_host_fixture.mjs"
+import { Element, fixture } from "./support/native_m6_host_fixture.mjs"
 
 test("native map replay consumes its scoped source and releases markers on close", async () => {
   const f = fixture()
@@ -77,6 +77,37 @@ test("native replay remains active while reopening other panels and refreshes a 
     assert.equal(f.owner.replay.active, true)
     assert.equal(reads, 2)
   } finally {
+    f.owner.destroy()
+  }
+})
+
+test("native replay opener toggles pending and ready runs without late marker leaks", async () => {
+  const f = fixture()
+  const opener = new Element()
+  f.nodes.set("[data-map-replay-open]", opener)
+  assert.equal(await f.owner.mount(), "ready")
+  let release
+  const pending = new Promise((resolve) => {
+    release = resolve
+  })
+  f.owner.source.snapshot = () => pending
+  try {
+    opener.emit("click")
+    assert.equal(f.owner.replay.active, true)
+    opener.emit("click")
+    assert.equal(f.owner.replay.active, false)
+    release({
+      points: [{ timestamp: 1774861200, longitude: 13, latitude: 52 }],
+    })
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.sources.has("native-replay-marker"), false)
+    assert.equal(await f.owner.replay.open(), "ready")
+    assert.equal(f.sources.has("native-replay-marker"), true)
+    opener.emit("click")
+    assert.equal(f.owner.replay.active, false)
+    assert.equal(f.sources.has("native-replay-marker"), false)
+  } finally {
+    release({ points: [] })
     f.owner.destroy()
   }
 })
