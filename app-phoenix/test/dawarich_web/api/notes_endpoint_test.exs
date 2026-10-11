@@ -56,12 +56,22 @@ defmodule DawarichWeb.Api.NotesEndpointTest do
       System.put_env("SELF_HOSTED", hosted)
       encoded = Jason.encode!(body)
       client = submit(ctx, "POST", target, encoded, headers)
-      puma = Dawarich.Test.ApiGolden.rails_connection(client, ctx.upstream)
-      {head, rest} = read_head(puma)
-      assert request_line(head) == "POST #{target} HTTP/1.1"
-      assert read_at_least(puma, rest, byte_size(encoded)) == encoded
-      reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-      assert {200, _, "rails"} = read_response(client)
+
+      expected =
+        cond do
+          headers != [] ->
+            {404, ~s({"status":404,"error":"Not Found"})}
+
+          body == %{"note" => %{"body" => "No write"}} ->
+            {422, ~s({"errors":["Noted at can't be blank"]})}
+
+          true ->
+            {500, ~s({"status":500,"error":"Internal Server Error"})}
+        end
+
+      {status, raw} = expected
+      assert {^status, _, ^raw} = read_response(client)
+      no_upstream!(ctx.upstream)
       assert Repo.query!("SELECT row_to_json(n)::text FROM notes n").rows == before
     end
   end

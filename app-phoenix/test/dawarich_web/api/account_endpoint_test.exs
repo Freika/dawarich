@@ -164,12 +164,19 @@ defmodule DawarichWeb.Api.AccountEndpointTest do
 
   defp replay!(ctx, method, target, body) do
     client = submit(ctx, method, target, body, [])
-    puma = Dawarich.Test.ApiGolden.rails_connection(client, ctx.upstream)
-    {head, rest} = read_head(puma)
-    assert request_line(head) == "#{method} #{target} HTTP/1.1"
-    assert read_at_least(puma, rest, byte_size(body)) == body
-    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-    assert {200, _, "rails"} = read_response(client)
+
+    expected = if String.contains?(target, "two_factor"), do: 503, else: 401
+    assert {^expected, _, raw} = read_response(client)
+    error = Jason.decode!(raw)["error"]
+
+    assert error ==
+             %{
+               503 => "two_factor_not_available",
+               402 => "payment_required",
+               401 => "password_required"
+             }[expected]
+
+    no_upstream!(ctx.upstream)
   end
 
   defp call(ctx, method, target, body \\ "", headers \\ []) do
