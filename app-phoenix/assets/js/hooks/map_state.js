@@ -3,5 +3,6 @@ export function rememberMapState(hook) {
 }
 
 export function restoreMapState(hook) {
-  if (hook.mapOwnedState) hook.el.dataset.mapState = hook.mapOwnedState
+  const state = hook.mapOwner?.presentationState ?? hook.mapOwnedState
+  if (state) hook.el.dataset.mapState = state
 }

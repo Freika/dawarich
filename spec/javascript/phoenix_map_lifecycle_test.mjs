@@ -388,3 +388,21 @@ test("current ordinary map refresh deadline ends loading emits failure and rejec
   }
   assert.equal(jobs.size, 0)
 })
+
+test("native runtime exposes the latest published state through refresh and disposal", async () => {
+  const pending = deferred()
+  let wait = false
+  const { runtime } = fixture({
+    refresh: () => (wait ? pending.promise : Promise.resolve()),
+  })
+  assert.equal(await runtime.mount(), "ready")
+  assert.equal(runtime.presentationState, "ready")
+  wait = true
+  const refreshing = runtime.reconnect()
+  assert.equal(runtime.presentationState, "loading")
+  pending.resolve()
+  assert.equal(await refreshing, "ready")
+  assert.equal(runtime.presentationState, "ready")
+  runtime.destroy()
+  assert.equal(runtime.presentationState, "cancelled")
+})
