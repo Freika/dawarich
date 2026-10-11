@@ -94,7 +94,19 @@ export function mountHost({
           lifetime,
           getConfig: () => owner.config,
         })
-        timeline = createHostTimeline({
+        owner.timeline = timeline = createHostTimeline({
+          library,
+          pushEvent,
+          getConfig: () => owner.config,
+          replay: () => owner.replay,
+          blocked: () =>
+            owner.config.editEnabled ||
+            owner.selection.state.active ||
+            Boolean(
+              element
+                .closest?.("[data-native-map-root]")
+                ?.querySelector("[data-map-tool-status]")?.textContent,
+            ),
           map,
           root: element.closest?.("[data-native-map-root]"),
           reader,

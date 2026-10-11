@@ -40,6 +40,7 @@ test("family hook clear before lazy import prevents allocation and releases hand
     "map:invalidate",
     "map:layer",
     "map:settings",
+    "track:selection",
   ])
   assert.deepEqual([...removed].sort(), [...handlers.keys()].sort())
 })

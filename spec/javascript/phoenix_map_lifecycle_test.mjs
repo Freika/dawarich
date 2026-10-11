@@ -239,3 +239,50 @@ test("production runtime publishes a current read-only root snapshot and removes
   assert.equal(element.dawarichMapSnapshot, undefined)
   assert.equal(stale(), null)
 })
+
+test("map hook retains only latest scalar track selection across lazy mount and ignores after destroy", async () => {
+  const pending = deferred()
+  const handlers = new Map(),
+    selections = []
+  const attached = deferred()
+  const entered = deferred()
+  const owner = {
+    config: {},
+    mount: async () => {
+      entered.resolve()
+      return attached.promise
+    },
+    destroy() {},
+    timeline: { select: async (receipt) => selections.push(receipt) },
+  }
+  const hook = {
+    ...MapHook,
+    el: {},
+    pushEvent() {},
+    loader: () => pending.promise,
+    handleEvent(name, callback) {
+      handlers.set(name, callback)
+      return name
+    },
+    removeHandleEvent() {},
+  }
+  const mounting = hook.mounted()
+  handlers.get("track:selection")({
+    id: 7,
+    points: false,
+    geometry: "forbidden",
+  })
+  handlers.get("track:selection")({ id: 8, points: true, rows: "forbidden" })
+  pending.resolve({ mountHost: () => owner })
+  await entered.promise
+  handlers.get("track:selection")({ id: 10, points: false })
+  assert.equal(selections.length, 0)
+  attached.resolve("ready")
+  await mounting
+  assert.deepEqual(selections, [{ id: 10, points: false }])
+  await handlers.get("track:selection")({ id: null, points: false })
+  assert.deepEqual(selections.at(-1), { id: null, points: false })
+  hook.destroyed()
+  await handlers.get("track:selection")({ id: 9, points: true })
+  assert.equal(selections.length, 2)
+})

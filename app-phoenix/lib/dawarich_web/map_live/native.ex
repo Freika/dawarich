@@ -70,6 +70,8 @@ defmodule DawarichWeb.MapLive.Native do
              do: DawarichWeb.MapLive.TrackCommands.clear(socket),
              else: socket
 
+        socket = DawarichWeb.MapLive.TrackCommands.resume(socket)
+
         socket =
           if connected?(socket) and params["panel"] == "timeline" and
                (previous != socket.assigns.map_revision or old_panel != "timeline"),
@@ -119,7 +121,7 @@ defmodule DawarichWeb.MapLive.Native do
   end
 
   def handle_event("map:select", %{"kind" => "track", "id" => id}, socket),
-    do: DawarichWeb.MapLive.TrackCommands.handle_event("track:toggle", %{"id" => id}, socket)
+    do: DawarichWeb.MapLive.TrackCommands.handle_event("track:from_map", %{"id" => id}, socket)
 
   def handle_event("track:" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.TrackCommands.handle_event(event, payload, socket)

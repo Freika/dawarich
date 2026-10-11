@@ -4,9 +4,19 @@ export const MapHook = {
     this.mapRevoked = false
     this.mapReady = false
     this.mapConfig = null
+    this.mapTrackSelection = null
     this.mapRealtime = null
     this.mapInvalidations = []
     this.mapHandlers = [
+      this.handleEvent("track:selection", (payload) => {
+        if (this.mapDestroyed || this.mapRevoked) return
+        this.mapTrackSelection = {
+          id: payload.id,
+          points: payload.points === true,
+        }
+        if (this.mapReady)
+          return this.mapOwner?.timeline?.select(this.mapTrackSelection)
+      }),
       this.handleEvent("map:layer", (payload) =>
         this.mapOwner?.layer?.(payload),
       ),
@@ -56,6 +66,9 @@ export const MapHook = {
           ...this.mapConfig,
         })
       await this.mapOwner.mount()
+      if (this.mapDestroyed || this.mapRevoked) return
+      if (this.mapTrackSelection)
+        await this.mapOwner.timeline?.select(this.mapTrackSelection)
       if (this.mapDestroyed || this.mapRevoked) return
       this.mapReady = true
       for (const receipt of this.mapInvalidations)

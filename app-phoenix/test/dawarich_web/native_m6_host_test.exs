@@ -189,6 +189,7 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, "#native-track-info", "Track ##{track}")
     assert has_element?(view, "#native-track-info .track-info-stats", "1.0 km")
     assert has_element?(view, "#native-track-info .track-info-stats", "Avg")
+    assert has_element?(view, "#native-segment-drawer")
     assert has_element?(view, "#native-track-info input[data-track-points]")
     assert has_element?(view, "#native-track-info [data-track-replay]")
     assert_push_event(view, "track:selection", %{id: ^track, points: false})
@@ -205,7 +206,40 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert_push_event(view, "track:selection", %{id: nil, points: false})
     render_hook(view, "track:toggle", %{"id" => "-1"})
     refute has_element?(view, "#native-track-info")
+    render_hook(view, "track:toggle", %{"id" => nil})
+    refute has_element?(view, "#native-track-info")
     assert rows("SELECT count(*) FROM tracks WHERE user_id=$1", [id]) == [[1]]
+  end
+
+  test "native map track click opens timeline and preserves the owned card after its panel patch",
+       %{id: id} do
+    track = id * 10
+
+    Dawarich.Test.FrameSeeds.track!(id, track, %{
+      start_at: ~N[2026-03-30 09:00:00],
+      end_at: ~N[2026-03-30 09:10:00],
+      dominant_mode: 4
+    })
+
+    {:ok, view, _} = open(id, @second)
+    render_hook(view, "map:select", %{"kind" => "track", "id" => track})
+    patch = URI.parse(assert_patch(view))
+    assert patch.path == "/map/v2"
+
+    assert URI.decode_query(patch.query) == %{
+             "start_at" => "2026-03-30T00:00",
+             "end_at" => "2026-03-30T23:59",
+             "panel" => "timeline"
+           }
+
+    render_async(view, 5000)
+    assert has_element?(view, "#native-timeline-feed")
+    assert has_element?(view, "#native-track-info", "Track ##{track}")
+    assert_push_event(view, "track:selection", %{id: ^track, points: false})
+    render_hook(view, "track:close", %{})
+    refute has_element?(view, "#native-track-info")
+    render_hook(view, "map:select", %{"kind" => "track", "id" => -1})
+    refute has_element?(view, "#native-track-info")
   end
 
   test "native production host loads and refreshes only the open timeline", %{id: id} do
