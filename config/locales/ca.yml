@@ -3233,6 +3233,7 @@ ca:
         failed_to_start_import_please_try_again: No s'ha pogut iniciar la importació. Torna-ho a provar.
         an_error_occurred_while_starting_the_import_please_try_again: S'ha produït un error en iniciar la importació. Torna-ho a provar.
         please_upload_a_valid_zip_file: Puja un arxiu ZIP vàlid.
+        cannot_delete_yourself_or_last_admin: No pots eliminar el teu compte ni l’últim administrador actiu.
         cannot_remove_last_admin_role: No es pot eliminar el rol d'administrador de l'últim administrador.
         cannot_disable_last_admin: No es pot desactivar l'últim usuari administrador.
       visits:

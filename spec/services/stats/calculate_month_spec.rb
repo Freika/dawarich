@@ -85,11 +85,11 @@ RSpec.describe Stats::CalculateMonth do
           end
 
           it 'does not create stats' do
-            expect { calculate_stats }.not_to(change { Stat.count })
+            expect { expect { calculate_stats }.to raise_error(StandardError) }.not_to(change { Stat.count })
           end
 
           it 'creates a notification' do
-            expect { calculate_stats }.to change { Notification.count }.by(1)
+            expect { expect { calculate_stats }.to raise_error(StandardError) }.to change { Notification.count }.by(1)
           end
         end
       end
