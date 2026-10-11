@@ -26,6 +26,37 @@ RSpec.describe PhoenixBuildInputs do
     expect(translations.dig('en', 'number', 'format')).to eq(I18n.t('number.format', locale: :en).stringify_keys)
   end
 
+  it 'exports newly compiled manifest paths instead of a precompile-era helper cache' do
+    Dir.mktmpdir do |dir|
+      manifest = File.join(dir, 'manifest.json')
+      File.write(manifest, JSON.generate('assets' => { 'probe.js' => 'probe-fresh.js' }))
+      map = Importmap::Map.new
+      map.pin('notification_probe', to: 'probe.js')
+      allow(Rails.application).to receive(:importmap).and_return(map)
+      allow(Rails.application.config.assets).to receive(:manifest).and_return(manifest)
+      allow(ActionController::Base.helpers).to receive(:path_to_asset).with('probe.js').and_return('/assets/probe-stale.js')
+
+      expect(JSON.parse(described_class.importmap_json).dig('imports', 'notification_probe'))
+        .to eq('/assets/probe-fresh.js')
+    end
+  end
+
+  it 'refreshes an explicit manifest export after its contents change in the same process' do
+    Dir.mktmpdir do |dir|
+      manifest = File.join(dir, 'manifest.json')
+      map = Importmap::Map.new
+      map.pin('notification_probe', to: 'probe.js')
+      allow(Rails.application).to receive(:importmap).and_return(map)
+      File.write(manifest, JSON.generate('assets' => { 'probe.js' => 'probe-first.js' }))
+      expect(JSON.parse(described_class.importmap_json(manifest)).dig('imports', 'notification_probe'))
+        .to eq('/assets/probe-first.js')
+
+      File.write(manifest, JSON.generate('assets' => { 'probe.js' => 'probe-second.js' }))
+      expect(JSON.parse(described_class.importmap_json(manifest)).dig('imports', 'notification_probe'))
+        .to eq('/assets/probe-second.js')
+    end
+  end
+
   describe PhoenixBuildInputs::ManifestResolver do
     it 'maps a logical path through the manifest and leaves absolute paths and URLs alone' do
       Dir.mktmpdir do |dir|

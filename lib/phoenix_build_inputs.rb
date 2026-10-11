@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'digest'
+
 module PhoenixBuildInputs
   LOCALES = 'config/locales/0_vendor'
   ASSETS = 'vendor/assets'
@@ -110,9 +112,14 @@ module PhoenixBuildInputs
   end
 
   def importmap_json(manifest = nil)
-    return Rails.application.importmap.to_json(resolver: ActionController::Base.helpers) unless manifest
+    manifest ||= Rails.application.config.assets.manifest
+    unless manifest && File.file?(manifest)
+      return Rails.application.importmap.to_json(resolver: ActionController::Base.helpers)
+    end
 
-    Rails.application.importmap.to_json(resolver: ManifestResolver.new(manifest), cache_key: "phoenix:#{manifest}")
+    resolver = ManifestResolver.new(manifest)
+    digest = Digest::SHA256.hexdigest(JSON.generate(resolver.assets))
+    Rails.application.importmap.to_json(resolver:, cache_key: "phoenix:#{manifest}:#{digest}")
   end
 
   def compile_assets(dir, manifest)
