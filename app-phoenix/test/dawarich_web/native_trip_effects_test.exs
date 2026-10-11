@@ -1,5 +1,5 @@
 defmodule DawarichWeb.NativeTripEffectsTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: false
   import Phoenix.ConnTest, only: [get: 2]
   import Phoenix.LiveViewTest
   alias Dawarich.Test.{RailsUser, TripsSeeds}

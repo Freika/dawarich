@@ -1,5 +1,5 @@
 defmodule Dawarich.NativeDerivativePurgeTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: false
   alias Dawarich.{Imports, Storage, Uploads}
   alias Dawarich.Accounts.Scope
   alias Dawarich.Exports.PurgeWorker

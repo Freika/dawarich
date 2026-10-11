@@ -1,5 +1,5 @@
 defmodule Dawarich.Trips.WebCommandsTest do
-  use Dawarich.JobsCase, async: true, group: :scratch_db
+  use Dawarich.JobsCase, async: false, group: :scratch_db
 
   alias Dawarich.Jobs.Ownership
   alias Dawarich.Test.RailsUser

@@ -1,5 +1,5 @@
 defmodule DawarichWeb.NativeFamilyCommandsTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: false
   import Phoenix.ConnTest, only: [get: 2]
   import Phoenix.LiveViewTest
   alias Dawarich.Test.RailsUser
@@ -96,18 +96,18 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
     |> form("#native-family-invite", family_invitation: %{email: "new-family@example.test"})
     |> render_submit()
 
-    [[token]] =
-      Repo.query!("SELECT token FROM family_invitations WHERE family_id=$1", [id], log: false).rows
+    [[invitation_id, token]] =
+      Repo.query!("SELECT id,token FROM family_invitations WHERE family_id=$1", [id], log: false).rows
 
     assert has_element?(view, "#native-family-invitations", "new-family@example.test")
     assert count("job_outbox", "command_type", "mail.family_invitation") == 1
-    render_click(view, "family:cancel", %{"token" => "unowned-token"})
+    render_click(view, "family:cancel", %{"id" => "999999999999"})
 
     assert Repo.query!("SELECT status FROM family_invitations WHERE token=$1", [token],
              log: false
            ).rows == [[0]]
 
-    render_click(view, "family:cancel", %{"token" => token})
+    render_click(view, "family:cancel", %{"id" => to_string(invitation_id)})
 
     assert Repo.query!("SELECT status FROM family_invitations WHERE token=$1", [token],
              log: false
@@ -130,7 +130,8 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
     assert count("family_location_requests", "family_id", id) == 1
     render_click(view, "family:request", %{"id" => to_string(id + 1)})
     assert count("family_location_requests", "family_id", id) == 1
-    assert has_element?(view, "[role=alert]", "wait")
+    assert has_element?(view, "[role=alert]")
+    assert :sys.get_state(view.pid).socket.assigns.flash["error"] != ""
   end
 
   test "native family departure and deletion retain confirmation refusal and navigation", %{

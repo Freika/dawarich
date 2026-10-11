@@ -1,5 +1,5 @@
 defmodule Dawarich.Trips.CommandsTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: false
 
   alias Dawarich.Accounts
   alias Dawarich.Accounts.Scope

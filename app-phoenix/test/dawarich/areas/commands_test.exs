@@ -1,5 +1,5 @@
 defmodule Dawarich.Areas.CommandsTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: false
   alias Dawarich.{Accounts, Areas, Maps}
   alias Dawarich.Jobs.Ownership
   alias Dawarich.Test.RailsUser

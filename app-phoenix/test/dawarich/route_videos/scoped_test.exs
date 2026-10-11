@@ -1,5 +1,5 @@
 defmodule Dawarich.RouteVideos.ScopedTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: false
 
   alias Dawarich.{Accounts, Maps, RailsMessages, RouteVideos}
   alias Dawarich.Jobs.Ownership

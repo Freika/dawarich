@@ -1,5 +1,5 @@
 defmodule DawarichWeb.NativeVideoStudioTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: false
 
   import Phoenix.LiveViewTest
 
