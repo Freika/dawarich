@@ -1944,3 +1944,13 @@ Rails Family map markers and cached popups can remain visible indefinitely after
 - Phoenix: `app-phoenix/lib/dawarich_web/public_map_auth.ex:31`; `app-phoenix/lib/dawarich_web/public_map_live.ex:7`. Original HTTP method travels as a boolean in the signed mount session; only admitted static GET counts, with no connected/reconnect effect.
 - Test: `native public GET counts once while HEAD and LiveView reconnect are read only`. HEAD counter RED, GREEN, omit-method-guard mutation fails, restored GREEN.
 - Difference: ED-NATIVE-STAGE2-PUBLIC-HEAD. Restores the planned native GET-only touch boundary while fixing Rails' HEAD counter inflation.
+
+
+### FRB-NATIVE-STAGE2-PUBLIC-ROUTE — Disabled shared routes still expose point coordinates
+
+Rails hides a disabled shared trip route in its page, but its public points API applies the route flag only to family-only links. An unlocked anonymous viewer can still fetch the trip coordinates. Native public trip and track metadata and point reads honor an explicitly disabled route; existing omitted route defaults and live/family rules remain intact. This completes the approved milestone-six public privacy browser contract.
+
+- Rails: `app/controllers/api/v1/shared/points_controller.rb:11`; page gate `app/services/shared_links/trip_presenter.rb:26`.
+- Phoenix: `app-phoenix/lib/dawarich/maps/public.ex:145`.
+- Test: “disabled public trip route refuses points after a positive native read”; restoring the unconditional anonymous route admission fails the test.
+- Ledger: ED-NATIVE-STAGE2-PUBLIC-ROUTE; no DRB added. Rails production code unchanged.

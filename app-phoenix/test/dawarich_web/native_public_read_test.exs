@@ -80,6 +80,25 @@ defmodule DawarichWeb.NativePublicReadTest do
     assert read("photos/foreign/thumbnail?source=immich").status == 404
   end
 
+  test "disabled public trip route refuses points after a positive native read" do
+    TripsSeeds.point!(%{id: 8_813_225, user_id: 881_322, timestamp: 1_778_364_000, at: [13, 52]})
+    assert Jason.decode!(read("points").resp_body) == [[13.0, 52.0, 1_778_364_000]]
+
+    Repo.query!(
+      "UPDATE shared_links SET settings=jsonb_set(settings,'{show_route}','false') WHERE id=$1::text::uuid",
+      [@id],
+      log: false
+    )
+
+    assert Jason.decode!(read("metadata").resp_body)["routeEnabled"] == false
+    for action <- ~w(points route) do
+      conn = read(action)
+      assert conn.status == 200
+      assert conn.resp_body == "[]"
+      assert get_resp_header(conn, "cache-control") == ["private, no-store"]
+    end
+  end
+
   test "native public read guard rejects writes origins and credentials" do
     assert read("metadata", method: :post).status == 405
     assert read("metadata", origin: "https://foreign.invalid").status == 403
