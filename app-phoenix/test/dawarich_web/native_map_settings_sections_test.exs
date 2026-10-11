@@ -60,6 +60,31 @@ defmodule DawarichWeb.NativeMapSettingsSectionsTest do
     %{id: id, view: view}
   end
 
+  test "native advanced defaults permit saving unrelated track settings", %{view: view, id: id} do
+    doc = render(view) |> LazyHTML.from_fragment()
+
+    for field <- LazyHTML.query(doc, "#native-advanced-form input[type=number]") do
+      [value] = LazyHTML.attribute(field, "value")
+      [minimum] = LazyHTML.attribute(field, "min")
+      assert String.to_integer(value) >= String.to_integer(minimum)
+
+      case LazyHTML.attribute(field, "max") do
+        [maximum] -> assert String.to_integer(value) <= String.to_integer(maximum)
+        [] -> :ok
+      end
+    end
+
+    view
+    |> form("#native-advanced-form", %{
+      "meters_between_routes" => "750",
+      "minutes_between_routes" => "45"
+    })
+    |> render_submit()
+
+    assert stored(id)["meters_between_routes"] == "750"
+    assert stored(id)["minutes_between_routes"] == "45"
+  end
+
   test "theme preset saves custom style with derived tokens and refuses unknown keys", c do
     refute has_element?(c.view, "#native-theme-form")
     c.view |> element("#native-theme-presets [data-theme-key=autumn]") |> render_click()

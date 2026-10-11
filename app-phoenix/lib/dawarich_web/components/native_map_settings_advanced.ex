@@ -36,7 +36,7 @@ defmodule DawarichWeb.NativeMapSettingsAdvanced do
       <.number
         name="fog_of_war_threshold"
         label={p(@locale, "fog_of_war_threshold")}
-        value={@saved["fog_of_war_threshold"]}
+        value={@saved["fog_of_war_threshold"] |> Dawarich.RubyInteger.to_i() |> max(1) |> min(10)}
         min="1"
         max="10"
         step="1"
