@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dawarich:native-frontend:provenance:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "runtime_tree_sha256",
+    "schema_sha256",
+    "dataset_sha256",
+    "workload_sha256",
+    "identity_sha256",
+    "version",
+    "source_sha",
+    "image_id",
+    "runtime",
+    "config"
+  ],
+  "properties": {
+    "runtime_tree_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "schema_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "dataset_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "workload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "identity_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "version": {
+      "const": 1
+    },
+    "source_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "image_id": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "runtime": {
+      "enum": [
+        "ruby-3.4.9-yjit",
+        "elixir-1.20.4-otp-27"
+      ]
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "app_cpus",
+        "app_memory_mib",
+        "swap_mib",
+        "pool",
+        "db_cpus",
+        "db_memory_mib",
+        "redis_memory_mib",
+        "jobs",
+        "schedulers",
+        "puma_workers",
+        "puma_threads",
+        "yjit"
+      ],
+      "properties": {
+        "app_cpus": {
+          "enum": [
+            2
+          ],
+          "type": "integer"
+        },
+        "app_memory_mib": {
+          "enum": [
+            512,
+            1024
+          ],
+          "type": "integer"
+        },
+        "swap_mib": {
+          "enum": [
+            0
+          ],
+          "type": "integer"
+        },
+        "pool": {
+          "enum": [
+            10
+          ],
+          "type": "integer"
+        },
+        "db_cpus": {
+          "enum": [
+            2
+          ],
+          "type": "integer"
+        },
+        "db_memory_mib": {
+          "enum": [
+            1024
+          ],
+          "type": "integer"
+        },
+        "redis_memory_mib": {
+          "enum": [
+            128
+          ],
+          "type": "integer"
+        },
+        "jobs": {
+          "enum": [
+            "idle"
+          ],
+          "type": "string"
+        },
+        "schedulers": {
+          "enum": [
+            2
+          ],
+          "type": "integer"
+        },
+        "puma_workers": {
+          "enum": [
+            2
+          ],
+          "type": "integer"
+        },
+        "puma_threads": {
+          "enum": [
+            5
+          ],
+          "type": "integer"
+        },
+        "yjit": {
+          "enum": [
+            true
+          ],
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

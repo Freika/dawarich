@@ -1,5 +1,7 @@
 # Ordinary forms inside native pages
 
+> Historical hybrid form-isolation record. [Native development](phoenix/native-frontend-development.md) and [ADR-0017 cleanup context](phoenix/native-frontend-cleanup-adr.md) supersede these island instructions for migrated pages. Final shared cleanup/acceptance remains DRAFT; retain the historical cases and effects until their named native successors are green.
+
 > Superseded for migrated pages by ADR-0017 (2026-10-08): native pages (`:native_pages` live_session, currently the Tags pages) use LiveView forms (`to_form`, `phx-change`, `phx-submit`) and have no islands. This document still describes the remaining hybrid pages.
 
 LiveView's connected render starts from persisted assigns. An ordinary browser/Turbo/Stimulus form does not send edits through `phx-change`, so a patch can restore server defaults while a user is editing, especially a selected option or checkbox before the initial join. Put editable forms in an island with a deterministic, unique `id` and `phx-update="ignore"`. Existing keyed field islands are also valid. LiveView-bound forms must remain patchable. Turbo document/frame/stream responses still own ordinary form validation and replacement.

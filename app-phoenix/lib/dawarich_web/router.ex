@@ -25,6 +25,7 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.SettingsMiscRoutes
   import DawarichWeb.OnboardingRoutes
   import DawarichWeb.TrialHomeRoutes
+  import DawarichWeb.StandaloneApiRoutes
 
   pipeline :browser do
     plug DawarichWeb.HostAuthorization
@@ -52,6 +53,7 @@ defmodule DawarichWeb.Router do
   browser_map_routes()
   metrics_routes()
   api_routes()
+  standalone_api_routes()
   health_routes()
   operator_routes()
 

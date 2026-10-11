@@ -16,9 +16,7 @@ defmodule DawarichWeb.RailsProxy do
       do: "Puma closed the proxied response early: #{inspect(reason)}"
   end
 
-  @read [length: 1_048_576, read_length: 1_048_576, read_timeout: 60_000]
-
-  def read_options, do: @read
+  defdelegate read_options, to: DawarichWeb.Api.RequestBody
 
   @impl true
   def init(opts), do: Keyword.fetch!(opts, :upstream)
@@ -110,7 +108,7 @@ defmodule DawarichWeb.RailsProxy do
   end
 
   defp relay_body(conn, socket, frame, last) do
-    case read_body(conn, @read) do
+    case read_body(conn, read_options()) do
       {:more, data, conn} ->
         with :ok <- :gen_tcp.send(socket, frame.(data)), do: relay_body(conn, socket, frame, last)
 

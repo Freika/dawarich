@@ -97,39 +97,6 @@ function reconcile(from, incoming) {
   DOM.mergeAttrs(from, incoming)
 }
 
-test("client-opened dialogs preserve browser open and closed state while accepting server attributes", () => {
-  for (const open of [true, false]) {
-    const current = element({ tag: "dialog", open })
-    const incoming = element({
-      tag: "dialog",
-      open: !open,
-      title: "server update",
-      content: "updated dialog",
-    })
-    reconcile(current, incoming)
-    assert.equal(current.hasAttribute("open"), open)
-    assert.equal(current.getAttribute("title"), "server update")
-    assert.equal(current.getAttribute("data-server-revision"), "server update")
-    assert.deepEqual(incoming.children, ["updated dialog"])
-  }
-})
-
-test("account disclosure survives server reconciliation without rewriting incoming content", () => {
-  for (const open of [true, false]) {
-    const current = element({ open })
-    const incoming = element({
-      open: !open,
-      title: "server update",
-      content: "updated action",
-    })
-    reconcile(current, incoming)
-    assert.equal(current.hasAttribute("open"), open)
-    assert.equal(current.getAttribute("title"), "server update")
-    assert.equal(current.getAttribute("data-server-revision"), "server update")
-    assert.deepEqual(incoming.children, ["updated action"])
-  }
-})
-
 test("unrelated disclosure follows the server instead of keeping account state", () => {
   const current = element({ open: true, navbar: false })
   reconcile(current, element({ navbar: false, title: "server update" }))

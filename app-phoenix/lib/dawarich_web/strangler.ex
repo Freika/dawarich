@@ -86,14 +86,8 @@ defmodule DawarichWeb.Strangler do
         DawarichWeb.RailsErrors.respond(conn, 404)
 
       Dawarich.Standalone.enabled?() ->
-        conn = DawarichWeb.StandaloneRoutes.dispatch(conn)
-
-        if conn.halted do
-          conn
-        else
-          {reason, status} = standalone_rejection(conn)
-          DawarichWeb.StandaloneError.respond(conn, reason, status)
-        end
+        {reason, status} = standalone_rejection(conn)
+        DawarichWeb.StandaloneError.respond(conn, reason, status)
 
       DawarichWeb.TurboVisit.live_view_visit?(conn) ->
         DawarichWeb.TurboVisit.reload(conn)

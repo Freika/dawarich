@@ -71,7 +71,7 @@ defmodule DawarichWeb.Api.Body do
       api_request?(conn) and header_method_override?(conn) ->
         {:proxy, "method override header"}
 
-      RailsProxy.Headers.chunked?(conn) ->
+      DawarichWeb.Api.RequestBody.chunked?(conn) ->
         {:proxy, "chunked request body"}
 
       length in [nil, "0"] ->
@@ -111,7 +111,7 @@ defmodule DawarichWeb.Api.Body do
   defp raw(conn), do: read(conn, [])
 
   defp read(conn, acc) do
-    case read_body(conn, RailsProxy.read_options()) do
+    case read_body(conn, DawarichWeb.Api.RequestBody.read_options()) do
       {:ok, data, conn} -> {:ok, IO.iodata_to_binary([acc, data]), conn}
       {:more, data, conn} -> read(conn, [acc, data])
       {:error, _reason} -> {:error, conn}

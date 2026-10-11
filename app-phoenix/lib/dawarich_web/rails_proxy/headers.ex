@@ -1,8 +1,6 @@
 defmodule DawarichWeb.RailsProxy.Headers do
   @moduledoc false
 
-  import Plug.Conn, only: [get_req_header: 2]
-
   @remote_addr "x-dawarich-remote-addr"
   @hop_by_hop ~w(connection keep-alive proxy-connection te trailer transfer-encoding upgrade expect http2-settings)
 
@@ -20,10 +18,8 @@ defmodule DawarichWeb.RailsProxy.Headers do
   def target(%{query_string: ""} = conn), do: conn.request_path
   def target(conn), do: conn.request_path <> "?" <> conn.query_string
 
-  def chunked?(conn), do: get_req_header(conn, "transfer-encoding") != []
-
-  def body?(conn),
-    do: chunked?(conn) or Enum.any?(get_req_header(conn, "content-length"), &(&1 != "0"))
+  defdelegate chunked?(conn), to: DawarichWeb.Api.RequestBody
+  defdelegate body?(conn), to: DawarichWeb.Api.RequestBody
 
   def bodyless?(method, status), do: method == "HEAD" or status in [204, 304]
 

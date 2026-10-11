@@ -4,9 +4,8 @@ defmodule DawarichWeb.RateLimit.Request do
   import Plug.Conn
 
   alias Dawarich.{RailsCookies, RailsSecret, RubyInteger}
-  alias DawarichWeb.Api.Body
-  alias DawarichWeb.{RailsRemoteIp, RailsProxy}
-  alias DawarichWeb.RailsProxy.Headers
+  alias DawarichWeb.Api.{Body, RequestBody}
+  alias DawarichWeb.RailsRemoteIp
 
   @json ~w(application/json text/x-json application/jsonrequest)
   @form ~w(application/x-www-form-urlencoded multipart/form-data)
@@ -127,7 +126,7 @@ defmodule DawarichWeb.RateLimit.Request do
 
   defp body(conn, %{json: true} = facts) do
     cond do
-      Headers.chunked?(conn) -> {:defer, "chunked JSON body", conn}
+      RequestBody.chunked?(conn) -> {:defer, "chunked JSON body", conn}
       facts.content_length > @max_json -> {:ok, %{}, conn}
       true -> with {:ok, raw, conn} <- raw(conn, facts, @max_json), do: parsed(json(raw), conn)
     end
@@ -167,15 +166,15 @@ defmodule DawarichWeb.RateLimit.Request do
 
   defp raw(conn, facts, max) do
     cond do
-      Headers.chunked?(conn) -> {:defer, "chunked body", conn}
-      not Headers.body?(conn) -> {:ok, "", conn}
+      RequestBody.chunked?(conn) -> {:defer, "chunked body", conn}
+      not RequestBody.body?(conn) -> {:ok, "", conn}
       facts.content_length > max -> {:defer, "body larger than the limiter reads", conn}
       true -> read(conn, [])
     end
   end
 
   defp read(conn, acc) do
-    case read_body(conn, RailsProxy.read_options()) do
+    case read_body(conn, RequestBody.read_options()) do
       {:ok, data, conn} ->
         raw = IO.iodata_to_binary([acc, data])
         {:ok, raw, put_private(conn, :dawarich_raw_body, raw)}

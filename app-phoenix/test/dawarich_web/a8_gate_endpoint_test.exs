@@ -36,8 +36,8 @@ defmodule DawarichWeb.A8GateEndpointTest do
   for {name, method, path, body} <- [
         {"Cloud actions replay untouched before effects", :patch, "/visits/42",
          "visit%5Bname%5D=Original+bytes"},
-        {"native Cloud visits navigation preserves its timeline destination without forwarding",
-         :get, "/visits?status=suggested", ""},
+        {"Cloud visits navigation stays native before effects", :get, "/visits?status=suggested",
+         ""},
         {"Cloud settings replay untouched before auth", :get, "/settings/visits?locale=en", ""}
       ] do
     @tag cloud: method
@@ -50,14 +50,17 @@ defmodule DawarichWeb.A8GateEndpointTest do
         if old, do: System.put_env("SELF_HOSTED", old), else: System.delete_env("SELF_HOSTED")
       end)
 
-      if unquote(method) == :get and String.starts_with?(unquote(path), "/visits") do
-        conn = request(ctx, :get, unquote(path), "")
+      if unquote(path) == "/visits?status=suggested" do
+        conn = request(ctx, unquote(method), unquote(path), unquote(body))
         assert conn.status == 302
 
         assert get_resp_header(conn, "location") ==
                  ["http://www.example.com/map/v2?panel=timeline&date=today&status=suggested"]
 
+        refute Map.has_key?(conn.assigns, :current_user)
+        refute Map.has_key?(conn.assigns, :api_params)
         assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+        assert rows("SELECT count(*) FROM route_videos") == [[0]]
         assert rows("SELECT count(*) FROM visits") == [[0]]
       else
         replay(ctx, upstream!(), unquote(method), unquote(path), unquote(body))
@@ -119,13 +122,11 @@ defmodule DawarichWeb.A8GateEndpointTest do
     end
   end
 
-  test "native visits navigation ignores per-feature overrides while legacy actions retain their owner",
-       ctx do
+  test "visits hand-back covers the visit actions and leaves the page to settings", ctx do
     Application.put_env(:dawarich, :rails_routes, ["visits"])
     upstream = upstream!()
 
     for {method, path, body} <- [
-          {:get, "/visits?status=suggested", ""},
           {:patch, "/visits/42", "visit%5Bname%5D=Original+bytes"},
           {:put, "/visits/42", "visit%5Bname%5D=Original%20bytes"},
           {:delete, "/visits/42", ""},
@@ -136,15 +137,7 @@ defmodule DawarichWeb.A8GateEndpointTest do
           {:post, "/visits/bulk_destroy", "_method=delete&visit_ids%5B%5D=42"},
           {:post, "/visits/merge", "visit_ids%5B%5D=42&visit_ids%5B%5D=43"}
         ] do
-      if method == :get do
-        conn = request(ctx, method, path, body)
-        assert conn.status == 302
-
-        assert get_resp_header(conn, "location") ==
-                 ["http://www.example.com/map/v2?panel=timeline&date=today&status=suggested"]
-      else
-        replay(ctx, upstream, method, path, body)
-      end
+      replay(ctx, upstream, method, path, body)
     end
 
     Application.put_env(:dawarich, :rails_routes, ["settings"])
