@@ -170,6 +170,30 @@ export function installMapDiagnostics({ element, map, getConfig }) {
       } catch {}
     }
     const paintBudget = { left: 4096 }
+    let rendered
+    if (sourceId && map.queryRenderedFeatures) {
+      rendered = new Map()
+      const layers = (style.layers ?? [])
+        .filter((layer) => layer.source === sourceId)
+        .map((layer) => layer.id)
+      try {
+        const bounds = map.getContainer?.().getBoundingClientRect()
+        const area = bounds
+          ? [
+              [0, 0],
+              [bounds.width, bounds.height],
+            ]
+          : undefined
+        for (const row of (layers.length
+          ? map.queryRenderedFeatures(area, { layers })
+          : []
+        ).slice(0, 1000)) {
+          const id = String(row.properties?.id)
+          if (!rendered.has(id)) rendered.set(id, [])
+          rendered.get(id).push(row.geometry)
+        }
+      } catch {}
+    }
     const config = getConfig()
     const center = map.getCenter?.()
     return {
@@ -204,7 +228,14 @@ export function installMapDiagnostics({ element, map, getConfig }) {
       featureCount: rows.length,
       features: rows.slice(0, 500).map((row) => {
         const data = feature(row)
-        return { ...data, screen: hitPosition(map, data.geometry) }
+        const geometries = rendered
+          ? (rendered.get(String(data.properties.id)) ?? [])
+          : [data.geometry]
+        const screen =
+          geometries
+            .map((geometry) => hitPosition(map, geometry))
+            .find(Boolean) ?? null
+        return { ...data, screen }
       }),
     }
   }

@@ -405,3 +405,53 @@ test("native diagnostics copy owned GeoJSON input geometry and total count while
   assert.equal(JSON.stringify(remote).includes("synthetic-private"), false)
   f.destroy()
 })
+
+test("diagnostic hit positions require rendered source geometry instead of hidden tile geometry", () => {
+  const f = setup()
+  f.map.project = ([x, y]) => ({ x, y })
+  f.map.getContainer = () => ({
+    getBoundingClientRect: () => ({ width: 100, height: 100 }),
+  })
+  f.map.querySourceFeatures = () => [
+    {
+      type: "Feature",
+      properties: { id: 7 },
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [10, 10],
+          [20, 20],
+          [30, 30],
+        ],
+      },
+    },
+  ]
+  let rendered = []
+  f.map.queryRenderedFeatures = (_area, options) => {
+    assert.deepEqual(options.layers, ["points"])
+    return rendered
+  }
+  const read = () =>
+    f.element.dawarichMapSnapshot({ sourceId: "points-mvt-source" }).features[0]
+  assert.equal(read().screen, null)
+  rendered = [
+    {
+      properties: { id: 7 },
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [40, 40],
+          [50, 50],
+          [60, 60],
+        ],
+      },
+    },
+  ]
+  assert.deepEqual(read().screen, { x: 50, y: 50 })
+  assert.deepEqual(read().geometry.coordinates, [
+    [10, 10],
+    [20, 20],
+    [30, 30],
+  ])
+  f.destroy()
+})
