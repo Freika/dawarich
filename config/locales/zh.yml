@@ -3282,6 +3282,7 @@ zh:
         failed_to_start_import_please_try_again: 无法开始导入。请重试。
         an_error_occurred_while_starting_the_import_please_try_again: 开始导入时发生错误。请再试一次。
         please_upload_a_valid_zip_file: 请上传有效的 ZIP 文件。
+        cannot_delete_yourself_or_last_admin: 无法删除您自己的账户或最后一位活跃的管理员。
         cannot_remove_last_admin_role: 无法移除最后一位管理员用户的管理员角色。
         cannot_disable_last_admin: 无法禁用最后一个管理员用户。
       visits:
