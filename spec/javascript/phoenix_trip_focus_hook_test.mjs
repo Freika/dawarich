@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { TripHook } from "../../app-phoenix/assets/js/hooks/trip.js"
+import { TripHook } from "../../app-phoenix/assets/js/map/hooks/trip.js"
 
 function fixture() {
   const handlers = new Map(),

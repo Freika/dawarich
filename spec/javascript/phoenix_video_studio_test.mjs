@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { VideoStudio } from "../../app-phoenix/assets/js/hooks/video_studio.js"
+import { VideoStudio } from "../../app-phoenix/assets/js/video/hook.js"
 import { createStudioSource } from "../../app-phoenix/assets/js/map/data/studio_source.js"
 import { mountVideoStudio } from "../../app-phoenix/assets/js/video/studio.js"
 

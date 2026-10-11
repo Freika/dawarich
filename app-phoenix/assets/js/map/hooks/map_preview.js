@@ -3,7 +3,7 @@ export const MapPreview = {
     this.previewDestroyed = false
     try {
       const { mountPreview } = await (
-        this.loader ?? (() => import("../map/preview/runtime.js"))
+        this.loader ?? (() => import("../preview/runtime.js"))
       )()
       if (this.previewDestroyed) return
       this.previewOwner = mountPreview({ element: this.el })

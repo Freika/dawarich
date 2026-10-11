@@ -4,9 +4,9 @@ import {
   clearGalleries,
   openGallery,
   showGallery,
-} from "../../app-phoenix/assets/js/hooks/shared_gallery.js"
-import { SharedMap } from "../../app-phoenix/assets/js/hooks/shared_map.js"
-import { publicRoutes } from "../../app-phoenix/assets/js/hooks/shared_routes.js"
+} from "../../app-phoenix/assets/js/map/shared/shared_gallery.js"
+import { SharedMap } from "../../app-phoenix/assets/js/map/shared/shared_map.js"
+import { publicRoutes } from "../../app-phoenix/assets/js/map/shared/shared_routes.js"
 
 function setup(loader) {
   const events = new Map()
@@ -377,7 +377,7 @@ test("native public replay preserves day time speed follow and point controls an
   }
   try {
     const { PublicReplay } = await import(
-      "../../app-phoenix/assets/js/hooks/shared_replay.js"
+      "../../app-phoenix/assets/js/map/shared/shared_replay.js"
     )
     const targets = new Map()
     const panel = { hidden: true, classList: { toggle() {} } }
@@ -441,7 +441,7 @@ test("native public replay preserves day time speed follow and point controls an
 
 test("first replay draw positions its marker before attaching to MapLibre", async () => {
   const { PublicReplay } = await import(
-    "../../app-phoenix/assets/js/hooks/shared_replay.js"
+    "../../app-phoenix/assets/js/map/shared/shared_replay.js"
   )
   const lib = library()
   const panel = { hidden: true, classList: { toggle() {} } }

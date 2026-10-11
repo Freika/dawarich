@@ -1,7 +1,7 @@
 export async function loadSharedMap({ signal }) {
   const [maplibre, styles] = await Promise.all([
     import("/maplibre/6.4.1/maplibre-gl.mjs"),
-    import("../demo/map_style.js"),
+    import("../../demo/map_style.js"),
   ])
   const style = await styles.demoStyle(undefined, (url) =>
     fetch(url, { signal }),

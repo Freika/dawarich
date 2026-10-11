@@ -3,7 +3,7 @@ import test from "node:test"
 import {
   FamilyMap,
   SharedMap,
-} from "../../app-phoenix/assets/js/hooks/lazy_maps.js"
+} from "../../app-phoenix/assets/js/map/shared/lazy_maps.js"
 
 function setup(hook, name, snapshot, clear) {
   const events = new Map()

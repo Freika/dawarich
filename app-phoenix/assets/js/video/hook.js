@@ -11,9 +11,7 @@ export const VideoStudio = {
     if (!source) return
     const generation = ++this.videoGeneration
     try {
-      const runtime = await (
-        this.loader ?? (() => import("../video/studio.js"))
-      )()
+      const runtime = await (this.loader ?? (() => import("./studio.js")))()
       if (this.videoDestroyed || generation !== this.videoGeneration) return
       if (this.videoSource !== source) {
         this.videoOwner?.destroy()

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { PosterStudio } from "../../app-phoenix/assets/js/hooks/poster_studio.js"
+import { PosterStudio } from "../../app-phoenix/assets/js/poster/hook.js"
 import { createStudioSource } from "../../app-phoenix/assets/js/map/data/studio_source.js"
 import { createPosterSource } from "../../app-phoenix/assets/js/poster/source.js"
 import {

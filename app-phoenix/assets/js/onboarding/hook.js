@@ -1,4 +1,4 @@
-import { createOnboardingDialog } from "../onboarding/dialog.js"
+import { createOnboardingDialog } from "./dialog.js"
 
 export const OnboardingHook = {
   mounted() {

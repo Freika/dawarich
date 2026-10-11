@@ -20,7 +20,7 @@ export const FamilyHook = {
     MapHook.destroyed.call(this)
   },
   loader: () =>
-    import("../map/family/runtime.js").then(({ mountFamily }) => ({
+    import("../family/runtime.js").then(({ mountFamily }) => ({
       mountHost: mountFamily,
     })),
 }

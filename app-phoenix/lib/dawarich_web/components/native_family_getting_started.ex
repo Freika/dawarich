@@ -53,7 +53,11 @@ defmodule DawarichWeb.NativeFamilyGettingStarted do
               target="_blank"
               rel="noopener"
             ><img
-              src="/assets/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg"
+              src={
+                DawarichWeb.Assets.stylesheet_path(
+                  "Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg"
+                )
+              }
               alt="App Store"
               class="h-[34px] max-w-full"
             /></a>
@@ -62,7 +66,9 @@ defmodule DawarichWeb.NativeFamilyGettingStarted do
               target="_blank"
               rel="noopener"
             ><img
-              src="/assets/GetItOnGooglePlay_Badge_Web_color_English.svg"
+              src={
+                DawarichWeb.Assets.stylesheet_path("GetItOnGooglePlay_Badge_Web_color_English.svg")
+              }
               alt="Google Play"
               class="h-[34px] max-w-full"
             /></a>

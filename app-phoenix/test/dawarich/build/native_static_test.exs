@@ -1,6 +1,7 @@
 defmodule Dawarich.Build.NativeStaticTest do
   use ExUnit.Case, async: true
   import Plug.Test
+  require Phoenix.LiveViewTest
   alias Dawarich.Build.NativeAssets
   alias DawarichWeb.Assets
 
@@ -119,5 +120,46 @@ defmodule Dawarich.Build.NativeStaticTest do
     refute File.exists?(Path.join(out, "tmp/phoenix/importmap.json"))
     refute File.exists?(Path.join(out, "config/sprockets-manifest.json"))
     refute File.exists?(Path.join(out, "public/assets"))
+  end
+
+  test "native family onboarding badges resolve through native static assets", %{tmp_dir: dir} do
+    root = Dawarich.RailsRoot.root()
+    static = Path.join(dir, "static")
+    manifest = File.read!("assets/native-static.json") |> Jason.decode!()
+
+    for [source, target] <- manifest["copies"], String.contains?(target, "Badge") do
+      destination = Path.join(static, "native/" <> target)
+      File.mkdir_p!(Path.dirname(destination))
+      File.cp!(Path.join(root, source), destination)
+    end
+
+    page = %{
+      owner?: true,
+      member_count: 1,
+      invitations: [],
+      trial_ends: nil,
+      me: %{sharing: %{enabled?: false}}
+    }
+
+    html =
+      Phoenix.LiveViewTest.render_component(
+        &DawarichWeb.NativeFamilyGettingStarted.getting_started/1,
+        page: page,
+        locale: "de",
+        self_hosted: true
+      )
+
+    paths = html |> LazyHTML.from_fragment() |> LazyHTML.query("img") |> LazyHTML.attribute("src")
+    assert length(paths) == 2
+    options = Plug.Static.init(at: "/", from: static)
+
+    for path <- paths do
+      assert String.starts_with?(path, "/native/")
+      image = Plug.Static.call(conn(:get, path), options)
+      assert image.status == 200
+      assert Plug.Conn.get_resp_header(image, "content-type") == ["image/svg+xml"]
+      assert image.resp_body =~ "<svg"
+      assert Plug.Static.call(conn(:head, path), options).status == 200
+    end
   end
 end

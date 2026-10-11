@@ -2,7 +2,7 @@ import { MapHook } from "./map.js"
 export const TripHook = {
   ...MapHook,
   loader: () =>
-    import("../map/trip/runtime.js").then((module) => ({
+    import("../trip/runtime.js").then((module) => ({
       mountHost: module.mountTrip,
     })),
   async mounted() {

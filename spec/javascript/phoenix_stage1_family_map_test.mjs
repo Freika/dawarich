@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { FamilyMap } from "../../app-phoenix/assets/js/hooks/family_map.js"
+import { FamilyMap } from "../../app-phoenix/assets/js/map/shared/family_map.js"
 
 function setup(loader) {
   const events = new Map()

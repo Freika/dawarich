@@ -1,5 +1,5 @@
 const loadEditor = () =>
-  Promise.all([import("trix"), import("../editor/attachments.js")]).then(
+  Promise.all([import("trix"), import("./attachments.js")]).then(
     ([, attachments]) => attachments,
   )
 

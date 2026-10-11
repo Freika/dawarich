@@ -35,7 +35,7 @@ defmodule DawarichWeb.SharingBridgeTest do
   test "native family consent hides the placeholder and revocation erases the map" do
     run("""
     import assert from "node:assert/strict";
-    import { FamilyMap } from "./assets/js/hooks/family_map.js";
+    import { FamilyMap } from "./assets/js/map/shared/family_map.js";
     const events = new Map(), empty = {hidden: false}, canvas = {hidden: true, replaceChildren() {}};
     let removed = 0;
     class MapView {addControl() {} fitBounds() {} remove() {removed++;}}

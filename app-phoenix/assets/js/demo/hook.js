@@ -3,8 +3,8 @@ const ACTIVE = { original: "btn-warning", matched: "btn-success" }
 async function defaultLoader() {
   const [maplibre, demo, styles] = await Promise.all([
     import("/maplibre/6.4.1/maplibre-gl.mjs"),
-    import("../demo/map_matching_demo.js"),
-    import("../demo/map_style.js"),
+    import("./map_matching_demo.js"),
+    import("./map_style.js"),
   ])
   return { maplibre, demo, style: await styles.demoStyle() }
 }

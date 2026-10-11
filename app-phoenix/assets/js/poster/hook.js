@@ -11,9 +11,7 @@ export const PosterStudio = {
     try {
       if (this.posterOwner && source === this.posterSource)
         return await this.posterOwner.open()
-      const runtime = await (
-        this.loader ?? (() => import("../poster/runtime.js"))
-      )()
+      const runtime = await (this.loader ?? (() => import("./runtime.js")))()
       if (this.posterDestroyed || generation !== this.posterGeneration) return
       this.posterOwner?.destroy()
       this.posterOwner = runtime.mountPosterStudio({

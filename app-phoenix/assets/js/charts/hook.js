@@ -1,7 +1,7 @@
 export const NativeChart = {
   mounted() {
     this.chartAlive = true
-    import("../charts/adapter.js").then(({ createAdapter }) => {
+    import("./adapter.js").then(({ createAdapter }) => {
       if (!this.chartAlive) return
       this.chartAdapter = createAdapter(
         this.el.querySelector("[data-chart-plot]"),

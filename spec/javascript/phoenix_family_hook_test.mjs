@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { FamilyHook } from "../../app-phoenix/assets/js/hooks/family.js"
+import { FamilyHook } from "../../app-phoenix/assets/js/map/hooks/family.js"
 
 test("family hook clear before lazy import prevents allocation and releases handlers", async () => {
   let resolve,
