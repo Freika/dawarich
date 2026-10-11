@@ -39,7 +39,7 @@ export function createMapFamilyLayer({
       overlay = null
     }
   }
-  function render(rows) {
+  function render(rows, members) {
     const container = list()
     if (!container) return
     const document = root.ownerDocument
@@ -52,11 +52,13 @@ export function createMapFamilyLayer({
           "btn btn-ghost h-auto w-full justify-start text-left whitespace-normal [overflow-wrap:anywhere]",
         )
         button.setAttribute("data-family-member-id", String(row.user_id))
-        const stamp = new Date(Number(row.timestamp) * 1000)
+        const stamp = new Date(row.updated_at || Number(row.timestamp) * 1000)
         const when = Number.isFinite(stamp.getTime())
           ? new Intl.DateTimeFormat(config.locale, {
-              dateStyle: "medium",
-              timeStyle: "short",
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
               timeZone: config.range?.timezone || "UTC",
             }).format(stamp)
           : ""
@@ -71,11 +73,49 @@ export function createMapFamilyLayer({
               config.uiLabels?.["messages.centered_on_family_member"] ||
               ""
         })
+        const history = members.find((member) => member.user_id === row.user_id)
+        const since = history?.sharing_since && new Date(history.sharing_since)
+        if (since && Number.isFinite(since.getTime())) {
+          const days = Math.min(
+            365,
+            Math.floor((Date.now() - since.getTime()) / 86400000),
+          )
+          const date = new Intl.DateTimeFormat(config.locale, {
+            month: "short",
+            day: "numeric",
+          }).format(since)
+          const text =
+            config.uiLabels?.[
+              `family.sharing_since.${days === 1 ? "one" : "other"}`
+            ]
+          if (text) {
+            const info = document.createElement("span")
+            info.setAttribute("data-member-info", String(row.user_id))
+            info.setAttribute(
+              "data-family-sharing-since",
+              history.sharing_since,
+            )
+            info.setAttribute(
+              "class",
+              "block text-xs w-full [overflow-wrap:anywhere]",
+            )
+            info.textContent = text
+              .replace("{date}", date)
+              .replace("{count}", String(days))
+            button.append(info)
+          }
+        }
         return button
       }),
     )
     container.hidden = rows.length === 0
     if (empty()) empty().hidden = rows.length > 0
+    const loaded =
+      config.uiLabels?.[
+        `family.loaded_members.${rows.length === 1 ? "one" : "other"}`
+      ]
+    if (status() && rows.length > 0 && loaded)
+      status().textContent = loaded.replace("{count}", String(rows.length))
   }
   async function update(next, { signal } = {}) {
     if (destroyed) return
@@ -115,7 +155,7 @@ export function createMapFamilyLayer({
           Math.abs(row.latitude) <= 90,
       )
       overlay.replace(rows, history.data.members || [])
-      render(rows)
+      render(rows, history.data.members || [])
     } catch {
       if (operation.revision === requests.revision) clearView()
     } finally {

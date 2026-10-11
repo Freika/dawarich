@@ -15,5 +15,20 @@ defmodule DawarichWeb.NativeMapLabels do
 
       {key, value}
     end)
+    |> Map.merge(family_labels(locale))
+  end
+
+  defp family_labels(locale) do
+    for scope <- ~w(sharing_since loaded_members),
+        {kind, count} <- [{"one", 1}, {"other", "{count}"}],
+        into: %{} do
+      {:ok, text} =
+        Dawarich.I18n.t(locale, "javascript.family.#{scope}", %{
+          "count" => count,
+          "date" => "{date}"
+        })
+
+      {"family.#{scope}.#{kind}", text |> LazyHTML.from_fragment() |> LazyHTML.text()}
+    end
   end
 end

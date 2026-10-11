@@ -301,3 +301,82 @@ test("new Family refresh keeps latest admitted rows when an older reader ignores
     f.owner.destroy()
   }
 })
+
+test("main map Family member history retains sharing date and source day count", async () => {
+  const f = fixture()
+  f.config.uiLabels["family.sharing_since.other"] = "Seit {date} ({count} Tage)"
+  const read = f.reader.read
+  f.reader.read = async (resource, params) =>
+    resource === "family_history"
+      ? {
+          data: {
+            members: [
+              {
+                user_id: 7,
+                sharing_since: new Date(
+                  Date.now() - 2 * 86400000 - 1000,
+                ).toISOString(),
+                points: [
+                  [52.4, 13.5],
+                  [52.5, 13.6],
+                ],
+              },
+            ],
+          },
+        }
+      : read(resource, params)
+  try {
+    await f.owner.update(f.config)
+    const info = f.nodes.find((n) => n["data-member-info"] === "7")
+    assert.ok(info)
+    assert.match(info.textContent, /Seit .+ \(2 Tage\)/)
+  } finally {
+    f.owner.destroy()
+  }
+})
+
+test("main map Family list retains source update timestamp in the profile timezone", async () => {
+  const f = fixture()
+  const read = f.reader.read
+  f.reader.read = async (resource, params) => {
+    const result = await read(resource, params)
+    if (resource === "family_locations")
+      result.data.locations[0].updated_at = "2026-06-02T12:34:00Z"
+    return result
+  }
+  try {
+    await f.owner.update(f.config)
+    const button = f.nodes.find((n) => n.type === "button")
+    const expected = new Intl.DateTimeFormat("de", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "Europe/Berlin",
+    }).format(new Date("2026-06-02T12:34:00Z"))
+    assert.ok(button.textContent.includes(expected))
+  } finally {
+    f.owner.destroy()
+  }
+})
+
+test("main map Family loaded status retains singular and plural counts", async () => {
+  const f = fixture()
+  f.config.uiLabels["family.loaded_members.one"] = "Ein Mitglied"
+  f.config.uiLabels["family.loaded_members.other"] = "{count} Mitglieder"
+  try {
+    await f.owner.update(f.config)
+    assert.equal(f.status.textContent, "Ein Mitglied")
+    const read = f.reader.read
+    f.reader.read = async (resource, params) => {
+      const result = await read(resource, params)
+      if (resource === "family_locations")
+        result.data.locations.push({ ...result.data.locations[0], user_id: 8 })
+      return result
+    }
+    await f.owner.update(f.config)
+    assert.equal(f.status.textContent, "2 Mitglieder")
+  } finally {
+    f.owner.destroy()
+  }
+})

@@ -183,3 +183,11 @@ Native Trip itinerary presentation uses pure source formatters. A stop-focus eve
 Native Trip deletion, GPX/GeoJSON export and recalculation delegate to existing domain services through Dawarich.Maps.Dependencies.Trip. Every effect refreshes resource admission, local format/ownership refusals retain the page and show localized feedback, recalculation retains its cooldown/outbox behavior, and successful deletion/export navigate to their normal result pages. Edit/share navigation remains at pending m5/m4 page boundaries.
 
 Trip delivery reconciles owned user/Trip topics, rechecks resource admission before callbacks, refreshes the safe presentation, and emits changed configuration to its current map owner. Refusal clears root/title/editor/gallery and local display choices and releases map subscriptions. Initial inactive principals do not mount studio owners. Tests settle subscription acknowledgement receipts before ownership withdrawal to make queued callback guard mutations deterministic. The parent has no direct async operation today; a common admission hook is registered for that phase.
+
+### Main-map Family layer
+
+The main native map keeps the `Family Members` layer preference and exposes only `familyEnabled` in its config. The client owns its member list, current locations, history overlay, centering feedback and polling; those arrays stay outside LiveView state. The layer uses the same scoped cookie location/history endpoints and overlay as the native Family page. Config changes, disable, refusal and disposal clear visible data and cancel pending reads. A superseded reader cannot publish after a newer result.
+
+The optional Family stream is admitted through the existing Family dependency adapter only while the actor's current preference and membership allow it. Layer saves reconcile listeners. Membership loss releases the Family stream and emits a bounded reconnect invalidation while keeping ordinary map streams, which causes the private Family read to refuse and clear client data. Events carry kind/revision, never coordinates or legacy payloads.
+
+Member controls keep source update timestamps in the profile timezone, sharing-since dates/history-day counts, localized singular/plural loaded feedback and ordinary map centering. Photos and Family remain separate lazy engines under the map owner's auxiliary-layer lifetime.
