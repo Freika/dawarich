@@ -1,0 +1,314 @@
+# Native milestone 4 frozen contracts
+
+Date: 2026-10-10. Approved defaults O1–O10; governing ADR-0017. This handoff supplements `native-m4-inventory.md`. The family/sharing track is integrated; the controller performs the final full gate.
+
+## Product and transport decisions
+
+- Imports keep atomic batch claim and whole-ready-batch repair/retry. No partial publication or automatic retries after an unknown commit. Existing duplicate-name behaviour stays.
+- Configurable transport defaults: 20 entries, 50 GiB per entry and aggregate; account restore remains one ZIP, 50 GiB. Legacy trial remains 11 MiB and five non-demo imports; active-until and the Cloud ten-million-point boundary remain business admission facts checked again at claim.
+- Preparation runs one file at a time, at most 64 MiB buffered working set; originals above 256 MiB use raw fallback with a localized notice. Checksum chunks remain 2 MiB. Reservation expires after 24 hours; inactivity timeout is 120 seconds reset only by actual progress. Durable sweep takes at most 100 rows per batch. Entry, original, aggregate and preparation budgets are independent.
+- Upload cancellation is always available. Running import cancellation uses fenced deletion; extraction cancellation uses fenced removal. Export deletion is its fenced cancellation path; no additional cancel action.
+- Public shared GET/unlock and invitation landing/acceptance remain HTTP. Anonymous connected reads use a separate read-only session with signed bootstrap, bounded by link/unlock/session expiry and 30 minutes. Reconnect and every delivery recheck owner, audience, phrase/revocation version and exact expiry. No extra connected view count.
+- Month/digest/achievement hosts link to native sharing controls and safely back until M5. Main map/studios remain M6. Native pages use no Turbo, Stimulus or ActionCable browser consumer. Retain independent protocols and deferred host consumers.
+- Owner secret reveal uses scoped HTTP and transient hook DOM erased on patch/close/destroy. No raw phrase, upload target, signed blob id, password hash or provider credentials in socket/principal/metadata/logs.
+
+## Domain and web seams
+
+All authenticated entrypoints take `Accounts.Scope`; reload the actor/session and target admission. Result vocabulary: `{:ok, value}` or `{:error, reason}`, where reasons are closed atoms (`:stale_session`, `:unauthorized`, `:not_found`, `:invalid_input`, `:expired`, `:claimed`, `:cancelled`, `:limit`, `:unavailable`) or a validation DTO containing field errors without secrets. Web adapters own translated notices and safe refusal destinations. Domain modules never depend on DawarichWeb/Plug/socket.
+
+- `Uploads.reserve(scope, entry, policy)` returns an owner-bound non-authorizing reference. `target(scope, ref, attrs)` returns a transient PUT URL/headers only to authenticated same-origin CSRF-protected bounded HTTP. `claim(scope, refs, operation)` verifies actual stored bytes/checksum, ownership, expiry and current entitlement atomically. `cancel(scope, ref)` is idempotent and arbitrates with claim under the same lock. Account archive restore retains its existing owned-export exception; cleanup never purges attached exports.
+- External LiveView metadata contains only `uploader` and `upload_ref`. No framework upload-config mutation or signed capability. Claims resolve references server-side. Pending rows have owner/state/expiry and durable purge intent; tombstones refuse late PUT and restart sweep is bounded.
+- `Imports.page/get/create/update/delete/extract/remove_extraction/request_provider/subscribe` own admission and existing durable jobs. `Exports.page/request/delete/subscribe` reuse worker claim/complete/fail contracts and exact download bytes. IDs and format/source payloads are untrusted.
+- `Notifications.page/open/mark_all_read/delete/unread/subscribe` preserve 20-row paging, unread-offset and timestamp semantics. Worker `create!` remains; every write records durable owner invalidation in the same transaction, including deletes. Native events never render Turbo HTML.
+- `Families.page/locations/create/update/delete/invite/cancel_invitation/accept_invitation/remove_member/request_location/respond_location/set_sharing/subscribe` and `Sharing.page/change` follow the approved plan. Family indicator invalidation carries owner identity only; B reloads an authorized indicator, C owns membership/consent and public read admission.
+- Invalidation messages are `{:domain_changed, owner_or_resource_id, version_or_kind}`; ID/version/closed kind only. No emails, title/content, coordinates, phrases or credentials. Subscribe before snapshot; replay/reconnect converges to authorized DB state. Timers have generation tokens and teardown cancels them.
+- X1 establishes sanitized job principals and fresh params/event/info/async hooks before A/B page migration. Native refusal clears private snapshots before sign-in or an owned safe destination. Family/public sessions remain separate C integration seams; no same-URL refusal loops.
+
+## Ownership and independent consumers
+
+A owns Uploads, storage lifecycle/migration, Direct uploader/checksum/preparation and Imports. B owns Exports, Notifications, navbar/session and owner relay. C owns Families/Sharing, public admission and family/shared map hooks. X owns minimal route macros, shared principal/redaction/hook registration, structural gates/registers and browser integration. Each track supplies append packets and uses its assigned private runner; no shared database or Redis. Controller scripts and other plan files stay read-only.
+
+Retained `/cable` consumers: deferred main-map/browser modules under `app/javascript/channels`, supported separately built Rails frontend, and Phoenix wire tests (`cable/*`, `cable_wire*`). No production external-client census establishes that all wire consumers can be retired; retain the explicit compatibility adapter. M4 native notifications/family/public hooks cease consuming it. Retained HTTP: storage PUT/blob/representation, import/downloads, API family/shared, public unlock and invitation acceptance, point/trip export and hybrid Points POST `/exports`. Provider shared POST `/settings/background_jobs` retires after A6 caller census. No release/lifecycle/Cloud admission changes.
+
+## Budgets and reproducible baseline
+
+App baseline is inventory commit `96837848a`, E2E `ff256e6`. Telemetry counts only `[:dawarich,:repo,:query]`, excludes Redis, job repo, workers, storage/network/assets and migrations. Synthetic dataset: one owner family and request from the existing recorded fixtures, one ordinary user with 61 imports and exports, 61 notifications, active import/extraction, public link fixtures, empty public month/digest/achievement. No real data.
+
+| Variant | Static | Connected |
+| --- | ---: | ---: |
+| Imports populated | 6 | 5 |
+| New import | 5 | 5 |
+| Active import/extraction show | 12 | 7 |
+| Active import edit | 10 | 5 |
+| Exports populated | 5 | 5 |
+| Notifications populated | 7 | 7 |
+| Notification detail | 6 | 5 |
+| Family owner | 19 | 10 |
+| Family edit | 17 | 9 |
+| Invitations | 11 | 6 |
+| Family outsider new | 9 | 5 |
+| Location-request target | 11 | 6 |
+
+Import page patch: 4. Old navbar tick: 1 on every view. Cloud family owner/outsider new HTTP: 19/9. Manager hub/live/timeline/trip HTTP: 11/11/12/13. Public unlocked trip: 12 with resource, 3 absent; track/timeline/live fixture documents: 3; month/digest/achievement: 5/4/4; phrase prompt: 2. Empty/missing public resources are explicitly included; these figures are not populated map capacity guarantees.
+
+New page caps are baseline plus itemized actor/session (one actor read per hook/context boundary), entitlement (one additional current user/count read where required), and target/membership reads measured for the relevant context. No unexplained blanket allowance: task evidence must list actual admission reads and totals. Native navbar periodic queries: zero. Durable relay infrastructure remains singleton: current idle 1 second, failure backoff 5 seconds; native batch bounded at 100 intents.
+
+Production esbuild minified eager graph: `app.js` 166,694 raw / 51,060 gzip bytes; static shared chunk 544 / 337; total 167,238 / 51,397. Lazy emoji/module/demo/style chunks excluded and itemized by the manifest. Common added eager overhead cap: 5 KiB gzip over this baseline, maps/ZIP/gallery always lazy. Root-dependent legacy page graph remains pre-migration and is replaced page by page; X4 records actual transferred graphs from the production stand.
+
+Synthetic 8 MiB original `File.arrayBuffer()` observation: 8 MiB returned original buffer, 16 MiB array-buffer allocation growth in Node; excludes ZIP worker/output/browser/GPU. Rails preparation reads the entire original (`app/javascript/services/zip_file.js:3-13`), so this is a lower-bound memory observation, not a browser peak. The chosen bounded streaming preparation budget must be measured and enforced in A2/X4 before acceptance. Account cleanup baseline: completed/cancelled entry tests pass but no owned pending cleanup occurs before A1/A2; the existing metadata capability gap is a Phoenix defect, not a proven Rails changelog fix.
+
+## A4 scoped import observation (2026-10-10)
+
+One synthetic owner, one GPX import, UTC, no attachment/worker/background delivery. Totals include fresh admission and the existing navbar, exclude later B5 reductions. Telemetry query categorization records only counts, never SQL arguments.
+
+| Page | Static | Connected | Patch | Owner invalidation | Actor reads in those phases |
+| --- | ---: | ---: | ---: | ---: | --- |
+| imports index | 10 | 10 | 7 | 4 | 6 / 7 / 4 / 3 |
+| import show | 10 | 11 | 7 | 4 | 5 / 6 / 3 / 2 |
+| import edit | 8 | 9 | 6 | 3 | 5 / 6 / 3 / 2 |
+
+Show counts points only when its record changes; each queued owner wake still checks actor/target. Duplicate queued wakes perform one snapshot. Provider availability reads only return names while secrets remain request-local. Temporary measurement test RED/GREEN/no-counter mutation/restored GREEN removed; final observations will be repeated after B5. Legacy invalid/duplicate rename keeps the Rails success notice without persisting a rejected name; this task preserves that behavior. German browser range/overflow and actual transferred graphs remain controller stage acceptance.
+
+## A6 shared background POST retirement packet (2026-10-10)
+
+Native imports offers only configured Immich/PhotoPrism job buttons. Scoped request re-admits identity/active entitlement and reads configuration under the actor SHARE lock, with producer ownership held before actor locking; existing IntegrationCommands provides durable output/timezone behavior. Accepted intent is latched per job/page, failures remain retryable. URL/key never enter the page. The six legacy backend actions, Cloud allowed integration jobs, paid-provider forced-rerun refusal and visits toggles remain tested independently.
+
+Caller census after migration: Phoenix imports index has no shared POST link. Airtrail/TeslaMate are `SettingsLive.Integrations` `sync` events calling `Integrations.start_sync`; reverse/continue/visits are `SettingsLive.BackgroundJobs` events backed by Admin.Background. Settings navigation/operator redirects are GET destinations. `app/javascript` and native assets contain no shared POST consumer. Rails view references remain the unmigrated Rails oracle/source, not a native UI requirement.
+
+X2 removal packet: `IntegrationFormRoutes` POST macro/router invocation and now-orphan pipeline, `IntegrationJobActions` (including its consumed body/query legacy visits branch), background-only AdminWrites adapters/gate/request helpers after an orphan census. Preserve Admin.Background, IntegrationCommands and BackgroundCommands source behavior; six-command domain tests remain. Retarget shared endpoint/Puma/route-key assertions in `endpoint_test`, `background_jobs_http_compat_test`, `a12f3b_d02_test`, `admin_writes_request_test`, `a10b/a10c_ownership_test`, `admin_gate_test`, `a12f3b_d01/i04_test`, `a12f3b_h01_test`, and structural removed-page-write/register tests as applicable. HTTP route still exists in A6 until X2; no route removed prematurely.
+
+## B1 scoped exports and event contract (2026-10-10)
+
+`Exports.page/request/delete/subscribe` reload the current scoped principal, target owner and write entitlement. Native request refuses unavailable producer ownership. Parsing remains the existing Rails date/format contract in bounded Submission; worker claim/complete/fail keep artifact and unknown-COMMIT fences. Export deletion remains cancellation; legacy URL retirement follows in B2.
+
+Point acceptance, processing/completion/failure, deletion, account-backup capture/status/failure and restored row/attachment persist `Exports.EventsWorker` intents in the corresponding write transaction. Payload contains only event_id/user_id; delivery is `{:domain_changed, owner, :exports}`. The projection worker refuses calls inside a write transaction, then uses the existing idempotent AfterCommit delivery receipt; subscriptions convey no continuing permission. Independent Sidekiq/no-Oban producer contracts remain; native UI uses the scoped refusal. Restored attachment preparation performs storage work before the transaction that persists attachment and its invalidation.
+
+Caller compatibility assertions now select their actual worker while preserving exact args and artifact bytes. Drain tests process owner projections before asserting that their failed purge remains outstanding; unknown-COMMIT and producer-transfer test repos expose event insertion without changing the failure/locking seam. Nine named behaviors and twelve discriminating mutation checks are in the report. Strict explicit caller batch: 222 passed, seed 404, warnings-as-errors. No full suite or new Rails fix.
+
+## B2 native exports and retained POST (2026-10-10)
+
+Exports subscribes before a fresh scoped snapshot; owner progress wakes coalesce, reconnect reloads, revoked sessions clear cached rows/confirmation. Delete confirms a server-selected owned target once and checks current ownership again inside the command. Completed blob and local legacy URLs stay ordinary HTTP download links. Native legacy deletion commits a durable path cleanup intent; it refuses escaping paths/symlink parents and retains files with remaining export references.
+
+The hybrid Points POST `/exports` now uses the scoped command with native producer ownership and typed no-replay refusal. All recorded parser/field/date/timezone cases survive; `_method=post` remains accepted, unsafe method overrides and client envelopes refuse. The page's UI HTTP delete adapter remains until X2's consumer-verified retirement. Rails expired Lite/pending-payment users may export; fresh locked/deleted/revoked identities refuse. B1's `inactive` named vector now tests a locked login, preserving the Rails business entitlement corpus.
+
+A1 bootstrap correction: private upload lifecycle DDL stores a blob bigint without requiring public Active Storage tables before fresh Cloud provisioning. Runtime reservation/claim checks continue to require an actual current owned blob/receipt and arbitrate against attachment/deletion. Fresh-install caller RED/GREEN/FK mutation/restored evidence is in the implementation report; no Cloud guard changed.
+
+## B3 scoped notifications (2026-10-10)
+
+`Notifications.page/open/unread/mark_all_read/delete/delete_all` accept sanitized Scope. Reads re-admit current identity; writes lock the actor, re-admit and constrain the target to the current owner. Missing/foreign targets and revoked/deleted sessions return typed refusals without effects. Opening an unread item changes read_at and updated_at once; mark-all changes only read_at. Existing pagination/unread-offset/timezone/enum semantics and raw worker compatibility remain. Durable owner events and native page wiring follow in B4/B5.
+
+B4 notification publication uses existing after-commit worker intents with only random event identity and owner identity; no source row or web HTML is required. Duplicate delivery uses existing durable receipts. Committed restore batches and account cleanup enqueue owner wakes; transaction rollback emits none. Native subscriptions precede reads, coalesce at most 100 pending owner messages and re-admit before reading. Independent Cable adapters retain their protocol. B5 removes native per-socket polling. Account mount telemetry retains business budget four reads: disconnected imports=1/notifications=1/users=2, connected imports=1/notifications=1/users=3, explicitly including one fresh subscription-admission read.
+
+## B5 native notifications and shared admission
+
+Native notification pages use scoped open/page/read-all/delete commands. Confirmation targets come from server-owned detail/all-owner state, cancel has no effect and confirmation latches before the effect. Removed details clear and navigate to `/notifications`; ordinary read links, timestamps and all nineteen recorded notification fixtures survive through `NativeNotificationCorpus`. No native fallback write controls or per-socket navbar timer; an old navbar tick reads zero notification rows. Independent legacy wire polling remains infrastructure.
+
+All native Tags/settings/admin navbars subscribe to owner notification invalidation; family membership/consent/request/invitation/lapse invalidation reloads an admitted navbar and continues to the family's own delivery hook. Native-identity sessions are marked before shared hooks, closing the C-family/sharing startup seam without changing track C files. Native principals are credential-free typed projections; inspection also protects the supporter contact. Configuration presentation reads fresh settings separately and retains masked credential sentinels. Native params/events/info/async admission precedes shared hooks; a settings patch cannot upgrade a revoked session to the actor's new identity.
+
+Final frozen-data mount counts explicitly account for native admission: account/general/new tag 5 static / 6 connected (business four + one params read, plus one connected subscription read); edit tag 6 / 7 (business five + those reads); visits 7 / 8 (business six + those reads); integrations 7 / 8 (business five + fresh presentation read + params read, plus subscription). Admin instance 19 / 19 keeps its nineteen static and eighteen connected reference budgets plus one connected owner subscription read; user reads static five/connected six. Table-category assertions preserve all other reads and exact connected user increment; a second subscription-admission mutation fails every budget. Idle zero-notification-query telemetry is limited to the tested socket, excluding other test processes. Actual browser width/focus and stage production graph checks remain stage acceptance.
+
+## X2 A/B retirement and surviving consumers (2026-10-10)
+
+Ordinary browser writes for imports, export deletion, notification actions and shared background jobs are unregistered. NativeM4RetiredWrites rejects their POST/PATCH/PUT/DELETE method families and HTML suffixes before source-key overrides or unsupported-body replay, in either Rails mode. Existing halted connections remain unchanged. Native GET pages, private upload targets, storage capabilities/PUT, authenticated import downloads, independent APIs/wire and Points POST `/exports` remain. Import downloads no longer consult ImportsGate; owner/missing/source/storage outcomes stay in the retained native adapter.
+
+The completed orphan census removes ImportsController/Request/Authorization/Gate/Actions/Polling, import form classifiers/extraction stream, export-delete forms/handlers, notification form macro/actions and IntegrationFormRoutes/IntegrationJobActions including the consumed legacy query branch. Background-only AdminWrites.Request/Settings and the duplicate BackgroundCommands producer have no surviving executable callers and are removed. AdminWritesGate retains only context/auth options for the independently used fallback; Admin.Background, IntegrationCommands, storage/download/domain worker modules and raw owned-receipt interoperability remain. This supersedes the prospective A6 packet above: its six source actions and retry/force/batch effects survive through canonical native commands, while metadata specific to the removed web dispatcher is retired. No native page imports the shared POST.
+
+| Old case family | Named successor / preserved invariant |
+| --- | --- |
+| ImportsUpload GPX receipt / multipart / format / replay vectors | Seven named cases in imports_upload_test retain owned receipts, captured Berlin zone, all GeoJSON/KML/mixed/Google input vectors, raw multipart/query/origin/CSRF inputs, scoped owner edit/delete, catalogless delete and exact extraction options/duplicate/foreign/removal effects. Retired raw HTTP inputs return 404 with no upstream request. Actual ref-only external upload claim cases remain in imports_live_upload_test. |
+| ImportsRemaining normal/foreign/non-GPX | Seven locales' original HTML fixture business vectors, native save/invalid enum, safe foreign read, retired foreign/override writes, exact CSV/original ZIP bytes and durable native delete. |
+| ExportsDelete owner/standalone/DELETE+POST | Legacy purge domain still checks owner and preserves payload/file bytes; standalone native deletion preserves signed-link revocation/shared blob/retry; all old method/token/query/override inputs now refuse before effects, scoped owner deletion and retained Points producer remain. |
+| AdminWritesRequest five cases | Canonical, malformed, all four query/body fixture readers, forwarded-origin/CSRF/session and conflicting-IP vectors remain. Each background HTTP envelope now refuses without mutation; shared Admission/RemoteIp/Response contracts remain separate. |
+| BackgroundJobsHttpCompat / I04 / D02 | All six command names, typed invalid/deleted/producer refusal, photo time-zone payloads, canonical metadata, reverse-geocoding force/non-force/retry batches and Cloud rules survive through Imports/Integrations/Admin.Background and IntegrationCommands. Consumed POST/query fixtures have zero-effect retirement successors. |
+| N01 / N02 | Fresh scoped mark-all/delete-all/foreign/stale refusal and raw invalid-row validation; native owner invalidation plus exact independent Cable message vectors; immediate cross-tab signout keeps the row. |
+| O02/O07, Endpoint, StorageRoutes, A8/PageRoutes, A10b/A10c, H01 | Retired route inputs remain exercised as local 404/no effect/no replay; native session metadata and retained reads/source overrides remain. Independent storage bytes/rollback, other domain replay/API/public behaviors remain unchanged. |
+
+No fixtures were deleted, regenerated or written through the E2E fixture link. ED-NATIVE-M4-ROUTE-RETIREMENT-AB records the exact method/path census and intentionally retired transport representation. C route cleanup and final integration remain outside this branch's A/B assignment.
+
+
+## X3 A/B corpus and runtime audit
+
+The X2 table above names each changed envelope/corpus case and its preserved business successor. Import source/locale/raw upload/zone/header/signed bytes, all export producer input datasets, notification ordering/age/enum/timezone/read links/notices, independent Cable wire and retained HTTP storage/download tests remain readers of their original fixtures. No fixture was removed or regenerated. Family/public/sharing source and inventory rows remain C-owned; no complete integrated milestone claim is made here.
+
+`NativePagesHotwireFreeTest` includes `native_jobs` route discovery and explicitly requires the seven list/new/show/edit/export/notification/detail variants. English/German static and connected controls have one label and unique IDs. Open export and notification confirmations are inspected and cancelled with original rows retained. The extraction heading resolves once and native submission is guarded. `NativeAssetsTest` reads the actual esbuild eager and lazy input graph, requires native external upload hooks and refuses Rails transport modules/app sources; a real two-step transitive import mutation fails, rather than a source-string-only assertion. Shared library/chunk gzip limits remain separately enforced. Stage browser network, keyboard, 390px and Range measurements remain unexecuted controller acceptance.
+
+
+## X4 A/B stage browser contract
+
+E2E commits `5cec967` and `4e70993` preserve the original empty/list/edit/delete, notification pagination/read/XSS/notices/achievement, account manifest/restore and GPX/ZIP/GeoJSON business oracles. Helpers acknowledge native hydration and real PUT completion, then wait for owner events instead of polling page reloads. Export/notification cancellation, Escape/focus and one confirmed effect replace obsolete method-link expectations. Exact imported GPX bytes and ordered GeoJSON coordinates supplement the original byte/count assertions. No fixture was deleted or regenerated.
+
+New browser contracts cover multi-file/original-name uploads, configured count refusal before target issuance, incomplete/forged claims, held PUT cancellation/disconnect and revoked-target replay, distinct errors/reselection, bounded raw fallback, leaving during lazy preparation, browser slice/heap measurements, missed-deletion reconnect, worker failure and seeded failure/stalled retry/reset/delete. Notification worker creation/read/delete/read-all/delete-all reach two tabs; account removal clears the already-open private detail. English/German 390px checks inspect page scroll and each visible text Range, including empty/progress/error/dialog states. Native page visits record owned script raw/gzip transfers and enforce the frozen shared gzip budget; compiled transitive graph checks remain separate. Recorded heap excludes native Blob/process memory; stage acceptance must itemize that limit.
+
+Controller stage fixture preparation must supply fresh synthetic identities through `PHOENIX_E2E_TRIAL_USERS` (array: two users per repeat, byte-boundary then quota case) and `PHOENIX_E2E_IMPORT_TRANSITIONS` (array per repeat with `en`/`de` actors). Each transition actor supplies email/password, `failed_extract_id`, `stalled_extract_id`, `stalled_delete_id`, and exact `failed_extract_counts` with visits/places/tracks/segments. These cases use HTTP sign-in/native controls and never invoke a Rails fixture process themselves. Missing fixtures fail explicitly; no skip or fabricated browser result. Trial byte admission preserves the existing eleven-MiB boundary despite the ten-MB label, with actual raw PUT bytes; scope/count admission is rechecked after another tab consumes slot five. Stage Cloud setup must preserve lifecycle admission preconditions.
+
+All scoped upload/credential specs disable trace/screenshots/video; capability-bearing replay transport errors use a generic message. Transfer artifacts contain only native static asset paths/counts and the synthetic page path. The final authoring collection contains 46 tests in 16 files including setup, with syntax/diff checks clean. No implementation-time G44/390px execution, browser RED/GREEN/mutation, full-suite or final acceptance is claimed. Stage acceptance owns those runs plus fresh fixture provisioning.
+
+## A/B implementation handoff completion (2026-10-10)
+
+X0, A1–A6, B1–B5 and the A/B portions of X1–X3 are committed. X4 A/B authoring is committed through E2E `4e70993`; the saved documentation WIP remains in history. Earlier task-local remaining-work statements describe their original checkpoints. This handoff completes the assigned implementation and authoring scope, while integrated X1–X4 and X5 remain controller-owned.
+
+Resumed verification: five explicit structural, asset and register-reader files passed 30 tests with seed 404 and warnings as errors; the five native upload/checksum/credential Node files passed 14 tests; the fifteen explicit browser spec files collected 46 cases across 16 files including setup. Collection starts no browser and is not browser acceptance. Fixtures, Swagger/schema and Cloud lifecycle guards remain unchanged. Named behavior RED/GREEN/mutation/restoration evidence and per-task commits are recorded in the implementation report.
+
+## A/B review: upload cleanup fencing (2026-10-10)
+
+Cancellation marks the owned blob under lock. Final local PUT publication rechecks both the marker and native reservation state while locking the blob. Cleanup removes the unclaimable blob row under reservation/blob locks before object I/O; the reservation retains the exact key and service recorded at creation, so deletion failure remains retryable after row removal. Object I/O stays outside locks. Remote signing expiry cannot fence an already in-flight PUT: purged S3 identities remain scheduled for five-minute repeat cleanup. Sweep admits at most 100 expirations and 100 due cleanup identities per batch, avoids another active cleanup job for the same reference and schedules the nearest due deadline. Local cleanup is terminal after successful deletion because the final publication fence prevents resurrection. Pre-existing cancelled records lazily recover identity under cleanup locks only through their owned upload receipt/blob, never a client value; already-purged old rows without a key cannot reconstruct past artifacts. No change to attached-export exclusion or native account receipt rules.
+
+## A/B review: native account producer admission (2026-10-10)
+
+Account ZIP `UserData.start_upload` holds effective native import producer ownership before claim/attachment/publication and returns `:not_owned` without effects when unavailable. Claims re-admit the original actor under lock. Account backup uses `UserData.request_native_export`, holds effective native export ownership, locks/re-admits the original actor and reads fresh timezone/locale before native publication. Standalone overrides legacy owner rows through the existing NativeOwnership rule; it never emits a Rails command. Backup refusals stay in place with the generic localized error, or go to sign-in for a revoked identity. Raw `request_export` and signed `start_import` remain independent backend compatibility APIs, retaining their Sidekiq corpus; native controls do not select them as a fallback.
+
+## A/B review: stalled import deadlines (2026-10-10)
+
+Connected import index/detail snapshots schedule one versioned nearest future stall boundary: one hour after deletion updated_at or six hours after supported pending/running extraction started_at. Matching delivery reloads through the scoped domain API with current original-identity admission and current time; obsolete tokens are inert. Navigation, invalidation and terminal transitions cancel/recompute the timer; refusal clears private data and cancels it. Disconnected rendering schedules nothing. Existing navbar and imports_refresh polling remain disabled. Extraction controls live only on detail, so index deadlines cover displayed deletion states. Deterministic per-view injected clocks cross both cutoffs without database/domain wakes and prove cancellation, stale-token isolation and revoked-session clearing.
+
+
+## A/B review round 2: claimed object deletion debt
+
+`NativePurge.mark!` transfers matching claimed reservation identities into cancelled cleanup debt before attachment purge jobs or independent backend purge handbacks commit. The reservation is independent of the deleted blob/user and retains the target deadline. Shared attachments never authorize debt transfer. The shared purge worker fences/removes native blob rows transactionally, deletes objects outside its DB transactions and retains replayable job object identities on failure; legacy generated blobs retain their existing retry rows until successful deletion. Cleanup's local publication and remote late-arrival rules remain unchanged. Storage lifecycle inventory is in the approved milestone plan.
+
+
+## A/B review round 2: bounded sweep scheduling
+
+Every reservation, recurring remote cleanup and sweep successor schedules through `Uploads.SweepSchedule.enqueue!` within its existing repository transaction. A transaction-scoped advisory lock serializes the outstanding-job read/update/insert. It retains one available/scheduled/retryable successor, moves its deadline earlier when required, and cancels historical duplicate queued chains; an executing sweep may coexist with that one successor. No-debt sweeps cancel outstanding successors. Oban changeset `unique` metadata alone is not the mechanism: raw Ecto insertion is used only behind this explicit single-chain lock. Due row batches remain bounded at 100, and completed jobs are ordinary Oban history.
+
+
+## A/B review round 2: export deletion admission
+
+Native deletion resolves the owned export's actual file type, then admits and holds the effective parent producer (`exports.points` for point files, `users.export_data` for account files) before attachment/blob/delete/purge/invalidation effects. Unavailable ownership returns `{:error, :not_owned}` with the export, file and every publication footprint unchanged, including exports with no attached blob. Standalone retains the existing effective-native override. Independent raw `Exports.Delete.call` clients preserve their byte-identical Sidekiq purge handback contract; native callers never publish it.
+
+Sweep completion additionally recomputes the minimum persisted reservation/cleanup deadline after acquiring the chain lock. A stale pre-lock no-debt snapshot cannot cancel a newly required successor. The deterministic stale-completion regression fails if scheduling trusts the caller's old deadline.
+
+Expanded caller verification retargets historical I02/I03/I04 HTTP write assertions to the retained signed-upload domain and scoped import update/extraction operations. No-file alerts, atomic invalid-batch rollback, GPX classification, rename/source/rejected-name effects, exact worker identity, extraction event/start timestamp, duplicate refusal and removal outbox/status remain asserted. Transport statuses/redirects for retired routes are covered by native_m4_route_retirement_test; existing fixtures remain unchanged. Export/storage native fixtures now declare the relevant account producer, preserving raw backend Sidekiq tests.
+
+
+## Integrated derivative purge retries (2026-10-10)
+
+A shared purge job records the complete eligible variant/preview graph before native parent fencing or reservation cleanup removes graph links. Every retry seeds collection with both original roots and the captured blob identities, then rechecks outside references and the exact captured key/service. A disconnected surviving derivative remains authorized cleanup work; a newly shared child is protected and its tombstone cleared. Missing rows retain their captured object deletion identity. The native parent keeps its separate late-PUT reservation debt. This restores Rails dependent-attachment cleanup behavior rather than fixing a Rails defect. Named deterministic variant and preview cases cover cleanup-first ordering, parent DELETE failure, child DELETE failure and newly shared children in native_derivative_purge_test.
+
+
+### Integrated native subscriptions
+
+Native job and family hosts subscribe through `Families.subscribe_changes/1` with the sanitized session scope. A revoked principal cannot install a new family subscription. Consent invalidations rebuild the family navbar from a freshly admitted actor; notification delivery independently refreshes unread counts. Safe family refusals erase the page, locations, history, confirmation and scope before navigating to `/family/new`. Regressions: `notification_subscription_test.exs` (scoped revoked subscription and cross-host consent/unread) and `native_m4_sessions_test.exs` (safe family refusal).
+
+
+## X2/X3 integrated route and behavior reconciliation (2026-10-10)
+
+Ordinary family and owner sharing writes now use native commands/events. Their retired HTTP verbs return 404 before effects, method override, compatibility-key routing or Puma replay in both operating modes. Public invitation acceptance remains bounded HTTP POST through Families with the original session/login/flash redirect, origin and POST/path CSRF checks. Public unlock, signed storage/downloads, external API/JSON and independently consumed wire clients remain.
+
+| Removed UI methods | Paths (extension variants included) | Named successor |
+| --- | --- | --- |
+| POST/PATCH/PUT/DELETE | `/family` | `native_m4_route_retirement_test`: retired family and sharing UI writes refuse before effects and Rails replay |
+| POST/DELETE | `/family/members/:id`, `/family/invitations/:id` | Same retirement case; native F03/F04 and family browser confirmation effects |
+| POST | `/family/invitations`, `/family/location_requests` | Native F04/F05 invitation/request validation and durable effects |
+| POST/PATCH | `/family/location_requests/:id/{accept,decline}`, `/family/location_sharing` | Native F05/F06 target, status, expiry, consent/history and independent JSON vectors |
+| POST/PATCH/DELETE | `/share_links/{live,timeline}`, `/trips/:id/share_link`, `/tracks/:id/share_link` and revoke/regenerate/regenerate_phrase suffixes | Native management fixture corpus, S03/S04/S06/S07 and endpoint successors |
+| POST/PATCH | `/share_links/shares/:id/revoke`, `/stats/:year/:month/sharing`, `/digests/:year/sharing`, `/achievements/:key/toggle_sharing` | Retired route matrix; native scoped report/achievement writes and public reads |
+
+| Retained HTTP contract | Admission/consumer |
+| --- | --- |
+| POST `/family/memberships`, `/family/memberships.:format` | Public token landing and registration join; actual scoped acceptance. Bounded form/JSON; unsupported envelopes refuse locally; existing guest return/flash and per-form POST/path CSRF. |
+| GET `/invitations/:token`, `/family/invitations/:token` | Native public invitation document; reserved `new` token remains 404. |
+| GET `/family/locations.json` | Independent JSON clients; fresh family/consent/privacy epoch. No native browser fetch/poll bridge. |
+| GET `/native/family/invitations/:id/{copy,view}`, `/native/family/upgrade`, `/native/sharing/{phrase,:id/:field}` | Fresh scoped HTTP capability reveal, CSRF/no-store where required; no capability in socket assigns. |
+| GET public share/report/achievement documents, public unlock POST | Existing expiry/audience/owner/cookie/limiter/status/PNG and native read admission; public CSRF exemption preserved. |
+| Storage PUT/GET, signed downloads, API family/shared, POST `/exports`, independent Cable/Sidekiq wire | Existing byte, ownership, expiry, producer and envelope contracts retained; native UI does not replay to Rails. |
+
+Removed orphan family forms/gates/actions/admissions, sharing form/stream/method/route adapters, old report toggle handlers and sharing-only achievement branches. The sole legacy family browser hook and its registration/importmap/static entry are removed. Shared RailsStimulus/Turbo bridges remain for actual deferred consumers (trips/settings/posters); their three timing/feedback tests are explicitly named deferred behavior. Native family consent/erasure instead crosses the actual FamilyMap hook. No fake old-route support router remains; FamilyCorpus seeds data and calls only retained invitation HTTP acceptance.
+
+All 294 family fixture names and 505 management names plus 23 track/timeline domain vectors remain immutable/read. Native refusals replace UI handbacks; unsupported legacy timeline dates refuse without changing stored settings. Genuine guest/token/status/cookie/JSON/public/security/effect vectors retain HTTP or domain successors. Validation messages are asserted by field/nonempty localized content; the original Rails invalid-form fixtures do not contain these messages and are not silently regenerated. Resource form field values/headings/order/settings and effect/broadcast rows remain tested. Unknown native hub tabs normalize to live without changing the independent read adapter. Malformed settings return a typed admission refusal. These correct Phoenix gaps; no new Rails defect.
+
+### Exact renamed-test successors
+
+Generated template names retain the same fixture tag/name and multiplicity. Unchanged behavior test names are omitted from this rename table, including token HTTP acceptance, foreign ownership/rollback and low-level independent wire contracts. Legacy frame/stream/importmap/Puma assertions are M/C/R transport rows; their persisted data, permissions, casts, ordering, localization and terminal effects are B rows retained below and in the immutable corpus.
+
+| File | Former name/template | Named successor/template |
+| --- | --- | --- |
+| `test/dawarich/a12f3b_h01_test.exs` | “part B handback occurs before native effects and final native transport errors are source compatible” | “native retired part B writes refuse before effects while independent handbacks remain” |
+| `test/dawarich_web/a10c_routes_test.exs` | “routes sharing and JSON deck actions outside page request filters” | “retained JSON deck routes keep admission while achievement UI sharing writes are retired” |
+| `test/dawarich_web/a12f3a_o_closure_test.exs` | “O06: every Q M W P method is native and each source key restores raw pre-effect Rails routing” | “O06: retained Q M W P methods keep native admission and independent source routing” |
+| `test/dawarich_web/a12f3b_a02_test.exs` | “achievement sharing and public embeds close remaining gates” | “native A02a achievement sharing preserves independently public embeds” |
+| `test/dawarich_web/a12f3b_f01_test.exs` | “family pages resolve lapsed and malformed actor states before effects”; “family reconnect cannot retain a removed membership” | “native F01a family pages resolve lapsed and malformed actor states before effects”; “native F01b family reconnect cannot retain a removed membership” |
+| `test/dawarich_web/a12f3b_f02_test.exs` | “family create and update preserve validation and ownership”; “invalid family update preserves original name and flash contract” | “native F02a family create update validation and ownership preserve effects”; “native F02b invalid update preserves original name and entered values” |
+| `test/dawarich_web/a12f3b_f03_test.exs` | “family removal preserves creator and actor boundaries”; “family delete failure does not replay committed removal” | “native F03a family removal preserves creator actor and foreign boundaries”; “native F03b failed publication does not replay committed family removal” |
+| `test/dawarich_web/a12f3b_f04_test.exs` | “family invitations create cancel and distinguish new from token” | “native F04a invitations preserve creation cancellation and token distinction” |
+| `test/dawarich_web/a12f3b_f05_test.exs` | “location requests preserve target consent and expiry”; “location request enqueue failure preserves the source committed request” | “native F05a location requests preserve target consent and expiry”; “native F05b retry preserves the source committed request after enqueue failure” |
+| `test/dawarich_web/a12f3b_f06_test.exs` | “family location sharing preserves duration and member audience”; “family sharing error stays native before and after commit” | “native F06a duration and audience persist while independent JSON values survive”; “native F06b malformed consent refuses before effects and independent JSON remains terminal” |
+| `test/dawarich_web/a12f3b_review_r1_test.exs` | “R1 accepts per-form CSRF only for the submitted path and effective method” | “native R1 retained acceptance binds per-form CSRF to its exact POST path” |
+| `test/dawarich_web/a12f3b_review_r2_test.exs` | “R2 declared router dispatches formatted forms after POST overrides” | “native R2 retired family suffix and method-override envelopes cannot mutate state” |
+| `test/dawarich_web/a12f3b_review_r3_test.exs` | “R3 departure rescues malformed settings after revocation and retains pending requests” | “native R3 departure rescues malformed settings after revocation and retains pending requests” |
+| `test/dawarich_web/a12f3b_review_r4_test.exs` | “R4 disabling sharing applies successful Rails URL normalization” | “native R4 consent preserves URL normalization and independent API refusal” |
+| `test/dawarich_web/a12f3b_review_r5_test.exs` | “R5 existing owner and member blank creation is an authorization redirect” | “native R5 existing owner and member blank creation refuse authorization before effects” |
+| `test/dawarich_web/a12f3b_review_test.exs` | “F1 routed form POST overrides destroy and revoke without replacing protected grants”; “F2 invalid JSON live create preserves Rails missing-template 500 and old grant”; “F3 Rails-valid flexible timeline dates hand off before validation or display effects”; “F3 existing Rails-valid month-name timeline hands off without a display crash”; “F4 track label and default persisted name use resolved preference and session locale” | “native F1 explicit sharing actions preserve protected grants without method guessing”; “native F2 invalid live creation reports validation without changing its active grant”; “native F3 flexible timeline dates refuse before validation or display effects”; “native F3 existing month-name timeline refuses unsupported display without changing stored settings”; “native F4 track labels and persisted names use resolved preference and session locale” |
+| `test/dawarich_web/a12f3b_s03_test.exs` | “track share new and create match Rails ownership and rollback”; “track share validation cannot mutate an active grant” | “native S03a track reads and create preserve Rails ownership and rollback”; “native S03b track validation cannot mutate an active grant” |
+| `test/dawarich_web/a12f3b_s04_test.exs` | “track share destroy and revoke invalidate the actual grant”; “track revoke is terminal after successful write” | “native S04a track share destroy and revoke invalidate the actual grant”; “native S04b failed response cannot replay a committed track revoke” |
+| `test/dawarich_web/a12f3b_s06_test.exs` | “timeline share six legacy actions preserve active range and grants”; “timeline malformed range preserves existing grant” | “native S06a timeline six actions preserve active range and grants”; “native S06b timeline malformed range preserves existing grant” |
+| `test/dawarich_web/a12f3b_s07_test.exs` | “live trip and hub residual transports preserve all five writes” | “native S07a live trip and hub commands preserve all five writes” |
+| `test/dawarich_web/achievement_sharing_test.exs` | “F1 signed standalone sharing rejects same-host non-HTTP schemes with the achievement fallback”; “F1 signed sharing rejects browser backslash userinfo tricks and preserves relative returns”; “answers Rails sharing form and modal JSON with exact redirects and URLs”; “does not replay after a sharing effect or response failure” | “native achievement sharing uses its resource return for every non-HTTP referer”; “native achievement resource returns ignore userinfo backslash and alternate-port referers”; “native achievement fixture values preserve enablement uuid state and public links”; “native achievement sharing remains terminal after response failure and refuses malformed input” |
+| `test/dawarich_web/family_browser_envelopes_test.exs` | “confirmed browser leave removes one membership and redirects”; “confirmed browser remove preserves the owner and removes the member”; “browser family deletion refuses members until the owner removes them”; “browser Turbo sharing form persists live location and history consent”; “browser family map includes only consenting members and removes revoked consent” | “native confirmed browser leave removes one membership and redirects”; “native confirmed browser remove preserves the owner and removes the member”; “native browser family deletion refuses members until the owner removes them”; “native family form persists live location and history consent”; “native browser family map includes only consenting members and removes revoked consent” |
+| `test/dawarich_web/family_invitation_test.exs` | “invitation key hands back public and nested token landings” | “native invitation landings ignore compatibility keys without Rails replay” |
+| `test/dawarich_web/family_pages_test.exs` | “family key hands back documents before pipeline”; “family writes have native routes and retain explicit handback” | “native family documents ignore compatibility keys without Rails replay”; “retired family UI writes have no routes even with compatibility keys” |
+| `test/dawarich_web/map_data_routes_test.exs` | “existing page frame and sharing routes retain their pipelines” | “native public sharing routes retain admission pipelines without a Rails gate” |
+| `test/dawarich_web/native_m4_route_retirement_test.exs` |  | “retired family and sharing UI writes refuse before effects and Rails replay”; “retained invitation acceptance preserves guest return and alert without membership effects”; “retained invitation acceptance refuses unsupported envelopes without effects or Rails replay” |
+| `test/dawarich_web/page_envelopes_test.exs` | “Turbo frame pages use the Rails minimal frame layout while document visits stay native” | “native family and sharing documents ignore frame hints while deferred pages retain envelopes” |
+| `test/dawarich_web/page_routes_test.exs` | “existing page route metadata survives extraction” | “native notifications page metadata uses the native jobs session while independent page routes survive extraction” |
+| `test/dawarich_web/share_management_endpoint_test.exs` | “live and trip CRUD rotation responses match hub frame and HTML branches”; “invalid CSRF origin content type and method override replay byte intact before writes”; “share links and trip shares keys hand back every mutation”; “committed mutation is never replayed when follow up response fails”; “invalid active live replacement is native and preserves rows and old stream revoked event”; “nested share forms preserve checkbox order and replay scalar map collisions”; “replacement follows Rails primary key order for old live broadcasts” | “native live and trip CRUD retain notices rotation and validation”; “native retired sharing envelopes refuse CSRF origin type and overrides before effects”; “native compatibility keys cannot hand back sharing pages or events”; “native committed sharing remains terminal when response rendering fails”; “native invalid live replacement rolls back and preserves compatibility broadcasts”; “native checkbox last value survives while scalar map collisions refuse without effects”; “native replacement preserves primary key order for old live broadcasts” |
+| `test/dawarich_web/share_management_page_test.exs` |  | “native hub normalizes an unknown tab to a usable live form” |
+| `test/dawarich_web/share_management_parity_test.exs` | “management #{@name} matches Rails” | “native management #{@name} preserves scoped inputs persisted rows and wire effects” |
+| `test/dawarich_web/sharing_bridge_test.exs` | “family Turbo flash streams enter the initiating LiveView bridge”; “a consenting member hides the flex map placeholder and revocation reveals it”; “sharing controls wait for Stimulus handlers and retain initially disabled fields”; “a Rails sharing flash received before LiveView joins survives the connection” | “deferred Stimulus registration has no retired sharing stream write listener”; “native family consent hides the placeholder and revocation erases the map”; “deferred controls wait for Stimulus handlers and retain initially disabled fields”; “deferred map flash rendering preserves each visible notice without a write bridge” |
+
+The two legacy family hook Node names map to “native family snapshot hydrates the consented map and clears refused data” and “native family disconnect cancels pending lazy work and destroys map state”. The first additionally keeps marker/focus coordinates and empty/refused state; the second rejects late lazy results and destroys maps/listeners. Localized last-seen remains server-owned TimeAgo plus family fixture/runtime tests.
+
+Structural successor “native family and sharing pages and open confirmations have accessible names without Hotwire” covers every route in both native sessions, English/German, static/connected controls, family/shared confirmations and cancelled-effect counts. Actual eager/lazy graph successor includes family/sharing/public hooks and rejects Rails transports. The legacy upload gzip assertion is retained and tagged `native_resource_measurement` for controller acceptance; integration excludes it because the brief explicitly excludes performance measurements. No budget is raised and no resource acceptance is claimed.
+
+X4 is collection only: all authored app/E2E tracks merged without rewriting history. Controller owns browser execution, German 390px/Range/focus/GPU/real PUT measurements and X5.
+
+
+### Additional direct-caller successors
+
+| File | Former name/template | Named successor/template |
+| --- | --- | --- |
+| `test/dawarich/build/native_assets_test.exs` |  | “native family sharing and public eager and lazy modules exclude Rails transports” |
+| `test/dawarich/imports/normal_upload_test.exs` | “unsupported upload replay has no committed import effect” | “retired ordinary upload cannot replay or commit an import” |
+| `test/dawarich_web/a10c_ownership_test.exs` | “owns supported achievement actions and rolls them back before any effect” | “native achievement sharing persists while retained unlock HTTP owns and rolls back effects” |
+| `test/dawarich_web/achievement_actions_request_test.exs` | “admits the real JSON clients and Rails sharing form with method path CSRF”; “replays ambiguous transport unchanged before effects” | “native achievement values persist while retained deck JSON enforces method path CSRF”; “retained deck JSON replays ambiguous transport unchanged before effects” |
+| `test/dawarich_web/achievements_gate_endpoint_test.exs` | “unsupported achievement writes go to Puma” | “deferred achievement writes retain Puma while sharing writes stay retired” |
+| `test/dawarich_web/api/ingest_endpoint_test.exs` | “invalid percent escapes in a query or form body reach Rails unchanged before either write”; “method override posts reach Rails with their body and override header before either write” | “invalid percent escape API replay is byte exact and retired family requests stay effect free”; “method override API replay is byte exact and retired family requests stay effect free” |
+| `test/dawarich_web/family_session_handback_test.exs` | “independent JSON clients forward unsupported session writers before effects”; “family JSON hands locale persistence to Rails before effects” | “native independent family JSON ignores client hints without session or upstream effects”; “native independent family JSON locale hints remain read only before delivery” |
+| `test/dawarich_web/g44_admin_browser_test.exs` | “retained HTTP visits toggle retains body consumed by native integration rate limiting” | “retired visits toggle refuses consumed valid and invalid bodies without effects” |
+| `test/dawarich_web/g44_background_timezone_test.exs` | “browser visits toggle fills missing default timezone and rebuilds existing months”; “failed background timezone scheduling rolls back preferences and stats on an idle connection” | “native confirmed visits toggle fills missing default timezone and rebuilds existing months”; “failed native visits scheduling rolls back preferences and stats on an idle connection” |
+| `test/dawarich_web/imports_browser_test.exs` | “rendered extraction POST negotiates Turbo replacement and queues distrusted classification”; “standalone foreign-owner browser reads and writes return the Rails denial without effects” | “native extraction queues distrusted classification while retired POST envelopes refuse”; “native foreign import reads refuse safely and retired writes have no effects” |
+| `test/dawarich_web/layout_parity_test.exs` | “the layout shell matches Rails for #{name}”; “the onboarding modal and unlock host carry Rails' Stimulus attributes for #{name}” | “the layout shell preserves Rails meaning with native upload sharing entries for #{name}”; “the deferred onboarding and unlock host retain independent handlers with native upload entry for #{name}” |
+| `test/dawarich_web/map_live_test.exs` | “the Rails regions are LiveView-ignored MapShell hooks that Turbo may drive” | “deferred main map keeps its MapShell while sharing opens the native manager”; “deferred achievement manager adapter replaces only the card modal import” |
+| `test/dawarich_web/native_pages_hotwire_free_test.exs` |  | “native family and sharing pages and open confirmations have accessible names without Hotwire” |
+| `test/dawarich_web/rails_page_test.exs` | “a page view looks the Rails user up once” | “a native notification page freshly reads its actor at every admission seam” |
+| `test/dawarich_web/rate_limit_test.exs` | “every routed request runs the limiter right after ForceSSL” | “every routed request runs the limiter after ForceSSL and bounded public transport admission” |
+| `test/dawarich_web/strangler_test.exs` | “lifecycle preserves route rails_key hand-back” | “retired trip sharing cannot replay through a lifecycle route key” |
+| `test/dawarich_web/trips_live_test.exs` | “the header of Rails' request spec: named studio buttons, edit, delete, exports, the share frame” | “the header of Rails' request spec: named studio buttons edit delete exports and native sharing entry” |
+
+The additional layout/report/achievement/main-map/trip corpus keeps every frozen reader. NativeM4Corpus canonicalizes only the retired upload-form entry, achievement toggle/stop controls, empty unused sharing frame, old sharing-anchor Turbo attributes and duplicate historical mobile ID. Actual navbar IDs are proven unique before canonicalization. Report canonicalization removes only the old sharing dialog/triggers and their native sharing/upgrade entries; scoped Sharing independently verifies persisted UUID/settings and unchanged rows. Both report entry positions remain. Titles, charts, content, unrelated links/controls, routes and nonsharing handlers remain exact.
+
+The deferred achievement host uses one thin Phoenix-only card-modal adapter until M5 replaces that host. It inherits existing read/copy/embed/focus/cache behavior, redirects enable/disable to the native owner manager and never fetches a retired write. Phoenix overrides only the card-modal import, preserving its base alias and stat/main-map modules. No new hybrid fallback is added. Its native manager and all fully native M4 pages exclude the Rails transport graph. Root Rails JavaScript is unchanged.
+
+Sharing-only stream submit/reconnect/flash-publication machinery is removed from rails_bridge.js; real deferred Stimulus ready/disabled-field/disposal and appendRailsFlash for the independent map-shell consumer remain. SharingParts and the fake old route support router have no surviving consumers and are removed. Empty share-link-modal frames have no consumer after C7 and are removed from deferred map/trip hosts.
+
+The connected navbar assertions account for one C1 Families.subscribe_changes fresh actor read beyond the earlier B5 snapshot. Their existing business bounds and table categories remain; this is a deterministic admission contract, not an acceptance benchmark. Notification HTTP actor freshness is four reads across bootstrap/admission seams. Independent family worker tests additionally assert exact native notification owner invalidation args, replay deduplication and worker receipt, while preserving the original six mail delivery claims.
+
+The existing T02 native-owner trip closure explicitly scopes its absent Rails upstream fixture and restores the previous value. The full manifest exposed a inherited mock-upstream leak (502); isolated native truth is 404. No TripsGate/Puma/domain behavior is changed; deferred trip compatibility remains M6.
+
+## Stage 1 static asset budgets
+
+The track-C metafile diff against 71b0f2cb3 identified eager public map/replay/route/day-clock/gallery helpers and family map code. Stage 1 now imports the map runtimes only when their hooks mount. Immediate event listeners retain the latest snapshot, erase on revocation/disconnect, and refuse initialization after destruction. Gallery/canvas erasure is shared with the real runtimes. SparkMD5 loads only when checksum work starts; cancellation is checked before and after that import.
+
+The shared minified eager gzip cap remains 56,517 bytes. The integrated pre-fix graph was 61,476 bytes; the restored graph is 54,205 bytes (zlib gzip across recursive static imports). This is a static compiled-byte check, with no resource-measurement tag or browser performance claim.
+
+Non-minified per-input allowances use the integrated esbuild metafile, with 1,024 bytes of headroom per feature:
+
+| Eager feature | Measured bytes | Cap |
+| --- | ---: | ---: |
+| Upload checksum/direct transport | 8,416 | 9,440 |
+| Credential value/QR hooks | 4,256 | 5,280 |
+| Family confirm/invitation clipboard | 2,918 | 3,942 |
+| Sharing controls/clipboard | 6,365 | 7,389 |
+| Map bridges/erasure/hook registry | 3,748 | 4,772 |
+
+The unrelated-code allowance remains a separate baseline plus 1,024 bytes. Its old baseline loses the 16,713-byte hashing input now made lazy and transfers the preexisting 1,844 upload, 1,632 clipboard and 232 registry bytes into their feature buckets. Existing HTTP chrome, Places, chart/heatmap and editor allowances remain independent. Static eager-import, feature-growth, revoke-before-load, destroy-before-load and abort-during-hasher-import mutations fail their named checks.

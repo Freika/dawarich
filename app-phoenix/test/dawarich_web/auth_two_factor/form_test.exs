@@ -1,14 +1,14 @@
 defmodule DawarichWeb.AuthTwoFactor.FormTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias Dawarich.Auth.TwoFactor.Totp
-  alias Dawarich.Test.ParityHTML
+  alias Dawarich.Test.NativeAuthHTTP
   alias DawarichWeb.AuthTwoFactor.Form
 
   @root "test/fixtures/auth/two_factor"
   @rows (@root <> "/requests.json") |> File.read!() |> Jason.decode!()
 
-  test "management forms match source EN and DE markup and empty rejected code" do
+  test "management forms preserve source EN DE fields labels capabilities and empty rejected code" do
     for path <- Path.wildcard(@root <> "/*.html"),
         Path.basename(path) != "verify_missing_secret.html" do
       name = Path.basename(path, ".html")
@@ -49,19 +49,20 @@ defmodule DawarichWeb.AuthTwoFactor.FormTest do
         |> Phoenix.HTML.Safe.to_iodata()
         |> IO.iodata_to_binary()
 
-      assert ParityHTML.normalize(html) == ParityHTML.normalize(source),
-             name <>
-               ": " <>
-               ParityHTML.first_difference(
-                 ParityHTML.normalize(html),
-                 ParityHTML.normalize(source)
-               )
+      assert NativeAuthHTTP.fields(html) == NativeAuthHTTP.fields(source), name
+      assert NativeAuthHTTP.text(html, "label") == NativeAuthHTTP.text(source, "label"), name
+      assert NativeAuthHTTP.text(html, "h1") == NativeAuthHTTP.text(source, "h1"), name
+      secret_visible = manual == "" or String.contains?(html, manual)
+      assert secret_visible
+      codes_preserved = Enum.all?(codes, &String.contains?(html, &1))
+      assert codes_preserved
+      assert String.contains?(html, "<svg") == String.contains?(source, "<svg")
 
       assert html =~ "tab tab-lg tab-active" == (kind == :show)
 
       for form <- html |> LazyHTML.from_fragment() |> LazyHTML.query("form") |> LazyHTML.to_tree() do
         {"form", attrs, _} = form
-        assert Map.new(attrs)["data-turbo"] == "false"
+        assert Map.has_key?(Map.new(attrs), "data-auth-form")
       end
 
       refute html =~ ~s(value="123456")
@@ -83,5 +84,43 @@ defmodule DawarichWeb.AuthTwoFactor.FormTest do
 
     assert html =~ "&lt;script&gt;"
     refute html =~ "<script>"
+  end
+
+  test "setup QR encodes the supplied account and secret capability in EN and DE" do
+    for locale <- ~w(en de), account <- ~w(first second) do
+      secret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+      uri = Totp.provisioning_uri(secret, account <> "@example.test")
+
+      html =
+        Form.page(%{
+          __changed__: nil,
+          locale: locale,
+          kind: :verify,
+          self_hosted: true,
+          admin: false,
+          two_factor: true,
+          rails_csrf_token: "CSRF",
+          secret: secret,
+          uri: uri,
+          codes: []
+        })
+        |> Phoenix.HTML.Safe.to_iodata()
+        |> IO.iodata_to_binary()
+
+      actual =
+        html |> LazyHTML.from_fragment() |> LazyHTML.query("svg[shape-rendering='crispEdges']")
+
+      expected = uri |> Dawarich.QrSvg.otp() |> LazyHTML.from_fragment() |> LazyHTML.query("svg")
+
+      correct_qr =
+        Enum.count(actual) == 1 and
+          LazyHTML.attribute(LazyHTML.query(actual, "path"), "d") ==
+            LazyHTML.attribute(LazyHTML.query(expected, "path"), "d") and
+          LazyHTML.attribute(actual, "viewBox") == LazyHTML.attribute(expected, "viewBox")
+
+      assert correct_qr
+      manual_visible = NativeAuthHTTP.text(html, "details code") == secret
+      assert manual_visible
+    end
   end
 end

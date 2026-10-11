@@ -6,7 +6,11 @@ defmodule Dawarich.Families.Locations do
 
   @statuses ~w(unknown unplugged charging full connected_not_charging discharging)
 
-  def read(user, now) do
+  def read(user, now, opts \\ []) do
+    Dawarich.Families.Snapshot.read(user, Keyword.put(opts, :now, now), fn -> load(user, now) end)
+  end
+
+  defp load(user, now) do
     case membership(user.id) do
       [_settings, nil] ->
         {:ok, 404, not_in_family()}
@@ -20,7 +24,7 @@ defmodule Dawarich.Families.Locations do
 
         own = Sharing.enabled?(settings, now)
 
-        RailsTime.with_zone(user.timezone, fn ->
+        Dawarich.Families.Snapshot.with_zone(user.timezone, fn ->
           {:ok, 200,
            {:object,
             [
@@ -37,9 +41,9 @@ defmodule Dawarich.Families.Locations do
       {:object,
        [{"error", I18n.en!("controllers.api.v1.families.locations.user_is_not_part_of_a_family")}]}
 
-  def membership(user_id) do
+  def membership(user_id, repo \\ Repo) do
     [row] =
-      Repo.query!(
+      repo.query!(
         "SELECT u.settings, m.family_id FROM users u " <>
           "LEFT JOIN family_memberships m ON m.user_id = u.id WHERE u.id = $1",
         [user_id]

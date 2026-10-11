@@ -1,5 +1,6 @@
 defmodule Dawarich.Imports.ProcessWorkerTest do
   use Dawarich.JobsCase
+  import Dawarich.Test.Await
   alias Dawarich.Imports.{Lease, ProcessWorker, NormalLifecycle}
   alias Dawarich.Jobs.{Dispatch, Ownership, Processed, Registry}
   alias Dawarich.Test.NormalFormats
@@ -120,7 +121,7 @@ defmodule Dawarich.Imports.ProcessWorkerTest do
       end)
 
     on_exit(fn -> send(holder.pid, :release) end)
-    assert_receive :holding
+    await_receive(:holding)
     rows("UPDATE imports SET source=4 WHERE id=$1", [c.import.id])
 
     {1, [%{id: gpx}]} =

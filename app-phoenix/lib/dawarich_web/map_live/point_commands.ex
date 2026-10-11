@@ -1,0 +1,65 @@
+defmodule DawarichWeb.MapLive.PointCommands do
+  @moduledoc false
+  import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
+  alias Dawarich.LocationCommands.Points
+
+  def handle_event("point:move", %{"point_id" => id} = params, socket) do
+    attrs = Map.take(params, ~w(point track_revision history_scope))
+
+    case Points.move(socket.assigns.current_scope, id, attrs) do
+      {:ok, response} ->
+        {:reply, %{ok: true, response: plain(response)}, socket}
+
+      {:error, {:stale, response}} ->
+        {:reply, %{error: "stale", response: plain(response)}, socket}
+
+      {:error, reason} ->
+        {:reply, %{error: code(reason)}, socket}
+    end
+  end
+
+  def handle_event("point:delete", %{"point_id" => id}, socket) do
+    case Points.delete(socket.assigns.current_scope, id) do
+      :ok ->
+        socket =
+          if to_string(socket.assigns[:point_address] && socket.assigns.point_address.id) ==
+               to_string(id),
+             do: assign(socket, :point_address, nil),
+             else: socket
+
+        socket = feedback(socket, :notice, "point_deleted_successfully")
+        {:reply, %{ok: true}, push_event(socket, "map:invalidate", %{resource: "points"})}
+
+      {:error, reason} ->
+        {:reply, %{error: code(reason)}, feedback(socket, :alert, "failed_to_delete_point")}
+    end
+  end
+
+  def handle_event("points:bulk_delete", %{"point_ids" => ids}, socket) when is_list(ids) do
+    case Points.bulk_delete(socket.assigns.current_scope, ids) do
+      {:ok, count} ->
+        {:reply, %{ok: true, count: count},
+         push_event(socket, "map:invalidate", %{resource: "points"})}
+
+      {:error, reason} ->
+        {:reply, %{error: code(reason)}, socket}
+    end
+  end
+
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  defp feedback(socket, kind, key),
+    do:
+      put_flash(
+        socket,
+        kind,
+        DawarichWeb.Translate.t(socket.assigns.locale, "javascript.messages." <> key, %{})
+      )
+
+  defp plain(term), do: term |> DawarichWeb.Api.Respond.encode() |> Jason.decode!()
+
+  defp code({:invalid, code}), do: code
+  defp code(reason) when is_atom(reason), do: Atom.to_string(reason)
+  defp code(_), do: "unavailable"
+end

@@ -65,6 +65,23 @@ defmodule Dawarich.UserData.Restore.Files do
     end
   end
 
+  defp attach_blob!(repo, "Export", id, blob, now) do
+    {:ok, blob_id} =
+      repo.transaction(fn ->
+        blob_id = Blobs.attach!(repo, "Export", id, blob, now)
+
+        [[user_id, type]] =
+          repo.query!("SELECT user_id,file_type FROM exports WHERE id=$1", [id], log: false).rows
+
+        Dawarich.Exports.Events.restored(repo, user_id, id, type || 0, :attached)
+        blob_id
+      end)
+
+    blob_id
+  end
+
+  defp attach_blob!(repo, type, id, blob, now), do: Blobs.attach!(repo, type, id, blob, now)
+
   defp attach(repo, type, id, data, path, context) do
     temp = Path.join(System.tmp_dir!(), "restore-file-" <> Storage.generate_key())
 
@@ -86,7 +103,7 @@ defmodule Dawarich.UserData.Restore.Files do
           Map.get(context.storage, :stored_service, blob.service_name)
         )
 
-      Blobs.attach!(repo, type, id, blob, context.now)
+      attach_blob!(repo, type, id, blob, context.now)
 
       if Map.has_key?(context, :stage_upload) do
         context.stage_upload.(%{

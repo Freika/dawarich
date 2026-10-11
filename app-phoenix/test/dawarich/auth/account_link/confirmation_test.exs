@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.AccountLink.ConfirmationTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Auth.AccountLink.Confirmation
   alias Dawarich.{Repo, Test.RailsUser}
 

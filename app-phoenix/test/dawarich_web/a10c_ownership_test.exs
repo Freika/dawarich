@@ -51,11 +51,14 @@ defmodule DawarichWeb.A10cOwnershipTest do
     %{upstream: upstream, port: port}
   end
 
-  test "owns supported achievement actions and rolls them back before any effect", ctx do
-    {200, _, body} =
-      exchange(ctx, "PATCH", "/achievements/country_de/toggle_sharing", ~s({"enabled":true}))
+  test "native achievement sharing persists while retained unlock HTTP owns and rolls back effects",
+       ctx do
+    user = Dawarich.Accounts.get(44001)
+    scope = Dawarich.Accounts.Scope.for_user(user, "en")
+    resource = %{type: :achievement, key: "country_de", owner_id: user.id}
 
-    assert Jason.decode!(body)["enabled"] == true
+    assert {:ok, %{enabled: true}} =
+             Dawarich.Sharing.change(scope, resource, :update, %{"enabled" => true})
 
     assert [[true]] ==
              rows(
@@ -79,8 +82,8 @@ defmodule DawarichWeb.A10cOwnershipTest do
 
     form = URI.encode_query(%{"_method" => "patch", "enabled" => "false"})
 
-    assert {302, _, ""} =
-             exchange(ctx, "POST", "/achievements/country_de/toggle_sharing", form, form: true)
+    assert {:ok, %{enabled: false}} =
+             Dawarich.Sharing.change(scope, resource, :update, %{"enabled" => false})
 
     assert [[false]] ==
              rows(
@@ -92,8 +95,6 @@ defmodule DawarichWeb.A10cOwnershipTest do
     )
 
     for {method, path, raw, opts} <- [
-          {"PATCH", "/achievements/country_de/toggle_sharing", ~s({"enabled":true}), []},
-          {"POST", "/achievements/country_de/toggle_sharing", form, [form: true]},
           {"POST", "/achievements/unlocks/next", "{}", []},
           {"POST", "/achievements/unlocks/42001/seen", ~s({"claim_token":"synthetic"}), []},
           {"POST", "/achievements/unlocks/dismiss", ~s({"batch_end_id":42001}), []}
@@ -113,20 +114,18 @@ defmodule DawarichWeb.A10cOwnershipTest do
         ] do
       before = snapshot()
 
-      assert {203, _, "Rails"} =
-               exchange(
-                 ctx,
-                 "PATCH",
-                 "/achievements/country_de/toggle_sharing",
-                 raw,
-                 opts ++ [proxy: true]
-               )
+      assert {404, _, _} =
+               exchange(ctx, "PATCH", "/achievements/country_de/toggle_sharing", raw, opts)
+
+      assert {404, _, _} =
+               exchange(ctx, "POST", "/achievements/country_de/toggle_sharing", form, form: true)
 
       assert snapshot() == before
     end
   end
 
-  test "hands back unsupported persisted state before locale or session effects", ctx do
+  test "native public card refuses and actions hand back unsupported persisted state before locale or session effects",
+       ctx do
     uuid = "a10c0000-0000-4000-8000-000000044001"
 
     rows(
@@ -140,12 +139,20 @@ defmodule DawarichWeb.A10cOwnershipTest do
         [invalid]
       )
 
-      for {method, path, body, user} <- [
-            {"POST", "/achievements/unlocks/next?locale=de", "{}", 44001},
-            {"GET", "/shared/achievements/#{uuid}?locale=de", "", 44002}
-          ] do
+      before = snapshot()
+
+      {203, headers, "Rails"} =
+        exchange(ctx, "POST", "/achievements/unlocks/next?locale=de", "{}", proxy: true)
+
+      assert values(headers, "set-cookie") == []
+      assert snapshot() == before
+
+      for user <- [44002, 44001] do
         before = snapshot()
-        {203, headers, "Rails"} = exchange(ctx, method, path, body, proxy: true, user: user)
+
+        assert {503, headers, ""} =
+                 exchange(ctx, "GET", "/shared/achievements/#{uuid}?locale=de", "", user: user)
+
         assert values(headers, "set-cookie") == []
         assert snapshot() == before
       end
@@ -170,23 +177,23 @@ defmodule DawarichWeb.A10cOwnershipTest do
     assert rows("SELECT to_jsonb(u) FROM users u WHERE id=44002") == other
     assert Enum.drop(snapshot(), 1) == Enum.drop(before, 1)
 
+    user = Dawarich.Accounts.get(44001)
     rows("UPDATE users SET settings='[]' WHERE id=44001")
     before = snapshot()
 
-    assert {203, headers, "Rails"} =
-             exchange(
-               ctx,
-               "PATCH",
-               "/achievements/country_de/toggle_sharing?locale=de",
-               ~s({"enabled":true}),
-               proxy: true
+    assert {:error, :unavailable} =
+             Dawarich.Sharing.change(
+               Dawarich.Accounts.Scope.for_user(user, "en"),
+               %{type: :achievement, key: "country_de", owner_id: user.id},
+               :update,
+               %{"enabled" => true}
              )
 
-    assert values(headers, "set-cookie") == []
     assert snapshot() == before
   end
 
-  test "independently rolls public cards and PNG back and retains other A10 residues", ctx do
+  test "keeps native public cards owned while the PNG rolls back independently and retains other A10 residues",
+       ctx do
     uuid = "a10c0000-0000-4000-8000-000000044001"
 
     rows(
@@ -214,7 +221,9 @@ defmodule DawarichWeb.A10cOwnershipTest do
     for key <- ~w(shared achievements) do
       Application.put_env(:dawarich, :rails_routes, [key])
       before = snapshot()
-      assert {203, _, "Rails"} = exchange(ctx, "GET", path, "", proxy: true, guest: true)
+      assert {200, headers, body} = exchange(ctx, "GET", path, "", guest: true)
+      assert body =~ "Germany Explorer" and not (body =~ "data-phx")
+      assert values(headers, "content-security-policy") == ["frame-ancestors *"]
       assert {203, _, ""} = exchange(ctx, "HEAD", path <> "/og.png", "", proxy: true, guest: true)
       assert snapshot() == before
     end
@@ -232,7 +241,13 @@ defmodule DawarichWeb.A10cOwnershipTest do
           {"POST", "/admin/settings/test_geocoding", ""}
         ] do
       before = snapshot()
-      assert {203, _, _} = exchange(ctx, method, path, raw, proxy: true, form: method == "POST")
+
+      if path == "/settings/background_jobs" do
+        assert {404, _, _} = exchange(ctx, method, path, raw, form: method == "POST")
+      else
+        assert {203, _, _} = exchange(ctx, method, path, raw, proxy: true, form: method == "POST")
+      end
+
       assert snapshot() == before
     end
 
@@ -283,28 +298,72 @@ defmodule DawarichWeb.A10cOwnershipTest do
       "#{method} #{target} HTTP/1.1\r\nHost: www.example.com\r\n#{cookie}#{headers}Content-Length: #{byte_size(raw)}\r\n\r\n#{raw}"
     )
 
-    if opts[:proxy] do
-      upstream = accept(ctx.upstream)
-      {head, rest} = read_head(upstream)
-      length = header(head, "content-length") |> List.first("0") |> String.to_integer()
-      received = read_at_least(upstream, rest, length) |> binary_part(0, length)
+    response =
+      case {opts[:proxy] == true, first_reply(ctx.upstream, client)} do
+        {true, {:rails, upstream}} ->
+          {head, rest} = read_head(upstream)
+          length = header(head, "content-length") |> List.first("0") |> String.to_integer()
+          received = read_at_least(upstream, rest, length) |> binary_part(0, length)
 
-      reply(
-        upstream,
-        "HTTP/1.1 203 Non-Authoritative Information\r\nContent-Length: 5\r\n\r\nRails"
-      )
+          reply(
+            upstream,
+            "HTTP/1.1 203 Non-Authoritative Information\r\nContent-Length: 5\r\n\r\nRails"
+          )
 
-      :gen_tcp.close(upstream)
-      assert request_line(head) == "#{method} #{target} HTTP/1.1"
-      assert received == raw
-    else
-      assert {:error, :timeout} == :gen_tcp.accept(ctx.upstream.listen, 0)
-    end
+          :gen_tcp.close(upstream)
+          assert request_line(head) == "#{method} #{target} HTTP/1.1"
+          assert received == raw
+          read_response(client, method: method)
 
-    response = read_response(client, method: method)
+        {false, {:native, buffer}} ->
+          response = read_response(client, method: method, buffer: buffer)
+          assert {:error, :timeout} == :gen_tcp.accept(ctx.upstream.listen, 0)
+          response
+
+        {true, {:native, buffer}} ->
+          flunk(
+            "#{method} #{target} expected a Rails handback, Phoenix answered natively: " <>
+              status_line(buffer)
+          )
+
+        {false, {:rails, upstream}} ->
+          :gen_tcp.close(upstream)
+          flunk("#{method} #{target} expected a native response, Phoenix forwarded it to Rails")
+      end
+
     :gen_tcp.close(client)
     response
   end
+
+  defp first_reply(server, client) do
+    owner = self()
+
+    task =
+      Task.async(fn ->
+        socket = accept(server)
+        :ok = :gen_tcp.controlling_process(socket, owner)
+        socket
+      end)
+
+    :ok = :inet.setopts(client, active: :once)
+
+    receive do
+      {ref, upstream} when ref == task.ref ->
+        Process.demonitor(ref, [:flush])
+        :ok = :inet.setopts(client, active: false)
+        {:rails, upstream}
+
+      {:tcp, ^client, data} ->
+        Task.shutdown(task, :brutal_kill)
+        {:native, data}
+
+      {:tcp_closed, ^client} ->
+        Task.shutdown(task, :brutal_kill)
+        {:native, ""}
+    end
+  end
+
+  defp status_line(buffer), do: buffer |> String.split("\r\n") |> hd()
 
   defp rows(sql, args \\ []), do: Repo.query!(sql, args, log: false).rows
 

@@ -2,32 +2,47 @@ defmodule Dawarich.Achievements.PublicCard do
   @moduledoc false
   alias Dawarich.Achievements.{Registry, UiPresenter, UiSilhouettes, UiText}
   alias DawarichWeb.Locale
+  alias Dawarich.Sharing.Delivery
 
   def load(repo, uuid, context) do
-    case query(
-           repo,
-           "SELECT p.user_id,p.achievement_key,u.settings FROM achievement_progresses p JOIN users u ON u.id=p.user_id AND u.deleted_at IS NULL WHERE p.sharing_uuid=$1 AND p.sharing_enabled=true",
-           [uuid]
-         ) do
-      [[owner_id, key, settings]] ->
-        settings = Dawarich.UserSettings.safe(settings)
+    target = {:achievement, repo, uuid}
+    carrier = Delivery.admit(target, DateTime.utc_now())
 
-        cond do
-          definition = Registry.find(key) ->
-            settings =
-              if context[:viewer_id] == owner_id and is_binary(context[:requested_locale]) and
-                   is_map(settings),
-                 do: Map.put(settings, "locale", context[:requested_locale]),
-                 else: settings
+    result =
+      case carrier do
+        [[owner_id, key, settings]] ->
+          settings = Dawarich.UserSettings.safe(settings)
 
-            read(repo, owner_id, definition, settings, uuid, context)
+          cond do
+            definition = Registry.find(key) ->
+              settings =
+                if context[:viewer_id] == owner_id and is_binary(context[:requested_locale]) and
+                     is_map(settings),
+                   do: Map.put(settings, "locale", context[:requested_locale]),
+                   else: settings
 
-          true ->
-            :not_found
+              case context[:reader] do
+                reader when is_function(reader, 0) -> reader.()
+                _ -> read(repo, owner_id, definition, settings, uuid, context)
+              end
+
+            true ->
+              :not_found
+          end
+
+        nil ->
+          :not_found
+      end
+
+    case result do
+      {:ok, page} ->
+        case Delivery.deliver(target, carrier, page, context) do
+          {:ok, page} -> {:ok, page}
+          _ -> :not_found
         end
 
-      [] ->
-        :not_found
+      other ->
+        other
     end
   end
 

@@ -36,7 +36,8 @@ defmodule DawarichWeb.A8GateEndpointTest do
   for {name, method, path, body} <- [
         {"Cloud actions replay untouched before effects", :patch, "/visits/42",
          "visit%5Bname%5D=Original+bytes"},
-        {"Cloud navigation replays untouched before auth", :get, "/visits?status=suggested", ""},
+        {"Cloud visits navigation stays native before effects", :get, "/visits?status=suggested",
+         ""},
         {"Cloud settings replay untouched before auth", :get, "/settings/visits?locale=en", ""}
       ] do
     @tag cloud: method
@@ -49,7 +50,21 @@ defmodule DawarichWeb.A8GateEndpointTest do
         if old, do: System.put_env("SELF_HOSTED", old), else: System.delete_env("SELF_HOSTED")
       end)
 
-      replay(ctx, upstream!(), unquote(method), unquote(path), unquote(body))
+      if unquote(path) == "/visits?status=suggested" do
+        conn = request(ctx, unquote(method), unquote(path), unquote(body))
+        assert conn.status == 302
+
+        assert get_resp_header(conn, "location") ==
+                 ["http://www.example.com/map/v2?panel=timeline&date=today&status=suggested"]
+
+        refute Map.has_key?(conn.assigns, :current_user)
+        refute Map.has_key?(conn.assigns, :api_params)
+        assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+        assert rows("SELECT count(*) FROM route_videos") == [[0]]
+        assert rows("SELECT count(*) FROM visits") == [[0]]
+      else
+        replay(ctx, upstream!(), unquote(method), unquote(path), unquote(body))
+      end
     end
   end
 
@@ -112,7 +127,6 @@ defmodule DawarichWeb.A8GateEndpointTest do
     upstream = upstream!()
 
     for {method, path, body} <- [
-          {:get, "/visits?status=suggested", ""},
           {:patch, "/visits/42", "visit%5Bname%5D=Original+bytes"},
           {:put, "/visits/42", "visit%5Bname%5D=Original%20bytes"},
           {:delete, "/visits/42", ""},

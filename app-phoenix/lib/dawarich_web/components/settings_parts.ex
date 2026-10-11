@@ -13,49 +13,88 @@ defmodule DawarichWeb.SettingsParts do
   attr :two_factor, :boolean, required: true
   attr :native, :boolean, default: false
 
+  attr :http, :boolean, default: false
+
   def navigation(assigns) do
     ~H"""
     <div
       id="settings-navigation"
-      phx-hook={if @native, do: "ScrollIntoView", else: "RailsStimulus"}
+      phx-hook={if !@http, do: if(@native, do: "ScrollIntoView", else: "RailsStimulus")}
+      data-auth-settings-navigation={@http}
       class="mb-6 overflow-x-auto pb-1"
       data-controller={!@native && "scroll-into-view"}
     >
       <div class="tabs tabs-boxed inline-flex min-w-max flex-nowrap">
-        <a role="tab" class={tab(@active, "general")} href="/settings/general">{t(
+        <a
+          role="tab"
+          aria-current={if @http and @active == "general", do: "page"}
+          class={tab(@active, "general", @http)}
+          href="/settings/general"
+        >{t(
           @locale,
           "settings.navigation.general",
           %{}
         )}</a>
-        <a role="tab" class={tab(@active, "integrations")} href="/settings/integrations">{t(
+        <a
+          role="tab"
+          aria-current={if @http and @active == "integrations", do: "page"}
+          class={tab(@active, "integrations", @http)}
+          href="/settings/integrations"
+        >{t(
           @locale,
           "settings.navigation.integrations",
           %{}
         )}</a>
-        <a role="tab" class={tab(@active, "visits")} href="/settings/visits">{t(
+        <a
+          role="tab"
+          aria-current={if @http and @active == "visits", do: "page"}
+          class={tab(@active, "visits", @http)}
+          href="/settings/visits"
+        >{t(
           @locale,
           "settings.navigation.visits",
           %{}
         )}</a>
-        <a :if={@two_factor} role="tab" class={tab(@active, "two_factor")} href="/settings/two_factor">{t(
+        <a
+          :if={@two_factor}
+          role="tab"
+          aria-current={if @http and @active == "two_factor", do: "page"}
+          class={tab(@active, "two_factor", @http)}
+          href="/settings/two_factor"
+        >{t(
           @locale,
           "settings.navigation.two_factor_authentication",
           %{}
         )}</a>
         <%= if @self_hosted do %>
           <%= if @admin do %>
-            <a role="tab" class={tab(@active, "users")} href="/settings/users">{t(
+            <a
+              role="tab"
+              aria-current={if @http and @active == "users", do: "page"}
+              class={tab(@active, "users", @http)}
+              href="/settings/users"
+            >{t(
               @locale,
               "settings.navigation.users",
               %{}
             )}</a>
-            <a role="tab" class={tab(@active, "instance")} href="/admin/settings">{t(
+            <a
+              role="tab"
+              aria-current={if @http and @active == "instance", do: "page"}
+              class={tab(@active, "instance", @http)}
+              href="/admin/settings"
+            >{t(
               @locale,
               "settings.navigation.instance",
               %{}
             )}</a>
           <% end %>
-          <a role="tab" class={tab(@active, "background_jobs")} href="/settings/background_jobs">{t(
+          <a
+            role="tab"
+            aria-current={if @http and @active == "background_jobs", do: "page"}
+            class={tab(@active, "background_jobs", @http)}
+            href="/settings/background_jobs"
+          >{t(
             @locale,
             "settings.navigation.background_jobs",
             %{}
@@ -66,8 +105,10 @@ defmodule DawarichWeb.SettingsParts do
     """
   end
 
-  defp tab(active, active), do: "tab tab-lg tab-active"
-  defp tab(_active, _tab), do: "tab tab-lg"
+  defp tab(active, key, http) do
+    base = if active == key, do: "tab tab-lg tab-active", else: "tab tab-lg"
+    base <> if(http, do: " focus-visible:outline focus-visible:outline-2", else: "")
+  end
 
   def smtp_configured?, do: Ruby.present?(System.get_env("SMTP_SERVER"))
 

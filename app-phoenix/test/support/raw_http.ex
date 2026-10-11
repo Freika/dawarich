@@ -83,8 +83,8 @@ defmodule Dawarich.Test.RawHTTP do
     end
   end
 
-  def read_response_head(socket) do
-    {head, rest} = read_head(socket)
+  def read_response_head(socket, acc \\ "") do
+    {head, rest} = read_head(socket, acc)
     [status_line | lines] = String.split(head, "\r\n")
     ["HTTP/1." <> _, status | _] = String.split(status_line, " ", parts: 3)
 
@@ -97,7 +97,7 @@ defmodule Dawarich.Test.RawHTTP do
   end
 
   def read_response(socket, opts \\ []) do
-    {status, headers, rest} = read_response_head(socket)
+    {status, headers, rest} = read_response_head(socket, Keyword.get(opts, :buffer, ""))
 
     body =
       cond do

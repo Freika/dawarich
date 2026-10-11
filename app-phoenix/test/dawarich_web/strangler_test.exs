@@ -69,18 +69,22 @@ defmodule DawarichWeb.StranglerTest do
   end
 
   @tag a12h_route: true
-  test "lifecycle preserves route rails_key hand-back" do
-    route =
-      Phoenix.Router.route_info(
-        DawarichWeb.Router,
-        "POST",
-        "/trips/42/share_link",
-        "www.example.com"
-      )
+  test "retired trip sharing cannot replay through a lifecycle route key" do
+    assert Phoenix.Router.route_info(
+             DawarichWeb.Router,
+             "POST",
+             "/trips/42/share_link",
+             "www.example.com"
+           ) == :error
 
-    assert route.rails_key == "trip_shares"
     Application.put_env(:dawarich, :rails_routes, ["trip_shares"])
-    hand_back!("/trips/42/share_link?source=a12h", "synthetic=a12h&unchanged=1")
+
+    response =
+      Plug.Test.conn(:post, "/trips/42/share_link?source=a12h", "synthetic=a12h&unchanged=1")
+      |> Strangler.call([])
+
+    assert response.status == 404
+    refute_received {:upstream, _}
   end
 
   @tag a12h_route: true

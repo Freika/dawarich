@@ -66,7 +66,7 @@ defmodule Dawarich.A12f3bR20Test do
   end
 
   @tag a12f3b_case: "R20k02"
-  test "visits.web_redetect native producer reaches its source terminal effect" do
+  test "visits.web_redetect reaches its source terminal effect with durable notification delivery" do
     {_, uid} = pipeline!()
     System.put_env("DAWARICH_RAILS", "off")
     Ownership.put!(ScratchRepo, "command:visits.full_history_redetect", :sidekiq, pinned: true)
@@ -90,8 +90,17 @@ defmodule Dawarich.A12f3bR20Test do
     assert month["event_id"] == args["event_id"]
     assert month["months_failed"] == 0
     assert month["visits_created"] == 0
+    :ok = Dawarich.Notifications.Events.subscribe(uid)
     assert RedetectWorker.perform(%Oban.Job{args: args, conf: Oban.config(@oban)}) == :ok
-    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[2]]
+
+    assert rows("SELECT count(*) FROM oban.oban_jobs WHERE worker=$1", [inspect(RedetectWorker)]) ==
+             [[2]]
+
+    assert [[%{"user_id" => ^uid}]] =
+             rows("SELECT args FROM oban.oban_jobs WHERE worker=$1", [
+               inspect(Dawarich.Notifications.EventsWorker)
+             ])
+
     assert %{success: 1, failure: 0} = Oban.drain_queue(@oban, queue: :visit_suggesting)
     assert length(visits(uid)) == 1
 
@@ -103,6 +112,19 @@ defmodule Dawarich.A12f3bR20Test do
              ["Visit re-detection busy"],
              ["Visit re-detection complete"]
            ]
+
+    assert rows("SELECT count(*) FROM oban.oban_jobs WHERE worker=$1", [
+             inspect(Dawarich.Notifications.EventsWorker)
+           ]) == [[2]]
+
+    [[pending]] =
+      rows("SELECT count(*) FROM oban.oban_jobs WHERE queue='projections' AND state='available'")
+
+    assert %{success: ^pending, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
+    assert_received {:domain_changed, ^uid, :notifications}
+    assert_received {:domain_changed, ^uid, :notifications}
+    refute_received {:domain_changed, ^uid, :notifications}
+    assert %{success: 0, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
 
     assert {:cooldown, 429, :native} = WebSettings.redetect(ScratchRepo, uid, now, "en")
     assert rails_commands_count() == 0

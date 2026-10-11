@@ -1,25 +1,11 @@
 defmodule DawarichWeb.Strangler do
-  @moduledoc false
   @behaviour Plug
 
-  import Plug.Conn, only: [get_req_header: 2, halt: 1]
+  import Plug.Conn, only: [halt: 1]
 
   require Logger
 
-  @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
-  @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
-  @page_pipelines [
-    :browser,
-    :insights,
-    :rails_frame,
-    :sharing,
-    :sharing_unlock,
-    :achievement_public,
-    :trial_resume,
-    :admin_writes,
-    :trial_welcome,
-    :public_home
-  ]
+  @page_pipelines ~w(browser insights rails_frame sharing sharing_unlock achievement_public trial_resume admin_writes trial_welcome public_home)a
   @keys %{"s" => "sharing", "invitations" => "family"}
 
   @constraints %{
@@ -64,21 +50,28 @@ defmodule DawarichWeb.Strangler do
     "/api/v1/families/location_requests/:id/decline" => %{"id" => ~r/\A\d{1,18}\z/}
   }
 
-  def browser_like?(value), do: value =~ @browser_like
+  defdelegate browser_like?(value), to: DawarichWeb.PageRequest
 
   @impl true
   def init(opts), do: opts
 
   @impl true
   def call(conn, _opts) do
-    conn = DawarichWeb.PageEnvelope.prepare(conn)
+    conn =
+      conn |> DawarichWeb.NativePlacesEnvelope.prepare() |> DawarichWeb.NativeM6Envelope.prepare()
 
     cond do
-      conn.halted ->
-        conn
+      conn.halted or DawarichWeb.NativeM4RetiredWrites.retired?(conn) ->
+        DawarichWeb.NativeM4RetiredWrites.refuse(conn)
 
       conn.private[:dawarich_api_pre_effect_pin] ->
         hand_back(conn)
+
+      DawarichWeb.PublicShareRequest.owned?(conn) ->
+        conn
+        |> Plug.Conn.put_private(:dawarich_native_api, true)
+        |> Plug.Conn.put_private(:dawarich_method, conn.method)
+        |> Plug.Head.call([])
 
       owned?(conn) ->
         conn
@@ -161,6 +154,9 @@ defmodule DawarichWeb.Strangler do
       :error ->
         false
 
+      %{native_page: true} ->
+        true
+
       %{pipe_through: pipelines} = route ->
         not handed_back?(conn.path_info, route) and slice_owned?(route, conn) and
           rails_constraints?(route) and
@@ -223,11 +219,12 @@ defmodule DawarichWeb.Strangler do
     false
   end
 
-  def rails_constraints?(%{route: route, path_params: params}),
+  def rails_constraints?(%{route: route, path_params: params} = info),
     do:
-      Enum.all?(Map.get(constraints(), route, %{}), fn {name, pattern} ->
-        Regex.match?(pattern, params[name])
-      end)
+      :native_m6_browser in Map.get(info, :pipe_through, []) or
+        Enum.all?(Map.get(constraints(), route, %{}), fn {name, pattern} ->
+          Regex.match?(pattern, params[name])
+        end)
 
   defp constraints,
     do:
@@ -241,6 +238,7 @@ defmodule DawarichWeb.Strangler do
 
   def handed_back?([]), do: "home" in Application.get_env(:dawarich, :rails_routes, [])
 
+  defp handed_back?(_path, %{native_ui: true}), do: false
   defp handed_back?(_path, %{retired: true}), do: false
 
   defp handed_back?(path, route) do
@@ -252,40 +250,7 @@ defmodule DawarichWeb.Strangler do
     Enum.any?(keys, &(&1 in Application.get_env(:dawarich, :rails_routes, [])))
   end
 
-  def page_request?(conn),
-    do: page_envelope?(DawarichWeb.AchievementPublicQuery.page_conn(conn))
+  def page_request?(%{private: %{dawarich_native_places: true}}), do: true
 
-  defp page_envelope?(%{private: %{dawarich_page_envelope: true}} = conn),
-    do: DawarichWeb.PageEnvelope.accepted?(conn)
-
-  defp page_envelope?(conn) do
-    not String.contains?(List.last(conn.path_info) || "", ".") and
-      not String.match?(header(conn, "x-requested-with"), ~r/XMLHttpRequest/i) and
-      not valueless_query?(conn.query_string) and
-      not format_param?(conn.query_string) and
-      page_accept?(header(conn, "accept"))
-  end
-
-  defp valueless_query?(query) do
-    query
-    |> String.split("&", trim: true)
-    |> Enum.any?(&(not String.contains?(&1, "=")))
-  end
-
-  defp format_param?(query) do
-    Map.has_key?(Plug.Conn.Query.decode(query), "format")
-  rescue
-    Plug.Conn.InvalidQueryError -> true
-  end
-
-  defp page_accept?(accept) do
-    types =
-      for entry <- String.split(accept, ","),
-          do: entry |> String.split(";") |> hd() |> String.trim() |> String.downcase()
-
-    String.trim(accept) == "" or browser_like?(accept) or
-      (Enum.all?(types, &(&1 in @page_types)) and Enum.any?(types, &(&1 in ~w(text/html */*))))
-  end
-
-  defp header(conn, name), do: conn |> get_req_header(name) |> Enum.join(", ")
+  defdelegate page_request?(conn), to: DawarichWeb.PageRequest
 end

@@ -3,7 +3,6 @@ defmodule DawarichWeb.PointsLiveTest do
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
-  import Dawarich.Test.FormIsolation
   import Plug.Conn
 
   alias Dawarich.{RailsCookies, RailsSecret, Repo}
@@ -34,7 +33,7 @@ defmodule DawarichWeb.PointsLiveTest do
     do: html |> LazyHTML.from_fragment() |> LazyHTML.query(selector) |> LazyHTML.attribute(name)
 
   @tag :standalone_search
-  test "standalone Rails search form retains filters pagination user scope and signed bulk deletion",
+  test "native search retains filters pagination user scope and signed HTTP compatibility",
        %{user: user} do
     previous = Map.take(System.get_env(), ~w(DAWARICH_RAILS SELF_HOSTED))
     System.put_env(%{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => "true"})
@@ -68,20 +67,20 @@ defmodule DawarichWeb.PointsLiveTest do
     assert conn.status == 200
     {:ok, view, html} = live(conn)
 
-    assert attr(html, "#points input[name='point_ids[]']", "value") ==
+    assert attr(html, "[phx-click='select_point']", "phx-value-id") ==
              Enum.map(837_101..837_150, &to_string/1)
 
     refute html =~ "point_837201"
     refute html =~ "point_837202"
-    assert attr(html, "#bulk_destroy_form input[name='authenticity_token']", "value") != []
-    assert attr(html, "#bulk_destroy_form input[name='_method']", "value") == ["delete"]
+    assert attr(html, "#point_filters input[name='authenticity_token']", "value") == []
+    assert attr(html, "#point_filters", "phx-submit") == ["filter"]
     assert attr(html, "input[name='start_at']", "value") == ["2026-03-01T10:00"]
     assert attr(html, "select[name='import_id'] option", "value") == ["", "83711"]
 
     html =
       view |> element(".flex.justify-center.mb-4 [aria-label='pager'] a", "2") |> render_click()
 
-    assert attr(html, "#points input[name='point_ids[]']", "value") == ["837151"]
+    assert attr(html, "[phx-click='select_point']", "phx-value-id") == ["837151"]
 
     assert_patch(
       view,
@@ -91,7 +90,7 @@ defmodule DawarichWeb.PointsLiveTest do
     {:ok, _, filtered} =
       live_as(user, "/points?" <> String.replace(query, "import_id=", "import_id=83711"))
 
-    assert attr(filtered, "#points input[name='point_ids[]']", "value") == ["837101"]
+    assert attr(filtered, "[phx-click='select_point']", "phx-value-id") == ["837101"]
 
     path = "/points/bulk_destroy?" <> query
     unsigned = post_bulk(session, path, "_method=delete&point_ids[]=837101")
@@ -145,7 +144,7 @@ defmodule DawarichWeb.PointsLiveTest do
              "10:00:27</span>"
   end
 
-  test "list controls preserve original filter and bulk form names", %{user: user} do
+  test "native controls retain source filter values and owned import options", %{user: user} do
     stamp = ~N[2026-03-01 10:00:00]
 
     Repo.insert_all("imports", [
@@ -155,52 +154,32 @@ defmodule DawarichWeb.PointsLiveTest do
     fill(user, 1)
     Repo.query!("UPDATE points SET import_id = 83711 WHERE user_id = $1", [user.id])
     {:ok, _view, html} = live_as(user, "/points?#{@range}&import_id=83711&order_by=asc")
-    [action] = attr(html, "#bulk_destroy_form", "action")
-    assert URI.parse(action).path == "/points/bulk_destroy"
-
-    assert URI.decode_query(URI.parse(action).query) == %{
-             "action" => "index",
-             "controller" => "points",
-             "start_at" => "1772359200",
-             "end_at" => "1772445600",
-             "import_id" => "83711",
-             "order_by" => "asc"
-           }
-
-    assert attr(html, "#bulk_destroy_form input[name='_method']", "value") == ["delete"]
-    assert attr(html, "input[name='point_ids[]']", "value") == ["837101"]
+    assert attr(html, "#point_filters", "phx-submit") == ["filter"]
+    assert attr(html, "[phx-click='select_point']", "phx-value-id") == ["837101"]
     assert attr(html, "input[name='start_at']", "value") == ["2026-03-01T10:00"]
     assert attr(html, "select[name='import_id'] option[selected]", "value") == ["83711"]
 
-    assert attr(html, "#points [data-controller='checkbox-select-all']", "phx-hook") == [
-             "RailsStimulus"
-           ]
-
-    assert attr(html, "#bulk_destroy_form", "phx-submit") == []
+    refute html =~ "RailsStimulus"
+    refute html =~ "data-controller"
     assert html =~ "Synthetic.json"
   end
 
-  test "selection island survives hydration and is replaced for a different page", %{user: user} do
+  test "native static and connected rows retain page identity without an ignored selection island",
+       %{user: user} do
     fill(user, 51)
 
     conn =
       get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/points?#{@range}")
 
-    [static_id] = attr(conn.resp_body, "[id^='points-page-']", "id")
-    assert_form_isolated(conn.resp_body, "#bulk_destroy_form")
+    assert length(attr(conn.resp_body, "[phx-click='select_point']", "phx-value-id")) == 50
     {:ok, view, html} = live(conn)
-    assert_form_isolated(html, "#bulk_destroy_form")
-    assert attr(html, "[id^='points-page-']", "id") == [static_id]
-    assert attr(html, "#points [phx-hook='RailsStimulus']", "phx-update") == ["ignore"]
-    assert attr(html, "#points input[name='point_ids[]']", "value") |> length() == 50
+    assert length(attr(html, "[phx-click='select_point']", "phx-value-id")) == 50
+    assert attr(html, "#points [phx-update='ignore']", "id") == []
 
     html =
       view |> element(".flex.justify-center.mb-4 [aria-label='pager'] a", "2") |> render_click()
 
-    [next_id] = attr(html, "[id^='points-page-']", "id")
-    assert_form_isolated(html, "#bulk_destroy_form")
-    refute next_id == static_id
-    assert attr(html, "#points input[name='point_ids[]']", "value") == ["837101"]
+    assert attr(html, "[phx-click='select_point']", "phx-value-id") == ["837101"]
   end
 
   test "pagination and order navigation render the selected page", %{user: user} do
@@ -252,9 +231,12 @@ defmodule DawarichWeb.PointsLiveTest do
            ) == ""
   end
 
-  test "points route and query writers hand back before page pipeline", %{user: user} do
-    assert %{pipe_through: [:browser, :rails_user], rails_gate: {MapDataGate, :points?}} =
-             Phoenix.Router.route_info(Router, "GET", "/points", "localhost")
+  test "native Points owns its route while legacy map query admission stays available", %{
+    user: user
+  } do
+    route = Phoenix.Router.route_info(Router, "GET", "/points", "localhost")
+    assert route.pipe_through == [:native_data_request, :browser, :rails_user]
+    refute Map.has_key?(route, :rails_gate)
 
     assert MapDataGate.points?(
              RailsUser.signed_in(user.id) |> Map.put(:query_string, @range),

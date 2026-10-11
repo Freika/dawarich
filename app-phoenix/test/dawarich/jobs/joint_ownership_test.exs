@@ -5,6 +5,7 @@ end
 
 defmodule Dawarich.Jobs.JointOwnershipTest do
   use Dawarich.JobsCase
+  import Dawarich.Test.Await
 
   alias Dawarich.Jobs.{Claimer, Ownership, Registry}
 
@@ -61,7 +62,7 @@ defmodule Dawarich.Jobs.JointOwnershipTest do
       end)
 
     try do
-      assert_receive :holding
+      await_receive(:holding)
 
       assert Claimer.claim(ScratchRepo, @oban, entry(hd(@keys)), "50ms") ==
                {:error, :lock_not_available}
@@ -97,7 +98,7 @@ defmodule Dawarich.Jobs.JointOwnershipTest do
       end)
 
     try do
-      assert_receive :holding
+      await_receive(:holding)
 
       assert Claimer.claim(ScratchRepo, @oban, entry(key), "50ms") ==
                {:error, :lock_not_available}

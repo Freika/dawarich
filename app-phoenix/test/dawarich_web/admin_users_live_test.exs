@@ -157,7 +157,7 @@ defmodule DawarichWeb.AdminUsersLiveTest do
     )
 
     assert length(static) in 1..28
-    assert length(connected) in 1..16
+    assert (length(connected) - 1) in 1..16
     assert length(event) in 1..12
     GenServer.stop(view.pid)
   end

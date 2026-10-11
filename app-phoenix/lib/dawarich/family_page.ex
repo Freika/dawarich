@@ -4,6 +4,12 @@ defmodule Dawarich.FamilyPage do
   alias Dawarich.{FamilyPageAccess, Repo, UserTimeZone}
 
   def read(user, action, opts) do
+    Dawarich.Families.Snapshot.read(user, opts, fn -> load(user, action, opts) end)
+  rescue
+    ArgumentError -> :rails
+  end
+
+  defp load(user, action, opts) do
     FamilyPageAccess.validate_settings!(Dawarich.UserSettings.get(user))
     now = Keyword.get(opts, :now, DateTime.utc_now())
     self_hosted = Keyword.fetch!(opts, :self_hosted)
@@ -180,7 +186,7 @@ defmodule Dawarich.FamilyPage do
        members: members,
        me: Enum.find(members, &(&1.id == user.id)),
        trial_ends:
-         if(user.status == 0 and not is_nil(user.active_until),
+         if(user.status == 2 and not is_nil(user.active_until),
            do:
              UserTimeZone.local(
                Dawarich.UserSettings.get(user),

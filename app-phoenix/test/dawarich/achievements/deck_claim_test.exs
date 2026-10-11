@@ -1,5 +1,6 @@
 defmodule Dawarich.Achievements.DeckClaimTest do
   use Dawarich.JobsCase, async: false
+  import Dawarich.Test.Await
   alias Dawarich.Achievements.Deck
   alias Dawarich.Test.RailsUser
 
@@ -104,7 +105,7 @@ defmodule Dawarich.Achievements.DeckClaimTest do
         end)
       end)
 
-    assert_receive :locked
+    await_receive(:locked)
 
     hook = fn :before_lock ->
       [[pid]] = rows("SELECT pg_backend_pid()")
@@ -116,8 +117,8 @@ defmodule Dawarich.Achievements.DeckClaimTest do
     contenders =
       for _ <- 1..2, do: Task.async(fn -> Deck.claim(ScratchRepo, 44001, %{}, context) end)
 
-    assert_receive {:waiting, first}
-    assert_receive {:waiting, second}
+    await_receive({:waiting, first})
+    await_receive({:waiting, second})
     assert first != second
     for task <- contenders, do: assert(Task.yield(task, 0) == nil)
     :atomics.put(clock, 1, 46)

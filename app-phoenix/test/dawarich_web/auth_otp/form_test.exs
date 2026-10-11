@@ -1,9 +1,9 @@
 defmodule DawarichWeb.AuthOtp.FormTest do
   use ExUnit.Case, async: true
-  alias Dawarich.Test.ParityHTML
+  alias Dawarich.Test.NativeAuthHTTP
   alias DawarichWeb.AuthOtp.Form
 
-  test "challenge form matches source document navigation and empty code markup" do
+  test "challenge form preserves source navigation fields labels and empty code" do
     assert Code.ensure_loaded?(Form)
 
     for locale <- ~w(en de es fr pl ca zh) do
@@ -18,12 +18,14 @@ defmodule DawarichWeb.AuthOtp.FormTest do
       }
 
       html = Form.page(assigns) |> Phoenix.HTML.Safe.to_iodata() |> IO.iodata_to_binary()
-      assert ParityHTML.normalize(html) == ParityHTML.normalize(source)
+      assert NativeAuthHTTP.fields(html) == NativeAuthHTTP.fields(source)
+      assert NativeAuthHTTP.text(html, "label") == NativeAuthHTTP.text(source, "label")
+      assert NativeAuthHTTP.text(html, "a") == NativeAuthHTTP.text(source, "a")
 
       [{"form", attrs, _}] =
         html |> LazyHTML.from_fragment() |> LazyHTML.query("form") |> LazyHTML.to_tree()
 
-      assert Map.new(attrs)["data-turbo"] == "false"
+      assert Map.has_key?(Map.new(attrs), "data-auth-form")
       assert Map.new(attrs)["method"] == "post"
       assert Map.new(attrs)["action"] == "/users/otp_challenge"
 

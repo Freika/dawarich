@@ -1,12 +1,12 @@
 defmodule DawarichWeb.A12f3bReviewR4Test do
   use Dawarich.JobsCase, async: false
-  import Dawarich.Test.FamilyForms
-  alias Dawarich.{Accounts, Repo}
+  import Dawarich.Test.FamilyCorpus
+  alias Dawarich.{Accounts, Repo, Families}
 
   setup do: seed()
 
   @tag a12f3b_review: "R4"
-  test "R4 disabling sharing applies successful Rails URL normalization", c do
+  test "native R4 consent preserves URL normalization and independent API refusal", c do
     settings = Accounts.settings(c.member.id)
 
     settings =
@@ -19,9 +19,7 @@ defmodule DawarichWeb.A12f3bReviewR4Test do
       })
 
     Repo.query!("UPDATE users SET settings=$1 WHERE id=90102", [settings])
-    conn = json_request(c.member, "PATCH", "/family/location_sharing", %{"enabled" => false})
-    assert conn.status == 200
-    assert Jason.decode!(conn.resp_body)["success"]
+    assert {:ok, _} = Families.set_sharing(scope(c.member), %{"enabled" => false}, opts())
     settings = Accounts.settings(c.member.id)
     assert settings["family"]["location_sharing"] == %{"enabled" => false}
     assert settings["immich_url"] == "https://photos.example.test"
@@ -32,8 +30,7 @@ defmodule DawarichWeb.A12f3bReviewR4Test do
       Map.put(settings, "immich_url", "https://photos.example.test/")
     ])
 
-    assert json_request(c.member, "PATCH", "/family/location_sharing", %{"enabled" => false}).status ==
-             200
+    assert {:ok, _} = Families.set_sharing(scope(c.member), %{"enabled" => false}, opts())
 
     assert Accounts.settings(c.member.id)["immich_url"] == "https://photos.example.test"
 
@@ -58,8 +55,7 @@ defmodule DawarichWeb.A12f3bReviewR4Test do
         assert Accounts.settings(c.member.id) == stored
       end
 
-      assert json_request(c.member, "PATCH", "/family/location_sharing", %{"enabled" => false}).status ==
-               200
+      assert {:ok, _} = Families.set_sharing(scope(c.member), %{"enabled" => false}, opts())
     end
 
     for malformed <- [
@@ -71,8 +67,7 @@ defmodule DawarichWeb.A12f3bReviewR4Test do
       Repo.query!("UPDATE users SET settings=$1 WHERE id=90102", [Map.merge(settings, malformed)])
       before = Accounts.settings(c.member.id)
 
-      assert json_request(c.member, "PATCH", "/family/location_sharing", %{"enabled" => false}).status ==
-               500
+      assert {:error, _} = Families.set_sharing(scope(c.member), %{"enabled" => false}, opts())
 
       assert Accounts.settings(c.member.id) == before
     end

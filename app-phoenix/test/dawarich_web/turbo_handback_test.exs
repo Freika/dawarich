@@ -10,7 +10,7 @@ defmodule DawarichWeb.TurboHandbackTest do
       Map.new([:rails_routes, :rails_upstream], &{&1, Application.fetch_env(:dawarich, &1)})
 
     upstream = listen()
-    Application.put_env(:dawarich, :rails_routes, ["trips"])
+    Application.put_env(:dawarich, :rails_routes, ["trips", "map"])
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
 
     on_exit(fn ->
@@ -27,7 +27,8 @@ defmodule DawarichWeb.TurboHandbackTest do
     %{upstream: upstream}
   end
 
-  test "a native Turbo handback preserves the notice for the browser document request", ctx do
+  test "a retained residency Turbo handback preserves the notice for the browser document request",
+       ctx do
     notice = "Trip was successfully created. Data is being calculated in the background."
 
     source =
@@ -40,7 +41,7 @@ defmodule DawarichWeb.TurboHandbackTest do
       end)
 
     conn =
-      Plug.Test.conn(:get, "/trips/42")
+      Plug.Test.conn(:get, "/map/residency")
       |> put_req_header("accept", "text/vnd.turbo-stream.html, text/html, application/xhtml+xml")
       |> put_req_header("x-dawarich-liveview", "true")
       |> put_req_header("cookie", "_dawarich_session=synthetic-opaque-session")
@@ -54,12 +55,12 @@ defmodule DawarichWeb.TurboHandbackTest do
     document = conn |> delete_req_header("x-dawarich-liveview") |> Strangler.call([])
     assert document.resp_body == notice
     head = Task.await(source)
-    assert request_line(head) == "GET /trips/42 HTTP/1.1"
+    assert request_line(head) == "GET /map/residency HTTP/1.1"
     assert header(head, "cookie") == ["_dawarich_session=synthetic-opaque-session"]
     assert header(head, "x-dawarich-liveview") == []
   end
 
-  test "native frames, writes, JSON and ordinary Rails Turbo requests retain their handback",
+  test "retained residency frames writes JSON and ordinary Rails Turbo requests retain their handback",
        ctx do
     for {method, headers} <- [
           {:get, [{"x-dawarich-liveview", "true"}, {"turbo-frame", "trip_recalculate_frame"}]},
@@ -77,14 +78,14 @@ defmodule DawarichWeb.TurboHandbackTest do
         end)
 
       conn =
-        Enum.reduce(headers, Plug.Test.conn(method, "/trips/42"), fn {key, value}, conn ->
+        Enum.reduce(headers, Plug.Test.conn(method, "/map/residency"), fn {key, value}, conn ->
           put_req_header(conn, key, value)
         end)
 
       assert Strangler.call(conn, []).resp_body == "rails"
 
       assert Task.await(source) |> request_line() ==
-               "#{String.upcase(to_string(method))} /trips/42 HTTP/1.1"
+               "#{String.upcase(to_string(method))} /map/residency HTTP/1.1"
     end
   end
 end

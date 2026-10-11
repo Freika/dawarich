@@ -1,5 +1,6 @@
 defmodule DawarichWeb.A12f3bP03Test do
   use Dawarich.JobsCase, async: false
+  import Dawarich.Test.Await
   alias Dawarich.Jobs.{Dispatch, Ownership}
   alias Dawarich.Posters.{Persistence, Generation, ProgressWorker}
   alias Dawarich.Exports.PurgeWorker
@@ -89,7 +90,7 @@ defmodule DawarichWeb.A12f3bP03Test do
       assert :ok = ProgressWorker.run(ScratchRepo, job)
       assert :ok = ProgressWorker.run(ScratchRepo, job)
       send(Dawarich.Cable.Bus, :poll)
-      assert_receive {:cable_pg, _, _, ^channel, _seq, payload} = event
+      await_receive({:cable_pg, _, _, ^channel, _seq, payload} = event)
       assert Dawarich.Cable.Bus.event(event) == {:message, channel, payload}
       assert Jason.decode!(payload) =~ "poster_#{id}"
     end

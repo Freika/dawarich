@@ -2,9 +2,12 @@ defmodule Dawarich.Photos.ProviderInventoryTest do
   use ExUnit.Case, async: false
   import Dawarich.Test.RawHTTP
   @cap 32 * 1024 * 1024
+  @beyond_test_timeout 120_000
 
   @tag :provider_inventory
   test "other user-configured integration providers refuse redirects, invalid bases and oversized streams" do
+    Dawarich.ApiEndpointCase.put_photo_source_timeout(@beyond_test_timeout)
+
     for source <- [:airtrail, :teslamate, :trek] do
       {base, task, _} =
         provider(fn socket ->
@@ -24,13 +27,13 @@ defmodule Dawarich.Photos.ProviderInventoryTest do
             end
           end)
 
-          early = :gen_tcp.recv(socket, 0, 1000)
+          early = :gen_tcp.recv(socket, 0, :infinity)
           :gen_tcp.send(socket, "0\r\n\r\n")
           early
         end)
 
       assert {:error, _} = fetch(source, base)
-      assert {:error, :closed} = Task.await(task)
+      assert {:error, :closed} = Task.await(task, :infinity)
 
       {destination, target, ref} = provider(&response(&1, body(source)))
 
@@ -43,7 +46,7 @@ defmodule Dawarich.Photos.ProviderInventoryTest do
         end)
 
       assert {:error, _} = fetch(source, base)
-      Task.await(origin)
+      Task.await(origin, :infinity)
       Task.shutdown(target, :brutal_kill)
       refute_received {^ref, :contacted}
 
@@ -56,7 +59,7 @@ defmodule Dawarich.Photos.ProviderInventoryTest do
 
       {base, task, _} = provider(&response(&1, body(source)))
       assert {:ok, []} = fetch(source, base <> "/provider")
-      Task.await(task)
+      Task.await(task, :infinity)
     end
   end
 

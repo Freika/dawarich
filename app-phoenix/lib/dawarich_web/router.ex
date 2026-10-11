@@ -4,8 +4,13 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.AchievementRoutes
   import DawarichWeb.AchievementImageRoutes
   import DawarichWeb.A8Routes
+  import DawarichWeb.PublicMapRoutes
+  import DawarichWeb.BrowserMapRoutes
   import DawarichWeb.PageRoutes
   import DawarichWeb.A10Routes
+  require DawarichWeb.TripsNativeRoutes
+  import DawarichWeb.NativePublicRoutes
+  import DawarichWeb.NativeDataRoutes
   import DawarichWeb.NativeAdminRoutes
   import DawarichWeb.CableRoutes
   import DawarichWeb.ApiRoutes
@@ -13,13 +18,12 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.A9Routes
   import DawarichWeb.StorageRoutes
   import DawarichWeb.MetricsRoutes
+  import DawarichWeb.NativeUploadRoutes
   import DawarichWeb.HealthRoutes
   import DawarichWeb.OperatorRoutes
   import DawarichWeb.DomainRoutes
   import DawarichWeb.SettingsMiscRoutes
   import DawarichWeb.OnboardingRoutes
-  import DawarichWeb.IntegrationFormRoutes
-  import DawarichWeb.NotificationFormRoutes
   import DawarichWeb.TrialHomeRoutes
   import DawarichWeb.StandaloneApiRoutes
 
@@ -45,27 +49,8 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsHeaders
   end
 
-  pipeline :insights do
-    plug DawarichWeb.HostAuthorization
-    plug :accepts, ["html"]
-    plug DawarichWeb.ForceSSL
-    plug DawarichWeb.RateLimit
-    plug :fetch_query_params
-    plug DawarichWeb.InsightsVisit
-    plug DawarichWeb.RailsAuth
-    plug :phoenix_session
-    plug :fetch_session
-    plug :fetch_live_flash
-    plug DawarichWeb.Locale
-    plug DawarichWeb.LayoutAssigns
-    plug :put_root_layout, html: {DawarichWeb.Layouts, :root}
-    plug DawarichWeb.PageEnvelope, :layout
-    plug :protect_from_forgery
-    plug DawarichWeb.RailsHeaders
-    plug DawarichWeb.InsightsFrame
-    plug DawarichWeb.RequireUser
-  end
-
+  public_map_routes()
+  browser_map_routes()
   metrics_routes()
   api_routes()
   standalone_api_routes()
@@ -86,9 +71,9 @@ defmodule DawarichWeb.Router do
   pipeline :sharing do
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.PublicShareRequest
     plug DawarichWeb.RateLimit
     plug :fetch_query_params
-    plug DawarichWeb.TurboVisit
     plug DawarichWeb.RailsAuth
     plug DawarichWeb.Locale
     plug DawarichWeb.LayoutAssigns
@@ -99,6 +84,7 @@ defmodule DawarichWeb.Router do
     plug :put_api_tag, "sharing"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.PublicShareRequest
     plug DawarichWeb.RateLimit
     plug DawarichWeb.Api.Body
     plug DawarichWeb.UnlockAdmission
@@ -109,22 +95,13 @@ defmodule DawarichWeb.Router do
   end
 
   scope "/" do
-    pipe_through :sharing
-
-    get "/s/:id", DawarichWeb.SharedLinkPage, :show,
-      metadata: %{rails_gate: {DawarichWeb.SharingGate, :show?}}
-  end
-
-  scope "/" do
     pipe_through :sharing_unlock
 
-    post "/s/:id/unlock", DawarichWeb.SharedLinkPage, :unlock,
-      metadata: %{rails_gate: {DawarichWeb.SharingGate, :unlock?}}
+    post "/s/:id/unlock", DawarichWeb.SharedLinkPage, :unlock, metadata: %{native_ui: true}
   end
 
   pipeline :rails_user do
     plug DawarichWeb.RequireUser
-    plug DawarichWeb.FamilyGate
   end
 
   pipeline :rails_frame do
@@ -152,18 +129,6 @@ defmodule DawarichWeb.Router do
   achievement_routes()
   achievement_image_routes()
 
-  pipeline :imports_request do
-    plug :put_api_tag, "imports"
-    plug DawarichWeb.HostAuthorization
-    plug DawarichWeb.ForceSSL
-    plug DawarichWeb.RateLimit
-    plug DawarichWeb.RailsAuth
-    plug DawarichWeb.ImportsRequest
-    plug DawarichWeb.RailsHeaders
-  end
-
-  @native_import %{rails_gate: {DawarichWeb.ImportsGate, :native?}}
-
   pipeline :map_write do
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
@@ -173,6 +138,8 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsHeaders
   end
 
+  native_data_routes()
+  DawarichWeb.TripsNativeRoutes.trips_routes()
   page_routes()
 
   pipeline :stats_request do
@@ -213,47 +180,21 @@ defmodule DawarichWeb.Router do
     post "/digests/:year", DawarichWeb.DigestActions, :destroy
   end
 
-  integration_form_routes()
   a10_routes()
+  native_public_routes()
+  native_upload_routes()
   native_admin_routes()
   trial_home_routes()
   settings_misc_routes()
   onboarding_routes()
-  notification_form_routes()
-
-  pipeline :stats_sharing do
-    plug DawarichWeb.HostAuthorization
-    plug DawarichWeb.ForceSSL
-    plug DawarichWeb.RateLimit
-    plug DawarichWeb.RailsAuth
-    plug DawarichWeb.StatsSharingRequest
-    plug DawarichWeb.RailsHeaders
-  end
-
-  scope "/" do
-    pipe_through :stats_sharing
-
-    for method <- [:patch, :post] do
-      match method, "/digests/:year/sharing", DawarichWeb.DigestSharing, :update
-      match method, "/stats/:year/:month/sharing", DawarichWeb.StatSharing, :update
-    end
-  end
 
   scope "/" do
     pipe_through :sharing
-
-    get "/shared/digest/:uuid", DawarichWeb.SharedStatsPage, :digest,
-      metadata: %{rails_key: "shared"}
-
-    get "/shared/month/:uuid", DawarichWeb.SharedStatsPage, :month,
-      metadata: %{rails_key: "shared"}
   end
 
   map_frame_routes()
   a8_routes()
   share_page_routes()
-  share_form_routes()
-  native_share_routes()
   poster_routes()
 
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)

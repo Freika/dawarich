@@ -55,6 +55,11 @@ defmodule Dawarich.Accounts do
     Dawarich.UserSettings.provided(settings)
   end
 
+  def settings_for(%{settings: settings}) when is_map(settings) or is_nil(settings),
+    do: {:ok, Dawarich.UserSettings.provided(settings)}
+
+  def settings_for(_), do: {:error, :unsupported}
+
   def persist_locale(id, locale) do
     %{rows: rows} =
       Repo.query!(
@@ -63,15 +68,15 @@ defmodule Dawarich.Accounts do
         SET settings = CASE WHEN jsonb_typeof(settings) = 'object' THEN settings ELSE '{}'::jsonb END
           || jsonb_build_object('locale', $1::text),
           updated_at = $2
-        WHERE id = $3
+        WHERE id = $3 AND (settings IS NULL OR jsonb_typeof(settings) IN ('object', 'null'))
         RETURNING settings
         """,
         [locale, NaiveDateTime.utc_now(), id]
       )
 
     case rows do
-      [[settings]] -> Dawarich.UserSettings.provided(settings)
-      [] -> nil
+      [[settings]] -> {:ok, Dawarich.UserSettings.provided(settings)}
+      [] -> {:error, :unsupported}
     end
   end
 

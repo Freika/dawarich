@@ -1,5 +1,5 @@
 defmodule Dawarich.Imports.FitReaderTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Imports.Fit.Reader
   alias Dawarich.Test.NormalFormats
   @dir Path.expand("../../fixtures/imports/formats", __DIR__)

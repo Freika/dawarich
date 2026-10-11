@@ -150,7 +150,7 @@ defmodule DawarichWeb.MapControls do
             <div class="w-full lg:w-1/12 relative">
               <a
                 class="btn btn-sm border border-base-300 hover:btn-ghost w-full flex-nowrap"
-                data-turbo-frame="share-link-modal"
+                data-turbo="false"
                 data-testid="timeline-share-button"
                 href={@share}
               >

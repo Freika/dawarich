@@ -3,7 +3,7 @@ defmodule DawarichWeb.AchievementAuthRefusalTest do
   import Plug.Conn
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.{AuthHandler, Endpoint, RailsCsrf}
-  alias DawarichWeb.AchievementActions.{Request, Sharing, Unlocks}
+  alias DawarichWeb.AchievementActions.{Request, Unlocks}
 
   setup do
     previous = Map.take(System.get_env(), ~w(DAWARICH_RAILS SELF_HOSTED))
@@ -38,8 +38,7 @@ defmodule DawarichWeb.AchievementAuthRefusalTest do
         for {method, path} <- [
               {"POST", "/achievements/unlocks/next"},
               {"POST", "/achievements/unlocks/1/seen"},
-              {"POST", "/achievements/unlocks/dismiss"},
-              {"PATCH", "/achievements/country_de/toggle_sharing"}
+              {"POST", "/achievements/unlocks/dismiss"}
             ] do
           conn =
             request(method, path, session)
@@ -75,13 +74,21 @@ defmodule DawarichWeb.AchievementAuthRefusalTest do
         end
 
         for {action, method, path, plug} <- [
-              {:next, "POST", "/achievements/unlocks/next", Unlocks},
-              {:sharing, "PATCH", "/achievements/country_de/toggle_sharing", Sharing}
+              {:next, "POST", "/achievements/unlocks/next", Unlocks}
             ] do
           conn = request(method, path, session)
           {:ok, conn, actor, params, context} = Request.load(conn, action)
           conn = assign(conn, :achievement_action, {actor, params, context})
           Repo.query!("UPDATE users SET locked_at=now() WHERE id=$1", [actor.id])
+
+          assert {:error, :stale_session} =
+                   Dawarich.Sharing.change(
+                     Dawarich.Accounts.Scope.for_user(actor, "en"),
+                     %{type: :achievement, key: "country_de", owner_id: actor.id},
+                     :update,
+                     %{"enabled" => true}
+                   )
+
           refused = plug.call(conn, [])
           refute_received {:handback, _}
           assert refused.status == 401
@@ -91,6 +98,12 @@ defmodule DawarichWeb.AchievementAuthRefusalTest do
       end)
 
     refute log =~ "[standalone.handback]"
+
+    assert request("PATCH", "/achievements/country_de/toggle_sharing", session)
+           |> Endpoint.call([])
+           |> Map.fetch!(:status) == 404
+
+    refute_received {:handback, _}
 
     unsupported =
       request("POST", "/achievements/unlocks/next", session)

@@ -1,5 +1,6 @@
 defmodule Dawarich.ReleaseMigrations.MapMatchingDeadlineTest do
   use Dawarich.ScratchCase, async: true, group: :scratch_case_db
+  import Dawarich.Test.Await
 
   alias Dawarich.{ReleaseMigration, ReleaseMigrator}
   alias Dawarich.ReleaseMigrator.Floor
@@ -140,7 +141,7 @@ defmodule Dawarich.ReleaseMigrations.MapMatchingDeadlineTest do
         )
       end)
 
-    assert_receive {:locked, pid} when pid == blocker.pid
+    await_receive({:locked, pid} when pid == blocker.pid)
     blocker
   end
 

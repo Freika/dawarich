@@ -1,5 +1,6 @@
 defmodule Dawarich.Tracks.BackfillWalksTest do
   use Dawarich.JobsCase, async: true, group: :scratch_db
+  import Dawarich.Test.Await
 
   import Dawarich.LockRace
   alias Dawarich.Jobs.Ownership
@@ -83,7 +84,7 @@ defmodule Dawarich.Tracks.BackfillWalksTest do
         send(parent, {:walk, first})
       end)
 
-    assert_receive {:walk, first}
+    await_receive({:walk, first})
     second = Task.async(fn -> schedule(1, @now) end)
     assert settle(second, "INSERT INTO phoenix.track_backfill_walks%") == :blocked
     commit(holder)

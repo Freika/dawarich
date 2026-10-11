@@ -16,7 +16,21 @@ defmodule Dawarich.Ingest.Friends do
   ORDER BY timestamp DESC LIMIT 1
   """
 
-  def for_user(user_id, now \\ DateTime.utc_now()) do
+  def for_user(user_id, now \\ DateTime.utc_now(), opts \\ []) do
+    with user when not is_nil(user) <- Dawarich.Accounts.public_owner(user_id),
+         {:ok, friends} <-
+           Dawarich.Families.Snapshot.read(user, Keyword.put(opts, :now, now), fn ->
+             {:ok, read(user_id, now)}
+           end) do
+      friends
+    else
+      _ -> []
+    end
+  rescue
+    ArgumentError -> Ruby.unsupported!("family publication settings would require Rails")
+  end
+
+  defp read(user_id, now) do
     case Repo.query!("SELECT family_id FROM family_memberships WHERE user_id = $1 LIMIT 1", [
            user_id
          ]).rows do

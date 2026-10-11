@@ -87,3 +87,5 @@ for repo <- scratch_repos do
 end
 
 Dawarich.LaneGuard.attach!()
+
+Dawarich.Test.Preload.load!()

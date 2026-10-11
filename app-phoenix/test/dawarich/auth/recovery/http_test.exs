@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.Recovery.HttpTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Plug.Conn
   alias Dawarich.Auth.SessionCookie
   alias Dawarich.Repo

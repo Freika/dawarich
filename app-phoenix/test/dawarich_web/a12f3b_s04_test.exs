@@ -2,8 +2,10 @@ defmodule DawarichWeb.A12f3bS04Test do
   use Dawarich.IngestCase, async: false
   alias Dawarich.Test.A12f3bShareCase, as: S
   alias Dawarich.ShareManagement.TrackMutations
-  alias DawarichWeb.{TrackShareActions, ShareManagementForm}
-  import Plug.Conn
+  alias Dawarich.Sharing
+  import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
+  @endpoint DawarichWeb.Endpoint
 
   setup do
     old = Application.get_env(:dawarich, :rails_upstream)
@@ -15,19 +17,21 @@ defmodule DawarichWeb.A12f3bS04Test do
   end
 
   @tag a12f3b_case: "S04a"
-  test "track share destroy and revoke invalidate the actual grant", %{actor: actor} do
+  test "native S04a track share destroy and revoke invalidate the actual grant", %{actor: actor} do
     before = S.rows()
     assert {:error, 404} = TrackMutations.run(actor, 99104, :revoke, %{}, "en", now: S.now())
     assert S.rows() == before
 
     for action <- [:revoke, :destroy] do
-      response =
-        S.request(actor, "track", action, %{
-          "_method" => if(action == :revoke, do: "patch", else: "delete")
-        })
-        |> TrackShareActions.call(action)
+      assert {:ok, _} =
+               Sharing.change(
+                 Dawarich.Accounts.Scope.for_user(actor, "en"),
+                 %{type: :track, owner_id: actor.id, id: 99103},
+                 action,
+                 %{},
+                 now: S.now()
+               )
 
-      assert response.status == 302
       refute Dawarich.SharedLinks.active(S.id(7), S.now())
 
       assert {:missing, "/map/v2"} =
@@ -43,19 +47,35 @@ defmodule DawarichWeb.A12f3bS04Test do
   end
 
   @tag a12f3b_case: "S04b"
-  test "track revoke is terminal after successful write", %{actor: actor} do
-    assert {:ok, result} = TrackMutations.run(actor, 99103, :revoke, %{}, "en", now: S.now())
+  test "native S04b failed response cannot replay a committed track revoke", %{actor: actor} do
+    conn =
+      Dawarich.Test.RailsUser.signed_in(actor.id)
+      |> Dawarich.Test.RailsUser.connecting_as(actor.id)
+
+    {:ok, view, _} = live(conn, "/tracks/99103/share_link/new")
+    socket = :sys.get_state(view.pid).socket
+
+    socket = %{
+      socket
+      | assigns:
+          Map.delete(socket.assigns, :flash)
+          |> Map.put(:confirmation, %{resource: socket.assigns.resource, action: :revoke})
+    }
+
+    assert_raise KeyError, fn ->
+      DawarichWeb.SharingLive.Index.handle_event("sharing_confirm", %{}, socket)
+    end
+
     before = S.rows()
 
-    broken =
-      S.request(actor, "track", :revoke)
-      |> register_before_send(fn response ->
-        raise "synthetic response failed: #{response.status}"
-      end)
-
-    assert_raise RuntimeError, "synthetic response failed: 302", fn ->
-      ShareManagementForm.respond(broken, {"track", :revoke}, %{}, {:ok, result})
-    end
+    assert {:error, :not_found} =
+             Sharing.change(
+               Dawarich.Accounts.Scope.for_user(actor, "en"),
+               %{type: :track, owner_id: actor.id, id: 99103},
+               :revoke,
+               %{},
+               now: S.now()
+             )
 
     assert S.rows() == before
     assert commands() == []

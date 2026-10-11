@@ -119,10 +119,10 @@ defmodule Dawarich.Imports.ManualExtraction do
             end
           end
 
+          Events.enqueue(repo, user_id, event, :extraction)
           :queued
         end)
 
-      if match?({:ok, _}, result), do: Events.broadcast(user_id)
       result
     end
   end

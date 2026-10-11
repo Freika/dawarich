@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.Otp.CompletionTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Auth.{Account, Otp.Completion}
   alias Dawarich.Auth.TwoFactor.{Secret, Totp}
   alias Dawarich.{Repo, Test.RailsUser}

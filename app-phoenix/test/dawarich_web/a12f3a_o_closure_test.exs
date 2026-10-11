@@ -6,7 +6,7 @@ defmodule DawarichWeb.A12f3aOClosureTest do
   import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
 
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{A8Gate, A8Request, ImportsRequest, MapWriteRequest, RailsAuth, RailsCsrf}
+  alias DawarichWeb.{A8Gate, A8Request, MapWriteRequest, RailsAuth, RailsCsrf}
 
   setup do
     actor = RailsUser.insert!(%{id: 8891, email: "o02-dispatch@example.test"})
@@ -122,30 +122,14 @@ defmodule DawarichWeb.A12f3aOClosureTest do
       MapWriteRequest
     )
 
-    for {method, path, attrs, form} <- [
-          {:post, "/imports", %{"import" => %{"files" => ["SYNTHETIC_BLOB"]}},
-           DawarichWeb.Imports.UploadForm},
-          {:patch, "/imports/42", %{"import" => %{"name" => "Synthetic"}},
-           DawarichWeb.Imports.UpdateForm}
-        ] do
-      body = encode(attrs, ctx.token)
-      conn = request(ctx, method, path, body, "text/html")
-      assert apply(ImportsRequest, :request_module, [conn]) == form
-      admitted = ImportsRequest.call(conn, [])
-      refute admitted.halted
-      assert admitted.private.dawarich_raw_body == body
-      assert admitted.assigns.api_params == Map.put(attrs, "authenticity_token", ctx.token)
-      replay(ctx, method, path, encode(attrs, "invalid"), ImportsRequest, "text/html")
-
-      replay(
-        ctx,
-        method,
-        path,
-        encode(Map.put(attrs, "foreign_domain", "x"), ctx.token),
-        ImportsRequest,
-        "text/html"
-      )
-
+    for {method, path, attrs} <- [
+          {:post, "/imports", %{"import" => %{"files" => ["SYNTHETIC_BLOB"]}}},
+          {:patch, "/imports/42", %{"import" => %{"name" => "Synthetic"}}}
+        ],
+        token <- [ctx.token, "invalid"],
+        values <- [attrs, Map.put(attrs, "foreign_domain", "x")] do
+      conn = request(ctx, method, path, encode(values, token), "text/html")
+      Dawarich.Test.RetiredM4Requests.assert_retired(conn)
       assert effects() == before
     end
 
@@ -285,6 +269,8 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     saved = Application.get_env(:dawarich, :rails_routes, [])
     mode = System.get_env("SELF_HOSTED")
     standalone = System.get_env("DAWARICH_RAILS")
+    jwt = System.get_env("JWT_SECRET_KEY")
+    System.put_env("JWT_SECRET_KEY", "native-owner-matrix-synthetic-jwt")
     Application.put_env(:dawarich, :rails_routes, [])
     System.delete_env("DAWARICH_RAILS")
 
@@ -292,6 +278,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       Application.put_env(:dawarich, :rails_routes, saved)
       restore_env("SELF_HOSTED", mode)
       restore_env("DAWARICH_RAILS", standalone)
+      restore_env("JWT_SECRET_KEY", jwt)
     end)
 
     session = RailsUser.session(8896)
@@ -299,16 +286,26 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   end
 
   @tag a12f3a_o06: true
-  test "O06: every Q M W P method is native and each source key restores raw pre-effect Rails routing",
+  test "O06: Q M W P native page ownership and retained source rollback preserve effects",
        ctx do
+    jwt = System.get_env("JWT_SECRET_KEY")
+    System.put_env("JWT_SECRET_KEY", String.duplicate("s", 64))
+    on_exit(fn -> restore_env("JWT_SECRET_KEY", jwt) end)
     routes = q_m_w_p()
-    assert length(routes) == 40
+    assert length(routes) == 38
     ctx = seed_routes(ctx)
     System.put_env("SELF_HOSTED", "true")
 
     for {method, path, key, _} <- routes do
-      pinned(ctx, method, path, key)
-      if method == "GET", do: pinned(ctx, "HEAD", path, key)
+      if adopted?(method, path),
+        do: native_only(ctx, method, path, key),
+        else: pinned(ctx, method, path, key)
+
+      if method == "GET" do
+        if adopted?(method, path),
+          do: native_only(ctx, "HEAD", path, key),
+          else: pinned(ctx, "HEAD", path, key)
+      end
     end
 
     for hosted <- ["true", "false"], legacy <- [false, true] do
@@ -320,8 +317,14 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
         assert route != :error, "#{method} #{path}"
         assert owner(route) == owner, "#{method} #{path}"
         assert Code.ensure_loaded?(owner)
-        replay_only(ctx, method, path <> "?raw=a%2Bb&raw=c", key)
-        if method == "GET", do: replay_only(ctx, "HEAD", path, key)
+
+        if adopted?(method, path) do
+          native_only(ctx, method, path <> "?raw=a%2Bb&raw=c", key)
+          if method == "GET", do: native_only(ctx, "HEAD", path, key)
+        else
+          replay_only(ctx, method, path <> "?raw=a%2Bb&raw=c", key)
+          if method == "GET", do: replay_only(ctx, "HEAD", path, key)
+        end
       end
     end
 
@@ -329,7 +332,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     Application.put_env(:dawarich, :rails_routes, ["stats", "digests"])
 
     for path <- ["/shared/month/missing", "/shared/digest/missing"], method <- [:get, :head] do
-      assert info("GET", path).rails_key == "shared"
+      assert info("GET", path)[:native_page] || info("GET", path).rails_key == "shared"
       response = dispatch(build_conn(), @endpoint, method, path, nil)
       assert response.status == 302
       assert get_resp_header(response, "location") == ["http://www.example.com/"]
@@ -375,13 +378,20 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   test "O07: import export trip visit video methods consume native owner outcomes exactly once",
        ctx do
     routes = i_f_e_t_v_r()
-    assert length(routes) == 38
+    assert length(routes) == 31
     ctx = seed_routes(ctx)
     System.put_env("SELF_HOSTED", "true")
 
     for {method, path, key, _} <- routes do
-      pinned(ctx, method, path, key)
-      if method == "GET", do: pinned(ctx, "HEAD", path, key)
+      if adopted?(method, path),
+        do: native_only(ctx, method, path, key),
+        else: pinned(ctx, method, path, key)
+
+      if method == "GET" do
+        if adopted?(method, path),
+          do: native_only(ctx, "HEAD", path, key),
+          else: pinned(ctx, "HEAD", path, key)
+      end
     end
 
     for hosted <- ["true", "false"], legacy <- [false, true] do
@@ -393,8 +403,14 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
         assert route != :error, "#{method} #{path}"
         assert owner(route) == handler, "#{method} #{path}"
         assert Code.ensure_loaded?(handler)
-        replay_only(ctx, method, path <> "?original=a%2Bb&original=c", key)
-        if method == "GET", do: replay_only(ctx, "HEAD", path, key)
+
+        if adopted?(method, path) do
+          native_only(ctx, method, path <> "?original=a%2Bb&original=c", key)
+          if method == "GET", do: native_only(ctx, "HEAD", path, key)
+        else
+          replay_only(ctx, method, path <> "?original=a%2Bb&original=c", key)
+          if method == "GET", do: replay_only(ctx, "HEAD", path, key)
+        end
       end
     end
 
@@ -404,8 +420,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     for {method, path, headers, bytes} <- [
           {"POST", "/route_videos", [], "foreign_domain=x"},
           {"POST", "/trips", [{"x-http-method-override", "DELETE"}], "trip%5Bname%5D=Synthetic"},
-          {"POST", "/settings/users/import", [], "archive=bad&authenticity_token=bad"},
-          {"POST", "/exports", [], "authenticity_token=bad"}
+          {"POST", "/settings/users/import", [], "archive=bad&authenticity_token=bad"}
         ] do
       System.put_env("SELF_HOSTED", "true")
       previous = observations()
@@ -421,6 +436,21 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       assert response.status == 204
       assert line == "#{method} #{path} HTTP/1.1"
       assert original == bytes
+      assert observations() == previous
+    end
+
+    for mode <- [nil, "off"] do
+      if mode,
+        do: System.put_env("DAWARICH_RAILS", mode),
+        else: System.delete_env("DAWARICH_RAILS")
+
+      previous = observations()
+
+      response =
+        @endpoint.call(raw(ctx, "POST", "/exports", "authenticity_token=bad"), @endpoint.init([]))
+
+      assert response.status == 422
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
       assert observations() == previous
     end
 
@@ -442,24 +472,17 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       {"/imports/42/edit", "imports", DawarichWeb.ImportsLive.Edit},
       {"/imports/42/download", "imports", DawarichWeb.ImportsDownload},
       {"/exports", "exports", DawarichWeb.ExportsLive.Index},
-      {"/trips", "trips", DawarichWeb.TripsLive.Index},
-      {"/trips/new", "trips", DawarichWeb.TripsLive.Form},
-      {"/trips/42", "trips", DawarichWeb.TripsLive.Show},
-      {"/trips/42/edit", "trips", DawarichWeb.TripsLive.Form},
+      {"/trips", "trips", DawarichWeb.TripsLive.NativeIndex},
+      {"/trips/new", "trips", DawarichWeb.NativeTripsLive.Form},
+      {"/trips/42", "trips", DawarichWeb.TripsLive.NativeMap},
+      {"/trips/42/edit", "trips", DawarichWeb.NativeTripsLive.Form},
       {"/visits", "visits", DawarichWeb.VisitsNavigation},
       {"/settings/visits", "settings", DawarichWeb.SettingsLive.Visits}
     ]
 
     Enum.map(reads, fn {path, key, handler} -> {"GET", path, key, handler} end) ++
       [
-        {"POST", "/imports", "imports", DawarichWeb.ImportsController},
-        {"PATCH", "/imports/42", "imports", DawarichWeb.ImportsController},
-        {"PUT", "/imports/42", "imports", DawarichWeb.ImportsController},
-        {"DELETE", "/imports/42", "imports", DawarichWeb.ImportsController},
-        {"POST", "/imports/42/extraction", "imports", DawarichWeb.ImportsController},
-        {"DELETE", "/imports/42/extraction", "imports", DawarichWeb.ImportsController},
         {"POST", "/exports", "exports", DawarichWeb.ExportsCreate},
-        {"DELETE", "/exports/42", "exports", DawarichWeb.ExportsDelete},
         {"POST", "/trips", "trips", DawarichWeb.TripActions},
         {"PATCH", "/trips/42", "trips", DawarichWeb.TripActions},
         {"PUT", "/trips/42", "trips", DawarichWeb.TripActions},
@@ -483,26 +506,26 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
 
   defp q_m_w_p do
     reads = [
-      {"/stats", "stats", DawarichWeb.StatsLive.Index},
-      {"/stats/2024", "stats", DawarichWeb.StatsLive.Year},
-      {"/stats/2024/3", "stats", DawarichWeb.StatsLive.Month},
-      {"/digests", "digests", DawarichWeb.DigestsLive.Index},
-      {"/digests/2024", "digests", DawarichWeb.DigestsLive.Show},
-      {"/insights", "insights", DawarichWeb.InsightsLive.Index},
-      {"/insights/details", "insights", DawarichWeb.InsightsLive.Details},
-      {"/shared/month/synthetic", "shared", DawarichWeb.SharedStatsPage},
-      {"/shared/digest/synthetic", "shared", DawarichWeb.SharedStatsPage},
-      {"/map", "map", DawarichWeb.MapLive},
-      {"/map/v2", "map", DawarichWeb.MapLive},
+      {"/stats", "stats", DawarichWeb.StatsLive.NativePage},
+      {"/stats/2024", "stats", DawarichWeb.StatsLive.NativePage},
+      {"/stats/2024/3", "stats", DawarichWeb.StatsLive.NativePage},
+      {"/digests", "digests", DawarichWeb.DigestsLive.NativePage},
+      {"/digests/2024", "digests", DawarichWeb.DigestsLive.NativePage},
+      {"/insights", "insights", DawarichWeb.InsightsLive.NativePage},
+      {"/insights/details", "insights", DawarichWeb.InsightsLive.NativePage},
+      {"/shared/month/synthetic", "shared", DawarichWeb.NativePublicPage},
+      {"/shared/digest/synthetic", "shared", DawarichWeb.NativePublicPage},
+      {"/map", "map", DawarichWeb.MapLive.Native},
+      {"/map/v2", "map", DawarichWeb.MapLive.Native},
       {"/map/v1", "map", DawarichWeb.MapRedirects},
       {"/maps/v2", "map", DawarichWeb.MapRedirects},
-      {"/map/timeline_feeds", "map", DawarichWeb.MapFrames},
-      {"/map/timeline_feeds/calendar", "map", DawarichWeb.MapFrames},
+      {"/map/timeline_feeds", "map", DawarichWeb.NativeMapRetired},
+      {"/map/timeline_feeds/calendar", "map", DawarichWeb.NativeMapRetired},
       {"/map/residency", "map", DawarichWeb.MapFrames},
-      {"/map/timeline_feeds/42/track_info", "map", DawarichWeb.MapFrames},
+      {"/map/timeline_feeds/42/track_info", "map", DawarichWeb.NativeMapRetired},
       {"/points", "points", DawarichWeb.PointsLive.Index},
-      {"/points/42/address", "points", DawarichWeb.PointAddress},
-      {"/tracks/41/segments", "tracks", DawarichWeb.MapFrames},
+      {"/points/42/address", "points", DawarichWeb.NativeMapRetired},
+      {"/tracks/41/segments", "tracks", DawarichWeb.NativeMapRetired},
       {"/places", "places", DawarichWeb.PlacesLive.Index},
       {"/places/42", "places", DawarichWeb.PlaceNavigation},
       {"/places/nearby", "places", DawarichWeb.PlaceNavigation}
@@ -512,15 +535,13 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       [
         {"PUT", "/stats/2024/3/update", "stats", DawarichWeb.StatsActions},
         {"PUT", "/stats/update_all", "stats", DawarichWeb.StatsActions},
-        {"PATCH", "/stats/2024/3/sharing", "stats", DawarichWeb.StatSharing},
         {"POST", "/digests", "digests", DawarichWeb.DigestActions},
         {"DELETE", "/digests/2024", "digests", DawarichWeb.DigestActions},
-        {"PATCH", "/digests/2024/sharing", "digests", DawarichWeb.DigestSharing},
         {"POST", "/areas", "areas", DawarichWeb.AreaActions},
         {"PATCH", "/areas/42", "areas", DawarichWeb.AreaActions},
         {"PUT", "/areas/42", "areas", DawarichWeb.AreaActions},
-        {"PATCH", "/tracks/41/segments/42", "tracks", DawarichWeb.SegmentActions},
-        {"PUT", "/tracks/41/segments/42", "tracks", DawarichWeb.SegmentActions},
+        {"PATCH", "/tracks/41/segments/42", "tracks", DawarichWeb.NativeMapRetired},
+        {"PUT", "/tracks/41/segments/42", "tracks", DawarichWeb.NativeMapRetired},
         {"POST", "/tracks/recalculation", "tracks", DawarichWeb.TrackRecalculationActions},
         {"DELETE", "/points/bulk_destroy", "points", DawarichWeb.PointListActions},
         {"POST", "/places", "places", DawarichWeb.PlaceActions},
@@ -533,6 +554,76 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   defp info(method, path), do: Phoenix.Router.route_info(Router, method, path, "www.example.com")
   defp owner(%{phoenix_live_view: {view, _, _, _}}), do: view
   defp owner(route), do: route.plug
+
+  defp adopted?(method, path) do
+    path = hd(String.split(path, "?"))
+
+    route = info(if(method == "HEAD", do: "GET", else: method), path)
+    data_native = is_map(route) and :native_data_request in route.pipe_through
+
+    if data_native or
+         path in ~w(/map /map/v2 /map/v1 /maps/v2 /trips /trips/42 /trips/new /trips/42/edit /visits) do
+      method in ~w(GET HEAD)
+    else
+      path in ~w(/map/timeline_feeds /map/timeline_feeds/calendar /map/timeline_feeds/42/track_info /points/42/address /tracks/41/segments /tracks/41/segments/42)
+    end
+  end
+
+  defp native_only(ctx, method, path, key) do
+    before = observations()
+    Application.put_env(:dawarich, :rails_routes, [key])
+    route = info(if(method == "HEAD", do: "GET", else: method), hd(String.split(path, "?")))
+
+    assert {:ok, :ok} =
+             Repo.transaction(fn ->
+               Repo.query!("SAVEPOINT native_consumed_probe")
+               response = native_response(ctx, raw(ctx, method, path, ""))
+
+               expected =
+                 case route.plug do
+                   DawarichWeb.NativeMapRetired ->
+                     [410]
+
+                   DawarichWeb.MapRedirects ->
+                     [301]
+
+                   DawarichWeb.VisitsNavigation ->
+                     [302, 422]
+
+                   _ ->
+                     [[id], _] = ctx.session["warden.user.user.key"]
+
+                     if Repo.query!("SELECT jsonb_typeof(settings) FROM users WHERE id=$1", [id],
+                          log: false
+                        ).rows == [["array"]], do: [422], else: [200]
+                 end
+
+               assert response.status in expected
+
+               if expected == [200] and method == "GET" do
+                 if hd(String.split(path, "?")) in ~w(/trips /trips/new /trips/42/edit /visits) do
+                   assert String.contains?(response.resp_body, "<html"), path
+                 else
+                   hook = if String.starts_with?(path, "/trips/"), do: "Trip", else: "Map"
+
+                   if :native_data_request in route.pipe_through,
+                     do: assert(String.contains?(response.resp_body, "<html")),
+                     else: assert(String.contains?(response.resp_body, "phx-hook=\"#{hook}\""))
+                 end
+               end
+
+               assert response.private[:dawarich_method] == method
+               assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+               refute String.contains?(response.resp_body, "data-controller")
+               if method == "HEAD", do: assert(response.resp_body == "")
+               Repo.query!("ROLLBACK TO SAVEPOINT native_consumed_probe")
+               Repo.query!("RELEASE SAVEPOINT native_consumed_probe")
+               :ok
+             end)
+
+    assert observations() == before
+    Application.put_env(:dawarich, :rails_routes, [])
+  end
 
   defp pinned(ctx, method, path, key) do
     {path, body, headers} = eligible(ctx, method, path)
@@ -568,17 +659,26 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     before = observations()
     Application.put_env(:dawarich, :rails_routes, [key])
 
-    {{line, bytes}, response} =
-      forwarded(ctx.upstream, fn ->
-        response = @endpoint.call(build.(), @endpoint.init([]))
-        assert response.status == 204, "rollback #{key}: #{method} #{path}"
-        response
-      end)
+    if route[:native_page] == true or
+         (method in ["GET", "HEAD"] and URI.parse(path).path == "/places") do
+      response = native_response(ctx, build.())
+      assert response.status in [200, 301, 302, 303]
+      assert observations() == before
+    else
+      {{line, bytes}, response} =
+        forwarded(ctx.upstream, fn ->
+          response = @endpoint.call(build.(), @endpoint.init([]))
+          assert response.status == 204, "rollback #{key}: #{method} #{path}"
+          response
+        end)
 
-    assert line == "#{method} #{path} HTTP/1.1"
-    assert bytes == body
-    assert response.status == 204
-    refute response.private[:dawarich_method]
+      assert line == "#{method} #{path} HTTP/1.1"
+      assert bytes == body
+      assert response.status == 204
+      refute response.private[:dawarich_method]
+      assert observations() == before
+    end
+
     assert observations() == before
     Application.put_env(:dawarich, :rails_routes, [])
   end
@@ -612,14 +712,25 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     Application.put_env(:dawarich, :rails_routes, [key])
     body = "original=%2B+%26&original=second&nested%5Ba%5D=1"
 
-    {{line, bytes}, response} =
-      forwarded(ctx.upstream, fn ->
-        @endpoint.call(raw(ctx, method, path, body), @endpoint.init([]))
-      end)
+    route = info(if(method == "HEAD", do: "GET", else: method), path |> String.split("?") |> hd())
 
-    assert line == "#{method} #{path} HTTP/1.1"
-    assert bytes == body
-    assert response.status == 204
+    if route[:native_page] == true or
+         (method in ["GET", "HEAD"] and URI.parse(path).path == "/places") do
+      response = native_response(ctx, raw(ctx, method, path, body))
+      assert response.status in [200, 301, 302, 303]
+      assert observations() == before
+    else
+      {{line, bytes}, response} =
+        forwarded(ctx.upstream, fn ->
+          @endpoint.call(raw(ctx, method, path, body), @endpoint.init([]))
+        end)
+
+      assert line == "#{method} #{path} HTTP/1.1"
+      assert bytes == body
+      assert response.status == 204
+      assert observations() == before
+    end
+
     assert observations() == before
     Application.put_env(:dawarich, :rails_routes, [])
   end

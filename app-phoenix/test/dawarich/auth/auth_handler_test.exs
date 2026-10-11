@@ -5,7 +5,7 @@ defmodule Dawarich.Auth.AuthHandlerTest do
 
   alias Dawarich.{Accounts, RailsCookies, RailsSecret, Repo}
   alias Dawarich.Auth.RememberCookie
-  alias Dawarich.Test.{AuthMarkup, ParityHTML}
+  alias Dawarich.Test.{AuthMarkup, NativeAuthHTTP}
   alias DawarichWeb.{AuthHandler, AuthRestore, RailsAuth, RailsCsrf}
 
   @fixture Jason.decode!(File.read!(Path.expand("../../fixtures/auth/requests.json", __DIR__)))
@@ -173,14 +173,19 @@ defmodule Dawarich.Auth.AuthHandlerTest do
     assert state(ctx.id) == %{failed_attempts: 0, sign_in_count: 1, remembered: false}
   end
 
-  test "the sign-in page Phoenix serves is Rails' devise/sessions/new, byte for byte" do
+  test "the native sign-in document preserves the source submission fields and translated labels" do
     conn = call(:get, "/users/sign_in", [session_cookie(guest())], nil)
 
     assert conn.status == 200
     assert get_resp_header(conn, "x-dawarich-auth-owner") == ["native-credentials"]
 
-    assert AuthMarkup.strict(AuthMarkup.hero(conn.resp_body)) ==
-             AuthMarkup.strict(@markup["signin"]["html"])
+    assert NativeAuthHTTP.fields(conn.resp_body) ==
+             NativeAuthHTTP.fields(@markup["signin"]["html"])
+
+    assert NativeAuthHTTP.text(conn.resp_body, "label") ==
+             NativeAuthHTTP.text(@markup["signin"]["html"], "label")
+
+    assert conn.resp_body =~ "/native/auth_http.js"
   end
 
   test "the browser's own field set, commit=Log in included, signs in natively", ctx do
@@ -212,10 +217,10 @@ defmodule Dawarich.Auth.AuthHandlerTest do
 
       failed = @markup["signin_failed"]
       shown = String.replace(failed["html"], ~s(value="#{failed["email"]}"), ~s(value="#{email}"))
-      assert AuthMarkup.strict(AuthMarkup.hero(conn.resp_body)) == AuthMarkup.strict(shown)
+      assert NativeAuthHTTP.fields(conn.resp_body) == NativeAuthHTTP.fields(shown)
 
-      assert ParityHTML.normalize(AuthMarkup.toast(conn.resp_body)) ==
-               ParityHTML.normalize(failed["toast"])
+      assert NativeAuthHTTP.text(conn.resp_body, "[role=alert] span") ==
+               NativeAuthHTTP.text(failed["toast"], "span")
     end
 
     assert state(ctx.id).failed_attempts == @fixture["wrong_password"]["user"]["failed_attempts"]

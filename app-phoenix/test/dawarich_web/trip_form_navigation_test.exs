@@ -1,5 +1,5 @@
 defmodule DawarichWeb.TripFormNavigationTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest

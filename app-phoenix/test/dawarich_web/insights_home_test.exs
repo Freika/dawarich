@@ -87,7 +87,6 @@ defmodule DawarichWeb.InsightsHomeTest do
         "http://www.example.com/?return_to=https%3A%2F%2Fevil.invalid&year=2024"
       )
       |> DawarichWeb.RailsHeaders.call([])
-      |> DawarichWeb.InsightsFrame.call([])
       |> DawarichWeb.InsightsHome.index(%{
         "return_to" => "https://evil.invalid",
         "year" => "2024"

@@ -144,7 +144,8 @@ defmodule DawarichWeb.VisitSettingsLiveTest do
              Translate.t("en", "settings.visits.redetect_panel.available_again_at", %{})
   end
 
-  def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)
+  def handle_query(_event, _measurements, meta, pid),
+    do: Dawarich.Test.NativeQueryBudget.record(meta, pid)
 
   defp queries(fun) do
     id = "visits-budget-#{System.unique_integer([:positive])}"
@@ -162,12 +163,18 @@ defmodule DawarichWeb.VisitSettingsLiveTest do
     end
   end
 
-  test "the page stays within the Rails-era query budget", %{user: user} do
+  test "visit settings business queries retain their budget with explicit subscription admission",
+       %{user: user} do
     {conn, static} = queries(fn -> get(conn_for(user), "/settings/visits") end)
+    static_counts = Dawarich.Test.NativeQueryBudget.counts()
     {_, connected} = queries(fn -> {:ok, _view, _html} = live(conn) end)
 
+    connected_counts = Dawarich.Test.NativeQueryBudget.counts()
+
     assert static <= 9
-    assert connected <= 6
+    assert connected - 3 <= 6
+    assert connected_counts["users"] == static_counts["users"] + 2
+    assert Map.delete(connected_counts, "users") == Map.delete(static_counts, "users")
   end
 
   test "signed-out settings uses the established Devise redirect" do
@@ -196,4 +203,62 @@ defmodule DawarichWeb.VisitSettingsLiveTest do
     assert session["flash"]["flashes"]["alert"] ==
              "You need to sign in or sign up before continuing."
   end
+
+  test "opaque visit settings refuse static join save and redetection without settings or job effects",
+       %{user: user} do
+    rails = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if rails,
+        do: System.put_env("DAWARICH_RAILS", rails),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    for value <- [[], 42] do
+      Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [user.id, value], log: false)
+      before = rows_snapshot(user)
+      conn = get(conn_for(user), "/settings/visits")
+      assert conn.status == 302
+      assert get_resp_header(conn, "location") == ["/"]
+      assert conn.assigns.flash["alert"] != nil
+      assert rows_snapshot(user) == before
+      assert Dawarich.Visits.WebSettings.load(Repo, user.id) == {:error, :unsupported}
+      scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(user.id), "en")
+
+      assert Dawarich.Settings.update_visits(scope, %{"visit_min_points" => "4"}) ==
+               {:error, :unsupported}
+
+      assert Dawarich.Settings.request_visit_redetection(scope) == {:error, :unsupported}
+      assert rows_snapshot(user) == before
+
+      Repo.query!("UPDATE users SET settings='{}'::jsonb WHERE id=$1", [user.id], log: false)
+      conn = get(conn_for(user), "/settings/visits")
+      Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [user.id, value], log: false)
+      assert {:error, {:redirect, %{to: "/", flash: flash}}} = live(conn)
+      assert Phoenix.LiveView.Utils.verify_flash(@endpoint, flash)["alert"] != nil
+
+      for event <- ["save", "redetect"] do
+        Repo.query!("UPDATE users SET settings='{}'::jsonb WHERE id=$1", [user.id], log: false)
+        {:ok, view, _} = live_as(user)
+        Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [user.id, value], log: false)
+        before = rows_snapshot(user)
+        render_hook(view, event, %{"settings" => %{"visit_min_points" => "4"}})
+        assert_redirect(view, "/")
+        assert rows_snapshot(user) == before
+      end
+    end
+  end
+
+  defp rows_snapshot(user),
+    do: {
+      Repo.query!(
+        "SELECT settings,updated_at,visits_redetected_at FROM users WHERE id=$1",
+        [user.id],
+        log: false
+      ).rows,
+      Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows,
+      Repo.query!("SELECT count(*) FROM oban.oban_jobs", [], log: false).rows,
+      redetections()
+    }
 end

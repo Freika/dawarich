@@ -57,6 +57,7 @@ end
 
 defmodule Dawarich.AfterCommitReviewTest do
   use Dawarich.JobsCase, async: false
+  import Dawarich.Test.Await
   import Dawarich.AnomalyCase
   alias Dawarich.AfterCommit
   @at 1_767_225_600
@@ -150,7 +151,7 @@ defmodule Dawarich.AfterCommitReviewTest do
       Dawarich.Cable.Bus.channel(Dawarich.RailsMessages.broadcasting(["tracks", {:user, user}]))
 
     {:ok, ref} = Redix.PubSub.subscribe(pubsub, channel, self())
-    assert_receive {:redix_pubsub, ^pubsub, ^ref, :subscribed, _}
+    await_receive({:redix_pubsub, ^pubsub, ^ref, :subscribed, _})
     start_supervised!({AfterCommitReviewRedisPublisher, conn: conn})
 
     payload = %{
@@ -166,8 +167,8 @@ defmodule Dawarich.AfterCommitReviewTest do
     [[args]] = rows("SELECT args FROM oban.oban_jobs")
     assert {:error, _} = AfterCommit.Worker.run(ScratchRepo, args)
     assert :ok = AfterCommit.Worker.run(ScratchRepo, args)
-    assert_receive {:redix_pubsub, ^pubsub, ^ref, :message, %{payload: first}}
-    assert_receive {:redix_pubsub, ^pubsub, ^ref, :message, %{payload: second}}
+    await_receive({:redix_pubsub, ^pubsub, ^ref, :message, %{payload: first}})
+    await_receive({:redix_pubsub, ^pubsub, ^ref, :message, %{payload: second}})
     assert Jason.decode!(first)["track_id"] == 1
     assert Jason.decode!(second)["track_id"] == 2
     refute_receive {:redix_pubsub, ^pubsub, ^ref, :message, _}

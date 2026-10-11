@@ -69,7 +69,10 @@ defmodule Dawarich.Imports.DestroyWorkerTest do
              Dispatch.run(repo: ScratchRepo, oban: oban, now: DateTime.add(scheduled, 1))
 
     assert [["imports", "Dawarich.Imports.DestroyWorker"]] =
-             rows("SELECT queue,worker FROM oban.oban_jobs WHERE id<>$1", [c.job.id])
+             rows(
+               "SELECT queue,worker FROM oban.oban_jobs WHERE id<>$1 AND worker='Dawarich.Imports.DestroyWorker'",
+               [c.job.id]
+             )
   end
 
   test "normal deletion removes all points and publishes durable terminal followups", c do

@@ -1,5 +1,5 @@
 defmodule Dawarich.Imports.CsvRecordsTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Imports.Csv.{Detector, Records}
   @dir Path.expand("../../fixtures/imports/formats", __DIR__)
 

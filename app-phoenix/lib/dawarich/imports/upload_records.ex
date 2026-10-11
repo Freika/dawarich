@@ -15,6 +15,9 @@ defmodule Dawarich.Imports.UploadRecords do
 
     unless locked != [], do: repo.rollback(:not_found)
 
+    if Enum.any?(locked, fn [metadata] -> Dawarich.Storage.NativePurge.pending?(metadata) end),
+      do: repo.rollback(:not_found)
+
     if Map.get(item, :upload_user_id) &&
          not Dawarich.Storage.UploadReceipts.owned?(repo, blob.id, user.id),
        do: repo.rollback(:forbidden)

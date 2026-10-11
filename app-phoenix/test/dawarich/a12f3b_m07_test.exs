@@ -79,7 +79,7 @@ defmodule Dawarich.A12f3bM07Test do
   end
 
   @tag a12f3b_case: "M07b"
-  test "OTP mail enqueue failure preserves source lock and accounting order" do
+  test "OTP enqueue and safe delivery failures preserve source lock and accounting order" do
     {id, key} = user!()
     rows("UPDATE users SET failed_otp_attempts=9 WHERE id=$1", [id])
 
@@ -99,7 +99,7 @@ defmodule Dawarich.A12f3bM07Test do
     assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
     args = %{"user_id" => id, "locale" => "fr", "event_id" => Ecto.UUID.generate()}
     Process.put(:transport_result, {:error, :rejected})
-    assert OtpAccountLockedWorker.perform(%Oban.Job{args: args}) == {:error, :rejected}
+    assert OtpAccountLockedWorker.perform(%Oban.Job{args: args}) == {:error, :delivery_failed}
     assert_received {:mail, _}
     assert Redis.cache_command(["GET", key]) == {:ok, bytes}
     assert Lockout.register_failed_attempt(ScratchRepo, id, now: @now, oban: :mail_lockout) == :ok

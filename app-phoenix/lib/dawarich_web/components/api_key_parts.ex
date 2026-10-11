@@ -4,6 +4,7 @@ defmodule DawarichWeb.ApiKeyParts do
 
   alias DawarichWeb.Params
 
+  attr :native, :boolean, default: false
   attr :locale, :string, required: true
   attr :user, :map, required: true
   attr :base_url, :string, required: true
@@ -16,7 +17,8 @@ defmodule DawarichWeb.ApiKeyParts do
           {t(@locale, "devise.registrations.api_key.current_api_key", %{})}
         </p>
         <div class="mt-2 rounded-xl bg-base-300/70 p-3">
-          <code class="block break-all text-sm sm:text-base" phx-no-format>{@user.api_key}</code>
+          <.credential :if={@native} id="account-current-key" />
+          <code :if={not @native} class="block break-all text-sm sm:text-base" phx-no-format>{@user.api_key}</code>
         </div>
         <p class="mt-3 text-sm text-base-content/70">
           {t(@locale, "devise.registrations.api_key.docs", %{})}
@@ -32,7 +34,17 @@ defmodule DawarichWeb.ApiKeyParts do
           {t(@locale, "devise.registrations.api_key.scan_with_dawarich_app", %{})}
         </p>
         <div class="mt-4 mx-auto max-w-xs overflow-hidden rounded-2xl bg-white p-4 shadow-lg flex justify-center">
-          {Phoenix.HTML.raw(Dawarich.QrSvg.api_key(@base_url <> "/", @user.api_key))}
+          <div
+            :if={@native}
+            id="account-key-qr"
+            phx-hook="CredentialQr"
+            phx-update="ignore"
+            data-auto-reveal="true"
+          >
+          </div>
+          <%= if not @native do %>
+            {Phoenix.HTML.raw(Dawarich.QrSvg.api_key(@base_url <> "/", @user.api_key))}
+          <% end %>
         </div>
       </div>
 
@@ -56,19 +68,42 @@ defmodule DawarichWeb.ApiKeyParts do
               <p class="mt-3 text-sm text-base-content/70">
                 {t(@locale, "devise.registrations.api_key.and_provide_your_api_key", %{})}
               </p>
-              <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm" phx-no-format>{@user.api_key}</code>
+              <.credential :if={@native} id="account-app-key" />
+              <code
+                :if={not @native}
+                class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"
+                phx-no-format
+              >{@user.api_key}</code>
             </section>
             <section class="rounded-2xl border border-base-300/70 bg-base-100/40 p-4">
               <h4 class="text-lg font-bold">
                 {t(@locale, "devise.registrations.api_key.owntracks", %{})}
               </h4>
-              <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm" phx-no-format>{with_key(@base_url <> "/api/v1/owntracks/points", @user.api_key)}</code>
+              <.credential
+                :if={@native}
+                id="account-owntracks-key"
+                path={@base_url <> "/api/v1/owntracks/points"}
+              />
+              <code
+                :if={not @native}
+                class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"
+                phx-no-format
+              >{with_key(@base_url <> "/api/v1/owntracks/points", @user.api_key)}</code>
             </section>
             <section class="rounded-2xl border border-base-300/70 bg-base-100/40 p-4">
               <h4 class="text-lg font-bold">
                 {t(@locale, "devise.registrations.api_key.overland", %{})}
               </h4>
-              <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm" phx-no-format>{with_key(@base_url <> "/api/v1/overland/batches", @user.api_key)}</code>
+              <.credential
+                :if={@native}
+                id="account-overland-key"
+                path={@base_url <> "/api/v1/overland/batches"}
+              />
+              <code
+                :if={not @native}
+                class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"
+                phx-no-format
+              >{with_key(@base_url <> "/api/v1/overland/batches", @user.api_key)}</code>
             </section>
           </div>
         </div>
@@ -93,6 +128,21 @@ defmodule DawarichWeb.ApiKeyParts do
         </button>
       </div>
     </div>
+    """
+  end
+
+  attr :id, :string, required: true
+  attr :path, :string, default: nil
+
+  defp credential(assigns) do
+    ~H"""
+    <code
+      id={@id}
+      phx-hook="CredentialValue"
+      phx-update="ignore"
+      data-path={@path}
+      class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"
+    ></code>
     """
   end
 

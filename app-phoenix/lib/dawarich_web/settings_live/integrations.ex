@@ -1,6 +1,7 @@
 defmodule DawarichWeb.SettingsLive.Integrations do
   @moduledoc false
   use DawarichWeb, :live_view
+  on_mount {DawarichWeb.AccountSettings, :default}
   import DawarichWeb.Icon, only: [icon: 1]
   import DawarichWeb.IntegrationPanes, only: [service_icon: 1, status_icon: 1, pane: 1]
   import DawarichWeb.ListParts, only: [page_header: 1]
@@ -25,7 +26,7 @@ defmodule DawarichWeb.SettingsLive.Integrations do
 
   @impl true
   def handle_params(params, _uri, socket) do
-    user = socket.assigns.current_user
+    user = Accounts.get(socket.assigns.current_user.id)
 
     if params["service"] == "geocoding" and user.admin == true and socket.assigns.self_hosted do
       {:noreply, redirect(socket, to: "/admin/settings")}
@@ -167,6 +168,13 @@ defmodule DawarichWeb.SettingsLive.Integrations do
   defp trek_failure(socket, reason), do: failure(socket, reason)
 
   defp load_page(socket, user, params) do
+    case Accounts.settings_for(user) do
+      {:ok, _} -> load_supported_page(socket, user, params)
+      {:error, _} -> DawarichWeb.AccountSettings.refuse(socket)
+    end
+  end
+
+  defp load_supported_page(socket, user, params) do
     page = page(user, params, socket.assigns)
 
     values =
@@ -178,7 +186,7 @@ defmodule DawarichWeb.SettingsLive.Integrations do
 
     socket
     |> assign(page)
-    |> assign(:current_user, user)
+    |> assign(:current_user, Dawarich.Accounts.Principal.project(user))
     |> assign(:form, to_form(values, as: :settings))
     |> assign(
       :upgrade,

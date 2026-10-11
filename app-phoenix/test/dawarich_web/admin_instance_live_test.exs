@@ -209,14 +209,26 @@ defmodule DawarichWeb.AdminInstanceLiveTest do
     assert Process.alive?(view.pid)
   end
 
-  test "the page stays within the inventory query budget plus the admission read" do
+  test "admin instance business queries retain their budget with named admission reads" do
     {conn, static} =
       NativeAdminUI.queries(fn ->
         get(RailsUser.signed_in(16101) |> RailsUser.connecting_as(16101), "/admin/settings")
       end)
 
     {_, connected} = NativeAdminUI.queries(fn -> {:ok, _view, _} = live(conn) end)
+    static_counts = Dawarich.Test.NativeQueryBudget.classify(static)
+    connected_counts = Dawarich.Test.NativeQueryBudget.classify(connected)
+
     assert length(static) <= 19
-    assert length(connected) <= 17 + 1
+    assert length(connected) - 2 <= 17 + 1
+    assert static_counts["users"] == 5
+    assert connected_counts["users"] == 7
+
+    assert Map.delete(connected_counts, "users") == %{
+             "imports" => 1,
+             "instance_settings" => 2,
+             "notifications" => 1,
+             "other" => 9
+           }
   end
 end

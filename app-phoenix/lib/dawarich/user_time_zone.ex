@@ -6,12 +6,13 @@ defmodule Dawarich.UserTimeZone do
 
   @utc_zones ~w(UTC Etc/UTC UCT Etc/UCT Universal Etc/Universal Zulu Etc/Zulu)
 
-  def local(settings, %NaiveDateTime{} = at) do
+  def local(settings, %NaiveDateTime{} = at, repo \\ Repo) do
     %{rows: [[offset, zone]]} =
       query!(
         "SELECT extract(epoch FROM (($1::timestamp AT TIME ZONE 'UTC') AT TIME ZONE z.name) - $1::timestamp)::int, z.name FROM z",
         [at],
-        settings
+        settings,
+        repo
       )
 
     zoned(at, offset, zone)

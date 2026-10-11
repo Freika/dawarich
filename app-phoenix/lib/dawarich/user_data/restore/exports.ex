@@ -33,7 +33,20 @@ defmodule Dawarich.UserData.Restore.Exports do
         row =
           if row["status"] == 1, do: Map.put(row, "processing_started_at", context.now), else: row
 
-        id = Batch.create_record!(repo, "exports", row, context)
+        {:ok, id} =
+          repo.transaction(fn ->
+            id = Batch.create_record!(repo, "exports", row, context)
+
+            Dawarich.Exports.Events.restored(
+              repo,
+              user,
+              id,
+              Map.get(row, "file_type", 0),
+              :created
+            )
+
+            id
+          end)
 
         if row["status"] == 0 and Map.get(row, "file_type", 0) == 0 and row["file_format"] != 2 do
           Dawarich.Imports.Fence.run(context, fn ->

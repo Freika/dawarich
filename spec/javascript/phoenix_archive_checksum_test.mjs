@@ -46,3 +46,37 @@ test("the hook reports each selected file's checksum under its LiveView entry re
     ["archive_checksum", { ref: "7", checksum: "AELTPXGTbs81Ygn6v0o2PQ==" }],
   ])
 })
+
+test("lazy checksum refuses an aborted import before constructing the hasher", async () => {
+  let release
+  let loads = 0
+  let constructed = 0
+  const deferred = new Promise((resolve) => {
+    release = resolve
+  })
+  const controller = new AbortController()
+  const result = base64Md5(new Blob(["synthetic"]), {
+    signal: controller.signal,
+    loadMd5: () => {
+      loads++
+      return deferred
+    },
+  })
+  assert.equal(loads, 1)
+  controller.abort()
+  release({
+    default: {
+      ArrayBuffer: class {
+        constructor() {
+          constructed++
+        }
+      },
+    },
+  })
+  await assert.rejects(result, (error) => error.name === "AbortError")
+  assert.equal(constructed, 0)
+  assert.equal(
+    await base64Md5(new Blob(["synthetic"])),
+    "Xwa4XhYZsri1b3t1igoxCg==",
+  )
+})

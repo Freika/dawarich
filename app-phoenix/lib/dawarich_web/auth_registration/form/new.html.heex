@@ -1,6 +1,6 @@
 <div class="hero bg-base-200">
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-10 items-start gap-10">
-    <div class="text-center lg:text-left max-w-md">
+    <div class="text-center lg:text-left max-w-md min-w-0 [overflow-wrap:anywhere]">
       <h1 class="text-4xl font-bold text-base-content">{text(@locale, "almost_there")}</h1>
       <p class="py-6 text-base-content/70">
         {text(@locale, "only_a_few_steps_left_until_you_get_control_over")}
@@ -14,14 +14,14 @@
         </li>
       </ol>
     </div>
-    <div class="card flex-shrink-0 w-full max-w-sm shadow-lg bg-base-100 px-5 py-5">
+    <div class="card flex-shrink-0 w-full max-w-sm min-w-0 shadow-lg bg-base-100 px-5 py-5">
       <form
         class="new_user"
         id="new_user"
         action="/users"
         method="post"
         accept-charset="UTF-8"
-        data-turbo="false"
+        data-auth-form
       >
         <input type="hidden" name="authenticity_token" value={@token} />
         <input
@@ -34,7 +34,9 @@
           :if={@messages != []}
           id="error_explanation"
           class="alert alert-error mb-4"
-          data-turbo-cache="false"
+          data-auth-error-summary
+          tabindex="-1"
+          role="alert"
         >
           <ul>
             <li :for={message <- @messages}>{message}</li>
@@ -50,7 +52,7 @@
             autocomplete="email"
             autofocus
             readonly={@invitation != nil}
-            class="input input-bordered w-full"
+            class="input input-bordered w-full min-w-0"
           />
         </div>
         <div class="form-control">
@@ -64,7 +66,7 @@
             name="user[password]"
             autocomplete="new-password"
             aria-describedby="password-hint"
-            class="input input-bordered w-full"
+            class="input input-bordered w-full min-w-0"
           />
           <span id="password-hint" class="label-text-alt text-base-content/60 mt-1">{DawarichWeb.Translate.t(
             @locale,
@@ -82,7 +84,7 @@
             id="user_password_confirmation"
             name="user[password_confirmation]"
             autocomplete="new-password"
-            class="input input-bordered w-full"
+            class="input input-bordered w-full min-w-0"
           />
         </div>
         <div class="form-control mt-6">

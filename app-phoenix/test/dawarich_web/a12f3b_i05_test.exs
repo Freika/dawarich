@@ -126,7 +126,9 @@ defmodule DawarichWeb.A12f3bI05Test do
     assert_received {:immich_request, "PUT", "/api/assets/reject", ["synthetic"], _}
 
     assert [[accepted, _at, _inserted]] =
-             rows("SELECT args,scheduled_at,inserted_at FROM oban.oban_jobs")
+             rows(
+               "SELECT args,scheduled_at,inserted_at FROM oban.oban_jobs WHERE worker='Dawarich.Immich.VerifyWorker'"
+             )
 
     assert accepted["assets"] == [asset("submitted")]
     assert accepted["immich_url"] == url
@@ -135,7 +137,7 @@ defmodule DawarichWeb.A12f3bI05Test do
     assert accepted["unconfirmed"] == []
 
     assert rows(
-             "SELECT scheduled_at = n.created_at + interval '10 seconds' FROM oban.oban_jobs j JOIN notifications n ON n.id=(j.args->>'notification_id')::bigint WHERE n.id=$1",
+             "SELECT scheduled_at = n.created_at + interval '10 seconds' FROM oban.oban_jobs j JOIN notifications n ON n.id=(j.args->>'notification_id')::bigint WHERE j.worker='Dawarich.Immich.VerifyWorker' AND n.id=$1",
              [accepted["notification_id"]]
            ) == [[true]]
 
@@ -179,7 +181,9 @@ defmodule DawarichWeb.A12f3bI05Test do
     assert apply(VerifyWorker, :run, [Repo, Oban, first, [http: http, now: @now]]) == :ok
 
     assert [[child, at, _inserted]] =
-             rows("SELECT args,scheduled_at,inserted_at FROM oban.oban_jobs ORDER BY id")
+             rows(
+               "SELECT args,scheduled_at,inserted_at FROM oban.oban_jobs WHERE worker='Dawarich.Immich.VerifyWorker' ORDER BY id"
+             )
 
     assert Map.take(child, ~w(notification_id assets immich_url pass confirmed unconfirmed)) == %{
              "notification_id" => id,
@@ -192,12 +196,15 @@ defmodule DawarichWeb.A12f3bI05Test do
 
     assert NaiveDateTime.compare(at, DateTime.to_naive(@now)) == :eq
     assert apply(VerifyWorker, :run, [Repo, Oban, first, [http: http, now: @now]]) == :ok
-    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[1]]
+
+    assert rows("SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Immich.VerifyWorker'") ==
+             [[1]]
+
     assert apply(VerifyWorker, :run, [Repo, Oban, child, [http: http, now: @now]]) == :ok
 
     assert [[retry, at, _inserted]] =
              rows(
-               "SELECT args,scheduled_at,inserted_at FROM oban.oban_jobs ORDER BY id DESC LIMIT 1"
+               "SELECT args,scheduled_at,inserted_at FROM oban.oban_jobs WHERE worker='Dawarich.Immich.VerifyWorker' ORDER BY id DESC LIMIT 1"
              )
 
     assert retry["assets"] == [hd(assets)]
@@ -206,10 +213,18 @@ defmodule DawarichWeb.A12f3bI05Test do
     assert retry["unconfirmed"] == []
     assert NaiveDateTime.compare(at, @now |> DateTime.add(30) |> DateTime.to_naive()) == :eq
     assert apply(VerifyWorker, :run, [Repo, Oban, retry, [http: http, now: @now]]) == :ok
-    [[last]] = rows("SELECT args FROM oban.oban_jobs ORDER BY id DESC LIMIT 1")
+
+    [[last]] =
+      rows(
+        "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Immich.VerifyWorker' ORDER BY id DESC LIMIT 1"
+      )
+
     assert last["pass"] == 3
     assert apply(VerifyWorker, :run, [Repo, Oban, last, [http: http, now: @now]]) == :ok
-    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[3]]
+
+    assert rows("SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Immich.VerifyWorker'") ==
+             [[3]]
+
     assert [[1, content]] = rows("SELECT kind,content FROM notifications WHERE id=$1", [id])
     assert content =~ "20"
     assert content =~ "1"

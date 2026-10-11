@@ -85,7 +85,7 @@ defmodule Dawarich.MapPage do
     cond do
       not Ruby.present?(value) -> {:ok, nil}
       not Regex.match?(@numeric, value) -> :not_found
-      true -> find_place(user_id, DawarichWeb.Params.ruby_to_i(value))
+      true -> find_place(user_id, Dawarich.RubyInteger.to_i(value))
     end
   end
 
@@ -122,7 +122,7 @@ defmodule Dawarich.MapPage do
 
   defp import_row(user_id, value) when is_binary(value) do
     with true <- Ruby.present?(value) and Regex.match?(@numeric, value),
-         id when id in 1..@max_id <- DawarichWeb.Params.ruby_to_i(value),
+         id when id in 1..@max_id <- Dawarich.RubyInteger.to_i(value),
          [id, min, max] <-
            Repo.query!(
              "SELECT i.id, min(p.timestamp), max(p.timestamp) FROM imports i LEFT JOIN points p ON p.import_id = i.id " <>

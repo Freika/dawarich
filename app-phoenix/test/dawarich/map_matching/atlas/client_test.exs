@@ -1,5 +1,6 @@
 defmodule Dawarich.MapMatching.Atlas.ClientTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
+  import Dawarich.Test.Await
   import ExUnit.CaptureLog
   import Dawarich.Test.RawHTTP
   alias Dawarich.MapMatching.Atlas.{Client, ConnectionTest, Endpoint}
@@ -124,7 +125,7 @@ defmodule Dawarich.MapMatching.Atlas.ClientTest do
       end)
 
     request = Task.async(fn -> Client.match(c.url, @input, receive_timeout: 25) end)
-    assert_receive :request_received
+    await_receive(:request_received)
     assert {:error, %{code: "connection_failed", transient?: true}} = Task.await(request)
     send(task.pid, :close)
     Task.await(task)

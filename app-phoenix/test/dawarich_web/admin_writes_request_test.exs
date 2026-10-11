@@ -1,11 +1,12 @@
 defmodule DawarichWeb.AdminWritesRequestTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Plug.Conn
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Auth.Admission
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{AdminWritesGate, RailsCsrf}
-  alias DawarichWeb.AdminWrites.{Request, Response}
+  alias DawarichWeb.RailsCsrf
+  alias DawarichWeb.AdminWrites.Response
+  import Dawarich.Test.RetiredM4Requests
 
   @path "/settings/background_jobs"
 
@@ -29,7 +30,8 @@ defmodule DawarichWeb.AdminWritesRequestTest do
     %{session: RailsUser.session(14001), opts: [context: %{self_hosted: true, oidc: false}]}
   end
 
-  test "accepts only canonical background forms with method path csrf and current session", c do
+  test "retired background forms preserve canonical method path csrf and session vectors without effects",
+       c do
     assert Code.ensure_loaded?(Response), "admin writes response module must exist"
     before = snapshot()
 
@@ -45,16 +47,10 @@ defmodule DawarichWeb.AdminWritesRequestTest do
       pairs = if override, do: pairs ++ [{"_method", override}], else: pairs
       raw = URI.encode_query(pairs ++ fields)
       conn = request(c.session, method, @path, raw)
-      assert AdminWritesGate.eligible?(conn, :background, c.opts)
-      {:ok, admitted, actor, params, context} = admit!(conn, :background, c.opts)
-      assert actor.id == 14001
-      assert context.method == effective
-      refute Map.has_key?(params, "_method")
-      same_body = admitted.private.dawarich_raw_body == raw
-      assert same_body, "admitted body bytes changed"
+      assert_retired(conn)
 
       redirected =
-        Response.redirect(admitted, 303, @path, :alert, "Synthetic validation")
+        Response.redirect(conn, 303, @path, :alert, "Synthetic validation")
 
       assert redirected.status == 303 and redirected.resp_body == "" and redirected.halted
 
@@ -121,14 +117,13 @@ defmodule DawarichWeb.AdminWritesRequestTest do
     )
 
     conn = request(c.session, "PATCH", @path, raw)
-    assert AdminWritesGate.eligible?(conn, :background, c.opts)
     Repo.query!("UPDATE users SET deleted_at=now() WHERE id=14001", [], log: false)
     handoff!(assign(conn, :current_user, Accounts.get(14001)), :background, c.opts, raw)
     Repo.query!("UPDATE users SET deleted_at=NULL WHERE id=14001", [], log: false)
     assert snapshot() == before
   end
 
-  test "preserves raw fallback and refuses malformed background forms", c do
+  test "retired background forms reject every malformed transport vector without effects", c do
     before = snapshot()
     token = URI.encode_query(%{"authenticity_token" => csrf(c.session, "PATCH", @path, :global)})
 
@@ -168,8 +163,7 @@ defmodule DawarichWeb.AdminWritesRequestTest do
     assert snapshot() == before
   end
 
-  test "admits the existing background Turbo query independently of its body", c do
-    assert Code.ensure_loaded?(Request), "admin writes request module must exist"
+  test "retired background Turbo query and body fixture vectors have no effects", c do
     session = RailsUser.session(14002)
     before = snapshot()
 
@@ -188,9 +182,7 @@ defmodule DawarichWeb.AdminWritesRequestTest do
           csrf(session, "PATCH", "/settings/background_jobs", :global)
         )
 
-      {:ok, returned, actor, params, _} = admit!(conn, :background, c.opts)
-      refute actor.admin
-      assert params["settings[visits_suggestions_enabled]"] in ["true", "false"]
+      returned = assert_retired(conn)
       assert returned.query_string == query
     end
 
@@ -220,20 +212,18 @@ defmodule DawarichWeb.AdminWritesRequestTest do
   end
 
   @tag :proxy_admission
-  test "proxied background writes preserve CSRF origin and session admission", c do
+  test "retired proxied background writes preserve CSRF origin and session refusal vectors", c do
     for {method, fields} <- [
           {"PATCH", [{"settings[visits_suggestions_enabled]", "true"}]},
           {"POST", [{"job_name", "start_reverse_geocoding"}]}
         ] do
-      action = :background
       path = @path
       raw = role_body(c.session, method, path, fields)
 
       conn = request(c.session, method, path, raw)
       conn = %{conn | remote_ip: {127, 0, 0, 1}}
       conn = put_req_header(conn, "x-forwarded-for", "192.0.2.5, 10.0.0.2")
-      admitted = match?({:ok, _, %{id: 14001}, _, _}, Request.load(conn, action, c.opts))
-      assert admitted, "proxied #{action} should be admitted"
+      assert_retired(conn)
 
       assert DawarichWeb.RailsRemoteIp.ip(conn) == "192.0.2.5"
 
@@ -243,7 +233,7 @@ defmodule DawarichWeb.AdminWritesRequestTest do
             %{conn | req_headers: [{"x-forwarded-for", "192.0.2.6"} | conn.req_headers]},
             put_req_header(conn, "client-ip", "198.51.100.4")
           ] do
-        assert {:handoff, _} = Request.load(refused, action, c.opts)
+        assert_retired(refused)
       end
 
       invalid =
@@ -255,7 +245,7 @@ defmodule DawarichWeb.AdminWritesRequestTest do
         )
 
       invalid = put_req_header(invalid, "x-forwarded-for", "192.0.2.5")
-      assert {:handoff, _} = Request.load(invalid, action, c.opts)
+      assert_retired(invalid)
     end
   end
 
@@ -271,7 +261,7 @@ defmodule DawarichWeb.AdminWritesRequestTest do
     conn = request(c.session, "POST", @path, raw)
     conn = %{conn | remote_ip: {198, 51, 100, 20}}
     conn = put_req_header(conn, "x-forwarded-for", "192.0.2.5")
-    assert match?({:ok, _, _, _, _}, Request.load(conn, :background, c.opts))
+    assert_retired(conn)
     assert DawarichWeb.RailsRemoteIp.ip(conn) == "198.51.100.20"
     conflict = put_req_header(conn, "client-ip", "198.51.100.4")
     assert Admission.context(c.session, conflict, false, true) == {:handoff, :client_ip}
@@ -280,7 +270,7 @@ defmodule DawarichWeb.AdminWritesRequestTest do
       DawarichWeb.RailsRemoteIp.ip(conflict)
     end
 
-    assert match?({:handoff, _}, Request.load(conflict, :background, c.opts))
+    assert_retired(conflict)
   end
 
   defp role_body(session, method, path, fields) do
@@ -295,34 +285,10 @@ defmodule DawarichWeb.AdminWritesRequestTest do
         log: false
       ).rows
 
-  defp admit!(conn, action, opts) do
-    result = Request.load(conn, action, opts)
-    admitted = match?({:ok, _, _, _, _}, result)
-    assert admitted, "request should be admitted"
-    result
-  end
-
-  defp handoff!(conn, action, opts, expected) do
-    result = Request.load(conn, action, opts)
-    handed = match?({:handoff, _}, result)
-    assert handed, "request should hand back before effects"
-    {:handoff, returned} = result
-
-    raw =
-      case returned.private[:dawarich_raw_body] do
-        nil ->
-          {:ok, bytes, _} = read_body(returned)
-          bytes
-
-        bytes ->
-          bytes
-      end
-
-    same = raw == expected
-    assert same, "fallback bytes changed"
-    same_envelope = returned.method == conn.method and returned.req_headers == conn.req_headers
-    assert same_envelope, "fallback headers or method changed"
-    returned
+  defp handoff!(conn, _action, _opts, expected) do
+    {:ok, bytes, returned} = read_body(conn)
+    assert bytes == expected
+    assert_retired(returned)
   end
 
   defp request(session, method, path, raw) do

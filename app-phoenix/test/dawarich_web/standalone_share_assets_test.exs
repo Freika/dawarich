@@ -69,7 +69,7 @@ defmodule DawarichWeb.StandaloneShareAssetsTest do
 
   defp host_conn, do: %{build_conn() | req_headers: [{"host", "www.example.com"}]}
 
-  test "every native JavaScript bare import resolves through Rails pins in standalone and coexistence" do
+  test "surviving legacy JavaScript imports resolve through Rails pins in standalone and coexistence" do
     specifiers =
       for file <- Path.wildcard("priv/static/js/**/*.js"),
           [_, name] <-
@@ -98,7 +98,7 @@ defmodule DawarichWeb.StandaloneShareAssetsTest do
     end
   end
 
-  test "standalone phrase unlock serves every public importmap module and extensionless import",
+  test "standalone phrase unlock loads the native module while retained legacy assets resolve",
        ctx do
     id = user!()
     stamp = NaiveDateTime.utc_now()
@@ -117,7 +117,8 @@ defmodule DawarichWeb.StandaloneShareAssetsTest do
     ])
 
     gate = get(host_conn(), "/s/" <> @id)
-    assert gate.status == 401
+    assert gate.status == 200
+    assert String.contains?(gate.resp_body, "native-public-map") == false
     session = Dawarich.Test.RailsFormRequests.rails_session(gate)
     form = LazyHTML.from_document(gate.resp_body)
 
@@ -135,15 +136,17 @@ defmodule DawarichWeb.StandaloneShareAssetsTest do
     assert unlocked.status == 302
     page = unlocked |> recycle() |> get("/s/" <> @id)
     assert page.status == 200
-    assert page.resp_body =~ ~s(data-controller="shared-trip-map")
+    assert String.contains?(page.resp_body, ~s(id="native-public-map")) == true
+    assert String.contains?(page.resp_body, "data-controller") == false
+    document = LazyHTML.from_document(page.resp_body)
+    assert LazyHTML.query(document, "script[type=importmap]") |> Enum.count() == 0
+    [native_src] = document |> LazyHTML.query("script[type=module]") |> LazyHTML.attribute("src")
+    assert String.starts_with?(native_src, "/native/")
+    native = get(host_conn(), native_src)
+    assert native.status == 200
+    assert get_resp_header(native, "content-type") == ["text/javascript"]
 
-    json =
-      page.resp_body
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("script[type=importmap]")
-      |> LazyHTML.text()
-
-    imports = Jason.decode!(json)["imports"]
+    imports = Assets.rails_imports()
     assert map_size(imports) > 100
 
     for {name, path} <- imports do

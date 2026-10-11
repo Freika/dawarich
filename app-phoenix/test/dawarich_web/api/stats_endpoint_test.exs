@@ -231,8 +231,8 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
         assert {200, _, "rails"} = read_response(client)
       end)
 
-    assert log =~ ~r/\[api\] GET \/api\/v1\/stats 200 \d+ms request_id=[0-9a-f-]{36}/
-    assert log =~ ~r/\[api\] GET \/api\/v1\/digests\/2023 304 \d+ms request_id=[0-9a-f-]{36}/
+    assert log =~ ~r/\[api\] GET \/api\/v1\/stats 200 \d+ms request_id=\[FILTERED\]/
+    assert log =~ ~r/\[api\] GET \/api\/v1\/digests\/2023 304 \d+ms request_id=\[FILTERED\]/
     assert log =~ ~s([api] /api/v1/insights handed to Rails: year parameter "abc")
   end
 

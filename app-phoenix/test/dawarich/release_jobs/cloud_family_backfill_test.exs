@@ -126,7 +126,7 @@ defmodule Dawarich.ReleaseJobs.CloudFamilyBackfillTest do
     assert rows("SELECT status FROM users WHERE id=$1", [inactive]) == [[0]]
   end
 
-  test "L1 entitlement backfill crosses the 200 boundary without notifications or subscription loss" do
+  test "L1 entitlement backfill preserves the exact native invalidation jobs across 200 families" do
     assert {:ok, FamilyBackfill, args} = ReleaseJobs.decode(elem(List.last(@classes), 0), [])
     invalid = put_in(args, ["cursor", "time_zone"], "invalid-zone")
     assert admit(invalid) == {:cancel, :invalid_payload}
@@ -151,11 +151,18 @@ defmodule Dawarich.ReleaseJobs.CloudFamilyBackfillTest do
     assert {:ok, FamilyBackfill, args} = ReleaseJobs.decode(elem(List.last(@classes), 0), [])
     assert run(args) == :ok
     assert rows("SELECT count(*) FROM families WHERE access_until IS NOT NULL") == [[200]]
-    [[next]] = rows("SELECT args FROM oban.oban_jobs")
+    assert_native_jobs(Enum.take(cases, 200))
+
+    [[next]] =
+      rows("SELECT args FROM oban.oban_jobs WHERE worker=$1", [
+        Oban.Worker.to_string(FamilyBackfill)
+      ])
+
     assert next["operation_id"] == args["operation_id"]
     assert run(next) == :ok
     assert run(args) == :ok
     assert run(next) == :ok
+    assert_native_jobs(cases)
     assert rows("SELECT count(*) FROM job_outbox") == [[0]]
     assert rows("SELECT count(*) FROM notifications") == [[0]]
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
@@ -278,6 +285,30 @@ defmodule Dawarich.ReleaseJobs.CloudFamilyBackfillTest do
         "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Families.AutoCreateWorker' ORDER BY id"
       )
       |> List.flatten()
+
+  defp assert_native_jobs(cases) do
+    expected =
+      for {_family, member, paid, expiry} <- cases,
+          user <- [member, paid],
+          job <-
+            [[user, "lapse", "available", nil]] ++
+              if(expiry.year == 2099, do: [[user, "lapse", "scheduled", expiry]], else: []),
+          do: job
+
+    actual =
+      rows(
+        "SELECT (args->>'user_id')::bigint,args->>'kind',state,CASE WHEN state='scheduled' THEN scheduled_at END FROM oban.oban_jobs WHERE worker='Dawarich.Families.EventsWorker'"
+      )
+
+    assert Enum.sort(actual) == Enum.sort(expected)
+
+    assert rows("SELECT DISTINCT worker FROM oban.oban_jobs ORDER BY worker") ==
+             [["Dawarich.Families.EventsWorker"], [Oban.Worker.to_string(FamilyBackfill)]]
+
+    assert rows(
+             "SELECT count(DISTINCT args->>'event_id'),count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Families.EventsWorker'"
+           ) == [[length(expected), length(expected)]]
+  end
 
   defp user!(plan, expiry \\ ~N[2099-12-01 00:00:00]),
     do: Wave6Fixtures.user!(%{"plan" => plan, "active_until" => expiry})

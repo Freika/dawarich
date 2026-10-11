@@ -314,7 +314,7 @@ defmodule Dawarich.Jobs.DispatchTest do
     assert jobs() == []
   end
 
-  test "a decoder that raises quarantines only its own row; the rest of the batch is delivered" do
+  test "a decoder failure filters its event UUID while quarantining only its row and delivering the batch" do
     bad =
       outbox!(
         command_type: "test.raises",
@@ -343,7 +343,8 @@ defmodule Dawarich.Jobs.DispatchTest do
 
     assert [["quarantined", nil, "decoder_error"]] = outbox_state(bad)
     assert [["dispatched", _, nil]] = outbox_state(good)
-    assert log =~ bad
+    assert log =~ "job_outbox [FILTERED] (test.raises) quarantined as decoder_error"
+    refute log =~ bad
     assert log =~ "ArgumentError"
     refute log =~ "decoder bug"
   end

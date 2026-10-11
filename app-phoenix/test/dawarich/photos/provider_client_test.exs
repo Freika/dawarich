@@ -5,6 +5,7 @@ defmodule Dawarich.Photos.ProviderClientTest do
   alias Dawarich.{Redis, Repo}
 
   @cap 32 * 1024 * 1024
+  @beyond_test_timeout 120_000
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -56,6 +57,8 @@ defmodule Dawarich.Photos.ProviderClientTest do
   test "every photo response is capped during streaming before the provider finishes", %{
     user: user
   } do
+    Dawarich.ApiEndpointCase.put_photo_source_timeout(@beyond_test_timeout)
+
     paths = [
       {:legacy, "immich", 200},
       {:thumbnail, "immich", 200},
@@ -82,14 +85,14 @@ defmodule Dawarich.Photos.ProviderClientTest do
           end)
 
           :gen_tcp.send(socket, "1\r\nx\r\n")
-          closed = :gen_tcp.recv(socket, 0, 1000)
+          closed = :gen_tcp.recv(socket, 0, :infinity)
           :gen_tcp.send(socket, "0\r\n\r\n")
           closed
         end)
 
       settings = settings(user, source, base)
       result = fetch(path, source, settings, user)
-      {_head, closed} = Task.await(task)
+      {_head, closed} = Task.await(task, :infinity)
       assert closed == {:error, :closed}, "#{path}/#{source}/#{status} buffered to completion"
       refute match?({:ok, body} when is_binary(body), result)
       refute match?({:ok, 200, %{"failed" => 0}}, result)
@@ -107,12 +110,12 @@ defmodule Dawarich.Photos.ProviderClientTest do
       {base, task} =
         provider(fn socket ->
           reply(socket, "HTTP/1.1 #{status} OK\r\nContent-Length: #{@cap + 1}\r\n\r\n")
-          :gen_tcp.recv(socket, 0, 1000)
+          :gen_tcp.recv(socket, 0, :infinity)
         end)
 
       settings = settings(user, "immich", base)
       refute match?({:ok, _}, Thumbnail.fetch(settings, "immich", "asset", user.id))
-      assert {_, {:error, :closed}} = Task.await(task)
+      assert {_, {:error, :closed}} = Task.await(task, :infinity)
     end
   end
 

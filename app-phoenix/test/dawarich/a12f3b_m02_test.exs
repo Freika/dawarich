@@ -56,14 +56,14 @@ defmodule Dawarich.A12f3bM02Test do
   end
 
   @tag a12f3b_case: "M02b"
-  test "Devise mail failure preserves retry and recovery state ordering" do
+  test "safe Devise mail failure preserves retry and recovery state ordering" do
     for {kind, column} <- [
           reset_password_instructions: :reset_password_token,
           unlock_instructions: :unlock_token
         ] do
       {id, args, _} = queued!(kind, column)
       Process.put(:transport_result, {:error, :rejected})
-      assert MailWorker.perform(%Oban.Job{args: args}) == {:error, :rejected}
+      assert MailWorker.perform(%Oban.Job{args: args}) == {:error, :delivery_failed}
       assert_received {:mail, first}
       assert rows("SELECT #{column} FROM users WHERE id=$1", [id]) == [[args["digest"]]]
 

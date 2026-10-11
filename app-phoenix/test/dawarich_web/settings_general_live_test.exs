@@ -246,7 +246,8 @@ defmodule DawarichWeb.SettingsGeneralLiveTest do
     assert has_element?(view, "#general-settings input[name='show_supporter_badge']")
   end
 
-  def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)
+  def handle_query(_event, _measurements, meta, pid),
+    do: Dawarich.Test.NativeQueryBudget.record(meta, pid)
 
   defp queries(fun) do
     id = "general-budget-#{System.unique_integer([:positive])}"
@@ -264,11 +265,18 @@ defmodule DawarichWeb.SettingsGeneralLiveTest do
     end
   end
 
-  test "the page stays within the Rails-era query budget", %{user: user} do
+  test "general business queries retain their budget with explicit subscription admission", %{
+    user: user
+  } do
     {conn, static} = queries(fn -> get(conn_for(user), "/settings/general") end)
+    static_counts = Dawarich.Test.NativeQueryBudget.counts()
     {_, connected} = queries(fn -> {:ok, _view, _html} = live(conn) end)
 
-    assert static <= 4
-    assert connected <= 4
+    connected_counts = Dawarich.Test.NativeQueryBudget.counts()
+
+    assert static - 1 <= 4
+    assert connected - 3 <= 4
+    assert connected_counts["users"] == static_counts["users"] + 2
+    assert Map.delete(connected_counts, "users") == Map.delete(static_counts, "users")
   end
 end

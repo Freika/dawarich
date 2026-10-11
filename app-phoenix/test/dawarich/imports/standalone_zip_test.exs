@@ -1,5 +1,6 @@
 defmodule Dawarich.Imports.StandaloneZipTest do
   use Dawarich.JobsCase
+  import Dawarich.Test.Await
   import Phoenix.ConnTest
   import Plug.Conn
   alias Dawarich.{Repo, Jobs}
@@ -64,7 +65,7 @@ defmodule Dawarich.Imports.StandaloneZipTest do
   end
 
   for mode <- ["on", "off"] do
-    test "ZIP parent waits for all five terminal children in #{mode}",
+    test "native ZIP claim waits for all five terminal children in #{mode}",
          c do
       mode = unquote(mode)
 
@@ -86,7 +87,7 @@ defmodule Dawarich.Imports.StandaloneZipTest do
              ScratchRepo
            )
 
-         session = RailsUser.session(user.id)
+         scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(user.id), "en")
 
          for type <-
                ~w(imports.process_normal imports.process_gpx imports.update_points_count imports.prepared_download_purge),
@@ -94,18 +95,12 @@ defmodule Dawarich.Imports.StandaloneZipTest do
 
          Dawarich.EnhancedImportCase.with_env("DAWARICH_RAILS", mode, fn ->
            {:ok, {_, bytes}} = :zip.create(~c"mixed.zip", members(), [:memory])
-           signed = direct_upload!(session, user, c.root, bytes)
+           ref = direct_upload!(scope, c.root, bytes)
+           assert {:ok, [_]} = Dawarich.Imports.create(scope, [ref], repo: ScratchRepo)
 
-           response =
-             request(
-               session,
-               :post,
-               "/imports",
-               Plug.Conn.Query.encode(%{"import" => %{"files" => [signed]}}),
-               "application/x-www-form-urlencoded"
-             )
+           assert [["claimed"]] ==
+                    rows("SELECT state FROM phoenix.native_uploads WHERE reference=$1", [ref])
 
-           assert response.status == 303
            assert [[parent]] = rows("SELECT id FROM imports WHERE user_id=$1", [user.id])
 
            assert %{dispatched: 1} =
@@ -202,7 +197,7 @@ defmodule Dawarich.Imports.StandaloneZipTest do
                end)
              end)
 
-           assert_receive :child_locked
+           await_receive(:child_locked)
 
            try do
              assert {:snooze, 5} = Dawarich.Imports.ProcessWorker.perform(parent_job)
@@ -260,28 +255,27 @@ defmodule Dawarich.Imports.StandaloneZipTest do
     ]
   end
 
-  defp direct_upload!(session, user, root, bytes) do
-    catalog = %{default: "local", services: %{"local" => %{service: "local", root: root}}}
+  defp direct_upload!(scope, root, bytes) do
+    storage = %{service: "local", root: root}
+    catalog = %{default: "local", services: %{"local" => storage}}
 
-    body = %{
-      "blob" => %{
-        "filename" => "mixed.zip",
-        "byte_size" => byte_size(bytes),
-        "checksum" => Base.encode64(:crypto.hash(:md5, bytes)),
-        "content_type" => "application/zip"
-      }
+    entry = %{
+      filename: "mixed.zip",
+      byte_size: byte_size(bytes),
+      checksum: Base.encode64(:crypto.hash(:md5, bytes)),
+      content_type: "application/zip"
     }
 
-    conn =
-      Plug.Test.conn(:post, "http://www.example.com/rails/active_storage/direct_uploads", body)
-      |> assign(:rails_session, session)
-      |> assign(:current_user, user)
-      |> put_req_header("x-csrf-token", DawarichWeb.RailsCsrf.masked_token(session))
+    assert {:ok, ref} =
+             Dawarich.Uploads.reserve(scope, entry, %{repo: ScratchRepo, storage: storage})
 
-    response = DawarichWeb.ActiveStorage.call(conn, action: :direct_upload, storage: catalog)
-    assert response.status == 200
-    blob = Jason.decode!(response.resp_body)
-    url = blob["direct_upload"]["url"]
+    assert {:ok, grant} =
+             Dawarich.Uploads.target(scope, ref, %{},
+               repo: ScratchRepo,
+               services: catalog.services
+             )
+
+    url = DawarichWeb.NativeUploadTarget.response(grant, "http://www.example.com").url
 
     token =
       url |> URI.parse() |> Map.fetch!(:path) |> String.split("/") |> List.last() |> URI.decode()
@@ -298,16 +292,7 @@ defmodule Dawarich.Imports.StandaloneZipTest do
       )
 
     assert response.status == 204
-    blob["signed_id"]
-  end
-
-  defp request(session, method, path, body, type) do
-    build_conn()
-    |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-    |> put_req_header("x-csrf-token", DawarichWeb.RailsCsrf.masked_token(session))
-    |> put_req_header("content-type", type)
-    |> put_req_header("content-length", Integer.to_string(byte_size(body)))
-    |> dispatch(DawarichWeb.Endpoint, method, path, body)
+    ref
   end
 
   defp job!(id) do

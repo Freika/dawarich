@@ -21,10 +21,16 @@ defmodule DawarichWeb.NativeOnboarding do
       JS.hide(to: Enum.map_join(@screens -- [screen], ", ", &"##{&1}"))
       |> JS.show(to: "##{screen}")
 
+    js =
+      if screen == "onboarding-track-screen",
+        do: JS.dispatch(js, "dawarich:reveal-qr", to: "#onboarding-api-qr"),
+        else: js
+
     if event, do: JS.dispatch(js, "dawarich:track", detail: %{event: event}), else: js
   end
 
   def modal(assigns) do
+    assigns = Map.put_new(assigns, :http, false)
     %{current_user: user, navbar: %{family: family}} = assigns
 
     assigns =
@@ -32,12 +38,22 @@ defmodule DawarichWeb.NativeOnboarding do
         family_card: family.available or family.member,
         family_href: if(family.available, do: "/family", else: "/family/new"),
         demo_loaded: assigns.navbar.imports.demo,
+        demo_loading: Map.get(assigns, :demo_status) == :loading,
+        target: Map.get(assigns, :target),
         formats: @formats,
-        legacy_trial: user.status == 2 and user.subscription_source in [nil, 0]
+        legacy_trial: user.status == 2 and user.subscription_source in [nil, 0],
+        auto: Map.get(assigns, :auto_open, false) == true and assigns.navbar.onboarding == true
       )
 
     ~H"""
-    <dialog id="getting_started" class="modal">
+    <dialog
+      id="getting_started"
+      class="modal"
+      phx-hook={@target && "Onboarding"}
+      data-auto={@target && to_string(@auto)}
+      data-user-id={@target && @current_user.id}
+      phx-target={@target}
+    >
       <form id="onboarding-dismiss" method="dialog"></form>
       <div class="modal-box max-w-2xl bg-base-200">
         <div id="onboarding-choice-screen">
@@ -51,7 +67,9 @@ defmodule DawarichWeb.NativeOnboarding do
             <button
               type="button"
               class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-primary/40 hover:border-primary sm:col-span-2"
-              phx-click={show("onboarding-track-screen", "onboarding_track_selected")}
+              phx-click={!@http && show("onboarding-track-screen", "onboarding_track_selected")}
+              data-auth-onboarding-screen={@http && "onboarding-track-screen"}
+              data-auth-track-event={@http && "onboarding_track_selected"}
             >
               <div class="card-body p-5">
                 <div class="flex items-center gap-2 mb-2">
@@ -67,7 +85,9 @@ defmodule DawarichWeb.NativeOnboarding do
             <button
               type="button"
               class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-secondary"
-              phx-click={show("onboarding-import-screen", "onboarding_import_selected")}
+              phx-click={!@http && show("onboarding-import-screen", "onboarding_import_selected")}
+              data-auth-onboarding-screen={@http && "onboarding-import-screen"}
+              data-auth-track-event={@http && "onboarding_import_selected"}
             >
               <div class="card-body p-5">
                 <div class="flex items-center gap-2 mb-2">
@@ -79,29 +99,38 @@ defmodule DawarichWeb.NativeOnboarding do
                 </p>
               </div>
             </button>
-            <form method="post" action="/settings/onboarding/demo_data" class="contents">
+            <button
+              :if={@target}
+              id="native-demo-load"
+              type="button"
+              disabled={@demo_loaded or @demo_loading}
+              phx-click={
+                JS.dispatch("dawarich:track", detail: %{event: "onboarding_demo_selected"})
+                |> JS.push("demo:load", target: @target)
+              }
+              class={demo_class(@demo_loaded or @demo_loading)}
+            >
+              <.demo_body locale={@locale} loaded={@demo_loaded} loading={@demo_loading} />
+            </button>
+            <form
+              :if={!@target}
+              data-auth-form={@http}
+              data-auth-track-event={@http && "onboarding_demo_selected"}
+              method="post"
+              action="/settings/onboarding/demo_data"
+              class="contents"
+            >
               <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
               <button
                 type="submit"
                 disabled={@demo_loaded}
                 phx-click={
-                  JS.dispatch("dawarich:track", detail: %{event: "onboarding_demo_selected"})
+                  !@http &&
+                    JS.dispatch("dawarich:track", detail: %{event: "onboarding_demo_selected"})
                 }
-                class={"card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-accent #{if @demo_loaded, do: "opacity-50 pointer-events-none"}"}
+                class={demo_class(@demo_loaded)}
               >
-                <div class="card-body p-5">
-                  <div class="flex items-center gap-2 mb-2">
-                    <Icon.icon name="map" class="w-6 h-6 text-accent" />
-                    <h4 class="text-lg font-semibold">
-                      {if @demo_loaded,
-                        do: t(@locale, "javascript.demo.already_loaded", %{}),
-                        else: tm(@locale, "explore_with_demo_data")}
-                    </h4>
-                  </div>
-                  <p class="text-sm text-base-content/70">
-                    {tm(@locale, "load_sample_location_data_3_days_in_berlin_to_see")}
-                  </p>
-                </div>
+                <.demo_body locale={@locale} loaded={@demo_loaded} loading={false} />
               </button>
             </form>
             <a
@@ -131,7 +160,8 @@ defmodule DawarichWeb.NativeOnboarding do
             <button
               type="button"
               class="btn btn-ghost btn-sm btn-circle"
-              phx-click={show("onboarding-choice-screen")}
+              phx-click={!@http && show("onboarding-choice-screen")}
+              data-auth-onboarding-screen={@http && "onboarding-choice-screen"}
             >
               <Icon.icon name="arrow-left" class="w-4 h-4" />
             </button>
@@ -154,12 +184,50 @@ defmodule DawarichWeb.NativeOnboarding do
             <a class="btn btn-primary" href="/imports/new">{tm(@locale, "import_files")}</a>
           </div>
         </div>
-        <.track_screen locale={@locale} base_url={@base_url} current_user={@current_user} native />
+        <.track_screen
+          locale={@locale}
+          base_url={@base_url}
+          current_user={@current_user}
+          native
+          http={@http}
+        />
       </div>
       <form method="dialog" class="modal-backdrop">
         <button>{tm(@locale, "close")}</button>
       </form>
     </dialog>
+    """
+  end
+
+  defp demo_class(inactive),
+    do:
+      "card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-accent" <>
+        if(inactive, do: " opacity-50 pointer-events-none", else: "")
+
+  attr :locale, :string, required: true
+  attr :loaded, :boolean, required: true
+  attr :loading, :boolean, required: true
+
+  defp demo_body(assigns) do
+    ~H"""
+    <div class="card-body p-5">
+      <div class="flex items-center gap-2 mb-2">
+        <span :if={@loading} class="loading loading-spinner loading-md text-accent"></span>
+        <Icon.icon :if={!@loading} name="map" class="w-6 h-6 text-accent" />
+        <h4 class="text-lg font-semibold min-w-0">
+          {cond do
+            @loading -> t(@locale, "javascript.demo.creating", %{})
+            @loaded -> t(@locale, "javascript.demo.already_loaded", %{})
+            true -> tm(@locale, "explore_with_demo_data")
+          end}
+        </h4>
+      </div>
+      <p class="text-sm text-base-content/70">
+        {if @loading,
+          do: t(@locale, "javascript.demo.creating_help", %{}),
+          else: tm(@locale, "load_sample_location_data_3_days_in_berlin_to_see")}
+      </p>
+    </div>
     """
   end
 end

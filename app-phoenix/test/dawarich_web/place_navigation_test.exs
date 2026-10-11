@@ -2,7 +2,6 @@ defmodule DawarichWeb.PlaceNavigationTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
   import Plug.Conn
-  import Dawarich.Test.RailsFormRequests
   alias Dawarich.Test.{FrameSeeds, RailsUser, ParityHTML, MapStimulus}
   @endpoint DawarichWeb.Endpoint
   @effects File.read!("test/fixtures/places/remaining/effects.json")
@@ -31,7 +30,7 @@ defmodule DawarichWeb.PlaceNavigationTest do
     )
   end
 
-  test "direct links redirect and nearby hands provider calls back" do
+  test "standalone direct links and nearby preserve retained map effects" do
     assert Code.ensure_loaded?(DawarichWeb.PlaceNavigation)
     saved = Map.new(@providers, &{&1, System.get_env(&1)})
     for key <- @providers, do: System.delete_env(key)
@@ -45,7 +44,14 @@ defmodule DawarichWeb.PlaceNavigationTest do
       "DELETE FROM instance_settings WHERE key IN ('photon_api_host','geoapify_api_key','nominatim_api_host','locationiq_api_key')"
     )
 
-    upstream = upstream!()
+    saved_mode = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if saved_mode,
+        do: System.put_env("DAWARICH_RAILS", saved_mode),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
 
     for entry <- @effects, entry["request"]["method"] == "get" do
       user = FrameSeeds.seed_place_remainder!(entry)
@@ -54,18 +60,12 @@ defmodule DawarichWeb.PlaceNavigationTest do
       if entry["name"] == "nearby_enabled_zero",
         do: System.put_env("PHOTON_API_HOST", "photon.example.invalid")
 
-      conn =
-        if (String.starts_with?(entry["name"], "foreign_") and entry["request"]["framed"]) or
-             entry["request"]["accept"] == "text/vnd.turbo-stream.html" do
-          {{line, _}, conn} = forwarded(upstream, fn -> request(entry, user) end)
-          assert conn.status == 204
-          assert line =~ "GET #{entry["request"]["path"]} HTTP/1.1"
-          nil
-        else
-          request(entry, user)
-        end
+      conn = request(entry, user)
 
-      if conn do
+      if expected["status"] == nil do
+        assert conn.status == 406, entry["name"]
+        assert conn.resp_body == ""
+      else
         assert conn.status == expected["status"], entry["name"]
 
         if expected["headers"]["location"],
@@ -82,7 +82,8 @@ defmodule DawarichWeb.PlaceNavigationTest do
                  MapStimulus.attributes(golden, ["turbo-frame"]),
                entry["name"]
 
-        if entry["request"]["framed"], do: assert(conn.resp_body =~ "place-drawer")
+        if entry["request"]["framed"] and conn.status == 200,
+          do: assert(conn.resp_body =~ "place-drawer")
       end
     end
 

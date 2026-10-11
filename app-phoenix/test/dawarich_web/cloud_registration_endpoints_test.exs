@@ -1,5 +1,6 @@
 defmodule DawarichWeb.CloudRegistrationEndpointsTest do
   use Dawarich.JobsCase
+  import Dawarich.Test.Await
   import Plug.Conn
   import Dawarich.AnomalyCase
   alias Dawarich.{RailsCookies, RailsSecret}
@@ -225,7 +226,7 @@ defmodule DawarichWeb.CloudRegistrationEndpointsTest do
 
     pids =
       for _ <- tasks do
-        assert_receive {:ready, pid}
+        await_receive({:ready, pid})
         pid
       end
 

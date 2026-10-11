@@ -3,7 +3,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
   alias Dawarich.Repo
-  alias Dawarich.Test.{FrameSeeds, RailsUser}
+  alias Dawarich.Test.{FrameSeeds, RailsUser, ImportsExportsSeeds}
 
   @endpoint DawarichWeb.Endpoint
   @markers [
@@ -21,7 +21,15 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     "onclick=",
     "onchange="
   ]
-  @sessions [:native_pages, :native_admin, :native_background]
+  @sessions [
+    :native_pages,
+    :native_admin,
+    :native_background,
+    :native_places,
+    :native_jobs,
+    :native_notifications,
+    :native_data
+  ]
   @secret_free_change_forms ["integration-settings"]
 
   setup do
@@ -59,6 +67,30 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
       }
     ])
 
+    Dawarich.Test.StatsSeeds.digest!(user.id, %{year: 2024})
+    FrameSeeds.stat!(user.id, 2024, 3)
+
+    ImportsExportsSeeds.import!(%{
+      id: 84111,
+      user_id: user.id,
+      raw_data: %{"waypoints_seen" => 1}
+    })
+
+    ImportsExportsSeeds.export!(%{id: 84111, user_id: user.id})
+    stamp = ~N[2026-03-01 10:00:00]
+
+    Repo.insert_all("notifications", [
+      %{
+        id: 84111,
+        user_id: user.id,
+        kind: 0,
+        title: "Native structural gate",
+        content: "Synthetic safe content",
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
     %{user: user}
   end
 
@@ -71,7 +103,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
             "input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea"
           )
           |> LazyHTML.filter(":not(label *):not([aria-label]):not([aria-labelledby])"),
-        id = List.first(LazyHTML.attribute(control, "id")),
+        id <- [List.first(LazyHTML.attribute(control, "id"))],
         is_nil(id) or Enum.count(LazyHTML.query(doc, ~s(label[for="#{id}"]))) != 1,
         do: LazyHTML.to_html(control)
   end
@@ -92,7 +124,12 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     end)
     |> Enum.map(fn %{path: path} ->
       id = if String.starts_with?(path, "/settings/users"), do: "8411", else: "84111"
-      String.replace(path, ":id", id)
+
+      path
+      |> String.replace(":id", id)
+      |> String.replace(":year", "2024")
+      |> String.replace(":month", "3")
+      |> String.replace(":key", "country_de")
     end)
   end
 
@@ -158,6 +195,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     saving =
       for path <- paths do
         conn = get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
+        assert conn.status == 200, path
         static = html_response(conn, 200)
         {:ok, _view, connected} = live(conn)
 
@@ -185,6 +223,328 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     assert Enum.count(saving, & &1) >= 2
   end
 
+  test "native map selection and dialog commands retain accessible Hotwire-free controls", %{
+    user: user
+  } do
+    place = FrameSeeds.place!(user.id, 84112, "Cafe")
+
+    visit =
+      FrameSeeds.visit!(user.id, 84112, %{
+        place_id: place,
+        status: 0,
+        started_at: ~N[2026-03-30 09:00:00],
+        ended_at: ~N[2026-03-30 10:00:00]
+      })
+
+    conn =
+      RailsUser.signed_in(user.id)
+      |> RailsUser.connecting_as(user.id)
+      |> Plug.Test.init_test_session(%{})
+      |> Plug.Conn.put_private(:phoenix_endpoint, @endpoint)
+      |> Map.merge(%{
+        request_path: "/map/v2",
+        path_info: ["map", "v2"],
+        query_string: "start_at=2026-03-30T00:00&end_at=2026-03-30T23:59&panel=timeline"
+      })
+      |> Plug.Conn.fetch_query_params()
+      |> Dawarich.Test.NativeM6IntegrationRouter.call([])
+
+    {:ok, view, _} = live(conn)
+    render_async(view, 5000)
+    render_hook(view, "timeline:select_day", %{"date" => "2026-03-30"})
+    render_hook(view, "timeline:select", %{"id" => to_string(visit)})
+    assert_native_controls(render(view))
+    render_hook(view, "visits:bulk", %{"action" => "confirm", "ids" => [to_string(visit)]})
+    assert_reply(view, %{ok: true})
+    render_async(view, 5000)
+    render_hook(view, "visit:edit", %{"id" => to_string(visit)})
+    view |> form("#native-visit-note-form", note: %{body: "Gate note"}) |> render_submit()
+    assert render(view) =~ "Gate note"
+    assert_native_controls(render(view))
+    render_hook(view, "visit:close", %{})
+    render_hook(view, "map:panel", %{"panel" => "settings"})
+    assert_native_controls(render(view))
+    GenServer.stop(view.pid)
+  end
+
+  test "canonical milestone six documents and changed forms retain native accessible controls", %{
+    user: user
+  } do
+    Dawarich.Test.TripsSeeds.trip!(%{
+      id: 84112,
+      user_id: user.id,
+      name: "Native control trip",
+      path: [[13.4, 52.5], [13.5, 52.6]],
+      started_at: ~N[2026-06-01 00:00:00],
+      ended_at: ~N[2026-06-02 23:59:59]
+    })
+
+    stamp = NaiveDateTime.utc_now()
+
+    Repo.insert_all("families", [
+      %{
+        id: 84112,
+        creator_id: user.id,
+        name: "Control family",
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    Repo.insert_all("family_memberships", [
+      %{
+        id: 84112,
+        family_id: 84112,
+        user_id: user.id,
+        role: 0,
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    uuid = Ecto.UUID.generate()
+
+    Repo.insert_all("shared_links", [
+      %{
+        id: Ecto.UUID.dump!(uuid),
+        user_id: user.id,
+        resource_type: 0,
+        resource_id: 84112,
+        name: "Control share",
+        settings: %{"show_photos" => false},
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    for path <- ["/map", "/map/v2", "/trips/84112", "/family", "/s/#{uuid}"] do
+      conn = get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
+      assert_native_controls(html_response(conn, 200))
+      {:ok, view, connected} = live(conn)
+      assert_native_controls(connected)
+
+      cond do
+        path in ["/map", "/map/v2"] ->
+          assert has_element?(view, "#native-map-search[autocomplete=off]")
+
+          for panel <- ["settings", "timeline", "insights", ""] do
+            render_hook(view, "map:panel", %{"panel" => panel})
+            render_async(view, 5000)
+            assert_native_controls(render(view))
+          end
+
+        path == "/trips/84112" ->
+          render_click(view, "trip:note:edit", %{"day" => "2026-06-01"})
+          assert has_element?(view, "#native-trip-note-form textarea[aria-label]")
+          assert_native_controls(render(view))
+          render_click(view, "trip:note:cancel", %{})
+          assert_native_controls(render(view))
+
+        path == "/family" ->
+          view
+          |> form("#native-family-invite", family_invitation: %{email: ""})
+          |> render_submit()
+
+          assert has_element?(view, "[role=alert]")
+          assert_native_controls(render(view))
+
+        true ->
+          :ok
+      end
+
+      GenServer.stop(view.pid)
+    end
+  end
+
+  test "native job pages and open dialogs have one accessible label and no Hotwire runtime", %{
+    user: user
+  } do
+    paths = native_paths()
+
+    for path <-
+          ~w(/imports /imports/new /imports/84111 /imports/84111/edit /exports /notifications /notifications/84111),
+        do: assert(path in paths)
+
+    for locale <- ~w(en de),
+        path <-
+          ~w(/imports /imports/new /imports/84111 /imports/84111/edit /exports /notifications /notifications/84111) do
+      conn =
+        get(
+          RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id),
+          path <> "?locale=" <> locale
+        )
+
+      {:ok, view, connected} = live(conn)
+      for html <- [html_response(conn, 200), connected], do: assert_native_controls(html)
+
+      events =
+        case path do
+          "/exports" ->
+            {"choose_export_delete", %{"id" => "84111"}, "cancel_export_delete",
+             "export-delete-dialog"}
+
+          "/notifications" ->
+            {"choose_notifications_delete_all", %{}, "cancel_notifications_delete_all",
+             "notifications-delete-dialog"}
+
+          "/notifications/84111" ->
+            {"choose_notification_delete", %{}, "cancel_notification_delete",
+             "notification-delete-dialog"}
+
+          _ ->
+            nil
+        end
+
+      if events do
+        {choose, params, cancel, id} = events
+        render_hook(view, choose, params)
+        assert has_element?(view, "##{id}[open][aria-labelledby]")
+        assert_native_controls(Dawarich.Test.NativeAdminUI.html(view))
+        render_hook(view, cancel, %{})
+        refute has_element?(view, "##{id}[open]")
+      end
+
+      if path == "/imports/84111" do
+        assert has_element?(view, "#extraction-dialog-84111[aria-labelledby]")
+
+        assert has_element?(
+                 view,
+                 ~s(#extraction-dialog-84111 form[phx-submit="extract_import"] input[type=submit][phx-disable-with])
+               )
+      end
+
+      GenServer.stop(view.pid)
+    end
+
+    assert [[1]] = Repo.query!("SELECT count(*) FROM exports WHERE id=84111", [], log: false).rows
+
+    assert [[1]] =
+             Repo.query!("SELECT count(*) FROM notifications WHERE id=84111", [], log: false).rows
+  end
+
+  test "native family and sharing pages and open confirmations have accessible names without Hotwire" do
+    saved = Map.new(~w(SELF_HOSTED DAWARICH_RAILS), &{&1, System.get_env(&1)})
+    System.put_env("SELF_HOSTED", "true")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      for {key, value} <- saved,
+          do: if(value, do: System.put_env(key, value), else: System.delete_env(key))
+    end)
+
+    owner = FrameSeeds.seed_family!(FrameSeeds.load_family("owner_en"))
+    manager = FrameSeeds.seed_management!("hub_active_shared_en")
+
+    Repo.query!("UPDATE users SET active_until='3026-01-01' WHERE id=$1", [manager.id],
+      log: false
+    )
+
+    Repo.query!("UPDATE family_location_requests SET expires_at='3026-01-01' WHERE status=0", [],
+      log: false
+    )
+
+    FrameSeeds.track!(manager.id, 99701, %{
+      start_at: ~N[2026-10-03 08:00:00],
+      end_at: ~N[2026-10-03 09:00:00],
+      dominant_mode: 1
+    })
+
+    FrameSeeds.stat!(manager.id, 2026, 10)
+
+    Repo.query!(
+      "INSERT INTO digests(user_id,year,period_type,created_at,updated_at) VALUES($1,2026,1,NOW(),NOW())",
+      [manager.id],
+      log: false
+    )
+
+    paths = [
+      {owner.id, "/family"},
+      {owner.id, "/family/edit"},
+      {owner.id, "/family/invitations"},
+      {90103, "/family/new"},
+      {90102, "/family/location_requests/94001"},
+      {manager.id, "/share_links/hub"},
+      {manager.id, "/share_links/hub?tab=shared"},
+      {manager.id, "/share_links/live/new"},
+      {manager.id, "/share_links/timeline/new"},
+      {manager.id, "/trips/99101/share_link/new"},
+      {manager.id, "/tracks/99701/share_link/new"},
+      {manager.id, "/stats/2026/10/sharing"},
+      {manager.id, "/digests/2026/sharing"},
+      {manager.id, "/achievements/country_fr/sharing"}
+    ]
+
+    routes =
+      DawarichWeb.Router.__routes__()
+      |> Enum.filter(fn
+        %{metadata: %{phoenix_live_view: {_, _, _, %{name: name}}}} ->
+          name in [:family_pages, :native_sharing]
+
+        _ ->
+          false
+      end)
+
+    assert length(routes) == 12
+
+    assert %{phoenix_live_view: {DawarichWeb.FamiliesLive.NativeMap, _, _, _}} =
+             Phoenix.Router.route_info(DawarichWeb.Router, "GET", "/family", "a")
+
+    for locale <- ~w(en de), {id, path} <- paths do
+      uri = path <> if(String.contains?(path, "?"), do: "&", else: "?") <> "locale=" <> locale
+      conn = get(RailsUser.signed_in(id) |> RailsUser.connecting_as(id), uri)
+      {:ok, view, connected} = live(conn)
+      for html <- [html_response(conn, 200), connected], do: assert_native_controls(html)
+
+      events =
+        case path do
+          "/family" ->
+            assert has_element?(view, ~s(button[phx-click="family:member"][data-confirm]))
+            nil
+
+          "/share_links/live/new" ->
+            {"sharing_prepare", %{"action" => "revoke"}, "sharing_cancel", "sharing-confirm"}
+
+          _ ->
+            nil
+        end
+
+      if events do
+        {prepare, attrs, cancel, dialog} = events
+        render_hook(view, prepare, attrs)
+        assert has_element?(view, "##{dialog}[data-pending=true]")
+        html = Dawarich.Test.NativeAdminUI.html(view)
+        assert_native_controls(html)
+
+        named =
+          html
+          |> LazyHTML.from_document()
+          |> LazyHTML.query("##{dialog}")
+          |> LazyHTML.attribute("aria-labelledby")
+
+        assert [title] = named
+
+        assert html
+               |> LazyHTML.from_document()
+               |> LazyHTML.query("##{title}")
+               |> LazyHTML.text()
+               |> String.trim() != ""
+
+        render_hook(view, cancel, %{})
+        refute has_element?(view, "##{dialog}[data-pending=true]")
+      end
+
+      GenServer.stop(view.pid)
+    end
+
+    assert [[1]] =
+             Repo.query!("SELECT count(*) FROM family_memberships WHERE id=92002", [], log: false).rows
+
+    assert [[7]] =
+             Repo.query!("SELECT count(*) FROM shared_links WHERE user_id=$1", [manager.id],
+               log: false
+             ).rows
+  end
+
   test "LiveView event telemetry, which carries raw form params, reaches only LiveView's own logger" do
     for prefix <- [
           [:phoenix, :live_view, :handle_event],
@@ -194,5 +554,58 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
       assert match?({Phoenix.LiveView.Logger, _}, handler.id),
              "unexpected #{inspect(handler.id)} on #{inspect(handler.event_name)}"
     end
+  end
+
+  test "native Places and open form dialogs have unique accessible controls and no Hotwire", %{
+    user: user
+  } do
+    mode = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if mode,
+        do: System.put_env("DAWARICH_RAILS", mode),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    conn = RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id) |> get("/places")
+    assert_native_controls(html_response(conn, 200))
+    {:ok, view, connected} = live(conn)
+    assert_native_controls(connected)
+    FrameSeeds.place!(user.id, 84_112, "Native <literal>")
+    render_patch(view, "/places?page=1")
+    assert_native_controls(render(view))
+
+    for {event, params} <- [
+          {"open_create", %{}},
+          {"open_edit", %{"id" => "84112"}},
+          {"open_detail", %{"id" => "84112"}},
+          {"request_delete", %{"id" => "84112"}}
+        ] do
+      render_click(view, event, params)
+      assert_native_controls(render(view))
+      render_click(view, "cancel_form", %{})
+    end
+
+    render_click(view, "open_create", %{})
+    gen = Dawarich.Test.NativePlaces.generation(view, :form_state)
+
+    render_submit(view, "save_place", %{
+      "generation" => gen,
+      "place" => %{"name" => "", "latitude" => "invalid", "longitude" => ""}
+    })
+
+    assert has_element?(view, "dialog[id^=place-form] [role=alert]")
+    assert_native_controls(render(view))
+
+    render_click(view, "validate_place", %{
+      "generation" => gen,
+      "place" => %{"name" => "Nearby", "latitude" => "0", "longitude" => "0"}
+    })
+
+    render_click(view, "nearby", %{"generation" => gen})
+    assert_native_controls(render(view))
+    render_async(view)
+    assert_native_controls(render(view))
   end
 end

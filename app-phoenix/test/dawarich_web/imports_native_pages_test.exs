@@ -2,11 +2,9 @@ defmodule DawarichWeb.ImportsNativePagesTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
-  import Dawarich.Test.FormIsolation
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
   alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
   @endpoint DawarichWeb.Endpoint
-  @reopen ~s(button[data-action="click->import-extraction#open"])
+  @reopen ~s(button[phx-click])
   setup do
     user = RailsUser.insert!(%{id: 7591, email: "native-pages@example.test"})
     ImportsExportsSeeds.import!(%{id: 759_101, user_id: user.id, name: "native.gpx"})
@@ -26,30 +24,38 @@ defmodule DawarichWeb.ImportsNativePagesTest do
   defp live_as(user, path),
     do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
 
-  test "new native page binds the upload controller to Rails' direct upload endpoint", c do
-    {:ok, _view, html} = live_as(c.user, "/imports/new")
+  test "new native page labels bounded multi-file uploads without a legacy endpoint", c do
+    {:ok, view, html} = live_as(c.user, "/imports/new")
+    assert has_element?(view, "label[for=import_files]")
+    assert has_element?(view, "input#import_files[multiple][data-native-selection]")
 
-    assert html =~
-             ~s(data-upload-url-value="http://www.example.com/rails/active_storage/direct_uploads")
+    assert has_element?(
+             view,
+             "#phx-import-upload[data-upload-kind=imports][phx-submit=start_imports]"
+           )
 
-    refute html =~ "/imports/direct_uploads"
-    assert_form_isolated(html, "#phx-import-upload")
+    assert has_element?(view, "#phx-import-upload button[type=submit][disabled]")
+    refute html =~ "/rails/active_storage/direct_uploads"
+    refute has_element?(view, "#phx-import-upload[phx-update=ignore], [data-controller=upload]")
   end
 
-  test "import rename and source selection share a stable patch isolation before and after join",
+  test "native import rename and source selection remain labelled before and after join",
        c do
     path = "/imports/759101/edit"
     dead = RailsUser.signed_in(c.user.id) |> get(path) |> html_response(200)
     {:ok, view, joined} = live_as(c.user, path)
 
     for html <- [dead, joined, render(view)] do
-      assert_form_isolated(html, "form[action='/imports/759101']")
+      doc = LazyHTML.from_document(html)
 
-      assert ["phx-import-edit-759101"] ==
-               html
-               |> LazyHTML.from_document()
-               |> LazyHTML.query("form[phx-update='ignore']")
-               |> LazyHTML.attribute("id")
+      assert ["native.gpx"] ==
+               doc |> LazyHTML.query("#import_name") |> LazyHTML.attribute("value")
+
+      assert ["import_source"] ==
+               doc |> LazyHTML.query("label[for=import_source]") |> LazyHTML.attribute("for")
+
+      assert Enum.count(LazyHTML.query(doc, "form[phx-submit=save_import]")) == 1
+      assert Enum.count(LazyHTML.query(doc, "form[phx-update=ignore]")) == 0
     end
   end
 
@@ -63,17 +69,15 @@ defmodule DawarichWeb.ImportsNativePagesTest do
     assert edit =~ "data-phx-main"
   end
 
-  test "a foreign import is shown by Rails while an owned non-GPX import is native", c do
+  test "foreign imports refuse to the safe index while owned non-GPX imports remain native", c do
     other = RailsUser.insert!(%{id: 7592, email: "foreign-pages@example.test"})
     ImportsExportsSeeds.import!(%{id: 759_102, user_id: c.user.id, name: "owned.kml", source: 9})
-    upstream = upstream!()
 
     for {user_id, path} <- [
           {other.id, "/imports/759101"},
           {other.id, "/imports/759101/edit"}
         ] do
-      {request, conn} = forwarded(upstream, fn -> get(RailsUser.signed_in(user_id), path) end)
-      assert {request, conn.status} == {{"GET #{path} HTTP/1.1", ""}, 204}
+      assert {:error, {:redirect, %{to: "/imports"}}} = live_as(%{id: user_id}, path)
     end
 
     for path <- ["/imports/759102", "/imports/759102/edit"] do
@@ -106,15 +110,11 @@ defmodule DawarichWeb.ImportsNativePagesTest do
              Repo.query!("SELECT payload FROM job_outbox WHERE command_type='imports.destroy'").rows
   end
 
-  test "a non-GPX row keeps the Turbo delete link and supports owner-scoped native deletion", c do
+  test "non-GPX row deletion uses the same owned native command", c do
     ImportsExportsSeeds.import!(%{id: 759_103, user_id: c.user.id, name: "owned.csv", source: 10})
     {:ok, view, _} = live_as(c.user, "/imports")
-    refute has_element?(view, "#import_759103 form[phx-submit=delete_import]")
-
-    assert has_element?(
-             view,
-             ~s(#import_759103 a[data-turbo-method=delete][href="/imports/759103"])
-           )
+    assert has_element?(view, "#import_759103 form[phx-submit=delete_import]")
+    refute has_element?(view, "[data-turbo-method]")
 
     render_hook(view, "delete_import", %{"import_id" => "759103"})
 
@@ -143,26 +143,23 @@ defmodule DawarichWeb.ImportsNativePagesTest do
     assert has_element?(view, @reopen, "Start over")
   end
 
-  test "the list polls while an import is unfinished and stops once every row is final", c do
-    fast_polling()
+  test "native index progress wakes on invalidation and never installs an import poll", c do
     Repo.query!("UPDATE imports SET status=1 WHERE id=759101")
     {:ok, view, _} = live_as(c.user, "/imports")
     Repo.query!("UPDATE imports SET status=2,processed=11 WHERE id=759101")
 
-    assert eventually(fn ->
-             has_element?(view, "#import_759101 [data-status-display]", "Completed")
-           end)
+    Dawarich.Imports.Events.broadcast(c.user.id)
+    assert has_element?(view, "#import_759101 [data-status-display]", "Completed")
 
     refute_refresh(view)
   end
 
-  test "a GPX import's page polls while its extraction runs and stops once it is final", c do
+  test "native detail extraction completion wakes without an import poll", c do
     Repo.query!(
       "UPDATE imports SET raw_data=$1,additional_data_extraction_status=2,additional_data_extraction=$2 WHERE id=759101",
       [%{"waypoints_seen" => 1}, %{"started_at" => DateTime.to_iso8601(DateTime.utc_now())}]
     )
 
-    fast_polling()
     {:ok, view, _} = live_as(c.user, "/imports/759101")
 
     Repo.query!(
@@ -170,11 +167,12 @@ defmodule DawarichWeb.ImportsNativePagesTest do
       [%{"counts" => %{"visits" => 2, "places" => 3, "tracks" => 4, "segments" => 5}}]
     )
 
-    assert eventually(fn -> has_element?(view, @reopen, "Re-extract") end)
+    Dawarich.Imports.Events.broadcast(c.user.id)
+    assert has_element?(view, @reopen, "Re-extract")
     refute_refresh(view)
   end
 
-  test "a poll recounts the import's points only when the import itself changed", c do
+  test "native invalidation recounts points only when the import itself changed", c do
     Repo.query!("UPDATE imports SET status=1 WHERE id=759101")
     {:ok, view, _} = live_as(c.user, "/imports/759101")
     assert has_element?(view, "[data-points-count]", "0")
@@ -184,31 +182,12 @@ defmodule DawarichWeb.ImportsNativePagesTest do
       [c.user.id]
     )
 
-    send(view.pid, :imports_refresh)
+    send(view.pid, {:domain_changed, c.user.id, :imports})
     assert has_element?(view, "[data-points-count]", "0")
 
     Repo.query!("UPDATE imports SET processed=11 WHERE id=759101")
-    send(view.pid, :imports_refresh)
+    send(view.pid, {:domain_changed, c.user.id, :imports})
     assert has_element?(view, "[data-points-count]", "1")
-  end
-
-  defp fast_polling do
-    Application.put_env(:dawarich, :imports_poll_ms, 10)
-    on_exit(fn -> Application.delete_env(:dawarich, :imports_poll_ms) end)
-  end
-
-  defp eventually(check, tries \\ 300) do
-    cond do
-      check.() ->
-        true
-
-      tries == 0 ->
-        false
-
-      true ->
-        Process.sleep(10)
-        eventually(check, tries - 1)
-    end
   end
 
   defp refute_refresh(view) do

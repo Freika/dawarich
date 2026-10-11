@@ -18,6 +18,31 @@ defmodule Dawarich.Timeline.DayRows do
     associations(user, visits, tracks, first, last, repo)
   end
 
+  def fetch_window(user, query, keys, repo \\ Repo) do
+    visit_ids = for [_, _, _, 0, id] <- keys, do: -id
+    track_ids = for [_, _, _, 1, id] <- keys, do: id
+    track_days = for [date, _, _, 1, _] <- keys, do: date
+    settings = Dawarich.UserSettings.get(user)
+
+    visits =
+      visits(user.id, query.start, query.stop, query.cutoff, settings, repo, nil, visit_ids)
+
+    tracks =
+      tracks(
+        user.id,
+        query.start,
+        query.stop,
+        query.cutoff,
+        settings,
+        repo,
+        track_ids,
+        {query.window.start_date, query.window.end_date},
+        track_days
+      )
+
+    associations(user, visits, tracks, query.window.start_date, query.window.end_date, repo)
+  end
+
   def visit(user, id, repo \\ Repo) do
     visits = visits(user.id, nil, nil, nil, Dawarich.UserSettings.get(user), repo, id)
     day = hd(visits).day
@@ -61,7 +86,7 @@ defmodule Dawarich.Timeline.DayRows do
 
   def track(user, id, repo \\ Repo), do: DayAssociations.track(user, id, repo)
 
-  defp visits(user_id, start_s, end_s, window_now, settings, repo, include_id) do
+  defp visits(user_id, start_s, end_s, window_now, settings, repo, include_id, ids \\ nil) do
     """
     SELECT v.id, v.name, v.status, v.confidence, v.place_id, v.area_id, v.duration,
            #{epoch("v.started_at")}, #{epoch("v.ended_at")}, #{local("v.started_at")}, #{offset("v.started_at")},
@@ -70,9 +95,10 @@ defmodule Dawarich.Timeline.DayRows do
     WHERE v.user_id = $1 AND
       (v.id=$5 OR (v.deleted_at IS NULL AND v.status <> 2
       AND v.started_at BETWEEN #{bound("$2")} AND #{bound("$3")} AND #{windowed("v.started_at", "$4")}))
+      AND ($6::bigint[] IS NULL OR v.id=ANY($6))
     ORDER BY v.started_at, v.id DESC
     """
-    |> UserTimeZone.query!([user_id, start_s, end_s, window_now, include_id], settings, repo)
+    |> UserTimeZone.query!([user_id, start_s, end_s, window_now, include_id, ids], settings, repo)
     |> Map.fetch!(:rows)
     |> Enum.map(fn [
                      id,
@@ -110,18 +136,37 @@ defmodule Dawarich.Timeline.DayRows do
     end)
   end
 
-  defp tracks(user_id, start_s, end_s, window_now, settings, repo) do
+  defp tracks(
+         user_id,
+         start_s,
+         end_s,
+         window_now,
+         settings,
+         repo,
+         ids \\ nil,
+         dates \\ {nil, nil},
+         days \\ nil
+       ) do
+    {first, last} = dates
+
     """
     SELECT t.id, t.distance, t.duration, t.avg_speed, t.elevation_gain, t.elevation_loss, t.dominant_mode,
            #{epoch("t.start_at")}, #{epoch("t.end_at")}, #{local("t.start_at")}, #{offset("t.start_at")},
            #{local("t.end_at")}, #{offset("t.end_at")}, #{day("t.start_at")}, z.name, #{total("t")}, s.day, s.seconds
     FROM tracks t CROSS JOIN z
-    #{shares("t")}
+    #{shares("t", "coalesce($6::date, (t.start_at AT TIME ZONE 'UTC' AT TIME ZONE z.name)::date)", "coalesce($7::date, t.end_at AT TIME ZONE 'UTC' AT TIME ZONE z.name)")}
     WHERE t.user_id = $1 AND t.start_at <= #{bound("$3")} AND t.end_at >= #{bound("$2")}
       AND NOT (t.dominant_mode = 1 AND t.distance < 100) AND #{windowed("t.start_at", "$4")}
+      AND ($5::bigint[] IS NULL OR t.id=ANY($5))
+      AND ($6::date IS NULL OR coalesce(s.day,#{day("t.start_at")}) BETWEEN $6::date AND $7::date)
+      AND ($8::date[] IS NULL OR EXISTS(SELECT 1 FROM unnest($5::bigint[],$8::date[]) chosen(id,day) WHERE chosen.id=t.id AND chosen.day=coalesce(s.day,#{day("t.start_at")})))
     ORDER BY t.start_at, t.id, s.day
     """
-    |> UserTimeZone.query!([user_id, start_s, end_s, window_now], settings, repo)
+    |> UserTimeZone.query!(
+      [user_id, start_s, end_s, window_now, ids, first, last, days],
+      settings,
+      repo
+    )
     |> Map.fetch!(:rows)
     |> Enum.chunk_by(&hd/1)
     |> Enum.map(&track_row/1)

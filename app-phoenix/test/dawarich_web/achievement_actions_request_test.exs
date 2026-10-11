@@ -5,7 +5,7 @@ defmodule DawarichWeb.AchievementActionsRequestTest do
   alias Dawarich.Repo
   alias Dawarich.Test.{RailsUser, RawHTTP}
   alias DawarichWeb.{RailsCsrf, RailsProxy}
-  alias DawarichWeb.AchievementActions.{Gate, Request}
+  alias DawarichWeb.AchievementActions.{Request}
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -23,39 +23,32 @@ defmodule DawarichWeb.AchievementActionsRequestTest do
     :ok
   end
 
-  test "admits the real JSON clients and Rails sharing form with method path CSRF" do
+  test "native achievement values persist while retained deck JSON enforces method path CSRF" do
     session = RailsUser.session(44001)
+
+    user = Dawarich.Accounts.get(44001)
 
     for key <- ~w(country_de country_fr border_hopper),
         value <- [true, false, 0, 1, "off", "false", "arbitrary"] do
-      path = "/achievements/#{key}/toggle_sharing"
-      raw = Jason.encode!(%{"enabled" => value})
-      conn = request("PATCH", path, raw, session)
-      assert Gate.eligible?(conn, :sharing)
-      {:ok, loaded, actor, params, context} = accepted!(conn, :sharing)
-      assert actor.id == 44001 and actor.admin == false
-      assert params["enabled"] == value
-      assert context.locale == "en" and context.key == key
-      assert loaded.private.dawarich_raw_body == raw and loaded.method == "PATCH"
-      assert loaded.resp_cookies == %{}
+      assert {:ok, result} =
+               Dawarich.Sharing.change(
+                 Dawarich.Accounts.Scope.for_user(user, "en"),
+                 %{type: :achievement, key: key, owner_id: user.id},
+                 :update,
+                 %{"enabled" => value}
+               )
+
+      assert result.enabled == Dawarich.Families.SharingUpdate.Web.boolean(value)
+
+      assert [[enabled]] =
+               Repo.query!(
+                 "SELECT sharing_enabled FROM achievement_progresses WHERE user_id=$1 AND achievement_key=$2",
+                 [user.id, key],
+                 log: false
+               ).rows
+
+      assert enabled == result.enabled
     end
-
-    path = "/achievements/country_de/toggle_sharing"
-    token = RailsCsrf.masked_form_token(session, path, "PATCH")
-
-    raw =
-      URI.encode_query(%{
-        "_method" => "patch",
-        "enabled" => "true",
-        "authenticity_token" => token
-      })
-
-    conn =
-      request("POST", path, raw, session, type: "application/x-www-form-urlencoded", csrf: false)
-
-    {:ok, loaded, _, params, context} = accepted!(conn, :sharing)
-    assert loaded.method == "POST" and context.method == "PATCH"
-    assert params["enabled"] == "true" and context.state == %{}
 
     for {action, path, raw} <- [
           {:next, "/achievements/unlocks/next", "{}"},
@@ -66,47 +59,48 @@ defmodule DawarichWeb.AchievementActionsRequestTest do
       accepted!(request("POST", path, raw, session), action)
     end
 
+    path = "/achievements/unlocks/next"
     global = RailsCsrf.masked_token(session)
 
-    accepted!(request("PATCH", path, "{}", session, token: global), :sharing)
+    accepted!(request("POST", path, "{}", session, token: global), :next)
 
-    rejected!(request("PATCH", path, "{}", session, token: "invalid"), :sharing)
+    rejected!(request("POST", path, "{}", session, token: "invalid"), :next)
 
     wrong =
-      RailsCsrf.masked_form_token(session, "/achievements/country_fr/toggle_sharing", "PATCH")
+      RailsCsrf.masked_form_token(session, "/achievements/unlocks/dismiss", "POST")
 
-    rejected!(request("PATCH", path, "{}", session, token: wrong), :sharing)
+    rejected!(request("POST", path, "{}", session, token: wrong), :next)
 
     rejected!(
-      request("PATCH", path, "{}", session,
+      request("POST", path, "{}", session,
         headers: [{"origin", "https://outside.example.invalid"}]
       ),
-      :sharing
+      :next
     )
 
     before = snapshot()
-    raw = ~s({"locale":"de","enabled":null})
-    rejected!(request("PATCH", path, raw, session), :sharing)
+    raw = ~s({"locale":"de","claim_token":{}})
+    rejected!(request("POST", path, raw, session), :next)
 
     Repo.query!("UPDATE users SET encrypted_password='synthetic-salt-change' WHERE id=44001", [],
       log: false
     )
 
-    rejected!(request("PATCH", path, "{}", session), :sharing)
+    rejected!(request("POST", path, "{}", session), :next)
     assert Enum.take(snapshot(), 2) == Enum.take(before, 2)
   end
 
-  test "replays ambiguous transport unchanged before effects" do
+  test "retained deck JSON replays ambiguous transport unchanged before effects" do
     session = RailsUser.session(44001)
-    path = "/achievements/country_de/toggle_sharing"
+    path = "/achievements/unlocks/next"
     before = snapshot()
 
     bad = [
-      {path, ~s({"enabled":false,"enabled":true}), []},
-      {path, ~s({"enabled":{"nested":true}}), []},
-      {path, ~s({"enabled":true,"unknown":1}), []},
-      {path, ~s({"enabled":true,"_method":"patch"}), []},
-      {path, ~s({"enabled":true,"locale":"de"}), [headers: [{"x-csrf-token", "second"}]]},
+      {path, ~s({"claim_token":false,"claim_token":true}), []},
+      {path, ~s({"claim_token":{"nested":true}}), []},
+      {path, ~s({"claim_token":true,"unknown":1}), []},
+      {path, ~s({"claim_token":true,"_method":"patch"}), []},
+      {path, ~s({"claim_token":true,"locale":"de"}), [headers: [{"x-csrf-token", "second"}]]},
       {path, "{", []},
       {path, <<255>>, []},
       {path <> "?locale=de&locale=en", "{}", []},
@@ -121,10 +115,10 @@ defmodule DawarichWeb.AchievementActionsRequestTest do
     ]
 
     for {target, raw, opts} <- bad do
-      conn = request("PATCH", target, raw, session, opts)
-      rejected = rejected!(conn, :sharing)
+      conn = request("POST", target, raw, session, opts)
+      rejected = rejected!(conn, :next)
 
-      assert rejected.method == "PATCH" and
+      assert rejected.method == "POST" and
                rejected.query_string == (URI.parse(target).query || "")
 
       assert rejected.resp_cookies == %{}
@@ -133,24 +127,24 @@ defmodule DawarichWeb.AchievementActionsRequestTest do
     end
 
     for raw <- [
-          "enabled=true&enabled=false",
-          "enabled=%zz",
-          "enabled%5Bnested%5D=true",
+          "claim_token=true&claim_token=false",
+          "claim_token=%zz",
+          "claim_token%5Bnested%5D=true",
           "locale=de&locale=en"
         ] do
-      conn = request("PATCH", path, raw, session, type: "application/x-www-form-urlencoded")
-      rejected = rejected!(conn, :sharing)
+      conn = request("POST", path, raw, session, type: "application/x-www-form-urlencoded")
+      rejected = rejected!(conn, :next)
       replay!(rejected, path, raw)
     end
 
     for extra <- [%{"invitation_token" => "synthetic"}, %{"dawarich_client" => "ios"}, %{}] do
       current = if extra == %{}, do: %{}, else: Map.merge(session, extra)
-      rejected!(request("PATCH", path, "{}", current), :sharing)
+      rejected!(request("POST", path, "{}", current), :next)
     end
 
     Repo.query!("UPDATE users SET settings='[]'::jsonb WHERE id=44001", [], log: false)
 
-    rejected = rejected!(request("PATCH", path <> "?locale=de", "{}", session), :sharing)
+    rejected = rejected!(request("POST", path <> "?locale=de", "{}", session), :next)
 
     assert rejected.resp_cookies == %{}
     assert Repo.query!("SELECT settings FROM users WHERE id=44001", [], log: false).rows == [[[]]]
@@ -223,7 +217,7 @@ defmodule DawarichWeb.AchievementActionsRequestTest do
     proxied = RailsProxy.call(conn, {{127, 0, 0, 1}, server.port})
     assert proxied.status == 218 and proxied.resp_body == "Rails"
     {line, body} = Task.await(task)
-    assert line == "PATCH " <> target <> " HTTP/1.1"
+    assert line == "POST " <> target <> " HTTP/1.1"
     assert body == raw
     :gen_tcp.close(server.listen)
   end

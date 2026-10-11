@@ -7,20 +7,27 @@ defmodule Dawarich.Posters.ProgressWorker do
   @impl Oban.Worker
   def perform(%Oban.Job{args: args}), do: run(Dawarich.Jobs.repo(), args)
 
-  def run(repo, args) do
+  def run(repo, args, opts \\ []) do
     case repo.transaction(fn ->
            if Processed.claim!(repo, args["event_id"], "posters.progress") do
-             publish(repo, args)
+             publish(repo, args, opts)
+           else
+             :ok
            end
-
-           :ok
          end) do
-      {:ok, :ok} -> :ok
-      {:error, reason} -> {:error, reason}
+      {:ok, {:published, user, id}} ->
+        Dawarich.Posters.Events.broadcast(user, id)
+        :ok
+
+      {:ok, :ok} ->
+        :ok
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
-  defp publish(repo, args) do
+  defp publish(repo, args, opts) do
     id = args["poster_id"]
     user = args["user_id"]
 
@@ -47,10 +54,10 @@ defmodule Dawarich.Posters.ProgressWorker do
           |> Phoenix.HTML.Safe.to_iodata()
           |> IO.iodata_to_binary()
 
-        case Dawarich.Cable.turbo([{:user, user}, "posters"], "replace", "poster_#{id}", html,
-               repo: repo
-             ) do
-          :ok -> :ok
+        publisher = Keyword.get(opts, :publish, &Dawarich.Cable.turbo/5)
+
+        case publisher.([{:user, user}, "posters"], "replace", "poster_#{id}", html, repo: repo) do
+          :ok -> {:published, user, id}
           {:error, reason} -> repo.rollback(reason)
         end
 

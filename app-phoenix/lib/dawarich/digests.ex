@@ -8,7 +8,7 @@ defmodule Dawarich.Digests do
 
   def to_i(value) when is_integer(value), do: value
   def to_i(value) when is_float(value), do: trunc(value)
-  def to_i(value) when is_binary(value), do: DawarichWeb.Params.ruby_to_i(value)
+  def to_i(value) when is_binary(value), do: Dawarich.RubyInteger.to_i(value)
   def to_i(_value), do: 0
 
   def index(user_id, context) do

@@ -1,0 +1,26 @@
+export function downloadBlob(
+  blob,
+  filename,
+  {
+    document = globalThis.document,
+    URL = globalThis.URL,
+    setTimeout = globalThis.setTimeout,
+  } = {},
+) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 2000)
+}
+
+export function pngBlob(bytes) {
+  return new Blob([bytes], { type: "image/png" })
+}
+
+export function pdfBlob(bytes) {
+  return new Blob([bytes], { type: "application/pdf" })
+}

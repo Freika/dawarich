@@ -10,6 +10,26 @@ defmodule DawarichWeb.SharedLinkCookie do
   @thirty_days "SELECT ($1::timestamptz AT TIME ZONE z.name + interval '30 days') AT TIME ZONE z.name FROM z"
   @anonymous %{"timezone" => ""}
 
+  def proof_identity(token) when is_binary(token),
+    do: :crypto.hash(:sha256, "native-public:" <> token) |> Base.encode16(case: :lower)
+
+  def proofs(conn, now \\ DateTime.utc_now(), secret \\ RailsSecret.fetch()) do
+    fetch_cookies(conn).req_cookies
+    |> Enum.filter(fn {name, _} -> String.starts_with?(name, "shared_link_") end)
+    |> Enum.take(32)
+    |> Enum.reduce(%{}, fn {name, value}, acc ->
+      id = String.replace_prefix(name, "shared_link_", "")
+
+      with true <- Dawarich.SharedLinks.canonical?(id),
+           {:ok, token, expiry} when is_binary(token) <-
+             RailsCookies.decrypt_metadata(value, name, secret, now) do
+        Map.put(acc, id, %{"identity" => proof_identity(token), "expires_at" => expiry})
+      else
+        _ -> acc
+      end
+    end)
+  end
+
   def unlock_token(id, phrase) do
     unless Ruby.blank?(phrase),
       do: :sha256 |> :crypto.hash("#{id}:#{phrase}") |> Base.encode16(case: :lower)

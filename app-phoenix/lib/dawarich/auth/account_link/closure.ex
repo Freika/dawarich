@@ -1,13 +1,11 @@
 defmodule Dawarich.Auth.AccountLink.Closure do
   @moduledoc false
-  import Plug.Conn
   import Ecto.Query
   alias Dawarich.Auth.Account
   alias Dawarich.Auth.Api.ChallengeToken
   alias Dawarich.Auth.AccountLink.SignIn
-  alias Dawarich.Auth.Providers.{Accounts, Completion, Failure, Jwks}
+  alias Dawarich.Auth.Providers.{Completion, Jwks}
   alias Dawarich.{RailsCache.Wire, Redis, Repo}
-  alias DawarichWeb.AuthAccountLink.Response
 
   def issue(id, provider, uid, context) do
     with {:ok, secret} <- ChallengeToken.secret(context) do
@@ -139,110 +137,6 @@ defmodule Dawarich.Auth.AccountLink.Closure do
 
       {:ok, %{result | session: session}}
     end
-  end
-
-  def route(%{method: "GET", request_path: "/auth/account_link"} = conn, params, context) do
-    case confirm(params["token"], conn.assigns.rails_session, context) do
-      {:ok, result} -> completed(conn, result, context)
-      {:error, reason} -> error(conn, reason, context)
-    end
-  end
-
-  def route(%{method: "GET", request_path: "/auth/account_link/challenge"} = conn, _, context) do
-    case pending(conn.assigns.rails_session, context) do
-      {:ok, prepared} -> Response.form(conn, labeled(prepared, context), context)
-      {:error, reason} -> error(conn, reason, context)
-    end
-  end
-
-  def route(
-        %{method: "POST", request_path: "/auth/account_link/challenge"} = conn,
-        params,
-        context
-      ) do
-    case password(conn.assigns.rails_session, params["password"], context) do
-      {:ok, result} ->
-        completed(conn, result, context)
-
-      {:error, :incorrect_password, session} ->
-        {:ok, prepared} = pending(session, context)
-        conn = assign(conn, :rails_session, flash(session, "incorrect_password", %{}, context))
-
-        conn = register_before_send(conn, &%{&1 | status: 422})
-
-        Response.form(
-          conn,
-          labeled(%{prepared | session: conn.assigns.rails_session}, context),
-          context
-        )
-
-      {:error, reason, session} ->
-        error(assign(conn, :rails_session, session), reason, context)
-
-      {:error, reason} ->
-        error(conn, reason, context)
-    end
-  end
-
-  def route(%{method: "POST", request_path: "/auth/account_link/email"} = conn, _, context) do
-    with {:ok, prepared} <- pending(conn.assigns.rails_session, context) do
-      label =
-        prepared.pending["provider_label"] ||
-          Accounts.label(prepared.pending["provider"], context)
-
-      case Accounts.send_link(
-             prepared.user,
-             prepared.pending["provider"],
-             prepared.pending["uid"],
-             label,
-             context
-           ) do
-        {:ok, :sent} ->
-          Failure.redirect(
-            conn,
-            "/users/sign_in",
-            "controllers.auth.account_links.confirmation_link_sent",
-            %{"email" => prepared.user.email},
-            context,
-            "notice"
-          )
-
-        {:error, {:rate_limited, _}} ->
-          error(conn, :rate_limited, context)
-
-        {:error, _} ->
-          Failure.terminal(conn)
-      end
-    else
-      {:error, reason} -> error(conn, reason, context)
-    end
-  end
-
-  def route(conn, _, _), do: conn |> send_resp(404, "") |> halt()
-
-  defp completed(conn, result, context) do
-    result = labeled(result, context)
-    Response.completed(conn, result, context)
-  end
-
-  defp labeled(result, context) do
-    pending =
-      Map.put_new(
-        result.pending,
-        "provider_label",
-        Accounts.label(result.pending["provider"], context)
-      )
-
-    %{result | pending: pending}
-  end
-
-  defp error(conn, reason, context), do: Failure.link_error(conn, reason, context)
-
-  defp flash(session, key, bindings, context) do
-    text =
-      DawarichWeb.Translate.t(context.locale, "controllers.auth.account_links." <> key, bindings)
-
-    Map.put(session, "flash", %{"discard" => [], "flashes" => %{"alert" => text}})
   end
 
   defp verify(token, context) when is_binary(token) and byte_size(token) <= 16384 do

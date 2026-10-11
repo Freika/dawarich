@@ -155,9 +155,9 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
     send(extraction.pid, :start_deadline)
 
     assert %RuntimeError{message: "GPX extraction did not finish within 0 minutes"} =
-             Task.await(extraction)
+             Task.await(extraction, :infinity)
 
-    assert {:error, :closed} = :gen_tcp.recv(socket, 0, 1_000)
+    assert {:error, :closed} = :gen_tcp.recv(socket, 0, :infinity)
 
     assert {4, %{"error_message" => "GPX extraction did not finish within 0 minutes"}, _} =
              import_state(id)

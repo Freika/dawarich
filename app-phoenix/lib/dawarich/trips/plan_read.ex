@@ -12,22 +12,23 @@ defmodule Dawarich.Trips.PlanRead do
   @in_days "planned_day_id IN (SELECT id FROM planned_days WHERE trip_id=$1)"
 
   def supported?(repo, user_id, trip_id) do
-    repo.query!(
-      """
-      SELECT NOT EXISTS (
-        SELECT 1 FROM trips t LEFT JOIN trip_sources s ON s.id=t.trip_source_id
-        WHERE t.id=$1 AND t.trip_source_id IS NOT NULL AND s.user_id IS DISTINCT FROM $2
-      ) AND NOT EXISTS (
-        SELECT 1 FROM planned_reservations r JOIN trips owner ON owner.id=r.trip_id
-        LEFT JOIN planned_days d ON d.id=r.planned_day_id
-        LEFT JOIN trips day_owner ON day_owner.id=d.trip_id
-        WHERE (r.trip_id=$1 OR d.trip_id=$1)
-          AND (owner.user_id<>$2 OR (d.id IS NOT NULL AND day_owner.user_id<>$2))
-      )
-      """,
-      [trip_id, user_id],
-      log: false
-    ).rows == [[true]]
+    repo.query!("SELECT #{supported_sql("$1", "$2")}", [trip_id, user_id], log: false).rows ==
+      [[true]]
+  end
+
+  def supported_sql(trip, user) do
+    """
+    NOT EXISTS (
+      SELECT 1 FROM trips st LEFT JOIN trip_sources ss ON ss.id=st.trip_source_id
+      WHERE st.id=#{trip} AND st.trip_source_id IS NOT NULL AND ss.user_id IS DISTINCT FROM #{user}
+    ) AND NOT EXISTS (
+      SELECT 1 FROM planned_reservations sr JOIN trips so ON so.id=sr.trip_id
+      LEFT JOIN planned_days sd ON sd.id=sr.planned_day_id
+      LEFT JOIN trips sdo ON sdo.id=sd.trip_id
+      WHERE (sr.trip_id=#{trip} OR sd.trip_id=#{trip})
+        AND (so.user_id<>#{user} OR (sd.id IS NOT NULL AND sdo.user_id<>#{user}))
+    )
+    """
   end
 
   def load(repo, user_id, trip_id) do

@@ -46,12 +46,19 @@ defmodule DawarichWeb.PlaceActionsTest do
 
   test "place responses match drawer modal and list requests" do
     assert Code.ensure_loaded?(DawarichWeb.PlaceActions)
-    upstream = upstream!()
+    previous = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
 
     for entry <- @effects, entry["request"]["method"] in ~w(post patch delete) do
       user = FrameSeeds.seed_place_remainder!(entry)
       expected = Enum.find(@responses, &(&1["name"] == entry["name"]))
-      {run, raw} = request(entry, RailsUser.session(user.id))
+      {run, _raw} = request(entry, RailsUser.session(user.id))
       attrs = entry["request"]["params"]["place"] || %{}
 
       retained =
@@ -68,10 +75,8 @@ defmodule DawarichWeb.PlaceActionsTest do
               [id]
             ).rows
 
-          {{line, received}, conn} = forwarded(upstream, run)
-          assert conn.status == 204, entry["name"]
-          assert line =~ "POST #{entry["request"]["path"]} HTTP/1.1"
-          assert received == raw
+          conn = run.()
+          assert conn.status == 422, entry["name"]
 
           assert Repo.query!(
                    "SELECT to_jsonb(p) FROM places p WHERE id >= $1 AND id < $1+20 ORDER BY id",

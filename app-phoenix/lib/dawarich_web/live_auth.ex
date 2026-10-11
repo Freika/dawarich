@@ -9,6 +9,9 @@ defmodule DawarichWeb.LiveAuth do
   @layout ~w(notification_session locale suggested_locale self_hosted request_path query_params rails_csrf_token base_url)a
 
   def on_mount(:default, _params, session, socket) do
+    socket =
+      if is_binary(session["native_identity"]), do: assign(socket, :native, true), else: socket
+
     rendered = session["rails_user_id"]
 
     connected_user =

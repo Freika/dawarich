@@ -50,7 +50,8 @@ defmodule DawarichWeb.AuthAccount.Http do
          :ok <- admission(session, conn, context),
          [[id], salt] <- session["warden.user.user.key"],
          {:ok, _actor} <- account(context).actor(id, salt, context),
-         %Accounts.User{} <- Accounts.get(id) do
+         %Accounts.User{settings: settings} when is_map(settings) or is_nil(settings) <-
+           Accounts.get(id) do
       conn = RailsAuth.call(conn, secret: secret)
       locale = DawarichWeb.Locale.resolve(nil, conn.assigns.current_user, session)
       {:ok, conn, id, salt, context |> Map.put(:secret, secret) |> Map.put(:locale, locale)}

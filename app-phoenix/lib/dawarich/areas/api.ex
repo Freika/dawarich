@@ -60,18 +60,39 @@ defmodule Dawarich.Areas.Api do
   end
 
   def destroy(repo, user, id, ctx) do
+    with :ok <- Settings.guard(user, ctx) do
+      case remove(repo, user, id, ctx) do
+        :ok ->
+          {:ok, 200,
+           %{
+             "message" =>
+               Dawarich.I18n.en!("controllers.api.v1.areas.area_was_successfully_deleted")
+           }}
+
+        :not_found ->
+          missing()
+
+        :foreign_area_dependency ->
+          foreign_dependency()
+      end
+    end
+  rescue
+    _ -> {:error, 500, Settings.failure()}
+  end
+
+  def remove(repo, user, id, ctx) do
     ctx = Map.put(ctx, :native_delete, Dawarich.Standalone.enabled?())
 
     result =
       repo.transaction(fn ->
-        with :ok <- Settings.guard(user, ctx),
-             {:ok, area} <- identity(repo, user.id, id, ctx.native_delete) do
-          {:ok, delete_graph(repo, user, area, ctx)}
+        case identity(repo, user.id, id, ctx.native_delete) do
+          {:ok, area} -> delete_graph(repo, user, area, ctx)
+          _ -> repo.rollback(:not_found)
         end
       end)
 
     case result do
-      {:ok, {:ok, visits}} ->
+      {:ok, visits} ->
         for [_, place, _, demo] <- visits,
             not ctx.native_delete and not demo and not is_nil(place) do
           Dawarich.Settings.Progress.produce(
@@ -83,20 +104,18 @@ defmodule Dawarich.Areas.Api do
           )
         end
 
-        {:ok, 200,
-         %{
-           "message" =>
-             Dawarich.I18n.en!("controllers.api.v1.areas.area_was_successfully_deleted")
-         }}
+        :ok
 
-      {:ok, error} ->
-        error
-
-      {:error, :foreign_area_dependency} ->
-        foreign_dependency()
+      {:error, reason} ->
+        reason
     end
-  rescue
-    _ -> {:error, 500, Settings.failure()}
+  end
+
+  def find(repo, user_id, id) do
+    case identity(repo, user_id, id) do
+      {:ok, area} -> {:ok, area}
+      _ -> :not_found
+    end
   end
 
   defp delete_graph(repo, user, area, ctx) do

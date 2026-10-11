@@ -39,6 +39,9 @@ defmodule Dawarich.Admin.Access do
     _ -> false
   end
 
+  def same_identity?(%{session_version: version} = original, current) when is_binary(version),
+    do: Dawarich.Accounts.Principal.same_identity?(original, current)
+
   def same_identity?(%{encrypted_password: original}, %{encrypted_password: current})
       when is_binary(original) and is_binary(current),
       do: Plug.Crypto.secure_compare(String.slice(original, 0, 29), String.slice(current, 0, 29))

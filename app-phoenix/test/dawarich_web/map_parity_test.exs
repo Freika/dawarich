@@ -80,11 +80,20 @@ defmodule DawarichWeb.MapParityTest do
           Map.put(assigns, :inner_content, Phoenix.HTML.raw(body))
         )
         |> MapStimulus.prepare()
+        |> Dawarich.Test.NativeM4Corpus.prepare()
 
-      rails = "test/fixtures/map/#{@name}.html" |> File.read!() |> MapStimulus.prepare()
+      rails =
+        "test/fixtures/map/#{@name}.html"
+        |> File.read!()
+        |> MapStimulus.prepare()
+        |> Dawarich.Test.NativeM4Corpus.prepare()
 
       assert ParityHTML.without(phoenix, @chrome, "body") ==
+               ParityHTML.without(rails, @chrome, "body"),
+             ParityHTML.first_difference(
+               ParityHTML.without(phoenix, @chrome, "body"),
                ParityHTML.without(rails, @chrome, "body")
+             )
 
       assert ParityHTML.without(phoenix, @phoenix_head, "head") ==
                ParityHTML.without(rails, @rails_head, "head")

@@ -1,5 +1,5 @@
 defmodule Dawarich.NotesApi.WriteTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true, group: :notes_fixture_ids
 
   alias Dawarich.NotesApi.Write
 

@@ -5,6 +5,7 @@ defmodule Dawarich.Photos.ProviderVerificationTest do
   alias Dawarich.Immich.VerifyWorker
 
   @cap 32 * 1024 * 1024
+  @beyond_test_timeout 120_000
   @key "synthetic-verification-credential"
   @body ~s({"exifInfo":{"latitude":1,"longitude":2}})
   @paths [
@@ -69,6 +70,8 @@ defmodule Dawarich.Photos.ProviderVerificationTest do
   @tag :verification_cap
   test "verification and integration clients cancel oversized valid JSON before its terminator",
        ctx do
+    Dawarich.ApiEndpointCase.put_photo_source_timeout(@beyond_test_timeout)
+
     for path <- @paths do
       {base, task, _} =
         provider(
@@ -89,7 +92,7 @@ defmodule Dawarich.Photos.ProviderVerificationTest do
               end
             end)
 
-            early = :gen_tcp.recv(socket, 0, 1000)
+            early = :gen_tcp.recv(socket, 0, :infinity)
             :gen_tcp.send(socket, "0\r\n\r\n")
             early
           end,
@@ -97,7 +100,10 @@ defmodule Dawarich.Photos.ProviderVerificationTest do
         )
 
       result = run(path, ctx, base)
-      assert {_, {:error, :closed}} = Task.await(task), "#{path} buffered the oversized body"
+
+      assert {_, {:error, :closed}} = Task.await(task, :infinity),
+             "#{path} buffered the oversized body"
+
       if path == :worker, do: assert_unconfirmed(ctx), else: assert(match?({:error, _}, result))
     end
   end

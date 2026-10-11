@@ -1,0 +1,38 @@
+<input
+  type="hidden"
+  value={@token}
+  name="user[reset_password_token]"
+  id="user_reset_password_token"
+/>
+<div class="form-control">
+  <label class="label" for="user_password"><span class="label-text">{text(assigns, "new_password")}</span></label>
+  <em id="password-hint" class="text-base-content opacity-60 text-sm">(12 {text(
+    assigns,
+    "characters_minimum"
+  )}</em>
+  <input
+    autofocus="autofocus"
+    autocomplete="new-password"
+    class="input input-bordered w-full min-w-0"
+    type="password"
+    name="user[password]"
+    id="user_password"
+    aria-invalid={if "password" in @invalid, do: "true"}
+    aria-describedby={described(@invalid, "password", "password-hint")}
+  />
+</div>
+<div class="form-control">
+  <label class="label" for="user_password_confirmation"><span class="label-text">{text(
+    assigns,
+    "confirm_new_password"
+  )}</span></label>
+  <input
+    autocomplete="new-password"
+    class="input input-bordered w-full min-w-0"
+    type="password"
+    name="user[password_confirmation]"
+    id="user_password_confirmation"
+    aria-invalid={if "password_confirmation" in @invalid, do: "true"}
+    aria-describedby={described(@invalid, "password_confirmation")}
+  />
+</div>

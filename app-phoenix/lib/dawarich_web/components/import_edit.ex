@@ -8,24 +8,28 @@ defmodule DawarichWeb.ImportEdit do
   attr :locale, :string, required: true
   attr :csrf, :string, required: true
   attr :invalid_source, :boolean, default: false
+  attr :native, :boolean, default: false
 
   def form(assigns) do
     assigns = assign(assigns, sources: UiRecords.sources(), submit: submit(assigns.locale))
 
     ~H"""
     <div class="mx-auto md:w-2/3 w-full" data-testid="native-imports-root">
-      <h1 class="font-bold text-4xl">{text(@locale, "imports.edit.editing_import")}</h1>
+      <h1 class="font-bold text-4xl [overflow-wrap:anywhere]">
+        {text(@locale, "imports.edit.editing_import")}
+      </h1>
       <form
         id={"phx-import-edit-#{@record.id}"}
-        phx-update="ignore"
+        phx-update={if(!@native, do: "ignore")}
+        phx-submit={@native && "save_import"}
         class="form-body mt-4"
-        action={"/imports/#{@record.id}"}
+        action={!@native && "/imports/#{@record.id}"}
         accept-charset="UTF-8"
         method="post"
       >
-        <input type="hidden" name="_method" value="patch" />
-        <input type="hidden" name="authenticity_token" value={@csrf} />
-        <div :if={@invalid_source} class="alert alert-error mb-4">
+        <input :if={!@native} type="hidden" name="_method" value="patch" />
+        <input :if={!@native} type="hidden" name="authenticity_token" value={@csrf} />
+        <div :if={@invalid_source} class="alert alert-error mb-4" role="alert">
           <ul>
             <li>{source_error(@locale)}</li>
           </ul>
@@ -33,7 +37,7 @@ defmodule DawarichWeb.ImportEdit do
         <div class="form-control">
           <label for="import_name">{attribute(@locale, "name")}</label>
           <input
-            class="input input-bordered"
+            class="input input-bordered w-full min-w-0"
             type="text"
             value={@record.name}
             name="import[name]"
@@ -55,7 +59,7 @@ defmodule DawarichWeb.ImportEdit do
             <.source_select locale={@locale} sources={@sources} source={@record.source} />
           <% end %>
         </div>
-        <div class="my-4">
+        <div class="my-4 flex flex-wrap gap-2">
           <input
             type="submit"
             name="commit"
@@ -81,7 +85,7 @@ defmodule DawarichWeb.ImportEdit do
 
   defp source_select(assigns) do
     ~H"""
-    <select class="select select-bordered" name="import[source]" id="import_source">
+    <select class="select select-bordered w-full min-w-0" name="import[source]" id="import_source">
       <option value="" label=" "></option>
       <option
         :for={{source, index} <- Enum.with_index(@sources)}

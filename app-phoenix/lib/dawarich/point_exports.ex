@@ -42,6 +42,9 @@ defmodule Dawarich.PointExports do
 
       if export.file_format != 2, do: produce(repo, owner, id, user, locale, now)
 
+      if owner == :oban,
+        do: Dawarich.Exports.Events.enqueue(repo, user_id, Ecto.UUID.generate(), :created)
+
       id
     end)
   rescue

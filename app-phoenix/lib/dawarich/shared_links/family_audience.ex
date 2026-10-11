@@ -39,31 +39,31 @@ defmodule Dawarich.SharedLinks.FamilyAudience do
     end
   end
 
-  def trips(user, page, now) do
+  def trips(user, page, now, opts \\ []) do
+    case Dawarich.Families.Snapshot.read(user, Keyword.put(opts, :now, now), fn ->
+           {:ok, read_trips(user, page, now)}
+         end) do
+      {:ok, result} -> result
+      _ -> %{entries: [], total_pages: 0}
+    end
+  end
+
+  defp read_trips(user, page, now) do
     case family_id(user.id, now) do
       nil ->
         %{entries: [], total_pages: 0}
 
       family ->
         rows =
-          Repo.query!(
-            "SELECT t.name,t.started_at,t.ended_at,s.id::text,count(*) OVER() FROM trips t JOIN shared_links s ON s.resource_id=t.id AND s.user_id=t.user_id JOIN users u ON u.id=s.user_id AND u.deleted_at IS NULL JOIN family_memberships m ON m.user_id=u.id WHERE m.family_id=$1 AND s.user_id<>$2 AND s.resource_type=0 AND s.settings->>'audience'='family' AND s.settings->>'family_id'=$1::text AND s.revoked_at IS NULL AND (s.expires_at IS NULL OR s.expires_at>$3) ORDER BY t.started_at DESC,t.id LIMIT 6 OFFSET $4",
+          UserTimeZone.query!(
+            "SELECT t.name,((t.started_at AT TIME ZONE 'UTC') AT TIME ZONE z.name)::date,((t.ended_at AT TIME ZONE 'UTC') AT TIME ZONE z.name)::date,s.id::text,count(*) OVER() FROM trips t JOIN shared_links s ON s.resource_id=t.id AND s.user_id=t.user_id JOIN users u ON u.id=s.user_id AND u.deleted_at IS NULL JOIN family_memberships m ON m.user_id=u.id CROSS JOIN z WHERE m.family_id=$1 AND s.user_id<>$2 AND s.resource_type=0 AND s.settings->>'audience'='family' AND s.settings->>'family_id'=$1::text AND s.revoked_at IS NULL AND (s.expires_at IS NULL OR s.expires_at>$3) ORDER BY t.started_at DESC,t.id LIMIT 6 OFFSET $4",
             [family, user.id, DateTime.to_naive(now), (page - 1) * 6],
-            log: false
+            Dawarich.UserSettings.get(user)
           ).rows
 
         entries =
-          Enum.map(rows, fn [name, started, ended, share, _] ->
-            %{
-              name: name,
-              share_id: share,
-              started_on:
-                UserTimeZone.local(Dawarich.UserSettings.get(user), started).local
-                |> NaiveDateTime.to_date(),
-              ended_on:
-                UserTimeZone.local(Dawarich.UserSettings.get(user), ended).local
-                |> NaiveDateTime.to_date()
-            }
+          Enum.map(rows, fn [name, started_on, ended_on, share, _] ->
+            %{name: name, share_id: share, started_on: started_on, ended_on: ended_on}
           end)
 
         total =

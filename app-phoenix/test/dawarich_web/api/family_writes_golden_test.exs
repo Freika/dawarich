@@ -92,7 +92,7 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
              {kase["response"]["status"],
               ApiGolden.normalized(kase["response"]["body"], unordered)}
 
-    assert rows(@written) == Map.take(kase["after"], @written)
+    assert decision_rows(action, status) == Map.take(kase["after"], @written)
 
     mailed =
       for ["ActionMailer::MailDeliveryJob", "FamilyMailer", "location_request", gid] <-
@@ -106,6 +106,35 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
 
     assert count("phoenix.notification_events") == count("notifications") - notifications
   end
+
+  defp decision_rows(action, status) when action in [:accept, :decline] and status == 200 do
+    written = rows(@written)
+
+    [request] =
+      Enum.filter(written["family_location_requests"], &Map.has_key?(&1, "responded_at"))
+
+    actual = request["responded_at"]
+    at = NaiveDateTime.from_iso8601!(actual)
+    expected = DateTime.to_naive(@now)
+    assert NaiveDateTime.compare(at, expected) != :lt
+    assert NaiveDateTime.diff(at, expected, :microsecond) < 1_000_000
+
+    Map.new(written, fn {table, records} ->
+      {table,
+       Enum.map(records, fn record ->
+         Map.new(record, fn {key, value} ->
+           value =
+             if key in ~w(responded_at updated_at) and value == actual,
+               do: NaiveDateTime.to_iso8601(expected),
+               else: value
+
+           {key, value}
+         end)
+       end)}
+    end)
+  end
+
+  defp decision_rows(_, _), do: rows(@written)
 
   defp action("GET", "/api/v1/families/mine"), do: {:mine, %{}}
   defp action("GET", "/api/v1/families/locations/history"), do: {:history, %{}}

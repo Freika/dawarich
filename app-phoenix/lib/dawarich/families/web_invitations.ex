@@ -33,6 +33,8 @@ defmodule Dawarich.Families.WebInvitations do
   end
 
   def accept(repo, user, token, ctx, opts \\ []) do
+    opts = Keyword.put_new_lazy(opts, :clock, fn -> Dawarich.Families.Clock.ticking(ctx.now) end)
+
     result =
       repo.transaction(fn ->
         case repo.query!(
@@ -44,6 +46,8 @@ defmodule Dawarich.Families.WebInvitations do
             repo.rollback(:not_found)
 
           [[id, family, email, status, expires]] ->
+            ctx = %{ctx | now: Keyword.fetch!(opts, :clock).()}
+
             cond do
               NaiveDateTime.compare(expires, DateTime.to_naive(ctx.now)) == :lt ->
                 repo.rollback(:invitation_expired)
@@ -58,7 +62,7 @@ defmodule Dawarich.Families.WebInvitations do
                 repo.rollback(:already_in_family)
 
               true ->
-                join(repo, user, id, family, ctx, opts)
+                join(repo, user, id, family, expires, ctx, opts)
             end
         end
       end)
@@ -204,7 +208,7 @@ defmodule Dawarich.Families.WebInvitations do
     )
   end
 
-  defp join(repo, user, invitation, family, ctx, opts) do
+  defp join(repo, user, invitation, family, expires, ctx, opts) do
     [[creator, name, access]] =
       repo.query!(
         "SELECT creator_id,name,access_until FROM families WHERE id=$1 FOR UPDATE",
@@ -217,9 +221,13 @@ defmodule Dawarich.Families.WebInvitations do
         log: false
       ).rows
 
+    ctx = %{ctx | now: Keyword.fetch!(opts, :clock).()}
     access = WebCreate.refresh_access(repo, family, access, plan, until, ctx.self_hosted)
 
     cond do
+      NaiveDateTime.compare(expires, DateTime.to_naive(ctx.now)) == :lt ->
+        repo.rollback(:invitation_expired)
+
       not ctx.self_hosted and not Entitlements.inherited?(access, plan, until, ctx.now) ->
         {:error, :family_lapsed}
 
@@ -248,32 +256,11 @@ defmodule Dawarich.Families.WebInvitations do
       log: false
     )
 
+    if Keyword.get(opts, :native_events, true),
+      do: Dawarich.Families.ProducerEvents.family(repo, family, :membership, ctx.now)
+
     Keyword.get(opts, :settled, fn -> :ok end).()
-    locale = Dawarich.Mail.ExploreFeatures.locale(Dawarich.UserSettings.get(user), "en")
-
-    Notifications.create!(
-      repo,
-      user.id,
-      :info,
-      t(locale, "accept_invitation", "welcome_to_family"),
-      t(locale, "accept_invitation", "you_ve_joined_the_family_name", %{"name" => name}),
-      at
-    )
-
-    [[settings]] =
-      repo.query!("SELECT settings FROM users WHERE id=$1", [creator], log: false).rows
-
-    locale = Dawarich.Mail.ExploreFeatures.locale(settings, "en")
-
-    Notifications.create!(
-      repo,
-      creator,
-      :info,
-      t(locale, "accept_invitation", "new_family_member"),
-      t(locale, "accept_invitation", "email_has_joined_your_family", %{"email" => user.email}),
-      at
-    )
-
+    Dawarich.Families.JoinNotices.create!(repo, user, creator, name, at)
     family
   end
 

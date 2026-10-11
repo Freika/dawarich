@@ -42,7 +42,7 @@ defmodule DawarichWeb.RailsPageTest do
   defp settings(user),
     do: Repo.one(from(u in "users", where: u.id == ^user.id, select: u.settings))
 
-  test "a page view looks the Rails user up once", %{user: user} do
+  test "a native notification page freshly reads its actor at every admission seam", %{user: user} do
     returning = RailsUser.signed_in(user.id) |> get("/notifications") |> recycle()
     assert Map.has_key?(Plug.Conn.fetch_cookies(returning).req_cookies, "_dawarich_phoenix")
     :telemetry.attach("a5-users", [:dawarich, :repo, :query], &__MODULE__.count_query/4, self())
@@ -51,7 +51,7 @@ defmodule DawarichWeb.RailsPageTest do
     get(returning, "/notifications")
 
     assert length(for({:query, query} <- flush(), query =~ ~s(FROM "public"."users"), do: query)) ==
-             1
+             4
   end
 
   test "a signed-out visitor goes to sign in with Devise's alert and the way back" do

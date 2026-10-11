@@ -4,15 +4,16 @@ defmodule Dawarich.Build.RailsParityTest do
   alias Dawarich.Build
   alias Jason.OrderedObject
 
+  @css "4716ec3b8d184a05b32e71aca1d8031336f08c6ba442785ddac033fd2129968d"
+
   @moduletag :tmp_dir
   @moduletag timeout: 300_000
 
-  @i18n "96491df05ef8ffc0044689e3f3b801085ca852ca43d07285fdee77b569c8ee46"
+  @i18n "ff72bd2fbe780a84b37cfd0c5ef6e9fa28c01e3023326295224541f1b1e4bd39"
   @achievements "6709610e637f512e76f7e5e1531f3be92c51e70fbf17564f6c3d609458a78198"
-  @importmap "285e1582c34cd0077430983506cd849ed9c8a704b9e2a0316a54d240aee46aa6"
-  @assets "f5eac41c61aea9ec2d70f4d9c33c45eaeb7a48694d658e1a6de8ddae71fa172a"
-  @manifest "3a7b4171d9c9173a2c4b48e28efde792e1b4259fb7d04c5b53915e1627d6f07f"
-  @css "20dd4517130b506c3880ec3f7750af66d681eeb1b9851c8665f8ffb0a92cefea"
+  @importmap "73ee634b5edc6fc7a1f55baa085c6cfa1f603fe445274021abb1618fb0973970"
+  @assets "874267bddec6acef1dc95030962ad38361b914c83fd6bb7f475339504c9d01eb"
+  @manifest "4c809501f79c28919ee1bc9776bd8229077eaf386811ec33d8a3aedca4908add"
 
   setup_all do
     root = Build.root()
@@ -62,7 +63,10 @@ defmodule Dawarich.Build.RailsParityTest do
     assert sha(manifest(Path.join(dir, "config/sprockets-manifest.json"))) == @manifest
   end
 
-  test "npm's Tailwind CLI writes the standalone binary's bytes", %{root: root, tmp_dir: tmp} do
+  test "npm Tailwind retains source classes and deterministic native CSS bytes", %{
+    root: root,
+    tmp_dir: tmp
+  } do
     target = Path.join(tmp, "tailwind.css")
 
     {output, status} =
@@ -83,7 +87,31 @@ defmodule Dawarich.Build.RailsParityTest do
       )
 
     assert status == 0, output
-    assert sha(File.read!(target)) == @css
+    bytes = File.read!(target)
+    assert sha(bytes) == @css
+    assert bytes =~ ~S(.bg-secondary\/10{background-color:)
+    assert bytes =~ ~S(.min-w-0{min-width:0})
+    repeated = Path.join(tmp, "tailwind-repeated.css")
+
+    {_, repeated_status} =
+      System.cmd(
+        Path.join(root, "node_modules/.bin/tailwindcss"),
+        [
+          "-i",
+          "app/assets/stylesheets/application.tailwind.css",
+          "-c",
+          "config/tailwind.config.js",
+          "--minify",
+          "-o",
+          repeated
+        ],
+        cd: root,
+        env: [{"BROWSERSLIST_IGNORE_OLD_DATA", "1"}],
+        stderr_to_stdout: true
+      )
+
+    assert repeated_status == 0
+    assert File.read!(repeated) == bytes
   end
 
   defp sha(bytes), do: :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower)

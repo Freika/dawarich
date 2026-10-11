@@ -75,7 +75,11 @@ defmodule DawarichWeb.NativeM7RouteLedgerTest do
           uniq: true,
           do: "#{inspect(module)}.#{function}"
 
-    assert length(gates) > 30
+    current =
+      Regex.scan(~r/^\| CG:([^ |]+) \|/m, ledger)
+      |> Enum.map(fn [_, gate] -> gate end)
+
+    assert Enum.sort(gates) == Enum.sort(current)
 
     for gate <- gates do
       assert ledger =~ "| G:#{gate} |"

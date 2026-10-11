@@ -176,8 +176,8 @@ defmodule DawarichWeb.Api.PlanEndpointTest do
                  |> read_response()
       end)
 
-    assert log =~ ~r/\[api\] GET \/api\/v1\/plan 200 \d+ms request_id=[0-9a-f-]{36}/
-    assert log =~ ~r/\[api\] GET \/api\/v1\/plan 304 \d+ms request_id=[0-9a-f-]{36}/
+    assert log =~ ~r/\[api\] GET \/api\/v1\/plan 200 \d+ms request_id=\[FILTERED\]/
+    assert log =~ ~r/\[api\] GET \/api\/v1\/plan 304 \d+ms request_id=\[FILTERED\]/
   end
 
   test "a hand-off to Rails logs at info, tagged [api]", %{port: port, upstream: upstream} do

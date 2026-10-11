@@ -2,7 +2,6 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
   use Dawarich.IngestCase, async: false
   import Dawarich.Test.RawHTTP
   import ExUnit.CaptureLog
-  require Logger
 
   @moduletag :capture_log
 
@@ -116,7 +115,7 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
     assert {200, _, "rails"} = read_response(client)
   end
 
-  test "invalid percent escapes in a query or form body reach Rails unchanged before either write",
+  test "invalid percent escape API replay is byte exact and retired family requests stay effect free",
        %{
          port: port,
          upstream: upstream
@@ -136,15 +135,22 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
           String.replace_prefix(path, "/api/v1/points", "/family/location_requests")
         ] do
       client = post(port, target, type, body, headers, nil)
-      {head, received} = puma_request(upstream, body)
-      assert request_line(head) == "POST #{target} HTTP/1.1"
-      assert received == body
-      assert {200, _, "rails"} = read_response(client)
+
+      if String.starts_with?(target, "/family/") do
+        assert {404, _, _} = read_response(client)
+        no_upstream!(upstream)
+      else
+        {head, received} = puma_request(upstream, body)
+        assert request_line(head) == "POST #{target} HTTP/1.1"
+        assert received == body
+        assert {200, _, "rails"} = read_response(client)
+      end
+
       assert_no_writes()
     end
   end
 
-  test "method override posts reach Rails with their body and override header before either write",
+  test "method override API replay is byte exact and retired family requests stay effect free",
        %{
          port: port,
          upstream: upstream
@@ -158,15 +164,22 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
     for {type, body, headers} <- cases,
         target <- ["/api/v1/points", "/family/location_requests"] do
       client = post(port, target, type, body, headers, nil)
-      {head, received} = puma_request(upstream, body)
-      assert request_line(head) == "POST #{target} HTTP/1.1"
-      assert received == body
 
-      if headers != [] do
-        assert header(head, "x-http-method-override") == ["GET"]
+      if String.starts_with?(target, "/family/") do
+        assert {404, _, _} = read_response(client)
+        no_upstream!(upstream)
+      else
+        {head, received} = puma_request(upstream, body)
+        assert request_line(head) == "POST #{target} HTTP/1.1"
+        assert received == body
+
+        if headers != [] do
+          assert header(head, "x-http-method-override") == ["GET"]
+        end
+
+        assert {200, _, "rails"} = read_response(client)
       end
 
-      assert {200, _, "rails"} = read_response(client)
       assert_no_writes()
     end
   end
@@ -199,9 +212,9 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
     assert [[0]] = Repo.query!("SELECT count(*) FROM points").rows
 
     assert [request_id] = values(headers, "x-request-id")
-
-    assert log =~
-             "[ingest] /api/v1/overland/batches write failed: Postgrex.Error sqlstate=undefined_table request_id=#{request_id}"
+    assert Ecto.UUID.cast(request_id) == {:ok, request_id}
+    assert log =~ "[ingest] /api/v1/overland/batches write failed: Postgrex.Error [FILTERED]"
+    refute log =~ request_id
 
     refute log =~ "relation"
     refute log =~ "does not exist"
@@ -272,7 +285,7 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
       end)
 
     assert log =~
-             ~r/\[ingest\] POST \/api\/v1\/overland\/batches 201 \d+ms request_id=[0-9a-f-]{36}/
+             ~r/\[ingest\] POST \/api\/v1\/overland\/batches 201 \d+ms request_id=\[FILTERED\]/
 
     refute log =~ "phoenix-a3-endpoint-key"
     refute log =~ "13.4,"
@@ -293,7 +306,7 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
         assert {401, _, ""} = read_response(client)
       end)
 
-    assert log =~ ~r/\[ingest\] POST \/api\/v1\/points 401 \d+ms request_id=[0-9a-f-]{36}/
+    assert log =~ ~r/\[ingest\] POST \/api\/v1\/points 401 \d+ms request_id=\[FILTERED\]/
     refute log =~ "phoenix-a3-endpoint-key"
     refute log =~ "13.4,"
     refute log =~ "52.5]"

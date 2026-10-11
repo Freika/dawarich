@@ -1,5 +1,6 @@
 defmodule DawarichWeb.A12f3bN02Test do
   use Dawarich.DataCase, async: false
+  import Dawarich.Test.Await
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
   import Plug.Conn
@@ -31,12 +32,14 @@ defmodule DawarichWeb.A12f3bN02Test do
   end
 
   @tag a12f3b_case: "N02a"
-  test "native notification publication updates the authorized connected navbar", ctx do
+  test "native owner invalidation updates the navbar while independent wire messages remain exact",
+       ctx do
+    [[old_wire_count]] = Repo.query!("SELECT count(*) FROM phoenix.notification_events").rows
     id = Notifications.create!(Repo, ctx.actor.id, :info, "Created", "Body")
     {:ok, view, _} = live_as(ctx)
     stream = Dawarich.RailsMessages.broadcasting([{:user, ctx.actor.id}, "notifications"])
     {:ok, _} = Bus.subscribe(stream)
-    assert_receive {:redix_pubsub, _, _, :subscribed, _}
+    await_receive({:redix_pubsub, _, _, :subscribed, _})
 
     assert apply(Notifications, :update_with_broadcast!, [
              Repo,
@@ -45,9 +48,10 @@ defmodule DawarichWeb.A12f3bN02Test do
              %{"title" => "Updated", "content" => "New body"}
            ]) == :ok
 
-    assert TurboEvents.notifications(Repo, Repo) == 2
-    for _ <- 1..4, do: assert_receive({:redix_pubsub, _, _, :message, _})
+    assert TurboEvents.notifications(Repo, Repo) == old_wire_count + 2
+    for _ <- 1..4, do: await_receive({:redix_pubsub, _, _, :message, _})
     :sys.get_state(Bus)
+    Dawarich.Notifications.Events.broadcast(ctx.actor.id)
     html = render(view)
     assert html =~ "Updated"
     refute html =~ ">Created<"
@@ -64,8 +68,9 @@ defmodule DawarichWeb.A12f3bN02Test do
     assert Notifications.get(ctx.actor.id, id).kind == "warning"
     assert Notifications.get(ctx.actor.id, id).read_at
     assert TurboEvents.notifications(Repo, Repo) == 1
-    for _ <- 1..2, do: assert_receive({:redix_pubsub, _, _, :message, _})
+    for _ <- 1..2, do: await_receive({:redix_pubsub, _, _, :message, _})
     :sys.get_state(Bus)
+    Dawarich.Notifications.Events.broadcast(ctx.actor.id)
     assert render(view) =~ "warning"
     assert Dawarich.Navbar.unread(ctx.actor.id).count == 0
   end
@@ -94,8 +99,7 @@ defmodule DawarichWeb.A12f3bN02Test do
       |> DawarichWeb.AuthHandler.call(enabled: true, registration_enabled: true)
 
     assert logout.status == 303
-    render_click(view, "destroy_all")
-    assert_redirect(view, "/users/sign_in")
+    assert_redirect(view, "/users/sign_in", 1_000)
     assert Notifications.get(ctx.actor.id, id)
   end
 

@@ -1338,3 +1338,609 @@ Rails counts administrators before an unlocked update and does not share a guard
 - Evidence: A2 commit `c7f44a025`; `m3b-domain.report.md`, `m3b-x3.report.md`. No machine stress or Rails production change.
 - Ledger: ED-NATIVE-ADMIN-USERS-DELETE-GUARD; no DRB added. Distinct from FRB-084's missing deletion guard.
 - CHANGELOG-ready: Serialize native administrator deletion and role changes to retain administration access.
+
+### FRB-086 — Corrupt Place dependents disclose another owner's data
+
+Database-valid cross-owner visit/tag associations can disclose foreign visit names, times, duration and tags in an owned Place drawer. Native Places detail filters each dependent by the Place owner; edit offers only owned tags. Retained map/Rails adapters are unchanged until milestone 6. Public endpoints are not claimed to create this graph.
+
+- Rails: `app/controllers/places_controller.rb:14,17`; `app/models/place.rb:13,17`; `app/models/concerns/taggable.rb:8`.
+- Phoenix: `app-phoenix/lib/dawarich/place_drawer.ex:58`; `app-phoenix/lib/dawarich/places/reads.ex:19`.
+- Test: `native Place detail never exposes foreign dependent data` in `app-phoenix/test/dawarich/places_test.exs`.
+- Ledger: ED-NATIVE-M3D-DEPENDENT-PRIVACY; no DRB added.
+- CHANGELOG-ready: Keep foreign-owner visit and tag data out of native Place details, even when stored associations are corrupt.
+
+### FRB-087 — Corrupt Place removal changes another owner's graph
+
+Rails destruction nullifies/removes database-valid foreign dependents of an owned Place, and tag replacement may remove foreign associations. Native update/delete refuses corrupt foreign visit/suggestion/note/tag graphs before effects. Normal owned graphs retain phased persistence; visits survive deletion.
+
+- Rails: `app/controllers/places_controller.rb:49,51,94`; `app/models/place.rb:13,18`; `app/models/concerns/taggable.rb:7`; `app/models/concerns/notable.rb:7`.
+- Phoenix: `app-phoenix/lib/dawarich/places/native_fence.ex:5`; `app-phoenix/lib/dawarich/places/web_write.ex:15`; `app-phoenix/lib/dawarich/places/web_delete.ex:21`.
+- Test: `native Place commands refuse stale actors and foreign dependents before effects` in `app-phoenix/test/dawarich/places/commands_test.exs`. Independent suggestion/tagging/note successors: `foreign Place suggestions fence update and delete with an unchanged graph`, `foreign Place taggings fence update and delete with an unchanged graph`, and `foreign Place notes fence update and delete with an unchanged graph`. Each SQL branch has a detected mutation.
+- Ledger: ED-NATIVE-M3D-DEPENDENT-WRITES; no DRB added.
+- Limits: Fresh admission and foreign graph fence precede record effects after Place row lock; no guarantee against arbitrary concurrent direct-database corruption after the check or cross-phase/reconnect durability.
+- CHANGELOG-ready: Refuse native Place edits/removal when corrupt associations would change another owner's data.
+
+### FRB-088 — Non-object account settings crash the Places page before refusal
+
+An account with an array-valued settings container cannot open the Rails Places page: its navbar indexes the raw settings with a string. Native account decoding retains the opaque container for explicit domain refusal instead of raising during authentication; the native Places page renders a generic alert, and commands remain unsupported with zero effects.
+
+- Rails: `app/helpers/application_helper.rb:78`, `app/views/shared/_navbar.html.erb:127`; local Rails helper oracle raises `TypeError` for an array-valued synthetic user.
+- Phoenix: `app-phoenix/lib/dawarich/accounts/settings_value.ex:8`, `app-phoenix/lib/dawarich/accounts/user.ex:17`, `app-phoenix/lib/dawarich/place_list.ex:30`, `app-phoenix/lib/dawarich_web/locale.ex:60`. Object/nil casts and dumps retain their original write boundary; opaque reads do not grant write support.
+- Test: `unsupported persisted Place settings render alert before and after join`, including zero-effect command refusal and unchanged malformed settings after an explicit native locale query.
+- Ledger: ED-NATIVE-M3D-OPAQUE-SETTINGS; no DRB added. Distinct from FRB-051 NULL/default handling: this preserves a malformed non-object container as unsupported for Places.
+- Evidence: milestone 3d implementation report; RED, restored GREEN and decoder mutation. No all-page support claim for corrupt settings.
+- Stage-2 integration extends the explicit unsupported-container refusal to native map, Family, public-map and Trip-form document admission: `app-phoenix/lib/dawarich_web/native_m6_auth.ex:11`, `app-phoenix/lib/dawarich_web/native_data_request.ex:41`. These documents return 422 before locale/page/retained-preflight effects. Tests: `native document authentication refuses malformed persisted settings before loading a page` and `native data documents reject malformed settings before retained Trip preflight`; omitted guard mutations fail. The Rails navbar root cause and ED-NATIVE-M3D-OPAQUE-SETTINGS are unchanged.
+
+### FRB-NATIVE-M5-FAMILY-INDICATOR — Duplicate family navbar IDs
+
+Rails renders the family sharing indicator in both mobile and desktop navigation with the same DOM ID. DOM replacement can address only one copy, leaving the other sharing indicator stale; the same copied structure also fails native LiveView duplicate-ID validation. Native navigation uses a distinct mobile ID and retains the desktop indicator ID; both display the current sharing state. Hybrid Turbo replacement targets are unchanged.
+
+- Rails: `app/views/shared/_navbar.html.erb:21,83`; `app/views/families/_navbar_indicator.html.erb:1`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/navbar.ex:195`; `app-phoenix/lib/dawarich_web/components/navbar_parts.ex:70`.
+- Test: “native family indicators keep separate mobile and desktop sharing states” in `app-phoenix/test/dawarich_web/native_data_clock_test.exs`; current Points/Stats family-expiry lifecycle cases mount/patch without duplicate-ID exceptions.
+- Ledger: ED-NATIVE-M5-FAMILY-INDICATOR added; no DRB added.
+- Evidence: impl-m5.report.md final audit follow-up; RED unique-node assertion, GREEN, duplicate-ID mutation fails, restored GREEN. Rails remains unchanged.
+- CHANGELOG-ready: Keep mobile and desktop family-sharing indicators independently addressable and current.
+
+### FRB-NATIVE-M5-PUBLIC-DELIVERY — Revoked report can finish an in-flight read
+
+Rails checks public report access once, before loading owner presentation data and rendering. Disabling sharing during that work can still deliver the already admitted report. Native report projections repeat the source reader after preparation and refuse changed sharing settings or owner state. Shared resource projections similarly repeat M4 grant admission and compare current privacy zones before returning ready data. This closes the deterministic preparation-window case; it is not an atomic guarantee against revocation after the final check.
+
+- Rails: `app/controllers/shared/digests_controller.rb:13,15,26`; `app/controllers/shared/stats_controller.rb:11,13,26`.
+- Phoenix: `app-phoenix/lib/dawarich/sharing/reports.ex:27`; `app-phoenix/lib/dawarich/sharing/pages.ex:36`.
+- Test: “public report delivery rechecks sharing settings and current owner”; “public delivery repeats grant and privacy admission after a ready read” in `app-phoenix/test/dawarich/sharing/pages_test.exs`.
+- Ledger: ED-NATIVE-M5-PUBLIC added; no DRB added.
+- Evidence: named deterministic after-read revocation and privacy probes, RED/GREEN, reread-bypass mutations fail, restored GREEN. Rails symptom is source-backed, not a new Rails runtime concurrency oracle. Retained Rails is unchanged.
+- CHANGELOG-ready: Recheck public sharing and owner state before returning prepared native report data.
+
+
+### FRB-NATIVE-M5-ACHIEVEMENT-DELIVERY — Revoked achievement can finish an in-flight read
+
+Rails memoizes the enabled carrier and its owner before preparing the public badge; revoking the share or deleting the owner during preparation can still deliver that badge. Phoenix repeats current carrier/key/owner/settings admission after fresh or cached preparation, refusing changed admission. Login-locked owners remain admitted. This protects the preparation window; revocation after the final check is not an atomic delivery guarantee.
+
+- Rails: `app/controllers/shared/achievements_controller.rb:9,39,45` (memoized admission, presenter); cached image branch at `:22,26,30` uses the same admission.
+- Phoenix: `app-phoenix/lib/dawarich/achievements/public_card.ex:6`; `app-phoenix/lib/dawarich/sharing/pages.ex:9`.
+- Tests: “public achievement revocation during preparation refuses fresh and cached cards”; “public achievement owner deletion during preparation refuses fresh and cached cards” in `app-phoenix/test/dawarich_web/native_public_metadata_test.exs`.
+- Ledger: ED-NATIVE-M5-ACHIEVEMENT-DELIVERY added; no DRB added.
+- Evidence: deterministic after-read revocation, soft/hard deletion and cached-reader probes RED/GREEN; delivery-check-bypass mutation fails both; restored targeted callers. Rails race is source-backed; Rails production remains unchanged.
+- CHANGELOG-ready: Recheck achievement sharing and owner existence before delivering prepared public badges.
+
+Round-2 extension (2026-10-10), FRB-NATIVE-M5-ACHIEVEMENT-DELIVERY: the same `Sharing.Delivery.deliver/4` rule now protects PublicCard, PNG rendering/cache retrieval, image HTTP delivery, and both native and retained achievement HTML documents after rendering. The retained document carries its original admission snapshot in request-private state. Tests in `public_delivery_test.exs` cover cold/warm images under revocation and soft/hard owner deletion, image HTTP responses, and native/retained HTML delivery. Ten new tests RED 0/10; GREEN 10/10; shared-check bypass fails all ten and both previous preparation regressions; restored caller batch 26 passed. Rails image source: `app/controllers/shared/achievements_controller.rb:22,26,30`; Phoenix: `app-phoenix/lib/dawarich/achievements/og_image.ex`, `app-phoenix/lib/dawarich/sharing/delivery.ex`, and achievement HTTP plugs. ED-NATIVE-M5-ACHIEVEMENT-DELIVERY-R2 added; no DRB. Final-check atomicity limitation unchanged.
+
+Round-2 extension (2026-10-10), FRB-NATIVE-M5-PUBLIC-DELIVERY: initial and final report admission now read an injectable live clock independently. Native and retained HTTP documents recheck after HTML preparation. The public-path census also routes shared-link trip/track/timeline/live documents, shared trip/points/live-points/route/photo/thumbnail APIs, and public month hexagons/bounds through the same Sharing.Delivery rule. API checks run in `register_before_send`, after JSON/image preparation and conditional-cache handling. Public cache policy callbacks delegate to that rule; no production public Cache.Pages consumer currently exists. Shared-link checks retain the existing cookie and family predicates, live-owner admission and privacy fingerprint. Report snapshots include carrier/revision plus safe owner fields, hashed without retaining credentials. M4 grant/cookie/consent logic remains behind the existing dependency adapter; no replacement domain policy.
+
+- Rails sources: `app/controllers/shared/digests_controller.rb:15,26`, `shared/stats_controller.rb:13,25`, `shared/links_controller.rb:8,14,35`, `api/v1/shared/base_controller.rb:27,31`, `api/v1/shared/photos_controller.rb:24`, `api/v1/maps/hexagons_controller.rb:99,100`. These paths admit before preparation/delivery.
+- Phoenix: `app-phoenix/lib/dawarich/sharing/delivery.ex`, `sharing/reports.ex`, `sharing/pages.ex`, `dawarich_web/public_delivery.ex` and the native/retained/shared-link/shared-API/hexagon HTTP callers.
+- Tests: six named report/HTML expiry/revocation cases in `public_report_delivery_test.exs`; thirteen named document/API/cached-photo cases in `public_link_delivery_test.exs`; existing `pages_test.exs`, public owner/expiry/native metadata and cache isolation cases. Each new public path has a named deterministic probe and an authorized positive control. The original S02 preparation-race case is retained as “zone expansion during shared public delivery refuses payloads and cannot poison thumbnail grants”, now requiring an immediate 404 as well as unpoisoned subsequent grants. Historical API corpus clocks are pinned explicitly in the test harness through the delivery clock seam; production never uses request-start time for final admission.
+- Evidence: report initial RED 8/16; twelve path tests RED 0/12; live-points RED 0/1; GREEN focused 55 passed. A warning-free shared-check bypass fails all 29 new delivery cases, the cache policy regression, both original achievement preparation cases, report/resource expiry checks and the S02 successor (35 failures; 21/56 passed, seven excluded by explicit S02 location selection); restored direct callers rerun. A preliminary redundant-boolean mutation and initial thumbnail fixture/cache setup failures are excluded.
+- Ledger: ED-NATIVE-M5-PUBLIC-DELIVERY-R2 appended; existing FRB extended; no DRB. Source-backed Rails races, no Rails production changes or new runtime Rails oracle. Final-check atomicity and client-side cached-response limitations remain.
+
+Round-3 link-binding extension (2026-10-10), FRB-NATIVE-M5-PUBLIC-DELIVERY: bind initial and final admission to the exact link/settings/resource/audience read for preparation, rather than independently admitting a newer link while projecting old flags. Restricting stats or description between the first link read and initial admission now refuses HTML/API delivery. Rails request-start link source: `app/controllers/shared/links_controller.rb:35`; API uses `app/controllers/api/v1/shared/trips_controller.rb`. Phoenix: `lib/dawarich/sharing/delivery.ex` prepared-link admission clause, `lib/dawarich_web/shared_link_page.ex`, `lib/dawarich_web/api/shared_controller.ex`. Named tests: “public trip API binds preparation flags to the initial admission”, “public trip HTML binds description flags to the initial admission”. Both RED (200 instead of 404), GREEN and link-binding bypass failures; restored caller coverage recorded in the round-3 report. ED-NATIVE-M5-LINK-BINDING-R3 appended; no DRB. Same final-check atomicity limit.
+
+Round-3 family-viewer extension (2026-10-10), FRB-NATIVE-M5-PUBLIC-DELIVERY: family HTML repeats login eligibility and the original signed session/remember-cookie identity at final Delivery admission, then checks current family consent. It never switches an admitted session to a different remember identity. Password changes, login locks and soft deletion during rendering refuse with 404 and withhold protected content while membership remains. Rails: `app/controllers/shared/links_controller.rb:35` request-start current_user consent. Phoenix: `lib/dawarich_web/rails_auth.ex` delivery_user/2 and `lib/dawarich_web/shared_link_page.ex` allowed callback. Six actual signed/remember HTTP cases named “family shared HTML revalidates {session,remember} viewer after {password,lock,deletion} during preparation”: RED 0/6 (200 instead of 404), GREEN 6/6, request-start-viewer mutation fails all six. ED-NATIVE-M5-FAMILY-VIEWER-DELIVERY-R3 appended; no DRB. Same final-check atomicity limitation.
+### FRB-NATIVE-M4-ABANDONED-UPLOAD — Leaving an upload strands its unattached file
+
+Rails creates direct-upload blobs before form submission. Navigating away only removes browser listeners; it does not abort or purge completed unattached uploads. Native reservations expire after the configured lease, with durable bounded sweeping and retryable physical deletion before metadata removal. Cancelled grants remain tombstoned until their target expires.
+
+- Rails: `app/javascript/controllers/upload_controller.js:40,110,153`; Active Storage direct-upload creation precedes the hidden signed-id field at line 160.
+- Phoenix: `app-phoenix/lib/dawarich/uploads/sweep_worker.ex:11`; `app-phoenix/lib/dawarich/uploads/cleanup_worker.ex:9`; `app-phoenix/lib/dawarich/uploads/records.ex:76`.
+- Test: “expired abandoned uploads are purged once after worker restart”; “cleanup refuses an attached export and retains a late PUT tombstone until target expiry” in `app-phoenix/test/dawarich/uploads_test.exs`.
+- Evidence: `impl-m4.report.md`, A1; Rails direct-upload creation/local upload probe confirms the unattached metadata/file are retained, then purges its own fixture; controller disconnect source proves it submits no cancellation. No Rails browser cancellation reproduction claimed. Native owned reservations only; unreserved Rails/rich-text blobs and attached exports are excluded. Stage-1 C extends the same lease/sweep to owned rich-text reservations, including claimed uploads removed before saving; saved embeds are retained. ED-NATIVE-M4-UPLOAD-LIFECYCLE added; no DRB added.
+- Rich-text Rails source: `app/views/trips/_form.html.erb:81`; Action Text 8.1.3.1 `app/javascript/actiontext/attachment_upload.js:13`; Active Storage 8.1.3.1 `app/controllers/active_storage/direct_uploads_controller.rb:8` creates the blob before an editor save. Source inspection supports the abandoned editor path; no additional Rails browser reproduction is claimed.
+- Rich-text Phoenix/test: `app-phoenix/lib/dawarich/uploads/sweep_worker.ex:17`; “rich text sweeps pending and claimed orphans while retaining saved embeds” in `uploads_test.exs`; omitted claimed-orphan sweep mutation fails. Existing ED-NATIVE-M4-UPLOAD-LIFECYCLE and ED-NATIVE-M5-EDITOR extended; no new DRB.
+- CHANGELOG-ready: Remove abandoned native uploads, including unsaved rich-text attachments, after their lease expires while preserving accepted attachments.
+
+### FRB-NATIVE-M4-STORAGE-PATH-LOG — Request logging exposes signed storage capabilities
+
+Rails' request logger emits `request.filtered_path`, which filters query parameters but retains a signed Active Storage path token. Native logging redacts the storage capability and private filename in bare request messages, structured reports and lazy iodata.
+
+- Rails: railties 8.1.3.1 `lib/rails/rack/logger.rb:40,57-59`; Active Storage disk/blob capability routes.
+- Phoenix: `app-phoenix/lib/dawarich/log_redaction.ex:71,86`.
+- Test: “storage request path logs never retain a signed upload capability” in `app-phoenix/test/dawarich_web/native_upload_target_test.exs`; disable-path-scrub mutation fails it.
+- Evidence: `impl-m4.report.md`, A2; actual installed Rails request logger invoked with a synthetic disk path and url/token/secret parameter filters confirms the retained capability. No production token used. Native logging is repaired; retained Rails logging remains unchanged. ED-NATIVE-M4-UPLOAD-TRANSPORT added; no DRB added.
+- CHANGELOG-ready: Keep signed storage capabilities and private download filenames out of native request logs.
+
+### FRB-NATIVE-M4-LEGACY-EXPORT-PATH — Legacy export removal traverses outside public storage
+
+An export URL containing `../` lets Rails' destroy callback delete a local file outside `public`; a parent symlink also escapes that directory. Native deletion rejects nonlocal and dot-segment paths before changing metadata; its durable physical cleanup refuses symlink parents.
+
+- Rails: `app/models/export.rb:59,62`.
+- Phoenix: `app-phoenix/lib/dawarich/exports/delete.ex:17`; `app-phoenix/lib/dawarich/exports/legacy_purge_worker.ex:5,52`.
+- Test: **unsafe legacy export paths and symlink parents cannot remove outside artifacts**, `app-phoenix/test/dawarich/exports/legacy_purge_test.exs`.
+- Evidence: synthetic actual Rails `remove_attached_file` callback removes `public/../outside.gpx`; native path/symlink mutations fail the named case. Native-only fix; Rails unchanged. ED-NATIVE-M4-EXPORTS-UI; no DRB.
+
+### FRB-NATIVE-M4-LEGACY-EXPORT-REFERENCE — Removing one legacy export deletes another export's file
+
+Rails' destroy callback removes a legacy file without checking other export references. Native cleanup persists its path with the deletion and retains the artifact while an export still references that path; replay and missing-file cleanup are idempotent.
+
+- Rails: `app/models/export.rb:59,62`.
+- Phoenix: `app-phoenix/lib/dawarich/exports/delete.ex:69`; `app-phoenix/lib/dawarich/exports/legacy_purge_worker.ex:38`.
+- Test: **native legacy export deletion purges only its unshared local artifact after commit**, `app-phoenix/test/dawarich/exports/legacy_purge_test.exs`.
+- Evidence: actual Rails callback on synthetic shared path removes its artifact despite a second model's reference; native reference-check and uncommitted-cleanup mutations fail. Probe models are unpersisted; source has no reference query. This does not claim cross-system concurrent creation/unlink arbitration. Native-only fix; Rails unchanged. ED-NATIVE-M4-EXPORTS-UI; no DRB.
+
+### FRB-NATIVE-M4-NOTIFICATION-INVALIDATION — Reading or deleting leaves other tabs stale
+
+Rails broadcasts creation and explicit broadcast updates, but ordinary opening, read-all, single deletion and delete-all do not invalidate other tabs. Their unread badge and removed detail can remain stale. Phoenix persists an owner-only publication intent in the same transaction as every affected mutation, including restored batches and account removal. Authorized native subscribers reload snapshots; a deleted detail is cleared before redirecting to the notification list.
+
+- Rails: `app/models/notification.rb:4`; `app/controllers/notifications_controller.rb:15,19,25,30`.
+- Phoenix: `app-phoenix/lib/dawarich/notifications/mutations.ex:48`; `app-phoenix/lib/dawarich/notifications/events.ex:13`; `app-phoenix/lib/dawarich_web/notification_session/native.ex:86`.
+- Tests: **delete-all invalidation survives relay restart without its deleted rows**, **rollback emits no native event and duplicate replay converges**, **native subscriptions clear a deleted detail before delivering its owner wake**.
+- Evidence: actual synthetic Rails model/controller mutators instrumented broadcast methods: create emits two calls; open/delete/read-all/delete-all emit zero. No Rails browser reproduction claimed. Owner, replay, rollback and deleted-detail mutations fail. Native-only fix; Rails unchanged. ED-NATIVE-M4-NOTIFICATION-EVENTS; no DRB.
+
+### FRB-NATIVE-M4-FAMILY-INDICATOR-ID — Mobile and desktop indicators repeat the same element identity
+
+Rails renders the same `family-navbar-indicator` frame in both mobile and desktop navigation, so updates cannot address those two indicators independently. Native indicators now have distinct element IDs and refresh from an admitted owner permission snapshot.
+
+- Rails: `app/views/shared/_navbar.html.erb:21,83`; `app/views/families/_navbar_indicator.html.erb:1`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/navbar.ex:50`; `app-phoenix/lib/dawarich_web/components/navbar_parts.ex:75`.
+- Test: **native family indicator follows current owner permissions without swallowing family delivery**, `notifications_native_events_test.exs`.
+- Evidence: source plus two actual partial renders produce two identical frame IDs; no Rails browser stale-indicator reproduction claimed. Repeating the native ID fails the named LiveView test on duplicate elements. Independent legacy frame protocol unchanged. ED-NATIVE-M4-NOTIFICATIONS-UI; no DRB.
+
+
+### FRB-NATIVE-M4-EXTRACTION-DIALOG-NAME — Extraction dialog has no accessible name
+
+The Rails extraction modal has a visible heading without a dialog accessible-name relationship. Screen reader dialog navigation cannot identify its purpose. Native extraction now references its uniquely identified localized heading and disables its LiveView submit while the command is pending.
+
+- Rails: `app/views/imports/_extraction_dialog.html.erb:1,3`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/imports_extraction_dialog.ex:15,22,98`.
+- Test: **native job pages and open dialogs have one accessible label and no Hotwire runtime**, `native_pages_hotwire_free_test.exs`.
+- Evidence: actual synthetic Rails partial render: one dialog, one heading, zero accessible-name attributes. Native static/connected English/German case initially fails missing relationship, then passes; removing native naming and adding a duplicate control label each fail the exact named case. No browser/screen-reader execution claimed. ED-NATIVE-M4-STRUCTURAL-AB; no DRB.
+
+### FRB-NATIVE-M4-RESTORED-EXPORT-PURGE — Restored URLs authorize unrelated file deletion
+
+An account archive can restore a completed export whose URL names an unrelated public file. Deleting that export in Rails removes the file. Native cleanup requires a private creation-time artifact identity with the exact export, owner and path; restore cannot populate that ledger. Unproven legacy URLs remain readable references and their files are retained. Current native producers use blobs; there is no URL-derived provenance backfill.
+
+- Rails: `app/services/users/import_data/exports.rb:70-84`; `app/models/export.rb:59-62`.
+- Phoenix: `app-phoenix/lib/dawarich/exports/legacy_purge_worker.ex:18`; `app-phoenix/lib/dawarich/exports/delete.ex:69`; private `export_legacy_artifacts` migration.
+- Test: “restored export URLs never authorize deletion of unrelated public files” in `app-phoenix/test/dawarich/exports/legacy_purge_test.exs`; restored error page and another owner's export-like path, mismatched provenance, old path-only job. Existing trusted artifact/reference/symlink cases remain.
+- Ledger: ED-NATIVE-M4-RESTORED-EXPORT-PURGE; no DRB. Rails production remains unchanged.
+
+
+### FRB-NATIVE-M4-DELETED-UPLOAD-RESURRECTION — Deleted imports/accounts can leave replayed remote uploads
+
+Deleting an imported direct upload or its account purges the current remote object, but a still-valid or already in-flight PUT can recreate it after deletion. Rails has no retained native-upload identity or recurring deletion debt for this path. Phoenix transfers a claimed reservation's trusted creation-time key/service and target deadline into durable cleanup debt before removing the blob or owner. Cleanup waits past signing expiry, retains remote identity for bounded recurring late-arrival removal, and excludes shared attachments. Shared purge I/O runs outside its database transactions.
+
+- Rails: `app/models/import.rb:197`; `app/services/users/destroy.rb:17-19,139-142`. Source-backed deletion/lack-of-debt observation; no Rails/S3 server reproduction was executed.
+- Phoenix: `app-phoenix/lib/dawarich/storage/native_purge.ex:63`; `app-phoenix/lib/dawarich/uploads/deletion_debt.ex:4`; `app-phoenix/lib/dawarich/exports/purge_worker.ex:35`.
+- Tests: “claimed remote import deletion retains debt for replay and in-flight arrivals” and “claimed remote account destruction retains debt after owner removal”, `claimed_upload_cleanup_test.exs`, through actual Imports.delete/DestroyLease/DestroyService and Users.DestroyWorker. Deterministic simulated remote object arrivals; local verified-read adapter uses the same stored service identity.
+- ED-NATIVE-M4-DELETED-UPLOAD-DEBT; no DRB. Rails source remains unchanged.
+### FRB-NATIVE-M4-FAMILY-CAPACITY — Concurrent invitations can oversubscribe a Cloud family
+
+Rails checks invitation capacity before its transaction without locking the family.
+Two invitations can both take the final available seat. Native scoped commands
+lock family, users and memberships before repeating capacity admission.
+
+- Rails: `app/services/families/invite.rb:19,21`.
+- Phoenix: `app-phoenix/lib/dawarich/families/native_commands.ex:90`.
+- Test: `families_commands_test.exs`, “concurrent invitations serialize the final Cloud seat”; deterministic two-connection lock-removal mutation fails.
+- Ledger: ED-NATIVE-M4-FAMILY-CAPACITY; no DRB added. Rails production code is unchanged.
+
+### FRB-NATIVE-M4-FAMILY-DELIVERY — A removed viewer can keep receiving family locations
+
+Rails checks membership and family access at subscription. Its stream callback
+then transmits subsequent coordinates without repeating either check. A removed
+member or viewer whose family access lapses can keep the old subscription.
+Native family pages re-admit every delivery, read currently authorized snapshots,
+clear refused state, and erase browser maps and member rows on disconnect.
+Versioned timers independently expire silent consent and access grants.
+
+- Rails: `app/channels/family_locations_channel.rb:6,9,10`.
+- Phoenix: `app-phoenix/lib/dawarich_web/native_family_auth.ex:17`; `app-phoenix/lib/dawarich_web/family_delivery.ex:17` and `assets/js/hooks/family_map.js` lifecycle.
+- Tests: “withdrawn consent or removed membership discards queued coordinates before rendering”; “reconnect snapshots recover missed invalidation and family refusal clears private state”; timer-version and info-admission mutations fail.
+- Ledger: ED-NATIVE-M4-FAMILY-DELIVERY; no DRB added. Independent wire adapters remain separately supported; native pages do not subscribe to coordinate streams.
+
+### FRB-NATIVE-M4-PUBLIC-DELIVERY — Public live maps retain revoked subscriptions
+
+Rails admits a public link once when connecting and subscribes to its coordinate stream. An already connected reader can retain old content after revocation, expiry, phrase rotation or audience loss. Native public readers re-admit before each snapshot and clear silent expiry with a versioned deadline timer. Native browser hooks abort pending loads and erase maps, markers, images, replay timers and data on refusal/disconnect. Snapshot construction repeats admission and privacy checks after loading, preventing queued revoked data from being published; independent wire adapters retain their external protocol.
+
+- Rails: `app/channels/application_cable/connection.rb:27,29`; `app/channels/shared_location_channel.rb:5,8`.
+- Phoenix: `app-phoenix/lib/dawarich/sharing/public.ex:20`; integrated host `app-phoenix/lib/dawarich_web/public_map_auth.ex:20`, `:94`, and `app-phoenix/lib/dawarich_web/public_map_deadline.ex:12`. The immutable M4 grant is bounded by unlock and browser-session cookie deadlines; the native host consumes hashed session signout before publishing another snapshot.
+- Tests: “queued public update after revoke or phrase rotation clears old content before delivery”; “public expiry clears a silent connection and reconnect cannot revive it”; admission/cache/timer mutations fail.
+- Ledger: ED-NATIVE-M4-PUBLIC-ADMISSION; no DRB added. Rails production code unchanged.
+
+
+### FRB-NATIVE-M4-TRACK-ROUTE — Shared tracks ignore the disabled route option
+
+Rails renders a shared track map even when its owner disables the route section. Native public track readers omit both the map and route snapshot when `show_route` is false; optional stats/photos retain their independent settings.
+
+- Rails: `app/views/shared/links/_track.html.erb:6`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/shared_resource_page/track.html.heex:4`; `app-phoenix/lib/dawarich/sharing/public_snapshot.ex:28`.
+- Test: “native shared track honors the disabled route section”; track-section mutation fails, restoration passes.
+- Ledger: ED-NATIVE-M4-TRACK-ROUTE; no DRB added. Rails production code unchanged.
+
+### FRB-NATIVE-M4-FAMILY-SNAPSHOT — Consent can change while family coordinates load
+
+Rails captures sharing members before fetching their points and does not recheck before returning locations/history. Consent withdrawal, expiry or membership removal during that read can still disclose coordinates. Native scoped snapshots repeat actor/access admission and compare membership/consent/access fingerprints at the current clock before returning.
+
+- Rails: `app/services/families/locations.rb:17,19,28,31,43,50`.
+- Phoenix: `app-phoenix/lib/dawarich/families/native_reads.ex` snapshot validation.
+- Tests: `FamiliesSnapshotRaceTest`, ten named locations/history in-flight consent/member/viewer/expiry/access cases; bypass-final-validation mutation fails all ten.
+- Ledger: ED-NATIVE-M4-FAMILY-SNAPSHOT; no DRB added. Distinct from the existing subscription-only FAMILY-DELIVERY fix.
+
+### FRB-NATIVE-M4-UNLOCK-LOGS — Public unlock phrases reach unfiltered logs
+
+Rails accepts the public unlock secret under phrase, but its configured partial parameter filters contain neither phrase nor magic_phrase. Request parameter logging can expose that secret. Phoenix adds phrase to the common Phoenix/LogRedaction vocabulary, covering structured reports, lazy iodata, query strings and JSON without changing unlock semantics.
+
+- Rails: `app/controllers/shared/links_controller.rb:18`; `config/initializers/filter_parameter_logging.rb:8`.
+- Phoenix: `app-phoenix/config/config.exs:39`; shared `Dawarich.LogRedaction` filter.
+- Test: “public unlock phrase is filtered in structured reports lazy iodata and query strings”; exclude-phrase-from-sensitivity mutation fails.
+- Ledger: ED-NATIVE-M4-UNLOCK-LOGS; no DRB added. Rails production code unchanged.
+
+### FRB-NATIVE-M4-FAMILY-REQUEST-ACCESS — A waiting consent response can outlive Cloud family access
+
+Rails checks family access before invoking the response service, then waits for the request row lock. The locked decision checks only request status/expiry. If family access expires during that wait, accepting the still-pending request enables location sharing after admission has lapsed. Phoenix refreshes the clock and repeats the same effective family admission rule after the request lock, before consent, request, notification or durable-event writes.
+
+- Rails: `app/controllers/family/location_requests_controller.rb:5,30`; `app/services/families/respond_to_location_request.rb:17,36,41`. A private transactional Rails oracle moved the clock at the real `with_lock` boundary and reproduced accepted consent after access expired; all rows rolled back.
+- Phoenix: `app-phoenix/lib/dawarich/families/native_command_dispatch.ex:91`; shared admission in `families/native_commands.ex:119`.
+- Test: `families_commands_test.exs`, “Cloud access expiring at the locked request decision refuses consent without effects”; a controlled clock crosses access expiry while request expiry stays future. Skipping final admission fails the exact refusal; restored GREEN.
+- Ledger: ED-NATIVE-M4-FAMILY-REQUEST-ACCESS; no DRB added. Rails production code is unchanged.
+
+### FRB-NATIVE-M4-FAMILY-PUBLICATION — Family reads can publish data after in-flight revocation
+
+Rails family pages and location/history API reads capture membership/access and sharing consent before loading private rows. Removal, consent withdrawal or a crossed deadline during those later reads can still publish member email, last seen or coordinates. Phoenix routes native pages, invitation reveal and retained page/API readers through one transactional before/after publication epoch and fresh consent/access clock. Changed grants discard the document; late location refusal erases the private page as well as the map.
+
+- Rails: `app/controllers/families_controller.rb:12-23`; `app/services/families/locations.rb:14-21,43-60` (source-backed observation; no Rails runtime oracle claimed).
+- Phoenix: `app-phoenix/lib/dawarich/families/snapshot.ex:6`; `app-phoenix/lib/dawarich_web/family_delivery.ex:75`.
+- Tests: `families_snapshot_race_test.exs`, sixty-five `'<reader> rejects private publication after in-flight <change> revocation'` cases; one shared bypass mutation fails every reader. `family_native_delivery_test.exs`, 'late location refusal erases the private page confirmation and history before rendering'.
+- Ledger: ED-NATIVE-M4-FAMILY-PUBLICATION; no DRB. This extends the earlier subscription-time FRB-NATIVE-M4-FAMILY-DELIVERY to page/API publication. Rails production source is unchanged.
+
+Stage 1 C extends FRB-NATIVE-M4-FAMILY-PUBLICATION to the retained readers omitted from the original census:
+
+- OwnTracks friend email/coordinates: `app/services/own_tracks/friends_formatter.rb:19`; source consent reads `app/services/families/locations.rb:16`. Phoenix `app-phoenix/lib/dawarich/ingest/friends.ex:19`; five `friends rejects private publication after in-flight <change> revocation` cases.
+- Family trip names/dates/share references: `app/models/shared_link.rb:41` and `app/controllers/trips_controller.rb:15`. Phoenix `app-phoenix/lib/dawarich/shared_links/family_audience.ex:42`; five `trips rejects private publication after in-flight <change> revocation` cases.
+- Family Cable coordinates: `app/services/points/live_broadcaster.rb:19,28,73`. Phoenix `app-phoenix/lib/dawarich/points/live_broadcast_worker.ex:98`; five `family Cable coordinates refuse <change> after preparation` cases.
+- The same shared snapshot bypass fails all fifteen extensions and the existing seventy-five publication cases. ED-NATIVE-M4-FAMILY-PUBLICATION is expanded; no new numeric ID or DRB is needed. This is source-backed; no Rails runtime oracle is claimed.
+
+### FRB-NATIVE-S1-UPLOAD-DEPARTURE — Leaving during an upload retains its reservation
+
+Rails upload-controller disconnect removes form listeners without aborting the active transfer or releasing its upload. Phoenix now cancels an in-flight native PUT on pagehide with a keepalive request carrying only the owner-bound reservation reference. Cancellation suppresses late completion; success and cancellation remove the departure listener. This extends the previously recorded abandoned-upload lifecycle fix to hard page departure.
+
+- Rails: `app/javascript/controllers/upload_controller.js:40`.
+- Phoenix: `app-phoenix/assets/js/uploaders/direct.js:73`.
+- Tests: `phoenix_upload_pagehide_test.mjs`, “pagehide cancels an in-flight disk PUT once with a keepalive owner reference” and “completed disk PUT removes its departure listener before reporting completion”; registration and cleanup omission mutations fail. Browser consumer: `native-upload-boundaries.spec.js`, “disconnect during PUT cleans the pending target and late transport cannot revive it”.
+- Ledger: ED-NATIVE-S1-UPLOAD-DEPARTURE; no DRB. Rails source-backed observation; Rails production code unchanged.
+
+### FRB-NATIVE-S1-DATE-TOOLTIP — Import date tooltips overflow narrow screens
+
+Rails renders centered human-date tooltips at the right edge of the import table. Their full timestamp text can extend the document beyond a narrow viewport. Native import detail aligns date tooltips to the right edge below the small breakpoint.
+
+- Rails: `app/views/imports/_import.html.erb:18`, `app/helpers/datetime_formatting_helper.rb:16`.
+- Phoenix: `app-phoenix/lib/dawarich_web/imports_live/show.ex:129`.
+- Tests: `imports/extraction.spec.js`, English/German “390px extraction dialog opens cancels and preserves trust controls”; centered-tooltip mutation must overflow, and removing it must restore bounded dimensions.
+- Ledger: ED-NATIVE-S1-DATE-TOOLTIP; no DRB. Source-backed inherited layout defect; no Rails runtime oracle. Rails production code unchanged.
+### FRB-NATIVE-S1E3-OFFLINE-ERASURE — Family coordinates remain visible while offline
+
+Rails family maps retain coordinates when the browser goes offline; Stimulus disconnect runs only when the controller leaves the document. Phoenix erases private family/public content immediately on the browser offline event, rejects intervening snapshots, and requests fresh admitted state when online.
+
+- Rails: `app/javascript/controllers/family_map_controller.js:21,28`.
+- Phoenix: `app-phoenix/assets/js/hooks/lazy_maps.js:8`.
+- Tests: `browser offline erases lazy family content before heartbeat and requests fresh state on online`; public-map counterpart. Removing the offline listener fails both.
+- Ledger: ED-NATIVE-S1E3-OFFLINE-ERASURE; no DRB. Rails source unchanged.
+
+### FRB-NATIVE-S1E3-TOAST-INTERCEPTION — Retry notifications block replay controls
+
+Rails map notifications inherit DaisyUI fixed positioning and accept pointer events across their message. A persistent tile retry notification can cover the replay Next point button indefinitely. The shared map client used by Phoenix keeps notifications within their top-right container, lets message surfaces pass pointer events through, and retains interactive recovery buttons. Message text can shrink and wrap at narrow widths.
+
+- Rails/Phoenix shared map source: `app/javascript/maps_maplibre/components/toast.js:63`; Phoenix consumer: `app-phoenix/priv/static/js/map_shell.js:64`.
+- Tests: `a persistent error notification leaves the next replay point clickable`; original acceptance successor `next cycle button advances to next point`. Restoring fixed bottom positioning and message pointer events fails the focused browser regression.
+- Ledger: ED-NATIVE-S1E3-TOAST-INTERCEPTION; no DRB. The shared Rails map client receives the same correction.
+
+The same DaisyUI collision imposes a fit-content minimum width and nowrap text, putting German messages and recovery controls outside a 390-pixel viewport. The scoped map notification resets those inherited constraints, bounds its container and wraps both message and action. The focused browser case measures the document and every text Range after the slide-in animation settles.
+
+## Native milestone 6 additions
+
+### FRB-NATIVE-M6-FOG-DATES — A late fog read restores an older date window
+
+Changing dates while fog cell reads overlap can leave the previous range in the cache; the next zoom then displays that older range. Native fog checks its owned generation before committing H3/cell/cache state and cancels the replaced read.
+
+- Rails: `app/javascript/maps_maplibre/layers/fog_hexagon_source.js:20,26`; `app/javascript/maps_maplibre/layers/fog_layer.js:316`.
+- Phoenix: `app-phoenix/assets/js/map/layers/fog_hexagon_source.js:26,40`.
+- Test: “older fog date response cannot replace current cells” in `spec/javascript/phoenix_map_density_test.mjs`; deterministic source oracle fails on the Rails implementation; stale-date mutation fails and restoration passes.
+- Ledger: ED-NATIVE-M6-FOG-DATES; no DRB row added. Retained Rails remains unchanged.
+- CHANGELOG-ready: Keep fog on the selected dates when an older cell request finishes late.
+
+### FRB-NATIVE-M6-FOG-DISPOSE — Leaving the map keeps a fog read alive
+
+Removing the Rails fog layer detaches canvas/listeners but leaves its cell request and cache mutation running. Native removal cancels the owned request, clears cell state, and prevents late work from changing the removed layer.
+
+- Rails: `app/javascript/maps_maplibre/layers/fog_layer.js:378`; `app/javascript/maps_maplibre/layers/fog_hexagon_source.js:20`.
+- Phoenix: `app-phoenix/assets/js/map/layers/fog.js:272`; `app-phoenix/assets/js/map/layers/fog_hexagon_source.js:54`.
+- Test: “destroy drains density fetch and resize callbacks” in `spec/javascript/phoenix_map_density_test.mjs`; omit-source-dispose and resize-listener mutations fail, restoration passes.
+- Ledger: ED-NATIVE-M6-FOG-DISPOSE; no DRB row added. Retained Rails remains unchanged.
+- CHANGELOG-ready: Cancel fog cell work when leaving its map.
+
+### FRB-NATIVE-M6-HEX-DISPOSE — A removed hexagon layer keeps aggregating points
+
+A pending Rails hexagon load survives layer removal and fills its retained point buffer after leaving the map or replacing the style. Native removal destroys the owned load, cancels its request and prevents late aggregation/repaint.
+
+- Rails: `app/javascript/maps_maplibre/layers/hexagon_layer.js:411`; removal caller `app/javascript/controllers/maps/maplibre/layer_manager.js:277`.
+- Phoenix: `app-phoenix/assets/js/map/layers/hexagon.js:114`; `app-phoenix/assets/js/map/layers/hexagon_source.js:101`.
+- Test: “hexagon page completing after remove cannot repaint its layer” in `spec/javascript/phoenix_hexagon_scratch_test.mjs`; deterministic Rails-source oracle repopulates rawBuffer after remove, native hex-dispose mutation fails/restoration passes.
+- Ledger: ED-NATIVE-M6-HEX-DISPOSE; no DRB row added. Retained Rails remains unchanged.
+- CHANGELOG-ready: Stop hexagon point processing after leaving its map.
+
+### FRB-NATIVE-M6-SCRATCH-DISPOSE — A removed scratch layer leaves membership requests running
+
+Rails discards a late country result after removal but does not abort its fetch. Native acquisition and membership have owned cancellation; removal/destruction aborts pending work while leaving other maps alone.
+
+- Rails: `app/javascript/maps_maplibre/layers/scratch_layer.js:181`; `app/javascript/maps_maplibre/services/api_client.js:980,984`.
+- Phoenix: `app-phoenix/assets/js/map/layers/scratch.js:182,190`.
+- Test: “scratch protocol or membership reads cannot outlive their owner” in `spec/javascript/phoenix_hexagon_scratch_test.mjs`; scratch-protocol/scratch-request mutations fail, restoration passes; existing date/foreign-tab/retry corpus retained.
+- Ledger: ED-NATIVE-M6-SCRATCH-DISPOSE; no DRB row added. Retained Rails remains unchanged.
+- CHANGELOG-ready: Cancel scratch-map membership requests after leaving its map.
+
+### FRB-NATIVE-M6-PHOTO-TIMER — Successful photo loads leave their timeout running
+
+Rails' background photo Promise.race leaves the losing 15-second timeout scheduled after a successful response. Native photo operations close the matching deadline on success, failure, replacement and removal.
+
+- Rails: `app/javascript/controllers/maps/maplibre/data_loader.js:257,263`.
+- Phoenix: `app-phoenix/assets/js/map/data/photo_loader.js:40,71`.
+- Test: “timed-out or replaced photo load cannot add a marker” in `spec/javascript/phoenix_map_photos_test.mjs`; actual Rails timer oracle fails, photo-generation mutation fails/restored GREEN. Thumbnail expiry regression also proves read abort and no later URL allocation.
+- Ledger: ED-NATIVE-M6-PHOTO-TIMER; no DRB. Retained Rails unchanged.
+- CHANGELOG-ready: Release photo-loading deadlines when their requests settle.
+
+### FRB-NATIVE-M6-PHOTO-CLUSTER — Late cluster leaves recreate markers after removal
+
+Rails cluster expansion/leaves callbacks lack an owner-generation check. A response arriving after removal can create new photo markers and spider legs on the departed map. Native cluster operations are cancelled on move, replacement and removal before any allocation.
+
+- Rails: `app/javascript/maps_maplibre/layers/photos_layer.js:139,164,646`.
+- Phoenix: `app-phoenix/assets/js/map/layers/photos.js:85,94,226`.
+- Test: “late thumbnail and cluster callbacks cannot allocate after photo owner removal” in `spec/javascript/phoenix_map_photos_test.mjs`; actual Rails cluster oracle fails, cluster-generation/late-thumbnail mutations fail/restored GREEN.
+- Ledger: ED-NATIVE-M6-PHOTO-CLUSTER; no DRB. Retained Rails unchanged.
+- CHANGELOG-ready: Prevent photo clusters from reopening after leaving their map.
+
+### FRB-NATIVE-M6-PHOTO-POPUP — Removing photos leaves their popup open
+
+Rails creates a photo popup without retaining it for removal. Removing its photo layer or marker leaves the popup attached. Native markers own their popup, close listener, thumbnail read and object URL; removal releases all of them once.
+
+- Rails: `app/javascript/maps_maplibre/layers/photos_layer.js:584,646`.
+- Phoenix: `app-phoenix/assets/js/map/ui/photo_marker.js:82,87,94`.
+- Test: “destroy releases popup listeners and thumbnails” in `spec/javascript/phoenix_map_photos_test.mjs`; actual Rails popup oracle fails, popup-disposal/object-url mutations fail/restored GREEN. Existing hostile metadata cases have named native successors.
+- Ledger: ED-NATIVE-M6-PHOTO-POPUP; no DRB. Retained Rails unchanged.
+- CHANGELOG-ready: Close photo popups and release their thumbnails when leaving the map.
+
+### FRB-NATIVE-M6-ANOMALY-DISPOSE — Removed anomaly layers keep paging history
+
+Rails anomaly requests carry no cancellation signal and inherited layer removal leaves the in-flight history read alive. Native anomaly removal destroys its owned paging operation and rejects late rows before geometry publication.
+
+- Rails: `app/javascript/maps_maplibre/layers/anomalies_layer.js:64,89`; inherited removal `app/javascript/maps_maplibre/layers/base_layer.js:75`.
+- Phoenix: `app-phoenix/assets/js/map/layers/anomalies.js:40,51,64`.
+- Test: “removed anomalies stop owned pages and preserve exact request filters” in `spec/javascript/phoenix_map_entity_layers_test.mjs`; actual Rails cancellation oracle fails, anomaly-disposal/filter mutations fail/restored GREEN.
+- Ledger: ED-NATIVE-M6-ANOMALY-DISPOSE; no DRB. Retained Rails unchanged.
+- CHANGELOG-ready: Cancel anomaly history reads when removing their map layer.
+
+### FRB-NATIVE-M6-TRIP-DAY-DISPOSE — Trip day-layer removal crashes before hover setup
+
+Removing a Rails Trip day-route layer before setupInteractions raises because hoverMarkers is unset. Phoenix initializes owned interaction collections with the layer, making early removal safe.
+
+- Rails: `app/javascript/maps_maplibre/layers/day_routes_layer.js:12,341,351,365`.
+- Phoenix: `app-phoenix/assets/js/map/trip/interactions.js:3,4`; `trip/days.js:147`.
+- Test: “trip day routes preserve profile day colors and saved gap settings” in `spec/javascript/phoenix_trip_layers_test.mjs` removes before setup; actual Rails-source oracle RED and hover-before-setup mutation fail/restored GREEN.
+- Ledger: ED-NATIVE-M6-TRIP-DAY-DISPOSE; no DRB. Rails unchanged.
+- CHANGELOG-ready: Keep Trip day-layer cleanup safe before hover initialization.
+
+### FRB-NATIVE-M6-FLIGHT-POPUP — Removed flight layers leave a popup open
+
+Rails FlightsLayer.remove detaches layer handlers and geometry but leaves its popup visible. Phoenix removal closes the popup before releasing the layer.
+
+- Rails: `app/javascript/maps_maplibre/layers/flights_layer.js:68,104`.
+- Phoenix: `app-phoenix/assets/js/map/layers/flights.js:51,52`.
+- Test: “trip flight popup closes with its owned layer” in `spec/javascript/phoenix_trip_layers_test.mjs`; actual Rails-source oracle RED and flight-popup mutation fail/restored GREEN.
+- Ledger: ED-NATIVE-M6-FLIGHT-POPUP; no DRB. Rails unchanged.
+- CHANGELOG-ready: Close flight popups when removing their map layer.
+
+### FRB-NATIVE-M6-PUBLIC-LATE — Shared reads finish after the owner revokes access
+
+Rails validates a public link before the provider read; a thumbnail provider can finish after revocation and the controller still sends its bytes. Phoenix native public reads re-admit after completion and discard revoked, expired, re-locked, withdrawn or changed grants before returning data.
+
+- Rails: `app/controllers/api/v1/shared/base_controller.rb:27`, `app/controllers/api/v1/shared/photos_controller.rb:21,24`.
+- Phoenix: `app-phoenix/lib/dawarich/maps/dependencies/public.ex:44,49`.
+- Test: “public result revoked during provider completion is dropped” in `native_public_capability_test.exs`; actual named RED, late-admission mutation failure/restored GREEN. Rails source oracle loads the actual BaseController/PhotosController with a provider that revokes during completion and reproduces the response.
+- Ledger: ED-NATIVE-M6-PUBLIC-LATE; no DRB. Rails unchanged.
+- CHANGELOG-ready: Drop completed public-map reads after share revocation.
+
+### FRB-NATIVE-M6-REPLAY-PHOTO-POPUP — Replay photos leave popups open after close or day change
+
+Rails replay stack and marker layer create popups without retaining them; destroying the stack or hiding markers leaves an orphaned popup on the map. Native replay cards and markers own their popup, thumbnail request/blob and listeners, releasing all on day replacement, close or host destruction.
+
+- Rails: `app/javascript/maps_maplibre/components/replay_photo_stack.js:96`, `app/javascript/maps_maplibre/layers/replay_photo_layer.js:92`.
+- Phoenix: `app-phoenix/assets/js/map/replay/photo_card.js`, `app-phoenix/assets/js/map/replay/photos.js`, existing `app-phoenix/assets/js/map/ui/photo_marker.js`.
+- Tests: “closing replay photo stack releases its popup thumbnails and card listeners”; “closing replay releases photo popups density listeners and day-owned thumbnails”. Actual Rails-source oracle fails with both owned popups still open; popup-close and host-unwire mutations fail, restored GREEN.
+- Ledger: ED-NATIVE-M6-REPLAY-PHOTO-POPUP; no DRB. Rails unchanged.
+- CHANGELOG-ready: Close replay photo popups when changing day, closing replay or leaving the map.
+
+### FRB-NATIVE-M6-POSTER-EXPORT-CLOSE
+
+Rails: closing the poster studio while a Download renders still downloads the file later and keeps the offscreen map alive. Phoenix: dialog close/destroy aborts the run; a late result is `cancelled`, no download. Rails `app/javascript/controllers/poster_studio_editor_controller.js:178` (`close()` never aborts) and `:612` (export started without a signal); Phoenix `app-phoenix/assets/js/poster/runtime.js:129-139`, `app-phoenix/assets/js/poster/export/operation.js:20`. Tests: "close before encoding completes cannot download", "closing the studio during a download cancels the render and saves no file", oracle "Rails oracle: closing the poster studio during a download still saves the file".
+
+- Ledger: ED-NATIVE-M6-POSTER-EXPORT-CLOSE; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-POSTER-EXPORT-HANG
+
+Rails: a capture whose map never reaches `idle` never settles (an already-aborted signal is ignored too); Download stays disabled until reload. Phoenix: refuses pre-aborted signals and has a per-run deadline, always cleans up. Rails `app/javascript/poster_studio/render/offscreen_map.js:40-50`; Phoenix `app-phoenix/assets/js/poster/export/capture.js:18,47,67`. Tests: "an already aborted or never idle capture settles and cleans up", oracle "Rails oracle: an offscreen capture that never reaches idle never settles".
+
+- Ledger: ED-NATIVE-M6-POSTER-EXPORT-HANG; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-POSTER-EXPORT-CONTAINER
+
+Rails: when `new maplibregl.Map` throws (no WebGL) the hidden offscreen container stays in the page (no visible symptom; DOM leak per failed export). Phoenix creates the container inside the cleanup scope. Rails `offscreen_map.js:26-28`; Phoenix `capture.js:26-67`. Tests: "Map constructor failure removes its container", oracle "Rails oracle: offscreen capture leaks its container when the Map constructor throws".
+
+- Ledger: ED-NATIVE-M6-POSTER-EXPORT-CONTAINER; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-POSTER-ORDER-HANG
+
+Rails: a stalled print upload never settles and cannot be cancelled; the order steps spin and Download stays disabled until reload. Phoenix: abort on studio close/signal, deadline, listener cleanup. Rails `app/javascript/poster_studio/ui/order_client.js:41-55`; Phoenix `app-phoenix/assets/js/poster/order.js:35,61-62`. Tests: "cancelled print upload closes XHR listeners and never enables checkout", oracle "Rails oracle: a stalled print upload never settles and cannot be cancelled".
+
+- Ledger: ED-NATIVE-M6-POSTER-ORDER-HANG; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-POSTER-CHECKOUT-URL
+
+- Rails: the "Continue to checkout" link takes whatever `checkout_url` the print service returns, including `javascript:` or a foreign host. A compromised or misbehaving endpoint could make a user click a script or phishing URL from the Dawarich origin.
+  - Phoenix: only https on the print-service host or Stripe Checkout; otherwise the generic order error.
+  - Rails source: `app/javascript/controllers/poster_studio_editor_controller.js:749,795-797`.
+  - Phoenix source: `app-phoenix/assets/js/poster/order_controls.js:15-26,183-186`.
+  - Test: "checkout link only opens an https URL on the print service or Stripe Checkout host".
+
+- Ledger: ED-NATIVE-M6-POSTER-CHECKOUT-URL; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-POSTER-RANGE-ERROR
+
+- Rails: a failed range reload left an unhandled rejection. The status line cleared, the new dates stayed in the inputs and the preview kept the old range, with no message.
+  - Phoenix: shows the localized failure and restores the loaded dates. Aborts stay silent.
+  - Rails source: `app/javascript/controllers/poster_studio_editor_controller.js:514-537`.
+  - Phoenix source: `app-phoenix/assets/js/poster/controls.js:66-91`.
+  - Test: "a failed range reload shows an error and restores the loaded dates".
+
+- Ledger: ED-NATIVE-M6-POSTER-RANGE-ERROR; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-CONSTRUCTION
+
+**Video render: map/2D-context construction failure leaks the encoder and a hidden container.** Rails symptom: if MapLibre or the 2D context fails after the MP4 encoder was created (WebGL unavailable, context lost), the WebCodecs encoder stays open and the off-screen render container stays attached to `<body>` until reload; repeated attempts accumulate them. Phoenix: map, container and both canvases are acquired inside the guarded scope, released in `finally`, the encoder is aborted on every failure. Rails `app/javascript/video_studio/video_renderer.js:138,163,167` (encoder + container created before the `try` at :194). Phoenix `app-phoenix/assets/js/video/render/engine.js:128-130`, `app-phoenix/assets/js/video/render/map_capture.js:76,84-85`. Test `spec/javascript/phoenix_video_render_test.mjs` "map or 2d context failure after encoder setup releases encoder". Oracle: Rails module under Node fakes (scratch `oracle/rails_renderer_oracle.mjs`) prints encoder not aborted / container not removed.
+
+- Ledger: ED-NATIVE-M6-VIDEO-CONSTRUCTION; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-FIRST-IDLE
+
+**Video render: cancel before the map's first idle hangs.** Rails symptom: pressing Cancel (or closing the studio) while the render map is still loading leaves the render promise pending forever with the encoder open; the studio stays in "rendering" until the map happens to go idle (never, on a stalled tile/style load). Phoenix: the first idle wait is abortable and bounded (`FIRST_IDLE_TIMEOUT_MS` 60 s, value awaits O8 freeze); cancel rejects with `AbortError` and releases map/encoder/canvas. Rails `app/javascript/video_studio/video_renderer.js:194-196` (`map.once("idle", resolve)` with no abort/timeout). Phoenix `app-phoenix/assets/js/video/render/engine.js:12,100`. Tests "cancel before first idle releases map encoder and canvas", "a first idle that never arrives fails within its bound and releases".
+
+- Ledger: ED-NATIVE-M6-VIDEO-FIRST-IDLE; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-ABANDONED-UPLOAD
+
+**Video save: abandoned uploads leave orphan blobs.** Rails symptom: cancelling/closing the studio during "Save to gallery" (or a storage PUT failure) after the direct-upload blob was created leaves an unattached `active_storage_blobs` row (and possibly stored bytes) that nothing references or purges promptly. Phoenix: the browser discards a reservation it abandons (before or right after storage completes, never after the save was sent) via the scoped `discard_upload`, which reuses `AttachmentEffects.cleanup_failed_save!` (idempotent purge marker). Rails `app/javascript/video_studio/save_video.js:25-31` (abort only aborts XHRs; the created blob is never discarded). Phoenix `app-phoenix/assets/js/video/upload.js:71`, `app-phoenix/lib/dawarich/route_videos/scoped.ex` (`discard_upload/3`). Tests `phoenix_video_upload_test.mjs` "upload abort before commit discards the reservation and never saves", "abort after storage completes but before save still discards", "storage failure discards the reservation and reports the failure"; ExUnit `native_video_studio_test.exs` "a discarded or revoked upload never becomes a gallery row".
+
+- Ledger: ED-NATIVE-M6-VIDEO-ABANDONED-UPLOAD; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-CODEC-WAIT
+
+Codec support/probe, probe flush, dequeue or final flush can remain pending after cancellation or a silent encoder stall, retaining encoder/frame/map resources. Native waits accept the run signal and have owned 30-second operation deadlines; probe cleanup closes frame/encoder and production timeout closes the encoder.
+
+- Rails: `app/javascript/video_studio/codec_negotiation.js:38`, `app/javascript/video_studio/mp4_encoder.js:38`, `:99`, `:122`.
+- Phoenix: `app-phoenix/assets/js/video/` `codec.js:40`, `mp4_encoder.js:54`, `:177`, `:196`, `wait.js:1`.
+- Test: `phoenix_video_encoder_test.mjs`: "codec support and probe waits settle on cancellation and deadline", "a stalled probe flush releases its frame and encoder on abort or timeout", "stalled dequeue and finalize deadlines close the encoder and remove owned listeners".
+
+- Ledger: ED-NATIVE-M6-VIDEO-CODEC-WAIT; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-UPLOAD-WAIT
+
+A connected storage upload with no response can keep Save pending indefinitely. Native PUT has a five-minute transport deadline, removes owned handlers, discards its reservation and shows a retryable failure through the existing studio save notice.
+
+- Rails: `app/javascript/video_studio/save_video.js:31` (DirectUpload has no configured deadline).
+- Phoenix: `app-phoenix/assets/js/video/` `upload.js:3`, `:50`.
+- Test: `phoenix_video_upload_test.mjs`: "storage timeout discards the reservation, cleans listeners and permits retry".
+
+- Ledger: ED-NATIVE-M6-VIDEO-UPLOAD-WAIT; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-THEME-ORDER
+
+Rapid theme selections resolving in reverse order leave selected settings and saved recipe on one theme while preview/render tokens come from an older selection. Native style requests capture settings and a separate operation identity, discard obsolete success/error and disable Render until the current style is ready.
+
+- Rails: `app/javascript/controllers/video_studio_controller.js:452`.
+- Phoenix: `app-phoenix/assets/js/video/` `studio.js:74`.
+- Test: `phoenix_video_studio_test.mjs`: "reverse theme replies keep controls, preview, render and recipe on the selected theme".
+
+- Ledger: ED-NATIVE-M6-VIDEO-THEME-ORDER; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-RECIPE-SNAPSHOT
+
+Editing format or duration while rendering can save current settings describing different dimensions/duration from the rendered MP4 bytes. Native results retain an immutable settings/provenance snapshot captured at render start; Save uses that snapshot.
+
+- Rails: `app/javascript/controllers/video_studio_controller.js:643`, `:693`.
+- Phoenix: `app-phoenix/assets/js/video/` `studio_export.js:58`, `:97`.
+- Test: `phoenix_video_studio_test.mjs`: "settings changes during rendering save the recipe for the produced bytes".
+
+- Ledger: ED-NATIVE-M6-VIDEO-RECIPE-SNAPSHOT; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-CONFIGURE-CLOSE
+
+The encoder constructed after successful probing remains open if its production configure call throws; subsequent retries can accumulate encoder resources. Native configuration is guarded and closes the encoder before propagating failure, before map/container allocation.
+
+- Rails: `app/javascript/video_studio/mp4_encoder.js:79`, `:86`.
+- Phoenix: `app-phoenix/assets/js/video/` `mp4_encoder.js:131`.
+- Test: `phoenix_video_encoder_test.mjs`: "configure failure after a successful probe closes the production encoder before map allocation".
+
+- Ledger: ED-NATIVE-M6-VIDEO-CONFIGURE-CLOSE; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-FORMAT-OWN-KEY
+
+Stored recipe formats such as `__proto__`, `constructor` or `toString` select inherited Object members, producing undefined/NaN preview/render dimensions. Native normalization and direct format lookup require a string own key and use portrait dimensions otherwise.
+
+- Rails: `app/javascript/video_studio/studio_state.js:76`, `:182`.
+- Phoenix: `app-phoenix/assets/js/video/` `state.js:57`, `:147`.
+- Test: `phoenix_video_state_test.mjs`: "stored recipes with inherited format names fall back to finite portrait dimensions".
+
+- Ledger: ED-NATIVE-M6-VIDEO-FORMAT-OWN-KEY; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-FAMILY-NAV-ID
+
+Mobile and desktop family sharing indicators reused one DOM id in Rails. Updates or DOM lookups can target one copy ambiguously. Native navigation gives the two copies distinct ids and can mount/reconnect without duplicate-id rejection.
+
+- Rails: `app/views/shared/_navbar.html.erb:21,83`; `app/views/families/_navbar_indicator.html.erb:1`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/navbar.ex:199`; `app-phoenix/lib/dawarich_web/components/navbar_parts.ex:72`.
+- Test: `native family public navigation rechecks audience without disclosing missing or revoked resources`; valid connected-view RED rejects the duplicate id, restored GREEN7; duplicate-indicator mutation fails. Source inspection establishes both Rails partial insertions.
+- ED: ED-NATIVE-M6-FAMILY-NAV-ID. No DRB row.
+
+### FRB-NATIVE-M6-TRIP-PHOTO-LINK
+
+Trip photo-source and itinerary links in Rails interpolate configured base URLs, including URL userinfo or credential query keys. Such credentials appear in the rendered destination and browser navigation. Native trip presentation admits only HTTP(S) links without userinfo or credential query keys, preserving ordinary source links. It also excludes private itinerary source metadata before assigning LiveView state. Thumbnail URLs use the cookie reader. Production trip parent insertion remains the X1 handoff; the adapter behavior is verified independently.
+
+- Rails: `app/helpers/trips_helper.rb:11,15,32`; `app/views/trips/show.html.erb:282`; `app/views/trips/_source_itinerary.html.erb:28`.
+- Phoenix: `app-phoenix/lib/dawarich/maps/dependencies/trip.ex:96,104,149,157`.
+- Tests: `native trip presentation keeps ordinary photo source navigation and refuses credential-bearing links`; `native trip presentation excludes private itinerary source credentials while keeping ordinary navigation`. Photo-link and itinerary-source admission mutations fail.
+- ED: ED-NATIVE-M6-TRIP-PHOTO-LINK. No DRB row.
+
+### FRB-NATIVE-M6-TRIP-DEPENDENTS
+
+Deleting a Trip in Rails destroys all attached notes and Trip shares regardless of their owner. In a database-valid inconsistent stored graph, this removes another account's note/share record. Native Trip deletion uses the existing owner-scoped WebDelete option: it deletes the admitted Trip and owned dependents while preserving foreign notes/shares. These fixtures characterize historical stored graphs; they do not claim public creation endpoints admit them.
+
+- Rails: `app/models/concerns/notable.rb:7`; `app/models/trip.rb:19,20`.
+- Phoenix: `app-phoenix/lib/dawarich/maps/dependencies/trip.ex:124`; existing owner-scoped domain predicates in `app-phoenix/lib/dawarich/trips/web_delete.ex:68,80`.
+- Test: `native trip deletion preserves foreign notes and shares linked to its resource` in `native_trip_effects_test.exs`; valid source-semantics RED4/5, owner-scoped GREEN5, owner-scoping removal fails.
+- ED: ED-NATIVE-M6-TRIP-DEPENDENTS. No DRB row. Rails unchanged. No Rails oracle was run in this slice; source association inspection and the existing domain's source-compatible default establish the difference.
+
+### FRB-NATIVE-M6-CONTROL-LABELS
+
+The Rails Poster layout selector and track opacity/width sliders have no associated accessible label. The Visit place search and Trip note editor rely on placeholder text rather than a persistent label. Native controls retain localized accessible labels, including the populated note editor and validation state. A corrected test helper checks controls without IDs instead of silently skipping them.
+
+- Rails: `app/views/posters/_studio.html.erb:100,223,234`; `app/javascript/maps_maplibre/components/visit_place_search.js:219`; `app/views/trips/notes/_form.html.erb:16`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/native_poster_sections.ex:58,200`; `app-phoenix/lib/dawarich_web/components/native_visit_place_search.ex:44`; `app-phoenix/lib/dawarich_web/components/native_trip_note.ex:20`.
+- Tests: `canonical milestone six documents and changed forms retain native accessible controls`; `accessible control gate rejects unlabelled controls without ids`; `native trip note editor retains an accessible name through validation and cancel`. Removing Poster layout admission labels or restoring the helper's nil-ID filter fails the named gates.
+- ED: ED-NATIVE-M6-CONTROL-LABELS. No DRB.
+
+
+### FRB-NATIVE-M6-SELECTION-CANCEL-LOCALE
+
+The Rails rectangle selector replaces its action with hardcoded English “Cancel Selection”, even with a non-English map locale. Native uses the existing localized cancellation string and retains rectangle/highlight/cancel behavior. The incorrect native select-area translation key was also corrected; that key omission was a port defect.
+
+- Rails: `app/javascript/controllers/maps/maplibre/area_selection_manager.js:63`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/native_map_page.ex:119`; `app-phoenix/assets/js/map/selection/host.js:33`.
+- Tests: `native rectangle tool retains localized cancellation and placement guidance` (all supported locales), `native selection root draws rectangle highlights admitted points and clears on cancel`. Restoring hardcoded English fails the locale case; omitting cancellation fails the actual production-host behavior case.
+- ED: ED-NATIVE-M6-SELECTION-CANCEL-LOCALE. No DRB.
+
+### FRB-NATIVE-M6-POINT-MOVE-DEADLINE
+
+A Rails point-position request with no response keeps drag/history operations pending indefinitely. Native point commands have an owned 15-second acknowledgement deadline. Timeout releases latches, refuses late acknowledgements, clears uncertain editor geometry and rereads canonical point/track tiles without retrying the potentially committed write. Callback, synchronous send failure, scope cancellation and destruction drain timers.
+
+- Rails: `app/javascript/maps_maplibre/services/api_client.js:945` (PATCH has no signal or application deadline).
+- Phoenix: `app-phoenix/assets/js/map/edit/runtime.js:32`; `app-phoenix/assets/js/map/edit/host.js:37`.
+- Tests: `missing point replies time out drag and history without retry and ignore late acknowledgements`; `point send failures callbacks scope cancellation and destroy drain every owned deadline`; `missing move receipt releases host latches erases uncertain geometry and rereads canonical tiles`. Deterministic deadline-as-success, retained-timer and skipped-canonical-invalidation mutations fail these cases. A synthetic Rails module probe confirms an unsettled write, zero owned deadlines and no AbortSignal.
+- ED: ED-NATIVE-M6-POINT-MOVE-DEADLINE. No DRB.
+
+### FRB-NATIVE-M6-FAMILY-IDLE-CONSENT
+
+Rails Family map markers and cached popups can remain visible indefinitely after a timed sharing grant expires or sharing is withdrawn while the page stays idle. Native Family snapshots have an owned server timer and browser lease tied to the displayed snapshot, never extended by unrelated callbacks: at most 30 seconds, shortened to the nearest active sharing expiry. Expiry clears coordinates/history/popups and pending reads before fresh authorized reads. Stale timer tokens and late reads cannot restore the previous snapshot; refusal/destruction cancels timer ownership.
+
+- Rails: `app/javascript/controllers/family_map_controller.js:74,143` (snapshot refresh depends on activity/reconnect; relative-time repaint retains cached coordinates).
+- Phoenix: `app-phoenix/lib/dawarich_web/native_family_consent.ex:9,40`; `app-phoenix/assets/js/map/family/runtime.js:108`.
+- Tests: `idle Family server timer clears expired or withdrawn consent and ignores stale timer tokens`; `idle Family consent expiry clears coordinates popups and late reads without manual reconnect`; `idle Family withdrawal is revalidated within the bounded lease and destroyed leases cannot refetch`; `Family hook relays the latest server lease after lazy mount and clears an idle owner`. Server timer registration/deadline is inspected and its owned message is driven deterministically; browser timers are controllable. Disabled-expiry, retained-lease, missing-lazy-lease, stale-token and ignored-grant-deadline mutations fail.
+- Round-2 successors: `unrelated Family callbacks cannot postpone the displayed snapshot consent bound`; `unrelated Family lease callbacks cannot prolong cached coordinates or accept retired reads`. Renewal-guard and sliding-browser-deadline mutations fail.
+- The existing m4 sharing-invalidation adapter is still pending. Withdrawal is detected by fresh lease revalidation within 30 seconds, including when no location event occurs; this is a bound, not an instantaneous cross-tab publication guarantee.
+- ED: ED-NATIVE-M6-FAMILY-IDLE-CONSENT. No DRB.
+
+### FRB-NATIVE-STAGE2-PUBLIC-HEAD — HEAD requests inflate shared-link visit counts
+
+- Rails symptom: automated HEAD checks execute the shared link show action and increment the visible visit counter despite reading no document body.
+- Rails: `app/controllers/shared/links_controller.rb:12`; `app/models/shared_link.rb:77`.
+- Phoenix: `app-phoenix/lib/dawarich_web/public_map_auth.ex:31`; `app-phoenix/lib/dawarich_web/public_map_live.ex:7`. Original HTTP method travels as a boolean in the signed mount session; only admitted static GET counts, with no connected/reconnect effect.
+- Test: `native public GET counts once while HEAD and LiveView reconnect are read only`. HEAD counter RED, GREEN, omit-method-guard mutation fails, restored GREEN.
+- Difference: ED-NATIVE-STAGE2-PUBLIC-HEAD. Restores the planned native GET-only touch boundary while fixing Rails' HEAD counter inflation.

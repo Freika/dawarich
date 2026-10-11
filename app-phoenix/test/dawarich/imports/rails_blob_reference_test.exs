@@ -1,5 +1,5 @@
 defmodule Dawarich.Imports.RailsBlobReferenceTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Imports.RailsBlobReference
 
   test "existing Rails signed blob references retain purpose-bound compatibility" do

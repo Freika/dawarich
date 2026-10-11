@@ -5,6 +5,8 @@ defmodule Dawarich.PointExportsFenceTest do
 
   defmodule PausedRepo do
     def transaction(fun), do: Dawarich.ScratchRepo.transaction(fun)
+    defdelegate insert!(changeset, opts), to: Dawarich.ScratchRepo
+    defdelegate in_transaction?(), to: Dawarich.ScratchRepo
 
     def query!(sql, params, opts \\ []) do
       if String.contains?(sql, "INSERT INTO exports (") do

@@ -9,13 +9,6 @@ defmodule DawarichWeb.FamilyLocations do
 
   def init(action), do: action
 
-  def native?(conn, _params) do
-    query = Plug.Conn.Query.decode(conn.query_string)
-
-    conn.method in ["GET", "HEAD"] and DawarichWeb.FamilyGate.session_supported?(conn) and
-      not Enum.any?(~w(format locale), &Map.has_key?(query, &1))
-  end
-
   def call(conn, _action) do
     user = conn.assigns.current_user && Accounts.get(conn.assigns.current_user.id)
 

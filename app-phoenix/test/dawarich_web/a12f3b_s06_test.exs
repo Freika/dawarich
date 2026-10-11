@@ -2,20 +2,17 @@ defmodule DawarichWeb.A12f3bS06Test do
   use Dawarich.IngestCase, async: false
   alias Dawarich.Test.A12f3bShareCase, as: S
   alias Dawarich.ShareManagement.TimelineMutations
-  alias DawarichWeb.TimelineShareActions
+  alias Dawarich.Sharing
 
   setup do
     %{actor: S.seed!()}
   end
 
   @tag a12f3b_case: "S06a"
-  test "timeline share six legacy actions preserve active range and grants", %{actor: actor} do
-    form = S.request(actor, "timeline", :new) |> TimelineShareActions.call(:new)
-    assert form.status == 200
-    head = S.request(actor, "timeline", :new) |> Map.put(:method, "HEAD")
-    assert TimelineShareActions.native?(head, head.path_params)
-    assert (head |> Plug.Head.call([]) |> TimelineShareActions.call(:new)).status == 200
-    assert form.resp_body =~ "/share_links/timeline"
+  test "native S06a timeline six actions preserve active range and grants", %{actor: actor} do
+    scope = Dawarich.Accounts.Scope.for_user(actor, "en")
+    resource = %{type: :timeline, owner_id: actor.id}
+    assert {:ok, _} = Sharing.page(scope, resource, %{}, now: S.now())
 
     Repo.query!(
       "INSERT INTO shared_links(id,user_id,resource_type,name,settings,created_at,updated_at) VALUES($1::text::uuid,98102,2,'Foreign timeline',$2,$3,$3)",
@@ -31,8 +28,7 @@ defmodule DawarichWeb.A12f3bS06Test do
 
     for action <- [:create, :regenerate, :regenerate_phrase, :revoke, :create, :destroy] do
       params = if action == :create, do: S.params("timeline"), else: %{}
-      response = S.request(actor, "timeline", action, params) |> TimelineShareActions.call(action)
-      assert response.status == 302
+      assert {:ok, _} = Sharing.change(scope, resource, action, params, now: S.now())
 
       assert Repo.query!("SELECT revoked_at FROM shared_links WHERE id=$1::text::uuid", [S.id(0)]).rows ==
                [[nil]]
@@ -43,7 +39,7 @@ defmodule DawarichWeb.A12f3bS06Test do
   end
 
   @tag a12f3b_case: "S06b"
-  test "timeline malformed range preserves existing grant", %{actor: actor} do
+  test "native S06b timeline malformed range preserves existing grant", %{actor: actor} do
     before = S.rows()
 
     assert {:invalid, %{errors: [{:settings, _}]}} =

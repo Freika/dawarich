@@ -6,6 +6,8 @@ defmodule DawarichWeb.TripDocument do
 
   def init(opts), do: opts
 
+  def call(%{private: %{native_data_document: true}} = conn, _opts), do: conn
+
   def call(
         %{method: "GET", path_info: ["trips" | path], assigns: %{current_user: user}} = conn,
         _opts

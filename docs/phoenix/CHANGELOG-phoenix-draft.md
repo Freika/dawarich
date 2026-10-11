@@ -126,3 +126,143 @@ The controller recorded these deferrals on 2026-10-07; they remain follow-up wor
 - Serialize administrator deletion and role changes to retain administration access under competing writes. [FRB-085](fixed-rails-bugs.md#frb-085--concurrent-admin-roledeletion-writes-can-leave-no-administrator)
 
 These are native Phoenix corrections delivered in A2; retained Rails behavior is unchanged.
+
+
+## Native HTTP authentication (milestone 3c)
+
+- Render sign-in, registration, OTP, 2FA, recovery/unlock and provider-link documents with native HEEx and ordinary HTTP forms; preserve cookie, capability, status, mail and transaction contracts.
+- Preserve authenticated shell controls with explicit document lifecycles, accessible errors, pending-submit/back behavior and readable one-response 2FA secrets/backup codes.
+- Restore configured provider-entry and initial OTP locale parity, and filter OTP attempts/backup keys from Phoenix failure logs. These are Phoenix parity repairs; no Rails bug fix is claimed for this milestone.
+
+Implementation targeted tests and budgets are recorded in [native-m3c-inventory.md](native-m3c-inventory.md). Full seeds and integrated stage browser/390px acceptance remain controller-owned and pending.
+
+## Native Places (milestone 3d)
+
+- Keep foreign-owner visit and tag data out of native Place details, even when stored associations are corrupt. [FRB-086](fixed-rails-bugs.md#frb-086--corrupt-place-dependents-disclose-another-owners-data)
+
+- Refuse native Place edits/removal when corrupt associations would change another owner's data. [FRB-087](fixed-rails-bugs.md#frb-087--corrupt-place-removal-changes-another-owners-graph)
+- FRB-088: Opening Places with array-valued account settings now shows a safe native refusal instead of crashing authentication/navigation; native map and Trip-form documents refuse unsupported containers before page effects, and unsupported commands have no effects.
+
+## Native data pages (milestone 5)
+
+- Keep mobile and desktop family-sharing indicators independently addressable and current. [FRB-NATIVE-M5-FAMILY-INDICATOR](fixed-rails-bugs.md#frb-native-m5-family-indicator--duplicate-family-navbar-ids)
+
+- Recheck public sharing and owner state before returning prepared native report data. [FRB-NATIVE-M5-PUBLIC-DELIVERY](fixed-rails-bugs.md#frb-native-m5-public-delivery--revoked-report-can-finish-an-in-flight-read)
+
+- Recheck achievement sharing and owner existence before delivering prepared public badges. [FRB-NATIVE-M5-ACHIEVEMENT-DELIVERY](fixed-rails-bugs.md#frb-native-m5-achievement-delivery--revoked-achievement-can-finish-an-in-flight-read)
+
+- Extend public achievement delivery admission to PNG rendering, warmed OG images, and the final native/retained HTML response. FRB-NATIVE-M5-ACHIEVEMENT-DELIVERY.
+
+- Evaluate public report expiry at delivery, and re-admit final shared-link HTML, map responses, cached photo payloads and shared APIs through one check. FRB-NATIVE-M5-PUBLIC-DELIVERY.
+
+- Bind shared-link HTML/API admission to the exact link and privacy flags used for preparation, refusing flag changes before the initial snapshot. FRB-NATIVE-M5-PUBLIC-DELIVERY.
+
+- Revalidate the original signed family viewer at HTML delivery after password changes, login locks or deletion, retaining remember-cookie policy. FRB-NATIVE-M5-PUBLIC-DELIVERY.
+- Remove abandoned native uploads, including unsaved rich-text attachments, after their lease expires while preserving accepted attachments. [FRB-NATIVE-M4-ABANDONED-UPLOAD](fixed-rails-bugs.md#frb-native-m4-abandoned-upload--leaving-an-upload-strands-its-unattached-file)
+
+- Keep signed storage capabilities and private download filenames out of native request logs. [FRB-NATIVE-M4-STORAGE-PATH-LOG](fixed-rails-bugs.md#frb-native-m4-storage-path-log--request-logging-exposes-signed-storage-capabilities)
+
+- Refuse legacy export cleanup paths that escape public storage. [FRB-NATIVE-M4-LEGACY-EXPORT-PATH](fixed-rails-bugs.md#frb-native-m4-legacy-export-path--legacy-export-removal-traverses-outside-public-storage)
+- Retain a legacy export file while another export still references it. [FRB-NATIVE-M4-LEGACY-EXPORT-REFERENCE](fixed-rails-bugs.md#frb-native-m4-legacy-export-reference--removing-one-legacy-export-deletes-another-exports-file)
+
+- Refresh other native tabs after notification reads/deletion, and clear a removed open detail. [FRB-NATIVE-M4-NOTIFICATION-INVALIDATION](fixed-rails-bugs.md#frb-native-m4-notification-invalidation--reading-or-deleting-leaves-other-tabs-stale)
+
+- Give native mobile and desktop family indicators separate update targets. [FRB-NATIVE-M4-FAMILY-INDICATOR-ID](fixed-rails-bugs.md#frb-native-m4-family-indicator-id--mobile-and-desktop-indicators-repeat-the-same-element-identity)
+
+- Name the native extraction dialog from its localized heading for accessible dialog navigation. [FRB-NATIVE-M4-EXTRACTION-DIALOG-NAME](fixed-rails-bugs.md#frb-native-m4-extraction-dialog-name--extraction-dialog-has-no-accessible-name)
+
+- Prevent restored export URLs from deleting unrelated public files. [FRB-NATIVE-M4-RESTORED-EXPORT-PURGE](fixed-rails-bugs.md#frb-native-m4-restored-export-purge--restored-urls-authorize-unrelated-file-deletion)
+
+- Remove remote direct uploads that arrive after their import or account was deleted, using retained durable cleanup identities. [FRB-NATIVE-M4-DELETED-UPLOAD-RESURRECTION](fixed-rails-bugs.md#frb-native-m4-deleted-upload-resurrection--deleted-importsaccounts-can-leave-replayed-remote-uploads)
+## Native family safety (milestone 4)
+
+- Serialize family invitation capacity checks so concurrent invitations cannot oversubscribe the final Cloud seat. [FRB-NATIVE-M4-FAMILY-CAPACITY](fixed-rails-bugs.md#frb-native-m4-family-capacity--concurrent-invitations-can-oversubscribe-a-cloud-family)
+- Stop native family location delivery after membership/access loss and erase silent expired consent, disconnected maps and stale pending map loads. [FRB-NATIVE-M4-FAMILY-DELIVERY](fixed-rails-bugs.md#frb-native-m4-family-delivery--a-removed-viewer-can-keep-receiving-family-locations)
+
+- Clear native public live readers after link revocation, phrase/audience changes and silent expiry; bind reconnect admission to the original browser session, cookie deadlines and session signout. [FRB-NATIVE-M4-PUBLIC-DELIVERY](fixed-rails-bugs.md#frb-native-m4-public-delivery--public-live-maps-retain-revoked-subscriptions)
+
+- Honor the disabled route option on native public track pages. [FRB-NATIVE-M4-TRACK-ROUTE](fixed-rails-bugs.md#frb-native-m4-track-route--shared-tracks-ignore-the-disabled-route-option)
+
+- Discard family location/history snapshots when consent, membership or access changes while points load (FRB-NATIVE-M4-FAMILY-SNAPSHOT).
+
+- Filter public unlock phrase values from request and crash logs, including lazy messages (FRB-NATIVE-M4-UNLOCK-LOGS).
+
+- Refuse family location consent when Cloud family access expires while a response waits for its request lock (FRB-NATIVE-M4-FAMILY-REQUEST-ACCESS).
+
+- Discard family page, invitation and API snapshots when membership, consent or access changes during their private reads, and erase private rows on a late refusal. [FRB-NATIVE-M4-FAMILY-PUBLICATION](fixed-rails-bugs.md#frb-native-m4-family-publication--family-reads-can-publish-data-after-in-flight-revocation)
+
+- Extend family publication re-admission to OwnTracks friends, family trip metadata/share references and retained family Cable coordinates. [FRB-NATIVE-M4-FAMILY-PUBLICATION](fixed-rails-bugs.md#frb-native-m4-family-publication--family-reads-can-publish-data-after-in-flight-revocation)
+
+- Cancel in-flight native uploads when leaving the page, suppress late completion, and release owner-bound reservations with a keepalive request. [FRB-NATIVE-S1-UPLOAD-DEPARTURE](fixed-rails-bugs.md#frb-native-s1-upload-departure--leaving-during-an-upload-retains-its-reservation)
+
+- Keep import detail date tooltips inside narrow viewports. [FRB-NATIVE-S1-DATE-TOOLTIP](fixed-rails-bugs.md#frb-native-s1-date-tooltip--import-date-tooltips-overflow-narrow-screens)
+- Erase private map content immediately when the browser goes offline and reload freshly admitted snapshots on reconnect (FRB-NATIVE-S1E3-OFFLINE-ERASURE).
+
+- Keep persistent map retry notifications from blocking replay controls while preserving clickable recovery actions (FRB-NATIVE-S1E3-TOAST-INTERCEPTION).
+
+- Keep map retry messages and recovery actions within narrow German layouts by removing inherited fit-content and nowrap constraints (FRB-NATIVE-S1E3-TOAST-INTERCEPTION).
+
+## Native map follow-up
+
+- Keep fog on the selected dates when an older cell request finishes late. [FRB-NATIVE-M6-FOG-DATES](fixed-rails-bugs.md#frb-native-m6-fog-dates--a-late-fog-read-restores-an-older-date-window)
+- Cancel fog cell work when leaving its map. [FRB-NATIVE-M6-FOG-DISPOSE](fixed-rails-bugs.md#frb-native-m6-fog-dispose--leaving-the-map-keeps-a-fog-read-alive)
+- Stop hexagon point processing after leaving its map. [FRB-NATIVE-M6-HEX-DISPOSE](fixed-rails-bugs.md#frb-native-m6-hex-dispose--a-removed-hexagon-layer-keeps-aggregating-points)
+- Cancel scratch-map membership requests after leaving its map. [FRB-NATIVE-M6-SCRATCH-DISPOSE](fixed-rails-bugs.md#frb-native-m6-scratch-dispose--a-removed-scratch-layer-leaves-membership-requests-running)
+
+- Release photo-loading deadlines when their requests settle. [FRB-NATIVE-M6-PHOTO-TIMER](fixed-rails-bugs.md#frb-native-m6-photo-timer--successful-photo-loads-leave-their-timeout-running)
+- Prevent photo clusters from reopening after leaving their map. [FRB-NATIVE-M6-PHOTO-CLUSTER](fixed-rails-bugs.md#frb-native-m6-photo-cluster--late-cluster-leaves-recreate-markers-after-removal)
+- Close photo popups and release their thumbnails when leaving the map. [FRB-NATIVE-M6-PHOTO-POPUP](fixed-rails-bugs.md#frb-native-m6-photo-popup--removing-photos-leaves-their-popup-open)
+- Cancel anomaly history reads when removing their map layer. [FRB-NATIVE-M6-ANOMALY-DISPOSE](fixed-rails-bugs.md#frb-native-m6-anomaly-dispose--removed-anomaly-layers-keep-paging-history)
+
+- Keep Trip day-layer cleanup safe before hover initialization. [FRB-NATIVE-M6-TRIP-DAY-DISPOSE](fixed-rails-bugs.md#frb-native-m6-trip-day-dispose--trip-day-layer-removal-crashes-before-hover-setup)
+- Close flight popups when removing their map layer. [FRB-NATIVE-M6-FLIGHT-POPUP](fixed-rails-bugs.md#frb-native-m6-flight-popup--removed-flight-layers-leave-a-popup-open)
+
+- Drop completed native public-map reads after share revocation, expiry, phrase rotation or family withdrawal (FRB-NATIVE-M6-PUBLIC-LATE).
+
+- Close replay photo popups when changing day, closing replay or leaving the map. [FRB-NATIVE-M6-REPLAY-PHOTO-POPUP](fixed-rails-bugs.md#frb-native-m6-replay-photo-popup--replay-photos-leave-popups-open-after-close-or-day-change)
+
+- Fix poster export and print lifecycle cleanup. (FRB-NATIVE-M6-POSTER-EXPORT-CLOSE)
+
+- Fix poster export and print lifecycle cleanup. (FRB-NATIVE-M6-POSTER-EXPORT-HANG)
+
+- Fix poster export and print lifecycle cleanup. (FRB-NATIVE-M6-POSTER-EXPORT-CONTAINER)
+
+- Fix poster export and print lifecycle cleanup. (FRB-NATIVE-M6-POSTER-ORDER-HANG)
+
+- Validate poster checkout URLs. (FRB-NATIVE-M6-POSTER-CHECKOUT-URL)
+
+- Show failed poster range reloads and restore the loaded dates. (FRB-NATIVE-M6-POSTER-RANGE-ERROR)
+
+- Release video map, encoder and canvas resources on construction failure. (FRB-NATIVE-M6-VIDEO-CONSTRUCTION)
+
+- Cancel and bound the first video map idle wait. (FRB-NATIVE-M6-VIDEO-FIRST-IDLE)
+
+- Purge abandoned video upload reservations. (FRB-NATIVE-M6-VIDEO-ABANDONED-UPLOAD)
+
+- Fix video export stalls during codec negotiation, backpressure and finalization; cancellation and operation deadlines release encoder resources. (FRB-NATIVE-M6-VIDEO-CODEC-WAIT)
+
+- Fix stalled video uploads keeping Save pending; timed-out uploads discard their reservation and allow retry. (FRB-NATIVE-M6-VIDEO-UPLOAD-WAIT)
+
+- Fix out-of-order video theme loads replacing the selected preview and render style. (FRB-NATIVE-M6-VIDEO-THEME-ORDER)
+
+- Keep saved video recipes consistent with the rendered file when settings change during rendering. (FRB-NATIVE-M6-VIDEO-RECIPE-SNAPSHOT)
+
+- Release the production video encoder when configuration fails. (FRB-NATIVE-M6-VIDEO-CONFIGURE-CLOSE)
+
+- Handle inherited-property names in saved video recipes with the existing portrait fallback. (FRB-NATIVE-M6-VIDEO-FORMAT-OWN-KEY)
+
+- Give mobile and desktop family sharing indicators distinct identities so navigation updates target the correct copy. (FRB-NATIVE-M6-FAMILY-NAV-ID)
+
+- Omit credential-bearing photo and itinerary source destinations from native trip presentation and use cookie-authenticated thumbnails. (FRB-NATIVE-M6-TRIP-PHOTO-LINK)
+
+- Preserve foreign-owned note/share records linked to a deleted native Trip in an inconsistent stored graph. (FRB-NATIVE-M6-TRIP-DEPENDENTS)
+
+- Give native Poster layout/track sliders, Visit place search and Trip note editors persistent localized accessible names. [FRB-NATIVE-M6-CONTROL-LABELS](fixed-rails-bugs.md#frb-native-m6-control-labels)
+
+- Rectangle selection now keeps its cancel action localized instead of changing to hardcoded English (FRB-NATIVE-M6-SELECTION-CANCEL-LOCALE); owned rectangle and point highlights clear on cancel or map disposal.
+
+- Release native point-drag and history controls after a lost acknowledgement, clear uncertain geometry and reread canonical tiles without retrying the write. [FRB-NATIVE-M6-POINT-MOVE-DEADLINE](fixed-rails-bugs.md#frb-native-m6-point-move-deadline)
+
+- Erase idle native Family map coordinates and popups on sharing expiry, and revalidate withdrawals within a snapshot-bound lease that unrelated callbacks cannot extend while typed sharing invalidations are pending. [FRB-NATIVE-M6-FAMILY-IDLE-CONSENT](fixed-rails-bugs.md#frb-native-m6-family-idle-consent)
+
+- Keep shared-link visit counts unchanged for HEAD checks and connected map callbacks; admitted document GETs count once. [FRB-NATIVE-STAGE2-PUBLIC-HEAD](fixed-rails-bugs.md#frb-native-stage2-public-head--head-requests-inflate-shared-link-visit-counts)

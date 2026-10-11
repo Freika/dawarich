@@ -58,7 +58,9 @@ defmodule Dawarich.PointExportsDirectWorkerTest do
              oban: @oban
            ) == %{dispatched: 1}
 
-    assert [[args]] = rows("SELECT args FROM oban.oban_jobs")
+    assert [[args]] =
+             rows("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Exports.PointsWorker'")
+
     assert args["export_id"] == export_id
     assert args["time_zone"] == "America/New_York"
     assert File.cd!(root, fn -> perform_job(PointsWorker, args) end) == :ok

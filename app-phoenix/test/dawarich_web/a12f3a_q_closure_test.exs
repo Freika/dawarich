@@ -16,10 +16,13 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     saved = Application.get_env(:dawarich, :jobs_repo)
     Application.put_env(:dawarich, :jobs_repo, Repo)
     env = System.get_env("SELF_HOSTED")
+    jwt = System.get_env("JWT_SECRET_KEY")
+    System.put_env("JWT_SECRET_KEY", "synthetic-q-native-upgrade")
 
     on_exit(fn ->
       Application.put_env(:dawarich, :jobs_repo, saved)
       if env, do: System.put_env("SELF_HOSTED", env), else: System.delete_env("SELF_HOSTED")
+      if jwt, do: System.put_env("JWT_SECRET_KEY", jwt), else: System.delete_env("JWT_SECRET_KEY")
     end)
 
     user =
@@ -195,7 +198,7 @@ defmodule DawarichWeb.A12f3aQClosureTest do
   end
 
   @tag a12f3a_q05: true
-  test "Q05: insights details frame and transport tails matches current Rails contract without a native-owner Rails effect",
+  test "Q05: native Insights document preserves source all-time values auth and cache contract",
        %{user: user} do
     for row <- fixture("05") do
       set_mode(to_string(row["self_hosted"]))
@@ -206,8 +209,9 @@ defmodule DawarichWeb.A12f3aQClosureTest do
         |> get("/insights/details?year=all")
 
       assert conn.status == row["status"]
-      assert conn.resp_body =~ ~s(<turbo-frame id="insights_details">)
-      refute conn.resp_body =~ "<!DOCTYPE"
+      assert String.contains?(conn.resp_body, ~s(id="insights-period"))
+      refute String.contains?(conn.resp_body, "turbo-frame")
+      assert String.contains?(conn.resp_body, "<!DOCTYPE")
       assert get_resp_header(conn, "cache-control") == [row["cache_control"]]
     end
 
@@ -354,17 +358,32 @@ defmodule DawarichWeb.A12f3aQClosureTest do
 
       if row["status"] == 500 do
         assert_raise ArgumentError, fn ->
-          DawarichWeb.DigestsLive.Show.page(user, %{"year" => "2024"}, page_ctx)
+          digest_source(user, "2024", page_ctx)
         end
       else
-        assert DawarichWeb.DigestsLive.Show.page(user, %{"year" => "2024"}, page_ctx).digest.year ==
+        assert digest_source(user, "2024", page_ctx).digest.year ==
                  2024
       end
     end
 
     context = Dawarich.Stats.context(user, @now, true)
     assert Enum.map(Dawarich.Digests.index(user.id, context).digests, & &1.year) == [2024]
-    assert DawarichWeb.DigestsLive.Show.page(user, %{"year" => "2023"}, page_ctx) == :not_found
+    assert digest_source(user, "2023", page_ctx) == :not_found
+  end
+
+  defp digest_source(user, year, context) do
+    case Dawarich.Digests.get(user.id, Dawarich.RubyInteger.to_i(year)) do
+      nil ->
+        :not_found
+
+      digest ->
+        Dawarich.Digests.validate_summary!(digest)
+
+        if Dawarich.Entitlements.full_access?(user, context.self_hosted, context.now),
+          do: Dawarich.Digests.validate_full!(digest)
+
+        %{digest: digest}
+    end
   end
 
   @tag a12f3a_q11: true
@@ -383,15 +402,15 @@ defmodule DawarichWeb.A12f3aQClosureTest do
       assert result.uuid == row["uuid"]
     end
 
-    conn =
-      write(user, :patch, "/digests/2024/sharing", %{
-        "enabled" => "1",
-        "expiration" => "1h",
-        "format" => "json"
-      })
+    assert {:ok, %{settings: settings}} =
+             Dawarich.Sharing.change(
+               Dawarich.Accounts.Scope.for_user(user, "en"),
+               %{type: :digest, year: 2024, owner_id: user.id},
+               :update,
+               %{"enabled" => "1", "expiration" => "1h"}
+             )
 
-    assert conn.status == 200
-    assert Jason.decode!(conn.resp_body)["success"]
+    assert settings["enabled"]
 
     assert {:ok, shifted} =
              Dawarich.Digests.Sharing.update(
@@ -426,9 +445,15 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     assert :not_found =
              Dawarich.Stats.Sharing.update(Repo, user, "2023", "7", %{"enabled" => "1"}, ctx)
 
-    conn = write(user, :patch, "/stats/2024/3/sharing", %{"enabled" => "1", "format" => "json"})
-    assert conn.status == 200
-    assert Jason.decode!(conn.resp_body)["success"]
+    assert {:ok, %{settings: settings}} =
+             Dawarich.Sharing.change(
+               Dawarich.Accounts.Scope.for_user(user, "en"),
+               %{type: :month, year: 2024, month: 3, owner_id: user.id},
+               :update,
+               %{"enabled" => "1"}
+             )
+
+    assert settings["enabled"]
   end
 
   @tag a12f3a_q10: true
@@ -569,9 +594,21 @@ defmodule DawarichWeb.A12f3aQClosureTest do
       end
 
       set_mode(if(row["state"] == "partial", do: "false", else: "true"))
-      conn = build_conn() |> assign(:now, ctx.now) |> get("/shared/#{kind}/#{uuid}")
+
+      conn =
+        build_conn()
+        |> assign(:now, ctx.now)
+        |> put_private(:dawarich_clock, fn -> ctx.now end)
+        |> get("/shared/#{kind}/#{uuid}")
+
       assert conn.status == row["status"]
-      head = build_conn() |> assign(:now, ctx.now) |> head("/shared/#{kind}/#{uuid}")
+
+      head =
+        build_conn()
+        |> assign(:now, ctx.now)
+        |> put_private(:dawarich_clock, fn -> ctx.now end)
+        |> head("/shared/#{kind}/#{uuid}")
+
       assert head.status == conn.status
       assert head.resp_body == ""
       assert get_resp_header(conn, "cache-control") == [row["cache_control"]]
@@ -583,16 +620,42 @@ defmodule DawarichWeb.A12f3aQClosureTest do
           |> LazyHTML.query(selector)
           |> LazyHTML.to_html()
 
-        assert Dawarich.Test.ChartkickHTML.charts(html) ==
-                 Dawarich.Test.ChartkickHTML.charts(row["html"])
+        if kind in ~w(month digest) do
+          charts =
+            conn.resp_body
+            |> LazyHTML.from_document()
+            |> LazyHTML.query("[data-chart]")
+            |> LazyHTML.attribute("data-chart")
+            |> Enum.map(&Jason.decode!(&1)["data"])
 
-        assert Dawarich.Test.ParityHTML.stimulus(html) ==
-                 Dawarich.Test.ParityHTML.stimulus(row["html"])
+          assert charts == Enum.map(Dawarich.Test.ChartkickHTML.charts(row["html"]), & &1.data)
+          refute conn.resp_body =~ "data-controller="
+          refute conn.resp_body =~ "Chartkick"
 
-        assert normalize_public(html) == normalize_public(row["html"]),
-               inspect(first_difference(normalize_public(html), normalize_public(row["html"])),
-                 limit: :infinity
-               )
+          for selector <-
+                if(kind == "digest",
+                  do: [".stat-value", ".stat-title", "h1", "h2"],
+                  else: [".stat-value", "h1"]
+                ) do
+            expected =
+              row["html"]
+              |> LazyHTML.from_document()
+              |> LazyHTML.query(selector)
+              |> Enum.map(&(LazyHTML.text(&1) |> String.replace(~r/\s+/, " ") |> String.trim()))
+
+            actual =
+              conn.resp_body
+              |> LazyHTML.from_document()
+              |> LazyHTML.query(selector)
+              |> Enum.map(&(LazyHTML.text(&1) |> String.replace(~r/\s+/, " ") |> String.trim()))
+
+            if kind == "digest" do
+              assert actual == expected
+            else
+              assert actual == expected
+            end
+          end
+        end
 
         refute html =~ "data-api-key"
       else
@@ -604,20 +667,6 @@ defmodule DawarichWeb.A12f3aQClosureTest do
 
     assert (build_conn() |> get("/shared/#{kind}/unknown")).status == 302
   end
-
-  defp first_difference(a, a), do: nil
-
-  defp first_difference(a, b) when is_list(a) and is_list(b) and length(a) == length(b),
-    do: Enum.find_value(Enum.zip(a, b), fn {x, y} -> first_difference(x, y) end)
-
-  defp first_difference(a, b) when is_tuple(a) and is_tuple(b),
-    do: first_difference(Tuple.to_list(a), Tuple.to_list(b))
-
-  defp first_difference(a, b), do: {a, b}
-
-  defp normalize_public(html),
-    do:
-      html |> Dawarich.Test.ChartkickHTML.without_charts() |> Dawarich.Test.ParityHTML.normalize()
 
   defp fixture(task),
     do: File.read!("test/fixtures/stats/a12f3a-q#{task}.json") |> Jason.decode!()

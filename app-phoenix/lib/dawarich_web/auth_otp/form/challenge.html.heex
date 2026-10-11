@@ -1,17 +1,17 @@
 <div class="hero min-h-content bg-base-200">
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
-    <div class="text-center lg:text-left">
-      <h1 class="text-5xl font-bold text-base-content">
+    <div class="text-center lg:text-left min-w-0 [overflow-wrap:anywhere]">
+      <h1 class="text-4xl sm:text-5xl font-bold text-base-content">
         {text(@locale, "two_factor_authentication")}
       </h1>
       <p class="py-6 text-base-content opacity-70">
         {text(@locale, "enter_the_6_digit_code_from_your_authenticator_app_to")}
       </p>
     </div>
-    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
+    <div class="card flex-shrink-0 w-full max-w-sm min-w-0 shadow-2xl bg-base-100 px-5 py-5">
       <form
         class="form-body"
-        data-turbo="false"
+        data-auth-form
         action="/users/otp_challenge"
         accept-charset="UTF-8"
         method="post"
@@ -22,7 +22,7 @@
             <span class="label-text">{text(@locale, "authentication_code")}</span>
           </label>
           <input
-            class="input input-bordered text-center text-2xl tracking-widest"
+            class="input input-bordered w-full min-w-0 text-center text-2xl tracking-widest"
             maxlength="32"
             inputmode="numeric"
             autocomplete="one-time-code"
@@ -44,7 +44,6 @@
             name="commit"
             value={text(@locale, "verify")}
             class="btn btn-primary"
-            data-disable-with={text(@locale, "verify")}
           />
         </div>
       </form>

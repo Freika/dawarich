@@ -414,7 +414,7 @@ defmodule DawarichWeb.RateLimitTest do
     end
   end
 
-  test "every routed request runs the limiter right after ForceSSL" do
+  test "every routed request runs the limiter after ForceSSL and bounded public transport admission" do
     guarded =
       Path.expand("../../lib/dawarich_web/*.ex", __DIR__)
       |> Path.wildcard()
@@ -423,7 +423,8 @@ defmodule DawarichWeb.RateLimitTest do
         Regex.scan(~r/^\s*pipeline :(\w+) do\n(.*?)\n\s*end/ms, source, capture: :all_but_first)
       end)
       |> Enum.filter(fn [_name, body] ->
-        body =~ ~r/plug DawarichWeb\.ForceSSL\n\s+plug DawarichWeb\.RateLimit(?:\n|$)/
+        body =~
+          ~r/plug DawarichWeb\.ForceSSL\n(?:\s+plug DawarichWeb\.PublicShareRequest\n)?\s+plug DawarichWeb\.RateLimit(?:\n|$)/
       end)
       |> MapSet.new(fn [name, _body] -> name end)
 

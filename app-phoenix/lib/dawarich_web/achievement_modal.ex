@@ -52,13 +52,11 @@ defmodule DawarichWeb.AchievementModal do
             data-card-modal-target="copyBtn"
           >{t(@locale, "achievements.modal.copy", %{})}</button>
         </div>
-        <button
-          type="button"
+        <a
           class="ach-modal-unshare"
-          data-action="click->card-modal#unshare"
-          data-card-modal-target="unshareBtn sharingButton"
+          data-card-modal-target="unshareBtn"
           hidden
-        >{t(@locale, "achievements.modal.stop_sharing", %{})}</button>
+        >{t(@locale, "achievements.modal.stop_sharing", %{})}</a>
       </div>
       <div class="ach-modal-error" data-card-modal-target="error" role="alert" hidden></div>
     </dialog>

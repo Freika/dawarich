@@ -17,15 +17,33 @@ defmodule DawarichWeb.NativeAuth do
   end
 
   def on_mount(:require_user, params, session, socket) do
+    socket =
+      socket
+      |> assign(:native, true)
+      |> attach_hook(:native_principal_params, :handle_params, fn _, _, socket ->
+        DawarichWeb.NativeJobsAuth.authorize(socket)
+      end)
+      |> attach_hook(:native_principal_event, :handle_event, fn _, _, socket ->
+        DawarichWeb.NativeJobsAuth.authorize(socket)
+      end)
+      |> attach_hook(:native_principal_info, :handle_info, fn _, socket ->
+        DawarichWeb.NativeJobsAuth.authorize(socket)
+      end)
+      |> attach_hook(:native_principal_async, :handle_async, fn _, _, socket ->
+        DawarichWeb.NativeJobsAuth.authorize(socket)
+      end)
+
     case DawarichWeb.LiveAuth.on_mount(:default, params, session, socket) do
       {:cont, %{assigns: %{current_user: nil}} = socket} ->
         {:halt, redirect(socket, to: "/users/sign_in")}
 
       {:cont, socket} ->
-        scope = Scope.for_user(socket.assigns.current_user, socket.assigns.locale)
+        user = Dawarich.Accounts.Principal.project(socket.assigns.current_user)
+        scope = Scope.for_user(user, socket.assigns.locale)
 
         {:cont,
          socket
+         |> assign(:current_user, user)
          |> assign(:current_scope, scope)
          |> assign(:native, true)
          |> attach_hook(:native_request_path, :handle_params, &track_uri/3)}

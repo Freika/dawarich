@@ -18,14 +18,20 @@ defmodule Dawarich.Families.Clock do
 
   def parse(_other), do: raise(ArgumentError, "time is not a string")
 
-  def iso(nil), do: nil
+  def iso(at, repo \\ Repo)
+  def iso(nil, _repo), do: nil
 
-  def iso(%NaiveDateTime{} = utc) do
-    [[text]] = Repo.query!("SELECT " <> RailsTime.sql("$1::timestamp", 0), [utc]).rows
+  def iso(%NaiveDateTime{} = utc, repo) do
+    [[text]] = repo.query!("SELECT " <> RailsTime.sql("$1::timestamp", 0), [utc]).rows
     text
   end
 
   def naive(%DateTime{} = now), do: DateTime.to_naive(now)
+
+  def ticking(%DateTime{} = base) do
+    started = System.monotonic_time(:microsecond)
+    fn -> DateTime.add(base, System.monotonic_time(:microsecond) - started, :microsecond) end
+  end
 
   defp utc({:ok, at, _offset}), do: DateTime.to_naive(at)
   defp utc(_error), do: raise(ArgumentError, "time is not a valid time")

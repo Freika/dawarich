@@ -25,6 +25,97 @@ defmodule Dawarich.A12f3bR01Test do
     :ok
   end
 
+  for change <- [:consent, :member, :identity, :expiry, :access] do
+    @change change
+    test "family Cable coordinates refuse #{@change} after preparation" do
+      now = ~U[2026-10-03 10:00:00Z]
+
+      settings = %{
+        "timezone" => "UTC",
+        "family" => %{
+          "location_sharing" => %{
+            "enabled" => true,
+            "expires_at" => DateTime.to_iso8601(DateTime.add(now, 1))
+          }
+        }
+      }
+
+      user = user!(settings)
+
+      rows("UPDATE users SET plan=2,active_until=$2 WHERE id=$1", [
+        user,
+        DateTime.to_naive(DateTime.add(now, 3600))
+      ])
+
+      [[family]] =
+        rows(
+          "INSERT INTO families(name,creator_id,access_until,created_at,updated_at) VALUES('Synthetic guarded Cable',$1,$2,now(),now()) RETURNING id",
+          [user, DateTime.to_naive(DateTime.add(now, 1))]
+        )
+
+      rows(
+        "INSERT INTO family_memberships(family_id,user_id,role,created_at,updated_at) VALUES($1,$2,0,now(),now())",
+        [family, user]
+      )
+
+      Application.put_env(:dawarich, :cable, transport: :pg, repo: ScratchRepo, polling: false)
+      channel = Dawarich.RailsMessages.broadcasting(["family_locations", {:family, family}])
+
+      args = %{
+        "user_id" => user,
+        "broadcast_id" => Ecto.UUID.generate(),
+        "upserted" => [%{"id" => 1, "timestamp" => @at, "latitude" => 52.5, "longitude" => 13.4}],
+        "payloads" => []
+      }
+
+      opts = [now: now, self_hosted: false, clock: fn -> Process.get(:family_cable_now, now) end]
+      assert :ok = apply(Dawarich.Points.LiveBroadcastWorker, :run, [ScratchRepo, args, opts])
+
+      assert rows("SELECT count(*) FROM phoenix.cable_events WHERE channel=$1", [channel]) == [
+               [1]
+             ]
+
+      after_read = fn result ->
+        assert {:ok, {^family, [_]}} = result
+
+        case @change do
+          :consent ->
+            rows("UPDATE users SET settings='{}' WHERE id=$1", [user])
+
+          :member ->
+            rows("DELETE FROM family_memberships WHERE user_id=$1", [user])
+
+          :identity ->
+            rows("UPDATE users SET encrypted_password='changed-family-cable' WHERE id=$1", [user])
+
+          :expiry ->
+            Process.put(:family_cable_now, DateTime.add(now, 1))
+
+          :access ->
+            rows("UPDATE families SET access_until=$2 WHERE id=$1", [
+              family,
+              DateTime.to_naive(now)
+            ])
+        end
+
+        result
+      end
+
+      args = Map.put(args, "broadcast_id", Ecto.UUID.generate())
+
+      assert :ok =
+               apply(Dawarich.Points.LiveBroadcastWorker, :run, [
+                 ScratchRepo,
+                 args,
+                 Keyword.put(opts, :after_read, after_read)
+               ])
+
+      assert rows("SELECT count(*) FROM phoenix.cable_events WHERE channel=$1", [channel]) == [
+               [1]
+             ]
+    end
+  end
+
   @tag a12f3b_case: "R01k01"
   test "points.tile_epoch native producer reaches its source terminal effect" do
     user = user!()
@@ -113,6 +204,9 @@ defmodule Dawarich.A12f3bR01Test do
     [%{id: id}] = ingest(user)
     assert [[args]] = jobs("Dawarich.Points.LiveBroadcastWorker")
     assert :ok = Dawarich.Points.LiveBroadcastWorker.run(ScratchRepo, args)
+    assert [[native]] = jobs("Dawarich.Families.EventsWorker")
+    assert native["kind"] == "location" and native["user_id"] == user
+    assert Enum.sort(Map.keys(native)) == ~w(event_id kind user_id)
     send(Bus, :poll)
     :sys.get_state(Bus)
     assert_receive {:cable_pg, _, _, ^stream, _, bytes}
@@ -186,7 +280,7 @@ defmodule Dawarich.A12f3bR01Test do
     ingest(user, now: now)
     ingest(user, now: DateTime.add(now, 10))
 
-    assert [[args, due]] =
+    assert [[args, _due]] =
              rows(
                "SELECT payload,scheduled_at FROM public.job_outbox WHERE command_type='visits.suggest'"
              )

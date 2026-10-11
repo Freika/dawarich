@@ -15,22 +15,32 @@ defmodule Dawarich.PointListWindow do
   FROM z
   """
 
-  def build(params, settings, now, range) do
+  def build(params, settings, now, range, opts \\ []) do
     {first, last} = range || {nil, nil}
 
     [[start_value, end_value]] =
       UserTimeZone.query!(@defaults, [DateTime.to_naive(now), first, last], settings).rows
 
-    if supported_default?(params["start_at"], start_value) and
-         supported_default?(params["end_at"], end_value) do
-      supplied = Map.filter(params, fn {_key, value} -> Ruby.present?(value) end)
-      values = Map.merge(%{"start_at" => start_value, "end_at" => end_value}, supplied)
-      window = MapWindow.build(values, settings, now, nil)
-      Map.merge(window, %{start_epoch: epoch(window.start), end_epoch: epoch(window.end)})
-    else
-      :rails
+    supported =
+      supported_default?(params["start_at"], start_value) and
+        supported_default?(params["end_at"], end_value)
+
+    cond do
+      not supported and opts[:native] == true and not is_nil(range) ->
+        params |> MapWindow.build(settings, now, range) |> epochs()
+
+      supported ->
+        supplied = Map.filter(params, fn {_key, value} -> Ruby.present?(value) end)
+        values = Map.merge(%{"start_at" => start_value, "end_at" => end_value}, supplied)
+        values |> MapWindow.build(settings, now, nil) |> epochs()
+
+      true ->
+        :rails
     end
   end
+
+  defp epochs(window),
+    do: Map.merge(window, %{start_epoch: epoch(window.start), end_epoch: epoch(window.end)})
 
   defp supported_default?(supplied, value),
     do:

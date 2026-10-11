@@ -101,7 +101,10 @@ defmodule Dawarich.Mail.AccountDestroyConfirmationWorkerTest do
       end)
 
     assert_received {:mail, %{to: @email}}
-    assert log =~ event_id
+    assert args["event_id"] == event_id
+    assert log =~ "Dawarich.Mail.AccountDestroyConfirmationWorker"
+    assert log =~ "[FILTERED]"
+    refute log =~ event_id
     refute log =~ "dawarich.example.test"
     refute log =~ @token
     refute log =~ @email

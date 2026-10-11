@@ -1,5 +1,5 @@
 defmodule DawarichWeb.PublicShareOwnerTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Plug.Conn
   import Phoenix.ConnTest
   import Dawarich.Test.StatsSeeds
@@ -11,7 +11,6 @@ defmodule DawarichWeb.PublicShareOwnerTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
     user = RailsUser.insert!(%{id: 64127, email: "public-owner@dawarich.test"})
     uuid = Ecto.UUID.generate()
     settings = %{"enabled" => true, "expiration" => nil}

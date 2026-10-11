@@ -20,22 +20,65 @@ defmodule Dawarich.UserData do
 
     {:ok, :ok} =
       repo.transaction(fn ->
-        payload = %{"user_id" => user.id, "time_zone" => context.zone, "locale" => context.locale}
-
-        if Ownership.lock(repo, "command:users.export_data") == :oban do
-          repo.query!(
-            "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES(gen_random_uuid(),'users.export_data',1,$1,$2,$3,now())",
-            [payload, %{"producer" => "Phoenix SettingsUsersExport"}, user.id],
-            log: false
-          )
-        else
-          Dawarich.RailsCommands.insert!(repo, "users.export_data", payload)
-        end
-
-        :ok
+        publish_export(repo, user, context, Ownership.lock(repo, "command:users.export_data"))
       end)
 
     :ok
+  end
+
+  def request_native_export(scope, opts \\ []) do
+    repo = Keyword.get(opts, :repo, repo())
+
+    result =
+      repo.transaction(fn ->
+        unless Dawarich.Imports.NativeOwnership.lock(repo, "command:users.export_data") == :oban,
+          do: repo.rollback(:not_owned)
+
+        if callback = opts[:after_owner_lock], do: callback.(repo)
+        current = Dawarich.Uploads.Records.actor!(repo, scope)
+        publish_export(repo, current.user, context(current), :oban)
+      end)
+
+    case result do
+      {:ok, :ok} -> :ok
+      error -> error
+    end
+  end
+
+  defp publish_export(repo, user, context, owner) do
+    payload = %{"user_id" => user.id, "time_zone" => context.zone, "locale" => context.locale}
+
+    if owner == :oban do
+      repo.query!(
+        "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES(gen_random_uuid(),'users.export_data',1,$1,$2,$3,now())",
+        [payload, %{"producer" => "Phoenix SettingsUsersExport"}, user.id],
+        log: false
+      )
+    else
+      Dawarich.RailsCommands.insert!(repo, "users.export_data", payload)
+    end
+
+    :ok
+  end
+
+  def start_upload(%Scope{} = scope, ref) do
+    case Dawarich.Uploads.claim(scope, [ref], :account,
+           repo: repo(),
+           before_lock: fn repo ->
+             unless Dawarich.Imports.NativeOwnership.lock(repo, "command:users.import_data") ==
+                      :oban,
+                    do: repo.rollback(:not_owned)
+           end,
+           consume: fn repo, [item] ->
+             case start_import(scope, Dawarich.RailsMessages.blob_id(item.blob.id)) do
+               :ok -> :ok
+               {:error, reason} -> repo.rollback(reason)
+             end
+           end
+         ) do
+      {:ok, :ok} -> :ok
+      error -> error
+    end
   end
 
   def start_import(%Scope{} = scope, value) do

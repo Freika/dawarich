@@ -3,8 +3,8 @@ defmodule DawarichWeb.A12f3bA01Test do
   import Plug.Conn
   import Phoenix.ConnTest
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{AchievementPageGate, RailsAuth, RailsCsrf}
-  alias DawarichWeb.AchievementActions.{Request, Unlocks, Sharing}
+  alias DawarichWeb.{NativeDataAuth, RailsAuth, RailsCsrf}
+  alias DawarichWeb.AchievementActions.{Request, Unlocks}
 
   setup do
     previous = System.get_env("DAWARICH_RAILS")
@@ -65,7 +65,7 @@ defmodule DawarichWeb.A12f3bA01Test do
 
     for {path, status} <- [
           {"/achievements/country_fr", 302},
-          {"/achievements/missing", 404},
+          {"/achievements/missing", 302},
           {"/achievements/border_hopper", 302}
         ] do
       page =
@@ -81,9 +81,11 @@ defmodule DawarichWeb.A12f3bA01Test do
       |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
       |> RailsAuth.call([])
 
-    assert AchievementPageGate.open?(conn, %{})
+    scope = Dawarich.Accounts.Scope.for_user(conn.assigns.current_user, "en")
+    principal = Dawarich.Accounts.Principal.scope(scope)
+    assert {:ok, _} = Dawarich.Accounts.DataAccess.admit(principal)
     rows("UPDATE users SET encrypted_password='revoked' WHERE id=81301")
-    refute AchievementPageGate.open?(conn, %{})
+    assert {:error, :stale_session} = Dawarich.Accounts.DataAccess.admit(principal)
   end
 
   @tag a12f3b_case: "A01b"
@@ -93,8 +95,7 @@ defmodule DawarichWeb.A12f3bA01Test do
     for change <- ["locked_at=now()", "deleted_at=now()", "encrypted_password='revoked'"] do
       for {action, path, body, plug} <- [
             {:next, "/achievements/unlocks/next", "{}", Unlocks},
-            {:seen, "/achievements/unlocks/1/seen", ~s({"claim_token":"wrong"}), Unlocks},
-            {:sharing, "/achievements/country_de/toggle_sharing", "{}", Sharing}
+            {:seen, "/achievements/unlocks/1/seen", ~s({"claim_token":"wrong"}), Unlocks}
           ] do
         conn = request(path, body, session)
         {:ok, conn, actor, params, context} = Request.load(conn, action)
@@ -106,14 +107,26 @@ defmodule DawarichWeb.A12f3bA01Test do
             __changed__: %{},
             current_user: actor,
             locale: "en",
-            achievement_initial: false
+            flash: %{}
+          },
+          private: %{
+            data_principal:
+              Dawarich.Accounts.Principal.scope(Dawarich.Accounts.Scope.for_user(actor, "en"))
           }
         }
 
-        assert {:noreply, %{redirected: {:redirect, %{to: "/users/sign_in"}}}} =
-                 DawarichWeb.AchievementsLive.handle_params(%{}, "", socket)
+        assert {:halt, %{redirected: {:redirect, %{to: "/users/sign_in"}}}} =
+                 NativeDataAuth.authorize(socket, :params)
 
         assert plug.call(admitted, []).status == 401
+
+        assert {:error, :stale_session} =
+                 Dawarich.Sharing.change(
+                   Dawarich.Accounts.Scope.for_user(actor, "en"),
+                   %{type: :achievement, key: "country_de", owner_id: actor.id},
+                   :update,
+                   %{"enabled" => true}
+                 )
 
         assert rows(
                  "SELECT claim_token,claimed_at,seen_at FROM achievement_unlock_events WHERE user_id=81301"

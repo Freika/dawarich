@@ -19,6 +19,8 @@ defmodule DawarichWeb.Navbar do
   attr :now, :any, required: true
   attr :native, :boolean, default: false
 
+  attr :http, :boolean, default: false
+
   def navbar(assigns) do
     ~H"""
     <div class="navbar bg-base-100 h-16">
@@ -47,6 +49,7 @@ defmodule DawarichWeb.Navbar do
             class="menu menu-sm dropdown-content mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52"
           >
             <.main_links
+              indicator_id="family-navbar-indicator-mobile"
               mobile
               locale={@locale}
               request_path={@request_path}
@@ -103,6 +106,7 @@ defmodule DawarichWeb.Navbar do
           version={@data.version}
           rails_csrf_token={@rails_csrf_token}
           native={@native}
+          http={@http}
         />
         <div :if={@current_user} class="hidden xl:block">
           <.theme_toggle locale={@locale} theme={@current_user.theme} native={@native} />
@@ -129,6 +133,7 @@ defmodule DawarichWeb.Navbar do
         now={@now}
         rails_csrf_token={@rails_csrf_token}
         native={@native}
+        http={@http}
       />
     </div>
     """
@@ -141,6 +146,8 @@ defmodule DawarichWeb.Navbar do
   attr :current_user, :any, required: true
   attr :family, :any, required: true
   attr :native, :boolean, default: false
+
+  attr :indicator_id, :string, default: "family-navbar-indicator"
 
   def main_links(assigns) do
     assigns =
@@ -192,7 +199,13 @@ defmodule DawarichWeb.Navbar do
           href={@home}
         >
           <span>{t(@locale, "shared.navbar.family", %{})}<sup :if={not @mobile}>α</sup></span>
-          <.family_indicator locale={@locale} sharing={@family.sharing} native={@native} />
+          <.family_indicator
+            locale={@locale}
+            sharing={@family.sharing}
+            native={@native}
+            id={@indicator_id}
+            mobile={@mobile}
+          />
         </a>
       <% else %>
         <a class={link_class(@mobile, @request_path, "/family/new")} href="/family/new">{t(

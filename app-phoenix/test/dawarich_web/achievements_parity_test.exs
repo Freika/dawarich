@@ -4,11 +4,10 @@ defmodule DawarichWeb.AchievementsParityTest do
   import Phoenix.ConnTest
 
   alias Dawarich.Repo
-  alias Dawarich.Test.{ParityHTML, RailsUser}
+  alias Dawarich.Test.RailsUser
 
   @endpoint DawarichWeb.Endpoint
   @root "test/fixtures/achievements_ui"
-  @stimulus "[data-controller], [data-action], [data-card-modal-target], [data-share-key], [data-achievement-card-target]"
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -44,7 +43,8 @@ defmodule DawarichWeb.AchievementsParityTest do
     @fixture path |> File.read!() |> Jason.decode!()
     @external_resource path
 
-    test "#{@fixture["name"]} matches the page Rails renders" do
+    @tag retarget_corpus: @fixture["name"] == "en-detail-progress"
+    test "#{@fixture["name"]} retains source card values SVG and initial no-effects" do
       fixture = @fixture
       user_id = fixture["user_id"]
 
@@ -61,26 +61,49 @@ defmodule DawarichWeb.AchievementsParityTest do
             [user_id, fixture["seed_state"]]
           )
 
+      states =
+        Repo.query!(
+          "SELECT achievement_key,state FROM achievement_progresses WHERE user_id=$1 ORDER BY achievement_key",
+          [user_id]
+        ).rows
+
       html = RailsUser.signed_in(user_id) |> get(fixture["path"]) |> html_response(200)
       rails = File.read!(Path.join(@root, fixture["name"] <> ".html"))
-      phoenix = ParityHTML.fragment(html, ".ach-page")
-      expected = ParityHTML.normalize(rails)
 
-      assert phoenix == expected, ParityHTML.first_difference(phoenix, expected)
-      assert stimulus(page(html)) == stimulus(rails)
+      for selector <- [".card-title", ".card-description", ".metric", ".rarity", ".earned"] do
+        assert texts(html, ".ach-card " <> selector) == texts(rails, ".ach-card " <> selector)
+      end
+
+      for {selector, attribute} <- [
+            {".ach-silhouette-svg", "viewBox"},
+            {".ach-silhouette-svg path", "d"}
+          ] do
+        assert LazyHTML.from_document(html)
+               |> LazyHTML.query(selector)
+               |> LazyHTML.attribute(attribute) ==
+                 LazyHTML.from_document(rails)
+                 |> LazyHTML.query(selector)
+                 |> LazyHTML.attribute(attribute)
+      end
+
+      assert LazyHTML.from_document(html)
+             |> LazyHTML.query("#native-achievements")
+             |> Enum.count() == 1
+
+      refute html =~ "data-controller="
+      refute html =~ "data-action="
+
+      assert Repo.query!(
+               "SELECT achievement_key,state FROM achievement_progresses WHERE user_id=$1 ORDER BY achievement_key",
+               [user_id]
+             ).rows == states
     end
   end
 
-  defp page(html),
-    do: html |> LazyHTML.from_document() |> LazyHTML.query(".ach-page") |> LazyHTML.to_html()
-
-  defp stimulus(html),
+  defp texts(html, selector),
     do:
       html
-      |> ParityHTML.stimulus(@stimulus)
-      |> Enum.map(fn {tag, attrs} ->
-        {tag, Enum.map(attrs, fn {name, value} -> {name, undigest(value)} end)}
-      end)
-
-  defp undigest(value), do: String.replace(value, ~r/-[0-9a-f]{64}(?=\.webp\z)/, "")
+      |> LazyHTML.from_document()
+      |> LazyHTML.query(selector)
+      |> Enum.map(&(LazyHTML.text(&1) |> String.replace(~r/\s+/, " ") |> String.trim()))
 end

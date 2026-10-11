@@ -35,6 +35,23 @@ defmodule DawarichWeb.RailsAuth do
     Accounts.from_session(rails_session(conn, secret, now), now)
   end
 
+  def delivery_user(conn, now) do
+    secret = RailsSecret.fetch()
+    session = rails_session(fetch_cookies(conn), secret, now)
+
+    fresh =
+      if Map.has_key?(conn.assigns[:rails_session] || %{}, "warden.user.user.key"),
+        do: Accounts.from_session(session, now),
+        else: remembered(fetch_cookies(conn), secret, now)
+
+    with %{id: id} <- conn.assigns[:current_user],
+         %Accounts.User{id: ^id} = user <- fresh do
+      user
+    else
+      _ -> nil
+    end
+  end
+
   def user_id(conn) do
     user =
       case Map.fetch(conn.private, :dawarich_rails_user) do

@@ -1,60 +1,54 @@
 defmodule DawarichWeb.DirectUpload do
   @moduledoc false
-
-  alias Dawarich.{RailsMessages, Storage, UserData}
-  alias Dawarich.Storage.Blobs
-  alias DawarichWeb.{ActiveStorageUrls, Translate}
+  alias Dawarich.{Uploads, UserData}
+  alias Dawarich.Accounts.Scope
+  alias DawarichWeb.Translate
 
   def presign(entry, socket) do
-    %{current_user: user, locale: locale, base_url: base_url, checksums: checksums} =
-      socket.assigns
+    %{current_user: user, locale: locale, checksums: checksums} = socket.assigns
 
-    checksum = checksums[entry.ref]
+    attrs = %{
+      filename: entry.client_name,
+      byte_size: entry.client_size,
+      checksum: checksums[entry.ref] || (entry.client_meta || %{})["checksum"],
+      content_type: entry.client_type
+    }
 
-    cond do
-      not (is_binary(checksum) and checksum != "") ->
-        refuse(
-          socket,
-          locale,
-          "controllers.settings.users.an_error_occurred_while_starting_the_import_please_try_again"
-        )
+    kind = Map.get(socket.assigns, :upload_kind, :account)
+    prepared = Map.get(socket.assigns, :prepared_uploads, %{})[entry.ref] || %{}
 
-      not UserData.zip?(%{content_type: entry.client_type, filename: entry.client_name}) ->
-        refuse(socket, locale, "javascript.messages.please_select_a_valid_zip_file")
+    original =
+      Map.take(entry.client_meta || %{}, ~w(original_filename original_size client_wrapped))
 
-      UserData.legacy_trial_too_large?(user.status, user.subscription_source, entry.client_size) ->
-        refuse(socket, locale, "javascript.upload.file_size_limit")
+    original = Map.new(original, fn {key, value} -> {String.to_existing_atom(key), value} end)
+    attrs = attrs |> Map.merge(original) |> Map.merge(prepared)
 
-      true ->
-        now = DateTime.utc_now()
-        storage = Storage.services!(System.get_env())
-        service = Storage.service!(storage, storage.default)
+    result =
+      if kind == :account and not UserData.zip?(attrs),
+        do: {:error, :invalid_zip},
+        else: Uploads.reserve(Scope.for_user(user, locale), attrs, %{kind: kind})
 
-        {:ok, blob} =
-          Blobs.create_before_direct_upload(
-            service,
-            %{
-              "filename" => entry.client_name,
-              "byte_size" => entry.client_size,
-              "checksum" => checksum,
-              "content_type" => entry.client_type,
-              "metadata" => nil
-            },
-            DateTime.to_naive(now),
-            user_id: user.id
-          )
+    case result do
+      {:ok, ref} ->
+        refs = Map.get(socket.assigns, :upload_refs, %{}) |> Map.put(entry.ref, ref)
 
-        {url, headers} = ActiveStorageUrls.direct_upload(service, blob, base_url, now)
+        {:ok, %{uploader: "Direct", upload_ref: ref},
+         Phoenix.Component.assign(socket, :upload_refs, refs)}
 
-        {:ok,
-         %{
-           uploader: "Direct",
-           url: url,
-           headers: Map.new(headers),
-           signed_id: RailsMessages.blob_id(blob.id)
-         }, socket}
+      {:error, reason} ->
+        key =
+          case reason do
+            :invalid_zip ->
+              "javascript.messages.please_select_a_valid_zip_file"
+
+            :file_too_large ->
+              "javascript.upload.file_size_limit"
+
+            _ ->
+              "controllers.settings.users.an_error_occurred_while_starting_the_import_please_try_again"
+          end
+
+        {:error, %{reason: Translate.t(locale, key, %{})}, socket}
     end
   end
-
-  defp refuse(socket, locale, key), do: {:error, %{reason: Translate.t(locale, key, %{})}, socket}
 end

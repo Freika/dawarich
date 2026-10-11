@@ -3,6 +3,7 @@ defmodule DawarichWeb.SharedStatsPage do
   @behaviour Plug
   import Plug.Conn
   alias Dawarich.{CountryNames, Digests, Entitlements, LocalTime, Stats, UserTimeZone}
+  alias Dawarich.Sharing.Delivery
 
   alias DawarichWeb.{
     Assets,
@@ -16,36 +17,40 @@ defmodule DawarichWeb.SharedStatsPage do
   def init(kind), do: kind
 
   def call(conn, kind) do
-    now = conn.assigns.now
+    now = Delivery.now(clock: conn.private[:dawarich_clock])
     viewer = conn.assigns.current_user
     zone = Dawarich.RailsTimeZone.name(if(viewer, do: viewer.settings, else: %{"timezone" => ""}))
 
+    target = {kind, conn.path_params["uuid"], zone}
+    admitted = Delivery.admit(target, now)
+
     data =
-      case kind do
-        :digest -> Digests.Sharing.get(conn.path_params["uuid"], now, zone)
-        :month -> Stats.Sharing.get(conn.path_params["uuid"], now, zone)
-      end
+      admitted &&
+        case kind do
+          :digest -> Digests.Sharing.get(conn.path_params["uuid"], now, zone)
+          :month -> Stats.Sharing.get(conn.path_params["uuid"], now, zone)
+        end
 
-    if data do
-      page(conn, data, kind)
-    else
-      scope = if kind == :digest, do: "digests.shared_digest", else: "stats.shared_stats"
-
-      StatsActions.redirect(conn, %{
-        status: 302,
-        path: "/",
-        flash: :alert,
-        message:
-          Translate.t(
-            conn.assigns.locale,
-            "controllers.shared.#{scope}_not_found_or_no_longer_available",
-            %{}
-          )
-      })
-    end
+    if data, do: page(conn, data, kind, target, admitted), else: not_found(conn, kind)
   end
 
-  defp page(conn, data, kind) do
+  defp not_found(conn, kind) do
+    scope = if kind == :digest, do: "digests.shared_digest", else: "stats.shared_stats"
+
+    StatsActions.redirect(conn, %{
+      status: 302,
+      path: "/",
+      flash: :alert,
+      message:
+        Translate.t(
+          conn.assigns.locale,
+          "controllers.shared.#{scope}_not_found_or_no_longer_available",
+          %{}
+        )
+    })
+  end
+
+  defp page(conn, data, kind, target, admitted) do
     navbar =
       if conn.assigns.current_user,
         do:
@@ -110,10 +115,19 @@ defmodule DawarichWeb.SharedStatsPage do
     html =
       DawarichWeb.PageEnvelope.document(conn, assigns, content) |> Phoenix.HTML.Safe.to_iodata()
 
-    conn
-    |> put_resp_content_type("text/html")
-    |> put_resp_header("cache-control", "max-age=0, private, must-revalidate")
-    |> send_resp(200, html)
-    |> halt()
+    case Delivery.deliver(target, admitted, html,
+           clock: conn.private[:dawarich_clock],
+           after_read: conn.private[:dawarich_before_delivery] || fn -> :ok end
+         ) do
+      {:ok, html} ->
+        conn
+        |> put_resp_content_type("text/html")
+        |> put_resp_header("cache-control", "max-age=0, private, must-revalidate")
+        |> send_resp(200, html)
+        |> halt()
+
+      _ ->
+        not_found(conn, kind)
+    end
   end
 end

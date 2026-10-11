@@ -43,7 +43,7 @@ defmodule Dawarich.A12f3bM01Test do
   end
 
   @tag a12f3b_case: "M01b"
-  test "failed SMTP delivery leaves claim and sent marker retryable" do
+  test "safe SMTP failure leaves the claim retryable and preserves provider identity" do
     [[id]] =
       rows(
         "INSERT INTO users(email,settings,created_at,updated_at) VALUES('smtp@example.test','{}',now(),now()) RETURNING id"
@@ -51,7 +51,7 @@ defmodule Dawarich.A12f3bM01Test do
 
     args = %{"user_id" => id, "locale" => "fr", "event_id" => Ecto.UUID.generate()}
     Process.put(:transport_result, {:error, :rejected})
-    assert WelcomeWorker.perform(%Oban.Job{args: args}) == {:error, :rejected}
+    assert WelcomeWorker.perform(%Oban.Job{args: args}) == {:error, :delivery_failed}
     assert_received {:mail, first}
     assert rows("SELECT delivered_at FROM phoenix.delivery_claims") == [[nil]]
     Process.delete(:transport_result)

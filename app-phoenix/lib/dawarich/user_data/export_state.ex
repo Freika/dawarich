@@ -66,6 +66,13 @@ defmodule Dawarich.UserData.ExportState do
                   log: false
                 )
 
+                Dawarich.Exports.Events.enqueue(
+                  repo,
+                  args["user_id"],
+                  args["event_id"],
+                  :processing
+                )
+
                 [id, name, 1]
             end
 
@@ -160,6 +167,13 @@ defmodule Dawarich.UserData.ExportState do
           [state.id, code, state.now],
           log: false
         )
+
+        Dawarich.Exports.Events.enqueue(
+          state.repo,
+          state.args["user_id"],
+          state.args["event_id"],
+          "status:#{code}"
+        )
       end)
 
   def fail!(state) do
@@ -168,6 +182,13 @@ defmodule Dawarich.UserData.ExportState do
         "UPDATE exports SET status=3,updated_at=$2 WHERE id=$1",
         [state.id, state.now],
         log: false
+      )
+
+      Dawarich.Exports.Events.enqueue(
+        state.repo,
+        state.args["user_id"],
+        state.args["event_id"],
+        :failed
       )
 
       Processed.mark!(state.repo, state.args["event_id"], @key)

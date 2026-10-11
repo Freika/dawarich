@@ -1,5 +1,6 @@
 defmodule Dawarich.Points.DeviceTagBackfillTest do
   use Dawarich.JobsCase
+  import Dawarich.Test.Await
   import ExUnit.CaptureLog
 
   alias Dawarich.RecalculationFixtures, as: Fixtures
@@ -175,7 +176,7 @@ defmodule Dawarich.Points.DeviceTagBackfillTest do
     assert_receive {:DOWN, ^ref, :process, ^pid, :killed}
 
     for {guard, guard_ref} <- guards do
-      assert_receive {:DOWN, ^guard_ref, :process, ^guard, reason}
+      await_receive({:DOWN, ^guard_ref, :process, ^guard, reason})
       assert reason in [:normal, :noproc]
     end
 

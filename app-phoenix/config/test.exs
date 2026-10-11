@@ -11,8 +11,8 @@ connection = [
 
 partition = System.get_env("MIX_TEST_PARTITION", "")
 
-if partition != "" and partition not in ~w(1 2 3 4),
-  do: raise("MIX_TEST_PARTITION must be between 1 and 4")
+if partition != "" and partition not in ~w(1 2 3 4 5 6 7 8),
+  do: raise("MIX_TEST_PARTITION must be between 1 and 8")
 
 test_database = System.get_env("PHOENIX_TEST_DATABASE", "dawarich_phoenix_test") <> partition
 redis_url = System.get_env("PHOENIX_TEST_REDIS_URL", "redis://127.0.0.1:7153")

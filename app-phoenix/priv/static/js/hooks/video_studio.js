@@ -1,8 +1,9 @@
+import Flash from "controllers/flash_controller"
+import { translate } from "i18n"
 import { MapPageProvider } from "poster_studio/data/providers"
 import { ensureHudFonts } from "video_studio/hud_fonts"
 import { defaultSettings } from "video_studio/studio_state"
-import { translate } from "i18n"
-import Flash from "controllers/flash_controller"
+import { launchRequestedStudio } from "./requested_studio.js"
 import { bindControls, controls } from "./video_studio_controls.js"
 import { dates } from "./video_studio_dates.js"
 import { preview } from "./video_studio_preview.js"
@@ -117,12 +118,22 @@ export function mountVideoStudio(element, application = window.Stimulus) {
   studio.unbind = bindControls(studio)
   instances.set(element, studio)
   studio.syncControls()
+  studio.stopRequestedLaunch = launchRequestedStudio(
+    studio,
+    new MapPageProvider({
+      application: {
+        getControllerForElementAndIdentifier: (...args) =>
+          studio.application?.getControllerForElementAndIdentifier?.(...args),
+      },
+    }),
+  )
   return studio
 }
 
 export function destroyVideoStudio(element) {
   const studio = instances.get(element)
   if (!studio) return
+  studio.stopRequestedLaunch?.()
   studio.disposed = true
   studio.close()
   studio.saveAbortController?.abort()

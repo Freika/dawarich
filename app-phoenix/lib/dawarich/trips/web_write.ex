@@ -1,7 +1,7 @@
 defmodule Dawarich.Trips.WebWrite do
   @moduledoc false
   alias Dawarich.TripSettings
-  alias Dawarich.Trips.{WebCommands, WebParams, Attachments}
+  alias Dawarich.Trips.{AttachmentAdmission, Attachments, WebCommands, WebParams}
 
   @fields ~w(id name demo started_at ended_at created_at updated_at)a
 
@@ -12,7 +12,8 @@ defmodule Dawarich.Trips.WebWrite do
              WebParams.parse(user, attrs, previous, Map.put(context, :repo, repo)),
            {:ok, settings} <- settings(user),
            {:ok, embeds} <- embeds(repo, previous, changes.description),
-           :ok <- lock_embeds(repo, previous, embeds) do
+           :ok <- lock_embeds(repo, previous, embeds),
+           :ok <- admit_embeds(repo, user, previous, embeds) do
         calculate = calculate?(action, previous, changes)
 
         with :ok <- if(calculate, do: WebCommands.admission(repo), else: :ok) do
@@ -88,6 +89,11 @@ defmodule Dawarich.Trips.WebWrite do
 
   defp lock_embeds(_repo, _previous, :unchanged), do: :ok
   defp lock_embeds(repo, previous, embeds), do: Attachments.lock(repo, previous[:rich_id], embeds)
+
+  defp admit_embeds(_repo, _user, _previous, :unchanged), do: :ok
+
+  defp admit_embeds(repo, user, previous, embeds),
+    do: AttachmentAdmission.admit(repo, user.id, previous[:rich_id], embeds)
 
   defp calculate?(:create, _previous, _changes), do: true
 

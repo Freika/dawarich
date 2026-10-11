@@ -72,12 +72,14 @@ defmodule Dawarich.Imports.Destroy do
                    )
                  end
 
+                 if owner == :oban,
+                   do: Dawarich.Imports.Events.enqueue(repo, user_id, event, :deleting)
+
                  :queued
                end
            end
          end) do
       {:ok, :queued} ->
-        Dawarich.Imports.Events.broadcast(user_id)
         {:ok, :queued}
 
       other ->

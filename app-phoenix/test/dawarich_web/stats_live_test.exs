@@ -49,55 +49,23 @@ defmodule DawarichWeb.StatsLiveTest do
       on_exit(fn -> :persistent_term.erase({DawarichWeb.Assets, :rails_imports}) end)
     end
 
-    test "a rails_js page loads Rails' imports, translations and Chartkick; Phoenix's own entries win",
-         %{user: user} do
-      html = RailsUser.signed_in(user.id) |> get("/stats") |> html_response(200)
-      head = html |> LazyHTML.from_document() |> LazyHTML.query("head")
-
-      imports =
-        head
-        |> LazyHTML.query("script[type='importmap']")
-        |> LazyHTML.text()
-        |> Jason.decode!()
-        |> Map.fetch!("imports")
-
-      assert imports["chartkick"] == "/assets/chartkick-0123abcd.js"
-      assert imports["app"] =~ "/phoenix/js/app.js?vsn="
-
-      translations =
-        head
-        |> LazyHTML.query("script#i18n-translations[type='application/json']")
-        |> LazyHTML.text()
-        |> Jason.decode!()
-
-      assert translations["stats"]["map_initialization_failed"] == "Failed to initialize map"
-      assert Map.has_key?(translations, "transportation_modes")
-      assert html =~ ~r/import "chartkick"\s+import "Chart.bundle"/
+    test "native monthly charts retain their feature entry without loading Rails imports", %{
+      user: user
+    } do
+      html = RailsUser.signed_in(user.id) |> get("/stats/2024/03") |> html_response(200)
+      refute String.contains?(html, "importmap")
+      refute String.contains?(html, "i18n-translations")
+      refute String.contains?(html, "Chartkick")
+      assert String.contains?(html, "/native/app.js")
+      refute String.contains?(html, "should-not-win")
     end
 
-    test "a signed-in page without rails_js loads Rails' imports and translations, not Chartkick",
-         %{user: user} do
-      html = RailsUser.signed_in(user.id) |> get("/notifications") |> html_response(200)
-      head = html |> LazyHTML.from_document() |> LazyHTML.query("head")
-
-      imports =
-        head
-        |> LazyHTML.query("script[type='importmap']")
-        |> LazyHTML.text()
-        |> Jason.decode!()
-        |> Map.fetch!("imports")
-
-      assert imports["chartkick"] == "/assets/chartkick-0123abcd.js"
-      assert imports["app"] =~ "/phoenix/js/app.js?vsn="
-
-      translations =
-        head
-        |> LazyHTML.query("script#i18n-translations[type='application/json']")
-        |> LazyHTML.text()
-        |> Jason.decode!()
-
-      assert translations["demo"]["already_loaded"] == "Demo data already loaded"
-      refute html =~ ~r/import "chartkick"/
+    test "native trip cards retain their entry without loading Rails imports", %{user: user} do
+      html = RailsUser.signed_in(user.id) |> get("/trips") |> html_response(200)
+      refute String.contains?(html, "importmap")
+      refute String.contains?(html, "i18n-translations")
+      refute String.contains?(html, "Chartkick")
+      assert String.contains?(html, "/native/app.js")
     end
 
     test "rails_charts: false keeps Rails' modules and drops Chartkick" do
@@ -125,17 +93,11 @@ defmodule DawarichWeb.StatsLiveTest do
       refute html =~ ~r/import "chartkick"/
     end
 
-    test "rails_flash shows only success and error flashes", %{user: user} do
-      {:ok, view, _html} = live_as(user, "/stats")
-
-      refute render_hook(view, "rails_flash", %{
-               "type" => "info",
-               "message" => "a5s-unwanted-flash"
-             }) =~ "a5s-unwanted-flash"
-
-      html = render_hook(view, "rails_flash", %{"type" => "success", "message" => "Auto-saved"})
-      assert html =~ "alert-success"
-      assert html =~ "Auto-saved"
+    test "native monthly commands refuse arbitrary browser flash injection", %{user: user} do
+      {:ok, view, _html} = live_as(user, "/stats/2024/03")
+      render_hook(view, "rails_flash", %{"type" => "success", "message" => "untrusted-flash"})
+      refute has_element?(view, "[role=alert]", "untrusted-flash")
+      assert has_element?(view, "[role=alert]")
     end
   end
 
@@ -158,6 +120,12 @@ defmodule DawarichWeb.StatsLiveTest do
       Dawarich.Repo.query!(
         "UPDATE users SET points_count = 77, api_key = 'a5s-live-key' WHERE id = $1",
         [user.id]
+      )
+
+      Dawarich.Repo.query!(
+        "INSERT INTO phoenix.stats_point_counts (user_id,geocoded,without_data,computed_at) VALUES ($1,77,1,now()) ON CONFLICT (user_id) DO UPDATE SET geocoded=77,without_data=1,computed_at=now()",
+        [user.id],
+        log: false
       )
 
       geocoding!()
@@ -224,87 +192,94 @@ defmodule DawarichWeb.StatsLiveTest do
         html =
           RailsUser.signed_in(user.id) |> get("/stats?locale=#{locale}") |> html_response(200)
 
-        assert Enum.map(texts(html, ".stat-value.text-primary"), &String.trim/1) == [
+        assert Enum.map(texts(html, "#stats-total"), &String.trim/1) == [
                  "#{total} #{unit}"
                ]
 
-        assert texts(html, "h2.card-title > div > a:first-child") == ["2024", "2023"]
+        assert texts(html, "article > a:first-child") == ["2024", "2023"]
         cards = if unit == "km", do: ["50 km", "20 km"], else: ["31 mi", "12 mi"]
 
-        assert Enum.map(texts(html, ".card.w-full.shadow-xl > .card-body > p"), &String.trim/1) ==
+        assert Enum.map(texts(html, "p[id^=stats-year-total-]"), &String.trim/1) ==
                  cards
 
         assert html =~ if(locale == "de", do: "Statistiken", else: "Statistics")
       end
     end
 
-    test "the index: Rails' totals, method links, one card per year", %{user: user} do
-      {:ok, view, html} = live_as(user, "/stats", on_error: [duplicate_id: :warn])
+    test "native index retains source totals ready counts and one card per year", %{user: user} do
+      {:ok, view, html} = live_as(user, "/stats")
       assert html =~ ">Statistics | Dawarich</title>"
-      assert has_element?(view, ".stat-value.text-primary", "70 km")
-      assert has_element?(view, ".stat-value.text-success", "77")
-      assert has_element?(view, ".stat-desc", "100% of all points")
-      assert has_element?(view, ".stat-title .tooltip", "1 points without data")
-
-      assert has_element?(
-               view,
-               ~s(a[href="/stats/update_all"][data-turbo-method="put"]),
-               "Update stats"
-             )
-
-      assert has_element?(view, ~s(a[href="/stats/2024/all/update"][data-turbo-method="put"]))
-      assert has_element?(view, ~s(a.btn[href="/digests"]), "Year-End Digests")
-      assert texts(html, "h2.card-title > div > a:first-child") == ["2024", "2023"]
-      assert has_element?(view, "a.link-primary", "2 countries, 2 cities")
-      assert has_element?(view, "a.link-primary", "1 countries, 1 cities")
+      assert has_element?(view, "#stats-total", "70 km")
+      assert :sys.get_state(view.pid).socket.assigns.data.points.total == 77
+      assert :sys.get_state(view.pid).socket.assigns.data.points.percentage == 100
+      assert has_element?(view, "#stats-without-data", "1 points without data")
+      assert has_element?(view, "#stats-update", "Update stats")
+      assert texts(html, "article > a:first-child") == ["2024", "2023"]
+      assert has_element?(view, "#stats-year-2024-places", "2 countries, 2 cities")
+      assert has_element?(view, "#stats-year-2023-places", "1 countries, 1 cities")
+      refute html =~ "data-turbo-method"
     end
 
-    test "the nodes stats-index.spec.js matches with anchored regexes carry no surrounding whitespace",
-         %{user: user} do
-      html = RailsUser.signed_in(user.id) |> get("/stats") |> html_response(200)
-      assert texts(html, "#countries_visited p") == ["Czechia", "Germany"]
-      assert texts(html, "#cities_visited p") == ["Berlin", "Prague"]
-      assert texts(html, "#countries_cities_modal_2024 + .modal .text-sm") == ["Prague", "Berlin"]
+    test "native place dialogs switch source countries and cities without losing totals", %{
+      user: user
+    } do
+      {:ok, view, _} = live_as(user, "/stats")
+      view |> element("button[phx-value-kind=countries]") |> render_click()
+      assert texts(render(view), "#stats-dialog li") == ["Czechia", "Germany"]
+      render_click(view, "close_dialog", %{})
+      view |> element("button[phx-value-kind=cities]") |> render_click()
+      assert texts(render(view), "#stats-dialog li") == ["Berlin", "Prague"]
+      render_click(view, "close_dialog", %{})
+      assert has_element?(view, "#stats-total", "70 km")
+      refute has_element?(view, "#stats-dialog")
     end
 
-    test "every element the browser changes is an ignored island with an id", %{user: user} do
-      {:ok, view, _html} = live_as(user, "/stats", on_error: [duplicate_id: :warn])
+    test "native charts update only their plot island and retain source accessible values", %{
+      user: user
+    } do
+      {:ok, view, html} = live_as(user, "/stats")
+      assert has_element?(view, "#stats-year-2024[phx-hook=NativeChart]")
+      assert has_element?(view, "#stats-year-2024-plot[phx-update=ignore]")
+      assert has_element?(view, "#stats-year-2024 details table td", "March")
 
-      for selector <-
-            ~w(#chart-year-distance-2024 #chart-year-distance-2023 #countries_visited #cities_visited #countries_cities_modal_2024),
-          do: assert(has_element?(view, selector <> "[phx-update='ignore']"), selector)
+      [payload] =
+        html
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#stats-year-2024")
+        |> LazyHTML.attribute("data-chart")
+
+      assert Enum.slice(Jason.decode!(payload)["data"], 2, 2) == [["March", 38], ["April", 12]]
+      refute html =~ "RailsStimulus"
+      refute has_element?(view, "#stats-year-2024[phx-update=ignore]")
     end
 
-    test "the year page: the chart over the year, the cards in the window, Rails' relative hrefs",
-         %{user: user} do
+    test "native year chart cards and links retain source window values", %{user: user} do
       {:ok, view, html} = live_as(user, "/stats/2024")
       assert html =~ ">Statistics for 2024 year | Dawarich</title>"
-      assert has_element?(view, ~s(a[href="2024/3"]), "March 2024")
-
-      assert has_element?(
-               view,
-               ~s(a[href="2024/3"] .text-sm.text-gray-600),
-               "2 countries, 2 cities"
-             )
-
-      assert has_element?(view, ~s(a[href="2024/4"]), "12")
-      assert has_element?(view, "#chart-year-distance-2024[phx-update='ignore']")
+      assert has_element?(view, "a[href='/stats/2024/3']", "March")
+      assert has_element?(view, "#stats-month-places-3", "Berlin")
+      assert has_element?(view, "#stats-month-places-3", "Prague")
+      assert :sys.get_state(view.pid).socket.assigns.data.distances |> Enum.sum() == 50400
+      assert has_element?(view, "#stats-native-chart[phx-hook=NativeChart]")
     end
 
     test "a month without a stat is Rails' empty state with HTTP 200", %{user: user} do
       html = RailsUser.signed_in(user.id) |> get("/stats/2024/2") |> html_response(200)
       assert html =~ ">February 2024 Monthly Digest | Dawarich</title>"
-      assert html =~ ~s(<div class="alert">No location data available for this month</div>)
+
+      assert texts(html, "[role=status]") |> Enum.join() =~
+               "No location data available for this month"
+
       refute html =~ "stat-page-card"
     end
 
     test "a month compares itself with the year's average and the previous month", %{user: user} do
       {:ok, view, _html} = live_as(user, "/stats/2024/4")
-      assert has_element?(view, ".stat-value.text-success", "~12 km")
-      assert has_element?(view, ".stat-desc", "52% less than your average this year")
-      assert has_element?(view, ".stat-value.text-secondary", "1/30")
-      assert has_element?(view, ".stat-desc", "3 days less than previous month")
-      assert has_element?(view, ".stat-desc", "1 country less than previous month")
+      assert has_element?(view, "#stats-month-distance", "~12 km")
+      assert has_element?(view, "main p", "52% less than your average this year")
+      assert has_element?(view, "#stats-month-active-days", "1/30")
+      assert has_element?(view, "main p", "3 days less than previous month")
+      assert has_element?(view, "main p", "1 country less than previous month")
     end
 
     test "the peak day links to the map with the user's zoned day bounds", %{user: user} do
@@ -313,7 +288,7 @@ defmodule DawarichWeb.StatsLiveTest do
       href =
         "/map/v2?end_at=2024-03-07+23%3A59%3A59+%2B0100&start_at=2024-03-07+00%3A00%3A00+%2B0100"
 
-      assert has_element?(view, ~s(a.underline[href="#{href}"]), "March 07 (14 km)")
+      assert has_element?(view, ~s(#stats-peak-day[href="#{href}"]), "March 07 (14 km)")
       assert render(view) =~ "Mar 08 - Mar 14"
       assert has_element?(view, ~s(a.btn[href="/stats/2024"]), "← Back to 2024")
     end
@@ -340,28 +315,16 @@ defmodule DawarichWeb.StatsLiveTest do
       refute Map.has_key?(assigns, :api_key)
     end
 
-    test "the map card and the sharing dialog are hooked islands with Rails' Stimulus attributes",
-         %{user: user} do
-      {:ok, view, _html} = live_as(user, "/stats/2024/3")
-
-      assert has_element?(
-               view,
-               ~s(#stat-page-card[phx-hook="RailsStimulus"][phx-update="ignore"][data-controller="stat-page"][data-api-key="a5s-live-key"][data-year="2024"][data-month="3"][data-tiles-url=""][data-tiles-fallback="false"])
-             )
-
-      assert has_element?(
-               view,
-               ~s(#stat-page-card #monthly-stats-map[data-stat-page-target="map"])
-             )
-
-      assert has_element?(
-               view,
-               ~s(#sharing_modal[phx-hook="RailsStimulus"][phx-update="ignore"] form[data-sharing-modal-target="form"][action="/stats/2024/3/sharing"][method="post"] input[name="_method"][value="patch"])
-             )
-
-      assert has_element?(view, ~s(#sharing_modal input[name="authenticity_token"]))
-      assert has_element?(view, ~s(#sharing_modal option[value="1h"][selected="selected"]))
-      assert has_element?(view, ~s(#sharing_modal #sharing-link-display input[value=""]))
+    test "native monthly map and sharing use the scoped hosts without a DOM credential", %{
+      user: user
+    } do
+      {:ok, view, html} = live_as(user, "/stats/2024/3")
+      assert has_element?(view, "[phx-hook=MapPreview]")
+      refute String.contains?(html, "a5s-live-key")
+      assert has_element?(view, "button[phx-click=open_share]")
+      render_click(view, "open_share", %{})
+      assert has_element?(view, "#stats-sharing")
+      refute has_element?(view, "#sharing_modal")
     end
 
     test "a Lite user on Cloud sees the data window alert, a locked year and the sharing upgrade prompt",
@@ -381,16 +344,13 @@ defmodule DawarichWeb.StatsLiveTest do
 
       {:ok, view, _html} = live_as(user, "/stats")
 
-      assert has_element?(
-               view,
-               ~s([role="alert"][data-controller="removals"] a[href*="utm_medium=data_window"][href*="utm_content=stats_index"])
-             )
-
-      assert has_element?(view, "#chart-year-locked-2023[phx-update='ignore']")
-      assert has_element?(view, "a.tooltip.tooltip-bottom[data-tip] span.badge")
+      assert has_element?(view, "#stats-window-alert[role=alert]")
+      assert has_element?(view, "#stats-locked-2023")
+      assert has_element?(view, "button[phx-click=upgrade]")
       {:ok, month, _html} = live_as(user, "/stats/#{today.year}/#{today.month}")
-      assert has_element?(month, ~s(#sharing_modal a.btn-primary[href*="utm_content=sharing"]))
-      refute has_element?(month, ~s(#sharing_modal [data-controller="sharing-modal"]))
+      refute has_element?(month, "button[phx-click=open_share]")
+      assert has_element?(month, "#stats-window-alert[role=alert]")
+      refute has_element?(month, "#sharing_modal")
     end
   end
 end

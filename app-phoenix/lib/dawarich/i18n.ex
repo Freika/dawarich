@@ -22,6 +22,17 @@ defmodule Dawarich.I18n do
 
   def available_locales, do: Map.keys(translations())
 
+  def template(locale, key) do
+    path = String.split(key, ".")
+
+    Enum.find_value(Enum.uniq([locale, @default]), :missing, fn candidate ->
+      case dig(translations(), [candidate | path]) do
+        text when is_binary(text) -> {:ok, text}
+        _ -> nil
+      end
+    end)
+  end
+
   def lookup(tree, locale, key, bindings, opts \\ []) do
     chain =
       if Keyword.get(opts, :fallback, true), do: Enum.uniq([locale, @default]), else: [locale]

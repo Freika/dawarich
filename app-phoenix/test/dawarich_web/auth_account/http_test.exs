@@ -272,6 +272,20 @@ defmodule DawarichWeb.AuthAccount.HttpTest do
       )
     end
 
+    Repo.query!("UPDATE users SET settings='[]'::jsonb WHERE id=73801")
+    previous = snapshot()
+    result = Http.call(base, Keyword.put(c.opts, :native, true))
+
+    assert {result.status, result.resp_body, result.halted} ==
+             {422, "Invalid account request", true}
+
+    refute_received {:replayed, _, _, _, _}
+    assert same?(snapshot(), previous)
+
+    Repo.query!(
+      "UPDATE users SET settings='{\"timezone\":\"Europe/Berlin\",\"onboarding_completed\":true}'::jsonb WHERE id=73801"
+    )
+
     Repo.query!("UPDATE users SET remember_created_at=now()-interval '1 minute' WHERE id=73801")
     now = DateTime.utc_now()
     payload = [[73801], binary_part(c.hash, 0, 29), Accounts.remember_generated_at(now)]

@@ -1,84 +1,105 @@
 defmodule DawarichWeb.NotificationsLive.Show do
   @moduledoc false
   use DawarichWeb, :live_view
-
+  alias Phoenix.LiveView.JS
   import DawarichWeb.NotificationCard, only: [card: 1]
-
+  import DawarichWeb.NotificationDeleteDialog, only: [dialog: 1]
   alias Dawarich.Notifications
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    user_id = socket.assigns.current_user.id
-
-    case Notifications.get(user_id, DawarichWeb.Params.ruby_to_i(id)) do
-      nil ->
-        if connected?(socket),
-          do:
-            {:ok,
-             redirect(socket, to: "/notifications/#{URI.encode(id, &URI.char_unreserved?/1)}")},
-          else: raise(DawarichWeb.NotFoundError)
-
-      notification ->
+    case Notifications.open(socket.assigns.current_scope, id) do
+      {:ok, notification} ->
         [notification] =
           Notifications.localize(
-            [Notifications.mark_read(user_id, notification)],
+            [notification],
             Dawarich.UserSettings.get(socket.assigns.current_user),
             socket.assigns.now
           )
 
-        {:ok, assign(socket, notification: notification, morph_page_refreshes: true)}
+        {:ok, assign(socket, notification: notification, delete_target: nil)}
+
+      {:error, :not_found} ->
+        if connected?(socket),
+          do:
+            {:ok,
+             assign(socket, notification: nil, delete_target: nil)
+             |> redirect(to: "/notifications")},
+          else: raise(DawarichWeb.NotFoundError)
+
+      _ ->
+        {:ok, DawarichWeb.NotificationSession.Native.refuse(socket)}
     end
   end
 
   @impl true
-  def handle_event("destroy", _params, socket) do
-    %{current_user: user, notification: notification, locale: locale} = socket.assigns
+  def handle_event("choose_notification_delete", _, socket),
+    do: {:noreply, assign(socket, :delete_target, socket.assigns.notification.id)}
 
-    case Notifications.delete(user.id, notification.id) do
-      {0, _} ->
-        {:noreply, redirect(socket, to: "/notifications/#{notification.id}")}
+  def handle_event("cancel_notification_delete", _, socket),
+    do: {:noreply, assign(socket, :delete_target, nil)}
 
-      _deleted ->
-        message =
-          t(locale, "controllers.notifications.notification_was_successfully_destroyed", %{})
+  def handle_event("confirm_notification_delete", _, %{assigns: %{delete_target: nil}} = socket),
+    do: {:noreply, socket}
 
-        {:noreply, socket |> put_flash(:notice, message) |> redirect(to: "/notifications")}
+  def handle_event("confirm_notification_delete", _, socket) do
+    id = socket.assigns.delete_target
+    socket = assign(socket, :delete_target, nil)
+
+    case Notifications.delete(socket.assigns.current_scope, id) do
+      {:ok, :deleted} ->
+        {:noreply,
+         socket
+         |> assign(:notification, nil)
+         |> put_flash(
+           :notice,
+           t(
+             socket.assigns.locale,
+             "controllers.notifications.notification_was_successfully_destroyed",
+             %{}
+           )
+         )
+         |> redirect(to: "/notifications")}
+
+      {:error, :not_found} ->
+        {:noreply, socket |> assign(:notification, nil) |> redirect(to: "/notifications")}
+
+      _ ->
+        {:noreply, DawarichWeb.NotificationSession.Native.refuse(socket)}
     end
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="mx-auto md:w-2/3 w-full flex">
-      <div class="mx-auto">
+    <div class="mx-auto md:w-2/3 w-full min-w-0" data-testid="native-notifications-detail">
+      <div :if={@notification} class="mx-auto min-w-0">
         <.card notification={@notification} locale={@locale} now={@now} show_content />
-        <div class="my-5">
-          <a class="btn btn-small" href="/notifications">{t(
+        <div class="my-5 flex flex-wrap gap-2 min-w-0">
+          <a class="btn btn-small h-auto whitespace-normal" href="/notifications">{t(
             @locale,
             "notifications.show.back_to_notifications",
             %{}
           )}</a>
-          <div class="inline-block ml-2">
-            <form
-              class="button_to"
-              method="post"
-              action={"/notifications/#{@notification.id}"}
-              phx-submit="destroy"
-            >
-              <input type="hidden" name="_method" value="delete" /><button
-                data-turbo-confirm={t(@locale, "notifications.show.are_you_sure", %{})}
-                class="btn btn-small btn-warning"
-                type="submit"
-              >{t(@locale, "notifications.show.destroy_this_notification", %{})}</button><input
-                :if={@rails_csrf_token}
-                type="hidden"
-                name="authenticity_token"
-                value={@rails_csrf_token}
-              />
-            </form>
-          </div>
+          <button
+            type="button"
+            class="btn btn-small btn-warning h-auto whitespace-normal"
+            phx-click={
+              JS.push("choose_notification_delete")
+              |> JS.dispatch("dawarich:open-dialog", to: "#notification-delete-dialog")
+            }
+          >{t(@locale, "notifications.show.destroy_this_notification", %{})}</button>
         </div>
       </div>
+      <.dialog
+        locale={@locale}
+        target={@delete_target}
+        id="notification-delete-dialog"
+        title_id="notification-delete-title"
+        title={t(@locale, "notifications.show.are_you_sure", %{})}
+        cancel="cancel_notification_delete"
+        confirm="confirm_notification_delete"
+      />
     </div>
     """
   end

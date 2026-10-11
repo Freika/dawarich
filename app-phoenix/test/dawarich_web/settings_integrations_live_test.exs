@@ -156,7 +156,7 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
   defp server_html(view),
     do: rendered_to_string(view.module.render(:sys.get_state(view.pid).socket.assigns))
 
-  test "Phoenix filters nested integration credentials while retaining ordinary fields" do
+  test "Phoenix filters nested integration credentials and provider URLs while retaining ordinary fields" do
     params = %{
       "settings" =>
         Map.new(
@@ -166,13 +166,17 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
     }
 
     params = put_in(params, ["settings", "immich_url"], "https://example.test")
+    params = put_in(params, ["settings", "timezone"], "Europe/Berlin")
+    params = put_in(params, ["settings", "immich_skip_ssl_verification"], true)
     filtered = Phoenix.Logger.filter_values(params)
 
     for key <-
           ~w(password immich_api_key airtrail_api_key teslamate_password teslamate_api_token token secret),
         do: assert(filtered["settings"][key] == "[FILTERED]")
 
-    assert filtered["settings"]["immich_url"] == "https://example.test"
+    assert filtered["settings"]["immich_url"] == "[FILTERED]"
+    assert filtered["settings"]["timezone"] == "Europe/Berlin"
+    assert filtered["settings"]["immich_skip_ssl_verification"] == true
   end
 
   test "pane patches survive reload and SSL changes are local until save without photo import buttons",
@@ -294,7 +298,8 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
     end
   end
 
-  def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)
+  def handle_query(_event, _measurements, meta, pid),
+    do: Dawarich.Test.NativeQueryBudget.record(meta, pid)
 
   defp queries(fun) do
     id = "integrations-budget-#{System.unique_integer([:positive])}"
@@ -312,10 +317,92 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
     end
   end
 
-  test "integrations stays within its static and connected query budget", %{user: user} do
+  test "integration presentation and subscription reads have explicit budgets", %{user: user} do
     {conn, static} = queries(fn -> get(conn_for(user), "/settings/integrations") end)
+    static_counts = Dawarich.Test.NativeQueryBudget.counts()
     {_, connected} = queries(fn -> {:ok, _, _} = live(conn) end)
-    assert static <= 6
-    assert connected <= 5
+    connected_counts = Dawarich.Test.NativeQueryBudget.counts()
+    assert static - 2 <= 5
+    assert static_counts["users"] == 4
+    assert connected - 4 <= 5
+    assert connected_counts["users"] == static_counts["users"] + 2
+    assert Map.delete(connected_counts, "users") == Map.delete(static_counts, "users")
+  end
+
+  test "opaque integration settings refuse static join params and saving for full and restricted actors",
+       c do
+    jwt = System.get_env("JWT_SECRET_KEY")
+    System.put_env("JWT_SECRET_KEY", "synthetic-native-jwt")
+
+    on_exit(fn ->
+      if jwt, do: System.put_env("JWT_SECRET_KEY", jwt), else: System.delete_env("JWT_SECRET_KEY")
+    end)
+
+    for self_hosted <- ["true", "false"], plan <- [0, 1], value <- [[], 42] do
+      System.put_env("SELF_HOSTED", self_hosted)
+      Repo.query!("UPDATE users SET plan=$2 WHERE id=$1", [c.user.id, plan], log: false)
+      store(c.user, value)
+
+      before =
+        Repo.query!("SELECT settings,updated_at FROM users WHERE id=$1", [c.user.id], log: false).rows
+
+      jobs = Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows
+      conn = get(conn_for(c.user), "/settings/integrations?service=airtrail")
+      assert conn.status == 302
+      assert Plug.Conn.get_resp_header(conn, "location") == ["/"]
+      assert conn.assigns.flash["alert"] != nil
+
+      assert Repo.query!("SELECT settings,updated_at FROM users WHERE id=$1", [c.user.id],
+               log: false
+             ).rows == before
+
+      store(c.user, %{"timezone" => "UTC"})
+      conn = get(conn_for(c.user), "/settings/integrations?service=airtrail")
+      store(c.user, value)
+      assert {:error, {:redirect, %{to: "/", flash: flash}}} = live(conn)
+      assert Phoenix.LiveView.Utils.verify_flash(@endpoint, flash)["alert"] != nil
+
+      for operation <- [:params, :save] do
+        store(c.user, %{"timezone" => "UTC"})
+        {:ok, view, _} = live_as(c.user, "airtrail")
+        store(c.user, value)
+
+        if operation == :params,
+          do: render_patch(view, "/settings/integrations?service=teslamate"),
+          else:
+            render_hook(view, "save", %{
+              "settings" => %{"airtrail_api_key" => "synthetic-refused"}
+            })
+
+        assert_redirect(view, "/")
+      end
+
+      assert Accounts.settings(c.user.id) == value
+      assert Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows == jobs
+      assert hd(hd(before)) == value
+    end
+
+    System.put_env("SELF_HOSTED", "true")
+    store(c.user, %{"timezone" => "UTC"})
+    {:ok, view, _} = live_as(c.user, "airtrail")
+    jobs = Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows
+
+    {_, ref} =
+      Dawarich.Test.SettingsReadProbe.run(
+        view.pid,
+        "UPDATE users SET settings=$2,updated_at=$3 WHERE id=$1",
+        fn -> store(c.user, []) end,
+        fn ->
+          render_hook(view, "save", %{
+            "settings" => %{"airtrail_skip_ssl_verification" => "true"}
+          })
+        end
+      )
+
+    assert_received {:settings_read_probe, ^ref}
+    assert_redirect(view, "/")
+    refute Process.alive?(view.pid)
+    assert Accounts.settings(c.user.id) == []
+    assert Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows == jobs
   end
 end

@@ -12,7 +12,7 @@ defmodule Dawarich.SharedApi.Photos do
 
   def gallery(link) do
     if link.settings["show_photos"] == true,
-      do: Enum.map(photos(link), &serialize(&1, link.id)),
+      do: Enum.map(admitted(photos(link), link), &serialize(&1, link.id)),
       else: []
   rescue
     _ -> []
@@ -24,7 +24,7 @@ defmodule Dawarich.SharedApi.Photos do
   defp coexistence_response(_, :photos), do: {:ok, []}
   defp coexistence_response(_, :thumbnail), do: {:head, 404}
 
-  defp native_response(link, action, params) do
+  def native_response(link, action, params) do
     if link.settings["show_photos"] == true do
       case action do
         :photos -> {:ok, Enum.take(photos(link), 100) |> Enum.map(&serialize(&1, link.id))}
@@ -62,11 +62,13 @@ defmodule Dawarich.SharedApi.Photos do
   end
 
   defp ids(photos, link, context) do
-    allowed = if link.type == "trip", do: photos, else: Enum.take(photos, 100)
-    ids = Map.new(allowed, &{"#{&1["source"]}:#{&1["id"]}", true})
+    ids = Map.new(admitted(photos, link), &{"#{&1["source"]}:#{&1["id"]}", true})
     ProviderCache.put(Closure.photo_ids_key(link, context), ids, 600)
     ids
   end
+
+  defp admitted(photos, %{type: "trip"}), do: photos
+  defp admitted(photos, _link), do: Enum.take(photos, 100)
 
   defp thumbnail(link, params) do
     source = params["source"]

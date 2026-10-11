@@ -1,5 +1,5 @@
 defmodule DawarichWeb.ExportsLiveTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
@@ -12,7 +12,6 @@ defmodule DawarichWeb.ExportsLiveTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
-    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
 
     user =
       RailsUser.insert!(%{
@@ -109,17 +108,20 @@ defmodule DawarichWeb.ExportsLiveTest do
           do: assert(count(page, "#export_#{id} a[download]") == 0, "export #{id}")
     end
 
-    test "deleting goes through Rails' method link, never a LiveView event", %{user: user} do
+    test "deletion uses the owned native confirmation control", %{user: user} do
       Seeds.export!(%{id: 720_121, user_id: user.id})
-      {:ok, _view, html} = live_as(user)
-      page = content(html)
+      {:ok, view, html} = live_as(user)
 
       assert count(
-               page,
-               ~s(#export_720121 a[href="/exports/720121"][data-turbo-method="delete"][data-turbo-confirm="Are you sure?"])
+               content(html),
+               ~s(#export_720121 button[aria-label="Delete export"][phx-click])
              ) == 1
 
-      assert count(page, "[phx-click], [phx-submit], form") == 0
+      refute has_element?(view, "[data-turbo-method]")
+      render_hook(view, "choose_export_delete", %{"id" => "720121"})
+      assert has_element?(view, "#export-delete-dialog[open]")
+      render_hook(view, "cancel_export_delete", %{})
+      assert has_element?(view, "#export_720121")
     end
 
     test "lists only the signed-in user's exports", %{user: user} do
@@ -155,7 +157,7 @@ defmodule DawarichWeb.ExportsLiveTest do
   end
 
   describe "head" do
-    test "Turbo's morph metas come with the notifications and imports pages but not the exports page, as Rails' controllers decide",
+    test "native job pages retain their titles without Turbo refresh runtime",
          %{user: user} do
       now = NaiveDateTime.utc_now()
 
@@ -176,8 +178,8 @@ defmodule DawarichWeb.ExportsLiveTest do
 
       for path <- ["/notifications", "/notifications/720199", "/imports"] do
         html = html_response(get(RailsUser.signed_in(user.id), path), 200)
-        assert html =~ ~s(name="turbo-refresh-method"), path
-        assert html =~ ~s(name="turbo-refresh-scroll"), path
+        refute html =~ ~s(name="turbo-refresh-method"), path
+        refute html =~ ~s(name="turbo-refresh-scroll"), path
       end
     end
   end

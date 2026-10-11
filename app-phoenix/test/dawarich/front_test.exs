@@ -1,5 +1,6 @@
 defmodule Dawarich.FrontTest do
   use ExUnit.Case, async: false
+  import Dawarich.Test.Await
 
   import ExUnit.CaptureLog
 
@@ -153,7 +154,7 @@ defmodule Dawarich.FrontTest do
     :erlang.trace(planner, true, [:call])
     send(planner, :go)
 
-    assert_receive {:plan, {:direct, ^argv, "DAWARICH_PROXY=off"}}
+    await_receive({:plan, {:direct, ^argv, "DAWARICH_PROXY=off"}})
     ref = :erlang.trace_delivered(planner)
     assert_receive {:trace_delivered, ^planner, ^ref}
     refute_received {:trace, ^planner, :call, {:gen_tcp, :listen, _}}

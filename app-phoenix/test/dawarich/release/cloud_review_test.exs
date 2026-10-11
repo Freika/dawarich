@@ -1,5 +1,6 @@
 defmodule Dawarich.Release.CloudReviewTest do
   use Dawarich.JobsCase, async: false
+  import Dawarich.Test.Await
   import Dawarich.AnomalyCase
   alias Dawarich.Release.{Cloud, CloudJobs}
   alias Dawarich.ReleaseMigrator.{Jobs, Lease}
@@ -194,7 +195,7 @@ defmodule Dawarich.Release.CloudReviewTest do
         end
       end)
 
-    assert_receive {:user_locked, pid, first_backend}
+    await_receive({:user_locked, pid, first_backend})
 
     b =
       Task.async(fn ->
@@ -209,7 +210,7 @@ defmodule Dawarich.Release.CloudReviewTest do
         end
       end)
 
-    assert_receive {:publishing, second_backend}
+    await_receive({:publishing, second_backend})
     wait_for_block(second_backend, first_backend, System.monotonic_time(:millisecond) + 2000)
     send(pid, :publish)
     results = [Task.await(a, 5000), Task.await(b, 5000)]

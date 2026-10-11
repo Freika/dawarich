@@ -48,8 +48,9 @@ defmodule DawarichWeb.AuthHandler do
          true <- owned?(conn, session, opts) do
       conn = put_private(conn, :auth_registration_enabled, registration)
 
-      if Keyword.get(opts, :native, false) and conn.method == "POST" and Admission.oidc?() and
-           System.get_env("ALLOW_EMAIL_PASSWORD_LOGIN", "true") != "true" do
+      if Keyword.get(opts, :native, false) and conn.method == "POST" and
+           conn.request_path == "/users/sign_in" and
+           not DawarichWeb.AuthProviderEntries.email_password_enabled?() do
         AuthResponse.denied(
           conn,
           "controllers.users.sessions.email_password_login_is_disabled_please_use_oidc_to_sign"

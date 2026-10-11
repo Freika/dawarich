@@ -1,0 +1,71 @@
+<div class="hero min-h-content bg-base-200">
+  <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
+    <div class="text-center lg:text-left min-w-0 [overflow-wrap:anywhere]">
+      <h1 class="text-4xl sm:text-5xl font-bold text-base-content">{text(assigns, @title)}</h1>
+      <p class="py-6 text-base-content opacity-70">{text(assigns, @description)}</p>
+    </div>
+    <div class="card flex-shrink-0 w-full max-w-sm min-w-0 shadow-2xl bg-base-100 px-5 py-5">
+      <form
+        class={@form_id}
+        id={@form_id}
+        action={@path}
+        accept-charset="UTF-8"
+        method="post"
+        data-auth-form
+      >
+        <input :if={@view == :password_edit} type="hidden" name="_method" value="put" />
+        <input type="hidden" name="authenticity_token" value={@csrf} />
+        <div
+          :if={@errors}
+          id="error_explanation"
+          class="alert alert-error mb-4 min-w-0 [overflow-wrap:anywhere]"
+          role="alert"
+          tabindex="-1"
+          data-auth-error-summary
+        >
+          <DawarichWeb.Icon.icon name="circle-x" class="size-6 shrink-0" />
+          <div class="min-w-0">
+            <h3 class="font-bold">{@errors.heading}</h3><ul class="text-sm mt-1">
+              <li :for={message <- @errors.messages}>{message}</li>
+            </ul>
+          </div>
+        </div>
+        <%= if @view == :password_edit do %>
+          <.reset {assigns} />
+        <% else %>
+          <div class="form-control">
+            <label class="label" for="user_email"><span class="label-text">{text(assigns, "email")}</span></label>
+            <input
+              autofocus="autofocus"
+              autocomplete="email"
+              class="input input-bordered w-full min-w-0"
+              type="email"
+              value=""
+              name="user[email]"
+              id="user_email"
+              aria-invalid={if "email" in @invalid, do: "true"}
+              aria-describedby={described(@invalid, "email")}
+            />
+          </div>
+        <% end %>
+        <div class="form-control mt-6">
+          <input
+            type="submit"
+            name="commit"
+            value={text(assigns, @submit)}
+            class="btn btn-primary w-full"
+          />
+        </div>
+      </form>
+      <div class="mt-5 space-y-2 text-sm">
+        <div :for={{path, key} <- @links}>
+          <a class="link link-hover text-base-content/70" href={path}>{t(
+            @locale,
+            "devise.shared.links." <> key,
+            %{}
+          )}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

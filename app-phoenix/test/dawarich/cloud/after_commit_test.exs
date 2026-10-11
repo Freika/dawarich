@@ -1,5 +1,6 @@
 defmodule Dawarich.Cloud.AfterCommitTest do
   use Dawarich.JobsCase, async: false
+  import Dawarich.Test.Await
   import Dawarich.AnomalyCase
   alias Dawarich.AfterCommit
   alias Dawarich.AfterCommit.Callback
@@ -122,7 +123,7 @@ defmodule Dawarich.Cloud.AfterCommitTest do
         end)
       end)
 
-    assert_receive {:sending, pid}
+    await_receive({:sending, pid})
 
     second =
       Task.async(fn ->

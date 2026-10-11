@@ -86,7 +86,7 @@ defmodule DawarichWeb.FamilyLocationsTest do
     assert [%{"user_id" => 90101}] = json_response(locations(ctx.member), 200)
   end
 
-  test "family map HTML never contains credentials or coordinates", ctx do
+  test "native Family HTML preserves member metadata without credentials or coordinates", ctx do
     html =
       RailsUser.signed_in(ctx.owner.id) |> freeze_clock() |> get("/family") |> html_response(200)
 
@@ -97,13 +97,18 @@ defmodule DawarichWeb.FamilyLocationsTest do
     refute html =~ "data-lon="
     doc = LazyHTML.from_document(html)
 
-    assert ["FamilyPage"] ==
-             doc |> LazyHTML.query("#family-map") |> LazyHTML.attribute("phx-hook")
+    assert ["Family"] ==
+             doc |> LazyHTML.query("#native-family-map") |> LazyHTML.attribute("phx-hook")
 
-    assert ["[]"] ==
-             doc
-             |> LazyHTML.query("#family-map")
-             |> LazyHTML.attribute("data-family-map-locations-value")
+    [config] =
+      doc |> LazyHTML.query("#native-family-map") |> LazyHTML.attribute("data-map-config")
+
+    config = Jason.decode!(config)
+
+    for key <- ~w(locations api_key path geometry latitude longitude),
+        do: refute(Map.has_key?(config, key))
+
+    assert Enum.count(LazyHTML.query(doc, "[data-testid=family-last-seen]")) == 2
 
     assert Enum.count(LazyHTML.query(doc, "[data-family-member-id]")) == 2
     Repo.query!("DELETE FROM points WHERE user_id IN (90101, 90102)")
@@ -115,6 +120,6 @@ defmodule DawarichWeb.FamilyLocationsTest do
       |> html_response(200)
       |> LazyHTML.from_document()
 
-    assert Enum.count(LazyHTML.query(empty, "[data-family-last-seen][hidden]")) == 2
+    assert Enum.count(LazyHTML.query(empty, "[data-testid=family-last-seen]")) == 0
   end
 end

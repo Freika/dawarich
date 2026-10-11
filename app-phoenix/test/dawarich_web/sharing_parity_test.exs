@@ -4,12 +4,11 @@ defmodule DawarichWeb.SharingParityTest do
   import Phoenix.ConnTest
   import Plug.Conn, only: [get_resp_header: 2, put_req_header: 3]
 
-  alias Dawarich.Test.{ParityHTML, SharingSeeds}
+  alias Dawarich.Test.SharingSeeds
 
   @endpoint DawarichWeb.Endpoint
   @external_resource "test/fixtures/sharing/pages.json"
   @pages SharingSeeds.fixture("pages.json")["pages"]
-  @scripts ~s(script[type="importmap"], script#i18n-translations)
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
@@ -58,25 +57,13 @@ defmodule DawarichWeb.SharingParityTest do
 
   defp header(conn, name), do: conn |> get_resp_header(name) |> Enum.join(", ")
 
-  defp head(html) do
-    html
-    |> ParityHTML.without([@scripts], "head")
-    |> Enum.map(fn {"head", attrs, children} ->
-      {"head", attrs, Enum.map(children, &undigest_meta/1)}
-    end)
-  end
-
-  defp undigest_meta({"meta", attrs, children}),
+  defp text(doc, selector),
     do:
-      {"meta",
-       Enum.map(attrs, fn
-         {"content", value} -> {"content", String.replace(value, ~r/-[0-9a-f]{64}(?=\.)/, "")}
-         other -> other
-       end), children}
-
-  defp undigest_meta(node), do: node
-
-  defp data_attributes(html), do: ParityHTML.stimulus(html, "*")
+      doc
+      |> LazyHTML.query(selector)
+      |> LazyHTML.text()
+      |> String.replace(~r/\s+/, " ")
+      |> String.trim()
 
   defp unmask(value) do
     <<pad::binary-size(32), masked::binary-size(32)>> = Base.url_decode64!(value, padding: false)
@@ -118,7 +105,10 @@ defmodule DawarichWeb.SharingParityTest do
 
       assert header(conn, "etag") != "" == @page["etag"]
 
-      assert Map.new(cookie_lines(conn), fn {name, {_value, attrs}} -> {name, attrs} end) ==
+      assert Map.new(Map.delete(cookie_lines(conn), "_dawarich_phoenix"), fn {name,
+                                                                              {_value, attrs}} ->
+               {name, attrs}
+             end) ==
                @page["set_cookies"]
 
       if @page["touched"], do: assert(SharingSeeds.view_count(id) - before == @page["touched"])
@@ -126,16 +116,24 @@ defmodule DawarichWeb.SharingParityTest do
       if @page["title"] do
         html = conn.resp_body
         rails = SharingSeeds.page("#{@page["name"]}.html")
-        rails_head = SharingSeeds.page("#{@page["name"]}.head.html")
+        doc = LazyHTML.from_document(html)
+        assert doc |> LazyHTML.query("title") |> LazyHTML.text() == @page["title"]
 
-        assert ParityHTML.fragment(html, "body > *") == ParityHTML.normalize(rails)
+        assert LazyHTML.query(doc, "script[type=importmap], [data-controller], turbo-frame")
+               |> Enum.empty?()
 
-        body =
-          html |> LazyHTML.from_document() |> LazyHTML.query("body > *") |> LazyHTML.to_html()
+        assert html =~ "/native/app"
+        assert text(doc, "h1") == text(LazyHTML.from_fragment(rails), "h1")
 
-        assert data_attributes(body) == data_attributes(rails)
+        if @page["status"] == 200 do
+          assert html =~ "native-public-share"
+          assert Map.has_key?(cookie_lines(conn), "_dawarich_phoenix")
+          {_value, attrs} = cookie_lines(conn)["_dawarich_phoenix"]
+          assert "httponly" in attrs and "samesite=lax" in attrs and "path=/" in attrs
+        else
+          assert text(doc, "main") == text(LazyHTML.from_fragment(rails), "main")
+        end
 
-        assert head(html) == head("<html><head>#{rails_head}</head><body></body></html>")
         assert html =~ ~s(<html lang="#{@page["html_lang"]}">)
       end
     end

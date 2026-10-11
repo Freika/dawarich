@@ -27,7 +27,7 @@ defmodule DawarichWeb.A12f3aERequestClosureTest do
   end
 
   @tag a12f3a_e01: true
-  test "E01: export index and format submission matches current Rails contract without a native-owner Rails effect",
+  test "E01: native export index business corpus and retained format submission preserve source effects",
        c do
     capture = File.read!("test/fixtures/user_data/a12f3a-e02.json") |> Jason.decode!()
 
@@ -89,8 +89,8 @@ defmodule DawarichWeb.A12f3aERequestClosureTest do
 
       assert conn.status == expected["status"]
 
-      assert Dawarich.Test.ParityHTML.fragment(conn.resp_body, "div.px-4.flex-1 > div.flex > *") ==
-               Dawarich.Test.ParityHTML.normalize(expected["body"])
+      Dawarich.Test.NativeExportCorpus.assert_page(conn.resp_body, expected["body"])
+      assert conn.resp_body =~ ">#{page["title"]}</title>"
     end
   end
 
@@ -227,7 +227,7 @@ defmodule DawarichWeb.A12f3aERequestClosureTest do
 
   @tag a12f3a_e03: true
   @tag :tmp_dir
-  test "E03: export delete and native purge matches current Rails contract without a native-owner Rails effect",
+  test "E03: native scoped export deletion retains foreign and shared-blob source invariants",
        c do
     Ecto.Migrator.run(Repo, Path.expand("priv/repo/oban_migrations"), :up,
       all: true,
@@ -253,12 +253,20 @@ defmodule DawarichWeb.A12f3aERequestClosureTest do
     assert post_form(c.session, "_method=DELETE", [{"x-csrf-token", c.token}], "/exports/972102").status ==
              404
 
-    conn = post_form(c.session, "_method=DELETE", [{"x-csrf-token", c.token}], "/exports/972101")
-    assert conn.status == 303
+    assert post_form(c.session, "_method=DELETE", [{"x-csrf-token", c.token}], "/exports/972101").status ==
+             404
 
-    assert rails_session(conn)["flash"]["flashes"] == %{
-             "notice" => "Export was successfully destroyed."
-           }
+    scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(9721), "en")
+    assert {:error, :not_found} = Dawarich.Exports.delete(scope, 972_102)
+    assert {:ok, :deleted} = Dawarich.Exports.delete(scope, 972_101)
+    assert [[972_102]] == Repo.query!("SELECT id FROM exports ORDER BY id", [], log: false).rows
+
+    assert [] ==
+             Repo.query!(
+               "SELECT id FROM active_storage_attachments WHERE record_type='Export' AND record_id=972101",
+               [],
+               log: false
+             ).rows
 
     assert [[blob.id]] ==
              Repo.query!("SELECT id FROM active_storage_blobs WHERE id=$1", [blob.id]).rows

@@ -1,8 +1,9 @@
 defmodule Dawarich.Build.ClassSourceTest do
   use ExUnit.Case, async: false
 
+  @css "4716ec3b8d184a05b32e71aca1d8031336f08c6ba442785ddac033fd2129968d"
+
   @moduletag :tmp_dir
-  @css "20dd4517130b506c3880ec3f7750af66d681eeb1b9851c8665f8ffb0a92cefea"
 
   @tag :fix_image_tailwind
   test "Docker asset stage closes over Tailwind class sources and preserves CSS bytes", %{
@@ -42,7 +43,17 @@ defmodule Dawarich.Build.ClassSourceTest do
     styles = compile_styles(root, tmp)
     assert styles =~ ~S(.bg-secondary\/10{background-color:)
     assert styles =~ ~S(.hover\:bg-\[\#383f47\]:hover{)
-    assert Base.encode16(:crypto.hash(:sha256, styles), case: :lower) == @css
+    reference = Path.join(tmp, "reference")
+
+    for path <-
+          ~w(config/tailwind.config.js app/assets app/javascript app-phoenix/lib app-phoenix/assets/js app-phoenix/priv/tailwind) do
+      target = Path.join(reference, path)
+      File.mkdir_p!(Path.dirname(target))
+      File.cp_r!(Path.join(root, path), target)
+    end
+
+    assert styles == compile_styles(root, reference)
+    assert :crypto.hash(:sha256, styles) |> Base.encode16(case: :lower) == @css
   end
 
   @tag :a12f4_a22_1
@@ -55,7 +66,7 @@ defmodule Dawarich.Build.ClassSourceTest do
     refute config =~ "./app/views/"
 
     for path <-
-          ~w(config/tailwind.config.js app/assets app/javascript app-phoenix/lib app-phoenix/priv/tailwind) do
+          ~w(config/tailwind.config.js app/assets app/javascript app-phoenix/lib app-phoenix/assets/js app-phoenix/priv/tailwind) do
       target = Path.join(tmp, path)
       File.mkdir_p!(Path.dirname(target))
       File.cp_r!(Path.join(root, path), target)

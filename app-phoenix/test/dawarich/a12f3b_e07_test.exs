@@ -28,7 +28,7 @@ defmodule Dawarich.A12f3bE07Test do
   end
 
   @tag a12f3b_case: "E07a"
-  test "E07 native owner accepts every retained argument and continuation shape" do
+  test "E07 retained arguments settle mail and the exact native family invalidations" do
     owner = user!(2, %{"locale" => "de"})
 
     event =
@@ -97,7 +97,9 @@ defmodule Dawarich.A12f3bE07Test do
     assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: @oban, now: @now)
 
     assert [[mail_job, mail_args]] =
-             rows("SELECT id,args FROM oban.oban_jobs WHERE state <> 'completed'")
+             rows(
+               "SELECT id,args FROM oban.oban_jobs WHERE state <> 'completed' AND worker='Dawarich.Mail.FamilyLapseWorker'"
+             )
 
     Process.put(:transport_result, {:error, :synthetic_smtp_failure})
 
@@ -123,6 +125,16 @@ defmodule Dawarich.A12f3bE07Test do
     assert :ok = FamilyLapseWorker.perform(%Oban.Job{args: mail_args})
     refute_received {:mail, _}
     finish(mail_job)
+
+    settle_native_jobs(
+      [
+        [owner, "lapse", "available"],
+        [owner, "lapse", "scheduled"],
+        [owner, "lapse", "available"],
+        [member, "lapse", "available"]
+      ],
+      [owner]
+    )
 
     invitation = invitation!(family, owner, 0, DateTime.add(@now, 86_400), @now)
 
@@ -165,6 +177,13 @@ defmodule Dawarich.A12f3bE07Test do
     assert rows("SELECT status FROM family_invitations WHERE id=$1", [boundary]) == [[0]]
     assert rows("SELECT id FROM family_invitations WHERE id=$1", [stale]) == []
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+
+    settle_native_jobs(
+      for user <- [owner, member],
+          kind <- ["request", "invitation"],
+          do: [user, kind, "available"]
+    )
+
     assert Drain.status(ScratchRepo).counts.pending_outbox == 0
     assert Drain.status(ScratchRepo).counts.incomplete_oban == 0
 
@@ -187,7 +206,7 @@ defmodule Dawarich.A12f3bE07Test do
   end
 
   @tag a12f3b_case: "E07b"
-  test "E07 source accepted chain remains visible until all children settle" do
+  test "E07 accepted chain blocks drain until mail and native family invalidations settle" do
     owner = user!(2, %{})
 
     event =
@@ -257,7 +276,12 @@ defmodule Dawarich.A12f3bE07Test do
     assert Drain.status(ScratchRepo).counts.pending_outbox == 1
     assert "pending_outbox" in Drain.status(ScratchRepo).shutdown_reasons
     assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: @oban, now: @now)
-    assert [[job, child]] = rows("SELECT id,args FROM oban.oban_jobs WHERE state <> 'completed'")
+
+    assert [[job, child]] =
+             rows(
+               "SELECT id,args FROM oban.oban_jobs WHERE state <> 'completed' AND worker='Dawarich.Mail.FamilyLapseWorker'"
+             )
+
     assert Drain.status(ScratchRepo).shutdown == "BLOCKED"
     assert "incomplete_oban" in Drain.status(ScratchRepo).shutdown_reasons
     Process.put(:transport_result, {:error, :synthetic_smtp_failure})
@@ -266,13 +290,26 @@ defmodule Dawarich.A12f3bE07Test do
     Process.delete(:transport_result)
     assert :ok = FamilyLapseWorker.perform(%Oban.Job{args: child})
     finish(job)
+    assert Drain.status(ScratchRepo).counts.incomplete_oban == 5
+    assert "incomplete_oban" in Drain.status(ScratchRepo).shutdown_reasons
+
+    settle_native_jobs(
+      [
+        [owner, "lapse", "available"],
+        [owner, "lapse", "scheduled"],
+        [owner, "lapse", "available"],
+        [member, "lapse", "available"]
+      ],
+      [owner]
+    )
+
     assert Drain.status(ScratchRepo).counts.pending_outbox == 0
     assert Drain.status(ScratchRepo).counts.incomplete_oban == 0
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
   end
 
   @tag a12f3b_case: "E07R1"
-  test "R1 dispatches integer and numeric string family mail ids to terminal delivery" do
+  test "R1 integer and numeric string family mail ids settle with exact native invalidations" do
     for form <- [&Function.identity/1, &Integer.to_string/1, &"+000#{&1}"] do
       owner = user!(2, %{})
 
@@ -350,6 +387,18 @@ defmodule Dawarich.A12f3bE07Test do
       end
     end
 
+    assert Drain.status(ScratchRepo).counts.incomplete_oban == 9
+
+    expected =
+      for [owner] <- rows("SELECT creator_id FROM families ORDER BY id"),
+          state <- ["available", "scheduled"],
+          do: [owner, "lapse", state]
+
+    settle_native_jobs(
+      expected,
+      List.flatten(rows("SELECT creator_id FROM families ORDER BY id"))
+    )
+
     assert rows("SELECT count(*) FROM phoenix.delivery_claims WHERE delivered_at IS NOT NULL") ==
              [[6]]
 
@@ -357,6 +406,66 @@ defmodule Dawarich.A12f3bE07Test do
     assert Drain.status(ScratchRepo).counts.pending_outbox == 0
     assert Drain.status(ScratchRepo).counts.quarantined == 0
     assert Drain.status(ScratchRepo).counts.incomplete_oban == 0
+  end
+
+  defp settle_native_jobs(expected, notification_users \\ []) do
+    jobs =
+      rows(
+        "SELECT id,args,state,scheduled_at FROM oban.oban_jobs WHERE state <> 'completed' ORDER BY id"
+      )
+
+    {notifications, jobs} =
+      Enum.split_with(jobs, fn [_, args, _, _] -> not Map.has_key?(args, "kind") end)
+
+    assert Enum.sort(for [_, args, state, _] <- notifications, do: [args["user_id"], state]) ==
+             Enum.sort(for user <- notification_users, do: [user, "available"])
+
+    for [id, args, _, _] <- notifications do
+      assert rows("SELECT worker FROM oban.oban_jobs WHERE id=$1", [id]) == [
+               ["Dawarich.Notifications.EventsWorker"]
+             ]
+
+      assert Enum.sort(Map.keys(args)) == ~w(event_id user_id)
+      user = args["user_id"]
+      Dawarich.Notifications.Events.subscribe(user)
+      assert :ok = Dawarich.Notifications.EventsWorker.run(ScratchRepo, args)
+      assert_received {:domain_changed, ^user, :notifications}
+      assert :ok = Dawarich.Notifications.EventsWorker.run(ScratchRepo, args)
+      refute_received {:domain_changed, ^user, :notifications}
+      finish(id)
+      Phoenix.PubSub.unsubscribe(Dawarich.PubSub, "notifications:user:#{user}")
+    end
+
+    assert Enum.sort(
+             for [_id, args, state, _at] <- jobs, do: [args["user_id"], args["kind"], state]
+           ) == Enum.sort(expected)
+
+    assert length(Enum.uniq(for [_, args, _, _] <- jobs, do: args["event_id"])) ==
+             length(expected)
+
+    for [id, _, _, _] <- jobs,
+        do:
+          assert(
+            rows("SELECT worker FROM oban.oban_jobs WHERE id=$1", [id]) == [
+              ["Dawarich.Families.EventsWorker"]
+            ]
+          )
+
+    for [id, args, state, at] <- jobs do
+      assert Enum.sort(Map.keys(args)) == ~w(event_id kind user_id)
+      if state == "scheduled", do: assert(at == ~N[2026-10-07 12:00:00.000000])
+      assert Drain.status(ScratchRepo).shutdown == "BLOCKED"
+      assert "incomplete_oban" in Drain.status(ScratchRepo).shutdown_reasons
+      Phoenix.PubSub.subscribe(Dawarich.PubSub, "family:user:#{args["user_id"]}")
+      assert :ok = Dawarich.Families.EventsWorker.run(ScratchRepo, args)
+      user = args["user_id"]
+      kind = String.to_existing_atom(args["kind"])
+      assert_received {:domain_changed, ^user, ^kind}
+      assert :ok = Dawarich.Families.EventsWorker.run(ScratchRepo, args)
+      refute_received {:domain_changed, ^user, ^kind}
+      finish(id)
+      Phoenix.PubSub.unsubscribe(Dawarich.PubSub, "family:user:#{user}")
+    end
   end
 
   defp user!(plan, settings) do

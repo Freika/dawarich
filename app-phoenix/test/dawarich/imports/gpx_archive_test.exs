@@ -1,5 +1,6 @@
 defmodule Dawarich.Imports.GpxArchiveTest do
   use ExUnit.Case, async: true
+  import Dawarich.Test.Await
   alias Dawarich.Imports.GpxArchive
   alias Dawarich.GpxZipFixture, as: Zip
 
@@ -225,7 +226,7 @@ defmodule Dawarich.Imports.GpxArchiveTest do
 
     Process.exit(pid, :kill)
     assert_receive {:DOWN, ^ref, :process, ^pid, :killed}
-    assert_receive {:DOWN, ^guard_ref, :process, ^guard, :normal}, 500
+    await_receive({:DOWN, ^guard_ref, :process, ^guard, :normal})
     refute File.exists?(path)
     assert File.ls!(f.dir) == ["source.zip"]
   end
@@ -254,7 +255,7 @@ defmodule Dawarich.Imports.GpxArchiveTest do
     bytes = File.read!(f.input)
     body_size = byte_size(bytes) - 22
 
-    <<body::binary-size(body_size), 0x06054B50::little-32, 0::32, 1::little-16, 1::little-16,
+    <<body::binary-size(^body_size), 0x06054B50::little-32, 0::32, 1::little-16, 1::little-16,
       cd_size::little-32, cd_offset::little-32, 0::16>> = bytes
 
     trailer =

@@ -1,5 +1,6 @@
 defmodule Dawarich.Achievements.CelebrationsTest do
   use Dawarich.JobsCase, async: false
+  import Dawarich.Test.Await
   alias Dawarich.Achievements.Celebrations
   @stamp "2026-07-19T12:00:00+02:00"
 
@@ -70,7 +71,7 @@ defmodule Dawarich.Achievements.CelebrationsTest do
         end)
       end)
 
-    assert_receive :locked
+    await_receive(:locked)
 
     viewer =
       Task.async(fn -> Celebrations.record_seen!(ScratchRepo, 901, ["country_de"], @stamp) end)

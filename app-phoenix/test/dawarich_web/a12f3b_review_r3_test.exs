@@ -1,12 +1,12 @@
 defmodule DawarichWeb.A12f3bReviewR3Test do
   use Dawarich.JobsCase, async: false
-  import Dawarich.Test.FamilyForms
-  alias Dawarich.{Accounts, Repo}
+  import Dawarich.Test.FamilyCorpus
+  alias Dawarich.{Accounts, Repo, Families}
 
   setup do: seed()
 
   @tag a12f3b_review: "R3"
-  test "R3 departure rescues malformed settings after revocation and retains pending requests",
+  test "native R3 departure rescues malformed settings after revocation and retains pending requests",
        c do
     System.put_env("SELF_HOSTED", "false")
     on_exit(fn -> System.delete_env("SELF_HOSTED") end)
@@ -16,7 +16,7 @@ defmodule DawarichWeb.A12f3bReviewR3Test do
     )
 
     for actor <- [c.member, c.owner] do
-      assert request(actor, "DELETE", "/family/members/92002").status == 302
+      assert {:ok, _} = Families.remove_member(scope(actor), 92002, opts())
       assert records("SELECT count(*) FROM family_memberships WHERE id=92002") == [[0]]
       assert records("SELECT plan,status,active_until FROM users WHERE id=90102") == [[0, 0, nil]]
       assert Accounts.settings(c.member.id)["family"] == []
@@ -31,7 +31,7 @@ defmodule DawarichWeb.A12f3bReviewR3Test do
     end
 
     Repo.query!("UPDATE users SET settings=jsonb_set(settings,'{family}', '[]') WHERE id=90101")
-    assert request(c.owner, "DELETE", "/family").status == 302
+    assert {:ok, _} = Families.delete(scope(c.owner), opts())
     assert records("SELECT count(*) FROM families WHERE id=91001") == [[0]]
     assert records("SELECT count(*) FROM family_memberships WHERE id=92001") == [[0]]
   end

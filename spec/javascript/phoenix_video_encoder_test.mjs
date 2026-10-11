@@ -1,0 +1,710 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+import {
+  chooseBitrate,
+  pickSupportedCodec,
+} from "../../app-phoenix/assets/js/video/codec.js"
+import {
+  createMp4Encoder,
+  isVideoExportSupported,
+  probeVideoEncoderConfig,
+} from "../../app-phoenix/assets/js/video/mp4_encoder.js"
+
+class ArrayBufferTarget {
+  constructor() {
+    this.buffer = new ArrayBuffer(8)
+  }
+}
+const muxers = []
+class Muxer {
+  constructor(options) {
+    this.options = options
+    this.chunks = []
+    muxers.push(this)
+  }
+  addVideoChunk(chunk) {
+    this.chunks.push(chunk)
+  }
+  finalize() {
+    this.finalized = true
+  }
+}
+const runtime = (overrides = {}) => ({
+  VideoEncoder: globalThis.VideoEncoder,
+  VideoFrame: globalThis.VideoFrame,
+  Muxer,
+  ArrayBufferTarget,
+  pickCodec: async () => ({
+    config: { codec: "avc1.42001f" },
+    muxerCodec: "avc",
+  }),
+  ...overrides,
+})
+
+function fakeVideoEncoder() {
+  const listeners = []
+  let raiseError = null
+
+  const codec = {
+    state: "configured",
+    encodeQueueSize: 0,
+    configure() {},
+    encode() {
+      codec.encodeQueueSize += 1
+    },
+    close() {
+      codec.state = "closed"
+    },
+    async flush() {},
+    addEventListener(name, fn) {
+      if (name === "dequeue") listeners.push(fn)
+    },
+    removeEventListener(name, fn) {
+      const at = listeners.indexOf(fn)
+      if (name === "dequeue" && at !== -1) listeners.splice(at, 1)
+    },
+  }
+
+  function FakeVideoEncoder({ error }) {
+    raiseError = error
+    return codec
+  }
+  FakeVideoEncoder.isConfigSupported = async () => ({ supported: true })
+  globalThis.VideoEncoder = FakeVideoEncoder
+  globalThis.VideoFrame = class {
+    close() {}
+  }
+
+  return {
+    codec,
+    fail: (error) => raiseError(error),
+    drain: () => {
+      codec.encodeQueueSize = 0
+      for (const fn of listeners.splice(0)) fn()
+    },
+  }
+}
+
+async function backpressuredEncoder() {
+  const fake = fakeVideoEncoder()
+  const encoder = await createMp4Encoder({
+    width: 8,
+    height: 8,
+    fps: 30,
+    runtime: runtime(),
+  })
+  fake.codec.encodeQueueSize = 100
+  return { fake, encoder }
+}
+
+test(
+  "a hard encoder error unblocks a frame waiting on backpressure",
+  { timeout: 2000 },
+  async () => {
+    const { fake, encoder } = await backpressuredEncoder()
+    const pending = encoder.addFrame({}, 1)
+    fake.fail(new Error("encoder died"))
+
+    await assert.rejects(pending, /encoder died/)
+  },
+)
+
+test(
+  "cancelling unblocks a frame waiting on backpressure",
+  { timeout: 2000 },
+  async () => {
+    const { encoder } = await backpressuredEncoder()
+    const pending = encoder.addFrame({}, 1)
+    encoder.abort()
+
+    await assert.rejects(pending, /Render cancelled/)
+  },
+)
+
+test(
+  "a drained queue lets the next frame through",
+  { timeout: 2000 },
+  async () => {
+    const { fake, encoder } = await backpressuredEncoder()
+    const pending = encoder.addFrame({}, 1)
+    setTimeout(() => fake.drain(), 0)
+
+    await pending
+  },
+)
+
+test("runtime probe rejects a codec whose first encode throws", async () => {
+  let encoderClosed = false
+  let frameClosed = false
+
+  globalThis.OffscreenCanvas = class {
+    initialized = false
+
+    getContext() {
+      this.initialized = true
+    }
+  }
+  globalThis.VideoFrame = class {
+    constructor(source) {
+      if (!source.initialized) throw new DOMException("Invalid source state")
+    }
+
+    close() {
+      frameClosed = true
+    }
+  }
+  globalThis.VideoEncoder = class {
+    state = "configured"
+
+    configure() {}
+
+    encode() {
+      throw new DOMException(
+        "The given encoding is not supported.",
+        "NotSupportedError",
+      )
+    }
+
+    async flush() {}
+
+    close() {
+      this.state = "closed"
+      encoderClosed = true
+    }
+  }
+
+  const supported = await probeVideoEncoderConfig(
+    { width: 8, height: 8 },
+    {
+      VideoEncoder: globalThis.VideoEncoder,
+      VideoFrame: globalThis.VideoFrame,
+      OffscreenCanvas: globalThis.OffscreenCanvas,
+    },
+  )
+
+  assert.equal(supported, false)
+  assert.equal(frameClosed, true)
+  assert.equal(encoderClosed, true)
+})
+
+test("falls through when a reported codec fails the runtime probe", async () => {
+  const probed = []
+  const picked = await pickSupportedCodec({
+    width: 1920,
+    height: 1080,
+    fps: 30,
+    isConfigSupported: async () => ({ supported: true }),
+    probeConfig: async (config) => {
+      probed.push(config.codec)
+      if (config.codec.startsWith("avc1")) {
+        throw new DOMException(
+          "The given encoding is not supported.",
+          "NotSupportedError",
+        )
+      }
+      return true
+    },
+  })
+
+  assert.equal(picked.config.codec, "vp09.00.40.08")
+  assert.deepEqual(probed, ["avc1.640028", "avc1.4d0028", "vp09.00.40.08"])
+})
+
+test("returns null when every reported codec fails the runtime probe", async () => {
+  const picked = await pickSupportedCodec({
+    width: 1080,
+    height: 1920,
+    fps: 30,
+    isConfigSupported: async () => ({ supported: true }),
+    probeConfig: async () => false,
+  })
+
+  assert.equal(picked, null)
+})
+
+test(
+  "abort wakes encoder backpressure and closes frames",
+  { timeout: 2000 },
+  async () => {
+    const fake = fakeVideoEncoder()
+    const frames = []
+    globalThis.VideoFrame = class {
+      constructor() {
+        this.closed = false
+        frames.push(this)
+      }
+      close() {
+        this.closed = true
+      }
+    }
+    const controller = new AbortController()
+    const encoder = await createMp4Encoder({
+      width: 8,
+      height: 8,
+      fps: 30,
+      signal: controller.signal,
+      runtime: runtime(),
+    })
+    fake.codec.encodeQueueSize = 100
+    const parked = encoder.addFrame({}, 1)
+    controller.abort()
+    await assert.rejects(parked, {
+      name: "AbortError",
+      message: /Render cancelled/,
+    })
+    assert.equal(fake.codec.state, "closed")
+    assert.ok(frames.every((frame) => frame.closed))
+
+    const throwing = fakeVideoEncoder()
+    globalThis.VideoFrame = class {
+      constructor() {
+        frames.push(this)
+      }
+      close() {
+        this.closed = true
+      }
+    }
+    throwing.codec.encode = () => {
+      throw new DOMException("bad frame", "EncodingError")
+    }
+    const second = await createMp4Encoder({
+      width: 8,
+      height: 8,
+      fps: 30,
+      runtime: runtime(),
+    })
+    await assert.rejects(second.addFrame({}, 0), /bad frame/)
+    assert.equal(frames.at(-1).closed, true)
+  },
+)
+
+test("abort wakes a parked finalize", { timeout: 2000 }, async () => {
+  const fake = fakeVideoEncoder()
+  fake.codec.flush = () => new Promise(() => {})
+  const encoder = await createMp4Encoder({
+    width: 8,
+    height: 8,
+    fps: 30,
+    runtime: runtime(),
+  })
+  const finishing = encoder.finalize()
+  encoder.abort()
+  await assert.rejects(finishing, { name: "AbortError" })
+})
+
+test("runtime probe rejects encode failure", async () => {
+  const closed = []
+  const supported = await probeVideoEncoderConfig(
+    { width: 8, height: 8 },
+    {
+      OffscreenCanvas: class {
+        getContext() {}
+      },
+      VideoFrame: class {
+        close() {
+          closed.push("frame")
+        }
+      },
+      VideoEncoder: class {
+        constructor({ error }) {
+          this.error = error
+          this.state = "configured"
+        }
+        configure() {}
+        encode() {
+          this.error(new DOMException("encoder failed", "EncodingError"))
+        }
+        async flush() {}
+        close() {
+          this.state = "closed"
+          closed.push("encoder")
+        }
+      },
+    },
+  )
+  assert.equal(supported, false)
+  assert.deepEqual(closed.sort(), ["encoder", "frame"])
+})
+
+test("unsupported codec refuses without map allocation", async () => {
+  muxers.length = 0
+  const missing = await createMp4Encoder({
+    width: 8,
+    height: 8,
+    fps: 30,
+    runtime: runtime({ VideoEncoder: undefined }),
+  })
+  assert.equal(missing, null)
+  const none = await createMp4Encoder({
+    width: 8,
+    height: 8,
+    fps: 30,
+    runtime: runtime({
+      VideoEncoder: class {},
+      VideoFrame: class {},
+      pickCodec: async () => null,
+    }),
+  })
+  assert.equal(none, null)
+  assert.equal(muxers.length, 0)
+  assert.equal(isVideoExportSupported({}), false)
+})
+
+test("finalize muxes the encoded chunks into an MP4 blob", async () => {
+  const fake = fakeVideoEncoder()
+  muxers.length = 0
+  const encoder = await createMp4Encoder({
+    width: 1080,
+    height: 1920,
+    fps: 30,
+    runtime: runtime(),
+  })
+  assert.deepEqual(muxers[0].options.video, {
+    codec: "avc",
+    width: 1080,
+    height: 1920,
+    frameRate: 30,
+  })
+  assert.equal(muxers[0].options.fastStart, "in-memory")
+  await encoder.addFrame({}, 0)
+  const blob = await encoder.finalize()
+  assert.equal(blob.type, "video/mp4")
+  assert.equal(muxers[0].finalized, true)
+  assert.equal(fake.codec.state, "closed")
+  assert.equal(chooseBitrate(1080, 1920, 30), 9_331_200)
+  assert.equal(chooseBitrate(8, 8, 30), 4_000_000)
+})
+
+function deadlines() {
+  const pending = new Map()
+  let id = 0
+  return {
+    pending,
+    setTimeout(fn) {
+      pending.set(++id, fn)
+      return id
+    },
+    clearTimeout(key) {
+      pending.delete(key)
+    },
+    expire() {
+      for (const fn of [...pending.values()]) fn()
+    },
+  }
+}
+const turn = () => new Promise((resolve) => setImmediate(resolve))
+
+test(
+  "codec support and probe waits settle on cancellation and deadline",
+  { timeout: 1000 },
+  async () => {
+    for (const stage of ["support", "probe"]) {
+      for (const ending of ["abort", "timeout"]) {
+        const timers = deadlines()
+        const controller = new AbortController()
+        const picking = pickSupportedCodec({
+          width: 8,
+          height: 8,
+          fps: 30,
+          signal: controller.signal,
+          timers,
+          isConfigSupported: () =>
+            stage === "support"
+              ? new Promise(() => {})
+              : Promise.resolve({ supported: true }),
+          probeConfig: (config) =>
+            probeVideoEncoderConfig(
+              config,
+              {
+                OffscreenCanvas: class {
+                  getContext() {}
+                },
+                VideoFrame: class {
+                  close() {}
+                },
+                VideoEncoder: class {
+                  configure() {}
+                  encode() {}
+                  flush() {
+                    return new Promise(() => {})
+                  }
+                  close() {}
+                },
+              },
+              { signal: controller.signal, timers },
+            ),
+        })
+        const rejected = assert.rejects(picking, {
+          name: ending === "abort" ? "AbortError" : "TimeoutError",
+        })
+        await turn()
+        if (ending === "abort") controller.abort()
+        else timers.expire()
+        await rejected
+        assert.equal(timers.pending.size, 0)
+      }
+    }
+  },
+)
+
+test(
+  "a stalled probe flush releases its frame and encoder on abort or timeout",
+  { timeout: 1000 },
+  async () => {
+    for (const ending of ["abort", "timeout"]) {
+      const timers = deadlines()
+      const controller = new AbortController()
+      const closed = []
+      const probing = probeVideoEncoderConfig(
+        { width: 8, height: 8 },
+        {
+          OffscreenCanvas: class {
+            getContext() {}
+          },
+          VideoFrame: class {
+            close() {
+              closed.push("frame")
+            }
+          },
+          VideoEncoder: class {
+            state = "configured"
+            configure() {}
+            encode() {}
+            flush() {
+              return new Promise(() => {})
+            }
+            close() {
+              this.state = "closed"
+              closed.push("encoder")
+            }
+          },
+        },
+        { signal: controller.signal, timers },
+      )
+      const rejected = assert.rejects(probing, {
+        name: ending === "abort" ? "AbortError" : "TimeoutError",
+      })
+      await turn()
+      if (ending === "abort") controller.abort()
+      else timers.expire()
+      await rejected
+      assert.deepEqual(closed, ["frame", "encoder"])
+      assert.equal(timers.pending.size, 0)
+    }
+  },
+)
+
+test(
+  "stalled dequeue and finalize deadlines close the encoder and remove owned listeners",
+  { timeout: 1000 },
+  async () => {
+    for (const stage of ["dequeue", "flush"]) {
+      const timers = deadlines()
+      const fake = fakeVideoEncoder()
+      const listeners = new Set()
+      fake.codec.addEventListener = (_name, fn) => listeners.add(fn)
+      fake.codec.removeEventListener = (_name, fn) => listeners.delete(fn)
+      const encoder = await createMp4Encoder({
+        width: 8,
+        height: 8,
+        fps: 30,
+        timers,
+        runtime: runtime(),
+      })
+      fake.codec.encodeQueueSize = 100
+      fake.codec.flush = () => new Promise(() => {})
+      const waiting =
+        stage === "dequeue" ? encoder.addFrame({}, 0) : encoder.finalize()
+      const rejected = assert.rejects(waiting, { name: "TimeoutError" })
+      await turn()
+      timers.expire()
+      await rejected
+      assert.equal(fake.codec.state, "closed")
+      assert.equal(listeners.size, 0)
+      assert.equal(timers.pending.size, 0)
+    }
+  },
+)
+
+function orderedClock() {
+  const pending = new Map()
+  let now = 0
+  let id = 0
+  return {
+    pending,
+    get now() {
+      return now
+    },
+    setTimeout(fn, ms) {
+      pending.set(++id, { at: now + ms, fn })
+      return id
+    },
+    clearTimeout(key) {
+      pending.delete(key)
+    },
+    async advanceTo(target) {
+      for (;;) {
+        const due = [...pending].filter(([, timer]) => timer.at <= target)
+        if (due.length === 0) break
+        const [key, timer] = due.reduce((first, next) =>
+          next[1].at < first[1].at ? next : first,
+        )
+        pending.delete(key)
+        now = timer.at
+        timer.fn()
+        await turn()
+      }
+      now = target
+      await turn()
+    },
+  }
+}
+
+function countedSignal() {
+  const controller = new AbortController()
+  const listening = new Set()
+  const { signal } = controller
+  const add = signal.addEventListener.bind(signal)
+  const remove = signal.removeEventListener.bind(signal)
+  signal.addEventListener = (name, fn, options) => {
+    listening.add(fn)
+    add(name, fn, options)
+  }
+  signal.removeEventListener = (name, fn, options) => {
+    listening.delete(fn)
+    remove(name, fn, options)
+  }
+  return { controller, signal, listening }
+}
+
+test(
+  "default negotiation releases a stalled probe before encoder creation rejects",
+  { timeout: 1000 },
+  async () => {
+    for (const ending of ["timeout", "abort"]) {
+      const timers = orderedClock()
+      const { controller, signal, listening } = countedSignal()
+      const closed = []
+      class StalledEncoder {
+        static isConfigSupported() {
+          return new Promise((resolve) =>
+            timers.setTimeout(() => resolve({ supported: true }), 20_000),
+          )
+        }
+        state = "configured"
+        configure() {}
+        encode() {}
+        flush() {
+          return new Promise(() => {})
+        }
+        close() {
+          this.state = "closed"
+          closed.push("encoder")
+        }
+      }
+      const creating = createMp4Encoder({
+        width: 8,
+        height: 8,
+        fps: 30,
+        signal,
+        timers,
+        runtime: runtime({
+          pickCodec: undefined,
+          VideoEncoder: StalledEncoder,
+          VideoFrame: class {
+            close() {
+              closed.push("frame")
+            }
+          },
+          OffscreenCanvas: class {
+            getContext() {}
+          },
+        }),
+      })
+      const outcome = creating.then(
+        () => ({ settled: "resolved" }),
+        (error) => ({
+          settled: error.name,
+          at: timers.now,
+          closed: [...closed],
+          pending: timers.pending.size,
+          listeners: listening.size,
+        }),
+      )
+      await timers.advanceTo(20_000)
+      if (ending === "abort") {
+        await timers.advanceTo(25_000)
+        controller.abort()
+        await turn()
+      }
+      await timers.advanceTo(30_000)
+      await timers.advanceTo(60_000)
+      assert.deepEqual(await outcome, {
+        settled: ending === "abort" ? "AbortError" : "TimeoutError",
+        at: ending === "abort" ? 25_000 : 30_000,
+        closed: ["frame", "encoder"],
+        pending: 0,
+        listeners: 0,
+      })
+    }
+  },
+)
+
+test("configure failure after a successful probe closes the production encoder before map allocation", async () => {
+  const { renderRouteVideo } = await import(
+    "../../app-phoenix/assets/js/video/render/engine.js"
+  )
+  const encoders = []
+  let containers = 0
+  let libraries = 0
+  class Encoder {
+    state = "unconfigured"
+    static async isConfigSupported() {
+      return { supported: true }
+    }
+    constructor() {
+      encoders.push(this)
+    }
+    configure() {
+      if (encoders.length === 2) throw new Error("configure failed")
+      this.state = "configured"
+    }
+    encode() {}
+    async flush() {}
+    close() {
+      this.state = "closed"
+    }
+  }
+  const codecRuntime = runtime({
+    pickCodec: undefined,
+    VideoEncoder: Encoder,
+    VideoFrame: class {
+      close() {}
+    },
+    OffscreenCanvas: class {
+      getContext() {}
+    },
+  })
+  await assert.rejects(
+    renderRouteVideo(
+      { width: 8, height: 8, fps: 30 },
+      {
+        createEncoder: (options) =>
+          createMp4Encoder({ ...options, runtime: codecRuntime }),
+        document: {
+          createElement() {
+            containers += 1
+          },
+        },
+        loadLibrary: async () => {
+          libraries += 1
+        },
+      },
+    ),
+    /configure failed/,
+  )
+  assert.equal(encoders.length, 2)
+  assert.ok(encoders.every((encoder) => encoder.state === "closed"))
+  assert.equal(containers, 0)
+  assert.equal(libraries, 0)
+})

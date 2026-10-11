@@ -1,7 +1,7 @@
 defmodule Dawarich.Families.History do
   @moduledoc false
 
-  alias Dawarich.{I18n, RailsTime, Repo}
+  alias Dawarich.{I18n, Repo}
   alias Dawarich.Families.{Clock, Locations, Sharing}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.Api.Params
@@ -29,7 +29,13 @@ defmodule Dawarich.Families.History do
 
   def points_sql, do: @points
 
-  def read(user, params, now) do
+  def read(user, params, now, opts \\ []) do
+    Dawarich.Families.Snapshot.read(user, Keyword.put(opts, :now, now), fn ->
+      load(user, params, now)
+    end)
+  end
+
+  defp load(user, params, now) do
     case Locations.membership(user.id) do
       [_settings, nil] ->
         {:ok, 404, Locations.not_in_family()}
@@ -42,7 +48,7 @@ defmodule Dawarich.Families.History do
   end
 
   defp members(user, family_id, from, to, now) do
-    RailsTime.with_zone(user.timezone, fn ->
+    Dawarich.Families.Snapshot.with_zone(user.timezone, fn ->
       sharing =
         for m <- Locations.members(family_id),
             m.id != user.id,

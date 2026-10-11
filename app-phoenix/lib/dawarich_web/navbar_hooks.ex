@@ -9,7 +9,7 @@ defmodule DawarichWeb.NavbarHooks do
   @refresh 10_000
 
   def attach(socket, opts \\ []) do
-    if connected?(socket), do: schedule()
+    if connected?(socket) and socket.assigns[:native] != true, do: schedule()
 
     socket = notification_session(socket)
 
@@ -36,6 +36,8 @@ defmodule DawarichWeb.NavbarHooks do
 
     {:cont, assign(socket, :navbar, load(socket))}
   end
+
+  defp info(:navbar_refresh, %{assigns: %{native: true}} = socket), do: {:halt, socket}
 
   defp info(:navbar_refresh, socket) do
     schedule()

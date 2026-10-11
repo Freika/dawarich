@@ -1,9 +1,8 @@
 defmodule DawarichWeb.TripPlanHostsTest do
   use Dawarich.IngestCase, async: false
   require Phoenix.LiveViewTest
-  alias Dawarich.Test.{RailsUser, TripsSeeds, ParityHTML, MapStimulus}
+  alias Dawarich.Test.{RailsUser, TripsSeeds, ParityHTML, MapStimulus, NativeTripCorpus}
   import Phoenix.ConnTest
-  import Dawarich.Test.RailsFormRequests
   alias Dawarich.Trips.WebForm
   alias Dawarich.Jobs.Ownership
   @endpoint DawarichWeb.Endpoint
@@ -109,7 +108,7 @@ defmodule DawarichWeb.TripPlanHostsTest do
   defp fragment(html, selector),
     do: html |> LazyHTML.from_document() |> LazyHTML.query(selector) |> LazyHTML.to_html()
 
-  test "plan hosts choose map preview and managed form like Rails" do
+  test "native plan show hosts retain source itinerary and independent managed forms" do
     Repo.query!("DELETE FROM countries")
 
     for entry <- @effects, String.starts_with?(entry["name"], "plan_") do
@@ -132,12 +131,7 @@ defmodule DawarichWeb.TripPlanHostsTest do
               assert page.plan_on_map
             end
 
-            Phoenix.LiveViewTest.render_component(&DawarichWeb.TripsLive.Show.render/1, %{
-              page: page,
-              locale: "en",
-              rails_csrf_token: "CSRF",
-              base_url: "http://www.example.com"
-            })
+            NativeTripCorpus.render(user, id, @now)
 
           ".mx-auto.my-5" ->
             assert {:ok, form} = WebForm.load(Repo, user, id, %{})
@@ -150,42 +144,103 @@ defmodule DawarichWeb.TripPlanHostsTest do
             })
 
           "#trips" ->
-            assert {:ok, list} = Dawarich.TripList.load(user, 1)
+            scope = Dawarich.Maps.principal(user, "en")
+            assert {:ok, list} = Dawarich.Maps.Trip.list(scope, 1, 1, now: @now)
 
-            Phoenix.LiveViewTest.render_component(
-              &DawarichWeb.TripsLive.Index.render/1,
-              Map.merge(list, %{
-                locale: "en",
-                page: 1,
-                query: %{},
-                family_entries: [],
-                family_total_pages: 0,
-                family_page: 1
-              })
-            )
+            "<div id=trips>" <>
+              Enum.map_join(list.entries, fn trip ->
+                Phoenix.LiveViewTest.render_component(&DawarichWeb.NativeTripCard.trip_card/1, %{
+                  trip: trip,
+                  settings: list.settings,
+                  locale: "en"
+                })
+              end) <> "</div>"
         end
 
       golden = File.read!("test/fixtures/trips/remaining/pages/#{entry["name"]}.html")
-      actual = ParityHTML.normalize(fragment(html, selector))
-      expected = ParityHTML.normalize(fragment(golden, selector))
 
-      assert actual == expected,
-             entry["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
+      if selector == "#trip-shell" do
+        NativeTripCorpus.assert_values(html, golden)
 
-      actual_attrs = MapStimulus.attributes(MapStimulus.prepare(html), [selector])
-      expected_attrs = MapStimulus.attributes(MapStimulus.prepare(golden), [selector])
+        assert NativeTripCorpus.text(html, "#native-trip-itinerary") ==
+                 NativeTripCorpus.text(golden, "section[aria-labelledby=trip-plan-title]")
 
-      expected_attrs =
-        if selector == ".mx-auto.my-5",
-          do: [{selector, "form", [{"data-turbo", "false"}]} | expected_attrs],
-          else: expected_attrs
+        assert NativeTripCorpus.attrs(html, "#native-trip-itinerary a", "href") ==
+                 NativeTripCorpus.attrs(
+                   golden,
+                   "section[aria-labelledby=trip-plan-title] a",
+                   "href"
+                 )
 
-      assert actual_attrs == expected_attrs,
-             entry["name"] <>
-               inspect(
-                 Enum.zip(actual_attrs, expected_attrs) |> Enum.find(fn {a, b} -> a != b end),
-                 limit: :infinity
-               )
+        refute String.contains?(html, "data-controller")
+        scope = Dawarich.Maps.principal(user, "en")
+        assert {:ok, view} = Dawarich.Maps.Trip.view(scope, id, now: @now)
+        assert {:ok, data} = Dawarich.Maps.Trip.read(scope, id, now: @now)
+
+        assert view.presentation.map_state ==
+                 if(
+                   NativeTripCorpus.attrs(golden, "[data-testid=trip-plan-map]", "data-testid") ==
+                     [],
+                   do: :path,
+                   else: :plan
+                 )
+
+        plan =
+          NativeTripCorpus.attrs(
+            golden,
+            "[data-trip-maplibre-plan-value]",
+            "data-trip-maplibre-plan-value"
+          ) ++
+            NativeTripCorpus.attrs(
+              golden,
+              "[data-trip-maplibre-preview-plan-value]",
+              "data-trip-maplibre-preview-plan-value"
+            )
+
+        for raw <- plan, do: assert(data["plan"] == Jason.decode!(raw))
+      else
+        if selector == "#trips" do
+          assert NativeTripCorpus.text(html, "#trip-#{id}") ==
+                   NativeTripCorpus.text(golden, "#trip-#{id}")
+
+          assert NativeTripCorpus.attrs(html, "[phx-hook=MapPreview]", "data-map-config") !=
+                   []
+
+          refute html =~ "data-controller"
+
+          assert {:ok, data} =
+                   Dawarich.Maps.Trip.read(Dawarich.Maps.principal(user, "en"), id, now: @now)
+
+          for raw <-
+                NativeTripCorpus.attrs(
+                  golden,
+                  "[data-trip-maplibre-preview-plan-value]",
+                  "data-trip-maplibre-preview-plan-value"
+                ),
+              do: assert(data["plan"] == Jason.decode!(raw))
+        else
+          actual = ParityHTML.normalize(fragment(html, selector))
+          expected = ParityHTML.normalize(fragment(golden, selector))
+
+          assert actual == expected,
+                 entry["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
+
+          actual_attrs = MapStimulus.attributes(MapStimulus.prepare(html), [selector])
+          expected_attrs = MapStimulus.attributes(MapStimulus.prepare(golden), [selector])
+
+          expected_attrs =
+            if selector == ".mx-auto.my-5",
+              do: [{selector, "form", [{"data-turbo", "false"}]} | expected_attrs],
+              else: expected_attrs
+
+          assert actual_attrs == expected_attrs,
+                 entry["name"] <>
+                   inspect(
+                     Enum.zip(actual_attrs, expected_attrs) |> Enum.find(fn {a, b} -> a != b end),
+                     limit: :infinity
+                   )
+        end
+      end
 
       for field <- ~w(name started_at ended_at), selector == ".mx-auto.my-5" do
         assert LazyHTML.from_document(html)
@@ -199,8 +254,14 @@ defmodule DawarichWeb.TripPlanHostsTest do
       conn = RailsUser.signed_in(user.id) |> get(entry["request"]["path"])
       assert conn.status == 200, entry["name"]
 
-      assert conn.resp_body =~
-               if(selector == "#trip-shell", do: "trip-shell", else: "trip-maplibre-preview")
+      marker =
+        cond do
+          selector == "#trip-shell" -> "trip-shell"
+          selector == "#trips" -> "native-trip-preview"
+          true -> "trip-form"
+        end
+
+      assert conn.resp_body =~ marker
     end
 
     {user, id} = seed(Enum.find(@effects, &(&1["name"] == "managed_update")))
@@ -230,19 +291,25 @@ defmodule DawarichWeb.TripPlanHostsTest do
     refute page.plan_on_map
     assert page.map_state == :empty
 
-    upstream = upstream!()
     previous = Application.get_env(:dawarich, :rails_routes)
     Application.put_env(:dawarich, :rails_routes, ["trips"])
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, previous) end)
     before = Repo.query!("SELECT count(*) FROM job_outbox").rows
 
-    for path <- ["/trips", "/trips/#{id}", "/trips/#{id}/edit"] do
-      {{line, _}, conn} = forwarded(upstream, fn -> RailsUser.signed_in(user.id) |> get(path) end)
-      assert conn.status == 204
-      assert line =~ "GET #{path} HTTP/1.1"
-    end
+    conn = RailsUser.signed_in(user.id) |> get("/trips/#{id}/edit")
+    assert conn.status == 200
+    assert String.contains?(conn.resp_body, "RichText")
+    refute String.contains?(conn.resp_body, "data-controller")
 
+    index = RailsUser.signed_in(user.id) |> get("/trips")
+    assert index.status == 200
+    assert index.resp_body =~ "id=\"trips\""
+    refute index.resp_body =~ "data-controller"
     assert Repo.query!("SELECT count(*) FROM job_outbox").rows == before
+    conn = RailsUser.signed_in(user.id) |> get("/trips/#{id}")
+    assert conn.status == 200
+    assert String.contains?(conn.resp_body, "trip-shell")
+    refute String.contains?(conn.resp_body, "data-controller")
     assert commands() == []
   end
 end

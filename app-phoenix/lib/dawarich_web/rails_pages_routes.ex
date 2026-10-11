@@ -7,13 +7,20 @@ defmodule DawarichWeb.RailsPagesRoutes do
       scope "/" do
         pipe_through [:browser, :rails_user]
 
-        get "/imports/:id/download", DawarichWeb.ImportsDownload, :show, metadata: @native_import
+        get "/native/account/qr", DawarichWeb.NativeCredentialReveal, []
+        get "/native/account/key", DawarichWeb.NativeCredentialReveal, :key
+
+        get "/imports/:id/download", DawarichWeb.ImportsDownload, :show
 
         live_session :native_pages,
           session: {DawarichWeb.NativeAuth, :live_session, []},
           on_mount: {DawarichWeb.NativeAuth, :require_user},
           root_layout: {DawarichWeb.Layouts, :native_root},
           layout: {DawarichWeb.Layouts, :app} do
+          live "/places", DawarichWeb.PlacesLive.Index, :index,
+            container: {:div, class: "contents"},
+            metadata: %{retired: true}
+
           live "/tags", DawarichWeb.TagsLive.Index, :index, container: {:div, class: "contents"}
           live "/tags/new", DawarichWeb.TagsLive.Form, :new, container: {:div, class: "contents"}
 
@@ -37,10 +44,10 @@ defmodule DawarichWeb.RailsPagesRoutes do
             container: {:div, class: "contents"}
         end
 
-        live_session :rails_pages,
-          session: {DawarichWeb.NativeAuth, :live_session, []},
-          on_mount: DawarichWeb.LiveAuth,
-          root_layout: {DawarichWeb.Layouts, :root},
+        live_session :native_jobs,
+          session: {DawarichWeb.NativeJobsAuth, :live_session, []},
+          on_mount: {DawarichWeb.NativeJobsAuth, :require_user},
+          root_layout: {DawarichWeb.Layouts, :native_root},
           layout: {DawarichWeb.Layouts, :app} do
           live "/notifications", DawarichWeb.NotificationsLive.Index, :index,
             container: {:div, class: "contents"}
@@ -52,58 +59,15 @@ defmodule DawarichWeb.RailsPagesRoutes do
             container: {:div, class: "contents"}
 
           live "/imports/:id", DawarichWeb.ImportsLive.Show, :show,
-            container: {:div, class: "contents"},
-            metadata: @native_import
+            container: {:div, class: "contents"}
 
           live "/imports/:id/edit", DawarichWeb.ImportsLive.Edit, :edit,
-            container: {:div, class: "contents"},
-            metadata: @native_import
+            container: {:div, class: "contents"}
 
           live "/imports", DawarichWeb.ImportsLive.Index, :index,
             container: {:div, class: "contents"}
 
           live "/exports", DawarichWeb.ExportsLive.Index, :index,
-            container: {:div, class: "contents"}
-
-          live "/stats", DawarichWeb.StatsLive.Index, :index, container: {:div, class: "contents"}
-
-          live "/stats/:year", DawarichWeb.StatsLive.Year, :show,
-            container: {:div, class: "contents"}
-
-          live "/stats/:year/:month", DawarichWeb.StatsLive.Month, :month,
-            container: {:div, class: "contents"}
-
-          live "/digests", DawarichWeb.DigestsLive.Index, :index,
-            container: {:div, class: "contents"}
-
-          live "/digests/:year", DawarichWeb.DigestsLive.Show, :show,
-            container: {:div, class: "contents"}
-
-          live "/trips", DawarichWeb.TripsLive.Index, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TripsGate, :index?}}
-
-          live "/trips/new", DawarichWeb.TripsLive.Form, :new,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TripsGate, :form?}}
-
-          live "/trips/:id/edit", DawarichWeb.TripsLive.Form, :edit,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TripsGate, :form?}}
-
-          live "/trips/:id", DawarichWeb.TripsLive.Show, :show,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TripsGate, :show?}}
-
-          live "/places", DawarichWeb.PlacesLive.Index, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.PlacesGate, :index?}}
-
-          live "/points", DawarichWeb.PointsLive.Index, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.MapDataGate, :points?}}
-
-          live "/insights", DawarichWeb.InsightsLive.Index, :index,
             container: {:div, class: "contents"}
         end
       end

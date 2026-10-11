@@ -112,13 +112,48 @@ defmodule DawarichWeb.PublicShareExpiryTest do
           ])
 
     for kind <- ~w(month digest) do
-      conn = RailsUser.signed_in(user.id) |> assign(:now, @now) |> get("/shared/#{kind}/#{uuid}")
+      conn =
+        RailsUser.signed_in(user.id)
+        |> assign(:now, @now)
+        |> put_private(:dawarich_clock, fn -> @now end)
+        |> get("/shared/#{kind}/#{uuid}")
+
       assert conn.status == 200
-      assert (build_conn() |> assign(:now, @now) |> get("/shared/#{kind}/#{uuid}")).status == 302
+
+      assert (build_conn()
+              |> assign(:now, @now)
+              |> put_private(:dawarich_clock, fn -> @now end)
+              |> get("/shared/#{kind}/#{uuid}")).status == 302
     end
 
     for blank <- [nil, false, "", " \t", [], %{}] do
       assert Digests.Sharing.public?(%{settings | "expiration" => blank}, @now)
+    end
+  end
+
+  test "routed public report pages refuse shares that expire before delivery", %{uuid: uuid} do
+    settings = %{
+      "enabled" => true,
+      "expiration" => "1h",
+      "expires_at" => "2026-10-07T13:00:00+00:00"
+    }
+
+    for table <- ~w(stats digests),
+        do:
+          Repo.query!("UPDATE #{table} SET sharing_settings=$1 WHERE sharing_uuid=$2", [
+            settings,
+            Ecto.UUID.dump!(uuid)
+          ])
+
+    for kind <- ~w(month digest),
+        {delivery, status} <- [{@now, 200}, {~U[2026-10-07 14:00:00Z], 302}] do
+      conn =
+        build_conn()
+        |> assign(:now, @now)
+        |> put_private(:dawarich_clock, fn -> delivery end)
+        |> get("/shared/#{kind}/#{uuid}")
+
+      assert conn.status == status, inspect({kind, delivery, conn.status})
     end
   end
 
@@ -171,7 +206,12 @@ defmodule DawarichWeb.PublicShareExpiryTest do
           ])
 
     for kind <- ~w(month digest) do
-      conn = build_conn() |> assign(:now, now) |> get("/shared/#{kind}/#{uuid}")
+      conn =
+        build_conn()
+        |> assign(:now, now)
+        |> put_private(:dawarich_clock, fn -> now end)
+        |> get("/shared/#{kind}/#{uuid}")
+
       assert conn.status == status, inspect({kind, text, now, conn.status})
 
       if status == 302,

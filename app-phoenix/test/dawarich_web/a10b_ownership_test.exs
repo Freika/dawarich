@@ -50,7 +50,7 @@ defmodule DawarichWeb.A10bOwnershipTest do
     :ok
   end
 
-  test "welcome, guest home and the shared background POST are owned with exact rollback keys" do
+  test "welcome and guest home retain ownership while the shared background POST is retired" do
     for name <- ~w(background_override) do
       row = fixture("admin_setting_writes", name)
       method = "POST"
@@ -58,8 +58,8 @@ defmodule DawarichWeb.A10bOwnershipTest do
       conn =
         request(method, "/settings/background_jobs?" <> (row["query"] || ""), row["body"], 15802)
 
-      assert conn.status == 302
-      expected = row["after"]["visits_suggestions_enabled"]
+      assert conn.status == 404
+      expected = nil
 
       assert Repo.query!(
                "SELECT settings->'visits_suggestions_enabled' FROM users WHERE id=15802",
@@ -258,13 +258,22 @@ defmodule DawarichWeb.A10bOwnershipTest do
 
   defp handoff!(method, path, raw, actor, headers \\ []) do
     conn = request(method, path, raw, actor, headers)
-    assert conn.status == 218 and conn.resp_body == "Rails"
-    assert_receive {:upstream, line, length, body}
-    same_line = line == method <> " " <> path <> " HTTP/1.1"
-    assert same_line, "upstream request line changed"
-    assert length == byte_size(raw)
-    same_body = body == raw
-    assert same_body, "upstream body bytes changed"
+
+    if DawarichWeb.NativeM4RetiredWrites.retired?(%{
+         method: method,
+         path_info: URI.parse(path).path |> String.split("/", trim: true)
+       }) do
+      assert conn.status == 404
+      refute_receive {:upstream, _, _, _}, 0
+    else
+      assert conn.status == 218 and conn.resp_body == "Rails"
+      assert_receive {:upstream, line, length, body}
+      same_line = line == method <> " " <> path <> " HTTP/1.1"
+      assert same_line, "upstream request line changed"
+      assert length == byte_size(raw)
+      same_body = body == raw
+      assert same_body, "upstream body bytes changed"
+    end
   end
 
   defp upstream_loop(server, owner) do

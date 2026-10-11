@@ -264,6 +264,8 @@ defmodule Dawarich.A12f3bE061Test do
                DateTime.utc_now()
              ])
 
+    assert %{success: 1, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
+
     for pass <- 1..4 do
       assert Drain.status(ScratchRepo).counts.incomplete_oban == 1
 
@@ -276,6 +278,7 @@ defmodule Dawarich.A12f3bE061Test do
       end
     end
 
+    assert %{success: 1, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
     assert Drain.status(ScratchRepo).counts.incomplete_oban == 0
     assert [[1, content]] = rows("SELECT kind,content FROM notifications WHERE id=$1", [id])
     assert content =~ "20"

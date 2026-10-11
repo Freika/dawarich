@@ -9,9 +9,25 @@ defmodule DawarichWeb.DemoDataActions do
 
   def call(conn, :demo_data, opts \\ []) do
     case SettingsActions.admit(conn, ~w(POST DELETE)) do
-      :ok -> perform(conn, opts)
-      {:error, status} -> SettingsActions.reject(conn, status)
+      :ok ->
+        case Dawarich.Accounts.settings_for(conn.assigns.current_user) do
+          {:ok, _} -> perform(conn, opts)
+          {:error, :unsupported} -> unsupported(conn)
+        end
+
+      {:error, status} ->
+        SettingsActions.reject(conn, status)
     end
+  end
+
+  defp unsupported(conn) do
+    key =
+      if conn.method == "DELETE" or
+           String.upcase(conn.assigns.api_params["_method"] || "") == "DELETE",
+         do: "something_went_wrong_removing_demo_data",
+         else: "something_went_wrong_loading_demo_data"
+
+    redirect(conn, "/", key, "alert")
   end
 
   defp perform(conn, opts) do
@@ -37,30 +53,7 @@ defmodule DawarichWeb.DemoDataActions do
     end
   end
 
-  defp landing(user, opts) do
-    now = Keyword.get(opts, :now, DateTime.utc_now())
-
-    [[date]] =
-      Repo.query!(
-        "SELECT ($1::timestamptz AT TIME ZONE $2)::date - 1",
-        [now, Importer.zone(user)],
-        log: false
-      ).rows
-
-    {first, last} =
-      Dawarich.Visits.Calendar.previous_day(Repo, Importer.zone(user), DateTime.to_unix(now))
-
-    first = String.replace(first, "+00:00", "Z")
-    last = last |> String.replace(~r/\.\d+/, "") |> String.replace("+00:00", "Z")
-
-    "/map/v2?" <>
-      URI.encode_query(%{
-        "panel" => "timeline",
-        "date" => Date.to_iso8601(date),
-        "start_at" => first,
-        "end_at" => last
-      })
-  end
+  defp landing(user, opts), do: Dawarich.Onboarding.landing(user, opts)
 
   defp redirect(conn, path, key, type \\ "notice") do
     locale = Locale.resolve(nil, conn.assigns.current_user, conn.assigns.rails_session)
