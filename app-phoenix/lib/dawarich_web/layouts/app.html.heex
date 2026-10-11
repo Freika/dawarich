@@ -52,7 +52,7 @@
 </div>
 <%= if @current_user do %>
   <.live_component
-    :if={assigns[:native] == true && assigns[:socket] && assigns[:current_scope]}
+    :if={assigns[:native] == true && assigns[:socket] && @current_user}
     module={DawarichWeb.OnboardingLiveComponent}
     id="onboarding"
     scope={Dawarich.Maps.principal(@current_user, @locale)}
@@ -63,7 +63,7 @@
     auto_open={false}
   />
   <.onboarding_modal
-    :if={!(assigns[:native] == true && assigns[:socket] && assigns[:current_scope])}
+    :if={!(assigns[:native] == true && assigns[:socket] && @current_user)}
     current_user={@current_user}
     navbar={navbar_data(assigns)}
     locale={@locale}

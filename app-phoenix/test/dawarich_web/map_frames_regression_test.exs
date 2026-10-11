@@ -1,6 +1,7 @@
 defmodule DawarichWeb.MapFramesRegressionTest do
   use Dawarich.JobsCase, async: false
   import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
   import Plug.Conn
   alias Dawarich.Test.{FrameSeeds, ImportsExportsSeeds, RailsUser}
   @endpoint DawarichWeb.Endpoint
@@ -29,7 +30,7 @@ defmodule DawarichWeb.MapFramesRegressionTest do
   end
 
   @tag frames_f1: true
-  test "F1: timeline timestamps retain Rails parsing and fallback", %{user: user} do
+  test "F1 native timeline retains Rails timestamp parsing rollover and fallback", %{user: user} do
     for {id, day, name} <- [
           {89711, ~N[2026-09-15 10:00:00], "September stop"},
           {89712, ~N[2026-10-01 10:00:00], "October stop"}
@@ -49,29 +50,27 @@ defmodule DawarichWeb.MapFramesRegressionTest do
           {"20260915T000000", "20260915T235959"},
           {"Tue, 15 Sep 2026 00:00:00 +0200", "Tue, 15 Sep 2026 23:59:59 +0200"}
         ] do
-      conn = request(user, "/map/timeline_feeds", %{start_at: first, end_at: last})
-      assert conn.status == 200
-      assert conn.resp_body =~ "September stop"
-      refute conn.resp_body =~ "October stop"
+      html = native_feed(user, %{start_at: first, end_at: last})
+      assert html =~ "September stop"
+      refute html =~ "October stop"
     end
 
     rollover =
-      request(user, "/map/timeline_feeds", %{
+      native_feed(user, %{
         start_at: "2026-09-31 00:00:00",
         end_at: "2026-09-31 23:59:59"
       })
 
-    assert rollover.resp_body =~ "October stop"
+    assert rollover =~ "October stop"
 
     for value <- ["garbage", "2026-13-15", String.duplicate("a", 129), "2026-09-15 12:00 +2500"] do
-      conn = request(user, "/map/timeline_feeds", %{start_at: value, end_at: value})
-      assert conn.status == 200
-      refute conn.resp_body =~ "September stop"
+      html = native_feed(user, %{start_at: value, end_at: value})
+      refute html =~ "September stop"
     end
   end
 
   @tag frames_f2: true
-  test "F2: calendar accepts Rails month forms and rejects its invalid dates", %{user: user} do
+  test "F2 native calendar retains Rails month forms and refuses invalid dates", %{user: user} do
     for {value, title} <- [
           {"2026-09", "September 2026"},
           {"2026-9", "September 2026"},
@@ -82,9 +81,21 @@ defmodule DawarichWeb.MapFramesRegressionTest do
           {"2026/09/15", "September 2026"},
           {"09/2026", "January 2026"}
         ] do
-      conn = request(user, "/map/timeline_feeds/calendar", %{month: value})
-      assert conn.status == 200
-      assert conn.resp_body =~ title
+      assert {:ok, calendar} = Dawarich.Maps.Timeline.calendar(scope(user), value)
+
+      assert calendar.month ==
+               Calendar.strftime(
+                 Dawarich.MapApi.RailsDate.parse(value <> "-01", ~D[2026-10-11]) |> elem(1),
+                 "%Y-%m"
+               )
+
+      html =
+        render_component(&DawarichWeb.NativeTimelineCalendar.calendar/1,
+          calendar: %{status: :ready, month: calendar.month, summary: calendar},
+          locale: "en"
+        )
+
+      assert html =~ title
     end
 
     FrameSeeds.visit!(user.id, 89731, %{
@@ -92,14 +103,12 @@ defmodule DawarichWeb.MapFramesRegressionTest do
       ended_at: ~N[2026-09-14 10:30:00]
     })
 
-    conn = request(user, "/map/timeline_feeds/calendar", %{month: "2026/09/15"})
+    assert {:ok, calendar} = Dawarich.Maps.Timeline.calendar(scope(user), "2026/09/15")
+    day = calendar.weeks |> List.flatten() |> Enum.find(&(&1.date == "2026-09-14"))
+    assert day.tracked_seconds == 1800
 
-    assert Regex.run(~r/data-day="2026-09-14".*?data-tracked-seconds="(\d+)"/s, conn.resp_body,
-             capture: :all_but_first
-           ) == ["1800"]
-
-    for value <- ["2026.09", "202609", "2026-258", "2026-13", "2026/10/070"] do
-      assert request(user, "/map/timeline_feeds/calendar", %{month: value}).status == 500
+    for value <- ["bad", "garbage", "2026.09", "202609", "2026-258", "2026-13", "2026/10/070"] do
+      assert {:error, :invalid} = Dawarich.Maps.Timeline.calendar(scope(user), value)
     end
   end
 
@@ -172,19 +181,28 @@ defmodule DawarichWeb.MapFramesRegressionTest do
   end
 
   @tag frames_f5: true
-  test "F5: terminal frame failures retain Rails public error body", %{user: user} do
-    body = File.read!(Dawarich.RailsRoot.join("public/500.html"))
+  test "F5 native malformed timeline and calendar refuse without private projections", %{
+    user: user
+  } do
+    assert {:error, :invalid} = Dawarich.Maps.Timeline.feed(scope(user), %{"start_at" => ["1"]})
+
+    for month <- [["1"], "2026-13"] do
+      assert {:error, :invalid} = Dawarich.Maps.Timeline.calendar(scope(user), month)
+    end
+
+    conn = request(user, "/map/residency?year=2038", %{})
+    assert conn.status == 500
+    assert conn.resp_body == File.read!(Dawarich.RailsRoot.join("public/500.html"))
 
     for path <- [
-          "/map/residency?year=2038",
           "/map/timeline_feeds?start_at[]=1",
           "/map/timeline_feeds/calendar?month[]=1",
           "/map/timeline_feeds/calendar?month=2026-13"
         ] do
       conn = request(user, path, %{})
-      assert conn.status == 500
-      assert get_resp_header(conn, "content-type") == ["text/html; charset=UTF-8"]
-      assert conn.resp_body == body
+      assert conn.status == 410
+      assert get_resp_header(conn, "set-cookie") == []
+      refute conn.resp_body =~ "turbo-"
     end
   end
 
@@ -216,6 +234,20 @@ defmodule DawarichWeb.MapFramesRegressionTest do
       assert conn.status == 303
       assert get_resp_header(conn, "location") == [location]
     end
+  end
+
+  defp scope(user), do: Dawarich.Maps.principal(Dawarich.Accounts.get(user.id), "en")
+
+  defp native_feed(user, query) do
+    params = Map.new(query, fn {key, value} -> {to_string(key), value} end)
+    assert {:ok, feed} = Dawarich.Maps.Timeline.feed(scope(user), params)
+
+    render_component(&DawarichWeb.NativeTimelineFeed.feed/1,
+      timeline: %{status: :ready, feed: feed},
+      filter: %{},
+      tags: [],
+      locale: "en"
+    )
   end
 
   defp host_conn, do: %{build_conn() | req_headers: [{"host", "www.example.com"}]}

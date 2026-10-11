@@ -21,9 +21,11 @@ defmodule Dawarich.Visits.Timeline do
 
   defp month_shape(month, _now) when month in [nil, ""], do: :ok
 
-  defp month_shape(month, _now) when is_binary(month) and byte_size(month) <= 128 do
-    case Date.from_iso8601(month <> "-01") do
-      {:ok, _date} -> :ok
+  defp month_shape(month, now) when is_binary(month) and byte_size(month) <= 128 do
+    with fields when map_size(fields) > 0 <- Dawarich.Imports.DateParts.parse(month),
+         {:ok, _date} <- Dawarich.MapApi.RailsDate.parse(month <> "-01", DateTime.to_date(now)) do
+      :ok
+    else
       _ -> {:error, :invalid_input}
     end
   end

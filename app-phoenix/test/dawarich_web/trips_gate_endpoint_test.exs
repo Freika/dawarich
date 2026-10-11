@@ -38,14 +38,13 @@ defmodule DawarichWeb.TripsGateEndpointTest do
   defp request(target, cookie),
     do: "GET #{target} HTTP/1.1\r\nHost: a\r\nCookie: #{cookie}\r\n\r\n"
 
-  defp answered_by_puma(port, upstream, request) do
+  defp native_response(ctx, port, target, status \\ 200, cookie \\ nil) do
     client = connect(port)
-    send_raw(client, request)
-    puma = accept(upstream)
-    {head, _rest} = read_head(puma)
-    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
-    assert {200, _headers, "puma"} = read_response(client)
-    {request_line(head), header(head, "cookie")}
+    send_raw(client, request(target, cookie || ctx.cookie))
+    {actual, _headers, body} = read_response(client)
+    assert actual == status
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+    body
   end
 
   test "Phoenix answers the list for a signed-in user", ctx do
@@ -55,23 +54,21 @@ defmodule DawarichWeb.TripsGateEndpointTest do
     assert body =~ "data-phx-main"
   end
 
-  test "a non-string page goes to Puma with the Rails cookie", ctx do
-    assert {line, [cookie]} =
-             answered_by_puma(serve(), ctx.upstream, request("/trips?page%5B%5D=2", ctx.cookie))
-
-    assert line == "GET /trips?page%5B%5D=2 HTTP/1.1"
-    assert "_dawarich_session=" <> _ = cookie
+  test "native nonstring trip page refuses in place without forwarding", ctx do
+    body = native_response(ctx, serve(), "/trips?page%5B%5D=2")
+    assert body =~ "data-native-trip-index-refused"
+    refute body =~ "trip-881101"
   end
 
-  test "a gate that cannot read the database hands the request to Puma", ctx do
+  test "native trip database failure refuses without forwarding", ctx do
     port = serve()
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, :manual)
 
-    assert {"GET /trips HTTP/1.1", [_cookie]} =
-             answered_by_puma(port, ctx.upstream, request("/trips", ctx.cookie))
+    native_response(ctx, port, "/trips", 500)
   end
 
-  test "a page the read model rejects goes to Puma; the page before it stays with Phoenix", ctx do
+  test "native trip pages preserve bounded cards including source values the hybrid gate rejected",
+       ctx do
     for n <- 1..6,
         do:
           TripsSeeds.trip!(%{
@@ -98,21 +95,50 @@ defmodule DawarichWeb.TripsGateEndpointTest do
     assert {200, _headers, body} = read_response(client)
     assert body =~ "data-phx-main"
 
-    assert {line, [cookie]} =
-             answered_by_puma(port, ctx.upstream, request("/trips?page=2", ctx.cookie))
+    second = native_response(ctx, port, "/trips?page=2")
+    doc = LazyHTML.from_document(second)
 
-    assert line == "GET /trips?page=2 HTTP/1.1"
-    assert "_dawarich_session=" <> _ = cookie
+    assert LazyHTML.query(doc, "[data-trip-id]") |> LazyHTML.attribute("data-trip-id") == [
+             "881101",
+             "881108"
+           ]
+
+    assert second =~ "No points found"
+    refute second =~ "data-native-trip-index-refused"
   end
 
-  test "a signed-in user whose timezone Rails would reject is answered by Puma", ctx do
+  test "native invalid trip timezone uses the existing zone fallback without forwarding", ctx do
     TripsSeeds.user!(8812, %{"timezone" => "Europe/Atlantis"})
     cookie = "_dawarich_session=" <> RailsUser.cookie(RailsUser.session(8812))
 
-    assert {"GET /trips HTTP/1.1", [returned_cookie]} =
-             answered_by_puma(serve(), ctx.upstream, request("/trips", cookie))
+    body = native_response(ctx, serve(), "/trips", 200, cookie)
+    assert body =~ "id=\"native-trips-index\""
+    assert body =~ "No trips yet"
+    refute body =~ "data-native-trip-index-refused"
+    refute body =~ "data-trip-id="
 
-    assert "_dawarich_session=" <> _ = returned_cookie
+    previous = System.get_env("TIME_ZONE")
+    System.put_env("TIME_ZONE", "Europe/Berlin")
+
+    on_exit(fn ->
+      if previous, do: System.put_env("TIME_ZONE", previous), else: System.delete_env("TIME_ZONE")
+    end)
+
+    TripsSeeds.trip!(%{
+      id: 881_201,
+      user_id: 8812,
+      name: "Zone fallback trip",
+      started_at: ~N[2026-05-09 23:30:00],
+      ended_at: ~N[2026-05-10 01:00:00]
+    })
+
+    populated = native_response(ctx, serve(), "/trips", 200, cookie)
+    card = LazyHTML.from_document(populated) |> LazyHTML.query("[data-trip-id='881201']")
+    text = LazyHTML.text(card)
+    assert text =~ "Zone fallback trip"
+    assert text =~ "10 May 2026"
+    refute text =~ "9 May 2026"
+    refute populated =~ "trip-881101"
   end
 
   test "Phoenix answers a trip it can render for a signed-in user", ctx do
@@ -129,7 +155,7 @@ defmodule DawarichWeb.TripsGateEndpointTest do
     end
   end
 
-  test "an uncalculated, foreign or attachment-described trip goes to Puma with the Rails cookie",
+  test "native uncalculated attachment and foreign trip states remain owned without forwarding",
        ctx do
     TripsSeeds.trip!(%{id: 881_102, user_id: 8811, path: nil})
     TripsSeeds.trip!(%{id: 881_103, user_id: 8811, path: [[12.37, 51.338], [12.381, 51.341]]})
@@ -141,10 +167,22 @@ defmodule DawarichWeb.TripsGateEndpointTest do
 
     port = serve()
 
-    for target <- ~w(/trips/881102 /trips/881103 /trips/881199) do
-      assert {line, [cookie]} = answered_by_puma(port, ctx.upstream, request(target, ctx.cookie))
-      assert line == "GET #{target} HTTP/1.1"
-      assert "_dawarich_session=" <> _ = cookie
+    uncalculated = native_response(ctx, port, "/trips/881102")
+    assert uncalculated =~ "id=\"trip-shell\""
+    assert uncalculated =~ "data-trip-map-state=\"empty\""
+    attachment = native_response(ctx, port, "/trips/881103")
+    assert attachment =~ "role=\"alert\""
+    refute attachment =~ "trip-shell"
+    refute attachment =~ "source render error"
+    refute attachment =~ "<action-text-attachment"
+    foreign = TripsSeeds.user!(8813)
+    TripsSeeds.trip!(%{id: 881_199, user_id: foreign.id, name: "Private foreign trip"})
+
+    for target <- ~w(/trips/881199 /trips/881198) do
+      body = native_response(ctx, port, target)
+      assert body =~ "role=\"alert\""
+      refute body =~ "trip-shell"
+      refute body =~ "Private foreign trip"
     end
   end
 
