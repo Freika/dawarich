@@ -34,7 +34,8 @@ RSpec.describe PhoenixBuildInputs do
       map.pin('notification_probe', to: 'probe.js')
       allow(Rails.application).to receive(:importmap).and_return(map)
       allow(Rails.application.config.assets).to receive(:manifest).and_return(manifest)
-      allow(ActionController::Base.helpers).to receive(:path_to_asset).with('probe.js').and_return('/assets/probe-stale.js')
+      helpers = ActionController::Base.helpers
+      allow(helpers).to receive(:path_to_asset).with('probe.js').and_return('/assets/probe-stale.js')
 
       expect(JSON.parse(described_class.importmap_json).dig('imports', 'notification_probe'))
         .to eq('/assets/probe-fresh.js')
