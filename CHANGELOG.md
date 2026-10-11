@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Update both mobile and desktop family-sharing indicators after changing location-sharing settings.
+
 - Shared tracks hide their map and route coordinates when the owner disables route sharing, while enabled statistics remain visible.
 
 - Only administrators can request test email, and queued test messages are discarded after the recipient loses administrator access.
