@@ -89,9 +89,6 @@ defmodule DawarichWeb.Strangler do
         {reason, status} = standalone_rejection(conn)
         DawarichWeb.StandaloneError.respond(conn, reason, status)
 
-      DawarichWeb.TurboVisit.live_view_visit?(conn) ->
-        DawarichWeb.TurboVisit.reload(conn)
-
       true ->
         hand_back(conn)
     end
@@ -202,7 +199,7 @@ defmodule DawarichWeb.Strangler do
   defp slice_owned?(_route, _conn), do: true
 
   def gate_open?(%{rails_gate: {module, function}, path_params: params} = route, conn) do
-    DawarichWeb.PageEnvelope.authenticate_first?(conn, route) or
+    conn.private[:native_document_original] != nil or
       DawarichWeb.AuthenticatedPageGate.admit?(route, conn) or
       apply(module, function, [conn, params])
   rescue
@@ -250,7 +247,7 @@ defmodule DawarichWeb.Strangler do
     Enum.any?(keys, &(&1 in Application.get_env(:dawarich, :rails_routes, [])))
   end
 
-  def page_request?(%{private: %{dawarich_native_places: true}}), do: true
+  def page_request?(%{private: %{native_document_original: _}}), do: true
 
   defdelegate page_request?(conn), to: DawarichWeb.PageRequest
 end

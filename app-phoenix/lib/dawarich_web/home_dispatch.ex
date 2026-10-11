@@ -14,7 +14,7 @@ defmodule DawarichWeb.HomeDispatch do
           Phoenix.LiveView.Controller.live_render(
             conn,
             PublicHomeLive,
-            DawarichWeb.PageEnvelope.live_options(conn,
+            Keyword.merge([],
               session: Map.put(RailsAuth.live_session(conn), "registration_enabled", enabled),
               layout: {DawarichWeb.Layouts, :app}
             )

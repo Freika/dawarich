@@ -113,7 +113,14 @@ defmodule DawarichWeb.SharedStatsPage do
       end
 
     html =
-      DawarichWeb.PageEnvelope.document(conn, assigns, content) |> Phoenix.HTML.Safe.to_iodata()
+      DawarichWeb.Layouts.native_root(
+        Map.put(
+          assigns,
+          :inner_content,
+          DawarichWeb.Layouts.app(Map.put(assigns, :inner_content, content))
+        )
+      )
+      |> Phoenix.HTML.Safe.to_iodata()
 
     case Delivery.deliver(target, admitted, html,
            clock: conn.private[:dawarich_clock],

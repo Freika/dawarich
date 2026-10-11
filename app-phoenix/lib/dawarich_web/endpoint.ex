@@ -43,6 +43,7 @@ defmodule DawarichWeb.Endpoint do
   plug DawarichWeb.AuthGate
   plug DawarichWeb.Api.RequestFormat
   plug DawarichWeb.Api.MethodOverride
+  plug DawarichWeb.DocumentAliases
   plug DawarichWeb.Strangler
   plug DawarichWeb.Api.Transport, :router
 end

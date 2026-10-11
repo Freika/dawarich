@@ -90,7 +90,9 @@ defmodule DawarichWeb.ImportsDownload do
       })
 
     html =
-      DawarichWeb.PageEnvelope.document(conn, assigns, assigns.inner_content)
+      DawarichWeb.Layouts.native_root(
+        Map.put(assigns, :inner_content, DawarichWeb.Layouts.app(assigns))
+      )
       |> Phoenix.HTML.Safe.to_iodata()
 
     conn

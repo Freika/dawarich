@@ -23,7 +23,6 @@ defmodule DawarichWeb.A10Routes do
         plug DawarichWeb.ForceSSL
         plug DawarichWeb.RateLimit
         plug :fetch_query_params
-        plug DawarichWeb.TurboVisit
         plug DawarichWeb.RailsAuth
         plug :phoenix_session
         plug :fetch_session
@@ -31,7 +30,6 @@ defmodule DawarichWeb.A10Routes do
         plug DawarichWeb.Locale
         plug DawarichWeb.LayoutAssigns
         plug :put_root_layout, html: {DawarichWeb.Layouts, :root}
-        plug DawarichWeb.PageEnvelope, :layout
         plug :protect_from_forgery
         plug DawarichWeb.RailsHeaders
       end
@@ -42,7 +40,6 @@ defmodule DawarichWeb.A10Routes do
         plug DawarichWeb.ForceSSL
         plug DawarichWeb.RateLimit
         plug :fetch_query_params
-        plug DawarichWeb.TurboVisit
         plug DawarichWeb.RailsAuth
         plug DawarichWeb.TrialResumeHeaders
         plug :phoenix_session
@@ -51,7 +48,6 @@ defmodule DawarichWeb.A10Routes do
         plug DawarichWeb.Locale
         plug DawarichWeb.LayoutAssigns
         plug :put_root_layout, html: {DawarichWeb.Layouts, :root}
-        plug DawarichWeb.PageEnvelope, :layout
         plug :protect_from_forgery
         plug DawarichWeb.RailsHeaders
         plug DawarichWeb.RequireUser

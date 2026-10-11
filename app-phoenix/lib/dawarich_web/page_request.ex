@@ -11,9 +11,6 @@ defmodule DawarichWeb.PageRequest do
   def page_request?(conn),
     do: page_envelope?(DawarichWeb.AchievementPublicQuery.page_conn(conn))
 
-  defp page_envelope?(%{private: %{dawarich_page_envelope: true}} = conn),
-    do: DawarichWeb.PageEnvelope.accepted?(conn)
-
   defp page_envelope?(conn) do
     not String.contains?(List.last(conn.path_info) || "", ".") and
       not String.match?(header(conn, "x-requested-with"), ~r/XMLHttpRequest/i) and

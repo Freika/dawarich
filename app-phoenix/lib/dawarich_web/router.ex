@@ -33,7 +33,6 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.ForceSSL
     plug DawarichWeb.RateLimit
     plug :fetch_query_params
-    plug DawarichWeb.TurboVisit
     plug DawarichWeb.RailsAuth
     plug DawarichWeb.TripDocument
     plug DawarichWeb.ImportsHeaders
@@ -44,7 +43,6 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.Locale
     plug DawarichWeb.LayoutAssigns
     plug :put_root_layout, html: {DawarichWeb.Layouts, :root}
-    plug DawarichWeb.PageEnvelope, :layout
     plug :protect_from_forgery
     plug DawarichWeb.RailsHeaders
   end
