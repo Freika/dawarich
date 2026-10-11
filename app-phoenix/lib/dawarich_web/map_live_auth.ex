@@ -1,7 +1,10 @@
 defmodule DawarichWeb.MapLiveAuth do
   @moduledoc false
   import Phoenix.Component, only: [assign: 2]
-  import Phoenix.LiveView, only: [attach_hook: 4, connected?: 1, get_connect_info: 2, redirect: 2]
+
+  import Phoenix.LiveView,
+    only: [attach_hook: 4, connected?: 1, get_connect_info: 2, put_flash: 3, redirect: 2]
+
   alias Dawarich.Accounts.Scope
   alias Dawarich.Maps
 
@@ -38,6 +41,7 @@ defmodule DawarichWeb.MapLiveAuth do
         page_title: nil,
         flash_messages: []
       )
+      |> session_flash(session["flash_messages"])
 
     if connected_id == session["rails_user_id"] do
       socket
@@ -54,6 +58,22 @@ defmodule DawarichWeb.MapLiveAuth do
       {:halt, refuse(socket, :stale_session)}
     end
   end
+
+  defp session_flash(socket, messages) when is_list(messages) do
+    if connected?(socket) do
+      socket
+    else
+      Enum.reduce(messages, socket, fn
+        {type, message}, acc when type in ["notice", "alert"] and is_binary(message) ->
+          put_flash(acc, type, message)
+
+        _, acc ->
+          acc
+      end)
+    end
+  end
+
+  defp session_flash(socket, _), do: socket
 
   def authorize(%{assigns: %{current_scope: nil, map_error: reason}} = socket)
       when not is_nil(reason),
