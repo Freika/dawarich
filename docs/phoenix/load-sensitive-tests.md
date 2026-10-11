@@ -78,3 +78,29 @@ after enumeration; it is not a lookup into an indexed user table. PostgreSQL
 Shared counterpart: AFFiNE document **Dawarich — Load-sensitive export, lease and
 visit sweep root fixes**, document `IQjDYgmYAZw0iq5D6Q0pM`. Related synchronization precedent: **Dawarich — LiveView
 channel join test synchronization**, document `fhv7GPzGN7Cp-t_Y8Nhnb`.
+
+## Native browser creation, reload and sharing readiness
+
+Visit creation defaults to minute precision. Consecutive browser tests clicking
+the same map location must use distinct start times: the visit key includes the
+owner, place and start time, and a different name does not make it distinct.
+The searchable-visit test uses a separate interval and checks the POST response
+before waiting for the success notification.
+
+The native sharing page becomes visible before its LiveView joins. Browser
+tests must await the main view's `phx-connected` class before clicking patch
+links, then check the destination URL and selected tab. Studio readiness on the
+previous map document does not establish readiness of the sharing document.
+The native stats reload test also waits for its new main view to connect.
+
+Recalculation can change a stats cache revision between admission and delivery.
+The cache correctly refuses that revision; clearing the whole page projection
+would leave a blank chart after reload. Stats now reads one uncached projection
+on this freshness refusal, checking the actor scope before and after the read.
+It neither retries the cache nor publishes the fallback into it. Identity and
+eligibility refusals remain fail-closed. Deterministic query-boundary tests
+cover concurrent recalculation and an identity change during the fallback read.
+
+The ordered browser acceptance scopes retain each original lane's preceding
+files and run without retries. Root-fix and mutation evidence belongs in the
+controller's `fix-flakes-s1` execution report.

@@ -43,18 +43,7 @@ defmodule DawarichWeb.StatsLive.NativePage do
     opts = options(socket)
 
     with {:ok, scope} <- NativeDataAuth.scope(socket),
-         {:ok, data} <-
-           Dawarich.Cache.Pages.fetch(
-             scope,
-             resource(socket),
-             socket.assigns.query,
-             fn fresh -> read(fresh, socket.assigns.live_action, socket.assigns.query, opts) end,
-             Keyword.put(
-               opts,
-               :period_kind,
-               if(socket.assigns.live_action == :month, do: :month, else: :year)
-             )
-           ) do
+         {:ok, data} <- fetch(socket, scope, opts) do
       if socket.assigns.live_action == :index and data.points.state == :pending,
         do: PageRefresh.request(scope, :counts, socket.assigns.query, opts)
 
@@ -200,6 +189,36 @@ defmodule DawarichWeb.StatsLive.NativePage do
   defp refuse_in_place(socket, :stale_session), do: NativeDataAuth.refuse(socket, :stale_session)
   defp refuse_in_place(socket, _), do: NativeDataAuth.refuse(socket, :invalid_input)
   defp command_options(socket), do: Keyword.put(options(socket), :now, DateTime.utc_now())
+
+  defp fetch(socket, scope, opts) do
+    read = fn fresh -> read(fresh, socket.assigns.live_action, socket.assigns.query, opts) end
+
+    case Dawarich.Cache.Pages.fetch(
+           scope,
+           resource(socket),
+           socket.assigns.query,
+           read,
+           Keyword.put(
+             opts,
+             :period_kind,
+             if(socket.assigns.live_action == :month, do: :month, else: :year)
+           )
+         ) do
+      {:error, :stale} ->
+        with {:ok, fresh} <- NativeDataAuth.scope(socket),
+             {:ok, data} <- read.(fresh),
+             {:ok, current} <- NativeDataAuth.scope(socket),
+             true <- fresh == current do
+          {:ok, data}
+        else
+          false -> {:error, :stale}
+          error -> error
+        end
+
+      result ->
+        result
+    end
+  end
 
   defp resource(%{assigns: %{live_action: :index}}), do: :index
   defp resource(%{assigns: %{live_action: mode}}), do: mode
