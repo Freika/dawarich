@@ -414,3 +414,37 @@ test("current public map refresh deadline ends loading clears data emits failure
   }
   assert.equal(jobs.size, 0)
 })
+
+test("public refresh accepts renewed read leases but refuses shortened deadlines", async () => {
+  const f = fixture()
+  let reads = 0
+  f.reader.read = async (resource) => ({
+    data:
+      resource === "metadata"
+        ? {
+            ...config,
+            validUntil:
+              ++reads === 1 ? "2026-10-12T00:00:00Z" : "2026-10-12T00:00:01Z",
+          }
+        : points,
+  })
+  try {
+    assert.equal(await f.owner.mount(), "ready")
+    assert.equal(f.renders, 1)
+    reads = 0
+    f.reader.read = async (resource) => ({
+      data:
+        resource === "metadata"
+          ? {
+              ...config,
+              validUntil:
+                ++reads === 1 ? "2026-10-12T00:00:01Z" : "2026-10-12T00:00:00Z",
+            }
+          : points,
+    })
+    assert.equal(await f.owner.reconnect(), "failed")
+    assert.equal(f.renders, 1)
+  } finally {
+    f.owner.destroy()
+  }
+})
