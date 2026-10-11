@@ -113,8 +113,7 @@ defmodule DawarichWeb.A8Routes do
       scope "/" do
         pipe_through :a8_public
 
-        get "/visits", DawarichWeb.VisitsNavigation, :index,
-          metadata: %{rails_gate: {DawarichWeb.A8Gate, :navigation?}}
+        get "/visits", DawarichWeb.VisitsNavigation, :index, metadata: %{native_page: true}
       end
     end
   end

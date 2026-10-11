@@ -42,6 +42,18 @@ defmodule DawarichWeb.NativeMapVisitsTest do
     %{id: id, other: other}
   end
 
+  test "map Visit commands use M5 bigint admission without effects", c do
+    scope = Maps.principal(Accounts.get(c.id), "en")
+    before = rows("SELECT count(*) FROM visits WHERE user_id=$1", [c.id])
+
+    assert {:error, :invalid_input} =
+             Dawarich.Maps.VisitEditing.update(scope, String.duplicate("9", 128), %{
+               "name" => "Refused"
+             })
+
+    assert rows("SELECT count(*) FROM visits WHERE user_id=$1", [c.id]) == before
+  end
+
   test "native Visit creation enables the saved layer only after successful creation", c do
     rows("UPDATE users SET settings=$2::jsonb WHERE id=$1", [
       c.id,
@@ -172,7 +184,7 @@ defmodule DawarichWeb.NativeMapVisitsTest do
     noted = visit!(c.id, place, "N", "2024-01-01 12:00:00", "2024-01-01 13:00:00")
     note!(c.id, noted)
     render_hook(view, "visits:merge", %{"ids" => [to_string(second), to_string(noted)]})
-    assert_reply(view, %{error: "unsupported"})
+    assert_reply(view, %{error: "invalid_input"})
     assert count(c.id) == 3
 
     render_hook(view, "visits:merge", %{"ids" => [to_string(first), to_string(second)]})

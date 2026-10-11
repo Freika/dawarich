@@ -2,7 +2,7 @@ defmodule Dawarich.Maps.VisitEditing do
   @moduledoc false
   alias Dawarich.{Maps, Repo, RubyInteger}
   alias Dawarich.NotesApi.{Read, Write}
-  alias Dawarich.Visits.{WebEffects, WebMerge, WebUpdate}
+  alias Dawarich.Visits.{Commands, WebEffects}
   alias Dawarich.VisitsApi.Create
 
   @local "to_char((%s AT TIME ZONE 'UTC') AT TIME ZONE $3, 'YYYY-MM-DD\"T\"HH24:MI')"
@@ -64,19 +64,19 @@ defmodule Dawarich.Maps.VisitEditing do
   end
 
   def update(scope, id, attrs, opts \\ []) do
-    Maps.with_actor(scope, fn actor ->
+    with {:ok, _} <- Maps.admit(scope, opts) do
       attrs = Map.take(attrs, ~w(name place_id area_id status started_at ended_at))
-      ok(WebUpdate.run(Repo, actor, id, attrs, ctx(scope, opts)))
-    end)
+      ok(Commands.update(scope, id, attrs, native_opts(opts)))
+    end
   end
 
   def merge(scope, ids, opts \\ []) when is_list(ids) do
-    Maps.with_actor(scope, fn actor ->
-      case WebMerge.run(Repo, actor, ids, ctx(scope, opts)) do
-        {:ok, %{visit: visit}} -> {:ok, visit["id"]}
+    with {:ok, _} <- Maps.admit(scope, opts) do
+      case Commands.merge(scope, ids, native_opts(opts)) do
+        {:ok, %{ids: [id | _]}} -> {:ok, id}
         other -> typed(other)
       end
-    end)
+    end
   end
 
   @statuses %{"confirm" => "confirmed", "decline" => "declined"}
@@ -89,14 +89,21 @@ defmodule Dawarich.Maps.VisitEditing do
   def bulk(scope, "merge", ids, opts), do: ok(merge(scope, ids, opts))
 
   def bulk(scope, action, ids, opts) when action in ~w(delete confirm decline) do
-    Maps.with_actor(scope, fn actor ->
-      {kind, params} =
-        if action == "delete",
-          do: {:destroy, %{"visit_ids" => ids}},
-          else: {:update, %{"visit_ids" => ids, "status" => @statuses[action]}}
+    with {:ok, _} <- Maps.admit(scope, opts) do
+      params = %{"visit_ids" => ids}
 
-      ok(Dawarich.Visits.WebBulk.run(Repo, kind, actor, params, ctx(scope, opts)))
-    end)
+      result =
+        if action == "delete",
+          do: Commands.bulk_delete(scope, params, native_opts(opts)),
+          else:
+            Commands.bulk_update(
+              scope,
+              Map.put(params, "status", @statuses[action]),
+              native_opts(opts)
+            )
+
+      ok(result)
+    end
   end
 
   def bulk(_scope, _action, _ids, _opts), do: {:error, :unsupported}
@@ -175,13 +182,13 @@ defmodule Dawarich.Maps.VisitEditing do
     end
   end
 
-  defp ctx(scope, opts),
-    do: %{
-      now: now(opts),
-      locale: scope.locale || "en",
-      self_hosted:
-        Keyword.get_lazy(opts, :self_hosted?, &Dawarich.ReleaseMigration.self_hosted?/0)
-    }
+  defp native_opts(opts) do
+    Keyword.put(
+      opts,
+      :self_hosted,
+      Keyword.get_lazy(opts, :self_hosted?, &Dawarich.ReleaseMigration.self_hosted?/0)
+    )
+  end
 
   defp instant(value) when is_binary(value) do
     case DateTime.from_iso8601(value) do

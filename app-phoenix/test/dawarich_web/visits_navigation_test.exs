@@ -4,6 +4,15 @@ defmodule DawarichWeb.VisitsNavigationTest do
   import Plug.Conn
   @endpoint DawarichWeb.Endpoint
 
+  test "Visits navigation is native and malformed query stays a local refusal" do
+    route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", "/visits", "www.example.com")
+    assert route[:native_page]
+    refute route[:rails_gate]
+    conn = get(build_conn(), "/visits?status[]=suggested")
+    assert conn.status == 422
+    assert get_resp_header(conn, "location") == []
+  end
+
   test "default visits navigation is a public 302 with Rails Location" do
     for method <- [:get, :head] do
       conn = dispatch(build_conn(), @endpoint, method, "/visits", nil)

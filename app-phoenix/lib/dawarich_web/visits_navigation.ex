@@ -8,6 +8,14 @@ defmodule DawarichWeb.VisitsNavigation do
   def init(opts), do: opts
   @impl true
   def call(conn, _opts) do
+    if DawarichWeb.A8Gate.scalar_query?(conn.query_string, ~w(status locale)) do
+      navigate(conn)
+    else
+      conn |> send_resp(422, "") |> halt()
+    end
+  end
+
+  defp navigate(conn) do
     status = Plug.Conn.Query.decode(conn.query_string)["status"] || "confirmed"
 
     conn
