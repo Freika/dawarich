@@ -230,18 +230,39 @@ test("removed anomalies stop owned pages and preserve exact request filters", as
 })
 
 test("native place labels retain emoji as DOM text and release visible markers with the layer", () => {
-  const f = fixture(), events = new Map(), markers = []
-  let rendered = placesToGeoJSON([{ id: 7, name: "🏡 <b>Home</b>", latitude: 52.52, longitude: 13.405 }]).features
+  const f = fixture(),
+    events = new Map(),
+    markers = []
+  let rendered = placesToGeoJSON([
+    { id: 7, name: "🏡 <b>Home</b>", latitude: 52.52, longitude: 13.405 },
+  ]).features
   f.map.on = (event, fn) => events.set(event, fn)
-  f.map.off = (event, fn) => { if (events.get(event) === fn) events.delete(event) }
+  f.map.off = (event, fn) => {
+    if (events.get(event) === fn) events.delete(event)
+  }
   f.map.queryRenderedFeatures = () => rendered
-  f.map.getContainer = () => ({ ownerDocument: { createElement: () => ({ style: {} }) } })
+  f.map.getContainer = () => ({
+    ownerDocument: { createElement: () => ({ style: {} }) },
+  })
   class Marker {
-    constructor(options) { this.element = options.element; markers.push(this) }
-    setLngLat(value) { this.coordinates = value; return this }
-    getElement() { return this.element }
-    addTo() { this.removed = false; return this }
-    remove() { this.removed = true }
+    constructor(options) {
+      this.element = options.element
+      markers.push(this)
+    }
+    setLngLat(value) {
+      this.coordinates = value
+      return this
+    }
+    getElement() {
+      return this.element
+    }
+    addTo() {
+      this.removed = false
+      return this
+    }
+    remove() {
+      this.removed = true
+    }
   }
   const places = new PlacesLayer(f.map, { library: { Marker } })
   places.add({ type: "FeatureCollection", features: rendered })

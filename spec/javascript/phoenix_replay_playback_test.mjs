@@ -180,11 +180,21 @@ test("playing replay moves the marker along segments, follows it and stops at th
 
 test("starting playback publishes its state before the first animation frame", async () => {
   const states = []
-  const { createReplay } = await import("../../app-phoenix/assets/js/map/replay/runtime.js")
+  const { createReplay } = await import(
+    "../../app-phoenix/assets/js/map/replay/runtime.js"
+  )
   const replay = createReplay({
-    map: { ...mapMock(), getSource: () => ({ setData() {} }), getLayer: () => false, removeSource() {} },
+    map: {
+      ...mapMock(),
+      getSource: () => ({ setData() {} }),
+      getLayer: () => false,
+      removeSource() {},
+    },
     timezone: "UTC",
-    loadDay: async () => [point("2026-06-01T08:00:00Z", 0), point("2026-06-01T08:01:00Z", 1)],
+    loadDay: async () => [
+      point("2026-06-01T08:00:00Z", 0),
+      point("2026-06-01T08:01:00Z", 1),
+    ],
     raf: () => 1,
     cancelRaf() {},
     onState: () => states.push(replay.playing),

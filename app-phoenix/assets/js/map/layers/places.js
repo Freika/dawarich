@@ -9,7 +9,11 @@ export class PlacesLayer extends BaseLayer {
 
   add(data, beforeId = null) {
     if (!this.labels && this.library?.Marker)
-      this.labels = createPlaceLabels({ map: this.map, library: this.library, layerId: this.id })
+      this.labels = createPlaceLabels({
+        map: this.map,
+        library: this.library,
+        layerId: this.id,
+      })
     super.add(data, beforeId)
     this.labels?.refresh()
   }

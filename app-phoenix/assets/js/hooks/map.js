@@ -93,8 +93,12 @@ export const MapHook = {
       if (!this.mapDestroyed) this.el.dataset.mapState = "failed"
     }
   },
-  beforeUpdate() { rememberMapState(this) },
-  updated() { restoreMapState(this) },
+  beforeUpdate() {
+    rememberMapState(this)
+  },
+  updated() {
+    restoreMapState(this)
+  },
   reconnected() {
     if (this.mapReady) return this.mapRealtime?.reconnect()
     if (this.mapInvalidations?.length < 32) this.mapInvalidations.push({})

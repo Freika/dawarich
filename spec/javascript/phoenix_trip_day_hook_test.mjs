@@ -94,16 +94,28 @@ test("a trip day arriving at readiness is applied once", async () => {
 
 test("trip day receipts synchronize native details after the server patch", async () => {
   const f = fixture()
-  const days = ["2026-10-01", "2026-10-02"].map((day) => ({ id: `native-trip-day-${day}`, open: false }))
+  const days = ["2026-10-01", "2026-10-02"].map((day) => ({
+    id: `native-trip-day-${day}`,
+    open: false,
+  }))
   f.hook.el.closest = () => ({ querySelectorAll: () => days })
   f.release()
   await f.hook.mounted()
   const select = f.handlers.get("trip:select_day")
   select({ day: "2026-10-01" })
-  assert.deepEqual(days.map((day) => day.open), [true, false])
+  assert.deepEqual(
+    days.map((day) => day.open),
+    [true, false],
+  )
   select({ day: null, expanded: true })
-  assert.deepEqual(days.map((day) => day.open), [true, true])
+  assert.deepEqual(
+    days.map((day) => day.open),
+    [true, true],
+  )
   select({ day: null, expanded: false })
-  assert.deepEqual(days.map((day) => day.open), [false, false])
+  assert.deepEqual(
+    days.map((day) => day.open),
+    [false, false],
+  )
   f.hook.destroyed()
 })

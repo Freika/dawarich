@@ -786,7 +786,9 @@ test("video opening focuses its enabled close control while source loading disab
   const fonts = deferred()
   const h = harness({ fonts })
   let focused
-  h.root.single.close.focus = () => { focused = "close" }
+  h.root.single.close.focus = () => {
+    focused = "close"
+  }
   const opening = h.studio.open()
   await tick()
   assert.equal(h.root.single.switch.disabled, true)

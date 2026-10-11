@@ -410,7 +410,8 @@ test("map hit diagnostics distinguish source geometry from actually painted feat
   const { element, map, destroy } = setup()
   let painted = []
   map.queryRenderedFeatures = () => painted
-  const read = () => element.dawarichMapSnapshot({ sourceId: "points-mvt-source" })
+  const read = () =>
+    element.dawarichMapSnapshot({ sourceId: "points-mvt-source" })
   assert.equal(read().features[0].rendered, false)
   painted = [{ properties: { id: 0 } }]
   assert.equal(read().features[0].rendered, true)

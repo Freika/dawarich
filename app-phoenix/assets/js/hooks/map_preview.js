@@ -13,7 +13,9 @@ export const MapPreview = {
       if (!this.previewDestroyed) this.el.dataset.mapState = "failed"
     }
   },
-  beforeUpdate() { rememberMapState(this) },
+  beforeUpdate() {
+    rememberMapState(this)
+  },
   updated() {
     restoreMapState(this)
     return this.previewOwner?.update(
