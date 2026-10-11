@@ -5,13 +5,14 @@ defmodule DawarichWeb.MapLive.EntityCommands do
   alias Dawarich.Maps.Entities
 
   def handle_event("place:new", params, socket) do
-    form = %{
-      "name" => "",
-      "latitude" => to_string(params["latitude"]),
-      "longitude" => to_string(params["longitude"])
-    }
+    case DawarichWeb.MapLive.Coordinates.normalize(params) do
+      {:ok, coordinates} ->
+        form = Map.put(coordinates, "name", "")
+        {:noreply, assign(socket, :place_dialog, dialog(nil, form, tags(socket)))}
 
-    {:noreply, assign(socket, :place_dialog, dialog(nil, form, tags(socket)))}
+      {:error, _} ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("place:edit", %{"id" => id}, socket) do

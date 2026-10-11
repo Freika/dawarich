@@ -20,6 +20,31 @@ defmodule DawarichWeb.NativeM6HostTest do
     %{id: id}
   end
 
+  test "canonical map refuses malformed coordinate payload matrix without effects", %{id: id} do
+    {:ok, view, _} = open(id, @second)
+    before = rows("SELECT settings FROM users WHERE id=$1", [id])
+
+    for event <- ~w(place:new visit:new),
+        key <- ~w(latitude longitude),
+        value <- [%{}, %{"nested" => [1]}, [], [1], true, false, nil, "bad", "91e10"] do
+      params = Map.put(%{"latitude" => 52.5, "longitude" => 13.4}, key, value)
+      render_hook(view, event, params)
+      refute has_element?(view, "#native-place-dialog")
+      refute has_element?(view, "#native-visit-dialog")
+      assert Process.alive?(view.pid)
+      assert rows("SELECT count(*) FROM places WHERE user_id=$1", [id]) == [[0]]
+      assert rows("SELECT count(*) FROM visits WHERE user_id=$1", [id]) == [[0]]
+      assert rows("SELECT settings FROM users WHERE id=$1", [id]) == before
+    end
+
+    for event <- ~w(place:new visit:new) do
+      render_hook(view, event, %{"latitude" => "52.5", "longitude" => "13.4"})
+      dialog = if event == "place:new", do: "place", else: "visit"
+      assert has_element?(view, "#native-#{dialog}-dialog")
+      render_hook(view, "#{dialog}:close", %{})
+    end
+  end
+
   test "native production host restores range import panel and day on back and forward", %{id: id} do
     {:ok, view, html} = open(id, @first)
     assert has_element?(view, "#native-map[phx-hook=Map]")
