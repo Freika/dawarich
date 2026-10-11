@@ -35,14 +35,11 @@ export function mountHost({
   const requests = createRangeRequests({ pushEvent })
   const freshness = createTileFreshness()
   const fit = createViewportFit(reader, element)
+  const root = element.closest?.("[data-native-map-root]")
   const blocked = () =>
     owner.config.editEnabled ||
     owner.selection.state.active ||
-    Boolean(
-      element
-        .closest?.("[data-native-map-root]")
-        ?.querySelector("[data-map-tool-status]")?.textContent,
-    )
+    Boolean(root?.querySelector("[data-map-tool-status]")?.textContent)
   let library
   let layers
   let editing
@@ -75,7 +72,7 @@ export function mountHost({
           owner,
           map,
           lifetime,
-          root: element.closest?.("[data-native-map-root]"),
+          root: root,
         })
         owner.settings = createHostSettings({
           map,
@@ -88,12 +85,14 @@ export function mountHost({
         enrichment = createEnrichmentTool({
           map,
           pushEvent,
-          createPopup: () => null,
+          reader,
+          library,
+          root: root,
         })
         lifetime.own(enrichment.destroy)
         owner.search = createHostSearch({
           map,
-          root: element.closest?.("[data-native-map-root]"),
+          root: root,
           reader,
           lifetime,
           document: element.ownerDocument,
@@ -102,7 +101,7 @@ export function mountHost({
         })
         owner.selection = createHostSelection({
           map,
-          root: element.closest?.("[data-native-map-root]"),
+          root: root,
           reader,
           pushEvent,
           lifetime,
@@ -115,7 +114,7 @@ export function mountHost({
           replay: () => owner.replay,
           blocked,
           map,
-          root: element.closest?.("[data-native-map-root]"),
+          root: root,
           reader,
           lifetime,
         })
@@ -123,14 +122,14 @@ export function mountHost({
           map,
           reader,
           lifetime,
-          root: element.closest?.("[data-native-map-root]"),
+          root: root,
           getConfig: () => owner.config,
           entities: () => entities,
           blocked,
         })
         createHostTools({
           map,
-          root: element.closest?.("[data-native-map-root]"),
+          root: root,
           pushEvent,
           lifetime,
         })
@@ -149,14 +148,14 @@ export function mountHost({
           getConfig: () => owner.config,
           layers,
           document: element.ownerDocument,
-          root: element.closest?.("[data-native-map-root]"),
+          root: root,
         })
         lifetime.own(() => density?.destroy())
         aux = createHostAuxLayers({
           map,
           reader,
           library,
-          root: element.closest?.("[data-native-map-root]"),
+          root: root,
           onError: (code) => pushEvent("map:failed", { code }),
           replayActive: () => owner.replay?.active,
         })

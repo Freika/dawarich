@@ -52,6 +52,28 @@ defmodule DawarichWeb.NativeMapEnrichment do
             else: p(@locale, "scan_for_matches")}
         </button>
       </form>
+      <div
+        id="native-enrichment-results"
+        phx-update="ignore"
+        data-enrichment-results
+        data-labels={Jason.encode!(labels(@locale))}
+        class="space-y-2 min-w-0"
+      >
+        <label class="flex flex-wrap items-center gap-2 text-xs">
+          <input type="checkbox" data-enrichment-all class="checkbox checkbox-xs" />
+          {t(@locale, "points.index.select_all", %{})}
+        </label>
+        <div data-enrichment-list class="max-h-72 overflow-y-auto min-w-0"></div>
+        <button
+          type="button"
+          data-enrichment-submit
+          disabled
+          class="btn btn-xs btn-primary h-auto whitespace-normal"
+        >
+          {t(@locale, "javascript.immich.enrich_photos", %{count: 0})}
+        </button>
+        <p data-enrichment-status role="status" class="text-xs [overflow-wrap:anywhere]"></p>
+      </div>
       <p
         :if={@enrichment && @enrichment.status == :ready}
         class="text-xs"
@@ -74,6 +96,32 @@ defmodule DawarichWeb.NativeMapEnrichment do
       </p>
     </section>
     """
+  end
+
+  defp labels(locale) do
+    keys =
+      ~w(enrich_photos confirm_enrich enriching pending_enrichment partially_enriched enriched)
+
+    labels =
+      Map.new(keys, fn key ->
+        path = "javascript.immich." <> key
+
+        value =
+          case Dawarich.I18n.template(locale, path) do
+            {:ok, text} ->
+              String.replace(text, "%{", "{")
+
+            _ ->
+              Map.new(~w(one other), fn form ->
+                {:ok, text} = Dawarich.I18n.template(locale, path <> "." <> form)
+                {form, String.replace(text, "%{", "{")}
+              end)
+          end
+
+        {key, value}
+      end)
+
+    Map.put(labels, "failed", t(locale, "javascript.messages.failed_to_enrich_photos", %{}))
   end
 
   defp scanning?(enrichment), do: match?(%{status: :scanning}, enrichment)

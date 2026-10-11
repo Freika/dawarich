@@ -531,6 +531,58 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert_reply(view, %{error: "stale", response: %{"revision" => %{"point" => 1}}})
   end
 
+  test "canonical enrichment selection reaches scoped GPS command and refuses revoked actors", %{
+    id: id
+  } do
+    url = Dawarich.Test.NativeEnrichmentProvider.start(self())
+
+    rows("UPDATE users SET settings=settings || $2::jsonb WHERE id=$1", [
+      id,
+      %{"immich_url" => url, "immich_api_key" => "synthetic"}
+    ])
+
+    Dawarich.Test.FrameSeeds.point!(id, id * 10, DateTime.to_unix(~U[2026-03-30 09:00:00Z]), %{})
+    {:ok, view, _} = open(id, @second <> "&panel=tools")
+
+    view
+    |> form("#native-enrichment-scan", %{
+      start_date: "2026-03-30",
+      end_date: "2026-03-30",
+      tolerance: "1800"
+    })
+    |> render_submit()
+
+    render_async(view, 5000)
+
+    assert_push_event(view, "enrichment:matches", %{
+      matches: [%{"immich_asset_id" => "selected"}, %{"immich_asset_id" => "other"}]
+    })
+
+    assert has_element?(
+             view,
+             "#native-enrichment-results[phx-update=ignore] [data-enrichment-list]"
+           )
+
+    assert has_element?(view, "[data-enrichment-all]")
+    assert has_element?(view, "[data-enrichment-submit]")
+    asset = %{"immich_asset_id" => "selected", "latitude" => 52.52, "longitude" => 13.405}
+    render_hook(view, "enrichment:enrich", %{"assets" => [asset]})
+    assert_reply(view, %{ok: true, result: %{"pending" => 1, "failed" => 0}})
+    assert_receive {:enrichment_request, "PUT", "/api/assets/selected", body}
+    assert Jason.decode!(body) == Map.take(asset, ~w(latitude longitude))
+    refute_receive {:enrichment_request, "PUT", "/api/assets/other", _}
+    assert rows("SELECT count(*) FROM notifications WHERE user_id=$1", [id]) == [[1]]
+
+    rows("UPDATE users SET encrypted_password=$2 WHERE id=$1", [
+      id,
+      String.duplicate("rotated", 10)
+    ])
+
+    render_hook(view, "enrichment:enrich", %{"assets" => [asset]})
+    refute_receive {:enrichment_request, "PUT", _, _}
+    assert rows("SELECT count(*) FROM notifications WHERE user_id=$1", [id]) == [[1]]
+  end
+
   test "native production host settles enrichment scans and discards them on range replacement",
        %{id: id} do
     {:ok, view, _} = open(id, @second)

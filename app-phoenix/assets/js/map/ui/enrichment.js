@@ -6,9 +6,41 @@ export function createEnrichmentTool({
   map,
   pushEvent,
   createPopup,
+  root,
+  reader,
+  library,
   timers = globalThis,
   debounceMs = DEBOUNCE_MS,
+  loadResults = () => import("./enrichment_results.js"),
 }) {
+  let results,
+    loading,
+    generation = 0
+  function renderResults(rows) {
+    if (results) {
+      results.replace(rows)
+      return Promise.resolve()
+    }
+    if (!rows.length) return Promise.resolve()
+    const current = generation
+    loading ??= loadResults()
+    return loading
+      .then(({ createEnrichmentResults }) => {
+        if (destroyed || current !== generation) return
+        results ??= createEnrichmentResults({
+          root,
+          reader,
+          map,
+          library,
+          timers,
+          pushEvent,
+        })
+        results.replace(rows)
+      })
+      .catch(() => {
+        loading = null
+      })
+  }
   let destroyed = false
   let timer = null
   let popup = null
@@ -16,15 +48,21 @@ export function createEnrichmentTool({
   const closePopup = () => {
     popup?.remove()
     popup = null
+    results?.closePopup()
   }
 
   const onEnter = (event) => {
     closePopup()
     const feature = event.features?.[0]
-    if (feature && !destroyed) popup = createPopup(feature)
+    if (feature && !destroyed) {
+      if (createPopup) popup = createPopup(feature)
+      else results?.showPopup(feature.properties.id)
+    }
   }
 
   function clear() {
+    generation++
+    results?.clear()
     closePopup()
     if (map.getLayer(LAYER)) {
       map.off("mouseenter", LAYER, onEnter)
@@ -47,6 +85,7 @@ export function createEnrichmentTool({
   function matches({ matches: rows = [] }) {
     if (destroyed) return
     clear()
+    const rendered = renderResults(rows)
     const features = rows
       .filter(
         (row) =>
@@ -73,6 +112,7 @@ export function createEnrichmentTool({
     })
     map.on("mouseenter", LAYER, onEnter)
     map.on("mouseleave", LAYER, closePopup)
+    return rendered
   }
 
   function destroy() {
@@ -81,6 +121,7 @@ export function createEnrichmentTool({
     if (timer !== null) timers.clearTimeout(timer)
     timer = null
     clear()
+    results?.destroy()
   }
 
   return { rangeChanged, matches, clear, destroy }

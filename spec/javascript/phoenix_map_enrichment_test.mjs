@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { createEnrichmentTool } from "../../app-phoenix/assets/js/map/ui/enrichment.js"
 
-function fixture() {
+function fixture(options = {}) {
   const sources = new Map()
   const layers = new Set()
   const handlers = new Map()
@@ -28,6 +28,7 @@ function fixture() {
       handlers.delete(`${type}:${layer}`),
   }
   const tool = createEnrichmentTool({
+    ...options,
     map,
     pushEvent: (event, payload) => pushed.push([event, payload]),
     timers: {
@@ -99,4 +100,54 @@ test("a range change clears markers from the previous scan", () => {
   f.tool.rangeChanged({ start_date: "2026-05-01" })
   assert.equal(f.layers.size, 0)
   assert.equal(f.sources.size, 0)
+})
+
+test("enrichment selection engine loads only for results and cannot mount after scope or destroy", async () => {
+  let release,
+    loads = 0,
+    created = 0
+  const painted = [],
+    disposed = []
+  const f = fixture({
+    loadResults: () => {
+      loads++
+      return new Promise((resolve) => {
+        release = resolve
+      })
+    },
+  })
+  const module = {
+    createEnrichmentResults: () => {
+      created++
+      return {
+        replace: (rows) => painted.push(rows[0].immich_asset_id),
+        clear() {},
+        closePopup() {},
+        destroy: () => disposed.push(true),
+      }
+    },
+  }
+  assert.equal(loads, 0)
+  const obsolete = f.tool.matches({ matches: [match("obsolete")] })
+  assert.equal(loads, 1)
+  f.tool.rangeChanged({ start_date: "2026-06-01" })
+  const current = f.tool.matches({ matches: [match("current")] })
+  assert.equal(loads, 1)
+  release(module)
+  await Promise.all([obsolete, current])
+  assert.equal(created, 1)
+  assert.deepEqual(painted, ["current"])
+  f.tool.destroy()
+  assert.deepEqual(disposed, [true])
+  const destroyed = fixture({
+    loadResults: () =>
+      new Promise((resolve) => {
+        release = resolve
+      }),
+  })
+  const pending = destroyed.tool.matches({ matches: [match("late")] })
+  destroyed.tool.destroy()
+  release(module)
+  await pending
+  assert.equal(created, 1)
 })
