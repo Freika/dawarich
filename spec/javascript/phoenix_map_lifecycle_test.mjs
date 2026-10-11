@@ -13,6 +13,7 @@ const deferred = () => {
 function fixture(options = {}) {
   const calls = { maps: 0, removed: 0, roots: 0, refreshes: 0, readers: 0 }
   const element = {
+    dataset: {},
     appendChild() {
       calls.roots++
     },
@@ -49,9 +50,12 @@ function fixture(options = {}) {
     config: options.config ?? {},
     loadLibrary: options.loadLibrary ?? (async () => ({ Map: MockMap })),
     loadStyle: options.loadStyle ?? (async () => ({})),
-    refresh: async () => {
-      calls.refreshes++
-    },
+    refresh:
+      options.refresh ??
+      (async () => {
+        calls.refreshes++
+      }),
+    events: options.events,
     attach: options.attach,
     timers: options.timers,
   })
@@ -332,4 +336,55 @@ test("map hook retains only latest scalar visit selection across lazy mount and 
   assert.deepEqual(hook.mapHandlers, [])
   await handlers.get("visit:selection")({ id: 9 })
   assert.equal(selections.length, 2)
+})
+
+test("current ordinary map refresh deadline ends loading emits failure and rejects late geometry", async () => {
+  const jobs = new Map(),
+    receipts = [],
+    pending = deferred()
+  let next = 0,
+    applied = 0,
+    stall = false
+  const timers = {
+    setTimeout(fn) {
+      jobs.set(++next, fn)
+      return next
+    },
+    clearTimeout(id) {
+      jobs.delete(id)
+    },
+  }
+  const f = fixture({
+    timers,
+    events: { error: (receipt) => receipts.push(receipt) },
+    refresh: async ({ operation }) => {
+      if (stall) await pending.promise
+      operation.check()
+      applied++
+    },
+  })
+  try {
+    await f.runtime.mount()
+    stall = true
+    const refreshing = f.runtime.reconnect()
+    await Promise.resolve()
+    assert.equal(f.element.dataset.mapState, "loading")
+    const expire = [...jobs.values()].at(-1)
+    expire()
+    assert.equal(await refreshing, "failed")
+    assert.equal(f.element.dataset.mapState, "failed")
+    assert.deepEqual(receipts, [{ code: "map_refresh_failed" }])
+    pending.resolve()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(applied, 1)
+    stall = false
+    assert.equal(await f.runtime.reconnect(), "ready")
+    assert.equal(f.element.dataset.mapState, "ready")
+    assert.equal(applied, 2)
+    assert.equal(f.calls.maps, 1)
+  } finally {
+    pending.resolve()
+    f.runtime.destroy()
+  }
+  assert.equal(jobs.size, 0)
 })

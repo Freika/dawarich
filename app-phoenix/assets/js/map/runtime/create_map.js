@@ -61,7 +61,11 @@ export function createMapRuntime({
       events.refreshed?.({ revision: current.revision ?? operation.revision })
       return "ready"
     } catch (error) {
-      if (error.name === "AbortError") return "cancelled"
+      if (
+        error.name === "AbortError" &&
+        (lifetime.destroyed || operation.revision !== operations.revision)
+      )
+        return "cancelled"
       publish("failed")
       events.error?.({ code: "map_refresh_failed" })
       return "failed"

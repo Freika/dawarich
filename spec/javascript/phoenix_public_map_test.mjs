@@ -364,3 +364,53 @@ test("public document publishes readiness failure and disposal through its nativ
   }
   assert.equal(f.element.dataset.mapState, "cancelled")
 })
+
+test("current public map refresh deadline ends loading clears data emits failure and rejects late geometry", async () => {
+  const jobs = new Map()
+  let next = 0,
+    release
+  const timers = {
+    setTimeout(fn) {
+      jobs.set(++next, fn)
+      return next
+    },
+    clearTimeout(id) {
+      jobs.delete(id)
+    },
+  }
+  const f = fixture({ timers })
+  try {
+    await f.owner.mount()
+    const read = f.reader.read
+    f.reader.read = async (resource) =>
+      resource === "metadata"
+        ? { data: config }
+        : new Promise((resolve) => {
+            release = resolve
+          })
+    const refreshing = f.owner.reconnect()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.element.dataset.mapState, "loading")
+    assert.equal(jobs.size, 1)
+    const expire = [...jobs.values()].at(-1)
+    expire()
+    assert.equal(await refreshing, "failed")
+    assert.equal(f.element.dataset.mapState, "failed")
+    assert.equal(f.cleared, 2)
+    assert.deepEqual(f.events.at(-1), [
+      "map:failed",
+      { code: "map_refresh_failed" },
+    ])
+    release({ data: points })
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.renders, 1)
+    f.reader.read = read
+    assert.equal(await f.owner.reconnect(), "ready")
+    assert.equal(f.renders, 2)
+    assert.equal(f.maps, 1)
+  } finally {
+    release?.({ data: points })
+    f.owner.destroy()
+  }
+  assert.equal(jobs.size, 0)
+})

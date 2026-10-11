@@ -18,6 +18,7 @@ export function mountPublic({
     return response.json()
   },
   createLayers = createPublicLayers,
+  timers = globalThis,
   loadPhotos = async (options) => {
     const { PhotosLayer } = await import("../layers/photos.js")
     if (options.signal.aborted) throw cancelled()
@@ -55,6 +56,7 @@ export function mountPublic({
     element,
     config: initial,
     reader,
+    timers,
     loadLibrary: async (options) => {
       library = await loadLibrary(options)
       return library
