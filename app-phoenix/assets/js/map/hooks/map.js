@@ -1,3 +1,4 @@
+import { rememberMapState, restoreMapState } from "./map_state.js"
 export const MapHook = {
   async mounted() {
     this.mapDestroyed = false
@@ -81,6 +82,9 @@ export const MapHook = {
         await this.mapOwner.visits?.select(this.mapVisitSelection)
       if (this.mapDestroyed || this.mapRevoked) return
       this.mapReady = true
+      const entry = this.el.ownerDocument?.location?.href
+      if (entry)
+        this.mapOwner.openStudio?.(new URL(entry).searchParams.get("studio"))
       for (const receipt of this.mapInvalidations)
         this.mapRealtime.invalidate(receipt)
       this.mapInvalidations = []
@@ -88,6 +92,12 @@ export const MapHook = {
       this.mapRealtime?.destroy()
       if (!this.mapDestroyed) this.el.dataset.mapState = "failed"
     }
+  },
+  beforeUpdate() {
+    rememberMapState(this)
+  },
+  updated() {
+    restoreMapState(this)
   },
   reconnected() {
     if (this.mapReady) return this.mapRealtime?.reconnect()

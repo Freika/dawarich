@@ -88,7 +88,7 @@ test("native map document owns navigation controls across reconnect and removes 
   assert.equal(f.calls.removed, 1)
 })
 
-test("native document fits the admitted range once and preserves empty-range viewport", async () => {
+test("native bounds use the browser API date contract and preserve empty-range viewport", async () => {
   const f = fixture()
   try {
     assert.equal(await f.owner.mount(), "ready")
@@ -98,8 +98,8 @@ test("native document fits the admitted range once and preserves empty-range vie
     ])
     assert.equal(f.calls.fits[0].options.maxZoom, 15)
     assert.equal(f.calls.bounds[0].resource, "bounds")
-    assert.equal(f.calls.bounds[0].params.start_at, f.range.startAt)
-    assert.equal(f.calls.bounds[0].params.end_at, f.range.endAt)
+    assert.equal(f.calls.bounds[0].params.start_date, f.range.startAt)
+    assert.equal(f.calls.bounds[0].params.end_date, f.range.endAt)
     await f.owner.update({
       ...f.owner.config,
       revision: 2,

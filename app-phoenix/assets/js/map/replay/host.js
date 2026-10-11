@@ -1,3 +1,4 @@
+import { bindTool } from "../ui/host_tools.js"
 import { mapTranslate } from "../ui/translate.js"
 import { createReplayDensity } from "./density.js"
 import { createReplayPanel } from "./panel.js"
@@ -20,7 +21,8 @@ export function installHostReplay({
     range = null,
     active = false,
     latest = {},
-    generation = 0
+    generation = 0,
+    reopening = false
   const translate = mapTranslate(() => owner.config)
   const keys = [
     "play",
@@ -43,7 +45,6 @@ export function installHostReplay({
     ]),
   )
   const container = root?.querySelector("[data-map-replay-panel]")
-  const opener = root?.querySelector("[data-map-replay-open]")
   function ensure() {
     if (runtime && runtime.manager.timezone !== owner.config.range.timezone) {
       runtime.close()
@@ -126,6 +127,7 @@ export function installHostReplay({
       }
     },
     close() {
+      reopening = false
       generation++
       active = false
       if (!lifetime.destroyed) onActive(false)
@@ -159,18 +161,21 @@ export function installHostReplay({
   }
   const close = () => {
     owner.replay.close()
-    opener?.focus()
+    root?.querySelector("[data-map-replay-open]")?.focus()
   }
-  const closer = root?.querySelector("[data-map-replay-close]")
-  opener?.addEventListener("click", open)
-  closer?.addEventListener("click", close)
+  bindTool(root, "[data-map-replay-open]", open, lifetime)
+  bindTool(root, "[data-map-replay-close]", close, lifetime)
   const update = owner.update,
     reconnect = owner.reconnect
   owner.update = async (next) => {
-    const changed = active && range !== JSON.stringify(next.range)
-    if (changed) owner.replay.close()
+    const changed =
+      (active || reopening) && range !== JSON.stringify(next.range)
+    if (changed) {
+      owner.replay.close()
+      reopening = true
+    }
     const result = await update.call(owner, next)
-    if (changed && result === "ready") await owner.replay.open(next.range)
+    if (reopening && result === "ready") await owner.replay.open(next.range)
     return result
   }
   owner.reconnect = async (receipt) => {
@@ -179,8 +184,6 @@ export function installHostReplay({
     return result
   }
   lifetime.own(() => {
-    opener?.removeEventListener("click", open)
-    closer?.removeEventListener("click", close)
     owner.replay.close()
   })
   return owner.replay

@@ -28,6 +28,7 @@ export function createReplayPanel({ elements, replay, translate }) {
     if (elements.cycle) {
       const count = manager.getPointCountAtMinute(minute)
       elements.cycle.hidden = count < 2
+      elements.cycle.style.display = count < 2 ? "none" : ""
       elements.cycleCount.textContent = `${manager.cycleIndex + 1} / ${count}`
     }
     elements.time.textContent = manager.formatCurrentMinute(minute)
@@ -105,6 +106,7 @@ export function createReplayPanel({ elements, replay, translate }) {
 
   return {
     onState({ minute, point, dayChanged }) {
+      setPlaying(replay.playing)
       if (dayChanged) refresh()
       if (minute != null) showMinute(minute)
       if (point) showVelocity(point)
@@ -112,6 +114,7 @@ export function createReplayPanel({ elements, replay, translate }) {
     stopped: () => setPlaying(false),
     refresh,
     destroy() {
+      setPlaying(false)
       for (const unbind of bindings.splice(0)) unbind()
       scrubber.destroy()
       for (const key of ["day-count", "day-index", "point-count"])

@@ -7,8 +7,13 @@ defmodule DawarichWeb.NativeMapLabels do
       Map.new(~w(count id speed current total latitude longitude query), &{&1, "{#{&1}}"})
 
     Map.new(@keys, fn key ->
+      path =
+        if key == "replay.no_data_loaded",
+          do: "shared.replay_panel.no_data_loaded",
+          else: "javascript." <> key
+
       value =
-        case Dawarich.I18n.t(locale, "javascript." <> key, bindings) do
+        case Dawarich.I18n.t(locale, path, bindings) do
           {:ok, text} -> text |> LazyHTML.from_fragment() |> LazyHTML.text()
           _ -> key
         end

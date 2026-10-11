@@ -142,7 +142,7 @@ defmodule Dawarich.Maps.Public do
     do:
       if(link.type == "live" or FamilyAudience.family_only?(link),
         do: link.settings["show_route"] not in @false_flags,
-        else: true
+        else: link.settings["show_route"] not in (@false_flags -- [nil])
       )
 
   defp valid_until(link, capability) do

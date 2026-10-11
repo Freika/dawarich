@@ -181,6 +181,7 @@ export function mountVideoStudio({ root, source, request, deps = {} }) {
       openController = new AbortController()
       el("dialog")?.showModal?.()
       range.setBusy(true)
+      el("close")?.focus?.()
       try {
         const [kit, library] = await Promise.all([loadKit(), loadLibrary()])
         if (!ctx.current(gen)) return

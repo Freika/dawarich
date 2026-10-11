@@ -1,3 +1,4 @@
+import { waitForStyle } from "../runtime/style_ready.js"
 import { createReader } from "../data/reader.js"
 import { cancelled } from "../data/request_scope.js"
 import { readRouteSnapshot } from "../data/route_snapshot.js"
@@ -27,7 +28,7 @@ export function mountTrip({
     },
     loadStyle,
     attach: ({ map, config, lifetime }) =>
-      new Promise((resolve) => {
+      waitForStyle(map, lifetime).then(() => {
         const ready = () => {
           installStudios({ element, owner, lifetime })
           installHostReplay({
@@ -47,13 +48,8 @@ export function mountTrip({
           })
           lifetime.own(() => layers.destroy())
           lifetime.own(() => photos?.remove())
-          resolve(() => map.off("load", ready))
         }
-        if (map.loaded()) ready()
-        else {
-          map.once("load", ready)
-          lifetime.own(() => map.off("load", ready))
-        }
+        ready()
       }),
     refresh: async ({ map, config, operation, signal }) => {
       const { data } = await operation.wait(

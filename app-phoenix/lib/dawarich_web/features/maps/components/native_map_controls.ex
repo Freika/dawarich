@@ -87,6 +87,11 @@ defmodule DawarichWeb.NativeMapControls do
           >
             <Icon.icon name="chevron-right" class="size-6" />
           </.link>
+          <a
+            href={"/share_links/hub?" <> Plug.Conn.Query.encode(%{"start_date" => Date.to_iso8601(@window.start_date), "end_date" => Date.to_iso8601(@window.end_date), "locale" => @locale})}
+            data-testid="timeline-share-button"
+            class="btn btn-sm h-auto whitespace-normal"
+          >{t(@locale, "share_links.hubs.frame.share", %{})}</a>
           <button type="submit" class="btn btn-sm btn-primary">{s(@locale, "search")}</button>
           <.link id="native-map-today" patch={@today} class="btn btn-sm border border-base-300">{s(
             @locale,

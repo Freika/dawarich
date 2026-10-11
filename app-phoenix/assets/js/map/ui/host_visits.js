@@ -60,7 +60,8 @@ export function createHostVisits({
       presentation()
       map.flyTo({
         center,
-        zoom: Math.max(map.getZoom(), 14),
+        zoom: Math.max(map.getZoom(), 15),
+        duration: 600,
         padding: panelPadding({
           container: map.getContainer(),
           overlay: () => root?.querySelector("#native-map-panel"),

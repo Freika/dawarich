@@ -21,6 +21,7 @@ import {
   createHostRecentPoint,
   installRecentReconnect,
 } from "./recent_point.js"
+import { waitForStyle } from "./style_ready.js"
 import { createViewportFit } from "./viewport_fit.js"
 export { createMapRuntime }
 export function mountHost({
@@ -162,17 +163,7 @@ export function mountHost({
         })
         lifetime.own(() => aux.destroy())
         lifetime.own(() => entities?.destroy())
-        return new Promise((resolve) => {
-          const ready = () => {
-            layers.mount()
-            resolve(() => map.off("load", ready))
-          }
-          if (map.loaded()) ready()
-          else {
-            map.once("load", ready)
-            lifetime.own(() => map.off("load", ready))
-          }
-        })
+        return waitForStyle(map, lifetime).then(() => layers.mount())
       }),
     refresh:
       refresh ??
@@ -243,9 +234,11 @@ export function mountHost({
       error: (receipt) => pushEvent("map:failed", receipt),
     },
   })
+  const snapshotReader = reader.fork?.() ?? reader
   owner.source = createStudioSource({
     getState: () => owner.config,
-    readSnapshot: (state, options) => readRouteSnapshot(reader, state, options),
+    readSnapshot: (state, options) =>
+      readRouteSnapshot(snapshotReader, state, options),
     applyDates: requests.applyDates,
   })
   Object.defineProperties(owner, {
@@ -290,6 +283,7 @@ export function mountHost({
   owner.destroy = () => {
     requests.destroy()
     owner.source.destroy()
+    if (snapshotReader !== reader) snapshotReader.destroy()
     dispose()
   }
   return owner

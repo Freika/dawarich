@@ -505,3 +505,21 @@ test("unrelated Family lease callbacks cannot prolong cached coordinates or acce
   }
   assert.equal(jobs.size, 0)
 })
+
+test("family geometry becomes ready after style load while basemap tiles remain pending", async () => {
+  const f = fixture({ loaded: false })
+  const mounting = f.owner.mount()
+  try {
+    await new Promise((resolve) => setImmediate(resolve))
+    for (const ready of [...(f.events.get("style.load") ?? [])]) ready()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.reads.length, 2)
+    assert.equal(await mounting, "ready")
+    assert.equal(f.sources.get("family-members").data.features.length, 1)
+    f.releaseLoad()
+    assert.equal(f.reads.length, 2)
+  } finally {
+    f.owner.destroy()
+    await mounting
+  }
+})

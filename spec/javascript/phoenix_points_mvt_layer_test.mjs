@@ -439,6 +439,7 @@ test("refresh reloads tiles in place with a fresh version, so rendered points st
   const before = tile()
 
   layer.refresh()
+  map.emit("render")
 
   assert.deepEqual(reloads, ["points-mvt-source"])
   assert.notEqual(tile(), before)

@@ -96,7 +96,10 @@ export function bindVideoControls({ root, studio, window: win }) {
   action("close", () => studio.close())
   action("switch", () => studio.switchStudio())
   action("load", () => studio.applyDates())
-  on(find(root, "dialog"), "close", () => studio.close())
+  const dialog = find(root, "dialog")
+  on(dialog, "close", () => {
+    if (!dialog.open) studio.close()
+  })
   for (const swatch of findAll(root, "theme"))
     on(swatch, "click", () =>
       studio.change({ theme: swatch.dataset.videoTheme }),

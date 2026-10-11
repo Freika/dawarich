@@ -84,6 +84,22 @@ defmodule DawarichWeb.MapLiveTest do
     end
   end
 
+  test "native map opens the sharing manager with the selected date range", %{user: user} do
+    {:ok, map, _} = live_as(user, "/map/v2?start_at=2025-10-15T00:00&end_at=2025-10-16T23:59")
+
+    [href] =
+      map
+      |> render()
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("a[data-testid=timeline-share-button]")
+      |> LazyHTML.attribute("href")
+
+    {:ok, sharing, _} = live_as(user, href)
+    sharing |> element("[data-testid=hub-tab-timeline]") |> render_click()
+    assert has_element?(sharing, "input[name='shared_link[start_date]'][value='2025-10-15']")
+    assert has_element?(sharing, "input[name='shared_link[end_date]'][value='2025-10-16']")
+  end
+
   test "HEAD answers without a body", %{user: user} do
     conn = head(RailsUser.signed_in(user.id), "/map/v2")
     assert conn.status == 200

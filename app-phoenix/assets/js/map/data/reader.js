@@ -143,6 +143,8 @@ export function createReader({
   }
 
   return {
+    fork: () =>
+      createReader({ origin, fetch, maxPages, maxRows, timers, timeoutMs }),
     read,
     pages,
     reset: () => scope.reset(),

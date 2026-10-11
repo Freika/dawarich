@@ -1,3 +1,4 @@
+import { waitForStyle } from "../runtime/style_ready.js"
 import { createReader } from "../data/reader.js"
 import { createRequestScope } from "../data/request_scope.js"
 import { createMapRuntime } from "../runtime/create_map.js"
@@ -35,7 +36,7 @@ export function mountFamily({
     },
     loadStyle,
     attach: ({ map, config, lifetime }) =>
-      new Promise((resolve) => {
+      waitForStyle(map, lifetime).then(() => {
         const ready = () => {
           overlayLocale = JSON.stringify([config.locale, config.familyTime])
           overlay = createFamilyOverlay({
@@ -47,13 +48,8 @@ export function mountFamily({
             colorMode: config.colorMode,
           })
           lifetime.own(() => overlay.destroy())
-          resolve(() => map.off("load", ready))
         }
-        if (map.loaded()) ready()
-        else {
-          map.once("load", ready)
-          lifetime.own(() => map.off("load", ready))
-        }
+        ready()
       }),
     refresh: async ({ map, config, operation, signal }) => {
       const desired = JSON.stringify([config.locale, config.familyTime])

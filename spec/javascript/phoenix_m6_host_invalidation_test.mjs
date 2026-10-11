@@ -10,6 +10,7 @@ test("native host same-range invalidation reloads both owned tile sources withou
   assert.equal(f.owner.state, "ready")
   assert.deepEqual(calls, [])
   assert.equal(await f.owner.reconnect(), "ready")
+  f.map.emit("render")
   assert.deepEqual(calls.sort(), ["points-mvt-source", "tracks-mvt-source"])
   assert.equal(f.owner.map, f.map)
   assert.equal(f.owner.config.range.startAt, "2026-03-29T00:00")

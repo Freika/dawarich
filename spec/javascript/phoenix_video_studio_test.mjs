@@ -769,3 +769,31 @@ test("settings changes during rendering save the recipe for the produced bytes",
   await saving
   h.studio.destroy()
 })
+
+test("a queued close from the previous video open cannot close its replacement", async () => {
+  const h = harness()
+  await h.studio.open()
+  h.studio.close()
+  await h.studio.open()
+  h.root.single.dialog.emit("close")
+  assert.equal(h.root.single.dialog.open, true)
+  assert.equal(h.root.single.render.disabled, false)
+  assert.equal(h.maps.at(-1).removed, false)
+  h.studio.destroy()
+})
+
+test("video opening focuses its enabled close control while source loading disables the switch", async () => {
+  const fonts = deferred()
+  const h = harness({ fonts })
+  let focused
+  h.root.single.close.focus = () => {
+    focused = "close"
+  }
+  const opening = h.studio.open()
+  await tick()
+  assert.equal(h.root.single.switch.disabled, true)
+  assert.equal(focused, "close")
+  fonts.resolve()
+  await opening
+  h.studio.destroy()
+})

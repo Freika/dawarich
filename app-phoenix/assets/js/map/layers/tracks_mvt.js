@@ -1,4 +1,5 @@
 import { BaseLayer, isAbortedRequest } from "./base.js"
+import { queueTileRefresh } from "./tile_refresh.js"
 
 export class TracksMvtLayer extends BaseLayer {
   constructor(map, options = {}) {
@@ -34,6 +35,8 @@ export class TracksMvtLayer extends BaseLayer {
   }
 
   remove() {
+    this._cancelTileRefresh?.()
+    this._cancelTileRefresh = null
     this._unwatchTileErrors()
     this._unwatchEmptyTracks()
     super.remove()
@@ -167,7 +170,8 @@ export class TracksMvtLayer extends BaseLayer {
   refresh() {
     this.freshness?.bump("tracks")
     if (this.map.refreshTiles && this.map.getSource(this.sourceId)) {
-      this.map.refreshTiles(this.sourceId)
+      this._cancelTileRefresh?.()
+      this._cancelTileRefresh = queueTileRefresh(this.map, this.sourceId)
       return
     }
 

@@ -5,7 +5,13 @@ import { installHostShortcuts } from "./shortcuts.js"
 export function bindTool(root, selector, callback, lifetime) {
   if (!root) return
   const click = (event) => {
-    if (event.target.closest?.(selector)) callback(event)
+    const button = event.target?.closest?.(selector)
+    if (
+      button &&
+      root.contains(button) &&
+      button.closest("[data-native-map-root]") === root
+    )
+      callback(event)
   }
   root.addEventListener("click", click)
   lifetime.own(() => root.removeEventListener("click", click))

@@ -163,12 +163,7 @@ defmodule DawarichWeb.NativeMapPage do
           end_date={String.slice(@page.window.end, 0, 10)}
           locale={@locale}
         />
-        <DawarichWeb.NativeTrackInfo.card
-          track={assigns[:track_info]}
-          unit={@map_config["distanceUnit"] || "km"}
-          locale={@locale}
-        />
-        <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale={@locale} />
+          <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale={@locale} />
         <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale={@locale} />
         <DawarichWeb.NativeMapReplay.panel id="native-map-replay" locale={@locale} />
         <button
@@ -218,6 +213,11 @@ defmodule DawarichWeb.NativeMapPage do
             selection={assigns[:timeline_selection]}
             selected_visit={assigns[:selected_visit]}
             tags={@page.timeline_tags}
+            locale={@locale}
+          />
+        <DawarichWeb.NativeTrackInfo.card
+            track={assigns[:track_info]}
+            unit={@map_config["distanceUnit"] || "km"}
             locale={@locale}
           />
         </section>

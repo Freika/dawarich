@@ -17,10 +17,7 @@ export class Element {
   emit(name, value = {}) {
     value.target ??= this
     for (const fn of this.listeners.get(name) ?? []) fn(value)
-    if (name === "click") this.parent?.emit(name, value)
-  }
-  closest(selector) {
-    return selector === this.selector ? this : this.parent?.closest(selector)
+    this.parent?.emit(name, value)
   }
   appendChild(child) {
     this.children.push(child)
@@ -44,11 +41,16 @@ export function fixture(config = {}, options = {}) {
   const nodes = new Map()
   const root = new Element()
   root.querySelector = (selector) => nodes.get(selector)
-  const setNode = nodes.set.bind(nodes)
+  root.contains = (element) => [...nodes.values()].includes(element)
   nodes.set = (selector, node) => {
     node.parent = root
-    node.selector = selector
-    return setNode(selector, node)
+    node.closest = (query) =>
+      query === selector
+        ? node
+        : query === "[data-native-map-root]"
+          ? root
+          : null
+    return Map.prototype.set.call(nodes, selector, node)
   }
   const element = new Element()
   const range = {
@@ -141,7 +143,7 @@ export function fixture(config = {}, options = {}) {
       getEast: () => 14,
     }),
   }
-  const reader = {
+  const reader = options.reader ?? {
     async read(resource, params) {
       reads.push({ resource, params })
       return {

@@ -133,4 +133,9 @@ defmodule DawarichWeb.NativeMapHostTest do
       assert Jason.decode!(encoded)["liveEnabled"] == enabled
     end
   end
+  test "native empty replay uses the source localized label" do
+    assert DawarichWeb.NativeMapLabels.labels("en")["replay.no_data_loaded"] == "No data loaded"
+    assert DawarichWeb.NativeMapLabels.labels("de")["replay.no_data_loaded"] == "Keine Daten geladen"
+  end
+
 end

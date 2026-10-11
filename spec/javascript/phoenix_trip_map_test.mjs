@@ -304,16 +304,23 @@ test("trip launcher dispatches its fixed stable source and releases the click ow
       : selector === "#native-video-studio"
         ? studio
         : null
+  root.contains = (node) => node === button
+  button.closest = (selector) =>
+    selector === "[data-native-map-root]"
+      ? root
+      : selector === '[data-testid="map-button-video"]'
+        ? button
+        : null
   studio.dispatchEvent = (event) => events.push(event)
   button.parent = root
   button.selector = '[data-testid="map-button-video"]'
   f.element.closest = () => root
   await f.owner.mount()
-  button.emit("click")
+  root.emit("click", { target: button })
   assert.equal(events[0].detail.source, f.owner.source)
   assert.equal(events[0].detail.source.fixedRange, true)
   f.owner.destroy()
-  button.emit("click")
+  root.emit("click", { target: button })
   assert.equal(events.length, 1)
 })
 

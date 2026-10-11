@@ -25,9 +25,17 @@ export function createMapRuntime({
   let viewport = null
   let mounting = null
   let state = "idle"
+  let presentationState = "idle"
   lifetime.own(() => reader.destroy())
+  const window = element.ownerDocument.defaultView
+  const retire = (event) => {
+    if (!event.persisted) destroy()
+  }
+  window?.addEventListener("pagehide", retire)
+  lifetime.own(() => window?.removeEventListener("pagehide", retire))
 
   function publish(value) {
+    presentationState = value
     if (element.dataset) element.dataset.mapState = value
     const loading = element.querySelector?.("[data-map-loading]")
     if (loading) loading.hidden = value !== "loading"
@@ -217,6 +225,9 @@ export function createMapRuntime({
     destroy,
     get map() {
       return map
+    },
+    get presentationState() {
+      return presentationState
     },
     get state() {
       return state

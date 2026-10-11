@@ -1,3 +1,4 @@
+import { waitForStyle } from "../runtime/style_ready.js"
 import { cancelled } from "../data/request_scope.js"
 import { createStudioSource } from "../data/studio_source.js"
 import { installHostReplay } from "../replay/host.js"
@@ -81,16 +82,7 @@ export function mountPublic({
         clear()
         layers.destroy()
       })
-      return operation.wait(
-        new Promise((resolve) => {
-          if (map.loaded()) resolve()
-          else {
-            const ready = () => resolve()
-            map.once("load", ready)
-            lifetime.own(() => map.off("load", ready))
-          }
-        }),
-      )
+      return operation.wait(waitForStyle(map, lifetime))
     },
     refresh: async ({ map, config, operation, signal }) => {
       const data = await operation.wait(readGrant({ signal }))
