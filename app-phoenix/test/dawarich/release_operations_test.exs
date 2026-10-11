@@ -140,9 +140,10 @@ defmodule Dawarich.ReleaseOperationsTest do
     assert jobs() == []
   end
 
-  test "the final failed attempt fails the operation; resume re-enqueues from its cursor", %{
-    user: user
-  } do
+  test "final failure filters the operation UUID while resume re-enqueues from the persisted cursor",
+       %{
+         user: user
+       } do
     id = Ecto.UUID.generate()
     Process.put(:raise_after_write, true)
 
@@ -153,7 +154,9 @@ defmodule Dawarich.ReleaseOperationsTest do
         end
       end)
 
-    assert log =~ "resume with dawarich jobs resume #{id}"
+    assert log =~ "release operation [FILTERED] (release.counter) failed"
+    assert log =~ "resume with dawarich jobs resume [FILTERED]"
+    refute log =~ id
 
     assert rows("SELECT status, error FROM phoenix.release_operations WHERE id = $1", [
              Ecto.UUID.dump!(id)
