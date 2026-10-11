@@ -33,6 +33,7 @@ export function createEnrichmentResults({
     destroyed = false,
     busy = false,
     deadline = null,
+    activeAttempt = null,
     popup = null
   let rows = [],
     checks = []
@@ -62,6 +63,7 @@ export function createEnrichmentResults({
   }
   function clear() {
     generation++
+    activeAttempt = null
     busy = false
     timers.clearTimeout(deadline)
     deadline = null
@@ -167,10 +169,20 @@ export function createEnrichmentResults({
       return
     busy = true
     const current = generation
+    const attempt = { settled: false }
+    activeAttempt = attempt
     update()
     status.textContent = translate("enriching", { count: assets.length })
     const settle = (reply) => {
-      if (destroyed || current !== generation || !busy) return
+      if (
+        destroyed ||
+        current !== generation ||
+        attempt.settled ||
+        activeAttempt !== attempt
+      )
+        return
+      attempt.settled = true
+      activeAttempt = null
       timers.clearTimeout(deadline)
       deadline = null
       busy = false
