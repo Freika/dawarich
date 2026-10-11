@@ -124,6 +124,15 @@ defmodule DawarichWeb.NativeTimelineFeed do
         selection={@selection && @selection.day == day.date && @selection}
         selected_visit={@selected_visit}
       />
+      <button
+        :if={@timeline.feed && @timeline.feed[:next_cursor]}
+        type="button"
+        phx-click="timeline:more"
+        disabled={@timeline.status == :loading}
+        class="btn btn-sm max-w-full whitespace-normal"
+      >
+        {Phoenix.HTML.raw(t(@locale, "views.pagination.next", %{}))}
+      </button>
     </section>
     """
   end

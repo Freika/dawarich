@@ -157,6 +157,9 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event("timeline:select" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.VisitBulkCommands.handle_event(event, payload, socket)
 
+  def handle_event("timeline:more", _, socket),
+    do: {:noreply, DawarichWeb.MapLive.Timeline.more(socket)}
+
   def handle_event("timeline:tag", payload, socket),
     do: {:noreply, DawarichWeb.MapLive.Timeline.toggle_tag(socket, payload)}
 

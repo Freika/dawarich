@@ -3,7 +3,7 @@ defmodule DawarichWeb.MapLive.Timeline do
   import Phoenix.Component, only: [assign: 3]
   alias DawarichWeb.MapLive.Runs
 
-  @params ~w(start_at end_at)
+  @params ~w(start_at end_at cursor)
   @timeout 30_000
 
   def refresh(socket, params) do
@@ -17,6 +17,16 @@ defmodule DawarichWeb.MapLive.Timeline do
       Runs.start(socket, :timeline, previous[:run], fn -> loader.(scope, params, []) end, timeout)
 
     assign(socket, :timeline, %{status: :loading, run: run, params: params, feed: previous.feed})
+  end
+
+  def more(socket) do
+    case socket.assigns[:timeline] do
+      %{status: :ready, feed: %{next_cursor: cursor}, params: params} when is_binary(cursor) ->
+        refresh(socket, Map.put(params, "cursor", cursor))
+
+      _ ->
+        socket
+    end
   end
 
   def filter(socket, params) do

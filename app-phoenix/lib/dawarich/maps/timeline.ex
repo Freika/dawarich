@@ -1,7 +1,7 @@
 defmodule Dawarich.Maps.Timeline do
   @moduledoc false
-  alias Dawarich.{Entitlements, MapWindow, Maps, RubyInteger}
-  alias Dawarich.Maps.Dependencies.Timeline, as: Source
+  alias Dawarich.{MapWindow, Maps, RubyInteger}
+  alias Dawarich.Visits.Timeline, as: Source
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   @bounds ~w(start_at end_at)
@@ -11,16 +11,29 @@ defmodule Dawarich.Maps.Timeline do
       Maps.with_actor(scope, fn actor ->
         now = now(opts)
         window = MapWindow.build(bounds(params, now), Dawarich.UserSettings.get(actor), now, nil)
-        feed = Source.feed(actor, window, cutoff(actor, opts))
 
-        {:ok,
-         %{
-           days: feed.days,
-           redetected: feed.redetected,
-           requested_date: window.start_date,
-           restricted: restricted?(actor, opts),
-           unit: Source.unit(actor)
-         }}
+        query = %{
+          "start_at" => window.start,
+          "end_at" => window.end,
+          "cursor" => params["cursor"]
+        }
+
+        with {:ok, page} <- Source.load(scope, query, source_options(opts)) do
+          entries = Enum.group_by(page.rows, & &1.date)
+          days = Enum.map(page.days, &Map.put(&1, :entries, Map.get(entries, &1.date, [])))
+
+          {:ok,
+           %{
+             days: days,
+             redetected: page.redetected,
+             requested_date: window.start_date,
+             restricted: page.restricted,
+             unit: Dawarich.Timeline.Days.unit(Dawarich.UserSettings.get(actor)),
+             next_cursor: page.next_cursor,
+             revision: page.revision,
+             stream_limit: page.stream_limit
+           }}
+        end
       end)
     else
       {:error, :invalid}
@@ -29,7 +42,7 @@ defmodule Dawarich.Maps.Timeline do
 
   def track(scope, id) do
     Maps.with_actor(scope, fn actor ->
-      case Source.track(actor, RubyInteger.to_i(id)) do
+      case Dawarich.Timeline.DayRows.track(actor, RubyInteger.to_i(id)) do
         nil -> {:error, :not_found}
         track -> {:ok, track}
       end
@@ -37,13 +50,12 @@ defmodule Dawarich.Maps.Timeline do
   end
 
   def calendar(scope, month, opts \\ []) do
-    Maps.with_actor(scope, fn actor ->
-      try do
-        {:ok, Source.month(actor, month, cutoff(actor, opts), now(opts))}
-      rescue
-        _ in [ArgumentError, FunctionClauseError] -> {:error, :invalid}
+    with {:ok, _} <- Maps.admit(scope, opts) do
+      case Source.calendar(scope, month, source_options(opts)) do
+        {:error, :invalid_input} -> {:error, :invalid}
+        result -> result
       end
-    end)
+    end
   end
 
   defp bounds(params, now) do
@@ -53,12 +65,13 @@ defmodule Dawarich.Maps.Timeline do
     end)
   end
 
-  defp cutoff(actor, opts), do: if(restricted?(actor, opts), do: now(opts))
-
-  defp restricted?(actor, opts) do
-    hosted = Keyword.get_lazy(opts, :self_hosted?, &Dawarich.ReleaseMigration.self_hosted?/0)
-    not Entitlements.full_access?(actor, hosted, now(opts))
-  end
+  defp source_options(opts),
+    do:
+      Keyword.put(
+        opts,
+        :self_hosted,
+        Keyword.get_lazy(opts, :self_hosted?, &Dawarich.ReleaseMigration.self_hosted?/0)
+      )
 
   defp now(opts), do: Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
 end

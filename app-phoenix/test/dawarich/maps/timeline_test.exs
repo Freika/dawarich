@@ -11,6 +11,26 @@ defmodule Dawarich.Maps.TimelineTest do
     %{scope: Maps.principal(actor, "en"), actor: actor, other: other}
   end
 
+  test "map timeline uses M5 cursor pages without losing owned legs", c do
+    owned =
+      for minute <- 0..104 do
+        from = NaiveDateTime.add(~N[2026-03-29 08:00:00], minute * 60)
+        track!(c.actor, from, NaiveDateTime.add(from, 30))
+      end
+
+    params = %{"start_at" => "2026-03-29T00:00", "end_at" => "2026-03-29T23:59"}
+    assert {:ok, first} = Timeline.feed(c.scope, params, @opts)
+    assert length(legs(first)) == 100
+    assert is_binary(first.next_cursor)
+
+    assert {:ok, last} =
+             Timeline.feed(c.scope, Map.put(params, "cursor", first.next_cursor), @opts)
+
+    assert length(legs(last)) == 5
+    assert last.next_cursor == nil
+    assert MapSet.new(legs(first) ++ legs(last)) == MapSet.new(owned)
+  end
+
   test "local day midnight and DST return the same owned legs", c do
     early = track!(c.actor, ~N[2026-03-28 23:10:00], ~N[2026-03-28 23:40:00])
     late = track!(c.actor, ~N[2026-03-29 21:30:00], ~N[2026-03-29 21:50:00])
