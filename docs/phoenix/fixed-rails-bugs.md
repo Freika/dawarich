@@ -1589,3 +1589,12 @@ Stage 1 C extends FRB-NATIVE-M4-FAMILY-PUBLICATION to the retained readers omitt
 - Family trip names/dates/share references: `app/models/shared_link.rb:41` and `app/controllers/trips_controller.rb:15`. Phoenix `app-phoenix/lib/dawarich/shared_links/family_audience.ex:42`; five `trips rejects private publication after in-flight <change> revocation` cases.
 - Family Cable coordinates: `app/services/points/live_broadcaster.rb:19,28,73`. Phoenix `app-phoenix/lib/dawarich/points/live_broadcast_worker.ex:98`; five `family Cable coordinates refuse <change> after preparation` cases.
 - The same shared snapshot bypass fails all fifteen extensions and the existing seventy-five publication cases. ED-NATIVE-M4-FAMILY-PUBLICATION is expanded; no new numeric ID or DRB is needed. This is source-backed; no Rails runtime oracle is claimed.
+
+### FRB-NATIVE-S1E3-OFFLINE-ERASURE — Family coordinates remain visible while offline
+
+Rails family maps retain coordinates when the browser goes offline; Stimulus disconnect runs only when the controller leaves the document. Phoenix erases private family/public content immediately on the browser offline event, rejects intervening snapshots, and requests fresh admitted state when online.
+
+- Rails: `app/javascript/controllers/family_map_controller.js:21,28`.
+- Phoenix: `app-phoenix/assets/js/hooks/lazy_maps.js:8`.
+- Tests: `browser offline erases lazy family content before heartbeat and requests fresh state on online`; public-map counterpart. Removing the offline listener fails both.
+- Ledger: ED-NATIVE-S1E3-OFFLINE-ERASURE; no DRB. Rails source unchanged.

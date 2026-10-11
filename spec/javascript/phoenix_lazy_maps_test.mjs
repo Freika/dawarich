@@ -108,4 +108,32 @@ for (const [label, hook, name, snapshot, clear] of [
     assert.equal(c.mounts(), 0)
     assert.equal(c.events.size, 0)
   })
+  test(`browser offline erases lazy ${label} content before heartbeat and requests fresh state on online`, async () => {
+    const prior = globalThis.window
+    const win = new EventTarget()
+    globalThis.window = win
+    try {
+      const c = setup(hook, name, snapshot, clear)
+      let reloads = 0
+      c.instance.pushEvent = () => { reloads++ }
+      c.events.get(snapshot)({ private: true })
+      win.dispatchEvent(new Event("offline"))
+      assert.equal(c.canvas.hidden, true)
+      assert.equal(label === "public" ? c.content.hidden : c.row.hidden, true)
+      c.events.get(snapshot)({ stale: true })
+      c.release()
+      await c.instance.ready
+      assert.deepEqual(c.deliveries, [])
+      win.dispatchEvent(new Event("online"))
+      assert.equal(reloads, 1)
+      c.events.get(snapshot)({ fresh: true })
+      assert.deepEqual(c.deliveries, [{ fresh: true }])
+      c.instance.destroyed()
+      win.dispatchEvent(new Event("online"))
+      assert.equal(reloads, 1)
+    } finally {
+      globalThis.window = prior
+    }
+  })
+
 }
