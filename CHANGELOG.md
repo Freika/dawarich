@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Only administrators can request test email, and queued test messages are discarded after the recipient loses administrator access.
 - Keep tied transportation modes, visit and country rankings, location-search coordinates, and Immich GPS matches deterministic.
 - Clear pending two-factor challenges after successful authentication, preventing a stale challenge from switching accounts.
 - Reserve transportation reclassification while its worker is queued, preventing duplicate runs from repeated requests and allowing retry after enqueue failure.
