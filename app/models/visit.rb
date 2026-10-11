@@ -19,7 +19,7 @@ class Visit < ApplicationRecord
   # One combined callback: registering the same method for separate
   # after_*_commit hooks would silently keep only the last registration.
   after_commit :cleanup_place_if_orphan, on: %i[update destroy], if: :left_active_state?
-  after_commit :bust_timeline_month_summary_cache, unless: :demo?
+  after_commit :bust_timeline_month_summary_cache, unless: -> { demo? && previously_new_record? }
 
   validates :started_at, :ended_at, :duration, :name, :status, presence: true
 

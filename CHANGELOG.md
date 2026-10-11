@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Calendar activity and status counts refresh after demo visit edits and deletion, including restored visits removed by null-island cleanup.
+
 - Achievement sharing returns only to same-host HTTP(S) or safe relative pages and falls back for non-HTTP return URLs.
 
 - Concurrent Cloud family invitations can no longer reserve the same final available seat; self-hosted families remain unlimited.
