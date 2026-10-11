@@ -60,7 +60,11 @@ defmodule DawarichWeb.NativeMapChrome do
       now={@now}
       native
     />
-
+    <DawarichWeb.Chrome.achievement_host
+      :if={@page && @current_scope && @navbar}
+      user_id={@current_user.id}
+      native
+    />
     """
   end
 end
