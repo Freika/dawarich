@@ -247,6 +247,60 @@ defmodule DawarichWeb.NativeM6HostTest do
     refute has_element?(view, "#native-track-info")
   end
 
+  test "native timeline enables visit rendering transiently and restores saved visibility after close",
+       %{id: id} do
+    {:ok, view, _} = open(id, @second)
+    refute config(view)["visitsEnabled"]
+    render_patch(view, @second <> "&panel=timeline")
+    render_async(view, 5000)
+    assert config(view)["visitsEnabled"]
+    [[settings]] = rows("SELECT settings FROM users WHERE id=$1", [id])
+    refute "Visits" in (settings["enabled_map_layers"] || [])
+    render_patch(view, @second)
+    refute config(view)["visitsEnabled"]
+  end
+
+  test "native visit pin selects its profile-local day and owned row without opening an editor",
+       %{id: id} do
+    visit =
+      Dawarich.Test.FrameSeeds.visit!(id, id * 10, %{
+        name: "Late visit",
+        started_at: ~N[2026-03-30 22:30:00],
+        ended_at: ~N[2026-03-30 23:30:00]
+      })
+
+    {:ok, view, _} = open(id, @second)
+    render_hook(view, "map:select", %{"kind" => "visit", "id" => visit})
+    patch = URI.parse(assert_patch(view))
+
+    assert URI.decode_query(patch.query) == %{
+             "panel" => "timeline",
+             "date" => "2026-03-31",
+             "start_at" => "2026-03-31T00:00",
+             "end_at" => "2026-03-31T23:59"
+           }
+
+    render_async(view, 5000)
+    assert has_element?(view, "#native-visit-#{visit}.visit-row--selected")
+
+    assert has_element?(
+             view,
+             "#native-visit-#{visit} button.visit-row__time[phx-click='visit:select']"
+           )
+
+    refute has_element?(view, "#native-visit-dialog")
+    assert_push_event(view, "visit:selection", %{id: ^visit})
+    view |> element("#native-visit-#{visit} button.visit-row__time") |> render_click()
+    assert_push_event(view, "visit:selection", %{id: ^visit})
+    render_patch(view, @second)
+    render_async(view, 5000)
+    refute has_element?(view, ".visit-row--selected")
+    assert_push_event(view, "visit:selection", %{id: nil})
+    render_hook(view, "map:select", %{"kind" => "visit", "id" => -1})
+    refute has_element?(view, ".visit-row--selected")
+    assert rows("SELECT count(*) FROM visits WHERE user_id=$1", [id]) == [[1]]
+  end
+
   test "native production host loads and refreshes only the open timeline", %{id: id} do
     track = id * 10
 

@@ -30,7 +30,7 @@ defmodule DawarichWeb.MapLive.NativeConfig do
       "heatmapEnabled" => "Heatmap" in layers,
       "photosEnabled" => "Photos" in layers,
       "placesEnabled" => "Places" in layers,
-      "visitsEnabled" => "Visits" in layers,
+      "visitsEnabled" => panel == "timeline" or "Visits" in layers,
       "areasEnabled" => "Areas" in layers,
       "familyEnabled" => "Family Members" in layers,
       "mapOptions" => %{

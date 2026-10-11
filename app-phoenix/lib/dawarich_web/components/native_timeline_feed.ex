@@ -17,6 +17,7 @@ defmodule DawarichWeb.NativeTimelineFeed do
   attr :timeline, :map, default: nil
   attr :filter, :map, default: nil
   attr :selection, :map, default: nil
+  attr :selected_visit, :any, default: nil
   attr :tags, :list, default: []
   attr :locale, :string, required: true
 
@@ -110,6 +111,7 @@ defmodule DawarichWeb.NativeTimelineFeed do
         locale={@locale}
         redetected={@timeline.feed.redetected}
         selection={@selection && @selection.day == day.date && @selection}
+        selected_visit={@selected_visit}
       />
     </section>
     """
@@ -138,6 +140,7 @@ defmodule DawarichWeb.NativeTimelineFeed do
   attr :locale, :string, required: true
   attr :redetected, :boolean, default: false
   attr :selection, :any, default: nil
+  attr :selected_visit, :any, default: nil
 
   defp day(assigns) do
     date = Date.from_iso8601!(assigns.day.date)
@@ -214,6 +217,7 @@ defmodule DawarichWeb.NativeTimelineFeed do
                 locale={@locale}
                 redetected={@redetected}
                 selection={@selection && @selection.ids}
+                selected={@selected_visit == entry.visit_id}
               />
             <% "gap" -> %>
               <NativeTimelineEntries.gap entry={entry} locale={@locale} />

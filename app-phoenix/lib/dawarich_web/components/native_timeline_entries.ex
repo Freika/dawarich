@@ -10,6 +10,7 @@ defmodule DawarichWeb.NativeTimelineEntries do
   attr :locale, :string, required: true
   attr :redetected, :boolean, default: false
   attr :selection, :any, default: nil
+  attr :selected, :boolean, default: false
 
   def visit(assigns) do
     entry = assigns.entry
@@ -28,6 +29,7 @@ defmodule DawarichWeb.NativeTimelineEntries do
       id={"native-visit-#{@entry.visit_id}"}
       class={[
         "visit-row min-w-0",
+        @selected && "visit-row--selected",
         @all_day && "visit-row--all-day",
         @subdued && "visit-row--subdued",
         @low && "visit-row--lowconf"
@@ -48,9 +50,15 @@ defmodule DawarichWeb.NativeTimelineEntries do
         phx-value-id={@entry.visit_id}
         aria-label={@parts.primary}
       />
-      <div class="visit-row__time">
+      <button
+        type="button"
+        class="visit-row__time"
+        phx-click="visit:select"
+        phx-value-id={@entry.visit_id}
+        aria-label={@parts.primary}
+      >
         {if @all_day, do: v(@locale, "all_day"), else: @start_label}
-      </div>
+      </button>
       <div class="visit-row__rail"><span class="visit-status-dot"></span></div>
       <div class="visit-row__content min-w-0">
         <div class="visit-row__title [overflow-wrap:anywhere]">{@parts.primary}</div>

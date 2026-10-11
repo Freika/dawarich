@@ -73,6 +73,13 @@ defmodule DawarichWeb.MapLive.Native do
         socket = DawarichWeb.MapLive.TrackCommands.resume(socket)
 
         socket =
+          DawarichWeb.MapLive.VisitNavigation.params(
+            socket,
+            previous != socket.assigns.map_revision or old_panel != params["panel"] or
+              old_date != params["date"]
+          )
+
+        socket =
           if connected?(socket) and params["panel"] == "timeline" and
                (previous != socket.assigns.map_revision or old_panel != "timeline"),
              do: DawarichWeb.MapLive.Timeline.refresh(socket, params),
@@ -129,8 +136,14 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event("map:select", %{"kind" => "area", "id" => id}, socket),
     do: DawarichWeb.MapLive.AreaCommands.handle_event("area:edit", %{"id" => id}, socket)
 
+  def handle_event("map:select", %{"kind" => "visit", "id" => id}, socket),
+    do: DawarichWeb.MapLive.VisitNavigation.select(socket, id)
+
+  def handle_event("visit:select", %{"id" => id}, socket),
+    do: DawarichWeb.MapLive.VisitNavigation.select(socket, id)
+
   def handle_event("map:select", %{"kind" => kind, "id" => id}, socket)
-      when kind in ~w(place visit),
+      when kind == "place",
       do: DawarichWeb.MapLive.EntityCommands.handle_event(kind <> ":edit", %{"id" => id}, socket)
 
   def handle_event("visits:bulk" = event, payload, socket),

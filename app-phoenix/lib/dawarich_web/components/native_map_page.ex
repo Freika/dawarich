@@ -99,6 +99,7 @@ defmodule DawarichWeb.NativeMapPage do
           timeline={assigns[:timeline]}
           filter={assigns[:timeline_filter]}
           selection={assigns[:timeline_selection]}
+          selected_visit={assigns[:selected_visit]}
           tags={@page.timeline_tags}
           locale={@locale}
         />
