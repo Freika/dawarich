@@ -17,8 +17,9 @@ const canReveal = () =>
   !document.hidden && !document.querySelector("dialog[open]")
 
 export class AchievementUnlocksLifecycle {
-  constructor(el) {
+  constructor(el, loadMaterial = () => import("../achievements/material.js")) {
     this.el = el
+    this.loadMaterial = loadMaterial
   }
   start() {
     this.generation = (this.generation || 0) + 1
@@ -55,6 +56,8 @@ export class AchievementUnlocksLifecycle {
   stop() {
     this.generation += 1
     this.stopped = true
+    this.disposeMaterial?.()
+    this.disposeMaterial = null
     clearTimeout(this.ackTimer)
     clearTimeout(this.retryTimer)
     clearTimeout(this.transitionTimer)
@@ -110,7 +113,11 @@ export class AchievementUnlocksLifecycle {
         this.retryTimer = this.later(() => this.load(), 1000)
         return
       }
+      this.disposeMaterial?.()
+      this.disposeMaterial = null
       this.el.innerHTML = item.html
+      await this.decorate(generation)
+      if (!this.active(generation)) return
       if (this.focusAfterLoad) {
         this.el
           .querySelector(".ach-unlock-front")
@@ -129,6 +136,12 @@ export class AchievementUnlocksLifecycle {
     } finally {
       if (generation === this.generation) this.loading = false
     }
+  }
+
+  async decorate(generation) {
+    const { initializeAchievementMaterials } = await this.loadMaterial()
+    if (this.active(generation))
+      this.disposeMaterial = initializeAchievementMaterials(this.el)
   }
 
   async nextCard() {
@@ -228,6 +241,8 @@ export class AchievementUnlocksLifecycle {
   }
 
   hide() {
+    this.disposeMaterial?.()
+    this.disposeMaterial = null
     clearTimeout(this.ackTimer)
     clearTimeout(this.retryTimer)
     this.current = null
