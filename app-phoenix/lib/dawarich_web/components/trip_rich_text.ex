@@ -17,7 +17,7 @@ defmodule DawarichWeb.TripRichText do
       phx-update="ignore"
       data-revision={@revision}
       data-upload-failed={t(@locale, "javascript.upload.none_uploaded", %{})}
-      class="trip-rich-text [&_.trix-button-group--file-tools]:inline-flex"
+      class="trip-rich-text [&_trix-toolbar_.trix-button-group--file-tools]:inline-flex"
     >
       <input type="hidden" id={"#{@id}-input"} name={@name} value={@value} />
       <trix-editor
