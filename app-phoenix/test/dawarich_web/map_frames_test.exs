@@ -2,6 +2,7 @@ defmodule DawarichWeb.MapFramesTest do
   use Dawarich.JobsCase, async: false
 
   import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
   import Plug.Conn
 
   alias Dawarich.Test.FrameSeeds, as: S
@@ -25,6 +26,17 @@ defmodule DawarichWeb.MapFramesTest do
       |> put_req_header("x-turbo-request-id", "a6s2-frame")
       |> get(path)
 
+  defp native_map(user) do
+    {:ok, view, _} =
+      live(
+        RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id),
+        "/map/v2?panel=timeline&date=2026-09-27&start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59"
+      )
+
+    render_async(view)
+    view
+  end
+
   describe "the track card" do
     setup %{user: user} do
       S.track!(user.id, 7221, %{
@@ -40,30 +52,39 @@ defmodule DawarichWeb.MapFramesTest do
       :ok
     end
 
-    test "an owner gets Rails' card with Rails' headers", %{user: user} do
-      conn = frame_get(user, "/map/timeline_feeds/7221/track_info")
-      html = html_response(conn, 200)
+    test "native owner opens the scoped track card with replay sharing and segment controls", %{
+      user: user
+    } do
+      view = native_map(user)
+      render_hook(view, "track:toggle", %{"id" => "7221"})
+      assert has_element?(view, "#native-track-info[data-track-id='7221']", "12.3 km")
 
-      assert get_resp_header(conn, "content-type") == ["text/html; charset=utf-8"]
-      assert get_resp_header(conn, "vary") == ["Accept"]
-      assert get_resp_header(conn, "x-frame-options") == ["SAMEORIGIN"]
-      assert html =~ ~s(<turbo-frame id="track-info-7221">)
-      assert html =~ ~s(data-track-start="2026-09-27T07:00:00+02:00")
-      assert html =~ ~s(href="/tracks/7221/share_link/new")
-      assert html =~ ~s(src="/tracks/7221/segments")
-      assert html =~ "12.3 km"
-      assert html =~ ~s(id="track-replay-play-icon")
-      refute html =~ "↓"
+      assert has_element?(
+               view,
+               "[data-track-replay][data-track-start='2026-09-27T07:00:00+02:00']"
+             )
+
+      assert has_element?(view, "a[href='/tracks/7221/share_link/new']")
+      assert has_element?(view, "button[phx-click='segments:open'][phx-value-track_id='7221']")
+      refute has_element?(view, "turbo-frame, [data-controller]")
+      refute render(view) =~ "↓"
     end
 
-    test "a browser-like or empty Accept gets no Vary", %{user: user} do
-      for accept <- [@browser, ""] do
-        assert frame_get(user, "/map/timeline_feeds/7221/track_info", accept)
-               |> get_resp_header("vary") == []
+    test "a browser-like or empty Accept gets no Vary", %{
+      user: user
+    } do
+      for accept <- [@frame, @browser, ""] do
+        conn = frame_get(user, "/map/timeline_feeds/7221/track_info", accept)
+        assert conn.status == 410
+        assert conn.resp_body == "This map command is available through the native map."
+        assert get_resp_header(conn, "cache-control") == ["no-store"]
+        assert get_resp_header(conn, "set-cookie") == []
       end
     end
 
-    test "another user's track is Rails' 404", %{user: user} do
+    test "native track selection refuses another owner and clears the selected track", %{
+      user: user
+    } do
       other = S.user!(7022)
 
       S.track!(other.id, 7222, %{
@@ -71,18 +92,29 @@ defmodule DawarichWeb.MapFramesTest do
         end_at: ~N[2026-09-27 06:00:00]
       })
 
-      assert_error_sent 404, fn -> frame_get(user, "/map/timeline_feeds/7222/track_info") end
+      view = native_map(user)
+      render_hook(view, "track:toggle", %{"id" => "7221"})
+      assert has_element?(view, "#native-track-info[data-track-id='7221']")
+      render_hook(view, "track:toggle", %{"id" => "7222"})
+      refute has_element?(view, "#native-track-info")
+      assert :sys.get_state(view.pid).socket.assigns.track_info == nil
+      assert_push_event(view, "track:selection", %{id: nil, points: false})
     end
 
-    test "a signed-out request is Devise's redirect with the return path and alert" do
-      conn =
+    test "native map guests receive sign-in and retired track reads expose no data" do
+      conn = build_conn() |> get("/map/v2?panel=timeline")
+      assert redirected_to(conn, 302) == "http://www.example.com/users/sign_in"
+      assert [cookie] = get_resp_header(conn, "set-cookie")
+      assert cookie =~ "_dawarich_session="
+
+      retired =
         build_conn()
         |> put_req_header("accept", @frame)
         |> get("/map/timeline_feeds/7221/track_info")
 
-      assert redirected_to(conn, 302) == "http://www.example.com/users/sign_in"
-      assert [cookie] = get_resp_header(conn, "set-cookie")
-      assert cookie =~ "_dawarich_session="
+      assert retired.status == 410
+      refute retired.resp_body =~ "7221"
+      assert get_resp_header(retired, "set-cookie") == []
     end
   end
 
@@ -104,7 +136,9 @@ defmodule DawarichWeb.MapFramesTest do
   describe "the day feed" do
     @feed "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59"
 
-    test "renders the day, its rows and the forms with the session's masked token", %{user: user} do
+    test "native day feed preserves owned visits journeys local times and scoped actions", %{
+      user: user
+    } do
       S.place!(user.id, 7321, "Café Kowalski, Karl-Liebknecht-Straße, 10, Leipzig, Sachsen")
 
       S.visit!(user.id, 7121, %{
@@ -128,20 +162,31 @@ defmodule DawarichWeb.MapFramesTest do
         duration: 1800
       })
 
-      html = user |> frame_get(@feed) |> html_response(200)
+      view = native_map(user)
+      assert has_element?(view, "#native-timeline-feed [data-day='2026-09-27']")
+      assert has_element?(view, "#native-visit-7121[data-started-at='2026-09-27T08:00:00+02:00']")
+      assert has_element?(view, "#native-visit-7122")
+      assert has_element?(view, "[data-track-id='7223'][data-entry=journey]")
 
-      assert html =~ ~s(<turbo-frame id="timeline-feed-frame">)
-      assert html =~ ~s(data-day="2026-09-27")
-      assert html =~ ~s(id="visit_entry_7121")
-      assert html =~ ~s(data-started-at="2026-09-27T08:00:00+02:00")
-      assert html =~ ~s(data-max-bulk-visits="500")
-      assert html =~ ~s(action="/visits/7121")
-      assert html =~ ~s(data-frame-id="track-info-7223")
-      assert html =~ "Karl-Liebknecht-Straße 10, Leipzig"
-      assert length(Regex.scan(~r/name="authenticity_token" value="[^"]+"/, html)) == 6
+      assert has_element?(
+               view,
+               "#native-visit-7121 button[phx-click='visit:edit'][phx-value-id='7121']"
+             )
+
+      assert has_element?(
+               view,
+               "#native-visit-7121 button[phx-click='visit:delete'][phx-value-id='7121']"
+             )
+
+      assert render(view) =~ "Karl-Liebknecht-Straße 10, Leipzig"
+
+      refute has_element?(
+               view,
+               "turbo-frame, #native-timeline-feed input[name=authenticity_token]"
+             )
     end
 
-    test "leaves the session's pending flash and token alone", %{user: user} do
+    test "retired day feed leaves pending flash and session token unchanged", %{user: user} do
       S.visit!(user.id, 7124, %{
         started_at: ~N[2026-09-27 06:00:00],
         ended_at: ~N[2026-09-27 07:00:00]
@@ -154,11 +199,11 @@ defmodule DawarichWeb.MapFramesTest do
         |> put_req_header("accept", @frame)
         |> get(@feed)
 
-      assert conn.status == 200
+      assert conn.status == 410
       assert get_resp_header(conn, "set-cookie") == []
     end
 
-    test "a session without a token gets one when the feed renders forms, as form_with creates it",
+    test "native timeline commands need no Rails form token from the retired feed",
          %{user: user} do
       cookie = user.id |> RailsUser.session() |> Map.delete("_csrf_token") |> RailsUser.cookie()
 
@@ -176,22 +221,20 @@ defmodule DawarichWeb.MapFramesTest do
         ended_at: ~N[2026-09-27 07:00:00]
       })
 
-      assert [set] = request.() |> get_resp_header("set-cookie")
-      [_, value] = Regex.run(~r/_dawarich_session=([^;]+)/, set)
-
-      read =
-        build_conn()
-        |> put_req_cookie("_dawarich_session", value)
-        |> DawarichWeb.RailsAuth.call([])
-
-      assert is_binary(read.assigns.rails_session["_csrf_token"])
+      assert request.().status == 410
+      assert request.() |> get_resp_header("set-cookie") == []
+      view = native_map(user)
+      assert has_element?(view, "#native-visit-7123 button[phx-click='visit:edit']")
+      refute has_element?(view, "#native-timeline-feed input[name=authenticity_token]")
     end
 
-    test "an empty day keeps the day navigator for the requested date", %{user: user} do
-      html = user |> frame_get(@feed) |> html_response(200)
-
-      assert html =~ ~s(data-testid="day-header-label">Sunday, September 27<)
-      refute html =~ "timeline-entries"
+    test "native empty day keeps navigation for the requested date", %{user: user} do
+      view = native_map(user)
+      assert has_element?(view, "[data-testid=day-header-label]", "Sunday, September 27")
+      assert has_element?(view, "button[phx-click='calendar:day'][phx-value-date='2026-09-26']")
+      assert has_element?(view, "button[phx-click='calendar:day'][phx-value-date='2026-09-28']")
+      assert render(view) =~ "No visits tracked this day"
+      refute has_element?(view, "[data-entry=visit], [data-entry=journey]")
     end
   end
 
@@ -209,42 +252,37 @@ defmodule DawarichWeb.MapFramesTest do
   end
 
   describe "the calendar" do
-    test "Turbo's stream request gets the replace stream, a frame request the frame", %{
+    test "native calendar event renders the selected month while retired transports refuse", %{
       user: user
     } do
-      stream =
-        frame_get(
-          user,
-          "/map/timeline_feeds/calendar?month=2026-09",
-          "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"
-        )
+      view = native_map(user)
+      render_hook(view, "calendar:month", %{"month" => "2026-09"})
+      render_async(view)
 
-      frame = frame_get(user, "/map/timeline_feeds/calendar?month=2026-09")
+      assert has_element?(
+               view,
+               "#native-timeline-calendar [data-testid=calendar-title]",
+               "September 2026"
+             )
 
-      assert get_resp_header(stream, "content-type") == [
-               "text/vnd.turbo-stream.html; charset=utf-8"
-             ]
+      assert has_element?(view, "button[data-day='2026-09-27'][phx-click='calendar:day']")
 
-      assert stream.resp_body =~
-               ~r/\A<turbo-stream action="replace" target="timeline-calendar-frame"><template><turbo-frame id="timeline-calendar-frame">/
-
-      assert html_response(frame, 200) =~ ~s(<turbo-frame id="timeline-calendar-frame">)
-      assert get_resp_header(frame, "vary") == ["Accept"]
+      for accept <- [@frame, "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"] do
+        conn = frame_get(user, "/map/timeline_feeds/calendar?month=2026-09", accept)
+        assert conn.status == 410
+        refute conn.resp_body =~ "turbo-"
+      end
     end
 
-    test "a lone */* gets the stream; browser-like and empty Accept get HTML without Vary", %{
+    test "retired calendar refuses wildcard browser and empty Accept without session writes", %{
       user: user
     } do
-      path = "/map/timeline_feeds/calendar?month=2026-09"
-
-      assert frame_get(user, path, "*/*") |> get_resp_header("content-type") == [
-               "text/vnd.turbo-stream.html; charset=utf-8"
-             ]
-
-      for accept <- [@browser, ""] do
-        conn = frame_get(user, path, accept)
-        assert get_resp_header(conn, "content-type") == ["text/html; charset=utf-8"]
-        assert get_resp_header(conn, "vary") == []
+      for accept <- ["*/*", @browser, ""] do
+        conn = frame_get(user, "/map/timeline_feeds/calendar?month=2026-09", accept)
+        assert conn.status == 410
+        assert get_resp_header(conn, "content-type") == ["text/plain; charset=utf-8"]
+        assert get_resp_header(conn, "set-cookie") == []
+        refute conn.resp_body =~ "turbo-"
       end
     end
   end
