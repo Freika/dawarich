@@ -46,6 +46,8 @@ export function createViewportFit(reader, element) {
       {
         padding: panelPadding({
           container: map.getContainer?.(),
+          notice: () =>
+            element?.ownerDocument?.querySelector("#demo-data-banner"),
           overlay: () =>
             element
               ?.closest?.("[data-native-map-root]")

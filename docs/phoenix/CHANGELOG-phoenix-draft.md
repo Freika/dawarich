@@ -270,3 +270,5 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 - Hide public trip and track point coordinates when the owner disables the shared route. [FRB-NATIVE-STAGE2-PUBLIC-ROUTE](fixed-rails-bugs.md#frb-native-stage2-public-route--disabled-shared-routes-still-expose-point-coordinates)
 
 - Refresh native point and track tiles after paused style updates so deleted points disappear without rebuilding the map. [FRB-NATIVE-STAGE2-PAUSED-TILES](fixed-rails-bugs.md#frb-native-stage2-paused-tiles--deleted-points-remain-painted-after-map-updates)
+
+- Keep fitted native map pins clear of an overlapping demo-data banner. [FRB-NATIVE-STAGE2-DEMO-CLEARANCE](fixed-rails-bugs.md#frb-native-stage2-demo-clearance--demo-banner-covers-fitted-map-pins)

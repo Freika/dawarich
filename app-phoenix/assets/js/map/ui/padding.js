@@ -19,10 +19,27 @@ export function overlayAwarePadding(mapRect, overlayRect) {
   return padding
 }
 
-export function panelPadding({ container, overlay }) {
-  return () =>
-    overlayAwarePadding(
-      container?.getBoundingClientRect(),
+export function panelPadding({ container, overlay, notice }) {
+  return () => {
+    const mapRect = container?.getBoundingClientRect()
+    const padding = overlayAwarePadding(
+      mapRect,
       overlay()?.getBoundingClientRect(),
     )
+    const rect = notice?.()?.getBoundingClientRect()
+    if (
+      mapRect &&
+      rect &&
+      rect.left < mapRect.right &&
+      rect.right > mapRect.left &&
+      rect.top < mapRect.bottom &&
+      rect.bottom > mapRect.top
+    ) {
+      padding.bottom = Math.max(
+        padding.bottom,
+        Math.ceil(mapRect.bottom - rect.top + OVERLAY_GAP),
+      )
+    }
+    return padding
+  }
 }

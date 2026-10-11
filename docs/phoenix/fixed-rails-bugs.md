@@ -1963,3 +1963,12 @@ Rails point and track invalidations reload vector tiles synchronously. When a st
 - Phoenix: `app-phoenix/assets/js/map/layers/tile_refresh.js:1`; callers `points_mvt.js:162`, `tracks_mvt.js:175`.
 - Test: “native point and track invalidations fetch fresh tiles after a paused style frame”; synchronous-refresh mutation fails. Existing in-place refresh cases now drive the owned render event and still assert retained layers and fresh versions.
 - Ledger: ED-NATIVE-STAGE2-PAUSED-TILES; no DRB. Rails production code unchanged.
+
+### FRB-NATIVE-STAGE2-DEMO-CLEARANCE — Demo banner covers fitted map pins
+
+The fixed bottom demo banner can cover a fitted visit pin and intercept its real pointer target. Rails fits against toolbar clearance only, also omitting the banner. Native initial bounds measure the banner's overlap with the current map and reserve bottom clearance; removed and offscreen banners retain normal padding.
+
+- Rails: `app/javascript/controllers/maps/maplibre/map_data_manager.js:509`; `app/javascript/maps_maplibre/utils/map_padding.js:5`; banner `app/views/layouts/map.html.erb:50`.
+- Phoenix: `app-phoenix/assets/js/map/ui/padding.js:23`; `app-phoenix/assets/js/map/runtime/viewport_fit.js:47`.
+- Test: “native bounds keep points above an overlapping demo banner and release retired clearance”; omitting notice measurement fails it. Browser obstruction identified with actual elementFromPoint ancestry, without reading banner text.
+- Ledger: ED-NATIVE-STAGE2-DEMO-CLEARANCE; no DRB. Rails production code unchanged.
