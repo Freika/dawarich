@@ -196,3 +196,5 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 - Erase private map content immediately when the browser goes offline and reload freshly admitted snapshots on reconnect (FRB-NATIVE-S1E3-OFFLINE-ERASURE).
 
 - Keep persistent map retry notifications from blocking replay controls while preserving clickable recovery actions (FRB-NATIVE-S1E3-TOAST-INTERCEPTION).
+
+- Keep map retry messages and recovery actions within narrow German layouts by removing inherited fit-content and nowrap constraints (FRB-NATIVE-S1E3-TOAST-INTERCEPTION).

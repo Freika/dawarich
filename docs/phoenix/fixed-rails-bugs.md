@@ -1606,3 +1606,5 @@ Rails map notifications inherit DaisyUI fixed positioning and accept pointer eve
 - Rails/Phoenix shared map source: `app/javascript/maps_maplibre/components/toast.js:63`; Phoenix consumer: `app-phoenix/priv/static/js/map_shell.js:64`.
 - Tests: `a persistent error notification leaves the next replay point clickable`; original acceptance successor `next cycle button advances to next point`. Restoring fixed bottom positioning and message pointer events fails the focused browser regression.
 - Ledger: ED-NATIVE-S1E3-TOAST-INTERCEPTION; no DRB. The shared Rails map client receives the same correction.
+
+The same DaisyUI collision imposes a fit-content minimum width and nowrap text, putting German messages and recovery controls outside a 390-pixel viewport. The scoped map notification resets those inherited constraints, bounds its container and wraps both message and action. The focused browser case measures the document and every text Range after the slide-in animation settles.
