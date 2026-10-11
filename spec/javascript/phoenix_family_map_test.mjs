@@ -112,7 +112,7 @@ function fixture(options = {}) {
         mapOptions: {},
       }),
     },
-    ownerDocument: { createElement: () => ({ style: {}, remove() {} }) },
+    ownerDocument: { defaultView: options.window, createElement: () => ({ style: {}, remove() {} }) },
     appendChild() {},
   }
   const reader = {
@@ -559,4 +559,30 @@ test("native Family offline blocks queued refreshes until fresh admission online
   } finally {
     f.owner.destroy()
   }
+})
+
+
+test("native Family offline owns erasure refresh and window listener teardown lazily", async () => {
+  const window = new EventTarget()
+  const f = fixture({ window })
+  try {
+    await f.owner.mount()
+    assert.equal(f.sources.get("family-members").data.features.length, 1)
+    window.dispatchEvent(new Event("offline"))
+    assert.equal(f.sources.get("family-members").data.features.length, 0)
+    const reads = f.reads.length
+    await f.owner.reconnect()
+    assert.equal(f.reads.length, reads)
+    window.dispatchEvent(new Event("online"))
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(f.sources.get("family-members").data.features.length, 1)
+    assert.equal(f.reads.length, reads + 2)
+  } finally {
+    f.owner.destroy()
+  }
+  const reads = f.reads.length
+  window.dispatchEvent(new Event("online"))
+  window.dispatchEvent(new Event("offline"))
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(f.reads.length, reads)
 })

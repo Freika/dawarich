@@ -1613,8 +1613,8 @@ Rails renders centered human-date tooltips at the right edge of the import table
 Rails family maps retain coordinates when the browser goes offline; Stimulus disconnect runs only when the controller leaves the document. Phoenix erases private family/public content immediately on the browser offline event, rejects intervening snapshots, and requests fresh admitted state when online.
 
 - Rails: `app/javascript/controllers/family_map_controller.js:21,28`.
-- Phoenix: `app-phoenix/assets/js/map/shared/lazy_maps.js:8`; native family successor `app-phoenix/assets/js/map/hooks/family.js:24`, `app-phoenix/assets/js/map/family/runtime.js:104`.
-- Tests: `browser offline erases lazy family content before heartbeat and requests fresh state on online`; public-map counterpart; `native Family offline erases immediately and online refreshes with owned listeners`; `native Family offline blocks queued refreshes until fresh admission online`. Removing the offline listener or the native refresh admission fails its named successor.
+- Phoenix: `app-phoenix/assets/js/map/shared/lazy_maps.js:8`; native family successor `app-phoenix/assets/js/map/hooks/family.js:17`, `app-phoenix/assets/js/map/family/runtime.js:158`.
+- Tests: `browser offline erases lazy family content before heartbeat and requests fresh state on online`; public-map counterpart; `native Family disconnected erases immediately and reconnects fresh`; `native Family offline owns erasure refresh and window listener teardown lazily`; `native Family offline blocks queued refreshes until fresh admission online`. Removing the offline listener or the native refresh admission fails its named successor.
 - Ledger: ED-NATIVE-S1E3-OFFLINE-ERASURE; no DRB. Rails source unchanged.
 
 ### FRB-NATIVE-S1E3-TOAST-INTERCEPTION — Retry notifications block replay controls

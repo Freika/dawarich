@@ -98,7 +98,7 @@ test("Family hook relays the latest server lease after lazy mount and clears an 
 })
 
 
-test("native Family offline erases immediately and online refreshes with owned listeners", async () => {
+test("native Family disconnected erases immediately and reconnects fresh", async () => {
   const window = new EventTarget()
   let cleared = 0, refreshed = 0
   const hook = {
@@ -114,20 +114,16 @@ test("native Family offline erases immediately and online refreshes with owned l
   }
   try {
     await hook.mounted()
-    window.dispatchEvent(new Event("offline"))
-    assert.equal(cleared, 1)
-    assert.equal(hook.familyOffline, true)
     hook.disconnected()
-    assert.equal(cleared, 2)
-    window.dispatchEvent(new Event("online"))
+    assert.equal(cleared, 1)
+    hook.reconnected()
     await new Promise(resolve => setTimeout(resolve, 30))
     assert.equal(refreshed, 1)
-    assert.equal(hook.familyOffline, false)
   } finally {
     hook.destroyed()
   }
   window.dispatchEvent(new Event("offline"))
   window.dispatchEvent(new Event("online"))
-  assert.equal(cleared, 2)
+  assert.equal(cleared, 1)
   assert.equal(refreshed, 1)
 })

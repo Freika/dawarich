@@ -27,6 +27,9 @@ export function mountFamily({
     empty.style.display = visible ? "" : "none"
   }
   let overlay, library, overlayLocale, leaseTimer, leaseToken
+  const window = element.ownerDocument?.defaultView
+  let offline = window?.navigator?.onLine === false
+  const unavailable = () => offline || isOffline() || window?.liveSocket?.isConnected?.() === false
   let destroyed = false
   let leaseDeadline = now() + 30000
   const reads = createRequestScope(timers)
@@ -74,7 +77,7 @@ export function mountFamily({
       overlay.clear()
       showEmpty(true)
       reads.reset()
-      if (isOffline()) return
+      if (unavailable()) return
       const read = reads.begin(signal)
       try {
         const [latest, history] = await operation.wait(
@@ -96,7 +99,7 @@ export function mountFamily({
         )
         operation.check()
         read.check()
-        if (isOffline() || now() >= leaseDeadline) return
+        if (unavailable() || now() >= leaseDeadline) return
         overlay.replace(latest.data.locations, history.data.members)
         showEmpty(latest.data.locations.length === 0)
       } finally {
@@ -134,9 +137,21 @@ export function mountFamily({
     overlay?.clear()
     showEmpty(true)
   }
+  const onOffline = () => {
+    offline = true
+    owner.clear()
+  }
+  const onOnline = () => {
+    offline = false
+    void owner.reconnect()
+  }
+  window?.addEventListener("offline", onOffline)
+  window?.addEventListener("online", onOnline)
   const destroy = owner.destroy
   owner.destroy = () => {
     destroyed = true
+    window?.removeEventListener("offline", onOffline)
+    window?.removeEventListener("online", onOnline)
     timers.clearTimeout(leaseTimer)
     reads.destroy()
     overlay?.clear()
