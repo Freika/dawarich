@@ -86,14 +86,8 @@ defmodule Dawarich.Build.DockerfileTest do
 
     for copy <- [
           "COPY --from=phoenix_builder /build/_build/prod/rel/dawarich /opt/dawarich",
-          "COPY --from=phoenix_builder /out/public/assets public/assets",
-          "COPY --from=phoenix_builder /out/config/sprockets-manifest.json config/sprockets-manifest.json",
           "COPY --from=phoenix_builder /out/tmp/phoenix tmp/phoenix",
-          "COPY --from=phoenix_builder #{builder_css_path()} #{@css}",
           "COPY --from=poster_builder /renderer vendor/poster_renderer",
-          "COPY app/javascript app/javascript",
-          "COPY app/assets/fonts app/assets/fonts",
-          "COPY vendor/javascript vendor/javascript",
           "COPY config/storage.yml config/storage.yml",
           "COPY .app_version .app_version"
         ] do
@@ -116,7 +110,7 @@ defmodule Dawarich.Build.DockerfileTest do
     refute payload =~ "ENV LD_LIBRARY_PATH"
 
     {"phoenix_builder", builder} = List.keyfind(stages(), "phoenix_builder", 0)
-    assert "COPY lib/assets lib/assets" in builder
+    assert "COPY lib/assets /src/lib/assets" in builder
     assert "COPY config/shared_link_wordlist.txt priv/shared_link_wordlist.txt" in builder
     assert "COPY lib/assets/admin1_world.geojson priv/admin1_world.geojson" in builder
     assert "COPY lib/assets/countries.geojson.gz priv/countries.geojson.gz" in builder
@@ -174,8 +168,98 @@ defmodule Dawarich.Build.DockerfileTest do
     assert Enum.join(native, "\n") =~ "dawarich eval 'Dawarich.Release.check_runtime_apps!()'"
   end
 
+  test "native release payload omits legacy browser loaders and includes renderer data" do
+    native = Enum.join(native_stage(), "\n")
+    refute native =~ "COPY app/javascript"
+    refute native =~ "COPY vendor/javascript"
+    refute native =~ "sprockets-manifest.json"
+    refute native =~ "public/assets"
+    refute native =~ "app/assets/builds"
+    assert native =~ "COPY --from=phoenix_builder /build/_build/prod/rel/dawarich /opt/dawarich"
+    assert native =~ "COPY --from=phoenix_builder /out/tmp/phoenix tmp/phoenix"
+    assert native =~ "COPY public/maplibre public/maplibre"
+
+    assert native =~
+             "COPY app/assets/svg/icons/flags/landscape app/assets/svg/icons/flags/landscape"
+
+    builder = List.keyfind(stages(), "phoenix_builder", 0) |> elem(1)
+
+    sources =
+      for "COPY " <> copy <- builder,
+          source <- copy |> String.split() |> Enum.drop(-1),
+          do: source
+
+    for source <- sources do
+      assert File.exists?(Path.join(Dawarich.Build.root(), source)), source
+    end
+
+    manifest = File.read!("assets/native-static.json") |> Jason.decode!()
+
+    for [input, _] <- manifest["copies"] do
+      assert Enum.any?(sources, &(input == &1 or String.starts_with?(input, &1 <> "/"))), input
+    end
+
+    renderer = List.keyfind(stages(), "poster_builder", 0) |> elem(1) |> Enum.join("\n")
+    assert renderer =~ "COPY vendor/poster_renderer/fonts fonts"
+    assert renderer =~ "COPY app-phoenix/assets/server/poster_loader.mjs loader.mjs"
+
+    for input <-
+          ~w(data/theme_loader data/protomaps_schema export/pdf_encoder export/png_encoder render/overlay render/style_builder render/text_layout) do
+      assert renderer =~ "app-phoenix/assets/js/poster/#{input}.js"
+    end
+  end
+
+  @tag :tmp_dir
+  test "native renderer imports its declared pure modules without Rails browser directories", %{
+    tmp_dir: tmp
+  } do
+    root = Dawarich.Build.root()
+    renderer = List.keyfind(stages(), "poster_builder", 0) |> elem(1)
+
+    for "COPY " <> copy <- renderer do
+      paths = String.split(copy)
+      sources = Enum.drop(paths, -1)
+      destination = List.last(paths)
+
+      for source <- sources do
+        target =
+          if length(sources) > 1 or String.ends_with?(destination, "/"),
+            do: Path.join(destination, Path.basename(source)),
+            else: destination
+
+        target = Path.join(tmp, target)
+        File.mkdir_p!(Path.dirname(target))
+        File.cp_r!(Path.join(root, source), target)
+      end
+    end
+
+    File.ln_s!(Path.join(root, "app-phoenix/assets/node_modules"), Path.join(tmp, "node_modules"))
+    refute File.exists?(Path.join(tmp, "app/javascript"))
+
+    script = """
+    import { resolveTheme } from 'poster_studio/data/theme_loader';
+    import { encodePdf } from 'poster_studio/export/pdf_encoder';
+    import { encodePng } from 'poster_studio/export/png_encoder';
+    import { drawOverlay } from 'poster_studio/render/overlay';
+    import { buildPosterStyle } from 'poster_studio/render/style_builder';
+    import { formatCoords } from 'poster_studio/render/text_layout';
+    for (const fn of [resolveTheme, encodePdf, encodePng, drawOverlay, buildPosterStyle, formatCoords]) {
+      if (typeof fn !== 'function') throw new Error('missing renderer export');
+    }
+    console.log('native-renderer-imports-ok');
+    """
+
+    assert {"native-renderer-imports-ok\n", 0} =
+             System.cmd(
+               "node",
+               ["--import", "./register.mjs", "--input-type=module", "-e", script],
+               cd: tmp,
+               stderr_to_stdout: true
+             )
+  end
+
   defp builder_css_path do
-    {"phoenix_builder", lines} = List.keyfind(stages(), "phoenix_builder", 0)
+    {"rails_frontend_builder", lines} = List.keyfind(stages(), "rails_frontend_builder", 0)
     tailwind = Enum.find_index(lines, &String.contains?(&1, "node_modules/.bin/tailwindcss"))
     assert tailwind, "the builder stage no longer runs Tailwind"
 
@@ -197,7 +281,10 @@ defmodule Dawarich.Build.DockerfileTest do
     checkout = Enum.find_index(final, &Regex.match?(~r/^COPY \.\.\/\.\s/, &1))
 
     fresh =
-      Enum.find_index(final, &(&1 == "COPY --from=phoenix_builder #{builder_css_path()} #{@css}"))
+      Enum.find_index(
+        final,
+        &(&1 == "COPY --from=rails_frontend_builder #{builder_css_path()} #{@css}")
+      )
 
     assert checkout, "the final stage no longer copies the checkout"
     assert fresh, "the final stage does not copy the builder's #{@css}"

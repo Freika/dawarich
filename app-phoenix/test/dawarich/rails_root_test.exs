@@ -9,9 +9,7 @@ defmodule Dawarich.RailsRootTest do
 
     caches = [
       Dawarich.I18n,
-      Dawarich.Achievements.Registry,
-      DawarichWeb.Assets,
-      {DawarichWeb.Assets, :rails_imports}
+      Dawarich.Achievements.Registry
     ]
 
     cached = Map.new(caches, &{&1, :persistent_term.get(&1, nil)})
@@ -31,16 +29,6 @@ defmodule Dawarich.RailsRootTest do
         "definitions" => [],
         "transliteration" => %{"default" => %{}, "rules" => %{}}
       })
-    )
-
-    File.write!(
-      Path.join(root, "tmp/phoenix/importmap.json"),
-      Jason.encode!(%{"imports" => %{"release" => "/assets/release.js"}})
-    )
-
-    File.write!(
-      Path.join(root, "config/sprockets-manifest.json"),
-      Jason.encode!(%{"assets" => %{"release.css" => "release-123.css"}})
     )
 
     app_path = System.get_env("APP_PATH")
@@ -75,8 +63,7 @@ defmodule Dawarich.RailsRootTest do
       assert Dawarich.AppVersion.current() == "1.2.3"
       assert Dawarich.I18n.t("en", "release") == {:ok, "ready"}
       assert Dawarich.Achievements.Registry.all() == []
-      assert DawarichWeb.Assets.stylesheet_path("release.css") == "/assets/release-123.css"
-      assert DawarichWeb.Assets.rails_imports() == %{"release" => "/assets/release.js"}
+      assert DawarichWeb.Assets.stylesheet_path("release.css") == "/native/release.css"
       Application.put_env(:dawarich, :rails_root, source_root)
       assert Dawarich.RailsRoot.root() == source_root
       Application.delete_env(:dawarich, :rails_root)

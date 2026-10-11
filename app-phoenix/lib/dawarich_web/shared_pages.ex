@@ -57,11 +57,6 @@ defmodule DawarichWeb.SharedPages do
   def title(%{link: link, locale: locale}),
     do: t(locale, "shared.links.show.name_shared_on_dawarich", %{name: link.name})
 
-  def importmap,
-    do: Jason.encode!(%{"imports" => Assets.rails_imports()}, escape: :html_safe)
-
-  def translations(locale), do: Layouts.rails_translations(locale)
-
   def cta(content, path \\ "/"),
     do:
       "https://dawarich.app#{path}?utm_campaign=cloud&utm_content=#{content}" <>

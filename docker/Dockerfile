@@ -50,17 +50,33 @@ COPY app-phoenix/rel rel
 COPY app-phoenix/config/runtime.exs config/
 COPY app-phoenix/assets/package.json app-phoenix/assets/package-lock.json assets/
 RUN npm ci --prefix assets --no-audit --no-fund && rm -rf ~/.npm
-COPY app-phoenix/assets/js assets/js
-RUN mix esbuild.install --if-missing && mix assets.deploy
-RUN mix release
+COPY app-phoenix/assets assets
+COPY app-phoenix/assets /src/app-phoenix/assets
+COPY app-phoenix/lib /src/app-phoenix/lib
+COPY app-phoenix/priv/tailwind /src/app-phoenix/priv/tailwind
+COPY app/assets/stylesheets /src/app/assets/stylesheets
+COPY app/assets/fonts /src/app/assets/fonts
+COPY app/assets/images /src/app/assets/images
+COPY vendor/assets/stylesheets /src/vendor/assets/stylesheets
+COPY vendor/assets/fonts /src/vendor/assets/fonts
+COPY vendor/javascript/mapbox-gl-rtl-text.js vendor/javascript/mapbox-gl-rtl-text.LICENSE.txt /src/vendor/javascript/
+COPY public/maplibre /src/public/maplibre
+COPY lib/assets /src/lib/assets
+COPY config/locales /src/config/locales
+COPY config/achievements /src/config/achievements
+COPY config/achievements.yml config/shared_link_wordlist.txt /src/config/
+RUN ln -s /build/assets/node_modules /src/app-phoenix/assets/node_modules \
+    && mix esbuild.install --if-missing && APP_PATH=/src mix assets.deploy \
+    && mix dawarich.build_inputs --root /src --out /out && mix release
+RUN mkdir -p /out/public/api-docs \
+    && cp assets/node_modules/swagger-ui-dist/swagger-ui-bundle.js \
+          assets/node_modules/swagger-ui-dist/swagger-ui.css \
+          assets/node_modules/swagger-ui-dist/LICENSE /out/public/api-docs/
 
+FROM phoenix_builder AS rails_frontend_builder
 WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund && rm -rf ~/.npm
-RUN mkdir -p /out/public/api-docs \
-    && cp node_modules/swagger-ui-dist/swagger-ui-bundle.js \
-          node_modules/swagger-ui-dist/swagger-ui.css \
-          node_modules/swagger-ui-dist/LICENSE /out/public/api-docs/
 COPY app/assets app/assets
 COPY lib/assets lib/assets
 COPY app/javascript app/javascript
@@ -74,8 +90,9 @@ COPY app-phoenix/assets/js app-phoenix/assets/js
 COPY app-phoenix/priv/tailwind/retained_classes.html app-phoenix/priv/tailwind/retained_classes.html
 RUN BROWSERSLIST_IGNORE_OLD_DATA=1 node_modules/.bin/tailwindcss \
       -i app/assets/stylesheets/application.tailwind.css -o app/assets/builds/tailwind.css \
-      -c config/tailwind.config.js --minify \
-    && cd /build && mix dawarich.build_inputs --root /src --out /out
+      -c config/tailwind.config.js --minify
+COPY app-phoenix/tools/rails_frontend /build/tools/rails_frontend
+RUN cd /build && mix run --no-start tools/rails_frontend/build.exs --root /src --out /legacy-out
 
 FROM debian:trixie-slim AS poster_builder
 
@@ -85,8 +102,12 @@ RUN apt-get update -qq \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /renderer
 COPY vendor/poster_renderer/package.json vendor/poster_renderer/package-lock.json ./
-COPY vendor/poster_renderer/render.sh vendor/poster_renderer/render.mjs vendor/poster_renderer/register.mjs vendor/poster_renderer/loader.mjs ./
+COPY vendor/poster_renderer/render.sh vendor/poster_renderer/render.mjs vendor/poster_renderer/register.mjs ./
 COPY vendor/poster_renderer/fonts fonts
+COPY app-phoenix/assets/server/poster_loader.mjs loader.mjs
+COPY app-phoenix/assets/js/poster/data/theme_loader.js app-phoenix/assets/js/poster/data/protomaps_schema.js browser/data/
+COPY app-phoenix/assets/js/poster/export/pdf_encoder.js app-phoenix/assets/js/poster/export/png_encoder.js browser/export/
+COPY app-phoenix/assets/js/poster/render/overlay.js app-phoenix/assets/js/poster/render/style_builder.js app-phoenix/assets/js/poster/render/text_layout.js browser/render/
 RUN if [ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "arm64" ]; then \
     test "$(node -p 'process.versions.modules')" = 115 \
     && npm ci --no-audit --no-fund \
@@ -110,10 +131,7 @@ COPY --from=mbgl_libs /out /opt/mbgl-libs
 WORKDIR $APP_PATH
 ENV DAWARICH_RAILS=off DAWARICH_PHOENIX_LIFECYCLE=true
 COPY --from=phoenix_builder /build/_build/prod/rel/dawarich /opt/dawarich
-COPY --from=phoenix_builder /out/public/assets public/assets
 COPY --from=phoenix_builder /out/public/api-docs public/api-docs
-COPY --from=phoenix_builder /out/config/sprockets-manifest.json config/sprockets-manifest.json
-COPY --from=phoenix_builder /src/app/assets/builds/tailwind.css app/assets/builds/tailwind.css
 COPY --from=phoenix_builder /out/tmp/phoenix tmp/phoenix
 COPY swagger/v1/swagger.yaml swagger/v1/swagger.yaml
 COPY public/*.html public/*.png public/*.ico public/*.svg public/*.txt public/*.webmanifest public/
@@ -121,11 +139,7 @@ COPY public/maplibre public/maplibre
 COPY public/maps public/maps
 COPY public/maps_maplibre public/maps_maplibre
 COPY public/poster_themes public/poster_themes
-COPY app/javascript app/javascript
-COPY app/assets/fonts app/assets/fonts
-COPY app/assets/images app/assets/images
-COPY app/assets/svg app/assets/svg
-COPY vendor/javascript vendor/javascript
+COPY app/assets/svg/icons/flags/landscape app/assets/svg/icons/flags/landscape
 COPY config/storage.yml config/storage.yml
 COPY .app_version .app_version
 COPY --from=poster_builder /renderer vendor/poster_renderer
@@ -235,10 +249,10 @@ RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \
     && rm -rf ~/.npm; \
     fi
 
-COPY --from=phoenix_builder /out/public/assets public/assets
+COPY --from=rails_frontend_builder /legacy-out/public/assets public/assets
 COPY --from=phoenix_builder /out/public/api-docs public/api-docs
-COPY --from=phoenix_builder /out/config/sprockets-manifest.json config/sprockets-manifest.json
-COPY --from=phoenix_builder /src/app/assets/builds/tailwind.css app/assets/builds/tailwind.css
+COPY --from=rails_frontend_builder /legacy-out/config/sprockets-manifest.json config/sprockets-manifest.json
+COPY --from=rails_frontend_builder /src/app/assets/builds/tailwind.css app/assets/builds/tailwind.css
 COPY --from=phoenix_builder /out/tmp/phoenix tmp/phoenix
 
 RUN mkdir -p tmp/pids tmp/cache tmp/sockets \

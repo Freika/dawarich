@@ -548,7 +548,7 @@ test("closing the studio during a download cancels the render and saves no file"
 test("reopening the studio keeps layout, title and colours in sync with its controls", async () => {
   const runtime = await import("../../app-phoenix/assets/js/poster/runtime.js")
   const { PosterStudio } = await import(
-    "../../app-phoenix/assets/js/hooks/poster_studio.js"
+    "../../app-phoenix/assets/js/poster/hook.js"
   )
   const library = fakeLibrary()
   const dom = elements()

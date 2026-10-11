@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 const { RichText } = await import(
-  "../../app-phoenix/assets/js/hooks/rich_text.js"
+  "../../app-phoenix/assets/js/editor/hook.js"
 )
 
 class Attachments {

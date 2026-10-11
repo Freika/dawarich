@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 const { MapMatchingDemo } = await import(
-  "../../app-phoenix/assets/js/hooks/map_matching_demo.js"
+  "../../app-phoenix/assets/js/demo/hook.js"
 )
 const demo = await import(
   "../../app-phoenix/assets/js/demo/map_matching_demo.js"

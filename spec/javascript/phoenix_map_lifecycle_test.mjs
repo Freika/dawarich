@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { MapHook } from "../../app-phoenix/assets/js/hooks/map.js"
+import { MapHook } from "../../app-phoenix/assets/js/map/hooks/map.js"
 import { createMapRuntime } from "../../app-phoenix/assets/js/map/runtime/create_map.js"
 
 const deferred = () => {

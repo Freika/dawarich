@@ -14,5 +14,13 @@
     "spark-md5": "3.0.2",
     "trix": "2.1.19"
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "tailwindcss": "3.4.17",
+    "daisyui": "4.7.3",
+    "@tailwindcss/forms": "0.5.9",
+    "@tailwindcss/aspect-ratio": "0.4.2",
+    "@tailwindcss/typography": "0.5.15",
+    "swagger-ui-dist": "5.33.1"
+  }
 }

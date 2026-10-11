@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { PublicReplay } from "../../app-phoenix/assets/js/hooks/shared_replay.js"
+import { PublicReplay } from "../../app-phoenix/assets/js/map/shared/shared_replay.js"
 
 function replay(points, zone = "Europe/Berlin") {
   const targets = new Map()

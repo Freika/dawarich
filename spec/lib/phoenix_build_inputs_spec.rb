@@ -141,7 +141,7 @@ RSpec.describe PhoenixBuildInputs do
     end
 
     it 'precompiles the assets Rails is configured to precompile' do
-      compiler = Rails.root.join('app-phoenix/lib/dawarich/build/sprockets/compiler.ex').read
+      compiler = Rails.root.join('app-phoenix/tools/rails_frontend/lib/dawarich/build/sprockets/compiler.ex').read
 
       expect(compiler[/@precompile ~w\(([^)]*)\)/, 1].split).to match_array(Rails.application.config.assets.precompile)
     end

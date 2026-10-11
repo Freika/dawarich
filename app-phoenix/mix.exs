@@ -18,7 +18,7 @@ defmodule Dawarich.MixProject do
     [mod: {Dawarich.Application, []}, extra_applications: [:logger, :inets, :ssl, :xmerl]]
   end
 
-  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:test), do: ["lib", "test/support", "tools/rails_frontend/lib"]
   defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
@@ -57,9 +57,11 @@ defmodule Dawarich.MixProject do
         Mix.raise("Rails owns the Dawarich database; Phoenix never resets it")
       end,
       "assets.setup": ["esbuild.install --if-missing"],
-      "assets.build": ["esbuild native"],
+      "assets.build": ["dawarich.native_assets", "esbuild native", "dawarich.native_graph"],
       "assets.deploy": [
+        "dawarich.native_assets",
         "esbuild native --minify",
+        "dawarich.native_graph",
         "phx.digest"
       ],
       test: [

@@ -71,7 +71,6 @@ defmodule DawarichWeb.PublicFiles do
     with true <- Dawarich.Standalone.enabled?() or rails_env in @serving_envs,
          [] <- get_req_header(conn, "range"),
          {:ok, segments} <- segments(conn.request_path),
-         segments = asset_segments(root, segments),
          {path, info, headers} <- find(root, segments, header(conn, "accept-encoding") || ""),
          true <- authorized?(conn, env["APPLICATION_HOSTS"]),
          {:ok, secure} <- secure_headers(conn, env) do
@@ -82,24 +81,6 @@ defmodule DawarichWeb.PublicFiles do
   end
 
   def call(conn, _opts), do: conn
-
-  defp asset_segments(root, ["assets" | tail] = original) do
-    if Dawarich.Standalone.enabled?() do
-      logical = Enum.join(tail, "/")
-
-      with resolved when is_binary(resolved) <-
-             DawarichWeb.Assets.asset_path(Path.dirname(root), logical),
-           {:ok, mapped} <- segments(resolved) do
-        mapped
-      else
-        _ -> original
-      end
-    else
-      original
-    end
-  end
-
-  defp asset_segments(_root, segments), do: segments
 
   defp header(conn, name) do
     case get_req_header(conn, name) do

@@ -6,19 +6,19 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
   @http_chrome_cap 2 * 1024
   @places_cap 2 * 1024
-  @m6_inputs ~w(js/hooks/map.js js/hooks/family.js js/hooks/map_preview.js js/hooks/onboarding.js js/hooks/poster_studio.js js/hooks/public_map.js js/hooks/trip.js js/hooks/video_studio.js js/onboarding/dialog.js)
+  @m6_inputs ~w(js/map/hooks/map.js js/map/hooks/family.js js/map/hooks/map_preview.js js/onboarding/hook.js js/poster/hook.js js/map/hooks/public_map.js js/map/hooks/trip.js js/video/hook.js js/onboarding/dialog.js)
   @other_slack 1024
   @chrome_inputs ~w(js/analytics_events.js js/hooks/achievement_unlocks.js js/hooks/changelog_widget.js)
   @chrome_base_bytes 6_707 + 548
   @places_inputs ~w(js/hooks/place_draft.js js/hooks/ordinary_dialog.js)
-  @m5_inputs ~w(js/hooks/chart.js js/hooks/heatmap.js js/hooks/rich_text.js)
+  @m5_inputs ~w(js/charts/hook.js js/charts/heatmap.js js/editor/hook.js)
   @other_base_bytes 335_463 - 16_713 - 1_844 - 1_632 - 232 + 22
   @m4_inputs [
     {~w(js/hooks/archive_checksum.js js/uploaders/direct.js), 8416},
     {~w(js/hooks/credential_qr.js js/hooks/credential_value.js), 4256},
     {~w(js/hooks/family_confirm.js js/hooks/family_invitation_clipboard.js), 2918},
     {~w(js/hooks/sharing_controls.js js/hooks/clipboard.js), 6365},
-    {~w(js/hooks/lazy_maps.js js/hooks/shared_erase.js js/hooks/index.js), 3748}
+    {~w(js/map/shared/lazy_maps.js js/map/shared/shared_erase.js js/hooks/index.js), 3748}
   ]
 
   @tag trix_pin: true
@@ -29,6 +29,9 @@ defmodule Dawarich.Build.NativeAssetsTest do
     assert Enum.any?(graph, &String.contains?(&1, "node_modules/trix/"))
     refute Enum.any?(graph, &Regex.match?(~r/@rails|actiontext|activestorage/i, &1))
   end
+
+  defp engine_inputs(inputs),
+    do: inputs -- (@m6_inputs ++ Enum.flat_map(@m4_inputs, &elem(&1, 0)))
 
   defp build!(dir, extra \\ []) do
     assert 0 ==
@@ -121,10 +124,13 @@ defmodule Dawarich.Build.NativeAssetsTest do
           do: input
 
     for studio <- ~w(poster video) do
-      assert Enum.any?(eager_inputs, &String.ends_with?(&1, "hooks/#{studio}_studio.js"))
+      assert Enum.any?(eager_inputs, &String.ends_with?(&1, "#{studio}/hook.js"))
     end
 
-    refute Enum.any?(eager_inputs, &Regex.match?(~r{js/(poster|video)/|fflate|mp4-muxer}, &1))
+    refute Enum.any?(
+             engine_inputs(eager_inputs),
+             &Regex.match?(~r{js/(poster|video)/|fflate|mp4-muxer}, &1)
+           )
   end
 
   test "both studio engines ship as recursive lazy chunks outside the eager graph", %{
@@ -205,12 +211,12 @@ defmodule Dawarich.Build.NativeAssetsTest do
     end
 
     refute Enum.any?(
-             closure_inputs.(roots.app),
+             engine_inputs(closure_inputs.(roots.app)),
              &Regex.match?(~r{js/(map|poster|video)/|h3-js|fflate|mp4-muxer}, &1)
            )
 
     refute Enum.any?(
-             closure_inputs.(roots.map),
+             engine_inputs(closure_inputs.(roots.map)),
              &Regex.match?(~r{js/poster/(runtime|export)|js/video/|h3-js|fflate|mp4-muxer}, &1)
            )
 
@@ -346,8 +352,8 @@ defmodule Dawarich.Build.NativeAssetsTest do
     inputs = dir |> build!() |> inputs()
 
     for hook <-
-          ~w(family_map.js family_confirm.js sharing_controls.js shared_map.js shared_replay.js clipboard.js),
-        do: assert(Enum.any?(inputs, &String.ends_with?(&1, "hooks/" <> hook)))
+          ~w(map/shared/family_map.js hooks/family_confirm.js hooks/sharing_controls.js map/shared/shared_map.js map/shared/shared_replay.js hooks/clipboard.js),
+        do: assert(Enum.any?(inputs, &String.ends_with?(&1, hook)))
 
     refute Enum.any?(
              inputs,
@@ -372,7 +378,7 @@ defmodule Dawarich.Build.NativeAssetsTest do
     bytes = dir |> build!() |> app_input_bytes()
 
     for input <-
-          ~w(js/hooks/shared_map.js js/hooks/shared_replay.js js/hooks/shared_routes.js js/hooks/shared_route_segmenter.js js/hooks/family_map.js node_modules/spark-md5/spark-md5.js),
+          ~w(js/map/shared/shared_map.js js/map/shared/shared_replay.js js/map/shared/shared_routes.js js/map/shared/shared_route_segmenter.js js/map/shared/family_map.js node_modules/spark-md5/spark-md5.js),
         do: refute(Map.has_key?(bytes, input), input)
   end
 
@@ -477,14 +483,14 @@ defmodule Dawarich.Build.NativeAssetsTest do
           {input, _} <- outputs[path]["inputs"],
           do: input
 
-    refute Enum.any?(eager_inputs, &Regex.match?(~r{js/(map/|poster/|video/)}, &1))
+    refute Enum.any?(engine_inputs(eager_inputs), &Regex.match?(~r{js/(map/|poster/|video/)}, &1))
     assert Enum.any?(inputs(dir), &String.contains?(&1, "map/runtime/host.js"))
   end
 
   test "native map chunks contain no Rails controller or Hotwire input", %{tmp_dir: dir} do
     build!(dir)
     graph = inputs(dir)
-    assert Enum.any?(graph, &String.contains?(&1, "hooks/map.js"))
+    assert Enum.any?(graph, &String.contains?(&1, "map/hooks/map.js"))
     assert Enum.any?(graph, &String.contains?(&1, "map/data/studio_source.js"))
 
     refute Enum.any?(
@@ -561,6 +567,17 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
     assert conn.status == 200
     assert hd(Plug.Conn.get_resp_header(conn, "content-type")) =~ "javascript"
+    assert Plug.Conn.get_resp_header(conn, "cache-control") == ["public"]
+    versioned = DawarichWeb.Endpoint.call(conn(:get, "/native/" <> probe <> "?vsn=1"), [])
+    assert versioned.status == 200
+
+    assert Plug.Conn.get_resp_header(versioned, "cache-control") == [
+             "public, max-age=31536000, immutable"
+           ]
+
+    head = DawarichWeb.Endpoint.call(conn(:head, "/native/" <> probe), [])
+    assert head.status == 200
+    assert head.resp_body == ""
   end
 
   test "production static map workers styles poster fonts and RTL assets resolve with their MIME types",
@@ -579,14 +596,8 @@ defmodule Dawarich.Build.NativeAssetsTest do
           weight <- ~w(400 700),
           do: "poster/#{family}-#{weight}.woff2"
 
-    Dawarich.Build.Sprockets.Writer.write!(
-      root,
-      Dawarich.Build.Sprockets.Compiler.compile(
-        source_root,
-        font_paths ++ ["mapbox-gl-rtl-text.js"]
-      ),
-      Dawarich.Build.Sprockets.Writer.now()
-    )
+    Dawarich.Build.NativeAssets.build!(source_root, public)
+    Phoenix.Digester.compile(public, public, true)
 
     paths =
       for name <- ~w(maplibre-gl.mjs maplibre-gl-shared.mjs maplibre-gl-worker.mjs),
@@ -598,8 +609,8 @@ defmodule Dawarich.Build.NativeAssetsTest do
           {"/maps_maplibre/styles/light.json", "application/json"},
           {"/maps_maplibre/styles/dark.json", "application/json"}
         ] ++
-        Enum.map(font_paths, &{DawarichWeb.Assets.stylesheet_path(root, &1), "font/woff2"}) ++
-        [{DawarichWeb.Assets.stylesheet_path(root, "mapbox-gl-rtl-text.js"), "text/javascript"}]
+        Enum.map(font_paths, &{DawarichWeb.Assets.stylesheet_path(public, &1), "font/woff2"}) ++
+        [{DawarichWeb.Assets.stylesheet_path(public, "mapbox-gl-rtl-text.js"), "text/javascript"}]
 
     for {path, type} <- paths do
       response =
