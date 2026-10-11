@@ -126,7 +126,15 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
       {:ok, %{settings: settings, recalculation_triggered: triggered}} ->
         {:noreply,
          socket
-         |> update(&%{&1 | saved: settings, draft_modes: nil, error: nil, notice: nil})
+         |> update(
+           &%{
+             &1
+             | saved: settings,
+               draft_modes: nil,
+               error: nil,
+               notice: save_notice(attrs, settings)
+           }
+         )
          |> push_event("map:settings", %{settings: settings, recalculation_triggered: triggered})}
 
       {:error, {:invalid, errors}} ->
@@ -135,6 +143,12 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
       {:error, reason} ->
         {:noreply, update(socket, &%{&1 | error: reason, notice: nil})}
     end
+  end
+
+  defp save_notice(attrs, settings) do
+    if Map.has_key?(attrs, "live_map_enabled"),
+      do: {:live, settings["live_map_enabled"] != false},
+      else: nil
   end
 
   defp update(socket, fun) do

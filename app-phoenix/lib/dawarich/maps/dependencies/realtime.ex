@@ -63,6 +63,12 @@ defmodule Dawarich.Maps.Dependencies.Realtime do
 
   defp map_topics(scope, user, opts) do
     topics = user_topics(user.id)
+
+    topics =
+      if Dawarich.UserSettings.get(user)["live_map_enabled"] == false,
+        do: Map.delete(topics, stream(["points", {:user, user.id}])),
+        else: topics
+
     layers = Dawarich.UserSettings.get(user)["enabled_map_layers"] || []
 
     if "Family Members" in List.wrap(layers) do

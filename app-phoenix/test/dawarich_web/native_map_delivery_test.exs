@@ -221,4 +221,43 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
     assert {:ignored, _} = Subscriptions.deliver(socket, {:native_message, "foreign", "private"})
     Subscriptions.release(socket)
   end
+
+  test "native live mode preference releases only point delivery and resubscribes once", %{
+    scope: scope,
+    socket: socket
+  } do
+    descriptor = %{kind: :map, scope: scope}
+    point_topic = RailsMessages.broadcasting(["points", {:user, 881_401}])
+    track_topic = RailsMessages.broadcasting(["tracks", {:user, 881_401}])
+    socket = Subscriptions.sync(socket, descriptor, bus: NativeMapBus)
+    assert_receive {:native_subscribe, ^point_topic}
+
+    Repo.query!(
+      "UPDATE users SET settings=jsonb_set(settings, '{live_map_enabled}', 'false') WHERE id=$1",
+      [881_401]
+    )
+
+    socket = Subscriptions.sync(socket, descriptor, bus: NativeMapBus)
+    assert_receive {:native_unsubscribe, ^point_topic}
+    refute Map.has_key?(socket.assigns.native_subscriptions.topics, point_topic)
+    assert Map.has_key?(socket.assigns.native_subscriptions.topics, track_topic)
+
+    assert {:ignored, socket} =
+             Subscriptions.deliver(socket, {:native_message, point_topic, "synthetic-point"})
+
+    Repo.query!(
+      "UPDATE users SET settings=jsonb_set(settings, '{live_map_enabled}', 'true') WHERE id=$1",
+      [881_401]
+    )
+
+    socket = Subscriptions.sync(socket, descriptor, bus: NativeMapBus)
+    assert_receive {:native_subscribe, ^point_topic}
+    socket = Subscriptions.sync(socket, descriptor, bus: NativeMapBus)
+    refute_receive {:native_subscribe, ^point_topic}
+
+    assert {:delivered, socket} =
+             Subscriptions.deliver(socket, {:native_message, point_topic, "synthetic-point"})
+
+    Subscriptions.release(socket)
+  end
 end

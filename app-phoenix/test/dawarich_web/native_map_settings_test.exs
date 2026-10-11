@@ -112,4 +112,20 @@ defmodule DawarichWeb.NativeMapSettingsTest do
       )
       |> hd()
       |> hd()
+
+  test "native live mode save shows its description and persisted state notice", %{
+    view: view,
+    id: id
+  } do
+    assert has_element?(view, "#native-advanced-form", "Show new points in real-time")
+
+    for {enabled, notice} <- [{false, "Live mode disabled"}, {true, "Live mode enabled"}] do
+      view
+      |> form("#native-advanced-form", %{"live_map_enabled" => to_string(enabled)})
+      |> render_submit()
+
+      assert stored(id)["live_map_enabled"] == enabled
+      assert has_element?(view, "#native-settings-notice[role=status]", notice)
+    end
+  end
 end

@@ -59,6 +59,7 @@ defmodule DawarichWeb.NativeMapSettingsAdvanced do
         label={p(@locale, "live_mode")}
         checked={@saved["live_map_enabled"] != false}
       />
+      <p class="text-sm [overflow-wrap:anywhere]">{p(@locale, "show_new_points_in_real_time")}</p>
       <button type="submit" class="btn btn-sm btn-primary btn-block">{p(@locale, "apply_settings")}</button>
     </form>
     <div class="flex flex-col gap-2">

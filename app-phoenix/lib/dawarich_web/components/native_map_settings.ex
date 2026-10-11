@@ -133,6 +133,9 @@ defmodule DawarichWeb.NativeMapSettings do
 
   defp error(locale, _reason), do: t(locale, "javascript.messages.failed_to_update_settings", %{})
 
+  defp notice(locale, {:live, enabled}),
+    do: t(locale, "javascript.live_map." <> if(enabled, do: "enabled", else: "disabled"), %{})
+
   defp notice(locale, :recalculation),
     do: t(locale, "javascript.settings.recalculation_queued", %{})
 
