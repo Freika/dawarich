@@ -32,6 +32,7 @@ defmodule DawarichWeb.MapLive.NativeConfig do
       "placesEnabled" => "Places" in layers,
       "visitsEnabled" => "Visits" in layers,
       "areasEnabled" => "Areas" in layers,
+      "familyEnabled" => "Family Members" in layers,
       "mapOptions" => %{
         "projection" => %{"type" => if(saved["globe_projection"], do: "globe", else: "mercator")}
       },

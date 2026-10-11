@@ -14,11 +14,10 @@ import { createHostTimeline } from "../ui/host_timeline.js"
 import { createHostTools } from "../ui/host_tools.js"
 import { createRangeRequests } from "../ui/navigation.js"
 import { installStudios } from "../ui/studios.js"
+import { createHostAuxLayers } from "./aux_layers.js"
 import { createMapRuntime } from "./create_map.js"
 import { createViewportFit } from "./viewport_fit.js"
-
 export { createMapRuntime }
-
 export function mountHost({
   element,
   pushEvent,
@@ -37,8 +36,7 @@ export function mountHost({
   let enrichment
   let timeline
   let density
-  let photos
-  let photoKey
+  let aux
   let entities
   const config = JSON.parse(element.dataset.mapConfig ?? "{}")
   const owner = createMapRuntime({
@@ -56,7 +54,8 @@ export function mountHost({
       (({ map, config, lifetime }) => {
         installStudios({ element, owner, lifetime })
         installHostReplay({
-          onActive: (active) => (active ? photos?.hide() : photos?.show()),
+          onActive: (active) =>
+            active ? aux?.photos?.hide() : aux?.photos?.show(),
           library,
           reader,
           owner,
@@ -125,7 +124,15 @@ export function mountHost({
           root: element.closest?.("[data-native-map-root]"),
         })
         lifetime.own(() => density?.destroy())
-        lifetime.own(() => photos?.remove())
+        aux = createHostAuxLayers({
+          map,
+          reader,
+          library,
+          root: element.closest?.("[data-native-map-root]"),
+          onError: (code) => pushEvent("map:failed", { code }),
+          replayActive: () => owner.replay?.active,
+        })
+        lifetime.own(() => aux.destroy())
         lifetime.own(() => entities?.destroy())
         return new Promise((resolve) => {
           const ready = () => {
@@ -198,42 +205,7 @@ export function mountHost({
           })
         }
         if (entities) await operation.wait(entities.update(config, { signal }))
-        if (!config.photosEnabled) {
-          photos?.remove()
-          photos = null
-          photoKey = null
-        } else {
-          const desired = JSON.stringify([
-            config.range,
-            config.epoch,
-            config.locale,
-          ])
-          if (photoKey !== desired || !photos) {
-            const [module, library] = await operation.wait(
-              Promise.all([
-                import("../layers/photos.js"),
-                loadLibrary({ signal }),
-              ]),
-            )
-            operation.check()
-            photos?.remove()
-            photos = new module.PhotosLayer(map, {
-              reader,
-              library,
-              timezone: config.range.timezone,
-              labels: config.photoLabels,
-              onError: (code) => pushEvent("map:failed", { code }),
-            })
-            photos.add()
-            const status = await operation.wait(
-              photos.load(config.range, { signal }),
-            )
-            operation.check()
-            if (status !== "ready") throw new Error("Photos unavailable")
-            if (owner.replay?.active) photos.hide()
-            photoKey = desired
-          }
-        }
+        await operation.wait(aux.update(config, { operation, signal }))
       }),
     events: {
       refreshed(receipt) {
@@ -255,7 +227,7 @@ export function mountHost({
   })
   Object.defineProperty(owner, "editor", { get: () => editing?.editor })
   Object.defineProperty(owner, "entityLayers", { get: () => entities })
-  Object.defineProperty(owner, "photoLayer", { get: () => photos })
+  Object.defineProperty(owner, "photoLayer", { get: () => aux?.photos })
   owner.visitsFilter = (filter) =>
     owner.update({ ...owner.config, visitFilter: filter })
   owner.layer = ({ layer, enabled }) => {
@@ -280,6 +252,7 @@ export function mountHost({
       enrichment?.clear()
       owner.selection?.cancel()
     }
+    aux?.clear(config)
     timeline?.config(config)
     editing?.config(config)
     const updating = update.call(owner, config)

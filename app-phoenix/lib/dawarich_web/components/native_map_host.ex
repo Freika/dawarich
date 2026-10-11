@@ -2,7 +2,7 @@ defmodule DawarichWeb.NativeMapHost do
   @moduledoc false
   use Phoenix.Component
 
-  @fields ~w(namespace revision editEnabled panel customTheme tilesFallback tilesUrl hiddenTileCategories disabledPoiGroups distanceUnit title styleUrl range mapOptions epoch pointsEnabled tracksEnabled heatmapEnabled trackColor styleName flightsEnabled fogEnabled fogMode fogRadius hexagonsEnabled scratchEnabled photosEnabled visitsEnabled placesEnabled areasEnabled anomaliesEnabled placesTagFilters tripId planEnabled routeOptions shareId publicType routeEnabled validUntil byDay)
+  @fields ~w(namespace revision editEnabled panel customTheme tilesFallback tilesUrl hiddenTileCategories disabledPoiGroups distanceUnit title styleUrl range mapOptions epoch pointsEnabled tracksEnabled heatmapEnabled trackColor styleName flightsEnabled fogEnabled fogMode fogRadius hexagonsEnabled scratchEnabled photosEnabled visitsEnabled placesEnabled areasEnabled familyEnabled anomaliesEnabled placesTagFilters tripId planEnabled routeOptions shareId publicType routeEnabled validUntil byDay)
   @range ~w(startAt endAt importId timezone)
   @options ~w(center zoom minZoom maxZoom bearing pitch projection interactive attributionControl)
 

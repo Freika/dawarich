@@ -21,7 +21,8 @@ defmodule DawarichWeb.NativeMapPanels do
     {"Photos", "photos"},
     {"Visits", "visits"},
     {"Places", "places"},
-    {"Areas", "areas"}
+    {"Areas", "areas"},
+    {"Family Members", "family_members"}
   ]
 
   def layers, do: Enum.map(@layers, &elem(&1, 0))
@@ -95,6 +96,17 @@ defmodule DawarichWeb.NativeMapPanels do
           )}</span>
         </label>
       </form>
+      <div id="native-family-members" phx-update="ignore" class="min-w-0" hidden></div>
+      <p id="native-map-family-empty" phx-update="ignore" data-map-family-empty hidden>
+        {t(@locale, "javascript.family.none_sharing", %{})}
+      </p>
+      <p
+        id="native-family-status"
+        phx-update="ignore"
+        role="status"
+        data-centered={t(@locale, "javascript.messages.centered_on_family_member", %{})}
+      >
+      </p>
       <label class="flex min-w-0 flex-wrap items-center gap-2">
         <input
           type="checkbox"
