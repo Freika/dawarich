@@ -1605,5 +1605,5 @@ Rails renders centered human-date tooltips at the right edge of the import table
 
 - Rails: `app/views/imports/_import.html.erb:18`, `app/helpers/datetime_formatting_helper.rb:16`.
 - Phoenix: `app-phoenix/lib/dawarich_web/imports_live/show.ex:129`.
-- Tests: `imports/extraction.spec.js`, English/German “390px extraction detail and Escape/cancel confirmations remain bounded”; centered-tooltip mutation must overflow, and removing it must restore bounded dimensions.
+- Tests: `imports/extraction.spec.js`, English/German “390px extraction dialog opens cancels and preserves trust controls”; centered-tooltip mutation must overflow, and removing it must restore bounded dimensions.
 - Ledger: ED-NATIVE-S1-DATE-TOOLTIP; no DRB. Source-backed inherited layout defect; no Rails runtime oracle. Rails production code unchanged.
