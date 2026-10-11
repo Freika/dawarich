@@ -69,7 +69,14 @@ defmodule DawarichWeb.ImportsLive.Show do
   def handle_event("delete_import", _, socket) do
     case Dawarich.Imports.delete(socket.assigns.current_scope, socket.assigns.record.id) do
       {:ok, _} ->
-        refresh(socket)
+        {:noreply,
+         socket
+         |> ImportsStallTimer.cancel()
+         |> put_flash(
+           :notice,
+           t(socket.assigns.locale, "controllers.imports.import_is_being_deleted", %{})
+         )
+         |> redirect(to: "/imports")}
 
       {:error, _} ->
         {:noreply,

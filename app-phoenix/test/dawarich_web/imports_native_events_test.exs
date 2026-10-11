@@ -56,6 +56,22 @@ defmodule DawarichWeb.ImportsNativeEventsTest do
     refute Map.get(:sys.get_state(reconnected.pid).socket.assigns, :polling, false)
   end
 
+  test "deleting a failed import leaves its detail page when cleanup is queued", c do
+    Repo.query!("UPDATE imports SET status=3 WHERE id=109510", [], log: false)
+    {:ok, view, _} = live_as(c.user, "/imports/109510")
+
+    view |> element("form[phx-submit=delete_import]") |> render_submit()
+
+    assert assert_redirect(view, "/imports")["notice"] == "Import is being deleted."
+    assert Repo.query!("SELECT status FROM imports WHERE id=109510", [], log: false).rows == [[4]]
+
+    assert Repo.query!(
+             "SELECT count(*) FROM job_outbox WHERE command_type='imports.destroy' AND aggregate_id=109510",
+             [],
+             log: false
+           ).rows == [[1]]
+  end
+
   test "a revoked owner receives no queued update and cannot rename or delete", c do
     {:ok, view, _} = live_as(c.user, "/imports/109510")
     socket = :sys.get_state(view.pid).socket
