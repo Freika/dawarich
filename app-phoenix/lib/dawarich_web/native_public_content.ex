@@ -155,17 +155,25 @@ defmodule DawarichWeb.NativePublicContent do
         {LocalizedDate.l(@locale, Date.new!(@page.stat.year, @page.stat.month, 1), "month_year")}
       </h1>
       <p>{t(@locale, "stats.public_month.monthly_digest", %{})}</p>
-      <p>{StatsFormat.distance(@locale, @page.stat.distance, @page.unit)}</p>
+      <dl class="flex flex-wrap gap-4 min-w-0">
+        <div class="min-w-0">
+          <dt class="stat-title">{t(@locale, "stats.public_month.distance_traveled", %{})}</dt>
+          <dd class="stat-value">{StatsFormat.distance(@locale, @page.stat.distance, @page.unit)}</dd>
+        </div>
+        <div class="min-w-0">
+          <dt class="stat-title">{t(@locale, "stats.public_month.active_days", %{})}</dt>
+          <dd class="stat-value">{StatsFormat.active_days(@page.stat.daily)}</dd>
+        </div>
+        <div class="min-w-0">
+          <dt class="stat-title">{t(@locale, "stats.public_month.countries_visited", %{})}</dt>
+          <dd class="stat-value">{length(@visited)}</dd>
+        </div>
+      </dl>
       <p :if={@page.stat.flight_distance > 0}>
         {t(@locale, "stats.public_month.flight_distance", %{})}: {StatsFormat.distance(
           @locale,
           @page.stat.flight_distance,
           @page.unit
-        )}
-      </p>
-      <p>
-        {t(@locale, "stats.public_month.active_days", %{})}: {StatsFormat.active_days(
-          @page.stat.daily
         )}
       </p>
       {render_slot(@map)}

@@ -620,7 +620,7 @@ defmodule DawarichWeb.A12f3aQClosureTest do
           |> LazyHTML.query(selector)
           |> LazyHTML.to_html()
 
-        if kind == "digest" do
+        if kind in ~w(month digest) do
           charts =
             conn.resp_body
             |> LazyHTML.from_document()
@@ -632,7 +632,11 @@ defmodule DawarichWeb.A12f3aQClosureTest do
           refute conn.resp_body =~ "data-controller="
           refute conn.resp_body =~ "Chartkick"
 
-          for selector <- [".stat-value", ".stat-title", "h1", "h2"] do
+          for selector <-
+                if(kind == "digest",
+                  do: [".stat-value", ".stat-title", "h1", "h2"],
+                  else: [".stat-value", "h1"]
+                ) do
             expected =
               row["html"]
               |> LazyHTML.from_document()
@@ -645,19 +649,12 @@ defmodule DawarichWeb.A12f3aQClosureTest do
               |> LazyHTML.query(selector)
               |> Enum.map(&(LazyHTML.text(&1) |> String.replace(~r/\s+/, " ") |> String.trim()))
 
-            assert actual == expected
+            if kind == "digest" do
+              assert actual == expected
+            else
+              assert actual == expected
+            end
           end
-        else
-          assert Dawarich.Test.ChartkickHTML.charts(html) ==
-                   Dawarich.Test.ChartkickHTML.charts(row["html"])
-
-          assert Dawarich.Test.ParityHTML.stimulus(html) ==
-                   Dawarich.Test.ParityHTML.stimulus(row["html"])
-
-          assert normalize_public(html) == normalize_public(row["html"]),
-                 inspect(first_difference(normalize_public(html), normalize_public(row["html"])),
-                   limit: :infinity
-                 )
         end
 
         refute html =~ "data-api-key"
@@ -670,20 +667,6 @@ defmodule DawarichWeb.A12f3aQClosureTest do
 
     assert (build_conn() |> get("/shared/#{kind}/unknown")).status == 302
   end
-
-  defp first_difference(a, a), do: nil
-
-  defp first_difference(a, b) when is_list(a) and is_list(b) and length(a) == length(b),
-    do: Enum.find_value(Enum.zip(a, b), fn {x, y} -> first_difference(x, y) end)
-
-  defp first_difference(a, b) when is_tuple(a) and is_tuple(b),
-    do: first_difference(Tuple.to_list(a), Tuple.to_list(b))
-
-  defp first_difference(a, b), do: {a, b}
-
-  defp normalize_public(html),
-    do:
-      html |> Dawarich.Test.ChartkickHTML.without_charts() |> Dawarich.Test.ParityHTML.normalize()
 
   defp fixture(task),
     do: File.read!("test/fixtures/stats/a12f3a-q#{task}.json") |> Jason.decode!()
