@@ -163,7 +163,9 @@ remain debt. Never decode arbitrary serialized Ruby as a migration strategy.
    Require all relevant owner keys Oban, 24 unique schedules, no
    ActiveJob/unknown work in every queue, scheduled/retry/dead/busy zero, no live fetch/reserved
    work, no future/due pending or quarantined public outbox debt, no future/due/leased/retrying
-   or dead reverse debt, no unfinished source-dependent native/release operations. Historical
+   or dead reverse debt, no unfinished source-dependent native/release operations
+   (`dawarich jobs operations` prints each unfinished release operation id on stdout; logs
+   filter it). Historical
    terminal rows may remain; Processed receipts stay while supported delayed replay is possible,
    unfinished generations/chunks stay, and dead/unsupported debt never expires automatically.
    Fence live housekeeping that would destroy any of these until Eugene decides disposition;

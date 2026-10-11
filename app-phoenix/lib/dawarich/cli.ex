@@ -16,6 +16,7 @@ defmodule Dawarich.CLI do
     ["jobs", "status"] => {Jobs, :status},
     ["jobs", "drain-status"] => {Jobs, :drain_status},
     ["jobs", "resume"] => {Jobs, :resume},
+    ["jobs", "operations"] => {Jobs, :operations},
     ["users", "activate"] => {Users, :activate},
     ["users", "admin"] => {Users, :admin},
     ["users", "email"] => {Users, :email},
@@ -84,6 +85,7 @@ defmodule Dawarich.CLI do
     jobs status                                   Job owners, outbox, Phoenix nodes and Oban job counts as JSON
     jobs drain-status                             Redacted native drain debt and rollback blockers as JSON
     jobs resume OPERATION_ID                      Resume a failed release backfill
+    jobs operations                               Unfinished release operations with their resume commands
     users activate                                Activate every user (self-hosted only)
     users admin EMAIL                             Make a user an administrator
     users email EMAIL NEW_EMAIL                   Change a user's email address

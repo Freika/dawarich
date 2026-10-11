@@ -170,6 +170,69 @@ defmodule Dawarich.ReleaseOperationsTest do
            ]
   end
 
+  test "jobs operations prints unfinished operation ids and resume commands on stdout while logs stay filtered",
+       %{user: user} do
+    failed = Ecto.UUID.generate()
+    Process.put(:raise_after_write, true)
+
+    failure_log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        assert_raise RuntimeError, fn ->
+          run(%{"version" => 1, "event_id" => failed, "cursor" => cursor(user, 0, 3)}, 10, 10)
+        end
+      end)
+
+    Process.delete(:raise_after_write)
+    interrupted = Ecto.UUID.generate()
+    running!(interrupted, cursor(user, 1, 3))
+
+    job!(
+      %{"version" => 1, "operation_id" => interrupted, "cursor" => cursor(user, 1, 3)},
+      "discarded"
+    )
+
+    live = Ecto.UUID.generate()
+    running!(live, cursor(user, 0, 3))
+    job!(%{"version" => 1, "operation_id" => live, "cursor" => cursor(user, 0, 3)}, "executing")
+    done = Ecto.UUID.generate()
+    assert run(%{"version" => 1, "event_id" => done, "cursor" => cursor(user, 0, 1)}) == :ok
+
+    ctx = %{repo: ScratchRepo, out: :stdio, err: :stderr, env: %{}}
+
+    {{code, out}, cli_log} =
+      ExUnit.CaptureLog.with_log(fn ->
+        ExUnit.CaptureIO.with_io(fn -> Dawarich.CLI.run(~w(jobs operations), ctx) end)
+      end)
+
+    assert code == 0
+
+    assert Enum.sort(String.split(out, "\n", trim: true)) ==
+             Enum.sort([
+               "#{failed} release.counter failed: resume with dawarich jobs resume #{failed}",
+               "#{interrupted} release.counter interrupted: resume with dawarich jobs resume #{interrupted}",
+               "#{live} release.counter running"
+             ])
+
+    refute out =~ done
+    assert failure_log =~ "dawarich jobs operations"
+
+    for id <- [failed, interrupted, live] do
+      refute failure_log =~ id
+      refute cli_log =~ id
+    end
+
+    assert {:ok, _} = resume(failed)
+    assert {:ok, _} = resume(interrupted)
+    assert resume(live) == {:error, :not_resumable}
+  end
+
+  test "jobs operations says so when nothing is unfinished" do
+    ctx = %{repo: ScratchRepo, out: :stdio, err: :stderr, env: %{}}
+
+    assert ExUnit.CaptureIO.with_io(fn -> Dawarich.CLI.run(~w(jobs operations), ctx) end) ==
+             {0, "no unfinished release operations\n"}
+  end
+
   test "resume refuses a completed or unknown operation", %{user: user} do
     id = Ecto.UUID.generate()
     assert run(%{"version" => 1, "event_id" => id, "cursor" => cursor(user, 0, 1)}) == :ok

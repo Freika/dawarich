@@ -24,14 +24,24 @@ defmodule Dawarich.ReleaseOperations do
   UPDATE phoenix.release_operations SET status = 'running', error = NULL, updated_at = now()
   WHERE id = $1 AND status = 'failed' AND cursor = $2
   """
+  resumable = fn id ->
+    """
+    (status = 'failed' OR status = 'running' AND NOT EXISTS (
+      SELECT 1 FROM oban.oban_jobs
+      WHERE state IN ('available', 'suspended', 'scheduled', 'executing', 'retryable')
+        AND (args->>'operation_id' = #{id} OR args->>'event_id' = #{id})
+    ))
+    """
+  end
+
   @resume """
   UPDATE phoenix.release_operations SET status = 'running', error = NULL, updated_at = now()
-  WHERE id = $1 AND (status = 'failed' OR status = 'running' AND NOT EXISTS (
-    SELECT 1 FROM oban.oban_jobs
-    WHERE state IN ('available', 'suspended', 'scheduled', 'executing', 'retryable')
-      AND (args->>'operation_id' = $1::text OR args->>'event_id' = $1::text)
-  ))
+  WHERE id = $1 AND #{resumable.("$1::text")}
   RETURNING command_type, cursor
+  """
+  @unfinished """
+  SELECT o.id::text, o.command_type, o.status, #{resumable.("o.id::text")}
+  FROM phoenix.release_operations o WHERE o.status <> 'completed' ORDER BY o.inserted_at, o.id
   """
   @user "SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND deleted_at IS NULL)"
 
@@ -73,6 +83,8 @@ defmodule Dawarich.ReleaseOperations do
       end
     end)
   end
+
+  def unfinished(repo), do: repo.query!(@unfinished, [], log: false).rows
 
   def value(repo, sql, params \\ []) do
     [[value]] = repo.query!(sql, params, log: false).rows
@@ -120,7 +132,7 @@ defmodule Dawarich.ReleaseOperations do
 
     Logger.error(
       "release operation #{op.id} (#{op.worker.command_type()}) failed at #{inspect(op.cursor)}; " <>
-        "resume with dawarich jobs resume #{op.id}"
+        "resume with dawarich jobs resume #{op.id}; dawarich jobs operations prints the id"
     )
   end
 
