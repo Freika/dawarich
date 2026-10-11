@@ -17,6 +17,7 @@ function control() {
     disabled: false,
     attributes: {},
     hidden: false,
+    style: {},
     setAttribute(name, value) {
       node.attributes[name] = value
     },
@@ -230,4 +231,50 @@ test("closing the native replay panel clears its play state before reopening", (
   assert.equal(elements.play.attributes["aria-pressed"], "true")
   panel.destroy()
   assert.equal(elements.play.attributes["aria-pressed"], "false")
+})
+
+test("native replay cycle visibility follows multiple and single-point scrubbing", () => {
+  const manager = new ReplayManager({ timezone: "UTC" })
+  manager.setPoints([
+    point("2026-06-01T08:00:00Z", 1),
+    point("2026-06-01T08:00:30Z", 2),
+    point("2026-06-01T08:01:00Z", 3),
+  ])
+  const elements = Object.fromEntries(
+    [
+      "play",
+      "speed",
+      "speedLabel",
+      "prev",
+      "next",
+      "day",
+      "dayCount",
+      "time",
+      "velocity",
+      "noData",
+      "follow",
+      "scrubber",
+      "cycle",
+      "cycleCount",
+      "cyclePrev",
+      "cycleNext",
+    ].map((key) => [key, control()]),
+  )
+  const sought = []
+  const replay = { manager, seek: (minute) => sought.push(minute), pause() {} }
+  const panel = createReplayPanel({ elements, replay, translate })
+  const visible = () => elements.cycle.style.display !== "none"
+  for (const [minute, show] of [
+    [480, true],
+    [481, false],
+    [480, true],
+  ]) {
+    elements.scrubber.value = String(minute)
+    elements.scrubber.fire("input")
+    assert.equal(visible(), show)
+    assert.equal(elements.cycle.hidden, !show)
+  }
+  assert.deepEqual(sought, [480, 481, 480])
+  panel.destroy()
+  assert.equal(elements.cycleNext.listeners.size, 0)
 })
