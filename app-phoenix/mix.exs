@@ -57,9 +57,10 @@ defmodule Dawarich.MixProject do
         Mix.raise("Rails owns the Dawarich database; Phoenix never resets it")
       end,
       "assets.setup": ["esbuild.install --if-missing"],
-      "assets.build": ["esbuild native"],
+      "assets.build": ["esbuild native", "dawarich.native_graph"],
       "assets.deploy": [
         "esbuild native --minify",
+        "dawarich.native_graph",
         "phx.digest"
       ],
       test: [
