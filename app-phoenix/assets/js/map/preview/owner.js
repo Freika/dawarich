@@ -1,9 +1,9 @@
-import { waitForStyle } from "../runtime/style_ready.js"
 import { RouteSegmenter } from "../algorithms/route_segmenter.js"
 import { createReader } from "../data/reader.js"
 import { createStatsLayer } from "../public/stats.js"
 import { createPublicStatsReader } from "../public/stats_reader.js"
 import { createMapRuntime } from "../runtime/create_map.js"
+import { waitForStyle } from "../runtime/style_ready.js"
 import { fetchStyle } from "../style/load_style.js"
 import { TripPlanLayer } from "../trip/plan.js"
 export function createPreviewOwner({

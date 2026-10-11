@@ -215,7 +215,11 @@ export function installMapDiagnostics({ element, map, getConfig }) {
           geometries
             .map((geometry) => hitPosition(map, geometry))
             .find(Boolean) ?? null
-        return { ...data, screen, rendered: !!rendered?.[data.properties.id]?.length }
+        return {
+          ...data,
+          screen,
+          rendered: !!rendered?.[data.properties.id]?.length,
+        }
       }),
     }
   }

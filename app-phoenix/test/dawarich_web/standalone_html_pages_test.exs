@@ -131,12 +131,12 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
     assert String.contains?(private.resp_body, "10:00") == false
     Repo.query!("UPDATE shared_links SET revoked_at=now() WHERE id=$1::text::uuid", [trip_link])
     revoked = page(owner, "/s/" <> trip_link)
-    assert revoked.status == 200
+    assert revoked.status == 404
     assert String.contains?(revoked.resp_body, "native-public-map") == false
     assert String.contains?(revoked.resp_body, "Owner-only description") == false
     Repo.query!("UPDATE tracks SET user_id=94802 WHERE id=94801")
     missing = page(owner, "/s/" <> track_link)
-    assert missing.status == 200
+    assert missing.status == 404
     assert String.contains?(missing.resp_body, ~s(id="native-public-map")) == false
   end
 
@@ -153,7 +153,7 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
 
     Repo.query!("DELETE FROM trips WHERE id=94801")
     missing = page(94802, "/s/" <> hd(links))
-    assert missing.status == 200
+    assert missing.status == 404
     assert get_resp_header(missing, "cache-control") == ["private, no-store"]
 
     Repo.query!(
@@ -162,7 +162,7 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
     )
 
     prompt = page(94802, "/s/" <> hd(links))
-    assert prompt.status == 200
+    assert prompt.status == 404
     assert String.contains?(prompt.resp_body, "native-public-map") == false
     assert get_resp_header(prompt, "cache-control") == ["private, no-store"]
     assert String.contains?(prompt.resp_body, "mobile-navigation-menu") == true
@@ -185,11 +185,11 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
 
     Repo.query!("DELETE FROM family_memberships WHERE user_id=94802")
     denied = page(94802, "/s/" <> hd(links))
-    assert denied.status == 200
+    assert denied.status == 404
     assert String.contains?(denied.resp_body, "native-public-map") == false
     assert String.contains?(denied.resp_body, "mobile-navigation-menu") == false
     anonymous = build_conn() |> put_req_header("accept", "text/html") |> get("/s/" <> hd(links))
-    assert anonymous.status == 200
+    assert anonymous.status == 404
     assert String.contains?(anonymous.resp_body, "native-public-map") == false
   end
 

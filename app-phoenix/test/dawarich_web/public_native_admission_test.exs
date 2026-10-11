@@ -100,7 +100,7 @@ defmodule DawarichWeb.PublicNativeAdmissionTest do
              Public.grant(SharedLinks.active(@id, c.now), nil, c.now, DateTime.add(c.now, 1800))
 
     denied = get(build_conn(), "/s/" <> @id)
-    assert denied.status == 200
+    assert denied.status == 404
     refute String.contains?(denied.resp_body, ~s(id="native-public-map"))
     assert SharingSeeds.view_count(@id) == 0
   end
@@ -141,7 +141,7 @@ defmodule DawarichWeb.PublicNativeAdmissionTest do
     render_click(view, "public:reload", %{})
     assert state(view).public_presentation == nil
     denied = get(build_conn(), "/s/" <> @id)
-    assert denied.status == 200
+    assert denied.status == 404
     refute String.contains?(denied.resp_body, ~s(id="native-public-map"))
   end
 

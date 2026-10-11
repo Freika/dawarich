@@ -74,7 +74,7 @@ defmodule DawarichWeb.SharingParityTest do
     csrf = SharingSeeds.fixture("csrf.json")
     id = csrf["action"] |> String.split("/") |> Enum.at(2)
     cookie = Dawarich.Test.RailsUser.cookie(%{"_csrf_token" => csrf["session"]})
-    html = conn({"_dawarich_session", cookie}) |> get("/s/#{id}") |> html_response(200)
+    html = conn({"_dawarich_session", cookie}) |> get("/s/#{id}") |> html_response(401)
     doc = LazyHTML.from_document(html)
 
     assert doc
@@ -106,7 +106,13 @@ defmodule DawarichWeb.SharingParityTest do
       conn = request(@page, cookie)
 
       native = @page["verb"] == "get"
-      assert conn.status == if(native, do: 200, else: @page["status"])
+
+      expected_status =
+        if native && String.starts_with?(@page["name"], "missing_"),
+          do: 404,
+          else: @page["status"]
+
+      assert conn.status == expected_status
 
       for {name, value} <- @page["headers"] do
         expected = if native && name == "cache-control", do: "private, no-store", else: value

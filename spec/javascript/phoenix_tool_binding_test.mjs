@@ -44,7 +44,9 @@ test("native tool clicks survive a replaced launcher and expire with their root"
   assert.equal(calls, 2)
   new Button(new Root()).click(root)
   assert.equal(calls, 2)
-  cleanups.forEach((cleanup) => cleanup())
+  cleanups.forEach((cleanup) => {
+    cleanup()
+  })
   root.button.click()
   assert.equal(calls, 2)
 })

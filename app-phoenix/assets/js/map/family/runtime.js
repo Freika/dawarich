@@ -1,7 +1,7 @@
-import { waitForStyle } from "../runtime/style_ready.js"
 import { createReader } from "../data/reader.js"
 import { createRequestScope } from "../data/request_scope.js"
 import { createMapRuntime } from "../runtime/create_map.js"
+import { waitForStyle } from "../runtime/style_ready.js"
 import { createFamilyOverlay } from "./overlay.js"
 export function mountFamily({
   element,

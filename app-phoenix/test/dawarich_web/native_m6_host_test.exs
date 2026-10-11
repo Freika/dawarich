@@ -265,14 +265,24 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert rows("SELECT count(*) FROM tracks WHERE user_id=$1", [id]) == [[1]]
   end
 
-  test "timeline-owned track controls toggle canonical points without an overlaid sibling", %{id: id} do
+  test "timeline-owned track controls toggle canonical points without an overlaid sibling", %{
+    id: id
+  } do
     track = id * 10
+
     Dawarich.Test.FrameSeeds.track!(id, track, %{
-      start_at: ~N[2026-03-30 09:00:00], end_at: ~N[2026-03-30 09:10:00], dominant_mode: 4
+      start_at: ~N[2026-03-30 09:00:00],
+      end_at: ~N[2026-03-30 09:10:00],
+      dominant_mode: 4
     })
+
     {:ok, view, _} = open(id, @second <> "&panel=timeline")
     render_async(view, 5000)
-    view |> element("#native-timeline-feed [data-track-id='#{track}'] .journey-leg") |> render_click()
+
+    view
+    |> element("#native-timeline-feed [data-track-id='#{track}'] .journey-leg")
+    |> render_click()
+
     assert_push_event(view, "track:selection", %{id: ^track, points: false})
     control = "#native-map-panel #native-track-info input[data-track-points]"
     view |> element(control) |> render_click()

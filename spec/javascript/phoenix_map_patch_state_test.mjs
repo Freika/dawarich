@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { MapHook } from "../../app-phoenix/assets/js/hooks/map.js"
-import { MapPreview } from "../../app-phoenix/assets/js/hooks/map_preview.js"
+import { MapHook } from "../../app-phoenix/assets/js/map/hooks/map.js"
+import { MapPreview } from "../../app-phoenix/assets/js/map/hooks/map_preview.js"
 
 for (const [kind, implementation] of [
   ["map", MapHook],

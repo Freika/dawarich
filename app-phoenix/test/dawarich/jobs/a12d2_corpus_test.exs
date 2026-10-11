@@ -1292,7 +1292,7 @@ defmodule Dawarich.Jobs.A12d2CorpusTest do
   @tag :rails_parity
   @tag :a12d2_reverse_handoff
   test "publishes actual reverse rows for the Rails acceptance handoff" do
-    assert rows("SELECT max(version::bigint) FROM schema_migrations") == [[20_260_927_120_000]]
+    assert rows("SELECT max(version::bigint) FROM schema_migrations") == [[20_261_006_120_100]]
     schema_hash = :crypto.hash(:sha, File.read!("../db/schema.rb")) |> Base.encode16(case: :lower)
 
     for {key, value} <- [{"environment", "test"}, {"schema_sha1", schema_hash}] do
@@ -1463,7 +1463,8 @@ defmodule Dawarich.Jobs.A12d2CorpusTest do
         task = Task.async(fn -> Ownership.put!(ScratchRepo, key, :sidekiq) end)
 
         assert Dawarich.LockRace.wait_until(fn ->
-                 Dawarich.LockRace.blocked("INSERT INTO phoenix.job_owners%") > 0
+                 Dawarich.LockRace.blocked("INSERT INTO phoenix.job_owners%") > 0 or
+                   Dawarich.LockRace.blocked("SELECT key FROM phoenix.job_owners%") > 0
                end)
 
         send(parent, {:releasing, task})

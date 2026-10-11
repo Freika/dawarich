@@ -6,13 +6,22 @@ test("initial dialog focus cannot reclaim the note field on a later animation fr
   const previousDocument = globalThis.document
   const previousWindow = globalThis.window
   const frames = []
-  const name = { focus() { globalThis.document.activeElement = this } }
-  const note = { focus() { globalThis.document.activeElement = this } }
+  const name = {
+    focus() {
+      globalThis.document.activeElement = this
+    },
+  }
+  const note = {
+    focus() {
+      globalThis.document.activeElement = this
+    },
+  }
   globalThis.document = { activeElement: null }
   globalThis.window = { requestAnimationFrame: (fn) => frames.push(fn) }
   const hook = Object.assign(Object.create(OrdinaryDialog), {
     el: {
-      querySelector: (selector) => selector === "[data-dialog-initial-focus]" ? name : null,
+      querySelector: (selector) =>
+        selector === "[data-dialog-initial-focus]" ? name : null,
       addEventListener() {},
       removeEventListener() {},
     },

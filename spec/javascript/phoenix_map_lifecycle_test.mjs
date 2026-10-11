@@ -406,7 +406,9 @@ test("container resize updates the viewport and destruction disconnects the obse
       disconnected++
     }
   }
-  const f = fixture({ window: { ResizeObserver } })
+  const f = fixture({
+    window: Object.assign(new EventTarget(), { ResizeObserver }),
+  })
   await f.runtime.mount()
   f.runtime.map.resize = () => resized++
   assert.equal(observed, f.element)

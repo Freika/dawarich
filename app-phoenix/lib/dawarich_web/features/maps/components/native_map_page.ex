@@ -146,7 +146,7 @@ defmodule DawarichWeb.NativeMapPage do
           %{}
         )}</button>
         <DawarichWeb.NativePlaceDrawer.drawer detail={assigns[:place_detail]} locale={@locale} />
-      <DawarichWeb.NativeMapPlace.dialog dialog={assigns[:place_dialog]} locale={@locale} />
+        <DawarichWeb.NativeMapPlace.dialog dialog={assigns[:place_dialog]} locale={@locale} />
         <button type="button" data-testid="native-create-place" class="btn btn-sm">{t(
           @locale,
           "javascript.places.create_new",
@@ -164,7 +164,7 @@ defmodule DawarichWeb.NativeMapPage do
           end_date={String.slice(@page.window.end, 0, 10)}
           locale={@locale}
         />
-          <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale={@locale} />
+        <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale={@locale} />
         <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale={@locale} />
         <DawarichWeb.NativeMapReplay.panel id="native-map-replay" locale={@locale} />
         <button
@@ -216,7 +216,7 @@ defmodule DawarichWeb.NativeMapPage do
             tags={@page.timeline_tags}
             locale={@locale}
           />
-        <DawarichWeb.NativeTrackInfo.card
+          <DawarichWeb.NativeTrackInfo.card
             track={assigns[:track_info]}
             unit={@map_config["distanceUnit"] || "km"}
             locale={@locale}

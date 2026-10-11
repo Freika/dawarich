@@ -1,8 +1,9 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { PointsMvtLayer as ActualLayer } from "../../app-phoenix/assets/js/map/layers/points_mvt.js"
-import { heatmapPaint } from "../../app-phoenix/assets/js/map/layers/heatmap.js"
 import { createTileFreshness } from "../../app-phoenix/assets/js/map/data/tile_freshness.js"
+import { heatmapPaint } from "../../app-phoenix/assets/js/map/layers/heatmap.js"
+import { PointsMvtLayer as ActualLayer } from "../../app-phoenix/assets/js/map/layers/points_mvt.js"
+
 const freshness = createTileFreshness("http://x.test")
 const withTileVersion = (url) =>
   new URL(freshness.transformRequest(url.href).url)

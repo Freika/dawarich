@@ -1,7 +1,6 @@
 import { attachViewportStore } from "../data/view_store.js"
 import { installStyleFallback } from "../style/load_style.js"
 import { registerRTLTextPlugin } from "../style/rtl.js"
-import { installMapDiagnostics } from "./diagnostics.js"
 import { createLifecycle } from "./lifecycle.js"
 import { createOperations } from "./operation.js"
 
@@ -179,6 +178,10 @@ export function createMapRuntime({
         pending.then(release, () => {})
         throw error
       }
+      const { installMapDiagnostics } = await operation.wait(
+        import("./diagnostics.js"),
+      )
+      operation.check()
       lifetime.own(
         installMapDiagnostics({ element, map, getConfig: () => current }),
       )

@@ -47,19 +47,22 @@ defmodule DawarichWeb.PublicLinkDeliveryTest do
        %{uuid: uuid} do
     import Phoenix.LiveViewTest
     rows("DELETE FROM trips WHERE id=19022")
-    assert head(build_conn(), "/s/#{uuid}").status == 200
+    assert head(build_conn(), "/s/#{uuid}").status == 404
     assert rows("SELECT view_count FROM shared_links WHERE id=$1::text::uuid", [uuid]) == [[0]]
     conn = get(build_conn(), "/s/#{uuid}")
+    assert conn.status == 404
     assert rows("SELECT view_count FROM shared_links WHERE id=$1::text::uuid", [uuid]) == [[1]]
     refute conn.resp_body =~ "native-public-map"
 
     {:ok, view, _} =
-      live(put_private(conn, :live_view_connect_info, %{session: get_session(conn)}))
+      live(
+        put_private(%{conn | status: 200}, :live_view_connect_info, %{session: get_session(conn)})
+      )
 
     refute has_element?(view, "#native-public-map")
     assert rows("SELECT view_count FROM shared_links WHERE id=$1::text::uuid", [uuid]) == [[1]]
     revoke()
-    assert get(build_conn(), "/s/#{uuid}").status == 200
+    assert get(build_conn(), "/s/#{uuid}").status == 404
     assert rows("SELECT view_count FROM shared_links WHERE id=$1::text::uuid", [uuid]) == [[1]]
   end
 
@@ -78,7 +81,7 @@ defmodule DawarichWeb.PublicLinkDeliveryTest do
                Dawarich.Maps.Public.presentation(grant, after_read: &revoke/0)
 
       conn = get(build_conn(), "/s/#{uuid}")
-      assert conn.status == 200
+      assert conn.status == 404
       refute conn.resp_body =~ "id=\"native-public-map\""
       refute conn.resp_body =~ "id=\"native-public-resource\""
     end
@@ -278,7 +281,7 @@ defmodule DawarichWeb.PublicLinkDeliveryTest do
       assert {:ok, _} = Dawarich.Maps.Public.presentation(grant)
       assert {:error, :not_found} = Dawarich.Maps.Public.presentation(grant, after_read: hook)
       conn = get(request.(), path)
-      assert conn.status == 200
+      assert conn.status == 404
       refute conn.resp_body =~ "id=\"native-public-resource\""
       refute conn.resp_body =~ "id=\"native-public-map\""
       assert rows("SELECT count(*) FROM family_memberships WHERE user_id=19023") == [[1]]

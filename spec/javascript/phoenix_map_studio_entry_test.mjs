@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { MapHook } from "../../app-phoenix/assets/js/hooks/map.js"
+import { MapHook } from "../../app-phoenix/assets/js/map/hooks/map.js"
 import { installStudios } from "../../app-phoenix/assets/js/map/ui/studios.js"
 
 test("native hub studio entry waits for the owned map before opening", async () => {

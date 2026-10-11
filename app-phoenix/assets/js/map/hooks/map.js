@@ -1,5 +1,6 @@
-import { rememberMapState, restoreMapState } from "./map_state.js"
+import { MapState } from "./map_state.js"
 export const MapHook = {
+  ...MapState,
   async mounted() {
     this.mapDestroyed = false
     this.mapRevoked = false
@@ -13,10 +14,14 @@ export const MapHook = {
     this.mapHandlers = [
       this.handleEvent("place:focus", ({ latitude, longitude }) => {
         if (
-          this.mapDestroyed || this.mapRevoked ||
-          !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
-          Math.abs(latitude) > 90 || Math.abs(longitude) > 180
-        ) return
+          this.mapDestroyed ||
+          this.mapRevoked ||
+          !Number.isFinite(latitude) ||
+          !Number.isFinite(longitude) ||
+          Math.abs(latitude) > 90 ||
+          Math.abs(longitude) > 180
+        )
+          return
         this.mapPlaceFocus = { center: [longitude, latitude], zoom: 16 }
         if (this.mapReady) this.mapOwner?.map?.jumpTo(this.mapPlaceFocus)
       }),
@@ -103,12 +108,6 @@ export const MapHook = {
       this.mapRealtime?.destroy()
       if (!this.mapDestroyed) this.el.dataset.mapState = "failed"
     }
-  },
-  beforeUpdate() {
-    rememberMapState(this)
-  },
-  updated() {
-    restoreMapState(this)
   },
   reconnected() {
     if (this.mapReady) return this.mapRealtime?.reconnect()

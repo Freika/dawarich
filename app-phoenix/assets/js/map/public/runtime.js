@@ -1,8 +1,8 @@
-import { waitForStyle } from "../runtime/style_ready.js"
 import { cancelled } from "../data/request_scope.js"
 import { createStudioSource } from "../data/studio_source.js"
 import { installHostReplay } from "../replay/host.js"
 import { createMapRuntime } from "../runtime/create_map.js"
+import { waitForStyle } from "../runtime/style_ready.js"
 import { createPublicLayers } from "./layers.js"
 import { createPublicReader } from "./reader.js"
 export function mountPublic({

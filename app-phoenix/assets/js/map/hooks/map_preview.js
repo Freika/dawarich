@@ -1,5 +1,6 @@
-import { rememberMapState, restoreMapState } from "./map_state.js"
+import { MapState } from "./map_state.js"
 export const MapPreview = {
+  ...MapState,
   async mounted() {
     this.previewDestroyed = false
     try {
@@ -13,11 +14,8 @@ export const MapPreview = {
       if (!this.previewDestroyed) this.el.dataset.mapState = "failed"
     }
   },
-  beforeUpdate() {
-    rememberMapState(this)
-  },
   updated() {
-    restoreMapState(this)
+    MapState.updated.call(this)
     return this.previewOwner?.update(
       JSON.parse(this.el.dataset.mapConfig ?? "{}"),
     )

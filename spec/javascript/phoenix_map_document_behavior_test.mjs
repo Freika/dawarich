@@ -5,6 +5,10 @@ import { mountHost } from "../../app-phoenix/assets/js/map/runtime/host.js"
 function fixture() {
   const calls = { controls: [], fits: [], removed: 0, bounds: [] }
   const loading = { hidden: false }
+  let requested
+  const boundsRequested = new Promise((resolve) => {
+    requested = resolve
+  })
   let response = {
     status: "ok",
     data: {
@@ -35,6 +39,7 @@ function fixture() {
       destroy() {},
       async read(resource, params, opts) {
         calls.bounds.push({ resource, params, opts })
+        requested()
         return await response
       },
     },
@@ -65,6 +70,7 @@ function fixture() {
     calls,
     element,
     loading,
+    boundsRequested,
     range,
     respond: (next) => {
       response = next
@@ -129,7 +135,7 @@ test("native document publishes loading until current bounds settle and discards
   )
   const mounting = f.owner.mount()
   try {
-    for (let n = 0; n < 12; n++) await Promise.resolve()
+    await f.boundsRequested
     assert.equal(f.calls.bounds.length, 1)
     assert.equal(f.element.dataset.mapState, "loading")
     assert.equal(f.loading.hidden, false)

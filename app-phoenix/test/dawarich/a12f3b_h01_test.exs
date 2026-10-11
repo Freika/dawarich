@@ -453,7 +453,7 @@ defmodule Dawarich.A12f3bH01Test do
     ])
 
     refused = request(actor, "GET", "/s/" <> Shares.id(1))
-    assert refused.status == 200
+    assert refused.status == 404
     refute refused.resp_body =~ "data-native-public-map"
 
     denied =

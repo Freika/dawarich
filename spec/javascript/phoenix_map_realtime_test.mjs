@@ -110,7 +110,9 @@ test("unrecognized or malformed revisions do not trigger reads", async () => {
 })
 
 test("map hook owns coalesced delivery handlers and releases them on teardown", async () => {
-  const { MapHook } = await import("../../app-phoenix/assets/js/map/hooks/map.js")
+  const { MapHook } = await import(
+    "../../app-phoenix/assets/js/map/hooks/map.js"
+  )
   const handlers = new Map(),
     removed = [],
     jobs = new Map()
@@ -186,7 +188,9 @@ test("map hook owns coalesced delivery handlers and releases them on teardown", 
 })
 
 test("reconnect while the map chunk loads keeps a bounded invalidation queue", async () => {
-  const { MapHook } = await import("../../app-phoenix/assets/js/map/hooks/map.js")
+  const { MapHook } = await import(
+    "../../app-phoenix/assets/js/map/hooks/map.js"
+  )
   let release
   const pending = new Promise((resolve) => {
       release = resolve

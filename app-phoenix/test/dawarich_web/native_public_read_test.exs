@@ -91,6 +91,7 @@ defmodule DawarichWeb.NativePublicReadTest do
     )
 
     assert Jason.decode!(read("metadata").resp_body)["routeEnabled"] == false
+
     for action <- ~w(points route) do
       conn = read(action)
       assert conn.status == 200

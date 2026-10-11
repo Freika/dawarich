@@ -34,7 +34,7 @@ defmodule DawarichWeb.FamiliesLive.NativeMap do
 
   def handle_event(event, params, socket)
       when event in ~w(family_prepare_confirm family_cancel_confirm family_confirm),
-    do: DawarichWeb.NativeFamilyConfirmation.handle_event(event, params, socket)
+      do: DawarichWeb.NativeFamilyConfirmation.handle_event(event, params, socket)
 
   def handle_event(_, _, socket), do: {:noreply, socket}
 

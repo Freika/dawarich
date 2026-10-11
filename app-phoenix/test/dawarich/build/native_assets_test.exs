@@ -6,7 +6,7 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
   @http_chrome_cap 2 * 1024
   @places_cap 2 * 1024
-  @m6_inputs ~w(js/map/hooks/map.js js/map/hooks/family.js js/map/hooks/map_preview.js js/onboarding/hook.js js/poster/hook.js js/map/hooks/public_map.js js/map/hooks/trip.js js/video/hook.js js/onboarding/dialog.js)
+  @m6_inputs ~w(js/map/hooks/map_state.js js/map/hooks/map.js js/map/hooks/family.js js/map/hooks/map_preview.js js/onboarding/hook.js js/poster/hook.js js/map/hooks/public_map.js js/map/hooks/trip.js js/video/hook.js js/onboarding/dialog.js)
   @other_slack 1024
   @chrome_inputs ~w(js/analytics_events.js js/hooks/achievement_unlocks.js js/hooks/changelog_widget.js)
   @chrome_base_bytes 6_707 + 548
