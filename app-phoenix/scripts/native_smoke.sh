@@ -58,7 +58,7 @@ dk network create --label org.dawarich.x4="$RUN" "$NET" >/dev/null; NETWORK=1
 dk volume create --label org.dawarich.x4="$RUN" "$VOL" >/dev/null; VOLUME=1
 export NATIVE_SMOKE_API_KEY=$(openssl rand -hex 32)
 PASSWORD=$(openssl rand -hex 24)
-printf 'POSTGRES_PASSWORD=%s\n' "$PASSWORD" >"$PRIVATE/pg.env"
+printf 'POSTGRES_PASSWORD=%s\nPOSTGRES_DB=%s\n' "$PASSWORD" "$NATIVE_SMOKE_DATABASE" >"$PRIVATE/pg.env"
 cat >"$PRIVATE/app.env" <<ENV
 SELF_HOSTED=true
 DATABASE_HOST=$PG

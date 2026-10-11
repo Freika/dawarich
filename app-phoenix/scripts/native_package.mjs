@@ -37,10 +37,11 @@ export function auditPayload(root, priv) {
     if (!expected || expected !== actual) throw new Error(`digest integrity mismatch: ${target}`);
     if (path.endsWith('.css')) {
       const css = readFileSync(path, 'utf8');
-      for (const match of css.matchAll(/url\(['"]?([^)'"\s]+)['"]?\)/g)) {
-        if (/^(data:|https?:|#)/.test(match[1])) continue;
+      for (const match of css.matchAll(/url\(\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|([^)'"\s]+))\s*\)/g)) {
+        const reference = match[1] ?? match[2] ?? match[3];
+        if (/^(data:|https?:|#)/.test(reference)) continue;
         const relative = path.slice(resolve(staticRoot).length).replaceAll('\\', '/');
-        const url = new URL(match[1], `http://static.test${relative}`);
+        const url = new URL(reference, `http://static.test${relative}`);
         present(join(staticRoot, decodeURIComponent(url.pathname)));
       }
     }

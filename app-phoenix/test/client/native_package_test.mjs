@@ -96,3 +96,48 @@ test('native image payload verifies digested byte integrity', t => {
   put('release/priv/static/native/app-abcd.js', 'corrupted synthetic bundle');
   assert.throws(() => auditPayload(root, release), /integrity/);
 });
+
+test('image smoke initializes its allocated database before native startup', async t => {
+  const { spawnSync } = await import('node:child_process');
+  const { chmodSync } = await import('node:fs');
+  const root = mkdtempSync(join(tmpdir(), 'native-smoke-database-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const docker = join(root, 'docker');
+  writeFileSync(docker, `#!/bin/sh
+case "$*" in
+  *inspect*) exit 1;;
+  *" run "*)
+    while [ "$#" -gt 0 ]; do
+      if [ "$1" = --env-file ]; then cp "$2" "$CAPTURE"; exit 23; fi
+      shift
+    done
+    exit 24;;
+  *) exit 0;;
+esac
+`);
+  chmodSync(docker, 0o755);
+  const capture = join(root, 'captured.env');
+  const result = spawnSync('bash', ['app-phoenix/scripts/native_smoke.sh'], { env: {
+    ...process.env, PATH: `${root}:${process.env.PATH}`, CAPTURE: capture,
+    NATIVE_DOCKER_CONTEXT: 'colima', NATIVE_IMAGE: 'synthetic-native', RAILS_FALLBACK_IMAGE: 'synthetic-rails',
+    NATIVE_PLAYWRIGHT_ROOT: root, NATIVE_SMOKE_DATABASE: 'synthetic_database',
+    NATIVE_SMOKE_OUT: join(root, 'out'), NATIVE_SMOKE_RUN: 'synthetic-test',
+  }});
+  assert.equal(result.status, 23);
+  assert.equal(readFileSync(capture, 'utf8').split('\n').find(line => line.startsWith('POSTGRES_DB=')),
+    'POSTGRES_DB=synthetic_database');
+});
+
+test('native payload accepts SVG data URLs containing nested fragment references', t => {
+  const { root, release, put } = fixture(t);
+  const target = 'native/inter-font-abcd.css';
+  const css = '@font-face{src:url("./inter-abcd.woff2?vsn=d")} .icon{background:url("data:image/svg+xml,%3csvg filter=\'url(%23a)\'%3e%3c/svg%3e")}';
+  put(`release/priv/static/${target}`, css);
+  const manifestPath = join(release, 'static/cache_manifest.json');
+  const manifest = JSON.parse(readFileSync(manifestPath));
+  manifest.digests[target].sha512 = createHash('sha512').update(css).digest('base64');
+  writeFileSync(manifestPath, JSON.stringify(manifest));
+  assert.equal(auditPayload(root, release).digests, 3);
+  rmSync(join(root, 'release/priv/static/native/inter-abcd.woff2'));
+  assert.throws(() => auditPayload(root, release), /inter-abcd.woff2/);
+});
