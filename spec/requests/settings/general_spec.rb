@@ -134,6 +134,8 @@ RSpec.describe 'settings/general', type: :request do
     end
 
     describe 'POST /test_email' do
+      let!(:user) { create(:user, :admin, settings: {}) }
+
       around do |example|
         original_from = UsersMailer.default_params[:from]
         UsersMailer.default from: 'hi@dawarich.app'

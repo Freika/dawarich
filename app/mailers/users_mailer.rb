@@ -53,6 +53,7 @@ class UsersMailer < ApplicationMailer
 
   def test_email
     @user = params[:user]
+    return unless @user.reload.admin? && @user.deleted_at.nil?
 
     mail(to: @user.email, subject: I18n.t('mailers.users.test_email.subject')).tap do |message|
       message.raise_delivery_errors = true
