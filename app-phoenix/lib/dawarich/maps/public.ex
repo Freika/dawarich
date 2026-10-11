@@ -14,11 +14,18 @@ defmodule Dawarich.Maps.Public do
   def presentation(capability, opts \\ []) do
     opts = delivery_options(opts)
 
-    with {:ok, bound} <- Dawarich.Maps.PublicGrant.bind(capability, opts),
-         {:ok, link} <- admitted(bound, opts, true),
-         {:ok, page} <-
-           Dawarich.Sharing.Pages.resource(bound.grant, Keyword.get(opts, :params, %{}), opts) do
-      {:ok, Dawarich.Maps.PublicPresentation.project(page, FamilyAudience.family_only?(link))}
+    with {:ok, bound} <- Dawarich.Maps.PublicGrant.bind(capability, opts) do
+      with_link(bound, opts, fn link ->
+        with {:ok, page} <-
+               Dawarich.Sharing.Pages.resource(bound.grant, Keyword.get(opts, :params, %{}), opts) do
+          page =
+            if page.resource,
+              do: put_in(page.resource.photos, Photos.gallery(link)),
+              else: page
+
+          {:ok, Dawarich.Maps.PublicPresentation.project(page, FamilyAudience.family_only?(link))}
+        end
+      end)
     end
   end
 

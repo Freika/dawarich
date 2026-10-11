@@ -7,7 +7,15 @@ defmodule Dawarich.Maps.PublicPresentation do
     do: %{link: page.link, resource: nil}
 
   def project(%{link: link, resource: resource}, family?) do
-    photos = Dawarich.Sharing.PublicSnapshot.photos(resource.photos, resource[:zone] || "UTC")
+    photos =
+      resource.photos
+      |> Enum.map(fn
+        photo when is_map(photo) -> {:object, Map.to_list(photo)}
+        photo -> photo
+      end)
+      |> Dawarich.Sharing.PublicSnapshot.photos(resource[:zone] || "UTC")
+      |> Enum.map(&Map.take(&1, ~w(id source thumbnail_url taken_at day_key)))
+
     grouped = Enum.group_by(photos, & &1["day_key"])
 
     days =
@@ -19,6 +27,7 @@ defmodule Dawarich.Maps.PublicPresentation do
 
     resource =
       resource
+      |> Map.put(:photos, photos)
       |> Map.put(:days, days)
       |> Map.put(:family, family?)
       |> Map.put(:started, resource[:started_at])
