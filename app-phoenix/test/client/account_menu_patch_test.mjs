@@ -4,7 +4,7 @@ import test from "node:test"
 import vm from "node:vm"
 
 const source = await readFile(
-  new URL("../../priv/static/js/app.js", import.meta.url),
+  new URL("../../assets/js/app.js", import.meta.url),
   "utf8",
 )
 let options
@@ -16,19 +16,19 @@ const globals = {
     }
     connect() {}
   },
-  MapShell: {},
-  RailsStimulus: {},
-  VideoStudio: {},
-  meta: () => null,
+  hooks: {},
+  Direct: {},
+  initializeAnalyticsEvents() {},
   document: {
     readyState: "loading",
     addEventListener() {},
     querySelectorAll: () => [],
+    querySelector: () => null,
   },
   window: { addEventListener() {}, setTimeout() {} },
 }
 vm.runInNewContext(
-  source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, ""),
+  source.replace(/^import(?:[^\n]*from )?[^\n]+\n/gm, ""),
   globals,
 )
 
@@ -67,6 +67,8 @@ function element({
     },
     matches(selector) {
       return (
+        (selector === 'dialog, .navbar-end details:has([href="/users/sign_out"])' &&
+          (tag === "dialog" || (tag === "details" && navbar && logout))) ||
         selector === tag ||
         (selector === ".navbar-end details" && tag === "details" && navbar)
       )

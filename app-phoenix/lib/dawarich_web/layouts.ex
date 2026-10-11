@@ -19,37 +19,6 @@ defmodule DawarichWeb.Layouts do
     t(locale, "helpers.application.full_title", %{page_title: title, app_name: app_name})
   end
 
-  def importmap(_rails_js \\ false) do
-    versions = DawarichWeb.Assets.script_versions()
-
-    phoenix = %{
-      "app" => "/phoenix/js/app.js?vsn=#{versions.app}",
-      "map_shell" => "/phoenix/js/map_shell.js?vsn=#{versions.map_shell}",
-      "phoenix" => "/phoenix/js/phoenix.mjs?vsn=#{versions.phoenix}",
-      "rails_bridge" => "/phoenix/js/rails_bridge.js?vsn=#{versions.rails_bridge}",
-      "phoenix_live_view" => "/phoenix/js/phoenix_live_view.esm.js?vsn=#{versions.live_view}"
-    }
-
-    rails = DawarichWeb.Assets.rails_imports()
-
-    phoenix =
-      if rails["controllers/card_modal_controller"],
-        do:
-          Map.merge(phoenix, %{
-            "rails_card_modal" => rails["controllers/card_modal_controller"],
-            "controllers/card_modal_controller" =>
-              "/phoenix/js/native_card_modal.js?vsn=#{versions.native_card_modal}"
-          }),
-        else: phoenix
-
-    imports = Map.merge(rails, phoenix)
-
-    Jason.encode!(%{"imports" => imports})
-  end
-
-  def rails_modules?(assigns),
-    do: assigns[:rails_js] == true or not is_nil(assigns[:current_user])
-
   def rails_translations(locale) do
     base =
       case Dawarich.I18n.t(locale, "javascript") do

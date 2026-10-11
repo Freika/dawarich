@@ -1,34 +1,6 @@
 defmodule DawarichWeb.Assets do
   @moduledoc false
 
-  @app_js Path.expand("../../priv/static/js/app.js", __DIR__)
-  @external_resource @app_js
-  @app_hash @app_js
-            |> File.read!()
-            |> then(&:crypto.hash(:md5, &1))
-            |> Base.url_encode64(padding: false)
-
-  @map_shell_js Path.expand("../../priv/static/js/map_shell.js", __DIR__)
-  @external_resource @map_shell_js
-  @map_shell_hash @map_shell_js
-                  |> File.read!()
-                  |> then(&:crypto.hash(:md5, &1))
-                  |> Base.url_encode64(padding: false)
-
-  @rails_bridge_js Path.expand("../../priv/static/js/rails_bridge.js", __DIR__)
-  @external_resource @rails_bridge_js
-  @rails_bridge_hash @rails_bridge_js
-                     |> File.read!()
-                     |> then(&:crypto.hash(:md5, &1))
-                     |> Base.url_encode64(padding: false)
-
-  @native_card_modal_js Path.expand("../../priv/static/js/native_card_modal.js", __DIR__)
-  @external_resource @native_card_modal_js
-  @native_card_modal_hash @native_card_modal_js
-                          |> File.read!()
-                          |> then(&:crypto.hash(:md5, &1))
-                          |> Base.url_encode64(padding: false)
-
   def native_path(logical), do: DawarichWeb.Endpoint.static_path("/native/" <> logical)
 
   def stylesheet_path(logical), do: "/assets/" <> Map.get(manifest(), logical, logical)
@@ -42,17 +14,6 @@ defmodule DawarichWeb.Assets do
     Enum.find_value([logical, logical <> ".js", logical <> "/index.js"], fn candidate ->
       if digest = assets[candidate], do: "/assets/" <> digest
     end)
-  end
-
-  def script_versions do
-    %{
-      phoenix: to_string(Application.spec(:phoenix, :vsn)),
-      live_view: to_string(Application.spec(:phoenix_live_view, :vsn)),
-      app: @app_hash,
-      map_shell: @map_shell_hash,
-      rails_bridge: @rails_bridge_hash,
-      native_card_modal: @native_card_modal_hash
-    }
   end
 
   def rails_imports do

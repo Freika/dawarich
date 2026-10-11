@@ -67,6 +67,8 @@ function element({
     },
     matches(selector) {
       return (
+        (selector === 'dialog, .navbar-end details:has([href="/users/sign_out"])' &&
+          (tag === "dialog" || (tag === "details" && navbar && logout))) ||
         (selector === "details, dialog" &&
           ["details", "dialog"].includes(tag)) ||
         selector === tag ||
@@ -130,4 +132,20 @@ test("account disclosure survives server reconciliation without rewriting incomi
     assert.equal(current.getAttribute("data-server-revision"), "server update")
     assert.deepEqual(incoming.children, ["updated action"])
   }
+})
+
+
+test("native page navigation preserves dialog and account disclosure state without hybrid boot", () => {
+  for (const tag of ["dialog", "details"]) {
+    const current = element({ tag, open: true })
+    reconcile(current, element({ tag, title: "next page", content: "next action" }))
+    assert.equal(current.hasAttribute("open"), true)
+    assert.equal(current.getAttribute("title"), "next page")
+  }
+  const unrelated = element({ open: true, navbar: false })
+  reconcile(unrelated, element({ navbar: false }))
+  assert.equal(unrelated.hasAttribute("open"), false)
+  const revoked = element({ open: true })
+  reconcile(revoked, element({ logout: false }))
+  assert.equal(revoked.hasAttribute("open"), false)
 })
