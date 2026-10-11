@@ -40,9 +40,15 @@ defmodule DawarichWeb.MapLive.AreaCommands do
           if id, do: Areas.update_area(scope, id, form), else: Areas.create_area(scope, form)
 
         case result do
-          {:ok, area} -> saved(socket, area["id"])
-          {:error, {:invalid, errors}} -> open(socket, %{dialog | form: form, errors: errors})
-          {:error, _} -> open(socket, %{dialog | form: form, errors: [failure(socket)]})
+          {:ok, area} ->
+            socket = if is_nil(id), do: enable_layer(socket), else: socket
+            saved(socket, area["id"])
+
+          {:error, {:invalid, errors}} ->
+            open(socket, %{dialog | form: form, errors: errors})
+
+          {:error, _} ->
+            open(socket, %{dialog | form: form, errors: [failure(socket)]})
         end
 
       _ ->
@@ -76,6 +82,21 @@ defmodule DawarichWeb.MapLive.AreaCommands do
      |> assign(:area_dialog, nil)
      |> push_event("map:invalidate", %{resource: "areas", id: Dawarich.RubyInteger.to_i(id)})}
   end
+
+  defp enable_layer(%{assigns: %{map_settings: %{saved: settings}, map_config: _}} = socket) do
+    layers = Enum.uniq((settings["enabled_map_layers"] || []) ++ ["Areas"])
+
+    {:noreply, socket} =
+      DawarichWeb.MapLive.Native.handle_event(
+        "settings:map_layers",
+        %{"layers" => layers},
+        socket
+      )
+
+    socket
+  end
+
+  defp enable_layer(socket), do: socket
 
   defp coordinate(value) when is_number(value), do: to_string(value)
   defp coordinate(value) when is_binary(value), do: value
