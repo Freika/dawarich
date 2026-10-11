@@ -1,3 +1,4 @@
+import { bindTool } from "../ui/host_tools.js"
 import { mapTranslate } from "../ui/translate.js"
 import { createReplayDensity } from "./density.js"
 import { createReplayPanel } from "./panel.js"
@@ -43,7 +44,6 @@ export function installHostReplay({
     ]),
   )
   const container = root?.querySelector("[data-map-replay-panel]")
-  const opener = root?.querySelector("[data-map-replay-open]")
   function ensure() {
     if (runtime && runtime.manager.timezone !== owner.config.range.timezone) {
       runtime.close()
@@ -159,11 +159,10 @@ export function installHostReplay({
   }
   const close = () => {
     owner.replay.close()
-    opener?.focus()
+    root?.querySelector("[data-map-replay-open]")?.focus()
   }
-  const closer = root?.querySelector("[data-map-replay-close]")
-  opener?.addEventListener("click", open)
-  closer?.addEventListener("click", close)
+  bindTool(root, "[data-map-replay-open]", open, lifetime)
+  bindTool(root, "[data-map-replay-close]", close, lifetime)
   const update = owner.update,
     reconnect = owner.reconnect
   owner.update = async (next) => {
@@ -179,8 +178,6 @@ export function installHostReplay({
     return result
   }
   lifetime.own(() => {
-    opener?.removeEventListener("click", open)
-    closer?.removeEventListener("click", close)
     owner.replay.close()
   })
   return owner.replay

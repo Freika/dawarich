@@ -61,7 +61,11 @@ test("native replay wrapper forwards the admitted reconnect receipt", async () =
   installHostReplay({
     owner,
     map: {},
-    root: { querySelector: () => null },
+    root: {
+      querySelector: () => null,
+      addEventListener() {},
+      removeEventListener() {},
+    },
     lifetime: {
       own: (callback) => {
         dispose = callback

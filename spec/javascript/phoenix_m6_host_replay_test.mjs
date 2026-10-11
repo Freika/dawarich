@@ -111,3 +111,31 @@ test("native replay opener toggles pending and ready runs without late marker le
     f.owner.destroy()
   }
 })
+
+test("native replay survives a replaced launcher and releases root click ownership", async () => {
+  const f = fixture()
+  const panel = new Element()
+  panel.hidden = true
+  f.nodes.set("[data-map-replay-panel]", panel)
+  f.nodes.set("[data-map-replay-open]", new Element())
+  try {
+    await f.owner.mount()
+    f.owner.source.snapshot = async () => ({
+      points: [{ timestamp: 1774861200, longitude: 13, latitude: 52 }],
+    })
+    const replacement = new Element()
+    f.nodes.set("[data-map-replay-open]", replacement)
+    replacement.emit("click")
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(panel.hidden, false)
+    assert.equal(f.sources.has("native-replay-marker"), true)
+    replacement.emit("click")
+    assert.equal(panel.hidden, true)
+    f.owner.destroy()
+    assert.equal(f.root.listeners.get("click").size, 0)
+    replacement.emit("click")
+    assert.equal(f.sources.has("native-replay-marker"), false)
+  } finally {
+    f.owner.destroy()
+  }
+})
