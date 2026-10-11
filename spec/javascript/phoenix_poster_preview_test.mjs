@@ -545,6 +545,65 @@ test("closing the studio during a download cancels the render and saves no file"
   delete globalThis.fetch
 })
 
+test("Escape cancellation aborts a poster export before the queued close event", async () => {
+  const { mountPosterStudio } = await import(
+    "../../app-phoenix/assets/js/poster/runtime.js"
+  )
+  const { createPosterExports } = await import(
+    "../../app-phoenix/assets/js/poster/export/operation.js"
+  )
+  const library = fakeLibrary()
+  const dom = elements()
+  const root = fakeRoot(dom, [swatch("noir", "Noir")])
+  const pending = deferred()
+  const requests = []
+  const downloads = []
+  globalThis.fetch = async () => ({ ok: true, json: async () => tokens })
+  const owner = mountPosterStudio({
+    root,
+    source: {
+      snapshot: async () => ({
+        revision: 1,
+        range: {},
+        points: [],
+        geojson: { type: "FeatureCollection", features: [route] },
+      }),
+    },
+    loadLibrary: async () => library.library,
+    window: environment(),
+    exports: createPosterExports({
+      exportPoster: (request) => {
+        requests.push(request)
+        return pending.promise
+      },
+      download: (...args) => downloads.push(args),
+    }),
+  })
+  await owner.open()
+  root.lookup.download.dispatchEvent(new Event("click"))
+  await tick()
+  assert.equal(root.lookup.download.disabled, true)
+  assert.equal(requests.length, 1)
+  assert.deepEqual(requests[0].bounds, [
+    [13.4, 52.5],
+    [13.5, 52.6],
+  ])
+  assert.equal(requests[0].layout.id, "print-a3")
+  assert.equal(requests[0].cssSize.width, 300)
+  assert.equal(requests[0].signal.aborted, false)
+  const cancel = new Event("cancel", { cancelable: true })
+  dom.dialog.dispatchEvent(cancel)
+  assert.equal(cancel.defaultPrevented, true)
+  assert.equal(dom.dialog.open, false)
+  assert.equal(requests[0].signal.aborted, true)
+  pending.resolve({ blob: new Blob(["png"]), extension: "png", geometry: {} })
+  await tick()
+  assert.deepEqual(downloads, [])
+  assert.equal(root.lookup.download.disabled, false)
+  owner.destroy()
+  delete globalThis.fetch
+})
+
 test("reopening the studio keeps layout, title and colours in sync with its controls", async () => {
   const runtime = await import("../../app-phoenix/assets/js/poster/runtime.js")
   const { PosterStudio } = await import(
