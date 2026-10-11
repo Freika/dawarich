@@ -51,6 +51,8 @@ class User < ApplicationRecord
   has_many :user_achievements, dependent: :destroy
 
   after_create :create_api_key
+  after_initialize :normalize_nil_settings
+
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :trigger_creation_webhook, on: :create,
@@ -135,6 +137,10 @@ class User < ApplicationRecord
     provider.present?
   end
 
+  def settings_hash
+    settings.is_a?(Hash) ? settings : {}
+  end
+
   def safe_settings
     Users::SafeSettings.new(settings, plan: entitlements.full_access? ? :pro : :lite)
   end
@@ -190,7 +196,7 @@ class User < ApplicationRecord
     job = DataMigrations::RecalculateAnomaliesUserJob
     return false if settings.blank?
 
-    settings[job::QUEUED_SETTINGS_KEY].present? && settings[job::RECALCULATED_SETTINGS_KEY].blank?
+    settings_hash[job::QUEUED_SETTINGS_KEY].present? && settings_hash[job::RECALCULATED_SETTINGS_KEY].blank?
   end
 
   # nil changelog_consent => user has not been shown the opt-in prompt yet.
@@ -230,11 +236,11 @@ class User < ApplicationRecord
   end
 
   def immich_integration_configured?
-    settings['immich_url'].present? && settings['immich_api_key'].present?
+    settings_hash['immich_url'].present? && settings_hash['immich_api_key'].present?
   end
 
   def photoprism_integration_configured?
-    settings['photoprism_url'].present? && settings['photoprism_api_key'].present?
+    settings_hash['photoprism_url'].present? && settings_hash['photoprism_api_key'].present?
   end
 
   def years_tracked
@@ -410,6 +416,12 @@ class User < ApplicationRecord
   end
 
   private
+
+  def normalize_nil_settings
+    return unless has_attribute?(:settings)
+
+    self.settings = {} if settings.nil?
+  end
 
   def saved_change_to_timezone_setting?
     return false unless saved_change_to_settings?
