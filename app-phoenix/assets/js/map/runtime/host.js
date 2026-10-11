@@ -39,7 +39,7 @@ export function mountHost({
   const blocked = () =>
     owner.config.editEnabled ||
     owner.selection.state.active ||
-    Boolean(root?.querySelector("[data-map-tool-status]")?.textContent)
+    Boolean(root?.querySelector("[data-map-tool-status]")?.textContent?.trim())
   let library
   let layers
   let editing

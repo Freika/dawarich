@@ -493,3 +493,38 @@ test("native timeline keyboard steps profile calendar dates ignores text inputs 
     f.owner.destroy()
   }
 })
+
+test("empty native tool status whitespace permits track clicks and hover while armed tools block them", async () => {
+  const f = fixture({ tracksEnabled: true })
+  const status = new Element()
+  const canvas = { style: {} }
+  f.map.getCanvas = () => canvas
+  status.textContent = "\n        "
+  f.nodes.set("[data-map-tool-status]", status)
+  f.map.queryRenderedFeatures = () => [
+    { properties: { id: 7 }, layer: { id: "tracks-mvt" } },
+  ]
+  try {
+    await f.owner.mount()
+    f.map.emit("click", { point: { x: 20, y: 20 } })
+    assert.ok(
+      f.pushed.some(
+        ({ event, payload }) =>
+          event === "map:select" &&
+          payload.kind === "track" &&
+          payload.id === 7,
+      ),
+    )
+    f.map.emit("mousemove", { point: { x: 20, y: 20 } })
+    assert.equal(f.map.getCanvas().style.cursor, "pointer")
+    const count = f.pushed.filter(({ event }) => event === "map:select").length
+    status.textContent = "Click to place a visit"
+    f.map.emit("click", { point: { x: 20, y: 20 } })
+    assert.equal(
+      f.pushed.filter(({ event }) => event === "map:select").length,
+      count,
+    )
+  } finally {
+    f.owner.destroy()
+  }
+})
