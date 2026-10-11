@@ -60,6 +60,10 @@ try {
   for (const path of ['/tags', '/imports/new', '/settings/general', '/settings/users'])
     await document(path, !fallback);
   if (!fallback) {
+    await document('/tags/new', true);
+    await page.locator('[data-emoji-toggle]').click();
+    await page.waitForSelector('em-emoji-picker');
+    evidence('lazy emoji picker');
     await document('/stats', true);
     await page.waitForSelector('[data-chart-plot] canvas');
     evidence('lazy chart');
@@ -78,6 +82,9 @@ try {
     assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
     assert.ok(bytes.length > 1000);
     evidence('synthetic studio PNG export');
+    await page.locator('#native-poster-dialog [data-poster-switch-video]').click();
+    await page.waitForSelector('#native-video-dialog[open] .maplibregl-canvas');
+    evidence('lazy video studio');
     await document('/s/00000000-0000-4000-8000-000000000004');
     await page.waitForSelector('.maplibregl-canvas');
     evidence('public map');
