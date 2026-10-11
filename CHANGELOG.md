@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Keep signed storage capabilities and private filenames out of request path logs.
+
 - Prevent legacy or restored export URLs from deleting unrelated files; retain unproven legacy files after export removal or migration.
 
 - Refuse location-sharing consent when family access expires while waiting for the request lock.
