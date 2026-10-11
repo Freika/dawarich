@@ -155,6 +155,7 @@ function fixture(options = {}) {
     reader,
     timers,
     now: options.now,
+    isOffline: options.isOffline,
     loadLibrary: async () => ({ Map: MapView, Popup }),
     loadStyle: async () => ({ version: 8, sources: {}, layers: [] }),
     pushEvent() {},
@@ -533,6 +534,28 @@ test("family empty guidance display follows consent despite flex styling", async
     assert.equal(f.empty.style.display, "")
     await f.owner.reconnect()
     assert.equal(f.empty.style.display, "none")
+  } finally {
+    f.owner.destroy()
+  }
+})
+
+
+test("native Family offline blocks queued refreshes until fresh admission online", async () => {
+  let offline = false
+  const f = fixture({ isOffline: () => offline })
+  try {
+    await f.owner.mount()
+    assert.equal(f.sources.get("family-members").data.features.length, 1)
+    offline = true
+    f.owner.clear()
+    const reads = f.reads.length
+    await f.owner.reconnect()
+    assert.equal(f.reads.length, reads)
+    assert.equal(f.sources.get("family-members").data.features.length, 0)
+    offline = false
+    await f.owner.reconnect()
+    assert.equal(f.reads.length, reads + 2)
+    assert.equal(f.sources.get("family-members").data.features.length, 1)
   } finally {
     f.owner.destroy()
   }

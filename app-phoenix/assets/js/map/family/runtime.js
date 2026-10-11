@@ -18,6 +18,7 @@ export function mountFamily({
   },
   timers = globalThis,
   now = Date.now,
+  isOffline = () => false,
 }) {
   const empty = element.querySelector?.("[data-family-empty]")
   const showEmpty = (visible) => {
@@ -73,6 +74,7 @@ export function mountFamily({
       overlay.clear()
       showEmpty(true)
       reads.reset()
+      if (isOffline()) return
       const read = reads.begin(signal)
       try {
         const [latest, history] = await operation.wait(
@@ -94,7 +96,7 @@ export function mountFamily({
         )
         operation.check()
         read.check()
-        if (now() >= leaseDeadline) return
+        if (isOffline() || now() >= leaseDeadline) return
         overlay.replace(latest.data.locations, history.data.members)
         showEmpty(latest.data.locations.length === 0)
       } finally {
