@@ -24,6 +24,7 @@ export function createHostTimeline({
   const requests = createRequestScope()
   let hovered
   let selected
+  let pointing = false
   function clear() {
     hovered?.setAttribute("data-track-hovered", "false")
     hovered?.classList?.remove("bg-base-200")
@@ -106,6 +107,7 @@ export function createHostTimeline({
     const feature = features[0]
     const id = Number(feature?.properties?.track_id || feature?.properties?.id)
     if (!Number.isSafeInteger(id) || id <= 0) return leave()
+    pointing = true
     map.getCanvas().style.cursor = "pointer"
     const segmentId =
       feature.layer?.id === "native-selected-track-segments"
@@ -126,7 +128,8 @@ export function createHostTimeline({
   }
   function leave() {
     clear()
-    map.getCanvas().style.cursor = ""
+    if (pointing) map.getCanvas().style.cursor = ""
+    pointing = false
   }
   const document = root?.ownerDocument
   function keydown(event) {
