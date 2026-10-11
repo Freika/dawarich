@@ -69,7 +69,7 @@ export function createReader({
         }),
       )
       operation.check()
-      const data =
+      let data =
         response.status === 204
           ? []
           : await operation.wait(
@@ -86,6 +86,17 @@ export function createReader({
         const error = new Error("Map read failed")
         error.status = response.status
         throw error
+      }
+      if (resource === "track") {
+        if (
+          data?.type !== "FeatureCollection" ||
+          !Array.isArray(data.features) ||
+          data.features.length !== 1 ||
+          data.features[0]?.type !== "Feature" ||
+          Number(data.features[0].properties?.id) !== Number(params.id)
+        )
+          throw new Error("Invalid map track")
+        data = data.features[0]
       }
       const result = {
         status: noData ? "no_data" : "ok",

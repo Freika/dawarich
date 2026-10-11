@@ -28,6 +28,8 @@ defmodule DawarichWeb.NativeSegmentEditor do
       <div
         :for={segment <- @drawer.segments}
         id={"native-segment-#{segment.id}"}
+        data-segment-id={segment.id}
+        data-track-id={@drawer.track_id}
         class="flex flex-wrap items-center gap-2 py-1 text-sm"
       >
         <Icon.icon name={TimelineFormat.mode_icon(segment.transportation_mode)} class="w-4 h-4" />

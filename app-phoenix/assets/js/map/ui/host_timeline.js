@@ -33,17 +33,24 @@ export function createHostTimeline({
     hover.clear()
   }
   async function enter(event) {
-    const id = event.target.closest?.("[data-track-id]")?.dataset.trackId
-    if (!id || selected === id) return
+    const row = event.target.closest?.("[data-track-id]")
+    const id = row?.dataset.trackId
+    const segmentId = row?.dataset.segmentId
+    const key = `${id}:${segmentId || ""}`
+    if (!id || selected === key) return
     clear()
-    selected = id
+    selected = key
+    const exact = segmentId && selection.segment(segmentId)
+    if (exact) return hover.hover(exact)
     const operation = requests.begin()
     try {
       const result = await operation.wait(
         reader.read("track", { id }, { signal: operation.signal }),
       )
       operation.check()
-      hover.hover(result.data)
+      hover.hover(
+        segmentId ? selection.segment(segmentId, result.data) : result.data,
+      )
     } catch {
     } finally {
       operation.close()
@@ -100,8 +107,20 @@ export function createHostTimeline({
     const id = Number(feature?.properties?.track_id || feature?.properties?.id)
     if (!Number.isSafeInteger(id) || id <= 0) return leave()
     map.getCanvas().style.cursor = "pointer"
-    enter({ target: { closest: () => ({ dataset: { trackId: String(id) } }) } })
-    hovered = root?.querySelector(`[data-track-id="${id}"]`)
+    const segmentId =
+      feature.layer?.id === "native-selected-track-segments"
+        ? feature.properties.id
+        : null
+    enter({
+      target: {
+        closest: () => ({ dataset: { trackId: String(id), segmentId } }),
+      },
+    })
+    hovered = root?.querySelector(
+      segmentId
+        ? `[data-segment-id="${segmentId}"]`
+        : `[data-track-id="${id}"]`,
+    )
     hovered?.setAttribute("data-track-hovered", "true")
     hovered?.classList?.add("bg-base-200")
   }

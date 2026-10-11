@@ -37,10 +37,18 @@ export function createTrackSelection({
         ? feature.geometry.coordinates
         : [feature.geometry.coordinates]
     const coordinates = lines.flat()
-    for (const [coordinate, label] of [
-      [coordinates[0], feature.properties.dominant_mode_emoji || "📍"],
-      [coordinates.at(-1), "🏁"],
-    ]) {
+    const starts = (feature.properties?.segments || [])
+      .map((segment) => [
+        segment.coordinates?.[0] || coordinates[segment.start_index],
+        segment.emoji || feature.properties?.dominant_mode_emoji || "📍",
+      ])
+      .filter(([coordinate]) => coordinate)
+    if (!starts.length)
+      starts.push([
+        coordinates[0],
+        feature.properties?.dominant_mode_emoji || "📍",
+      ])
+    for (const [coordinate, label] of [...starts, [coordinates.at(-1), "🏁"]]) {
       if (!coordinate) continue
       const element = root.ownerDocument.createElement("span")
       element.className = "native-track-endpoint"
@@ -136,6 +144,46 @@ export function createTrackSelection({
       operation.close()
     }
   }
+  function segment(id, feature = selected) {
+    const row = feature?.properties?.segments?.find(
+      (row) => String(row.id) === String(id),
+    )
+    if (!row) return null
+    let coordinates = row.coordinates
+    if (!Array.isArray(coordinates) || coordinates.length < 2) {
+      const path =
+        feature.geometry?.type === "LineString"
+          ? feature.geometry.coordinates
+          : []
+      const first = row.start_index,
+        last = row.end_index
+      if (
+        !Number.isInteger(first) ||
+        !Number.isInteger(last) ||
+        first < 0 ||
+        last <= first ||
+        last >= path.length
+      )
+        return null
+      coordinates = path.slice(first, last + 1)
+    }
+    if (
+      coordinates.some(
+        (point) =>
+          !Array.isArray(point) ||
+          point.length !== 2 ||
+          !point.every(Number.isFinite) ||
+          Math.abs(point[0]) > 180 ||
+          Math.abs(point[1]) > 90,
+      )
+    )
+      return null
+    return {
+      type: "Feature",
+      geometry: { type: "LineString", coordinates },
+      properties: {},
+    }
+  }
   function destroy() {
     destroyed = true
     clear()
@@ -143,6 +191,7 @@ export function createTrackSelection({
   }
   return {
     select,
+    segment,
     clear,
     destroy,
     get selected() {

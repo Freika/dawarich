@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
+import { createReader } from "../../app-phoenix/assets/js/map/data/reader.js"
 import { Element, fixture } from "./support/native_m6_host_fixture.mjs"
 
 test("map host timeline hover reads the canonical track and clears on range replacement", async () => {
@@ -215,9 +216,20 @@ test("native selected segments retain parent identity color and source endpoint 
         segments: [
           {
             id: 19,
+            emoji: "🚶",
             color: "#3B82F6",
             coordinates: [
               [12, 51],
+              [14, 53],
+            ],
+            mode: "cycling",
+          },
+          {
+            id: 20,
+            emoji: "🚲",
+            color: "#22C55E",
+            coordinates: [
+              [13, 52],
               [14, 53],
             ],
             mode: "cycling",
@@ -234,12 +246,202 @@ test("native selected segments retain parent identity color and source endpoint 
     assert.equal(segment.properties.color, "#3B82F6")
     assert.deepEqual(
       markers.map((marker) => marker.element.textContent),
-      ["🚲", "🏁"],
+      ["🚶", "🚲", "🏁"],
     )
     f.owner.destroy()
-    assert.equal(removed.length, 2)
+    assert.equal(removed.length, 3)
     assert.equal(f.sources.has("native-selected-track"), false)
   } finally {
     f.owner.destroy()
+  }
+})
+
+test("native segment row and map hover use the owned exact segment geometry and clear the previous row", async () => {
+  const f = fixture({ tracksEnabled: true })
+  const rows = [new Element(), new Element()]
+  f.nodes.set('[data-segment-id="19"]', rows[0])
+  f.nodes.set('[data-segment-id="20"]', rows[1])
+  const track = {
+    type: "Feature",
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [12, 51],
+        [13, 52],
+        [14, 53],
+      ],
+    },
+    properties: {
+      id: 7,
+      segments: [
+        {
+          id: 19,
+          coordinates: [
+            [12, 51],
+            [13, 52],
+          ],
+          start_index: 0,
+          end_index: 1,
+        },
+        {
+          id: 20,
+          coordinates: [
+            [13, 52],
+            [14, 53],
+          ],
+          start_index: 1,
+          end_index: 2,
+        },
+      ],
+    },
+  }
+  f.reader.read = async () => ({ data: track })
+  try {
+    await f.owner.mount()
+    await f.owner.timeline.select({ id: 7 })
+    f.root.emit("pointerover", {
+      target: {
+        closest: () => ({ dataset: { trackId: "7", segmentId: "19" } }),
+      },
+    })
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.deepEqual(
+      f.sources.get("native-timeline-hover").data.geometry.coordinates,
+      [
+        [12, 51],
+        [13, 52],
+      ],
+    )
+    f.map.queryRenderedFeatures = () => [
+      {
+        layer: { id: "native-selected-track-segments" },
+        properties: { id: 19, track_id: 7 },
+      },
+    ]
+    f.map.emit("mousemove", { point: { x: 20, y: 20 } })
+    assert.equal(rows[0]["data-track-hovered"], "true")
+    f.map.queryRenderedFeatures = () => [
+      {
+        layer: { id: "native-selected-track-segments" },
+        properties: { id: 20, track_id: 7 },
+      },
+    ]
+    f.map.emit("mousemove", { point: { x: 30, y: 30 } })
+    assert.equal(rows[0]["data-track-hovered"], "false")
+    assert.equal(rows[1]["data-track-hovered"], "true")
+    assert.deepEqual(
+      f.sources.get("native-timeline-hover").data.geometry.coordinates,
+      [
+        [13, 52],
+        [14, 53],
+      ],
+    )
+    f.map.emit("mouseleave")
+    assert.equal(f.sources.has("native-timeline-hover"), false)
+    assert.equal(rows[1]["data-track-hovered"], "false")
+    const enter = () =>
+      f.root.emit("pointerover", {
+        target: {
+          closest: () => ({ dataset: { trackId: "7", segmentId: "19" } }),
+        },
+      })
+    track.properties.segments[0].coordinates = undefined
+    enter()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.deepEqual(
+      f.sources.get("native-timeline-hover").data.geometry.coordinates,
+      [
+        [12, 51],
+        [13, 52],
+      ],
+    )
+    for (const change of [
+      { start_index: -1 },
+      {
+        start_index: 0,
+        coordinates: [
+          [-181, 51],
+          [13, 52],
+        ],
+      },
+      {
+        coordinates: [
+          [12, 51],
+          [NaN, 52],
+        ],
+      },
+    ]) {
+      f.root.emit("pointerout")
+      Object.assign(track.properties.segments[0], change)
+      enter()
+      await new Promise((resolve) => setImmediate(resolve))
+      assert.equal(f.sources.has("native-timeline-hover"), false)
+    }
+    Object.assign(track.properties.segments[0], {
+      start_index: 0,
+      coordinates: [
+        [12, 51],
+        [13, 52],
+      ],
+    })
+    f.root.emit("pointerout")
+    f.root.emit("pointerover", {
+      target: {
+        closest: () => ({ dataset: { trackId: "7", segmentId: "foreign" } }),
+      },
+    })
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.sources.has("native-timeline-hover"), false)
+  } finally {
+    f.owner.destroy()
+  }
+})
+
+test("native canonical track owner consumes the real cookie FeatureCollection shape", async () => {
+  const f = fixture()
+  const feature = {
+    type: "Feature",
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [12, 51],
+        [14, 53],
+      ],
+    },
+    properties: { id: 7, segments: [] },
+  }
+  const actual = createReader({
+    origin: "https://map.test",
+    fetch: async (url) =>
+      new Response(
+        JSON.stringify(
+          url.endsWith("/7")
+            ? { type: "FeatureCollection", features: [feature] }
+            : [{ id: 9, longitude: "12", latitude: "51" }],
+        ),
+        { headers: { "x-total-pages": "1" } },
+      ),
+  })
+  const read = f.reader.read
+  f.reader.read = (resource, ...args) =>
+    resource === "track"
+      ? actual.read(resource, ...args)
+      : read(resource, ...args)
+  f.reader.pages = (...args) => actual.pages(...args)
+  try {
+    await f.owner.mount()
+    await f.owner.timeline.select({ id: 7, points: true })
+    assert.equal(f.sources.has("native-selected-track"), true)
+    assert.deepEqual(
+      f.sources.get("native-selected-track").data.features[0].geometry,
+      feature.geometry,
+    )
+    assert.equal(
+      f.sources.get("track-points-source").data.features[0].properties.id,
+      9,
+    )
+  } finally {
+    f.owner.destroy()
+    actual.destroy()
   }
 })

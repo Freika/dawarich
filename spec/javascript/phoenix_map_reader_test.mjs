@@ -193,3 +193,41 @@ test("thumbnail reader uses owned cookie bytes and never decodes an image as JSO
   )
   reader.destroy()
 })
+
+test("cookie track reads unwrap exactly one admitted FeatureCollection and refuse malformed identity envelopes", async () => {
+  const feature = {
+    type: "Feature",
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [12, 51],
+        [13, 52],
+      ],
+    },
+    properties: { id: 7 },
+  }
+  let data = { type: "FeatureCollection", features: [feature] }
+  const reader = createReader({
+    origin: "https://map.test",
+    fetch: async () => response(data),
+  })
+  try {
+    assert.deepEqual((await reader.read("track", { id: 7 })).data, feature)
+    assert.deepEqual((await reader.read("tracks", {})).data, data)
+    for (const value of [
+      { type: "FeatureCollection", features: [] },
+      { type: "FeatureCollection", features: [feature, feature] },
+      { type: "FeatureCollection", features: [null] },
+      {
+        type: "FeatureCollection",
+        features: [{ ...feature, properties: { id: 8 } }],
+      },
+      feature,
+    ]) {
+      data = value
+      await assert.rejects(reader.read("track", { id: 7 }), /Invalid map track/)
+    }
+  } finally {
+    reader.destroy()
+  }
+})

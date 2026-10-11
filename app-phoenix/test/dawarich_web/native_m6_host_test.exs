@@ -164,7 +164,12 @@ defmodule DawarichWeb.NativeM6HostTest do
 
     {:ok, view, _} = open(id, @second)
     render_hook(view, "segments:open", %{"track_id" => to_string(track)})
-    assert has_element?(view, "#native-segment-#{track * 10}")
+
+    assert has_element?(
+             view,
+             "#native-segment-#{track * 10}[data-segment-id='#{track * 10}'][data-track-id='#{track}']"
+           )
+
     view |> form("#native-segment-form-#{track * 10}", mode: "walking") |> render_change()
     assert_push_event(view, "map:invalidate", %{resource: "tracks", id: ^track})
     assert has_element?(view, "#native-segment-#{track * 10} [data-corrected]")
