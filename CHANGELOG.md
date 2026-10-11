@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
+
 
 - Update both mobile and desktop family-sharing indicators after changing location-sharing settings.
 
