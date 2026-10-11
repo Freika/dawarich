@@ -1,10 +1,12 @@
 defmodule DawarichWeb.Api.FamilyGoldenTest do
   use Dawarich.ApiEndpointCase
+  @moduletag api_golden: true
 
   alias Dawarich.Test.ApiGolden
 
   @golden "test/fixtures/api_family/golden.json" |> File.read!() |> Jason.decode!()
   @tables ~w(users families family_memberships point_sources points)
+  @moduletag api_now: ~U[2037-01-15 10:30:00Z]
 
   setup do
     if zone = @golden["time_zone"], do: System.put_env("TIME_ZONE", zone)

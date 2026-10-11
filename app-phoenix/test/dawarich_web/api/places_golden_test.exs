@@ -1,5 +1,6 @@
 defmodule DawarichWeb.Api.PlacesGoldenTest do
   use Dawarich.ApiEndpointCase
+  @moduletag api_golden: true
 
   alias Dawarich.Accounts
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
@@ -10,6 +11,7 @@ defmodule DawarichWeb.Api.PlacesGoldenTest do
   @tables ~w(users tags places taggings visits place_visits notes)
   @written ~w(tags places taggings visits place_visits notes)
   @now @golden["now"] |> DateTime.from_iso8601() |> elem(1)
+  @moduletag api_now: @now
 
   setup do
     if zone = @golden["time_zone"], do: System.put_env("TIME_ZONE", zone)

@@ -1,5 +1,6 @@
 defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
   use Dawarich.ApiEndpointCase
+  @moduletag api_golden: true
 
   alias Dawarich.Accounts
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
@@ -11,6 +12,7 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
   @written ~w(users family_location_requests notifications)
   @outbox ~w(phoenix.rails_commands phoenix.notification_events)
   @now @golden["now"] |> DateTime.from_iso8601() |> elem(1)
+  @moduletag api_now: @now
   @http_owned ~w(history_missing_params history_blank_params history_not_in_family
                  sharing_missing_enabled sharing_blank_enabled sharing_not_in_family create_stranger
                  create_deleted_member create_without_target create_not_in_family accept_missing

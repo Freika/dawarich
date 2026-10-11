@@ -39,9 +39,26 @@ defmodule Dawarich.ApiEndpointCase do
   def init(opts), do: opts
 
   def call(conn, opts) do
+    conn =
+      if opts[:api_golden] do
+        conn
+        |> Plug.Conn.put_private(:dawarich_rate_limit, [])
+        |> Plug.Conn.assign(:readiness_opts,
+          release: fn _ -> :ready end,
+          redis: fn -> {:ok, "PONG"} end,
+          env: %{"SELF_HOSTED" => "true"}
+        )
+      else
+        conn
+      end
+
+    conn =
+      if opts[:api_now],
+        do: Plug.Conn.put_private(conn, :dawarich_clock, fn -> opts[:api_now] end),
+        else: conn
+
     conn
     |> Plug.Conn.assign(:api_now, opts[:api_now])
-    |> Plug.Conn.put_private(:dawarich_clock, fn -> opts[:api_now] end)
     |> Plug.Conn.assign(:api_repo, opts[:api_repo])
     |> DawarichWeb.Endpoint.call(DawarichWeb.Endpoint.init([]))
   end
@@ -59,8 +76,14 @@ defmodule Dawarich.ApiEndpointCase do
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
 
     plug =
-      if context[:api_now],
-        do: {__MODULE__, [api_now: context.api_now, api_repo: context[:api_repo]]},
+      if not is_nil(context[:api_now]) or context[:api_golden] == true,
+        do:
+          {__MODULE__,
+           [
+             api_now: context[:api_now],
+             api_repo: context[:api_repo],
+             api_golden: context[:api_golden]
+           ]},
         else: DawarichWeb.Endpoint
 
     bandit =
