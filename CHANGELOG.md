@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Prevent legacy or restored export URLs from deleting unrelated files; retain unproven legacy files after export removal or migration.
+
 - Shared tracks hide their map and route coordinates when the owner disables route sharing, while enabled statistics remain visible.
 
 - Only administrators can request test email, and queued test messages are discarded after the recipient loses administrator access.
