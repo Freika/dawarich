@@ -36,7 +36,7 @@ defmodule DawarichWeb.NativeMapSettingsAdvanced do
       <.number
         name="fog_of_war_threshold"
         label={p(@locale, "fog_of_war_threshold")}
-        value={@saved["fog_of_war_threshold"]}
+        value={bounded_threshold(@saved["fog_of_war_threshold"])}
         min="1"
         max="10"
         step="1"
@@ -134,4 +134,11 @@ defmodule DawarichWeb.NativeMapSettingsAdvanced do
 
   defp p(locale, key), do: t(locale, "map.maplibre.settings_panel." <> key, %{})
   defp j(locale, key), do: t(locale, "javascript." <> key, %{})
+
+  defp bounded_threshold(value) do
+    case Integer.parse(to_string(value)) do
+      {number, ""} -> number |> max(1) |> min(10)
+      _ -> 1
+    end
+  end
 end

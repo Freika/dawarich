@@ -60,6 +60,28 @@ defmodule DawarichWeb.NativeMapSettingsSectionsTest do
     %{id: id, view: view}
   end
 
+  test "default advanced values permit a browser-valid settings submission", c do
+    controls =
+      c.view
+      |> render()
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("#native-advanced-form input[type=number]")
+      |> LazyHTML.to_tree()
+
+    for {"input", attrs, _} <- controls do
+      attrs = Map.new(attrs)
+      value = String.to_integer(attrs["value"])
+      assert value >= String.to_integer(attrs["min"])
+      if attrs["max"], do: assert(value <= String.to_integer(attrs["max"]))
+    end
+
+    c.view
+    |> form("#native-advanced-form", %{"meters_between_routes" => "750"})
+    |> render_submit()
+
+    assert stored(c.id)["meters_between_routes"] == "750"
+  end
+
   test "theme preset saves custom style with derived tokens and refuses unknown keys", c do
     refute has_element?(c.view, "#native-theme-form")
     c.view |> element("#native-theme-presets [data-theme-key=autumn]") |> render_click()
