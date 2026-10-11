@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { createHash } from 'node:crypto';
 import { auditPayload, auditDocument } from '../../scripts/native_package.mjs';
 
 function fixture(t) {
@@ -22,13 +23,17 @@ function fixture(t) {
     'release/priv/admin1_world.geojson', 'release/priv/countries.geojson.gz',
   ]) put(path);
   put('release/priv/static/native/app-abcd.js');
-  put('release/priv/static/native/inter-font-abcd.css', '@font-face{src:url("./inter-abcd.woff2")}');
+  put('release/priv/static/native/inter-font-abcd.css', '@font-face{src:url("./inter-abcd.woff2?vsn=d")}');
   put('release/priv/static/native/inter-abcd.woff2');
-  put('release/priv/static/cache_manifest.json', JSON.stringify({ latest: {
+  const latest = {
     'native/app.js': 'native/app-abcd.js',
     'native/inter-font.css': 'native/inter-font-abcd.css',
     'native/inter.woff2': 'native/inter-abcd.woff2',
-  }}));
+  };
+  const digests = Object.fromEntries(Object.values(latest).map(path => [path, {
+    sha512: createHash('sha512').update(readFileSync(join(root, 'release/priv/static', path))).digest('base64'),
+  }]));
+  put('release/priv/static/cache_manifest.json', JSON.stringify({ latest, digests }));
   return { root, put, release: join(root, 'release/priv') };
 }
 
@@ -83,4 +88,11 @@ esac
     assert.equal(result.status, 64, `${collision} collision refuses`);
     assert.doesNotMatch(readFileSync(commands, 'utf8'), /\b(create|run|rm)\b/, 'no resource mutation');
   }
+});
+
+test('native image payload verifies digested byte integrity', t => {
+  const { root, release, put } = fixture(t);
+  assert.ok(auditPayload(root, release).digests === 3);
+  put('release/priv/static/native/app-abcd.js', 'corrupted synthetic bundle');
+  assert.throws(() => auditPayload(root, release), /integrity/);
 });

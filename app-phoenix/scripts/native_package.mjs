@@ -1,5 +1,6 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
+import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const required = [
@@ -31,11 +32,16 @@ export function auditPayload(root, priv) {
     const path = resolve(staticRoot, target);
     if (!path.startsWith(resolve(staticRoot) + '/')) throw new Error('digest escapes static root');
     present(path);
+    const expected = manifest.digests?.[target]?.sha512;
+    const actual = createHash('sha512').update(readFileSync(path)).digest('base64');
+    if (!expected || expected !== actual) throw new Error(`digest integrity mismatch: ${target}`);
     if (path.endsWith('.css')) {
       const css = readFileSync(path, 'utf8');
       for (const match of css.matchAll(/url\(['"]?([^)'"\s]+)['"]?\)/g)) {
         if (/^(data:|https?:|#)/.test(match[1])) continue;
-        present(match[1].startsWith('/') ? join(staticRoot, match[1]) : resolve(dirname(path), match[1]));
+        const relative = path.slice(resolve(staticRoot).length).replaceAll('\\', '/');
+        const url = new URL(match[1], `http://static.test${relative}`);
+        present(join(staticRoot, decodeURIComponent(url.pathname)));
       }
     }
   }
