@@ -49,7 +49,7 @@ defmodule DawarichWeb.FamilyPagesTest do
     assert_form_isolated(document(ctx.member, "/family/location_requests/94001"))
     assert String.contains?(owner, "Leipzig Fixture Family")
     expect_element(owner, "a[href='/family/edit']")
-    expect_element(owner, "[phx-click='family:member'][phx-value-id='92002'][data-confirm]")
+    expect_element(owner, "[data-family-action=remove_member][data-family-target='92002']")
 
     expect_element(
       owner,
@@ -60,13 +60,13 @@ defmodule DawarichWeb.FamilyPagesTest do
 
     expect_element(
       owner,
-      "[phx-click='family:cancel'][phx-value-id='93001'][data-confirm]"
+      "[data-family-action=cancel_invitation][data-family-target='93001']"
     )
 
     member = document(ctx.member, "/family?locale=de")
     expect_element(member, "a[href='/family/edit']", false)
     expect_element(member, "#native-family-invite", false)
-    expect_element(member, "[phx-click='family:member'][phx-value-id='92002'][data-confirm]")
+    expect_element(member, "[data-family-action=remove_member][data-family-target='92002']")
     expect_element(member, "[phx-click='family:request'][phx-value-id='90101']")
 
     for html <- [owner, member],

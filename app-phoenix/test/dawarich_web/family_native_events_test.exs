@@ -83,10 +83,14 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
   test "native member confirmation gates cancellation and repeated removal cannot affect the owner",
        ctx do
     {view, _} = open(ctx.owner, "/family")
-    selector = "button[phx-click='family:member'][phx-value-id='92002'][data-confirm]"
+    selector = "button[data-family-action=remove_member][data-family-target='92002']"
     assert has_element?(view, selector)
     assert row("SELECT count(*) FROM family_memberships WHERE id=92002") == [[1]]
     view |> element(selector) |> render_click()
+    render_click(view, "family_cancel_confirm", %{})
+    assert row("SELECT count(*) FROM family_memberships WHERE id=92002") == [[1]]
+    view |> element(selector) |> render_click()
+    render_click(view, "family_confirm", %{})
     assert row("SELECT count(*) FROM family_memberships WHERE id=92002") == [[0]]
     render_click(view, "family:member", %{"id" => "92002"})
     assert row("SELECT count(*) FROM family_memberships WHERE id=92001") == [[1]]
@@ -98,9 +102,10 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
     {view, _} = open(ctx.owner, "/family")
 
     view
-    |> element("button[phx-click='family:member'][phx-value-id='92002'][data-confirm]")
+    |> element("button[data-family-action=remove_member][data-family-target='92002']")
     |> render_click()
 
+    render_click(view, "family_confirm", %{})
     assert row("SELECT count(*) FROM family_memberships WHERE id=92002") == [[0]]
     assert row("SELECT count(*) FROM family_memberships WHERE id=92001") == [[1]]
   end
@@ -133,7 +138,11 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
     })
 
     [[id]] = row("SELECT id FROM family_invitations WHERE email='new-native@example.invalid'")
-    assert has_element?(view, "[phx-click='family:cancel'][phx-value-id='#{id}']")
+
+    assert has_element?(
+             view,
+             "[data-family-action=cancel_invitation][data-family-target='#{id}']"
+           )
 
     refute Map.has_key?(
              Enum.find(
@@ -144,11 +153,16 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
            )
 
     view
-    |> element("[phx-click='family:cancel'][phx-value-id='#{id}'][data-confirm]")
+    |> element("[data-family-action=cancel_invitation][data-family-target='#{id}']")
     |> render_click()
 
+    render_click(view, "family_confirm", %{})
     assert row("SELECT status FROM family_invitations WHERE id=#{id}") == [[3]]
-    refute has_element?(view, "[phx-click='family:cancel'][phx-value-id='#{id}']")
+
+    refute has_element?(
+             view,
+             "[data-family-action=cancel_invitation][data-family-target='#{id}']"
+           )
   end
 
   test "native map consent history and duration persist independently and refresh the native indicator",

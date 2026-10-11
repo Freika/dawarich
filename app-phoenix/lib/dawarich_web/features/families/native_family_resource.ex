@@ -36,6 +36,7 @@ defmodule DawarichWeb.NativeFamilyResource do
   def refuse(socket, reason),
     do:
       socket
+      |> assign(confirmation: nil, errors: [])
       |> DawarichWeb.MapLiveAuth.refuse(reason)
       |> push_event("map:clear", %{code: Atom.to_string(reason)})
 end

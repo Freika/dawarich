@@ -542,7 +542,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
       events =
         case path do
           "/family" ->
-            assert has_element?(view, ~s(button[phx-click="family:member"][data-confirm]))
+            assert has_element?(view, ~s(button[data-family-action=remove_member]))
             nil
 
           "/share_links/live/new" ->

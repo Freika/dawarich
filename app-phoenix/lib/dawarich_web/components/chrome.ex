@@ -31,6 +31,7 @@ defmodule DawarichWeb.Chrome do
   def flash_message(assigns) do
     assigns =
       assign(assigns,
+        id: flash_id(assigns),
         class: flash_class(assigns.type),
         icon: flash_icon(assigns.type),
         timeout: if(to_string(assigns.type) in ["notice", "success"], do: 5000, else: 0)
@@ -38,6 +39,7 @@ defmodule DawarichWeb.Chrome do
 
     ~H"""
     <div
+      id={@id}
       data-controller={!@native && "removals"}
       data-removals-timeout-value={!@native && @timeout}
       phx-mounted={@timeout == 5000 && JS.dispatch("dawarich:flash-timeout")}
@@ -70,6 +72,13 @@ defmodule DawarichWeb.Chrome do
     </div>
     """
   end
+
+  defp flash_id(%{native: true, type: type, message: message}) do
+    digest = :crypto.hash(:sha256, :erlang.term_to_binary(message)) |> Base.encode16(case: :lower)
+    "native-flash-#{type}-#{digest}"
+  end
+
+  defp flash_id(_), do: nil
 
   attr :user_id, :integer, required: true
   attr :native, :boolean, default: false

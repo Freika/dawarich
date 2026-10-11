@@ -62,6 +62,52 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
     refute has_element?(view, "#family-shell")
   end
 
+  test "successive native consent changes own distinct flash identities after dismissal", %{
+    id: id
+  } do
+    {:ok, view, _} = open(id)
+    render_change(view, "family:sharing", %{"sharing" => %{"enabled" => "true"}})
+
+    first =
+      render(view)
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("#flash-messages [role=alert]")
+      |> LazyHTML.attribute("id")
+
+    assert [first_id] = first
+    assert has_element?(view, "##{first_id}", "Location sharing enabled")
+    render_click(view, "lv:clear-flash", %{"key" => "success"})
+    refute has_element?(view, "##{first_id}")
+    render_change(view, "family:sharing", %{"sharing" => %{"enabled" => "false"}})
+
+    assert [second_id] =
+             render(view)
+             |> LazyHTML.from_document()
+             |> LazyHTML.query("#flash-messages [role=alert]")
+             |> LazyHTML.attribute("id")
+
+    refute second_id == first_id
+    assert has_element?(view, "##{second_id}", "Location sharing disabled")
+    assert Dawarich.Accounts.get(id).settings["family"]["location_sharing"]["enabled"] == false
+  end
+
+  test "native map family confirmation consumes one admitted action and cancellation has no effects",
+       %{id: id} do
+    {:ok, view, _} = open(id)
+    view |> element("[data-family-action=remove_member]") |> render_click()
+    assert has_element?(view, "#family-confirm[data-pending=true]", "family-command-#{id + 1}")
+    render_click(view, "family_cancel_confirm", %{})
+    render_click(view, "family_confirm", %{})
+    assert count("family_memberships", "user_id", id + 1) == 1
+    view |> element("[data-family-action=remove_member]") |> render_click()
+    render_click(view, "family_confirm", %{})
+    render_click(view, "family_confirm", %{})
+    assert count("family_memberships", "user_id", id + 1) == 0
+    refute has_element?(view, "#family-confirm[data-pending=true]")
+    assert_push_event(view, "close-dialog", %{id: "family-confirm"})
+    assert has_element?(view, "[role=alert]", "removed")
+  end
+
   test "native family member removal preserves foreign memberships and refuses nonowner effects",
        %{id: id} do
     at = NaiveDateTime.utc_now()
@@ -78,7 +124,7 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
     render_click(member, "family:member", %{"id" => to_string(id)})
     assert count("family_memberships", "user_id", id) == 1
     {:ok, owner, _} = open(id)
-    assert has_element?(owner, "[phx-click='family:member'][phx-value-id='#{id + 1}']")
+    assert has_element?(owner, "[data-family-action=remove_member]")
     render_click(owner, "family:member", %{"id" => to_string(id + 2)})
     assert count("family_memberships", "user_id", id + 2) == 1
     render_click(owner, "family:member", %{"id" => to_string(id + 1)})
@@ -138,7 +184,7 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
     id: id
   } do
     {:ok, owner, _} = open(id)
-    assert has_element?(owner, "[phx-click='family:destroy'][data-confirm]")
+    assert has_element?(owner, "[data-family-action=delete]")
     render_click(owner, "family:destroy", %{})
     assert count("families", "id", id) == 1
     assert has_element?(owner, "[role=alert]", "members")
@@ -146,7 +192,7 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
 
     assert has_element?(
              member,
-             "[phx-click='family:member'][phx-value-id='#{id + 1}'][data-confirm]"
+             "[data-family-action=remove_member]"
            )
 
     render_click(member, "family:member", %{"id" => to_string(id + 1)})
@@ -159,6 +205,7 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
 
   test "native family commands refuse malformed payloads without effects or owner loss", %{id: id} do
     {:ok, view, _} = open(id)
+    render_click(view, "family_unknown", %{})
 
     for payload <- ["malformed", nil, false, []] do
       render_change(view, "family:sharing", %{"sharing" => payload})

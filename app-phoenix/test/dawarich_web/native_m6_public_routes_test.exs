@@ -67,6 +67,36 @@ defmodule DawarichWeb.NativeM6PublicRoutesTest do
     assert count.() == after_join
   end
 
+  test "public trip heading preserves the resource name independently of the link label", %{
+    uuid: uuid
+  } do
+    rows("UPDATE shared_links SET name='Trip: Native public trip' WHERE id=$1::text::uuid", [uuid])
+
+    html = get(build_conn(), "/s/#{uuid}") |> html_response(200)
+
+    assert LazyHTML.from_document(html)
+           |> LazyHTML.query("h1")
+           |> LazyHTML.text()
+           |> String.trim() == "Native public trip"
+  end
+
+  test "public HTTP refuses unknown revoked and locked links with source statuses", %{uuid: uuid} do
+    assert get(build_conn(), "/s/#{Ecto.UUID.generate()}").status == 404
+
+    rows(
+      "UPDATE shared_links SET magic_phrase='synthetic-status-phrase' WHERE id=$1::text::uuid",
+      [uuid]
+    )
+
+    locked = get(build_conn(), "/s/#{uuid}")
+    assert locked.status == 401
+    assert locked.resp_body =~ "public-phrase"
+    rows("UPDATE shared_links SET revoked_at=now() WHERE id=$1::text::uuid", [uuid])
+    revoked = get(build_conn(), "/s/#{uuid}")
+    assert revoked.status == 404
+    assert revoked.resp_body =~ "no longer available"
+  end
+
   test "native family public navigation rechecks audience without disclosing missing or revoked resources",
        %{uuid: uuid, id: id} do
     viewer = id + 1
@@ -256,7 +286,7 @@ defmodule DawarichWeb.NativeM6PublicRoutesTest do
     )
 
     locked = get(build_conn(), "/s/#{uuid}")
-    assert locked.status == 200
+    assert locked.status == 401
     assert rows("SELECT view_count FROM shared_links WHERE id=$1::text::uuid", [uuid]) == [[1]]
   end
 
@@ -273,9 +303,9 @@ defmodule DawarichWeb.NativeM6PublicRoutesTest do
       |> Plug.Conn.put_private(:live_view_connect_info, %{session: %{}})
       |> get("/s/#{uuid}")
 
-    {:ok, view, html} = live(conn)
-    assert has_element?(view, "form[action='/s/#{uuid}/unlock'][method=post]")
-    refute has_element?(view, "#native-public-map")
+    html = html_response(conn, 401)
+    assert html =~ "action=\"/s/#{uuid}/unlock\""
+    refute html =~ "id=\"native-public-map\""
     refute html =~ "data-controller"
     refute html =~ "synthetic-locked-phrase"
 

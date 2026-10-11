@@ -523,3 +523,221 @@ test("family geometry becomes ready after style load while basemap tiles remain 
     await mounting
   }
 })
+
+test("family empty guidance follows admitted locations and clears on withdrawal", async () => {
+  const f = fixture()
+  try {
+    await f.owner.mount()
+    assert.equal(f.empty.hidden, true)
+    const admittedRead = f.reader.read
+    f.reader.read = async (resource) => ({
+      data:
+        resource === "family_locations" ? { locations: [] } : { members: [] },
+    })
+    await f.owner.reconnect()
+    assert.equal(f.empty.hidden, false)
+    f.reader.read = admittedRead
+    await f.owner.reconnect()
+    assert.equal(f.empty.hidden, true)
+    f.owner.clear()
+    assert.equal(f.empty.hidden, false)
+  } finally {
+    f.owner.destroy()
+  }
+})
+
+test("Family config and reconnect wait for attachment then paint latest geometry once", async () => {
+  const f = fixture({ loaded: false })
+  try {
+    const mounting = f.owner.mount()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.maps, 1)
+    const range = { startAt: "2026-10-05", endAt: "2026-10-06" }
+    const updating = f.owner.update({ ...f.owner.config, revision: 2, range })
+    const reconnecting = f.owner.reconnect()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.reads.length, 0)
+    f.releaseLoad()
+    assert.deepEqual(await Promise.all([mounting, updating, reconnecting]), [
+      "ready",
+      "ready",
+      "ready",
+    ])
+    assert.equal(f.maps, 1)
+    assert.equal(f.reads.length, 2)
+    assert.deepEqual(
+      f.reads.find((read) => read.resource === "family_history").params,
+      { start_at: range.startAt, end_at: range.endAt },
+    )
+    assert.equal(f.sources.get("family-members").data.features.length, 1)
+  } finally {
+    f.owner.destroy()
+  }
+})
+
+test("idle Family consent expiry clears coordinates popups and late reads without manual reconnect", async () => {
+  let time = 1000,
+    next = 0
+  const jobs = new Map()
+  const f = fixture({
+    consentLeaseMs: 100,
+    now: () => time,
+    timers: {
+      setTimeout(fn, delay) {
+        jobs.set(++next, { fn, delay })
+        return next
+      },
+      clearTimeout(id) {
+        jobs.delete(id)
+      },
+    },
+  })
+  try {
+    await f.owner.mount()
+    for (const fn of f.events.get("click:family-circles"))
+      fn({ features: [{ properties: { id: 7 } }], lngLat: [13, 52] })
+    const delayed = defer()
+    f.reader.read = () => delayed.promise
+    time += 100
+    const expiry = [...jobs.values()].find((job) => job.delay === 100)
+    assert.ok(expiry)
+    expiry.fn()
+    assert.equal(f.sources.get("family-members").data.features.length, 0)
+    assert.equal(f.sources.get("family-history").data.features.length, 0)
+    assert.equal(f.popups[0].removed, true)
+    f.reader.read = async (resource) => ({
+      data:
+        resource === "family_locations" ? { locations: [] } : { members: [] },
+    })
+    f.owner.lease({ milliseconds: 100 })
+    const renewed = [...jobs.values()].find((job) => job.delay === 100)
+    time += 100
+    renewed.fn()
+    delayed.resolve({
+      data: {
+        locations: [{ user_id: 7, latitude: 52, longitude: 13 }],
+        members: [],
+      },
+    })
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.sources.get("family-members").data.features.length, 0)
+    assert.equal(f.sources.get("family-history").data.features.length, 0)
+    assert.equal(f.maps, 1)
+  } finally {
+    f.owner.destroy()
+  }
+  assert.equal(jobs.size, 0)
+})
+
+test("idle Family withdrawal is revalidated within the bounded lease and destroyed leases cannot refetch", async () => {
+  let next = 0
+  const jobs = new Map()
+  const f = fixture({
+    timers: {
+      setTimeout(fn, delay) {
+        jobs.set(++next, { fn, delay })
+        return next
+      },
+      clearTimeout(id) {
+        jobs.delete(id)
+      },
+    },
+  })
+  let expiry,
+    revalidations = 0
+  try {
+    await f.owner.mount()
+    f.reader.read = async (resource) => {
+      revalidations++
+      return {
+        data:
+          resource === "family_locations" ? { locations: [] } : { members: [] },
+      }
+    }
+    expiry = [...jobs.values()].find(
+      (job) => job.delay <= 30000 && job.delay > 15000,
+    )
+    assert.ok(expiry)
+    expiry.fn()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.sources.get("family-members").data.features.length, 0)
+    assert.equal(f.empty.hidden, false)
+    assert.equal(revalidations, 2)
+  } finally {
+    f.owner.destroy()
+  }
+  const before = f.reads.length
+  expiry.fn()
+  await Promise.resolve()
+  assert.equal(f.reads.length, before)
+  assert.equal(jobs.size, 0)
+})
+
+test("unrelated Family lease callbacks cannot prolong cached coordinates or accept retired reads", async () => {
+  let time = 1000,
+    next = 0
+  const jobs = new Map()
+  const f = fixture({
+    consentLeaseMs: 100,
+    now: () => time,
+    timers: {
+      setTimeout(fn, delay) {
+        jobs.set(++next, { fn, delay })
+        return next
+      },
+      clearTimeout(id) {
+        jobs.delete(id)
+      },
+    },
+  })
+  try {
+    await f.owner.mount()
+    for (const fn of f.events.get("click:family-circles"))
+      fn({ features: [{ properties: { id: 7 } }], lngLat: [13, 52] })
+    for (const elapsed of [20, 40, 80]) {
+      time = 1000 + elapsed
+      f.owner.lease({ milliseconds: 30000 })
+      assert.ok([...jobs.values()].some((job) => job.delay === 100 - elapsed))
+    }
+    const late = defer()
+    f.reader.read = () => late.promise
+    const pending = f.owner.reconnect()
+    await Promise.resolve()
+    time = 1100
+    const expiry = [...jobs.values()].find((job) => job.delay === 20)
+    expiry.fn()
+    assert.equal(f.sources.get("family-members").data.features.length, 0)
+    assert.equal(f.sources.get("family-history").data.features.length, 0)
+    assert.equal(f.popups[0].removed, true)
+    f.reader.read = async (resource) => ({
+      data:
+        resource === "family_locations" ? { locations: [] } : { members: [] },
+    })
+    await f.owner.reconnect()
+    late.resolve({
+      data: {
+        locations: [{ user_id: 7, latitude: 52, longitude: 13 }],
+        members: [],
+      },
+    })
+    await pending
+    assert.equal(f.sources.get("family-members").data.features.length, 0)
+  } finally {
+    f.owner.destroy()
+  }
+  assert.equal(jobs.size, 0)
+})
+
+test("family empty guidance display follows consent despite flex styling", async () => {
+  const f = fixture()
+  try {
+    await f.owner.mount()
+    assert.equal(f.empty.style.display, "none")
+    f.owner.clear()
+    assert.equal(f.empty.style.display, "")
+    await f.owner.reconnect()
+    assert.equal(f.empty.style.display, "none")
+  } finally {
+    f.owner.destroy()
+  }
+})

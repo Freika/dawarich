@@ -43,14 +43,13 @@ defmodule DawarichWeb.NativeFamilyInvitations do
           class="btn btn-sm h-auto whitespace-normal"
           aria-label={t(@locale, "shared.sharing_link.copy", %{})}
         >⧉</button>
-        <button
+        <DawarichWeb.FamilyNativeControls.confirm_button
           :if={@page.owner?}
-          type="button"
-          phx-click="family:cancel"
-          phx-value-id={invitation.id}
-          data-confirm={s(@locale, "cancel_this_invitation")}
+          action="cancel_invitation"
+          id={invitation.id}
+          label={t(@locale, "family_invitations.index.cancel", %{})}
           class="btn btn-sm text-error"
-        >×</button>
+        />
       </div>
       <form
         :if={@page.owner? && @page.can_invite?}

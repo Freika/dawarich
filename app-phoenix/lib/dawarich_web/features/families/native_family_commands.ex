@@ -99,10 +99,18 @@ defmodule DawarichWeb.NativeFamilyCommands do
     do: reload(socket, "error", Enum.join(errors, ", "))
 
   defp respond(socket, "destroy", {:ok, _}),
-    do: {:noreply, push_navigate(socket, to: "/family/new")}
+    do:
+      {:noreply,
+       socket
+       |> put_flash(:notice, t(socket, "controllers.families.family_deleted_successfully"))
+       |> push_navigate(to: "/family/new")}
 
   defp respond(socket, "member", {:ok, %{self?: true}}),
-    do: {:noreply, push_navigate(socket, to: "/family/new")}
+    do:
+      {:noreply,
+       socket
+       |> put_flash(:notice, t(socket, "controllers.family.memberships.you_have_left_the_family"))
+       |> push_navigate(to: "/family/new")}
 
   defp respond(socket, "member", {:ok, %{email: email}}),
     do:
