@@ -175,8 +175,8 @@ defmodule DawarichWeb.NavbarEnd do
       </button>
       <.dynamic_tag
         :if={!@http}
-        name={if @native, do: "button", else: "a"}
-        type={@native && "button"}
+        tag_name={if @native, do: "button", else: "a"}
+        {if @native, do: %{type: "button"}, else: %{}}
         onclick={!@native && "getting_started.showModal()"}
         phx-click={@native && JS.dispatch("dawarich:open-dialog", to: "#getting_started")}
         class="relative whitespace-nowrap"
