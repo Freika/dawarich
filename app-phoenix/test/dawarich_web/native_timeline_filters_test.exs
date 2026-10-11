@@ -16,9 +16,17 @@ defmodule DawarichWeb.NativeTimelineFiltersTest do
          current_scope: Maps.principal(Accounts.get(session["user_id"]), "en"),
          map_url: %{},
          calendar_loader: Agent.get(session["loader"], & &1),
-         calendar_timeout: 50
+         calendar_timeout: session["timeout"] || 50
        )}
     end
+
+    def handle_event("calendar:stale", _, socket),
+      do:
+        TimelineFilters.handle_async(
+          {:calendar, make_ref()},
+          {:ok, {:ok, %{month: "2026-01", weeks: []}}},
+          socket
+        )
 
     def handle_event(event, payload, socket),
       do: TimelineFilters.handle_event(event, payload, socket)
@@ -125,6 +133,48 @@ defmodule DawarichWeb.NativeTimelineFiltersTest do
     refute html =~ ~s(role="alert")
     assert html =~ "February 2026"
     assert :counters.get(calls, 1) >= 1
+  end
+
+  test "calendar loading shows its target month and refuses stale completion", %{id: id} do
+    parent = self()
+
+    loader = fn _scope, month ->
+      if month == "2026-01" do
+        send(parent, {:calendar_loading, self()})
+        receive do: (:release -> :ok)
+      end
+
+      {:ok, %{month: month, weeks: []}}
+    end
+
+    agent = start_supervised!({Agent, fn -> loader end})
+
+    {:ok, view, _} =
+      live_isolated(Phoenix.ConnTest.build_conn(), Host,
+        session: %{"user_id" => id, "loader" => agent, "timeout" => 5000}
+      )
+
+    render_hook(view, "calendar:month", %{"month" => "2026-03"})
+    render_async(view, 2000)
+    render_hook(view, "calendar:month", %{"month" => "2026-01"})
+    assert_receive {:calendar_loading, slow}
+
+    assert has_element?(
+             view,
+             "#native-timeline-calendar.timeline-calendar--loading[aria-busy=true]"
+           )
+
+    assert has_element?(view, "[data-testid=calendar-title]", "January 2026")
+    assert has_element?(view, "[data-testid=calendar-skeleton]")
+    refute has_element?(view, "button.cal-cell")
+    render_hook(view, "calendar:month", %{"month" => "2026-02"})
+    send(slow, :release)
+    render_async(view, 2000)
+    assert has_element?(view, "[data-testid=calendar-title]", "February 2026")
+    refute has_element?(view, ".timeline-calendar--loading")
+    refute has_element?(view, "[data-testid=calendar-skeleton]")
+    render_hook(view, "calendar:stale", %{})
+    assert has_element?(view, "[data-testid=calendar-title]", "February 2026")
   end
 
   defp state(view),

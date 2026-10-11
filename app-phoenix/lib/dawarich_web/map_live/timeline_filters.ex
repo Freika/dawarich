@@ -25,7 +25,12 @@ defmodule DawarichWeb.MapLive.TimelineFilters do
       )
 
     {:noreply,
-     assign(socket, :calendar, %{status: :loading, run: run, summary: previous.summary})}
+     assign(socket, :calendar, %{
+       status: :loading,
+       run: run,
+       month: month,
+       summary: previous.summary
+     })}
   end
 
   def handle_event("calendar:day", %{"date" => date}, socket) when is_binary(date) do
