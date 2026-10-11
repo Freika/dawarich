@@ -100,6 +100,7 @@ defmodule Dawarich.Test.ApiGolden do
 
     assert got_status == status
     {comparison_body, headers} = crypto_comparison(got_body, headers, options)
+    headers = Keyword.get(options, :headers, &Function.identity/1).(headers)
 
     ignore =
       (kase["ignore"] || []) ++

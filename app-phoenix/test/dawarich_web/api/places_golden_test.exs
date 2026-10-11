@@ -8,12 +8,27 @@ defmodule DawarichWeb.Api.PlacesGoldenTest do
   alias Dawarich.PlacesApi
 
   @golden "test/fixtures/api_places/golden.json" |> File.read!() |> Jason.decode!()
+  @capture "test/rails_captures/api_places.json" |> File.read!() |> Jason.decode!()
+  @captured Map.new(@capture["cases"], &{&1["name"], &1})
+  @golden @golden
+          |> Map.update!("cases", &Enum.map(&1, fn kase -> @captured[kase["name"]] || kase end))
+          |> Map.update!("setups", &Map.merge(&1, @capture["setups"]))
+          |> Map.update!("sequences", &Map.merge(&1, @capture["sequences"]))
   @tables ~w(users tags places taggings visits place_visits notes)
   @written ~w(tags places taggings visits place_visits notes)
   @now @golden["now"] |> DateTime.from_iso8601() |> elem(1)
   @moduletag api_now: @now
 
   setup do
+    previous = Application.get_env(:dawarich, :rails_secret)
+
+    Application.put_env(
+      :dawarich,
+      :rails_secret,
+      "phoenix-a2-cookie-fixture-secret-not-for-production"
+    )
+
+    on_exit(fn -> Application.put_env(:dawarich, :rails_secret, previous) end)
     if zone = @golden["time_zone"], do: System.put_env("TIME_ZONE", zone)
     :ok
   end
@@ -28,9 +43,17 @@ defmodule DawarichWeb.Api.PlacesGoldenTest do
       Enum.each(@kase["env"], fn {name, value} -> System.put_env(name, value) end)
       seed(@kase)
       before = rows(@tables)
-      ApiGolden.check(@kase, port, puma)
+      expected = difference(@kase)
 
-      if @kase["after"], do: domain!(@kase), else: assert(rows(@tables) == before)
+      ApiGolden.check(expected, port, puma,
+        headers: &Dawarich.Test.GoldenCookies.headers(&1, @kase, @now)
+      )
+
+      cond do
+        Map.has_key?(@captured, @kase["name"]) -> assert rows(@tables) == @kase["after"]
+        @kase["after"] -> domain!(@kase)
+        true -> assert rows(@tables) == before
+      end
     end
   end
 
@@ -96,6 +119,24 @@ defmodule DawarichWeb.Api.PlacesGoldenTest do
     assert for({:object, [{"id", id} | _]} <- tags, do: id) == [950_102, 950_101]
     assert List.keyfind(pairs, "icon", 0) == {"icon", nil}
   end
+
+  defp difference(%{"name" => name} = kase)
+       when name in ~w(replay_update_null_latitude replay_create_place_string) do
+    assert kase["response"]["status"] == 500
+    source = Enum.find(@golden["cases"], &(&1["name"] == "invalid_one_coordinate"))
+
+    response =
+      if name == "replay_update_null_latitude",
+        do: source["response"],
+        else:
+          source["response"]
+          |> Map.put("status", 400)
+          |> Map.put("body", ~s({"error":"param is missing or the value is empty: place"}))
+
+    Map.put(kase, "response", response)
+  end
+
+  defp difference(kase), do: kase
 
   defp seed(kase) do
     Dawarich.FixtureCleanup.delete!(Repo, ~w(places))

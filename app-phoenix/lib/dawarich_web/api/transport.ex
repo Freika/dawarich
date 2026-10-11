@@ -92,7 +92,7 @@ defmodule DawarichWeb.Api.Transport do
   defp json(""), do: {:ok, %{}}
 
   defp json(raw) do
-    case Jason.decode(raw, objects: :ordered_objects) do
+    case DawarichWeb.Api.SourceJSON.decode(raw) do
       {:ok, params} when is_map(params) -> {:ok, SourceParams.munge(params)}
       {:ok, params} -> {:ok, %{"_json" => SourceParams.munge(params)}}
       _ -> {:error, 400}

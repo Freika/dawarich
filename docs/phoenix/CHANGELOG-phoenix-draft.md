@@ -266,3 +266,7 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 - Erase idle native Family map coordinates and popups on sharing expiry, and revalidate withdrawals within a snapshot-bound lease that unrelated callbacks cannot extend while typed sharing invalidations are pending. [FRB-NATIVE-M6-FAMILY-IDLE-CONSENT](fixed-rails-bugs.md#frb-native-m6-family-idle-consent)
 
 - Keep shared-link visit counts unchanged for HEAD checks and connected map callbacks; admitted document GETs count once. [FRB-NATIVE-STAGE2-PUBLIC-HEAD](fixed-rails-bugs.md#frb-native-stage2-public-head--head-requests-inflate-shared-link-visit-counts)
+
+- Refuse scalar Place parameters with 400 instead of Rails' handled 500. [FRB-NATIVE-S2GA-PLACE-SCALAR](fixed-rails-bugs.md#frb-native-s2ga-place-scalar--scalar-place-parameters-return-a-validation-refusal)
+- Validate null Place latitude with 422 before persistence instead of Rails' failed null-column write. [FRB-NATIVE-S2GA-PLACE-NULL](fixed-rails-bugs.md#frb-native-s2ga-place-null--null-latitude-updates-refuse-before-persistence)
+- Refuse invalid ingest coordinate text before it can create a null-geometry point or schedule arrival effects. [FRB-NATIVE-S2GA-INGEST-NULL-GEOMETRY](fixed-rails-bugs.md#frb-native-s2ga-ingest-null-geometry--invalid-coordinate-text-cannot-create-a-null-geometry-point)

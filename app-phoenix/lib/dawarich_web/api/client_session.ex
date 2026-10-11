@@ -5,6 +5,16 @@ defmodule DawarichWeb.Api.ClientSession do
   def call(conn) do
     conn = DawarichWeb.RailsAuth.call(conn, [])
 
+    conn =
+      if conn.cookies["remember_user_token"] && is_nil(conn.assigns.current_user),
+        do:
+          delete_resp_cookie(conn, "remember_user_token",
+            path: "/",
+            same_site: "Lax",
+            http_only: false
+          ),
+        else: conn
+
     client =
       List.first(get_req_header(conn, "x-dawarich-client")) || conn.assigns.api_params["client"]
 

@@ -27,8 +27,7 @@ defmodule DawarichWeb.Api.IngestController do
   }
 
   @impl true
-  def init({:native, action}),
-    do: if(Dawarich.Standalone.enabled?(), do: {:native, action}, else: action)
+  def init({:native, action}), do: {:native, action}
 
   def init(action), do: action
 
