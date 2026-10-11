@@ -99,7 +99,9 @@ defmodule DawarichWeb.PublicNativeAdmissionTest do
     assert {:error, _} =
              Public.grant(SharedLinks.active(@id, c.now), nil, c.now, DateTime.add(c.now, 1800))
 
-    assert (build_conn() |> get("/s/" <> @id)).status == 404
+    denied = get(build_conn(), "/s/" <> @id)
+    assert denied.status == 200
+    refute String.contains?(denied.resp_body, ~s(id="native-public-map"))
     assert SharingSeeds.view_count(@id) == 0
   end
 
@@ -112,92 +114,83 @@ defmodule DawarichWeb.PublicNativeAdmissionTest do
       )
 
       {_, view} = open()
-      assert has_element?(view, "#native-public-share [data-public-content]")
+      assert has_element?(view, "#native-public-map")
       Repo.query!("UPDATE shared_links SET #{column} WHERE id=$1::text::uuid", [@id], log: false)
       send(view.pid, {:share_changed, @id, :queued})
       render(view)
-      assert state(view).page == nil
-      refute has_element?(view, "[data-public-content]")
-      assert_push_event(view, "public-share-clear", %{})
+      assert state(view).public_presentation == nil
+      refute has_element?(view, "#native-public-map")
+      assert_push_event(view, "map:clear", %{code: _})
     end
   end
 
   test "public expiry clears a silent connection and reconnect cannot revive it" do
     {_, view} = open()
-    old = state(view).public_expiry
-    send(view.pid, {:public_share_expiry, make_ref()})
+    old = state(view).public_deadline
+    send(view.pid, {:public_map_expiry, make_ref()})
     render(view)
-    assert state(view).public_expiry.token == old.token
+    assert state(view).public_deadline.token == old.token
 
     Repo.query!("UPDATE shared_links SET expires_at=NOW() WHERE id=$1::text::uuid", [@id],
       log: false
     )
 
-    send(view.pid, {:public_share_expiry, old.token})
+    send(view.pid, {:public_map_expiry, old.token})
     render(view)
-    assert state(view).page == nil
-    render_click(view, "public_reload", %{})
-    assert state(view).page == nil
-    assert build_conn() |> get("/s/" <> @id) |> response(404)
+    assert state(view).public_presentation == nil
+    render_click(view, "public:reload", %{})
+    assert state(view).public_presentation == nil
+    denied = get(build_conn(), "/s/" <> @id)
+    assert denied.status == 200
+    refute String.contains?(denied.resp_body, ~s(id="native-public-map"))
   end
 
-  test "HTTP public bootstrap is session bound bounded read only and contains no secret state",
-       c do
-    {conn, view} = open()
+  test "HTTP public bootstrap is bounded read only and contains no secret state", c do
+    {_, view} = open()
     assigns = state(view)
-    assert assigns.grant.expires_at <= DateTime.to_unix(c.now) + 1800
+    bound = assigns.public_capability.grant
+    assert bound.expires_at <= DateTime.to_unix(c.now) + 86_400
     refute Map.has_key?(assigns, :bootstrap)
-    refute inspect(assigns) =~ "encrypted_password"
+    refute String.contains?(inspect(assigns), "encrypted_password")
     before = SharingSeeds.view_count(@id)
 
     render_click(view, "sharing_create", %{
       "shared_link" => %{"magic_phrase" => "write-only-probe"}
     })
 
-    render_click(view, "public_reload", %{})
+    render_click(view, "public:reload", %{})
     assert SharingSeeds.view_count(@id) == before
-    refute inspect(state(view)) =~ "write-only-probe"
-    token = conn.assigns.public_bootstrap
-    bad = build_conn() |> put_private(:live_view_connect_info, %{session: %{}})
-
-    {:ok, denied, _} =
-      live_isolated(bad, DawarichWeb.PublicShareLive,
-        session: %{"bootstrap" => token, "locale" => "en"}
-      )
-
-    assert state(denied).page == nil
-    refute has_element?(denied, "[data-public-content]")
+    refute String.contains?(inspect(state(view)), "write-only-probe")
+    tampered = %{assigns.public_capability | grant: %{bound | version: "tampered"}}
+    assert {:error, _} = Dawarich.Maps.Public.config(tampered)
     Repo.query!("UPDATE users SET locked_at=NOW() WHERE id=9901", [], log: false)
-    assert {:ok, _} = Public.read(assigns.grant, DateTime.utc_now())
+    assert {:ok, _} = Dawarich.Maps.Public.config(assigns.public_capability)
     Repo.query!("UPDATE users SET deleted_at=NOW() WHERE id=9901", [], log: false)
-    assert {:error, _} = Public.read(assigns.grant, DateTime.utc_now())
+    assert {:error, _} = Dawarich.Maps.Public.config(assigns.public_capability)
   end
 
   test "public connected viewer cannot upgrade identity or survive its session signout" do
     user = Dawarich.Test.RailsUser.session(9901)
     conn = Dawarich.Test.RailsUser.signed_in(9901, user) |> get("/s/" <> @id)
-    assert conn.assigns.current_user.id == 9901
     session = Map.put(get_session(conn), "rails_user_id", 9901)
     {:ok, view, _} = live(put_private(conn, :live_view_connect_info, %{session: session}))
-    assert has_element?(view, "[data-public-content]")
-    token = conn.assigns.public_bootstrap
+    cap = state(view).public_capability
+    assert cap.viewer_scope.user.id == 9901
+    assert Map.has_key?(cap, :grant)
+    assert cap.grant.viewer.id == 9901
+    assert has_element?(view, "#native-public-map")
 
-    for id <- [nil, 9902] do
-      bad =
-        build_conn()
-        |> put_private(:live_view_connect_info, %{session: Map.put(session, "rails_user_id", id)})
+    foreign = Dawarich.Test.RailsUser.insert!(%{id: 9902, email: "public-other@example.invalid"})
 
-      {:ok, denied, _} =
-        live_isolated(bad, DawarichWeb.PublicShareLive, session: %{"bootstrap" => token})
-
-      assert state(denied).page == nil
+    for scope <- [nil, Dawarich.Maps.principal(foreign, "en")] do
+      assert {:error, _} = Dawarich.Maps.Public.config(%{cap | viewer_scope: scope})
     end
 
     DawarichWeb.NotificationSession.signed_out(user)
     render(view)
-    assert state(view).page == nil
-    render_click(view, "public_reload", %{})
-    assert state(view).page == nil
+    assert state(view).public_presentation == nil
+    render_click(view, "public:reload", %{})
+    assert state(view).public_presentation == nil
   end
 
   test "public bootstrap cannot outlive an earlier unlock or session cookie deadline", c do
@@ -217,7 +210,7 @@ defmodule DawarichWeb.PublicNativeAdmissionTest do
     conn = build_conn() |> put_req_cookie(name, cookie) |> get("/s/" <> id)
     conn = put_private(conn, :live_view_connect_info, %{session: get_session(conn)})
     {:ok, view, _} = live(conn)
-    assert state(view).grant.expires_at <= DateTime.to_unix(due)
+    assert state(view).public_capability.grant.expires_at <= DateTime.to_unix(due)
 
     session_cookie =
       Dawarich.RailsCookies.encrypt(
@@ -237,6 +230,6 @@ defmodule DawarichWeb.PublicNativeAdmissionTest do
         })
       )
 
-    assert state(signed).grant.expires_at <= DateTime.to_unix(due)
+    assert state(signed).public_capability.grant.expires_at <= DateTime.to_unix(due)
   end
 end

@@ -75,7 +75,7 @@ defmodule DawarichWeb.PublicShareAuth do
   defp viewer_id(nil), do: nil
   defp viewer_id(viewer), do: viewer.id
 
-  defp cookie_deadlines(conn, link, now) do
+  def cookie_deadlines(conn, link, now) do
     for name <- ["shared_link_" <> link.id, "_dawarich_session"],
         cookie <- [fetch_cookies(conn).req_cookies[name]],
         is_binary(cookie),

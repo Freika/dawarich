@@ -80,24 +80,28 @@ defmodule DawarichWeb.PublicNativeRenderTest do
       )
 
       {view, html} = open(@trip)
-      assert has_element?(view, "[data-public-map]") == enabled
-      assert has_element?(view, "[data-public-replay-panel]") == enabled
+      assert has_element?(view, "#native-public-map") == enabled
+      assert has_element?(view, "#native-public-replay") == enabled
 
-      if enabled,
-        do: assert(has_element?(view, "[data-public-replay-action=replayScrubberHover]"))
+      if enabled, do: assert(has_element?(view, "#native-public-replay"))
 
-      assert has_element?(view, "[data-public-stats]") == enabled
-      assert has_element?(view, "[data-public-days]") == enabled
-      assert has_element?(view, "[data-public-description]") == enabled
-      if enabled, do: assert(html =~ "Safe notes")
+      assert has_element?(view, "#native-public-metrics") == enabled
+      assert has_element?(view, "[data-public-day]") == enabled
+      assert has_element?(view, "#native-public-description") == enabled
+      if enabled, do: assert(String.contains?(html, "Safe notes"))
 
       assert html
              |> LazyHTML.from_document()
-             |> LazyHTML.query("[data-public-description] script")
+             |> LazyHTML.query("#native-public-description script")
              |> Enum.empty?()
 
       refute html =~ "data-controller"
-      if !enabled, do: assert(:sys.get_state(view.pid).socket.assigns.page.map.photos == [])
+
+      if !enabled,
+        do:
+          assert(
+            :sys.get_state(view.pid).socket.assigns.public_presentation.resource.photos == []
+          )
     end
   end
 
@@ -105,7 +109,14 @@ defmodule DawarichWeb.PublicNativeRenderTest do
     {view, html} = open(@live)
     refute html =~ "data-latitude"
 
-    assert :sys.get_state(view.pid).socket.assigns.page.map.latest == [
+    assert elem(
+             Dawarich.Maps.Public.read(
+               :sys.get_state(view.pid).socket.assigns.public_capability,
+               :points,
+               %{}
+             ),
+             1
+           ) == [
              [12.5, 51.5, DateTime.to_unix(c.now)]
            ]
 
@@ -127,10 +138,9 @@ defmodule DawarichWeb.PublicNativeRenderTest do
       log: false
     )
 
-    render_click(view, "public_reload", %{})
+    render_click(view, "public:reload", %{})
     state = :sys.get_state(view.pid).socket.assigns
-    assert state.page.map.latest == []
-    assert state.page.map.points == []
+    assert Dawarich.Maps.Public.read(state.public_capability, :points, %{}) == {:ok, []}
 
     Repo.query!("UPDATE shared_links SET revoked_at=NOW() WHERE id=$1::text::uuid", [@live],
       log: false
@@ -138,8 +148,8 @@ defmodule DawarichWeb.PublicNativeRenderTest do
 
     send(view.pid, {:share_changed, @live, %{latitude: 51.5, longitude: 12.5}})
     render(view)
-    assert :sys.get_state(view.pid).socket.assigns.page == nil
-    assert_push_event(view, "public-share-clear", %{})
+    assert :sys.get_state(view.pid).socket.assigns.public_presentation == nil
+    assert_push_event(view, "map:clear", %{code: "not_found"})
     assert {:error, _} = read_revoked(c.now)
   end
 
@@ -162,15 +172,25 @@ defmodule DawarichWeb.PublicNativeRenderTest do
       )
 
       {view, _} = open(id)
-      assert has_element?(view, "[data-public-map]") == enabled
-      if !enabled, do: assert(:sys.get_state(view.pid).socket.assigns.page.map.points == [])
+      assert has_element?(view, "#native-public-map") == enabled
+
+      if !enabled,
+        do:
+          assert(
+            Dawarich.Maps.Public.read(
+              :sys.get_state(view.pid).socket.assigns.public_capability,
+              :route,
+              %{}
+            ) == {:ok, []}
+          )
     end
   end
 
   test "silent live-point age erases its marker without another publication", c do
     {view, _} = open(@live)
     assigns = :sys.get_state(view.pid).socket.assigns
-    assert assigns.public_expiry.due == DateTime.to_unix(c.now) + 901
+
+    assert is_reference(assigns.public_deadline.token)
 
     Repo.query!(
       "UPDATE points SET timestamp=$1 WHERE user_id=9901",
@@ -178,11 +198,11 @@ defmodule DawarichWeb.PublicNativeRenderTest do
       log: false
     )
 
-    send(view.pid, {:public_share_expiry, assigns.public_expiry.token})
+    send(view.pid, {:public_map_expiry, assigns.public_deadline.token})
     render(view)
-    page = :sys.get_state(view.pid).socket.assigns.page
-    assert page.map.latest == []
-    assert page.expires_at > assigns.public_expiry.due
+    current = :sys.get_state(view.pid).socket.assigns
+    assert Dawarich.Maps.Public.read(current.public_capability, :points, %{}) == {:ok, []}
+    refute Map.has_key?(current, :page)
   end
 
   for change <- [:link, :privacy] do

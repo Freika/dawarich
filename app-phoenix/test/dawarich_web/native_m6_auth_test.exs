@@ -15,7 +15,7 @@ defmodule DawarichWeb.NativeM6AuthTest do
 
     for path <- ~w(/map/v2 /trips/42 /family /s/missing) do
       response = get(conn, path)
-      assert response.status == 422
+      assert response.status == 422, path
       assert response.resp_body == ""
       assert Plug.Conn.get_resp_header(response, "location") == []
       assert Plug.Conn.get_resp_header(response, "cache-control") == ["private, no-store"]

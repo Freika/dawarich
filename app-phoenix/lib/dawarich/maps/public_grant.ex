@@ -87,7 +87,12 @@ defmodule Dawarich.Maps.PublicGrant do
   defp resource(_, _), do: :ok
 
   defp due(link, capability, now) do
-    [link.expires_at, (capability[:proof] || %{})["expires_at"], DateTime.add(now, 86_400)]
+    [
+      link.expires_at,
+      capability[:expires_at],
+      (capability[:proof] || %{})["expires_at"],
+      DateTime.add(now, 86_400)
+    ]
     |> Enum.map(fn
       %DateTime{} = at ->
         at

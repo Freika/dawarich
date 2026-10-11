@@ -18,6 +18,11 @@ defmodule DawarichWeb.PublicMapAuth do
       viewer_scope: user && Dawarich.Maps.principal(user, conn.assigns[:locale] || "en")
     }
 
+    deadlines = DawarichWeb.PublicShareAuth.cookie_deadlines(conn, capability, DateTime.utc_now())
+
+    capability =
+      Map.put(capability, :expires_at, Enum.min_by(deadlines, &DateTime.to_unix/1, fn -> nil end))
+
     capability =
       case Dawarich.Maps.PublicGrant.bind(capability, []) do
         {:ok, bound} ->
@@ -55,6 +60,10 @@ defmodule DawarichWeb.PublicMapAuth do
          do: Map.put(capability, :viewer_scope, nil),
          else: capability
 
+    if connected?(socket) && capability && capability.viewer_scope &&
+         session["notification_session"],
+       do: Phoenix.PubSub.subscribe(Dawarich.PubSub, session["notification_session"])
+
     socket =
       socket
       |> assign(for key <- @layout, do: {key, session[Atom.to_string(key)]})
@@ -81,7 +90,14 @@ defmodule DawarichWeb.PublicMapAuth do
           do: authorize(s),
           else: {:halt, refuse(s, :not_found)}
       end)
-      |> attach_hook(:public_admission_info, :handle_info, fn _, s -> authorize(s) end)
+      |> attach_hook(:public_admission_info, :handle_info, fn
+        :notification_signed_out, s ->
+          capability = Map.put(s.assigns.public_capability, :viewer_scope, nil)
+          {:halt, refuse(assign(s, public_capability: capability), :not_found)}
+
+        _, s ->
+          authorize(s)
+      end)
       |> attach_hook(:public_admission_async, :handle_async, fn _, _, s -> authorize(s) end)
       |> authorize()
       |> then(fn {_, next} -> {:cont, next} end)
