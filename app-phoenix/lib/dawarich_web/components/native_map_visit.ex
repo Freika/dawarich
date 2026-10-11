@@ -128,7 +128,12 @@ defmodule DawarichWeb.NativeMapVisit do
             >
               {note_error(@locale, @dialog.note_error)}
             </p>
-            <textarea class="textarea textarea-bordered w-full" rows="2" name="note[body]"></textarea>
+            <textarea
+              class="textarea textarea-bordered w-full"
+              rows="2"
+              name="note[body]"
+              aria-label={t(@locale, "trips.notes.form.write_your_notes_for_this_day", %{})}
+            ></textarea>
             <button type="submit" class="btn btn-sm">{t(@locale, "trips.notes.empty.save_note", %{})}</button>
           </form>
         </section>

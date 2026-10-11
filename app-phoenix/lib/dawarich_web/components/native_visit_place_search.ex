@@ -42,6 +42,7 @@ defmodule DawarichWeb.NativeVisitPlaceSearch do
           phx-debounce="300"
           class="input input-sm input-bordered w-full"
           placeholder={j(@locale, "places.search_placeholder")}
+          aria-label={j(@locale, "places.search_placeholder")}
         />
       </form>
       <p :if={@error} class="text-error text-sm mt-1" role="alert">

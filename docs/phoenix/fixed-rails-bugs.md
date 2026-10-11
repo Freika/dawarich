@@ -1609,3 +1609,12 @@ Deleting a Trip in Rails destroys all attached notes and Trip shares regardless 
 - Phoenix: `app-phoenix/lib/dawarich/maps/dependencies/trip.ex:124`; existing owner-scoped domain predicates in `app-phoenix/lib/dawarich/trips/web_delete.ex:68,80`.
 - Test: `native trip deletion preserves foreign notes and shares linked to its resource` in `native_trip_effects_test.exs`; valid source-semantics RED4/5, owner-scoped GREEN5, owner-scoping removal fails.
 - ED: ED-NATIVE-M6-TRIP-DEPENDENTS. No DRB row. Rails unchanged. No Rails oracle was run in this slice; source association inspection and the existing domain's source-compatible default establish the difference.
+
+### FRB-NATIVE-M6-CONTROL-LABELS
+
+The Rails Poster layout selector and track opacity/width sliders have no associated accessible label. The Visit place search and Trip note editor rely on placeholder text rather than a persistent label. Native controls retain localized accessible labels, including the populated note editor and validation state. A corrected test helper checks controls without IDs instead of silently skipping them.
+
+- Rails: `app/views/posters/_studio.html.erb:100,223,234`; `app/javascript/maps_maplibre/components/visit_place_search.js:219`; `app/views/trips/notes/_form.html.erb:16`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/native_poster_sections.ex:58,200`; `app-phoenix/lib/dawarich_web/components/native_visit_place_search.ex:44`; `app-phoenix/lib/dawarich_web/components/native_trip_note.ex:20`.
+- Tests: `canonical milestone six documents and changed forms retain native accessible controls`; `accessible control gate rejects unlabelled controls without ids`; `native trip note editor retains an accessible name through validation and cancel`. Removing Poster layout admission labels or restoring the helper's nil-ID filter fails the named gates.
+- ED: ED-NATIVE-M6-CONTROL-LABELS. No DRB.

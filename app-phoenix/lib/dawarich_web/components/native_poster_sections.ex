@@ -55,7 +55,11 @@ defmodule DawarichWeb.NativePosterSections do
 
     ~H"""
     <.section icon="grid2x2" title={p(@locale, "layout")} open>
-      <select class="select select-bordered select-sm w-full py-0" data-poster-layout>
+      <select
+        class="select select-bordered select-sm w-full py-0"
+        data-poster-layout
+        aria-label={p(@locale, "layout")}
+      >
         <optgroup :for={{category, ids} <- @layouts} label={js(@locale, "categories." <> category)}>
           <option :for={id <- ids} value={id} selected={id == "print-a3"}>
             {js(@locale, "layouts." <> id)}
@@ -199,6 +203,7 @@ defmodule DawarichWeb.NativePosterSections do
       </div>
       <input
         type="range"
+        aria-label={@label}
         min={@min}
         max={@max}
         step={@step}

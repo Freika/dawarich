@@ -181,3 +181,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Omit credential-bearing photo and itinerary source destinations from native trip presentation and use cookie-authenticated thumbnails. (FRB-NATIVE-M6-TRIP-PHOTO-LINK)
 
 - Preserve foreign-owned note/share records linked to a deleted native Trip in an inconsistent stored graph. (FRB-NATIVE-M6-TRIP-DEPENDENTS)
+
+- Give native Poster layout/track sliders, Visit place search and Trip note editors persistent localized accessible names. [FRB-NATIVE-M6-CONTROL-LABELS](fixed-rails-bugs.md#frb-native-m6-control-labels)

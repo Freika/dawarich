@@ -71,7 +71,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
             "input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea"
           )
           |> LazyHTML.filter(":not(label *):not([aria-label]):not([aria-labelledby])"),
-        id = List.first(LazyHTML.attribute(control, "id")),
+        id <- [List.first(LazyHTML.attribute(control, "id"))],
         is_nil(id) or Enum.count(LazyHTML.query(doc, ~s(label[for="#{id}"]))) != 1,
         do: LazyHTML.to_html(control)
   end
@@ -227,6 +227,95 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     render_hook(view, "map:panel", %{"panel" => "settings"})
     assert_native_controls(render(view))
     GenServer.stop(view.pid)
+  end
+
+  test "canonical milestone six documents and changed forms retain native accessible controls", %{
+    user: user
+  } do
+    Dawarich.Test.TripsSeeds.trip!(%{
+      id: 84112,
+      user_id: user.id,
+      name: "Native control trip",
+      path: [[13.4, 52.5], [13.5, 52.6]],
+      started_at: ~N[2026-06-01 00:00:00],
+      ended_at: ~N[2026-06-02 23:59:59]
+    })
+
+    stamp = NaiveDateTime.utc_now()
+
+    Repo.insert_all("families", [
+      %{
+        id: 84112,
+        creator_id: user.id,
+        name: "Control family",
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    Repo.insert_all("family_memberships", [
+      %{
+        id: 84112,
+        family_id: 84112,
+        user_id: user.id,
+        role: 0,
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    uuid = Ecto.UUID.generate()
+
+    Repo.insert_all("shared_links", [
+      %{
+        id: Ecto.UUID.dump!(uuid),
+        user_id: user.id,
+        resource_type: 0,
+        resource_id: 84112,
+        name: "Control share",
+        settings: %{"show_photos" => false},
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    for path <- ["/map", "/map/v2", "/trips/84112", "/family", "/s/#{uuid}"] do
+      conn = get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
+      assert_native_controls(html_response(conn, 200))
+      {:ok, view, connected} = live(conn)
+      assert_native_controls(connected)
+
+      cond do
+        path in ["/map", "/map/v2"] ->
+          assert has_element?(view, "#native-map-search[autocomplete=off]")
+
+          for panel <- ["settings", "timeline", "insights", ""] do
+            render_hook(view, "map:panel", %{"panel" => panel})
+            render_async(view, 5000)
+            assert_native_controls(render(view))
+          end
+
+        path == "/trips/84112" ->
+          render_click(view, "trip:note:edit", %{"day" => "2026-06-01"})
+          assert has_element?(view, "#native-trip-note-form textarea[aria-label]")
+          assert_native_controls(render(view))
+          render_click(view, "trip:note:cancel", %{})
+          assert_native_controls(render(view))
+
+        path == "/family" ->
+          view
+          |> form("#native-family-invite", family_invitation: %{email: ""})
+          |> render_submit()
+
+          assert has_element?(view, "[role=alert]")
+          assert_native_controls(render(view))
+
+        true ->
+          :ok
+      end
+
+      GenServer.stop(view.pid)
+    end
   end
 
   test "LiveView event telemetry, which carries raw form params, reaches only LiveView's own logger" do
