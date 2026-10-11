@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Area creation and editing reject unsupported response formats before saving changes or scheduling visit relabeling.
 - Account deletion confirmation can be requested again immediately if token generation or email enqueueing fails.
 - Partnero signup failure diagnostics and Immich enrichment errors exclude provider-supplied credentials and customer details.
 - Propagate failed monthly statistics calculations so background jobs can retry, with one failure notification per stats delivery.
