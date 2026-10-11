@@ -1,7 +1,7 @@
 defmodule DawarichWeb.PublicDeliveryInventoryTest do
   use ExUnit.Case, async: true
 
-  test "every route without mandatory user admission is in the public delivery inventory" do
+  test "every activated route without mandatory user admission has an exact public delivery inventory entry" do
     routes =
       DawarichWeb.Router.__routes__()
       |> Enum.map(fn route ->

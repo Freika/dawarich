@@ -3,22 +3,33 @@ import { readFile } from "node:fs/promises"
 import test from "node:test"
 import vm from "node:vm"
 
-const entry = await readFile(new URL("../../assets/js/app.js", import.meta.url), "utf8")
+const entry = await readFile(
+  new URL("../../assets/js/app.js", import.meta.url),
+  "utf8",
+)
 const pages = await Promise.all(
   ["native_family_page", "native_family_invitations"].map((name) =>
-    readFile(new URL(`../../lib/dawarich_web/components/${name}.ex`, import.meta.url), "utf8"),
+    readFile(
+      new URL(`../../lib/dawarich_web/components/${name}.ex`, import.meta.url),
+      "utf8",
+    ),
   ),
 )
 const html = await readFile(
-  new URL("../../deps/phoenix_html/priv/static/phoenix_html.js", import.meta.url),
+  new URL(
+    "../../deps/phoenix_html/priv/static/phoenix_html.js",
+    import.meta.url,
+  ),
   "utf8",
 )
 
 function click(action, decision) {
   assert.match(entry, /import "phoenix_html"/)
-  const button = pages.join("\n").match(
-    new RegExp(`<button\\b[^>]*phx-click="family:${action}"[^>]*>`, "s"),
-  )?.[0]
+  const button = pages
+    .join("\n")
+    .match(
+      new RegExp(`<button\\b[^>]*phx-click="family:${action}"[^>]*>`, "s"),
+    )?.[0]
   assert.match(button || "", /data-confirm=/)
   const listeners = new Map()
   let prompts = 0
@@ -28,8 +39,12 @@ function click(action, decision) {
       this.type = type
       this.defaultPrevented = false
     }
-    preventDefault() { this.defaultPrevented = true }
-    stopImmediatePropagation() { this.stopped = true }
+    preventDefault() {
+      this.defaultPrevented = true
+    }
+    stopImmediatePropagation() {
+      this.stopped = true
+    }
   }
   const window = {
     CustomEvent: Event,
@@ -38,12 +53,18 @@ function click(action, decision) {
       handlers.push(handler)
       listeners.set(type, handlers)
     },
-    confirm() { prompts += 1; return decision },
+    confirm() {
+      prompts += 1
+      return decision
+    },
   }
   vm.runInNewContext(html, { window })
-  window.addEventListener("click", () => { commands += 1 })
+  window.addEventListener("click", () => {
+    commands += 1
+  })
   const element = {
-    getAttribute: (key) => key === "data-confirm" ? "Synthetic family confirmation" : null,
+    getAttribute: (key) =>
+      key === "data-confirm" ? "Synthetic family confirmation" : null,
     dispatchEvent(event) {
       event.target = this
       for (const handler of listeners.get(event.type) || []) handler(event)

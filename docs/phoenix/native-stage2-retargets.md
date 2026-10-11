@@ -210,3 +210,13 @@ Delivery successors bind a real HTTP-admitted immutable grant, prove a positive 
 | `dawarich_web/share_management_page_test.exs` | share compatibility hints cannot return the manager to Rails or own public reads | share compatibility hints preserve native manager commands and the native public map owner |
 | `dawarich_web/public_native_gallery_test.exs` | native public gallery retains authorized photos while private and disabled photos never render | native public map gallery retains authorized photos and clears private or disabled photo delivery |
 | `dawarich_web/public_link_delivery_test.exs` | New admitted missing-resource accounting regression | native missing resource counts admitted GET once while HEAD reconnect and revoked links remain read only |
+
+## Stage-2 group A: Public route census (2026-10-11)
+
+The exact public-delivery census includes all 194 current route/verb/plug/pipeline tuples (previously 118). The original mandatory-admission pipeline filter is unchanged; native public reads, native map reads, refused methods and already-retired map endpoints remain explicit entries. `/s/:id` is the native PublicMapLive owner and public month is NativePublicPage. Removal of obsolete endpoints belongs to M7.
+
+| Test file | Previous case | Named successor |
+| --- | --- | --- |
+| `dawarich_web/public_delivery_inventory_test.exs` | every route without mandatory user admission is in the public delivery inventory | every activated route without mandatory user admission has an exact public delivery inventory entry |
+
+Reconciliation evidence: original group 35/118 passed (83 failures), named successor RED 35/118, restored group 119 passed. The final explicit group/direct-caller/register packet passes 403 cases on both seeds 404 and 202 with warnings-as-errors. Strict test-environment force compile and format pass; both actual-dispatch client confirmation tests and Biome pass. Named mutation checks fail for retired event dispatch, omitted confirmation, stale navbar, uncleared withdrawn membership, missing-resource counting, grant/log filtering, immutable/final admission, gallery privacy, envelope/CSRF, public owner and omitted census entry. All mutations were restored. No Rails bug fixed, lifecycle change, new page state or full/browser gate claim.
