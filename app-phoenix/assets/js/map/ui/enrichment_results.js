@@ -7,6 +7,7 @@ export function createEnrichmentResults({
   pushEvent,
   confirm = (message) => globalThis.confirm(message),
   urls = globalThis.URL,
+  onSubmitted,
 }) {
   let host,
     list,
@@ -197,21 +198,25 @@ export function createEnrichmentResults({
       deadline = null
       busy = false
       const result = reply?.result
-      status.textContent =
-        reply?.ok && !result?.error
-          ? translate(
-              result?.pending > 0
-                ? "pending_enrichment"
-                : result?.failed > 0
-                  ? "partially_enriched"
-                  : "enriched",
-              {
-                count: result?.pending || result?.enriched || 0,
-                enriched: result?.enriched || 0,
-                failed: result?.failed || 0,
-              },
-            )
-          : translate("failed")
+      const accepted = reply?.ok && !result?.error
+      if (accepted) {
+        clear()
+        onSubmitted?.()
+      }
+      status.textContent = accepted
+        ? translate(
+            result?.pending > 0
+              ? "pending_enrichment"
+              : result?.failed > 0
+                ? "partially_enriched"
+                : "enriched",
+            {
+              count: result?.pending || result?.enriched || 0,
+              enriched: result?.enriched || 0,
+              failed: result?.failed || 0,
+            },
+          )
+        : translate("failed")
       update()
     }
     deadline = timers.setTimeout(() => settle({ error: "timeout" }), 60000)

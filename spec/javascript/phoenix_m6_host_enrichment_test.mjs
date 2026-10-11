@@ -77,7 +77,8 @@ test("native enrichment selection confirms and sends only selected assets with p
     assert.match(ui.status.textContent, /Pending 1/)
     command.reply({ ok: true, result: { pending: 1, failed: 0 } })
     assert.match(ui.status.textContent, /Submitted 1/)
-    assert.equal(ui.submit.disabled, false)
+    assert.equal(ui.submit.disabled, true)
+    assert.equal(ui.list.children.length, 0)
   } finally {
     globalThis.confirm = original
     f.owner.destroy()
@@ -209,6 +210,66 @@ test("enrichment results bind when the tools panel appears after map attachment"
     ui.all.emit("change")
     assert.equal(ui.submit.disabled, true)
   } finally {
+    f.owner.destroy()
+  }
+})
+
+test("accepted enrichment retires selection markers and popups until a new scan while keeping its receipt", async () => {
+  const popups = []
+  class Popup {
+    constructor() {
+      popups.push(this)
+    }
+    setLngLat() {
+      return this
+    }
+    setDOMContent() {
+      return this
+    }
+    addTo() {
+      return this
+    }
+    remove() {
+      this.removed = true
+    }
+  }
+  const f = fixture({}, { library: { Popup } }),
+    ui = resultUI(f)
+  const original = globalThis.confirm
+  globalThis.confirm = () => true
+  ui.result.dataset.labels = JSON.stringify({
+    ...JSON.parse(ui.result.dataset.labels),
+    partially_enriched: "Partial {enriched}/{failed}",
+    enriched: "Enriched {count}",
+  })
+  try {
+    await f.owner.mount()
+    for (const [result, receipt] of [
+      [{ pending: 1, failed: 0 }, "Submitted 1"],
+      [{ enriched: 1, failed: 1 }, "Partial 1/1"],
+      [{ enriched: 1, failed: 0 }, "Enriched 1"],
+    ]) {
+      await f.owner.enrichment.matches({ matches: rows })
+      ui.list.children[1].children[0].checked = false
+      ui.list.children[1].children[0].emit("change")
+      ui.list.children[0].emit("mouseenter")
+      ui.submit.emit("click")
+      const command = f.pushed.at(-1)
+      assert.equal(command.payload.assets.length, 1)
+      command.reply({ ok: true, result })
+      assert.equal(ui.status.textContent, receipt)
+      assert.equal(ui.list.children.length, 0)
+      assert.equal(ui.all.checked, false)
+      assert.equal(ui.submit.disabled, true)
+      assert.equal(f.sources.has("native-enrichment-matches"), false)
+      assert.equal(f.layers.has("native-enrichment-matches"), false)
+      assert.equal(popups.at(-1).removed, true)
+      const count = f.pushed.length
+      ui.submit.emit("click")
+      assert.equal(f.pushed.length, count)
+    }
+  } finally {
+    globalThis.confirm = original
     f.owner.destroy()
   }
 })

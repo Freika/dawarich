@@ -34,6 +34,7 @@ export function createEnrichmentTool({
           library,
           timers,
           pushEvent,
+          onSubmitted: clear,
         })
         results.replace(rows)
       })
