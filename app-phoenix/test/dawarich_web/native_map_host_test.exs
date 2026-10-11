@@ -108,4 +108,29 @@ defmodule DawarichWeb.NativeMapHostTest do
     assert labels["anomalies.low_accuracy"] =~ "{threshold}"
     refute html =~ "synthetic-override"
   end
+
+  test "native live mode configuration follows the saved flag and scalar host contract" do
+    for enabled <- [true, false] do
+      config =
+        DawarichWeb.MapLive.NativeConfig.build(
+          %{saved: %{"live_map_enabled" => enabled}},
+          %{},
+          %{},
+          ""
+        )
+
+      assert config["liveEnabled"] == enabled
+
+      html =
+        render_component(&DawarichWeb.NativeMapHost.map_host/1, id: "native-map", config: config)
+
+      [encoded] =
+        html
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("[data-map-config]")
+        |> LazyHTML.attribute("data-map-config")
+
+      assert Jason.decode!(encoded)["liveEnabled"] == enabled
+    end
+  end
 end

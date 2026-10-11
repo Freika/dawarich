@@ -13,10 +13,19 @@ const kinds = new Set([
   "reconnect",
 ])
 export function createRealtime(options) {
-  const refresh = createRefresh(options),
+  const pending = new Set()
+  const refresh = createRefresh({
+      ...options,
+      run: () => {
+        const batch = { kinds: [...pending] }
+        pending.clear()
+        return options.run(batch)
+      },
+    }),
     seen = new Map()
   return {
     invalidate(receipt = {}) {
+      if (!kinds.has(receipt.kind ?? "map")) return Promise.resolve("ignored")
       if (receipt.revision !== undefined) {
         const kind = receipt.kind ?? "map",
           revision = receipt.revision
@@ -29,9 +38,16 @@ export function createRealtime(options) {
           return Promise.resolve("ignored")
         seen.set(kind, revision)
       }
+      pending.add(receipt.kind ?? "map")
       return refresh.schedule()
     },
-    reconnect: () => refresh.schedule(),
-    destroy: () => refresh.destroy(),
+    reconnect: () => {
+      pending.add("reconnect")
+      return refresh.schedule()
+    },
+    destroy: () => {
+      pending.clear()
+      refresh.destroy()
+    },
   }
 }

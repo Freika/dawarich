@@ -124,6 +124,7 @@ test("map hook owns coalesced delivery handlers and releases them on teardown", 
       jobs.delete(id)
     },
   }
+  const receipts = []
   let reads = 0,
     destroyed = 0
   const hook = {
@@ -143,7 +144,8 @@ test("map hook owns coalesced delivery handlers and releases them on teardown", 
         async mount() {
           return "ready"
         },
-        async reconnect() {
+        async reconnect(receipt) {
+          receipts.push(receipt)
           reads++
           return "ready"
         },
@@ -163,6 +165,7 @@ test("map hook owns coalesced delivery handlers and releases them on teardown", 
   for (const callback of callbacks) await callback()
   await reconnect
   assert.equal(reads, 1)
+  assert.deepEqual(receipts, [{ kinds: ["points", "reconnect"] }])
   handlers.get("map:invalidate")({ kind: "points", revision: 2 })
   hook.destroyed()
   assert.equal(jobs.size, 0)
@@ -216,4 +219,28 @@ test("reconnect while the map chunk loads keeps a bounded invalidation queue", a
   assert.equal(jobs.size, 1)
   hook.destroyed()
   assert.equal(jobs.size, 0)
+})
+
+test("native realtime batches retain only admitted invalidation kinds", async () => {
+  const batches = [],
+    f = fixture(async (receipt) => {
+      batches.push(receipt)
+      return "ready"
+    })
+  f.owner.invalidate({ kind: "family", revision: 1, secret: "discard" })
+  f.owner.invalidate({ kind: "points", revision: 1 })
+  f.owner.invalidate({ kind: "points", revision: 1 })
+  await f.flush()
+  assert.deepEqual(batches, [{ kinds: ["family", "points"] }])
+  f.owner.reconnect()
+  await f.flush()
+  assert.deepEqual(batches[1], { kinds: ["reconnect"] })
+  f.owner.destroy()
+})
+
+test("native realtime rejects unknown kinds without a revision", async () => {
+  const f = fixture()
+  assert.equal(await f.owner.invalidate({ kind: "unknown" }), "ignored")
+  assert.equal(f.jobs.size, 0)
+  f.owner.destroy()
 })

@@ -15,6 +15,7 @@ defmodule DawarichWeb.MapLive.NativeConfig do
         "/maps_maplibre/styles/#{if saved["maps_maplibre_style"] in ~w(light dark white black grayscale), do: saved["maps_maplibre_style"], else: "light"}.json",
       "tilesUrl" => saved["maps_maplibre_tiles_url"],
       "trackColor" => saved["track_color"],
+      "liveEnabled" => saved["live_map_enabled"] != false,
       "editEnabled" => saved["point_dragging_enabled"] == true,
       "distanceUnit" => maps["distance_unit"] || "km",
       "hiddenTileCategories" => maps["hidden_tile_categories"] || [],

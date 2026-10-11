@@ -60,7 +60,7 @@ export const MapHook = {
       ])
       if (this.mapDestroyed || this.mapRevoked) return
       this.mapRealtime = createRealtime({
-        run: () => this.mapOwner?.reconnect(),
+        run: (receipt) => this.mapOwner?.reconnect(receipt),
         timers: this.mapTimers ?? globalThis,
       })
       this.mapOwner = runtime.mountHost({

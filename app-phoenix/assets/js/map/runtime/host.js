@@ -17,6 +17,10 @@ import { createRangeRequests } from "../ui/navigation.js"
 import { installStudios } from "../ui/studios.js"
 import { createHostAuxLayers } from "./aux_layers.js"
 import { createMapRuntime } from "./create_map.js"
+import {
+  createHostRecentPoint,
+  installRecentReconnect,
+} from "./recent_point.js"
 import { createViewportFit } from "./viewport_fit.js"
 export { createMapRuntime }
 export function mountHost({
@@ -46,7 +50,7 @@ export function mountHost({
   let timeline
   let density
   let aux
-  let entities
+  let entities, recent
   const config = JSON.parse(element.dataset.mapConfig ?? "{}")
   const owner = createMapRuntime({
     element,
@@ -62,6 +66,7 @@ export function mountHost({
       attach ??
       (({ map, config, lifetime }) => {
         installStudios({ element, owner, lifetime })
+        recent = createHostRecentPoint({ map, reader, lifetime, config })
         installHostReplay({
           onActive: (active) =>
             active ? aux?.photos?.hide() : aux?.photos?.show(),
@@ -231,6 +236,7 @@ export function mountHost({
         }
         if (entities) await operation.wait(entities.update(config, { signal }))
         if (aux) await operation.wait(aux.update(config, { operation, signal }))
+        if (recent) await operation.wait(recent.baseline({ signal }))
       }),
     events: {
       refreshed(receipt) {
@@ -262,21 +268,18 @@ export function mountHost({
       [`${layer}Enabled`]: enabled === true,
     })
   }
-  const reconnect = owner.reconnect
-  owner.reconnect = async () => {
-    const state = await reconnect.call(owner)
-    if (state === "ready") {
-      layers?.points.refresh()
-      layers?.tracks.refresh()
-    }
-    return state
-  }
+  installRecentReconnect(
+    owner,
+    () => layers,
+    () => recent,
+  )
   const update = owner.update
   owner.update = (config) => {
     if (config.revision !== owner.config.revision) {
       enrichment?.clear()
       owner.selection?.cancel()
     }
+    recent?.config(config)
     aux?.clear(config)
     timeline?.config(config)
     owner.visits?.config(config)
