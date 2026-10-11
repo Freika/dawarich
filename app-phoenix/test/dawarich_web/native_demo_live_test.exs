@@ -118,6 +118,14 @@ defmodule DawarichWeb.NativeDemoLiveTest do
     assert rows("SELECT count(*) FROM imports WHERE user_id=$1 AND demo", [c.id]) == [[0]]
   end
 
+  test "demo removal carries the localized success notice to its destination", c do
+    {:ok, _} = Onboarding.load_demo(c.scope, DemoData.fixtures())
+    view = open(c.id, nil)
+    view |> element("#native-demo-remove") |> render_click()
+    {"/", flash} = assert_redirect(view)
+    assert flash["notice"] == "Demo data removed."
+  end
+
   test "reconnect reconciles committed demo state", c do
     view = open(c.id, nil)
     refute has_element?(view, "#demo-data-banner")

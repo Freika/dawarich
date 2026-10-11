@@ -64,7 +64,7 @@ defmodule DawarichWeb.MapLiveAuth do
       socket
     else
       Enum.reduce(messages, socket, fn
-        {type, message}, acc when type in ["notice", "alert"] and is_binary(message) ->
+        {type, message}, acc when type in ["notice", "alert", "error"] and is_binary(message) ->
           put_flash(acc, type, message)
 
         _, acc ->

@@ -8,6 +8,11 @@ export function mapSettings(settings, config) {
   const styleName = settings.maps_maplibre_style
   return {
     ...config,
+    routeOptions: {
+      ...config.routeOptions,
+      distanceThresholdMeters: Number(settings.meters_between_routes ?? config.routeOptions?.distanceThresholdMeters),
+      timeThresholdMinutes: Number(settings.minutes_between_routes ?? config.routeOptions?.timeThresholdMinutes),
+    },
     distanceUnit: maps.distance_unit ?? config.distanceUnit,
     customTheme: settings.maps_maplibre_custom_theme ?? config.customTheme,
     tilesFallback:

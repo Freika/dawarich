@@ -139,6 +139,64 @@ defmodule DawarichWeb.NativeMapEntitiesTest do
     refute html =~ "Spot 1.0"
   end
 
+  test "late nearby completion preserves the current place draft before submit", c do
+    test_pid = self()
+
+    nearby = fn _scope, _params ->
+      send(test_pid, {:draft_nearby, self()})
+
+      receive do
+        :release -> {:ok, [%{"name" => "Nearby result"}]}
+      end
+    end
+
+    agent = start_supervised!({Agent, fn -> nearby end})
+    view = open(c, agent)
+    render_hook(view, "place:new", %{"latitude" => 52.52, "longitude" => 13.405})
+    render_hook(view, "place:nearby", %{"latitude" => "52.52", "longitude" => "13.405"})
+    assert_receive {:draft_nearby, pending}
+
+    view
+    |> form("#native-place-form", place: %{name: "Typed name", note: "Typed note"})
+    |> render_change()
+
+    send(pending, :release)
+    render_async(view)
+    assert has_element?(view, "#native-place-form input[name='place[name]'][value='Typed name']")
+    assert has_element?(view, "#native-place-form textarea", "Typed note")
+    assert has_element?(view, "#native-place-form", "Nearby result")
+    view |> form("#native-place-form") |> render_submit()
+
+    assert rows("SELECT name,note FROM places WHERE user_id=$1", [c.id]) == [
+             ["Typed name", "Typed note"]
+           ]
+  end
+
+  test "malformed place draft fields leave the owned form usable", c do
+    view = open(c)
+    render_hook(view, "place:new", %{"latitude" => 52.52, "longitude" => 13.405})
+
+    view
+    |> form("#native-place-form", place: %{name: "Kept draft", note: "Kept note"})
+    |> render_change()
+
+    render_hook(view, "place:change", %{
+      "place" => %{
+        "name" => %{"nested" => "invalid"},
+        "note" => ["invalid"],
+        "tag_ids" => %{"invalid" => "shape"}
+      }
+    })
+
+    assert has_element?(view, "#native-place-form input[name='place[name]'][value='Kept draft']")
+    assert has_element?(view, "#native-place-form textarea", "Kept note")
+    view |> form("#native-place-form") |> render_submit()
+
+    assert rows("SELECT name,note FROM places WHERE user_id=$1", [c.id]) == [
+             ["Kept draft", "Kept note"]
+           ]
+  end
+
   defp finished(pid) do
     ref = Process.monitor(pid)
     assert_receive {:DOWN, ^ref, :process, ^pid, _}, 2_000

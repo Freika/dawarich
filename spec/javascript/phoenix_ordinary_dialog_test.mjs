@@ -2,6 +2,34 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { OrdinaryDialog } from "../../app-phoenix/assets/js/hooks/ordinary_dialog.js"
 
+test("initial dialog focus cannot reclaim the note field on a later animation frame", () => {
+  const previousDocument = globalThis.document
+  const previousWindow = globalThis.window
+  const frames = []
+  const name = { focus() { globalThis.document.activeElement = this } }
+  const note = { focus() { globalThis.document.activeElement = this } }
+  globalThis.document = { activeElement: null }
+  globalThis.window = { requestAnimationFrame: (fn) => frames.push(fn) }
+  const hook = Object.assign(Object.create(OrdinaryDialog), {
+    el: {
+      querySelector: (selector) => selector === "[data-dialog-initial-focus]" ? name : null,
+      addEventListener() {},
+      removeEventListener() {},
+    },
+  })
+  try {
+    hook.mounted()
+    assert.equal(globalThis.document.activeElement, name)
+    note.focus()
+    while (frames.length) frames.shift()()
+    assert.equal(globalThis.document.activeElement, note)
+    hook.destroyed()
+  } finally {
+    globalThis.document = previousDocument
+    globalThis.window = previousWindow
+  }
+})
+
 test("ordinary dialog wraps Tab both ways and removes its owned listener", () => {
   const previous = globalThis.document
   const controls = Array.from({ length: 3 }, () => ({

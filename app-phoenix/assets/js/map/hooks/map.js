@@ -7,9 +7,19 @@ export const MapHook = {
     this.mapConfig = null
     this.mapTrackSelection = null
     this.mapVisitSelection = null
+    this.mapPlaceFocus = null
     this.mapRealtime = null
     this.mapInvalidations = []
     this.mapHandlers = [
+      this.handleEvent("place:focus", ({ latitude, longitude }) => {
+        if (
+          this.mapDestroyed || this.mapRevoked ||
+          !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+          Math.abs(latitude) > 90 || Math.abs(longitude) > 180
+        ) return
+        this.mapPlaceFocus = { center: [longitude, latitude], zoom: 16 }
+        if (this.mapReady) this.mapOwner?.map?.jumpTo(this.mapPlaceFocus)
+      }),
       this.handleEvent("visit:selection", (payload) => {
         if (this.mapDestroyed || this.mapRevoked) return
         this.mapVisitSelection = { id: payload.id }
@@ -85,6 +95,7 @@ export const MapHook = {
       const entry = this.el.ownerDocument?.location?.href
       if (entry)
         this.mapOwner.openStudio?.(new URL(entry).searchParams.get("studio"))
+      if (this.mapPlaceFocus) this.mapOwner?.map?.jumpTo(this.mapPlaceFocus)
       for (const receipt of this.mapInvalidations)
         this.mapRealtime.invalidate(receipt)
       this.mapInvalidations = []

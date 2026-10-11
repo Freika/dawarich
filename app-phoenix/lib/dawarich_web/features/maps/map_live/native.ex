@@ -115,7 +115,10 @@ defmodule DawarichWeb.MapLive.Native do
             socket
           end
 
-        {:noreply, DawarichWeb.MapLive.VisitNavigation.hydrate(socket)}
+        {:noreply,
+         socket
+         |> DawarichWeb.MapLive.VisitNavigation.hydrate()
+         |> DawarichWeb.MapLive.PlaceDetail.hydrate()}
 
       {:error, reason} ->
         {:noreply, DawarichWeb.MapLiveAuth.refuse(socket, reason)}
@@ -149,7 +152,7 @@ defmodule DawarichWeb.MapLive.Native do
 
   def handle_event("map:select", %{"kind" => kind, "id" => id}, socket)
       when kind == "place",
-      do: DawarichWeb.MapLive.EntityCommands.handle_event(kind <> ":edit", %{"id" => id}, socket)
+      do: DawarichWeb.MapLive.PlaceDetail.handle_event("place:detail:open", %{"id" => id}, socket)
 
   def handle_event("visits:bulk" = event, payload, socket),
     do: DawarichWeb.MapLive.VisitBulkCommands.handle_event(event, payload, socket)
@@ -165,6 +168,9 @@ defmodule DawarichWeb.MapLive.Native do
 
   def handle_event("timeline:filter", payload, socket),
     do: {:noreply, DawarichWeb.MapLive.Timeline.filter(socket, payload)}
+
+  def handle_event("place:detail:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.PlaceDetail.handle_event(event, payload, socket)
 
   def handle_event("place:" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.EntityCommands.handle_event(event, payload, socket)
@@ -244,7 +250,10 @@ defmodule DawarichWeb.MapLive.Native do
 
   def handle_async({:timeline, _} = name, result, socket) do
     {:noreply, socket} = DawarichWeb.MapLive.Timeline.handle_async(name, result, socket)
-    {:noreply, DawarichWeb.MapLive.VisitNavigation.hydrate(socket)}
+
+    {:noreply,
+     socket
+     |> DawarichWeb.MapLive.VisitNavigation.hydrate()}
   end
 
   def handle_async({:calendar, _} = name, result, socket),

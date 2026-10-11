@@ -145,7 +145,8 @@ defmodule DawarichWeb.NativeMapPage do
           "javascript.visits.create_new",
           %{}
         )}</button>
-        <DawarichWeb.NativeMapPlace.dialog dialog={assigns[:place_dialog]} locale={@locale} />
+        <DawarichWeb.NativePlaceDrawer.drawer detail={assigns[:place_detail]} locale={@locale} />
+      <DawarichWeb.NativeMapPlace.dialog dialog={assigns[:place_dialog]} locale={@locale} />
         <button type="button" data-testid="native-create-place" class="btn btn-sm">{t(
           @locale,
           "javascript.places.create_new",

@@ -173,8 +173,10 @@ defmodule DawarichWeb.NavbarEnd do
           class="badge badge-secondary badge-xs absolute right-2 top-1/2 -translate-y-1/2"
         ></span>
       </button>
-      <a
+      <.dynamic_tag
         :if={!@http}
+        tag_name={if @native, do: "button", else: "a"}
+        {if @native, do: %{type: "button"}, else: %{}}
         onclick={!@native && "getting_started.showModal()"}
         phx-click={@native && JS.dispatch("dawarich:open-dialog", to: "#getting_started")}
         class="relative whitespace-nowrap"
@@ -184,7 +186,7 @@ defmodule DawarichWeb.NavbarEnd do
           :if={@onboarding}
           class="badge badge-secondary badge-xs absolute right-2 top-1/2 -translate-y-1/2"
         ></span>
-      </a>
+      </.dynamic_tag>
     </li>
     <li :if={@http}>
       <DawarichWeb.AuthHttpChrome.sign_out locale={@locale} rails_csrf_token={@rails_csrf_token} />

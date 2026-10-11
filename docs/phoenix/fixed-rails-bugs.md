@@ -1963,3 +1963,11 @@ Rails point and track invalidations reload vector tiles synchronously. When a st
 - Phoenix: `app-phoenix/assets/js/map/layers/tile_refresh.js:1`; callers `points_mvt.js:162`, `tracks_mvt.js:175`.
 - Test: “native point and track invalidations fetch fresh tiles after a paused style frame”; synchronous-refresh mutation fails. Existing in-place refresh cases now drive the owned render event and still assert retained layers and fresh versions.
 - Ledger: ED-NATIVE-STAGE2-PAUSED-TILES; no DRB. Rails production code unchanged.
+### FRB-NATIVE-S2E4-ONBOARDING-FOCUS — Get started cannot restore keyboard focus
+
+Rails renders Get started as an anchor without href, so keyboard users cannot activate it normally and closing onboarding cannot return focus to that control. Native navbar variants use a button for the existing dialog dispatch; the browser restores focus after Escape.
+
+- Rails: `app/views/shared/_navbar.html.erb:138` and `:228`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/navbar_end.ex:178`.
+- Test: `automatic native onboarding dismisses persistently and manual reopening restores focus`; desktop and German mobile openings use `openNativeOnboarding`.
+- ED: ED-NATIVE-S2E4-ONBOARDING-FOCUS. No DRB. Native browser focus restoration passes; replacing the opener with the Rails-style anchor fails the named focus assertion. Restored evidence is recorded in the assigned group-4 fix report.

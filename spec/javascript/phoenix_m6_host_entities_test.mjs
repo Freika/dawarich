@@ -62,3 +62,21 @@ test("native creation guidance belongs to the armed tool and clears after click 
     f.owner.destroy()
   }
 })
+
+test("whitespace-only creation guidance permits place selection while armed guidance blocks it", async () => {
+  const f = fixture({ placesEnabled: true }), status = new Element()
+  status.textContent = "\n  "
+  f.nodes.set("[data-map-tool-status]", status)
+  f.reader.pages = async resource => resource === "places" ? [{id: 7, name: "Owned place", latitude: 52, longitude: 13}] : []
+  await f.owner.mount()
+  const select = () => f.map.emit("click:places", {features: [{properties: {id: 7}}]})
+  select()
+  assert.deepEqual(f.pushed.filter(item => item.event === "map:select"), [{event: "map:select", payload: {kind: "place", id: 7}, reply: undefined}])
+  status.textContent = "Place placement active"
+  select()
+  assert.equal(f.pushed.filter(item => item.event === "map:select").length, 1)
+  status.textContent = " \n "
+  select()
+  assert.equal(f.pushed.filter(item => item.event === "map:select").length, 2)
+  f.owner.destroy()
+})

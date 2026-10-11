@@ -17,7 +17,7 @@ defmodule DawarichWeb.NativeMapPlace do
       class="modal modal-open z-[10000]"
       role="dialog"
       aria-modal="true"
-      phx-mounted={JS.focus_first(to: "#native-place-form")}
+      phx-hook="OrdinaryDialog"
       phx-window-keydown={close()}
       phx-key="escape"
     >
@@ -34,7 +34,12 @@ defmodule DawarichWeb.NativeMapPlace do
             {message(@locale, error)}
           </li>
         </ul>
-        <form id="native-place-form" phx-submit="place:save" class="space-y-3">
+        <form
+          id="native-place-form"
+          phx-change="place:change"
+          phx-submit="place:save"
+          class="space-y-3"
+        >
           <input type="hidden" name="place[latitude]" value={@dialog.form["latitude"]} />
           <input type="hidden" name="place[longitude]" value={@dialog.form["longitude"]} />
           <label class="form-control">
@@ -47,6 +52,7 @@ defmodule DawarichWeb.NativeMapPlace do
               class="input input-bordered w-full"
               type="text"
               name="place[name]"
+              data-dialog-initial-focus
               value={@dialog.form["name"]}
             />
           </label>

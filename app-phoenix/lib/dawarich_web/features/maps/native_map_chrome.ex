@@ -41,7 +41,7 @@ defmodule DawarichWeb.NativeMapChrome do
       &Dawarich.Navbar.put_changelog_consent(&1, decision)
     )
 
-    {:halt, socket}
+    {:halt, refresh(socket)}
   end
 
   defp event(_, _, socket), do: {:cont, socket}
@@ -58,6 +58,11 @@ defmodule DawarichWeb.NativeMapChrome do
       self_hosted={@self_hosted != false}
       rails_csrf_token={assigns[:rails_csrf_token]}
       now={@now}
+      native
+    />
+    <DawarichWeb.Chrome.achievement_host
+      :if={@page && @current_scope && @navbar}
+      user_id={@current_user.id}
       native
     />
     """

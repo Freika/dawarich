@@ -43,8 +43,17 @@ defmodule DawarichWeb.OnboardingLiveComponent do
 
   def handle_event("demo:remove", _params, socket) do
     case Onboarding.remove_demo(socket.assigns.scope) do
-      {:ok, _} -> {:noreply, push_navigate(socket, to: "/")}
-      _ -> {:noreply, assign(socket, :demo_status, :failed)}
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :notice,
+           t(socket.assigns.locale, "controllers.settings.onboardings.demo_data_removed", %{})
+         )
+         |> push_navigate(to: "/")}
+
+      _ ->
+        {:noreply, assign(socket, :demo_status, :failed)}
     end
   end
 
