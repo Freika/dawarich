@@ -41,7 +41,7 @@ defmodule Dawarich.Trips.WebExport do
           log: false
         ).rows
 
-      locale = DawarichWeb.Locale.resolve(nil, user, %{})
+      locale = Dawarich.Localization.resolve(nil, user, %{})
 
       slug =
         Dawarich.Achievements.UiText.search(name, locale)

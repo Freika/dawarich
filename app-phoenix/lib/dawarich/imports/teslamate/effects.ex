@@ -97,10 +97,12 @@ defmodule Dawarich.Imports.Teslamate.Effects do
   def failure(ctx, message) do
     locale = Dawarich.Mail.ExploreFeatures.locale(ctx.settings, nil)
     prefix = "jobs.tesla_mate.sync_job."
-    title = DawarichWeb.Translate.t(locale, prefix <> "teslamate_sync_failed", %{})
+    title = Dawarich.Formatting.Translate.t(locale, prefix <> "teslamate_sync_failed", %{})
 
     content =
-      DawarichWeb.Translate.t(locale, prefix <> "your_teslamate_sync_failed", %{message: message})
+      Dawarich.Formatting.Translate.t(locale, prefix <> "your_teslamate_sync_failed", %{
+        message: message
+      })
 
     Dawarich.Notifications.create!(ctx.repo, ctx.id, :error, title, content)
     Dawarich.Jobs.Processed.mark!(ctx.repo, ctx.event, "imports.teslamate_sync")

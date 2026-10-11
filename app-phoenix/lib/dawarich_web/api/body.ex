@@ -4,10 +4,6 @@ defmodule DawarichWeb.Api.Body do
 
   import Plug.Conn
 
-  require Logger
-
-  alias DawarichWeb.RailsProxy
-
   @max 2_097_152
   @json ~w(application/json text/x-json application/jsonrequest)
   @form "application/x-www-form-urlencoded"
@@ -34,19 +30,12 @@ defmodule DawarichWeb.Api.Body do
     end
   end
 
-  def replay(conn, reason) do
+  def replay(conn, _reason) do
     cond do
       conn.state in [:sent, :chunked] -> halt(conn)
       conn.private[:dawarich_native_api] -> DawarichWeb.RailsErrors.respond(conn, 500)
-      Dawarich.Standalone.enabled?() -> DawarichWeb.StandaloneError.respond(conn, "api_body")
-      true -> proxy_replay(conn, reason)
+      true -> DawarichWeb.StandaloneError.respond(conn, "api_body")
     end
-  end
-
-  defp proxy_replay(conn, reason) do
-    Logger.info("[#{conn.assigns.api_tag}] #{conn.request_path} handed to Rails: #{reason}")
-
-    conn |> RailsProxy.call(upstream()) |> halt()
   end
 
   @doc false
@@ -257,6 +246,4 @@ defmodule DawarichWeb.Api.Body do
   end
 
   defp method_override?(value), do: String.upcase(value) in @override_methods
-
-  defp upstream, do: Application.fetch_env!(:dawarich, :rails_upstream)
 end

@@ -116,7 +116,7 @@ defmodule Dawarich.Trips.WebNotes do
       Map.new(note, fn {key, value} -> {Atom.to_string(key), value} end)
       |> Map.merge(%{"attachable_type" => "Trip", "attachable_id" => trip_id})
 
-    locale = context[:locale] || DawarichWeb.Locale.resolve(nil, user, %{})
+    locale = context[:locale] || Dawarich.Localization.resolve(nil, user, %{})
 
     with {:ok, errors} <- Validation.errors(attrs, repo),
          {:ok, errors} <- Dawarich.WebValidation.notes(locale, errors) do

@@ -4,7 +4,7 @@ defmodule Dawarich.Insights.Details do
   alias Dawarich.Insights.Details.Digests, as: DetailDigests
   alias Dawarich.Insights.Details.Totals
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias DawarichWeb.StatsFormat
+  alias Dawarich.Formatting.StatsFormat, as: StatsFormat
 
   def load(user, params, opts \\ []) do
     if opts[:fill] == true and
@@ -12,7 +12,7 @@ defmodule Dawarich.Insights.Details do
        do: raise(ArgumentError, "invalid insights period")
 
     now = opts[:now] || DateTime.utc_now()
-    self_hosted = Keyword.get_lazy(opts, :self_hosted, &DawarichWeb.LayoutAssigns.self_hosted?/0)
+    self_hosted = Keyword.get_lazy(opts, :self_hosted, &Dawarich.RuntimePolicy.self_hosted?/0)
     context = Stats.context(user, now, self_hosted)
     result = Repo.query!("SELECT * FROM stats WHERE user_id=$1", [user.id])
     stats = for row <- result.rows, do: Map.new(Enum.zip(result.columns, row))

@@ -1,7 +1,7 @@
-defmodule DawarichWeb.CableProxy.FrameTest do
+defmodule Dawarich.Cable.FrameTest do
   use ExUnit.Case, async: true
 
-  alias DawarichWeb.CableProxy.Frame
+  alias Dawarich.Cable.Frame
 
   test "Puma's frames decode at every length, and an incomplete frame waits" do
     small = :binary.copy("a", 125)

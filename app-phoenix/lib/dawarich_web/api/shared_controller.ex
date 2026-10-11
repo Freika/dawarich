@@ -96,24 +96,7 @@ defmodule DawarichWeb.Api.SharedController do
     |> assign(:api_if_none_match, conn |> get_req_header("if-none-match") |> Enum.join(", "))
   end
 
-  defp supported?(conn),
-    do:
-      if(Dawarich.Standalone.enabled?(),
-        do: conn.assigns.api_params["format"] in [nil, "json"],
-        else: coexistence_supported?(conn)
-      )
-
-  defp coexistence_supported?(conn) do
-    client =
-      List.first(get_req_header(conn, "x-dawarich-client")) || conn.assigns.api_params["client"]
-
-    not Map.has_key?(fetch_cookies(conn).req_cookies, "remember_user_token") and
-      client not in ["ios", "android"] and
-      get_req_header(conn, "x-requested-with") == [] and
-      conn.assigns.api_params["format"] in [nil, "json"] and
-      not Enum.any?(conn.req_headers, fn {name, _} -> String.contains?(name, "_") end) and
-      length(get_req_header(conn, "cookie")) <= 1
-  end
+  defp supported?(conn), do: conn.assigns.api_params["format"] in [nil, "json"]
 
   defp dispatch(conn, :route, link),
     do: result(conn, Dawarich.SharedApi.Points.route(link), cache_control: cache(link))

@@ -24,99 +24,39 @@ defmodule DawarichWeb.StandaloneApiRoutes do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :standalone_api
 
-        get "/settings/mobile", MobileSettingsController, :show,
-          metadata: %{
-            slice: :api_standalone,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        get "/settings/mobile", MobileSettingsController, :show, metadata: %{head: false}
 
-        get "/areas", AreasController, :index,
-          metadata: %{
-            slice: :api_standalone,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        get "/areas", AreasController, :index, metadata: %{head: false}
 
-        post "/areas", AreasController, :create,
-          metadata: %{
-            slice: :api_standalone,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        post "/areas", AreasController, :create, metadata: %{head: false}
 
-        get "/areas/:id", AreasController, :show,
-          metadata: %{
-            slice: :api_standalone,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        get "/areas/:id", AreasController, :show, metadata: %{head: false}
 
-        patch "/areas/:id", AreasController, :update,
-          metadata: %{
-            slice: :api_standalone,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        patch "/areas/:id", AreasController, :update, metadata: %{head: false}
 
-        put "/areas/:id", AreasController, :update,
-          metadata: %{
-            slice: :api_standalone,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        put "/areas/:id", AreasController, :update, metadata: %{head: false}
 
-        delete "/areas/:id", AreasController, :destroy,
-          metadata: %{
-            slice: :api_standalone,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        delete "/areas/:id", AreasController, :destroy, metadata: %{head: false}
       end
 
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :standalone_api_active
 
-        post "/recalculations", RecalculationsController, :create,
-          metadata: %{
-            slice: :api_standalone,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        post "/recalculations", RecalculationsController, :create, metadata: %{head: false}
 
-        patch "/settings/mobile", MobileSettingsController, :update,
-          metadata: %{
-            slice: :api_standalone,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        patch "/settings/mobile", MobileSettingsController, :update, metadata: %{head: false}
 
-        patch "/settings", SettingsController, :update,
-          metadata: %{
-            slice: :api_standalone,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        patch "/settings", SettingsController, :update, metadata: %{head: false}
 
-        get "/demo_data", DemoDataController, :show,
-          metadata: %{
-            slice: :api_foundation,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        get "/demo_data", DemoDataController, :show
 
-        post "/demo_data", DemoDataController, :create,
-          metadata: %{
-            slice: :api_foundation,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        post "/demo_data", DemoDataController, :create
 
-        delete "/demo_data", DemoDataController, :destroy,
-          metadata: %{
-            slice: :api_foundation,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        delete "/demo_data", DemoDataController, :destroy
 
-        post "/digests", DigestWritesController, :create,
-          metadata: %{
-            slice: :api_standalone,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        post "/digests", DigestWritesController, :create, metadata: %{head: false}
 
-        delete "/digests/:year", DigestWritesController, :destroy,
-          metadata: %{
-            slice: :api_standalone,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
+        delete "/digests/:year", DigestWritesController, :destroy, metadata: %{head: false}
       end
     end
   end

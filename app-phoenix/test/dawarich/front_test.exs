@@ -5,7 +5,6 @@ defmodule Dawarich.FrontTest do
   import ExUnit.CaptureLog
 
   alias Dawarich.{Front, RailsServer}
-  alias DawarichWeb.RailsProxy.Upstream
 
   @prod %{"RAILS_ENV" => "production"}
   @opts [upstream_port: 41_000, ipv6?: false]
@@ -120,7 +119,7 @@ defmodule Dawarich.FrontTest do
 
     assert {:proxy, _} = plan
     assert {{127, 0, 0, 1}, ^port} = Front.upstream(plan)
-    assert {:ok, socket} = Upstream.open(Front.upstream(plan))
+    assert {:ok, socket} = :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false], 1000)
     assert {:ok, accepted} = :gen_tcp.accept(listener)
     :ok = :gen_tcp.close(socket)
     :ok = :gen_tcp.close(accepted)

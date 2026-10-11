@@ -1,7 +1,7 @@
 defmodule Dawarich.Digests.Sharing do
   @moduledoc false
   alias Dawarich.{Accounts, Digests, Repo, UserTimeZone}
-  alias DawarichWeb.Translate
+  alias Dawarich.Formatting.Translate, as: Translate
 
   def update(repo, user, year, attrs, context) do
     repo.transaction(fn ->

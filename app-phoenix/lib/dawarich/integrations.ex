@@ -3,7 +3,7 @@ defmodule Dawarich.Integrations do
 
   alias Dawarich.{UserSettings, UserTimeZone}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias DawarichWeb.LocalizedDate
+  alias Dawarich.Formatting.LocalizedDate, as: LocalizedDate
 
   alias Dawarich.Accounts.Scope
   alias Dawarich.{Accounts, Entitlements, Repo}

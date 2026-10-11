@@ -6,51 +6,41 @@ defmodule DawarichWeb.ApiReadRoutes do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_stats
 
-        get "/timeline", TimelineController, :index,
-          metadata: %{slice: :api_map_reads, native_api: true}
+        get "/timeline", TimelineController, :index, metadata: %{native_api: true}
 
-        get "/tags/privacy_zones", PrivacyZonesController, :index,
-          metadata: %{slice: :api_map_reads, native_api: true}
+        get "/tags/privacy_zones", PrivacyZonesController, :index, metadata: %{native_api: true}
 
-        get "/countries/borders", SpatialController, :borders,
-          metadata: %{slice: :api_map_reads, native_api: true}
+        get "/countries/borders", SpatialController, :borders, metadata: %{native_api: true}
 
-        get "/countries/visited", SpatialController, :visited,
-          metadata: %{slice: :api_map_reads, native_api: true}
+        get "/countries/visited", SpatialController, :visited, metadata: %{native_api: true}
 
         get "/points/tracked_months", SpatialController, :tracked_months,
-          metadata: %{slice: :api_map_reads, native_api: true}
+          metadata: %{native_api: true}
 
-        get "/maps/hexagons/fog", HexagonsController, :fog,
-          metadata: %{slice: :api_map_reads, native_api: true}
+        get "/maps/hexagons/fog", HexagonsController, :fog, metadata: %{native_api: true}
       end
 
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_spatial_grants
 
-        get "/maps/hexagons/bounds", HexagonsController, :bounds,
-          metadata: %{slice: :api_map_reads, native_api: true}
+        get "/maps/hexagons/bounds", HexagonsController, :bounds, metadata: %{native_api: true}
 
-        get "/maps/hexagons", HexagonsController, :index,
-          metadata: %{slice: :api_map_reads, native_api: true}
+        get "/maps/hexagons", HexagonsController, :index, metadata: %{native_api: true}
       end
 
       scope "/api/v1/tiles", DawarichWeb.Api do
         pipe_through :api_tiles
 
-        get "/points/:z/:x/:y", PointTilesController, :show,
-          metadata: %{slice: :api_map_reads, native_api: true}
+        get "/points/:z/:x/:y", PointTilesController, :show, metadata: %{native_api: true}
 
-        get "/tracks/:z/:x/:y", TrackTilesController, :show,
-          metadata: %{slice: :api_map_reads, native_api: true}
+        get "/tracks/:z/:x/:y", TrackTilesController, :show, metadata: %{native_api: true}
       end
 
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_transport
 
         for method <- [:get, :post, :delete] do
-          match method, "/mcp", McpController, :handle,
-            metadata: %{slice: :api_map_reads, native_api: true}
+          match method, "/mcp", McpController, :handle, metadata: %{native_api: true}
         end
       end
     end
@@ -61,28 +51,26 @@ defmodule DawarichWeb.ApiReadRoutes do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_stats
 
-        get "/stats", StatsController, :index, metadata: %{slice: :api_stats}
-        get "/insights", StatsController, :insights, metadata: %{slice: :api_stats}
-        get "/insights/details", StatsController, :details, metadata: %{slice: :api_stats}
-        get "/residency", StatsController, :residency, metadata: %{slice: :api_stats}
-        get "/digests", DigestsController, :closure_index, metadata: %{slice: :api_stats}
-        get "/digests/:year", DigestsController, :closure_show, metadata: %{slice: :api_stats}
+        get "/stats", StatsController, :index
+        get "/insights", StatsController, :insights
+        get "/insights/details", StatsController, :details
+        get "/residency", StatsController, :residency
+        get "/digests", DigestsController, :closure_index
+        get "/digests/:year", DigestsController, :closure_show
 
-        get "/countries/visited_cities", GeoController, :visited_cities,
-          metadata: %{slice: :api_stats}
+        get "/countries/visited_cities", GeoController, :visited_cities
 
-        get "/flights", GeoController, :flights, metadata: %{slice: :api_stats}
+        get "/flights", GeoController, :flights
       end
 
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_stats
 
-        get "/points", MapController, :points, metadata: %{slice: :api_map_reads}
-        get "/tracks", MapController, :tracks, metadata: %{slice: :api_map_reads}
-        get "/tracks/:id", MapController, :track, metadata: %{slice: :api_map_reads}
+        get "/points", MapController, :points
+        get "/tracks", MapController, :tracks
+        get "/tracks/:id", MapController, :track
 
-        get "/tracks/:track_id/points", MapController, :track_points,
-          metadata: %{slice: :api_map_reads}
+        get "/tracks/:track_id/points", MapController, :track_points
       end
     end
   end
@@ -92,11 +80,9 @@ defmodule DawarichWeb.ApiReadRoutes do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_places
 
-        get "/places/nearby", PlacesController, :nearby,
-          metadata: %{slice: :api_places, native_api: true}
+        get "/places/nearby", PlacesController, :nearby, metadata: %{native_api: true}
 
-        get "/places/search", PlacesController, :search,
-          metadata: %{slice: :api_places, native_api: true}
+        get "/places/search", PlacesController, :search, metadata: %{native_api: true}
 
         for {method, path, action} <- [
               {:get, "/places", :index},
@@ -106,8 +92,7 @@ defmodule DawarichWeb.ApiReadRoutes do
               {:put, "/places/:id", :update},
               {:delete, "/places/:id", :destroy}
             ] do
-          match method, path, PlacesController, {:closure, action},
-            metadata: %{slice: :api_places}
+          match method, path, PlacesController, {:closure, action}
         end
       end
     end
@@ -118,18 +103,16 @@ defmodule DawarichWeb.ApiReadRoutes do
       scope "/api/v1/families", DawarichWeb.Api do
         pipe_through :api_stats
 
-        get "/locations", FamilyController, :locations, metadata: %{slice: :api_family}
-        get "/locations/history", FamilyController, :history, metadata: %{slice: :api_family}
-        get "/mine", FamilyController, :mine, metadata: %{slice: :api_family}
-        patch "/sharing", FamilyController, :sharing, metadata: %{slice: :api_family}
-        put "/sharing", FamilyController, :sharing, metadata: %{slice: :api_family}
-        post "/location_requests", FamilyController, :create, metadata: %{slice: :api_family}
+        get "/locations", FamilyController, :locations
+        get "/locations/history", FamilyController, :history
+        get "/mine", FamilyController, :mine
+        patch "/sharing", FamilyController, :sharing
+        put "/sharing", FamilyController, :sharing
+        post "/location_requests", FamilyController, :create
 
-        post "/location_requests/:id/accept", FamilyController, :accept,
-          metadata: %{slice: :api_family}
+        post "/location_requests/:id/accept", FamilyController, :accept
 
-        post "/location_requests/:id/decline", FamilyController, :decline,
-          metadata: %{slice: :api_family}
+        post "/location_requests/:id/decline", FamilyController, :decline
       end
     end
   end
@@ -139,13 +122,11 @@ defmodule DawarichWeb.ApiReadRoutes do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_locations_photos
 
-        get "/locations", LocationsController, :index, metadata: %{slice: :api_locations_photos}
+        get "/locations", LocationsController, :index
 
-        get "/photos/:id/thumbnail", PhotosController, :thumbnail,
-          metadata: %{slice: :api_locations_photos}
+        get "/photos/:id/thumbnail", PhotosController, :thumbnail
 
-        get "/photos/:id/thumbnail.jpg", PhotosController, :thumbnail,
-          metadata: %{slice: :api_locations_photos}
+        get "/photos/:id/thumbnail.jpg", PhotosController, :thumbnail
       end
     end
   end

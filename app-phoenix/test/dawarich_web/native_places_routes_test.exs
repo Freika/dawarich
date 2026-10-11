@@ -44,7 +44,7 @@ defmodule DawarichWeb.NativePlacesRoutesTest do
     for {path, headers, status} <- [
           {"/places", [{"accept", "application/json"}], 406},
           {"/places?format=json", [], 406},
-          {"/places.json", [], 404},
+          {"/places.json", [], 406},
           {"/places?format=turbo_stream", [], 406},
           {"/places", [{"accept", "text/vnd.turbo-stream.html"}], 406},
           {"/places?format=html", [{"accept", "application/json"}], 200}
@@ -58,7 +58,7 @@ defmodule DawarichWeb.NativePlacesRoutesTest do
     end
   end
 
-  test "owned direct member GET redirects while framed member GET remains map data", ctx do
+  test "owned member documents ignore frame hints and preserve private map navigation", ctx do
     S.place!(ctx.actor.id, 118_501, "Owned")
     S.place!(ctx.other.id, 118_502, "Foreign")
     conn = N.conn(ctx.actor) |> get("/places/118501?extra=value")
@@ -69,9 +69,8 @@ defmodule DawarichWeb.NativePlacesRoutesTest do
       |> put_req_header("turbo-frame", "place-drawer")
       |> get("/places/118501?locale=de&extra=value")
 
-    assert conn.status == 200
-    assert conn.resp_body =~ "<turbo-frame"
-    assert conn.resp_body =~ "Owned"
+    assert redirected_to(conn, 302) == "http://www.example.com/map/v2?place_id=118501"
+    refute conn.resp_body =~ "<turbo-frame"
 
     for path <- ~w(/places/118502 /places/118599 /places/nope /places/118501/edit /places/new) do
       conn = N.conn(ctx.actor) |> get(path)

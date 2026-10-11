@@ -2,7 +2,7 @@ defmodule Dawarich.Cable.TurboEvents do
   @moduledoc false
 
   alias Dawarich.{Cable, Notifications}
-  alias DawarichWeb.CableTurbo
+  alias Dawarich.Cable.HTML, as: CableTurbo
 
   @batch 100
   @claim_notification """

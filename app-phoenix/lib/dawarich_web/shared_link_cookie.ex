@@ -4,14 +4,12 @@ defmodule DawarichWeb.SharedLinkCookie do
   import Plug.Conn
 
   alias Dawarich.{RailsCookies, RailsSecret, UserTimeZone}
-  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.RackScheme
 
   @thirty_days "SELECT ($1::timestamptz AT TIME ZONE z.name + interval '30 days') AT TIME ZONE z.name FROM z"
   @anonymous %{"timezone" => ""}
 
-  def proof_identity(token) when is_binary(token),
-    do: :crypto.hash(:sha256, "native-public:" <> token) |> Base.encode16(case: :lower)
+  defdelegate proof_identity(token), to: Dawarich.Sharing.UnlockToken
 
   def proofs(conn, now \\ DateTime.utc_now(), secret \\ RailsSecret.fetch()) do
     fetch_cookies(conn).req_cookies
@@ -30,10 +28,7 @@ defmodule DawarichWeb.SharedLinkCookie do
     end)
   end
 
-  def unlock_token(id, phrase) do
-    unless Ruby.blank?(phrase),
-      do: :sha256 |> :crypto.hash("#{id}:#{phrase}") |> Base.encode16(case: :lower)
-  end
+  defdelegate unlock_token(id, phrase), to: Dawarich.Sharing.UnlockToken
 
   def expires_at(link, now, settings, env \\ System.get_env())
 

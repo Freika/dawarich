@@ -3,8 +3,8 @@ defmodule DawarichWeb.MapWriteRoutesTest do
 
   import Plug.Conn
   import Plug.Test
-  alias Dawarich.Test.{FrameSeeds, RailsFormRequests, RailsUser}
-  alias DawarichWeb.{MapWriteGate, Router, Strangler}
+  alias Dawarich.Test.{FrameSeeds, RailsUser}
+  alias DawarichWeb.{MapWriteGate, Router, NativeRequest}
 
   setup do
     user = FrameSeeds.user!(9183)
@@ -14,12 +14,11 @@ defmodule DawarichWeb.MapWriteRoutesTest do
       end_at: ~N[2026-10-03 10:00:00]
     })
 
-    upstream = RailsFormRequests.upstream!()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
     old = Application.get_env(:dawarich, :rails_routes, [])
     Application.put_env(:dawarich, :rails_routes, [])
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, old) end)
-    %{user: user, upstream: upstream}
+    %{user: user}
   end
 
   defp info(method, path), do: Phoenix.Router.route_info(Router, method, path, "www.example.com")
@@ -44,35 +43,13 @@ defmodule DawarichWeb.MapWriteRoutesTest do
     |> put_req_header("accept", "text/vnd.turbo-stream.html")
   end
 
-  defp forwarded(ctx, conn) do
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, ctx.upstream.port})
-
-    before =
-      Repo.query!("SELECT (SELECT count(*) FROM tags), (SELECT count(*) FROM track_segments)").rows
-
-    {{line, raw}, response} =
-      RailsFormRequests.forwarded(ctx.upstream, fn -> Strangler.call(conn, []) end)
-
-    assert line == "#{conn.method} #{conn.request_path} HTTP/1.1"
-    assert raw == "authenticity_token=SYNTHETIC&tag[name]=Synthetic"
-    assert response.status == 204
-    assert response.halted
-
-    assert Repo.query!(
-             "SELECT (SELECT count(*) FROM tags), (SELECT count(*) FROM track_segments)"
-           ).rows == before
-
-    assert commands() == []
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
-  end
-
   test "retained point-list methods keep their declared HTTP admission", ctx do
     for {method, path, plug} <- writes() do
       route = info(method, path)
       assert route.plug == plug
       assert route.pipe_through == [:map_write]
-      assert route.rails_gate == {MapWriteGate, :owned?}
-      conn = request(ctx.user, method, path) |> Strangler.call([])
+      refute Map.has_key?(route, :rails_gate)
+      conn = request(ctx.user, method, path) |> NativeRequest.call([])
       refute conn.halted
       refute Map.has_key?(conn.private, :dawarich_raw_body)
       refute Map.has_key?(conn.assigns, :rails_session)
@@ -86,31 +63,12 @@ defmodule DawarichWeb.MapWriteRoutesTest do
     end
   end
 
-  test "point-list coexistence switches retain the independent HTTP contract", ctx do
-    for {key, get_path, write_path} <- [
-          {"points", "/points", "/points/bulk_destroy"}
-        ] do
-      Application.put_env(:dawarich, :rails_routes, [key])
-      method = if key == "points", do: "DELETE", else: "PATCH"
-      route = info(method, write_path)
-      assert Strangler.handed_back?([key])
-      assert route.rails_gate == {MapWriteGate, :owned?}
-      forwarded(ctx, request(ctx.user, method, write_path))
-      get_conn = request(ctx.user, "GET", get_path) |> put_req_header("accept", "text/html")
-
-      if key == "points",
-        do: refute(Strangler.call(get_conn, []).halted),
-        else: forwarded(ctx, get_conn)
-    end
-  end
-
   test "retained point writes and external APIs keep ownership under a map switch", ctx do
     Application.put_env(:dawarich, :rails_routes, ["map"])
 
     for {method, path, _} <- writes() do
       assert info(method, path) != :error
-      refute Strangler.handed_back?(String.split(path, "/", trim: true))
-      conn = request(ctx.user, method, path) |> Strangler.call([])
+      conn = request(ctx.user, method, path) |> NativeRequest.call([])
       refute conn.halted
     end
 
@@ -125,7 +83,7 @@ defmodule DawarichWeb.MapWriteRoutesTest do
     assert route.plug == DawarichWeb.Api.PointWritesController
     assert route.plug_opts == :destroy
     assert route.pipe_through == [:api_ingest]
-    assert route.slice == :ingest
+    refute Map.has_key?(route, :slice)
     refute Map.get(route, :rails_gate) == {MapWriteGate, :owned?}
     assert info("PATCH", "/api/v1/tracks/42") == :error
   end
@@ -144,7 +102,7 @@ defmodule DawarichWeb.MapWriteRoutesTest do
         assert route.plug == DawarichWeb.NativeMapRetired
         assert route[:retired] == true
         refute Map.has_key?(route, :rails_gate)
-        conn = request(ctx.user, method, path) |> Strangler.call([])
+        conn = request(ctx.user, method, path) |> NativeRequest.call([])
         refute conn.halted
         response = DawarichWeb.Router.call(conn, DawarichWeb.Router.init([]))
         assert response.status == 410
@@ -155,7 +113,7 @@ defmodule DawarichWeb.MapWriteRoutesTest do
     conn =
       request(ctx.user, "PATCH", "/tracks/91830/segments/43")
       |> delete_req_header("cookie")
-      |> Strangler.call([])
+      |> NativeRequest.call([])
 
     refute conn.halted
     assert DawarichWeb.Router.call(conn, DawarichWeb.Router.init([])).status == 410

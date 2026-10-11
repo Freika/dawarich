@@ -10,7 +10,7 @@ defmodule Dawarich.Tracks.DailyWorker do
   alias Dawarich.Jobs.Ownership
   alias Dawarich.RailsCommands
   alias Dawarich.Tracks.RangeWorker
-  alias DawarichWeb.LayoutAssigns
+  alias Dawarich.RuntimePolicy, as: LayoutAssigns
 
   @key "cron:daily_track_generation_job"
   @range_key "command:tracks.generate_range"

@@ -13,7 +13,7 @@ defmodule Dawarich.Families.SharingUpdate.Web do
          {:object,
           [
             {"error",
-             DawarichWeb.Translate.t(
+             Dawarich.Formatting.Translate.t(
                Map.get(user, :locale, "en"),
                "controllers.family.location_sharing.user_is_not_part_of_a_family",
                %{}
@@ -123,7 +123,7 @@ defmodule Dawarich.Families.SharingUpdate.Web do
             [expires]
           ).rows
 
-        formatted = DawarichWeb.LocalizedDate.time(locale, local, "short_with_time")
+        formatted = Dawarich.Formatting.LocalizedDate.time(locale, local, "short_with_time")
         fields ++ [{"expires_at", Clock.iso(expires)}, {"expires_at_formatted", formatted}]
       else
         fields

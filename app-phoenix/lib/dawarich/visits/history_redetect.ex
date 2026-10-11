@@ -35,7 +35,7 @@ defmodule Dawarich.Visits.HistoryRedetect do
         not Dawarich.Entitlements.full_access?(
           repo,
           user,
-          DawarichWeb.LayoutAssigns.self_hosted?(),
+          Dawarich.RuntimePolicy.self_hosted?(),
           now
         )
 

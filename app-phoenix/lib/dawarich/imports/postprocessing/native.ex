@@ -47,7 +47,7 @@ defmodule Dawarich.Imports.Postprocessing.Native do
 
       hosted =
         Map.get_lazy(context, :self_hosted?, fn ->
-          DawarichWeb.LayoutAssigns.self_hosted?(System.get_env())
+          Dawarich.RuntimePolicy.self_hosted?(System.get_env())
         end)
 
       payload = %{

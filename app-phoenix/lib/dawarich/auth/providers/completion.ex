@@ -74,7 +74,7 @@ defmodule Dawarich.Auth.Providers.Completion do
     path = destination(user, session, context, conn)
 
     notice =
-      DawarichWeb.Translate.t(
+      Dawarich.Formatting.Translate.t(
         Map.get(context, :locale, "en"),
         "devise.omniauth_callbacks.success",
         %{"kind" => Accounts.label(provider, context)}

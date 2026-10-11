@@ -2,7 +2,7 @@ defmodule Dawarich.Digests.WebCommands do
   @moduledoc false
   alias Dawarich.{Digests, Stats}
   alias Dawarich.Jobs.Ownership
-  alias DawarichWeb.Translate
+  alias Dawarich.Formatting.Translate, as: Translate
 
   def create(repo, user, raw_year, context) do
     if is_list(raw_year) or is_map(raw_year),

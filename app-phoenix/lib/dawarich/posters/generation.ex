@@ -4,7 +4,7 @@ defmodule Dawarich.Posters.Generation do
   alias Dawarich.Jobs.Processed
   alias Dawarich.Posters.{Geometry, NativeRenderer, Publication, TrackBuilder}
   alias Dawarich.State.Lease
-  alias DawarichWeb.Translate
+  alias Dawarich.Formatting.Translate, as: Translate
 
   def run(id, user_id, event, locale, opts \\ []) do
     repo = Keyword.get(opts, :repo, Jobs.repo())

@@ -1,7 +1,7 @@
 defmodule Dawarich.Auth.Mobile.Payload do
   @moduledoc false
   alias Dawarich.Auth.Api.Payload
-  alias DawarichWeb.Translate
+  alias Dawarich.Formatting.Translate, as: Translate
 
   def success(user, created, context) do
     case read(user, context) do

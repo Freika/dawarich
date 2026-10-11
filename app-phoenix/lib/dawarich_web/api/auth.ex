@@ -6,7 +6,7 @@ defmodule DawarichWeb.Api.Auth do
 
   alias Dawarich.{Accounts, AppVersion, I18n, RailsCookies, RailsSecret}
   alias DawarichWeb.Api.{Body, Headers, Respond}
-  alias DawarichWeb.Strangler
+  alias DawarichWeb.PageRequest
 
   @bearer ~r/\ABearer\s+(\S+)\z/i
   @accept ~r/\A([\w.+*\/-]+)(?:\s*;\s*\w+="?[\w.]+"?)*\z/
@@ -231,7 +231,7 @@ defmodule DawarichWeb.Api.Auth do
   defp accept(value) do
     cond do
       String.trim(value) == "" -> {:ok, :html, false}
-      Strangler.browser_like?(value) -> {:ok, :html, false}
+      PageRequest.browser_like?(value) -> {:ok, :html, false}
       String.contains?(value, ",") -> {:replay, "multi-valued Accept"}
       true -> single(Regex.run(@accept, value, capture: :all_but_first))
     end

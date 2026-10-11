@@ -2,7 +2,7 @@ defmodule Dawarich.Posters.ProgressWorker do
   @moduledoc false
   use Oban.Worker, queue: :posters, max_attempts: 26
   alias Dawarich.Jobs.Processed
-  alias DawarichWeb.MapGalleryCards
+  alias Dawarich.Cable.HTML
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: args}), do: run(Dawarich.Jobs.repo(), args)
@@ -50,7 +50,7 @@ defmodule Dawarich.Posters.ProgressWorker do
         poster = %{id: id, name: name, status: status, settings: settings, files: files}
 
         html =
-          MapGalleryCards.poster_card(%{__changed__: nil, poster: poster, locale: args["locale"]})
+          HTML.poster_card(%{__changed__: nil, poster: poster, locale: args["locale"]})
           |> Phoenix.HTML.Safe.to_iodata()
           |> IO.iodata_to_binary()
 

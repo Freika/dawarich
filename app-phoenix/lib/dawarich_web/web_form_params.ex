@@ -3,7 +3,6 @@ defmodule DawarichWeb.WebFormParams do
 
   import Plug.Conn
   alias DawarichWeb.Api.Body
-  alias DawarichWeb.RailsProxy
   alias Plug.Conn.Query
 
   @max 2_097_152
@@ -31,7 +30,7 @@ defmodule DawarichWeb.WebFormParams do
            Plug.Conn.Utils.media_type(type),
          [length] <- get_req_header(conn, "content-length"),
          {size, ""} when size in 0..@max <- Integer.parse(length),
-         false <- RailsProxy.Headers.chunked?(conn) do
+         false <- DawarichWeb.Api.RequestBody.chunked?(conn) do
       read(conn, [], &parts(&1, boundary, repeated))
     else
       _ -> {:replay, conn}
@@ -39,7 +38,7 @@ defmodule DawarichWeb.WebFormParams do
   end
 
   defp read(conn, acc, parse) do
-    case read_body(conn, RailsProxy.read_options()) do
+    case read_body(conn, DawarichWeb.Api.RequestBody.read_options()) do
       {:more, data, conn} ->
         read(conn, [acc, data], parse)
 

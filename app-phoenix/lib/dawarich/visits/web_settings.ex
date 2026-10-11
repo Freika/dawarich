@@ -85,7 +85,7 @@ defmodule Dawarich.Visits.WebSettings do
       cooldown: cooldown,
       available_at: if(cooldown, do: available_at(settings, last)),
       restricted: not Entitlements.full_access?(user, self_hosted, now),
-      two_factor: DawarichWeb.SettingsParts.two_factor_available?()
+      two_factor: Dawarich.Auth.TwoFactor.Secret.available?()
     }
   end
 
@@ -93,7 +93,7 @@ defmodule Dawarich.Visits.WebSettings do
   def page(_user, nil, _now, _self_hosted), do: {:error, :unavailable}
 
   defp available_at(settings, last) do
-    DawarichWeb.LocalizedTime.l(
+    Dawarich.Formatting.LocalizedTime.l(
       "en",
       UserTimeZone.local(settings, NaiveDateTime.add(last, 3600)).local,
       "short"

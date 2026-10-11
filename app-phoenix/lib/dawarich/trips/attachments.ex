@@ -2,7 +2,7 @@ defmodule Dawarich.Trips.Attachments do
   @moduledoc false
   alias Dawarich.{RailsMessages, Storage}
   alias Dawarich.Storage.{NativePurge, Representations, Variation}
-  alias DawarichWeb.BlobPath
+  alias Dawarich.Storage.BlobPath, as: BlobPath
 
   def resolve(repo, sgid) do
     with {:ok, id} <- RailsMessages.verified_attachable_blob_id(sgid) do

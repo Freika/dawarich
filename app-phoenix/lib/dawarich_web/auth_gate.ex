@@ -31,7 +31,7 @@ defmodule DawarichWeb.AuthGate do
   @impl true
   def call(conn, _opts) do
     conn =
-      if Dawarich.Standalone.enabled?(), do: DawarichWeb.StandaloneAuth.call(conn), else: conn
+      DawarichWeb.StandaloneAuth.call(conn)
 
     case if(conn.halted, do: nil, else: claimed(conn)) do
       nil -> conn
@@ -42,23 +42,12 @@ defmodule DawarichWeb.AuthGate do
   defp claimed(conn) do
     flows = flows()
 
-    if not DawarichWeb.Strangler.handed_back?(conn.path_info) and
-         (Dawarich.Standalone.enabled?() or System.get_env("SELF_HOSTED") == "true") do
-      Enum.find(@handlers, fn {flow, handler} -> flow in flows and handler.route?(conn) end)
-    end
+    Enum.find(@handlers, fn {flow, handler} -> flow in flows and handler.route?(conn) end)
   end
 
-  def flows do
-    if Dawarich.Standalone.enabled?(),
-      do: Enum.map(@handlers, &elem(&1, 0)),
-      else: Application.get_env(:dawarich, :phoenix_auth, []) || []
-  end
+  def flows, do: Enum.map(@handlers, &elem(&1, 0))
 
-  defp native_options(flow, opts) do
-    if Dawarich.Standalone.enabled?() and flow in ["credentials", "otp", "two_factor"],
-      do: Keyword.put(opts, :native, true),
-      else: opts
-  end
+  defp native_options(_flow, opts), do: Keyword.put(opts, :native, true)
 
   defp options("account_link"),
     do: [enabled: true, context: Application.get_env(:dawarich, :account_link_context, %{})]

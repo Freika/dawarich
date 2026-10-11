@@ -16,7 +16,7 @@ defmodule Dawarich.Stats.ApiClosure do
   alias Dawarich.AccountApi.Closure, as: Account
   alias Dawarich.Geocoding.Config
   alias Dawarich.Stats.{Heatmap, Insights, Summary, Toponyms}
-  alias DawarichWeb.Api.Params
+  alias Dawarich.Input.Params, as: Params
 
   def read(action, user, params, now) do
     with :ok <- Account.pending(user, now) do

@@ -3,7 +3,7 @@ defmodule Dawarich.VisitsApi.Read do
 
   alias Dawarich.{RailsTime, Repo}
   alias Dawarich.VisitsApi.Payload
-  alias DawarichWeb.Api.Params
+  alias Dawarich.Input.Params, as: Params
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   @active "v.user_id=$1 AND v.deleted_at IS NULL AND v.status!=2"

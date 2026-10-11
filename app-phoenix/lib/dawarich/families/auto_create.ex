@@ -6,7 +6,7 @@ defmodule Dawarich.Families.AutoCreate do
   alias Dawarich.Families.{AutoCreateSharing, MemberSync}
   alias Dawarich.Jobs.Ownership
   alias Dawarich.Mail.ExploreFeatures
-  alias DawarichWeb.LayoutAssigns
+  alias Dawarich.RuntimePolicy, as: LayoutAssigns
 
   def run(repo, user_id, opts \\ []) do
     if LayoutAssigns.self_hosted?() do

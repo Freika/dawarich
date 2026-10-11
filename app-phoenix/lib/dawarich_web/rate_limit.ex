@@ -8,7 +8,7 @@ defmodule DawarichWeb.RateLimit do
 
   alias Dawarich.{Accounts, Entitlements, Jobs, State, TtlCache}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias DawarichWeb.{LayoutAssigns, RailsProxy}
+  alias DawarichWeb.LayoutAssigns
   alias DawarichWeb.RateLimit.{Request, Rules}
 
   @message "API rate limit exceeded. Please wait before making more requests."
@@ -54,17 +54,8 @@ defmodule DawarichWeb.RateLimit do
       {:blocked, conn} ->
         blocked(conn)
 
-      {:defer, conn, counted, reason} ->
-        if conn.private[:dawarich_native_api] do
-          DawarichWeb.RailsErrors.respond(conn, 500)
-        else
-          Logger.info("[rate_limit] #{conn.request_path} handed to Rails: #{reason}")
-
-          conn
-          |> put_private(:dawarich_rate_limit, counted)
-          |> RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream))
-          |> halt()
-        end
+      {:defer, conn, _counted, _reason} ->
+        DawarichWeb.RailsErrors.respond(conn, 500)
     end
   end
 

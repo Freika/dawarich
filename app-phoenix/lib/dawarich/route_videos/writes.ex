@@ -34,7 +34,7 @@ defmodule Dawarich.RouteVideos.Writes do
     if is_nil(value) or String.valid?(value) do
       {:ok,
        if(Ruby.blank?(value),
-         do: DawarichWeb.Translate.t(locale, "controllers.route_videos.untitled", %{}),
+         do: Dawarich.Formatting.Translate.t(locale, "controllers.route_videos.untitled", %{}),
          else: value
        )}
     else

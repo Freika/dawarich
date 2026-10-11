@@ -24,7 +24,7 @@ defmodule DawarichWeb.A8Gate do
             {:ok, "multipart", "form-data", %{"boundary" => _}},
             Plug.Conn.Utils.media_type(type)
           ) and
-            not DawarichWeb.RailsProxy.Headers.chunked?(conn) and
+            not DawarichWeb.Api.RequestBody.chunked?(conn) and
             bounded_length?(Plug.Conn.get_req_header(conn, "content-length"))
 
         _ ->

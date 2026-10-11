@@ -2,7 +2,7 @@ defmodule Dawarich.Tiles.Http do
   @moduledoc false
   import Plug.Conn
   alias Dawarich.{Entitlements, RailsTime, Redis, Repo, RubyInteger}
-  alias DawarichWeb.Api.Params
+  alias Dawarich.Input.Params, as: Params
 
   def coords(params) do
     params = Map.update(params, "y", nil, &String.replace_suffix(to_string(&1), ".mvt", ""))

@@ -80,9 +80,9 @@ defmodule Dawarich.Auth.Standalone do
           conn
         end
 
-      DawarichWeb.RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+      DawarichWeb.StandaloneError.respond(conn)
     else
-      DawarichWeb.RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+      DawarichWeb.StandaloneError.respond(conn)
     end
   end
 end

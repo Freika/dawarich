@@ -2,7 +2,7 @@ defmodule DawarichWeb.WelcomeGate do
   @moduledoc false
   alias Dawarich.Auth.Admission
   alias Dawarich.{RailsSecret, Trial.Welcome}
-  alias DawarichWeb.Strangler
+  alias DawarichWeb.PageRequest
 
   def context(opts) do
     context = Keyword.get(opts, :context, %{}) |> Map.put_new_lazy(:env, &System.get_env/0)
@@ -33,7 +33,7 @@ defmodule DawarichWeb.WelcomeGate do
 
     (Dawarich.Standalone.enabled?() or Plug.Conn.get_req_header(conn, "x-dawarich-client") == []) and
       conn.request_path == "/trial/welcome" and conn.method in ["GET", "HEAD"] and
-      Strangler.page_request?(conn) and Admission.headers(conn.req_headers) == :ok and
+      PageRequest.page_request?(conn) and Admission.headers(conn.req_headers) == :ok and
       byte_size(conn.query_string) <= 65_536 and length(pairs) <= length(allowed) and
       length(pairs) == length(Enum.uniq_by(pairs, &elem(&1, 0))) and
       Enum.all?(pairs, fn {key, value} -> key in allowed and String.valid?(value) end) and

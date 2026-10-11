@@ -263,7 +263,7 @@ defmodule DawarichWeb.PointsLiveTest do
              %{}
            )
 
-    refute DawarichWeb.Strangler.page_request?(
+    refute DawarichWeb.PageRequest.page_request?(
              build_conn()
              |> Map.put(:path_info, ["points"])
              |> put_req_header("x-requested-with", "XMLHttpRequest")

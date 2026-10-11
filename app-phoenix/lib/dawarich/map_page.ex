@@ -176,7 +176,7 @@ defmodule Dawarich.MapPage do
       "utm_source" => "app"
     }
 
-    SubscriptionToken.url(user, now) <> "&" <> DawarichWeb.Params.to_query(utm)
+    SubscriptionToken.url(user, now) <> "&" <> Dawarich.Formatting.Params.to_query(utm)
   end
 
   defp settings_view(settings, full, env) do

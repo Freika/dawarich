@@ -139,7 +139,7 @@ defmodule Dawarich.InsightsTest do
     assert_raise ArgumentError, fn -> page(user, %{"year" => "2024"}) end
 
     assert %{year: 0, totals: %{any: false}} = page(user, %{"year" => "abc"})
-    assert_raise DawarichWeb.NotFoundError, fn -> page(user, %{"year" => "99999"}) end
+    assert_raise Dawarich.NotFoundError, fn -> page(user, %{"year" => "99999"}) end
   end
 
   test "a year before 1583 renders with Elixir's calendar, unlike Rails' Julian one (ED-164)",

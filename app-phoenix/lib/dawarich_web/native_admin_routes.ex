@@ -33,8 +33,7 @@ defmodule DawarichWeb.NativeAdminRoutes do
           root_layout: {DawarichWeb.Layouts, :native_root},
           layout: {DawarichWeb.Layouts, :app} do
           live "/settings/background_jobs", DawarichWeb.SettingsLive.BackgroundJobs, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.AdminGate, :background_route?}}
+            container: {:div, class: "contents"}
         end
       end
     end

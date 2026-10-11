@@ -1,7 +1,7 @@
 defmodule DawarichWeb.A8FormDecode do
   @moduledoc false
   import Plug.Conn
-  alias DawarichWeb.{RailsProxy, Api.Body}
+  alias DawarichWeb.{Api.Body}
   alias Plug.Conn.Query
   @max 2_097_152
   @pairs 4_096
@@ -22,7 +22,7 @@ defmodule DawarichWeb.A8FormDecode do
            Plug.Conn.Utils.media_type(type),
          [length] <- get_req_header(conn, "content-length"),
          {size, ""} when size in 0..@max <- Integer.parse(length),
-         false <- RailsProxy.Headers.chunked?(conn) do
+         false <- DawarichWeb.Api.RequestBody.chunked?(conn) do
       read(conn, [], &parts(&1, boundary, repeated_keys, decoder))
     else
       _ -> {:replay, conn}
@@ -30,7 +30,7 @@ defmodule DawarichWeb.A8FormDecode do
   end
 
   defp read(conn, acc, parse) do
-    case read_body(conn, RailsProxy.read_options()) do
+    case read_body(conn, DawarichWeb.Api.RequestBody.read_options()) do
       {:more, data, conn} ->
         read(conn, [acc, data], parse)
 

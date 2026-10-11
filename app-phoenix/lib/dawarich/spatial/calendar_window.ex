@@ -6,7 +6,7 @@ defmodule Dawarich.Spatial.CalendarWindow do
   def month(actor, date) do
     zone =
       if actor,
-        do: DawarichWeb.Api.UserZone.name(actor.timezone || System.get_env("TIME_ZONE", "UTC")),
+        do: Dawarich.Input.UserZone.name(actor.timezone || System.get_env("TIME_ZONE", "UTC")),
         else: UserTimeZone.name(%{})
 
     days(zone, date, Date.end_of_month(date))

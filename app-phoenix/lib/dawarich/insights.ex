@@ -4,7 +4,8 @@ defmodule Dawarich.Insights do
   alias Dawarich.{Repo, Stats}
   alias Dawarich.Insights.Heatmap
   alias Dawarich.Stats.Toponyms
-  alias DawarichWeb.{Params, StatsFormat}
+  alias Dawarich.Formatting.Params
+  alias Dawarich.Formatting.StatsFormat
 
   def page(user, params, context) do
     if is_list(params["year"]) or is_map(params["year"]),
@@ -73,7 +74,7 @@ defmodule Dawarich.Insights do
 
   defp year!(selected) do
     year = Params.ruby_to_i(selected)
-    if abs(year) > 9999, do: raise(DawarichWeb.NotFoundError), else: year
+    if abs(year) > 9999, do: raise(Dawarich.NotFoundError), else: year
   end
 
   defp totals(stats, unit) do

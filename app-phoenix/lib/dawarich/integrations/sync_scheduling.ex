@@ -5,7 +5,7 @@ defmodule Dawarich.Integrations.SyncScheduling do
   alias Dawarich.AirTrail.ImportFlightsWorker
   alias Dawarich.Imports.{Teslamate, Trek}
   alias Dawarich.Jobs.{Claimer, Ownership, Processed}
-  alias DawarichWeb.LayoutAssigns
+  alias Dawarich.RuntimePolicy, as: LayoutAssigns
 
   @namespace <<0x6B, 0xA7, 0xB8, 0x11, 0x9D, 0xAD, 0x11, 0xD1, 0x80, 0xB4, 0x00, 0xC0, 0x4F, 0xD4,
                0x30, 0xC8>>

@@ -4,7 +4,7 @@ defmodule Dawarich.Imports.Integrations.PhotoImportRecord do
   alias Dawarich.Jobs.Processed
   alias Dawarich.Imports.NativeOwnership, as: Ownership
   alias Dawarich.State.Lease
-  alias DawarichWeb.Translate
+  alias Dawarich.Formatting.Translate, as: Translate
 
   def run(repo, args, provider, source, fetch, opts) do
     lane = "command:imports.#{provider}_geodata"

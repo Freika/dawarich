@@ -118,7 +118,6 @@ defmodule DawarichWeb.StandaloneRecalculationTest do
     conn = Plug.Test.conn(:post, "/api/v1/recalculations")
     route = Phoenix.Router.route_info(DawarichWeb.Router, "POST", conn.path_info, conn.host)
     assert route.plug == DawarichWeb.Api.RecalculationsController
-    refute DawarichWeb.Strangler.gate_open?(route, conn)
   end
 
   @tag :sweep6_transport

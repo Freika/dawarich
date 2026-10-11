@@ -3,8 +3,8 @@ defmodule DawarichWeb.AchievementActionsRequestTest do
   import Plug.Conn
   import Phoenix.ConnTest
   alias Dawarich.Repo
-  alias Dawarich.Test.{RailsUser, RawHTTP}
-  alias DawarichWeb.{RailsCsrf, RailsProxy}
+  alias Dawarich.Test.RailsUser
+  alias DawarichWeb.RailsCsrf
   alias DawarichWeb.AchievementActions.{Request}
 
   setup do
@@ -195,30 +195,9 @@ defmodule DawarichWeb.AchievementActionsRequestTest do
     end
   end
 
-  defp replay!(conn, target, raw) do
-    server = RawHTTP.listen()
-
-    task =
-      Task.async(fn ->
-        socket = RawHTTP.accept(server)
-        {head, rest} = RawHTTP.read_head(socket)
-        length = RawHTTP.header(head, "content-length") |> List.first("0") |> String.to_integer()
-
-        body =
-          if RawHTTP.header(head, "transfer-encoding") == ["chunked"],
-            do: RawHTTP.dechunk(socket, rest),
-            else: RawHTTP.read_at_least(socket, rest, length) |> binary_part(0, length)
-
-        RawHTTP.reply(socket, "HTTP/1.1 218 Rails\r\ncontent-length: 5\r\n\r\nRails")
-        :gen_tcp.close(socket)
-        {RawHTTP.request_line(head), body}
-      end)
-
-    proxied = RailsProxy.call(conn, {{127, 0, 0, 1}, server.port})
-    assert proxied.status == 218 and proxied.resp_body == "Rails"
-    {line, body} = Task.await(task)
-    assert line == "POST " <> target <> " HTTP/1.1"
-    assert body == raw
-    :gen_tcp.close(server.listen)
+  defp replay!(conn, _target, _raw) do
+    refusal = DawarichWeb.Api.Body.replay(conn, "invalid achievement request")
+    assert refusal.status == 422
+    assert refusal.halted
   end
 end

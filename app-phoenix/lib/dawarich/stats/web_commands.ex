@@ -1,7 +1,8 @@
 defmodule Dawarich.Stats.WebCommands do
   @moduledoc false
   alias Dawarich.Jobs.Ownership
-  alias DawarichWeb.{LocalizedDate, Translate}
+  alias Dawarich.Formatting.LocalizedDate
+  alias Dawarich.Formatting.Translate
 
   def update_all(repo, user, context) do
     repo.transaction(fn ->

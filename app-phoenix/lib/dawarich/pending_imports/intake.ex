@@ -35,8 +35,12 @@ defmodule Dawarich.PendingImports.Intake do
     if Enum.any?(patterns, &Regex.match?(&1, ctx.origin || "")), do: :ok, else: {:error, 403, nil}
   end
 
-  defp file(%{"file" => %Plug.Upload{} = file}), do: {:ok, file}
-  defp file(_), do: error(400, "missing_file")
+  defp file(params) do
+    case Dawarich.Input.Upload.cast(params) do
+      {:ok, file} -> {:ok, file}
+      :error -> error(400, "missing_file")
+    end
+  end
 
   defp filename(params),
     do:

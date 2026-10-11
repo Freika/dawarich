@@ -3,7 +3,7 @@ defmodule Dawarich.FamilyApi.Closure do
   alias Dawarich.{I18n, RailsTime, Repo}
   alias Dawarich.AccountApi.Closure, as: Account
   alias Dawarich.Families.{Clock, History, Locations, Mine, Requests, Sharing, SharingUpdate}
-  alias DawarichWeb.Api.Params
+  alias Dawarich.Input.Params, as: Params
 
   def run(action, user, params, now, opts \\ []) do
     if action in [:mine, :locations, :history] do

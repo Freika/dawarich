@@ -3,7 +3,6 @@ defmodule DawarichWeb.A8RequestTest do
 
   import Plug.Conn
   import Plug.Test
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
 
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.{A8Request, RailsAuth, RailsCsrf}
@@ -11,9 +10,7 @@ defmodule DawarichWeb.A8RequestTest do
   setup do
     actor = RailsUser.insert!(%{id: 8881, email: "a8vv-form@dawarich.test"})
     session = RailsUser.session(actor.id)
-    upstream = upstream!()
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
-    %{session: session, token: RailsCsrf.masked_token(session), upstream: upstream}
+    %{session: session, token: RailsCsrf.masked_token(session)}
   end
 
   defp video_body(token) do
@@ -43,20 +40,13 @@ defmodule DawarichWeb.A8RequestTest do
   end
 
   defp assert_replay(ctx, method, path, body, headers \\ []) do
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, ctx.upstream.port})
-
     before =
       Repo.query!("SELECT (SELECT count(*) FROM route_videos), (SELECT count(*) FROM visits)").rows
 
-    {{line, received}, conn} =
-      forwarded(ctx.upstream, fn -> request(ctx, method, path, body, headers) end)
+    conn = request(ctx, method, path, body, headers)
 
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
-
-    assert conn.status == 204
+    assert conn.status == 422
     assert conn.halted
-    assert line == "#{method |> Atom.to_string() |> String.upcase()} #{path} HTTP/1.1"
-    assert received == body
 
     assert Repo.query!(
              "SELECT (SELECT count(*) FROM route_videos), (SELECT count(*) FROM visits)"

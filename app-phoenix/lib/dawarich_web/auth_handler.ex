@@ -6,7 +6,7 @@ defmodule DawarichWeb.AuthHandler do
   alias Dawarich.Auth.{ActionCsrf, Admission, Credentials}
   alias Dawarich.Auth.Otp.Start
   alias DawarichWeb.AuthOtp.Response
-  alias DawarichWeb.{AuthMessages, AuthResponse, RailsAuth, RailsProxy, RequestURL}
+  alias DawarichWeb.{AuthMessages, AuthResponse, RailsAuth, RequestURL}
 
   @routes Enum.map(~w(GET POST), &{&1, "/users/sign_in"}) ++
             Enum.map(~w(DELETE POST), &{&1, "/users/sign_out"})
@@ -292,7 +292,7 @@ defmodule DawarichWeb.AuthHandler do
     case {Keyword.get(opts, :native, false), Keyword.get(opts, :fallback)} do
       {true, _} -> conn |> send_resp(422, "Invalid authentication request") |> halt()
       {_, fun} when is_function(fun, 1) -> fun.(conn)
-      {_, nil} -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+      {_, nil} -> DawarichWeb.StandaloneError.respond(conn)
     end
   end
 end

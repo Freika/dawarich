@@ -17,11 +17,9 @@ defmodule DawarichWeb.A9Routes do
       scope "/" do
         pipe_through :poster_form
 
-        post "/posters", DawarichWeb.PostersController, :create,
-          metadata: %{rails_gate: {DawarichWeb.PostersGate, :native?}}
+        post "/posters", DawarichWeb.PostersController, :create
 
-        delete "/posters/:id", DawarichWeb.PostersController, :destroy,
-          metadata: %{rails_gate: {DawarichWeb.PostersGate, :native?}}
+        delete "/posters/:id", DawarichWeb.PostersController, :destroy
       end
     end
   end

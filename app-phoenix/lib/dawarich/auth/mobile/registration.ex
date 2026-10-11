@@ -2,7 +2,7 @@ defmodule Dawarich.Auth.Mobile.Registration do
   @moduledoc false
   alias Dawarich.Auth.{Registration, RegistrationPolicy}
   alias Dawarich.Auth.Mobile.Payload
-  alias DawarichWeb.Translate
+  alias Dawarich.Formatting.Translate, as: Translate
 
   def create(params, context) do
     context = RegistrationPolicy.context(context)

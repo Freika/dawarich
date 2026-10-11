@@ -19,26 +19,20 @@ defmodule DawarichWeb.ApiClosureRoutes do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_locations_photos
 
-        get "/photos", PhotosController, :index,
-          metadata: %{slice: :api_locations_photos, native_api: true}
+        get "/photos", PhotosController, :index, metadata: %{native_api: true}
 
-        get "/locations", LocationsController, :index_closure,
-          metadata: %{slice: :api_locations_photos}
+        get "/locations", LocationsController, :index_closure
 
         get "/locations/suggestions", LocationsController, :suggestions,
-          metadata: %{slice: :api_locations_photos, native_api: true}
+          metadata: %{native_api: true}
 
-        get "/photos/:id/thumbnail", PhotosController, :thumbnail_closure,
-          metadata: %{slice: :api_locations_photos}
+        get "/photos/:id/thumbnail", PhotosController, :thumbnail_closure
 
-        get "/photos/:id/thumbnail.jpg", PhotosController, :thumbnail_closure,
-          metadata: %{slice: :api_locations_photos}
+        get "/photos/:id/thumbnail.jpg", PhotosController, :thumbnail_closure
 
-        post "/immich/enrich/scan", ImmichController, :scan,
-          metadata: %{slice: :api_locations_photos, native_api: true}
+        post "/immich/enrich/scan", ImmichController, :scan, metadata: %{native_api: true}
 
-        post "/immich/enrich", ImmichController, :create,
-          metadata: %{slice: :api_locations_photos, native_api: true}
+        post "/immich/enrich", ImmichController, :create, metadata: %{native_api: true}
       end
     end
   end

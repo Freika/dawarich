@@ -3,11 +3,10 @@ defmodule DawarichWeb.A8RemainingRequestTest do
 
   import Plug.Conn
   import Plug.Test
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
 
   alias Dawarich.Test.RailsUser
   alias Dawarich.{RailsCookies, RailsSecret}
-  alias DawarichWeb.{A8FormDecode, A8Gate, A8Request, RailsAuth, RailsCsrf, Strangler}
+  alias DawarichWeb.{A8FormDecode, A8Gate, A8Request, RailsAuth, RailsCsrf}
 
   setup do
     now = DateTime.utc_now()
@@ -29,13 +28,9 @@ defmodule DawarichWeb.A8RemainingRequestTest do
         DateTime.add(now, 3600)
       )
 
-    upstream = upstream!()
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
-
     %{
       session: session,
       token: RailsCsrf.masked_token(session),
-      upstream: upstream,
       remember: remember
     }
   end
@@ -67,22 +62,12 @@ defmodule DawarichWeb.A8RemainingRequestTest do
   end
 
   defp replay(ctx, method, path, body, headers \\ []) do
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, ctx.upstream.port})
     before = snapshot()
 
-    {{line, received}, conn} =
-      forwarded(ctx.upstream, fn ->
-        conn = request(ctx, method, path, body, headers)
-        assert conn.halted, "#{method} #{path}: expected Rails hand-back"
-        conn
-      end)
+    conn = request(ctx, method, path, body, headers)
 
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
-
-    assert conn.status == 204
+    assert conn.status == 422
     assert conn.halted
-    assert line == "#{method |> Atom.to_string() |> String.upcase()} #{path} HTTP/1.1"
-    assert received == body
     assert snapshot() == before
 
     if not Map.has_key?(ctx.session, "warden.user.user.key"),
@@ -236,12 +221,12 @@ defmodule DawarichWeb.A8RemainingRequestTest do
           "/trips/:trip_id/notes",
           "/trips/:trip_id/notes/:id"
         ] do
-      assert Strangler.rails_constraints?(%{
+      assert DawarichWeb.RouteConstraints.valid?(%{
                route: route,
                path_params: %{"id" => "42", "trip_id" => "43"}
              })
 
-      refute Strangler.rails_constraints?(%{
+      refute DawarichWeb.RouteConstraints.valid?(%{
                route: route,
                path_params: %{"id" => "bad", "trip_id" => "bad"}
              })

@@ -72,7 +72,7 @@ defmodule Dawarich.ShareManagement.Read do
         modes =
           ~w(unknown stationary walking running cycling driving bus train flying boat motorcycle)
 
-        locale = locale || DawarichWeb.Locale.resolve(nil, user, %{})
+        locale = locale || Dawarich.Localization.resolve(nil, user, %{})
         unit = get_in(Dawarich.UserSettings.get(user), ["maps", "distance_unit"]) || "km"
         factors = %{"km" => 1000, "mi" => 1609.34, "m" => 1, "ft" => 0.3048, "yd" => 0.9144}
 
@@ -88,7 +88,7 @@ defmodule Dawarich.ShareManagement.Read do
             UserTimeZone.local(Dawarich.UserSettings.get(user), start).local
             |> NaiveDateTime.to_date()
 
-          date = DawarichWeb.LocalizedDate.l(locale, date, "day_month_year_abbreviated")
+          date = Dawarich.Formatting.LocalizedDate.l(locale, date, "day_month_year_abbreviated")
 
           {:ok, name} =
             Dawarich.I18n.t(locale, "helpers.shared_links.track_label", %{

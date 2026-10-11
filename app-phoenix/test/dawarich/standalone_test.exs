@@ -2,7 +2,6 @@ defmodule Dawarich.StandaloneTest do
   use Dawarich.DataCase, async: false
 
   import Plug.Conn
-  import ExUnit.CaptureLog
 
   setup do
     previous = System.get_env("DAWARICH_RAILS")
@@ -47,79 +46,11 @@ defmodule Dawarich.StandaloneTest do
     end
   end
 
-  test "standalone unknown routes and rejected envelopes are terminal logged and counted" do
-    id = "standalone-test"
-    parent = self()
-
-    :telemetry.attach(
-      id,
-      [:dawarich, :standalone, :handback],
-      fn event, measurements, metadata, _ -> send(parent, {event, measurements, metadata}) end,
-      nil
-    )
-
-    on_exit(fn -> :telemetry.detach(id) end)
-    Application.put_env(:dawarich, :rails_upstream, nil)
-
-    log =
-      capture_log(fn ->
-        for {path, status, reason} <- [
-              {"/missing-native", 404, "missing_route"},
-              {"/tags?format=json", 422, "unsupported_envelope"}
-            ] do
-          conn = Plug.Test.conn(:get, path) |> DawarichWeb.Strangler.call([])
-          assert conn.status == status
-          assert conn.halted
-
-          assert_receive {[:dawarich, :standalone, :handback], %{count: 1},
-                          %{method: "GET", path: logged_path, reason: ^reason, status: ^status}}
-
-          assert logged_path == conn.request_path
-        end
-      end)
-
-    assert log =~ "[standalone.handback]"
-    assert log =~ "missing_route"
-    assert log =~ "unsupported_envelope"
-  end
-
-  test "standalone custom HTTP methods share the bounded OTHER telemetry label" do
-    parent = self()
-    id = "standalone-custom-methods"
-
-    :telemetry.attach(
-      id,
-      [:dawarich, :standalone, :handback],
-      fn _, _, metadata, _ ->
-        send(parent, {:handback, metadata})
-      end,
-      nil
-    )
-
-    on_exit(fn -> :telemetry.detach(id) end)
-
-    for method <- ~w(REVIEWONE REVIEWTWO GET HEAD POST PUT PATCH DELETE OPTIONS) do
-      label = if method in ~w(REVIEWONE REVIEWTWO), do: "OTHER", else: method
-
-      log =
-        capture_log(fn ->
-          conn = Plug.Test.conn(method, "/review-missing") |> DawarichWeb.Strangler.call([])
-          assert conn.status == 404
-          assert_receive {:handback, %{method: ^label, status: 404, reason: "missing_route"}}
-        end)
-
-      assert log =~ method
-    end
-  end
-
   test "standalone proxy body replay and cable never open an upstream" do
     Application.put_env(:dawarich, :rails_upstream, nil)
 
     for fun <- [
-          &DawarichWeb.RailsProxy.call(&1, nil),
-          &DawarichWeb.RailsProxy.with_upstream(&1, nil, fn _, _ -> flunk("opened upstream") end),
-          &DawarichWeb.Api.Body.replay(&1, "JSON Jason does not read"),
-          &DawarichWeb.CableProxy.upgrade(&1, nil)
+          &DawarichWeb.Api.Body.replay(&1, "JSON Jason does not read")
         ] do
       conn = Plug.Test.conn(:post, "/api/v1/points") |> assign(:api_tag, "api") |> fun.()
       assert conn.status == 422

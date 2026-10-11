@@ -1,7 +1,7 @@
 defmodule DawarichWeb.HomeGate do
   @moduledoc false
   alias Dawarich.Auth.Admission
-  alias DawarichWeb.{AdminGate, RailsAuth, Strangler}
+  alias DawarichWeb.{AdminGate, RailsAuth, PageRequest}
   @markers ~w(client aff via referral dawarich_client invitation_token pending_import_ticket)
 
   def owned?(%{path_info: []} = conn, _params) do
@@ -13,14 +13,13 @@ defmodule DawarichWeb.HomeGate do
       for part <- String.split(conn.query_string, "&", trim: true),
           do: part |> String.split("=", parts: 2) |> hd() |> URI.decode_www_form()
 
-    "home" not in Application.get_env(:dawarich, :rails_routes, []) and
-      conn.method in ["GET", "HEAD"] and is_nil(conn.assigns.rails_locked) and
+    conn.method in ["GET", "HEAD"] and is_nil(conn.assigns.rails_locked) and
       (Dawarich.Standalone.enabled?() or is_nil(user) or AdminGate.supported?(user)) and
       (Dawarich.Standalone.enabled?() or not is_nil(user) or
          match?(
            {:ok, _},
            DawarichWeb.PublicHomeLive.registration(DawarichWeb.LayoutAssigns.self_hosted?())
-         )) and Strangler.page_request?(conn) and
+         )) and PageRequest.page_request?(conn) and
       Admission.headers(conn.req_headers) == :ok and
       Enum.all?(query, fn {_key, value} -> is_binary(value) end) and
       length(keys) == length(Enum.uniq(keys)) and

@@ -6,7 +6,7 @@ defmodule Dawarich.Test.A12a do
   alias Dawarich.Accounts.User
   alias Dawarich.Cable.Bus
   alias Dawarich.RailsMessages
-  alias DawarichWeb.CableProxy.Frame
+  alias Dawarich.Cable.Frame
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias Dawarich.Repo
 

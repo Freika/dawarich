@@ -33,7 +33,6 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.ForceSSL
     plug DawarichWeb.RateLimit
     plug :fetch_query_params
-    plug DawarichWeb.TurboVisit
     plug DawarichWeb.RailsAuth
     plug DawarichWeb.TripDocument
     plug DawarichWeb.ImportsHeaders
@@ -44,7 +43,6 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.Locale
     plug DawarichWeb.LayoutAssigns
     plug :put_root_layout, html: {DawarichWeb.Layouts, :root}
-    plug DawarichWeb.PageEnvelope, :layout
     plug :protect_from_forgery
     plug DawarichWeb.RailsHeaders
   end
@@ -198,13 +196,6 @@ defmodule DawarichWeb.Router do
   poster_routes()
 
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
-
-  defp method_override_to_rails(conn, _opts) do
-    if conn.private[:dawarich_native_api] or
-         Plug.Conn.get_req_header(conn, "x-http-method-override") == [],
-       do: conn,
-       else: DawarichWeb.Api.Body.replay(conn, "method override header")
-  end
 
   defp put_path_format(%{path_info: [_api, _v1, "photos", _id, "thumbnail.jpg"]} = conn, _opts),
     do: Plug.Conn.assign(conn, :api_params, Map.put(conn.assigns.api_params, "format", "jpg"))

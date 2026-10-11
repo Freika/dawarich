@@ -3,7 +3,7 @@ defmodule Dawarich.MapApi.Params do
 
   alias Dawarich.{RubyInteger, SafeTimestamp}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias DawarichWeb.Api.Params
+  alias Dawarich.Input.Params, as: Params
 
   @false_values ["0", "f", "F", "false", "FALSE", "off", "OFF"]
 

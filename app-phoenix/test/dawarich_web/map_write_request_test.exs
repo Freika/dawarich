@@ -3,7 +3,6 @@ defmodule DawarichWeb.MapWriteRequestTest do
 
   import Plug.Conn
   import Plug.Test
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
 
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.{MapWriteRequest, RailsAuth, RailsCsrf}
@@ -13,9 +12,7 @@ defmodule DawarichWeb.MapWriteRequestTest do
       RailsUser.insert!(%{id: 9182, email: "a6s4-write@example.invalid", status: 0, plan: 0})
 
     session = RailsUser.session(actor.id)
-    upstream = upstream!()
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
-    %{session: session, token: RailsCsrf.masked_token(session), upstream: upstream}
+    %{session: session, token: RailsCsrf.masked_token(session)}
   end
 
   defp request(ctx, method, path, body, headers \\ []) do
@@ -38,18 +35,13 @@ defmodule DawarichWeb.MapWriteRequestTest do
 
   defp replay(ctx, method, path, body, headers \\ []) do
     before = snapshot()
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, ctx.upstream.port})
 
-    {{line, raw}, conn} =
-      forwarded(ctx.upstream, fn -> request(ctx, method, path, body, headers) end)
+    conn = request(ctx, method, path, body, headers)
 
-    assert conn.status == 204
+    assert conn.status == 422
     assert conn.halted
-    assert line == "#{method |> Atom.to_string() |> String.upcase()} #{path} HTTP/1.1"
-    assert raw == body
     assert snapshot() == before
     assert commands() == []
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
   end
 
   defp snapshot do

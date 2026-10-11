@@ -4,7 +4,7 @@ defmodule Dawarich.VisitsApi.Create do
   alias Dawarich.{Geocoding, I18n, Jobs, RailsEffects, RailsTime}
   alias Dawarich.VisitsApi.Effects
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias DawarichWeb.Api.Params
+  alias Dawarich.Input.Params, as: Params
 
   @statuses %{"suggested" => 0, "confirmed" => 1, "declined" => 2}
 

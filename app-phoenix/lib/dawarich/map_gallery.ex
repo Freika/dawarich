@@ -89,7 +89,7 @@ defmodule Dawarich.MapGallery do
 
   def blob_path(blob, disposition \\ nil, secret \\ Dawarich.RailsSecret.fetch()),
     do:
-      DawarichWeb.BlobPath.redirect_path(blob.id, blob.filename,
+      Dawarich.Storage.BlobPath.redirect_path(blob.id, blob.filename,
         disposition: disposition,
         secret: secret
       )

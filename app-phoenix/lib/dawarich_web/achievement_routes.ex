@@ -17,18 +17,15 @@ defmodule DawarichWeb.AchievementRoutes do
 
         post "/achievements/unlocks/next",
              DawarichWeb.AchievementActions.Unlocks,
-             [action: :next],
-             metadata: %{rails_gate: {DawarichWeb.AchievementActions.Gate, :next?}}
+             action: :next
 
         post "/achievements/unlocks/:id/seen",
              DawarichWeb.AchievementActions.Unlocks,
-             [action: :seen],
-             metadata: %{rails_gate: {DawarichWeb.AchievementActions.Gate, :seen?}}
+             action: :seen
 
         post "/achievements/unlocks/dismiss",
              DawarichWeb.AchievementActions.Unlocks,
-             [action: :dismiss],
-             metadata: %{rails_gate: {DawarichWeb.AchievementActions.Gate, :dismiss?}}
+             action: :dismiss
       end
     end
   end

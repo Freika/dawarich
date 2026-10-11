@@ -45,7 +45,7 @@ defmodule Dawarich.Imports.Api do
   def context(conn) do
     Map.merge(
       %{
-        self_hosted?: DawarichWeb.LayoutAssigns.self_hosted?(),
+        self_hosted?: Dawarich.RuntimePolicy.self_hosted?(),
         now: DateTime.utc_now(),
         storage: Storage.config!(System.get_env())
       },
@@ -100,8 +100,12 @@ defmodule Dawarich.Imports.Api do
     _ -> error(500, "controllers.api.v1.imports.an_error_occurred_while_processing_the_import")
   end
 
-  def file(%{"file" => %Plug.Upload{} = upload}), do: {:ok, upload}
-  def file(_), do: error(422, "controllers.api.v1.imports.missing_required_parameter_file")
+  def file(params) do
+    case Dawarich.Input.Upload.cast(params) do
+      {:ok, upload} -> {:ok, upload}
+      :error -> error(422, "controllers.api.v1.imports.missing_required_parameter_file")
+    end
+  end
 
   defp file_type(file) do
     ext = file.filename |> Path.extname() |> String.downcase()

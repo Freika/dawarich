@@ -177,10 +177,13 @@ defmodule DawarichWeb.TagsLiveTest do
     refute render(view) =~ ~s(phx-submit="changelog_consent")
   end
 
-  test "a Turbo visit from a hybrid page gets the reload document", %{user: user} do
+  test "legacy Turbo visit hints render a full native Tags document", %{user: user} do
     conn =
       RailsUser.signed_in(user.id) |> put_req_header("x-turbo-request-id", "1") |> get("/tags")
 
-    assert conn.resp_body =~ "turbo-visit-control"
+    assert conn.status == 200
+    assert String.contains?(conn.resp_body, "/native/app.js")
+    assert String.contains?(conn.resp_body, "<html")
+    refute conn.resp_body =~ "turbo-visit-control"
   end
 end

@@ -58,7 +58,7 @@ defmodule Dawarich.Visits.RealtimeDebouncer do
           not Entitlements.full_access?(
             repo,
             %{id: user_id, plan: plan},
-            DawarichWeb.LayoutAssigns.self_hosted?(env),
+            Dawarich.RuntimePolicy.self_hosted?(env),
             now
           )
       }

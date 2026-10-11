@@ -111,7 +111,7 @@ defmodule DawarichWeb.AchievementPublicQueryTest do
       assert request("GET", :card, query, :endpoint).status == 422, query
     end
 
-    refute DawarichWeb.Strangler.page_request?(
+    refute DawarichWeb.PageRequest.page_request?(
              build_conn("GET", "/shared/month/unknown?utm_source")
            )
   end

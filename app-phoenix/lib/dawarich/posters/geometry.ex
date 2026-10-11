@@ -2,7 +2,7 @@ defmodule Dawarich.Posters.Geometry do
   @moduledoc false
   alias Dawarich.Ingest.Ruby
   alias Dawarich.Posters.Time
-  alias DawarichWeb.LocalizedDate
+  alias Dawarich.Formatting.LocalizedDate, as: LocalizedDate
   @tile_pixels 512
   @meters_per_pixel 40_075_016.686 / @tile_pixels
 
