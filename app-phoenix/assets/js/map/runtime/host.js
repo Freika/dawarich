@@ -1,3 +1,4 @@
+import { waitForStyle } from "./style_ready.js"
 import { createReader } from "../data/reader.js"
 import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
@@ -161,17 +162,7 @@ export function mountHost({
         })
         lifetime.own(() => aux.destroy())
         lifetime.own(() => entities?.destroy())
-        return new Promise((resolve) => {
-          const ready = () => {
-            layers.mount()
-            resolve(() => map.off("load", ready))
-          }
-          if (map.loaded()) ready()
-          else {
-            map.once("load", ready)
-            lifetime.own(() => map.off("load", ready))
-          }
-        })
+        return waitForStyle(map, lifetime).then(() => layers.mount())
       }),
     refresh:
       refresh ??

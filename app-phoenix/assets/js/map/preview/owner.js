@@ -1,3 +1,4 @@
+import { waitForStyle } from "../runtime/style_ready.js"
 import { RouteSegmenter } from "../algorithms/route_segmenter.js"
 import { createReader } from "../data/reader.js"
 import { createStatsLayer } from "../public/stats.js"
@@ -126,16 +127,7 @@ export function createPreviewOwner({
       })
       map.on("style.load", render)
       lifetime.own(() => map.off("style.load", render))
-      return operation.wait(
-        new Promise((resolve) => {
-          const ready = () => resolve()
-          if (map.loaded()) ready()
-          else {
-            map.once("load", ready)
-            lifetime.own(() => map.off("load", ready))
-          }
-        }),
-      )
+      return operation.wait(waitForStyle(map, lifetime))
     },
     refresh: async ({ config: state, operation, signal }) => {
       let data
