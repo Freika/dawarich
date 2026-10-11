@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
+
 
 - Shared tracks hide their map and route coordinates when the owner disables route sharing, while enabled statistics remain visible.
 
