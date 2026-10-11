@@ -95,7 +95,7 @@ defmodule DawarichWeb.TripFormsActionsTest do
     post_form(ctx.session, Plug.Conn.Query.encode(params), [{"accept", accept}], req["path"])
   end
 
-  test "forms and CRUD preserve Rails status markup and active gate" do
+  test "native trip forms use the lazy editor while retained CRUD preserves effects and active gates" do
     previous = Application.get_env(:dawarich, :jobs_repo)
     Application.put_env(:dawarich, :jobs_repo, Repo)
     on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, previous) end)
@@ -132,8 +132,10 @@ defmodule DawarichWeb.TripFormsActionsTest do
         )
 
       assert conn.status == 200
-      assert conn.resp_body =~ "trip_description"
-      assert conn.resp_body =~ "import &quot;trix&quot;" or conn.resp_body =~ "import \"trix\""
+      assert conn.resp_body =~ "phx-submit=\"save\""
+      assert conn.resp_body =~ "phx-hook=\"RichText\""
+      refute conn.resp_body =~ "type=\"importmap\""
+      refute conn.resp_body =~ "data-controller="
     end
 
     for name <-
@@ -230,8 +232,9 @@ defmodule DawarichWeb.TripFormsActionsTest do
       RailsUser.signed_in(8950)
       |> Phoenix.ConnTest.dispatch(DawarichWeb.Endpoint, :get, "/trips/new", nil)
 
-    assert new.status == 303
-    assert get_resp_header(new, "location") == ["http://www.example.com/"]
+    assert new.status == 302
+    assert get_resp_header(new, "location") == ["/"]
+    assert Phoenix.Flash.get(new.assigns.flash, :notice) == "Your account is not active."
 
     session = RailsUser.session(8950)
 

@@ -92,7 +92,7 @@ defmodule DawarichWeb.A12f3aTClosureTest do
   end
 
   @tag a12f3a_t03: true
-  test "T03: trip photos provider handoff matches current Rails contract without a native-owner Rails effect",
+  test "T03 native trip photos preserve provider and local day values through cookie reads",
        %{user: user} do
     for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
     oracle = File.read!("test/fixtures/trips/a12f3a-t03.json") |> Jason.decode!()
@@ -155,7 +155,9 @@ defmodule DawarichWeb.A12f3aTClosureTest do
     assert Enum.find(page.days, &(&1.date == ~D[2026-10-03])).photos != []
     conn = get(RailsUser.signed_in(user.id), "/trips/980301")
     assert conn.status == 200
-    assert conn.resp_body =~ "/api/v1/photos/late/thumbnail.jpg"
+    refute conn.resp_body =~ "/api/v1/photos/late/thumbnail.jpg"
+    refute conn.resp_body =~ user.api_key
+    assert conn.resp_body =~ "/native/map/data/photos/late/thumbnail?source="
     assert commands() == []
   end
 
@@ -284,7 +286,7 @@ defmodule DawarichWeb.A12f3aTClosureTest do
   end
 
   @tag a12f3a_t02: true
-  test "T02: trip show itinerary and future plans matches current Rails contract without a native-owner Rails effect",
+  test "T02 native trip missing and future attachment states refuse or render without effects",
        %{user: user} do
     TripsSeeds.trip!(%{
       id: 980_201,
@@ -297,8 +299,11 @@ defmodule DawarichWeb.A12f3aTClosureTest do
 
     assert {:ok, page} = Dawarich.TripPage.load(user, 980_201, @now)
     assert page.map_state == :future
-    assert get(RailsUser.signed_in(user.id), "/trips/980299").status == 404
-    assert get(RailsUser.signed_in(user.id), "/trips/980299/edit").status == 404
+    missing = get(RailsUser.signed_in(user.id), "/trips/980299")
+    assert missing.status == 200
+    assert missing.resp_body =~ "role=\"alert\""
+    refute missing.resp_body =~ "trip-shell"
+    assert_error_sent 404, fn -> get(RailsUser.signed_in(user.id), "/trips/980299/edit") end
 
     TripsSeeds.rich_text!(
       980_201,
@@ -311,7 +316,7 @@ defmodule DawarichWeb.A12f3aTClosureTest do
   end
 
   @tag a12f3a_t_edges_inactive: true
-  test "T01 T05 T07: inactive accounts receive the source redirect before trip effects", %{
+  test "T01 T05 T07 native form and retained writes refuse inactive accounts before effects", %{
     user: user
   } do
     TripsSeeds.trip!(%{id: 980_701, user_id: user.id})
@@ -321,8 +326,13 @@ defmodule DawarichWeb.A12f3aTClosureTest do
     for mode <- ["true", "false", nil] do
       if mode, do: System.put_env("SELF_HOSTED", mode), else: System.delete_env("SELF_HOSTED")
 
+      native = get(RailsUser.signed_in(user.id), "/trips/new")
+      assert redirected_to(native, 302) == "/"
+
+      assert Phoenix.Flash.get(native.assigns.flash, :notice) ==
+               "Your account is not active."
+
       requests = [
-        fn -> get(RailsUser.signed_in(user.id), "/trips/new") end,
         fn -> submit(user, "/trips", %{"trip" => %{"name" => "Inactive"}}) end,
         fn -> submit(user, "/trips/980701/recalculate", %{}) end,
         fn -> submit(user, "/trips/980799/recalculate", %{}) end

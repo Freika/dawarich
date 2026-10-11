@@ -36,7 +36,8 @@ defmodule DawarichWeb.A8GateEndpointTest do
   for {name, method, path, body} <- [
         {"Cloud actions replay untouched before effects", :patch, "/visits/42",
          "visit%5Bname%5D=Original+bytes"},
-        {"Cloud navigation replays untouched before auth", :get, "/visits?status=suggested", ""},
+        {"native Cloud visits navigation preserves its timeline destination without forwarding",
+         :get, "/visits?status=suggested", ""},
         {"Cloud settings replay untouched before auth", :get, "/settings/visits?locale=en", ""}
       ] do
     @tag cloud: method
@@ -49,7 +50,18 @@ defmodule DawarichWeb.A8GateEndpointTest do
         if old, do: System.put_env("SELF_HOSTED", old), else: System.delete_env("SELF_HOSTED")
       end)
 
-      replay(ctx, upstream!(), unquote(method), unquote(path), unquote(body))
+      if unquote(method) == :get and String.starts_with?(unquote(path), "/visits") do
+        conn = request(ctx, :get, unquote(path), "")
+        assert conn.status == 302
+
+        assert get_resp_header(conn, "location") ==
+                 ["http://www.example.com/map/v2?panel=timeline&date=today&status=suggested"]
+
+        assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+        assert rows("SELECT count(*) FROM visits") == [[0]]
+      else
+        replay(ctx, upstream!(), unquote(method), unquote(path), unquote(body))
+      end
     end
   end
 
@@ -107,7 +119,8 @@ defmodule DawarichWeb.A8GateEndpointTest do
     end
   end
 
-  test "visits hand-back covers the visit actions and leaves the page to settings", ctx do
+  test "native visits navigation ignores per-feature overrides while legacy actions retain their owner",
+       ctx do
     Application.put_env(:dawarich, :rails_routes, ["visits"])
     upstream = upstream!()
 
@@ -123,7 +136,15 @@ defmodule DawarichWeb.A8GateEndpointTest do
           {:post, "/visits/bulk_destroy", "_method=delete&visit_ids%5B%5D=42"},
           {:post, "/visits/merge", "visit_ids%5B%5D=42&visit_ids%5B%5D=43"}
         ] do
-      replay(ctx, upstream, method, path, body)
+      if method == :get do
+        conn = request(ctx, method, path, body)
+        assert conn.status == 302
+
+        assert get_resp_header(conn, "location") ==
+                 ["http://www.example.com/map/v2?panel=timeline&date=today&status=suggested"]
+      else
+        replay(ctx, upstream, method, path, body)
+      end
     end
 
     Application.put_env(:dawarich, :rails_routes, ["settings"])

@@ -235,7 +235,8 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
     for path <- [target, "/achievements"], do: native_response(ctx, port, path, ctx.cookie, 200)
   end
 
-  test "native opaque collection settings refuse without forwarding or celebration writes", ctx do
+  test "native opaque collection HTTP settings return typed refusal without forwarding or writes",
+       ctx do
     rails = System.get_env("DAWARICH_RAILS")
     System.delete_env("DAWARICH_RAILS")
 
@@ -251,8 +252,8 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
       Dawarich.Repo.query!("UPDATE users SET settings=$1 WHERE id=79301", [value], log: false)
 
       for target <- ~w(/achievements /achievements/country_de) do
-        body = native_response(ctx, port, target, ctx.cookie, 200)
-        assert body =~ "role=\"alert\""
+        body = native_response(ctx, port, target, ctx.cookie, 422)
+        assert body == ""
         refute body =~ "data-testid=\"achievement-collection\""
       end
 

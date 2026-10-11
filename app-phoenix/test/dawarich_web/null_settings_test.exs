@@ -2,6 +2,7 @@ defmodule DawarichWeb.NullSettingsTest do
   use ExUnit.Case, async: false
   import Plug.Conn
   import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
   alias Dawarich.{Repo, UserSettings}
   alias Dawarich.Test.RailsUser
 
@@ -38,7 +39,7 @@ defmodule DawarichWeb.NullSettingsTest do
     %{user: user}
   end
 
-  test "NULL settings preserve Rails bodies for public HTML PNG map stats timeline settings and API",
+  test "NULL settings preserve public and API values with native map and timeline successors",
        %{user: user} do
     corpus = File.read!("test/fixtures/null_settings.json") |> Jason.decode!()
 
@@ -59,16 +60,49 @@ defmodule DawarichWeb.NullSettingsTest do
               build_conn()
 
             true ->
-              RailsUser.signed_in(user.id)
+              RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id)
           end
 
-        conn = conn |> put_req_header("accept", row["type"]) |> get(row["path"])
+        native_timeline = String.starts_with?(row["path"], "/map/timeline_feeds")
+
+        path =
+          if native_timeline,
+            do:
+              "/map/v2?panel=timeline&date=2026-10-07&start_at=2026-10-07T00:00:00&end_at=2026-10-07T23:59:59",
+            else: row["path"]
+
+        conn = conn |> put_req_header("accept", row["type"]) |> get(path)
         assert conn.status == row["status"], row["path"]
 
         assert get_resp_header(conn, "content-type") |> hd() |> String.split(";") |> hd() ==
                  row["type"]
 
         cond do
+          String.starts_with?(path, "/map/v2") ->
+            {:ok, view, _} = live(conn)
+            render_async(view)
+            page = :sys.get_state(view.pid).socket.assigns.page
+            assert page.window.iana == "Etc/UTC"
+            assert page.window.start_date == ~D[2026-10-07]
+            assert has_element?(view, "[phx-hook=Map]")
+            refute has_element?(view, "[data-controller], turbo-frame")
+
+            if native_timeline do
+              assert has_element?(
+                       view,
+                       "#native-timeline-feed [data-testid=day-header-label]",
+                       "Wednesday, October 7"
+                     )
+
+              assert has_element?(
+                       view,
+                       "#native-timeline-feed button[phx-value-date='2026-10-06']"
+                     )
+
+              assert render(view) =~ "No visits tracked this day"
+              assert get(RailsUser.signed_in(user.id), row["path"]).status == 410
+            end
+
           row["json"] ->
             assert Jason.decode!(conn.resp_body) == row["json"]
 

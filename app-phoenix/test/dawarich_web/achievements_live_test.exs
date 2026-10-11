@@ -209,7 +209,7 @@ defmodule DawarichWeb.AchievementsLiveTest do
     assert has_element?(view, "#achievement-filter a[data-phx-link=patch]")
   end
 
-  test "opaque achievement settings refuse before celebration writes on static join and fresh params",
+  test "native opaque achievement settings refuse HTTP before writes and clear joined projections",
        %{user: user} do
     rails = System.get_env("DAWARICH_RAILS")
     System.put_env("DAWARICH_RAILS", "off")
@@ -240,9 +240,8 @@ defmodule DawarichWeb.AchievementsLiveTest do
 
       before = achievement_snapshot(user)
       conn = RailsUser.signed_in(user.id) |> get("/achievements/country_de")
-      assert conn.status == 200
-      assert conn.resp_body =~ "role=\"alert\""
-      refute conn.resp_body =~ "data-testid=\"achievement-collection\""
+      assert conn.status == 422
+      assert conn.resp_body == ""
       assert achievement_snapshot(user) == before
 
       Dawarich.Repo.query!("UPDATE users SET settings='{}'::jsonb WHERE id=$1", [user.id],
