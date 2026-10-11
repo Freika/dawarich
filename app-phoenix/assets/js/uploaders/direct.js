@@ -26,6 +26,7 @@ export const Direct = (entries, onViewError) => {
       stopped = false
     const clear = () => {
       clearTimeout(timer)
+      globalThis.removeEventListener?.("pagehide", cancel)
       if (xhr) {
         xhr.onload = xhr.onerror = null
         xhr.upload.removeEventListener?.("progress", progress)
@@ -69,6 +70,7 @@ export const Direct = (entries, onViewError) => {
     }
     entry.onCancel?.(cancel)
     onViewError(cancel)
+    globalThis.addEventListener?.("pagehide", cancel, { once: true })
     idle()
     request("target", entry.meta.upload_ref, controller.signal)
       .then((response) => {

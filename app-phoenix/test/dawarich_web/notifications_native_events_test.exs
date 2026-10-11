@@ -20,6 +20,47 @@ defmodule DawarichWeb.NotificationsNativeEventsTest do
 
   defp wake(scope), do: Dawarich.Notifications.Events.broadcast(scope.user.id)
 
+  test "localized notification disable labels preserve cancellation and confirmed deletion", c do
+    for {locale, delete, cancel} <- [{"en", "Delete", "Cancel"}, {"de", "Löschen", "Abbrechen"}] do
+      id = create(c.scope, "localized confirmation")
+      {:ok, view, _} = open(c.user, "/notifications/#{id}?locale=#{locale}")
+
+      button =
+        render(view)
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#notification-delete-dialog button[phx-disable-with]")
+
+      assert LazyHTML.attribute(button, "phx-disable-with") == [delete]
+      assert String.trim(LazyHTML.text(button)) == delete
+
+      backdrop =
+        render(view)
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#notification-delete-dialog .modal-backdrop")
+
+      assert LazyHTML.attribute(backdrop, "aria-label") == [
+               if(locale == "de", do: "Schließen", else: "Close")
+             ]
+
+      render_click(view, "choose_notification_delete", %{})
+      view |> element("#notification-delete-dialog button", cancel) |> render_click()
+      render_click(view, "confirm_notification_delete", %{})
+      assert Notifications.get(c.user.id, id)
+      render_click(view, "choose_notification_delete", %{})
+      view |> element("#notification-delete-dialog .modal-backdrop") |> render_click()
+      render_click(view, "confirm_notification_delete", %{})
+      assert Notifications.get(c.user.id, id)
+      render_click(view, "choose_notification_delete", %{})
+
+      view
+      |> element("#notification-delete-dialog button[phx-disable-with]", delete)
+      |> render_click()
+
+      assert_redirect(view, "/notifications")
+      refute Notifications.get(c.user.id, id)
+    end
+  end
+
   test "idle connected native navbars perform no notification queries", c do
     {:ok, view, _} = open(c.user, "/notifications")
     handler = {__MODULE__, make_ref()}

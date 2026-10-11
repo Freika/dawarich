@@ -38,7 +38,7 @@ defmodule DawarichWeb.PointsLive.Index do
 
     with {:ok, scope} <- NativeDataAuth.scope(socket),
          {:ok, result} <-
-           Pages.load(scope, params,
+           Pages.load(scope, Map.delete(params, "locale"),
              now: DateTime.utc_now(),
              self_hosted: socket.assigns.self_hosted
            ) do

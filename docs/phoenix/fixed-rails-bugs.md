@@ -1589,3 +1589,21 @@ Stage 1 C extends FRB-NATIVE-M4-FAMILY-PUBLICATION to the retained readers omitt
 - Family trip names/dates/share references: `app/models/shared_link.rb:41` and `app/controllers/trips_controller.rb:15`. Phoenix `app-phoenix/lib/dawarich/shared_links/family_audience.ex:42`; five `trips rejects private publication after in-flight <change> revocation` cases.
 - Family Cable coordinates: `app/services/points/live_broadcaster.rb:19,28,73`. Phoenix `app-phoenix/lib/dawarich/points/live_broadcast_worker.ex:98`; five `family Cable coordinates refuse <change> after preparation` cases.
 - The same shared snapshot bypass fails all fifteen extensions and the existing seventy-five publication cases. ED-NATIVE-M4-FAMILY-PUBLICATION is expanded; no new numeric ID or DRB is needed. This is source-backed; no Rails runtime oracle is claimed.
+
+### FRB-NATIVE-S1-UPLOAD-DEPARTURE — Leaving during an upload retains its reservation
+
+Rails upload-controller disconnect removes form listeners without aborting the active transfer or releasing its upload. Phoenix now cancels an in-flight native PUT on pagehide with a keepalive request carrying only the owner-bound reservation reference. Cancellation suppresses late completion; success and cancellation remove the departure listener. This extends the previously recorded abandoned-upload lifecycle fix to hard page departure.
+
+- Rails: `app/javascript/controllers/upload_controller.js:40`.
+- Phoenix: `app-phoenix/assets/js/uploaders/direct.js:73`.
+- Tests: `phoenix_upload_pagehide_test.mjs`, “pagehide cancels an in-flight disk PUT once with a keepalive owner reference” and “completed disk PUT removes its departure listener before reporting completion”; registration and cleanup omission mutations fail. Browser consumer: `native-upload-boundaries.spec.js`, “disconnect during PUT cleans the pending target and late transport cannot revive it”.
+- Ledger: ED-NATIVE-S1-UPLOAD-DEPARTURE; no DRB. Rails source-backed observation; Rails production code unchanged.
+
+### FRB-NATIVE-S1-DATE-TOOLTIP — Import date tooltips overflow narrow screens
+
+Rails renders centered human-date tooltips at the right edge of the import table. Their full timestamp text can extend the document beyond a narrow viewport. Native import detail aligns date tooltips to the right edge below the small breakpoint.
+
+- Rails: `app/views/imports/_import.html.erb:18`, `app/helpers/datetime_formatting_helper.rb:16`.
+- Phoenix: `app-phoenix/lib/dawarich_web/imports_live/show.ex:129`.
+- Tests: `imports/extraction.spec.js`, English/German “390px extraction dialog opens cancels and preserves trust controls”; centered-tooltip mutation must overflow, and removing it must restore bounded dimensions.
+- Ledger: ED-NATIVE-S1-DATE-TOOLTIP; no DRB. Source-backed inherited layout defect; no Rails runtime oracle. Rails production code unchanged.

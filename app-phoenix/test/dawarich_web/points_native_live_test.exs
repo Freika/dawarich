@@ -29,6 +29,22 @@ defmodule DawarichWeb.PointsNativeLiveTest do
     assert :sys.get_state(view.pid).socket.assigns.query["order_by"] == "asc"
   end
 
+  test "localized point navigation retains filters and working export confirmation", %{user: user} do
+    for {locale, export} <- [{"en", "Export"}, {"de", "Export"}] do
+      {:ok, view, _} = live(NativeAdminUI.conn(user), @path <> "&locale=" <> locale)
+      assert has_element?(view, "#point_160000")
+      assert has_element?(view, "button[phx-click='export'][phx-value-format='json']", export)
+      refute Map.has_key?(:sys.get_state(view.pid).socket.assigns.query, "locale")
+      view |> element("button[phx-click='export'][phx-value-format='json']") |> render_click()
+      assert has_element?(view, "#points_dialog_title", export)
+      view |> element("#points_cancel") |> render_click()
+      refute has_element?(view, "#points_dialog")
+      view |> form("#point_filters", @params) |> render_submit()
+      assert URI.decode_query(URI.parse(assert_patch(view)).query)["start_at"] == @params["start_at"]
+      assert has_element?(view, "#point_160000")
+    end
+  end
+
   test "older point query cannot replace a new filter", %{user: user} do
     {:ok, view, _} = live(NativeAdminUI.conn(user), @path)
     render_patch(view, @path <> "&page=2")

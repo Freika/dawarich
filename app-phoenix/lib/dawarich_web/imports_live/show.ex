@@ -126,7 +126,7 @@ defmodule DawarichWeb.ImportsLive.Show do
           {@notice}
         </p>
         <div id={"import_#{@record.id}"}>
-          <table class="table table-fixed w-full max-sm:[&_th]:p-1 max-sm:[&_td]:p-1 max-sm:text-xs">
+          <table class="table table-fixed w-full max-sm:[&_th]:p-1 max-sm:[&_td]:p-1 max-sm:text-xs max-sm:[&_.tooltip:before]:left-auto max-sm:[&_.tooltip:before]:right-0 max-sm:[&_.tooltip:before]:translate-x-0">
             <thead>
               <tr>
                 <th>{t(@locale, "imports.import.name", %{})}</th>
