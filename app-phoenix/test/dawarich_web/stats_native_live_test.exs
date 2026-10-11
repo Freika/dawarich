@@ -17,6 +17,28 @@ defmodule DawarichWeb.StatsNativeLiveTest do
     %{user: user}
   end
 
+  test "monthly stats route mounts the M6 owner and switches heatmap to points", %{user: user} do
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2025/4")
+    assert has_element?(view, "#monthly-stats-map[phx-hook='MapPreview']")
+
+    config =
+      view
+      |> element("#monthly-stats-map")
+      |> render()
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("[data-map-config]")
+      |> LazyHTML.attribute("data-map-config")
+      |> hd()
+      |> Jason.decode!()
+
+    assert config["kind"] == "owned_stats"
+    assert config["range"]["timezone"] == "Etc/UTC"
+    assert config["layer"] == "heatmap"
+    view |> element("[phx-click='stats:layer'][phx-value-layer='points']") |> render_click()
+    assert has_element?(view, "#monthly-stats-map[data-map-config*=points]")
+    refute has_element?(view, "[data-controller], [phx-hook='RailsStimulus'], turbo-frame")
+  end
+
   @tag retained_year_controls: true
   test "native year cards retain map links per-year places and digest navigation", %{user: user} do
     Dawarich.Repo.query!(

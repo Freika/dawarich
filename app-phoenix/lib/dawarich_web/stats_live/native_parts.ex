@@ -7,6 +7,7 @@ defmodule DawarichWeb.StatsLive.NativeParts do
   attr :data, :map, required: true
   attr :locale, :string, required: true
   attr :mode, :atom, required: true
+  attr :month_layer, :string, default: "heatmap"
 
   def page(assigns) do
     ~H"""
@@ -130,6 +131,11 @@ defmodule DawarichWeb.StatsLive.NativeParts do
           </article>
         <% else %>
           <DawarichWeb.StatsLive.NativeMonthParts.summary data={@data} locale={@locale} />
+          <DawarichWeb.StatsLive.NativeMonthMap.render
+            data={@data}
+            locale={@locale}
+            layer={@month_layer}
+          />
           <%= if @data.data.stat do %>
             <NativeChart.chart
               id="stats-native-chart"

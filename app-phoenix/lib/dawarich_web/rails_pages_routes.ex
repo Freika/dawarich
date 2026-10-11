@@ -70,15 +70,6 @@ defmodule DawarichWeb.RailsPagesRoutes do
           live "/exports", DawarichWeb.ExportsLive.Index, :index,
             container: {:div, class: "contents"}
         end
-
-        live_session :rails_pages,
-          session: {DawarichWeb.NativeAuth, :live_session, []},
-          on_mount: DawarichWeb.LiveAuth,
-          root_layout: {DawarichWeb.Layouts, :root},
-          layout: {DawarichWeb.Layouts, :app} do
-          live "/stats/:year/:month", DawarichWeb.StatsLive.Month, :month,
-            container: {:div, class: "contents"}
-        end
       end
     end
   end

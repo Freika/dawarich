@@ -437,3 +437,69 @@ test("readonly trip previews preserve every saved style and omit navigation cont
     globalThis.fetch = previous
   }
 })
+
+test("owned monthly preview reads cookie hexagons and bounded points", async () => {
+  const { createPreviewOwner } = await import(
+    "../../app-phoenix/assets/js/map/preview/owner.js"
+  )
+  const sources = new Map(),
+    layers = new Map(),
+    listeners = new Map()
+  const reads = []
+  const element = {
+    dataset: {},
+    ownerDocument: { createElement: () => ({ style: {}, remove() {} }) },
+    appendChild() {},
+  }
+  const map = {
+    loaded: () => true,
+    on: (name, f) => listeners.set(name, f),
+    once() {},
+    off: (name) => listeners.delete(name),
+    addSource: (id, s) => sources.set(id, s),
+    addLayer: (l) => layers.set(l.id, l),
+    getSource: (id) => sources.get(id),
+    getLayer: (id) => layers.get(id),
+    removeSource: (id) => sources.delete(id),
+    removeLayer: (id) => layers.delete(id),
+    fitBounds() {},
+    remove() {},
+    getCanvas: () => ({ style: {} }),
+    setFeatureState() {},
+  }
+  const reader = {
+    read: async (resource, params) => {
+      reads.push([resource, params])
+      return { data: { features: [{ id: 7 }] } }
+    },
+    pages: async (resource, params) => {
+      reads.push([resource, params])
+      return [{latitude: 52, longitude: 13, timestamp: 1}]
+    },
+    reset() {},
+    destroy() {},
+  }
+  const owner = createPreviewOwner({
+    element,
+    config: { kind: "owned_stats", layer: "heatmap", range: {startAt: "2025-04-01T00:00:00Z", endAt: "2025-04-30T23:59:59Z", timezone: "UTC"} },
+    reader,
+    loadLibrary: async () => ({
+      Map: class {
+        constructor() {
+          Object.assign(this, map)
+        }
+      },
+    }),
+    loadStyle: async () => ({}),
+  })
+  assert.equal(await owner.mount(), "ready")
+  assert.equal(sources.has("hexagons"), true)
+  assert.equal(reads[0][0], "hexagons")
+  assert.equal(reads[0][1].start_date, "2025-04-01T00:00:00Z")
+  assert.equal(await owner.update({kind: "owned_stats", layer: "points", range: {startAt: "2025-04-01T00:00:00Z", endAt: "2025-04-30T23:59:59Z"}}), "ready")
+  assert.equal(reads.at(-2)[0], "points")
+  assert.equal(reads.at(-1)[0], "bounds")
+  assert.equal(sources.has("hexagons"), false)
+  assert.equal(layers.has("preview-points"), true)
+  owner.destroy()
+})

@@ -22,6 +22,10 @@ defmodule DawarichWeb.NativeDataRoutes do
             container: {:div, class: "contents"},
             metadata: %{native_page: true}
 
+          live "/stats/:year/:month", DawarichWeb.StatsLive.NativePage, :month,
+            container: {:div, class: "contents"},
+            metadata: %{native_page: true}
+
           live "/insights", DawarichWeb.InsightsLive.NativePage, :index,
             container: {:div, class: "contents"},
             metadata: %{native_page: true}

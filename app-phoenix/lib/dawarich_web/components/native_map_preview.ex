@@ -1,7 +1,7 @@
 defmodule DawarichWeb.NativeMapPreview do
   @moduledoc false
   use Phoenix.Component
-  @fields ~w(kind tripId uuid styleName interactive numbered revision)
+  @fields ~w(kind layer tripId uuid styleName interactive numbered revision)
   attr(:id, :string, required: true)
   attr(:config, :map, required: true)
   attr(:locale, :string, default: "en")

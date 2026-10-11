@@ -20,6 +20,7 @@ defmodule DawarichWeb.StatsLive.NativePage do
      assign(socket,
        data: nil,
        query: %{},
+       month_layer: "heatmap",
        stats_dialog: nil,
        page_title: t(socket.assigns.locale, "stats.index.statistics", %{})
      )}
@@ -59,6 +60,15 @@ defmodule DawarichWeb.StatsLive.NativePage do
   def handle_event(event, _, %{assigns: %{data: nil}} = socket)
       when event in ~w(update open_places open_share share),
       do: {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
+
+  def handle_event("stats:layer", %{"layer" => layer}, socket) when layer in ~w(heatmap points) do
+    with {:ok, _} <- NativeDataAuth.scope(socket),
+         true <- socket.assigns.live_action == :month and not is_nil(socket.assigns.data) do
+      {:noreply, assign(socket, :month_layer, layer)}
+    else
+      _ -> {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
+    end
+  end
 
   def handle_event("update", _params, socket) do
     params =
@@ -152,7 +162,13 @@ defmodule DawarichWeb.StatsLive.NativePage do
     ~H"""
     <main class="min-w-0 w-full my-5">
       <h1 class="text-3xl font-bold break-words">{@page_title}</h1>
-      <NativeParts.page :if={@data} data={@data} locale={@locale} mode={@live_action} />
+      <NativeParts.page
+        :if={@data}
+        data={@data}
+        locale={@locale}
+        mode={@live_action}
+        month_layer={@month_layer}
+      />
       <button
         :if={@data && @data[:active] != false}
         id="stats-update"
