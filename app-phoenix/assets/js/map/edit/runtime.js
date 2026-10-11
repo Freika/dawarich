@@ -79,12 +79,16 @@ export function createPointEditing({
     }
   }
 
+  function cancel() {
+    for (const request of pending) request.reject(abortError())
+    pending.clear()
+  }
+
   function destroy() {
     if (destroyed) return
     destroyed = true
     gesture?.detach()
-    for (const request of pending) request.reject(abortError())
-    pending.clear()
+    cancel()
   }
 
   return {
@@ -98,6 +102,7 @@ export function createPointEditing({
           }),
     undo: () => (destroyed ? Promise.reject(abortError()) : history.undo()),
     redo: () => (destroyed ? Promise.reject(abortError()) : history.redo()),
+    cancel,
     destroy,
     history,
   }

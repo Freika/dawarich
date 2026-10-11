@@ -83,3 +83,91 @@ test("native point editing reads every bounded cookie page with current import a
     f.owner.destroy()
   }
 })
+
+const editTrack = {
+  type: "Feature",
+  geometry: {
+    type: "LineString",
+    coordinates: [
+      [13, 52],
+      [14, 53],
+    ],
+  },
+  properties: { id: 9, revision: 0 },
+}
+const editPoints = [
+  { id: 7, longitude: 13, latitude: 52, revision: 0 },
+  { id: 8, longitude: 14, latitude: 53, revision: 0 },
+]
+
+test("date and import changes close selected edit geometry and reject deferred drag reads and replies", async () => {
+  for (const change of [
+    { startAt: "2026-03-30T00:00", endAt: "2026-03-30T23:59" },
+    { importId: "29" },
+  ]) {
+    const f = fixture({ editEnabled: true })
+    f.map.getCanvasContainer = () => ({ style: {} })
+    f.reader.read = async () => ({ data: structuredClone(editTrack) })
+    f.reader.pages = async () => structuredClone(editPoints)
+    let pending, release
+    try {
+      await f.owner.mount()
+      const editor = f.owner.editor
+      await editor.selectTrack(9, { forEditing: true })
+      assert.equal(editor.startDrag(7), true)
+      editor.dragTo(14, 53)
+      pending = editor.endDrag({ lng: 14, lat: 53 })
+      const command = f.pushed.find((item) => item.event === "point:move")
+      await f.owner.update({
+        ...f.owner.config,
+        revision: 2,
+        range: { ...f.owner.config.range, ...change },
+      })
+      assert.equal(editor.data, null)
+      assert.equal(f.layers.has("track-points"), false)
+      assert.equal(editor.draggedPointId, null)
+      command.reply({
+        ok: true,
+        response: {
+          point: { ...editPoints[0], revision: 1 },
+          revision: { point: 1 },
+        },
+      })
+      await pending
+      assert.equal(editor.data, null)
+      assert.equal(editor.edits.history.size, 0)
+      assert.equal(editor.mutationState.busy, false)
+      f.reader.read = () =>
+        new Promise((resolve) => {
+          release = resolve
+        })
+      editor.beginTileDrag({
+        geometry: { type: "Point", coordinates: [13, 52] },
+        properties: { ...editPoints[0], track_id: 9 },
+      })
+      editor.dragTo(14, 53)
+      const loading = editor.trackLoad
+      await f.owner.update({
+        ...f.owner.config,
+        revision: 3,
+        range: {
+          ...f.owner.config.range,
+          importId: "30",
+          startAt: "2026-04-01",
+        },
+      })
+      release({ data: editTrack })
+      await loading
+      await editor.endDrag({ lng: 14, lat: 53 })
+      assert.equal(editor.data, null)
+      assert.equal(
+        f.pushed.filter((item) => item.event === "point:move").length,
+        1,
+      )
+    } finally {
+      release?.({ data: editTrack })
+      f.owner.destroy()
+      await pending
+    }
+  }
+})

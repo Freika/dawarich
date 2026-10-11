@@ -15,6 +15,14 @@ export function createHostEditing({
 }) {
   const enabled = () => getConfig().editEnabled === true
   const scope = () => getConfig().range ?? {}
+  const identity = (range) =>
+    JSON.stringify([
+      range.startAt,
+      range.endAt,
+      range.importId ?? null,
+      range.timezone,
+    ])
+  let sessionScope = identity(scope())
   const reads = (resource, id, options) =>
     reader
       .read(resource, { id, import_id: scope().importId }, options)
@@ -72,6 +80,13 @@ export function createHostEditing({
     editor,
     transport,
     config(next) {
+      const nextScope = identity(next.range ?? {})
+      if (nextScope !== sessionScope) {
+        gesture.cancel()
+        editor.close()
+        transport.cancel()
+        sessionScope = nextScope
+      }
       editor.edits.panel.distanceUnit = next.distanceUnit ?? "km"
       editor.importScoped = Boolean(next.range?.importId)
       editor.setEditable(next.editEnabled === true)
