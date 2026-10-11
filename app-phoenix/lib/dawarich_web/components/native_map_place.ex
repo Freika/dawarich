@@ -17,7 +17,7 @@ defmodule DawarichWeb.NativeMapPlace do
       class="modal modal-open z-[10000]"
       role="dialog"
       aria-modal="true"
-      phx-mounted={JS.focus_first(to: "#native-place-form")}
+      phx-hook="OrdinaryDialog"
       phx-window-keydown={close()}
       phx-key="escape"
     >
@@ -52,6 +52,7 @@ defmodule DawarichWeb.NativeMapPlace do
               class="input input-bordered w-full"
               type="text"
               name="place[name]"
+              data-dialog-initial-focus
               value={@dialog.form["name"]}
             />
           </label>
