@@ -181,3 +181,17 @@ test("timeline-started playback updates the native replay play state", () => {
   assert.equal(elements.play.attributes["aria-pressed"], "false")
   panel.destroy()
 })
+
+test("closing the native replay panel clears its play state before reopening", () => {
+  const manager = new ReplayManager({ timezone: "UTC" })
+  manager.setPoints([point("2026-06-01T08:00:00Z", 5)])
+  const elements = Object.fromEntries(
+    ["play", "speed", "speedLabel", "prev", "next", "day", "dayCount", "time", "velocity", "noData", "follow", "scrubber"].map((key) => [key, control()]),
+  )
+  const replay = { manager, playing: true, seek() {} }
+  const panel = createReplayPanel({ elements, replay, translate })
+  panel.onState({ minute: 480 })
+  assert.equal(elements.play.attributes["aria-pressed"], "true")
+  panel.destroy()
+  assert.equal(elements.play.attributes["aria-pressed"], "false")
+})

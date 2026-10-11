@@ -113,6 +113,7 @@ export function createReplayPanel({ elements, replay, translate }) {
     stopped: () => setPlaying(false),
     refresh,
     destroy() {
+      setPlaying(false)
       for (const unbind of bindings.splice(0)) unbind()
       scrubber.destroy()
       for (const key of ["day-count", "day-index", "point-count"])
