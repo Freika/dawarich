@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Refuse location-sharing consent when family access expires while waiting for the request lock.
+
 - Keep saved ZIP member imports processing when a later archive member fails validation.
 
 - Shared tracks hide their map and route coordinates when the owner disables route sharing, while enabled statistics remain visible.
