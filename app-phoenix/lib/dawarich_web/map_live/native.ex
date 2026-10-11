@@ -26,6 +26,7 @@ defmodule DawarichWeb.MapLive.Native do
     case Dawarich.Maps.page(socket.assigns.current_scope, params, opts) do
       {:ok, page} ->
         previous = socket.assigns[:map_revision]
+        old_date = (socket.assigns[:map_url] || %{})["date"]
         old_panel = (socket.assigns[:map_url] || %{})["panel"]
 
         socket =
@@ -62,6 +63,12 @@ defmodule DawarichWeb.MapLive.Native do
           if previous != socket.assigns.map_revision,
             do: DawarichWeb.MapLive.EnrichmentCommands.cancel(socket),
             else: socket
+
+        socket =
+          if previous != socket.assigns.map_revision or old_panel != params["panel"] or
+               old_date != params["date"],
+             do: DawarichWeb.MapLive.TrackCommands.clear(socket),
+             else: socket
 
         socket =
           if connected?(socket) and params["panel"] == "timeline" and
@@ -110,6 +117,12 @@ defmodule DawarichWeb.MapLive.Native do
 
     {:noreply, socket |> assign(:map_config, config) |> push_event("map:config", config)}
   end
+
+  def handle_event("map:select", %{"kind" => "track", "id" => id}, socket),
+    do: DawarichWeb.MapLive.TrackCommands.handle_event("track:toggle", %{"id" => id}, socket)
+
+  def handle_event("track:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.TrackCommands.handle_event(event, payload, socket)
 
   def handle_event("map:select", %{"kind" => "area", "id" => id}, socket),
     do: DawarichWeb.MapLive.AreaCommands.handle_event("area:edit", %{"id" => id}, socket)

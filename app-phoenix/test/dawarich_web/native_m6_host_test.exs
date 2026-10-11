@@ -172,6 +172,42 @@ defmodule DawarichWeb.NativeM6HostTest do
     refute has_element?(view, "#native-segment-drawer")
   end
 
+  test "native journey opens bounded owned track information and collapses on repeat or day patch",
+       %{id: id} do
+    track = id * 10
+
+    Dawarich.Test.FrameSeeds.track!(id, track, %{
+      start_at: ~N[2026-03-30 09:00:00],
+      end_at: ~N[2026-03-30 09:10:00],
+      dominant_mode: 4
+    })
+
+    {:ok, view, _} = open(id, @second <> "&panel=timeline")
+    render_async(view, 5000)
+    row = "#native-timeline-feed [data-track-id='#{track}'] .journey-leg"
+    view |> element(row) |> render_click()
+    assert has_element?(view, "#native-track-info", "Track ##{track}")
+    assert has_element?(view, "#native-track-info .track-info-stats", "1.0 km")
+    assert has_element?(view, "#native-track-info .track-info-stats", "Avg")
+    assert has_element?(view, "#native-track-info input[data-track-points]")
+    assert has_element?(view, "#native-track-info [data-track-replay]")
+    assert_push_event(view, "track:selection", %{id: ^track, points: false})
+    view |> element("#native-track-info input[data-track-points]") |> render_click()
+    assert_push_event(view, "track:selection", %{id: ^track, points: true})
+    view |> element(row) |> render_click()
+    refute has_element?(view, "#native-track-info")
+    assert_push_event(view, "track:selection", %{id: nil, points: false})
+    render_hook(view, "track:toggle", %{"id" => to_string(track)})
+    assert has_element?(view, "#native-track-info")
+    render_patch(view, @second <> "&panel=timeline&date=2026-03-31")
+    render_async(view, 5000)
+    refute has_element?(view, "#native-track-info")
+    assert_push_event(view, "track:selection", %{id: nil, points: false})
+    render_hook(view, "track:toggle", %{"id" => "-1"})
+    refute has_element?(view, "#native-track-info")
+    assert rows("SELECT count(*) FROM tracks WHERE user_id=$1", [id]) == [[1]]
+  end
+
   test "native production host loads and refreshes only the open timeline", %{id: id} do
     track = id * 10
 

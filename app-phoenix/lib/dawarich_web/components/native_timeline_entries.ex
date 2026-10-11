@@ -137,8 +137,9 @@ defmodule DawarichWeb.NativeTimelineEntries do
       <button
         type="button"
         class="journey-leg w-full text-left"
-        phx-click="segments:open"
-        phx-value-track_id={@entry.track_id}
+        phx-click={@entry.track_id && "track:toggle"}
+        phx-value-id={@entry.track_id}
+        disabled={is_nil(@entry.track_id)}
       >
         <div class="journey-leg__time">{@time}</div>
         <div class="journey-leg__rail-col" aria-hidden="true"></div>
