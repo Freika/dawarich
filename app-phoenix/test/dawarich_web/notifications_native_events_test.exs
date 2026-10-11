@@ -32,8 +32,22 @@ defmodule DawarichWeb.NotificationsNativeEventsTest do
 
       assert LazyHTML.attribute(button, "phx-disable-with") == [delete]
       assert String.trim(LazyHTML.text(button)) == delete
+
+      backdrop =
+        render(view)
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#notification-delete-dialog .modal-backdrop")
+
+      assert LazyHTML.attribute(backdrop, "aria-label") == [
+               if(locale == "de", do: "Schließen", else: "Close")
+             ]
+
       render_click(view, "choose_notification_delete", %{})
       view |> element("#notification-delete-dialog button", cancel) |> render_click()
+      render_click(view, "confirm_notification_delete", %{})
+      assert Notifications.get(c.user.id, id)
+      render_click(view, "choose_notification_delete", %{})
+      view |> element("#notification-delete-dialog .modal-backdrop") |> render_click()
       render_click(view, "confirm_notification_delete", %{})
       assert Notifications.get(c.user.id, id)
       render_click(view, "choose_notification_delete", %{})
