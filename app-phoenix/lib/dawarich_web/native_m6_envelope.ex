@@ -81,7 +81,11 @@ defmodule DawarichWeb.NativeM6Envelope do
   defp refuse(conn, status),
     do: conn |> put_resp_header("cache-control", "no-store") |> send_resp(status, "") |> halt()
 
-  defp public_status(%{status: 200, assigns: %{live_module: DawarichWeb.PublicMapLive, public_error: reason}} = conn) when not is_nil(reason) do
+  defp public_status(
+         %{status: 200, assigns: %{live_module: DawarichWeb.PublicMapLive, public_error: reason}} =
+           conn
+       )
+       when not is_nil(reason) do
     Map.put(conn, :status, if(reason == :locked, do: 401, else: 404))
   end
 

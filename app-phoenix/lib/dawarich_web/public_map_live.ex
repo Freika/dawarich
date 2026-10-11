@@ -93,7 +93,12 @@ defmodule DawarichWeb.PublicMapLive do
   def render(assigns) do
     link = assigns.public_presentation && assigns.public_presentation.link
     visible = link && (link.type not in ["trip", "track"] || link.settings["show_route"] != false)
-    assigns = assign(assigns, :map_visible, visible)
+    resource = assigns.public_presentation && assigns.public_presentation.resource
+
+    title =
+      (resource && resource[:name]) || (assigns.public_config && assigns.public_config["title"])
+
+    assigns = assign(assigns, map_visible: visible, public_title: title)
 
     ~H"""
     <DawarichWeb.NativePublicChrome.header {assigns} />
@@ -104,7 +109,7 @@ defmodule DawarichWeb.PublicMapLive do
     >
       <%= if @public_config do %>
         <h1 class="mb-4 break-words text-3xl font-bold [overflow-wrap:anywhere]">
-          {@public_config["title"]}
+          {@public_title}
         </h1>
         <DawarichWeb.NativePublicResource.resource
           presentation={@public_presentation}

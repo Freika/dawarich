@@ -67,9 +67,27 @@ defmodule DawarichWeb.NativeM6PublicRoutesTest do
     assert count.() == after_join
   end
 
+  test "public trip heading preserves the resource name independently of the link label", %{
+    uuid: uuid
+  } do
+    rows("UPDATE shared_links SET name='Trip: Native public trip' WHERE id=$1::text::uuid", [uuid])
+
+    html = get(build_conn(), "/s/#{uuid}") |> html_response(200)
+
+    assert LazyHTML.from_document(html)
+           |> LazyHTML.query("h1")
+           |> LazyHTML.text()
+           |> String.trim() == "Native public trip"
+  end
+
   test "public HTTP refuses unknown revoked and locked links with source statuses", %{uuid: uuid} do
     assert get(build_conn(), "/s/#{Ecto.UUID.generate()}").status == 404
-    rows("UPDATE shared_links SET magic_phrase='synthetic-status-phrase' WHERE id=$1::text::uuid", [uuid])
+
+    rows(
+      "UPDATE shared_links SET magic_phrase='synthetic-status-phrase' WHERE id=$1::text::uuid",
+      [uuid]
+    )
+
     locked = get(build_conn(), "/s/#{uuid}")
     assert locked.status == 401
     assert locked.resp_body =~ "public-phrase"
