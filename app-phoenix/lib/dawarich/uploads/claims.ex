@@ -8,7 +8,7 @@ defmodule Dawarich.Uploads.Claims do
 
     with {:ok, current} <- Dawarich.Accounts.NativeAccess.admit(scope, repo),
          true <-
-           operation in [:imports, :account, :rich_text] and is_list(refs) and
+           operation in [:imports, :account, :rich_text, :route_video] and is_list(refs) and
              length(refs) in 1..Dawarich.Uploads.Policy.limits().max_entries and
              (operation == :imports or length(refs) == 1) and
              length(Enum.uniq(refs)) == length(refs),
@@ -28,7 +28,7 @@ defmodule Dawarich.Uploads.Claims do
 
           if row.kind != Atom.to_string(operation), do: repo.rollback(:invalid_input)
 
-          if operation != :rich_text and current.user.status == 2 and
+          if operation in [:imports, :account] and current.user.status == 2 and
                current.user.subscription_source in [nil, 0] and
                (item.blob.byte_size > 11 * 1024 * 1024 or row.original_size > 11 * 1024 * 1024),
              do: repo.rollback(:file_too_large)

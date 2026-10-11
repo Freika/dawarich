@@ -3,6 +3,15 @@ defmodule Dawarich.Uploads.Policy do
   @gib 1024 * 1024 * 1024
   def limits(policy \\ %{})
 
+  def limits(%{kind: :route_video} = policy) do
+    limits(
+      Map.merge(
+        %{max_entries: 1, max_bytes: 250 * 1024 * 1024, aggregate_bytes: 250 * 1024 * 1024},
+        Map.delete(policy, :kind)
+      )
+    )
+  end
+
   def limits(%{kind: :rich_text} = policy) do
     limits(
       Map.merge(
@@ -57,6 +66,7 @@ defmodule Dawarich.Uploads.Policy do
              Map.get(entry, :original_size, size) > 0,
          true <- Map.get(entry, :original_size, size) <= limits.max_bytes,
          {:ok, <<_::binary-size(16)>>} <- Base.decode64(checksum),
+         true <- kind != :route_video or type == "video/mp4",
          true <- kind != :account or Dawarich.UserData.zip?(%{filename: name, content_type: type}) do
       true
     else

@@ -10,7 +10,9 @@ defmodule Dawarich.Uploads.Reservations do
     limits = Policy.limits(policy)
 
     with {:ok, _} <- Dawarich.Accounts.NativeAccess.admit(scope, repo),
-         true <- kind in [:imports, :account, :rich_text] and Policy.valid?(entry, kind, limits) do
+         true <-
+           kind in [:imports, :account, :rich_text, :route_video] and
+             Policy.valid?(entry, kind, limits) do
       repo.transaction(fn ->
         current = Records.actor!(repo, scope)
         budget!(repo, current.user, entry, kind, limits)
@@ -80,7 +82,7 @@ defmodule Dawarich.Uploads.Reservations do
          (user.points_count || 0) >= 10_000_000,
        do: repo.rollback(:points_limit)
 
-    if kind != :rich_text and user.status == 2 and user.subscription_source in [nil, 0] do
+    if kind in [:imports, :account] and user.status == 2 and user.subscription_source in [nil, 0] do
       if entry.byte_size > 11 * 1024 * 1024 or
            Map.get(entry, :original_size, entry.byte_size) > 11 * 1024 * 1024,
          do: repo.rollback(:file_too_large)

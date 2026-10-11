@@ -56,7 +56,7 @@ function server(overrides = {}) {
       ok: true,
       url: "https://storage.example/put",
       headers: { "Content-Type": "video/mp4", "Content-MD5": "x" },
-      signed_id: "signed-ref",
+      reference: "signed-ref",
     },
     "video:save": { ok: true, id: 41 },
     "video:discard": { ok: true },
@@ -120,7 +120,7 @@ test("rendered video uploads to the reserved target then saves through the scope
     [
       "video:save",
       {
-        signed_id: "signed-ref",
+        reference: "signed-ref",
         name: "Leipzig loop",
         settings: { format: "square", watermark: "false" },
       },
@@ -140,7 +140,7 @@ test("upload abort before commit discards the reservation and never saves", asyn
     remote.calls.map(([event]) => event),
     ["video:upload_target", "video:discard"],
   )
-  assert.deepEqual(remote.calls[1][1], { signed_id: "signed-ref" })
+  assert.deepEqual(remote.calls[1][1], { reference: "signed-ref" })
   assert.deepEqual(created[0].listeners, {})
 })
 
@@ -192,7 +192,7 @@ test("a committed save is not discarded by a late abort", async () => {
     request: async (event) => {
       calls.push(event)
       if (event === "video:upload_target")
-        return { ok: true, url: "/put", headers: {}, signed_id: "ref" }
+        return { ok: true, url: "/put", headers: {}, reference: "ref" }
       if (event === "video:save") return pendingSave
       return { ok: true }
     },
@@ -235,7 +235,7 @@ test("abort during reservation discards the late target without starting a PUT",
   const rejected = assert.rejects(uploading, { name: "AbortError" })
   await tick()
   controller.abort()
-  release({ ok: true, url: "/put", signed_id: "late-ref" })
+  release({ ok: true, url: "/put", reference: "late-ref" })
   await tick()
   assert.equal(created.length, 0)
   await rejected
@@ -243,7 +243,7 @@ test("abort during reservation discards the late target without starting a PUT",
     remote.calls.map(([event]) => event),
     ["video:upload_target", "video:discard"],
   )
-  assert.deepEqual(remote.calls[1][1], { signed_id: "late-ref" })
+  assert.deepEqual(remote.calls[1][1], { reference: "late-ref" })
 })
 
 test("storage timeout discards the reservation, cleans listeners and permits retry", async () => {

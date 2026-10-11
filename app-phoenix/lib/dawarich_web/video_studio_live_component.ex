@@ -6,7 +6,8 @@ defmodule DawarichWeb.VideoStudioLiveComponent do
   import DawarichWeb.NativeRouteVideoCard, only: [native_route_video_card: 1]
 
   alias Dawarich.RouteVideos
-  alias DawarichWeb.{Icon, NativeVideoStudio, RouteVideoUpload}
+  alias Dawarich.RouteVideos.Uploads
+  alias DawarichWeb.{Icon, NativeVideoStudio}
   alias Phoenix.LiveView.JS
 
   def update(assigns, socket) do
@@ -25,17 +26,21 @@ defmodule DawarichWeb.VideoStudioLiveComponent do
       "content_type" => Map.get(params, "content_type", "video/mp4")
     }
 
-    case RouteVideoUpload.target(socket.assigns.scope, attrs, socket.assigns.base_url) do
+    case Uploads.target(socket.assigns.scope, attrs, socket.assigns.base_url) do
       {:ok, target} -> {:reply, Map.put(target, :ok, true), socket}
       {:error, reason} -> {:reply, failure(socket, reason), socket}
     end
   end
 
-  def handle_event("video:save", %{"signed_id" => signed} = params, socket)
-      when is_binary(signed) do
-    attrs = %{"signed_id" => signed, "name" => params["name"], "settings" => params["settings"]}
+  def handle_event("video:save", %{"reference" => reference} = params, socket)
+      when is_binary(reference) do
+    attrs = %{
+      "reference" => reference,
+      "name" => params["name"],
+      "settings" => params["settings"]
+    }
 
-    case RouteVideos.create_video(socket.assigns.scope, attrs, []) do
+    case Uploads.save(socket.assigns.scope, attrs, []) do
       {:ok, %{id: id, evicted: evicted}} ->
         send(self(), {__MODULE__, {:saved, id, evicted}})
 
@@ -49,9 +54,9 @@ defmodule DawarichWeb.VideoStudioLiveComponent do
     end
   end
 
-  def handle_event("video:discard", %{"signed_id" => signed}, socket) when is_binary(signed),
-    do:
-      {:reply, %{ok: RouteVideos.discard_upload(socket.assigns.scope, signed, []) == :ok}, socket}
+  def handle_event("video:discard", %{"reference" => reference}, socket)
+      when is_binary(reference),
+      do: {:reply, %{ok: Uploads.discard(socket.assigns.scope, reference, []) == :ok}, socket}
 
   def handle_event("video:delete", %{"id" => id}, socket) do
     socket =

@@ -3,13 +3,14 @@ defmodule DawarichWeb.NativeVideoStudioTest do
 
   import Phoenix.LiveViewTest
 
-  alias Dawarich.{Accounts, Maps, RailsMessages}
+  alias Dawarich.{Accounts, Maps}
   alias Dawarich.Jobs.Ownership
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.NativeVideoStudio
 
   @endpoint DawarichWeb.Endpoint
-  @checksum "AELTPXGTbs81Ygn6v0o2PQ=="
+  @bytes String.duplicate("v", 4096)
+  @checksum Base.encode64(:crypto.hash(:md5, @bytes))
   @themes [%{key: "terracotta", name: "Terracotta"}, %{key: "noir", name: "Noir"}]
 
   defmodule Host do
@@ -88,8 +89,22 @@ defmodule DawarichWeb.NativeVideoStudioTest do
       "filename" => "Leipzig.mp4"
     })
 
-    assert_reply(view, %{ok: true, signed_id: signed, url: url})
+    assert_reply(view, %{ok: true, reference: signed, url: url})
     {signed, url}
+  end
+
+  defp store(reference) do
+    [[key]] =
+      rows(
+        "SELECT b.key FROM active_storage_blobs b JOIN phoenix.native_uploads u ON u.blob_id=b.id WHERE u.reference=$1",
+        [reference]
+      )
+
+    config = Dawarich.Imports.StorageContext.storage()
+    path = Dawarich.Storage.disk_path(config.root, key)
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, @bytes)
+    on_exit(fn -> File.rm(path) end)
   end
 
   test "native video studio is a keyed hook root whose ignored islands hold only browser-owned state" do
@@ -148,9 +163,10 @@ defmodule DawarichWeb.NativeVideoStudioTest do
   test "saving a fresh upload creates one video and notifies the host", %{id: id} do
     {view, _html} = live!(id)
     {signed, _url} = target(view)
+    store(signed)
 
     hook(view, "video:save", %{
-      "signed_id" => signed,
+      "reference" => signed,
       "name" => "Leipzig",
       "settings" => %{"format" => "square", "watermark" => "false", "source" => "map"}
     })
@@ -159,7 +175,7 @@ defmodule DawarichWeb.NativeVideoStudioTest do
     assert rows("SELECT user_id,name FROM route_videos WHERE id=$1", [video]) == [[id, "Leipzig"]]
     assert render(view) =~ "{:saved, #{video}, []}"
 
-    hook(view, "video:save", %{"signed_id" => signed, "name" => "again", "settings" => %{}})
+    hook(view, "video:save", %{"reference" => signed, "name" => "again", "settings" => %{}})
     assert_reply(view, %{ok: false})
     assert rows("SELECT count(*) FROM route_videos WHERE user_id=$1", [id]) == [[1]]
   end
@@ -167,14 +183,14 @@ defmodule DawarichWeb.NativeVideoStudioTest do
   test "a discarded or revoked upload never becomes a gallery row", %{id: id} do
     {view, _html} = live!(id)
     {signed, _url} = target(view)
-    hook(view, "video:discard", %{"signed_id" => signed})
+    hook(view, "video:discard", %{"reference" => signed})
     assert_reply(view, %{ok: true})
-    hook(view, "video:save", %{"signed_id" => signed, "name" => "x", "settings" => %{}})
+    hook(view, "video:save", %{"reference" => signed, "name" => "x", "settings" => %{}})
     assert_reply(view, %{ok: false})
 
     {other, _url} = target(view)
     rows("UPDATE users SET encrypted_password=$2 WHERE id=$1", [id, String.duplicate("r", 60)])
-    hook(view, "video:save", %{"signed_id" => other, "name" => "x", "settings" => %{}})
+    hook(view, "video:save", %{"reference" => other, "name" => "x", "settings" => %{}})
     assert_reply(view, %{ok: false})
 
     hook(view, "video:upload_target", %{
@@ -185,6 +201,9 @@ defmodule DawarichWeb.NativeVideoStudioTest do
 
     assert_reply(view, %{ok: false})
     assert rows("SELECT count(*) FROM route_videos WHERE user_id=$1", [id]) == [[0]]
-    assert {:ok, _} = RailsMessages.verified_blob_id(other, DateTime.utc_now())
+
+    assert rows("SELECT state FROM phoenix.native_uploads WHERE reference=$1", [other]) == [
+             ["pending"]
+           ]
   end
 end

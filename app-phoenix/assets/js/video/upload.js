@@ -82,14 +82,14 @@ export async function uploadRenderedVideo({
     await put(target, file, { XMLHttpRequest, signal, onProgress })
     if (signal?.aborted) throw aborted()
   } catch (error) {
-    await request("video:discard", { signed_id: target.signed_id }).catch(
+    await request("video:discard", { reference: target.reference }).catch(
       () => null,
     )
     throw error
   }
 
   const saved = await request("video:save", {
-    signed_id: target.signed_id,
+    reference: target.reference,
     name,
     settings: Object.fromEntries(
       Object.entries(settings ?? {}).map(([key, value]) => [

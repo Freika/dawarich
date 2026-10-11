@@ -8,7 +8,8 @@ defmodule DawarichWeb.NativeVideoGalleryTest do
   alias Dawarich.Test.RailsUser
 
   @endpoint DawarichWeb.Endpoint
-  @checksum "AELTPXGTbs81Ygn6v0o2PQ=="
+  @bytes String.duplicate("v", 4096)
+  @checksum Base.encode64(:crypto.hash(:md5, @bytes))
 
   defmodule Host do
     use Phoenix.LiveView
@@ -92,6 +93,20 @@ defmodule DawarichWeb.NativeVideoGalleryTest do
     do:
       rows("UPDATE users SET encrypted_password=$2 WHERE id=$1", [id, String.duplicate("r", 60)])
 
+  defp store(reference) do
+    [[key]] =
+      rows(
+        "SELECT b.key FROM active_storage_blobs b JOIN phoenix.native_uploads u ON u.blob_id=b.id WHERE u.reference=$1",
+        [reference]
+      )
+
+    config = Dawarich.Imports.StorageContext.storage()
+    path = Dawarich.Storage.disk_path(config.root, key)
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, @bytes)
+    on_exit(fn -> File.rm(path) end)
+  end
+
   test "saved video appears as a native card with its MP4 download", %{id: id} do
     {view, html} = live!(id)
     assert count(html, "#native-video-gallery-list") == 1
@@ -104,11 +119,12 @@ defmodule DawarichWeb.NativeVideoGalleryTest do
       "filename" => "Leipzig.mp4"
     })
 
-    assert_reply(view, %{ok: true, signed_id: signed})
+    assert_reply(view, %{ok: true, reference: signed})
+    store(signed)
 
     view
     |> element("#native-video-studio")
-    |> render_hook("video:save", %{"signed_id" => signed, "name" => "Leipzig", "settings" => %{}})
+    |> render_hook("video:save", %{"reference" => signed, "name" => "Leipzig", "settings" => %{}})
 
     assert_reply(view, %{ok: true, id: video})
     html = render(view)
