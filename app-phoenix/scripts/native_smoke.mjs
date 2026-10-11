@@ -23,9 +23,10 @@ page.on('websocket', socket => sockets.push(socket.url().split('?')[0]));
 page.on('response', response => {
   const url = new URL(response.url());
   if (url.origin !== new URL(baseURL).origin) return;
-  if (!/^\/(native|maplibre|maps|maps_maplibre|poster_themes|api-docs)\//.test(url.pathname)) return;
+  if (!/^\/(native|assets|maplibre|maps|maps_maplibre|poster_themes|api-docs)\//.test(url.pathname)) return;
   if (/\.(js|mjs|css|woff2|png|svg)$/.test(url.pathname)) {
     assets.add(url.pathname);
+    if (!fallback && url.pathname.startsWith('/assets/')) failures.push(url.pathname);
     if (response.status() >= 400) failures.push(url.pathname);
     if (/\.(js|mjs)$/.test(url.pathname)) pending.push(response.text().then(body => {
       if (!fallback && /Turbo\.session|@hotwired\/|application\.register\(/.test(body)) failures.push(url.pathname);
@@ -102,7 +103,11 @@ try {
     assert.deepEqual(globals, []);
     await context.storageState({ path: process.env.NATIVE_SMOKE_SESSION });
     evidence('native session saved privately for whole-app fallback');
-  } else evidence('native session accepted by whole-app Rails fallback');
+  } else {
+    evidence('native session accepted by whole-app Rails fallback');
+    await document('/s/00000000-0000-4000-8000-000000000004');
+    evidence('whole-app fallback public URL');
+  }
   const manifestResponse = await context.request.get('/site.webmanifest');
   assert.equal(manifestResponse.status(), 200);
   const manifest = await manifestResponse.json();
