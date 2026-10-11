@@ -7,17 +7,13 @@ class AreasController < ApplicationController
   before_action :set_area, only: %i[update]
 
   def create
-    @area = current_user.areas.build(area_params)
+    respond_to do |format|
+      format.turbo_stream do
+        @area = current_user.areas.build(area_params)
 
-    if @area.save
-      respond_to do |format|
-        format.turbo_stream do
+        if @area.save
           render turbo_stream: stream_flash(:success, I18n.t('controllers.areas.created'))
-        end
-      end
-    else
-      respond_to do |format|
-        format.turbo_stream do
+        else
           render turbo_stream: stream_flash(:error, @area.errors.full_messages.join(', '))
         end
       end
@@ -25,15 +21,11 @@ class AreasController < ApplicationController
   end
 
   def update
-    if @area.update(area_params)
-      respond_to do |format|
-        format.turbo_stream do
+    respond_to do |format|
+      format.turbo_stream do
+        if @area.update(area_params)
           render turbo_stream: stream_flash(:success, I18n.t('controllers.areas.updated'))
-        end
-      end
-    else
-      respond_to do |format|
-        format.turbo_stream do
+        else
           render turbo_stream: stream_flash(:error, @area.errors.full_messages.join(', '))
         end
       end
