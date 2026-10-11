@@ -32,6 +32,7 @@ defmodule DawarichWeb.NativeM6TripIndexTest do
   } do
     conn = RailsUser.signed_in(id) |> RailsUser.connecting_as(id) |> get("/trips")
     {:ok, view, html} = live(conn)
+    assert has_element?(view, "#mobile-navigation-menu a[href='/map/v2']")
     assert has_element?(view, "#native-trip-preview-#{id * 10}[phx-hook=MapPreview]")
     assert has_element?(view, "a[href='/trips/#{id * 10}']", "Owned preview")
     refute has_element?(view, "[data-controller], [data-action], turbo-frame")

@@ -72,7 +72,7 @@ defmodule DawarichWeb.A9RoutesTest do
     {"/stats/:year/:month", DawarichWeb.StatsLive.Month, :month, nil},
     {"/digests", DawarichWeb.DigestsLive.Index, :index, nil},
     {"/digests/:year", DawarichWeb.DigestsLive.Show, :show, nil},
-    {"/trips", DawarichWeb.TripsLive.Index, :index, {DawarichWeb.TripsGate, :index?}},
+    {"/trips", DawarichWeb.TripsLive.NativeIndex, :index, nil},
     {"/trips/:id", DawarichWeb.TripsLive.NativeMap, :show, nil},
     {"/places", DawarichWeb.PlacesLive.Index, :index, {DawarichWeb.PlacesGate, :index?}},
     {"/insights", DawarichWeb.InsightsLive.Index, :index, nil},
@@ -99,7 +99,7 @@ defmodule DawarichWeb.A9RoutesTest do
     for {path, view, action, gate} <- @pages do
       info = Phoenix.Router.route_info(Router, "GET", path, "www.example.com")
 
-      native = path in ["/trips/:id", "/family"]
+      native = path in ["/trips", "/trips/:id", "/family"]
       pipeline = if native, do: :native_m6_browser, else: :browser
 
       assert {info.route, info.plug, info.plug_opts, info.pipe_through, info[:slice],

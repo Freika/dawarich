@@ -884,23 +884,26 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "value-less browser query keys go to Puma unchanged while valued keys stay in Phoenix",
+  test "retained value-less stats queries hand back while native trip queries resolve locally",
        ctx do
     port = serve()
 
-    for target <- ~w(/trips?page /trips?view /stats?year) do
+    for target <- ~w(/stats?year) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
 
-    assert answered_by_phoenix(port, "GET /trips?page=2 HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+    for target <- ~w(/trips?page /trips?view /trips?page=2) do
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+    end
   end
 
-  test "trip routes outside A8 and A9 ownership go to Puma", ctx do
+  test "retained trip forms and writes hand back while native trip formats refuse locally", ctx do
     port = serve()
 
     for target <-
-          ~w(/trips/new?format=json /trips/5/edit?format=json /trips.json /trips?format=json) do
+          ~w(/trips/new?format=json /trips/5/edit?format=json) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
@@ -909,7 +912,9 @@ defmodule DawarichWeb.EndpointTest do
           {"/trips/abc", 302},
           {"/trips/12abc", 302},
           {"/trips/1234567890123456789", 302},
-          {"/trips/5.json", 422}
+          {"/trips/5.json", 422},
+          {"/trips.json", 422},
+          {"/trips?format=json", 422}
         ] do
       assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == status
       assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
@@ -944,13 +949,13 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "DAWARICH_RAILS_ROUTES=trips hands both pages back with their query", ctx do
+  test "native trip index ignores obsolete rollback keys and retains query admission", ctx do
     Application.put_env(:dawarich, :rails_routes, ["trips"])
     port = serve()
 
     for target <- ~w(/trips /trips?page=2) do
-      assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
-               "GET #{target} HTTP/1.1"
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     end
   end
 
