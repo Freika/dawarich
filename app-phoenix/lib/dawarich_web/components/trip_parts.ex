@@ -31,17 +31,11 @@ defmodule DawarichWeb.TripParts do
               tabindex="0"
               class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-44 z-10"
             >
-              <li>
-                <a data-turbo-method="post" href={"/trips/#{@page.id}/export?file_format=gpx"}>{s(
-                  @locale,
-                  "gpx"
-                )}</a>
-              </li>
-              <li>
-                <a data-turbo-method="post" href={"/trips/#{@page.id}/export?file_format=json"}>{s(
-                  @locale,
-                  "geojson"
-                )}</a>
+              <li :for={{format, label} <- [{"gpx", "gpx"}, {"json", "geojson"}]}>
+                <form method="post" action={"/trips/#{@page.id}/export?file_format=#{format}"} data-turbo="false">
+                  <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
+                  <button type="submit">{s(@locale, label)}</button>
+                </form>
               </li>
             </ul>
           </div>
