@@ -97,6 +97,35 @@ defmodule DawarichWeb.NativeM6HostTest do
     refute has_element?(view, "#native-visit-dialog")
   end
 
+  test "native rectangle tool retains localized cancellation and placement guidance", %{id: id} do
+    for locale <- Dawarich.I18n.available_locales() do
+      {:ok, view, _} = open(id, @second, locale)
+
+      assert has_element?(view, "#native-map")
+
+      button =
+        view
+        |> render()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("[data-testid=native-select-area]")
+
+      {:ok, select} = Dawarich.I18n.t(locale, "javascript.map_controls.select_area")
+      assert LazyHTML.attribute(button, "data-select-message") == [select]
+      refute has_element?(view, "#native-select-area .translation_missing")
+      {:ok, cancel} = Dawarich.I18n.t(locale, "javascript.visits.cancel_selection")
+
+      {:ok, draw} =
+        Dawarich.I18n.t(
+          locale,
+          "javascript.messages.draw_a_rectangle_on_the_map_to_select_points"
+        )
+
+      assert LazyHTML.attribute(button, "data-cancel-message") == [cancel]
+      assert LazyHTML.attribute(button, "data-draw-message") == [draw]
+      assert LazyHTML.attribute(button, "aria-pressed") == ["false"]
+    end
+  end
+
   test "native production host opens validates and closes an Area dialog", %{id: id} do
     {:ok, view, _} = open(id, @second)
     render_hook(view, "area:new", %{"latitude" => 52.52, "longitude" => 13.405})

@@ -1618,3 +1618,13 @@ The Rails Poster layout selector and track opacity/width sliders have no associa
 - Phoenix: `app-phoenix/lib/dawarich_web/components/native_poster_sections.ex:58,200`; `app-phoenix/lib/dawarich_web/components/native_visit_place_search.ex:44`; `app-phoenix/lib/dawarich_web/components/native_trip_note.ex:20`.
 - Tests: `canonical milestone six documents and changed forms retain native accessible controls`; `accessible control gate rejects unlabelled controls without ids`; `native trip note editor retains an accessible name through validation and cancel`. Removing Poster layout admission labels or restoring the helper's nil-ID filter fails the named gates.
 - ED: ED-NATIVE-M6-CONTROL-LABELS. No DRB.
+
+
+### FRB-NATIVE-M6-SELECTION-CANCEL-LOCALE
+
+The Rails rectangle selector replaces its action with hardcoded English “Cancel Selection”, even with a non-English map locale. Native uses the existing localized cancellation string and retains rectangle/highlight/cancel behavior. The incorrect native select-area translation key was also corrected; that key omission was a port defect.
+
+- Rails: `app/javascript/controllers/maps/maplibre/area_selection_manager.js:63`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/native_map_page.ex:119`; `app-phoenix/assets/js/map/selection/host.js:33`.
+- Tests: `native rectangle tool retains localized cancellation and placement guidance` (all supported locales), `native selection root draws rectangle highlights admitted points and clears on cancel`. Restoring hardcoded English fails the locale case; omitting cancellation fails the actual production-host behavior case.
+- ED: ED-NATIVE-M6-SELECTION-CANCEL-LOCALE. No DRB.

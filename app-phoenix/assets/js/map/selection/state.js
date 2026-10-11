@@ -6,8 +6,9 @@ export function createAreaSelection({
   getRange,
   pushEvent,
   onChange = () => {},
+  onDraw = () => {},
 }) {
-  const state = { points: [], visits: [], bounds: null }
+  const state = { active: false, points: [], visits: [], bounds: null }
   let controller = null
   let gesture = null
   let generation = 0
@@ -22,12 +23,18 @@ export function createAreaSelection({
 
   function start() {
     cancel()
+    state.active = true
+    onChange()
     map.dragPan.disable()
     map.boxZoom.disable()
-    gesture = rectangleGesture(map, (bounds) => {
-      restore()
-      load(bounds)
-    })
+    gesture = rectangleGesture(
+      map,
+      (bounds) => {
+        restore()
+        load(bounds)
+      },
+      onDraw,
+    )
   }
 
   function load(bounds) {
@@ -51,6 +58,7 @@ export function createAreaSelection({
     controller?.abort()
     controller = null
     restore()
+    state.active = false
     state.points = []
     state.visits = []
     state.bounds = null

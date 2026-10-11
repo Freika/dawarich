@@ -108,9 +108,21 @@ defmodule DawarichWeb.NativeMapPage do
         residency={assigns[:residency]}
         locale={@locale}
       />
-      <button type="button" data-testid="native-select-area" class="btn btn-sm">{t(
+      <button
+        type="button"
+        data-testid="native-select-area"
+        class="btn btn-sm"
+        phx-update="ignore"
+        id="native-select-area"
+        aria-pressed="false"
+        data-select-message={t(@locale, "javascript.map_controls.select_area", %{})}
+        data-cancel-message={t(@locale, "javascript.visits.cancel_selection", %{})}
+        data-draw-message={
+          t(@locale, "javascript.messages.draw_a_rectangle_on_the_map_to_select_points", %{})
+        }
+      >{t(
         @locale,
-        "javascript.selection.select_area",
+        "javascript.map_controls.select_area",
         %{}
       )}</button>
       <section
