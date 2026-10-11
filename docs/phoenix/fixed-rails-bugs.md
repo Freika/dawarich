@@ -1944,3 +1944,12 @@ Rails Family map markers and cached popups can remain visible indefinitely after
 - Phoenix: `app-phoenix/lib/dawarich_web/public_map_auth.ex:31`; `app-phoenix/lib/dawarich_web/public_map_live.ex:7`. Original HTTP method travels as a boolean in the signed mount session; only admitted static GET counts, with no connected/reconnect effect.
 - Test: `native public GET counts once while HEAD and LiveView reconnect are read only`. HEAD counter RED, GREEN, omit-method-guard mutation fails, restored GREEN.
 - Difference: ED-NATIVE-STAGE2-PUBLIC-HEAD. Restores the planned native GET-only touch boundary while fixing Rails' HEAD counter inflation.
+
+### FRB-NATIVE-S2E4-ONBOARDING-FOCUS — Get started cannot restore keyboard focus
+
+Rails renders Get started as an anchor without href, so keyboard users cannot activate it normally and closing onboarding cannot return focus to that control. Native navbar variants use a button for the existing dialog dispatch; the browser restores focus after Escape.
+
+- Rails: `app/views/shared/_navbar.html.erb:138` and `:228`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/navbar_end.ex:175`.
+- Test: `automatic native onboarding dismisses persistently and manual reopening restores focus`; desktop and German mobile openings use `openNativeOnboarding`.
+- ED: ED-NATIVE-S2E4-ONBOARDING-FOCUS. No DRB. Browser verification pending in the assigned fix report.
