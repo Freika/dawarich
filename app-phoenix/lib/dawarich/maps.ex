@@ -1,28 +1,34 @@
 defmodule Dawarich.Maps do
   @moduledoc false
   alias Dawarich.Accounts.Scope
-  alias Dawarich.Maps.{Projection, Dependencies.Principal}
+  alias Dawarich.Maps.Projection
+  alias Dawarich.Accounts.{DataAccess, Principal}
 
-  def principal(user, locale), do: Principal.scope(user, locale)
+  def principal(user, locale), do: Scope.for_user(Principal.project(user), locale)
 
   def admit(scope, opts \\ []) do
-    with {:ok, user} <- Principal.actor(scope, Keyword.get(opts, :now, DateTime.utc_now())) do
-      {:ok,
-       %Scope{
-         scope
-         | user: Map.put(Principal.safe(user), :session_identity, scope.user.session_identity)
-       }}
+    with {:ok, fresh} <- actor(scope, opts) do
+      {:ok, %{fresh | user: Principal.project(fresh.user)}}
     end
   rescue
     _ -> {:error, :unavailable}
   end
 
   def with_actor(scope, effect, opts \\ []) do
-    with {:ok, user} <- Principal.actor(scope, Keyword.get(opts, :now, DateTime.utc_now())) do
-      effect.(user)
-    end
+    with {:ok, fresh} <- actor(scope, opts), do: effect.(fresh.user)
   rescue
     _ -> {:error, :unavailable}
+  end
+
+  defp actor(scope, opts) do
+    now = Keyword.get(opts, :now, DateTime.utc_now())
+
+    with {:ok, fresh} <- DataAccess.admit(scope, opts) do
+      user = fresh.user
+      if user.status in [0, 3] or (user.active_until && DateTime.compare(user.active_until, now) == :lt),
+        do: {:error, :unauthorized},
+        else: {:ok, fresh}
+    end
   end
 
   def page(scope, params, opts) when is_map(params) do

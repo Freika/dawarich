@@ -22,7 +22,7 @@ defmodule DawarichWeb.MapLiveAuthTest do
 
     session = %{
       "rails_user_id" => row.id,
-      "map_identity" => scope.user.session_identity,
+      "map_identity" => scope.user.session_version,
       "locale" => "en"
     }
 

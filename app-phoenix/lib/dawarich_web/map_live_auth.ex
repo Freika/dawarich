@@ -13,7 +13,7 @@ defmodule DawarichWeb.MapLiveAuth do
   def live_session(conn) do
     session = DawarichWeb.RailsAuth.live_session(conn)
     user = conn.assigns[:current_user]
-    Map.put(session, "map_identity", user && Dawarich.Maps.Dependencies.Principal.identity(user))
+    Map.put(session, "map_identity", user && Dawarich.Accounts.Principal.version(user))
   end
 
   def on_mount(:default, _params, session, socket) do
@@ -23,7 +23,7 @@ defmodule DawarichWeb.MapLiveAuth do
         else: session["rails_user_id"]
 
     scope = %Scope{
-      user: %{id: session["rails_user_id"], session_identity: session["map_identity"]},
+      user: %{id: session["rails_user_id"], session_version: session["map_identity"]},
       locale: session["locale"]
     }
 
