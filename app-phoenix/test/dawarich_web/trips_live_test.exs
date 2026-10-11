@@ -165,7 +165,7 @@ defmodule DawarichWeb.TripsLiveTest do
       refute has_element?(far, "[role='navigation']")
     end
 
-    test "patching to malformed countries refuses locally without preserving stale cards", %{
+    test "patching to malformed countries keeps the M5 normalized bounded card", %{
       user: user
     } do
       for n <- 1..6,
@@ -184,8 +184,9 @@ defmodule DawarichWeb.TripsLiveTest do
       {:ok, view, _html} = live_as(user, "/trips")
 
       render_patch(view, "/trips?page=2")
-      assert has_element?(view, "[data-native-trip-index-refused][role=alert]")
-      refute has_element?(view, "[data-trip-id]")
+      refute has_element?(view, "[data-native-trip-index-refused][role=alert]")
+      assert has_element?(view, "#trip-883510")
+      refute has_element?(view, "#trip-883510", "country")
       assert :sys.get_state(view.pid).socket.redirected == nil
     end
 
@@ -449,12 +450,14 @@ defmodule DawarichWeb.TripsLiveTest do
       scope = Dawarich.Maps.principal(Dawarich.Accounts.get(user.id), "en")
 
       assert {:ok, topics} =
-               Dawarich.Maps.Dependencies.Realtime.topics(
+               Dawarich.Maps.Realtime.topics(
                  %{kind: :trip, scope: scope, trip_id: 883_901},
                  []
                )
 
-      assert Enum.sort(Map.values(topics)) == ~w(imports map_edits points progress tracks trip)
+      assert Enum.sort(Map.values(topics)) ==
+               ~w(imports map_edits points progress sharing tracks trip)
+
       assert topics[Dawarich.RailsMessages.broadcasting([{:trip, 883_901}])] == "trip"
       refute has_element?(view, "turbo-cable-stream-source")
     end

@@ -37,14 +37,6 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
        socket
        |> assign(result)
        |> assign(
-         :settings,
-         Map.put(
-           result.settings,
-           :style,
-           Dawarich.UserSettings.get(socket.assigns.current_scope.user)["map_style"] || "streets"
-         )
-       )
-       |> assign(
          page: page,
          family_page: family_page,
          query: Map.take(params, ~w(page family_page)),

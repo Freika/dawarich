@@ -27,7 +27,7 @@ defmodule Dawarich.Trips.Pages do
          total_pages: own.total_pages,
          family_entries: family.entries,
          family_total_pages: family.total_pages,
-         settings: Map.take(settings, [:unit, :factor])
+         settings: Map.take(settings, [:unit, :factor, :style])
        }}
     end
   end
