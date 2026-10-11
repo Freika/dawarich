@@ -5,10 +5,8 @@ defmodule Dawarich.Families.SharingUpdate do
   alias Dawarich.Families.{Clock, Locations}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
-  @false_values [false, "0", "f", "F", "false", "FALSE", "off", "OFF"]
   @hours %{"1h" => 1, "6h" => 6, "12h" => 12, "24h" => 24}
   @windows ~w(24h 7d 30d all)
-  @strip ~r/\A[\0\t\n\v\f\r ]|[\0\t\n\v\f\r ]\z/
 
   def call(user, params, now) do
     case Locations.membership(user.id) do
@@ -23,16 +21,18 @@ defmodule Dawarich.Families.SharingUpdate do
               RailsTime.with_zone(user.timezone, fn -> update(user.id, params, now) end)
             end)
     end
+  rescue
+    _ -> {:ok, 500, {:object, [{"success", false}, {"message", t("unexpected_error", %{})}]}}
   end
 
   def web_call(user, params, now), do: __MODULE__.Web.call(user, params, now)
-  def web_write!(user_id, params, now, repo \\ Repo), do: write!(user_id, params, now, true, repo)
+  def web_write!(user_id, params, now, repo \\ Repo), do: write!(user_id, params, now, repo)
 
   def enable!(user_id, duration, now) when is_binary(duration),
     do: write!(user_id, %{"enabled" => true, "duration" => duration}, now)
 
   defp update(user_id, params, now) do
-    enabled = boolean(params["enabled"])
+    enabled = __MODULE__.Web.boolean(params["enabled"])
     duration = requested_duration(params)
     config = write!(user_id, Map.put(params, "enabled", enabled), now)
     expires = if enabled, do: Clock.parse(config["expires_at"])
@@ -51,7 +51,7 @@ defmodule Dawarich.Families.SharingUpdate do
         )}}
   end
 
-  defp write!(user_id, params, now, normalize? \\ false, repo \\ Repo) do
+  defp write!(user_id, params, now, repo \\ Repo) do
     [[settings, email]] =
       repo.query!("SELECT settings, email FROM users WHERE id = $1 FOR UPDATE", [user_id]).rows
 
@@ -59,13 +59,7 @@ defmodule Dawarich.Families.SharingUpdate do
     settings = Dawarich.UserSettings.provided(settings)
     stored = settings
 
-    settings =
-      if normalize? do
-        __MODULE__.Web.normalize_settings!(settings)
-      else
-        plain!(settings)
-        settings
-      end
+    settings = __MODULE__.Web.normalize_settings!(settings)
 
     family = settings["family"]
     unless is_nil(family) or is_map(family), do: raise(ArgumentError, "family settings")
@@ -123,10 +117,7 @@ defmodule Dawarich.Families.SharingUpdate do
         expiring(base, duration, expiry(duration, now), repo)
 
       Ruby.present?(old["duration"]) ->
-        existing =
-          if params["web"],
-            do: __MODULE__.Web.duration(old["duration"]),
-            else: duration(old["duration"])
+        existing = __MODULE__.Web.duration(old["duration"])
 
         expiring(base, existing, carried(existing, old["expires_at"], now), repo)
 
@@ -161,8 +152,12 @@ defmodule Dawarich.Families.SharingUpdate do
 
   defp message(true, duration) do
     case Map.fetch(@hours, duration) do
-      {:ok, hours} -> t("enabled_for_hours", %{"count" => hours})
-      :error -> t("enabled", %{})
+      {:ok, hours} ->
+        t("enabled_for_hours", %{"count" => hours})
+
+      :error ->
+        count = __MODULE__.Web.hours(duration)
+        if count > 0, do: t("enabled_for_hours", %{"count" => count}), else: t("enabled", %{})
     end
   end
 
@@ -178,8 +173,7 @@ defmodule Dawarich.Families.SharingUpdate do
 
   defp missing?(value), do: value != false and Ruby.blank?(value)
 
-  defp boolean(value) when is_binary(value) or is_boolean(value), do: value not in @false_values
-  defp boolean(_value), do: raise(ArgumentError, "enabled parameter shape")
+  defp boolean(value), do: __MODULE__.Web.boolean(value)
 
   defp flag(nil), do: nil
   defp flag(""), do: nil
@@ -188,47 +182,7 @@ defmodule Dawarich.Families.SharingUpdate do
   defp window(value) when is_nil(value) or is_binary(value) or is_boolean(value), do: value
   defp window(_value), do: raise(ArgumentError, "history window parameter shape")
 
-  defp requested_duration(params),
-    do:
-      if(params["web"],
-        do: __MODULE__.Web.duration(params["duration"]),
-        else: duration(params["duration"])
-      )
-
-  defp duration(nil), do: nil
-
-  defp duration(value) when is_binary(value) do
-    if Ruby.blank?(value) or value == "permanent" or Map.has_key?(@hours, value),
-      do: value,
-      else: raise(ArgumentError, "duration outside the fixed choices")
-  end
-
-  defp duration(_value), do: raise(ArgumentError, "duration parameter shape")
-
-  defp plain!(%{} = settings) do
-    for key <- ~w(immich_url photoprism_url), not untouched_url?(settings[key]) do
-      raise ArgumentError, "#{key} would be rewritten on save"
-    end
-
-    case settings["maps"] do
-      nil ->
-        :ok
-
-      %{"url" => url} when is_binary(url) ->
-        if url =~ @strip, do: raise(ArgumentError, "maps url")
-
-      %{} ->
-        :ok
-
-      _other ->
-        raise ArgumentError, "maps settings would be read on save"
-    end
-  end
-
-  defp plain!(_settings), do: raise(ArgumentError, "settings are not an object")
-
-  defp untouched_url?(url),
-    do: is_nil(url) or (is_binary(url) and not String.ends_with?(url, "/"))
+  defp requested_duration(params), do: __MODULE__.Web.duration(params["duration"])
 
   defp missing do
     key = "controllers.api.v1.families.sharing.missing_required_parameter_param"

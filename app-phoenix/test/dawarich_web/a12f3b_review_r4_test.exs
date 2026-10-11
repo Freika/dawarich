@@ -6,7 +6,7 @@ defmodule DawarichWeb.A12f3bReviewR4Test do
   setup do: seed()
 
   @tag a12f3b_review: "R4"
-  test "native R4 consent preserves URL normalization and independent API refusal", c do
+  test "native R4 consent preserves URL normalization across web and API writes", c do
     settings = Accounts.settings(c.member.id)
 
     settings =
@@ -44,7 +44,7 @@ defmodule DawarichWeb.A12f3bReviewR4Test do
       api_user = Map.put(Accounts.get(c.member.id), :timezone, "Europe/Berlin")
 
       for params <- [%{"enabled" => false}, %{"enabled" => false, "web" => true}] do
-        assert {:replay, "ArgumentError"} =
+        assert {:ok, 200, body} =
                  DawarichWeb.Api.FamilyController.run(
                    :sharing,
                    api_user,
@@ -52,7 +52,20 @@ defmodule DawarichWeb.A12f3bReviewR4Test do
                    ~U[2026-10-03 10:00:00Z]
                  )
 
-        assert Accounts.settings(c.member.id) == stored
+        assert body
+               |> Dawarich.ReleaseMigrations.Effects.Support.Ruby.json()
+               |> IO.iodata_to_binary()
+               |> Jason.decode!() == %{
+                 "success" => true,
+                 "enabled" => false,
+                 "duration" => "permanent",
+                 "message" => "Location sharing disabled"
+               }
+
+        normalized = Accounts.settings(c.member.id)
+        assert normalized["immich_url"] == "https://photos.example.test"
+        assert normalized["photoprism_url"] == "https://gallery.example.test"
+        assert normalized["maps"]["url"] == "https://maps.example.test/"
       end
 
       assert {:ok, _} = Families.set_sharing(scope(c.member), %{"enabled" => false}, opts())

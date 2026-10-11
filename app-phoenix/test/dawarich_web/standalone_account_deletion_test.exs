@@ -258,7 +258,7 @@ defmodule DawarichWeb.StandaloneAccountDeletionTest do
     assert sent.status == 202
 
     assert Jason.decode!(sent.resp_body)["message"] ==
-             "A confirmation email has been sent. Click the link in the email to permanently delete your account."
+             "A confirmation email has been sent. Click the link in the email to permanently delete your account. If you have an active Apple or Google subscription, cancel it in your platform settings to avoid further charges."
 
     assert live?(c.actor.id)
     assert api(c.actor, %{}).status == 429

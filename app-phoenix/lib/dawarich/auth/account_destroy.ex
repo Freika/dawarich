@@ -8,11 +8,18 @@ defmodule Dawarich.Auth.AccountDestroy do
   def context(context) do
     repo = Map.get(context, :repo, Repo)
 
-    if Dawarich.Standalone.enabled?() do
+    if context[:native_api] == true or Dawarich.Standalone.enabled?() do
       context
-      |> Map.put_new(:enqueue_destroy, &Dawarich.Users.DestroyWorker.enqueue(repo, &1))
+      |> Map.put_new(
+        :enqueue_destroy,
+        &Dawarich.Users.DestroyWorker.enqueue(repo, &1, Ecto.UUID.generate(),
+          native: context[:native_api]
+        )
+      )
       |> Map.put_new(:enqueue_confirmation, fn payload ->
-        Dawarich.Mail.UserCallbacks.enqueue(repo, "account_destroy_confirmation", payload)
+        Dawarich.Mail.UserCallbacks.enqueue(repo, "account_destroy_confirmation", payload,
+          native: context[:native_api]
+        )
       end)
     else
       context

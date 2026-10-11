@@ -212,7 +212,11 @@ defmodule Dawarich.Test.ApiGolden do
 
       validator ->
         digest = :crypto.hash(:sha256, raw) |> Base.encode16(case: :lower) |> binary_part(0, 32)
-        assert values(headers, "etag") == [~s(W/"#{digest}")]
+
+        if options[:crypto_etag] == false,
+          do: assert(values(headers, "etag") == []),
+          else: assert(values(headers, "etag") == [~s(W/"#{digest}")])
+
         assert values(headers, "content-length") == [Integer.to_string(byte_size(raw))]
         body = validator.(raw)
 

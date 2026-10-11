@@ -24,7 +24,9 @@ defmodule Dawarich.Mail.UserCallbacks do
       command = command(type)
 
       case repo.transaction(fn ->
-             if NativeOwnership.lock(repo, "command:" <> command) == :oban do
+             owner = NativeOwnership.lock(repo, "command:" <> command)
+
+             if opts[:native] == true or owner == :oban do
                publish!(repo, command, worker, payload, args, opts)
              else
                :not_owner

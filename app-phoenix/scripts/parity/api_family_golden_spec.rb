@@ -92,7 +92,7 @@ RSpec.describe 'Phoenix fixture: golden family API requests', type: :request do
   include ActiveSupport::Testing::TimeHelpers
 
   after(:all) do
-    path = Rails.root.join('app-phoenix/test/fixtures/api_family/golden.json')
+    path = Rails.root.join('app-phoenix/test/rails_fixtures/api_family/golden.json')
     FileUtils.mkdir_p(path.dirname)
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'setups' => ApiFamilyGoldenOracle.setups.sort.to_h,
                 'cases' => ApiFamilyGoldenOracle.results.sort_by { _1['name'] } }
@@ -140,19 +140,20 @@ RSpec.describe 'Phoenix fixture: golden family API requests', type: :request do
     { 'name' => kase[:name], 'expect' => kase[:expect].to_s, 'ignore' => mask.empty? ? [] : ['etag'],
       'mask' => mask, 'unordered' => mask.empty? ? [] : ['locations'], 'env' => kase[:env], 'setup' => setup,
       'request' => { 'method' => kase[:method].to_s.upcase, 'target' => path, 'headers' => headers.to_a },
-      'response' => response }
+      'response' => response, 'after' => ApiFamilyGoldenOracle.setups.fetch(family_setup).to_h }
   end
 
   def family_response(kase, path, headers)
+    config = Rails.application.env_config
+    previous = config.slice('action_dispatch.show_exceptions', 'action_dispatch.show_detailed_exceptions')
+    config.merge!('action_dispatch.show_exceptions' => :all, 'action_dispatch.show_detailed_exceptions' => false)
     send(kase[:method], path, headers: headers)
     headers = response.headers.to_h.transform_keys(&:downcase).except('date', 'content-length')
     headers = FamilyGoldenHeaders.fixed(headers)
     body = kase[:expect] == :rails ? response.body.gsub(/token=[\w.-]+/, 'token=redacted') : response.body
     { 'status' => response.status, 'headers' => headers, 'body' => body }
-  rescue StandardError
-    raise unless kase[:expect] == :rails
-
-    { 'status' => 500, 'headers' => {}, 'body' => '' }
+  ensure
+    config.merge!(previous) if previous
   end
 
   def family_setup

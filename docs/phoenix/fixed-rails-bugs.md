@@ -1998,3 +1998,11 @@ Rails accepts `abc` as coordinate text, commits a point whose geometry is null, 
 - Phoenix: `app-phoenix/lib/dawarich/ingest/closure.ex:51,70,78`; `app-phoenix/lib/dawarich/ingest/geo.ex:27`.
 - Test: `golden replay_coordinate_text` in `app-phoenix/test/dawarich_web/api/ingest_golden_test.exs`.
 - ED: ED-NATIVE-S2GA-INGEST-NULL-GEOMETRY. No DRB.
+
+### FRB-NATIVE-S2GB-NULL-FAMILY-SETTINGS — Family locations crash on null member settings
+
+- Rails symptom: a family member whose settings are SQL NULL makes the locations API return a production-handled 500, even though no sharing consent exists.
+- Rails: `app/models/concerns/user_family.rb:48` calls `settings.dig` without handling nil; fresh `replay_member_settings_null` captures the complete failure and unchanged database.
+- Phoenix: `app-phoenix/lib/dawarich/user_settings.ex:90` and `app-phoenix/lib/dawarich/families/sharing.ex:7` treat absent sharing settings as disabled; no coordinates are disclosed and no settings are rewritten.
+- Test: `DawarichWeb.Api.FamilyGoldenTest`, `golden replay_member_settings_null`, asserts the source 500 then compares the explicit safe successor to the recorded disabled-sharing response and checks all after-state.
+- Difference: ED-NATIVE-S2GB-NULL-FAMILY-SETTINGS; no DRB (no data change).

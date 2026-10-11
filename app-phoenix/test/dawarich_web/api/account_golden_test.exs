@@ -26,7 +26,7 @@ defmodule DawarichWeb.Api.AccountGoldenTest do
   alias Dawarich.ActiveRecordEncryption
   alias Dawarich.Auth.TwoFactor.{BackupCodes, Secret, Totp}
 
-  @path "test/fixtures/api_account/golden.json"
+  @path "test/rails_fixtures/api_account/golden.json"
   @moduletag api_public_only: true
   @moduletag :capture_log
   @tables ~w(users families family_memberships instance_settings)
@@ -127,6 +127,19 @@ defmodule DawarichWeb.Api.AccountGoldenTest do
         else: System.delete_env("SUBSCRIPTION_WEBHOOK_SECRET")
     end)
 
+    saved_context = Application.fetch_env(:dawarich, :account_destroy_context)
+
+    Application.put_env(:dawarich, :account_destroy_context, %{
+      base_url: "https://www.example.com"
+    })
+
+    on_exit(fn ->
+      case saved_context do
+        {:ok, value} -> Application.put_env(:dawarich, :account_destroy_context, value)
+        :error -> Application.delete_env(:dawarich, :account_destroy_context)
+      end
+    end)
+
     :ok
   end
 
@@ -170,22 +183,78 @@ defmodule DawarichWeb.Api.AccountGoldenTest do
           do: crypto_options(@kase, before),
           else: []
 
+      if @kase["repeat"] do
+        first = connect(ctx.port)
+        send_raw(first, raw_request(request(@kase)["request"]))
+        {status, _, _} = read_response(first)
+        assert status == if(@kase["name"] == "delete_twice", do: 200, else: 202)
+      end
+
       ApiGolden.check(request(@kase), ctx.port, ctx.upstream, options)
 
       expected =
-        if @kase["expect"] == "own",
+        if @kase["after"],
           do: expected_after(@kase, before, ctx),
           else: before
 
       assert after_rows(Repo) == expected
       assert after_rows(ScratchRepo) == before_scratch
       assert rows("SELECT kind,payload FROM phoenix.rails_commands") == []
+      if String.starts_with?(@kase["name"], "delete_"), do: deletion_jobs!(@kase)
 
       for {key, _} <- @kase["cache_after"] || %{} do
-        assert Dawarich.RailsCache.get(key) == :miss
-        assert Dawarich.Redis.cache_command(["TTL", key]) == {:ok, -2}
+        assert {:ok, bytes} = Dawarich.Redis.cache_command(["GET", key])
+        assert {:ok, %{value: true, expires_at: expires}} = Dawarich.RailsCache.Wire.decode(bytes)
+
+        assert expires ==
+                 DateTime.to_unix(elem(DateTime.from_iso8601(@kase["source_time"]), 1)) + 3600
+
+        assert {:ok, ttl} = Dawarich.Redis.cache_command(["TTL", key])
+        assert ttl in 3598..3600
+        assert @kase["cache_after"][key]["value"] == true
       end
     end
+  end
+
+  defp deletion_jobs!(kase) do
+    jobs =
+      Repo.query!("SELECT command_type,payload FROM job_outbox ORDER BY event_id", [], log: false).rows
+
+    assert length(jobs) == length(kase["jobs_after"])
+
+    for {[type, payload], source} <- Enum.zip(jobs, kase["jobs_after"]) do
+      assert payload["user_id"] == hd(source["args"])
+
+      if source["job"] == "Users::DestroyJob" do
+        assert type == "users.destroy"
+        assert payload == %{"user_id" => 954_001}
+      else
+        assert type == "mail.user.account_destroy_confirmation"
+        token = URI.decode_query(URI.parse(payload["link_url"]).query)["token"]
+        now = elem(DateTime.from_iso8601(kase["source_time"]), 1)
+        assert {:ok, claims} = Dawarich.Auth.DestroyToken.verify(token, %{clock: fn -> now end})
+        assert claims["user_id"] == 954_001
+        assert payload["link_expires_at"] == DateTime.to_unix(now) + 3600
+
+        assert payload["link_token_sha256"] ==
+                 Base.encode16(:crypto.hash(:sha256, token), case: :lower)
+
+        assert String.replace(payload["link_url"], token, "runtime:destroy_token") ==
+                 List.last(source["args"])["link_url"]
+      end
+    end
+  end
+
+  defp raw_request(request) do
+    [
+      request["method"],
+      " ",
+      request["target"],
+      " HTTP/1.1\r\n",
+      Enum.map(request["headers"], fn [name, value] -> [name, ": ", value, "\r\n"] end),
+      "\r\n",
+      request["body"]
+    ]
   end
 
   defp seed(row, ctx) do

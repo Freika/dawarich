@@ -55,17 +55,17 @@ module FamilyWritesGoldenSupport
   end
 
   def writes_response(kase, headers, body)
+    config = Rails.application.env_config
+    previous = config.slice('action_dispatch.show_exceptions', 'action_dispatch.show_detailed_exceptions')
+    config.merge!('action_dispatch.show_exceptions' => :all, 'action_dispatch.show_detailed_exceptions' => false)
     params = body.empty? ? nil : body
     send(kase[:method], kase[:path], params:, headers: headers.except('Content-Length'))
     headers = response.headers.to_h.transform_keys(&:downcase).except('date', 'content-length')
     headers = FamilyGoldenHeaders.fixed(headers)
-    html = kase[:expect] == :rails && response.media_type == 'text/html'
     { 'status' => response.status, 'headers' => headers,
-      'body' => html ? '' : response.body.gsub(/token=[\w.-]+/, 'token=redacted') }
-  rescue StandardError
-    raise unless kase[:expect] == :rails
-
-    { 'status' => 500, 'headers' => {}, 'body' => '' }
+      'body' => response.body.gsub(/token=[\w.-]+/, 'token=redacted') }
+  ensure
+    config.merge!(previous) if previous
   end
 
   def writes_jobs

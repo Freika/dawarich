@@ -18,9 +18,11 @@ defmodule Dawarich.Users.DestroyWorker do
   def args_from_command(1, _), do: {:error, "invalid_payload"}
   def args_from_command(_, _), do: {:error, "unsupported_version"}
 
-  def enqueue(repo, id, event \\ Ecto.UUID.generate()) do
+  def enqueue(repo, id, event \\ Ecto.UUID.generate(), opts \\ []) do
     if repo.in_transaction?() do
-      case NativeOwnership.lock(repo, "command:users.destroy") do
+      owner = NativeOwnership.lock(repo, "command:users.destroy")
+
+      case if(opts[:native], do: :oban, else: owner) do
         :oban ->
           repo.query!(
             "INSERT INTO public.job_outbox(event_id,command_type,command_version,payload,aggregate_id,metadata,scheduled_at) VALUES($1,'users.destroy',1,$2,$3,$4,now()) ON CONFLICT(event_id) DO NOTHING",

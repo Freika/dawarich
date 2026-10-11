@@ -24,7 +24,7 @@ defmodule Dawarich.FamilyApi.Closure do
       pending -> pending
     end
   rescue
-    _ -> {:ok, 500, error("internal_server_error")}
+    _ -> {:replay, "family operation failed"}
   end
 
   defp gate(action, user, params, now) do
@@ -48,7 +48,7 @@ defmodule Dawarich.FamilyApi.Closure do
         {:ok, 404, Locations.not_in_family()}
 
       true ->
-        terminal(dispatch(action, user, params, now))
+        dispatch(action, user, params, now)
     end
   end
 
@@ -77,10 +77,14 @@ defmodule Dawarich.FamilyApi.Closure do
     do: Requests.respond(user, decision, params, now)
 
   defp dispatch(:history, user, params, now) do
-    if params["start_at"] in [nil, ""] or params["end_at"] in [nil, ""] do
+    if Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(params["start_at"]) or
+         Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(params["end_at"]) do
       {:ok, 400,
        error(I18n.en!("controllers.api.v1.families.locations.start_at_and_end_at_are_required"))}
     else
+      unless is_binary(params["start_at"]) and is_binary(params["end_at"]),
+        do: raise(ArgumentError)
+
       with {:ok, {:text, from}} <- Params.timestamp(params["start_at"]),
            {:ok, {:text, to}} <- Params.timestamp(params["end_at"]) do
         [_settings, family] = Locations.membership(user.id)
@@ -136,7 +140,5 @@ defmodule Dawarich.FamilyApi.Closure do
     end
   end
 
-  defp terminal({:replay, _}), do: {:ok, 500, error("internal_server_error")}
-  defp terminal(result), do: result
   defp error(message), do: {:object, [{"error", message}]}
 end

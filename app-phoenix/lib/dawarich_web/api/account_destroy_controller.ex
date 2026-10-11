@@ -11,6 +11,9 @@ defmodule DawarichWeb.Api.AccountDestroyController do
   def call(conn, _opts) do
     context =
       (Application.get_env(:dawarich, :account_destroy_context, %{}) || %{})
+      |> Map.put_new(:repo, conn.assigns[:api_repo] || Dawarich.Repo)
+      |> Map.put_new(:clock, fn -> conn.assigns[:api_now] || DateTime.utc_now() end)
+      |> Map.put(:native_api, true)
       |> Map.put_new(:self_hosted, System.get_env("SELF_HOSTED", "true") != "false")
       |> AccountDestroy.context()
 
@@ -31,8 +34,7 @@ defmodule DawarichWeb.Api.AccountDestroyController do
           202,
           {:object,
            [
-             {"message",
-              "A confirmation email has been sent. Click the link in the email to permanently delete your account."}
+             {"message", request_sent()}
            ]}
         )
 
@@ -77,6 +79,18 @@ defmodule DawarichWeb.Api.AccountDestroyController do
         else: "confirm_with_email"
 
     Dawarich.I18n.en!("controllers.concerns.account_deletion_confirmable." <> key)
+  end
+
+  defp request_sent do
+    message =
+      "A confirmation email has been sent. Click the link in the email to permanently delete your account."
+
+    {:ok, text} =
+      Dawarich.I18n.t("en", "controllers.api.v1.users.destroy.request_sent", %{
+        "message" => message
+      })
+
+    text
   end
 
   defp message(key), do: Dawarich.I18n.en!("controllers.api.v1.users.destroy." <> key)
