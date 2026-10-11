@@ -5,6 +5,7 @@ defmodule DawarichWeb.NativeFamilyConfirmation do
 
   def handle_event("family_prepare_confirm", params, socket) do
     page = socket.assigns.page
+
     {:noreply, prepared} =
       socket
       |> assign(:page, page.presentation)
@@ -21,6 +22,7 @@ defmodule DawarichWeb.NativeFamilyConfirmation do
 
   def handle_event("family_confirm", _, socket) do
     pending = socket.assigns.confirmation
+
     action =
       case pending.action do
         "delete" -> "destroy"

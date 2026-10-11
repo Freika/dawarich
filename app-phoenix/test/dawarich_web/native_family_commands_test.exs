@@ -62,7 +62,8 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
     refute has_element?(view, "#family-shell")
   end
 
-  test "native map family confirmation consumes one admitted action and cancellation has no effects", %{id: id} do
+  test "native map family confirmation consumes one admitted action and cancellation has no effects",
+       %{id: id} do
     {:ok, view, _} = open(id)
     view |> element("[data-family-action=remove_member]") |> render_click()
     assert has_element?(view, "#family-confirm[data-pending=true]", "family-command-#{id + 1}")
@@ -175,6 +176,7 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
 
   test "native family commands refuse malformed payloads without effects or owner loss", %{id: id} do
     {:ok, view, _} = open(id)
+    render_click(view, "family_unknown", %{})
 
     for payload <- ["malformed", nil, false, []] do
       render_change(view, "family:sharing", %{"sharing" => payload})

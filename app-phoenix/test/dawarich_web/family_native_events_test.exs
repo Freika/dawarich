@@ -138,7 +138,11 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
     })
 
     [[id]] = row("SELECT id FROM family_invitations WHERE email='new-native@example.invalid'")
-    assert has_element?(view, "[data-family-action=cancel_invitation][data-family-target='#{id}']")
+
+    assert has_element?(
+             view,
+             "[data-family-action=cancel_invitation][data-family-target='#{id}']"
+           )
 
     refute Map.has_key?(
              Enum.find(
@@ -154,7 +158,11 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
 
     render_click(view, "family_confirm", %{})
     assert row("SELECT status FROM family_invitations WHERE id=#{id}") == [[3]]
-    refute has_element?(view, "[data-family-action=cancel_invitation][data-family-target='#{id}']")
+
+    refute has_element?(
+             view,
+             "[data-family-action=cancel_invitation][data-family-target='#{id}']"
+           )
   end
 
   test "native map consent history and duration persist independently and refresh the native indicator",

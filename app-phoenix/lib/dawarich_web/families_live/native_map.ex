@@ -7,7 +7,11 @@ defmodule DawarichWeb.FamiliesLive.NativeMap do
 
   def mount(_, _, socket),
     do:
-      {:ok, socket |> assign(confirmation: nil, errors: []) |> DawarichWeb.NativeFamilyResource.attach() |> maybe_chrome(), layout: false}
+      {:ok,
+       socket
+       |> assign(confirmation: nil, errors: [])
+       |> DawarichWeb.NativeFamilyResource.attach()
+       |> maybe_chrome(), layout: false}
 
   def handle_params(_, _, %{assigns: %{current_scope: nil}} = socket), do: {:noreply, socket}
 
@@ -28,7 +32,8 @@ defmodule DawarichWeb.FamiliesLive.NativeMap do
   def handle_event("family:" <> _ = event, params, socket),
     do: DawarichWeb.NativeFamilyCommands.handle_event(event, params, socket)
 
-  def handle_event("family_" <> _ = event, params, socket),
+  def handle_event(event, params, socket)
+      when event in ~w(family_prepare_confirm family_cancel_confirm family_confirm),
     do: DawarichWeb.NativeFamilyConfirmation.handle_event(event, params, socket)
 
   def handle_event(_, _, socket), do: {:noreply, socket}
