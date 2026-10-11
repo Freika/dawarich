@@ -115,6 +115,7 @@ export function createReplay({
     follow ??= createFollowCamera({ map, onChange: onFollow })
     follow.start()
     frame = raf(tick)
+    onState({ day: manager.getCurrentDay(), minute })
   }
 
   function seek(value) {
