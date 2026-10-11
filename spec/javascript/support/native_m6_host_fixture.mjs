@@ -44,7 +44,12 @@ export function fixture(config = {}, options = {}) {
   root.contains = (element) => [...nodes.values()].includes(element)
   nodes.set = (selector, node) => {
     node.parent = root
-    node.closest = (query) => query === selector ? node : query === "[data-native-map-root]" ? root : null
+    node.closest = (query) =>
+      query === selector
+        ? node
+        : query === "[data-native-map-root]"
+          ? root
+          : null
     return Map.prototype.set.call(nodes, selector, node)
   }
   const element = new Element()

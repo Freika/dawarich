@@ -500,10 +500,16 @@ test("native map track hits ignore blank tool markup but refuse armed placement"
   try {
     await f.owner.mount()
     f.map.emit("click", { point: { x: 20, y: 20 } })
-    assert.equal(f.pushed.filter(({ event }) => event === "map:select").length, 1)
+    assert.equal(
+      f.pushed.filter(({ event }) => event === "map:select").length,
+      1,
+    )
     status.textContent = "Click to place the visit"
     f.map.emit("click", { point: { x: 20, y: 20 } })
-    assert.equal(f.pushed.filter(({ event }) => event === "map:select").length, 1)
+    assert.equal(
+      f.pushed.filter(({ event }) => event === "map:select").length,
+      1,
+    )
   } finally {
     f.owner.destroy()
   }

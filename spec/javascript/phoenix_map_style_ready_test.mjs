@@ -11,7 +11,9 @@ test("already loaded native style admits geometry while basemap tiles remain pen
     once: (name) => listeners.push(name),
     off() {},
   }
-  waitForStyle(map, { own() {} }).then(() => { admitted = true })
+  waitForStyle(map, { own() {} }).then(() => {
+    admitted = true
+  })
   await new Promise((resolve) => setImmediate(resolve))
   assert.equal(admitted, true)
   assert.deepEqual(listeners, [])
