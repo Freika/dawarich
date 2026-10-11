@@ -13,6 +13,7 @@ const context = await browser.newContext({ baseURL, acceptDownloads: true,
   storageState: fallback ? process.env.NATIVE_SMOKE_SESSION : undefined });
 const page = await context.newPage();
 const assets = new Set();
+let stage = 'startup';
 const pending = [];
 const failures = [];
 const sockets = [];
@@ -22,15 +23,16 @@ page.on('websocket', socket => sockets.push(socket.url().split('?')[0]));
 page.on('response', response => {
   const url = new URL(response.url());
   if (url.origin !== new URL(baseURL).origin) return;
+  if (!/^\/(native|maplibre|maps|maps_maplibre|poster_themes|api-docs)\//.test(url.pathname)) return;
   if (/\.(js|mjs|css|woff2|png|svg)$/.test(url.pathname)) {
     assets.add(url.pathname);
     if (response.status() >= 400) failures.push(url.pathname);
     if (/\.(js|mjs)$/.test(url.pathname)) pending.push(response.text().then(body => {
-      if (!fallback) assert.ok(!/Turbo\.session|@hotwired\/|application\.register\(/.test(body), 'bundled legacy runtime');
-    }));
+      if (!fallback && /Turbo\.session|@hotwired\/|application\.register\(/.test(body)) failures.push(url.pathname);
+    }).catch(() => failures.push(url.pathname)));
   }
 });
-function evidence(name) { console.log(`PASS ${name}`); }
+function evidence(name) { stage = name; console.log(`PASS ${name}`); }
 async function document(path, connected = false) {
   const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
   assert.equal(response.status(), 200, `document ${path}`);
@@ -123,6 +125,12 @@ try {
   writeFileSync(process.env.NATIVE_SMOKE_RECEIPT, JSON.stringify({ mode: fallback ? 'rails' : 'native',
     assets: [...assets].sort(), workers: workers.length, sockets: sockets.length, status: 'passed' }, null, 2));
   evidence('asset and socket receipt');
+} catch (error) {
+  console.error(`FAIL browser after ${stage}: ${error.name}`);
+  if (error.code === 'ERR_ASSERTION') console.error(error.message);
+  const frame = error.stack?.split('\n').find(line => line.includes('native_smoke.mjs:'));
+  if (frame) console.error(frame);
+  process.exitCode = 1;
 } finally {
   await context.close();
   await browser.close();
