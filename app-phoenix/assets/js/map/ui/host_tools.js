@@ -1,5 +1,6 @@
 import { createAreaEditor } from "./area_editor.js"
 import { createEntityEditor } from "./entity_editor.js"
+import { installHostShortcuts } from "./shortcuts.js"
 
 export function bindTool(root, selector, callback, lifetime) {
   const button = root?.querySelector(selector)
@@ -9,6 +10,7 @@ export function bindTool(root, selector, callback, lifetime) {
 }
 
 export function createHostTools({ map, root, pushEvent, lifetime }) {
+  installHostShortcuts({ root, lifetime })
   const status = root?.querySelector("[data-map-tool-status]")
   const clear = () => {
     if (status) status.textContent = ""

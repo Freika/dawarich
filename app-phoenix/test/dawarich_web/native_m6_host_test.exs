@@ -356,6 +356,16 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, ".timeline-day-modes .mode-chip--muted", "30m moving")
   end
 
+  test "native launcher toggle dismisses only explicit repeated clicks", %{id: id} do
+    {:ok, view, _} = open(id, "/map/v2?panel=layers")
+    view |> element("[data-testid=map-button-layers]") |> render_click()
+    refute has_element?(view, "#native-map-layers-panel")
+    view |> element("[data-testid=map-button-layers]") |> render_click()
+    assert has_element?(view, "#native-map-layers-panel")
+    render_hook(view, "map:panel", %{"panel" => "layers"})
+    assert has_element?(view, "#native-map-layers-panel")
+  end
+
   test "native URL visit hydration admits only current owned rows and today uses profile day", %{
     id: id
   } do

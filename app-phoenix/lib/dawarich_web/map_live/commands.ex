@@ -53,6 +53,12 @@ defmodule DawarichWeb.MapLive.Commands do
       when is_binary(first) and is_binary(last),
       do: patch(socket, %{"start_at" => first, "end_at" => last})
 
+  def handle_event("map:panel", %{"panel" => panel, "toggle" => "true"}, socket)
+      when is_binary(panel) do
+    panel = if socket.assigns.map_url["panel"] == panel, do: "", else: panel
+    patch(socket, %{"panel" => panel})
+  end
+
   def handle_event("map:panel", %{"panel" => panel}, socket) when is_binary(panel),
     do: patch(socket, %{"panel" => panel})
 

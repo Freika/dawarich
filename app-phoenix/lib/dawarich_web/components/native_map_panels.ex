@@ -42,6 +42,7 @@ defmodule DawarichWeb.NativeMapPanels do
         data-testid={"map-button-#{button}"}
         phx-click="map:panel"
         phx-value-panel={panel}
+        phx-value-toggle="true"
         aria-expanded={to_string(@panel == panel)}
         aria-controls={
           %{
