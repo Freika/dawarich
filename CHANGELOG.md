@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Timeline calendar activity and status counts refresh after confirming or declining visits in bulk.
+
+### Fixed
 - Shared photo thumbnails lose their old authorization immediately when the trip dates or shared resource change.
 
 ### Fixed
