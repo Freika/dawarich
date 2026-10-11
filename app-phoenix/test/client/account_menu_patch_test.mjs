@@ -67,7 +67,7 @@ function element({
     },
     matches(selector) {
       return (
-        (selector === 'dialog, .navbar-end details:has([href="/users/sign_out"])' &&
+        (selector === 'dialog,.navbar-end details:has([href="/users/sign_out"],form[action="/users/sign_out"])' &&
           (tag === "dialog" || (tag === "details" && navbar && logout))) ||
         selector === tag ||
         (selector === ".navbar-end details" && tag === "details" && navbar)

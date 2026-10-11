@@ -5,6 +5,21 @@ import { createMapRuntime } from "../runtime/create_map.js"
 import { waitForStyle } from "../runtime/style_ready.js"
 import { createPublicLayers } from "./layers.js"
 import { createPublicReader } from "./reader.js"
+function sameGrant(before, after) {
+  const { validUntil: previous, ...grant } = before
+  const { validUntil: current, ...fresh } = after
+  const oldDeadline = Date.parse(previous),
+    newDeadline = Date.parse(current)
+  return (
+    JSON.stringify(grant) === JSON.stringify(fresh) &&
+    (previous === current ||
+      (typeof previous === "string" &&
+        typeof current === "string" &&
+        Number.isFinite(oldDeadline) &&
+        Number.isFinite(newDeadline) &&
+        newDeadline >= oldDeadline))
+  )
+}
 export function mountPublic({
   element,
   pushEvent,
@@ -49,8 +64,7 @@ export function mountPublic({
         ? await reader.pages("photos", {}, { signal })
         : []
     const { data: fresh } = await reader.read("metadata", {}, { signal })
-    if (JSON.stringify(metadata) !== JSON.stringify(fresh))
-      throw new Error("Public grant changed")
+    if (!sameGrant(metadata, fresh)) throw new Error("Public grant changed")
     return { metadata, points, route, photos: images }
   }
   const owner = createMapRuntime({

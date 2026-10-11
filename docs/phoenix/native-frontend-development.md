@@ -106,3 +106,15 @@ Source-feature browser successors already delivered on the stage-2 E2E base rema
 Controller acceptance must execute the eight new browser cases plus changed inherited cases, named navigation/auth/revocation/destruction mutations and English/German 390px label, keyboard/focus/Escape and document/Range overflow checks. C2's 17-test/11-file discovery and two probe unit passes do not satisfy that gate. Record any skips/flakes, exact identities and unsupported measurements in X5 Results; no performance/control experiment is required.
 
 X4 packaging commands and smoke contracts are documented in [native production smoke](native-production-smoke.md). Executed artifact evidence belongs to the controller report; X5 remains the release acceptance gate.
+
+### X5 group 1 browser contract reconciliation
+
+The native account menu submits logout as an HTTP POST form with a DELETE override. LiveView DOM reconciliation preserves browser open/closed state for that form-bearing disclosure, while a server removing the logout action can still close or replace it. This avoids the initial connected render closing the menu between opening it and submitting logout.
+
+Browser successors wait for the destination path and native join before history checks, and open both the mobile navigation and nested My Data disclosure before selecting Imports. Native RichText owns a lazily loaded Trix textbox and its readiness acknowledgement; Trix alone is an admitted library, while the ActionText wrapper and Hotwire runtime remain forbidden. Poster close uses its native dialog form. Disconnect checks inspect transport state rather than an obsolete CSS class. Offline simulation explicitly disconnects the existing socket; reconnect readmission preserves the map instance and authorized route sources while refreshing server metadata.
+
+Asset audits drain observed browser response bodies. When Chromium cannot retain a body, they fetch the same declared static pathname without query parameters, verify status and audit its canonical bytes. Undeclared URLs and failed observed responses stay refused. Decoded/gzip values then describe canonical served bytes; optional wire Content-Length remains from the observed response. This is a tooling correction, not a raised cap or a transfer/parse-time measurement.
+
+Executed lane evidence and exact code identities are recorded in the controller report `fix-x5f1.report.md`. Milestone/release acceptance remains controller-owned.
+
+Public map refresh compares grant fields independently from the request lease deadline. Fresh API reads may renew that deadline as time advances; an advancing finite deadline is admitted only when every other metadata field remains equal. A shortened, removed or newly bounded deadline remains a mixed-grant refusal, as do route/range/photo/capability changes. Server authorization and the LiveView deadline remain authoritative; this correction changes no public API or lease duration.

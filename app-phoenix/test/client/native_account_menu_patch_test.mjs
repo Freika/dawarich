@@ -52,6 +52,7 @@ function element({
   tag = "details",
   navbar = true,
   logout = true,
+  transport = "link",
   title = "old",
   content = "old action",
 } = {}) {
@@ -68,6 +69,8 @@ function element({
     matches(selector) {
       return (
         (selector.replace(/,\s*/g, ",") === 'dialog,.navbar-end details:has([href="/users/sign_out"])' &&
+          (tag === "dialog" || (tag === "details" && navbar && logout && transport === "link"))) ||
+        (selector === 'dialog,.navbar-end details:has([href="/users/sign_out"],form[action="/users/sign_out"])' &&
           (tag === "dialog" || (tag === "details" && navbar && logout))) ||
         (selector === "details, dialog" &&
           ["details", "dialog"].includes(tag)) ||
@@ -148,4 +151,18 @@ test("native page navigation preserves dialog and account disclosure state witho
   const revoked = element({ open: true })
   reconcile(revoked, element({ logout: false }))
   assert.equal(revoked.hasAttribute("open"), false)
+})
+
+
+test("native POST logout disclosure keeps browser state through the connected patch and later updates", () => {
+  for (const open of [true, false]) {
+    const current = element({ open, transport: "form" })
+    const incoming = element({ open: !open, transport: "form", title: "connected" })
+    reconcile(current, incoming)
+    assert.equal(current.hasAttribute("open"), open)
+    assert.equal(current.getAttribute("title"), "connected")
+    reconcile(current, element({ transport: "form", logout: false, title: "revoked" }))
+    assert.equal(current.hasAttribute("open"), false)
+    assert.equal(current.getAttribute("title"), "revoked")
+  }
 })
