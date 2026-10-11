@@ -1,20 +1,30 @@
-defmodule Dawarich.Maps.Dependencies.Realtime do
+defmodule Dawarich.Maps.Realtime do
   @moduledoc false
   alias Dawarich.{Maps, RailsMessages}
   alias Dawarich.Maps.Family
   alias Dawarich.Maps.Trip
-  alias Dawarich.Maps.Public
 
   def topics(%{kind: :public, capability: capability}, opts) do
-    case Public.config(capability, opts) do
-      {:ok, %{"publicType" => "live"}} ->
-        {:ok, %{stream(["shared_location", {:shared_link, capability.id}]) => "public"}}
+    with {:ok, link} <- Dawarich.Maps.PublicGrant.admit(capability, opts, false) do
+      topics = %{Dawarich.Sharing.Events.topic(link.id) => "public"}
 
-      {:ok, _} ->
-        {:ok, %{}}
+      topics =
+        if link.type == "live",
+          do: Map.put(topics, stream(["shared_location", {:shared_link, link.id}]), "public"),
+          else: topics
 
-      {:error, _} = error ->
-        error
+      topics =
+        if Dawarich.SharedLinks.FamilyAudience.family_only?(link) do
+          Enum.reduce(
+            Enum.uniq([link.user_id, capability.viewer_scope.user.id]),
+            topics,
+            &Map.put(&2, "family:user:#{&1}", "public")
+          )
+        else
+          topics
+        end
+
+      {:ok, topics}
     end
   end
 
@@ -35,23 +45,8 @@ defmodule Dawarich.Maps.Dependencies.Realtime do
                   )}
 
         :family ->
-          Maps.with_actor(
-            scope,
-            fn user ->
-              case Dawarich.FamilyPage.read(user, :show,
-                     now: Keyword.get(opts, :now, DateTime.utc_now()),
-                     self_hosted:
-                       Keyword.get(opts, :self_hosted, DawarichWeb.LayoutAssigns.self_hosted?())
-                   ) do
-                {:ok, %{state: :show, family: %{id: id}}} ->
-                  {:ok, %{stream(["family_locations", {:family, id}]) => "family"}}
-
-                _ ->
-                  {:error, :not_found}
-              end
-            end,
-            opts
-          )
+          with {:ok, _} <- Family.view(scope, opts),
+               do: {:ok, %{"family:user:#{fresh.user.id}" => "family"}}
 
         _ ->
           {:error, :not_found}
@@ -75,8 +70,8 @@ defmodule Dawarich.Maps.Dependencies.Realtime do
 
     if "Family Members" in List.wrap(layers) do
       case Family.view(scope, opts) do
-        {:ok, %{presentation: %{family: %{id: id}}}} ->
-          Map.put(topics, stream(["family_locations", {:family, id}]), "family")
+        {:ok, _} ->
+          Map.put(topics, "family:user:#{user.id}", "family")
 
         _ ->
           topics
@@ -87,8 +82,10 @@ defmodule Dawarich.Maps.Dependencies.Realtime do
   end
 
   defp user_topics(id) do
-    Map.new(~w(points tracks imports map_edits), &{stream([&1, {:user, id}]), &1})
-    |> Map.put(stream([{:user, id}]), "progress")
+    Map.new(~w(points tracks map_edits), &{stream([&1, {:user, id}]), &1})
+    |> Map.put("imports:user:#{id}:native", "imports")
+    |> Map.put("notifications:user:#{id}", "progress")
+    |> Map.put("sharing:user:#{id}", "sharing")
   end
 
   defp stream(parts), do: RailsMessages.broadcasting(parts)

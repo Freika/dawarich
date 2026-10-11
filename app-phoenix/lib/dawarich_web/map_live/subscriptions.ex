@@ -2,7 +2,7 @@ defmodule DawarichWeb.MapLive.Subscriptions do
   @moduledoc false
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [connected?: 1, push_event: 3]
-  alias Dawarich.Maps.Dependencies.Realtime
+  alias Dawarich.Maps.Realtime
 
   def sync(socket, descriptor, opts \\ []) do
     state =
@@ -10,7 +10,7 @@ defmodule DawarichWeb.MapLive.Subscriptions do
         %{
           descriptor: descriptor,
           topics: %{},
-          bus: Keyword.get(opts, :bus, Dawarich.Cable.Bus),
+          bus: Keyword.get(opts, :bus, Dawarich.Maps.EventBus),
           opts: Keyword.take(opts, [:now, :self_hosted]),
           seen: [],
           revision: 0
@@ -46,6 +46,9 @@ defmodule DawarichWeb.MapLive.Subscriptions do
       {:message, topic, payload} when is_binary(payload) ->
         admit_message(socket, topic, payload)
 
+      {:domain_message, topic} ->
+        admit_message(socket, topic, nil)
+
       {:subscribed, topic} ->
         if Map.has_key?(state.topics, topic),
           do: {:delivered, reconnect(socket)},
@@ -72,19 +75,20 @@ defmodule DawarichWeb.MapLive.Subscriptions do
     case Realtime.topics(state.descriptor, state.opts) do
       {:ok, desired} ->
         socket = reconcile(socket, desired)
-        fingerprint = :crypto.hash(:sha256, topic <> payload)
+        fingerprint = if is_binary(payload), do: :crypto.hash(:sha256, topic <> payload)
 
         cond do
           not Map.has_key?(desired, topic) ->
             {:ignored, socket}
 
-          fingerprint in state.seen ->
+          fingerprint && fingerprint in state.seen ->
             {:ignored, socket}
 
           true ->
             updated = %{
               socket.assigns.native_subscriptions
-              | seen: Enum.take([fingerprint | state.seen], 32)
+              | seen:
+                  if(fingerprint, do: Enum.take([fingerprint | state.seen], 32), else: state.seen)
             }
 
             {:delivered,

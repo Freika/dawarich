@@ -161,7 +161,8 @@ defmodule DawarichWeb.NativeTripDeliveryTest do
   defp settle_subscriptions(view) do
     topics = :sys.get_state(view.pid).socket.assigns.native_subscriptions.topics
 
-    for _ <- Map.keys(topics),
+    for {_topic, subscription} <- topics,
+        is_reference(subscription),
         do: assert_push_event(view, "map:invalidate", %{kind: "reconnect"}, 1000)
 
     render(view)

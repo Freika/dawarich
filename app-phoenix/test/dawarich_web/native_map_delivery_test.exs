@@ -18,6 +18,25 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
     %{scope: scope, socket: socket}
   end
 
+  test "native family invalidations consume the real M4 consent producer", %{
+    scope: scope,
+    socket: socket
+  } do
+    family!()
+    family_layer!(true)
+    socket = Subscriptions.sync(socket, %{kind: :map, scope: scope})
+    :ok = Dawarich.Families.Events.broadcast(scope.user.id, :consent)
+    assert_receive {:domain_changed, 881_401, :consent} = message
+    assert {:delivered, socket} = Subscriptions.deliver(socket, message)
+
+    assert hd(socket.private.live_temp.push_events) == [
+             "map:invalidate",
+             %{kind: "family", revision: 1}
+           ]
+
+    Subscriptions.release(socket)
+  end
+
   test "native map Family delivery invalidates only an admitted enabled membership", %{
     scope: scope,
     socket: socket
@@ -25,7 +44,7 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
     family!()
     family_layer!(true)
     socket = Subscriptions.sync(socket, %{kind: :map, scope: scope}, bus: NativeMapBus)
-    topic = RailsMessages.broadcasting(["family_locations", {:family, 881_401}])
+    topic = "family:user:881401"
     assert_receive {:native_subscribe, ^topic}
     message = {:native_message, topic, "synthetic-family-update"}
     assert {:delivered, socket} = Subscriptions.deliver(socket, message)
@@ -60,7 +79,7 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
   } do
     family!()
     descriptor = %{kind: :map, scope: scope}
-    topic = RailsMessages.broadcasting(["family_locations", {:family, 881_401}])
+    topic = "family:user:881401"
     socket = Subscriptions.sync(socket, descriptor, bus: NativeMapBus)
     refute Map.has_key?(socket.assigns.native_subscriptions.topics, topic)
     family_layer!(true)
@@ -103,7 +122,7 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
         socket
       )
 
-    topic = RailsMessages.broadcasting(["family_locations", {:family, 881_401}])
+    topic = "family:user:881401"
     assert_receive {:native_subscribe, ^topic}
     assert socket.assigns.map_config["familyEnabled"] == true
 

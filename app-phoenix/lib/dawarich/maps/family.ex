@@ -14,6 +14,7 @@ defmodule Dawarich.Maps.Family do
        }}
     else
       {:ok, _} -> {:error, :not_found}
+      {:error, :unauthorized} -> {:error, :not_found}
       error -> error
     end
   end
