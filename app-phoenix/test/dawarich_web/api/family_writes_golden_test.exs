@@ -7,23 +7,26 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
   alias Dawarich.Test.ApiGolden
   alias DawarichWeb.Api.FamilyController
 
-  @golden "test/fixtures/api_family/writes.json" |> File.read!() |> Jason.decode!()
+  @golden "test/rails_fixtures/api_family/writes.json" |> File.read!() |> Jason.decode!()
   @tables ~w(users families family_memberships family_location_requests notifications points)
-  @written ~w(users family_location_requests notifications)
+  @written @tables
   @outbox ~w(phoenix.rails_commands phoenix.notification_events)
   @now @golden["now"] |> DateTime.from_iso8601() |> elem(1)
   @moduletag api_now: @now
-  @http_owned ~w(history_missing_params history_blank_params history_not_in_family
-                 sharing_missing_enabled sharing_blank_enabled sharing_not_in_family create_stranger
-                 create_deleted_member create_without_target create_not_in_family accept_missing
-                 accept_not_target mine_not_in_family decline accept_suggested create_request
-                 create_target_sharing create_cooldown)
-
   @events Path.expand("../../../priv/repo/sql/20260928120000_wave2.sql", __DIR__)
 
   setup do
     if zone = @golden["time_zone"], do: System.put_env("TIME_ZONE", zone)
     Repo.query!(File.read!(@events), [], query_type: :text)
+    previous = System.get_env("JWT_SECRET_KEY")
+    System.put_env("JWT_SECRET_KEY", Dawarich.Test.FamilyGoldenResponse.secret())
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("JWT_SECRET_KEY", previous),
+        else: System.delete_env("JWT_SECRET_KEY")
+    end)
+
     :ok
   end
 
@@ -33,12 +36,12 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
       Enum.each(@kase["env"], fn {name, value} -> System.put_env(name, value) end)
       seed(@kase)
 
-      if @kase["expect"] == "rails" or @kase["name"] in @http_owned, do: http!(@kase, port, puma)
+      http!(@kase, port, puma)
       if @kase["expect"] == "own", do: domain!(@kase)
     end
   end
 
-  test "a failure after the first write rolls every table back and hands the request to Rails" do
+  test "a failure after the first write rolls every table back and returns the source error" do
     kase = Enum.find(@golden["cases"], &(&1["name"] == "create_request"))
     seed(kase)
     Repo.query!("DROP TABLE phoenix.notification_events")
@@ -46,7 +49,9 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
     tables = @tables ++ ["phoenix.rails_commands"]
     before = rows(tables)
 
-    assert {:replay, _reason} = FamilyController.run(action, user, params, @now)
+    assert {:ok, 500, {:object, [{"message", "An error occurred"}]}} =
+             FamilyController.run(action, user, params, @now)
+
     assert rows(tables) == before
   end
 
@@ -61,9 +66,15 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
   end
 
   defp http!(kase, port, puma) do
-    before = rows(@tables ++ @outbox)
-    ApiGolden.check(kase, port, puma)
-    if kase["expect"] == "rails", do: assert(rows(@tables ++ @outbox) == before)
+    notifications = count("notifications")
+    Dawarich.Test.FamilyGoldenResponse.check(kase, port, puma)
+
+    {action, _params} =
+      action(kase["request"]["method"], URI.parse(kase["request"]["target"]).path)
+
+    assert decision_rows(action, kase["response"]["status"]) == kase["after"]
+    assert_mail(kase)
+    assert count("phoenix.notification_events") == count("notifications") - notifications
 
     for table <- @outbox ++ Enum.reverse(@tables), do: Repo.query!("DELETE FROM #{table}")
 
@@ -96,6 +107,12 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
 
     assert decision_rows(action, status) == Map.take(kase["after"], @written)
 
+    assert_mail(kase)
+
+    assert count("phoenix.notification_events") == count("notifications") - notifications
+  end
+
+  defp assert_mail(kase) do
     mailed =
       for ["ActionMailer::MailDeliveryJob", "FamilyMailer", "location_request", gid] <-
             kase["jobs"],
@@ -103,10 +120,13 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
 
     assert length(mailed) == length(kase["jobs"])
 
-    assert mail_commands() ==
-             Enum.map(mailed, &%{"user_id" => user.id, "request_id" => &1})
+    expected =
+      Enum.map(mailed, fn id ->
+        source = Enum.find(kase["after"]["family_location_requests"], &(&1["id"] == id))
+        %{"user_id" => source["requester_id"], "request_id" => id}
+      end)
 
-    assert count("phoenix.notification_events") == count("notifications") - notifications
+    assert mail_commands() == expected
   end
 
   defp decision_rows(action, status) when action in [:accept, :decline] and status == 200 do
@@ -150,6 +170,8 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
     [id, decision] = String.split(rest, "/")
     {String.to_existing_atom(decision), %{"id" => id}}
   end
+
+  defp action(_, _), do: {:other, %{}}
 
   defp query(target), do: URI.decode_query(URI.parse(target).query || "")
 

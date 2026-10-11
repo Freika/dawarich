@@ -7,7 +7,6 @@ defmodule Dawarich.Families.Requests do
   alias Dawarich.Mail.ResidualCommands
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
-  @max_id 9_223_372_036_854_775_807
   @cooldown_seconds 3600
   @lifetime_seconds 86_400
 
@@ -17,7 +16,7 @@ defmodule Dawarich.Families.Requests do
         {:ok, 404, Locations.not_in_family()}
 
       [_settings, family] ->
-        target = target_id(params)
+        target = Dawarich.Families.RequestInput.target_id(params)
 
         if target == user.id do
           message =
@@ -60,11 +59,15 @@ defmodule Dawarich.Families.Requests do
           :request_location,
           fn ->
             RailsTime.with_zone(user.timezone, fn ->
-              create(user, family_id, target_id(params), now)
+              create(user, family_id, Dawarich.Families.RequestInput.target_id(params), now)
             end)
           end
         )
     end
+  rescue
+    _ -> failure(500, "an_error_occurred")
+  catch
+    {:self_request, result} -> result
   end
 
   def respond(user, decision, params, now, repo \\ Repo) do
@@ -100,7 +103,20 @@ defmodule Dawarich.Families.Requests do
 
   defp create(user, family_id, target_id, now, opts) do
     repo = Keyword.get(opts, :repo, Repo)
-    if target_id == user.id, do: raise(ArgumentError, "a request for one's own location")
+
+    if target_id == user.id do
+      message =
+        Dawarich.WebValidation.message(
+          "en",
+          "family/location_request",
+          "requester",
+          "models.family.location_request.cannot_request_your_own_location"
+        )
+
+      throw(
+        {:self_request, {:ok, 422, {:object, [{"message", "Validation failed: " <> message}]}}}
+      )
+    end
 
     case repo.query!(
            "SELECT u.id, u.email, u.settings FROM users u " <>
@@ -234,24 +250,6 @@ defmodule Dawarich.Families.Requests do
 
       _other ->
         raise ArgumentError, "duration parameter shape"
-    end
-  end
-
-  defp target_id(params) do
-    case params["target_user_id"] do
-      nil ->
-        nil
-
-      id when is_integer(id) and id >= -@max_id - 1 and id <= @max_id ->
-        id
-
-      id when is_binary(id) ->
-        if id =~ ~r/\A\d{1,18}\z/,
-          do: String.to_integer(id),
-          else: raise(ArgumentError, "target id shape")
-
-      _other ->
-        raise ArgumentError, "target id shape"
     end
   end
 

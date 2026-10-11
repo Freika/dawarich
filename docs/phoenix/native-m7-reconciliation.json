@@ -12885,6 +12885,32 @@
         }
       ],
       "authority": "fix-s2g: native terminal refusal retains body, framing, no-upstream and privacy contracts after m7 B3"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/a12f3b_review_r4_test.exs",
+        "name": "native R4 consent preserves URL normalization and independent API refusal"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/a12f3b_review_r4_test.exs",
+          "name": "native R4 consent preserves URL normalization across web and API writes"
+        }
+      ],
+      "authority": "fix-s2gb fresh Rails capture; API URL normalization replaces retired refusal while retaining web consent and invalid-settings rollback"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/api/family_writes_golden_test.exs",
+        "name": "a failure after the first write rolls every table back and hands the request to Rails"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/api/family_writes_golden_test.exs",
+          "name": "a failure after the first write rolls every table back and returns the source error"
+        }
+      ],
+      "authority": "fix-s2gb controller Rails oracle decision; terminal source error retains all-table rollback and no-effect obligations"
     }
   ],
   "readers": [
@@ -14566,21 +14592,21 @@
     {
       "file": "app-phoenix/test/dawarich_web/api/account_golden_test.exs",
       "markers": [
-        "test/fixtures",
+        "test/rails_fixtures",
         "fixtures/"
       ]
     },
     {
       "file": "app-phoenix/test/dawarich_web/api/family_golden_test.exs",
       "markers": [
-        "test/fixtures",
+        "test/rails_fixtures",
         "fixtures/"
       ]
     },
     {
       "file": "app-phoenix/test/dawarich_web/api/family_writes_golden_test.exs",
       "markers": [
-        "test/fixtures",
+        "test/rails_fixtures",
         "fixtures/"
       ]
     },

@@ -28,7 +28,38 @@ defmodule Dawarich.Test.ApiGoldenTest do
     end
   end
 
-  defp check(expected, actual) do
+  test "signed error bodies validate original framing without inventing an ETag" do
+    expected = %{
+      "status" => 403,
+      "headers" => %{
+        "content-type" => "application/json",
+        "x-request-id" => "00000000-0000-0000-0000-000000000000",
+        "x-runtime" => "0.000001"
+      },
+      "body" => ~s({"token":"redacted"})
+    }
+
+    actual = Map.put(expected, "body", ~s({"token":"verified-synthetic-token"}))
+
+    validator = fn raw ->
+      assert {:ok, decoded} = Jason.decode(raw)
+      assert decoded["token"] == "verified-synthetic-token"
+      String.replace(raw, "verified-synthetic-token", "redacted")
+    end
+
+    options = [crypto: validator, crypto_etag: false]
+    check(expected, actual, options)
+
+    for changed <- [
+          Map.put(actual, "body", ~s({"token":"invalid"})),
+          Map.put(actual, "length", byte_size(actual["body"]) - 1),
+          put_in(actual, ["headers", "etag"], "unexpected")
+        ] do
+      assert_raise ExUnit.AssertionError, fn -> check(expected, changed, options) end
+    end
+  end
+
+  defp check(expected, actual, options \\ []) do
     server = listen()
     upstream = listen()
 
@@ -40,7 +71,7 @@ defmodule Dawarich.Test.ApiGoldenTest do
         reply(socket, [
           "HTTP/1.1 #{actual["status"]} OK\r\n",
           Enum.map(actual["headers"], fn {name, value} -> "#{name}: #{value}\r\n" end),
-          "Content-Length: #{byte_size(actual["body"])}\r\n\r\n",
+          "Content-Length: #{actual["length"] || byte_size(actual["body"])}\r\n\r\n",
           actual["body"]
         ])
 
@@ -55,7 +86,8 @@ defmodule Dawarich.Test.ApiGoldenTest do
           "response" => expected
         },
         server.port,
-        upstream
+        upstream,
+        options
       )
     after
       Task.await(peer)

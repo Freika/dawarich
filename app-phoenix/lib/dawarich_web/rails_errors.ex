@@ -16,6 +16,9 @@ defmodule DawarichWeb.RailsErrors do
     do: halt(conn)
 
   def respond(conn, status, opts) do
+    opts =
+      Keyword.put_new(opts, :exception, Enum.take(conn.path_info, 3) == ["api", "v1", "families"])
+
     conn = assign(conn, :api_params, conn.assigns[:api_params] || %{})
     format = DawarichWeb.Api.RequestFormat.decide(conn)
 
@@ -33,15 +36,27 @@ defmodule DawarichWeb.RailsErrors do
           else: {"text/plain", @reasons[status]}
       end
 
+    conn =
+      if opts[:exception] do
+        %{conn | resp_headers: []}
+        |> put_resp_header("x-request-id", conn.assigns[:api_request_id] || Ecto.UUID.generate())
+        |> put_resp_header("x-runtime", "0.000000")
+      else
+        conn
+      end
+
     conn = if conn.method == "HEAD", do: Plug.Head.call(conn, []), else: conn
 
     conn =
-      if opts[:transport],
+      if opts[:transport] || opts[:exception],
         do: delete_resp_header(conn, "cache-control"),
         else: DawarichWeb.RailsHeaders.call(conn, [])
 
     conn
-    |> put_resp_content_type(type, if(type == "text/html", do: "UTF-8", else: "utf-8"))
+    |> put_resp_content_type(
+      type,
+      if(type == "text/html" or opts[:exception] == true, do: "UTF-8", else: "utf-8")
+    )
     |> send_resp(status, body)
     |> halt()
   end

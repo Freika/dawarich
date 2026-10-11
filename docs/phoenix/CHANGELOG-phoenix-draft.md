@@ -266,3 +266,5 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 - Erase idle native Family map coordinates and popups on sharing expiry, and revalidate withdrawals within a snapshot-bound lease that unrelated callbacks cannot extend while typed sharing invalidations are pending. [FRB-NATIVE-M6-FAMILY-IDLE-CONSENT](fixed-rails-bugs.md#frb-native-m6-family-idle-consent)
 
 - Keep shared-link visit counts unchanged for HEAD checks and connected map callbacks; admitted document GETs count once. [FRB-NATIVE-STAGE2-PUBLIC-HEAD](fixed-rails-bugs.md#frb-native-stage2-public-head--head-requests-inflate-shared-link-visit-counts)
+
+- Keep the Family locations API available when a member has null settings; absent consent disables sharing without rewriting data. [FRB-NATIVE-S2GB-NULL-FAMILY-SETTINGS](fixed-rails-bugs.md#frb-native-s2gb-null-family-settings--family-locations-crash-on-null-member-settings)

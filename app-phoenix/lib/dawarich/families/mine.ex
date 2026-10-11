@@ -21,7 +21,7 @@ defmodule Dawarich.Families.Mine do
   end
 
   defp payload(user_id, settings, family_id, now) do
-    members = Locations.members(family_id)
+    members = Locations.members(family_id) |> Enum.sort_by(& &1.id)
     [[name]] = Repo.query!("SELECT name FROM families WHERE id = $1", [family_id]).rows
 
     {:object,

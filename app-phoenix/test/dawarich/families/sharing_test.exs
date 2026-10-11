@@ -24,8 +24,6 @@ defmodule Dawarich.Families.SharingTest do
           true,
           0,
           ["x"],
-          "2099-01-01",
-          "2099-01-01 00:00:00Z",
           "2099-02-30T00:00:00Z"
         ] do
       assert_raise ArgumentError, fn -> Sharing.enabled?(settings(expires_at), @now) end

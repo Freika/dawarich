@@ -832,10 +832,10 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
   end
 
   def places_response(kase, target, headers, body, strict: false)
+    config = Rails.application.env_config
+    previous = config.slice('action_dispatch.show_exceptions', 'action_dispatch.show_detailed_exceptions')
+    config.merge!('action_dispatch.show_exceptions' => :all, 'action_dispatch.show_detailed_exceptions' => false)
     if kase[:second_save_failure]
-      config = Rails.application.env_config
-      detailed = config['action_dispatch.show_detailed_exceptions']
-      config['action_dispatch.show_detailed_exceptions'] = false
       allow_any_instance_of(User).to receive(:update!).and_wrap_original do |original, changes|
         original.receiver.email = nil
         original.call(changes)
@@ -849,10 +849,8 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
     super
   ensure
     travel_to(ApiAccountGoldenOracle::NOW) if kase[:source_offset]
-    if kase[:second_save_failure]
-      config['action_dispatch.show_detailed_exceptions'] = detailed
-      allow_any_instance_of(User).to receive(:update!).and_call_original
-    end
+    config.merge!(previous) if previous
+    allow_any_instance_of(User).to receive(:update!).and_call_original if kase[:second_save_failure]
   end
 
   def account_crypto(result, payload, entry, owner)
