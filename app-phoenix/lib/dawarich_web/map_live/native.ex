@@ -107,6 +107,7 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event("map:anomalies", %{"enabled" => value}, socket)
       when value in ["true", "false"] do
     config = Map.put(socket.assigns.map_config, "anomaliesEnabled", value == "true")
+
     {:noreply, socket |> assign(:map_config, config) |> push_event("map:config", config)}
   end
 
@@ -155,7 +156,14 @@ defmodule DawarichWeb.MapLive.Native do
         socket.assigns.map_url["panel"]
       )
 
-    {:noreply, socket |> assign(:map_config, config) |> push_event("map:config", config)}
+    {:noreply,
+     socket
+     |> assign(:map_config, config)
+     |> push_event("map:config", config)
+     |> DawarichWeb.MapLive.Subscriptions.sync(%{
+       kind: :map,
+       scope: socket.assigns.current_scope
+     })}
   end
 
   def handle_event("enrichment:" <> _ = event, payload, socket),

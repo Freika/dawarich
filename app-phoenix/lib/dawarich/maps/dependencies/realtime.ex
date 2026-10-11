@@ -1,7 +1,7 @@
 defmodule Dawarich.Maps.Dependencies.Realtime do
   @moduledoc false
   alias Dawarich.{Maps, RailsMessages}
-  alias Dawarich.Maps.Dependencies.{Public, Trip}
+  alias Dawarich.Maps.Dependencies.{Family, Public, Trip}
 
   def topics(%{kind: :public, capability: capability}, opts) do
     case Public.config(capability, opts) do
@@ -20,7 +20,7 @@ defmodule Dawarich.Maps.Dependencies.Realtime do
     with {:ok, fresh} <- Maps.admit(scope, opts) do
       case descriptor.kind do
         :map ->
-          {:ok, user_topics(fresh.user.id)}
+          Maps.with_actor(scope, fn user -> {:ok, map_topics(scope, user, opts)} end, opts)
 
         :trip ->
           with {:ok, _} <- Trip.config(scope, descriptor.trip_id, opts),
@@ -60,6 +60,23 @@ defmodule Dawarich.Maps.Dependencies.Realtime do
   end
 
   def topics(_, _), do: {:error, :not_found}
+
+  defp map_topics(scope, user, opts) do
+    topics = user_topics(user.id)
+    layers = Dawarich.UserSettings.get(user)["enabled_map_layers"] || []
+
+    if "Family Members" in List.wrap(layers) do
+      case Family.view(scope, opts) do
+        {:ok, %{presentation: %{family: %{id: id}}}} ->
+          Map.put(topics, stream(["family_locations", {:family, id}]), "family")
+
+        _ ->
+          topics
+      end
+    else
+      topics
+    end
+  end
 
   defp user_topics(id) do
     Map.new(~w(points tracks imports map_edits), &{stream([&1, {:user, id}]), &1})

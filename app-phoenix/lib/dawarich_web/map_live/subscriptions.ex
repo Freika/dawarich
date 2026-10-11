@@ -99,7 +99,9 @@ defmodule DawarichWeb.MapLive.Subscriptions do
   defp reconcile(socket, desired) do
     state = socket.assigns.native_subscriptions
 
-    Enum.each(Map.keys(state.topics) -- Map.keys(desired), fn topic ->
+    removed = Map.keys(state.topics) -- Map.keys(desired)
+
+    Enum.each(removed, fn topic ->
       state.bus.unsubscribe(topic)
     end)
 
@@ -113,7 +115,11 @@ defmodule DawarichWeb.MapLive.Subscriptions do
         end
       end)
 
-    assign(socket, :native_subscriptions, %{state | topics: topics})
+    socket = assign(socket, :native_subscriptions, %{state | topics: topics})
+
+    if state.descriptor.kind == :map and removed != [],
+      do: invalidate(socket, "reconnect"),
+      else: socket
   end
 
   defp subscribe(bus, topic) do
