@@ -86,6 +86,8 @@ try {
     const bytes = readFileSync(await download.path());
     assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
     assert.ok(bytes.length > 1000);
+    assert.equal(bytes.readUInt32BE(16), 1080);
+    assert.equal(bytes.readUInt32BE(20), 1080);
     evidence('synthetic studio PNG export');
     await page.locator('#native-poster-dialog [data-poster-switch-video]').click();
     await page.waitForSelector('#native-video-dialog[open] .maplibregl-canvas');

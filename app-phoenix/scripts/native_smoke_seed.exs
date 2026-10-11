@@ -8,7 +8,8 @@ r.query!(
       "timezone" => "UTC",
       "locale" => "en",
       "globe_projection" => false,
-      "onboarding_completed" => true
+      "onboarding_completed" => true,
+      "enabled_map_layers" => ["Points", "Tracks"]
     },
     System.fetch_env!("NATIVE_SMOKE_API_KEY"),
     id
@@ -42,4 +43,5 @@ r.query!(
   log: false
 )
 
+r.query!("UPDATE users SET points_count=3 WHERE id=$1", [id], log: false)
 IO.puts("synthetic smoke data ready")
