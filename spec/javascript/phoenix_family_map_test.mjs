@@ -99,7 +99,7 @@ function fixture(options = {}) {
     },
     ...options.timers,
   }
-  const empty = { hidden: false }
+  const empty = { hidden: false, style: {} }
   const element = {
     querySelector: (selector) =>
       selector === "[data-family-empty]" ? empty : null,
@@ -504,4 +504,18 @@ test("unrelated Family lease callbacks cannot prolong cached coordinates or acce
     f.owner.destroy()
   }
   assert.equal(jobs.size, 0)
+})
+
+test("family empty guidance display follows consent despite flex styling", async () => {
+  const f = fixture()
+  try {
+    await f.owner.mount()
+    assert.equal(f.empty.style.display, "none")
+    f.owner.clear()
+    assert.equal(f.empty.style.display, "")
+    await f.owner.reconnect()
+    assert.equal(f.empty.style.display, "none")
+  } finally {
+    f.owner.destroy()
+  }
 })

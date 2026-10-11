@@ -19,6 +19,11 @@ export function mountFamily({
   now = Date.now,
 }) {
   const empty = element.querySelector?.("[data-family-empty]")
+  const showEmpty = (visible) => {
+    if (!empty) return
+    empty.hidden = !visible
+    empty.style.display = visible ? "" : "none"
+  }
   let overlay, library, overlayLocale, leaseTimer, leaseToken
   let destroyed = false
   let leaseDeadline = now() + 30000
@@ -70,7 +75,7 @@ export function mountFamily({
         overlayLocale = desired
       }
       overlay.clear()
-      if (empty) empty.hidden = false
+      showEmpty(true)
       reads.reset()
       const read = reads.begin(signal)
       try {
@@ -95,7 +100,7 @@ export function mountFamily({
         read.check()
         if (now() >= leaseDeadline) return
         overlay.replace(latest.data.locations, history.data.members)
-        if (empty) empty.hidden = latest.data.locations.length > 0
+        showEmpty(latest.data.locations.length === 0)
       } finally {
         read.close()
       }
@@ -129,7 +134,7 @@ export function mountFamily({
     reads.reset()
     reader.reset()
     overlay?.clear()
-    if (empty) empty.hidden = false
+    showEmpty(true)
   }
   const destroy = owner.destroy
   owner.destroy = () => {
