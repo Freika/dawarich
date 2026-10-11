@@ -9,6 +9,8 @@ export function overlayAwarePadding(mapRect, overlayRect) {
     left: BASE_MAP_PADDING,
   }
   if (!mapRect || !overlayRect) return padding
+  if (overlayRect.bottom <= mapRect.top || overlayRect.top >= mapRect.bottom)
+    return padding
   const overlapsLeftEdge =
     overlayRect.left < mapRect.right && overlayRect.right > mapRect.left
   if (!overlapsLeftEdge) return padding
