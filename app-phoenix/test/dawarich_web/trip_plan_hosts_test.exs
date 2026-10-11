@@ -3,7 +3,6 @@ defmodule DawarichWeb.TripPlanHostsTest do
   require Phoenix.LiveViewTest
   alias Dawarich.Test.{RailsUser, TripsSeeds, ParityHTML, MapStimulus, NativeTripCorpus}
   import Phoenix.ConnTest
-  import Dawarich.Test.RailsFormRequests
   alias Dawarich.Trips.WebForm
   alias Dawarich.Jobs.Ownership
   @endpoint DawarichWeb.Endpoint
@@ -210,9 +209,7 @@ defmodule DawarichWeb.TripPlanHostsTest do
           refute html =~ "data-controller"
 
           assert {:ok, data} =
-                   Dawarich.Maps.Trip.read(Dawarich.Maps.principal(user, "en"), id,
-                     now: @now
-                   )
+                   Dawarich.Maps.Trip.read(Dawarich.Maps.principal(user, "en"), id, now: @now)
 
           for raw <-
                 NativeTripCorpus.attrs(
@@ -261,7 +258,7 @@ defmodule DawarichWeb.TripPlanHostsTest do
         cond do
           selector == "#trip-shell" -> "trip-shell"
           selector == "#trips" -> "native-trip-preview"
-          true -> "trip-maplibre-preview"
+          true -> "trip-form"
         end
 
       assert conn.resp_body =~ marker
@@ -294,17 +291,15 @@ defmodule DawarichWeb.TripPlanHostsTest do
     refute page.plan_on_map
     assert page.map_state == :empty
 
-    upstream = upstream!()
     previous = Application.get_env(:dawarich, :rails_routes)
     Application.put_env(:dawarich, :rails_routes, ["trips"])
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, previous) end)
     before = Repo.query!("SELECT count(*) FROM job_outbox").rows
 
-    for path <- ["/trips/#{id}/edit"] do
-      {{line, _}, conn} = forwarded(upstream, fn -> RailsUser.signed_in(user.id) |> get(path) end)
-      assert conn.status == 204
-      assert line =~ "GET #{path} HTTP/1.1"
-    end
+    conn = RailsUser.signed_in(user.id) |> get("/trips/#{id}/edit")
+    assert conn.status == 200
+    assert String.contains?(conn.resp_body, "RichText")
+    refute String.contains?(conn.resp_body, "data-controller")
 
     index = RailsUser.signed_in(user.id) |> get("/trips")
     assert index.status == 200
