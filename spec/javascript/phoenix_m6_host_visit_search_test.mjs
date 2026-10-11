@@ -64,7 +64,7 @@ test("native visit selection uses the Rails bounded camera transition", async ()
   }
 })
 
-test("native visit pointer survives unrelated timeline pointer-out", async () => {
+test("native track hover reconciliation preserves a cursor owned by a visit", async () => {
   const f = fixture({ visitsEnabled: true })
   const canvas = { style: {} }
   let hit = true
@@ -75,7 +75,8 @@ test("native visit pointer survives unrelated timeline pointer-out", async () =>
     await f.owner.mount()
     f.map.emit("mousemove", { point: { x: 20, y: 20 } })
     assert.equal(canvas.style.cursor, "pointer")
-    f.root.emit("pointerout", { target: { closest: () => null } })
+    const trackMove = [...f.listeners.get("mousemove")][0]
+    trackMove({ point: { x: 20, y: 20 } })
     assert.equal(canvas.style.cursor, "pointer")
     hit = false
     f.map.emit("mousemove", { point: { x: 30, y: 30 } })
