@@ -104,7 +104,7 @@ defmodule Dawarich.Digests.Pages do
 
     if length(monthly) <= 12 and
          Enum.all?(monthly, fn {month, meters} ->
-           Digests.to_i(month) in 1..12 and is_number(meters)
+           Digests.to_i(month) in 1..12 and distance?(meters)
          end) do
       {:ok,
        Map.merge(data, %{
@@ -116,13 +116,26 @@ defmodule Dawarich.Digests.Pages do
          total_countries_all_time: scalar(all_time, "total_countries", 0),
          total_cities_all_time: scalar(all_time, "total_cities", 0),
          total_distance_all_time: integer(all_time, "total_distance"),
-         monthly_distances: Enum.sort_by(monthly, fn {month, _} -> Digests.to_i(month) end),
+         monthly_distances:
+           monthly
+           |> Enum.map(fn {month, meters} -> {month, distance(meters)} end)
+           |> Enum.sort_by(fn {month, _} -> Digests.to_i(month) end),
          sharing_expiration: expiry
        })}
     else
       {:error, :invalid_input}
     end
   end
+
+  defp distance(value) when is_number(value), do: value
+  defp distance(value), do: Digests.to_i(value)
+
+  defp distance?(value) when is_number(value), do: true
+
+  defp distance?(value) when is_binary(value) and byte_size(value) <= 128,
+    do: Regex.match?(~r/\A[+-]?\d+(?:\.\d+)?\z/, value)
+
+  defp distance?(_), do: false
 
   defp values(map, key) when is_map(map),
     do:
