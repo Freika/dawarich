@@ -118,3 +118,13 @@ Asset audits drain observed browser response bodies. When Chromium cannot retain
 Executed lane evidence and exact code identities are recorded in the controller report `fix-x5f1.report.md`. Milestone/release acceptance remains controller-owned.
 
 Public map refresh compares grant fields independently from the request lease deadline. Fresh API reads may renew that deadline as time advances; an advancing finite deadline is admitted only when every other metadata field remains equal. A shortened, removed or newly bounded deadline remains a mixed-grant refusal, as do route/range/photo/capability changes. Server authorization and the LiveView deadline remain authoritative; this correction changes no public API or lease duration.
+
+## Browser timing regressions
+
+Registration assertions select the locale used by their labels explicitly, including when the shared account previously chose another language. A connected LiveView alone does not establish the language of its controls.
+
+Family tests complete the localized tab's map admission before reloading the other tab, and await fresh map-read completion, rendered consent state and the existing `map:ready` acknowledgement before the next consent change. A locale parameter persists account settings; overlapping that write with the other tab's guarded snapshot can produce `grant_changed`. Snapshot refusal remains fail-closed. Consent revocation, retained canvases and fresh reconnect reads remain required.
+
+Replay advancement tests seek their owned short fixture segment before starting normal-speed playback. The shared day's first minute can contain unrelated points and is not a bounded timing fixture.
+
+Poster Escape cancellation disposes export and order ownership synchronously on the native dialog's `cancel` event. The dialog loses its open state before the queued `close` observer runs, so that observer alone cannot prevent a completed encoder from delivering a file. The cancellation test holds only the detached PDF export canvas's JPEG encoder, releases it once, and withholds the close observer. The preview backdrop also calls `toBlob`; its callback is not export readiness, and PNG export uses a separate encoder. These barriers verify cancellation without sleeps or retries. The controller's `fix-flakes-s2` report records the ordered-prefix verification and mutation evidence.
