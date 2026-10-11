@@ -2,7 +2,7 @@ defmodule Dawarich.Settings.Integrations do
   @moduledoc false
   alias Dawarich.{UserSettings, Settings.Integrations.Connection}
   alias Dawarich.Imports.Trek.{Endpoint, Client.Error}
-  alias DawarichWeb.Translate
+  alias Dawarich.Formatting.Translate, as: Translate
 
   @providers ~w(immich photoprism airtrail teslamate)
   @fields ~w(immich_url immich_api_key immich_skip_ssl_verification photoprism_url photoprism_api_key photoprism_skip_ssl_verification airtrail_url airtrail_api_key airtrail_skip_ssl_verification teslamate_url teslamate_username teslamate_password teslamate_api_token teslamate_skip_ssl_verification)

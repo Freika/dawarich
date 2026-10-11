@@ -4,7 +4,7 @@ defmodule Dawarich.Mail.Residual do
 
   alias Dawarich.{I18n, LocalTime}
   alias Dawarich.Mail.{ExploreFeatures, Layout}
-  alias DawarichWeb.LocalizedTime
+  alias Dawarich.Formatting.LocalizedTime, as: LocalizedTime
 
   @dir Path.expand("../../../priv/mail/residual", __DIR__)
   @surfaces %{

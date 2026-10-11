@@ -2,7 +2,7 @@ defmodule Dawarich.Settings.Api do
   @moduledoc false
   alias Dawarich.{Entitlements, I18n, RubyInteger, UserSettings}
   alias Dawarich.Settings.Progress
-  alias DawarichWeb.Api.SettingsController
+  alias Dawarich.Settings.Input, as: SettingsController
 
   @fields ~w(fog_of_war_meters preferred_map_layer time_threshold_minutes merge_threshold_minutes live_map_enabled track_color immich_url immich_api_key photoprism_url photoprism_api_key airtrail_url airtrail_api_key maps distance_unit visits_suggestions_enabled fog_of_war_threshold fog_of_war_mode enabled_map_layers places_tag_filters maps_maplibre_style maps_maplibre_tiles_url maps_maplibre_tiles_fallback maps_maplibre_custom_theme globe_projection enabled_transportation_modes min_minutes_spent_in_city gps_filtering_enabled timezone visit_radius_meters visit_min_points visit_min_duration_minutes point_dragging_enabled meters_between_routes speed_colored_routes points_rendering_mode minutes_between_routes route_opacity route_color speed_color_scale points_tiled_rendering)
   @modes ~w(unknown stationary walking running cycling driving bus train flying boat motorcycle)
@@ -14,7 +14,7 @@ defmodule Dawarich.Settings.Api do
   def context(conn),
     do:
       Map.merge(
-        %{now: DateTime.utc_now(), self_hosted?: DawarichWeb.LayoutAssigns.self_hosted?()},
+        %{now: DateTime.utc_now(), self_hosted?: Dawarich.RuntimePolicy.self_hosted?()},
         conn.assigns[:api_context] || %{}
       )
 
@@ -212,7 +212,7 @@ defmodule Dawarich.Settings.Api do
       )
 
     attrs =
-      if attrs["locale"] in DawarichWeb.Locale.locales(),
+      if attrs["locale"] in Dawarich.Localization.locales(),
         do: attrs,
         else: Map.delete(attrs, "locale")
 

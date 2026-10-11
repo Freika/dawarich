@@ -55,7 +55,7 @@ defmodule Dawarich.Visits.BulkSweep do
           Settings.policy(settings).suggestions_enabled,
           Processed.claim!(repo, receipt_id(args["event_id"], id), "visits.bulk_suggest") do
         zone = Map.fetch!(zones, TimeZoneName.to_iana(UserTimeZone.zone(settings, zone_env)))
-        hosted = DawarichWeb.LayoutAssigns.self_hosted?(env)
+        hosted = Dawarich.RuntimePolicy.self_hosted?(env)
         now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
         restricted = not Entitlements.full_access?(repo, %{id: id, plan: plan}, hosted, now)
 

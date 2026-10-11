@@ -168,7 +168,7 @@ defmodule DawarichWeb.A12f3aOClosureTest do
     refute A8Gate.actions?(rejected, %{})
 
     {^gate, binary, filename} = :code.get_object_code(gate)
-    source = Path.expand("../../lib/dawarich_web/trip_request_gate.ex", __DIR__)
+    source = Path.expand("../../lib/dawarich_web/features/trips/trip_request_gate.ex", __DIR__)
 
     cloud_policy =
       source |> File.read!() |> String.replace("do: query?(conn)", "do: query?(conn) and false")

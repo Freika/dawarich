@@ -53,7 +53,7 @@ defmodule Dawarich.Posters.Persistence do
 
     name =
       if Ruby.blank?(params["name"]),
-        do: DawarichWeb.Translate.t(locale, "controllers.posters.untitled", %{}),
+        do: Dawarich.Formatting.Translate.t(locale, "controllers.posters.untitled", %{}),
         else: Ruby.to_s(params["name"])
 
     now = NaiveDateTime.utc_now()

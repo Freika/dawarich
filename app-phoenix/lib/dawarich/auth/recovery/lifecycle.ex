@@ -200,7 +200,9 @@ defmodule Dawarich.Auth.Recovery.Lifecycle do
   defp locked?(user, now), do: not Accounts.unlocked?(user, now)
 
   defp intent(user, kind, raw, digest, context) do
-    locale = DawarichWeb.Locale.resolve(nil, user, %{"locale" => Map.get(context, :locale, "en")})
+    locale =
+      Dawarich.Localization.resolve(nil, user, %{"locale" => Map.get(context, :locale, "en")})
+
     %Notification{kind: kind, user_id: user.id, raw: raw, digest: digest, locale: locale}
   end
 

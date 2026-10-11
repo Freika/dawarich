@@ -1,7 +1,7 @@
 defmodule Dawarich.RouteVideos.Uploads do
   @moduledoc false
   alias Dawarich.{Maps, RailsMessages, Repo, RouteVideos, Uploads}
-  alias DawarichWeb.ActiveStorageUrls
+  alias Dawarich.Storage.UploadUrls, as: ActiveStorageUrls
 
   def target(scope, attrs, base_url, opts \\ []) do
     entry = %{

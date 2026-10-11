@@ -148,5 +148,7 @@ defmodule Dawarich.Auth.Recovery.Closure do
   end
 
   defp secret(context), do: Map.get_lazy(context, :secret, &RailsSecret.fetch/0)
-  defp text(context, key), do: DawarichWeb.Translate.t(Map.get(context, :locale, "en"), key, %{})
+
+  defp text(context, key),
+    do: Dawarich.Formatting.Translate.t(Map.get(context, :locale, "en"), key, %{})
 end

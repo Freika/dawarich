@@ -5,67 +5,47 @@ defmodule DawarichWeb.TripPlanItems do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.LocalizedDate
 
-  def it(locale, key, bindings \\ %{}), do: t(locale, "trips.source_itinerary." <> key, bindings)
-
-  def visible?(plan),
-    do:
-      Enum.any?(
-        [
-          plan.days,
-          plan.reservations,
-          plan.accommodations,
-          plan.travellers,
-          plan.unplanned_places
-        ],
-        &(&1 != [])
-      )
-
-  def synced?(nil), do: false
-
-  def synced?(note),
-    do:
-      Ruby.present?(note.source_digest) and
-        note.source_digest == Base.encode16(:crypto.hash(:sha256, note.body || ""), case: :lower)
-
-  def trek_url(plan) do
-    if plan.source && Ruby.present?(plan.trip.source_identifier),
-      do:
-        String.replace_suffix(plan.source.base_url, "/", "") <>
-          "/trips/" <> URI.encode(plan.trip.source_identifier, &URI.char_unreserved?/1)
+  def it(locale, key, bindings \\ %{}) do
+    t(locale, "trips.source_itinerary." <> key, bindings)
   end
 
-  def prepare(plan, settings) do
-    local = fn reservation ->
-      Map.update!(reservation, :starts_at, fn at ->
-        if at, do: Dawarich.UserTimeZone.local(settings, at).local
-      end)
-    end
+  def visible?(plan) do
+    Enum.any?(
+      [plan.days, plan.reservations, plan.accommodations, plan.travellers, plan.unplanned_places],
+      &(&1 != [])
+    )
+  end
 
-    %{
-      plan
-      | reservations: Enum.map(plan.reservations, local),
-        days:
-          Enum.map(plan.days, fn day ->
-            %{day | reservations: Enum.map(day.reservations, local)}
-          end)
-    }
+  def synced?(nil) do
+    false
+  end
+
+  def synced?(note) do
+    Ruby.present?(note.source_digest) and
+      note.source_digest == Base.encode16(:crypto.hash(:sha256, note.body || ""), case: :lower)
   end
 
   def details(locale, stop) do
     time = [stop.starts_at, stop.ends_at] |> Enum.filter(&Ruby.present?/1) |> Enum.join("–")
 
     mode =
-      if Ruby.present?(stop.transport_mode),
-        do: fallback(locale, "transportation_modes." <> stop.transport_mode, stop.transport_mode)
+      if Ruby.present?(stop.transport_mode) do
+        fallback(locale, "transportation_modes." <> stop.transport_mode, stop.transport_mode)
+      end
 
     duration =
-      if stop.duration_minutes != nil,
-        do: it(locale, "duration_minutes", %{count: stop.duration_minutes})
+      if stop.duration_minutes != nil do
+        it(locale, "duration_minutes", %{count: stop.duration_minutes})
+      end
 
     [
-      if(Ruby.present?(time), do: time),
+      if Ruby.present?(time) do
+        time
+      end,
       mode,
-      if(Ruby.present?(stop.category), do: stop.category),
+      if Ruby.present?(stop.category) do
+        stop.category
+      end,
       duration
     ]
     |> Enum.reject(&is_nil/1)
@@ -86,10 +66,12 @@ defmodule DawarichWeb.TripPlanItems do
     end
   end
 
-  def coordinate(%Decimal{} = value), do: Decimal.to_float(value)
+  def coordinate(%Decimal{} = value) do
+    Decimal.to_float(value)
+  end
 
-  attr :item, :map, required: true
-  attr :locale, :string, required: true
+  attr(:item, :map, required: true)
+  attr(:locale, :string, required: true)
 
   def reservation(assigns) do
     assigns =
@@ -97,10 +79,12 @@ defmodule DawarichWeb.TripPlanItems do
         assigns,
         :details,
         [
-          if(assigns.item.starts_at,
-            do: LocalizedDate.time(assigns.locale, assigns.item.starts_at, "short")
-          ),
-          if(Ruby.present?(assigns.item.location), do: assigns.item.location)
+          if assigns.item.starts_at do
+            LocalizedDate.time(assigns.locale, assigns.item.starts_at, "short")
+          end,
+          if Ruby.present?(assigns.item.location) do
+            assigns.item.location
+          end
         ]
         |> Enum.reject(&is_nil/1)
       )
@@ -131,8 +115,8 @@ defmodule DawarichWeb.TripPlanItems do
     """
   end
 
-  attr :item, :map, required: true
-  attr :locale, :string, required: true
+  attr(:item, :map, required: true)
+  attr(:locale, :string, required: true)
 
   def stay(assigns) do
     dates =
@@ -146,8 +130,12 @@ defmodule DawarichWeb.TripPlanItems do
         assigns,
         :details,
         [
-          if(Ruby.present?(assigns.item.address), do: assigns.item.address),
-          if(Ruby.present?(dates), do: dates)
+          if Ruby.present?(assigns.item.address) do
+            assigns.item.address
+          end,
+          if Ruby.present?(dates) do
+            dates
+          end
         ]
         |> Enum.reject(&is_nil/1)
       )
@@ -170,4 +158,7 @@ defmodule DawarichWeb.TripPlanItems do
     </li>
     """
   end
+
+  defdelegate trek_url(arg1), to: Dawarich.Trips.Itinerary
+  defdelegate prepare(arg1, arg2), to: Dawarich.Trips.Itinerary
 end

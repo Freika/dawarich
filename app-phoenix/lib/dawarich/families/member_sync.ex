@@ -3,7 +3,7 @@ defmodule Dawarich.Families.MemberSync do
 
   alias Dawarich.Families.{LapseNotices, MemberEntitlements}
   alias Dawarich.Jobs.Ownership
-  alias DawarichWeb.LayoutAssigns
+  alias Dawarich.RuntimePolicy, as: LayoutAssigns
 
   def run(repo, family_id, opts \\ []) do
     if LayoutAssigns.self_hosted?() do

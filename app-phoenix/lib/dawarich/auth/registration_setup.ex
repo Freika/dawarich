@@ -133,10 +133,16 @@ defmodule Dawarich.Auth.RegistrationSetup do
         end
 
       locale = Map.get(context, :locale, "en")
-      error = DawarichWeb.Translate.t(locale, "services.families.accept_invitation." <> key, %{})
+
+      error =
+        Dawarich.Formatting.Translate.t(
+          locale,
+          "services.families.accept_invitation." <> key,
+          %{}
+        )
 
       alert =
-        DawarichWeb.Translate.t(
+        Dawarich.Formatting.Translate.t(
           locale,
           "controllers.users.registrations.account_created_successfully_but_there_was_an_issue_accepting_the",
           %{"error_message" => error}
@@ -186,14 +192,14 @@ defmodule Dawarich.Auth.RegistrationSetup do
           locale = Map.get(context, :locale, "en")
 
           title =
-            DawarichWeb.Translate.t(
+            Dawarich.Formatting.Translate.t(
               locale,
               "services.families.accept_invitation.welcome_to_family",
               %{}
             )
 
           body =
-            DawarichWeb.Translate.t(
+            Dawarich.Formatting.Translate.t(
               locale,
               "services.families.accept_invitation.you_ve_joined_the_family_name",
               %{"name" => invitation.name}
@@ -211,14 +217,14 @@ defmodule Dawarich.Auth.RegistrationSetup do
           owner_locale = Dawarich.UserSettings.safe(settings)["locale"] || "en"
 
           title =
-            DawarichWeb.Translate.t(
+            Dawarich.Formatting.Translate.t(
               owner_locale,
               "services.families.accept_invitation.new_family_member",
               %{}
             )
 
           body =
-            DawarichWeb.Translate.t(
+            Dawarich.Formatting.Translate.t(
               owner_locale,
               "services.families.accept_invitation.email_has_joined_your_family",
               %{"email" => user.email}

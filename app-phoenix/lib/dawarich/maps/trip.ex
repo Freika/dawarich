@@ -187,8 +187,8 @@ defmodule Dawarich.Maps.Trip do
       "tripId" => page.id,
       "title" => page.name,
       "range" => %{
-        "startAt" => DawarichWeb.HumanDatetime.iso8601(page.started_at),
-        "endAt" => DawarichWeb.HumanDatetime.iso8601(page.ended_at),
+        "startAt" => Dawarich.Formatting.HumanDatetime.iso8601(page.started_at),
+        "endAt" => Dawarich.Formatting.HumanDatetime.iso8601(page.ended_at),
         "timezone" => page.iana
       },
       "routeOptions" => %{

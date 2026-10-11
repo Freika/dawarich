@@ -2,7 +2,7 @@ defmodule Dawarich.Digests.ReadClosure do
   @moduledoc false
   alias Dawarich.{Accounts, Digests, RailsTime, Stats}
   alias Dawarich.Digests.Api
-  alias DawarichWeb.Api.Params
+  alias Dawarich.Input.Params, as: Params
 
   def index(user, now) do
     RailsTime.with_zone(user.timezone, fn ->
@@ -36,7 +36,7 @@ defmodule Dawarich.Digests.ReadClosure do
     RailsTime.with_zone(user.timezone, fn ->
       with {:ok, digest} <- Api.show(user.id, Digests.to_i(year)) do
         stamp = Params.http_date(digest.modified)
-        conn = %Plug.Conn{req_headers: headers}
+        conn = %{req_headers: headers}
 
         with {:ok, since} <- Params.if_modified_since(conn) do
           if not Enum.any?(headers, &(elem(&1, 0) == "if-none-match")) and since != nil and

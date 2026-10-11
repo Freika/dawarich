@@ -3,7 +3,7 @@ defmodule Dawarich.Imports.StaleRecovery do
   require Logger
   alias Dawarich.Jobs.Ownership
   alias Dawarich.State.Lease
-  alias DawarichWeb.Translate
+  alias Dawarich.Formatting.Translate, as: Translate
   @key "cron:stale_jobs_recovery_job"
   @prefix "jobs.stale_jobs_recovery_job."
 

@@ -31,7 +31,7 @@ defmodule Dawarich.Digests.Context do
         not Entitlements.full_access?(
           repo,
           user,
-          DawarichWeb.LayoutAssigns.self_hosted?(env),
+          Dawarich.RuntimePolicy.self_hosted?(env),
           now
         )
     }

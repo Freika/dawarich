@@ -27,7 +27,7 @@ defmodule Dawarich.Digests.HttpWrites do
         {:ok, 202,
          %{
            "message" =>
-             DawarichWeb.Translate.t(
+             Dawarich.Formatting.Translate.t(
                "en",
                "controllers.api.v1.digests.digest_for_year_is_being_generated",
                %{year: year}

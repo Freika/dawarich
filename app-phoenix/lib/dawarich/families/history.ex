@@ -4,7 +4,7 @@ defmodule Dawarich.Families.History do
   alias Dawarich.{I18n, Repo}
   alias Dawarich.Families.{Clock, Locations, Sharing}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias DawarichWeb.Api.Params
+  alias Dawarich.Input.Params, as: Params
 
   @windows %{"24h" => "24 hours", "7d" => "7 days", "30d" => "30 days", "all" => "1 year"}
 

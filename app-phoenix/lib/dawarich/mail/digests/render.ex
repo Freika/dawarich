@@ -6,7 +6,8 @@ defmodule Dawarich.Mail.Digests.Render do
   alias Dawarich.Mail.{ExploreFeatures, Layout}
   alias Dawarich.Mail.Digests.{Charts, Data}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias DawarichWeb.{LocalizedDate, NumberFormat}
+  alias Dawarich.Formatting.LocalizedDate
+  alias Dawarich.Formatting.NumberFormat
 
   @dir Path.expand("../../../../priv/mail/digests", __DIR__)
   @pre_style "white-space: pre; font-family: ui-monospace, \"SF Mono\", Menlo, Consolas, monospace; line-height: 1.25; font-size: 13px; background: #fff; padding: 16px; border-radius: 6px; border: 1px solid #e5e5e5; overflow-x: auto; margin: 0 0 1em 0;"

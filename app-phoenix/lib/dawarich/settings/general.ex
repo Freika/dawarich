@@ -41,7 +41,7 @@ defmodule Dawarich.Settings.General do
     locale = if is_binary(params["locale"]), do: String.downcase(params["locale"])
 
     changes =
-      if locale in DawarichWeb.Locale.locales(),
+      if locale in Dawarich.Localization.locales(),
         do: Map.put(changes, "locale", locale),
         else: changes
 

@@ -73,7 +73,7 @@ defmodule Dawarich.Imports.Trek.Endpoint do
 
   defp reject!(opts, key, values \\ %{}) do
     message =
-      DawarichWeb.Translate.t(
+      Dawarich.Formatting.Translate.t(
         Keyword.get(opts, :locale, "en"),
         "services.concerns.url_validatable." <> key,
         values

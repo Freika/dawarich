@@ -118,7 +118,7 @@ defmodule Dawarich.Visits.UserRedetectWorker do
               not Dawarich.Entitlements.full_access?(
                 repo,
                 user,
-                DawarichWeb.LayoutAssigns.self_hosted?(),
+                Dawarich.RuntimePolicy.self_hosted?(),
                 clock.()
               )
           }
@@ -153,7 +153,7 @@ defmodule Dawarich.Visits.UserRedetectWorker do
     error ->
       Logger.error("event=visits.user_redetect_month_failed type=#{inspect(error.__struct__)}")
 
-      unless DawarichWeb.LayoutAssigns.self_hosted?(),
+      unless Dawarich.RuntimePolicy.self_hosted?(),
         do: Sentry.capture_exception(error, stacktrace: __STACKTRACE__, handled: true)
 
       true

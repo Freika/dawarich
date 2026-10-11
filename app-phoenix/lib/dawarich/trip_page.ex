@@ -97,7 +97,7 @@ defmodule Dawarich.TripPage do
     notes = day_notes(id)
     photos = Dawarich.Trips.Photos.load(user, started, ended, zone)
     {:ok, plan} = Dawarich.Trips.PlanRead.load(Repo, user.id, id)
-    plan = DawarichWeb.TripPlanItems.prepare(plan, Dawarich.UserSettings.get(user))
+    plan = Dawarich.Trips.Itinerary.prepare(plan, Dawarich.UserSettings.get(user))
 
     future =
       Ruby.present?(source_identifier) and

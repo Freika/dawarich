@@ -2,7 +2,8 @@ defmodule Dawarich.Auth.Providers.Failure do
   @moduledoc false
   import Plug.Conn
   alias Dawarich.Auth.{SessionCookie, Providers.Accounts}
-  alias DawarichWeb.{AuthCookie, RequestURL, Translate}
+  alias DawarichWeb.{AuthCookie, RequestURL}
+  alias Dawarich.Formatting.Translate
 
   def respond(conn, reason, provider, context) do
     {path, key, bindings} =

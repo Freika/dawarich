@@ -1,7 +1,7 @@
 defmodule Dawarich.Achievements.PublicCard do
   @moduledoc false
   alias Dawarich.Achievements.{Registry, UiPresenter, UiSilhouettes, UiText}
-  alias DawarichWeb.Locale
+  alias Dawarich.Localization, as: Locale
   alias Dawarich.Sharing.Delivery
 
   def load(repo, uuid, context) do

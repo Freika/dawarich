@@ -5,7 +5,9 @@ defmodule Dawarich.Trial.Welcome do
   alias Dawarich.Auth.Recovery.Settings
   alias Dawarich.{I18n, RailsCookies, Repo, UserTimeZone}
   alias Dawarich.Trial.{WelcomeClaim, WelcomeSession, WelcomeToken}
-  alias DawarichWeb.{Locale, LocalizedDate, RailsAuth}
+  alias DawarichWeb.{RailsAuth}
+  alias Dawarich.Localization, as: Locale
+  alias Dawarich.Formatting.LocalizedDate
   @prefix "controllers.trial.welcome."
   @markers ~w(client aff via referral dawarich_client invitation_token pending_import_ticket)
   @fields ~w(id encrypted_password active_until signup_variant otp_required_for_login provider locked_at settings sign_in_count current_sign_in_at last_sign_in_at current_sign_in_ip last_sign_in_ip)

@@ -13,7 +13,7 @@ defmodule Dawarich.Places.WebWrite do
       with {:ok, previous} <- load(repo, action, user.id, id),
            {:ok, values} <- values(action, previous, attrs),
            :ok <- NativeFence.check(repo, id, context),
-           [] <- errors(values, context[:locale] || DawarichWeb.Locale.resolve(nil, user, %{})) do
+           [] <- errors(values, context[:locale] || Dawarich.Localization.resolve(nil, user, %{})) do
         saved = save(repo, user.id, previous, values, stamp)
         Dawarich.Sharing.PublicEvents.enqueue(repo, user.id)
         {:ok, saved}

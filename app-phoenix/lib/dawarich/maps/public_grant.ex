@@ -2,7 +2,7 @@ defmodule Dawarich.Maps.PublicGrant do
   @moduledoc false
   alias Dawarich.{Maps, SharedLinks}
   alias Dawarich.SharedLinks.FamilyAudience
-  alias DawarichWeb.SharedLinkCookie
+  alias Dawarich.Sharing.UnlockToken, as: SharedLinkCookie
 
   def bind(%{grant: _} = capability, _opts), do: {:ok, capability}
 

@@ -85,7 +85,7 @@ defmodule Dawarich.Points.LiveBroadcastWorker do
              log: false
            ).rows do
         [[id, access, plan, until]] ->
-          if DawarichWeb.LayoutAssigns.self_hosted?() or
+          if Dawarich.RuntimePolicy.self_hosted?() or
                Dawarich.Entitlements.inherited?(access, plan, until, now),
              do: id
 

@@ -1,6 +1,6 @@
 defmodule Dawarich.Settings.Integrations.Connection do
   @moduledoc false
-  alias DawarichWeb.Translate
+  alias Dawarich.Formatting.Translate, as: Translate
 
   def test(provider, settings, locale) do
     cond do

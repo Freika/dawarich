@@ -3,7 +3,7 @@ defmodule Dawarich.Maps.Public do
   alias Dawarich.{Accounts, Maps, SharedLinks, TripSettings, UserTimeZone, Repo}
   alias Dawarich.SharedLinks.FamilyAudience
   alias Dawarich.SharedApi.{Points, Photos}
-  alias DawarichWeb.SharedLinkCookie
+  alias Dawarich.Sharing.UnlockToken, as: SharedLinkCookie
   @false_flags [nil, false, "", "0", "false", "FALSE", "f", "F", "off", "OFF"]
 
   def config(capability, opts \\ []) do
@@ -43,7 +43,7 @@ defmodule Dawarich.Maps.Public do
                   Dawarich.Navbar.load(user,
                     now: Keyword.get(opts, :now, DateTime.utc_now()),
                     self_hosted:
-                      Keyword.get(opts, :self_hosted, DawarichWeb.LayoutAssigns.self_hosted?())
+                      Keyword.get(opts, :self_hosted, Dawarich.RuntimePolicy.self_hosted?())
                   )
                 end,
                 opts

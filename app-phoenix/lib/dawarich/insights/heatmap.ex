@@ -2,7 +2,7 @@ defmodule Dawarich.Insights.Heatmap do
   @moduledoc false
 
   alias Dawarich.RubyInteger
-  alias DawarichWeb.LocalizedDate
+  alias Dawarich.Formatting.LocalizedDate, as: LocalizedDate
 
   @default_levels %{p25: 1000, p50: 5000, p75: 10_000, p90: 20_000}
   @classes %{

@@ -78,7 +78,7 @@ defmodule Dawarich.Trips.WebForm do
              managed:
                Dawarich.ReleaseMigrations.Effects.Support.Ruby.present?(identifier) and
                  plan.trip.source_status == 0,
-             trek_url: DawarichWeb.TripPlanItems.trek_url(plan)
+             trek_url: Dawarich.Trips.Itinerary.trek_url(plan)
            }}
         else
           _ -> {:replay, "planned trip ownership"}

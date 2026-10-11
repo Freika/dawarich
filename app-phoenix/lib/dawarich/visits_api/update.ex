@@ -4,7 +4,7 @@ defmodule Dawarich.VisitsApi.Update do
   alias Dawarich.{I18n, Jobs, RailsTime, RubyInteger}
   alias Dawarich.VisitsApi.Effects
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias DawarichWeb.Api.Params
+  alias Dawarich.Input.Params, as: Params
 
   @input ~w(name place_id area_id status started_at ended_at)
   @status %{"suggested" => 0, "confirmed" => 1, "declined" => 2}
