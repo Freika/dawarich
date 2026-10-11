@@ -86,10 +86,10 @@ ENV
 chmod 600 "$PRIVATE/"*.env
 OWNED+=("$PG")
 dk run -d --pull=never --name "$PG" --network "$NET" --label org.dawarich.x4="$RUN" --env-file "$PRIVATE/pg.env" -e POSTGRES_INITDB_ARGS='--locale-provider=icu --icu-locale=en-US' -v "$VOL:/var/lib/postgresql/data" postgis/postgis:17-3.5-alpine >/dev/null
-OWNED+=("$REDIS")
+OWNED=("$REDIS" "${OWNED[@]}")
 dk run -d --pull=never --name "$REDIS" --network "$NET" --label org.dawarich.x4="$RUN" redis:7.4-alpine >/dev/null
 for n in {1..90}; do dk exec "$PG" pg_isready -U postgres >/dev/null 2>&1 && break; sleep 1; done
-OWNED+=("$APP")
+OWNED=("$APP" "${OWNED[@]}")
 dk run -d --pull=never --name "$APP" --network "$NET" --label org.dawarich.x4="$RUN" --env-file "$PRIVATE/app.env" -p 127.0.0.1::3000 "$NATIVE_IMAGE" bin/rails server -b 0.0.0.0 -p 3000 >/dev/null
 url() { printf 'http://127.0.0.1:%s' "$(dk port "$APP" 3000/tcp | cut -d: -f2)"; }
 wait_app() {
