@@ -47,8 +47,7 @@ defmodule DawarichWeb.NativePosterGalleryTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias Dawarich.{Accounts, Cable, Maps}
-  alias Dawarich.Posters.Dependencies.Progress
+  alias Dawarich.{Accounts, Maps}
   alias Dawarich.Posters.Persistence
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.NativePosterGallery
@@ -86,13 +85,7 @@ defmodule DawarichWeb.NativePosterGalleryTest do
     |> live()
   end
 
-  defp progress(user_id, poster_id) do
-    payload =
-      Cable.Frames.payload(Cable.turbo_tag("replace", "poster_#{poster_id}", "<div></div>"))
-
-    {:redix_pubsub, self(), make_ref(), :message,
-     %{channel: Cable.Bus.channel(Progress.stream(user_id)), payload: payload}}
-  end
+  defp progress(user_id, poster_id), do: {:poster_changed, user_id, poster_id}
 
   defp cards(html), do: html |> LazyHTML.from_fragment() |> LazyHTML.query("[data-poster-card]")
 
@@ -101,6 +94,27 @@ defmodule DawarichWeb.NativePosterGalleryTest do
       "UPDATE posters SET settings = settings || jsonb_build_object('progress_phase', $2::text) WHERE id = $1",
       [id, phase]
     )
+  end
+
+  test "native poster gallery consumes its committed domain progress producer", %{id: id} do
+    {:ok, poster} = Persistence.create(@recipe, %{id: id}, "en")
+    {:ok, view, _} = probe(id)
+    phase(poster, "saving")
+
+    args = %{
+      "poster_id" => poster,
+      "user_id" => id,
+      "locale" => "en",
+      "event_id" => Ecto.UUID.generate()
+    }
+
+    Phoenix.PubSub.subscribe(Dawarich.PubSub, "posters:user:#{id}")
+
+    assert :ok =
+             Dawarich.Posters.ProgressWorker.run(Repo, args, publish: fn _, _, _, _, _ -> :ok end)
+
+    assert_receive {:poster_changed, ^id, ^poster}
+    assert render(view) =~ "Saving"
   end
 
   test "queued create returns one card and reconnect reloads current status", %{id: id} do

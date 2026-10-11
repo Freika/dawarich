@@ -4,7 +4,7 @@ defmodule DawarichWeb.NativePosterGallery do
   import Phoenix.LiveView, only: [connected?: 1, put_flash: 3]
 
   alias Dawarich.Posters
-  alias Dawarich.Posters.Dependencies.Progress
+  alias Dawarich.Posters.Events, as: Progress
   alias DawarichWeb.Translate
 
   def mount(socket) do
