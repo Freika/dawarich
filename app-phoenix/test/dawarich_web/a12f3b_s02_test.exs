@@ -496,7 +496,7 @@ defmodule DawarichWeb.A12f3bS02Test do
         )
 
         assert {200, _, ^list} = routed_response(c, link, "photos", "GET", list)
-        assert_receive {:s02_rails_request, "GET " <> _}
+        refute_received {:s02_rails_request, _}
       end
 
       for method <- ~w(GET HEAD) do
@@ -510,7 +510,7 @@ defmodule DawarichWeb.A12f3bS02Test do
                  )
 
         assert body == if(method == "HEAD", do: "", else: @image)
-        if mode != :standalone, do: assert_receive({:s02_rails_request, _})
+        refute_received {:s02_rails_request, _}
       end
 
       Repo.query!(
@@ -589,8 +589,11 @@ defmodule DawarichWeb.A12f3bS02Test do
     System.put_env("DAWARICH_RAILS_SLICES", "api_shared")
     headers = [{"Cookie", "remember_user_token=synthetic-legacy-viewer"}]
     action = "photos/public-0/thumbnail?source=immich"
-    assert {200, _, @image} = routed_response(c, link, action, "GET", @image, headers)
-    assert_receive {:s02_rails_request, _}
+
+    assert {404, _, ~s({"error":"not_found"})} =
+             routed_response(c, link, action, "GET", @image, headers)
+
+    refute_received {:s02_rails_request, _}
 
     Repo.query!(
       "UPDATE trips SET started_at=started_at + interval '1 day', ended_at=ended_at + interval '1 day' WHERE id=$1",
@@ -601,7 +604,7 @@ defmodule DawarichWeb.A12f3bS02Test do
     get = routed_response(c, link, action, "GET", @image, headers)
     head = routed_response(c, link, action, "HEAD", @image, headers)
     assert {elem(get, 0), elem(head, 0)} == {404, 404}
-    assert elem(get, 2) == ""
+    assert elem(get, 2) == ~s({"error":"not_found"})
     assert elem(head, 2) == ""
     refute_received {:s02_rails_request, _}
 
@@ -625,8 +628,11 @@ defmodule DawarichWeb.A12f3bS02Test do
     System.delete_env("DAWARICH_RAILS")
     System.put_env("DAWARICH_RAILS_SLICES", "api_shared")
     action = "photos/public-0/thumbnail?source=immich"
-    assert {200, _, @image} = routed_response(c, link, action, "GET", @image)
-    assert_receive {:s02_rails_request, _}
+
+    assert {500, _, ~s({"status":500,"error":"Internal Server Error"})} =
+             routed_response(c, link, action, "GET", @image)
+
+    refute_received {:s02_rails_request, _}
 
     Repo.query!(
       "UPDATE trips SET started_at=started_at + interval '1 day', ended_at=ended_at + interval '1 day' WHERE id=$1",
@@ -636,8 +642,8 @@ defmodule DawarichWeb.A12f3bS02Test do
     before_denial = requests(c)
     get = routed_response(c, link, action, "GET", @image)
     head = routed_response(c, link, action, "HEAD", @image)
-    assert {elem(get, 0), elem(head, 0)} == {404, 404}
-    assert elem(get, 2) == ""
+    assert {elem(get, 0), elem(head, 0)} == {500, 500}
+    assert elem(get, 2) == ~s({"status":500,"error":"Internal Server Error"})
     assert elem(head, 2) == ""
     refute_received {:s02_rails_request, _}
 

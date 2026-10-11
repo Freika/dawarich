@@ -525,10 +525,33 @@ defmodule DawarichWeb.StandaloneAuthReviewTest do
   defp guard(fun, method, path, expected_body \\ "") do
     System.delete_env("DAWARICH_RAILS")
     upstream = RailsFormRequests.upstream!()
-    {{line, body}, response} = RailsFormRequests.forwarded(upstream, fun)
-    assert response.status == 204
-    assert String.starts_with?(line, String.upcase(to_string(method)) <> " " <> path <> " ")
-    assert body == expected_body
+    before = Repo.query!("SELECT to_jsonb(u) FROM users u ORDER BY id", [], log: false).rows
+    response = fun.()
+
+    expected =
+      cond do
+        String.starts_with?(path, "/api/v1/auth/register") -> 422
+        String.starts_with?(path, "/api/") -> 401
+        String.starts_with?(path, "/auth/ios/success") -> 200
+        path == "/users" -> 303
+        String.starts_with?(path, "/users/auth/apple") -> 302
+        true -> 422
+      end
+
+    assert response.status == expected, "#{method} #{path}"
+
+    if method not in [:get, :head] and expected in [302, 303],
+      do: assert(response.private.dawarich_raw_body == expected_body)
+
+    if expected in [401, 422] do
+      assert Repo.query!("SELECT to_jsonb(u) FROM users u ORDER BY id", [], log: false).rows ==
+               before
+
+      refute response.resp_cookies["_dawarich_session"]
+    end
+
+    assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
+    :gen_tcp.close(upstream.listen)
     System.put_env("DAWARICH_RAILS", "off")
   end
 

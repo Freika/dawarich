@@ -164,23 +164,24 @@ defmodule DawarichWeb.Api.RemainingRoutesTest do
   test "existing API route metadata and pipelines survive extraction" do
     assert Code.ensure_loaded?(DawarichWeb.ApiRoutes)
 
+    keys = MapSet.new(@routes, fn {verb, path, _, _, _, _} -> {verb, "/api/v1" <> path} end)
+
     actual =
       for route <- DawarichWeb.Router.__routes__(),
-          String.starts_with?(route.path, "/api/"),
-          route.metadata[:slice] not in [:api_shared, :api_notes, :api_visits, :api_account] do
+          {String.upcase(to_string(route.verb)), route.path} in keys do
         verb = route.verb |> to_string() |> String.upcase()
         info = Phoenix.Router.route_info(DawarichWeb.Router, verb, route.path, "localhost")
 
-        {verb, route.path, route.plug_opts, route.metadata[:slice], info.pipe_through, route.plug}
+        refute Map.has_key?(route.metadata, :slice)
+        {verb, route.path, route.plug_opts, info.pipe_through, route.plug}
       end
 
     expected =
-      for {verb, path, action, slice, pipeline, controller} <- @routes do
-        {verb, "/api/v1" <> path, action, slice, [pipeline],
-         Module.concat(DawarichWeb.Api, controller)}
+      for {verb, path, action, _slice, pipeline, controller} <- @routes do
+        {verb, "/api/v1" <> path, action, [pipeline], Module.concat(DawarichWeb.Api, controller)}
       end
 
-    assert actual == expected
+    assert Enum.sort(actual) == Enum.sort(expected)
   end
 
   test "api rollback remains broad and slice rollback stays selective", %{
@@ -191,7 +192,7 @@ defmodule DawarichWeb.Api.RemainingRoutesTest do
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, previous) end)
     headers = [{"Accept", "application/json"}]
 
-    for {method, target, slices, cloud, broad, replay} <- [
+    for {method, target, slices, cloud, broad, _replay} <- [
           {"GET", "/api/v1/flights", "api_stats", false, false, true},
           {"GET", "/api/v1/places", "api_stats", false, false, false},
           {"GET", "/api/v1/flights", "api_places", false, false, false},
@@ -211,15 +212,8 @@ defmodule DawarichWeb.Api.RemainingRoutesTest do
       Application.put_env(:dawarich, :rails_routes, if(broad, do: ["api"], else: []))
       client = request(port, target, headers, method)
 
-      if replay do
-        assert puma(upstream, if(method == "HEAD", do: "", else: "rails")) ==
-                 "#{method} #{target} HTTP/1.1"
-
-        assert {200, _, _} = read_response(client, method: method)
-      else
-        assert {401, _, ""} = read_response(client, method: method)
-        no_upstream!(upstream)
-      end
+      assert {401, _, ""} = read_response(client, method: method)
+      no_upstream!(upstream)
     end
   end
 end

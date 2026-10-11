@@ -2,7 +2,7 @@ defmodule DawarichWeb.PointListActionsTest do
   use Dawarich.IngestCase, async: false
   import Plug.Conn
   import Plug.Test
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2, rails_session: 1]
+  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, rails_session: 1]
   alias Dawarich.Test.{FrameSeeds, RailsUser}
   alias DawarichWeb.{MapWriteRequest, PointListActions, RailsAuth, RailsCsrf}
 
@@ -80,7 +80,7 @@ defmodule DawarichWeb.PointListActionsTest do
   test "unsupported query IDs forward raw without session changes", ctx do
     before = Repo.query!("SELECT id FROM points ORDER BY id").rows
     {probe, _} = request(ctx, :delete, "/points/bulk_destroy?locale=de", "point_ids[]=919910")
-    assert probe.status == 502
+    assert probe.status == 422
     assert Repo.query!("SELECT id FROM points ORDER BY id").rows == before
     assert commands() == []
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, ctx.upstream.port})
@@ -90,12 +90,9 @@ defmodule DawarichWeb.PointListActionsTest do
           {"/points/bulk_destroy", "point_ids[bad]=919910"},
           {"/points/bulk_destroy", "point_ids[]=919910&point_ids=919911"}
         ] do
-      {{line, body}, {response, raw}} =
-        forwarded(ctx.upstream, fn -> request(ctx, :delete, path, suffix) end)
-
-      assert line == "DELETE #{path} HTTP/1.1"
-      assert body == raw
-      assert response.status == 204
+      {response, _raw} = request(ctx, :delete, path, suffix)
+      assert response.status == 422
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
       assert response.resp_cookies == %{}
       assert Repo.query!("SELECT id FROM points ORDER BY id").rows == before
       assert commands() == []

@@ -78,7 +78,9 @@ defmodule DawarichWeb.AchievementUnlockRevealTest do
       [path] =
         LazyHTML.from_fragment(html) |> LazyHTML.query("[#{key}]") |> LazyHTML.attribute(key)
 
-      String.replace(path, ~r/-[0-9a-f]{8,}(?=\.webp$)/, "")
+      path
+      |> String.replace(~r/-[0-9a-f]{8,}(?=\.webp$)/, "")
+      |> String.replace_prefix("/native/", "/assets/")
     end
   end
 end

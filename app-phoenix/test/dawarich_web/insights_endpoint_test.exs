@@ -55,16 +55,6 @@ defmodule DawarichWeb.InsightsEndpointTest do
     read_response(client)
   end
 
-  defp puma(port, upstream, request) do
-    client = connect(port)
-    send_raw(client, request)
-    puma = accept(upstream)
-    {head, _rest} = read_head(puma)
-    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
-    assert {200, _headers, "puma"} = read_response(client)
-    {request_line(head), header(head, "cookie")}
-  end
-
   test "old framed native details requests receive the full authorized native document", ctx do
     frame = [{"Cookie", ctx.cookie}, {"Turbo-Frame", "insights_details"}]
 
@@ -106,15 +96,12 @@ defmodule DawarichWeb.InsightsEndpointTest do
        ctx do
     cookie = {"Cookie", ctx.cookie}
 
-    assert {line, [forwarded]} =
-             puma(ctx.port, ctx.upstream, request("/insights/details", [cookie], "POST"))
-
-    assert line == "POST /insights/details HTTP/1.1"
-    assert forwarded == ctx.cookie
+    assert {404, _, _} = phoenix(ctx.port, request("/insights/details", [cookie], "POST"))
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
 
     for {target, headers, status} <- [
-          {"/insights/details?format=csv", [cookie], 422},
-          {"/insights/details.csv", [cookie], 422},
+          {"/insights/details?format=csv", [cookie], 406},
+          {"/insights/details.csv", [cookie], 406},
           {"/insights/details", [cookie, {"Accept", "application/json"}], 406},
           {"/insights/details", [cookie, {"X-Requested-With", "XMLHttpRequest"}], 200}
         ] do
@@ -131,10 +118,9 @@ defmodule DawarichWeb.InsightsEndpointTest do
     for {key, target} <- [{"home", "/"}] do
       Application.put_env(:dawarich, :rails_routes, [key])
 
-      assert {line, [_cookie]} =
-               puma(ctx.port, ctx.upstream, request(target, [{"Cookie", ctx.cookie}]))
-
-      assert line == "GET #{target} HTTP/1.1"
+      assert {302, headers, ""} = phoenix(ctx.port, request(target, [{"Cookie", ctx.cookie}]))
+      assert values(headers, "location") == ["http://a/map/v2"]
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     end
 
     Application.put_env(:dawarich, :rails_routes, ["home"])

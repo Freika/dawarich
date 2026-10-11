@@ -89,7 +89,9 @@ defmodule DawarichWeb.Api.SharedEndpointTest do
     for action <- @actions do
       path = "/api/v1/shared/#{@id}/#{action}"
       info = Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "localhost")
-      assert info.slice == :api_shared
+      assert info.pipe_through == [:api_shared]
+      assert info.plug == DawarichWeb.Api.SharedController
+      refute Map.has_key?(info, :slice)
 
       for {method, slices, hosted} <- [
             {"GET", "api_shared", "true"},
@@ -100,10 +102,18 @@ defmodule DawarichWeb.Api.SharedEndpointTest do
         System.put_env("SELF_HOSTED", hosted)
         client = request(ctx.port, path, @headers, method)
 
-        assert puma(ctx.upstream, if(method == "HEAD", do: "", else: "rails")) ==
-                 "#{method} #{path} HTTP/1.1"
+        {status, _, body} = read_response(client, method: method)
 
-        assert {200, _, _} = read_response(client, method: method)
+        expected =
+          cond do
+            action == "trip" -> 500
+            action == "photos/synthetic/thumbnail" -> 404
+            true -> 200
+          end
+
+        assert status == expected
+        if method == "HEAD", do: assert(body == "")
+        no_upstream!(ctx.upstream)
       end
     end
   end
@@ -180,12 +190,9 @@ defmodule DawarichWeb.Api.SharedEndpointTest do
     cookie = "remember_user_token=synthetic-original-signed-cookie"
     target = "/api/v1/shared/#{@id}/route"
     client = request(ctx.port, target, @headers ++ [{"Cookie", cookie}])
-    puma = Dawarich.Test.ApiGolden.rails_connection(client, ctx.upstream)
-    {head, _rest} = read_head(puma)
-    assert request_line(head) == "GET #{target} HTTP/1.1"
-    assert header(head, "cookie") == [cookie]
-    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-    assert {200, _, "rails"} = read_response(client)
+    assert {200, headers, "[]"} = read_response(client)
+    refute List.keymember?(headers, "set-cookie", 0)
+    no_upstream!(ctx.upstream)
     assert Repo.query!("SELECT row_to_json(s)::text FROM shared_links s").rows == before
     assert rows("SELECT kind,payload FROM phoenix.rails_commands") == []
   end

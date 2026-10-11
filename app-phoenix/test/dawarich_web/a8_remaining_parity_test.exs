@@ -69,12 +69,16 @@ defmodule DawarichWeb.A8RemainingParityTest do
 
   defp naive(text), do: text |> DateTime.from_iso8601() |> elem(1) |> DateTime.to_naive()
 
-  defp submit(entry, user) do
+  defp submit(entry, user, valid_csrf \\ true) do
     req = entry["request"]
     session = RailsUser.session(user.id)
 
     params =
-      Map.put(req["params"], "authenticity_token", DawarichWeb.RailsCsrf.masked_token(session))
+      Map.put(
+        req["params"],
+        "authenticity_token",
+        if(valid_csrf, do: DawarichWeb.RailsCsrf.masked_token(session), else: "invalid")
+      )
 
     params =
       if String.upcase(req["method"]) == "POST",
@@ -94,18 +98,11 @@ defmodule DawarichWeb.A8RemainingParityTest do
     {fn -> dispatch(conn, @endpoint, :post, req["path"], raw) end, raw}
   end
 
-  defp replay(upstream, run, raw) do
+  defp replay(upstream, run, _raw, expected \\ 500) do
     before = snapshot()
-
-    {{_line, received}, conn} =
-      forwarded(upstream, fn ->
-        conn = run.()
-        assert conn.status == 204
-        conn
-      end)
-
-    assert conn.status == 204
-    assert received == raw
+    conn = run.()
+    assert conn.status == expected
+    assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
     assert snapshot() == before
   end
 
@@ -298,17 +295,17 @@ defmodule DawarichWeb.A8RemainingParityTest do
       if key == "trips" do
         {entry, user} = seed_trip("update_noop_ordinary_oban")
         {run, raw} = submit(entry, user)
-        replay(upstream, run, raw)
+        replay(upstream, run, raw, 303)
       else
-        {run, raw} = submit(place_entry, place_user)
-        replay(upstream, run, raw)
+        {run, raw} = submit(place_entry, place_user, false)
+        replay(upstream, run, raw, 422)
       end
     end
 
     Application.put_env(:dawarich, :rails_routes, [])
-    {run, raw} = submit(place_entry, place_user)
+    {run, raw} = submit(place_entry, place_user, false)
     System.put_env("SELF_HOSTED", "false")
-    replay(upstream, run, raw)
+    replay(upstream, run, raw, 422)
     System.put_env("SELF_HOSTED", "true")
     session = RailsUser.session(place_user.id)
 
@@ -322,7 +319,8 @@ defmodule DawarichWeb.A8RemainingParityTest do
     replay(
       upstream,
       fn -> post_form(session, raw, [{"accept", "text/vnd.turbo-stream.html"}], "/places") end,
-      raw
+      raw,
+      422
     )
 
     assert commands() == []

@@ -82,7 +82,7 @@ defmodule DawarichWeb.AchievementPublicTest do
     seed(visible)
     head = request("HEAD", visible["path"], %{})
     assert head.status == 200 and head.resp_body == ""
-    assert get_resp_header(head, "cache-control") == ["max-age=0, private, must-revalidate"]
+    assert get_resp_header(head, "cache-control") == ["private, no-store"]
     assert get_resp_header(head, "x-frame-options") == []
     assert get_resp_header(head, "content-security-policy") == ["frame-ancestors *"]
 
@@ -122,7 +122,7 @@ defmodule DawarichWeb.AchievementPublicTest do
       assert get_resp_header(result, "location") == [row["location"]]
       assert get_resp_header(result, "x-frame-options") == []
       assert get_resp_header(result, "content-security-policy") == ["frame-ancestors *"]
-      assert get_resp_header(result, "cache-control") == ["no-cache"]
+      assert get_resp_header(result, "cache-control") == ["private, no-store"]
       assert result.private.dawarich_rails_session_changes["flash"]["flashes"] == row["flash"]
       assert Map.has_key?(result.resp_cookies, "_dawarich_session")
     end

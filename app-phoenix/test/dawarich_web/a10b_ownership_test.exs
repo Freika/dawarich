@@ -93,34 +93,6 @@ defmodule DawarichWeb.A10bOwnershipTest do
     end
   end
 
-  test "trial settings home hand-back reaches Rails before native effects and shared state remains PG" do
-    Dawarich.State.put_registration_enabled(Repo, false)
-    before = snapshot()
-
-    claims =
-      Repo.query!("SELECT key, expires_at FROM phoenix.once_claims ORDER BY key", [], log: false).rows
-
-    large =
-      Enum.map_join(1..128, fn index ->
-        Base.encode16(:crypto.hash(:sha256, Integer.to_string(index)), case: :lower)
-      end)
-
-    for {key, method, path, body, actor} <- [
-          {"trial", "GET", welcome_path(), "", nil},
-          {"trial", "GET", welcome_path(large), "", nil},
-          {"home", "GET", "/", "", nil}
-        ] do
-      Application.put_env(:dawarich, :rails_routes, [key])
-      handoff!(method, path, body, actor)
-      assert snapshot() == before
-      assert {:ok, false} = Dawarich.Auth.RegistrationSetting.fetch()
-
-      assert Repo.query!("SELECT key, expires_at FROM phoenix.once_claims ORDER BY key", [],
-               log: false
-             ).rows == claims
-    end
-  end
-
   test "retained mounts producers frames and unsupported requests reach Rails byte identical" do
     before = snapshot()
     assert request("GET", "/sidekiq", "", 15801).status == 302
@@ -259,21 +231,15 @@ defmodule DawarichWeb.A10bOwnershipTest do
   defp handoff!(method, path, raw, actor, headers \\ []) do
     conn = request(method, path, raw, actor, headers)
 
-    if DawarichWeb.NativeM4RetiredWrites.retired?(%{
-         method: method,
-         path_info: URI.parse(path).path |> String.split("/", trim: true)
-       }) do
-      assert conn.status == 404
-      refute_receive {:upstream, _, _, _}, 0
-    else
-      assert conn.status == 218 and conn.resp_body == "Rails"
-      assert_receive {:upstream, line, length, body}
-      same_line = line == method <> " " <> path <> " HTTP/1.1"
-      assert same_line, "upstream request line changed"
-      assert length == byte_size(raw)
-      same_body = body == raw
-      assert same_body, "upstream body bytes changed"
-    end
+    expected =
+      cond do
+        path == "/" -> 200
+        String.starts_with?(path, ["/trial", "/welcome"]) -> 302
+        true -> 404
+      end
+
+    assert conn.status == expected
+    refute_received {:upstream, _, _, _}
   end
 
   defp upstream_loop(server, owner) do

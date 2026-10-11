@@ -9,7 +9,8 @@ defmodule Dawarich.Maps.PublicGrant do
   def bind(%{id: id} = capability, opts) do
     now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
 
-    with link when not is_nil(link) <- SharedLinks.active(id, now),
+    with {:ok, _uuid} <- Ecto.UUID.cast(id),
+         link when not is_nil(link) <- SharedLinks.active(id, now),
          :ok <- phrase(link, capability[:proof], now),
          {:ok, viewer} <- viewer(capability[:viewer_scope], opts),
          {:ok, grant} <-

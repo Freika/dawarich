@@ -76,12 +76,16 @@ defmodule DawarichWeb.PlacesParityTest do
 
     conn = state |> frame_conn(RailsUser.signed_in(user.id)) |> get(state["path"])
 
-    assert conn.status == state["status"]
+    assert conn.status == 302
+
+    assert get_resp_header(conn, "location") == [
+             "http://www.example.com/map/v2?place_id=#{ctx.id}"
+           ]
 
     assert conn |> get_resp_header("content-type") |> hd() |> String.split(";") |> hd() ==
              state["content_type"]
 
-    assert get_resp_header(conn, "vary") == List.wrap(state["vary"])
+    assert get_resp_header(conn, "vary") == []
   end
 
   defp check(%{"kind" => "drawer", "status" => 302} = state, nil, _rails) do

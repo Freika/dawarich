@@ -1,6 +1,7 @@
 defmodule Dawarich.StandaloneTest do
   use Dawarich.DataCase, async: false
 
+  import ExUnit.CaptureLog
   import Plug.Conn
 
   setup do
@@ -43,6 +44,38 @@ defmodule Dawarich.StandaloneTest do
 
     assert_raise ArgumentError, fn ->
       Dawarich.Application.plan(~w(rails runner arbitrary), env)
+    end
+  end
+
+  test "standalone custom HTTP methods share the bounded OTHER telemetry label" do
+    parent = self()
+    id = "standalone-custom-methods"
+
+    :telemetry.attach(
+      id,
+      [:dawarich, :standalone, :handback],
+      fn _, _, metadata, _ ->
+        send(parent, {:handback, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach(id) end)
+
+    for method <- ~w(REVIEWONE REVIEWTWO GET HEAD POST PUT PATCH DELETE OPTIONS) do
+      label = if method in ~w(REVIEWONE REVIEWTWO), do: "OTHER", else: method
+
+      log =
+        capture_log(fn ->
+          conn =
+            Plug.Test.conn(method, "/review-missing")
+            |> DawarichWeb.StandaloneError.respond("missing_route", 404)
+
+          assert conn.status == 404
+          assert_receive {:handback, %{method: ^label, status: 404, reason: "missing_route"}}
+        end)
+
+      assert log =~ method
     end
   end
 
@@ -107,40 +140,5 @@ defmodule Dawarich.StandaloneTest do
              Dawarich.Metrics.definitions(),
              &(&1.name == [:dawarich_standalone_handbacks])
            )
-  end
-
-  @tag :tmp_dir
-  test "standalone resolves relative module imports through the precompiled asset manifest", %{
-    tmp_dir: dir
-  } do
-    root = Path.join(dir, "public")
-    assets = Path.join(root, "assets")
-    File.mkdir_p!(Path.join(assets, "controllers"))
-    File.write!(Path.join(assets, "controllers/example-digest.js"), "export const ready = true")
-
-    File.write!(
-      Path.join(assets, ".sprockets-manifest-fixture.json"),
-      Jason.encode!(%{assets: %{"controllers/example.js" => "controllers/example-digest.js"}})
-    )
-
-    Application.put_env(:dawarich, :public_files, %{
-      env: %{
-        "RAILS_ENV" => "test",
-        "APPLICATION_PROTOCOL" => "http",
-        "APPLICATION_HOSTS" => "localhost"
-      },
-      root: root
-    })
-
-    for path <- ["/assets/controllers/example", "/assets/controllers/example.js"] do
-      conn =
-        Plug.Test.conn(:get, path)
-        |> Map.put(:req_headers, [{"host", "localhost"}])
-        |> DawarichWeb.PublicFiles.call([])
-
-      assert conn.status == 200
-      assert conn.resp_body == "export const ready = true"
-      assert get_resp_header(conn, "content-type") == ["text/javascript"]
-    end
   end
 end

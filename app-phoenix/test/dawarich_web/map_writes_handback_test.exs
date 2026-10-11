@@ -85,17 +85,19 @@ defmodule DawarichWeb.MapWritesHandbackTest do
       "authenticity_token=" <>
         URI.encode_www_form(RailsCsrf.masked_token(ctx.session)) <> "&" <> suffix
 
-  defp forwarded(ctx, method, path, body, headers \\ [], session \\ nil) do
+  defp refused(ctx, method, path, body, headers \\ [], session \\ nil) do
     before = snapshot()
 
-    {{line, bytes}, conn} =
-      RailsFormRequests.forwarded(ctx.upstream, fn ->
-        request(ctx, method, path, body, headers, session)
-      end)
+    points? = String.starts_with?(path, "/points/bulk_destroy")
 
-    assert line == "#{method |> Atom.to_string() |> String.upcase()} #{path} HTTP/1.1"
-    assert bytes == body
-    assert conn.status == 204
+    body =
+      if points?,
+        do: Regex.replace(~r/authenticity_token=[^&]*/, body, "authenticity_token=invalid"),
+        else: body
+
+    conn = request(ctx, method, path, body, headers, session)
+    assert conn.status == if(points?, do: 422, else: 404)
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     assert get_resp_header(conn, "set-cookie") == []
     assert Map.has_key?(conn.private, :dawarich_rails_session_changes) == false
     assert snapshot() == before
@@ -115,13 +117,13 @@ defmodule DawarichWeb.MapWritesHandbackTest do
   test "unowned query format session token override shapes forward bytes", ctx do
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
     probe = request(ctx, :post, "/tags", "authenticity_token=BAD&tag[name]=Synthetic-new")
-    assert probe.status == 502
+    assert probe.status == 404
     assert Repo.query!("SELECT name FROM tags ORDER BY id").rows == [["Synthetic"]]
 
     mismatch =
       request(ctx, :post, "/tags", raw(ctx, "tag[name]=Synthetic-new"), [{"x-csrf-token", "BAD"}])
 
-    assert mismatch.status == 502
+    assert mismatch.status == 404
     assert Repo.query!("SELECT name FROM tags ORDER BY id").rows == [["Synthetic"]]
 
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, ctx.upstream.port})
@@ -139,7 +141,7 @@ defmodule DawarichWeb.MapWritesHandbackTest do
           {"/tags", raw(ctx, "tag[name]=Changed"), [],
            Map.delete(ctx.session, "warden.user.user.key")}
         ],
-        do: forwarded(ctx, :post, path, body, headers, session)
+        do: refused(ctx, :post, path, body, headers, session)
   end
 
   test "retired segment writes refuse rollback keys while retained writes preserve native stores",
@@ -147,8 +149,16 @@ defmodule DawarichWeb.MapWritesHandbackTest do
     before = snapshot()
     Application.put_env(:dawarich, :rails_routes, ["points"])
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
-    probe = request(ctx, :delete, "/points/bulk_destroy", raw(ctx, "point_ids[]=920010"))
-    assert probe.status == 502
+
+    probe =
+      request(
+        ctx,
+        :delete,
+        "/points/bulk_destroy",
+        "authenticity_token=invalid&point_ids[]=920010"
+      )
+
+    assert probe.status == 422
     assert snapshot() == before
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, ctx.upstream.port})
 
@@ -164,8 +174,8 @@ defmodule DawarichWeb.MapWritesHandbackTest do
         retired(ctx, method, path, body)
         retired(ctx, :post, path, "_method=#{method}&" <> body)
       else
-        forwarded(ctx, method, path, body)
-        forwarded(ctx, :post, path, "_method=#{method}&" <> body)
+        refused(ctx, method, path, body)
+        refused(ctx, :post, path, "_method=#{method}&" <> body)
       end
     end
   end
@@ -183,7 +193,7 @@ defmodule DawarichWeb.MapWritesHandbackTest do
       refute :map_write in route.pipe_through
     end
 
-    forwarded(ctx, :patch, "/api/v1/tracks/920010", raw(ctx, "track[distance]=500"))
+    refused(ctx, :patch, "/api/v1/tracks/920010", raw(ctx, "track[distance]=500"))
     before = snapshot()
     previous = System.get_env("DAWARICH_RAILS")
 
@@ -216,12 +226,12 @@ defmodule DawarichWeb.MapWritesHandbackTest do
   test "rejected write commits no cookie outbox RailsCommands", ctx do
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
     probe = request(ctx, :post, "/tags", raw(ctx, "tag[name]=Changed&tag[unknown]=1"))
-    assert probe.status == 502
+    assert probe.status == 404
     assert get_resp_header(probe, "set-cookie") == []
     assert Map.has_key?(probe.private, :dawarich_rails_session_changes) == false
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, ctx.upstream.port})
-    forwarded(ctx, :post, "/tags", raw(ctx, "tag[name]=Changed&tag[unknown]=1"))
+    refused(ctx, :post, "/tags", raw(ctx, "tag[name]=Changed&tag[unknown]=1"))
     retired(ctx, :patch, "/tracks/920010/segments/9200100", raw(ctx, "reset=true&unknown=1"))
-    forwarded(ctx, :delete, "/points/bulk_destroy?client=legacy", raw(ctx, "point_ids[]=920010"))
+    refused(ctx, :delete, "/points/bulk_destroy?client=legacy", raw(ctx, "point_ids[]=920010"))
   end
 end

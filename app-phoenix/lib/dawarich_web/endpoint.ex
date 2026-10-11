@@ -33,11 +33,6 @@ defmodule DawarichWeb.Endpoint do
     from: {:phoenix_live_view, "priv/static"},
     only: ~w(phoenix_live_view.esm.js)
 
-  plug Plug.Static,
-    at: "/phoenix/js",
-    from: {:dawarich, "priv/static/js"},
-    only: ~w(app.js map_shell.js rails_bridge.js native_card_modal.js hooks)
-
   plug DawarichWeb.PublicFiles
   plug DawarichWeb.Cors
   plug DawarichWeb.AuthGate

@@ -425,13 +425,31 @@ defmodule DawarichWeb.MapFramesTest do
         |> put_req_header("accept", @frame)
         |> put_req_header("turbo-frame", "place-drawer")
         |> get("/places/7084101")
+        |> then(fn conn ->
+          location = conn |> get_resp_header("location") |> List.first() |> URI.parse()
+          recycle(conn) |> get(location.path <> "?" <> (location.query || ""))
+        end)
+
+    defp csrf_meta?(conn) do
+      html_response(conn, 200)
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("meta[name=csrf-token]")
+      |> LazyHTML.attribute("content")
+      |> Enum.any?(&(is_binary(&1) and byte_size(&1) > 0))
+    end
 
     test "stages a CSRF token only when the session has none", %{user: user} do
       cookie = user.id |> RailsUser.session() |> Map.delete("_csrf_token") |> RailsUser.cookie()
       staged = build_conn() |> put_req_cookie("_dawarich_session", cookie) |> drawer_get()
 
-      assert html_response(staged, 200) =~ ~r/name="authenticity_token" value="[^"]+"/
-      assert [set] = get_resp_header(staged, "set-cookie")
+      assert csrf_meta?(staged)
+
+      [set] =
+        Enum.filter(
+          get_resp_header(staged, "set-cookie"),
+          &String.starts_with?(&1, "_dawarich_session=")
+        )
+
       [_, value] = Regex.run(~r/_dawarich_session=([^;]+)/, set)
 
       read =
@@ -442,8 +460,12 @@ defmodule DawarichWeb.MapFramesTest do
       assert is_binary(read.assigns.rails_session["_csrf_token"])
 
       kept = user.id |> RailsUser.signed_in() |> drawer_get()
-      assert html_response(kept, 200) =~ ~r/name="authenticity_token" value="[^"]+"/
-      assert get_resp_header(kept, "set-cookie") == []
+      assert csrf_meta?(kept)
+
+      refute Enum.any?(
+               get_resp_header(kept, "set-cookie"),
+               &String.starts_with?(&1, "_dawarich_session=")
+             )
     end
 
     test "a place that leaves after the gate is replayed", %{user: user} do

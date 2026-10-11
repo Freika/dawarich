@@ -71,11 +71,9 @@ defmodule DawarichWeb.PageRoutesTest do
           {"/imports/17/download", DawarichWeb.ImportsDownload, :show, [:browser, :rails_user],
            %{"id" => "17"}, nil},
           {"/places/17", DawarichWeb.PlaceNavigation, :show, [:rails_frame], %{"id" => "17"},
-           {DawarichWeb.PlacesGate, :navigation?}},
-          {"/map/residency", DawarichWeb.MapFrames, :residency, [:rails_frame], %{},
-           {DawarichWeb.MapFramesGate, :residency?}},
-          {"/", DawarichWeb.HomeDispatch, [], [:public_home], %{},
-           {DawarichWeb.HomeGate, :owned?}}
+           nil},
+          {"/map/residency", DawarichWeb.MapFrames, :residency, [:rails_frame], %{}, nil},
+          {"/", DawarichWeb.HomeDispatch, [], [:public_home], %{}, nil}
         ] do
       route = info(path)
       assert route.plug == plug

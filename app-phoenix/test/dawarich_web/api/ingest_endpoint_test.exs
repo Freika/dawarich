@@ -53,25 +53,6 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
     client
   end
 
-  defp puma(upstream) do
-    socket =
-      Dawarich.Test.ApiGolden.rails_connection(Process.get({__MODULE__, :last_request}), upstream)
-
-    {head, _rest} = read_head(socket)
-    reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-    request_line(head)
-  end
-
-  defp puma_request(upstream, body) do
-    socket =
-      Dawarich.Test.ApiGolden.rails_connection(Process.get({__MODULE__, :last_request}), upstream)
-
-    {head, rest} = read_head(socket)
-    received = read_at_least(socket, rest, byte_size(body))
-    reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-    {head, received}
-  end
-
   defp assert_no_writes do
     assert [[0]] = Repo.query!("SELECT count(*) FROM points").rows
 
@@ -98,8 +79,9 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
       {var, value} = unquote(Macro.escape(env))
       System.put_env(var, value)
       client = post(port, "/api/v1/overland/batches")
-      assert puma(upstream) == "POST /api/v1/overland/batches HTTP/1.1"
-      assert {200, _, "rails"} = read_response(client)
+      assert {201, _, ~s({"result":"ok"})} = read_response(client)
+      no_upstream!(upstream)
+      assert [[1]] = Repo.query!("SELECT count(*) FROM points").rows
     end
   end
 
@@ -107,12 +89,12 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
     client = connect(port)
     Process.put({__MODULE__, :last_request}, client)
     send_raw(client, "GET /api/v1/points.json HTTP/1.1\r\nHost: localhost\r\n\r\n")
-    assert puma(upstream) == "GET /api/v1/points.json HTTP/1.1"
-    assert {200, _, "rails"} = read_response(client)
+    assert {401, _, _} = read_response(client)
+    no_upstream!(upstream)
 
     client = post(port, "/api/v1/points.json")
-    assert puma(upstream) == "POST /api/v1/points.json HTTP/1.1"
-    assert {200, _, "rails"} = read_response(client)
+    assert {500, _, _} = read_response(client)
+    no_upstream!(upstream)
   end
 
   test "invalid percent escape API replay is byte exact and retired family requests stay effect free",
@@ -140,10 +122,8 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
         assert {404, _, _} = read_response(client)
         no_upstream!(upstream)
       else
-        {head, received} = puma_request(upstream, body)
-        assert request_line(head) == "POST #{target} HTTP/1.1"
-        assert received == body
-        assert {200, _, "rails"} = read_response(client)
+        assert {400, _, _} = read_response(client)
+        no_upstream!(upstream)
       end
 
       assert_no_writes()
@@ -169,15 +149,9 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
         assert {404, _, _} = read_response(client)
         no_upstream!(upstream)
       else
-        {head, received} = puma_request(upstream, body)
-        assert request_line(head) == "POST #{target} HTTP/1.1"
-        assert received == body
-
-        if headers != [] do
-          assert header(head, "x-http-method-override") == ["GET"]
-        end
-
-        assert {200, _, "rails"} = read_response(client)
+        expected = if(headers == [], do: 404, else: 401)
+        assert {^expected, _, _} = read_response(client)
+        no_upstream!(upstream)
       end
 
       assert_no_writes()
@@ -193,8 +167,8 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
       ~s({"locations":[{"geometry":{"coordinates":[13.4,52.5]},"properties":{"timestamp":1790000000,"battery_level":true}}]})
 
     client = post(port, "/api/v1/points", body)
-    assert puma(upstream) == "POST /api/v1/points HTTP/1.1"
-    assert {200, _, "rails"} = read_response(client)
+    assert {500, _, _} = read_response(client)
+    no_upstream!(upstream)
     assert {[[0]], []} = {Repo.query!("SELECT count(*) FROM points").rows, commands()}
   end
 

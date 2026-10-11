@@ -171,7 +171,9 @@ defmodule DawarichWeb.TrekSourcesLiveTest do
       assert_error_sent 404, fn -> get(conn_for(user), path(bad)) end
     end
 
-    assert get(conn_for(c.user), path(id) <> ".html").status == 404
+    alias_page = get(conn_for(c.user), path(id) <> ".html")
+    assert alias_page.status == 200
+    assert alias_page.resp_body =~ ~s(id="trek-trips")
     rows("UPDATE trip_sources SET base_url=$2 WHERE id=$1", [id, c.url <> "/fail"])
 
     assert {:error, {:redirect, %{to: "/settings/integrations?service=trek", flash: flash}}} =

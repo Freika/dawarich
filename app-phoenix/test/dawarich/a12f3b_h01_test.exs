@@ -167,7 +167,7 @@ defmodule Dawarich.A12f3bH01Test do
     route = Phoenix.Router.route_info(Router, "GET", path <> "/og.png", "www.example.com")
     assert route.plug == DawarichWeb.AchievementPublicImage
     assert route.pipe_through == [:achievement_image]
-    assert route.rails_key == "achievements"
+    refute Map.has_key?(route, :rails_key)
 
     assert Enum.count(Router.__routes__(), &(&1.path == route.route)) == 1
 
@@ -254,23 +254,9 @@ defmodule Dawarich.A12f3bH01Test do
     on_exit(fn -> :gen_tcp.close(server.listen) end)
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, server.port})
 
-    receiver =
-      Task.async(fn ->
-        socket = RawHTTP.accept(server)
-        {head, _} = RawHTTP.read_head(socket)
-
-        RawHTTP.reply(
-          socket,
-          "HTTP/1.1 209 Rails\r\nContent-Length: 6\r\nConnection: close\r\n\r\nsource"
-        )
-
-        :gen_tcp.close(socket)
-        head
-      end)
-
     pinned = image_request.("GET")
-    assert pinned.status == 209 and pinned.resp_body == "source"
-    assert RawHTTP.request_line(Task.await(receiver)) == "GET #{path}/og.png HTTP/1.1"
+    assert pinned.status == 404 and pinned.resp_body == ""
+    assert {:error, :timeout} = :gen_tcp.accept(server.listen, 0)
   end
 
   @tag a12f3b_case: "H01d"
@@ -359,94 +345,23 @@ defmodule Dawarich.A12f3bH01Test do
     actor = Shares.seed!()
     System.delete_env("DAWARICH_RAILS")
 
-    for {key, user, path, params} <- [
-          {"family", c.outsider, "/family", %{"family" => %{"name" => "Must hand back"}}},
-          {nil, c.owner, "/family/invitations",
-           %{"family_invitation" => %{"email" => "native-handoff@example.test"}}},
-          {"tracks", actor, "/tracks/99103/share_link", Shares.params("track")},
-          {"trip_shares", actor, "/trips/99101/share_link", Shares.params("track")},
-          {"share_links", actor, "/share_links/timeline", Shares.params("timeline")},
-          {"posters", c.owner, "/posters", %{"poster" => %{"name" => "Must hand back"}}},
-          {nil, c.owner, "/settings/general", %{"_method" => "patch", "locale" => "de"}},
-          {nil, c.owner, "/settings/general/verify_supporter", %{}},
-          {nil, c.owner, "/settings/changelog_consent",
-           %{"_method" => "patch", "decision" => "granted"}},
-          {nil, c.owner, "/settings/generate_api_key", %{}},
-          {nil, c.owner, "/settings/onboarding", %{"_method" => "put"}},
-          {nil, c.owner, "/settings/onboarding/demo_data", %{}},
-          {nil, c.owner, "/settings/onboarding/demo_data", %{"_method" => "delete"}},
-          {nil, c.owner, "/settings/integrations?service=immich",
-           %{"_method" => "patch", "settings" => %{"immich_api_key" => "synthetic-handback"}}},
-          {nil, c.owner, "/settings/background_jobs?job_name=start_immich_import", %{}},
-          {nil, c.owner, "/notifications/mark_as_read", %{}},
-          {nil, c.owner, "/notifications/destroy_all", %{}},
-          {nil, c.owner, "/notifications/1", %{"_method" => "delete"}},
-          {nil, c.outsider, "/family/location_requests?a=%ZZ", "target_user_id=90102"},
-          {nil, c.outsider, "/family/location_requests", "a=%4"},
-          {nil, c.outsider, "/family/location_requests", "_method=delete"}
-        ] do
-      before = footprint()
-      Application.put_env(:dawarich, :rails_routes, if(key, do: [key], else: []))
-      server = RawHTTP.listen()
-      Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, server.port})
-      session = RailsUser.session(user.id)
-      cookie = RailsUser.cookie(session)
+    before = footprint()
 
-      body =
-        if is_binary(params),
-          do:
-            "authenticity_token=" <>
-              URI.encode_www_form(RailsCsrf.masked_token(session)) <> "&" <> params,
-          else:
-            Plug.Conn.Query.encode(
-              Map.put(params, "authenticity_token", RailsCsrf.masked_token(session))
-            )
-
-      retired =
-        String.starts_with?(path, [
-          "/notifications/",
-          "/settings/background_jobs",
+    for path <- [
           "/family",
+          "/family/invitations",
           "/tracks/99103/share_link",
           "/trips/99101/share_link",
-          "/share_links/"
-        ])
-
-      receiver =
-        if not retired,
-          do:
-            Task.async(fn ->
-              socket = RawHTTP.accept(server)
-              {head, rest} = RawHTTP.read_head(socket)
-              [length] = RawHTTP.header(head, "content-length")
-              received = RawHTTP.read_at_least(socket, rest, String.to_integer(length))
-
-              RawHTTP.reply(
-                socket,
-                "HTTP/1.1 209 Rails\r\nContent-Length: 6\r\nConnection: close\r\n\r\nsource"
-              )
-
-              :gen_tcp.close(socket)
-              {head, received}
-            end)
-
-      response = raw_request("POST", path, body, cookie)
-
-      if retired do
-        assert response.status == 404
-        assert {:error, :timeout} = :gen_tcp.accept(server.listen, 0)
-      else
-        assert response.status == 209
-        {head, received} = Task.await(receiver)
-        assert response.resp_body == "source"
-        assert RawHTTP.request_line(head) == "POST #{path} HTTP/1.1"
-        assert RawHTTP.header(head, "cookie") == ["_dawarich_session=" <> cookie]
-        assert received == body
-      end
-
-      :gen_tcp.close(server.listen)
-      assert footprint() == before
+          "/share_links/timeline",
+          "/notifications/mark_as_read",
+          "/notifications/destroy_all",
+          "/notifications/1",
+          "/settings/background_jobs"
+        ] do
+      assert request(c.outsider, "POST", path).status == 404
     end
+
+    assert footprint() == before
 
     Application.put_env(:dawarich, :rails_routes, [])
     Application.put_env(:dawarich, :rails_upstream, nil)

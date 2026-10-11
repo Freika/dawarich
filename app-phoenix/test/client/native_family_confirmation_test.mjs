@@ -10,7 +10,7 @@ const entry = await readFile(
 const pages = await Promise.all(
   ["native_family_page", "native_family_invitations"].map((name) =>
     readFile(
-      new URL(`../../lib/dawarich_web/components/${name}.ex`, import.meta.url),
+      new URL(`../../lib/dawarich_web/features/families/components/${name}.ex`, import.meta.url),
       "utf8",
     ),
   ),

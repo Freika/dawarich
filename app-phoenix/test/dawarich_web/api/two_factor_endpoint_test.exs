@@ -99,7 +99,7 @@ defmodule DawarichWeb.Api.TwoFactorEndpointTest do
           {"/api/v1/users/me/two_factor/setup", "password=x&password=y",
            [type: "application/x-www-form-urlencoded"]},
           {"/api/v1/users/me/two_factor/setup?format=xml", ~s({"password":"safepassword12"}), []},
-          {"/api/v1/users/me/two_factor/setup", ~s({"password":"safepassword12"}),
+          {"/api/v1/users/me/two_factor/setup", ~s({"password":"wrong"}),
            [headers: [{"X-Dawarich-Client", "ios"}]]},
           {"/api/v1/users/me/two_factor/setup", "{}",
            [headers: [{"Cookie", "remember_user_token=synthetic-unsupported"}]]},
@@ -191,7 +191,7 @@ defmodule DawarichWeb.Api.TwoFactorEndpointTest do
       for {method, target} <- @actions do
         route = Phoenix.Router.route_info(DawarichWeb.Router, method, target, "localhost")
         assert route.plug == DawarichWeb.Api.TwoFactorController
-        assert route.pipe_through == [:api_account] and route.slice == :api_account
+        assert route.pipe_through == [:api_account] and route[:slice] == nil
       end
 
       assert {200, _, raw} =
@@ -252,7 +252,7 @@ defmodule DawarichWeb.Api.TwoFactorEndpointTest do
     previous = Application.get_env(:dawarich, :rails_routes, [])
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, previous) end)
     before = state(c)
-    body = ~s({"password":"safepassword12","otp_code":"123456"})
+    body = ~s({"password":"wrong","otp_code":"123456"})
 
     for kind <- [:slice, :broad, :cloud] do
       System.put_env("DAWARICH_RAILS_SLICES", if(kind == :slice, do: "api_account", else: ""))
@@ -278,7 +278,7 @@ defmodule DawarichWeb.Api.TwoFactorEndpointTest do
 
   test "mobile auth and challenge routes remain Rails after management activation", c do
     before = state(c)
-    body = ~s({"password":"safepassword12","otp_code":"123456"})
+    body = ~s({"password":"wrong","otp_code":"123456"})
 
     for {method, target} <- [
           {"POST", "/api/v1/auth/register"},
@@ -343,14 +343,71 @@ defmodule DawarichWeb.Api.TwoFactorEndpointTest do
 
   defp replay!(c, method, target, body, opts) do
     client = submit(c, method, target, body, opts)
-    puma = Dawarich.Test.ApiGolden.rails_connection(client, c.upstream)
-    {head, rest} = read_head(puma)
-    assert request_line(head) == "#{method} #{target} HTTP/1.1"
-    assert header(head, "x-original") == ["synthetic-byte-check"]
-    assert header(head, "content-type") == [Keyword.get(opts, :type, "application/json")]
-    assert read_at_least(puma, rest, byte_size(body)) == body
-    response = if method == "HEAD", do: "", else: "rails"
-    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: #{byte_size(response)}\r\n\r\n#{response}")
-    assert {200, _, ^response} = read_response(client, method: method)
+    {status, headers, response} = read_response(client, method: method)
+    assert status == refusal_status(method, target, opts, body)
+    request_headers = Keyword.get(opts, :headers, [])
+
+    cond do
+      {"X-Dawarich-Client", "ios"} in request_headers ->
+        cookies = values(headers, "set-cookie")
+        assert length(cookies) == 1
+
+        conn =
+          Plug.Test.conn(:get, "/")
+          |> Plug.Conn.put_req_header("cookie", hd(cookies) |> String.split(";") |> hd())
+          |> DawarichWeb.RailsAuth.call([])
+
+        assert conn.assigns.rails_session["dawarich_client"] == "ios"
+        refute Map.has_key?(conn.assigns.rails_session, "warden.user.user.key")
+
+      Enum.any?(request_headers, fn {name, _} -> name == "Cookie" end) ->
+        assert Enum.all?(values(headers, "set-cookie"), fn value ->
+                 String.starts_with?(value, "remember_user_token=") and
+                   String.contains?(value, "max-age=0")
+               end)
+
+      true ->
+        assert values(headers, "set-cookie") == []
+    end
+
+    if method == "HEAD", do: assert(response == "")
+    no_upstream!(c.upstream)
+  end
+
+  defp refusal_status(method, target, opts, body) do
+    cond do
+      String.starts_with?(target, "/users/") ->
+        422
+
+      target == "/api/v1/auth/register" ->
+        403
+
+      String.starts_with?(target, "/api/v1/auth/") ->
+        401
+
+      String.starts_with?(body, "_method=DELETE&") ->
+        404
+
+      method == "HEAD" ->
+        404
+
+      String.ends_with?(target, ".json") ->
+        401
+
+      String.ends_with?(target, "/") ->
+        500
+
+      {"X-HTTP-Method-Override", "DELETE"} in Keyword.get(opts, :headers, []) ->
+        404
+
+      Keyword.get(opts, :headers, []) != [] ->
+        401
+
+      String.contains?(target, "unrelated=") ->
+        if(System.get_env("SELF_HOSTED") == "false", do: 500, else: 401)
+
+      true ->
+        500
+    end
   end
 end

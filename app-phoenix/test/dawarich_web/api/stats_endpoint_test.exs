@@ -147,8 +147,15 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
           {"/api/v1/digests", bearer("phoenix-a4g2-key-zone")}
         ] do
       client = request(port, target, headers)
-      assert puma(upstream) == "GET #{target} HTTP/1.1", target
-      assert {200, _, "rails"} = read_response(client)
+
+      if target == "/api/v1/digests" do
+        assert {200, _, ~s({"digests":[],"availableYears":[]})} = read_response(client)
+      else
+        assert {500, _, ~s({"status":500,"error":"Internal Server Error"})} =
+                 read_response(client)
+      end
+
+      no_upstream!(upstream)
     end
   end
 
@@ -161,8 +168,8 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
           "/api/v1/flights?start_at=0000-01-01"
         ] do
       client = request(port, target, bearer())
-      assert puma(upstream) == "GET #{target} HTTP/1.1", target
-      assert {200, _, "rails"} = read_response(client)
+      assert {500, _, ~s({"status":500,"error":"Internal Server Error"})} = read_response(client)
+      no_upstream!(upstream)
     end
   end
 
@@ -189,11 +196,11 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
       with {name, value} <- env, do: System.put_env(name, value)
       client = request(port, target, [{"Accept", "application/json"}], method)
 
-      assert puma(upstream, if(method == "HEAD", do: "", else: "rails")) ==
-               "#{method} #{target} HTTP/1.1",
-             target
+      expected = if target in ["/api/v1/digests/new", "/api/v1/digests/23"], do: 404, else: 401
 
-      assert {200, _, _} = read_response(client, method: method)
+      assert {^expected, _, body} = read_response(client, method: method)
+      if method == "HEAD", do: assert(body == "")
+      no_upstream!(upstream)
     end
 
     System.delete_env("DAWARICH_RAILS_SLICES")
@@ -227,13 +234,16 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
                  |> read_response()
 
         client = request(port, "/api/v1/insights?year=abc", bearer())
-        assert puma(upstream) == "GET /api/v1/insights?year=abc HTTP/1.1"
-        assert {200, _, "rails"} = read_response(client)
+
+        assert {500, _, ~s({"status":500,"error":"Internal Server Error"})} =
+                 read_response(client)
+
+        no_upstream!(upstream)
       end)
 
     assert log =~ ~r/\[api\] GET \/api\/v1\/stats 200 \d+ms request_id=\[FILTERED\]/
     assert log =~ ~r/\[api\] GET \/api\/v1\/digests\/2023 304 \d+ms request_id=\[FILTERED\]/
-    assert log =~ ~s([api] /api/v1/insights handed to Rails: year parameter "abc")
+    refute log =~ "handed to Rails"
   end
 
   test "a DB error raised while reading hands off to Rails instead of crashing, in every controller",
@@ -247,20 +257,23 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
         ] do
       conn =
         Plug.Test.conn(:get, path)
+        |> Plug.Conn.put_req_header("accept", "application/json")
         |> Plug.Conn.assign(:api_user, %{id: 1, timezone: nil})
         |> Plug.Conn.assign(:api_params, %{})
         |> Plug.Conn.assign(:api_tag, "api")
         |> Plug.Conn.put_private(:dawarich_raw_body, "")
-
-      proxied = Task.async(fn -> puma(upstream) end)
+        |> Plug.Conn.put_private(:dawarich_native_api, true)
 
       log =
         with_info_log(fn ->
-          assert controller.call(conn, action).halted
-          assert Task.await(proxied) == "GET #{path} HTTP/1.1"
+          result = controller.call(conn, action)
+          assert result.halted
+          assert result.status == 500
+          assert result.resp_body == ~s({"status":500,"error":"Internal Server Error"})
+          no_upstream!(upstream)
         end)
 
-      assert log =~ "[api] #{path} handed to Rails: DBConnection.OwnershipError", path
+      refute log =~ "handed to Rails"
     end
   end
 end

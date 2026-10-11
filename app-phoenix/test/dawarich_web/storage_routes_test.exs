@@ -2,7 +2,7 @@ defmodule DawarichWeb.StorageRoutesTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
   import Plug.Conn
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
+  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0]
   alias Dawarich.Test.RailsUser
   alias Dawarich.{Storage, RailsMessages}
   alias DawarichWeb.ActiveStorageUrls
@@ -303,11 +303,10 @@ defmodule DawarichWeb.StorageRoutesTest do
           {:put, put, <<8, 9, 0, 255>>, [{"content-type", "application/octet-stream"}]},
           {:get, disk, "", []}
         ] do
-      {{line, bytes}, result} =
-        forwarded(c.upstream, fn -> request(c, method, url, body, headers, false) end)
-
-      assert {line, bytes, result.status} ==
-               {String.upcase(to_string(method)) <> " #{url} HTTP/1.1", body, 204}
+      result = request(c, method, url, body, [{"accept", "application/json"} | headers], false)
+      assert result.status == if(method == :get, do: 200, else: 422)
+      if method == :get, do: assert(result.resp_body == binary)
+      assert {:error, :timeout} = :gen_tcp.accept(c.upstream.listen, 0)
     end
 
     assert [[before]] == Repo.query!("SELECT count(*) FROM active_storage_blobs").rows

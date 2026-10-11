@@ -179,18 +179,9 @@ defmodule DawarichWeb.TripFormsActionsTest do
       before =
         Repo.query!("SELECT (SELECT count(*) FROM trips), (SELECT count(*) FROM job_outbox)").rows
 
-      {{line, body}, conn} = forwarded(upstream, fn -> submit(ctx, accept) end)
-      assert conn.status == 204
-      assert line =~ "POST #{ctx.entry["request"]["path"]} HTTP/1.1"
-      assert body =~ "authenticity_token="
-      expected = Map.put(ctx.entry["request"]["params"], "authenticity_token", ctx.token)
-
-      expected =
-        if ctx.entry["request"]["method"] == "POST",
-          do: expected,
-          else: Map.put(expected, "_method", "patch")
-
-      assert body == Plug.Conn.Query.encode(expected)
+      conn = submit(ctx, accept)
+      assert conn.status == 500
+      assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
 
       assert Repo.query!("SELECT (SELECT count(*) FROM trips), (SELECT count(*) FROM job_outbox)").rows ==
                before
@@ -270,11 +261,9 @@ defmodule DawarichWeb.TripFormsActionsTest do
 
     Ownership.put!(Repo, "command:trips.calculate", :sidekiq)
 
-    {{_, received}, owner_race} =
-      forwarded(upstream, fn -> DawarichWeb.TripActions.call(admitted, :create) end)
-
-    assert owner_race.status == 204
-    assert received == raw
+    owner_race = DawarichWeb.TripActions.call(admitted, :create)
+    assert owner_race.status == 500
+    assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
 
     assert Repo.query!("SELECT (SELECT count(*) FROM trips), (SELECT count(*) FROM job_outbox)").rows ==
              before

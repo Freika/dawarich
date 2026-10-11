@@ -87,8 +87,9 @@ defmodule DawarichWeb.LiveSocketTest do
 
     sentinel = connect(ctx.port)
     send_raw(sentinel, "GET /sentinel HTTP/1.1\r\nHost: a\r\n\r\n")
-    puma = accept(ctx.upstream)
-    {head, _} = read_head(puma)
-    assert request_line(head) == "GET /sentinel HTTP/1.1"
+    assert {404, _headers, _body} = read_response(sentinel)
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+    :gen_tcp.close(client)
+    :gen_tcp.close(sentinel)
   end
 end

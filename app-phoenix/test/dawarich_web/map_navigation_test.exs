@@ -73,7 +73,7 @@ defmodule DawarichWeb.MapNavigationTest do
           "--test",
           "../spec/javascript/phoenix_map_lifecycle_test.mjs",
           "../spec/javascript/phoenix_m6_studio_wiring_test.mjs",
-          "test/client/retained_turbo_actions_test.mjs"
+          "../spec/javascript/phoenix_m6_host_navigation_test.mjs"
         ],
         stderr_to_stdout: true
       )

@@ -117,8 +117,16 @@ defmodule DawarichWeb.Api.PlanEndpointTest do
 
     for key <- ~w(phoenix-a4-enum phoenix-a4-alias) do
       client = request(port, "/api/v1/plan", bearer(key))
-      assert puma(upstream) == "GET /api/v1/plan HTTP/1.1"
-      assert {200, _, "rails"} = read_response(client)
+
+      if key == "phoenix-a4-enum" do
+        assert {500, _, ~s({"status":500,"error":"Internal Server Error"})} =
+                 read_response(client)
+      else
+        assert {200, _, body} = read_response(client)
+        assert Jason.decode!(body)["active_until"] == "2027-01-01T01:00:00+01:00"
+      end
+
+      no_upstream!(upstream)
     end
   end
 
@@ -131,8 +139,9 @@ defmodule DawarichWeb.Api.PlanEndpointTest do
       System.put_env(var, value)
       user!(%{api_key: @key})
       client = request(port, "/api/v1/plan", bearer())
-      assert puma(upstream) == "GET /api/v1/plan HTTP/1.1"
-      assert {200, _, "rails"} = read_response(client)
+      assert {200, _, body} = read_response(client)
+      assert Jason.decode!(body)["plan"] == "pro"
+      no_upstream!(upstream)
     end
   end
 
@@ -153,10 +162,10 @@ defmodule DawarichWeb.Api.PlanEndpointTest do
         ] do
       client = request(port, target, bearer(), method)
 
-      assert puma(upstream, if(method == "HEAD", do: "", else: "rails")) ==
-               "#{method} #{target} HTTP/1.1"
-
-      assert {200, _, _} = read_response(client, method: method)
+      expected = if target == "/api/v1/ready", do: 503, else: 200
+      assert {^expected, _, body} = read_response(client, method: method)
+      if method == "HEAD", do: assert(body == "")
+      no_upstream!(upstream)
     end
   end
 
@@ -186,11 +195,14 @@ defmodule DawarichWeb.Api.PlanEndpointTest do
     log =
       with_info_log(fn ->
         client = request(port, "/api/v1/plan", bearer("phoenix-a4-enum-log"))
-        assert puma(upstream) == "GET /api/v1/plan HTTP/1.1"
-        assert {200, _, "rails"} = read_response(client)
+
+        assert {500, _, ~s({"status":500,"error":"Internal Server Error"})} =
+                 read_response(client)
+
+        no_upstream!(upstream)
       end)
 
-    assert log =~ "[api] /api/v1/plan handed to Rails: enum value 7"
+    refute log =~ "handed to Rails"
   end
 
   test "a DB error raised while gathering fields hands off to Rails instead of crashing", %{
@@ -206,27 +218,23 @@ defmodule DawarichWeb.Api.PlanEndpointTest do
 
     conn =
       Plug.Test.conn(:get, "/api/v1/plan")
+      |> Plug.Conn.put_req_header("accept", "application/json")
       |> Plug.Conn.assign(:api_user, api_user)
       |> Plug.Conn.assign(:api_tag, "api")
       |> Plug.Conn.put_private(:dawarich_raw_body, "")
+      |> Plug.Conn.put_private(:dawarich_native_api, true)
 
     Ecto.Adapters.SQL.Sandbox.checkin(Repo)
-
-    puma =
-      Task.async(fn ->
-        socket = accept(upstream)
-        {head, _rest} = read_head(socket)
-        reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-        request_line(head)
-      end)
 
     log =
       with_info_log(fn ->
         result = PlanController.call(conn, :show)
-        assert Task.await(puma) == "GET /api/v1/plan HTTP/1.1"
         assert result.halted
+        assert result.status == 500
+        assert result.resp_body == ~s({"status":500,"error":"Internal Server Error"})
+        no_upstream!(upstream)
       end)
 
-    assert log =~ "[api] /api/v1/plan handed to Rails: DBConnection.OwnershipError"
+    refute log =~ "handed to Rails"
   end
 end

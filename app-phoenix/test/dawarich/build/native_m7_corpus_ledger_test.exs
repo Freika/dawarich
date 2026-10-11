@@ -12,7 +12,21 @@ defmodule Dawarich.Build.NativeM7CorpusLedgerTest do
     assert Enum.sum(Enum.map(files, &length(&1["cases"]))) == 2578
 
     for file <- files do
-      assert File.regular?(source(file["file"])), file["file"]
+      assert File.regular?(source(file["file"])) or
+               Map.has_key?(integrated["retired_files"], file["file"]),
+             file["file"]
+
+      if not File.regular?(source(file["file"])) do
+        assert integrated["retired_files"][file["file"]]["successors"] != []
+
+        for entry <- file["cases"] do
+          assert Enum.any?(
+                   integrated["renames"],
+                   &(&1["old"] == %{"file" => file["file"], "name" => entry["old"]["name"]})
+                 )
+        end
+      end
+
       assert file["fixture_policy"] != ""
 
       for entry <- file["cases"] do
@@ -36,7 +50,9 @@ defmodule Dawarich.Build.NativeM7CorpusLedgerTest do
     end
 
     assert Enum.sort(Map.keys(historical["planned_cleanup_successors"])) ==
-             Enum.sort(integrated["pending_cleanup"])
+             Enum.sort(integrated["completed_cleanup"])
+
+    assert integrated["pending_cleanup"] == []
   end
 
   test "reconciliation retains fixture readers and historical difference registers" do
@@ -47,11 +63,14 @@ defmodule Dawarich.Build.NativeM7CorpusLedgerTest do
     assert length(integrated["legacy_reader_handoffs"]) == 13
 
     for row <- integrated["legacy_reader_handoffs"] do
-      assert File.regular?(source(row["file"]))
+      assert File.regular?(source(row["file"])) or
+               Map.has_key?(integrated["retired_files"], row["file"])
+
       assert row["fixture_policy"] != ""
       assert row["cleanup_owner"] != ""
-      assert row["disposition"] =~ "no deletion clearance"
-      assert row["current_cases"] != [] or is_binary(row["module_contract"])
+      assert row["disposition"] != ""
+      assert row["successors"] != []
+      for %{"file" => file, "name" => name} <- row["successors"], do: assert(named?(file, name))
 
       assert Enum.sort(Enum.map(row["current_cases"], & &1["name"])) ==
                Enum.sort(declarations(row["file"]))
@@ -96,17 +115,17 @@ defmodule Dawarich.Build.NativeM7CorpusLedgerTest do
   defp source(file), do: Path.join(@root, file)
 
   defp declarations(file) do
-    text = File.read!(source(file))
+    text = if File.regular?(source(file)), do: File.read!(source(file)), else: ""
 
     for quote <- [~s("), "'", "`"],
-        pattern = "\\btest\\s*(?:\\(\\s*)?#{quote}((?:\\\\.|[^#{quote}\\\\])*)#{quote}",
+        pattern = "(?m)^\\s*test\\s*(?:\\(\\s*)?#{quote}((?:\\\\.|[^#{quote}\\\\])*)#{quote}",
         [_, name] <- Regex.scan(Regex.compile!(pattern), text),
         do: name
   end
 
   defp named?(file, name) do
     normalize = &(&1 |> String.replace(~S(\"), ~s(")) |> String.replace(~S(\'), "'"))
-    pattern = "\\b(?:test|it)\\s*\\(?\\s*[\"'`]#{Regex.escape(normalize.(name))}[\"'`]"
+    pattern = "(?m)^\\s*(?:test|it)\\s*\\(?\\s*[\"'`]#{Regex.escape(normalize.(name))}[\"'`]"
 
     if File.regular?(source(file)) do
       text = normalize.(File.read!(source(file)))

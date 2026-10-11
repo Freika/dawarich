@@ -38,11 +38,16 @@ defmodule DawarichWeb.Api.SharedGoldenTest do
 
       for {key, _} <- @kase["cache_after"] || %{}, do: Dawarich.Redis.cache_command(["DEL", key])
 
+      for [[user]] <- Repo.query!("SELECT DISTINCT user_id FROM shared_links").rows,
+          do: ProviderCache.invalidate(user)
+
+      photo_provider!(@kase)
       before = after_rows()
       photo_search!(@kase)
       kase = cookie(@kase)
+      kase = native(kase)
 
-      if @kase["name"] in ~w(thumbnail_foreign thumbnail_private thumbnail_track_beyond_marker_cap thumbnail_unconfigured) do
+      if @kase["name"] in ~w(deleted_owner_live deleted_owner_timeline deleted_owner_track deleted_owner_trip points_timeline_invalid thumbnail_foreign thumbnail_private thumbnail_track_beyond_marker_cap thumbnail_unconfigured thumbnail_trip_beyond_marker_cap) do
         client = connect(ctx.port)
         request = kase["request"]
 
@@ -53,12 +58,22 @@ defmodule DawarichWeb.Api.SharedGoldenTest do
           request["body"] || ""
         ])
 
-        assert {status, _, body} = read_response(client)
+        assert {status, headers, body} = read_response(client)
+        assert values(headers, "set-cookie") == []
         assert status == kase["response"]["status"]
-        assert body == kase["response"]["body"]
+
+        assert body ==
+                 (kase["response"]["body"] || Base.decode64!(kase["response"]["body_base64"]))
+
         no_upstream!(ctx.upstream)
       else
         ApiGolden.check(kase, ctx.port, ctx.upstream)
+      end
+
+      if @kase["name"] in ~w(thumbnail_trip_beyond_marker_cap thumbnail_provider_failed) do
+        assert_receive {:golden_photo_request, _}
+      else
+        refute_received {:golden_photo_request, _}
       end
 
       assert after_rows() ==
@@ -99,22 +114,103 @@ defmodule DawarichWeb.Api.SharedGoldenTest do
     assert next > id
   end
 
-  defp photo_search!(%{"name" => "thumbnail_" <> _, "cache_after" => caches}) do
-    [[id]] = Repo.query!("SELECT id::text FROM shared_links LIMIT 1").rows
-    link = SharedLinks.active(id, @now)
-    context = Photos.grant_context(link)
+  defp native(kase) do
+    kase = Map.put(kase, "expect", "own")
 
-    for {"photos_search/" <> _, %{"value" => photos}} <- caches,
-        is_list(photos),
-        {from, to} <- [context.range] do
-      key = "photos_search/#{link.user_id}/v2/#{from}/#{to}"
-      ProviderCache.put(key, photos, 60)
+    case kase["name"] do
+      "points_timeline_invalid" ->
+        put_in(kase, ["response"], %{
+          "status" => 500,
+          "body" => ~s({"status":500,"error":"Internal Server Error"})
+        })
+
+      name when name in ["trip_unsupported_client_header", "points_json_suffix"] ->
+        update_in(
+          kase,
+          ["response", "headers"],
+          &(Map.delete(&1, "set-cookie") |> Map.put("vary", "Accept"))
+        )
+
+      _ ->
+        kase
     end
+  end
+
+  defp photo_provider!(%{"name" => "thumbnail_" <> _} = kase) do
+    provider = listen()
+    body = if encoded = kase["response"]["body_base64"], do: Base.decode64!(encoded), else: ""
+    status = if body == "", do: 404, else: 200
+
+    parent = self()
+
+    photo =
+      kase["request"]["target"]
+      |> URI.parse()
+      |> Map.fetch!(:path)
+      |> String.split("/")
+      |> Enum.at(-2)
+
+    worker =
+      Task.async(fn ->
+        socket = accept(provider)
+        {head, _} = read_head(socket)
+
+        send(parent, {:golden_photo_request, request_line(head)})
+        assert request_line(head) == "GET /api/assets/#{photo}/thumbnail?size=preview HTTP/1.1"
+
+        reply(socket, [
+          "HTTP/1.1 #{status} Result\r\nContent-Length: #{byte_size(body)}\r\nConnection: close\r\n\r\n",
+          body
+        ])
+
+        :gen_tcp.close(socket)
+      end)
+
+    Repo.query!(
+      "UPDATE users SET settings=jsonb_set(settings,'{immich_url}',to_jsonb($1::text)) WHERE id IN (SELECT user_id FROM shared_links)",
+      ["http://127.0.0.1:#{provider.port}"]
+    )
 
     on_exit(fn ->
-      ProviderCache.invalidate(link.user_id)
-      Dawarich.Redis.cache_command(["UNLINK", Closure.photo_ids_key(link, context)])
+      Process.exit(worker.pid, :kill)
+      :gen_tcp.close(provider.listen)
     end)
+  end
+
+  defp photo_provider!(_), do: :ok
+
+  defp photo_search!(%{"name" => name, "cache_after" => caches}) when is_map(caches) do
+    if String.starts_with?(name, ["thumbnail_", "photos_"]) do
+      [[id]] = Repo.query!("SELECT id::text FROM shared_links LIMIT 1").rows
+      link = SharedLinks.active(id, @now)
+      context = Photos.grant_context(link)
+
+      if is_tuple(context.range) do
+        {from, to} = context.range
+        key = "photos_search/#{link.user_id}/v2/#{from}/#{to}"
+
+        assert {:ok, _} =
+                 Dawarich.Redis.cache_command([
+                   "UNLINK",
+                   key,
+                   ProviderCache.key(link.user_id, from, to)
+                 ])
+
+        assert ProviderCache.get(key) == :miss
+      end
+
+      for {"photos_search/" <> _, %{"value" => photos}} <- caches,
+          is_list(photos),
+          {from, to} <- [context.range] do
+        key = "photos_search/#{link.user_id}/v2/#{from}/#{to}"
+        ProviderCache.put(key, photos, 60)
+      end
+
+      on_exit(fn ->
+        ProviderCache.invalidate(link.user_id)
+        Dawarich.Redis.cache_command(["UNLINK", Closure.photo_ids_key(link, context)])
+      end)
+    end
   end
 
   defp photo_search!(_), do: :ok

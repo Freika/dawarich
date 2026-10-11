@@ -8,6 +8,15 @@ defmodule DawarichWeb.A8GateEndpointTest do
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    old_jwt = System.get_env("JWT_SECRET_KEY")
+    System.put_env("JWT_SECRET_KEY", "synthetic-a8-cloud-jwt")
+
+    on_exit(fn ->
+      if old_jwt,
+        do: System.put_env("JWT_SECRET_KEY", old_jwt),
+        else: System.delete_env("JWT_SECRET_KEY")
+    end)
+
     previous = Map.new([:rails_routes, :jobs_repo], &{&1, Application.fetch_env(:dawarich, &1)})
     Application.put_env(:dawarich, :jobs_repo, ScratchRepo)
     Application.put_env(:dawarich, :rails_routes, [])
@@ -96,12 +105,13 @@ defmodule DawarichWeb.A8GateEndpointTest do
   end
 
   defp replay(ctx, upstream, method, path, body) do
-    {{line, actual}, conn} = forwarded(upstream, fn -> request(ctx, method, path, body) end)
-    assert line == "#{String.upcase(to_string(method))} #{path} HTTP/1.1"
-    assert actual == body
-    assert conn.status == 204
-    refute Map.has_key?(conn.assigns, :current_user)
-    refute Map.has_key?(conn.assigns, :api_params)
+    conn = request(ctx, method, path, body)
+
+    expected =
+      if method == :get or (method == :post and path == "/visits/bulk_update"), do: 200, else: 422
+
+    assert conn.status == expected, "#{method} #{path}"
+    assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
     assert rows("SELECT count(*) FROM route_videos") == [[0]]
     assert rows("SELECT count(*) FROM visits") == [[0]]
@@ -149,107 +159,29 @@ defmodule DawarichWeb.A8GateEndpointTest do
   end
 
   test "API and storage requests retain their assigned route ownership", ctx do
-    upstream = upstream!()
-    replay(ctx, upstream, :get, "/api/v1/route_videos", "")
-    previous = System.get_env("DAWARICH_RAILS")
-
-    on_exit(fn ->
-      if previous,
-        do: System.put_env("DAWARICH_RAILS", previous),
-        else: System.delete_env("DAWARICH_RAILS")
-    end)
-
-    System.put_env("DAWARICH_RAILS", "off")
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
-
-    for {method, path} <- [
-          {:get, "/api/v1/route_videos"}
+    for {method, path, module, action, pipeline} <- [
+          {"POST", "/rails/active_storage/direct_uploads", DawarichWeb.StorageRoutes,
+           :direct_upload, :storage_upload},
+          {"GET", "/rails/active_storage/blobs/redirect/synthetic/movie.mp4",
+           DawarichWeb.StorageRoutes, :redirect, :storage_public},
+          {"GET", "/api/v1/visits", DawarichWeb.Api.VisitsController, :index, :api_visits},
+          {"PATCH", "/api/v1/visits/42", DawarichWeb.Api.VisitsController, :update, :api_visits}
         ] do
-      assert Phoenix.Router.route_info(
-               DawarichWeb.Router,
-               String.upcase(to_string(method)),
-               path,
-               "www.example.com"
-             ) == :error
-
-      missing = request(ctx, method, path, "")
-      assert missing.status == 404
-      assert missing.resp_body == File.read!(Dawarich.RailsRoot.join("public/404.html"))
-      assert get_resp_header(missing, "set-cookie") == []
-    end
-
-    if previous,
-      do: System.put_env("DAWARICH_RAILS", previous),
-      else: System.delete_env("DAWARICH_RAILS")
-
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
-
-    for {method, path, action, pipeline} <- [
-          {:post, "/rails/active_storage/direct_uploads", :direct_upload, :storage_upload},
-          {:get, "/rails/active_storage/blobs/redirect/synthetic/movie.mp4", :redirect,
-           :storage_public}
-        ] do
-      assert %{
-               plug: DawarichWeb.StorageRoutes,
-               plug_opts: ^action,
-               pipe_through: [^pipeline],
-               rails_key: "active_storage"
-             } =
-               Phoenix.Router.route_info(
-                 DawarichWeb.Router,
-                 String.upcase(to_string(method)),
-                 path,
-                 "www.example.com"
-               )
-
-      Application.put_env(:dawarich, :rails_routes, ["active_storage"])
-      replay(ctx, upstream, method, path, "")
-      Application.put_env(:dawarich, :rails_routes, [])
-    end
-
-    for {method, path, action} <- [
-          {"GET", "/api/v1/visits", :index},
-          {"PATCH", "/api/v1/visits/42", :update}
-        ] do
-      assert %{
-               plug: DawarichWeb.Api.VisitsController,
-               plug_opts: ^action,
-               pipe_through: [:api_visits],
-               slice: :api_visits
-             } = Phoenix.Router.route_info(DawarichWeb.Router, method, path, "www.example.com")
-    end
-
-    route =
-      Phoenix.Router.route_info(
-        DawarichWeb.Router,
-        "GET",
-        "/api/v1/photos/synthetic/thumbnail",
-        "www.example.com"
-      )
-
-    assert route.slice == :api_locations_photos
-    assert route.plug == DawarichWeb.Api.PhotosController
-
-    for {method, path, module, action} <- [
-          {"POST", "/route_videos", DawarichWeb.RouteVideoActions, :create},
-          {"DELETE", "/route_videos/42", DawarichWeb.RouteVideoActions, :destroy},
-          {"POST", "/route_videos/42", DawarichWeb.RouteVideoActions, :destroy},
-          {"PATCH", "/visits/bulk_update", DawarichWeb.VisitActions, :bulk_update},
-          {"POST", "/visits/bulk_update", DawarichWeb.VisitActions, :bulk_update},
-          {"DELETE", "/visits/bulk_destroy", DawarichWeb.VisitActions, :bulk_destroy},
-          {"POST", "/visits/bulk_destroy", DawarichWeb.VisitActions, :bulk_destroy},
-          {"POST", "/visits/merge", DawarichWeb.VisitActions, :merge},
-          {"PATCH", "/visits/42", DawarichWeb.VisitActions, :update},
-          {"PUT", "/visits/42", DawarichWeb.VisitActions, :update},
-          {"DELETE", "/visits/42", DawarichWeb.VisitActions, :destroy},
-          {"POST", "/visits/42", DawarichWeb.VisitActions, :member}
-        ] do
-      assert %{plug: ^module, plug_opts: ^action, pipe_through: [:a8_action]} =
+      assert %{plug: ^module, plug_opts: ^action, pipe_through: [^pipeline]} =
                Phoenix.Router.route_info(DawarichWeb.Router, method, path, "www.example.com")
     end
 
+    missing = request(ctx, :get, "/api/v1/route_videos", "")
+    assert missing.status == 404
+    assert get_resp_header(missing, "set-cookie") == []
+
     for path <- ["/visits/not-a-number", "/visits/1234567890123456789", "/visits/42.json"] do
-      replay(ctx, upstream, :post, path, "_method=delete")
+      refused = request(ctx, :post, path, "_method=delete")
+      assert refused.status == 404
     end
+
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+    assert rows("SELECT count(*) FROM route_videos") == [[0]]
+    assert rows("SELECT count(*) FROM visits") == [[0]]
   end
 end

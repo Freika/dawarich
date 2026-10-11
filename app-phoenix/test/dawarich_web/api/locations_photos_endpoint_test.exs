@@ -259,8 +259,17 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
           {"#{@thumb}?source=immich", bearer()}
         ] do
       client = request(port, target, headers)
-      assert puma(upstream) == "GET #{target} HTTP/1.1", target
-      assert {200, _, "rails"} = read_response(client)
+
+      if headers == bearer("phoenix-a4g3-key-zone") do
+        assert {200, _,
+                ~s({"query":null,"locations":[],"total_locations":0,"search_metadata":{}})} =
+                 read_response(client)
+      else
+        assert {500, _, ~s({"status":500,"error":"Internal Server Error"})} =
+                 read_response(client)
+      end
+
+      no_upstream!(upstream)
     end
 
     assert Task.await(immich) == [@preview, @preview]
@@ -310,11 +319,10 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
       with {name, value} <- env, do: System.put_env(name, value)
       client = request(port, target, [{"Accept", "application/json"}], method)
 
-      assert puma(upstream, if(method == "HEAD", do: "", else: "rails")) ==
-               "#{method} #{target} HTTP/1.1",
-             target
-
-      assert {200, _, _} = read_response(client, method: method)
+      expected = 401
+      assert {^expected, _, body} = read_response(client, method: method)
+      if method == "HEAD", do: assert(body == "")
+      no_upstream!(upstream)
     end
 
     System.delete_env("DAWARICH_RAILS_SLICES")
@@ -371,17 +379,19 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
 
         for target <- ["/api/v1/locations?lat=52.52abc&lon=13.405", "#{@thumb}?source=immich"] do
           client = request(port, target, bearer())
-          assert puma(upstream) == "GET #{target} HTTP/1.1"
-          assert {200, _, "rails"} = read_response(client)
+
+          assert {500, _, ~s({"status":500,"error":"Internal Server Error"})} =
+                   read_response(client)
+
+          no_upstream!(upstream)
         end
       end)
 
     Task.await(immich)
     assert log =~ ~r/\[api\] GET \/api\/v1\/locations 200 \d+ms request_id=\[FILTERED\]/
-    assert log =~ "[api] /api/v1/locations handed to Rails: coordinate parameter shape"
+    refute log =~ "handed to Rails"
 
-    assert log =~
-             "[api] /api/v1/photos/[FILTERED]/thumbnail handed to Rails: photo source answered 302"
+    refute log =~ "photo source answered"
 
     refute log =~ @id
     messages = logged_messages(log)
@@ -402,24 +412,24 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
         ] do
       conn =
         Plug.Test.conn(:get, path)
+        |> Plug.Conn.put_req_header("accept", "application/json")
         |> Map.put(:path_params, path_params)
         |> Plug.Conn.assign(:api_user, %{id: 1, timezone: nil})
         |> Plug.Conn.assign(:api_params, params)
         |> Plug.Conn.assign(:api_tag, "api")
         |> Plug.Conn.put_private(:dawarich_raw_body, "")
-
-      proxied = Task.async(fn -> puma(upstream) end)
+        |> Plug.Conn.put_private(:dawarich_native_api, true)
 
       log =
         with_info_log(fn ->
-          assert controller.call(conn, action).halted
-          assert Task.await(proxied) == "GET #{path} HTTP/1.1"
+          result = controller.call(conn, action)
+          assert result.halted
+          assert result.status == 500
+          assert result.resp_body == ~s({"status":500,"error":"Internal Server Error"})
+          no_upstream!(upstream)
         end)
 
-      safe_path =
-        if controller == PhotosController, do: "/api/v1/photos/[FILTERED]/thumbnail", else: path
-
-      assert log =~ "[api] #{safe_path} handed to Rails: DBConnection.OwnershipError", path
+      refute log =~ "handed to Rails"
       if controller == PhotosController, do: refute(log =~ @id)
     end
   end

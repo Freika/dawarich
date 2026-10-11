@@ -297,15 +297,16 @@ defmodule DawarichWeb.RouteVideoActionsTest do
     for zone <- ["Mars/Unknown", %{}] do
       Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [ctx.user.id, %{"timezone" => zone}])
 
-      assert {{"POST /route_videos HTTP/1.1", ^body}, %{status: 204}} =
-               forwarded(upstream, fn ->
-                 post_form(
-                   ctx.session,
-                   body,
-                   [{"accept", "text/vnd.turbo-stream.html"}, {"x-csrf-token", ctx.token}],
-                   "/route_videos"
-                 )
-               end)
+      result =
+        post_form(
+          ctx.session,
+          body,
+          [{"accept", "text/vnd.turbo-stream.html"}, {"x-csrf-token", ctx.token}],
+          "/route_videos"
+        )
+
+      assert result.status == 422
+      assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
 
       assert ScratchRepo.query!("SELECT id FROM route_videos").rows == []
       assert ScratchRepo.query!("SELECT id FROM phoenix.rails_commands").rows == []
