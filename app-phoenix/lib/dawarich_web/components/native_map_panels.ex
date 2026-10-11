@@ -30,8 +30,11 @@ defmodule DawarichWeb.NativeMapPanels do
   attr :locale, :string, required: true
   attr :panel, :string, default: ""
 
+  attr :self_hosted, :boolean, default: true
+
   def navigation(assigns) do
-    assigns = assign(assigns, :panels, @panels)
+    panels = if assigns.self_hosted, do: @panels, else: @panels ++ [{"links", "links"}]
+    assigns = assign(assigns, :panels, panels)
 
     ~H"""
     <nav class="flex min-w-0 flex-wrap gap-2" aria-label={c(@locale, "map_controls")}>

@@ -18,7 +18,15 @@ defmodule DawarichWeb.NativeMapPage do
       class="relative w-full min-w-0 h-[calc(100dvh-4rem)] flex flex-col"
     >
       <DawarichWeb.Chrome.flash locale={@locale} flash={@flash} native />
-      <DawarichWeb.NativeMapPanels.navigation locale={@locale} panel={@map_url["panel"] || ""} />
+      <DawarichWeb.NativeMapPanels.navigation
+        locale={@locale}
+        panel={@map_url["panel"] || ""}
+        self_hosted={assigns[:self_hosted] != false}
+      />
+      <DawarichWeb.NativeMapLinks.links
+        :if={assigns[:self_hosted] == false && @map_url["panel"] == "links"}
+        locale={@locale}
+      />
       <DawarichWeb.NativeMapPanels.layer_panel
         :if={@map_url["panel"] == "layers" && assigns[:map_settings]}
         locale={@locale}
