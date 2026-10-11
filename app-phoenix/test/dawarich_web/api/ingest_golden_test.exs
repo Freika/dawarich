@@ -27,9 +27,8 @@ defmodule DawarichWeb.Api.IngestGoldenTest do
       client = connect(port)
       send_raw(client, raw(@kase["request"]))
 
-      if @kase["expect"] == "replay",
-        do: replayed(@kase, upstream, client),
-        else: owned(@kase, client)
+      owned(@kase, client)
+      assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
     end
   end
 
@@ -56,6 +55,8 @@ defmodule DawarichWeb.Api.IngestGoldenTest do
   defp owned(kase, client) do
     {status, headers, body} = read_response(client)
     expected = kase["response"]
+    assert is_map(expected["headers"]), "Rails capture lacks terminal response headers"
+    assert is_list(kase["rows"]), "Rails capture lacks database effects"
     ids = new_ids(kase)
     id_free? = normalize(body, ids) == body
 
@@ -116,29 +117,6 @@ defmodule DawarichWeb.Api.IngestGoldenTest do
              [[kase["points_count"]]]
 
     assert commands(ids) == kase["commands"]
-  end
-
-  defp replayed(kase, upstream, client) do
-    request = kase["request"]
-    puma = Dawarich.Test.ApiGolden.rails_connection(client, upstream)
-    {head, rest} = read_head(puma)
-
-    assert request_line(head) == "POST #{request["target"]} HTTP/1.1"
-
-    assert read_at_least(puma, rest, byte_size(request["body"]))
-           |> binary_part(0, byte_size(request["body"])) == request["body"]
-
-    for [name, value] <- request["headers"],
-        do: assert(header(head, String.downcase(name)) == [value], name)
-
-    %{"status" => status, "body" => body} = kase["response"]
-    reply(puma, "HTTP/1.1 #{status} Rails\r\nContent-Length: #{byte_size(body)}\r\n\r\n#{body}")
-    assert {^status, _, ^body} = read_response(client)
-
-    assert Repo.query!("SELECT count(*) FROM points WHERE user_id = $1", [kase["user_id"]]).rows ==
-             [[length(kase["setup_point_ids"])]]
-
-    assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands").rows == [[0]]
   end
 
   defp new_ids(kase) do

@@ -126,7 +126,7 @@ defmodule Dawarich.Auth.HttpBoundaryTest do
     assert AuthHandler.call(conn, fallback: & &1) == conn
   end
 
-  test "ambiguous form replay and a missing CSRF token hand the consumed body to Rails before credentials" do
+  test "ambiguous forms preserve their body and method overrides terminate before credentials" do
     previous = System.get_env("SELF_HOSTED")
     System.put_env("SELF_HOSTED", "true")
 
@@ -164,20 +164,18 @@ defmodule Dawarich.Auth.HttpBoundaryTest do
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
     on_exit(fn -> Application.put_env(:dawarich, :rails_upstream, previous_upstream) end)
 
-    peer =
-      Task.async(fn ->
-        socket = Dawarich.Test.RawHTTP.accept(upstream)
-        {head, rest} = Dawarich.Test.RawHTTP.read_head(socket)
-        body = Dawarich.Test.RawHTTP.read_at_least(socket, rest, byte_size(override))
-        Dawarich.Test.RawHTTP.reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
-        :gen_tcp.close(socket)
-        {Dawarich.Test.RawHTTP.request_line(head), body}
-      end)
+    refused_override =
+      AuthHandler.call(put_private(conn, :dawarich_rate_limit, []),
+        native: true,
+        enabled: true,
+        registration_enabled: false,
+        fallback: & &1
+      )
 
-    replayed = AuthHandler.call(conn, enabled: true, registration_enabled: false, fallback: & &1)
-    assert replayed.status == 200 and replayed.halted
-    assert Task.await(peer) == {"POST /users/sign_in HTTP/1.1", override}
-    assert replayed.private.dawarich_raw_body == override
+    assert {refused_override.status, refused_override.halted} == {422, true}
+    assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
+    assert refused_override.private.dawarich_raw_body == override
+    assert refused_override.resp_cookies == %{}
 
     raw = "user%5Bemail%5D=unknown&user%5Bpassword%5D=secret"
 

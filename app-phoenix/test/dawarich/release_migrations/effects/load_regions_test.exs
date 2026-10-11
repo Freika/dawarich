@@ -153,7 +153,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.LoadRegionsTest do
       |> String.split(~r/^FROM /m)
       |> Enum.find(&(&1 =~ ~r/\A\S+ AS phoenix_builder\n/))
 
-    [before_release, _] = String.split(builder, "\nRUN mix release\n", parts: 2)
+    [before_release, _] = String.split(builder, ~r/\bmix release(?:\s|$)/, parts: 2)
 
     assert "COPY lib/assets/admin1_world.geojson priv/admin1_world.geojson" in String.split(
              before_release,

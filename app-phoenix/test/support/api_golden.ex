@@ -50,9 +50,7 @@ defmodule Dawarich.Test.ApiGolden do
 
     send_raw(client, raw(request))
 
-    if kase["expect"] == "own",
-      do: owned(kase, client, upstream, options),
-      else: rails(kase, client, upstream)
+    owned(kase, client, upstream, options)
   end
 
   def insert!(table, rows, repo \\ Dawarich.Repo)
@@ -156,26 +154,6 @@ defmodule Dawarich.Test.ApiGolden do
     end
 
     assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
-  end
-
-  defp rails(kase, client, upstream) do
-    %{"method" => method, "target" => target, "headers" => sent} = kase["request"]
-    puma = rails_connection(client, upstream)
-    {head, rest} = read_head(puma)
-
-    assert request_line(head) == "#{method} #{target} HTTP/1.1"
-    for [name, value] <- sent, do: assert(header(head, String.downcase(name)) == [value], name)
-    sent_body = Map.get(kase["request"], "body", "")
-    assert read_at_least(puma, rest, byte_size(sent_body)) == sent_body
-
-    %{"status" => status} = kase["response"]
-    body = body(kase["response"])
-    lengths = if method == "HEAD", do: head_length(kase["response"]), else: [byte_size(body)]
-    framing = Enum.map(lengths, &"Content-Length: #{&1}\r\n")
-    reply(puma, ["HTTP/1.1 #{status} Rails\r\n", framing, "\r\n", body])
-    assert {^status, headers, received} = response(client, method)
-    if method == "HEAD", do: assert(values(headers, "content-length") == lengths)
-    assert received == body
   end
 
   defp response(client, "HEAD") do
