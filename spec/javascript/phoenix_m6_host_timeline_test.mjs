@@ -94,6 +94,7 @@ test("native track selection ignores late geometry after replacement and disposa
 test("native track clicks send only owned scalar commands and replay seeks the source profile day", async () => {
   const f = fixture({ tracksEnabled: true })
   const replay = []
+  f.root.contains = () => false
   try {
     await f.owner.mount()
     f.map.queryRenderedFeatures = () => [
@@ -483,6 +484,26 @@ test("native timeline keyboard steps profile calendar dates ignores text inputs 
       f.pushed.filter(({ event }) => event === "calendar:day").length,
       2,
     )
+  } finally {
+    f.owner.destroy()
+  }
+})
+
+test("native map track hits ignore blank tool markup but refuse armed placement", async () => {
+  const f = fixture({ tracksEnabled: true })
+  const status = new Element()
+  status.textContent = "\n  "
+  f.nodes.set("[data-map-tool-status]", status)
+  f.map.queryRenderedFeatures = () => [
+    { properties: { id: 7 }, layer: { id: "tracks-mvt" } },
+  ]
+  try {
+    await f.owner.mount()
+    f.map.emit("click", { point: { x: 20, y: 20 } })
+    assert.equal(f.pushed.filter(({ event }) => event === "map:select").length, 1)
+    status.textContent = "Click to place the visit"
+    f.map.emit("click", { point: { x: 20, y: 20 } })
+    assert.equal(f.pushed.filter(({ event }) => event === "map:select").length, 1)
   } finally {
     f.owner.destroy()
   }

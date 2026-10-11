@@ -15,7 +15,9 @@ export class Element {
     this.listeners.get(name)?.delete(fn)
   }
   emit(name, value = {}) {
+    value.target ??= this
     for (const fn of this.listeners.get(name) ?? []) fn(value)
+    this.parent?.emit(name, value)
   }
   appendChild(child) {
     this.children.push(child)
@@ -39,6 +41,12 @@ export function fixture(config = {}, options = {}) {
   const nodes = new Map()
   const root = new Element()
   root.querySelector = (selector) => nodes.get(selector)
+  root.contains = (element) => [...nodes.values()].includes(element)
+  nodes.set = (selector, node) => {
+    node.parent = root
+    node.closest = (query) => query === selector ? node : query === "[data-native-map-root]" ? root : null
+    return Map.prototype.set.call(nodes, selector, node)
+  }
   const element = new Element()
   const range = {
     startAt: "2026-03-29T00:00",
