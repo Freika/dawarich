@@ -58,6 +58,25 @@ defmodule DawarichWeb.NativeM6HostTest do
     render_async(view, 5000)
   end
 
+  test "native Area dialog wires its owned radius preview through validation and close", %{id: id} do
+    {:ok, view, _} = open(id, @second)
+    render_hook(view, "area:new", %{"latitude" => 52.5, "longitude" => 13.4})
+    assert has_element?(view, "[data-native-map-root] #native-area-dialog[phx-hook=AreaPreview]")
+
+    view
+    |> form("#native-area-form", area: %{name: "Home", radius: "-5"})
+    |> render_submit()
+
+    assert has_element?(
+             view,
+             "#native-area-dialog[phx-hook=AreaPreview] input[name='area[radius]'][value='-5']"
+           )
+
+    render_hook(view, "area:close", %{})
+    refute has_element?(view, "#native-area-dialog")
+    assert rows("SELECT count(*) FROM areas WHERE user_id=$1", [id]) == [[0]]
+  end
+
   test "native production host opens validates and closes an Area dialog", %{id: id} do
     {:ok, view, _} = open(id, @second)
     render_hook(view, "area:new", %{"latitude" => 52.52, "longitude" => 13.405})

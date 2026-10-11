@@ -14,6 +14,7 @@ defmodule DawarichWeb.NativeAreaDialog do
     ~H"""
     <div
       id="native-area-dialog"
+      phx-hook="AreaPreview"
       class="modal modal-open z-[10000]"
       role="dialog"
       aria-modal="true"

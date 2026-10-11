@@ -37,6 +37,9 @@ export function createHostTools({ map, root, pushEvent, lifetime }) {
   lifetime.own(() => map.off("click", "points-mvt", address))
   const area = createAreaEditor({ map, pushEvent })
   lifetime.own(area.destroy)
+  const preview = ({ detail }) => (detail ? area.preview(detail) : area.clear())
+  root?.addEventListener("native:area-preview", preview)
+  lifetime.own(() => root?.removeEventListener("native:area-preview", preview))
   bindTool(root, '[data-testid="native-create-area"]', area.arm, lifetime)
   return { area, entity }
 }
