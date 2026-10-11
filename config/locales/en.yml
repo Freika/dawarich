@@ -3221,6 +3221,7 @@ en:
         failed_to_start_import_please_try_again: Failed to start import. Please try again.
         an_error_occurred_while_starting_the_import_please_try_again: An error occurred while starting the import. Please try again.
         please_upload_a_valid_zip_file: Please upload a valid ZIP file.
+        cannot_delete_yourself_or_last_admin: Cannot delete yourself or the last active administrator.
         cannot_remove_last_admin_role: Cannot remove admin role from the last admin user.
         cannot_disable_last_admin: Cannot disable the last admin user.
       visits:
