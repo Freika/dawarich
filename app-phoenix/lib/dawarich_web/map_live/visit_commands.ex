@@ -146,7 +146,9 @@ defmodule DawarichWeb.MapLive.VisitCommands do
 
     if current.id,
       do: {:noreply, socket},
-      else: {:noreply, push_event(socket, "map:layer", %{layer: "visits", enabled: true})}
+      else:
+        {:noreply,
+         socket |> enable_layer() |> push_event("map:layer", %{layer: "visits", enabled: true})}
   end
 
   def settle(socket, current, {:error, {:invalid, errors}}),
@@ -154,6 +156,21 @@ defmodule DawarichWeb.MapLive.VisitCommands do
 
   def settle(socket, current, {:error, reason}),
     do: {:noreply, assign(socket, :visit_dialog, %{current | errors: [reason]})}
+
+  defp enable_layer(%{assigns: %{map_settings: %{saved: settings}, map_config: _}} = socket) do
+    layers = Enum.uniq((settings["enabled_map_layers"] || []) ++ ["Visits"])
+
+    {:noreply, socket} =
+      DawarichWeb.MapLive.Native.handle_event(
+        "settings:map_layers",
+        %{"layers" => layers},
+        socket
+      )
+
+    socket
+  end
+
+  defp enable_layer(socket), do: socket
 
   defp reply(socket, result) when result == :ok or elem(result, 0) == :ok,
     do:

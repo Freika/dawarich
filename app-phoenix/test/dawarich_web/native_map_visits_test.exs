@@ -1,5 +1,6 @@
 defmodule DawarichWeb.NativeMapVisitsTest do
   use Dawarich.DataCase, async: false
+  import Phoenix.ConnTest, only: [get: 2]
   import Phoenix.LiveViewTest
   alias Dawarich.{Accounts, Maps}
   alias Dawarich.Test.RailsUser
@@ -39,6 +40,55 @@ defmodule DawarichWeb.NativeMapVisitsTest do
       end
 
     %{id: id, other: other}
+  end
+
+  test "native Visit creation enables the saved layer only after successful creation", c do
+    rows("UPDATE users SET settings=$2::jsonb WHERE id=$1", [
+      c.id,
+      %{"timezone" => "Europe/Berlin", "enabled_map_layers" => ["Points"]}
+    ])
+
+    {:ok, view, _} =
+      RailsUser.signed_in(c.id)
+      |> RailsUser.connecting_as(c.id)
+      |> Plug.Test.init_test_session(%{})
+      |> Plug.Conn.put_private(:phoenix_endpoint, @endpoint)
+      |> Map.merge(%{request_path: "/map/v2", path_info: ["map", "v2"], query_string: ""})
+      |> Plug.Conn.fetch_query_params()
+      |> Dawarich.Test.NativeM6IntegrationRouter.call([])
+      |> live()
+
+    render_hook(view, "visit:new", %{"latitude" => 52.5, "longitude" => 13.4})
+
+    view
+    |> form("#native-visit-form",
+      visit: %{name: "Cafe", started_at: "2024-06-15T13:00", ended_at: "2024-06-15T12:00"}
+    )
+    |> render_submit()
+
+    assert Accounts.get(c.id).settings["enabled_map_layers"] == ["Points"]
+
+    view
+    |> form("#native-visit-form",
+      visit: %{name: "Cafe", started_at: "2024-06-15T12:00", ended_at: "2024-06-15T13:00"}
+    )
+    |> render_submit()
+
+    assert Accounts.get(c.id).settings["enabled_map_layers"] == ["Points", "Visits"]
+    assert Accounts.get(c.id).settings["timezone"] == "Europe/Berlin"
+    assert_push_event(view, "map:config", %{"visitsEnabled" => true})
+    [[visit]] = rows("SELECT id FROM visits WHERE user_id=$1", [c.id])
+    render_hook(view, "settings:map_layers", %{"layers" => ["Points"]})
+    render_hook(view, "visit:edit", %{"id" => to_string(visit)})
+
+    view
+    |> form("#native-visit-form",
+      visit: %{name: "Office", started_at: "2024-06-15T12:00", ended_at: "2024-06-15T14:00"}
+    )
+    |> render_submit()
+
+    assert Accounts.get(c.id).settings["enabled_map_layers"] == ["Points"]
+    assert name_and_place(visit) |> hd() == "Office"
   end
 
   test "visit dialog creates in the profile zone and enables the visits layer", c do
