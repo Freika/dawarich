@@ -1598,3 +1598,12 @@ Rails upload-controller disconnect removes form listeners without aborting the a
 - Phoenix: `app-phoenix/assets/js/uploaders/direct.js:73`.
 - Tests: `phoenix_upload_pagehide_test.mjs`, “pagehide cancels an in-flight disk PUT once with a keepalive owner reference” and “completed disk PUT removes its departure listener before reporting completion”; registration and cleanup omission mutations fail. Browser consumer: `native-upload-boundaries.spec.js`, “disconnect during PUT cleans the pending target and late transport cannot revive it”.
 - Ledger: ED-NATIVE-S1-UPLOAD-DEPARTURE; no DRB. Rails source-backed observation; Rails production code unchanged.
+
+### FRB-NATIVE-S1-DATE-TOOLTIP — Import date tooltips overflow narrow screens
+
+Rails renders centered human-date tooltips at the right edge of the import table. Their full timestamp text can extend the document beyond a narrow viewport. Native import detail aligns date tooltips to the right edge below the small breakpoint.
+
+- Rails: `app/views/imports/_import.html.erb:18`, `app/helpers/datetime_formatting_helper.rb:16`.
+- Phoenix: `app-phoenix/lib/dawarich_web/imports_live/show.ex:129`.
+- Tests: `imports/extraction.spec.js`, English/German “390px extraction detail and Escape/cancel confirmations remain bounded”; centered-tooltip mutation must overflow, and removing it must restore bounded dimensions.
+- Ledger: ED-NATIVE-S1-DATE-TOOLTIP; no DRB. Source-backed inherited layout defect; no Rails runtime oracle. Rails production code unchanged.

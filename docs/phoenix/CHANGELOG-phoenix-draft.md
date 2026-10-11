@@ -194,3 +194,5 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 - Extend family publication re-admission to OwnTracks friends, family trip metadata/share references and retained family Cable coordinates. [FRB-NATIVE-M4-FAMILY-PUBLICATION](fixed-rails-bugs.md#frb-native-m4-family-publication--family-reads-can-publish-data-after-in-flight-revocation)
 
 - Cancel in-flight native uploads when leaving the page, suppress late completion, and release owner-bound reservations with a keepalive request. [FRB-NATIVE-S1-UPLOAD-DEPARTURE](fixed-rails-bugs.md#frb-native-s1-upload-departure--leaving-during-an-upload-retains-its-reservation)
+
+- Keep import detail date tooltips inside narrow viewports. [FRB-NATIVE-S1-DATE-TOOLTIP](fixed-rails-bugs.md#frb-native-s1-date-tooltip--import-date-tooltips-overflow-narrow-screens)
