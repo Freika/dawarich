@@ -112,6 +112,7 @@ defmodule Dawarich.MapApi.Hexagons do
     {:ok, cells} =
       Repo.transaction(fn ->
         Repo.query!("SET LOCAL statement_timeout = 5000")
+        Repo.query!("SET LOCAL jit = off")
         Repo.query!(sql, args).rows
       end)
 
