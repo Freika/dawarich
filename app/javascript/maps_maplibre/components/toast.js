@@ -20,6 +20,7 @@ export class Toast {
       z-index: 9999;
       display: flex;
       flex-direction: column;
+      max-width: calc(100vw - 40px);
       gap: 12px;
       pointer-events: none;
     `
@@ -63,6 +64,10 @@ export class Toast {
       .toast-container > .toast {
         position: relative;
         inset: auto;
+        min-width: 0;
+        white-space: normal;
+        flex-direction: row;
+        flex-wrap: wrap;
         pointer-events: none;
         animation: toast-slide-in 0.3s ease-out;
       }
@@ -119,7 +124,10 @@ export class Toast {
         padding: 4px 8px;
         color: white;
         font-weight: 700;
-        white-space: nowrap;
+        min-width: 0;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
       `
       button.addEventListener("click", () => {
         Toast.dismiss(toast)
