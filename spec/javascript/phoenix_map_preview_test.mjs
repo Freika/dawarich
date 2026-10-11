@@ -383,3 +383,57 @@ test("new Trip empty preview settles without history or invalid range request", 
   assert.equal(await owner.mount(), "ready")
   owner.destroy()
 })
+
+test("readonly trip previews preserve every saved style and omit navigation controls", async () => {
+  const { createPreviewOwner } = await import(
+    "../../app-phoenix/assets/js/map/preview/owner.js"
+  )
+  const previous = globalThis.fetch
+  const urls = []
+  globalThis.fetch = async (url) => {
+    urls.push(url)
+    return {
+      ok: true,
+      json: async () => ({ version: 8, sources: {}, layers: [] }),
+    }
+  }
+  try {
+    for (const styleName of ["white", "black", "grayscale", "dark", "light"]) {
+      let controls = 0
+      const owner = createPreviewOwner({
+        element: {
+          dataset: {},
+          ownerDocument: { createElement: () => ({ style: {}, remove() {} }) },
+          appendChild() {},
+        },
+        config: { styleName, interactive: false },
+        reader: { reset() {}, destroy() {} },
+        loadLibrary: async () => ({
+          NavigationControl: class {},
+          Map: class {
+            loaded() {
+              return true
+            }
+            on() {}
+            off() {}
+            addControl() {
+              controls++
+            }
+            getSource() {}
+            getLayer() {}
+            remove() {}
+          },
+        }),
+      })
+      try {
+        assert.equal(await owner.mount(), "ready")
+        assert.equal(urls.at(-1), `/maps_maplibre/styles/${styleName}.json`)
+        assert.equal(controls, 0)
+      } finally {
+        owner.destroy()
+      }
+    }
+  } finally {
+    globalThis.fetch = previous
+  }
+})

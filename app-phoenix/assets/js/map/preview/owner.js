@@ -3,20 +3,14 @@ import { createReader } from "../data/reader.js"
 import { createStatsLayer } from "../public/stats.js"
 import { createPublicStatsReader } from "../public/stats_reader.js"
 import { createMapRuntime } from "../runtime/create_map.js"
+import { fetchStyle } from "../style/load_style.js"
 import { TripPlanLayer } from "../trip/plan.js"
 export function createPreviewOwner({
   element,
   config,
   reader = config.kind === "stats" ? createPublicStatsReader() : createReader(),
   loadLibrary = () => import("/maplibre/6.4.1/maplibre-gl.mjs"),
-  loadStyle = async (state, { signal }) => {
-    const response = await fetch(
-      `/maps_maplibre/styles/${state.styleName === "dark" ? "dark" : "light"}.json`,
-      { signal, credentials: "same-origin" },
-    )
-    if (!response.ok) throw new Error("Style unavailable")
-    return response.json()
-  },
+  loadStyle = fetchStyle,
 }) {
   let library, plan, current, map, stats
   function clear() {
@@ -82,6 +76,7 @@ export function createPreviewOwner({
     element,
     config: {
       ...config,
+      navigationControls: config.interactive === true,
       mapOptions: {
         center: [0, 0],
         zoom: 2,

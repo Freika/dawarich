@@ -96,7 +96,10 @@ export function createMapRuntime({
       })
       const owned = map
       lifetime.own(() => owned.remove())
-      if (typeof library.NavigationControl === "function")
+      if (
+        current.navigationControls !== false &&
+        typeof library.NavigationControl === "function"
+      )
         map.addControl(new library.NavigationControl(), "top-right")
       if (typeof library.getRTLTextPluginStatus === "function")
         void registerRTLTextPlugin(
