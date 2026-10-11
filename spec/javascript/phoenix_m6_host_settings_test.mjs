@@ -18,3 +18,16 @@ test("native host settings change style and rebuild owned tiles", async () => {
   assert.equal(f.owner.config.styleName, "dark")
   f.owner.destroy()
 })
+
+test("layer settings preserve the active style and selected overlays", async () => {
+  const f = fixture({ styleName: "light", styleUrl: "/maps_maplibre/styles/light.json" })
+  let replacements = 0
+  f.map.setStyle = () => { replacements++; f.layers.clear(); f.sources.clear() }
+  await f.owner.mount()
+  f.map.addLayer({ id: "selected-overlay" })
+  await f.owner.settings({ settings: { enabled_map_layers: ["Points", "Tracks"] } })
+  assert.equal(replacements, 0)
+  assert.equal(f.layers.has("selected-overlay"), true)
+  assert.equal(f.owner.config.tracksEnabled, true)
+  f.owner.destroy()
+})

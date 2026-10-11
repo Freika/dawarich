@@ -70,8 +70,17 @@ export function createHostSettings({
   })
   lifetime.own(style.destroy)
   return async ({ settings }) => {
-    const next = mapSettings(settings, getConfig())
+    const previous = getConfig()
+    const next = mapSettings(settings, previous)
     await update(next)
-    await style.apply(next.styleUrl)
+    const appearance = (config) => JSON.stringify([
+      config.styleUrl,
+      config.customTheme,
+      config.tilesUrl,
+      config.hiddenTileCategories,
+      config.disabledPoiGroups,
+    ])
+    if (appearance(next) !== appearance(previous))
+      await style.apply(next.styleUrl)
   }
 }
