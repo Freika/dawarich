@@ -34,7 +34,12 @@ defmodule DawarichWeb.NativeMapPlace do
             {message(@locale, error)}
           </li>
         </ul>
-        <form id="native-place-form" phx-submit="place:save" class="space-y-3">
+        <form
+          id="native-place-form"
+          phx-change="place:change"
+          phx-submit="place:save"
+          class="space-y-3"
+        >
           <input type="hidden" name="place[latitude]" value={@dialog.form["latitude"]} />
           <input type="hidden" name="place[longitude]" value={@dialog.form["longitude"]} />
           <label class="form-control">

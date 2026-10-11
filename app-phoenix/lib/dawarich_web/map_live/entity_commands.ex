@@ -26,6 +26,17 @@ defmodule DawarichWeb.MapLive.EntityCommands do
     end
   end
 
+  def handle_event("place:change", %{"place" => attrs}, socket) when is_map(attrs) do
+    case socket.assigns[:place_dialog] do
+      %{form: form} = current ->
+        draft = Map.merge(form, Map.take(attrs, ~w(name latitude longitude note tag_ids)))
+        {:noreply, assign(socket, :place_dialog, %{current | form: draft})}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_event("place:save", %{"place" => attrs}, socket) when is_map(attrs) do
     case socket.assigns[:place_dialog] do
       %{id: id, form: form} = current ->
