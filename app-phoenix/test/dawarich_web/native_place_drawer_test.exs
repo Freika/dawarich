@@ -88,6 +88,14 @@ defmodule DawarichWeb.NativePlaceDrawerTest do
     refute has_element?(owned, "#native-place-drawer")
   end
 
+  test "deleting an owned map place carries the localized success notice", %{id: id, place: place} do
+    {:ok, view, _} = open(id, place)
+    render_click(view, "place:detail:delete")
+    assert_patch(view, "/map/v2")
+    assert has_element?(view, "#flash-messages [role=alert]", "Place was successfully destroyed.")
+    assert rows("SELECT count(*) FROM places WHERE id=$1", [place]) == [[0]]
+  end
+
   defp open(id, place) do
     path = if place, do: "/map/v2?place_id=#{place}", else: "/map/v2"
     live(RailsUser.signed_in(id) |> RailsUser.connecting_as(id), path)

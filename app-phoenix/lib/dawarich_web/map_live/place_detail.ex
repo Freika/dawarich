@@ -71,7 +71,7 @@ defmodule DawarichWeb.MapLive.PlaceDetail do
              socket
              |> assign(:place_dialog, nil)
              |> close()
-             |> notice("controllers.places.destroyed")
+             |> notice("controllers.places.place_was_successfully_destroyed")
              |> push_event("map:invalidate", %{resource: "places"})}
 
           {:error, :not_found} ->
