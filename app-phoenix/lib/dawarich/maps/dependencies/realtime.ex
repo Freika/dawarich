@@ -1,7 +1,8 @@
 defmodule Dawarich.Maps.Dependencies.Realtime do
   @moduledoc false
   alias Dawarich.{Maps, RailsMessages}
-  alias Dawarich.Maps.Dependencies.{Family, Public, Trip}
+  alias Dawarich.Maps.Family
+  alias Dawarich.Maps.Dependencies.{Public, Trip}
 
   def topics(%{kind: :public, capability: capability}, opts) do
     case Public.config(capability, opts) do

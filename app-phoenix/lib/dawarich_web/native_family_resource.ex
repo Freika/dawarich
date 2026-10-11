@@ -19,7 +19,7 @@ defmodule DawarichWeb.NativeFamilyResource do
   end
 
   def admit(socket) do
-    case Dawarich.Maps.Dependencies.Family.view(socket.assigns.current_scope,
+    case Dawarich.Maps.Family.view(socket.assigns.current_scope,
            self_hosted: socket.assigns.self_hosted != false
          ) do
       {:ok, page} ->

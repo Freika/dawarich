@@ -28,14 +28,18 @@ defmodule DawarichWeb.NativeFamilyInvitations do
                 )
             })}
           </p>
-          <a href={@base_url <> "/invitations/" <> invitation.token} class="link">{@base_url <>
-            "/invitations/" <> invitation.token}</a>
+          <a href={"/native/family/invitations/#{invitation.id}/view"} class="link">{t(
+            @locale,
+            "family_invitations.index.view_invitation",
+            %{}
+          )}</a>
         </div>
         <button
           type="button"
-          phx-hook="Clipboard"
+          phx-hook="InvitationClipboard"
           id={"family-invite-copy-#{invitation.id}"}
-          data-clipboard-text={@base_url <> "/invitations/" <> invitation.token}
+          data-reveal-path={"/native/family/invitations/#{invitation.id}/copy"}
+          data-copied-label={t(@locale, "javascript.messages.copied_to_clipboard", %{})}
           class="btn btn-sm h-auto whitespace-normal"
           aria-label={t(@locale, "shared.sharing_link.copy", %{})}
         >⧉</button>
@@ -43,7 +47,7 @@ defmodule DawarichWeb.NativeFamilyInvitations do
           :if={@page.owner?}
           type="button"
           phx-click="family:cancel"
-          phx-value-token={invitation.token}
+          phx-value-id={invitation.id}
           data-confirm={s(@locale, "cancel_this_invitation")}
           class="btn btn-sm text-error"
         >×</button>

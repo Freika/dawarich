@@ -25,9 +25,11 @@ defmodule Dawarich.Maps do
 
     with {:ok, fresh} <- DataAccess.admit(scope, opts) do
       user = fresh.user
-      if user.status in [0, 3] or (user.active_until && DateTime.compare(user.active_until, now) == :lt),
-        do: {:error, :unauthorized},
-        else: {:ok, fresh}
+
+      if user.status in [0, 3] or
+           (user.active_until && DateTime.compare(user.active_until, now) == :lt),
+         do: {:error, :unauthorized},
+         else: {:ok, fresh}
     end
   end
 

@@ -99,7 +99,7 @@ defmodule DawarichWeb.BrowserMapData do
     scope = Dawarich.Maps.principal(user, "en")
     operation = if action == :family_locations, do: :locations, else: :history
 
-    case Dawarich.Maps.Dependencies.Family.read(scope, operation, conn.assigns.api_params,
+    case Dawarich.Maps.Family.read(scope, operation, conn.assigns.api_params,
            now: conn.assigns[:now] || DateTime.utc_now()
          ) do
       {:ok, status, body} -> Api.Respond.json(conn, status, body)

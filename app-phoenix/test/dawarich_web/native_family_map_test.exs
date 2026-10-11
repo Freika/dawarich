@@ -38,11 +38,28 @@ defmodule DawarichWeb.NativeFamilyMapTest do
     assert read(ctx.owner, "locations").status == 404
   end
 
-  test "family adapter retains original session admission", ctx do
+  test "family map refuses a consent change during its snapshot", ctx do
+    scope = Maps.principal(ctx.owner, "en")
+
+    assert {:error, :grant_changed} =
+             Dawarich.Maps.Family.read(scope, :locations, %{},
+               now: @now,
+               self_hosted: true,
+               after_read: fn result ->
+                 Repo.query!(
+                   "UPDATE users SET settings = jsonb_set(settings, '{family,location_sharing,enabled}', 'false') WHERE id = 90102"
+                 )
+
+                 result
+               end
+             )
+  end
+
+  test "family map retains original session admission", ctx do
     scope = Maps.principal(ctx.owner, "en")
 
     assert {:ok, 200, _} =
-             Dawarich.Maps.Dependencies.Family.read(scope, :locations, %{},
+             Dawarich.Maps.Family.read(scope, :locations, %{},
                now: @now,
                self_hosted: true
              )
@@ -52,7 +69,7 @@ defmodule DawarichWeb.NativeFamilyMapTest do
     ])
 
     assert {:error, :stale_session} =
-             Dawarich.Maps.Dependencies.Family.read(scope, :locations, %{},
+             Dawarich.Maps.Family.read(scope, :locations, %{},
                now: @now,
                self_hosted: true
              )
