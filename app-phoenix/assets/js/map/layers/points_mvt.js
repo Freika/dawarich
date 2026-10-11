@@ -1,3 +1,4 @@
+import { queueTileRefresh } from "./tile_refresh.js"
 import { getMarkerStrokeColor } from "../algorithms/marker_theme.js"
 import { BaseLayer, isAbortedRequest } from "./base.js"
 import { heatmapPaint } from "./heatmap.js"
@@ -32,6 +33,8 @@ export class PointsMvtLayer extends BaseLayer {
   }
 
   remove() {
+    this._cancelTileRefresh?.()
+    this._cancelTileRefresh = null
     this._unwatchTileErrors()
     super.remove()
   }
@@ -149,7 +152,8 @@ export class PointsMvtLayer extends BaseLayer {
   refresh() {
     this.freshness?.bump("points")
     if (this.map.refreshTiles && this.map.getSource(this.sourceId)) {
-      this.map.refreshTiles(this.sourceId)
+      this._cancelTileRefresh?.()
+      this._cancelTileRefresh = queueTileRefresh(this.map, this.sourceId)
       return
     }
 

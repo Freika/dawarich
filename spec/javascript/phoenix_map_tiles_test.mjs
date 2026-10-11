@@ -92,6 +92,7 @@ test("tile epoch update refreshes sources once and style reload restores layers"
   owner.mount()
   owner.update({ epoch: 2, tracksEnabled: true })
   owner.update({ epoch: 2, tracksEnabled: true })
+  map.emit("render")
   assert.deepEqual(map.refreshes, ["points-mvt-source", "tracks-mvt-source"])
   map.sources.clear()
   map.layers.clear()
@@ -145,6 +146,31 @@ test("focused edit exclusions survive range and style replacement", () => {
     assert.match(JSON.stringify(map.getFilter("points-mvt")), /9/)
     owner.edit(null)
     assert.equal(map.getFilter("points-mvt"), null)
+  } finally {
+    owner.destroy()
+  }
+})
+
+test("native point and track invalidations fetch fresh tiles after a paused style frame", () => {
+  const map = fakeMap()
+  let paused = true
+  const fetched = []
+  map.refreshTiles = (id) => { if (!paused) fetched.push(id) }
+  const owner = createBaseLayers({ map, config: { tracksEnabled: true } })
+  try {
+    owner.mount()
+    owner.points.refresh()
+    owner.points.refresh()
+    owner.tracks.refresh()
+    assert.deepEqual(fetched, [])
+    paused = false
+    map.emit("render")
+    assert.deepEqual(fetched.sort(), ["points-mvt-source", "tracks-mvt-source"])
+    fetched.length = 0
+    owner.points.refresh()
+    owner.destroy()
+    map.emit("render")
+    assert.deepEqual(fetched, [])
   } finally {
     owner.destroy()
   }

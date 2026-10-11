@@ -268,3 +268,5 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 - Keep shared-link visit counts unchanged for HEAD checks and connected map callbacks; admitted document GETs count once. [FRB-NATIVE-STAGE2-PUBLIC-HEAD](fixed-rails-bugs.md#frb-native-stage2-public-head--head-requests-inflate-shared-link-visit-counts)
 
 - Hide public trip and track point coordinates when the owner disables the shared route. [FRB-NATIVE-STAGE2-PUBLIC-ROUTE](fixed-rails-bugs.md#frb-native-stage2-public-route--disabled-shared-routes-still-expose-point-coordinates)
+
+- Refresh native point and track tiles after paused style updates so deleted points disappear without rebuilding the map. [FRB-NATIVE-STAGE2-PAUSED-TILES](fixed-rails-bugs.md#frb-native-stage2-paused-tiles--deleted-points-remain-painted-after-map-updates)

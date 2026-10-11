@@ -183,6 +183,7 @@ test("refresh reloads tiles in place with a fresh version, so rendered tracks st
   const before = tile()
 
   layer.refresh()
+  map.emit("render")
 
   assert.deepEqual(reloads, ["tracks-mvt-source"])
   assert.notEqual(tile(), before)
