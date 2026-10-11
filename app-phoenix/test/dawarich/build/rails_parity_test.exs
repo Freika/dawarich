@@ -21,7 +21,7 @@ defmodule Dawarich.Build.RailsParityTest do
     dir =
       Path.join(System.tmp_dir!(), "native-build-parity-#{System.unique_integer([:positive])}")
 
-    Mix.Tasks.Dawarich.BuildInputs.run(["--root", root, "--out", dir])
+    Mix.Tasks.Dawarich.LegacyBuildInputs.run(["--root", root, "--out", dir])
     on_exit(fn -> File.rm_rf!(dir) end)
     %{root: root, dir: dir}
   end

@@ -112,4 +112,33 @@ defmodule Dawarich.Build.CompareBuildInputsTest do
     assert status != 0
     assert output =~ "importmap.json"
   end
+
+  test "data comparison retains timezone gzip and required-input checks without frontend manifest",
+       %{tmp_dir: root} do
+    a = tree!(root, "data-a")
+    b = tree!(root, "data-b")
+
+    for dir <- [a, b] do
+      File.rm_rf!(Path.join(dir, "config"))
+      File.rm_rf!(Path.join(dir, "public"))
+      File.rm!(Path.join(dir, "tmp/phoenix/importmap.json"))
+      File.mkdir_p!(Path.join(dir, "priv"))
+      File.write!(Path.join(dir, "priv/countries.geojson.gz"), gz("{}", 9, 0))
+    end
+
+    compare_data = fn ->
+      System.cmd("/bin/sh", [@script, a, b, "data"], stderr_to_stdout: true)
+    end
+
+    assert compare_data.() == {"", 0}
+    File.write!(Path.join(b, "priv/countries.geojson.gz"), gz("{}", 9, 42))
+    assert compare_data.() == {"", 0}
+    File.write!(Path.join(a, "tmp/phoenix/time_zones.json"), "{}")
+    assert {zones, 1} = compare_data.()
+    assert zones =~ "time zones differ"
+    File.write!(Path.join(a, "tmp/phoenix/time_zones.json"), @zones)
+    for dir <- [a, b], do: File.rm!(Path.join(dir, "tmp/phoenix/achievements.json"))
+    assert {_, status} = compare_data.()
+    assert status != 0
+  end
 end

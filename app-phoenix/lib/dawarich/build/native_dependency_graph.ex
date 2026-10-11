@@ -25,6 +25,8 @@ defmodule Dawarich.Build.NativeDependencyGraph do
     |> Enum.uniq()
   end
 
+  def audit_files(paths), do: scan(paths, MapSet.new()) |> Enum.uniq()
+
   defp scan([], _seen), do: []
 
   defp scan([path | rest], seen) do

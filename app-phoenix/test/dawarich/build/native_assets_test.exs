@@ -579,14 +579,8 @@ defmodule Dawarich.Build.NativeAssetsTest do
           weight <- ~w(400 700),
           do: "poster/#{family}-#{weight}.woff2"
 
-    Dawarich.Build.Sprockets.Writer.write!(
-      root,
-      Dawarich.Build.Sprockets.Compiler.compile(
-        source_root,
-        font_paths ++ ["mapbox-gl-rtl-text.js"]
-      ),
-      Dawarich.Build.Sprockets.Writer.now()
-    )
+    Dawarich.Build.NativeAssets.build!(source_root, public)
+    Phoenix.Digester.compile(public, public, true)
 
     paths =
       for name <- ~w(maplibre-gl.mjs maplibre-gl-shared.mjs maplibre-gl-worker.mjs),
@@ -598,8 +592,8 @@ defmodule Dawarich.Build.NativeAssetsTest do
           {"/maps_maplibre/styles/light.json", "application/json"},
           {"/maps_maplibre/styles/dark.json", "application/json"}
         ] ++
-        Enum.map(font_paths, &{DawarichWeb.Assets.stylesheet_path(root, &1), "font/woff2"}) ++
-        [{DawarichWeb.Assets.stylesheet_path(root, "mapbox-gl-rtl-text.js"), "text/javascript"}]
+        Enum.map(font_paths, &{DawarichWeb.Assets.stylesheet_path(public, &1), "font/woff2"}) ++
+        [{DawarichWeb.Assets.stylesheet_path(public, "mapbox-gl-rtl-text.js"), "text/javascript"}]
 
     for {path, type} <- paths do
       response =
