@@ -7,12 +7,13 @@ class Stats::CalculatingJob < ApplicationJob
     user = find_user_or_skip(user_id) || return
 
     I18n.with_locale(user.locale) do
-      Stats::CalculateMonth.new(user_id, year, month, notify_on_failure:).call
+      Stats::CalculateMonth.new(user_id, year, month, notify_on_failure: false).call
     end
   rescue StandardError => e
     Rails.logger.error("Stats::CalculatingJob failed for user #{user_id} #{year}-#{month}: #{e.class}: #{e.message}")
 
     create_stats_update_failed_notification(user_id, e) if notify_on_failure
+    raise
   end
 
   private
