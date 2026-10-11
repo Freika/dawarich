@@ -236,7 +236,7 @@ defmodule DawarichWeb.NativeTripsLive.Show do
         <div class="w-full lg:w-2/5 min-w-0">
           <ShowParts.header trip={@trip} locale={@locale} />
           <ShowParts.recalculate recalculating={@recalculating} locale={@locale} />
-          <DawarichWeb.TripItinerary.itinerary
+          <DawarichWeb.NativeTripItinerary.itinerary
             :if={@trip.plan}
             plan={@trip.plan}
             notes={@trip.notes}

@@ -65,7 +65,7 @@ defmodule Dawarich.StandaloneTest do
       capture_log(fn ->
         for {path, status, reason} <- [
               {"/missing-native", 404, "missing_route"},
-              {"/map?format=json", 422, "unsupported_envelope"}
+              {"/tags?format=json", 422, "unsupported_envelope"}
             ] do
           conn = Plug.Test.conn(:get, path) |> DawarichWeb.Strangler.call([])
           assert conn.status == status

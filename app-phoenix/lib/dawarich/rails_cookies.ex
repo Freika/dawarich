@@ -14,6 +14,13 @@ defmodule Dawarich.RailsCookies do
     end
   end
 
+  def decrypt_metadata(value, name, secret, now) do
+    case decrypt_with_expiry(value, name, secret, now) do
+      {:ok, value, due} -> {:ok, value, if(due, do: DateTime.to_iso8601(due))}
+      _ -> :error
+    end
+  end
+
   def decrypt_with_expiry(value, name, secret, now) do
     with [data, iv, tag] <- value |> URI.decode_www_form() |> String.split("--"),
          {:ok, data} <- Base.decode64(data),

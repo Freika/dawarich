@@ -1,7 +1,7 @@
 defmodule DawarichWeb.TripItineraryTest do
   use Dawarich.IngestCase, async: true
   require Phoenix.LiveViewTest
-  alias Dawarich.Test.{RailsUser, TripsSeeds, ParityHTML, MapStimulus}
+  alias Dawarich.Test.{RailsUser, TripsSeeds}
   alias Dawarich.Trips.PlanRead
 
   @effects File.read!("test/fixtures/trips/remaining/effects.json")
@@ -88,7 +88,7 @@ defmodule DawarichWeb.TripItineraryTest do
     {plan, actor["settings"], trip["id"]}
   end
 
-  test "itinerary matches Rails and suppresses only unchanged synced note" do
+  test "native itinerary retains source values links focus availability and synced-note suppression" do
     for entry <- @effects,
         String.starts_with?(entry["name"], "plan_") and String.ends_with?(entry["name"], "_show") do
       {plan, settings, id} = seed(entry)
@@ -98,7 +98,7 @@ defmodule DawarichWeb.TripItineraryTest do
       on_map = String.contains?(golden, "data-trip-plan-focus-longitude-param")
 
       html =
-        Phoenix.LiveViewTest.render_component(&DawarichWeb.TripItinerary.itinerary/1, %{
+        Phoenix.LiveViewTest.render_component(&DawarichWeb.NativeTripItinerary.itinerary/1, %{
           plan: plan,
           notes: notes,
           plan_on_map: on_map,
@@ -106,20 +106,36 @@ defmodule DawarichWeb.TripItineraryTest do
           now: @now
         })
 
-      rails = ParityHTML.fragment(golden, "section[aria-labelledby='trip-plan-title']")
+      actual = LazyHTML.from_fragment(html)
 
-      assert ParityHTML.normalize(html) == rails,
-             entry["name"] <>
-               ": " <> ParityHTML.first_difference(ParityHTML.normalize(html), rails)
+      expected =
+        golden
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("section[aria-labelledby='trip-plan-title']")
 
-      actual_attributes =
-        MapStimulus.attributes(html, ["section[aria-labelledby='trip-plan-title']"])
+      text = fn doc -> doc |> LazyHTML.text() |> String.replace(~r/\s+/, " ") |> String.trim() end
+      assert text.(actual) == text.(expected), entry["name"]
 
-      expected_attributes =
-        MapStimulus.attributes(golden, ["section[aria-labelledby='trip-plan-title']"])
+      assert LazyHTML.attribute(LazyHTML.query(actual, "a[href]"), "href") ==
+               LazyHTML.attribute(LazyHTML.query(expected, "a[href]"), "href"),
+             entry["name"]
 
-      assert actual_attributes == expected_attributes,
-             inspect({actual_attributes, expected_attributes}, limit: :infinity)
+      ids =
+        if on_map do
+          for day <- plan.days,
+              stop <- day.stops,
+              not is_nil(stop.longitude) and not is_nil(stop.latitude),
+              do: to_string(stop.id)
+        else
+          []
+        end
+
+      assert LazyHTML.attribute(
+               LazyHTML.query(actual, "[phx-click='trip:plan:focus']"),
+               "phx-value-id"
+             ) == ids
+
+      refute Enum.any?(LazyHTML.query(actual, "[data-controller], [data-action], [data-turbo]"))
 
       if entry["name"] == "plan_edited_show", do: assert(html =~ "Source detail")
       if entry["name"] == "plan_synced_show", do: refute(html =~ "Source detail")

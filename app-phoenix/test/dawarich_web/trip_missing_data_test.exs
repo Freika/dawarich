@@ -1,10 +1,8 @@
 defmodule DawarichWeb.TripMissingDataTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
-  import Dawarich.Test.RailsFormRequests
-  require Phoenix.LiveViewTest
   alias Dawarich.Jobs.Ownership
-  alias Dawarich.Test.{RailsUser, TripsSeeds, ParityHTML, MapStimulus}
+  alias Dawarich.Test.{RailsUser, TripsSeeds, NativeTripCorpus}
   alias Dawarich.{TripPage, Trips.ShowCalculation}
   @endpoint DawarichWeb.Endpoint
   @now ~U[2026-10-03 10:00:00.000000Z]
@@ -72,9 +70,6 @@ defmodule DawarichWeb.TripMissingDataTest do
     {Dawarich.Accounts.get(actor["id"]), trip["id"]}
   end
 
-  defp shell(html),
-    do: html |> LazyHTML.from_document() |> LazyHTML.query("#trip-shell") |> LazyHTML.to_html()
-
   test "Cloud calculation documents produce native work without Rails effects" do
     previous = System.get_env("SELF_HOSTED")
 
@@ -97,12 +92,10 @@ defmodule DawarichWeb.TripMissingDataTest do
     assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[1]]
   end
 
-  test "an owner flip before document production replays the Rails GET and response" do
+  test "an owner flip before native document production refuses locally without effects" do
     entry = Enum.find(@effects, &(&1["name"] == "show_nil_path_sidekiq"))
     {user, id} = seed(entry)
     Ownership.put!(Repo, "command:trips.calculate", :oban)
-    golden = File.read!("test/fixtures/trips/remaining/pages/show_nil_path_sidekiq.html")
-    upstream = upstream!()
     handler = {__MODULE__, :owner_flip}
 
     :ok =
@@ -110,8 +103,7 @@ defmodule DawarichWeb.TripMissingDataTest do
         handler,
         [:dawarich, :repo, :query],
         fn _, _, meta, _ ->
-          if meta.query ==
-               "SELECT owner FROM phoenix.job_owners WHERE key = 'command:trips.calculate'" and
+          if meta.query == "SELECT id FROM trips WHERE id=$1 AND user_id=$2 FOR UPDATE" and
                Process.delete(:flip_show_owner) do
             Ownership.put!(Repo, "command:trips.calculate", :sidekiq)
           end
@@ -121,40 +113,33 @@ defmodule DawarichWeb.TripMissingDataTest do
 
     on_exit(fn -> :telemetry.detach(handler) end)
 
-    puma =
-      Task.async(fn ->
-        socket = Dawarich.Test.RawHTTP.accept(upstream)
-        {head, rest} = Dawarich.Test.RawHTTP.read_head(socket)
+    before =
+      Repo.query!("SELECT md5(to_jsonb(t)::text) FROM trips t WHERE id=$1", [id], log: false).rows
 
-        Dawarich.Test.RawHTTP.reply(
-          socket,
-          "HTTP/1.1 200 OK\r\ncontent-type: text/html; charset=utf-8\r\ncontent-length: #{byte_size(golden)}\r\n\r\n" <>
-            golden
-        )
+    before_user =
+      Repo.query!("SELECT md5(to_jsonb(u)::text) FROM users u WHERE id=$1", [user.id], log: false).rows
 
-        :gen_tcp.close(socket)
-        {Dawarich.Test.RawHTTP.request_line(head), rest}
-      end)
-
-    before = Repo.query!("SELECT to_jsonb(t) FROM trips t WHERE id=$1", [id]).rows
     Process.put(:flip_show_owner, true)
-    before_user = Repo.query!("SELECT to_jsonb(u) FROM users u WHERE id=$1", [user.id]).rows
-    path = entry["request"]["path"]
-    conn = RailsUser.signed_in(user.id) |> get(path)
+    conn = RailsUser.signed_in(user.id) |> get(entry["request"]["path"])
     assert conn.status == 200
-    assert conn.resp_body == golden
-    assert Task.await(puma) == {"GET #{path} HTTP/1.1", ""}
+    assert String.contains?(conn.resp_body, "Recalculation failed")
+    assert String.contains?(conn.resp_body, "trip-shell")
+    refute String.contains?(conn.resp_body, "data-controller")
+    assert Plug.Conn.get_resp_header(conn, "location") == []
     assert Process.get(:flip_show_owner) == nil
-    assert Repo.query!("SELECT to_jsonb(t) FROM trips t WHERE id=$1", [id]).rows == before
 
-    assert Repo.query!("SELECT to_jsonb(u) FROM users u WHERE id=$1", [user.id]).rows ==
-             before_user
+    assert Repo.query!("SELECT md5(to_jsonb(t)::text) FROM trips t WHERE id=$1", [id], log: false).rows ==
+             before
+
+    assert Repo.query!("SELECT md5(to_jsonb(u)::text) FROM users u WHERE id=$1", [user.id],
+             log: false
+           ).rows == before_user
 
     assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
     assert commands() == []
   end
 
-  test "missing show renders Rails states and queues only on document mount" do
+  test "missing show corpus retains native states and fenced document effects" do
     Repo.query!("DELETE FROM countries")
 
     for entry <- Enum.sort_by(@effects, &(&1["request"]["owner"] != "oban")),
@@ -191,63 +176,18 @@ defmodule DawarichWeb.TripMissingDataTest do
       assert Repo.query!("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [id]).rows ==
                before
 
-      for connected <- [false, true] do
-        socket = %Phoenix.LiveView.Socket{
-          assigns: %{__changed__: %{}, current_user: user, now: @now, locale: "en"},
-          transport_pid: if(connected, do: self())
-        }
+      scope = Dawarich.Maps.principal(user, "en")
+      assert {:ok, safe} = Dawarich.Maps.Dependencies.Trip.presentation(scope, id, now: @now)
+      assert safe.map_state == page.map_state
+      assert safe.has_path == page.has_path
 
-        result =
-          case DawarichWeb.TripsLive.Show.mount(%{"id" => to_string(id)}, %{}, socket) do
-            {:ok, socket} -> {:ok, socket, []}
-            result -> result
-          end
+      for key <- [:path_json, :windows_json, :plan_json, :api_key, :trip_stream],
+          do: refute(Map.has_key?(safe, key))
 
-        assert {:ok, mounted, options} = result
-
-        assert mounted.assigns.page.map_state == page.map_state
-        assert options[:temporary_assigns] == [page: nil]
-        assert mounted.redirected == nil
-
-        assert Repo.query!("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [id]).rows ==
-                 before
-      end
-
-      html =
-        Phoenix.LiveViewTest.render_component(&DawarichWeb.TripsLive.Show.render/1, %{
-          page: page,
-          locale: "en",
-          rails_csrf_token: "CSRF",
-          base_url: "http://www.example.com"
-        })
-
-      golden =
-        File.read!("test/fixtures/trips/remaining/pages/#{entry["name"]}.html")
-        |> Dawarich.Test.NativeTripExports.prepare()
-
-      actual = ParityHTML.normalize(shell(Dawarich.Test.NativeM4Corpus.prepare(html)))
-      expected = ParityHTML.normalize(shell(Dawarich.Test.NativeM4Corpus.prepare(golden)))
-
-      assert actual == expected,
-             entry["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
-
-      attributes =
-        html
-        |> MapStimulus.prepare()
-        |> Dawarich.Test.NativeM4Corpus.prepare()
-        |> MapStimulus.attributes(["#trip-shell"])
-
-      expected_attributes =
-        golden
-        |> MapStimulus.prepare()
-        |> Dawarich.Test.NativeM4Corpus.prepare()
-        |> MapStimulus.attributes(["#trip-shell"])
-
-      assert attributes == expected_attributes,
-             inspect(
-               Enum.zip(attributes, expected_attributes) |> Enum.find(fn {a, b} -> a != b end),
-               limit: :infinity
-             )
+      html = NativeTripCorpus.render(user, id, @now)
+      golden = File.read!("test/fixtures/trips/remaining/pages/#{entry["name"]}.html")
+      NativeTripCorpus.assert_values(html, golden)
+      refute String.contains?(html, "data-controller")
 
       if entry["request"]["owner"] == "oban" and eligible do
         Process.put(:show_failure, true)
@@ -270,6 +210,7 @@ defmodule DawarichWeb.TripMissingDataTest do
 
       Repo.query!("UPDATE trips SET visited_countries = '[1]'::jsonb WHERE id=$1", [id])
       assert TripPage.gate(user, id) == :rails
+      assert {:error, :not_found} = Dawarich.Maps.Dependencies.Trip.view(scope, id, now: @now)
 
       assert {:replay, _} =
                ShowCalculation.run(SpyRepo, user, id, %{now: @now, connected: false})

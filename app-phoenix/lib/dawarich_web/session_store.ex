@@ -22,13 +22,20 @@ defmodule DawarichWeb.SessionStore do
       session
       |> Map.put(@rails_user, DawarichWeb.RailsAuth.user_id(conn))
       |> Map.put("operator_login", DawarichWeb.OperatorGrant.login(conn))
+      |> Map.put("shared_link_proofs", DawarichWeb.SharedLinkCookie.proofs(conn))
 
     {sid, session}
   end
 
   @impl true
   def put(conn, sid, session, opts),
-    do: COOKIE.put(conn, sid, Map.drop(session, [@rails_user, "operator_login"]), opts)
+    do:
+      COOKIE.put(
+        conn,
+        sid,
+        Map.drop(session, [@rails_user, "operator_login", "shared_link_proofs"]),
+        opts
+      )
 
   @impl true
   def delete(conn, sid, opts), do: COOKIE.delete(conn, sid, opts)

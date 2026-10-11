@@ -56,26 +56,16 @@ defmodule DawarichWeb.PageRoutes do
         pipe_through :map_redirect
 
         for path <- ["/map/v1", "/map/v1.:format"] do
-          get path, DawarichWeb.MapRedirects, :legacy, metadata: %{rails_key: "map"}
+          get path, DawarichWeb.MapRedirects, :legacy, metadata: %{retired: true}
         end
 
         for path <- ["/maps/v2", "/maps/v2.:format"] do
-          get path, DawarichWeb.MapRedirects, :plural, metadata: %{rails_key: "map"}
+          get path, DawarichWeb.MapRedirects, :plural, metadata: %{retired: true}
         end
       end
 
-      scope "/" do
-        pipe_through [:browser, :rails_user]
-
-        live_session :rails_map,
-          session: {DawarichWeb.RailsAuth, :live_session, []},
-          on_mount: DawarichWeb.LiveAuth,
-          root_layout: {DawarichWeb.Layouts, :map_root},
-          layout: {DawarichWeb.Layouts, :map} do
-          live "/map", DawarichWeb.MapLive, :index, container: {:div, class: "contents"}
-          live "/map/v2", DawarichWeb.MapLive, :index, container: {:div, class: "contents"}
-        end
-      end
+      import DawarichWeb.NativeM6Routes
+      native_m6_routes()
     end
   end
 end

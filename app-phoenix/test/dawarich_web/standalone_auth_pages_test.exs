@@ -65,7 +65,7 @@ defmodule DawarichWeb.StandaloneAuthPagesTest do
   @tag :sa_pages_anonymous
   test "standalone anonymous protected pages redirect with Rails flash and return path", c do
     for path <- protected_paths(hd(c.actors).id) ++ ["/settings/two_factor"] do
-      assert_sign_in(page(%{}, path), path)
+      assert_page_admission(page(%{}, path), path)
     end
 
     for {method, path} <- [
@@ -87,7 +87,7 @@ defmodule DawarichWeb.StandaloneAuthPagesTest do
       }
 
       for path <- protected_paths(actor.id) ++ ["/settings/two_factor"] do
-        assert_sign_in(page(pending, path), path)
+        assert_page_admission(page(pending, path), path)
       end
 
       for {method, path} <- [
@@ -219,6 +219,23 @@ defmodule DawarichWeb.StandaloneAuthPagesTest do
       account = Repo.get!(Account, actor.id)
       refute account.otp_required_for_login
       assert account.otp_secret == nil and account.otp_backup_codes == nil
+    end
+  end
+
+  defp assert_page_admission(conn, path) do
+    retired? =
+      path in ["/map/timeline_feeds", "/map/timeline_feeds/calendar"] or
+        Regex.match?(~r{\A/map/timeline_feeds/[0-9]+/track_info\z}, path) or
+        Regex.match?(~r{\A/tracks/[0-9]+/segments\z}, path) or
+        Regex.match?(~r{\A/points/[0-9]+/address\z}, path)
+
+    if retired? do
+      assert conn.status == 410
+      assert conn.resp_body == "This map command is available through the native map."
+      assert get_resp_header(conn, "location") == []
+      assert get_resp_header(conn, "cache-control") == ["no-store"]
+    else
+      assert_sign_in(conn, path)
     end
   end
 

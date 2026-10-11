@@ -8,7 +8,11 @@
     "date-fns": "4.1.0",
     "emoji-mart": "5.6.0",
     "fflate": "0.8.2",
+    "h3-js": "4.4.0",
+    "mp4-muxer": "5.2.2",
+    "pmtiles": "4.5.0",
     "spark-md5": "3.0.2",
     "trix": "2.1.19"
-  }
+  },
+  "type": "module"
 }

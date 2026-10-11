@@ -57,7 +57,8 @@ defmodule DawarichWeb.Strangler do
 
   @impl true
   def call(conn, _opts) do
-    conn = DawarichWeb.NativePlacesEnvelope.prepare(conn)
+    conn =
+      conn |> DawarichWeb.NativePlacesEnvelope.prepare() |> DawarichWeb.NativeM6Envelope.prepare()
 
     cond do
       conn.halted or DawarichWeb.NativeM4RetiredWrites.retired?(conn) ->
@@ -224,11 +225,12 @@ defmodule DawarichWeb.Strangler do
     false
   end
 
-  def rails_constraints?(%{route: route, path_params: params}),
+  def rails_constraints?(%{route: route, path_params: params} = info),
     do:
-      Enum.all?(Map.get(constraints(), route, %{}), fn {name, pattern} ->
-        Regex.match?(pattern, params[name])
-      end)
+      :native_m6_browser in Map.get(info, :pipe_through, []) or
+        Enum.all?(Map.get(constraints(), route, %{}), fn {name, pattern} ->
+          Regex.match?(pattern, params[name])
+        end)
 
   defp constraints,
     do:

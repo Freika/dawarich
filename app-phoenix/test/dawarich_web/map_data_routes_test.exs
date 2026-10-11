@@ -126,22 +126,27 @@ defmodule DawarichWeb.MapDataRoutesTest do
 
   test "native public sharing routes retain admission pipelines without a Rails gate" do
     for {verb, path, pipelines, gate} <- [
-          {:get, "/map", [:browser, :rails_user], nil},
-          {:get, "/map/v2", [:browser, :rails_user], nil},
-          {:get, "/places", [:browser, :rails_user], nil},
+          {:get, "/map", [:native_m6_browser, :rails_user], nil},
+          {:get, "/map/v2", [:native_m6_browser, :rails_user], nil},
+          {:get, "/places", [:browser, :rails_user], {DawarichWeb.PlacesGate, :index?}},
           {:get, "/places/:id", [:rails_frame], {DawarichWeb.PlacesGate, :navigation?}},
-          {:get, "/map/timeline_feeds", [:rails_frame], {DawarichWeb.MapFramesGate, :feed?}},
-          {:get, "/map/timeline_feeds/calendar", [:rails_frame],
-           {DawarichWeb.MapFramesGate, :calendar?}},
+          {:get, "/map/timeline_feeds", [:native_map_retired], nil},
+          {:get, "/map/timeline_feeds/calendar", [:native_map_retired], nil},
           {:get, "/map/residency", [:rails_frame], {DawarichWeb.MapFramesGate, :residency?}},
-          {:get, "/map/timeline_feeds/:id/track_info", [:rails_frame],
-           {DawarichWeb.MapFramesGate, :track?}},
-          {:get, "/s/:id", [:sharing], nil},
-          {:post, "/s/:id/unlock", [:sharing_unlock], nil}
+          {:get, "/map/timeline_feeds/:id/track_info", [:native_map_retired], nil},
+          {:get, "/s/:id", [:native_m6_browser], nil},
+          {:post, "/s/:id/unlock", [:sharing_unlock], {DawarichWeb.SharingGate, :unlock?}}
         ] do
-      route = Enum.find(Router.__routes__(), &(&1.verb == verb and &1.path == path))
-      assert pipelines(route) == pipelines
-      assert route.metadata[:rails_gate] == gate
+      route =
+        Phoenix.Router.route_info(
+          Router,
+          verb |> Atom.to_string() |> String.upcase(),
+          path,
+          "localhost"
+        )
+
+      assert route.pipe_through == pipelines
+      assert route[:rails_gate] == gate
     end
   end
 

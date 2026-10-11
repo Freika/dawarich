@@ -1,18 +1,14 @@
 defmodule DawarichWeb.MapLiveTest do
   use Dawarich.JobsCase, async: false
-
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
-  import Dawarich.Test.FormIsolation
-
   alias Dawarich.Repo
   alias Dawarich.Test.RailsUser
-
   @endpoint DawarichWeb.Endpoint
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
-    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
 
     user =
       RailsUser.insert!(%{
@@ -28,6 +24,46 @@ defmodule DawarichWeb.MapLiveTest do
   defp live_as(user, path),
     do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
 
+  defp config(view, selector, attribute) do
+    [value] =
+      view
+      |> render()
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query(selector)
+      |> LazyHTML.attribute(attribute)
+
+    Jason.decode!(value)
+  end
+
+  defp map_config(view), do: config(view, "#native-map", "data-map-config")
+
+  defp settings(user, values),
+    do:
+      Repo.query!("UPDATE users SET settings = settings || $1::jsonb WHERE id = $2", [
+        values,
+        user.id
+      ])
+
+  defp tags(user, entries) do
+    stamp = NaiveDateTime.utc_now(:second)
+
+    Repo.insert_all(
+      "tags",
+      for(
+        {id, name, color, icon} <- entries,
+        do: %{
+          id: id,
+          name: name,
+          color: color,
+          icon: icon,
+          user_id: user.id,
+          created_at: stamp,
+          updated_at: stamp
+        }
+      )
+    )
+  end
+
   test "signed out, both paths redirect to sign-in" do
     for path <- ["/map", "/map/v2?panel=timeline"],
         do:
@@ -36,16 +72,15 @@ defmodule DawarichWeb.MapLiveTest do
           )
   end
 
-  test "signed in, both paths render the map layout with Rails' title", %{user: user} do
+  test "signed in aliases render the native map document with the map title", %{user: user} do
     for path <- ["/map", "/map/v2"] do
       html = RailsUser.signed_in(user.id) |> get(path) |> html_response(200)
-      assert_form_isolated(html)
       assert html =~ ">Map | Dawarich</title>"
-      assert html =~ "width=device-width,initial-scale=1,viewport-fit=cover"
-      assert html =~ ~s(<body class="h-screen !h-[100dvh] overflow-hidden relative">)
-      assert html =~ ~s(id="map-footer")
-      refute html =~ "locale-suggestion"
-      refute html =~ "turbo-refresh-method"
+      assert html =~ "width=device-width,initial-scale=1"
+      assert html =~ "native-map-page"
+
+      for marker <- ~w(locale-suggestion turbo-refresh-method MapShell data-controller),
+          do: refute(html =~ marker)
     end
   end
 
@@ -55,477 +90,360 @@ defmodule DawarichWeb.MapLiveTest do
     assert conn.resp_body == ""
   end
 
-  test "deferred main map keeps its MapShell while sharing opens the native manager", %{
-    user: user
-  } do
-    {:ok, view, _html} = live_as(user, "/map/v2")
-    assert_form_isolated(render(view))
+  test "native map and studios survive a server panel patch with keyed owners", %{user: user} do
+    {:ok, view, _} = live_as(user, "/map/v2")
 
-    for selector <- ["div#map-shell"],
-        do:
-          assert(
-            has_element?(
-              view,
-              "#{selector}[phx-hook='MapShell'][phx-update='ignore'][data-turbo='true']"
-            ),
-            selector
-          )
+    for {id, hook} <- [
+          {"native-map", "Map"},
+          {"native-poster-studio", "PosterStudio"},
+          {"native-video-studio", "VideoStudio"}
+        ] do
+      assert has_element?(view, "##{id}[phx-hook='#{hook}']")
+    end
+
+    view |> element("[data-testid=map-button-settings]") |> render_click()
+    assert has_element?(view, "#native-map-settings")
+    assert has_element?(view, "#native-map[phx-update=ignore]")
+    refute render(view) =~ "MapShell"
   end
 
-  test "deferred achievement manager adapter replaces only the card modal import" do
-    prior = :persistent_term.get({DawarichWeb.Assets, :rails_imports}, :missing)
-
+  test "native head loads its entry despite cached legacy imports", %{user: user} do
     :persistent_term.put({DawarichWeb.Assets, :rails_imports}, %{
-      "controllers/card_modal_controller" => "/assets/card_modal.js",
-      "controllers/stat_page_controller" => "/assets/stat_page.js"
-    })
-
-    on_exit(fn ->
-      if prior == :missing,
-        do: :persistent_term.erase({DawarichWeb.Assets, :rails_imports}),
-        else: :persistent_term.put({DawarichWeb.Assets, :rails_imports}, prior)
-    end)
-
-    imports = DawarichWeb.Layouts.importmap() |> Jason.decode!() |> Map.fetch!("imports")
-    assert imports["controllers/card_modal_controller"] =~ "/phoenix/js/native_card_modal.js?vsn="
-    assert imports["rails_card_modal"] == "/assets/card_modal.js"
-    assert imports["controllers/stat_page_controller"] == "/assets/stat_page.js"
-  end
-
-  test "the head carries Rails' translations and imports, and Phoenix's own entries win", %{
-    user: user
-  } do
-    :persistent_term.put({DawarichWeb.Assets, :rails_imports}, %{
-      "maplibre-gl" => "/maplibre/6.4.1/maplibre-gl.mjs",
-      "app" => "/assets/should-not-win.js"
+      "app" => "/assets/should-not-win.js",
+      "maplibre-gl" => "/legacy/maplibre.mjs"
     })
 
     on_exit(fn -> :persistent_term.erase({DawarichWeb.Assets, :rails_imports}) end)
     html = RailsUser.signed_in(user.id) |> get("/map/v2") |> html_response(200)
-    head = html |> LazyHTML.from_document() |> LazyHTML.query("head")
+    assert html =~ "/native/app"
 
-    imports =
-      head
-      |> LazyHTML.query("script[type='importmap']")
-      |> LazyHTML.text()
-      |> Jason.decode!()
-      |> Map.fetch!("imports")
-
-    assert imports["maplibre-gl"] == "/maplibre/6.4.1/maplibre-gl.mjs"
-    assert imports["app"] =~ "/phoenix/js/app.js?vsn="
-
-    translations =
-      head |> LazyHTML.query("script#i18n-translations") |> LazyHTML.text() |> Jason.decode!()
-
-    assert Map.has_key?(translations, "transportation_modes")
-    refute html =~ ~s(import "chartkick")
+    for marker <- ~w(importmap should-not-win legacy/maplibre chartkick),
+        do: refute(html =~ marker)
   end
 
-  test "the translations script matches Rails' byte layout, with no formatter-added whitespace",
-       %{user: user} do
-    html = RailsUser.signed_in(user.id) |> get("/map/v2") |> html_response(200)
-
-    assert html =~
-             ~r/<script id="i18n-translations" type="application\/json" data-turbo-track="reload">\{/
+  test "native localized config decodes reserved placeholders without a global script", %{
+    user: user
+  } do
+    {:ok, view, _} = live_as(user, "/map/v2")
+    video = config(view, "#native-video-studio", "data-video-config")
+    assert Enum.any?(Map.values(video["strings"]), &String.contains?(&1, "%{format}"))
+    refute has_element?(view, "script#i18n-translations")
+    assert map_size(map_config(view)["uiLabels"]) > 0
   end
 
-  describe "the page" do
-    setup do
-      System.put_env("JWT_SECRET_KEY", "phoenix-a6-jwt-fixture-secret-not-for-production")
-      on_exit(fn -> System.delete_env("JWT_SECRET_KEY") end)
-    end
-
-    test "the map page retains the ActionCable URL and realtime values", %{user: user} do
-      for live_mode <- [true, false], path <- ["/map", "/map/v2"] do
-        Repo.query!("UPDATE users SET settings = settings || $1::jsonb WHERE id = $2", [
-          %{"live_map_enabled" => live_mode},
-          user.id
-        ])
-
-        html = RailsUser.signed_in(user.id) |> get(path) |> html_response(200)
-        doc = LazyHTML.from_document(html)
-
-        assert LazyHTML.attribute(LazyHTML.query(doc, "meta[name='action-cable-url']"), "content") ==
-                 ["/cable"]
-
-        {:ok, view, _html} = live_as(user, path)
-        root = "#maps-maplibre-container[data-controller~='maps--maplibre-realtime']"
-        assert has_element?(view, "#{root}[data-maps--maplibre-realtime-enabled-value='true']")
-
-        assert has_element?(
-                 view,
-                 "#{root}[data-maps--maplibre-realtime-live-mode-value='#{live_mode}']"
-               )
-      end
-    end
-
-    test "the map root carries Rails' values", %{user: user} do
-      Repo.query!(
-        "UPDATE users SET settings = settings || '{\"live_map_enabled\": false}' WHERE id = $1",
-        [user.id]
-      )
-
-      {:ok, view, _html} = live_as(user, "/map/v2?panel=timeline&date=2026-05-28&import_id=12x")
-      root = "#maps-maplibre-container"
-      assert has_element?(view, "#{root}[data-maps--maplibre-api-key-value='a6-live-key']")
-
-      assert has_element?(
-               view,
-               "#{root}[data-maps--maplibre-start-date-value='2026-05-28T00:00:00+02:00']"
-             )
-
-      assert has_element?(view, "#{root}[data-maps--maplibre-timezone-value='Europe/Berlin']")
-      assert has_element?(view, "#{root}[data-maps--maplibre-import-id-value='']")
-      assert has_element?(view, "#{root}[data-maps--maplibre-realtime-live-mode-value='false']")
-
-      assert has_element?(
-               view,
-               "#{root} [data-maps--maplibre-target='container'].panel-open.panel-timeline-expanded"
-             )
-
-      refute has_element?(view, "#{root}[data-maps--maplibre-place-latitude-value]")
-      assert has_element?(view, "turbo-frame#place-drawer:not([src])")
-    end
-
-    test "the date navigation keeps panel and import_id and Rails' link order", %{user: user} do
-      {:ok, view, _html} = live_as(user, "/map/v2?panel=timeline&date=2026-05-28&import_id=12x")
-
-      assert has_element?(
-               view,
-               "form[action='/map/v2?import_id=12x'][method='get'] input[type='hidden'][name='panel'][value='timeline']"
-             )
-
-      assert has_element?(view, "input[name='start_at'][value='2026-05-28T00:00']")
-
-      prev =
-        "/map/v2?end_at=2026-05-27T23%3A59%3A59%2B02%3A00&import_id=12x&panel=timeline&start_at=2026-05-27T00%3A00%3A00%2B02%3A00"
-
-      assert has_element?(view, "a[href='#{prev}']")
-
-      assert has_element?(
-               view,
-               "a[data-turbo='false'][href='/share_links/hub?end_date=2026-05-28&start_date=2026-05-28']"
-             )
-
-      {:ok, plain, _html} = live_as(user, "/map/v2")
-      refute has_element?(plain, "input[name='panel']")
-      refute has_element?(plain, "a[href*='import_id=']")
-      refute has_element?(plain, "a[href*='panel=']")
-    end
-
-    test "a place of another user is Rails' 404", %{user: user} do
-      other = RailsUser.insert!(%{id: 6002, email: "a6-live-other@dawarich.test"})
-
-      Repo.query!(
-        "INSERT INTO places (id, user_id, name, latitude, longitude, created_at, updated_at) VALUES (6090, $1, 'x', 1, 1, now(), now())",
-        [other.id]
-      )
-
-      assert_error_sent 404, fn ->
-        RailsUser.signed_in(user.id) |> get("/map/v2?place_id=6090")
-      end
-    end
-
-    test "rails_flash shows only success and error flashes", %{user: user} do
-      {:ok, view, _html} = live_as(user, "/map/v2")
-
-      refute render_hook(view, "rails_flash", %{"type" => "info", "message" => "a6-unwanted"}) =~
-               "a6-unwanted"
-
-      assert render_hook(view, "rails_flash", %{
-               "type" => "success",
-               "message" => "Re-classification started"
-             }) =~ "alert-success"
-    end
-
-    test "the panel: Turbo-permanent, timeline classes, Layers tab state, the Pro gates", %{
-      user: user
-    } do
-      {:ok, view, _html} = live_as(user, "/map/v2?panel=timeline")
-
-      assert has_element?(
-               view,
-               "#map-settings-panel[data-turbo-permanent].map-control-panel.open.timeline-expanded[data-controller='map-panel']"
-             )
-
-      refute has_element?(view, "[data-tab-content='layers'].active")
-
-      assert has_element?(
-               view,
-               "[data-tab-content='search'] input[data-maps--maplibre-target='searchInput']"
-             )
-
-      refute has_element?(view, "[data-tab-content='links']")
-      refute has_element?(view, "[data-maps--maplibre-target='flightsToggle']")
-      assert has_element?(view, "[data-maps--maplibre-target='familyToggle']")
-
-      {:ok, plain, _html} = live_as(user, "/map/v2")
-      assert has_element?(plain, "[data-tab-content='layers'].active")
-      refute has_element?(plain, "#map-settings-panel.open")
-    end
-
-    test "the Layers places filter lists every tag in name order", %{user: user} do
-      stamp = NaiveDateTime.utc_now(:second)
-
-      Repo.insert_all(
-        "tags",
-        for {id, name} <- [{6011, "Zoo"}, {6012, "Alpha"}] do
-          %{
-            id: id,
-            name: name,
-            color: "#123456",
-            icon: nil,
-            user_id: user.id,
-            created_at: stamp,
-            updated_at: stamp
-          }
-        end
-      )
-
-      {:ok, view, _html} = live_as(user, "/map/v2")
-      html = render(view)
-
-      [alpha, zoo] =
-        for id <- ~w(6012 6011),
-            do: :binary.match(html, ~s(name="place_tag_ids[]" value="#{id}")) |> elem(0)
-
-      assert alpha < zoo
-
-      assert has_element?(
-               view,
-               "input[name='place_tag_ids[]'][value='6012'] + span[style='border-color: #123456; color: #123456;']"
-             )
-    end
-
-    test "the timeline rail: the calendar frame's month, Rails' frame ids, up to eight tag chips",
-         %{user: user} do
-      stamp = NaiveDateTime.utc_now(:second)
-
-      Repo.insert_all(
-        "tags",
-        for i <- 1..9 do
-          %{
-            id: 6020 + i,
-            name: "Chip #{i}",
-            color: if(i == 1, do: nil, else: "#abcdef"),
-            icon: if(i == 2, do: "🏠"),
-            user_id: user.id,
-            created_at: stamp,
-            updated_at: stamp
-          }
-        end
-      )
-
-      {:ok, view, _html} = live_as(user, "/map/v2?panel=timeline&date=2026-05-28")
-
-      tab =
-        "[data-tab-content='timeline-feed'].active .timeline-tab-content[data-controller='timeline-feed']"
-
-      assert has_element?(
-               view,
-               "#{tab} turbo-frame#timeline-calendar-frame[src='/map/timeline_feeds/calendar?month=2026-05'][loading='lazy']"
-             )
-
-      assert has_element?(
-               view,
-               "#{tab} turbo-frame#timeline-feed-frame[data-timeline-feed-target='visitListFrame'][data-maps--maplibre-target='timelineFeedContainer']"
-             )
-
-      assert has_element?(
-               view,
-               "#{tab} a[data-testid='tags-manage-link'][href='/tags'][target='_blank']"
-             )
-
-      assert render(view)
-             |> LazyHTML.from_fragment()
-             |> LazyHTML.query(".timeline-rail__tags button.tag-chip")
-             |> Enum.count() ==
-               8
-
-      assert has_element?(view, "button.tag-chip[data-tag-name='chip 1']:not([style])")
-
-      assert has_element?(
-               view,
-               "button.tag-chip[data-tag-name='chip 3'][style='background-color: #abcdef;']"
-             )
-    end
-
-    test "Settings: the theme swatches, the tile categories and POI groups the user hid, the modes",
-         %{user: user} do
-      Repo.query!(
-        ~s(UPDATE users SET settings = settings || '{"maps": {"hidden_tile_categories": ["roads"], "disabled_poi_groups": ["cycling"]}, "enabled_transportation_modes": ["train"]}' WHERE id = $1),
-        [user.id]
-      )
-
-      {:ok, view, _html} = live_as(user, "/map/v2")
-
-      assert has_element?(
-               view,
-               "[data-map-theme-editor-target='swatch'][data-key='blueprint'][data-name='Blueprint']"
-             )
-
-      assert has_element?(
-               view,
-               "input[data-tile-category='roads'][data-custom-supported='true']:not([checked])"
-             )
-
-      assert has_element?(
-               view,
-               "input[data-tile-category='road_labels'][data-custom-supported='false'][checked]"
-             )
-
-      assert has_element?(view, "input[data-poi-group='cycling']:not([checked])")
-      assert has_element?(view, "input[data-testid='enabled-mode-train'][checked]")
-      assert has_element?(view, "input[data-testid='enabled-mode-walking']:not([checked])")
-
-      refute has_element?(view, "form.button_to[action='/tracks/recalculation']")
-
-      assert has_element?(
-               view,
-               "button[data-testid='reclassify-history-button']:not([disabled]) + input[type='hidden'][name='authenticity_token']"
-             )
-    end
-
-    test "Tools: the Immich panel only for a configured Pro user", %{user: user} do
-      {:ok, view, _html} = live_as(user, "/map/v2")
-      refute has_element?(view, "#immich-enrich-toggle-btn")
-
-      Repo.query!(
-        ~s(UPDATE users SET settings = settings || '{"immich_url": "https://immich.a6.test", "immich_api_key": "k"}' WHERE id = $1),
-        [user.id]
-      )
-
-      {:ok, view, _html} = live_as(user, "/map/v2")
-      assert has_element?(view, "#immich-enrich-toggle-btn")
-
-      assert has_element?(
-               view,
-               "[data-controller='maps--immich-enrich'][data-maps--immich-enrich-api-key-value='a6-live-key'][data-maps--immich-enrich-immich-url-value='https://immich.a6.test']"
-             )
-    end
-
-    test "the studios: Rails' request-spec markers, fonts in Rails' order, the URLs", %{
-      user: user
-    } do
-      System.put_env("PRINT_ORDER_URL", "https://prints.dawarich.app/api/orders")
-      on_exit(fn -> System.delete_env("PRINT_ORDER_URL") end)
+  test "native subscription admission preserves live mode settings without cable secrets", %{
+    user: user
+  } do
+    for enabled <- [true, false] do
+      settings(user, %{"live_map_enabled" => enabled})
       {:ok, view, html} = live_as(user, "/map/v2")
-      assert html =~ "map-button-poster"
-      assert has_element?(view, "[data-poster-studio-editor-target='dateStart']")
-      assert has_element?(view, "[data-video-studio-target='dateStart']")
-      assert has_element?(view, "[data-video-studio-target='dateEnd']")
-      assert html =~ "video-studio#applyDateTimeRange"
-      assert has_element?(view, "[data-poster-studio-editor-target='trackOpacity'][value='100']")
+      state = :sys.get_state(view.pid).socket.assigns
+      assert state.page.live_map == enabled
+      assert state.native_subscriptions.descriptor.scope.user.id == user.id
 
-      assert has_element?(
-               view,
-               "#poster-studio[data-poster-studio-editor-print-order-url-value='https://prints.dawarich.app/api/orders']"
-             )
-
-      assert has_element?(
-               view,
-               "#video-studio[data-video-studio-upload-url-value='http://www.example.com/rails/active_storage/direct_uploads'][data-video-studio-create-url-value='/route_videos']"
-             )
-
-      [fonts] =
-        html
-        |> LazyHTML.from_fragment()
-        |> LazyHTML.query("#poster-studio")
-        |> LazyHTML.attribute("data-poster-studio-editor-fonts-value")
-
-      keys = Jason.decode!(fonts, objects: :ordered_objects).values |> Enum.map(&elem(&1, 0))
-
-      assert keys ==
-               ~w(inter-400 inter-700 oswald-400 oswald-700 playfair-display-400 playfair-display-700 jetbrains-mono-400 jetbrains-mono-700)
-
-      assert Jason.decode!(fonts)["oswald-700"] =~
-               ~r{\A/assets/poster/oswald-700(-[0-9a-f]+)?\.woff2\z}
-    end
-
-    test "PRINT_ORDER_URL overrides the order endpoint", %{user: user} do
-      System.put_env("PRINT_ORDER_URL", "http://localhost:3001/api/orders")
-      on_exit(fn -> System.delete_env("PRINT_ORDER_URL") end)
-      {:ok, view, _html} = live_as(user, "/map/v2")
-
-      assert has_element?(
-               view,
-               "#poster-studio[data-poster-studio-editor-print-order-url-value='http://localhost:3001/api/orders']"
-             )
-    end
-
-    test "the poster gallery links Rails' blob paths and streams on the user's signed name", %{
-      user: user
-    } do
-      stamp = NaiveDateTime.utc_now(:second)
-
-      Repo.insert_all("posters", [
-        %{
-          id: 6031,
-          name: "A6 live poster",
-          status: 2,
-          settings: %{},
-          user_id: user.id,
-          created_at: stamp,
-          updated_at: stamp
-        }
-      ])
-
-      Repo.insert_all("active_storage_blobs", [
-        %{
-          id: 6032,
-          key: "a6live6032",
-          filename: "a6.png",
-          byte_size: 1,
-          service_name: "test",
-          created_at: stamp
-        }
-      ])
-
-      Repo.insert_all("active_storage_attachments", [
-        %{name: "image", record_type: "Poster", record_id: 6031, blob_id: 6032, created_at: stamp}
-      ])
-
-      {:ok, view, _html} = live_as(user, "/map/v2")
-      src = Dawarich.MapGallery.blob_path(%{id: 6032, filename: "a6.png"})
-      assert has_element?(view, "#poster-gallery-list #poster_6031 img[src='#{src}']")
-      assert has_element?(view, "#poster_6031 a[href='#{src}?disposition=attachment']")
-
-      assert has_element?(
-               view,
-               "#poster_6031 a[data-turbo-method='delete'][href='/posters/6031']"
-             )
-
-      assert has_element?(
-               view,
-               "turbo-cable-stream-source[channel='Turbo::StreamsChannel'][signed-stream-name='#{Dawarich.RailsMessages.stream_name([{:user, user.id}, "posters"])}']"
-             )
+      for marker <- ~w(action-cable-url a6-live-key turbo-cable-stream-source),
+          do: refute(html =~ marker)
     end
   end
 
-  describe "controls the LiveView doesn't own survive its join (A5 s3 lesson)" do
-    @map_control ":is(input:not([type=button]):not([type=reset]), select, textarea, button[name]):not(form[phx-submit] *):not(form[phx-change] *)"
-    @unpatched ":not([phx-update=ignore]):not([phx-update=ignore] *)"
+  test "native map config carries typed range timezone and no credential projection", %{
+    user: user
+  } do
+    settings(user, %{"live_map_enabled" => false})
+    {:ok, view, html} = live_as(user, "/map/v2?panel=timeline&date=2026-05-28&import_id=12x")
+    data = map_config(view)
+    assert data["range"]["startAt"] == "2026-05-28T00:00:00+02:00"
+    assert data["range"]["timezone"] == "Europe/Berlin"
+    assert data["panel"] == "timeline"
+    assert :sys.get_state(view.pid).socket.assigns.page.import_id == nil
+    refute html =~ "a6-live-key"
+    refute Map.has_key?(data, "apiKey")
+    assert has_element?(view, "#native-map-panel")
+    refute has_element?(view, "turbo-frame#place-drawer")
+  end
 
-    test "every control outside phx-change/phx-submit handling sits under an ignored, id-bearing ancestor",
-         %{user: user} do
-      {:ok, view, _html} = live_as(user, "/map/v2")
-      doc = view |> render() |> LazyHTML.from_fragment()
+  test "native day navigation retains panel import and profile offset", %{user: user} do
+    {:ok, view, _} = live_as(user, "/map/v2?panel=timeline&date=2026-05-28&import_id=12")
+    assert has_element?(view, "#native-map-dates input[name=start_at][value='2026-05-28T00:00']")
+    view |> element("#native-map-prev-day") |> render_click()
+    patch = assert_patch(view)
+    query = URI.decode_query(URI.parse(patch).query)
+    assert query["panel"] == "timeline"
+    assert query["import_id"] == "12"
+    assert String.starts_with?(map_config(view)["range"]["startAt"], "2026-05-27")
+    {:ok, plain, _} = live_as(user, "/map/v2")
+    refute Map.has_key?(:sys.get_state(plain.pid).socket.assigns.map_url, "panel")
+    refute Map.has_key?(:sys.get_state(plain.pid).socket.assigns.map_url, "import_id")
+  end
 
-      all = doc |> LazyHTML.query(@map_control)
-      assert Enum.count(all) > 50
+  test "foreign place produces a typed native refusal without exposing its data", %{user: user} do
+    other = RailsUser.insert!(%{id: 6002, email: "a6-live-other@dawarich.test"})
 
-      unprotected = doc |> LazyHTML.query(@map_control <> @unpatched)
-      assert Enum.count(unprotected) == 0, inspect(LazyHTML.attribute(unprotected, "id"))
+    Repo.query!(
+      "INSERT INTO places (id, user_id, name, latitude, longitude, created_at, updated_at) VALUES (6090, $1, 'foreign-place-hidden', 1, 1, now(), now())",
+      [other.id]
+    )
+
+    {:ok, view, html} = live_as(user, "/map/v2?place_id=6090")
+    assert has_element?(view, "[role=alert]", "not_found")
+    refute has_element?(view, "#native-map")
+    refute html =~ "foreign-place-hidden"
+  end
+
+  test "unowned Rails flash events cannot inject native notices", %{user: user} do
+    {:ok, view, _} = live_as(user, "/map/v2")
+
+    for type <- ~w(info success error) do
+      refute render_hook(view, "rails_flash", %{"type" => type, "message" => "unowned-flash"}) =~
+               "unowned-flash"
+
+      refute "unowned-flash" in Map.values(:sys.get_state(view.pid).socket.assigns.flash)
     end
+  end
 
-    test "the ignored ancestors each carry their own stable, unique id", %{user: user} do
-      {:ok, view, _html} = live_as(user, "/map/v2")
-      doc = view |> render() |> LazyHTML.from_fragment()
+  test "native panel state changes through its launcher and close commands", %{user: user} do
+    {:ok, view, _} = live_as(user, "/map/v2?panel=timeline")
+    assert has_element?(view, "#native-map-panel")
+    view |> element("[data-testid=map-button-layers]") |> render_click()
+    assert map_config(view)["panel"] == "layers"
+    assert has_element?(view, "#native-map-layers")
+    refute has_element?(view, "#native-map-panel")
+    view |> element("#native-map-panel-close") |> render_click()
+    assert map_config(view)["panel"] == ""
+    refute has_element?(view, "#native-map-layers")
+  end
 
-      ids = doc |> LazyHTML.query("[phx-update=ignore]") |> LazyHTML.attribute("id")
-      assert ids != []
-      assert Enum.all?(ids, &(&1 != ""))
-      assert Enum.uniq(ids) == ids
-    end
+  test "native places filter preserves every owned tag name order and color", %{user: user} do
+    settings(user, %{"enabled_map_layers" => ["Places"]})
+    tags(user, [{6011, "Zoo", "#123456", nil}, {6012, "Alpha", "#123456", nil}])
+    {:ok, view, _} = live_as(user, "/map/v2?panel=layers")
+
+    names =
+      render(view)
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("[data-place-tag-name]")
+      |> LazyHTML.attribute("data-place-tag-name")
+
+    assert names == ["Alpha", "Zoo"]
+
+    assert has_element?(
+             view,
+             "input[name='place_tag_ids[]'][value='6012'] + span[style='border-color: #123456; color: #123456;']"
+           )
+  end
+
+  test "native calendar loads its month and bounds timeline tag chips to eight", %{user: user} do
+    tags(
+      user,
+      for(
+        i <- 1..9,
+        do:
+          {6020 + i, "Chip #{i}", if(i == 1, do: nil, else: "#abcdef"),
+           if(i == 2, do: "🏠", else: nil)}
+      )
+    )
+
+    {:ok, view, _} = live_as(user, "/map/v2?panel=timeline&date=2026-05-28")
+    render_async(view)
+    assert :sys.get_state(view.pid).socket.assigns.calendar.summary.month == "2026-05"
+
+    chips =
+      render(view) |> LazyHTML.from_fragment() |> LazyHTML.query("#native-timeline-tags button")
+
+    assert Enum.count(chips) == 8
+
+    styles =
+      render(view)
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("button[data-tag-name='chip 1']")
+      |> LazyHTML.attribute("style")
+
+    assert Enum.all?(styles, &(&1 == ""))
+    assert has_element?(view, "button[data-tag-name='chip 2']", "🏠")
+
+    assert has_element?(
+             view,
+             "button[data-tag-name='chip 3'][style='background-color: #abcdef;']"
+           )
+
+    view |> element("button[data-tag-name='chip 3']") |> render_click()
+    assert has_element?(view, "button[data-tag-name='chip 3'][aria-pressed=true]")
+    refute has_element?(view, "turbo-frame")
+  end
+
+  test "native settings retain hidden tile POI and transport choices", %{user: user} do
+    settings(user, %{
+      "maps" => %{"hidden_tile_categories" => ["roads"], "disabled_poi_groups" => ["cycling"]},
+      "enabled_transportation_modes" => ["train"]
+    })
+
+    {:ok, view, _} = live_as(user, "/map/v2?panel=settings")
+    assert has_element?(view, "#native-theme-presets [data-theme-key=blueprint]")
+    refute has_element?(view, "#native-layers-form input[name='tiles[]'][value=roads][checked]")
+
+    assert has_element?(
+             view,
+             "#native-layers-form input[name='tiles[]'][value=road_labels][checked]"
+           )
+
+    refute has_element?(view, "#native-layers-form input[name='poi[]'][value=cycling][checked]")
+
+    assert has_element?(
+             view,
+             "#native-transport-form input[name='modes[]'][value=train][checked]"
+           )
+
+    refute has_element?(
+             view,
+             "#native-transport-form input[name='modes[]'][value=walking][checked]"
+           )
+
+    assert has_element?(view, "#native-transport-apply[disabled]")
+    view |> form("#native-transport-form", %{"modes" => ["walking"]}) |> render_change()
+    refute has_element?(view, "#native-transport-apply[disabled]")
+    assert Dawarich.Accounts.get(user.id).settings["enabled_transportation_modes"] == ["train"]
+  end
+
+  test "native Immich tools require configured Pro admission and hide provider credentials", %{
+    user: user
+  } do
+    {:ok, view, _} = live_as(user, "/map/v2?panel=tools")
+    refute has_element?(view, "#native-enrichment-scan")
+
+    settings(user, %{
+      "immich_url" => "https://immich.a6.test",
+      "immich_api_key" => "synthetic-immich-key"
+    })
+
+    {:ok, view, html} = live_as(user, "/map/v2?panel=tools")
+    assert has_element?(view, "#native-enrichment-scan")
+    for marker <- ~w(immich.a6.test synthetic-immich-key a6-live-key), do: refute(html =~ marker)
+    previous = System.get_env("SELF_HOSTED")
+    System.put_env("SELF_HOSTED", "false")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("SELF_HOSTED", previous),
+        else: System.delete_env("SELF_HOSTED")
+    end)
+
+    Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [user.id])
+    {:ok, lite, _} = live_as(user, "/map/v2?panel=tools")
+    refute has_element?(lite, "#native-enrichment-scan")
+  end
+
+  test "native studios preserve font order date controls and native save commands", %{user: user} do
+    {:ok, view, html} = live_as(user, "/map/v2")
+
+    for selector <- [
+          "[data-testid=map-button-poster]",
+          "[data-poster-date-start]",
+          "[data-video-start]",
+          "[data-video-end]"
+        ],
+        do: assert(has_element?(view, selector))
+
+    [raw] =
+      render(view)
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("#native-poster-studio")
+      |> LazyHTML.attribute("data-poster-config")
+
+    ordered =
+      Jason.decode!(raw, objects: :ordered_objects).values
+      |> Enum.find_value(fn {k, v} -> if k == "fonts", do: v.values end)
+
+    assert Enum.map(ordered, &elem(&1, 0)) ==
+             ~w(inter-400 inter-700 oswald-400 oswald-700 playfair-display-400 playfair-display-700 jetbrains-mono-400 jetbrains-mono-700)
+
+    assert config(view, "#native-poster-studio", "data-poster-config")["fonts"]["oswald-700"] =~
+             ~r{\A/assets/poster/oswald-700(-[0-9a-f]+)?\.woff2\z}
+
+    refute html =~ "/rails/active_storage/direct_uploads"
+
+    assert render_hook(element(view, "#native-video-studio"), "video:upload_target", %{
+             "byte_size" => 0
+           }) =~
+             "native-video-studio"
+  end
+
+  test "PRINT_ORDER_URL overrides the native order endpoint", %{user: user} do
+    System.put_env("PRINT_ORDER_URL", "http://localhost:3001/api/orders")
+    on_exit(fn -> System.delete_env("PRINT_ORDER_URL") end)
+    {:ok, view, _} = live_as(user, "/map/v2")
+
+    assert config(view, "#native-poster-studio", "data-poster-config")["printOrderUrl"] ==
+             "http://localhost:3001/api/orders"
+  end
+
+  test "native poster gallery retains download URLs and deletes through its scoped owner", %{
+    user: user
+  } do
+    stamp = NaiveDateTime.utc_now(:second)
+
+    Repo.insert_all("posters", [
+      %{
+        id: 6031,
+        name: "A6 live poster",
+        status: 2,
+        settings: %{},
+        user_id: user.id,
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    Repo.insert_all("active_storage_blobs", [
+      %{
+        id: 6032,
+        key: "a6live6032",
+        filename: "a6.png",
+        byte_size: 1,
+        service_name: "test",
+        created_at: stamp
+      }
+    ])
+
+    Repo.insert_all("active_storage_attachments", [
+      %{name: "image", record_type: "Poster", record_id: 6031, blob_id: 6032, created_at: stamp}
+    ])
+
+    {:ok, view, _} = live_as(user, "/map/v2")
+    src = Dawarich.MapGallery.blob_path(%{id: 6032, filename: "a6.png"})
+    assert has_element?(view, "#native-poster-gallery-list #poster_6031 img[src='#{src}']")
+    assert has_element?(view, "#poster_6031 a[href='#{src}?disposition=attachment']")
+    view |> element("#poster_6031 button[phx-click='poster:delete']") |> render_click()
+    refute has_element?(view, "#poster_6031")
+    assert Repo.query!("SELECT id FROM posters WHERE id=6031").rows == []
+    refute has_element?(view, "turbo-cable-stream-source")
+  end
+
+  test "native browser controls outside server forms have ignored keyed owners", %{user: user} do
+    {:ok, view, _} = live_as(user, "/map/v2?panel=settings")
+    doc = render(view) |> LazyHTML.from_fragment()
+
+    selector =
+      ":is(input:not([type=button]):not([type=reset]):not([type=hidden]),select,textarea,button[name]):not(form[phx-submit] *):not(form[phx-change] *)"
+
+    assert Enum.count(LazyHTML.query(doc, selector)) > 0
+
+    unprotected =
+      LazyHTML.query(doc, selector <> ":not([phx-update=ignore]):not([phx-update=ignore] *)")
+
+    assert Enum.count(unprotected) == 0, inspect(LazyHTML.attribute(unprotected, "name"))
+  end
+
+  test "the ignored ancestors each carry their own stable, unique id", %{user: user} do
+    {:ok, view, _} = live_as(user, "/map/v2")
+
+    ids =
+      render(view)
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("[phx-update=ignore]")
+      |> LazyHTML.attribute("id")
+
+    assert ids != []
+    assert Enum.all?(ids, &(&1 != ""))
+    assert Enum.uniq(ids) == ids
   end
 end

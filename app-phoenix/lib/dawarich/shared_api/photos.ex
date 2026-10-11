@@ -24,7 +24,7 @@ defmodule Dawarich.SharedApi.Photos do
   defp coexistence_response(_, :photos), do: {:ok, []}
   defp coexistence_response(_, :thumbnail), do: {:head, 404}
 
-  defp native_response(link, action, params) do
+  def native_response(link, action, params) do
     if link.settings["show_photos"] == true do
       case action do
         :photos -> {:ok, Enum.take(photos(link), 100) |> Enum.map(&serialize(&1, link.id))}

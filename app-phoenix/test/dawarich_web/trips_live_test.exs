@@ -54,7 +54,7 @@ defmodule DawarichWeb.TripsLiveTest do
       refute has_element?(view, "[role='navigation']")
     end
 
-    test "a card links to its trip, previews the path through the Rails bridge, counts days and countries",
+    test "a native card links to its trip, reads its scoped path, counts days and countries",
          %{user: user} do
       trip!(user, 883_101, %{
         started_at: ~N[2026-05-09 06:00:00],
@@ -68,16 +68,24 @@ defmodule DawarichWeb.TripsLiveTest do
                "a.block.group[href='/trips/883101'] > #trip-883101[data-trip-id='883101']"
              )
 
-      assert has_element?(
-               view,
-               "#map-883101[phx-hook='RailsStimulus'][phx-update='ignore'][data-controller='trip-maplibre-preview'][data-trip-maplibre-preview-map-style-value='light']"
-             )
+      assert has_element?(view, "#native-trip-preview-883101[phx-hook=MapPreview]")
 
-      assert html
-             |> LazyHTML.from_fragment()
-             |> LazyHTML.query("#map-883101")
-             |> LazyHTML.attribute("data-trip-maplibre-preview-path-value") ==
-               [~S([[12.5,51.25],[12.37346812345679,51.34]])]
+      config =
+        html
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("#native-trip-preview-883101")
+        |> LazyHTML.attribute("data-map-config")
+        |> hd()
+        |> Jason.decode!()
+
+      assert config["tripId"] == 883_101
+      assert config["styleName"] == "light"
+      refute Map.has_key?(config, "path")
+
+      data =
+        RailsUser.signed_in(user.id) |> get("/native/map/data/trips/883101") |> json_response(200)
+
+      assert data["path"] == Jason.decode!(~S([[12.5,51.25],[12.37346812345679,51.34]]))
 
       card = view |> element("#trip-883101") |> render()
       assert card =~ "12 km"
@@ -123,7 +131,18 @@ defmodule DawarichWeb.TripsLiveTest do
       {:ok, view, _html} = live_as(user, "/trips")
 
       assert view |> element("#trip-883301") |> render() =~ "10 mi"
-      assert has_element?(view, "#map-883301[data-trip-maplibre-preview-map-style-value='dark']")
+
+      config =
+        view
+        |> element("#native-trip-preview-883301")
+        |> render()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("[data-map-config]")
+        |> LazyHTML.attribute("data-map-config")
+        |> hd()
+        |> Jason.decode!()
+
+      assert config["styleName"] == "dark"
     end
 
     test "six trips per page, newest first; the next page patches; out of range is the empty state",
@@ -146,7 +165,7 @@ defmodule DawarichWeb.TripsLiveTest do
       refute has_element?(far, "[role='navigation']")
     end
 
-    test "patching to a page with malformed countries hands it to Rails", %{
+    test "patching to malformed countries refuses locally without preserving stale cards", %{
       user: user
     } do
       for n <- 1..6,
@@ -164,22 +183,30 @@ defmodule DawarichWeb.TripsLiveTest do
       Dawarich.Repo.query!("UPDATE trips SET visited_countries = '[1]'::jsonb WHERE id = 883510")
       {:ok, view, _html} = live_as(user, "/trips")
 
-      assert {:error, {:redirect, %{to: "/trips?page=2"}}} = render_patch(view, "/trips?page=2")
+      render_patch(view, "/trips?page=2")
+      assert has_element?(view, "[data-native-trip-index-refused][role=alert]")
+      refute has_element?(view, "[data-trip-id]")
+      assert :sys.get_state(view.pid).socket.redirected == nil
     end
 
     test "the process keeps no trip path once the list has rendered", %{user: user} do
       trip!(user, 883_601)
       {:ok, view, html} = live_as(user, "/trips")
-      assert html =~ "map-883601"
-      assert :sys.get_state(view.pid).socket.assigns.entries == []
+      assert html =~ "native-trip-preview-883601"
+      entries = :sys.get_state(view.pid).socket.assigns.entries
+      assert Enum.map(entries, & &1.id) == [883_601]
+      refute Enum.any?(entries, &Map.has_key?(&1, :path_json))
+      refute Enum.any?(entries, &Map.has_key?(&1, :plan_json))
     end
 
-    test "the head has no Turbo morph metas and no Chartkick, and loads Rails' importmap and translations",
+    test "the native list head omits Turbo Chartkick importmap and inline translations",
          %{user: user} do
       html = RailsUser.signed_in(user.id) |> get("/trips") |> html_response(200)
       refute html =~ "turbo-refresh-method"
       refute html =~ ~s(import "chartkick")
-      assert html =~ ~s(id="i18n-translations")
+      refute html =~ ~s(id="i18n-translations")
+      refute html =~ "importmap"
+      assert html =~ "/native/app"
     end
   end
 
@@ -227,91 +254,82 @@ defmodule DawarichWeb.TripsLiveTest do
     defp attribute(html, selector, name),
       do: html |> LazyHTML.from_fragment() |> LazyHTML.query(selector) |> LazyHTML.attribute(name)
 
-    test "Rails' title, the #trip-shell region and the map controller's values", %{user: user} do
-      {:ok, view, html} = live_as(user, "/trips/883901")
+    defp native_as(user, path) do
+      {:ok, view, html} = live_as(user, path)
+      assert has_element?(view, "#trip-shell [phx-hook=Trip]")
+      refute has_element?(view, "[data-controller], turbo-frame, turbo-cable-stream-source")
+      {view, html}
+    end
 
+    defp config(html) do
+      [raw] = attribute(html, "[phx-hook=Trip]", "data-map-config")
+      Jason.decode!(raw)
+    end
+
+    test "native trip title and range settings retain cookie geometry without credentials", %{
+      user: user
+    } do
+      {view, html} = native_as(user, "/trips/883901")
       assert html =~ ">Leipzig &amp;lt;loop&amp;gt; | Dawarich</title>"
       assert page_title(view) == "Leipzig &lt;loop&gt; | Dawarich"
+      c = config(html)
+      assert c["title"] == "Leipzig <loop>"
+      assert c["tripId"] == 883_901
 
-      assert has_element?(
-               view,
-               "#trip-shell.contents[phx-hook='MapShell'][phx-update='ignore'][data-turbo='true']"
-             )
+      assert c["range"] == %{
+               "timezone" => "Europe/Berlin",
+               "startAt" => "2026-05-09T08:00:00+02:00",
+               "endAt" => "2026-05-12T22:00:00+02:00"
+             }
 
-      assert has_element?(
-               view,
-               "#trip-shell > div.container[data-controller='trip-maplibre'][data-trip-maplibre-api-key-value='a8-k-8831'][data-trip-maplibre-timezone-value='Europe/Berlin'][data-trip-maplibre-started-at-value='2026-05-09T08:00:00+02:00'][data-trip-maplibre-ended-at-value='2026-05-12T22:00:00+02:00'][data-trip-maplibre-trip-id-value='883901'][data-trip-maplibre-meters-between-routes-value='500'][data-trip-maplibre-minutes-between-routes-value='30'][data-trip-maplibre-map-style-value='light']"
-             )
+      assert c["routeOptions"] == %{
+               "distanceThresholdMeters" => 500,
+               "timeThresholdMinutes" => 30
+             }
 
-      refute has_element?(view, "[data-trip-maplibre-plan-value]")
+      assert c["styleName"] == "light"
+      refute Map.has_key?(c, "path")
+      refute html =~ "a8-k-8831"
 
-      assert attribute(
-               html,
-               "[data-controller='trip-maplibre']",
-               "data-trip-maplibre-trip-name-value"
-             ) == ["Leipzig <loop>"]
+      data =
+        RailsUser.signed_in(user.id) |> get("/native/map/data/trips/883901") |> json_response(200)
 
-      assert attribute(
-               html,
-               "[data-controller='trip-maplibre']",
-               "data-trip-maplibre-path-data-value"
-             ) == [~S([[12.5,51.25],[12.37346812345679,51.34]])]
+      assert data["path"] == [[12.5, 51.25], [12.37346812345679, 51.34]]
 
-      assert attribute(
-               html,
-               "[data-controller='trip-maplibre']",
-               "data-trip-maplibre-device-windows-value"
-             ) ==
-               [~S([{"tracker_id":"phone","start_at":1778313600,"end_at":1778314200}])]
+      assert data["deviceWindows"] == [
+               %{"tracker_id" => "phone", "start_at" => 1_778_313_600, "end_at" => 1_778_314_200}
+             ]
 
-      assert has_element?(view, "#trip-shell > #poster-studio")
-      assert has_element?(view, "#trip-shell > #video-studio")
+      assert has_element?(view, "#native-poster-studio")
+      assert has_element?(view, "#native-video-studio")
     end
 
-    test "the header of Rails' request spec: named studio buttons edit delete exports and native sharing entry",
-         %{user: user} do
-      {:ok, view, _html} = live_as(user, "/trips/883901")
-      actions = "[data-testid='trip-header-actions']"
+    test "native trip actions retain studios exports edit delete and sharing", %{user: user} do
+      {view, _} = native_as(user, "/trips/883901")
+      assert has_element?(view, "[data-testid=map-button-poster]:not([disabled])")
+      assert has_element?(view, "[data-testid=map-button-video]:not([disabled])")
 
       assert has_element?(
                view,
-               "#{actions} [data-trip-maplibre-target='posterBtn'][aria-label='Create a poster of this trip']:not([disabled])"
+               "[data-testid=trip-header-actions] a[href='/trips/883901/edit']",
+               "Edit"
              )
+
+      for format <- ~w(gpx json),
+          do: assert(has_element?(view, "[phx-click='trip:export'][phx-value-format=#{format}]"))
+
+      assert has_element?(view, "a[href='/trips/883901/share_link/new']", "Share")
 
       assert has_element?(
                view,
-               "#{actions} [data-action='click->trip-maplibre#openVideoStudio'][aria-label='Create a replay video of this trip']"
+               "[phx-click='trip:delete'][data-confirm='Delete this trip? This cannot be undone.']"
              )
 
-      assert has_element?(view, "#{actions} a[href='/trips/883901/edit'][title='Edit trip']")
-
-      assert has_element?(
-               view,
-               "#{actions} form[data-turbo='false'][method='post'][action='/trips/883901/export?file_format=gpx'] button[type='submit']"
-             )
-
-      assert has_element?(
-               view,
-               "#{actions} form[data-turbo='false'][method='post'][action='/trips/883901/export?file_format=json'] button[type='submit']"
-             )
-
-      assert has_element?(
-               view,
-               "#{actions} a[data-turbo='false'][href='/trips/883901/share_link/new'][title='Share trip']"
-             )
-
-      refute has_element?(view, "#{actions} .badge-success")
-
-      delete =
-        "#{actions} form.button_to[method='post'][action='/trips/883901'][data-turbo-confirm='Delete this trip? This cannot be undone.']"
-
-      assert has_element?(view, "#{delete} input[type='hidden'][name='_method'][value='delete']")
-      assert has_element?(view, "#{delete} input[type='hidden'][name='authenticity_token']")
-      assert has_element?(view, "#{delete} button.text-error[type='submit'][title='Delete trip']")
-      refute has_element?(view, "turbo-frame#share-link-modal")
+      refute has_element?(view, "[data-testid=trip-header-actions] .badge-success")
+      refute has_element?(view, "#trip-shell [name=authenticity_token]")
     end
 
-    test "the badge shows only for an active share of this trip", %{user: user} do
+    test "native trip badge retains only the active owned share", %{user: user} do
       TripsSeeds.shared_link!(%{
         id: "a8510000-0000-4000-8000-0000000000b1",
         resource_type: 1,
@@ -319,7 +337,7 @@ defmodule DawarichWeb.TripsLiveTest do
         user_id: user.id
       })
 
-      {:ok, view, _html} = live_as(user, "/trips/883901")
+      {view, _} = native_as(user, "/trips/883901")
       refute has_element?(view, ".badge.badge-success.badge-xs")
 
       TripsSeeds.shared_link!(%{
@@ -329,25 +347,16 @@ defmodule DawarichWeb.TripsLiveTest do
         user_id: user.id
       })
 
-      {:ok, view, _html} = live_as(user, "/trips/883901")
-
-      assert has_element?(
-               view,
-               "a[title='Share trip'] .badge.badge-success.badge-xs[aria-label='Currently shared']",
-               "Public"
-             )
+      {view, _} = native_as(user, "/trips/883901")
+      assert has_element?(view, "a[href='/trips/883901/share_link/new'] .badge-success", "Public")
     end
 
-    test "flights only with AirTrail; Rails' disabled button within 60 seconds of a recalculation, the form later",
-         %{user: user} do
-      {:ok, view, _html} = live_as(user, "/trips/883901")
-      refute has_element?(view, "[data-trip-maplibre-target='flightsToggleBtn']")
-
-      assert has_element?(
-               view,
-               "turbo-frame#trip_recalculate_frame button.btn-outline[disabled]",
-               "Recalculating…"
-             )
+    test "native trip flight visibility and recalculation cooldown retain source policy", %{
+      user: user
+    } do
+      {view, _} = native_as(user, "/trips/883901")
+      refute has_element?(view, "[phx-value-layer=flights]")
+      assert has_element?(view, "[phx-click='trip:recalculate'][disabled]", "Recalculating…")
 
       pilot =
         TripsSeeds.user!(8833, %{
@@ -359,137 +368,120 @@ defmodule DawarichWeb.TripsLiveTest do
         last_recalculated_at: NaiveDateTime.add(NaiveDateTime.utc_now(), -90)
       })
 
-      {:ok, view, _html} = live_as(pilot, "/trips/883902")
+      {view, _} = native_as(pilot, "/trips/883902")
+      assert has_element?(view, "[phx-click='trip:layer'][phx-value-layer=flights]")
 
       assert has_element?(
                view,
-               "[data-trip-maplibre-target='flightsToggleBtn'][data-action='click->trip-maplibre#toggleFlights']"
-             )
-
-      assert has_element?(
-               view,
-               "turbo-frame#trip_recalculate_frame form.button_to[action='/trips/883902/recalculate'][data-turbo-confirm] button[type='submit']",
+               "[phx-click='trip:recalculate'][data-confirm]:not([disabled])",
                "Recalculate"
              )
     end
 
-    test "countries: rounded distance, Rails' duration, the count and flags in sorted order", %{
-      user: user
-    } do
-      {:ok, view, html} = live_as(user, "/trips/883901")
+    test "native trip countries retain rounded distance duration and sorted flags", %{user: user} do
+      {view, html} = native_as(user, "/trips/883901")
       assert render(view) =~ ~r/12 km\s+·\s+3 days, 14 hours\s+·\s+2 countries/
-      assert attribute(html, "svg[title]", "title") == ["France", "Germany"]
+      assert attribute(html, "#native-trip-summary svg[title]", "title") == ["France", "Germany"]
     end
 
-    test "four Berlin days with stats, a note with Rails' PATCH form, empty POST forms elsewhere",
-         %{user: user} do
-      {:ok, view, _html} = live_as(user, "/trips/883901")
+    test "native trip Berlin days retain stats note editing and empty-day creation", %{user: user} do
+      {view, html} = native_as(user, "/trips/883901")
 
-      assert view
-             |> render()
-             |> LazyHTML.from_fragment()
-             |> LazyHTML.query("details[data-day-key]")
-             |> LazyHTML.attribute("data-day-key") ==
-               ~w(2026-05-09 2026-05-10 2026-05-11 2026-05-12)
+      assert attribute(html, "details[id^=native-trip-day-]", "id") ==
+               Enum.map(
+                 ~w(2026-05-09 2026-05-10 2026-05-11 2026-05-12),
+                 &("native-trip-day-" <> &1)
+               )
 
-      day_one = view |> element("details[data-day-key='2026-05-09'] summary") |> render()
-      assert day_one =~ "May 9, Saturday"
-      assert day_one =~ ~r/10:00\s+–\s+10:10/
-      assert day_one =~ ~r/·\s+1\.1\s+km/
+      day = view |> element("#native-trip-day-2026-05-09 summary") |> render()
+      assert day =~ "May 9, Saturday"
+      assert day =~ ~r/10:00\s+–\s+10:10/
+      assert day =~ ~r/1\.1\s+km/
+      assert has_element?(view, "#native-trip-day-2026-05-12", "No data")
 
-      assert view |> element("details[data-day-key='2026-05-12'] summary") |> render() =~
-               "No data"
-
-      note = "details[data-day-key='2026-05-10'] turbo-frame#note-883901-2026-05-10"
-
-      assert view
-             |> render()
-             |> LazyHTML.from_fragment()
-             |> LazyHTML.query("#{note} [data-note-display='2026-05-10'] .whitespace-pre-wrap")
-             |> LazyHTML.text() ==
+      assert has_element?(
+               view,
+               "#native-trip-day-2026-05-10 .whitespace-pre-wrap",
                "Morgenkaffee <b>am</b> See"
-
-      assert has_element?(
-               view,
-               "#{note} form.button_to[action='/trips/883901/notes/88391'] button[data-turbo-confirm='Delete this note?']",
-               "Delete"
-             )
-
-      patch =
-        "#{note} [data-note-form='2026-05-10'].hidden form.space-y-3[action='/trips/883901/notes/88391'][accept-charset='UTF-8'][method='post']"
-
-      assert has_element?(view, "#{patch} input[name='_method'][value='patch']")
-
-      assert has_element?(
-               view,
-               "#{patch} input#note_date[type='hidden'][name='note[date]'][value='2026-05-10']"
              )
 
       assert has_element?(
                view,
-               "#{patch} input[type='submit'][name='commit'][value='Update note'][data-disable-with='Update note']"
+               "[phx-click='trip:note:delete'][phx-value-day='2026-05-10'][data-confirm='Delete this note?']"
              )
 
-      empty =
-        "details[data-day-key='2026-05-09'] turbo-frame#note-883901-2026-05-09 form.space-y-3[action='/trips/883901/notes']"
+      view
+      |> element("[phx-click='trip:note:edit'][phx-value-day='2026-05-10']")
+      |> render_click()
 
       assert has_element?(
                view,
-               "#{empty} input[type='hidden'][name='note[date]'][value='2026-05-09']"
+               "#native-trip-note-form textarea[name='note[body]']",
+               "Morgenkaffee <b>am</b> See"
              )
 
-      assert has_element?(view, "#{empty} button[type='submit']", "Save note")
+      render_click(view, "trip:note:cancel", %{})
+
+      view
+      |> element("[phx-click='trip:note:edit'][phx-value-day='2026-05-09']")
+      |> render_click()
+
+      assert has_element?(
+               view,
+               "#native-trip-note-form[phx-submit='trip:note:save'] button[type=submit]",
+               "Save note"
+             )
+
+      refute has_element?(view, "#trip-shell input[name='_method']")
     end
 
-    test "the replay panel has day navigation; the poster studio shows Rails' range instead of date controls",
+    test "native trip replay and studios retain day navigation and fixed range", %{user: user} do
+      {view, html} = native_as(user, "/trips/883901")
+      assert has_element?(view, "[data-map-replay-panel] [data-replay=prev]")
+      assert has_element?(view, "[data-map-replay-panel] [data-replay=next]")
+      refute has_element?(view, "#native-poster-studio input[type=date]")
+      assert html =~ "9 May 2026 – 12 May 2026"
+      assert has_element?(view, "#native-poster-gallery-list")
+    end
+
+    test "native trip delivery uses admitted topics without a signed DOM stream", %{user: user} do
+      {view, _} = native_as(user, "/trips/883901")
+      scope = Dawarich.Maps.principal(Dawarich.Accounts.get(user.id), "en")
+
+      assert {:ok, topics} =
+               Dawarich.Maps.Dependencies.Realtime.topics(
+                 %{kind: :trip, scope: scope, trip_id: 883_901},
+                 []
+               )
+
+      assert Enum.sort(Map.values(topics)) == ~w(imports map_edits points progress tracks trip)
+      assert topics[Dawarich.RailsMessages.broadcasting([{:trip, 883_901}])] == "trip"
+      refute has_element?(view, "turbo-cable-stream-source")
+    end
+
+    test "native trip process keeps safe presentation without path or credentials", %{user: user} do
+      {view, _} = native_as(user, "/trips/883901")
+      page = :sys.get_state(view.pid).socket.assigns.page.presentation
+      assert page.name == "Leipzig <loop>"
+
+      for key <- [:api_key, :path_json, :windows_json, :plan_json, :trip_stream],
+          do: refute(Map.has_key?(page, key))
+    end
+
+    test "native trip feedback follows admitted producer outcomes instead of client flash injection",
          %{user: user} do
-      {:ok, view, html} = live_as(user, "/trips/883901")
-
-      assert has_element?(
-               view,
-               "[data-trip-maplibre-target='map'] [data-trip-maplibre-target='replayPanel']"
-             )
-
-      assert has_element?(
-               view,
-               "[data-trip-maplibre-target='replayPrevDayButton'][data-action='click->trip-maplibre#replayPrevDay']"
-             )
-
-      refute has_element?(view, "[data-poster-studio-editor-target='dateStart']")
-      assert html =~ ~r/9 May 2026 – 12 May 2026/
-      assert has_element?(view, "#poster-studio #poster-gallery-list")
+      {view, _} = native_as(user, "/trips/883901")
+      render_click(view, "trip:export", %{"format" => "invalid"})
+      assert has_element?(view, "#flash-messages .alert-error", "Unsupported")
+      refute has_element?(view, "#flash-messages .alert-success")
+      assert has_element?(view, "#trip-shell")
     end
 
-    test "the page subscribes to the trip's Turbo stream", %{user: user} do
-      {:ok, view, _html} = live_as(user, "/trips/883901")
-      name = Dawarich.TripStream.stream_name(883_901)
-
-      assert has_element?(
-               view,
-               "#trip-shell turbo-cable-stream-source[channel='Turbo::StreamsChannel'][signed-stream-name='#{name}']"
-             )
-    end
-
-    test "the process keeps no path once the page has rendered", %{user: user} do
-      {:ok, view, _html} = live_as(user, "/trips/883901")
-      assert :sys.get_state(view.pid).socket.assigns.page == nil
-    end
-
-    test "rails_flash shows only success and error flashes", %{user: user} do
-      {:ok, view, _html} = live_as(user, "/trips/883901")
-
-      refute render_hook(view, "rails_flash", %{"type" => "info", "message" => "a8-unwanted"}) =~
-               "a8-unwanted"
-
-      assert render_hook(view, "rails_flash", %{"type" => "success", "message" => "Recalculating"}) =~
-               "alert-success"
-    end
-
-    test "a zone Rails knows only by its friendly name renders (Rails' request spec)" do
+    test "native trip friendly Berlin timezone normalizes in its owned config" do
       berliner = TripsSeeds.user!(8834, %{"timezone" => "Berlin"})
       trip!(berliner, 883_903)
-      {:ok, view, _html} = live_as(berliner, "/trips/883903")
-      assert has_element?(view, "[data-trip-maplibre-timezone-value='Europe/Berlin']")
+      {_, html} = native_as(berliner, "/trips/883903")
+      assert config(html)["range"]["timezone"] == "Europe/Berlin"
     end
   end
 end

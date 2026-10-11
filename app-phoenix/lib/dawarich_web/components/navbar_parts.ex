@@ -65,9 +65,8 @@ defmodule DawarichWeb.NavbarParts do
 
   attr :locale, :string, required: true
   attr :sharing, :boolean, required: true
-  attr :native, :boolean, default: false
-
   attr :id, :string, default: "family-navbar-indicator"
+  attr :native, :boolean, default: false
   attr :mobile, :boolean, default: false
 
   def family_indicator(%{native: true} = assigns) do

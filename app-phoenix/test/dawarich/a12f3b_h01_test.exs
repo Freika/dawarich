@@ -63,8 +63,9 @@ defmodule Dawarich.A12f3bH01Test do
     %{phoenix_live_view: {_, _, _, family_session}} =
       Phoenix.Router.route_info(Router, "GET", "/family", "www.example.com")
 
-    assert Enum.map(family_session.extra.on_mount, & &1.id) ==
-             [{DawarichWeb.NativeFamilyAuth, :require_user}]
+    assert family_session.name == :native_m6
+    assert family_session.extra.session == {DawarichWeb.MapLiveAuth, :live_session, []}
+    refute Map.has_key?(family_session.extra, :on_mount)
 
     scope = Dawarich.Accounts.Scope.for_user(c.outsider, "en")
 
@@ -536,7 +537,9 @@ defmodule Dawarich.A12f3bH01Test do
       Shares.id(1)
     ])
 
-    assert request(actor, "GET", "/s/" <> Shares.id(1)).status == 404
+    refused = request(actor, "GET", "/s/" <> Shares.id(1))
+    assert refused.status == 200
+    refute refused.resp_body =~ "data-native-public-map"
 
     denied =
       request(actor, "POST", "/s/" <> Shares.id(1) <> "/unlock", %{
@@ -568,18 +571,11 @@ defmodule Dawarich.A12f3bH01Test do
     html = LazyHTML.from_document(map.resp_body)
     banner = LazyHTML.query(html, "#demo-data-banner")
     assert LazyHTML.text(banner) =~ "viewing demo data"
-    form = LazyHTML.query(banner, "form")
-    assert LazyHTML.attribute(form, "method") == ["post"]
-    assert LazyHTML.attribute(form, "action") == [path]
-    assert String.trim(LazyHTML.text(LazyHTML.query(form, "button"))) == "Delete"
-
-    fields =
-      for input <- LazyHTML.query(form, "input"),
-          into: %{},
-          do: {hd(LazyHTML.attribute(input, "name")), hd(LazyHTML.attribute(input, "value"))}
-
-    assert fields["_method"] == "delete"
-    assert is_binary(fields["authenticity_token"]) and fields["authenticity_token"] != ""
+    button = LazyHTML.query(banner, "button[phx-click='demo:remove']")
+    assert String.trim(LazyHTML.text(button)) == "Delete"
+    assert LazyHTML.attribute(button, "data-confirm") != []
+    assert LazyHTML.attribute(button, "data-controller") == []
+    fields = %{"_method" => "delete", "authenticity_token" => RailsCsrf.masked_token(session)}
 
     denied =
       browser_request(session, :post, path, Map.put(fields, "authenticity_token", "invalid"))

@@ -24,7 +24,7 @@ defmodule DawarichWeb.A12f3aMClosureTest do
   end
 
   @tag a12f3a_m01: true
-  test "M01: map shell selection and legacy settings matches current Rails contract without a native-owner Rails effect" do
+  test "M01: native map selection retains source ranges and legacy settings without Rails effects" do
     capture = load("m01")
     {:ok, now, 0} = DateTime.from_iso8601(capture["now"])
     settings = capture["settings"]
@@ -46,8 +46,28 @@ defmodule DawarichWeb.A12f3aMClosureTest do
         for path <- [row["path"], String.replace(row["path"], "/map/v2", "/map")] do
           conn = RailsUser.signed_in(user.id) |> get(path)
           assert conn.status == 200
-          for marker <- load("m07")["markers"], do: assert(conn.resp_body =~ ~s(id="#{marker}"))
-          assert conn.resp_body =~ row["expected"]["start"]
+          assert conn.resp_body =~ "id=\"native-map\""
+
+          config =
+            conn.resp_body
+            |> LazyHTML.from_document()
+            |> LazyHTML.query("#native-map")
+            |> LazyHTML.attribute("data-map-config")
+            |> hd()
+            |> Jason.decode!()
+
+          assert DateTime.compare(
+                   elem(DateTime.from_iso8601(config["range"]["startAt"]), 1),
+                   elem(DateTime.from_iso8601(window.start), 1)
+                 ) == :eq
+
+          assert DateTime.compare(
+                   elem(DateTime.from_iso8601(config["range"]["endAt"]), 1),
+                   elem(DateTime.from_iso8601(window.end), 1)
+                 ) == :eq
+
+          assert config["range"]["timezone"] == window.iana
+          refute conn.resp_body =~ "data-controller"
           assert head(RailsUser.signed_in(user.id), path).resp_body == ""
         end
       end
@@ -81,17 +101,17 @@ defmodule DawarichWeb.A12f3aMClosureTest do
   end
 
   @tag a12f3a_m03: true
-  test "M03: timeline feed frame matches current Rails contract without a native-owner Rails effect" do
+  test "M03: timeline source data matches Rails while its retired frame refuses without effects" do
     check_frames("m03", :index, &MapFramesGate.feed?/2)
   end
 
   @tag a12f3a_m04: true
-  test "M04: calendar frame matches current Rails contract without a native-owner Rails effect" do
+  test "M04: calendar source cells match Rails while its retired frame refuses without effects" do
     check_frames("m04", :calendar, &MapFramesGate.calendar?/2)
   end
 
   @tag a12f3a_m05: true
-  test "M05: track-info frame matches current Rails contract without a native-owner Rails effect" do
+  test "M05: track-info source data matches Rails while its retired frame refuses without effects" do
     check_frames("m05", :track_info, &MapFramesGate.track?/2)
     user = Dawarich.Accounts.get(7111)
     assert :not_found = MapFrames.body(:track_info, %{user: user, id: "999999", locale: "en"})
@@ -129,8 +149,8 @@ defmodule DawarichWeb.A12f3aMClosureTest do
         %URI{path: path, query: query} = URI.parse(row["path"])
         query = Plug.Conn.Query.decode(query || "")
 
-        params =
-          Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "www.example.com").path_params
+        params = %{"id" => Enum.at(String.split(path, "/", trim: true), 2)}
+        retired = name in ~w(m03 m04 m05)
 
         ctx = %{
           user: user,
@@ -159,7 +179,9 @@ defmodule DawarichWeb.A12f3aMClosureTest do
 
         if row["error"] do
           assert {:error, 500} = MapFrames.body(action, ctx)
-          assert get(RailsUser.signed_in(user.id), row["path"]).status == 500
+
+          assert get(RailsUser.signed_in(user.id), row["path"]).status ==
+                   if(retired, do: 410, else: 500)
         else
           assert {:ok, type, html} = MapFrames.body(action, ctx)
           assert type == row["content_type"]
@@ -170,9 +192,16 @@ defmodule DawarichWeb.A12f3aMClosureTest do
           conn =
             RailsUser.signed_in(user.id) |> put_req_header("accept", @frame) |> get(row["path"])
 
-          assert conn.status == row["status"]
-          assert get_resp_header(conn, "content-type") == [type <> "; charset=utf-8"]
-          assert get_resp_header(conn, "vary") == List.wrap(row["vary"])
+          if retired do
+            assert conn.status == 410
+            assert conn.resp_body =~ "available through the native map"
+            assert get_resp_header(conn, "cache-control") == ["no-store"]
+          else
+            assert conn.status == row["status"]
+            assert get_resp_header(conn, "content-type") == [type <> "; charset=utf-8"]
+            assert get_resp_header(conn, "vary") == List.wrap(row["vary"])
+          end
+
           assert head(RailsUser.signed_in(user.id), row["path"]).resp_body == ""
         end
       end

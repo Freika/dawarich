@@ -201,3 +201,66 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 - Keep persistent map retry notifications from blocking replay controls while preserving clickable recovery actions (FRB-NATIVE-S1E3-TOAST-INTERCEPTION).
 
 - Keep map retry messages and recovery actions within narrow German layouts by removing inherited fit-content and nowrap constraints (FRB-NATIVE-S1E3-TOAST-INTERCEPTION).
+
+## Native map follow-up
+
+- Keep fog on the selected dates when an older cell request finishes late. [FRB-NATIVE-M6-FOG-DATES](fixed-rails-bugs.md#frb-native-m6-fog-dates--a-late-fog-read-restores-an-older-date-window)
+- Cancel fog cell work when leaving its map. [FRB-NATIVE-M6-FOG-DISPOSE](fixed-rails-bugs.md#frb-native-m6-fog-dispose--leaving-the-map-keeps-a-fog-read-alive)
+- Stop hexagon point processing after leaving its map. [FRB-NATIVE-M6-HEX-DISPOSE](fixed-rails-bugs.md#frb-native-m6-hex-dispose--a-removed-hexagon-layer-keeps-aggregating-points)
+- Cancel scratch-map membership requests after leaving its map. [FRB-NATIVE-M6-SCRATCH-DISPOSE](fixed-rails-bugs.md#frb-native-m6-scratch-dispose--a-removed-scratch-layer-leaves-membership-requests-running)
+
+- Release photo-loading deadlines when their requests settle. [FRB-NATIVE-M6-PHOTO-TIMER](fixed-rails-bugs.md#frb-native-m6-photo-timer--successful-photo-loads-leave-their-timeout-running)
+- Prevent photo clusters from reopening after leaving their map. [FRB-NATIVE-M6-PHOTO-CLUSTER](fixed-rails-bugs.md#frb-native-m6-photo-cluster--late-cluster-leaves-recreate-markers-after-removal)
+- Close photo popups and release their thumbnails when leaving the map. [FRB-NATIVE-M6-PHOTO-POPUP](fixed-rails-bugs.md#frb-native-m6-photo-popup--removing-photos-leaves-their-popup-open)
+- Cancel anomaly history reads when removing their map layer. [FRB-NATIVE-M6-ANOMALY-DISPOSE](fixed-rails-bugs.md#frb-native-m6-anomaly-dispose--removed-anomaly-layers-keep-paging-history)
+
+- Keep Trip day-layer cleanup safe before hover initialization. [FRB-NATIVE-M6-TRIP-DAY-DISPOSE](fixed-rails-bugs.md#frb-native-m6-trip-day-dispose--trip-day-layer-removal-crashes-before-hover-setup)
+- Close flight popups when removing their map layer. [FRB-NATIVE-M6-FLIGHT-POPUP](fixed-rails-bugs.md#frb-native-m6-flight-popup--removed-flight-layers-leave-a-popup-open)
+
+- Drop completed native public-map reads after share revocation, expiry, phrase rotation or family withdrawal (FRB-NATIVE-M6-PUBLIC-LATE).
+
+- Close replay photo popups when changing day, closing replay or leaving the map. [FRB-NATIVE-M6-REPLAY-PHOTO-POPUP](fixed-rails-bugs.md#frb-native-m6-replay-photo-popup--replay-photos-leave-popups-open-after-close-or-day-change)
+
+- Fix poster export and print lifecycle cleanup. (FRB-NATIVE-M6-POSTER-EXPORT-CLOSE)
+
+- Fix poster export and print lifecycle cleanup. (FRB-NATIVE-M6-POSTER-EXPORT-HANG)
+
+- Fix poster export and print lifecycle cleanup. (FRB-NATIVE-M6-POSTER-EXPORT-CONTAINER)
+
+- Fix poster export and print lifecycle cleanup. (FRB-NATIVE-M6-POSTER-ORDER-HANG)
+
+- Validate poster checkout URLs. (FRB-NATIVE-M6-POSTER-CHECKOUT-URL)
+
+- Show failed poster range reloads and restore the loaded dates. (FRB-NATIVE-M6-POSTER-RANGE-ERROR)
+
+- Release video map, encoder and canvas resources on construction failure. (FRB-NATIVE-M6-VIDEO-CONSTRUCTION)
+
+- Cancel and bound the first video map idle wait. (FRB-NATIVE-M6-VIDEO-FIRST-IDLE)
+
+- Purge abandoned video upload reservations. (FRB-NATIVE-M6-VIDEO-ABANDONED-UPLOAD)
+
+- Fix video export stalls during codec negotiation, backpressure and finalization; cancellation and operation deadlines release encoder resources. (FRB-NATIVE-M6-VIDEO-CODEC-WAIT)
+
+- Fix stalled video uploads keeping Save pending; timed-out uploads discard their reservation and allow retry. (FRB-NATIVE-M6-VIDEO-UPLOAD-WAIT)
+
+- Fix out-of-order video theme loads replacing the selected preview and render style. (FRB-NATIVE-M6-VIDEO-THEME-ORDER)
+
+- Keep saved video recipes consistent with the rendered file when settings change during rendering. (FRB-NATIVE-M6-VIDEO-RECIPE-SNAPSHOT)
+
+- Release the production video encoder when configuration fails. (FRB-NATIVE-M6-VIDEO-CONFIGURE-CLOSE)
+
+- Handle inherited-property names in saved video recipes with the existing portrait fallback. (FRB-NATIVE-M6-VIDEO-FORMAT-OWN-KEY)
+
+- Give mobile and desktop family sharing indicators distinct identities so navigation updates target the correct copy. (FRB-NATIVE-M6-FAMILY-NAV-ID)
+
+- Omit credential-bearing photo and itinerary source destinations from native trip presentation and use cookie-authenticated thumbnails. (FRB-NATIVE-M6-TRIP-PHOTO-LINK)
+
+- Preserve foreign-owned note/share records linked to a deleted native Trip in an inconsistent stored graph. (FRB-NATIVE-M6-TRIP-DEPENDENTS)
+
+- Give native Poster layout/track sliders, Visit place search and Trip note editors persistent localized accessible names. [FRB-NATIVE-M6-CONTROL-LABELS](fixed-rails-bugs.md#frb-native-m6-control-labels)
+
+- Rectangle selection now keeps its cancel action localized instead of changing to hardcoded English (FRB-NATIVE-M6-SELECTION-CANCEL-LOCALE); owned rectangle and point highlights clear on cancel or map disposal.
+
+- Release native point-drag and history controls after a lost acknowledgement, clear uncertain geometry and reread canonical tiles without retrying the write. [FRB-NATIVE-M6-POINT-MOVE-DEADLINE](fixed-rails-bugs.md#frb-native-m6-point-move-deadline)
+
+- Erase idle native Family map coordinates and popups on sharing expiry, and revalidate withdrawals within a snapshot-bound lease that unrelated callbacks cannot extend while typed sharing invalidations are pending. [FRB-NATIVE-M6-FAMILY-IDLE-CONSENT](fixed-rails-bugs.md#frb-native-m6-family-idle-consent)

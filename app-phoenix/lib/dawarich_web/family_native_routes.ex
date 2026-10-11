@@ -15,10 +15,6 @@ defmodule DawarichWeb.FamilyNativeRoutes do
 
   defmacro pages do
     quote do
-      live "/family", DawarichWeb.FamiliesLive.Show, :show,
-        container: {:div, class: "contents"},
-        metadata: %{native_ui: true}
-
       live "/family/new", DawarichWeb.FamiliesLive.Form, :new,
         container: {:div, class: "contents"},
         metadata: %{native_ui: true}

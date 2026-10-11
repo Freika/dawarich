@@ -72,6 +72,19 @@ defmodule DawarichWeb.MapDataHandbackTest do
     |> dispatch(@endpoint, method, path, body)
   end
 
+  defp retired?(path),
+    do: String.starts_with?(path, "/tracks/") or String.contains?(path, "/address")
+
+  defp forwarded_write(_upstream, user, method, "/tracks/" <> _ = path, body) do
+    before = changes()
+    conn = RailsUser.signed_in(user.id) |> write(method, path, body)
+    assert conn.status == 410
+    assert conn.resp_body =~ "available through the native map"
+    assert get_resp_header(conn, "set-cookie") == []
+    assert get_resp_header(conn, "cache-control") == ["no-store"]
+    assert changes() == before
+  end
+
   defp forwarded_write(upstream, user, method, path, body) do
     before = changes()
 
@@ -112,7 +125,7 @@ defmodule DawarichWeb.MapDataHandbackTest do
     end
   end
 
-  test "unsupported segment PATCH reset and override posts remain Rails requests", %{
+  test "retired segment PATCH reset and override posts refuse without effects", %{
     user: user,
     upstream: upstream
   } do
@@ -129,7 +142,7 @@ defmodule DawarichWeb.MapDataHandbackTest do
     end
   end
 
-  test "native Points ignores rollback while retained map GETs keep their source owners", %{
+  test "points and tags retain handback while retired address and segment GETs refuse", %{
     user: user,
     upstream: upstream
   } do
@@ -141,8 +154,13 @@ defmodule DawarichWeb.MapDataHandbackTest do
       Application.put_env(:dawarich, :rails_routes, [key])
 
       for path <- paths do
-        if String.starts_with?(path, "/points?") do
-          assert RailsUser.signed_in(user.id) |> get(path) |> Map.fetch!(:status) == 200
+        if retired?(path) do
+          before = changes()
+          conn = RailsUser.signed_in(user.id) |> get(path)
+          assert conn.status == 410
+          assert conn.resp_body =~ "available through the native map"
+          assert get_resp_header(conn, "set-cookie") == []
+          assert changes() == before
         else
           {{line, raw}, conn} =
             RailsFormRequests.forwarded(upstream, fn ->
@@ -177,7 +195,7 @@ defmodule DawarichWeb.MapDataHandbackTest do
         |> put_req_header("turbo-frame", "point-address-838001")
         |> get(path)
 
-      assert conn.status == 200, path
+      assert conn.status == if(retired?(path), do: 410, else: 200), path
     end
 
     assert %{plug: Phoenix.LiveView.Plug} =
@@ -189,7 +207,7 @@ defmodule DawarichWeb.MapDataHandbackTest do
     assert Phoenix.Router.route_info(Router, "GET", "/tracks/8380", "localhost") == :error
   end
 
-  test "native Points refuses formats without effects while legacy segment queries retain forwarding",
+  test "unsupported retained page formats hand back while retired segments refuse without session effects",
        %{
          user: user,
          upstream: upstream
@@ -201,44 +219,37 @@ defmodule DawarichWeb.MapDataHandbackTest do
 
     flash = %{"discard" => [], "flashes" => %{"notice" => "Saved"}}
 
-    before = changes()
-
-    for {path, headers, status} <- [
-          {"/points", [{"accept", "application/json"}], 406},
-          {"/points.json", [], 422},
-          {"/points?format=json", [], 422}
+    for {path, headers} <- [
+          {"/points", [{"accept", "application/json"}]},
+          {"/points", [{"x-requested-with", "XMLHttpRequest"}]},
+          {"/points.json", []},
+          {"/points?format=json", []},
+          {"/points?start_at[]=1", []},
+          {"/tracks/8380/segments?via=x", []}
         ] do
-      conn =
-        Enum.reduce(headers, RailsUser.signed_in(user.id, %{"flash" => flash}), fn {key, value},
-                                                                                   conn ->
-          put_req_header(conn, key, value)
-        end)
-
-      if status == 406 do
-        assert_error_sent(406, fn -> get(conn, path) end)
+      if retired?(path) do
+        before = changes()
+        conn = RailsUser.signed_in(user.id, %{"flash" => flash}) |> get(path)
+        assert conn.status == 410
+        assert conn.resp_body =~ "available through the native map"
+        assert get_resp_header(conn, "set-cookie") == []
+        assert changes() == before
       else
-        assert get(conn, path).status == status
-      end
-
-      assert changes() == before
-    end
-
-    for path <- ["/tracks/8380/segments?via=x"] do
-      headers = []
-
-      {{line, _}, conn} =
-        RailsFormRequests.forwarded(upstream, fn ->
-          Enum.reduce(headers, RailsUser.signed_in(user.id, %{"flash" => flash}), fn {key, value},
-                                                                                     conn ->
-            put_req_header(conn, key, value)
+        {{line, _}, conn} =
+          RailsFormRequests.forwarded(upstream, fn ->
+            Enum.reduce(headers, RailsUser.signed_in(user.id, %{"flash" => flash}), fn {key,
+                                                                                        value},
+                                                                                       conn ->
+              put_req_header(conn, key, value)
+            end)
+            |> get(path)
           end)
-          |> get(path)
-        end)
 
-      assert line == "GET #{path} HTTP/1.1"
-      assert conn.status == 204
-      assert get_resp_header(conn, "set-cookie") == []
-      refute Map.has_key?(conn.private, :dawarich_rails_session_changes)
+        assert line == "GET #{path} HTTP/1.1"
+        assert conn.status == 204
+        assert get_resp_header(conn, "set-cookie") == []
+        refute Map.has_key?(conn.private, :dawarich_rails_session_changes)
+      end
     end
   end
 end

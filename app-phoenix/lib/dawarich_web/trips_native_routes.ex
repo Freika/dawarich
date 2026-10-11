@@ -14,10 +14,6 @@ defmodule DawarichWeb.TripsNativeRoutes do
             on_mount: DawarichWeb.LiveAuth,
             root_layout: {DawarichWeb.Layouts, :root},
             layout: {DawarichWeb.Layouts, :app} do
-            live "/trips", DawarichWeb.TripsLive.Index, :index,
-              container: {:div, class: "contents"},
-              metadata: %{rails_gate: {DawarichWeb.TripsGate, :index?}}
-
             live "/trips/new", DawarichWeb.TripsLive.Form, :new,
               container: {:div, class: "contents"},
               metadata: %{rails_gate: {DawarichWeb.TripsGate, :form?}}
@@ -25,10 +21,6 @@ defmodule DawarichWeb.TripsNativeRoutes do
             live "/trips/:id/edit", DawarichWeb.TripsLive.Form, :edit,
               container: {:div, class: "contents"},
               metadata: %{rails_gate: {DawarichWeb.TripsGate, :form?}}
-
-            live "/trips/:id", DawarichWeb.TripsLive.Show, :show,
-              container: {:div, class: "contents"},
-              metadata: %{rails_gate: {DawarichWeb.TripsGate, :show?}}
           end
         end
       end

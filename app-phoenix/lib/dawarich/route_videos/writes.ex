@@ -7,7 +7,9 @@ defmodule Dawarich.RouteVideos.Writes do
 
   @ceiling 250 * 1024 * 1024
 
-  def create(repo, user, %{"route_video" => %{} = params}, now, locale, policy) do
+  def create(repo, user, params, now, locale, policy, opts \\ [])
+
+  def create(repo, user, %{"route_video" => %{} = params}, now, locale, policy, opts) do
     with {:ok, recipe} <- Recipe.read(params["settings"]),
          {:ok, name} <- name(params["name"], locale),
          {:ok, blob_id} <- verified(params["file"], now),
@@ -20,12 +22,12 @@ defmodule Dawarich.RouteVideos.Writes do
           {:replay, "blob identification or analysis requires Rails storage"}
 
         true ->
-          save(repo, user.id, blob_id, name, recipe, now, policy)
+          save(repo, user.id, blob_id, name, recipe, now, policy, opts[:fresh] == true)
       end
     end
   end
 
-  def create(_repo, _user, _params, _now, _locale, _policy),
+  def create(_repo, _user, _params, _now, _locale, _policy, _opts),
     do: {:replay, "route video shape"}
 
   defp name(value, locale) when is_nil(value) or is_binary(value) do
@@ -95,8 +97,8 @@ defmodule Dawarich.RouteVideos.Writes do
     end
   end
 
-  defp save(repo, user_id, blob_id, name, recipe, now, policy) do
-    case insert(repo, user_id, blob_id, name, recipe, DateTime.to_naive(now)) do
+  defp save(repo, user_id, blob_id, name, recipe, now, policy, fresh) do
+    case insert(repo, user_id, blob_id, name, recipe, DateTime.to_naive(now), fresh) do
       {:ok, id} ->
         cap(repo, user_id, id, policy.max_per_user, now)
 
@@ -112,14 +114,14 @@ defmodule Dawarich.RouteVideos.Writes do
     end
   end
 
-  defp insert(repo, user_id, blob_id, name, recipe, now) do
+  defp insert(repo, user_id, blob_id, name, recipe, now, fresh) do
     repo.transaction(fn ->
       repo.query!("SELECT id FROM active_storage_blobs WHERE id=$1 FOR UPDATE", [blob_id],
         log: false
       )
 
       case blob(repo, blob_id, user_id, "FOR UPDATE OF b") do
-        {:ok, _} -> :ok
+        {:ok, _} -> if fresh and attached?(repo, blob_id), do: repo.rollback(:admission_refused)
         {:error, _} -> repo.rollback(:admission_refused)
       end
 

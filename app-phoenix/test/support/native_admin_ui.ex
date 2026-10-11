@@ -56,7 +56,7 @@ defmodule Dawarich.Test.NativeAdminUI do
             "input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea"
           )
           |> LazyHTML.filter(":not(label *):not([aria-label]):not([aria-labelledby])"),
-        id = List.first(LazyHTML.attribute(control, "id")),
+        id <- [List.first(LazyHTML.attribute(control, "id"))],
         is_nil(id) or Enum.count(LazyHTML.query(doc, ~s(label[for="#{id}"]))) != 1,
         do: LazyHTML.to_html(control)
   end

@@ -28,7 +28,7 @@ defmodule DawarichWeb.Api.GeoController do
 
   defp answer(conn, action) do
     result =
-      if Dawarich.Standalone.enabled?(),
+      if conn.assigns[:browser_map_read] == true or Dawarich.Standalone.enabled?(),
         do:
           Dawarich.Stats.ApiClosure.read(
             action,

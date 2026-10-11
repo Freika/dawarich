@@ -8,14 +8,20 @@ defmodule DawarichWeb.PageRoutesTest do
     for {path, view, action, params, gate, session} <- [
           {"/notifications", DawarichWeb.NotificationsLive.Index, :index, %{}, nil, :native_jobs},
           {"/notifications/17", DawarichWeb.NotificationsLive.Show, :show, %{"id" => "17"}, nil,
-           :native_jobs},
-          {"/imports/17", DawarichWeb.ImportsLive.Show, :show, %{"id" => "17"}, nil,
-           :native_jobs},
-          {"/places", DawarichWeb.PlacesLive.Index, :index, %{}, nil, :native_pages},
-          {"/map/v2", DawarichWeb.MapLive, :index, %{}, nil, :rails_map}
+           :rails_pages},
+          {"/imports/17", DawarichWeb.ImportsLive.Show, :show, %{"id" => "17"},
+           {DawarichWeb.ImportsGate, :native?}, :rails_pages},
+          {"/places", DawarichWeb.PlacesLive.Index, :index, %{},
+           {DawarichWeb.PlacesGate, :index?}, :rails_pages},
+          {"/map/v2", DawarichWeb.MapLive.Native, :index, %{}, nil, :native_m6}
         ] do
       route = info(path)
-      assert route.pipe_through == [:browser, :rails_user]
+
+      assert route.pipe_through == [
+               if(session == :native_m6, do: :native_m6_browser, else: :browser),
+               :rails_user
+             ]
+
       assert route.plug == Phoenix.LiveView.Plug
       assert route.plug_opts == action
       assert route.path_params == params
@@ -23,35 +29,23 @@ defmodule DawarichWeb.PageRoutesTest do
       assert {^view, ^action, opts, %{name: ^session, extra: extra}} = route.phoenix_live_view
       assert opts[:container] == {:div, class: "contents"}
 
-      session_module =
-        case session do
-          :native_jobs -> DawarichWeb.NativeJobsAuth
-          :native_pages -> DawarichWeb.NativeAuth
-          :rails_map -> DawarichWeb.RailsAuth
-        end
+      if session == :native_m6 do
+        assert extra == %{
+                 session: {DawarichWeb.MapLiveAuth, :live_session, []},
+                 root_layout: {DawarichWeb.Layouts, :native_root},
+                 layout: false
+               }
+      else
+        session_module =
+          if session == :rails_pages, do: DawarichWeb.NativeAuth, else: DawarichWeb.RailsAuth
 
-      assert extra.session == {session_module, :live_session, []}
-
-      expected =
-        case session do
-          :native_pages -> {DawarichWeb.NativeAuth, :require_user}
-          :native_jobs -> {DawarichWeb.NativeJobsAuth, :require_user}
-          :rails_map -> {DawarichWeb.LiveAuth, :default}
-        end
-
-      assert Enum.map(extra.on_mount, & &1.id) == [expected]
-
-      layout = if session == :rails_map, do: :map, else: :app
-
-      root =
-        case session do
-          :rails_map -> :map_root
-          :native_pages -> :native_root
-          :native_jobs -> :native_root
-        end
-
-      assert extra.layout == {DawarichWeb.Layouts, layout}
-      assert extra.root_layout == {DawarichWeb.Layouts, root}
+        assert extra.session == {session_module, :live_session, []}
+        assert Enum.map(extra.on_mount, & &1.id) == [{DawarichWeb.LiveAuth, :default}]
+        layout = if session == :rails_map, do: :map, else: :app
+        root = if session == :rails_map, do: :map_root, else: :root
+        assert extra.layout == {DawarichWeb.Layouts, layout}
+        assert extra.root_layout == {DawarichWeb.Layouts, root}
+      end
     end
 
     for {path, plug, action, pipelines, params, gate} <- [

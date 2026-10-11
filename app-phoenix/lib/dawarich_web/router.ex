@@ -4,6 +4,8 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.AchievementRoutes
   import DawarichWeb.AchievementImageRoutes
   import DawarichWeb.A8Routes
+  import DawarichWeb.PublicMapRoutes
+  import DawarichWeb.BrowserMapRoutes
   import DawarichWeb.PageRoutes
   import DawarichWeb.A10Routes
   require DawarichWeb.TripsNativeRoutes
@@ -46,6 +48,8 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsHeaders
   end
 
+  public_map_routes()
+  browser_map_routes()
   metrics_routes()
   api_routes()
   health_routes()
@@ -86,12 +90,6 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsAuth
     plug DawarichWeb.Locale
     plug DawarichWeb.RailsHeaders
-  end
-
-  scope "/" do
-    pipe_through :sharing
-
-    get "/s/:id", DawarichWeb.SharedLinkPage, :show, metadata: %{native_ui: true}
   end
 
   scope "/" do
