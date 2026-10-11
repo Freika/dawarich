@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Calendar activity and status counts refresh after demo visit edits and deletion, including restored visits removed by null-island cleanup.
 - Keep tied transportation modes, visit and country rankings, location-search coordinates, and Immich GPS matches deterministic.
 - Clear pending two-factor challenges after successful authentication, preventing a stale challenge from switching accounts.
 - Reserve transportation reclassification while its worker is queued, preventing duplicate runs from repeated requests and allowing retry after enqueue failure.
