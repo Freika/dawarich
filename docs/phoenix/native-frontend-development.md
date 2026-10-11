@@ -1,6 +1,6 @@
 # Native frontend development
 
-Status: **Implementation guide finalized**, 2026-10-11, against the integrated stage-2 m7 base. Commands are source-aligned; the [C-track results](native-m7-inventory.md#track-c-implementation-results-2026-10-11) distinguish executed targeted tests from pending acceptance. Merge the A/B cleanup deliveries before using their final asset/routing contracts. X4/X5 still supply production build, serving, packaging, fallback and runtime evidence; this guide is not yet an accepted release runbook.
+Status: **Implementation guide finalized**, 2026-10-11, against the integrated stage-2 m7 base. Commands are source-aligned; the [C-track results](native-m7-inventory.md#track-c-implementation-results-2026-10-11) distinguish executed targeted tests from pending acceptance. The A/B cleanup deliveries are merged; the integration report records the executed checks and remaining reconciliation. X4/X5 still supply production build, serving, packaging, fallback and runtime evidence; this guide is not yet an accepted release runbook.
 
 ## Prepare a private checkout
 
@@ -44,16 +44,16 @@ mix format --check-formatted
 mix compile --warnings-as-errors --all-warnings
 ```
 
-`assets.build` invokes the configured `esbuild native` profile: ESM, splitting, output `priv/static/native`, and external `/maplibre/*` imports. `assets.deploy` minifies that profile and runs `phx.digest`, producing `priv/static/cache_manifest.json` and digested static outputs. The native JS graph/demo eager-byte caps remain required. These source-aligned commands are not fresh production-build evidence for this delivery.
+`assets.build` first runs `dawarich.native_assets` to compile Tailwind/native styles and copy the positive static ledger, then invokes the configured `esbuild native` profile: ESM, splitting, output `priv/static/native`, and external `/maplibre/*` imports. Both aliases audit the emitted import closure with `dawarich.native_graph`. `assets.deploy` minifies that profile and runs `phx.digest`, producing `priv/static/cache_manifest.json` and digested static outputs. The native JS graph/demo eager-byte caps remain required. These source-aligned commands are not fresh production-build evidence for this delivery.
 
 | Input/boundary | Current source | Owner delivery / acceptance still needed |
 | --- | --- | --- |
-| Native JS | Phoenix esbuild entrypoint/profile; lazy hooks | Keep one native entrypoint and explicit library chunks; A2 emitted/lazy/worker graph and runtime checks. |
-| CSS/fonts/images | Native root uses `DawarichWeb.Assets`; resolver reads Rails asset manifest | A3 native digest/static manifest and actual CSS/font/worker serving tests. Keep Tailwind/DaisyUI and useful source classes. |
-| Importmap/Sprockets | `mix dawarich.build_inputs --root ... --out ...` still compiles Sprockets and exports importmap alongside runtime data | A3 separates data export from frontend discovery. Do not call an invented data-only alias or copy the old manifest under a new name. |
-| Runtime data | i18n/achievements/timezone/geodata/OpenAPI and renderer/font inputs | Retain data/gzip/error invariants and positive asset manifest. Separate data requirements from legacy JS discovery. |
-| Docker native stages | Current Dockerfile copies root Rails JS/vendor/assets/config and mixed build outputs | A4 removes obsolete native payload only after positive renderer/worker/font/PWA/Swagger tests; X4 actual image/export smoke. Rails build sources stay. |
-| Feature locations | Existing web module/template families; new native browser families on feature branches | B4a–B4c/A4 physically group small families with unchanged module names, URLs and Scope/session contracts. No simultaneous namespace rewrite. |
+| Native JS | Phoenix esbuild entrypoint/profile, feature hooks and lazy library/worker chunks | A1/A2 merged; emitted graph and per-feature byte caps remain required. |
+| CSS/fonts/images | `Dawarich.Build.NativeAssets`, `assets/native-static.json` and Phoenix digest resolution | A3 merged; native stylesheet/font/worker serving tests remain required. Tailwind/DaisyUI and source class inputs stay. |
+| Importmap/Sprockets | Isolated `tools/rails_frontend` legacy oracle/tooling | Native build discovery does not call these tools. Rails whole-app build sources and their independent parity tests stay. |
+| Runtime data | `mix dawarich.build_inputs --root ... --out ...` exports i18n/achievements/timezone/geodata | Data exports are independent of frontend configuration; retain exact bytes and validation. |
+| Docker native stages | Positive native static/renderer/font/PWA/Swagger inputs | A4 recipe changes merged; X4 still owns actual image/export/startup acceptance. |
+| Feature locations | Web families under `dawarich_web/features`, browser hooks under `hooks` and library code under `maps`/`studios` | A4/B4 moves merged, retaining module names, URLs, Scope and session contracts. |
 
 A successful esbuild command alone does not prove native CSS, production font/worker URLs, renderer output or a Rails-independent image. Keep the historical hybrid build instructions as history until the corresponding runtime consumers are removed.
 

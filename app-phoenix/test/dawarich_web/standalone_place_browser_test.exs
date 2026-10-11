@@ -231,8 +231,11 @@ defmodule DawarichWeb.StandalonePlaceBrowserTest do
         |> Plug.Conn.put_req_header("turbo-frame", "place-drawer")
         |> dispatch(DawarichWeb.Endpoint, :get, "/places/#{id}?#{query}")
 
-      assert drawer.status == 200
-      assert drawer.resp_body =~ "Query place"
+      assert drawer.status == 302
+
+      assert Plug.Conn.get_resp_header(drawer, "location") == [
+               "http://www.example.com/map/v2?place_id=#{id}"
+             ]
 
       nearby =
         RailsUser.signed_in(ctx.id)

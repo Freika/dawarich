@@ -62,28 +62,46 @@ defmodule DawarichWeb.PlaceNavigationTest do
 
       conn = request(entry, user)
 
-      if expected["status"] == nil do
-        assert conn.status == 406, entry["name"]
-        assert conn.resp_body == ""
-      else
-        assert conn.status == expected["status"], entry["name"]
+      cond do
+        entry["request"]["accept"] == "text/vnd.turbo-stream.html" ->
+          assert conn.status == 406, entry["name"]
+          assert conn.resp_body == ""
 
-        if expected["headers"]["location"],
-          do: assert(get_resp_header(conn, "location") == [expected["headers"]["location"]])
+        Regex.match?(~r|^/places/[0-9]+$|, entry["request"]["path"]) and expected["status"] == 200 ->
+          id = entry["request"]["path"] |> String.split("/") |> List.last()
+          assert conn.status == 302, entry["name"]
 
-        golden = File.read!("test/fixtures/places/remaining/pages/#{entry["name"]}.html")
-        actual = ParityHTML.normalize(conn.resp_body)
-        expected_body = ParityHTML.normalize(golden)
+          assert get_resp_header(conn, "location") == [
+                   "http://www.example.com/map/v2?place_id=#{id}"
+                 ]
 
-        assert actual == expected_body,
-               entry["name"] <> ParityHTML.first_difference(actual, expected_body)
+        Regex.match?(~r|^/places/[0-9]+$|, entry["request"]["path"]) and
+          is_integer(expected["status"]) and expected["status"] >= 400 ->
+          assert conn.status == 404, entry["name"]
 
-        assert MapStimulus.attributes(conn.resp_body, ["turbo-frame"]) ==
-                 MapStimulus.attributes(golden, ["turbo-frame"]),
-               entry["name"]
+        expected["status"] == nil ->
+          assert conn.status == 406, entry["name"]
+          assert conn.resp_body == ""
 
-        if entry["request"]["framed"] and conn.status == 200,
-          do: assert(conn.resp_body =~ "place-drawer")
+        true ->
+          assert conn.status == expected["status"], entry["name"]
+
+          if expected["headers"]["location"],
+            do: assert(get_resp_header(conn, "location") == [expected["headers"]["location"]])
+
+          golden = File.read!("test/fixtures/places/remaining/pages/#{entry["name"]}.html")
+          actual = ParityHTML.normalize(conn.resp_body)
+          expected_body = ParityHTML.normalize(golden)
+
+          assert actual == expected_body,
+                 entry["name"] <> ParityHTML.first_difference(actual, expected_body)
+
+          assert MapStimulus.attributes(conn.resp_body, ["turbo-frame"]) ==
+                   MapStimulus.attributes(golden, ["turbo-frame"]),
+                 entry["name"]
+
+          if entry["request"]["framed"] and conn.status == 200,
+            do: assert(conn.resp_body =~ "place-drawer")
       end
     end
 

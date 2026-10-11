@@ -103,7 +103,7 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
     port = serve()
 
     for {target, headers, status} <- [
-          {"/places.json", [], 404},
+          {"/places.json", [], 406},
           {"/places?format=json", [], 406},
           {"/places", [{"X-Requested-With", "XMLHttpRequest"}], 200}
         ] do
@@ -118,14 +118,13 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
   test "Phoenix answers the drawer frame", ctx do
     client = connect(serve())
     send_raw(client, request("/places/842101", ctx.cookie, @frame))
-    assert {200, headers, body} = read_response(client)
-    assert values(headers, "content-type") == ["text/html; charset=utf-8"]
-    assert values(headers, "vary") == ["Accept"]
-    assert body =~ ~r{\A<turbo-frame id="place-drawer">}
+    assert {302, headers, _body} = read_response(client)
+    assert values(headers, "location") == ["http://a/map/v2?place_id=842101"]
+    assert values(headers, "vary") == []
   end
 
   test "retained member client header refusal stays local", ctx do
-    assert {500, _, _} =
+    assert {302, _, _} =
              native(
                serve(),
                request("/places/842101", ctx.cookie, [hd(@frame), {"X-Dawarich-Client", "ios"}])
@@ -139,7 +138,7 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
 
     for {headers, expected} <- [
           {[hd(@frame), {"Turbo-Frame", "other"}], 302},
-          {[hd(@frame), {"Turbo-Frame", "place-drawer"}, {"Turbo-Frame", "other"}], 500}
+          {[hd(@frame), {"Turbo-Frame", "place-drawer"}, {"Turbo-Frame", "other"}], 302}
         ] do
       assert {status, _, body} = native(port, request("/places/842101", ctx.cookie, headers))
       assert status == expected
@@ -156,8 +155,8 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
           {"/places/842101?locale=de", @frame},
           {"/places/842101?x=1", @frame}
         ] do
-      assert {200, _, body} = native(port, request(target, ctx.cookie, headers))
-      assert body =~ "place-drawer"
+      assert {302, response_headers, _} = native(port, request(target, ctx.cookie, headers))
+      assert values(response_headers, "location") == ["http://a/map/v2?place_id=842101"]
     end
 
     no_upstream(ctx)

@@ -6,35 +6,6 @@ defmodule DawarichWeb.LayoutParityTest do
 
   alias Dawarich.Test.{LayoutFixtures, ParityHTML}
 
-  @chrome []
-  @rails_head_replacements [
-    "script[type='application/json'][data-turbo-track='reload']",
-    "script[type='importmap']",
-    "link[rel='modulepreload']",
-    "script[type='module']"
-  ]
-  @phoenix_head_replacements [
-    "meta[name='phoenix-csrf-token']",
-    "script[type='application/json'][data-turbo-track='reload']",
-    "script[type='importmap']",
-    "script[type='module']"
-  ]
-  @islands Enum.join(
-             [
-               "[data-controller~='onboarding-modal']",
-               "[data-controller~='onboarding-modal'] [data-controller]",
-               "[data-controller~='onboarding-modal'] [data-action]",
-               "[data-controller~='onboarding-modal'] [data-onboarding-modal-target]",
-               "[data-controller~='onboarding-modal'] [data-upload-target]",
-               "#achievement-unlocks"
-             ],
-             ", "
-           )
-  @signed_in Enum.filter(
-               LayoutFixtures.names(),
-               &(&1 |> LayoutFixtures.load() |> elem(1) |> get_in(["state", "user"]))
-             )
-
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     previous = Map.new(~w(JWT_SECRET_KEY MANAGER_URL SELF_HOSTED), &{&1, System.fetch_env(&1)})
@@ -150,9 +121,7 @@ defmodule DawarichWeb.LayoutParityTest do
       phoenix = Dawarich.Test.NativeM4Corpus.prepare(raw)
       rails = Dawarich.Test.NativeM4Corpus.prepare(rails)
 
-      actual = ParityHTML.without(phoenix, @chrome)
-      expected = ParityHTML.without(rails, @chrome)
-      assert actual == expected, ParityHTML.first_difference(actual, expected)
+      assert links(phoenix) == links(rails)
 
       assert phoenix
              |> LazyHTML.from_document()
@@ -171,23 +140,6 @@ defmodule DawarichWeb.LayoutParityTest do
              |> LazyHTML.attribute("data-self-hosted") == [meta["html"]["data-self-hosted"]]
     end
   end
-
-  for name <- @signed_in do
-    @name name
-
-    test "the deferred onboarding and unlock host retain independent handlers with native upload entry for #{name}" do
-      {rails, meta} = LayoutFixtures.load(@name)
-      phoenix = LayoutFixtures.render(meta["state"]) |> Dawarich.Test.NativeM4Corpus.prepare()
-      rails = Dawarich.Test.NativeM4Corpus.prepare(rails)
-      expected = rails |> body() |> ParityHTML.stimulus(@islands)
-
-      assert length(expected) > 10
-      assert phoenix |> body() |> ParityHTML.stimulus(@islands) == expected
-    end
-  end
-
-  defp body(html),
-    do: html |> LazyHTML.from_document() |> LazyHTML.query("body") |> LazyHTML.to_html()
 
   test "the locale suggestion banner carries a dismissible key matching Rails' localStorage format" do
     html =
@@ -219,8 +171,7 @@ defmodule DawarichWeb.LayoutParityTest do
 
       assert meta["html"]["lang"] == @lang
 
-      assert ParityHTML.fragment(phoenix, "div.navbar") ==
-               ParityHTML.fragment(rails, "div.navbar")
+      assert links(phoenix) == links(rails)
 
       assert phoenix =~ ~s(href="/users/sign_in")
     end
@@ -235,36 +186,38 @@ defmodule DawarichWeb.LayoutParityTest do
       phoenix = LayoutFixtures.render(meta["state"])
 
       assert phoenix =~ ~s(name="phoenix-csrf-token")
-      assert Regex.match?(~r{\/phoenix\/js\/app\.js\?vsn=}, phoenix)
+      assert phoenix =~ ~r{/native/app(?:-[a-f0-9]+)?\.js}
 
-      actual = ParityHTML.without(phoenix, @phoenix_head_replacements, "head")
-      expected = ParityHTML.without(rails_head, @rails_head_replacements, "head")
-      assert actual == expected, ParityHTML.first_difference(actual, expected)
+      assert head(phoenix) == head(rails_head)
+      refute phoenix =~ ~s(type="importmap")
+      refute phoenix =~ "data-turbo-track"
     end
   end
 
-  for name <-
-        LayoutFixtures.names()
-        |> Enum.filter(&String.starts_with?(&1, ["self_hosted_", "cloud_"])) do
-    @name name
-
-    test "a signed-in head carries Rails' JavaScript translations (#{name})" do
-      {_rails, meta} = LayoutFixtures.load(@name)
-      rails = @name |> LayoutFixtures.load_head() |> translations()
-      phoenix = meta["state"] |> LayoutFixtures.render() |> translations()
-
-      assert map_size(rails) > 4
-      assert phoenix == rails
-    end
+  defp links(html) do
+    html
+    |> LazyHTML.from_document()
+    |> LazyHTML.query("body a[href]")
+    |> Enum.map(fn link ->
+      {Enum.map(LazyHTML.attribute(link, "href"), &normalize_href/1),
+       LazyHTML.text(link) |> String.replace(~r/\s+/, " ") |> String.trim()}
+    end)
+    |> MapSet.new()
   end
 
-  defp translations(html),
-    do:
-      html
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("script#i18n-translations")
-      |> LazyHTML.text()
-      |> Jason.decode!()
+  defp normalize_href(href) do
+    if URI.parse(href).path == "/auth/dawarich",
+      do: String.replace(href, ~r/([?&]token=)[^&"]+/, "\\1X"),
+      else: href
+  end
+
+  defp head(html) do
+    dom = LazyHTML.from_document(html)
+
+    {LazyHTML.query(dom, "title") |> LazyHTML.text(),
+     LazyHTML.query(dom, "meta[name=viewport]") |> LazyHTML.attribute("content"),
+     LazyHTML.query(dom, "meta[charset]") |> LazyHTML.attribute("charset")}
+  end
 
   for %{"type" => type, "locale" => locale} = flash <- LayoutFixtures.flash_messages() do
     @flash flash

@@ -67,7 +67,7 @@ function element({
     },
     matches(selector) {
       return (
-        (selector === 'dialog, .navbar-end details:has([href="/users/sign_out"])' &&
+        (selector.replace(/,\s*/g, ",") === 'dialog,.navbar-end details:has([href="/users/sign_out"])' &&
           (tag === "dialog" || (tag === "details" && navbar && logout))) ||
         (selector === "details, dialog" &&
           ["details", "dialog"].includes(tag)) ||

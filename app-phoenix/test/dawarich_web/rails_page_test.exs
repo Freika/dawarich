@@ -213,7 +213,10 @@ defmodule DawarichWeb.RailsPageTest do
       |> put_req_header("x-turbo-request-id", "1")
       |> get("/notifications")
 
-    assert html_response(conn, 200) =~ ~s(<meta name="turbo-visit-control" content="reload">)
-    assert conn.resp_cookies == %{}
+    body = html_response(conn, 200)
+    assert body =~ "kept"
+    assert body =~ "/native/app.js"
+    refute body =~ "turbo-visit-control"
+    refute Map.has_key?(rails_session(conn), "flash")
   end
 end

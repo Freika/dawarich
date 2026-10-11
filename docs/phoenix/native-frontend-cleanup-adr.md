@@ -20,7 +20,7 @@ Keeping the hybrid or wrapping its controller registry under another name keeps 
 
 Markup equality ceases to be the migrated page oracle; public API/crypto/effect bytes remain valid contracts. Separate live_session boundaries require native full-document transitions, not a same-session navigation shim. Physical moves must retain adjacent templates and partition-safe support. Secret handling, stale async rejection, context admission and worker/library teardown remain behavior requirements.
 
-Acceptance remains pending after A/B integration and X4/X5: production digest URLs and image payload, no-upstream refusals, exact fixture/register reconciliation, full ExUnit seeds/all partitions, stage standalone G44 and English/German 390px evidence. The controller removed performance measurements (D1–D4); no resource/control matrix is required. Existing eager byte/bundle-boundary tests and functional lifecycle cases remain.
+A/B integration is merged; complete direct-caller reconciliation and X4/X5 acceptance remain pending: production digest URLs and image payload, no-upstream refusals, exact fixture/register reconciliation, full ExUnit seeds/all partitions, stage standalone G44 and English/German 390px evidence. The controller removed performance measurements (D1–D4); no resource/control matrix is required. Existing eager byte/bundle-boundary tests and functional lifecycle cases remain.
 
 Historical incremental evidence remains in inventory Appendix G; the [C-track implementation results](native-m7-inventory.md#track-c-implementation-results-2026-10-11) add exact current successor/reader checks and pending browser contracts. No final acceptance or Rails-independent artifact is claimed. Rails bugs fixed by this documentation/retarget brief: none.
 

@@ -79,7 +79,7 @@ defmodule DawarichWeb.NativePosterStudioTest do
     assert config["strings"]["order_summary"] =~ "%{layout}"
     assert config["strings"]["order_summary"] =~ "%{price}"
     assert config["strings"]["order_errors.too_large"] =~ "50 MB"
-    assert config["fonts"]["oswald-700"] =~ ~r{^/assets/poster/oswald-700}
+    assert config["fonts"]["oswald-700"] =~ ~r{^/native/poster/oswald-700}
 
     assert config["strings"]["open_failed"] ==
              "Poster-Studio konnte nicht geöffnet werden: %{error}"

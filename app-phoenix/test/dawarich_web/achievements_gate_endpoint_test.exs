@@ -71,26 +71,6 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
     headers
   end
 
-  defp answered_by_puma(port, upstream, request) do
-    client = connect(port)
-    send_raw(client, request)
-    puma = accept(upstream)
-    {head, _rest} = read_head(puma)
-    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
-    assert {200, _headers, "puma"} = read_response(client)
-    {request_line(head), header(head, "cookie")}
-  end
-
-  defp assert_puma(ctx, port, targets, method, extra) do
-    for target <- targets do
-      assert {line, [cookie]} =
-               answered_by_puma(port, ctx.upstream, request(method, target, ctx.cookie, extra))
-
-      assert line == "#{method} #{target} HTTP/1.1"
-      assert cookie == ctx.cookie
-    end
-  end
-
   test "Phoenix answers signed-in collection and detail pages on Cloud too, HEAD included", ctx do
     cloud = %{
       "SELF_HOSTED" => "false",
@@ -173,7 +153,7 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
             port,
             target,
             ctx.cookie,
-            422
+            406
           )
 
     for target <- ~w(/achievements /achievements/country_de),
@@ -195,18 +175,6 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
       {status, _, _} = read_response(client)
       assert status == 404
       assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
-    end
-
-    System.put_env("DAWARICH_RAILS", "on")
-
-    for method <- ~w(POST PATCH PUT DELETE) do
-      assert_puma(
-        ctx,
-        port,
-        ~w(/achievements /achievements/country_de),
-        method,
-        "Content-Type: application/x-www-form-urlencoded\r\n"
-      )
     end
 
     System.put_env("DAWARICH_RAILS", "off")

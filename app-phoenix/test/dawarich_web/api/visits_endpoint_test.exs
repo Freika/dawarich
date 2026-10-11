@@ -35,8 +35,8 @@ defmodule DawarichWeb.Api.VisitsEndpointTest do
           "localhost"
         )
 
-      assert {route.plug, route.plug_opts, route.slice} ==
-               {DawarichWeb.Api.VisitsController, action, :api_visits}
+      assert {route.plug, route.plug_opts, route[:slice]} ==
+               {DawarichWeb.Api.VisitsController, action, nil}
     end
   end
 
@@ -57,17 +57,12 @@ defmodule DawarichWeb.Api.VisitsEndpointTest do
 
     for {slices, payload} <- [
           {"", %{"visit" => Map.put(attrs(), "name", %{"nested" => "shape"})}},
-          {"api_visits", %{"visit" => attrs()}}
+          {"api_visits", %{"visit" => Map.put(attrs(), "name", %{"nested" => "shape"})}}
         ] do
       System.put_env("DAWARICH_RAILS_SLICES", slices)
       client = submit(ctx, "POST", "/api/v1/visits", payload)
-      puma = Dawarich.Test.ApiGolden.rails_connection(client, ctx.upstream)
-      {head, rest} = read_head(puma)
-      encoded = Jason.encode!(payload)
-      assert request_line(head) == "POST /api/v1/visits HTTP/1.1"
-      assert read_at_least(puma, rest, byte_size(encoded)) == encoded
-      reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-      assert {200, _, "rails"} = read_response(client)
+      assert {500, _, _} = read_response(client)
+      no_upstream!(ctx.upstream)
       assert rows("SELECT row_to_json(v)::text FROM visits v") == before
       assert rows("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id") == effects
     end

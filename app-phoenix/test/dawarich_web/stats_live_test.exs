@@ -87,9 +87,10 @@ defmodule DawarichWeb.StatsLiveTest do
         )
       end
 
-      assert root.(%{}) =~ ~r/import "chartkick"/
+      assert root.(%{}) =~ "/native/app.js"
       html = root.(%{rails_charts: false})
-      assert html =~ ~s(id="i18n-translations")
+      assert html =~ "/native/app.js"
+      refute html =~ "importmap"
       refute html =~ ~r/import "chartkick"/
     end
 

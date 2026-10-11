@@ -114,15 +114,17 @@ defmodule DawarichWeb.PostersEndpointTest do
         ] do
       Application.put_env(:dawarich, :rails_routes, key)
 
-      {{line, forwarded}, conn} =
-        RailsFormRequests.forwarded(upstream, fn ->
-          request(ctx.session, :post, "/posters", body, accept)
-        end)
+      conn = request(ctx.session, :post, "/posters", body, accept)
 
-      assert line == "POST /posters HTTP/1.1"
-      assert forwarded =~ body
-      assert conn.status == 204
-      assert rows(ctx.user.id) == []
+      if key == [] do
+        assert conn.status == 422
+        assert rows(ctx.user.id) == []
+      else
+        assert conn.status == 302
+        assert [[_, "Untouched", 0, _]] = rows(ctx.user.id)
+      end
+
+      assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
     end
   end
 
@@ -133,13 +135,9 @@ defmodule DawarichWeb.PostersEndpointTest do
     for path <- ["/posters", "/posters/preview"] do
       assert route("GET", path) == :error
 
-      {{line, ""}, conn} =
-        RailsFormRequests.forwarded(upstream, fn ->
-          request(ctx.session, :get, path, "", "text/html")
-        end)
-
-      assert line == "GET #{path} HTTP/1.1"
-      assert conn.status == 204
+      conn = request(ctx.session, :get, path, "", "text/html")
+      assert conn.status == 404
+      assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
     end
   end
 

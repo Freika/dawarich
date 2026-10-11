@@ -35,7 +35,7 @@ defmodule Mix.Tasks.Dawarich.BuildInputsTest do
 
     try do
       assert Dawarich.Build.root() == root
-      Mix.Tasks.Dawarich.BuildInputs.run(["--root", Dawarich.Build.root(), "--out", out])
+      Mix.Tasks.Dawarich.LegacyBuildInputs.run(["--root", Dawarich.Build.root(), "--out", out])
     after
       Application.put_env(:dawarich, :rails_root, previous)
     end
@@ -64,7 +64,7 @@ defmodule Mix.Tasks.Dawarich.BuildInputsTest do
     root: root,
     out: out
   } do
-    Mix.Tasks.Dawarich.BuildInputs.run(["--root", root, "--out", out])
+    Mix.Tasks.Dawarich.LegacyBuildInputs.run(["--root", root, "--out", out])
     assets = json(out, "config/sprockets-manifest.json")["assets"]
     imports = json(out, "tmp/phoenix/importmap.json")["imports"]
     assert imports["application"] == "/assets/" <> assets["application.js"]
@@ -87,14 +87,14 @@ defmodule Mix.Tasks.Dawarich.BuildInputsTest do
     File.write!(Path.join(root, "config/importmap.rb"), "\nKernel.system('false')\n", [:append])
 
     assert_raise ArgumentError, ~r/unsupported line/, fn ->
-      Mix.Tasks.Dawarich.BuildInputs.run(["--root", root, "--out", out])
+      Mix.Tasks.Dawarich.LegacyBuildInputs.run(["--root", root, "--out", out])
     end
   end
 
   defp json(out, path), do: out |> Path.join(path) |> File.read!() |> Jason.decode!()
 
   test "writes every input Phoenix reads from the repository, without Ruby", %{tmp_dir: out} do
-    Mix.Tasks.Dawarich.BuildInputs.run(["--root", Dawarich.Build.root(), "--out", out])
+    Mix.Tasks.Dawarich.LegacyBuildInputs.run(["--root", Dawarich.Build.root(), "--out", out])
     assets = json(out, "config/sprockets-manifest.json")["assets"]
 
     for logical <-

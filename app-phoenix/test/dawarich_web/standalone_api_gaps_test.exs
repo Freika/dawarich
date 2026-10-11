@@ -222,11 +222,8 @@ defmodule DawarichWeb.StandaloneApiGapsTest do
 
     for {method, path} <- routes do
       conn = request(c.actor, method, path)
-      assert conn.status == 218
-      assert conn.resp_body == "Rails"
-      assert_receive {:upstream, line, body}
-      assert body == "{}"
-      assert line == String.upcase(to_string(method)) <> " " <> path <> " HTTP/1.1"
+      assert conn.status == if(path =~ "/areas/", do: 404, else: 401)
+      refute_received {:upstream, _, _}
     end
   end
 

@@ -409,7 +409,7 @@ defmodule DawarichWeb.RateLimitTest do
       end)
       |> MapSet.new(fn [name, _body] -> name end)
 
-    for file <- ~w(auth_handler.ex auth_otp/http.ex) do
+    for file <- ~w(auth_handler.ex features/accounts/auth_otp/http.ex) do
       source = File.read!(Path.expand("../../lib/dawarich_web/#{file}", __DIR__))
 
       assert source =~

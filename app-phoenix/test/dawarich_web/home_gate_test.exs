@@ -53,7 +53,7 @@ defmodule DawarichWeb.HomeGateTest do
 
     assert false == HomeGate.owned?(marked, %{})
     Application.put_env(:dawarich, :rails_routes, ["home"])
-    assert false == HomeGate.owned?(prepared("/"), %{})
+    assert true == HomeGate.owned?(prepared("/"), %{})
     Application.put_env(:dawarich, :rails_routes, ["insights"])
     assert true == HomeGate.owned?(prepared("/"), %{})
   end

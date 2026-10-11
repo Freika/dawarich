@@ -88,15 +88,10 @@ defmodule DawarichWeb.MapDataHandbackTest do
   defp forwarded_write(upstream, user, method, path, body) do
     before = changes()
 
-    {{line, raw}, conn} =
-      RailsFormRequests.forwarded(upstream, fn ->
-        RailsUser.signed_in(user.id) |> write(method, path, body)
-      end)
-
-    assert line == "#{method |> Atom.to_string() |> String.upcase()} #{path} HTTP/1.1"
-    assert raw == body
-    assert conn.status == 204
+    conn = RailsUser.signed_in(user.id) |> write(method, path, body)
+    assert conn.status == if(String.starts_with?(path, "/points/"), do: 422, else: 404)
     assert get_resp_header(conn, "set-cookie") == []
+    assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
     assert changes() == before
   end
 
@@ -166,17 +161,13 @@ defmodule DawarichWeb.MapDataHandbackTest do
           if String.starts_with?(path, "/points?") do
             assert RailsUser.signed_in(user.id) |> get(path) |> Map.fetch!(:status) == 200
           else
-            {{line, raw}, conn} =
-              RailsFormRequests.forwarded(upstream, fn ->
-                RailsUser.signed_in(user.id)
-                |> put_req_header("turbo-frame", "point-address-838001")
-                |> get(path)
-              end)
+            conn =
+              RailsUser.signed_in(user.id)
+              |> put_req_header("turbo-frame", "point-address-838001")
+              |> get(path)
 
-            assert line == "GET #{path} HTTP/1.1"
-            assert raw == ""
-            assert conn.status == 204
-            assert get_resp_header(conn, "set-cookie") == []
+            assert conn.status == 200
+            assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
           end
         end
       end
@@ -206,7 +197,7 @@ defmodule DawarichWeb.MapDataHandbackTest do
     assert %{plug: Phoenix.LiveView.Plug} =
              Phoenix.Router.route_info(Router, "GET", "/places", "localhost")
 
-    assert %{slice: :api_map_reads} =
+    assert %{plug: DawarichWeb.Api.MapController, pipe_through: [:api_stats]} =
              Phoenix.Router.route_info(Router, "GET", "/api/v1/tracks/8380", "localhost")
 
     assert Phoenix.Router.route_info(Router, "GET", "/tracks/8380", "localhost") == :error
@@ -219,8 +210,8 @@ defmodule DawarichWeb.MapDataHandbackTest do
 
     for {path, headers, status} <- [
           {"/points", [{"accept", "application/json"}], 406},
-          {"/points.json", [], 422},
-          {"/points?format=json", [], 422},
+          {"/points.json", [], 406},
+          {"/points?format=json", [], 406},
           {"/tracks/8380/segments?via=x", [], 410}
         ] do
       conn =
@@ -228,11 +219,7 @@ defmodule DawarichWeb.MapDataHandbackTest do
           put_req_header(acc, key, value)
         end)
 
-      if status == 406 do
-        assert_error_sent(406, fn -> get(conn, path) end)
-      else
-        assert get(conn, path).status == status
-      end
+      assert get(conn, path).status == status
 
       assert changes() == before
     end

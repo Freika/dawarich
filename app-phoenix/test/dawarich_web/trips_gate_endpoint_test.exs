@@ -189,9 +189,7 @@ defmodule DawarichWeb.TripsGateEndpointTest do
   test "note writes from the trip page reach Puma byte for byte and its Turbo Stream comes back unchanged",
        ctx do
     port = serve()
-    accept = "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"
     session = RailsUser.session(8811)
-    cookie = "_dawarich_session=" <> RailsUser.cookie(session)
     token = "authenticity_token=" <> URI.encode_www_form(RailsCsrf.masked_token(session))
 
     for {target, body} <- [
@@ -203,30 +201,14 @@ defmodule DawarichWeb.TripsGateEndpointTest do
 
       send_raw(
         client,
-        "POST #{target} HTTP/1.1\r\nHost: a\r\nCookie: #{cookie}\r\nAccept: #{accept}\r\nX-Dawarich-Client: legacy-web\r\n" <>
+        "POST #{target} HTTP/1.1\r\nHost: a\r\nCookie: #{ctx.cookie}\r\nAccept: text/vnd.turbo-stream.html\r\nX-Dawarich-Client: legacy-web\r\n" <>
           "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: #{byte_size(body)}\r\n\r\n" <>
           body
       )
 
-      puma = accept(ctx.upstream)
-      {head, rest} = read_head(puma)
-      assert request_line(head) == "POST #{target} HTTP/1.1"
-      assert header(head, "accept") == [accept]
-      assert header(head, "cookie") == [cookie]
-      assert header(head, "content-type") == ["application/x-www-form-urlencoded"]
-      assert read_at_least(puma, rest, byte_size(body)) == body
-
-      stream =
-        ~s(<turbo-stream action="replace" target="note-881101-2026-05-10"><template>x</template></turbo-stream>)
-
-      reply(
-        puma,
-        "HTTP/1.1 200 OK\r\nContent-Type: text/vnd.turbo-stream.html; charset=utf-8\r\n" <>
-          "Content-Length: #{byte_size(stream)}\r\n\r\n#{stream}"
-      )
-
-      assert {200, headers, ^stream} = read_response(client)
-      assert values(headers, "content-type") == ["text/vnd.turbo-stream.html; charset=utf-8"]
+      assert {422, _, _} = read_response(client)
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+      assert Dawarich.Repo.query!("SELECT count(*) FROM notes", [], log: false).rows == [[0]]
     end
   end
 end

@@ -106,7 +106,7 @@ defmodule DawarichWeb.TrialWelcomeEndpointTest do
       value = if field == "locked_at", do: "CURRENT_TIMESTAMP", else: "true"
       Repo.query!("UPDATE users SET #{field}=#{value} WHERE id=$1", [@user_id], log: false)
       refused = dispatch(Phoenix.ConnTest.build_conn(), :get, welcome_path())
-      assert refused.status == 500
+      assert refused.status == 422
       assert refused.resp_cookies == %{}
 
       Repo.query!(

@@ -94,17 +94,23 @@ defmodule DawarichWeb.A10cOwnershipTest do
       "INSERT INTO achievement_unlock_events(id,user_id,kind,key,created_at,updated_at) VALUES(42002,44001,'geography','DE',now(),now())"
     )
 
-    for {method, path, raw, opts} <- [
-          {"POST", "/achievements/unlocks/next", "{}", []},
-          {"POST", "/achievements/unlocks/42001/seen", ~s({"claim_token":"synthetic"}), []},
-          {"POST", "/achievements/unlocks/dismiss", ~s({"batch_end_id":42001}), []}
-        ] do
-      Application.put_env(:dawarich, :rails_routes, ["achievements"])
-      before = snapshot()
-      assert {203, _, "Rails"} = exchange(ctx, method, path, raw, opts ++ [proxy: true])
-      assert snapshot() == before
-      Application.put_env(:dawarich, :rails_routes, [])
-    end
+    Application.put_env(:dawarich, :rails_routes, ["achievements"])
+    {200, _, raw} = exchange(ctx, "POST", "/achievements/unlocks/next", "{}")
+    claim = Jason.decode!(raw)
+    assert claim["id"] == 42002
+
+    assert {204, _, ""} =
+             exchange(
+               ctx,
+               "POST",
+               "/achievements/unlocks/42002/seen",
+               Jason.encode!(%{claim_token: claim["token"]})
+             )
+
+    assert {204, _, ""} =
+             exchange(ctx, "POST", "/achievements/unlocks/dismiss", ~s({"batch_end_id":42002}))
+
+    Application.put_env(:dawarich, :rails_routes, [])
 
     for {raw, opts} <- [
           {~s({"enabled":false,"enabled":true}), []},
@@ -141,8 +147,8 @@ defmodule DawarichWeb.A10cOwnershipTest do
 
       before = snapshot()
 
-      {203, headers, "Rails"} =
-        exchange(ctx, "POST", "/achievements/unlocks/next?locale=de", "{}", proxy: true)
+      {422, headers, _} =
+        exchange(ctx, "POST", "/achievements/unlocks/next?locale=de", "{}")
 
       assert values(headers, "set-cookie") == []
       assert snapshot() == before
@@ -224,7 +230,7 @@ defmodule DawarichWeb.A10cOwnershipTest do
       assert {200, headers, body} = exchange(ctx, "GET", path, "", guest: true)
       assert body =~ "Germany Explorer" and not (body =~ "data-phx")
       assert values(headers, "content-security-policy") == ["frame-ancestors *"]
-      assert {203, _, ""} = exchange(ctx, "HEAD", path <> "/og.png", "", proxy: true, guest: true)
+      assert {200, _, ""} = exchange(ctx, "HEAD", path <> "/og.png", "", guest: true)
       assert snapshot() == before
     end
 
@@ -245,7 +251,7 @@ defmodule DawarichWeb.A10cOwnershipTest do
       if path == "/settings/background_jobs" do
         assert {404, _, _} = exchange(ctx, method, path, raw, form: method == "POST")
       else
-        assert {203, _, _} = exchange(ctx, method, path, raw, proxy: true, form: method == "POST")
+        assert {404, _, _} = exchange(ctx, method, path, raw, form: method == "POST")
       end
 
       assert snapshot() == before
@@ -259,8 +265,8 @@ defmodule DawarichWeb.A10cOwnershipTest do
         ] do
       before = snapshot()
 
-      assert {203, _, "Rails"} =
-               exchange(ctx, method, path, raw, proxy: true, form: method == "POST")
+      assert {404, _, _} =
+               exchange(ctx, method, path, raw, form: method == "POST")
 
       assert snapshot() == before
     end
@@ -298,72 +304,11 @@ defmodule DawarichWeb.A10cOwnershipTest do
       "#{method} #{target} HTTP/1.1\r\nHost: www.example.com\r\n#{cookie}#{headers}Content-Length: #{byte_size(raw)}\r\n\r\n#{raw}"
     )
 
-    response =
-      case {opts[:proxy] == true, first_reply(ctx.upstream, client)} do
-        {true, {:rails, upstream}} ->
-          {head, rest} = read_head(upstream)
-          length = header(head, "content-length") |> List.first("0") |> String.to_integer()
-          received = read_at_least(upstream, rest, length) |> binary_part(0, length)
-
-          reply(
-            upstream,
-            "HTTP/1.1 203 Non-Authoritative Information\r\nContent-Length: 5\r\n\r\nRails"
-          )
-
-          :gen_tcp.close(upstream)
-          assert request_line(head) == "#{method} #{target} HTTP/1.1"
-          assert received == raw
-          read_response(client, method: method)
-
-        {false, {:native, buffer}} ->
-          response = read_response(client, method: method, buffer: buffer)
-          assert {:error, :timeout} == :gen_tcp.accept(ctx.upstream.listen, 0)
-          response
-
-        {true, {:native, buffer}} ->
-          flunk(
-            "#{method} #{target} expected a Rails handback, Phoenix answered natively: " <>
-              status_line(buffer)
-          )
-
-        {false, {:rails, upstream}} ->
-          :gen_tcp.close(upstream)
-          flunk("#{method} #{target} expected a native response, Phoenix forwarded it to Rails")
-      end
-
+    response = read_response(client, method: method)
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     :gen_tcp.close(client)
     response
   end
-
-  defp first_reply(server, client) do
-    owner = self()
-
-    task =
-      Task.async(fn ->
-        socket = accept(server)
-        :ok = :gen_tcp.controlling_process(socket, owner)
-        socket
-      end)
-
-    :ok = :inet.setopts(client, active: :once)
-
-    receive do
-      {ref, upstream} when ref == task.ref ->
-        Process.demonitor(ref, [:flush])
-        :ok = :inet.setopts(client, active: false)
-        {:rails, upstream}
-
-      {:tcp, ^client, data} ->
-        Task.shutdown(task, :brutal_kill)
-        {:native, data}
-
-      {:tcp_closed, ^client} ->
-        Task.shutdown(task, :brutal_kill)
-        {:native, ""}
-    end
-  end
-
-  defp status_line(buffer), do: buffer |> String.split("\r\n") |> hd()
 
   defp rows(sql, args \\ []), do: Repo.query!(sql, args, log: false).rows
 

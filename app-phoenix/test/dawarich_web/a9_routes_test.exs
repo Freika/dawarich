@@ -82,18 +82,17 @@ defmodule DawarichWeb.A9RoutesTest do
   ]
 
   @frames [
-    {"/map/residency", DawarichWeb.MapFrames, :residency,
-     {DawarichWeb.MapFramesGate, :residency?}},
-    {"/places/:id", DawarichWeb.PlaceNavigation, :show, {DawarichWeb.PlacesGate, :navigation?}}
+    {"/map/residency", DawarichWeb.MapFrames, :residency, nil},
+    {"/places/:id", DawarichWeb.PlaceNavigation, :show, nil}
   ]
 
   test "existing routes retain path verb pipeline slice gate and live session metadata" do
-    for {verb, path, controller, action, pipeline, slice} <- @api do
+    for {verb, path, controller, action, pipeline, _slice} <- @api do
       info = Phoenix.Router.route_info(Router, verb, path, "www.example.com")
 
-      assert {info.route, info.plug, info.plug_opts, info.pipe_through, info.slice,
+      assert {info.route, info.plug, info.plug_opts, info.pipe_through, info[:slice],
               info[:rails_gate], info[:phoenix_live_view]} ==
-               {path, controller, action, [pipeline], slice, nil, nil}
+               {path, controller, action, [pipeline], nil, nil, nil}
     end
 
     for {path, view, action, gate} <- @pages do

@@ -3,7 +3,7 @@ defmodule DawarichWeb.WebFormParamsTest do
 
   import Plug.Conn
   import Plug.Test
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
+  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0]
 
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.{A8Request, RailsAuth, RailsCsrf, WebFormParams}
@@ -97,10 +97,9 @@ defmodule DawarichWeb.WebFormParamsTest do
 
       assert elem(result, 0) == :replay
 
-      {{line, raw}, conn} = forwarded(ctx.upstream, fn -> request(ctx, body) end)
-      assert line == "POST /route_videos HTTP/1.1"
-      assert raw == body
-      assert conn.status == 204
+      conn = request(ctx, body)
+      assert conn.status == 422
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
       assert conn.halted
     end
 

@@ -380,14 +380,8 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
           )
 
           if kind in ["metadata_unidentified", "metadata_preidentified"] do
-            upstream = upstream!()
-
-            {{line, body}, result} =
-              forwarded(upstream, fn -> RouteVideoActions.call(conn, action) end)
-
-            assert line == "#{req["method"]} #{req["path"]} HTTP/1.1"
-            assert body == Plug.Conn.Query.encode(params)
-            assert result.status == 204
+            result = RouteVideoActions.call(conn, action)
+            assert result.status == 422
             assert_video_rows(graph, repo)
             assert repo.query!("SELECT kind,payload FROM phoenix.rails_commands").rows == []
             nil
@@ -448,14 +442,8 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
 
     if state["status"] >= 400 or name == "visits/merge_noted" or
          String.starts_with?(name, "visits/invalid_confidence_") do
-      upstream = upstream!()
-
-      {{line, body}, result} =
-        forwarded(upstream, fn -> DawarichWeb.VisitActions.call(conn, action) end)
-
-      assert line == "#{req["method"]} #{req["path"]} HTTP/1.1"
-      assert body == Plug.Conn.Query.encode(req["params"])
-      assert result.status == 204
+      result = DawarichWeb.VisitActions.call(conn, action)
+      assert result.status == 422
       assert_rows(flat_graph(state["before"]), repo)
       assert repo.query!("SELECT kind,payload FROM phoenix.rails_commands").rows == []
     else

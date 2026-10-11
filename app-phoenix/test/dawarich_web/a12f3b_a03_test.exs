@@ -6,6 +6,7 @@ defmodule DawarichWeb.A12f3bA03Test do
 
   defmodule Routes do
     use Phoenix.Router
+    import Phoenix.ConnTest, except: [get: 3]
     import DawarichWeb.AchievementImageRoutes
     achievement_image_routes()
   end
