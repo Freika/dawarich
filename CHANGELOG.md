@@ -9,7 +9,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Keep tied transportation modes, visit and country rankings, location-search coordinates, and Immich GPS matches deterministic.
-
+- Clear pending two-factor challenges after successful authentication, preventing a stale challenge from switching accounts.
+- Reserve transportation reclassification while its worker is queued, preventing duplicate runs from repeated requests and allowing retry after enqueue failure.
+- Import progress no longer moves backwards when an older Google Takeout continuation finishes late or publishes a stale status.
+- Public monthly statistics and yearly digest links show an unavailable-share message after their owner is deleted.
+- Area creation and editing reject unsupported response formats before saving changes or scheduling visit relabeling.
+- Account deletion confirmation can be requested again immediately if token generation or email enqueueing fails.
+- Partnero signup failure diagnostics and Immich enrichment errors exclude provider-supplied credentials and customer details.
+- Propagate failed monthly statistics calculations so background jobs can retry, with one failure notification per stats delivery.
+- Timeline calendar activity and status counts refresh after confirming or declining visits in bulk.
+- Shared photo thumbnails lose their old authorization immediately when the trip dates or shared resource change.
+- Protect the acting and last active administrator from deletion, and serialize administrator deletion and role changes to retain administration access.
 - Prometheus metrics from web and Sidekiq no longer produce duplicate series when label order differs (#3769).
 - KMZ imports no longer repeatedly re-import their own archive and fill the import queue and storage (#3766).
 
