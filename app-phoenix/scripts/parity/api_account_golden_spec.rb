@@ -709,6 +709,7 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
       end
       untouched = kase[:method] == :get || (status >= 400 && !entry[:deleted] && !entry[:second_save_failure])
       expect(after).to eq(before), entry[:name] if untouched
+      result['repeat'] = true if entry[:repeat]
       result['jobs_after'] = account_jobs
       expect(result['jobs_after'].length).to eq(entry[:jobs]), entry[:name] if entry[:jobs]
       account_crypto(result, payload, entry, owner) if entry[:crypto]
@@ -717,7 +718,12 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
       expect(result).not_to have_key('mask')
       result
     end
-    path = Rails.root.join(ENV.fetch('API_GOLDEN_OUTPUT', 'app-phoenix/test/fixtures/api_account/golden.json'))
+    path = Rails.root.join(ENV.fetch('API_GOLDEN_OUTPUT', 'app-phoenix/test/rails_fixtures/api_account/golden.json'))
+    if ENV['API_GOLDEN_CASES'].present?
+      prior = JSON.parse(path.read)
+      cases = prior.fetch('cases').reject { |row| cases.any? { _1['name'] == row['name'] } } + cases
+      oracle.setups.merge!(prior.fetch('setups'))
+    end
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'now' => oracle::NOW.iso8601,
                 'runtime_seed_fields' => %w[users.encrypted_password users.otp_secret users.otp_backup_codes],
                 'sequences' => oracle::SEQUENCES, 'setups' => oracle.setups.sort.to_h,

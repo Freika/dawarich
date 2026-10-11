@@ -5,7 +5,7 @@ require_relative 'family_golden_headers'
 
 module ApiFamilyWritesOracle
   TABLES = %w[users families family_memberships family_location_requests notifications points].freeze
-  AFTER = %w[users family_location_requests notifications].freeze
+  AFTER = TABLES.freeze
   OWNER = 890_001
   MEMBER = 890_002
   STRANGER = 890_003
@@ -158,7 +158,7 @@ RSpec.describe 'Phoenix fixture: golden family API writes', type: :request do
   include FamilyWritesGoldenSupport
 
   after(:all) do
-    path = Rails.root.join('app-phoenix/test/fixtures/api_family/writes.json')
+    path = Rails.root.join('app-phoenix/test/rails_fixtures/api_family/writes.json')
     oracle = ApiFamilyWritesOracle
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'now' => oracle::NOW.iso8601,
                 'sequences' => oracle::SEQUENCES, 'setups' => oracle.setups.sort.to_h,
