@@ -221,3 +221,65 @@ test("map edit invalidation closes stale active geometry and reopening reads the
     }
   }
 })
+
+test("missing move receipt releases host latches erases uncertain geometry and rereads canonical tiles", async () => {
+  const { createHostEditing } = await import(
+    "../../app-phoenix/assets/js/map/edit/host.js"
+  )
+  const f = fixture({ editEnabled: true }),
+    jobs = new Map(),
+    cleanups = [],
+    refreshes = []
+  let next = 0
+  f.map.getCanvasContainer = () => ({ style: {} })
+  const editing = createHostEditing({
+    map: f.map,
+    reader: f.reader,
+    pushEvent: (event, payload, reply) =>
+      f.pushed.push({ event, payload, reply }),
+    lifetime: { own: (cleanup) => cleanups.push(cleanup) },
+    getConfig: () => f.owner.config,
+    layers: {
+      points: { refresh: () => refreshes.push("points") },
+      tracks: { refresh: () => refreshes.push("tracks") },
+    },
+    document: f.element.ownerDocument,
+    root: f.root,
+    timers: {
+      setTimeout: (fn) => {
+        jobs.set(++next, fn)
+        return next
+      },
+      clearTimeout: (id) => jobs.delete(id),
+    },
+  })
+  let pending
+  try {
+    const editor = editing.editor
+    editor.selectPoint({
+      geometry: { type: "Point", coordinates: [13, 52] },
+      properties: editPoints[0],
+    })
+    editor.startDrag(7)
+    editor.dragTo(14, 53)
+    pending = editor.endDrag({ lng: 14, lat: 53 })
+    assert.equal(jobs.size, 1)
+    for (const fn of [...jobs.values()]) fn()
+    await pending
+    assert.equal(editor.data, null)
+    assert.equal(editor.mutationState.busy, false)
+    assert.equal(editor.inFlight, false)
+    assert.deepEqual(refreshes, ["points", "tracks"])
+    f.pushed[0].reply({
+      ok: true,
+      response: { point: editPoints[0], revision: { point: 1 } },
+    })
+    assert.equal(editor.data, null)
+    assert.equal(editor.edits.history.size, 0)
+    assert.equal(jobs.size, 0)
+  } finally {
+    for (const cleanup of cleanups.reverse()) cleanup()
+    f.owner.destroy()
+    await pending
+  }
+})

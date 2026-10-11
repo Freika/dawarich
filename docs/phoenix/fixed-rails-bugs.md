@@ -1628,3 +1628,12 @@ The Rails rectangle selector replaces its action with hardcoded English “Cance
 - Phoenix: `app-phoenix/lib/dawarich_web/components/native_map_page.ex:119`; `app-phoenix/assets/js/map/selection/host.js:33`.
 - Tests: `native rectangle tool retains localized cancellation and placement guidance` (all supported locales), `native selection root draws rectangle highlights admitted points and clears on cancel`. Restoring hardcoded English fails the locale case; omitting cancellation fails the actual production-host behavior case.
 - ED: ED-NATIVE-M6-SELECTION-CANCEL-LOCALE. No DRB.
+
+### FRB-NATIVE-M6-POINT-MOVE-DEADLINE
+
+A Rails point-position request with no response keeps drag/history operations pending indefinitely. Native point commands have an owned 15-second acknowledgement deadline. Timeout releases latches, refuses late acknowledgements, clears uncertain editor geometry and rereads canonical point/track tiles without retrying the potentially committed write. Callback, synchronous send failure, scope cancellation and destruction drain timers.
+
+- Rails: `app/javascript/maps_maplibre/services/api_client.js:945` (PATCH has no signal or application deadline).
+- Phoenix: `app-phoenix/assets/js/map/edit/runtime.js:32`; `app-phoenix/assets/js/map/edit/host.js:37`.
+- Tests: `missing point replies time out drag and history without retry and ignore late acknowledgements`; `point send failures callbacks scope cancellation and destroy drain every owned deadline`; `missing move receipt releases host latches erases uncertain geometry and rereads canonical tiles`. Deterministic deadline-as-success, retained-timer and skipped-canonical-invalidation mutations fail these cases. A synthetic Rails module probe confirms an unsettled write, zero owned deadlines and no AbortSignal.
+- ED: ED-NATIVE-M6-POINT-MOVE-DEADLINE. No DRB.

@@ -86,3 +86,98 @@ test("destroy cancels drag and pending undo", async () => {
   assert.deepEqual(await editing.commit(move), { status: "refused" })
   assert.equal(pushed.length, 2)
 })
+
+function clock() {
+  const jobs = new Map()
+  let next = 0
+  return {
+    jobs,
+    setTimeout(fn) {
+      jobs.set(++next, fn)
+      return next
+    },
+    clearTimeout(id) {
+      jobs.delete(id)
+    },
+    expire() {
+      const callbacks = [...jobs.values()]
+      jobs.clear()
+      for (const fn of callbacks) fn()
+    },
+  }
+}
+
+test("missing point replies time out drag and history without retry and ignore late acknowledgements", async () => {
+  const timers = clock(),
+    pushed = [],
+    uncertain = []
+  const editing = createPointEditing({
+    isEditMode: () => true,
+    setPosition() {},
+    pushEvent: (event, payload, reply) =>
+      pushed.push({ event, payload, reply }),
+    timers,
+    onUncertain: (pointId) => uncertain.push(pointId),
+  })
+  try {
+    const pending = editing.commit(move)
+    assert.equal(timers.jobs.size, 1)
+    timers.expire()
+    assert.deepEqual(await pending, { status: "error" })
+    assert.deepEqual(uncertain, [5])
+    pushed[0].reply(accepted)
+    assert.equal(editing.history.size, 0)
+    const saved = editing.commit(move)
+    pushed[1].reply(accepted)
+    await saved
+    assert.equal(timers.jobs.size, 0)
+    const undo = editing.undo()
+    const rejected = assert.rejects(undo, { name: "TimeoutError" })
+    assert.equal(editing.history.busy, true)
+    timers.expire()
+    await rejected
+    assert.equal(editing.history.busy, false)
+    assert.equal(editing.history.entries.length, 1)
+    pushed[2].reply(accepted)
+    assert.equal(editing.history.undone.length, 0)
+    assert.equal(pushed.length, 3)
+    assert.deepEqual(uncertain, [5, 5])
+  } finally {
+    editing.destroy()
+  }
+  assert.equal(timers.jobs.size, 0)
+})
+
+test("point send failures callbacks scope cancellation and destroy drain every owned deadline", async () => {
+  const timers = clock(),
+    pushed = []
+  let fail = true
+  const editing = createPointEditing({
+    isEditMode: () => true,
+    setPosition() {},
+    timers,
+    pushEvent: (_event, _payload, reply) => {
+      if (fail) throw new Error("send unavailable")
+      pushed.push(reply)
+    },
+  })
+  try {
+    assert.deepEqual(await editing.commit(move), { status: "error" })
+    assert.equal(timers.jobs.size, 0)
+    fail = false
+    const pending = editing.commit(move)
+    assert.equal(timers.jobs.size, 1)
+    editing.cancel()
+    assert.deepEqual(await pending, { status: "cancelled" })
+    assert.equal(timers.jobs.size, 0)
+    const last = editing.commit(move)
+    assert.equal(timers.jobs.size, 1)
+    editing.destroy()
+    assert.deepEqual(await last, { status: "cancelled" })
+    assert.equal(timers.jobs.size, 0)
+    for (const reply of pushed) reply(accepted)
+    assert.equal(editing.history.size, 0)
+  } finally {
+    editing.destroy()
+  }
+})

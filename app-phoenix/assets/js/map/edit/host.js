@@ -12,6 +12,7 @@ export function createHostEditing({
   layers,
   document,
   root,
+  timers = globalThis,
 }) {
   const enabled = () => getConfig().editEnabled === true
   const scope = () => getConfig().range ?? {}
@@ -32,6 +33,13 @@ export function createHostEditing({
     pushEvent,
     setPosition: () => {},
     historyScope: scope,
+    timers,
+    onUncertain: () => {
+      invalidate()
+      reader.reset()
+      layers.points.refresh()
+      layers.tracks.refresh()
+    },
   })
   const editor = new MapEditor(map, {
     document,
