@@ -1,3 +1,4 @@
+import { HtmlLabelManager } from "../utils/html_label_manager"
 import { getVisitMarkerColor } from "../utils/marker_theme"
 import { BaseLayer } from "./base_layer"
 
@@ -17,7 +18,12 @@ export class VisitsLayer extends BaseLayer {
     this.dayRouteSourceId = `${this.sourceId}-day-route`
     this.dayRouteLayerId = `${this.id}-day-route`
     this.haloLayerId = `${this.id}-halo`
-    this.labelsLayerId = `${this.id}-labels`
+    this.labels = new HtmlLabelManager(map, {
+      className: "map-html-label map-html-label--visits",
+      anchor: "top",
+      offset: [0, 16],
+      visible: this.visible,
+    })
   }
 
   getSourceConfig() {
@@ -79,30 +85,11 @@ export class VisitsLayer extends BaseLayer {
           "circle-opacity": 0.9,
         },
       },
-
-      // Visit labels
-      {
-        id: this.labelsLayerId,
-        type: "symbol",
-        source: this.sourceId,
-        layout: {
-          "text-field": ["get", "name"],
-          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-          "text-size": 11,
-          "text-offset": [0, 1.5],
-          "text-anchor": "top",
-        },
-        paint: {
-          "text-color": "#111827",
-          "text-halo-color": "#ffffff",
-          "text-halo-width": 2,
-        },
-      },
     ]
   }
 
   getLayerIds() {
-    return [this.dayRouteLayerId, this.haloLayerId, this.id, this.labelsLayerId]
+    return [this.dayRouteLayerId, this.haloLayerId, this.id]
   }
 
   /**
@@ -131,12 +118,14 @@ export class VisitsLayer extends BaseLayer {
     })
 
     this.setVisibility(this.visible)
+    this.labels.sync(data?.features || [])
   }
 
   /**
    * Override remove() so we also clean up the day-route source.
    */
   remove() {
+    this.labels.clear()
     this.getLayerIds().forEach((layerId) => {
       if (this.map.getLayer(layerId)) {
         this.map.removeLayer(layerId)
@@ -164,6 +153,16 @@ export class VisitsLayer extends BaseLayer {
     if (source?.setData) {
       source.setData(data)
     }
+    this.labels.sync(data?.features || [])
+  }
+
+  setVisibility(visible) {
+    super.setVisibility(visible)
+    this.labels?.setVisibility(visible)
+  }
+
+  setLabelOpacity(resolver) {
+    this.labels.setOpacity(resolver)
   }
 
   /**
@@ -199,9 +198,7 @@ export class VisitsLayer extends BaseLayer {
         : ["match", ["get", "status"], allowed, true, false]
 
     this.map.setFilter(this.id, filter)
-    if (this.map.getLayer(this.labelsLayerId)) {
-      this.map.setFilter(this.labelsLayerId, filter)
-    }
+    this.labels.setFilter((f) => allowed.includes(f.properties.status))
   }
 
   /**

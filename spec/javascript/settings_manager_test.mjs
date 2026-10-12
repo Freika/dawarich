@@ -356,3 +356,24 @@ test("track color picker drives the tiled Tracks layer", async () => {
 
   assert.deepEqual(colorCalls, [{ trackColor: "#abcdef" }])
 })
+
+test("style rebuild reloads enabled family labels after the new layers exist", async () => {
+  const controller = await styleSwapController()
+  const seen = []
+  controller.controller.settings.familyEnabled = true
+  controller.controller.loadMapData = async () => seen.push("layers")
+  controller.controller.loadFamilyMembers = async () => seen.push("family")
+  await controller.restoreStyleLayers()
+  assert.deepEqual(seen, ["layers", "family"])
+
+  seen.length = 0
+  controller.controller._disconnected = true
+  await controller.restoreStyleLayers()
+  assert.deepEqual(seen, ["layers"])
+
+  seen.length = 0
+  controller.controller._disconnected = false
+  controller.controller.settings.familyEnabled = false
+  await controller.restoreStyleLayers()
+  assert.deepEqual(seen, ["layers"])
+})
