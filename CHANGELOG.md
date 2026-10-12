@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- Refresh import statuses after the live stream subscribes or reconnects, recovering updates missed before connection (#3174).
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
 
 
