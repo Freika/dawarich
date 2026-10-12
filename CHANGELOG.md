@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- Emoji in place, area, visit and family member names now render correctly on the map instead of a placeholder glyph (#2365).
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
 
 
