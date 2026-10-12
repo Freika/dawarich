@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe ResponsiveQrSvg do
   describe '.call' do
-    let(:content) { 'https://example.com/some/long/url?token=' + ('a' * 80) }
+    let(:content) { "https://example.com/some/long/url?token=#{'a' * 80}" }
 
     it 'returns a single <svg> element' do
       svg = described_class.call(content)

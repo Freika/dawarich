@@ -40,12 +40,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  /* Reserve space on the right so the action controls clear the close button */
+  padding-right: 34px;
   margin-bottom: 6px;
   position: relative;
   z-index: 2;
 }
 
-/* Day navigation (left) */
+/* Current day (left) */
 .replay-day-nav {
   display: flex;
   align-items: center;
@@ -53,6 +55,7 @@
   flex-shrink: 0;
 }
 
+/* Day navigation buttons (multi-day contexts, e.g. trip replay) */
 .replay-day-nav button {
   width: 26px;
   height: 26px;
@@ -176,6 +179,36 @@
 .replay-play-btn .pause-icon.hidden,
 .replay-play-btn .play-icon.hidden {
   display: none;
+}
+
+.replay-follow-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid oklch(var(--p));
+  background: oklch(var(--b1));
+  color: oklch(var(--p));
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.replay-follow-btn:hover {
+  background: oklch(var(--p) / 0.1);
+}
+
+.replay-follow-btn.following {
+  background: oklch(var(--p));
+  color: oklch(var(--pc));
+}
+
+.replay-follow-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .replay-speed-control {
@@ -408,8 +441,8 @@
   position: absolute;
   top: 4px;
   right: 6px;
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -419,14 +452,67 @@
   color: oklch(var(--bc) / 0.4);
   cursor: pointer;
   transition: all 0.15s;
-  font-size: 14px;
+  font-size: 20px;
   line-height: 1;
-  z-index: 1;
+  /* Above the controls row (z-index: 2) so the full button stays hoverable */
+  z-index: 3;
 }
 
 .replay-close:hover {
   background: oklch(var(--b2));
   color: oklch(var(--bc) / 0.8);
+}
+
+/* Replay photo marker (HTML overlay revealed progressively as replay reaches each photo) */
+/* MapLibre positions the outer .replay-photo-marker via transform: translate(); keep all
+   visual transforms (pop animation, hover scale) on the inner element so they don't fight it. */
+.replay-photo-marker {
+  width: 50px;
+  height: 50px;
+  cursor: pointer;
+}
+
+.replay-photo-marker-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  border: 3px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.replay-photo-marker:hover {
+  z-index: 1000;
+}
+
+.replay-photo-marker:hover .replay-photo-marker-inner {
+  transform: scale(1.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.replay-photo-marker-inner.replay-photo-pop {
+  animation: replay-photo-pop 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes replay-photo-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .replay-photo-marker-inner.replay-photo-pop {
+    animation: none;
+  }
 }
 
 /* Responsive: adjust replay panel shift for narrower side panels */
@@ -468,6 +554,7 @@
   .replay-controls-row {
     flex-wrap: wrap;
     gap: 6px;
+    padding-right: 30px;
   }
 
   .replay-day-nav {
@@ -522,5 +609,83 @@
   .replay-cycle-controls button {
     width: 20px;
     height: 20px;
+  }
+}
+
+/* Replay corner photo stack (tilted pile revealed during replay) */
+.replay-photo-stack {
+  /* Single source of truth for the stack's scale. The fan offset is derived
+     from it so cards keep their spacing ratio at any size. */
+  --stack-size: 140px;
+  --stack-fan-step: calc(var(--stack-size) * 0.078);
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: var(--stack-size);
+  height: var(--stack-size);
+  z-index: 450;
+  pointer-events: none;
+}
+
+.replay-photo-stack-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--stack-size);
+  height: var(--stack-size);
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translate(
+      calc(var(--depth, 0) * var(--stack-fan-step)),
+      calc(var(--depth, 0) * var(--stack-fan-step))
+    )
+    rotate(var(--rot, 0deg));
+  transition: transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.replay-photo-stack-img {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-color: oklch(var(--b1));
+  border: 4px solid white;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.replay-photo-stack-card:hover {
+  z-index: 1000 !important;
+}
+
+.replay-photo-stack-card:hover .replay-photo-stack-img {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.replay-photo-stack-pop .replay-photo-stack-img {
+  animation: replay-photo-stack-pop 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes replay-photo-stack-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .replay-photo-stack-card {
+    transition: none;
+  }
+  .replay-photo-stack-pop .replay-photo-stack-img {
+    animation: none;
   }
 }

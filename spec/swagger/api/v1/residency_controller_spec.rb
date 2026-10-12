@@ -49,8 +49,6 @@ describe 'Residency API', type: :request do
 
         before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 

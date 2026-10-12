@@ -4,7 +4,7 @@
 Dawarich is a Rails 8 monolith. Controllers, models, jobs, services, policies, and Stimulus/Turbo JS live in `app/`, while shared POROs sit in `lib/`. Configuration, credentials, and cron/Sidekiq settings live in `config/`; API documentation assets are in `swagger/`. Database migrations and seeds live in `db/`, Docker tooling sits in `docker/`, and docs or media live in `docs/` and `screenshots/`. Runtime artifacts in `storage/`, `tmp/`, and `log/` stay untracked.
 
 ## Architecture & Key Services
-The stack pairs Rails 8 with PostgreSQL + PostGIS, Redis-backed Sidekiq, Devise/Pundit, Tailwind + DaisyUI, and Leaflet/Chartkick. Imports, exports, sharing, and trip analytics lean on PostGIS geometries plus workers, so queue anything non-trivial instead of blocking requests.
+The stack pairs Rails 8 with PostgreSQL + PostGIS, Redis-backed Sidekiq, Devise/Pundit, Tailwind + DaisyUI, and MapLibre/Chartkick. Imports, exports, sharing, and trip analytics lean on PostGIS geometries plus workers, so queue anything non-trivial instead of blocking requests.
 
 ## Build, Test, and Development Commands
 - `docker compose -f docker/docker-compose.yml up` — launches the full stack for smoke tests.

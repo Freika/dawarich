@@ -1,19 +1,23 @@
 # frozen_string_literal: true
 
 class SetPointsTimestampFromGeojsonDate < ActiveRecord::Migration[8.0]
-  def change
-    Point.where(timestamp: nil).find_each do |point|
-      geojson = point.raw_data
+  # Raw SQL: loading the Point AR model couples this migration to HEAD's
+  # associations (country, track) and any future enum/scope additions, which
+  # is exactly the long-jump upgrade hazard documented in #2362. Postgres can
+  # parse the embedded ISO timestamp directly.
+  def up
+    execute(<<~SQL.squish)
+      UPDATE points
+      SET timestamp = EXTRACT(EPOCH FROM (raw_data->'properties'->>'date')::timestamptz)::bigint
+      WHERE timestamp IS NULL
+        AND raw_data IS NOT NULL
+        AND raw_data ? 'properties'
+        AND raw_data->'properties' ? 'date'
+        AND (raw_data->'properties'->>'date') ~ '^[0-9]{4}-'
+    SQL
+  end
 
-      next unless geojson && geojson['properties'] && geojson['properties']['date']
-
-      begin
-        parsed_time = Time.zone.parse(geojson['properties']['date']).utc.to_i
-
-        point.update!(timestamp: parsed_time)
-      rescue ArgumentError => e
-        Rails.logger.warn("Failed to parse date for Point ID #{point.id}: #{e.message}")
-      end
-    end
+  def down
+    # No-op: we don't want to revert valid timestamps to NULL.
   end
 end

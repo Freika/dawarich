@@ -3,23 +3,26 @@
 class Trips::CalculatePathJob < ApplicationJob
   queue_as :trips
 
-  def perform(trip_id)
+  retry_on Timeout::Error, ActiveRecord::Deadlocked, attempts: 3 do |job, error|
+    trip_id, run_token = job.arguments
+    Rails.logger.error("Trips::CalculatePathJob retries exhausted trip_id=#{trip_id}: #{error.class}: #{error.message}")
+    Trips::CalculateAllJob.tally_completion(trip_id, run_token, error: true)
+  end
+
+  discard_on ActiveRecord::RecordNotFound do |job, error|
+    trip_id, run_token = job.arguments
+    Rails.logger.warn("Trips::CalculatePathJob discarded trip_id=#{trip_id}: #{error.class}: #{error.message}")
+    Trips::CalculateAllJob.tally_completion(trip_id, run_token, error: true)
+  end
+
+  def perform(trip_id, run_token = nil)
     trip = Trip.find(trip_id)
+    placeholder_shown = trip.path.blank?
 
     trip.calculate_path
     trip.save!
 
-    broadcast_update(trip)
-  end
-
-  private
-
-  def broadcast_update(trip)
-    Turbo::StreamsChannel.broadcast_update_to(
-      "trip_#{trip.id}",
-      target: 'trip_path',
-      partial: 'trips/path',
-      locals: { trip: trip }
-    )
+    Turbo::StreamsChannel.broadcast_refresh_to(trip) if placeholder_shown && trip.path.present?
+    Trips::CalculateAllJob.tally_completion(trip_id, run_token)
   end
 end

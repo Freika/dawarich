@@ -11,7 +11,8 @@ class Points::Params
 
   def call
     points.map do |point|
-      next unless params_valid?(point)
+      timestamp = Points::TimestampParser.call(point.dig(:properties, :timestamp))
+      next unless params_valid?(point, timestamp)
 
       altitude_value = point[:properties][:altitude]
 
@@ -19,15 +20,15 @@ class Points::Params
         lonlat: lonlat(point),
         battery_status:     point[:properties][:battery_state],
         battery:            battery_level(point[:properties][:battery_level]),
-        timestamp:          DateTime.parse(point[:properties][:timestamp]),
+        timestamp:,
         altitude:           altitude_value,
         tracker_id:         point[:properties][:device_id],
         velocity:           point[:properties][:speed],
         ssid:               point[:properties][:wifi],
         accuracy:           point[:properties][:horizontal_accuracy],
         vertical_accuracy:  point[:properties][:vertical_accuracy],
-        course_accuracy:    point[:properties][:course_accuracy],
-        course:             point[:properties][:course],
+        course_accuracy:    column_safe_decimal(point[:properties][:course_accuracy]),
+        course:             column_safe_decimal(point[:properties][:course]),
         motion_data:        Points::MotionDataExtractor.from_overland_properties(point[:properties]),
         raw_data:           point,
         user_id:            user_id
@@ -39,15 +40,29 @@ class Points::Params
 
   private
 
+  COURSE_COLUMN_LIMIT = 1000
+
   def battery_level(level)
     value = (level.to_f * 100).to_i
 
     value.positive? ? value : nil
   end
 
-  def params_valid?(point)
-    point.dig(:geometry, :coordinates).present? &&
-      point.dig(:properties, :timestamp).present?
+  def column_safe_decimal(value)
+    return nil if value.nil?
+
+    number = Float(value, exception: false)
+    return nil if number.nil? || !number.finite? || number.abs >= COURSE_COLUMN_LIMIT
+
+    value
+  end
+
+  def params_valid?(point, timestamp)
+    coordinates = point.dig(:geometry, :coordinates)
+
+    coordinates.present? &&
+      timestamp.present? &&
+      !Points::NullIsland.coordinates?(coordinates[0], coordinates[1])
   end
 
   def lonlat(point)

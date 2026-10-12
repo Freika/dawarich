@@ -38,8 +38,6 @@ describe 'Auth Registrations API', type: :request do
           { email: 'new@example.com', password: 'secret123456', password_confirmation: 'secret123456' }
         end
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -52,6 +50,27 @@ describe 'Auth Registrations API', type: :request do
 
         let(:credentials) do
           { email: 'invalid', password: 'short', password_confirmation: 'mismatch' }
+        end
+
+        run_test!
+      end
+
+      response '403', 'registration disabled on this instance' do
+        schema type: :object,
+               properties: {
+                 error: { type: :string, example: 'registration_disabled' },
+                 message: { type: :string }
+               },
+               required: %w[error message]
+
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+          allow(DawarichSettings).to receive(:registration_enabled?).and_return(false)
+          allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
+        end
+
+        let(:credentials) do
+          { email: 'new@example.com', password: 'secret123456', password_confirmation: 'secret123456' }
         end
 
         run_test!

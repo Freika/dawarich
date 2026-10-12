@@ -4,6 +4,10 @@ module Users::DigestsMailerHelper
   BLOCKS         = %w[▁ ▂ ▃ ▄ ▅ ▆ ▇ █].freeze
   HEATMAP_LEVELS = %w[· ░ ▒ ▓ █].freeze
 
+  def digest_utm(campaign:, content:)
+    { utm_source: 'email', utm_medium: 'email', utm_campaign: campaign, utm_content: content }
+  end
+
   # Horizontal bar chart.
   #   values:  numeric array
   #   labels:  same-length string array
@@ -89,8 +93,8 @@ module Users::DigestsMailerHelper
     current  = current.to_f
     previous = previous.to_f
 
-    return '→ same' if current == previous
-    return '↑ new' if previous.zero?
+    return I18n.t('helpers.users.digests_mailer.same') if current == previous
+    return I18n.t('helpers.users.digests_mailer.new') if previous.zero?
 
     delta = ((current - previous) / previous * 100).round
     sign  = delta.positive? ? '+' : ''
@@ -101,10 +105,12 @@ module Users::DigestsMailerHelper
   # Render a trend when only the percent-change is stored (e.g. month_over_month['distance_change_percent']).
   # Guards against percent == -100 which would make 1 + pct/100 == 0 → Infinity → NaN → FloatDomainError.
   def ascii_trend_from_pct(current, percent_change)
-    return '→ same' if percent_change.nil?
+    return I18n.t('helpers.users.digests_mailer.same') if percent_change.nil?
 
     denom = 1 + percent_change.to_f / 100.0
-    return current.to_f.positive? ? '↑ new' : '→ same' if denom.zero?
+    if denom.zero?
+      return I18n.t(current.to_f.positive? ? 'helpers.users.digests_mailer.new' : 'helpers.users.digests_mailer.same')
+    end
 
     ascii_trend(current, current.to_f / denom)
   end

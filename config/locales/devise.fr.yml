@@ -1,0 +1,86 @@
+---
+fr:
+  devise:
+    confirmations:
+      confirmed: Votre compte a bien été confirmé.
+      send_instructions: Vous allez recevoir sous quelques minutes un email comportant
+        des instructions pour confirmer votre compte.
+      send_paranoid_instructions: Si votre email existe sur notre base de données,
+        vous recevrez sous quelques minutes un message avec des instructions pour
+        confirmer votre compte.
+    failure:
+      already_authenticated: Vous êtes déjà connecté(e).
+      inactive: Votre compte n’est pas encore activé.
+      invalid: "%{authentication_keys} ou mot de passe incorrect."
+      locked: Votre compte est verrouillé.
+      last_attempt: Il vous reste une chance avant que votre compte soit bloqué.
+      not_found_in_database: "%{authentication_keys} ou mot de passe incorrect."
+      timeout: Votre session est expirée, veuillez vous reconnecter pour continuer.
+      unauthenticated: Vous devez vous connecter ou vous enregistrer pour continuer.
+      unconfirmed: Vous devez confirmer votre compte par email.
+      deleted: Votre compte a été supprimé.
+    mailer:
+      confirmation_instructions:
+        subject: Instructions de confirmation
+      reset_password_instructions:
+        subject: Instructions de réinitialisation du mot de passe
+      unlock_instructions:
+        subject: Instructions pour déverrouiller le compte
+      email_changed:
+        subject: Email modifié
+      password_change:
+        subject: Mot de passe modifié
+    omniauth_callbacks:
+      failure: 'Nous ne pouvons pas vous authentifier depuis %{kind} pour la raison
+        suivante : ''%{reason}''.'
+      success: Autorisé par votre compte %{kind}.
+    passwords:
+      no_token: Vous ne pouvez pas accéder à cette page si vous n’y accédez pas depuis
+        un email de réinitialisation de mot de passe. Si vous venez en effet d’un
+        tel email, vérifiez que vous avez copié l’adresse URL en entier.
+      send_instructions: Vous allez recevoir sous quelques minutes un email vous indiquant
+        comment réinitialiser votre mot de passe.
+      send_paranoid_instructions: Si votre email existe dans notre base de données,
+        vous recevrez un lien vous permettant de récupérer votre mot de passe.
+      updated: Votre mot de passe a bien été modifié. Vous êtes maintenant connecté(e).
+      updated_not_active: Votre mot de passe a bien été modifié.
+    registrations:
+      destroyed: Votre compte a été programmé pour suppression. Au revoir !
+      cannot_delete: Impossible de supprimer votre compte tant que vous êtes propriétaire
+        d’une famille comptant d’autres membres.
+      signed_up: Bienvenue ! Vous vous êtes bien enregistré(e).
+      signed_up_but_inactive: Vous vous êtes bien enregistré(e). Cependant, nous n’avons
+        pas pu vous connecter car votre compte n’a pas encore été activé.
+      signed_up_but_locked: Vous vous êtes bien enregistré(e). Cependant, nous n’avons
+        pas pu vous connecter car votre compte est verrouillé.
+      signed_up_but_unconfirmed: Un message avec un lien de confirmation vous a été
+        envoyé par mail. Veuillez suivre ce lien pour activer votre compte.
+      update_needs_confirmation: Vous avez bien modifié votre compte, mais nous devons
+        vérifier votre nouvelle adresse email. Veuillez consulter vos emails et cliquer
+        sur le lien de confirmation pour confirmer votre nouvelle adresse.
+      updated: Votre compte a bien été modifié.
+      updated_but_not_signed_in: Votre compte a été mis à jour avec succès. Vous devez
+        vous reconnecter car votre mot de passe a été modifié.
+    sessions:
+      signed_in: Connecté(e).
+      signed_out: Déconnecté(e).
+      already_signed_out: Déconnecté(e).
+    unlocks:
+      send_instructions: Vous allez recevoir sous quelques minutes un email comportant
+        des instructions pour déverrouiller votre compte.
+      send_paranoid_instructions: Si votre email existe sur notre base de données,
+        vous recevrez sous quelques minutes un message avec des instructions pour
+        déverrouiller votre compte.
+      unlocked: Votre compte a bien été déverrouillé. Veuillez vous connecter.
+  errors:
+    messages:
+      already_confirmed: a déjà été confirmé(e)
+      confirmation_period_expired: doit être confirmé(e) en %{period}, veuillez en
+        demander un(e) autre
+      expired: est expiré, veuillez en demander un autre
+      not_found: n’a pas été trouvé(e)
+      not_locked: n’était pas verrouillé(e)
+      not_saved:
+        one: 'une erreur a empêché ce (cet ou cette) %{resource} d’être enregistré(e) :'
+        other: "%{count} erreurs ont empêché ce (cet ou cette) %{resource} d’être
+          enregistré(e) :"

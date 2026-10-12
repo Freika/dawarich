@@ -3,9 +3,9 @@
 class Family::Invitations::CleanupJob < ApplicationJob
   queue_as :families
 
+  # Runs on every instance: invitations belong to individual families, so there
+  # is no instance-wide flag to check. Expiring nothing is a cheap no-op.
   def perform
-    return unless DawarichSettings.family_feature_enabled?
-
     Rails.logger.info 'Starting family invitations cleanup'
 
     expired_count = Family::Invitation.where(status: :pending)

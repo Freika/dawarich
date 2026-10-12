@@ -8,12 +8,14 @@ class Api::UserSerializer
   def call
     data = {
       user: {
+        id:        user.id,
         email:     user.email,
         theme:     user.theme,
         created_at: user.created_at,
         updated_at: user.updated_at,
         settings: settings
-      }
+      },
+      features: DawarichSettings.features_for(user)
     }
 
     data.merge!(subscription: subscription) unless DawarichSettings.self_hosted?

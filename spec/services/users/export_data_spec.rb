@@ -98,6 +98,22 @@ RSpec.describe Users::ExportData, type: :service do
         end
       end
 
+      it 'exports a portable TREK snapshot without its database source ID' do
+        stub_host_addresses('trek.example.test', '93.184.216.34')
+        source = create(:trip_source, user:)
+        snapshot = { 'days' => [{ 'date' => '2024-11-27', 'day_number' => 1, 'notes' => 'Arrival' }] }
+        create(:trip, user:, trip_source: source, source_identifier: '12', source_status: :active,
+                      source_snapshot: snapshot)
+
+        result = service.export
+
+        Zip::File.open_buffer(result.file.download) do |archive|
+          exported = JSON.parse(archive.read('trips.jsonl').lines.first)
+          expect(exported).not_to have_key('trip_source_id')
+          expect(exported['source_snapshot']).to eq(snapshot)
+        end
+      end
+
       it 'marks the export as completed' do
         result = service.export
 
@@ -167,6 +183,92 @@ RSpec.describe Users::ExportData, type: :service do
 
       it 're-raises the error' do
         expect { service.export }.to raise_error(StandardError, error_message)
+      end
+    end
+
+    context 'when a raw data archive blob is missing from storage' do
+      before do
+        allow(Users::ExportData::Imports).to receive(:new).and_return(double(call: []))
+        allow(Users::ExportData::Exports).to receive(:new).and_return(double(call: []))
+        allow(Notifications::Create).to receive(:new).and_return(double(call: true))
+
+        archive = create(:points_raw_data_archive, user: user)
+        blob = archive.file.blob
+        blob.service.delete(blob.key)
+      end
+
+      after do
+        FileUtils.rm_rf(export_directory) if File.directory?(export_directory)
+      end
+
+      it 'completes the export instead of aborting' do
+        result = service.export
+
+        expect(result.status).to eq('completed')
+      end
+
+      it 'records a file_error for the missing archive' do
+        result = service.export
+
+        temp_dir = Rails.root.join('tmp/test_extract_missing_blob')
+        FileUtils.mkdir_p(temp_dir)
+
+        begin
+          temp_zip = temp_dir.join('test.zip')
+          File.binwrite(temp_zip, result.file.download)
+
+          Zip::File.open(temp_zip) do |zip_file|
+            entry = zip_file.find_entry('raw_data_archives.jsonl')
+            record = JSON.parse(entry.get_input_stream.read)
+
+            expect(record['file_error']).to be_present
+            expect(record['file_name']).to be_nil
+          end
+        ensure
+          FileUtils.rm_rf(temp_dir)
+        end
+      end
+    end
+
+    context 'when exporting encrypted raw data archives' do
+      before do
+        allow(Users::ExportData::Imports).to receive(:new).and_return(double(call: []))
+        allow(Users::ExportData::Exports).to receive(:new).and_return(double(call: []))
+        allow(Notifications::Create).to receive(:new).and_return(double(call: true))
+
+        create(:points_raw_data_archive, :encrypted, user: user)
+      end
+
+      after do
+        FileUtils.rm_rf(export_directory) if File.directory?(export_directory)
+      end
+
+      it 'writes a portable plaintext gzip and rewrites the archive metadata' do
+        result = service.export
+
+        temp_dir = Rails.root.join('tmp/test_extract_portable_archive')
+        FileUtils.mkdir_p(temp_dir)
+
+        begin
+          temp_zip = temp_dir.join('test.zip')
+          File.binwrite(temp_zip, result.file.download)
+
+          Zip::File.open(temp_zip) do |zip_file|
+            record = JSON.parse(zip_file.find_entry('raw_data_archives.jsonl').get_input_stream.read)
+
+            expect(record['metadata']['format_version']).to eq(1)
+            expect(record['metadata']).not_to have_key('encryption')
+
+            content = zip_file.find_entry("files/#{record['file_name']}").get_input_stream.read
+            expect(Digest::SHA256.hexdigest(content)).to eq(record['metadata']['content_checksum'])
+
+            lines = Zlib::GzipReader.new(StringIO.new(content)).readlines
+            expect(lines.size).to eq(2)
+            expect(JSON.parse(lines.first)).to include('id', 'raw_data')
+          end
+        ensure
+          FileUtils.rm_rf(temp_dir)
+        end
       end
     end
 

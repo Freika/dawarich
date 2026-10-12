@@ -9,13 +9,10 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
     before do
       ActiveJob::Base.queue_adapter.enqueued_jobs.clear
       Point.delete_all
+      Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
     end
 
     context 'when reverse geocoding is disabled' do
-      before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-      end
-
       let!(:point_without_geocoding) do
         create(:point, user: user, reverse_geocoded_at: nil)
       end
@@ -39,10 +36,23 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
       end
     end
 
-    context 'when reverse geocoding is enabled' do
-      before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+    context 'when resolving the geocoding config' do
+      before { configure_instance_geocoding }
+
+      it 'resolves the config once per run, not per user or per point' do
+        other_user = create(:user)
+        create_list(:point, 2, user: user, reverse_geocoded_at: nil)
+        create_list(:point, 2, user: other_user, reverse_geocoded_at: nil)
+        allow(Geocoding::Config).to receive(:resolved_config).and_call_original
+
+        described_class.perform_now
+
+        expect(Geocoding::Config).to have_received(:resolved_config).once
       end
+    end
+
+    context 'when reverse geocoding is enabled' do
+      before { configure_instance_geocoding }
 
       context 'with no points needing reverse geocoding' do
         let!(:geocoded_point) do
@@ -75,18 +85,32 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
           create(:point, user: user, reverse_geocoded_at: 1.day.ago)
         end
 
+        before do
+          Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+        end
+
         it 'processes all points that need reverse geocoding' do
           expect { described_class.perform_now }.to have_enqueued_job(ReverseGeocodingJob).exactly(3).times
         end
 
-        it 'enqueues jobs with correct parameters' do
+        it 'enqueues jobs with force: false to preserve the dedup guard' do
           expect { described_class.perform_now }
             .to have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding1.id)
+            .with('Point', point_without_geocoding1.id, force: false)
             .and have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding2.id)
+            .with('Point', point_without_geocoding2.id, force: false)
             .and have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding3.id)
+            .with('Point', point_without_geocoding3.id, force: false)
+        end
+
+        it 'keeps pending claims instead of enqueueing duplicates' do
+          Sidekiq.redis do |r|
+            [point_without_geocoding1, point_without_geocoding2, point_without_geocoding3].each do |p|
+              r.set(Point.geocode_dedup_key(p.id), 1, ex: 86_400)
+            end
+          end
+
+          expect { described_class.perform_now }.not_to have_enqueued_job(ReverseGeocodingJob)
         end
 
         it 'uses find_each with correct batch size' do
@@ -149,9 +173,7 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
     end
 
     describe 'error handling' do
-      before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-      end
+      before { configure_instance_geocoding }
 
       let!(:point_without_geocoding) do
         create(:point, user: user, reverse_geocoded_at: nil)
@@ -165,6 +187,33 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
         it 'continues processing other points despite individual failures' do
           expect { described_class.perform_now }.to raise_error(StandardError, 'API error')
         end
+      end
+    end
+
+    context 'when the environment pins a provider' do
+      before do
+        ENV['PHOTON_API_HOST'] = 'photon.pinned.example.com'
+        InstanceSettings::Resolver.reset!
+      end
+
+      it 'enqueues geocoding for the points of every user' do
+        other_user = create(:user)
+        point = create(:point, user: user, reverse_geocoded_at: nil)
+        other_point = create(:point, user: other_user, reverse_geocoded_at: nil)
+
+        described_class.perform_now
+
+        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', point.id, force: false)
+        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', other_point.id, force: false)
+      end
+    end
+
+    context 'when only a per-user geocoding setting exists' do
+      it 'does not enqueue geocoding' do
+        create(:service_setting, :active, user: user)
+        create(:point, user: user, reverse_geocoded_at: nil)
+
+        expect { described_class.perform_now }.not_to have_enqueued_job(ReverseGeocodingJob)
       end
     end
   end

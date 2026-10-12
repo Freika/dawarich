@@ -37,7 +37,7 @@ RSpec.describe Trips::CalculateCountriesJob, type: :job do
 
     it 'broadcasts the update with correct parameters' do
       expect(Turbo::StreamsChannel).to receive(:broadcast_update_to).with(
-        "trip_#{trip.id}",
+        trip,
         target: 'trip_countries',
         partial: 'trips/countries',
         locals: { trip: trip, distance_unit: distance_unit }
@@ -83,10 +83,15 @@ RSpec.describe Trips::CalculateCountriesJob, type: :job do
     end
 
     context 'when trip is not found' do
-      it 'raises ActiveRecord::RecordNotFound' do
+      it 'is discarded without raising and tallies an error completion' do
+        allow(Trips::CalculateAllJob).to receive(:tally_completion)
+        run_token = SecureRandom.uuid
+
         expect do
-          described_class.perform_now(999_999, distance_unit)
-        end.to raise_error(ActiveRecord::RecordNotFound)
+          described_class.perform_now(999_999, distance_unit, run_token)
+        end.not_to raise_error
+
+        expect(Trips::CalculateAllJob).to have_received(:tally_completion).with(999_999, run_token, error: true)
       end
     end
 
@@ -95,7 +100,7 @@ RSpec.describe Trips::CalculateCountriesJob, type: :job do
 
       it 'passes the correct distance_unit to broadcast' do
         expect(Turbo::StreamsChannel).to receive(:broadcast_update_to).with(
-          "trip_#{trip.id}",
+          trip,
           target: 'trip_countries',
           partial: 'trips/countries',
           locals: { trip: trip, distance_unit: 'mi' }

@@ -4,10 +4,9 @@ module Tracks
   # Reprocesses tracks to update transportation mode segments.
   # Can reprocess tracks for a specific import or individual tracks.
   #
-  # Uses user-specific transportation thresholds from settings when available.
+  # Manually corrected segments are preserved: the Detector subtracts their
+  # time ranges from the auto-classified output.
   class Reprocessor
-    LARGE_TRACK_THRESHOLD = 10_000
-
     def initialize(import: nil, track: nil)
       @import = import
       @track = track
@@ -33,10 +32,12 @@ module Tracks
       count
     end
 
+    # Raises on failure so single-track callers (segment reset) can roll
+    # back alongside their own writes instead of committing half a change.
     def reprocess_single
       return false unless @track
 
-      reprocess_track(@track)
+      reprocess_track!(@track, fallback: false)
       true
     end
 
@@ -46,71 +47,47 @@ module Tracks
 
     private
 
+    # Batch path: one broken track must not abort the rest of the import.
     def reprocess_track(track)
-      points_count = track.points.count
-      return if points_count < 2
-
-      if points_count > LARGE_TRACK_THRESHOLD
-        Rails.logger.warn "[Reprocessor] Track #{track.id} has #{points_count} points, " \
-                          'which may use significant memory during reprocessing'
-      end
-
-      points = track.points.order(:timestamp).to_a
-
-      Track.transaction do
-        track.track_segments.destroy_all
-
-        # Get user-specific thresholds
-        user_thresholds, expert_thresholds = extract_user_thresholds(track.user)
-
-        detector = TransportationModes::Detector.new(
-          track, points,
-          user_thresholds: user_thresholds,
-          user_expert_thresholds: expert_thresholds
-        )
-        segment_data = detector.call
-
-        create_segments(track, segment_data)
-      end
+      reprocess_track!(track)
     rescue StandardError => e
-      Rails.logger.error "Failed to reprocess track #{track.id}: #{e.message}"
+      ExceptionReporter.call(e, "Failed to reprocess track #{track.id}")
     end
 
-    def extract_user_thresholds(user)
-      return [nil, nil] unless user
+    def reprocess_track!(track, fallback: true)
+      Track.transaction do
+        preserved = track.track_segments.manually_corrected.to_a
+        track.track_segments.auto_classified.delete_all
 
-      safe_settings = Users::SafeSettings.new(user.settings || {})
-      [safe_settings.transportation_thresholds, safe_settings.transportation_expert_thresholds]
+        detector = TransportationModes::Detector.new(
+          track,
+          enabled_modes: extract_enabled_modes(track.user),
+          preserved: preserved,
+          fallback: fallback
+        )
+        create_segments(track, detector.call)
+        recompute_dominant_mode(track)
+      end
+    end
+
+    def extract_enabled_modes(user)
+      return nil unless user
+
+      Users::SafeSettings.new(user.settings || {}).enabled_transportation_modes
     end
 
     def create_segments(track, segment_data)
       return if segment_data.empty?
 
-      segments = segment_data.map do |data|
-        track.track_segments.create(
-          transportation_mode: data[:mode],
-          start_index: data[:start_index],
-          end_index: data[:end_index],
-          distance: data[:distance],
-          duration: data[:duration],
-          avg_speed: data[:avg_speed],
-          max_speed: data[:max_speed],
-          avg_acceleration: data[:avg_acceleration],
-          confidence: data[:confidence],
-          source: data[:source]
-        )
-      end.select(&:persisted?)
-
-      update_dominant_mode(track, segments)
+      TrackSegments::BulkInserter.call(track, segment_data)
     end
 
-    def update_dominant_mode(track, segments)
-      return if segments.empty?
+    def recompute_dominant_mode(track)
+      all_segments = track.track_segments.reload.to_a
+      return if all_segments.empty?
 
-      dominant_segment = segments.max_by { |s| s.duration || 0 }
-      return unless dominant_segment
-
-      track.update(dominant_mode: dominant_segment.transportation_mode)
+      mode = Track.pick_dominant_mode(all_segments)
+      track.update!(dominant_mode: mode) if mode
     end
   end
 end

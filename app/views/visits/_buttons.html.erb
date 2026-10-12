@@ -1,8 +1,6 @@
 <%= turbo_frame_tag "visit_buttons_#{visit.id}" do %>
   <% if !visit.confirmed? %>
-    <%= link_to 'Confirm', visit_path(visit, 'visit[status]': :confirmed), data: { turbo_method: :patch }, class: 'btn btn-xs btn-success' %>
+    <%= link_to t('.confirm'), visit_path(visit, 'visit[status]': :confirmed), data: { turbo_method: :patch }, class: 'btn btn-xs btn-success' %>
   <% end %>
-  <% if !visit.declined? %>
-    <%= link_to 'Decline', visit_path(visit, 'visit[status]': :declined), data: { turbo_method: :patch }, class: 'btn btn-xs btn-error mx-1' %>
-  <% end %>
+  <%= link_to t('.delete'), visit_path(visit), data: { turbo_method: :delete, turbo_confirm: t('.delete_this_visit_your_location_points_stay') }, class: 'btn btn-xs btn-error mx-1' %>
 <% end %>

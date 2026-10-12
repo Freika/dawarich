@@ -7,7 +7,12 @@ class AddSharingFieldsToStats < ActiveRecord::Migration[8.0]
 
     change_column_default :stats, :sharing_settings, {}
 
-    BulkStatsCalculatingJob.set(wait: 5.minutes).perform_later
+    # Tolerate the job class being renamed/removed and Sidekiq being down.
+    begin
+      BulkStatsCalculatingJob.set(wait: 5.minutes).perform_later
+    rescue StandardError => e
+      Rails.logger.warn "[Migration] Could not enqueue BulkStatsCalculatingJob: #{e.message}"
+    end
   end
 
   def down

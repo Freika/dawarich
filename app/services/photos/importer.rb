@@ -32,10 +32,7 @@ class Photos::Importer
 
     {
       lonlat: point['lonlat'],
-      longitude: point['longitude'],
-      latitude: point['latitude'],
       timestamp: point['timestamp'].to_i,
-      raw_data: point,
       import_id: import.id,
       user_id: user_id,
       created_at: Time.current,

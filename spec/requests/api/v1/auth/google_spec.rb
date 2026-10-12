@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'POST /api/v1/auth/google', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:verifier_double) { instance_double(Auth::VerifyGoogleToken) }
 
   before do
@@ -19,7 +21,7 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
       )
     end
 
-    it 'creates a new user in pending_payment with provider google and uid' do
+    it 'creates a new user in pending_payment with provider google_oauth2 and uid' do
       expect do
         post '/api/v1/auth/google', params: { id_token: 'fake_token' }
       end.to change(User, :count).by(1)
@@ -27,7 +29,7 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
       user = User.find_by(email: 'google@example.com')
       expect(user.status).to eq('pending_payment')
       expect(user.subscription_source).to eq('none')
-      expect(user.provider).to eq('google')
+      expect(user.provider).to eq('google_oauth2')
       expect(user.uid).to eq('google-uid-123')
     end
 
@@ -39,7 +41,7 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
   end
 
   context 'returning Google user' do
-    let!(:existing) { create(:user, email: 'google@example.com', provider: 'google', uid: 'google-uid-123') }
+    let!(:existing) { create(:user, email: 'google@example.com', provider: 'google_oauth2', uid: 'google-uid-123') }
 
     before do
       allow(verifier_double).to receive(:call).and_return(
@@ -93,6 +95,40 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
         expect(body['error']).to eq('verification_sent')
         expect(existing.reload.provider).to be_nil
         expect(existing.reload.uid).to be_nil
+      end
+
+      it 'rate-limited retry returns 429 verification_rate_limited with Retry-After and no second mailer' do
+        freeze_time do
+          # First collision seeds the rate-limit key and returns the genuine 202.
+          post '/api/v1/auth/google', params: { id_token: 'fake_token' }
+          expect(response).to have_http_status(:accepted)
+
+          expect do
+            post '/api/v1/auth/google', params: { id_token: 'fake_token' }
+          end.not_to have_enqueued_job(Users::MailerSendingJob)
+
+          expect(response).to have_http_status(:too_many_requests)
+          expect(response.headers['Retry-After']).to eq(
+            Auth::FindOrCreateOauthUser::LINK_EMAIL_RATE_LIMIT_WINDOW.to_i.to_s
+          )
+          body = JSON.parse(response.body)
+          expect(body['error']).to eq('verification_rate_limited')
+          expect(body['message']).to be_present
+          expect(existing.reload.provider).to be_nil
+          expect(existing.reload.uid).to be_nil
+        end
+      end
+
+      it 'reports the time left in the window, not the full window, in Retry-After' do
+        freeze_time do
+          post '/api/v1/auth/google', params: { id_token: 'fake_token' }
+
+          travel 20.minutes
+          post '/api/v1/auth/google', params: { id_token: 'fake_token' }
+
+          expect(response).to have_http_status(:too_many_requests)
+          expect(response.headers['Retry-After']).to eq(40.minutes.to_i.to_s)
+        end
       end
     end
 

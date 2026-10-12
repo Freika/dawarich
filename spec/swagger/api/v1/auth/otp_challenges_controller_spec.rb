@@ -49,8 +49,6 @@ describe 'Auth OTP Challenges API', type: :request do
           { challenge_token: challenge_token_value, otp_code: ROTP::TOTP.new(user.otp_secret).now }
         end
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 

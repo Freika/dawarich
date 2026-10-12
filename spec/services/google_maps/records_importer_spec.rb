@@ -39,10 +39,28 @@ RSpec.describe GoogleMaps::RecordsImporter do
     end
 
     context 'with regular timestamp' do
-      let(:locations) { super()[0].merge('timestamp' => time.to_s).to_json }
+      let(:locations) { [super()[0].merge('timestamp' => time.to_s)] }
 
       it 'creates a point' do
         expect { parser }.to change(Point, :count).by(1)
+      end
+
+      it 'derives the tracker id from the deviceTag' do
+        parser
+
+        expect(Point.last.tracker_id).to eq('google-records-device-1234567890')
+      end
+    end
+
+    context 'without a deviceTag' do
+      let(:locations) do
+        [super()[0].except('deviceTag').merge('timestamp' => time.to_s)]
+      end
+
+      it 'falls back to the per-import tracker id' do
+        parser
+
+        expect(Point.last.tracker_id).to eq("google-records-#{import.id}")
       end
     end
 
@@ -150,13 +168,10 @@ RSpec.describe GoogleMaps::RecordsImporter do
         expect(created_point.battery).to eq(1) # true -> 1
       end
 
-      it 'stores all fields in raw_data' do
+      it 'does not persist raw_data for imported points' do
         parser
-        created_point = Point.last
 
-        expect(created_point.raw_data['source']).to eq('WIFI')
-        expect(created_point.raw_data['deviceTag']).to eq(1_234_567_890)
-        expect(created_point.raw_data['platformType']).to eq('ANDROID')
+        expect(Point.where(import_id: import.id).pluck(:raw_data).uniq).to eq([{}])
       end
     end
 

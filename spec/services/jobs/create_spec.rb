@@ -5,11 +5,13 @@ require 'rails_helper'
 RSpec.describe Jobs::Create do
   describe '#call' do
     before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
       allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+      Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
     end
 
     context 'when job_name is start_reverse_geocoding' do
+      before { configure_instance_geocoding }
+
       let(:user) { create(:user) }
       let(:points) do
         (1..4).map do |i|
@@ -21,6 +23,7 @@ RSpec.describe Jobs::Create do
 
       it 'enqueues reverse geocoding for all user points' do
         created_points = points # force creation before the service call
+        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
 
         expect do
           described_class.new(job_name, user.id).call
@@ -29,6 +32,8 @@ RSpec.describe Jobs::Create do
     end
 
     context 'when job_name is continue_reverse_geocoding' do
+      before { configure_instance_geocoding }
+
       let(:user) { create(:user) }
       let(:points_without_address) do
         (1..4).map do |i|
@@ -48,10 +53,32 @@ RSpec.describe Jobs::Create do
       it 'enqueues reverse geocoding for all user points without address' do
         _with_address = points_with_address # force creation
         without_address = points_without_address # force creation
+        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
 
         expect do
           described_class.new(job_name, user.id).call
         end.to have_enqueued_job(ReverseGeocodingJob).exactly(without_address.size).times
+      end
+    end
+
+    context 'when geocoding is not configured for the instance' do
+      let(:user) { create(:user) }
+
+      it 'enqueues nothing for a user without settings' do
+        create(:point, user: user)
+
+        expect do
+          described_class.new('start_reverse_geocoding', user.id).call
+        end.not_to have_enqueued_job(ReverseGeocodingJob)
+      end
+
+      it 'enqueues nothing even when the user has an active geocoding setting' do
+        create(:service_setting, :geoapify, :active, user: user)
+        create(:point, user: user)
+
+        expect do
+          described_class.new('start_reverse_geocoding', user.id).call
+        end.not_to have_enqueued_job(ReverseGeocodingJob)
       end
     end
 
@@ -61,6 +88,103 @@ RSpec.describe Jobs::Create do
 
       it 'raises an error' do
         expect { described_class.new(job_name, user.id).call }.to raise_error(Jobs::Create::InvalidJobName)
+      end
+    end
+
+    context 'when forcing rerun on a paid provider on a hosted (non-self-hosted) instance' do
+      let(:user) { create(:user) }
+
+      before do
+        configure_instance_geocoding(locationiq_api_key: 'test-api-key')
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'raises PaidProviderForceRerunBlocked and enqueues no jobs' do
+        create(:point, user:, timestamp: 1.day.ago)
+
+        expect do
+          expect do
+            described_class.new('start_reverse_geocoding', user.id).call
+          end.to raise_error(Jobs::Create::PaidProviderForceRerunBlocked)
+        end.not_to have_enqueued_job(ReverseGeocodingJob)
+      end
+    end
+
+    context 'when forcing rerun on a paid provider on a self-hosted instance' do
+      let(:user) { create(:user) }
+
+      before do
+        configure_instance_geocoding(locationiq_api_key: 'test-api-key')
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      end
+
+      it 'enqueues jobs because the operator owns their own provider bill' do
+        create(:point, user:, timestamp: 1.day.ago)
+
+        expect do
+          described_class.new('start_reverse_geocoding', user.id).call
+        end.to have_enqueued_job(ReverseGeocodingJob).at_least(:once)
+      end
+    end
+
+    context 'when continue_reverse_geocoding runs on a paid provider' do
+      let(:user) { create(:user) }
+
+      before do
+        configure_instance_geocoding(locationiq_api_key: 'test-api-key')
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'is not blocked because force is false' do
+        create(:point, user:, country: nil, city: nil, timestamp: 1.day.ago)
+        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+
+        expect do
+          described_class.new('continue_reverse_geocoding', user.id).call
+        end.to have_enqueued_job(ReverseGeocodingJob).at_least(:once)
+      end
+    end
+
+    context 'dedup interaction' do
+      let(:user) { create(:user) }
+      let!(:point) { create(:point, user:, country: nil, city: nil, reverse_geocoded_at: nil) }
+
+      before do
+        configure_instance_geocoding
+        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+      end
+
+      it 'skips continue_reverse_geocoding when a dedup key already claims the point' do
+        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: 86_400) }
+
+        expect do
+          described_class.new('continue_reverse_geocoding', user.id).call
+        end.not_to have_enqueued_job(ReverseGeocodingJob)
+      end
+
+      it 'claims the dedup key for points enqueued via continue_reverse_geocoding' do
+        described_class.new('continue_reverse_geocoding', user.id).call
+
+        ttl = Sidekiq.redis { |r| r.ttl(Point.geocode_dedup_key(point.id)) }
+        expect(ttl).to eq(-1)
+      end
+
+      it 'clears the dedup key when start_reverse_geocoding force-runs over an existing claim' do
+        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: 86_400) }
+
+        expect do
+          described_class.new('start_reverse_geocoding', user.id).call
+        end.to have_enqueued_job(ReverseGeocodingJob).with('Point', point.id, force: true)
+      end
+
+      it 'releases dedup keys when bulk enqueue raises after claiming' do
+        allow(ActiveJob).to receive(:perform_all_later).and_raise(StandardError, 'queue down')
+
+        expect do
+          described_class.new('continue_reverse_geocoding', user.id).call
+        end.to raise_error(StandardError, 'queue down')
+
+        expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
       end
     end
   end

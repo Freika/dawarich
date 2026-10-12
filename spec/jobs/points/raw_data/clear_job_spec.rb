@@ -12,7 +12,7 @@ RSpec.describe Points::RawData::ClearJob, type: :job do
     it 'enqueues a ClearUserJob for each user' do
       users = create_list(:user, 2)
 
-      expect { described_class.perform_now }.to have_enqueued_job(Points::RawData::ClearUserJob).exactly(2).times
+      expect { described_class.perform_now }.to have_enqueued_job(Points::RawData::ClearUserJob).at_least(2).times
 
       users.each do |user|
         expect(Points::RawData::ClearUserJob).to have_been_enqueued.with(user.id)

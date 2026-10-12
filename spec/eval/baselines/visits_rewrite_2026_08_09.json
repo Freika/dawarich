@@ -1,0 +1,69 @@
+{
+  "home_gap": {
+    "count": 1,
+    "visits": [
+      {
+        "start_offset": 0,
+        "end_offset": 16170
+      }
+    ]
+  },
+  "dark_dinner": {
+    "count": 1,
+    "visits": [
+      {
+        "start_offset": 0,
+        "end_offset": 1140
+      }
+    ]
+  },
+  "drive_carving": {
+    "count": 0,
+    "visits": []
+  },
+  "reentry": {
+    "count": 1,
+    "visits": [
+      {
+        "start_offset": 0,
+        "end_offset": 2910
+      }
+    ]
+  },
+  "cold_start": {
+    "count": 1,
+    "visits": [
+      {
+        "start_offset": 405,
+        "end_offset": 2325
+      }
+    ]
+  },
+  "day_boundary": {
+    "count": 1,
+    "visits": [
+      {
+        "start_offset": 0,
+        "end_offset": 8700
+      }
+    ]
+  },
+  "batch_boundary": {
+    "count": 1,
+    "visits": [
+      {
+        "start_offset": 0,
+        "end_offset": 6900
+      }
+    ]
+  },
+  "dark_venue": {
+    "count": 1,
+    "visits": [
+      {
+        "start_offset": 0,
+        "end_offset": 4670
+      }
+    ]
+  }
+}

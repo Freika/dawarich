@@ -12,6 +12,13 @@ class User < ApplicationRecord
   # until their subscription source confirms a purchase.
   attr_accessor :skip_auto_trial
 
+  attr_accessor :skip_family_sync
+
+  # Set by Omniauthable.from_omniauth. Post-create callbacks re-save the record,
+  # which clears `previously_new_record?`, so signup-vs-login can't be read off
+  # the record afterwards — the lookup has to tell us.
+  attr_accessor :oauth_newly_created
+
   devise :two_factor_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable,
          :lockable,
@@ -22,23 +29,40 @@ class User < ApplicationRecord
   has_many :imports,        dependent: :destroy
   has_many :stats,          dependent: :destroy
   has_many :exports,        dependent: :destroy
+  has_many :posters,        dependent: :destroy
+  has_many :route_videos,   dependent: :destroy
   has_many :notifications,  dependent: :destroy
   has_many :areas,          dependent: :destroy
   has_many :visits,         dependent: :destroy
   has_many :visited_places, through: :visits, source: :place
   has_many :places,         dependent: :destroy
   has_many :tags,           dependent: :destroy
-  has_many :trips,  dependent: :destroy
+  has_many :service_settings, dependent: :destroy
+  has_many :trips, dependent: :destroy
+  has_many :trip_sources, dependent: :destroy
   has_many :tracks, dependent: :destroy
+  has_many :flights, dependent: :destroy
   has_many :raw_data_archives, class_name: 'Points::RawDataArchive', dependent: :destroy
   has_many :digests, class_name: 'Users::Digest', dependent: :destroy
+  has_many :notes, dependent: :destroy
+  has_many :shared_links, dependent: :destroy
+  has_many :achievement_progresses, class_name: 'Achievements::Progress', dependent: :destroy
+  has_many :achievement_unlock_events, class_name: 'Achievements::UnlockEvent', dependent: :delete_all
+  has_many :user_achievements, dependent: :destroy
 
   after_create :create_api_key
+  after_initialize :normalize_nil_settings
+
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :trigger_creation_webhook, on: :create,
                                             if: -> { !DawarichSettings.self_hosted? && skip_auto_trial }
   after_update :invalidate_plan_rate_limit_cache, if: :saved_change_to_plan?
+  after_update_commit :enqueue_family_auto_creation, if: :saved_change_to_plan?
+  after_update_commit :enqueue_family_member_sync, if: :saved_change_to_subscription_state?
+  after_update :reset_archival_warnings, if: :saved_change_to_plan?
+  after_update :mark_stats_for_rebucketing, if: :saved_change_to_timezone_setting?
+  after_update_commit :enqueue_stats_rebuild, if: :saved_change_to_timezone_setting?
 
   before_save :sanitize_input
 
@@ -55,14 +79,129 @@ class User < ApplicationRecord
   # `User#none?` predicate that collides with NilClass semantics in
   # conditional chains. Callers use `user.sub_source_none?` etc.
   enum :subscription_source, { none: 0, paddle: 1, apple_iap: 2, google_play: 3 }, default: :none, prefix: :sub_source
-  enum :plan, { lite: 0, pro: 1 }, default: :pro
+  enum :plan, { lite: 0, pro: 1, family: 2 }, default: :pro
+  # No default: nil means the user has not yet been prompted about the
+  # changelog widget. prefix avoids `granted?`/`declined?` collisions.
+  attribute :changelog_consent, :integer
+  enum :changelog_consent, { declined: 0, granted: 1 }, prefix: :changelog_consent
+
+  MAX_FAILED_OTP_ATTEMPTS = 10
+  OTP_LOCK_DURATION = 30.minutes
+  OTP_LOCK_EMAIL_THROTTLE = 1.hour
+
+  def display_name
+    [first_name, last_name].filter_map { |part| part.to_s.strip.presence }.join(' ').presence || email
+  end
+
+  def otp_locked?
+    otp_locked_at.present? && otp_locked_at > OTP_LOCK_DURATION.ago
+  end
+
+  def register_failed_otp_attempt!
+    return if otp_locked?
+
+    User.where(id: id).update_all(failed_otp_attempts: 0, otp_locked_at: nil) if otp_locked_at.present?
+
+    User.where(id: id).update_all('failed_otp_attempts = failed_otp_attempts + 1')
+    reload
+
+    return if failed_otp_attempts < MAX_FAILED_OTP_ATTEMPTS
+
+    transitioned = User.where(id: id, otp_locked_at: nil).update_all(otp_locked_at: Time.current)
+    return unless transitioned.positive?
+
+    reload
+    send_otp_lockout_email
+  end
+
+  def send_otp_lockout_email
+    key = "otp_lockout_email_throttle/user/#{id}"
+    return unless Rails.cache.write(key, true, expires_in: OTP_LOCK_EMAIL_THROTTLE, unless_exist: true)
+
+    UsersMailer.with(user: self).otp_account_locked.deliver_later
+  end
+
+  def reset_failed_otp_attempts!
+    return if failed_otp_attempts.zero? && otp_locked_at.nil?
+
+    update_columns(failed_otp_attempts: 0, otp_locked_at: nil)
+  end
+
+  # Devise hook: clearing the password should also clear the OTP lockout so
+  # the user-facing "or reset your password" guidance actually works.
+  def reset_password(*)
+    super.tap { |success| reset_failed_otp_attempts! if success }
+  end
 
   def oauth_user?
     provider.present?
   end
 
+  def settings_hash
+    settings.is_a?(Hash) ? settings : {}
+  end
+
   def safe_settings
-    Users::SafeSettings.new(settings, plan: plan)
+    Users::SafeSettings.new(settings, plan: entitlements.full_access? ? :pro : :lite)
+  end
+
+  # Old rows can carry a settings container that is not an object at all, so the
+  # value is normalized rather than trusted: ' FR ' and 'fr' both mean French,
+  # and anything that is not a shipped locale reads as unset.
+  def preferred_locale
+    return unless settings.is_a?(Hash)
+
+    value = settings['locale']
+    return unless value.is_a?(String)
+
+    locale = value.strip.downcase.to_sym
+    locale if I18n.available_locales.include?(locale)
+  end
+
+  def locale
+    preferred_locale || I18n.default_locale
+  end
+
+  # `update_all` keeps the write clear of whatever else the request is saving on
+  # this user. The CASE covers rows whose settings are null or not an object —
+  # `'[]'::jsonb || '{...}'::jsonb` appends an element instead of merging a key.
+  def persist_locale!(locale)
+    self.class.where(id: id).update_all(
+      ActiveRecord::Base.sanitize_sql_array(
+        [
+          "settings = CASE WHEN jsonb_typeof(settings) = 'object' THEN settings ELSE '{}'::jsonb END " \
+          "|| jsonb_build_object('locale', ?), updated_at = ?",
+          locale.to_s,
+          Time.current
+        ]
+      )
+    )
+
+    # `update_all` leaves this instance holding the old settings, and Devise
+    # keeps one instance for the whole session — without this, every later read
+    # of `preferred_locale` would report the language the user just replaced.
+    # The change is cleared so a subsequent `save` still writes only what the
+    # request itself touched.
+    self[:settings] = (settings.is_a?(Hash) ? settings : {}).merge('locale' => locale.to_s)
+    clear_attribute_changes([:settings])
+
+    locale
+  end
+
+  # Only accounts the migration actually handed to a rebuild are waiting on one.
+  # Deriving this from live state instead would report a permanent "pending" for
+  # anyone the dispatcher never picked up — no points at the time, filtering off
+  # at the time, or created after the migration ran.
+  def gps_noise_recheck_pending?
+    job = DataMigrations::RecalculateAnomaliesUserJob
+    return false if settings.blank?
+
+    settings_hash[job::QUEUED_SETTINGS_KEY].present? && settings_hash[job::RECALCULATED_SETTINGS_KEY].blank?
+  end
+
+  # nil changelog_consent => user has not been shown the opt-in prompt yet.
+  def changelog_prompt_pending?
+    changelog_consent.nil?
   end
 
   def countries_visited
@@ -96,31 +235,49 @@ class User < ApplicationRecord
     StatsQuery.new(self).points_stats[:geocoded]
   end
 
-  def total_reverse_geocoded_points_without_data
-    points.where(geodata: {}).count
-  end
-
   def immich_integration_configured?
-    settings['immich_url'].present? && settings['immich_api_key'].present?
+    settings_hash['immich_url'].present? && settings_hash['immich_api_key'].present?
   end
 
   def photoprism_integration_configured?
-    settings['photoprism_url'].present? && settings['photoprism_api_key'].present?
+    settings_hash['photoprism_url'].present? && settings_hash['photoprism_api_key'].present?
   end
 
   def years_tracked
     Rails.cache.fetch("dawarich/user_#{id}_years_tracked", expires_in: 1.day) do
-      # Use select_all for better performance with large datasets
-      sql = <<-SQL
-        SELECT DISTINCT
+      sql = <<~SQL
+        WITH RECURSIVE tracked_months AS (
+          SELECT MAX(timestamp) AS timestamp
+          FROM points
+          WHERE user_id = $1
+
+          UNION ALL
+
+          SELECT (
+            SELECT MAX(points.timestamp)
+            FROM points
+            WHERE points.user_id = $1
+              AND points.timestamp < EXTRACT(
+                EPOCH FROM DATE_TRUNC('month', TO_TIMESTAMP(tracked_months.timestamp))
+              )::bigint
+          )
+          FROM tracked_months
+          WHERE tracked_months.timestamp IS NOT NULL
+        )
+        SELECT
           EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp)) AS year,
-          TO_CHAR(TO_TIMESTAMP(timestamp), 'Mon') AS month
-        FROM points
-        WHERE user_id = #{id}
-        ORDER BY year DESC, month ASC
+          TO_CHAR(TO_TIMESTAMP(timestamp), 'Mon') AS month,
+          EXTRACT(MONTH FROM TO_TIMESTAMP(timestamp)) AS month_number
+        FROM tracked_months
+        WHERE timestamp IS NOT NULL
+        ORDER BY year DESC, month_number ASC
       SQL
 
-      result = ActiveRecord::Base.connection.select_all(sql)
+      binds = [
+        ActiveRecord::Relation::QueryAttribute.new('user_id', id, ActiveRecord::Type::Integer.new)
+      ]
+
+      result = ActiveRecord::Base.connection.exec_query(sql, 'YearsTracked', binds)
 
       result
         .map { |r| [r['year'].to_i, r['month']] }
@@ -128,6 +285,13 @@ class User < ApplicationRecord
         .transform_values { |year_data| year_data.map { |_, month| month } }
         .map { |year, months| { year: year, months: months } }
     end
+  end
+
+  def own_subscription_live?
+    return false if sub_source_none?
+    return false unless active? || trial?
+
+    active_until&.future? || false
   end
 
   def can_subscribe?
@@ -167,13 +331,19 @@ class User < ApplicationRecord
 
   delegate :timezone, to: :safe_settings
 
+  def timezone_iana
+    raw = timezone.presence || Time.zone.name
+    tz = ActiveSupport::TimeZone[raw] if raw
+    tz ? tz.tzinfo.name : 'Etc/UTC'
+  end
+
   # Aggregate countries from all stats' toponyms
   # Only counts a country if the user spent meaningful time in at least one city
   # (i.e., the country has non-empty cities array in at least one month)
   def countries_visited_uncached
     countries = Set.new
 
-    stats.find_each do |stat|
+    stats.select(:id, :toponyms).find_each do |stat|
       toponyms = stat.toponyms
       next unless toponyms.is_a?(Array)
 
@@ -194,7 +364,7 @@ class User < ApplicationRecord
   def cities_visited_uncached
     cities = Set.new
 
-    stats.find_each do |stat|
+    stats.select(:id, :toponyms).find_each do |stat|
       toponyms = stat.toponyms
       next unless toponyms.is_a?(Array)
 
@@ -233,12 +403,55 @@ class User < ApplicationRecord
   end
 
   def supporter_info
-    return { supporter: false } if safe_settings.supporter_email.blank?
+    if safe_settings.supporter_email.present?
+      email_info = Supporter::VerifyEmail.new(safe_settings.supporter_email).call
+      return email_info if email_info[:supporter]
+    end
 
-    Supporter::VerifyEmail.new(safe_settings.supporter_email).call
+    if safe_settings.supporter_github_username.present?
+      return Supporter::VerifyGithubUsername.new(safe_settings.supporter_github_username).call
+    end
+
+    { supporter: false }
   end
 
   private
+
+  def normalize_nil_settings
+    return unless has_attribute?(:settings)
+
+    self.settings = {} if settings.nil?
+  end
+
+  def saved_change_to_timezone_setting?
+    return false unless saved_change_to_settings?
+
+    before, after = saved_change_to_settings
+
+    before_timezone = before['timezone'] if before.is_a?(Hash)
+    after_timezone = after['timezone'] if after.is_a?(Hash)
+
+    before_timezone != after_timezone
+  end
+
+  def mark_stats_for_rebucketing
+    @stats_months_to_rebuild = stats.pluck(:year, :month)
+    return if @stats_months_to_rebuild.empty?
+
+    stats.update_all(calculation_version: 0, repair_deferred_at: Time.current)
+  end
+
+  def enqueue_stats_rebuild
+    months = @stats_months_to_rebuild
+    @stats_months_to_rebuild = nil
+    return if months.blank?
+
+    months.each do |year, month|
+      Stats::CalculatingJob
+        .set(wait: rand(0..Stats::BulkCalculator::REPAIR_JITTER.to_i).seconds)
+        .perform_later(id, year, month, notify_on_failure: false)
+    end
+  end
 
   def create_api_key
     self.api_key = SecureRandom.hex(32)
@@ -251,6 +464,8 @@ class User < ApplicationRecord
   end
 
   def sanitize_input
+    return unless settings.is_a?(Hash)
+
     settings['immich_url']&.gsub!(%r{/+\z}, '')
     settings['photoprism_url']&.gsub!(%r{/+\z}, '')
     settings.try(:[], 'maps')&.try(:[], 'url')&.strip!
@@ -269,8 +484,40 @@ class User < ApplicationRecord
     Users::CreationWebhookJob.perform_later(id)
   end
 
+  def saved_change_to_subscription_state?
+    saved_change_to_plan? || saved_change_to_status? || saved_change_to_active_until?
+  end
+
+  def enqueue_family_member_sync
+    return if DawarichSettings.self_hosted?
+    return if skip_family_sync
+
+    family_id = Family::Membership.where(user_id: id).pick(:family_id)
+    return if family_id.blank?
+
+    Families::MemberSyncJob.perform_later(family_id)
+  end
+
+  def enqueue_family_auto_creation
+    return if DawarichSettings.self_hosted?
+    return unless family?
+    return if Family::Membership.exists?(user_id: id)
+
+    Families::AutoCreationJob.perform_later(id)
+  end
+
   def invalidate_plan_rate_limit_cache
     key = api_key_previously_was || api_key_was || api_key
     Rails.cache.delete("rack_attack/plan/#{key}") if key.present?
+  end
+
+  def reset_archival_warnings
+    # Atomic JSONB key removal at the SQL level so a concurrent settings write
+    # (e.g. the archival warning job's merge) is never clobbered by a stale
+    # full-column overwrite.
+    User.where(id: id).update_all(
+      "settings = COALESCE(settings, '{}'::jsonb) - 'archival_warnings' - 'lite_since'"
+    )
+    settings&.except!('archival_warnings', 'lite_since')
   end
 end

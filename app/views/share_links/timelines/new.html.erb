@@ -1,0 +1,14 @@
+<%= render 'shared_links/modal',
+           resource: nil,
+           share: @share,
+           title: t('.share_a_date_range'),
+           subtitle: timeline_share_subtitle(@share),
+           close_path: map_v2_path,
+           paths: {
+             create:            share_links_timeline_path,
+             revoke:            revoke_share_links_timeline_path,
+             regenerate:        regenerate_share_links_timeline_path,
+             regenerate_phrase: regenerate_phrase_share_links_timeline_path,
+             destroy:           share_links_timeline_path
+           },
+           create_form_partial: 'shared_links/modal_timeline_create_form' %>

@@ -22,7 +22,7 @@ class TagsController < ApplicationController
     authorize @tag
 
     if @tag.save
-      redirect_to tags_path, notice: 'Tag was successfully created.'
+      redirect_to tags_path, notice: I18n.t('controllers.tags.tag_was_successfully_created')
     else
       render :new, status: :unprocessable_entity
     end
@@ -36,7 +36,8 @@ class TagsController < ApplicationController
     authorize @tag
 
     if @tag.update(tag_params)
-      redirect_to tags_path, notice: 'Tag was successfully updated.'
+      @tag.adopt!
+      redirect_to tags_path, notice: I18n.t('controllers.tags.tag_was_successfully_updated')
     else
       render :edit, status: :unprocessable_entity
     end
@@ -47,7 +48,7 @@ class TagsController < ApplicationController
 
     @tag.destroy!
 
-    redirect_to tags_path, notice: 'Tag was successfully deleted.', status: :see_other
+    redirect_to tags_path, notice: I18n.t('controllers.tags.tag_was_successfully_deleted'), status: :see_other
   end
 
   private

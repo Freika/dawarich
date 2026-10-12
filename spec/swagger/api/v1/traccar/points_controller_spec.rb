@@ -82,14 +82,19 @@ description: 'Event type that produced the fix (e.g. motionchange, heartbeat)' }
         end
         let(:api_key) { create(:user).api_key }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
       response '401', 'Unauthorized' do
         let(:point) { { device_id: 'x' } }
         let(:api_key) { nil }
+
+        run_test!
+      end
+
+      response '422', 'Point rejected' do
+        let(:point) { { device_id: 'x' } }
+        let(:api_key) { create(:user).api_key }
 
         run_test!
       end

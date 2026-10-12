@@ -1,0 +1,27 @@
+<turbo-frame id="note-<%= trip.id %>-<%= date %>">
+  <div data-note-display="<%= date %>">
+    <button class="btn btn-sm btn-ghost"
+            data-action="click->trip-maplibre#showNoteForm"
+            data-date="<%= date %>">
+      <%= t('.add_note') %>
+    </button>
+  </div>
+
+  <div data-note-form="<%= date %>" class="hidden">
+    <%= form_with url: trip_notes_path(trip), class: "space-y-3" do %>
+      <input type="hidden" name="note[date]" value="<%= date %>">
+      <div>
+        <textarea name="note[body]"
+                  class="textarea textarea-bordered w-full min-h-[100px]"
+                  maxlength="10000"
+                  placeholder="<%= t('.write_your_notes_for_this_day') %>"></textarea>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm"><%= t('.save_note') %></button>
+        <button type="button" class="btn btn-ghost btn-sm"
+                data-action="click->trip-maplibre#hideNoteForm"
+                data-date="<%= date %>"><%= t('.cancel') %></button>
+      </div>
+    <% end %>
+  </div>
+</turbo-frame>

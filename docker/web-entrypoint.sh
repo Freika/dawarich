@@ -7,6 +7,29 @@ set -e
 
 echo "⚠️ Starting Rails environment: $RAILS_ENV ⚠️"
 
+. "$(dirname "$0")/entrypoint-env-guard.sh"
+sanitize_integer_env WEB_CONCURRENCY 1
+
+# Optional privilege drop. When PUID/PGID are set and the container starts as
+# root, fix ownership of the mounted writable paths, then re-exec as that user.
+# Prefer this over compose `user:`, which starts unprivileged and cannot chown
+# root-owned volumes.
+if [ "$(id -u)" = "0" ] && [ -n "${PUID}${PGID}" ]; then
+  TARGET_UID="${PUID:-1000}"
+  TARGET_GID="${PGID:-1000}"
+  for _dir in public storage tmp db log; do
+    _path="$APP_PATH/$_dir"
+    [ -d "$_path" ] || continue
+    if [ "$(stat -c '%u' "$_path")" != "$TARGET_UID" ]; then
+      echo "🔑 Adjusting ownership of $_path to $TARGET_UID:$TARGET_GID..."
+      chown -R "$TARGET_UID:$TARGET_GID" "$_path"
+    fi
+  done
+  exec gosu "$TARGET_UID:$TARGET_GID" "$0" "$@"
+fi
+
+warn_if_development_env
+
 # Parse DATABASE_URL if present, otherwise use individual variables
 if [ -n "$DATABASE_URL" ]; then
   # Strip scheme (postgres:// or postgresql://)
@@ -41,12 +64,15 @@ rm -f "$APP_PATH/tmp/pids/server.pid"
 
 # Sync static assets from image to volume
 # This ensures new and updated files are copied to the persistent volume
-if [ -d "/tmp/public_assets" ]; then
+ASSETS_DIST="$APP_PATH/public_dist"
+if [ -d "$ASSETS_DIST" ]; then
   echo "📦 Syncing static assets to public volume..."
   # Remove old compiled assets to prevent stale files from persisting
   rm -rf $APP_PATH/public/assets
-  cp -r /tmp/public_assets/* $APP_PATH/public/
+  cp -r "$ASSETS_DIST"/* $APP_PATH/public/
   echo "✅ Static assets synced!"
+else
+  echo "⚠️ $ASSETS_DIST not found — static assets were NOT synced. The public volume may keep serving assets from a previous version."
 fi
 
 # Function to check and create a PostgreSQL database
@@ -88,33 +114,6 @@ bundle exec rake data:migrate
 
 echo "Running seeds..."
 bundle exec rails db:seed
-
-# Optionally start prometheus exporter alongside the web process
-PROMETHEUS_EXPORTER_PID=""
-if [ "$PROMETHEUS_EXPORTER_ENABLED" = "true" ]; then
-  PROM_HOST=${PROMETHEUS_EXPORTER_HOST:-0.0.0.0}
-  PROM_PORT=${PROMETHEUS_EXPORTER_PORT:-9394}
-
-  case "$PROM_HOST" in
-    ""|"0.0.0.0"|"::"|"127.0.0.1"|"localhost"|"ANY")
-      echo "📈 Starting Prometheus exporter on ${PROM_HOST:-0.0.0.0}:${PROM_PORT}..."
-      bundle exec prometheus_exporter -b "${PROM_HOST:-ANY}" -p "${PROM_PORT}" &
-      PROMETHEUS_EXPORTER_PID=$!
-
-      cleanup() {
-        if [ -n "$PROMETHEUS_EXPORTER_PID" ] && kill -0 "$PROMETHEUS_EXPORTER_PID" 2>/dev/null; then
-          echo "🛑 Stopping Prometheus exporter (PID $PROMETHEUS_EXPORTER_PID)..."
-          kill "$PROMETHEUS_EXPORTER_PID"
-          wait "$PROMETHEUS_EXPORTER_PID" 2>/dev/null || true
-        fi
-      }
-      trap cleanup EXIT INT TERM
-      ;;
-    *)
-      echo "ℹ️ PROMETHEUS_EXPORTER_HOST is set to $PROM_HOST, skipping embedded exporter startup."
-      ;;
-  esac
-fi
 
 # run passed commands
 exec bundle exec "${@}"

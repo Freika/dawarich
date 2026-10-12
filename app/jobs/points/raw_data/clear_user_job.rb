@@ -9,6 +9,7 @@ module Points
       queue_as :archival
 
       BATCH_SIZE = 5_000
+      COOLING_PERIOD = Clearer::COOLING_PERIOD
 
       def perform(user_id)
         user = find_user_or_skip(user_id) || return
@@ -31,7 +32,7 @@ module Points
       def clear_user(user)
         verified_archive_ids = Points::RawDataArchive
                                .where(user_id: user.id)
-                               .where.not(verified_at: nil)
+                               .where(verified_at: ..COOLING_PERIOD.ago)
                                .pluck(:id)
 
         return if verified_archive_ids.empty?
@@ -55,8 +56,8 @@ module Points
 
         Rails.logger.info("Cleared raw_data for #{total} points (user #{user.id})")
 
-        Metrics::Archives::Operation.new(operation: 'clear', status: 'success').call
-        Metrics::Archives::PointsArchived.new(count: total, operation: 'removed').call
+        Yabeda.dawarich_archive.operations_total.increment({ operation: 'clear', status: 'success' })
+        Yabeda.dawarich_archive.points_total.increment({ operation: 'removed' }, by: total)
       end
     end
   end

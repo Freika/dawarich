@@ -64,11 +64,38 @@ RSpec.describe 'Api::V1::Photos', type: :request do
           allow(Rails.cache).to receive(:read).and_return(nil)
         end
 
+        it 'ignores old cached photos that may contain archived assets' do
+          old_key = "photos_#{user.id}_#{start_date}_#{end_date}"
+          allow(Rails.cache).to receive(:read).with(old_key).and_return([{ id: 'archived' }])
+
+          get '/api/v1/photos', params: { api_key: user.api_key, start_date: start_date, end_date: end_date }
+
+          expect(JSON.parse(response.body)).to eq(photo_data)
+        end
+
         it 'writes cached photos with 30 minute ttl' do
-          cache_key = "photos_#{user.id}_#{start_date}_#{end_date}"
+          cache_key = "photos_#{user.id}_v2_#{start_date}_#{end_date}"
           expect(Rails.cache).to receive(:write).with(cache_key, photo_data, expires_in: 30.minutes)
 
           get '/api/v1/photos', params: { api_key: user.api_key, start_date: start_date, end_date: end_date }
+        end
+      end
+
+      context 'when the upstream returns an empty array' do
+        let(:start_date) { '2024-01-01' }
+        let(:end_date) { '2024-01-02' }
+
+        before do
+          allow_any_instance_of(Photos::Search).to receive(:call).and_return([])
+          allow(Rails.cache).to receive(:read).and_return(nil)
+        end
+
+        it 'does not write the empty result to the cache' do
+          expect(Rails.cache).not_to receive(:write)
+
+          get '/api/v1/photos', params: { api_key: user.api_key, start_date: start_date, end_date: end_date }
+
+          expect(JSON.parse(response.body)).to eq([])
         end
       end
     end

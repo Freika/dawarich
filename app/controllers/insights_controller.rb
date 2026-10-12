@@ -43,8 +43,8 @@ class InsightsController < ApplicationController
   private
 
   def set_available_years
-    @available_years = current_user.stats.distinct.pluck(:year).sort.reverse
-    scoped_years = current_user.scoped_stats.distinct.pluck(:year)
+    @available_years = current_user.stats.where(month: 1..12).distinct.pluck(:year).sort.reverse
+    scoped_years = current_user.scoped_stats.where(month: 1..12).distinct.pluck(:year)
     @locked_years = current_user.plan_restricted? ? (@available_years - scoped_years).to_set : Set.new
   end
 
@@ -55,16 +55,18 @@ class InsightsController < ApplicationController
   end
 
   def load_year_stats
+    scoped_stats = current_user.scoped_stats.where(month: 1..12)
+
     if @all_time
-      @year_stats = current_user.scoped_stats.order(year: :desc, month: :desc)
+      @year_stats = scoped_stats.order(year: :desc, month: :desc)
       @previous_year_stats = Stat.none
-      @display_label = 'All Time'
+      @display_label = I18n.t('controllers.insights.all_time')
     else
       @selected_year = @selected_year.to_i
       @previous_year = @selected_year - 1
-      @year_stats = current_user.scoped_stats.where(year: @selected_year).order(:month)
-      @previous_year_stats = current_user.scoped_stats.where(year: @previous_year).order(:month)
-      @display_label = "#{@selected_year} Overview"
+      @year_stats = scoped_stats.where(year: @selected_year).order(:month)
+      @previous_year_stats = scoped_stats.where(year: @previous_year).order(:month)
+      @display_label = I18n.t('controllers.insights.year_overview', year: @selected_year)
     end
   end
 
@@ -173,7 +175,7 @@ class InsightsController < ApplicationController
 
     current_user.scoped_visits.confirmed.where(started_at: start_time..end_time).group(:name)
                 .select('name, COUNT(*) as visit_count, SUM(duration) as total_duration')
-                .order('visit_count DESC, total_duration DESC').limit(5)
+                .order(Arel.sql('visit_count DESC, total_duration DESC, name COLLATE "C" ASC')).limit(5)
                 .map { |v| { name: v.name, visit_count: v.visit_count, total_duration: v.total_duration } }
   end
 
@@ -188,11 +190,22 @@ class InsightsController < ApplicationController
                                   .monthly
                                   .find_by(year: @selected_year, month: @selected_month)
 
-    return unless @monthly_digest.nil? && @available_months.include?(@selected_month)
+    return unless @available_months.include?(@selected_month)
+
+    return unless @monthly_digest.nil? || monthly_digest_stale?(@monthly_digest)
 
     @monthly_digest = Users::Digests::CalculateMonth
                       .new(current_user.id, @selected_year, @selected_month)
                       .call
+  end
+
+  def monthly_digest_stale?(digest)
+    latest_stat_update = current_user.scoped_stats
+                                     .where(year: digest.year, month: digest.month)
+                                     .maximum(:updated_at)
+    return false if latest_stat_update.nil?
+
+    digest.updated_at < latest_stat_update
   end
 
   def determine_selected_month

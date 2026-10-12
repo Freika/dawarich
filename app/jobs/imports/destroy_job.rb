@@ -15,9 +15,21 @@ class Imports::DestroyJob < ApplicationJob
     broadcast_deletion_complete(import)
   rescue ActiveRecord::RecordNotFound
     Rails.logger.warn "Import #{import_id} not found, may have already been deleted"
+  rescue StandardError
+    revert_deleting_status(import)
+    raise
   end
 
   private
+
+  def revert_deleting_status(import)
+    return unless import && Import.exists?(import.id)
+
+    import.failed!
+    broadcast_status_update(import)
+  rescue StandardError => e
+    Rails.logger.warn "Failed to revert deleting status for import #{import.id}: #{e.message}"
+  end
 
   def broadcast_status_update(import)
     ImportsChannel.broadcast_to(
@@ -30,6 +42,13 @@ class Imports::DestroyJob < ApplicationJob
         }
       }
     )
+
+    Turbo::StreamsChannel.broadcast_replace_to(
+      [import.user, :imports],
+      target: ActionView::RecordIdentifier.dom_id(import),
+      partial: 'imports/table_row',
+      locals: { import: import, timezone: import.user.safe_settings.timezone }
+    )
   end
 
   def broadcast_deletion_complete(import)
@@ -41,6 +60,10 @@ class Imports::DestroyJob < ApplicationJob
           id: import.id
         }
       }
+    )
+
+    Turbo::StreamsChannel.broadcast_remove_to(
+      [import.user, :imports], target: ActionView::RecordIdentifier.dom_id(import)
     )
   end
 end

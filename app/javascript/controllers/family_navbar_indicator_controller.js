@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 
 export default class extends Controller {
   static targets = ["indicator"]
@@ -50,13 +51,11 @@ export default class extends Controller {
     if (this.enabledValue) {
       this.indicatorTarget.className =
         "tooltip tooltip-bottom w-2 h-2 bg-green-500 rounded-full animate-pulse"
-      this.indicatorTarget.dataset.tip =
-        "Location is being shared with your family"
+      this.indicatorTarget.dataset.tip = translate("family.sharing_enabled")
     } else {
       this.indicatorTarget.className =
         "tooltip tooltip-bottom w-2 h-2 bg-gray-400 rounded-full"
-      this.indicatorTarget.dataset.tip =
-        "Location is not being shared with your family"
+      this.indicatorTarget.dataset.tip = translate("family.sharing_disabled")
     }
   }
 }

@@ -1,0 +1,33 @@
+<turbo-frame id="note-<%= trip.id %>-<%= note.date %>">
+  <%= form_with(
+    model: note,
+    url: note.persisted? ? trip_note_path(trip, note) : trip_notes_path(trip),
+    class: "space-y-3"
+  ) do |form| %>
+    <%= form.hidden_field :date, value: note.date %>
+
+    <% if note.errors.any? %>
+      <div class="alert alert-error text-sm">
+        <%= note.errors.full_messages.join(', ') %>
+      </div>
+    <% end %>
+
+    <div>
+      <textarea name="note[body]"
+                class="textarea textarea-bordered w-full min-h-[100px]"
+                maxlength="10000"
+                placeholder="<%= t('.write_your_notes_for_this_day') %>"><%= note.body %></textarea>
+    </div>
+
+    <div class="flex gap-2">
+      <%= form.submit t(note.persisted? ? '.update_note' : '.save_note'),
+          class: "btn btn-primary btn-sm" %>
+      <button type="button"
+              class="btn btn-ghost btn-sm"
+              data-action="click->trip-maplibre#hideNoteForm"
+              data-date="<%= note.date %>">
+        <%= t('.cancel') %>
+      </button>
+    </div>
+  <% end %>
+</turbo-frame>

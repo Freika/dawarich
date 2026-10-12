@@ -101,7 +101,7 @@ RSpec.describe Users::ImportData::Visits, type: :service do
 
       context 'when place already exists with exact coordinates' do
         let!(:existing_place) do
-          create(:place, name: 'Office Building', latitude: 40.7589, longitude: -73.9851)
+          create(:place, user: user, name: 'Office Building', latitude: 40.7589, longitude: -73.9851)
         end
 
         it 'uses the existing place' do
@@ -116,7 +116,7 @@ RSpec.describe Users::ImportData::Visits, type: :service do
 
       context 'when place exists with nearby coordinates' do
         let!(:nearby_place) do
-          create(:place, name: 'Different Name', latitude: 40.75895, longitude: -73.98515)
+          create(:place, user: user, name: 'Different Name', latitude: 40.75895, longitude: -73.98515)
         end
 
         it 'uses the nearby place' do

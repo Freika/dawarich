@@ -114,6 +114,92 @@ RSpec.describe Timeline::MonthSummary do
         expect(summary[:days]['2026-04-22']).to be_nil
       end
     end
+
+    context 'with points only (no track or visit) on a day' do
+      let(:active_day_local) { Time.zone.parse('2026-04-15 14:00:00 +0200') }
+      let(:empty_day_local)  { Time.zone.parse('2026-04-16 14:00:00 +0200') }
+
+      before do
+        3.times do |i|
+          create(:point, user: user, timestamp: (active_day_local + (i * 10).minutes).to_i)
+        end
+      end
+
+      it 'still marks the day as active (heat_bucket >= 1)' do
+        cell = summary[:weeks].flatten.find { |c| c[:date] == '2026-04-15' }
+        expect(cell[:heat_bucket]).to be >= 1
+      end
+
+      it 'leaves an empty day with no activity (heat_bucket == 0)' do
+        cell = summary[:weeks].flatten.find { |c| c[:date] == '2026-04-16' }
+        expect(cell[:heat_bucket]).to eq(0)
+      end
+
+      it 'groups points by the user timezone when computing the active day' do
+        # 22:30 UTC on April 14 = 00:30 April 15 in Europe/Berlin (CEST +02:00).
+        # Point's UTC date is 14th, but locally it falls on the 15th.
+        create(:point, user: user, timestamp: Time.zone.parse('2026-04-14 22:30:00 UTC').to_i)
+        cell = summary[:weeks].flatten.find { |c| c[:date] == '2026-04-15' }
+        expect(cell[:heat_bucket]).to be >= 1
+      end
+    end
+
+    context 'with no points, tracks, or visits' do
+      it 'returns heat_bucket 0 for every in-month cell' do
+        in_month_cells = summary[:weeks].flatten.select { |c| c[:in_month] }
+        expect(in_month_cells).not_to be_empty
+        in_month_cells.each do |cell|
+          expect(cell[:heat_bucket]).to eq(0)
+        end
+      end
+    end
+
+    context 'with a points-only month' do
+      before do
+        3.times do |i|
+          create(:point,
+                 user: user,
+                 timestamp: (Time.zone.parse('2026-04-15 14:00:00 +0200') + (i * 10).minutes).to_i)
+        end
+      end
+
+      it 'clamps the active day to heat_bucket 1 when month_max is 0' do
+        cell = summary[:weeks].flatten.find { |c| c[:date] == '2026-04-15' }
+        expect(cell[:heat_bucket]).to eq(1)
+      end
+    end
+
+    context 'with America/Los_Angeles timezone (negative UTC offset)' do
+      let(:user) { create(:user, settings: { 'timezone' => 'America/Los_Angeles' }) }
+
+      subject(:summary) { described_class.new(user: user, month: '2026-03').call }
+
+      before do
+        create(:point, user: user, timestamp: Time.zone.parse('2026-03-31 23:30:00 -0700').to_i)
+      end
+
+      it 'attributes a late-night local point to the local date, not the UTC date' do
+        cell = summary[:weeks].flatten.find { |c| c[:date] == '2026-03-31' }
+        expect(cell[:heat_bucket]).to be >= 1
+      end
+
+      it 'does not attribute the point to April 1 (its UTC date)' do
+        expect(summary[:days]['2026-04-01']).to be_nil
+      end
+    end
+
+    context 'across a DST spring-forward day in Europe/Berlin' do
+      subject(:summary) { described_class.new(user: user, month: '2026-03').call }
+
+      before do
+        create(:point, user: user, timestamp: Time.zone.parse('2026-03-29 10:00:00 +0200').to_i)
+      end
+
+      it 'attributes the point to March 29 without crashing' do
+        cell = summary[:weeks].flatten.find { |c| c[:date] == '2026-03-29' }
+        expect(cell[:heat_bucket]).to be >= 1
+      end
+    end
   end
 
   describe 'Lite plan restrictions' do
@@ -133,6 +219,14 @@ RSpec.describe Timeline::MonthSummary do
       summary = described_class.new(user: lite_user, month: Date.current.strftime('%Y-%m')).call
       in_month_cells = summary[:weeks].flatten.select { |c| c[:in_month] }
       expect(in_month_cells).to all(include(disabled: false))
+    end
+
+    it 'does not light up disabled cells with out-of-window points' do
+      out_of_window_time = 18.months.ago.beginning_of_month + 1.day
+      create(:point, user: lite_user, timestamp: out_of_window_time.to_i)
+      summary = described_class.new(user: lite_user, month: out_of_window_time.strftime('%Y-%m')).call
+      in_month_cells = summary[:weeks].flatten.select { |c| c[:in_month] }
+      expect(in_month_cells).to all(include(heat_bucket: 0, disabled: true))
     end
   end
 

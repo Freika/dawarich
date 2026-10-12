@@ -8,6 +8,8 @@ class VisitSuggestingJob < ApplicationJob
 
   # Passing timespan of more than 3 years somehow results in duplicated Places
   def perform(user_id:, start_at:, end_at:)
+    release_debounce_key(user_id)
+
     user = find_user_or_skip(user_id) || return
 
     return unless user.safe_settings.visits_suggestions_enabled?
@@ -27,6 +29,13 @@ class VisitSuggestingJob < ApplicationJob
   end
 
   private
+
+  # retry: false means a transient Redis blip here would otherwise drop the whole run.
+  def release_debounce_key(user_id)
+    Visits::RealtimeDebouncer.new(user_id).clear
+  rescue StandardError => e
+    Rails.logger.warn("[VisitSuggestingJob] debounce key release failed user_id=#{user_id}: #{e.class}: #{e.message}")
+  end
 
   def parse_date(date)
     date.is_a?(String) ? Time.zone.parse(date) : date.to_datetime

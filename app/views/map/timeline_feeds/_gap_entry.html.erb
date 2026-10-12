@@ -1,0 +1,17 @@
+<%# An interior stretch of the day with no visit and no track. The old feed
+    closed over these silently, so a dead battery looked identical to a
+    continuous day. The dotted rail says the record stops here, not the day. %>
+<%# Same height scale as a journey leg, so four untracked hours take up as much
+    of the column as a four-hour drive. %>
+<div class="timeline-entry timeline-entry--gap"
+     style="--tl-leg-extra: <%= journey_leg_extra_height(entry[:minutes] * 60) %>px"
+     data-entry-type="gap">
+  <div class="gap-leg">
+    <div class="gap-leg__time"><%= l(Time.zone.parse(entry[:started_at]), format: :hour_minute) %></div>
+    <div class="gap-leg__rail-col" aria-hidden="true"></div>
+    <div class="gap-leg__summary">
+      <%= t('.untracked', duration: format_duration_short(entry[:minutes] * 60)) %>
+    </div>
+    <span></span>
+  </div>
+</div>

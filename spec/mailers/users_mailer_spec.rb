@@ -31,43 +31,50 @@ RSpec.describe UsersMailer, type: :mailer do
     end
   end
 
-  # Trial-reminder mailers below are kept transitionally so stale Sidekiq
-  # jobs scheduled before the billing extraction drain cleanly. New code
-  # must NOT enqueue these — Manager owns the trial-reminder lifecycle now.
-  # Earliest safe removal: 2026-05-17 (deploy + 21 days).
-  describe 'trial_expires_soon' do
-    let(:mail) { UsersMailer.with(user: user).trial_expires_soon }
+  describe 'otp_account_locked' do
+    let(:mail) { UsersMailer.with(user: user).otp_account_locked }
 
     it 'renders the headers' do
-      expect(mail.subject).to eq('⚠️ Your Dawarich trial expires in 2 days')
+      expect(mail.subject).to eq('Dawarich account temporarily locked')
       expect(mail.to).to eq([user.email])
+    end
+
+    it 'renders the body with the user email' do
+      expect(mail.body.encoded).to match(user.email)
+    end
+
+    it 'includes password reset link in HTML part' do
+      expect(mail.html_part.body.encoded).to include('password')
+    end
+
+    it 'includes password reset link in text part' do
+      expect(mail.text_part.body.encoded).to include('password')
     end
   end
 
-  describe 'trial_expired' do
-    let(:mail) { UsersMailer.with(user: user).trial_expired }
+  describe 'legacy trial lifecycle emails' do
+    %i[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late].each do |action|
+      it "delivers nothing for a stale #{action} job" do
+        mail = UsersMailer.with(user: user).public_send(action)
 
-    it 'renders the headers' do
-      expect(mail.subject).to eq('💔 Your Dawarich trial expired')
-      expect(mail.to).to eq([user.email])
+        expect { mail.deliver_now }.not_to(change { ActionMailer::Base.deliveries.size })
+      end
     end
-  end
 
-  describe 'post_trial_reminder_early' do
-    let(:mail) { UsersMailer.with(user: user).post_trial_reminder_early }
+    it 'delivers nothing for a stale job without user params' do
+      mail = UsersMailer.with({}).trial_expired
 
-    it 'renders the headers' do
-      expect(mail.subject).to eq('🚀 Still interested in Dawarich? Subscribe now!')
-      expect(mail.to).to eq([user.email])
+      expect { mail.deliver_now }.not_to(change { ActionMailer::Base.deliveries.size })
     end
-  end
 
-  describe 'post_trial_reminder_late' do
-    let(:mail) { UsersMailer.with(user: user).post_trial_reminder_late }
+    it 'discards a stale delivery job whose user record is gone' do
+      job = ActionMailer::MailDeliveryJob.new(
+        'UsersMailer', 'trial_expired', 'deliver_now', args: [], params: { user: user }
+      )
+      serialized = job.serialize
+      User.unscoped.where(id: user.id).delete_all
 
-    it 'renders the headers' do
-      expect(mail.subject).to eq('📍 Your location data is waiting - Subscribe to Dawarich')
-      expect(mail.to).to eq([user.email])
+      expect { ActiveJob::Base.execute(serialized) }.not_to raise_error
     end
   end
 end

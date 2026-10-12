@@ -44,8 +44,6 @@ describe 'Users Exist API', type: :request do
         let(:existing_user) { create(:user) }
         let(:payload) { { ids: [existing_user.id, 999_999_999] } }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 

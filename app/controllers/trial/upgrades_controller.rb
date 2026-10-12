@@ -3,6 +3,7 @@
 module Trial
   class UpgradesController < ApplicationController
     before_action :authenticate_user!
+    before_action :redirect_if_self_hosted
 
     def show
       token = current_user.generate_subscription_token(
@@ -19,6 +20,10 @@ module Trial
     end
 
     private
+
+    def redirect_if_self_hosted
+      redirect_to root_path if DawarichSettings.self_hosted?
+    end
 
     def sanitized_plan
       %w[pro lite].include?(params[:plan]) ? params[:plan] : nil

@@ -1,0 +1,12 @@
+{
+  "name": "dawarich-poster-renderer",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Server-side poster renderer: maplibre-native + the app's own style/overlay modules",
+  "dependencies": {
+    "@maplibre/maplibre-gl-native": "^6.4.1",
+    "canvas": "^3.2.3",
+    "fflate": "^0.8.2"
+  }
+}

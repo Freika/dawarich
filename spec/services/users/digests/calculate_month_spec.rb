@@ -45,6 +45,37 @@ RSpec.describe Users::Digests::CalculateMonth do
         cities = digest.time_spent_by_location['cities']
         expect(cities).to include('name' => 'Madrid', 'minutes' => 600)
       end
+
+      it 'recovers when another calculation creates the digest first' do
+        attempts = 0
+
+        allow_any_instance_of(Users::Digest).to receive(:save!).and_wrap_original do |original, *args|
+          attempts += 1
+
+          if attempts == 1
+            Users::Digest.insert_all!(
+              [
+                {
+                  user_id: user.id,
+                  year: year,
+                  month: month,
+                  period_type: Users::Digest.period_types[:monthly],
+                  sharing_uuid: SecureRandom.uuid,
+                  created_at: Time.current,
+                  updated_at: Time.current
+                }
+              ]
+            )
+            original.receiver.errors.add(:year, :taken)
+            raise ActiveRecord::RecordInvalid, original.receiver
+          end
+
+          original.call(*args)
+        end
+
+        expect(calculate_digest).to be_persisted
+        expect(user.digests.monthly.where(year: year, month: month).count).to eq(1)
+      end
     end
 
     context 'when the user is on the Lite cloud plan' do
@@ -112,6 +143,17 @@ RSpec.describe Users::Digests::CalculateMonth do
         nz = countries.find { |c| c['name'] == 'New Zealand' }
 
         expect(nz['minutes']).to eq(1_440)
+      end
+    end
+
+    context 'when the stat carries flight distance' do
+      let!(:stat) { create(:stat, user: user, year: year, month: month, distance: 12_345, flight_distance: 633_400) }
+
+      it 'copies it onto the digest without folding it into the tracked distance' do
+        digest = calculate_digest
+
+        expect(digest.flight_distance).to eq(633_400)
+        expect(digest.distance).to eq(12_345)
       end
     end
   end

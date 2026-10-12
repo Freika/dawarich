@@ -15,4 +15,12 @@ RSpec.describe PointsChannel, type: :channel do
     expect(subscription).to be_confirmed
     expect(subscription).to have_stream_for(user)
   end
+
+  it 'rejects an anonymous (share-only) connection' do
+    stub_connection(current_user: nil)
+
+    subscribe
+
+    expect(subscription).to be_rejected
+  end
 end

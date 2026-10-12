@@ -1,0 +1,16 @@
+{
+  "name": "Midnight Blue",
+  "description": "Deep navy background with gold/copper roads - luxury atlas aesthetic",
+  "bg": "#0A1628",
+  "text": "#D4AF37",
+  "gradient_color": "#0A1628",
+  "water": "#061020",
+  "parks": "#0F2235",
+  "road_motorway": "#D4AF37",
+  "road_primary": "#C9A227",
+  "road_secondary": "#A8893A",
+  "road_tertiary": "#8B7355",
+  "road_residential": "#6B5B4F",
+  "road_default": "#8B7355",
+  "route": "#E0457B"
+}

@@ -1,7 +1,7 @@
 <%= turbo_frame_tag "nearby-places" do %>
   <div class="space-y-2 max-h-48 overflow-y-auto">
     <% if places.blank? %>
-      <p class="text-sm text-gray-500">No nearby places found</p>
+      <p class="text-sm text-gray-500"><%= t('.no_nearby_places_found') %></p>
     <% else %>
       <% places.each_with_index do |place, index| %>
         <div class="card card-compact bg-base-200 cursor-pointer hover:bg-base-300 transition"
@@ -31,7 +31,7 @@
   <% if radius < max_radius %>
     <div class="mt-2 text-center">
       <% next_radius = [radius + 0.5, max_radius].min %>
-      <%= link_to "Load More (search up to #{(next_radius * 1000).round}m)",
+      <%= link_to t('.load_more_search_up_to_distance_m', distance: (next_radius * 1000).round),
             nearby_places_path(
               latitude: params[:latitude],
               longitude: params[:longitude],

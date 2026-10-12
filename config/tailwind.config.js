@@ -10,6 +10,7 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ["Inter var", ...defaultTheme.fontFamily.sans],
+        display: ["Archivo", ...defaultTheme.fontFamily.sans],
       },
     },
   },
@@ -23,6 +24,7 @@ module.exports = {
     themes: [
       {
         dawarich: {
+          "color-scheme": "light",
           primary: "#3B82F6",
           "primary-content": "#FFFFFF",
           secondary: "#0D9488",
@@ -48,6 +50,7 @@ module.exports = {
           "--rounded-badge": "9999px",
         },
         "dawarich-dark": {
+          "color-scheme": "dark",
           primary: "#60A5FA",
           "primary-content": "#0A1530",
           secondary: "#2DD4BF",

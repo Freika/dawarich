@@ -2,9 +2,9 @@
   <table class="table">
     <thead>
       <tr>
-        <th>Name</th>
-        <th>Imported points</th>
-        <th>Created at</th>
+        <th><%= t('.name') %></th>
+        <th><%= t('.imported_points') %></th>
+        <th><%= t('.created_at') %></th>
       </tr>
     </thead>
     <tbody>
@@ -15,14 +15,14 @@
         <td>
           <%= "#{number_with_delimiter import.points.size}" %>
         </td>
-        <td><%= human_datetime(import.created_at) %></td>
+        <td><%= human_datetime(import.created_at, current_user.safe_settings.timezone) %></td>
       </tr>
     </tbody>
   </table>
 
   <% if action_name != "show" %>
-    <%= link_to "Show this import", import, class: "rounded-lg py-3 px-5 bg-gray-100 inline-block font-medium" %>
-    <%= link_to "Edit this import", edit_import_path(import), class: "rounded-lg py-3 ml-2 px-5 bg-gray-100 inline-block font-medium" %>
+    <%= link_to t('.show_this_import'), import, class: "rounded-lg py-3 px-5 bg-gray-100 inline-block font-medium" %>
+    <%= link_to t('.edit_this_import'), edit_import_path(import), class: "rounded-lg py-3 ml-2 px-5 bg-gray-100 inline-block font-medium" %>
     <hr class="mt-6">
   <% end %>
 </div>

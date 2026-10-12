@@ -264,19 +264,22 @@ export class RouteSegmenter {
     const distanceThresholdKm = options.distanceThresholdMeters || 500
     const timeThresholdMinutes = options.timeThresholdMinutes || 60
 
-    // Sort by timestamp
-    const sorted = points.slice().sort((a, b) => a.timestamp - b.timestamp)
+    const buckets = points.reduce((acc, p) => {
+      const key = p.tracker_id || ""
+      if (!acc[key]) acc[key] = []
+      acc[key].push(p)
+      return acc
+    }, {})
 
-    // Split into segments based on distance and time gaps
-    const segments = RouteSegmenter.splitIntoSegments(sorted, {
-      distanceThresholdKm,
-      timeThresholdMinutes,
+    const features = Object.values(buckets).flatMap((bucket) => {
+      if (bucket.length < 2) return []
+      const sorted = bucket.slice().sort((a, b) => a.timestamp - b.timestamp)
+      const segments = RouteSegmenter.splitIntoSegments(sorted, {
+        distanceThresholdKm,
+        timeThresholdMinutes,
+      })
+      return segments.map((segment) => RouteSegmenter.segmentToFeature(segment))
     })
-
-    // Convert segments to LineStrings
-    const features = segments.map((segment) =>
-      RouteSegmenter.segmentToFeature(segment),
-    )
 
     return {
       type: "FeatureCollection",

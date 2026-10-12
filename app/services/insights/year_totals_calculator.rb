@@ -48,10 +48,9 @@ module Insights
 
         stat.toponyms.each do |toponym|
           next unless toponym.is_a?(Hash)
-
-          countries.add(toponym['country']) if toponym['country'].present?
-
           next unless toponym['cities'].is_a?(Array)
+
+          countries.add(toponym['country']) if toponym['country'].present? && toponym['cities'].any?
 
           toponym['cities'].each do |city|
             cities.add(city['city']) if city.is_a?(Hash) && city['city'].present?
@@ -69,11 +68,11 @@ module Insights
     def find_biggest_month
       return nil if stats.empty?
 
-      max_stat = stats.max_by(&:distance)
+      max_stat = stats.select { |stat| stat.month.to_i.between?(1, 12) }.max_by(&:distance)
       return nil unless max_stat&.distance&.positive?
 
       {
-        month: Date::MONTHNAMES[max_stat.month],
+        month: I18n.l(Date.new(max_stat.year, max_stat.month, 1), format: :month_name),
         distance: Stat.convert_distance(max_stat.distance, distance_unit).round
       }
     end

@@ -14,33 +14,33 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Your data history is filling up</h1>
+      <h1><%= t('.your_data_history_is_filling_up') %></h1>
     </div>
     <div class="content">
-      <p>Hi <%= @user.email %>, this is Evgenii from Dawarich.</p>
+      <p><%= t('.hi') %> <%= @user.email %><%= t('.this_is_evgenii_from_dawarich') %></p>
 
       <div class="notice">
-        <p><strong>Heads up:</strong> Your oldest location data will be archived in about <strong>2 weeks</strong>.</p>
+        <p><strong><%= t('.heads_up') %></strong> <%= t('.your_oldest_location_data_will_be_archived_in_about') %> <strong><%= t('.weeks') %></strong>.</p>
       </div>
 
-      <p>On the Lite plan, your most recent 12 months of data remain fully searchable and interactive. Older data is archived — it can always be exported, but it won't appear on your map, in search, stats, or timeline replay.</p>
+      <p><%= t('.on_the_lite_plan_your_most_recent_12_months_of') %></p>
 
-      <h3>Upgrade to Pro to keep your full history:</h3>
+      <h3><%= t('.upgrade_to_pro_to_keep_your_full_history') %></h3>
       <ul>
-        <li>Unlimited searchable history — every month, every year</li>
-        <li>Heatmap, Fog of War, and Globe view</li>
-        <li>Full Write API access</li>
-        <li>Immich and PhotoPrism integrations</li>
+        <li><%= t('.unlimited_searchable_history_every_month_every_year') %></li>
+        <li><%= t('.heatmap_fog_of_war_and_globe_view') %></li>
+        <li><%= t('.full_write_api_access') %></li>
+        <li><%= t('.immich_and_photoprism_integrations') %></li>
       </ul>
 
-      <a href="<%= @upgrade_url %>" class="cta">Upgrade to Pro</a>
+      <a href="<%= @upgrade_url %>" class="cta"><%= t('.upgrade_to_pro') %></a>
 
-      <p>Your data is always yours — Pro simply makes all of it searchable and interactive in-app.</p>
+      <p><%= t('.your_data_is_always_yours_pro_simply_makes_all_of') %></p>
 
-      <p>Questions? Drop me a message at hi@dawarich.app or just reply to this email.</p>
+      <p><%= t('.questions_drop_me_a_message_at_hi_dawarich_app_or') %></p>
 
-      <p>Best regards,<br>
-      Evgenii from Dawarich</p>
+      <p><%= t('.best_regards') %><br>
+      <%= t('.evgenii_from_dawarich') %></p>
     </div>
   </div>
 </body>

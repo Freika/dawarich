@@ -30,7 +30,8 @@ class Api::V1::ImportsController < ApiController
 
   def create
     unless params[:file].is_a?(ActionDispatch::Http::UploadedFile)
-      render json: { error: 'Missing required parameter: file' }, status: :unprocessable_entity and return
+      render json: { error: I18n.t('controllers.api.v1.imports.missing_required_parameter_file') },
+             status: :unprocessable_entity and return
     end
 
     uploaded_file = params[:file]
@@ -53,7 +54,8 @@ class Api::V1::ImportsController < ApiController
   rescue StandardError => e
     Rails.logger.error "API Import error: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}"
     ExceptionReporter.call(e)
-    render json: { error: 'An error occurred while processing the import' }, status: :internal_server_error
+    render json: { error: I18n.t('controllers.api.v1.imports.an_error_occurred_while_processing_the_import') },
+           status: :internal_server_error
   end
 
   private
@@ -74,7 +76,11 @@ class Api::V1::ImportsController < ApiController
     return if ALLOWED_EXTENSIONS.include?(ext)
 
     render json: {
-      error: "Unsupported file type '#{ext}'. Allowed: #{ALLOWED_EXTENSIONS.join(', ')}"
+      error: I18n.t(
+        'controllers.api.v1.imports.unsupported_file_type_ext_allowed_join',
+        ext: ext,
+        allowed: ALLOWED_EXTENSIONS.join(', ')
+      )
     }, status: :unprocessable_entity
   end
 

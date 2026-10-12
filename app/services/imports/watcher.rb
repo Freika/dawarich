@@ -41,7 +41,7 @@ class Imports::Watcher
 
     return if import.persisted?
 
-    import.source = source(file_name)
+    import.source = source(file_name, file_path)
     import.file.attach(
       io: File.open(file_path),
       filename: file_name,
@@ -51,9 +51,12 @@ class Imports::Watcher
     import.save!
   end
 
-  def source(file_name)
+  def source(file_name, file_path)
     case file_name.split('.').last.downcase
     when 'json'
+      detected_source = Imports::SourceDetector.new_from_file_header(file_path).detect_source
+      return detected_source if detected_source
+
       case file_name
       when /location-history/i
         :google_phone_takeout
@@ -72,14 +75,15 @@ class Imports::Watcher
     when 'geojson' then :geojson
     when 'kml', 'kmz' then :kml
     when 'zip' then nil
-    else raise UnsupportedSourceError, 'Unsupported source '
+    else raise UnsupportedSourceError, I18n.t('services.imports.watcher.unsupported_source_without_name')
     end
   end
 
   def mime_type(source)
     case source&.to_sym
     when :gpx then 'application/xml'
-    when :json, :geojson, :google_phone_takeout, :google_records, :google_semantic_history
+    when :json, :geojson, :google_phone_takeout, :google_records, :google_semantic_history, :google_photos,
+         :polarsteps, :mobile_photo_library
       'application/json'
     when :owntracks, :fit
       'application/octet-stream'
@@ -89,7 +93,7 @@ class Imports::Watcher
     when nil
       'application/octet-stream' # fallback MIME type for nil source
     else
-      raise UnsupportedSourceError, "Unsupported source: #{source}"
+      raise UnsupportedSourceError, I18n.t('services.imports.watcher.unsupported_source', source:)
     end
   end
 end

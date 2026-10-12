@@ -29,7 +29,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
   describe '#call' do
     context 'when reverse geocoding is enabled' do
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        configure_instance_geocoding
         allow(Geocoder).to receive(:search).and_return([mock_geocoded_place])
       end
 
@@ -49,6 +49,50 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         expect { service.call }.to change { place.reload.name }
           .and change { place.reload.city }.to('Berlin')
           .and change { place.reload.country }.to('Germany')
+      end
+
+      context 'when the place name is locked by the user' do
+        let(:place) { create(:place, name: "Mum's house", name_locked_at: 1.day.ago) }
+
+        it 'keeps the user-supplied name' do
+          expect { service.call }.not_to(change { place.reload.name })
+        end
+
+        it 'still refreshes city and country' do
+          expect { service.call }.to change { place.reload.city }.to('Berlin')
+        end
+      end
+
+      context 'when a sibling place has a locked name' do
+        let(:sibling) do
+          create(:place, user: place.user, name: 'Sibling I named', name_locked_at: 1.day.ago,
+                         geodata: { 'properties' => { 'osm_id' => 99_999 } })
+        end
+
+        let(:sibling_geocoded_place) do
+          double(
+            data: {
+              'geometry' => { 'coordinates' => [13.0948638, 54.2905245] },
+              'properties' => {
+                'osm_id' => 99_999, 'name' => 'Photon Override', 'osm_value' => 'cafe',
+                'city' => 'Hamburg', 'country' => 'Germany'
+              }
+            }
+          )
+        end
+
+        before do
+          sibling
+          allow(Geocoder).to receive(:search).and_return([mock_geocoded_place, sibling_geocoded_place])
+        end
+
+        it 'keeps the locked sibling name through the bulk upsert' do
+          expect { service.call }.not_to(change { sibling.reload.name })
+        end
+
+        it 'still refreshes the locked sibling city' do
+          expect { service.call }.to change { sibling.reload.city }.to('Hamburg')
+        end
       end
 
       it 'sets reverse_geocoded_at timestamp' do
@@ -98,14 +142,14 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         it 'updates the original place and creates others' do
           service.call
 
-          created_place = Place.global.where.not(id: place.id).first
+          created_place = Place.where.not(id: place.id).first
           expect(created_place.name).to include('Second Place')
           expect(created_place.city).to eq('Hamburg')
         end
       end
 
       context 'with existing places in database' do
-        let!(:existing_place) { create(:place, :with_geodata) }
+        let!(:existing_place) { create(:place, :with_geodata, user: place.user) }
 
         before do
           # Mock geocoded place with same OSM ID as existing place
@@ -177,7 +221,6 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
 
     context 'when reverse geocoding is disabled' do
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
         allow(Rails.logger).to receive(:warn)
       end
 
@@ -202,7 +245,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
 
   describe 'private methods' do
     before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+      configure_instance_geocoding
     end
 
     describe '#place_name' do
@@ -260,6 +303,35 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         result = service.send(:place_name, data)
         expect(result).to eq('Test (Fast food restaurant)')
       end
+
+      it 'omits generic boolean osm values from place names' do
+        data = {
+          'properties' => {
+            'name' => 'Gas Station',
+            'osm_value' => 'yes',
+            'postcode' => '10115',
+            'street' => 'Main Street'
+          }
+        }
+
+        result = service.send(:place_name, data)
+        expect(result).to eq('Gas Station')
+      end
+
+      it 'falls back to the address when Photon returns a generic name' do
+        data = {
+          'properties' => {
+            'name' => 'Yes',
+            'osm_value' => 'yes',
+            'postcode' => '10115',
+            'street' => 'Main Street',
+            'housenumber' => '42'
+          }
+        }
+
+        result = service.send(:place_name, data)
+        expect(result).to eq('10115 Main Street 42')
+      end
     end
 
     describe '#extract_osm_ids' do
@@ -283,9 +355,9 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
     end
 
     describe '#find_existing_places' do
-      let!(:existing_place1) { create(:place, :with_geodata) }
+      let!(:existing_place1) { create(:place, :with_geodata, user: place.user) }
       let!(:existing_place2) do
-        create(:place, geodata: {
+        create(:place, user: place.user, geodata: {
                  'properties' => { 'osm_id' => 999 }
                })
       end
@@ -417,7 +489,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
     describe '#save_places' do
       it 'saves new places when places_to_create is present' do
         place # Ensure place exists
-        new_place = build(:place)
+        new_place = build(:place, user: create(:user))
         places_to_create = [new_place]
         places_to_update = []
 
@@ -436,12 +508,23 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         expect(existing_place.reload.name).to eq('New Name')
       end
 
+      it 'orders bulk updates by primary key' do
+        first_place = create(:place)
+        second_place = create(:place)
+        allow(Place).to receive(:upsert_all)
+
+        service.send(:save_places, [], [second_place, first_place])
+
+        expect(Place).to have_received(:upsert_all)
+          .with(satisfy { |attributes| attributes.pluck(:id) == [first_place.id, second_place.id] }, unique_by: :id)
+      end
+
       it 'handles empty arrays gracefully' do
         expect { service.send(:save_places, [], []) }.not_to raise_error
       end
 
       context 'when a deadlock occurs' do
-        let(:new_place) { build(:place) }
+        let(:new_place) { build(:place, user: create(:user)) }
 
         it 'retries on ActiveRecord::Deadlocked and succeeds' do
           call_count = 0
@@ -470,7 +553,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
 
   describe 'edge cases and error scenarios' do
     before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+      configure_instance_geocoding
     end
 
     context 'when Geocoder returns empty results' do
@@ -631,6 +714,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
       end
 
       before do
+        configure_instance_geocoding(nominatim_api_host: 'nominatim.test.example.com')
         allow(Geocoder).to receive(:search).and_return([nominatim_place, second_nominatim_place])
       end
 
@@ -647,7 +731,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         place # Force creation
         expect { service.call }.to change { Place.count }.by(1)
 
-        created_place = Place.global.where.not(id: place.id).first
+        created_place = Place.where.not(id: place.id).first
         expect(created_place.name).to include('Nice Cafe')
         expect(created_place.city).to eq('Hamburg')
       end
@@ -719,7 +803,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         place # Force place creation
         expect { service.call }.to change { Place.count }.by(1)
 
-        created_place = Place.global.where.not(id: place.id).first
+        created_place = Place.where.not(id: place.id).first
         expect(created_place.latitude).to eq(54.0)
         expect(created_place.longitude).to eq(13.0)
       end

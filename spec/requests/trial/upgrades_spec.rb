@@ -8,6 +8,7 @@ RSpec.describe 'Trial::Upgrades', type: :request do
 
     before do
       stub_const('MANAGER_URL', 'https://manager.example.test')
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
     end
 
     context 'when not signed in' do

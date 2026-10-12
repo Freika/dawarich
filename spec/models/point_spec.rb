@@ -82,6 +82,44 @@ RSpec.describe Point, type: :model do
         end
       end
     end
+
+    describe '.null_island' do
+      let(:user) { create(:user) }
+
+      let!(:exact_zero) do
+        create(:point, user: user, timestamp: 1.hour.ago.to_i, lonlat: 'POINT(0 0)')
+      end
+      # Google Timeline exports emit coordinates a fraction of a degree off zero
+      # instead of exact zeros; they are the same defect and must be caught.
+      let!(:near_zero) do
+        create(:point, user: user, timestamp: 2.hours.ago.to_i,
+                       lonlat: 'POINT(-0.009821517715778327 -0.0056462072163441235)')
+      end
+      let!(:real_location) do
+        create(:point, user: user, timestamp: 3.hours.ago.to_i, lonlat: 'POINT(13.405 52.52)')
+      end
+      # Gulf of Guinea is genuine ocean; only the immediate neighbourhood of the
+      # origin is treated as a broken coordinate.
+      let!(:far_from_zero) do
+        create(:point, user: user, timestamp: 4.hours.ago.to_i, lonlat: 'POINT(1.5 1.5)')
+      end
+
+      it 'includes points at exactly (0, 0)' do
+        expect(described_class.null_island).to include(exact_zero)
+      end
+
+      it 'includes points a fraction of a degree from (0, 0)' do
+        expect(described_class.null_island).to include(near_zero)
+      end
+
+      it 'excludes points at a real location' do
+        expect(described_class.null_island).not_to include(real_location)
+      end
+
+      it 'excludes points well outside the origin neighbourhood' do
+        expect(described_class.null_island).not_to include(far_from_zero)
+      end
+    end
   end
 
   describe 'methods' do
@@ -96,33 +134,95 @@ RSpec.describe Point, type: :model do
     describe '#async_reverse_geocode' do
       let(:point) { build(:point) }
 
+      def clear_dedup_key(point_id)
+        Sidekiq.redis { |r| r.del(Point.geocode_dedup_key(point_id)) }
+      end
+
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        configure_instance_geocoding
         allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
       end
 
       it 'enqueues ReverseGeocodeJob with correct arguments' do
         point.save
+        clear_dedup_key(point.id)
 
         expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
-          .with('Point', point.id)
+          .with('Point', point.id, force: false)
       end
 
       context 'when point is imported' do
-        let(:point) { build(:point, import_id: 1) }
+        let(:point) { create(:point, import: create(:import)) }
 
         it 'enqueues ReverseGeocodeJob' do
+          clear_dedup_key(point.id)
           expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
         end
       end
 
       context 'when reverse geocoding is disabled' do
         before do
-          allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+          InstanceSetting.delete_all
+          InstanceSettings::Resolver.reset!
         end
 
         it 'does not enqueue ReverseGeocodeJob' do
           expect { point.save }.not_to have_enqueued_job(ReverseGeocodingJob)
+        end
+      end
+
+      context 'when called twice for the same point' do
+        it 'only enqueues a single job (dedup)' do
+          point.save
+
+          expect { point.async_reverse_geocode }.not_to have_enqueued_job(ReverseGeocodingJob)
+        end
+
+        it 'keeps the Redis claim until the pending job finishes' do
+          point.save
+
+          ttl = Sidekiq.redis { |r| r.ttl(Point.geocode_dedup_key(point.id)) }
+          expect(ttl).to eq(-1)
+        end
+      end
+
+      context 'with force: true' do
+        it 'enqueues even when dedup key is set' do
+          point.save
+
+          expect { point.async_reverse_geocode(force: true) }
+            .to have_enqueued_job(ReverseGeocodingJob)
+            .with('Point', point.id, force: true)
+        end
+
+        it 'clears the dedup key so subsequent non-force calls can re-claim' do
+          point.save
+
+          point.async_reverse_geocode(force: true)
+
+          expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
+        end
+      end
+
+      context 'with different points' do
+        it 'enqueues a separate job per point' do
+          point.save
+          other_point = build(:point)
+
+          expect { other_point.save }
+            .to have_enqueued_job(ReverseGeocodingJob).with('Point', kind_of(Integer), force: false)
+        end
+      end
+
+      context 'when perform_later raises after the SETNX claim' do
+        it 'releases the dedup key so a retry can re-claim' do
+          point.save
+          clear_dedup_key(point.id)
+          allow(ReverseGeocodingJob).to receive(:perform_later).and_raise(StandardError, 'queue down')
+
+          expect { point.async_reverse_geocode }.to raise_error(StandardError, 'queue down')
+          expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
         end
       end
     end
@@ -141,6 +241,54 @@ RSpec.describe Point, type: :model do
       it 'returns latitude' do
         expect(point.lat).to eq(2)
       end
+    end
+  end
+
+  describe '.dedup_key' do
+    let(:timestamp) { Time.zone.at(1_700_000_000) }
+
+    it 'collapses different WKT strings that parse to the same doubles' do
+      a = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+      b = { lonlat: 'POINT(-0.12780000 51.50740000)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(a)).to eq(described_class.dedup_key(b))
+    end
+
+    it 'distinguishes points whose doubles actually differ' do
+      a = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+      b = { lonlat: 'POINT(-0.1279 51.5074)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(a)).not_to eq(described_class.dedup_key(b))
+    end
+
+    it 'distinguishes points by timestamp and user_id' do
+      base = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(base))
+        .not_to eq(described_class.dedup_key(base.merge(timestamp: timestamp + 1)))
+      expect(described_class.dedup_key(base))
+        .not_to eq(described_class.dedup_key(base.merge(user_id: 2)))
+    end
+
+    it 'ignores SRID prefix in EWKT and yields the same key as plain WKT' do
+      plain = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+      ewkt  = { lonlat: 'SRID=4326;POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(plain)).to eq(described_class.dedup_key(ewkt))
+    end
+
+    it 'extracts lon and lat from POINT Z (3D form) without folding altitude into the key' do
+      flat = { lonlat: 'POINT(-0.1278 51.5074)', timestamp: timestamp, user_id: 1 }
+      threed = { lonlat: 'POINT Z (-0.1278 51.5074 100)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(flat)).to eq(described_class.dedup_key(threed))
+    end
+
+    it 'handles southern-hemisphere negative lat/lon' do
+      a = { lonlat: 'POINT(-68.1193 -16.4897)', timestamp: timestamp, user_id: 1 }
+      b = { lonlat: 'POINT(-68.11930 -16.48970)', timestamp: timestamp, user_id: 1 }
+
+      expect(described_class.dedup_key(a)).to eq(described_class.dedup_key(b))
     end
   end
 end

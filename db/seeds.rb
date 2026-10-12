@@ -20,7 +20,8 @@ end
 if Country.none?
   Rails.logger.debug 'Creating countries...'
 
-  countries_json = Oj.load(File.read(Rails.root.join('lib/assets/countries.geojson')))
+  countries_path = Rails.root.join('lib/assets/countries.geojson.gz')
+  countries_json = Zlib::GzipReader.open(countries_path) { |gzip| Oj.load(gzip.read) }
 
   factory = RGeo::Geos.factory(srid: 4326)
   countries_multi_polygon = RGeo::GeoJSON.decode(countries_json.to_json, geo_factory: factory)
@@ -37,6 +38,12 @@ if Country.none?
       )
     end
   end
+end
+
+if defined?(Region) && Region.none?
+  Rails.logger.debug 'Creating regions...'
+
+  Achievements::LoadRegions.new.call
 end
 
 if Tag.none?

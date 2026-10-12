@@ -36,8 +36,22 @@ RSpec.describe TrackSegment, type: :model do
     subject { build(:track_segment) }
 
     it { is_expected.to validate_presence_of(:transportation_mode) }
-    it { is_expected.to validate_presence_of(:start_index) }
-    it { is_expected.to validate_presence_of(:end_index) }
+
+    it 'requires either time anchors or index anchors' do
+      segment = build(:track_segment, start_index: nil, end_index: nil, start_at: nil, end_at: nil)
+      expect(segment).not_to be_valid
+      expect(segment.errors[:base]).to include('must have either start_at/end_at or start_index/end_index')
+    end
+
+    it 'accepts time anchors without indexes' do
+      expect(build(:track_segment, :anchored)).to be_valid
+    end
+
+    it 'rejects end_at before start_at' do
+      segment = build(:track_segment, :anchored)
+      segment.end_at = segment.start_at - 60
+      expect(segment).not_to be_valid
+    end
 
     it { is_expected.to validate_numericality_of(:start_index).only_integer.is_greater_than_or_equal_to(0) }
     it { is_expected.to validate_numericality_of(:end_index).only_integer.is_greater_than_or_equal_to(0) }
@@ -73,6 +87,25 @@ RSpec.describe TrackSegment, type: :model do
       %i[walking cycling running train flying stationary from_source].each do |trait|
         expect(build(:track_segment, trait)).to be_valid
       end
+    end
+  end
+
+  describe 'scopes and predicates for manual correction' do
+    let(:track) { create(:track) }
+    let!(:auto)      { create(:track_segment, track: track, corrected_at: nil) }
+    let!(:corrected) { create(:track_segment, track: track, corrected_at: 2.days.ago) }
+
+    it 'returns auto-classified segments via .auto_classified' do
+      expect(TrackSegment.auto_classified).to contain_exactly(auto)
+    end
+
+    it 'returns user-corrected segments via .manually_corrected' do
+      expect(TrackSegment.manually_corrected).to contain_exactly(corrected)
+    end
+
+    it 'reports manually_corrected? based on corrected_at presence' do
+      expect(corrected.manually_corrected?).to be true
+      expect(auto.manually_corrected?).to be false
     end
   end
 end

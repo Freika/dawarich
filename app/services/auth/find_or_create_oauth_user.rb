@@ -3,6 +3,7 @@
 module Auth
   class FindOrCreateOauthUser
     class UnverifiedEmail < StandardError; end
+    class AccountPendingDeletion < StandardError; end
 
     class MissingOauthEmail < StandardError
       attr_reader :provider, :uid
@@ -15,12 +16,14 @@ module Auth
     end
 
     class LinkVerificationSent < StandardError
-      attr_reader :user, :provider, :uid
+      attr_reader :user, :provider, :uid, :rate_limited, :retry_after
 
-      def initialize(user:, provider:, uid:)
+      def initialize(user:, provider:, uid:, rate_limited: false, retry_after: nil)
         @user = user
         @provider = provider
         @uid = uid
+        @rate_limited = rate_limited
+        @retry_after = retry_after
         super('OAuth account link verification required for existing email')
       end
     end
@@ -28,36 +31,76 @@ module Auth
     LINK_EMAIL_RATE_LIMIT_WINDOW = 1.hour
     LINK_EMAIL_RATE_LIMIT_KEY_PREFIX = 'oauth_account_link:rate_limit:'
 
+    # Stores the send time so a rate-limited retry can report how long is left.
+    def self.acquire_rate_limit(user_id)
+      Rails.cache.write(
+        "#{LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{user_id}", Time.current.to_i,
+        expires_in: LINK_EMAIL_RATE_LIMIT_WINDOW,
+        unless_exist: true
+      )
+    end
+
+    def self.rate_limit_retry_after(user_id)
+      window = LINK_EMAIL_RATE_LIMIT_WINDOW.to_i
+      sent_at = Rails.cache.read("#{LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{user_id}")
+      return window unless sent_at.is_a?(Integer)
+
+      (window - (Time.current.to_i - sent_at)).clamp(1, window)
+    end
+
     PROVIDERS_REQUIRING_EMAIL = %w[apple].freeze
 
-    def initialize(provider:, provider_label:, claims:, email_verified:, on_email_collision: :send_email)
+    def initialize(provider:, provider_label:, claims:, email_verified:, name_attrs: nil,
+                   on_email_collision: :send_email, allow_registration: true)
       @provider = provider
       @provider_label = provider_label
       @claims = claims
       @uid = claims[:sub].to_s
       @email = claims[:email].to_s.downcase
       @email_verified = email_verified
+      @name_attrs = name_attrs || {}
       @on_email_collision = on_email_collision
+      @allow_registration = allow_registration
     end
 
     def call
-      by_identity = User.find_by(provider: @provider, uid: @uid)
+      by_identity = User.unscoped.find_by(provider: @provider, uid: @uid)
+      raise AccountPendingDeletion if by_identity&.deleted?
       return [by_identity, false] if by_identity
 
       if @email.present?
-        existing = User.find_by(email: @email)
+        # unscoped: the soft-delete default scope would hide a pending-deletion
+        # row and let the insert below fail on the unique email index instead.
+        existing = User.unscoped.find_by(email: @email)
+        raise AccountPendingDeletion if existing&.deleted?
         return handle_email_collision(existing) if existing
       end
 
-      [create_new_user, true]
-    rescue ActiveRecord::RecordNotUnique
-      retry_existing = @email.present? ? User.find_by(email: @email) : nil
-      raise if retry_existing.nil?
+      return [nil, false] unless @allow_registration
 
-      handle_email_collision(retry_existing)
+      [create_new_user, true]
+    rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid => e
+      recover_from_create_conflict(e)
     end
 
     private
+
+    # A concurrent sign-in for the same email/identity can land between the
+    # lookups in #call and the insert in #create_new_user. The email-uniqueness
+    # validation raises RecordInvalid (not RecordNotUnique), so both have to be
+    # rescued and re-resolved idempotently: same (provider, uid) → log them in;
+    # same email under a different identity → the normal collision flow.
+    def recover_from_create_conflict(error)
+      by_identity = User.unscoped.find_by(provider: @provider, uid: @uid)
+      raise AccountPendingDeletion if by_identity&.deleted?
+      return [by_identity, false] if by_identity
+
+      existing = @email.present? ? User.unscoped.find_by(email: @email) : nil
+      raise error if existing.nil?
+      raise AccountPendingDeletion if existing.deleted?
+
+      handle_email_collision(existing)
+    end
 
     def handle_email_collision(existing)
       raise UnverifiedEmail unless @email_verified
@@ -67,8 +110,11 @@ module Auth
         return [existing, false]
       end
 
-      send_verification_email(existing) if @on_email_collision == :send_email
-      raise LinkVerificationSent.new(user: existing, provider: @provider, uid: @uid)
+      rate_limited = (@on_email_collision == :send_email) && send_verification_email(existing) == :rate_limited
+      raise LinkVerificationSent.new(
+        user: existing, provider: @provider, uid: @uid, rate_limited: rate_limited,
+        retry_after: (self.class.rate_limit_retry_after(existing.id) if rate_limited)
+      )
     end
 
     def auto_link_allowed?
@@ -76,13 +122,7 @@ module Auth
     end
 
     def send_verification_email(existing_user)
-      cache_key = "#{LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{existing_user.id}"
-      acquired = Rails.cache.write(
-        cache_key, true,
-        expires_in: LINK_EMAIL_RATE_LIMIT_WINDOW,
-        unless_exist: true
-      )
-      return unless acquired
+      return :rate_limited unless self.class.acquire_rate_limit(existing_user.id)
 
       token = Auth::IssueAccountLinkToken.new(
         existing_user, provider: @provider, uid: @uid
@@ -98,6 +138,7 @@ module Auth
         provider_label: @provider_label,
         link_url: link_url
       )
+      :sent
     end
 
     def default_mailer_host
@@ -117,7 +158,9 @@ module Auth
         email: @email.presence || "#{@uid}@#{@provider}.dawarich.app",
         password: SecureRandom.hex(32),
         provider: @provider,
-        uid: @uid
+        uid: @uid,
+        first_name: @name_attrs[:first_name].presence,
+        last_name: @name_attrs[:last_name].presence
       }
       attrs.merge!(status: :pending_payment, skip_auto_trial: true) unless DawarichSettings.self_hosted?
 

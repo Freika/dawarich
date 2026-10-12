@@ -9,7 +9,7 @@ module OmniauthHelpers
       uid: '123545',
       info: {
         email: email,
-        name: 'Test User',
+        name: 'Ada Lovelace',
         image: 'https://avatars.githubusercontent.com/u/123545'
       },
       credentials: {
@@ -20,7 +20,7 @@ module OmniauthHelpers
         raw_info: {
           login: 'testuser',
           avatar_url: 'https://avatars.githubusercontent.com/u/123545',
-          name: 'Test User',
+          name: 'Ada Lovelace',
           email: email
         }
       }
@@ -33,7 +33,9 @@ module OmniauthHelpers
       uid: '123545',
       info: {
         email: email,
-        name: 'Test User',
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        name: 'Ada Lovelace',
         image: 'https://lh3.googleusercontent.com/a/test'
       },
       credentials: {
@@ -45,9 +47,9 @@ module OmniauthHelpers
         raw_info: {
           email: email,
           email_verified: true,
-          name: 'Test User',
-          given_name: 'Test',
-          family_name: 'User',
+          name: 'Ada Lovelace',
+          given_name: 'Ada',
+          family_name: 'Lovelace',
           picture: 'https://lh3.googleusercontent.com/a/test'
         }
       }

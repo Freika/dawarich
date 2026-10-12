@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'POST /api/v1/auth/login', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let!(:user) { create(:user, email: 'me@example.com', password: 'secret123456') }
 
   before do
@@ -32,6 +34,38 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
   it 'returns 401 on unknown email' do
     post '/api/v1/auth/login', params: { email: 'nope@example.com', password: 'secret123456' }
     expect(response).to have_http_status(:unauthorized)
+  end
+
+  describe 'email whitespace/case normalisation on lookup' do
+    # Mirrors Devise's `config.strip_whitespace_keys = [:email]` and the
+    # `logins/api_email` Rack::Attack throttle's `downcase.strip` key, so the
+    # controller's lookup must strip *and* downcase the param the same way.
+
+    it 'logs in when the email has leading/trailing whitespace' do
+      post '/api/v1/auth/login',
+           params: { email: '  me@example.com  ', password: 'secret123456' }
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body['api_key']).to eq(user.api_key)
+      expect(body['user_id']).to eq(user.id)
+    end
+
+    it 'still runs a bcrypt comparison on the padded unknown-email path' do
+      # The constant-time dummy-password comparison must still fire when the
+      # (stripped) lookup misses, so padded unknown emails don't leak account
+      # existence through response timing.
+      expect(BCrypt::Password).to receive(:new).and_call_original.at_least(:once)
+      post '/api/v1/auth/login',
+           params: { email: '  no-such-user@example.com  ', password: 'whatever' }
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'still returns 401 when the email param is missing or blank' do
+      post '/api/v1/auth/login', params: { password: 'secret123456' }
+      expect(response).to have_http_status(:unauthorized)
+      post '/api/v1/auth/login', params: { email: '   ', password: 'secret123456' }
+      expect(response).to have_http_status(:unauthorized)
+    end
   end
 
   describe 'shared API middleware' do
@@ -106,44 +140,57 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
     end
   end
 
+  # The published API contract for POST /api/v1/auth/login is application/json
+  # (spec/swagger/api/v1/auth/sessions_controller_spec.rb `consumes 'application/json'`),
+  # and form-encoded bodies diverge one middleware layer below from JSON at the
+  # rack-attack layer (Rack::Request#params ignores application/json). Every
+  # brute-force case below is therefore exercised against the production JSON
+  # shape, with one form-encoded guard so the legacy body parser is not lost.
   describe 'brute-force protection' do
-    it 'throttles repeated attempts against the same email to 5 per minute' do
+    # Rack::Attack throttle windows are aligned to epoch minutes, so a
+    # multi-second burst of slow bcrypt requests can straddle a window
+    # boundary and split the counter across two windows. Freeze time so
+    # every request in an example lands in the same window.
+    before { freeze_time }
+    after { travel_back }
+
+    it 'throttles repeated JSON attempts against the same email to 5 per minute' do
       5.times do
         post '/api/v1/auth/login',
-             params: { email: 'me@example.com', password: 'wrong' }
+             params: { email: 'me@example.com', password: 'wrong' }, as: :json
         expect(response).to have_http_status(:unauthorized)
       end
       post '/api/v1/auth/login',
-           params: { email: 'me@example.com', password: 'wrong' }
+           params: { email: 'me@example.com', password: 'wrong' }, as: :json
       expect(response).to have_http_status(:too_many_requests)
     end
 
-    it 'normalises email casing/whitespace so case variations share the same bucket' do
+    it 'normalises email casing/whitespace so case variations share the same bucket (JSON body)' do
       5.times do
         post '/api/v1/auth/login',
-             params: { email: 'me@example.com', password: 'wrong' }
+             params: { email: 'me@example.com', password: 'wrong' }, as: :json
       end
       post '/api/v1/auth/login',
-           params: { email: '  ME@Example.com  ', password: 'wrong' }
+           params: { email: '  ME@Example.com  ', password: 'wrong' }, as: :json
       expect(response).to have_http_status(:too_many_requests)
     end
 
-    it 'throttles repeated attempts from the same IP across many emails to 20 per minute' do
+    it 'throttles repeated JSON attempts from the same IP across many emails to 20 per minute' do
       # 20 attempts from this IP, each with a different email so the email throttle
       # does not fire (each email still under the per-email limit of 5).
       20.times do |i|
         post '/api/v1/auth/login',
-             params: { email: "user#{i}@example.com", password: 'wrong' }
+             params: { email: "user#{i}@example.com", password: 'wrong' }, as: :json
       end
       post '/api/v1/auth/login',
-           params: { email: 'user-final@example.com', password: 'wrong' }
+           params: { email: 'user-final@example.com', password: 'wrong' }, as: :json
       expect(response).to have_http_status(:too_many_requests)
     end
 
     it 'returns the shared rate-limit error envelope when throttled' do
       6.times do
         post '/api/v1/auth/login',
-             params: { email: 'me@example.com', password: 'wrong' }
+             params: { email: 'me@example.com', password: 'wrong' }, as: :json
       end
       expect(response).to have_http_status(:too_many_requests)
       body = JSON.parse(response.body)
@@ -154,11 +201,22 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
     it 'still permits a successful login while under the limit' do
       4.times do
         post '/api/v1/auth/login',
-             params: { email: 'me@example.com', password: 'wrong' }
+             params: { email: 'me@example.com', password: 'wrong' }, as: :json
       end
       post '/api/v1/auth/login',
-           params: { email: 'me@example.com', password: 'secret123456' }
+           params: { email: 'me@example.com', password: 'secret123456' }, as: :json
       expect(response).to have_http_status(:ok)
+    end
+
+    it 'still throttles form-encoded bodies (legacy/client form posts)' do
+      5.times do
+        post '/api/v1/auth/login',
+             params: { email: 'me@example.com', password: 'wrong' }
+        expect(response).to have_http_status(:unauthorized)
+      end
+      post '/api/v1/auth/login',
+           params: { email: 'me@example.com', password: 'wrong' }
+      expect(response).to have_http_status(:too_many_requests)
     end
   end
 end

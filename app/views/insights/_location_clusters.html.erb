@@ -3,7 +3,7 @@
   <div class="card-body p-5">
     <h2 class="card-title text-lg flex items-center gap-2">
       <%= icon 'map-pin', class: 'w-5 h-5 text-primary' %>
-      Top Visited Locations
+      <%= t('.top_visited_locations') %>
     </h2>
 
     <% if @top_visited_locations.present? %>
@@ -21,11 +21,11 @@
             <div class="grid grid-cols-2 gap-2 text-center">
               <div>
                 <div class="text-xl font-bold"><%= location[:visit_count] %></div>
-                <div class="text-xs text-base-content/60"><%= 'visit'.pluralize(location[:visit_count]) %></div>
+                <div class="text-xs text-base-content/60"><%= t('.visit_count', count: location[:visit_count]) %></div>
               </div>
               <div>
                 <div class="text-xl font-bold"><%= format_location_time(location[:total_duration]) %></div>
-                <div class="text-xs text-base-content/60">total time</div>
+                <div class="text-xs text-base-content/60"><%= t('.total_time') %></div>
               </div>
             </div>
           </div>
@@ -35,8 +35,8 @@
       <div class="text-center py-8 text-base-content/60">
         <div class="flex flex-col items-center gap-2">
           <%= icon 'map-pin', class: 'w-8 h-8 opacity-50' %>
-          <p>No visit data available for this period.</p>
-          <p class="text-sm">Confirmed visits will appear here.</p>
+          <p><%= t('.no_visit_data_available_for_this_period') %></p>
+          <p class="text-sm"><%= t('.confirmed_visits_will_appear_here') %></p>
         </div>
       </div>
     <% end %>

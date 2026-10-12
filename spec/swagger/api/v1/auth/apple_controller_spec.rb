@@ -43,8 +43,6 @@ describe 'Auth Apple API', type: :request do
 
         let(:payload) { { id_token: 'fake_token' } }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -61,6 +59,39 @@ describe 'Auth Apple API', type: :request do
         let(:payload) { { id_token: 'bad_token' } }
 
         run_test!
+      end
+
+      response '429', 'a verification email for this address was already sent within the last hour' do
+        schema type: :object,
+               properties: { error: { type: :string }, message: { type: :string } }
+        header 'Retry-After', schema: { type: :string },
+                              description: 'Seconds until another verification email can be requested'
+
+        before do
+          existing = create(:user, email: 'apple@example.com')
+          Auth::FindOrCreateOauthUser.acquire_rate_limit(existing.id)
+        end
+
+        let(:payload) { { id_token: 'fake_token' } }
+
+        run_test! do |response|
+          expect(response.parsed_body['error']).to eq('verification_rate_limited')
+        end
+      end
+
+      response '409', 'account deletion is in progress' do
+        schema type: :object,
+               properties: { error: { type: :string }, message: { type: :string } }
+
+        before do
+          create(:user, email: 'apple@example.com').mark_as_deleted!
+        end
+
+        let(:payload) { { id_token: 'fake_token' } }
+
+        run_test! do |response|
+          expect(response.parsed_body['error']).to eq('account_pending_deletion')
+        end
       end
     end
   end

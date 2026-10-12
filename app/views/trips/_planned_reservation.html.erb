@@ -1,0 +1,18 @@
+<li class="flex items-start gap-2 text-sm">
+  <%= icon 'calendar-check-2', class: 'mt-0.5 size-4 shrink-0 text-base-content/50' %>
+  <div class="min-w-0">
+    <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span class="font-medium [overflow-wrap:anywhere]"><%= reservation.title %></span>
+      <% if reservation.status.present? %>
+        <span class="badge badge-ghost badge-sm"><%= planned_reservation_status(reservation.status) %></span>
+      <% end %>
+    </p>
+    <% details = [(l(reservation.starts_at, format: :short) if reservation.starts_at), reservation.location.presence].compact %>
+    <% if details.any? %>
+      <p class="text-xs tabular-nums text-base-content/60"><%= details.join(' · ') %></p>
+    <% end %>
+    <% if reservation.notes.present? %>
+      <p class="mt-0.5 whitespace-pre-line text-xs text-base-content/70"><%= reservation.notes %></p>
+    <% end %>
+  </div>
+</li>

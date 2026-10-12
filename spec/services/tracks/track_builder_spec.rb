@@ -303,6 +303,48 @@ RSpec.describe Tracks::TrackBuilder do
     end
   end
 
+  describe '#update_dominant_mode' do
+    let(:track) { create(:track, user: user, dominant_mode: :unknown) }
+
+    it 'is a no-op for empty segment_data' do
+      expect { builder.update_dominant_mode(track, []) }.not_to(change { track.reload.dominant_mode })
+    end
+
+    it 'picks the longest-distance moving mode when mixed with stationary' do
+      segment_data = [
+        { mode: :stationary, distance: 10_000, duration: 7200 },
+        { mode: :walking,    distance: 200,    duration: 300 },
+        { mode: :driving,    distance: 5_000,  duration: 600 }
+      ]
+
+      builder.update_dominant_mode(track, segment_data)
+
+      expect(track.reload.dominant_mode).to eq('driving')
+    end
+
+    it 'falls back to longest-duration mode when no moving segment crosses the distance threshold' do
+      segment_data = [
+        { mode: :stationary, distance: 0,  duration: 3600 },
+        { mode: :stationary, distance: 0,  duration: 1800 },
+        { mode: :walking,    distance: 10, duration: 60 }
+      ]
+
+      builder.update_dominant_mode(track, segment_data)
+
+      expect(track.reload.dominant_mode).to eq('stationary')
+    end
+
+    it 'tolerates nil distance and duration via Track.pick_dominant_mode#to_i coercion' do
+      segment_data = [
+        { mode: :walking, distance: nil, duration: nil },
+        { mode: :driving, distance: 5_000, duration: 600 }
+      ]
+
+      expect { builder.update_dominant_mode(track, segment_data) }.not_to raise_error
+      expect(track.reload.dominant_mode).to eq('driving')
+    end
+  end
+
   describe 'user method requirement' do
     let(:invalid_class) do
       Class.new do
@@ -317,6 +359,36 @@ RSpec.describe Tracks::TrackBuilder do
         NotImplementedError,
         'Including class must implement user method'
       )
+    end
+  end
+
+  describe 'honors user-disabled transportation modes during initial detection' do
+    let(:user) do
+      create(:user, settings: {
+               'enabled_transportation_modes' => %w[stationary walking driving],
+               'time_threshold_minutes' => '30'
+             })
+    end
+
+    let!(:points) do
+      base = 1.hour.ago.to_i
+      coords = 8.times.map do |i|
+        [-74.0060 + (i * 0.0010), 40.7128 + (i * 0.0005)]
+      end
+      coords.each_with_index.map do |(lon, lat), i|
+        create(:point, user: user,
+                       lonlat: "POINT(#{lon} #{lat})",
+                       timestamp: base + (i * 30),
+                       altitude: 100,
+                       velocity: 4.5)
+      end
+    end
+
+    it 'does not assign cycling segments when cycling is disabled by the user' do
+      builder.create_track_from_points(points, 1200)
+
+      modes = TrackSegment.all.pluck(:transportation_mode)
+      expect(modes).not_to include('cycling')
     end
   end
 

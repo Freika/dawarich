@@ -1,0 +1,14 @@
+<%= render 'shared_links/modal',
+           resource: @trip,
+           share: @share,
+           title: t('.share_trip', trip: @trip.name),
+           subtitle: t('.trip_is_shared_via_a_public_link', trip: @trip.name),
+           close_path: trip_path(@trip),
+           paths: {
+             create:            trip_share_link_path(@trip),
+             revoke:            revoke_trip_share_link_path(@trip),
+             regenerate:        regenerate_trip_share_link_path(@trip),
+             regenerate_phrase: regenerate_phrase_trip_share_link_path(@trip),
+             destroy:           trip_share_link_path(@trip)
+           },
+           create_form_partial: 'shared_links/modal_trip_create_form' %>

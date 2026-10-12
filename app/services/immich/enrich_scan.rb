@@ -13,8 +13,10 @@ class Immich::EnrichScan
   end
 
   def call
-    return error_result('Immich URL is missing') if user.safe_settings.immich_url.blank?
-    return error_result('Immich API key is missing') if user.safe_settings.immich_api_key.blank?
+    return error_result(I18n.t('services.immich.configuration.url_missing')) if user.safe_settings.immich_url.blank?
+    if user.safe_settings.immich_api_key.blank?
+      return error_result(I18n.t('services.immich.configuration.api_key_missing'))
+    end
 
     immich_data = fetch_immich_photos
     return error_result(immich_data[:error]) if immich_data[:error]
@@ -33,7 +35,7 @@ class Immich::EnrichScan
 
   def fetch_immich_photos
     photos = Immich::RequestPhotos.new(user, start_date: start_date || '1970-01-01', end_date:).call
-    return { error: 'Failed to fetch photos from Immich' } if photos.nil?
+    return { error: I18n.t('services.immich.enrich_scan.failed_to_fetch_photos_from_immich') } if photos.nil?
 
     { photos: photos }
   end
@@ -62,7 +64,8 @@ class Immich::EnrichScan
     points = user.points
                  .where(timestamp: min_ts..max_ts)
                  .where.not(lonlat: nil)
-                 .order(:timestamp)
+                 .select(:id, :timestamp, :lonlat)
+                 .order(:timestamp, :id)
                  .to_a
 
     return [] if points.empty?
@@ -108,13 +111,44 @@ class Immich::EnrichScan
   def build_interpolated_match(photo, photo_ts, before_point, after_point)
     gap = after_point.timestamp - before_point.timestamp
     fraction = (photo_ts - before_point.timestamp).to_f / gap
-
-    lat = before_point.lat + (after_point.lat - before_point.lat) * fraction
-    lon = before_point.lon + (after_point.lon - before_point.lon) * fraction
+    lat, lon = great_circle_interpolate(before_point, after_point, fraction)
 
     nearest_ts = fraction <= 0.5 ? before_point.timestamp : after_point.timestamp
 
     build_match(photo, photo_ts, lat, lon, (photo_ts - nearest_ts).abs, 'interpolated')
+  end
+
+  def great_circle_interpolate(before_point, after_point, fraction)
+    from = spherical_vector(before_point.lat, before_point.lon)
+    to = spherical_vector(after_point.lat, after_point.lon)
+    angle = Math.acos(from.zip(to).sum { |left, right| left * right }.clamp(-1.0, 1.0))
+    sine = Math.sin(angle)
+
+    return [before_point.lat, before_point.lon] if angle.abs < Float::EPSILON
+    return linear_interpolate(before_point, after_point, fraction) if sine.abs < Float::EPSILON
+
+    from_weight = Math.sin((1 - fraction) * angle) / sine
+    to_weight = Math.sin(fraction * angle) / sine
+    x, y, z = from.zip(to).map { |left, right| (from_weight * left) + (to_weight * right) }
+
+    [
+      Math.atan2(z, Math.sqrt((x * x) + (y * y))) * 180 / Math::PI,
+      Math.atan2(y, x) * 180 / Math::PI
+    ]
+  end
+
+  def spherical_vector(latitude, longitude)
+    lat = latitude * Math::PI / 180
+    lon = longitude * Math::PI / 180
+
+    [Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)]
+  end
+
+  def linear_interpolate(before_point, after_point, fraction)
+    [
+      before_point.lat + ((after_point.lat - before_point.lat) * fraction),
+      before_point.lon + ((after_point.lon - before_point.lon) * fraction)
+    ]
   end
 
   def build_nearest_match(photo, photo_ts, point)
@@ -134,7 +168,9 @@ class Immich::EnrichScan
   end
 
   def parse_photo_timestamp(photo)
-    time_str = photo.dig('exifInfo', 'dateTimeOriginal') || photo['localDateTime']
+    time_str = photo['fileCreatedAt'] ||
+               photo.dig('exifInfo', 'dateTimeOriginal') ||
+               photo['localDateTime']
     return nil if time_str.blank?
 
     Time.parse(time_str).utc.to_i

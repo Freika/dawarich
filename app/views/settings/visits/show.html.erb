@@ -1,0 +1,53 @@
+<% content_for :title, t('.visit_detection') %>
+
+<div class="min-h-content w-full my-5">
+  <%= render 'shared/page_header', title: t('.visit_detection') %>
+  <%= render 'settings/navigation' %>
+
+  <div class="card bg-base-200 shadow-xl mb-6" data-controller="visit-detection-settings">
+    <%= form_with url: settings_visits_path, method: :patch, local: true do |f| %>
+      <div class="card-body">
+        <h2 class="text-2xl font-bold mb-2"><%= t('.tune_how_dawarich_decides_where_you_actually_were') %></h2>
+        <p class="text-sm opacity-80 mb-4">
+          <%= t('.these_settings_control_how_the_app_groups_your_gps_points') %>
+        </p>
+
+        <%= fields_for :settings do |sf| %>
+          <div class="form-control mb-4">
+            <%= sf.label :visit_radius_meters, t('.visit_radius_meters'), class: 'label-text font-semibold' %>
+            <%= sf.number_field :visit_radius_meters,
+                                value: current_user.safe_settings.visit_radius_meters,
+                                in: 5..500, step: 1,
+                                class: 'input input-bordered w-32' %>
+            <span class="text-xs opacity-70 mt-1"><%= t('.points_within_this_radius_are_treated_as_the_same_visit') %></span>
+          </div>
+
+          <div class="form-control mb-4">
+            <%= sf.label :visit_min_points, t('.minimum_points_to_count_as_a_visit'), class: 'label-text font-semibold' %>
+            <%= sf.number_field :visit_min_points,
+                                value: current_user.safe_settings.visit_min_points,
+                                in: 2..20, step: 1,
+                                class: 'input input-bordered w-32' %>
+            <span class="text-xs opacity-70 mt-1"><%= t('.lower_more_visits_suggested_including_brief_stops_default_3') %></span>
+          </div>
+
+          <div class="form-control mb-4">
+            <%= sf.label :visit_min_duration_minutes, t('.minimum_visit_duration_minutes'), class: 'label-text font-semibold' %>
+            <%= sf.number_field :visit_min_duration_minutes,
+                                value: current_user.safe_settings.visit_min_duration_minutes,
+                                in: 1..60, step: 1,
+                                class: 'input input-bordered w-32' %>
+            <span class="text-xs opacity-70 mt-1"><%= t('.skip_stops_shorter_than_this_raise_to_ignore_short_drive') %></span>
+          </div>
+
+        <% end %>
+
+        <div class="card-actions justify-end">
+          <%= f.submit t('.save_settings'), class: 'btn btn-primary' %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <%= render 'redetect_panel' %>
+</div>

@@ -96,6 +96,42 @@ RSpec.describe 'Api::V1::Users::Destroy', type: :request do
         expect(response).to have_http_status(:unauthorized)
         expect(user.reload.deleted_at).to be_nil
       end
+
+      context 'when the user is an OIDC user (unknowable password)' do
+        let(:user) do
+          create(:user, provider: 'openid_connect', uid: 'oidc-api-1', password: SecureRandom.hex(16))
+        end
+
+        it 'soft-deletes when confirm_email matches' do
+          expect do
+            delete '/api/v1/users/me', params: { confirm_email: user.email.upcase }, headers: headers
+          end.to have_enqueued_job(Users::DestroyJob).with(user.id)
+
+          expect(user.reload.deleted_at).to be_present
+        end
+
+        it 'returns 401 when confirm_email is wrong' do
+          delete '/api/v1/users/me', params: { confirm_email: 'nope@example.com' }, headers: headers
+
+          expect(response).to have_http_status(:unauthorized)
+          expect(user.reload.deleted_at).to be_nil
+        end
+
+        it 'returns 401 when confirm_email is missing' do
+          delete '/api/v1/users/me', headers: headers
+
+          expect(response).to have_http_status(:unauthorized)
+          expect(user.reload.deleted_at).to be_nil
+        end
+
+        it 'accepts a valid password from a linked user who knows one' do
+          expect do
+            delete '/api/v1/users/me', params: { password: user.password }, headers: headers
+          end.to have_enqueued_job(Users::DestroyJob).with(user.id)
+
+          expect(user.reload.deleted_at).to be_present
+        end
+      end
     end
 
     context 'when the user owns a family with other members' do

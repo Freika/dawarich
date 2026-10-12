@@ -44,8 +44,34 @@ RSpec.describe OwnTracks::PointCreator do
     expect(user.points_count).to eq(Point.where(user_id: user.id).count)
   end
 
+  it 'enqueues VisitSuggestingJob when reverse geocoding is enabled (regression for #1749)' do
+    configure_instance_geocoding
+
+    expect { call_service }.to have_enqueued_job(VisitSuggestingJob)
+      .with(hash_including(user_id: user.id))
+  end
+
+  it 'does not enqueue VisitSuggestingJob when reverse geocoding is disabled' do
+    expect { call_service }.not_to have_enqueued_job(VisitSuggestingJob)
+  end
+
   context 'when params are invalid' do
     let(:point_params) { { lat: nil } }
+
+    it 'returns an empty array' do
+      expect(call_service).to eq([])
+    end
+  end
+
+  context 'when the payload is at Null Island (0,0)' do
+    let(:point_params) do
+      parsed = OwnTracks::RecParser.new(File.read(file_path)).call.first
+      parsed.merge('lat' => 0.0, 'lon' => 0.0, lat: 0.0, lon: 0.0)
+    end
+
+    it 'drops the point' do
+      expect { call_service }.not_to(change { Point.where(user:).count })
+    end
 
     it 'returns an empty array' do
       expect(call_service).to eq([])

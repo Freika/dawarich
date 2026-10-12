@@ -12,11 +12,26 @@ module Auth
     def call
       raise InvalidToken, 'blank token' if @id_token.blank?
 
-      client_ids = [ENV['GOOGLE_IOS_CLIENT_ID'], ENV['GOOGLE_ANDROID_CLIENT_ID']].compact
+      client_ids = [
+        ENV['GOOGLE_IOS_CLIENT_ID'],
+        ENV['GOOGLE_ANDROID_CLIENT_ID'],
+        ENV['GOOGLE_OAUTH_CLIENT_ID']
+      ].compact
       raise InvalidToken, 'Google client IDs not configured' if client_ids.empty?
 
-      claims = GoogleIDToken::Validator.new.check(@id_token, client_ids)
-      raise InvalidToken, 'validator returned nil' if claims.nil?
+      validator = GoogleIDToken::Validator.new
+      claims = nil
+      audience_error = nil
+
+      client_ids.each do |client_id|
+        claims = validator.check(@id_token, client_id)
+        break if claims
+      rescue GoogleIDToken::AudienceMismatchError => e
+        audience_error = e
+        next
+      end
+
+      raise InvalidToken, audience_error&.message || 'validator returned nil' if claims.nil?
 
       claims = claims.symbolize_keys
       verify_nonce!(claims)

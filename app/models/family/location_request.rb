@@ -24,7 +24,7 @@ class Family::LocationRequest < ApplicationRecord
   def requester_cannot_be_target
     return unless requester_id.present? && requester_id == target_user_id
 
-    errors.add(:requester_id, 'cannot request your own location')
+    errors.add(:requester_id, I18n.t('models.family.location_request.cannot_request_your_own_location'))
   end
 
   def set_defaults

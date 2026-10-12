@@ -22,7 +22,10 @@ class OwnTracks::Importer
     points_data = parsed_data.map do |point|
       next unless point_valid?(point)
 
-      OwnTracks::Params.new(point).call.merge(
+      attrs = OwnTracks::Params.new(point, include_raw_data: false).call
+      next unless attrs
+
+      attrs.merge(
         import_id: import.id,
         user_id: user_id,
         created_at: Time.current,

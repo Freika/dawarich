@@ -11,6 +11,8 @@ class Users::CreationWebhookJob < ApplicationJob
     payload = {
       user_id: user.id,
       email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
       active_until: user.active_until,
       status: user.status,
       action: 'create_user'

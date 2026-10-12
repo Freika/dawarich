@@ -161,8 +161,10 @@ RSpec.describe Insights::YearTotalsCalculator do
       it 'handles malformed data gracefully' do
         result = calculator.call
 
-        expect(result.countries_count).to eq(2) # Spain and Italy
-        expect(result.cities_count).to eq(0) # No valid cities
+        # Stat#toponyms sanitizes away all malformed city entries, so no
+        # country retains a valid city and none are counted.
+        expect(result.countries_count).to eq(0)
+        expect(result.cities_count).to eq(0)
       end
     end
 
@@ -211,6 +213,24 @@ RSpec.describe Insights::YearTotalsCalculator do
         result = calculator.call
 
         expect(result.biggest_month).to be_nil
+      end
+    end
+
+    context 'when a legacy stat has an invalid month' do
+      let!(:valid_stat) do
+        create(:stat, user:, year: 2024, month: 6, distance: 100_000, daily_distance: {}, toponyms: [])
+      end
+      let!(:invalid_stat) do
+        create(:stat, user:, year: 2024, month: 7, distance: 500_000, daily_distance: {}, toponyms: []).tap do |stat|
+          stat.update_column(:month, 13)
+        end
+      end
+      let(:stats) { user.stats.where(year: 2024) }
+
+      it 'ignores the invalid row when naming the biggest month' do
+        result = calculator.call
+
+        expect(result.biggest_month).to eq(month: 'June', distance: 100)
       end
     end
   end

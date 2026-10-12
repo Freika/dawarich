@@ -22,7 +22,7 @@ RSpec.describe Points::RawData::Verifier do
       # Create archive
       archiver = Points::RawData::Archiver.new
       archiver.archive_specific_month(user.id, test_date.year, test_date.month)
-      Points::RawDataArchive.last
+      Points::RawDataArchive.last.tap { |a| a.update_column(:verified_at, nil) }
     end
 
     it 'verifies a valid archive successfully' do
@@ -95,6 +95,77 @@ RSpec.describe Points::RawData::Verifier do
 
       expect(archive.reload.verified_at).to be_present
     end
+
+    it 'passes verification when raw_data was already cleared after archiving' do
+      archive_id = archive.id
+
+      Point.where(id: points.map(&:id)).update_all(raw_data: {})
+
+      expect do
+        verifier.verify_specific_archive(archive_id)
+      end.to change { archive.reload.verified_at }.from(nil)
+    end
+
+    it 'does not bump verified_at when re-verifying an already verified archive' do
+      original = 10.days.ago.change(usec: 0)
+      archive.update_column(:verified_at, original)
+
+      verifier.verify_specific_archive(archive.id)
+
+      expect(archive.reload.verified_at).to eq(original)
+    end
+
+    it 'unsets verified_at when a previously verified archive fails re-verification' do
+      archive.update_column(:verified_at, 10.days.ago)
+      archive.update_column(:point_ids_checksum, 'invalid')
+
+      verifier.verify_specific_archive(archive.id)
+
+      expect(archive.reload.verified_at).to be_nil
+    end
+
+    it 'keeps verified_at when a re-check fails only due to a download error' do
+      archive.update_column(:verified_at, 10.days.ago)
+      allow(Points::RawDataArchive).to receive(:find).with(archive.id).and_return(archive)
+      allow(archive.file.blob).to receive(:download).and_raise(StandardError, 'timeout')
+
+      verifier.verify_specific_archive(archive.id)
+
+      expect(archive.reload.verified_at).to be_present
+    end
+
+    it 'unsets verified_at when a re-check fails to decrypt the archive' do
+      archive.update_column(:verified_at, 10.days.ago)
+      allow(Points::RawData::Encryption)
+        .to receive(:decrypt_if_needed).and_raise(OpenSSL::Cipher::CipherError, 'bad decrypt')
+
+      verifier.verify_specific_archive(archive.id)
+
+      expect(archive.reload.verified_at).to be_nil
+    end
+
+    it 'reports how many points were already cleared when a verified archive fails re-check' do
+      archive.update_column(:verified_at, 10.days.ago)
+      archive.update_column(:point_ids_checksum, 'invalid')
+      Point.where(id: points.map(&:id)).update_all(raw_data: {}, raw_data_archive_id: archive.id)
+
+      expect(ExceptionReporter).to receive(:call).with(anything, %r{5/5 linked points already cleared})
+
+      verifier.verify_specific_archive(archive.id)
+    end
+
+    it 'skips raw_data comparison for points re-archived into a different archive' do
+      archive_id = archive.id
+      other_archive = create(:points_raw_data_archive, user: user, year: 2020, month: 1)
+
+      points.first.update_columns(
+        raw_data: { 'mutated' => true }, raw_data_archive_id: other_archive.id
+      )
+
+      expect do
+        verifier.verify_specific_archive(archive_id)
+      end.to change { archive.reload.verified_at }.from(nil)
+    end
   end
 
   describe 'encryption support' do
@@ -121,13 +192,13 @@ RSpec.describe Points::RawData::Verifier do
       expect(archive.verified_at).to be_present
     end
 
-    it 'detects content checksum tampering' do
+    it 'detects content checksum tampering and unsets verified_at' do
       archive.metadata['content_checksum'] = 'tampered_checksum'
       archive.save!
 
       expect do
         verifier.verify_specific_archive(archive.id)
-      end.not_to(change { archive.reload.verified_at })
+      end.to change { archive.reload.verified_at }.to(nil)
     end
   end
 
@@ -143,6 +214,7 @@ RSpec.describe Points::RawData::Verifier do
       # Archive them
       archiver = Points::RawData::Archiver.new
       archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      user.raw_data_archives.update_all(verified_at: nil)
     end
 
     it 'verifies all archives for a month' do
@@ -165,6 +237,7 @@ RSpec.describe Points::RawData::Verifier do
 
       archiver = Points::RawData::Archiver.new
       archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      user.raw_data_archives.update_all(verified_at: nil)
     end
 
     it 'verifies all unverified archives' do
@@ -197,6 +270,58 @@ RSpec.describe Points::RawData::Verifier do
 
       expect(result[:verified]).to eq(0)
       expect(result[:failed]).to eq(0)
+    end
+  end
+
+  describe 'metric emissions' do
+    let(:test_date) { 3.months.ago.beginning_of_month.utc }
+
+    let(:archive) do
+      create_list(:point, 3, user: user,
+                            timestamp: test_date.to_i,
+                            raw_data: { lon: 13.4, lat: 52.5 })
+
+      archiver = Points::RawData::Archiver.new
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      Points::RawDataArchive.last
+    end
+
+    it 'increments operations_total with verify/success on successful verification' do
+      expect do
+        verifier.verify_specific_archive(archive.id)
+      end.to increment_yabeda_counter(Yabeda.dawarich_archive.operations_total)
+        .with_tags(operation: 'verify', status: 'success')
+    end
+
+    it 'measures verification_duration_seconds with success status' do
+      expect do
+        verifier.verify_specific_archive(archive.id)
+      end.to measure_yabeda_histogram(Yabeda.dawarich_archive.verification_duration_seconds)
+        .with_tags(status: 'success')
+    end
+
+    context 'when verification fails' do
+      before { archive.update_column(:point_count, 999) }
+
+      it 'increments operations_total with verify/failure' do
+        expect do
+          verifier.verify_specific_archive(archive.id)
+        end.to increment_yabeda_counter(Yabeda.dawarich_archive.operations_total)
+          .with_tags(operation: 'verify', status: 'failure')
+      end
+
+      it 'measures verification_duration_seconds with failure status' do
+        expect do
+          verifier.verify_specific_archive(archive.id)
+        end.to measure_yabeda_histogram(Yabeda.dawarich_archive.verification_duration_seconds)
+          .with_tags(status: 'failure')
+      end
+
+      it 'increments verification_failures_total with check tag' do
+        expect do
+          verifier.verify_specific_archive(archive.id)
+        end.to increment_yabeda_counter(Yabeda.dawarich_archive.verification_failures_total)
+      end
     end
   end
 end

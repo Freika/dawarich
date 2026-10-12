@@ -1,0 +1,20 @@
+<div class="dropdown dropdown-end dropdown-open">
+  <div class="card card-compact w-72 bg-base-100 shadow-lg border border-base-300 absolute right-0 mt-2 z-[60]">
+    <div class="card-body">
+      <h3 class="font-semibold text-sm"><%= t('.stay_up_to_date') %></h3>
+      <p class="text-xs opacity-80">
+        <%= t('.get_a_what_s_new_notice_when_a_new_dawarich') %> <%= changelog_widget_host %><%= t('.like_any_web_request_that_host_sees_your_ip_address') %>
+      </p>
+      <div class="card-actions justify-end mt-1">
+        <%= button_to t('.no_thanks'), changelog_consent_path,
+              method: :patch, params: { decision: "declined" },
+              class: "btn btn-ghost btn-xs",
+              form: { data: { turbo_stream: true } } %>
+        <%= button_to t('.yes_notify_me'), changelog_consent_path,
+              method: :patch, params: { decision: "granted" },
+              class: "btn btn-primary btn-xs",
+              form: { data: { turbo_stream: true } } %>
+      </div>
+    </div>
+  </div>
+</div>

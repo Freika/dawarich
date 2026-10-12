@@ -37,6 +37,16 @@ RSpec.describe '/visits', type: :request do
       expect(response.location).to include('/map')
     end
 
+    it 'renders a plural-aware French success message in the Turbo response' do
+      user.persist_locale!(:fr)
+
+      patch bulk_update_visits_url(format: :turbo_stream),
+            params: { status: 'confirmed', source_status: 'suggested' }
+
+      expect(response).to have_http_status(:ok)
+      expect_flash_stream('3 visites confirmées.')
+    end
+
     it 'does not affect visits of other users' do
       other_user = create(:user)
       other_visit = create(:visit, user: other_user, status: :suggested)
@@ -142,6 +152,19 @@ RSpec.describe '/visits', type: :request do
         expect(response).not_to have_http_status(:unprocessable_content)
         expect(visit.reload.name).to eq('Original Name')
       end
+
+      it 'silently confirms a suggested visit when the user edits it' do
+        patch visit_url(visit), params: { visit: { name: 'Renamed by user' } }
+
+        expect(visit.reload.status).to eq('confirmed')
+        expect(visit.name).to eq('Renamed by user')
+      end
+
+      it 'does not override an explicit status from the edit' do
+        patch visit_url(visit), params: { visit: { status: :declined, name: 'Still declined' } }
+
+        expect(visit.reload.status).to eq('declined')
+      end
     end
 
     context 'with turbo_stream format' do
@@ -155,6 +178,22 @@ RSpec.describe '/visits', type: :request do
         expect(visit.reload.status).to eq('confirmed')
         expect_turbo_stream_response
         expect_turbo_stream_action('replace', "visit_entry_#{visit.id}")
+      end
+
+      it 'uses a feminine French status in the success message' do
+        user.persist_locale!(:fr)
+
+        patch visit_url(visit), params: { visit: { status: :confirmed } }, as: :turbo_stream
+
+        expect_flash_stream('Visite confirmée.')
+      end
+
+      it 'does not emit the removed review-flow streams (badge, day banner, filter counts)' do
+        patch visit_url(visit), params: { visit: { status: :confirmed } }, as: :turbo_stream
+
+        expect(response.body).not_to include('timeline-suggestions-badge')
+        expect(response.body).not_to include('day-banner-')
+        expect(response.body).not_to include('filter-count-')
       end
 
       it 'sets visit name from place when place_id is provided' do
@@ -267,15 +306,44 @@ RSpec.describe '/visits', type: :request do
   describe 'DELETE /destroy' do
     let!(:visit) { create(:visit, user:, status: :confirmed) }
 
-    it 'removes the visit' do
-      expect { delete visit_url(visit), as: :turbo_stream }.to change(Visit, :count).by(-1)
+    it 'soft-deletes the visit, keeping the row as a tombstone' do
+      expect { delete visit_url(visit), as: :turbo_stream }.not_to change(Visit, :count)
+
+      expect(visit.reload.deleted_at).to be_present
+      expect(Visit.active).not_to include(visit)
     end
 
-    it 'returns turbo_stream removing the visit row' do
+    it 'returns turbo_stream removing the correct visit_entry row' do
       delete visit_url(visit), as: :turbo_stream
 
       expect_turbo_stream_response
-      expect_turbo_stream_action('remove', "visit_item_#{visit.id}")
+      expect_turbo_stream_action('remove', "visit_entry_#{visit.id}")
+    end
+
+    it 'does NOT emit the old visit_item target' do
+      delete visit_url(visit), as: :turbo_stream
+
+      expect(response.body).not_to include("visit_item_#{visit.id}")
+    end
+
+    it 'does not emit the removed review-flow streams (banner, filter counts, badge)' do
+      delete visit_url(visit), as: :turbo_stream
+
+      expect(response.body).not_to include('day-banner-')
+      expect(response.body).not_to include('filter-count-')
+      expect(response.body).not_to include('timeline-suggestions-badge')
+    end
+
+    it 'includes the calendar frame stream' do
+      delete visit_url(visit), as: :turbo_stream
+
+      expect_turbo_stream_action('replace', 'timeline-calendar-frame')
+    end
+
+    it 'includes the success flash message' do
+      delete visit_url(visit), as: :turbo_stream
+
+      expect_flash_stream('Visit removed. Your location points are still here.')
     end
 
     it 'busts the MonthSummary cache for the visit month' do
@@ -380,6 +448,260 @@ RSpec.describe '/visits', type: :request do
            params: { visit_ids: [visit_a.id, visit_b.id] }
 
       expect(Rails.cache.read(cache_key)).to be_nil
+    end
+  end
+
+  describe 'PATCH /bulk_update with visit_ids (selection mode)' do
+    let!(:visit_a) { create(:visit, user:, status: :suggested) }
+    let!(:visit_b) { create(:visit, user:, status: :suggested) }
+    let!(:visit_c) { create(:visit, user:, status: :suggested) }
+
+    it 'confirms only the selected visits, not the rest' do
+      patch bulk_update_visits_url, params: { status: 'confirmed', visit_ids: [visit_a.id, visit_b.id] }
+
+      expect(visit_a.reload.status).to eq('confirmed')
+      expect(visit_b.reload.status).to eq('confirmed')
+      expect(visit_c.reload.status).to eq('suggested')
+    end
+
+    it 'declines only the selected visits' do
+      patch bulk_update_visits_url, params: { status: 'declined', visit_ids: [visit_a.id] }
+
+      expect(visit_a.reload.status).to eq('declined')
+      expect(visit_b.reload.status).to eq('suggested')
+    end
+
+    it 'rejects the whole batch when an id belongs to another user' do
+      other_user_visit = create(:visit, user: create(:user), status: :suggested)
+
+      patch bulk_update_visits_url(format: :turbo_stream),
+            params: { status: 'confirmed', visit_ids: [visit_a.id, other_user_visit.id] }
+
+      expect(response).to have_http_status(:not_found)
+      expect(visit_a.reload.status).to eq('suggested')
+      expect(other_user_visit.reload.status).to eq('suggested')
+    end
+
+    it 'falls back to source_status scoping when visit_ids is absent' do
+      patch bulk_update_visits_url, params: { status: 'confirmed', source_status: 'suggested' }
+
+      expect([visit_a, visit_b, visit_c].each(&:reload).map(&:status)).to all(eq('confirmed'))
+    end
+
+    it 'rejects when more than the maximum number of visit_ids are submitted' do
+      ids = (1..(VisitsController::MAX_BULK_VISIT_IDS + 1)).to_a
+
+      patch bulk_update_visits_url(format: :turbo_stream), params: { status: 'confirmed', visit_ids: ids }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include(VisitsController::MAX_BULK_VISIT_IDS.to_s)
+      expect([visit_a, visit_b, visit_c].each(&:reload).map(&:status)).to all(eq('suggested'))
+    end
+
+    it 'rejects when fallback (status-only) scoping would exceed the maximum' do
+      stub_const('VisitsController::MAX_BULK_VISIT_IDS', 2)
+
+      patch bulk_update_visits_url(format: :turbo_stream),
+            params: { status: 'confirmed', source_status: 'suggested' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect([visit_a, visit_b, visit_c].each(&:reload).map(&:status)).to all(eq('suggested'))
+    end
+  end
+
+  describe 'DELETE /bulk_destroy' do
+    let!(:visit_a) { create(:visit, user:, status: :suggested) }
+    let!(:visit_b) { create(:visit, user:, status: :confirmed) }
+    let!(:visit_c) { create(:visit, user:, status: :suggested) }
+
+    it 'soft-deletes the selected visits, keeping tombstones' do
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [visit_a.id, visit_b.id] }
+
+      expect(response).to have_http_status(:ok)
+      expect(Visit.where(id: [visit_a.id, visit_b.id]).pluck(:deleted_at)).to all(be_present)
+      expect(Visit.active.where(id: [visit_a.id, visit_b.id])).to be_empty
+      expect(Visit.active.where(id: visit_c.id)).to exist
+    end
+
+    it 'rejects when no visit_ids are submitted' do
+      delete bulk_destroy_visits_url(format: :turbo_stream), params: { visit_ids: [] }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect { visit_a.reload }.not_to raise_error
+    end
+
+    it 'rejects when an id belongs to another user' do
+      other_user_visit = create(:visit, user: create(:user))
+
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [visit_a.id, other_user_visit.id] }
+
+      expect(response).to have_http_status(:not_found)
+      expect { visit_a.reload }.not_to raise_error
+      expect { other_user_visit.reload }.not_to raise_error
+    end
+
+    it 'busts the month-summary cache for affected months' do
+      month_start = visit_a.started_at.beginning_of_month.to_date
+      cache_key = Timeline::MonthSummary.cache_key_for(user, month_start)
+      # Pre-populate with a valid MonthSummary shape so the calendar stream can
+      # render during the action, then verify the after_action busts the key.
+      sentinel = { month: month_start.strftime('%Y-%m'), weeks: [], days: {}, status_counts: {} }
+      Rails.cache.write(cache_key, sentinel)
+
+      expect(Rails.cache.read(cache_key)).to be_present
+
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [visit_a.id] }
+
+      expect(Rails.cache.read(cache_key)).to be_nil
+    end
+
+    it 'keeps points attached to the tombstoned visit' do
+      point = create(:point, user: user, visit: visit_a)
+
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [visit_a.id] }
+
+      expect(Point.where(id: point.id)).to exist
+      expect(point.reload.visit_id).to eq(visit_a.id)
+    end
+
+    it 'rejects when more than the maximum number of visit_ids are submitted' do
+      ids = (1..(VisitsController::MAX_BULK_VISIT_IDS + 1)).to_a
+
+      delete bulk_destroy_visits_url(format: :turbo_stream), params: { visit_ids: ids }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include(VisitsController::MAX_BULK_VISIT_IDS.to_s)
+    end
+
+    it 'returns the Lite-window upgrade hint when an archived visit id is submitted' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :lite)
+      old_visit = create(:visit, user: user,
+                                  started_at: 13.months.ago,
+                                  ended_at: 13.months.ago + 30.minutes)
+
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [visit_a.id, old_visit.id] }
+
+      expect(response).to have_http_status(:not_found)
+      expect(response.body).to include('Lite plan')
+      expect { old_visit.reload }.not_to raise_error
+      expect { visit_a.reload }.not_to raise_error
+    end
+
+    it 'busts caches for every month touched when the deletion spans months' do
+      tz = user.safe_settings.timezone.presence || 'UTC'
+      apr_start = Time.use_zone(tz) { Time.zone.local(2026, 4, 30, 10, 0) }
+      may_start = Time.use_zone(tz) { Time.zone.local(2026, 5, 1, 10, 0) }
+      apr_visit = create(:visit, user:, started_at: apr_start, ended_at: apr_start + 30.minutes)
+      may_visit = create(:visit, user:, started_at: may_start, ended_at: may_start + 30.minutes)
+      apr_key = Timeline::MonthSummary.cache_key_for(user, apr_start.to_date.beginning_of_month)
+      may_key = Timeline::MonthSummary.cache_key_for(user, may_start.to_date.beginning_of_month)
+      Rails.cache.write(apr_key, 'sentinel-apr')
+      Rails.cache.write(may_key, 'sentinel-may')
+
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [apr_visit.id, may_visit.id] }
+
+      expect(Rails.cache.read(apr_key)).to be_nil
+      expect(Rails.cache.read(may_key)).to be_nil
+    end
+
+    it 'includes the calendar frame stream in the turbo response' do
+      delete bulk_destroy_visits_url(format: :turbo_stream),
+             params: { visit_ids: [visit_a.id] }
+
+      expect_turbo_stream_response
+      expect_turbo_stream_action('replace', 'timeline-calendar-frame')
+    end
+
+    context 'with date + source_status instead of visit_ids (Delete all path)' do
+      let(:tz) { 'UTC' }
+
+      before do
+        user.settings ||= {}
+        user.settings['timezone'] = tz
+        user.save!
+        Visit.delete_all
+      end
+
+      let!(:suggested_today) do
+        create(:visit, user:, status: :suggested,
+                       started_at: Time.zone.today.beginning_of_day + 9.hours,
+                       ended_at: Time.zone.today.beginning_of_day + 10.hours)
+      end
+      let!(:suggested_today_2) do
+        create(:visit, user:, status: :suggested,
+                       started_at: Time.zone.today.beginning_of_day + 11.hours,
+                       ended_at: Time.zone.today.beginning_of_day + 12.hours)
+      end
+      let!(:confirmed_today) do
+        create(:visit, user:, status: :confirmed,
+                       started_at: Time.zone.today.beginning_of_day + 13.hours,
+                       ended_at: Time.zone.today.beginning_of_day + 14.hours)
+      end
+
+      it 'soft-deletes all visits with the given status on the given date' do
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: Time.zone.today.to_s, source_status: 'suggested' }
+
+        expect(response).to have_http_status(:ok)
+        expect(Visit.active.where(id: [suggested_today.id, suggested_today_2.id])).to be_empty
+        expect(Visit.where(id: [suggested_today.id, suggested_today_2.id]).pluck(:deleted_at)).to all(be_present)
+        expect(Visit.active.where(id: confirmed_today.id)).to exist
+      end
+
+      it 'returns the turbo stream response with calendar frame' do
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: Time.zone.today.to_s, source_status: 'suggested' }
+
+        expect_turbo_stream_response
+        expect_turbo_stream_action('replace', 'timeline-calendar-frame')
+      end
+
+      it 'does not touch visits of other users' do
+        other_visit = create(:visit, user: create(:user), status: :suggested,
+                                     started_at: Time.zone.today.beginning_of_day + 9.hours,
+                                     ended_at: Time.zone.today.beginning_of_day + 10.hours)
+
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: Time.zone.today.to_s, source_status: 'suggested' }
+
+        expect { other_visit.reload }.not_to raise_error
+      end
+
+      it 'returns unprocessable when no visits match date + source_status' do
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: '1900-01-01', source_status: 'suggested' }
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it 'returns unprocessable when neither visit_ids nor date+source_status are given' do
+        delete bulk_destroy_visits_url(format: :turbo_stream), params: {}
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it 'returns unprocessable for an unknown source_status without raising' do
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: Time.zone.today.to_s, source_status: 'bogus' }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(Visit.where(id: suggested_today.id)).to exist
+      end
+
+      it 'rejects source_status=confirmed so confirmed visits cannot be bulk-deleted by date' do
+        delete bulk_destroy_visits_url(format: :turbo_stream),
+               params: { date: Time.zone.today.to_s, source_status: 'confirmed' }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(Visit.where(id: confirmed_today.id)).to exist
+      end
     end
   end
 end

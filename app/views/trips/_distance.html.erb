@@ -1,6 +1,6 @@
 <% if trip.distance.present? %>
   <span class="text-md"><%= trip.distance_in_unit(distance_unit).round %> <%= distance_unit %></span>
 <% else %>
-  <span class="text-md">Calculating...</span>
+  <span class="text-md"><%= t('.calculating') %></span>
   <span class="loading loading-dots loading-sm"></span>
 <% end %>

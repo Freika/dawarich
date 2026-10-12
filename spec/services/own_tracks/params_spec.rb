@@ -62,6 +62,14 @@ RSpec.describe OwnTracks::Params do
       expect(params).to eq(expected_json)
     end
 
+    context 'when raw data is excluded' do
+      subject(:params) { described_class.new(raw_point_params, include_raw_data: false).call }
+
+      it 'returns parsed params without the raw_data key' do
+        expect(params).to eq(expected_json.except(:raw_data))
+      end
+    end
+
     context 'when battery status is unplugged' do
       let(:raw_point_params) { super().merge(bs: 1) }
 

@@ -31,6 +31,7 @@ RSpec.describe Places::NameFetcher do
     end
 
     before do
+      configure_instance_geocoding
       allow(Geocoder).to receive(:search).and_return([geocoder_result])
     end
 
@@ -46,7 +47,7 @@ RSpec.describe Places::NameFetcher do
       it 'updates place name from geocoder data' do
         expect { service.call }.to change(place, :name)
           .from(Place::DEFAULT_NAME)
-          .to('Central Park')
+          .to('Central Park, New York')
       end
 
       it 'updates place city from geocoder data' do
@@ -65,6 +66,69 @@ RSpec.describe Places::NameFetcher do
         expect(place).to receive(:save!)
 
         service.call
+      end
+
+      context 'when a device-named place gets a real address' do
+        let(:place) do
+          create(
+            :place,
+            name: 'Visited place',
+            city: nil,
+            country: nil,
+            geodata: {},
+            lonlat: 'POINT(10.0 10.0)'
+          )
+        end
+
+        it 'renames the place' do
+          expect { service.call }.to change { place.reload.name }.from('Visited place').to('Central Park, New York')
+        end
+
+        it 'propagates the new name to a visit that carried the old place name' do
+          visit = create(:visit, place: place, user: place.user, name: 'Visited place')
+
+          service.call
+
+          expect(visit.reload.name).to eq('Central Park, New York')
+        end
+
+        it 'leaves a visit the user renamed independently alone' do
+          visit = create(:visit, place: place, user: place.user, name: 'Dentist')
+
+          service.call
+
+          expect(visit.reload.name).to eq('Dentist')
+        end
+      end
+
+      context 'when the name is locked by the user' do
+        let(:place) do
+          create(
+            :place,
+            name: "Mum's house",
+            name_locked_at: 1.day.ago,
+            city: nil,
+            country: nil,
+            geodata: {},
+            lonlat: 'POINT(10.0 10.0)'
+          )
+        end
+
+        it 'keeps the user-supplied name' do
+          expect { service.call }.not_to change(place, :name)
+        end
+
+        it 'still refreshes city and country' do
+          expect { service.call }.to change(place, :city).from(nil).to('New York')
+        end
+
+        it 'propagates the locked name to visits still using the default name' do
+          visit = create(:visit, place: place, user: place.user, name: Place::DEFAULT_NAME)
+
+          service.call
+
+          expect(visit.reload.name).to eq("Mum's house")
+        end
       end
 
       context 'when DawarichSettings.store_geodata? is enabled' do
@@ -106,7 +170,7 @@ RSpec.describe Places::NameFetcher do
           expect { service.call }.to \
             change { visit_with_default_name.reload.name }
             .from(Place::DEFAULT_NAME)
-            .to('Central Park')
+            .to('Central Park, New York')
         end
 
         it 'does not update visits with custom names' do
@@ -136,7 +200,35 @@ RSpec.describe Places::NameFetcher do
       it 'returns the updated place' do
         result = service.call
         expect(result).to eq(place)
-        expect(result.name).to eq('Central Park')
+        expect(result.name).to eq('Central Park, New York')
+      end
+    end
+
+    context 'when the geocoder provider times out' do
+      before do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Rails.logger).to receive(:warn)
+        allow(Geocoder).to receive(:search).and_raise(Geocoder::LookupTimeout.new('execution expired'))
+      end
+
+      it 'returns nil without reporting an application exception' do
+        expect(service.call).to be_nil
+        expect(ExceptionReporter).not_to have_received(:call)
+        expect(Rails.logger).to have_received(:warn).with(/Geocoding provider error in NameFetcher/)
+      end
+    end
+
+    context 'when geocoding fails unexpectedly' do
+      let(:error) { StandardError.new('unexpected failure') }
+
+      before do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Geocoder).to receive(:search).and_raise(error)
+      end
+
+      it 'reports the application exception' do
+        expect(service.call).to be_nil
+        expect(ExceptionReporter).to have_received(:call).with(error)
       end
     end
 

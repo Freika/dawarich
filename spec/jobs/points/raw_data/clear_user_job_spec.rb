@@ -19,7 +19,7 @@ RSpec.describe Points::RawData::ClearUserJob, type: :job do
 
     context 'when user has verified archives with uncleared points' do
       let!(:archive) do
-        create(:points_raw_data_archive, user: user, verified_at: Time.current)
+        create(:points_raw_data_archive, user: user, verified_at: 8.days.ago)
       end
       let!(:point) do
         create(:point, user: user, raw_data_archived: true,
@@ -31,6 +31,23 @@ RSpec.describe Points::RawData::ClearUserJob, type: :job do
         described_class.perform_now(user.id)
 
         expect(point.reload.raw_data).to eq({})
+      end
+    end
+
+    context 'when the archive was verified within the cooling period' do
+      let!(:archive) do
+        create(:points_raw_data_archive, user: user, verified_at: 2.days.ago)
+      end
+      let!(:point) do
+        create(:point, user: user, raw_data_archived: true,
+                       raw_data_archive_id: archive.id,
+                       raw_data: { 'foo' => 'bar' })
+      end
+
+      it 'does not clear raw_data yet' do
+        described_class.perform_now(user.id)
+
+        expect(point.reload.raw_data).to eq({ 'foo' => 'bar' })
       end
     end
 
@@ -56,6 +73,31 @@ RSpec.describe Points::RawData::ClearUserJob, type: :job do
         allow(ActiveRecord::Base).to receive(:with_advisory_lock).and_return(false)
 
         expect { described_class.perform_now(user.id) }.not_to raise_error
+      end
+    end
+
+    context 'metric emissions' do
+      let!(:archive) do
+        create(:points_raw_data_archive, user: user, verified_at: 8.days.ago)
+      end
+      let!(:point) do
+        create(:point, user: user, raw_data_archived: true,
+                       raw_data_archive_id: archive.id,
+                       raw_data: { 'foo' => 'bar' })
+      end
+
+      it 'increments operations_total with clear/success tags' do
+        expect do
+          described_class.perform_now(user.id)
+        end.to increment_yabeda_counter(Yabeda.dawarich_archive.operations_total)
+          .with_tags(operation: 'clear', status: 'success')
+      end
+
+      it 'increments points_total with removed tag' do
+        expect do
+          described_class.perform_now(user.id)
+        end.to increment_yabeda_counter(Yabeda.dawarich_archive.points_total)
+          .with_tags(operation: 'removed')
       end
     end
   end

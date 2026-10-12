@@ -1,0 +1,116 @@
+zh:
+  achievements:
+    unlocks:
+      kicker: 新发现
+      announcement: 卡片已解锁
+      remaining:
+        one: 这叠中的最后一张卡片
+        other: "这叠中还有 %{count} 张卡片"
+      next: 下一张
+      done: 完成
+      dismiss: 关闭这叠卡片
+      view: 在收藏中查看 %{name}
+    ui:
+      title: 成就
+      summary: 概览
+      continents: 大洲
+      countries: 国家
+      regions: 地区
+      world_explored: 已探索世界
+      collection_hint: 按大洲、国家和地区浏览你的收藏。
+      collection_navigation: 成就收藏
+      browse: 浏览收藏
+      breadcrumb: 面包屑导航
+      getting_started: 记录或导入位置数据即可开始探索这些卡片。
+      import_data: 导入数据
+      collection_progress: "%{collection}探索进度"
+      completed_on: "解锁于 %{date}"
+      remaining:
+        one: 还有 1 个待探索
+        other: 还有 %{count} 个待探索
+      share: 分享
+      enable_sharing: 创建公开链接
+      countries_progress: "已访问 %{count}/%{total} 个国家"
+      regions_progress: "已探索 %{count}/%{total} 个地区"
+      browse_children: "浏览%{collection}"
+      search_children: "搜索%{collection}"
+      collection_pages: 收藏分页
+      prev_page: 上一页
+      next_page: 下一页
+      disable_sharing: 停止分享
+      public_link: 公开链接
+      preview_hint: 选择卡片以近距离查看。
+      search_cards: 搜索卡片
+      card_status: 卡片状态
+      apply: 应用
+      clear: 清除筛选
+      page_range: "第 %{first}–%{last} 张，共 %{total} 张卡片"
+      no_results: 没有匹配的卡片
+      no_results_hint: 尝试其他名称或清除筛选以查看完整收藏。
+      about_boundaries: 关于边界数据
+      boundaries_note: "地区检测基于近似边界。来源："
+      threshold_note:
+        one: 停留 %{count} 分钟后，该地点将计入成就。
+        other: 停留 %{count} 分钟后，该地点将计入成就。
+      status:
+        all: 所有卡片
+        unlocked: 已解锁
+        in_progress: 进行中
+        locked: 未解锁
+    cards:
+      explorer_name: "%{place}探索者"
+      date_format: "%Y年%-m月%-d日"
+      description:
+        continent: "记录你在%{place}全部 %{count} 个国家和地区的足迹。"
+        regions: "记录你在%{place}全部 %{count} 个地区的足迹。"
+        country: "记录你在%{place}的足迹。"
+      status:
+        locked: 未解锁
+        unlocked: 已解锁
+        unlocked_on: "已解锁 · %{date}"
+        in_progress: 进行中
+        visited: 已访问
+      metric:
+        explored: 已探索
+        not_yet_explored: 尚未探索
+        percent_explored: "已探索 %{percent}%"
+        countries: "%{count}/%{total} 个国家"
+        regions: "%{count}/%{total} 个地区"
+      rarity:
+        common: 普通
+        rare: 稀有
+        epic: 史诗
+        legendary: 传说
+      boundary_unavailable: 边界不可用
+      open_label: "打开%{name} — %{status}"
+      progress_label: 探索进度
+      details_regions: "%{count}/%{total} 个地区"
+    modal:
+      detail: 成就详情
+      close: 关闭
+      share: 分享
+      embed: 嵌入
+      public_link: 公开链接
+      embed_code: 嵌入代码
+      iframe_title: Dawarich 成就
+      copy: 复制
+      copied: 已复制
+      stop_sharing: 停止分享
+      share_error: 无法更新分享状态，请重试。
+      copy_error: 无法自动复制。请选中链接或代码并手动复制。
+    public:
+      not_found: 未找到分享的成就，或该成就已不可用
+      social_description: "已探索 %{progress}。由 Dawarich 记录。"
+      tracked_with_html: "由 %{link} 记录"
+    notifications:
+      region_title: "已探索%{region}！"
+      region_content: "%{achievement}：已访问 %{count}/%{total} 个地区。"
+      country_content: "%{achievement}：已访问 %{count}/%{total} 个国家。"
+      digest_title: "新探索 %{count} 个地区！"
+      digest_content: 你最新的数据解锁了新地区——可在“成就”页查看。
+      completion_title: "已完成%{achievement}！"
+      completion_country: 你已探索这个国家。
+      completion_target_regions: "你已探索 %{count} 个地区。"
+      completion_all_regions: "你已探索全部 %{count} 个地区。"
+      completion_target_countries: "你已探索 %{count} 个国家。"
+      completion_all_countries: "你已探索全部 %{count} 个国家。"

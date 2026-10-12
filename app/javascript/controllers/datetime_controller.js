@@ -2,6 +2,7 @@
 // - trips/new
 // - trips/edit
 
+import { translate } from "i18n"
 import BaseController from "./base_controller"
 
 export default class extends BaseController {
@@ -52,7 +53,7 @@ export default class extends BaseController {
 
     // Validate that start date is before end date
     if (startDate >= endDate) {
-      const errorMessage = "Start date must be earlier than end date"
+      const errorMessage = translate("datetime.start_before_end")
       this.endedAtTarget.setCustomValidity(errorMessage)
       if (showPopup) {
         this.endedAtTarget.reportValidity()
@@ -115,13 +116,13 @@ export default class extends BaseController {
             composed: true,
           })
 
-          const tripsElement = document.querySelector(
-            '[data-controller="trips"]',
+          const previewElement = document.querySelector(
+            '[data-controller~="trip-maplibre-preview"]',
           )
-          if (tripsElement) {
-            tripsElement.dispatchEvent(event)
+          if (previewElement) {
+            previewElement.dispatchEvent(event)
           } else {
-            console.error("Trips controller element not found")
+            console.error("Trip map preview element not found")
           }
         } catch (error) {
           console.error("Error:", error)

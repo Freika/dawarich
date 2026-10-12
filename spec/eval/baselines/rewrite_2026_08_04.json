@@ -1,0 +1,107 @@
+{
+  "walk": {
+    "point_accuracy": 1.0,
+    "boundary_f1": 1.0,
+    "per_mode": {
+      "walking": {
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    "predicted": [["walking", 0, 895]],
+    "labels": [["walking", 0, 900]]
+  },
+  "commute_mixed": {
+    "point_accuracy": 0.98,
+    "boundary_f1": 1.0,
+    "per_mode": {
+      "walking": {
+        "precision": 1.0,
+        "recall": 0.95
+      },
+      "driving": {
+        "precision": 0.9677,
+        "recall": 1.0
+      }
+    },
+    "predicted": [
+      ["walking", 0, 270],
+      ["driving", 270, 1200],
+      ["walking", 1200, 1495]
+    ],
+    "labels": [
+      ["walking", 0, 300],
+      ["driving", 300, 1200],
+      ["walking", 1200, 1500]
+    ]
+  },
+  "run": {
+    "point_accuracy": 1.0,
+    "boundary_f1": 1.0,
+    "per_mode": {
+      "running": {
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    "predicted": [["running", 0, 1195]],
+    "labels": [["running", 0, 1200]]
+  },
+  "bike_errand": {
+    "point_accuracy": 0.9722,
+    "boundary_f1": 1.0,
+    "per_mode": {
+      "walking": {
+        "precision": 1.0,
+        "recall": 0.8333
+      },
+      "cycling": {
+        "precision": 0.9677,
+        "recall": 1.0
+      }
+    },
+    "predicted": [["walking", 0, 150], ["cycling", 150, 1075]],
+    "labels": [["walking", 0, 180], ["cycling", 180, 1080]]
+  },
+  "train_trip": {
+    "point_accuracy": 0.975,
+    "boundary_f1": 0.8,
+    "per_mode": {
+      "walking": {
+        "precision": 1.0,
+        "recall": 0.95
+      },
+      "train": {
+        "precision": 0.9833,
+        "recall": 0.9833
+      },
+      "driving": {
+        "precision": 0.0,
+        "recall": 0.0
+      }
+    },
+    "predicted": [
+      ["walking", 0, 270],
+      ["train", 270, 2070],
+      ["driving", 2070, 2100],
+      ["walking", 2100, 2390]
+    ],
+    "labels": [
+      ["walking", 0, 300],
+      ["train", 300, 2100],
+      ["walking", 2100, 2400]
+    ]
+  },
+  "sparse_drive": {
+    "point_accuracy": 1.0,
+    "boundary_f1": 1.0,
+    "per_mode": {
+      "driving": {
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    "predicted": [["driving", 0, 1740]],
+    "labels": [["driving", 0, 1800]]
+  }
+}

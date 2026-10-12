@@ -26,12 +26,20 @@ class Tracks::Merger
     @newer_track = newer_track
   end
 
+  def user
+    @older_track&.user
+  end
+
   def call
     return false if invalid_merge?
 
     ActiveRecord::Base.transaction do
-      # Delete segments from both tracks (indices become invalid after merge)
-      @older_track.track_segments.delete_all
+      # Auto segments are regenerated after the merge. Time-anchored corrected
+      # segments survive (they are valid regardless of track boundaries);
+      # legacy index-anchored ones cannot be trusted across a merge.
+      @older_track.track_segments.auto_classified.delete_all
+      @newer_track.track_segments.auto_classified.delete_all
+      @newer_track.track_segments.where.not(start_at: nil).update_all(track_id: @older_track.id)
       @newer_track.track_segments.delete_all
 
       # Update newer track's points to belong to older track
@@ -55,6 +63,13 @@ class Tracks::Merger
     end
 
     true
+  rescue ActiveRecord::RecordNotUnique
+    Rails.logger.info(
+      'event=tracks.unique_violation_rescued service=merger ' \
+      "user_id=#{@older_track&.user_id} " \
+      "older_track_id=#{@older_track&.id} newer_track_id=#{@newer_track&.id}"
+    )
+    false
   rescue StandardError => e
     Rails.logger.error "Failed to merge tracks #{@older_track&.id} and #{@newer_track&.id}: #{e.message}"
     false

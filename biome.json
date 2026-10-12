@@ -14,6 +14,7 @@
       "!!**/vendor",
       "!!app/assets/builds",
       "!!app/assets/stylesheets/maplibre-gl.css",
+      "!!public/maplibre/**",
       "!!app/javascript/posthog.js",
       "!!spec/fixtures/files/**"
     ]
@@ -85,12 +86,9 @@
     },
     {
       "includes": [
-        "app/assets/stylesheets/leaflet_theme.css",
-        "app/assets/stylesheets/leaflet.control.layers.tree.css",
         "app/assets/stylesheets/application.css",
         "app/assets/stylesheets/actiontext.css",
-        "app/assets/stylesheets/maps_maplibre_panel.css",
-        "app/javascript/styles/visits.css"
+        "app/assets/stylesheets/maps_maplibre_panel.css"
       ],
       "linter": {
         "rules": {

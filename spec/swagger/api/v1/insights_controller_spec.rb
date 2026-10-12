@@ -60,8 +60,6 @@ RSpec.describe 'Insights API', type: :request do
                  }
                }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -123,8 +121,6 @@ description: 'Distance by day of week (Mon-Sun)' },
                    }
                  }
                }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

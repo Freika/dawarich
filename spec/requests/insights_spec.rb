@@ -48,6 +48,16 @@ RSpec.describe '/insights', type: :request do
 
           expect(response.status).to eq(200)
         end
+
+        it 'puts the selected year before the previous year and colors both bars' do
+          create(:stat, user:, year: Time.current.year - 1, month: 1, distance: 80_000)
+
+          get details_insights_url(year: Time.current.year.to_s)
+
+          rows = Nokogiri::HTML(response.body).css('[data-comparison-metric="distance"]')
+          expect(rows.map { |row| row['data-comparison-year'] }).to eq(%w[current previous])
+          expect(rows.last.at_css('[data-comparison-bar]')['class']).to include('bg-warning')
+        end
       end
     end
 
@@ -58,11 +68,41 @@ RSpec.describe '/insights', type: :request do
         expect(response.status).to eq(200)
       end
 
+      it 'loads days per country for the year the page is showing' do
+        create(:stat, user:, year: 2026, month: 3, distance: 1000)
+
+        get insights_url(year: 2026)
+
+        expect(response.body).to include('residency-content')
+        expect(response.body).to include(map_residency_path(year: 2026))
+      end
+
+      it 'omits days per country on All Time, which has no calendar year to count' do
+        create(:stat, user:, year: 2026, month: 3, distance: 1000)
+
+        get insights_url(year: 'all')
+
+        expect(response.body).not_to include('residency-content')
+      end
+
       context 'when there are no stats' do
         it 'renders the page without errors' do
           get insights_url
 
           expect(response.status).to eq(200)
+        end
+      end
+
+      context 'when a legacy stat has an invalid month' do
+        before do
+          stat = create(:stat, user:, year: 2024, month: 12, distance: 100_000)
+          stat.update_column(:month, 13)
+        end
+
+        it 'ignores the invalid row instead of returning an error' do
+          get insights_url(year: '2024')
+
+          expect(response).to be_successful
         end
       end
 

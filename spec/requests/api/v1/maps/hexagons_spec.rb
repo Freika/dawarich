@@ -316,6 +316,47 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
         expect(json_response['point_count']).to eq(3)
       end
 
+      it 'uses outlier-resistant bounds only when requested' do
+        base_timestamp = Time.utc(2024, 6, 20, 10, 0).to_i
+        50.times do |index|
+          create(:point, user:, latitude: 40.7 + (index * 0.0001), longitude: -74.0 + (index * 0.0001),
+                         timestamp: base_timestamp + index)
+        end
+        create(:point, user:, latitude: 52.5, longitude: 13.4, timestamp: base_timestamp + 100)
+
+        get '/api/v1/maps/hexagons/bounds', params: date_params, headers: headers
+        expect(response.parsed_body).to include('point_count' => 54, 'max_lng' => 13.4)
+
+        get '/api/v1/maps/hexagons/bounds', params: date_params.merge(robust: 'true'), headers: headers
+        expect(response.parsed_body).to include('point_count' => 54)
+        expect(response.parsed_body['max_lng']).to be < 0
+      end
+
+      it 'returns a retryable error when robust bounds exceed the query budget' do
+        allow(Maps::BoundsCalculator).to receive(:new).and_raise(ActiveRecord::QueryCanceled, 'statement timeout')
+
+        get '/api/v1/maps/hexagons/bounds', params: date_params.merge(robust: 'true'), headers: headers
+
+        expect(response).to have_http_status(:service_unavailable)
+      end
+
+      it 'scopes bounds to the selected import' do
+        selected_import = create(:import, user:)
+        selected = create(:point, user:, import: selected_import, latitude: 41.2, longitude: -72.8,
+                                  timestamp: Time.new(2024, 6, 20, 10, 0).to_i)
+
+        get '/api/v1/maps/hexagons/bounds', params: date_params.merge(import_id: selected_import.id), headers: headers
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body).to include(
+          'min_lat' => selected.lat,
+          'max_lat' => selected.lat,
+          'min_lng' => selected.lon,
+          'max_lng' => selected.lon,
+          'point_count' => 1
+        )
+      end
+
       it 'returns not found when no points exist in date range' do
         get '/api/v1/maps/hexagons/bounds',
             params: { start_date: '2023-01-01T00:00:00Z', end_date: '2023-01-31T23:59:59Z' },
@@ -403,6 +444,27 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
         expect(json_response['point_count']).to eq(2)
       end
 
+      it 'keeps an existing historic shared month visible after the owner switches to Lite' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update!(plan: :lite)
+
+        get '/api/v1/maps/hexagons/bounds', params: { uuid: stat.sharing_uuid }
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body['point_count']).to eq(2)
+      end
+
+      it 'does not narrow public bounds by import' do
+        selected_import = create(:import, user:)
+        create(:point, user:, import: selected_import, latitude: 42.0, longitude: -73.0,
+                       timestamp: Time.new(2024, 6, 20, 10, 0).to_i)
+
+        get '/api/v1/maps/hexagons/bounds', params: { uuid: stat.sharing_uuid, import_id: selected_import.id }
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body).to include('min_lat' => 41.0, 'max_lat' => 42.0, 'point_count' => 3)
+      end
+
       context 'with invalid sharing UUID' do
         it 'returns not found' do
           get '/api/v1/maps/hexagons/bounds', params: { uuid: 'invalid-uuid' }
@@ -419,6 +481,81 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
       it 'returns unauthorized' do
         get '/api/v1/maps/hexagons/bounds',
             params: { start_date: '2024-06-01T00:00:00Z', end_date: '2024-06-30T23:59:59Z' }
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+  describe 'GET /api/v1/maps/hexagons/fog' do
+    let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
+    let(:params) { { start_date: '2024-06-01T00:00:00Z', end_date: '2024-06-30T23:59:59Z' } }
+
+    context 'with precalculated stats' do
+      before do
+        create(:stat, user:, year: 2024, month: 6, h3_hex_ids: [
+                 ['8828308281fffff', 3, Time.zone.parse('2024-06-10T10:00:00Z').to_i,
+                  Time.zone.parse('2024-06-10T12:00:00Z').to_i]
+               ])
+      end
+
+      it 'returns the cell ids' do
+        get '/api/v1/maps/hexagons/fog', params: params, headers: headers
+
+        expect(response).to have_http_status(:success)
+        json = JSON.parse(response.body)
+        expect(json['h3_indexes']).to eq(['8828308281fffff'])
+        expect(json['metadata']['count']).to eq(1)
+      end
+    end
+
+    context 'without stats' do
+      it 'returns an empty collection' do
+        get '/api/v1/maps/hexagons/fog', params: params, headers: headers
+
+        expect(response).to have_http_status(:success)
+        expect(JSON.parse(response.body)['h3_indexes']).to eq([])
+      end
+    end
+
+    context 'with missing params' do
+      it 'returns bad request' do
+        get '/api/v1/maps/hexagons/fog', params: { start_date: '2024-06-01' }, headers: headers
+
+        expect(response).to have_http_status(:bad_request)
+      end
+    end
+
+    context 'with unparseable dates' do
+      it 'returns bad request' do
+        get '/api/v1/maps/hexagons/fog',
+            params: { start_date: 'garbage', end_date: 'garbage' }, headers: headers
+
+        expect(response).to have_http_status(:bad_request)
+      end
+    end
+
+    context 'when the service fails unexpectedly' do
+      before do
+        allow(Maps::FogHexagons).to receive(:new).and_raise(StandardError, 'boom')
+      end
+
+      it 'returns a graceful error' do
+        get '/api/v1/maps/hexagons/fog', params: params, headers: headers
+
+        expect(response).to have_http_status(:internal_server_error)
+        expect(JSON.parse(response.body)['error']).to eq('Failed to generate hexagon grid')
+      end
+    end
+
+    context 'without authentication' do
+      it 'returns unauthorized' do
+        get '/api/v1/maps/hexagons/fog', params: params
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it 'returns unauthorized when a sharing uuid is passed' do
+        get '/api/v1/maps/hexagons/fog', params: params.merge(uuid: SecureRandom.uuid)
 
         expect(response).to have_http_status(:unauthorized)
       end

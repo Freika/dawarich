@@ -60,21 +60,18 @@ RSpec.describe Points::Create do
       end
 
       it 'upserts the processed data' do
-        expect(Point).to receive(:upsert_all)
-          .with(
-            processed_data,
-            unique_by: %i[lonlat timestamp user_id],
-            returning: Arel.sql(
-              'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
-            )
-          )
-          .and_return(upsert_result)
+        expect(Point).to receive(:archival_safe_upsert_all) do |rows, options|
+          expect(rows.map { |row| row.slice(:lonlat, :timestamp, :user_id) })
+            .to eq(processed_data.map { |row| row.slice(:lonlat, :timestamp, :user_id) })
+          expect(options[:returning]).to eq(Arel.sql(Point::UPSERT_RETURNING_COLUMNS))
+          upsert_result
+        end
 
         described_class.new(user, point_params).call
       end
 
       it 'returns the upsert result' do
-        allow(Point).to receive(:upsert_all).and_return(upsert_result)
+        allow(Point).to receive(:archival_safe_upsert_all).and_return(upsert_result)
         result = described_class.new(user, point_params).call
         expect(result).to eq(upsert_result)
       end
@@ -168,7 +165,7 @@ RSpec.describe Points::Create do
 
         it 'uses the correct unique constraint' do
           expect(Point).to receive(:upsert_all) do |_data, options|
-            expect(options[:unique_by]).to eq(%i[lonlat timestamp user_id])
+            expect(options[:unique_by]).to eq(%i[user_id timestamp lonlat])
             deduplicated_upsert_result
           end
 
@@ -178,7 +175,10 @@ RSpec.describe Points::Create do
         it 'uses the correct returning clause' do
           expect(Point).to receive(:upsert_all) do |_data, options|
             expect(options[:returning]).to eq(
-              Arel.sql('id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
+              Arel.sql(
+                'id, xmax::text AS xmax, timestamp, ' \
+                'ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+              )
             )
             deduplicated_upsert_result
           end
@@ -203,6 +203,44 @@ RSpec.describe Points::Create do
           expect(points[1].lonlat.x).to be_within(0.0001).of(-74.006)
           expect(points[1].lonlat.y).to be_within(0.0001).of(40.7128)
         end
+      end
+    end
+
+    context 'with lonlat strings that collapse to the same geography' do
+      # Regression: clients (e.g. Overland on iOS) occasionally emit the same
+      # location in two different WKT-string forms inside a single batch. Ruby
+      # string equality would keep both, but the PostgreSQL UNIQUE index on
+      # (lonlat, timestamp, user_id) treats them as equal — so `upsert_all`
+      # fails with PG::CardinalityViolation and the whole 1000-point slice is
+      # lost.
+      let(:collapsed_processed_data) do
+        current_time = Time.current
+        [
+          {
+            lonlat: 'POINT(-0.1278 51.5074)',
+            timestamp: timestamp,
+            user_id: user.id,
+            created_at: current_time,
+            updated_at: current_time
+          },
+          {
+            lonlat: 'POINT(-0.12780000 51.50740000)', # different string, same point
+            timestamp: timestamp,
+            user_id: user.id,
+            created_at: current_time,
+            updated_at: current_time
+          }
+        ]
+      end
+
+      before do
+        allow_any_instance_of(Points::Params).to receive(:call).and_return(collapsed_processed_data)
+      end
+
+      it 'deduplicates them before upsert_all (prevents PG::CardinalityViolation)' do
+        expect do
+          described_class.new(user, point_params).call
+        end.to change { Point.where(user: user, timestamp: timestamp.to_i).count }.from(0).to(1)
       end
     end
 
@@ -301,6 +339,20 @@ RSpec.describe Points::Create do
         expect(user.points_count).to eq(Point.where(user_id: user.id).count)
       end
 
+      it 'enqueues VisitSuggestingJob when reverse geocoding is enabled (regression for #1749)' do
+        configure_instance_geocoding
+
+        expect do
+          described_class.new(user, point_params).call
+        end.to have_enqueued_job(VisitSuggestingJob).with(hash_including(user_id: user.id))
+      end
+
+      it 'does not enqueue VisitSuggestingJob when reverse geocoding is disabled' do
+        expect do
+          described_class.new(user, point_params).call
+        end.not_to have_enqueued_job(VisitSuggestingJob)
+      end
+
       it 'does not increment points_count for duplicate upserts' do
         described_class.new(user, point_params).call
         user.reload
@@ -366,15 +418,11 @@ RSpec.describe Points::Create do
       before do
         allow(Points::Params).to receive(:new).with(geojson_data, user.id).and_return(params_service)
         allow(params_service).to receive(:call).and_return(all_processed_data)
-        allow(Point).to receive(:upsert_all)
-          .with(
-            all_processed_data,
-            unique_by: %i[lonlat timestamp user_id],
-            returning: Arel.sql(
-              'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
-            )
-          )
-          .and_return(expected_results)
+        allow(Point).to receive(:archival_safe_upsert_all) do |rows, options|
+          expect(rows.map { |row| row[:lonlat] }).to eq(all_processed_data.map { |row| row[:lonlat] })
+          expect(options[:returning]).to eq(Arel.sql(Point::UPSERT_RETURNING_COLUMNS))
+          expected_results
+        end
       end
 
       it 'correctly processes real GeoJSON example data' do
@@ -399,6 +447,50 @@ RSpec.describe Points::Create do
         time_obj = Time.zone.at(result[1].timestamp)
         expected_time = Time.parse('2025-01-17T21:03:02Z')
         expect(time_obj).to be_within(1.second).of(expected_time)
+      end
+    end
+
+    describe 'out-of-range course_accuracy from a near-stationary iOS fix' do
+      let(:user) { create(:user) }
+      let(:batch_params) do
+        {
+          locations: [
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [7.300162333022016, 51.40863363359207] },
+              properties: {
+                timestamp: '2026-01-04T14:32:36.999Z',
+                speed: 0.01308945239267841,
+                course: 4.801180790801141,
+                course_accuracy: 1731.726995484005
+              }
+            },
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [7.299433856659638, 51.40862237973182] },
+              properties: {
+                timestamp: '2026-01-04T14:36:40.999Z',
+                speed: 1.003747182282529,
+                course: 266.37909882602,
+                course_accuracy: 32.15991578317691
+              }
+            }
+          ]
+        }
+      end
+
+      it 'persists the whole batch instead of failing on the overflowing point' do
+        expect { described_class.new(user, batch_params).call }
+          .to change(user.points, :count).by(2)
+      end
+
+      it 'drops the overflowing course_accuracy and keeps the valid one' do
+        described_class.new(user, batch_params).call
+
+        accuracies = user.points.order(:timestamp).pluck(:course_accuracy)
+
+        expect(accuracies.first).to be_nil
+        expect(accuracies.last).to be_within(0.00001).of(32.15992)
       end
     end
   end

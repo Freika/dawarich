@@ -29,18 +29,22 @@ class Tracks::IncrementalGenerator
   end
 
   def call
-    segments = fetch_untracked_segments
-    return if segments.empty?
+    Tracks::PerUserLock.with_user_lock(user.id) do
+      segments = fetch_untracked_segments
 
-    segments.each do |segment|
-      next if segment[:points].size < 2
+      segments.each do |segment|
+        next if segment[:points].size < 2
 
-      track = create_track_from_points(
-        segment[:points],
-        segment[:pre_calculated_distance]
-      )
+        track = create_track_from_points(
+          segment[:points],
+          segment[:pre_calculated_distance],
+          tracker_id: segment[:tracker_id]
+        )
 
-      merge_with_recent_track(track) if track
+        merge_with_recent_track(track) if track
+      end
+
+      Tracks::BoundaryDetector.new(user).resolve_cross_chunk_tracks
     end
   end
 
@@ -75,6 +79,7 @@ class Tracks::IncrementalGenerator
     # Find a track that ended shortly before this one started
     # (within the time threshold, suggesting they're part of the same journey)
     preceding = user.tracks
+                    .where(tracker_id: new_track.tracker_id)
                     .where('end_at < ?', new_track.start_at)
                     .where('end_at > ?', new_track.start_at - time_threshold_minutes.minutes)
                     .where.not(id: new_track.id)

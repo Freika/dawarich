@@ -101,4 +101,37 @@ RSpec.describe Auth::VerifyAppleToken do
     token = JWT.encode(payload, other_key, 'RS256', { kid: kid })
     expect { described_class.new(token).call }.to raise_error(Auth::VerifyAppleToken::InvalidToken)
   end
+
+  context 'with an explicit client_id (web Services ID)' do
+    let(:web_services_id) { 'app.dawarich.web' }
+
+    def build_web_token(payload_overrides = {})
+      payload = {
+        iss: 'https://appleid.apple.com',
+        aud: web_services_id,
+        sub: '000123.abc456.def789',
+        email: 'user@example.com',
+        email_verified: 'true',
+        exp: 15.minutes.from_now.to_i,
+        iat: Time.now.to_i
+      }.merge(payload_overrides)
+      JWT.encode(payload, rsa_key, 'RS256', { kid: kid })
+    end
+
+    it 'verifies tokens whose audience matches the supplied client_id' do
+      claims = described_class.new(build_web_token, client_id: web_services_id).call
+      expect(claims[:sub]).to eq('000123.abc456.def789')
+    end
+
+    it 'rejects tokens whose audience matches the iOS bundle but not the supplied client_id' do
+      ios_token = build_token
+      expect { described_class.new(ios_token, client_id: web_services_id).call }
+        .to raise_error(Auth::VerifyAppleToken::InvalidToken)
+    end
+
+    it 'falls back to APPLE_BUNDLE_ID when client_id is not supplied (iOS path unchanged)' do
+      claims = described_class.new(build_token).call
+      expect(claims[:sub]).to eq('000123.abc456.def789')
+    end
+  end
 end

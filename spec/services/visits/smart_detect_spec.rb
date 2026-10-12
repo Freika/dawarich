@@ -3,77 +3,119 @@
 require 'rails_helper'
 
 RSpec.describe Visits::SmartDetect do
+  include Visits::AdvisoryLockable
+
   let(:user) { create(:user) }
-  let(:start_at) { 1.day.ago }
-  let(:end_at) { Time.current }
+  let(:base_ts) { 1_700_000_000 }
 
-  subject { described_class.new(user, start_at: start_at, end_at: end_at) }
+  before do
+    allow(DawarichSettings).to receive_messages(reverse_geocoding_enabled?: false, store_geodata?: false)
+  end
 
-  describe '#call' do
-    context 'when there are no points' do
-      it 'returns an empty array' do
-        expect(subject.call).to eq([])
+  def seed_cluster(count = 6)
+    Array.new(count) do |i|
+      create(:point, user: user, latitude: 52.5, longitude: 13.4, lonlat: 'POINT(13.4 52.5)',
+                     timestamp: base_ts + (i * 60), accuracy: 10, visit_id: nil)
+    end
+  end
+
+  describe 'advisory lock' do
+    it 'serializes the write phase with pg_advisory_xact_lock(user.id)' do
+      skip 'advisory_locks disabled in test env' unless advisory_locks_enabled?
+
+      seed_cluster
+
+      sql_log = []
+      original = ActiveRecord::Base.connection.method(:execute)
+      allow(ActiveRecord::Base.connection).to receive(:execute) do |sql, *rest|
+        sql_log << sql.to_s
+        original.call(sql, *rest)
       end
+
+      described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
+
+      expect(sql_log.any? { |s| s.include?("pg_advisory_xact_lock(#{user.id})") }).to eq(true)
+    end
+  end
+
+  describe 'happy path' do
+    it 'creates visits when the pipeline finds stays' do
+      seed_cluster
+
+      visits = described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
+
+      expect(visits.size).to be >= 1
     end
 
-    context 'when there are points' do
-      let!(:points) do
-        create_list(:point, 5, user: user, timestamp: 2.hours.ago, visit_id: nil, anomaly: false)
-      end
-      let(:potential_visits) { [{ id: 1, center_lat: 40.7128, center_lon: -74.0060 }] }
-      let(:merged_visits) { [{ id: 2, center_lat: 40.7128, center_lon: -74.0060 }] }
-      let(:created_visits) { [instance_double(Visit)] }
+    it 'fills the point→visit cache' do
+      points = seed_cluster
 
-      before do
-        allow(Visits::Detector).to receive(:new).and_return(
-          instance_double(Visits::Detector, detect_potential_visits: potential_visits)
-        )
-        allow(Visits::Merger).to receive(:new).and_return(
-          instance_double(Visits::Merger, merge_visits: merged_visits)
-        )
-        allow(Visits::Creator).to receive(:new).with(user).and_return(
-          instance_double(Visits::Creator, create_visits: created_visits)
-        )
-      end
+      visits = described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
 
-      it 'delegates to the appropriate services and returns created visits' do
-        expect(subject.call).to eq(created_visits)
-      end
+      expect(visits.size).to be >= 1
+      expect(points.map { |p| p.reload.visit_id }).to all(be_present)
+    end
+  end
+
+  describe 'pipeline' do
+    before { seed_cluster }
+
+    it 'produces the expected scored visit for a known fixture (regression)' do
+      visits = described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
+
+      expect(visits.size).to eq(1)
+      visit = visits.first
+      expect(visit.points.count).to eq(6)
+      expect(visit.started_at.to_i).to eq(base_ts)
+      expect(visit.ended_at.to_i).to eq(base_ts + 300)
+      expect(visit.status).to eq('suggested')
+      expect(visit.confidence).to be_present
+      expect(visit.detection_version).to eq(Visits::Detection::VERSION)
     end
 
-    context 'when user is on Lite plan with points outside the 12-month window' do
-      let!(:lite_user) do
-        u = create(:user)
-        u.update_columns(plan: User.plans[:lite])
-        u
-      end
-      let(:archived_start) { 14.months.ago.beginning_of_day }
-      let(:archived_end) { archived_start + 1.hour }
+    it 'emits a structured Runner log' do
+      pattern = /\[Visits::Detection::Runner\] user_id=#{user.id} range=\d+\.\.\d+ version=\d+ /
+      pattern = /#{pattern}visits=\d+ duration_ms=\d+/
+      expect(Rails.logger).to receive(:info).with(a_string_matching(pattern)).at_least(:once)
+      allow(Rails.logger).to receive(:info)
 
-      before do
-        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 600).call
+    end
+  end
 
-        # Old archived points (outside 12-month Lite window)
-        15.times do |i|
-          create(:point, :with_known_location, user: lite_user,
-                                               timestamp: archived_start.to_i + (i * 5 * 60))
-        end
+  describe 'failure handling' do
+    it 'raises to the caller — there is no fallback detector' do
+      seed_cluster(1)
 
-        # Recent point (inside window)
-        recent_ts = 1.day.ago.to_i
-        create(:point, :with_known_location, user: lite_user, timestamp: recent_ts)
-      end
+      allow_any_instance_of(Visits::Detection::CandidateLoader).to receive(:call)
+        .and_raise(ActiveRecord::StatementInvalid, 'statement timeout')
 
-      it 'exposes @points scoped to the plan window (excludes points older than 12 months)' do
-        service = described_class.new(lite_user, start_at: archived_start, end_at: 1.hour.from_now)
+      expect { described_class.new(user, start_at: base_ts - 1, end_at: base_ts + 1).call }
+        .to raise_error(ActiveRecord::StatementInvalid, /statement timeout/)
+    end
+  end
 
-        # Points older than the 12-month window must be filtered out via user.scoped_points
-        archived_count = service.points.where(timestamp: archived_start.to_i..archived_end.to_i).count
-        expect(archived_count).to eq(0)
+  describe 'plan window clamping' do
+    let(:lite_user) { create(:user, plan: :lite) }
 
-        # Only the in-window point should remain
-        expect(service.points.count).to eq(1)
-      end
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+    it 'clamps start_at to the data window for plan-restricted users' do
+      window_start = lite_user.data_window_start.to_i
+      requested_start = window_start - 30.days.to_i
+
+      detector = described_class.new(lite_user, start_at: requested_start, end_at: window_start + 60)
+
+      expect(detector.start_at).to eq(window_start)
+    end
+
+    it 'leaves start_at untouched for unrestricted (Pro) users' do
+      pro_user = create(:user, plan: :pro)
+      requested_start = base_ts - 365.days.to_i
+
+      detector = described_class.new(pro_user, start_at: requested_start, end_at: base_ts)
+
+      expect(detector.start_at).to eq(requested_start)
     end
   end
 end

@@ -81,6 +81,35 @@ RSpec.describe Users::ExportData::Exports, type: :service do
       end
     end
 
+    context 'when user has a user_data archive export with an attached file' do
+      let(:blob) { create_blob(filename: 'user_data_export.zip', content_type: 'application/zip') }
+      let!(:archive_export) do
+        export = create(:export,
+                        user: user,
+                        name: 'user_data_export_20260101_000000.zip',
+                        file_format: :archive,
+                        file_type: :user_data,
+                        status: :completed)
+        export.file.attach(blob)
+        export
+      end
+
+      it 'preserves the export metadata' do
+        export_data = subject.first
+
+        expect(export_data['name']).to eq('user_data_export_20260101_000000.zip')
+        expect(export_data['file_type']).to eq('user_data')
+      end
+
+      it 'does not bundle the export file' do
+        export_data = subject.first
+
+        expect(export_data['file_name']).to be_nil
+        expect(export_data['original_filename']).to be_nil
+        expect(Dir.children(files_directory)).to be_empty
+      end
+    end
+
     context 'with multiple users' do
       let(:other_user) { create(:user) }
       let!(:user_export) { create(:export, user: user, name: 'User Export') }

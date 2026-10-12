@@ -4,8 +4,13 @@ module Points
   module RawData
     class Clearer
       BATCH_SIZE = 10_000
+      COOLING_PERIOD = 7.days
 
-      def initialize
+      # cooling_period: nil clears any verified archive immediately (manual
+      # runbook paths); pass COOLING_PERIOD to only clear archives whose
+      # verification has aged past the safety window (automated paths).
+      def initialize(cooling_period: nil)
+        @cooling_period = cooling_period
         @stats = { cleared: 0, skipped: 0 }
       end
 
@@ -44,9 +49,9 @@ module Points
 
       def verified_archives
         # Only archives that are verified but have points with non-empty raw_data
-        Points::RawDataArchive
-          .where.not(verified_at: nil)
-          .where(id: points_needing_clearing.select(:raw_data_archive_id).distinct)
+        scope = Points::RawDataArchive.where.not(verified_at: nil)
+        scope = scope.where(verified_at: ..@cooling_period.ago) if @cooling_period
+        scope.where(id: points_needing_clearing.select(:raw_data_archive_id).distinct)
       end
 
       def points_needing_clearing
@@ -75,23 +80,13 @@ module Points
         @stats[:cleared] += cleared_count
         Rails.logger.info("✓ Cleared #{cleared_count} points for archive #{archive.id}")
 
-        Metrics::Archives::Operation.new(
-          operation: 'clear',
-          status: 'success'
-        ).call
-
-        Metrics::Archives::PointsArchived.new(
-          count: cleared_count,
-          operation: 'removed'
-        ).call
+        Yabeda.dawarich_archive.operations_total.increment({ operation: 'clear', status: 'success' })
+        Yabeda.dawarich_archive.points_total.increment({ operation: 'removed' }, by: cleared_count)
       rescue StandardError => e
         ExceptionReporter.call(e, "Failed to clear points for archive #{archive.id}")
         Rails.logger.error("✗ Failed to clear archive #{archive.id}: #{e.message}")
 
-        Metrics::Archives::Operation.new(
-          operation: 'clear',
-          status: 'failure'
-        ).call
+        Yabeda.dawarich_archive.operations_total.increment({ operation: 'clear', status: 'failure' })
       end
 
       def clear_points_in_batches(point_ids)
@@ -99,7 +94,10 @@ module Points
 
         point_ids.each_slice(BATCH_SIZE) do |batch|
           Point.transaction do
-            cleared = Point.where(id: batch, raw_data_archived: true).update_all(raw_data: {})
+            cleared = Point.where(id: batch, raw_data_archived: true).update_all(
+              raw_data: {},
+              lock_version: Arel.sql('lock_version')
+            )
             # rubocop:enable Rails/SkipsModelValidations
             total_cleared += cleared
           end

@@ -3,97 +3,106 @@
  * Loads settings from backend API only (no localStorage)
  */
 
+import { classifyBasemapUrl } from "maps_maplibre/utils/basemap_url"
+
+// Matches Tracks::GeojsonSerializer::DEFAULT_COLOR; keep them in sync.
+export const LAYER_COLOR_DEFAULTS = {
+  trackColor: "#6366F1",
+}
+
+// hiddenTileCategories / disabledPoiGroups deliberately have no defaults:
+// they enter the cache only via backend sync or an explicit set, so an
+// early save can't wipe the stored values with empty arrays.
 const DEFAULT_SETTINGS = {
   mapStyle: "light",
+  vectorTilesUrl: null,
+  tilesFallback: false,
+  ...LAYER_COLOR_DEFAULTS,
+  customTheme: {
+    base: "noir",
+    tokens: {
+      bg: "#000000",
+      water: "#0A0A0A",
+      parks: "#111111",
+      buildings: "#141414",
+      railway: "#808080",
+      boundaries: "#4D4D4D",
+      road_motorway: "#FFFFFF",
+      road_primary: "#E0E0E0",
+      road_secondary: "#B0B0B0",
+      road_tertiary: "#808080",
+      road_residential: "#505050",
+      road_default: "#808080",
+    },
+  },
   enabledMapLayers: ["Heatmap", "Tracks"],
-  routeOpacity: 0.6,
+  placesTagFilters: null,
   fogOfWarRadius: 50,
   fogOfWarThreshold: 50,
+  fogOfWarMode: "points",
+  globeProjection: false,
   metersBetweenRoutes: 500,
   minutesBetweenRoutes: 30,
-  pointsRenderingMode: "raw",
-  speedColoredRoutes: false,
-  speedColorScale: "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
-  globeProjection: false,
   minMinutesSpentInCity: 60,
-  maxGapMinutesInCity: 120,
   gpsFilteringEnabled: true,
-  gpsAccuracyThreshold: 100,
-  transportationExpertMode: false,
-  transportationThresholds: {
-    walkingMaxSpeed: 7,
-    cyclingMaxSpeed: 45,
-    drivingMaxSpeed: 220,
-    flyingMinSpeed: 150,
-  },
-  transportationExpertThresholds: {
-    stationaryMaxSpeed: 1,
-    runningVsCyclingAccel: 0.25,
-    cyclingVsDrivingAccel: 0.4,
-    trainMinSpeed: 80,
-    minSegmentDuration: 60,
-    timeGapThreshold: 180,
-    minFlightDistanceKm: 100,
-  },
+  pointDraggingEnabled: false,
+  enabledTransportationModes: [
+    "unknown",
+    "stationary",
+    "walking",
+    "running",
+    "cycling",
+    "driving",
+    "bus",
+    "train",
+    "flying",
+    "boat",
+    "motorcycle",
+  ],
 }
 
 const LAYER_NAME_MAP = {
   Points: "pointsVisible",
-  Routes: "routesVisible",
   Heatmap: "heatmapEnabled",
+  Hexagons: "hexagonsEnabled",
   Visits: "visitsEnabled",
   Photos: "photosEnabled",
   Areas: "areasEnabled",
   Tracks: "tracksEnabled",
+  Flights: "flightsEnabled",
   "Fog of War": "fogEnabled",
   "Scratch map": "scratchEnabled",
   "Family Members": "familyEnabled",
   Places: "placesEnabled",
+  Anomalies: "anomaliesEnabled",
 }
 
 const BACKEND_SETTINGS_MAP = {
   mapStyle: "maps_maplibre_style",
+  customTheme: "maps_maplibre_custom_theme",
+  vectorTilesUrl: "maps_maplibre_tiles_url",
+  tilesFallback: "maps_maplibre_tiles_fallback",
+  trackColor: "track_color",
   enabledMapLayers: "enabled_map_layers",
-  routeOpacity: "route_opacity",
+  placesTagFilters: "places_tag_filters",
   fogOfWarRadius: "fog_of_war_meters",
   fogOfWarThreshold: "fog_of_war_threshold",
+  fogOfWarMode: "fog_of_war_mode",
+  globeProjection: "globe_projection",
   metersBetweenRoutes: "meters_between_routes",
   minutesBetweenRoutes: "minutes_between_routes",
-  pointsRenderingMode: "points_rendering_mode",
-  speedColoredRoutes: "speed_colored_routes",
-  speedColorScale: "speed_color_scale",
-  globeProjection: "globe_projection",
   minMinutesSpentInCity: "min_minutes_spent_in_city",
-  maxGapMinutesInCity: "max_gap_minutes_in_city",
   gpsFilteringEnabled: "gps_filtering_enabled",
-  gpsAccuracyThreshold: "gps_accuracy_threshold",
-  transportationExpertMode: "transportation_expert_mode",
-  transportationThresholds: "transportation_thresholds",
-  transportationExpertThresholds: "transportation_expert_thresholds",
+  pointDraggingEnabled: "point_dragging_enabled",
+  enabledTransportationModes: "enabled_transportation_modes",
   distance_unit: "distance_unit",
   liveMapEnabled: "live_map_enabled",
-}
-
-const TRANSPORTATION_THRESHOLD_MAP = {
-  walkingMaxSpeed: "walking_max_speed",
-  cyclingMaxSpeed: "cycling_max_speed",
-  drivingMaxSpeed: "driving_max_speed",
-  flyingMinSpeed: "flying_min_speed",
-}
-
-const TRANSPORTATION_EXPERT_THRESHOLD_MAP = {
-  stationaryMaxSpeed: "stationary_max_speed",
-  runningVsCyclingAccel: "running_vs_cycling_accel",
-  cyclingVsDrivingAccel: "cycling_vs_driving_accel",
-  trainMinSpeed: "train_min_speed",
-  minSegmentDuration: "min_segment_duration",
-  timeGapThreshold: "time_gap_threshold",
-  minFlightDistanceKm: "min_flight_distance_km",
 }
 
 export class SettingsManager {
   static apiKey = null
   static cachedSettings = null
+  static saveQueue = Promise.resolve()
 
   /**
    * Initialize settings manager with API key
@@ -127,10 +136,16 @@ export class SettingsManager {
    * @returns {Object} Settings with individual layer booleans
    */
   static _expandLayerSettings(settings) {
-    const enabledLayers = settings.enabledMapLayers || []
+    const enabledLayers = [...(settings.enabledMapLayers || [])]
+    if (enabledLayers.includes("Routes") && !enabledLayers.includes("Tracks")) {
+      enabledLayers.push("Tracks")
+    }
+    settings.enabledMapLayers = enabledLayers.filter(
+      (name) => name !== "Routes",
+    )
 
     Object.entries(LAYER_NAME_MAP).forEach(([layerName, settingKey]) => {
-      settings[settingKey] = enabledLayers.includes(layerName)
+      settings[settingKey] = settings.enabledMapLayers.includes(layerName)
     })
 
     return settings
@@ -153,44 +168,8 @@ export class SettingsManager {
     return enabledLayers
   }
 
-  /**
-   * Convert transportation thresholds between frontend and backend formats
-   * @param {Object} thresholds - Threshold object to convert
-   * @param {Object} keyMap - Mapping between frontend camelCase and backend snake_case keys
-   * @param {boolean} toFrontend - If true, convert from backend to frontend; otherwise, convert to backend
-   * @returns {Object} Converted threshold object
-   */
-  static _convertTransportationThresholds(
-    thresholds,
-    keyMap,
-    toFrontend = false,
-  ) {
-    if (!thresholds) return null
-
-    const converted = {}
-    if (toFrontend) {
-      Object.entries(keyMap).forEach(([frontendKey, backendKey]) => {
-        if (backendKey in thresholds) {
-          converted[frontendKey] = parseFloat(thresholds[backendKey])
-        }
-      })
-    } else {
-      Object.entries(keyMap).forEach(([frontendKey, backendKey]) => {
-        if (frontendKey in thresholds) {
-          converted[backendKey] = thresholds[frontendKey]
-        }
-      })
-    }
-    return converted
-  }
-
   static _parseIntOr(value, fallback) {
     const parsed = parseInt(value, 10)
-    return Number.isNaN(parsed) ? fallback : parsed
-  }
-
-  static _parseFloatOr(value, fallback) {
-    const parsed = parseFloat(value)
     return Number.isNaN(parsed) ? fallback : parsed
   }
 
@@ -225,12 +204,7 @@ export class SettingsManager {
           if (backendKey in backendSettings) {
             let value = backendSettings[backendKey]
 
-            if (frontendKey === "routeOpacity") {
-              value = SettingsManager._parseFloatOr(
-                value,
-                DEFAULT_SETTINGS.routeOpacity,
-              )
-            } else if (frontendKey === "fogOfWarRadius") {
+            if (frontendKey === "fogOfWarRadius") {
               value = SettingsManager._parseIntOr(
                 value,
                 DEFAULT_SETTINGS.fogOfWarRadius,
@@ -255,41 +229,16 @@ export class SettingsManager {
                 value,
                 DEFAULT_SETTINGS.minMinutesSpentInCity,
               )
-            } else if (frontendKey === "maxGapMinutesInCity") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.maxGapMinutesInCity,
-              )
-            } else if (frontendKey === "gpsAccuracyThreshold") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.gpsAccuracyThreshold,
-              )
             } else if (frontendKey === "gpsFilteringEnabled") {
               value = value === true || value === "true"
-            } else if (frontendKey === "speedColoredRoutes") {
+            } else if (frontendKey === "pointDraggingEnabled") {
               value = value === true || value === "true"
             } else if (frontendKey === "globeProjection") {
               value = value === true || value === "true"
-            } else if (frontendKey === "transportationExpertMode") {
-              value = value === true || value === "true"
             } else if (frontendKey === "liveMapEnabled") {
               value = value === true || value === "true"
-            } else if (frontendKey === "transportationThresholds" && value) {
-              value = SettingsManager._convertTransportationThresholds(
-                value,
-                TRANSPORTATION_THRESHOLD_MAP,
-                true,
-              )
-            } else if (
-              frontendKey === "transportationExpertThresholds" &&
-              value
-            ) {
-              value = SettingsManager._convertTransportationThresholds(
-                value,
-                TRANSPORTATION_EXPERT_THRESHOLD_MAP,
-                true,
-              )
+            } else if (frontendKey === "tilesFallback") {
+              value = value === true || value === "true"
             }
 
             frontendSettings[frontendKey] = value
@@ -355,46 +304,44 @@ export class SettingsManager {
           } else if (frontendKey in settings) {
             let value = settings[frontendKey]
 
-            if (frontendKey === "routeOpacity") {
-              value = parseFloat(value).toString()
-            } else if (
+            if (
               frontendKey === "fogOfWarRadius" ||
               frontendKey === "fogOfWarThreshold" ||
               frontendKey === "metersBetweenRoutes" ||
               frontendKey === "minutesBetweenRoutes" ||
-              frontendKey === "minMinutesSpentInCity" ||
-              frontendKey === "maxGapMinutesInCity"
+              frontendKey === "minMinutesSpentInCity"
             ) {
               value = parseInt(value, 10).toString()
-            } else if (frontendKey === "speedColoredRoutes") {
-              value = Boolean(value)
             } else if (frontendKey === "globeProjection") {
-              value = Boolean(value)
-            } else if (frontendKey === "transportationExpertMode") {
               value = Boolean(value)
             } else if (frontendKey === "liveMapEnabled") {
               value = Boolean(value)
-            } else if (frontendKey === "transportationThresholds" && value) {
-              value = SettingsManager._convertTransportationThresholds(
-                value,
-                TRANSPORTATION_THRESHOLD_MAP,
-                false,
-              )
-            } else if (
-              frontendKey === "transportationExpertThresholds" &&
-              value
-            ) {
-              value = SettingsManager._convertTransportationThresholds(
-                value,
-                TRANSPORTATION_EXPERT_THRESHOLD_MAP,
-                false,
-              )
+            } else if (frontendKey === "pointDraggingEnabled") {
+              value = Boolean(value)
             }
 
             backendSettings[backendKey] = value
           }
         },
       )
+
+      // distance_unit, tile categories, and POI groups live inside the
+      // nested `maps` hash on the backend, the API merges it so the V1
+      // keys managed by the settings page survive.
+      delete backendSettings.distance_unit
+      const mapsPayload = {}
+      if (settings.distance_unit != null) {
+        mapsPayload.distance_unit = settings.distance_unit
+      }
+      if (Array.isArray(settings.hiddenTileCategories)) {
+        mapsPayload.hidden_tile_categories = settings.hiddenTileCategories
+      }
+      if (Array.isArray(settings.disabledPoiGroups)) {
+        mapsPayload.disabled_poi_groups = settings.disabledPoiGroups
+      }
+      if (Object.keys(mapsPayload).length > 0) {
+        backendSettings.maps = mapsPayload
+      }
 
       const response = await fetch("/api/v1/settings", {
         method: "PATCH",
@@ -427,6 +374,10 @@ export class SettingsManager {
     return SettingsManager.getSettings()[key]
   }
 
+  static validVectorTilesUrl(url) {
+    return !url || classifyBasemapUrl(url) !== null
+  }
+
   /**
    * Update a specific setting and save to backend
    * @param {string} key - Setting key
@@ -434,10 +385,16 @@ export class SettingsManager {
    * @returns {Promise<Object|null>} API response data
    */
   static async updateSetting(key, value) {
-    const settings = SettingsManager.getSettings()
-    settings[key] = value
+    return await SettingsManager.updateSettings({ [key]: value })
+  }
 
-    const isLayerSetting = Object.values(LAYER_NAME_MAP).includes(key)
+  static async updateSettings(updates) {
+    const settings = SettingsManager.getSettings()
+    Object.assign(settings, updates)
+
+    const isLayerSetting = Object.keys(updates).some((key) =>
+      Object.values(LAYER_NAME_MAP).includes(key),
+    )
     if (isLayerSetting) {
       settings.enabledMapLayers =
         SettingsManager._collapseLayerSettings(settings)
@@ -445,7 +402,13 @@ export class SettingsManager {
 
     SettingsManager.updateCache(settings)
 
-    return await SettingsManager.saveToBackend(settings)
+    const previousSave = SettingsManager.saveQueue.catch(() => null)
+    const save = previousSave.then(() =>
+      SettingsManager.saveToBackend(settings),
+    )
+    SettingsManager.saveQueue = save
+
+    return await save
   }
 
   /**

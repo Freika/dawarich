@@ -2,8 +2,10 @@
 
 module Points
   module RawData
-    # Daily spot-check: verifies a random sample of unverified archives.
-    # Uses the existing Verifier which checks checksums, counts, and sampled raw_data matches.
+    # Daily spot-check: verifies a random sample of archives.
+    # Unverified archives get a chance to become clearable; already-verified
+    # archives are re-checked for storage bit rot (failures alert via Sentry
+    # without touching verified_at).
     class VerifyRandomJob < ApplicationJob
       queue_as :archival
 
@@ -11,7 +13,6 @@ module Points
 
       def perform
         archives = Points::RawDataArchive
-                   .where(verified_at: nil)
                    .order(Arel.sql('RANDOM()'))
                    .limit(SAMPLE_SIZE)
 

@@ -3,63 +3,74 @@
   <div class="card bg-base-200 shadow-xl">
     <div class="card-body">
       <h2 class="text-2xl font-bold mb-4 flex items-center">
-        <%= icon 'heart', class: 'mr-2 text-pink-500' %> Supporter Status
+        <%= icon 'heart', class: 'mr-2 text-pink-500' %> <%= t('.supporter_status') %>
       </h2>
       <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
         <% if current_user.supporter? %>
           <div class="alert alert-success">
             <%= icon 'circle-check', class: 'w-5 h-5' %>
-            <span>Thank you for supporting Dawarich<%= " via #{current_user.supporter_platform&.titleize}" if current_user.supporter_platform %>!</span>
+            <span><%= t('.supporter_thanks', platform: current_user.supporter_platform ? t('.supporter_platform', platform: t("supporter_platforms.#{current_user.supporter_platform}")) : '') %></span>
           </div>
         <% end %>
 
         <%= form_with url: settings_verify_supporter_path, method: :post, data: { turbo: false } do |vf| %>
           <div class="form-control">
             <%= vf.label :supporter_email, class: 'label' do %>
-              <span class="label-text font-medium">Email used for Patreon/GitHub/Ko-fi</span>
+              <span class="label-text font-medium"><%= t('.email_used_for_patreon_github_ko_fi') %></span>
             <% end %>
-            <div class="join w-full">
-              <%= vf.email_field :supporter_email,
-                  value: current_user.safe_settings.supporter_email,
-                  class: 'input input-bordered join-item w-full',
-                  placeholder: 'supporter@example.com' %>
-              <%= vf.submit 'Verify', class: 'btn btn-primary join-item' %>
-            </div>
+            <%= vf.email_field :supporter_email,
+                value: current_user.safe_settings.supporter_email,
+                class: 'input input-bordered w-full',
+                placeholder: t('.supporter_example_com') %>
           </div>
+
+          <div class="form-control mt-3">
+            <%= vf.label :supporter_github_username, class: 'label' do %>
+              <span class="label-text font-medium"><%= t('.github_username_for_github_sponsors_with_a_private_email') %></span>
+            <% end %>
+            <%= vf.text_field :supporter_github_username,
+                value: current_user.safe_settings.supporter_github_username,
+                class: 'input input-bordered w-full',
+                placeholder: t('.octocat'),
+                autocapitalize: 'none',
+                autocorrect: 'off' %>
+          </div>
+
+          <%= vf.submit t('.verify'), class: 'btn btn-primary mt-3' %>
         <% end %>
 
-        <% if current_user.safe_settings.supporter_email.present? && !current_user.supporter? %>
+        <% if (current_user.safe_settings.supporter_email.present? || current_user.safe_settings.supporter_github_username.present?) && !current_user.supporter? %>
           <div class="alert">
             <%= icon 'triangle-alert', class: 'w-5 h-5 text-warning' %>
-            <span>Email not found in supporter list. Make sure you're using the same email as your donation platform.</span>
+            <span><%= t('.not_found_in_supporter_list_make_sure_you_re_using') %></span>
           </div>
         <% end %>
 
         <!-- Info panel -->
         <div class="bg-base-200 p-4 rounded-lg space-y-3">
           <h3 class="font-semibold flex items-center gap-2">
-            <%= icon 'info', class: 'w-4 h-4 text-primary' %> How to support Dawarich
+            <%= icon 'info', class: 'w-4 h-4 text-primary' %> <%= t('.how_to_support_dawarich') %>
           </h3>
           <p class="text-sm text-base-content/70">
-            Dawarich is a free and open-source project. Your support helps cover hosting costs, fund development, and keep the project alive. You can support us through any of these platforms:
+            <%= t('.dawarich_is_a_free_and_open_source_project_your_support') %>
           </p>
           <div class="flex flex-wrap gap-2">
             <a href="https://www.patreon.com/freika" class="btn btn-sm btn-outline" target="_blank" rel="noopener noreferrer">
-              Patreon
+              <%= t('.patreon') %>
             </a>
             <a href="https://github.com/sponsors/Freika" class="btn btn-sm btn-outline" target="_blank" rel="noopener noreferrer">
-              GitHub Sponsors
+              <%= t('.github_sponsors') %>
             </a>
             <a href="https://ko-fi.com/freika" class="btn btn-sm btn-outline" target="_blank" rel="noopener noreferrer">
-              Ko-fi
+              <%= t('.ko_fi') %>
             </a>
           </div>
 
-          <h3 class="font-semibold mt-3">Supporter benefits</h3>
+          <h3 class="font-semibold mt-3"><%= t('.supporter_benefits') %></h3>
           <ul class="text-sm text-base-content/70 list-disc list-inside space-y-1">
-            <li>Access to reverse geocoding API (see Patreon tier)</li>
-            <li>Mention in Github Releases</li>
-            <li>Supporter badge displayed in the navbar</li>
+            <li><%= t('.access_to_reverse_geocoding_api_see_patreon_tier') %></li>
+            <li><%= t('.mention_in_github_releases') %></li>
+            <li><%= t('.supporter_badge_displayed_in_the_navbar') %></li>
           </ul>
         </div>
       </div>

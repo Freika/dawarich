@@ -40,27 +40,29 @@ workers ENV.fetch('WEB_CONCURRENCY', 2)
 #
 preload_app!
 
+# Compact the preloaded heap before forking so workers share as many
+# copy-on-write pages as possible. Only runs in cluster mode (workers > 0).
+before_fork do
+  3.times { GC.start }
+  GC.compact
+end
+
+# Instance settings are cached per process. `preload_app!` above means a thread
+# started during preload lives in the master and dies at fork, so the subscriber
+# has to be started per worker or every request-serving process would keep a
+# stale snapshot until the next restart.
+before_worker_boot do
+  InstanceSettings::Notifier.start
+rescue StandardError => e
+  Rails.logger.warn("[InstanceSettings] subscriber failed to start: #{e.class}: #{e.message}")
+end
+
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 
-# Prometheus exporter
+# Yabeda-Puma plugin: emits puma_* gauges (workers, backlog, pool_capacity, busy_threads).
+# activate_control_app is required by yabeda-puma-plugin (uses the control socket).
 if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
-  require 'prometheus_exporter/instrumentation'
-  require_relative 'prometheus_helper'
-
-  before_fork do
-    if PrometheusHelper.ensure_reachable!
-      PrometheusExporter::Client.default = PrometheusExporter::Client.new(
-        host: ENV.fetch('PROMETHEUS_EXPORTER_HOST', 'ANY'),
-        port: ENV.fetch('PROMETHEUS_EXPORTER_PORT', 9394)
-      )
-    end
-  end
-
-  on_worker_boot do
-    if PrometheusHelper.ensure_reachable!
-      require 'prometheus_exporter/instrumentation'
-      PrometheusExporter::Instrumentation::Puma.start
-    end
-  end
+  activate_control_app
+  plugin :yabeda
 end

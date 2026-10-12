@@ -133,6 +133,107 @@ RSpec.describe Timeline::DayAssembler do
       end
     end
 
+    context 'with segment-derived summary data' do
+      let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
+
+      let!(:track) do
+        create(:track,
+               user: user,
+               start_at: day + 8.hours,
+               end_at: day + 9.hours,
+               distance: 10_000,
+               duration: 3600,
+               dominant_mode: :driving)
+      end
+
+      before do
+        create(:track_segment, track: track, transportation_mode: :driving,
+                               start_at: day + 8.hours, end_at: day + 8.hours + 40.minutes,
+                               distance: 9_000, duration: 2400, confidence_score: 0.95)
+        create(:track_segment, track: track, transportation_mode: :walking,
+                               start_at: day + 8.hours + 40.minutes, end_at: day + 8.hours + 48.minutes,
+                               distance: 600, duration: 480, confidence_score: 0.9)
+        # Confident but tiny: a 200 m jog must not earn a day chip
+        create(:track_segment, :running, track: track,
+                                         start_at: day + 8.hours + 48.minutes, end_at: day + 8.hours + 50.minutes,
+                                         distance: 200, duration: 120, confidence_score: 0.9)
+        # Below the confidence gate: moves the user, but must not claim a mode
+        create(:track_segment, track: track, transportation_mode: :cycling,
+                               start_at: day + 8.hours + 50.minutes, end_at: day + 8.hours + 55.minutes,
+                               distance: 500, duration: 300, confidence_score: 0.3)
+        create(:track_segment, :stationary, track: track,
+                                            start_at: day + 8.hours + 55.minutes, end_at: day + 9.hours,
+                                            distance: 20, duration: 300, confidence_score: 1.0)
+      end
+
+      subject do
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+      end
+
+      it 'aggregates confident per-mode distances into the day summary, largest first' do
+        modes = subject.first[:summary][:mode_distances]
+
+        expect(modes.keys).to eq(%w[driving walking])
+        expect(modes['driving']).to eq(9.0)
+        expect(modes['walking']).to eq(0.6)
+      end
+
+      it 'exposes per-track moving duration on journey entries' do
+        journey = subject.first[:entries].find { |e| e[:type] == 'journey' }
+        expect(journey[:moving_duration]).to eq(2400 + 480 + 120 + 300)
+      end
+    end
+
+    context 'with a track spanning midnight' do
+      let(:day) { Time.zone.parse('2025-03-10 00:00:00') }
+
+      let!(:track) do
+        create(:track, user: user, start_at: day + 22.hours, end_at: day + 26.hours,
+                       distance: 12_000, duration: 14_400).tap do |t|
+          create(:track_segment, track: t, transportation_mode: :driving,
+                                 start_at: day + 22.hours, end_at: day + 26.hours,
+                                 distance: 12_000, duration: 14_400, confidence_score: 0.95)
+        end
+      end
+
+      subject do
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 2.days).iso8601).call
+      end
+
+      it 'scales moving duration by the day share on the continuation day' do
+        continuation = subject.flat_map { |d| d[:entries] }
+                              .find { |e| e[:type] == 'journey' && e[:continuation_of_date].present? }
+
+        expect(continuation[:moving_duration]).to eq(continuation[:day_duration])
+      end
+    end
+
+    context 'with tombstoned visits' do
+      let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
+
+      let!(:kept_visit) do
+        create(:visit, user: user, name: 'Kept', status: :confirmed,
+                       started_at: day + 9.hours, ended_at: day + 10.hours, duration: 60)
+      end
+      let!(:soft_deleted_visit) do
+        create(:visit, user: user, name: 'Tombstone', status: :confirmed, deleted_at: 1.day.ago,
+                       started_at: day + 11.hours, ended_at: day + 12.hours, duration: 60)
+      end
+      let!(:declined_visit) do
+        create(:visit, user: user, name: 'Old Decline', status: :declined,
+                       started_at: day + 13.hours, ended_at: day + 14.hours, duration: 60)
+      end
+
+      subject do
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+      end
+
+      it 'excludes soft-deleted and declined visits from the feed' do
+        names = subject.first[:entries].select { |e| e[:type] == 'visit' }.map { |e| e[:name] }
+        expect(names).to eq(['Kept'])
+      end
+    end
+
     context 'with a visit whose place has tags' do
       let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
       let(:tag1) { create(:tag, user: user, name: 'Home', icon: '🏠', color: '#4CAF50') }
@@ -385,6 +486,48 @@ RSpec.describe Timeline::DayAssembler do
       end
     end
 
+    context 'N+1 guard: query count must not grow with visit count' do
+      let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
+
+      def build_visits(num)
+        tag = create(:tag, user: user)
+        num.times do |i|
+          p = create(:place, :with_geodata, name: "P#{i}", latitude: 52.5 + i * 0.001, longitude: 13.4)
+          p.tags << tag
+          v = create(:visit, user: user, place: p, name: "V#{i}", status: :suggested,
+                              started_at: day + (8 + (i % 14)).hours,
+                              ended_at: day + (9 + (i % 14)).hours,
+                              duration: 60)
+          v.suggested_places << p
+          create_list(:point, 2, user: user, visit: v)
+        end
+      end
+
+      def query_count_for_call
+        user.reload
+        count = 0
+        counter = lambda do |_name, _start, _finish, _id, payload|
+          count += 1 unless payload[:name].in?(%w[SCHEMA TRANSACTION])
+        end
+        assembler = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+        ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { assembler.call }
+        count
+      end
+
+      it 'issues the same number of queries for 10 visits as for 3 visits (batch COUNT, no N+1)' do
+        build_visits(3)
+        count_small = query_count_for_call
+
+        build_visits(10)
+        count_large = query_count_for_call
+
+        expect(count_large).to be <= count_small + 2,
+                               "Query count grew from #{count_small} (3 visits) to #{count_large} (13 visits). " \
+                               'point_count_for is issuing one COUNT per visit (N+1). ' \
+                               'Expected a single batched GROUP BY count query instead.'
+      end
+    end
+
     context 'summary status counts' do
       let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
 
@@ -409,11 +552,11 @@ RSpec.describe Timeline::DayAssembler do
         described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
       end
 
-      it 'includes suggested/confirmed/declined counts in summary' do
+      it 'counts visible visits only — declined rows are tombstones and never reach the feed' do
         summary = subject.first[:summary]
         expect(summary[:suggested_count]).to eq(1)
         expect(summary[:confirmed_count]).to eq(2)
-        expect(summary[:declined_count]).to eq(1)
+        expect(summary[:declined_count]).to eq(0)
       end
     end
 
@@ -792,6 +935,57 @@ RSpec.describe Timeline::DayAssembler do
         expect(result).to eq([])
       end
     end
+
+    context 'with stationary phantom tracks (keepalive clusters)' do
+      let(:day) { Time.zone.parse('2026-05-12 00:00:00') }
+
+      let!(:drive_track) do
+        create(:track,
+               user: user,
+               start_at: day + 7.hours,
+               end_at:   day + 7.hours + 30.minutes,
+               distance: 3700,
+               duration: 1800,
+               dominant_mode: :driving)
+      end
+
+      let!(:phantom_stationary_track) do
+        create(:track,
+               user: user,
+               start_at: day + 10.hours,
+               end_at:   day + 10.hours + 30.minutes,
+               distance: 8,
+               duration: 1800,
+               dominant_mode: :stationary)
+      end
+
+      let!(:real_stationary_movement_track) do
+        create(:track,
+               user: user,
+               start_at: day + 12.hours,
+               end_at:   day + 12.hours + 5.minutes,
+               distance: 200,
+               duration: 300,
+               dominant_mode: :stationary)
+      end
+
+      subject do
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+      end
+
+      it 'omits low-distance stationary tracks from the journey entries' do
+        entries = subject.first[:entries]
+        track_ids = entries.select { |e| e[:type] == 'journey' }.map { |e| e[:track_id] }
+        expect(track_ids).to include(drive_track.id)
+        expect(track_ids).to include(real_stationary_movement_track.id)
+        expect(track_ids).not_to include(phantom_stationary_track.id)
+      end
+
+      it 'excludes all stationary tracks from time_moving_minutes regardless of distance' do
+        summary = subject.first[:summary]
+        expect(summary[:time_moving_minutes]).to eq(30)
+      end
+    end
   end
 
   describe '#build_visit_entry suggested_places injection' do
@@ -852,6 +1046,20 @@ RSpec.describe Timeline::DayAssembler do
       entry = assembler.build_visit_entry(visit.reload)
 
       expect(entry[:suggested_places].map { |p| p[:id] }).to eq([place_other.id])
+    end
+  end
+
+  describe 'confidence band exposure' do
+    let(:day) { Time.zone.parse('2025-03-10 00:00:00') }
+
+    it 'exposes the visit confidence band on the entry for UI gating' do
+      create(:visit, user: user, place: nil, area: nil, status: :suggested, confidence: 30,
+                     started_at: day + 9.hours, ended_at: day + 10.hours, duration: 60)
+
+      days = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+      entry = days.first[:entries].first
+
+      expect(entry[:confidence_band]).to eq(:low)
     end
   end
 end

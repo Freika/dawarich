@@ -43,8 +43,6 @@ describe 'Plan API', type: :request do
         let(:user) { create(:user) }
         let(:api_key) { user.api_key }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 

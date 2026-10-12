@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import Flash from "./flash_controller"
 
 export default class extends Controller {
@@ -49,35 +50,41 @@ export default class extends Controller {
     if (succeeded) {
       this.handleSuccess()
     } else {
-      Flash.show("error", "Failed to copy. Please copy manually.")
+      Flash.show(
+        "error",
+        translate("messages.failed_to_copy_please_copy_manually"),
+      )
     }
   }
 
   handleSuccess() {
     this.showButtonFeedback()
-    Flash.show("notice", "Copied to clipboard!")
+    Flash.show("notice", translate("messages.copied_to_clipboard"))
   }
 
   showButtonFeedback() {
     const button = this.element
-    const originalClasses = button.className
     const originalHTML = button.innerHTML
 
-    // Change button appearance
-    button.className = "btn btn-success btn-xs"
+    // Lock the current dimensions so swapping the content doesn't resize the
+    // button or break a join/input-group layout, then briefly show a check.
+    const { width, height } = button.getBoundingClientRect()
+    button.style.width = `${width}px`
+    button.style.height = `${height}px`
+    button.classList.add("btn-success")
     button.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
       </svg>
-      Copied!
     `
     button.disabled = true
 
-    // Reset after 2 seconds
     setTimeout(() => {
-      button.className = originalClasses
+      button.style.width = ""
+      button.style.height = ""
+      button.classList.remove("btn-success")
       button.innerHTML = originalHTML
       button.disabled = false
-    }, 2000)
+    }, 1500)
   }
 }

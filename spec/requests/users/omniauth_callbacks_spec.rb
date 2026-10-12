@@ -6,12 +6,14 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
   let(:email) { 'oauth_user@example.com' }
 
   before(:all) do
-    # Add OpenID Connect callback route for testing
+    # Add OAuth callback routes for testing
     # This is needed because OMNIAUTH_PROVIDERS may be empty in test environment
     Rails.application.routes.append do
       devise_scope :user do
         get 'users/auth/openid_connect/callback', to: 'users/omniauth_callbacks#openid_connect'
         post 'users/auth/openid_connect/callback', to: 'users/omniauth_callbacks#openid_connect'
+        get 'users/auth/google_oauth2/callback', to: 'users/omniauth_callbacks#google_oauth2'
+        get 'users/auth/github/callback', to: 'users/omniauth_callbacks#github'
       end
     end
     # Force route recompilation so appended routes are recognized even when
@@ -41,6 +43,14 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
         user = User.find_by(email: email)
         expect(user).to be_present
         expect(user.encrypted_password).to be_present
+
+        if provider == :google_oauth2
+          expect(user.first_name).to eq('Ada')
+          expect(user.last_name).to eq('Lovelace')
+        elsif provider == :github
+          expect(user.first_name).to eq('Ada')
+          expect(user.last_name).to eq('Lovelace')
+        end
       end
     end
 
@@ -84,6 +94,36 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
     end
   end
 
+  describe 'GET /users/auth/google_oauth2/callback' do
+    before do
+      mock_google_auth(email: email)
+    end
+
+    include_examples 'successful OAuth authentication', :google_oauth2, 'Google'
+
+    context 'when an account with the email is pending deletion' do
+      before do
+        create(:user, email: email).mark_as_deleted!
+      end
+
+      it 'redirects to sign in with deletion guidance' do
+        Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:google_oauth2]
+        get '/users/auth/google_oauth2/callback'
+
+        expect(response).to redirect_to(new_user_session_path)
+        expect(flash[:alert]).to include('being deleted')
+      end
+    end
+  end
+
+  describe 'GET /users/auth/github/callback' do
+    before do
+      mock_github_auth(email: email)
+    end
+
+    include_examples 'successful OAuth authentication', :github, 'GitHub'
+  end
+
   # Self-hosted configuration (SELF_HOSTED=true) uses OpenID Connect
   describe 'GET /users/auth/openid_connect/callback' do
     before do
@@ -121,6 +161,20 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
           end.not_to change(User, :count)
 
           expect(response).to redirect_to(root_path)
+        end
+      end
+
+      context 'when the OIDC-linked user is pending deletion' do
+        before do
+          create(:user, email: email, provider: 'openid_connect', uid: '123545').mark_as_deleted!
+        end
+
+        it 'redirects with deletion guidance' do
+          Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:openid_connect]
+          get '/users/auth/openid_connect/callback'
+
+          expect(response).to redirect_to(new_user_session_path)
+          expect(flash[:alert]).to include('being deleted')
         end
       end
 

@@ -9,6 +9,78 @@ RSpec.describe Track, type: :model do
     it { is_expected.to have_many(:track_segments).dependent(:destroy) }
   end
 
+  describe '.delete_orphaned' do
+    let(:user) { create(:user) }
+
+    it 'deletes the tracks and their segments' do
+      orphan = create(:track, user: user)
+      create(:track_segment, track: orphan)
+
+      expect { Track.delete_orphaned([orphan.id]) }
+        .to change { Track.exists?(orphan.id) }.from(true).to(false)
+      expect(TrackSegment.where(track_id: orphan.id)).to be_empty
+    end
+
+    it 'broadcasts a destroyed event to the owner for each deleted track' do
+      orphan = create(:track, user: user)
+
+      expect { Track.delete_orphaned([orphan.id]) }
+        .to(have_broadcasted_to(user).from_channel(TracksChannel)
+        .with { |data| expect(data).to include('action' => 'destroyed', 'track_id' => orphan.id) })
+    end
+
+    it 'returns the number of tracks deleted' do
+      orphans = create_list(:track, 2, user: user)
+
+      expect(Track.delete_orphaned(orphans.map(&:id))).to eq(2)
+    end
+
+    it 'spares tracks that still have points' do
+      track = create(:track, user: user)
+      segment = create(:track_segment, track: track)
+      create(:point, user: user, track: track)
+
+      expect(Track.delete_orphaned([track.id])).to eq(0)
+      expect(Track.exists?(track.id)).to be true
+      expect(TrackSegment.exists?(segment.id)).to be true
+    end
+
+    it 'deletes only the point-less tracks in a mixed batch' do
+      orphan = create(:track, user: user)
+      kept = create(:track, user: user)
+      create(:point, user: user, track: kept)
+
+      expect(Track.delete_orphaned([orphan.id, kept.id])).to eq(1)
+      expect(Track.exists?(orphan.id)).to be false
+      expect(Track.exists?(kept.id)).to be true
+    end
+
+    it 'does not broadcast for empty input' do
+      expect { Track.delete_orphaned([]) }
+        .not_to have_broadcasted_to(user).from_channel(TracksChannel)
+    end
+  end
+
+  describe 'points foreign key' do
+    let(:user) { create(:user) }
+
+    it 'refuses to delete a track that still has points' do
+      track = create(:track, user: user)
+      create(:point, user: user, track: track)
+
+      expect { Track.where(id: track.id).delete_all }
+        .to raise_error(ActiveRecord::InvalidForeignKey)
+    end
+
+    it 'allows destroy, which nullifies the points first' do
+      track = create(:track, user: user)
+      point = create(:point, user: user, track: track)
+
+      expect { track.destroy }.not_to raise_error
+      expect(point.reload.track_id).to be_nil
+    end
+  end
+
   describe 'enums' do
     it do
       is_expected.to define_enum_for(:dominant_mode)
@@ -38,6 +110,27 @@ RSpec.describe Track, type: :model do
     it { is_expected.to validate_numericality_of(:distance).is_greater_than_or_equal_to(0) }
     it { is_expected.to validate_numericality_of(:avg_speed).is_greater_than_or_equal_to(0) }
     it { is_expected.to validate_numericality_of(:duration).is_greater_than_or_equal_to(0) }
+  end
+
+  describe '.avg_speed_kmh' do
+    it 'returns 0 for non-positive duration' do
+      expect(Track.avg_speed_kmh(1000, 0)).to eq(0.0)
+      expect(Track.avg_speed_kmh(1000, -10)).to eq(0.0)
+    end
+
+    it 'returns 0 for non-positive distance' do
+      expect(Track.avg_speed_kmh(0, 60)).to eq(0.0)
+      expect(Track.avg_speed_kmh(-100, 60)).to eq(0.0)
+    end
+
+    it 'converts m/s to km/h with two-decimal precision' do
+      expect(Track.avg_speed_kmh(10_000, 3600)).to eq(10.0)
+      expect(Track.avg_speed_kmh(21_355, 5076)).to be_within(0.01).of(15.14)
+    end
+
+    it 'caps at the column precision limit' do
+      expect(Track.avg_speed_kmh(10**12, 1)).to eq(999_999.99)
+    end
   end
 
   describe '.last_for_day' do
@@ -172,6 +265,28 @@ RSpec.describe Track, type: :model do
         expect(Track.with_detected_mode).not_to include(unknown_track)
       end
     end
+
+    describe '.without_phantom_stationary' do
+      let!(:driving_with_zero_distance)  { create(:track, user: user, dominant_mode: :driving, distance: 0) }
+      let!(:stationary_below_threshold)  { create(:track, user: user, dominant_mode: :stationary, distance: 50) }
+      let!(:stationary_at_threshold)     { create(:track, user: user, dominant_mode: :stationary, distance: 100) }
+      let!(:stationary_above_threshold)  { create(:track, user: user, dominant_mode: :stationary, distance: 250) }
+
+      subject(:scope) { Track.without_phantom_stationary(100) }
+
+      it 'keeps non-stationary tracks regardless of distance' do
+        expect(scope).to include(driving_with_zero_distance)
+      end
+
+      it 'excludes stationary tracks below the threshold' do
+        expect(scope).not_to include(stationary_below_threshold)
+      end
+
+      it 'keeps stationary tracks at or above the threshold' do
+        expect(scope).to include(stationary_at_threshold)
+        expect(scope).to include(stationary_above_threshold)
+      end
+    end
   end
 
   describe '#activity_breakdown' do
@@ -217,6 +332,46 @@ RSpec.describe Track, type: :model do
       end
 
       it 'sets dominant_mode to the mode with longest duration' do
+        track.update_dominant_mode!
+        expect(track.reload.dominant_mode).to eq('driving')
+      end
+    end
+
+    context 'when a stationary keepalive segment outlasts a moving segment' do
+      before do
+        create(:track_segment, track: track, transportation_mode: :stationary,
+                               distance: 50, duration: 3600)
+        create(:track_segment, track: track, transportation_mode: :driving,
+                               distance: 3000, duration: 1800)
+      end
+
+      it 'picks the moving mode even though stationary lasts longer' do
+        track.update_dominant_mode!
+        expect(track.reload.dominant_mode).to eq('driving')
+      end
+    end
+
+    context 'when only a stationary segment exists' do
+      before do
+        create(:track_segment, track: track, transportation_mode: :stationary,
+                               distance: 5, duration: 1800)
+      end
+
+      it 'sets dominant_mode to stationary' do
+        track.update_dominant_mode!
+        expect(track.reload.dominant_mode).to eq('stationary')
+      end
+    end
+
+    context 'when an unknown segment outdistances a real moving segment' do
+      before do
+        create(:track_segment, track: track, transportation_mode: :unknown,
+                               distance: 200, duration: 60)
+        create(:track_segment, track: track, transportation_mode: :driving,
+                               distance: 60,  duration: 30)
+      end
+
+      it 'prefers the real moving mode over unknown' do
         track.update_dominant_mode!
         expect(track.reload.dominant_mode).to eq('driving')
       end

@@ -1,14 +1,14 @@
 <div class="space-y-4">
   <div class="rounded-2xl bg-base-200/70 p-4 sm:p-5">
-    <p class="text-sm font-medium text-base-content/70">Current API key</p>
+    <p class="text-sm font-medium text-base-content/70"><%= t('.current_api_key') %></p>
     <div class="mt-2 rounded-xl bg-base-300/70 p-3">
       <code class="block break-all text-sm sm:text-base"><%= current_user.api_key %></code>
     </div>
-    <p class="mt-3 text-sm text-base-content/70">Docs: <%= link_to "API documentation", 'https://dawarich.app/docs/api/dawarich-api?utm_source=app&utm_medium=web&utm_campaign=api_docs', class: 'underline hover:no-underline' %></p>
+    <p class="mt-3 text-sm text-base-content/70"><%= t('.docs') %> <%= link_to t('.api_documentation'), 'https://dawarich.app/docs/api/dawarich-api?utm_source=app&utm_medium=web&utm_campaign=api_docs', class: 'underline hover:no-underline' %></p>
   </div>
 
   <div class="rounded-2xl border border-base-300/70 bg-base-200/40 p-4 text-center">
-    <p class="text-sm font-medium text-base-content/70">Scan with Dawarich app</p>
+    <p class="text-sm font-medium text-base-content/70"><%= t('.scan_with_dawarich_app') %></p>
     <div class="mt-4 mx-auto max-w-xs overflow-hidden rounded-2xl bg-white p-4 shadow-lg flex justify-center">
       <%= api_key_qr_code(current_user) %>
     </div>
@@ -16,24 +16,24 @@
 
   <div class="space-y-3">
     <div tabindex="0" class="collapse collapse-arrow rounded-2xl border border-base-300/70 bg-base-200/40">
-      <div class="collapse-title text-lg font-semibold">Usage examples</div>
+      <div class="collapse-title text-lg font-semibold"><%= t('.usage_examples') %></div>
       <div class="collapse-content space-y-4">
         <section class="rounded-2xl border border-base-300/70 bg-base-100/40 p-4">
-          <h4 class='text-lg font-bold'>Dawarich iOS or Android app</h4>
-          <p class="mt-2 text-sm text-base-content/70">Provide your instance URL:</p>
+          <h4 class='text-lg font-bold'><%= t('.dawarich_ios_or_android_app') %></h4>
+          <p class="mt-2 text-sm text-base-content/70"><%= t('.provide_your_instance_url') %></p>
           <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"><%= root_url %></code>
 
-          <p class="mt-3 text-sm text-base-content/70">And provide your API key:</p>
+          <p class="mt-3 text-sm text-base-content/70"><%= t('.and_provide_your_api_key') %></p>
           <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"><%= current_user.api_key %></code>
         </section>
 
         <section class="rounded-2xl border border-base-300/70 bg-base-100/40 p-4">
-          <h4 class='text-lg font-bold'>OwnTracks</h4>
+          <h4 class='text-lg font-bold'><%= t('.owntracks') %></h4>
           <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"><%= api_v1_owntracks_points_url(api_key: current_user.api_key) %></code>
         </section>
 
         <section class="rounded-2xl border border-base-300/70 bg-base-100/40 p-4">
-          <h4 class='text-lg font-bold'>Overland</h4>
+          <h4 class='text-lg font-bold'><%= t('.overland') %></h4>
           <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"><%= api_v1_overland_batches_url(api_key: current_user.api_key) %></code>
         </section>
       </div>
@@ -41,6 +41,6 @@
   </div>
 
   <div>
-    <%= link_to "Generate new API key", generate_api_key_path, data: { turbo_confirm: "Are you sure? This will invalidate the current API key.", turbo_method: :post }, class: 'btn btn-primary w-full sm:w-auto' %>
+    <%= link_to t('.generate_new_api_key'), generate_api_key_path, data: { turbo_confirm: t('.are_you_sure_this_will_invalidate_the_current_api_key'), turbo_method: :post }, class: 'btn btn-primary w-full sm:w-auto' %>
   </div>
 </div>

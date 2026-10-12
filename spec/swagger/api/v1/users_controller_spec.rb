@@ -3,18 +3,19 @@
 require 'swagger_helper'
 
 describe 'Users API', type: :request do
+  let(:user) { create(:user) }
+  let(:Authorization) { "Bearer #{user.api_key}" }
+
   path '/api/v1/users/me' do
     get 'Returns the current user' do
       tags 'Users'
       consumes 'application/json'
-      security [bearer_auth: []]
+      produces 'application/json'
+      security [{ bearer_auth: [] }]
       parameter name: 'Authorization', in: :header, type: :string, required: true,
                 description: 'Bearer token in the format: Bearer {api_key}'
 
       response '200', 'user found' do
-        let(:user) { create(:user) }
-        let(:Authorization) { "Bearer #{user.api_key}" }
-
         schema type: :object,
                properties: {
                  user: {
@@ -49,10 +50,15 @@ describe 'Users API', type: :request do
                      },
                      admin: { type: :boolean }
                    }
+                 },
+                 features: {
+                   type: :object,
+                   properties: {
+                     family: { type: :boolean },
+                     reverse_geocoding: { type: :boolean }
+                   }
                  }
                }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -71,7 +77,7 @@ describe 'Users API', type: :request do
                   'immediately when the correct password is supplied.'
       consumes 'application/json'
       produces 'application/json'
-      security [bearer_auth: []]
+      security [{ bearer_auth: [] }]
       parameter name: 'Authorization', in: :header, type: :string, required: true,
                 description: 'Bearer token in the format: Bearer {api_key}'
       parameter name: :payload, in: :body, required: false, schema: {
@@ -85,13 +91,9 @@ describe 'Users API', type: :request do
       response '202', 'confirmation email sent (cloud)' do
         schema type: :object, properties: { message: { type: :string } }
 
-        let(:user) { create(:user) }
-        let(:Authorization) { "Bearer #{user.api_key}" }
         let(:payload) { {} }
 
         before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -100,8 +102,6 @@ describe 'Users API', type: :request do
         schema type: :object,
                properties: { error: { type: :string }, message: { type: :string } }
 
-        let(:user) { create(:user) }
-        let(:Authorization) { "Bearer #{user.api_key}" }
         let(:payload) { {} }
 
         before do

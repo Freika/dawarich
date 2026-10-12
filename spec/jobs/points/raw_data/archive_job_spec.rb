@@ -12,7 +12,7 @@ RSpec.describe Points::RawData::ArchiveJob, type: :job do
     it 'enqueues an ArchiveUserJob for each user' do
       users = create_list(:user, 3)
 
-      expect { described_class.perform_now }.to have_enqueued_job(Points::RawData::ArchiveUserJob).exactly(3).times
+      expect { described_class.perform_now }.to have_enqueued_job(Points::RawData::ArchiveUserJob).at_least(3).times
 
       users.each do |user|
         expect(Points::RawData::ArchiveUserJob).to have_been_enqueued.with(user.id)

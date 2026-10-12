@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.0" creator="overpass-turbo"
+  xmlns="http://www.topografix.com/GPX/1/0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd">
+  <metadata>
+    <time>2024-03-16T12:30:23.000Z</time>
+  </metadata>
+  <trk>
+    <name>Alfeld - Hannover</name>
+    <trkseg>
+      <trkpt lat="51.982600" lon="9.827800">
+        <ele>92</ele>
+      </trkpt>
+      <trkpt lat="51.983100" lon="9.828400">
+        <ele>93</ele>
+      </trkpt>
+      <trkpt lat="51.983700" lon="9.829100">
+        <ele>94</ele>
+      </trkpt>
+      <trkpt lat="51.984200" lon="9.829900">
+        <ele>95</ele>
+      </trkpt>
+      <trkpt lat="51.984800" lon="9.830600">
+        <ele>96</ele>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

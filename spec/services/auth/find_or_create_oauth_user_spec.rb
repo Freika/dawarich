@@ -57,6 +57,60 @@ RSpec.describe Auth::FindOrCreateOauthUser do
       expect(existing.reload.uid).to be_nil
     end
 
+    it 'carries rate_limited=false on the genuine first send' do
+      error = nil
+      expect do
+        build(claims: { sub: 'apple-2', email: 'taken@example.com' }, email_verified: true).call
+      rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
+        error = e
+      end.to have_enqueued_job(Users::MailerSendingJob)
+
+      expect(error).to respond_to(:rate_limited)
+      expect(error.rate_limited).to be(false)
+    end
+
+    it 'raises LinkVerificationSent with rate_limited=true on a rate-limited retry without enqueuing a second mailer' do
+      first_error = nil
+      expect do
+        build(claims: { sub: 'apple-2', email: 'taken@example.com' }, email_verified: true).call
+      rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
+        first_error = e
+      end.to have_enqueued_job(Users::MailerSendingJob)
+      expect(first_error.rate_limited).to be(false)
+
+      second_error = nil
+      expect do
+        build(claims: { sub: 'apple-3', email: 'taken@example.com' }, email_verified: true).call
+      rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
+        second_error = e
+      end.not_to have_enqueued_job(Users::MailerSendingJob)
+
+      expect(second_error).to be_a(Auth::FindOrCreateOauthUser::LinkVerificationSent)
+      expect(second_error.rate_limited).to be(true)
+      expect(existing.reload.provider).to be_nil
+      expect(existing.reload.uid).to be_nil
+    end
+
+    it 'raises LinkVerificationSent with rate_limited=false when on_email_collision is :raise_only (no email sent)' do
+      service = described_class.new(
+        provider: 'apple',
+        provider_label: 'Sign in with Apple',
+        claims: { sub: 'apple-2', email: 'taken@example.com' },
+        email_verified: true,
+        on_email_collision: :raise_only
+      )
+
+      error = nil
+      expect do
+        service.call
+      rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
+        error = e
+      end.not_to have_enqueued_job(Users::MailerSendingJob)
+
+      expect(error).to be_a(Auth::FindOrCreateOauthUser::LinkVerificationSent)
+      expect(error.rate_limited).to be(false)
+    end
+
     it 'does not enqueue the Manager creation webhook on the link-verification path' do
       expect do
         build(claims: { sub: 'apple-2', email: 'taken@example.com' }, email_verified: true).call
@@ -72,15 +126,61 @@ RSpec.describe Auth::FindOrCreateOauthUser do
     # verification path covered above.
   end
 
+  describe 'concurrent sign-in race (existing row appears between lookup and insert)' do
+    # Reproduces the production 422 "Email has already been taken": a second
+    # concurrent request created the row after our up-front find_by(email:)
+    # returned nil, so create! hits the email-uniqueness *validation*
+    # (RecordInvalid, not RecordNotUnique). Stubbing the lookup is the
+    # deterministic way to simulate the TOCTOU window without real threads.
+    it 'recovers a different-identity email collision into the link-verification flow' do
+      existing = create(:user, email: 'race@example.com')
+      allow(User).to receive(:find_by).and_call_original
+      allow(User).to receive(:find_by).with(email: 'race@example.com').and_return(nil, existing)
+
+      expect do
+        build(provider: 'google', provider_label: 'Google',
+              claims: { sub: 'g-race', email: 'race@example.com' }, email_verified: true).call
+      end.to raise_error(Auth::FindOrCreateOauthUser::LinkVerificationSent)
+    end
+
+    it 'logs in the existing identity when the same (provider, uid) was just created' do
+      existing = create(:user, provider: 'google', uid: 'g-dup', email: 'dup@example.com')
+      allow(User).to receive(:find_by).and_call_original
+      allow(User).to receive(:find_by).with(provider: 'google', uid: 'g-dup').and_return(nil, existing)
+      allow(User).to receive(:find_by).with(email: 'dup@example.com').and_return(nil)
+
+      user, created = build(provider: 'google', provider_label: 'Google',
+                            claims: { sub: 'g-dup', email: 'dup@example.com' }, email_verified: true).call
+
+      expect(user).to eq(existing)
+      expect(created).to be(false)
+    end
+  end
+
+  describe 'email collision with an account pending deletion' do
+    it 'raises AccountPendingDeletion instead of a validation error' do
+      existing = create(:user, email: 'deleted@example.com')
+      existing.mark_as_deleted!
+
+      expect do
+        build(provider: 'google_oauth2', provider_label: 'Google',
+              claims: { sub: 'deleted-google', email: 'deleted@example.com' }).call
+      end.to raise_error(Auth::FindOrCreateOauthUser::AccountPendingDeletion)
+    end
+  end
+
   describe 'missing email from apple (subsequent sign-in with no local record)' do
     it 'raises MissingOauthEmail instead of fabricating a synthetic address' do
-      expect do
+      error = nil
+      begin
         build(provider: 'apple', claims: { sub: 'apple-orphan', email: '' }).call
-      end.to raise_error(Auth::FindOrCreateOauthUser::MissingOauthEmail) do |e|
-        expect(e.provider).to eq('apple')
-        expect(e.uid).to eq('apple-orphan')
+      rescue Auth::FindOrCreateOauthUser::MissingOauthEmail => e
+        error = e
       end
 
+      expect(error).to be_a(Auth::FindOrCreateOauthUser::MissingOauthEmail)
+      expect(error.provider).to eq('apple')
+      expect(error.uid).to eq('apple-orphan')
       expect(User.find_by(provider: 'apple', uid: 'apple-orphan')).to be_nil
     end
 
@@ -89,6 +189,17 @@ RSpec.describe Auth::FindOrCreateOauthUser do
 
       expect(created).to be(true)
       expect(user.email).to eq('g-1@google.dawarich.app')
+    end
+  end
+
+  describe 'apple sign-in for an identity pending deletion' do
+    it 'raises AccountPendingDeletion even when Apple omits the email' do
+      existing = create(:user, provider: 'apple', uid: 'deleted-apple', email: 'deleted-apple@example.com')
+      existing.mark_as_deleted!
+
+      expect do
+        build(provider: 'apple', claims: { sub: 'deleted-apple', email: '' }).call
+      end.to raise_error(Auth::FindOrCreateOauthUser::AccountPendingDeletion)
     end
   end
 
@@ -120,6 +231,55 @@ RSpec.describe Auth::FindOrCreateOauthUser do
 
       expect { build(claims: { sub: 'apple-6', email: 'selfhost-2@example.com' }).call }
         .not_to have_enqueued_job(Users::CreationWebhookJob)
+    end
+  end
+
+  describe 'name_attrs persistence' do
+    let(:claims) { { sub: '000.apple.web', email: 'newperson@example.com' } }
+
+    it 'persists first_name and last_name when supplied for a newly created user' do
+      user, created = described_class.new(
+        provider: 'apple',
+        provider_label: 'Sign in with Apple',
+        claims: claims,
+        email_verified: true,
+        name_attrs: { first_name: 'Grace', last_name: 'Hopper' }
+      ).call
+
+      expect(created).to be true
+      expect(user.first_name).to eq('Grace')
+      expect(user.last_name).to eq('Hopper')
+    end
+
+    it 'ignores name_attrs for an already-existing identity (no overwrite)' do
+      create(:user,
+             provider: 'apple', uid: '000.apple.web',
+             email: 'newperson@example.com', first_name: 'Original', last_name: 'Name')
+
+      user, created = described_class.new(
+        provider: 'apple',
+        provider_label: 'Sign in with Apple',
+        claims: claims,
+        email_verified: true,
+        name_attrs: { first_name: 'New', last_name: 'Override' }
+      ).call
+
+      expect(created).to be false
+      expect(user.first_name).to eq('Original')
+      expect(user.last_name).to eq('Name')
+    end
+
+    it 'is a no-op when name_attrs is empty or nil' do
+      user, = described_class.new(
+        provider: 'apple',
+        provider_label: 'Sign in with Apple',
+        claims: claims,
+        email_verified: true,
+        name_attrs: nil
+      ).call
+
+      expect(user.first_name).to be_nil
+      expect(user.last_name).to be_nil
     end
   end
 end

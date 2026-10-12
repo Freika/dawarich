@@ -23,17 +23,18 @@ class Api::V1::DigestsController < ApiController
     year = params[:year].to_i
 
     unless valid_year?(year)
-      render json: { error: 'Invalid year' }, status: :unprocessable_entity
+      render json: { error: I18n.t('controllers.api.v1.digests.invalid_year') }, status: :unprocessable_entity
       return
     end
 
     if current_api_user.digests.yearly.exists?(year: year)
-      render json: { error: 'Digest already exists' }, status: :conflict
+      render json: { error: I18n.t('controllers.api.v1.digests.digest_already_exists') }, status: :conflict
       return
     end
 
     Users::Digests::Yearly::CalculatingJob.perform_later(current_api_user.id, year)
-    render json: { message: "Digest for #{year} is being generated" }, status: :accepted
+    render json: { message: I18n.t('controllers.api.v1.digests.digest_for_year_is_being_generated', year: year) },
+           status: :accepted
   end
 
   def destroy
@@ -45,7 +46,7 @@ class Api::V1::DigestsController < ApiController
   private
 
   def available_years_for_generation
-    tracked_years = current_api_user.stats.select(:year).distinct.pluck(:year)
+    tracked_years = current_api_user.scoped_stats.select(:year).distinct.pluck(:year)
     existing_digests = current_api_user.digests.yearly.pluck(:year)
 
     (tracked_years - existing_digests - [Time.current.year]).sort.reverse
@@ -54,7 +55,7 @@ class Api::V1::DigestsController < ApiController
   def valid_year?(year)
     return false if year < 1970 || year >= Time.current.year
 
-    current_api_user.stats.exists?(year: year)
+    current_api_user.scoped_stats.exists?(year: year)
   end
 
   def distance_unit

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Tag < ApplicationRecord
+  include Demoable
+
   belongs_to :user
   has_many :taggings, dependent: :destroy
   has_many :places, through: :taggings, source: :taggable, source_type: 'Place'
@@ -29,6 +31,6 @@ class Tag < ApplicationRecord
     return if icon.blank?
     return unless icon.match?(/\A[a-zA-Z]+\z/)
 
-    errors.add(:icon, 'must be an emoji or symbol, not a letter')
+    errors.add(:icon, I18n.t('models.tag.must_be_an_emoji_or_symbol_not_a_letter'))
   end
 end

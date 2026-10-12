@@ -1,6 +1,17 @@
 import { HtmlLabelManager } from "../utils/html_label_manager"
+import { getVisitMarkerColor } from "../utils/marker_theme"
 import { BaseLayer } from "./base_layer"
 
+/**
+ * Visits layer. Every visit draws in one colour — the same colour the
+ * timeline's rail dot uses — because showing a visit is asserting it, and
+ * confirmed / suggested / declined is not a visual state. Status still
+ * drives filtering (setStatusFilter), just not appearance.
+ *
+ * Adds a halo ring for the currently selected visit, a dashed day-route
+ * polyline through the day's visits in chronological order, and support
+ * for filtering by status without rebuilding the source data.
+ */
 export class VisitsLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "visits", ...options })
@@ -27,6 +38,8 @@ export class VisitsLayer extends BaseLayer {
 
   getLayerConfigs() {
     return [
+      // Dashed polyline for the currently selected day, placed below
+      // everything else so the visit dots sit on top.
       {
         id: this.dayRouteLayerId,
         type: "line",
@@ -42,6 +55,9 @@ export class VisitsLayer extends BaseLayer {
           "line-dasharray": [2, 2],
         },
       },
+
+      // Halo ring for the selected visit. Hidden by default via a filter
+      // that can never match a real visit id.
       {
         id: this.haloLayerId,
         type: "circle",
@@ -55,20 +71,15 @@ export class VisitsLayer extends BaseLayer {
         },
         filter: ["==", ["get", "id"], -1],
       },
+
+      // Visit circles
       {
         id: this.id,
         type: "circle",
         source: this.sourceId,
         paint: {
           "circle-radius": 12,
-          "circle-color": [
-            "case",
-            ["==", ["get", "status"], "confirmed"],
-            "#22c55e",
-            ["==", ["get", "status"], "declined"],
-            "#9ca3af",
-            "#eab308",
-          ],
+          "circle-color": getVisitMarkerColor(),
           "circle-stroke-width": 2,
           "circle-stroke-color": "#ffffff",
           "circle-opacity": 0.9,
@@ -81,6 +92,10 @@ export class VisitsLayer extends BaseLayer {
     return [this.dayRouteLayerId, this.haloLayerId, this.id]
   }
 
+  /**
+   * Override add() so we can also create the day-route source, which
+   * is independent of the main visits source.
+   */
   add(data) {
     this.data = data
 
@@ -106,7 +121,11 @@ export class VisitsLayer extends BaseLayer {
     this.labels.sync(data?.features || [])
   }
 
+  /**
+   * Override remove() so we also clean up the day-route source.
+   */
   remove() {
+    this.labels.clear()
     this.getLayerIds().forEach((layerId) => {
       if (this.map.getLayer(layerId)) {
         this.map.removeLayer(layerId)
@@ -121,10 +140,13 @@ export class VisitsLayer extends BaseLayer {
       this.map.removeSource(this.dayRouteSourceId)
     }
 
-    this.labels.clear()
     this.data = null
   }
 
+  /**
+   * Update() only touches the main visits source. Keep the day-route
+   * source untouched so selection/filter changes don't invalidate it.
+   */
   update(data) {
     this.data = data
     const source = this.map.getSource(this.sourceId)
@@ -139,12 +161,25 @@ export class VisitsLayer extends BaseLayer {
     this.labels?.setVisibility(visible)
   }
 
+  setLabelOpacity(resolver) {
+    this.labels.setOpacity(resolver)
+  }
+
+  /**
+   * Highlight a visit by setting the halo filter. Pass null to clear.
+   * Uses `["get", "id"]` because properties.id is the visit id (see
+   * data_loader.js visitsToGeoJSON).
+   */
   setSelectedVisit(visitId) {
     if (!this.map.getLayer(this.haloLayerId)) return
     const id = visitId == null ? -1 : Number(visitId)
     this.map.setFilter(this.haloLayerId, ["==", ["get", "id"], id])
   }
 
+  /**
+   * Filter the visible visits by status. Does not touch the halo layer
+   * so a selected visit stays highlighted regardless of filter state.
+   */
   setStatusFilter({
     confirmed = true,
     suggested = true,
@@ -163,11 +198,14 @@ export class VisitsLayer extends BaseLayer {
         : ["match", ["get", "status"], allowed, true, false]
 
     this.map.setFilter(this.id, filter)
-    this.labels.setFilter((feature) =>
-      allowed.includes(feature?.properties?.status),
-    )
+    this.labels.setFilter((f) => allowed.includes(f.properties.status))
   }
 
+  /**
+   * Update the day-route polyline. `visitFeatures` is an array of
+   * `{ lng, lat }` in chronological order. Pass `null` or an array
+   * with fewer than 2 points to clear the route.
+   */
   setDayRoute(visitFeatures) {
     const source = this.map.getSource(this.dayRouteSourceId)
     if (!source) return

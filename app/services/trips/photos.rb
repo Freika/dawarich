@@ -25,8 +25,8 @@ class Trips::Photos
 
     photos = Photos::Search.new(
       user,
-      start_date: trip.started_at.to_date.to_s,
-      end_date: trip.ended_at.to_date.to_s
+      start_date: trip.started_at.iso8601,
+      end_date: trip.ended_at.iso8601
     ).call
 
     @photos = photos.map { |photo| photo_thumbnail(photo) }
@@ -37,7 +37,8 @@ class Trips::Photos
       id: asset[:id],
       url: "/api/v1/photos/#{asset[:id]}/thumbnail.jpg?api_key=#{user.api_key}&source=#{asset[:source]}",
       source: asset[:source],
-      orientation: asset[:orientation]
+      orientation: asset[:orientation],
+      taken_at: asset[:capturedAt] || asset[:localDateTime]
     }
   end
 end

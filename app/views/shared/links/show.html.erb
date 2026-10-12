@@ -1,0 +1,17 @@
+<% content_for(:title, t('.name_shared_on_dawarich', name: @link.name)) %>
+
+<% content_for :head do %>
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="<%= @link.name %>">
+  <meta property="og:description" content="<%= t('.shared_from_dawarich') %>">
+  <meta property="og:image" content="<%= image_url('og_default.png') %>">
+  <meta name="twitter:card" content="summary_large_image">
+<% end %>
+
+<% if @resource.nil? && SharedLink::RESOURCE_TYPES_REQUIRING_ID.include?(@link.resource_type) %>
+  <%= render 'shared/links/missing_resource' %>
+<% elsif lookup_context.exists?("shared/links/#{@link.resource_type}", [], true) %>
+  <%= render partial: "shared/links/#{@link.resource_type}", locals: { link: @link, resource: @resource } %>
+<% else %>
+  <%= render 'shared/links/unsupported' %>
+<% end %>

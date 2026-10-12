@@ -253,6 +253,19 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
         expect(response).to have_http_status(:ok)
         expect(user.reload.plan).to eq('pro')
       end
+
+      it 'updates plan to family when manager pushes plan=family' do
+        token = build_token(
+          user_id: user.id,
+          plan: 'family',
+          status: 'active',
+          active_until: 30.days.from_now.iso8601
+        )
+
+        post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+        expect(response).to have_http_status(:ok)
+        expect(user.reload.plan).to eq('family')
+      end
     end
 
     context 'malformed JWT' do

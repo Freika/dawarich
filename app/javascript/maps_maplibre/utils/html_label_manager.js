@@ -1,4 +1,4 @@
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 
 export class HtmlLabelManager {
   constructor(map, options = {}) {
@@ -13,6 +13,7 @@ export class HtmlLabelManager {
     this.markers = new Map()
     this._features = []
     this._filterFn = null
+    this._opacityResolver = null
   }
 
   sync(features) {
@@ -40,12 +41,21 @@ export class HtmlLabelManager {
     }
   }
 
+  setOpacity(resolver) {
+    this._opacityResolver = resolver
+    for (const marker of this.markers.values()) {
+      this._applyOpacity(marker)
+    }
+  }
+
   clear() {
     for (const marker of this.markers.values()) {
       marker.remove()
     }
     this.markers.clear()
     this._features = []
+    this._filterFn = null
+    this._opacityResolver = null
   }
 
   _render() {
@@ -72,6 +82,7 @@ export class HtmlLabelManager {
       }
       marker._feature = feature
       this._applyVisibility(marker, this.visible && this._passesFilter(feature))
+      this._applyOpacity(marker)
     }
     for (const [id, marker] of this.markers) {
       if (!seenIds.has(id)) {
@@ -97,6 +108,15 @@ export class HtmlLabelManager {
   _applyVisibility(marker, visible) {
     const el = marker.getElement()
     el.style.display = visible ? "" : "none"
+  }
+
+  _applyOpacity(marker) {
+    const opacity = this._opacityResolver
+      ? String(this._opacityResolver(marker._feature))
+      : ""
+    // MapLibre reapplies its own marker opacity on map movement.
+    marker.setOpacity(opacity || 1)
+    marker.getElement().style.opacity = opacity
   }
 
   _passesFilter(feature) {

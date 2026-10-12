@@ -7,19 +7,29 @@ class Api::V1::SubscriptionsController < ApiController
   def callback
     if ENV['SUBSCRIPTION_WEBHOOK_SECRET'].blank?
       Rails.logger.error('[Subscriptions#callback] SUBSCRIPTION_WEBHOOK_SECRET is not configured')
-      return render(json: { message: 'Configuration error' }, status: :service_unavailable)
+      return render(json: { message: I18n.t('controllers.api.v1.subscriptions.configuration_error') },
+                    status: :service_unavailable)
     end
-    return render(json: { message: 'Invalid webhook secret' }, status: :unauthorized) unless valid_manager_secret?
+    unless valid_manager_secret?
+      return render(json: { message: I18n.t('controllers.api.v1.subscriptions.invalid_webhook_secret') },
+                    status: :unauthorized)
+    end
 
     decoded = Subscription::DecodeJwtToken.new(params[:token]).call
 
-    return render(json: { message: 'Missing event_id' }, status: :unprocessable_content) if decoded[:event_id].blank?
+    if decoded[:event_id].blank?
+      return render(json: { message: I18n.t('controllers.api.v1.subscriptions.missing_event_id') },
+                    status: :unprocessable_content)
+    end
 
-    return render(json: { message: 'Stale event' }, status: :ok) unless claim_event!(decoded)
+    unless claim_event!(decoded)
+      return render(json: { message: I18n.t('controllers.api.v1.subscriptions.stale_event') },
+                    status: :ok)
+    end
 
     if event_older_than_last_seen?(decoded)
       Rails.cache.delete("manager_callback:processed:#{decoded[:event_id]}")
-      return render(json: { message: 'Stale event' }, status: :ok)
+      return render(json: { message: I18n.t('controllers.api.v1.subscriptions.stale_event') }, status: :ok)
     end
 
     user = User.find_by(id: decoded[:user_id])
@@ -60,7 +70,7 @@ class Api::V1::SubscriptionsController < ApiController
       raise
     end
 
-    return render(json: { message: 'Stale event' }, status: :ok) unless applied
+    return render(json: { message: I18n.t('controllers.api.v1.subscriptions.stale_event') }, status: :ok) unless applied
 
     Rails.cache.delete("rack_attack/plan/#{user.api_key}") if user.previous_changes.any?
 
@@ -72,13 +82,15 @@ class Api::V1::SubscriptionsController < ApiController
       source: user.subscription_source
     )
 
-    render json: { message: 'Subscription updated successfully' }
+    render json: { message: I18n.t('controllers.api.v1.subscriptions.subscription_updated_successfully') }
   rescue JWT::DecodeError => e
     ExceptionReporter.call(e)
-    render json: { message: 'Failed to verify subscription update.' }, status: :unauthorized
+    render json: { message: I18n.t('controllers.api.v1.subscriptions.failed_to_verify_subscription_update') },
+           status: :unauthorized
   rescue ArgumentError => e
     ExceptionReporter.call(e)
-    render json: { message: 'Invalid subscription data received.' }, status: :unprocessable_content
+    render json: { message: I18n.t('controllers.api.v1.subscriptions.invalid_subscription_data_received') },
+           status: :unprocessable_content
   end
 
   private

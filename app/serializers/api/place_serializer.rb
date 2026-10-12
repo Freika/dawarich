@@ -17,7 +17,8 @@ class Api::PlaceSerializer
       geodata:    place.geodata,
       created_at: place.created_at,
       updated_at: place.updated_at,
-      reverse_geocoded_at: place.reverse_geocoded_at
+      reverse_geocoded_at: place.reverse_geocoded_at,
+      name_locked: place.name_locked?
     }
   end
 

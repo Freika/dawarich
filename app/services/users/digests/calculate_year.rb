@@ -13,7 +13,7 @@ module Users
       def call
         return nil if monthly_stats.empty?
 
-        digest = Users::Digest.find_or_initialize_by(user: user, year: year, period_type: :yearly)
+        digest = find_or_build_digest
 
         digest.assign_attributes(
           distance: total_distance,
@@ -28,11 +28,23 @@ module Users
 
         digest.save!
         digest
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+        @attempts = @attempts.to_i + 1
+        raise if @attempts >= 3
+
+        retry
       end
 
       private
 
       attr_reader :user, :year
+
+      def find_or_build_digest
+        existing = user.digests.yearly.where(year: year).order(:id).to_a
+        existing.drop(1).each(&:destroy)
+
+        existing.first || user.digests.yearly.new(year: year)
+      end
 
       def monthly_stats
         @monthly_stats ||= user.scoped_stats.where(year: year).order(:month)
@@ -102,7 +114,7 @@ module Users
 
       def format_top_countries(country_minutes)
         country_minutes
-          .sort_by { |_, minutes| -minutes }
+          .sort_by { |name, minutes| [-minutes, name] }
           .first(10)
           .map { |name, minutes| { 'name' => name, 'minutes' => minutes } }
       end
@@ -130,6 +142,11 @@ module Users
       def fetch_daily_country_stats
         start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
         end_of_year = start_of_year.end_of_year
+        lower_bound = if user.plan_restricted?
+                        [start_of_year.to_i, user.data_window_start.to_i].max
+                      else
+                        start_of_year.to_i
+                      end
 
         sql = <<~SQL
           SELECT
@@ -139,12 +156,12 @@ module Users
             MAX(timestamp) as max_timestamp
           FROM points
           WHERE user_id = #{user.id}
-            AND timestamp >= #{start_of_year.to_i}
+            AND timestamp >= #{lower_bound}
             AND timestamp <= #{end_of_year.to_i}
             AND country_name IS NOT NULL
             AND country_name != ''
           GROUP BY point_date, country_name
-          ORDER BY point_date, min_timestamp
+          ORDER BY point_date, min_timestamp, country_name COLLATE "C"
         SQL
 
         ActiveRecord::Base.connection.execute(sql).to_a

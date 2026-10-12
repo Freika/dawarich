@@ -51,6 +51,101 @@ RSpec.describe Points::RawData::Archiver do
       expect(old_points.map(&:raw_data_archive_id).uniq.compact.size).to eq(1)
     end
 
+    it 'uses the shared conflict-key order when locking points to flag' do
+      expect(Point).to receive(:raw_data_lock_order).and_call_original
+
+      archiver.archive_user(user.id)
+    end
+
+    it 'does not link changed raw data to the stale archive snapshot' do
+      changed_point = old_points.first
+      stale_archive_id = nil
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        unless stale_archive_id
+          stale_archive_id = archive.id
+          changed_point.update_column(:raw_data, { source: 'concurrent ingest' })
+        end
+        method.call(archive, *args)
+      end
+
+      archiver.archive_user(user.id)
+
+      expect(changed_point.reload).to have_attributes(
+        raw_data_archived: true,
+        raw_data: { 'source' => 'concurrent ingest' }
+      )
+      expect(changed_point.raw_data_archive_id).not_to eq(stale_archive_id)
+      expect(old_points.drop(1).map { |point| point.reload.raw_data_archive_id }).to all(eq(stale_archive_id))
+    end
+
+    it 'stops re-fetching once a pass links no points' do
+      passes = 0
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        passes += 1
+        raise 'archive_user kept re-fetching points it could not link' if passes > 3
+
+        Point.where(id: old_points.map(&:id)).update_all(raw_data: { pass: passes })
+        method.call(archive, *args)
+      end
+
+      expect { archiver.archive_user(user.id) }.not_to raise_error
+      expect(passes).to eq(1)
+    end
+
+    it 'discards an archive that ends up with no linked points' do
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        Point.where(id: old_points.map(&:id)).update_all(raw_data: { source: 'concurrent ingest' })
+        method.call(archive, *args)
+      end
+
+      expect { archiver.archive_user(user.id) }.not_to change(Points::RawDataArchive, :count)
+    end
+
+    it 'skips a batch it cannot link and still archives the rest' do
+      stub_const('Points::RawData::Archiver::CHUNK_SIZE', 2)
+      ordered = old_points.sort_by(&:id)
+      stalled = ordered.first(2)
+      corrupted = false
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        unless corrupted
+          corrupted = true
+          Point.where(id: stalled.map(&:id)).update_all(raw_data: { source: 'concurrent ingest' })
+        end
+        method.call(archive, *args)
+      end
+
+      archiver.archive_user(user.id)
+
+      expect(stalled.map { |point| point.reload.raw_data_archived }).to all(be false)
+      expect(ordered.drop(2).map { |point| point.reload.raw_data_archived }).to all(be true)
+    end
+
+    it 'reports a failure when a zero-link archive cannot be cleaned up' do
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        Point.where(id: old_points.map(&:id)).update_all(raw_data: { source: 'concurrent ingest' })
+        method.call(archive, *args)
+      end
+      allow(archiver).to receive(:cleanup_failed_archive!)
+
+      expect(archiver.archive_user(user.id)[:failed]).to eq(1)
+    end
+
+    it 'retries point flagging after write contention' do
+      attempts = 0
+      allow(Point).to receive(:sleep)
+      allow(Point).to receive(:transaction).and_wrap_original do |method, *args, &block|
+        attempts += 1
+        raise ActiveRecord::Deadlocked if attempts == 1
+
+        method.call(*args, &block)
+      end
+
+      archiver.archive_user(user.id)
+
+      expect(attempts).to be > 1
+      expect(old_points.map { |point| point.reload.raw_data_archived }).to all(be true)
+    end
+
     it 'does not archive recent points' do
       recent_point = create(:point, user: user,
                                     timestamp: 1.week.ago.to_i,
@@ -92,6 +187,59 @@ RSpec.describe Points::RawData::Archiver do
         # 5 old_points + 3 june + 2 july = 10
         expect(Point.where(raw_data_archived: true).count).to eq(10)
       end
+
+      it 'creates one archive per month, labeled with the points own month' do
+        archiver.archive_user(user.id)
+
+        four_months_ago = 4.months.ago.beginning_of_month.utc
+        three_months_ago = 3.months.ago.beginning_of_month.utc
+
+        archives = user.raw_data_archives.order(:year, :month)
+        expect(archives.map { |a| [a.year, a.month, a.point_count] }).to contain_exactly(
+          [four_months_ago.year, four_months_ago.month, 3],
+          [three_months_ago.year, three_months_ago.month, 7]
+        )
+      end
+
+      it 'links each point to the archive of its own month' do
+        archiver.archive_user(user.id)
+
+        june_archive_ids = june_points.map { |p| p.reload.raw_data_archive_id }.uniq
+        july_archive_ids = july_points.map { |p| p.reload.raw_data_archive_id }.uniq
+
+        expect(june_archive_ids.size).to eq(1)
+        expect(july_archive_ids.size).to eq(1)
+        expect(june_archive_ids).not_to eq(july_archive_ids)
+
+        june_archive = Points::RawDataArchive.find(june_archive_ids.first)
+        four_months_ago = 4.months.ago.beginning_of_month.utc
+        expect([june_archive.year, june_archive.month]).to eq([four_months_ago.year, four_months_ago.month])
+      end
+    end
+
+    context 'when one month group fails' do
+      let!(:newer_points) do
+        create_list(:point, 2, user: user,
+                              timestamp: 4.months.ago.beginning_of_month.to_i,
+                              raw_data: { lon: 14.0, lat: 53.0 })
+      end
+
+      it 'still archives the sibling months in the same batch, then stops' do
+        calls = 0
+        allow(Points::RawData::Encryption).to receive(:encrypt).and_wrap_original do |m, *args|
+          calls += 1
+          raise StandardError, 'boom' if calls == 1
+
+          m.call(*args)
+        end
+
+        result = archiver.archive_user(user.id)
+
+        expect(result[:failed]).to eq(1)
+        expect(result[:archived]).to eq(2)
+        expect(old_points.each(&:reload).map(&:raw_data_archived)).to all(be false)
+        expect(newer_points.each(&:reload).map(&:raw_data_archived)).to all(be true)
+      end
     end
 
     it 'stores min and max point IDs in metadata' do
@@ -100,6 +248,12 @@ RSpec.describe Points::RawData::Archiver do
       archive = user.raw_data_archives.last
       expect(archive.metadata['min_point_id']).to eq(old_points.map(&:id).min)
       expect(archive.metadata['max_point_id']).to eq(old_points.map(&:id).max)
+    end
+
+    it 'marks the archive as verified after the write-time round-trip check' do
+      archiver.archive_user(user.id)
+
+      expect(user.raw_data_archives.last.verified_at).to be_present
     end
   end
 
@@ -115,6 +269,12 @@ RSpec.describe Points::RawData::Archiver do
       expect do
         archiver.archive_specific_month(user.id, test_date.year, test_date.month)
       end.to change(Points::RawDataArchive, :count).by(1)
+    end
+
+    it 'reports how many points were actually linked' do
+      stats = archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      expect(stats).to include(processed: 1, archived: 3)
     end
 
     it 'creates archive with correct metadata' do
@@ -288,6 +448,69 @@ RSpec.describe Points::RawData::Archiver do
       actual_checksum = Digest::SHA256.hexdigest(encrypted_content)
 
       expect(archive.metadata['content_checksum']).to eq(actual_checksum)
+    end
+  end
+
+  describe 'metric emissions' do
+    let(:test_date) { 3.months.ago.beginning_of_month.utc }
+    let!(:test_points) do
+      create_list(:point, 3, user: user,
+                            timestamp: test_date.to_i,
+                            raw_data: { lon: 13.4, lat: 52.5 })
+    end
+
+    it 'increments operations_total with archive/success tags' do
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to increment_yabeda_counter(Yabeda.dawarich_archive.operations_total)
+        .with_tags(operation: 'archive', status: 'success')
+    end
+
+    it 'increments points_total with added tag' do
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to increment_yabeda_counter(Yabeda.dawarich_archive.points_total)
+        .with_tags(operation: 'added')
+    end
+
+    it 'measures size_bytes histogram' do
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to measure_yabeda_histogram(Yabeda.dawarich_archive.size_bytes)
+    end
+
+    it 'measures compression_ratio histogram' do
+      expect do
+        archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+      end.to measure_yabeda_histogram(Yabeda.dawarich_archive.compression_ratio)
+    end
+
+    context 'when count mismatch occurs' do
+      it 'increments count_mismatches_total and sets count_difference gauge' do
+        fake_compressor = instance_double(Points::RawData::ChunkCompressor)
+        allow(Points::RawData::ChunkCompressor).to receive(:new).and_return(fake_compressor)
+
+        io = StringIO.new
+        gz = Zlib::GzipWriter.new(io)
+        2.times { |i| gz.puts({ id: i, raw_data: { test: 'data' } }.to_json) }
+        gz.close
+
+        allow(fake_compressor).to receive(:compress).and_return(
+          { data: io.string.force_encoding(Encoding::ASCII_8BIT), count: 2 }
+        )
+
+        expect do
+          archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+        rescue StandardError
+          nil
+        end.to increment_yabeda_counter(Yabeda.dawarich_archive.count_mismatches_total)
+
+        expect do
+          archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+        rescue StandardError
+          nil
+        end.to update_yabeda_gauge(Yabeda.dawarich_archive.count_difference)
+      end
     end
   end
 end

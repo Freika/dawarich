@@ -1,0 +1,128 @@
+zh:
+  families:
+    getting_started:
+      members_lose_access_when_your_plan_ends: 套餐有效期间，您添加的每个人都能获得完整访问权限。套餐结束后，他们的访问权限也会结束。
+      invite_title: 添加您的第一位家庭成员
+      invite_body: 您的家庭已准备就绪。您添加的每个人都可以看到其他人的位置，同时每个人仍拥有自己的私人地图。
+      seats: 已使用 %{used}/%{total} 个名额
+      trial_ends_on: 您的家庭试用期将于 %{date} 结束
+      sharing_title: 开始共享您的位置
+      sharing_body: 您的家人目前还看不到您。请在下方开启共享，然后安装应用，让您的位置保持最新。
+      app_title: 获取应用
+      app_body: 使用随身携带的手机时，位置共享效果最佳。
+      email_address: 邮箱地址
+      invite: 邀请
+  family_mailer:
+    plan_lapsed:
+      the_family_plan_has_ended: 家庭套餐已结束
+      hi: 您好
+      family_plan_ended_html: <strong>%{family}</strong> 的 Dawarich 家庭套餐已失效，因此您通过该套餐获得的访问权限也已结束。
+      family_plan_ended_text: "%{family} 的 Dawarich 家庭套餐已失效，因此您通过该套餐获得的访问权限也已结束。"
+      what_this_means: 这意味着
+      your_data_is_safe_and_still_yours: 您的数据安全无虞，并且仍归您所有。
+      you_can_no_longer_see_your_family_on_the_map: 您无法再在地图上看到家人。
+      your_location_is_no_longer_shared_with_them: 您的位置不再与他们共享。
+      tracking_and_uploads_are_paused_until_a_plan_is_active: 在套餐重新激活之前，追踪和上传功能将暂停。
+      what_you_can_do: 您可以：
+      ask_the_owner_to_renew_html: 请 %{owner} 续订家庭套餐，或者开通您自己的套餐。
+      ask_the_owner_to_renew_text: 请 %{owner} 续订家庭套餐，或者开通您自己的套餐。
+      get_your_own_plan: 开通您自己的套餐
+      nothing_is_deleted_your_history_is_waiting_when_you_come_back: 不会删除任何内容。您的历史记录会保留，等待您回来。
+  imports:
+    extraction_card:
+      this_gpx_file_holds_no_waypoints: 此 GPX 文件仅包含记录的轨迹点，没有可作为地点导入的航点。
+  map:
+    onboarding_modal:
+      invite_your_family: 邀请您的家人
+      add_your_family_and_see_each_other_on_the_map: 添加家人，即可在地图上看到彼此的位置。
+  settings:
+    integrations:
+      index:
+        services:
+          teslamate: TeslaMateApi
+        teslamate_integration: TeslaMateApi 集成
+        teslamate_url: TeslaMateApi URL
+        the_base_url_of_your_teslamateapi_instance: 您的 TeslaMateApi 实例的基础 URL。
+        teslamate_setup_guide: 设置指南（TeslaMateApi v1.25.0 或更高版本）
+        teslamate_username: HTTP Basic 用户名（可选）
+        teslamate_password: HTTP Basic 密码（可选）
+        teslamate_api_token: Bearer 令牌（可选）
+        teslamate_authentication_help: 使用 Basic 身份验证保护反向代理，或为兼容的代理或分支版本使用 Bearer 令牌。标准 TeslaMateApi 读取端点不使用其 API_TOKEN。
+        sync_teslamate_drives: 同步 TeslaMateApi 行程
+        teslamate_sync_help: 已完成的行程每天自动同步一次。TeslaMateApi 不提供当前行程和停车位置。
+  stats:
+    month:
+      flight_distance: 飞行距离
+      from_airtrail_not_counted_in_distance: 来自 AirTrail，不计入行程距离
+    public_month:
+      flight_distance: 飞行距离
+      from_airtrail_not_counted_in_distance: 来自 AirTrail，不计入行程距离
+  users:
+    digests_mailer:
+      monthly_digest:
+        flights: 航班
+  enums:
+    place:
+      source:
+        gpx_waypoint: GPX 航点
+  controllers:
+    api:
+      v1:
+        auth:
+          account_pending_deletion: 使用此邮箱的帐户正在删除中。请在删除完成后重试。
+        visits:
+          no_visits_provided: 未提供到访记录
+          invalid_visit_payload: 到访记录必须是对象
+          too_many_visits_maximum_is_limit_per_batch: 选择的到访记录过多，每批最多 %{limit} 条
+    users:
+      apple_oauth:
+        account_pending_deletion: 使用此邮箱的帐户正在删除中。请在删除完成后重试。
+      omniauth_callbacks:
+        account_pending_deletion: 使用此邮箱的帐户正在删除中。请在删除完成后重试。
+  mailers:
+    family:
+      plan_lapsed:
+        subject: 👪 %{family} 的家庭套餐已结束
+  services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: TeslaMateApi 连接验证成功
+        teslamate_url_is_missing: 缺少 TeslaMateApi URL
+        teslamate_connection_failed_message: "TeslaMateApi 连接失败：%{message}"
+    families:
+      auto_create:
+        default_name: 我的家庭
+        notification_title: 您的家庭套餐已准备就绪
+        notification_content: 我们已为您创建“%{name}”。您可以邀请最多 %{seats} 人，并在地图上看到彼此的位置。
+    immich:
+      enrich_photos:
+        checking_title: 正在检查 Immich 位置更新
+        checking: 已向 Immich 提交 %{count} 个位置更新。正在检查坐标是否已保存。
+        result_title: Immich 位置更新结果
+        confirmed:
+          one: 已确认 %{count} 张照片的位置已保存。
+          other: 已确认 %{count} 张照片的位置已保存。
+        unconfirmed: 仍有 %{count} 个位置更新尚未确认。Immich 可能仍在处理这些更新。请检查其元数据任务以及 API 密钥的 asset.read 权限。对于外部图库，请确认 Immich 可以写入 XMP 附属文件：只读挂载或文件权限可能会阻止保存。问题解决后，请先重新扫描再重试。
+    imports:
+      geojson_importer:
+        points_skipped_title: 导入时已跳过没有时间戳的轨迹点
+        points_skipped: 您的文件 %{name} 包含 %{skipped} 个没有时间戳的轨迹点，已将其跳过。GeoJSON 轨迹点需要提供“timestamp”属性或第四个 [lon, lat, altitude, time] 坐标值才能导入。
+      create:
+        zero_points_waypoints_only:
+          one: 您的文件 %{name} 导入了 0 个轨迹点。文件包含 %{count} 个航点（收藏地点或已保存地点），但没有记录的轨迹。Dawarich 目前仅导入轨迹。
+          other: 您的文件 %{name} 导入了 0 个轨迹点。文件包含 %{count} 个航点（收藏地点或已保存地点），但没有记录的轨迹。Dawarich 目前仅导入轨迹。
+        zero_points_route_only:
+          one: 您的文件 %{name} 导入了 0 个轨迹点。文件包含一条由 %{count} 个点组成的规划路线，但没有记录的轨迹。Dawarich 导入记录的轨迹，而不是规划路线。
+          other: 您的文件 %{name} 导入了 0 个轨迹点。文件包含一条由 %{count} 个点组成的规划路线，但没有记录的轨迹。Dawarich 导入记录的轨迹，而不是规划路线。
+  jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: TeslaMateApi 同步失败
+        your_teslamate_sync_failed: "您的 TeslaMateApi 同步失败，错误：%{message}。请检查集成设置后重试。"
+  javascript:
+    messages:
+      some_photo_sources_unavailable: 部分照片来源不可用：%{sources}
+    immich:
+      pending_enrichment: 已向 Immich 提交 %{count} 个位置更新；其中 %{failed} 个发送失败。保存的坐标检查完成后，您将收到通知。
+    poster:
+      gallery_without_flights: 图库海报使用不含航班叠加层的 GPS 路线。下载时会保留当前视图。

@@ -54,5 +54,11 @@ RSpec.describe Photos::Importer do
         expect { service }.to change { Point.count }.by(1)
       end
     end
+
+    it 'does not persist raw_data for imported points' do
+      service
+
+      expect(Point.where(import_id: import.id).pluck(:raw_data).uniq).to eq([{}])
+    end
   end
 end

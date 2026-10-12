@@ -38,8 +38,6 @@ describe 'Imports API', type: :request do
 
         let!(:imports) { create_list(:import, 2, user:) }
 
-        after { |example| SwaggerResponseExample.capture(example, response) }
-
         run_test!
       end
 
@@ -76,8 +74,6 @@ describe 'Imports API', type: :request do
                required: %w[id name status created_at]
 
         let(:file) { fixture_file_upload('gpx/gpx_track_single_segment.gpx', 'application/gpx+xml') }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end
@@ -122,8 +118,6 @@ describe 'Imports API', type: :request do
 
         let(:import) { create(:import, user:) }
         let(:id) { import.id }
-
-        after { |example| SwaggerResponseExample.capture(example, response) }
 
         run_test!
       end

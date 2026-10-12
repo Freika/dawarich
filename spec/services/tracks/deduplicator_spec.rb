@@ -28,6 +28,19 @@ RSpec.describe Tracks::Deduplicator do
     end
 
     context 'when duplicates exist' do
+      # The (user_id, start_at, end_at) unique index blocks duplicate inserts at
+      # the DB level. Dropping it inside the example's transaction lets us seed
+      # legacy-style duplicates so we can verify the runtime cleanup path; the
+      # rollback at the end of the example restores the index automatically.
+      before do
+        ActiveRecord::Base.connection.execute(
+          'DROP INDEX IF EXISTS index_tracks_on_user_start_end_unique'
+        )
+        ActiveRecord::Base.connection.execute(
+          'DROP INDEX IF EXISTS index_tracks_on_user_tracker_start_end_unique'
+        )
+      end
+
       let(:start_time) { 2.hours.ago }
       let(:end_time) { 1.hour.ago }
 
@@ -63,6 +76,24 @@ RSpec.describe Tracks::Deduplicator do
         described_class.new(user).call
 
         expect(Rails.logger).to have_received(:info).with(/Removed 1 duplicate tracks for user #{user.id}/)
+      end
+    end
+
+    context 'when duplicate tracks still own points' do
+      let(:start_time) { 2.hours.ago }
+      let(:end_time) { 1.hour.ago }
+
+      let!(:older) { create(:track, user: user, start_at: start_time, end_at: end_time, tracker_id: 'a') }
+      let!(:newer) { create(:track, user: user, start_at: start_time, end_at: end_time, tracker_id: 'b') }
+
+      it 'detaches their points instead of aborting on the foreign key' do
+        point = create(:point, user: user, track: older)
+
+        expect { described_class.new(user).call }.not_to raise_error
+
+        expect(Track.exists?(older.id)).to be false
+        expect(Track.exists?(newer.id)).to be true
+        expect(point.reload.track_id).to be_nil
       end
     end
 

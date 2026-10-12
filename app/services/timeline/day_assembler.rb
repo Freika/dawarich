@@ -7,6 +7,17 @@ module Timeline
     # memory just to compute bounds.
     MAX_RANGE = 31.days
 
+    PHANTOM_STATIONARY_DISTANCE_M = 100
+
+    # Modes that never count as movement in summaries or journey rows.
+    NON_MOVING_MODES = %w[stationary unknown].freeze
+    # Segments below this posterior don't get to claim a mode in the day
+    # chips (matches the display gate in TrackSegments::DisplayLegs).
+    CHIP_CONFIDENCE_MIN = TrackSegments::DisplayLegs::UNCERTAIN_BELOW
+    # Modes that moved less than this (in the user's display unit) stay off
+    # the day chips — a 200 m jog across a parking lot is not a story.
+    CHIP_MIN_DISTANCE = 0.5
+
     def initialize(user, start_at:, end_at:, distance_unit: 'km')
       @user = user
       @start_at = start_at.present? ? Time.zone.parse(start_at) : nil
@@ -23,6 +34,10 @@ module Timeline
 
       return [] if visits.empty? && tracks.empty?
 
+      @segment_stats = load_segment_stats(tracks)
+
+      @visit_point_counts = Point.where(visit_id: visits.map(&:id)).group(:visit_id).count
+
       days = group_by_day(visits, tracks)
       build_days(days)
     end
@@ -38,6 +53,7 @@ module Timeline
         name: visit.name,
         editable_name: visit.name,
         status: visit.status,
+        confidence_band: visit.confidence_band,
         place_id: visit.place_id,
         point_count: point_count_for(visit),
         tags: build_tags(visit.place),
@@ -57,6 +73,10 @@ module Timeline
 
     attr_reader :user, :start_at, :end_at, :distance_unit
 
+    def timezone
+      @timezone ||= user.safe_settings.timezone
+    end
+
     def fetch_visits
       user.scoped_visits
           .includes(:area, suggested_places: :tags, place: :tags)
@@ -66,54 +86,101 @@ module Timeline
 
     def point_count_for(visit)
       assoc = visit.association(:points)
-      assoc.loaded? ? assoc.target.length : visit.points.count
+      return assoc.target.length if assoc.loaded?
+      return @visit_point_counts.fetch(visit.id, 0) if @visit_point_counts
+
+      visit.points.count
     end
 
     def fetch_tracks
       user.scoped_tracks
-          .where(start_at: start_at..end_at)
+          .where('start_at <= ? AND end_at >= ?', end_at, start_at)
+          .without_phantom_stationary(PHANTOM_STATIONARY_DISTANCE_M)
           .order(start_at: :asc)
     end
 
+    # Two grouped sums over the whole window's segments: per-track moving
+    # seconds (any non-stationary movement, however uncertain) and per-track
+    # per-mode confident distances for the day chips.
+    def load_segment_stats(tracks)
+      ids = tracks.map(&:id)
+      return { moving: {}, mode_distances: {} } if ids.empty?
+
+      moving_scope = TrackSegment.where(track_id: ids)
+                                 .where.not(transportation_mode: NON_MOVING_MODES)
+      {
+        moving: moving_scope.group(:track_id).sum(:duration),
+        mode_distances: moving_scope
+                        .where('corrected_at IS NOT NULL OR confidence_score IS NULL OR confidence_score >= ?',
+                               CHIP_CONFIDENCE_MIN)
+                        .group(:track_id, :transportation_mode).sum(:distance)
+      }
+    end
+
     def group_by_day(visits, tracks)
-      Time.use_zone(user.safe_settings.timezone) do
+      Time.use_zone(timezone) do
         grouped = {}
+        window = start_at.in_time_zone.to_date..end_at.in_time_zone.to_date
 
         visits.each do |visit|
           day_key = visit.started_at.in_time_zone.to_date
-          grouped[day_key] ||= { visits: [], tracks: [] }
+          next unless window.cover?(day_key)
+
+          grouped[day_key] ||= empty_day_bucket
           grouped[day_key][:visits] << visit
         end
 
         tracks.each do |track|
-          day_key = track.start_at.in_time_zone.to_date
-          grouped[day_key] ||= { visits: [], tracks: [] }
-          grouped[day_key][:tracks] << track
+          start_day = track.start_at.in_time_zone.to_date
+          TrackDayShares.shares_for(track, timezone).each do |day_key, fraction|
+            next unless window.cover?(day_key)
+
+            grouped[day_key] ||= empty_day_bucket
+            grouped[day_key][:tracks] << track
+            grouped[day_key][:track_shares][track.id] = fraction
+            grouped[day_key][:originating_tracks] << track if day_key == start_day
+          end
         end
 
         grouped.sort_by(&:first)
       end
     end
 
-    def build_days(days)
-      days.map { |date, data| build_day(date, data[:visits], data[:tracks]) }
+    def empty_day_bucket
+      { visits: [], tracks: [], originating_tracks: [], track_shares: {} }
     end
 
-    def build_day(date, visits, tracks)
-      entries = interleave(visits, tracks)
+    def build_days(days)
+      days.map { |date, data| build_day(date, data) }
+    end
+
+    def build_day(date, data)
+      entries = interleave(date, data[:visits], data[:tracks], data[:track_shares])
       {
         date: date.to_s,
-        summary: build_summary(visits, tracks),
-        bounds: build_bounds(visits, tracks),
+        summary: build_summary(data[:visits], data[:tracks], data[:track_shares]),
+        bounds: build_bounds(data[:visits], data[:originating_tracks]),
         entries: entries
       }
     end
 
-    def interleave(visits, tracks)
+    def interleave(date, visits, tracks, track_shares)
+      day_local = date.in_time_zone(timezone)
+      day_start = day_local.beginning_of_day
+      day_end = day_local.end_of_day
       visit_entries = visits.map { |v| build_visit_entry(v) }
-      track_entries = tracks.map { |t| build_journey_entry(t) }
+      track_entries = tracks.map { |t| build_journey_entry(t, date: date, day_share: track_shares.fetch(t.id, 1.0)) }
 
-      (visit_entries + track_entries).sort_by { |e| e[:started_at] }
+      (visit_entries + track_entries).sort_by do |entry|
+        started_at_time = Time.iso8601(entry[:started_at])
+        anchor_time = if entry[:continuation_of_date]
+                        ended_at_time = Time.iso8601(entry[:ended_at])
+                        [[ended_at_time, day_end].min, day_start].max
+                      else
+                        started_at_time
+                      end
+        [anchor_time, started_at_time]
+      end
     end
 
     # NOTE: visit.duration is stored in MINUTES. See the public #build_visit_entry
@@ -159,7 +226,10 @@ module Timeline
       seen.values
     end
 
-    def build_journey_entry(track)
+    def build_journey_entry(track, date: nil, day_share: 1.0)
+      start_day = track.start_at.in_time_zone(timezone).to_date
+      continuation = date.present? && date != start_day
+
       {
         type: 'journey',
         track_id: track.id,
@@ -172,8 +242,21 @@ module Timeline
         avg_speed: convert_speed(track.avg_speed.to_f),
         speed_unit: speed_unit_label,
         elevation_gain: track.elevation_gain,
-        elevation_loss: track.elevation_loss
+        elevation_loss: track.elevation_loss,
+        continuation_of_date: continuation ? start_day.to_s : nil,
+        day_distance: continuation ? convert_distance(track.distance.to_f * day_share) : nil,
+        day_duration: continuation ? (track.duration.to_f * day_share).round : nil,
+        moving_duration: day_moving_duration(track, continuation, day_share)
       }
+    end
+
+    # Continuation rows describe one day's slice of the track, so moving time
+    # has to be apportioned the same way distance and duration are.
+    def day_moving_duration(track, continuation, day_share)
+      moving = @segment_stats[:moving][track.id]
+      return moving unless continuation && moving
+
+      (moving.to_f * day_share).round
     end
 
     def build_place(place)
@@ -186,9 +269,13 @@ module Timeline
       }
     end
 
-    def build_summary(visits, tracks)
-      total_distance_m = tracks.sum(&:distance)
-      moving_seconds = tracks.sum(&:duration)
+    def build_summary(visits, tracks, track_shares)
+      total_distance_m = tracks.sum { |t| t.distance.to_f * track_shares.fetch(t.id, 1.0) }
+      # Asymmetry with fetch_tracks is intentional: stationary tracks with >=100m
+      # still surface in the timeline as "🛑 stayed" rows, but their duration must
+      # not contribute to "time_moving_minutes" — "stayed" is not "moving".
+      moving_tracks = tracks.reject { |t| t.dominant_mode == 'stationary' }
+      moving_seconds = moving_tracks.sum { |t| t.duration.to_f * track_shares.fetch(t.id, 1.0) }
       # NOTE: visit.duration is stored in MINUTES (see Visits::Creator / Visits::Create).
       stationary_minutes = visits.sum(&:duration)
       status_counts = visits.group_by(&:status).transform_values(&:size)
@@ -201,8 +288,25 @@ module Timeline
         time_stationary_minutes: stationary_minutes,
         suggested_count: status_counts.fetch('suggested', 0),
         confirmed_count: status_counts.fetch('confirmed', 0),
-        declined_count: status_counts.fetch('declined', 0)
+        declined_count: status_counts.fetch('declined', 0),
+        mode_distances: mode_distances_for(tracks, track_shares)
       }
+    end
+
+    def mode_distances_for(tracks, track_shares)
+      day_track_ids = tracks.map(&:id).to_set
+      totals = Hash.new(0.0)
+
+      @segment_stats[:mode_distances].each do |(track_id, mode), meters|
+        next unless day_track_ids.include?(track_id)
+
+        totals[mode] += meters.to_f * track_shares.fetch(track_id, 1.0)
+      end
+
+      totals.transform_values { |meters| convert_distance(meters) }
+            .reject { |_, value| value < CHIP_MIN_DISTANCE }
+            .sort_by { |_, value| -value }
+            .to_h
     end
 
     def build_bounds(visits, tracks)

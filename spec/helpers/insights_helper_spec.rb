@@ -160,4 +160,48 @@ RSpec.describe InsightsHelper, type: :helper do
       expect(indices).to eq(indices.sort)
     end
   end
+
+  describe '#format_location_time' do
+    it 'returns "0 min" for nil' do
+      expect(helper.format_location_time(nil)).to eq('0 min')
+    end
+
+    it 'returns "0 min" for zero' do
+      expect(helper.format_location_time(0)).to eq('0 min')
+    end
+
+    it 'returns minutes for sub-hour durations' do
+      expect(helper.format_location_time(30)).to eq('30 min')
+    end
+
+    it 'returns hours for sub-day durations' do
+      expect(helper.format_location_time(120)).to eq('2 hours')
+    end
+
+    it 'returns singular hour' do
+      expect(helper.format_location_time(60)).to eq('1 hour')
+    end
+
+    it 'returns total days for single-day durations' do
+      expect(helper.format_location_time(1440)).to eq('1 day')
+    end
+
+    it 'returns total days for multi-day durations' do
+      expect(helper.format_location_time(2 * 1440)).to eq('2 days')
+    end
+
+    # Regression: ActiveSupport::Duration#parts decomposes into months/weeks/days,
+    # so parts[:days] only returns the day-remainder (max ~6). The previous
+    # implementation reported "4 days" for 191_741 minutes (≈133 days), which
+    # silently underreports time spent at top locations.
+    it 'returns the total day count for durations spanning months' do
+      # 133 days = 191_520 minutes
+      expect(helper.format_location_time(133 * 1440)).to eq('133 days')
+    end
+
+    it 'returns the total day count for durations spanning years' do
+      # 400 days = 576_000 minutes — clearly across a year boundary
+      expect(helper.format_location_time(400 * 1440)).to eq('400 days')
+    end
+  end
 end

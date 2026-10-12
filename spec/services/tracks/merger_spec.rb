@@ -72,6 +72,26 @@ lonlat: 'POINT(-74.009 40.7158)')
         expect(older_track.distance).not_to eq(original_distance)
       end
 
+      it 'recalculates duration to span the merged point set' do
+        merger.call
+
+        older_track.reload
+        first_ts = older_track.points.minimum(:timestamp)
+        last_ts = older_track.points.maximum(:timestamp)
+        expected_duration = last_ts - first_ts
+
+        expect(older_track.duration).to eq(expected_duration)
+      end
+
+      it 'recalculates avg_speed from the post-merge distance and duration' do
+        merger.call
+
+        older_track.reload
+        expected_kmh = ((older_track.distance.to_f / older_track.duration) * 3.6).round(2)
+
+        expect(older_track.avg_speed).to be_within(0.01).of(expected_kmh)
+      end
+
       it 'deletes old segments and re-detects for the merged track' do
         create(:track_segment, track: older_track, start_index: 0, end_index: 1)
         create(:track_segment, track: newer_track, start_index: 0, end_index: 1)

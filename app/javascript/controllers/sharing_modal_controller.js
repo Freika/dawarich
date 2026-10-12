@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 
 export default class extends Controller {
   static targets = [
@@ -38,7 +39,7 @@ export default class extends Controller {
 
       const button = this.sharingLinkTarget.nextElementSibling
       const originalText = button.innerHTML
-      button.innerHTML = "Link Copied!"
+      button.innerHTML = translate("sharing.link_copied")
       button.classList.add("btn-outline", "btn-success")
 
       setTimeout(() => {

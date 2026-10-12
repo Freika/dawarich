@@ -56,7 +56,12 @@ module Users
           toponyms = stat.toponyms
           next [] unless toponyms.is_a?(Array)
 
-          toponyms.filter_map { |t| t['country'] if t.is_a?(Hash) && t['country'].present? }
+          toponyms.filter_map do |t|
+            next unless t.is_a?(Hash) && t['country'].present?
+            next unless t['cities'].is_a?(Array) && t['cities'].any?
+
+            t['country']
+          end
         end.uniq
       end
 

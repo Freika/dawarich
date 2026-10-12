@@ -1,6 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
-import maplibregl from "maplibre-gl"
+import { translate } from "i18n"
+import * as maplibregl from "maplibre-gl"
 import { escapeHtml } from "maps_maplibre/utils/geojson_transformers"
+import { HtmlLabelManager } from "maps_maplibre/utils/html_label_manager"
 import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
@@ -24,6 +26,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.labels?.clear()
     if (this._initTimer) {
       clearTimeout(this._initTimer)
       this._initTimer = null
@@ -70,7 +73,6 @@ export default class extends Controller {
   addMembers() {
     const locations = this.locationsValue
     if (!locations.length) return
-
     const features = locations.map((loc, i) => ({
       type: "Feature",
       geometry: {
@@ -79,7 +81,7 @@ export default class extends Controller {
       },
       properties: {
         id: loc.user_id,
-        name: loc.email || "Unknown",
+        name: loc.name || loc.email || translate("common.unknown"),
         color: MEMBER_COLORS[i % MEMBER_COLORS.length],
         lastUpdate: loc.timestamp,
       },
@@ -115,24 +117,12 @@ export default class extends Controller {
       },
     })
 
-    // Email labels
-    this.map.addLayer({
-      id: "family-labels",
-      type: "symbol",
-      source: "family-members",
-      layout: {
-        "text-field": ["get", "name"],
-        "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-        "text-size": 12,
-        "text-offset": [0, 1.5],
-        "text-anchor": "top",
-      },
-      paint: {
-        "text-color": theme === "dark" ? "#e5e7eb" : "#111827",
-        "text-halo-color": theme === "dark" ? "#1f2937" : "#ffffff",
-        "text-halo-width": 2,
-      },
+    this.labels = new HtmlLabelManager(this.map, {
+      className: "map-html-label map-html-label--family",
+      anchor: "top",
+      offset: [0, 14],
     })
+    this.labels.sync(features)
 
     // Click to show popup
     this.map.on("click", "family-circles", (e) => {

@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Users::CreationWebhookJob, type: :job do
-  let(:user) { create(:user, :trial) }
+  let(:user) { create(:user, :trial, first_name: 'Ada', last_name: 'Lovelace') }
   let(:jwt_token) { 'encoded.jwt.token' }
   let(:manager_url) { 'https://manager.example.com' }
   let(:request_url) { "#{manager_url}/api/v1/users" }
@@ -20,6 +20,8 @@ RSpec.describe Users::CreationWebhookJob, type: :job do
       expected_payload = {
         user_id: user.id,
         email: user.email,
+        first_name: 'Ada',
+        last_name: 'Lovelace',
         active_until: user.active_until,
         status: user.status,
         action: 'create_user'
