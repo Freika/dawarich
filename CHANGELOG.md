@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
-
+- Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200)
+- Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
 - Country boundaries now include Crimea in Ukraine, matching its subdivisions: the Ukraine achievement card, scratch map and country attribution follow, and existing points there move from Russia to Ukraine in the background (#3834).
 - Count briefly visited countries consistently in Insights, statistics, the stats API and digests even when no city meets the minimum stay threshold. (#3290)
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
