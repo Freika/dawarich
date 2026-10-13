@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="<%= I18n.locale %>" data-theme="<%= app_theme %>" data-self-hosted="<%= DawarichSettings.self_hosted? %>" data-analytics-account="<%= user_signed_in? %>" data-analytics-consent="<%= current_user&.product_analytics_consent.nil? ? 'unknown' : current_user.product_analytics_consent %>" data-partnero-id="<%= ENV['PARTNERO_PROGRAM_ID'] %>" data-google-ads-id="<%= ENV['GOOGLE_ADS_ID'] %>">
+<html lang="<%= I18n.locale %>" data-theme="<%= app_theme %>" data-self-hosted="<%= DawarichSettings.self_hosted? %>" data-analytics-account="<%= user_signed_in? %>" data-analytics-consent="<%= current_user&.product_analytics_consent.nil? ? 'unknown' : current_user.product_analytics_consent %>" <%= tag.attributes(consent_gated_tracking_attributes) %>>
   <head>
     <title><%= full_title(yield(:title)) %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
