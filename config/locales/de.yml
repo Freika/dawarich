@@ -140,12 +140,6 @@ de:
         link_provider_to_your_dawarich_account: "%{provider} mit deinem Dawarich-Konto verknüpfen"
         existing_account_link_instructions_html: "Wir haben ein bestehendes Dawarich-Konto für %{email} gefunden. Gib dein Passwort ein, um deine %{provider}-Identität mit diesem Konto zu verknüpfen und dich anzumelden."
   devise:
-    confirmations:
-      new:
-        resend_confirmation: Bestätigungslink erneut senden
-        enter_your_email_address_and_we_ll_resend_the_confirmation: Gib deine E-Mail-Adresse ein, und wir senden dir die Bestätigungsanweisungen erneut.
-        email: E-Mail
-        resend_confirmation_instructions: Bestätigungsanweisungen erneut senden
     mailer:
       confirmation_instructions:
         welcome: Willkommen
@@ -174,7 +168,6 @@ de:
         change_your_password: Passwort ändern
         enter_your_new_password_below: Gib dein neues Passwort unten ein.
         new_password: Neues Passwort
-        characters_minimum: Zeichen erforderlich)
         confirm_new_password: Neues Passwort bestätigen
         change_my_password: Passwort ändern
       new:
@@ -254,13 +247,18 @@ de:
         join: Beitreten
         you_ve_been_invited_by: Du wurdest von
         to_join_their_family_create_your_account_to_accept_the: eingeladen, der Familie beizutreten. Erstelle dein Konto, um die Einladung anzunehmen und Standortdaten zu teilen.
-        almost_there: Fast fertig!
-        only_a_few_steps_left_until_you_get_control_over: Nur noch wenige Schritte, bis du Kontrolle über deine Standortdaten hast!
-        create_your_account: Erstelle dein Konto
-        configure_your_mobile_app: Konfiguriere deine mobile App
-        start_tracking_your_location_data_securely: Beginne mit der sicheren Aufzeichnung deiner Standortdaten
-        ellipsis: "…"
-        you_re_beautiful: Du bist wunderschön!
+        almost_there: "Fast fertig"
+        only_a_few_steps_left_until_you_get_control_over: "Nur noch wenige Schritte, bis du Kontrolle über deine Standortdaten hast."
+        steps:
+          account:
+            title: "Erstelle dein Konto"
+            body: "Nutze das Formular auf dieser Seite."
+          mobile_app:
+            title: "Konfiguriere deine mobile App"
+            body: "Zeichne neue Standorte mit der Dawarich-App oder OwnTracks auf."
+          import:
+            title: "Importiere deinen Verlauf"
+            body: "Füge deinen Google-Timeline-Export und ältere GPX- oder GeoJSON-Dateien hinzu."
         invitation_email_notice: Deine E-Mail (%{email}) wird für dieses Konto verwendet
         email: E-Mail
         password: Passwort
@@ -280,6 +278,19 @@ de:
         don_t_have_an_account_yet: Du hast noch kein Konto?
         login_now: Jetzt anmelden
         and_take_control_over_your_location_data: und übernimm die Kontrolle über deine Standortdaten.
+        benefits:
+          map:
+            title: "Dein gesamter Verlauf auf einer Karte"
+            body: "Sieh jeden Punkt, jede Route und jeden Besuch auf einer interaktiven Karte."
+          import:
+            title: "Nimm deine Daten mit"
+            body: "Importiere aus Google Timeline, OwnTracks, GPX, GeoJSON und mehr."
+          stats:
+            title: "Sieh, wo du überall warst"
+            body: "Länder, Städte und Distanz, aufgeschlüsselt nach Jahr und Monat."
+          privacy:
+            title: "Deine Daten gehören dir"
+            body: "Keine Werbung, und dein Standortverlauf wird niemals verkauft."
         email: E-Mail
         password: Passwort
         remember_me: Angemeldet bleiben
@@ -300,7 +311,6 @@ de:
         log_in: Anmelden
         register: Registrieren
         forgot_your_password: Passwort vergessen?
-        didn_t_receive_confirmation_instructions: Keine Bestätigungsanweisungen erhalten?
         didn_t_receive_unlock_instructions: Keine Entsperranweisungen erhalten?
     unlocks:
       new:
@@ -587,24 +597,6 @@ de:
       stay_connected_with_your_growing_family_2: "• Mit deiner wachsenden Familie in Verbindung bleiben"
       manage_family_members_and_settings_from_your_family_page_2: "• Familie und Einstellungen von deiner Familien-Übersicht verwalten"
       tip_you_can_manage_your_family_members_and_privacy_settings: 'TIP: Du kannst deine Familie und Privatsphäre-Einstellungen jederzeit von deiner Familien-Übersicht verwalten.'
-  home:
-    index:
-      dawarich: Dawarich
-      the_only_location_history_tracker_you_ll_ever_need: Der einzige Standortverlaufstracker, den du je benötigen wirst.
-      or: oder
-      location_history_visualisation: Visualisierung des Standortverlaufs
-      effortlessly_import_your_location_history_from_google_maps_timeline_and: Importiere deinen Standortverlauf mühelos aus Google Maps Timeline und OwnTracks. Erkunde deine Wege auf einer interaktiven Karte und passe Ebenen wie Heatmap, Punkte und Verbindungslinien an.
-      comprehensive_travel_statistics: Umfassende Reisestatistiken
-      gain_insights_into_your_travel_patterns_with_detailed_statistics_track: Erhalte Einblicke in deine Reisemuster mit detaillierten Statistiken. Verfolge die Anzahl der besuchten Länder und Städte sowie die Gesamtstrecke. Teile deine Daten nach Jahren und Monaten für einen klaren Überblick über deine Reisen.
-      self_hosted_and_private: Selbst gehostet und privat
-      maintain_complete_control_over_your_data_with_our_self_hosted: Mit der selbst gehosteten Lösung behältst du die volle Kontrolle über deine Daten. Dein Standortverlauf bleibt privat und sicher, während dir alle Funktionen eines leistungsfähigen Tracking-Systems zur Verfügung stehen.
-      find_more_on: Mehr erfährst du auf
-      the_website: der Website
-      or_check_out_the: ", oder sieh dir den"
-      source_code: Quellcode
-      on_github: auf GitHub an.
-      sign_up: Registrieren
-      sign_in: Anmelden
   imports:
     extraction_card:
       additional_data: Zusätzliche Daten
@@ -1000,10 +992,12 @@ de:
         timeline_t: Zeitleiste (T)
         layers: Ebenen
         layers_l: Ebenen (L)
+        family: "Familie"
+        family_f: "Familie (F)"
         search: Suche
         search_2: Suche (/)
-        create: Erstellen
-        create_c: Erstellen (C)
+        tools: "Werkzeuge"
+        tools_c: "Werkzeuge (C)"
         replay: Wiedergabe
         replay_points_for_the_current_date_range_r: Standortpunkte für den aktuellen Zeitraum wiedergeben (R)
         poster_studio: Poster-Studio
@@ -1045,7 +1039,6 @@ de:
         places: Orte
         show_your_saved_places: Deine gespeicherten Orte anzeigen
         enable_all_tags: Alle Tags aktivieren
-        filter_by_tags: Nach Tags filtern
         untagged: "\U0001F3F7️ Ohne Tag"
         click_tags_to_filter_places: Klick auf Tags, um Orte zu filtern
         photos: Fotos
@@ -1059,6 +1052,7 @@ de:
         scratch_map: Besuchte Länder
         show_scratched_countries: Im ausgewählten Zeitraum besuchte Länder hervorheben
         family_members: Familienmitglieder
+        manage_family: "Familie verwalten"
         show_family_member_locations: Standorte von Familienmitgliedern anzeigen
         click_to_center_on_member: Klicke, um auf Mitglied zu zoomen
         appearance: Erscheinungsbild
@@ -4562,6 +4556,7 @@ de:
       enabled: Live-Modus aktiviert
     map_panel:
       layers: Kartenlayers
+      family: "Familie"
       links: Links
       search: Suche
       settings: Einstellungen

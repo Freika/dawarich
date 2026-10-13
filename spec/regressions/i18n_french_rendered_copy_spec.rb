@@ -154,11 +154,8 @@ RSpec.describe 'Rendered French copy' do
     end
   end
 
-  it 'uses idiomatic self-hosting and shared-link recovery copy' do
+  it 'uses idiomatic shared-link recovery copy' do
     I18n.with_locale(:fr) do
-      expect(I18n.t('home.index.self_hosted_and_private')).to eq('Auto-hébergé et privé')
-      expect(I18n.t('home.index.maintain_complete_control_over_your_data_with_our_self_hosted'))
-        .to include('solution auto-hébergée', 'en toute sérénité')
       expect(I18n.t('shared.links.not_found.the_owner_may_have_revoked_the_link_or_it_may'))
         .to include('Le propriétaire')
       expect(I18n.t('shared.links.phrase_prompt.this_shared_link_is_protected_ask_the_owner_for_the'))

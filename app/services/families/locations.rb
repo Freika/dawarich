@@ -47,9 +47,12 @@ class Families::Locations
     latest_points =
       sharing_members.map { _1.points.without_raw_data.complete.not_anomaly.order(timestamp: :desc).first }.compact
 
+    with_address = Geocoding::Config.for(user).enabled?
+
     latest_points.map do |point|
       {
         user_id: point.user_id,
+        address: (point.address_line if with_address),
         email: point.user.email,
         name: point.user.display_name,
         email_initial: point.user.email.first.upcase,
