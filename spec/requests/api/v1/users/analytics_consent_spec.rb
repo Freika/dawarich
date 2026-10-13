@@ -46,4 +46,13 @@ RSpec.describe 'Api::V1::Users::AnalyticsConsent', type: :request do
     patch '/api/v1/users/me/analytics_consent', params: { consent: true }, headers: headers
     expect(response).to have_http_status(:forbidden)
   end
+
+  it 'never hands out an analytics identity on self-hosted instances' do
+    patch '/api/v1/users/me/analytics_consent', params: { consent: true }, headers: headers
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+
+    get '/api/v1/users/me/analytics_consent', headers: headers
+
+    expect(response.parsed_body).to eq('consent' => false, 'analytics_id' => nil)
+  end
 end

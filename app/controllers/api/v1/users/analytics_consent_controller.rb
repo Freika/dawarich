@@ -20,6 +20,8 @@ class Api::V1::Users::AnalyticsConsentController < ApiController
   private
 
   def render_consent
+    return render(json: { consent: false, analytics_id: nil }) if DawarichSettings.self_hosted?
+
     render json: {
       consent: current_api_user.product_analytics_consent,
       analytics_id: current_api_user.product_analytics_consent? ? current_api_user.product_analytics_id : nil
