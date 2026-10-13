@@ -37,7 +37,7 @@
           <tbody>
             <% @places.each do |place| %>
               <tr>
-                <td><%= place.name %></td>
+                <td><%= link_to place.name, map_v2_path(place_id: place.id), class: 'link link-hover' %></td>
                 <td><%= human_datetime(place.created_at, current_user.safe_settings.timezone) %></td>
                 <td><%= "#{place.lat}, #{place.lon}" %></td>
                 <td>
