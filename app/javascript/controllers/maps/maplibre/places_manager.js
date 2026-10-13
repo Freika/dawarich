@@ -306,6 +306,18 @@ export class PlacesManager {
     await this.handlePlaceCreated(event)
   }
 
+  handlePlaceDeleted(event) {
+    const placesLayer = this.layerManager.getLayer("places")
+    if (!placesLayer?.data) return
+
+    placesLayer.update({
+      type: "FeatureCollection",
+      features: placesLayer.data.features.filter(
+        (feature) => feature.properties?.id !== event.detail.id,
+      ),
+    })
+  }
+
   /**
    * Append or replace a single place feature on the layer without touching
    * the backend. Replaces by id when the place is already present (edit).

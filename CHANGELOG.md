@@ -6,12 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Clicking a place on the map opens its details panel instead of a popup. The panel's Edit button changes the place's name and tags, and place names on the Places page open the same panel.
+
 ### Fixed
 - Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200)
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
 - Country boundaries now include Crimea in Ukraine, matching its subdivisions: the Ukraine achievement card, scratch map and country attribution follow, and existing points there move from Russia to Ukraine in the background (#3834).
 - Count briefly visited countries consistently in Insights, statistics, the stats API and digests even when no city meets the minimum stay threshold. (#3290)
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
+- Opening a place link directly now shows the place on the map instead of a blank page, and the place panel's Delete button and notes form work.
 - Refresh import statuses after the live stream subscribes or reconnects, recovering updates missed before connection (#3174).
 - Emoji in place, area, visit and family member names now render correctly on the map instead of a placeholder glyph (#2365).
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
