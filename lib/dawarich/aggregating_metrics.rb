@@ -18,7 +18,8 @@ module Dawarich
     LOCAL_PROCESS = 'web'
     REMOTE_PROCESS = 'sidekiq'
     PROCESS_LABEL = 'process'
-    SAMPLE_LINE = /\A([a-zA-Z_:][a-zA-Z0-9_:]*)(\{.*?\})?(\s+.*)\z/
+    SAMPLE_LINE = /\A([a-zA-Z_:][a-zA-Z0-9_:]*)(\{(?:[^"{}]|"(?:\\.|[^"\\])*")*\})?(\s+.*)\z/
+    LABEL_PAIR = /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*"((?:\\.|[^"\\])*)"/
     PROCESS_LABEL_PRESENT = /[{,]process="/
 
     def initialize(local_app, remote_url:, remote_user:, remote_password:, timeout: 5)
@@ -61,8 +62,8 @@ module Dawarich
     # metadata.
     #
     # Both processes register some collectors independently, so the same metric
-    # name and label set can arrive from each with a different value — which
-    # OpenMetrics forbids and strict ingesters reject. Those samples, and only
+    # name and label set can arrive from each with a different value, producing
+    # duplicate samples that strict ingesters reject. Those samples, and only
     # those, get a `process` label naming where they came from, so the series
     # stay distinct without renaming anything that isn't ambiguous.
     def merge(local, remote)
@@ -103,10 +104,11 @@ module Dawarich
       match = SAMPLE_LINE.match(line.strip)
       return if match.nil?
 
-      labels = match[2]
-      labels = nil if labels == '{}'
-
-      "#{match[1]}#{labels}"
+      # prometheus-client emits canonical escapes. Consume quoted values whole,
+      # then compare label hashes independently of order. Prometheus treats an
+      # empty-valued label as absent; normalize only the comparison identity.
+      labels = match[2].to_s.scan(LABEL_PAIR).to_h.reject { |_name, value| value.empty? }
+      [match[1], labels]
     end
 
     def disambiguate(line, process, collisions)

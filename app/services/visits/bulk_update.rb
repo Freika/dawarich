@@ -43,6 +43,9 @@ module Visits
 
       # Captured before update_all: declined visits drop out of scoped_visits.
       declined_place_ids = status == 'declined' ? visits.where.not(place_id: nil).distinct.pluck(:place_id) : []
+      tz = user.safe_settings.timezone.presence || 'UTC'
+      months = visits.distinct.pluck(:started_at).compact
+                     .map { |time| time.in_time_zone(tz).to_date.beginning_of_month }.uniq
 
       updated_count = visits.update_all(status: status)
       # rubocop:enable Rails/SkipsModelValidations
@@ -50,6 +53,10 @@ module Visits
       # update_all skips AR callbacks, so declining here must enqueue the
       # orphan-place check the model runs on single-record declines.
       declined_place_ids.each { |place_id| Places::DeleteIfOrphanJob.perform_later(place_id) }
+
+      ActiveRecord.after_all_transactions_commit do
+        months.each { |month| Rails.cache.delete(Timeline::MonthSummary.cache_key_for(user, month)) }
+      end
 
       { count: updated_count, visits: visits }
     end

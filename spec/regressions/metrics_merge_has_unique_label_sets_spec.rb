@@ -2,7 +2,11 @@
 
 require 'rails_helper'
 require 'dawarich/aggregating_metrics'
+require 'json'
+require 'prometheus/client'
+require 'prometheus/client/formats/text'
 require 'rack/mock'
+require 'strscan'
 
 RSpec.describe 'Merged /metrics never repeats a label set' do
   let(:local_body) { <<~METRICS }
@@ -51,20 +55,109 @@ RSpec.describe 'Merged /metrics never repeats a label set' do
     body.each.to_a.join
   end
 
-  # Mirrors the reporter's own detection: strip comments, strip each line's
-  # value, then look for a repeated name+labels combination.
+  # Compare parsed label hashes so label ordering cannot hide repeated series.
   def repeated_series(output)
-    identities = output.each_line
-                       .reject { |line| line.start_with?('#') }
-                       .map(&:strip)
-                       .reject(&:empty?)
-                       .map { |line| line.sub(/\s+\S+\s*\z/, '') }
+    identities = output.each_line.filter_map do |line|
+      scanner = StringScanner.new(line.strip)
+      name = scanner.scan(/[a-zA-Z_:][a-zA-Z0-9_:]*/)
+      next unless name
+
+      labels = {}
+      if scanner.scan(/\{/)
+        until scanner.scan(/\s*\}/)
+          key = scanner.scan(/\s*[a-zA-Z_][a-zA-Z0-9_]*/).strip
+          scanner.scan(/\s*=\s*/)
+          raise "Repeated label name: #{key}" if labels.key?(key)
+
+          labels[key] = JSON.parse(scanner.scan(/"(?:\\.|[^"\\])*"/))
+          scanner.scan(/\s*,\s*/)
+        end
+      end
+
+      [name, labels.reject { |_key, value| value.empty? }]
+    end
 
     identities.tally.select { |_identity, count| count > 1 }.keys
   end
 
   it 'emits no repeated name+label-set combination' do
     expect(repeated_series(merged_output)).to be_empty
+  end
+
+  context 'when both processes emit the same labels in different orders' do
+    let(:local_body) do
+      <<~METRICS
+        activerecord_queries_total{async="true",cached="false",config="primary",kind="SCHEMA"} 134.0
+      METRICS
+    end
+    let(:remote_body) do
+      <<~METRICS
+        activerecord_queries_total{config="primary",kind="SCHEMA",cached="false",async="true"} 101.0
+      METRICS
+    end
+
+    it 'adds distinct process labels while preserving label order and values' do
+      output = merged_output
+
+      expect(repeated_series(output)).to be_empty
+      expect(output).to include(
+        'activerecord_queries_total{process="web",async="true",cached="false",config="primary",kind="SCHEMA"} 134.0',
+        'activerecord_queries_total{process="sidekiq",config="primary",kind="SCHEMA",cached="false",async="true"} 101.0'
+      )
+    end
+  end
+
+  context 'when one side adds an empty-valued label' do
+    let(:local_body) { %(queries{kind="SCHEMA"} 134.0\n) }
+    let(:remote_body) { %(queries{cached="",kind="SCHEMA"} 101.0\n) }
+
+    it 'treats an empty-valued label as absent without altering the original labels' do
+      output = merged_output
+
+      expect(repeated_series(output)).to be_empty
+      expect(output).to eq(
+        local_body.sub('queries{', 'queries{process="web",') +
+        remote_body.sub('queries{', 'queries{process="sidekiq",')
+      )
+    end
+  end
+
+  context 'with labels serialized by prometheus-client' do
+    def queries_registry(labels, value)
+      registry = Prometheus::Client::Registry.new
+      counter = registry.counter(:activerecord_queries_total, docstring: 'Total queries', labels: labels.keys)
+      counter.increment(labels: labels, by: value)
+      registry
+    end
+
+    let(:query_labels) { { sql: "SELECT \"a,b,c,d\", '\\path'\nFROM } records", kind: 'SCHEMA' } }
+    let(:local_registry) { queries_registry(query_labels, 134) }
+    let(:remote_registry) { queries_registry(query_labels.to_a.reverse.to_h, 101) }
+    let(:local_body) { Prometheus::Client::Formats::Text.marshal(local_registry) }
+    let(:remote_body) { Prometheus::Client::Formats::Text.marshal(remote_registry) }
+    let(:local_sample) { local_body.lines.last }
+    let(:remote_sample) { remote_body.lines.last }
+
+    it 'disambiguates library-generated samples while preserving their escaping' do
+      output = merged_output
+      expected_samples = [
+        local_sample.sub('{', '{process="web",'),
+        remote_sample.sub('{', '{process="sidekiq",')
+      ]
+
+      expect(output.lines.grep(/\Aactiverecord_queries_total/)).to eq(expected_samples)
+    end
+
+    context 'when comma-separated text inside a quoted label value differs' do
+      let(:remote_registry) do
+        labels = query_labels.merge(sql: query_labels[:sql].sub('a,b,c,d', 'a,c,b,d'))
+        queries_registry(labels.to_a.reverse.to_h, 101)
+      end
+
+      it 'preserves distinct series without adding process labels' do
+        expect(merged_output.lines.grep(/\Aactiverecord_queries_total/)).to eq([local_sample, remote_sample])
+      end
+    end
   end
 
   it 'keeps both processes values rather than dropping one' do

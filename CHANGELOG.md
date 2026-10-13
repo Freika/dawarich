@@ -6,8 +6,49 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Country boundaries now include Crimea in Ukraine, matching its subdivisions: the Ukraine achievement card, scratch map and country attribution follow, and existing points there move from Russia to Ukraine in the background (#3834).
+- Count briefly visited countries consistently in Insights, statistics, the stats API and digests even when no city meets the minimum stay threshold. (#3290)
+- Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
+- Refresh import statuses after the live stream subscribes or reconnects, recovering updates missed before connection (#3174).
+- Emoji in place, area, visit and family member names now render correctly on the map instead of a placeholder glyph (#2365).
+- Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
+- Update both mobile and desktop family-sharing indicators after changing location-sharing settings.
+- Keep signed storage capabilities and private filenames out of request path logs.
+- Prevent legacy or restored export URLs from deleting unrelated files; retain unproven legacy files after export removal or migration.
+- Refuse location-sharing consent when family access expires while waiting for the request lock.
+- Keep saved ZIP member imports processing when a later archive member fails validation.
+- Keep notification badges, read states and deleted items current in other open tabs.
+- Use safe defaults for missing user settings and refuse unsupported settings writes without replacing malformed data.
+- Shared tracks hide their map and route coordinates when the owner disables route sharing, while enabled statistics remain visible.
+- Only administrators can request test email, and queued test messages are discarded after the recipient loses administrator access.
+- Calendar activity and status counts refresh after demo visit edits and deletion, including restored visits removed by null-island cleanup.
+- Achievement sharing returns only to same-host HTTP(S) or safe relative pages and falls back for non-HTTP return URLs.
+- Concurrent Cloud family invitations can no longer reserve the same final available seat; self-hosted families remain unlimited.
+- Public-share unlock phrases are filtered from request parameters and query-string logs.
+- Keep tied transportation modes, visit and country rankings, location-search coordinates, and Immich GPS matches deterministic.
+- Clear pending two-factor challenges after successful authentication, preventing a stale challenge from switching accounts.
+- Reserve transportation reclassification while its worker is queued, preventing duplicate runs from repeated requests and allowing retry after enqueue failure.
+- Import progress no longer moves backwards when an older Google Takeout continuation finishes late or publishes a stale status.
+- Public monthly statistics and yearly digest links show an unavailable-share message after their owner is deleted.
+- Area creation and editing reject unsupported response formats before saving changes or scheduling visit relabeling.
+- Account deletion confirmation can be requested again immediately if token generation or email enqueueing fails.
+- Partnero signup failure diagnostics and Immich enrichment errors exclude provider-supplied credentials and customer details.
+- Propagate failed monthly statistics calculations so background jobs can retry, with one failure notification per stats delivery.
+- Timeline calendar activity and status counts refresh after confirming or declining visits in bulk.
+- Shared photo thumbnails lose their old authorization immediately when the trip dates or shared resource change.
+- Protect the acting and last active administrator from deletion, and serialize administrator deletion and role changes to retain administration access.
+- Prometheus metrics from web and Sidekiq no longer produce duplicate series when label order differs (#3769).
+- KMZ imports no longer repeatedly re-import their own archive and fill the import queue and storage (#3766).
+
+## [1.15.3] - 2026-09-30, Berlin
+
 ### Added
 
+- Trips can be shared privately with family members, who see them in their trip list and a read-only map. Access follows family membership, sharing settings and privacy zones. (#3751)
+- Account settings allow editing first and last names. Family maps use these names when available and fall back to email. (#3748)
+- Trip pages link to the full map for the exact trip interval, preserving seconds in the date filters. (#3756)
 - Shared achievement links now show a preview of the achievement card with its geography and progress. (#3721)
 
 ### Changed
@@ -16,6 +57,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Achievement backfills now restore historical visit dates, including previously earned regions and countries (#3728).
+
+- Geocoding jobs keep their duplicate-work guard through long queues and retries, and nightly scheduling no longer queues the same pending points again. (#3754)
+- GPX exports work when an older database lacks the decimal-altitude column, while retaining decimal precision when it is available. (#3752)
+- Test email is queued through the same worker as system mail, and the notice reports enqueueing rather than confirmed delivery. (#3746)
+- Archived Immich photos are excluded from map and trip results, including results previously cached before the fix. (#3740)
+- The Family Members map layer shows only other members, avoiding duplicate routes and markers for the current user.
 - Map point editing keeps route colors and uncovered edges in sync, restores visible undo and redo history, and avoids stale lines and false save failures.
 - Point markers overlapping routes remain selectable. Markers with multiple points zoom until one point can be selected, and never offer to delete an arbitrary point. (#3719)
 - Insights shows the current year first with a distinct color for the previous year, and hosted settings hide the What's New notice preference.

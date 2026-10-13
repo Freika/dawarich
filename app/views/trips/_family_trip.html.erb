@@ -1,0 +1,15 @@
+<%= link_to public_shared_link_path(share), class: 'block group' do %>
+  <div class="border border-base-300 rounded-xl overflow-hidden transition-all duration-200 hover:border-primary/30 hover:shadow-lg"
+       data-testid="family-trip-card">
+    <div style="width: 100%; aspect-ratio: 16/10;" class="flex items-center justify-center bg-base-200">
+      <%= icon 'map', class: 'w-12 h-12 text-base-content/40' %>
+    </div>
+    <div class="px-4 py-3">
+      <h3 class="font-semibold text-base group-hover:text-primary truncate"><%= trip.name %></h3>
+      <p class="text-xs text-base-content/50 mt-0.5">
+        <%= human_date(trip.started_at) %> <%= t('trips.trip.ndash') %> <%= human_date(trip.ended_at) %>
+      </p>
+      <span class="badge badge-success badge-sm mt-3"><%= t('shared_links.family.label') %></span>
+    </div>
+  </div>
+<% end %>

@@ -93,25 +93,24 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
           expect { described_class.perform_now }.to have_enqueued_job(ReverseGeocodingJob).exactly(3).times
         end
 
-        it 'enqueues jobs with force: true to bypass the dedup guard' do
+        it 'enqueues jobs with force: false to preserve the dedup guard' do
           expect { described_class.perform_now }
             .to have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding1.id, force: true)
+            .with('Point', point_without_geocoding1.id, force: false)
             .and have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding2.id, force: true)
+            .with('Point', point_without_geocoding2.id, force: false)
             .and have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding3.id, force: true)
+            .with('Point', point_without_geocoding3.id, force: false)
         end
 
-        it 'enqueues even when dedup keys already exist (rescue path)' do
+        it 'keeps pending claims instead of enqueueing duplicates' do
           Sidekiq.redis do |r|
             [point_without_geocoding1, point_without_geocoding2, point_without_geocoding3].each do |p|
-              r.set(Point.geocode_dedup_key(p.id), 1, ex: Point::GEOCODE_DEDUP_TTL)
+              r.set(Point.geocode_dedup_key(p.id), 1, ex: 86_400)
             end
           end
 
-          expect { described_class.perform_now }
-            .to have_enqueued_job(ReverseGeocodingJob).exactly(3).times
+          expect { described_class.perform_now }.not_to have_enqueued_job(ReverseGeocodingJob)
         end
 
         it 'uses find_each with correct batch size' do
@@ -204,8 +203,8 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
 
         described_class.perform_now
 
-        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', point.id, force: true)
-        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', other_point.id, force: true)
+        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', point.id, force: false)
+        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', other_point.id, force: false)
       end
     end
 

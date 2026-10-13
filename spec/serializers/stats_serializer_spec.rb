@@ -144,20 +144,21 @@ RSpec.describe StatsSerializer do
       end
     end
 
-    context 'when toponyms include flyover countries with empty cities' do
-      let!(:stat_with_flyover) do
+    context 'when toponyms include countries with empty cities' do
+      let!(:stat_without_qualifying_city) do
         create(:stat, year: 2020, month: 1, user:, toponyms: [
                  { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'points' => 5, 'stayed_for' => 120 }] },
                  { 'country' => 'Germany', 'cities' => [] }
                ])
       end
 
-      it 'excludes flyover countries from yearly counts' do
+      it 'includes countries without qualifying cities in yearly counts' do
         result = JSON.parse(serializer)
         yearly = result['yearlyStats']
 
         year_2020 = yearly.find { |y| y['year'] == 2020 }
-        expect(year_2020['totalCountriesVisited']).to eq(1)
+        expect(year_2020['totalCountriesVisited']).to eq(2)
+        expect(year_2020['totalCitiesVisited']).to eq(1)
       end
     end
   end

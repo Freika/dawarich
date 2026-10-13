@@ -175,7 +175,7 @@ class InsightsController < ApplicationController
 
     current_user.scoped_visits.confirmed.where(started_at: start_time..end_time).group(:name)
                 .select('name, COUNT(*) as visit_count, SUM(duration) as total_duration')
-                .order('visit_count DESC, total_duration DESC').limit(5)
+                .order(Arel.sql('visit_count DESC, total_duration DESC, name COLLATE "C" ASC')).limit(5)
                 .map { |v| { name: v.name, visit_count: v.visit_count, total_duration: v.total_duration } }
   end
 

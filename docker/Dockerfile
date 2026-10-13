@@ -136,6 +136,9 @@ RUN chmod +x /usr/local/bin/web-entrypoint.sh
 COPY ./docker/sidekiq-entrypoint.sh /usr/local/bin/sidekiq-entrypoint.sh
 RUN chmod +x /usr/local/bin/sidekiq-entrypoint.sh
 
+COPY ./docker/cloud-entrypoint.sh /usr/local/bin/cloud-entrypoint.sh
+RUN chmod +x /usr/local/bin/cloud-entrypoint.sh
+
 EXPOSE $RAILS_PORT
 
 STOPSIGNAL SIGINT

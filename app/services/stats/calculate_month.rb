@@ -23,6 +23,7 @@ class Stats::CalculateMonth
     update_month_stats(year, month)
   rescue StandardError => e
     report_failure(e)
+    raise
   end
 
   private

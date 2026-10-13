@@ -10,7 +10,7 @@ class Shared::StatsController < ApplicationController
   def show
     @stat = Stat.find_by(sharing_uuid: params[:uuid])
 
-    unless @stat&.public_accessible?
+    unless @stat&.public_accessible? && @stat.user
       return redirect_to root_path,
                          alert: I18n.t('controllers.shared.stats.shared_stats_not_found_or_no_longer_available')
     end
