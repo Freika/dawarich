@@ -852,9 +852,10 @@ export default class extends Controller {
     this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
 
     // Visit labels
-    const labelExpr = this._dayRangeExpr("started_at", isoStart, isoEnd, 1, DIM)
-    this._safeSetPaint("visits-labels", "text-opacity", labelExpr)
-    this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
+    this.layerManager.getLayer("visits")?.setLabelOpacity((f) => {
+      const startedAt = f.properties.started_at
+      return startedAt >= isoStart && startedAt < isoEnd ? 1 : DIM
+    })
   }
 
   /**
@@ -871,8 +872,7 @@ export default class extends Controller {
     this._safeSetPaint("points-mvt", "circle-stroke-opacity", 1)
     this._safeSetPaint("visits", "circle-opacity", 0.9)
     this._safeSetPaint("visits", "circle-stroke-opacity", 1)
-    this._safeSetPaint("visits-labels", "text-opacity", 1)
-    this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
+    this.layerManager.getLayer("visits")?.setLabelOpacity(null)
   }
 
   /**
@@ -929,18 +929,11 @@ export default class extends Controller {
       ]
       this._safeSetPaint("visits", "circle-opacity", visitExpr)
       this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
-      this._safeSetPaint("visits-labels", "text-opacity", visitExpr)
-
-      // Labels collide-hide by default, so a neighbouring (dimmed) visit's
-      // label can win placement over the hovered one and the text under the
-      // bright dot fades out. Give the hovered visit the lowest sort key so
-      // its label is placed first and always survives collision.
-      this._safeSetLayout("visits-labels", "symbol-sort-key", [
-        "case",
-        ["==", ["get", "id"], Number(visitId)],
-        0,
-        1,
-      ])
+      this.layerManager
+        .getLayer("visits")
+        ?.setLabelOpacity((f) =>
+          f.properties.id === Number(visitId) ? 1 : 0.15,
+        )
     } else {
       const VISITS_NEARLY_INVISIBLE = 0.05
       this._safeSetPaint("visits", "circle-opacity", VISITS_NEARLY_INVISIBLE)
@@ -949,12 +942,9 @@ export default class extends Controller {
         "circle-stroke-opacity",
         VISITS_NEARLY_INVISIBLE,
       )
-      this._safeSetPaint(
-        "visits-labels",
-        "text-opacity",
-        VISITS_NEARLY_INVISIBLE,
-      )
-      this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
+      this.layerManager
+        .getLayer("visits")
+        ?.setLabelOpacity(() => VISITS_NEARLY_INVISIBLE)
     }
   }
 
