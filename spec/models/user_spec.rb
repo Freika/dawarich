@@ -645,16 +645,16 @@ RSpec.describe User, type: :model do
       end
 
       it 'returns array of countries from stats toponyms' do
-        expect(subject).to include('Germany', 'France')
-        expect(subject.count).to eq(2)
+        expect(subject).to include('Germany', 'France', 'Belgium')
+        expect(subject.count).to eq(3)
       end
 
       it 'excludes nil and empty country names' do
         expect(subject).not_to include(nil, '')
       end
 
-      it 'excludes drive-through countries with no qualifying cities' do
-        expect(subject).not_to include('Belgium')
+      it 'includes drive-through countries with no qualifying cities' do
+        expect(subject).to include('Belgium')
       end
 
       it 'selects only fields required for toponym aggregation' do
@@ -733,12 +733,12 @@ RSpec.describe User, type: :model do
                ])
       end
 
-      it 'returns number of countries with qualifying cities' do
-        expect(subject).to eq(2)
+      it 'returns number of countries in stats toponyms' do
+        expect(subject).to eq(3)
       end
 
-      it 'excludes drive-through countries with empty cities' do
-        expect(user.countries_visited).not_to include('Belgium')
+      it 'includes drive-through countries with empty cities' do
+        expect(user.countries_visited).to include('Belgium')
       end
     end
 
