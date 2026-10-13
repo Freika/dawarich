@@ -5,7 +5,7 @@ module Achievements
   class RegionSilhouettes
     TOLERANCE = 0.02
 
-    CACHE_VERSION = 3
+    CACHE_VERSION = 4
     CACHE_TTL = 1.week
 
     SOURCES = {
