@@ -9,32 +9,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Count briefly visited countries consistently in Insights, statistics, the stats API and digests even when no city meets the minimum stay threshold. (#3290)
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
-
-
+- Refresh import statuses after the live stream subscribes or reconnects, recovering updates missed before connection (#3174).
+- Emoji in place, area, visit and family member names now render correctly on the map instead of a placeholder glyph (#2365).
+- Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
 - Update both mobile and desktop family-sharing indicators after changing location-sharing settings.
-
 - Keep signed storage capabilities and private filenames out of request path logs.
-
 - Prevent legacy or restored export URLs from deleting unrelated files; retain unproven legacy files after export removal or migration.
-
 - Refuse location-sharing consent when family access expires while waiting for the request lock.
-
 - Keep saved ZIP member imports processing when a later archive member fails validation.
-
 - Keep notification badges, read states and deleted items current in other open tabs.
-
 - Use safe defaults for missing user settings and refuse unsupported settings writes without replacing malformed data.
-
 - Shared tracks hide their map and route coordinates when the owner disables route sharing, while enabled statistics remain visible.
-
 - Only administrators can request test email, and queued test messages are discarded after the recipient loses administrator access.
-
 - Calendar activity and status counts refresh after demo visit edits and deletion, including restored visits removed by null-island cleanup.
-
 - Achievement sharing returns only to same-host HTTP(S) or safe relative pages and falls back for non-HTTP return URLs.
-
 - Concurrent Cloud family invitations can no longer reserve the same final available seat; self-hosted families remain unlimited.
-
 - Public-share unlock phrases are filtered from request parameters and query-string logs.
 - Keep tied transportation modes, visit and country rankings, location-search coordinates, and Immich GPS matches deterministic.
 - Clear pending two-factor challenges after successful authentication, preventing a stale challenge from switching accounts.

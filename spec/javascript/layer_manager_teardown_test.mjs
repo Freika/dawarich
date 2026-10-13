@@ -99,3 +99,19 @@ test("unsubscribes every delegated map handler before rebuilding a style", () =>
 test("tears down without any layers present", () => {
   assert.deepEqual(teardown({}).layers, {})
 })
+
+test("clears every DOM label layer before rebuilding the map style", () => {
+  const seen = []
+  const ids = ["placesLayer", "areasLayer", "visitsLayer", "familyLayer"]
+  teardown(
+    Object.fromEntries(
+      ids.map((id) => [
+        id,
+        {
+          remove: () => seen.push(id),
+        },
+      ]),
+    ),
+  )
+  assert.deepEqual(seen.sort(), ids.sort())
+})
