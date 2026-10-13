@@ -83,6 +83,7 @@ Rails.application.routes.draw do
     end
 
     resource :onboarding, only: [:update] do
+      post :event, on: :member
       post :demo_data, on: :member
       delete :demo_data, on: :member, action: :destroy_demo_data
     end
