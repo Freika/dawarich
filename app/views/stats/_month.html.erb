@@ -223,7 +223,7 @@
       <%= icon 'globe' %> <%= t('.countries_cities') %>
     </h2>
     <div class="space-y-4">
-      <% visited_toponyms = stat.toponyms.select { |t| t['country'].present? && t['cities']&.any? } %>
+      <% visited_toponyms = stat.toponyms.select { |t| t['country'].present? } %>
       <% if visited_toponyms.present? %>
         <% max_cities = visited_toponyms.map { |country| country['cities'].length }.max %>
         <% progress_colors = ['progress-primary', 'progress-secondary', 'progress-accent', 'progress-info', 'progress-success', 'progress-warning'] %>

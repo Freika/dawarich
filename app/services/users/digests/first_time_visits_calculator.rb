@@ -58,7 +58,6 @@ module Users
 
           toponyms.filter_map do |t|
             next unless t.is_a?(Hash) && t['country'].present?
-            next unless t['cities'].is_a?(Array) && t['cities'].any?
 
             t['country']
           end
