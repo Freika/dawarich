@@ -35,6 +35,21 @@ RSpec.describe DataMigrations::ReassignCrimeaPointsJob, type: :job do
     expect(sevastopol.reload.country_id).to eq(ukraine.id)
   end
 
+  it 'renames moved points still labelled as Russia and keeps other provider labels' do
+    labelled = point_at(34.10, 44.95, country: russia)
+    labelled.update_columns(country_name: russia.name, country: russia.name)
+    unlabelled = point_at(33.50, 44.58, country: russia, timestamp: 1_700_000_100)
+    unlabelled.update_columns(country_name: nil, country: nil)
+    provider = point_at(34.20, 45.00, country: russia, timestamp: 1_700_000_200)
+    provider.update_columns(country_name: 'Autonomous Republic of Crimea')
+
+    described_class.perform_now
+
+    expect([labelled.reload.country_name, labelled[:country]]).to eq([ukraine.name, ukraine.name])
+    expect([unlabelled.reload.country_name, unlabelled[:country]]).to eq([ukraine.name, ukraine.name])
+    expect(provider.reload.country_name).to eq('Autonomous Republic of Crimea')
+  end
+
   it 'leaves Russian points outside Crimea alone, including the Taman shore across the strait' do
     moscow = point_at(37.62, 55.75, country: russia)
     taman = point_at(36.80, 45.25, country: russia, timestamp: 1_700_000_100)

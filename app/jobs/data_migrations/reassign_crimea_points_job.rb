@@ -13,12 +13,12 @@ class DataMigrations::ReassignCrimeaPointsJob < ApplicationJob
 
   def perform
     ukraine = Country.where(iso_a2: 'UA').order(:id).first
-    russia_ids = Country.where(iso_a2: 'RU').ids
-    return if ukraine.nil? || russia_ids.empty?
+    russia = Country.where(iso_a2: 'RU')
+    return if ukraine.nil? || russia.none?
 
     user_ids = Set.new
     loop do
-      rows = reassign_batch(ukraine, russia_ids)
+      rows = reassign_batch(ukraine, russia.ids, russia.pluck(:name))
       break if rows.empty?
 
       # Scheduled per batch: moved points no longer match, so a rerun after a
@@ -45,16 +45,24 @@ class DataMigrations::ReassignCrimeaPointsJob < ApplicationJob
       LIMIT :limit
     ),
     moved AS (
-      UPDATE points p SET country_id = :ukraine_id, updated_at = NOW()
+      UPDATE points p
+      SET country_id = :ukraine_id,
+          country_name = CASE WHEN COALESCE(p.country_name, '') IN ('', :russia_names) THEN :ukraine_name
+                              ELSE p.country_name END,
+          country = CASE WHEN COALESCE(p.country, '') IN ('', :russia_names) THEN :ukraine_name ELSE p.country END,
+          updated_at = NOW()
       FROM batch WHERE p.id = batch.id
       RETURNING p.user_id, p."timestamp" / 86400 AS day
     )
     SELECT DISTINCT user_id, day FROM moved
   SQL
 
-  def reassign_batch(ukraine, russia_ids)
+  # Labels left by the country backfill follow the move; other reverse-geocoder
+  # labels are provider data and stay as returned.
+  def reassign_batch(ukraine, russia_ids, russia_names)
     west, south, east, north = CRIMEA_BOX
-    binds = { russia_ids:, west:, south:, east:, north:, ukraine_id: ukraine.id, limit: BATCH_SIZE }
+    binds = { russia_ids:, russia_names:, west:, south:, east:, north:,
+              ukraine_id: ukraine.id, ukraine_name: ukraine.name, limit: BATCH_SIZE }
 
     ActiveRecord::Base.connection.select_rows(ActiveRecord::Base.sanitize_sql_array([REASSIGN_SQL, binds]))
   end

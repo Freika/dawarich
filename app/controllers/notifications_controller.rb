@@ -23,7 +23,8 @@ status: :see_other
   end
 
   def destroy_all
-    current_user.notifications.destroy_all
+    current_user.notifications.delete_all
+    Notification.broadcast_delete_all_for(current_user)
     notice = I18n.t('controllers.notifications.all_notifications_where_successfully_destroyed')
     redirect_to notifications_url,
                 notice: notice, status: :see_other

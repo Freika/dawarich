@@ -31,7 +31,23 @@ class Notification < ApplicationRecord
   def self.broadcast_read_all_for(user)
     broadcast_badge_for(user)
     Turbo::StreamsChannel.broadcast_remove_to([user, :notifications], targets: '.notification-item')
-    Turbo::StreamsChannel.broadcast_refresh_to([user, :notifications])
+    broadcast_page_refresh_for(user)
+  end
+
+  # Targets every list, detail and navbar copy without refreshing other tabs.
+  def self.broadcast_delete_all_for(user)
+    broadcast_badge_for(user)
+    Turbo::StreamsChannel.broadcast_remove_to(
+      [user, :notifications],
+      targets: '.notification-item, [id^="notification_"], [id^="detail_notification_"]'
+    )
+    broadcast_page_refresh_for(user)
+  end
+
+  # Only the notification pages subscribe to this stream: a refresh on the navbar
+  # stream would reload every open tab, including maps.
+  def self.broadcast_page_refresh_for(user)
+    Turbo::StreamsChannel.broadcast_refresh_to([user, :notification_pages])
   end
 
   private

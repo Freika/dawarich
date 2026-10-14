@@ -141,8 +141,8 @@ RSpec.describe 'Merged /metrics never repeats a label set' do
     it 'disambiguates library-generated samples while preserving their escaping' do
       output = merged_output
       expected_samples = [
-        local_sample.sub('{', '{process="web",'),
-        remote_sample.sub('{', '{process="sidekiq",')
+        local_sample.dup.insert(local_sample.index('{') + 1, 'process="web",'),
+        remote_sample.dup.insert(remote_sample.index('{') + 1, 'process="sidekiq",')
       ]
 
       expect(output.lines.grep(/\Aactiverecord_queries_total/)).to eq(expected_samples)

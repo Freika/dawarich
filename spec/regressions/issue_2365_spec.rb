@@ -12,10 +12,10 @@ RSpec.describe 'Issue #2365: emoji map labels' do
     controllers/family_map_controller.js
   ]
 
-  it 'records the fix only under Unreleased Fixed, without rewriting released history' do
+  it 'records the fix only under 1.15.4 Fixed, without rewriting released history' do
     changelog = File.read(File.expand_path('../../CHANGELOG.md', __dir__))
-    unreleased = changelog.split("## [Unreleased]\n", 2).last.split(/^## /, 2).first
-    fixed = unreleased.split("### Fixed\n", 2).last.split(/^### /, 2).first
+    release = changelog.split(/^## \[1\.15\.4\][^\n]*\n/, 2).last.split(/^## /, 2).first
+    fixed = release.split("### Fixed\n", 2).last.split(/^### /, 2).first
 
     expect(changelog.lines.grep(/#2365/).size).to eq(1)
     expect(fixed).to include('(#2365).')
