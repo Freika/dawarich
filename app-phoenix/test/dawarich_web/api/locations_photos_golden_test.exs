@@ -19,6 +19,7 @@ defmodule DawarichWeb.Api.LocationsPhotosGoldenTest do
 
   for kase <- @golden["cases"] do
     @case_name kase["name"]
+    @tag s1160_tie: kase["name"] == "replay_locations_tie"
     test "golden #{kase["name"]}", %{port: port, upstream: puma, golden: golden} do
       kase = Enum.find(golden["cases"], &(&1["name"] == @case_name))
       Enum.each(kase["env"], fn {name, value} -> System.put_env(name, value) end)

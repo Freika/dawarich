@@ -204,8 +204,8 @@ defmodule Dawarich.Tracks.Builder do
   defp write_segments(repo, track_id, segment_data) do
     Segments.insert!(repo, track_id, segment_data)
 
-    segment_data
-    |> Enum.map(&%{transportation_mode: &1.mode, distance: &1.distance, duration: &1.duration})
+    repo
+    |> Segments.load_segments_for_dominant_mode!(track_id)
     |> DominantMode.pick()
     |> case do
       nil ->
