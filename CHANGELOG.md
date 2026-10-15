@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `POST /api/v1/visits` accepts an optional `address` (street, house number, postcode, city, country). A newly created place stores it, and visit responses include the place's formatted `address`, so apps can keep a visit's name and address separately.
+- A visit created without an address (for example from the map's visit form) gets its place address and city looked up in the background when reverse geocoding is enabled; the name you gave is kept.
+- Visit cards in the map's visit list show the place address under the visit name.
+
 ## [1.15.4] - 2026-10-14, Berlin
 
 ### Fixed
