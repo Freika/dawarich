@@ -37,7 +37,7 @@ defmodule Dawarich.A12f3bR14Test do
       assert CheckWorker.perform(%Oban.Job{args: args}) == :ok
       assert CheckWorker.perform(%Oban.Job{args: args}) == :ok
 
-      assert [[3]] =
+      assert [[5]] =
                rows(
                  "SELECT (state->>'calculation_version')::int FROM achievement_progresses WHERE user_id=$1",
                  [user]

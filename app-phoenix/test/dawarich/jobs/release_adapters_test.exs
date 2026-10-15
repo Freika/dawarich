@@ -216,7 +216,10 @@ defmodule Dawarich.Jobs.ReleaseAdaptersTest do
       )
     end
 
-    for {id, version} <- [{54_502, 3}, {54_903, 4}] do
+    for {id, version} <- [
+          {54_502, Dawarich.Achievements.Checker.calculation_version()},
+          {54_903, Dawarich.Achievements.Checker.calculation_version() + 1}
+        ] do
       rows(
         "INSERT INTO achievement_progresses(user_id,achievement_key,state,created_at,updated_at) VALUES($1,'exploration',$2,now(),now())",
         [id, %{"calculation_version" => version}]

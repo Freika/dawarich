@@ -10,7 +10,7 @@ defmodule Dawarich.Build.RailsParityTest do
   @moduletag timeout: 300_000
 
   @i18n "ff72bd2fbe780a84b37cfd0c5ef6e9fa28c01e3023326295224541f1b1e4bd39"
-  @achievements "6709610e637f512e76f7e5e1531f3be92c51e70fbf17564f6c3d609458a78198"
+  @achievements "e3bac66c27a142a0b8b760a576bfb66154ac509aaff809bd43bcbbd22ddec87d"
   @importmap "73ee634b5edc6fc7a1f55baa085c6cfa1f603fe445274021abb1618fb0973970"
   @assets "874267bddec6acef1dc95030962ad38361b914c83fd6bb7f475339504c9d01eb"
   @manifest "4c809501f79c28919ee1bc9776bd8229077eaf386811ec33d8a3aedca4908add"
