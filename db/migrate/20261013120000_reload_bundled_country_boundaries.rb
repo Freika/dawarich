@@ -2,8 +2,8 @@
 
 # Seeds only run on an empty countries table, so existing installs keep the
 # old geometry until it is reloaded from the corrected bundled source.
-class MoveCrimeaToUkraine < ActiveRecord::Migration[8.1]
-  # The job reads the new Ukraine polygon, so it must not be enqueued before
+class ReloadBundledCountryBoundaries < ActiveRecord::Migration[8.1]
+  # The job reads the reloaded polygons, so it must not be enqueued before
   # the geometry commits: jobs are pushed to Sidekiq immediately here.
   disable_ddl_transaction!
 
@@ -38,13 +38,13 @@ class MoveCrimeaToUkraine < ActiveRecord::Migration[8.1]
   end
 
   def enqueue_reassignment
-    DataMigrations::ReassignCrimeaPointsJob.perform_later
+    DataMigrations::ReassignBoundaryPointsJob.perform_later
   rescue NameError
     raise
   rescue StandardError => e
     Rails.logger.error(
-      "[MoveCrimeaToUkraine] could not enqueue the point reassignment (#{e.class}: #{e.message}). " \
-      'Start it later with: DataMigrations::ReassignCrimeaPointsJob.perform_later'
+      "[ReloadBundledCountryBoundaries] could not enqueue the point reassignment (#{e.class}: #{e.message}). " \
+      'Start it later with: DataMigrations::ReassignBoundaryPointsJob.perform_later'
     )
   end
 end
