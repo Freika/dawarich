@@ -2270,12 +2270,33 @@ ca:
         other: "%{count} dies"
     edit:
       editing_trip: Edició del viatge
+    filters:
+      search: "Cerca"
+      search_placeholder: "Nom, descripció, llocs o notes"
+      sort: "Ordena"
+      sorts:
+        newest: "Més recents primer"
+        oldest: "Més antics primer"
+        name: "Nom (A–Z)"
+        distance: "Distància més llarga"
+      year: "Any"
+      all_years: "Tots els anys"
+      month: "Mes"
+      all_months: "Tots els mesos"
+      choose_year_first: "Tria primer un any"
+      country: "País"
+      all_countries: "Tots els països"
+      apply: "Aplica"
+      reset: "Restableix"
     index:
       new_trip: Nou viatge
       no_trips_yet: Encara no hi ha viatges
       create_your_first_trip_to_see_your_journeys_visualized_with: Crea el teu primer viatge per veure els teus trajectes visualitzats amb mapes, fotos i estadístiques.
       create_your_first_trip: Crea el teu primer viatge
       trips: Viatges
+      no_matching_trips: "Cap viatge coincideix amb aquests filtres"
+      try_other_filters: "Prova una altra cerca, un altre any o un altre país."
+      show_all_trips: "Mostra tots els viatges"
     new:
       new_trip: Nou viatge
     notes:

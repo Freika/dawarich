@@ -3132,6 +3132,24 @@ fr:
         other: "%{count} jours"
     edit:
       editing_trip: Modification du voyage
+    filters:
+      search: "Rechercher"
+      search_placeholder: "Nom, description, lieux ou notes"
+      sort: "Trier"
+      sorts:
+        newest: "Plus récents d’abord"
+        oldest: "Plus anciens d’abord"
+        name: "Nom (A–Z)"
+        distance: "Plus longue distance"
+      year: "Année"
+      all_years: "Toutes les années"
+      month: "Mois"
+      all_months: "Tous les mois"
+      choose_year_first: "Choisissez d’abord une année"
+      country: "Pays"
+      all_countries: "Tous les pays"
+      apply: "Appliquer"
+      reset: "Réinitialiser"
     index:
       new_trip: Nouveau voyage
       no_trips_yet: Aucun voyage pour le moment
@@ -3140,6 +3158,9 @@ fr:
         statistiques.
       create_your_first_trip: Créer votre premier voyage
       trips: Voyages
+      no_matching_trips: "Aucun voyage ne correspond à ces filtres"
+      try_other_filters: "Essayez une autre recherche, une autre année ou un autre pays."
+      show_all_trips: "Afficher tous les voyages"
     new:
       new_trip: Nouveau voyage
     notes:

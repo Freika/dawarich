@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Search trips by name, description, places and notes; sort them and filter by year, month and country.
+
 ## [1.15.4] - 2026-10-14, Berlin
 
 ### Fixed
