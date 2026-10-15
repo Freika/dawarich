@@ -694,7 +694,28 @@ en:
         one: day
         other: days
       longest_streak: Longest Streak
+    distance_race:
+      title: "%{year} vs %{previous}"
+      title_single: "Distance through %{year}"
+      aria: "Cumulative distance in %{year} compared with %{previous}"
+      so_far: "So far in %{year}"
+      by_date: "by %{date}"
+      same_day: "Same day in %{year}"
+      ended_at: "%{year} ended at %{distance}"
+      ahead: "Ahead by %{distance}"
+      behind: "Behind by %{distance}"
+      no_previous: "No data for %{year} to compare with."
+    country_ribbon:
+      title: "Where you spent %{year}"
+      today: "Today"
+      segment:
+        one: "%{country}, %{from} – %{to}, %{count} day"
+        other: "%{country}, %{from} – %{to}, %{count} days"
+      more_countries:
+        one: "+%{count} more country"
+        other: "+%{count} more countries"
     header:
+      period: "Period"
       insights: Insights
       your_personal_movement_analytics_and_travel_patterns: Your personal movement analytics and travel patterns
       by_year: By Year
@@ -725,6 +746,8 @@ en:
       countries_2: countries
       monthly_digest: Monthly Digest
       select_a_month_to_view_its_digest: 'Select a month to view its digest:'
+    months:
+      title: "Distance by month"
     movement_wellness:
       movement_wellness: Movement & Wellness
       active_time: ACTIVE TIME
@@ -822,6 +845,15 @@ en:
       rome_rarr_amalfi: Rome → Amalfi
       favorites_marked: Favorites marked
       places: places
+    year_cards:
+      title: "Years"
+    year_calendar:
+      mode: "Calendar view"
+      mode_both: "Countries + distance"
+      mode_distance: "Distance"
+      mode_countries: "Countries"
+      no_data: "No data"
+      timezone_note: "Countries are counted per UTC day, distances per day in your time zone (%{zone}), so a day near midnight can show one day's country next to another day's distance."
     year_comparison:
       your_journey: 'Your Journey:'
       vs: vs
@@ -2122,7 +2154,6 @@ en:
       cities_visited: Cities visited
     stat:
       total_distance: Total distance
-      year_month: "%{year}/%{month}"
     year:
       map: "[Map]"
       days: Days

@@ -701,7 +701,28 @@ zh:
         one: 天
         other: 天
       longest_streak: 最长连续记录
+    distance_race:
+      title: "%{year} 对比 %{previous}"
+      title_single: "%{year} 年累计距离"
+      aria: "%{year} 年累计距离与 %{previous} 年对比"
+      so_far: "%{year} 年至今"
+      by_date: "截至 %{date}"
+      same_day: "%{year} 年同一天"
+      ended_at: "%{year} 年全年 %{distance}"
+      ahead: "领先 %{distance}"
+      behind: "落后 %{distance}"
+      no_previous: "没有 %{year} 年的数据可供比较。"
+    country_ribbon:
+      title: "%{year} 年你在哪里"
+      today: "今天"
+      segment:
+        one: "%{country}，%{from} – %{to}，%{count} 天"
+        other: "%{country}，%{from} – %{to}，%{count} 天"
+      more_countries:
+        one: "还有 %{count} 个国家"
+        other: "还有 %{count} 个国家"
     header:
+      period: "时间范围"
       insights: 洞察
       your_personal_movement_analytics_and_travel_patterns: 您的个人运动数据分析和出行模式
       by_year: 按年份
@@ -732,6 +753,8 @@ zh:
       countries_2: 国家/地区
       monthly_digest: 每月摘要
       select_a_month_to_view_its_digest: 选择一个月查看其摘要：
+    months:
+      title: "每月距离"
     movement_wellness:
       movement_wellness: 运动与健康
       active_time: 活动时间
@@ -829,6 +852,15 @@ zh:
       rome_rarr_amalfi: 罗马 → 阿马尔菲
       favorites_marked: 已标记的收藏夹
       places: 个地点
+    year_cards:
+      title: "年份"
+    year_calendar:
+      mode: "日历视图"
+      mode_both: "国家 + 距离"
+      mode_distance: "距离"
+      mode_countries: "国家"
+      no_data: "无数据"
+      timezone_note: "国家按 UTC 日期统计，距离按你所在时区（%{zone}）的日期统计，因此接近午夜的日子可能会把某一天的国家与另一天的距离显示在一起。"
     year_comparison:
       your_journey: 您的旅程：
       vs: 与
@@ -2148,7 +2180,6 @@ zh:
       percent_of_total: 占所有点的 %{percent}%%
     stat:
       total_distance: 总距离
-      year_month: "%{year}/%{month}"
     year:
       map: "[地图]"
       days: 天数

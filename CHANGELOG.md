@@ -8,9 +8,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Search trips by name, description, places and notes; sort them and filter by year, month and country.
+- Insights show route maps on the year cards. Pro and self-hosted instances also get a year calendar coloured by country, a country timeline and a race against the previous year's distance.
 
-## [1.15.4] - 2026-10-14, Berlin
+### Changed
+
+- Stats and Insights are now one page at /insights; /stats and /stats/:year redirect there.
+- Search trips by name, description, places and notes; sort them and filter by year, month and country.
 
 ### Fixed
 - Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200). On large instances still carrying legacy coordinates this step can take several minutes; let it finish.
