@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [1.15.4] - 2026-10-14, Berlin
 
 ### Fixed
+- Changing the theme with a missing or unknown value now returns an error instead of crashing or saving an invalid theme.
+- Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200)
 - Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200). On large instances still carrying legacy coordinates this step can take several minutes; let it finish.
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
 - Bundled country boundaries now match their ISO 3166-2 subdivisions: achievement cards, the scratch map and country attribution follow, and affected existing points are reassigned in the background.
