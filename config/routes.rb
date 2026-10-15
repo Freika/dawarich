@@ -229,10 +229,12 @@ Rails.application.routes.draw do
   resources :insights, only: :index do
     collection do
       get :details
+      get 'routes/:year', action: :routes, as: :routes, constraints: { year: /\d{4}/ }
     end
   end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
-  get 'stats/:year/:month', to: 'stats#month', constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
+  get 'stats/:year/:month', to: 'stats#month', as: :month_stats,
+                            constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
   put 'stats/:year/:month/update',
       to: 'stats#update',
       as: :update_year_month_stats,

@@ -194,7 +194,7 @@ RSpec.describe 'malformed persisted toponyms' do
     end
   end
 
-  describe 'stats index page', type: :request do
+  describe 'all-time insights page', type: :request do
     before do
       sign_in user
       configure_instance_geocoding
@@ -203,7 +203,7 @@ RSpec.describe 'malformed persisted toponyms' do
     it 'renders the yearly aggregation when a month holds malformed toponyms' do
       create_stat_with_toponyms(user, malformed_toponyms)
 
-      get '/stats'
+      get insights_path(year: 'all')
 
       expect(response.status).to eq(200)
       expect(response.body).to include('France')

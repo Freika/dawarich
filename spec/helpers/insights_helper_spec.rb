@@ -43,32 +43,6 @@ RSpec.describe InsightsHelper, type: :helper do
     end
   end
 
-  describe '#activity_level_class' do
-    it 'returns bg-base-300 for level 0' do
-      expect(helper.activity_level_class(0)).to eq('bg-base-300')
-    end
-
-    it 'returns bg-success/30 for level 1' do
-      expect(helper.activity_level_class(1)).to eq('bg-success/30')
-    end
-
-    it 'returns bg-success/50 for level 2' do
-      expect(helper.activity_level_class(2)).to eq('bg-success/50')
-    end
-
-    it 'returns bg-success/70 for level 3' do
-      expect(helper.activity_level_class(3)).to eq('bg-success/70')
-    end
-
-    it 'returns bg-success for level 4' do
-      expect(helper.activity_level_class(4)).to eq('bg-success')
-    end
-
-    it 'returns bg-base-300 for unknown level' do
-      expect(helper.activity_level_class(99)).to eq('bg-base-300')
-    end
-  end
-
   describe '#format_heatmap_distance' do
     before do
       allow(Stat).to receive(:convert_distance).and_call_original

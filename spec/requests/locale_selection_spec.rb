@@ -4,11 +4,11 @@ require 'rails_helper'
 
 RSpec.describe 'Locale selection', type: :request do
   it 'defaults to English regardless of the browser language' do
-    get root_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9,en;q=0.8' }
+    get new_user_session_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9,en;q=0.8' }
 
     expect(response.body).to include('<html lang="en"')
-    expect(response.body).to include('The only location history tracker')
-    expect(response.body).not_to include('Der einzige Standortverlaufstracker')
+    expect(response.body).to include('Login now')
+    expect(response.body).not_to include('Jetzt anmelden')
   end
 
   it 'localizes the primary sign-in action' do
@@ -19,18 +19,18 @@ RSpec.describe 'Locale selection', type: :request do
   end
 
   it 'persists an explicit supported locale in the session' do
-    get root_path, params: { locale: 'de' }
-    get root_path
+    get new_user_session_path, params: { locale: 'de' }
+    get new_user_session_path
 
     expect(response.body).to include('<html lang="de"')
-    expect(response.body).to include('Der einzige Standortverlaufstracker')
+    expect(response.body).to include('Jetzt anmelden')
   end
 
   it 'ignores an unsupported explicit locale' do
-    get root_path, params: { locale: 'xx' }
+    get new_user_session_path, params: { locale: 'xx' }
 
     expect(response.body).to include('<html lang="en"')
-    expect(response.body).to include('The only location history tracker')
+    expect(response.body).to include('Login now')
   end
 
   it 'persists the preference for a signed-in user and lets an explicit choice override it' do

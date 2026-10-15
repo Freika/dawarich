@@ -1,0 +1,96 @@
+<% unit = current_user.safe_settings.distance_unit %>
+<% chart = distance_race_chart(race, unit) %>
+<% f = chart.frame %>
+<% previous_year = race.year - 1 %>
+<% last_day = Date.new(race.year, 1, 1) + (chart.current.size - 1) %>
+
+<section class="card bg-base-200 mb-6" data-testid="distance-race" aria-labelledby="distance-race-title"
+         data-controller="distance-race"
+         data-distance-race-current-value="<%= chart.current.to_json %>"
+         data-distance-race-previous-value="<%= (chart.previous || []).to_json %>"
+         data-distance-race-year-value="<%= race.year %>"
+         data-distance-race-unit-value="<%= unit %>"
+         data-distance-race-left-value="<%= f[:left] %>"
+         data-distance-race-right-value="<%= f[:width] - f[:right] %>">
+  <div class="card-body p-5 gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 id="distance-race-title" class="text-xl font-bold min-w-0">
+        <%= chart.previous ? t('.title', year: race.year, previous: previous_year) : t('.title_single', year: race.year) %>
+      </h2>
+      <div class="flex flex-wrap items-center gap-4 text-xs text-base-content/60">
+        <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-2.5 rounded-sm bg-primary"></span><%= race.year %></span>
+        <% if chart.previous %>
+          <span class="flex items-center gap-1.5"><span class="inline-block h-0.5 w-3 border-t-2 border-dashed border-base-content/40"></span><%= previous_year %></span>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="grid gap-5">
+      <div class="relative min-w-0">
+        <div class="overflow-x-auto">
+        <svg viewBox="0 0 <%= f[:width] %> <%= f[:height] %>" class="block w-full min-w-[34rem] h-auto overflow-visible" role="img"
+             aria-label="<%= t('.aria', year: race.year, previous: previous_year) %>" data-distance-race-target="svg">
+          <defs>
+            <linearGradient id="race-fill-<%= race.year %>" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="oklch(var(--p))" stop-opacity="0.22" />
+              <stop offset="1" stop-color="oklch(var(--p))" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <% chart.ticks.each do |label, ty| %>
+            <line x1="<%= f[:left] %>" x2="<%= f[:width] - f[:right] %>" y1="<%= ty %>" y2="<%= ty %>" stroke="oklch(var(--bc) / 0.1)" />
+            <text x="<%= f[:left] - 8 %>" y="<%= ty + 4 %>" text-anchor="end" font-size="10.5" fill="oklch(var(--bc) / 0.55)"><%= label %></text>
+          <% end %>
+          <% chart.months.each do |label, mx| %>
+            <text x="<%= mx + 2 %>" y="<%= f[:height] - 8 %>" font-size="10.5" fill="oklch(var(--bc) / 0.55)"><%= label %></text>
+          <% end %>
+          <% if chart.previous %>
+            <path d="<%= chart.previous_path %>" fill="none" stroke="oklch(var(--bc) / 0.4)" stroke-width="2" stroke-dasharray="4 4" data-race-line="previous" />
+          <% end %>
+          <path d="<%= chart.area_path %>" fill="url(#race-fill-<%= race.year %>)" />
+          <path d="<%= chart.current_path %>" fill="none" stroke="oklch(var(--p))" stroke-width="2.6" stroke-linejoin="round" data-race-line="current" />
+          <% if chart.previous %>
+            <line x1="<%= chart.today_x %>" x2="<%= chart.today_x %>" y1="<%= chart.today_current_y %>" y2="<%= chart.today_previous_y %>"
+                  stroke="<%= race.lead >= 0 ? 'oklch(var(--su))' : 'oklch(var(--wa))' %>" stroke-width="2" />
+            <circle cx="<%= chart.today_x %>" cy="<%= chart.today_previous_y %>" r="3.5" fill="oklch(var(--bc) / 0.4)" />
+          <% end %>
+          <circle cx="<%= chart.today_x %>" cy="<%= chart.today_current_y %>" r="5" fill="oklch(var(--p))" stroke="oklch(var(--b2))" stroke-width="2" />
+          <g data-distance-race-target="hover" visibility="hidden">
+            <line data-distance-race-target="hoverLine" y1="<%= f[:top] %>" y2="<%= f[:height] - f[:bottom] %>" stroke="oklch(var(--bc) / 0.35)" />
+          </g>
+          <rect x="<%= f[:left] %>" y="<%= f[:top] %>" width="<%= f[:width] - f[:left] - f[:right] %>" height="<%= f[:height] - f[:top] - f[:bottom] %>"
+                fill="transparent" data-action="mousemove->distance-race#show mouseleave->distance-race#hide" />
+        </svg>
+        </div>
+        <div data-distance-race-target="tooltip" class="hidden absolute z-10 pointer-events-none rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-xs tabular-nums shadow-lg">
+          <div data-distance-race-target="tooltipDate" class="font-semibold"></div>
+          <div data-distance-race-target="tooltipCurrent"></div>
+          <div data-distance-race-target="tooltipPrevious" class="text-base-content/60"></div>
+        </div>
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-base-content/60"><%= t('.so_far', year: race.year) %></div>
+          <div class="text-2xl font-extrabold tabular-nums"><%= number_with_delimiter chart.current.last.round %> <%= unit %></div>
+          <div class="text-xs text-base-content/60"><%= t('.by_date', date: l(last_day, format: :short_month_day)) %></div>
+        </div>
+        <% if chart.previous %>
+          <% same_day = chart.previous[[chart.current.size - 1, chart.previous.size - 1].min] %>
+          <div class="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-base-content/60"><%= t('.same_day', year: previous_year) %></div>
+            <div class="text-2xl font-extrabold tabular-nums"><%= number_with_delimiter same_day.round %> <%= unit %></div>
+            <div class="text-xs text-base-content/60"><%= t('.ended_at', year: previous_year, distance: "#{number_with_delimiter chart.previous.last.round} #{unit}") %></div>
+          </div>
+          <% lead = Stat.convert_distance(race.lead.abs, unit).round %>
+          <% percent = same_day.positive? ? ((chart.current.last - same_day) / same_day * 100).round : nil %>
+          <span data-testid="distance-race-lead"
+                class="badge <%= race.lead >= 0 ? 'badge-success' : 'badge-warning' %> badge-outline justify-self-start whitespace-normal h-auto py-1 sm:col-span-2">
+            <%= t(race.lead >= 0 ? '.ahead' : '.behind', distance: "#{number_with_delimiter lead} #{unit}") %><%= " (#{percent.positive? ? '+' : ''}#{percent}%)" if percent %>
+          </span>
+        <% else %>
+          <p class="text-sm text-base-content/60 sm:self-center"><%= t('.no_previous', year: previous_year) %></p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</section>

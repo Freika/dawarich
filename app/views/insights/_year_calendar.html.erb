@@ -1,0 +1,129 @@
+<%
+  countries = local_assigns.fetch(:countries, [])
+  daily_countries = local_assigns.fetch(:daily_countries, {})
+  with_countries = countries.any?
+  colors = country_colors(countries)
+  unit = current_user.safe_settings.distance_unit
+  today = Time.current.in_time_zone(current_user.timezone_iana).to_date
+  weeks = heatmap_week_columns(year)
+  month_labels = heatmap_month_labels(weeks, year)
+%>
+
+<section class="card bg-base-200 mb-6" data-testid="year-calendar" aria-labelledby="year-calendar-title"
+         data-controller="year-calendar"
+         data-year-calendar-target-date-value="<%= most_recent_active_date(activity.daily_data) %>"
+         data-year-calendar-no-data-value="<%= t('.no_data') %>">
+  <div class="card-body p-5 gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <h2 id="year-calendar-title" class="flex items-center gap-2 text-xl font-bold min-w-0">
+        <%= icon 'calendar', class: 'w-5 h-5 text-base-content/60 shrink-0' %>
+        <%= t('insights.activity_heatmap.activity_overview') %>
+      </h2>
+      <p class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-base-content/70" data-testid="year-calendar-streaks">
+        <span><strong class="text-base-content tabular-nums"><%= activity.active_days %></strong> <%= t('insights.activity_heatmap.active_days') %></span>
+        <span>
+          <%= t('insights.activity_streak.longest_streak') %>:
+          <strong class="text-base-content tabular-nums"><%= activity.longest_streak %> <%= t('insights.activity_streak.day', count: activity.longest_streak) %></strong>
+          <% if activity.longest_streak_start && activity.longest_streak_end %>
+            <span class="text-base-content/50">(<%= l(activity.longest_streak_start.to_date, format: :short_month_day) %> – <%= l(activity.longest_streak_end.to_date, format: :short_month_day) %>)</span>
+          <% end %>
+        </span>
+        <span><strong class="text-base-content tabular-nums"><%= activity.current_streak %> <%= t('insights.activity_streak.day', count: activity.current_streak) %></strong> <%= t('insights.activity_streak.current') %></span>
+      </p>
+    </div>
+
+    <div class="grid gap-5 items-start <%= 'lg:grid-cols-[minmax(0,1fr)_14rem]' if with_countries %>">
+      <div class="relative min-w-0">
+        <div class="overflow-x-auto" data-year-calendar-target="scroller">
+          <div class="year-calendar mx-auto pb-1" style="--weeks: <%= weeks.size %>"
+               data-mode="<%= with_countries ? 'both' : 'distance' %>" data-year-calendar-target="grid"
+               data-action="mouseover->year-calendar#show mouseleave->year-calendar#hide">
+            <div class="year-calendar__months" aria-hidden="true">
+              <% month_labels.each do |label| %>
+                <span style="grid-column: <%= label[:index] + 2 %> / span 4"><%= label[:name] %></span>
+              <% end %>
+            </div>
+
+            <div class="year-calendar__body">
+              <% [t('insights.activity_heatmap.mon'), nil, t('insights.activity_heatmap.wed'), nil, t('insights.activity_heatmap.fri'), nil, nil].each do |day_label| %>
+                <span class="year-calendar__day" aria-hidden="true"><%= day_label %></span>
+              <% end %>
+              <% weeks.each do |week_start| %>
+                <% 7.times do |offset| %>
+                  <% date = week_start + offset %>
+                  <% if date.year != year %>
+                    <i class="year-calendar__cell year-calendar__cell--pad"></i>
+                  <% elsif date > today %>
+                    <i class="year-calendar__cell year-calendar__cell--future"></i>
+                  <% else %>
+                    <% key = date.strftime('%Y-%m-%d') %>
+                    <% meters = activity.daily_data[key].to_i %>
+                    <% country = daily_countries[key] %>
+                    <%= tag.i class: 'year-calendar__cell',
+                              style: "--c: #{colors[country] || 'oklch(var(--p))'}; --a: #{meters.positive? ? calendar_alpha(meters, activity.activity_levels) : 0.32}",
+                              data: { date: key, label: l(date, format: :short_weekday_month_day),
+                                      distance: (format_heatmap_distance(meters, unit) if meters.positive?),
+                                      country: country } %>
+                  <% end %>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-2 flex items-center justify-end gap-1.5 text-xs text-base-content/60" aria-hidden="true">
+          <span><%= t('insights.activity_heatmap.less') %></span>
+          <% [0.32, 0.5, 0.72, 1].each do |alpha| %>
+            <i class="year-calendar__swatch" style="--a: <%= alpha %>"></i>
+          <% end %>
+          <span><%= t('insights.activity_heatmap.more') %></span>
+        </div>
+
+        <div data-year-calendar-target="tooltip" class="hidden absolute z-10 pointer-events-none rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-xs shadow-lg">
+          <div data-year-calendar-target="tooltipDate" class="font-semibold"></div>
+          <div data-year-calendar-target="tooltipDetail" class="text-base-content/70"></div>
+        </div>
+      </div>
+
+      <% if with_countries %>
+        <div class="grid gap-3 content-start">
+          <div class="seg-vertical flex flex-col rounded-lg border border-base-300 bg-base-100 p-1" role="group" aria-label="<%= t('.mode') %>">
+            <% { 'both' => t('.mode_both'), 'distance' => t('.mode_distance'), 'countries' => t('.mode_countries') }.each do |mode, label| %>
+              <button type="button" class="btn btn-sm btn-ghost justify-start font-medium aria-pressed:btn-active"
+                      aria-pressed="<%= mode == 'both' %>" data-mode="<%= mode %>" data-action="year-calendar#setMode"
+                      data-year-calendar-target="modeButton"><%= label %></button>
+            <% end %>
+          </div>
+
+          <div class="grid gap-0.5" data-testid="year-calendar-countries">
+            <% countries.each do |country| %>
+              <button type="button" class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-base-100 aria-pressed:bg-base-100"
+                      aria-pressed="false" data-country="<%= country[:country_name] %>" data-action="year-calendar#focusCountry"
+                      data-year-calendar-target="countryButton">
+                <span class="h-2.5 w-2.5 shrink-0 rounded-sm" style="background: <%= colors[country[:country_name]] %>"></span>
+                <span class="min-w-0 flex-1 truncate">
+                  <%= country[:country_name] %>
+                  <% if country[:threshold_warning] %>
+                    <%= icon 'triangle-alert', class: 'w-3.5 h-3.5 inline text-warning ml-0.5' %>
+                  <% end %>
+                </span>
+                <span class="shrink-0 tabular-nums text-base-content/60"><%= country[:days] %></span>
+              </button>
+            <% end %>
+          </div>
+
+          <% if countries.any? { _1[:threshold_warning] } %>
+            <p class="flex items-start gap-1.5 text-xs text-base-content/60">
+              <%= icon 'triangle-alert', class: 'w-3.5 h-3.5 text-warning shrink-0 mt-0.5' %>
+              <span><%= t('map.residency.show.exceeds_183_day_threshold_common_in_many_tax_jurisdictions') %></span>
+            </p>
+          <% end %>
+          <p class="text-xs text-base-content/50"><%= t('map.residency.show.distinct_days_with_at_least_one_tracked_point_per_country') %></p>
+          <% unless %w[UTC Etc/UTC].include?(current_user.timezone_iana) %>
+            <p class="text-xs text-base-content/50" data-testid="year-calendar-timezone-note"><%= t('.timezone_note', zone: current_user.timezone_iana) %></p>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</section>

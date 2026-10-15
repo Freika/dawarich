@@ -1,0 +1,11 @@
+<%= content_tag tag, data: { testid: testid }, class: 'w-full max-w-sm mx-auto space-y-6 lg:max-w-md lg:mx-0 lg:col-start-1 lg:row-start-2 lg:pt-4' do %>
+  <% items.each do |key, icon_name| %>
+    <li class="flex gap-4">
+      <%= icon icon_name, class: 'w-5 h-5 mt-0.5 shrink-0 text-base-content/70' %>
+      <div>
+        <h2 class="font-semibold text-base-content"><%= t("#{scope}.#{key}.title") %></h2>
+        <p class="mt-1 text-sm text-base-content/70"><%= t("#{scope}.#{key}.body") %></p>
+      </div>
+    </li>
+  <% end %>
+<% end %>
