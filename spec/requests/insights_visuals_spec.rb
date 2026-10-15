@@ -164,6 +164,17 @@ RSpec.describe 'Insights visuals', type: :request do
       expect(response.parsed_body['lines']).to eq([[[2.35, 48.86], [4.84, 45.76]]])
     end
 
+    it 'does not rerun a failed route query on every view' do
+      allow(ExceptionReporter).to receive(:call)
+      allow_any_instance_of(Stats::YearRoutesQuery).to receive(:call)
+        .and_raise(ActiveRecord::QueryCanceled, 'statement timeout')
+
+      2.times { get routes_insights_path(year: 2025) }
+
+      expect(response.parsed_body['lines']).to eq([])
+      expect(ExceptionReporter).to have_received(:call).once
+    end
+
     it 'serves no routes from outside a Lite data window' do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       user.update!(plan: :lite)

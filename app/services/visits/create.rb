@@ -182,7 +182,7 @@ module Visits
     # Suggested places need a name; manual places sent without an address need
     # one filled in. A user-given name is locked and survives the lookup.
     def enqueue_name_fetching
-      return unless suggested? || address.empty?
+      return unless suggested? || address_geodata.empty?
       return if @created_place.nil?
       return unless Geocoding::Config.for(user).enabled?
 

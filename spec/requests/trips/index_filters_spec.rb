@@ -16,6 +16,17 @@ RSpec.describe 'Trips index search, filters and sorting', type: :request do
 
   before { sign_in user }
 
+  describe 'malformed input' do
+    it 'ignores NUL bytes in the search and country filters' do
+      trip('Lisbon weekend', visited_countries: ['Portugal'])
+
+      get trips_path(q: "lis\u0000bon", country: "Portu\u0000gal")
+
+      expect(response).to have_http_status(:ok)
+      expect(listed_names).to eq(['Lisbon weekend'])
+    end
+  end
+
   describe 'search' do
     it 'matches the trip name, case-insensitively' do
       trip('Lisbon weekend')

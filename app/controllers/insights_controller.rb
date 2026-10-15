@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class InsightsController < ApplicationController
+  ROUTES_FAILURE_TTL = 1.hour
+
   before_action :authenticate_user!
 
   def index
@@ -45,9 +47,12 @@ class InsightsController < ApplicationController
     authorize :insights, :routes?
 
     query = Stats::YearRoutesQuery.new(current_user, params[:year].to_i)
-    render json: { lines: Rails.cache.fetch(query.cache_key, expires_in: 24.hours) { query.call || [] } }
+    cache_key = query.cache_key
+    render json: { lines: Rails.cache.fetch(cache_key, expires_in: 24.hours) { query.call || [] } }
   rescue ActiveRecord::StatementInvalid => e
     ExceptionReporter.call(e)
+    # Cached briefly so a year whose query times out is not rerun on every view.
+    Rails.cache.write(cache_key, [], expires_in: ROUTES_FAILURE_TTL) if cache_key
     render json: { lines: [] }
   end
 

@@ -60,7 +60,7 @@ class Place < ApplicationRecord
 
   # "Street 12, 04275 City" from the geocoder properties, or nil without them.
   def address_line
-    properties = geodata&.dig('properties') || {}
+    properties = Geocoding::ResultNormalizer.from_data(geodata)[:properties]
     street = [properties['street'], properties['housenumber']].compact_blank.join(' ')
     locality = [properties['postcode'], properties['city']].compact_blank.join(' ')
     [street, locality].compact_blank.join(', ').presence

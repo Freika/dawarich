@@ -114,11 +114,11 @@ module Trips
       month = nil unless (1..12).cover?(month)
 
       Filters.new(
-        q: params[:q].to_s.strip[0, QUERY_MAX_LENGTH],
+        q: params[:q].to_s.delete("\0").strip[0, QUERY_MAX_LENGTH],
         sort: SORTS.key?(params[:sort]) ? params[:sort] : DEFAULT_SORT,
         year:,
         month:,
-        country: params[:country].to_s.strip.presence
+        country: params[:country].to_s.delete("\0").strip.presence
       )
     end
 
