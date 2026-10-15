@@ -85,7 +85,7 @@ class Users::RecalculateDataJob < ApplicationJob
   def recalculate_stats(years_to_process)
     years_to_process.each do |y|
       (1..12).each do |month|
-        Stats::CalculateMonth.new(user.id, y, month).call
+        Stats::CalculateMonth.new(user.id, y, month, notify_on_failure: @notify).call
       end
     end
 
@@ -143,7 +143,8 @@ class Users::RecalculateDataJob < ApplicationJob
         kind: :error,
         title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_failed'),
         content: I18n.t('jobs.users.recalculate_data_job.message_stacktrace_n', message: error.message,
-                        backtrace: error.backtrace.first(10).join("\n"))
+                        backtrace: error.backtrace.first(10).join("\n")),
+        deduplicate: true
       ).call
     end
   rescue ActiveRecord::RecordNotFound

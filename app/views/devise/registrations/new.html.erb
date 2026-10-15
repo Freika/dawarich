@@ -1,6 +1,6 @@
 <div class="hero bg-base-200">
-  <div class="hero-content flex-col lg:flex-row-reverse w-full my-10 items-start gap-10">
-    <div class="text-center lg:text-left max-w-md">
+  <div class="hero-content grid w-full my-10 gap-y-8 lg:grid-cols-[minmax(0,28rem)_24rem] lg:justify-center lg:gap-x-20">
+    <div class="text-center lg:text-left lg:self-end">
       <% if @invitation %>
         <h1 class="text-4xl font-bold text-base-content"><%= t('.join_family', family: @invitation.family.name) %></h1>
         <p class="py-6 text-base-content/70">
@@ -16,20 +16,12 @@
         <h1 class="text-4xl font-bold text-base-content"><%= t('.almost_there') %></h1>
       <% end %>
 
-      <p class="py-6 text-base-content/70">
+      <p class="pt-6 text-base-content/70">
         <%= t('.only_a_few_steps_left_until_you_get_control_over') %>
       </p>
-
-      <ol class="list-decimal list-inside space-y-2 text-base-content/80">
-        <li><%= t('.create_your_account') %></li>
-        <li><%= t('.configure_your_mobile_app') %></li>
-        <li><%= t('.start_tracking_your_location_data_securely') %></li>
-        <li><%= t('.ellipsis') %></li>
-        <li><%= t('.you_re_beautiful') %></li>
-      </ol>
     </div>
 
-    <div class="card flex-shrink-0 w-full max-w-sm shadow-lg bg-base-100 px-5 py-5">
+    <div class="card flex-shrink-0 w-full max-w-sm mx-auto border border-base-content/10 bg-base-100 px-5 py-5 lg:col-start-2 lg:row-span-2 lg:self-center">
       <%= form_for(resource, as: resource_name, url: registration_path(resource_name), class: 'form-body', html: { data: { turbo: false } }) do |f| %>
         <%= render "devise/shared/error_messages", resource: resource %>
         <% if @invitation %>
@@ -94,5 +86,9 @@
         <%= render "devise/shared/links" %>
       <% end %>
     </div>
+
+    <%= render 'devise/shared/feature_list',
+               tag: :ol, testid: 'sign-up-steps', scope: 'devise.registrations.new.steps',
+               items: { account: 'user', mobile_app: 'smartphone', import: 'file-up' } %>
   </div>
 </div>

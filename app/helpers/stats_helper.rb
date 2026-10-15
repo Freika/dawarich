@@ -20,8 +20,8 @@ module StatsHelper
   end
 
   def countries_and_cities_stat_for_month(stat)
-    visited = stat.toponyms.select { |t| t['country'].present? && t['cities']&.any? }
-    countries = visited.count
+    visited = stat.toponyms.select { |t| t['country'].present? }
+    countries = visited.map { |t| t['country'] }.uniq.count
     cities = visited.sum { _1['cities'].count }
 
     I18n.t('helpers.stats.countries_and_cities', countries:, cities:)
@@ -43,7 +43,7 @@ module StatsHelper
   end
 
   def countries_visited(stat)
-    stat.toponyms.count { |t| t['country'].present? && t['cities']&.any? }
+    stat.toponyms.filter_map { |t| t['country'].presence }.uniq.count
   end
 
   def peak_day(stat)
@@ -92,7 +92,7 @@ module StatsHelper
       toponyms.each do |t|
         city_names = (t['cities'] || []).filter_map { |c| c['city'] }
         cities.concat(city_names)
-        countries << normalize_country_name(t['country']) if city_names.any? && t['country'].present?
+        countries << normalize_country_name(t['country']) if t['country'].present?
       end
     end
 
@@ -107,6 +107,7 @@ module StatsHelper
         country = normalize_country_name(toponym['country'])
         next if country.blank?
 
+        grouped[country]
         (toponym['cities'] || []).each do |city_data|
           city = city_data['city']
           grouped[country] << city if city.present?

@@ -12,35 +12,35 @@ RSpec.describe 'Browser language suggestion', type: :request do
   end
 
   it 'never switches language on its own' do
-    get root_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
+    get new_user_session_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
 
     expect(rendered_locale(response.body)).to eq('en')
   end
 
   it 'offers the browser language instead of applying it' do
-    get root_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
+    get new_user_session_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
 
     banner = suggestion(response.body)
     expect(banner).to be_present
     expect(banner.text).to include('Deutsch')
-    expect(banner.at_css('a')['href']).to eq('/?locale=de')
+    expect(banner.at_css('a')['href']).to eq('/users/sign_in?locale=de')
   end
 
   it 'writes the suggestion in the language being offered' do
-    get root_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
+    get new_user_session_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
 
     expect(suggestion(response.body).text).to include(I18n.t('shared.locale_suggestion.message', locale: :de))
   end
 
   it 'stays quiet when the browser already matches the interface' do
-    get root_path, headers: { 'Accept-Language' => 'en-US,en;q=0.9' }
+    get new_user_session_path, headers: { 'Accept-Language' => 'en-US,en;q=0.9' }
 
     expect(suggestion(response.body)).to be_nil
   end
 
   it 'stays quiet when the visitor already picked a language this session' do
-    get root_path, params: { locale: 'en' }, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
-    get root_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
+    get new_user_session_path, params: { locale: 'en' }, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
+    get new_user_session_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
 
     expect(suggestion(response.body)).to be_nil
   end
@@ -49,7 +49,7 @@ RSpec.describe 'Browser language suggestion', type: :request do
     user = create(:user, settings: { 'locale' => 'en' })
     sign_in user
 
-    get root_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
+    get new_user_session_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
 
     expect(suggestion(response.body)).to be_nil
   end
@@ -61,7 +61,7 @@ RSpec.describe 'Browser language suggestion', type: :request do
   end
 
   it 'applies the language when the offer is accepted' do
-    get root_path, params: { locale: 'de' }, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
+    get new_user_session_path, params: { locale: 'de' }, headers: { 'Accept-Language' => 'de-DE,de;q=0.9' }
 
     expect(rendered_locale(response.body)).to eq('de')
     expect(suggestion(response.body)).to be_nil

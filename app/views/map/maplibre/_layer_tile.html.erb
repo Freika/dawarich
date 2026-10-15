@@ -1,0 +1,15 @@
+<%# locals: (target:, action:, icon_name:, label:, description:, pro: false, testid: nil) %>
+<% description_id = "layer-tile-#{target}-description" %>
+<% badge = pro_badge_tag if pro %>
+<label class="layer-tile" title="<%= description %>">
+  <%= tag.input type: 'checkbox',
+                class: 'layer-tile__input',
+                data: { 'maps--maplibre-target': target, action: "change->maps--maplibre##{action}", testid: testid },
+                aria: { describedby: description_id } %>
+  <%= icon icon_name, class: 'layer-tile__icon' %>
+  <span class="layer-tile__label"><%= label %></span>
+  <span id="<%= description_id %>" class="sr-only"><%= description %></span>
+  <% if badge %>
+    <span class="layer-tile__badge"><%= badge %></span>
+  <% end %>
+</label>

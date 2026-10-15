@@ -13,7 +13,7 @@ RSpec.describe 'Achievement stylesheets load only where achievements can appear'
   it 'links them on any page for a signed-in user, where the unlock deck can appear' do
     sign_in user
 
-    get stats_path
+    get insights_path
 
     expect(response.body).to match(stylesheet_link)
   end

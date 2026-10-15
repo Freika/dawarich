@@ -650,9 +650,15 @@ export class SettingsController {
   // Reload layers after a style change. setStyle replaces the whole style
   // document — including the projection — so globe mode must be restored
   // or every style/theme change silently drops back to mercator.
-  restoreStyleLayers() {
+  async restoreStyleLayers() {
     this.restoreGlobeProjection()
-    this.controller.loadMapData()
+    await this.controller.loadMapData()
+    if (
+      this.controller.settings?.familyEnabled &&
+      !this.controller._disconnected
+    ) {
+      await this.controller.loadFamilyMembers()
+    }
   }
 
   applyUserStyleUrl(styleUrl, styleName) {

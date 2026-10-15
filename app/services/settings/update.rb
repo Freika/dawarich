@@ -12,6 +12,10 @@ class Settings::Update
   end
 
   def call
+    unless user.settings.is_a?(Hash)
+      return { success: false, notices: [], alerts: [I18n.t('services.settings.update.failed')] }
+    end
+
     existing_settings = user.safe_settings.settings
     params_hash = cast_boolean_params(settings_params)
     reset_teslamate_checkpoint(params_hash, existing_settings)
@@ -52,7 +56,12 @@ class Settings::Update
 
     # The connection tests above take seconds; re-read settings so a write that
     # landed in the meantime is not reverted by this save.
-    final_settings = user.reload.settings.merge(params_hash).merge(statuses)
+    current_settings = user.reload.settings
+    unless current_settings.is_a?(Hash)
+      return { success: false, notices: [], alerts: [I18n.t('services.settings.update.failed')] }
+    end
+
+    final_settings = current_settings.merge(params_hash).merge(statuses)
     unless user.update(settings: final_settings)
       return { success: false, notices: [], alerts: [I18n.t('services.settings.update.failed')] }
     end

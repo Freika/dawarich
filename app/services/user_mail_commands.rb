@@ -8,6 +8,7 @@ module UserMailCommands
     'account_destroy_confirmation' => %w[link_url]
   }.freeze
   TYPES = LEGACY_OPTIONS.keys.index_with { |email_type| "mail.user.#{email_type}" }.freeze
+  CONFIRMED_ENQUEUE = %w[account_destroy_confirmation].freeze
 
   module_function
 
@@ -48,9 +49,14 @@ module UserMailCommands
   def legacy(email_type)
     lambda do |payload, at|
       options = LEGACY_OPTIONS.fetch(email_type).to_h { |key| [key.to_sym, payload.fetch(key)] }
-      I18n.with_locale(payload['locale']) do
+      job = I18n.with_locale(payload['locale']) do
         Users::MailerSendingJob.set(wait_until: at).perform_later(payload['user_id'], email_type, **options)
       end
+      if CONFIRMED_ENQUEUE.include?(email_type) && !job.try(:successfully_enqueued?)
+        raise ActiveJob::EnqueueError, "#{email_type} mail could not be queued"
+      end
+
+      job
     end
   end
 

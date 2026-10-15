@@ -656,7 +656,7 @@ RSpec.describe 'A11e account link source oracle', type: :request do
       link_confirm(client)
       link_completed(client)
       expect(link_session(client).slice('otp_user_id', 'otp_failed_attempts', 'partnero_referral'))
-        .to eq(data.slice('otp_user_id', 'otp_failed_attempts', 'partnero_referral'))
+        .to eq(data.slice('partnero_referral'))
 
       user.update_columns(provider: nil, uid: nil)
       client = link_collision(link_client)

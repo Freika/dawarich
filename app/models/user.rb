@@ -51,6 +51,8 @@ class User < ApplicationRecord
   has_many :user_achievements, dependent: :destroy
 
   after_create :create_api_key
+  after_initialize :normalize_nil_settings
+
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :trigger_creation_webhook, on: :create,
@@ -135,6 +137,10 @@ class User < ApplicationRecord
     provider.present?
   end
 
+  def settings_hash
+    settings.is_a?(Hash) ? settings : {}
+  end
+
   def safe_settings
     Users::SafeSettings.new(settings, plan: entitlements.full_access? ? :pro : :lite)
   end
@@ -190,7 +196,7 @@ class User < ApplicationRecord
     job = DataMigrations::RecalculateAnomaliesUserJob
     return false if settings.blank?
 
-    settings[job::QUEUED_SETTINGS_KEY].present? && settings[job::RECALCULATED_SETTINGS_KEY].blank?
+    settings_hash[job::QUEUED_SETTINGS_KEY].present? && settings_hash[job::RECALCULATED_SETTINGS_KEY].blank?
   end
 
   # nil changelog_consent => user has not been shown the opt-in prompt yet.
@@ -230,11 +236,11 @@ class User < ApplicationRecord
   end
 
   def immich_integration_configured?
-    settings['immich_url'].present? && settings['immich_api_key'].present?
+    settings_hash['immich_url'].present? && settings_hash['immich_api_key'].present?
   end
 
   def photoprism_integration_configured?
-    settings['photoprism_url'].present? && settings['photoprism_api_key'].present?
+    settings_hash['photoprism_url'].present? && settings_hash['photoprism_api_key'].present?
   end
 
   def years_tracked
@@ -332,8 +338,7 @@ class User < ApplicationRecord
   end
 
   # Aggregate countries from all stats' toponyms
-  # Only counts a country if the user spent meaningful time in at least one city
-  # (i.e., the country has non-empty cities array in at least one month)
+  # Includes countries even when no city meets the minimum stay threshold
   def countries_visited_uncached
     countries = Set.new
 
@@ -344,7 +349,6 @@ class User < ApplicationRecord
       toponyms.each do |toponym|
         next unless toponym.is_a?(Hash)
         next if toponym['country'].blank?
-        next unless toponym['cities'].is_a?(Array) && toponym['cities'].any?
 
         countries.add(toponym['country'])
       end
@@ -403,13 +407,24 @@ class User < ApplicationRecord
     end
 
     if safe_settings.supporter_github_username.present?
-      return Supporter::VerifyGithubUsername.new(safe_settings.supporter_github_username).call
+      github_info = Supporter::VerifyGithubUsername.new(safe_settings.supporter_github_username).call
+      return github_info if github_info[:supporter]
+    end
+
+    if DawarichSettings.self_hosted? && safe_settings.app_store_supporter?
+      return { supporter: true, platform: 'app_store' }
     end
 
     { supporter: false }
   end
 
   private
+
+  def normalize_nil_settings
+    return unless has_attribute?(:settings)
+
+    self.settings = {} if settings.nil?
+  end
 
   def saved_change_to_timezone_setting?
     return false unless saved_change_to_settings?

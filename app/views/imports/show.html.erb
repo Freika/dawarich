@@ -11,10 +11,10 @@
     <%= turbo_stream_from "import_#{@import.id}_extraction" %>
     <%= render 'imports/extraction_card', import: @import %>
 
-    <%= link_to t('.edit_this_import'), edit_import_path(@import), class: "mt-2 rounded-lg py-3 px-5 bg-secondary-content inline-block font-medium" %>
+    <%= link_to t('.edit_this_import'), edit_import_path(@import), class: "btn mt-2" %>
     <div class="inline-block ml-2">
-      <%= link_to t('.destroy_this_import'), import_path(@import), data: { turbo_confirm: t('.are_you_sure_this_action_will_delete_all_points_imported'), turbo_method: :delete }, class: "mt-2 rounded-lg py-3 px-5 bg-secondary-content font-medium" %>
+      <%= link_to t('.destroy_this_import'), import_path(@import), data: { turbo_confirm: t('.are_you_sure_this_action_will_delete_all_points_imported'), turbo_method: :delete }, class: "btn btn-outline btn-error mt-2" %>
     </div>
-    <%= link_to t('.back_to_imports'), imports_path, class: "ml-2 rounded-lg py-3 px-5 bg-secondary-content inline-block font-medium" %>
+    <%= link_to t('.back_to_imports'), imports_path, class: "btn mt-2 ml-2" %>
   </div>
 </div>

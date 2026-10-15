@@ -35,16 +35,30 @@
     <%= icon 'search' %>
   </button>
 
+  <% if family_feature_available? && current_user.in_family? %>
+    <button type="button"
+            class="map-button-cluster__btn"
+            data-action="click->map-panel#openTab"
+            aria-expanded="false"
+            data-tab="family"
+            data-testid="map-button-family"
+            aria-label="<%= t('.family') %>"
+            aria-keyshortcuts="F"
+            title="<%= t('.family_f') %>">
+      <%= icon 'users' %>
+    </button>
+  <% end %>
+
   <button type="button"
           class="map-button-cluster__btn map-button-cluster__btn--create"
           data-action="click->map-panel#openTab"
           aria-expanded="false"
           data-tab="tools"
           data-testid="map-button-create"
-          aria-label="<%= t('.create') %>"
+          aria-label="<%= t('.tools') %>"
           aria-keyshortcuts="C"
-          title="<%= t('.create_c') %>">
-    <%= icon 'circle-plus' %>
+          title="<%= t('.tools_c') %>">
+    <%= icon 'wrench' %>
   </button>
 
   <button type="button"

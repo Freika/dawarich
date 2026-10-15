@@ -1,34 +1,47 @@
-<!-- Header -->
-<div class="mb-6">
-  <div class="flex items-center gap-2 mb-1">
-    <%= icon 'compass', class: 'w-7 h-7 text-primary' %>
-    <h1 class="text-3xl font-bold"><%= t('.insights') %></h1>
-    <p class="text-base-content/60 hidden sm:inline"><%= t('.your_personal_movement_analytics_and_travel_patterns') %></p>
-  </div>
-  <div class="flex gap-2 mt-2">
-    <% if @available_years.any? %>
-      <div class="dropdown">
-        <label tabindex="0" class="btn btn-sm btn-outline">
-          <%= @display_label %>
-          <%= icon 'chevron-down', class: 'w-4 h-4 ml-1' %>
-        </label>
-        <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-200 rounded-box w-52">
-          <li>
-            <%= link_to t('.all_time'), insights_path(year: 'all'), class: @all_time ? 'active' : '' %>
-          </li>
-          <li class="menu-title"><span class='p-2'><%= t('.by_year') %></span></li>
-          <% @available_years.each do |year| %>
-            <li>
-              <%= link_to insights_path(year: year), class: (!@all_time && year == @selected_year) ? 'active' : '' do %>
-                <%= year %> <%= t('.overview') %>
-                <% if @locked_years.include?(year) %>
-                  <%= icon 'lock', class: 'w-3 h-3 inline opacity-50' %>
-                <% end %>
-              <% end %>
-            </li>
-          <% end %>
-        </ul>
+<div class="mb-6 space-y-3">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2">
+        <%= icon 'compass', class: 'w-7 h-7 text-primary shrink-0' %>
+        <h1 class="text-3xl font-bold"><%= t('.insights') %></h1>
       </div>
-    <% end %>
+      <p class="text-base-content/60 mt-1"><%= t('.your_personal_movement_analytics_and_travel_patterns') %></p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <% if Date.today >= Date.new(2025, 12, 31) %>
+        <%= link_to users_digests_path, class: 'btn btn-sm' do %>
+          <%= icon 'earth', class: 'w-4 h-4' %> <%= t('stats.index.year_end_digests') %>
+        <% end %>
+      <% end %>
+      <% unless @all_time %>
+        <%= link_to preferred_map_path(year_timespan(@selected_year)), class: 'btn btn-sm' do %>
+          <%= icon 'map', class: 'w-4 h-4' %> <%= t('shared.navbar.map') %>
+        <% end %>
+      <% end %>
+      <% if current_user.active? && !@year_locked %>
+        <%= link_to (@all_time ? update_all_stats_path : update_year_month_stats_path(@selected_year, :all)),
+                    data: { turbo_method: :put }, class: 'btn btn-sm btn-ghost' do %>
+          <%= icon 'refresh-ccw', class: 'w-4 h-4' %> <%= t('stats.index.update_stats') %>
+        <% end %>
+      <% end %>
+    </div>
   </div>
+
+  <% if @available_years.any? %>
+    <nav class="flex flex-wrap gap-2" aria-label="<%= t('.period') %>" data-testid="insights-period">
+      <%= link_to t('.all_time'), insights_path(year: 'all'),
+                  class: "btn btn-sm #{'btn-primary' if @all_time}", aria: { current: ('page' if @all_time) } %>
+      <% @available_years.each do |year| %>
+        <% current = !@all_time && year == @selected_year %>
+        <%= link_to insights_path(year: year), class: "btn btn-sm tabular-nums #{'btn-primary' if current}",
+                                               aria: { current: ('page' if current) } do %>
+          <% if @locked_years.include?(year) %>
+            <%= icon 'lock', class: 'w-3 h-3 opacity-60' %>
+            <span class="sr-only"><%= t('stats.locked_year_card.available_on_pro') %></span>
+          <% end %>
+          <%= year %>
+        <% end %>
+      <% end %>
+    </nav>
+  <% end %>
 </div>

@@ -1,4 +1,5 @@
 <% content_for :title, t('.notifications') %>
+<%= turbo_stream_from current_user, :notification_pages %>
 <div class="w-full my-5">
   <%= render layout: 'shared/page_header', locals: { title: t('.notifications') } do %>
     <% if @notifications.unread.any? %>

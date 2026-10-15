@@ -1,12 +1,12 @@
 <div class="hero min-h-content bg-base-200">
-  <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
+  <div class="hero-content grid w-full my-10 gap-y-8 lg:grid-cols-[minmax(0,28rem)_24rem] lg:justify-center lg:items-center lg:gap-x-20">
     <div class="text-center lg:text-left">
       <h1 class="text-5xl font-bold text-base-content"><%= t('.forgot_your_password') %></h1>
-      <p class="py-6 text-base-content opacity-70">
+      <p class="pt-6 text-base-content opacity-70">
         <%= t('.enter_your_email_address_and_we_ll_send_you_instructions') %>
       </p>
     </div>
-    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
+    <div class="card flex-shrink-0 w-full max-w-sm mx-auto border border-base-content/10 bg-base-100 px-5 py-5">
       <%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :post }) do |f| %>
         <%= render "devise/shared/error_messages", resource: resource %>
 

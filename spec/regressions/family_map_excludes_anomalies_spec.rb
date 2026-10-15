@@ -6,6 +6,8 @@ RSpec.describe 'Family map excludes points flagged as anomalies' do
   let(:owner) { create(:user) }
   let(:viewer) { create(:user) }
   let(:family) { create(:family, creator: owner) }
+  # Family location data excludes the requesting member, so it is read as another member.
+  let(:viewer) { create(:user) }
   let(:real_at) { 2.hours.ago.to_i }
   let(:anomaly_at) { 1.hour.ago.to_i }
 

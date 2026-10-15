@@ -14,6 +14,10 @@ class Map::ResidencyController < ApplicationController
     @total_tracked_days = result[:total_tracked_days]
     @daily_countries = result[:daily_countries]
     @countries = result[:countries]
+    @activity = Insights::ActivityHeatmapCalculator.new(
+      current_user.scoped_stats.where(year: @year, month: 1..12), @year
+    ).call
+    @distance_race = Insights::DistanceRace.for(current_user, @year)
 
     render layout: false
   end
