@@ -22,6 +22,46 @@ RSpec.describe Achievements::RegionSilhouettes do
       expect(shapes['DE-BY'][:viewbox].split.size).to eq(4)
     end
 
+    it 'cuts disputed areas out of the outline' do
+      create(:disputed_area, geom: 'POLYGON ((11.0 48.0, 11.0 49.0, 11.5 49.0, 11.5 48.0, 11.0 48.0))')
+
+      shapes = described_class.new(level: :subdivision, codes: %w[DE-BY]).call
+
+      xmin, ymin, width, height = shapes['DE-BY'][:viewbox].split.map(&:to_f)
+
+      expect(xmin).to be_within(0.01).of(11.5)
+      expect(width).to be_within(0.01).of(0.5)
+      expect([ymin, height]).to eq([-49.0, 1.0])
+    end
+
+    it 'leaves no sliver where the disputed area boundary misses the outline by metres' do
+      create(:disputed_area, geom: 'POLYGON ((11.0005 48.0, 11.0005 49.0, 11.5 49.0, 11.5 48.0, 11.0005 48.0))')
+
+      shapes = described_class.new(level: :subdivision, codes: %w[DE-BY]).call
+
+      expect(shapes['DE-BY'][:viewbox].split.map(&:to_f).first).to be > 11.4
+    end
+
+    it 'drops fragments the cut leaves stranded inside a disputed area' do
+      create(:disputed_area, geom: 'POLYGON ((11.0 48.0, 11.0 49.0, 11.5 49.0, 11.5 48.0, 11.0 48.0), ' \
+                                   '(11.2 48.5, 11.21 48.5, 11.21 48.51, 11.2 48.51, 11.2 48.5))')
+
+      shapes = described_class.new(level: :subdivision, codes: %w[DE-BY]).call
+
+      expect(shapes['DE-BY'][:viewbox].split.map(&:to_f).first).to be > 11.4
+    end
+
+    it 'cuts disputed areas out of a self-intersecting outline without failing' do
+      Region.find_by!(code: 'DE-BY').update_columns(
+        geom: 'MULTIPOLYGON (((11.0 48.0, 12.0 49.0, 12.0 48.0, 11.0 49.0, 11.0 48.0)))'
+      )
+      create(:disputed_area, geom: 'POLYGON ((11.0 48.0, 11.0 49.0, 11.3 49.0, 11.3 48.0, 11.0 48.0))')
+
+      shapes = described_class.new(level: :subdivision, codes: %w[DE-BY]).call
+
+      expect(shapes['DE-BY'][:path]).to be_present
+    end
+
     it 'negates the y axis so the viewbox matches SVG orientation' do
       shapes = described_class.new(level: :subdivision, codes: %w[DE-BY]).call
 

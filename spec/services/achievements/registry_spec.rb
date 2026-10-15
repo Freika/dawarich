@@ -51,6 +51,43 @@ RSpec.describe Achievements::Registry do
     end
   end
 
+  describe 'disputed subdivisions' do
+    it 'leaves subdivisions lying almost entirely in disputed areas out of their country' do
+      ukraine = described_class.find('country_ua')
+
+      expect(ukraine.region_codes).not_to include('UA-43', 'UA-40')
+      expect(ukraine.total).to eq(25)
+      expect(ukraine.card['description']).to eq('Spend time in all 25 regions of Ukraine.')
+    end
+
+    it 'lists exactly the planet subdivisions lying at least 75% inside a disputed area' do
+      Achievements::LoadDisputedAreas.new.call
+      planet = YAML.load_file(Rails.root.join(described_class::PLANET_PATH))['continents']
+      planet_codes = planet.values.flat_map do |continent|
+        continent['countries'].values.flat_map { |country| country['subdivisions'].keys }
+      end
+      sql = <<~SQL
+        SELECT feature -> 'properties' ->> 'iso_3166_2'
+        FROM jsonb_array_elements(?::jsonb -> 'features') AS feature
+        CROSS JOIN LATERAL (
+          SELECT ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(feature ->> 'geometry'), 4326)) AS g
+        ) region
+        WHERE ST_Area(ST_Intersection(region.g, (
+                SELECT ST_Union(d.geom) FROM disputed_areas d WHERE ST_Intersects(d.geom, region.g)
+              ))::geography) >= 0.75 * ST_Area(region.g::geography)
+      SQL
+      asset = Rails.root.join(Achievements::LoadRegions::ASSET_PATH).read
+      covered = ActiveRecord::Base.connection.select_values(ActiveRecord::Base.sanitize_sql_array([sql, asset]))
+
+      expect(covered & planet_codes).to match_array(described_class::DISPUTED_SUBDIVISIONS)
+    end
+
+    it 'never resolves them to a parent set' do
+      expect(described_class.subdivision_codes).not_to include('GE-AB', 'IN-JK', 'MD-SN')
+      expect(described_class.subdivision_parent_for('UA-43')).to be_nil
+    end
+  end
+
   describe 'continent definitions' do
     it 'collects the countries of its continent' do
       europe = described_class.find('continent_europe')

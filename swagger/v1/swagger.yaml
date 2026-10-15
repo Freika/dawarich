@@ -6161,6 +6161,9 @@ paths:
                         type: number
                       longitude:
                         type: number
+                      address:
+                        type: string
+                        nullable: true
         '422':
           description: invalid request
         '401':
@@ -6186,6 +6189,20 @@ paths:
                     ended_at:
                       type: string
                       format: datetime
+                    address:
+                      type: object
+                      description: Optional address stored on a newly created place
+                      properties:
+                        street:
+                          type: string
+                        house_number:
+                          type: string
+                        postcode:
+                          type: string
+                        city:
+                          type: string
+                        country:
+                          type: string
                   required:
                   - name
                   - latitude
