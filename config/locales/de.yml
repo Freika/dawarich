@@ -744,7 +744,28 @@ de:
       day:
         one: "Tag"
         other: "Tage"
+    distance_race:
+      title: "%{year} vs. %{previous}"
+      title_single: "Strecke im Jahr %{year}"
+      aria: "Kumulierte Strecke %{year} im Vergleich zu %{previous}"
+      so_far: "Bisher in %{year}"
+      by_date: "bis %{date}"
+      same_day: "Am selben Tag %{year}"
+      ended_at: "%{year} endete bei %{distance}"
+      ahead: "Vorne um %{distance}"
+      behind: "Zurück um %{distance}"
+      no_previous: "Keine Daten aus %{year} zum Vergleich."
+    country_ribbon:
+      title: "Wo du %{year} warst"
+      today: "Heute"
+      segment:
+        one: "%{country}, %{from} – %{to}, %{count} Tag"
+        other: "%{country}, %{from} – %{to}, %{count} Tage"
+      more_countries:
+        one: "+%{count} weiteres Land"
+        other: "+%{count} weitere Länder"
     header:
+      period: "Zeitraum"
       insights: Einblicke
       your_personal_movement_analytics_and_travel_patterns: Deine persönlichen Bewegungsanalysen und Reisemuster
       by_year: Nach Jahr
@@ -775,6 +796,8 @@ de:
       countries_2: Länder
       monthly_digest: Monatlicher Überblick
       select_a_month_to_view_its_digest: 'Wähle einen Monat aus, um seinen Überblick anzuzeigen:'
+    months:
+      title: "Strecke nach Monat"
     movement_wellness:
       movement_wellness: Bewegung & Wohlbefinden
       active_time: AKTIVE ZEIT
@@ -872,6 +895,15 @@ de:
       rome_rarr_amalfi: Rom → Amalfi
       favorites_marked: Favoriten markiert
       places: Orte
+    year_cards:
+      title: "Jahre"
+    year_calendar:
+      mode: "Kalenderansicht"
+      mode_both: "Länder + Strecke"
+      mode_distance: "Strecke"
+      mode_countries: "Länder"
+      no_data: "Keine Daten"
+      timezone_note: "Länder werden pro UTC-Tag gezählt, Strecken pro Tag in deiner Zeitzone (%{zone}). Ein Tag kurz vor oder nach Mitternacht kann daher das Land eines Tages neben der Strecke eines anderen zeigen."
     year_comparison:
       your_journey: 'Deine Reise:'
       vs: vs
@@ -2127,7 +2159,6 @@ de:
       cities_visited: Besuchte Städte
     stat:
       total_distance: Gesamte Entfernung
-      year_month: "%{year}/%{month}"
     year:
       map: "[Karte]"
       days: Tage

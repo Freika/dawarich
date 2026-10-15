@@ -694,7 +694,32 @@ pl:
         one: dzień
         other: dni
       longest_streak: Najdłuższa seria
+    distance_race:
+      title: "%{year} vs %{previous}"
+      title_single: "Dystans w %{year}"
+      aria: "Skumulowany dystans w %{year} w porównaniu z %{previous}"
+      so_far: "Do tej pory w %{year}"
+      by_date: "do %{date}"
+      same_day: "Ten sam dzień w %{year}"
+      ended_at: "%{year} zakończył się na %{distance}"
+      ahead: "Więcej o %{distance}"
+      behind: "Mniej o %{distance}"
+      no_previous: "Brak danych z %{year} do porównania."
+    country_ribbon:
+      title: "Gdzie spędziłeś %{year}"
+      today: "Dziś"
+      segment:
+        one: "%{country}, %{from} – %{to}, %{count} dzień"
+        few: "%{country}, %{from} – %{to}, %{count} dni"
+        many: "%{country}, %{from} – %{to}, %{count} dni"
+        other: "%{country}, %{from} – %{to}, %{count} dnia"
+      more_countries:
+        one: "+%{count} kraj więcej"
+        few: "+%{count} kraje więcej"
+        many: "+%{count} krajów więcej"
+        other: "+%{count} kraju więcej"
     header:
+      period: "Okres"
       insights: Podsumowanie
       your_personal_movement_analytics_and_travel_patterns: Twoja analiza ruchu i wzorców podróży
       by_year: Według lat
@@ -725,6 +750,8 @@ pl:
       countries_2: kraje
       monthly_digest: Podsumowanie miesięczne
       select_a_month_to_view_its_digest: 'Wybierz miesiąc, aby zobaczyć jego podsumowanie:'
+    months:
+      title: "Dystans według miesięcy"
     movement_wellness:
       movement_wellness: Ruch i kondycja
       active_time: CZAS AKTYWNOŚCI
@@ -822,6 +849,15 @@ pl:
       rome_rarr_amalfi: Rome → Amalfi
       favorites_marked: Oznaczone ulubione
       places: miejsca
+    year_cards:
+      title: "Lata"
+    year_calendar:
+      mode: "Widok kalendarza"
+      mode_both: "Kraje + dystans"
+      mode_distance: "Dystans"
+      mode_countries: "Kraje"
+      no_data: "Brak danych"
+      timezone_note: "Kraje liczone są według dni UTC, a dystanse według dni w Twojej strefie czasowej (%{zone}), więc dzień blisko północy może pokazać kraj z jednego dnia obok dystansu z innego."
     year_comparison:
       your_journey: 'Twoja podróż:'
       vs: vs
@@ -2122,7 +2158,6 @@ pl:
       cities_visited: Odwiedzone miasta
     stat:
       total_distance: Całkowity dystans
-      year_month: "%{year}/%{month}"
     year:
       map: "[Mapa]"
       days: Dni

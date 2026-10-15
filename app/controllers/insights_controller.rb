@@ -16,6 +16,7 @@ class InsightsController < ApplicationController
 
     load_year_totals
     load_activity_heatmap
+    @all_time ? load_years_overview : load_months
   end
 
   def details
@@ -60,13 +61,11 @@ class InsightsController < ApplicationController
     if @all_time
       @year_stats = scoped_stats.order(year: :desc, month: :desc)
       @previous_year_stats = Stat.none
-      @display_label = I18n.t('controllers.insights.all_time')
     else
       @selected_year = @selected_year.to_i
       @previous_year = @selected_year - 1
       @year_stats = scoped_stats.where(year: @selected_year).order(:month)
       @previous_year_stats = scoped_stats.where(year: @previous_year).order(:month)
-      @display_label = I18n.t('controllers.insights.year_overview', year: @selected_year)
     end
   end
 
@@ -79,6 +78,23 @@ class InsightsController < ApplicationController
     @countries_list = @year_totals.countries_list
     @days_traveling = @year_totals.days_traveling
     @biggest_month = @year_totals.biggest_month
+  end
+
+  def load_years_overview
+    year_cards = Stats::YearCardsQuery.new(current_user)
+    @stats_by_year = year_cards.stats_by_year
+    @year_distances = year_cards.year_distances
+
+    points_stats = ::StatsQuery.new(current_user).points_stats
+    @points_total = points_stats[:total]
+    @points_reverse_geocoded = points_stats[:geocoded]
+    @points_reverse_geocoded_percentage = points_stats[:geocoded_percentage]
+    @points_reverse_geocoded_without_data = points_stats[:without_data]
+  end
+
+  def load_months
+    @month_distances = Stat.year_distance(@selected_year, current_user)
+    @distance_race = Insights::DistanceRace.for(current_user, @selected_year) unless current_user.full_access?
   end
 
   def load_comparison_data

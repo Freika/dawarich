@@ -14,7 +14,7 @@ RSpec.describe 'Navbar app menu', type: :request do
   it 'is hidden from a visitor who has not signed in' do
     get new_user_session_path
 
-    expect(menu_hrefs).not_to include(trips_url, stats_url, points_url)
+    expect(menu_hrefs).not_to include(trips_url, insights_url, points_url)
     expect(mobile_menu_toggle).to be_nil
   end
 
@@ -23,7 +23,7 @@ RSpec.describe 'Navbar app menu', type: :request do
 
     get trips_path
 
-    expect(menu_hrefs).to include(trips_url, stats_url, points_url)
+    expect(menu_hrefs).to include(trips_url, insights_url, points_url)
     expect(mobile_menu_toggle).to be_present
   end
 end

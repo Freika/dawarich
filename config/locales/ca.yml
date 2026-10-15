@@ -694,7 +694,28 @@ ca:
         one: dia
         other: dies
       longest_streak: Ratxa més llarga
+    distance_race:
+      title: "%{year} vs %{previous}"
+      title_single: "Distància el %{year}"
+      aria: "Distància acumulada el %{year} comparada amb el %{previous}"
+      so_far: "Fins ara el %{year}"
+      by_date: "a %{date}"
+      same_day: "Mateix dia el %{year}"
+      ended_at: "El %{year} va acabar amb %{distance}"
+      ahead: "Per davant en %{distance}"
+      behind: "Per darrere en %{distance}"
+      no_previous: "No hi ha dades del %{year} per comparar."
+    country_ribbon:
+      title: "On vas passar el %{year}"
+      today: "Avui"
+      segment:
+        one: "%{country}, %{from} – %{to}, %{count} dia"
+        other: "%{country}, %{from} – %{to}, %{count} dies"
+      more_countries:
+        one: "+%{count} país més"
+        other: "+%{count} països més"
     header:
+      period: "Període"
       insights: Anàlisi
       your_personal_movement_analytics_and_travel_patterns: La teva anàlisi personal de moviment i patrons de viatge
       by_year: Per any
@@ -725,6 +746,8 @@ ca:
       countries_2: països
       monthly_digest: Resum mensual
       select_a_month_to_view_its_digest: 'Selecciona un mes per veure el seu resum:'
+    months:
+      title: "Distància per mes"
     movement_wellness:
       movement_wellness: Moviment i benestar
       active_time: TEMPS ACTIU
@@ -822,6 +845,15 @@ ca:
       rome_rarr_amalfi: Roma → Amalfi
       favorites_marked: Preferits marcats
       places: llocs
+    year_cards:
+      title: "Anys"
+    year_calendar:
+      mode: "Vista del calendari"
+      mode_both: "Països + distància"
+      mode_distance: "Distància"
+      mode_countries: "Països"
+      no_data: "Sense dades"
+      timezone_note: "Els països es compten per dia UTC i les distàncies per dia a la teva zona horària (%{zone}), així que un dia prop de mitjanit pot mostrar el país d’un dia al costat de la distància d’un altre."
     year_comparison:
       your_journey: 'El teu viatge:'
       vs: vs
@@ -2122,7 +2154,6 @@ ca:
       percent_of_total: "%{percent}%% de tots els punts"
     stat:
       total_distance: Distància total
-      year_month: "%{year}/%{month}"
     year:
       map: "[Mapa]"
       days: Dies

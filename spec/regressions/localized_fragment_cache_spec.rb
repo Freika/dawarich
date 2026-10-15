@@ -22,14 +22,16 @@ RSpec.describe 'Localized fragment caching', type: :request do
     sign_in user
   end
 
-  it 'does not serve English stats markup to a German request' do
-    get stats_path, params: { locale: 'en' }
-    expect(response.body).to include('Total distance')
+  it 'does not serve an English tracking summary to a German request' do
+    english = I18n.t('stats.index.geopoints_tracked', locale: :en)
 
-    get stats_path, params: { locale: 'de' }
+    get insights_path(year: 'all'), params: { locale: 'en' }
+    expect(response.body).to include(english)
 
-    expect(response.body).to include(I18n.t('stats.index.total_distance', locale: :de))
-    expect(response.body).not_to include('Total distance')
+    get insights_path(year: 'all'), params: { locale: 'de' }
+
+    expect(response.body).to include(I18n.t('stats.index.geopoints_tracked', locale: :de))
+    expect(response.body).not_to include(english)
   end
 
   # The summary and the per-year cards are separate cache blocks with separate
@@ -37,16 +39,19 @@ RSpec.describe 'Localized fragment caching', type: :request do
   it 'does not serve an English year card to a German request' do
     english = I18n.t('stats.index.last_update', locale: :en)
 
-    get stats_path, params: { locale: 'en' }
+    get insights_path(year: 'all'), params: { locale: 'en' }
     expect(response.body).to include(english)
 
-    get stats_path, params: { locale: 'de' }
+    get insights_path(year: 'all'), params: { locale: 'de' }
 
     expect(response.body).to include(I18n.t('stats.index.last_update', locale: :de))
     expect(response.body).not_to include(english)
   end
 
   it 'does not serve English insights markup to a German request' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    user.update!(plan: :lite)
+
     get insights_path, params: { locale: 'en' }
     expect(response.body).to include('Activity Overview')
 

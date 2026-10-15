@@ -14,6 +14,7 @@ import { RouteSegmenter } from "maps_maplibre/utils/route_segmenter"
 export default class extends Controller {
   static values = {
     path: String,
+    lines: String,
     plan: String,
     numbered: { type: Boolean, default: false },
     mapStyle: { type: String, default: "light" },
@@ -59,6 +60,7 @@ export default class extends Controller {
   }
 
   showRoute() {
+    if (this.showLines()) return true
     if (!this.hasPathValue || !this.pathValue) return false
 
     let coordinates
@@ -75,6 +77,27 @@ export default class extends Controller {
       latitude: lat,
     }))
     this._renderSegment(segment)
+    return true
+  }
+
+  showLines() {
+    if (!this.hasLinesValue || !this.linesValue) return false
+
+    let lines
+    try {
+      lines = JSON.parse(this.linesValue)
+    } catch (_e) {
+      return false
+    }
+    if (!lines.length) return false
+
+    this._renderLines(
+      lines.flatMap((line) =>
+        RouteSegmenter.unwrapCoordinates(
+          line.map(([lon, lat]) => ({ longitude: lon, latitude: lat })),
+        ),
+      ),
+    )
     return true
   }
 
@@ -119,7 +142,10 @@ export default class extends Controller {
     this.planLayer?.remove()
     this.planLayer = null
 
-    const lineStrings = RouteSegmenter.unwrapCoordinates(segment)
+    this._renderLines(RouteSegmenter.unwrapCoordinates(segment))
+  }
+
+  _renderLines(lineStrings) {
     const data = {
       type: "Feature",
       geometry: {

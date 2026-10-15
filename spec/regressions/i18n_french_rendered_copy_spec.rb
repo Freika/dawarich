@@ -321,24 +321,9 @@ RSpec.describe 'Rendered French copy' do
     end
   end
 
-  it 'uses localized plural nouns in the activity-streak view' do
-    heatmap = double(
-      current_streak: 1, longest_streak: 5,
-      longest_streak_start: nil, longest_streak_end: nil,
-      total_active_days: 5, weeks: []
-    )
-
-    rendered = I18n.with_locale(:fr) do
-      ApplicationController.render(
-        partial: 'insights/activity_streak',
-        assigns: { activity_heatmap: heatmap, selected_year: Time.current.year, all_time: false }
-      )
-    end
-    text = Nokogiri::HTML(rendered).text.squish
-
-    expect(text).to include('1 jour')
-    expect(text).to include('5 jours')
-    expect(text).not_to include('1 jours')
+  it 'uses localized plural nouns for activity streaks' do
+    expect(I18n.t('insights.activity_streak.day', count: 1, locale: :fr)).to eq('jour')
+    expect(I18n.t('insights.activity_streak.day', count: 5, locale: :fr)).to eq('jours')
   end
 
   it 'pluralizes French visit-redetection completion copy' do

@@ -1342,7 +1342,28 @@ fr:
         one: jour
         other: jours
       longest_streak: La plus longue séquence
+    distance_race:
+      title: "%{year} vs %{previous}"
+      title_single: "Distance en %{year}"
+      aria: "Distance cumulée en %{year} comparée à %{previous}"
+      so_far: "Jusqu’ici en %{year}"
+      by_date: "au %{date}"
+      same_day: "Même jour en %{year}"
+      ended_at: "%{year} s’est terminée à %{distance}"
+      ahead: "En avance de %{distance}"
+      behind: "En retard de %{distance}"
+      no_previous: "Aucune donnée de %{year} pour comparer."
+    country_ribbon:
+      title: "Où vous avez passé %{year}"
+      today: "Aujourd’hui"
+      segment:
+        one: "%{country}, %{from} – %{to}, %{count} jour"
+        other: "%{country}, %{from} – %{to}, %{count} jours"
+      more_countries:
+        one: "+%{count} autre pays"
+        other: "+%{count} autres pays"
     header:
+      period: "Période"
       insights: Vos analyses
       your_personal_movement_analytics_and_travel_patterns: vos analyses personnelles
         de déplacement et habitudes de voyage
@@ -1376,6 +1397,8 @@ fr:
       monthly_digest: Récapitulatif mensuel
       select_a_month_to_view_its_digest: 'Sélectionnez un mois pour visualiser son
         récapitulatif :'
+    months:
+      title: "Distance par mois"
     movement_wellness:
       movement_wellness: Mouvement et bien-être
       active_time: Temps actif
@@ -1484,6 +1507,15 @@ fr:
       rome_rarr_amalfi: Rome → Amalfi
       favorites_marked: Favoris marqués
       places: lieux
+    year_cards:
+      title: "Années"
+    year_calendar:
+      mode: "Vue du calendrier"
+      mode_both: "Pays + distance"
+      mode_distance: "Distance"
+      mode_countries: "Pays"
+      no_data: "Aucune donnée"
+      timezone_note: "Les pays sont comptés par jour UTC, les distances par jour dans votre fuseau horaire (%{zone}) : près de minuit, un jour peut afficher le pays d’un jour à côté de la distance d’un autre."
     year_comparison:
       your_journey: 'Votre parcours :'
       vs: vs
@@ -2969,7 +3001,6 @@ fr:
       cities_visited: Villes visitées
     stat:
       total_distance: Distance totale
-      year_month: "%{year}/%{month}"
     year:
       map: "[Carte]"
       days: Jours
