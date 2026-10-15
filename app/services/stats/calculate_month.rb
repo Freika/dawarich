@@ -112,7 +112,8 @@ class Stats::CalculateMonth
         kind: :error,
         title: I18n.t('services.stats.calculate_month.stats_update_failed'),
         content: I18n.t('services.stats.calculate_month.message_stacktrace_n', message: error.message,
-                        backtrace: error.backtrace.join("\n"))
+                        backtrace: error.backtrace.join("\n")),
+        deduplicate: true
       ).call
     end
   end
