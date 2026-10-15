@@ -97,7 +97,7 @@ defmodule Dawarich.Imports.GpxImporterTest do
     Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(phoenix.rails_commands))
     rows("UPDATE points SET altitude=77 WHERE import_id=$1", [c.import.id])
     assert :ok == run(c)
-    assert [[2002, 1001, 0, _]] = counters(c)
+    assert [[2002, 1001, 1000, _]] = counters(c)
     assert [[77]] == rows("SELECT min(altitude) FROM points WHERE import_id=$1", [c.import.id])
     assert commands("points.tile_epoch") == []
     assert length(commands("imports.progress")) == 2
