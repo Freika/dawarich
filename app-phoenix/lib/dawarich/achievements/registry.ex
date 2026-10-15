@@ -1,6 +1,10 @@
 defmodule Dawarich.Achievements.Registry do
   @moduledoc false
 
+  @disputed ~w(ES-CE ES-ML GE-AB GY-BA GY-CU GY-PM GY-PT GY-UD IN-AR IN-JK IN-LA MD-BD MD-SN PK-GB PK-JK UA-40 UA-43 UM-76 UM-79)
+
+  def disputed_subdivisions, do: @disputed
+
   def all, do: data().definitions
   def find(key), do: Map.get(data().by_key, key)
   def announcer(code), do: Map.get(data().announcers, code)

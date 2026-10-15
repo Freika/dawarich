@@ -317,7 +317,7 @@ defmodule Dawarich.Achievements.CheckerTest do
     apply!(uid, Enum.at(steps, 0))
 
     rows(
-      "INSERT INTO achievement_progresses (user_id, achievement_key, state, sharing_enabled, created_at, updated_at) VALUES ($1, 'exploration', '{\"calculation_version\": 3}', false, now(), now())",
+      "INSERT INTO achievement_progresses (user_id, achievement_key, state, sharing_enabled, created_at, updated_at) VALUES ($1, 'exploration', '{\"calculation_version\": 5}', false, now(), now())",
       [uid]
     )
 
@@ -369,7 +369,7 @@ defmodule Dawarich.Achievements.CheckerTest do
                "C" => "2026-06-02T00:00:00Z"
              },
              "threshold_seconds" => 1800,
-             "calculation_version" => 3
+             "calculation_version" => 5
            }
 
     assert {%{"dwell" => dwell}, ["C"]} =

@@ -24,6 +24,13 @@ defmodule Dawarich.Seeds.Reference do
     :ok
   end
 
+  def disputed_areas(repo, opts \\ []) do
+    if empty?(repo, "disputed_areas"),
+      do: Dawarich.ReleaseMigrations.Effects.LoadDisputedAreas.run(repo, opts)
+
+    :ok
+  end
+
   def tags(repo, opts \\ []) do
     if empty?(repo, "tags") do
       users =

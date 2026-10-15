@@ -26,8 +26,10 @@ defmodule Dawarich.ReleaseMigrations.V1_10_1 do
 
   defp drop_legacy_lat_lon_from_points(repo) do
     if column?(repo, "points", "latitude") or column?(repo, "points", "longitude") do
-      if column?(repo, "points", "latitude") and column?(repo, "points", "longitude"),
-        do: repeat_until_zero(repo, @backfill_lonlat)
+      if column?(repo, "points", "latitude") and column?(repo, "points", "longitude") do
+        Dawarich.ReleaseMigrations.Effects.MergeLegacyDuplicates.run(repo)
+        repeat_until_zero(repo, @backfill_lonlat)
+      end
 
       drop_legacy_columns(repo)
     end

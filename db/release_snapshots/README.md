@@ -173,11 +173,25 @@ upgrading.
 
 ## Ledgers
 
-Rails 1.15.3 is the last Rails release and shares 1.15.2's migration state. The
+Rails 1.15.3 shares 1.15.2's migration state. The
 release commit `93cc71f2b` changes no `db/` files. `db/release_migrations.json`
 lists both releases in that state, and the Ecto registry resolves 1.15.3 to the
 historical `V1_15_2` module. No new steps, ledger versions or upgrade snapshots
-are required.
+are required for 1.15.3.
+
+Rails 1.15.4 and 1.16.0 add two versions each, registered in `V1_15_4` and
+`V1_16_0`. Their replay snapshots advance the 1.15.2 image through the four Rails
+versions. The release map was derived from local commits `df38ac970` and
+`ec49374ae`, since their tags were not available locally. The six migrations
+added by the Phoenix branch remain `Unreleased`; those files are absent from
+both Rails release trees. The visit-date step is a no-op; disputed-area loading
+publishes the sole new full achievement backfill. Both the country reload and
+disputed-area load run outside the enclosing migration transaction so jobs are
+published after reference geometry commits.
+
+`Dawarich.Achievements.DisputedArea.fetch!/2` loads its generic SRID-4326 geometry
+through an Ecto type and explicit EWKB projection, matching the application's
+existing Postgrex configuration without a global geometry codec.
 
 A real install's `schema_migrations` and `data_migrations` are supersets of the state's set in
 `db/release_migrations.json`:

@@ -9,6 +9,7 @@ defmodule Dawarich.ReleaseJobsTest do
   @v1 %{"version" => 1}
   @arg_keys ~w(version operation_id cursor user_id event_id import_id ambient_zone)
   @command_payloads %{
+    "DataMigrations::ReassignBoundaryPointsJob" => %{},
     "DataMigrations::AddPointDimensionColumnsJob" => %{},
     "DataMigrations::DropLegacyLatLonJob" => %{},
     "DataMigrations::BackfillAchievementsJob" => %{},
@@ -201,7 +202,7 @@ defmodule Dawarich.ReleaseJobsTest do
   end
 
   test "every class the release modules record has a decision" do
-    assert MapSet.size(recorded_classes()) == 22
+    assert MapSet.size(recorded_classes()) == 23
     assert MapSet.equal?(recorded_classes(), MapSet.new(ReleaseJobs.classes()))
   end
 

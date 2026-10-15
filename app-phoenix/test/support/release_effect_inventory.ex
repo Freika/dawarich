@@ -3,6 +3,10 @@ defmodule Dawarich.ReleaseEffectInventory do
 
   @job_classes [
     %{
+      class: "DataMigrations::ReassignBoundaryPointsJob",
+      rails_file: "app/jobs/data_migrations/reassign_boundary_points_job.rb"
+    },
+    %{
       class: "DataMigrations::AddPointDimensionColumnsJob",
       rails_file: "app/jobs/data_migrations/add_point_dimension_columns_job.rb"
     },

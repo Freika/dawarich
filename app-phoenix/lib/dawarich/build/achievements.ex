@@ -80,7 +80,7 @@ defmodule Dawarich.Build.Achievements do
     for {continent, data} <- pairs(planet),
         {code, country} <- pairs(fetch!(data, "countries")) do
       name = fetch!(country, "name")
-      subdivisions = pairs(fetch!(country, "subdivisions"))
+      subdivisions = subdivisions(country)
       gridded = subdivisions != []
 
       %{
@@ -116,9 +116,18 @@ defmodule Dawarich.Build.Achievements do
     ])
   end
 
+  defp subdivisions(country),
+    do:
+      country
+      |> fetch!("subdivisions")
+      |> pairs()
+      |> Enum.reject(fn {code, _} ->
+        code in Dawarich.Achievements.Registry.disputed_subdivisions()
+      end)
+
   defp country_card(country, gridded) do
     name = fetch!(country, "name")
-    count = country |> fetch!("subdivisions") |> pairs() |> length()
+    count = country |> subdivisions() |> length()
     art = fetch!(country, "art")
 
     description =

@@ -37,7 +37,7 @@ defmodule Dawarich.Achievements.UiSilhouettes do
     end) || nil
   end
 
-  defp key(level, code), do: "achievements/silhouette/v4/#{level}/#{code}"
+  defp key(level, code), do: "achievements/silhouette/v5/#{level}/#{code}"
 
   defp build(_repo, _level, []), do: %{}
 
@@ -69,7 +69,9 @@ defmodule Dawarich.Achievements.UiSilhouettes do
       end
 
     sql = """
-    WITH src AS (SELECT id,#{column} AS code,geom::geometry AS g0 FROM #{table} WHERE #{column}=ANY($1)),
+    WITH source AS (SELECT id,#{column} AS code,geom::geometry AS g FROM #{table} WHERE #{column}=ANY($1)),
+    masked AS (SELECT id,code,g,(SELECT ST_Buffer(ST_Union(d.geom),0.002) FROM disputed_areas d WHERE ST_Intersects(d.geom,g)) AS mask FROM source),
+    src AS (SELECT id,code,CASE WHEN mask IS NULL THEN g ELSE (SELECT ST_Collect(part.geom) FROM ST_Dump(ST_CollectionExtract(ST_Difference(ST_MakeValid(g),mask),3)) part WHERE ST_Area(part.geom)>=0.01*ST_Area(g) OR NOT ST_DWithin(part.geom,mask,0.03)) END AS g0 FROM masked),
     framed AS MATERIALIZED (#{framed}),
     shifted AS MATERIALIZED (SELECT code,g0,ST_ShiftLongitude(g0) AS shifted FROM framed),
     unwrapped AS MATERIALIZED (SELECT code,CASE WHEN ST_XMax(g0)-ST_XMin(g0)>180 AND ST_XMax(shifted)-ST_XMin(shifted)<180 THEN shifted ELSE g0 END AS g0 FROM shifted),

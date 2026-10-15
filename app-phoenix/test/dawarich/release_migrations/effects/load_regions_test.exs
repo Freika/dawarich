@@ -24,7 +24,10 @@ defmodule Dawarich.ReleaseMigrations.Effects.LoadRegionsTest do
     LoadRegions.run(ScratchRepo)
 
     features = RailsTree.read(@rails_asset) |> Jason.decode!() |> Map.fetch!("features")
-    codes = Enum.map(features, &get_in(&1, ["properties", "iso_3166_2"]))
+
+    codes =
+      Enum.map(features, &get_in(&1, ["properties", "iso_3166_2"])) --
+        Dawarich.Achievements.Registry.disputed_subdivisions()
 
     assert Enum.sort(column("SELECT code FROM regions")) == Enum.sort(codes)
 
@@ -40,6 +43,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.LoadRegionsTest do
           SELECT feature -> 'properties' ->> 'iso_3166_2' AS code,
                  ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(feature ->> 'geometry'), 4326)) AS geom
           FROM jsonb_array_elements($1::text::jsonb -> 'features') AS feature
+          WHERE NOT (feature->'properties'->>'iso_3166_2')=ANY($2::varchar[])
         )
         SELECT count(*) FILTER (WHERE NOT ST_IsValid(source.geom)),
                count(*) FILTER (WHERE ST_AsEWKB(regions.geom) IS DISTINCT FROM ST_AsEWKB(
@@ -47,7 +51,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.LoadRegionsTest do
                       ELSE ST_Multi(ST_CollectionExtract(ST_MakeValid(source.geom), 3)) END))
         FROM source LEFT JOIN regions USING (code)
         """,
-        [RailsTree.read(@rails_asset)],
+        [RailsTree.read(@rails_asset), Dawarich.Achievements.Registry.disputed_subdivisions()],
         log: false
       ).rows
 

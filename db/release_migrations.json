@@ -1412,6 +1412,32 @@
       "schema_removed": [],
       "data_added": [],
       "data_removed": []
+    },
+    {
+      "first_release": "1.15.4",
+      "releases": [
+        "1.15.4"
+      ],
+      "schema_added": [
+        "20261010120000",
+        "20261013120000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.16.0",
+      "releases": [
+        "1.16.0"
+      ],
+      "schema_added": [
+        "20261014120000",
+        "20261014120100"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
     }
   ]
 }
