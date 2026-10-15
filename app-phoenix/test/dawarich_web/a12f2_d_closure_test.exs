@@ -191,7 +191,7 @@ defmodule DawarichWeb.A12f2DClosureTest do
 
     assert version == 0
 
-    assert {:ok, 200, %{"recalculation_triggered" => false}} =
+    assert {:error, 423, %{"status" => "locked"}} =
              Api.update(
                Repo,
                user,
@@ -216,6 +216,7 @@ defmodule DawarichWeb.A12f2DClosureTest do
              )
 
     Dawarich.Transportation.RecalculationStatus.clear(user.id)
+    Repo.query!("DELETE FROM phoenix.transportation_recalculations WHERE user_id=$1", [user.id])
 
     assert {:error, 422, _} =
              Api.update(

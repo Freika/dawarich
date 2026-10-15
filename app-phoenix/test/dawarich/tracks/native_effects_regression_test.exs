@@ -107,7 +107,7 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
           )::binary>>
       ])
 
-    before = RecalculationStatus.data(1)
+    before = RecalculationStatus.data(1, ScratchRepo)
     assert before["status"] == "processing"
     assert before["total_tracks"] == 1
 
@@ -119,7 +119,7 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
     }
 
     assert ReclassifyTrackWorker.run(ScratchRepo, __MODULE__, args) == :ok
-    after_state = RecalculationStatus.data(1)
+    after_state = RecalculationStatus.data(1, ScratchRepo)
     assert after_state == before
     refute RecalculationStatus.native?(1)
 
@@ -134,7 +134,7 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
       Jason.encode!(%{"status" => "completed", "processed_tracks" => 9, "total_tracks" => 9})
 
     assert {:ok, "OK"} = Dawarich.Redis.cache_command(["SET", RecalculationStatus.key(1), stale])
-    assert RecalculationStatus.data(1) == before
+    assert RecalculationStatus.data(1, ScratchRepo) == before
 
     assert :ok =
              ReclassifyTrackWorker.run(
@@ -144,7 +144,7 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
              )
 
     assert Dawarich.Redis.cache_command(["GET", RecalculationStatus.key(1)]) == {:ok, stale}
-    assert RecalculationStatus.data(1) == before
+    assert RecalculationStatus.data(1, ScratchRepo) == before
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[2]]
   end
 
@@ -450,7 +450,7 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
     {:ok, "OK"} =
       Dawarich.Redis.cache_command(["SET", RecalculationStatus.key(1), stale, "EX", "300"])
 
-    assert RecalculationStatus.data(1)["total_tracks"] == 1
+    assert RecalculationStatus.data(1, ScratchRepo)["total_tracks"] == 1
 
     args = %{
       "track_id" => -1,
@@ -473,7 +473,7 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
     {:ok, expected} = Dawarich.RailsCache.get(legacy_key)
     assert expected["status"] == "completed"
     assert expected["processed_tracks"] == 1
-    actual = RecalculationStatus.data(1)
+    actual = RecalculationStatus.data(1, ScratchRepo)
     assert actual == expected
 
     older =
@@ -487,10 +487,10 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
     assert {:ok, "OK"} =
              Dawarich.Redis.cache_command(["SET", RecalculationStatus.key(1), older, "EX", "300"])
 
-    assert RecalculationStatus.data(1) == expected
+    assert RecalculationStatus.data(1, ScratchRepo) == expected
     RecalculationStatus.start(1, 2, ~U[2026-10-07 01:00:00Z])
-    assert RecalculationStatus.data(1)["total_tracks"] == 2
-    assert RecalculationStatus.data(1)["started_at"] == "2026-10-07T01:00:00Z"
+    assert RecalculationStatus.data(1, ScratchRepo)["total_tracks"] == 2
+    assert RecalculationStatus.data(1, ScratchRepo)["started_at"] == "2026-10-07T01:00:00Z"
   end
 
   test "review: Rails failed status remains authoritative over stale native completion" do
@@ -511,7 +511,7 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
     {:ok, "OK"} =
       Dawarich.Redis.cache_command(["SET", RecalculationStatus.key(1), stale, "EX", "300"])
 
-    assert RecalculationStatus.data(1)["total_tracks"] == 1
+    assert RecalculationStatus.data(1, ScratchRepo)["total_tracks"] == 1
 
     args = %{
       "track_id" => -1,
@@ -534,7 +534,7 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
     {:ok, expected} = Dawarich.RailsCache.get(legacy_key)
     assert expected["status"] == "failed"
     assert expected["processed_tracks"] == 1
-    actual = RecalculationStatus.data(1)
+    actual = RecalculationStatus.data(1, ScratchRepo)
     assert actual == expected
 
     older =
@@ -548,9 +548,9 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
     assert {:ok, "OK"} =
              Dawarich.Redis.cache_command(["SET", RecalculationStatus.key(1), older, "EX", "300"])
 
-    assert RecalculationStatus.data(1) == expected
+    assert RecalculationStatus.data(1, ScratchRepo) == expected
     RecalculationStatus.start(1, 2, ~U[2026-10-07 01:00:00Z])
-    assert RecalculationStatus.data(1)["total_tracks"] == 2
-    assert RecalculationStatus.data(1)["started_at"] == "2026-10-07T01:00:00Z"
+    assert RecalculationStatus.data(1, ScratchRepo)["total_tracks"] == 2
+    assert RecalculationStatus.data(1, ScratchRepo)["started_at"] == "2026-10-07T01:00:00Z"
   end
 end

@@ -190,8 +190,8 @@ defmodule Dawarich.A12f3bE03Test do
     assert Enum.map(children, fn [_, _, due] -> due end) ==
              List.duplicate(@now, 100) ++ [DateTime.add(@now, 10)]
 
-    assert RecalculationStatus.data(owner)["processed_tracks"] == 0
-    assert RecalculationStatus.data(owner)["status"] == "processing"
+    assert RecalculationStatus.data(owner, ScratchRepo)["processed_tracks"] == 0
+    assert RecalculationStatus.data(owner, ScratchRepo)["status"] == "processing"
     assert :ok = UserReclassify.run(ScratchRepo, fanout, %{now: DateTime.add(@now, 1)})
     assert track_children(parent) == children
 
@@ -203,8 +203,8 @@ defmodule Dawarich.A12f3bE03Test do
     end
 
     Dawarich.Test.AfterCommit.drain(ScratchRepo)
-    assert RecalculationStatus.data(owner)["status"] == "completed"
-    assert RecalculationStatus.data(owner)["processed_tracks"] == 101
+    assert RecalculationStatus.data(owner, ScratchRepo)["status"] == "completed"
+    assert RecalculationStatus.data(owner, ScratchRepo)["processed_tracks"] == 101
     assert kinds() == []
   end
 
@@ -282,8 +282,8 @@ defmodule Dawarich.A12f3bE03Test do
     fanout = %{"user_id" => owner, "event_id" => event}
 
     probe = fn ->
-      assert RecalculationStatus.data(owner)["status"] == "processing"
-      assert RecalculationStatus.data(owner)["processed_tracks"] == 0
+      assert RecalculationStatus.data(owner, ScratchRepo)["status"] == "processing"
+      assert RecalculationStatus.data(owner, ScratchRepo)["processed_tracks"] == 0
     end
 
     insertions = :counters.new(1, [])
@@ -307,15 +307,15 @@ defmodule Dawarich.A12f3bE03Test do
     assert {:error, %RuntimeError{message: "track unavailable"}} =
              Dawarich.AfterCommit.Worker.run(HookRepo, intent)
 
-    assert RecalculationStatus.data(owner)["status"] == "failed"
-    assert RecalculationStatus.data(owner)["processed_tracks"] == 0
+    assert RecalculationStatus.data(owner, ScratchRepo)["status"] == "failed"
+    assert RecalculationStatus.data(owner, ScratchRepo)["processed_tracks"] == 0
     assert track_children(event) == []
     assert Processed.done?(ScratchRepo, event)
     refute Processed.done?(ScratchRepo, intent["intent_id"])
     HookRepo.clear_hook()
     assert :ok = Dawarich.AfterCommit.Worker.run(ScratchRepo, intent)
     assert length(track_children(event)) == 2
-    assert RecalculationStatus.data(owner)["status"] == "processing"
+    assert RecalculationStatus.data(owner, ScratchRepo)["status"] == "processing"
     assert kinds() == []
 
     Dawarich.RailsCommands.insert!(ScratchRepo, "release_user_redetect", %{

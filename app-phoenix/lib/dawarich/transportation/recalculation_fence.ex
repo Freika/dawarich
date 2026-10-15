@@ -1,6 +1,36 @@
 defmodule Dawarich.Transportation.RecalculationFence do
   @moduledoc false
 
+  def waiting(repo, user) do
+    case repo.query!(
+           "SELECT job.scheduled_at FROM phoenix.transportation_recalculations fence LEFT JOIN public.job_outbox job ON job.event_id=fence.event_id WHERE fence.user_id=$1 AND fence.remaining IS NULL",
+           [user],
+           log: false
+         ).rows do
+      [[at]] ->
+        %{
+          "status" => "processing",
+          "total_tracks" => 0,
+          "processed_tracks" => 0,
+          "started_at" => at && DateTime.to_iso8601(at)
+        }
+
+      [] ->
+        nil
+    end
+  end
+
+  def admit_progress?(repo, user, event) do
+    [[admitted]] =
+      repo.query!(
+        "SELECT NOT EXISTS(SELECT 1 FROM phoenix.transportation_recalculations WHERE user_id=$1) OR EXISTS(SELECT 1 FROM phoenix.transportation_recalculations fence JOIN public.job_outbox child ON child.metadata->>'parent_event_id'=fence.event_id::text WHERE fence.user_id=$1 AND fence.remaining>0 AND child.event_id=$2)",
+        [user, Ecto.UUID.dump!(event)],
+        log: false
+      ).rows
+
+    admitted
+  end
+
   def claim(repo, user, event) do
     repo.query!(
       "INSERT INTO phoenix.transportation_recalculations(user_id,event_id) VALUES($1,$2) ON CONFLICT(user_id) DO NOTHING RETURNING user_id",

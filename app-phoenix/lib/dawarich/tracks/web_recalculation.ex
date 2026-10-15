@@ -7,7 +7,7 @@ defmodule Dawarich.Tracks.WebRecalculation do
     repo.transaction(fn ->
       repo.query!("SELECT id FROM users WHERE id=$1 FOR UPDATE", [user.id])
 
-      if RecalculationStatus.in_progress?(user.id) do
+      if RecalculationStatus.in_progress?(user.id, repo) do
         :running
       else
         if Ownership.lock(repo, "command:transportation.user_reclassify") != :oban,

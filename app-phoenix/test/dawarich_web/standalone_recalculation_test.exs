@@ -275,6 +275,154 @@ defmodule DawarichWeb.StandaloneRecalculationTest do
     assert web(session, "text/html").status == 302
   end
 
+  @tag :s1160_queue
+  test "queued reservation is visible before fanout and late older progress cannot change it", %{
+    id: id
+  } do
+    alias Dawarich.Transportation.{AfterCommit, RecalculationStatus}
+    Ownership.put!(Repo, "command:transportation.user_reclassify", :oban)
+    prepare_user(id)
+    RecalculationStatus.start(id, 1, DateTime.utc_now())
+    RecalculationStatus.increment(id, Ecto.UUID.generate())
+    session = RailsUser.session(id)
+    assert web(session, "text/html").status == 302
+    assert web(session, "text/html").status == 302
+    waiting = RecalculationStatus.data(id)
+    assert waiting["status"] == "processing"
+    assert waiting["total_tracks"] == 0
+    assert waiting["processed_tracks"] == 0
+    assert RecalculationStatus.in_progress?(id)
+    user = Dawarich.Accounts.get(id)
+
+    assert {:ok, 200, body} =
+             Dawarich.Settings.Progress.show(user, %{self_hosted?: true, now: DateTime.utc_now()})
+
+    assert body["status"] == "processing"
+    assert body["total_tracks"] == 0
+
+    assert {:error, 423, _} =
+             Dawarich.Settings.Api.update(
+               Repo,
+               user,
+               %{"settings" => %{"enabled_transportation_modes" => ["walking"]}},
+               %{self_hosted?: true, now: DateTime.utc_now()}
+             )
+
+    assert rows(
+             "SELECT count(*) FROM job_outbox WHERE command_type='transportation.user_reclassify'"
+           ) == [[1]]
+
+    assert :ok = RecalculationStatus.increment(id, Ecto.UUID.generate())
+
+    assert :ok =
+             AfterCommit.progress(
+               Repo,
+               %{"user_id" => id, "event_id" => Ecto.UUID.generate()},
+               Ecto.UUID.generate()
+             )
+
+    assert RecalculationStatus.data(id) == waiting
+
+    [[event]] =
+      rows("SELECT event_id FROM phoenix.transportation_recalculations WHERE user_id=$1", [id])
+
+    payload = %{
+      "user_id" => id,
+      "event_id" => Ecto.UUID.cast!(event),
+      "track_ids" => [101, 102],
+      "now" => DateTime.to_iso8601(DateTime.utc_now()),
+      "locale" => "en",
+      "time_zone" => "UTC"
+    }
+
+    assert :ok = AfterCommit.start(Repo, payload, Ecto.UUID.generate())
+    assert RecalculationStatus.data(id)["total_tracks"] == 2
+    assert RecalculationStatus.data(id)["processed_tracks"] == 0
+    started = RecalculationStatus.data(id)
+
+    assert :ok =
+             AfterCommit.progress(
+               Repo,
+               %{"user_id" => id, "event_id" => Ecto.UUID.generate()},
+               Ecto.UUID.generate()
+             )
+
+    assert RecalculationStatus.data(id) == started
+  end
+
+  defmodule FailingQueueRepo do
+    defdelegate transaction(fun), to: Dawarich.Repo
+
+    def query!(sql, params, opts \\ []) do
+      if String.starts_with?(sql, "INSERT INTO public.job_outbox"),
+        do: raise("synthetic enqueue failure"),
+        else: Dawarich.Repo.query!(sql, params, opts)
+    end
+  end
+
+  @tag :s1160_queue
+  test "failed queue transaction leaves neither reservation nor enqueue and can retry", %{id: id} do
+    Ownership.put!(Repo, "command:transportation.user_reclassify", :oban)
+    user = Dawarich.Accounts.get(id)
+    ctx = %{now: DateTime.utc_now()}
+
+    assert_raise RuntimeError, "synthetic enqueue failure", fn ->
+      Dawarich.Tracks.WebRecalculation.create(FailingQueueRepo, user, ctx)
+    end
+
+    assert rows("SELECT count(*) FROM phoenix.transportation_recalculations WHERE user_id=$1", [
+             id
+           ]) == [[0]]
+
+    assert rows("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [id]) == [[0]]
+
+    assert {:error, :probe} =
+             Repo.transaction(fn ->
+               assert {:ok, :started} = Dawarich.Tracks.WebRecalculation.create(Repo, user, ctx)
+               Repo.rollback(:probe)
+             end)
+
+    refute Dawarich.Transportation.RecalculationStatus.in_progress?(id)
+
+    assert rows("SELECT count(*) FROM phoenix.transportation_recalculations WHERE user_id=$1", [
+             id
+           ]) == [[0]]
+
+    assert rows("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [id]) == [[0]]
+    assert {:ok, :started} = Dawarich.Tracks.WebRecalculation.create(Repo, user, ctx)
+    assert Dawarich.Transportation.RecalculationStatus.in_progress?(id)
+  end
+
+  @tag :s1160_queue
+  test "settings producer reserves queued reclassification before fanout", %{id: id} do
+    Ownership.put!(Repo, "command:transportation.user_reclassify", :oban)
+
+    assert :ok =
+             Dawarich.Settings.Progress.produce(
+               Repo,
+               "transportation.user_reclassify",
+               %{"user_id" => id},
+               id,
+               %{now: DateTime.utc_now()}
+             )
+
+    assert Dawarich.Transportation.RecalculationStatus.in_progress?(id)
+
+    assert :ok =
+             Dawarich.Settings.Progress.produce(
+               Repo,
+               "transportation.user_reclassify",
+               %{"user_id" => id},
+               id,
+               %{now: DateTime.utc_now()}
+             )
+
+    assert rows(
+             "SELECT count(*) FROM job_outbox WHERE command_type='transportation.user_reclassify' AND aggregate_id=$1",
+             [id]
+           ) == [[1]]
+  end
+
   @tag review_finding: "F1_failure"
   test "review failed reclassification releases its durable fence without Redis", %{id: id} do
     Ownership.put!(Repo, "command:transportation.user_reclassify", :oban)
