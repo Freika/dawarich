@@ -34,7 +34,7 @@
 
     <%# Card body %>
     <div class="px-4 py-3">
-      <h3 class="font-semibold text-base group-hover:text-primary transition-colors truncate"><%= trip.name %></h3>
+      <h3 class="font-semibold text-base group-hover:text-primary transition-colors truncate" data-testid="trip-card-name"><%= trip.name %></h3>
       <p class="text-xs text-base-content/50 mt-0.5">
         <%= human_date(trip.started_at) %> <%= t('.ndash') %> <%= human_date(trip.ended_at) %>
       </p>

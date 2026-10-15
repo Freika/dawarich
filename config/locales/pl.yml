@@ -2305,12 +2305,33 @@ pl:
         other: "%{count} dni"
     edit:
       editing_trip: Edycja podróży
+    filters:
+      search: "Szukaj"
+      search_placeholder: "Nazwa, opis, miejsca lub notatki"
+      sort: "Sortowanie"
+      sorts:
+        newest: "Od najnowszych"
+        oldest: "Od najstarszych"
+        name: "Nazwa (A–Z)"
+        distance: "Najdłuższy dystans"
+      year: "Rok"
+      all_years: "Wszystkie lata"
+      month: "Miesiąc"
+      all_months: "Wszystkie miesiące"
+      choose_year_first: "Najpierw wybierz rok"
+      country: "Kraj"
+      all_countries: "Wszystkie kraje"
+      apply: "Zastosuj"
+      reset: "Wyczyść"
     index:
       new_trip: Nowa podróż
       no_trips_yet: Brak podróży
       create_your_first_trip_to_see_your_journeys_visualized_with: Utwórz pierwszą podróż, aby zobaczyć swoje trasy na mapach, ze zdjęciami i statystykami.
       create_your_first_trip: Utwórz pierwszą podróż
       trips: Podróże
+      no_matching_trips: "Żadna podróż nie pasuje do tych filtrów"
+      try_other_filters: "Spróbuj innego wyszukiwania, roku lub kraju."
+      show_all_trips: "Pokaż wszystkie podróże"
     new:
       new_trip: Nowa podróż
     notes:

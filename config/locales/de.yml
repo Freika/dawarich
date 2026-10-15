@@ -2306,12 +2306,33 @@ de:
         other: "%{count} Länder"
     edit:
       editing_trip: Reise bearbeiten
+    filters:
+      search: "Suche"
+      search_placeholder: "Name, Beschreibung, Orte oder Notizen"
+      sort: "Sortierung"
+      sorts:
+        newest: "Neueste zuerst"
+        oldest: "Älteste zuerst"
+        name: "Name (A–Z)"
+        distance: "Längste Strecke"
+      year: "Jahr"
+      all_years: "Alle Jahre"
+      month: "Monat"
+      all_months: "Alle Monate"
+      choose_year_first: "Wähle zuerst ein Jahr"
+      country: "Land"
+      all_countries: "Alle Länder"
+      apply: "Anwenden"
+      reset: "Zurücksetzen"
     index:
       new_trip: Neue Reise
       no_trips_yet: Noch keine Reisen
       create_your_first_trip_to_see_your_journeys_visualized_with: Erstelle deine erste Reise, um deine Reisen mit Karten, Fotos und Statistiken visuell darzustellen.
       create_your_first_trip: Erstelle deine erste Reise
       trips: Reisen
+      no_matching_trips: "Keine Reisen passen zu diesen Filtern"
+      try_other_filters: "Versuche eine andere Suche, ein anderes Jahr oder Land."
+      show_all_trips: "Alle Reisen anzeigen"
     new:
       new_trip: Neue Reise
     notes:

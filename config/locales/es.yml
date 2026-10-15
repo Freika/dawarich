@@ -2306,12 +2306,33 @@ es:
         other: "%{count} países"
     edit:
       editing_trip: Editando un viaje
+    filters:
+      search: "Buscar"
+      search_placeholder: "Nombre, descripción, lugares o notas"
+      sort: "Ordenar"
+      sorts:
+        newest: "Más recientes primero"
+        oldest: "Más antiguos primero"
+        name: "Nombre (A–Z)"
+        distance: "Mayor distancia"
+      year: "Año"
+      all_years: "Todos los años"
+      month: "Mes"
+      all_months: "Todos los meses"
+      choose_year_first: "Elige primero un año"
+      country: "País"
+      all_countries: "Todos los países"
+      apply: "Aplicar"
+      reset: "Restablecer"
     index:
       new_trip: Nuevo viaje
       no_trips_yet: Aún no tienes viajes
       create_your_first_trip_to_see_your_journeys_visualized_with: Crea tu primer viaje para ver tus viajes visualizados con mapas, fotos y estadísticas.
       create_your_first_trip: Crear un nuevo viaje
       trips: Viajes
+      no_matching_trips: "Ningún viaje coincide con estos filtros"
+      try_other_filters: "Prueba con otra búsqueda, año o país."
+      show_all_trips: "Mostrar todos los viajes"
     new:
       new_trip: Nuevo viaje
     notes:

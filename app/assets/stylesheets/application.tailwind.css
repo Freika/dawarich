@@ -227,8 +227,8 @@ a.card:hover {
    plate, and at rest its face matches a regular button while a coloured
    variant keeps its coloured label. */
 .btn-outline:where(
-  :not(:hover, :active, .btn-active, .btn-disabled, :disabled)
-) {
+    :not(:hover, :active, .btn-active, .btn-disabled, :disabled)
+  ) {
   --raise-edge: inherit;
   --raise-ambient: inherit;
   --raise-highlight: transparent;
@@ -237,6 +237,13 @@ a.card:hover {
 
 .layer-tile:has(.layer-tile__input:checked) {
   --raise-ring: oklch(var(--p) / 0.5);
+}
+
+/* A closed modal never animates. Firefox can style the page once before the
+   stylesheet lands; the hidden modals are then visible, and DaisyUI's 200ms
+   fade would play them out on every load. Opening still fades in. */
+.modal:not(.modal-open, [open], :target, .modal-toggle:checked + .modal) {
+  transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
