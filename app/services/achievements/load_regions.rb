@@ -15,6 +15,7 @@ module Achievements
              ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(feature ->> 'geometry'), 4326)),
              NOW(), NOW()
       FROM jsonb_array_elements(?::jsonb -> 'features') AS feature
+      WHERE NOT (feature -> 'properties' ->> '#{CODE_PROPERTY}') = ANY(ARRAY[?]::text[])
       ON CONFLICT (code) DO UPDATE SET geom = EXCLUDED.geom, updated_at = EXCLUDED.updated_at
     SQL
 
@@ -28,7 +29,9 @@ module Achievements
       raise MissingCountriesError, MISSING_COUNTRIES if Country.none?
 
       geojson = File.read(Rails.root.join(ASSET_PATH))
-      Region.connection.execute(Region.sanitize_sql_array([UPSERT_SQL, geojson]))
+      disputed = Registry::DISPUTED_SUBDIVISIONS
+      Region.connection.execute(Region.sanitize_sql_array([UPSERT_SQL, geojson, disputed]))
+      Region.where(code: disputed).delete_all
       Region.connection.execute(REPAIR_SQL)
     end
   end
