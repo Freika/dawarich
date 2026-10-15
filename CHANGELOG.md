@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Self-hosted users with an active Pro purchase in the Dawarich mobile app now get the supporter badge. The app reports the purchase to your instance automatically; Dawarich Cloud ignores it.
 
+- `POST /api/v1/visits` accepts an optional `address` (street, house number, postcode, city, country). A newly created place stores it, and visit responses include the place's formatted `address`, so apps can keep a visit's name and address separately.
+- A visit created without an address (for example from the map's visit form) gets its place address and city looked up in the background when reverse geocoding is enabled; the name you gave is kept.
+- Visit cards in the map's visit list show the place address under the visit name.
 ### Changed
 - Achievements no longer credit any country or region for time spent in territories claimed by more than one state (Natural Earth disputed areas), and achievement cards leave those areas out; statistics, the scratch map and country attribution are unchanged. Regions lying almost entirely in such territories are no longer part of their country's set. Existing progress is recalculated in the background without notifications, and achievements already earned are kept.
 
