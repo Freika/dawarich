@@ -9,13 +9,13 @@
   <div class="grid grid-cols-1 gap-4 <%= 'lg:grid-cols-2' if @stats_by_year.size + @locked_years.size > 1 %>">
     <% @stats_by_year.each do |year, stats| %>
       <% cache [current_user.id, 'insights_year_card', I18n.locale, year, stats.map(&:updated_at).max, distance_unit, geocoding, map_years.include?(year), map_style], expires_in: 24.hours do %>
-        <% routes = Stats::YearRoutesQuery.new(current_user, year).call if map_years.include?(year) %>
+        <% with_map = map_years.include?(year) && Stats::YearRoutesQuery.new(current_user, year).any? %>
         <div class="card bg-base-200 overflow-hidden" data-testid="insights-year-card">
-          <% if routes %>
-            <%= link_to insights_path(year: year), class: 'block bg-base-300', tabindex: -1, aria: { hidden: true } do %>
+          <% if with_map %>
+            <%= link_to insights_path(year: year), class: 'block bg-base-300', tabindex: -1, aria: { hidden: true }, data: { map_wrapper: true } do %>
               <div class="pointer-events-none aspect-[16/7] max-h-72 w-full" data-testid="insights-year-map"
                    data-controller="trip-maplibre-preview"
-                   data-trip-maplibre-preview-lines-value="<%= routes.to_json %>"
+                   data-trip-maplibre-preview-lines-url-value="<%= routes_insights_path(year: year) %>"
                    data-trip-maplibre-preview-map-style-value="<%= map_style %>"></div>
             <% end %>
           <% end %>

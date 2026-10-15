@@ -52,7 +52,12 @@
           <%= render 'year_calendar', year: @selected_year, activity: @activity_heatmap %>
         <% end %>
       <% end %>
-      <%= render 'distance_race', race: @distance_race if @distance_race %>
+      <% if !current_user.full_access? && current_user.stats.exists?(year: @selected_year - 1) %>
+        <div class="mb-6" data-testid="distance-race-locked">
+          <%= render 'pro_locked_card', title: t('insights.distance_race.title', year: @selected_year, previous: @selected_year - 1),
+                                        utm_content: 'distance_race' %>
+        </div>
+      <% end %>
     <% end %>
 
     <!-- Lazy-loaded below-the-fold details -->

@@ -89,6 +89,7 @@ RSpec.describe 'Insights visuals', type: :request do
     it 'shows an activity-only calendar inline for a Lite user on Cloud' do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       user.update!(plan: :lite)
+      create(:stat, user:, year: Time.current.year - 1, month: 1, distance: 1_000)
       create(:stat, user:, year: Time.current.year, month: Time.current.month, distance: 5_000,
                     daily_distance: { '1' => 5_000 })
 
@@ -99,7 +100,32 @@ RSpec.describe 'Insights visuals', type: :request do
       expect(calendar.at_css('.year-calendar')['data-mode']).to eq('distance')
       expect(calendar.css('[data-action="year-calendar#setMode"]')).to be_empty
       expect(doc.at_css('turbo-frame#residency-content')).to be_nil
-      expect(doc.at_css('[data-testid="distance-race"]')).to be_present
+      expect(doc.at_css('[data-testid="distance-race"]')).to be_nil
+      expect(doc.at_css('[data-testid="distance-race-locked"]').text)
+        .to include("#{Time.current.year} vs #{Time.current.year - 1}")
+    end
+  end
+
+  describe 'race for a Lite user' do
+    it 'leaves the locked race out for a Lite user without a previous year' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :lite)
+      create(:stat, user:, year: Time.current.year, month: Time.current.month, distance: 5_000)
+
+      get insights_path(year: Time.current.year)
+
+      expect(doc.at_css('[data-testid="distance-race-locked"]')).to be_nil
+    end
+  end
+
+  describe 'year without detected countries' do
+    it 'explains that countries need reverse geocoding' do
+      create(:stat, user:, year: 2025, month: 3, distance: 40_000, daily_distance: { '4' => 25_000 })
+
+      get map_residency_path(year: 2025)
+
+      expect(doc.at_css('[data-testid="residency-no-countries"]').text)
+        .to include('Points need reverse geocoding to detect countries.')
     end
   end
 
@@ -111,13 +137,53 @@ RSpec.describe 'Insights visuals', type: :request do
                      start_at: Time.utc(2025, 5, 3, 10), end_at: Time.utc(2025, 5, 3, 14))
     end
 
-    it 'shows the routes of a year on a map and a strip of its months' do
+    it 'loads the routes of a year into its map after the page and shows a strip of its months' do
       get insights_path(year: 'all')
 
       card = doc.css('[data-testid="insights-year-card"]').find { _1.text.include?('2025') }
       map = card.at_css('[data-testid="insights-year-map"]')
-      expect(JSON.parse(map['data-trip-maplibre-preview-lines-value'])).to eq([[[13.4, 52.52], [14.42, 50.08]]])
+      expect(map['data-trip-maplibre-preview-lines-url-value']).to eq(routes_insights_path(year: 2025))
       expect(card.css('[data-testid="insights-year-strip"] span').size).to eq(12)
+    end
+
+    it 'serves the routes of a year as JSON' do
+      get routes_insights_path(year: 2025)
+
+      expect(response.parsed_body['lines']).to eq([[[13.4, 52.52], [14.42, 50.08]]])
+    end
+
+    it 'keeps serving the built routes until a track of the year changes' do
+      get routes_insights_path(year: 2025)
+      Track.update_all(original_path: 'LINESTRING(2.35 48.86, 4.84 45.76)')
+
+      get routes_insights_path(year: 2025)
+      expect(response.parsed_body['lines']).to eq([[[13.4, 52.52], [14.42, 50.08]]])
+
+      Track.first.touch
+      get routes_insights_path(year: 2025)
+      expect(response.parsed_body['lines']).to eq([[[2.35, 48.86], [4.84, 45.76]]])
+    end
+
+    it 'serves no routes from outside a Lite data window' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :lite)
+      old = 3.years.ago.year
+      create(:track, user:, original_path: 'LINESTRING(2.35 48.86, 4.84 45.76)',
+                     start_at: Time.utc(old, 5, 3, 10), end_at: Time.utc(old, 5, 3, 14))
+
+      get routes_insights_path(year: old)
+
+      expect(response.parsed_body['lines']).to eq([])
+    end
+
+    it 'answers with no routes instead of failing when the geometry query breaks' do
+      allow_any_instance_of(Stats::YearRoutesQuery).to receive(:call)
+        .and_raise(ActiveRecord::StatementInvalid, 'boom')
+
+      get routes_insights_path(year: 2025)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body['lines']).to eq([])
     end
 
     it 'leaves the map out for a year without tracks' do

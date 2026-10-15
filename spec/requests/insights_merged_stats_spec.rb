@@ -29,6 +29,7 @@ RSpec.describe 'Insights as the single stats page', type: :request do
       get '/stats/2024/6'
 
       expect(response).to have_http_status(:ok)
+      expect(Nokogiri::HTML(response.body).at_css("a.btn[href='#{insights_path(year: 2024)}']")).to be_present
     end
 
     it 'returns to the matching view after recalculating' do

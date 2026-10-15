@@ -43,6 +43,26 @@ RSpec.describe Stats::YearRoutesQuery do
     expect(described_class.new(user, old).call).to be_nil
   end
 
+  it 'stays under the coordinate cap however many routes the year has' do
+    stub_const("#{described_class}::MAX_COORDINATES", 60)
+    40.times do |i|
+      path = (0..9).map { |j| "#{10 + (i * 0.3) + (j * 0.02)} #{48 + (j * 0.05)}" }.join(', ')
+      track("LINESTRING(#{path})", Time.utc(2025, 4, 1, 10) + i.hours)
+    end
+
+    lines = described_class.new(user, 2025).call
+
+    expect(lines.sum(&:size)).to be <= 60
+    expect(lines).not_to be_empty
+  end
+
+  it 'tells whether the year has any routes without building them' do
+    track('LINESTRING(13.40 52.52, 14.42 50.08)', Time.utc(2025, 6, 1, 10))
+
+    expect(described_class.new(user, 2025).any?).to be(true)
+    expect(described_class.new(user, 2024).any?).to be(false)
+  end
+
   it 'keeps few coordinates for a long, dense route' do
     path = (0..2_000).map { |i| "#{13 + (i * 0.001)} #{52 + (Math.sin(i / 50.0) * 0.01)}" }.join(', ')
     track("LINESTRING(#{path})", Time.utc(2025, 3, 1, 10))

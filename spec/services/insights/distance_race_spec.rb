@@ -55,6 +55,27 @@ RSpec.describe Insights::DistanceRace do
     expect(result.lead).to eq(7_000 - 2_000)
   end
 
+  it 'compares with the same calendar day when the previous year is a leap year' do
+    stat(2024, 2, { 29 => 1_000 })
+    stat(2024, 3, { 1 => 2_000 })
+    stat(2025, 3, { 1 => 5_000 })
+
+    result = race(2025, today: Date.new(2025, 3, 1))
+
+    expect(result.previous.size).to eq(365)
+    expect(result.lead).to eq(5_000 - 3_000)
+  end
+
+  describe '.for' do
+    it 'keeps the previous year for a user without a data window' do
+      this_year = Time.current.year
+      stat(this_year, 1, { 1 => 3_000 })
+      stat(this_year - 1, 12, { 31 => 1_000 })
+
+      expect(described_class.for(user, this_year).previous).to be_present
+    end
+  end
+
   it 'has no previous line and no lead without data for the previous year' do
     stat(2026, 1, { 1 => 3_000 })
 

@@ -24,10 +24,9 @@ module Insights
 
       current = cumulative(@year, DailyDistances.call(@current_stats), last_index)
       previous_daily = DailyDistances.call(@previous_stats)
-      previous = cumulative(@year - 1, previous_daily, year_length(@year - 1) - 1) if previous_daily.any?
+      previous = aligned_previous(previous_daily) if previous_daily.any?
 
-      Result.new(year: @year, current:, previous:,
-                 lead: previous && (current.last - previous[[last_index, previous.size - 1].min]))
+      Result.new(year: @year, current:, previous:, lead: previous && (current.last - previous[last_index]))
     end
 
     private
@@ -36,6 +35,17 @@ module Insights
       start = Date.new(year, 1, 1)
       total = 0
       (0..last_index).map { |offset| total += daily.fetch((start + offset).strftime('%Y-%m-%d'), 0) }
+    end
+
+    def aligned_previous(daily)
+      totals = cumulative(@year - 1, daily, year_length(@year - 1) - 1)
+      start = Date.new(@year, 1, 1)
+
+      (0...year_length(@year)).map do |offset|
+        date = start + offset
+        same_day = Date.new(@year - 1, date.month, [date.day, Time.days_in_month(date.month, @year - 1)].min)
+        totals[same_day.yday - 1]
+      end
     end
 
     def year_length(year)

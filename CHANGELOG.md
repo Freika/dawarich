@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Insights show route maps on the year cards. Pro and self-hosted instances also get a year calendar coloured by country, a country timeline and a race against the previous year's distance.
+
+### Changed
+
+- Stats and Insights are now one page at /insights; /stats and /stats/:year redirect there.
+
 ### Fixed
 
 - Refresh import statuses after the live stream subscribes or reconnects, recovering updates missed before connection (#3174).

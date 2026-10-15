@@ -11,4 +11,7 @@
   <% elsif @distance_race %>
     <%= render 'insights/distance_race', race: @distance_race %>
   <% end %>
+  <% if @countries.empty? %>
+    <p class="mb-6 text-sm text-base-content/60" data-testid="residency-no-countries"><%= t('.points_need_reverse_geocoding_to_detect_countries') %></p>
+  <% end %>
 <% end %>

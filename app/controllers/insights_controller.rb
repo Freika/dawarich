@@ -41,6 +41,16 @@ class InsightsController < ApplicationController
     end
   end
 
+  def routes
+    authorize :insights, :routes?
+
+    query = Stats::YearRoutesQuery.new(current_user, params[:year].to_i)
+    render json: { lines: Rails.cache.fetch(query.cache_key, expires_in: 24.hours) { query.call || [] } }
+  rescue ActiveRecord::StatementInvalid => e
+    ExceptionReporter.call(e)
+    render json: { lines: [] }
+  end
+
   private
 
   def set_available_years
@@ -94,7 +104,6 @@ class InsightsController < ApplicationController
 
   def load_months
     @month_distances = Stat.year_distance(@selected_year, current_user)
-    @distance_race = Insights::DistanceRace.for(current_user, @selected_year) unless current_user.full_access?
   end
 
   def load_comparison_data
@@ -116,7 +125,7 @@ class InsightsController < ApplicationController
   end
 
   def load_activity_heatmap
-    return if @all_time
+    return if @all_time || current_user.full_access?
 
     @activity_heatmap = Insights::ActivityHeatmapCalculator.new(@year_stats, @selected_year).call
   end

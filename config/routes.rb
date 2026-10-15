@@ -229,6 +229,7 @@ Rails.application.routes.draw do
   resources :insights, only: :index do
     collection do
       get :details
+      get 'routes/:year', action: :routes, as: :routes, constraints: { year: /\d{4}/ }
     end
   end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }

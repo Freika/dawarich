@@ -15,6 +15,7 @@ export default class extends Controller {
   static values = {
     path: String,
     lines: String,
+    linesUrl: String,
     plan: String,
     numbered: { type: Boolean, default: false },
     mapStyle: { type: String, default: "light" },
@@ -55,8 +56,31 @@ export default class extends Controller {
     window.addEventListener("trip-plan:focus", this.onPlanFocus)
 
     this.map.on("load", () => {
-      if (!this.showRoute()) this.showPlan()
+      if (this.hasLinesUrlValue) this.loadLines()
+      else if (!this.showRoute()) this.showPlan()
     })
+  }
+
+  async loadLines() {
+    let lines
+    try {
+      const response = await fetch(this.linesUrlValue, {
+        headers: { Accept: "application/json" },
+      })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      lines = (await response.json()).lines || []
+    } catch (error) {
+      console.error("Failed to load routes:", error)
+      return
+    }
+    if (!this.map) return
+
+    if (lines.length) {
+      this.linesValue = JSON.stringify(lines)
+      this.showLines()
+    } else {
+      this.element.closest("[data-map-wrapper]")?.remove()
+    }
   }
 
   showRoute() {
