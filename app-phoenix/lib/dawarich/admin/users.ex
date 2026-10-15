@@ -126,19 +126,21 @@ defmodule Dawarich.Admin.Users do
   defp delete_target(actor, id, context) do
     repo = context.repo
 
-    case repo.query!("SELECT admin FROM users WHERE id=$1 AND deleted_at IS NULL", [id],
+    case repo.query!("SELECT admin,status FROM users WHERE id=$1 AND deleted_at IS NULL", [id],
            log: false
          ).rows do
       [] ->
         {:error, :not_found}
 
-      [[admin]] ->
+      [[admin, status]] ->
         [[count]] =
-          repo.query!("SELECT count(*) FROM users WHERE admin AND deleted_at IS NULL", [],
+          repo.query!(
+            "SELECT count(*) FROM users WHERE admin AND status=1 AND deleted_at IS NULL",
+            [],
             log: false
           ).rows
 
-        if admin == true and count == 1 do
+        if admin == true and status == 1 and count == 1 do
           {:error, :last_admin}
         else
           AccountDestroy.request_as_admin(actor.id, id, AccountDestroy.context(context))

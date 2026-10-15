@@ -1,5 +1,6 @@
 defmodule DawarichWeb.TimelineFormatTest do
   use ExUnit.Case, async: true
+  require Phoenix.LiveViewTest
 
   alias DawarichWeb.{LocalizedDate, TimelineFormat}
 
@@ -59,6 +60,39 @@ defmodule DawarichWeb.TimelineFormatTest do
              primary: "Markt",
              secondary: "Leipzig"
            }
+  end
+
+  test "native visit card safely displays the normalized place address" do
+    entry = %{
+      visit_id: 1160,
+      name: "Manual",
+      place: %{name: "Manual", address: "<script>street</script> 12, City"},
+      area: nil,
+      status: "confirmed",
+      confidence_band: nil,
+      point_count: 0,
+      tags: [],
+      duration: 60,
+      start_s: 0,
+      end_s: 3600,
+      start_local: ~N[2026-10-01 12:00:00],
+      end_local: ~N[2026-10-01 13:00:00],
+      started_at: "2026-10-01T12:00:00Z",
+      ended_at: "2026-10-01T13:00:00Z"
+    }
+
+    html =
+      Phoenix.LiveViewTest.render_component(&DawarichWeb.NativeTimelineEntries.visit/1,
+        entry: entry,
+        locale: "en"
+      )
+
+    doc = LazyHTML.from_document(html)
+
+    assert LazyHTML.query(doc, "[data-testid=visit-address-1160]") |> LazyHTML.text() ==
+             entry.place.address
+
+    assert Enum.count(LazyHTML.query(doc, "script")) == 0
   end
 
   test "display_name falls back from the visit to its place, its area, then Unnamed" do

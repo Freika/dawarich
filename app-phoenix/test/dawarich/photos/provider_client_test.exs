@@ -125,7 +125,14 @@ defmodule Dawarich.Photos.ProviderClientTest do
   } do
     key = "synthetic-photo-provider-credential"
 
-    for {status, expected} <- [{401, "Unauthorized"}, {599, ""}] do
+    for {status, expected} <- [
+          {403, "Forbidden"},
+          {413, "Content Too Large"},
+          {414, "URI Too Long"},
+          {416, "Range Not Satisfiable"},
+          {499, "Unknown status"},
+          {599, "Unknown status"}
+        ] do
       {base, task} = provider(&response(&1, status, key, key))
       settings(user, "immich", base, key)
 
@@ -136,6 +143,34 @@ defmodule Dawarich.Photos.ProviderClientTest do
       refute String.contains?(error, key)
       assert error == "HTTP #{status}: #{expected}"
     end
+  end
+
+  test "enrichment transport errors expose only the trusted exception class", %{user: user} do
+    previous = Application.get_env(:dawarich, :photo_source_timeout)
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:dawarich, :photo_source_timeout, previous),
+        else: Application.delete_env(:dawarich, :photo_source_timeout)
+    end)
+
+    Application.put_env(:dawarich, :photo_source_timeout, 40)
+
+    {base, task} =
+      provider(fn _socket ->
+        receive do
+          :finish -> :ok
+        after
+          100 -> :ok
+        end
+      end)
+
+    settings(user, "immich", base, "synthetic-echoed-marker")
+
+    assert {:ok, 200, %{"errors" => [%{"error" => "Immich connection failed: Net::ReadTimeout"}]}} =
+             enrich(user)
+
+    Task.await(task)
   end
 
   @tag :photo_url

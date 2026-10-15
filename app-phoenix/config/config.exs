@@ -43,6 +43,7 @@ filtered_parameters = [
   "capability",
   "magic_phrase",
   "signed_id",
+  "signed_blob_id",
   "url",
   "authorization",
   "cookie",

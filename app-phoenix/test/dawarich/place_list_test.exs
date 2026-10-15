@@ -81,7 +81,7 @@ defmodule Dawarich.PlaceListTest do
   test "settings Rails rejects hand back", %{user: user} do
     S.place!(user.id, 841_501, "Ort")
 
-    assert PlaceList.load(%{user | settings: []}, nil) == :rails
+    assert {:ok, %{entries: [_]}} = PlaceList.load(%{user | settings: []}, nil)
     assert PlaceList.load(%{user | settings: %{"timezone" => 5}}, nil) == :rails
     assert PlaceList.load(%{user | settings: %{"timezone" => "Mars/Phobos"}}, nil) == :rails
 

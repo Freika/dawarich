@@ -62,19 +62,49 @@ defmodule DawarichWeb.FamilyLocationsTest do
     end
   end
 
+  test "family location addresses normalize flat providers and obey reverse geocoding config",
+       ctx do
+    previous = System.get_env("PHOTON_API_HOST")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("PHOTON_API_HOST", previous),
+        else: System.delete_env("PHOTON_API_HOST")
+    end)
+
+    System.put_env("PHOTON_API_HOST", "synthetic.invalid")
+
+    Repo.query!(
+      "UPDATE points SET geodata=$1 WHERE user_id=90102",
+      [%{"address" => %{"road" => "Main", "town" => "Leipzig", "country" => "Germany"}}],
+      log: false
+    )
+
+    assert [%{"address" => "Main, Leipzig, Germany"}] = json_response(locations(ctx.owner), 200)
+    System.delete_env("PHOTON_API_HOST")
+
+    Repo.query!(
+      "DELETE FROM instance_settings WHERE key IN ('photon_api_host','nominatim_api_host','geoapify_api_key','locationiq_api_key')",
+      [],
+      log: false
+    )
+
+    assert [%{"address" => nil}] = json_response(locations(ctx.owner), 200)
+  end
+
   test "web projection preserves member email order and omits API only fields", ctx do
     conn = locations(ctx.owner)
     [member] = json_response(conn, 200)
     assert member["user_id"] == 90102
 
     assert Enum.sort(Map.keys(member)) ==
-             ~w(email latitude longitude name timestamp updated_at user_id)
+             ~w(address email latitude longitude name timestamp updated_at user_id)
 
     assert member["latitude"] == 51.3397
     assert member["longitude"] == 12.3731
     assert member["timestamp"] == 1_791_021_300
     assert member["updated_at"] == "2026-10-03T11:55:00.000+02:00"
-    assert conn.resp_body =~ ~s([{"user_id":90102,"email":)
+    assert conn.resp_body =~ ~s([{"user_id":90102,"address":null,"email":)
     assert conn.resp_body =~ ~s("latitude":51.3397,"longitude":12.3731,"timestamp":1791021300,)
     refute conn.resp_body =~ "battery"
     refute conn.resp_body =~ "email_initial"

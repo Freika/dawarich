@@ -18,7 +18,7 @@ defmodule DawarichWeb.PlacesDialogAdmissionTest do
          ctx do
       event = unquote(event)
 
-      for value <- [[], 42] do
+      for value <- [%{"timezone" => []}, %{"timezone" => 42}] do
         Repo.query!(
           "UPDATE users SET settings=$2 WHERE id=$1",
           [ctx.actor.id, ctx.actor.settings],

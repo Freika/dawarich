@@ -4,7 +4,7 @@ defmodule Dawarich.FamilyPageAccess do
   alias Dawarich.Entitlements
   alias Dawarich.Families.Sharing
 
-  def validate_settings!(settings) when is_map(settings) or is_nil(settings) do
+  def validate_settings!(settings) do
     settings = Dawarich.UserSettings.safe(settings)
 
     if settings["timezone"] != nil and not is_binary(settings["timezone"]),
@@ -19,8 +19,6 @@ defmodule Dawarich.FamilyPageAccess do
 
     config
   end
-
-  def validate_settings!(_settings), do: raise(ArgumentError, "settings are not an object")
 
   def member([id, email, membership_id, role, joined_at, settings, latest], now) do
     config = validate_settings!(settings)

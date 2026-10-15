@@ -74,10 +74,6 @@ defmodule Dawarich.Admin.UserRolesTest do
 
     for params <- [
           %{},
-          %{"admin" => "false"},
-          %{"admin" => false},
-          %{"admin" => "off"},
-          %{"admin" => nil},
           %{"status" => "active"}
         ] do
       assert :ok = UserRoles.guard(c.target, params, Repo, "en")
@@ -91,6 +87,17 @@ defmodule Dawarich.Admin.UserRolesTest do
     before = snapshot()
     assert Users.update(scope, c.target.id, %{}) == {:error, :unauthorized}
     assert snapshot() == before
+  end
+
+  test "inactive administrators cannot permit losing the last active admin", c do
+    Repo.query!("UPDATE users SET deleted_at=NULL,status=0 WHERE id=15102", [], log: false)
+
+    for value <- [false, 0, "0", "false", "FALSE", "f", "F", "off", "OFF", nil, ""] do
+      assert {:blocked, _} = UserRoles.guard(c.target, %{"admin" => value}, Repo, "en")
+    end
+
+    assert {:blocked, _} = UserRoles.guard(c.target, %{"status" => "inactive"}, Repo, "en")
+    assert :ok = UserRoles.guard(%{c.target | status: 0}, %{"admin" => false}, Repo, "en")
   end
 
   defp snapshot do

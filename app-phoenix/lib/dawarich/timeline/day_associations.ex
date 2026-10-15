@@ -43,13 +43,22 @@ defmodule Dawarich.Timeline.DayAssociations do
   def places(ids, repo) do
     """
     SELECT id, name, city, country, coalesce(ST_Y(lonlat::geometry), latitude::float8),
-           coalesce(ST_X(lonlat::geometry), longitude::float8)
+           coalesce(ST_X(lonlat::geometry), longitude::float8), geodata
     FROM places WHERE id = ANY($1)
     """
     |> repo.query!([ids])
     |> Map.fetch!(:rows)
-    |> Map.new(fn [id, name, city, country, lat, lng] ->
-      {id, %{id: id, name: name, city: city, country: country, lat: lat, lng: lng}}
+    |> Map.new(fn [id, name, city, country, lat, lng, geodata] ->
+      {id,
+       %{
+         id: id,
+         name: name,
+         city: city,
+         country: country,
+         address: Dawarich.Address.place(geodata),
+         lat: lat,
+         lng: lng
+       }}
     end)
   end
 

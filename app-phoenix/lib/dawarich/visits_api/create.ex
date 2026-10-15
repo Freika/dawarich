@@ -65,6 +65,7 @@ defmodule Dawarich.VisitsApi.Create do
            lat: lat,
            lon: lon,
            status: status,
+           address: Dawarich.Address.manual(attrs["address"]),
            name: if(is_nil(attrs["name"]), do: nil, else: Ruby.to_s(attrs["name"]))
          }}
       else
@@ -159,8 +160,9 @@ defmodule Dawarich.VisitsApi.Create do
           {:ok, visit} = Effects.load(repo, owner, id, false)
           Effects.changed(repo, nil, visit, now, true)
 
-          if new? && values.status == 0 && Geocoding.Config.resolve(repo).enabled,
-            do: RailsEffects.place_name(repo, owner, place_id)
+          if new? && (values.status == 0 || values.address == %{}) &&
+               Geocoding.Config.resolve(repo).enabled,
+             do: RailsEffects.place_name(repo, owner, place_id)
 
           {:ok, Map.put(visit, :duplicate, false)}
 
@@ -191,8 +193,18 @@ defmodule Dawarich.VisitsApi.Create do
 
             [[id]] =
               repo.query!(
-                "INSERT INTO places (user_id,name,latitude,longitude,lonlat,source,name_locked_at,created_at,updated_at) VALUES ($1,$2,$3::double precision,$4::double precision,ST_SetSRID(ST_MakePoint($4::double precision,$3::double precision),4326),0,$5,$6,$6) RETURNING id",
-                [owner, values.name, values.lat, values.lon, lock, now]
+                "INSERT INTO places (user_id,name,latitude,longitude,lonlat,source,name_locked_at,created_at,updated_at,city,country,geodata) VALUES ($1,$2,$3::double precision,$4::double precision,ST_SetSRID(ST_MakePoint($4::double precision,$3::double precision),4326),0,$5,$6,$6,$7,$8,$9) RETURNING id",
+                [
+                  owner,
+                  values.name,
+                  values.lat,
+                  values.lon,
+                  lock,
+                  now,
+                  Dawarich.Address.value(values.address, "city"),
+                  Dawarich.Address.value(values.address, "country"),
+                  values.address
+                ]
               ).rows
 
             {:ok, [id, values.name], true}

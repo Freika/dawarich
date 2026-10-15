@@ -50,7 +50,10 @@ RSpec.describe 'Phoenix fixture: golden visits API requests', type: :request do
       expect(payload.length).to eq(entry[:count]), entry[:name] if entry[:count]
       headers = result.dig('response', 'headers')
       expect(headers.slice(*entry[:headers].keys)).to eq(entry[:headers]) if entry[:headers]
-      result['provider_response'] = JSON.generate(type: 'FeatureCollection', features: kase[:provider_input]) if kase[:provider_input]
+      if kase[:provider_called]
+        result['provider_response'] =
+          JSON.generate(type: 'FeatureCollection', features: kase[:provider_input])
+      end
       result['jobs_after'] = enqueued_jobs.map { { 'job' => _1[:job].name, 'args' => _1[:args] } }
       expect(result['jobs_after'].length).to eq(entry[:jobs]), entry[:name] if entry[:jobs]
       if kase[:method] == :get || entry.fetch(:status, 200) >= 400
@@ -195,7 +198,10 @@ RSpec.describe 'Phoenix fixture: golden visits API requests', type: :request do
       double(data:, latitude: 52.52, longitude: 13.405)
     end
     kase[:provider_input] = results.map(&:data)
-    allow(Geocoder).to receive(:search).and_return(results)
+    allow(Geocoder).to receive(:search) {
+      kase[:provider_called] = true
+      results
+    }
     search = Places::NearbySearch.new(user: owner, latitude: 52.52, longitude: 13.405, cache: true)
     kase[:cache_keys] << search.send(:cache_key)
   end

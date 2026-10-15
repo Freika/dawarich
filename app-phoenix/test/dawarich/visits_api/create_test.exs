@@ -185,6 +185,115 @@ defmodule Dawarich.VisitsApi.CreateTest do
            ]
   end
 
+  test "manual address is stored only on new places and is returned by every visit read" do
+    address = %{
+      "street" => "Main",
+      "house_number" => "12",
+      "postcode" => "04275",
+      "city" => "Leipzig",
+      "country" => "Germany",
+      "ignored" => "secret"
+    }
+
+    assert {:ok, visit} =
+             create(%{
+               "latitude" => 40,
+               "longitude" => 10,
+               "name" => "Manual",
+               "address" => address
+             })
+
+    [[place]] = rows("SELECT place_id FROM visits WHERE id=$1", [visit.id])
+
+    assert [["Leipzig", "Germany", %{"properties" => props}]] =
+             rows("SELECT city,country,geodata FROM places WHERE id=$1", [place])
+
+    assert props == %{
+             "street" => "Main",
+             "housenumber" => "12",
+             "postcode" => "04275",
+             "city" => "Leipzig",
+             "country" => "Germany"
+           }
+
+    [row] = Dawarich.VisitsApi.Payload.rows("v.id=$1", [visit.id], "", ScratchRepo)
+    {:object, fields} = Dawarich.VisitsApi.Payload.term(row)
+    assert {:object, place_fields} = fields |> Map.new() |> Map.fetch!("place")
+    assert Map.new(place_fields)["address"] == "Main 12, 04275 Leipzig"
+    assert {:ok, reused} = create(%{"address" => address})
+    [[reused_place]] = rows("SELECT place_id FROM visits WHERE id=$1", [reused.id])
+    assert reused_place == 953_201
+    assert rows("SELECT geodata FROM places WHERE id=$1", [reused_place]) == [[%{}]]
+    assert_suggested_and_structured_addresses()
+  end
+
+  test "confirmed new places without meaningful address fetch names but retain manual locks" do
+    ScratchRepo.insert_all("instance_settings", [
+      %{
+        key: "photon_api_host",
+        value: "synthetic.invalid",
+        created_at: @stamp,
+        updated_at: @stamp
+      }
+    ])
+
+    for {address, lon} <- [{nil, 10}, {%{"street" => " ", "city" => ""}, 11}] do
+      assert {:ok, visit} =
+               create(%{
+                 "latitude" => 40,
+                 "longitude" => lon,
+                 "name" => "Manual",
+                 "address" => address
+               })
+
+      [[place]] = rows("SELECT place_id FROM visits WHERE id=$1", [visit.id])
+
+      assert rows("SELECT name_locked_at,geodata FROM places WHERE id=$1", [place]) == [
+               [DateTime.to_naive(@now), %{}]
+             ]
+
+      assert ["place_name_fetch", %{"user_id" => 953_001, "place_id" => place}] in commands()
+    end
+  end
+
+  defp assert_suggested_and_structured_addresses do
+    ScratchRepo.insert_all("instance_settings", [
+      %{
+        key: "photon_api_host",
+        value: "synthetic.invalid",
+        created_at: @stamp,
+        updated_at: @stamp
+      }
+    ])
+
+    assert {:ok, visit} =
+             create(%{
+               "latitude" => 40,
+               "longitude" => 12,
+               "name" => "Suggested place",
+               "status" => "suggested",
+               "address" => %{"street" => "Main"}
+             })
+
+    [[place]] = rows("SELECT place_id FROM visits WHERE id=$1", [visit.id])
+    assert ["place_name_fetch", %{"user_id" => 953_001, "place_id" => place}] in commands()
+
+    for {root, lon} <- Enum.with_index([[], "unsupported", false], 20) do
+      assert {:ok, visit} =
+               create(%{
+                 "latitude" => 40,
+                 "longitude" => lon,
+                 "name" => "Manual",
+                 "address" => root
+               })
+
+      assert rows(
+               "SELECT p.geodata FROM places p JOIN visits v ON v.place_id=p.id WHERE v.id=$1",
+               [visit.id]
+             ) == [[%{}]]
+    end
+  end
+
   defp create(changes),
     do:
       Create.call(

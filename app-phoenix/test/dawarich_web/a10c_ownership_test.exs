@@ -187,7 +187,7 @@ defmodule DawarichWeb.A10cOwnershipTest do
     rows("UPDATE users SET settings='[]' WHERE id=44001")
     before = snapshot()
 
-    assert {:error, :unavailable} =
+    assert {:ok, %{enabled: true, uuid: ^uuid}} =
              Dawarich.Sharing.change(
                Dawarich.Accounts.Scope.for_user(user, "en"),
                %{type: :achievement, key: "country_de", owner_id: user.id},

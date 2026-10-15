@@ -61,6 +61,21 @@ defmodule Dawarich.LogRedactionTest do
              %{"phrase" => "[FILTERED]", "attempt" => 1}
   end
 
+  test "legacy and canonical storage capabilities and private filenames are filtered" do
+    for route <-
+          ~w(blobs blobs/redirect blobs/proxy representations representations/redirect representations/proxy disk),
+        prefix <- ["", "/mounted"] do
+      path = "#{prefix}/rails/active_storage/#{route}/synthetic-signed-blob/private-file.gpx"
+      filtered = Dawarich.LogRedaction.request_path(path <> "?download=1")
+      refute filtered =~ "synthetic-signed-blob"
+      refute filtered =~ "private-file.gpx"
+      assert filtered =~ "?download=1"
+    end
+
+    assert Phoenix.Logger.filter_values(%{"signed_blob_id" => "synthetic-signed-blob"}) ==
+             %{"signed_blob_id" => "[FILTERED]"}
+  end
+
   test "crash report never contains submitted secrets" do
     log =
       crash_with(

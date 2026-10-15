@@ -120,7 +120,9 @@ defmodule Dawarich.Trips.WebParamsTest do
                WebParams.parse(user, Map.put(valid, "started_at", value), %{}, %{repo: Repo})
     end
 
-    for settings <- ["legacy", %{"timezone" => "Unknown/Zone"}, %{"timezone" => []}] do
+    assert {:ok, _} = WebParams.parse(%{settings: "legacy"}, valid, %{}, %{repo: Repo})
+
+    for settings <- [%{"timezone" => "Unknown/Zone"}, %{"timezone" => []}] do
       assert {:replay, _} = WebParams.parse(%{settings: settings}, valid, %{}, %{repo: Repo})
     end
 

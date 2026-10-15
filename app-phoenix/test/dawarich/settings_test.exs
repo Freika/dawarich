@@ -291,6 +291,12 @@ defmodule Dawarich.SettingsTest do
     assert {:ok, %{"supporter" => true, "platform" => "github_sponsors"}} =
              Settings.verify_supporter(scope, %{"supporter_github_username" => " Fan "})
 
+    Repo.query!(
+      "UPDATE users SET settings=settings || '{\"app_store_supporter\":true}'::jsonb WHERE id=$1",
+      [scope.user.id],
+      log: false
+    )
+
     assert {:ok, %{"supporter" => false}} =
              Settings.verify_supporter(scope, %{"supporter_github_username" => "stranger"})
 

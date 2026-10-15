@@ -2,6 +2,11 @@
 
 module ApiSharedGoldenOracle
   CASES = [
+    { name: 'points_track_hidden_route', action: 'points',
+      link: { resource_type: 1, resource_id: 951_201, settings: { 'show_route' => false, 'show_stats' => true } },
+      json: [] },
+    { name: 'points_track_absent_route', action: 'points', link: { resource_type: 1, resource_id: 951_201 },
+      timestamps: [T0 - 1, T0 + 3601], cache: 'max-age=30, public' },
     { name: 'family_anonymous', action: 'points', link: { settings: { 'audience' => 'family', 'family_id' => 1 } },
 status: 404, json: { 'error' => 'not_found' } },
     { name: 'points_null_trip', action: 'points', null_id: 951_402, null_ts: T0 },

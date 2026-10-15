@@ -53,7 +53,11 @@ defmodule DawarichWeb.AuthApi.ResponseTest do
       assert result.resp_body == body
       assert get_resp_header(result, "set-cookie") == []
       assert get_resp_header(result, "x-dawarich-auth-owner") == ["native-api-auth"]
-      expected = row["response"]["headers"] |> Map.drop(~w(x-request-id x-runtime etag))
+
+      expected =
+        row["response"]["headers"]
+        |> Map.drop(~w(x-request-id x-runtime etag))
+        |> Map.put("x-dawarich-version", Dawarich.AppVersion.current())
 
       actual =
         Map.new(result.resp_headers)

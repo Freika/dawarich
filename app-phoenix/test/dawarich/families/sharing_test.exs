@@ -16,7 +16,12 @@ defmodule Dawarich.Families.SharingTest do
   end
 
   test "settings Rails cannot dig through raise instead of answering" do
-    for bad <- [[], "x", %{"family" => "x"}, %{"family" => []}, %{"family" => 1}] do
+    for raw <- [[], "x", 0, false] do
+      refute Sharing.enabled?(raw, @now)
+      assert Sharing.config(raw) == nil
+    end
+
+    for bad <- [%{"family" => "x"}, %{"family" => []}, %{"family" => 1}] do
       assert_raise ArgumentError, fn -> Sharing.enabled?(bad, @now) end
     end
 
