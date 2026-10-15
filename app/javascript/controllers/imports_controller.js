@@ -29,8 +29,10 @@ export default class extends BaseController {
   async sync() {
     if (this.syncing) return
 
-    const rows = [...this.element.querySelectorAll("tr[data-import-status]")].filter(
-      (row) => ["created", "processing", "deleting"].includes(row.dataset.importStatus),
+    const rows = [
+      ...this.element.querySelectorAll("tr[data-import-status]"),
+    ].filter((row) =>
+      ["created", "processing", "deleting"].includes(row.dataset.importStatus),
     )
     if (!rows.length) return
 
@@ -40,9 +42,13 @@ export default class extends BaseController {
         headers: { Accept: "text/html" },
         credentials: "same-origin",
       })
-      if (!response.ok) throw new Error(`Imports sync failed: ${response.status}`)
+      if (!response.ok)
+        throw new Error(`Imports sync failed: ${response.status}`)
 
-      const latest = new DOMParser().parseFromString(await response.text(), "text/html")
+      const latest = new DOMParser().parseFromString(
+        await response.text(),
+        "text/html",
+      )
       rows.forEach((row) => {
         // A newer Turbo broadcast may already have replaced or removed this row.
         if (!row.isConnected || !this.element.contains(row)) return
