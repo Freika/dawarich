@@ -9,11 +9,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Insights show route maps on the year cards. Pro and self-hosted instances also get a year calendar coloured by country, a country timeline and a race against the previous year's distance.
+- Search trips by name, description, places and notes; sort them and filter by year, month and country.
+- A Family tab on the map (`F`) holds the family layer, the member list with each member's last known address, and a link to the family page.
 
 ### Changed
 
 - Stats and Insights are now one page at /insights; /stats and /stats/:year redirect there.
-- Search trips by name, description, places and notes; sort them and filter by year, month and country.
+- Visitors opening `/` go to the sign-in page; the landing page is removed. Sign-in and sign-up pages are redesigned.
+- The map Layers tab shows layers as tiles, with options for enabled layers below them. Anomalies show only while Points are on, and the Create button is now Tools.
+- Buttons are raised and form fields recessed across the app.
+
+### Fixed
+
+- Stop the onboarding and other closed modals from flashing on page load in Firefox.
+
+## [1.15.4] - 2026-10-14, Berlin
 
 ### Fixed
 - Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200). On large instances still carrying legacy coordinates this step can take several minutes; let it finish.

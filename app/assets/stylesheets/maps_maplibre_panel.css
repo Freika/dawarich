@@ -920,6 +920,13 @@
   display: none;
 }
 
+[data-tab-content="layers"]:has(
+    [data-maps--maplibre-target="fogToggle"]:not(:checked)
+  )
+  [data-layer-options="fog"] {
+  display: none;
+}
+
 .layer-options {
   display: grid;
   gap: 16px;

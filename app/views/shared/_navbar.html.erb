@@ -242,8 +242,8 @@
         </ul>
       </div>
     <% else %>
-      <% show_login = !current_page?(new_user_session_path) %>
-      <% show_register = !SELF_HOSTED && defined?(devise_mapping) && devise_mapping&.registerable? && !current_page?(new_user_registration_path) %>
+      <% show_login = controller_name != 'sessions' %>
+      <% show_register = !SELF_HOSTED && defined?(devise_mapping) && devise_mapping&.registerable? && controller_name != 'registrations' %>
       <% if show_login || show_register %>
         <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
           <% if show_login %>

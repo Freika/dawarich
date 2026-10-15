@@ -53,6 +53,12 @@ RSpec.describe 'Map layers tab', type: :request do
     expect(points_options.at_css('[data-maps--maplibre-target="pointsEditToggle"]')).to be_present
   end
 
+  it 'groups the fog of war modes as a fog option' do
+    fog_options = layers_tab.at_css('[data-layer-options="fog"]')
+
+    expect(fog_options.css('input[name="fogOfWarMode"]').size).to eq(2)
+  end
+
   it 'shows the flights tile only when AirTrail is connected' do
     expect(tile_for(layers_tab, 'flightsToggle')).to be_empty
 
