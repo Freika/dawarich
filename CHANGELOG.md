@@ -9,12 +9,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Self-hosted users with an active Pro purchase in the Dawarich mobile app now get the supporter badge. The app reports the purchase to your instance automatically; Dawarich Cloud ignores it.
 
+### Changed
+- Achievements no longer credit any country or region for time spent in territories claimed by more than one state (Natural Earth disputed areas), and achievement cards leave those areas out; statistics, the scratch map and country attribution are unchanged. Regions lying almost entirely in such territories are no longer part of their country's set. Existing progress is recalculated in the background without notifications, and achievements already earned are kept.
+
 ## [1.15.4] - 2026-10-14, Berlin
 
 ### Fixed
+- Changing the theme with a missing or unknown value now returns an error instead of crashing or saving an invalid theme.
+- Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200)
 - Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200). On large instances still carrying legacy coordinates this step can take several minutes; let it finish.
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
-- Country boundaries now include Crimea in Ukraine, matching its subdivisions: the Ukraine achievement card, scratch map and country attribution follow, and existing points there move from Russia to Ukraine in the background (#3834).
+- Bundled country boundaries now match their ISO 3166-2 subdivisions: achievement cards, the scratch map and country attribution follow, and affected existing points are reassigned in the background.
 - Count briefly visited countries consistently in Insights, statistics, the stats API and digests even when no city meets the minimum stay threshold. (#3290)
 - Refresh import statuses after the live stream subscribes or reconnects, recovering updates missed before connection (#3174).
 - Emoji in place, area, visit and family member names now render correctly on the map instead of a placeholder glyph (#2365).

@@ -31,19 +31,27 @@ RSpec.describe 'bundled country PMTiles' do
     expect(Digest::SHA256.file(archive).hexdigest).to eq(manifest.fetch('archive_sha256'))
   end
 
-  it 'files Crimea under Ukraine, matching its UA-43 and UA-40 subdivisions' do
-    source = Rails.root.join('lib/assets/countries.geojson.gz')
-    document = Zlib::GzipReader.open(source) { |gzip| JSON.parse(gzip.read) }
-    factory = RGeo::Geos.factory(srid: 4326)
-    shapes = document.fetch('features').to_h do |feature|
-      [feature.dig('properties', 'ISO3166-1-Alpha-2'),
-       RGeo::GeoJSON.decode(feature['geometry'].to_json, geo_factory: factory)]
+  it 'files sampled points under the same country as their ISO 3166-2 subdivision' do
+    countries = Zlib::GzipReader.open(Rails.root.join('lib/assets/countries.geojson.gz'), &:read)
+    subdivisions = Rails.root.join('lib/assets/admin1_world.geojson').read
+    sql = <<~SQL
+      SELECT feature -> 'properties' ->> ?
+      FROM jsonb_array_elements(?::jsonb -> 'features') AS feature
+      WHERE ST_Covers(ST_SetSRID(ST_GeomFromGeoJSON(feature ->> 'geometry'), 4326),
+                      ST_SetSRID(ST_MakePoint(?, ?), 4326))
+    SQL
+    covering = lambda do |geojson, property, longitude, latitude|
+      query = ActiveRecord::Base.sanitize_sql_array([sql, property, geojson, longitude, latitude])
+      ActiveRecord::Base.connection.select_values(query)
     end
-    simferopol = factory.point(34.10, 44.95)
-    sevastopol = factory.point(33.50, 44.58)
 
-    expect(shapes.select { |_code, shape| shape.contains?(simferopol) }.keys).to eq(['UA'])
-    expect(shapes.select { |_code, shape| shape.contains?(sevastopol) }.keys).to eq(['UA'])
+    [[34.10, 44.95], [33.50, 44.58], [13.40, 52.52], [2.17, 41.39]].each do |longitude, latitude|
+      subdivision = covering.call(subdivisions, 'iso_3166_2', longitude, latitude)
+
+      expect(subdivision.size).to eq(1)
+      expect(covering.call(countries, 'ISO3166-1-Alpha-2', longitude, latitude))
+        .to eq([subdivision.first.split('-').first])
+    end
   end
 
   it 'keeps both antimeridian fragments under one canonical country identifier' do

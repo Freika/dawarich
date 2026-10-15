@@ -30,6 +30,13 @@ module Achievements
     PLANET_PATH = 'config/achievements/planet.yml'
     NO_META_CONTINENT = 'Antarctica'
 
+    # At least 75% inside DisputedArea; the remainder is boundary mismatch
+    # between the two sources, so these count toward no set at all.
+    DISPUTED_SUBDIVISIONS = %w[
+      ES-CE ES-ML GE-AB GY-BA GY-CU GY-PM GY-PT GY-UD IN-AR IN-JK
+      IN-LA MD-BD MD-SN PK-GB PK-JK UA-40 UA-43 UM-76 UM-79
+    ].freeze
+
     class << self
       def all
         @all ||= hand_definitions + continent_definitions + country_definitions
@@ -133,7 +140,8 @@ module Achievements
       end
 
       def country_definition(continent, code, country)
-        gridded = country['subdivisions'].any?
+        subdivisions = country['subdivisions'].except(*DISPUTED_SUBDIVISIONS)
+        gridded = subdivisions.any?
 
         Definition.new(
           key: "country_#{code.downcase}",
@@ -141,8 +149,8 @@ module Achievements
           name: gridded ? "#{country['name']} Explorer" : country['name'],
           country: code,
           continent: continent,
-          card: country_card(country, gridded),
-          regions: gridded ? country['subdivisions'] : { code => country['name'] },
+          card: country_card(country, subdivisions.size),
+          regions: gridded ? subdivisions : { code => country['name'] },
           level: gridded ? :subdivision : :country,
           parent_key: (continent_key(continent) unless continent == NO_META_CONTINENT)
         )
@@ -161,13 +169,13 @@ module Achievements
         }
       end
 
-      def country_card(country, gridded)
+      def country_card(country, count)
         name = country['name']
-        count = country['subdivisions'].size
+        description = count.positive? ? "Spend time in all #{count} regions of #{name}." : "Spend time in #{name}."
 
         {
           'rarity' => 'Rare',
-          'description' => gridded ? "Spend time in all #{count} regions of #{name}." : "Spend time in #{name}.",
+          'description' => description,
           'place' => name,
           'child_zoom' => (country['art']['zoom'] + 1.5).round(1),
           'art' => country['art']

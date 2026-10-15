@@ -46,6 +46,12 @@ if defined?(Region) && Region.none?
   Achievements::LoadRegions.new.call
 end
 
+if DisputedArea.none?
+  Rails.logger.debug 'Creating disputed areas...'
+
+  Achievements::LoadDisputedAreas.new.call
+end
+
 if Tag.none?
   Rails.logger.debug 'Creating default tags...'
 
