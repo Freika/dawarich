@@ -2776,6 +2776,7 @@ pl:
     immich: Immich
     photoprism: PhotoPrism
   supporter_platforms:
+    app_store: aplikację Dawarich
     github: GitHub
     patreon: Patreon
     ko_fi: Ko-fi

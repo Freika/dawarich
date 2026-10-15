@@ -401,17 +401,18 @@ class User < ApplicationRecord
   end
 
   def supporter_info
-    if DawarichSettings.self_hosted? && safe_settings.app_store_supporter?
-      return { supporter: true, platform: 'app_store' }
-    end
-
     if safe_settings.supporter_email.present?
       email_info = Supporter::VerifyEmail.new(safe_settings.supporter_email).call
       return email_info if email_info[:supporter]
     end
 
     if safe_settings.supporter_github_username.present?
-      return Supporter::VerifyGithubUsername.new(safe_settings.supporter_github_username).call
+      github_info = Supporter::VerifyGithubUsername.new(safe_settings.supporter_github_username).call
+      return github_info if github_info[:supporter]
+    end
+
+    if DawarichSettings.self_hosted? && safe_settings.app_store_supporter?
+      return { supporter: true, platform: 'app_store' }
     end
 
     { supporter: false }

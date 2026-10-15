@@ -600,6 +600,26 @@ RSpec.describe User, type: :model do
           expect(user.supporter?).to be true
         end
 
+        it 'keeps the platform of an already verified supporter' do
+          stub_request(:get, %r{verify\.dawarich\.app/api/v1/verify\?email_hash=})
+            .to_return(status: 200, body: { supporter: true, platform: 'patreon' }.to_json,
+                       headers: { 'Content-Type' => 'application/json' })
+          user.settings['supporter_email'] = 'fan@example.com'
+          user.settings['app_store_supporter'] = true
+
+          expect(user.supporter_platform).to eq('patreon')
+        end
+
+        it 'falls back to the flag when the GitHub username is not a supporter' do
+          stub_request(:get, %r{verify\.dawarich\.app/api/v1/verify\?github_username=})
+            .to_return(status: 200, body: { supporter: false }.to_json,
+                       headers: { 'Content-Type' => 'application/json' })
+          user.settings['supporter_github_username'] = 'nobody'
+          user.settings['app_store_supporter'] = true
+
+          expect(user.supporter_platform).to eq('app_store')
+        end
+
         it 'is not a supporter when the flag is false' do
           user.settings['app_store_supporter'] = false
 
