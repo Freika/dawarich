@@ -6,16 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Achievements no longer credit any country or region for time spent in territories claimed by more than one state (Natural Earth disputed areas), and achievement cards leave those areas out; statistics, the scratch map and country attribution are unchanged. Regions lying almost entirely in such territories are no longer part of their country's set. Existing progress is recalculated in the background without notifications, and achievements already earned are kept.
+
+## [1.15.4] - 2026-10-14, Berlin
+
 ### Fixed
 - Changing the theme with a missing or unknown value now returns an error instead of crashing or saving an invalid theme.
 - Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200)
+- Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200). On large instances still carrying legacy coordinates this step can take several minutes; let it finish.
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
-- Country boundaries now include Crimea in Ukraine, matching its subdivisions: the Ukraine achievement card, scratch map and country attribution follow, and existing points there move from Russia to Ukraine in the background (#3834).
+- Bundled country boundaries now match their ISO 3166-2 subdivisions: achievement cards, the scratch map and country attribution follow, and affected existing points are reassigned in the background.
 - Count briefly visited countries consistently in Insights, statistics, the stats API and digests even when no city meets the minimum stay threshold. (#3290)
-- Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
 - Refresh import statuses after the live stream subscribes or reconnects, recovering updates missed before connection (#3174).
 - Emoji in place, area, visit and family member names now render correctly on the map instead of a placeholder glyph (#2365).
-- Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
 - Update both mobile and desktop family-sharing indicators after changing location-sharing settings.
 - Keep signed storage capabilities and private filenames out of request path logs.
 - Prevent legacy or restored export URLs from deleting unrelated files; retain unproven legacy files after export removal or migration.
@@ -37,7 +41,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Area creation and editing reject unsupported response formats before saving changes or scheduling visit relabeling.
 - Account deletion confirmation can be requested again immediately if token generation or email enqueueing fails.
 - Partnero signup failure diagnostics and Immich enrichment errors exclude provider-supplied credentials and customer details.
-- Propagate failed monthly statistics calculations so background jobs can retry, with one failure notification per stats delivery.
+- Propagate failed monthly statistics calculations so background jobs can retry, without repeating an unread failure notification on every retry of statistics or data recalculation; digest jobs report a failed month with a single digest failure notice.
+- Achievement backfills now restore historical visit dates, including previously earned regions and countries (#3728).
 - Timeline calendar activity and status counts refresh after confirming or declining visits in bulk.
 - Shared photo thumbnails lose their old authorization immediately when the trip dates or shared resource change.
 - Protect the acting and last active administrator from deletion, and serialize administrator deletion and role changes to retain administration access.
@@ -58,8 +63,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Exploration achievements and printed poster ordering are available to everyone without feature flags. Existing location history is checked in the background without sending old unlock notifications. Printed poster ordering remains unavailable when `PRINT_ORDER_URL` is blank.
 
 ### Fixed
-
-- Achievement backfills now restore historical visit dates, including previously earned regions and countries (#3728).
 
 - Geocoding jobs keep their duplicate-work guard through long queues and retries, and nightly scheduling no longer queues the same pending points again. (#3754)
 - GPX exports work when an older database lacks the decimal-altitude column, while retaining decimal precision when it is available. (#3752)
