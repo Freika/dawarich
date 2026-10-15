@@ -124,27 +124,6 @@ defmodule Dawarich.Imports.ZipFanout do
             not Enum.any?(Path.split(file.entry.name), &String.starts_with?(&1, "."))
         end)
 
-      extension = Path.extname(blob.filename)
-
-      files =
-        if String.downcase(extension) in @supported,
-          do: [
-            %{
-              entry: %{
-                name: "_source" <> extension,
-                size: File.stat!(path).size,
-                content_type:
-                  if(String.downcase(extension) == ".kmz",
-                    do: "application/vnd.google-earth.kmz",
-                    else: "application/zip"
-                  )
-              },
-              path: path
-            }
-            | files
-          ],
-          else: files
-
       files = Enum.sort_by(files, & &1.entry.name)
 
       known =
