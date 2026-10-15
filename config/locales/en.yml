@@ -2295,12 +2295,33 @@ en:
         other: "%{count} days"
     edit:
       editing_trip: Editing trip
+    filters:
+      search: "Search"
+      search_placeholder: "Name, description, places or notes"
+      sort: "Sort"
+      sorts:
+        newest: "Newest first"
+        oldest: "Oldest first"
+        name: "Name (A–Z)"
+        distance: "Longest distance"
+      year: "Year"
+      all_years: "All years"
+      month: "Month"
+      all_months: "All months"
+      choose_year_first: "Choose a year first"
+      country: "Country"
+      all_countries: "All countries"
+      apply: "Apply"
+      reset: "Reset"
     index:
       new_trip: New trip
       no_trips_yet: No trips yet
       create_your_first_trip_to_see_your_journeys_visualized_with: Create your first trip to see your journeys visualized with maps, photos, and stats.
       create_your_first_trip: Create your first trip
       trips: Trips
+      no_matching_trips: "No trips match these filters"
+      try_other_filters: "Try a different search, year or country."
+      show_all_trips: "Show all trips"
     new:
       new_trip: New trip
     notes:

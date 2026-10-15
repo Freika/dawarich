@@ -2296,12 +2296,33 @@ zh:
         other: "%{count} 天"
     edit:
       editing_trip: 编辑行程
+    filters:
+      search: "搜索"
+      search_placeholder: "名称、描述、地点或笔记"
+      sort: "排序"
+      sorts:
+        newest: "最新优先"
+        oldest: "最早优先"
+        name: "名称（A–Z）"
+        distance: "距离最长"
+      year: "年份"
+      all_years: "所有年份"
+      month: "月份"
+      all_months: "所有月份"
+      choose_year_first: "请先选择年份"
+      country: "国家"
+      all_countries: "所有国家"
+      apply: "应用"
+      reset: "重置"
     index:
       new_trip: 新行程
       no_trips_yet: 尚无行程
       create_your_first_trip_to_see_your_journeys_visualized_with: 创建您的第一个行程，通过地图、照片和统计数据直观查看您的旅程。
       create_your_first_trip: 创建您的第一个行程
       trips: 行程
+      no_matching_trips: "没有符合这些筛选条件的行程"
+      try_other_filters: "请尝试其他搜索词、年份或国家。"
+      show_all_trips: "显示所有行程"
     new:
       new_trip: 新行程
     notes:
