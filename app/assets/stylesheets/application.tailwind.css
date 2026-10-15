@@ -227,8 +227,8 @@ a.card:hover {
    plate, and at rest its face matches a regular button while a coloured
    variant keeps its coloured label. */
 .btn-outline:where(
-  :not(:hover, :active, .btn-active, .btn-disabled, :disabled)
-) {
+    :not(:hover, :active, .btn-active, .btn-disabled, :disabled)
+  ) {
   --raise-edge: inherit;
   --raise-ambient: inherit;
   --raise-highlight: transparent;
@@ -397,30 +397,30 @@ html.dark em-emoji-picker {
       text elements collapses sized components (it turns a DaisyUI `.stats`
       row into overlapping columns). Reach for `min-w-0` at the call site. */
 :where(
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  p,
-  li,
-  dd,
-  dt,
-  figcaption,
-  summary,
-  label,
-  .card-title,
-  .stat-title,
-  .stat-value,
-  .stat-desc,
-  .label-text,
-  .label-text-alt,
-  .badge,
-  .alert,
-  .tab,
-  .menu li > *
-) {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    li,
+    dd,
+    dt,
+    figcaption,
+    summary,
+    label,
+    .card-title,
+    .stat-title,
+    .stat-value,
+    .stat-desc,
+    .label-text,
+    .label-text-alt,
+    .badge,
+    .alert,
+    .tab,
+    .menu li > *
+  ) {
   overflow-wrap: break-word;
 }
 
