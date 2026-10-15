@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Search trips by name, description, places and notes; sort them and filter by year, month and country.
+
 ### Fixed
 
 - Refresh import statuses after the live stream subscribes or reconnects, recovering updates missed before connection (#3174).

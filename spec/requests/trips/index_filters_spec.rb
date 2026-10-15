@@ -78,6 +78,37 @@ RSpec.describe 'Trips index search, filters and sorting', type: :request do
       expect(listed_names).to eq(['Iberia'])
     end
 
+    it 'matches description text with escaped characters' do
+      trip('Pub', description: 'Fish & chips by the sea')
+      trip('Cafe', description: 'Tea and cake')
+
+      get trips_path(q: 'fish & chips')
+      expect(listed_names).to eq(['Pub'])
+
+      get trips_path(q: 'amp')
+      expect(listed_names).to be_empty
+    end
+
+    it 'matches countries by name only, not by their stored punctuation' do
+      trip('Iberia', visited_countries: %w[Portugal Spain])
+      trip('Not calculated', visited_countries: {})
+
+      get trips_path(q: '"')
+      expect(listed_names).to be_empty
+
+      get trips_path(q: '{')
+      expect(listed_names).to be_empty
+    end
+
+    it 'never lists trips of other users' do
+      trip('Mine in Lisbon')
+      create(:trip, name: 'Theirs in Lisbon', started_at: Time.utc(2024, 6, 10), ended_at: Time.utc(2024, 6, 12))
+
+      get trips_path(q: 'lisbon')
+
+      expect(listed_names).to eq(['Mine in Lisbon'])
+    end
+
     it 'treats LIKE wildcards literally' do
       trip('100% fun')
       trip('Boring')
@@ -125,6 +156,25 @@ RSpec.describe 'Trips index search, filters and sorting', type: :request do
       get trips_path(month: 7)
 
       expect(listed_names).to match_array(%w[June July])
+    end
+
+    it 'keeps an active year selected even when no trip touches it' do
+      trip('June', started_at: Time.utc(2024, 6, 1), ended_at: Time.utc(2024, 6, 3))
+
+      get trips_path(year: 2030)
+
+      selected = Nokogiri::HTML(response.body).at_css('select[name="year"] option[selected]')
+      expect(selected['value']).to eq('2030')
+    end
+
+    it 'explains why the month is unavailable without a year' do
+      trip('June')
+
+      get trips_path
+
+      month = Nokogiri::HTML(response.body).at_css('select[name="month"]')
+      hint = Nokogiri::HTML(response.body).at_css("##{month['aria-describedby']}")
+      expect(hint.text).to eq(I18n.t('trips.filters.choose_year_first'))
     end
 
     it 'offers every year a trip touches' do

@@ -1,6 +1,6 @@
 <% label_class = 'text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1 block' %>
 <div class="border border-base-300 rounded-xl bg-base-200/50 p-4 mb-5">
-  <%= form_with url: trips_path, method: :get, data: { controller: 'auto-submit', turbo_action: 'advance' },
+  <%= form_with url: trips_path, method: :get, data: { controller: 'auto-submit', turbo_action: 'advance', action: 'pointerdown->auto-submit#notePointer' },
                 class: 'flex flex-wrap items-end gap-3', html: { role: 'search' } do |f| %>
     <div class="min-w-0 flex-[2_1_16rem]">
       <%= f.label :q, t('.search'), class: label_class %>
@@ -14,14 +14,15 @@
       <%= f.select :sort,
                    options_for_select(Trips::IndexQuery::SORTS.keys.map { [t(".sorts.#{_1}"), _1] }, filters.sort),
                    {}, class: 'select select-bordered select-sm w-full',
-                       data: { action: 'change->auto-submit#submit' } %>
+                       data: { action: 'keydown->auto-submit#noteKeyboard change->auto-submit#submit' } %>
     </div>
 
     <div class="min-w-0 flex-[1_1_7rem]">
       <%= f.label :year, t('.year'), class: label_class %>
-      <%= f.select :year, options_for_select(years, filters.year), { include_blank: t('.all_years') },
+      <%= f.select :year, options_for_select((years | [filters.year].compact).sort.reverse, filters.year),
+                   { include_blank: t('.all_years') },
                    class: 'select select-bordered select-sm w-full',
-                   data: { action: 'change->auto-submit#submit' } %>
+                   data: { action: 'keydown->auto-submit#noteKeyboard change->auto-submit#submit' } %>
     </div>
 
     <div class="min-w-0 flex-[1_1_8rem]">
@@ -30,16 +31,20 @@
                    options_for_select((1..12).map { [t('date.month_names')[_1], _1] }, filters.month),
                    { include_blank: t('.all_months') },
                    class: 'select select-bordered select-sm w-full', disabled: filters.year.nil?,
-                   title: (t('.choose_year_first') if filters.year.nil?),
-                   data: { action: 'change->auto-submit#submit' } %>
+                   aria: { describedby: ('trips-month-hint' if filters.year.nil?) },
+                   data: { action: 'keydown->auto-submit#noteKeyboard change->auto-submit#submit' } %>
+      <% if filters.year.nil? %>
+        <span id="trips-month-hint" class="sr-only"><%= t('.choose_year_first') %></span>
+      <% end %>
     </div>
 
+    <% countries = (countries | [filters.country].compact).sort_by(&:downcase) %>
     <% if countries.any? %>
       <div class="min-w-0 flex-[1_1_9rem]">
         <%= f.label :country, t('.country'), class: label_class %>
         <%= f.select :country, options_for_select(countries, filters.country), { include_blank: t('.all_countries') },
                      class: 'select select-bordered select-sm w-full',
-                     data: { action: 'change->auto-submit#submit' } %>
+                     data: { action: 'keydown->auto-submit#noteKeyboard change->auto-submit#submit' } %>
       </div>
     <% end %>
 

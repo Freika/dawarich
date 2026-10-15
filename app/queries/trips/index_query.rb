@@ -12,14 +12,26 @@ module Trips
     QUERY_MAX_LENGTH = 100
     YEARS = (1900..2200)
 
+    DESCRIPTION_TEXT_SQL = <<~SQL.squish
+      replace(replace(replace(replace(replace(replace(
+        regexp_replace(rich_texts.body, '<[^>]*>', ' ', 'g'),
+        '&nbsp;', ' '), '&lt;', '<'), '&gt;', '>'), '&quot;', '"'), '&#39;', ''''), '&amp;', '&')
+    SQL
+
     SEARCH_SQL = <<~SQL.squish
       trips.name ILIKE :pattern
-      OR trips.visited_countries::text ILIKE :pattern
+      OR (
+        jsonb_typeof(trips.visited_countries) = 'array'
+        AND EXISTS (
+          SELECT 1 FROM jsonb_array_elements_text(trips.visited_countries) AS visited(country)
+          WHERE visited.country ILIKE :pattern
+        )
+      )
       OR EXISTS (
         SELECT 1 FROM action_text_rich_texts rich_texts
         WHERE rich_texts.record_type = 'Trip' AND rich_texts.record_id = trips.id
           AND rich_texts.name = 'description'
-          AND regexp_replace(rich_texts.body, '<[^>]*>', ' ', 'g') ILIKE :pattern
+          AND #{DESCRIPTION_TEXT_SQL} ILIKE :pattern
       )
       OR EXISTS (
         SELECT 1 FROM notes
