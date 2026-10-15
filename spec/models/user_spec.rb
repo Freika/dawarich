@@ -583,6 +583,41 @@ RSpec.describe User, type: :model do
   describe 'methods' do
     let(:user) { create(:user) }
 
+    describe '#supporter_info with the app_store_supporter flag' do
+      context 'when self-hosted' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+        it 'reports an App Store supporter' do
+          user.settings['app_store_supporter'] = true
+
+          expect(user.supporter?).to be true
+          expect(user.supporter_platform).to eq('app_store')
+        end
+
+        it 'accepts the flag stored as a string' do
+          user.settings['app_store_supporter'] = 'true'
+
+          expect(user.supporter?).to be true
+        end
+
+        it 'is not a supporter when the flag is false' do
+          user.settings['app_store_supporter'] = false
+
+          expect(user.supporter?).to be false
+        end
+      end
+
+      context 'when on Dawarich Cloud' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+        it 'ignores the flag' do
+          user.settings['app_store_supporter'] = true
+
+          expect(user.supporter?).to be false
+        end
+      end
+    end
+
     describe '#oauth_user?' do
       it 'returns true when provider is set' do
         user.update_columns(provider: 'google_oauth2', uid: '12345')
