@@ -61,4 +61,13 @@ RSpec.describe 'Import progress during delayed continuations' do
       anything, hash_including(locals: hash_including(import: have_attributes(processed: 2000)))
     )
   end
+
+  it 'skips progress and status broadcasts once the import has been deleted' do
+    broadcaster
+    Import.where(id: import.id).delete_all
+
+    expect { broadcaster.broadcast_import_progress(import, 1000) }.not_to raise_error
+    expect { broadcaster.broadcast_status_update }.not_to raise_error
+    expect(Turbo::StreamsChannel).not_to have_received(:broadcast_replace_to)
+  end
 end

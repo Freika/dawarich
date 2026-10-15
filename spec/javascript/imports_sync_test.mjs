@@ -4,10 +4,16 @@ import test from "node:test"
 
 const source = (
   await readFile(
-    new URL("../../app/javascript/controllers/imports_controller.js", import.meta.url),
+    new URL(
+      "../../app/javascript/controllers/imports_controller.js",
+      import.meta.url,
+    ),
     "utf8",
   )
-).replace('import BaseController from "./base_controller"', "class BaseController {}")
+).replace(
+  'import BaseController from "./base_controller"',
+  "class BaseController {}",
+)
 const { default: ImportsController } = await import(
   `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
 )
@@ -31,7 +37,11 @@ function fixture(t, statuses, latest = {}) {
     if (!originals.has(name)) {
       originals.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
     }
-    Object.defineProperty(globalThis, name, { configurable: true, writable: true, value })
+    Object.defineProperty(globalThis, name, {
+      configurable: true,
+      writable: true,
+      value,
+    })
   }
   t.after(() => {
     for (const [name, original] of originals) {
@@ -39,20 +49,25 @@ function fixture(t, statuses, latest = {}) {
       else delete globalThis[name]
     }
   })
-  install("window", { location: { href: "http://localhost/imports?page=2&sort=status" } })
+  install("window", {
+    location: { href: "http://localhost/imports?page=2&sort=status" },
+  })
   install("document", {
     importNode: (node, deep) => {
       assert.equal(deep, true)
       return { ...node }
     },
   })
-  install("DOMParser", class {
-    parseFromString(html, type) {
-      assert.equal(html, "latest HTML")
-      assert.equal(type, "text/html")
-      return { getElementById: (id) => latest[id] }
-    }
-  })
+  install(
+    "DOMParser",
+    class {
+      parseFromString(html, type) {
+        assert.equal(html, "latest HTML")
+        assert.equal(type, "text/html")
+        return { getElementById: (id) => latest[id] }
+      }
+    },
+  )
   install("fetch", async (...args) => {
     requests.push(args)
     return { ok: true, text: async () => "latest HTML" }
@@ -75,10 +90,12 @@ test("sync recovers missed updates and deletes vanished imports on the current p
 
   await controller.sync()
 
-  assert.deepEqual(requests, [[
-    window.location.href,
-    { headers: { Accept: "text/html" }, credentials: "same-origin" },
-  ]])
+  assert.deepEqual(requests, [
+    [
+      window.location.href,
+      { headers: { Accept: "text/html" }, credentials: "same-origin" },
+    ],
+  ])
   assert.deepEqual(rows[0].replacement, { status: "completed" })
   assert.deepEqual(rows[1].replacement, { status: "failed" })
   assert.equal(rows[2].removed, true)
@@ -95,11 +112,17 @@ test("final statuses do not trigger a page request", async (t) => {
 })
 
 test("a late fetch cannot overwrite a newer Turbo row", async (t) => {
-  const { controller, rows, install } = fixture(
-    t, ["processing", "deleting"], { import_0: { status: "processing" } },
-  )
+  const { controller, rows, install } = fixture(t, ["processing", "deleting"], {
+    import_0: { status: "processing" },
+  })
   let finish
-  install("fetch", () => new Promise((resolve) => { finish = resolve }))
+  install(
+    "fetch",
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
   const pending = controller.sync()
   rows[0].isConnected = false
   controller.element.contains = () => false
@@ -118,9 +141,9 @@ test("simultaneous sync calls issue only one request", async (t) => {
 })
 
 test("a failed request leaves rows intact and allows the next sync", async (t) => {
-  const { controller, rows, warnings, install } = fixture(
-    t, ["processing"], { import_0: { status: "completed" } },
-  )
+  const { controller, rows, warnings, install } = fixture(t, ["processing"], {
+    import_0: { status: "completed" },
+  })
   const successfulFetch = globalThis.fetch
   install("fetch", async () => ({ ok: false, status: 503 }))
   await controller.sync()
