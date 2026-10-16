@@ -89,3 +89,37 @@ test("native live marker ignores notifications without a new current range row",
   )
   f.owner.destroy()
 })
+
+test("native live marker retains a point arriving during the enabling baseline", async () => {
+  const f = fixture({ liveEnabled: false })
+  f.reader.read = async (resource) => ({
+    data: resource === "points" ? [] : {},
+  })
+  await f.owner.mount()
+  let baselineStarted
+  const started = new Promise((resolve) => {
+    baselineStarted = resolve
+  })
+  let finishBaseline
+  f.reader.read = (resource) => {
+    if (resource !== "points") return Promise.resolve({ data: {} })
+    baselineStarted()
+    return new Promise((resolve) => {
+      finishBaseline = resolve
+    })
+  }
+  const enabling = f.owner.update({ ...f.owner.config, liveEnabled: true })
+  await started
+  f.reader.read = async (resource) => ({
+    data: resource === "points" ? [row] : {},
+  })
+  await f.owner.reconnect({ kinds: ["points"] })
+  finishBaseline({ data: [] })
+  await enabling
+  assert.deepEqual(
+    f.sources.get("recent-point-source")?.data.features[0]?.geometry
+      .coordinates,
+    [13.41, 52.51],
+  )
+  f.owner.destroy()
+})

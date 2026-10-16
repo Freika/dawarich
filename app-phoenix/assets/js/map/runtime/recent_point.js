@@ -98,6 +98,12 @@ export function createHostRecentPoint({ map, reader, lifetime, config }) {
   })
   return {
     baseline,
+    prepare(receipt) {
+      if (state.liveEnabled === true && receipt?.kinds?.includes("points")) {
+        requests.reset()
+        primed = true
+      }
+    },
     deliver,
     config(next) {
       if (key(next) !== key(state)) clear()
@@ -121,6 +127,7 @@ export function installRecentReconnect(
       )
     )
       invalidateEditing()
+    getRecent()?.prepare(receipt)
     const state = await reconnect.call(owner)
     if (state === "ready") {
       getLayers()?.points.refresh()
