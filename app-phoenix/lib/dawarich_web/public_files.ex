@@ -69,8 +69,8 @@ defmodule DawarichWeb.PublicFiles do
       if Keyword.has_key?(opts, :env), do: RailsSecret.rails_env(env), else: default_rails_env
 
     with true <- Dawarich.Standalone.enabled?() or rails_env in @serving_envs,
-         [] <- get_req_header(conn, "range"),
          {:ok, segments} <- segments(conn.request_path),
+         true <- range_allowed?(conn, segments),
          {path, info, headers} <- find(root, segments, header(conn, "accept-encoding") || ""),
          true <- authorized?(conn, env["APPLICATION_HOSTS"]),
          {:ok, secure} <- secure_headers(conn, env) do
@@ -217,7 +217,20 @@ defmodule DawarichWeb.PublicFiles do
 
   defp coding(part), do: part |> String.split(";", parts: 2) |> hd()
 
+  defp range_allowed?(conn, segments) do
+    get_req_header(conn, "range") == [] or
+      (Dawarich.Standalone.enabled?() and segments == ["maps", "countries-v3.pmtiles"])
+  end
+
   defp respond(conn, path, file_info(size: size, mtime: mtime), headers, secure) do
+    if get_req_header(conn, "range") != [] do
+      DawarichWeb.PublicFileRange.serve(conn, path, size, mtime, headers ++ secure)
+    else
+      respond_whole(conn, path, size, mtime, headers, secure)
+    end
+  end
+
+  defp respond_whole(conn, path, size, mtime, headers, secure) do
     last_modified = Calendar.strftime(DateTime.from_unix!(mtime), "%a, %d %b %Y %H:%M:%S GMT")
 
     if header(conn, "if-modified-since") == last_modified do

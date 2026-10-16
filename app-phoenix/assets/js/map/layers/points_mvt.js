@@ -1,7 +1,7 @@
 import { getMarkerStrokeColor } from "../algorithms/marker_theme.js"
 import { BaseLayer, isAbortedRequest } from "./base.js"
 import { heatmapPaint } from "./heatmap.js"
-import { queueTileRefresh } from "./tile_refresh.js"
+import { queueTileRefresh, retryTileSource } from "./tile_refresh.js"
 
 export class PointsMvtLayer extends BaseLayer {
   constructor(map, options = {}) {
@@ -147,6 +147,12 @@ export class PointsMvtLayer extends BaseLayer {
       "visibility",
       visible ? "visible" : "none",
     )
+  }
+
+  retry() {
+    this._tileErrorReported = false
+    this.freshness?.bump("points")
+    retryTileSource(this.map, this.sourceId)
   }
 
   refresh() {

@@ -1,5 +1,5 @@
 import { BaseLayer, isAbortedRequest } from "./base.js"
-import { queueTileRefresh } from "./tile_refresh.js"
+import { queueTileRefresh, retryTileSource } from "./tile_refresh.js"
 
 export class TracksMvtLayer extends BaseLayer {
   constructor(map, options = {}) {
@@ -165,6 +165,12 @@ export class TracksMvtLayer extends BaseLayer {
     })
     if (ownIndex === -1 || ownIndex + 1 >= styleLayers.length) return null
     return styleLayers[ownIndex + 1].id
+  }
+
+  retry() {
+    this._tileErrorReported = false
+    this.freshness?.bump("tracks")
+    retryTileSource(this.map, this.sourceId)
   }
 
   refresh() {

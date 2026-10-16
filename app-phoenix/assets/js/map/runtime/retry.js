@@ -6,8 +6,8 @@ export function installMapRetry({ owner, root, layers, density }) {
     root,
     translate: mapTranslate(() => owner.config),
     async run(code) {
-      if (code === "point_tiles_failed") return layers()?.points.refresh()
-      if (code === "track_tiles_failed") return layers()?.tracks.refresh()
+      if (code === "point_tiles_failed") return layers()?.points.retry()
+      if (code === "track_tiles_failed") return layers()?.tracks.retry()
       if (code.startsWith("scratch")) return density()?.retry(code)
       return owner.reconnect({ kinds: ["retry"] })
     },
