@@ -8,7 +8,6 @@ defmodule Dawarich.RawData.Archiver do
 
   @chunk 50_000
   @flag_batch 5_000
-  @zone "SELECT name FROM pg_timezone_names WHERE name = ANY($1) ORDER BY array_position($1, name) LIMIT 1"
   @cutoff "SELECT floor(extract(epoch FROM ((now() AT TIME ZONE $1) - interval '2 months') AT TIME ZONE $1))::bigint"
   @candidates """
   SELECT id,
@@ -64,7 +63,7 @@ defmodule Dawarich.RawData.Archiver do
   end
 
   def time_zone(repo, name),
-    do: ReleaseOperations.value(repo, @zone, [[TimeZoneName.to_iana(name), "UTC"]])
+    do: Dawarich.TimeZoneNames.first!(repo, [TimeZoneName.to_iana(name), "UTC"])
 
   defp cutoff(repo) do
     zone = time_zone(repo, System.get_env("TIME_ZONE", "Europe/Berlin"))

@@ -12,6 +12,11 @@ defmodule Dawarich.TimeZoneNames do
 
   def member?(repo, name), do: MapSet.member?(names(repo), name)
 
+  def first!(repo, names),
+    do:
+      Enum.find(names, &member?(repo, &1)) ||
+        raise(ArgumentError, "no known zone in #{inspect(names)}")
+
   def invalidate(repo) do
     if function_exported?(repo, :get_dynamic_repo, 0), do: TtlCache.delete(key(repo)), else: :ok
   end

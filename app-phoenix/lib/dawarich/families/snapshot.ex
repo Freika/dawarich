@@ -25,12 +25,9 @@ defmodule Dawarich.Families.Snapshot do
     zone = if is_binary(setting), do: Dawarich.TimeZoneName.to_iana(setting), else: ""
 
     if zone =~ ~r{\A[A-Z][A-Za-z_\-]*(?:/[A-Za-z0-9_+\-]+)+\z} do
-      [[known]] =
-        repo.query!("SELECT EXISTS(SELECT 1 FROM pg_timezone_names WHERE name=$1)", [zone],
-          log: false
-        ).rows
-
-      if known, do: :ok, else: {:replay, "PostgreSQL does not know time zone #{zone}"}
+      if Dawarich.TimeZoneNames.member?(repo, zone),
+        do: :ok,
+        else: {:replay, "PostgreSQL does not know time zone #{zone}"}
     else
       :ok
     end

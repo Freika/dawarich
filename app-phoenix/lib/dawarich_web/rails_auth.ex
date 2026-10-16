@@ -20,6 +20,7 @@ defmodule DawarichWeb.RailsAuth do
     now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
     session = rails_session(conn, secret, now)
     {user, locked} = current_user(conn, session, secret, now)
+    if user, do: Dawarich.Accounts.DataAccess.remember(user)
 
     conn
     |> assign(:rails_session, session)

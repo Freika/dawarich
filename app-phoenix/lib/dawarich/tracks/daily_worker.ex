@@ -33,7 +33,6 @@ defmodule Dawarich.Tracks.DailyWorker do
 
   @due "SELECT EXISTS (SELECT 1 FROM points WHERE user_id = $1 AND timestamp >= $2)"
   @history "SELECT count(*) FROM (SELECT 1 FROM points WHERE user_id = $1 LIMIT #{@bootstrap_limit + 1}) s"
-  @zone "SELECT name FROM pg_timezone_names WHERE name = ANY($1) ORDER BY array_position($1, name) LIMIT 1"
 
   def key, do: @key
 
@@ -144,12 +143,13 @@ defmodule Dawarich.Tracks.DailyWorker do
       "start_at" => start_ts |> DateTime.from_unix!() |> iso(),
       "end_at" => iso(now),
       "time_zone" =>
-        one!(repo, @zone, [
+        Dawarich.TimeZoneNames.first!(
+          repo,
           Enum.map(
             [timezone, System.get_env("TIME_ZONE", "UTC"), "UTC"],
             &Dawarich.TimeZoneName.to_iana/1
           )
-        ]),
+        ),
       "mode" => "daily",
       "untracked_only" => false,
       "import_id" => nil,

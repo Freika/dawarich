@@ -83,7 +83,7 @@ defmodule Dawarich.Accounts do
   @spec from_session(map(), DateTime.t()) :: %User{} | {:locked, %User{}} | nil
   def from_session(%{"warden.user.user.key" => [[id], salt]}, now)
       when is_integer(id) and is_binary(salt) do
-    with %User{} = user <- find(id),
+    with %User{} = user <- Dawarich.Accounts.DataAccess.cached(id) || find(id),
          value when is_binary(value) <- salt(user),
          true <- Plug.Crypto.secure_compare(value, salt) do
       if unlocked?(user, now), do: user, else: {:locked, user}
