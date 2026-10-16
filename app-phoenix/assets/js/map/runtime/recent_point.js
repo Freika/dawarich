@@ -6,11 +6,13 @@ export function createHostRecentPoint({ map, reader, lifetime, config }) {
   let state = config,
     destroyed = false,
     primed = false,
+    pending = false,
     latest = null
   const key = (value) => JSON.stringify([value.range, value.liveEnabled])
   const clear = () => {
     requests.reset()
     primed = false
+    pending = false
     latest = null
     layer.clear()
     layer.hide()
@@ -33,7 +35,9 @@ export function createHostRecentPoint({ map, reader, lifetime, config }) {
         ])
       : null
   async function baseline({ signal } = {}) {
-    if (destroyed || state.liveEnabled !== true || primed) return
+    if (destroyed || state.liveEnabled !== true) return
+    if (pending) return deliver({ kinds: ["points"] }, { signal })
+    if (primed) return
     const operation = requests.begin(signal)
     try {
       const result = await operation.wait(
@@ -47,14 +51,14 @@ export function createHostRecentPoint({ map, reader, lifetime, config }) {
       operation.close()
     }
   }
-  async function deliver(receipt = {}) {
+  async function deliver(receipt = {}, { signal } = {}) {
     if (
       destroyed ||
       state.liveEnabled !== true ||
       !receipt.kinds?.includes("points")
     )
       return
-    const operation = requests.begin(),
+    const operation = requests.begin(signal),
       current = state
     try {
       const result = await operation.wait(
@@ -72,6 +76,7 @@ export function createHostRecentPoint({ map, reader, lifetime, config }) {
         Math.abs(lon) > 180
       )
         return
+      pending = false
       if (identity(row) === latest) return
       latest = identity(row)
       layer.add()
@@ -98,6 +103,13 @@ export function createHostRecentPoint({ map, reader, lifetime, config }) {
   })
   return {
     baseline,
+    prepare(receipt) {
+      if (state.liveEnabled === true && receipt?.kinds?.includes("points")) {
+        requests.reset()
+        primed = true
+        pending = true
+      }
+    },
     deliver,
     config(next) {
       if (key(next) !== key(state)) clear()
@@ -121,6 +133,7 @@ export function installRecentReconnect(
       )
     )
       invalidateEditing()
+    getRecent()?.prepare(receipt)
     const state = await reconnect.call(owner)
     if (state === "ready") {
       getLayers()?.points.refresh()

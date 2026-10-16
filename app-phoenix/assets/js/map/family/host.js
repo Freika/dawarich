@@ -14,11 +14,13 @@ export function createMapFamilyLayer({
     overlayLocale,
     config,
     poll,
-    destroyed = false;
+    destroyed = false,
+    rendered;
   const list = () => root?.querySelector("#native-family-members");
   const status = () => root?.querySelector("#native-family-status");
   const empty = () => root?.querySelector("[data-map-family-empty]");
   function clearView() {
+    rendered = null;
     overlay?.clear();
     list()?.replaceChildren();
     if (list()) list().hidden = true;
@@ -29,10 +31,14 @@ export function createMapFamilyLayer({
     if (poll !== undefined) timers.clearInterval(poll);
     poll = undefined;
   }
+  const scope = (value) => JSON.stringify([
+    value?.familyEnabled, value?.namespace, value?.range, value?.locale,
+  ]);
   function clear(next) {
+    const preserve = next && config && scope(next) === scope(config);
     if (next) config = next;
     requests.reset();
-    clearView();
+    if (!preserve) clearView();
     if (!config?.familyEnabled) {
       stop();
       overlay?.destroy();
@@ -42,6 +48,14 @@ export function createMapFamilyLayer({
   function render(rows, members) {
     const container = list();
     if (!container) return;
+    const signature = JSON.stringify([
+      rows, members, config.locale, config.range?.timezone, config.uiLabels,
+      members.map(({ sharing_since: since }) =>
+        Math.min(365, Math.floor((Date.now() - Date.parse(since)) / 86400000)),
+      ),
+    ]);
+    if (rendered?.container === container && rendered.signature === signature) return;
+    rendered = { container, signature };
     const document = root.ownerDocument;
     container.replaceChildren(
       ...rows.map((row) => {

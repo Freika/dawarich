@@ -37,3 +37,18 @@ The first integrated fix gate completed all partitions with 11,038 tests and eig
 A successful sign-in redirect can render the map's Settings button before its LiveView has connected. The shared E2E panel helper must await `[data-phx-main].phx-connected` before clicking; otherwise the initial click can be lost and auth setup times out waiting for the panel close control. Waiting for `/map/v2` alone does not establish event readiness. Keep the native globe form submission, unchecked assertion, panel close and saved-session assertions.
 
 The native Tools control is `map-button-tools`; the helper's historical `create` alias maps to that panel. The browser witness `native/map-panel-readiness.spec.js` delays the LiveView WebSocket, opens Settings through the shared helper, verifies the globe preference after reload and checks the Tools alias. Removing the connection wait or restoring the old `map-button-create` selector must fail it. App runtime and lifecycle admission are unchanged.
+
+
+## Family and realtime browser acceptance
+
+Family visibility and member controls belong to `panel=family`, opened through `map-button-family`; Layers retains the other map layers. Browser successors retain member timestamps, history colors, centering, empty states and saved visibility. The scoped helper opens the panel only after the native connection is ready.
+
+When a point invalidation interrupts live mode's initial baseline read, the pending delivery must survive the replacement refresh. The recent-point owner cancels the old baseline and preserves its previous identity before refreshing, then renders the latest admitted row. Other invalidation kinds still establish a baseline without manufacturing a new marker. Disabling live mode and changing ranges retain their cancellation and clearing boundaries.
+
+The deterministic witness is `native live marker retains a point arriving during the enabling baseline` in `spec/javascript/phoenix_m6_host_recent_test.mjs`. Its named mutation removes delivery preparation before reconnect. Existing marker, duplicate suppression, disabled-state and late-read tests remain required. This corrects a native baseline race; Rails already renders admitted point broadcasts directly in `app/javascript/controllers/maps/maplibre_realtime_controller.js:207` at Rails `ec49374ae`.
+
+
+An unchanged admitted Family refresh keeps its member controls mounted while data reloads, so background invalidations cannot repeatedly detach a pending centering click. Identical results retain the existing controls; the sharing-age day boundary still updates its displayed duration. Disable, range/locale/namespace changes, failed reads and teardown still clear data and fence late reads. The named client witness is `Family refresh preserves admitted centering controls while unchanged data reloads`; mutations independently restore eager clearing and unconditional replacement.
+
+
+A point invalidation also remains pending when another panel refresh supersedes its refresh. The next successful refresh consumes the pending delivery within its own cancellation boundary; a cancelled refresh cannot discard the only notification of a new point. Range/live-state changes still reset that pending state. `native live marker survives a panel refresh superseding its point invalidation` deterministically exercises this real host sequence; removing pending delivery consumption fails it.
