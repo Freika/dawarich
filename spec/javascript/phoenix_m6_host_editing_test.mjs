@@ -321,3 +321,34 @@ test("style changes replace native edit history and discard its selected geometr
     f.owner.destroy()
   }
 })
+
+test("a completed canonical edit survives its own invalidation but refuses a newer foreign revision", async () => {
+  const f = fixture({ editEnabled: true })
+  f.map.getCanvasContainer = () => ({ style: {} })
+  let revision = 0
+  f.reader.read = async () => ({ data: { ...editTrack, properties: { ...editTrack.properties, revision } } })
+  f.reader.pages = async () => structuredClone(editPoints)
+  await f.owner.mount()
+  try {
+    const editor = f.owner.editor
+    editor.indicator.show = () => {}
+    await editor.selectTrack(9)
+    editor.startDrag(7)
+    editor.dragTo(13.1,52.1)
+    const pending = editor.endDrag({ lng: 13.1, lat: 52.1 })
+    revision = 1
+    f.pushed.find(item => item.event === "point:move").reply({ ok: true, response: {
+      point: { ...editPoints[0], longitude: 13.1, latitude: 52.1, revision },
+      track: { ...editTrack, properties: { ...editTrack.properties, revision } },
+      revision: { point: revision, track: revision },
+    } })
+    await pending
+    await f.owner.reconnect({ kinds: ["map_edits"] })
+    assert.ok(editor.data)
+    assert.deepEqual(editor._point(7).geometry.coordinates,[13.1,52.1])
+    assert.equal(editor.trackRevision,1)
+    revision = 2
+    await f.owner.reconnect({ kinds: ["map_edits"] })
+    assert.equal(editor.data,null)
+  } finally { f.owner.destroy() }
+})

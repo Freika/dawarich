@@ -1,3 +1,4 @@
+import { createEditReconciliation } from "./reconcile.js"
 import { mapTranslate } from "../ui/translate.js"
 import { PointDragGesture } from "./drag.js"
 import { MapEditor } from "./editor.js"
@@ -13,6 +14,7 @@ export function createHostEditing({
   document,
   root,
   clearSelection,
+  onMoved,
   timers = globalThis,
 }) {
   const enabled = () => getConfig().editEnabled === true
@@ -46,6 +48,7 @@ export function createHostEditing({
   const editor = new MapEditor(map, {
     document,
     clearSelection,
+  onMoved,
     history: transport.history,
     translate: mapTranslate(getConfig),
     distanceUnit: getConfig().distanceUnit ?? "km",
@@ -69,11 +72,14 @@ export function createHostEditing({
       const error = root?.querySelector("[data-map-edit-error]")
       if (error) error.textContent = message
     },
-    onMoved: () => {
+    onMoved: (response) => {
+      reconciliation.remember(response)
+      onMoved?.(response)
       const error = root?.querySelector("[data-map-edit-error]")
       if (error) error.textContent = ""
     },
   })
+  const reconciliation = createEditReconciliation({ editor, readTrack: (id) => reads("track", id), reset: () => reader.reset(), invalidate })
   const gesture = new PointDragGesture(map, {
     isEnabled: enabled,
     getEditor: () => editor,
@@ -95,6 +101,7 @@ export function createHostEditing({
   }
   return {
     invalidate,
+    reconcile: reconciliation.reconcile,
     editor,
     transport,
     config(next) {

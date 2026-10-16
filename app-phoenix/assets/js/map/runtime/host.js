@@ -154,6 +154,7 @@ export function mountHost({
         lifetime.own(() => layers.destroy());
         editing = createHostEditing({
           clearSelection: () => timeline?.config(),
+          onMoved: (response) => density?.moved(response),
           map,
           reader,
           pushEvent,
@@ -266,7 +267,7 @@ export function mountHost({
     owner,
     () => layers,
     () => recent,
-    () => editing?.invalidate(),
+    (receipt) => { density?.invalidate(); return editing?.reconcile(receipt); },
   );
   const update = owner.update;
   owner.update = (config) => {
