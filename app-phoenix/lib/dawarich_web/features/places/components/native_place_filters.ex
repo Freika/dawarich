@@ -27,7 +27,7 @@ defmodule DawarichWeb.NativePlaceFilters do
       >{s(@locale, "enable_all_tags")}</button>
       <form id="native-place-filter" phx-change="settings:place_tags" class="space-y-2 min-w-0">
         <fieldset class="flex min-w-0 flex-wrap gap-2">
-          <legend class="text-sm">{s(@locale, "filter_by_tags")}</legend>
+          <legend class="text-sm">{s(@locale, "click_tags_to_filter_places")}</legend>
           <input type="hidden" name="place_tag_ids[]" value="" />
           <label class="flex min-w-0 items-center gap-1">
             <input

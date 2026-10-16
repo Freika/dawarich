@@ -68,7 +68,7 @@ defmodule DawarichWeb.A10bOwnershipTest do
              ).rows == [[expected]]
     end
 
-    assert dispatch(build_conn(), @endpoint, :get, "/", nil).status == 200
+    assert dispatch(build_conn(), @endpoint, :get, "/", nil).status == 302
     welcome = welcome_path()
     conn = dispatch(build_conn(), @endpoint, :get, welcome, nil)
     assert conn.status == 302
@@ -233,7 +233,7 @@ defmodule DawarichWeb.A10bOwnershipTest do
 
     expected =
       cond do
-        path == "/" -> 200
+        path == "/" -> 302
         String.starts_with?(path, ["/trial", "/welcome"]) -> 302
         true -> 404
       end

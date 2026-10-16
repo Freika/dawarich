@@ -6,11 +6,9 @@
         {text(@locale, "only_a_few_steps_left_until_you_get_control_over")}
       </p>
       <ol class="list-decimal list-inside space-y-2 text-base-content/80">
-        <li :for={
-          key <-
-            ~w(create_your_account configure_your_mobile_app start_tracking_your_location_data_securely ellipsis you_re_beautiful)
-        }>
-          {text(@locale, key)}
+        <li :for={step <- ~w(account mobile_app import)}>
+          <strong>{text(@locale, "steps." <> step <> ".title")}</strong>
+          <p>{text(@locale, "steps." <> step <> ".body")}</p>
         </li>
       </ol>
     </div>

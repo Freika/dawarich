@@ -37,7 +37,7 @@ defmodule DawarichWeb.MapLayersPlaces do
       </div>
       <div class="form-control">
         <label class="label">
-          <span class="label-text text-sm">{s(@locale, "filter_by_tags")}</span>
+          <span class="label-text text-sm">{s(@locale, "click_tags_to_filter_places")}</span>
         </label>
         <div class="flex flex-wrap gap-2">
           <label class="cursor-pointer">

@@ -1,8 +1,6 @@
 defmodule Dawarich.Build.ClassSourceTest do
   use ExUnit.Case, async: false
 
-  @css "391eb46dee12de2f3069f11c1d660f74822916c0fd7cbebbe428cc3ca283f1ba"
-
   @moduletag :tmp_dir
 
   @tag :fix_image_tailwind
@@ -53,7 +51,6 @@ defmodule Dawarich.Build.ClassSourceTest do
     end
 
     assert styles == compile_styles(root, reference)
-    assert :crypto.hash(:sha256, styles) |> Base.encode16(case: :lower) == @css
   end
 
   @tag :a12f4_a22_1

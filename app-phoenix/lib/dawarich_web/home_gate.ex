@@ -15,11 +15,7 @@ defmodule DawarichWeb.HomeGate do
 
     conn.method in ["GET", "HEAD"] and is_nil(conn.assigns.rails_locked) and
       (Dawarich.Standalone.enabled?() or is_nil(user) or AdminGate.supported?(user)) and
-      (Dawarich.Standalone.enabled?() or not is_nil(user) or
-         match?(
-           {:ok, _},
-           DawarichWeb.PublicHomeLive.registration(DawarichWeb.LayoutAssigns.self_hosted?())
-         )) and PageRequest.page_request?(conn) and
+      PageRequest.page_request?(conn) and
       Admission.headers(conn.req_headers) == :ok and
       Enum.all?(query, fn {_key, value} -> is_binary(value) end) and
       length(keys) == length(Enum.uniq(keys)) and

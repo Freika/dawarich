@@ -1,4 +1,4 @@
-import { createCircle } from "../algorithms/geometry.js"
+import { createCircle } from "../algorithms/geometry.js";
 export function visitsToGeoJSON(visits) {
   return {
     type: "FeatureCollection",
@@ -18,7 +18,7 @@ export function visitsToGeoJSON(visits) {
         duration: visit.duration,
       },
     })),
-  }
+  };
 }
 export function placesToGeoJSON(places) {
   return {
@@ -40,14 +40,14 @@ export function placesToGeoJSON(places) {
         color: place.tags?.[0]?.color || "#6366f1",
       },
     })),
-  }
+  };
 }
 export function areasToGeoJSON(areas) {
   return {
     type: "FeatureCollection",
     features: areas.map((area) => {
-      const center = [parseFloat(area.longitude), parseFloat(area.latitude)]
-      const coordinates = createCircle(center, area.radius)
+      const center = [parseFloat(area.longitude), parseFloat(area.latitude)];
+      const coordinates = createCircle(center, area.radius);
 
       return {
         type: "Feature",
@@ -60,8 +60,10 @@ export function areasToGeoJSON(areas) {
           name: area.name,
           color: area.color || "#ef4444",
           radius: area.radius,
+          latitude: center[1],
+          longitude: center[0],
         },
-      }
+      };
     }),
-  }
+  };
 }

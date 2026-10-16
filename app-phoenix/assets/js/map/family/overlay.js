@@ -1,4 +1,5 @@
-import { familyLastSeen } from "./time.js"
+import { createPlaceLabels } from "../layers/place_labels.js";
+import { familyLastSeen } from "./time.js";
 
 const escapeHtml = (value) =>
   String(value ?? "").replace(
@@ -7,7 +8,7 @@ const escapeHtml = (value) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
         c
       ],
-  )
+  );
 
 const colors = [
   "#3b82f6",
@@ -16,8 +17,8 @@ const colors = [
   "#ef4444",
   "#8b5cf6",
   "#ec4899",
-]
-const collection = (features) => ({ type: "FeatureCollection", features })
+];
+const collection = (features) => ({ type: "FeatureCollection", features });
 export function createFamilyOverlay({
   map,
   library,
@@ -31,15 +32,15 @@ export function createFamilyOverlay({
     history = [],
     popup = null,
     selected = null,
-    destroyed = false
+    destroyed = false;
   const source = "family-members",
-    historySource = "family-history"
+    historySource = "family-history";
   const ids = [
     "family-history-line",
     "family-pulse",
     "family-circles",
     "family-labels",
-  ]
+  ];
   const color = (id, index) =>
     colors[
       (colorMode === "index"
@@ -47,12 +48,12 @@ export function createFamilyOverlay({
         : String(id)
             .split("")
             .reduce((n, c) => n + c.charCodeAt(0), 0)) % colors.length
-    ]
-  const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" })
+    ];
+  const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
   const lastSeen = (stamp) => {
-    if (labels) return familyLastSeen({ timestamp: stamp }, labels, now())
-    const seconds = Math.round((Number(stamp) * 1000 - now()) / 1000)
-    if (!Number.isFinite(seconds)) return ""
+    if (labels) return familyLastSeen({ timestamp: stamp }, labels, now());
+    const seconds = Math.round((Number(stamp) * 1000 - now()) / 1000);
+    if (!Number.isFinite(seconds)) return "";
     const [size, unit] =
       Math.abs(seconds) < 60
         ? [1, "second"]
@@ -60,9 +61,9 @@ export function createFamilyOverlay({
           ? [60, "minute"]
           : Math.abs(seconds) < 86400
             ? [3600, "hour"]
-            : [86400, "day"]
-    return relative.format(Math.round(seconds / size), unit)
-  }
+            : [86400, "day"];
+    return relative.format(Math.round(seconds / size), unit);
+  };
   function data() {
     return collection(
       locations.map((row, index) => ({
@@ -75,7 +76,7 @@ export function createFamilyOverlay({
           lastSeen: lastSeen(row.timestamp),
         },
       })),
-    )
+    );
   }
   function lines() {
     return collection(
@@ -99,47 +100,47 @@ export function createFamilyOverlay({
             coordinates: m.points.map((p) => [p[1], p[0]]),
           },
         })),
-    )
+    );
   }
   function close() {
-    popup?.remove()
-    popup = null
-    selected = null
+    popup?.remove();
+    popup = null;
+    selected = null;
   }
   function show() {
-    const row = locations.find((l) => l.user_id === selected)
+    const row = locations.find((l) => l.user_id === selected);
     if (!row) {
-      close()
-      return
+      close();
+      return;
     }
-    popup ??= new library.Popup({ offset: 16, closeButton: false })
+    popup ??= new library.Popup({ offset: 16, closeButton: false });
     popup
       .setLngLat([row.longitude, row.latitude])
       .setHTML(
-        `<div style="max-width:min(320px,80vw);overflow-wrap:anywhere"><strong>${escapeHtml(row.name || row.email)}</strong><div>${escapeHtml(lastSeen(row.timestamp))}</div></div>`,
+        `<div style="max-width:min(320px,80vw);overflow-wrap:anywhere"><strong>${escapeHtml(row.name || row.email)}</strong><div>${escapeHtml(lastSeen(row.timestamp))}</div>${row.address ? `<div>${escapeHtml(row.address)}</div>` : ""}</div>`,
       )
-      .addTo(map)
+      .addTo(map);
   }
   const click = (e) => {
-    const id = e.features?.[0]?.properties?.id
+    const id = e.features?.[0]?.properties?.id;
     if (locations.some((l) => l.user_id === id)) {
-      close()
-      selected = id
-      show()
+      close();
+      selected = id;
+      show();
     }
-  }
+  };
   function paint() {
-    if (destroyed) return
-    map.getSource(source)?.setData(data())
-    map.getSource(historySource)?.setData(lines())
-    if (popup) show()
+    if (destroyed) return;
+    map.getSource(source)?.setData(data());
+    map.getSource(historySource)?.setData(lines());
+    if (popup) show();
   }
   function restore() {
-    if (destroyed) return
+    if (destroyed) return;
     if (!map.getSource(source))
-      map.addSource(source, { type: "geojson", data: data() })
+      map.addSource(source, { type: "geojson", data: data() });
     if (!map.getSource(historySource))
-      map.addSource(historySource, { type: "geojson", data: lines() })
+      map.addSource(historySource, { type: "geojson", data: lines() });
     const configs = [
       {
         id: ids[0],
@@ -190,44 +191,53 @@ export function createFamilyOverlay({
           "text-halo-width": 2,
         },
       },
-    ]
-    for (const layer of configs)
-      if (!map.getLayer(layer.id)) map.addLayer(layer)
+    ];
+    for (const layer of library?.Marker ? configs.slice(0, -1) : configs)
+      if (!map.getLayer(layer.id)) map.addLayer(layer);
   }
-  restore()
-  map.on("style.load", restore)
-  map.on("click", "family-circles", click)
-  const interval = timers.setInterval(paint, 60000)
+  restore();
+  const htmlLabels = library?.Marker
+    ? createPlaceLabels({
+        map,
+        library,
+        layerId: "family-circles",
+        kind: "family",
+      })
+    : null;
+  map.on("style.load", restore);
+  map.on("click", "family-circles", click);
+  const interval = timers.setInterval(paint, 60000);
   return {
     replace(rows, members = []) {
-      if (destroyed) return
+      if (destroyed) return;
       locations = rows.filter(
         (l) =>
           Number.isFinite(l.longitude) &&
           Number.isFinite(l.latitude) &&
           Math.abs(l.longitude) <= 180 &&
           Math.abs(l.latitude) <= 90,
-      )
-      history = members
-      close()
-      paint()
+      );
+      history = members;
+      close();
+      paint();
     },
     clear() {
-      locations = []
-      history = []
-      close()
-      paint()
+      locations = [];
+      history = [];
+      close();
+      paint();
     },
     destroy() {
-      if (destroyed) return
-      this.clear()
-      destroyed = true
-      timers.clearInterval(interval)
-      map.off("style.load", restore)
-      map.off("click", "family-circles", click)
-      for (const id of ids) if (map.getLayer(id)) map.removeLayer(id)
+      if (destroyed) return;
+      this.clear();
+      htmlLabels?.destroy();
+      destroyed = true;
+      timers.clearInterval(interval);
+      map.off("style.load", restore);
+      map.off("click", "family-circles", click);
+      for (const id of ids) if (map.getLayer(id)) map.removeLayer(id);
       for (const id of [source, historySource])
-        if (map.getSource(id)) map.removeSource(id)
+        if (map.getSource(id)) map.removeSource(id);
     },
-  }
+  };
 }

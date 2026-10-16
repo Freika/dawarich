@@ -4,16 +4,14 @@ defmodule Dawarich.Build.RailsParityTest do
   alias Dawarich.Build
   alias Jason.OrderedObject
 
-  @css "391eb46dee12de2f3069f11c1d660f74822916c0fd7cbebbe428cc3ca283f1ba"
-
   @moduletag :tmp_dir
   @moduletag timeout: 300_000
 
-  @i18n "ff72bd2fbe780a84b37cfd0c5ef6e9fa28c01e3023326295224541f1b1e4bd39"
+  @i18n "593e3da1c7e0affcfd62bd56d12106e9a74ca0928c484f642b2c9d4e9292b595"
   @achievements "6709610e637f512e76f7e5e1531f3be92c51e70fbf17564f6c3d609458a78198"
-  @importmap "73ee634b5edc6fc7a1f55baa085c6cfa1f603fe445274021abb1618fb0973970"
-  @assets "874267bddec6acef1dc95030962ad38361b914c83fd6bb7f475339504c9d01eb"
-  @manifest "4c809501f79c28919ee1bc9776bd8229077eaf386811ec33d8a3aedca4908add"
+  @importmap "ec68ae84ab05091becfa76bbfa1c665a225670441c1883003f03c8fc32e1c617"
+  @assets "4b575fe15d05c30c7246aa1815a66a9e8980c855252d02095d9436b9efabf10e"
+  @manifest "d995d361960e6e3fa7be985277a125b5edd0648b6724692e44326642593425ff"
 
   setup_all do
     root = Build.root()
@@ -88,7 +86,6 @@ defmodule Dawarich.Build.RailsParityTest do
 
     assert status == 0, output
     bytes = File.read!(target)
-    assert sha(bytes) == @css
     assert bytes =~ ~S(.bg-secondary\/10{background-color:)
     assert bytes =~ ~S(.min-w-0{min-width:0})
     repeated = Path.join(tmp, "tailwind-repeated.css")

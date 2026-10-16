@@ -6,6 +6,7 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
   import DawarichWeb.ListParts, only: [page_header: 1]
   import DawarichWeb.Paginator, only: [paginator: 1]
   import DawarichWeb.NativeTripCard, only: [trip_card: 1]
+  alias Dawarich.Trips.{IndexQuery, Pages}
 
   @impl true
   def mount(_, _, socket) do
@@ -17,6 +18,10 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
         family_total_pages: 0,
         family_page: 1,
         query: %{},
+        filters: Pages.normalize(%{}),
+        filter_form: to_form(%{}, as: "filters"),
+        filter_options: %{years: [], countries: []},
+        filtered: false,
         settings: nil
       )
 
@@ -32,14 +37,20 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
          page = DawarichWeb.TripsGate.page_number(params["page"]),
          family_page = DawarichWeb.TripsGate.page_number(params["family_page"]),
          {:ok, result} <-
-           Dawarich.Maps.Trip.list(socket.assigns.current_scope, page, family_page) do
+           Dawarich.Maps.Trip.list(socket.assigns.current_scope, page, family_page,
+             filters: params
+           ) do
       {:noreply,
        socket
        |> assign(result)
        |> assign(
          page: page,
          family_page: family_page,
-         query: Map.take(params, ~w(page family_page)),
+         query: query(result.query),
+         filters: result.query,
+         filter_form: to_form(query(result.query), as: "filters"),
+         filter_options: result.options,
+         filtered: IndexQuery.active?(result.query),
          map_error: nil,
          page_title: t(socket.assigns.locale, "trips.index.trips", %{})
        )}
@@ -62,6 +73,41 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
   defp valid_page?(_), do: false
 
   @impl true
+  def handle_event("trips:filter", %{"filters" => filters}, socket) when is_map(filters) do
+    if Enum.all?(filters, fn {key, value} ->
+         key in ~w(q sort year month country) and is_binary(value)
+       end) do
+      with {:ok, _scope} <- Dawarich.Maps.admit(socket.assigns.current_scope) do
+        normalized = Pages.normalize(Map.put(filters, "family_page", socket.assigns.family_page))
+        query = URI.encode_query(query(normalized))
+
+        {:noreply,
+         push_patch(socket, to: "/trips" <> if(query == "", do: "", else: "?" <> query))}
+      else
+        _ -> {:noreply, DawarichWeb.MapLiveAuth.refuse(socket, :unauthorized)}
+      end
+    else
+      {:noreply,
+       put_flash(
+         socket,
+         :error,
+         t(socket.assigns.locale, "controllers.application.admin_action_failed", %{})
+       )}
+    end
+  end
+
+  def handle_event(_, _, socket), do: {:noreply, socket}
+
+  defp query(query) do
+    query
+    |> Enum.reject(fn {key, value} ->
+      value in [nil, ""] or (key in [:page, :family_page] and value == 1) or
+        (key == :sort and value == "newest")
+    end)
+    |> Map.new(fn {key, value} -> {to_string(key), to_string(value)} end)
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <DawarichWeb.NativeMapChrome.header {assigns} />
@@ -75,7 +121,22 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
               class="w-4 h-4"
             /> {t(@locale, "trips.index.new_trip", %{})}</a>
           </.page_header>
-          <%= if @entries == [] do %>
+          <DawarichWeb.TripsNative.Filters.filters
+            locale={@locale}
+            form={@filter_form}
+            options={@filter_options}
+            query={@filters}
+          />
+          <div
+            :if={@entries == [] and @filtered}
+            data-testid="trips-no-matches"
+            class="text-center py-12"
+          >
+            <h3>{t(@locale, "trips.index.no_matching_trips", %{})}</h3>
+            <p>{t(@locale, "trips.index.try_other_filters", %{})}</p>
+            <.link patch="/trips">{t(@locale, "trips.index.show_all_trips", %{})}</.link>
+          </div>
+          <%= if @entries == [] and !@filtered do %>
             <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-300">
               <h3 class="text-xl font-bold mb-3">{t(@locale, "trips.index.no_trips_yet", %{})}</h3>
               <p class="text-base-content/50 mb-6 max-w-sm mx-auto">
@@ -91,7 +152,8 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
                 %{}
               )}</a>
             </div>
-          <% else %>
+          <% end %>
+          <%= if @entries != [] do %>
             <div class="flex justify-center mb-4">
               <.paginator
                 locale={@locale}

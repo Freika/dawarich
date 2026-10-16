@@ -9,3 +9,5 @@
 @import "../../../app/assets/stylesheets/maps_maplibre_timeline_rail.css";
 @import "../../../app/assets/stylesheets/maps_maplibre_place_drawer.css";
 @import "./brand_fonts.css";
+
+@import "./native_shell.css";

@@ -17,10 +17,12 @@ defmodule DawarichWeb.MapLive.Native do
   end
 
   def handle_params(params, _uri, socket) do
+    socket = DawarichWeb.NativeMapChrome.refresh(socket)
+
     opts = [
       now: socket.assigns.now,
       self_hosted: socket.assigns.self_hosted != false,
-      family: false
+      family: socket.assigns.navbar.family.available and socket.assigns.navbar.family.member
     ]
 
     case Dawarich.Maps.page(socket.assigns.current_scope, params, opts) do
@@ -35,13 +37,14 @@ defmodule DawarichWeb.MapLive.Native do
           |> assign(page: page, params: params)
           |> Commands.apply_params(params, page.window)
 
-        config = %{
-          "namespace" => "user:#{socket.assigns.current_user.id}",
-          "revision" => socket.assigns.map_revision,
-          "range" =>
-            socket.assigns.map_range
-            |> Map.new(fn {key, value} -> {Atom.to_string(key), value} end)
-        }
+        config =
+          Map.merge(socket.assigns[:map_config] || %{}, %{
+            "namespace" => "user:#{socket.assigns.current_user.id}",
+            "revision" => socket.assigns.map_revision,
+            "range" =>
+              socket.assigns.map_range
+              |> Map.new(fn {key, value} -> {Atom.to_string(key), value} end)
+          })
 
         config =
           DawarichWeb.MapLive.NativeConfig.build(
@@ -128,12 +131,9 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event("poster:" <> _ = event, payload, socket),
     do: DawarichWeb.NativePosterGallery.handle_event(event, payload, socket)
 
-  def handle_event("map:anomalies", %{"enabled" => value}, socket)
-      when value in ["true", "false"] do
-    config = Map.put(socket.assigns.map_config, "anomaliesEnabled", value == "true")
-
-    {:noreply, socket |> assign(:map_config, config) |> push_event("map:config", config)}
-  end
+  def handle_event(event, payload, socket)
+      when event in ~w(map:visits_filter map:flights map:anomalies),
+      do: DawarichWeb.MapLive.LayerCommands.handle_event(event, payload, socket)
 
   def handle_event("map:select", %{"kind" => "track", "id" => id}, socket),
     do: DawarichWeb.MapLive.TrackCommands.handle_event("track:from_map", %{"id" => id}, socket)

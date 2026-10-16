@@ -1,7 +1,7 @@
 defmodule DawarichWeb.MapLive.NativeConfig do
   @moduledoc false
 
-  def build(settings, _page, config, panel) do
+  def build(settings, page, config, panel) do
     saved = (settings && settings.saved) || %{}
     maps = saved["maps"] || %{}
     layers = saved["enabled_map_layers"] || []
@@ -25,7 +25,11 @@ defmodule DawarichWeb.MapLive.NativeConfig do
       "fogRadius" => saved["fog_of_war_meters"],
       "hexagonsEnabled" => "Hexagons" in layers,
       "scratchEnabled" => "Scratch map" in layers,
-      "anomaliesEnabled" => config["anomaliesEnabled"] == true,
+      "anomaliesPreferred" =>
+        Map.get(config, "anomaliesPreferred", config["anomaliesEnabled"] == true),
+      "anomaliesEnabled" =>
+        "Points" in layers and
+          Map.get(config, "anomaliesPreferred", config["anomaliesEnabled"] == true),
       "pointsEnabled" => "Points" in layers,
       "tracksEnabled" => "Tracks" in layers,
       "heatmapEnabled" => "Heatmap" in layers,
@@ -33,7 +37,10 @@ defmodule DawarichWeb.MapLive.NativeConfig do
       "placesEnabled" => "Places" in layers,
       "visitsEnabled" => panel == "timeline" or "Visits" in layers,
       "areasEnabled" => "Areas" in layers,
-      "familyEnabled" => "Family Members" in layers,
+      "familyEnabled" => Map.get(page || %{}, :family, false) and "Family Members" in layers,
+      "airtrailConfigured" => Map.get(page || %{}, :airtrail, false),
+      "flightsEnabled" =>
+        Map.get(page || %{}, :airtrail, false) and Map.get(config, "flightsPreferred", true),
       "mapOptions" => %{
         "projection" => %{"type" => if(saved["globe_projection"], do: "globe", else: "mercator")}
       },

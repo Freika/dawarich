@@ -172,13 +172,6 @@ defmodule DawarichWeb.Navbar do
       )}</a>
     </li>
     <li>
-      <a class={link_class(@mobile, @request_path, "/stats")} href={@base_url <> "/stats"}>{t(
-        @locale,
-        "shared.navbar.stats",
-        %{}
-      )}</a>
-    </li>
-    <li>
       <a class={link_class(@mobile, @request_path, "/insights")} href={@base_url <> "/insights"}>{t(
         @locale,
         "shared.navbar.insights_sup_sup_html",
