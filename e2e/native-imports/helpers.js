@@ -31,42 +31,8 @@ function observePage(page) {
 
 async function readyPage(page) {
   await page.waitForLoadState("load")
-  await page.waitForFunction(
-    async () => {
-      const main = document.querySelector("[data-phx-main]")
-      const root = main && window.liveSocket?.getRootById(main.id)
-      const hosts = main
-        ? [...document.querySelectorAll('[phx-hook="RailsStimulus"]')]
-        : [document.querySelector("#achievement-unlocks")].filter(Boolean)
-      for (const host of hosts) {
-        const hook = root?.getHook(host)
-        const application = main ? await hook?.bridge?.ready : window.Stimulus
-        if (!application) return false
-        for (const element of [
-          host,
-          ...host.querySelectorAll("[data-controller]"),
-        ]) {
-          for (const name of (element.getAttribute("data-controller") || "")
-            .split(/\s+/)
-            .filter(Boolean)) {
-            const controller = application.getControllerForElementAndIdentifier(
-              element,
-              name,
-            )
-            if (!controller) return false
-            if (
-              name === "achievement-unlocks" &&
-              (controller.loading || controller.stopped)
-            )
-              return false
-          }
-        }
-      }
-      return hosts.length > 0
-    },
-    null,
-    { timeout: 15000 },
-  )
+  await expect(page.locator("[data-phx-main].phx-connected")).toBeVisible()
+  await page.waitForFunction(() => window.liveSocket?.isConnected())
   await expect
     .poll(() => observePage(page).assets.size, {
       timeout: 15000,
@@ -209,8 +175,15 @@ export async function settings(page, locale, zone) {
   await expect(page.locator("[data-phx-main].phx-connected")).toBeVisible()
   await page.locator("#timezone").selectOption(zone)
   await page.locator(`label:has(#locale_${locale})`).click()
+  const changesLocale =
+    (await page.locator("html").getAttribute("lang")) !== locale
+  const navigation = changesLocale
+    ? page.waitForNavigation({ waitUntil: "load" })
+    : null
   await page.locator('#general-settings button[type="submit"]').click()
+  if (navigation) await navigation
   await expect(page.locator("html")).toHaveAttribute("lang", locale)
+  await readyPage(page)
   await expect(
     page.locator("#flash-messages [role=alert]").first(),
   ).toBeVisible()
@@ -224,87 +197,70 @@ export function row(page, name) {
     .filter({ has: page.getByRole("link", { name, exact: true }) })
 }
 
-export async function createPlainImport(page, input) {
+async function uploadForm(page) {
   await nativePage(page, "/imports/new")
-  const csrf = await page
-    .locator('meta[name="csrf-token"]')
-    .getAttribute("content")
-  const upload = await page.request.post(
-    "/rails/active_storage/direct_uploads",
+  await page.waitForFunction(() => {
+    const form = document.querySelector("#phx-import-upload")
+    const main = form?.closest("[data-phx-main]")
+    return !!(main && window.liveSocket?.getRootById(main.id)?.getHook(form))
+  })
+  return page.locator("#phx-import-upload")
+}
+
+async function finishUpload(page, form, input, evidence) {
+  const progress = form.getByRole("progressbar")
+  await expect(progress).toBeVisible()
+  await expect(progress).toHaveAttribute("value", "100", { timeout: 30000 })
+  await expect(
+    form.locator("[data-entry-ref]").getByText("100%", { exact: true }),
+  ).toBeVisible()
+  await expect(form.getByText(input.name, { exact: true })).toBeVisible()
+  const submit = form.getByTestId("import-submit")
+  await expect(submit).toBeEnabled()
+  if (evidence) await evidence.screenshot(page, "native-upload-100-percent")
+  await submit.click()
+  await expect(page).toHaveURL(/\/imports$/)
+  await expect(page.locator("[data-phx-main].phx-connected")).toBeVisible()
+}
+
+export async function createPlainImport(page, input, evidence) {
+  const form = await uploadForm(page)
+  await page.evaluate(
+    ({ name, mimeType, bytes, checksum }) => {
+      const form = document.querySelector("#phx-import-upload")
+      const main = form.closest("[data-phx-main]")
+      const hook = window.liveSocket.getRootById(main.id).getHook(form)
+      const file = new File(
+        [Uint8Array.from(atob(bytes), (c) => c.charCodeAt(0))],
+        name,
+        { type: mimeType },
+      )
+      file.meta = () => ({
+        checksum,
+        original_filename: name,
+        original_size: file.size,
+        client_wrapped: false,
+      })
+      hook.upload("files", [file])
+    },
     {
-      headers: { "X-CSRF-Token": csrf },
-      data: {
-        blob: {
-          filename: input.name,
-          content_type: input.mimeType,
-          byte_size: input.buffer.length,
-          checksum: createHash("md5").update(input.buffer).digest("base64"),
-        },
-      },
+      name: input.name,
+      mimeType: input.mimeType,
+      bytes: input.buffer.toString("base64"),
+      checksum: createHash("md5").update(input.buffer).digest("base64"),
     },
   )
-  expect(
-    upload.ok(),
-    `direct storage registration returned ${upload.status()}`,
-  ).toBeTruthy()
-  const blob = await upload.json()
-  const stored = await page.request.put(blob.direct_upload.url, {
-    headers: blob.direct_upload.headers,
-    data: input.buffer,
-  })
-  expect(stored.ok()).toBeTruthy()
-  const created = await page.request.post("/imports", {
-    form: { authenticity_token: csrf, "import[files][]": blob.signed_id },
-    maxRedirects: 0,
-  })
-  expect(created.status()).toBe(303)
-  expect(created.headers()["x-dawarich-handler"]).toBe("phoenix-imports")
-  await nativePage(page, "/imports")
+  await finishUpload(page, form, input, evidence)
 }
 
 export async function createClientZipImport(page, input, evidence) {
-  await nativePage(page, "/imports/new")
-  const file = page.getByTestId("import-file-input")
+  const form = await uploadForm(page)
+  const file = form.getByTestId("import-file-input")
   await expect(file).toBeVisible()
-  await page.waitForFunction(async () => {
-    const form = document
-      .querySelector('[data-testid="import-file-input"]')
-      ?.closest("form")
-    const main = form?.closest("[data-phx-main]")
-    const hook = main && window.liveSocket?.getRootById(main.id)?.getHook(form)
-    const application = await hook?.bridge?.ready
-    return !!application?.getControllerForElementAndIdentifier(form, "upload")
-  })
   await file.setInputFiles({
     name: input.name,
     mimeType: input.mimeType,
     buffer: input.buffer,
   })
-  const form = page.locator("form").filter({ has: file })
-  await expect(
-    form.locator('progress[data-upload-target="progress"]'),
-  ).toBeVisible()
-  await expect(form.getByText("100%", { exact: true })).toBeVisible({
-    timeout: 30000,
-  })
-  const descriptor = await form
-    .locator('input[type="hidden"][name="import[files][]"]')
-    .inputValue()
-  expect(JSON.parse(descriptor)).toMatchObject({
-    original_filename: input.name,
-    client_wrapped: true,
-  })
-  if (evidence)
-    await evidence.screenshot(page, "native-client-zip-upload-100-percent")
-  const createdResponse = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname === "/imports" &&
-      response.request().method() === "POST",
-  )
-  await page.getByTestId("import-submit").click()
-  const created = await createdResponse
-  expect(created.status()).toBe(303)
-  expect(created.headers()["x-dawarich-handler"]).toBe("phoenix-imports")
-  await expect(page).toHaveURL(/\/imports$/)
-  await expect(page.locator("[data-phx-main].phx-connected")).toBeVisible()
+  await finishUpload(page, form, input, evidence)
 }
