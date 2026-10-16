@@ -42,7 +42,6 @@ defmodule Dawarich.Release.Cloud do
         {:ok, :ok} ->
           cond do
             result.pending_data != [] -> {:error, {:pending_data, result.pending_data}}
-            not CloudJobs.ready?(repo) -> {:error, :pending_release_jobs}
             true -> :ok
           end
 
@@ -87,7 +86,7 @@ defmodule Dawarich.Release.Cloud do
       CloudPreflight.schemas_present?(repo) and private_current?(repo) and
       ReleaseMigrator.status(repo, opts) == {:ok, :current} and data_current?(repo, opts) and
       repo.query!("SELECT 1 FROM phoenix.registration_setting WHERE id=true", [], log: false).num_rows ==
-        1 and CloudJobs.ready?(repo)
+        1 and not CloudJobs.failed?(repo)
   rescue
     _ -> false
   catch

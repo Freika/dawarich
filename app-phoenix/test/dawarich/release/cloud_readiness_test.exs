@@ -46,7 +46,7 @@ defmodule Dawarich.Release.CloudReadinessTest do
     :ok
   end
 
-  test "L1 Cloud readiness observes all ledgers and pending operations without mutation" do
+  test "L1 Cloud readiness observes all ledgers without waiting for background release jobs" do
     assert Cloud.ready?(ScratchRepo, opts())
     reader = "l1_cloud_reader_" <> Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
 
@@ -111,7 +111,7 @@ defmodule Dawarich.Release.CloudReadinessTest do
     )
 
     before = snapshot()
-    refute read_only_ready?()
+    assert read_only_ready?()
     assert snapshot() == before
 
     ScratchRepo.query!(
@@ -129,12 +129,12 @@ defmodule Dawarich.Release.CloudReadinessTest do
     )
 
     before = snapshot()
-    refute read_only_ready?()
+    assert read_only_ready?()
     assert snapshot() == before
-    assert {:error, :pending_release_jobs} = Cloud.migrate(ScratchRepo, opts())
-    assert {:error, :pending_release_jobs} = Cloud.migrate(ScratchRepo, opts())
+    assert :ok = Cloud.migrate(ScratchRepo, opts())
+    assert :ok = Cloud.migrate(ScratchRepo, opts())
     assert ScratchRepo.query!("SELECT count(*) FROM oban.oban_jobs", [], log: false).rows == [[1]]
-    refute Cloud.ready?(ScratchRepo, opts())
+    assert Cloud.ready?(ScratchRepo, opts())
     [[id, args]] = ScratchRepo.query!("SELECT id,args FROM oban.oban_jobs", [], log: false).rows
 
     ScratchRepo.query!(

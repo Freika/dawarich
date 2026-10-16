@@ -57,7 +57,7 @@ defmodule Dawarich.Release.CloudReviewTest do
     end
   end
 
-  test "achievement publication is not completed data work" do
+  test "Cloud migrate and seed admit pending heavy jobs while completion tracks every achievement child" do
     opts = [
       env: %{
         "SELF_HOSTED" => "false",
@@ -97,19 +97,33 @@ defmodule Dawarich.Release.CloudReviewTest do
                )
              end)
 
-    assert :ok =
-             Lease.with_lease(ScratchRepo, [], fn lease ->
-               CloudJobs.reconcile(ScratchRepo, lease)
+    assert {:ok, :ok} =
+             ScratchRepo.transaction(fn ->
+               Jobs.insert!(
+                 ScratchRepo,
+                 "20261013120000",
+                 {"DataMigrations::ReassignBoundaryPointsJob", [], 0},
+                 :record
+               )
              end)
 
-    assert %{success: 1, failure: 0} =
+    assert :ok = Cloud.migrate(ScratchRepo, opts)
+    pending = rows("SELECT id,args,meta FROM oban.oban_jobs ORDER BY id")
+    assert length(pending) == 2
+    refute CloudJobs.ready?(ScratchRepo)
+    assert Cloud.ready?(ScratchRepo, opts)
+    assert :ok = Cloud.seed(ScratchRepo, opts)
+    assert :ok = Cloud.migrate(ScratchRepo, opts)
+    assert rows("SELECT id,args,meta FROM oban.oban_jobs ORDER BY id") == pending
+
+    assert %{success: 2, failure: 0} =
              Oban.drain_queue(oban, queue: :maintenance, with_scheduled: true)
 
     assert rows(
              "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Achievements.BulkCheckWorker' AND state<>'completed'"
            ) == [[1]]
 
-    assert {CloudJobs.ready?(ScratchRepo), Cloud.ready?(ScratchRepo, opts)} == {false, false}
+    assert {CloudJobs.ready?(ScratchRepo), Cloud.ready?(ScratchRepo, opts)} == {false, true}
 
     assert %{success: 1, failure: 0} =
              Oban.drain_queue(oban, queue: :projections, with_scheduled: true, with_limit: 1)
@@ -119,7 +133,7 @@ defmodule Dawarich.Release.CloudReviewTest do
            ) == [[1]]
 
     before = rows("SELECT row_to_json(t) FROM phoenix.processed_commands t ORDER BY event_id")
-    assert {CloudJobs.ready?(ScratchRepo), Cloud.ready?(ScratchRepo, opts)} == {false, false}
+    assert {CloudJobs.ready?(ScratchRepo), Cloud.ready?(ScratchRepo, opts)} == {false, true}
 
     assert rows("SELECT row_to_json(t) FROM phoenix.processed_commands t ORDER BY event_id") ==
              before
