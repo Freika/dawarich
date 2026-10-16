@@ -103,3 +103,37 @@ test("native merged point hover advertises zoom and editor hover advertises drag
     f.owner.destroy()
   }
 })
+
+test("native editing refuses a merged tile even when it carries one point id", async () => {
+  const f = setup(16)
+  f.map.getCanvasContainer = () => ({ style: {} })
+  f.map.queryRenderedFeatures = () => [
+    {
+      geometry: { type: "Point", coordinates: [13, 52] },
+      properties: { id: 7, count: 2, longitude: 13, latitude: 52 },
+    },
+  ]
+  try {
+    await f.owner.mount()
+    await f.owner.update({ ...f.owner.config, editEnabled: true })
+    f.map.emit("mousedown", {
+      point: { x: 0, y: 0 },
+      lngLat: { lng: 13, lat: 52 },
+      preventDefault() {},
+    })
+    f.map.emit("mousemove", {
+      point: { x: 8, y: 8 },
+      lngLat: { lng: 14, lat: 53 },
+    })
+    await new Promise((resolve) => setImmediate(resolve))
+    f.map.emit("mouseup", { lngLat: { lng: 14, lat: 53 } })
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(
+      f.pushed.some(({ event }) => event === "point:move"),
+      false,
+    )
+    assert.equal(Boolean(f.owner.editor.data), false)
+  } finally {
+    f.owner.destroy()
+  }
+})

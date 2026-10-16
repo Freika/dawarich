@@ -78,6 +78,7 @@ export function createHostEditing({
     getEditor: () => editor,
     isSinglePoint: (properties) =>
       Number.isInteger(Number(properties.id)) &&
+      Number(properties.count ?? 1) === 1 &&
       Number(properties.point_count ?? 1) === 1,
   })
   gesture.attach()
