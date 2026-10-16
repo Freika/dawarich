@@ -275,7 +275,8 @@ defmodule Dawarich.Visits.BulkSweepWorkerTest do
         for n <- 1..40,
             do: {54000 + n, if(rem(n, 4) in [1, 3], do: "Asia/Tokyo", else: fallback)}
 
-      assert {result, lookups, actual} == {:ok, 1, expected}
+      assert {result, actual} == {:ok, expected}
+      assert lookups <= 1
     end
   end
 

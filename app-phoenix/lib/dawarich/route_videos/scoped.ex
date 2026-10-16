@@ -103,10 +103,9 @@ defmodule Dawarich.RouteVideos.Scoped do
   defp known_zone(repo, settings) do
     name = UserTimeZone.zone(settings, System.get_env()) |> TimeZoneName.to_iana()
 
-    case repo.query!("SELECT name FROM pg_timezone_names WHERE name=$1", [name], log: false).rows do
-      [[^name]] -> {:ok, name}
-      [] -> {:error, :invalid_zone}
-    end
+    if Dawarich.TimeZoneNames.member?(repo, name),
+      do: {:ok, name},
+      else: {:error, :invalid_zone}
   end
 
   defp admitted(scope, opts, effect), do: Maps.with_actor(scope, effect, opts)

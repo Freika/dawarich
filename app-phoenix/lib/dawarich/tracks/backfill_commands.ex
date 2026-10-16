@@ -101,14 +101,7 @@ defmodule Dawarich.Tracks.BackfillCommands do
     fallback = System.get_env("TIME_ZONE", "Europe/Berlin") |> TimeZoneName.to_iana()
     name = if is_binary(name) and name != "", do: TimeZoneName.to_iana(name), else: fallback
 
-    [[zone]] =
-      repo.query!(
-        "SELECT name FROM pg_timezone_names WHERE name = ANY($1) ORDER BY array_position($1, name) LIMIT 1",
-        [[name, fallback, "UTC"]],
-        log: false
-      ).rows
-
-    zone
+    Dawarich.TimeZoneNames.first!(repo, [name, fallback, "UTC"])
   end
 
   defp transaction(repo, kind, fun) do

@@ -99,13 +99,7 @@ defmodule Dawarich.Visits.BulkSweep do
 
     fallback = TimeZoneName.to_iana(env["TIME_ZONE"] || "Europe/Berlin")
 
-    valid =
-      repo.query!(
-        "SELECT name FROM pg_timezone_names WHERE name = ANY($1::text[])",
-        [Enum.uniq([fallback | names])],
-        log: false
-      ).rows
-      |> MapSet.new(&hd/1)
+    valid = MapSet.new(Enum.filter([fallback | names], &Dawarich.TimeZoneNames.member?(repo, &1)))
 
     fallback = if MapSet.member?(valid, fallback), do: fallback, else: "UTC"
     Map.new(names, &{&1, if(MapSet.member?(valid, &1), do: &1, else: fallback)})

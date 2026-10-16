@@ -100,9 +100,7 @@ defmodule Dawarich.Achievements.PublicCard do
     raw = settings["timezone"] || System.get_env("TIME_ZONE", "Europe/Berlin")
 
     is_binary(raw) and
-      query(repo, "SELECT EXISTS(SELECT 1 FROM pg_timezone_names WHERE name=$1)", [
-        Dawarich.TimeZoneName.to_iana(raw)
-      ]) == [[true]]
+      Dawarich.TimeZoneNames.member?(repo, Dawarich.TimeZoneName.to_iana(raw))
   end
 
   def supported_settings?(_, _), do: false

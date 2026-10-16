@@ -77,14 +77,8 @@ defmodule Dawarich.Digests.Context do
   end
 
   defp resolve(repo, raw) when is_binary(raw) do
-    case repo.query!(
-           "SELECT name FROM pg_timezone_names WHERE name = $1",
-           [TimeZoneName.to_iana(raw)],
-           log: false
-         ).rows do
-      [[name] | _] -> name
-      [] -> nil
-    end
+    name = TimeZoneName.to_iana(raw)
+    if Dawarich.TimeZoneNames.member?(repo, name), do: name
   end
 
   defp resolve(_repo, _raw), do: nil
