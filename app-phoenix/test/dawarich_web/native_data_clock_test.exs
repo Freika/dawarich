@@ -71,6 +71,7 @@ defmodule DawarichWeb.NativeDataClockTest do
   end
 
   defp grant(view, user, path) do
+    render_async(view)
     now = DateTime.utc_now() |> DateTime.to_naive()
 
     Repo.insert_all("family_memberships", [
@@ -78,6 +79,7 @@ defmodule DawarichWeb.NativeDataClockTest do
     ])
 
     render_patch(view, path)
+    render_async(view)
   end
 
   defp reload(view, module, params) do
