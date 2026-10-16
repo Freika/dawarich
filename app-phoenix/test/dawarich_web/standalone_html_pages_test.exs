@@ -1,6 +1,7 @@
 defmodule DawarichWeb.StandaloneHtmlPagesTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
   import Plug.Conn
   alias Dawarich.Test.{ApiGolden, RailsUser}
   @endpoint DawarichWeb.Endpoint
@@ -298,8 +299,31 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
     conn = page(fixture["user_id"], "/s/" <> id)
     assert conn.status == 200
 
-    assert String.contains?(conn.resp_body, "/photos/synthetic-photo-101/thumbnail?source=immich") ==
-             true
+    {:ok, view, _html} =
+      live(RailsUser.connecting_as(conn, fixture["user_id"]))
+
+    assert has_element?(view, "details[data-public-day='2026-03-02']")
+    refute has_element?(view, "#native-public-resource img")
+    render_hook(view, "public:gallery", %{"day" => "2026-03-02", "open" => true})
+
+    assert has_element?(
+             view,
+             "details[data-public-day='2026-03-02'] img[src$='/photos/synthetic-photo-101/thumbnail?source=immich']"
+           )
+
+    render_hook(view, "public:gallery", %{"day" => "2026-03-01", "open" => true})
+
+    assert length(
+             view
+             |> element("#native-public-resource")
+             |> render()
+             |> LazyHTML.from_fragment()
+             |> LazyHTML.query("img")
+             |> LazyHTML.attribute("src")
+           ) == 101
+
+    refute has_element?(view, "img[src*='synthetic-private-photo']")
+    refute has_element?(view, "img[src*='synthetic-unmappable-photo']")
 
     assert {:ok, api_photos} = Dawarich.SharedApi.Photos.response(link, :photos)
     assert length(api_photos) == 100
