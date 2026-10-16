@@ -52,6 +52,7 @@ test("native retry remains inside map hook ownership during shell patches", asyn
   try {
     f.map.emit("error", { sourceId: "points-mvt-source", error: new Error("tile unavailable") })
     f.root.replaceChildren()
+    await new Promise(setImmediate)
     const alert = f.element.children.find(node => node.dataset.mapRetry === "point_tiles_failed")
     assert.ok(alert)
     let removed = false

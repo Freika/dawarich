@@ -68,3 +68,28 @@ screenshot. The native CLI receipt exposes only readiness booleans alongside its
 existing protected artifact receipt. Rails and non-map capture paths keep their
 existing behavior. Repository E2E counterparts are the individually named
 `tile-only` cases, the native map-toast backport and `native/scenario-capture`.
+
+## Post-merge deterministic regressions
+
+The move completion path has one callback: remember the canonical track revision,
+notify the moved-point consumer (including country membership), then clear the
+previous error. Both reconciliation and moved-point effects have client mutation
+witnesses in `test/client/map_edit_completion_test.mjs`. The redundant shorthand
+callback introduced in `ac2bc042a` is removed; the composed handler already called
+both effects.
+
+Rails 1.16.0 owner and shared trip galleries retain every photo in provider order
+within each date, with privacy filtering on shared galleries. Their gallery is
+separate from the shared map API's 100-photo cap. The standalone review witness
+now connects as its owner and expands each day before checking thumbnails,
+including photo 101. Initial HTTP HTML intentionally has no gallery images.
+
+The eager baseline includes exactly 389 emitted bytes for the `PublicGallery`
+toggle hook introduced in `bb06fcbc1`; the existing 1 KiB slack is unchanged.
+The map closure loads retry UI only upon failure, suppresses UI creation if the
+owner is destroyed during loading, and keeps point/track/country recovery routes.
+This removes 881 raw bytes and 329 gzip bytes from the post-callback-fix closure.
+The remaining source-replacement, canonical-edit reconciliation and country
+receipt behavior needs a map raw allowance of 131,500 bytes (previously 130,000).
+Measured map startup is 131,358 raw / 45,681 gzip bytes. All gzip caps and all other
+closure caps remain unchanged; the build test also refuses eager retry UI.
