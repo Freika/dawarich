@@ -125,6 +125,25 @@ defmodule DawarichWeb.ImportsDownloadTest do
     assert conn.resp_body == zip
   end
 
+  test "pending download retains native navigation without retired browser hooks", c do
+    {:ok, {_, zip}} = :zip.create(~c"pending.zip", [{~c"pending.gpx", "<gpx/>"}], [:memory])
+    id = import!(c, "pending.gpx.zip", zip, "pending.gpx")
+    conn = get(RailsUser.signed_in(c.user.id), "/imports/#{id}/download")
+
+    assert conn.status == 202
+    assert Plug.Conn.get_resp_header(conn, "refresh") == ["3"]
+    document = LazyHTML.from_document(conn.resp_body)
+    assert LazyHTML.query(document, "h1") |> LazyHTML.text() =~ "Preparing your download"
+
+    assert LazyHTML.query(document, "a[href='/imports/#{id}/download?original=1']")
+           |> LazyHTML.text() =~ "original"
+
+    assert LazyHTML.query(document, "a[href='/imports']") |> Enum.count() >= 1
+
+    assert LazyHTML.query(document, "[phx-hook=RailsStimulus], [data-controller], [data-action]")
+           |> Enum.empty?()
+  end
+
   @tag :g44_imports_zip
   test "standalone preparing page archive link returns the original zip through the browser envelope",
        c do

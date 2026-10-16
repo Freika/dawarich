@@ -79,6 +79,7 @@ defmodule DawarichWeb.ImportsDownload do
     assigns =
       Map.merge(conn.assigns, %{
         __changed__: nil,
+        native: true,
         flash: %{},
         page_title: nil,
         inner_content: Phoenix.HTML.raw(body),
