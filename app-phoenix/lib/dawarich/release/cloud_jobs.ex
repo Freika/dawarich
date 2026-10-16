@@ -13,6 +13,14 @@ defmodule Dawarich.Release.CloudJobs do
     end)
   end
 
+  def failed?(repo) do
+    repo.query!(
+      "SELECT 1 FROM phoenix.release_operations WHERE status='failed' LIMIT 1",
+      [],
+      log: false
+    ).num_rows != 0
+  end
+
   def ready?(repo) do
     operations_complete?(repo) and Enum.all?(records(repo), &record_complete?(repo, &1)) and
       repo.query!(
