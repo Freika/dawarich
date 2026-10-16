@@ -40,7 +40,7 @@ defmodule Dawarich.A12f3bE05ATest do
     assert at == DateTime.to_naive(@now)
     assert CheckWorker.perform(%Oban.Job{args: child}) == :ok
 
-    assert [[3]] =
+    assert [[5]] =
              rows(
                "SELECT (state->>'calculation_version')::integer FROM achievement_progresses WHERE user_id=701 AND achievement_key='exploration'"
              )

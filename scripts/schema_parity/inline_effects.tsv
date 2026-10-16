@@ -12,6 +12,7 @@ app/models/service_setting.rb	1.13.1
 app/models/service_setting.rb	1.15.0
 app/models/service_settings/geocoding_schema.rb	1.13.1
 app/models/user_achievement.rb	1.15.2
+app/services/achievements/load_disputed_areas.rb	1.16.0
 app/services/achievements/load_regions.rb	1.15.2
 app/services/achievements/migrate_exploration_state.rb	1.15.2
 app/services/geocoding/config.rb	1.15.0
@@ -31,4 +32,6 @@ config/initializers/03_dawarich_settings.rb	1.13.1
 config/initializers/oj.rb	1.13.1
 config/initializers/oj.rb	1.15.0
 config/initializers/oj.rb	1.15.2
+db/migrate/20260714090000_drop_legacy_lat_lon_from_points.rb	1.10.1
+db/migrate/20261013120000_reload_bundled_country_boundaries.rb	1.15.4
 lib/assets/admin1_world.geojson	1.15.2

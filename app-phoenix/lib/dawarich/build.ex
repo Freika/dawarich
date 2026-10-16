@@ -17,6 +17,12 @@ defmodule Dawarich.Build do
            "priv/shared_link_wordlist.txt"},
           {"lib/assets/countries.geojson.gz", "countries.geojson.gz",
            "priv/countries.geojson.gz"},
+          {"lib/assets/disputed_areas.geojson", "disputed_areas.geojson",
+           "priv/disputed_areas.geojson"},
+          {"lib/assets/COUNTRIES_LICENSE.md", "COUNTRIES_LICENSE.md",
+           "priv/COUNTRIES_LICENSE.md"},
+          {"lib/assets/DISPUTED_AREAS_LICENSE.md", "DISPUTED_AREAS_LICENSE.md",
+           "priv/DISPUTED_AREAS_LICENSE.md"},
           {"lib/assets/admin1_world.geojson", "admin1_world.geojson", "priv/admin1_world.geojson"}
         ] do
       input = Path.join(root, source)
@@ -43,6 +49,7 @@ defmodule Dawarich.Build do
         Path.join(root, "config/locales/**/*.yml"),
         Path.join(root, "config/achievements.yml"),
         Path.join(root, "config/achievements/*.yml"),
+        Path.join(__DIR__, "achievements/registry.ex"),
         Path.join(__DIR__, "build/**/*.ex")
       ],
       &Path.wildcard/1

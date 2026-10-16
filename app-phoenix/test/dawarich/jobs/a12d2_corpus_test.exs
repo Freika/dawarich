@@ -251,7 +251,10 @@ defmodule Dawarich.Jobs.A12d2CorpusTest do
     seed_point(48305, 48104, DateTime.to_unix(now) - 3600, true)
     seed_point(48306, 48105, DateTime.to_unix(now) - 3600, false, nil)
 
-    for {id, version} <- [{48101, 3}, {48103, 0}],
+    for {id, version} <- [
+          {48101, Dawarich.Achievements.Checker.calculation_version()},
+          {48103, 0}
+        ],
         do:
           rows(
             "INSERT INTO achievement_progresses(user_id,achievement_key,state,created_at,updated_at) VALUES($1,'exploration',$2,now(),now())",
@@ -1292,7 +1295,7 @@ defmodule Dawarich.Jobs.A12d2CorpusTest do
   @tag :rails_parity
   @tag :a12d2_reverse_handoff
   test "publishes actual reverse rows for the Rails acceptance handoff" do
-    assert rows("SELECT max(version::bigint) FROM schema_migrations") == [[20_261_006_120_100]]
+    assert rows("SELECT max(version::bigint) FROM schema_migrations") == [[20_261_014_120_100]]
     schema_hash = :crypto.hash(:sha, File.read!("../db/schema.rb")) |> Base.encode16(case: :lower)
 
     for {key, value} <- [{"environment", "test"}, {"schema_sha1", schema_hash}] do
