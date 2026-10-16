@@ -145,6 +145,10 @@ export function createDensityLayers({
 
   return {
     update,
+    retry(code) {
+      if (!scratch || destroyed) return
+      return code === "scratch_tiles_failed" ? scratch.refresh() : scratch.update()
+    },
     destroy() {
       if (destroyed) return
       destroyed = true

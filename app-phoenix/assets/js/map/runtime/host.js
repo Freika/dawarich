@@ -22,6 +22,7 @@ import {
 import { waitForStyle } from "./style_ready.js";
 import { createLayerPreferences } from "./layer_preferences.js";
 import { installHostSource } from "./studio_source.js";
+import { installMapRetry } from "./retry.js";
 import { createViewportFit } from "./viewport_fit.js";
 export { createMapRuntime };
 export function mountHost({
@@ -33,7 +34,8 @@ export function mountHost({
   attach,
   refresh,
 }) {
-  const fail = (code) => pushEvent("map:failed", { code });
+  let retry;
+  const fail = (code) => { retry?.fail(code); pushEvent("map:failed", { code }); };
   const requests = createRangeRequests({ pushEvent });
   const freshness = createTileFreshness();
   const fit = createViewportFit(reader, element);
@@ -241,7 +243,7 @@ export function mountHost({
       }),
     events: {
       refreshed: (receipt) => pushEvent("map:ready", receipt),
-      error: (receipt) => pushEvent("map:failed", receipt),
+      error: (receipt) => fail(receipt.code),
     },
   });
   Object.defineProperties(owner, {
@@ -289,5 +291,6 @@ export function mountHost({
     requests,
     onDestroy: preferences.destroy,
   });
+  retry = installMapRetry({ owner, root, layers: () => layers, density: () => density });
   return owner;
 }
