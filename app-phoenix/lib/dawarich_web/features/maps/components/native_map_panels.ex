@@ -56,6 +56,7 @@ defmodule DawarichWeb.NativeMapPanels do
         :for={{panel, button} <- @panels}
         type="button"
         class="btn btn-sm h-auto whitespace-normal"
+        style="min-height: 2.5rem"
         data-testid={"map-button-#{button}"}
         phx-click="map:panel"
         phx-value-panel={panel}

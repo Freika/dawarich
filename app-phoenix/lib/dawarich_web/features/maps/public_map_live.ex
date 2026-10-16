@@ -11,6 +11,7 @@ defmodule DawarichWeb.PublicMapLive do
       assign(socket,
         public_map_ready: false,
         public_selected_day: nil,
+        public_gallery_days: MapSet.new(),
         public_unlock_token: session["public_unlock_token"]
       )
 
@@ -51,6 +52,19 @@ defmodule DawarichWeb.PublicMapLive do
       socket = assign(socket, public_cursor: resource.next_cursor, public_selected_day: nil)
       {_, socket} = DawarichWeb.PublicMapAuth.authorize(socket)
       {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("public:gallery", %{"day" => day, "open" => open}, socket)
+      when is_binary(day) and is_boolean(open) do
+    resource = socket.assigns.public_presentation && socket.assigns.public_presentation.resource
+
+    if resource && Enum.any?(resource.days, &(to_string(&1.date) == day)) do
+      days = socket.assigns.public_gallery_days
+      days = if open, do: MapSet.put(days, day), else: MapSet.delete(days, day)
+      {:noreply, assign(socket, :public_gallery_days, days)}
     else
       {:noreply, socket}
     end
@@ -114,6 +128,7 @@ defmodule DawarichWeb.PublicMapLive do
         <DawarichWeb.NativePublicResource.resource
           presentation={@public_presentation}
           selected_day={@public_selected_day}
+          gallery_days={@public_gallery_days}
           locale={@locale || "en"}
         />
         <DawarichWeb.NativeMapReplay.panel

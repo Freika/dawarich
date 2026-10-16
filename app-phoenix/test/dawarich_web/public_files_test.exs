@@ -223,4 +223,46 @@ defmodule DawarichWeb.PublicFilesTest do
       assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
     end
   end
+
+  test "native country archive serves exact ranges and refuses invalid ranges and file boundaries",
+       %{root: root} do
+    previous = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    file = Path.join(root, "maps/countries-v3.pmtiles")
+    File.mkdir_p!(Path.dirname(file))
+    File.write!(file, "PMTiles-native-range-fixture")
+
+    request = fn target, range, host ->
+      Plug.Test.conn(:get, target)
+      |> then(&%{&1 | req_headers: [{"host", host}]})
+      |> Plug.Conn.put_req_header("range", range)
+      |> PublicFiles.call(root: root, env: env("plain"))
+    end
+
+    conn = request.("/maps/countries-v3.pmtiles?_=1", "bytes=0-6", "dawarich.example")
+    assert conn.status == 206
+    assert conn.resp_body == "PMTiles"
+    assert Plug.Conn.get_resp_header(conn, "content-range") == ["bytes 0-6/28"]
+    assert Plug.Conn.get_resp_header(conn, "accept-ranges") == ["bytes"]
+
+    assert request.("/maps/countries-v3.pmtiles", "bytes=8-", "dawarich.example").resp_body ==
+             "native-range-fixture"
+
+    for range <- ["bytes=999-1000", "bytes=9-1", "bytes=0-1,3-4", "bytes=oops"] do
+      assert request.("/maps/countries-v3.pmtiles", range, "dawarich.example").status == 416
+    end
+
+    refute request.("/maps/countries-v3.pmtiles", "bytes=0-6", "foreign.example").halted
+    refute request.("/maps/../countries-v3.pmtiles", "bytes=0-6", "dawarich.example").halted
+    File.rm!(file)
+    File.ln_s!(Path.join(root, "robots.txt"), file)
+    refute request.("/maps/countries-v3.pmtiles", "bytes=0-6", "dawarich.example").halted
+  end
 end

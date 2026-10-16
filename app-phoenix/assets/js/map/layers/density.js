@@ -145,6 +145,17 @@ export function createDensityLayers({
 
   return {
     update,
+    invalidate() { scratchKey = null },
+    moved(response) {
+      if (!scratch || !Array.isArray(response.visited_countries?.iso_a3)) return
+      scratch.visitedIsoA3 = [...response.visited_countries.iso_a3]
+      scratch.stale = false
+      scratch.applyFilter()
+    },
+    retry(code) {
+      if (!scratch || destroyed) return
+      return code === "scratch_tiles_failed" ? scratch.refresh() : scratch.update()
+    },
     destroy() {
       if (destroyed) return
       destroyed = true

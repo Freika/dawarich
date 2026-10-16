@@ -181,3 +181,19 @@ test("point send failures callbacks scope cancellation and destroy drain every o
     editing.destroy()
   }
 })
+
+test("native point moves preserve the selected import in country history scope", async () => {
+  const { editing, pushed } = fixture()
+  const pending = editing.commit({ ...move, historyScope: { ...move.historyScope, importId: "29" } })
+  try {
+    assert.deepEqual(pushed[0].payload.history_scope, {
+      start_at: move.historyScope.startAt,
+      end_at: move.historyScope.endAt,
+      import_id: "29",
+    })
+  } finally {
+    pushed[0].reply(accepted)
+    await pending
+    editing.destroy()
+  }
+})

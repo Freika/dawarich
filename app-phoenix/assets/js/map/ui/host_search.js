@@ -28,7 +28,12 @@ export function createHostSearch({
         pushEvent,
       })
     : null
-  if (visits) lifetime.own(visits.destroy)
+  if (visits) {
+    const outside = () => visits.clear()
+    map.on("click", outside)
+    lifetime.own(() => map.off("click", outside))
+    lifetime.own(visits.destroy)
+  }
   const input = root?.querySelector("[data-map-search]")
   const results = root?.querySelector("[data-map-suggestions]")
   if (input && results) {

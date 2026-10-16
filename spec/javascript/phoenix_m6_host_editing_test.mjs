@@ -299,3 +299,56 @@ test("native editing clears a selected timeline route before opening drag geomet
     f.owner.destroy()
   }
 })
+
+test("style changes replace native edit history and discard its selected geometry", async () => {
+  const f = fixture({ editEnabled: true, styleName: "light" })
+  f.map.getCanvasContainer = () => ({ style: {} })
+  f.reader.read = async () => ({ data: structuredClone(editTrack) })
+  f.reader.pages = async () => structuredClone(editPoints)
+  await f.owner.mount()
+  try {
+    const editor = f.owner.editor
+    await editor.selectTrack(9, { forEditing: true })
+    editor.edits.record({ pointId: 7, from: { longitude: 13, latitude: 52 }, to: { longitude: 14, latitude: 53 } }, {
+      point: { ...editPoints[0], revision: 1 }, revision: { point: 1, track: 1 }, track: editTrack,
+    })
+    assert.equal(editor.edits.history.size, 1)
+    await f.owner.update({ ...f.owner.config, styleName: "dark" })
+    assert.equal(editor.edits.history.size, 0)
+    assert.equal(editor.data, null)
+    assert.equal(f.layers.has("track-points"), false)
+  } finally {
+    f.owner.destroy()
+  }
+})
+
+test("a completed canonical edit survives its own invalidation but refuses a newer foreign revision", async () => {
+  const f = fixture({ editEnabled: true })
+  f.map.getCanvasContainer = () => ({ style: {} })
+  let revision = 0
+  f.reader.read = async () => ({ data: { ...editTrack, properties: { ...editTrack.properties, revision } } })
+  f.reader.pages = async () => structuredClone(editPoints)
+  await f.owner.mount()
+  try {
+    const editor = f.owner.editor
+    editor.indicator.show = () => {}
+    await editor.selectTrack(9)
+    editor.startDrag(7)
+    editor.dragTo(13.1,52.1)
+    const pending = editor.endDrag({ lng: 13.1, lat: 52.1 })
+    revision = 1
+    f.pushed.find(item => item.event === "point:move").reply({ ok: true, response: {
+      point: { ...editPoints[0], longitude: 13.1, latitude: 52.1, revision },
+      track: { ...editTrack, properties: { ...editTrack.properties, revision } },
+      revision: { point: revision, track: revision },
+    } })
+    await pending
+    await f.owner.reconnect({ kinds: ["map_edits"] })
+    assert.ok(editor.data)
+    assert.deepEqual(editor._point(7).geometry.coordinates,[13.1,52.1])
+    assert.equal(editor.trackRevision,1)
+    revision = 2
+    await f.owner.reconnect({ kinds: ["map_edits"] })
+    assert.equal(editor.data,null)
+  } finally { f.owner.destroy() }
+})

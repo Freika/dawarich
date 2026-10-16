@@ -263,3 +263,15 @@ test("native host lazily owns density and reconnect never duplicates its canvas"
   )
   assert.equal(receipts.length, 12)
 })
+
+test("a successful point move replaces visited country membership before the next read", async () => {
+  const f = fixture()
+  const filters = new Map()
+  f.map.setFilter = (id, filter) => filters.set(id,filter)
+  const owner = createDensityLayers({ ...f, loadH3: async () => f.h3, loadProtocol: async () => {} })
+  await owner.update({ ...config, fogEnabled: false, hexagonsEnabled: false })
+  assert.equal(typeof owner.moved,"function")
+  owner.moved({ visited_countries: { iso_a3: ["FRA"] } })
+  assert.deepEqual(filters.get("scratch"),["in",["get","iso_a3"],["literal",["FRA"]]])
+  owner.destroy()
+})

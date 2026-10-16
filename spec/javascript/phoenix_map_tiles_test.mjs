@@ -177,3 +177,24 @@ test("native point and track invalidations fetch fresh tiles after a paused styl
     owner.destroy()
   }
 })
+
+for (const kind of ["points","tracks"]) {
+  test(`${kind} retry replaces failed tile cache entries and readmits a new error episode`, () => {
+    const map = fakeMap()
+    const owner = createBaseLayers({ map, config: { tracksEnabled: true } })
+    owner.mount()
+    try {
+      const layer = owner[kind], source = map.getSource(`${kind}-mvt-source`)
+      source.serialize = () => ({ tiles: ["/owned/{z}/{x}/{y}"] })
+      source.setTiles = () => {}
+      const filter = ["!=",["get","id"],7]
+      map.setFilter(layer.id,filter)
+      layer._tileErrorReported = true
+      assert.equal(typeof layer.retry,"function")
+      layer.retry()
+      assert.notEqual(map.getSource(layer.sourceId),source)
+      assert.deepEqual(map.getFilter(layer.id),filter)
+      assert.equal(layer._tileErrorReported,false)
+    } finally { owner.destroy() }
+  })
+}

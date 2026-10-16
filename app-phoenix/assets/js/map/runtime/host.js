@@ -22,6 +22,7 @@ import {
 import { waitForStyle } from "./style_ready.js";
 import { createLayerPreferences } from "./layer_preferences.js";
 import { installHostSource } from "./studio_source.js";
+import { installMapRetry } from "./retry.js";
 import { createViewportFit } from "./viewport_fit.js";
 export { createMapRuntime };
 export function mountHost({
@@ -33,7 +34,8 @@ export function mountHost({
   attach,
   refresh,
 }) {
-  const fail = (code) => pushEvent("map:failed", { code });
+  let retry;
+  const fail = (code) => { retry?.fail(code); pushEvent("map:failed", { code }); };
   const requests = createRangeRequests({ pushEvent });
   const freshness = createTileFreshness();
   const fit = createViewportFit(reader, element);
@@ -152,6 +154,7 @@ export function mountHost({
         lifetime.own(() => layers.destroy());
         editing = createHostEditing({
           clearSelection: () => timeline?.config(),
+          onMoved: (response) => density?.moved(response),
           map,
           reader,
           pushEvent,
@@ -241,7 +244,7 @@ export function mountHost({
       }),
     events: {
       refreshed: (receipt) => pushEvent("map:ready", receipt),
-      error: (receipt) => pushEvent("map:failed", receipt),
+      error: (receipt) => fail(receipt.code),
     },
   });
   Object.defineProperties(owner, {
@@ -264,7 +267,7 @@ export function mountHost({
     owner,
     () => layers,
     () => recent,
-    () => editing?.invalidate(),
+    (receipt) => { density?.invalidate(); return editing?.reconcile(receipt); },
   );
   const update = owner.update;
   owner.update = (config) => {
@@ -289,5 +292,6 @@ export function mountHost({
     requests,
     onDestroy: preferences.destroy,
   });
+  retry = installMapRetry({ owner, root: element, layers: () => layers, density: () => density });
   return owner;
 }

@@ -24,6 +24,7 @@ import { EmojiPicker } from "./emoji_picker.js"
 import { FamilyConfirm } from "./family_confirm.js"
 import { FamilyInvitationClipboard } from "./family_invitation_clipboard.js"
 import { OrdinaryDialog } from "./ordinary_dialog.js"
+import { PublicGallery } from "./public_gallery.js"
 import { PlaceDraft } from "./place_draft.js"
 import { ScrollIntoView } from "./scroll_into_view.js"
 import {
@@ -33,6 +34,7 @@ import {
 } from "./sharing_controls.js"
 
 export const hooks = {
+  PublicGallery,
   InsightsYearMap,
   OrdinaryDialog,
   PlaceDraft,

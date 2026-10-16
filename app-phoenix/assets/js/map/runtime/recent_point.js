@@ -132,7 +132,7 @@ export function installRecentReconnect(
         (kind) => kind === "map_edits" || kind === "reconnect",
       )
     )
-      invalidateEditing()
+      await invalidateEditing(receipt)
     getRecent()?.prepare(receipt)
     const state = await reconnect.call(owner)
     if (state === "ready") {
