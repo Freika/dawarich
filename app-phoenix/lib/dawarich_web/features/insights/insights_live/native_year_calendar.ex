@@ -1,6 +1,7 @@
 defmodule DawarichWeb.InsightsLive.NativeYearCalendar do
   @moduledoc false
   use DawarichWeb, :html
+  alias Dawarich.Insights.Heatmap
   alias DawarichWeb.{LocalizedDate, StatsFormat}
   attr :data, :map, required: true
   attr :heatmap, :any, default: nil
@@ -64,7 +65,7 @@ defmodule DawarichWeb.InsightsLive.NativeYearCalendar do
           data-country={@daily[date]}
           aria-label={label(@locale, date, @daily[date], meters(@heatmap, date), @unit, @mode)}
           title={label(@locale, date, @daily[date], meters(@heatmap, date), @unit, @mode)}
-          class={"rounded p-1 text-xs min-w-0 break-words #{if @country && @country != @daily[date], do: "opacity-30", else: ""} #{if active?(@mode,@daily[date],meters(@heatmap,date)), do: "bg-primary/20", else: "bg-base-200"}"}
+          class={"rounded p-1 text-xs min-w-0 break-words #{if @country && @country != @daily[date], do: "opacity-30", else: ""} #{shade(@mode, @daily[date], @heatmap, date)}"}
         >
           <time datetime={Date.to_iso8601(date)}>{LocalizedDate.l(@locale, date, "short_month_day")}</time>
           <span :if={@mode != "distance"}>{@daily[date]}</span>
@@ -119,9 +120,20 @@ defmodule DawarichWeb.InsightsLive.NativeYearCalendar do
 
   defp meters(nil, _), do: 0
   defp meters(heatmap, date), do: Map.get(heatmap.daily, Date.to_iso8601(date), 0)
-  defp active?("countries", country, _), do: not is_nil(country)
-  defp active?("distance", _, meters), do: meters > 0
-  defp active?(_, country, meters), do: country != nil or meters > 0
+
+  defp shade("countries", country, _, _),
+    do: if(country, do: "bg-primary/20", else: "bg-base-200")
+
+  defp shade("both", country, heatmap, date) when not is_nil(country) do
+    if meters(heatmap, date) == 0,
+      do: "bg-primary/20",
+      else: shade("distance", nil, heatmap, date)
+  end
+
+  defp shade(_, _, nil, _), do: "bg-base-300"
+
+  defp shade(_, _, heatmap, date),
+    do: Heatmap.level_class(Heatmap.level(meters(heatmap, date), heatmap.levels))
 
   defp label(locale, date, country, meters, unit, mode),
     do:
