@@ -166,6 +166,46 @@ defmodule DawarichWeb.Sync1160InsightsTest do
     refute has_element?(view, "[data-testid=year-calendar][data-country=France]")
   end
 
+  test "calendar distinguishes distance intensity and preserves country-only mode", %{user: user} do
+    stat!(user.id, %{
+      year: 2025,
+      month: 4,
+      distance: 76_000,
+      daily_distance: [[1, 1000], [2, 5000], [3, 10_000], [4, 20_000], [5, 40_000]],
+      toponyms: [toponym("France", [])]
+    })
+
+    Dawarich.Test.FrameSeeds.point!(
+      user.id,
+      916_296,
+      DateTime.to_unix(~U[2025-04-01 12:00:00Z]),
+      %{country_name: "France"}
+    )
+
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2025")
+    render_async(view)
+
+    for mode <- ~w(both distance) do
+      render_click(view, "calendar_mode", %{"mode" => mode})
+
+      for {day, shade} <- [
+            {1, "bg-success/30"},
+            {3, "bg-success/50"},
+            {4, "bg-success/70"},
+            {5, "bg-success"},
+            {6, "bg-base-300"}
+          ] do
+        selector = "[data-residency-day='2025-04-0#{day}']"
+        html = view |> render() |> LazyHTML.from_document() |> LazyHTML.query(selector)
+        assert shade in (html |> LazyHTML.attribute("class") |> hd() |> String.split())
+      end
+    end
+
+    render_click(view, "calendar_mode", %{"mode" => "countries"})
+    assert has_element?(view, "[data-residency-day='2025-04-01'][class~='bg-primary/20']")
+    assert has_element?(view, "[data-residency-day='2025-04-05'][class~='bg-base-200']")
+  end
+
   test "recalculation commands return the corresponding consolidated insights period", %{
     user: user
   } do
