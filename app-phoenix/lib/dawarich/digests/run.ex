@@ -22,7 +22,7 @@ defmodule Dawarich.Digests.Run do
     stats = Keyword.get(opts, :stats, &CalculateMonth.call/5)
 
     for month <- 1..12 do
-      stats.(repo, args["user_id"], args["year"], month, stats_options(opts))
+      check_stats!(stats.(repo, args["user_id"], args["year"], month, stats_options(opts)))
     end
 
     yearly = Keyword.get(opts, :yearly, &Calculation.yearly/4)
@@ -35,7 +35,7 @@ defmodule Dawarich.Digests.Run do
 
   defp calculate_month(repo, args, opts) do
     stats = Keyword.get(opts, :stats, &CalculateMonth.call/5)
-    stats.(repo, args["user_id"], args["year"], args["month"], stats_options(opts))
+    check_stats!(stats.(repo, args["user_id"], args["year"], args["month"], stats_options(opts)))
     monthly = Keyword.get(opts, :monthly, &Calculation.monthly/5)
     monthly.(repo, args["user_id"], args["year"], args["month"], calculation_options(args, opts))
   rescue
@@ -47,8 +47,12 @@ defmodule Dawarich.Digests.Run do
   defp calculation_options(args, opts),
     do: opts |> Keyword.put(:error_stack, true) |> Keyword.put(:ambient_zone, args["time_zone"])
 
+  defp check_stats!({:error, %{__exception__: true} = error}), do: raise(error)
+  defp check_stats!({:error, error}), do: throw(error)
+  defp check_stats!(_), do: :ok
+
   defp stats_options(opts) do
-    options = Keyword.get(opts, :stats_opts, [])
+    options = Keyword.get(opts, :stats_opts, []) |> Keyword.put(:notify, false)
 
     case Keyword.get(opts, :now) do
       nil -> options

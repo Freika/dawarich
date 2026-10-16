@@ -44,7 +44,15 @@ defmodule Dawarich.Users.Recalculation do
     for year <- state.years, month <- 1..12 do
       Keyword.get(opts, :before_month, fn _, _, _ -> :ok end).(year, month, state)
       stats = Keyword.get(opts, :stats, &CalculateMonth.call/5)
-      stats.(repo, state.user_id, year, month, stats_options(opts))
+
+      options =
+        stats_options(opts)
+        |> Keyword.put(:notify, Map.get(args, "notify", true) not in [false, nil])
+
+      case stats.(repo, state.user_id, year, month, options) do
+        {:error, error} -> raise error
+        _ -> :ok
+      end
     end
 
     with :ok <- RecalculationTracks.run(repo, oban, state, args, opts) do

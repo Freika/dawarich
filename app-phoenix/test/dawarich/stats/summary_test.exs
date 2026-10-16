@@ -64,8 +64,8 @@ defmodule Dawarich.Stats.SummaryTest do
       |> String.replace(~s("december":0), ~s("december":2))
 
     assert json(Summary.term(id, true, @now)) ==
-             ~s({"totalDistanceKm":4,"totalPointsTracked":5,"totalReverseGeocodedPoints":3,"totalCountriesVisited":2,"totalCitiesVisited":5,) <>
-               ~s("yearlyStats":[{"year":2021,"totalDistanceKm":0,"totalCountriesVisited":0,"totalCitiesVisited":0,"monthlyDistanceKm":{#{@zero}}},) <>
+             ~s({"totalDistanceKm":4,"totalPointsTracked":5,"totalReverseGeocodedPoints":3,"totalCountriesVisited":3,"totalCitiesVisited":5,) <>
+               ~s("yearlyStats":[{"year":2021,"totalDistanceKm":0,"totalCountriesVisited":2,"totalCitiesVisited":0,"monthlyDistanceKm":{#{@zero}}},) <>
                ~s({"year":2020,"totalDistanceKm":4,"totalCountriesVisited":2,"totalCitiesVisited":3,"monthlyDistanceKm":{#{months_2020}}}]})
   end
 

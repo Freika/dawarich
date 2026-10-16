@@ -16,8 +16,14 @@ defmodule Dawarich.Digests.LocationTimeTest do
       result = assert_recorded(id)
       assert result["total_country_minutes"] == 1441
       assert length(result["countries"]) == 10
-      assert hd(result["countries"]) == %{"name" => "Country 10", "minutes" => 131}
-      assert List.last(result["countries"]) == %{"name" => "Country 1", "minutes" => 131}
+
+      if id == "ranked_locations_yearly" do
+        assert Enum.map(result["countries"], & &1["name"]) ==
+                 for(n <- 0..10, do: "Country #{n}") |> Enum.sort() |> Enum.take(10)
+      else
+        assert hd(result["countries"]) == %{"name" => "Country 10", "minutes" => 131}
+        assert List.last(result["countries"]) == %{"name" => "Country 1", "minutes" => 131}
+      end
     end
   end
 

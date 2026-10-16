@@ -10,7 +10,7 @@ defmodule Dawarich.Stats.Toponyms do
   end
 
   def visited(toponyms),
-    do: Enum.filter(toponyms, &(Ruby.present?(&1["country"]) and &1["cities"] != []))
+    do: Enum.filter(toponyms, &Ruby.present?(&1["country"]))
 
   def known_countries(toponyms), do: Enum.count(toponyms, &(&1["country"] != nil))
 
@@ -30,7 +30,7 @@ defmodule Dawarich.Stats.Toponyms do
 
     countries =
       for t <- toponyms,
-          t["cities"] != [] and Ruby.present?(t["country"]),
+          Ruby.present?(t["country"]),
           uniq: true,
           do: Dawarich.CountryNames.normalize(t["country"], table)
 
@@ -44,7 +44,7 @@ defmodule Dawarich.Stats.Toponyms do
             acc
 
           country ->
-            Enum.reduce(t["cities"], acc, fn %{"city" => city}, a ->
+            Enum.reduce(t["cities"], Map.put_new(acc, country, []), fn %{"city" => city}, a ->
               Map.update(a, country, [city], &[city | &1])
             end)
         end

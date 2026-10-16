@@ -9,7 +9,7 @@ defmodule Dawarich.Digests.ToponymsTest do
     stats = history(kase)
     first = Toponyms.first_visits(stats, 2025, 3)
     assert first == hd(kase["expected"]["rows"])["first_time_visits"]
-    refute "Country only" in first["countries"]
+    assert "Country only" in first["countries"]
 
     assert Toponyms.city_minutes(current(kase)) ==
              hd(kase["expected"]["rows"])["time_spent_by_location"]["cities"]

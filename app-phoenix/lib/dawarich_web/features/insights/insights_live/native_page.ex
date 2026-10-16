@@ -4,7 +4,6 @@ defmodule DawarichWeb.InsightsLive.NativePage do
   alias Dawarich.Insights.{Pages, ResidencyPage}
   alias Dawarich.Stats.PageRefresh
   alias DawarichWeb.{DataAsync, NativeDataAuth}
-  alias DawarichWeb.InsightsLive.NativeParts
 
   @impl true
   def mount(_, _, socket) do
@@ -15,8 +14,13 @@ defmodule DawarichWeb.InsightsLive.NativePage do
           PageRefresh.topic(socket.private.data_principal.user.id)
         )
 
+    socket = %{socket | private: Map.put(socket.private, :insights_receipt, Ecto.UUID.generate())}
+
     {:ok,
      assign(socket,
+       dialog: nil,
+       calendar_mode: "both",
+       calendar_country: nil,
        data: nil,
        query: %{},
        details: nil,
@@ -32,11 +36,17 @@ defmodule DawarichWeb.InsightsLive.NativePage do
       socket
       |> DataAsync.advance()
       |> assign(
+        dialog:
+          if(params["year"] == "all" && params["places_kind"] in ~w(countries cities),
+            do: params["places_kind"]
+          ),
+        calendar_mode: "both",
+        calendar_country: nil,
         data: nil,
         details: nil,
         residency: nil,
         refresh_state: nil,
-        query: Map.take(params, ~w(year month page residency_page))
+        query: Map.take(params, ~w(year month page residency_page places_page places_kind))
       )
 
     with {:ok, scope} <- NativeDataAuth.scope(socket),
@@ -53,6 +63,9 @@ defmodule DawarichWeb.InsightsLive.NativePage do
         socket.assigns.query
         |> Map.put("year", data.selected)
         |> Map.put("month", to_string(data[:selected_month] || ""))
+
+      if data.all_time && data.consolidated.index.points.state == :pending,
+        do: PageRefresh.request(scope, :counts, %{}, options(socket))
 
       socket = assign(socket, data: data, query: query)
 
@@ -130,6 +143,10 @@ defmodule DawarichWeb.InsightsLive.NativePage do
       when event in ~w(retry_read retry_refresh),
       do: {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
 
+  def handle_event(event, params, socket)
+      when event in ~w(open_places close_dialog calendar_mode calendar_country update),
+      do: DawarichWeb.InsightsLive.NativeControls.handle(event, params, socket)
+
   def handle_event("period", %{"period" => params}, socket) do
     with {:ok, scope} <- NativeDataAuth.scope(socket),
          {:ok, _, _} <- Dawarich.Analytics.Period.admit(scope, params, :insights, options(socket)) do
@@ -171,63 +188,7 @@ defmodule DawarichWeb.InsightsLive.NativePage do
   def handle_event(_, _, socket), do: {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
 
   @impl true
-  def render(assigns) do
-    ~H"""
-    <main class="w-full min-w-0 my-5">
-      <h1 class="text-3xl font-bold break-words">{@page_title}</h1>
-      <NativeParts.overview
-        :if={@data}
-        data={@data}
-        query={@query}
-        locale={@locale}
-        path={if(@live_action == :details, do: "/insights/details", else: "/insights")}
-      />
-      <p
-        :if={@data && (@data.year_locked || @data.restricted)}
-        id="insights-locked"
-        role="status"
-        class="alert flex-wrap min-w-0 break-words"
-      >
-        {t(@locale, "stats.locked_year_card.available_on_pro", %{})}
-      </p>
-      <button
-        :if={@data && @data.restricted}
-        id="insights-upgrade"
-        class="btn whitespace-normal"
-        phx-click="upgrade"
-      >{t(@locale, "shared.plan_data_window_alert.upgrade_to_pro", %{})}</button>
-      <NativeParts.read
-        :if={@details}
-        kind="details"
-        read={@details}
-        locale={@locale}
-        query={@query}
-        path={if(@live_action == :details, do: "/insights/details", else: "/insights")}
-      />
-      <NativeParts.read
-        :if={@residency}
-        kind="residency"
-        read={@residency}
-        locale={@locale}
-        query={@query}
-        path={if(@live_action == :details, do: "/insights/details", else: "/insights")}
-      />
-      <p
-        :if={@refresh_state == :pending || (@details && @details.state == :pending)}
-        id="insights-refresh-pending"
-        role="status"
-        aria-live="polite"
-      >
-        {t(@locale, "javascript.common.loading", %{})}
-      </p>
-      <button :if={@refresh_state == :failed} class="btn whitespace-normal" phx-click="retry_refresh">{t(
-        @locale,
-        "javascript.messages.retry",
-        %{}
-      )}</button>
-    </main>
-    """
-  end
+  def render(assigns), do: DawarichWeb.InsightsLive.NativeView.render(assigns)
 
   defp start(socket, :residency) when socket.assigns.data.all_time, do: socket
 

@@ -18,7 +18,10 @@ defmodule Dawarich.Users.RecalculationNotifications do
         [[settings]] ->
           locale = ExploreFeatures.locale(settings, nil)
           {kind, title, content} = message(locale, outcome, detail)
-          Notifications.create!(repo, args["user_id"], kind, title, content)
+
+          if outcome == :error,
+            do: Dawarich.Stats.FailureNotice.create!(repo, args["user_id"], kind, title, content),
+            else: Notifications.create!(repo, args["user_id"], kind, title, content)
       end
     end
   end

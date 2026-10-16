@@ -16,7 +16,8 @@ defmodule Dawarich.Stats.Summary do
             year: year,
             month: month,
             distance: distance,
-            toponyms: Toponyms.sanitize(toponyms)
+            toponyms: Toponyms.sanitize(toponyms),
+            yearly_toponyms: yearly_toponyms(toponyms)
           }
 
     [[points]] = Repo.query!("SELECT points_count FROM users WHERE id = $1", [user_id]).rows
@@ -33,9 +34,18 @@ defmodule Dawarich.Stats.Summary do
      ]}
   end
 
+  defp yearly_toponyms(toponyms) when is_list(toponyms),
+    do:
+      toponyms
+      |> List.flatten()
+      |> Enum.filter(&(is_map(&1) and is_list(&1["cities"])))
+      |> Toponyms.sanitize()
+
+  defp yearly_toponyms(_), do: []
+
   defp yearly(stats) do
     for {year, rows} <- stats |> Enum.group_by(& &1.year) |> Enum.sort_by(&elem(&1, 0), :desc) do
-      visited = rows |> Enum.flat_map(& &1.toponyms) |> Toponyms.visited()
+      visited = rows |> Enum.flat_map(& &1.yearly_toponyms) |> Toponyms.visited()
 
       {:object,
        [

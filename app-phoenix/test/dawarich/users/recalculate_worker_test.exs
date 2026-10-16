@@ -57,7 +57,7 @@ defmodule Dawarich.Users.RecalculateWorkerTest do
                Keyword.put(options(), :before_month, fault)
              )
 
-    assert length(notices()) == 2
+    assert length(notices()) == 1
     assert RecalculateWorker.new(args(source)).changes.max_attempts == 26
     assert RecalculateWorker.backoff(%Oban.Job{attempt: 1}) in 15..24
     assert RecalculateWorker.backoff(%Oban.Job{attempt: 5}) in 271..316
