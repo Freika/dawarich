@@ -39,7 +39,9 @@ defmodule DawarichWeb.NativeMapChrome do
           socket.assigns.map_url["panel"]
         )
 
-      socket |> assign(page: page, map_config: config) |> push_event("map:config", config)
+      changed = config != socket.assigns.map_config
+      socket = assign(socket, page: page, map_config: config)
+      if changed, do: push_event(socket, "map:config", config), else: socket
     else
       socket
     end
