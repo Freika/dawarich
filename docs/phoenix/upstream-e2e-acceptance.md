@@ -30,7 +30,40 @@ The old insights Countries card no longer exists in Rails 1.16.0. Its successor
 exercises the year residency view, page scrolling, mobile country expansion and
 horizontal bounds rather than the retired card's fixed height.
 
-Whole-suite MacBook and mini acceptance remains pending. The controller report
-`impl-e2e-upstream-1016.report.md` records the paired commits, exact lane counts,
-remaining scenarios and cleanup; this document does not claim release acceptance.
+Acceptance requires one complete standalone MacBook lane and one complete mini
+lane with zero failures, preserving declared non-applicability and privacy
+reporting. The controller report `impl-e2e-upstream-1016.report.md` records the
+frozen paired commits, exact lane counts, mutation evidence and cleanup.
 AFFiNE counterpart: `Dawarich — Rails 1.16.0 native shell sync`.
+
+
+The tile cutover cases now use isolated native fixtures. Offline browsing keeps
+Point and Track vector sources and bundled country PMTiles without complete
+history reads. Import-scoped metadata/tiles, bounded selection and Replay,
+LiveView-delivered timeline journeys, day routes, flight exclusions, canonical
+edits, stale refusal, rollback, style/range teardown and reduced-motion feedback
+retain individual browser assertions. The million-point measurement is outside
+the existing D1–D4 native performance scope; the dedicated Cloud/Lite server is
+outside self-hosted lane admission. No applicable case is blanket-quarantined.
+
+Native read failures expose a bounded, localized Retry control owned by the
+ignored map hook. Shell patches retain it; teardown removes it. Point/Track
+retries replace their failed vector sources, preserve filters and admit a fresh
+error episode. Country metadata and bundled PMTiles have independent retry
+flows. The bundled native country archive serves exact single byte ranges under
+the existing path, symlink, host and HTTPS checks. Other legacy public-file
+range behavior remains subject to its existing admission.
+
+A successful edit applies its visited-country receipt immediately. A later map
+edit invalidation rereads membership in each connected tab. The editor survives
+its own already-confirmed edit only after a fresh canonical track revision check;
+a newer foreign revision, pending command, read refusal or reconnect retires
+stale geometry. Range/style changes retain their separate cleanup boundaries.
+
+Protected map capture installs the account-scoped onboarding key before
+navigation, waits for the connected renderer, dismisses optional prompts after
+connection, and checks loaded tiles plus an unobscured map before its private
+screenshot. The native CLI receipt exposes only readiness booleans alongside its
+existing protected artifact receipt. Rails and non-map capture paths keep their
+existing behavior. Repository E2E counterparts are the individually named
+`tile-only` cases, the native map-toast backport and `native/scenario-capture`.
