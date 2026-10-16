@@ -44,3 +44,19 @@ test("native retry retains a failed read and retires listeners on teardown", asy
   assert.equal(calls, 1)
   assert.equal(root.node.removed, true)
 })
+
+test("native retry remains inside map hook ownership during shell patches", async () => {
+  const { fixture } = await import("./support/native_m6_host_fixture.mjs")
+  const f = fixture()
+  await f.owner.mount()
+  try {
+    f.map.emit("error", { sourceId: "points-mvt-source", error: new Error("tile unavailable") })
+    f.root.replaceChildren()
+    const alert = f.element.children.find(node => node.dataset.mapRetry === "point_tiles_failed")
+    assert.ok(alert)
+    let removed = false
+    alert.remove = () => { removed = true }
+    f.owner.destroy()
+    assert.equal(removed, true)
+  } finally { f.owner.destroy() }
+})

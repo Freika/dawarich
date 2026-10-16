@@ -292,6 +292,6 @@ export function mountHost({
     requests,
     onDestroy: preferences.destroy,
   });
-  retry = installMapRetry({ owner, root, layers: () => layers, density: () => density });
+  retry = installMapRetry({ owner, root: element, layers: () => layers, density: () => density });
   return owner;
 }
