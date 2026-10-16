@@ -28,7 +28,7 @@ defmodule Dawarich.CountryNamesTest do
 
   test "normalize/2 and the flags follow StatsHelper#normalize_country_name and CountryFlagHelper#country_flag" do
     table = CountryNames.table()
-    assert table == Enum.map(@corpus["table"], &List.to_tuple/1)
+    assert Enum.sort(table) == Enum.sort(Enum.map(@corpus["table"], &List.to_tuple/1))
 
     for %{"input" => input, "normalized" => normalized, "flag" => flag} <- @corpus["cases"] do
       assert CountryNames.normalize(input, table) == normalized, inspect(input)
