@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- When several phones bought Pro in the mobile app for the same self-hosted account, one phone's purchase lapsing no longer removes the supporter badge while another phone's purchase is still active. `PATCH /api/v1/settings` accepts an optional `app_store_supporter_install` id alongside `app_store_supporter`; reports without it keep the previous behaviour.
+
 ## [1.16.0] - 2026-10-15, Berlin
 
 ### Added
