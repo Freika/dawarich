@@ -31,3 +31,9 @@ The scoped Stats cache race checks remain on the native month route after index/
 The reader reconciliation adds the boundary registry witness without changing the historical census. The integration also reconciles T1's FRB-S1160-BOUNDARY-FOLLOWUPS and ED-S1160-BOUNDARY-FOLLOWUPS entries, and records the preserved empty-cities yearly-digest quirk as DRB-S1160-EMPTY-CITIES. Cloud provisioning readiness for heavy release jobs remains an owner decision; lifecycle admission is unchanged.
 
 The first integrated fix gate completed all partitions with 11,038 tests and eight failures: seven stale stats route/status/recording callers and the pending Cloud provisioning readiness case. Exact route inventories and source-recorded NULL settings now cover those caller successors. Their targeted packet passes; final all-partition acceptance still requires the controller's replacement-gate authorization. The original gate result remains in the controller report.
+
+## Browser auth setup readiness
+
+A successful sign-in redirect can render the map's Settings button before its LiveView has connected. The shared E2E panel helper must await `[data-phx-main].phx-connected` before clicking; otherwise the initial click can be lost and auth setup times out waiting for the panel close control. Waiting for `/map/v2` alone does not establish event readiness. Keep the native globe form submission, unchecked assertion, panel close and saved-session assertions.
+
+The native Tools control is `map-button-tools`; the helper's historical `create` alias maps to that panel. The browser witness `native/map-panel-readiness.spec.js` delays the LiveView WebSocket, opens Settings through the shared helper, verifies the globe preference after reload and checks the Tools alias. Removing the connection wait or restoring the old `map-button-create` selector must fail it. App runtime and lifecycle admission are unchanged.
