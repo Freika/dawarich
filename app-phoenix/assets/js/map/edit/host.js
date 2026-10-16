@@ -48,7 +48,6 @@ export function createHostEditing({
   const editor = new MapEditor(map, {
     document,
     clearSelection,
-  onMoved,
     history: transport.history,
     translate: mapTranslate(getConfig),
     distanceUnit: getConfig().distanceUnit ?? "km",
