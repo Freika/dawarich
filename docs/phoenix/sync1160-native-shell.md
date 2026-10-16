@@ -52,3 +52,13 @@ An unchanged admitted Family refresh keeps its member controls mounted while dat
 
 
 A point invalidation also remains pending when another panel refresh supersedes its refresh. The next successful refresh consumes the pending delivery within its own cancellation boundary; a cancelled refresh cannot discard the only notification of a new point. Range/live-state changes still reset that pending state. `native live marker survives a panel refresh superseding its point invalidation` deterministically exercises this real host sequence; removing pending delivery consumption fails it.
+
+## Final G44 readiness investigation
+
+Native server-rendered controls can be visible before the owning LiveView connects. Browser tests must wait for the native connection before hub tab patches, share revocation, Points pagination, trip export and import deletion on a newly navigated detail page. The private-auth reporter protects every subsequent step of a test that filled a password; its generic failure message alone does not locate a failure in authentication. Use a scoped open reporter for diagnosis, protect its artifacts, and restore the privacy reporter afterward.
+
+Timeline URL updates can precede the DOM patch that supplies the keyboard handler's selected date. Wait for both the URL date and `#native-map-page[data-selected-date]`, then for the timeline's `aria-busy=false`, before issuing the next key. Keep every exact day, no-reload and fresh-read assertion.
+
+Rails 1.16.0 API visit deletion writes a tombstone and invalidates month cache without broadcasting a visit-layer refresh (`app/controllers/api/v1/visits_controller.rb`, `app/models/visit.rb`). An API cleanup must reload and await map readiness before checking source absence; incidental notification traffic is not a readiness guarantee. The creation assertions still require automatic Visits enablement, the named marker, visible layer and canonical endpoint data. No runtime behavior or Rails bug is changed by these test corrections.
+
+Scoped MacBook verification passed all eight files ten times (291 cases including setup), plus 41 cases for the final post-auth changes. The final eight-file mini packet passed three consecutive fresh runs (30 cases each, zero failures or skips). A deterministic WebSocket gate confirms a trip export click is lost before join and reaches Exports after join. No runtime fix, new quarantine, retry, sleep or timeout increase is involved. Scoped repeated browser verification remains separate from the controller's final whole-lane acceptance.
