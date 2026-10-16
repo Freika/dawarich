@@ -12937,6 +12937,19 @@
         }
       ],
       "authority": "Rails 1.16.0 T5: native root/auth and notice behavior replaces retired marketing/markup recording"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/insights_endpoint_test.exs",
+        "name": "guest root renders native public home and details redirect to sign in"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/insights_endpoint_test.exs",
+          "name": "guest root and details redirect to sign in"
+        }
+      ],
+      "authority": "Rails 1.16.0 sync #3837 root redirect; native behavior and independent insights authorization retained"
     }
   ],
   "readers": [

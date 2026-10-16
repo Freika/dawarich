@@ -206,6 +206,7 @@ defmodule DawarichWeb.NativeAuthIntegrationTest do
   test "native auth refusal never calls Rails and retained API/mobile responses stay unchanged",
        c do
     assert_native(fetch(c.guest, "/users/sign_in"))
+    assert_native(fetch(c.guest, "/users/sign_in?locale=de"))
     owner = self()
     handler = {__MODULE__, make_ref()}
 
@@ -228,7 +229,7 @@ defmodule DawarichWeb.NativeAuthIntegrationTest do
     end)
 
     for {path, expected} <- [
-          {"/users/sign_in?locale=de", 422},
+          {"/users/sign_in?locale=xx", 422},
           {"/users/sign_up?unexpected=1", 400},
           {"/users/password/new?unexpected=1", 422},
           {"/users/unlock/new?unexpected=1", 422}
