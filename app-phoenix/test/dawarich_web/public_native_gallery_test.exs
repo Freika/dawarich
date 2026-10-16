@@ -79,7 +79,9 @@ defmodule DawarichWeb.PublicNativeGalleryTest do
 
     Repo.query!(
       "UPDATE shared_links SET settings=$2 WHERE id=$1::text::uuid",
-      [@id, %{"show_photos" => false}], log: false)
+      [@id, %{"show_photos" => false}],
+      log: false
+    )
 
     render_hook(view, "public:gallery", %{"day" => "2026-05-10", "open" => true})
     refute has_element?(view, "#native-public-resource img")
