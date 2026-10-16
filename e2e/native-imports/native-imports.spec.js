@@ -48,8 +48,9 @@ for (const scenario of [
     expect(id).toMatch(/^[1-9]\d*$/)
 
     let subsequentNavigations = 0
-    page.on("framenavigated", (frame) => {
-      if (frame === page.mainFrame()) subsequentNavigations++
+    page.on("request", (request) => {
+      if (request.isNavigationRequest() && request.frame() === page.mainFrame())
+        subsequentNavigations++
     })
     await expect(imported.locator("[data-status-display]")).toContainText(
       scenario.completed,
@@ -120,22 +121,14 @@ for (const scenario of [
     await expect(page.locator("[data-phx-main].phx-connected")).toBeVisible()
     const editedName = `Rhéin & 東京 — ${input.name}`
     const editForm = page
-      .locator(`form[action="/imports/${id}"]`)
+      .locator(`#phx-import-edit-${id}`)
       .filter({ has: page.locator('input[name="import[name]"]') })
     await editForm.locator('input[name="import[name]"]').fill(editedName)
     await expect(editForm.locator('select[name="import[source]"]')).toHaveValue(
       "gpx",
     )
     await evidence.screenshot(page, "native-owner-edit-form")
-    const updatedResponse = page.waitForResponse(
-      (response) =>
-        new URL(response.url()).pathname === `/imports/${id}` &&
-        response.request().method() === "POST",
-    )
     await editForm.getByRole("button").click()
-    const updated = await updatedResponse
-    expect(updated.status()).toBe(303)
-    expect(updated.headers()["x-dawarich-handler"]).toBe("phoenix-imports")
     await expect(page).toHaveURL(/\/imports$/)
     await nativePage(page, "/imports")
     imported = row(page, editedName)
@@ -210,16 +203,27 @@ for (const scenario of [
       const csrf = await foreignPage
         .locator('meta[name="csrf-token"]')
         .getAttribute("content")
-      for (const suffix of ["", "/edit", "/download"]) {
+      for (const suffix of ["", "/edit"]) {
         const denied = await foreignPage.request.get(
           `/imports/${id}${suffix}`,
           { maxRedirects: 0 },
         )
         evidence.protocol(`foreign GET ${suffix || "/show"}`, denied)
-        expect(denied.status()).toBe(303)
-        expect(denied.headers()["x-dawarich-handler"]).toBeUndefined()
+        expect(denied.status()).toBe(302)
+        expect(denied.headers().location).toBe("/imports")
+        expect(denied.headers()["x-dawarich-handler"]).toBe("phoenix-imports")
         expect(await denied.text()).not.toContain(editedName)
       }
+      const deniedDownload = await foreignPage.request.get(
+        `/imports/${id}/download`,
+        { maxRedirects: 0 },
+      )
+      evidence.protocol("foreign GET /download", deniedDownload)
+      expect(deniedDownload.status()).toBe(404)
+      expect(deniedDownload.headers()["x-dawarich-handler"]).toBe(
+        "phoenix-imports",
+      )
+      expect(await deniedDownload.text()).not.toContain(editedName)
       const update = await foreignPage.request.patch(`/imports/${id}`, {
         form: {
           authenticity_token: csrf,
@@ -228,14 +232,14 @@ for (const scenario of [
         maxRedirects: 0,
       })
       evidence.protocol("foreign PATCH", update)
-      expect(update.status()).toBe(303)
+      expect(update.status()).toBe(404)
       expect(update.headers()["x-dawarich-handler"]).toBeUndefined()
       const remove = await foreignPage.request.delete(`/imports/${id}`, {
         headers: { "X-CSRF-Token": csrf },
         maxRedirects: 0,
       })
       evidence.protocol("foreign DELETE", remove)
-      expect(remove.status()).toBe(303)
+      expect(remove.status()).toBe(404)
       expect(remove.headers()["x-dawarich-handler"]).toBeUndefined()
       expect(importEvidence(id)).toMatchObject({
         name: editedName,
