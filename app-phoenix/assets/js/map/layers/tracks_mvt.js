@@ -168,9 +168,7 @@ export class TracksMvtLayer extends BaseLayer {
   }
 
   retry() {
-    this._tileErrorReported = false
-    this.freshness?.bump("tracks")
-    retryTileSource(this.map, this.sourceId)
+    retryTileSource(this, "tracks")
   }
 
   refresh() {

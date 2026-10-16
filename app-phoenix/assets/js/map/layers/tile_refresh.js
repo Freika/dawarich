@@ -14,9 +14,14 @@ export function queueTileRefresh(map, sourceId) {
   return cancel
 }
 
-export function retryTileSource(map, sourceId) {
-  const source = map.getSource(sourceId)
-  const tiles = source?.serialize?.().tiles
-  if (source?.setTiles && Array.isArray(tiles)) source.setTiles(tiles)
-  else if (source) map.refreshTiles?.(sourceId)
+export function retryTileSource(layer, kind) {
+  const map = layer.map
+  if (!map.getSource(layer.sourceId)) return
+  const filters = layer.getLayerIds().map(id => [id,map.getFilter?.(id)])
+  const before = layer._layerAbove()
+  layer.freshness?.bump(kind)
+  layer.remove()
+  layer.add(undefined, before)
+  for (const [id, filter] of filters)
+    if (filter != null && map.getLayer(id)) map.setFilter(id,filter)
 }

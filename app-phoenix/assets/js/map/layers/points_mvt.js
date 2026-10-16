@@ -150,9 +150,7 @@ export class PointsMvtLayer extends BaseLayer {
   }
 
   retry() {
-    this._tileErrorReported = false
-    this.freshness?.bump("points")
-    retryTileSource(this.map, this.sourceId)
+    retryTileSource(this, "points")
   }
 
   refresh() {

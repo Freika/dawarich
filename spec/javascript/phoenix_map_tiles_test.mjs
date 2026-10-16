@@ -185,13 +185,15 @@ for (const kind of ["points","tracks"]) {
     owner.mount()
     try {
       const layer = owner[kind], source = map.getSource(`${kind}-mvt-source`)
-      let replacements = 0
       source.serialize = () => ({ tiles: ["/owned/{z}/{x}/{y}"] })
-      source.setTiles = tiles => { assert.deepEqual(tiles,["/owned/{z}/{x}/{y}"]); replacements++ }
+      source.setTiles = () => {}
+      const filter = ["!=",["get","id"],7]
+      map.setFilter(layer.id,filter)
       layer._tileErrorReported = true
       assert.equal(typeof layer.retry,"function")
       layer.retry()
-      assert.equal(replacements,1)
+      assert.notEqual(map.getSource(layer.sourceId),source)
+      assert.deepEqual(map.getFilter(layer.id),filter)
       assert.equal(layer._tileErrorReported,false)
     } finally { owner.destroy() }
   })
