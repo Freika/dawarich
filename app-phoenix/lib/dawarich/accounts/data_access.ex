@@ -24,6 +24,12 @@ defmodule Dawarich.Accounts.DataAccess do
     end
   end
 
+  def memo_open?, do: is_map(Process.get(@memo))
+
+  def open_memo, do: Process.put(@memo, %{})
+
+  def close_memo, do: Process.delete(@memo)
+
   def remember(%{id: id} = user) do
     with %{} = memo <- Process.get(@memo), do: Process.put(@memo, Map.put(memo, id, user))
     user

@@ -48,8 +48,6 @@ defmodule Dawarich.MapPage do
          print_order_url: env["PRINT_ORDER_URL"] || "https://prints.dawarich.app/api/orders",
          family: family,
          features_json: features_json(family),
-         posters: Dawarich.MapGallery.posters(user.id),
-         route_videos: Dawarich.MapGallery.route_videos(user.id, window.zone),
          posters_stream: Dawarich.RailsMessages.stream_name([{:user, user.id}, "posters"])
        })}
     end

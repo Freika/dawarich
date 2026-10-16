@@ -11,7 +11,7 @@ defmodule DawarichWeb.MapLive.Native do
     {:ok,
      socket
      |> assign(:page_title, t(socket.assigns.locale, "map.maplibre.index.map", %{}))
-     |> DawarichWeb.NativeMapChrome.load()
+     |> DawarichWeb.NativeMapChrome.load(refresh: false)
      |> DawarichWeb.MapLive.SettingsCommands.load()
      |> DawarichWeb.NativePosterGallery.mount(), layout: false}
   end
