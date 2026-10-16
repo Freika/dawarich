@@ -56,7 +56,7 @@
                   </label>
                 </div>
 
-                <% if DawarichSettings.self_hosted? %>
+                <% if DawarichSettings.self_hosted? && current_user.admin? %>
                   <div class="border-t border-base-content/10 pt-4">
                     <div class="flex flex-wrap items-center gap-3">
                       <%= link_to t('.send_test_email'), settings_test_email_path,

@@ -76,7 +76,7 @@ class StatsSerializer
       toponyms.each do |toponym|
         next unless toponym.is_a?(Hash)
         next if toponym['country'].blank?
-        next unless toponym['cities'].is_a?(Array) && toponym['cities'].any?
+        next unless toponym['cities'].is_a?(Array)
 
         countries.add(toponym['country'])
         toponym['cities'].each do |city|

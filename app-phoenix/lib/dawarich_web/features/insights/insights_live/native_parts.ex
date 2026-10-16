@@ -57,7 +57,20 @@ defmodule DawarichWeb.InsightsLive.NativeParts do
         year={@data.year}
         unit={@data.unit}
       />
-      <div :if={!@data.all_time} class="flex flex-wrap min-w-0 gap-4">
+      <DawarichWeb.InsightsLive.NativeConsolidated.render data={@data} locale={@locale} />
+      <section
+        :if={!@data.all_time && !@data.restricted}
+        data-testid="insights-activity-summary"
+        class="my-4"
+      >
+        <p>{@data.heatmap.active_days} {t(@locale, "insights.activity_heatmap.active_days", %{})}</p>
+        <HeatmapParts.streak
+          locale={@locale}
+          heatmap={@data.heatmap}
+          current_year={@data.year == @data.period.today.year}
+        />
+      </section>
+      <div :if={!@data.all_time && @data.restricted} class="flex flex-wrap min-w-0 gap-4">
         <HeatmapParts.heatmap
           native={true}
           zone={@data.period.zone}
@@ -82,6 +95,11 @@ defmodule DawarichWeb.InsightsLive.NativeParts do
   attr :locale, :string, required: true
   attr :query, :map, required: true
   attr :path, :string, required: true
+
+  attr :calendar_mode, :string, default: "both"
+  attr :calendar_country, :any, default: nil
+  attr :heatmap, :any, default: nil
+  attr :unit, :string, default: "km"
 
   def read(assigns) do
     ~H"""
@@ -116,6 +134,10 @@ defmodule DawarichWeb.InsightsLive.NativeParts do
       />
       <.residency
         :if={@kind == "residency"}
+        calendar_mode={@calendar_mode}
+        calendar_country={@calendar_country}
+        heatmap={@heatmap}
+        unit={@unit}
         data={@read.value}
         locale={@locale}
         query={@query}
@@ -155,12 +177,24 @@ defmodule DawarichWeb.InsightsLive.NativeParts do
   attr :query, :map, required: true
   attr :path, :string, required: true
 
+  attr :calendar_mode, :string, default: "both"
+  attr :calendar_country, :any, default: nil
+  attr :heatmap, :any, default: nil
+  attr :unit, :string, default: "km"
+
   def residency(assigns) do
     ~H"""
     <section id="insights-residency-ready" class="min-w-0 my-4">
       <h2 class="text-xl break-words">{t(@locale, "map.residency.show.days_per_country", %{})}</h2>
       <p>{@data.total} / {if(Calendar.ISO.leap_year?(@data.year), do: 366, else: 365)}</p>
-      <DawarichWeb.InsightsLive.NativeResidencyCalendar.render data={@data} locale={@locale} />
+      <DawarichWeb.InsightsLive.NativeYearCalendar.render
+        data={@data}
+        locale={@locale}
+        mode={@calendar_mode}
+        country={@calendar_country}
+        heatmap={@heatmap}
+        unit={@unit}
+      />
       <p :if={@data.countries == []} class="break-words">
         {t(@locale, "map.residency.show.no_country_data_for", %{})} {@data.year}
       </p>

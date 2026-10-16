@@ -22,6 +22,20 @@ RSpec.describe 'settings/general', type: :request do
         expect(response).to be_successful
       end
 
+      context 'when the user bought self-hosted Pro in the mobile app' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+          user.update!(settings: { 'app_store_supporter' => true })
+        end
+
+        it 'names the Dawarich app as the supporter platform' do
+          get settings_general_index_url
+
+          expect(response.body).to include('Thank you for supporting Dawarich via Dawarich app!')
+          expect(response.body).not_to include('translation_missing')
+        end
+      end
+
       it 'renders both digest toggles and the email-digests anchor' do
         get settings_general_index_url
 
@@ -134,6 +148,8 @@ RSpec.describe 'settings/general', type: :request do
     end
 
     describe 'POST /test_email' do
+      let!(:user) { create(:user, :admin, settings: {}) }
+
       around do |example|
         original_from = UsersMailer.default_params[:from]
         UsersMailer.default from: 'hi@dawarich.app'
@@ -259,6 +275,21 @@ RSpec.describe 'settings/general', type: :request do
           expect(response).to redirect_to(settings_general_index_path)
           expect(flash[:notice]).to include('Verified!')
           expect(user.reload.settings['supporter_github_username']).to eq('octocat')
+        end
+      end
+
+      context 'when an App Store supporter submits an email that is not a supporter' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+          user.update!(settings: { 'app_store_supporter' => true })
+          allow_any_instance_of(Supporter::VerifyEmail).to receive(:call).and_return({ supporter: false })
+        end
+
+        it 'reports the email as not found' do
+          post settings_verify_supporter_path, params: { supporter_email: 'typo@example.com' }
+
+          expect(flash[:notice]).to be_nil
+          expect(flash[:alert]).to be_present
         end
       end
 

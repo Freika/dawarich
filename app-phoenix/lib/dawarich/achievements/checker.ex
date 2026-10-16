@@ -4,7 +4,7 @@ defmodule Dawarich.Achievements.Checker do
   alias Dawarich.Achievements.{Dwell, Notices, Position}
   alias Dawarich.RubyInteger
 
-  @calculation_version 3
+  @calculation_version 5
   @commit_attempts 2
 
   def calculation_version, do: @calculation_version
@@ -43,7 +43,7 @@ defmodule Dawarich.Achievements.Checker do
     RubyInteger.to_i(value || 60) * 60
   end
 
-  def merged_state(state, deltas, replace, cursor, inserted, threshold, now) do
+  def merged_state(state, deltas, replace, cursor, inserted, threshold, now, first_seen \\ %{}) do
     base = if replace, do: %{}, else: Map.get(state, "dwell", %{})
 
     dwell =
@@ -51,7 +51,12 @@ defmodule Dawarich.Achievements.Checker do
         Map.update(acc, code, delta, &(&1 + delta))
       end)
 
-    earned = Map.get(state, "earned", %{})
+    earned =
+      Map.new(Map.get(state, "earned", %{}), fn {code, date} ->
+        historical = first_seen[code]
+        earlier = if replace and historical, do: earlier(date, historical), else: date
+        {code, earlier}
+      end)
 
     codes =
       for(
@@ -69,12 +74,23 @@ defmodule Dawarich.Achievements.Checker do
         "cursor" => cursor,
         "inserted_through" => inserted,
         "dwell" => dwell,
-        "earned" => Map.merge(earned, Map.new(codes, &{&1, now})),
+        "earned" => Map.merge(earned, Map.new(codes, &{&1, Map.get(first_seen, &1, now)})),
         "threshold_seconds" => threshold,
         "calculation_version" => @calculation_version
       })
 
     {merged, codes}
+  end
+
+  defp earlier(date, historical) do
+    {:ok, known, _} = DateTime.from_iso8601(date)
+    {:ok, visited, _} = DateTime.from_iso8601(historical)
+    earliest = if DateTime.compare(known, visited) == :gt, do: visited, else: known
+
+    earliest
+    |> DateTime.shift_zone!("Etc/UTC")
+    |> DateTime.truncate(:second)
+    |> DateTime.to_iso8601()
   end
 
   defp check(repo, user_id, settings, id, notify, oldest, hook) do
@@ -123,9 +139,15 @@ defmodule Dawarich.Achievements.Checker do
               do: %{},
               else: Dwell.deltas(repo, user_id, if(replace, do: 0, else: previous), cursor)
 
+          dates =
+            Dwell.first_seen(repo, user_id, if(replace, do: 0, else: previous), cursor)
+            |> Map.new(fn {code, ts} ->
+              {code, ts |> DateTime.from_unix!() |> DateTime.to_iso8601()}
+            end)
+
           hook.(:before_commit)
 
-          case commit(repo, user_id, id, deltas, replace, pos, threshold, notify) do
+          case commit(repo, user_id, id, deltas, replace, pos, threshold, notify, dates) do
             {:committed, codes} -> codes
             :conflict -> attempt(repo, user_id, id, oldest, threshold, notify, hook, left - 1)
           end
@@ -145,7 +167,7 @@ defmodule Dawarich.Achievements.Checker do
   defp calculation_changed?(state),
     do: RubyInteger.to_i(state["calculation_version"]) < @calculation_version
 
-  defp commit(repo, user_id, id, deltas, replace, pos, threshold, notify) do
+  defp commit(repo, user_id, id, deltas, replace, pos, threshold, notify, dates) do
     {:ok, outcome} =
       repo.transaction(fn ->
         current = state(repo, id, " FOR UPDATE")
@@ -156,7 +178,7 @@ defmodule Dawarich.Achievements.Checker do
           cursor = max(pos.cursor, pos.previous)
 
           {merged, codes} =
-            merged_state(current, deltas, replace, cursor, pos.inserted, threshold, now)
+            merged_state(current, deltas, replace, cursor, pos.inserted, threshold, now, dates)
 
           repo.query!(
             "UPDATE achievement_progresses SET state = $2, updated_at = now() WHERE id = $1",

@@ -110,15 +110,15 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
     socket =
       Phoenix.Component.assign(socket,
         map_settings: %{saved: %{}, draft_modes: nil, error: nil, notice: nil},
-        page: nil,
+        page: %{family: true, airtrail: false},
         map_config: %{},
         map_url: %{"panel" => "layers"}
       )
 
     {:noreply, socket} =
       DawarichWeb.MapLive.Native.handle_event(
-        "settings:map_layers",
-        %{"layers" => ["Points", "Family Members"]},
+        "settings:family_layer",
+        %{"enabled" => "true"},
         socket
       )
 
@@ -128,8 +128,8 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
 
     {:noreply, socket} =
       DawarichWeb.MapLive.Native.handle_event(
-        "settings:map_layers",
-        %{"layers" => ["Points"]},
+        "settings:family_layer",
+        %{"enabled" => "false"},
         socket
       )
 

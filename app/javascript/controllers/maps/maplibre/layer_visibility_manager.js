@@ -1,5 +1,6 @@
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
+import { anomaliesVisible } from "maps_maplibre/utils/layer_dependencies"
 import { gatedToggle } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
@@ -383,6 +384,9 @@ export class LayerVisibilityManager {
     SettingsManager.updateSetting("pointsVisible", event.currentTarget.checked)
 
     await this.reapplyPointsRenderer()
+    await this.refreshAnomalies({
+      enabled: anomaliesVisible(SettingsManager.getSettings()),
+    })
   }
 
   async reapplyPointsRenderer() {
@@ -411,7 +415,9 @@ export class LayerVisibilityManager {
   async toggleAnomalies(event) {
     const enabled = event.target.checked
     SettingsManager.updateSetting("anomaliesEnabled", enabled)
-    await this.refreshAnomalies({ enabled })
+    await this.refreshAnomalies({
+      enabled: anomaliesVisible(SettingsManager.getSettings()),
+    })
   }
 
   async refreshAnomalies({ enabled }) {

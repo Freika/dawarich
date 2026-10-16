@@ -32,6 +32,7 @@
   {:delete, "/trips/:trip_id/notes/:id", DawarichWeb.TripNoteActions, [:a8_action]},
   {:delete, "/visits/:id", DawarichWeb.VisitActions, [:a8_action]},
   {:delete, "/visits/bulk_destroy", DawarichWeb.VisitActions, [:a8_action]},
+  {:get, "/insights/routes/:year", DawarichWeb.InsightsRoutes, [:family_data]},
   {:get, "/", DawarichWeb.HomeDispatch, [:public_home]},
   {:get, "/api-docs", DawarichWeb.ApiDocs, [:operator]},
   {:get, "/api-docs/index.html", DawarichWeb.ApiDocs, [:operator]},

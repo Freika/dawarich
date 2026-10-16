@@ -32,8 +32,9 @@ module Imports
         FileUtils.mkdir_p(temp_dir)
         FileUtils.cp(@file_path, @stable_zip_path)
 
-        extract_files(temp_dir)
-        entries = collect_supported_files(temp_dir)
+        extracted_dir = File.join(temp_dir, 'extracted')
+        extract_files(extracted_dir)
+        entries = collect_supported_files(extracted_dir)
         known_entries = detect_google_takeout(entries) + detect_google_photos(entries)
 
         if known_entries.any?
@@ -127,15 +128,18 @@ module Imports
       user = User.find(@user_id)
       seen_names = user.imports.where(name: entries.map { |entry| import_name_for(entry) }).pluck(:name).to_set
 
-      new_imports = entries.filter_map do |entry|
-        name = import_name_for(entry)
-        next if seen_names.include?(name)
+      new_imports = []
+      begin
+        entries.each do |entry|
+          name = import_name_for(entry)
+          next if seen_names.include?(name)
 
-        seen_names << name
-        build_import(user, entry, name)
+          seen_names << name
+          new_imports << build_import(user, entry, name)
+        end
+      ensure
+        enqueue_processing(new_imports)
       end
-
-      enqueue_processing(new_imports)
     end
 
     def import_name_for(entry)

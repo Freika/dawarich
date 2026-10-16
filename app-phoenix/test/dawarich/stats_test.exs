@@ -92,7 +92,7 @@ defmodule Dawarich.StatsTest do
     assert Enum.at(y2024.distances, 2) == 38_400 and Enum.at(y2024.distances, 0) == 0
     assert index.locked_years == []
     assert index.total_distance == 70_400
-    assert index.countries_visited == ["Czechia", "Germany"]
+    assert index.countries_visited == ["Austria", "Czechia", "Germany"]
     assert index.cities_visited == ["Berlin", "Nowhere", "Prague"]
   end
 
@@ -223,10 +223,11 @@ defmodule Dawarich.StatsTest do
     ]
 
     places = Dawarich.Stats.Toponyms.year_places(stats, 2023, table)
-    assert places.countries_count == 3
+    assert places.countries_count == 4
     assert places.cities_count == 5
 
     assert places.grouped == [
+             {"Austria", []},
              {"Czech Republic", ["Brno"]},
              {"Czechia", ["Prague"]},
              {"Germany", ["Berlin", "Hamburg"]}

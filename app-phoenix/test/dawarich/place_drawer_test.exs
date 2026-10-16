@@ -197,7 +197,7 @@ defmodule Dawarich.PlaceDrawerTest do
   end
 
   test "settings Rails rejects hand back", %{user: user} do
-    assert PlaceDrawer.load(%{user | settings: []}, 844_101) == :rails
+    assert {:ok, %{id: 844_101}} = PlaceDrawer.load(%{user | settings: []}, 844_101)
     assert PlaceDrawer.load(%{user | settings: %{"timezone" => 5}}, 844_101) == :rails
     assert PlaceDrawer.load(%{user | settings: %{"timezone" => "Mars/Phobos"}}, 844_101) == :rails
 

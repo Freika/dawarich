@@ -11,7 +11,7 @@ defmodule Dawarich.Settings.Supporter do
 
       with {:ok, settings} <- General.save(repo, id, changes) do
         invalidate(email, github)
-        {:ok, Supporters.info(settings, now)}
+        {:ok, Supporters.info(Map.delete(settings, "app_store_supporter"), now)}
       end
     else
       true -> {:error, :empty}

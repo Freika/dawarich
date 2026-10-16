@@ -51,6 +51,7 @@ defmodule Dawarich.RailsJobOwners do
     "DataMigrations::RecalculateAnomaliesJob" => {:oban, ["command:release.anomalies"]},
     "DataMigrations::RecalculateAnomaliesUserJob" => {:oban, ["command:release.anomalies_user"]},
     "DataMigrations::RecalculatePerTrackerTracksJob" => {:oban, ["command:release.per_tracker"]},
+    "DataMigrations::ReassignBoundaryPointsJob" => {:oban, ["command:release.boundary_points"]},
     "DataMigrations::SetPointsCountryIdsJob" => :retire,
     "DataMigrations::SetReverseGeocodedAtForPointsJob" => :retire,
     "DataMigrations::StartSettingsPointsCountryIdsJob" => :retire,

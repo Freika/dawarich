@@ -3,32 +3,7 @@
 module StatsClosureFixtures
   def capture_q_commands
     user = reader(5290)
-    no_geocoding
-    sign_in user
-    get '/stats'
-    token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
-    headers = { 'X-CSRF-Token' => token }
-    notifications_before = user.notifications.count
-    Stats::CalculatingJob.new.perform(user.id, 2024, 13)
-    default_failure_notified = user.notifications.count > notifications_before
-    expect(default_failure_notified).to eq(true)
-    q06 = %w[1 01 all 0 13].map do |month|
-      get '/stats'
-      clear_enqueued_jobs
-      put "/stats/2024/#{month}/update", headers: headers
-      q_result(month).merge(jobs: enqueued_jobs.map { _1[:args] }, default_failure_notified:)
-    end
-    write_json(fixtures.join('stats/a12f3a-q06.json'), q06)
-    create(:point, user:, timestamp: Time.utc(2024, 3, 5).to_i)
-    create(:point, user:, timestamp: Time.utc(2024, 4, 5).to_i)
-    clear_enqueued_jobs
-    get '/stats'
-    put '/stats/update_all', headers: headers
-    q07 = q_result('update_all').merge(
-      debounce_ttl: Stats::RecalculationDebouncer::KEY_TTL.to_i,
-      jobs: enqueued_jobs.map { _1[:args] }
-    )
-    write_json(fixtures.join('stats/a12f3a-q07.json'), q07)
+    headers = capture_q_updates(user)
 
     stat(52_901, user, 2024, 3, 1000)
     q09 = %w[2024 2024tail 1969 2026 2023].map do |year|
@@ -48,6 +23,57 @@ module StatsClosureFixtures
     write_json(fixtures.join('stats/a12f3a-q10.json'), q10)
     sign_out user
     capture_q_reads
+  end
+
+  def capture_q_updates(user)
+    no_geocoding
+    sign_in user
+    get '/insights'
+    token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+    headers = { 'X-CSRF-Token' => token }
+    notifications_before = user.notifications.count
+    expect { Stats::CalculatingJob.new.perform(user.id, 2024, 13) }.to raise_error(Date::Error)
+    default_failure_notified = user.notifications.count > notifications_before
+    expect(default_failure_notified).to eq(true)
+    q06 = %w[1 01 all 0 13].map do |month|
+      get '/insights'
+      clear_enqueued_jobs
+      put "/stats/2024/#{month}/update", headers: headers
+      q_result(month).merge(jobs: enqueued_jobs.map { _1[:args] }, default_failure_notified:)
+    end
+    write_json(fixtures.join('stats/a12f3a-q06.json'), q06)
+    create(:point, user:, timestamp: Time.utc(2024, 3, 5).to_i)
+    create(:point, user:, timestamp: Time.utc(2024, 4, 5).to_i)
+    clear_enqueued_jobs
+    get '/insights'
+    put '/stats/update_all', headers: headers
+    q07 = q_result('update_all').merge(
+      debounce_ttl: Stats::RecalculationDebouncer::KEY_TTL.to_i,
+      jobs: enqueued_jobs.map { _1[:args] }
+    )
+    write_json(fixtures.join('stats/a12f3a-q07.json'), q07)
+
+    headers
+  end
+
+  def capture_stats_null_redirect(user)
+    captures = [nil, :json_null, {}].map do |settings|
+      if settings == :json_null
+        User.where(id: user.id).update_all("settings='null'::jsonb")
+      else
+        user.update_columns(settings:)
+      end
+      sign_in user.reload
+      get '/stats'
+      { status: response.status, type: response.media_type,
+        location: response.location&.delete_prefix('http://www.example.com') }
+    end
+    expect(captures.uniq).to eq([{ status: 302, type: 'text/html', location: '/insights?year=all' }])
+    path = fixtures.join('null_settings.json')
+    corpus = JSON.parse(File.read(path))
+    row = corpus.find { _1['path'] == '/stats' }
+    row.merge!(captures.first.transform_keys(&:to_s), 'null_result' => 302, 'selectors' => [])
+    write_json(path, corpus)
   end
 
   def capture_q_reads

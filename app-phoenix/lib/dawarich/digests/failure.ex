@@ -1,7 +1,8 @@
 defmodule Dawarich.Digests.Failure do
   @moduledoc false
 
-  alias Dawarich.{I18n, Notifications}
+  alias Dawarich.I18n
+  alias Dawarich.Stats.FailureNotice
   alias Dawarich.Mail.ExploreFeatures
 
   def create!(repo, kind, user_id, error, stack) do
@@ -25,7 +26,7 @@ defmodule Dawarich.Digests.Failure do
             "backtrace" => backtrace
           })
 
-        Notifications.create!(repo, user_id, :error, title, content)
+        FailureNotice.create!(repo, user_id, :error, title, content)
     end
   end
 

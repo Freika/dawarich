@@ -4,7 +4,7 @@ defmodule DawarichWeb.PublicHomeTest do
   import Phoenix.LiveViewTest
   import Plug.Conn
   alias Dawarich.Auth.RegistrationSetting
-  alias Dawarich.Test.{ParityHTML, RailsUser}
+  alias Dawarich.Test.RailsUser
   alias DawarichWeb.{HomeDispatch, HomeGate, PublicHomeLive}
   @endpoint DawarichWeb.Endpoint
 
@@ -77,22 +77,10 @@ defmodule DawarichWeb.PublicHomeTest do
     assert conn.status == 200
     refute conn.resp_body =~ ~s(href="/users/sign_up")
 
-    for locale <- ~w(en de es fr pl ca zh), mode <- [:enabled, :disabled, :cloud] do
-      :ok = RegistrationSetting.put(mode == :enabled)
-
-      {:ok, view, html} =
-        live_isolated(RailsUser.connecting_as(build_conn(), nil), PublicHomeLive,
-          session: session(locale, mode != :cloud)
-        )
-
-      expected = File.read!("test/fixtures/welcome_home/home_#{locale}_#{mode}.html")
-      assert ParityHTML.fragment(html, ".w-full.mx-auto.my-5") == ParityHTML.normalize(expected)
-      meta = Jason.decode!(File.read!("test/fixtures/welcome_home/home_#{locale}_#{mode}.json"))
-      assert html =~ ~s(href="/users/sign_in")
-      assert html =~ ~s(aria-label=)
-      assert ParityHTML.fragment(html, "footer") == ParityHTML.normalize(meta["footer"])
-      assert has_element?(view, "a[href='/users/sign_in']")
-      assert has_element?(view, "a[href='/users/sign_up']") == (mode != :disabled)
+    for locale <- ~w(en de es fr pl ca zh) do
+      conn = get(build_conn(), "/?locale=" <> locale)
+      assert conn.status == 302
+      assert get_resp_header(conn, "location") == ["http://www.example.com/users/sign_in"]
     end
   end
 
@@ -115,18 +103,7 @@ defmodule DawarichWeb.PublicHomeTest do
     end
 
     Dawarich.Repo.query!("DELETE FROM phoenix.registration_setting", [], log: false)
-    refute HomeGate.owned?(Plug.Test.conn(:get, "/"), %{})
-  end
-
-  test "anonymous connected event keeps the guest page usable" do
-    assert Code.ensure_loaded?(PublicHomeLive), "public home LiveView must exist"
-    :ok = RegistrationSetting.put(true)
-    conn = build_conn() |> RailsUser.connecting_as(nil)
-    {:ok, view, _html} = live_isolated(conn, PublicHomeLive, session: session("en", true))
-    html = render_hook(view, "changelog_consent", %{"decision" => "granted"})
-    assert html =~ "The only location history tracker"
-    assert has_element?(view, "a[href='/users/sign_in']")
-    assert render_hook(view, "lv:clear-flash", %{"key" => "notice"}) =~ "Location history"
+    assert HomeGate.owned?(Plug.Test.conn(:get, "/"), %{})
   end
 
   test "registration-disabled Rails notice survives the guest transport join and is consumed once" do
@@ -186,32 +163,12 @@ defmodule DawarichWeb.PublicHomeTest do
   end
 
   defp assert_guest_notice(conn, notice) do
-    assert conn.status == 200
-    assert conn.resp_body =~ notice
-    assert get_resp_header(conn, "location") == []
-
-    token =
-      conn.resp_body
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("meta[name='phoenix-csrf-token']")
-      |> LazyHTML.attribute("content")
-      |> hd()
-
-    request = conn |> browser_recycle() |> Map.put(:params, %{"_csrf_token" => token})
-
-    info =
-      Phoenix.Socket.Transport.connect_info(request, @endpoint,
-        session: {:mfa, {@endpoint, :session_options, []}}
-      )
-
-    assert is_map(info.session), "guest WebSocket session must pass Phoenix CSRF validation"
-    assert is_nil(info.session["rails_user_id"])
-    {:ok, view, html} = conn |> put_private(:live_view_connect_info, info) |> live()
-    assert html =~ notice
-    assert has_element?(view, "#flash-messages", notice)
-    next = conn |> browser_recycle() |> get("/")
+    assert conn.status == 302
+    assert get_resp_header(conn, "location") == ["http://www.example.com/users/sign_in"]
+    next = conn |> browser_recycle() |> get("/users/sign_in")
     assert next.status == 200
-    refute next.resp_body =~ notice
+    assert next.resp_body =~ notice
+    refute next |> browser_recycle() |> get("/users/sign_in") |> Map.fetch!(:resp_body) =~ notice
   end
 
   defp browser_recycle(conn) do

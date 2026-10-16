@@ -129,8 +129,8 @@ defmodule Dawarich.A12f3bR05Test do
     args = %{"track_id" => -1, "report_progress" => true, "user_id" => 1, "event_id" => event}
     for _ <- 1..2, do: assert(ReclassifyTrackWorker.run(ScratchRepo, __MODULE__, args) == :ok)
     Dawarich.Test.AfterCommit.drain(ScratchRepo)
-    assert RecalculationStatus.data(1)["processed_tracks"] == 1
-    assert RecalculationStatus.data(1)["status"] == "completed"
+    assert RecalculationStatus.data(1, ScratchRepo)["processed_tracks"] == 1
+    assert RecalculationStatus.data(1, ScratchRepo)["status"] == "completed"
     assert [[channel, payload]] = rows("SELECT channel,payload FROM phoenix.cable_events")
     assert channel == Dawarich.RailsMessages.broadcasting(["tracks", {:user, 1}])
     assert Jason.decode!(payload)["action"] == "transport_progress"
@@ -139,7 +139,7 @@ defmodule Dawarich.A12f3bR05Test do
     orphan = Map.put(args, "event_id", Ecto.UUID.generate())
     for _ <- 1..2, do: assert(ReclassifyTrackWorker.run(ScratchRepo, __MODULE__, orphan) == :ok)
     Dawarich.Test.AfterCommit.drain(ScratchRepo)
-    assert RecalculationStatus.data(1)["processed_tracks"] == 1
+    assert RecalculationStatus.data(1, ScratchRepo)["processed_tracks"] == 1
     System.delete_env("DAWARICH_RAILS")
     RecalculationStatus.clear(1)
 

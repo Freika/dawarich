@@ -222,7 +222,7 @@ defmodule Dawarich.Users.RecalculationCorpusTest do
         name == "user_busy" ->
           assert result == {:snooze, 3}, name
 
-        name in ~w(user_stats_escape user_digest_escape) ->
+        name in ~w(user_stats_handled user_stats_escape user_digest_escape) ->
           assert {:error, %RuntimeError{message: "synthetic recalculation failure"}} = result
 
         true ->

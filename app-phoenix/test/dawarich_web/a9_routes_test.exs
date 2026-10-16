@@ -67,8 +67,6 @@ defmodule DawarichWeb.A9RoutesTest do
     {"/imports/:id", DawarichWeb.ImportsLive.Show, :show, nil},
     {"/imports", DawarichWeb.ImportsLive.Index, :index, nil},
     {"/exports", DawarichWeb.ExportsLive.Index, :index, nil},
-    {"/stats", DawarichWeb.StatsLive.NativePage, :index, nil},
-    {"/stats/:year", DawarichWeb.StatsLive.NativePage, :year, nil},
     {"/stats/:year/:month", DawarichWeb.StatsLive.NativePage, :month, nil},
     {"/digests", DawarichWeb.DigestsLive.NativePage, :index, nil},
     {"/digests/:year", DawarichWeb.DigestsLive.NativePage, :show, nil},
@@ -174,6 +172,15 @@ defmodule DawarichWeb.A9RoutesTest do
                  layout: {DawarichWeb.Layouts, :app}
                }
       end
+    end
+
+    for {path, action} <- [{"/stats", :index}, {"/stats/:year", :year}] do
+      info = Phoenix.Router.route_info(Router, "GET", path, "www.example.com")
+
+      assert {info.route, info.plug, info.plug_opts, info.pipe_through, info[:slice],
+              info[:rails_gate], info[:phoenix_live_view], info[:native_page]} ==
+               {path, DawarichWeb.InsightsRedirect, action,
+                [:native_data_request, :browser, :rails_user], nil, nil, nil, true}
     end
 
     for {path, plug, action, gate} <- @frames do

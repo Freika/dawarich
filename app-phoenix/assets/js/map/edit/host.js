@@ -12,6 +12,7 @@ export function createHostEditing({
   layers,
   document,
   root,
+  clearSelection,
   timers = globalThis,
 }) {
   const enabled = () => getConfig().editEnabled === true
@@ -43,6 +44,7 @@ export function createHostEditing({
   })
   const editor = new MapEditor(map, {
     document,
+    clearSelection,
     history: transport.history,
     translate: mapTranslate(getConfig),
     distanceUnit: getConfig().distanceUnit ?? "km",
@@ -76,6 +78,7 @@ export function createHostEditing({
     getEditor: () => editor,
     isSinglePoint: (properties) =>
       Number.isInteger(Number(properties.id)) &&
+      Number(properties.count ?? 1) === 1 &&
       Number(properties.point_count ?? 1) === 1,
   })
   gesture.attach()

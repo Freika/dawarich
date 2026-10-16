@@ -24,6 +24,12 @@ mix assets.build
 
 The variables in these examples must be set by the developer/controller; they are not committed allocations. The commands install dependencies/build assets, not a web service. Missing dependencies or private test schema are setup work. Use the targeted runner's schema preparation for its private database. For a separately assigned Rails schema oracle, detect Ruby first, use Ruby 3.4.9 with the returned activation command, and invoke Rails only with `RAILS_ENV=test DATABASE_NAME="$PRIVATE_DATABASE" REDIS_URL="$PRIVATE_REDIS_URL"` inline. Never export `DATABASE_NAME`; load only the authorized database credential fields without printing them. Do not use `ecto.reset`/`ecto.drop`: the aliases intentionally refuse.
 
+## Test fixture isolation
+
+Whole-format import recordings pin parent and initial-child identities. Compose their setup with the storage/environment fixture only; do not create an unrelated auto-ID lease import first. A generated row can already occupy a recorded identity before `SeedIds` has a chance to advance its sequence. `A12f3bImportsFixture.setup/1` accepts an existing context for these cases, while `setup/0` retains its lease fixture.
+
+In a shared SQL sandbox, drain a LiveView's async reads with `render_async/1` before changing authorization data or patching the view, and drain the patched reads before the next change. Canceling a task during its checkout can disconnect the shared holder while the test owner is still alive. Clock tests should settle the reads before expiring access so they exercise re-admission without racing the sandbox connection.
+
 ## Edit native frontend code
 
 The native entrypoint is `app-phoenix/assets/js/app.js`. `assets/js/hooks/index.js` registers named hooks for browser libraries; domain behavior lives in contexts taking `Accounts.Scope`. Keep library/editor/map/studio imports lazy, worker/style URLs compatible with production digests, and direct-upload adapters explicit. Native uploads do not imply a Hotwire dependency. Inspect the emitted graph as well as source markers: an import name scan alone misses bundled/lazy code.

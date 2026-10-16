@@ -1,5 +1,5 @@
 defmodule Dawarich.SupportersTest do
-  use Dawarich.JobsCase, async: true, group: :scratch_db
+  use Dawarich.JobsCase, async: false, group: :scratch_db
 
   alias Dawarich.{AppVersion, Supporters}
 
@@ -92,6 +92,44 @@ defmodule Dawarich.SupportersTest do
 
     refute_received {:verify, _, _}
     refute Supporters.badge?(%{}, DateTime.utc_now())
+  end
+
+  test "App Store fallback is self-hosted only and negative GitHub falls through" do
+    old = System.get_env("SELF_HOSTED")
+
+    on_exit(fn ->
+      if old, do: System.put_env("SELF_HOSTED", old), else: System.delete_env("SELF_HOSTED")
+    end)
+
+    System.put_env("SELF_HOSTED", "true")
+
+    for flag <- [true, "true", "yes", 1] do
+      assert Supporters.info(%{"app_store_supporter" => flag}, DateTime.utc_now()) == %{
+               "supporter" => true,
+               "platform" => "app_store"
+             }
+    end
+
+    for flag <- [false, "false", "off", "0", 0, nil, ""] do
+      assert Supporters.info(%{"app_store_supporter" => flag}, DateTime.utc_now()) == %{
+               "supporter" => false
+             }
+    end
+
+    settings = %{
+      "app_store_supporter" => true,
+      "supporter_github_username" => "negative-store-test"
+    }
+
+    assert Supporters.info(settings, DateTime.utc_now())["platform"] == "app_store"
+
+    assert Supporters.info(
+             %{settings | "supporter_github_username" => "freika"},
+             DateTime.utc_now()
+           )["supporter"] == true
+
+    System.put_env("SELF_HOSTED", "false")
+    assert Supporters.info(settings, DateTime.utc_now()) == %{"supporter" => false}
   end
 
   describe "info/2" do

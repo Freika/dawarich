@@ -105,10 +105,9 @@ export class LayerManager {
     subscribe("click", "visits", handlers.handleVisitClick)
     subscribe("click", "photos", handlers.handlePhotoClick)
     subscribe("click", "places", handlers.handlePlaceClick)
-    // Areas have multiple layers (fill, outline, labels)
+    // Areas have multiple layers (fill, outline)
     subscribe("click", "areas-fill", handlers.handleAreaClick)
     subscribe("click", "areas-outline", handlers.handleAreaClick)
-    subscribe("click", "areas-labels", handlers.handleAreaClick)
 
     // Anomalies click handler
     subscribe("click", "anomalies", handlers.handleAnomalyClick)
@@ -176,7 +175,7 @@ export class LayerManager {
       this.map.getCanvas().style.cursor = ""
     })
     // Areas hover handlers for all sub-layers
-    const areaLayers = ["areas-fill", "areas-outline", "areas-labels"]
+    const areaLayers = ["areas-fill", "areas-outline"]
     areaLayers.forEach((layerId) => {
       // Only add handlers if layer exists
       if (this.map.getLayer(layerId)) {

@@ -2,8 +2,7 @@ defmodule Dawarich.A12f3bImportsFixture do
   import Dawarich.JobsCase
   alias Dawarich.ScratchRepo
 
-  def setup do
-    c = Dawarich.ImportLeaseFixture.create()
+  def setup(c \\ Dawarich.ImportLeaseFixture.create()) do
     root = Path.join(System.tmp_dir!(), "reverse-imports-" <> Ecto.UUID.generate())
     File.mkdir_p!(root)
     old = System.get_env("DAWARICH_RAILS")

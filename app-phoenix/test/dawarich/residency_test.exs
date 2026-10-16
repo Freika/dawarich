@@ -139,7 +139,8 @@ defmodule Dawarich.ResidencyTest do
       {~U[2025-01-02 12:00:00Z], "France", %{}}
     ])
 
-    assert {:replay, _} = residency(days, 2025)
+    assert Jason.decode!(json(residency(days, 2025)))["countries"]
+           |> Enum.map(& &1["country_name"]) == ["France", "Germany"]
 
     counts = user!()
 
@@ -151,7 +152,8 @@ defmodule Dawarich.ResidencyTest do
       {~U[2025-01-01 13:00:00Z], "France", %{}}
     ])
 
-    assert {:replay, _} = residency(counts, 2025)
+    assert Jason.decode!(json(residency(counts, 2025)))["daily_countries"]["2025-01-01"] ==
+             "France"
 
     future = user!()
     stat!(future, %{year: 2045, month: 1, distance: 1})

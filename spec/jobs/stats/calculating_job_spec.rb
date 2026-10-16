@@ -16,7 +16,7 @@ RSpec.describe Stats::CalculatingJob, type: :job do
     it 'calls Stats::CalculateMonth service' do
       subject
 
-      expect(Stats::CalculateMonth).to have_received(:new).with(user.id, 2024, 1, notify_on_failure: true)
+      expect(Stats::CalculateMonth).to have_received(:new).with(user.id, 2024, 1, notify_on_failure: false)
     end
 
     context 'when Stats::CalculateMonth raises an error' do
@@ -25,14 +25,14 @@ RSpec.describe Stats::CalculatingJob, type: :job do
       end
 
       it 'creates an error notification' do
-        expect { subject }.to change { Notification.count }.by(1)
+        expect { expect { subject }.to raise_error(StandardError) }.to change { Notification.count }.by(1)
         expect(Notification.last.kind).to eq('error')
       end
 
       it 'creates the notification in the user saved locale' do
         user.update!(settings: { 'locale' => 'fr' })
 
-        I18n.with_locale(:en) { subject }
+        I18n.with_locale(:en) { expect { subject }.to raise_error(StandardError) }
 
         expect(user.notifications.last.title).to eq('Échec de la mise à jour des statistiques')
       end
@@ -45,10 +45,10 @@ RSpec.describe Stats::CalculatingJob, type: :job do
         allow_any_instance_of(Stats::CalculateMonth).to receive(:points).and_raise(StandardError, 'boom')
       end
 
-      it 'creates the service notification in the user saved locale' do
-        I18n.with_locale(:en) { subject }
+      it 'creates one notification in the user saved locale' do
+        I18n.with_locale(:en) { expect { subject }.to raise_error(StandardError) }
 
-        expect(user.notifications.last.title).to eq("L'actualisation des statistiques a échoué")
+        expect(user.notifications.last.title).to eq('Échec de la mise à jour des statistiques')
         expect(user.notifications.last.content).to include('boom')
       end
     end

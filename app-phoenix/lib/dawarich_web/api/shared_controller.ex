@@ -110,6 +110,9 @@ defmodule DawarichWeb.Api.SharedController do
       else: result(conn, Dawarich.SharedApi.Points.index(link), [])
   end
 
+  defp dispatch(conn, :points, %{type: "track", settings: %{"show_route" => false}}),
+    do: result(conn, {:ok, []}, [])
+
   defp dispatch(conn, :points, %{type: type} = link) when type != "live",
     do: result(conn, Dawarich.SharedApi.Points.index(link), cache_control: cache(link))
 

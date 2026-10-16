@@ -128,14 +128,24 @@ defmodule DawarichWeb.PlacesLiveTest do
   end
 
   test "unsupported persisted Place settings render alert before and after join", %{user: user} do
+    for raw <- [[], 42] do
+      Dawarich.Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [user.id, raw], log: false)
+      {:ok, safe_view, _} = live_as(user, "/places")
+      refute has_element?(safe_view, "[role=alert]")
+      assert Dawarich.Accounts.get(user.id).settings == raw
+      GenServer.stop(safe_view.pid)
+    end
+
     conn = RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id)
 
-    Dawarich.Repo.query!("UPDATE users SET settings='[]'::jsonb WHERE id=$1", [user.id],
+    Dawarich.Repo.query!(
+      ~s(UPDATE users SET settings='{"timezone":[]}'::jsonb WHERE id=$1),
+      [user.id],
       log: false
     )
 
     assert Dawarich.Accounts.SettingsValue.cast([]) == :error
-    assert Dawarich.Accounts.get(user.id).settings == []
+    assert Dawarich.Accounts.get(user.id).settings["timezone"] == []
     conn = get(conn, "/places")
     assert conn.status == 200
     {:ok, view, _} = live(conn)
@@ -161,6 +171,6 @@ defmodule DawarichWeb.PlacesLiveTest do
     assert :sys.get_state(view.pid).socket.redirected == nil
     localized = get(RailsUser.signed_in(user.id), "/places?locale=de")
     assert localized.status == 200
-    assert Dawarich.Accounts.get(user.id).settings == []
+    assert Dawarich.Accounts.get(user.id).settings["timezone"] == []
   end
 end

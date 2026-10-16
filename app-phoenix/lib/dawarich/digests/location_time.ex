@@ -29,7 +29,7 @@ defmodule Dawarich.Digests.LocationTime do
       end)
 
     %{
-      "countries" => Toponyms.ranked(minutes),
+      "countries" => Toponyms.ranked(minutes, if(period.month, do: :encounter, else: :name)),
       "cities" => Toponyms.city_minutes(stats),
       "total_country_minutes" => Enum.sum(Enum.map(minutes, &elem(&1, 1)))
     }

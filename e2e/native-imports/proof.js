@@ -34,7 +34,7 @@ export function importEvidence(id) {
       'actual_points', (SELECT count(*) FROM points p WHERE p.import_id=i.id),
       'owner_email', u.email, 'locale', u.settings->>'locale',
       'blob_filename', b.filename, 'blob_metadata', b.metadata, 'blob_key', b.key,
-      'blob_checksum', b.checksum,
+      'blob_checksum', b.checksum, 'blob_service', b.service_name,
       'blob_bytes', b.byte_size,
       'commands', COALESCE((SELECT json_agg(json_build_object(
         'type', o.command_type, 'version', o.command_version, 'payload', o.payload,
@@ -56,8 +56,15 @@ export function storedBlobEvidence(blob) {
     throw new Error("Set isolated NATIVE_IMPORTS_STORAGE_ROOT")
   if (!/^[a-zA-Z0-9_-]+$/.test(blob.blob_key))
     throw new Error("Invalid stored blob key")
+  const serviceRoot =
+    blob.blob_service === "test"
+      ? path.join(path.dirname(root), "tmp", "storage")
+      : blob.blob_service === "local"
+        ? root
+        : null
+  if (!serviceRoot) throw new Error("Expected an isolated Disk storage service")
   const file = path.join(
-    root,
+    serviceRoot,
     blob.blob_key.slice(0, 2),
     blob.blob_key.slice(2, 4),
     blob.blob_key,

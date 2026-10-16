@@ -145,7 +145,7 @@ defmodule Dawarich.Imports.GpxLifecycleTest do
     rows("UPDATE imports SET raw_points=9,doubles=4,processed=7 WHERE id=$1", [c.import.id])
     assert {:ok, :ok} = run(c)
 
-    assert [[2, 1, 0, 1]] ==
+    assert [[2, 1, 0, 7]] ==
              rows("SELECT status,raw_points,doubles,processed FROM imports WHERE id=$1", [
                c.import.id
              ])

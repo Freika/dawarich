@@ -64,7 +64,7 @@ defmodule Dawarich.Locations.Closure do
 
   def term(search, rows) do
     if search.limit < 0, do: raise(ArgumentError)
-    points = rows |> Enum.map(&point/1) |> Enum.sort_by(& &1.ts)
+    points = rows |> Enum.map(&point/1) |> Enum.sort_by(&{&1.ts, &1.id})
 
     cond do
       points == [] -> {:ok, result([])}
@@ -72,8 +72,9 @@ defmodule Dawarich.Locations.Closure do
     end
   end
 
-  defp point([ts, lat, lon, city, country, altitude, accuracy, distance, date]) do
+  defp point([ts, lat, lon, city, country, altitude, accuracy, distance, date, id]) do
     %{
+      id: id,
       ts: ts,
       coordinates: [lat, lon],
       city: city,
@@ -101,7 +102,7 @@ defmodule Dawarich.Locations.Closure do
     last = List.last(points)
     count = length(points)
     minutes = if count > 1, do: RubyFloat.round((last.ts - first.ts) / 60), else: @single
-    best = Enum.min_by(points, &(&1.accuracy || @no_accuracy))
+    best = Enum.min_by(points, &{&1.accuracy || @no_accuracy, &1.ts, &1.id})
     distance = RubyFloat.round(RubyFloat.sum(Enum.map(points, & &1.distance)) / count, 2)
 
     %{

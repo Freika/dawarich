@@ -3,7 +3,13 @@ defmodule Dawarich.Imports.AcceptedDispositionReviewTest do
   alias Dawarich.A12f3bImportsFixture, as: F
   alias Dawarich.Imports.{Events, ProcessWorker, ProcessGpxWorker}
   alias Dawarich.Jobs.{Ownership, Processed, Registry}
-  setup do: F.setup()
+
+  setup c do
+    case c.review_case do
+      "zip-" <> _ -> F.setup(%{})
+      _ -> F.setup()
+    end
+  end
 
   @tag review_case: "mixed-gpx"
   test "edited GPX normal execution has one native progress transport with mixed owners", c do

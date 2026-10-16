@@ -86,3 +86,5 @@ state	file	method	image	upgraded_from	hub_digest
 1.14.4	1.14.4.image.sql.gz	image	1.14.4	-	sha256:2fecbaf093b9544b5733fe972d422100c2bc5be896e706c58eab8bdb6860fe06
 1.15.0	1.15.0.image.sql.gz	image	1.15.0	-	sha256:56be3eb19c9a1d735217e8c16283a9ec63e47d91d9d70cdd23102181d51b579b
 1.15.2	1.15.2.image.sql.gz	image	1.15.2	-	sha256:e58334ca56976feb4c885a8bd34b251ec2e3f45ffeabd4fd4371b5d2108fc70d
+1.15.4	1.15.4.replay.sql.gz	replay	-	1.15.2	-
+1.16.0	1.16.0.replay.sql.gz	replay	-	1.15.4	-

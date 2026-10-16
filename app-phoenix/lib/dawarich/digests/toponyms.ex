@@ -17,7 +17,7 @@ defmodule Dawarich.Digests.Toponyms do
 
   def sanitize(_raw), do: []
 
-  def countries(stats, require_cities \\ true) do
+  def countries(stats, require_cities \\ false) do
     stats
     |> entries()
     |> Enum.filter(&(Ruby.present?(&1["country"]) and (not require_cities or &1["cities"] != [])))
@@ -72,9 +72,9 @@ defmodule Dawarich.Digests.Toponyms do
     |> ranked()
   end
 
-  def ranked(pairs) do
+  def ranked(pairs, order \\ :encounter) do
     pairs
-    |> Enum.sort_by(fn {_, minutes} -> -minutes end)
+    |> Enum.sort_by(fn {name, minutes} -> {-minutes, if(order == :name, do: name)} end)
     |> Enum.take(10)
     |> Enum.map(fn {name, minutes} -> %{"name" => name, "minutes" => minutes} end)
   end

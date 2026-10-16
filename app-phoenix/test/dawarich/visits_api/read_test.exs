@@ -136,10 +136,11 @@ defmodule Dawarich.VisitsApi.ReadTest do
     assert hd(maps)["started_at"] == "2026-09-01T14:00:00.000+02:00"
 
     assert maps |> Enum.at(1) |> Map.fetch!("place") ==
-             {:object, [{"latitude", "52.6"}, {"longitude", "13.6"}, {"id", nil}]}
+             {:object,
+              [{"latitude", "52.6"}, {"longitude", "13.6"}, {"id", nil}, {"address", nil}]}
 
     assert maps |> Enum.at(3) |> Map.fetch!("place") ==
-             {:object, [{"latitude", nil}, {"longitude", nil}, {"id", nil}]}
+             {:object, [{"latitude", nil}, {"longitude", nil}, {"id", nil}, {"address", nil}]}
 
     assert commands() == []
 
@@ -147,7 +148,8 @@ defmodule Dawarich.VisitsApi.ReadTest do
     assert {:ok, {:object, fields}} = Read.show(owner, 953_301, "UTC")
 
     assert Map.new(fields)["place"] ==
-             {:object, [{"latitude", 52.52}, {"longitude", 13.405}, {"id", 953_131}]}
+             {:object,
+              [{"latitude", 52.52}, {"longitude", 13.405}, {"id", 953_131}, {"address", nil}]}
   end
 
   defp range, do: %{"start_at" => "2026-09-01T12:00:00Z", "end_at" => "2026-09-01T13:00:00Z"}

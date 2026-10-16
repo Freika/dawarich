@@ -30,7 +30,7 @@ class Users::Digests::Monthly::CalculatingJob < ApplicationJob
     return :missing unless user
 
     I18n.with_locale(user.locale) do
-      Stats::CalculateMonth.new(user_id, year, month).call
+      Stats::CalculateMonth.new(user_id, year, month, notify_on_failure: false).call
       Users::Digests::CalculateMonth.new(user_id, year, month).call
     end
   rescue StandardError => e

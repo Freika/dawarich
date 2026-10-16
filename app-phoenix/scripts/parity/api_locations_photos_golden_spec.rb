@@ -50,7 +50,7 @@ module ApiLocationsPhotosGoldenOracle
       seed: :visits },
     { name: 'replay_locations_impossible_date', expect: :rails, path: "#{LOC}?#{HERE}&date_from=2023-02-30",
       seed: :visits },
-    { name: 'replay_locations_tie', expect: :rails, path: "#{LOC}?#{HERE}", seed: :tie },
+    { name: 'replay_locations_tie', expect: :own, path: "#{LOC}?#{HERE}", seed: :tie },
     { name: 'replay_locations_zone_case', expect: :rails, path: "#{LOC}?#{HERE}", seed: :visits,
       user: { timezone: 'europe/berlin' } },
     { name: 'replay_locations_client_header', expect: :rails, path: "#{LOC}?#{HERE}",
@@ -141,7 +141,8 @@ RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type
     end
   end
 
-  (ApiLocationsPhotosGoldenOracle::CASES + (ENV['GROUP_C_CAPTURE'] == '1' ? [] : ApiLocationsPhotosGoldenOracle::CLOSURE_CASES)).each do |kase|
+  closure_cases = ENV['GROUP_C_CAPTURE'] == '1' ? [] : ApiLocationsPhotosGoldenOracle::CLOSURE_CASES
+  (ApiLocationsPhotosGoldenOracle::CASES + closure_cases).each do |kase|
     next if ENV['API_GOLDEN_CASES'].present? && !ENV['API_GOLDEN_CASES'].split(',').include?(kase[:name])
 
     it(kase[:name]) do
@@ -193,7 +194,7 @@ RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type
       'setup' => setup, 'upstream' => g3_upstream(kase),
       'request' => { 'method' => kase[:method].to_s.upcase, 'target' => path, 'headers' => headers.to_a },
       'response' => captured, 'after' => group_c_rows(ApiLocationsPhotosGoldenOracle::TABLES),
-      'provider_cache' => kase[:seed] == :photoprism ? { Photoprism::CachePreviewToken::TOKEN_CACHE_KEY + "_#{user.id}" => Rails.cache.read(Photoprism::CachePreviewToken::TOKEN_CACHE_KEY + "_#{user.id}") } : {} }
+      'provider_cache' => g3_provider_cache(kase, user) }
   end
 
   def g3_request(kase, path, headers)
@@ -242,6 +243,13 @@ RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type
     headers['If-None-Match'] = response.headers['ETag']
   end
 
+  def g3_provider_cache(kase, user)
+    return {} unless kase[:seed] == :photoprism
+
+    key = "#{Photoprism::CachePreviewToken::TOKEN_CACHE_KEY}_#{user.id}"
+    { key => Rails.cache.read(key) }
+  end
+
   def g3_upstream_url(kase)
     base = kase.dig(:user, :settings, 'immich_url') || ApiLocationsPhotosGoldenOracle::IMMICH
     "#{base}/api/assets/#{kase.fetch(:asset_id, ApiLocationsPhotosGoldenOracle::ASSET)}/thumbnail?size=preview"
@@ -267,18 +275,24 @@ RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type
   end
 
   def g3_upstream(kase)
+    oracle = ApiLocationsPhotosGoldenOracle
     if kase[:seed] == :photoprism
-      oracle = ApiLocationsPhotosGoldenOracle
       return { 'path' => "/api/v1/t/#{oracle::ASSET}/phoenix-a4g3-preview-token/tile_500",
                'request_headers' => {}, 'status' => 200, 'headers' => [],
                'body_base64' => Base64.strict_encode64(oracle::JPEG), 'calls' => 1 }
     end
     up = kase[:upstream] or return nil
+    redirect = if up[:status] == 302
+                 { 'redirect' => { 'path' => '/elsewhere', 'status' => 200, 'headers' => [],
+                                   'body_base64' => Base64.strict_encode64(oracle::JPEG) } }
+               else
+                 {}
+               end
     { 'path' => URI(g3_upstream_url(kase)).request_uri, 'api_key' => ApiLocationsPhotosGoldenOracle::IMMICH_KEY,
       'status' => up[:status], 'headers' => (up[:headers] || {}).to_a, 'fault' => up[:fault]&.to_s,
       'body_base64' => Base64.strict_encode64(up.fetch(:body, ApiLocationsPhotosGoldenOracle::JPEG)),
       'calls' => up[:status] == 302 ? 2 : up.fetch(:calls),
-      **(up[:status] == 302 ? { 'redirect' => { 'path' => '/elsewhere', 'status' => 200, 'headers' => [], 'body_base64' => Base64.strict_encode64(ApiLocationsPhotosGoldenOracle::JPEG) } } : {}) }
+      **redirect }
   end
 
   def g3_point(user, lat, lon, timestamp, **attrs)

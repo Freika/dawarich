@@ -13,6 +13,10 @@ async function loadFamilyMapController(theme = "dark") {
   const withoutImports = source.replace(/^import .*\n/gm, "")
   const dependencies = `
     class Controller {}
+    class HtmlLabelManager {
+      sync(features) { this.features = features }
+      clear() { this.cleared = true }
+    }
     class LngLatBounds {
       constructor() { this.coordinates = [] }
       extend(coordinates) { this.coordinates.push(coordinates) }
@@ -44,7 +48,7 @@ test("family member labels render before the map fits their bounds", async () =>
     },
   ]
   controller.map = {
-    addSource(id, source) {
+    addSource(_id, source) {
       sources.push(source)
     },
     addLayer(layer) {
@@ -59,8 +63,18 @@ test("family member labels render before the map fits their bounds", async () =>
   controller.addMembers()
 
   assert.equal(sources[0].data.features[0].properties.name, "Ada Lovelace")
-  const labels = layers.find((layer) => layer.id === "family-labels")
-  assert.equal(labels.paint["text-color"], "#e5e7eb")
+  assert.equal(
+    layers.some((layer) => layer.type === "symbol"),
+    false,
+  )
+  assert.equal(controller.labels.features[0].properties.name, "Ada Lovelace")
+  let removed = false
+  controller.map.remove = () => {
+    removed = true
+  }
+  controller.disconnect()
+  assert.equal(controller.labels.cleared, true)
+  assert.equal(removed, true)
   assert.deepEqual(fitCalls[0].bounds.coordinates, [[13.405, 52.52]])
   assert.deepEqual(fitCalls[0].options, { padding: 60, maxZoom: 14 })
 })

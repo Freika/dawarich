@@ -14,8 +14,7 @@ module LocationSearch
 
       ActiveRecord::Base.connection.exec_query(safe_query)
                         .map { |row| format_point_result(row) }
-                        .sort_by { |point| point[:timestamp] }
-                        .reverse # Most recent first
+                        .sort_by { |point| [-point[:timestamp], point[:id]] }
     end
 
     private
@@ -46,7 +45,7 @@ module LocationSearch
           AND ST_DWithin(p.lonlat, search_point.geom, ?)
           #{date_filter_sql}
           #{plan_filter_sql}
-        ORDER BY p.timestamp DESC
+        ORDER BY p.timestamp DESC, p.id ASC
       SQL
 
       # Combine bind values: longitude, latitude, user_id, radius, then date filters, then plan filter

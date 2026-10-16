@@ -17,20 +17,29 @@ defmodule Dawarich.VisitsApi.Payload do
         "v.duration,v.name,CASE v.status WHEN 0 THEN 'suggested' WHEN 1 THEN 'confirmed' WHEN 2 THEN 'declined' END," <>
         "v.confidence,CASE WHEN v.confidence>=70 THEN 'high' WHEN v.confidence>=40 THEN 'medium' WHEN v.confidence IS NOT NULL THEN 'low' END," <>
         "CASE WHEN p.id IS NOT NULL THEN to_json(COALESCE(ST_Y(p.lonlat::geometry),p.latitude::double precision)) ELSE #{decimal("a.latitude")} END," <>
-        "CASE WHEN p.id IS NOT NULL THEN to_json(COALESCE(ST_X(p.lonlat::geometry),p.longitude::double precision)) ELSE #{decimal("a.longitude")} END,p.id " <>
+        "CASE WHEN p.id IS NOT NULL THEN to_json(COALESCE(ST_X(p.lonlat::geometry),p.longitude::double precision)) ELSE #{decimal("a.longitude")} END,p.id,p.geodata " <>
         "#{@joins} WHERE #{where}#{tail}",
       args
     ).rows
   end
 
   def term(row) do
-    [lat, lon, id] = Enum.drop(row, 10)
+    [lat, lon, id, geodata] = Enum.drop(row, 10)
     lat = if id && is_number(lat), do: lat * 1.0, else: lat
     lon = if id && is_number(lon), do: lon * 1.0, else: lon
 
     {:object,
      Enum.zip(@keys, row) ++
-       [{"place", {:object, [{"latitude", lat}, {"longitude", lon}, {"id", id}]}}]}
+       [
+         {"place",
+          {:object,
+           [
+             {"latitude", lat},
+             {"longitude", lon},
+             {"id", id},
+             {"address", Dawarich.Address.place(geodata)}
+           ]}}
+       ]}
   end
 
   defp decimal(column),

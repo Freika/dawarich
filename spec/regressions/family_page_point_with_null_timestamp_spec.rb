@@ -15,6 +15,8 @@ RSpec.describe 'Family location lookup with incomplete points' do
   let(:owner) { create(:user) }
   let(:viewer) { create(:user) }
   let(:family) { create(:family, creator: owner) }
+  # Family location data excludes the requesting member, so it is read as another member.
+  let(:viewer) { create(:user) }
 
   before do
     create(:family_membership, user: owner, family: family, role: :owner)

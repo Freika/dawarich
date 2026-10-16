@@ -67,6 +67,29 @@ RSpec.describe Achievements::RegionSetChecker do
     end
   end
 
+  describe 'unlock date' do
+    include ActiveSupport::Testing::TimeHelpers
+
+    before { seed_germany }
+
+    it 'records when the region was actually visited, not when the check ran' do
+      travel_to(Time.at(base_ts).utc + 5_000_000) do
+        described_class.new(user, notify: false).call
+      end
+
+      expect(Time.iso8601(exploration.state['earned']['DE-BY']).to_i).to eq(base_ts)
+      expect(Time.iso8601(exploration.state['earned']['DE']).to_i).to eq(base_ts)
+    end
+
+    it 'still records the true visit date on a backfill running long after the fact' do
+      travel_to(Time.at(base_ts).utc + 5_000_000) do
+        described_class.new(user, notify: false, oldest_timestamp: base_ts - 1).call
+      end
+
+      expect(Time.iso8601(exploration.state['earned']['DE-BY']).to_i).to eq(base_ts)
+    end
+  end
+
   describe 'flat countries' do
     let(:normandy) { 'MULTIPOLYGON (((2.0 48.0, 2.0 49.0, 3.0 49.0, 3.0 48.0, 2.0 48.0)))' }
 

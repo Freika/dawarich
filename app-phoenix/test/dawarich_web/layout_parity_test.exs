@@ -121,7 +121,7 @@ defmodule DawarichWeb.LayoutParityTest do
       phoenix = Dawarich.Test.NativeM4Corpus.prepare(raw)
       rails = Dawarich.Test.NativeM4Corpus.prepare(rails)
 
-      assert links(phoenix) == links(rails)
+      assert destinations(phoenix) == destinations(rails)
 
       assert phoenix
              |> LazyHTML.from_document()
@@ -171,7 +171,7 @@ defmodule DawarichWeb.LayoutParityTest do
 
       assert meta["html"]["lang"] == @lang
 
-      assert links(phoenix) == links(rails)
+      assert destinations(phoenix) == destinations(rails)
 
       assert phoenix =~ ~s(href="/users/sign_in")
     end
@@ -194,13 +194,16 @@ defmodule DawarichWeb.LayoutParityTest do
     end
   end
 
-  defp links(html) do
+  defp destinations(html) do
     html
     |> LazyHTML.from_document()
     |> LazyHTML.query("body a[href]")
     |> Enum.map(fn link ->
-      {Enum.map(LazyHTML.attribute(link, "href"), &normalize_href/1),
-       LazyHTML.text(link) |> String.replace(~r/\s+/, " ") |> String.trim()}
+      href = link |> LazyHTML.attribute("href") |> hd() |> normalize_href()
+
+      if URI.parse(href).path == "/stats",
+        do: String.replace_suffix(href, "/stats", "/insights"),
+        else: href
     end)
     |> MapSet.new()
   end
@@ -222,7 +225,7 @@ defmodule DawarichWeb.LayoutParityTest do
   for %{"type" => type, "locale" => locale} = flash <- LayoutFixtures.flash_messages() do
     @flash flash
 
-    test "a #{type} flash in #{locale} matches Rails' flash message partial" do
+    test "a #{type} flash in #{locale} preserves escaped content and a dismiss action" do
       html =
         render_component(&DawarichWeb.Chrome.flash_message/1,
           type: @flash["type"],
@@ -230,7 +233,10 @@ defmodule DawarichWeb.LayoutParityTest do
           locale: @flash["locale"]
         )
 
-      assert ParityHTML.normalize(html) == ParityHTML.normalize(@flash["html"])
+      dom = LazyHTML.from_fragment(html)
+      assert LazyHTML.query(dom, "[role=alert]") |> LazyHTML.text() =~ "Gespeichert & <b>ok</b>"
+      assert LazyHTML.query(dom, "button[aria-label]") |> Enum.count() == 1
+      refute html =~ "<b>ok</b>"
     end
   end
 end

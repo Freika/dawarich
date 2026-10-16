@@ -199,11 +199,11 @@ defmodule Dawarich.Families.Requests do
         response_failure(403, "not_authorized")
 
       [[_target]] ->
-        locked(repo, user_id, id, decision, params, clock)
+        locked(repo, user_id, family_id, id, decision, params, clock)
     end
   end
 
-  defp locked(repo, user_id, id, decision, params, clock) do
+  defp locked(repo, user_id, family_id, id, decision, params, clock) do
     [[status, expires, suggested]] =
       repo.query!(
         "SELECT status, expires_at, suggested_duration FROM family_location_requests WHERE id = $1 FOR UPDATE",
@@ -213,30 +213,36 @@ defmodule Dawarich.Families.Requests do
     now = clock.()
     at = Clock.naive(now)
 
-    if status == 0 and NaiveDateTime.compare(expires, at) == :gt do
-      if decision == :accept do
-        if params["web"],
-          do:
-            SharingUpdate.web_write!(
-              user_id,
-              %{"enabled" => true, "duration" => duration(params, suggested), "web" => true},
-              now,
-              repo
-            ),
-          else: SharingUpdate.enable!(user_id, duration(params, suggested), now)
-      end
+    cond do
+      status != 0 or NaiveDateTime.compare(expires, at) != :gt ->
+        response_failure(422, "no_longer_actionable")
 
-      code = if decision == :accept, do: 1, else: 2
+      not Dawarich.Families.ConsentAdmission.allowed?(repo, user_id, family_id, now) ->
+        response_failure(403, "not_authorized")
 
-      repo.query!(
-        "UPDATE family_location_requests SET status = $1, responded_at = $2, updated_at = $2 WHERE id = $3",
-        [code, at, id]
-      )
+      true ->
+        if decision == :accept do
+          if params["web"],
+            do:
+              SharingUpdate.web_write!(
+                user_id,
+                %{"enabled" => true, "duration" => duration(params, suggested), "web" => true},
+                now,
+                repo
+              ),
+            else: SharingUpdate.enable!(user_id, duration(params, suggested), now)
+        end
 
-      {:ok, 200,
-       {:object, [{"success", true}, {"status", if(code == 1, do: "accepted", else: "declined")}]}}
-    else
-      response_failure(422, "no_longer_actionable")
+        code = if decision == :accept, do: 1, else: 2
+
+        repo.query!(
+          "UPDATE family_location_requests SET status = $1, responded_at = $2, updated_at = $2 WHERE id = $3",
+          [code, at, id]
+        )
+
+        {:ok, 200,
+         {:object,
+          [{"success", true}, {"status", if(code == 1, do: "accepted", else: "declined")}]}}
     end
   end
 

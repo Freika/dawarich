@@ -40,7 +40,9 @@ defmodule Dawarich.ReleaseMigrations do
     V1_14_3,
     V1_14_4,
     V1_15_0,
-    V1_15_2
+    V1_15_2,
+    V1_15_4,
+    V1_16_0
   }
 
   @releases [
@@ -82,6 +84,8 @@ defmodule Dawarich.ReleaseMigrations do
     V1_14_4,
     V1_15_0,
     V1_15_2,
+    V1_15_4,
+    V1_16_0,
     Unreleased
   ]
 

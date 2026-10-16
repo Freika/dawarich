@@ -1,7 +1,7 @@
 defmodule DawarichWeb.NativeMapChrome do
   @moduledoc false
   use DawarichWeb, :html
-  import Phoenix.LiveView, only: [attach_hook: 4, connected?: 1]
+  import Phoenix.LiveView, only: [attach_hook: 4, connected?: 1, push_event: 3]
 
   def load(socket) do
     if connected?(socket) do
@@ -15,7 +15,7 @@ defmodule DawarichWeb.NativeMapChrome do
     |> attach_hook(:native_chrome_info, :handle_info, &info/2)
   end
 
-  defp refresh(socket) do
+  def refresh(socket) do
     navbar =
       Dawarich.Maps.with_actor(socket.assigns.current_scope, fn actor ->
         Dawarich.Navbar.load(actor,
@@ -24,7 +24,27 @@ defmodule DawarichWeb.NativeMapChrome do
         )
       end)
 
-    assign(socket, :navbar, navbar)
+    socket = assign(socket, :navbar, navbar)
+
+    if socket.view == DawarichWeb.MapLive.Native and is_map(navbar) and
+         is_map(socket.assigns[:map_config]) and is_map(socket.assigns[:page]) do
+      page =
+        Map.put(socket.assigns.page, :family, navbar.family.available and navbar.family.member)
+
+      config =
+        DawarichWeb.MapLive.NativeConfig.build(
+          socket.assigns[:map_settings],
+          page,
+          socket.assigns.map_config,
+          socket.assigns.map_url["panel"]
+        )
+
+      changed = config != socket.assigns.map_config
+      socket = assign(socket, page: page, map_config: config)
+      if changed, do: push_event(socket, "map:config", config), else: socket
+    else
+      socket
+    end
   end
 
   defp info({:domain_changed, owner, kind}, socket)
@@ -44,7 +64,7 @@ defmodule DawarichWeb.NativeMapChrome do
     {:halt, refresh(socket)}
   end
 
-  defp event(_, _, socket), do: {:cont, socket}
+  defp event(_, _, socket), do: {:cont, refresh(socket)}
 
   def header(assigns) do
     ~H"""

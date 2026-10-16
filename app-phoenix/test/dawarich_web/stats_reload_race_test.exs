@@ -30,16 +30,16 @@ defmodule DawarichWeb.StatsReloadRaceTest do
     end
 
     install_cache(command)
-    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2024")
-    assert has_element?(view, "#stats-native-chart[phx-hook=NativeChart]")
-    assert :sys.get_state(view.pid).socket.assigns.data.distances |> Enum.sum() == 1002
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2024/3")
+    assert has_element?(view, "#monthly-stats-map[phx-hook=MapPreview]")
+    assert :sys.get_state(view.pid).socket.assigns.data.data.stat.distance == 1002
     assert Dawarich.Test.NativePageCache.entries(cache) == %{}
   end
 
   test "a recalculation race cannot render a chart after the actor identity changes", %{
     user: user
   } do
-    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2024")
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2024/3")
     {:ok, cache} = Dawarich.Test.NativePageCache.start()
     {:ok, reads} = start_supervised({Agent, fn -> 0 end}, id: :reads)
     handler = "stats-reload-identity"
@@ -48,7 +48,10 @@ defmodule DawarichWeb.StatsReloadRaceTest do
       handler,
       [:dawarich, :repo, :query],
       fn _, _, metadata, _ ->
-        if String.starts_with?(metadata.query, "SELECT month, distance, toponyms FROM stats") do
+        if String.starts_with?(
+             metadata.query,
+             "SELECT month, distance, flight_distance, daily_distance, toponyms"
+           ) do
           count = Agent.get_and_update(reads, fn count -> {count + 1, count + 1} end)
 
           if count == 2 do
@@ -80,7 +83,7 @@ defmodule DawarichWeb.StatsReloadRaceTest do
     end
 
     install_cache(command)
-    assert {:error, {:redirect, %{to: "/users/sign_in"}}} = render_patch(view, "/stats/2024")
+    assert {:error, {:redirect, %{to: "/users/sign_in"}}} = render_patch(view, "/stats/2024/3")
     assert Agent.get(reads, & &1) == 2
     assert Dawarich.Test.NativePageCache.entries(cache) == %{}
   end

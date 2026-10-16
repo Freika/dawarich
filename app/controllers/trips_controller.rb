@@ -9,9 +9,14 @@ class TripsController < ApplicationController
   before_action :set_trip, only: %i[show edit update destroy recalculate export]
 
   def index
-    @trips = current_user.trips
-                         .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
-                         .order(started_at: :desc).page(params[:page]).per(6)
+    trips_query = Trips::IndexQuery.new(current_user, params)
+    @filters = trips_query.filters
+    @has_trips = current_user.trips.exists?
+    @trip_years = @has_trips ? trips_query.years : []
+    @trip_countries = @has_trips ? trips_query.countries : []
+    @trips = trips_query.call
+                        .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
+                        .page(params[:page]).per(6)
     @family_trip_links = SharedLink.family_trips_for(current_user).index_by(&:resource_id)
     @family_trips = Trip.where(id: @family_trip_links.keys)
                         .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)

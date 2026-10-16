@@ -434,7 +434,7 @@ defmodule DawarichWeb.MapWritesParityTest do
     do: html |> LazyHTML.from_fragment() |> LazyHTML.to_tree() |> html()
 
   defp html(nodes) when is_list(nodes),
-    do: nodes |> Enum.flat_map(&island/1) |> ParityHTML.normalize()
+    do: nodes |> Enum.flat_map(&island/1) |> ParityHTML.normalize_flash()
 
   defp island({"fieldset", attrs, children}) do
     if Map.has_key?(Map.new(attrs), "data-rails-form-ready") do

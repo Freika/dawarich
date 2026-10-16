@@ -10,7 +10,6 @@ defmodule Dawarich.Insights.Details.Totals do
     countries =
       for t <- toponyms,
           is_list(t["cities"]),
-          t["cities"] != [],
           Ruby.present?(t["country"]),
           uniq: true,
           do: t["country"]

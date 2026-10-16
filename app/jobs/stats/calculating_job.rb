@@ -10,9 +10,12 @@ class Stats::CalculatingJob < ApplicationJob
     return if Stats::EffectReceipts.done?(receipt)
     return forward(user_id, year, month, notify_on_failure, execution_receipt) if JobOwnership.oban?(OWNER_KEY)
 
+    error = nil
     Stats::EffectReceipts.once(receipt, 'stats.calculate_month') do
-      calculate(user_id, year, month, notify_on_failure)
+      error = calculate(user_id, year, month, notify_on_failure)
+      :failed if error
     end
+    raise error if error
   end
 
   private
@@ -21,15 +24,14 @@ class Stats::CalculatingJob < ApplicationJob
     user = find_user_or_skip(user_id) || return
 
     I18n.with_locale(user.locale) do
-      calculator = Stats::CalculateMonth.new(user_id, year, month, notify_on_failure:)
-      calculator.call
-      :failed if calculator.error
+      Stats::CalculateMonth.new(user_id, year, month, notify_on_failure: false).call
     end
+    nil
   rescue StandardError => e
     Rails.logger.error("Stats::CalculatingJob failed for user #{user_id} #{year}-#{month}: #{e.class}: #{e.message}")
 
     create_stats_update_failed_notification(user_id, e) if notify_on_failure
-    :failed
+    e
   end
 
   def forward(user_id, year, month, notify_on_failure, execution_receipt)
@@ -49,7 +51,8 @@ class Stats::CalculatingJob < ApplicationJob
         kind: :error,
         title: I18n.t('jobs.stats.calculating_job.stats_update_failed'),
         content: I18n.t('jobs.stats.calculating_job.message_stacktrace_n', message: error.message,
-                        backtrace: error.backtrace.join("\n"))
+                        backtrace: error.backtrace.join("\n")),
+        deduplicate: true
       ).call
     end
   end

@@ -263,13 +263,13 @@ defmodule Dawarich.Transportation.Segments do
   def load_segments_for_dominant_mode!(repo, track_id) do
     result =
       repo.query!(
-        "SELECT transportation_mode, distance, duration FROM track_segments WHERE track_id = $1 ORDER BY id",
+        "SELECT id, transportation_mode, distance, duration FROM track_segments WHERE track_id = $1 ORDER BY id",
         [track_id],
         log: false
       )
 
-    Enum.map(result.rows, fn [mode_int, distance, duration] ->
-      %{transportation_mode: int_to_mode(mode_int), distance: distance, duration: duration}
+    Enum.map(result.rows, fn [id, mode, distance, duration] ->
+      %{id: id, transportation_mode: int_to_mode(mode), distance: distance, duration: duration}
     end)
   end
 

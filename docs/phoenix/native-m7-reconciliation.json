@@ -12911,6 +12911,45 @@
         }
       ],
       "authority": "fix-s2gb controller Rails oracle decision; terminal source error retains all-table rollback and no-effect obligations"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/public_home_test.exs",
+        "name": "anonymous connected event keeps the guest page usable"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/sync1160_auth_shell_test.exs",
+          "name": "guest root redirects to sign-in carrying selected locale and unconsumed flash"
+        }
+      ],
+      "authority": "Rails 1.16.0 T5: native root/auth and notice behavior replaces retired marketing/markup recording"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/layout_parity_test.exs",
+        "name": "a #{type} flash in #{locale} matches Rails' flash message partial"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/layout_parity_test.exs",
+          "name": "a #{type} flash in #{locale} preserves escaped content and a dismiss action"
+        }
+      ],
+      "authority": "Rails 1.16.0 T5: native root/auth and notice behavior replaces retired marketing/markup recording"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/insights_endpoint_test.exs",
+        "name": "guest root renders native public home and details redirect to sign in"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/insights_endpoint_test.exs",
+          "name": "guest root and details redirect to sign in"
+        }
+      ],
+      "authority": "Rails 1.16.0 sync #3837 root redirect; native behavior and independent insights authorization retained"
     }
   ],
   "readers": [
@@ -14058,6 +14097,13 @@
       ]
     },
     {
+      "file": "app-phoenix/test/dawarich/release_operations/boundary_points_registry_test.exs",
+      "markers": [
+        "expected_diffs.md",
+        "fixed-rails-bugs.md"
+      ]
+    },
+    {
       "file": "app-phoenix/test/dawarich/release_operations/per_tracker_test.exs",
       "markers": [
         "fixtures/"
@@ -14592,21 +14638,18 @@
     {
       "file": "app-phoenix/test/dawarich_web/api/account_golden_test.exs",
       "markers": [
-        "test/rails_fixtures",
         "fixtures/"
       ]
     },
     {
       "file": "app-phoenix/test/dawarich_web/api/family_golden_test.exs",
       "markers": [
-        "test/rails_fixtures",
         "fixtures/"
       ]
     },
     {
       "file": "app-phoenix/test/dawarich_web/api/family_writes_golden_test.exs",
       "markers": [
-        "test/rails_fixtures",
         "fixtures/"
       ]
     },
@@ -14988,13 +15031,6 @@
         "test/fixtures",
         "fixtures/",
         "phoenix/js"
-      ]
-    },
-    {
-      "file": "app-phoenix/test/dawarich_web/public_home_test.exs",
-      "markers": [
-        "test/fixtures",
-        "fixtures/"
       ]
     },
     {

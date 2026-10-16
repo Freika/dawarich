@@ -10,6 +10,16 @@ module ApiVisitsGoldenOracle
   RANGE = 'start_at=2026-09-01T12:00:00Z&end_at=2026-09-04T12:00:00Z'
   BOX = 'selection=true&sw_lat=52&sw_lng=13&ne_lat=53&ne_lng=14'
   CASES = [
+    { name: 'create_manual_address', method: :post, path: P,
+      body: { visit: CREATE.merge(latitude: 40, longitude: 10,
+                                  address: { street: 'Main', house_number: '12', postcode: '04275',
+                                             city: 'Leipzig', country: 'Germany' }) } },
+    { name: 'create_blank_address', method: :post, path: P,
+      body: { visit: CREATE.merge(latitude: 40, longitude: 10, address: { street: ' ', city: '' }) } },
+    { name: 'create_scalar_address', method: :post, path: P,
+      body: { visit: CREATE.merge(latitude: 40, longitude: 10,
+                                  address: { street: 42, city: 0, country: true,
+                                             house_number: false, postcode: [] }) } },
     { name: 'select_name_255', method: :post, path: "#{H}/select_place",
       body: { photon: PHOTON.merge(name: 'a' * 255) }, status: 201, selected: true },
     { name: 'select_name_256', method: :post, path: "#{H}/select_place",

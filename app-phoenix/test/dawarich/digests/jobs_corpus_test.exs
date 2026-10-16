@@ -67,7 +67,7 @@ defmodule Dawarich.Digests.JobsCorpusTest do
       result = worker.perform(%Oban.Job{args: args}, options(kase, args))
 
       failed =
-        row["profile"] in ~w(stats_raise late_stats_raise digest_raise digest_database vanished)
+        row["profile"] in ~w(stats_return stats_database stats_raise late_stats_raise digest_raise digest_database vanished)
 
       if failed, do: assert(match?({:error, _}, result)), else: assert(result == :ok)
 
@@ -86,6 +86,11 @@ defmodule Dawarich.Digests.JobsCorpusTest do
         )
 
       assert length(emails) == length(expected["emails"]), row["id"]
+
+      assert Enum.map(emails, fn [kind, payload] ->
+               %{"kind" => kind, "payload" => Map.delete(payload, "event_id")}
+             end) == expected["publications"],
+             row["id"]
 
       for {[type, payload], recorded} <- Enum.zip(emails, expected["emails"]) do
         assert type ==

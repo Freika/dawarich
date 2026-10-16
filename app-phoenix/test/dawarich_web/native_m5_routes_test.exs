@@ -6,8 +6,7 @@ defmodule DawarichWeb.NativeM5RoutesTest do
   test "independent data and public routes use native admission without handback" do
     for {path, view} <- [
           {"/points", DawarichWeb.PointsLive.Index},
-          {"/stats", DawarichWeb.StatsLive.NativePage},
-          {"/stats/2024", DawarichWeb.StatsLive.NativePage},
+          {"/stats/2024/3", DawarichWeb.StatsLive.NativePage},
           {"/insights", DawarichWeb.InsightsLive.NativePage},
           {"/insights/details", DawarichWeb.InsightsLive.NativePage},
           {"/digests", DawarichWeb.DigestsLive.NativePage},
@@ -21,6 +20,18 @@ defmodule DawarichWeb.NativeM5RoutesTest do
       assert Enum.map(extra.on_mount, & &1.id) == [{DawarichWeb.NativeDataAuth, :require_user}]
       assert route[:native_page]
       refute route[:rails_gate]
+    end
+
+    for {path, action} <- [{"/stats", :index}, {"/stats/2026", :year}] do
+      route = Phoenix.Router.route_info(Router, "GET", path, "example.invalid")
+      assert route.plug == DawarichWeb.InsightsRedirect
+      assert route.plug_opts == action
+    end
+
+    for path <- ["/insights/routes/2026", "/insights/routes/2026.json"] do
+      route = Phoenix.Router.route_info(Router, "GET", path, "example.invalid")
+      assert route.plug == DawarichWeb.InsightsRoutes
+      assert route.pipe_through == [:family_data]
     end
 
     for {path, kind} <- [

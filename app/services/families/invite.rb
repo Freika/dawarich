@@ -16,15 +16,16 @@ module Families
 
     def call
       return false unless valid?
-      return false unless invite_sendable?
 
-      ActiveRecord::Base.transaction do
+      family.with_lock do
+        family.clear_member_cache!
+        next false unless invite_sendable?
+
         invitation = create_invitation
         send_invitation_email(invitation)
         send_notification
+        true
       end
-
-      true
     rescue ActiveRecord::RecordInvalid => e
       handle_record_invalid_error(e)
       false

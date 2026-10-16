@@ -228,8 +228,8 @@ defmodule DawarichWeb.PostersParityTest do
   defp assert_html(native, rails, ids) do
     native = canonical(native, ids)
     rails = canonical(rails, ids)
-    actual = ParityHTML.normalize(native)
-    expected = ParityHTML.normalize(rails)
+    actual = ParityHTML.normalize_flash(native)
+    expected = ParityHTML.normalize_flash(rails)
     assert actual == expected, ParityHTML.first_difference(actual, expected)
     assert ParityHTML.stimulus(native, "*") == ParityHTML.stimulus(rails, "*")
   end

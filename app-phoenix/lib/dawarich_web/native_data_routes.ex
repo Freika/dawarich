@@ -9,19 +9,14 @@ defmodule DawarichWeb.NativeDataRoutes do
       scope "/" do
         pipe_through [:native_data_request, :browser, :rails_user]
 
+        get "/stats", DawarichWeb.InsightsRedirect, :index, metadata: %{native_page: true}
+        get "/stats/:year", DawarichWeb.InsightsRedirect, :year, metadata: %{native_page: true}
+
         live_session :native_data,
           session: {DawarichWeb.NativeAuth, :live_session, []},
           on_mount: {DawarichWeb.NativeDataAuth, :require_user},
           root_layout: {DawarichWeb.Layouts, :native_root},
           layout: {DawarichWeb.Layouts, :app} do
-          live "/stats", DawarichWeb.StatsLive.NativePage, :index,
-            container: {:div, class: "contents"},
-            metadata: %{native_page: true}
-
-          live "/stats/:year", DawarichWeb.StatsLive.NativePage, :year,
-            container: {:div, class: "contents"},
-            metadata: %{native_page: true}
-
           live "/stats/:year/:month", DawarichWeb.StatsLive.NativePage, :month,
             container: {:div, class: "contents"},
             metadata: %{native_page: true}

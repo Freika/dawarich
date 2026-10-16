@@ -23,6 +23,12 @@ defmodule DawarichWeb.NativeMapPage do
           locale={@locale}
           panel={@map_url["panel"] || ""}
           self_hosted={assigns[:self_hosted] != false}
+          family={@page.family}
+        />
+        <DawarichWeb.NativeMapFamily.panel
+          :if={@page.family && @map_url["panel"] == "family" && assigns[:map_settings]}
+          locale={@locale}
+          settings={@map_settings}
         />
         <DawarichWeb.NativeMapLinks.links
           :if={assigns[:self_hosted] == false && @map_url["panel"] == "links"}
@@ -139,6 +145,7 @@ defmodule DawarichWeb.NativeMapPage do
         >
         </section>
         <DawarichWeb.NativeMapVisit.dialog dialog={assigns[:visit_dialog]} locale={@locale} />
+        <p id="native-map-point-summary" data-map-point-summary phx-update="ignore" role="status" />
         <DawarichWeb.NativePointAddress.drawer address={assigns[:point_address]} locale={@locale} />
         <button type="button" data-testid="native-create-visit" class="btn btn-sm">{t(
           @locale,

@@ -22,10 +22,24 @@ defmodule Dawarich.Supporters do
     github = present(settings["supporter_github_username"])
     by_email = email && by_email(email, now, running_version)
 
+    by_github =
+      if by_email && by_email["supporter"] not in [nil, false],
+        do: nil,
+        else: github && by_github(github, now, running_version)
+
     cond do
-      by_email && by_email["supporter"] not in [nil, false] -> by_email
-      github -> by_github(github, now, running_version)
-      true -> %{"supporter" => false}
+      by_email && by_email["supporter"] not in [nil, false] ->
+        by_email
+
+      by_github && by_github["supporter"] not in [nil, false] ->
+        by_github
+
+      Dawarich.RuntimePolicy.self_hosted?() and
+          UserSettings.cast(settings["app_store_supporter"]) == true ->
+        %{"supporter" => true, "platform" => "app_store"}
+
+      true ->
+        %{"supporter" => false}
     end
   end
 

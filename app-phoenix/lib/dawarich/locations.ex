@@ -21,7 +21,7 @@ defmodule Dawarich.Locations do
       WITH search_point AS (SELECT ST_SetSRID(ST_MakePoint($1::float8, $2::float8), 4326)::geography AS geom)
       SELECT COALESCE(p.timestamp, 0), ST_Y(p.lonlat::geometry), ST_X(p.lonlat::geometry), p.city, p.country,
              p.altitude, p.accuracy, ST_Distance(p.lonlat, search_point.geom),
-             #{RailsTime.sql("(to_timestamp(COALESCE(p.timestamp, 0)) AT TIME ZONE 'UTC')", 0)}
+             #{RailsTime.sql("(to_timestamp(COALESCE(p.timestamp, 0)) AT TIME ZONE 'UTC')", 0)}, p.id
       FROM points p, search_point
       WHERE p.user_id = $3 AND ST_DWithin(p.lonlat, search_point.geom, $4::float8)#{Enum.join(clauses)}
       ORDER BY p.timestamp, p.id
@@ -31,10 +31,9 @@ defmodule Dawarich.Locations do
   end
 
   def term(search, rows) do
-    points = rows |> Enum.map(&point/1) |> Enum.sort_by(& &1.ts)
+    points = rows |> Enum.map(&point/1) |> Enum.sort_by(&{&1.ts, &1.id})
 
     cond do
-      tie?(points) -> {:replay, "matched points share a timestamp"}
       points == [] -> {:ok, result([])}
       true -> {:ok, result([location(search, visits(points))])}
     end
@@ -51,8 +50,9 @@ defmodule Dawarich.Locations do
     |> Enum.unzip()
   end
 
-  defp point([ts, lat, lon, city, country, altitude, accuracy, distance, date]) do
+  defp point([ts, lat, lon, city, country, altitude, accuracy, distance, date, id]) do
     %{
+      id: id,
       ts: ts,
       coordinates: [lat, lon],
       city: city,
@@ -63,9 +63,6 @@ defmodule Dawarich.Locations do
       date: date
     }
   end
-
-  defp tie?(points),
-    do: points |> Enum.chunk_every(2, 1, :discard) |> Enum.any?(fn [a, b] -> a.ts == b.ts end)
 
   defp visits(points) do
     points
@@ -83,7 +80,7 @@ defmodule Dawarich.Locations do
     last = List.last(points)
     count = length(points)
     minutes = if count > 1, do: RubyFloat.round((last.ts - first.ts) / 60), else: @single
-    best = Enum.min_by(points, &(&1.accuracy || @no_accuracy))
+    best = Enum.min_by(points, &{&1.accuracy || @no_accuracy, &1.ts, &1.id})
     distance = RubyFloat.round(RubyFloat.sum(Enum.map(points, & &1.distance)) / count, 2)
 
     %{

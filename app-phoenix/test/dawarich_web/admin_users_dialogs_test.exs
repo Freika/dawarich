@@ -4,7 +4,8 @@ defmodule Dawarich.Test.LastAdminUIProbe do
   defdelegate rollback(reason), to: Repo
 
   def query!(sql, params, opts \\ []) do
-    if sql == "SELECT admin FROM users WHERE id=$1 AND deleted_at IS NULL" and params == [10802] do
+    if sql == "SELECT admin,status FROM users WHERE id=$1 AND deleted_at IS NULL" and
+         params == [10802] do
       Repo.query!("UPDATE users SET admin=false WHERE id=10801", [], log: false)
     end
 

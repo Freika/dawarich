@@ -2006,3 +2006,11 @@ Rails accepts `abc` as coordinate text, commits a point whose geometry is null, 
 - Phoenix: `app-phoenix/lib/dawarich/user_settings.ex:90` and `app-phoenix/lib/dawarich/families/sharing.ex:7` treat absent sharing settings as disabled; no coordinates are disclosed and no settings are rewritten.
 - Test: `DawarichWeb.Api.FamilyGoldenTest`, `golden replay_member_settings_null`, asserts the source 500 then compares the explicit safe successor to the recorded disabled-sharing response and checks all after-state.
 - Difference: ED-NATIVE-S2GB-NULL-FAMILY-SETTINGS; no DRB (no data change).
+
+### FRB-S1160-BOUNDARY-FOLLOWUPS — Boundary reassignment can lose refresh work after a crash
+
+- Rails symptom: point movement commits before dirty-day and achievement publication; a crash leaves stale stats and achievements because retry no longer finds the moved source-country points.
+- Rails: `app/jobs/data_migrations/reassign_boundary_points_job.rb:27,32`.
+- Phoenix: `app-phoenix/lib/dawarich/release_operations/boundary_points.ex:36` commits point movement, dirty UTC days, achievement work and the resumable cursor together.
+- Test: `boundary batches retain provider labels and atomically preserve followups across replay` in `app-phoenix/test/dawarich/release_operations/boundary_points_test.exs`; injected publication failure leaves no movement or dirty days, then retry and replay succeed.
+- Difference: ED-S1160-BOUNDARY-FOLLOWUPS. Delivered by T1; integration reconciles this register entry. No Rails production change.

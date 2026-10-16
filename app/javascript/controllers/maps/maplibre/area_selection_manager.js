@@ -4,6 +4,8 @@ import { VisitCard } from "maps_maplibre/components/visit_card"
 import { SelectedPointsLayer } from "maps_maplibre/layers/selected_points_layer"
 import { SelectionLayer } from "maps_maplibre/layers/selection_layer"
 import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
+import { anomaliesVisible } from "maps_maplibre/utils/layer_dependencies"
+import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
 /**
  * Manages area selection and bulk operations for Maps V2
@@ -575,10 +577,7 @@ export class AreaSelectionManager {
   }
 
   async refreshAnomaliesIfEnabled() {
-    const toggleOn =
-      this.controller.hasAnomaliesToggleTarget &&
-      this.controller.anomaliesToggleTarget.checked
-    if (!toggleOn) return
+    if (!anomaliesVisible(SettingsManager.getSettings())) return
 
     await this.controller.layerVisibilityManager.refreshAnomalies({
       enabled: true,

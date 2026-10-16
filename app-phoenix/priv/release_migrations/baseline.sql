@@ -32,6 +32,8 @@ CREATE UNIQUE INDEX "index_digests_on_user_year_month_period_type" ON "digests" 
 CREATE UNIQUE INDEX "index_digests_on_user_year_period_type_monthless" ON "digests" ("user_id", "year", "period_type") WHERE (month IS NULL);
 CREATE INDEX "index_digests_on_user_id" ON "digests" ("user_id");
 CREATE INDEX "index_digests_on_year" ON "digests" ("year");
+CREATE TABLE "disputed_areas" ("id" bigserial primary key, "created_at" timestamp(6) NOT NULL, "geom" geometry(GEOMETRY,4326) NOT NULL, "name" character varying NOT NULL, "updated_at" timestamp(6) NOT NULL);
+CREATE INDEX "index_disputed_areas_on_geom" ON "disputed_areas" USING gist ("geom");
 CREATE TABLE "exports" ("id" bigserial primary key, "created_at" timestamp(6) NOT NULL, "end_at" timestamp(6), "error_message" text, "file_format" integer DEFAULT 0, "file_type" integer DEFAULT 0 NOT NULL, "name" character varying NOT NULL, "processing_started_at" timestamp(6), "start_at" timestamp(6), "status" integer DEFAULT 0 NOT NULL, "updated_at" timestamp(6) NOT NULL, "url" character varying, "user_id" bigint NOT NULL);
 CREATE INDEX "index_exports_on_file_type" ON "exports" ("file_type");
 CREATE INDEX "index_exports_on_status" ON "exports" ("status");
@@ -361,10 +363,14 @@ ALTER TABLE "visits" ADD CONSTRAINT "fk_rails_09e5e7c20b"
 FOREIGN KEY ("user_id")
   REFERENCES "users" ("id");
 CREATE TABLE IF NOT EXISTS "schema_migrations" ("version" character varying NOT NULL PRIMARY KEY);
-INSERT INTO "schema_migrations" (version) VALUES (20261006120100);
-INSERT INTO "schema_migrations" (version) VALUES (20261006120000);
-INSERT INTO "schema_migrations" (version) VALUES (20260927120000);
+INSERT INTO "schema_migrations" (version) VALUES (20261014120100);
 INSERT INTO "schema_migrations" (version) VALUES
+(20261014120000),
+(20261013120000),
+(20261010120000),
+(20261006120100),
+(20261006120000),
+(20260927120000),
 (20260925100100),
 (20260925100000),
 (20260923180000),

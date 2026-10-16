@@ -18,7 +18,7 @@ defmodule DawarichWeb.AuthHttpChrome do
     ~H"""
     <div
       id="flash-messages"
-      class="fixed top-5 right-5 max-w-[calc(100vw-2.5rem)] flex flex-col gap-2 z-50"
+      class="fixed top-5 right-5 max-w-[calc(100vw-2.5rem)] flex flex-col gap-2 z-50 pointer-events-none"
     >
       <div
         :for={{type, message} <- @messages}
@@ -27,12 +27,12 @@ defmodule DawarichWeb.AuthHttpChrome do
         data-auth-error-summary={type in ["alert", "error"]}
         data-auth-flash
         data-auth-flash-timeout={if type in ["notice", "success"], do: "5000", else: "0"}
-        class={"alert #{if type in ["notice", "success"], do: "alert-success", else: "alert-error"} shadow-lg min-w-0"}
+        class={"alert #{if type in ["notice", "success"], do: "alert-success", else: "alert-error"} shadow-lg min-w-0 pointer-events-none"}
       >
         <span class="min-w-0 [overflow-wrap:anywhere]">{message}</span>
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-ghost"
+          class="btn btn-sm btn-circle btn-ghost pointer-events-auto shrink-0"
           data-auth-flash-dismiss
           aria-label={t(@locale, "shared.flash_message.close", %{})}
         ><Icon.icon name="x" class="size-4" /></button>

@@ -5,7 +5,7 @@ defmodule Dawarich.Transportation.RecalculationStatus do
   @increment """
   local raw = redis.call('GET', KEYS[1])
   local state = raw and cjson.decode(raw) or {processed_tracks = 0, total_tracks = cjson.null}
-  if state.status == 'completed' then return state.processed_tracks end
+  if state.total_tracks == 0 or state.status == 'completed' then return state.processed_tracks end
   if redis.call('SADD', KEYS[2], ARGV[1]) == 0 then return state.processed_tracks end
   redis.call('EXPIRE', KEYS[2], 86400)
   state.processed_tracks = state.processed_tracks + 1
@@ -24,7 +24,11 @@ defmodule Dawarich.Transportation.RecalculationStatus do
   def rails_active?(user),
     do: not Dawarich.Standalone.enabled?() and legacy(user)["status"] == "processing"
 
-  def data(user) do
+  def data(user, repo \\ Dawarich.Repo) do
+    Dawarich.Transportation.RecalculationFence.waiting(repo, user) || current_data(user)
+  end
+
+  defp current_data(user) do
     native = native_data(user)
 
     if native && Dawarich.Standalone.enabled?() do
@@ -69,7 +73,7 @@ defmodule Dawarich.Transportation.RecalculationStatus do
   def native?(user),
     do: match?({:ok, raw} when is_binary(raw), Redis.cache_command(["GET", key(user)]))
 
-  def in_progress?(user), do: data(user)["status"] == "processing"
+  def in_progress?(user, repo \\ Dawarich.Repo), do: data(user, repo)["status"] == "processing"
 
   def start(user, total, now) do
     {:ok, _} = Redis.cache_command(["DEL", key(user) <> ":events"])
@@ -89,7 +93,7 @@ defmodule Dawarich.Transportation.RecalculationStatus do
     do:
       put(
         user,
-        Map.merge(data(user), %{"status" => "completed", "completed_at" => iso(now)}),
+        Map.merge(current_data(user), %{"status" => "completed", "completed_at" => iso(now)}),
         300
       )
 
@@ -97,7 +101,7 @@ defmodule Dawarich.Transportation.RecalculationStatus do
     do:
       put(
         user,
-        Map.merge(data(user), %{
+        Map.merge(current_data(user), %{
           "status" => "failed",
           "error_message" => error_message,
           "completed_at" => iso(now)
@@ -105,7 +109,14 @@ defmodule Dawarich.Transportation.RecalculationStatus do
         3_600
       )
 
-  def increment(user, event, now \\ DateTime.utc_now()) do
+  def increment(user, event, now \\ DateTime.utc_now(), repo \\ Dawarich.Repo) do
+    if is_nil(Dawarich.Transportation.RecalculationFence.waiting(repo, user)),
+      do: increment_started(user, event, now)
+
+    :ok
+  end
+
+  defp increment_started(user, event, now) do
     {:ok, _} =
       Redis.cache_command([
         "EVAL",

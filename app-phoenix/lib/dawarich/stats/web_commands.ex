@@ -65,6 +65,7 @@ defmodule Dawarich.Stats.WebCommands do
                   })
 
             result(context, "stats_for_target_are_being_updated", %{target: target})
+            |> Map.put(:path, "/insights?" <> URI.encode_query(%{"year" => year}))
 
           :sidekiq ->
             {:replay, "Sidekiq stats calculation"}
@@ -72,7 +73,7 @@ defmodule Dawarich.Stats.WebCommands do
       end)
       |> unwrap()
     else
-      {:ok, result(context, "invalid_period", %{}, :alert)}
+      {:ok, Map.put(result(context, "invalid_period", %{}, :alert), :path, "/insights")}
     end
   end
 
@@ -85,7 +86,7 @@ defmodule Dawarich.Stats.WebCommands do
   end
 
   defp result(context, key, attrs, flash \\ :notice),
-    do: %{status: 303, path: "/stats", flash: flash, message: t(context, key, attrs)}
+    do: %{status: 303, path: "/insights?year=all", flash: flash, message: t(context, key, attrs)}
 
   defp t(context, key, attrs), do: Translate.t(context.locale, "controllers.stats." <> key, attrs)
   defp unwrap({:ok, {:replay, _} = replay}), do: replay

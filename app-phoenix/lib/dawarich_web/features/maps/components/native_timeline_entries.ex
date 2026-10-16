@@ -19,6 +19,7 @@ defmodule DawarichWeb.NativeTimelineEntries do
       assign(assigns,
         all_day: TimelineFormat.all_day?(entry),
         parts: TimelineFormat.name_parts(entry, assigns.locale),
+        address: entry.place && entry.place[:address],
         start_label: LocalizedTime.l(assigns.locale, entry.start_local, "hour_minute"),
         low: TimelineFormat.low_confidence?(entry, assigns.redetected),
         subdued: TimelineFormat.subdued?(entry, assigns.redetected)
@@ -63,7 +64,11 @@ defmodule DawarichWeb.NativeTimelineEntries do
       <div class="visit-row__content min-w-0">
         <div class="visit-row__title [overflow-wrap:anywhere]">{@parts.primary}</div>
         <div class="visit-row__meta flex flex-wrap gap-1">
-          <span :if={@parts.secondary} class="visit-row__address [overflow-wrap:anywhere]">{@parts.secondary}</span>
+          <span
+            :if={@address || @parts.secondary}
+            data-testid={"visit-address-#{@entry.visit_id}"}
+            class="visit-row__address [overflow-wrap:anywhere]"
+          >{@address || @parts.secondary}</span>
           <span class="visit-row__points">{@entry.point_count} {v(@locale, "pts")}</span>
           <span :for={tag <- @entry.tags} class="visit-tag">
             <span class="visit-tag__dot" style={"background-color: #{tag.color};"}></span>{"#" <>

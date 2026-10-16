@@ -1942,7 +1942,7 @@
       "x-permitted-cross-domain-policies": "none",
       "referrer-policy": "strict-origin-when-cross-origin",
       "x-dawarich-response": "Hey, I'm alive and authenticated!",
-      "x-dawarich-version": "1.15.3",
+      "x-dawarich-version": "1.16.0",
       "etag": "W/\"0b9f49206974a47949b0de1cac32ad8f\"",
       "content-type": "application/json; charset=utf-8",
       "vary": "Accept",

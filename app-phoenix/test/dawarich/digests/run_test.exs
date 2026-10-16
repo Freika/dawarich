@@ -29,15 +29,14 @@ defmodule Dawarich.Digests.RunTest do
       kase = job_case!("stats_return_#{kind}_en")
       DigestFixtures.load!(ScratchRepo, kase)
 
-      assert {:ok, id} =
+      assert {:error, ^fault, _} =
                apply(Run, String.to_existing_atom(kind), [
                  ScratchRepo,
                  args(kase),
-                 Keyword.put(options(kase), :stats, returned)
+                 [stats: returned]
                ])
 
-      [expected] = kase["expected"]["rows"]
-      assert DigestFixtures.digests(ScratchRepo, 14101) == [Map.put(expected, "id", id)]
+      assert DigestFixtures.digests(ScratchRepo, 14101) == []
 
       raised = fn _, _, _, _, _ -> raise fault end
 
@@ -84,19 +83,14 @@ defmodule Dawarich.Digests.RunTest do
 
     assert [[1]] = rows("SELECT count(*) FROM notifications WHERE user_id=14101 AND kind=2")
 
-    assert {:ok, id} =
-             Run.monthly(
-               ScratchRepo,
-               args(kase),
-               Keyword.put(options(kase), :stats_opts, stats_opts)
-             )
+    assert {:error, ^database_error, _} =
+             Run.monthly(ScratchRepo, args(kase), stats_opts: stats_opts)
 
-    [expected] = kase["expected"]["rows"]
-    assert DigestFixtures.digests(ScratchRepo, 14101) == [Map.put(expected, "id", id)]
-    assert [[2]] = rows("SELECT count(*) FROM notifications WHERE user_id=14101 AND kind=2")
+    assert DigestFixtures.digests(ScratchRepo, 14101) == []
+    assert [[1]] = rows("SELECT count(*) FROM notifications WHERE user_id=14101 AND kind=2")
 
     before_store = fn _context -> raise database_error end
-    opts = Keyword.put(options(kase), :before_store, before_store)
+    opts = [now: @now, before_store: before_store]
 
     assert {:error, ^database_error, captured} =
              Calculation.monthly(
@@ -112,7 +106,7 @@ defmodule Dawarich.Digests.RunTest do
     assert Enum.any?(stack, &match?({Dawarich.Digests.Calculation, _, _, _}, &1))
     assert stack != []
     assert job_case!("digest_database_monthly_en")["expected"]["emails"] == []
-    assert length(kase["expected"]["emails"]) == 1
+    assert kase["expected"]["emails"] == []
   end
 
   test "yearly generation visits all twelve months in order and keeps earlier committed stats on a later raised error" do

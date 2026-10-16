@@ -405,8 +405,8 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
         )
 
       assert ParityHTML.first_difference(
-               ParityHTML.normalize(normalized),
-               ParityHTML.normalize(File.read!("#{@dir}/#{name}.html"))
+               ParityHTML.normalize_flash(normalized),
+               ParityHTML.normalize_flash(File.read!("#{@dir}/#{name}.html"))
              ) == "equal"
 
       oracle = File.read!("#{@dir}/#{name}.html")
@@ -451,8 +451,8 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
       check_headers(conn, state)
 
       assert ParityHTML.first_difference(
-               ParityHTML.normalize(conn.resp_body),
-               ParityHTML.normalize(File.read!("#{@dir}/#{name}.html"))
+               ParityHTML.normalize_flash(conn.resp_body),
+               ParityHTML.normalize_flash(File.read!("#{@dir}/#{name}.html"))
              ) == "equal"
 
       streams = LazyHTML.from_fragment(conn.resp_body) |> LazyHTML.query("turbo-stream")

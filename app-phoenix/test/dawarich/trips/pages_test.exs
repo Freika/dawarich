@@ -106,7 +106,7 @@ defmodule Dawarich.Trips.PagesTest do
     on_exit(fn -> System.delete_env("SELF_HOSTED") end)
 
     assert [%{name: "trip 950501", started_on: ~D[2026-05-10], ended_on: ~D[2026-05-12]}] =
-             list!(viewer).family_entries
+             list!(viewer, %{"q" => "absent", "year" => "1900", "country" => "Atlantis"}).family_entries
 
     Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [owner.user.id])
 
@@ -177,14 +177,20 @@ defmodule Dawarich.Trips.PagesTest do
   end
 
   test "page parameters normalize once with source casts and bounded overflow" do
-    assert Pages.normalize(%{"page" => "2abc", "family_page" => "-3"}) ==
+    assert Map.take(Pages.normalize(%{"page" => "2abc", "family_page" => "-3"}), [
+             :page,
+             :family_page
+           ]) ==
              %{page: 2, family_page: 1}
 
-    assert Pages.normalize(%{"page" => ["2"], "family_page" => %{"a" => "1"}}) ==
+    assert Map.take(Pages.normalize(%{"page" => ["2"], "family_page" => %{"a" => "1"}}), [
+             :page,
+             :family_page
+           ]) ==
              %{page: 1, family_page: 1}
 
     assert Pages.normalize(%{"page" => String.duplicate("9", 40)}).page == 1_000_000_000_000
-    assert Pages.normalize("x") == %{page: 1, family_page: 1}
+    assert Map.take(Pages.normalize("x"), [:page, :family_page]) == %{page: 1, family_page: 1}
 
     owner = scope(9_512)
 

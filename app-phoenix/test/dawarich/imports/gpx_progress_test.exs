@@ -47,7 +47,7 @@ defmodule Dawarich.Imports.GpxProgressTest do
     assert record(c, 1, state, DateTime.add(@now, 4)) == state
     state = record(c, 1, state, DateTime.add(@now, 5))
     assert state.index == 1
-    assert processed(c) == [[1]]
+    assert processed(c) == [[1100]]
     assert length(pending()) == 3
   end
 
@@ -56,6 +56,40 @@ defmodule Dawarich.Imports.GpxProgressTest do
     record(c, 0, state)
     assert processed(c) == [[0]]
     assert length(pending()) == 2
+  end
+
+  test "stale lower and zero progress retain durable values across normal and GPX lanes", c do
+    for source <- [4, 10] do
+      rows("UPDATE imports SET source=$2,processed=2000 WHERE id=$1", [c.import.id, source])
+
+      for index <- [1000, 0, 3000] do
+        record(c, index, %{at: nil, index: nil})
+        assert processed(c) == [[max(2000, index)]]
+      end
+
+      rows("UPDATE imports SET processed=NULL WHERE id=$1", [c.import.id])
+      record(c, 0, %{at: nil, index: nil})
+      assert processed(c) == [[0]]
+    end
+  end
+
+  test "deleted import progress sends neither native wakeup nor Rails command", c do
+    Dawarich.Imports.Events.subscribe(c.import.user_id)
+    rows("DELETE FROM imports WHERE id=$1", [c.import.id])
+    assert %{index: 100} = record(c, 100, %{at: nil, index: nil})
+    refute_receive :imports_changed
+    assert pending() == []
+    assert :ok = Dawarich.Imports.Progress.publish!(ScratchRepo, c.import, "de")
+
+    assert :ok =
+             Dawarich.Imports.Progress.publish!(
+               ScratchRepo,
+               c.import,
+               "de",
+               "command:imports.process_gpx"
+             )
+
+    assert pending() == []
   end
 
   test "progress transport failure is best-effort but database progress remains", c do

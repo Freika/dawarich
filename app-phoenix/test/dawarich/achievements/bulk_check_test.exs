@@ -41,7 +41,7 @@ defmodule Dawarich.Achievements.BulkCheckTest do
 
     rows(
       "INSERT INTO achievement_progresses(user_id,achievement_key,state,created_at,updated_at) VALUES($1,'exploration',$2,now(),now())",
-      [59_002, %{"calculation_version" => 3}]
+      [59_002, %{"calculation_version" => 5}]
     )
 
     assert BulkCheckWorker.run(ScratchRepo, @oban, args, now: @now) == :ok
@@ -84,11 +84,11 @@ defmodule Dawarich.Achievements.BulkCheckTest do
       "INSERT INTO achievement_progresses(user_id,achievement_key,state,created_at,updated_at) VALUES($1,'exploration',$2,now(),now()),($3,'exploration',$4,now(),now()),($5,'exploration',$6,now(),now()),($7,'other',$6,now(),now())",
       [
         current,
-        %{"calculation_version" => 3},
+        %{"calculation_version" => 5},
         stale,
-        %{"calculation_version" => 2},
-        future,
         %{"calculation_version" => 4},
+        future,
+        %{"calculation_version" => 6},
         fresh
       ]
     )

@@ -1,13 +1,15 @@
-import { getVisitMarkerColor } from "../algorithms/marker_theme.js"
-import { BaseLayer } from "./base.js"
+import { getVisitMarkerColor } from "../algorithms/marker_theme.js";
+import { BaseLayer } from "./base.js";
+import { createPlaceLabels } from "./place_labels.js";
 
 export class VisitsLayer extends BaseLayer {
   constructor(map, options = {}) {
-    super(map, { id: "visits", ...options })
-    this.dayRouteSourceId = `${this.sourceId}-day-route`
-    this.dayRouteLayerId = `${this.id}-day-route`
-    this.haloLayerId = `${this.id}-halo`
-    this.labelsLayerId = `${this.id}-labels`
+    super(map, { id: "visits", ...options });
+    this.library = options.library;
+    this.dayRouteSourceId = `${this.sourceId}-day-route`;
+    this.dayRouteLayerId = `${this.id}-day-route`;
+    this.haloLayerId = `${this.id}-halo`;
+    this.labelsLayerId = `${this.id}-labels`;
   }
 
   getSourceConfig() {
@@ -17,11 +19,11 @@ export class VisitsLayer extends BaseLayer {
         type: "FeatureCollection",
         features: [],
       },
-    }
+    };
   }
 
   getLayerConfigs() {
-    return [
+    const layers = [
       {
         id: this.dayRouteLayerId,
         type: "line",
@@ -79,67 +81,91 @@ export class VisitsLayer extends BaseLayer {
           "text-halo-width": 2,
         },
       },
-    ]
+    ];
+    return this.library?.Marker ? layers.slice(0, -1) : layers;
   }
 
   getLayerIds() {
-    return [this.dayRouteLayerId, this.haloLayerId, this.id, this.labelsLayerId]
+    return [
+      this.dayRouteLayerId,
+      this.haloLayerId,
+      this.id,
+      this.labelsLayerId,
+    ];
   }
 
   add(data) {
-    this.data = data
+    this.data = data;
+    if (!this.labels && this.library?.Marker)
+      this.labels = createPlaceLabels({
+        map: this.map,
+        library: this.library,
+        layerId: this.id,
+        kind: "visits",
+      });
 
     if (!this.map.getSource(this.sourceId)) {
-      this.map.addSource(this.sourceId, this.getSourceConfig())
+      this.map.addSource(this.sourceId, this.getSourceConfig());
     }
 
     if (!this.map.getSource(this.dayRouteSourceId)) {
       this.map.addSource(this.dayRouteSourceId, {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
-      })
+      });
     }
 
-    const layers = this.getLayerConfigs()
+    const layers = this.getLayerConfigs();
     layers.forEach((layerConfig) => {
       if (!this.map.getLayer(layerConfig.id)) {
-        this.map.addLayer(layerConfig)
+        this.map.addLayer(layerConfig);
       }
-    })
+    });
 
-    this.setVisibility(this.visible)
+    this.setVisibility(this.visible);
+  }
+
+  setVisibility(visible) {
+    super.setVisibility(visible);
+    this.labels?.visibility(visible);
+  }
+
+  setLabelOpacity(value) {
+    this.labels?.opacity(value);
   }
 
   remove() {
+    this.labels?.destroy();
+    this.labels = null;
     this.getLayerIds().forEach((layerId) => {
       if (this.map.getLayer(layerId)) {
-        this.map.removeLayer(layerId)
+        this.map.removeLayer(layerId);
       }
-    })
+    });
 
     if (this.map.getSource(this.sourceId)) {
-      this.map.removeSource(this.sourceId)
+      this.map.removeSource(this.sourceId);
     }
 
     if (this.map.getSource(this.dayRouteSourceId)) {
-      this.map.removeSource(this.dayRouteSourceId)
+      this.map.removeSource(this.dayRouteSourceId);
     }
 
-    this.data = null
+    this.data = null;
   }
 
   update(data) {
-    this.data = data
-    const source = this.map.getSource(this.sourceId)
+    this.data = data;
+    const source = this.map.getSource(this.sourceId);
     if (source?.setData) {
-      source.setData(data)
+      source.setData(data);
     }
   }
 
   setSelectedVisit(visitId) {
-    if (!this.map.getLayer(this.haloLayerId)) return
-    const id = visitId == null ? -1 : Number(visitId)
-    this.map.setFilter(this.haloLayerId, ["==", ["get", "id"], id])
+    if (!this.map.getLayer(this.haloLayerId)) return;
+    const id = visitId == null ? -1 : Number(visitId);
+    this.map.setFilter(this.haloLayerId, ["==", ["get", "id"], id]);
   }
 
   setStatusFilter({
@@ -147,31 +173,32 @@ export class VisitsLayer extends BaseLayer {
     suggested = true,
     declined = true,
   } = {}) {
-    if (!this.map.getLayer(this.id)) return
+    if (!this.map.getLayer(this.id)) return;
 
-    const allowed = []
-    if (confirmed) allowed.push("confirmed")
-    if (suggested) allowed.push("suggested")
-    if (declined) allowed.push("declined")
+    const allowed = [];
+    if (confirmed) allowed.push("confirmed");
+    if (suggested) allowed.push("suggested");
+    if (declined) allowed.push("declined");
 
     const filter =
       allowed.length === 0
         ? ["==", ["get", "status"], "__none__"]
-        : ["match", ["get", "status"], allowed, true, false]
+        : ["match", ["get", "status"], allowed, true, false];
 
-    this.map.setFilter(this.id, filter)
+    this.map.setFilter(this.id, filter);
+    this.labels?.refresh();
     if (this.map.getLayer(this.labelsLayerId)) {
-      this.map.setFilter(this.labelsLayerId, filter)
+      this.map.setFilter(this.labelsLayerId, filter);
     }
   }
 
   setDayRoute(visitFeatures) {
-    const source = this.map.getSource(this.dayRouteSourceId)
-    if (!source) return
+    const source = this.map.getSource(this.dayRouteSourceId);
+    if (!source) return;
 
     if (!visitFeatures || visitFeatures.length < 2) {
-      source.setData({ type: "FeatureCollection", features: [] })
-      return
+      source.setData({ type: "FeatureCollection", features: [] });
+      return;
     }
 
     source.setData({
@@ -186,6 +213,6 @@ export class VisitsLayer extends BaseLayer {
           },
         },
       ],
-    })
+    });
   }
 }

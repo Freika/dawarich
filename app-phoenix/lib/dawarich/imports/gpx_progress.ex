@@ -9,7 +9,7 @@ defmodule Dawarich.Imports.GpxProgress do
     if index == 0 || is_nil(state.at) || DateTime.diff(now, state.at, :microsecond) >= 5_000_000 ||
          index - state.index >= 100 do
       Fence.run(context, fn ->
-        value = if context[:continuation_progress?], do: "GREATEST(processed,$3)", else: "$3"
+        value = "GREATEST(processed,$3)"
 
         context.repo.query!(
           "UPDATE imports SET processed=#{value} WHERE id=$1 AND user_id=$2 AND processed IS DISTINCT FROM #{value}",
@@ -18,8 +18,11 @@ defmodule Dawarich.Imports.GpxProgress do
         )
       end)
 
-      publish(import, context)
-      broadcast(import)
+      if Progress.present?(context.repo, import) do
+        publish(import, context)
+        broadcast(import)
+      end
+
       %{at: now, index: index}
     else
       state

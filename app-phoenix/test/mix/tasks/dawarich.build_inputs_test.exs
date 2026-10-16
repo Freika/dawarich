@@ -10,7 +10,7 @@ defmodule Mix.Tasks.Dawarich.BuildInputsTest do
     out = Path.join(tmp, "out")
 
     for path <-
-          ~w(app/assets app/javascript vendor/assets vendor/javascript config/locales config/achievements config/achievements.yml config/importmap.rb config/shared_link_wordlist.txt lib/assets/admin1_world.geojson lib/assets/countries.geojson.gz app-phoenix/priv) do
+          ~w(app/assets app/javascript vendor/assets vendor/javascript config/locales config/achievements config/achievements.yml config/importmap.rb config/shared_link_wordlist.txt lib/assets/admin1_world.geojson lib/assets/countries.geojson.gz lib/assets/disputed_areas.geojson lib/assets/COUNTRIES_LICENSE.md lib/assets/DISPUTED_AREAS_LICENSE.md app-phoenix/priv) do
       target = Path.join(root, path)
       File.mkdir_p!(Path.dirname(target))
       File.cp_r!(Path.join(source, path), target)
@@ -78,7 +78,10 @@ defmodule Mix.Tasks.Dawarich.BuildInputsTest do
           {"app-phoenix/priv/time_zones.json", "tmp/phoenix/time_zones.json"},
           {"config/shared_link_wordlist.txt", "priv/shared_link_wordlist.txt"},
           {"lib/assets/countries.geojson.gz", "priv/countries.geojson.gz"},
-          {"lib/assets/admin1_world.geojson", "priv/admin1_world.geojson"}
+          {"lib/assets/admin1_world.geojson", "priv/admin1_world.geojson"},
+          {"lib/assets/disputed_areas.geojson", "priv/disputed_areas.geojson"},
+          {"lib/assets/COUNTRIES_LICENSE.md", "priv/COUNTRIES_LICENSE.md"},
+          {"lib/assets/DISPUTED_AREAS_LICENSE.md", "priv/DISPUTED_AREAS_LICENSE.md"}
         ] do
       assert File.regular?(Path.join(out, output)), output
       assert File.read!(Path.join(out, output)) == File.read!(Path.join(root, input))

@@ -75,4 +75,24 @@ defmodule Dawarich.Achievements.UiSilhouettesTest do
     assert %{"XX" => %{"viewbox" => "12.3457 -51.3457 0.0544 0.0456"}} =
              UiSilhouettes.cards(ScratchRepo, "country", ["XX"])
   end
+
+  test "silhouettes remove disputed land and touching slivers while preserving remote islands" do
+    rows("DELETE FROM disputed_areas")
+    on_exit(fn -> rows("DELETE FROM disputed_areas") end)
+
+    rows(
+      "INSERT INTO disputed_areas(name,geom,created_at,updated_at) VALUES('synthetic',ST_MakeEnvelope(12.2,51.2,12.8,51.8,4326),now(),now())"
+    )
+
+    assert UiSilhouettes.cards(ScratchRepo, "country", ["DE"]) == %{}
+
+    reshape(
+      "DE",
+      "MULTIPOLYGON (((12.25 51.25,12.25 51.5,12.5 51.5,12.5 51.25,12.25 51.25)),((20 55,20 56,21 56,21 55,20 55)))"
+    )
+
+    Dawarich.Test.AchievementSilhouettes.clear()
+    shape = UiSilhouettes.cards(ScratchRepo, "country", ["DE"])["DE"]
+    assert shape["viewbox"] == "20.0 -56.0 1.0 1.0"
+  end
 end

@@ -57,8 +57,8 @@ defmodule DawarichWeb.InsightsLiveTest do
     {:ok, view, _} = live_as(user, "/insights")
     assert :sys.get_state(view.pid).socket.assigns.data.year == 2024
     assert :sys.get_state(view.pid).socket.assigns.data.totals.distance == 50
-    assert has_element?(view, "#activity-heatmap-card[phx-hook=NativeHeatmap]")
-    assert has_element?(view, "#activity-heatmap-card [data-date='2024-03-07'].bg-success")
+    assert has_element?(view, "[data-testid=insights-activity-summary]", "5 active days")
+    assert has_element?(view, "[data-residency-day='2024-03-07'][aria-label*='14 km']")
     assert has_element?(view, "#insights-residency-ready")
     refute render(view) =~ "turbo-frame"
   end

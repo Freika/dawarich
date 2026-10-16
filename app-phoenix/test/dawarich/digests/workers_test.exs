@@ -55,11 +55,8 @@ defmodule Dawarich.Digests.WorkersTest do
 
         result = worker.perform(%Oban.Job{args: args}, Keyword.merge(F.job_options(kase), extra))
 
-        if origin == :stats,
-          do: assert(result == :ok),
-          else: assert(match?({:error, %Postgrex.Error{}}, result))
-
-        expected = if origin == :stats, do: 1, else: 0
+        assert match?({:error, %Postgrex.Error{}}, result)
+        expected = 0
 
         assert [[^expected]] =
                  rows(

@@ -60,6 +60,7 @@ function fixture() {
                   {
                     user_id: 7,
                     name: "<member>",
+                    address: "<script>Street & City</script>",
                     email: "member@example.invalid",
                     longitude: 13.5,
                     latitude: 52.4,
@@ -151,6 +152,8 @@ test("main map Family layer reads admitted locations history and renders safe ce
   assert.equal(f.list.hidden, false)
   const button = f.nodes.find((n) => n.type === "button")
   assert.match(button.textContent, /<member>/)
+  assert.equal(button.children[0].textContent, "<script>Street & City</script>")
+  assert.equal(button.children[0].innerHTML, undefined)
   button.click()
   assert.deepEqual(f.flights, [{ center: [13.5, 52.4], zoom: 15 }])
   assert.equal(f.status.textContent, "Zentriert")
@@ -376,6 +379,66 @@ test("main map Family loaded status retains singular and plural counts", async (
     }
     await f.owner.update(f.config)
     assert.equal(f.status.textContent, "2 Mitglieder")
+  } finally {
+    f.owner.destroy()
+  }
+})
+
+test("Family refresh preserves admitted centering controls while unchanged data reloads", async () => {
+  const f = fixture()
+  await f.owner.update(f.config)
+  const button = f.list.children[0]
+  const read = f.reader.read
+  let release
+  const pending = new Promise((resolve) => {
+    release = resolve
+  })
+  f.reader.read = async (...args) => {
+    await pending
+    return read(...args)
+  }
+  const refreshing = f.owner.update({ ...f.config, panel: "family" })
+  try {
+    assert.equal(f.list.hidden, false)
+    assert.equal(f.list.children[0], button)
+    release()
+    await refreshing
+    assert.equal(f.list.children[0], button)
+    button.click()
+    assert.deepEqual(f.flights, [{ center: [13.5, 52.4], zoom: 15 }])
+  } finally {
+    release()
+    await refreshing
+    f.owner.destroy()
+  }
+})
+
+test("Family unchanged refresh updates sharing age at its next day boundary", async (t) => {
+  const f = fixture()
+  let now = Date.parse("2026-06-02T01:00:00Z")
+  t.mock.method(Date, "now", () => now)
+  const read = f.reader.read
+  f.reader.read = (resource, ...args) =>
+    resource === "family_history"
+      ? Promise.resolve({
+          data: {
+            members: [{ user_id: 7, sharing_since: "2026-06-01T01:00:00Z" }],
+          },
+        })
+      : read(resource, ...args)
+  const config = {
+    ...f.config,
+    uiLabels: {
+      "family.sharing_since.one": "{count} day",
+      "family.sharing_since.other": "{count} days",
+    },
+  }
+  try {
+    await f.owner.update(config)
+    assert.equal(f.list.children[0].children.at(-1).textContent, "1 day")
+    now += 86400000
+    await f.owner.update(config)
+    assert.equal(f.list.children[0].children.at(-1).textContent, "2 days")
   } finally {
     f.owner.destroy()
   }

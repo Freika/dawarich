@@ -12,6 +12,53 @@ defmodule Dawarich.Test.ParityHTML do
     nodes |> Enum.flat_map(&node/1) |> Enum.reject(&(&1 == ""))
   end
 
+  def normalize_flash(html) when is_binary(html),
+    do: html |> LazyHTML.from_fragment() |> LazyHTML.to_tree() |> normalize_flash()
+
+  def normalize_flash(nodes) when is_list(nodes),
+    do: nodes |> flash_presentation(false) |> normalize()
+
+  defp flash_presentation(nodes, inside) when is_list(nodes),
+    do: Enum.map(nodes, &flash_presentation(&1, inside))
+
+  defp flash_presentation({tag, attrs, children}, inside) do
+    classes = attrs |> Map.new() |> Map.get("class", "") |> String.split()
+
+    flash =
+      "alert" in classes and
+        Enum.any?(classes, &(&1 in ~w(alert-success alert-error alert-warning alert-info)))
+
+    inside = inside or flash
+
+    attrs =
+      if inside do
+        Enum.flat_map(attrs, fn
+          {"class", _} ->
+            if flash,
+              do: [
+                {"class",
+                 Enum.join(
+                   Enum.filter(
+                     classes,
+                     &(&1 in ~w(alert-success alert-error alert-warning alert-info))
+                   ),
+                   " "
+                 )}
+              ],
+              else: []
+
+          attr ->
+            [attr]
+        end)
+      else
+        attrs
+      end
+
+    {tag, attrs, flash_presentation(children, inside)}
+  end
+
+  defp flash_presentation(other, _inside), do: other
+
   def fragment(html, selector),
     do:
       html

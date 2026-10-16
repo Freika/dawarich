@@ -1,0 +1,72 @@
+# Rails 1.16.0 native shell sync
+
+T5 ports trip filtering, auth/root navigation, map panels, Unicode map labels and notices. It uses native LiveViews, scoped contexts and named browser hooks; Rails HTML recordings are not refreshed.
+
+Trip queries search names, decoded rich descriptions, notes and itinerary records without duplicating trips. Search escapes SQL wildcards, removes NUL and uses Rails' 100-codepoint limit. Periods overlap in the actor's timezone; country selection uses exact JSON membership. Sorts include deterministic id ties. Options come from all owned trips, and family pagination stays independent. The routed index is `DawarichWeb.TripsLive.NativeIndex`; `NativeTripsLive.Index` is an older component.
+
+Root redirects guests to sign-in and authenticated users to the preferred native map. Locale and unconsumed flash survive that redirect. Auth forms omit self links and registration omits irrelevant recovery links. Rails sign-in still has a relevant unlock-email link. Direct sign-in locale navigation admits only one supported locale parameter.
+
+Family controls have a separate panel and F shortcut, available with current membership and feature access. The existing family overlay already restores geometry after style changes. DOM labels extend the existing places renderer to visits, area centers and family names, keeping safe text, filtering, opacity, visibility and teardown. Nullable family addresses are consumed from the scoped family projection; that projection owns reverse-geocoding and privacy rules.
+
+Points visibility controls effective anomaly visibility while retaining the anomaly preference. Browser preferences are scoped to the user namespace and survive document reloads. Fog modes stay grouped, visit filters and place tags remain native, and flights require AirTrail configuration. Scratch maps request `/maps/countries-v3.pmtiles`; the public-files boundary and existing Docker public/maps copy serve the archive.
+
+Notice text permits pointer events to reach underlying map controls; links and dismiss actions remain interactive. Messages wrap within the viewport. Native CSS enforces the hidden attribute even when modal styles specify grid display.
+
+The Rails build oracle refreshes the locale, asset, importmap and normalized-manifest byte pins. CSS checks retain deterministic repeated output and Docker class-source closure rather than a historical checksum that changes whenever native classes change.
+
+The Rails sync merge already supplies all seven locale source deltas. Native i18n is rebuilt from those sources. No-fallback checks cover the new keys and real interpolation bindings. A real Rails oracle confirms Polish country-ribbon counts use the simple backend's one/other categories despite additional few/many source leaves; this port preserves that behavior.
+
+## Verification and integration
+
+Named witnesses are `sync1160_index_test.exs`, `sync1160_trips_live_test.exs`, `sync1160_auth_shell_test.exs`, `sync1160_map_shell_test.exs`, `sync1160_i18n_test.exs` and `test/client/sync1160_map_labels_test.mjs`. Standalone browser successors are in the E2E repository at `native/sync1160-shell.spec.js`. Controller evidence records the paired commits, private runner logs, source mutations and final gate.
+
+T2 supplies `DawarichWeb.InsightsRoutes`, `DawarichWeb.InsightsRedirect` and `InsightsYearMap`. Its route/alias/shared-hook integration is wired together: route previews and their JSON alias bypass document conversion, stats index/year redirect to insights, and the month route stays native. Preview admission reads the configured self-hosted mode when no layout assign is present and retains the Cloud data window. Authenticated route previews accept JSON and the `.json` suffix through the same plug, outside document conversion. Legacy year redirects admit four digits and normalize them numerically; malformed suffixes refuse locally. Request tests and the compiled route ledger cover these boundaries. Navbar entries already consolidate on insights. T3 supplies the nullable family address projection; T1 supplies the version-three reference archive.
+
+This is implementation documentation, not release or production-serving acceptance.
+
+Flash parity readers use an explicit presentation-only comparator: classes within the flash may differ, while severity, role, escaped text, dismissal controls, stream targets and all surrounding markup stay checked. Retained JS/hook consumers use IDs or roles and do not select these fragments by their presentation classes. Native click-through and wrapping remain the shell contract.
+
+The scoped Stats cache race checks remain on the native month route after index/year consolidation. Index/year interaction, totals, places, history, recalculation, entitlement, private-state and expiry checks now exercise insights; scoped year queries retain their data contracts. Q06/Q07 redirect rows are refreshed by the Rails parity recorder, with status, flash and jobs unchanged. Its focused NULL-settings capture also records the stats index redirect for SQL NULL, JSON null and empty settings; the native successor follows it to insights while retaining the public/API/PNG and unchanged-settings assertions. The new map hook has an explicit 2 KiB eager cap; its engine remains lazy.
+
+The reader reconciliation adds the boundary registry witness without changing the historical census. The integration also reconciles T1's FRB-S1160-BOUNDARY-FOLLOWUPS and ED-S1160-BOUNDARY-FOLLOWUPS entries, and records the preserved empty-cities yearly-digest quirk as DRB-S1160-EMPTY-CITIES. Cloud provisioning readiness for heavy release jobs remains an owner decision; lifecycle admission is unchanged.
+
+The first integrated fix gate completed all partitions with 11,038 tests and eight failures: seven stale stats route/status/recording callers and the pending Cloud provisioning readiness case. Exact route inventories and source-recorded NULL settings now cover those caller successors. Their targeted packet passes; final all-partition acceptance still requires the controller's replacement-gate authorization. The original gate result remains in the controller report.
+
+## Browser auth setup readiness
+
+A successful sign-in redirect can render the map's Settings button before its LiveView has connected. The shared E2E panel helper must await `[data-phx-main].phx-connected` before clicking; otherwise the initial click can be lost and auth setup times out waiting for the panel close control. Waiting for `/map/v2` alone does not establish event readiness. Keep the native globe form submission, unchecked assertion, panel close and saved-session assertions.
+
+The native Tools control is `map-button-tools`; the helper's historical `create` alias maps to that panel. The browser witness `native/map-panel-readiness.spec.js` delays the LiveView WebSocket, opens Settings through the shared helper, verifies the globe preference after reload and checks the Tools alias. Removing the connection wait or restoring the old `map-button-create` selector must fail it. App runtime and lifecycle admission are unchanged.
+
+
+## Family and realtime browser acceptance
+
+Family visibility and member controls belong to `panel=family`, opened through `map-button-family`; Layers retains the other map layers. Browser successors retain member timestamps, history colors, centering, empty states and saved visibility. The scoped helper opens the panel only after the native connection is ready.
+
+When a point invalidation interrupts live mode's initial baseline read, the pending delivery must survive the replacement refresh. The recent-point owner cancels the old baseline and preserves its previous identity before refreshing, then renders the latest admitted row. Other invalidation kinds still establish a baseline without manufacturing a new marker. Disabling live mode and changing ranges retain their cancellation and clearing boundaries.
+
+The deterministic witness is `native live marker retains a point arriving during the enabling baseline` in `spec/javascript/phoenix_m6_host_recent_test.mjs`. Its named mutation removes delivery preparation before reconnect. Existing marker, duplicate suppression, disabled-state and late-read tests remain required. This corrects a native baseline race; Rails already renders admitted point broadcasts directly in `app/javascript/controllers/maps/maplibre_realtime_controller.js:207` at Rails `ec49374ae`.
+
+
+An unchanged admitted Family refresh keeps its member controls mounted while data reloads, so background invalidations cannot repeatedly detach a pending centering click. Identical results retain the existing controls; the sharing-age day boundary still updates its displayed duration. Disable, range/locale/namespace changes, failed reads and teardown still clear data and fence late reads. The named client witness is `Family refresh preserves admitted centering controls while unchanged data reloads`; mutations independently restore eager clearing and unconditional replacement.
+
+
+A point invalidation also remains pending when another panel refresh supersedes its refresh. The next successful refresh consumes the pending delivery within its own cancellation boundary; a cancelled refresh cannot discard the only notification of a new point. Range/live-state changes still reset that pending state. `native live marker survives a panel refresh superseding its point invalidation` deterministically exercises this real host sequence; removing pending delivery consumption fails it.
+
+## Final G44 readiness investigation
+
+Native server-rendered controls can be visible before the owning LiveView connects. Browser tests must wait for the native connection before hub tab patches, share revocation, Points pagination, trip export and import deletion on a newly navigated detail page. The private-auth reporter protects every subsequent step of a test that filled a password; its generic failure message alone does not locate a failure in authentication. Use a scoped open reporter for diagnosis, protect its artifacts, and restore the privacy reporter afterward.
+
+Timeline URL updates can precede the DOM patch that supplies the keyboard handler's selected date. Wait for both the URL date and `#native-map-page[data-selected-date]`, then for the timeline's `aria-busy=false`, before issuing the next key. Keep every exact day, no-reload and fresh-read assertion.
+
+Rails 1.16.0 API visit deletion writes a tombstone and invalidates month cache without broadcasting a visit-layer refresh (`app/controllers/api/v1/visits_controller.rb`, `app/models/visit.rb`). An API cleanup must reload and await map readiness before checking source absence; incidental notification traffic is not a readiness guarantee. The creation assertions still require automatic Visits enablement, the named marker, visible layer and canonical endpoint data. No runtime behavior or Rails bug is changed by these test corrections.
+
+Scoped MacBook verification passed all eight files ten times (291 cases including setup), plus 41 cases for the final post-auth changes. The final eight-file mini packet passed three consecutive fresh runs (30 cases each, zero failures or skips). A deterministic WebSocket gate confirms a trip export click is lost before join and reaches Exports after join. No runtime fix, new quarantine, retry, sleep or timeout increase is involved. Scoped repeated browser verification remains separate from the controller's final whole-lane acceptance.
+
+## Notification return-page readiness
+
+The seeded notification lifecycle also needs a fresh connection wait after the detail page's ordinary Back link and after the single-delete redirect. The initial `nativeJobPage` wait covers only its original index. A server-rendered unread badge or deletion flash on a later document does not establish that document's event readiness. Await `[data-phx-main].phx-connected` before its pagination patch or Mark all as read action, retaining the read-color, unread counts, sanitization, confirmation cancellation and deletion assertions.
+
+A scoped open-reporter mini run located the failure at the second-page read-color assertion after Back. A deterministic WebSocket gate reproduces both lost actions: Next leaves 20 rows after join, and Mark all as read leaves 18 unread after join; each succeeds when clicked after connection. The original spec passed twenty MacBook repetitions despite the mini failure, demonstrating why repetition alone cannot establish this dependency. The corrected spec passes twenty MacBook repetitions, and the audited trip packet passes all ten cases including setup. The audit adds the same prerequisite before trip-day actions after reload and cleanup navigation, trip deletion after rename, and rich-description resubmission after Edit; the editor also awaits its own ready attribute. Existing helpers already cover initial native page loads; map/editor/async-only controls supply additional readiness receipts. HTTP auth forms and browser-local details controls do not require a LiveView connection.
+
+This is a browser prerequisite correction. Rails notification read/delete behavior and trip note, rename/delete and rich-attachment contracts remain unchanged. The privacy reporter is restored, with its five redaction tests passing. No application runtime or lifecycle admission is changed; full-lane acceptance remains with the controller.

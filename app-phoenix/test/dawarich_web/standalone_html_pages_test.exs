@@ -51,12 +51,21 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
 
         if route["rails_status"] == 200 and route["html"] do
           {route["target"], result,
-           route["native_status"] ||
-             case URI.parse(route["target"]).path do
-               path when path in @retired_paths -> 410
-               "/sidekiq" -> 302
-               _ -> 200
-             end}
+           case URI.parse(route["target"]).path do
+             "/stats" ->
+               302
+
+             "/stats/" <> year when byte_size(year) == 4 ->
+               302
+
+             _ ->
+               route["native_status"] ||
+                 case URI.parse(route["target"]).path do
+                   path when path in @retired_paths -> 410
+                   "/sidekiq" -> 302
+                   _ -> 200
+                 end
+           end}
         end
       end
 

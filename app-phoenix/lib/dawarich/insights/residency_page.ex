@@ -36,7 +36,7 @@ defmodule Dawarich.Insights.ResidencyPage do
       countries =
         Repo.query!(
           @days <>
-            "SELECT country_name,array_agg(day ORDER BY day),count(*) OVER() FROM days GROUP BY country_name ORDER BY count(*) DESC,min(day),country_name COLLATE \"C\" LIMIT 50 OFFSET $4",
+            "SELECT country_name,array_agg(day ORDER BY day),count(*) OVER() FROM days GROUP BY country_name ORDER BY count(*) DESC,country_name COLLATE \"C\" LIMIT 50 OFFSET $4",
           args ++ [(page - 1) * 50],
           log: false
         ).rows
@@ -52,6 +52,9 @@ defmodule Dawarich.Insights.ResidencyPage do
       {:ok,
        %{
          state: :ready,
+         zone: period.zone,
+         today: period.today,
+         country_count: count,
          year: year,
          total: total,
          daily: daily,

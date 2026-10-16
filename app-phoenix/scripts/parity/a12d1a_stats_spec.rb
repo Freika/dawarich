@@ -752,11 +752,11 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
     error_class = profile.include?('database') ? ActiveRecord::StatementInvalid : StandardError
     error = error_class.new('synthetic digest failure')
     error.set_backtrace((1..25).map { |line| "synthetic frame #{line}" })
-    allow(Stats::CalculateMonth).to receive(:new).and_wrap_original do |original, *args|
+    allow(Stats::CalculateMonth).to receive(:new).and_wrap_original do |original, *args, **kwargs|
       calls << { 'kind' => 'stats', 'month' => args[2], 'locale' => I18n.locale.to_s, 'zone' => Time.zone.name }
       raise error if profile == 'stats_raise' || (profile == 'late_stats_raise' && args[2] == 7)
 
-      original.call(*args)
+      original.call(*args, **kwargs)
     end
     calculator = kind == 'monthly' ? Users::Digests::CalculateMonth : Users::Digests::CalculateYear
     allow(calculator).to receive(:new).and_wrap_original do |original, *args|
@@ -781,12 +781,22 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
     job.job_id = '00000000-0000-4000-8000-000000141001'
     args = [digest_user_id, 2025]
     args << 3 if kind == 'monthly'
+    publications = []
+    allow(RailsCommands::Poller).to receive(:publish).and_wrap_original do |original, type, payload|
+      result = original.call(type, payload)
+      if type.start_with?('digests.email_')
+        publications << { 'kind' => type, 'payload' => payload }
+        Users::Digests::Commands.email(kind.to_sym, payload)
+      end
+      result
+    end
     job.perform(*args)
     emails = digest_job_enqueued
     notifications = Notification.where(user_id: digest_user_id).order(:id).pluck(:kind, :title, :content)
-    terminal_profiles = %w[stats_raise digest_raise digest_database late_stats_raise vanished missing_user deleted_user]
+    terminal_profiles = %w[stats_return stats_database stats_raise digest_raise digest_database late_stats_raise
+                           vanished missing_user deleted_user]
     terminal = terminal_profiles.include?(profile)
-    expect(emails.length).to eq(terminal ? 0 : 1)
+    expect(emails.length).to eq(terminal ? 0 : 1), "#{kind}/#{profile}/#{locale}"
     unless terminal
       expect(emails.first['job_class']).to eq(digest_job_class(kind, 'EmailSendingJob').name)
       expect(emails.first['arguments']).to eq(args)
@@ -794,7 +804,7 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
       expect(calls.select { |call| call['kind'] == 'stats' }.map { |call| call['month'] })
         .to eq(kind == 'monthly' ? [3] : (1..12).to_a)
     end
-    if %w[stats_raise digest_raise digest_database late_stats_raise].include?(profile)
+    if %w[stats_return stats_database stats_raise digest_raise digest_database late_stats_raise].include?(profile)
       expect(notifications.length).to eq(1)
       expect(notifications.first.last).to include('synthetic frame 20')
       expect(notifications.first.last).not_to include('synthetic frame 21')
@@ -808,7 +818,8 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
     {
       'id' => "#{profile}_#{kind}_#{locale}", 'kind' => kind, 'profile' => profile, 'locale' => locale,
       'args' => args, 'ambient_zone' => Time.zone.name, 'input' => input, 'before' => before,
-      'expected' => { 'rows' => digest_rows, 'calls' => calls, 'emails' => emails, 'notifications' => notifications,
+      'expected' => { 'rows' => digest_rows, 'calls' => calls, 'emails' => emails,
+                      'publications' => publications, 'notifications' => notifications,
                       'stats' => digest_select('SELECT user_id, year, month, distance, flight_distance, ' \
                                                'daily_distance, toponyms, h3_hex_ids, calculation_version FROM stats ' \
                                                "WHERE user_id = #{digest_user_id} ORDER BY year, month") }
@@ -1072,7 +1083,7 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
       error = StandardError.new('synthetic recalculation failure')
       error.set_backtrace((1..25).map { |line| "synthetic frame #{line}" })
       replayed = false
-      allow(Stats::CalculateMonth).to receive(:new).and_wrap_original do |original, *args|
+      allow(Stats::CalculateMonth).to receive(:new).and_wrap_original do |original, *args, **kwargs|
         calls << { 'kind' => 'stats', 'args' => args, 'locale' => I18n.locale.to_s, 'zone' => Time.zone.name }
         raise error if profile == 'user_stats_escape'
 
@@ -1080,7 +1091,7 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
           replayed = true
           raise ArgumentError, 'synthetic nested argument'
         end
-        original.call(*args)
+        original.call(*args, **kwargs)
       end
       if profile == 'user_stats_handled'
         allow_any_instance_of(Stats::CalculateMonth).to receive(:points).and_raise(error)
@@ -1356,7 +1367,7 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
 
         error = { 'class' => e.class.name, 'message' => e.message }
       end
-      faults = %w[user_stats_escape user_digest_escape user_invalid_year dispatch_malformed]
+      faults = %w[user_stats_handled user_stats_escape user_digest_escape user_invalid_year dispatch_malformed]
       expect(error).to be_nil unless faults.include?(profile)
       expect(error).not_to be_nil if faults.include?(profile)
       parents = calls.select { |row| row['kind'] == 'tracks' && row['result'].is_a?(Hash) }
