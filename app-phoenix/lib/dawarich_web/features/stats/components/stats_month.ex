@@ -202,7 +202,7 @@ defmodule DawarichWeb.StatsMonth do
             %{}
           )}
         </div>
-        <div class="stat-value text-accent">{length(Toponyms.visited(@stat.toponyms))}</div>
+        <div class="stat-value text-accent">{length(Toponyms.countries(@stat.toponyms))}</div>
         <div class="stat-desc">
           {StatsFormat.than_previous_countries(@locale, @stat.toponyms, @previous)}
         </div>

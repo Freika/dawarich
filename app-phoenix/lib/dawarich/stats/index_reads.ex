@@ -16,7 +16,11 @@ defmodule Dawarich.Stats.IndexReads do
       AND (top.value->'country' IS NULL OR jsonb_typeof(top.value->'country') IN ('null','string'))
       AND jsonb_typeof(c.city)='object' AND jsonb_typeof(c.city->'city')='string'
       AND c.city->>'city' ~ '[^[:space:]]'
-  ), countries AS (SELECT DISTINCT country AS name FROM places WHERE country ~ '[^[:space:]]'),
+  ), countries AS (
+    SELECT DISTINCT value->>'country' AS name FROM top
+    WHERE jsonb_typeof(value)='object' AND jsonb_typeof(value->'country')='string'
+      AND value->>'country' ~ '[^[:space:]]'
+  ),
   cities AS (SELECT DISTINCT city AS name FROM places)
   SELECT (SELECT count(*) FROM countries), (SELECT count(*) FROM cities),
     ARRAY(SELECT name FROM countries ORDER BY name COLLATE "C" LIMIT 50 OFFSET $2),

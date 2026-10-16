@@ -55,7 +55,7 @@ defmodule DawarichWeb.PublicMonth do
         </div>
         <div class="stat place-items-center text-center">
           <div class="stat-title">{t(@locale, "stats.public_month.countries_visited", %{})}</div>
-          <div class="stat-value">{length(@visited)}</div>
+          <div class="stat-value">{length(Toponyms.countries(@visited))}</div>
           <div class="stat-desc">{t(@locale, "stats.public_month.different_countries", %{})}</div>
         </div>
       </div>

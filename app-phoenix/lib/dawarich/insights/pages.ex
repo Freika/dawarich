@@ -3,7 +3,7 @@ defmodule Dawarich.Insights.Pages do
   alias Dawarich.Accounts.DataAccess
   alias Dawarich.Analytics.Period
   alias Dawarich.{Stats, Repo, Digests}
-  alias Dawarich.Insights.{Heatmap, NativeDetails}
+  alias Dawarich.Insights.{Heatmap, NativeDetails, Consolidation}
 
   def overview(scope, params, opts \\ []) do
     with {:ok, scope} <- DataAccess.admit(scope, settings: true),
@@ -61,6 +61,7 @@ defmodule Dawarich.Insights.Pages do
          Map.merge(data, %{
            selected_month: month,
            totals: totals,
+           consolidated: Consolidation.load(scope, period, rows, params, opts),
            heatmap:
              if(period.all_time,
                do: nil,

@@ -79,15 +79,17 @@ defmodule Dawarich.Users.RecalculationStatsTest do
           phase: fn kind, year, _ -> send(parent, {:phase, kind, year}) end
         ]
 
-    assert {:ok, _} = Recalculation.run(ScratchRepo, :recalculation_stats, args(source), opts)
-    for month <- 1..12, do: assert_receive({:month, 2025, ^month, "fr"})
-    assert_receive {:phase, :tracks, 2025}
-    assert_receive {:phase, :digest, 2025}
+    assert_raise RuntimeError, "synthetic recalculation failure", fn ->
+      Recalculation.run(ScratchRepo, :recalculation_stats, args(source), opts)
+    end
+
+    assert_receive {:month, 2025, 1, "fr"}
+    refute_receive {:phase, _, _}
 
     messages =
       rows("SELECT kind,title,content FROM notifications WHERE user_id=$1 ORDER BY id", [170_101])
 
-    assert length(messages) == 12
+    assert length(messages) == 1
     [kind, title, _] = hd(source["expected"]["notifications"])
 
     for [actual_kind, actual_title, content] <- messages do

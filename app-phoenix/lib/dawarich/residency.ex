@@ -78,25 +78,19 @@ defmodule Dawarich.Residency do
   defp db_year(now),
     do: hd(hd(Repo.query!("SELECT extract(year FROM $1::timestamptz)::int", [now]).rows))
 
-  defp daily_countries(rows, order) do
-    rows
-    |> Enum.chunk_by(fn [date, _country, _count] -> date end)
-    |> Enum.reduce_while({:ok, []}, fn [[date | _] | _] = group, {:ok, acc} ->
-      case Enum.sort_by(group, fn [_date, _country, count] -> count end, :desc) do
-        [[_, _, top], [_, _, next] | _] when top == next and order == :strict ->
-          {:halt, {:replay, "countries tie on #{date}"}}
+  defp daily_countries(rows, _order) do
+    daily =
+      rows
+      |> Enum.chunk_by(fn [date, _, _] -> date end)
+      |> Enum.map(fn group ->
+        [date, country, _] = Enum.min_by(group, fn [_, country, count] -> {-count, country} end)
+        {Date.to_iso8601(date), country}
+      end)
 
-        [[_, country, _] | _] ->
-          {:cont, {:ok, [{Date.to_iso8601(date), country} | acc]}}
-      end
-    end)
-    |> case do
-      {:ok, pairs} -> {:ok, Enum.reverse(pairs)}
-      replay -> replay
-    end
+    {:ok, daily}
   end
 
-  defp countries(rows, year, order) do
+  defp countries(rows, year, _order) do
     total = total(rows)
 
     entries =
@@ -104,7 +98,7 @@ defmodule Dawarich.Residency do
         {iso2, _iso3} = CountryNames.iso_codes(name)
         days = length(dates)
 
-        {days,
+        {{-days, name},
          {:object,
           [
             {"country_name", name},
@@ -118,11 +112,7 @@ defmodule Dawarich.Residency do
           ]}}
       end
 
-    days = Enum.map(entries, &elem(&1, 0))
-
-    if order == :source or length(Enum.uniq(days)) == length(days),
-      do: {:ok, entries |> Enum.sort_by(&elem(&1, 0), :desc) |> Enum.map(&elem(&1, 1))},
-      else: {:replay, "countries with equal days"}
+    {:ok, entries |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&elem(&1, 1))}
   end
 
   defp by_country(rows) do

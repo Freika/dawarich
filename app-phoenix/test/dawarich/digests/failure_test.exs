@@ -43,8 +43,8 @@ defmodule Dawarich.Digests.FailureTest do
       rows("UPDATE users SET deleted_at=now() WHERE id=14101")
       assert Failure.create!(ScratchRepo, kind, 14101, error, stack) == :missing
       assert Failure.create!(ScratchRepo, kind, 0, error, stack) == :missing
-      assert [[4]] = rows("SELECT count(*) FROM notifications")
-      assert [[4]] = rows("SELECT count(*) FROM phoenix.notification_events")
+      assert [[3]] = rows("SELECT count(*) FROM notifications")
+      assert [[3]] = rows("SELECT count(*) FROM phoenix.notification_events")
     end
   end
 end

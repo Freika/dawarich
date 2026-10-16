@@ -39,7 +39,9 @@ defmodule DawarichWeb.StatsLive.NativeMonthParts do
         </div>
         <div>
           <h2>{t(@locale, "stats.month.countries_visited", %{})}</h2>
-          <p>{NumberFormat.delimited(@locale, length(Toponyms.visited(@data.data.stat.toponyms)))}</p>
+          <p>
+            {NumberFormat.delimited(@locale, length(Toponyms.countries(@data.data.stat.toponyms)))}
+          </p>
           <p>
             {StatsFormat.than_previous_countries(
               @locale,

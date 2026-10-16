@@ -3,7 +3,8 @@ defmodule Dawarich.Stats.CalculateMonth do
 
   require Logger
 
-  alias Dawarich.{I18n, Notifications}
+  alias Dawarich.I18n
+  alias Dawarich.Stats.FailureNotice
   alias Dawarich.Mail.ExploreFeatures
   alias Dawarich.Stats.{Accounts, GeocodedDays, Hexagons, MonthQueries}
 
@@ -168,7 +169,7 @@ defmodule Dawarich.Stats.CalculateMonth do
     {:ok, _} =
       Dawarich.Transaction.run(repo, fn ->
         fence!(ctx)
-        result = Notifications.create!(repo, user.id, :error, title, content)
+        result = FailureNotice.create!(repo, user.id, :error, title, content)
         fence!(ctx)
         result
       end)

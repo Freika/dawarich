@@ -79,12 +79,19 @@ defmodule DawarichWeb.StatsLive.NativePage do
     with {:ok, scope} <- NativeDataAuth.scope(socket),
          {:ok, _} <-
            Commands.update(scope, params, socket.private.stats_receipt, command_options(socket)) do
-      {:noreply,
-       put_flash(
-         socket,
-         :notice,
-         t(socket.assigns.locale, "controllers.stats.stats_are_being_updated", %{})
-       )}
+      socket =
+        put_flash(
+          socket,
+          :notice,
+          t(socket.assigns.locale, "controllers.stats.stats_are_being_updated", %{})
+        )
+
+      socket =
+        if socket.assigns.live_action == :month,
+          do: push_navigate(socket, to: "/insights?year=#{socket.assigns.data.year}"),
+          else: socket
+
+      {:noreply, socket}
     else
       {:error, reason} -> {:noreply, refuse_in_place(socket, reason)}
     end
