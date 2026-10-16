@@ -136,6 +136,11 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsHeaders
   end
 
+  scope "/" do
+    pipe_through :family_data
+    get "/insights/routes/:year", DawarichWeb.InsightsRoutes, [], metadata: %{native_api: true}
+  end
+
   native_data_routes()
   DawarichWeb.TripsNativeRoutes.trips_routes()
   page_routes()

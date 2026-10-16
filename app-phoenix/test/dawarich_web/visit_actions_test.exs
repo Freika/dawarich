@@ -94,8 +94,8 @@ defmodule DawarichWeb.VisitActionsTest do
   defp parity(html, name),
     do:
       assert(
-        ParityHTML.normalize(html) ==
-          ParityHTML.normalize(File.read!("test/fixtures/a8vv/visits/#{name}.html"))
+        ParityHTML.normalize_flash(html) ==
+          ParityHTML.normalize_flash(File.read!("test/fixtures/a8vv/visits/#{name}.html"))
       )
 
   @tag :safe_back3

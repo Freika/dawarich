@@ -5,6 +5,7 @@ defmodule DawarichWeb.DocumentAliases do
 
   @pipelines ~w(browser native_m6_browser native_public public_home trial_resume trial_welcome sharing rails_frame achievement_public native_navigation)a
   @protocols [
+    DawarichWeb.InsightsRoutes,
     DawarichWeb.Storage,
     DawarichWeb.ImportsDownload,
     DawarichWeb.NativeCredentialReveal

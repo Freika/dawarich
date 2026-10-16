@@ -99,8 +99,8 @@ defmodule DawarichWeb.PlaceActionsTest do
               )
 
         golden = File.read!("test/fixtures/places/remaining/pages/#{entry["name"]}.html")
-        actual = ParityHTML.normalize(conn.resp_body)
-        expected_body = ParityHTML.normalize(golden)
+        actual = ParityHTML.normalize_flash(conn.resp_body)
+        expected_body = ParityHTML.normalize_flash(golden)
 
         assert actual == expected_body,
                entry["name"] <> ": " <> ParityHTML.first_difference(actual, expected_body)

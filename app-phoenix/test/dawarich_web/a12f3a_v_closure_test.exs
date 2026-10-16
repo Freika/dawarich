@@ -64,8 +64,8 @@ defmodule DawarichWeb.A12f3aVClosureTest do
       assert conn.status == ctx.state["status"]
       durable(ctx.state)
 
-      assert ParityHTML.normalize(conn.resp_body) ==
-               ParityHTML.normalize(File.read!("test/fixtures/a8vv/visits/#{name}.html"))
+      assert ParityHTML.normalize_flash(conn.resp_body) ==
+               ParityHTML.normalize_flash(File.read!("test/fixtures/a8vv/visits/#{name}.html"))
 
       no_rails()
     end
@@ -81,8 +81,10 @@ defmodule DawarichWeb.A12f3aVClosureTest do
     id = hd(ctx.state["before"]["rows"]["visits"])["id"]
     assert {:ok, result} = WebDelete.run(ScratchRepo, ctx.user, id, %{}, ctx)
 
-    assert ParityHTML.normalize(DawarichWeb.VisitStreams.render(:destroy, result, ctx)) ==
-             ParityHTML.normalize(File.read!("test/fixtures/a8vv/visits/soft_delete_turbo.html"))
+    assert ParityHTML.normalize_flash(DawarichWeb.VisitStreams.render(:destroy, result, ctx)) ==
+             ParityHTML.normalize_flash(
+               File.read!("test/fixtures/a8vv/visits/soft_delete_turbo.html")
+             )
 
     durable(ctx.state)
     assert rows("SELECT * FROM place_visits ORDER BY id") == unrelated
@@ -113,8 +115,8 @@ defmodule DawarichWeb.A12f3aVClosureTest do
     assert {:ok, result} = WebBulk.run(ScratchRepo, :destroy, ctx.user, req["params"], ctx)
     durable(ctx.state)
 
-    assert ParityHTML.normalize(DawarichWeb.VisitStreams.render(:bulk_destroy, result, ctx)) ==
-             ParityHTML.normalize(
+    assert ParityHTML.normalize_flash(DawarichWeb.VisitStreams.render(:bulk_destroy, result, ctx)) ==
+             ParityHTML.normalize_flash(
                File.read!("test/fixtures/a8vv/visits/bulk_cross_day_destroy.html")
              )
 
@@ -160,8 +162,8 @@ defmodule DawarichWeb.A12f3aVClosureTest do
     assert rows("SELECT id FROM place_visits ORDER BY id") == []
     assert rows("SELECT id FROM visits WHERE id=ANY($1)", [result.source_ids]) == []
 
-    assert ParityHTML.normalize(DawarichWeb.VisitStreams.render(:merge, result, ctx)) ==
-             ParityHTML.normalize(File.read!("test/fixtures/a8vv/visits/merge_noted.html"))
+    assert ParityHTML.normalize_flash(DawarichWeb.VisitStreams.render(:merge, result, ctx)) ==
+             ParityHTML.normalize_flash(File.read!("test/fixtures/a8vv/visits/merge_noted.html"))
 
     no_rails()
   end

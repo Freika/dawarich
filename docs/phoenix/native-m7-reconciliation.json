@@ -14097,6 +14097,13 @@
       ]
     },
     {
+      "file": "app-phoenix/test/dawarich/release_operations/boundary_points_registry_test.exs",
+      "markers": [
+        "expected_diffs.md",
+        "fixed-rails-bugs.md"
+      ]
+    },
+    {
       "file": "app-phoenix/test/dawarich/release_operations/per_tracker_test.exs",
       "markers": [
         "fixtures/"
@@ -18009,7 +18016,7 @@
     "B2-refusal",
     "B3"
   ],
-  "merge_reader_count": 378,
+  "merge_reader_count": 379,
   "integration_verification": {
     "targeted_packet": "927 passed on seeds 404 and 202; two existing release-stand skips; seven other S02 cases excluded from the register-only selection",
     "remaining_caller_files": [

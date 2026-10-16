@@ -1,5 +1,6 @@
 defmodule Dawarich.Sync1160I18nTest do
   use ExUnit.Case, async: true
+  import Phoenix.LiveViewTest, only: [render_component: 2]
   alias Dawarich.I18n
 
   test "seven source locales export every sync key without fallback and interpolate real bindings" do
@@ -42,6 +43,21 @@ defmodule Dawarich.Sync1160I18nTest do
       assert {:ok, value} = I18n.t(locale, prefix <> "." <> leaf, bindings, fallback: false)
       assert is_binary(value)
       refute value =~ "%{"
+    end
+
+    for locale <- ~w(en ca de es fr pl zh) do
+      {:ok, label} = I18n.t(locale, "supporter_platforms.app_store", %{}, fallback: false)
+
+      html =
+        render_component(&DawarichWeb.Components.SupporterCard.card/1,
+          user: %{settings: %{}},
+          locale: locale,
+          supporter: true,
+          platform: "app_store"
+        )
+
+      assert html |> LazyHTML.from_fragment() |> LazyHTML.text() |> String.contains?(label)
+      refute html =~ "translation_missing"
     end
   end
 

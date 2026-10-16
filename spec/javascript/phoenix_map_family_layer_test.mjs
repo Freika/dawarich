@@ -60,6 +60,7 @@ function fixture() {
                   {
                     user_id: 7,
                     name: "<member>",
+                    address: "<script>Street & City</script>",
                     email: "member@example.invalid",
                     longitude: 13.5,
                     latitude: 52.4,
@@ -151,6 +152,8 @@ test("main map Family layer reads admitted locations history and renders safe ce
   assert.equal(f.list.hidden, false)
   const button = f.nodes.find((n) => n.type === "button")
   assert.match(button.textContent, /<member>/)
+  assert.equal(button.children[0].textContent, "<script>Street & City</script>")
+  assert.equal(button.children[0].innerHTML, undefined)
   button.click()
   assert.deepEqual(f.flights, [{ center: [13.5, 52.4], zoom: 15 }])
   assert.equal(f.status.textContent, "Zentriert")

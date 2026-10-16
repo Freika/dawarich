@@ -129,11 +129,11 @@ defmodule DawarichWeb.NativeDataClockTest do
   end
 
   test "Stats reload uses current family expiry rather than the mount clock", %{user: user} do
-    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2024")
-    grant(view, user, "/stats/2024")
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2024")
+    grant(view, user, "/insights?year=2024")
     refute :sys.get_state(view.pid).socket.assigns.data.restricted
     expire(view)
-    reload(view, DawarichWeb.StatsLive.NativePage, %{"year" => "2024", "page" => "1"})
+    reload(view, DawarichWeb.InsightsLive.NativePage, %{"year" => "2024", "page" => "1"})
     assert :sys.get_state(view.pid).socket.assigns.data.restricted
   end
 end

@@ -6,14 +6,27 @@ defmodule DawarichWeb.InsightsRoutes do
 
   def init(opts), do: opts
 
-  def call(conn, _opts) do
+  def call(conn, opts) do
+    year = conn.path_params["year"] |> String.replace_suffix(".json", "")
+
+    if Regex.match?(~r/\A[0-9]{4}\z/, year),
+      do: respond(%{conn | path_params: Map.put(conn.path_params, "year", year)}, opts),
+      else: conn |> send_resp(404, "") |> halt()
+  end
+
+  defp respond(conn, _opts) do
     with %{id: _} = user <- conn.assigns[:current_user],
          {:ok, result} <-
            Dawarich.Insights.YearRoutes.fetch(
              Scope.for_user(user, conn.assigns[:locale] || "en"),
              conn.path_params["year"],
              now: conn.assigns[:now] || DateTime.utc_now(),
-             self_hosted: conn.assigns[:self_hosted] || false
+             self_hosted:
+               Map.get(
+                 conn.assigns,
+                 :self_hosted,
+                 Dawarich.ReleaseMigration.self_hosted?(System.get_env())
+               )
            ) do
       conn
       |> put_resp_content_type("application/json")

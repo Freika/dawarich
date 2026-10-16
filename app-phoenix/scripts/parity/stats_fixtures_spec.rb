@@ -325,6 +325,13 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
     end
   end
 
+  it 'records Q06 and Q07 insights redirects with their original jobs and flashes' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+    travel_to now do
+      capture_q_updates(reader(5290))
+    end
+  end
+
   it 'reads back Q06 routing errors after ActionCable subscriber initialization' do
     subscriber = ActionCable.server.pubsub
     allow(File).to receive(:write).and_call_original

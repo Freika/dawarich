@@ -165,10 +165,25 @@ test("family Unicode names and current rows restore once after style replacement
       intervals.delete(fn);
     },
   };
+  let popupHtml = "";
+  f.library.Popup = class {
+    setLngLat() {
+      return this;
+    }
+    setHTML(html) {
+      popupHtml = html;
+      return this;
+    }
+    addTo() {
+      return this;
+    }
+    remove() {}
+  };
   const overlay = createFamilyOverlay({ ...f, timers });
   const row = {
     user_id: 3,
     name: "👨‍👩‍👧 Ada <script>",
+    address: "<img src=x> Street & City",
     email: "fallback",
     latitude: 52,
     longitude: 13,
@@ -176,6 +191,19 @@ test("family Unicode names and current rows restore once after style replacement
   };
   f.rows([point(3, row.name)]);
   overlay.replace([row]);
+  const select = () => {
+    for (const handler of f.events.get("click:family-circles"))
+      handler({ features: [{ properties: { id: 3 } }] });
+  };
+  select();
+  assert.match(popupHtml, /&lt;img src=x&gt; Street &amp; City/);
+  assert.equal(popupHtml.includes("<img"), false);
+  overlay.replace([{ ...row, address: null }]);
+  select();
+  assert.equal(popupHtml.includes("Street"), false);
+  assert.equal(popupHtml.includes("null"), false);
+  overlay.replace([row]);
+
   f.emit("render");
   assert.equal(f.markers.size, 1);
   assert.equal([...f.markers][0].element.textContent, row.name);

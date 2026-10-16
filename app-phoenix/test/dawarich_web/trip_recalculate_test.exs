@@ -162,7 +162,10 @@ defmodule DawarichWeb.TripRecalculateTest do
                  expected["flash"]
       else
         golden = File.read!("test/fixtures/trips/remaining/pages/#{name}.html")
-        assert ParityHTML.normalize(conn.resp_body) == ParityHTML.normalize(golden), name
+
+        assert ParityHTML.normalize_flash(conn.resp_body) == ParityHTML.normalize_flash(golden),
+               name
+
         assert ParityHTML.stimulus(conn.resp_body) == ParityHTML.stimulus(golden)
       end
     end

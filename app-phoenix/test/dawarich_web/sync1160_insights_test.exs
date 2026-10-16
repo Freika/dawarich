@@ -27,6 +27,71 @@ defmodule DawarichWeb.Sync1160InsightsTest do
     %{user: user}
   end
 
+  test "stats requests redirect numeric four-digit years and preserve the native month", %{
+    user: user
+  } do
+    for {path, destination} <- [
+          {"/stats", "/insights?year=all"},
+          {"/stats/0042", "/insights?year=42"},
+          {"/stats/2025", "/insights?year=2025"}
+        ] do
+      conn = get(NativeAdminUI.conn(user), path)
+      assert conn.status == 302
+      assert Plug.Conn.get_resp_header(conn, "location") == [destination]
+      guest = get(build_conn(), path)
+      assert guest.status == 302
+      assert URI.parse(hd(Plug.Conn.get_resp_header(guest, "location"))).path == "/users/sign_in"
+    end
+
+    for year <- ~w(42 2025tail 20255 abcd) do
+      assert get(NativeAdminUI.conn(user), "/stats/" <> year).status == 404
+    end
+
+    assert get(NativeAdminUI.conn(user), "/stats/2025/3").status == 200
+  end
+
+  test "year route JSON aliases retain scoped data authentication and locked-year privacy", %{
+    user: user
+  } do
+    for path <- ["/insights/routes/2025", "/insights/routes/2025.json"] do
+      conn =
+        NativeAdminUI.conn(user)
+        |> Plug.Conn.put_req_header("accept", "application/json")
+        |> get(path)
+
+      assert conn.status == 200
+
+      assert Plug.Conn.get_resp_header(conn, "content-type") == [
+               "application/json; charset=utf-8"
+             ]
+
+      assert Plug.Conn.get_resp_header(conn, "cache-control") == ["private, no-store"]
+      assert %{"lines" => [_ | _]} = Jason.decode!(conn.resp_body)
+      guest = build_conn() |> Plug.Conn.put_req_header("accept", "application/json") |> get(path)
+      assert guest.status == 302
+      assert URI.parse(hd(Plug.Conn.get_resp_header(guest, "location"))).path == "/users/sign_in"
+    end
+
+    System.put_env("SELF_HOSTED", "false")
+    Dawarich.Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [user.id], log: false)
+    conn = get(NativeAdminUI.conn(user), "/insights/routes/2018.json")
+    assert conn.status == 200
+    assert Jason.decode!(conn.resp_body) == %{"lines" => []}
+  end
+
+  test "self-hosted Lite preview admission uses the configured mode while Cloud keeps its window",
+       %{user: user} do
+    Dawarich.Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [user.id], log: false)
+    System.put_env("SELF_HOSTED", "true")
+    own = get(NativeAdminUI.conn(user), "/insights/routes/2018.json")
+    assert own.status == 200
+    assert %{"lines" => [_ | _]} = Jason.decode!(own.resp_body)
+    System.put_env("SELF_HOSTED", "false")
+    cloud = get(NativeAdminUI.conn(user), "/insights/routes/2018.json")
+    assert cloud.status == 200
+    assert Jason.decode!(cloud.resp_body) == %{"lines" => []}
+  end
+
   test "consolidated insights offers tracked counts country lists newest six previews and twelve months",
        %{user: user} do
     {:ok, view, html} = live(NativeAdminUI.conn(user), "/insights?year=all")

@@ -249,7 +249,9 @@ defmodule DawarichWeb.A12f3aRClosureTest do
           Enum.map(evicted, &MapGallery.route_video(user.id, &1, "Europe/Berlin", ScratchRepo))
 
         html = DawarichWeb.RouteVideoStreams.save(video, expired, "en")
-        assert ParityHTML.normalize(normalize_urls(html)) == ParityHTML.normalize(state["body"])
+
+        assert ParityHTML.normalize_flash(normalize_urls(html)) ==
+                 ParityHTML.normalize_flash(state["body"])
       end
 
       assert rows("SELECT id,status,name,settings FROM route_videos ORDER BY id") ==
@@ -310,7 +312,8 @@ defmodule DawarichWeb.A12f3aRClosureTest do
           locale: "en"
         )
 
-      assert ParityHTML.normalize(normalize_urls(html)) == ParityHTML.normalize(state["body"])
+      assert ParityHTML.normalize_flash(normalize_urls(html)) ==
+               ParityHTML.normalize_flash(state["body"])
 
       for locale <- ~w(en ca de es fr pl zh) do
         html =

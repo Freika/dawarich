@@ -174,6 +174,7 @@ defmodule Dawarich.Jobs.RegistryTest do
   end
 
   @wave6_commands %{
+    "release.boundary_points" => Dawarich.ReleaseOperations.BoundaryPoints,
     "release.point_dimensions_country" => Dawarich.ReleaseOperations.PointBackfill,
     "release.route_opacity" => Dawarich.ReleaseOperations.RouteOpacity,
     "release.onboarding_completed" => Dawarich.ReleaseOperations.OnboardingCompleted,

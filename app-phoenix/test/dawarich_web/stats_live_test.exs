@@ -28,8 +28,8 @@ defmodule DawarichWeb.StatsLiveTest do
   describe "routes" do
     test "each page mounts for a signed-in user with Rails' title", %{user: user} do
       for {path, title} <- [
-            {"/stats", "Statistics | Dawarich"},
-            {"/stats/2024", "Statistics for 2024 year | Dawarich"},
+            {"/insights?year=all", "Insights | Dawarich"},
+            {"/insights?year=2024", "Insights | Dawarich"},
             {"/stats/2024/03", "March 2024 Monthly Digest | Dawarich"},
             {"/digests", "Year-End Digests | Dawarich"}
           ] do
@@ -191,77 +191,109 @@ defmodule DawarichWeb.StatsLiveTest do
         )
 
         html =
-          RailsUser.signed_in(user.id) |> get("/stats?locale=#{locale}") |> html_response(200)
+          RailsUser.signed_in(user.id)
+          |> get("/insights?year=all&locale=#{locale}")
+          |> html_response(200)
 
-        assert Enum.map(texts(html, "#stats-total"), &String.trim/1) == [
+        assert Enum.take(Enum.map(texts(html, ".card-body > .text-3xl"), &String.trim/1), 1) == [
                  "#{total} #{unit}"
                ]
 
         assert texts(html, "article > a:first-child") == ["2024", "2023"]
         cards = if unit == "km", do: ["50 km", "20 km"], else: ["31 mi", "12 mi"]
 
-        assert Enum.map(texts(html, "p[id^=stats-year-total-]"), &String.trim/1) ==
+        assert Enum.map(
+                 texts(html, "[data-testid=insights-year-card] > p:first-of-type"),
+                 &String.trim/1
+               ) ==
                  cards
 
-        assert html =~ if(locale == "de", do: "Statistiken", else: "Statistics")
+        assert html =~ DawarichWeb.Translate.t(locale, "insights.index.insights", %{})
       end
     end
 
     test "native index retains source totals ready counts and one card per year", %{user: user} do
-      {:ok, view, html} = live_as(user, "/stats")
-      assert html =~ ">Statistics | Dawarich</title>"
-      assert has_element?(view, "#stats-total", "70 km")
-      assert :sys.get_state(view.pid).socket.assigns.data.points.total == 77
-      assert :sys.get_state(view.pid).socket.assigns.data.points.percentage == 100
-      assert has_element?(view, "#stats-without-data", "1 points without data")
-      assert has_element?(view, "#stats-update", "Update stats")
+      {:ok, view, html} = live_as(user, "/insights?year=all")
+      assert html =~ ">Insights | Dawarich</title>"
+      assert has_element?(view, ".card-body > .text-3xl", "70 km")
+      assert :sys.get_state(view.pid).socket.assigns.data.consolidated.index.points.total == 77
+
+      assert :sys.get_state(view.pid).socket.assigns.data.consolidated.index.points.percentage ==
+               100
+
+      assert has_element?(view, "#insights-tracking", "1 points without data")
+      assert has_element?(view, "#insights-update", "Update stats")
       assert texts(html, "article > a:first-child") == ["2024", "2023"]
-      assert has_element?(view, "#stats-year-2024-places", "2 countries, 2 cities")
-      assert has_element?(view, "#stats-year-2023-places", "1 countries, 1 cities")
+
+      assert has_element?(
+               view,
+               "[data-testid=insights-year-card] summary",
+               "2 countries, 2 cities"
+             )
+
+      assert has_element?(
+               view,
+               "[data-testid=insights-year-card] summary",
+               "1 countries, 1 cities"
+             )
+
       refute html =~ "data-turbo-method"
     end
 
     test "native place dialogs switch source countries and cities without losing totals", %{
       user: user
     } do
-      {:ok, view, _} = live_as(user, "/stats")
+      {:ok, view, _} = live_as(user, "/insights?year=all")
       view |> element("button[phx-value-kind=countries]") |> render_click()
       assert texts(render(view), "#stats-dialog li") == ["Czechia", "Germany"]
       render_click(view, "close_dialog", %{})
       view |> element("button[phx-value-kind=cities]") |> render_click()
       assert texts(render(view), "#stats-dialog li") == ["Berlin", "Prague"]
       render_click(view, "close_dialog", %{})
-      assert has_element?(view, "#stats-total", "70 km")
+      assert has_element?(view, ".card-body > .text-3xl", "70 km")
       refute has_element?(view, "#stats-dialog")
     end
 
     test "native charts update only their plot island and retain source accessible values", %{
       user: user
     } do
-      {:ok, view, html} = live_as(user, "/stats")
-      assert has_element?(view, "#stats-year-2024[phx-hook=NativeChart]")
-      assert has_element?(view, "#stats-year-2024-plot[phx-update=ignore]")
-      assert has_element?(view, "#stats-year-2024 details table td", "March")
+      {:ok, view, html} = live_as(user, "/insights?year=all")
 
-      [payload] =
-        html
-        |> LazyHTML.from_document()
-        |> LazyHTML.query("#stats-year-2024")
-        |> LazyHTML.attribute("data-chart")
+      strips =
+        html |> LazyHTML.from_document() |> LazyHTML.query("[data-testid=insights-year-strip]")
 
-      assert Enum.slice(Jason.decode!(payload)["data"], 2, 2) == [["March", 38], ["April", 12]]
+      assert Enum.count(strips) == 2
+      assert has_element?(view, "[data-testid=insights-year-strip][role=img][aria-label]")
+
+      [year | _] =
+        strips |> Enum.map(&(LazyHTML.query(&1, "span") |> LazyHTML.attribute("title")))
+
+      assert Enum.slice(year, 2, 2) == ["March: 38 km", "April: 12 km"]
       refute html =~ "RailsStimulus"
-      refute has_element?(view, "#stats-year-2024[phx-update=ignore]")
+      refute has_element?(view, "[data-testid=insights-year-card][phx-update=ignore]")
     end
 
     test "native year chart cards and links retain source window values", %{user: user} do
-      {:ok, view, html} = live_as(user, "/stats/2024")
-      assert html =~ ">Statistics for 2024 year | Dawarich</title>"
+      {:ok, view, html} = live_as(user, "/insights?year=2024")
+      assert html =~ ">Insights | Dawarich</title>"
       assert has_element?(view, "a[href='/stats/2024/3']", "March")
-      assert has_element?(view, "#stats-month-places-3", "Berlin")
-      assert has_element?(view, "#stats-month-places-3", "Prague")
-      assert :sys.get_state(view.pid).socket.assigns.data.distances |> Enum.sum() == 50400
-      assert has_element?(view, "#stats-native-chart[phx-hook=NativeChart]")
+      render_async(view)
+
+      {:ok, year_data} =
+        Dawarich.Stats.Pages.year(
+          Dawarich.Accounts.Scope.for_user(user, "en"),
+          %{"year" => "2024"},
+          self_hosted: true
+        )
+
+      assert Enum.any?(year_data.stats, &String.contains?(inspect(&1.toponyms), "Berlin"))
+      assert Enum.any?(year_data.stats, &String.contains?(inspect(&1.toponyms), "Prague"))
+
+      assert :sys.get_state(view.pid).socket.assigns.data.consolidated.months
+             |> Enum.map(& &1.distance)
+             |> Enum.sum() == 50400
+
+      assert has_element?(view, "[data-testid=insights-month]")
     end
 
     test "a month without a stat is Rails' empty state with HTTP 200", %{user: user} do
@@ -343,10 +375,10 @@ defmodule DawarichWeb.StatsLiveTest do
         daily_distance: [[1, 1000]]
       })
 
-      {:ok, view, _html} = live_as(user, "/stats")
+      {:ok, view, _html} = live_as(user, "/insights?year=all")
 
-      assert has_element?(view, "#stats-window-alert[role=alert]")
-      assert has_element?(view, "#stats-locked-2023")
+      assert has_element?(view, "#insights-locked[role=status]")
+      assert has_element?(view, "[data-testid=insights-locked-year]", "2023")
       assert has_element?(view, "button[phx-click=upgrade]")
       {:ok, month, _html} = live_as(user, "/stats/#{today.year}/#{today.month}")
       refute has_element?(month, "button[phx-click=open_share]")

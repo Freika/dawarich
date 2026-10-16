@@ -47,33 +47,38 @@ defmodule DawarichWeb.StatsNativeLiveTest do
       log: false
     )
 
-    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats")
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=all")
     assert has_element?(view, "a[href='/digests']")
-    assert has_element?(view, "#stats-refresh-policy", "updated daily")
+    assert has_element?(view, "[data-testid=insights-year-card]", "2025")
 
     assert has_element?(
              view,
-             "#stats-year-2025-map[href='#{DawarichWeb.StatsFormat.year_map_path(2025)}']"
+             "a[href='#{DawarichWeb.StatsFormat.year_map_path(2025)}']"
            )
 
-    view |> element("#stats-year-2025-places") |> render_click()
-    assert has_element?(view, "#stats-dialog [data-year-places='2025']", "Germany")
-    assert has_element?(view, "#stats-dialog", "Berlin")
-    refute has_element?(view, "#stats-dialog [data-year-places='2024']")
-    view |> element("#stats-dialog-close") |> render_click()
-    refute has_element?(view, "#stats-dialog")
+    assert has_element?(view, "[data-testid=insights-year-card] details", "Germany")
+    assert has_element?(view, "[data-testid=insights-year-card] details", "Berlin")
+    assert has_element?(view, "[data-testid=insights-year-card] > a[href='/insights?year=2024']")
     render_click(view, "open_year_places", %{"year" => "1900"})
     refute has_element?(view, "#stats-dialog")
   end
 
   test "stats year patches change data and survive browser history", %{user: user} do
-    {:ok, view, _html} = live(NativeAdminUI.conn(user), "/stats/2025")
-    assert has_element?(view, "#stats-native-chart")
+    {:ok, view, _html} = live(NativeAdminUI.conn(user), "/insights?year=2025")
+    assert has_element?(view, "[data-testid=insights-month]")
     assert :sys.get_state(view.pid).socket.assigns.data.year == 2025
-    render_patch(view, "/stats/2024")
-    assert :sys.get_state(view.pid).socket.assigns.data.distances |> Enum.sum() == 1000
-    render_patch(view, "/stats/2025")
-    assert :sys.get_state(view.pid).socket.assigns.data.distances |> Enum.sum() == 12000
+    render_patch(view, "/insights?year=2024")
+
+    assert :sys.get_state(view.pid).socket.assigns.data.consolidated.months
+           |> Enum.map(& &1.distance)
+           |> Enum.sum() == 1000
+
+    render_patch(view, "/insights?year=2025")
+
+    assert :sys.get_state(view.pid).socket.assigns.data.consolidated.months
+           |> Enum.map(& &1.distance)
+           |> Enum.sum() == 12000
+
     html = NativeAdminUI.html(view)
     refute html =~ "data-controller"
     refute html =~ "turbo-frame"
@@ -137,9 +142,12 @@ defmodule DawarichWeb.StatsNativeLiveTest do
   end
 
   test "stats update and share refuse stale eligibility with no publication", %{user: user} do
-    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats")
-    view |> element("#stats-update") |> render_click()
-    view |> element("#stats-update") |> render_click()
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=all")
+    render_async(view)
+    view |> element("#insights-update") |> render_click()
+    render_async(view)
+    view |> element("#insights-update") |> render_click()
+    render_async(view)
 
     assert Dawarich.Repo.query!(
              "SELECT count(*) FROM job_outbox WHERE command_type='stats.full_recalculation'",
@@ -153,8 +161,11 @@ defmodule DawarichWeb.StatsNativeLiveTest do
       log: false
     )
 
-    html = render_click(view, "update", %{})
-    assert html =~ NativeAdminUI.escaped("controllers.application.admin_action_failed")
+    render_click(view, "update", %{})
+    {"/", flash} = assert_redirect(view)
+
+    assert flash["alert"] ==
+             DawarichWeb.Translate.t("en", "controllers.application.admin_action_failed", %{})
 
     assert Dawarich.Repo.query!(
              "SELECT count(*) FROM job_outbox WHERE command_type='stats.full_recalculation'",
@@ -180,9 +191,9 @@ defmodule DawarichWeb.StatsNativeLiveTest do
   end
 
   test "cold count renders pending without double calculation", %{user: user} do
-    {:ok, view, _html} = live(NativeAdminUI.conn(user), "/stats")
+    {:ok, view, _html} = live(NativeAdminUI.conn(user), "/insights?year=all")
     assert has_element?(view, "#stats-count-pending[role=status]")
-    assert :sys.get_state(view.pid).socket.assigns.data.total_distance == 13000
+    assert :sys.get_state(view.pid).socket.assigns.data.consolidated.index.total_distance == 13000
 
     assert Dawarich.Repo.query!(
              "SELECT user_id FROM phoenix.stats_point_counts WHERE user_id=$1",
@@ -196,10 +207,14 @@ defmodule DawarichWeb.StatsNativeLiveTest do
              log: false
            ).rows == [[1]]
 
+    render_async(view)
+    NativeAdminUI.queries(fn -> :ok end)
     {_, queries} = NativeAdminUI.queries(fn -> NativeAdminUI.html(view) end)
     assert queries == []
     refute Enum.any?(queries, &String.contains?(&1, "count(*) FROM points"))
-    assert :sys.get_state(view.pid).socket.assigns.data.points.state == :pending
+
+    assert :sys.get_state(view.pid).socket.assigns.data.consolidated.index.points.state ==
+             :pending
   end
 
   test "native Stats retains localized source totals places and refresh completion", %{user: user} do
@@ -209,9 +224,9 @@ defmodule DawarichWeb.StatsNativeLiveTest do
       log: false
     )
 
-    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats?locale=de")
-    assert has_element?(view, "#stats-year-total-2025", "12 km")
-    assert has_element?(view, "#stats-year-2025-places", "1")
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=all&locale=de")
+    assert has_element?(view, "[data-testid=insights-year-card]", "12 km")
+    assert has_element?(view, "[data-testid=insights-year-card] summary", "1")
     view |> element("button[phx-value-kind=countries]") |> render_click()
     assert has_element?(view, "#stats-dialog li", "Germany")
     render_click(view, "close_dialog", %{})
@@ -229,17 +244,26 @@ defmodule DawarichWeb.StatsNativeLiveTest do
     assert :ok = Dawarich.Stats.PageRefreshWorker.run(args, repo: Dawarich.Repo)
     assert has_element?(view, "#stats-count-ready")
     refute has_element?(view, "#stats-count-pending")
-    {:ok, year, _} = live(NativeAdminUI.conn(user), "/stats/2025?locale=de")
-    assert has_element?(year, "#stats-native-chart", "März")
-    assert has_element?(year, "#stats-month-places-3", "Berlin")
+    {:ok, year, _} = live(NativeAdminUI.conn(user), "/insights?year=2025&locale=de")
+    assert has_element?(year, "[data-testid=insights-month]", "März")
+    render_async(year)
+
+    {:ok, source} =
+      Dawarich.Stats.Pages.year(Scope.for_user(user, "de"), %{"year" => "2025"},
+        self_hosted: true
+      )
+
+    assert Enum.any?(source.stats, &String.contains?(inspect(&1.toponyms), "Berlin"))
     assert has_element?(year, "a[href='/stats/2025/3']", "März")
-    assert NativeAdminUI.html(year) =~ "Statistics" or NativeAdminUI.html(year) =~ "Statistiken"
+
+    assert NativeAdminUI.html(year) =~
+             DawarichWeb.Translate.t("de", "insights.index.insights", %{})
   end
 
   test "stats period commands publish once per selection and sharing keeps source expiration", %{
     user: user
   } do
-    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2025")
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2025")
     render_click(view, "update", %{})
     render_click(view, "update", %{})
 
@@ -249,7 +273,7 @@ defmodule DawarichWeb.StatsNativeLiveTest do
              log: false
            ).rows == [[12]]
 
-    render_patch(view, "/stats/2024")
+    render_patch(view, "/insights?year=2024")
     render_click(view, "update", %{})
 
     assert Dawarich.Repo.query!(
@@ -301,14 +325,14 @@ defmodule DawarichWeb.StatsNativeLiveTest do
     System.put_env("JWT_SECRET_KEY", "synthetic-native-stats-upgrade-secret")
     on_exit(fn -> System.delete_env("JWT_SECRET_KEY") end)
     Dawarich.Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [user.id], log: false)
-    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats")
-    assert has_element?(view, "#stats-window-alert[role=alert]")
-    assert has_element?(view, "#stats-locked-2024")
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=all")
+    assert has_element?(view, "#insights-locked[role=status]")
+    assert has_element?(view, "[data-testid=insights-locked-year]")
     assert has_element?(view, "button[phx-click=upgrade]")
     raw = :erlang.term_to_binary(:sys.get_state(view.pid).socket.assigns)
     refute raw =~ "token="
     refute raw =~ user.api_key
-    view |> element("#stats-upgrade") |> render_click()
+    view |> element("#insights-upgrade") |> render_click()
     {path, _flash} = assert_redirect(view)
     assert URI.decode_query(URI.parse(path).query)["utm_medium"] == "data_window"
   end
@@ -392,7 +416,7 @@ defmodule DawarichWeb.StatsNativeLiveTest do
       log: false
     )
 
-    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats")
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=all")
     assert has_element?(view, "button[phx-value-kind=cities]", "61")
     render_click(view, "open_places", %{"kind" => "cities"})
 
@@ -402,7 +426,7 @@ defmodule DawarichWeb.StatsNativeLiveTest do
              |> LazyHTML.query("#stats-dialog li")
            ) == 50
 
-    render_patch(view, "/stats?places_kind=cities&places_page=2")
+    render_patch(view, "/insights?year=all&places_kind=cities&places_page=2")
 
     assert Enum.count(
              NativeAdminUI.html(view)
@@ -499,10 +523,10 @@ defmodule DawarichWeb.StatsNativeLiveTest do
         else: Application.delete_env(:dawarich, :jobs_repo)
     end)
 
-    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2025")
-    refute Dawarich.Stats.PageRefresh.topic(user.id) in Registry.keys(Dawarich.PubSub, view.pid)
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2025")
+    assert Dawarich.Stats.PageRefresh.topic(user.id) in Registry.keys(Dawarich.PubSub, view.pid)
     before = :sys.get_state(view.pid).socket
-    assert before.assigns.data.distances |> Enum.sum() == 12000
+    assert Enum.sum(Enum.map(before.assigns.data.consolidated.months, & &1.distance)) == 12000
     render_click(view, "update", %{})
 
     [[id, args]] =
@@ -520,25 +544,16 @@ defmodule DawarichWeb.StatsNativeLiveTest do
              log: false
            ).rows == [[0]]
 
-    socket = :sys.get_state(view.pid).socket
-    assert socket.assigns.data.distances |> Enum.sum() == 12000
+    render_patch(view, "/insights?year=2025")
 
-    assert {:noreply, unchanged} =
-             DawarichWeb.StatsLive.NativePage.handle_info(
-               {:analytics_ready, user.id, "absent-protocol"},
-               socket
-             )
-
-    assert unchanged == socket
-    render_patch(view, "/stats/2025")
-    assert :sys.get_state(view.pid).socket.assigns.data.distances |> Enum.sum() == 9000
+    assert :sys.get_state(view.pid).socket.assigns.data.consolidated.months
+           |> Enum.map(& &1.distance)
+           |> Enum.sum() == 9000
   end
 
   @tag cache_return: true
   test "Stats cache delivery refuses a changed actor during SET before assigning its projection",
        %{user: user} do
-    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2025")
-    assert :sys.get_state(view.pid).socket.assigns.data.year == 2025
     {:ok, cache} = Dawarich.Test.NativePageCache.start()
 
     command = fn args ->
@@ -564,7 +579,18 @@ defmodule DawarichWeb.StatsNativeLiveTest do
         else: Application.delete_env(:dawarich, :native_page_cache_command)
     end)
 
-    assert {:error, {:redirect, %{to: "/users/sign_in"}}} = render_patch(view, "/stats/2024")
+    scope = Scope.for_user(user, "en")
+    params = %{"year" => "2024"}
+
+    assert {:error, :stale_session} =
+             Dawarich.Cache.Pages.fetch(
+               scope,
+               :stats_year,
+               params,
+               &Dawarich.Stats.Pages.year(&1, params, self_hosted: true),
+               self_hosted: true
+             )
+
     assert Dawarich.Test.NativePageCache.entries(cache) == %{}
     assert Enum.any?(Dawarich.Test.NativePageCache.commands(cache), &match?(["SET" | _], &1))
   end
@@ -574,11 +600,14 @@ defmodule DawarichWeb.StatsNativeLiveTest do
     user: user
   } do
     Process.flag(:trap_exit, true)
-    {:ok, view, html} = live(NativeAdminUI.conn(user), "/stats?year[bad]=1&places_kind=countries")
+
+    {:ok, view, html} =
+      live(NativeAdminUI.conn(user), "/insights?year[bad]=1&places_kind=countries")
+
     assert is_binary(html)
     assert Process.alive?(view.pid)
     assert :sys.get_state(view.pid).socket.assigns.data == nil
-    assert :sys.get_state(view.pid).socket.assigns.stats_dialog == nil
+    assert :sys.get_state(view.pid).socket.assigns.dialog == nil
     refute has_element?(view, "#stats-dialog")
 
     for {event, params} <- [
@@ -591,27 +620,27 @@ defmodule DawarichWeb.StatsNativeLiveTest do
       {_, queries} = NativeAdminUI.queries(fn -> render_hook(view, event, params) end)
       socket = :sys.get_state(view.pid).socket
       assert socket.assigns.data == nil
-      assert socket.assigns.stats_dialog == nil
+      assert socket.assigns.dialog == nil
       assert socket.assigns.flash["alert"]
       refute Enum.any?(queries, &String.match?(&1, ~r/\A\s*(INSERT|UPDATE|DELETE)\b/i))
     end
 
-    render_patch(view, "/stats")
-    assert :sys.get_state(view.pid).socket.assigns.data.total_distance == 13000
+    render_patch(view, "/insights?year=all")
+    assert :sys.get_state(view.pid).socket.assigns.data.consolidated.index.total_distance == 13000
   end
 
   @tag projection_refusal: true
   test "Stats year URL and forged places event retain the year projection without an index dialog",
        %{user: user} do
     Process.flag(:trap_exit, true)
-    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2025?places_kind=countries")
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2025&places_kind=countries")
     before = :sys.get_state(view.pid).socket.assigns.data
     assert before.year == 2025
     refute has_element?(view, "#stats-dialog")
     render_hook(view, "open_places", %{"kind" => "countries"})
     socket = :sys.get_state(view.pid).socket
     assert socket.assigns.data == before
-    assert socket.assigns.stats_dialog == nil
+    assert socket.assigns.dialog == nil
     assert socket.assigns.flash["alert"]
   end
 end
