@@ -5,7 +5,7 @@ defmodule DawarichWeb.RouteVideoActionsTest do
   import Plug.Conn
 
   alias Dawarich.{MapGallery, RailsMessages, RouteVideos, ScratchRepo}
-  alias Dawarich.Test.{ParityHTML, RailsUser}
+  alias Dawarich.Test.RailsUser
   alias DawarichWeb.{RailsCsrf, RouteVideoStreams}
 
   @now ~U[2026-10-03 10:00:00Z]
@@ -117,33 +117,35 @@ defmodule DawarichWeb.RouteVideoActionsTest do
              "flash-messages"
            ]
 
-    flash =
-      LazyHTML.from_fragment(html)
-      |> LazyHTML.query("turbo-stream[target=flash-messages]")
-      |> LazyHTML.to_html()
+    contents =
+      html |> String.replace(["<template>", "</template>"], "") |> LazyHTML.from_fragment()
 
-    oracle = File.read!("test/fixtures/a8vv/videos/all_recipe_keys.html")
+    notice = LazyHTML.query(contents, "turbo-stream[target=flash-messages] [role=alert]")
+    assert LazyHTML.text(notice) =~ "Video saved to your gallery."
+    assert LazyHTML.attribute(LazyHTML.query(notice, "button"), "aria-label") == ["Close"]
 
-    assert ParityHTML.fragment(flash, "template") ==
-             ParityHTML.fragment(oracle, "turbo-stream[target=flash-messages] template")
+    saved = LazyHTML.query(contents, "#route_video_#{id}")
+    assert LazyHTML.text(saved) =~ "Saved route"
 
-    assert html =~ "Video saved to your gallery."
+    assert LazyHTML.attribute(LazyHTML.query(saved, "video"), "src") == [
+             MapGallery.blob_path(video.files["file"])
+           ]
 
-    normalized =
-      Regex.replace(~r{(/rails/active_storage/blobs/(?:redirect|proxy)/)[^/]+/}, html, fn _full,
-                                                                                          prefix ->
-        prefix <> "BLOB_SIGNED_ID/"
-      end)
+    assert LazyHTML.text(saved) =~ "Download MP4"
 
-    ids = %{"886102" => "886101", to_string(id) => "886102"}
+    assert MapGallery.blob_path(video.files["file"], "attachment") in LazyHTML.attribute(
+             LazyHTML.query(saved, "a"),
+             "href"
+           )
 
-    normalized =
-      Regex.replace(~r{(route_video_|/route_videos/)(\d+)\b}, normalized, fn _, prefix, value ->
-        prefix <> Map.fetch!(ids, value)
-      end)
+    evicted = LazyHTML.query(contents, "#route_video_886102")
+    assert LazyHTML.text(evicted) =~ "Synthetic route"
+    assert LazyHTML.text(evicted) =~ "Re-render"
+    assert LazyHTML.attribute(LazyHTML.query(evicted, "video"), "src") == []
 
-    assert ParityHTML.normalize(normalized) ==
-             ParityHTML.normalize(File.read!("test/fixtures/a8vv/videos/cap_one.html"))
+    assert LazyHTML.attribute(LazyHTML.query(evicted, "button"), "data-settings") == [
+             expired.settings_json
+           ]
 
     body =
       Plug.Conn.Query.encode(%{

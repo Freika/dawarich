@@ -17,7 +17,15 @@ defmodule Dawarich.Auth.SignInFormTest do
         )
 
       assert fields(html) == fields(row["html"]), name
-      assert links(html) == links(row["html"]), name
+
+      assert Enum.all?(links(html), fn {href, label} ->
+               href != ["/users/sign_in"] and String.trim(label) != ""
+             end),
+             name
+
+      assert Enum.any?(links(html), fn {href, _} -> href == ["/users/sign_up"] end) ==
+               row["registration"]
+
       assert NativeAuthHTTP.text(html, "h1") == NativeAuthHTTP.text(row["html"], "h1"), name
       assert NativeAuthHTTP.text(html, "label") == NativeAuthHTTP.text(row["html"], "label"), name
     end

@@ -23,6 +23,12 @@ defmodule DawarichWeb.NativeMapPage do
           locale={@locale}
           panel={@map_url["panel"] || ""}
           self_hosted={assigns[:self_hosted] != false}
+          family={@page.family}
+        />
+        <DawarichWeb.NativeMapFamily.panel
+          :if={@page.family && @map_url["panel"] == "family" && assigns[:map_settings]}
+          locale={@locale}
+          settings={@map_settings}
         />
         <DawarichWeb.NativeMapLinks.links
           :if={assigns[:self_hosted] == false && @map_url["panel"] == "links"}

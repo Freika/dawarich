@@ -4,25 +4,30 @@ defmodule Dawarich.Trips.Pages do
   alias Dawarich.{Repo, RubyInteger, TripSettings}
   alias Dawarich.Accounts.Scope
   alias Dawarich.SharedLinks.FamilyAudience
-  alias Dawarich.Trips.{DayWindow, DetailProjection, ListProjection, WebForm}
+  alias Dawarich.Trips.{DayWindow, DetailProjection, IndexQuery, ListProjection, WebForm}
 
   @max_page 1_000_000_000_000
 
   def normalize(params) when is_map(params),
-    do: %{page: page(params["page"]), family_page: page(params["family_page"])}
+    do:
+      Map.merge(IndexQuery.normalize(params), %{
+        page: page(params["page"]),
+        family_page: page(params["family_page"])
+      })
 
   def normalize(_params), do: normalize(%{})
 
-  def list(%Scope{user: user}, params, now) do
+  def list(%Scope{user: user} = scope, params, now) do
     query = normalize(params)
 
     with {:ok, settings} <- settings(user) do
-      own = ListProjection.cards(user, query.page)
+      own = ListProjection.cards(user, query)
       family = FamilyAudience.trips(user, query.family_page, now)
 
       {:ok,
        %{
          query: query,
+         options: IndexQuery.options(scope),
          entries: own.entries,
          total_pages: own.total_pages,
          family_entries: family.entries,

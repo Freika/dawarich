@@ -5,7 +5,13 @@ defmodule Dawarich.Maps.Trip do
 
   def list(scope, page, family_page, opts \\ []) do
     with {:ok, fresh} <- Maps.admit(scope, opts) do
-      Pages.list(fresh, %{"page" => page, "family_page" => family_page}, now(opts))
+      params =
+        Map.merge(Keyword.get(opts, :filters, %{}), %{
+          "page" => page,
+          "family_page" => family_page
+        })
+
+      Pages.list(fresh, params, now(opts))
     end
   end
 

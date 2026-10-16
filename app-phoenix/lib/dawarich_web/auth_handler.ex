@@ -89,7 +89,8 @@ defmodule DawarichWeb.AuthHandler do
   defp dispatch(%{method: "GET", query_string: ""} = conn, _opts),
     do: AuthResponse.form(conn, "", nil, 200)
 
-  defp dispatch(%{method: "GET"} = conn, opts), do: fallback(conn, opts)
+  defp dispatch(%{method: "GET"} = conn, opts),
+    do: DawarichWeb.AuthNavigation.sign_in(conn, opts, &fallback/2)
 
   defp dispatch(conn, opts) do
     if not bounded_body?(conn) do

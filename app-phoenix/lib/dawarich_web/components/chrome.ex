@@ -15,7 +15,10 @@ defmodule DawarichWeb.Chrome do
     assigns = assign(assigns, :messages, messages)
 
     ~H"""
-    <div class="fixed top-5 right-5 flex flex-col gap-2 z-50" id="flash-messages">
+    <div
+      class="fixed top-5 right-5 w-96 max-w-[calc(100vw-2.5rem)] flex flex-col gap-2 z-50 pointer-events-none"
+      id="flash-messages"
+    >
       <%= for {type, message} <- @messages do %>
         <.flash_message type={type} message={message} locale={@locale} native={@native} />
       <% end %>
@@ -44,16 +47,16 @@ defmodule DawarichWeb.Chrome do
       data-removals-timeout-value={!@native && @timeout}
       phx-mounted={@timeout == 5000 && JS.dispatch("dawarich:flash-timeout")}
       role="alert"
-      class={"alert #{@class} shadow-lg z-[6000]"}
+      class={"native-flash alert #{@class} shadow-lg z-[6000] min-w-0 max-w-full pointer-events-none"}
     >
-      <div class="flex items-center gap-2">
-        <Icon.icon name={@icon} class="size-6" /><span>{@message}</span>
+      <div class="flex min-w-0 max-w-full items-start gap-2">
+        <Icon.icon name={@icon} class="size-6 shrink-0" /><span class="min-w-0 [overflow-wrap:anywhere]">{@message}</span>
       </div>
       <button
         type="button"
         data-action={!@native && "click->removals#remove"}
         phx-click={dismiss(@type)}
-        class="btn btn-sm btn-circle btn-ghost"
+        class="btn btn-sm btn-circle btn-ghost pointer-events-auto shrink-0"
         aria-label={t(@locale, "shared.flash_message.close", %{})}
       >
         <svg

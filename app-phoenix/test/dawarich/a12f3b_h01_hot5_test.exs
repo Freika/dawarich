@@ -83,7 +83,8 @@ defmodule Dawarich.A12f3bH01Hot5Test do
     for mode <- ~w(true false) do
       System.put_env("SELF_HOSTED", mode)
       home = request(nil, "GET", "/?client=ios&aff=partner&via=ignored")
-      assert home.status == 200
+      assert home.status == 302
+      assert get_resp_header(home, "location") == ["http://www.example.com/users/sign_in"]
       head = request(nil, "HEAD", "/")
       assert head.status == home.status and head.resp_body == ""
       assert get_resp_header(head, "content-type") == get_resp_header(home, "content-type")

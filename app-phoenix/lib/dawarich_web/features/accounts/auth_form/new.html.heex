@@ -7,6 +7,12 @@
       <p class="py-6 text-base-content opacity-70">
         {t(@locale, "devise.sessions.new.and_take_control_over_your_location_data", %{})}
       </p>
+      <ul class="space-y-3 mb-4">
+        <li :for={benefit <- ~w(import map stats privacy)}>
+          <strong>{t(@locale, "devise.sessions.new.benefits." <> benefit <> ".title", %{})}</strong>
+          <p>{t(@locale, "devise.sessions.new.benefits." <> benefit <> ".body", %{})}</p>
+        </li>
+      </ul>
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm min-w-0 shadow-2xl bg-base-100 px-5 py-5">
       <form
@@ -70,13 +76,7 @@
         </div>
       </form>
       <div :if={@email_password} class="mt-5 space-y-2 text-sm">
-        <div>
-          <a class="link link-hover text-base-content/70" href="/users/sign_in">{t(
-            @locale,
-            "devise.shared.links.log_in",
-            %{}
-          )}</a>
-        </div><div :if={@registration_enabled}>
+        <div :if={@registration_enabled}>
           <a class="link link-hover text-base-content/70" href="/users/sign_up">{t(
             @locale,
             "devise.shared.links.register",
@@ -90,6 +90,7 @@
             %{}
           )}</a>
         </div>
+
         <div>
           <a class="link link-hover text-base-content/70" href="/users/unlock/new">{t(
             @locale,

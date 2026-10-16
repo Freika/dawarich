@@ -52,13 +52,37 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
     save(socket, %{"places_tag_filters" => filters})
   end
 
+  def handle_event("settings:family_layer", params, socket) do
+    layers = socket.assigns.map_settings.saved["enabled_map_layers"] || []
+
+    if socket.assigns.page.family do
+      layers =
+        if params["enabled"] == "true",
+          do: Enum.uniq(layers ++ ["Family Members"]),
+          else: List.delete(layers, "Family Members")
+
+      save(socket, %{"enabled_map_layers" => layers})
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("settings:map_layers", params, socket) do
     layers =
       List.wrap(params["layers"])
-      |> Enum.filter(&(&1 in DawarichWeb.NativeMapPanels.layers()))
+      |> Enum.filter(&(&1 in DawarichWeb.NativeMapPanels.layers() and &1 != "Family Members"))
       |> Enum.uniq()
 
-    save(socket, %{"enabled_map_layers" => layers})
+    family = "Family Members" in socket.assigns.map_settings.saved["enabled_map_layers"]
+    layers = if family, do: layers ++ ["Family Members"], else: layers
+    attrs = %{"enabled_map_layers" => layers}
+
+    attrs =
+      if params["fog_mode"] in ~w(points hexagons),
+        do: Map.put(attrs, "fog_of_war_mode", params["fog_mode"]),
+        else: attrs
+
+    save(socket, attrs)
   end
 
   def handle_event("settings:transport_change", params, socket),

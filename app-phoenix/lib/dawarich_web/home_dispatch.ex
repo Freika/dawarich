@@ -1,30 +1,25 @@
 defmodule DawarichWeb.HomeDispatch do
   @moduledoc false
-  alias DawarichWeb.{InsightsHome, LayoutAssigns, PublicHomeLive, RailsAuth}
+  import Plug.Conn
+  alias DawarichWeb.{RailsAuth, RailsSession, RequestURL, TrialHomeSession}
   def init(opts), do: opts
 
   def call(conn, _opts) do
-    conn = conn |> RailsAuth.call([]) |> DawarichWeb.TrialHomeSession.call([])
+    conn = RailsAuth.call(conn, [])
 
-    if conn.assigns.current_user do
-      InsightsHome.index(conn, %{})
-    else
-      case PublicHomeLive.registration(LayoutAssigns.self_hosted?()) do
-        {:ok, enabled} ->
-          Phoenix.LiveView.Controller.live_render(
-            conn,
-            PublicHomeLive,
-            Keyword.merge([],
-              session: Map.put(RailsAuth.live_session(conn), "registration_enabled", enabled),
-              layout: {DawarichWeb.Layouts, :app}
-            )
-          )
-
-        :error ->
-          if Dawarich.Standalone.enabled?(),
-            do: DawarichWeb.StandaloneError.respond(conn, "registration_unavailable", 503),
-            else: DawarichWeb.StandaloneError.respond(conn)
+    conn =
+      case conn.assigns.rails_session["flash"] do
+        %{} = flash -> RailsSession.stage(conn, %{"flash" => flash})
+        _ -> conn
       end
-    end
+
+    conn = TrialHomeSession.call(conn, [])
+    path = if conn.assigns.current_user, do: "/map/v2", else: "/users/sign_in"
+
+    conn
+    |> put_resp_header("location", RequestURL.base(conn) <> path)
+    |> put_resp_header("cache-control", "no-cache")
+    |> put_resp_content_type("text/html")
+    |> send_resp(302, "")
   end
 end

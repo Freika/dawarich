@@ -15,12 +15,23 @@ defmodule DawarichWeb.NativeMapFamilyLayerTest do
       settings: %{"timezone" => "UTC"}
     })
 
-    conn = RailsUser.signed_in(id) |> RailsUser.connecting_as(id) |> get("/map/v2?panel=layers")
+    [[family]] =
+      Repo.query!(
+        "INSERT INTO families(name,creator_id,created_at,updated_at) VALUES('Synthetic',$1,now(),now()) RETURNING id",
+        [id]
+      ).rows
+
+    Repo.query!(
+      "INSERT INTO family_memberships(family_id,user_id,role,created_at,updated_at) VALUES($1,$2,1,now(),now())",
+      [family, id]
+    )
+
+    conn = RailsUser.signed_in(id) |> RailsUser.connecting_as(id) |> get("/map/v2?panel=family")
     {:ok, view, html} = live(conn)
-    assert has_element?(view, "#native-map-layers input[value='Family Members']")
+    assert has_element?(view, "#native-map-family-layer input[type=checkbox]")
 
     view
-    |> form("#native-map-layers", %{"layers" => ["Points", "Family Members"]})
+    |> form("#native-map-family-layer", %{"enabled" => "true"})
     |> render_change()
 
     assert "Family Members" in Dawarich.Accounts.get(id).settings["enabled_map_layers"]
@@ -38,7 +49,7 @@ defmodule DawarichWeb.NativeMapFamilyLayerTest do
     refute Map.has_key?(config, "api_key")
     refute html =~ "synthetic-family-layer-key"
     assert has_element?(view, "#native-family-members[phx-update=ignore]")
-    view |> form("#native-map-layers", %{"layers" => ["Points"]}) |> render_change()
+    view |> form("#native-map-family-layer", %{"enabled" => "false"}) |> render_change()
     refute "Family Members" in Dawarich.Accounts.get(id).settings["enabled_map_layers"]
     render_async(view, 5000)
   end

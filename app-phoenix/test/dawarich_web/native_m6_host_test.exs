@@ -861,8 +861,8 @@ defmodule DawarichWeb.NativeM6HostTest do
 
     assert config(view)["tracksEnabled"] == true
     assert config(view)["pointsEnabled"] == false
-    view |> element("[data-map-layer=anomalies]") |> render_click()
-    assert config(view)["anomaliesEnabled"] == true
+    assert has_element?(view, "[data-map-layer=anomalies][disabled]")
+    assert config(view)["anomaliesEnabled"] == false
     assert config(view)["fogEnabled"] == true
     assert config(view)["hexagonsEnabled"] == true
     assert config(view)["scratchEnabled"] == true

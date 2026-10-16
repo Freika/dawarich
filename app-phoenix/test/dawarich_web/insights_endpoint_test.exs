@@ -82,10 +82,9 @@ defmodule DawarichWeb.InsightsEndpointTest do
     assert values(headers, "location") == ["http://a/map/v2"]
   end
 
-  test "guest root renders native public home and details redirect to sign in", ctx do
-    assert {200, _headers, body} = phoenix(ctx.port, request("/", []))
-    assert body =~ "The only location history tracker"
-    assert body =~ ~s(href="/users/sign_in")
+  test "guest root and details redirect to sign in", ctx do
+    assert {302, root_headers, ""} = phoenix(ctx.port, request("/", []))
+    assert values(root_headers, "location") == ["http://a/users/sign_in"]
 
     target = "/insights/details?year=2024"
     assert {302, headers, ""} = phoenix(ctx.port, request(target, []))

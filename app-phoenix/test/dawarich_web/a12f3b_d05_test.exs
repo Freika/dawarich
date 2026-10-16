@@ -60,7 +60,8 @@ defmodule DawarichWeb.A12f3bD05Test do
           nil
         )
 
-      assert home.status == 200
+      assert home.status == 302
+      assert get_resp_header(home, "location") == ["http://www.example.com/users/sign_in"]
 
       {:ok, stored} =
         RailsCookies.decrypt(
@@ -82,7 +83,8 @@ defmodule DawarichWeb.A12f3bD05Test do
           nil
         )
 
-      assert head.status == 200 and head.resp_body == ""
+      assert head.status == 302 and head.resp_body == ""
+      assert get_resp_header(head, "location") == ["http://www.example.com/users/sign_in"]
 
       Repo.query!("UPDATE users SET settings=$1 WHERE id=18051", [%{}], log: false)
 
@@ -228,7 +230,8 @@ defmodule DawarichWeb.A12f3bD05Test do
         nil
       )
 
-    assert root.status == 503 and root.halted
+    assert root.status == 302
+    assert get_resp_header(root, "location") == ["http://www.example.com/users/sign_in"]
     assert get_resp_header(root, "x-dawarich-rails-proxy") == []
     refute_receive :replayed
   end

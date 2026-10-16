@@ -24,7 +24,7 @@ defmodule DawarichWeb.NativeTripMapTest do
   test "trip map list uses M5 normalized bounded cards", ctx do
     scope = Maps.principal(ctx.user, "en")
     assert {:ok, result} = Dawarich.Maps.Trip.list(scope, -1, -1, now: @now)
-    assert result.query == %{page: 1, family_page: 1}
+    assert Map.take(result.query, [:page, :family_page]) == %{page: 1, family_page: 1}
     assert [%{id: 884_101, preview: :path}] = result.entries
     refute Map.has_key?(hd(result.entries), :path_json)
   end
