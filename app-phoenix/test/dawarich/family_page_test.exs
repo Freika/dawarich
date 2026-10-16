@@ -169,7 +169,7 @@ defmodule Dawarich.FamilyPageTest do
         do: refute(String.contains?(encoded, forbidden))
 
     refute String.contains?(encoded, "a9fpl-fixture-")
-    assert :rails = read(%{ctx.owner | settings: []}, :show)
+    assert {:ok, %{state: :show}} = read(%{ctx.owner | settings: []}, :show)
     assert :rails = read(%{ctx.owner | settings: %{"timezone" => []}}, :show)
 
     assert :rails =

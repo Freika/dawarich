@@ -87,8 +87,7 @@ defmodule Dawarich.UserSettings do
   def provided(nil), do: %{}
   def provided(settings), do: settings
 
-  def get(%{settings: settings}) when is_map(settings) or is_nil(settings), do: safe(settings)
-  def get(%{settings: settings}), do: settings
+  def get(%{settings: settings}), do: safe(settings)
   def get(_user), do: safe(nil)
 
   def value(user, key), do: safe(get(user))[key]

@@ -34,16 +34,7 @@ defmodule DawarichWeb.Api.FamilyGoldenTest do
 
       before = digests()
 
-      kase =
-        if @kase["name"] == "replay_member_settings_null" do
-          assert @kase["response"]["status"] == 500
-          source = Enum.find(@golden["cases"], &(&1["name"] == "locations_member_disabled"))
-          Map.put(@kase, "response", source["response"])
-        else
-          @kase
-        end
-
-      Dawarich.Test.FamilyGoldenResponse.check(kase, port, puma)
+      Dawarich.Test.FamilyGoldenResponse.check(@kase, port, puma)
       assert digests() == before
       assert after_rows() == @kase["after"]
     end

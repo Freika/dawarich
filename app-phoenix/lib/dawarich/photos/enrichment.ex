@@ -174,18 +174,19 @@ defmodule Dawarich.Photos.Enrichment do
     end
   end
 
-  defp reason(400), do: "Bad Request"
-  defp reason(401), do: "Unauthorized"
-  defp reason(403), do: "Forbidden"
-  defp reason(404), do: "Not Found"
-  defp reason(422), do: "Unprocessable Entity"
-  defp reason(429), do: "Too Many Requests"
-  defp reason(500), do: "Internal Server Error"
-  defp reason(502), do: "Bad Gateway"
-  defp reason(503), do: "Service Unavailable"
-  defp reason(_), do: ""
-  defp transport_message(:timeout), do: "Net::ReadTimeout with #<Socket:(closed)>"
-  defp transport_message(_), do: "Failed to open TCP connection"
+  defp reason(413), do: "Content Too Large"
+  defp reason(414), do: "URI Too Long"
+  defp reason(416), do: "Range Not Satisfiable"
+
+  defp reason(status) do
+    Plug.Conn.Status.reason_phrase(status)
+  rescue
+    ArgumentError -> "Unknown status"
+  end
+
+  defp transport_message(:connect_timeout), do: "Immich connection failed: Net::OpenTimeout"
+  defp transport_message(:timeout), do: "Immich connection failed: Net::ReadTimeout"
+  defp transport_message(_), do: "Immich connection failed: SocketError"
 
   defp match(photo, points, tolerance) do
     ts =

@@ -123,7 +123,7 @@ defmodule Dawarich.ShareManagement.ParamsTest do
     assert {:ok, timeline} = Params.create(@user, "timeline", nil, %{}, "en")
     assert [{:settings, _message}] = Params.validate(timeline, @now, "en")
     assert Params.create(@user, "unknown", nil, %{}, "en") == :rails
-    assert Params.create(%{@user | settings: []}, "live", nil, %{}, "en") == :rails
+    assert {:ok, ^live} = Params.create(%{@user | settings: []}, "live", nil, %{}, "en")
 
     assert Params.create(%{@user | settings: %{"timezone" => []}}, "live", nil, %{}, "en") ==
              :rails

@@ -144,9 +144,7 @@ defmodule DawarichWeb.AchievementActionsRequestTest do
 
     Repo.query!("UPDATE users SET settings='[]'::jsonb WHERE id=44001", [], log: false)
 
-    rejected = rejected!(request("POST", path <> "?locale=de", "{}", session), :next)
-
-    assert rejected.resp_cookies == %{}
+    accepted!(request("POST", path <> "?locale=de", "{}", session), :next)
     assert Repo.query!("SELECT settings FROM users WHERE id=44001", [], log: false).rows == [[[]]]
   end
 

@@ -344,9 +344,10 @@ RSpec.describe 'Phoenix fixtures: admin setting writes', type: :request do
   end
 
   def home_policy(name, enabled)
-    links = Nokogiri::HTML(response.body).css('a[href="/users/sign_up"]')
-    expect(links.any?).to eq(enabled)
-    { 'name' => name, 'status' => response.status, 'signup' => links.any? }
+    get new_user_registration_path
+    admitted = response.status == 200
+    expect(admitted).to eq(enabled)
+    { 'name' => name, 'status' => response.status, 'signup' => admitted }
   end
 
   def background_body(name, user, value)

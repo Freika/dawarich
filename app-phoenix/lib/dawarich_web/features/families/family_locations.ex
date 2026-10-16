@@ -50,7 +50,7 @@ defmodule DawarichWeb.FamilyLocations do
           |> Enum.map(fn {:object, fields} ->
             {:object,
              Enum.filter(fields, fn {key, _} ->
-               key in ~w(user_id email name latitude longitude timestamp updated_at)
+               key in ~w(user_id email name address latitude longitude timestamp updated_at)
              end)}
           end)
 

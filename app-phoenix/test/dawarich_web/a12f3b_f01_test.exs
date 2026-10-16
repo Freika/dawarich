@@ -33,7 +33,7 @@ defmodule DawarichWeb.A12f3bF01Test do
     assert {:ok, %{state: :lapsed}} =
              FamilyPage.read(ctx.member, :new, now: @now, self_hosted: false)
 
-    Repo.query!("UPDATE users SET settings='[]'::jsonb WHERE id=$1", [ctx.owner.id])
+    Repo.query!(~s(UPDATE users SET settings='{"timezone":[]}'::jsonb WHERE id=$1), [ctx.owner.id])
 
     assert {:error, :invalid_input} =
              Dawarich.Families.page(Dawarich.Accounts.Scope.for_user(ctx.owner, "en"), :show,

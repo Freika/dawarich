@@ -6426,12 +6426,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"1c9216897692ce3dbe25e685f66aac37\"",
+          "etag":"W/\"66a116ff280fb3a2caacbb66aed41f68\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -7478,12 +7478,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"dfa5032cf8f07c08f0281da5da9c7da8\"",
+          "etag":"W/\"1556d4054c6c140d6eb6c652534cb172\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"results\":[{\"index\":0,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":1,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":2,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":3,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":4,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":5,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":6,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":7,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":8,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":9,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":10,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":11,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":12,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":13,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":14,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":15,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":16,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":17,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":18,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":19,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":20,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":21,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":22,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":23,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":24,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":25,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":26,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":27,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":28,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":29,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":30,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":31,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":32,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":33,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":34,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":35,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":36,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":37,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":38,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":39,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":40,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":41,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":42,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":43,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":44,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":45,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":46,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":47,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":48,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":49,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":50,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":51,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":52,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":53,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":54,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":55,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":56,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":57,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":58,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":59,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":60,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":61,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":62,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":63,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":64,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":65,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":66,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":67,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":68,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":69,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":70,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":71,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":72,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":73,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":74,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":75,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":76,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":77,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":78,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":79,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":80,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":81,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":82,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":83,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":84,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":85,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":86,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":87,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":88,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":89,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":90,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":91,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":92,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":93,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":94,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":95,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":96,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":97,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":98,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":99,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}}],\"created_count\":0,\"duplicate_count\":100,\"failed_count\":0}"
+        "body":"{\"results\":[{\"index\":0,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":1,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":2,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":3,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":4,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":5,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":6,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":7,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":8,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":9,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":10,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":11,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":12,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":13,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":14,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":15,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":16,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":17,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":18,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":19,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":20,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":21,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":22,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":23,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":24,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":25,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":26,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":27,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":28,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":29,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":30,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":31,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":32,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":33,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":34,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":35,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":36,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":37,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":38,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":39,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":40,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":41,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":42,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":43,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":44,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":45,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":46,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":47,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":48,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":49,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":50,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":51,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":52,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":53,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":54,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":55,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":56,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":57,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":58,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":59,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":60,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":61,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":62,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":63,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":64,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":65,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":66,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":67,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":68,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":69,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":70,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":71,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":72,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":73,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":74,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":75,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":76,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":77,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":78,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":79,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":80,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":81,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":82,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":83,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":84,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":85,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":86,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":87,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":88,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":89,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":90,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":91,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":92,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":93,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":94,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":95,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":96,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":97,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":98,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":99,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}}],\"created_count\":0,\"duplicate_count\":100,\"failed_count\":0}"
       },
       "after":{
         "areas":[
@@ -9600,12 +9600,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"dbe9c7f4658c2463fa4a4d7142300100\"",
+          "etag":"W/\"b0f2660760ac1b774e947dae866f1b80\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"results\":[{\"index\":0,\"status\":\"created\",\"visit\":{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":1,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}},{\"index\":2,\"status\":\"failed\",\"error\":\"Failed to create visit: invalid timestamps\"},{\"index\":3,\"status\":\"failed\",\"error\":\"Visit entry must be an object\"}],\"created_count\":1,\"duplicate_count\":1,\"failed_count\":2}"
+        "body":"{\"results\":[{\"index\":0,\"status\":\"created\",\"visit\":{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":1,\"status\":\"duplicate\",\"visit\":{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}},{\"index\":2,\"status\":\"failed\",\"error\":\"Failed to create visit: invalid timestamps\"},{\"index\":3,\"status\":\"failed\",\"error\":\"Visit entry must be an object\"}],\"created_count\":1,\"duplicate_count\":1,\"failed_count\":2}"
       },
       "after":{
         "areas":[
@@ -11156,8 +11156,8 @@
           "ttl":300
         },
         "timeline_month_summary/953001/2026-09/UTC/pro/v3":{
-          "value":"primed",
-          "ttl":300
+          "value":null,
+          "ttl":-2
         },
         "timeline_month_summary/953001/2026-10/UTC/pro/v3":{
           "value":"primed",
@@ -12754,8 +12754,8 @@
           "ttl":300
         },
         "timeline_month_summary/953001/2026-09/UTC/pro/v3":{
-          "value":"primed",
-          "ttl":300
+          "value":null,
+          "ttl":-2
         },
         "timeline_month_summary/953001/2026-10/UTC/pro/v3":{
           "value":"primed",
@@ -12809,12 +12809,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"245bcce9fe7b7613880de2576041fd6d\"",
+          "etag":"W/\"e69dceb4a54523ba607789613a735832\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -14375,6 +14375,575 @@
       "jobs_after":[]
     },
     {
+      "name":"create_blank_address",
+      "expect":"own",
+      "ignore":[],
+      "env":{},
+      "setup":"dda203ea17c49615",
+      "request":{
+        "method":"POST",
+        "target":"/api/v1/visits",
+        "headers":[
+          [
+            "Host",
+            "localhost"
+          ],
+          [
+            "Accept",
+            "application/json"
+          ],
+          [
+            "Content-Type",
+            "application/json"
+          ],
+          [
+            "Content-Length",
+            "178"
+          ],
+          [
+            "Authorization",
+            "Bearer phoenix-a4rest-visits-synthetic"
+          ]
+        ],
+        "body":"{\"visit\":{\"name\":\"Synthetic created visit\",\"latitude\":40,\"longitude\":10,\"started_at\":\"2026-09-10T12:00:00Z\",\"ended_at\":\"2026-09-10T13:01:59Z\",\"address\":{\"street\":\" \",\"city\":\"\"}}}"
+      },
+      "response":{
+        "status":200,
+        "headers":{
+          "x-frame-options":"SAMEORIGIN",
+          "x-xss-protection":"0",
+          "x-content-type-options":"nosniff",
+          "x-permitted-cross-domain-policies":"none",
+          "referrer-policy":"strict-origin-when-cross-origin",
+          "x-dawarich-response":"Hey, I'm alive and authenticated!",
+          "x-dawarich-version":"1.16.0",
+          "content-type":"application/json; charset=utf-8",
+          "vary":"Accept",
+          "etag":"W/\"8e545256a1ad4ddf78a5fcbce18cb58c\"",
+          "cache-control":"max-age=0, private, must-revalidate",
+          "x-request-id":"00000000-0000-0000-0000-000000000000",
+          "x-runtime":"0.000000"
+        },
+        "body":"{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":40.0,\"longitude\":10.0,\"id\":959200,\"address\":null}}"
+      },
+      "after":{
+        "areas":[
+          {
+            "id":953101,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "latitude":53.0,
+            "longitude":14.0,
+            "name":"Synthetic area",
+            "radius":100,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953102,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "latitude":53.0,
+            "longitude":14.0,
+            "name":"Synthetic area",
+            "radius":100,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953002
+          }
+        ],
+        "places":[
+          {
+            "id":953201,
+            "city":null,
+            "country":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "osm_id":42
+              }
+            },
+            "import_id":null,
+            "latitude":52.52,
+            "longitude":13.405,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "name":"Place 1",
+            "name_locked_at":null,
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953202,
+            "city":null,
+            "country":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "osm_id":42
+              }
+            },
+            "import_id":null,
+            "latitude":52.52,
+            "longitude":13.405,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "name":"Place 2",
+            "name_locked_at":null,
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953203,
+            "city":null,
+            "country":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "osm_id":42
+              }
+            },
+            "import_id":null,
+            "latitude":52.52,
+            "longitude":13.405,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "name":"Place 3",
+            "name_locked_at":null,
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953002
+          },
+          {
+            "id":953204,
+            "city":null,
+            "country":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "osm_id":42
+              }
+            },
+            "import_id":null,
+            "latitude":53.0,
+            "longitude":14.0,
+            "lonlat":"0101000020E61000000000000000002C400000000000804A40",
+            "name":"Place 4",
+            "name_locked_at":null,
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":959200,
+            "city":null,
+            "country":null,
+            "created_at":"2026-10-03T12:00:00",
+            "demo":false,
+            "geodata":{},
+            "import_id":null,
+            "latitude":40.0,
+            "longitude":10.0,
+            "lonlat":"0101000020E610000000000000000024400000000000004440",
+            "name":"Synthetic created visit",
+            "name_locked_at":"2026-10-03T12:00:00",
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":0,
+            "updated_at":"2026-10-03T12:00:00",
+            "user_id":953001
+          }
+        ],
+        "visits":[
+          {
+            "id":953301,
+            "area_id":null,
+            "confidence":39,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-01T13:00:00",
+            "import_id":null,
+            "name":"Visit 1",
+            "place_id":953201,
+            "started_at":"2026-09-01T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953302,
+            "area_id":null,
+            "confidence":40,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-02T13:00:00",
+            "import_id":null,
+            "name":"Visit 2",
+            "place_id":953201,
+            "started_at":"2026-09-02T12:00:00",
+            "status":0,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953303,
+            "area_id":null,
+            "confidence":69,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-03T13:00:00",
+            "import_id":null,
+            "name":"Visit 3",
+            "place_id":953204,
+            "started_at":"2026-09-03T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953304,
+            "area_id":null,
+            "confidence":70,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-04T23:00:00",
+            "import_id":null,
+            "name":"Visit 4",
+            "place_id":953204,
+            "started_at":"2026-09-04T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953305,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-02T13:00:00",
+            "import_id":null,
+            "name":"Visit 5",
+            "place_id":null,
+            "started_at":"2026-09-02T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953306,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-02T13:00:00",
+            "import_id":null,
+            "name":"Visit 6",
+            "place_id":null,
+            "started_at":"2026-09-02T12:00:00",
+            "status":2,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953307,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-05T13:00:00",
+            "import_id":null,
+            "name":"Visit 7",
+            "place_id":null,
+            "started_at":"2026-09-05T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953308,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-05T13:00:00",
+            "import_id":null,
+            "name":"Visit 8",
+            "place_id":null,
+            "started_at":"2026-09-05T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953309,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-02T13:00:00",
+            "import_id":null,
+            "name":"Visit 9",
+            "place_id":953201,
+            "started_at":"2026-09-02T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953002
+          },
+          {
+            "id":953310,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-04T13:00:00",
+            "import_id":null,
+            "name":"Visit 10",
+            "place_id":null,
+            "started_at":"2026-09-04T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":959100,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-10-03T12:00:00",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":61,
+            "ended_at":"2026-09-10T13:01:59",
+            "import_id":null,
+            "name":"Synthetic created visit",
+            "place_id":959200,
+            "started_at":"2026-09-10T12:00:00",
+            "status":1,
+            "updated_at":"2026-10-03T12:00:00",
+            "user_id":953001
+          }
+        ],
+        "points":[
+          {
+            "id":953401,
+            "accuracy":null,
+            "altitude":null,
+            "altitude_decimal":null,
+            "anomaly":null,
+            "battery":null,
+            "battery_status":null,
+            "bssid":null,
+            "city":null,
+            "connection":null,
+            "country":null,
+            "country_id":null,
+            "country_name":null,
+            "course":null,
+            "course_accuracy":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "external_track_id":null,
+            "geodata":{},
+            "import_id":null,
+            "in_regions":[],
+            "inrids":[],
+            "lock_version":0,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "mode":null,
+            "motion_data":{},
+            "ping":null,
+            "raw_data":{},
+            "raw_data_archive_id":null,
+            "raw_data_archived":false,
+            "reverse_geocoded_at":null,
+            "source_id":null,
+            "ssid":null,
+            "timestamp":1788265800,
+            "topic":null,
+            "track_id":null,
+            "tracker_id":null,
+            "trigger":null,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001,
+            "velocity":null,
+            "vertical_accuracy":null,
+            "visit_id":953301
+          },
+          {
+            "id":953402,
+            "accuracy":null,
+            "altitude":null,
+            "altitude_decimal":null,
+            "anomaly":null,
+            "battery":null,
+            "battery_status":null,
+            "bssid":null,
+            "city":null,
+            "connection":null,
+            "country":null,
+            "country_id":null,
+            "country_name":null,
+            "course":null,
+            "course_accuracy":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "external_track_id":null,
+            "geodata":{},
+            "import_id":null,
+            "in_regions":[],
+            "inrids":[],
+            "lock_version":0,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "mode":null,
+            "motion_data":{},
+            "ping":null,
+            "raw_data":{},
+            "raw_data_archive_id":null,
+            "raw_data_archived":false,
+            "reverse_geocoded_at":null,
+            "source_id":null,
+            "ssid":null,
+            "timestamp":1788352200,
+            "topic":null,
+            "track_id":null,
+            "tracker_id":null,
+            "trigger":null,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001,
+            "velocity":null,
+            "vertical_accuracy":null,
+            "visit_id":953302
+          }
+        ],
+        "place_visits":[
+          {
+            "id":953501,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "place_id":953203,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "visit_id":953301
+          },
+          {
+            "id":953502,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "place_id":953203,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "visit_id":953302
+          }
+        ],
+        "notes":[
+          {
+            "id":953601,
+            "attachable_id":953302,
+            "attachable_type":"Visit",
+            "body":"Synthetic merge note",
+            "created_at":"2026-09-01T12:00:00.123456",
+            "lonlat":null,
+            "noted_at":"2026-09-01T12:00:00.123456",
+            "source_digest":null,
+            "title":null,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          }
+        ],
+        "tags":[
+          {
+            "id":953701,
+            "color":"#123456",
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "icon":"x",
+            "name":"Synthetic tag",
+            "privacy_radius_meters":null,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          }
+        ],
+        "taggings":[
+          {
+            "id":953801,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "tag_id":953701,
+            "taggable_id":953201,
+            "taggable_type":"Place",
+            "updated_at":"2026-09-01T12:00:00.123456"
+          },
+          {
+            "id":953802,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "tag_id":953701,
+            "taggable_id":953202,
+            "taggable_type":"Place",
+            "updated_at":"2026-09-01T12:00:00.123456"
+          }
+        ],
+        "instance_settings":[]
+      },
+      "cache_after":{
+        "timeline_month_summary/953001/2026-08/UTC/pro/v3":{
+          "value":"primed",
+          "ttl":300
+        },
+        "timeline_month_summary/953001/2026-09/UTC/pro/v3":{
+          "value":null,
+          "ttl":-2
+        },
+        "timeline_month_summary/953001/2026-10/UTC/pro/v3":{
+          "value":"primed",
+          "ttl":300
+        }
+      },
+      "jobs_after":[]
+    },
+    {
       "name":"create_conflict",
       "expect":"own",
       "ignore":[],
@@ -14949,12 +15518,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"1c9216897692ce3dbe25e685f66aac37\"",
+          "etag":"W/\"66a116ff280fb3a2caacbb66aed41f68\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -15482,12 +16051,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"245bcce9fe7b7613880de2576041fd6d\"",
+          "etag":"W/\"e69dceb4a54523ba607789613a735832\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -15811,6 +16380,583 @@
             "import_id":null,
             "name":"Synthetic created visit",
             "place_id":953201,
+            "started_at":"2026-09-10T12:00:00",
+            "status":1,
+            "updated_at":"2026-10-03T12:00:00",
+            "user_id":953001
+          }
+        ],
+        "points":[
+          {
+            "id":953401,
+            "accuracy":null,
+            "altitude":null,
+            "altitude_decimal":null,
+            "anomaly":null,
+            "battery":null,
+            "battery_status":null,
+            "bssid":null,
+            "city":null,
+            "connection":null,
+            "country":null,
+            "country_id":null,
+            "country_name":null,
+            "course":null,
+            "course_accuracy":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "external_track_id":null,
+            "geodata":{},
+            "import_id":null,
+            "in_regions":[],
+            "inrids":[],
+            "lock_version":0,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "mode":null,
+            "motion_data":{},
+            "ping":null,
+            "raw_data":{},
+            "raw_data_archive_id":null,
+            "raw_data_archived":false,
+            "reverse_geocoded_at":null,
+            "source_id":null,
+            "ssid":null,
+            "timestamp":1788265800,
+            "topic":null,
+            "track_id":null,
+            "tracker_id":null,
+            "trigger":null,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001,
+            "velocity":null,
+            "vertical_accuracy":null,
+            "visit_id":953301
+          },
+          {
+            "id":953402,
+            "accuracy":null,
+            "altitude":null,
+            "altitude_decimal":null,
+            "anomaly":null,
+            "battery":null,
+            "battery_status":null,
+            "bssid":null,
+            "city":null,
+            "connection":null,
+            "country":null,
+            "country_id":null,
+            "country_name":null,
+            "course":null,
+            "course_accuracy":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "external_track_id":null,
+            "geodata":{},
+            "import_id":null,
+            "in_regions":[],
+            "inrids":[],
+            "lock_version":0,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "mode":null,
+            "motion_data":{},
+            "ping":null,
+            "raw_data":{},
+            "raw_data_archive_id":null,
+            "raw_data_archived":false,
+            "reverse_geocoded_at":null,
+            "source_id":null,
+            "ssid":null,
+            "timestamp":1788352200,
+            "topic":null,
+            "track_id":null,
+            "tracker_id":null,
+            "trigger":null,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001,
+            "velocity":null,
+            "vertical_accuracy":null,
+            "visit_id":953302
+          }
+        ],
+        "place_visits":[
+          {
+            "id":953501,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "place_id":953203,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "visit_id":953301
+          },
+          {
+            "id":953502,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "place_id":953203,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "visit_id":953302
+          }
+        ],
+        "notes":[
+          {
+            "id":953601,
+            "attachable_id":953302,
+            "attachable_type":"Visit",
+            "body":"Synthetic merge note",
+            "created_at":"2026-09-01T12:00:00.123456",
+            "lonlat":null,
+            "noted_at":"2026-09-01T12:00:00.123456",
+            "source_digest":null,
+            "title":null,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          }
+        ],
+        "tags":[
+          {
+            "id":953701,
+            "color":"#123456",
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "icon":"x",
+            "name":"Synthetic tag",
+            "privacy_radius_meters":null,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          }
+        ],
+        "taggings":[
+          {
+            "id":953801,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "tag_id":953701,
+            "taggable_id":953201,
+            "taggable_type":"Place",
+            "updated_at":"2026-09-01T12:00:00.123456"
+          },
+          {
+            "id":953802,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "tag_id":953701,
+            "taggable_id":953202,
+            "taggable_type":"Place",
+            "updated_at":"2026-09-01T12:00:00.123456"
+          }
+        ],
+        "instance_settings":[]
+      },
+      "cache_after":{
+        "timeline_month_summary/953001/2026-08/UTC/pro/v3":{
+          "value":"primed",
+          "ttl":300
+        },
+        "timeline_month_summary/953001/2026-09/UTC/pro/v3":{
+          "value":null,
+          "ttl":-2
+        },
+        "timeline_month_summary/953001/2026-10/UTC/pro/v3":{
+          "value":"primed",
+          "ttl":300
+        }
+      },
+      "jobs_after":[]
+    },
+    {
+      "name":"create_manual_address",
+      "expect":"own",
+      "ignore":[],
+      "env":{},
+      "setup":"dda203ea17c49615",
+      "request":{
+        "method":"POST",
+        "target":"/api/v1/visits",
+        "headers":[
+          [
+            "Host",
+            "localhost"
+          ],
+          [
+            "Accept",
+            "application/json"
+          ],
+          [
+            "Content-Type",
+            "application/json"
+          ],
+          [
+            "Content-Length",
+            "247"
+          ],
+          [
+            "Authorization",
+            "Bearer phoenix-a4rest-visits-synthetic"
+          ]
+        ],
+        "body":"{\"visit\":{\"name\":\"Synthetic created visit\",\"latitude\":40,\"longitude\":10,\"started_at\":\"2026-09-10T12:00:00Z\",\"ended_at\":\"2026-09-10T13:01:59Z\",\"address\":{\"street\":\"Main\",\"house_number\":\"12\",\"postcode\":\"04275\",\"city\":\"Leipzig\",\"country\":\"Germany\"}}}"
+      },
+      "response":{
+        "status":200,
+        "headers":{
+          "x-frame-options":"SAMEORIGIN",
+          "x-xss-protection":"0",
+          "x-content-type-options":"nosniff",
+          "x-permitted-cross-domain-policies":"none",
+          "referrer-policy":"strict-origin-when-cross-origin",
+          "x-dawarich-response":"Hey, I'm alive and authenticated!",
+          "x-dawarich-version":"1.16.0",
+          "content-type":"application/json; charset=utf-8",
+          "vary":"Accept",
+          "etag":"W/\"ecf2ced14caa7b5a0ed343d727bd54d6\"",
+          "cache-control":"max-age=0, private, must-revalidate",
+          "x-request-id":"00000000-0000-0000-0000-000000000000",
+          "x-runtime":"0.000000"
+        },
+        "body":"{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":40.0,\"longitude\":10.0,\"id\":959200,\"address\":\"Main 12, 04275 Leipzig\"}}"
+      },
+      "after":{
+        "areas":[
+          {
+            "id":953101,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "latitude":53.0,
+            "longitude":14.0,
+            "name":"Synthetic area",
+            "radius":100,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953102,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "latitude":53.0,
+            "longitude":14.0,
+            "name":"Synthetic area",
+            "radius":100,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953002
+          }
+        ],
+        "places":[
+          {
+            "id":953201,
+            "city":null,
+            "country":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "osm_id":42
+              }
+            },
+            "import_id":null,
+            "latitude":52.52,
+            "longitude":13.405,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "name":"Place 1",
+            "name_locked_at":null,
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953202,
+            "city":null,
+            "country":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "osm_id":42
+              }
+            },
+            "import_id":null,
+            "latitude":52.52,
+            "longitude":13.405,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "name":"Place 2",
+            "name_locked_at":null,
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953203,
+            "city":null,
+            "country":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "osm_id":42
+              }
+            },
+            "import_id":null,
+            "latitude":52.52,
+            "longitude":13.405,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "name":"Place 3",
+            "name_locked_at":null,
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953002
+          },
+          {
+            "id":953204,
+            "city":null,
+            "country":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "osm_id":42
+              }
+            },
+            "import_id":null,
+            "latitude":53.0,
+            "longitude":14.0,
+            "lonlat":"0101000020E61000000000000000002C400000000000804A40",
+            "name":"Place 4",
+            "name_locked_at":null,
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":959200,
+            "city":"Leipzig",
+            "country":"Germany",
+            "created_at":"2026-10-03T12:00:00",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "city":"Leipzig",
+                "street":"Main",
+                "country":"Germany",
+                "postcode":"04275",
+                "housenumber":"12"
+              }
+            },
+            "import_id":null,
+            "latitude":40.0,
+            "longitude":10.0,
+            "lonlat":"0101000020E610000000000000000024400000000000004440",
+            "name":"Synthetic created visit",
+            "name_locked_at":"2026-10-03T12:00:00",
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":0,
+            "updated_at":"2026-10-03T12:00:00",
+            "user_id":953001
+          }
+        ],
+        "visits":[
+          {
+            "id":953301,
+            "area_id":null,
+            "confidence":39,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-01T13:00:00",
+            "import_id":null,
+            "name":"Visit 1",
+            "place_id":953201,
+            "started_at":"2026-09-01T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953302,
+            "area_id":null,
+            "confidence":40,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-02T13:00:00",
+            "import_id":null,
+            "name":"Visit 2",
+            "place_id":953201,
+            "started_at":"2026-09-02T12:00:00",
+            "status":0,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953303,
+            "area_id":null,
+            "confidence":69,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-03T13:00:00",
+            "import_id":null,
+            "name":"Visit 3",
+            "place_id":953204,
+            "started_at":"2026-09-03T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953304,
+            "area_id":null,
+            "confidence":70,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-04T23:00:00",
+            "import_id":null,
+            "name":"Visit 4",
+            "place_id":953204,
+            "started_at":"2026-09-04T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953305,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-02T13:00:00",
+            "import_id":null,
+            "name":"Visit 5",
+            "place_id":null,
+            "started_at":"2026-09-02T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953306,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-02T13:00:00",
+            "import_id":null,
+            "name":"Visit 6",
+            "place_id":null,
+            "started_at":"2026-09-02T12:00:00",
+            "status":2,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953307,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-05T13:00:00",
+            "import_id":null,
+            "name":"Visit 7",
+            "place_id":null,
+            "started_at":"2026-09-05T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953308,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-05T13:00:00",
+            "import_id":null,
+            "name":"Visit 8",
+            "place_id":null,
+            "started_at":"2026-09-05T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953309,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-02T13:00:00",
+            "import_id":null,
+            "name":"Visit 9",
+            "place_id":953201,
+            "started_at":"2026-09-02T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953002
+          },
+          {
+            "id":953310,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-04T13:00:00",
+            "import_id":null,
+            "name":"Visit 10",
+            "place_id":null,
+            "started_at":"2026-09-04T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":959100,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-10-03T12:00:00",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":61,
+            "ended_at":"2026-09-10T13:01:59",
+            "import_id":null,
+            "name":"Synthetic created visit",
+            "place_id":959200,
             "started_at":"2026-09-10T12:00:00",
             "status":1,
             "updated_at":"2026-10-03T12:00:00",
@@ -16562,12 +17708,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"a104619717f399b876210eead05e26dd\"",
+          "etag":"W/\"0e73c9a2c5fb5d5f84b74f6a0a2d91a6\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":51.0,\"longitude\":12.0,\"id\":959200}}"
+        "body":"{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":51.0,\"longitude\":12.0,\"id\":959200,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -17661,12 +18807,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"1c9216897692ce3dbe25e685f66aac37\"",
+          "etag":"W/\"66a116ff280fb3a2caacbb66aed41f68\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -18192,12 +19338,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"1c9216897692ce3dbe25e685f66aac37\"",
+          "etag":"W/\"66a116ff280fb3a2caacbb66aed41f68\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -19209,6 +20355,581 @@
       "jobs_after":[]
     },
     {
+      "name":"create_scalar_address",
+      "expect":"own",
+      "ignore":[],
+      "env":{},
+      "setup":"dda203ea17c49615",
+      "request":{
+        "method":"POST",
+        "target":"/api/v1/visits",
+        "headers":[
+          [
+            "Host",
+            "localhost"
+          ],
+          [
+            "Accept",
+            "application/json"
+          ],
+          [
+            "Content-Type",
+            "application/json"
+          ],
+          [
+            "Content-Length",
+            "226"
+          ],
+          [
+            "Authorization",
+            "Bearer phoenix-a4rest-visits-synthetic"
+          ]
+        ],
+        "body":"{\"visit\":{\"name\":\"Synthetic created visit\",\"latitude\":40,\"longitude\":10,\"started_at\":\"2026-09-10T12:00:00Z\",\"ended_at\":\"2026-09-10T13:01:59Z\",\"address\":{\"street\":42,\"city\":0,\"country\":true,\"house_number\":false,\"postcode\":[]}}}"
+      },
+      "response":{
+        "status":200,
+        "headers":{
+          "x-frame-options":"SAMEORIGIN",
+          "x-xss-protection":"0",
+          "x-content-type-options":"nosniff",
+          "x-permitted-cross-domain-policies":"none",
+          "referrer-policy":"strict-origin-when-cross-origin",
+          "x-dawarich-response":"Hey, I'm alive and authenticated!",
+          "x-dawarich-version":"1.16.0",
+          "content-type":"application/json; charset=utf-8",
+          "vary":"Accept",
+          "etag":"W/\"64026dc8355fe3c4c5e6cdd5ab7fe3e8\"",
+          "cache-control":"max-age=0, private, must-revalidate",
+          "x-request-id":"00000000-0000-0000-0000-000000000000",
+          "x-runtime":"0.000000"
+        },
+        "body":"{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":40.0,\"longitude\":10.0,\"id\":959200,\"address\":\"42, 0\"}}"
+      },
+      "after":{
+        "areas":[
+          {
+            "id":953101,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "latitude":53.0,
+            "longitude":14.0,
+            "name":"Synthetic area",
+            "radius":100,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953102,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "latitude":53.0,
+            "longitude":14.0,
+            "name":"Synthetic area",
+            "radius":100,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953002
+          }
+        ],
+        "places":[
+          {
+            "id":953201,
+            "city":null,
+            "country":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "osm_id":42
+              }
+            },
+            "import_id":null,
+            "latitude":52.52,
+            "longitude":13.405,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "name":"Place 1",
+            "name_locked_at":null,
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953202,
+            "city":null,
+            "country":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "osm_id":42
+              }
+            },
+            "import_id":null,
+            "latitude":52.52,
+            "longitude":13.405,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "name":"Place 2",
+            "name_locked_at":null,
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953203,
+            "city":null,
+            "country":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "osm_id":42
+              }
+            },
+            "import_id":null,
+            "latitude":52.52,
+            "longitude":13.405,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "name":"Place 3",
+            "name_locked_at":null,
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953002
+          },
+          {
+            "id":953204,
+            "city":null,
+            "country":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "osm_id":42
+              }
+            },
+            "import_id":null,
+            "latitude":53.0,
+            "longitude":14.0,
+            "lonlat":"0101000020E61000000000000000002C400000000000804A40",
+            "name":"Place 4",
+            "name_locked_at":null,
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":959200,
+            "city":"0",
+            "country":"t",
+            "created_at":"2026-10-03T12:00:00",
+            "demo":false,
+            "geodata":{
+              "properties":{
+                "city":0,
+                "street":42,
+                "country":true
+              }
+            },
+            "import_id":null,
+            "latitude":40.0,
+            "longitude":10.0,
+            "lonlat":"0101000020E610000000000000000024400000000000004440",
+            "name":"Synthetic created visit",
+            "name_locked_at":"2026-10-03T12:00:00",
+            "note":null,
+            "reverse_geocoded_at":null,
+            "source":0,
+            "updated_at":"2026-10-03T12:00:00",
+            "user_id":953001
+          }
+        ],
+        "visits":[
+          {
+            "id":953301,
+            "area_id":null,
+            "confidence":39,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-01T13:00:00",
+            "import_id":null,
+            "name":"Visit 1",
+            "place_id":953201,
+            "started_at":"2026-09-01T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953302,
+            "area_id":null,
+            "confidence":40,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-02T13:00:00",
+            "import_id":null,
+            "name":"Visit 2",
+            "place_id":953201,
+            "started_at":"2026-09-02T12:00:00",
+            "status":0,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953303,
+            "area_id":null,
+            "confidence":69,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-03T13:00:00",
+            "import_id":null,
+            "name":"Visit 3",
+            "place_id":953204,
+            "started_at":"2026-09-03T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953304,
+            "area_id":null,
+            "confidence":70,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-04T23:00:00",
+            "import_id":null,
+            "name":"Visit 4",
+            "place_id":953204,
+            "started_at":"2026-09-04T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953305,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-02T13:00:00",
+            "import_id":null,
+            "name":"Visit 5",
+            "place_id":null,
+            "started_at":"2026-09-02T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953306,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-02T13:00:00",
+            "import_id":null,
+            "name":"Visit 6",
+            "place_id":null,
+            "started_at":"2026-09-02T12:00:00",
+            "status":2,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953307,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-05T13:00:00",
+            "import_id":null,
+            "name":"Visit 7",
+            "place_id":null,
+            "started_at":"2026-09-05T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953308,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-05T13:00:00",
+            "import_id":null,
+            "name":"Visit 8",
+            "place_id":null,
+            "started_at":"2026-09-05T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":953309,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-02T13:00:00",
+            "import_id":null,
+            "name":"Visit 9",
+            "place_id":953201,
+            "started_at":"2026-09-02T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953002
+          },
+          {
+            "id":953310,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-09-01T12:00:00.123456",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":60,
+            "ended_at":"2026-09-04T13:00:00",
+            "import_id":null,
+            "name":"Visit 10",
+            "place_id":null,
+            "started_at":"2026-09-04T12:00:00",
+            "status":1,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          },
+          {
+            "id":959100,
+            "area_id":null,
+            "confidence":null,
+            "confidence_breakdown":{},
+            "created_at":"2026-10-03T12:00:00",
+            "deleted_at":null,
+            "demo":false,
+            "detection_version":null,
+            "duration":61,
+            "ended_at":"2026-09-10T13:01:59",
+            "import_id":null,
+            "name":"Synthetic created visit",
+            "place_id":959200,
+            "started_at":"2026-09-10T12:00:00",
+            "status":1,
+            "updated_at":"2026-10-03T12:00:00",
+            "user_id":953001
+          }
+        ],
+        "points":[
+          {
+            "id":953401,
+            "accuracy":null,
+            "altitude":null,
+            "altitude_decimal":null,
+            "anomaly":null,
+            "battery":null,
+            "battery_status":null,
+            "bssid":null,
+            "city":null,
+            "connection":null,
+            "country":null,
+            "country_id":null,
+            "country_name":null,
+            "course":null,
+            "course_accuracy":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "external_track_id":null,
+            "geodata":{},
+            "import_id":null,
+            "in_regions":[],
+            "inrids":[],
+            "lock_version":0,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "mode":null,
+            "motion_data":{},
+            "ping":null,
+            "raw_data":{},
+            "raw_data_archive_id":null,
+            "raw_data_archived":false,
+            "reverse_geocoded_at":null,
+            "source_id":null,
+            "ssid":null,
+            "timestamp":1788265800,
+            "topic":null,
+            "track_id":null,
+            "tracker_id":null,
+            "trigger":null,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001,
+            "velocity":null,
+            "vertical_accuracy":null,
+            "visit_id":953301
+          },
+          {
+            "id":953402,
+            "accuracy":null,
+            "altitude":null,
+            "altitude_decimal":null,
+            "anomaly":null,
+            "battery":null,
+            "battery_status":null,
+            "bssid":null,
+            "city":null,
+            "connection":null,
+            "country":null,
+            "country_id":null,
+            "country_name":null,
+            "course":null,
+            "course_accuracy":null,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "external_track_id":null,
+            "geodata":{},
+            "import_id":null,
+            "in_regions":[],
+            "inrids":[],
+            "lock_version":0,
+            "lonlat":"0101000020E61000008FC2F5285CCF2A40C3F5285C8F424A40",
+            "mode":null,
+            "motion_data":{},
+            "ping":null,
+            "raw_data":{},
+            "raw_data_archive_id":null,
+            "raw_data_archived":false,
+            "reverse_geocoded_at":null,
+            "source_id":null,
+            "ssid":null,
+            "timestamp":1788352200,
+            "topic":null,
+            "track_id":null,
+            "tracker_id":null,
+            "trigger":null,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001,
+            "velocity":null,
+            "vertical_accuracy":null,
+            "visit_id":953302
+          }
+        ],
+        "place_visits":[
+          {
+            "id":953501,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "place_id":953203,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "visit_id":953301
+          },
+          {
+            "id":953502,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "place_id":953203,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "visit_id":953302
+          }
+        ],
+        "notes":[
+          {
+            "id":953601,
+            "attachable_id":953302,
+            "attachable_type":"Visit",
+            "body":"Synthetic merge note",
+            "created_at":"2026-09-01T12:00:00.123456",
+            "lonlat":null,
+            "noted_at":"2026-09-01T12:00:00.123456",
+            "source_digest":null,
+            "title":null,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          }
+        ],
+        "tags":[
+          {
+            "id":953701,
+            "color":"#123456",
+            "created_at":"2026-09-01T12:00:00.123456",
+            "demo":false,
+            "icon":"x",
+            "name":"Synthetic tag",
+            "privacy_radius_meters":null,
+            "updated_at":"2026-09-01T12:00:00.123456",
+            "user_id":953001
+          }
+        ],
+        "taggings":[
+          {
+            "id":953801,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "tag_id":953701,
+            "taggable_id":953201,
+            "taggable_type":"Place",
+            "updated_at":"2026-09-01T12:00:00.123456"
+          },
+          {
+            "id":953802,
+            "created_at":"2026-09-01T12:00:00.123456",
+            "tag_id":953701,
+            "taggable_id":953202,
+            "taggable_type":"Place",
+            "updated_at":"2026-09-01T12:00:00.123456"
+          }
+        ],
+        "instance_settings":[]
+      },
+      "cache_after":{
+        "timeline_month_summary/953001/2026-08/UTC/pro/v3":{
+          "value":"primed",
+          "ttl":300
+        },
+        "timeline_month_summary/953001/2026-09/UTC/pro/v3":{
+          "value":null,
+          "ttl":-2
+        },
+        "timeline_month_summary/953001/2026-10/UTC/pro/v3":{
+          "value":"primed",
+          "ttl":300
+        }
+      },
+      "jobs_after":[]
+    },
+    {
       "name":"create_suggested_deleted",
       "expect":"own",
       "ignore":[],
@@ -19783,12 +21504,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"b029263434a3a17a978087ca5ff4b72e\"",
+          "etag":"W/\"3c1f5ef16f632155322ddc10d462453c\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"suggested\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":51.0,\"longitude\":12.0,\"id\":959200}}"
+        "body":"{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"suggested\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":51.0,\"longitude\":12.0,\"id\":959200,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -20902,12 +22623,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"94672b6f3cef4df0d4138f9aceaf500d\"",
+          "etag":"W/\"4139b3416b83c118342e703ff509663a\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":0.0,\"longitude\":0.0,\"id\":959200}}"
+        "body":"{\"id\":959100,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-10T12:00:00.000Z\",\"ended_at\":\"2026-09-10T13:01:59.000Z\",\"duration\":61,\"name\":\"Synthetic created visit\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":0.0,\"longitude\":0.0,\"id\":959200,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -22463,8 +24184,8 @@
           "ttl":300
         },
         "timeline_month_summary/953001/2026-09/UTC/pro/v3":{
-          "value":"primed",
-          "ttl":300
+          "value":null,
+          "ttl":-2
         },
         "timeline_month_summary/953001/2026-10/UTC/pro/v3":{
           "value":"primed",
@@ -24598,12 +26319,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"fa9e7f91b288eab700339223637d416e\"",
+          "etag":"W/\"314801d9c54dc71a99eb7fab0842a730\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"[{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}},{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}]"
+        "body":"[{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}},{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}]"
       },
       "after":{
         "areas":[
@@ -25121,12 +26842,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"55d7d6b0a274769b0826d6bbc74b55f5\"",
+          "etag":"W/\"eab08641f434b9bc52d8231cd7957fc8\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"[{\"id\":953310,\"area_id\":953101,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 10\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":\"52.6\",\"longitude\":\"13.5\",\"id\":null}},{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}},{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}]"
+        "body":"[{\"id\":953310,\"area_id\":953101,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 10\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":\"52.6\",\"longitude\":\"13.5\",\"id\":null,\"address\":null}},{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}},{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}]"
       },
       "after":{
         "areas":[
@@ -26167,12 +27888,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"020ec6def68e9a1bceb85fa18f760837\"",
+          "etag":"W/\"92d5d9d6e7b94aa4dddf5b3d1c411dbe\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"[{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}},{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}},{\"id\":953303,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-03T12:00:00.000Z\",\"ended_at\":\"2026-09-03T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 3\",\"status\":\"confirmed\",\"confidence\":69,\"confidence_band\":\"medium\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204}},{\"id\":953304,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T23:00:00.000Z\",\"duration\":60,\"name\":\"Visit 4\",\"status\":\"confirmed\",\"confidence\":70,\"confidence_band\":\"high\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204}},{\"id\":953310,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 10\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":null,\"longitude\":null,\"id\":null}}]"
+        "body":"[{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}},{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}},{\"id\":953303,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-03T12:00:00.000Z\",\"ended_at\":\"2026-09-03T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 3\",\"status\":\"confirmed\",\"confidence\":69,\"confidence_band\":\"medium\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204,\"address\":null}},{\"id\":953304,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T23:00:00.000Z\",\"duration\":60,\"name\":\"Visit 4\",\"status\":\"confirmed\",\"confidence\":70,\"confidence_band\":\"high\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204,\"address\":null}},{\"id\":953310,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 10\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":null,\"longitude\":null,\"id\":null,\"address\":null}}]"
       },
       "after":{
         "areas":[
@@ -26690,12 +28411,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"fa9e7f91b288eab700339223637d416e\"",
+          "etag":"W/\"314801d9c54dc71a99eb7fab0842a730\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"[{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}},{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}]"
+        "body":"[{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}},{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}]"
       },
       "after":{
         "areas":[
@@ -27228,12 +28949,12 @@
           "x-total-count":"5",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"59895cb1a4b44a92ceb84ab2db78f0ae\"",
+          "etag":"W/\"04acca9131b887d3934da79fb32bd1b5\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"[{\"id\":953303,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-03T12:00:00.000Z\",\"ended_at\":\"2026-09-03T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 3\",\"status\":\"confirmed\",\"confidence\":69,\"confidence_band\":\"medium\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204}},{\"id\":953304,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T23:00:00.000Z\",\"duration\":60,\"name\":\"Visit 4\",\"status\":\"confirmed\",\"confidence\":70,\"confidence_band\":\"high\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204}}]"
+        "body":"[{\"id\":953303,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-03T12:00:00.000Z\",\"ended_at\":\"2026-09-03T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 3\",\"status\":\"confirmed\",\"confidence\":69,\"confidence_band\":\"medium\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204,\"address\":null}},{\"id\":953304,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T23:00:00.000Z\",\"duration\":60,\"name\":\"Visit 4\",\"status\":\"confirmed\",\"confidence\":70,\"confidence_band\":\"high\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204,\"address\":null}}]"
       },
       "after":{
         "areas":[
@@ -27754,12 +29475,12 @@
           "x-total-count":"5",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"020ec6def68e9a1bceb85fa18f760837\"",
+          "etag":"W/\"92d5d9d6e7b94aa4dddf5b3d1c411dbe\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"[{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}},{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}},{\"id\":953303,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-03T12:00:00.000Z\",\"ended_at\":\"2026-09-03T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 3\",\"status\":\"confirmed\",\"confidence\":69,\"confidence_band\":\"medium\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204}},{\"id\":953304,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T23:00:00.000Z\",\"duration\":60,\"name\":\"Visit 4\",\"status\":\"confirmed\",\"confidence\":70,\"confidence_band\":\"high\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204}},{\"id\":953310,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 10\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":null,\"longitude\":null,\"id\":null}}]"
+        "body":"[{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}},{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}},{\"id\":953303,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-03T12:00:00.000Z\",\"ended_at\":\"2026-09-03T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 3\",\"status\":\"confirmed\",\"confidence\":69,\"confidence_band\":\"medium\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204,\"address\":null}},{\"id\":953304,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T23:00:00.000Z\",\"duration\":60,\"name\":\"Visit 4\",\"status\":\"confirmed\",\"confidence\":70,\"confidence_band\":\"high\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204,\"address\":null}},{\"id\":953310,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 10\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":null,\"longitude\":null,\"id\":null,\"address\":null}}]"
       },
       "after":{
         "areas":[
@@ -28803,12 +30524,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"020ec6def68e9a1bceb85fa18f760837\"",
+          "etag":"W/\"92d5d9d6e7b94aa4dddf5b3d1c411dbe\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"[{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}},{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}},{\"id\":953303,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-03T12:00:00.000Z\",\"ended_at\":\"2026-09-03T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 3\",\"status\":\"confirmed\",\"confidence\":69,\"confidence_band\":\"medium\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204}},{\"id\":953304,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T23:00:00.000Z\",\"duration\":60,\"name\":\"Visit 4\",\"status\":\"confirmed\",\"confidence\":70,\"confidence_band\":\"high\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204}},{\"id\":953310,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 10\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":null,\"longitude\":null,\"id\":null}}]"
+        "body":"[{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}},{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}},{\"id\":953303,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-03T12:00:00.000Z\",\"ended_at\":\"2026-09-03T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 3\",\"status\":\"confirmed\",\"confidence\":69,\"confidence_band\":\"medium\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204,\"address\":null}},{\"id\":953304,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T23:00:00.000Z\",\"duration\":60,\"name\":\"Visit 4\",\"status\":\"confirmed\",\"confidence\":70,\"confidence_band\":\"high\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204,\"address\":null}},{\"id\":953310,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 10\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":null,\"longitude\":null,\"id\":null,\"address\":null}}]"
       },
       "after":{
         "areas":[
@@ -30378,12 +32099,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"a19f14f0b241a0f87a8da32eabb0d1c0\"",
+          "etag":"W/\"e2c305774afa7a9d6556c58df7c3d381\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":1500,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":1500,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -36203,12 +37924,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"1c9216897692ce3dbe25e685f66aac37\"",
+          "etag":"W/\"66a116ff280fb3a2caacbb66aed41f68\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -36725,12 +38446,12 @@
           "x-dawarich-response":"Hey, I'm alive and authenticated!",
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
-          "etag":"W/\"1c9216897692ce3dbe25e685f66aac37\"",
+          "etag":"W/\"66a116ff280fb3a2caacbb66aed41f68\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -37248,7 +38969,7 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"1c9216897692ce3dbe25e685f66aac37\"",
+          "etag":"W/\"66a116ff280fb3a2caacbb66aed41f68\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
@@ -37773,12 +39494,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"1c9216897692ce3dbe25e685f66aac37\"",
+          "etag":"W/\"66a116ff280fb3a2caacbb66aed41f68\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -38296,12 +40017,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"1c9216897692ce3dbe25e685f66aac37\"",
+          "etag":"W/\"66a116ff280fb3a2caacbb66aed41f68\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -38818,12 +40539,12 @@
           "x-dawarich-response":"Hey, I'm alive and authenticated!",
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
-          "etag":"W/\"1c9216897692ce3dbe25e685f66aac37\"",
+          "etag":"W/\"66a116ff280fb3a2caacbb66aed41f68\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -50764,12 +52485,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"1c9216897692ce3dbe25e685f66aac37\"",
+          "etag":"W/\"66a116ff280fb3a2caacbb66aed41f68\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -51287,12 +53008,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"b0c776e8cbd7fdd7cc67945eb5a9d416\"",
+          "etag":"W/\"aebd7505ed4d481ad364077c6d4b2eeb\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 2\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -51810,12 +53531,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"9938b8adb532c18ea1d47d84c9746d7c\"",
+          "etag":"W/\"feca5d90841d63b9594bca1f997ad19f\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953303,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-03T12:00:00.000Z\",\"ended_at\":\"2026-09-03T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 3\",\"status\":\"confirmed\",\"confidence\":69,\"confidence_band\":\"medium\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204}}"
+        "body":"{\"id\":953303,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-03T12:00:00.000Z\",\"ended_at\":\"2026-09-03T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 3\",\"status\":\"confirmed\",\"confidence\":69,\"confidence_band\":\"medium\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -52333,12 +54054,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"5f23169721081dcc825c6fe4a34f42ec\"",
+          "etag":"W/\"6cc93e9b02ffa2cedbfe9d7ed105fa58\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953304,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T23:00:00.000Z\",\"duration\":60,\"name\":\"Visit 4\",\"status\":\"confirmed\",\"confidence\":70,\"confidence_band\":\"high\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204}}"
+        "body":"{\"id\":953304,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T23:00:00.000Z\",\"duration\":60,\"name\":\"Visit 4\",\"status\":\"confirmed\",\"confidence\":70,\"confidence_band\":\"high\",\"place\":{\"latitude\":53.0,\"longitude\":14.0,\"id\":953204,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -52856,12 +54577,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"7a7e320d8fa7f549a91bc632822ae9ef\"",
+          "etag":"W/\"9cbf7e84fd47240f96ad09c75786c4f2\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T14:00:00.000+02:00\",\"ended_at\":\"2026-09-01T15:00:00.000+02:00\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T14:00:00.000+02:00\",\"ended_at\":\"2026-09-01T15:00:00.000+02:00\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -53366,7 +55087,7 @@
           ],
           [
             "If-None-Match",
-            "W/\"1c9216897692ce3dbe25e685f66aac37\""
+            "W/\"66a116ff280fb3a2caacbb66aed41f68\""
           ]
         ],
         "body":""
@@ -53382,7 +55103,7 @@
           "x-dawarich-response":"Hey, I'm alive and authenticated!",
           "x-dawarich-version":"1.16.0",
           "vary":"Accept",
-          "etag":"W/\"1c9216897692ce3dbe25e685f66aac37\"",
+          "etag":"W/\"66a116ff280fb3a2caacbb66aed41f68\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
@@ -55993,12 +57714,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"9fc39f27add14b0a8919f0b3892d7bce\"",
+          "etag":"W/\"334ff74655ca36cd47946676c4ca066c\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953310,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 10\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":null,\"longitude\":null,\"id\":null}}"
+        "body":"{\"id\":953310,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-04T12:00:00.000Z\",\"ended_at\":\"2026-09-04T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 10\",\"status\":\"confirmed\",\"confidence\":null,\"confidence_band\":null,\"place\":{\"latitude\":null,\"longitude\":null,\"id\":null,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -56524,12 +58245,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"c39893b4b1edf092b67b0164e1a48147\"",
+          "etag":"W/\"e9cfa13a721f6b5d592a3eec283bdc58\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":953101,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Synthetic area\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":953101,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Synthetic area\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -57055,12 +58776,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"bc12236fb44ba5277c682a0fac7fbb40\"",
+          "etag":"W/\"c18f706eaac0017e67d3c1a9609d7369\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":953101,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Explicit area name\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":953101,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Explicit area name\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -58116,12 +59837,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"acbf6522a2a7bc3d313fc76c728b95cc\"",
+          "etag":"W/\"3e22397a80466d3b76fbdd72e77b6d5a\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"declined\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"declined\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -58654,12 +60375,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"e1cd8e75d1cf31c0046109c64a38b02c\"",
+          "etag":"W/\"cfbe51186b44dbc4fb3b7d98f4bd3bea\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Adopted\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953202}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Adopted\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953202,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -59192,12 +60913,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"5402935c6b9d40136e07cb6594d3ad61\"",
+          "etag":"W/\"a10392cd38e4e11545d33dd2f1957e5c\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Explicit\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Explicit\",\"status\":\"suggested\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -60253,12 +61974,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"1c9216897692ce3dbe25e685f66aac37\"",
+          "etag":"W/\"66a116ff280fb3a2caacbb66aed41f68\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -60784,12 +62505,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"1b35e7a747316c3293b130cb7a739c6c\"",
+          "etag":"W/\"86a8d6ef1f009d9dc84a096c66f7e590\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-08-31T23:30:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-08-31T23:30:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -61315,12 +63036,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"63fa0c30a4492c11ed9dc849e0530bfe\"",
+          "etag":"W/\"8976bffce9c6c1d5a911b55f70fb52c2\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T01:30:00.000+02:00\",\"ended_at\":\"2026-09-01T15:00:00.000+02:00\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T01:30:00.000+02:00\",\"ended_at\":\"2026-09-01T15:00:00.000+02:00\",\"duration\":60,\"name\":\"Visit 1\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -61846,12 +63567,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"e0dcbf1fc272f841b96199064fe6fc8e\"",
+          "etag":"W/\"1b1241a8a99cc0eb502c3034fe069677\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Edited\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Edited\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -62377,12 +64098,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"cfa6b7d52db884d83ec5cabc66be7e14\"",
+          "etag":"W/\"ed5acf2963612bc0b918a0db2b04548e\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Place 2\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953202}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Place 2\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953202,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -62915,12 +64636,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"b1482af1c9b9f9e5b9b95ecbaf8c5d34\"",
+          "etag":"W/\"8b89703a2ac7f79cee936aef21d27571\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Put name\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Put name\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -63446,12 +65167,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"20cecf5ff79f5a58ecd7dd82ace4b5bf\"",
+          "etag":"W/\"f624ba716963f1dbdb7e1e06e31d5eb2\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Asserted\",\"status\":\"confirmed\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201}}"
+        "body":"{\"id\":953302,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-02T12:00:00.000Z\",\"ended_at\":\"2026-09-02T13:00:00.000Z\",\"duration\":60,\"name\":\"Asserted\",\"status\":\"confirmed\",\"confidence\":40,\"confidence_band\":\"medium\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953201,\"address\":null}}"
       },
       "after":{
         "areas":[
@@ -63977,12 +65698,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"842db776878962706d75bf1ea5a11bec\"",
+          "etag":"W/\"3d0d83c42ae9708efc561823e26f47dc\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"00000000-0000-0000-0000-000000000000",
           "x-runtime":"0.000000"
         },
-        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Place 3\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953203}}"
+        "body":"{\"id\":953301,\"area_id\":null,\"user_id\":953001,\"started_at\":\"2026-09-01T12:00:00.000Z\",\"ended_at\":\"2026-09-01T13:00:00.000Z\",\"duration\":60,\"name\":\"Place 3\",\"status\":\"confirmed\",\"confidence\":39,\"confidence_band\":\"low\",\"place\":{\"latitude\":52.52,\"longitude\":13.405,\"id\":953203,\"address\":null}}"
       },
       "after":{
         "areas":[

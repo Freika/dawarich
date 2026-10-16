@@ -23,12 +23,13 @@ defmodule Dawarich.Families.Locations do
               do: member
 
         own = Sharing.enabled?(settings, now)
+        with_address = Dawarich.Geocoding.Config.resolve(Repo).enabled
 
         Dawarich.Families.Snapshot.with_zone(user.timezone, fn ->
           {:ok, 200,
            {:object,
             [
-              {"locations", Enum.flat_map(sharing, &location/1)},
+              {"locations", Enum.flat_map(sharing, &location(&1, with_address))},
               {"updated_at", Clock.iso(Clock.naive(now))},
               {"sharing_enabled", own}
             ]}}
@@ -71,16 +72,17 @@ defmodule Dawarich.Families.Locations do
     end)
   end
 
-  defp location(member) do
+  defp location(member, with_address) do
     case Repo.query!(latest_sql(), [member.id]).rows do
       [] ->
         []
 
-      [[lat, lon, timestamp, battery, status, updated_at]] ->
+      [[lat, lon, timestamp, battery, status, updated_at, geodata]] ->
         [
           {:object,
            [
              {"user_id", member.id},
+             {"address", if(with_address, do: Dawarich.Address.point(geodata))},
              {"email", member.email},
              {"name", member.name},
              {"email_initial", initial(member.email)},
@@ -119,7 +121,7 @@ defmodule Dawarich.Families.Locations do
     """
     SELECT ST_Y(p.lonlat::geometry), ST_X(p.lonlat::geometry), p.timestamp, p.battery,
            CASE WHEN p.source_id IS NULL THEN p.battery_status ELSE s.battery_status END,
-           #{RailsTime.sql("(to_timestamp(p.timestamp) AT TIME ZONE 'UTC')", 3)}
+           #{RailsTime.sql("(to_timestamp(p.timestamp) AT TIME ZONE 'UTC')", 3)}, p.geodata
     FROM points p LEFT JOIN point_sources s ON s.id = p.source_id
     WHERE p.user_id = $1 AND p.timestamp IS NOT NULL AND p.lonlat IS NOT NULL
       AND (p.anomaly = false OR p.anomaly IS NULL)

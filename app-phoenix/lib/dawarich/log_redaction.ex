@@ -201,7 +201,7 @@ defmodule Dawarich.LogRedaction do
 
   defp scrub_storage_paths(binary) do
     Regex.replace(
-      ~r{(/rails/active_storage/(?:disk|blobs/(?:redirect|proxy)|representations/(?:redirect|proxy))/)[^\s"'?#]++},
+      ~r{(/rails/active_storage/(?:disk|blobs(?:/(?:redirect|proxy))?|representations(?:/(?:redirect|proxy))?)/)[^\s"'?#]++},
       binary,
       "\\1" <> @filtered
     )

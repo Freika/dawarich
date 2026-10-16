@@ -128,6 +128,47 @@ defmodule DawarichWeb.NativeOtpDocumentTest do
     assert response.resp_cookies["remember_user_token"].http_only
   end
 
+  test "every native cookie sign-in clears all four Rails pending OTP keys", c do
+    pending =
+      Map.merge(c.guest, %{
+        "otp_user_id" => c.actor.id,
+        "otp_challenge_at" => DateTime.to_unix(DateTime.utc_now()),
+        "otp_failed_attempts" => 2,
+        "otp_remember_me" => true
+      })
+
+    secret = Dawarich.RailsSecret.fetch()
+
+    for encode <- [
+          fn -> Dawarich.Auth.SessionCookie.for_login(pending, c.actor, "Signed in", secret) end,
+          fn ->
+            Dawarich.Auth.SessionCookie.for_otp_login(pending, c.actor, "Signed in", secret)
+          end,
+          fn ->
+            Dawarich.Auth.SessionCookie.for_account_link(
+              pending,
+              c.actor,
+              :sign_in,
+              "Signed in",
+              secret
+            )
+          end,
+          fn -> Dawarich.Auth.SessionCookie.for_restore(pending, c.actor, secret) end
+        ] do
+      {state, cookie} = encode.()
+      assert state["warden.user.user.key"] |> hd() |> hd() == c.actor.id
+      refute Enum.any?(@keys, &Map.has_key?(state, &1))
+
+      assert {:ok, ^state} =
+               Dawarich.RailsCookies.decrypt(
+                 cookie,
+                 "_dawarich_session",
+                 secret,
+                 DateTime.utc_now()
+               )
+    end
+  end
+
   test "initial challenge locale follows the approved display contract", c do
     response = start(c)
     assert response.resp_body =~ ~s(<html lang="de")
