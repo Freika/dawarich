@@ -59,6 +59,11 @@ export function createHostTimeline({
   }
   function click(event) {
     if (blocked()) return
+    const points = map.getLayer("points-mvt")
+      ? map.queryRenderedFeatures?.(event.point, { layers: ["points-mvt"] }) ||
+        []
+      : []
+    if (points.length) return pushEvent("track:close", {})
     const available = [
       "tracks-mvt",
       "native-selected-track-line",

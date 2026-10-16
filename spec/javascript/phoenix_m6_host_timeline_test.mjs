@@ -96,9 +96,10 @@ test("native track clicks send only owned scalar commands and replay seeks the s
   const replay = []
   try {
     await f.owner.mount()
-    f.map.queryRenderedFeatures = () => [
-      { properties: { id: 7 }, layer: { id: "tracks-mvt" } },
-    ]
+    f.map.queryRenderedFeatures = (_point, { layers }) =>
+      layers.includes("points-mvt")
+        ? []
+        : [{ properties: { id: 7 }, layer: { id: "tracks-mvt" } }]
     f.map.emit("click", { point: { x: 20, y: 20 } })
     assert.ok(
       f.pushed.some(
@@ -165,9 +166,10 @@ test("map track hover mirrors the native journey row and removes its owned hover
   const canvas = { style: { cursor: "" } }
   f.map.getCanvas = () => canvas
   f.nodes.set('[data-track-id="7"]', row)
-  f.map.queryRenderedFeatures = () => [
-    { properties: { id: 7 }, layer: { id: "tracks-mvt" } },
-  ]
+  f.map.queryRenderedFeatures = (_point, { layers }) =>
+    layers.includes("points-mvt")
+      ? []
+      : [{ properties: { id: 7 }, layer: { id: "tracks-mvt" } }]
   try {
     await f.owner.mount()
     f.map.emit("mousemove", { point: { x: 20, y: 30 } })
@@ -501,9 +503,10 @@ test("empty native tool status whitespace permits track clicks and hover while a
   f.map.getCanvas = () => canvas
   status.textContent = "\n        "
   f.nodes.set("[data-map-tool-status]", status)
-  f.map.queryRenderedFeatures = () => [
-    { properties: { id: 7 }, layer: { id: "tracks-mvt" } },
-  ]
+  f.map.queryRenderedFeatures = (_point, { layers }) =>
+    layers.includes("points-mvt")
+      ? []
+      : [{ properties: { id: 7 }, layer: { id: "tracks-mvt" } }]
   try {
     await f.owner.mount()
     f.map.emit("click", { point: { x: 20, y: 20 } })
@@ -575,9 +578,10 @@ test("native map track hits ignore blank tool markup but refuse armed placement"
   const status = new Element()
   status.textContent = "\n  "
   f.nodes.set("[data-map-tool-status]", status)
-  f.map.queryRenderedFeatures = () => [
-    { properties: { id: 7 }, layer: { id: "tracks-mvt" } },
-  ]
+  f.map.queryRenderedFeatures = (_point, { layers }) =>
+    layers.includes("points-mvt")
+      ? []
+      : [{ properties: { id: 7 }, layer: { id: "tracks-mvt" } }]
   try {
     await f.owner.mount()
     f.map.emit("click", { point: { x: 20, y: 20 } })

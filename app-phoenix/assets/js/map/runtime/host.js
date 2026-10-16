@@ -137,6 +137,7 @@ export function mountHost({
           blocked,
         });
         createHostTools({
+          getConfig: () => owner.config,
           map,
           root,
           pushEvent,
@@ -150,6 +151,7 @@ export function mountHost({
         });
         lifetime.own(() => layers.destroy());
         editing = createHostEditing({
+          clearSelection: () => timeline?.config(),
           map,
           reader,
           pushEvent,

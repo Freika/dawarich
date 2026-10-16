@@ -1,4 +1,26 @@
 import { expect, test } from "@playwright/test"
+import { closeOnboardingModal } from "./helpers/navigation.js"
+import { API_KEYS } from "./v2/helpers/constants.js"
+import { waitForMapLibre } from "./v2/helpers/setup.js"
+
+let original
+test.beforeEach(async ({ page }) => {
+  const response = await page.request.get("/native/map/data/settings")
+  expect(response.ok()).toBe(true)
+  original = (await response.json()).settings
+})
+test.afterEach(async ({ page }) => {
+  const response = await page.request.patch("/api/v1/settings", {
+    headers: { Authorization: `Bearer ${API_KEYS.DEMO_USER}` },
+    data: {
+      settings: {
+        enabled_map_layers: original.enabled_map_layers,
+        point_dragging_enabled: original.point_dragging_enabled,
+      },
+    },
+  })
+  expect(response.ok()).toBe(true)
+})
 
 const START = [13.4, 52.5]
 const MIDDLE = [13.4005, 52.5]
@@ -9,23 +31,20 @@ async function openEditor(
   page,
   { selectedGhost = false, partialSegments = false } = {},
 ) {
-  await page.goto("/map/v2")
-  await page.waitForFunction(() => {
-    const element = document.querySelector("#maps-maplibre-container")
-    const controller = window.Stimulus?.getControllerForElementAndIdentifier(
-      element,
-      "maps--maplibre",
-    )
-    return controller?.map?.loaded() && controller?.map?.getLayer("tracks-mvt")
-  })
+  await page.goto("/map/v2?locale=en")
+  await closeOnboardingModal(page)
+  await waitForMapLibre(page)
+  const edit = page.getByTestId("native-edit-points")
+  if ((await edit.getAttribute("aria-pressed")) !== "true") await edit.click()
+  await expect(edit).toHaveAttribute("aria-pressed", "true")
+  await waitForMapLibre(page)
 
   await page.evaluate(
     async ({ start, middle, end, selectedGhost, partialSegments }) => {
-      const element = document.querySelector("#maps-maplibre-container")
-      const controller = window.Stimulus.getControllerForElementAndIdentifier(
-        element,
-        "maps--maplibre",
-      )
+      const element = document.querySelector("#native-map")
+      const controller = window.liveSocket
+        ?.getViewByEl(element.closest("[data-phx-session]"))
+        ?.getHook(element)?.mapOwner
       const map = controller.map
       map.jumpTo({ center: middle, zoom: 16 })
       const feature = {
@@ -66,18 +85,26 @@ async function openEditor(
           geometry: { type: "LineString", coordinates: [start, middle] },
           properties: { id: 900002, revision: 1 },
         }
-        controller.layerManager.getLayer("tracks").setSelectedTrack(ghost)
-        controller.eventHandlers.selectedTrackFeature = ghost
+        controller.map.addSource("native-selected-track", {
+          type: "geojson",
+          data: ghost,
+        })
+        controller.map.addLayer({
+          id: "native-selected-track-line",
+          source: "native-selected-track",
+          type: "line",
+          paint: { "line-color": "#f00" },
+        })
       }
-      const editor = await controller.eventHandlers._mapEditor()
-      editor.apiClient = {
-        fetchTrackWithSegments: async () => structuredClone(feature),
-        fetchTrackPoints: async () => [
+      const editor = controller.editor
+      Object.assign(editor, {
+        readTrack: async () => structuredClone(feature),
+        readPoints: async () => [
           point(1, start),
           point(2, middle),
           point(3, end),
         ],
-        movePointPosition: async (_id, position) => ({
+        move: async (_id, position) => ({
           point: point(
             2,
             [Number(position.longitude), Number(position.latitude)],
@@ -123,18 +150,19 @@ async function openEditor(
           },
           revision: { point: 2, track: 2 },
         }),
-      }
+      })
       editor.setEditable(true)
-      controller.eventHandlers.pointDrag.isEnabled = () => true
       await editor.selectTrack(900001, { forEditing: true })
     },
     { start: START, middle: MIDDLE, end: END, selectedGhost, partialSegments },
   )
   await page.waitForFunction((middle) => {
-    const controller = window.Stimulus.getControllerForElementAndIdentifier(
-      document.querySelector("#maps-maplibre-container"),
-      "maps--maplibre",
-    )
+    const controller = (() => {
+      const el = document.querySelector("#native-map")
+      return window.liveSocket
+        ?.getViewByEl(el.closest("[data-phx-session]"))
+        ?.getHook(el)?.mapOwner
+    })()
     return (
       controller.map.queryRenderedFeatures(controller.map.project(middle), {
         layers: ["track-points"],
@@ -145,10 +173,12 @@ async function openEditor(
 
 async function mapPoint(page, coordinates) {
   return page.evaluate((value) => {
-    const controller = window.Stimulus.getControllerForElementAndIdentifier(
-      document.querySelector("#maps-maplibre-container"),
-      "maps--maplibre",
-    )
+    const controller = (() => {
+      const el = document.querySelector("#native-map")
+      return window.liveSocket
+        ?.getViewByEl(el.closest("[data-phx-session]"))
+        ?.getHook(el)?.mapOwner
+    })()
     const projected = controller.map.project(value)
     const rect = controller.map.getCanvas().getBoundingClientRect()
     return { x: rect.left + projected.x, y: rect.top + projected.y }
@@ -157,11 +187,13 @@ async function mapPoint(page, coordinates) {
 
 async function dragMiddlePoint(page) {
   await page.evaluate(async (moved) => {
-    const controller = window.Stimulus.getControllerForElementAndIdentifier(
-      document.querySelector("#maps-maplibre-container"),
-      "maps--maplibre",
-    )
-    const editor = controller.layerManager.getLayer("map-editor")
+    const controller = (() => {
+      const el = document.querySelector("#native-map")
+      return window.liveSocket
+        ?.getViewByEl(el.closest("[data-phx-session]"))
+        ?.getHook(el)?.mapOwner
+    })()
+    const editor = controller.editor
     if (!editor.startDrag(2)) throw new Error("Point drag could not start")
     editor.dragTo(...moved)
     await editor.endDrag({ lng: moved[0], lat: moved[1] })
@@ -177,10 +209,12 @@ test("dragged track segments keep their own colors without a duplicate base edge
   const renderedFeatures = () =>
     page.evaluate(
       ({ start, moved }) => {
-        const map = window.Stimulus.getControllerForElementAndIdentifier(
-          document.querySelector("#maps-maplibre-container"),
-          "maps--maplibre",
-        ).map
+        const map = (() => {
+          const el = document.querySelector("#native-map")
+          return window.liveSocket
+            ?.getViewByEl(el.closest("[data-phx-session]"))
+            ?.getHook(el)?.mapOwner
+        })().map
         const midpoint = map.project([
           (start[0] + moved[0]) / 2,
           (start[1] + moved[1]) / 2,
@@ -214,10 +248,12 @@ test("a partially segmented track keeps its uncovered edge after a point moves",
   const renderedLayers = () =>
     page.evaluate(
       ({ moved, end }) => {
-        const map = window.Stimulus.getControllerForElementAndIdentifier(
-          document.querySelector("#maps-maplibre-container"),
-          "maps--maplibre",
-        ).map
+        const map = (() => {
+          const el = document.querySelector("#native-map")
+          return window.liveSocket
+            ?.getViewByEl(el.closest("[data-phx-session]"))
+            ?.getHook(el)?.mapOwner
+        })().map
         const midpoint = map.project([
           (moved[0] + end[0]) / 2,
           (moved[1] + end[1]) / 2,
@@ -240,12 +276,14 @@ test("moving a point clears the previously selected track and keeps old tile edg
   await openEditor(page, { selectedGhost: true })
   await dragMiddlePoint(page)
   const state = await page.evaluate(() => {
-    const controller = window.Stimulus.getControllerForElementAndIdentifier(
-      document.querySelector("#maps-maplibre-container"),
-      "maps--maplibre",
-    )
+    const controller = (() => {
+      const el = document.querySelector("#native-map")
+      return window.liveSocket
+        ?.getViewByEl(el.closest("[data-phx-session]"))
+        ?.getHook(el)?.mapOwner
+    })()
     return {
-      selected: controller.layerManager.getLayer("tracks").selectedFeature,
+      selected: controller.map.getSource("native-selected-track") ?? null,
       filter: controller.map.getFilter("tracks-mvt"),
     }
   })
@@ -258,11 +296,13 @@ test("turning editing off clears an editor opened after a track was selected", a
 }) => {
   await openEditor(page, { selectedGhost: true })
   const state = await page.evaluate(() => {
-    const controller = window.Stimulus.getControllerForElementAndIdentifier(
-      document.querySelector("#maps-maplibre-container"),
-      "maps--maplibre",
-    )
-    const editor = controller.layerManager.getLayer("map-editor")
+    const controller = (() => {
+      const el = document.querySelector("#native-map")
+      return window.liveSocket
+        ?.getViewByEl(el.closest("[data-phx-session]"))
+        ?.getHook(el)?.mapOwner
+    })()
+    const editor = controller.editor
     const editingBefore = editor.forEditing
     editor.setEditable(false)
     return { editingBefore, dataAfter: editor.data }
@@ -314,11 +354,13 @@ test("dragging a rendered point with the mouse saves its new position", async ({
   await expect
     .poll(() =>
       page.evaluate((moved) => {
-        const controller = window.Stimulus.getControllerForElementAndIdentifier(
-          document.querySelector("#maps-maplibre-container"),
-          "maps--maplibre",
-        )
-        const editor = controller.layerManager.getLayer("map-editor")
+        const controller = (() => {
+          const el = document.querySelector("#native-map")
+          return window.liveSocket
+            ?.getViewByEl(el.closest("[data-phx-session]"))
+            ?.getHook(el)?.mapOwner
+        })()
+        const editor = controller.editor
         const coordinates = editor._point(2).geometry.coordinates
         return coordinates.every(
           (value, index) => Math.abs(value - moved[index]) < 0.00001,
