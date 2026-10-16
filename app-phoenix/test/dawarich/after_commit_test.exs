@@ -107,14 +107,20 @@ defmodule Dawarich.AfterCommitTest do
                %{now: now}
              )
 
-    assert Dawarich.Transportation.RecalculationStatus.data(user) == %{"status" => "idle"}
+    assert Dawarich.Transportation.RecalculationStatus.data(user, ScratchRepo) == %{
+             "status" => "idle"
+           }
+
     [[args]] = rows("SELECT args FROM oban.oban_jobs")
     assert :ok = AfterCommit.Worker.run(ScratchRepo, args)
-    assert Dawarich.Transportation.RecalculationStatus.data(user)["status"] == "completed"
+
+    assert Dawarich.Transportation.RecalculationStatus.data(user, ScratchRepo)["status"] ==
+             "completed"
+
     Dawarich.Transportation.RecalculationStatus.fail(user, now, "later state")
     assert :ok = AfterCommit.Worker.run(ScratchRepo, args)
 
-    assert Dawarich.Transportation.RecalculationStatus.data(user)["error_message"] ==
+    assert Dawarich.Transportation.RecalculationStatus.data(user, ScratchRepo)["error_message"] ==
              "later state"
   end
 
@@ -138,7 +144,9 @@ defmodule Dawarich.AfterCommitTest do
                ScratchRepo.rollback(:cancel)
              end)
 
-    assert Dawarich.Transportation.RecalculationStatus.data(user)["processed_tracks"] == 0
+    assert Dawarich.Transportation.RecalculationStatus.data(user, ScratchRepo)["processed_tracks"] ==
+             0
+
     assert rows("SELECT count(*) FROM phoenix.cable_events") == [[0]]
   end
 

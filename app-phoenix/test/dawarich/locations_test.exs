@@ -55,7 +55,7 @@ defmodule Dawarich.LocationsTest do
   end
 
   defp row(ts, accuracy, altitude, distance),
-    do: [ts, 52.5 + ts / 1.0e9, 13.4, "C#{ts}", "D", altitude, accuracy, distance, "d#{ts}"]
+    do: [ts, 52.5 + ts / 1.0e9, 13.4, "C#{ts}", "D", altitude, accuracy, distance, "d#{ts}", ts]
 
   test "rows: the points scan takes both timestamp bounds as index conditions" do
     id = user!()
@@ -111,8 +111,8 @@ defmodule Dawarich.LocationsTest do
     point!(other, 52.52001, 13.40502, @t0)
 
     assert [
-             [ts, lat, lon, "Berlin", "Germany", 42, 5, distance, date],
-             [0, _, _, nil, nil, nil, nil, _, epoch]
+             [ts, lat, lon, "Berlin", "Germany", 42, 5, distance, date, _],
+             [0, _, _, nil, nil, nil, nil, _, epoch, _]
            ] =
              "Europe/Berlin" |> rows(id, search()) |> Enum.sort_by(&hd/1, :desc)
 
@@ -124,7 +124,7 @@ defmodule Dawarich.LocationsTest do
 
     day = search(%{date_from: ~D[2023-11-15], date_to: ~D[2023-11-15]})
 
-    assert [[_, _, _, _, _, _, _, _, "2023-11-15T01:13:20+01:00"]] =
+    assert [[_, _, _, _, _, _, _, _, "2023-11-15T01:13:20+01:00", _]] =
              rows("Europe/Berlin", id, day)
 
     assert rows("America/New_York", id, day) == []
@@ -209,7 +209,25 @@ defmodule Dawarich.LocationsTest do
              {5, 2.0, [52.5 + (@t0 + 600) / 1.0e9, 13.4], "30m - 42m", 20}
   end
 
-  test "term: nothing matched is an empty result; two matched points sharing a timestamp go to Rails" do
+  test "representative coordinates use accuracy then timestamp then persisted ID in both readers" do
+    points = [
+      List.replace_at(row(@t0, 10, 1, 1.0), 9, 2),
+      row(@t0, 10, 1, 1.0) |> List.replace_at(1, 53.0) |> List.replace_at(9, 1),
+      row(@t0 + 60, 10, 1, 1.0),
+      row(@t0 - 60, 20, 1, 1.0)
+    ]
+
+    for reader <- [Locations, Dawarich.Locations.Closure],
+        input <- [points, Enum.reverse(points), Enum.drop(points, 1) ++ Enum.take(points, 1)] do
+      assert {:ok, body} = reader.term(search(), input)
+      [location] = Jsonb.get(body, "locations")
+      [visit] = Jsonb.get(location, "visits")
+      assert Jsonb.get(visit, "coordinates") == [53.0, 13.4]
+      assert Jsonb.get(visit, "points_count") == 4
+    end
+  end
+
+  test "term: nothing matched is empty and timestamp ties remain native" do
     assert Locations.term(search(), []) ==
              {:ok,
               {:object,
@@ -220,9 +238,9 @@ defmodule Dawarich.LocationsTest do
                  {"search_metadata", {:object, []}}
                ]}}
 
-    same = [@t0, 52.5, 13.4, nil, nil, nil, nil, 1.0, "d"]
+    same = [@t0, 52.5, 13.4, nil, nil, nil, nil, 1.0, "d", 1]
 
-    assert {:replay, "matched points share a timestamp"} =
+    assert {:ok, _} =
              Locations.term(search(), [same, List.replace_at(same, 1, 52.6)])
   end
 end

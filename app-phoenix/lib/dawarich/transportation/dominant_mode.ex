@@ -4,7 +4,9 @@ defmodule Dawarich.Transportation.DominantMode do
   @moving_distance_threshold_m 50
 
   def pick(segments) do
-    {order, distance_totals, duration_totals} = totals_by_mode(segments)
+    {order, distance_totals, duration_totals} =
+      totals_by_mode(Enum.sort_by(segments, &Map.get(&1, :id, 0)))
+
     distance_by_mode = Enum.map(order, fn mode -> {mode, Map.fetch!(distance_totals, mode)} end)
 
     moving =

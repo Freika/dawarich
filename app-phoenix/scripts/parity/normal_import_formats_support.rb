@@ -33,6 +33,10 @@ module NormalImportFormatsSupport
   end
 
   def source_write(name, value)
+    path = DIR.join("#{name}.json").to_s.sub('/test/fixtures/', '/test/fixtures/a12f3a_source/')
+    if ENV['NORMAL_IMPORT_WHOLE_CASES'].present? && File.file?(path)
+      value = JSON.parse(File.read(path)).merge(value).sort.to_h
+    end
     closure_cases[name] = value
     FixtureRecording.source_verify(DIR.join("#{name}.json"), JSON.generate(value))
   end

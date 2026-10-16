@@ -42,9 +42,15 @@ defmodule Dawarich.Transportation.AfterCommit do
   end
 
   def progress(repo, payload, intent) do
+    if RecalculationFence.admit_progress?(repo, payload["user_id"], payload["event_id"]),
+      do: publish_progress(repo, payload, intent),
+      else: :ok
+  end
+
+  defp publish_progress(repo, payload, intent) do
     user = payload["user_id"]
-    RecalculationStatus.increment(user, payload["event_id"])
-    status = RecalculationStatus.data(user)
+    RecalculationStatus.increment(user, payload["event_id"], DateTime.utc_now(), repo)
+    status = RecalculationStatus.data(user, repo)
 
     Dawarich.AfterCommit.once(repo, intent, fn ->
       RecalculationFence.progress(repo, user, payload["event_id"])

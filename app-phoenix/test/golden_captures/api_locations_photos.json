@@ -26949,7 +26949,7 @@
     },
     {
       "name":"replay_locations_tie",
-      "expect":"rails",
+      "expect":"own",
       "ignore":[],
       "env":{},
       "setup":[
@@ -27143,12 +27143,12 @@
           "x-dawarich-version":"1.16.0",
           "content-type":"application/json; charset=utf-8",
           "vary":"Accept",
-          "etag":"W/\"1616b7a49bd3efa7a39ecf4cea114f10\"",
+          "etag":"W/\"a4df86bf80f47ab7eee0f056fc0fb76c\"",
           "cache-control":"max-age=0, private, must-revalidate",
           "x-request-id":"12025473-5113-4107-b761-737d2b5352ab",
           "x-runtime":"0.000000"
         },
-        "body":"{\"query\":null,\"locations\":[{\"place_name\":null,\"coordinates\":[52.52,13.405],\"address\":null,\"total_visits\":1,\"first_visit\":\"2023-11-14T23:13:20+01:00\",\"last_visit\":\"2023-11-14T23:13:20+01:00\",\"visits\":[{\"timestamp\":1700000000,\"date\":\"2023-11-14T23:13:20+01:00\",\"coordinates\":[52.52002,13.40503],\"distance_meters\":2.39,\"duration_estimate\":\"~0 minutes\",\"points_count\":2,\"accuracy_meters\":5,\"visit_details\":{\"start_time\":\"2023-11-14T23:13:20+01:00\",\"end_time\":\"2023-11-14T23:13:20+01:00\",\"duration_minutes\":0,\"city\":null,\"country\":null,\"altitude_range\":\"30m\"}}]}],\"total_locations\":1,\"search_metadata\":{}}"
+        "body":"{\"query\":null,\"locations\":[{\"place_name\":null,\"coordinates\":[52.52,13.405],\"address\":null,\"total_visits\":1,\"first_visit\":\"2023-11-14T23:13:20+01:00\",\"last_visit\":\"2023-11-14T23:13:20+01:00\",\"visits\":[{\"timestamp\":1700000000,\"date\":\"2023-11-14T23:13:20+01:00\",\"coordinates\":[52.52001,13.40502],\"distance_meters\":2.39,\"duration_estimate\":\"~0 minutes\",\"points_count\":2,\"accuracy_meters\":5,\"visit_details\":{\"start_time\":\"2023-11-14T23:13:20+01:00\",\"end_time\":\"2023-11-14T23:13:20+01:00\",\"duration_minutes\":0,\"city\":null,\"country\":null,\"altitude_range\":\"30m\"}}]}],\"total_locations\":1,\"search_metadata\":{}}"
       },
       "after":{
         "users":[

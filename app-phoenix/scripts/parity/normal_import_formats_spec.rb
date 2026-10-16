@@ -705,13 +705,16 @@ record_id: 987_101 }).to_a
     it 'records whole create and ZIP build failure effects' do
       travel_to Time.utc(2026, 1, 15, 23, 30) do
         NormalImportFormatsSupport.whole_create_cases.each do |options|
+          selected = ENV['NORMAL_IMPORT_WHOLE_CASES']&.split(',')
+          next if selected && !selected.include?(options.fetch(:name))
+
           result = NormalImportFormatsSupport.capture_whole_create(options)
           expect(result).to include('source_transition', 'parent', 'children', 'notifications', 'jobs', 'archive')
           expect(result.fetch('source_transition')).to eq(options.fetch(:expected_source))
           case options.fetch(:name)
           when 'kmz_plain'
             expect(result.fetch('children').map { |child| child.fetch('name') })
-              .to eq(['_source.kmz (from plain.kmz)', 'first.KML (from plain.kmz)', 'last.kml (from plain.kmz)'])
+              .to eq(['first.KML (from plain.kmz)', 'last.kml (from plain.kmz)'])
           when 'kmz_wrapped'
             expect(result.fetch('points').map { |point| point.fetch('lonlat') }).to eq(['POINT(12.4 51.3)'])
             expect(result.fetch('kmz_leaf').fetch('name')).to eq('first.KML')

@@ -87,18 +87,23 @@ defmodule Dawarich.Settings.Progress do
         if Dawarich.Jobs.Ownership.lock(repo, "command:" <> kind) != :oban,
           do: raise("native producer owner unavailable")
 
-        repo.query!(
-          "INSERT INTO public.job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES($1,$2,1,$3,$4,$5,$6)",
-          [
-            Ecto.UUID.bingenerate(),
-            kind,
-            payload,
-            %{"producer" => "Phoenix Settings API"},
-            aggregate,
-            ctx.now
-          ],
-          log: false
-        )
+        event = Ecto.UUID.generate()
+
+        if kind != "transportation.user_reclassify" or
+             Dawarich.Transportation.RecalculationFence.claim(repo, aggregate, event) do
+          repo.query!(
+            "INSERT INTO public.job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES($1,$2,1,$3,$4,$5,$6)",
+            [
+              Ecto.UUID.dump!(event),
+              kind,
+              payload,
+              %{"producer" => "Phoenix Settings API"},
+              aggregate,
+              ctx.now
+            ],
+            log: false
+          )
+        end
 
         :ok
       end)
