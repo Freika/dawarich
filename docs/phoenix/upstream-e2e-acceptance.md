@@ -54,7 +54,8 @@ flows. The bundled native country archive serves exact single byte ranges under
 the existing path, symlink, host and HTTPS checks. Other legacy public-file
 range behavior remains subject to its existing admission.
 
-A successful edit applies its visited-country receipt immediately. A later map
+A successful edit applies its visited-country receipt immediately, scoped to the
+selected import as well as the active date range. A later map
 edit invalidation rereads membership in each connected tab. The editor survives
 its own already-confirmed edit only after a fresh canonical track revision check;
 a newer foreign revision, pending command, read refusal or reconnect retires

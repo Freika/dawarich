@@ -48,7 +48,7 @@ export function createPointEditing({
               revision: pointRevision,
             },
             track_revision: trackRevision,
-            history_scope: { start_at: scope.startAt, end_at: scope.endAt },
+            history_scope: { start_at: scope.startAt, end_at: scope.endAt, ...(scope.importId ? { import_id: scope.importId } : {}) },
           },
           (reply) => {
             if (destroyed || !pending.has(request)) return
