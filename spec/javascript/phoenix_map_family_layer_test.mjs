@@ -383,3 +383,32 @@ test("main map Family loaded status retains singular and plural counts", async (
     f.owner.destroy()
   }
 })
+
+test("Family refresh preserves admitted centering controls while unchanged data reloads", async () => {
+  const f = fixture()
+  await f.owner.update(f.config)
+  const button = f.list.children[0]
+  const read = f.reader.read
+  let release
+  const pending = new Promise((resolve) => {
+    release = resolve
+  })
+  f.reader.read = async (...args) => {
+    await pending
+    return read(...args)
+  }
+  const refreshing = f.owner.update({ ...f.config, panel: "family" })
+  try {
+    assert.equal(f.list.hidden, false)
+    assert.equal(f.list.children[0], button)
+    release()
+    await refreshing
+    assert.equal(f.list.children[0], button)
+    button.click()
+    assert.deepEqual(f.flights, [{ center: [13.5, 52.4], zoom: 15 }])
+  } finally {
+    release()
+    await refreshing
+    f.owner.destroy()
+  }
+})
