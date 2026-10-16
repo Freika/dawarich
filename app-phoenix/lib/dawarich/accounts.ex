@@ -15,8 +15,11 @@ defmodule Dawarich.Accounts do
   @spec get(integer()) :: %User{} | nil
   def get(id) when is_integer(id) do
     case find(id) do
-      %User{} = user -> if unlocked?(user, DateTime.utc_now()), do: user
-      nil -> nil
+      %User{} = user ->
+        if unlocked?(user, DateTime.utc_now()), do: Dawarich.Accounts.DataAccess.remember(user)
+
+      nil ->
+        nil
     end
   end
 

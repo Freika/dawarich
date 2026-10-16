@@ -3,14 +3,14 @@ defmodule DawarichWeb.NativeMapChrome do
   use DawarichWeb, :html
   import Phoenix.LiveView, only: [attach_hook: 4, connected?: 1, push_event: 3]
 
-  def load(socket) do
+  def load(socket, opts \\ []) do
     if connected?(socket) do
       Dawarich.Families.subscribe_changes(socket.assigns.current_scope)
       Dawarich.Notifications.subscribe(socket.assigns.current_scope)
     end
 
     socket
-    |> refresh()
+    |> then(&if(Keyword.get(opts, :refresh, true), do: refresh(&1), else: &1))
     |> attach_hook(:native_chrome, :handle_event, &event/3)
     |> attach_hook(:native_chrome_info, :handle_info, &info/2)
   end
