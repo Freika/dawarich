@@ -145,6 +145,7 @@ defmodule DawarichWeb.NativeMapPage do
         >
         </section>
         <DawarichWeb.NativeMapVisit.dialog dialog={assigns[:visit_dialog]} locale={@locale} />
+        <p id="native-map-point-summary" data-map-point-summary phx-update="ignore" role="status" />
         <DawarichWeb.NativePointAddress.drawer address={assigns[:point_address]} locale={@locale} />
         <button type="button" data-testid="native-create-visit" class="btn btn-sm">{t(
           @locale,

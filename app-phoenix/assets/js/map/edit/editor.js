@@ -66,11 +66,19 @@ export class MapEditor extends TrackSession {
     this._onMouseDown = this.onMouseDown.bind(this)
     this._onMouseMove = this.onMouseMove.bind(this)
     this._onMouseUp = this.onMouseUp.bind(this)
+    this._onMouseEnter = () => {
+      this.map.getCanvas().style.cursor = "grab"
+    }
+    this._onMouseLeave = () => {
+      this.map.getCanvas().style.cursor = ""
+    }
   }
 
   setEditable(editable) {
     this.editable = editable === true
     this.map.off("mousedown", "track-points", this._onMouseDown)
+    this.map.off("mouseenter", "track-points", this._onMouseEnter)
+    this.map.off("mouseleave", "track-points", this._onMouseLeave)
     this.edits.sync()
     if (!this.editable && this.forEditing) {
       this.close()
@@ -230,6 +238,8 @@ export class MapEditor extends TrackSession {
     this.map.off("mousemove", this._onMouseMove)
     this.map.off("mouseup", this._onMouseUp)
     this.map.off("mousedown", "track-points", this._onMouseDown)
+    this.map.off("mouseenter", "track-points", this._onMouseEnter)
+    this.map.off("mouseleave", "track-points", this._onMouseLeave)
     this.exclusions.restore()
     this.layer.remove()
     this.data = null
@@ -255,7 +265,11 @@ export class MapEditor extends TrackSession {
 
   _enableDragging() {
     this.map.off("mousedown", "track-points", this._onMouseDown)
+    this.map.off("mouseenter", "track-points", this._onMouseEnter)
+    this.map.off("mouseleave", "track-points", this._onMouseLeave)
     this.map.on("mousedown", "track-points", this._onMouseDown)
+    this.map.on("mouseenter", "track-points", this._onMouseEnter)
+    this.map.on("mouseleave", "track-points", this._onMouseLeave)
   }
 
   _mutationKey(pointId) {

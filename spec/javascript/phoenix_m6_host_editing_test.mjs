@@ -283,3 +283,19 @@ test("missing move receipt releases host latches erases uncertain geometry and r
     await pending
   }
 })
+
+test("native editing clears a selected timeline route before opening drag geometry", async () => {
+  const f = fixture({ editEnabled: true })
+  f.reader.read = async () => ({ data: structuredClone(editTrack) })
+  f.reader.pages = async () => structuredClone(editPoints)
+  try {
+    await f.owner.mount()
+    await f.owner.timeline.select({ id: 9 })
+    assert.equal(f.sources.has("native-selected-track"), true)
+    await f.owner.editor.selectTrack(9, { forEditing: true })
+    assert.equal(f.sources.has("native-selected-track"), false)
+    assert.equal(f.sources.has("editable-track-line-source"), true)
+  } finally {
+    f.owner.destroy()
+  }
+})

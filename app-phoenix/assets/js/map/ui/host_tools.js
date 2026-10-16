@@ -1,6 +1,7 @@
 import { createAreaEditor } from "./area_editor.js"
 import { createEntityEditor } from "./entity_editor.js"
 import { installHostShortcuts } from "./shortcuts.js"
+import { createPointSelection } from "./point_selection.js"
 
 export function bindTool(root, selector, callback, lifetime) {
   if (!root) return
@@ -17,7 +18,7 @@ export function bindTool(root, selector, callback, lifetime) {
   lifetime.own(() => root.removeEventListener("click", click))
 }
 
-export function createHostTools({ map, root, pushEvent, lifetime }) {
+export function createHostTools({ map, root, pushEvent, lifetime, getConfig }) {
   installHostShortcuts({ root, lifetime })
   const status = root?.querySelector("[data-map-tool-status]")
   const clear = () => {
@@ -48,18 +49,7 @@ export function createHostTools({ map, root, pushEvent, lifetime }) {
     () => arm("visit"),
     lifetime,
   )
-  const address = (event) => {
-    const point = event.features?.[0]?.properties
-    if (
-      point &&
-      !point.cluster &&
-      Number(point.count ?? 1) <= 1 &&
-      Number(point.point_count ?? 1) <= 1
-    )
-      entity.address(point)
-  }
-  map.on("click", "points-mvt", address)
-  lifetime.own(() => map.off("click", "points-mvt", address))
+  createPointSelection({ map, root, pushEvent, lifetime, getConfig })
   const area = createAreaEditor({ map, pushEvent: send })
   lifetime.own(area.destroy)
   const preview = ({ detail }) => (detail ? area.preview(detail) : area.clear())
