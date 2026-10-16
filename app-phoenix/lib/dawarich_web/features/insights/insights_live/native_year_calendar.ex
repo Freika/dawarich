@@ -124,6 +124,12 @@ defmodule DawarichWeb.InsightsLive.NativeYearCalendar do
   defp shade("countries", country, _, _),
     do: if(country, do: "bg-primary/20", else: "bg-base-200")
 
+  defp shade("both", country, heatmap, date) when not is_nil(country) do
+    if meters(heatmap, date) == 0,
+      do: "bg-primary/20",
+      else: shade("distance", nil, heatmap, date)
+  end
+
   defp shade(_, _, nil, _), do: "bg-base-300"
 
   defp shade(_, _, heatmap, date),

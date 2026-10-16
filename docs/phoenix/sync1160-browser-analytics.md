@@ -9,7 +9,8 @@ All-time Insights preserves tracking/geocoding counts, country/city dialogs and
 newest-first year summaries. Year cards use twelve-month distance strips and
 expandable places. A selected year offers twelve month states and a cumulative
 race. Full-access activity uses the combined year calendar: distance levels remain
-distinct in distance and combined modes, country mode shows country presence,
+distinct in distance and combined modes, combined mode preserves country-only
+days without distance, country mode shows country presence,
 and country focus dims other days. Date/distance/country labels and the UTC versus
 owner-timezone note replace the retired heatmap's map links. Lite heatmaps retain
 their separate behavior.

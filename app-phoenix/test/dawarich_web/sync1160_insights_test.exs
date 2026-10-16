@@ -182,6 +182,13 @@ defmodule DawarichWeb.Sync1160InsightsTest do
       %{country_name: "France"}
     )
 
+    Dawarich.Test.FrameSeeds.point!(
+      user.id,
+      916_295,
+      DateTime.to_unix(~U[2025-04-07 12:00:00Z]),
+      %{country_name: "France"}
+    )
+
     {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2025")
     render_async(view)
 
@@ -199,6 +206,13 @@ defmodule DawarichWeb.Sync1160InsightsTest do
         html = view |> render() |> LazyHTML.from_document() |> LazyHTML.query(selector)
         assert shade in (html |> LazyHTML.attribute("class") |> hd() |> String.split())
       end
+
+      country_only_shade = if mode == "both", do: "bg-primary/20", else: "bg-base-300"
+
+      assert has_element?(
+               view,
+               "[data-residency-day='2025-04-07'][class~='#{country_only_shade}']"
+             )
     end
 
     render_click(view, "calendar_mode", %{"mode" => "countries"})
