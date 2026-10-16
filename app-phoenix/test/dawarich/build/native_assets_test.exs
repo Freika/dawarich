@@ -12,7 +12,7 @@ defmodule Dawarich.Build.NativeAssetsTest do
   @chrome_base_bytes 6_707 + 548
   @places_inputs ~w(js/hooks/place_draft.js js/hooks/ordinary_dialog.js)
   @m5_inputs ~w(js/charts/hook.js js/charts/heatmap.js js/editor/hook.js js/insights/year_map_hook.js)
-  @other_base_bytes 335_463 - 16_713 - 1_844 - 1_632 - 232 + 22 + 31
+  @other_base_bytes 335_463 - 16_713 - 1_844 - 1_632 - 232 + 22 + 31 + 389
   @m4_inputs [
     {~w(js/hooks/archive_checksum.js js/uploaders/direct.js), 8416},
     {~w(js/hooks/credential_qr.js js/hooks/credential_value.js), 4256},
@@ -221,6 +221,8 @@ defmodule Dawarich.Build.NativeAssetsTest do
              engine_inputs(closure_inputs.(roots.map)),
              &Regex.match?(~r{js/poster/(runtime|export)|js/video/|h3-js|fflate|mp4-muxer}, &1)
            )
+
+    refute "js/map/ui/retry.js" in closure_inputs.(roots.map)
 
     refute Enum.any?(closure_inputs.(roots.poster), &String.contains?(&1, "mp4-muxer"))
     refute Enum.any?(closure_inputs.(roots.video), &String.contains?(&1, "fflate"))

@@ -6,7 +6,7 @@ import { createHostEditing } from "../../assets/js/map/edit/host.js"
 import { fixture } from "../../../spec/javascript/support/native_m6_host_fixture.mjs"
 
 test("host move completion keeps reconciliation history and moved-point effects without shadowed callbacks", async () => {
-  const build = spawnSync(fileURLToPath(new URL("../../_build/esbuild-darwin-arm64", import.meta.url)), [
+  const build = spawnSync(fileURLToPath(new URL(`../../_build/esbuild-${process.platform}-${process.arch}`, import.meta.url)), [
     fileURLToPath(new URL("../../assets/js/map/edit/host.js", import.meta.url)),
     "--log-override:duplicate-object-key=error", "--outfile=/dev/null",
   ], { encoding: "utf8" })
