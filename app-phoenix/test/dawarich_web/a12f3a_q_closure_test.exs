@@ -77,7 +77,7 @@ defmodule DawarichWeb.A12f3aQClosureTest do
       Repo.query!("DELETE FROM job_outbox", [])
       conn = write(user, :post, "/stats/2024/all/update", %{"_method" => "put"})
       assert conn.status == 303
-      assert get_resp_header(conn, "location") == ["http://www.example.com/stats"]
+      assert get_resp_header(conn, "location") == ["http://www.example.com/insights?year=2024"]
       assert Repo.query!("SELECT count(*) FROM job_outbox", []).rows == [[12]]
     end
   end

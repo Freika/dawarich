@@ -150,8 +150,16 @@ defmodule DawarichWeb.StorageRoutesTest do
   end
 
   test "route extraction preserves every existing LiveView session" do
+    for {path, action} <- [{"/stats", :index}, {"/stats/2024", :year}] do
+      route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "www.example.com")
+      assert route.plug == DawarichWeb.InsightsRedirect
+      assert route.plug_opts == action
+      assert route.pipe_through == [:native_data_request, :browser, :rails_user]
+      refute Map.has_key?(route, :phoenix_live_view)
+    end
+
     for path <-
-          ~w(/notifications /notifications/17 /imports/new /imports/17 /imports/17/edit /imports /exports /stats /stats/2024 /stats/2024/2 /digests /digests/2024 /trips /trips/17 /points /insights) do
+          ~w(/notifications /notifications/17 /imports/new /imports/17 /imports/17/edit /imports /exports /stats/2024/2 /digests /digests/2024 /trips /trips/17 /points /insights) do
       route =
         Phoenix.Router.route_info(
           DawarichWeb.Router,

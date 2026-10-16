@@ -56,6 +56,26 @@ module StatsClosureFixtures
     headers
   end
 
+  def capture_stats_null_redirect(user)
+    captures = [nil, :json_null, {}].map do |settings|
+      if settings == :json_null
+        User.where(id: user.id).update_all("settings='null'::jsonb")
+      else
+        user.update_columns(settings:)
+      end
+      sign_in user.reload
+      get '/stats'
+      { status: response.status, type: response.media_type,
+        location: response.location&.delete_prefix('http://www.example.com') }
+    end
+    expect(captures.uniq).to eq([{ status: 302, type: 'text/html', location: '/insights?year=all' }])
+    path = fixtures.join('null_settings.json')
+    corpus = JSON.parse(File.read(path))
+    row = corpus.find { _1['path'] == '/stats' }
+    row.merge!(captures.first.transform_keys(&:to_s), 'null_result' => 302, 'selectors' => [])
+    write_json(path, corpus)
+  end
+
   def capture_q_reads
     user = reader(5292)
     no_geocoding

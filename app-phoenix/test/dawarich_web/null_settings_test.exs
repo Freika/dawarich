@@ -78,6 +78,18 @@ defmodule DawarichWeb.NullSettingsTest do
                  row["type"]
 
         cond do
+          row["location"] ->
+            assert get_resp_header(conn, "location") == [row["location"]]
+
+            assert conn.resp_body == ""
+            next = get(RailsUser.signed_in(user.id), row["location"])
+            assert next.status == 200
+
+            assert next.resp_body
+                   |> LazyHTML.from_document()
+                   |> LazyHTML.query("h1")
+                   |> LazyHTML.text() == "Insights"
+
           String.starts_with?(path, "/map/v2") ->
             {:ok, view, _} = live(conn)
             render_async(view)

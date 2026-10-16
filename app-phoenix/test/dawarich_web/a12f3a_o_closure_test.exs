@@ -497,8 +497,8 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
 
   defp q_m_w_p do
     reads = [
-      {"/stats", "stats", DawarichWeb.StatsLive.NativePage},
-      {"/stats/2024", "stats", DawarichWeb.StatsLive.NativePage},
+      {"/stats", "stats", DawarichWeb.InsightsRedirect},
+      {"/stats/2024", "stats", DawarichWeb.InsightsRedirect},
       {"/stats/2024/3", "stats", DawarichWeb.StatsLive.NativePage},
       {"/digests", "digests", DawarichWeb.DigestsLive.NativePage},
       {"/digests/2024", "digests", DawarichWeb.DigestsLive.NativePage},
@@ -581,6 +581,13 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
                    DawarichWeb.VisitsNavigation ->
                      [302, 422]
 
+                   DawarichWeb.InsightsRedirect ->
+                     [[id], _] = ctx.session["warden.user.user.key"]
+
+                     if Repo.query!("SELECT jsonb_typeof(settings) FROM users WHERE id=$1", [id],
+                          log: false
+                        ).rows == [["array"]], do: [422], else: [302]
+
                    _ ->
                      [[id], _] = ctx.session["warden.user.user.key"]
 
@@ -590,6 +597,11 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
                  end
 
                assert response.status in expected
+
+               if route.plug == DawarichWeb.InsightsRedirect and response.status == 302 do
+                 year = if route.plug_opts == :index, do: "all", else: route.path_params["year"]
+                 assert get_resp_header(response, "location") == ["/insights?year=" <> year]
+               end
 
                if expected == [200] and method == "GET" do
                  if hd(String.split(path, "?")) in ~w(/trips /trips/new /trips/42/edit /visits) do

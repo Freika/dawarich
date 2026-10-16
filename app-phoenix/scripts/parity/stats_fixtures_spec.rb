@@ -328,7 +328,9 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
   it 'records Q06 and Q07 insights redirects with their original jobs and flashes' do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
     travel_to now do
-      capture_q_updates(reader(5290))
+      user = reader(5290)
+      capture_q_updates(user)
+      capture_stats_null_redirect(user)
     end
   end
 
