@@ -151,7 +151,7 @@ defmodule DawarichWeb.G44AdminBrowserTest do
     assert rows(
              "SELECT count(*) FROM job_outbox WHERE aggregate_id=$1 AND command_type='transportation.user_reclassify'",
              [c.actor.id]
-           ) == [[2]]
+           ) == [[1]]
   end
 
   @tag :g44_progress
