@@ -49,3 +49,6 @@ The deterministic witness is `native live marker retains a point arriving during
 
 
 An unchanged admitted Family refresh keeps its member controls mounted while data reloads, so background invalidations cannot repeatedly detach a pending centering click. Identical results retain the existing controls. Disable, range/locale/namespace changes, failed reads and teardown still clear data and fence late reads. The named client witness is `Family refresh preserves admitted centering controls while unchanged data reloads`; mutations independently restore eager clearing and unconditional replacement.
+
+
+A point invalidation also remains pending when another panel refresh supersedes its refresh. The next successful refresh consumes the pending delivery within its own cancellation boundary; a cancelled refresh cannot discard the only notification of a new point. Range/live-state changes still reset that pending state. `native live marker survives a panel refresh superseding its point invalidation` deterministically exercises this real host sequence; removing pending delivery consumption fails it.

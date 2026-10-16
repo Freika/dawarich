@@ -123,3 +123,47 @@ test("native live marker retains a point arriving during the enabling baseline",
   )
   f.owner.destroy()
 })
+
+test("native live marker survives a panel refresh superseding its point invalidation", async () => {
+  const f = fixture({ liveEnabled: true, familyEnabled: true })
+  const result = (resource, points = []) => ({
+    data:
+      resource === "points"
+        ? points
+        : resource === "family_locations"
+          ? { locations: [] }
+          : { members: [] },
+  })
+  f.reader.read = async (resource) => result(resource)
+  await f.owner.mount()
+  let started, release
+  const reading = new Promise((resolve) => {
+    started = resolve
+  })
+  f.reader.read = (resource) => {
+    if (resource === "family_locations") {
+      started()
+      return new Promise((resolve) => {
+        release = resolve
+      })
+    }
+    return Promise.resolve(result(resource, [row]))
+  }
+  const delivery = f.owner.reconnect({ kinds: ["points"] })
+  await reading
+  f.reader.read = async (resource) => result(resource, [row])
+  try {
+    await f.owner.update({ ...f.owner.config, panel: "family" })
+    release(result("family_locations"))
+    await delivery
+    assert.deepEqual(
+      f.sources.get("recent-point-source")?.data.features[0]?.geometry
+        .coordinates,
+      [13.41, 52.51],
+    )
+  } finally {
+    release(result("family_locations"))
+    await delivery
+    f.owner.destroy()
+  }
+})
