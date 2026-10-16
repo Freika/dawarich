@@ -42,6 +42,14 @@ export class PointEditHistory {
     this.onChange()
   }
 
+  clear() {
+    this.entries = []
+    this.undone = []
+    this.pointRevisions.clear()
+    this.trackRevisions.clear()
+    this.onChange()
+  }
+
   undo() {
     return this._step(this.entries, this.undone, "from")
   }

@@ -62,3 +62,24 @@ test("native host search selects a bounded suggestion and fits canonical timelin
   f.owner.destroy()
   assert.equal(input.listeners.get("input").size, 0)
 })
+
+test("native search keeps repeated completed selections until an outside map click", async () => {
+  const f = fixture()
+  const visits = new Element()
+  f.nodes.set("[data-map-search-visits]", visits)
+  f.reader.read = async () => ({ data: { locations: [], total_locations: 0 } })
+  f.map.flyTo = () => {}
+  await f.owner.mount()
+  try {
+    for (let i = 0; i < 2; i++) {
+      await f.owner.search.results.open({ name: `Berlin ${i}`, lat: 52, lon: 13 })
+      assert.equal(visits.hidden, false)
+      assert.ok(visits.children.length > 0)
+    }
+    f.map.emit("click", { originalEvent: { target: f.element } })
+    assert.equal(visits.hidden, true)
+    assert.deepEqual(visits.children, [])
+  } finally {
+    f.owner.destroy()
+  }
+})

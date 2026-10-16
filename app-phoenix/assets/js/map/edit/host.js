@@ -25,6 +25,7 @@ export function createHostEditing({
       range.timezone,
     ])
   let sessionScope = identity(scope())
+  let styleName = getConfig().styleName
   const reads = (resource, id, options) =>
     reader
       .read(resource, { id, import_id: scope().importId }, options)
@@ -98,9 +99,11 @@ export function createHostEditing({
     transport,
     config(next) {
       const nextScope = identity(next.range ?? {})
-      if (nextScope !== sessionScope) {
+      if (nextScope !== sessionScope || next.styleName !== styleName) {
         invalidate()
+        transport.history.clear()
         sessionScope = nextScope
+        styleName = next.styleName
       }
       editor.edits.panel.distanceUnit = next.distanceUnit ?? "km"
       editor.importScoped = Boolean(next.range?.importId)

@@ -6,6 +6,7 @@ defmodule DawarichWeb.NativePublicResource do
   attr :presentation, :map, required: true
   attr :selected_day, :string, default: nil
   attr :locale, :string, required: true
+  attr :gallery_days, :any, default: MapSet.new()
 
   def resource(%{presentation: %{resource: nil}} = assigns), do: ~H""
 
@@ -57,6 +58,8 @@ defmodule DawarichWeb.NativePublicResource do
       </div>
       <details
         :for={day <- @data.days}
+        id={"native-public-day-#{day.date}"}
+        phx-hook="PublicGallery"
         data-public-day={to_string(day.date)}
         data-public-day-selected={to_string(@selected_day == to_string(day.date))}
         class="min-w-0 rounded-lg bg-base-200 p-3"
@@ -83,7 +86,10 @@ defmodule DawarichWeb.NativePublicResource do
         </p>
         <div class="grid grid-cols-3 gap-2 min-w-0">
           <img
-            :for={photo <- day.photos}
+            :for={
+              photo <-
+                if(MapSet.member?(@gallery_days, to_string(day.date)), do: day.photos, else: [])
+            }
             src={"/native/public/maps/#{@link.id}/photos/#{URI.encode_www_form(photo["id"])}/thumbnail?" <> URI.encode_query(%{source: photo["source"]})}
             loading="lazy"
             alt=""

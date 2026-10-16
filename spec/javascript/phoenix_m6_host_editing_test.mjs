@@ -299,3 +299,25 @@ test("native editing clears a selected timeline route before opening drag geomet
     f.owner.destroy()
   }
 })
+
+test("style changes replace native edit history and discard its selected geometry", async () => {
+  const f = fixture({ editEnabled: true, styleName: "light" })
+  f.map.getCanvasContainer = () => ({ style: {} })
+  f.reader.read = async () => ({ data: structuredClone(editTrack) })
+  f.reader.pages = async () => structuredClone(editPoints)
+  await f.owner.mount()
+  try {
+    const editor = f.owner.editor
+    await editor.selectTrack(9, { forEditing: true })
+    editor.edits.record({ pointId: 7, from: { longitude: 13, latitude: 52 }, to: { longitude: 14, latitude: 53 } }, {
+      point: { ...editPoints[0], revision: 1 }, revision: { point: 1, track: 1 }, track: editTrack,
+    })
+    assert.equal(editor.edits.history.size, 1)
+    await f.owner.update({ ...f.owner.config, styleName: "dark" })
+    assert.equal(editor.edits.history.size, 0)
+    assert.equal(editor.data, null)
+    assert.equal(f.layers.has("track-points"), false)
+  } finally {
+    f.owner.destroy()
+  }
+})

@@ -59,6 +59,32 @@ defmodule DawarichWeb.PublicNativeGalleryTest do
     :ok
   end
 
+  test "public day galleries load on expansion clear on collapse and reopen with only authorized photos" do
+    conn = get(build_conn(), "/s/" <> @id)
+
+    {:ok, view, html} =
+      live(put_private(conn, :live_view_connect_info, %{session: get_session(conn)}))
+
+    refute has_element?(view, "#native-public-resource img")
+    refute String.contains?(html, "private-photo")
+    render_hook(view, "public:gallery", %{"day" => "2026-05-10", "open" => true})
+    assert has_element?(view, "details[data-public-day='2026-05-10'] img[src*='visible-photo']")
+    refute has_element?(view, "img[src*='private-photo']")
+    render_hook(view, "public:gallery", %{"day" => "2026-05-10", "open" => false})
+    refute has_element?(view, "#native-public-resource img")
+    render_hook(view, "public:gallery", %{"day" => "2026-05-10", "open" => true})
+    assert has_element?(view, "details[data-public-day='2026-05-10'] img[src*='visible-photo']")
+    render_hook(view, "public:gallery", %{"day" => "2099-01-01", "open" => true})
+    refute has_element?(view, "details[data-public-day='2099-01-01']")
+
+    Repo.query!(
+      "UPDATE shared_links SET settings=$2 WHERE id=$1::text::uuid",
+      [@id, %{"show_photos" => false}], log: false)
+
+    render_hook(view, "public:gallery", %{"day" => "2026-05-10", "open" => true})
+    refute has_element?(view, "#native-public-resource img")
+  end
+
   test "native public map gallery retains authorized photos and clears private or disabled photo delivery" do
     conn = get(build_conn(), "/s/" <> @id)
     assert conn.status == 200
@@ -70,10 +96,8 @@ defmodule DawarichWeb.PublicNativeGalleryTest do
     page = assigns.public_presentation
     assert Enum.map(page.resource.photos, & &1["id"]) == ["visible-photo"]
 
-    assert has_element?(
-             view,
-             "details[data-public-day='2026-05-10'] img[src*='visible-photo']"
-           )
+    render_hook(view, "public:gallery", %{"day" => "2026-05-10", "open" => true})
+    assert has_element?(view, "details[data-public-day='2026-05-10'] img[src*='visible-photo']")
 
     assert !String.contains?(html, "private-photo")
     assert !String.contains?(html, "data-controller")
