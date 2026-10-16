@@ -3,10 +3,47 @@ defmodule Dawarich.Accounts.DataAccess do
   alias Dawarich.Accounts
   alias Dawarich.Accounts.{Principal, Scope}
 
+  @memo {__MODULE__, :request_users}
+  @read ~r/\A\s*(select|with|begin|commit|savepoint|release|rollback)\b/i
+  @write ~r/\b(insert|update|delete|merge)\b/i
+
+  def with_request_memo(fun) do
+    previous = Process.put(@memo, %{})
+
+    try do
+      fun.()
+    after
+      if previous, do: Process.put(@memo, previous), else: Process.delete(@memo)
+    end
+  end
+
+  def cached(id) do
+    case Process.get(@memo) do
+      %{^id => user} -> user
+      _ -> nil
+    end
+  end
+
+  def remember(%{id: id} = user) do
+    with %{} = memo <- Process.get(@memo), do: Process.put(@memo, Map.put(memo, id, user))
+    user
+  end
+
+  def attach_write_invalidation do
+    :telemetry.attach(@memo, [:dawarich, :repo, :query], &__MODULE__.handle_query/4, nil)
+  end
+
+  def handle_query(_event, _measurements, %{query: query}, _config) when is_binary(query) do
+    if is_map(Process.get(@memo)) and (not (query =~ @read) or query =~ @write),
+      do: Process.put(@memo, %{})
+  end
+
+  def handle_query(_event, _measurements, _metadata, _config), do: :ok
+
   def admit(subject, opts \\ [])
 
   def admit(%Scope{user: %{id: id} = original} = subject, opts) do
-    with user when not is_nil(user) <- Accounts.get(id),
+    with user when not is_nil(user) <- fresh(id),
          true <- Principal.same_identity?(original, user),
          scope = %{subject | user: user},
          :ok <- settings(scope, opts),
@@ -20,6 +57,14 @@ defmodule Dawarich.Accounts.DataAccess do
   end
 
   def admit(_, _), do: {:error, :stale_session}
+
+  defp fresh(id) do
+    case Process.get(@memo) do
+      %{^id => user} -> user
+      %{} -> with %{} = user <- Accounts.get(id), do: remember(user)
+      nil -> Accounts.get(id)
+    end
+  end
 
   defp settings(scope, opts) do
     if opts[:settings] == true and not Dawarich.Admin.Access.supported?(scope.user),

@@ -90,6 +90,7 @@ defmodule Dawarich.Application do
 
     Dawarich.QrCache.create_table()
     Dawarich.TtlCache.create_table()
+    Dawarich.Accounts.DataAccess.attach_write_invalidation()
     Dawarich.Experimental.create_cache_table()
 
     if jobs_runtime?() do

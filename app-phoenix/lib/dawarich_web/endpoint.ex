@@ -11,6 +11,11 @@ defmodule DawarichWeb.Endpoint do
 
   def session_options, do: @session_options
 
+  def call(%Plug.Conn{method: method} = conn, opts) when method in ["GET", "HEAD"],
+    do: Dawarich.Accounts.DataAccess.with_request_memo(fn -> super(conn, opts) end)
+
+  def call(conn, opts), do: super(conn, opts)
+
   socket "/phoenix/live", DawarichWeb.LiveSocket,
     websocket: [connect_info: [session: @session_options]],
     longpoll: false
