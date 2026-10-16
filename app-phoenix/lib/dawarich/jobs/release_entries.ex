@@ -6,6 +6,7 @@ defmodule Dawarich.Jobs.ReleaseEntries do
 
   @commands [
     {"release.achievements_backfill", Ops.Achievements},
+    {"release.boundary_points", Ops.BoundaryPoints},
     {"release.import_backfill", Ops.ImportBackfill},
     {"release.point_dimensions_country", Ops.PointBackfill},
     {"release.route_opacity", Ops.RouteOpacity},
