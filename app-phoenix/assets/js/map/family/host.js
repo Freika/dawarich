@@ -50,6 +50,9 @@ export function createMapFamilyLayer({
     if (!container) return;
     const signature = JSON.stringify([
       rows, members, config.locale, config.range?.timezone, config.uiLabels,
+      members.map(({ sharing_since: since }) =>
+        Math.min(365, Math.floor((Date.now() - Date.parse(since)) / 86400000)),
+      ),
     ]);
     if (rendered?.container === container && rendered.signature === signature) return;
     rendered = { container, signature };

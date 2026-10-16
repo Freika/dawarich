@@ -412,3 +412,34 @@ test("Family refresh preserves admitted centering controls while unchanged data 
     f.owner.destroy()
   }
 })
+
+test("Family unchanged refresh updates sharing age at its next day boundary", async (t) => {
+  const f = fixture()
+  let now = Date.parse("2026-06-02T01:00:00Z")
+  t.mock.method(Date, "now", () => now)
+  const read = f.reader.read
+  f.reader.read = (resource, ...args) =>
+    resource === "family_history"
+      ? Promise.resolve({
+          data: {
+            members: [{ user_id: 7, sharing_since: "2026-06-01T01:00:00Z" }],
+          },
+        })
+      : read(resource, ...args)
+  const config = {
+    ...f.config,
+    uiLabels: {
+      "family.sharing_since.one": "{count} day",
+      "family.sharing_since.other": "{count} days",
+    },
+  }
+  try {
+    await f.owner.update(config)
+    assert.equal(f.list.children[0].children.at(-1).textContent, "1 day")
+    now += 86400000
+    await f.owner.update(config)
+    assert.equal(f.list.children[0].children.at(-1).textContent, "2 days")
+  } finally {
+    f.owner.destroy()
+  }
+})
