@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- Ignore small GPS altitude fluctuations when calculating track elevation gain and loss (#3458)
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
 
 
