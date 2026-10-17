@@ -56,6 +56,53 @@ RSpec.describe Users::SettingsUpdater do
       end
     end
 
+    context 'when the effective allowlist does not change' do
+      let(:all_modes) { Track::TRANSPORTATION_MODES.keys.map(&:to_s) }
+
+      it 'does not trigger reclassification when stored blank and sent the full list' do
+        user.settings['enabled_transportation_modes'] = []
+        user.save!
+
+        expect { described_class.new(user, 'enabled_transportation_modes' => all_modes).call }
+          .not_to have_enqueued_job(TransportationModes::UserReclassifyJob)
+      end
+
+      it 'does not trigger reclassification when unset and sent the full list' do
+        expect(user.settings['enabled_transportation_modes']).to be_nil
+
+        expect { described_class.new(user, 'enabled_transportation_modes' => all_modes).call }
+          .not_to have_enqueued_job(TransportationModes::UserReclassifyJob)
+      end
+
+      it 'does not trigger reclassification when the full list is resent in a different order' do
+        user.settings['enabled_transportation_modes'] = all_modes
+        user.save!
+
+        expect { described_class.new(user, 'enabled_transportation_modes' => all_modes.reverse).call }
+          .not_to have_enqueued_job(TransportationModes::UserReclassifyJob)
+      end
+    end
+
+    context 'when the effective allowlist actually changes' do
+      let(:all_modes) { Track::TRANSPORTATION_MODES.keys.map(&:to_s) }
+
+      it 'triggers reclassification moving from the full list to a subset' do
+        user.settings['enabled_transportation_modes'] = all_modes
+        user.save!
+
+        expect { described_class.new(user, 'enabled_transportation_modes' => %w[walking cycling]).call }
+          .to have_enqueued_job(TransportationModes::UserReclassifyJob).with(user.id)
+      end
+
+      it 'triggers reclassification moving from a subset to the full list' do
+        user.settings['enabled_transportation_modes'] = %w[walking cycling]
+        user.save!
+
+        expect { described_class.new(user, 'enabled_transportation_modes' => all_modes).call }
+          .to have_enqueued_job(TransportationModes::UserReclassifyJob).with(user.id)
+      end
+    end
+
     context 'when the allowlist contains no valid mode' do
       it 'rejects the update' do
         result = described_class.new(user, 'enabled_transportation_modes' => %w[teleporting]).call

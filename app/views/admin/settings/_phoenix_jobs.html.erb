@@ -1,0 +1,22 @@
+<% gauges = phoenix_jobs[:gauges] %>
+<% summary = phoenix_jobs[:summary] %>
+<section id="phoenix-jobs" aria-labelledby="instance-settings-phoenix-jobs" class="mb-8">
+  <h2 id="instance-settings-phoenix-jobs" class="min-w-0 text-xl font-semibold"><%= t('admin.settings.phoenix_jobs.title') %></h2>
+  <div class="mt-4 min-w-0 rounded-box border border-base-content/10 bg-base-200 p-5" data-testid="instance-settings-phoenix-jobs">
+    <% if gauges[:tables] == :unknown || summary[:status] == 'unknown' %>
+      <p class="max-w-3xl [text-wrap:pretty]"><%= t('admin.settings.phoenix_jobs.unknown') %></p>
+    <% elsif !gauges[:tables] %>
+      <p class="max-w-3xl [text-wrap:pretty]"><%= t('admin.settings.phoenix_jobs.not_installed') %></p>
+    <% elsif summary[:alarm] %>
+      <div role="alert" class="flex items-start gap-2 text-error">
+        <%= icon 'triangle-alert', class: 'size-4 shrink-0 mt-0.5' %>
+        <p class="min-w-0 max-w-3xl [text-wrap:pretty]"><%= t('admin.settings.phoenix_jobs.alarm') %></p>
+      </div>
+    <% else %>
+      <p class="max-w-3xl [text-wrap:pretty]"><%= t('admin.settings.phoenix_jobs.ok') %></p>
+    <% end %>
+    <% if gauges[:tables] == true %>
+      <pre class="mt-4 text-xs whitespace-pre-wrap [overflow-wrap:anywhere]"><%= JSON.pretty_generate(gauges.except(:tables)) %></pre>
+    <% end %>
+  </div>
+</section>

@@ -272,6 +272,7 @@ RSpec.describe 'Settings::Integrations', type: :request do
     end
 
     it 'sends an admin who follows an old geocoding link to Instance settings' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
       user.update!(admin: true)
 
       get settings_integrations_path(service: 'geocoding')

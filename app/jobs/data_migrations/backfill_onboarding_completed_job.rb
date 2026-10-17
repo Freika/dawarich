@@ -4,6 +4,8 @@ class DataMigrations::BackfillOnboardingCompletedJob < ApplicationJob
   queue_as :data_migrations
 
   def perform
+    return if ReleaseCommands.forwarded?(self, 'release.onboarding_completed', {})
+
     Rails.logger.info('Starting onboarding_completed backfill job')
 
     # Mark onboarding as completed for existing users who already have location data.

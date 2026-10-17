@@ -133,12 +133,8 @@ class Auth::AccountLinksController < ApplicationController
     if Auth::FindOrCreateOauthUser.acquire_rate_limit(user.id)
       token = Auth::IssueAccountLinkToken.new(user, provider: pending['provider'], uid: pending['uid']).call
       link_url = auth_account_link_url(token: token)
-      Users::MailerSendingJob.perform_later(
-        user.id,
-        'oauth_account_link',
-        provider_label: label_for(pending),
-        link_url: link_url
-      )
+      UserMailCommands.produce('oauth_account_link', user.id, producer: self.class.name,
+                                                       provider_label: label_for(pending), link_url: link_url)
       redirect_to new_user_session_path,
                   notice: I18n.t('controllers.auth.account_links.confirmation_link_sent', email: user.email)
     else

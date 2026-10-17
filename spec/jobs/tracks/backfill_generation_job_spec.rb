@@ -6,6 +6,17 @@ RSpec.describe Tracks::BackfillGenerationJob do
   let(:user) { create(:user) }
   let(:old_time) { Time.zone.local(2024, 6, 15, 10, 0, 0) }
 
+  around do |example|
+    ActiveRecord::Base.transaction do
+      ActiveRecord::Base.connection.execute('DROP TABLE IF EXISTS phoenix.track_backfill_ranges')
+      PhoenixSchema.reset!
+      example.run
+      raise ActiveRecord::Rollback
+    end
+  ensure
+    PhoenixSchema.reset!
+  end
+
   after do
     Tracks::BackfillScheduler.pop_range(user.id)
   end

@@ -4,6 +4,9 @@ class DataMigrations::BackfillAchievementsJob < ApplicationJob
   queue_as :data_migrations
 
   def perform
+    return if ReleaseCommands.forwarded?(self, 'release.achievements_backfill', {},
+                                         scheduled_at: scheduled_at || Time.current)
+
     return if Country.none?
 
     Achievements::LoadRegions.new.call if regions_missing?

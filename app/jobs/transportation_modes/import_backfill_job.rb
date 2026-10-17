@@ -10,6 +10,10 @@ module TransportationModes
     queue_as :low_priority
 
     def perform(import_id)
+      return if ReleaseCommands.forwarded?(self, 'release.import_backfill',
+                                           { 'import_id' => import_id, 'ambient_zone' => Time.zone.name },
+                                           scheduled_at: scheduled_at || Time.current)
+
       import = Import.find_by(id: import_id)
       return unless import
 

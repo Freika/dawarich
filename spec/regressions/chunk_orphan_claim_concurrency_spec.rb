@@ -28,7 +28,7 @@ RSpec.describe 'Chunk orphan claims under concurrency', :non_transactional, thre
           builder = builder_class.new(User.find(user.id))
           ready.count_down
           start.wait
-          builder.create_track_from_points(snapshot, 999_999, orphan_only: true)
+          builder.create_tracks_from_orphan_points(snapshot)
         end
       end
     end
@@ -49,5 +49,6 @@ RSpec.describe 'Chunk orphan claims under concurrency', :non_transactional, thre
     start&.count_down
     threads&.each { |thread| thread.kill if thread.alive? }
     threads&.each(&:join)
+    NonTransactionalConcurrency.delete_all
   end
 end

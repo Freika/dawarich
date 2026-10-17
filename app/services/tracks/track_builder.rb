@@ -56,13 +56,7 @@ module Tracks::TrackBuilder
   # but bad data is rarely useful.
   MAX_DISTANCE_METERS = 100_000_000
 
-  def create_track_from_points(points, pre_calculated_distance, tracker_id: nil,
-                               skip_segment_detection: false, orphan_only: false)
-    if orphan_only
-      return create_track_from_orphan_points(points, tracker_id: tracker_id,
-                                            skip_segment_detection: skip_segment_detection)
-    end
-
+  def create_track_from_points(points, pre_calculated_distance, tracker_id: nil, skip_segment_detection: false)
     return nil if points.size < 2
 
     resolved_tracker_id = tracker_id || points.first.tracker_id
@@ -112,25 +106,27 @@ module Tracks::TrackBuilder
   # Lock in ID order, then re-read ownership under the lock before calculating
   # metadata. Filtering only the final UPDATE would leave a phantom path/track.
   # Boundary merges deliberately use the default path to move owned points.
-  def create_track_from_orphan_points(points, tracker_id:, skip_segment_detection:)
+  def create_tracks_from_orphan_points(points, tracker_id: nil, skip_segment_detection: false)
     singleton = nil
-    track = Point.transaction do
-      orphans = Point.where(user_id: user.id, id: points.map(&:id), track_id: nil)
-                     .order(:id).lock.to_a.sort_by { |point| [point.timestamp, point.id] }
+    tracks = Point.transaction do
+      orphans = claimable_points.where(user_id: user.id, id: points.map(&:id), track_id: nil)
+                                .order(:id).lock.to_a.sort_by { |point| [point.timestamp, point.id] }
       if orphans.one?
         singleton = orphans.first
-        next
+        next []
       end
-      next if orphans.empty?
 
-      distance = Point.calculate_distance_for_array_geocoder(orphans, :m)
-      create_track_from_points(orphans, distance, tracker_id: tracker_id,
-                               skip_segment_detection: skip_segment_detection)
+      Tracks::OrphanRuns.new(user, orphans).call.filter_map do |run|
+        next if run.size < 2
+
+        distance = Point.calculate_distance_for_array_geocoder(run, :m)
+        create_track_from_points(run, distance, tracker_id: tracker_id, skip_segment_detection: skip_segment_detection)
+      end
     end
 
-    return track unless singleton
+    return tracks unless singleton
 
-    Tracks::OrphanPointAttacher.new(user, singleton, points).call
+    [Tracks::OrphanPointAttacher.new(user, singleton, points, claimable: claimable_points).call].compact
   end
 
   def reuse_existing_track(track, points, original_error)
@@ -158,7 +154,7 @@ module Tracks::TrackBuilder
     # path/distance were computed from its own point set, and stretching it
     # silently corrupts the track's metadata. Points outside the window stay
     # orphaned (track_id: nil) and get picked up by the next generation pass.
-    Point.where(
+    claimable_points.where(
       id: points.map(&:id),
       track_id: nil,
       timestamp: existing.start_at.to_i..existing.end_at.to_i
@@ -239,7 +235,7 @@ module Tracks::TrackBuilder
     detector = TransportationModes::Detector.new(
       track,
       enabled_modes: safe_settings.enabled_transportation_modes,
-      preserved: track.track_segments.manually_corrected.to_a
+      preserved: track.track_segments.outranking_inference.to_a
     )
     segment_data = detector.call
 
@@ -271,6 +267,10 @@ module Tracks::TrackBuilder
   end
 
   private
+
+  def claimable_points
+    Point.all
+  end
 
   def user
     raise NotImplementedError, 'Including class must implement user method'

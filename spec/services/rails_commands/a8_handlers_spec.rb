@@ -1,0 +1,101 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe 'RailsCommands::A8Handlers' do
+  include ActiveJob::TestHelper
+
+  let(:user) { create(:user) }
+
+  def detached_payload(video)
+    attachment = video.file.attachment
+    { 'user_id' => video.user_id, 'blob_id' => attachment.blob_id, 'action' => 'purge_detached',
+      'attachment' => attachment.attributes.slice('id', 'name', 'record_type', 'record_id', 'blob_id') }
+  end
+
+  it 'videos/shared_blob is answered and persisted as Rails answered it' do
+    state = JSON.parse(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/shared_blob.json').read)
+    graph = state.fetch('after')
+    actor = graph.fetch('user')
+    create(:user, id: actor.fetch('id'), email: actor.fetch('email'))
+    graph.fetch('active_storage_blobs').each { ActiveStorage::Blob.create!(_1) }
+    graph.fetch('route_videos').each { RouteVideo.create!(_1) }
+    graph.fetch('active_storage_attachments').each { ActiveStorage::Attachment.create!(_1) }
+    clear_enqueued_jobs
+    attachment = state.fetch('before').fetch('active_storage_attachments').first
+    payload = { 'user_id' => actor.fetch('id'), 'blob_id' => attachment.fetch('blob_id'),
+                'action' => 'purge_detached',
+                'attachment' => attachment.slice('id', 'name', 'record_type', 'record_id', 'blob_id') }
+
+    RailsCommands::Registry.handler('route_videos.attachment_job').call(payload)
+
+    expect(enqueued_jobs).to be_empty
+    graph.fetch('active_storage_blobs').each do |row|
+      expect(ActiveStorage::Blob.find(row.fetch('id')).attributes.slice(*row.keys)).to eq(
+        row.transform_values { _1.is_a?(String) && _1.match?(/\A\d{4}-\d{2}-\d{2}T/) ? Time.iso8601(_1) : _1 }
+      )
+    end
+    expect(ActiveStorage::Attachment.where(blob_id: attachment.fetch('blob_id')).pluck(:id)).to eq(
+      graph.fetch('active_storage_attachments').pluck('id')
+    )
+  end
+
+  it 'attachment shim retains a blob referenced by another record' do
+    first = create(:route_video, :with_file, user:)
+    blob = first.file.blob
+    second = create(:route_video, user:)
+    second.file.attach(blob)
+    payload = detached_payload(first)
+    first.file.attachment.delete
+    first.update!(status: :expired)
+    clear_enqueued_jobs
+
+    RailsCommands::Registry.handler('route_videos.attachment_job').call(payload)
+
+    expect(blob.reload.attachments.pluck(:record_id)).to eq([second.id])
+    expect(enqueued_jobs).to be_empty
+    second.file.attachment.delete
+    expect { RailsCommands::A8Handlers.attachment_job(payload) }.to have_enqueued_job(ActiveStorage::PurgeJob).with(blob)
+    perform_enqueued_jobs(only: ActiveStorage::PurgeJob)
+    expect(ActiveStorage::Blob.exists?(blob.id)).to be(false)
+    clear_enqueued_jobs
+    RailsCommands::A8Handlers.attachment_job(payload)
+    expect(enqueued_jobs).to be_empty
+  end
+
+  it 'attachment shim refuses invalid identity and purges only unattached rejection blobs' do
+    video = create(:route_video, :with_file, user:)
+    blob = video.file.blob
+    payload = detached_payload(video)
+    clear_enqueued_jobs
+    RailsCommands::A8Handlers.attachment_job(payload)
+    video.file.attachment.delete
+    RailsCommands::A8Handlers.attachment_job(payload.deep_merge('attachment' => { 'blob_id' => blob.id + 1 }))
+    RailsCommands::A8Handlers.attachment_job(payload.merge('user_id' => user.id + 1))
+    RailsCommands::A8Handlers.attachment_job(payload.merge('action' => 'anything'))
+    expect(enqueued_jobs).to be_empty
+    expect(blob.reload).to be_present
+    expect do
+      RailsCommands::A8Handlers.attachment_job('user_id' => user.id, 'blob_id' => blob.id,
+                                               'action' => 'purge_unattached')
+    end
+      .to have_enqueued_job(ActiveStorage::PurgeJob).with(blob)
+  end
+
+  it 'redetection shim invokes existing FullHistoryRedetectJob with the owner id' do
+    user.update_columns(visits_redetected_at: nil)
+    clear_enqueued_jobs
+    expect do
+      RailsCommands::Registry.handler('visits.web_redetect').call(
+        'user_id' => user.id, 'locale' => 'de', 'timezone' => 'America/New_York'
+      )
+    end
+      .to have_enqueued_job(Visits::FullHistoryRedetectJob).with(user.id)
+    expect(enqueued_jobs.last['locale']).to eq('de')
+    expect(enqueued_jobs.last['timezone']).to eq('America/New_York')
+    expect(user.reload.visits_redetected_at).to be_nil
+    clear_enqueued_jobs
+    RailsCommands::A8Handlers.redetect('user_id' => User.maximum(:id) + 1)
+    expect(enqueued_jobs).to be_empty
+  end
+end

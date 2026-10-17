@@ -1,0 +1,167 @@
+import Config
+
+reporting =
+  Dawarich.ErrorReporting.Config.from_env(
+    if(config_env() == :test, do: %{}, else: System.get_env()),
+    config_env()
+  )
+
+config :dawarich, :error_reporting, reporting
+config :sentry, Dawarich.ErrorReporting.Config.sdk(reporting)
+
+env_integer = fn name, default ->
+  case System.get_env(name) do
+    value when value in [nil, ""] -> default
+    value -> String.to_integer(value)
+  end
+end
+
+config :dawarich, :api_body_limits,
+  json: env_integer.("DAWARICH_MAX_REQUEST_BODY_BYTES", 8_388_608),
+  multipart: env_integer.("DAWARICH_MAX_MULTIPART_BODY_BYTES", 268_435_456)
+
+ssl_options = fn mode, root_cert ->
+  case mode do
+    "require" -> [verify: :verify_none]
+    mode when mode in ["verify-ca", "verify-full"] and root_cert in [nil, ""] -> true
+    mode when mode in ["verify-ca", "verify-full"] -> [cacertfile: root_cert]
+    _ -> false
+  end
+end
+
+socket_options = fn host ->
+  address = String.to_charlist(host || "localhost")
+
+  case {:inet.getaddr(address, :inet), :inet.getaddr(address, :inet6)} do
+    {{:error, _}, {:ok, _}} -> [:inet6]
+    _ -> []
+  end
+end
+
+oban_node = fn hostname ->
+  if is_binary(hostname) and hostname =~ ~r/\A\S+\z/,
+    do: hostname,
+    else: :inet.gethostname() |> elem(1) |> to_string()
+end
+
+if config_env() != :test do
+  Dawarich.Cloud.Configuration.validate!(System.get_env())
+
+  default_database =
+    if config_env() == :prod, do: "dawarich_production", else: "dawarich_development"
+
+  {repo_config, host, url_sslmode} =
+    case System.get_env("DATABASE_URL") do
+      url when url in [nil, ""] ->
+        host = System.get_env("DATABASE_HOST", "localhost")
+
+        {[
+           hostname: host,
+           port: env_integer.("DATABASE_PORT", 5432),
+           username: System.get_env("DATABASE_USERNAME"),
+           password: System.get_env("DATABASE_PASSWORD"),
+           database: System.get_env("DATABASE_NAME", default_database)
+         ], host, nil}
+
+      url ->
+        uri = url |> String.replace(~r{^postgis://}, "postgres://") |> URI.parse()
+        query = URI.decode_query(uri.query || "")
+        rest = query |> Map.delete("sslmode") |> URI.encode_query()
+
+        {[url: URI.to_string(%{uri | query: if(rest == "", do: nil, else: rest)})], uri.host,
+         query["sslmode"]}
+    end
+
+  queues = [
+    app_version_checking: 1,
+    mailers: 2,
+    trips: 2,
+    route_videos: 1,
+    maintenance: 1,
+    exports: 1,
+    posters: 1,
+    projections: 1,
+    imports: 1,
+    tracks: 2,
+    map_matching: env_integer.("MAP_MATCHING_CONCURRENCY", 2),
+    reverse_geocoding: 2,
+    visit_suggesting: 1,
+    extractions: 1
+  ]
+
+  config :dawarich,
+         Dawarich.Repo,
+         repo_config ++
+           [
+             ssl:
+               ssl_options.(
+                 url_sslmode || System.get_env("PGSSLMODE"),
+                 System.get_env("PGSSLROOTCERT")
+               ),
+             socket_options: socket_options.(host),
+             pool_size:
+               Enum.sum(Keyword.values(queues)) + 3 + env_integer.("RAILS_MAX_THREADS", 5)
+           ]
+
+  config :dawarich, Oban,
+    node: oban_node.(System.get_env("HOSTNAME")),
+    peer: Oban.Peers.Database,
+    stager: {Oban.Stager, []},
+    queues: queues,
+    cron: [
+      crontab:
+        Dawarich.Jobs.Registry.crontab() ++
+          [{"*/15 * * * *", Dawarich.Tracks.MapMatching.Sweeper}],
+      timezone: Dawarich.Jobs.Cron.timezone()
+    ],
+    pruner: false,
+    lifeline: [rescue_after: {60, :minute}],
+    shutdown_grace_period: 12_000
+
+  cable_transport =
+    case System.get_env("DAWARICH_CABLE_TRANSPORT") do
+      value when value in [nil, "", "redis"] -> :redis
+      "pg" -> :pg
+      _ -> raise ArgumentError, "DAWARICH_CABLE_TRANSPORT must be redis or pg"
+    end
+
+  config :dawarich, :cable,
+    transport: cable_transport,
+    url: System.get_env("REDIS_URL"),
+    database: env_integer.("RAILS_WS_DB", 2)
+
+  config :dawarich, :redis,
+    url: System.get_env("REDIS_URL"),
+    database: env_integer.("RAILS_JOB_QUEUE_DB", 1),
+    cache_database: env_integer.("RAILS_CACHE_DB", 0)
+
+  config :dawarich, :extraction_timeout_ms, 480_000
+end
+
+config :dawarich,
+       :rails_routes,
+       (System.get_env("DAWARICH_RAILS_ROUTES") || "")
+       |> String.split(",")
+       |> Enum.map(&String.trim/1)
+       |> Enum.reject(&(&1 == ""))
+
+config :dawarich,
+       :phoenix_auth,
+       (System.get_env("DAWARICH_PHOENIX_AUTH") || "")
+       |> String.split(",")
+       |> Enum.map(&(&1 |> String.trim() |> String.downcase()))
+       |> Enum.reject(&(&1 == ""))
+
+case System.get_env("DAWARICH_RAILS_ARGS") do
+  args when args in [nil, ""] ->
+    :ok
+
+  args ->
+    config :dawarich,
+           :rails_argv,
+           args |> String.replace_suffix("\x1F", "") |> String.split("\x1F")
+end
+
+config :dawarich,
+       :job_entries,
+       Dawarich.Standalone.job_entries()

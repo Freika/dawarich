@@ -132,12 +132,8 @@ module Auth
         host: default_mailer_host,
         protocol: default_mailer_protocol
       )
-      Users::MailerSendingJob.perform_later(
-        existing_user.id,
-        'oauth_account_link',
-        provider_label: @provider_label,
-        link_url: link_url
-      )
+      UserMailCommands.produce('oauth_account_link', existing_user.id, producer: self.class.name,
+                                                       provider_label: @provider_label, link_url: link_url)
       :sent
     end
 

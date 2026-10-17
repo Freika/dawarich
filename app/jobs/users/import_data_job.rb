@@ -7,6 +7,26 @@ class Users::ImportDataJob < ApplicationJob
 
   def perform(import_id)
     import = Import.find(import_id)
+    error = nil
+    result = JobOwnership.with_owner('command:users.import_data') do
+      perform_legacy(import_id)
+    rescue StandardError => e
+      error = e
+      nil
+    end
+    raise error if error
+    return result unless result == :not_owner
+
+    Users::DataCommands.forward_import(import, event_id: job_id, zone: Time.zone.name, locale: I18n.locale.to_s)
+  rescue ActiveRecord::RecordNotFound => e
+    ExceptionReporter.call(e, "Import job failed for import_id #{import_id} - import not found")
+    raise e
+  end
+
+  private
+
+  def perform_legacy(import_id)
+    import = Import.find(import_id)
     user = import.user
 
     archive_path = download_import_archive(import)
@@ -28,8 +48,6 @@ class Users::ImportDataJob < ApplicationJob
   ensure
     cleanup_archive(archive_path)
   end
-
-  private
 
   def handle_import_failure(import, user, error)
     user_id = user&.id || import&.user_id || 'unknown'

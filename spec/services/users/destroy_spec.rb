@@ -11,6 +11,39 @@ RSpec.describe Users::Destroy do
       user.mark_as_deleted!
     end
 
+    it 'cancels the pending explore_features command of the deleted user only' do
+      other = create(:user)
+      JobOutbox.delete_all
+      job_owner!('command:users.explore_features_mail', :oban)
+      [user, other].each do |owner|
+        JobCommands.produce('users.explore_features_mail', { 'user_id' => owner.id, 'locale' => 'en' },
+                            aggregate_id: owner.id, scheduled_at: 2.days.from_now, producer: 'spec')
+      end
+
+      described_class.new(user).call
+
+      expect(JobOutbox.pluck(:aggregate_id)).to eq([other.id])
+    end
+
+    it 'cancels pending wave-2 user commands inside the destroy transaction' do
+      other = create(:user)
+      JobOutbox.delete_all
+      wave2_types = %w[mail.user.welcome mail.user.archival_approaching mail.user.oauth_account_link
+                       mail.user.account_destroy_confirmation mail.family_lapse]
+      outbox_row = lambda do |type, aggregate_id, state = 'pending'|
+        JobOutbox.create!(event_id: SecureRandom.uuid, command_type: type, command_version: 1, payload: {},
+                          aggregate_id:, scheduled_at: Time.current, state:).event_id
+      end
+      wave2_types.each { |type| outbox_row.call(type, user.id) }
+      kept = wave2_types.map { |type| outbox_row.call(type, other.id) } +
+             [outbox_row.call('mail.user.welcome', user.id, 'dispatched'),
+              outbox_row.call('mail.family_invitation', user.id)]
+
+      described_class.new(user).call
+
+      expect(JobOutbox.pluck(:event_id)).to match_array(kept)
+    end
+
     context 'with minimal user data' do
       it 'hard deletes the user record' do
         expect { service.call }.to change { User.unscoped.count }.by(-1)
@@ -409,6 +442,17 @@ RSpec.describe Users::Destroy do
           # Family and memberships should still exist
           expect(Family.where(id: family.id).count).to eq(1)
           expect(Family::Membership.where(family_id: family.id).count).to eq(2)
+        end
+
+        it 'keeps the pending explore_features command when deletion is rolled back' do
+          JobOutbox.delete_all
+          job_owner!('command:users.explore_features_mail', :oban)
+          JobCommands.produce('users.explore_features_mail', { 'user_id' => user.id, 'locale' => 'en' },
+                              aggregate_id: user.id, scheduled_at: 2.days.from_now, producer: 'spec')
+
+          expect { service.call }.to raise_error(ActiveRecord::RecordInvalid)
+
+          expect(JobOutbox.where(command_type: 'users.explore_features_mail', aggregate_id: user.id)).to exist
         end
 
         it 'logs the validation failure' do

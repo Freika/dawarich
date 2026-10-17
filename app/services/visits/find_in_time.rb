@@ -14,7 +14,7 @@ module Visits
       user.scoped_visits
           .includes(:place, :area)
           .where(started_at: start_at..end_at)
-          .order(started_at: :asc)
+          .order(started_at: :asc, id: :asc)
     end
 
     private

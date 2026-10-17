@@ -23,6 +23,25 @@ RSpec.describe Users::ImportDataJob, type: :job do
     FileUtils.rm_f(archive_path) if File.exist?(archive_path)
   end
 
+  it 'forwards the original job id and context without downloading under Oban ownership' do
+    job_owner!('command:users.import_data', :oban)
+    expect(job).not_to receive(:download_import_archive)
+    Time.use_zone('America/New_York') do
+      I18n.with_locale(:de) { 2.times { job.perform(import.id) } }
+    end
+    expect(JobOutbox.where(command_type: 'users.import_data').sole).to have_attributes(
+      event_id: job.job_id, payload: { 'import_id' => import.id, 'user_id' => user.id,
+                                     'time_zone' => 'America/New_York', 'locale' => 'de' }
+    )
+  end
+
+  it 'routes the archive producer to the captured owner' do
+    job_owner!('command:users.import_data', :oban)
+    expect { import.process_user_data_archive! }.not_to have_enqueued_job
+    expect(JobOutbox.where(command_type: 'users.import_data').sole.payload)
+      .to include('import_id' => import.id, 'user_id' => user.id)
+  end
+
   describe '#perform' do
     context 'when import is successful' do
       before do

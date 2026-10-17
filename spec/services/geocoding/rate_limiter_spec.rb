@@ -184,4 +184,117 @@ RSpec.describe Geocoding::RateLimiter do
       expect(collected.map(&:round)).to eq([1, 2, 3, 4])
     end
   end
+
+  describe 'the shared limiter (GEOCODING_SHARED_RATE_LIMIT)' do
+    def stub_flag(value)
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('GEOCODING_SHARED_RATE_LIMIT').and_return(value)
+    end
+
+    [nil, 'false', '1'].each do |value|
+      it "flag #{value.inspect}: no Redis call and today's pacing" do
+        stub_flag(value)
+        expect(Sidekiq).not_to receive(:redis)
+
+        2.times { described_class.throttle(fast) { :ok } }
+        expect(described_class).to have_received(:sleep).with(be_within(0.02).of(0.1)).once
+
+        slow = config_for('photon.slow.example.com', rps: 1)
+        described_class.throttle(slow) { :ok }
+        result = described_class.throttle(slow, max_wait: 0.5) { :never }
+        expect(result).to be_nil
+      end
+    end
+
+    context 'with GEOCODING_SHARED_RATE_LIMIT=true' do
+      before do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('GEOCODING_SHARED_RATE_LIMIT').and_return('true')
+      end
+
+      it 'a reservation made by another process delays this one' do
+        allow(described_class).to receive(:sleep).and_call_original
+        Sidekiq.redis do |redis|
+          redis.call('EVAL', described_class::RESERVE_LUA, 1,
+                     'geocoding:rate_limit:photon:photon.example.com', 200_000, -1)
+        end
+
+        described_class.throttle(config_for('photon.example.com', rps: 5)) { :ok }
+
+        expect(described_class).to have_received(:sleep).with(be_within(0.03).of(0.2)).once
+      end
+
+      it 'reservations are spaced across threads' do
+        allow(described_class).to receive(:sleep).and_call_original
+        config = config_for('photon.threaded.example.com', rps: 5)
+        stamps = Queue.new
+
+        threads = 5.times.map do
+          Thread.new do
+            described_class.throttle(config) { stamps << Process.clock_gettime(Process::CLOCK_MONOTONIC) }
+          end
+        end
+        threads.each(&:join)
+
+        sorted = Array.new(stamps.size) { stamps.pop }.sort
+        deltas = sorted.each_cons(2).map { |a, b| b - a }
+        expect(deltas).to all(be >= 0.19)
+      end
+
+      it 'idle time banks no burst' do
+        allow(described_class).to receive(:sleep).and_call_original
+        config = config_for('photon.idle.example.com', rps: 5)
+        described_class.throttle(config) { :ok }
+        sleep 1.0
+
+        first = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        described_class.throttle(config) { :ok }
+        described_class.throttle(config) { :ok }
+        elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - first
+
+        expect(elapsed).to be_between(0.19, 0.26)
+      end
+
+      it 'max_wait refuses without reserving' do
+        config = config_for('photon.maxwait.example.com', rps: 5)
+        key = "geocoding:rate_limit:#{described_class.key_for(config)}"
+        Sidekiq.redis { |redis| redis.call('EVAL', described_class::RESERVE_LUA, 1, key, 5_000_000, -1) }
+        ttl_before = Sidekiq.redis { |redis| redis.call('PTTL', key) }
+
+        result = described_class.throttle(config, max_wait: 1.0) { :never }
+
+        expect(result).to be_nil
+        expect(Sidekiq.redis { |redis| redis.call('PTTL', key) }).to be_within(50).of(ttl_before)
+      end
+
+      it "the bucket lives in Sidekiq's Redis under the shared key" do
+        described_class.throttle(config_for('photon.komoot.io')) { :ok }
+
+        ttl = Sidekiq.redis { |redis| redis.call('PTTL', 'geocoding:rate_limit:photon:photon.komoot.io') }
+
+        expect(ttl).to be_positive
+      end
+
+      it 'Redis errors fall back to local pacing' do
+        allow(described_class).to receive(:sleep).and_call_original
+        allow(Sidekiq).to receive(:redis).and_raise(RedisClient::CannotConnectError)
+        allow(Rails.logger).to receive(:warn)
+        config = config_for('photon.fallback.example.com', rps: 5)
+
+        first = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        described_class.throttle(config) { :ok }
+        described_class.throttle(config) { :ok }
+        elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - first
+
+        expect(Rails.logger).to have_received(:warn).with(/pacing locally/).at_least(:once)
+        expect(elapsed).to be >= 0.19
+      end
+
+      it 'nil rps never touches Redis' do
+        expect(Sidekiq).not_to receive(:redis)
+
+        described_class.throttle(config_for('photon.example.com')) { :ok }
+      end
+    end
+  end
 end

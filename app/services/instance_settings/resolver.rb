@@ -5,10 +5,11 @@ module InstanceSettings
   # the environment pins, a stored row fills in, and the registry backstops.
   #
   # Reads must be cheap and must never break boot. `Point` evaluates
-  # `store_geodata?` once per created row, and config/initializers resolve while
-  # `assets:precompile` runs in an image build with no database at all — so the
-  # read path takes no lock and every database failure degrades to ENV + default
-  # rather than raising.
+  # `store_geodata?` once per created row, and config/initializers resolve at
+  # boot, which can happen with no database at all (`assets:precompile` on a
+  # build host, a database that is still starting) — so the read path takes no
+  # lock and every database failure degrades to ENV + default rather than
+  # raising.
   module Resolver
     class PinnedSettingError < StandardError; end
 

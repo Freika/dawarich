@@ -1,5 +1,84 @@
 #!/bin/sh
 
+validate_phoenix_lifecycle() {
+  validate_cloud_drain_argv "$0" "$@"
+  case "${DAWARICH_PHOENIX_LIFECYCLE-false}" in
+    false) ;;
+    true) ;;
+    *)
+      echo "DAWARICH_PHOENIX_LIFECYCLE must be true or false" >&2
+      exit 1
+      ;;
+  esac
+}
+
+validate_cloud_drain_mode() {
+  case "${DAWARICH_CLOUD_DRAIN_ONLY-false}" in
+    false) return ;;
+    true)
+      if [ "${SELF_HOSTED-true}" = false ] &&
+         [ "${DAWARICH_PHOENIX_LIFECYCLE-false}" = false ] &&
+         [ -z "${DAWARICH_PROCESS_ROLE:-}" ]; then
+        return
+      fi
+      echo "Cloud drain requires SELF_HOSTED=false and a source worker without native or idle mode" >&2
+      ;;
+    *) echo "DAWARICH_CLOUD_DRAIN_ONLY must be true or false" >&2 ;;
+  esac
+  exit 1
+}
+
+validate_cloud_drain_argv() {
+  validate_cloud_drain_mode
+  validate_native_admission
+  [ "${DAWARICH_CLOUD_DRAIN_ONLY-false}" = true ] || return 0
+  if [ "${1##*/}" = cloud-sidekiq-entrypoint.sh ]; then
+    shift
+    case "$#" in
+      1) [ "$1" = sidekiq ] && return 0 ;;
+      3) [ "$1" = sidekiq ] && [ "$2" = -C ] && [ "$3" = config/sidekiq.yml ] && return 0 ;;
+    esac
+  fi
+  echo "Cloud drain permits only the source Sidekiq worker with its known configuration" >&2
+  exit 1
+}
+
+validate_cloud_native_worker() {
+  validate_native_admission
+  phoenix_lifecycle_is_native || return 0
+  [ "${SELF_HOSTED-true}" = false ] || return 0
+  case "$#" in
+    1) [ "$1" = sidekiq ] && return 0 ;;
+    3) [ "$1" = sidekiq ] && [ "$2" = -C ] && [ "$3" = config/sidekiq.yml ] && return 0 ;;
+  esac
+  echo "Native Cloud worker requires the known Sidekiq compatibility command" >&2
+  exit 1
+}
+
+validate_native_admission() {
+  case "${DAWARICH_PHOENIX_LIFECYCLE-false}" in
+    false | true) ;;
+    *) echo "DAWARICH_PHOENIX_LIFECYCLE must be true or false" >&2; exit 1 ;;
+  esac
+  phoenix_lifecycle_is_native || return 0
+  env_value_is_truthy "${SELF_HOSTED-true}" && return 0
+  if dawarich eval 'if !Dawarich.Release.Lifecycle.admitted?(), do: System.halt(1)' >/dev/null 2>&1; then
+    case "${0##*/}" in
+      web-entrypoint.sh | sidekiq-entrypoint.sh)
+        echo "Native Cloud requires the Cloud web or worker entrypoint" >&2
+        exit 1
+        ;;
+    esac
+    return 0
+  fi
+  echo "Native lifecycle requires self-hosted mode" >&2
+  exit 1
+}
+
+phoenix_lifecycle_is_native() {
+  [ "${DAWARICH_PHOENIX_LIFECYCLE-false}" = true ] || [ "${DAWARICH_RAILS:-}" = off ]
+}
+
 sanitize_integer_env() {
   _name="$1"
   _default="$2"
@@ -42,3 +121,8 @@ https://dawarich.app/docs/self-hosting/environment-variables/#switching-an-exist
 EOF
   fi
 }
+
+if [ "${0##*/}" = sidekiq-entrypoint.sh ] &&
+   ! env_value_is_truthy "${SELF_HOSTED-true}" && phoenix_lifecycle_is_native; then
+  validate_phoenix_lifecycle "$@"
+fi

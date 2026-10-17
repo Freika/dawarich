@@ -9,6 +9,23 @@ RSpec.describe 'Api::V1::Places', type: :request do
   let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
 
   describe 'GET /api/v1/places' do
+    it 'returns places in ascending id order before pagination' do
+      higher = create(:place, user: user, id: place.id + 2)
+      lower = create(:place, user: user, id: place.id + 1)
+      create(:tagging, taggable: lower, tag: tag)
+
+      [{ filter: 'unknown' }, { filter: 'all' },
+       { tag_ids: [tag.id, 'untagged'] }].each do |params|
+        get '/api/v1/places', params: params, headers: headers
+
+        expect(JSON.parse(response.body).pluck('id')).to eq([place.id, lower.id, higher.id])
+      end
+
+      get '/api/v1/places', params: { page: 2, per_page: 1 }, headers: headers
+
+      expect(JSON.parse(response.body).pluck('id')).to eq([lower.id])
+    end
+
     it 'returns user places' do
       get '/api/v1/places', headers: headers
 

@@ -1,0 +1,26 @@
+defmodule DawarichWeb.A8RoutesTest do
+  use ExUnit.Case, async: true
+
+  test "existing page routes survive declaration extraction" do
+    for {path, module, action, pipelines} <- [
+          {"/", DawarichWeb.HomeDispatch, [], [:public_home]},
+          {"/settings/general", Phoenix.LiveView.Plug, :index, [:browser, :rails_user]},
+          {"/settings/integrations", Phoenix.LiveView.Plug, :index, [:browser, :rails_user]},
+          {"/imports/42/download", DawarichWeb.ImportsDownload, :show, [:browser, :rails_user]},
+          {"/map/v2", Phoenix.LiveView.Plug, :index, [:native_m6_browser, :rails_user]},
+          {"/map/timeline_feeds", DawarichWeb.NativeMapRetired, :gone, [:native_map_retired]},
+          {"/map/timeline_feeds/calendar", DawarichWeb.NativeMapRetired, :gone,
+           [:native_map_retired]},
+          {"/places/42", DawarichWeb.PlaceNavigation, :show, [:rails_frame]}
+        ] do
+      route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "www.example.com")
+      assert %{plug: ^module, plug_opts: ^action, pipe_through: ^pipelines} = route
+    end
+
+    route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", "/imports/42", "www.example.com")
+    assert Map.get(route, :rails_gate) == nil
+
+    assert {DawarichWeb.ImportsLive.Show, :show, _, %{name: :native_jobs}} =
+             route.phoenix_live_view
+  end
+end

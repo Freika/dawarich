@@ -1,0 +1,11 @@
+[hidden]:not([hidden="until-found"]) {
+  display: none !important;
+}
+
+.native-flash a,
+.native-flash button {
+  pointer-events: auto;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

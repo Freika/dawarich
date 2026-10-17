@@ -31,31 +31,8 @@ class Jobs::Create
     return unless geocoding_config.enabled?
 
     points_relation.in_batches(of: BULK_ENQUEUE_BATCH_SIZE) do |batch|
-      ids = batch.pluck(:id)
-      ids = force ? clear_dedup_keys(ids) : claim_dedup_keys(ids)
-      next if ids.empty?
-
-      jobs = ids.map { |id| ReverseGeocodingJob.new('Point', id, force: force) }
-      begin
-        ActiveJob.perform_all_later(jobs)
-      rescue StandardError
-        clear_dedup_keys(ids) unless force
-        raise
-      end
+      Geocoding::ReverseCommands.enqueue_points(user.id, batch.pluck(:id), force:, producer: 'Jobs::Create')
     end
-  end
-
-  def claim_dedup_keys(ids)
-    Point.claim_geocode_ids(ids)
-  end
-
-  def clear_dedup_keys(ids)
-    Sidekiq.redis do |redis|
-      redis.pipelined do |pipe|
-        ids.each { |id| pipe.del(Point.geocode_dedup_key(id)) }
-      end
-    end
-    ids
   end
 
   # Cloud users share the operator's geocoding budget, so a click that

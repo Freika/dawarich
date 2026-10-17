@@ -44,6 +44,26 @@ RSpec.describe Points::RawData::VerifyRandomJob, type: :job do
       end
     end
 
+    context 'when Oban owns the cron' do
+      let(:user) { create(:user) }
+      let(:month) { 3.months.ago.beginning_of_month.utc }
+
+      before do
+        allow(Points::RawData::Verifier).to receive(:new).and_call_original
+        allow(PointsChannel).to receive(:broadcast_to)
+        create_list(:point, 2, user:, timestamp: month.to_i, raw_data: { lon: 13.4, lat: 52.5 })
+        Points::RawData::Archiver.new.archive_specific_month(user.id, month.year, month.month)
+        Points::RawDataArchive.update_all(verified_at: nil)
+        job_owner!('cron:raw_data_verify_job', :oban)
+      end
+
+      it 'Oban-owned: verifies nothing' do
+        described_class.perform_now
+
+        expect(Points::RawDataArchive.sole.verified_at).to be_nil
+      end
+    end
+
     context 'when there are no archives at all' do
       it 'does nothing' do
         expect(verifier).not_to receive(:verify_specific_archive)

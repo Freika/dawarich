@@ -1,0 +1,12 @@
+DROP INDEX index_points_on_not_anomaly;
+DROP INDEX idx_points_track_generation;
+ALTER TABLE "visits" ADD "demo" boolean DEFAULT FALSE NOT NULL;
+CREATE INDEX "index_visits_on_demo_true" ON "visits" ("demo") WHERE demo = true;
+ALTER TABLE "trips" ADD "demo" boolean DEFAULT FALSE NOT NULL;
+CREATE INDEX "index_trips_on_demo_true" ON "trips" ("demo") WHERE demo = true;
+ALTER TABLE "tags" ADD "demo" boolean DEFAULT FALSE NOT NULL;
+CREATE INDEX "index_tags_on_demo_true" ON "tags" ("demo") WHERE demo = true;
+ALTER TABLE "places" ADD "demo" boolean DEFAULT FALSE NOT NULL;
+CREATE INDEX "index_places_on_demo_true" ON "places" ("demo") WHERE demo = true;
+ALTER TABLE "tracks" ADD "demo" boolean DEFAULT FALSE NOT NULL;
+CREATE INDEX "index_tracks_on_demo_true" ON "tracks" ("demo") WHERE demo = true;

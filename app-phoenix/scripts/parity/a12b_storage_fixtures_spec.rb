@@ -1,0 +1,630 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+require 'aws-sdk-s3'
+require_relative 'a12b_fixture_support'
+
+RSpec.describe 'Phoenix fixture: A12b Active Storage', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
+  def fx = A12bFixtureSupport
+  def payload = ((0..255).map(&:chr).join * 4).b
+
+  def compared
+    %w[content-type content-disposition content-length content-range last-modified cache-control location etag
+       set-cookie]
+  end
+
+  def mtime = (fx::NOW - 1.day).to_time
+  def url_options = { protocol: 'http://', host: 'dawarich.example', port: 80 }
+
+  def frozen(&) = travel_to(fx::NOW, &)
+
+  def with_urls(&) = ActiveStorage::Current.set(url_options: url_options, &)
+
+  def blob_specs
+    [["a12b#{'a' * 24}", 'export_from_2024-03-01_to_2024-03-31.json', 'application/json'],
+     ["a12b#{'b' * 24}", 'Bewegungsdaten März ü ß Æ.gpx', 'application/gpx+xml'],
+     ["a12b#{'c' * 24}", ' a&b <c> "q" 😀.png ', 'image/png'],
+     ["a12b#{'d' * 24}", "page#{0xa0.chr(Encoding::UTF_8)}.html", 'text/html'],
+     ["a12b#{'e' * 24}", 'no type', nil]]
+  end
+
+  def make_blob(id, key, filename, type, stored:, checksum: Digest::MD5.base64digest(payload), service: 'test')
+    blob = ActiveStorage::Blob.create!(id: id, key: key, filename: filename, content_type: type,
+                                       byte_size: payload.bytesize, checksum: checksum, service_name: service,
+                                       metadata: {})
+    if stored
+      blob.service.upload(key, StringIO.new(payload), checksum: blob.checksum)
+      File.utime(mtime, mtime, blob.service.path_for(key))
+    end
+    blob
+  end
+
+  def stored_blobs
+    blob_specs.each_with_index.map { |(key, name, type), i| make_blob(970_501 + i, key, name, type, stored: true) }
+  end
+
+  def fresh_blobs
+    [make_blob(970_511, "a12b#{'f' * 24}", 'upload.gpx', 'application/gpx+xml', stored: false),
+     make_blob(970_512, "a12b#{'g' * 24}", 'mismatch.gpx', 'application/gpx+xml', stored: false,
+                                                                               checksum: Digest::MD5.base64digest('other'))]
+  end
+
+  def row(blob, stored)
+    blob.attributes.transform_values { |v| v.respond_to?(:utc) ? v.utc.iso8601(6) : v }.merge('stored' => stored)
+  end
+
+  def with_env(values)
+    previous = values.keys.index_with { |k| ENV.fetch(k, nil) }
+    values.each { |k, v| v.nil? ? ENV.delete(k) : (ENV[k] = v) }
+    yield
+  ensure
+    previous&.each { |k, v| v.nil? ? ENV.delete(k) : (ENV[k] = v) }
+  end
+
+  def s3_service(endpoint)
+    with_env('AWS_ACCESS_KEY_ID' => 'a' * 20, 'AWS_SECRET_ACCESS_KEY' => 'b' * 40, 'AWS_REGION' => 'eu-central-1',
+             'AWS_BUCKET' => 'dawarich-a12b', 'AWS_ENDPOINT_URL' => endpoint, 'AWS_ENDPOINT' => nil) do
+      allow(Rails.env).to receive(:test?).and_return(false)
+      config = YAML.safe_load(ERB.new(Rails.root.join('config/storage.yml').read).result, aliases: true)
+      ActiveStorage::Service.configure(:s3, config)
+    ensure
+      allow(Rails.env).to receive(:test?).and_call_original
+    end
+  end
+
+  def services
+    @services ||= { 'aws' => s3_service(nil), 'custom' => s3_service('https://minio.example:9000'),
+                    'ip' => s3_service('http://127.0.0.1:9000') }
+  end
+
+  def urls(blobs)
+    with_urls do
+      blobs.product([nil, 'attachment', 'inline', 'bogus']).map do |blob, disposition|
+        type = blob.forced_disposition_for_serving || disposition
+        { 'blob_id' => blob.id, 'disposition' => disposition, 'disk_url' => blob.url(disposition: disposition),
+          's3' => services.transform_values do |s|
+            s.url(blob.key, expires_in: 300, filename: blob.filename, content_type: blob.content_type_for_serving,
+                            disposition: type)
+          end }
+      end
+    end
+  end
+
+  def direct_uploads(blobs)
+    with_urls do
+      blobs.map do |blob|
+        args = { content_type: blob.content_type, content_length: blob.byte_size, checksum: blob.checksum,
+custom_metadata: {} }
+        { 'blob_id' => blob.id,
+          'disk' => { 'url' => blob.service_url_for_direct_upload,
+'headers' => blob.service_headers_for_direct_upload },
+          's3' => services.transform_values do |s|
+            { 'url' => s.url_for_direct_upload(blob.key, expires_in: 300, **args),
+              'headers' => s.headers_for_direct_upload(blob.key, filename: blob.filename, **args) }
+          end }
+      end
+    end
+  end
+
+  def dispositions
+    nbsp = 0xa0.chr(Encoding::UTF_8)
+    names = blob_specs.map(&:second) + ['100%.zip', 'semi;colon/slash.zip', "tab\tname.zip", 'Ærøskøbing.zip',
+                                        "#{nbsp}edge.zip#{nbsp}"]
+    names.product(%w[attachment inline]).map do |name, type|
+      sanitized = ActiveStorage::Filename.new(name).sanitized
+      { 'type' => type, 'filename' => name, 'sanitized' => sanitized,
+        'header' => ActionDispatch::Http::ContentDisposition.format(disposition: type, filename: sanitized) }
+    end
+  end
+
+  def approximations
+    table = I18n::Backend::Transliterator::HashTransliterator::DEFAULT_APPROXIMATIONS
+    probe = "Ærøskøbing ß ü #{0x2028.chr(Encoding::UTF_8)} 😀"
+    expect(I18n.available_locales.map do |locale|
+      I18n.with_locale(locale) do
+        I18n.transliterate(probe)
+      end
+    end.uniq.size).to eq(1)
+    table
+  end
+
+  def record(name, method, path, headers: {}, body: nil, at: fx::NOW, csrf: false, stored_body: body)
+    travel_to(at) { send(method, path, headers: headers, params: body) }
+    { 'name' => name, 'method' => method.to_s.upcase, 'path' => path, 'headers' => headers.except('X-CSRF-Token'),
+      'csrf' => csrf, 'body' => stored_body && Base64.strict_encode64(stored_body), 'now' => at.iso8601(3),
+      'status' => response.status, 'response_headers' => response.headers.to_h.slice(*compared),
+      'response_body' => Base64.strict_encode64(response.body.to_s),
+      'default_service' => ActiveStorage::Blob.service.name.to_s }
+  end
+
+  def with_default_service(service)
+    previous = ActiveStorage::Blob.service
+    ActiveStorage::Blob.service = service
+    yield
+  ensure
+    ActiveStorage::Blob.service = previous
+  end
+
+  def local_blobs
+    [make_blob(970_514, "a12b#{'k' * 24}", 'local.json', 'application/json', stored: true, service: 'local'),
+     make_blob(970_515, "a12b#{'l' * 24}", 'local.gpx', 'application/gpx+xml', stored: false, service: 'local')]
+  end
+
+  def other_service_requests(stored, fresh)
+    paths = frozen do
+      with_urls do
+        [Rails.application.routes.url_helpers.rails_service_blob_path(stored.signed_id, stored.filename),
+         URI(stored.url(disposition: 'attachment')).path, URI(fresh.service_url_for_direct_upload).path]
+      end
+    end
+    with_default_service(services['aws']) do
+      [record('redirect_other_service', :get, paths[0]), record('disk_other_service', :get, paths[1]),
+       record('put_other_service', :put, paths[2], headers: { 'CONTENT_TYPE' => 'application/gpx+xml' }, body: payload)]
+    end
+  end
+
+  def blob_key_path(signed, filename)
+    "/rails/active_storage/disk/#{ERB::Util.url_encode(signed)}/#{ERB::Util.url_encode(filename)}"
+  end
+
+  def blob_key_message(key)
+    ActiveStorage.verifier.generate({ key: key, disposition: 'inline', content_type: nil, service_name: 'test' },
+                                    expires_in: 5.minutes, purpose: :blob_key)
+  end
+
+  def disk_requests(blob, missing)
+    path, upload_path, traversal, missing_key = frozen do
+      with_urls do
+        [URI(blob.url(disposition: 'attachment')).path, URI(blob.service_url_for_direct_upload).path,
+         blob_key_message('../a12b'), blob_key_message(missing.key)]
+      end
+    end
+    stamp = mtime.httpdate
+    [record('disk_plain', :get, path), record('disk_head', :head, path),
+     record('disk_range', :get, path, headers: { 'Range' => 'bytes=0-9' }),
+     record('disk_suffix', :get, path, headers: { 'Range' => 'bytes=-5' }),
+     record('disk_open', :get, path, headers: { 'Range' => 'bytes=1000-' }),
+     record('disk_clamped', :get, path, headers: { 'Range' => 'bytes=1020-99999' }),
+     record('disk_unsatisfiable', :get, path, headers: { 'Range' => 'bytes=999999-' }),
+     record('disk_backwards', :get, path, headers: { 'Range' => 'bytes=9-0' }),
+     record('disk_multi', :get, path, headers: { 'Range' => 'bytes=0-1,4-5' }),
+     record('disk_ims_equal', :get, path, headers: { 'If-Modified-Since' => stamp }),
+     record('disk_ims_later', :get, path, headers: { 'If-Modified-Since' => (mtime + 3600).httpdate }),
+     record('disk_ims_earlier', :get, path, headers: { 'If-Modified-Since' => (mtime - 3600).httpdate }),
+     record('disk_expired', :get, path, at: fx::NOW + 301),
+     record('disk_wrong_purpose', :get, "#{upload_path}/x.json"),
+     record('disk_traversal', :get, blob_key_path(traversal, 'x')),
+     record('disk_missing_file', :get, blob_key_path(missing_key, 'x')),
+     record('disk_json_accept', :get, blob_key_path(missing_key, 'x'), headers: { 'Accept' => 'application/json' }),
+     record('disk_browser_accept', :get, blob_key_path(missing_key, 'x'),
+            headers: { 'Accept' => 'application/json, */*' })]
+  end
+
+  def upload_requests(fresh, mismatch)
+    urls = frozen { with_urls { [fresh, mismatch].map { |b| URI(b.service_url_for_direct_upload).path } } }
+    type = { 'CONTENT_TYPE' => 'application/gpx+xml' }
+    [record('put_wrong_type', :put, urls[0], headers: { 'CONTENT_TYPE' => 'text/plain' }, body: payload),
+     record('put_wrong_length', :put, urls[0], headers: type, body: payload.byteslice(0, 1000)),
+     record('put_length_header', :put, urls[0], headers: type.merge('CONTENT_LENGTH' => '1000'), body: payload),
+     record('put_expired', :put, urls[0], headers: type, body: payload, at: fx::NOW + 301),
+     record('put_mismatch', :put, urls[1], headers: type, body: payload),
+     record('put_ok', :put, urls[0], headers: type, body: payload)]
+  end
+
+  def redirect_requests(blobs)
+    helpers = Rails.application.routes.url_helpers
+    first = blobs.first
+    signed = ERB::Util.url_encode(first.signed_id)
+    missing = ActiveStorage.verifier.generate(999_999_999, purpose: :blob_id)
+    [record('redirect_attachment', :get,
+            helpers.rails_service_blob_path(first.signed_id, first.filename, disposition: 'attachment')),
+     record('redirect_inline', :get, helpers.rails_service_blob_path(blobs[2].signed_id, blobs[2].filename)),
+     record('redirect_legacy', :get, "/rails/active_storage/blobs/#{signed}/x.json"),
+     record('redirect_bad_signature', :get, "/rails/active_storage/blobs/redirect/#{signed}x/x"),
+     record('redirect_missing_row', :get, helpers.rails_service_blob_path(missing, 'x'),
+            headers: { 'Accept' => 'text/html' })]
+  end
+
+  def session_data(value)
+    env = Rails.application.env_config.merge('HTTP_COOKIE' => "_dawarich_session=#{value}")
+    ActionDispatch::Request.new(env).cookie_jar.encrypted['_dawarich_session']
+  end
+
+  def direct_upload_requests
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+    sign_in create(:user, id: 970_520)
+    get '/notifications'
+    csrf_meta = response.body[/<meta name="csrf-token" content="([^"]+)"/, 1]
+    session_cookie = cookies['_dawarich_session']
+    allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token).and_return("a12b#{'h' * 24}")
+    ActiveRecord::Base.connection.execute("SELECT setval('active_storage_blobs_id_seq', 970599)")
+    json = { 'CONTENT_TYPE' => 'application/json', 'Accept' => 'application/json' }
+    blank = { blob: { filename: 'a.gpx', content_type: 'application/gpx+xml', byte_size: 1, checksum: '' } }.to_json
+    good = { blob: { filename: 'track (1) ü.gpx', content_type: 'application/gpx+xml', byte_size: 1024,
+                     checksum: Digest::MD5.base64digest(payload) } }.to_json
+    requests = [record('upload_ok', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => csrf_meta), body: good, csrf: true),
+                record('upload_no_csrf_json', :post, '/rails/active_storage/direct_uploads', headers: json, body: good),
+                record('upload_no_csrf_html', :post, '/rails/active_storage/direct_uploads',
+                       headers: { 'CONTENT_TYPE' => 'application/json', 'Accept' => 'text/html' }, body: good),
+                record('upload_missing_blob', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => csrf_meta), body: '{}', csrf: true),
+                record('upload_blank_checksum', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => csrf_meta), body: blank, csrf: true),
+                record('upload_bad_json', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => csrf_meta), body: '{"blob":', csrf: true),
+                record('upload_empty_blob', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => csrf_meta), body: '{"blob":{}}', csrf: true),
+                record('upload_body_token', :post, '/rails/active_storage/direct_uploads',
+                       headers: json, body: { blob: {}, authenticity_token: csrf_meta }.to_json,
+                       stored_body: '{"blob":{}}', csrf: 'body'),
+                record('upload_foreign_origin', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => csrf_meta, 'Origin' => 'http://evil.example'),
+                       body: '{"blob":{}}', csrf: true)]
+    rewritten = requests.first['response_headers']['set-cookie']
+    expect(rewritten.split('; ', 2).last).to eq('path=/; httponly; samesite=lax')
+    expect(session_data(fx.cookie_value(rewritten)))
+      .to eq(session_data(ERB::Util.url_encode(session_cookie))).and be_present
+    { 'csrf_meta' => csrf_meta, 'session_cookie' => session_cookie,
+      'time_zone' => Time.zone.tzinfo.name, 'row' => row(ActiveStorage::Blob.find(970_600), false),
+      'requests' => requests }
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
+  end
+
+  def approximations_path = Rails.root.join('app-phoenix/priv/i18n_approximations.json')
+  def unrecorded = %w[direct_upload upload_requests phoenix]
+
+  def storage_settings
+    { 'service_urls_expire_in' => ActiveStorage.service_urls_expire_in.to_i,
+      'binary_content_types' => ActiveStorage.content_types_to_serve_as_binary,
+      'inline_content_types' => ActiveStorage.content_types_allowed_inline,
+      'binary_content_type' => ActiveStorage.binary_content_type,
+      'routes_prefix' => ActiveStorage.routes_prefix,
+      'verifier_digest' => ActiveStorage.verifier.instance_variable_get(:@digest) }
+  end
+
+  it 'writes or verifies test/fixtures/a12b/storage.json and priv/i18n_approximations.json from what Rails does' do
+    expect(Rails.application.secret_key_base).to eq(fx::SECRET)
+    detailed = Rails.application.env_config['action_dispatch.show_detailed_exceptions']
+    Rails.application.env_config['action_dispatch.show_detailed_exceptions'] = false
+    host! 'dawarich.example'
+    stored, fresh, mismatch, missing, stable = frozen do
+      blobs = stored_blobs
+      upload, other = fresh_blobs
+      gone = make_blob(970_513, "a12b#{'i' * 24}", 'gone.json', 'application/json', stored: false)
+      [blobs, upload, other, gone,
+       { 'now' => fx::NOW.iso8601(3), 'settings' => storage_settings, 'dispositions' => dispositions,
+         'urls' => urls(blobs), 'direct_uploads' => direct_uploads(blobs + [upload]),
+         'blob_ids' => blobs.map { |b| { 'id' => b.id, 'signed' => b.signed_id } } }]
+    end
+    local, local_fresh = frozen { local_blobs }
+    requests = disk_requests(stored.first, missing) + upload_requests(fresh, mismatch) + redirect_requests(stored) +
+               other_service_requests(local, local_fresh)
+    expect(fresh.service.exist?(fresh.key)).to be(true)
+    expect(mismatch.service.exist?(mismatch.key)).to be(false)
+    expect(local_fresh.service.download(local_fresh.key).b).to eq(payload)
+    capture_closure(stored)
+    uploads = direct_upload_requests
+    rows = (stored + [local]).map { |b| row(b, true) } +
+           [fresh, mismatch, missing, local_fresh].map { |b| row(b, false) }
+    data = stable.merge('blobs' => rows, 'requests' => requests, 'direct_upload' => uploads.except('requests'),
+                        'upload_requests' => uploads['requests'])
+    if fx.write?
+      previous = fx::DIR.join('storage.json').exist? ? fx.read('storage.json') : {}
+      fx.write('storage.json', previous.merge(data.except(*unrecorded)))
+      approximations_path.write("#{Oj.dump(approximations, mode: :strict, indent: 2)}\n")
+    else
+      recorded = fx.read('storage.json')
+      expect(recorded.except(*unrecorded)).to eq(fx.normalized(data.except(*unrecorded)))
+      expect(JSON.parse(approximations_path.read)).to eq(fx.normalized(approximations))
+    end
+  ensure
+    Rails.application.env_config['action_dispatch.show_detailed_exceptions'] = detailed
+    remove_local([local, local_fresh])
+  end
+
+  def capture_closure(blobs)
+    previous_show = Rails.application.env_config['action_dispatch.show_exceptions']
+    Rails.application.env_config['action_dispatch.show_exceptions'] = :all
+    helpers = Rails.application.routes.url_helpers
+    first = blobs.first
+    proxy = helpers.rails_service_blob_proxy_path(first.signed_id, first.filename)
+    requests = [record('proxy_plain', :get, proxy), record('proxy_head', :head, proxy),
+                record('proxy_range', :get, proxy, headers: { 'Range' => 'bytes=0-9' }),
+                record('proxy_suffix', :get, proxy, headers: { 'Range' => 'bytes=-5' }),
+                record('proxy_unsatisfiable', :get, proxy, headers: { 'Range' => 'bytes=999999-' }),
+                record('proxy_invalid', :get, proxy, headers: { 'Range' => 'bytes=9-0' }),
+                record('proxy_disposition', :get, "#{proxy}?disposition=inline"),
+                record('proxy_conditional', :get, proxy,
+                       headers: { 'If-None-Match' => response.headers['etag'].to_s }),
+                record('proxy_ims', :get, proxy, headers: { 'If-Modified-Since' => Time.utc(2011).httpdate }),
+                record('proxy_bad_signature', :get, proxy.sub(first.signed_id, "#{first.signed_id}x"))]
+    allow(first.service).to receive(:download).and_raise(ActiveStorage::FileNotFoundError)
+    requests << record('proxy_missing_file', :get, proxy)
+    allow(first.service).to receive(:download).and_raise(IOError, 'synthetic provider failure')
+    requests << record('proxy_provider_failure', :get, proxy)
+    allow(first.service).to receive(:download).and_call_original
+    requests << record('proxy_untyped', :get,
+                       helpers.rails_service_blob_proxy_path(blobs[4].signed_id, blobs[4].filename))
+    requests << record('disk_untyped', :get, URI(frozen { with_urls { blobs[4].url } }).path)
+    ActiveRecord::Base.connection.execute("SELECT setval('active_storage_blobs_id_seq', 970600)")
+    allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token).and_return("a12b#{'v' * 24}")
+    image = blobs[2]
+    transforms = { resize_to_limit: [1, 1], rotate: 90, format: :png, saver: { quality: 80 } }
+    variation = ActiveStorage::Variation.new(transforms)
+    begin
+      repr = helpers.rails_blob_representation_proxy_path(image.signed_id, variation.key, image.filename)
+      requests += [record('representation_proxy', :get, repr),
+                   record('representation_redirect', :get,
+                          helpers.rails_blob_representation_path(image.signed_id, variation.key, image.filename)),
+                   record('representation_legacy', :get, repr.sub('/proxy/', '/')),
+                   record('representation_bad_signature', :get, repr.sub(variation.key, "#{variation.key}x")),
+                   record('representation_wrong_purpose', :get,
+                          repr.sub(variation.key, ActiveStorage.verifier.generate(transforms, purpose: :blob_id))),
+                   record('representation_non_image', :get, repr.sub(image.signed_id, first.signed_id)),
+                   record('representation_non_image_wrong_purpose', :get,
+                          repr.sub(image.signed_id, first.signed_id)
+                              .sub(variation.key, ActiveStorage.verifier.generate(transforms, purpose: :blob_id)))]
+      representation = image.representation(variation.key).processed
+      legacy = ActiveSupport::MessageVerifier.new(ActiveStorage.verifier.instance_variable_get(:@secret),
+                                                  digest: 'SHA1', serializer: :marshal,
+                                                  force_legacy_metadata_serializer: true)
+      legacy_key = legacy.generate(transforms, purpose: :variation)
+      expect(ActiveStorage::Variation.decode(legacy_key).transformations).to eq(transforms)
+      previews = capture_previews(helpers)
+      representation_marshal = Marshal.dump(representation.variation.transformations)
+      data = { 'legacy_variation' => legacy_key, 'previews' => previews, 'guest' => capture_guest,
+               'image_formats' => capture_image_formats(helpers), 's3' => capture_s3_proxy(helpers),
+               'now' => fx::NOW.iso8601(3), 'requests' => requests,
+               'variation' => { 'key' => variation.key, 'transformations' => transforms,
+                                'digest' => variation.digest,
+                                'marshal' => Base64.strict_encode64(Marshal.dump(transforms)) },
+               'representation' => { 'key' => representation.key, 'filename' => representation.filename.to_s,
+                                     'bytes' => Base64.strict_encode64(representation.download),
+                                     'digest' => representation.variation.digest,
+                                     'marshal' => Base64.strict_encode64(representation_marshal) },
+               'track_variants' => ActiveStorage.track_variants, 'processor' => ActiveStorage.variant_processor }
+      path = Rails.root.join('app-phoenix/test/fixtures/a12f2i/closure.json')
+      FixtureRecording.verify(path, "#{Oj.dump(fx.normalized(data), mode: :strict, indent: 2)}\n")
+    end
+  ensure
+    Rails.application.env_config['action_dispatch.show_exceptions'] = previous_show
+  end
+
+  def capture_s3_proxy(helpers)
+    config = { 's3' => { 'service' => 'S3', 'bucket' => 'synthetic', 'region' => 'eu-central-1',
+                         'access_key_id' => 'synthetic', 'secret_access_key' => 'synthetic',
+                         'stub_responses' => true } }
+    service = ActiveStorage::Service.configure(:s3, config)
+    allow(ActiveStorage::Blob.services).to receive(:fetch).and_call_original
+    allow(ActiveStorage::Blob.services).to receive(:fetch).with('s3').and_return(service)
+    client = service.client.client
+    client.stub_responses(:head_object, content_length: payload.bytesize)
+    client.stub_responses(:get_object, body: payload)
+    blob = frozen { make_blob(970_552, "a12b#{'n' * 24}", 's3.json', 'application/json', stored: false, service: 's3') }
+    path = helpers.rails_service_blob_proxy_path(blob.signed_id, blob.filename)
+    request = record('s3_proxy', :get, path)
+    expect(request['status']).to eq(200)
+    effects = client.api_requests.map do |call|
+      { 'method' => call[:operation_name].to_s, 'key' => call[:params][:key], 'range' => call[:params][:range] }
+    end
+    head = record('s3_proxy_head', :head, path)
+    expect(head['status']).to eq(200)
+    head_effects = client.api_requests.drop(effects.size).map do |call|
+      { 'method' => call[:operation_name].to_s, 'key' => call[:params][:key], 'range' => call[:params][:range] }
+    end
+    failures = %w[AccessDenied NoSuchKey].flat_map do |error|
+      client.stub_responses(:get_object, error)
+      %i[get head].map do |method|
+        failed = record("s3_proxy_#{error}_#{method}", method, path)
+        expect(failed['status']).to eq(500)
+        failed
+      end
+    end
+    { 'blob' => row(blob, true), 'request' => request, 'effects' => effects,
+      'head' => head, 'head_effects' => head_effects, 'failures' => failures }
+  end
+
+  def capture_image_formats(helpers)
+    signature = "\x89PNG\r\n\x1a\n".b
+    chunks = [['IHDR', [16, 16, 8, 2, 0, 0, 0].pack('NNCCCCC')],
+              ['IDAT', Zlib.deflate(("\0" * 49) * 16)], ['IEND', ''.b]]
+    bytes = signature + chunks.map do |name, data|
+      [data.bytesize].pack('N') + name + data + [Zlib.crc32(name + data)].pack('N')
+    end.join
+    blob = frozen do
+      ActiveStorage::Blob.create!(id: 970_551, key: "a12b#{'m' * 24}", filename: 'tiny.png',
+                                  content_type: 'image/png', service_name: 'test', byte_size: bytes.bytesize,
+                                  checksum: Digest::MD5.base64digest(bytes))
+    end
+    blob.service.upload(blob.key, StringIO.new(bytes), checksum: blob.checksum)
+    cases = %w[png jpg gif webp].each_with_index.map do |format, index|
+      key = "a12b#{(index + 1).to_s * 24}"
+      allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token).and_return(key)
+      variation = ActiveStorage::Variation.new(format: format, resize_to_limit: [1, 1], rotate: 90, quality: 80)
+      proxy = helpers.rails_blob_representation_proxy_path(blob.signed_id, variation.key, blob.filename)
+      redirect = helpers.rails_blob_representation_path(blob.signed_id, variation.key, blob.filename)
+      requests = [record("format_#{format}_proxy", :get, proxy),
+                  record("format_#{format}_redirect", :get, redirect)]
+      representation = blob.representation(variation.key).processed
+      expect(representation.download).to eq(bytes)
+      { 'key' => key, 'requests' => requests, 'content_type' => representation.image.blob.content_type }
+    end
+    { 'blob' => row(blob, true), 'bytes' => Base64.strict_encode64(bytes), 'cases' => cases }
+  end
+
+  def capture_guest
+    random = Random.new(120_206)
+    allow(SecureRandom).to receive(:random_bytes) { |n| random.bytes(n || 16) }
+    allow(OpenSSL::Random).to receive(:random_bytes) { |n| random.bytes(n) }
+    allow_any_instance_of(OpenSSL::Cipher).to receive(:random_iv) do |cipher|
+      cipher.iv = random.bytes(cipher.iv_len)
+    end
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+    frozen { get '/users/sign_in' }
+    token = response.body[/<meta name="csrf-token" content="([^"]+)"/, 1]
+    expect(token).to be_present
+    real_token = request.session[:_csrf_token]
+    cookie = cookies['_dawarich_session']
+    ActiveRecord::Base.connection.execute("SELECT setval('active_storage_blobs_id_seq', 972000)")
+    allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token)
+      .and_return(*%w[u w x A B C D E y z].map { |c| "a12b#{c * 24}" })
+    good = { blob: { filename: 'guest.png', byte_size: '1024', checksum: Digest::MD5.base64digest(payload),
+                     content_type: 'image/png', metadata: { 'note' => 'synthetic' } } }.to_json
+    json = { 'CONTENT_TYPE' => 'application/json', 'Accept' => 'application/json' }
+    form = Rack::Utils.build_nested_query(JSON.parse(good))
+    multipart = JSON.parse(good)['blob'].except('metadata').map do |name, value|
+      "--a12f2i\r\nContent-Disposition: form-data; name=\"blob[#{name}]\"\r\n\r\n#{value}\r\n"
+    end.join
+    multipart << "--a12f2i--\r\n"
+    requests = [record('guest_json', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => token), body: good, csrf: true),
+                record('guest_no_csrf', :post, '/rails/active_storage/direct_uploads', headers: json, body: good),
+                record('guest_form', :post, '/rails/active_storage/direct_uploads',
+                       headers: { 'CONTENT_TYPE' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json',
+                                  'X-CSRF-Token' => token }, body: form, csrf: true),
+                record('guest_multipart', :post, '/rails/active_storage/direct_uploads',
+                       headers: { 'CONTENT_TYPE' => 'multipart/form-data; boundary=a12f2i',
+                                  'Accept' => 'application/json', 'X-CSRF-Token' => token },
+                       body: multipart, csrf: true),
+                record('guest_unmasked', :post, '/rails/active_storage/direct_uploads',
+                       headers: json, body: JSON.parse(good).merge('authenticity_token' => real_token).to_json),
+                record('guest_bad_json', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => token), body: '{', csrf: true),
+                record('guest_wrong_origin', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => token, 'Origin' => 'http://evil.example'),
+                       body: good, csrf: true)]
+    cases = {
+      'negative' => { 'byte_size' => -1, 'metadata' => 'dropped' },
+      'scalars' => { 'filename' => 123, 'checksum' => 456, 'byte_size' => 12.7, 'content_type' => 789 },
+      'null_size' => { 'byte_size' => nil },
+      'null_checksum' => { 'checksum' => nil },
+      'missing_checksum' => {}
+    }
+    cases.each do |name, changes|
+      attrs = JSON.parse(good)['blob'].merge(changes)
+      attrs.delete('checksum') if name == 'missing_checksum'
+      ActiveRecord::Base.transaction(requires_new: true) do
+        requests << record("guest_#{name}", :post, '/rails/active_storage/direct_uploads',
+                           headers: json.merge('X-CSRF-Token' => token), body: { blob: attrs }.to_json, csrf: true)
+        raise ActiveRecord::Rollback if requests.last['status'] == 500
+      end
+    end
+    requests.each { |request| request['response_headers'].delete('set-cookie') }
+    before = ActiveStorage::Blob.count
+    allow_any_instance_of(ActiveStorage::Blob).to receive(:service_url_for_direct_upload)
+      .and_raise('synthetic response generation failure')
+    post_commit = record('post_commit', :post, '/rails/active_storage/direct_uploads',
+                         headers: json.merge('X-CSRF-Token' => token), body: good, csrf: true)
+    expect(post_commit['status']).to eq(500)
+    post_commit['blob_delta'] = ActiveStorage::Blob.count - before
+    expect(post_commit['blob_delta']).to eq(1)
+    post_commit['response_headers'].delete('set-cookie')
+    { 'cookie' => cookie, 'csrf' => token, 'requests' => requests, 'post_commit' => post_commit }
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
+    allow_any_instance_of(ActiveStorage::Blob).to receive(:service_url_for_direct_upload).and_call_original
+  end
+
+  def synthetic_pdf
+    objects = ['<< /Type /Catalog /Pages 2 0 R >>',
+               '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+               '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 16 16] /Contents 4 0 R >>',
+               "<< /Length 23 >>\nstream\n0 0 0 rg 0 0 16 16 re f\nendstream"]
+    bytes = "%PDF-1.4\n".b
+    offsets = objects.each_with_index.map do |object, index|
+      offset = bytes.bytesize
+      bytes << "#{index + 1} 0 obj\n#{object}\nendobj\n"
+      offset
+    end
+    start = bytes.bytesize
+    bytes << "xref\n0 5\n0000000000 65535 f \n"
+    offsets.each { |offset| bytes << format('%010d 00000 n ', offset) << "\n" }
+    bytes << "trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n#{start}\n%%EOF\n"
+  end
+
+  def capture_previews(helpers)
+    require 'tempfile'
+    Tempfile.create(['a12f2i', '.mp4']) do |file|
+      _out, _err, status = Open3.capture3('ffmpeg', '-y', '-f', 'lavfi', '-i', 'color=black:s=16x16:r=1',
+                                          '-frames:v', '1', '-pix_fmt', 'yuv420p', file.path)
+      expect(status.success?).to be(true)
+      [synthetic_pdf, File.binread(file.path)].each_with_index.map do |bytes, index|
+        type = index.zero? ? 'application/pdf' : 'video/mp4'
+        filename = index.zero? ? 'synthetic.pdf' : 'synthetic.mp4'
+        key = "a12b#{(index.zero? ? 'p' : 'q') * 24}"
+        blob = frozen do
+          ActiveStorage::Blob.create!(id: 970_541 + index, key: key, filename: filename,
+                                      content_type: type, byte_size: bytes.bytesize,
+                                      checksum: Digest::MD5.base64digest(bytes), service_name: 'test')
+        end
+        blob.service.upload(key, StringIO.new(bytes), checksum: blob.checksum)
+        output_key = "a12b#{(index.zero? ? 'r' : 's') * 24}"
+        allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token).and_return(output_key)
+        variation = ActiveStorage::Variation.new({})
+        path = helpers.rails_blob_representation_proxy_path(blob.signed_id, variation.key, filename)
+        request = record("preview_#{index}", :get, path)
+        expect(request['status']).to eq(200)
+        { 'blob' => row(blob, true), 'bytes' => Base64.strict_encode64(bytes),
+          'request' => request, 'key' => output_key }
+      end
+    end
+  end
+
+  def remove_local(blobs)
+    blobs.compact.each { |blob| blob.service.delete(blob.key) }
+    %w[storage/a1/2b storage/a1].map { |dir| Rails.root.join(dir) }.each do |dir|
+      Dir.rmdir(dir) if Dir.exist?(dir) && Dir.empty?(dir)
+    end
+  end
+
+  def phoenix_storage_code
+    <<~ELIXIR
+      Application.put_env(:dawarich, :rails_secret, "#{fx::SECRET}")
+      alias DawarichWeb.ActiveStorageUrls
+      fx = "test/fixtures/a12b/storage.json" |> File.read!() |> Jason.decode!()
+      now = ~U[2026-10-02 12:00:00.000000Z]
+      local = %{service: "local", root: "/unused", stored_service: "test"}
+      blob = fn row -> %{id: row["id"], key: row["key"], filename: row["filename"], content_type: row["content_type"], service_name: row["service_name"], byte_size: row["byte_size"], checksum: row["checksum"]} end
+      downloads = for row <- fx["blobs"], row["stored"], row["content_type"], row["service_name"] == "test", d <- [nil, "attachment"], do: %{"blob_id" => row["id"], "disposition" => d, "url" => ActiveStorageUrls.service_url(local, blob.(row), d, "http://dawarich.example", now)}
+      fresh = %{id: 970530, key: "a12b" <> String.duplicate("j", 24), filename: "phoenix.gpx", content_type: "application/gpx+xml", service_name: "test", byte_size: 1024, checksum: "#{Digest::MD5.base64digest(payload)}"}
+      {url, headers} = ActiveStorageUrls.direct_upload(local, fresh, "http://dawarich.example", now)
+      IO.puts(Jason.encode!(%{"downloads" => downloads, "upload" => %{"url" => url, "headers" => headers}, "signed_id" => Dawarich.RailsMessages.blob_id(970501)}))
+    ELIXIR
+  end
+
+  it 'serves what Phoenix signs: disk downloads, a direct upload target and a signed blob id' do
+    recorded = fx.read('storage.json')
+    host! 'dawarich.example'
+    travel_to(fx::NOW) do
+      blobs = stored_blobs
+      out = fx.phoenix(phoenix_storage_code)
+      out['downloads'].each do |download|
+        blob = blobs.find { |b| b.id == download['blob_id'] }
+        token = URI.decode_www_form_component(URI(download['url']).path.split('/')[4])
+        expect(ActiveStorage.verifier.verified(token, purpose: :blob_key)).to be_present
+        expect(blob.service.exist?(blob.key)).to be(true)
+        get URI(download['url']).path
+        expect(response).to have_http_status(:ok)
+        expect(response.body.b).to eq(payload)
+        type = (blob.forced_disposition_for_serving || download['disposition'] || 'inline').to_s
+        expect(response.headers['content-disposition'])
+          .to eq(ActionDispatch::Http::ContentDisposition.format(disposition: type, filename: blob.filename.sanitized))
+      end
+      untyped = blobs.find { |b| b.content_type.nil? }
+      expect { get URI(with_urls { untyped.url }).path }.to raise_error(NameError, /DEFAULT_SEND_FILE_TYPE/)
+      fresh = make_blob(970_530, "a12b#{'j' * 24}", 'phoenix.gpx', 'application/gpx+xml', stored: false)
+      put URI(out['upload']['url']).path, params: payload,
+                                          headers: { 'CONTENT_TYPE' => out['upload']['headers']['Content-Type'] }
+      expect(response).to have_http_status(:no_content)
+      expect(fresh.download.b).to eq(payload)
+      expect(ActiveStorage::Blob.find_signed!(out['signed_id'])).to eq(blobs.first)
+      fx.write('storage.json', recorded.merge('phoenix' => out)) if fx.write?
+    end
+  end
+end

@@ -10,7 +10,7 @@ class Points::Destroyer
     destroyed = nil
 
     ActiveRecord::Base.transaction do
-      destroyed = user.points.where(id: point_ids).without_raw_data.destroy_all
+      destroyed = user.points.where(id: point_ids).without_raw_data.order(id: :asc).destroy_all
     end
 
     return destroyed if destroyed.empty?

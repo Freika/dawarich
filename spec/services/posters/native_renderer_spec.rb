@@ -27,6 +27,19 @@ RSpec.describe Posters::NativeRenderer do
     )
   end
 
+  def wait_for_renderer_readiness
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args, &render|
+      original.call(*args) do |stdin, stdout, stderr, wait_thread|
+        ready = JSON.parse(stdout.gets)
+        expect(ready.fetch('pid')).to eq(wait_thread.pid)
+        expect(ready.fetch('pgrp')).to eq(wait_thread.pid)
+        expect(ready.fetch('child')).to be_positive
+        yield ready if block_given?
+        render.call(stdin, stdout, stderr, wait_thread)
+      end
+    end
+  end
+
   describe '#call' do
     it 'renders a job carrying theme tokens, track, view, and text' do
       result = build_renderer.call
@@ -89,10 +102,9 @@ RSpec.describe Posters::NativeRenderer do
 
     it 'times out when the process leader exits but a descendant retains its pipes' do
       stub_const("#{described_class}::RENDER_TIMEOUT", 0.2)
-      command = [
-        'ruby', '-rrbconfig', '-e',
-        'Process.spawn(RbConfig.ruby, "-e", "sleep 0.5", out: $stdout, err: $stderr)'
-      ]
+      stub_const("#{described_class}::TERMINATE_TIMEOUT", 0.05)
+      wait_for_renderer_readiness
+      command = fake_command + ['exit-parent']
 
       expect { build_renderer(command:).call }
         .to raise_error(described_class::Error, /timed out after 0.2 seconds/)
@@ -100,37 +112,50 @@ RSpec.describe Posters::NativeRenderer do
 
     it 'kills TERM-resistant descendants after a renderer timeout' do
       stub_const("#{described_class}::RENDER_TIMEOUT", 0.2)
-      pid_file = Tempfile.new('poster-renderer-child')
-      ready_path = "#{pid_file.path}.ready"
-      child_code = 'trap("TERM") {}; File.write(ARGV.fetch(0), "ready"); sleep 5'
-      parent_code = [
-        "child = Process.spawn(RbConfig.ruby, \"-e\", #{child_code.inspect}, #{ready_path.inspect}, " \
-        'out: File::NULL, err: File::NULL)',
-        "sleep 0.01 until File.exist?(#{ready_path.inspect})",
-        'File.write(ARGV.fetch(0), child)',
-        'sleep 5'
-      ].join('; ')
-      command = ['ruby', '-rrbconfig', '-e', parent_code, pid_file.path]
+      stub_const("#{described_class}::TERMINATE_TIMEOUT", 0.05)
+      child_pid = nil
+      wait_for_renderer_readiness { |ready| child_pid = ready.fetch('child') }
+      command = fake_command + ['linger']
 
       expect { build_renderer(command:).call }
         .to raise_error(described_class::Error, /timed out after 0.2 seconds/)
 
-      child_pid = File.read(pid_file.path).to_i
       child_running = lambda do
         state = IO.popen(['ps', '-o', 'stat=', '-p', child_pid.to_s], &:read).strip
         state.present? && !state.start_with?('Z')
       end
-      child_stopped = 50.times.any? do
-        break true unless child_running.call
-
-        sleep 0.01
-        false
-      end
-      expect(child_stopped).to be(true)
+      expect(child_running.call).to be(false)
     ensure
       Process.kill('KILL', child_pid) if child_pid&.positive? && child_running&.call
-      File.delete(ready_path) if ready_path && File.exist?(ready_path)
-      pid_file&.close!
+    end
+
+    it 'does not escalate to KILL when the process group probe returns EPERM' do
+      stub_const("#{described_class}::RENDER_TIMEOUT", 0.05)
+      process_group_id = nil
+      kill_calls = []
+      allow(Process).to receive(:kill).and_wrap_original do |original, signal, pid|
+        process_group_id ||= pid.abs if signal == 'TERM' && pid.negative?
+        kill_calls << [signal, pid]
+        raise Errno::EPERM if signal == 0 && pid == -process_group_id
+
+        original.call(signal, pid)
+      end
+      renderer = build_renderer(command: ['ruby', '-e', 'sleep 0.3'])
+
+      expect { renderer.call }.to raise_error(described_class::Error, /timed out after 0.05 seconds/)
+      expect(kill_calls).not_to include(['KILL', -process_group_id])
+    end
+
+    it 'raises the timeout error when TERM returns EPERM' do
+      stub_const("#{described_class}::RENDER_TIMEOUT", 0.05)
+      allow(Process).to receive(:kill).and_wrap_original do |original, signal, pid|
+        raise Errno::EPERM if signal == 'TERM' && pid.negative?
+
+        original.call(signal, pid)
+      end
+      renderer = build_renderer(command: ['ruby', '-e', 'sleep 0.3'])
+
+      expect { renderer.call }.to raise_error(described_class::Error, /timed out after 0.05 seconds/)
     end
 
     it 'raises when the theme tokens are unknown' do

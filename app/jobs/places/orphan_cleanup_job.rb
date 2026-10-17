@@ -7,12 +7,16 @@ class Places::OrphanCleanupJob < ApplicationJob
   # Drains the given user's orphan suggested places. Every place carries a
   # user_id (NOT NULL since 20260815100001), so there is no ownerless pass.
   def perform(user_id)
+    Places::JobCommands.execute('places.orphan_cleanup', user_id, job_id: job_id) { perform_rails(user_id) }
+  end
+
+  private
+
+  def perform_rails(user_id)
     return unless User.exists?(id: user_id)
 
     drain("user=#{user_id}", user_victims_sql, victim_binds(user_id))
   end
-
-  private
 
   def drain(scope, sql, binds)
     total = 0

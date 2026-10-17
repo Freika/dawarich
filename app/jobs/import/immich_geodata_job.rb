@@ -8,7 +8,14 @@ class Import::ImmichGeodataJob < ApplicationJob
 
   def perform(user_id)
     user = find_user_or_skip(user_id) || return
+    zone = Time.zone.name
+    result = PhoenixLease.try_hold("immich-geodata:#{user.id}") do
+      Imports::IntegrationCommands.legacy('imports.immich_geodata') do
+        Immich::ImportGeodata.new(user).call
+      end
+    end
+    return result unless [false, :not_owner].include?(result)
 
-    Immich::ImportGeodata.new(user).call
+    Imports::IntegrationCommands.forward('immich', user.id, event_id: job_id, time_zone: zone)
   end
 end

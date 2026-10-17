@@ -7,6 +7,9 @@ module GeocodedDaysHelpers
       keys = members.map { |member| "#{Stats::GeocodedDays::VERSION_KEY_PREFIX}:#{member}" }
       redis.call('DEL', Stats::GeocodedDays::PENDING_KEY, *keys)
     end
+    return unless Stats::GeocodedDays.table?
+
+    ActiveRecord::Base.connection.execute('DELETE FROM phoenix.stats_geocoded_days')
   end
 end
 

@@ -80,4 +80,16 @@ RSpec.describe Users::Digests::Monthly::CalculatingJob, type: :job do
 
     I18n.with_locale(:en) { described_class.new.perform(user.id, year, month) }
   end
+  it 'forwards positional string periods with the serialized ambient zone and no terminal effects' do
+    user = create(:user)
+    job_owner!(described_class::OWNER_KEY, :oban)
+    job = Time.use_zone('Tokyo') { described_class.new(user.id, '2025', '03') }
+    expect { Time.use_zone('Tokyo') { job.perform_now } }
+      .not_to change(Notification, :count)
+    expect(JobOutbox.sole).to have_attributes(
+      command_type: 'digests.calculate_month', event_id: job.job_id, aggregate_id: user.id,
+      payload: { 'user_id' => user.id, 'year' => 2025, 'month' => 3, 'time_zone' => 'Tokyo' }
+    )
+    expect(user.digests).to be_empty
+  end
 end

@@ -41,4 +41,27 @@ RSpec.describe AirTrail::ImportFlightsJob, type: :job do
 
     expect(user.notifications.last.title).to eq('La synchronisation AirTrail a échoué')
   end
+
+  it 'forwards without calling AirTrail while Oban owns the command' do
+    user = create(:user)
+    job_owner!(ImportCommands::AIRTRAIL_FLIGHTS_KEY, :oban)
+    expect(AirTrail::ImportFlights).not_to receive(:new)
+    job = described_class.new(user.id)
+
+    job.perform_now
+
+    expect(JobOutbox.pending.sole).to have_attributes(event_id: job.job_id, command_type: 'imports.airtrail_flights',
+                                                      payload: { 'user_id' => user.id })
+  end
+
+  it 'forwards when the owner moves between the pre-check and the gate' do
+    user = create(:user)
+    service = instance_double(AirTrail::ImportFlights, call: :not_owner)
+    allow(AirTrail::ImportFlights).to receive(:new).with(user).and_return(service)
+    job = described_class.new(user.id)
+
+    job.perform_now
+
+    expect(JobOutbox.pending.sole).to have_attributes(event_id: job.job_id, payload: { 'user_id' => user.id })
+  end
 end

@@ -28,7 +28,7 @@ RSpec.describe Imports::Destroy do
 
       expect { service.call }
         .to have_enqueued_job(Achievements::CheckJob).with(user.id)
-      expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([oldest_timestamp])
+      expect(Achievements::PendingChecks.read(user.id).first).to eq(oldest_timestamp)
     end
 
     context 'with points spanning several years' do

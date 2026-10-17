@@ -7,11 +7,15 @@ module Points
     class ClearJob < ApplicationJob
       queue_as :archival
 
+      OWNER_KEY = 'cron:raw_data_clear_job'
+
       def perform
         return unless ENV['ARCHIVE_RAW_DATA'] == 'true'
+        return if JobOwnership.oban?(OWNER_KEY)
 
         User.find_each do |user|
-          ClearUserJob.perform_later(user.id)
+          result = JobOwnership.with_owner(OWNER_KEY) { ClearUserJob.perform_later(user.id) }
+          break if result == :not_owner
         end
       rescue StandardError => e
         ExceptionReporter.call(e, 'Points raw data clearing scheduling failed')

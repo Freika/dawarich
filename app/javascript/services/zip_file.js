@@ -23,3 +23,33 @@ export function shouldZip(file) {
   const ext = parts.length > 1 ? parts.pop() : ""
   return !SKIP_EXTENSIONS.has(ext)
 }
+
+export async function prepareFilesForUpload(files, onCompressionFailure) {
+  const result = []
+  for (const original of files) {
+    if (!shouldZip(original)) {
+      result.push({
+        file: original,
+        originalFilename: original.name,
+        clientWrapped: false,
+      })
+      continue
+    }
+    try {
+      const zipped = await zipSingleFile(original)
+      result.push({
+        file: zipped,
+        originalFilename: original.name,
+        clientWrapped: true,
+      })
+    } catch (err) {
+      onCompressionFailure(original, err)
+      result.push({
+        file: original,
+        originalFilename: original.name,
+        clientWrapped: false,
+      })
+    }
+  }
+  return result
+}

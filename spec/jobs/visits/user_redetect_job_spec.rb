@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Visits::UserRedetectJob do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:base_ts) { Time.zone.parse('2026-01-05 09:00:00 UTC').to_i }
 
@@ -11,6 +13,7 @@ RSpec.describe Visits::UserRedetectJob do
   end
 
   it 'redetects the user history and stamps visits_redetected_at' do
+    user.update_columns(visits_redetected_at: 10.minutes.ago)
     6.times do |i|
       create(:point, user: user, latitude: 51.3402, longitude: 12.3712,
                      lonlat: 'POINT(12.3712 51.3402)', timestamp: base_ts + (i * 60), accuracy: 10)
@@ -20,6 +23,7 @@ RSpec.describe Visits::UserRedetectJob do
 
     expect(user.visits.count).to eq(1)
     expect(user.reload.visits_redetected_at).to be_present
+    expect(user.notifications.count).to eq(0)
   end
 
   it 'quietly skips deleted users' do
@@ -57,11 +61,18 @@ RSpec.describe Visits::UserRedetectJob do
   end
 
   it 're-enqueues itself with a delay when the per-user lock is busy' do
+    user.update_columns(visits_redetected_at: nil)
     allow(Tracks::PerUserLock).to receive(:with_user_lock)
       .and_raise(Tracks::PerUserLock::AcquisitionTimeout, 'busy')
 
-    expect { described_class.perform_now(user.id) }
-      .to have_enqueued_job(described_class).with(user.id, 1)
+    freeze_time do
+      (0...described_class::MAX_LOCK_RETRIES).each do |attempt|
+        expect { described_class.perform_now(user.id, attempt) }
+          .to have_enqueued_job(described_class).with(user.id, attempt + 1).at(15.minutes.from_now)
+      end
+    end
+    expect(user.reload.visits_redetected_at).to be_nil
+    expect(user.notifications.count).to eq(0)
   end
 
   it 'gives up after the retry budget instead of re-enqueueing forever' do

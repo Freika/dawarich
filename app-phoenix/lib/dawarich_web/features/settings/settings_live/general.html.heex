@@ -1,0 +1,207 @@
+<div class="min-h-content w-full my-5">
+  <.page_header title={t(@locale, "settings.general.index.general_settings", %{})} />
+  <.navigation
+    locale={@locale}
+    active="general"
+    self_hosted={@self_hosted}
+    admin={@current_user.admin == true}
+    two_factor={@two_factor}
+    native
+  />
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="card bg-base-200 shadow-xl">
+      <.form for={@form} id="general-settings" phx-change="change" phx-submit="save">
+        <div class="card-body">
+          <div class="space-y-8 animate-fade-in">
+            <div id="email-digests">
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <.icon name="mail" class="text-primary mr-2" />
+                {t(@locale, "settings.general.index.email_preferences", %{})}
+              </h2>
+              <div :if={@smtp} class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <.input
+                  field={@form[:monthly_digest_emails_enabled]}
+                  type="checkbox"
+                  label={t(@locale, "settings.general.index.monthly_digest_emails", %{})}
+                  hint={
+                    t(
+                      @locale,
+                      "settings.general.index.summary_of_your_last_month_sent_on_the_2nd",
+                      %{}
+                    )
+                  }
+                />
+                <.input
+                  field={@form[:yearly_digest_emails_enabled]}
+                  type="checkbox"
+                  label={t(@locale, "settings.general.index.year_end_digest_emails", %{})}
+                  hint={
+                    t(
+                      @locale,
+                      "settings.general.index.receive_an_annual_summary_on_january_2nd_with_your_year",
+                      %{}
+                    )
+                  }
+                />
+                <.input
+                  field={@form[:news_emails_enabled]}
+                  type="checkbox"
+                  label={t(@locale, "settings.general.index.news_updates", %{})}
+                  hint={
+                    t(
+                      @locale,
+                      "settings.general.index.receive_occasional_emails_about_new_features_and_important_updates",
+                      %{}
+                    )
+                  }
+                />
+                <div :if={test_email?(assigns)} class="border-t border-base-content/10 pt-4">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <button
+                      id="send-test-email"
+                      type="button"
+                      class="btn btn-outline btn-sm"
+                      phx-click="send_test_email"
+                      phx-disable-with={t(@locale, "settings.general.index.send_test_email", %{})}
+                    >
+                      {t(@locale, "settings.general.index.send_test_email", %{})}
+                    </button>
+                    <span class="text-sm text-base-content/70">
+                      {t(@locale, "settings.general.index.test_email_worker_hint", %{})}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div :if={!@smtp} class="bg-base-100 p-5 rounded-lg shadow-sm">
+                <p class="text-sm text-base-content/70">
+                  {t(@locale, "controllers.settings.general.smtp_not_configured_html", %{
+                    link: smtp_link(@locale)
+                  })}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <.icon name="globe" class="text-primary mr-2" />
+                {t(@locale, "settings.general.index.language", %{})}
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-medium">
+                      {t(@locale, "settings.general.index.your_language", %{})}
+                    </span>
+                  </label>
+                  <div
+                    class="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                    role="radiogroup"
+                    aria-label={t(@locale, "settings.general.index.your_language", %{})}
+                  >
+                    <label
+                      :for={code <- DawarichWeb.Locale.locales()}
+                      class="cursor-pointer"
+                      data-testid="language-choice"
+                    >
+                      <input
+                        class="peer sr-only"
+                        type="radio"
+                        value={code}
+                        checked={code == @form[:locale].value}
+                        name={@form[:locale].name}
+                        id={"locale_" <> code}
+                      />
+                      <div class="flex items-center gap-3 rounded-lg border-2 border-base-300 p-3 transition-colors hover:border-base-content/30 peer-checked:border-primary peer-checked:bg-primary/10 peer-focus-visible:ring-2 peer-focus-visible:ring-primary">
+                        <.flag
+                          code={flag_code(code)}
+                          class="inline-block rounded-sm h-5 w-auto shadow-sm shrink-0"
+                        />
+                        <span class="font-medium truncate" lang={code} data-testid="language-name">
+                          {native_name(code)}
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+                  <p class="text-sm text-base-content/70 mt-3">
+                    {t(
+                      @locale,
+                      "settings.general.index.the_interface_emails_and_notifications_will_use_this_language",
+                      %{}
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <.icon name="clock" class="text-primary mr-2" />
+                {t(@locale, "settings.general.index.timezone", %{})}
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <.input
+                  field={@form[:timezone]}
+                  type="select"
+                  options={@zones}
+                  label={t(@locale, "settings.general.index.your_timezone", %{})}
+                />
+                <p class="text-sm text-base-content/70 mt-1">
+                  {t(
+                    @locale,
+                    "settings.general.index.all_dates_and_times_will_be_displayed_in_this_timezone",
+                    %{}
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div :if={@self_hosted and @supporter}>
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <.icon name="gem" class="mr-2 text-sky-400" />
+                {t(@locale, "settings.general.index.supporter_badge", %{})}
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <.input
+                  field={@form[:show_supporter_badge]}
+                  type="checkbox"
+                  label={t(@locale, "settings.general.index.show_supporter_badge_in_navbar", %{})}
+                  hint={
+                    t(
+                      @locale,
+                      "settings.general.index.display_a_gem_icon_next_to_your_profile_to_show",
+                      %{}
+                    )
+                  }
+                />
+              </div>
+            </div>
+          </div>
+          <div class="card-actions justify-end mt-6">
+            <button
+              type="submit"
+              class="btn btn-primary"
+              phx-disable-with={t(@locale, "settings.general.index.save_changes", %{})}
+            >
+              {t(@locale, "settings.general.index.save_changes", %{})}
+            </button>
+          </div>
+        </div>
+      </.form>
+    </div>
+
+    <.supporter_card
+      :if={@self_hosted}
+      locale={@locale}
+      user={@current_user}
+      supporter={@supporter}
+      platform={@platform}
+    />
+    <.consent_card
+      :if={@self_hosted}
+      locale={@locale}
+      granted={@current_user.changelog_consent == 1}
+      native
+    />
+  </div>
+</div>

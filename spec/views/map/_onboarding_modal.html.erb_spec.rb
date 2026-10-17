@@ -56,4 +56,10 @@ RSpec.describe 'map/_onboarding_modal', type: :view do
 
     expect(rendered_modal).to include('Invite your family')
   end
+
+  it 'gives the controller root the id the Phoenix page hooks onto' do
+    root = Nokogiri::HTML5.fragment(rendered_modal).at_css('[data-controller="onboarding-modal"]')
+
+    expect(root['id']).to eq('onboarding-modal')
+  end
 end

@@ -5,14 +5,21 @@ class Trips::CalculateAllJob < ApplicationJob
 
   PENDING_KEY_PREFIX = 'trips:recalc:pending'
   PENDING_TTL = 10.minutes
+  OWNER_KEY = 'command:trips.calculate'
 
   def perform(trip_id, distance_unit = 'km')
-    run_token = SecureRandom.uuid
-    Rails.cache.write(self.class.pending_key(trip_id, run_token), 3, expires_in: PENDING_TTL, raw: true)
+    result = JobOwnership.with_owner(OWNER_KEY) { fan_out(trip_id, distance_unit) }
+    return unless result == :not_owner
 
-    Trips::CalculatePathJob.perform_later(trip_id, run_token)
-    Trips::CalculateDistanceJob.perform_later(trip_id, distance_unit, run_token)
-    Trips::CalculateCountriesJob.perform_later(trip_id, distance_unit, run_token)
+    self.class.forward(trip_id, distance_unit, job_id, scheduled_at: scheduled_at || Time.current)
+  end
+
+  def self.forward(trip_id, distance_unit, token, scheduled_at: Time.current)
+    JobCommands.forward(
+      'trips.calculate', { 'trip_id' => trip_id, 'distance_unit' => distance_unit },
+      event_id: Trips::CalculationReceipts.event_id(trip_id, token),
+      aggregate_id: trip_id, dedupe_key: trip_id.to_s, producer: name, scheduled_at:
+    )
   end
 
   def self.pending_key(trip_id, run_token)
@@ -31,7 +38,8 @@ class Trips::CalculateAllJob < ApplicationJob
     end
 
     remaining = Rails.cache.decrement(key)
-    return unless remaining&.zero?
+    return unless remaining&.zero? || Trips::CalculationReceipts.complete?(trip_id, run_token)
+    return unless Trips::CalculationReceipts.finish(trip_id, run_token)
 
     Rails.cache.delete(key)
     finalize(trip_id, error: false)
@@ -49,5 +57,19 @@ class Trips::CalculateAllJob < ApplicationJob
       partial: 'trips/recalculate_button',
       locals: { trip: trip, error: error }
     )
+  end
+
+  private
+
+  def fan_out(trip_id, distance_unit)
+    JobOwnership.require_source_children!(OWNER_KEY)
+    run_token = job_id
+    Rails.cache.write(self.class.pending_key(trip_id, run_token), 3, expires_in: PENDING_TTL, raw: true)
+
+    Trips::CalculatePathJob.set(wait_until: scheduled_at || Time.current).perform_later(trip_id, run_token)
+    Trips::CalculateDistanceJob.set(wait_until: scheduled_at || Time.current).perform_later(trip_id, distance_unit,
+                                                                                            run_token)
+    Trips::CalculateCountriesJob.set(wait_until: scheduled_at || Time.current).perform_later(trip_id, distance_unit,
+                                                                                             run_token)
   end
 end

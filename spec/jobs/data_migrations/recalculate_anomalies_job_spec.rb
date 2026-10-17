@@ -21,6 +21,16 @@ RSpec.describe DataMigrations::RecalculateAnomaliesJob, type: :job do
     end.to have_enqueued_job(user_job).with(tracking_user.id).exactly(:once)
   end
 
+  it 'preserves requested claim order while excluding users already claimed' do
+    first = tracking_user.id
+    second = create(:user).id
+    third = create(:user).id
+    dispatcher = described_class.new
+
+    expect(dispatcher.send(:claim, [second])).to eq([second])
+    expect(dispatcher.send(:claim, [third, second, first])).to eq([third, first])
+  end
+
   it 'skips users who have no points' do
     described_class.perform_now
 

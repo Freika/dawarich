@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "warmup_seconds": 30,
+  "trial_seconds": 60,
+  "grace_seconds": 10,
+  "repetitions": 3,
+  "preallocated_vus": 32,
+  "max_vus": 32,
+  "app_memory_mib": [
+    512,
+    1024
+  ],
+  "idle_socket_cohorts": [
+    1,
+    10,
+    50
+  ],
+  "fixture_counts": {
+    "points": 100000,
+    "tracks": 40,
+    "visits": 40,
+    "trips": 20,
+    "imports": 20,
+    "stats": 1
+  },
+  "slo": "calibrate-then-controller-approve",
+  "cases": [
+    {
+      "id": "map",
+      "path": "/map?start_at=2026-01-01&end_at=2026-01-02",
+      "kind": "html",
+      "rates": [
+        10,
+        100
+      ]
+    },
+    {
+      "id": "stats_page",
+      "path": "/stats",
+      "kind": "html",
+      "rates": [
+        10,
+        100
+      ]
+    },
+    {
+      "id": "trips",
+      "path": "/trips",
+      "kind": "html",
+      "marker": "Benchmark trip",
+      "rates": [
+        10,
+        100
+      ]
+    },
+    {
+      "id": "imports",
+      "path": "/imports",
+      "kind": "html",
+      "marker": "Benchmark import",
+      "rates": [
+        10,
+        100
+      ]
+    },
+    {
+      "id": "points_page",
+      "path": "/points?start_at=2026-01-01&end_at=2026-01-02",
+      "kind": "html",
+      "rates": [
+        10,
+        100
+      ]
+    },
+    {
+      "id": "points_api",
+      "path": "/api/v1/points?start_at=1767225600&end_at=1767325600&per_page=100",
+      "kind": "points",
+      "rates": [
+        50,
+        300
+      ]
+    },
+    {
+      "id": "tracks_api",
+      "path": "/api/v1/tracks?start_at=2026-01-01T00%3A00%3A00Z&end_at=2026-01-02T04%3A00%3A00Z&per_page=100",
+      "kind": "tracks",
+      "rates": [
+        5,
+        100
+      ]
+    },
+    {
+      "id": "stats_api",
+      "path": "/api/v1/stats",
+      "kind": "stats",
+      "rates": [
+        20,
+        200
+      ]
+    },
+    {
+      "id": "visits_api",
+      "path": "/api/v1/visits?per_page=100&start_at=2026-01-01&end_at=2026-01-02",
+      "kind": "visits",
+      "rates": [
+        20,
+        200
+      ]
+    },
+    {
+      "id": "points_tile",
+      "path": "/api/v1/tiles/points/10/550/335.mvt?start_at=1767225600&end_at=1767325600",
+      "kind": "mvt",
+      "rates": [
+        2,
+        8
+      ]
+    }
+  ]
+}

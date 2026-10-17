@@ -1,0 +1,9 @@
+<%= @t.("confirm_account_link") %>
+
+<%= @t.("hi") %> <%= @email %>,
+
+<%= @th.("account_link_request_text", %{"provider" => @provider_label}) %>
+
+<%= @t.("link") %> <%= @provider_label %>: <%= @link_url %>
+
+<%= @t.("didn_t_request_this_ignore_this_email_the_link_expires") %>

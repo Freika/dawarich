@@ -10,7 +10,7 @@ class Poster < ApplicationRecord
   has_one_attached :image
   has_one_attached :print_pdf
 
-  after_commit -> { Posters::CreateJob.perform_later(id) }, on: :create
+  after_commit -> { Posters::CreationCommand.call(self) }, on: :create
   after_update_commit :broadcast_status_change
 
   private

@@ -101,3 +101,7 @@ Naming/PredicatePrefix:
 Layout/LineLength:
   Exclude:
     - 'config/initializers/devise.rb'
+
+Rails/IndexWith:
+  Exclude:
+    - 'app-phoenix/scripts/rate_limit_bench.rb'

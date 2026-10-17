@@ -8,7 +8,15 @@ class Cache::PreheatingJob < ApplicationJob
 
   BATCH_SIZE = 500
 
-  def perform
+  around_enqueue do |job, enqueue|
+    if job.arguments == ['cron']
+      JobOwnership.with_owner('cron:cache_preheating_job') { enqueue.call }
+    else
+      enqueue.call
+    end
+  end
+
+  def perform(_origin = nil)
     preheat_country_borders
 
     target_users.find_in_batches(batch_size: BATCH_SIZE) do |batch|

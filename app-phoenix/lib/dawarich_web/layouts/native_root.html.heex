@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang={@locale} data-theme={theme(@current_user)} data-self-hosted={to_string(@self_hosted)}>
+  <head>
+    <title
+      data-default={page_title(@locale, nil)}
+      data-suffix={if @page_title, do: page_title(@locale, "")}
+      phx-no-format
+    >{page_title(@locale, @page_title)}</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <.pwa_meta locale={@locale} />
+    <meta name="csrf-param" content="authenticity_token" />
+    <meta name="csrf-token" content={@rails_csrf_token} />
+    <meta name="phoenix-csrf-token" content={Phoenix.Controller.get_csrf_token()} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("tailwind.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("inter-font.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("application.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("achievements.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("achievements_spectral.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("achievements_unlocks.css")} />
+    <script defer phx-track-static type="module" src={DawarichWeb.Assets.native_path("app.js")}>
+    </script>
+    {assigns[:head_content]}
+    <.favicon />
+    <.head_scripts self_hosted={@self_hosted} native />
+  </head>
+  <body class="min-h-screen flex flex-col">{@inner_content}</body>
+</html>

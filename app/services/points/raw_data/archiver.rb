@@ -58,7 +58,7 @@ module Points
       def archive_specific_month(user_id, year, month)
         lock_key = "archive_points:#{user_id}:#{year}:#{month}"
 
-        lock_acquired = ActiveRecord::Base.with_advisory_lock(lock_key, timeout_seconds: 0) do
+        lock_acquired = PhoenixLease.try_hold(lock_key) do
           point_ids = find_month_point_ids(user_id, year, month)
           next true if point_ids.empty?
 

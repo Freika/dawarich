@@ -1,0 +1,185 @@
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold">{@tag_title}</h1>
+    <p class="text-gray-600 mt-2">
+      {t(
+        @locale,
+        "tags.#{@kind}." <>
+          if(@kind == "new",
+            do: "create_a_new_tag_to_organize_your_places",
+            else: "update_your_tag_details"
+          ),
+        %{}
+      )}
+    </p>
+  </div>
+  <div class="card bg-base-100 shadow-xl">
+    <div class="card-body">
+      <.form for={@form} id="tag-form" class="space-y-4" phx-change="validate" phx-submit="save">
+        <div :if={@errors != []} class="alert alert-error" role="alert">
+          <div>
+            <h3 class="font-bold">
+              {t(@locale, "tags.form.errors_prohibited_save", %{count: length(@errors)})}
+            </h3>
+            <ul class="list-disc list-inside">
+              <li :for={message <- @errors}>{message}</li>
+            </ul>
+          </div>
+        </div>
+        <.input
+          field={@form[:name]}
+          label="Name"
+          phx-debounce="300"
+          placeholder={t(@locale, "tags.form.home_work_restaurant", %{})}
+        />
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="form-control">
+            <label class="label" for="tag-icon-toggle">Icon</label>
+            <div id="tag-icon-picker" class="relative w-full" phx-hook="EmojiPicker">
+              <button
+                id="tag-icon-toggle"
+                type="button"
+                data-emoji-toggle
+                aria-label={t(@locale, "tags.form.click_to_select_an_emoji", %{})}
+                class="input input-bordered w-full flex items-center justify-center text-4xl cursor-pointer hover:bg-base-200 min-h-[4rem]"
+              >
+                {@icon}
+              </button>
+              <div id="tag-icon-picker-panel" phx-update="ignore">
+                <div data-emoji-container hidden class="absolute z-50 mt-2 left-0"></div>
+              </div>
+              <input type="hidden" name="tag[icon]" id="tag_icon" value={@icon} />
+            </div>
+            <.error :for={{message, _} <- shown_errors(@form[:icon])}>{message}</.error>
+            <label class="label">
+              <span class="label-text-alt">
+                {t(@locale, "tags.form.click_to_select_an_emoji", %{})}
+              </span>
+            </label>
+          </div>
+          <fieldset class="form-control">
+            <legend class="label">Color</legend>
+            <div class="grid grid-cols-6 gap-2">
+              <label
+                :for={color <- @colors}
+                class="relative w-10 h-10 rounded-lg cursor-pointer transition-all hover:scale-110 border-2 border-base-300 has-[:checked]:ring-2 has-[:checked]:ring-offset-2 has-[:checked]:ring-primary has-[:focus-visible]:outline has-[:focus-visible]:outline-2"
+                style={"background-color: #{color};"}
+                title={color}
+              >
+                <input
+                  type="radio"
+                  name="tag[color]"
+                  value={color}
+                  checked={color == @color}
+                  aria-label={color}
+                  class="absolute inset-0 w-full h-full m-0 opacity-0 cursor-pointer"
+                />
+              </label>
+              <label
+                :if={@custom}
+                class="relative w-10 h-10 rounded-lg cursor-pointer border-2 border-base-300 ring-2 ring-offset-2 ring-primary"
+                style={"background-color: #{@color};"}
+                title={@color}
+              >
+                <input
+                  type="radio"
+                  name="tag[color]"
+                  value={@color}
+                  checked
+                  aria-label={@color}
+                  class="absolute inset-0 w-full h-full m-0 opacity-0 cursor-pointer"
+                />
+              </label>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 mt-3">
+              <label class="flex items-center gap-2 cursor-pointer min-w-0">
+                <span class="text-sm font-medium">{t(@locale, "tags.form.custom", %{})}</span>
+                <input
+                  type="color"
+                  name="tag[custom_color]"
+                  value={@color}
+                  class="w-12 h-12 rounded-lg cursor-pointer border-2 border-base-300 color-input"
+                />
+              </label>
+              <span class="text-sm text-base-content/60">{@color}</span>
+            </div>
+            <.error :for={{message, _} <- shown_errors(@form[:color])}>{message}</.error>
+            <label class="label">
+              <span class="label-text-alt">
+                {t(@locale, "tags.form.choose_from_swatches_or_pick_a_custom_color", %{})}
+              </span>
+            </label>
+          </fieldset>
+        </div>
+        <div class="form-control">
+          <input type="hidden" name="tag[privacy_enabled]" value="false" />
+          <label class="label cursor-pointer" for="tag_privacy_enabled">
+            <span class="label-text font-semibold">
+              <.icon name="lock-open" class="inline-block w-4" /> {t(
+                @locale,
+                "tags.form.privacy_zone",
+                %{}
+              )}
+            </span>
+            <input
+              type="checkbox"
+              id="tag_privacy_enabled"
+              name="tag[privacy_enabled]"
+              value="true"
+              checked={@privacy}
+              class="toggle toggle-error"
+            />
+          </label>
+          <label class="label">
+            <span class="label-text-alt">
+              {t(@locale, "tags.form.hide_map_data_around_places_with_this_tag", %{})}
+            </span>
+          </label>
+        </div>
+        <div :if={@privacy} class="form-control">
+          <label class="label" for="tag_privacy_radius_meters">
+            {t(@locale, "tags.form.privacy_radius", %{})}
+          </label>
+          <input
+            type="range"
+            min="50"
+            max="5000"
+            step="50"
+            id="tag_privacy_radius_meters"
+            name="tag[privacy_radius_meters]"
+            value={@radius}
+            class="range range-error"
+            phx-throttle="150"
+          />
+          <div class="flex justify-between text-xs px-2">
+            <span>{t(@locale, "units.meters_compact", %{value: 50})}</span>
+            <span class="font-semibold">{@radius}m</span>
+            <span>{t(@locale, "units.meters_compact", %{value: 5000})}</span>
+          </div>
+          <.error :for={{message, _} <- shown_errors(@form[:privacy_radius_meters])}>
+            {message}
+          </.error>
+          <label class="label">
+            <span class="label-text-alt">
+              {t(@locale, "tags.form.data_within_this_radius_will_be_hidden_from_the_map", %{})}
+            </span>
+          </label>
+        </div>
+        <div class="form-control mt-6">
+          <div class="flex gap-2">
+            <.button phx-disable-with={
+              t(@locale, "helpers.submit.#{if @tag.id, do: "update", else: "create"}", %{
+                model: "Tag"
+              })
+            }>
+              {t(@locale, "helpers.submit.#{if @tag.id, do: "update", else: "create"}", %{
+                model: "Tag"
+              })}
+            </.button>
+            <.link navigate={~p"/tags"} class="btn btn-ghost">{t(@locale, "tags.form.cancel", %{})}</.link>
+          </div>
+        </div>
+      </.form>
+    </div>
+  </div>
+</div>

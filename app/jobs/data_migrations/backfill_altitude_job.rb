@@ -6,6 +6,8 @@ class DataMigrations::BackfillAltitudeJob < ApplicationJob
   queue_as :data_migrations
 
   def perform
+    return if ReleaseCommands.forwarded?(self, 'release.altitude', {})
+
     Rails.logger.info('Enqueuing per-user altitude backfill jobs')
 
     User.where('points_count > 0').find_each do |user|

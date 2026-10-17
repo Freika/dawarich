@@ -8,6 +8,8 @@ RSpec.describe 'points:raw_data:archive' do
     Rake::Task['points:raw_data:archive'].reenable
   end
 
+  after { Rake::Task['points:raw_data:archive'].reenable }
+
   context 'with eligible points across users' do
     let(:user) { create(:user) }
     let(:other_user) { create(:user) }
@@ -35,13 +37,13 @@ RSpec.describe 'points:raw_data:archive' do
     end
   end
 
-  context 'when the per-user advisory lock is held' do
+  context 'when the per-user lease is held' do
     let(:user) { create(:user) }
 
     before do
       old_date = 3.months.ago.beginning_of_month
       create_list(:point, 2, user: user, timestamp: old_date.to_i, raw_data: { lon: 13.4, lat: 52.5 })
-      allow(ActiveRecord::Base).to receive(:with_advisory_lock).and_return(false)
+      allow(PhoenixLease).to receive(:try_hold).and_return(false)
     end
 
     it 'skips the locked user without archiving and says so' do
@@ -58,6 +60,8 @@ RSpec.describe 'points:raw_data:archive_full' do
     allow(PointsChannel).to receive(:broadcast_to)
     Rake::Task['points:raw_data:archive_full'].reenable
   end
+
+  after { Rake::Task['points:raw_data:archive_full'].reenable }
 
   let(:user) { create(:user) }
 

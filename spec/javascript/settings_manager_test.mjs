@@ -20,6 +20,7 @@ const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
 const combinedSource = `${basemapUrlSource}\n${withoutImports}`
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combinedSource).toString("base64")}`
 const { LAYER_COLOR_DEFAULTS, SettingsManager } = await import(moduleUrl)
+const realSaveToBackend = SettingsManager.saveToBackend
 
 async function loadSettingsController(settingsManager, overrides = {}) {
   const controllerSource = await readFile(
@@ -176,6 +177,98 @@ test("settings writes are serialized so a newer snapshot persists last", async (
     routeColor: "#111111",
     trackColor: "#6366F1",
   })
+})
+
+test("reset persists kilometers after a previous miles preference", async () => {
+  const originalSave = SettingsManager.saveToBackend
+  const originalApiKey = SettingsManager.apiKey
+  const originalFetch = globalThis.fetch
+  let saved
+  SettingsManager.apiKey = "test-key"
+  SettingsManager.saveQueue = Promise.resolve()
+  SettingsManager.saveToBackend = realSaveToBackend
+  globalThis.fetch = async (_url, options) => {
+    saved = JSON.parse(options.body).settings
+    return { ok: true, json: async () => ({ settings: saved }) }
+  }
+
+  try {
+    SettingsManager.cachedSettings = { distance_unit: "mi" }
+    await SettingsManager.resetToDefaults()
+    assert.equal(saved.maps.distance_unit, "km")
+    assert.deepEqual(saved.maps.hidden_tile_categories, [])
+    assert.deepEqual(saved.maps.disabled_poi_groups, [])
+    assert.equal(saved.live_map_enabled, true)
+  } finally {
+    SettingsManager.saveToBackend = originalSave
+    SettingsManager.apiKey = originalApiKey
+    globalThis.fetch = originalFetch
+  }
+})
+
+test("reset is saved after an in-flight settings update", async () => {
+  const originalSave = SettingsManager.saveToBackend
+  const originalApiKey = SettingsManager.apiKey
+  let finishFirstSave
+  const blocked = new Promise((resolve) => {
+    finishFirstSave = resolve
+  })
+  const snapshots = []
+  SettingsManager.apiKey = "test-key"
+  SettingsManager.cachedSettings = { distance_unit: "mi" }
+  SettingsManager.saveQueue = Promise.resolve()
+  SettingsManager.saveToBackend = async (settings) => {
+    snapshots.push({ ...settings })
+    if (snapshots.length === 1) await blocked
+    return settings
+  }
+
+  try {
+    const update = SettingsManager.updateSetting("distance_unit", "mi")
+    await Promise.resolve()
+    const reset = SettingsManager.resetToDefaults()
+    await Promise.resolve()
+    assert.equal(snapshots.length, 1)
+    finishFirstSave()
+    await Promise.all([update, reset])
+    assert.equal(snapshots.at(-1).distance_unit, "km")
+  } finally {
+    SettingsManager.saveToBackend = originalSave
+    SettingsManager.apiKey = originalApiKey
+  }
+})
+
+test("reset reloads only after the backend save settles", async () => {
+  const originalWindow = globalThis.window
+  const originalConfirm = globalThis.confirm
+  let finishSave
+  let reloaded = false
+  const saved = new Promise((resolve) => {
+    finishSave = resolve
+  })
+  globalThis.window = {
+    location: {
+      reload: () => {
+        reloaded = true
+      },
+    },
+  }
+  globalThis.confirm = () => true
+
+  try {
+    const { SettingsController } = await loadSettingsController({
+      resetToDefaults: () => saved,
+    })
+    const controller = new SettingsController({ settings: {} })
+    const reset = controller.resetSettings()
+    assert.equal(reloaded, false)
+    finishSave()
+    await reset
+    assert.equal(reloaded, true)
+  } finally {
+    globalThis.window = originalWindow
+    globalThis.confirm = originalConfirm
+  }
 })
 
 test("resetting layer colors cancels stale debounced saves", async () => {

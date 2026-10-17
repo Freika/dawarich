@@ -20,6 +20,18 @@ RSpec.describe Users::ExportData::Exports, type: :service do
   end
 
   describe '#call' do
+    it 'returns exports in id order when physical insertion order differs' do
+      connection = ActiveRecord::Base.connection
+      connection.execute('SET LOCAL enable_indexscan = off')
+      connection.execute('SET LOCAL enable_bitmapscan = off')
+      higher_id = Export.maximum(:id).to_i + 2
+      create(:export, id: higher_id, user: user, name: 'Later export')
+      create(:export, id: higher_id - 1, user: user, name: 'Earlier export')
+
+      expect(user.exports.pluck(:name)).to eq(['Later export', 'Earlier export'])
+      expect(subject.pluck('name')).to eq(['Earlier export', 'Later export'])
+    end
+
     context 'when user has no exports' do
       it 'returns an empty array' do
         expect(subject).to eq([])

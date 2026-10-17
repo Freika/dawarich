@@ -34,8 +34,7 @@ Rails.application.configure do
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable
 
-  # Disable request forgery protection in test environment.
-  config.action_controller.allow_forgery_protection = false
+  config.action_controller.allow_forgery_protection = ENV['E2E_PROXY_STACK'] == '1'
 
   # Store uploaded files on the local file system in a temporary directory.
   config.active_storage.service = :test
@@ -48,6 +47,16 @@ Rails.application.configure do
   # The :test delivery method accumulates sent emails in the
   # ActionMailer::Base.deliveries array.
   config.action_mailer.delivery_method = :test
+
+  if ENV['E2E_PROXY_STACK'] == '1' && ENV['E2E_SMTP_DELIVERY'] == '1'
+    config.action_mailer.delivery_method = :smtp
+    config.action_mailer.smtp_settings = {
+      address: ENV.fetch('SMTP_SERVER', '127.0.0.1'),
+      port: ENV.fetch('E2E_SMTP_PORT', '1025').to_i,
+      enable_starttls_auto: false
+    }
+    config.action_mailer.raise_delivery_errors = true
+  end
 
   # Unlike controllers, the mailer instance doesn't have any context about the
   # incoming request so you'll need to provide the :host parameter yourself.

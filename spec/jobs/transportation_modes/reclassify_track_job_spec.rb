@@ -61,7 +61,23 @@ RSpec.describe TransportationModes::ReclassifyTrackJob do
     expect(status.current_status).to eq('completed')
   end
 
-  it 'still counts progress when reclassification fails, so the status can complete' do
+  it 'Oban-owned forwards without reporting progress' do
+    track = create_track_with_points
+    job_owner!(described_class::OWNER_KEY, :oban)
+    status = instance_double(Tracks::TransportationRecalculationStatus)
+    allow(status).to receive(:increment_processed!)
+    allow(Tracks::TransportationRecalculationStatus).to receive(:new).and_return(status)
+    job = described_class.new(track.id, report_progress: true, user_id: user.id)
+
+    job.perform_now
+
+    expect(status).not_to have_received(:increment_processed!)
+    expect(JobOutbox.sole).to have_attributes(command_type: 'transportation.reclassify_track', aggregate_id: track.id,
+                                              event_id: job.job_id,
+                                              payload: hash_including('report_progress' => true, 'user_id' => user.id))
+  end
+
+  it 'Sidekiq-owned still reports in ensure on failure' do
     track = create_track_with_points
     status = Tracks::TransportationRecalculationStatus.new(user.id)
     status.start(total_tracks: 1)

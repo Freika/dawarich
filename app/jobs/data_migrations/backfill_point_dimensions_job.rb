@@ -49,6 +49,11 @@ class DataMigrations::BackfillPointDimensionsJob < ApplicationJob
   end
 
   def perform(start_id = nil, batch_size = BATCH_SIZE)
+    return if ReleaseCommands.forwarded?(
+      self, 'release.point_dimensions_country',
+      { 'phase' => 'dimensions', 'start_id' => start_id, 'batch_size' => batch_size, 'repair_collisions' => false }
+    )
+
     start_id ||= Point.minimum(:id)
     return if start_id.nil?
 

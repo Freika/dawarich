@@ -105,6 +105,15 @@ RSpec.describe '/trips', type: :request do
       expect(response.body).to include('Delete this trip')
     end
 
+    it 'renders the page and both studios inside #trip-shell' do
+      get trip_url(trip)
+
+      shell = Nokogiri::HTML(response.body).at_css('#trip-shell.contents')
+      expect(shell.at_css('turbo-cable-stream-source')).to be_present
+      expect(shell.at_css('[data-controller="trip-maplibre"]')).to be_present
+      expect(shell.css('#poster-studio, #video-studio').size).to eq(2)
+    end
+
     it 'renders a read-only itinerary for a TREK-managed trip' do
       stub_host_addresses('trek.example.test', '93.184.216.34')
       source = create(:trip_source, user:)
@@ -579,6 +588,25 @@ RSpec.describe '/trips', type: :request do
         patch trip_url(trip), params: { trip: invalid_attributes }
         expect(response).to have_http_status(:unprocessable_content)
       end
+    end
+  end
+
+  describe 'calculation commands once Oban owns trips' do
+    let!(:trip) { create(:trip, user:, path: nil, distance: nil) }
+
+    before { job_owner!('command:trips.calculate', :oban) }
+
+    it 'adds one pending command however often the page is viewed' do
+      3.times { get trip_path(trip) }
+
+      expect(JobOutbox.pending.where(command_type: 'trips.calculate', aggregate_id: trip.id).count).to eq(1)
+    end
+
+    it 'marks the cooldown and produces the command together' do
+      post recalculate_trip_path(trip), as: :turbo_stream
+
+      expect(trip.reload.last_recalculated_at).to be_present
+      expect(JobOutbox.pending.where(aggregate_id: trip.id).count).to eq(1)
     end
   end
 

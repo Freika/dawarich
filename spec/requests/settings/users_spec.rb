@@ -6,6 +6,76 @@ RSpec.describe '/settings/users', type: :request do
   let(:valid_attributes) { { email: 'user@domain.com', password: '4815162342abc' } }
   let!(:admin) { create(:user, :admin) }
 
+  context 'with PostgreSQL registration authority' do
+    let(:connection) { ActiveRecord::Base.connection }
+
+    around do |example|
+      with_legacy_registration do
+        phoenix_registration!
+        connection.execute('INSERT INTO phoenix.registration_setting (enabled) VALUES (true)')
+        example.run
+      ensure
+        connection.execute('DROP TABLE IF EXISTS phoenix.registration_setting')
+        PhoenixSchema.reset!
+        Rails.cache.delete('dawarich/registration_enabled')
+      end
+    end
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
+      Rails.cache.write('dawarich/registration_enabled', true)
+    end
+
+    it 'DawarichSettings and registration requests honor copied PG false despite legacy Redis true' do
+      connection.execute('UPDATE phoenix.registration_setting SET enabled=false')
+      expect(DawarichSettings.registration_enabled?).to be(false)
+      sign_in admin
+      patch update_registration_settings_settings_users_url, params: { registration_enabled: '0' }
+      expect(response).to redirect_to(settings_users_url)
+      expect(Rails.cache.read('dawarich/registration_enabled')).to be(true)
+      sign_out admin
+      get new_user_registration_path
+      expect(response).to redirect_to(root_path)
+      expect do
+        post user_registration_path, params: { user: valid_attributes.merge(password_confirmation: '4815162342abc') }
+      end.not_to change(User, :count)
+      expect(response).to redirect_to(root_path)
+      expect do
+        post '/api/v1/auth/register', params: valid_attributes.merge(password_confirmation: '4815162342abc')
+      end.not_to change(User, :count)
+      expect(response).to have_http_status(:forbidden)
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      get new_user_registration_path
+      expect(response).to have_http_status(:ok)
+      expect do
+        post '/api/v1/auth/register', params: valid_attributes.merge(password_confirmation: '4815162342abc')
+      end.to change(User, :count).by(1)
+      expect(response).to have_http_status(:created)
+    end
+
+    it 'settings update persists source nil and existing invitation OIDC exceptions remain' do
+      sign_in admin
+      patch update_registration_settings_settings_users_url, params: { registration_enabled: '' }
+      expect(response).to redirect_to(settings_users_url)
+      expect(flash[:notice]).to eq('User registration has been disabled.')
+      expect(connection.select_rows('SELECT enabled FROM phoenix.registration_setting')).to eq([[nil]])
+      expect(DawarichSettings.registration_enabled?).to be_nil
+      expect(Rails.cache.read('dawarich/registration_enabled')).to be(true)
+      sign_out admin
+      member = create(:user)
+      sign_in member
+      patch update_registration_settings_settings_users_url, params: { registration_enabled: '1' }
+      expect(response).to redirect_to(root_url)
+      expect(connection.select_rows('SELECT enabled FROM phoenix.registration_setting')).to eq([[nil]])
+      invitation = create(:family_invitation)
+      policy = Auth::EmailPasswordRegistrationPolicy.new(invitation: invitation, email: invitation.email)
+      expect(policy).to be_allowed
+      allow(DawarichSettings).to receive(:oidc_enabled?).and_return(true)
+      expect(policy).not_to be_allowed
+    end
+  end
+
   context 'when Dawarich is in self-hosted mode' do
     before do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(true)

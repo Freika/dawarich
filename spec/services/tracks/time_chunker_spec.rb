@@ -5,6 +5,8 @@ require 'rails_helper'
 RSpec.describe Tracks::TimeChunker do
   include ActiveSupport::Testing::TimeHelpers
 
+  around { |example| freeze_time { example.run } }
+
   let(:user) { create(:user) }
   let(:chunker) { described_class.new(user, **options) }
   let(:options) { {} }
@@ -53,8 +55,6 @@ RSpec.describe Tracks::TimeChunker do
     end
 
     context 'with user points' do
-      around { |example| freeze_time { example.run } }
-
       let!(:point1) { create(:point, user: user, timestamp: 3.days.ago.to_i) }
       let!(:point2) { create(:point, user: user, timestamp: 2.days.ago.to_i) }
       let!(:point3) { create(:point, user: user, timestamp: 1.day.ago.to_i) }

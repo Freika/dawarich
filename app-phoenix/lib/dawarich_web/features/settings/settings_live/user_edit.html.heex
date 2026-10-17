@@ -1,0 +1,54 @@
+<div :if={@target} class="min-h-content w-full">
+  <SettingsParts.navigation
+    locale={@locale}
+    active="users"
+    self_hosted={@self_hosted}
+    admin={@current_user.admin == true}
+    two_factor={@two_factor}
+    native
+  />
+  <div class="w-10/12 max-w-xl mx-auto my-10">
+    <h1 class="text-2xl font-bold">{label(@locale, "editing_user")}</h1>
+    <p class="text-base-content/70 mb-4">{@target.email}</p>
+    <.form
+      for={@form}
+      id={"edit-user-form-#{@form_version}"}
+      class="edit_user space-y-4"
+      phx-submit="update_user"
+    >
+      <.input
+        field={@form[:email]}
+        type="email"
+        label={label(@locale, "email")}
+        autocomplete="email"
+      />
+      <div class="form-control">
+        <label for="user_password">{label(@locale, "password")}
+        <span class="text-base-content/50 text-sm">{label(@locale, "leave_blank_to_keep_current")}</span></label>
+        <input
+          id="user_password"
+          type="password"
+          name="user[password]"
+          value=""
+          autocomplete="new-password"
+          class="input input-bordered w-full"
+        />
+      </div>
+      <.input field={@form[:admin]} type="rails_checkbox" label={label(@locale, "admin")} />
+      <.input
+        field={@form[:status]}
+        type="select"
+        label={label(@locale, "status")}
+        options={
+          Enum.map(statuses(), fn {name, value} ->
+            {t(@locale, "enums.user.status." <> name, %{}), value}
+          end)
+        }
+      />
+      <button type="submit" class="btn btn-primary" phx-disable-with={label(@locale, "update")}>{label(
+        @locale,
+        "update"
+      )}</button>
+    </.form>
+  </div>
+</div>

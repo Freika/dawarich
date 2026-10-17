@@ -3,6 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe BulkVisitsSuggestingJob, type: :job do
+  include ActiveSupport::Testing::TimeHelpers
   describe '#perform' do
     let(:start_at) { 1.day.ago.beginning_of_day }
     let(:end_at) { 1.day.ago.end_of_day }
@@ -97,6 +98,61 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
           start_at: chunk.first,
           end_at: chunk.last
         )
+      end
+    end
+
+    it 'bulk visit cron skips under native ownership while explicit accepted calls forward complete bounds' do
+      travel_to(Time.utc(2026, 10, 4, 12)) do
+        job_owner!('cron:visit_suggesting_job', :oban)
+        job_owner!('command:visits.bulk_suggest', :oban)
+        clear_enqueued_jobs
+        described_class.new.perform('a12d3_cron')
+        expect(JobOutbox.where(command_type: 'visits.bulk_suggest')).to be_empty
+        expect(enqueued_jobs).to be_empty
+
+        start = DateTime.iso8601('2023-12-30T00:00:00+01:00')
+        stop = DateTime.iso8601('2026-01-02T00:00:00+02:00')
+        explicit = described_class.new
+        explicit.perform(start_at: start, end_at: stop, user_ids: [user.id, nil, user.id], user_id: user_with_points.id)
+        row = JobOutbox.find(explicit.job_id)
+        expect(row.command_type).to eq('visits.bulk_suggest')
+        expect(row.command_version).to eq(1)
+        expect(row.payload).to eq('start_at' => start.iso8601(9), 'end_at' => stop.iso8601(9),
+                                  'user_ids' => [user.id, user_with_points.id], 'time_zone' => Time.zone.tzinfo.name,
+                                  'source_job_id' => explicit.job_id)
+        defaults = described_class.new
+        defaults.perform
+        expect(JobOutbox.find(defaults.job_id).payload).to include(
+          'start_at' => 1.day.ago.beginning_of_day.to_datetime.iso8601(9),
+          'end_at' => 1.day.ago.end_of_day.to_datetime.iso8601(9), 'user_ids' => []
+        )
+        expect(enqueued_jobs).to be_empty
+        expect(JobCommands.rehome!('visits.bulk_suggest', by: 'a12d3-test')).to include(moved: 2, left: 0)
+        parents = enqueued_jobs.select { _1[:job] == described_class }
+        expect(parents.map { _1['job_id'] }).to contain_exactly(explicit.job_id, defaults.job_id)
+        restored = parents.find { _1['job_id'] == explicit.job_id }
+        expect(ActiveJob::Arguments.deserialize(restored[:args])).to eq(
+          [{ start_at: start, end_at: stop, user_ids: [user.id, user_with_points.id] }]
+        )
+
+        clear_enqueued_jobs
+        payload = { 'user_id' => user_with_points.id, 'start_at' => start.to_i, 'end_at' => stop.to_i,
+                    'stepping' => 'fixed', 'time_zone' => 'Asia/Tokyo', 'plan_restricted' => false,
+                    'event_id' => explicit.job_id }
+        inline = ActiveSupport::IsolatedExecutionState[:job_commands_inline]
+        begin
+          ActiveSupport::IsolatedExecutionState[:job_commands_inline] = true
+          RailsCommands::Registry.handler('visits.suggest').call(payload)
+          expect(enqueued_jobs.map { _1[:job] }).to eq([VisitSuggestingJob])
+          expect(enqueued_jobs.first['job_id']).to eq(explicit.job_id)
+          clear_enqueued_jobs
+          job_owner!('command:visits.suggest', :oban)
+          RailsCommands::Registry.handler('visits.suggest').call(payload)
+          expect(enqueued_jobs).to be_empty
+          expect(JobOutbox.find(explicit.job_id).payload).to eq(payload.except('event_id'))
+        ensure
+          ActiveSupport::IsolatedExecutionState[:job_commands_inline] = inline
+        end
       end
     end
 

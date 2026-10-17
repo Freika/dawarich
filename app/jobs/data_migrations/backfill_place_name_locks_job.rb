@@ -6,6 +6,8 @@ class DataMigrations::BackfillPlaceNameLocksJob < ApplicationJob
   BATCH_SIZE = 1_000
 
   def perform
+    return if ReleaseCommands.forwarded?(self, 'release.place_name_locks', {})
+
     locked_total = 0
 
     candidates.in_batches(of: BATCH_SIZE) do |batch|

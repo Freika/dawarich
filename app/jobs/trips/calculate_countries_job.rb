@@ -21,10 +21,15 @@ class Trips::CalculateCountriesJob < ApplicationJob
     trip = Trip.find(trip_id)
 
     trip.calculate_countries
-    trip.save!
+    result = Trips::CalculationReceipts.with_effect(trip_id, run_token || job_id, 'countries') do
+      trip.save!
+      broadcast_update(trip, distance_unit)
+      Trips::CalculateAllJob.tally_completion(trip_id, run_token)
+    end
+    return unless result == :not_owner
 
-    broadcast_update(trip, distance_unit)
-    Trips::CalculateAllJob.tally_completion(trip_id, run_token)
+    Trips::CalculateAllJob.forward(trip_id, distance_unit, run_token || job_id,
+                                   scheduled_at: scheduled_at || Time.current)
   end
 
   private

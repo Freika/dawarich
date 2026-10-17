@@ -27,6 +27,8 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
   STALE_CLAIM_AFTER = 6.hours
 
   def perform(limit: CONCURRENCY)
+    return if ReleaseCommands.forward_recalculation(self, 'release.anomalies', { 'limit' => limit })
+
     runnable, skipped = next_users(limit)
 
     settle(skipped) if skipped.any?
@@ -166,7 +168,7 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
 
     condition_sql, condition_binds = claimable_condition
 
-    User.connection.select_values(
+    claimed = User.connection.select_values(
       ActiveRecord::Base.sanitize_sql_array(
         [
           "UPDATE users SET settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object(#{pairs}) " \
@@ -175,6 +177,8 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
         ]
       )
     )
+
+    user_ids & claimed
   end
 
   def queued_key

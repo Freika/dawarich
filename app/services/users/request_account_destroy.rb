@@ -35,14 +35,8 @@ module Users
         token: token, host: @host, protocol: @protocol
       )
 
-      job = Users::MailerSendingJob.perform_later(
-        @user.id,
-        'account_destroy_confirmation',
-        link_url: link_url
-      )
-      unless job.try(:successfully_enqueued?)
-        raise ActiveJob::EnqueueError, 'Account deletion confirmation could not be queued'
-      end
+      UserMailCommands.produce('account_destroy_confirmation', @user.id, producer: self.class.name,
+                                                                link_url: link_url)
 
       Result.new(status: :sent, message: SENT_MESSAGE)
     rescue StandardError

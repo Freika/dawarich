@@ -49,6 +49,10 @@ class Trial::WelcomeController < ApplicationController
 
   def mark_token_consumed!(jti, exp)
     ttl = [(exp.to_i - Time.current.to_i), 60].max
+    if PhoenixSchema.table?('once_claims')
+      return PhoenixClaims.claim("#{CONSUMED_KEY_PREFIX}sha256:#{Digest::SHA256.hexdigest(jti)}", ttl)
+    end
+
     Rails.cache.write("#{CONSUMED_KEY_PREFIX}#{jti}", true, expires_in: ttl, unless_exist: true)
   end
 

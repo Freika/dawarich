@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Api::V1::Digests', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
 
@@ -33,6 +35,16 @@ RSpec.describe 'Api::V1::Digests', type: :request do
       expect(json['availableYears']).to include(2022)
       expect(json['availableYears']).not_to include(2024)
       expect(json['availableYears']).not_to include(2023)
+    end
+
+    it 'omits a cached yearly digest for the unfinished year' do
+      travel_to Time.utc(2026, 6, 15) do
+        create(:users_digest, year: 2026, user:)
+
+        get api_v1_digests_url, headers: headers
+
+        expect(response.parsed_body.fetch('digests').pluck('year')).to eq([2024, 2023])
+      end
     end
   end
 

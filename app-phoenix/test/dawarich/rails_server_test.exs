@@ -1,0 +1,138 @@
+defmodule Dawarich.RailsServerTest do
+  use ExUnit.Case, async: true
+
+  alias Dawarich.RailsServer
+
+  defp start(argv) do
+    test = self()
+
+    start_supervised!(
+      {RailsServer,
+       argv: argv, sink: &send(test, {:out, &1}), on_exit: &send(test, {:exited, &1})}
+    )
+  end
+
+  test "forwards the command's output" do
+    start(["echo", "puma booted"])
+    assert_receive {:out, "puma booted\n"}, 2_000
+  end
+
+  test "reports the command's exit status and is not restarted" do
+    start(["sh", "-c", "exit 3"])
+    assert_receive {:exited, 3}, 2_000
+    refute_receive {:exited, _}, 500
+  end
+
+  @tag :capture_log
+  test "is restarted after an abnormal exit" do
+    test = self()
+
+    pid =
+      start_supervised!(
+        {RailsServer,
+         argv: ["sh", "-c", "echo up; exec cat"],
+         sink: fn data ->
+           send(test, {:output_ready, self()})
+           receive do: (:deliver -> send(test, {:out, data}))
+         end,
+         on_exit: &send(test, {:exited, &1})}
+      )
+
+    receive do: ({:output_ready, ^pid} -> send(pid, :deliver))
+    assert receive(do: ({:out, data} -> data)) == "up\n"
+
+    :sys.terminate(pid, :boom)
+
+    restarted = receive do: ({:output_ready, restarted} -> restarted)
+    assert restarted != pid
+    send(restarted, :deliver)
+    assert receive(do: ({:out, data} -> data)) == "up\n"
+  end
+
+  test "sends SIGTERM to the command when stopped" do
+    start([
+      "sh",
+      "-c",
+      "trap 'echo got-term; exit 0' TERM; echo ready; while :; do sleep 0.1; done"
+    ])
+
+    assert_receive {:out, "ready\n"}, 2_000
+
+    :ok = stop_supervised(RailsServer)
+
+    assert_receive {:out, "got-term\n"}, 2_000
+  end
+
+  test "refuses an executable that is not on PATH" do
+    assert {:error, _} = start_supervised({RailsServer, argv: ["definitely-not-a-command"]})
+  end
+
+  test "does not signal a command whose exit is already queued at shutdown" do
+    test = self()
+
+    pid =
+      start_supervised!(
+        {RailsServer,
+         argv: ["sh", "-c", "read trigger; echo bye; exit 0"],
+         sink: &send(test, {:out, &1}),
+         on_exit: &send(test, {:exited, &1}),
+         signal: fn os_pid, sig -> send(test, {:signalled, os_pid, sig}) end}
+      )
+
+    %{port: port} = :sys.get_state(pid)
+    :ok = :sys.suspend(pid)
+    assert Port.command(port, "\n")
+    assert wait_for_queued_exit_status(pid)
+    :ok = stop_supervised(RailsServer)
+    assert_received {:out, "bye\n"}
+    refute_received {:signalled, _, _}
+  end
+
+  defp wait_for_queued_exit_status(pid) do
+    wait_for_queued_exit_status(pid, System.monotonic_time(:millisecond) + 2_000)
+  end
+
+  defp wait_for_queued_exit_status(pid, deadline) do
+    case Process.info(pid, :messages) do
+      {:messages, messages} ->
+        if Enum.any?(messages, &match?({_port, {:exit_status, _}}, &1)) do
+          true
+        else
+          if System.monotonic_time(:millisecond) >= deadline do
+            false
+          else
+            Process.sleep(10)
+            wait_for_queued_exit_status(pid, deadline)
+          end
+        end
+
+      nil ->
+        false
+    end
+  end
+
+  test "sets and removes environment variables for the command only" do
+    test = self()
+    System.put_env("DAWARICH_A2_PROBE_REMOVED", "inherited")
+    on_exit(fn -> System.delete_env("DAWARICH_A2_PROBE_REMOVED") end)
+
+    start_supervised!(
+      {Dawarich.RailsServer,
+       argv: ["sh", "-c", ~S(echo "[${DAWARICH_A2_PROBE_REMOVED:-}][${DAWARICH_A2_PROBE_SET:-}]")],
+       env: [{"DAWARICH_A2_PROBE_REMOVED", false}, {"DAWARICH_A2_PROBE_SET", "1"}],
+       sink: &send(test, {:out, &1}),
+       on_exit: &send(test, {:exit, &1})}
+    )
+
+    assert_receive {:exit, 0}, 5_000
+    assert collected_output() == "[][1]\n"
+  end
+
+  defp collected_output(acc \\ "") do
+    receive do
+      {:out, data} -> collected_output(acc <> data)
+    after
+      0 -> acc
+    end
+  end
+end

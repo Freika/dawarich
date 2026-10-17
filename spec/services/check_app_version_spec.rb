@@ -45,6 +45,32 @@ RSpec.describe CheckAppVersion do
         it { is_expected.to be false }
       end
     end
+
+    context 'with a result Phoenix stored' do
+      before { phoenix_tables! }
+
+      def store(version, checked_at)
+        sql = <<~SQL.squish
+          INSERT INTO phoenix.app_version (latest_version, checked_at) VALUES (?, ?)
+        SQL
+
+        ActiveRecord::Base.connection.execute(ActiveRecord::Base.sanitize_sql_array(
+                                                [sql, version, checked_at.utc.iso8601]
+                                              ))
+      end
+
+      it 'announces a newer release checked within six hours' do
+        store('1.1.0', 1.hour.ago)
+
+        expect(check_app_version).to be true
+      end
+
+      it 'ignores a result older than six hours, as the cache would have expired' do
+        store('1.1.0', 7.hours.ago)
+
+        expect(check_app_version).to be false
+      end
+    end
   end
 
   describe '#refresh' do

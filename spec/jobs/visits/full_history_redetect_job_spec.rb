@@ -180,6 +180,20 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
     end
   end
 
+  describe 'Oban-owned forwarding' do
+    it 'forwards before loading the user' do
+      job_owner!('command:visits.full_history_redetect', :oban)
+      allow(User).to receive(:find).and_call_original
+
+      described_class.new.perform(user.id)
+
+      expect(User).not_to have_received(:find)
+      row = JobOutbox.sole
+      expect(row.payload).to eq('user_id' => user.id, 'time_zone' => Time.zone.tzinfo.name, 'plan_restricted' => false)
+      expect(user.notifications).to be_empty
+    end
+  end
+
   describe 'no points' do
     it 'sends an info notification and does not raise' do
       empty_user = create(:user).tap { |u| u.update_columns(visits_redetected_at: nil) }

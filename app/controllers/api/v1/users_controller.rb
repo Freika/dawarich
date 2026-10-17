@@ -25,7 +25,7 @@ class Api::V1::UsersController < ApiController
     end
 
     ids = Array(params[:ids]).filter_map { |raw| safe_integer(raw) }.uniq
-    existing = ids.empty? ? [] : User.where(id: ids).pluck(:id)
+    existing = ids.empty? ? [] : User.where(id: ids).order(id: :asc).pluck(:id)
     missing = ids - existing
 
     render json: { existing: existing, missing: missing }

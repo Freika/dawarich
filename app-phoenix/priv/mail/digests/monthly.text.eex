@@ -1,0 +1,35 @@
+<%= @v.(@title) %>
+─────────────────────────
+
+<%= @t.("here_s_what_your_location_history_looked_like_last_month") %>
+
+<%= @t.("overview") %>
+  <%= @t.("distance") %>       <%= @v.(@distance) %>
+<%= if @flights? do %>  <%= @t.("flights") %>        <%= @v.(@flight_distance) %>
+<% end %>  <%= @t.("active_days") %>    <%= @v.(@active_days) %>
+  <%= @t.("countries") %>      <%= @v.(@countries_count) %>
+  <%= @t.("cities") %>         <%= @v.(@cities_count) %>
+
+<%= @t.("weekly_pattern") %>
+<%= @v.(@weekly) %>
+
+<%= @t.("daily_distance") %>
+<%= @v.(@daily) %>
+
+<%= if @top_countries? do %><%= @t.("top_countries") %>
+<%= @v.(@countries_chart) %>
+
+<% end %><%= if @top_cities? do %><%= @t.("top_cities") %>
+<%= @v.(@cities_chart) %>
+
+<% end %><%= if @first_visits? do %><%= @t.("first_visits_this_month") %>
+<%= for line <- @first_country_lines do %><%= @v.(line) %>
+<% end %><%= for line <- @first_city_lines do %><%= @v.(line) %>
+<% end %><% end %><%= if @trend? do %><%= @t.("vs_previous_month") %>
+  <%= @t.("distance") %>  <%= @v.(@trend) %>
+
+<% end %><%= @t.("view_full_insights") %> <%= @v.(@insights_url) %>
+
+─────────────────────────────────────────
+<%= @t.("you_re_receiving_this_because_monthly_digest_emails_are_on_3") %>
+<%= @t.("manage_email_preferences_2") %> <%= @v.(@preferences_url) %>

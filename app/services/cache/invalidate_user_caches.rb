@@ -20,35 +20,51 @@ class Cache::InvalidateUserCaches
   end
 
   def invalidate_countries_visited
-    Rails.cache.delete("dawarich/user_#{user_id}_countries_visited")
+    cache.delete("dawarich/user_#{user_id}_countries_visited")
   end
 
   def invalidate_cities_visited
-    Rails.cache.delete("dawarich/user_#{user_id}_cities_visited")
+    cache.delete("dawarich/user_#{user_id}_cities_visited")
   end
 
   def invalidate_points_geocoded_stats
-    Rails.cache.delete("dawarich/user_#{user_id}_points_geocoded_stats")
+    cache.delete("dawarich/user_#{user_id}_points_geocoded_stats")
   end
 
   def invalidate_total_distance
-    Rails.cache.delete("dawarich/user_#{user_id}_total_distance")
+    cache.delete("dawarich/user_#{user_id}_total_distance")
   end
 
   def invalidate_insights_digest
     # Clear insights digest cache for specified year or all years
     # Note: delete_matched is supported by Redis cache store
     # The cache also auto-invalidates via timestamp-based keys when digests are updated
-    return unless Rails.cache.respond_to?(:delete_matched)
+    return unless cache.respond_to?(:delete_matched)
 
     if year
-      Rails.cache.delete_matched("insights/yearly_digest/#{user_id}/#{year}/*")
+      cache.delete_matched("insights/yearly_digest/#{user_id}/#{year}/*")
     else
-      Rails.cache.delete_matched("insights/yearly_digest/#{user_id}/*")
+      cache.delete_matched("insights/yearly_digest/#{user_id}/*")
     end
   end
 
   private
 
   attr_reader :user_id, :year
+
+  def cache
+    @cache ||= begin
+      store = Rails.cache
+      if store.is_a?(ActiveSupport::Cache::RedisCacheStore)
+        ActiveSupport::Cache::RedisCacheStore.new(
+          **store.options,
+          redis: store.redis,
+          pool: false,
+          error_handler: ->(exception:, **) { raise exception }
+        )
+      else
+        store
+      end
+    end
+  end
 end

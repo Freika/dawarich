@@ -1,0 +1,321 @@
+defmodule DawarichWeb.A10cOwnershipTest do
+  use ExUnit.Case, async: false
+  @moduletag :capture_log
+  import Dawarich.Test.RawHTTP
+  alias Dawarich.{Repo, Redis}
+  alias Dawarich.Test.RailsUser
+  alias DawarichWeb.RailsCsrf
+
+  setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    for spec <- Redis.child_specs() ++ Redis.cache_child_specs(), do: start_supervised!(spec)
+    upstream = listen()
+    saved = Map.new(~w(rails_upstream rails_routes)a, &{&1, Application.fetch_env(:dawarich, &1)})
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
+    Application.put_env(:dawarich, :rails_routes, [])
+
+    on_exit(fn ->
+      :gen_tcp.close(upstream.listen)
+
+      for {key, value} <- saved do
+        case value do
+          {:ok, configured} -> Application.put_env(:dawarich, key, configured)
+          :error -> Application.delete_env(:dawarich, key)
+        end
+      end
+    end)
+
+    for id <- [44001, 44002],
+        do:
+          RailsUser.insert!(%{
+            id: id,
+            email: "a10c-ownership-#{id}@example.invalid",
+            settings: %{"locale" => "en", "timezone" => "Europe/Berlin"}
+          })
+
+    rows(
+      "INSERT INTO achievement_progresses(user_id,achievement_key,state,created_at,updated_at) VALUES(44001,'exploration','{}',now(),now())"
+    )
+
+    rows(
+      "INSERT INTO achievement_unlock_events(id,user_id,kind,key,created_at,updated_at) VALUES(42001,44001,'geography','FR',now(),now())"
+    )
+
+    bandit =
+      start_supervised!(
+        {Bandit, [plug: DawarichWeb.Endpoint] ++ Dawarich.Front.http_options({127, 0, 0, 1}, 0)}
+      )
+
+    {:ok, {_, port}} = ThousandIsland.listener_info(bandit)
+    %{upstream: upstream, port: port}
+  end
+
+  test "native achievement sharing persists while retained unlock HTTP owns and rolls back effects",
+       ctx do
+    user = Dawarich.Accounts.get(44001)
+    scope = Dawarich.Accounts.Scope.for_user(user, "en")
+    resource = %{type: :achievement, key: "country_de", owner_id: user.id}
+
+    assert {:ok, %{enabled: true}} =
+             Dawarich.Sharing.change(scope, resource, :update, %{"enabled" => true})
+
+    assert [[true]] ==
+             rows(
+               "SELECT sharing_enabled FROM achievement_progresses WHERE user_id=44001 AND achievement_key='country_de'"
+             )
+
+    {200, _, body} = exchange(ctx, "POST", "/achievements/unlocks/next", "{}")
+    deck = Jason.decode!(body)
+    assert deck["id"] == 42001 and deck["remaining"] == 1
+
+    assert {204, _, ""} =
+             exchange(
+               ctx,
+               "POST",
+               "/achievements/unlocks/42001/seen",
+               Jason.encode!(%{claim_token: deck["token"]})
+             )
+
+    assert {204, _, ""} =
+             exchange(ctx, "POST", "/achievements/unlocks/dismiss", ~s({"batch_end_id":42001}))
+
+    form = URI.encode_query(%{"_method" => "patch", "enabled" => "false"})
+
+    assert {:ok, %{enabled: false}} =
+             Dawarich.Sharing.change(scope, resource, :update, %{"enabled" => false})
+
+    assert [[false]] ==
+             rows(
+               "SELECT sharing_enabled FROM achievement_progresses WHERE user_id=44001 AND achievement_key='country_de'"
+             )
+
+    rows(
+      "INSERT INTO achievement_unlock_events(id,user_id,kind,key,created_at,updated_at) VALUES(42002,44001,'geography','DE',now(),now())"
+    )
+
+    Application.put_env(:dawarich, :rails_routes, ["achievements"])
+    {200, _, raw} = exchange(ctx, "POST", "/achievements/unlocks/next", "{}")
+    claim = Jason.decode!(raw)
+    assert claim["id"] == 42002
+
+    assert {204, _, ""} =
+             exchange(
+               ctx,
+               "POST",
+               "/achievements/unlocks/42002/seen",
+               Jason.encode!(%{claim_token: claim["token"]})
+             )
+
+    assert {204, _, ""} =
+             exchange(ctx, "POST", "/achievements/unlocks/dismiss", ~s({"batch_end_id":42002}))
+
+    Application.put_env(:dawarich, :rails_routes, [])
+
+    for {raw, opts} <- [
+          {~s({"enabled":false,"enabled":true}), []},
+          {"{}", [token: "invalid"]},
+          {~s({"enabled":{"nested":true}}), []},
+          {"{}", [guest: true]}
+        ] do
+      before = snapshot()
+
+      assert {404, _, _} =
+               exchange(ctx, "PATCH", "/achievements/country_de/toggle_sharing", raw, opts)
+
+      assert {404, _, _} =
+               exchange(ctx, "POST", "/achievements/country_de/toggle_sharing", form, form: true)
+
+      assert snapshot() == before
+    end
+  end
+
+  test "native public card refuses and actions hand back unsupported persisted state before locale or session effects",
+       ctx do
+    uuid = "a10c0000-0000-4000-8000-000000044001"
+
+    rows(
+      "INSERT INTO achievement_progresses(user_id,achievement_key,state,sharing_enabled,sharing_uuid,created_at,updated_at) VALUES(44001,'country_de','{}',true,$1,now(),now())",
+      [uuid]
+    )
+
+    for invalid <- [[], %{"earned" => []}, %{"earned" => %{"DE-BY" => "not-an-approved-date"}}] do
+      rows(
+        "UPDATE achievement_progresses SET state=$1 WHERE user_id=44001 AND achievement_key='exploration'",
+        [invalid]
+      )
+
+      before = snapshot()
+
+      {422, headers, _} =
+        exchange(ctx, "POST", "/achievements/unlocks/next?locale=de", "{}")
+
+      assert values(headers, "set-cookie") == []
+      assert snapshot() == before
+
+      for user <- [44002, 44001] do
+        before = snapshot()
+
+        assert {503, headers, ""} =
+                 exchange(ctx, "GET", "/shared/achievements/#{uuid}?locale=de", "", user: user)
+
+        assert values(headers, "set-cookie") == []
+        assert snapshot() == before
+      end
+    end
+
+    rows(
+      "UPDATE achievement_progresses SET state='{}' WHERE user_id=44001 AND achievement_key='exploration'"
+    )
+
+    before = snapshot()
+
+    [[settings]] = rows("SELECT settings FROM users WHERE id=44001")
+    other = rows("SELECT to_jsonb(u) FROM users u WHERE id=44002")
+    {200, headers, html} = exchange(ctx, "GET", "/shared/achievements/#{uuid}?locale=de", "")
+    assert html =~ ~s(lang="de")
+    assert values(headers, "set-cookie") != []
+
+    assert rows("SELECT settings FROM users WHERE id=44001") == [
+             [Map.put(settings, "locale", "de")]
+           ]
+
+    assert rows("SELECT to_jsonb(u) FROM users u WHERE id=44002") == other
+    assert Enum.drop(snapshot(), 1) == Enum.drop(before, 1)
+
+    user = Dawarich.Accounts.get(44001)
+    rows("UPDATE users SET settings='[]' WHERE id=44001")
+    before = snapshot()
+
+    assert {:ok, %{enabled: true, uuid: ^uuid}} =
+             Dawarich.Sharing.change(
+               Dawarich.Accounts.Scope.for_user(user, "en"),
+               %{type: :achievement, key: "country_de", owner_id: user.id},
+               :update,
+               %{"enabled" => true}
+             )
+
+    assert snapshot() == before
+  end
+
+  test "keeps native public cards owned while the PNG rolls back independently and retains other A10 residues",
+       ctx do
+    uuid = "a10c0000-0000-4000-8000-000000044001"
+
+    rows(
+      "INSERT INTO achievement_progresses(user_id,achievement_key,state,sharing_enabled,sharing_uuid,created_at,updated_at) VALUES(44001,'country_de','{}',true,$1,now(),now())",
+      [uuid]
+    )
+
+    path = "/shared/achievements/#{uuid}"
+    {200, headers, body} = exchange(ctx, "GET", path, "", guest: true)
+    assert body =~ "Germany Explorer" and not (body =~ "data-phx")
+    assert values(headers, "x-frame-options") == []
+    assert values(headers, "content-security-policy") == ["frame-ancestors *"]
+
+    before = snapshot()
+    {200, headers, png} = exchange(ctx, "GET", path <> "/og.png", "", guest: true)
+    assert values(headers, "content-type") == ["image/png"]
+    assert values(headers, "cache-control") == ["private, no-store"]
+
+    assert <<137, 80, 78, 71, 13, 10, 26, 10, _::binary-size(8), 1200::32, 630::32, _::binary>> =
+             png
+
+    assert {200, _, ""} = exchange(ctx, "HEAD", path <> "/og.png", "", guest: true)
+    assert snapshot() == before
+
+    for key <- ~w(shared achievements) do
+      Application.put_env(:dawarich, :rails_routes, [key])
+      before = snapshot()
+      assert {200, headers, body} = exchange(ctx, "GET", path, "", guest: true)
+      assert body =~ "Germany Explorer" and not (body =~ "data-phx")
+      assert values(headers, "content-security-policy") == ["frame-ancestors *"]
+      assert {200, _, ""} = exchange(ctx, "HEAD", path <> "/og.png", "", guest: true)
+      assert snapshot() == before
+    end
+
+    Application.put_env(:dawarich, :rails_routes, [])
+    before = snapshot()
+    assert {302, _, _} = exchange(ctx, "GET", "/sidekiq", "")
+    assert {404, _, ""} = exchange(ctx, "GET", "/admin/flipper", "")
+    assert snapshot() == before
+
+    for {method, path, raw} <- [
+          {"DELETE", "/settings/users/44001", ""},
+          {"POST", "/settings/users/44001", "_method=delete"},
+          {"POST", "/settings/background_jobs", "job=synthetic"},
+          {"POST", "/admin/settings/test_geocoding", ""}
+        ] do
+      before = snapshot()
+
+      if path == "/settings/background_jobs" do
+        assert {404, _, _} = exchange(ctx, method, path, raw, form: method == "POST")
+      else
+        assert {404, _, _} = exchange(ctx, method, path, raw, form: method == "POST")
+      end
+
+      assert snapshot() == before
+    end
+
+    Application.put_env(:dawarich, :rails_routes, ["user_data"])
+
+    for {method, path, raw} <- [
+          {"GET", "/settings/users/export", ""},
+          {"POST", "/settings/users/import", "payload=synthetic"}
+        ] do
+      before = snapshot()
+
+      assert {404, _, _} =
+               exchange(ctx, method, path, raw, form: method == "POST")
+
+      assert snapshot() == before
+    end
+  end
+
+  defp exchange(ctx, method, target, raw, opts \\ []) do
+    session = RailsUser.session(Keyword.get(opts, :user, 44001))
+    path = URI.parse(target).path
+    effective = if raw =~ "_method=patch", do: "PATCH", else: method
+
+    token =
+      Keyword.get_lazy(opts, :token, fn ->
+        RailsCsrf.masked_form_token(session, path, effective)
+      end)
+
+    form = Keyword.get(opts, :form, false)
+    raw = if form, do: raw <> "&" <> URI.encode_query(%{"authenticity_token" => token}), else: raw
+
+    cookie =
+      if opts[:guest], do: "", else: "Cookie: _dawarich_session=#{RailsUser.cookie(session)}\r\n"
+
+    type = if form, do: "application/x-www-form-urlencoded", else: "application/json"
+
+    headers =
+      if method in ~w(GET HEAD DELETE),
+        do: "Accept: text/html\r\n",
+        else:
+          "Accept: #{if form, do: "text/html", else: "application/json"}\r\nContent-Type: #{type}\r\n" <>
+            if(form, do: "", else: "X-CSRF-Token: #{token}\r\n")
+
+    client = connect(ctx.port)
+
+    send_raw(
+      client,
+      "#{method} #{target} HTTP/1.1\r\nHost: www.example.com\r\n#{cookie}#{headers}Content-Length: #{byte_size(raw)}\r\n\r\n#{raw}"
+    )
+
+    response = read_response(client, method: method)
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+    :gen_tcp.close(client)
+    response
+  end
+
+  defp rows(sql, args \\ []), do: Repo.query!(sql, args, log: false).rows
+
+  defp snapshot,
+    do:
+      for(
+        table <- ~w(users achievement_progresses achievement_unlock_events),
+        do: rows("SELECT to_jsonb(t) FROM #{table} t ORDER BY id")
+      )
+end

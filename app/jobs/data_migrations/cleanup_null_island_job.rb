@@ -3,11 +3,7 @@
 class DataMigrations::CleanupNullIslandJob < ApplicationJob
   queue_as :data_migrations
 
-  def perform(user_id = nil)
-    return fan_out if user_id.nil?
-
-    user = find_user_or_skip(user_id) || return
-
+  def self.follow_up(user)
     rows = user.points.null_island.pluck(:id, :timestamp, :track_id)
     track_ids = rows.filter_map(&:last).uniq
     affected_months = rows.filter_map do |_, timestamp, _|
@@ -17,10 +13,7 @@ class DataMigrations::CleanupNullIslandJob < ApplicationJob
       [time.year, time.month]
     end.uniq
 
-    if rows.any?
-      Point.where(id: rows.map(&:first)).update_all(anomaly: true, updated_at: Time.current)
-      Points::TileEpoch.bump(user.id, timestamps: rows.map { |_, timestamp, _| timestamp })
-    end
+    Points::TileEpoch.bump(user.id, timestamps: rows.map { |_, timestamp, _| timestamp }) if rows.any?
     destroyed_visits = destroy_null_island_visits(user)
 
     Rails.logger.info(
@@ -32,19 +25,28 @@ class DataMigrations::CleanupNullIslandJob < ApplicationJob
     track_ids.each { |track_id| Tracks::RecalculateJob.perform_later(track_id) }
   end
 
+  def self.destroy_null_island_visits(user)
+    user.visits
+        .joins(:place)
+        .where(Points::NullIsland.sql_predicate('places.lonlat'))
+        .destroy_all
+        .count
+  end
+
+  def perform(user_id = nil)
+    return if ReleaseCommands.forwarded?(self, 'release.null_island', { 'user_id' => user_id }, aggregate_id: user_id)
+    return fan_out if user_id.nil?
+
+    user = find_user_or_skip(user_id) || return
+    user.points.null_island.update_all(anomaly: true, updated_at: Time.current)
+    self.class.follow_up(user)
+  end
+
   private
 
   def fan_out
     User.where(id: Point.null_island.select(:user_id).distinct)
         .pluck(:id)
         .each { |user_id| self.class.perform_later(user_id) }
-  end
-
-  def destroy_null_island_visits(user)
-    user.visits
-        .joins(:place)
-        .where(Points::NullIsland.sql_predicate('places.lonlat'))
-        .destroy_all
-        .count
   end
 end

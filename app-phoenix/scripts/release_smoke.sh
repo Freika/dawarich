@@ -1,0 +1,168 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+export LC_ALL=C.UTF-8
+
+MIX_ENV=prod mix release --overwrite >/dev/null
+for asset in _build/prod/rel/dawarich/lib/dawarich-*/priv/admin1_world.geojson; do
+  [ -f "$asset" ] && [ ! -L "$asset" ] && cmp -s "$asset" ../lib/assets/admin1_world.geojson \
+    || { echo "the release does not carry lib/assets/admin1_world.geojson as priv/admin1_world.geojson"; exit 1; }
+done
+for asset in _build/prod/rel/dawarich/lib/dawarich-*/priv/countries.geojson.gz; do
+  [ -f "$asset" ] && [ ! -L "$asset" ] && cmp -s "$asset" ../lib/assets/countries.geojson.gz \
+    || { echo "the release does not carry lib/assets/countries.geojson.gz as priv/countries.geojson.gz"; exit 1; }
+done
+rel=_build/prod/rel/dawarich/bin/dawarich
+work="$(mktemp -d)"
+export DAWARICH_COOKIE_FILE="$work/cookie"
+release_db="${PHOENIX_TEST_DATABASE:?PHOENIX_TEST_DATABASE must name a private smoke database}"
+
+status3_db="${release_db}_a0c_status3"
+PGPASSWORD="${DATABASE_PASSWORD:-}" psql -h "${DATABASE_HOST:-localhost}" -p "${DATABASE_PORT:-5432}" \
+  -U "${DATABASE_USERNAME:-postgres}" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $status3_db" >/dev/null
+PGPASSWORD="${DATABASE_PASSWORD:-}" psql -h "${DATABASE_HOST:-localhost}" -p "${DATABASE_PORT:-5432}" \
+  -U "${DATABASE_USERNAME:-postgres}" -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $status3_db" >/dev/null
+set +e
+DATABASE_NAME="$status3_db" "$rel" eval 'Dawarich.Release.halt_unless_ready()' >"$work/status3.out" 2>&1
+status3=$?
+set -e
+PGPASSWORD="${DATABASE_PASSWORD:-}" psql -h "${DATABASE_HOST:-localhost}" -p "${DATABASE_PORT:-5432}" \
+  -U "${DATABASE_USERNAME:-postgres}" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $status3_db" >/dev/null
+[ "$status3" -eq 3 ] \
+  || { echo "halt_unless_ready did not exit 3 for a database missing the phoenix schema (got $status3)"; cat "$work/status3.out" >&2; exit 1; }
+
+set +e
+DATABASE_PORT=1 DATABASE_NAME="$release_db" "$rel" eval 'Dawarich.Release.halt_unless_ready()' >"$work/status5.out" 2>&1
+status5=$?
+set -e
+[ "$status5" -eq 5 ] \
+  || { echo "halt_unless_ready did not exit 5 without a database connection (got $status5)"; cat "$work/status5.out" >&2; exit 1; }
+
+DATABASE_NAME="$release_db" "$rel" help >"$work/help.out" 2>&1 || { echo "dawarich help failed"; cat "$work/help.out" >&2; exit 1; }
+grep -q 'raw-data restore USER_ID YEAR MONTH' "$work/help.out" || { echo "help does not list the operator commands"; exit 1; }
+set +e
+DATABASE_NAME="$release_db" "$rel" users >"$work/users.out" 2>&1
+users=$?
+DATABASE_NAME="$release_db" "$rel" 'dawarich:jobs:rehome[command:x]' >"$work/retired.out" 2>&1
+retired=$?
+DATABASE_NAME="$release_db" "$rel" 'points:raw_data:status' >"$work/status.out" 2>&1
+rawstatus=$?
+set -e
+[ "$users" -eq 1 ] && grep -q 'Usage: dawarich COMMAND' "$work/users.out" || { echo "an incomplete command did not print the usage (exit $users)"; exit 1; }
+[ "$retired" -eq 1 ] && grep -q 'removed together with Sidekiq' "$work/retired.out" || { echo "a retired rake name was not explained (exit $retired)"; exit 1; }
+[ "$rawstatus" -eq 0 ] && [ "$(head -1 "$work/status.out" | wc -c | tr -d ' ')" = 139 ] || { echo "raw-data status through the rake name failed or re-encoded its header (exit $rawstatus)"; cat "$work/status.out" >&2; exit 1; }
+set +e
+printf '%s\n' phoenix-a12e-smoke-login-not-for-production | DATABASE_NAME="$release_db" "$rel" users password nobody@example.invalid >"$work/password.out" 2>&1
+password=$?
+set -e
+[ "$password" -eq 1 ] && [ "$(cat "$work/password.out")" = "dawarich: no user with email nobody@example.invalid" ] || { echo "users password with a piped password did not answer cleanly (exit $password)"; cat "$work/password.out" >&2; exit 1; }
+set +e
+DATABASE_PORT=1 DATABASE_NAME="$release_db" "$rel" migrate status >"$work/nodb.out" 2>"$work/nodb.err"
+nodb=$?
+set -e
+[ "$nodb" -eq 1 ] && [ "$(cat "$work/nodb.out")" = "phoenix and oban schemas: the database did not answer" ] || { echo "migrate status without a database did not answer on stdout alone (exit $nodb)"; cat "$work/nodb.out" "$work/nodb.err" >&2; exit 1; }
+uuid="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n' | sed 's/^\(.\{8\}\)\(.\{4\}\)\(.\{4\}\)\(.\{4\}\)/\1-\2-\3-\4-/')"
+set +e
+DATABASE_NAME="$release_db" "$rel" jobs resume "$uuid" >"$work/resume.out" 2>&1
+resume=$?
+set -e
+[ "$resume" -eq 1 ] && grep -q "$uuid is not a failed or stalled release operation" "$work/resume.out" || { echo "jobs resume did not reach the release operations (exit $resume)"; cat "$work/resume.out" >&2; exit 1; }
+[ "$(DATABASE_NAME="$release_db" "$rel" eval 'IO.puts(:still_eval)')" = still_eval ] || { echo "eval no longer reaches the release"; exit 1; }
+DATABASE_NAME="$release_db" "$rel" version | grep -q '^dawarich ' || { echo "version no longer reaches the release"; exit 1; }
+
+DAWARICH_RAILS_ARGS="$(printf '%s\037' sh -c 'printf "M\303\274nchen\n"; echo "args:[$1][$2][$3] $#"; echo "cookie:${RELEASE_COOKIE:-unset}"; while [ ! -f "$0" ]; do sleep 0.1; done; exit 7' "$work/go" "" x "")"
+export DAWARICH_RAILS_ARGS
+
+DATABASE_NAME="$release_db" "$rel" start >"$work/out" 2>&1 &
+node_pid=$!
+
+cleanup() {
+  ec=$?
+  if kill -0 "$node_pid" 2>/dev/null; then
+    kill "$node_pid" 2>/dev/null || true
+    wait "$node_pid" 2>/dev/null || true
+  fi
+  [ "$ec" -eq 0 ] || cat "$work/out" >&2
+  exit "$ec"
+}
+trap cleanup EXIT
+
+prefix=""
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  prefix="$(DATABASE_NAME="$release_db" "$rel" rpc 'IO.puts(Oban.config().prefix)' 2>/dev/null || true)"
+  [ "$prefix" = "oban" ] && break
+  sleep 1
+done
+[ "$prefix" = "oban" ] || { echo "rpc did not answer"; exit 1; }
+
+mode="$(stat -c %a "$DAWARICH_COOKIE_FILE" 2>/dev/null || stat -f %Lp "$DAWARICH_COOKIE_FILE")"
+[ "$mode" = "600" ] || { echo "cookie mode is $mode"; exit 1; }
+
+touch "$work/go"
+set +e
+wait "$node_pid"
+status=$?
+set -e
+[ "$status" -eq 7 ] || { echo "expected exit 7, got $status"; exit 1; }
+grep -qF "$(printf 'M\303\274nchen')" "$work/out" || { echo "non-ASCII output was re-encoded"; exit 1; }
+grep -qxF 'args:[][x][] 3' "$work/out" || { echo "empty arguments were dropped"; exit 1; }
+grep -qxF 'cookie:unset' "$work/out" || { echo "RELEASE_COOKIE reached the Rails server"; exit 1; }
+
+env_sh="$(ls _build/prod/rel/dawarich/releases/*/env.sh)"
+mkdir -p "$work/stubs" "$work/owned" "$work/locked"
+printf '#!/bin/sh\necho 0\n' >"$work/stubs/id"
+printf '#!/bin/sh\necho "$*" >"%s/chown.args"\n' "$work" >"$work/stubs/chown"
+chmod +x "$work/stubs/id" "$work/stubs/chown"
+PATH="$work/stubs:$PATH" DAWARICH_COOKIE_FILE="$work/owned/cookie" sh "$env_sh"
+[ "$(cat "$work/chown.args" 2>/dev/null)" = "-h $(ls -nd "$work/owned" | awk '{print $3":"$4}') $work/owned/cookie" ] \
+  || { echo "a cookie created as root was not handed to its directory's owner"; exit 1; }
+
+printf x >"$work/locked/cookie"
+chmod 000 "$work/locked/cookie"
+set +e
+DAWARICH_COOKIE_FILE="$work/locked/cookie" sh "$env_sh" 2>/dev/null
+locked=$?
+set -e
+chmod 600 "$work/locked/cookie"
+[ "$locked" -eq 4 ] || { echo "an unreadable cookie exited $locked, not 4"; exit 1; }
+
+rm -f "$work/chown.args"
+ln -s "$work/locked/target" "$work/owned/linked"
+set +e
+PATH="$work/stubs:$PATH" DAWARICH_COOKIE_FILE="$work/owned/linked" sh "$env_sh" 2>/dev/null
+linked=$?
+set -e
+[ "$linked" -eq 4 ] && [ ! -e "$work/locked/target" ] && [ ! -e "$work/chown.args" ] \
+  || { echo "a symlinked cookie path was followed (exit $linked)"; exit 1; }
+
+mkdir -p "$work/racestubs" "$work/race"
+cat >"$work/racestubs/rm" <<RMEOF
+#!/bin/sh
+/bin/rm "\$@"
+for a; do
+  case "\$a" in
+    -*) continue ;;
+  esac
+  printf '%s' racer > "\$a"
+done
+RMEOF
+chmod +x "$work/racestubs/rm"
+set +e
+PATH="$work/racestubs:$PATH" DAWARICH_COOKIE_FILE="$work/race/cookie" sh -c 'set -e; . "$1"' sh "$env_sh"
+raced=$?
+set -e
+[ "$raced" -eq 0 ] && [ "$(cat "$work/race/cookie" 2>/dev/null)" = racer ] \
+  || { echo "a cookie recreated between rm and the write was overwritten or aborted the script (exit $raced)"; exit 1; }
+
+mkdir -p "$work/rootstubs" "$work/rootlike"
+printf '#!/bin/sh\necho 0\n' >"$work/rootstubs/id"
+printf '#!/bin/sh\nexit 1\n' >"$work/rootstubs/chown"
+chmod +x "$work/rootstubs/id" "$work/rootstubs/chown"
+set +e
+PATH="$work/rootstubs:$PATH" DAWARICH_COOKIE_FILE="$work/rootlike/cookie" sh -c 'set -e; . "$1"' sh "$env_sh"
+chownfail=$?
+set -e
+[ "$chownfail" -eq 0 ] \
+  || { echo "a failing chown aborted env.sh instead of falling through to the cookie read (exit $chownfail)"; exit 1; }
+
+echo "release smoke: ok"

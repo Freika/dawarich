@@ -23,6 +23,23 @@ module Geocoding
   class RateLimiter
     MUTEX = Mutex.new
     MAX_INTERACTIVE_WAIT = 1.0
+    KEY_PREFIX = 'geocoding:rate_limit:'
+    PROVIDER_KEYS = %w[
+      command:geocoding.reverse_point command:geocoding.reverse_place
+      command:visits.suggest command:visits.full_history_redetect
+    ].freeze
+    RESERVE_LUA = <<~LUA
+      local clock = redis.call('TIME')
+      local now = tonumber(clock[1]) * 1000000 + tonumber(clock[2])
+      local slot = tonumber(redis.call('GET', KEYS[1]) or '0')
+      if slot < now then slot = now end
+      local wait = slot - now
+      local max_wait = tonumber(ARGV[2])
+      if max_wait >= 0 and wait > max_wait then return -1 end
+      local next_slot = slot + tonumber(ARGV[1])
+      redis.call('SET', KEYS[1], string.format('%.0f', next_slot), 'PX', string.format('%.0f', math.floor((next_slot - now) / 1000) + 1000))
+      return wait
+    LUA
 
     class << self
       def throttle(config, max_wait: nil)
@@ -37,8 +54,19 @@ module Geocoding
         yield
       end
 
+      def shared?
+        ENV['GEOCODING_SHARED_RATE_LIMIT'] == 'true'
+      end
+
+      def guard_claim!(key)
+        return if shared? || PROVIDER_KEYS.exclude?(key)
+
+        raise ArgumentError, "#{key} calls a geocoding provider: set GEOCODING_SHARED_RATE_LIMIT=true in Rails first"
+      end
+
       def reset!
         MUTEX.synchronize { next_slots.clear }
+        Sidekiq.redis { |redis| redis.call('KEYS', "#{KEY_PREFIX}*").each { |key| redis.call('DEL', key) } }
       end
 
       # Komoot meters per IP, so everyone pointed at it shares one bucket.
@@ -55,7 +83,23 @@ module Geocoding
       def reserve(config, max_wait)
         rate = config.rps
         return 0.0 if rate.nil? || rate <= 0
+        return local_reserve(config, rate, max_wait) unless shared?
 
+        shared_reserve(config, rate, max_wait)
+      rescue RedisClient::Error => e
+        Rails.logger.warn("[Geocoding::RateLimiter] shared limiter unavailable, pacing locally: #{e.class}")
+        local_reserve(config, rate, max_wait)
+      end
+
+      def shared_reserve(config, rate, max_wait)
+        max = max_wait ? (max_wait * 1_000_000).round : -1
+        wait = Sidekiq.redis do |redis|
+          redis.call('EVAL', RESERVE_LUA, 1, "#{KEY_PREFIX}#{key_for(config)}", (1_000_000 / rate).round, max)
+        end
+        wait.negative? ? nil : wait / 1_000_000.0
+      end
+
+      def local_reserve(config, rate, max_wait)
         interval = 1.0 / rate
         key = key_for(config)
 

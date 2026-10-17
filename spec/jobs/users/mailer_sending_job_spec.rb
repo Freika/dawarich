@@ -50,6 +50,109 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       end
     end
 
+    describe 'explore_features after Oban took the mail over' do
+      before do
+        job_owner!('command:users.explore_features_mail', :sidekiq)
+        user
+        job_owner!('command:users.explore_features_mail', :oban)
+        JobOutbox.delete_all
+        ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+      end
+
+      it 'forwards the queued job to the outbox under its own job id instead of mailing, once per job' do
+        job = described_class.new(user.id, 'explore_features')
+
+        expect { job.perform(user.id, 'explore_features') }.not_to have_enqueued_mail(UsersMailer, :explore_features)
+        job.perform(user.id, 'explore_features')
+
+        expect(JobOutbox.sole).to have_attributes(event_id: job.job_id, command_type: 'users.explore_features_mail',
+                                                  aggregate_id: user.id,
+                                                  payload: { 'user_id' => user.id, 'locale' => 'en' })
+      end
+
+      it 'forwards a serialized queued locale once even when the worker locale differs' do
+        queued_job = I18n.with_locale(:fr) do
+          described_class.perform_later(user.id, 'explore_features')
+          ActiveJob::Base.queue_adapter.enqueued_jobs.last
+        end
+
+        I18n.with_locale(:de) { perform_enqueued_jobs(only: described_class) }
+
+        expect(JobOutbox.sole).to have_attributes(event_id: queued_job['job_id'],
+                                                  payload: { 'user_id' => user.id, 'locale' => 'fr' })
+
+        I18n.with_locale(:en) { ActiveJob::Base.execute(queued_job) }
+
+        expect(JobOutbox.count).to eq(1)
+      end
+
+      it 'still sends every other type through Sidekiq' do
+        user
+        JobOutbox.delete_all
+
+        expect { described_class.perform_now(user.id, 'welcome') }.to have_enqueued_mail(UsersMailer, :welcome)
+        expect(JobOutbox.count).to eq(0)
+      end
+    end
+
+    describe 'wave-2 user mails' do
+      let(:token) { Auth::IssueAccountLinkToken.new(user, provider: 'google_oauth2', uid: 'uid-1').call }
+      let(:link_url) { "https://example.test/auth/account_link?token=#{token}" }
+      let(:wave2_mails) do
+        {
+          'welcome' => {},
+          'archival_approaching' => { epoch: '2026-03-29T01:30:00+02:00' },
+          'oauth_account_link' => { provider_label: 'Google', link_url: },
+          'account_destroy_confirmation' => { link_url: }
+        }
+      end
+
+      before do
+        allow(UsersMailer).to receive(:with).and_call_original
+        user
+        JobOutbox.delete_all
+        clear_enqueued_jobs
+      end
+
+      it 'each wave-2 type owned by oban forwards with event_id = job_id and enqueues no delivery' do
+        wave2_mails.each do |email_type, options|
+          JobOwnership.joint_keys("command:#{UserMailCommands::TYPES.fetch(email_type)}").each do |key|
+            job_owner!(key, :oban)
+          end
+          job = described_class.new(user.id, email_type, **options)
+
+          expect { job.perform_now }.not_to have_enqueued_job(ActionMailer::MailDeliveryJob)
+          expect(JobOutbox.find(job.job_id)).to have_attributes(command_type: UserMailCommands::TYPES.fetch(email_type),
+                                                                aggregate_id: user.id)
+        end
+      end
+
+      it "each wave-2 type owned by sidekiq enqueues today's delivery" do
+        wave2_mails.each do |email_type, options|
+          JobOwnership.joint_keys("command:#{UserMailCommands::TYPES.fetch(email_type)}").each do |key|
+            job_owner!(key, :sidekiq)
+          end
+
+          expect { described_class.perform_now(user.id, email_type, **options) }
+            .to have_enqueued_mail(UsersMailer, email_type.to_sym).with(params: { user:, **options }, args: [])
+        end
+        expect(JobOutbox.count).to eq(0)
+      end
+
+      it 'an old archival job without epoch forwards the user\'s 11_5mo mark as epoch' do
+        warnings = { 'archival_warnings' => { '11_5mo' => '2026-09-01T03:00:00+02:00' } }
+        user.update_columns(settings: user.settings.merge(warnings))
+        JobOwnership.joint_keys('command:mail.user.archival_approaching').each { |key| job_owner!(key, :oban) }
+        job = described_class.new(user.id, 'archival_approaching')
+
+        job.perform_now
+
+        expect(JobOutbox.find(job.job_id).payload).to eq(
+          'user_id' => user.id, 'locale' => 'en', 'epoch' => '2026-09-01T03:00:00+02:00'
+        )
+      end
+    end
+
     context 'with additional options' do
       it 'merges options with user params' do
         custom_options = { custom_data: 'test', priority: :high }
@@ -96,6 +199,20 @@ RSpec.describe Users::MailerSendingJob, type: :job do
     end
 
     context 'when email_type is a legacy trial lifecycle email' do
+      it 'legacy trial types enqueue no mail and have no native command mapping' do
+        allow(UsersMailer).to receive(:with).and_call_original
+        user
+        clear_enqueued_jobs
+        types = %w[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late]
+        expect(described_class::LEGACY_MANAGER_EMAIL_TYPES).to eq(types)
+        types.each do |type|
+          expect(UserMailCommands::TYPES).not_to have_key(type)
+          expect(described_class::MAILER_REGISTRY).not_to have_key(type)
+          described_class.new.perform(user.id, type)
+          expect(enqueued_jobs.length).to eq(0)
+        end
+      end
+
       %w[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late].each do |email_type|
         it "skips #{email_type}" do
           expect do

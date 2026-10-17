@@ -335,7 +335,7 @@ RSpec.describe 'Api::V1::Points', type: :request do
         put "/api/v1/points/#{point.id}?api_key=#{user.api_key}",
             params: { point: { latitude: 1.5, longitude: 1.5 } }
       end.to have_enqueued_job(Achievements::CheckJob).with(user.id)
-      expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([point.timestamp])
+      expect(Achievements::PendingChecks.read(user.id).first).to eq(point.timestamp)
 
       point.reload
       expect(point.country_id).to eq(new_country.id)
