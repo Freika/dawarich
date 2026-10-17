@@ -10,6 +10,10 @@ module Users
 
     MODES_KEY = 'enabled_transportation_modes'
     CITY_THRESHOLD_KEY = 'min_minutes_spent_in_city'
+    SUPPORTER_KEY = 'app_store_supporter'
+    SUPPORTER_INSTALL_KEY = 'app_store_supporter_install'
+    SUPPORTER_INSTALLS_KEY = 'app_store_supporter_installs'
+    MAX_INSTALL_ID_LENGTH = 128
 
     def initialize(user, settings_params)
       @user = user
@@ -68,9 +72,12 @@ module Users
     def apply_settings
       @settings_params.each do |key, value|
         next if key.to_s == 'timezone' && !ActiveSupport::TimeZone[value]
+        next if key.to_s == SUPPORTER_INSTALL_KEY
 
         if key.to_s == 'maps'
           merge_maps_settings(value)
+        elsif key.to_s == SUPPORTER_KEY
+          apply_supporter_flag(value)
         else
           @user.settings[key] = value
         end
@@ -87,6 +94,24 @@ module Users
       incoming = incoming.except('hidden_tile_categories', 'disabled_poi_groups') if @user.plan_restricted?
 
       @user.settings['maps'] = (@user.settings['maps'] || {}).merge(incoming)
+    end
+
+    def apply_supporter_flag(value)
+      install = supporter_install_id
+      return @user.settings[SUPPORTER_KEY] = value if install.nil?
+
+      installs = Array(@user.settings[SUPPORTER_INSTALLS_KEY]) - [install]
+      installs << install if ActiveModel::Type::Boolean.new.cast(value)
+      @user.settings[SUPPORTER_INSTALLS_KEY] = installs
+      @user.settings[SUPPORTER_KEY] = installs.any?
+    end
+
+    def supporter_install_id
+      raw = @settings_params[SUPPORTER_INSTALL_KEY] || @settings_params[SUPPORTER_INSTALL_KEY.to_sym]
+      return unless raw.is_a?(String)
+
+      id = raw.strip
+      id if id.present? && id.length <= MAX_INSTALL_ID_LENGTH
     end
 
     def sanitize_gated_layers
