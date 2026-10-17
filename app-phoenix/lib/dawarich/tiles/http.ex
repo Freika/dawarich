@@ -113,7 +113,13 @@ defmodule Dawarich.Tiles.Http do
       timeout =
         System.get_env("VECTOR_TILES_QUERY_TIMEOUT_MS", "5000") |> RubyInteger.to_i() |> max(1)
 
-      Repo.query!("SET LOCAL statement_timeout = #{timeout}")
+      Repo.query!(
+        "SELECT set_config('statement_timeout', $1, true), set_config('jit', 'off', true)",
+        [
+          Integer.to_string(timeout)
+        ]
+      )
+
       Repo.query!(sql, args).rows
     end)
     |> case do

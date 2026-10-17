@@ -7,7 +7,7 @@ defmodule Dawarich.Settings.Map do
 
   def get(scope, opts \\ []) do
     Maps.with_actor(scope, fn actor ->
-      {:ok, redact(Api.config(Api.read(Repo, actor.id), Api.restricted?(Repo, actor, ctx(opts))))}
+      {:ok, redact(Api.config(actor.settings, Api.restricted?(Repo, actor, ctx(opts))))}
     end)
   end
 

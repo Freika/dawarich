@@ -1,7 +1,7 @@
 defmodule Dawarich.MapWindow do
   @moduledoc false
 
-  alias Dawarich.{LocalTime, Repo, TimeZoneName, UserTimeZone, ZoneDst}
+  alias Dawarich.{LocalTime, Repo, TimeZoneName, UserTimeZone}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias Dawarich.Imports.{ImportTime, ZonePeriod}
   alias Dawarich.MapApi.RailsDate
@@ -9,54 +9,11 @@ defmodule Dawarich.MapWindow do
   @iso ~r/\A\s*(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?)?\s*(Z|[+-]\d{2}(?::?\d{2})?)?\s*\z/
   @max_epoch 253_402_300_799
 
-  @points """
-  SELECT r.e, to_char(to_timestamp(r.e) AT TIME ZONE r.z, 'YYYY-MM-DD"T"HH24:MI:SS'),
-         extract(epoch FROM (to_timestamp(r.e) AT TIME ZONE r.z) - (to_timestamp(r.e) AT TIME ZONE 'UTC'))::int
-  FROM unnest($1::bigint[], $2::text[]) WITH ORDINALITY AS r(e, z, i)
-  ORDER BY r.i
-  """
-
-  @candidates """
-  SELECT found.epochs, found.offsets
-  FROM unnest($1::timestamp[], $2::text[]) WITH ORDINALITY AS u(l, z, i)
-  CROSS JOIN LATERAL (
-    SELECT array_agg(c.e ORDER BY c.e) AS epochs, array_agg(c.utoff ORDER BY c.e) AS offsets
-    FROM (
-      SELECT step.hours, extract(epoch FROM candidate.t)::bigint AS e,
-             extract(epoch FROM offsets.delta)::int AS utoff,
-             min(step.hours) OVER () AS first_hours
-      FROM generate_series(0, 24) AS step(hours)
-      CROSS JOIN LATERAL (
-        SELECT DISTINCT (anchor.t AT TIME ZONE u.z) - (anchor.t AT TIME ZONE 'UTC') AS delta
-        FROM (VALUES ((u.l AT TIME ZONE u.z) - interval '2 days'), (u.l AT TIME ZONE u.z),
-                     ((u.l AT TIME ZONE u.z) + interval '2 days')) AS anchor(t)
-      ) offsets
-      CROSS JOIN LATERAL (
-        SELECT ((u.l + make_interval(hours => step.hours)) AT TIME ZONE 'UTC') - offsets.delta AS t
-      ) candidate
-      WHERE (candidate.t AT TIME ZONE u.z) = u.l + make_interval(hours => step.hours)
-    ) c
-    WHERE c.hours = c.first_hours
-  ) found
-  ORDER BY u.i
-  """
-
   defdelegate user_zone(settings, env), to: UserTimeZone, as: :zone
 
   def iso?(value), do: Regex.match?(@iso, value)
 
-  def local_utc(naive, zone, repo \\ Repo) do
-    [[epochs, offsets]] =
-      repo.query!(@candidates, [[NaiveDateTime.truncate(naive, :second)], [zone]]).rows
-
-    utc =
-      zone
-      |> ZoneDst.pick(Enum.zip(epochs, offsets))
-      |> DateTime.from_unix!()
-      |> DateTime.to_naive()
-
-    %{utc | microsecond: naive.microsecond}
-  end
+  defdelegate local_utc(naive, zone, repo \\ Repo), to: Dawarich.MapWindow.Convert
 
   def build(params, settings, now, import_range, env \\ System.get_env()) do
     main = UserTimeZone.name(settings, Repo, env)
@@ -64,33 +21,43 @@ defmodule Dawarich.MapWindow do
     valid = names |> Map.values() |> Enum.uniq() |> valid_zones()
     ctx = %{main: main, day: pick([names.day], valid, main), now: DateTime.to_unix(now)}
 
-    [now_main, now_day | imports] =
-      points([
-        {:epoch, ctx.now, main},
-        {:epoch, ctx.now, ctx.day} | import_specs(import_range, main)
-      ])
+    head = [
+      {:epoch, ctx.now, main},
+      {:epoch, ctx.now, ctx.day} | import_specs(import_range, main)
+    ]
 
-    ctx =
-      Map.merge(ctx, %{
-        today: day_of(now_main),
-        today_day: day_of(now_day),
-        imports: Enum.map(imports, &day_of/1)
-      })
+    limits = [local(~N[1970-01-01 00:00:00], main), local(~N[2100-01-01 00:00:00], main)]
 
-    {first, first_clamped} = bound(params, "start_at", ~T[00:00:00], ctx)
-    {last, last_clamped} = bound(params, "end_at", ~T[23:59:59], ctx)
+    {[now_main, now_day | imports], {first, first_clamped}, {last, last_clamped}, [f, l, lo, hi]} =
+      if explicit?(params, "start_at") and explicit?(params, "end_at") do
+        first = timestamp(params["start_at"], ctx)
+        last = timestamp(params["end_at"], ctx)
 
-    [f, l, lo, hi] =
-      points([
-        first,
-        last,
-        local(~N[1970-01-01 00:00:00], main),
-        local(~N[2100-01-01 00:00:00], main)
-      ])
+        {heads, tail} =
+          head
+          |> Kernel.++([elem(first, 0), elem(last, 0) | limits])
+          |> points()
+          |> Enum.split(length(head))
+
+        {heads, first, last, tail}
+      else
+        heads = points(head)
+        ctx = with_days(ctx, heads)
+        first = bound(params, "start_at", ~T[00:00:00], ctx)
+        last = bound(params, "end_at", ~T[23:59:59], ctx)
+        {heads, first, last, points([elem(first, 0), elem(last, 0) | limits])}
+      end
+
+    ctx = with_days(ctx, [now_main, now_day | imports])
+
+    known =
+      for {t, spec} <- Enum.zip([f, l, lo, hi], [first, last | limits]),
+          elem(spec, 2) == main,
+          do: t
 
     start_epoch = clamp(elem(f, 0), first_clamped, elem(lo, 0), elem(hi, 0))
     end_epoch = clamp(elem(l, 0), last_clamped, elem(lo, 0), elem(hi, 0))
-    [s, e] = points([{:epoch, start_epoch, main}, {:epoch, end_epoch, main}])
+    [s, e] = at_epochs([start_epoch, end_epoch], known, main)
     {s_l, e_l, n_l} = {naive(s), naive(e), naive(now_main)}
 
     [prev_s, prev_e, next_s, next_e, today_s, today_e, week_s, month_s] =
@@ -219,39 +186,27 @@ defmodule Dawarich.MapWindow do
     Calendar.strftime((source && parse_day(source, ctx.today_day)) || ctx.today_day, "%Y-%m")
   end
 
+  defp explicit?(params, key), do: is_binary(params[key]) and Ruby.present?(params[key])
+
+  defp with_days(ctx, [now_main, now_day | imports]) do
+    Map.merge(ctx, %{
+      today: day_of(now_main),
+      today_day: day_of(now_day),
+      imports: Enum.map(imports, &day_of/1)
+    })
+  end
+
+  defp at_epochs(epochs, known, zone) do
+    found = Enum.map(epochs, fn epoch -> Enum.find(known, &(elem(&1, 0) == epoch)) end)
+    if nil in found, do: points(Enum.map(epochs, &{:epoch, &1, zone})), else: found
+  end
+
   defp clamp(value, true, lo, hi), do: value |> max(lo) |> min(hi)
   defp clamp(value, false, _lo, _hi), do: value
 
   defp local(naive, zone), do: {:local, naive, zone}
 
-  defp points(specs) do
-    {epochs, zones} =
-      specs |> resolve() |> Enum.map(fn {:epoch, e, z} -> {e, z} end) |> Enum.unzip()
-
-    Repo.query!(@points, [epochs, zones]).rows |> Enum.map(&List.to_tuple/1)
-  end
-
-  defp resolve(specs) do
-    case for({:local, l, z} <- specs, do: {l, z}) do
-      [] ->
-        specs
-
-      locals ->
-        {naives, zones} = Enum.unzip(locals)
-        rows = Repo.query!(@candidates, [naives, zones]).rows
-
-        {resolved, []} =
-          Enum.map_reduce(specs, rows, fn
-            {:local, _l, z}, [[epochs, offsets] | rest] ->
-              {{:epoch, ZoneDst.pick(z, Enum.zip(epochs, offsets)), z}, rest}
-
-            spec, rest ->
-              {spec, rest}
-          end)
-
-        resolved
-    end
-  end
+  defp points(specs), do: Dawarich.MapWindow.Convert.points(specs)
 
   defp naive({_e, local, _offset}), do: NaiveDateTime.from_iso8601!(local)
   defp day_of({_e, local, _offset}), do: local |> binary_part(0, 10) |> Date.from_iso8601!()

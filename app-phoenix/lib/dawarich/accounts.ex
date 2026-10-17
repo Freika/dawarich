@@ -49,12 +49,18 @@ defmodule Dawarich.Accounts do
 
       user ->
         {settings, user} = Map.pop(user, :settings)
+        Dawarich.Accounts.DataAccess.remember_settings(user.id, settings)
         Map.put(user, :timezone, Dawarich.UserSettings.safe(settings)["timezone"])
     end
   end
 
   def settings(user_id) do
-    [[settings]] = Repo.query!("SELECT settings FROM users WHERE id = $1", [user_id]).rows
+    settings =
+      case Dawarich.Accounts.DataAccess.cached_settings(user_id) do
+        {:ok, raw} -> raw
+        :error -> hd(hd(Repo.query!("SELECT settings FROM users WHERE id = $1", [user_id]).rows))
+      end
+
     Dawarich.UserSettings.provided(settings)
   end
 
