@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- Weight the heatmap by time spent instead of recording frequency (#3597)
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
 
 

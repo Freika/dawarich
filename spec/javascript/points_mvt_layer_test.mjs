@@ -114,6 +114,16 @@ function evaluate(expression, properties) {
   const [op, ...args] = expression
   const resolved = () => args.map((arg) => evaluate(arg, properties))
   switch (op) {
+    case "case":
+      return evaluate(args[0], properties)
+        ? evaluate(args[1], properties)
+        : evaluate(args[2], properties)
+    case "has":
+      return Object.hasOwn(properties, args[0])
+    case "/": {
+      const [left, right] = resolved()
+      return left / right
+    }
     case "all":
       return resolved().every(Boolean)
     case "any":
@@ -220,14 +230,19 @@ test("tile URLs preserve the selected import scope", () => {
   assert.equal(params.get("import_id"), "42")
 })
 
-test("tiled heatmap weight scales with count: log-monotonic, classic at count 1", () => {
+test("tiled heatmap weight scales linearly with dwell, with a cached count fallback", () => {
   const layer = new PointsMvtLayer(fakeMap(), {})
   const heatmapConfig = layer
     .getLayerConfigs()
     .find((config) => config.id === PointsMvtLayer.HEATMAP_LAYER_ID)
   const weight = heatmapConfig.paint["heatmap-weight"]
 
-  assert.ok(Array.isArray(weight), "weight must be a count-based expression")
+  const dwellWeight = (dwell) => evaluate(weight, { dwell, count: 5000 })
+  assert.equal(dwellWeight(0), 0)
+  assert.equal(dwellWeight(600), 1)
+  assert.equal(dwellWeight(1200), 2)
+  assert.equal(dwellWeight(300) + dwellWeight(300), dwellWeight(600))
+
   const at = (count) => evaluate(weight, { count })
 
   assert.ok(

@@ -228,6 +228,21 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
         get path, params: cached_params, headers: { 'If-None-Match' => etag }
 
         expect(response).to have_http_status(:ok)
+        expect(response.headers['ETag']).to be_present
+        expect(response.headers['ETag']).not_to eq(etag)
+      end
+
+      it 'replaces cached tiles from before dwell was added' do
+        schema_version = Api::V1::Tiles::PointsController::TILE_SCHEMA_VERSION
+        stub_const('Api::V1::Tiles::PointsController::TILE_SCHEMA_VERSION', 4)
+        get path, params: cached_params
+        etag = response.headers['ETag']
+
+        stub_const('Api::V1::Tiles::PointsController::TILE_SCHEMA_VERSION', schema_version)
+        get path, params: cached_params, headers: { 'If-None-Match' => etag }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['ETag']).not_to eq(etag)
       end
 
       it 'revalidates empty tiles to 304 as well' do
