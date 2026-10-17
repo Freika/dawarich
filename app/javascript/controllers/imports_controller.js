@@ -1,6 +1,11 @@
 import BaseController from "./base_controller"
 
-// Recover status updates broadcast before the imports stream subscribes or reconnects.
+const ACTIVE_ROWS = ["created", "processing", "deleting"]
+  .map((status) => `tr[data-import-status="${status}"]`)
+  .join(", ")
+
+// Lives on the imports Turbo frame and reloads it to recover status updates
+// broadcast before the imports stream subscribes or reconnects.
 export default class extends BaseController {
   connect() {
     super.connect?.()
@@ -17,6 +22,24 @@ export default class extends BaseController {
         attributeFilter: ["connected"],
       })
     })
+
+    // A row broadcast while the frame is loading can be overwritten by the
+    // older response, so load once more after it lands.
+    this.markStale = (event) => {
+      if (
+        this.loading &&
+        event.target.getAttribute("target")?.startsWith("import_")
+      ) {
+        this.stale = true
+      }
+    }
+    this.loaded = () => {
+      this.loading = false
+      if (this.stale) this.sync()
+    }
+    document.addEventListener("turbo:before-stream-render", this.markStale)
+    this.element.addEventListener("turbo:frame-load", this.loaded)
+
     if ([...sources].some((source) => source.hasAttribute("connected"))) {
       this.sync()
     }
@@ -24,46 +47,17 @@ export default class extends BaseController {
 
   disconnect() {
     this.observer.disconnect()
+    document.removeEventListener("turbo:before-stream-render", this.markStale)
+    this.element.removeEventListener("turbo:frame-load", this.loaded)
   }
 
-  async sync() {
-    if (this.syncing) return
+  sync() {
+    if (!this.element.querySelector(ACTIVE_ROWS)) return
 
-    const rows = [
-      ...this.element.querySelectorAll("tr[data-import-status]"),
-    ].filter((row) =>
-      ["created", "processing", "deleting"].includes(row.dataset.importStatus),
-    )
-    if (!rows.length) return
-
-    this.syncing = true
-    try {
-      const response = await fetch(window.location.href, {
-        headers: { Accept: "text/html" },
-        credentials: "same-origin",
-      })
-      if (!response.ok)
-        throw new Error(`Imports sync failed: ${response.status}`)
-
-      const latest = new DOMParser().parseFromString(
-        await response.text(),
-        "text/html",
-      )
-      rows.forEach((row) => {
-        // A newer Turbo broadcast may already have replaced or removed this row.
-        if (!row.isConnected || !this.element.contains(row)) return
-
-        const replacement = latest.getElementById(row.id)
-        if (replacement) {
-          row.replaceWith(document.importNode(replacement, true))
-        } else if (row.dataset.importStatus === "deleting") {
-          row.remove()
-        }
-      })
-    } catch (error) {
-      console.warn("Could not synchronize import statuses", error)
-    } finally {
-      this.syncing = false
-    }
+    this.loading = true
+    this.stale = false
+    // The frame has no src until its first sync; later syncs reload that URL.
+    if (this.element.src) this.element.reload()
+    else this.element.src = window.location.href
   }
 }
