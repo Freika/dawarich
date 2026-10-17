@@ -38,6 +38,21 @@ RSpec.describe 'Settings', type: :request do
           expect(user.reload.theme).to eq('dark')
         end
       end
+
+      [{}, { theme: '' }, { theme: 'purple' }].each do |invalid_params|
+        context "with params #{invalid_params.inspect}" do
+          let(:params) { invalid_params }
+
+          it 'rejects the request without changing the theme' do
+            user.update!(theme: 'light')
+
+            get '/settings/theme', params: params
+
+            expect(response).to have_http_status(:unprocessable_entity)
+            expect(user.reload.theme).to eq('light')
+          end
+        end
+      end
     end
   end
 

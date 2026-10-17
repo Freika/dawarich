@@ -10,7 +10,7 @@ module Imports::Broadcaster
     import.class.where(id: import.id)
           .where('processed < ? OR processed IS NULL', index)
           .update_all(processed: index)
-    import.reload
+    return unless reload_import(import)
 
     broadcast_replace_to(
       [import.user, :imports],
@@ -24,7 +24,7 @@ module Imports::Broadcaster
   end
 
   def broadcast_status_update
-    import.reload
+    return unless reload_import(import)
 
     broadcast_replace_to(
       [import.user, :imports],
@@ -35,6 +35,13 @@ module Imports::Broadcaster
   end
 
   private
+
+  # The import can be deleted while its worker is still running.
+  def reload_import(import)
+    import.reload
+  rescue ActiveRecord::RecordNotFound
+    nil
+  end
 
   def should_broadcast?(index)
     return true if index.zero?

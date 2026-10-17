@@ -20,7 +20,7 @@ class Users::Digests::Yearly::CalculatingJob < ApplicationJob
 
   def recalculate_monthly_stats(user_id, year)
     (1..12).each do |month|
-      Stats::CalculateMonth.new(user_id, year, month).call
+      Stats::CalculateMonth.new(user_id, year, month, notify_on_failure: false).call
     end
   end
 

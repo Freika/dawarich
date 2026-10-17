@@ -1,13 +1,9 @@
 # frozen_string_literal: true
 
 class EnqueueAchievementVisitDateBackfill < ActiveRecord::Migration[8.1]
-  def up
-    DataMigrations::BackfillAchievementsJob.perform_later
-  rescue NameError
-    raise
-  rescue StandardError => e
-    Rails.logger.warn "[Migration] job=BackfillAchievementsJob enqueued=false error=#{e.message}"
-  end
+  # The full recalculation that restores historical visit dates now runs once
+  # from LoadDisputedAreas, which ships in the same release.
+  def up; end
 
   def down; end
 end

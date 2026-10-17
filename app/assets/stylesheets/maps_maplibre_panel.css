@@ -422,7 +422,6 @@
   border: 1px solid oklch(var(--bc) / 0.15);
   border-radius: 8px;
   padding: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   max-height: calc(100% - 24px);
   overflow-y: auto;
@@ -476,17 +475,14 @@
   align-items: center;
   justify-content: center;
   border: 0;
-  background: transparent;
+  background: oklch(var(--b1));
   border-radius: 6px;
   cursor: pointer;
   color: oklch(var(--bc) / 0.75);
-  transition:
-    background-color 120ms ease,
-    color 120ms ease;
 }
 
 .map-button-cluster__btn:hover {
-  background: oklch(var(--bc) / 0.08);
+  background: color-mix(in oklab, oklch(var(--bc)) 6%, oklch(var(--b1)));
   color: oklch(var(--bc));
 }
 
@@ -510,7 +506,7 @@
 }
 
 .map-button-cluster__btn--create:hover {
-  background: rgba(34, 197, 94, 0.12);
+  background: color-mix(in oklab, #22c55e 12%, oklch(var(--b1)));
   color: #22c55e;
 }
 
@@ -837,4 +833,114 @@
   padding: 2px 8px;
   font-size: 0.75rem;
   font-weight: 500;
+}
+
+/* Layers tab: one tile per layer, options for the enabled layers below */
+.layer-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 8px;
+}
+
+.layer-tile {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+  min-height: 76px;
+  padding: 14px 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--rounded-box, 0.625rem);
+  background-color: oklch(var(--b1));
+  text-align: center;
+  cursor: pointer;
+}
+
+.layer-tile:hover {
+  background-color: color-mix(in oklab, oklch(var(--bc)) 4%, oklch(var(--b1)));
+}
+
+.layer-tile__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.layer-tile:has(.layer-tile__input:focus-visible) {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: 1px;
+}
+
+.layer-tile:has(.layer-tile__input:checked) {
+  background-color: color-mix(in oklab, oklch(var(--p)) 12%, oklch(var(--b1)));
+}
+
+.layer-tile:has(.layer-tile__input:disabled) {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.layer-tile__icon {
+  width: 20px;
+  height: 20px;
+  color: oklch(var(--bc) / 0.75);
+}
+
+.layer-tile:has(.layer-tile__input:checked) .layer-tile__icon {
+  color: oklch(var(--p));
+}
+
+.layer-tile__label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.layer-tile__badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  line-height: 1;
+}
+
+[data-tab-content="layers"]:has(
+    [data-maps--maplibre-target="pointsToggle"]:not(:checked)
+  )
+  [data-layer-options="points"] {
+  display: none;
+}
+
+[data-tab-content="layers"]:has(
+    [data-maps--maplibre-target="fogToggle"]:not(:checked)
+  )
+  [data-layer-options="fog"] {
+  display: none;
+}
+
+.layer-options {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid oklch(var(--bc) / 0.1);
+}
+
+.layer-options__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: oklch(var(--bc) / 0.55);
 }

@@ -31,6 +31,14 @@ RSpec.describe Achievements::LoadRegions do
         expect(Region.where('NOT ST_IsValid(geom)').count).to eq(0)
       end
 
+      it 'drops subdivisions lying in disputed areas that an earlier load stored' do
+        create(:region, code: 'UA-43')
+
+        described_class.new.call
+
+        expect(Region.where(code: Achievements::Registry::DISPUTED_SUBDIVISIONS)).to be_empty
+      end
+
       it 'is idempotent' do
         expect { described_class.new.call }.not_to change(Region, :count)
       end

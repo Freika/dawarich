@@ -65,9 +65,14 @@ export class VisitCard {
 
         <div class="card-body p-3">
           <!-- Visit Name -->
-          <h3 class="card-title text-sm font-semibold mb-2">
+          <h3 class="card-title text-sm font-semibold ${visit.place?.address ? "" : "mb-2"}">
             ${escapeHtml(visit.name || visit.place?.name) || translate("visits.unnamed")}
           </h3>
+          ${
+            visit.place?.address
+              ? `<p class="text-xs text-base-content/70 mb-2 [overflow-wrap:anywhere]" data-visit-address>${escapeHtml(visit.place.address)}</p>`
+              : ""
+          }
 
           <!-- Date and Time -->
           <div class="text-xs text-base-content/70 space-y-1">

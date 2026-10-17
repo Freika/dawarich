@@ -6,22 +6,31 @@ RSpec.describe 'Notification mutations across tabs', type: :request do
   let(:user) { create(:user) }
   let(:notification) { create(:notification, user: user) }
   let(:messages) { [] }
+  let(:page_messages) { [] }
 
   before do
     sign_in user
     notification
     @subscription = ActiveSupport::Notifications.subscribe('broadcast.action_cable') do |event|
-      messages << event.payload[:message] if event.payload[:broadcasting] ==
-                                             Turbo::StreamsChannel.verified_stream_name(
-                                               Turbo::StreamsChannel.signed_stream_name([user, :notifications])
-                                             )
+      case event.payload[:broadcasting]
+      when stream_name([user, :notifications]) then messages << event.payload[:message]
+      when stream_name([user, :notification_pages]) then page_messages << event.payload[:message]
+      end
     end
   end
 
   after { ActiveSupport::Notifications.unsubscribe(@subscription) }
 
+  def stream_name(streamables)
+    Turbo::StreamsChannel.verified_stream_name(Turbo::StreamsChannel.signed_stream_name(streamables))
+  end
+
   def streams
     Nokogiri::HTML.fragment(messages.join).css('turbo-stream')
+  end
+
+  def page_actions
+    Nokogiri::HTML.fragment(page_messages.join).css('turbo-stream').map { |node| node['action'] }
   end
 
   it 'refreshes the unread badge after opening a notification' do
@@ -58,13 +67,39 @@ RSpec.describe 'Notification mutations across tabs', type: :request do
 
     expect(user.notifications.unread).to be_empty
     expect(streams.map { |node| node['target'] }).to include('notifications-badge')
+    expect(streams.map { |node| node['action'] }).not_to include('refresh')
+    expect(page_actions).to eq(['refresh'])
+  end
+
+  it 'subscribes only the notification list to the page refresh stream' do
+    signed = Turbo::StreamsChannel.signed_stream_name([user, :notification_pages])
+
+    get notifications_path
+    expect(response.body).to include(signed)
+
+    # A refreshed detail page would request a notification that delete-all removed.
+    get notification_path(notification)
+    expect(response.body).not_to include(signed)
   end
 
   it 'removes notification copies and refreshes the badge after delete all' do
     post delete_all_notifications_path
 
     expect(user.notifications).to be_empty
-    expect(streams.map { |node| node['target'] }).to include('notifications-badge',
-                                                             "detail_notification_#{notification.id}")
+    expect(streams.map { |node| node['target'] }).to include('notifications-badge')
+    removal = streams.find { |node| node['action'] == 'remove' }['targets']
+    expect(removal).to include('.notification-item', '[id^="notification_"]', '[id^="detail_notification_"]')
+    expect(streams.map { |node| node['action'] }).not_to include('refresh')
+    expect(page_actions).to eq(['refresh'])
+  end
+
+  it 'broadcasts a fixed number of updates when deleting many notifications' do
+    create_list(:notification, 5, user: user)
+    messages.clear
+
+    post delete_all_notifications_path
+
+    expect(user.notifications).to be_empty
+    expect(streams.size).to eq(2)
   end
 end

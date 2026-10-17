@@ -80,7 +80,18 @@ describe 'Visits API', type: :request do
               latitude: { type: :number },
               longitude: { type: :number },
               started_at: { type: :string, format: :datetime },
-              ended_at: { type: :string, format: :datetime }
+              ended_at: { type: :string, format: :datetime },
+              address: {
+                type: :object,
+                description: 'Optional address stored on a newly created place',
+                properties: {
+                  street: { type: :string },
+                  house_number: { type: :string },
+                  postcode: { type: :string },
+                  city: { type: :string },
+                  country: { type: :string }
+                }
+              }
             },
             required: %w[name latitude longitude started_at ended_at]
           }
@@ -114,7 +125,8 @@ describe 'Visits API', type: :request do
                      id: { type: :integer },
                      name: { type: :string },
                      latitude: { type: :number },
-                     longitude: { type: :number }
+                     longitude: { type: :number },
+                     address: { type: :string, nullable: true }
                    }
                  }
                }

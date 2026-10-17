@@ -38,23 +38,25 @@
   <% else %>
     <%= render 'stats_row' %>
 
-    <!-- Heatmap and Streak Row -->
-    <div class="flex flex-col lg:flex-row gap-6">
-      <% cache insights_cache_key + ["activity_heatmap"], expires_in: 24.hours do %>
-        <%= render 'activity_heatmap' %>
+    <% if @all_time %>
+      <%= render 'tracking_summary' %>
+      <%= render 'year_cards' if @stats_by_year.any? || @locked_years.any? %>
+    <% else %>
+      <%= render 'months' %>
+      <% if current_user.full_access? %>
+        <%= turbo_frame_tag "residency-content", src: map_residency_path(year: @selected_year), loading: :lazy do %>
+          <%= render 'days_per_country_skeleton' %>
+        <% end %>
+      <% elsif @activity_heatmap %>
+        <% cache insights_cache_key + ['year_calendar'], expires_in: 24.hours do %>
+          <%= render 'year_calendar', year: @selected_year, activity: @activity_heatmap %>
+        <% end %>
       <% end %>
-      <% cache insights_cache_key + ["activity_streak"], expires_in: 24.hours do %>
-        <%= render 'activity_streak' %>
-      <% end %>
-    </div>
-
-    <%# Days per country follows the page's year selector, so it has nothing to
-        show for All Time — same reasoning as the heatmap and streak cards. %>
-    <% if current_user.full_access? && !@all_time %>
-      <%= turbo_frame_tag "residency-content",
-                          src: map_residency_path(year: @selected_year),
-                          loading: :lazy do %>
-        <%= render 'days_per_country_skeleton' %>
+      <% if !current_user.full_access? && current_user.stats.exists?(year: @selected_year - 1) %>
+        <div class="mb-6" data-testid="distance-race-locked">
+          <%= render 'pro_locked_card', title: t('insights.distance_race.title', year: @selected_year, previous: @selected_year - 1),
+                                        utm_content: 'distance_race' %>
+        </div>
       <% end %>
     <% end %>
 

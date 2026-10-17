@@ -1,0 +1,54 @@
+<%
+  colors = country_colors(countries)
+  lanes = countries.first(InsightsChartsHelper::RIBBON_LANES)
+  today = Time.current.in_time_zone(current_user.timezone_iana).to_date
+  days_in_year = Date.new(year, 12, 31).yday.to_f
+%>
+
+<section class="card bg-base-200 mb-6" data-testid="country-ribbon" aria-labelledby="country-ribbon-title">
+  <div class="card-body p-5 gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 id="country-ribbon-title" class="flex items-center gap-2 text-xl font-bold min-w-0">
+        <%= icon 'globe', class: 'w-5 h-5 text-base-content/60 shrink-0' %>
+        <%= t('.title', year: year) %>
+      </h2>
+      <span class="badge badge-ghost tabular-nums"><%= total_tracked_days %> / <%= days_in_year.to_i %> <%= t('map.residency.show.days') %></span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <div class="grid min-w-[30rem] grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5">
+        <% lanes.each do |country| %>
+          <div class="flex min-w-0 items-center gap-2 text-sm">
+            <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: <%= colors[country[:country_name]] %>"></span>
+            <span class="min-w-0 truncate"><%= country[:country_name] %></span>
+            <span class="ml-auto shrink-0 tabular-nums text-base-content/50"><%= country[:days] %></span>
+          </div>
+          <div class="country-ribbon__lane" data-testid="country-ribbon-lane">
+            <% country[:periods].each do |period| %>
+              <% segment = ribbon_segment(period, year) %>
+              <% label = t('.segment', country: country[:country_name],
+                                       from: l(segment[:start_date], format: :short_month_day),
+                                       to: l(segment[:end_date], format: :short_month_day),
+                                       count: segment[:days]) %>
+              <span class="country-ribbon__segment" tabindex="0" role="img" aria-label="<%= label %>" title="<%= label %>"
+                    style="left: <%= segment[:left] %>%; width: <%= segment[:width] %>%; background: <%= colors[country[:country_name]] %>"></span>
+            <% end %>
+            <% if year == today.year %>
+              <span class="country-ribbon__today" style="left: <%= ((today.yday - 1) / days_in_year * 100).round(3) %>%" title="<%= t('.today') %>"></span>
+            <% end %>
+          </div>
+        <% end %>
+        <div></div>
+        <div class="grid grid-cols-12 text-xs text-base-content/60">
+          <% (1..12).each do |month| %>
+            <span><%= l(Date.new(year, month, 1), format: :abbreviated_month_name) %></span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <% if countries.size > lanes.size %>
+      <p class="text-xs text-base-content/60"><%= t('.more_countries', count: countries.size - lanes.size) %></p>
+    <% end %>
+  </div>
+</section>
