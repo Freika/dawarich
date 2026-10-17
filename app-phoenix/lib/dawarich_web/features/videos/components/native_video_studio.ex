@@ -7,7 +7,7 @@ defmodule DawarichWeb.NativeVideoStudio do
   import DawarichWeb.NativeVideoActions, only: [video_actions: 1]
 
   alias Dawarich.I18n
-  alias DawarichWeb.{Icon, PosterStudio}
+  alias DawarichWeb.{Icon, PosterFonts}
   alias Phoenix.LiveView.JS
 
   @strings %{
@@ -199,7 +199,7 @@ defmodule DawarichWeb.NativeVideoStudio do
 
   def config(locale) do
     Jason.encode!(%{
-      fonts: Jason.decode!(PosterStudio.fonts_json(~w(inter jetbrains-mono))),
+      fonts: Jason.decode!(PosterFonts.json(~w(inter jetbrains-mono))),
       strings:
         Map.new(@strings, fn {key, path} ->
           {:ok, text} = I18n.template(locale, "javascript." <> path)
