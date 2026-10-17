@@ -50,6 +50,21 @@ defmodule DawarichWeb.DeadRenderQueryBudgetTest do
     assert Enum.count(rest, &String.contains?(&1, @user_row)) == 1
   end
 
+  test "a map dead render reads the settings column only with the users row", %{id: id} do
+    queries = warm_render(id, "/map?start_at=2026-06-01&end_at=2026-06-02")
+    assert Enum.filter(queries, &(&1 =~ ~r/SELECT settings FROM users/)) == []
+  end
+
+  test "a native points API request reads the API user's settings once", %{id: id} do
+    Repo.query!("UPDATE users SET api_key = $2 WHERE id = $1", [id, "budget-key-#{id}"])
+
+    path =
+      "/api/v1/points?start_at=1780000000&end_at=1790000000&per_page=10&api_key=budget-key-#{id}"
+
+    queries = warm_get(path)
+    assert Enum.filter(queries, &(&1 =~ ~r/SELECT settings FROM users/)) == []
+  end
+
   test "an admission after a user write in the same request reads the row again", %{id: id} do
     Dawarich.Accounts.DataAccess.with_request_memo(fn ->
       scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(id), "en")
@@ -69,6 +84,26 @@ defmodule DawarichWeb.DeadRenderQueryBudgetTest do
 
     assert {:ok, admitted} = Dawarich.Accounts.DataAccess.admit(scope)
     assert admitted.user.status == 0
+  end
+
+  defp warm_get(path) do
+    assert Phoenix.ConnTest.build_conn() |> get(path) |> response(200)
+    owner = self()
+    key = {__MODULE__, make_ref()}
+
+    :telemetry.attach(
+      key,
+      [:dawarich, :repo, :query],
+      fn _, _, metadata, _ -> if self() == owner, do: send(owner, {key, metadata.query}) end,
+      nil
+    )
+
+    try do
+      assert Phoenix.ConnTest.build_conn() |> get(path) |> response(200)
+      collect(key, [])
+    after
+      :telemetry.detach(key)
+    end
   end
 
   defp warm_render(id, path) do

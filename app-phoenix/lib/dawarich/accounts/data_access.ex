@@ -30,6 +30,20 @@ defmodule Dawarich.Accounts.DataAccess do
 
   def close_memo, do: Process.delete(@memo)
 
+  def remember_settings(id, raw) do
+    with %{} = memo <- Process.get(@memo),
+         do: Process.put(@memo, Map.put(memo, {:settings, id}, raw))
+
+    raw
+  end
+
+  def cached_settings(id) do
+    case Process.get(@memo) do
+      %{{:settings, ^id} => raw} -> {:ok, raw}
+      _ -> :error
+    end
+  end
+
   def remember(%{id: id} = user) do
     with %{} = memo <- Process.get(@memo), do: Process.put(@memo, Map.put(memo, id, user))
     user
