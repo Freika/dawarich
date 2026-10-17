@@ -3,6 +3,7 @@
 module Visits
   class PlaceFinder
     SIMILARITY_RADIUS = 50
+    MANUAL_MATCH_RADIUS = 100
 
     attr_reader :user
 
@@ -22,16 +23,21 @@ module Visits
 
     private
 
-    # Rank candidates within the radius by exact-name, then manual-over-photon, then distance.
-    # Avoids minting duplicate "Suggested place" rows and prefers user-curated places.
+    # Prefer a user-named place over a reverse-geocoded one, then exact-name, then distance.
+    # Manual places are matched within a wider radius so a re-visit whose cluster center
+    # drifted still reuses the curated place instead of minting a new "Suggested place".
     def find_existing_place(lat, lon, name)
-      candidates = user.places.near([lat, lon], SIMILARITY_RADIUS, :m).to_a
-      return nil if candidates.empty?
+      candidates = user.places.near([lat, lon], MANUAL_MATCH_RADIUS, :m).to_a
+      manual = candidates.select(&:manual?)
+      pool = manual.presence || candidates.select do |place|
+        distance_meters(lat, lon, place.lat, place.lon) <= SIMILARITY_RADIUS
+      end
+      return nil if pool.empty?
 
-      candidates.min_by do |place|
+      pool.min_by do |place|
         [
-          name.present? && place.name == name ? 0 : 1,
           place.manual? ? 0 : 1,
+          name.present? && place.name == name ? 0 : 1,
           distance_meters(lat, lon, place.lat, place.lon)
         ]
       end
