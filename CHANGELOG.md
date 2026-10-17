@@ -6,13 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-### Fixed
-- When several phones bought Pro in the mobile app for the same self-hosted account, one phone's purchase lapsing no longer removes the supporter badge while another phone's purchase is still active. `PATCH /api/v1/settings` accepts an optional `app_store_supporter_install` id alongside `app_store_supporter`; reports without it keep the previous behaviour.
-
-## [1.16.0] - 2026-10-15, Berlin
+## [1.16.0] - 2026-10-17, Berlin
 
 ### Added
-- Self-hosted users with an active Pro purchase in the Dawarich mobile app now get the supporter badge. The app reports the purchase to your instance automatically; Dawarich Cloud ignores it.
+- Self-hosted users with an active Pro purchase in the Dawarich mobile app now get the supporter badge. The app reports the purchase to your instance automatically; Dawarich Cloud ignores it. When several phones on the same account bought Pro, the badge stays while any of their purchases is active: `PATCH /api/v1/settings` accepts an optional `app_store_supporter_install` id alongside `app_store_supporter`.
 - `POST /api/v1/visits` accepts an optional `address` (street, house number, postcode, city, country). A newly created place stores it, and visit responses include the place's formatted `address`, so apps can keep a visit's name and address separately.
 - A visit created without an address (for example from the map's visit form) gets its place address and city looked up in the background when reverse geocoding is enabled; the name you gave is kept.
 - Visit cards in the map's visit list show the place address under the visit name.
