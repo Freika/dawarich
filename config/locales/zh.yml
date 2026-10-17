@@ -970,6 +970,8 @@ zh:
         links: 链接
         video_studio: 视频工作室
       settings_panel:
+        speed_colored_tracks: 按速度为轨迹着色
+        edit_speed_colors: 编辑速度颜色
         close_panel: 关闭面板
         layers: 图层
         search_for_a_place: 搜索地点

@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- Restore speed coloring for Tracks and the speed color scale editor in map settings (#3681)
 - Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200)
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
 - Country boundaries now include Crimea in Ukraine, matching its subdivisions: the Ukraine achievement card, scratch map and country attribution follow, and existing points there move from Russia to Ukraine in the background (#3834).

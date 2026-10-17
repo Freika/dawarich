@@ -961,6 +961,8 @@ en:
         settings_s: Settings (S)
         links: Links
       settings_panel:
+        speed_colored_tracks: Color tracks by speed
+        edit_speed_colors: Edit speed colors
         close_panel: Close panel
         layers: Layers
         search_for_a_place: Search for a place

@@ -1011,6 +1011,8 @@ de:
         settings_s: Einstellungen (S)
         links: Links
       settings_panel:
+        speed_colored_tracks: Tracks nach Geschwindigkeit einfärben
+        edit_speed_colors: Geschwindigkeitsfarben bearbeiten
         close_panel: Fenster schließen
         layers: Ebenen
         search_for_a_place: Suche nach einem Ort

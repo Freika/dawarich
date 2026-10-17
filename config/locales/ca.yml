@@ -961,6 +961,8 @@ ca:
         settings_s: Configuració (S)
         links: Enllaços
       settings_panel:
+        speed_colored_tracks: Acoloreix els trajectes segons la velocitat
+        edit_speed_colors: Edita els colors de velocitat
         close_panel: Tanca el panell
         layers: Capes
         search_for_a_place: Cerca un lloc

@@ -21,6 +21,39 @@ const combinedSource = `${basemapUrlSource}\n${withoutImports}`
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combinedSource).toString("base64")}`
 const { LAYER_COLOR_DEFAULTS, SettingsManager } = await import(moduleUrl)
 
+test("speed coloring preferences load and persist with the existing backend keys", async () => {
+  const originalFetch = globalThis.fetch
+  let saved
+  globalThis.fetch = async (_url, options = {}) => {
+    if (options.method === "PATCH") {
+      saved = JSON.parse(options.body).settings
+      return { ok: true, json: async () => ({ settings: saved }) }
+    }
+    return {
+      ok: true,
+      json: async () => ({
+        settings: {
+          speed_colored_routes: "true",
+          speed_color_scale: "0:#000000|80:#ffffff",
+        },
+      }),
+    }
+  }
+  try {
+    SettingsManager.initialize("test-key")
+    const loaded = await SettingsManager.loadFromBackend()
+    assert.equal(loaded.speedColoredRoutes, true)
+    assert.equal(loaded.speedColorScale, "0:#000000|80:#ffffff")
+    await SettingsManager.saveToBackend(loaded)
+    assert.equal(saved.speed_colored_routes, true)
+    assert.equal(saved.speed_color_scale, loaded.speedColorScale)
+    await SettingsManager.updateSetting("speedColoredRoutes", false)
+    assert.equal(saved.speed_colored_routes, false)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 async function loadSettingsController(settingsManager, overrides = {}) {
   const controllerSource = await readFile(
     new URL(
@@ -376,4 +409,50 @@ test("style rebuild reloads enabled family labels after the new layers exist", a
   controller.controller.settings.familyEnabled = false
   await controller.restoreStyleLayers()
   assert.deepEqual(seen, ["layers"])
+})
+
+test("live speed changes use current preferences and restore edit exclusions", async () => {
+  const settings = {
+    speedColoredRoutes: false,
+    speedColorScale: "0:#000000|80:#ffffff",
+  }
+  const calls = []
+  const { SettingsController } = await loadSettingsController({
+    updateSetting(key, value) {
+      settings[key] = value
+    },
+    getSetting(key) {
+      return settings[key]
+    },
+  })
+  const controller = new SettingsController({
+    settings: {},
+    layerManager: {
+      getLayer(id) {
+        return id === "tracks-mvt"
+          ? {
+              setSpeedColoring(value) {
+                calls.push(value)
+              },
+            }
+          : {
+              reapplyTileFilters() {
+                calls.push("exclusions")
+              },
+            }
+      },
+    },
+  })
+  controller.toggleSpeedColoredRoutes({ target: { checked: true } })
+  assert.deepEqual(calls, [
+    { enabled: true, scale: settings.speedColorScale },
+    "exclusions",
+  ])
+  controller.updateSpeedColorScale({
+    detail: { colorStops: "0:#ff0000|80:#00ff00" },
+  })
+  assert.deepEqual(calls.at(-2), {
+    enabled: true,
+    scale: "0:#ff0000|80:#00ff00",
+  })
 })
