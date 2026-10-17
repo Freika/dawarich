@@ -1,7 +1,7 @@
 defmodule Dawarich.Settings.Api do
   @moduledoc false
   alias Dawarich.{Entitlements, I18n, RubyInteger, UserSettings}
-  alias Dawarich.Settings.Progress
+  alias Dawarich.Settings.{Progress, Supporter}
   alias Dawarich.Settings.Input, as: SettingsController
 
   @fields ~w(fog_of_war_meters preferred_map_layer time_threshold_minutes merge_threshold_minutes live_map_enabled track_color immich_url immich_api_key photoprism_url photoprism_api_key airtrail_url airtrail_api_key maps distance_unit visits_suggestions_enabled fog_of_war_threshold fog_of_war_mode enabled_map_layers places_tag_filters maps_maplibre_style maps_maplibre_tiles_url maps_maplibre_tiles_fallback maps_maplibre_custom_theme globe_projection enabled_transportation_modes min_minutes_spent_in_city gps_filtering_enabled timezone visit_radius_meters visit_min_points visit_min_duration_minutes point_dragging_enabled meters_between_routes speed_colored_routes points_rendering_mode minutes_between_routes route_opacity route_color speed_color_scale points_tiled_rendering)
@@ -160,8 +160,17 @@ defmodule Dawarich.Settings.Api do
 
            after_settings =
              Enum.reduce(attrs, before, fn
-               {"maps", maps}, acc -> Map.put(acc, "maps", Map.merge(acc["maps"] || %{}, maps))
-               {key, value}, acc -> Map.put(acc, key, value)
+               {"maps", maps}, acc ->
+                 Map.put(acc, "maps", Map.merge(acc["maps"] || %{}, maps))
+
+               {"app_store_supporter_install", _}, acc ->
+                 acc
+
+               {"app_store_supporter", value}, acc ->
+                 Supporter.flag(acc, value, attrs["app_store_supporter_install"])
+
+               {key, value}, acc ->
+                 Map.put(acc, key, value)
              end)
 
            after_settings = if restricted, do: gate(after_settings, attrs), else: after_settings
