@@ -10,9 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Native Phoenix routes for photos, places/search, spatial map reads and tiles, MCP, import intake, point mutations and signed storage proxy/representations. API transport now handles Cloud, HEAD, format suffixes, nested parameters and streaming uploads, with narrow pending-import CORS and terminal post-write errors. Existing route and slice rollback controls remain; auth/settings package activation and release acceptance follow separately.
 
-## [1.16.0] - 2026-10-15, Berlin
+## [1.16.0] - 2026-10-17, Berlin
 
 ### Added
+
 - Self-hosted users with an active Pro purchase in the Dawarich mobile app now get the supporter badge. The app reports the purchase to your instance automatically; Dawarich Cloud ignores it.
 - `POST /api/v1/visits` accepts an optional `address` (street, house number, postcode, city, country). A newly created place stores it, and visit responses include the place's formatted `address`, so apps can keep a visit's name and address separately.
 - A visit created without an address (for example from the map's visit form) gets its place address and city looked up in the background when reverse geocoding is enabled; the name you gave is kept.
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - A Family tab on the map (`F`) holds the family layer, the member list with each member's last known address, and a link to the family page.
 
 ### Changed
+
 - Achievements no longer credit any country or region for time spent in territories claimed by more than one state (Natural Earth disputed areas), and achievement cards leave those areas out; statistics, the scratch map and country attribution are unchanged. Regions lying almost entirely in such territories are no longer part of their country's set. Existing progress is recalculated in the background without notifications, and achievements already earned are kept. The upgrade loads the disputed-area boundaries and recalculates achievements once in the background; on large instances this can take a while.
 - Stats and Insights are now one page at /insights; /stats and /stats/:year redirect there.
 - Visitors opening `/` go to the sign-in page; the landing page is removed. Sign-in and sign-up pages are redesigned. Uptime checks that probe `/` now get a redirect; point them at `/api/v1/health`.
@@ -29,6 +31,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Buttons are raised and form fields recessed across the app.
 
 ### Fixed
+
 - Stop the onboarding and other closed modals from flashing on page load in Firefox.
 - Changing the theme with a missing or unknown value now returns an error instead of crashing or saving an invalid theme.
 - Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200). On large instances still carrying legacy coordinates this step can take several minutes; let it finish.

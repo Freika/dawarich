@@ -40,18 +40,14 @@ Standalone mode owns the general settings save form with native session and
 CSRF admission, locale/timezone selection, email preferences and supporter
 settings. Supporter verification remains a separate route.
 
-Standalone self-hosted mode also owns the authenticated settings/progress reads,
-point and track vector tiles, and date/import bounds used by the main map. Reads
-are account scoped, exclude anomalous points, and use private cache headers.
-Recalculation progress requires an active account and current subscription;
-settings index retains its existing account admission policy.
+Standalone self-hosted mode also owns the authenticated settings/progress reads.
+Point and track vector tiles and the hexagon bounds used by the main map are
+served by the native spatial routes (`PointTilesController`,
+`TrackTilesController`, `HexagonsController`) since 666ac5937; the earlier
+`StandaloneMap` tile and bounds branches were removed as unreachable on
+2026-10-17. Recalculation progress requires an active account and current
+subscription; settings index retains its existing account admission policy.
 Precompiled relative JavaScript imports resolve through the asset manifest.
-
-These are minimum main-path seams under ruling 15. Robust outlier bounds,
-antimeridian wrapping, complete vector-tile property/color parity and Cloud map
-contracts remain for the map owners. Bounds currently return the exact extent.
-Advanced speed coloring and unsupported map envelopes terminate with 422; map
-execution failures terminate with 500. Their reason tags begin `standalone_map_`.
 
 ## Standalone route activation
 

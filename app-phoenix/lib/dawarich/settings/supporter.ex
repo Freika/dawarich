@@ -1,6 +1,36 @@
 defmodule Dawarich.Settings.Supporter do
   @moduledoc false
-  alias Dawarich.{Jobs, Settings.General, Supporters}
+  alias Dawarich.{Jobs, Settings.General, Supporters, UserSettings}
+
+  @installs "app_store_supporter_installs"
+  @ruby_space ~r/\A[\x00\t\n\v\f\r ]+|[\x00\t\n\v\f\r ]+\z/
+
+  def flag(settings, value, install) do
+    case install_id(install) do
+      nil ->
+        Map.put(settings, "app_store_supporter", value)
+
+      id ->
+        installs = settings[@installs] |> ruby_array() |> Enum.reject(&(&1 == id))
+
+        installs =
+          if UserSettings.cast(value) in [nil, false], do: installs, else: installs ++ [id]
+
+        settings |> Map.put(@installs, installs) |> Map.put("app_store_supporter", installs != [])
+    end
+  end
+
+  defp install_id(raw) when is_binary(raw) do
+    id = String.replace(raw, @ruby_space, "")
+    if id != "" and length(String.codepoints(id)) <= 128, do: id
+  end
+
+  defp install_id(_raw), do: nil
+
+  defp ruby_array(nil), do: []
+  defp ruby_array(list) when is_list(list), do: list
+  defp ruby_array(map) when is_map(map), do: Enum.map(map, fn {key, value} -> [key, value] end)
+  defp ruby_array(value), do: [value]
 
   def verify(repo, id, params, now \\ DateTime.utc_now()) do
     with {:ok, email} <- normalized(params["supporter_email"], true),
