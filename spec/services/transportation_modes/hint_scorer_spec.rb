@@ -3,6 +3,29 @@
 require 'rails_helper'
 
 RSpec.describe TransportationModes::HintScorer do
+  describe '.authoritative_mode' do
+    it 'uses the first recognized motion, normalizing its case' do
+      data = { 'motion' => %w[unknown DRIVING walking], 'motion_authoritative' => true }
+
+      expect(described_class.authoritative_mode(data)).to eq(:driving)
+    end
+
+    it 'requires an explicit boolean flag' do
+      [nil, false, 'true'].each do |flag|
+        expect(described_class.authoritative_mode({ 'motion' => ['driving'], 'motion_authoritative' => flag }))
+          .to be_nil
+      end
+    end
+
+    it 'falls back for missing, unknown or malformed motion data' do
+      [nil, [], 'driving', ['unknown'], [nil]].each do |motion|
+        expect(described_class.authoritative_mode({ 'motion' => motion, 'motion_authoritative' => true })).to be_nil
+      end
+      expect(described_class.authoritative_mode(nil)).to be_nil
+      expect(described_class.authoritative_mode([])).to be_nil
+    end
+  end
+
   it 'boosts by Google probable activity probability' do
     motion_data = {
       'activityRecord' => {
