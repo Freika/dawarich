@@ -27,6 +27,19 @@ RSpec.describe 'Api::V1::Families::Locations', type: :request do
         expect(json_response).to have_key('sharing_enabled')
       end
 
+      it 'includes a nullable address tied to the returned location' do
+        point = create(:point, user: other_user, timestamp: 1.hour.ago.to_i,
+                               geodata: { properties: { street: 'Example Street', housenumber: '12' } })
+        get '/api/v1/families/locations', params: { api_key: user.api_key }
+        expect(response).to have_http_status(:ok)
+        location = JSON.parse(response.body).fetch('locations').first
+        expect(location).to include('address' => 'Example Street 12', 'timestamp' => point.timestamp)
+
+        point.update_columns(geodata: {}, city: nil, country_name: nil, country_id: nil, country: nil)
+        get '/api/v1/families/locations', params: { api_key: user.api_key }
+        expect(JSON.parse(response.body).fetch('locations').first).to include('address' => nil)
+      end
+
       it 'includes sharing status' do
         user.update_family_location_sharing!(true, duration: 'permanent')
 

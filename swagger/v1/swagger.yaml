@@ -1450,6 +1450,11 @@ paths:
                     description: Array of family member location data
                     items:
                       type: object
+                      properties:
+                        address:
+                          type: string
+                          nullable: true
+                          description: Address of this location; null when unavailable or pending geocoding
                   updated_at:
                     type: string
                     format: date-time
