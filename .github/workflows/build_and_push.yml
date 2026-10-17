@@ -7,6 +7,14 @@ on:
         description: "The branch to build the Docker image from"
         required: false
         default: "master"
+      tag:
+        description: "Image tag to publish instead of the ref name (letters, digits, . _ -)"
+        required: false
+        default: ""
+      platforms:
+        description: "Comma-separated platforms to build"
+        required: false
+        default: "linux/amd64,linux/arm64,linux/arm/v7"
   release:
     types: [created]
 
@@ -23,6 +31,9 @@ jobs:
     steps:
       - name: Compute version and platforms
         id: meta
+        env:
+          TAG_INPUT: ${{ github.event.inputs.tag }}
+          PLATFORMS_INPUT: ${{ github.event.inputs.platforms }}
         run: |
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
@@ -33,9 +44,27 @@ jobs:
             VERSION="rc"
           fi
 
+          if [ -n "$TAG_INPUT" ]; then
+            if ! printf '%s' "$TAG_INPUT" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$'; then
+              echo "Invalid tag input" >&2
+              exit 1
+            fi
+            VERSION="$TAG_INPUT"
+          fi
+
           IS_PRERELEASE="${{ github.event.release.prerelease }}"
-          PLATFORMS="linux/amd64,linux/arm64,linux/arm/v7"
-          MATRIX='{"include":[{"platform":"linux/amd64","runner":"ubuntu-22.04"},{"platform":"linux/arm64","runner":"ubuntu-22.04-arm"},{"platform":"linux/arm/v7","runner":"ubuntu-22.04-arm"}]}'
+          PLATFORMS="${PLATFORMS_INPUT:-linux/amd64,linux/arm64,linux/arm/v7}"
+          ENTRIES=""
+          IFS=',' read -ra PLATFORM_LIST <<< "$PLATFORMS"
+          for PLATFORM in "${PLATFORM_LIST[@]}"; do
+            case "$PLATFORM" in
+              linux/amd64) RUNNER="ubuntu-22.04" ;;
+              linux/arm64|linux/arm/v7) RUNNER="ubuntu-22.04-arm" ;;
+              *) echo "Unsupported platform: $PLATFORM" >&2; exit 1 ;;
+            esac
+            ENTRIES="${ENTRIES:+${ENTRIES},}{\"platform\":\"${PLATFORM}\",\"runner\":\"${RUNNER}\"}"
+          done
+          MATRIX="{\"include\":[${ENTRIES}]}"
 
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "is_prerelease=${IS_PRERELEASE}" >> $GITHUB_OUTPUT

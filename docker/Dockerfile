@@ -121,7 +121,7 @@ RUN apt-get update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     erlang-base erlang-inets erlang-ssl erlang-xmerl \
     libstdc++6 libgcc-s1 libssl3t64 libncurses6 zlib1g \
-    postgresql-client curl procps gosu ca-certificates tzdata nodejs \
+    postgresql-client curl wget procps gosu ca-certificates tzdata nodejs \
     libegl1 libgles2 libgbm1 libglx0 libopengl0 libx11-6 xvfb xauth mesa-libgallium \
     libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libjpeg62-turbo libgif7 librsvg2-2 \
     && rm -rf /var/lib/apt/lists/* \

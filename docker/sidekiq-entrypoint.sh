@@ -30,6 +30,10 @@ fi
 
 warn_if_development_env
 
+if [ -z "${DAWARICH_PROCESS_ROLE:-}" ] && [ "${DAWARICH_RAILS:-}" = off ]; then
+  export DAWARICH_PROCESS_ROLE=sidekiq_idle
+fi
+
 case "${DAWARICH_PROCESS_ROLE:-}" in
   sidekiq_idle) exec dawarich start ;;
   "" | web) ;;
