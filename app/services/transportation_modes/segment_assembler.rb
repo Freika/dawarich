@@ -4,7 +4,14 @@ module TransportationModes
   # Turns decoded windows into time-anchored segment hashes ready for
   # TrackSegments::BulkInserter. Manually corrected segments are preserved by
   # subtracting their time ranges from the auto output.
+  #
+  # Runs of windows the Decoder pinned to a device-certain mode become their
+  # own segments with source 'device' and confidence high; a run never mixes
+  # pinned and decoded windows, so the segment boundary falls where the
+  # device's certainty begins or ends.
   class SegmentAssembler
+    DEVICE_SOURCE = 'device'
+
     def self.call(rows:, windows:, decoded:, preserved: [])
       new(rows, windows, decoded, preserved).call
     end
@@ -42,7 +49,8 @@ module TransportationModes
                        end
         { start_ts: window[:start_ts], end_ts: interval_end,
           mode: @decoded[i][:mode], posterior: @decoded[i][:posterior],
-          hinted: @windows[i][:hints].present?, gap_before: window[:gap_before] }
+          hinted: @windows[i][:hints].present?, pinned: @decoded[i][:pinned] == true,
+          gap_before: window[:gap_before] }
       end
     end
 
@@ -55,14 +63,15 @@ module TransportationModes
       runs = []
       intervals.each do |interval|
         current = runs.last
-        if current && current[:mode] == interval[:mode] && !interval[:gap_before]
+        if current && current[:mode] == interval[:mode] && current[:pinned] == interval[:pinned] &&
+           !interval[:gap_before]
           current[:end_ts] = interval[:end_ts]
           current[:posteriors] << interval[:posterior]
           current[:hinted] ||= interval[:hinted]
         else
           runs << { mode: interval[:mode], start_ts: interval[:start_ts],
                     end_ts: interval[:end_ts], posteriors: [interval[:posterior]],
-                    hinted: interval[:hinted] }
+                    hinted: interval[:hinted], pinned: interval[:pinned] }
         end
       end
       runs
@@ -116,8 +125,14 @@ module TransportationModes
         max_speed: max_speed_kmh(segment_rows),
         confidence: confidence_bucket(posterior),
         confidence_score: posterior.round(4),
-        source: run[:hinted] ? 'hints+inferred' : 'inferred'
+        source: segment_source(run)
       }
+    end
+
+    def segment_source(run)
+      return DEVICE_SOURCE if run[:pinned]
+
+      run[:hinted] ? 'hints+inferred' : 'inferred'
     end
 
     def linestring_wkt(segment_rows)

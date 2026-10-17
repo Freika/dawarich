@@ -5,6 +5,12 @@ module TransportationModes
   # Hints are fused into emission scores — never a hard gate. OwnTracks' `m`
   # field is deliberately ignored: it is the monitoring-mode flag (significant
   # vs move), not a motion state.
+  #
+  # Overland points may carry motion_confidence (0..1). Below 1 it scales the
+  # hint through the same probability curve as Google's probableActivities
+  # (boost(1.0) == OVERLAND_BOOST, so an absent value behaves as before). At
+  # 1.0 the device states the mode as a fact: see .certain_mode, which the
+  # Decoder uses to pin windows instead of fusing a boost.
   class HintScorer
     GOOGLE_MODE_MAP = {
       'STILL' => :stationary,
@@ -45,6 +51,7 @@ module TransportationModes
     DEFAULT_PROBABILITY = 0.6
     PROBABILITY_SCALE = 8.0
     OVERLAND_BOOST = Math.log(9)
+    CERTAIN_CONFIDENCE = 1.0
 
     # Generic vehicle signals (iOS/Android "automotive") cover trains and
     # buses too — expand them so rail stays reachable when kinematics clearly
@@ -90,16 +97,38 @@ module TransportationModes
       strongest_only(hints)
     end
 
+    # The mode a point's device states as certain (Overland motion with
+    # motion_confidence >= 1.0 naming exactly one mode), or nil.
+    def self.certain_mode(motion_data)
+      return nil unless motion_data.is_a?(Hash)
+
+      confidence = motion_confidence(motion_data)
+      return nil unless confidence && confidence >= CERTAIN_CONFIDENCE
+
+      modes = overland_modes(motion_data['motion']).uniq
+      modes.one? ? modes.first : nil
+    end
+
+    def self.motion_confidence(data)
+      raw = data['motion_confidence']
+      value = raw.is_a?(Numeric) || raw.is_a?(String) ? Float(raw, exception: false) : nil
+      value&.finite? ? value : nil
+    end
+
+    def self.overland_modes(motion)
+      return [] unless motion.is_a?(Array)
+
+      motion.filter_map { |entry| OVERLAND_MODE_MAP[entry.to_s.downcase] }
+    end
+
     def self.overland_hints(data)
       motion = data['motion']
       return {} unless motion.is_a?(Array)
 
-      hints = {}
+      confidence = motion_confidence(data)
+      value = confidence ? boost(confidence) : OVERLAND_BOOST
+      hints = overland_modes(motion).index_with { value }
       raw_entries = motion.map { |entry| entry.to_s.downcase }
-      raw_entries.each do |entry|
-        mode = OVERLAND_MODE_MAP[entry]
-        hints[mode] = OVERLAND_BOOST if mode
-      end
       generic = raw_entries.find { |e| GENERIC_VEHICLE_HINTS.include?(e.upcase) || e == 'driving' }
       expand_generic_vehicle(strongest_only(hints), generic || '')
     end

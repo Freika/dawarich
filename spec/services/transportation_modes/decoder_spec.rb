@@ -66,4 +66,32 @@ RSpec.describe TransportationModes::Decoder do
   it 'returns empty for empty input' do
     expect(described_class.call([], enabled: all_modes)).to eq([])
   end
+
+  describe 'device-certain windows' do
+    it 'pins certain windows to their mode regardless of kinematics' do
+      windows = synthetic_windows(%i[cycling] * 8)
+      windows.each { |w| w[:certain_mode] = :driving }
+      out = described_class.call(windows, enabled: all_modes)
+
+      expect(out).to all(include(mode: :driving, posterior: 1.0, pinned: true))
+    end
+
+    it 'decodes uncertain windows around a pinned stretch normally' do
+      windows = synthetic_windows((%i[walking] * 8) + (%i[cycling] * 8) + (%i[walking] * 8))
+      windows[8, 8].each { |w| w[:certain_mode] = :driving }
+      out = described_class.call(windows, enabled: all_modes)
+
+      expect(out.map { |d| d[:mode] }.chunk_while { |a, b| a == b }.map(&:first)).to eq(%i[walking driving walking])
+      expect(out.first(8)).to all(satisfy { |d| !d[:pinned] })
+    end
+
+    it 'does not pin a mode the user has disabled' do
+      windows = synthetic_windows(%i[cycling] * 8)
+      windows.each { |w| w[:certain_mode] = :driving }
+      out = described_class.call(windows, enabled: %i[stationary walking cycling])
+
+      expect(out.map { |d| d[:mode] }.uniq).to eq([:cycling])
+      expect(out).to all(satisfy { |d| !d[:pinned] })
+    end
+  end
 end

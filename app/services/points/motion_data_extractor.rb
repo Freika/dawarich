@@ -12,6 +12,9 @@ module Points
       # departure_date from properties hash. The departure date rides along
       # because raw_data is emptied by archival, and the anomaly filter must
       # still tell a departed visit report from an arrival one afterwards.
+      # motion_confidence (0..1) states how sure the device is about `motion`;
+      # 1.0 means certain (e.g. phone connected to the car). It is kept only
+      # when numeric (a numeric string is accepted and stored as a float).
       def from_overland_properties(properties)
         return {} unless properties
 
@@ -24,6 +27,8 @@ module Points
         data['activity'] = activity if activity
         data['action']   = action   if action
         data['departure_date'] = departure if departure
+        confidence = motion && motion_confidence(properties)
+        data['motion_confidence'] = confidence if confidence
         data
       end
 
@@ -106,6 +111,12 @@ module Points
       end
 
       private
+
+      def motion_confidence(properties)
+        raw = properties[:motion_confidence] || properties['motion_confidence']
+        value = raw.is_a?(Numeric) || raw.is_a?(String) ? Float(raw, exception: false) : nil
+        value&.finite? ? value.clamp(0.0, 1.0) : nil
+      end
 
       # Comprehensive Google extraction for backfill — covers all Google formats.
       def from_google_all(raw_data)
