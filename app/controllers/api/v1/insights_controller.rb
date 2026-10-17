@@ -93,7 +93,7 @@ class Api::V1::InsightsController < ApiController
 
     current_api_user.scoped_visits.confirmed.where(started_at: start_time..end_time).group(:name)
                     .select('name, COUNT(*) as visit_count, SUM(duration) as total_duration')
-                    .order('visit_count DESC, total_duration DESC').limit(5)
+                    .order(Arel.sql('visit_count DESC, total_duration DESC, name COLLATE "C" ASC')).limit(5)
                     .map { |v| { name: v.name, visitCount: v.visit_count, totalDuration: v.total_duration } }
   end
 

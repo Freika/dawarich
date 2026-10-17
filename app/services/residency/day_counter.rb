@@ -48,7 +48,7 @@ module Residency
         }
       end
 
-      countries.sort_by { |c| -c[:days] }
+      countries.sort_by { |c| [-c[:days], c[:country_name]] }
     end
 
     def build_periods(sorted_dates)
@@ -107,7 +107,7 @@ module Residency
           by_date[row['point_date'].to_s] << { country: row['country_name'], count: row['point_count'].to_i }
         end
 
-        by_date.transform_values { |entries| entries.max_by { |e| e[:count] }[:country] }
+        by_date.transform_values { |entries| entries.min_by { |e| [-e[:count], e[:country]] }[:country] }
       end
     end
 
@@ -130,7 +130,7 @@ module Residency
             AND country_name != ''
             AND (anomaly IS NOT TRUE)
           GROUP BY point_date, country_name
-          ORDER BY point_date
+          ORDER BY point_date, country_name COLLATE "C"
         SQL
 
         ActiveRecord::Base.connection.exec_query(

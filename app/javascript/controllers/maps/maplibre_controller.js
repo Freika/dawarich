@@ -6,6 +6,7 @@ import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_ho
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
+import { anomaliesVisible } from "maps_maplibre/utils/layer_dependencies"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
@@ -341,7 +342,7 @@ export default class extends Controller {
       if (this.settings?.familyEnabled) {
         this.loadFamilyMembers()
       }
-      if (this.settings?.anomaliesEnabled) {
+      if (anomaliesVisible(SettingsManager.getSettings())) {
         this.layerVisibilityManager.refreshAnomalies({ enabled: true })
       }
     })
@@ -507,7 +508,7 @@ export default class extends Controller {
     this.layerManager.getLayer("map-editor")?.close()
     this._clearDayHighlight?.()
     await this.loadMapData({ fitBounds })
-    if (this.settings?.anomaliesEnabled) {
+    if (anomaliesVisible(SettingsManager.getSettings())) {
       this.layerVisibilityManager.refreshAnomalies({ enabled: true })
     }
     this.refreshTimelineFeedIfActive?.()
@@ -852,9 +853,10 @@ export default class extends Controller {
     this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
 
     // Visit labels
-    const labelExpr = this._dayRangeExpr("started_at", isoStart, isoEnd, 1, DIM)
-    this._safeSetPaint("visits-labels", "text-opacity", labelExpr)
-    this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
+    this.layerManager.getLayer("visits")?.setLabelOpacity((f) => {
+      const startedAt = f.properties.started_at
+      return startedAt >= isoStart && startedAt < isoEnd ? 1 : DIM
+    })
   }
 
   /**
@@ -871,8 +873,7 @@ export default class extends Controller {
     this._safeSetPaint("points-mvt", "circle-stroke-opacity", 1)
     this._safeSetPaint("visits", "circle-opacity", 0.9)
     this._safeSetPaint("visits", "circle-stroke-opacity", 1)
-    this._safeSetPaint("visits-labels", "text-opacity", 1)
-    this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
+    this.layerManager.getLayer("visits")?.setLabelOpacity(null)
   }
 
   /**
@@ -929,18 +930,11 @@ export default class extends Controller {
       ]
       this._safeSetPaint("visits", "circle-opacity", visitExpr)
       this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
-      this._safeSetPaint("visits-labels", "text-opacity", visitExpr)
-
-      // Labels collide-hide by default, so a neighbouring (dimmed) visit's
-      // label can win placement over the hovered one and the text under the
-      // bright dot fades out. Give the hovered visit the lowest sort key so
-      // its label is placed first and always survives collision.
-      this._safeSetLayout("visits-labels", "symbol-sort-key", [
-        "case",
-        ["==", ["get", "id"], Number(visitId)],
-        0,
-        1,
-      ])
+      this.layerManager
+        .getLayer("visits")
+        ?.setLabelOpacity((f) =>
+          f.properties.id === Number(visitId) ? 1 : 0.15,
+        )
     } else {
       const VISITS_NEARLY_INVISIBLE = 0.05
       this._safeSetPaint("visits", "circle-opacity", VISITS_NEARLY_INVISIBLE)
@@ -949,12 +943,9 @@ export default class extends Controller {
         "circle-stroke-opacity",
         VISITS_NEARLY_INVISIBLE,
       )
-      this._safeSetPaint(
-        "visits-labels",
-        "text-opacity",
-        VISITS_NEARLY_INVISIBLE,
-      )
-      this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
+      this.layerManager
+        .getLayer("visits")
+        ?.setLabelOpacity(() => VISITS_NEARLY_INVISIBLE)
     }
   }
 
@@ -1651,7 +1642,15 @@ export default class extends Controller {
         statusDiv.className = "text-xs text-info/70"
         statusDiv.dataset.memberInfo = location.user_id
 
-        info.append(emailDiv, timeDiv, statusDiv)
+        info.append(emailDiv)
+        if (location.address) {
+          const addressDiv = document.createElement("div")
+          addressDiv.className = "text-xs text-base-content/70 truncate"
+          addressDiv.title = location.address
+          addressDiv.textContent = location.address
+          info.append(addressDiv)
+        }
+        info.append(timeDiv, statusDiv)
         row.append(avatar, info)
         return row
       }),

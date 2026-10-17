@@ -84,12 +84,6 @@ zh:
         confirm_account_linking: 确认关联帐户
         link_provider_and_sign_in: 关联 %{provider} 并登录
   devise:
-    confirmations:
-      new:
-        resend_confirmation: 重新发送确认
-        enter_your_email_address_and_we_ll_resend_the_confirmation: 输入您的邮箱，我们将重新发送确认说明。
-        email: 邮箱
-        resend_confirmation_instructions: 重新发送确认说明
     mailer:
       confirmation_instructions:
         welcome: 欢迎
@@ -118,7 +112,6 @@ zh:
         change_your_password: 更改您的密码
         enter_your_new_password_below: 在下面输入您的新密码。
         new_password: 新密码
-        characters_minimum: 个字符（最少）
         confirm_new_password: 确认新密码
         change_my_password: 更改我的密码
       new:
@@ -198,13 +191,18 @@ zh:
         join_family: 加入 %{family}！
         you_ve_been_invited_by: 邀请人：
         to_join_their_family_create_your_account_to_accept_the: 邀请您加入他们的家庭。创建您的帐户以接受邀请并开始共享位置数据。
-        almost_there: 就快完成了！
-        only_a_few_steps_left_until_you_get_control_over: 只需几步即可掌控您的位置数据！
-        create_your_account: 创建您的帐户
-        configure_your_mobile_app: 配置您的移动应用
-        start_tracking_your_location_data_securely: 开始安全地记录您的位置数据
-        ellipsis: …
-        you_re_beautiful: 你很漂亮！
+        almost_there: "就快完成了"
+        only_a_few_steps_left_until_you_get_control_over: "只需几步即可掌控您的位置数据。"
+        steps:
+          account:
+            title: "创建您的帐户"
+            body: "使用本页上的表单。"
+          mobile_app:
+            title: "配置您的移动应用"
+            body: "使用 Dawarich 应用或 OwnTracks 记录新的位置。"
+          import:
+            title: "导入您的历史记录"
+            body: "添加您的 Google 地图时间线导出文件以及以往的 GPX 或 GeoJSON 文件。"
         invitation_email_notice: 您的邮箱 (%{email}) 将用于此帐户
         email: 邮箱
         password: 密码
@@ -223,6 +221,19 @@ zh:
         don_t_have_an_account_yet: 还没有帐户？
         login_now: 立即登录
         and_take_control_over_your_location_data: 并掌控您的位置数据。
+        benefits:
+          map:
+            title: "所有足迹，尽在一张地图"
+            body: "在交互式地图上查看每个位置点、路线和停留。"
+          import:
+            title: "带上您的数据"
+            body: "从 Google 地图时间线、OwnTracks、GPX、GeoJSON 等导入。"
+          stats:
+            title: "了解您去过哪里"
+            body: "按年和月统计国家、城市和里程。"
+          privacy:
+            title: "您的数据归您所有"
+            body: "没有广告，您的位置历史绝不会被出售。"
         email: 邮箱
         password: 密码
         remember_me: 记住我
@@ -242,7 +253,6 @@ zh:
         log_in: 登录
         register: 注册
         forgot_your_password: 忘记密码？
-        didn_t_receive_confirmation_instructions: 未收到确认说明？
         didn_t_receive_unlock_instructions: 没有收到解锁说明？
     unlocks:
       new:
@@ -543,26 +553,6 @@ zh:
       stay_connected_with_your_growing_family_2: • 与成长中的家庭保持联系
       manage_family_members_and_settings_from_your_family_page_2: • 从家庭页面管理家庭成员和设置
       tip_you_can_manage_your_family_members_and_privacy_settings: 提示：您可以随时从家庭仪表板管理家庭成员和隐私设置。
-  home:
-    index:
-      dawarich: Dawarich
-      the_only_location_history_tracker_you_ll_ever_need: 您唯一需要的位置历史记录工具。
-      or: 或
-      location_history_visualisation: 位置历史记录可视化
-      effortlessly_import_your_location_history_from_google_maps_timeline_and:
-        轻松从 Google 地图时间线和 OwnTracks
-        导入您的位置历史记录。在交互式地图上查看您的旅程，并通过热图、轨迹点、连接线等可自定义图层直观呈现。
-      comprehensive_travel_statistics: 全面的旅行统计数据
-      gain_insights_into_your_travel_patterns_with_detailed_statistics_track: 通过详细统计深入了解您的出行模式：查看到访过的国家和城市数量、旅行总距离，并按年份和月份拆分数据，清晰掌握您的旅程。
-      self_hosted_and_private: 自托管且私密
-      maintain_complete_control_over_your_data_with_our_self_hosted: 借助我们的自托管解决方案，您可以完全掌控自己的数据。Dawarich 确保您的位置历史记录私密安全，让您在享受强大追踪系统全部功能的同时安心无忧。
-      find_more_on: 更多信息请访问
-      the_website: 官方网站
-      or_check_out_the: ，或查看
-      source_code: 源代码
-      on_github: ，在 GitHub 上。
-      sign_up: 注册
-      sign_in: 登录
   imports:
     extraction_card:
       additional_data: 附加数据
@@ -711,7 +701,28 @@ zh:
         one: 天
         other: 天
       longest_streak: 最长连续记录
+    distance_race:
+      title: "%{year} 对比 %{previous}"
+      title_single: "%{year} 年累计距离"
+      aria: "%{year} 年累计距离与 %{previous} 年对比"
+      so_far: "%{year} 年至今"
+      by_date: "截至 %{date}"
+      same_day: "%{year} 年同一天"
+      ended_at: "%{year} 年全年 %{distance}"
+      ahead: "领先 %{distance}"
+      behind: "落后 %{distance}"
+      no_previous: "没有 %{year} 年的数据可供比较。"
+    country_ribbon:
+      title: "%{year} 年你在哪里"
+      today: "今天"
+      segment:
+        one: "%{country}，%{from} – %{to}，%{count} 天"
+        other: "%{country}，%{from} – %{to}，%{count} 天"
+      more_countries:
+        one: "还有 %{count} 个国家"
+        other: "还有 %{count} 个国家"
     header:
+      period: "时间范围"
       insights: 洞察
       your_personal_movement_analytics_and_travel_patterns: 您的个人运动数据分析和出行模式
       by_year: 按年份
@@ -742,6 +753,8 @@ zh:
       countries_2: 国家/地区
       monthly_digest: 每月摘要
       select_a_month_to_view_its_digest: 选择一个月查看其摘要：
+    months:
+      title: "每月距离"
     movement_wellness:
       movement_wellness: 运动与健康
       active_time: 活动时间
@@ -839,6 +852,15 @@ zh:
       rome_rarr_amalfi: 罗马 → 阿马尔菲
       favorites_marked: 已标记的收藏夹
       places: 个地点
+    year_cards:
+      title: "年份"
+    year_calendar:
+      mode: "日历视图"
+      mode_both: "国家 + 距离"
+      mode_distance: "距离"
+      mode_countries: "国家"
+      no_data: "无数据"
+      timezone_note: "国家按 UTC 日期统计，距离按你所在时区（%{zone}）的日期统计，因此接近午夜的日子可能会把某一天的国家与另一天的距离显示在一起。"
     year_comparison:
       your_journey: 您的旅程：
       vs: 与
@@ -958,10 +980,12 @@ zh:
         timeline_t: 时间线 (T)
         layers: 图层
         layers_l: 图层 (L)
+        family: "家庭"
+        family_f: "家庭 (F)"
         search: 搜索
         search_2: 搜索 (/)
-        create: 创建
-        create_c: 创建 (C)
+        tools: "工具"
+        tools_c: "工具 (C)"
         replay: 重播
         replay_points_for_the_current_date_range_r: 重播当前日期范围内的轨迹点 (R)
         poster_studio: 海报工作室
@@ -1003,7 +1027,6 @@ zh:
         places: 地点
         show_your_saved_places: 显示您保存的地点
         enable_all_tags: 启用所有标签
-        filter_by_tags: 按标签筛选
         untagged: 🏷️ 未标记
         click_tags_to_filter_places: 点击标签以筛选地点
         photos: 照片
@@ -1017,6 +1040,7 @@ zh:
         scratch_map: 已访问国家/地区
         show_scratched_countries: 突出显示所选时间范围内访问过的国家/地区
         family_members: 家庭成员
+        manage_family: "管理家庭"
         show_family_member_locations: 显示家庭成员位置
         click_to_center_on_member: 点击以家庭成员为中心
         appearance: 外观
@@ -2156,7 +2180,6 @@ zh:
       percent_of_total: 占所有点的 %{percent}%%
     stat:
       total_distance: 总距离
-      year_month: "%{year}/%{month}"
     year:
       map: "[地图]"
       days: 天数
@@ -2304,12 +2327,33 @@ zh:
         other: "%{count} 天"
     edit:
       editing_trip: 编辑行程
+    filters:
+      search: "搜索"
+      search_placeholder: "名称、描述、地点或笔记"
+      sort: "排序"
+      sorts:
+        newest: "最新优先"
+        oldest: "最早优先"
+        name: "名称（A–Z）"
+        distance: "距离最长"
+      year: "年份"
+      all_years: "所有年份"
+      month: "月份"
+      all_months: "所有月份"
+      choose_year_first: "请先选择年份"
+      country: "国家"
+      all_countries: "所有国家"
+      apply: "应用"
+      reset: "重置"
     index:
       new_trip: 新行程
       no_trips_yet: 尚无行程
       create_your_first_trip_to_see_your_journeys_visualized_with: 创建您的第一个行程，通过地图、照片和统计数据直观查看您的旅程。
       create_your_first_trip: 创建您的第一个行程
       trips: 行程
+      no_matching_trips: "没有符合这些筛选条件的行程"
+      try_other_filters: "请尝试其他搜索词、年份或国家。"
+      show_all_trips: "显示所有行程"
     new:
       new_trip: 新行程
     notes:
@@ -2774,6 +2818,7 @@ zh:
     immich: Immich
     photoprism: PhotoPrism
   supporter_platforms:
+    app_store: Dawarich 应用
     github: GitHub
     patreon: Patreon
     ko_fi: Ko-fi
@@ -3282,6 +3327,7 @@ zh:
         failed_to_start_import_please_try_again: 无法开始导入。请重试。
         an_error_occurred_while_starting_the_import_please_try_again: 开始导入时发生错误。请再试一次。
         please_upload_a_valid_zip_file: 请上传有效的 ZIP 文件。
+        cannot_delete_yourself_or_last_admin: 无法删除您自己的账户或最后一位活跃的管理员。
         cannot_remove_last_admin_role: 无法移除最后一位管理员用户的管理员角色。
         cannot_disable_last_admin: 无法禁用最后一个管理员用户。
       visits:
@@ -4578,6 +4624,7 @@ zh:
       enabled: 实时模式已启用
     map_panel:
       layers: 地图图层
+      family: "家庭"
       links: 链接
       search: 搜索
       settings: 设置

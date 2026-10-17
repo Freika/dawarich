@@ -65,7 +65,7 @@ class Immich::EnrichScan
                  .where(timestamp: min_ts..max_ts)
                  .where.not(lonlat: nil)
                  .select(:id, :timestamp, :lonlat)
-                 .order(:timestamp)
+                 .order(:timestamp, :id)
                  .to_a
 
     return [] if points.empty?

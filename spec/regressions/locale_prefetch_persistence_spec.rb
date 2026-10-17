@@ -61,8 +61,8 @@ RSpec.describe 'Locale persistence and link prefetching', type: :request do
   it 'does not carry a prefetched locale into the next request for a visitor' do
     sign_out user
 
-    get root_path, params: { locale: 'de' }, headers: { 'Sec-Purpose' => 'prefetch' }
-    get root_path
+    get new_user_session_path, params: { locale: 'de' }, headers: { 'Sec-Purpose' => 'prefetch' }
+    get new_user_session_path
 
     expect(response.body).to include('<html lang="en"')
   end

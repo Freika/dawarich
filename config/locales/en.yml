@@ -93,12 +93,6 @@ en:
         confirm_account_linking: Confirm account linking
         link_provider_and_sign_in: Link %{provider} and sign in
   devise:
-    confirmations:
-      new:
-        resend_confirmation: Resend confirmation
-        enter_your_email_address_and_we_ll_resend_the_confirmation: Enter your email address and we'll resend the confirmation instructions.
-        email: Email
-        resend_confirmation_instructions: Resend confirmation instructions
     mailer:
       confirmation_instructions:
         welcome: Welcome
@@ -127,7 +121,6 @@ en:
         change_your_password: Change your password
         enter_your_new_password_below: Enter your new password below.
         new_password: New password
-        characters_minimum: characters minimum)
         confirm_new_password: Confirm new password
         change_my_password: Change my password
       new:
@@ -207,13 +200,18 @@ en:
         join_family: Join %{family}!
         you_ve_been_invited_by: You've been invited by
         to_join_their_family_create_your_account_to_accept_the: to join their family. Create your account to accept the invitation and start sharing location data.
-        almost_there: Almost there!
-        only_a_few_steps_left_until_you_get_control_over: Only a few steps left until you get control over your location data!
-        create_your_account: Create your account
-        configure_your_mobile_app: Configure your mobile app
-        start_tracking_your_location_data_securely: Start tracking your location data securely
-        ellipsis: "…"
-        you_re_beautiful: You're beautiful!
+        almost_there: "Almost there"
+        only_a_few_steps_left_until_you_get_control_over: "Only a few steps left until you get control over your location data."
+        steps:
+          account:
+            title: "Create your account"
+            body: "Use the form on this page."
+          mobile_app:
+            title: "Configure your mobile app"
+            body: "Record new locations with the Dawarich app or OwnTracks."
+          import:
+            title: "Import your history"
+            body: "Add your Google Timeline export and older GPX or GeoJSON files."
         invitation_email_notice: Your email (%{email}) will be used for this account
         email: Email
         password: Password
@@ -232,6 +230,19 @@ en:
         don_t_have_an_account_yet: Don't have an account yet?
         login_now: Login now
         and_take_control_over_your_location_data: and take control over your location data.
+        benefits:
+          map:
+            title: "Your whole history on one map"
+            body: "See every point, route and visit on an interactive map."
+          import:
+            title: "Bring your data with you"
+            body: "Import from Google Timeline, OwnTracks, GPX, GeoJSON and more."
+          stats:
+            title: "See where you've been"
+            body: "Countries, cities and distance, broken down by year and month."
+          privacy:
+            title: "Your data stays yours"
+            body: "No ads, and your location history is never sold."
         email: Email
         password: Password
         remember_me: Remember me
@@ -251,7 +262,6 @@ en:
         log_in: Log in
         register: Register
         forgot_your_password: Forgot your password?
-        didn_t_receive_confirmation_instructions: Didn't receive confirmation instructions?
         didn_t_receive_unlock_instructions: Didn't receive unlock instructions?
     unlocks:
       new:
@@ -537,24 +547,6 @@ en:
       stay_connected_with_your_growing_family_2: "• Stay connected with your growing family"
       manage_family_members_and_settings_from_your_family_page_2: "• Manage family members and settings from your family page"
       tip_you_can_manage_your_family_members_and_privacy_settings: 'TIP: You can manage your family members and privacy settings at any time from your family dashboard.'
-  home:
-    index:
-      dawarich: Dawarich
-      the_only_location_history_tracker_you_ll_ever_need: The only location history tracker you'll ever need.
-      or: or
-      location_history_visualisation: Location history visualisation
-      effortlessly_import_your_location_history_from_google_maps_timeline_and: Effortlessly import your location history from Google Maps Timeline and Owntracks. View your journeys on an interactive map, complete with customizable layers like heatmaps, points, and connecting lines to visualize your travels.
-      comprehensive_travel_statistics: Comprehensive Travel Statistics
-      gain_insights_into_your_travel_patterns_with_detailed_statistics_track: Gain insights into your travel patterns with detailed statistics. Track the number of countries and cities visited and total distance traveled. Split your data by years and months for a clear overview of your journeys.
-      self_hosted_and_private: Self-Hosted and Private
-      maintain_complete_control_over_your_data_with_our_self_hosted: Maintain complete control over your data with our self-hosted solution. Dawarich ensures your location history remains private and secure, giving you peace of mind while enjoying the full functionality of a robust tracking system.
-      find_more_on: Find more on
-      the_website: the website
-      or_check_out_the: ", or check out the"
-      source_code: source code
-      on_github: on GitHub.
-      sign_up: Sign up
-      sign_in: Sign in
   imports:
     extraction_card:
       additional_data: Additional data
@@ -702,7 +694,28 @@ en:
         one: day
         other: days
       longest_streak: Longest Streak
+    distance_race:
+      title: "%{year} vs %{previous}"
+      title_single: "Distance through %{year}"
+      aria: "Cumulative distance in %{year} compared with %{previous}"
+      so_far: "So far in %{year}"
+      by_date: "by %{date}"
+      same_day: "Same day in %{year}"
+      ended_at: "%{year} ended at %{distance}"
+      ahead: "Ahead by %{distance}"
+      behind: "Behind by %{distance}"
+      no_previous: "No data for %{year} to compare with."
+    country_ribbon:
+      title: "Where you spent %{year}"
+      today: "Today"
+      segment:
+        one: "%{country}, %{from} – %{to}, %{count} day"
+        other: "%{country}, %{from} – %{to}, %{count} days"
+      more_countries:
+        one: "+%{count} more country"
+        other: "+%{count} more countries"
     header:
+      period: "Period"
       insights: Insights
       your_personal_movement_analytics_and_travel_patterns: Your personal movement analytics and travel patterns
       by_year: By Year
@@ -733,6 +746,8 @@ en:
       countries_2: countries
       monthly_digest: Monthly Digest
       select_a_month_to_view_its_digest: 'Select a month to view its digest:'
+    months:
+      title: "Distance by month"
     movement_wellness:
       movement_wellness: Movement & Wellness
       active_time: ACTIVE TIME
@@ -830,6 +845,15 @@ en:
       rome_rarr_amalfi: Rome → Amalfi
       favorites_marked: Favorites marked
       places: places
+    year_cards:
+      title: "Years"
+    year_calendar:
+      mode: "Calendar view"
+      mode_both: "Countries + distance"
+      mode_distance: "Distance"
+      mode_countries: "Countries"
+      no_data: "No data"
+      timezone_note: "Countries are counted per UTC day, distances per day in your time zone (%{zone}), so a day near midnight can show one day's country next to another day's distance."
     year_comparison:
       your_journey: 'Your Journey:'
       vs: vs
@@ -949,10 +973,12 @@ en:
         timeline_t: Timeline (T)
         layers: Layers
         layers_l: Layers (L)
+        family: "Family"
+        family_f: "Family (F)"
         search: Search
         search_2: Search (/)
-        create: Create
-        create_c: Create (C)
+        tools: "Tools"
+        tools_c: "Tools (C)"
         replay: Replay
         replay_points_for_the_current_date_range_r: Replay points for the current date range (R)
         poster_studio: Poster Studio
@@ -995,7 +1021,6 @@ en:
         places: Places
         show_your_saved_places: Show your saved places
         enable_all_tags: Enable All Tags
-        filter_by_tags: Filter by Tags
         untagged: "\U0001F3F7️ Untagged"
         click_tags_to_filter_places: Click tags to filter places
         photos: Photos
@@ -1009,6 +1034,7 @@ en:
         scratch_map: Visited Countries
         show_scratched_countries: Highlight countries visited in the selected range
         family_members: Family Members
+        manage_family: "Manage family"
         show_family_member_locations: Show family member locations
         click_to_center_on_member: Click to center on member
         appearance: Appearance
@@ -2128,7 +2154,6 @@ en:
       cities_visited: Cities visited
     stat:
       total_distance: Total distance
-      year_month: "%{year}/%{month}"
     year:
       map: "[Map]"
       days: Days
@@ -2301,12 +2326,33 @@ en:
         other: "%{count} days"
     edit:
       editing_trip: Editing trip
+    filters:
+      search: "Search"
+      search_placeholder: "Name, description, places or notes"
+      sort: "Sort"
+      sorts:
+        newest: "Newest first"
+        oldest: "Oldest first"
+        name: "Name (A–Z)"
+        distance: "Longest distance"
+      year: "Year"
+      all_years: "All years"
+      month: "Month"
+      all_months: "All months"
+      choose_year_first: "Choose a year first"
+      country: "Country"
+      all_countries: "All countries"
+      apply: "Apply"
+      reset: "Reset"
     index:
       new_trip: New trip
       no_trips_yet: No trips yet
       create_your_first_trip_to_see_your_journeys_visualized_with: Create your first trip to see your journeys visualized with maps, photos, and stats.
       create_your_first_trip: Create your first trip
       trips: Trips
+      no_matching_trips: "No trips match these filters"
+      try_other_filters: "Try a different search, year or country."
+      show_all_trips: "Show all trips"
     new:
       new_trip: New trip
     notes:
@@ -2721,6 +2767,7 @@ en:
     immich: Immich
     photoprism: PhotoPrism
   supporter_platforms:
+    app_store: Dawarich app
     github: GitHub
     patreon: Patreon
     ko_fi: Ko-fi
@@ -3221,6 +3268,7 @@ en:
         failed_to_start_import_please_try_again: Failed to start import. Please try again.
         an_error_occurred_while_starting_the_import_please_try_again: An error occurred while starting the import. Please try again.
         please_upload_a_valid_zip_file: Please upload a valid ZIP file.
+        cannot_delete_yourself_or_last_admin: Cannot delete yourself or the last active administrator.
         cannot_remove_last_admin_role: Cannot remove admin role from the last admin user.
         cannot_disable_last_admin: Cannot disable the last admin user.
       visits:
@@ -4521,6 +4569,7 @@ en:
       enabled: Live mode enabled
     map_panel:
       layers: Map Layers
+      family: "Family"
       links: Links
       search: Search
       settings: Settings

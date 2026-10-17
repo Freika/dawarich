@@ -93,12 +93,6 @@ ca:
         confirm_account_linking: Confirma la vinculació del compte
         link_provider_and_sign_in: "Vincula %{provider} i inicia sessió"
   devise:
-    confirmations:
-      new:
-        resend_confirmation: Reenvia la confirmació
-        enter_your_email_address_and_we_ll_resend_the_confirmation: Introdueix la teva adreça de correu electrònic i et reenviarem les instruccions de confirmació.
-        email: Correu electrònic
-        resend_confirmation_instructions: Reenvia les instruccions de confirmació
     mailer:
       confirmation_instructions:
         welcome: Benvingut/da
@@ -127,7 +121,6 @@ ca:
         change_your_password: Canvia la contrasenya
         enter_your_new_password_below: Introdueix la teva nova contrasenya a continuació.
         new_password: Nova contrasenya
-        characters_minimum: caràcters com a mínim)
         confirm_new_password: Confirma la nova contrasenya
         change_my_password: Canvia la meva contrasenya
       new:
@@ -207,13 +200,18 @@ ca:
         join_family: "Uneix-te a %{family}!"
         you_ve_been_invited_by: T'ha convidat
         to_join_their_family_create_your_account_to_accept_the: a unir-te a la seva família. Crea el teu compte per acceptar la invitació i començar a compartir dades d'ubicació.
-        almost_there: Ja gairebé ho tens!
-        only_a_few_steps_left_until_you_get_control_over: Només queden uns quants passos perquè prenguis el control de les teves dades d'ubicació!
-        create_your_account: Crea el teu compte
-        configure_your_mobile_app: Configura la teva aplicació mòbil
-        start_tracking_your_location_data_securely: Comença a registrar les teves dades d'ubicació de manera segura
-        ellipsis: "…"
-        you_re_beautiful: Ets genial!
+        almost_there: "Ja gairebé ho tens"
+        only_a_few_steps_left_until_you_get_control_over: "Només queden uns quants passos perquè prenguis el control de les teves dades d'ubicació."
+        steps:
+          account:
+            title: "Crea el teu compte"
+            body: "Fes servir el formulari d'aquesta pàgina."
+          mobile_app:
+            title: "Configura la teva aplicació mòbil"
+            body: "Registra noves ubicacions amb l'aplicació Dawarich o OwnTracks."
+          import:
+            title: "Importa el teu historial"
+            body: "Afegeix la teva exportació de Google Timeline i els fitxers GPX o GeoJSON antics."
         invitation_email_notice: "El teu correu electrònic (%{email}) s'utilitzarà per a aquest compte"
         email: Correu electrònic
         password: Contrasenya
@@ -232,6 +230,19 @@ ca:
         don_t_have_an_account_yet: Encara no tens un compte?
         login_now: Inicia sessió ara
         and_take_control_over_your_location_data: i pren el control de les teves dades d'ubicació.
+        benefits:
+          map:
+            title: "Tot el teu historial en un mapa"
+            body: "Mira cada punt, ruta i visita en un mapa interactiu."
+          import:
+            title: "Porta les teves dades"
+            body: "Importa des de Google Timeline, OwnTracks, GPX, GeoJSON i més."
+          stats:
+            title: "Descobreix on has estat"
+            body: "Països, ciutats i distància, per any i per mes."
+          privacy:
+            title: "Les teves dades són teves"
+            body: "Sense anuncis, i el teu historial d'ubicacions mai no es ven."
         email: Correu electrònic
         password: Contrasenya
         remember_me: Recorda'm
@@ -251,7 +262,6 @@ ca:
         log_in: Inicia sessió
         register: Registra't
         forgot_your_password: "Has oblidat la contrasenya?"
-        didn_t_receive_confirmation_instructions: No has rebut les instruccions de confirmació?
         didn_t_receive_unlock_instructions: No has rebut les instruccions de desbloqueig?
     unlocks:
       new:
@@ -537,24 +547,6 @@ ca:
       stay_connected_with_your_growing_family_2: "• Mantenir-te connectat amb la teva família, que no para de créixer"
       manage_family_members_and_settings_from_your_family_page_2: "• Gestionar els membres i la configuració de la família des de la seva pàgina"
       tip_you_can_manage_your_family_members_and_privacy_settings: 'CONSELL: Pots gestionar els membres de la teva família i la configuració de privadesa en qualsevol moment des del teu tauler de la família.'
-  home:
-    index:
-      dawarich: Dawarich
-      the_only_location_history_tracker_you_ll_ever_need: L'únic registre d'historial d'ubicacions que necessitaràs mai.
-      or: o
-      location_history_visualisation: Visualització de l'historial d'ubicacions
-      effortlessly_import_your_location_history_from_google_maps_timeline_and: Importa sense esforç el teu historial d'ubicacions des de Google Maps Timeline i Owntracks. Visualitza els teus trajectes en un mapa interactiu, amb capes personalitzables com mapes de calor, punts i línies de connexió per visualitzar els teus viatges.
-      comprehensive_travel_statistics: Estadístiques de viatge completes
-      gain_insights_into_your_travel_patterns_with_detailed_statistics_track: Obtén informació sobre els teus patrons de viatge amb estadístiques detallades. Fes seguiment del nombre de països i ciutats visitats i de la distància total recorreguda. Divideix les teves dades per anys i mesos per tenir una visió clara dels teus trajectes.
-      self_hosted_and_private: Autoallotjat i privat
-      maintain_complete_control_over_your_data_with_our_self_hosted: Mantén el control total de les teves dades amb la nostra solució autoallotjada. Dawarich garanteix que el teu historial d'ubicacions es mantingui privat i segur, donant-te tranquil·litat mentre gaudeixes de totes les funcionalitats d'un sistema de seguiment robust.
-      find_more_on: Troba més informació al
-      the_website: lloc web
-      or_check_out_the: ", o consulta el"
-      source_code: codi font
-      on_github: a GitHub.
-      sign_up: Registra't
-      sign_in: Inicia sessió
   imports:
     extraction_card:
       additional_data: Dades addicionals
@@ -702,7 +694,28 @@ ca:
         one: dia
         other: dies
       longest_streak: Ratxa més llarga
+    distance_race:
+      title: "%{year} vs %{previous}"
+      title_single: "Distància el %{year}"
+      aria: "Distància acumulada el %{year} comparada amb el %{previous}"
+      so_far: "Fins ara el %{year}"
+      by_date: "a %{date}"
+      same_day: "Mateix dia el %{year}"
+      ended_at: "El %{year} va acabar amb %{distance}"
+      ahead: "Per davant en %{distance}"
+      behind: "Per darrere en %{distance}"
+      no_previous: "No hi ha dades del %{year} per comparar."
+    country_ribbon:
+      title: "On vas passar el %{year}"
+      today: "Avui"
+      segment:
+        one: "%{country}, %{from} – %{to}, %{count} dia"
+        other: "%{country}, %{from} – %{to}, %{count} dies"
+      more_countries:
+        one: "+%{count} país més"
+        other: "+%{count} països més"
     header:
+      period: "Període"
       insights: Anàlisi
       your_personal_movement_analytics_and_travel_patterns: La teva anàlisi personal de moviment i patrons de viatge
       by_year: Per any
@@ -733,6 +746,8 @@ ca:
       countries_2: països
       monthly_digest: Resum mensual
       select_a_month_to_view_its_digest: 'Selecciona un mes per veure el seu resum:'
+    months:
+      title: "Distància per mes"
     movement_wellness:
       movement_wellness: Moviment i benestar
       active_time: TEMPS ACTIU
@@ -830,6 +845,15 @@ ca:
       rome_rarr_amalfi: Roma → Amalfi
       favorites_marked: Preferits marcats
       places: llocs
+    year_cards:
+      title: "Anys"
+    year_calendar:
+      mode: "Vista del calendari"
+      mode_both: "Països + distància"
+      mode_distance: "Distància"
+      mode_countries: "Països"
+      no_data: "Sense dades"
+      timezone_note: "Els països es compten per dia UTC i les distàncies per dia a la teva zona horària (%{zone}), així que un dia prop de mitjanit pot mostrar el país d’un dia al costat de la distància d’un altre."
     year_comparison:
       your_journey: 'El teu viatge:'
       vs: vs
@@ -949,10 +973,12 @@ ca:
         timeline_t: Línia de temps (T)
         layers: Capes
         layers_l: Capes (L)
+        family: "Família"
+        family_f: "Família (F)"
         search: Cerca
         search_2: Cerca (/)
-        create: Crea
-        create_c: Crea (C)
+        tools: "Eines"
+        tools_c: "Eines (C)"
         replay: Reproducció
         replay_points_for_the_current_date_range_r: Reprodueix els punts de l'interval de dates actual (R)
         poster_studio: Estudi de pòsters
@@ -994,7 +1020,6 @@ ca:
         places: Llocs
         show_your_saved_places: Mostra els teus llocs desats
         enable_all_tags: Activa totes les etiquetes
-        filter_by_tags: Filtra per etiquetes
         untagged: "🏷️ Sense etiqueta"
         click_tags_to_filter_places: Fes clic a les etiquetes per filtrar llocs
         photos: Fotos
@@ -1008,6 +1033,7 @@ ca:
         scratch_map: Països visitats
         show_scratched_countries: Ressalta els països visitats durant l'interval seleccionat
         family_members: Membres de la família
+        manage_family: "Gestiona la família"
         show_family_member_locations: Mostra les ubicacions dels membres de la família
         click_to_center_on_member: Fes clic per centrar en el membre
         appearance: Aparença
@@ -2128,7 +2154,6 @@ ca:
       percent_of_total: "%{percent}%% de tots els punts"
     stat:
       total_distance: Distància total
-      year_month: "%{year}/%{month}"
     year:
       map: "[Mapa]"
       days: Dies
@@ -2276,12 +2301,33 @@ ca:
         other: "%{count} dies"
     edit:
       editing_trip: Edició del viatge
+    filters:
+      search: "Cerca"
+      search_placeholder: "Nom, descripció, llocs o notes"
+      sort: "Ordena"
+      sorts:
+        newest: "Més recents primer"
+        oldest: "Més antics primer"
+        name: "Nom (A–Z)"
+        distance: "Distància més llarga"
+      year: "Any"
+      all_years: "Tots els anys"
+      month: "Mes"
+      all_months: "Tots els mesos"
+      choose_year_first: "Tria primer un any"
+      country: "País"
+      all_countries: "Tots els països"
+      apply: "Aplica"
+      reset: "Restableix"
     index:
       new_trip: Nou viatge
       no_trips_yet: Encara no hi ha viatges
       create_your_first_trip_to_see_your_journeys_visualized_with: Crea el teu primer viatge per veure els teus trajectes visualitzats amb mapes, fotos i estadístiques.
       create_your_first_trip: Crea el teu primer viatge
       trips: Viatges
+      no_matching_trips: "Cap viatge coincideix amb aquests filtres"
+      try_other_filters: "Prova una altra cerca, un altre any o un altre país."
+      show_all_trips: "Mostra tots els viatges"
     new:
       new_trip: Nou viatge
     notes:
@@ -2721,6 +2767,7 @@ ca:
     immich: Immich
     photoprism: PhotoPrism
   supporter_platforms:
+    app_store: l'aplicació Dawarich
     github: GitHub
     patreon: Patreon
     ko_fi: Ko-fi
@@ -3233,6 +3280,7 @@ ca:
         failed_to_start_import_please_try_again: No s'ha pogut iniciar la importació. Torna-ho a provar.
         an_error_occurred_while_starting_the_import_please_try_again: S'ha produït un error en iniciar la importació. Torna-ho a provar.
         please_upload_a_valid_zip_file: Puja un arxiu ZIP vàlid.
+        cannot_delete_yourself_or_last_admin: No pots eliminar el teu compte ni l’últim administrador actiu.
         cannot_remove_last_admin_role: No es pot eliminar el rol d'administrador de l'últim administrador.
         cannot_disable_last_admin: No es pot desactivar l'últim usuari administrador.
       visits:
@@ -4530,6 +4578,7 @@ ca:
       enabled: Mode en directe activat
     map_panel:
       layers: Capes del mapa
+      family: "Família"
       links: Enllaços
       search: Cerca
       settings: Configuració

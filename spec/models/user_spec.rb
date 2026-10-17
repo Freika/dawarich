@@ -583,6 +583,61 @@ RSpec.describe User, type: :model do
   describe 'methods' do
     let(:user) { create(:user) }
 
+    describe '#supporter_info with the app_store_supporter flag' do
+      context 'when self-hosted' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+        it 'reports an App Store supporter' do
+          user.settings['app_store_supporter'] = true
+
+          expect(user.supporter?).to be true
+          expect(user.supporter_platform).to eq('app_store')
+        end
+
+        it 'accepts the flag stored as a string' do
+          user.settings['app_store_supporter'] = 'true'
+
+          expect(user.supporter?).to be true
+        end
+
+        it 'keeps the platform of an already verified supporter' do
+          stub_request(:get, %r{verify\.dawarich\.app/api/v1/verify\?email_hash=})
+            .to_return(status: 200, body: { supporter: true, platform: 'patreon' }.to_json,
+                       headers: { 'Content-Type' => 'application/json' })
+          user.settings['supporter_email'] = 'fan@example.com'
+          user.settings['app_store_supporter'] = true
+
+          expect(user.supporter_platform).to eq('patreon')
+        end
+
+        it 'falls back to the flag when the GitHub username is not a supporter' do
+          stub_request(:get, %r{verify\.dawarich\.app/api/v1/verify\?github_username=})
+            .to_return(status: 200, body: { supporter: false }.to_json,
+                       headers: { 'Content-Type' => 'application/json' })
+          user.settings['supporter_github_username'] = 'nobody'
+          user.settings['app_store_supporter'] = true
+
+          expect(user.supporter_platform).to eq('app_store')
+        end
+
+        it 'is not a supporter when the flag is false' do
+          user.settings['app_store_supporter'] = false
+
+          expect(user.supporter?).to be false
+        end
+      end
+
+      context 'when on Dawarich Cloud' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+        it 'ignores the flag' do
+          user.settings['app_store_supporter'] = true
+
+          expect(user.supporter?).to be false
+        end
+      end
+    end
+
     describe '#oauth_user?' do
       it 'returns true when provider is set' do
         user.update_columns(provider: 'google_oauth2', uid: '12345')
@@ -645,16 +700,16 @@ RSpec.describe User, type: :model do
       end
 
       it 'returns array of countries from stats toponyms' do
-        expect(subject).to include('Germany', 'France')
-        expect(subject.count).to eq(2)
+        expect(subject).to include('Germany', 'France', 'Belgium')
+        expect(subject.count).to eq(3)
       end
 
       it 'excludes nil and empty country names' do
         expect(subject).not_to include(nil, '')
       end
 
-      it 'excludes drive-through countries with no qualifying cities' do
-        expect(subject).not_to include('Belgium')
+      it 'includes drive-through countries with no qualifying cities' do
+        expect(subject).to include('Belgium')
       end
 
       it 'selects only fields required for toponym aggregation' do
@@ -733,12 +788,12 @@ RSpec.describe User, type: :model do
                ])
       end
 
-      it 'returns number of countries with qualifying cities' do
-        expect(subject).to eq(2)
+      it 'returns number of countries in stats toponyms' do
+        expect(subject).to eq(3)
       end
 
-      it 'excludes drive-through countries with empty cities' do
-        expect(user.countries_visited).not_to include('Belgium')
+      it 'includes drive-through countries with empty cities' do
+        expect(user.countries_visited).to include('Belgium')
       end
     end
 

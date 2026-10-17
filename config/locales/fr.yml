@@ -534,13 +534,6 @@ fr:
         confirm_account_linking: Confirmer la liaison du compte
         link_provider_and_sign_in: Lier %{provider} et vous connecter
   devise:
-    confirmations:
-      new:
-        resend_confirmation: Renvoyer la confirmation
-        enter_your_email_address_and_we_ll_resend_the_confirmation: Entrez votre adresse
-          e-mail et nous renverrons les instructions de confirmation.
-        email: Adresse e-mail
-        resend_confirmation_instructions: Renvoyer les instructions de confirmation
     mailer:
       confirmation_instructions:
         welcome: Bienvenue
@@ -580,7 +573,6 @@ fr:
         change_your_password: Changer votre mot de passe
         enter_your_new_password_below: Entrez votre nouveau mot de passe ci-dessous
         new_password: Nouveau mot de passe
-        characters_minimum: caractères minimum)
         confirm_new_password: Confirmez votre nouveau mot de passe
         change_my_password: Changer mon mot de passe
       new:
@@ -690,15 +682,18 @@ fr:
         to_join_their_family_create_your_account_to_accept_the: pour rejoindre leur
           famille. Créez votre compte pour accepter l'invitation et commencer à partager
           vos données de localisation.
-        almost_there: Presque là !
-        only_a_few_steps_left_until_you_get_control_over: Seulement quelques étapes
-          restent à faire avant que vous ayez le contrôle sur vos données de localisation
-          !
-        create_your_account: Créer votre compte
-        configure_your_mobile_app: Configurer votre application mobile
-        start_tracking_your_location_data_securely: Commencer à suivre vos données de localisation de manière sécurisée
-        ellipsis: "…"
-        you_re_beautiful: Vous êtes beau(e) !
+        almost_there: "Presque là"
+        only_a_few_steps_left_until_you_get_control_over: "Seulement quelques étapes restent à faire avant que vous ayez le contrôle sur vos données de localisation."
+        steps:
+          account:
+            title: "Créer votre compte"
+            body: "Utilisez le formulaire de cette page."
+          mobile_app:
+            title: "Configurer votre application mobile"
+            body: "Enregistrez de nouvelles positions avec l'application Dawarich ou OwnTracks."
+          import:
+            title: "Importer votre historique"
+            body: "Ajoutez votre export Google Timeline et vos anciens fichiers GPX ou GeoJSON."
         invitation_email_notice: Votre adresse e-mail (%{email}) sera utilisée pour ce compte
         email: Adresse e-mail.
         password: Mot de passe.
@@ -720,6 +715,19 @@ fr:
         login_now: Connectez-vous
         and_take_control_over_your_location_data: Reprenez le contrôle de vos données
           de localisation.
+        benefits:
+          map:
+            title: "Tout votre historique sur une carte"
+            body: "Visualisez chaque point, trajet et visite sur une carte interactive."
+          import:
+            title: "Apportez vos données"
+            body: "Importez depuis Google Timeline, OwnTracks, GPX, GeoJSON et plus encore."
+          stats:
+            title: "Vos voyages en chiffres"
+            body: "Pays, villes et distance, par année et par mois."
+          privacy:
+            title: "Vos données vous appartiennent"
+            body: "Aucune publicité, et votre historique de localisation n'est jamais vendu."
         email: Adresse e-mail.
         password: Mot de passe.
         remember_me: Se souvenir de moi
@@ -742,8 +750,6 @@ fr:
         log_in: Se connecter
         register: S'inscrire
         forgot_your_password: Mot de passe oublié ?
-        didn_t_receive_confirmation_instructions: Vous n'avez pas reçu l'email de
-          confirmation ?
         didn_t_receive_unlock_instructions: Vous n'avez pas reçu l'email de déblocage ?
     unlocks:
       new:
@@ -1144,36 +1150,6 @@ fr:
       member_count:
         one: "Votre famille compte désormais %{count} membre."
         other: "Votre famille compte désormais %{count} membres."
-  home:
-    index:
-      dawarich: Dawarich
-      the_only_location_history_tracker_you_ll_ever_need: L'unique suivi d'historique
-        de localisation dont vous aurez jamais besoin.
-      or: ou
-      location_history_visualisation: Visualisation de l'historique de localisation
-      effortlessly_import_your_location_history_from_google_maps_timeline_and: Importez
-        facilement votre historique de localisation depuis Google Maps Timeline et
-        OwnTracks. Visualisez vos déplacements sur une carte interactive avec des
-        couches personnalisables, comme les cartes de chaleur, les points et les lignes
-        de liaison.
-      comprehensive_travel_statistics: Statistiques de déplacement complètes
-      gain_insights_into_your_travel_patterns_with_detailed_statistics_track: Gagnez
-        des informations sur vos modèles de déplacement avec des statistiques détaillées.
-        Suivez le nombre de pays et de villes visités ainsi que la distance totale
-        parcourue. Divisez vos données par années et mois pour obtenir une vue claire
-        de vos voyages.
-      self_hosted_and_private: Auto-hébergé et privé
-      maintain_complete_control_over_your_data_with_our_self_hosted: Gardez le contrôle
-        total de vos données grâce à notre solution auto-hébergée. Dawarich conserve
-        votre historique de localisation privé et sécurisé, afin que vous profitiez
-        de toutes les fonctionnalités d'un outil de suivi robuste en toute sérénité.
-      find_more_on: Trouvez plus d'informations sur
-      the_website: le site web
-      or_check_out_the: ", ou consultez le"
-      source_code: code source
-      on_github: sur GitHub.
-      sign_up: Inscrivez-vous
-      sign_in: Connectez-vous
   imports:
     extraction_card:
       additional_data: Données supplémentaires
@@ -1366,7 +1342,28 @@ fr:
         one: jour
         other: jours
       longest_streak: La plus longue séquence
+    distance_race:
+      title: "%{year} vs %{previous}"
+      title_single: "Distance en %{year}"
+      aria: "Distance cumulée en %{year} comparée à %{previous}"
+      so_far: "Jusqu’ici en %{year}"
+      by_date: "au %{date}"
+      same_day: "Même jour en %{year}"
+      ended_at: "%{year} s’est terminée à %{distance}"
+      ahead: "En avance de %{distance}"
+      behind: "En retard de %{distance}"
+      no_previous: "Aucune donnée de %{year} pour comparer."
+    country_ribbon:
+      title: "Où vous avez passé %{year}"
+      today: "Aujourd’hui"
+      segment:
+        one: "%{country}, %{from} – %{to}, %{count} jour"
+        other: "%{country}, %{from} – %{to}, %{count} jours"
+      more_countries:
+        one: "+%{count} autre pays"
+        other: "+%{count} autres pays"
     header:
+      period: "Période"
       insights: Vos analyses
       your_personal_movement_analytics_and_travel_patterns: vos analyses personnelles
         de déplacement et habitudes de voyage
@@ -1400,6 +1397,8 @@ fr:
       monthly_digest: Récapitulatif mensuel
       select_a_month_to_view_its_digest: 'Sélectionnez un mois pour visualiser son
         récapitulatif :'
+    months:
+      title: "Distance par mois"
     movement_wellness:
       movement_wellness: Mouvement et bien-être
       active_time: Temps actif
@@ -1508,6 +1507,15 @@ fr:
       rome_rarr_amalfi: Rome → Amalfi
       favorites_marked: Favoris marqués
       places: lieux
+    year_cards:
+      title: "Années"
+    year_calendar:
+      mode: "Vue du calendrier"
+      mode_both: "Pays + distance"
+      mode_distance: "Distance"
+      mode_countries: "Pays"
+      no_data: "Aucune donnée"
+      timezone_note: "Les pays sont comptés par jour UTC, les distances par jour dans votre fuseau horaire (%{zone}) : près de minuit, un jour peut afficher le pays d’un jour à côté de la distance d’un autre."
     year_comparison:
       your_journey: 'Votre parcours :'
       vs: vs
@@ -1645,10 +1653,12 @@ fr:
         timeline_t: Chronologie (T)
         layers: Couches
         layers_l: Couches (L)
+        family: "Famille"
+        family_f: "Famille (F)"
         search: Recherche
         search_2: Recherche (/)
-        create: Créer
-        create_c: Créer (C)
+        tools: "Outils"
+        tools_c: "Outils (C)"
         replay: Rejouer
         replay_points_for_the_current_date_range_r: Rejouer les points pour la période
           de date actuelle (R)
@@ -1695,7 +1705,6 @@ fr:
         places: Endroits
         show_your_saved_places: Afficher vos endroits sauvegardés
         enable_all_tags: Activer toutes les étiquettes
-        filter_by_tags: Filtrer par étiquettes
         untagged: "\U0001F3F7️ Sans étiquette"
         click_tags_to_filter_places: Cliquez sur les étiquettes pour filtrer les endroits
         photos: Photos
@@ -1709,6 +1718,7 @@ fr:
         scratch_map: Pays visités
         show_scratched_countries: Mettre en évidence les pays visités dans la période sélectionnée
         family_members: Membres de la famille
+        manage_family: "Gérer la famille"
         show_family_member_locations: Afficher les emplacements des membres de la
           famille
         click_to_center_on_member: Cliquez pour centrer sur le membre
@@ -2991,7 +3001,6 @@ fr:
       cities_visited: Villes visitées
     stat:
       total_distance: Distance totale
-      year_month: "%{year}/%{month}"
     year:
       map: "[Carte]"
       days: Jours
@@ -3154,6 +3163,24 @@ fr:
         other: "%{count} jours"
     edit:
       editing_trip: Modification du voyage
+    filters:
+      search: "Rechercher"
+      search_placeholder: "Nom, description, lieux ou notes"
+      sort: "Trier"
+      sorts:
+        newest: "Plus récents d’abord"
+        oldest: "Plus anciens d’abord"
+        name: "Nom (A–Z)"
+        distance: "Plus longue distance"
+      year: "Année"
+      all_years: "Toutes les années"
+      month: "Mois"
+      all_months: "Tous les mois"
+      choose_year_first: "Choisissez d’abord une année"
+      country: "Pays"
+      all_countries: "Tous les pays"
+      apply: "Appliquer"
+      reset: "Réinitialiser"
     index:
       new_trip: Nouveau voyage
       no_trips_yet: Aucun voyage pour le moment
@@ -3162,6 +3189,9 @@ fr:
         statistiques.
       create_your_first_trip: Créer votre premier voyage
       trips: Voyages
+      no_matching_trips: "Aucun voyage ne correspond à ces filtres"
+      try_other_filters: "Essayez une autre recherche, une autre année ou un autre pays."
+      show_all_trips: "Afficher tous les voyages"
     new:
       new_trip: Nouveau voyage
     notes:
@@ -3732,6 +3762,7 @@ fr:
     immich: Immich
     photoprism: PhotoPrism
   supporter_platforms:
+    app_store: l'application Dawarich
     github: GitHub
     patreon: Patreon
     ko_fi: Ko-fi
@@ -4226,6 +4257,7 @@ fr:
         an_error_occurred_while_starting_the_import_please_try_again: Une erreur est
           survenue lors du démarrage de l'importation. Veuillez réessayer.
         please_upload_a_valid_zip_file: Veuillez téléverser une archive ZIP valide.
+        cannot_delete_yourself_or_last_admin: Impossible de supprimer votre propre compte ou le dernier administrateur actif.
         cannot_remove_last_admin_role: Impossible de supprimer le rôle administrateur
           de l'utilisateur administrateur restant.
         cannot_disable_last_admin: Impossible de désactiver l'utilisateur administrateur
@@ -5801,6 +5833,7 @@ fr:
       enabled: Mode en direct activé
     map_panel:
       layers: Couche de carte
+      family: "Famille"
       links: Liens
       search: Recherche
       settings: Paramètres

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_14_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -132,6 +132,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
     t.index ["user_id", "year", "period_type"], name: "index_digests_on_user_year_period_type_monthless", unique: true, where: "(month IS NULL)"
     t.index ["user_id"], name: "index_digests_on_user_id"
     t.index ["year"], name: "index_digests_on_year"
+  end
+
+  create_table "disputed_areas", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.geometry "geom", limit: {srid: 4326, type: "geometry"}, null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["geom"], name: "index_disputed_areas_on_geom", using: :gist
   end
 
   create_table "exports", force: :cascade do |t|
