@@ -83,7 +83,8 @@ describe 'Visits API', type: :request do
               ended_at: { type: :string, format: :datetime },
               address: {
                 type: :object,
-                description: 'Optional address stored on a newly created place',
+                description: 'Optional address stored on a newly created place; ' \
+                             'ignored when the visit reuses a place within 100 m',
                 properties: {
                   street: { type: :string },
                   house_number: { type: :string },

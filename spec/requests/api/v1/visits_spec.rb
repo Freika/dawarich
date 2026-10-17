@@ -597,6 +597,18 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
     end
 
+    context 'when a batched visit carries an address' do
+      it 'stores the address on the new place' do
+        payload = visit_payload(0, name: 'Lunch', status: 'confirmed')
+                  .merge(address: { street: 'Poststraße', house_number: '23', city: 'Leipzig' })
+
+        post '/api/v1/visits/batch', params: { visits: [payload] }, headers: auth_headers, as: :json
+
+        expect(JSON.parse(response.body)['results'].first.dig('visit', 'place', 'address'))
+          .to eq('Poststraße 23, Leipzig')
+      end
+    end
+
     context 'when one visit in the batch is invalid' do
       let(:params) do
         { visits: [visit_payload(0, name: 'Home'), visit_payload(3, name: ''), visit_payload(6, name: 'Office')] }

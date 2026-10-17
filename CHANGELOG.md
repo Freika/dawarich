@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- `POST /api/v1/visits/batch` accepts the same optional `address` as `POST /api/v1/visits`.
+- A visit sent with an address that has no street or city still gets its place address looked up.
+
+### Fixed
+
+- A visit whose `address` is not an object is created without one instead of failing.
+
 ## [1.16.0] - 2026-10-17, Berlin
 
 ### Added
