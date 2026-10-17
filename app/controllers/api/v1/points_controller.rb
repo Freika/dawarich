@@ -93,6 +93,8 @@ class Api::V1::PointsController < ApiController
     points = Points::Create.new(current_api_user, batch_params).call
     sanitized = points.map { |row| row.to_h.except('xmax') }
 
+    record_first_mobile_upload(points.length) if points.any?
+
     render json: { data: sanitized }
   rescue Points::TimestampParser::InvalidTimestampError => e
     Rails.logger.warn("Point validation failed: #{e.message}")
@@ -174,6 +176,36 @@ class Api::V1::PointsController < ApiController
   end
 
   private
+
+  def record_first_mobile_upload(count)
+    path = request.headers['X-Dawarich-Mobile-Upload'].to_s
+    return unless ProductAnalytics::ENUMS.fetch('upload_path').include?(path)
+    return unless current_api_user.product_analytics_consent? && !DawarichSettings.self_hosted?
+
+    current_api_user.with_lock do
+      next if current_api_user.product_analytics_first_mobile_upload_at.present?
+
+      bucket = case count
+               when 1 then '1'
+               when 2..9 then '2-9'
+               when 10..99 then '10-99'
+               when 100..999 then '100-999'
+               else '1000+'
+               end
+      platform = if path == 'js'
+                   request.headers['X-Dawarich-Mobile-Platform'].to_s
+                 else
+                   (path == 'ios_native' ? 'ios' : 'android')
+                 end
+      return unless %w[ios android].include?(platform)
+
+      captured = ProductAnalytics.capture(user: current_api_user, event: 'first_mobile_upload_confirmed',
+                                          channel: 'server', platform: platform,
+                                          properties: { upload_path: path, count_bucket: bucket },
+                                          event_id: "user:#{current_api_user.id}:first_mobile_upload")
+      current_api_user.update!(product_analytics_first_mobile_upload_at: Time.current) if captured
+    end
+  end
 
   def relocate(point)
     point.lonlat = "POINT(#{point_params[:longitude]} #{point_params[:latitude]})"

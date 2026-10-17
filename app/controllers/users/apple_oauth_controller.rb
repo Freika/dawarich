@@ -2,6 +2,7 @@
 
 class Users::AppleOauthController < ApplicationController
   include PendingImportClaimable
+  include UtmTrackable
 
   skip_before_action :verify_authenticity_token, only: :callback
   before_action :ensure_enabled
@@ -24,6 +25,16 @@ class Users::AppleOauthController < ApplicationController
         COOKIE_OPTS.merge(value: session[:pending_import_ticket], expires: COOKIE_TTL.from_now)
     end
 
+    # Apple's cross-site form POST does not carry the Lax session cookie.
+    # Preserve only validated Google Ads attribution for a new signup.
+    if session[:utm_source] == 'google' && session[:utm_medium] == 'cpc'
+      campaign_id = session[:utm_campaign].to_s
+      if campaign_id.match?(/\A[0-9]{1,20}\z/)
+        cookies.encrypted[:apple_signup_campaign] =
+          COOKIE_OPTS.merge(value: campaign_id, expires: COOKIE_TTL.from_now)
+      end
+    end
+
     redirect_to authorize_url(nonce: nonce, state: state), allow_other_host: true
   end
 
@@ -41,17 +52,22 @@ class Users::AppleOauthController < ApplicationController
     submitted_state = params[:state].to_s
     return reject_with(state_mismatch_message) unless states_equal?(expected_state, submitted_state)
 
+    restore_signup_campaign
+
     claims = Auth::VerifyAppleToken
              .new(params[:id_token], nonce: expected_nonce, client_id: ENV['APPLE_WEB_SERVICES_ID'])
              .call
 
-    user, _created = Auth::FindOrCreateOauthUser.new(
+    user, created = Auth::FindOrCreateOauthUser.new(
       provider: 'apple',
       provider_label: I18n.t('oauth_providers.sign_in_with_apple'),
       claims: claims,
       email_verified: [true, 'true'].include?(claims[:email_verified]),
       name_attrs: extract_name_from_params
     ).call
+
+    assign_utm_params(user) if created && !DawarichSettings.self_hosted?
+    clear_utm_session unless created
 
     flash[:notice] = I18n.t('devise.omniauth_callbacks.success', kind: I18n.t('oauth_providers.apple'))
     sign_in_and_redirect user, event: :authentication
@@ -89,6 +105,16 @@ class Users::AppleOauthController < ApplicationController
   end
 
   private
+
+  def restore_signup_campaign
+    campaign_id = cookies.encrypted[:apple_signup_campaign].to_s
+    cookies.delete(:apple_signup_campaign)
+    return unless campaign_id.match?(/\A[0-9]{1,20}\z/)
+
+    session[:utm_source] = 'google'
+    session[:utm_medium] = 'cpc'
+    session[:utm_campaign] = campaign_id
+  end
 
   def restore_pending_import_ticket
     ticket = cookies.encrypted[:apple_pending_import_ticket]

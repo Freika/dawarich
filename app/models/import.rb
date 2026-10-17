@@ -19,6 +19,8 @@ class Import < ApplicationRecord
 
   after_commit -> { Import::ProcessJob.perform_later(id) unless skip_background_processing }, on: :create
   after_commit :remove_attached_file, on: :destroy
+  after_update_commit :enqueue_product_analytics_completion,
+                      if: -> { saved_change_to_status? && completed? && !demo? }
   before_commit :recalculate_stats, on: :destroy, if: -> { !demo && points.exists? }
 
   before_save :set_processing_started_at, if: :status_changed_to_processing?
@@ -149,6 +151,13 @@ class Import < ApplicationRecord
   end
 
   private
+
+  def enqueue_product_analytics_completion
+    return if DawarichSettings.self_hosted? || !ProductAnalytics.configured?
+    return unless user.product_analytics_consent?
+
+    ProductAnalyticsActivationJob.perform_later(user.id, import_id: id)
+  end
 
   def set_processing_started_at
     self.processing_started_at = Time.current

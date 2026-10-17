@@ -212,6 +212,31 @@ RSpec.describe Points::Intake do
     end
   end
 
+  describe 'product analytics milestone check' do
+    let(:user) { create(:user, product_analytics_consent: true, product_analytics_id: SecureRandom.uuid) }
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      allow(ProductAnalytics).to receive(:configured?).and_return(true)
+    end
+
+    it 'checks a consented user who has not reached every milestone yet' do
+      user.update!(product_analytics_activated_at: Time.current)
+
+      intake
+
+      expect(ProductAnalyticsActivationJob).to have_been_enqueued.with(user.id)
+    end
+
+    it 'skips a user whose milestones are all recorded' do
+      user.update!(product_analytics_first_point_at: Time.current, product_analytics_activated_at: Time.current)
+
+      intake
+
+      expect(ProductAnalyticsActivationJob).not_to have_been_enqueued
+    end
+  end
+
   def many_payloads(count)
     Array.new(count) do |i|
       { lonlat: "POINT(#{13.4 + (i / 100_000.0)} 52.5)", timestamp: 1_760_000_000 + i, tracker_id: 'bulk' }
