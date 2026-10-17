@@ -395,6 +395,12 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
     end
   end
 
+  it 'standalone worker entrypoint stays idle instead of starting Sidekiq' do
+    result = run_script('sidekiq-entrypoint.sh', 'sidekiq', DAWARICH_RAILS: 'off')
+    expect(result[:status]).to be_success
+    expect(result[:calls]).to eq(['dawarich start '])
+  end
+
   it 'off-mode keeps legacy boot and arbitrary command argv' do
     [nil, 'false'].each do |flag|
       [server, ['bin/rails', 'runner', 'puts 1']].each do |argv|
