@@ -12950,6 +12950,19 @@
         }
       ],
       "authority": "Rails 1.16.0 sync #3837 root redirect; native behavior and independent insights authorization retained"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/trip_shared_components_test.exs",
+        "name": "poster studio keeps map date controls by default and accepts the trip static range"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/native_poster_studio_test.exs",
+          "name": "native poster studio is a keyed hook root whose ignored islands hold only browser-owned state"
+        }
+      ],
+      "authority": "2026-10-17 dead-code removal: the Rails-markup PosterStudio was unrouted; the native studio test proves default date controls and the trip fixed range without them"
     }
   ],
   "readers": [

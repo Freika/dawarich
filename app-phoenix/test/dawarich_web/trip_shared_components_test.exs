@@ -1,7 +1,7 @@
 defmodule DawarichWeb.TripSharedComponentsTest do
   use ExUnit.Case, async: true
   import Phoenix.LiveViewTest
-  alias DawarichWeb.{MapReplay, PosterStudio}
+  alias DawarichWeb.MapReplay
 
   defp elements(html, selector), do: html |> LazyHTML.from_fragment() |> LazyHTML.query(selector)
 
@@ -41,34 +41,5 @@ defmodule DawarichWeb.TripSharedComponentsTest do
     assert html =~ ~s(data-trip-maplibre-target="replayPrevDayButton")
     assert html =~ ~s(data-trip-maplibre-target="replayNextDayButton")
     refute html =~ "maps--maplibre"
-  end
-
-  test "poster studio keeps map date controls by default and accepts the trip static range" do
-    page = %{
-      themes: [],
-      posters: [],
-      posters_stream: "signed",
-      print_order_url: "https://prints.dawarich.app/api/orders"
-    }
-
-    options = [page: page, locale: "en", rails_csrf_token: "csrf"]
-    map = render_component(&PosterStudio.poster_studio/1, options)
-
-    assert LazyHTML.attribute(
-             elements(map, "input[type=datetime-local]"),
-             "data-poster-studio-editor-target"
-           ) == ["dateStart", "dateEnd"]
-
-    assert map =~ ~s(data-action="poster-studio-editor#applyDates")
-
-    trip =
-      render_component(
-        &PosterStudio.poster_studio/1,
-        options ++ [date_range_label: "9 May 2026 – 12 May 2026"]
-      )
-
-    assert trip =~ "9 May 2026 – 12 May 2026"
-    assert Enum.empty?(elements(trip, "input[type=datetime-local]"))
-    refute trip =~ "poster-studio-editor#applyDates"
   end
 end
