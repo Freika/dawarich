@@ -32,6 +32,27 @@ RSpec.describe Point, type: :model do
   end
 
   describe 'scopes' do
+    describe '.not_flyover' do
+      let(:user) { create(:user) }
+
+      it 'includes speeds up to 500 km/h and excludes faster points in metres per second' do
+        retained = ['0', '-1', '.5', '+100', '138.88888888888889'].map do |velocity|
+          create(:point, user: user, velocity: velocity)
+        end
+        ['139', '250', ' 2.5e2 '].each { |velocity| create(:point, user: user, velocity: velocity) }
+
+        expect(user.points.not_flyover).to contain_exactly(*retained)
+      end
+
+      it 'keeps points with missing or nonnumeric speeds without a SQL cast error' do
+        retained = [nil, '', ' ', 'unknown', 'NaN', 'Infinity'].map do |velocity|
+          create(:point, user: user, velocity: velocity)
+        end
+
+        expect(user.points.not_flyover).to contain_exactly(*retained)
+      end
+    end
+
     describe '.reverse_geocoded' do
       let(:point) { create(:point, :reverse_geocoded) }
       let(:point_without_address) { create(:point, city: nil, country: nil) }

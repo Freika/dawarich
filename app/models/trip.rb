@@ -113,7 +113,7 @@ class Trip < ApplicationRecord
   end
 
   def calculate_countries
-    self.visited_countries = points.pluck(:country_name).uniq.compact
+    self.visited_countries = points.not_flyover.pluck(:country_name).uniq.compact
   end
 
   private

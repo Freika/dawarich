@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- Exclude countries flown over from trips, monthly and yearly digests, and Insights Days per Country. (#2711)
 - Count briefly visited countries consistently in Insights, statistics, the stats API and digests even when no city meets the minimum stay threshold. (#3290)
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
 - Refresh import statuses after the live stream subscribes or reconnects, recovering updates missed before connection (#3174).

@@ -128,6 +128,7 @@ module Residency
             AND timestamp <= $3
             AND country_name IS NOT NULL
             AND country_name != ''
+            AND #{CountriesAndCities.not_flyover_sql}
             AND (anomaly IS NOT TRUE)
           GROUP BY point_date, country_name
           ORDER BY point_date, country_name COLLATE "C"
