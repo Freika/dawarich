@@ -2,7 +2,10 @@
 
 # ProductAnalytics is the only capture path. The Rails integration must not
 # emit exceptions, request context, job details, or client-supplied identities.
-return if DawarichSettings.self_hosted? || !ProductAnalytics.configured?
+return if DawarichSettings.self_hosted?
+
+required_keys = %w[PRODUCT_POSTHOG_API_KEY PRODUCT_POSTHOG_PERSONAL_API_KEY PRODUCT_POSTHOG_PROJECT_ID]
+return if required_keys.any? { ENV[_1].blank? }
 
 PostHog::Rails.configure do |config|
   config.auto_capture_exceptions = false
