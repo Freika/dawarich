@@ -23,6 +23,33 @@ RSpec.describe 'Web product analytics', type: :request do
     expect(PostHog).to have_received(:capture).with(hash_including(event: 'web_first_observed')).once
   end
 
+  it 'records each onboarding step as a web event' do
+    post '/product_analytics_events', params: { event: 'onboarding_shown' }
+    post '/product_analytics_events', params: { event: 'onboarding_choice_selected', choice: 'track' }
+    post '/product_analytics_events', params: { event: 'onboarding_completed' }
+
+    expect(response).to have_http_status(:accepted)
+    expect(PostHog).to have_received(:capture)
+      .with(hash_including(event: 'onboarding_shown', properties: hash_including('channel' => 'web')))
+    expect(PostHog).to have_received(:capture)
+      .with(hash_including(event: 'onboarding_choice_selected', properties: hash_including('choice' => 'track')))
+    expect(PostHog).to have_received(:capture).with(hash_including(event: 'onboarding_completed'))
+  end
+
+  it 'rejects an onboarding choice outside the known options' do
+    post '/product_analytics_events', params: { event: 'onboarding_choice_selected', choice: 'private@example.com' }
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(PostHog).not_to have_received(:capture)
+  end
+
+  it 'rejects an event that is not allowed from the browser' do
+    post '/product_analytics_events', params: { event: 'paid_conversion' }
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(PostHog).not_to have_received(:capture)
+  end
+
   it 'refuses capture after withdrawal' do
     user.update!(product_analytics_consent: false, product_analytics_id: nil)
     post '/product_analytics_events', params: { event: 'web_first_observed' }

@@ -10,6 +10,9 @@ class ProductAnalytics
 
   EVENTS = {
     'web_first_observed' => [],
+    'onboarding_shown' => [],
+    'onboarding_choice_selected' => %w[choice],
+    'onboarding_completed' => [],
     'mobile_first_observed' => %w[installation_cohort app_version],
     'cloud_signup_started' => %w[auth_method app_version],
     'cloud_signup_failed' => %w[auth_method failure_category app_version],
@@ -45,6 +48,7 @@ class ProductAnalytics
     'plan' => %w[lite pro family],
     'provider' => %w[paddle apple_iap google_play],
     'activation_method' => %w[import points],
+    'choice' => %w[import track demo],
     'upload_path' => %w[js android_native ios_native],
     'count_bucket' => %w[1 2-9 10-99 100-999 1000+],
     'source' => %w[api owntracks overland traccar teslamate other google_semantic_history google_records
@@ -58,7 +62,8 @@ class ProductAnalytics
       ENV['PRODUCT_POSTHOG_PROJECT_ID'].present?
   end
 
-  def self.capture(user:, event:, channel:, platform: 'none', properties: {}, event_id: SecureRandom.uuid)
+  def self.capture(user:, event:, channel:, platform: 'none', properties: {}, event_id: SecureRandom.uuid,
+                   timestamp: nil)
     return false if DawarichSettings.self_hosted? || !configured?
     return false unless user.product_analytics_consent? && user.product_analytics_id.present?
 
@@ -75,7 +80,7 @@ class ProductAnalytics
     payload = safe.merge('schema_version' => 1, 'channel' => channel, 'platform' => platform,
                          'event_id' => public_event_id, '$geoip_disable' => true)
     !!PostHog.capture(distinct_id: user.product_analytics_id, event: event, properties: payload,
-                      uuid: public_event_id)
+                      uuid: public_event_id, **{ timestamp: timestamp }.compact)
   end
 
   def self.valid_property?(key, value)

@@ -912,6 +912,25 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(user.utm_campaign).to be_nil
       end
 
+      it 'records exactly one signup event for an email signup that opts in' do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('PRODUCT_POSTHOG_API_KEY').and_return('phc_test')
+        allow(ENV).to receive(:[]).with('PRODUCT_POSTHOG_PERSONAL_API_KEY').and_return('personal_test')
+        allow(ENV).to receive(:[]).with('PRODUCT_POSTHOG_PROJECT_ID').and_return('123')
+        captured = []
+        allow(PostHog).to receive(:capture) { |attrs| captured << attrs }
+
+        post user_registration_path, params: {
+          product_analytics_consent: 'true',
+          user: { email: 'signup-event@example.com', password: 'password123456',
+                  password_confirmation: 'password123456' }
+        }
+
+        signups = captured.select { |attrs| attrs[:event] == 'user_signed_up' }
+        expect(signups.size).to eq(1)
+        expect(signups.first[:properties]).to include('auth_method' => 'email')
+      end
+
       it 'captures UTM parameters from registration page URL' do
         get new_user_registration_path, params: utm_params
 

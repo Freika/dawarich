@@ -71,7 +71,9 @@ module Points
     def enqueue_product_analytics_check(upserted)
       return if DawarichSettings.self_hosted? || !ProductAnalytics.configured?
       return unless upserted.any? { |row| row['xmax'].to_i.zero? }
-      return unless User.where(id: user_id, product_analytics_consent: true).exists?
+      return unless User.where(id: user_id, product_analytics_consent: true)
+                        .where('product_analytics_first_point_at IS NULL OR product_analytics_activated_at IS NULL')
+                        .exists?
 
       ProductAnalyticsActivationJob.perform_later(user_id)
     end
