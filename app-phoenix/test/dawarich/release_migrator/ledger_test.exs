@@ -34,6 +34,11 @@ defmodule Dawarich.ReleaseMigrator.LedgerTest do
              {:newer, ["29990101000000"]}
   end
 
+  test "a version dev renamed or deleted before any release is tolerated like Rails does" do
+    ledger = ledger(@known ++ ~w[20250928000001 20250123145954 20260831140000])
+    assert Ledger.classify(ledger, @known) == :current
+  end
+
   test "the removed RailsPulse version and phantom schema.rb define versions are tolerated" do
     ledger = ledger(@known ++ ~w[20251228163703 20241030152025 20250930150256])
     assert Ledger.classify(ledger, @known) == :current
