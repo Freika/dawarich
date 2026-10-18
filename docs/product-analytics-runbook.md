@@ -42,6 +42,22 @@ ID of at most 20 digits is sent; free-form UTM text and Google click IDs are
 never sent to PostHog. The campaign is the saved signup acquisition source,
 not the latest touch before payment. Map campaign IDs to names using Google Ads.
 
+## Acquisition attribution for every source
+
+The same events also carry `acquisition_source`, `acquisition_medium` and, when
+present, `acquisition_campaign`, derived from the account's saved UTM values by
+`ProductAnalytics::Acquisition`. Raw UTM text never leaves the app: source and
+medium are mapped through closed alias lists (for example `hn` becomes
+`hackernews`, medium `newsletter` becomes `email`) and anything unlisted becomes
+`other`. The campaign is sent only when it is a lowercase slug of at most 64
+letters, digits, `_` or `-`; anything else, such as an email address, is dropped.
+Add a new alias to the lists before using a new `utm_source` in links or ads.
+
+`none` means no campaign was stored on the account, not that the visit was
+direct: UTM is stored only when the site consent cookie and the account opt-in
+were both present at signup, so OAuth accounts that opt in later always show
+`none`. Break funnels down by the property on `user_signed_up` (first-touch).
+
 PostHog shows the consenting cohort only. Use Manager's billing ledger for the
 all-customer payment count and reconcile the two; do not treat PostHog as the
 source of truth for ad spend or Google Ads bidding. This attribution does not
@@ -58,7 +74,7 @@ the same pseudonymous ID and campaign ID. Check a declined signup sends none.
 4. Run the consent, activation, and billing callback request specs. Check signup, import completion, ten non-import points, and first nonzero mobile upload with iOS and Android headers.
 5. Inspect `ProductAnalyticsErasureJob` retry failures and billing callback failures. Reconcile the consenting PostHog cohort against Manager's all-customer ledger without treating their denominators as identical.
 
-Anonymous signup starts/failures, non-Google campaign attribution, additional data-quality and money views, and device validation remain open. The product funnel is not live until credentials, deletion path, and production event quality are verified. The existing project's historical data is still present.
+Anonymous signup starts/failures, additional data-quality and money views, and device validation remain open. The product funnel is not live until credentials, deletion path, and production event quality are verified. The existing project's historical data is still present.
 
 The [Dawarich Cloud sales dashboard](https://eu.posthog.com/project/82529/dashboard/973682) now contains three draft 30-day funnels: [signup → first paid](https://eu.posthog.com/project/82529/insights/gdNqr3MS), [signup → paywall → purchase attempt → first paid](https://eu.posthog.com/project/82529/insights/uqapp4O8), and [trial → first paid](https://eu.posthog.com/project/82529/insights/k2i8j0d7). Each step filters `schema_version=1` and the reports begin 2026-09-24. They contain no canonical production events yet. Review cohort maturity and billing reconciliation before using conversion rates for decisions.
 

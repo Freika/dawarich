@@ -45,7 +45,7 @@ RSpec.describe ProductAnalytics do
                                                                    properties: attribution))
   end
 
-  it 'does not send arbitrary campaign text or non-ad UTM values' do
+  it 'keeps Google Ads fields off arbitrary campaign text and non-ad UTM values' do
     captured = []
     allow(PostHog).to receive(:capture) do |event|
       captured << event
@@ -94,5 +94,65 @@ RSpec.describe ProductAnalytics do
     expect(described_class.sanitize_sdk_event(event.deep_dup.tap do |invalid|
       invalid[:properties]['ad_campaign_id'] = 'private@example.com'
     end)).to be_nil
+  end
+
+  describe 'acquisition attribution' do
+    let(:captured) { [] }
+
+    before { allow(PostHog).to receive(:capture) { |attrs| captured << attrs } }
+
+    def signup_properties
+      described_class.capture(user: user, event: 'user_signed_up', channel: 'server',
+                              properties: { auth_method: 'email' })
+      captured.last[:properties]
+    end
+
+    it 'normalizes known sources, mediums and a slug campaign onto attribution events' do
+      user.update!(utm_source: ' HN ', utm_medium: 'Newsletter', utm_campaign: 'Launch_Week-2')
+
+      expect(signup_properties).to include('acquisition_source' => 'hackernews', 'acquisition_medium' => 'email',
+                                           'acquisition_campaign' => 'launch_week-2')
+    end
+
+    it 'buckets unknown sources and mediums as other' do
+      user.update!(utm_source: 'some-forum', utm_medium: 'inline-cta')
+
+      expect(signup_properties).to include('acquisition_source' => 'other', 'acquisition_medium' => 'other')
+    end
+
+    it 'marks an account without campaign parameters as none' do
+      expect(signup_properties).to include('acquisition_source' => 'none', 'acquisition_medium' => 'none')
+      expect(signup_properties).not_to have_key('acquisition_campaign')
+    end
+
+    it 'drops a campaign that is not a plain slug' do
+      user.update!(utm_source: 'newsletter', utm_campaign: 'private@example.com')
+
+      expect(signup_properties).to include('acquisition_source' => 'newsletter')
+      expect(signup_properties).not_to have_key('acquisition_campaign')
+    end
+
+    it 'adds no attribution to events outside the acquisition set' do
+      user.update!(utm_source: 'reddit', utm_medium: 'social')
+
+      described_class.capture(user: user, event: 'cloud_paywall_closed', channel: 'mobile',
+                              properties: { result: 'cancelled' })
+
+      expect(captured.last[:properties].keys.grep(/\Aacquisition_/)).to be_empty
+    end
+
+    it 'keeps only closed-list acquisition values at the final send boundary' do
+      event = { event: 'trial_started', distinct_id: user.product_analytics_id,
+                properties: { 'schema_version' => 1, 'channel' => 'billing', 'platform' => 'none',
+                              'event_id' => SecureRandom.uuid, '$geoip_disable' => true,
+                              'acquisition_source' => 'reddit', 'acquisition_medium' => 'social',
+                              'acquisition_campaign' => 'spring' } }
+
+      expect(described_class.sanitize_sdk_event(event.deep_dup)[:properties])
+        .to include('acquisition_source' => 'reddit', 'acquisition_campaign' => 'spring')
+      expect(described_class.sanitize_sdk_event(event.deep_dup.tap do |invalid|
+        invalid[:properties]['acquisition_source'] = 'someone@example.com'
+      end)).to be_nil
+    end
   end
 end

@@ -5,8 +5,9 @@ require 'digest'
 # The only path from Cloud account data to the new product analytics project.
 # Unknown events and properties fail closed; callers must use controlled values.
 class ProductAnalytics
-  AD_ATTRIBUTION_EVENTS = %w[user_signed_up trial_started paid_conversion payment_charged payment_refunded].freeze
-  AD_ATTRIBUTION_PROPERTIES = %w[ad_source ad_campaign_id].freeze
+  ATTRIBUTION_EVENTS = %w[user_signed_up trial_started paid_conversion payment_charged payment_refunded].freeze
+  ATTRIBUTION_PROPERTIES = %w[ad_source ad_campaign_id acquisition_source acquisition_medium
+                              acquisition_campaign].freeze
 
   EVENTS = {
     'web_first_observed' => [],
@@ -49,6 +50,8 @@ class ProductAnalytics
     'provider' => %w[paddle apple_iap google_play],
     'activation_method' => %w[import points],
     'choice' => %w[import track demo],
+    'acquisition_source' => Acquisition::SOURCES.keys + Acquisition::BUCKETS,
+    'acquisition_medium' => Acquisition::MEDIUMS.keys + Acquisition::BUCKETS,
     'upload_path' => %w[js android_native ios_native],
     'count_bucket' => %w[1 2-9 10-99 100-999 1000+],
     'source' => %w[api owntracks overland traccar teslamate other google_semantic_history google_records
@@ -72,7 +75,7 @@ class ProductAnalytics
     safe.each do |key, value|
       raise ArgumentError, "Invalid analytics property: #{key}" unless valid_property?(key, value)
     end
-    safe.merge!(ad_attribution(user)) if AD_ATTRIBUTION_EVENTS.include?(event)
+    safe.merge!(ad_attribution(user), Acquisition.properties(user)) if ATTRIBUTION_EVENTS.include?(event)
     raise ArgumentError, 'Invalid channel' unless ENUMS.fetch('channel').include?(channel)
     raise ArgumentError, 'Invalid platform' unless ENUMS.fetch('platform').include?(platform)
 
@@ -90,6 +93,7 @@ class ProductAnalytics
     return value.is_a?(String) && value.match?(/\A[A-Z]{3}\z/) if key == 'currency'
     return value == 'google_ads' if key == 'ad_source'
     return value.is_a?(String) && value.match?(/\A[0-9]{1,20}\z/) if key == 'ad_campaign_id'
+    return value.is_a?(String) && value.match?(Acquisition::CAMPAIGN_FORMAT) if key == 'acquisition_campaign'
     return value.is_a?(String) && value.match?(/\A[a-zA-Z0-9._-]{1,64}\z/) if %w[app_version offering].include?(key)
 
     false
@@ -103,7 +107,7 @@ class ProductAnalytics
     return nil unless action[:distinct_id].to_s.match?(/\A[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\z/i)
 
     allowed = EVENTS.fetch(event) + %w[schema_version channel platform event_id $geoip_disable]
-    allowed += AD_ATTRIBUTION_PROPERTIES if AD_ATTRIBUTION_EVENTS.include?(event)
+    allowed += ATTRIBUTION_PROPERTIES if ATTRIBUTION_EVENTS.include?(event)
     action[:properties] = action.fetch(:properties, {}).stringify_keys.slice(*allowed)
     return nil unless action[:properties].slice('schema_version', 'channel', 'platform', 'event_id',
                                                 '$geoip_disable').size == 5
