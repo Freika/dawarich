@@ -25,6 +25,17 @@ RSpec.describe Trek::Client do
     expect(source).to have_received(:resolved_base_url_ip!)
   end
 
+  it 'connects to a bracketed IPv6 base URL by its bare address' do
+    ipv6_source = instance_double(TripSource, base_url: 'http://[fd00::5]:3000', api_key: 'trek_test_key',
+                                              resolved_base_url_ip!: 'fd00::5')
+    stub_request(:get, 'http://[fd00::5]:3000/api/v1/trips')
+      .to_return(status: 200, body: { trips: [] }.to_json)
+
+    expect(Net::HTTP).to receive(:new).with('fd00::5', 3000, nil).and_call_original
+
+    expect(described_class.new(ipv6_source).trips).to eq([])
+  end
+
   it 'turns a non-success response into an error that retains the status' do
     stub_request(:get, 'https://trek.example.test/api/v1/trips')
       .to_return(status: 401, body: { error: 'unknown key' }.to_json)

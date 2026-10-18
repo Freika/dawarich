@@ -137,7 +137,7 @@
         <%= icon 'earth' %> <%= t('.countries_cities') %>
       </h2>
       <div class="space-y-4">
-        <% visited_toponyms = @stat.toponyms.select { |t| t['country'].present? && t['cities']&.any? } %>
+        <% visited_toponyms = @stat.toponyms.select { |t| t['country'].present? } %>
         <% visited_toponyms.each_with_index do |country, index| %>
           <div class="space-y-2">
             <div class="flex justify-between items-center">

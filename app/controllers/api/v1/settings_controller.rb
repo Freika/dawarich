@@ -81,6 +81,7 @@ class Api::V1::SettingsController < ApiController
       :min_minutes_spent_in_city,
       :gps_filtering_enabled,
       :point_dragging_enabled, :points_tiled_rendering,
+      :app_store_supporter, :app_store_supporter_install,
       enabled_map_layers: [],
       places_tag_filters: [],
       enabled_transportation_modes: [],

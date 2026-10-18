@@ -136,6 +136,60 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         expect(created_place.source).to eq('manual')
       end
 
+      context 'with an address' do
+        let(:params_with_address) do
+          valid_create_params.deep_merge(
+            visit: {
+              name: 'Lunch with Anna',
+              address: {
+                street: 'Karl-Liebknecht-Straße',
+                house_number: '34',
+                postcode: '04275',
+                city: 'Leipzig',
+                country: 'Germany'
+              }
+            }
+          )
+        end
+
+        it 'keeps the visit name and stores the address on the new place' do
+          post '/api/v1/visits', params: params_with_address, headers: auth_headers
+
+          place = Place.last
+          expect(Visit.last.name).to eq('Lunch with Anna')
+          expect(place.city).to eq('Leipzig')
+          expect(place.country).to eq('Germany')
+          expect(place.geodata['properties']).to include(
+            'street' => 'Karl-Liebknecht-Straße',
+            'housenumber' => '34',
+            'postcode' => '04275',
+            'city' => 'Leipzig',
+            'country' => 'Germany'
+          )
+        end
+
+        it 'returns the formatted address of the place' do
+          post '/api/v1/visits', params: params_with_address, headers: auth_headers
+
+          json_response = JSON.parse(response.body)
+          expect(json_response['place']['address']).to eq('Karl-Liebknecht-Straße 34, 04275 Leipzig')
+        end
+
+        it 'drops address keys outside the supported set' do
+          params = params_with_address.deep_merge(visit: { address: { osm_id: '123' } })
+
+          post '/api/v1/visits', params: params, headers: auth_headers
+
+          expect(Place.last.geodata['properties']).not_to have_key('osm_id')
+        end
+      end
+
+      it 'returns no address when none was given' do
+        post '/api/v1/visits', params: valid_create_params, headers: auth_headers
+
+        expect(JSON.parse(response.body)['place']['address']).to be_nil
+      end
+
       it 'reuses existing place when coordinates are exactly the same' do
         create(:visit, user: user, place: existing_place)
 

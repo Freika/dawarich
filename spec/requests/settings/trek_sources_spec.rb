@@ -7,7 +7,7 @@ RSpec.describe 'Settings::TrekSources', type: :request do
 
   before do
     sign_in user
-    allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+    stub_host_addresses('trek.example.test', '93.184.216.34')
   end
 
   it 'shows the disconnect action while selected trips are importing' do

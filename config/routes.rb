@@ -218,18 +218,30 @@ Rails.application.routes.draw do
       put :update_all
     end
   end
+  post 'achievements/unlocks/next', to: 'achievements/unlocks#next', as: :next_achievement_unlock
+  post 'achievements/unlocks/:id/seen', to: 'achievements/unlocks#seen', as: :seen_achievement_unlock
+  post 'achievements/unlocks/dismiss', to: 'achievements/unlocks#dismiss', as: :dismiss_achievement_unlocks
+  resources :achievements, only: %i[index show], param: :key do
+    member do
+      patch :toggle_sharing
+    end
+  end
   resources :insights, only: :index do
     collection do
       get :details
+      get 'routes/:year', action: :routes, as: :routes, constraints: { year: /\d{4}/ }
     end
   end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
-  get 'stats/:year/:month', to: 'stats#month', constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
+  get 'stats/:year/:month', to: 'stats#month', as: :month_stats,
+                            constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
   put 'stats/:year/:month/update',
       to: 'stats#update',
       as: :update_year_month_stats,
       constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
   get 'shared/month/:uuid', to: 'shared/stats#show', as: :shared_stat
+  get 'shared/achievements/:uuid/og.png', to: 'shared/achievements#image', as: :shared_achievement_image
+  get 'shared/achievements/:uuid', to: 'shared/achievements#show', as: :shared_achievement
 
   # Sharing management endpoint (requires auth)
   patch 'stats/:year/:month/sharing',
@@ -299,8 +311,10 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      match 'mcp', to: 'mcp#handle', via: %i[get post delete]
       get   'photos', to: 'photos#index'
       get   'health', to: 'health#index'
+      get   'ready', to: 'health#ready'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'

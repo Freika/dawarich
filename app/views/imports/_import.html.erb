@@ -21,8 +21,8 @@
   </table>
 
   <% if action_name != "show" %>
-    <%= link_to t('.show_this_import'), import, class: "rounded-lg py-3 px-5 bg-gray-100 inline-block font-medium" %>
-    <%= link_to t('.edit_this_import'), edit_import_path(import), class: "rounded-lg py-3 ml-2 px-5 bg-gray-100 inline-block font-medium" %>
+    <%= link_to t('.show_this_import'), import, class: "btn" %>
+    <%= link_to t('.edit_this_import'), edit_import_path(import), class: "btn ml-2" %>
     <hr class="mt-6">
   <% end %>
 </div>

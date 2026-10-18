@@ -6,11 +6,16 @@ RSpec.describe 'Users::Sessions', type: :request do
   let(:user) { create(:user, password: 'password123456') }
 
   describe 'public sign-in links' do
+    before do
+      stub_const('SELF_HOSTED', false)
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    end
+
     it 'uses full-page navigation so password managers can detect the login form' do
-      get root_path
+      get new_user_registration_path
 
       document = Nokogiri::HTML(response.body)
-      sign_in_links = document.css("a[href='#{new_user_session_path}']")
+      sign_in_links = document.css(".navbar a[href='#{new_user_session_path}']")
 
       expect(sign_in_links).not_to be_empty
       expect(sign_in_links.map { |link| link['data-turbo'] }).to all(eq('false'))

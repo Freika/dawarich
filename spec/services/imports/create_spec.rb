@@ -185,6 +185,13 @@ RSpec.describe Imports::Create do
             expect { service.call }.to have_enqueued_job(VisitSuggestingJob)
           end
         end
+
+        it 'schedules an achievements check from the oldest imported point' do
+          clear_achievement_checks(user.id)
+
+          expect { service.call }.to have_enqueued_job(Achievements::CheckJob).with(user.id)
+          expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([import.points.minimum(:timestamp)])
+        end
       end
 
       context 'when import fails' do

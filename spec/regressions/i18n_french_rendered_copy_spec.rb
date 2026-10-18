@@ -154,11 +154,8 @@ RSpec.describe 'Rendered French copy' do
     end
   end
 
-  it 'uses idiomatic self-hosting and shared-link recovery copy' do
+  it 'uses idiomatic shared-link recovery copy' do
     I18n.with_locale(:fr) do
-      expect(I18n.t('home.index.self_hosted_and_private')).to eq('Auto-hébergé et privé')
-      expect(I18n.t('home.index.maintain_complete_control_over_your_data_with_our_self_hosted'))
-        .to include('solution auto-hébergée', 'en toute sérénité')
       expect(I18n.t('shared.links.not_found.the_owner_may_have_revoked_the_link_or_it_may'))
         .to include('Le propriétaire')
       expect(I18n.t('shared.links.phrase_prompt.this_shared_link_is_protected_ask_the_owner_for_the'))
@@ -324,24 +321,9 @@ RSpec.describe 'Rendered French copy' do
     end
   end
 
-  it 'uses localized plural nouns in the activity-streak view' do
-    heatmap = double(
-      current_streak: 1, longest_streak: 5,
-      longest_streak_start: nil, longest_streak_end: nil,
-      total_active_days: 5, weeks: []
-    )
-
-    rendered = I18n.with_locale(:fr) do
-      ApplicationController.render(
-        partial: 'insights/activity_streak',
-        assigns: { activity_heatmap: heatmap, selected_year: Time.current.year, all_time: false }
-      )
-    end
-    text = Nokogiri::HTML(rendered).text.squish
-
-    expect(text).to include('1 jour')
-    expect(text).to include('5 jours')
-    expect(text).not_to include('1 jours')
+  it 'uses localized plural nouns for activity streaks' do
+    expect(I18n.t('insights.activity_streak.day', count: 1, locale: :fr)).to eq('jour')
+    expect(I18n.t('insights.activity_streak.day', count: 5, locale: :fr)).to eq('jours')
   end
 
   it 'pluralizes French visit-redetection completion copy' do

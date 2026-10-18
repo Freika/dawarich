@@ -105,10 +105,9 @@ export class LayerManager {
     subscribe("click", "visits", handlers.handleVisitClick)
     subscribe("click", "photos", handlers.handlePhotoClick)
     subscribe("click", "places", handlers.handlePlaceClick)
-    // Areas have multiple layers (fill, outline, labels)
+    // Areas have multiple layers (fill, outline)
     subscribe("click", "areas-fill", handlers.handleAreaClick)
     subscribe("click", "areas-outline", handlers.handleAreaClick)
-    subscribe("click", "areas-labels", handlers.handleAreaClick)
 
     // Anomalies click handler
     subscribe("click", "anomalies", handlers.handleAnomalyClick)
@@ -124,17 +123,30 @@ export class LayerManager {
     })
 
     // Cursor change on hover
-    // Merged cells carry no point to open, so they must not promise a click.
-    // mousemove, not mouseenter: clickable and merged features sit side by side
+    // mousemove, not mouseenter: single points and merged cells sit side by side
     // in this layer, and mouseenter fires only on entering the layer as a whole.
     subscribe("mousemove", "points-mvt", (e) => {
       const properties = e.features?.[0]?.properties
       let cursor = ""
       if (shouldShowPointPopup(properties))
         cursor = handlers.canDragPoint?.(properties) ? "grab" : "pointer"
+      else if (properties)
+        cursor =
+          this.map.getZoom() >= (this.map.getMaxZoom?.() ?? 22)
+            ? "pointer"
+            : "zoom-in"
       this.map.getCanvas().style.cursor = cursor
     })
     subscribe("mouseleave", "points-mvt", () => {
+      this.map.getCanvas().style.cursor = ""
+    })
+    subscribe("mousemove", "track-points", (e) => {
+      const properties = e.features?.[0]?.properties
+      this.map.getCanvas().style.cursor = handlers.canDragPoint?.(properties)
+        ? "grab"
+        : "pointer"
+    })
+    subscribe("mouseleave", "track-points", () => {
       this.map.getCanvas().style.cursor = ""
     })
     subscribe("mouseenter", "visits", () => {
@@ -163,7 +175,7 @@ export class LayerManager {
       this.map.getCanvas().style.cursor = ""
     })
     // Areas hover handlers for all sub-layers
-    const areaLayers = ["areas-fill", "areas-outline", "areas-labels"]
+    const areaLayers = ["areas-fill", "areas-outline"]
     areaLayers.forEach((layerId) => {
       // Only add handlers if layer exists
       if (this.map.getLayer(layerId)) {

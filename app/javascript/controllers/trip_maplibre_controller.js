@@ -63,6 +63,8 @@ export default class extends Controller {
     endedAt: String,
     tripId: Number,
     tripName: String,
+    metersBetweenRoutes: { type: Number, default: 500 },
+    minutesBetweenRoutes: { type: Number, default: 60 },
     pathData: String,
     deviceWindows: Array,
     plan: String,
@@ -236,7 +238,10 @@ export default class extends Controller {
       this.removeOverviewLine()
 
       this.dayRoutesLayer = new DayRoutesLayer(this.map)
-      this.dayRoutesLayer.addDayRoutes(this.pointsByDay)
+      this.dayRoutesLayer.addDayRoutes(this.pointsByDay, {
+        distanceThresholdMeters: this.metersBetweenRoutesValue,
+        timeThresholdMinutes: this.minutesBetweenRoutesValue,
+      })
 
       this.applyDayColors(dayKeys)
 

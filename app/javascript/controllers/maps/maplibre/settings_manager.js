@@ -213,22 +213,9 @@ export class SettingsController {
       }
     }
 
-    for (const [name, setting, target, unit] of [
-      ["metersBetweenRoutes", "metersBetweenRoutes", "metersBetweenValue", "m"],
-      [
-        "minutesBetweenRoutes",
-        "minutesBetweenRoutes",
-        "minutesBetweenValue",
-        "min",
-      ],
-    ]) {
+    for (const name of ["metersBetweenRoutes", "minutesBetweenRoutes"]) {
       const input = controller.element.querySelector(`input[name="${name}"]`)
-      if (!input) continue
-      input.value = this.settings[setting]
-      const targetName = `${target}Target`
-      const hasTarget = `has${target.charAt(0).toUpperCase()}${target.slice(1)}Target`
-      if (controller[hasTarget])
-        controller[targetName].textContent = `${input.value}${unit}`
+      if (input) input.value = this.settings[name]
     }
 
     // Sync city statistics settings
@@ -663,9 +650,15 @@ export class SettingsController {
   // Reload layers after a style change. setStyle replaces the whole style
   // document — including the projection — so globe mode must be restored
   // or every style/theme change silently drops back to mercator.
-  restoreStyleLayers() {
+  async restoreStyleLayers() {
     this.restoreGlobeProjection()
-    this.controller.loadMapData()
+    await this.controller.loadMapData()
+    if (
+      this.controller.settings?.familyEnabled &&
+      !this.controller._disconnected
+    ) {
+      await this.controller.loadFamilyMembers()
+    }
   }
 
   applyUserStyleUrl(styleUrl, styleName) {
@@ -1038,18 +1031,6 @@ export class SettingsController {
   updateFogThresholdDisplay(event) {
     if (this.controller.hasFogThresholdValueTarget) {
       this.controller.fogThresholdValueTarget.textContent = event.target.value
-    }
-  }
-
-  updateMetersBetweenDisplay(event) {
-    if (this.controller.hasMetersBetweenValueTarget) {
-      this.controller.metersBetweenValueTarget.textContent = `${event.target.value}m`
-    }
-  }
-
-  updateMinutesBetweenDisplay(event) {
-    if (this.controller.hasMinutesBetweenValueTarget) {
-      this.controller.minutesBetweenValueTarget.textContent = `${event.target.value}min`
     }
   }
 

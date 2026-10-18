@@ -21,7 +21,7 @@ RSpec.describe 'Integration URLs resolving to an IPv4-mapped IPv6 address' do
   }.each do |label, address|
     it "rejects #{label} on self-hosted" do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
-      allow(Resolv).to receive(:getaddress).with('metadata.example.test').and_return(address)
+      stub_host_addresses('metadata.example.test', address)
 
       expect { validator.validate_integration_url!('http://metadata.example.test') }
         .to raise_error(UrlValidatable::BlockedUrlError, /blocked/i)
@@ -35,7 +35,7 @@ RSpec.describe 'Integration URLs resolving to an IPv4-mapped IPv6 address' do
   }.each do |label, address|
     it "rejects #{label} on cloud" do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-      allow(Resolv).to receive(:getaddress).with('internal.example.test').and_return(address)
+      stub_host_addresses('internal.example.test', address)
 
       expect { validator.validate_integration_url!('http://internal.example.test') }
         .to raise_error(UrlValidatable::BlockedUrlError, /blocked/i)
@@ -44,7 +44,7 @@ RSpec.describe 'Integration URLs resolving to an IPv4-mapped IPv6 address' do
 
   it 'still allows a routable IPv6 address' do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-    allow(Resolv).to receive(:getaddress).with('immich.example.test').and_return('2606:2800:220:1::1')
+    stub_host_addresses('immich.example.test', '2606:2800:220:1::1')
 
     expect { validator.validate_integration_url!('http://immich.example.test') }.not_to raise_error
   end

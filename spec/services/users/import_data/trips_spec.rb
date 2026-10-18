@@ -29,7 +29,7 @@ RSpec.describe Users::ImportData::Trips, type: :service do
   describe '#call' do
     context 'with trips exported from TREK' do
       before do
-        allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+        stub_host_addresses('trek.example.test', '93.184.216.34')
       end
 
       let(:original_user) { create(:user) }

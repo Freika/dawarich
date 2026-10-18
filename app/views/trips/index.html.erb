@@ -8,7 +8,11 @@
       <% end %>
     <% end %>
 
-    <% if @trips.empty? %>
+    <% if @has_trips %>
+      <%= render 'filters', filters: @filters, years: @trip_years, countries: @trip_countries %>
+    <% end %>
+
+    <% if !@has_trips %>
       <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-300">
         <h3 class="text-xl font-bold mb-3"><%= t('.no_trips_yet') %></h3>
         <p class="text-base-content/50 mb-6 max-w-sm mx-auto">
@@ -17,6 +21,12 @@
         <%= link_to new_trip_path, class: 'btn btn-primary' do %>
           <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('.create_your_first_trip') %>
         <% end %>
+      </div>
+    <% elsif @trips.empty? %>
+      <div class="text-center py-12 px-8 bg-base-200 rounded-xl border border-base-300">
+        <h3 class="text-lg font-bold mb-2"><%= t('.no_matching_trips') %></h3>
+        <p class="text-base-content/50 mb-5 max-w-sm mx-auto"><%= t('.try_other_filters') %></p>
+        <%= link_to t('.show_all_trips'), trips_path, class: 'btn btn-sm' %>
       </div>
     <% else %>
       <div class="flex justify-center mb-4">
@@ -32,6 +42,19 @@
       <div class="flex justify-center mt-4">
         <%= paginate @trips %>
       </div>
+    <% end %>
+    <% if @family_trips.any? %>
+      <section class="mt-8" aria-label="<%= t('shared_links.family.trips') %>">
+        <h2 class="text-xl font-bold mb-4"><%= t('shared_links.family.trips') %></h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <% @family_trips.each do |trip| %>
+            <%= render 'family_trip', trip: trip, share: @family_trip_links.fetch(trip.id) %>
+          <% end %>
+        </div>
+        <div class="flex justify-center mt-4">
+          <%= paginate @family_trips, param_name: :family_page %>
+        </div>
+      </section>
     <% end %>
   </div>
 </div>

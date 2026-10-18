@@ -31,7 +31,7 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
         subject
 
         (1..12).each do |month|
-          expect(Stats::CalculateMonth).to have_received(:new).with(user.id, year, month)
+          expect(Stats::CalculateMonth).to have_received(:new).with(user.id, year, month, notify_on_failure: true)
         end
       end
 
@@ -76,7 +76,7 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
 
         [2023, 2024].each do |y|
           (1..12).each do |month|
-            expect(Stats::CalculateMonth).to have_received(:new).with(user.id, y, month)
+            expect(Stats::CalculateMonth).to have_received(:new).with(user.id, y, month, notify_on_failure: true)
           end
         end
       end
@@ -192,18 +192,21 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
       end
     end
 
-    context 'when the stats service handles an internal error' do
+    context 'when the stats service propagates an internal error' do
       before do
         user.update!(settings: { 'locale' => 'fr' })
         allow_any_instance_of(Stats::CalculateMonth).to receive(:call).and_call_original
         allow_any_instance_of(Stats::CalculateMonth).to receive(:points).and_raise(StandardError, 'boom')
       end
 
-      it 'creates the service notifications in the user saved locale' do
-        I18n.with_locale(:en) { described_class.perform_now(user.id, year: 2024) }
+      it 'creates failure notifications without a success notification' do
+        I18n.with_locale(:en) do
+          expect { described_class.perform_now(user.id, year: 2024) }.to raise_error(StandardError, 'boom')
+        end
 
         titles = user.notifications.error.pluck(:title).uniq
-        expect(titles).to eq(["L'actualisation des statistiques a échoué"])
+        expect(titles).to include("L'actualisation des statistiques a échoué")
+        expect(user.notifications.info).to be_empty
       end
     end
 

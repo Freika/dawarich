@@ -283,6 +283,20 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
+  describe '#meters_between_routes' do
+    it 'falls back to the default for unusable saved values' do
+      [0, -5, '', 'abc', nil].each do |value|
+        safe_settings = described_class.new({ 'meters_between_routes' => value })
+
+        expect(safe_settings.meters_between_routes).to eq(500), value.inspect
+      end
+    end
+
+    it 'returns saved distances as integers without an upper limit' do
+      expect(described_class.new({ 'meters_between_routes' => '25000' }).meters_between_routes).to eq(25_000)
+    end
+  end
+
   describe 'individual settings' do
     let(:safe_settings) { described_class.new(settings) }
 

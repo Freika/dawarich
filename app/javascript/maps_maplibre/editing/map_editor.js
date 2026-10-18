@@ -7,6 +7,7 @@ import {
   pointFeature,
   segmentFeature,
   snapshotCoordinates,
+  uncoveredTrackFeature,
   updateSegmentGeometry,
 } from "./editable_track_data"
 import { EditorHistory } from "./editor_history"
@@ -52,6 +53,7 @@ export class MapEditor {
     if (sessionVersion !== this.sessionVersion) return false
 
     this.forEditing = forEditing
+    if (forEditing) this._clearSelectedTrack()
     this._showTrack(trackId, track, points)
     if (this.editable) this._enableDragging()
     return true
@@ -64,8 +66,11 @@ export class MapEditor {
     if (!this.editable || this.disposed || this.mutationState.busy) return false
     this.selectPoint(feature, { forEditing: true })
     const trackId = feature.properties?.track_id
-    if (trackId != null)
+    if (trackId != null) {
+      this.trackId = Number(trackId)
+      this._excludeTiles()
       this.trackLoad = this._loadTrackDuringDrag(trackId, this.sessionVersion)
+    }
     return this.startDrag(Number(feature.properties.id))
   }
 
@@ -81,16 +86,31 @@ export class MapEditor {
 
     this.trackId = Number(trackId)
     this.trackRevision = Number(track.properties.revision || 0)
+    const pointFeatures = points.map((point) => pointFeature(point, trackId))
+    const segmentFeatures = (track.properties.segments || []).map(
+      segmentFeature,
+    )
+    const uncovered = this.importScoped
+      ? null
+      : uncoveredTrackFeature(pointFeatures, segmentFeatures)
     const data = {
       type: "FeatureCollection",
       features: [
         ...(!this.importScoped
           ? [
-              { ...track, properties: { ...track.properties, kind: "track" } },
-              ...(track.properties.segments || []).map(segmentFeature),
+              {
+                ...track,
+                properties: {
+                  ...track.properties,
+                  kind: "track",
+                  has_segments: (track.properties.segments || []).length > 0,
+                },
+              },
+              ...segmentFeatures,
+              ...(uncovered ? [uncovered] : []),
             ]
           : []),
-        ...points.map((point) => pointFeature(point, trackId)),
+        ...pointFeatures,
       ],
     }
     if (this.data) this.layer.setData(data)
@@ -123,6 +143,7 @@ export class MapEditor {
   selectPoint(feature, { forEditing = false } = {}) {
     this.close()
     this.forEditing = forEditing
+    if (forEditing) this._clearSelectedTrack()
     const properties = feature.properties || {}
     this.trackId = null
     this.trackRevision = null
@@ -231,6 +252,7 @@ export class MapEditor {
         (feature) => feature.geometry.coordinates,
       )
       this._updateSegments()
+      this._updateUncoveredTrack()
     }
     this.layer.setData(this.data)
     this._syncSelectedTrack(track)
@@ -341,7 +363,11 @@ export class MapEditor {
       const track = this._track()
       if (track) {
         track.geometry = clone(canonicalTrack.geometry)
-        track.properties = { ...canonicalTrack.properties, kind: "track" }
+        track.properties = {
+          ...canonicalTrack.properties,
+          kind: "track",
+          has_segments: (canonicalTrack.properties.segments || []).length > 0,
+        }
         this.data.features = this.data.features.filter(
           (feature) => feature.properties.kind !== "segment",
         )
@@ -350,6 +376,7 @@ export class MapEditor {
           0,
           ...(canonicalTrack.properties.segments || []).map(segmentFeature),
         )
+        this._updateUncoveredTrack()
       }
       this.trackRevision = Number(
         response.revision?.track ?? canonicalTrack.properties.revision,
@@ -454,6 +481,12 @@ export class MapEditor {
     this.map.on("mousedown", "track-points", this._onMouseDown)
   }
 
+  _clearSelectedTrack() {
+    this.layerManager.controller?.eventHandlers?.clearTrackSelection?.({
+      preserveEditor: true,
+    })
+  }
+
   _track() {
     return this.data.features.find(
       (feature) => feature.properties.kind === "track",
@@ -495,5 +528,15 @@ export class MapEditor {
 
   _updateSegments() {
     updateSegmentGeometry(this._points(), this._segments())
+  }
+
+  _updateUncoveredTrack() {
+    this.data.features = this.data.features.filter(
+      (feature) => feature.properties.kind !== "uncovered-track",
+    )
+    const track = this._track()
+    if (!track?.properties.has_segments) return
+    const uncovered = uncoveredTrackFeature(this._points(), this._segments())
+    if (uncovered) this.data.features.push(uncovered)
   }
 }

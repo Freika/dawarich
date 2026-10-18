@@ -24,8 +24,8 @@ RSpec.describe Photos::CacheCleaner do
         service.call
       end
 
-      it 'calls both delete operations' do
-        expect(Rails.cache).to receive(:delete_matched).twice
+      it 'clears API, search and thumbnail caches' do
+        expect(Rails.cache).to receive(:delete_matched).exactly(3).times
         service.call
       end
     end
@@ -56,7 +56,7 @@ RSpec.describe Photos::CacheCleaner do
     end
 
     it 'can be called as a class method' do
-      expect(Rails.cache).to receive(:delete_matched).twice
+      expect(Rails.cache).to receive(:delete_matched).exactly(3).times
       described_class.call(user)
     end
 

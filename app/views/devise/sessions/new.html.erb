@@ -1,6 +1,6 @@
 <div class="hero min-h-content bg-base-200">
-  <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
-    <div class="text-center lg:text-left">
+  <div class="hero-content grid w-full my-10 gap-y-8 lg:grid-cols-[minmax(0,28rem)_24rem] lg:justify-center lg:gap-x-20">
+    <div class="text-center lg:text-left lg:self-end">
       <% if @invitation %>
         <h1 class="text-5xl font-bold text-base-content"><%= t('.sign_in_to_join_family', family: @invitation.family.name) %></h1>
         <p class="py-6 text-base-content opacity-70">
@@ -16,10 +16,10 @@
         <% end %>
       <% else %>
         <h1 class="text-5xl font-bold text-base-content"><%= t('.login_now') %></h1>
-        <p class="py-6 text-base-content opacity-70"><%= t('.and_take_control_over_your_location_data') %></p>
+        <p class="pt-6 text-base-content opacity-70"><%= t('.and_take_control_over_your_location_data') %></p>
       <% end %>
     </div>
-    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
+    <div class="card flex-shrink-0 w-full max-w-sm mx-auto border border-base-content/10 bg-base-100 px-5 py-5 lg:col-start-2 lg:row-span-2 lg:self-center">
       <% if email_password_login_enabled? %>
         <%= form_for(resource, as: resource_name, url: session_path(resource_name), class: 'form-body', html: { data: { turbo: session[:dawarich_client] == 'ios' ? false : true } }) do |f| %>
           <%= render "devise/shared/error_messages", resource: resource %>
@@ -76,5 +76,10 @@
         <% end %>
       <% end %>
     </div>
+    <% unless @invitation %>
+      <%= render 'devise/shared/feature_list',
+                 tag: :ul, testid: 'sign-in-benefits', scope: 'devise.sessions.new.benefits',
+                 items: { map: 'map', import: 'file-up', stats: 'chart-column', privacy: 'shield-check' } %>
+    <% end %>
   </div>
 </div>

@@ -10,6 +10,8 @@ export default class extends Controller {
     showPhotos: Boolean,
     byDay: Boolean,
     timezone: String,
+    metersBetweenRoutes: { type: Number, default: 500 },
+    minutesBetweenRoutes: { type: Number, default: 60 },
   }
 
   static targets = [
@@ -135,7 +137,10 @@ export default class extends Controller {
     const pointsByDay = this.groupByDay(points)
 
     this.dayRoutesLayer = new DayRoutesLayer(this.map)
-    this.dayRoutesLayer.addDayRoutes(pointsByDay)
+    this.dayRoutesLayer.addDayRoutes(pointsByDay, {
+      distanceThresholdMeters: this.metersBetweenRoutesValue,
+      timeThresholdMinutes: this.minutesBetweenRoutesValue,
+    })
     this.recolorDots()
     this.dayRoutesLayer.setupInteractions({
       onDayClick: (dayKey) => this.pinDay(dayKey),

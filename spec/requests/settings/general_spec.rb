@@ -22,6 +22,20 @@ RSpec.describe 'settings/general', type: :request do
         expect(response).to be_successful
       end
 
+      context 'when the user bought self-hosted Pro in the mobile app' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+          user.update!(settings: { 'app_store_supporter' => true })
+        end
+
+        it 'names the Dawarich app as the supporter platform' do
+          get settings_general_index_url
+
+          expect(response.body).to include('Thank you for supporting Dawarich via Dawarich app!')
+          expect(response.body).not_to include('translation_missing')
+        end
+      end
+
       it 'renders both digest toggles and the email-digests anchor' do
         get settings_general_index_url
 
@@ -134,6 +148,8 @@ RSpec.describe 'settings/general', type: :request do
     end
 
     describe 'POST /test_email' do
+      let!(:user) { create(:user, :admin, settings: {}) }
+
       around do |example|
         original_from = UsersMailer.default_params[:from]
         UsersMailer.default from: 'hi@dawarich.app'
@@ -149,14 +165,33 @@ RSpec.describe 'settings/general', type: :request do
         ActionMailer::Base.deliveries.clear
       end
 
-      it 'delivers a test email to the current user' do
+      it 'queues the test email through the same worker as system emails' do
         expect do
           post settings_test_email_path
-        end.to change { ActionMailer::Base.deliveries.size }.by(1)
+        end.to have_enqueued_job(ActionMailer::MailDeliveryJob).with(
+          'UsersMailer', 'test_email', 'deliver_now', params: { user: user }, args: []
+        )
 
-        expect(ActionMailer::Base.deliveries.last.to).to include(user.email)
+        expect(ActionMailer::Base.deliveries).to be_empty
         expect(response).to redirect_to(settings_general_index_path)
         expect(flash[:notice]).to include(user.email)
+      end
+
+      it 'delivers from the queued worker when SMTP works' do
+        perform_enqueued_jobs(only: ActionMailer::MailDeliveryJob) { post settings_test_email_path }
+
+        expect(ActionMailer::Base.deliveries.last.to).to eq([user.email])
+      end
+
+      it 'surfaces SMTP errors in the worker even when normal mail suppresses them' do
+        allow_any_instance_of(Mail::TestMailer).to receive(:deliver!)
+          .and_raise(Net::SMTPAuthenticationError.new('worker configuration failed'))
+
+        post settings_test_email_path
+
+        expect do
+          perform_enqueued_jobs(only: ActionMailer::MailDeliveryJob)
+        end.to raise_error(Net::SMTPAuthenticationError)
       end
 
       it 'shows an alert when SMTP is not configured' do
@@ -169,14 +204,14 @@ RSpec.describe 'settings/general', type: :request do
         expect(flash[:alert]).to be_present
       end
 
-      it 'shows an alert with the error when delivery fails' do
-        allow_any_instance_of(Mail::Message).to receive(:deliver)
-          .and_raise(Net::SMTPAuthenticationError.new('authentication failed'))
+      it 'shows an alert when enqueueing fails' do
+        allow_any_instance_of(ActionMailer::Parameterized::MessageDelivery).to receive(:deliver_later)
+          .and_raise(Redis::CannotConnectError.new('connection failed'))
 
         post settings_test_email_path
 
         expect(response).to redirect_to(settings_general_index_path)
-        expect(flash[:alert]).to include('Net::SMTPAuthenticationError')
+        expect(flash[:alert]).to include('Redis::CannotConnectError')
       end
 
       it 'responds with turbo stream when requested' do
@@ -189,12 +224,12 @@ RSpec.describe 'settings/general', type: :request do
       it 'renders the button as a Turbo POST link' do
         get settings_general_index_path
 
-        link = response.body.scan(/<a[^>]*settings\/general\/test_email[^>]*>/).first
+        link = response.body.scan(%r{<a[^>]*settings/general/test_email[^>]*>}).first
         expect(link).to be_present
         expect(link).to include('data-turbo="true"')
         expect(link).to include('data-turbo-method="post"')
         expect(response.body).to include(
-          '>Sends a test message to your account email to verify SMTP settings</span>'
+          '>Queues a test message through the same background worker as system emails</span>'
         )
       end
 
@@ -240,6 +275,21 @@ RSpec.describe 'settings/general', type: :request do
           expect(response).to redirect_to(settings_general_index_path)
           expect(flash[:notice]).to include('Verified!')
           expect(user.reload.settings['supporter_github_username']).to eq('octocat')
+        end
+      end
+
+      context 'when an App Store supporter submits an email that is not a supporter' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+          user.update!(settings: { 'app_store_supporter' => true })
+          allow_any_instance_of(Supporter::VerifyEmail).to receive(:call).and_return({ supporter: false })
+        end
+
+        it 'reports the email as not found' do
+          post settings_verify_supporter_path, params: { supporter_email: 'typo@example.com' }
+
+          expect(flash[:notice]).to be_nil
+          expect(flash[:alert]).to be_present
         end
       end
 

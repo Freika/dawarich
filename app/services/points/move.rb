@@ -39,6 +39,7 @@ class Points::Move
     result = move_in_transaction
     publish(result)
     enqueue_stats_recalculation(result.point)
+    schedule_achievements_check(result.point)
     instrument(:success, started_at, result)
     result
   rescue StaleEdit => e
@@ -73,16 +74,19 @@ class Points::Move
     raise StaleEdit, current_result(point, track) if point.track_id != track_id
 
     check_revisions!(point, track)
-    before_countries = visited_country_codes
-
+    previous_country = [point.country_id, point.country_name, point[:country]]
     assign_position_and_country(point)
+    country_changed = previous_country != [point.country_id, point.country_name, point[:country]]
+    before_countries = visited_country_codes if country_changed
     point.save!
     # The composite MapEdits event is the single canonical publication for
     # this mutation; suppress the legacy generic Track update broadcast.
     Tracks::Recalculator.call(track, broadcast: false) if track
 
-    after_countries = visited_country_codes
-    changed_countries = before_countries == after_countries ? nil : { iso_a3: after_countries }
+    changed_countries = if country_changed
+                          after_countries = visited_country_codes
+                          { iso_a3: after_countries } unless before_countries == after_countries
+                        end
 
     current_result(point, track, changed_countries)
   end
@@ -142,6 +146,16 @@ class Points::Move
     )
     record_post_commit_failure('stats')
     report_post_commit_failure(e, 'Failed to enqueue stats recalculation for committed map edit')
+  end
+
+  def schedule_achievements_check(point)
+    Achievements::CheckJob.schedule(user.id, oldest_timestamp: point.timestamp)
+  rescue StandardError => e
+    Rails.logger.error(
+      "event=point_move.post_commit_failed operation=achievements error_class=#{e.class} point_id=#{point.id}"
+    )
+    record_post_commit_failure('achievements')
+    report_post_commit_failure(e, 'Failed to schedule achievements check for committed map edit')
   end
 
   def instrument(outcome, started_at, result = nil)

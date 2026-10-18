@@ -7,7 +7,7 @@ RSpec.describe Trek::ImportTripsJob do
   let(:source) { create(:trip_source, user:, importing: true, selection_token: 'token-1') }
 
   before do
-    allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+    stub_host_addresses('trek.example.test', '93.184.216.34')
   end
 
   it 'reports the original failure when the source was disconnected mid-import' do

@@ -45,7 +45,7 @@ module UserFamily
   def family_sharing_enabled?
     return false unless in_family?
 
-    sharing_settings = settings.dig('family', 'location_sharing')
+    sharing_settings = settings_hash.dig('family', 'location_sharing')
     return false unless sharing_settings.is_a?(Hash)
     return false unless sharing_settings['enabled'] == true
 
@@ -57,7 +57,12 @@ module UserFamily
                                       history_before_sharing: nil)
     return false unless in_family?
 
-    current_settings = settings || {}
+    unless settings.is_a?(Hash)
+      errors.add(:settings, :invalid)
+      raise ActiveRecord::RecordInvalid, self
+    end
+
+    current_settings = settings
     current_settings['family'] ||= {}
 
     if enabled
@@ -98,7 +103,7 @@ module UserFamily
   end
 
   def family_sharing_expires_at
-    sharing_settings = settings.dig('family', 'location_sharing')
+    sharing_settings = settings_hash.dig('family', 'location_sharing')
     return nil unless sharing_settings.is_a?(Hash)
 
     expires_at = sharing_settings['expires_at']
@@ -108,11 +113,11 @@ module UserFamily
   end
 
   def family_sharing_duration
-    settings.dig('family', 'location_sharing', 'duration') || 'permanent'
+    settings_hash.dig('family', 'location_sharing', 'duration') || 'permanent'
   end
 
   def family_sharing_started_at
-    started_at = settings.dig('family', 'location_sharing', 'started_at')
+    started_at = settings_hash.dig('family', 'location_sharing', 'started_at')
     return nil if started_at.blank?
 
     Time.zone.parse(started_at)
@@ -121,15 +126,15 @@ module UserFamily
   end
 
   def family_share_history?
-    settings.dig('family', 'location_sharing', 'share_history') == true
+    settings_hash.dig('family', 'location_sharing', 'share_history') == true
   end
 
   def family_history_window
-    settings.dig('family', 'location_sharing', 'history_window') || DEFAULT_HISTORY_WINDOW
+    settings_hash.dig('family', 'location_sharing', 'history_window') || DEFAULT_HISTORY_WINDOW
   end
 
   def family_history_before_sharing?
-    settings.dig('family', 'location_sharing', 'history_before_sharing') == true
+    settings_hash.dig('family', 'location_sharing', 'history_before_sharing') == true
   end
 
   # Returns points within the given date range, scoped by sharing start time,
@@ -182,6 +187,7 @@ module UserFamily
     {
       user_id: id,
       email: email,
+      name: display_name,
       latitude: latest_point.lat,
       longitude: latest_point.lon,
       timestamp: latest_point.timestamp,

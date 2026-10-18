@@ -32,6 +32,11 @@ class Family::LocationSharingController < ApplicationController
             locals: { user: current_user }
           ),
           turbo_stream.replace(
+            'family-navbar-indicator-mobile',
+            partial: 'families/navbar_indicator',
+            locals: { user: current_user, frame_id: 'family-navbar-indicator-mobile' }
+          ),
+          turbo_stream.replace(
             'family-getting-started-slot',
             partial: 'families/getting_started',
             locals: {

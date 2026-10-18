@@ -52,6 +52,17 @@ RSpec.describe Families::Locations do
       result = described_class.new(user).call
       expect(result.length).to eq(1)
       expect(result.first[:user_id]).to eq(other_user.id)
+      expect(result.first[:name]).to eq(other_user.email)
+    end
+
+    it 'uses profile names for the location and history payloads' do
+      other_user.update!(first_name: 'Ada', last_name: 'Lovelace')
+      other_user.update_family_location_sharing!(true, duration: 'permanent', share_history: true)
+      create(:point, user: other_user, timestamp: now.to_i)
+
+      expect(described_class.new(user).call.first[:name]).to eq('Ada Lovelace')
+      history = described_class.new(user).history(start_at: now - 1.hour, end_at: now + 1.hour)
+      expect(history.first[:name]).to eq('Ada Lovelace')
     end
 
     # A point with a NULL timestamp sorts
@@ -67,6 +78,25 @@ RSpec.describe Families::Locations do
       expect(result.length).to eq(1)
       expect(result.first[:timestamp]).to eq(real_point.timestamp)
       expect(result.first[:updated_at]).to eq(Time.zone.at(real_point.timestamp))
+    end
+
+    describe 'last known address' do
+      before do
+        other_user.update_family_location_sharing!(true, duration: 'permanent')
+        create(:point, user: other_user, timestamp: 1.hour.ago.to_i, geodata: {
+                 'properties' => { 'street' => 'Karl-Heine-Straße', 'city' => 'Leipzig', 'country' => 'Germany' }
+               })
+      end
+
+      it 'is included when reverse geocoding is enabled' do
+        configure_instance_geocoding
+
+        expect(described_class.new(user).call.first[:address]).to eq('Karl-Heine-Straße, Leipzig, Germany')
+      end
+
+      it 'is left out when reverse geocoding is off' do
+        expect(described_class.new(user).call.first[:address]).to be_nil
+      end
     end
 
     it 'excludes a member the caller asked to skip' do
@@ -154,7 +184,7 @@ RSpec.describe Families::Locations do
       end
 
       it 'does not include current user in results' do
-        user.update_family_location_sharing!(true, duration: 'permanent')
+        user.update_family_location_sharing!(true, duration: 'permanent', share_history: true)
         user.update!(
           settings: user.settings.deep_merge(
             'family' => { 'location_sharing' => { 'started_at' => 1.week.ago.iso8601 } }

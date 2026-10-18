@@ -44,7 +44,9 @@ module SharedLinks
         'shared-trip-map-link-id-value': @link.id,
         'shared-trip-map-show-photos-value': @ctx.show_photos?,
         'shared-trip-map-by-day-value': true,
-        'shared-trip-map-timezone-value': timezone
+        'shared-trip-map-timezone-value': timezone,
+        'shared-trip-map-meters-between-routes-value': @link.user.safe_settings.meters_between_routes,
+        'shared-trip-map-minutes-between-routes-value': @link.user.safe_settings.minutes_between_routes
       }
     end
 

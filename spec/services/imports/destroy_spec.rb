@@ -22,6 +22,15 @@ RSpec.describe Imports::Destroy do
       service.call
     end
 
+    it 'rebuilds achievement dwell from the oldest deleted import point' do
+      oldest_timestamp = import.points.minimum(:timestamp)
+      clear_achievement_checks(user.id)
+
+      expect { service.call }
+        .to have_enqueued_job(Achievements::CheckJob).with(user.id)
+      expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([oldest_timestamp])
+    end
+
     context 'with points spanning several years' do
       let!(:import) { create(:import, user: user) }
 

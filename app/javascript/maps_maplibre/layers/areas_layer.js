@@ -1,11 +1,15 @@
+import { HtmlLabelManager } from "../utils/html_label_manager"
 import { BaseLayer } from "./base_layer"
 
-/**
- * Areas layer for user-defined regions
- */
 export class AreasLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "areas", ...options })
+    this.labels = new HtmlLabelManager(map, {
+      className: "map-html-label map-html-label--areas",
+      anchor: "center",
+      offset: [0, 0],
+      visible: this.visible,
+    })
   }
 
   getSourceConfig() {
@@ -20,7 +24,6 @@ export class AreasLayer extends BaseLayer {
 
   getLayerConfigs() {
     return [
-      // Area fills
       {
         id: `${this.id}-fill`,
         type: "fill",
@@ -30,8 +33,6 @@ export class AreasLayer extends BaseLayer {
           "fill-opacity": 0.4,
         },
       },
-
-      // Area outlines
       {
         id: `${this.id}-outline`,
         type: "line",
@@ -41,27 +42,30 @@ export class AreasLayer extends BaseLayer {
           "line-width": 3,
         },
       },
-
-      // Area labels
-      {
-        id: `${this.id}-labels`,
-        type: "symbol",
-        source: this.sourceId,
-        layout: {
-          "text-field": ["get", "name"],
-          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-          "text-size": 14,
-        },
-        paint: {
-          "text-color": "#111827",
-          "text-halo-color": "#ffffff",
-          "text-halo-width": 2,
-        },
-      },
     ]
   }
 
   getLayerIds() {
-    return [`${this.id}-fill`, `${this.id}-outline`, `${this.id}-labels`]
+    return [`${this.id}-fill`, `${this.id}-outline`]
+  }
+
+  add(data) {
+    super.add(data)
+    this.labels.sync(data?.features || [])
+  }
+
+  update(data) {
+    super.update(data)
+    this.labels.sync(data?.features || [])
+  }
+
+  remove() {
+    this.labels.clear()
+    super.remove()
+  }
+
+  setVisibility(visible) {
+    super.setVisibility(visible)
+    this.labels?.setVisibility(visible)
   }
 }

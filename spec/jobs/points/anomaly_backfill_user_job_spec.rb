@@ -32,6 +32,13 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
       end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, notify: true)
     end
 
+    it 'rebuilds achievements after anomaly flags are cleared and re-evaluated' do
+      expect do
+        described_class.new.perform(user.id, reset: true)
+      end.to have_enqueued_job(Achievements::CheckJob)
+        .with(user.id, notify: true, oldest_timestamp: user.points.minimum(:timestamp))
+    end
+
     it 'notifies the user by default' do
       described_class.new.perform(user.id, reset: true)
 

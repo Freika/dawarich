@@ -29,7 +29,7 @@
       <div class="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4 lg:items-center">
         <div class="w-full lg:w-1/12 tooltip tooltip-bottom" data-tip="<%= human_date(start_at - 1.day) %>">
           <%= link_to map_v2_path(start_at: (start_at - 1.day).iso8601, end_at: (end_at - 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
-            <%= icon 'chevron-left' %>
+            <%= icon 'chevron-left', class: 'w-4 h-4' %>
           <% end %>
         </div>
         <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="<%= t('.start_date_and_time') %>">
@@ -40,7 +40,7 @@
         </div>
         <div class="w-full lg:w-1/12 tooltip tooltip-bottom" data-tip="<%= human_date(start_at + 1.day) %>">
           <%= link_to map_v2_path(start_at: (start_at + 1.day).iso8601, end_at: (end_at + 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
-            <%= icon 'chevron-right' %>
+            <%= icon 'chevron-right', class: 'w-4 h-4' %>
           <% end %>
         </div>
         <div class="w-full lg:w-1/12">

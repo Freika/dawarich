@@ -64,12 +64,194 @@ a.card:hover {
   box-shadow: 0 8px 20px oklch(var(--bc) / 0.05);
 }
 
-/* Button lift on hover */
-.btn-primary:hover,
-.btn-secondary:hover,
-.btn-accent:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px oklch(var(--p) / 0.35);
+/* Raised controls: what can be pressed stands a hair proud of the flat
+   surface. No outline frame; a 1px lower edge and a short soft shadow carry
+   the lift. --press is -1 on hover, 0 at rest and 1 while pressed or
+   selected; pressed keeps the edge and only loses the soft shadow. Ghost,
+   link and disabled buttons stay flat. */
+:root {
+  --raise-ring: oklch(var(--bc) / 0.06);
+  --raise-edge: oklch(var(--bc) / 0.22);
+  --raise-ambient: rgb(20 20 20 / 0.1);
+  --raise-ambient-filled: rgb(20 20 20 / 0.18);
+  --raise-highlight: transparent;
+}
+
+[data-theme="dawarich-dark"] {
+  --raise-edge: rgb(0 0 0 / 0.85);
+  --raise-ambient: rgb(0 0 0 / 0.45);
+  --raise-ambient-filled: rgb(0 0 0 / 0.45);
+}
+
+.btn:not(.btn-ghost, .btn-link, .btn-disabled, :disabled),
+.map-button-cluster__btn,
+.layer-tile {
+  --press: 0;
+  border-color: transparent;
+  box-shadow:
+    inset 0 1px 0 var(--raise-highlight),
+    0 0 0 1px var(--raise-ring),
+    0 max(1px, calc(1px - var(--press) * 1px)) 0 var(--raise-edge),
+    0 calc(2px - var(--press) * 1px) calc(2px - var(--press) * 1.4px)
+    var(--raise-ambient);
+  transform: translateY(min(0px, calc(var(--press) * 1px)));
+  animation: none;
+  transition-property:
+    background-color, border-color, color, box-shadow, transform;
+  transition-duration: 120ms, 120ms, 120ms, 70ms, 70ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (hover: hover) {
+  .btn:not(.btn-ghost, .btn-link, .btn-disabled, :disabled):hover,
+  .map-button-cluster__btn:hover,
+  .layer-tile:hover {
+    --press: -1;
+  }
+}
+
+.btn:not(.btn-ghost, .btn-link, .btn-disabled, :disabled):active,
+.btn.btn-active:not(.btn-ghost, .btn-link),
+.map-button-cluster__btn:active,
+.map-button-cluster__btn--active,
+.layer-tile:active {
+  --press: 1;
+  transform: translateY(min(0px, calc(var(--press) * 1px)));
+  animation: none;
+}
+
+/* Recessed fields: what you type into sits a hair below the surface, the
+   counterpart of the raised plate. A translucent darkening (so the field is
+   a step deeper than whatever surface it sits on), one dark 1px edge and an
+   inner shadow starting right inside it. The edge is always darker than the
+   surface: a light outline would read as a raised rim, not a recess. */
+:root {
+  --well: rgb(0 0 0 / 0.04);
+  --well-edge: rgb(0 0 0 / 0.1);
+  --well-edge-hover: rgb(0 0 0 / 0.18);
+  --well-shadow: rgb(0 0 0 / 0.1);
+}
+
+[data-theme="dawarich-dark"] {
+  --well: rgb(0 0 0 / 0.28);
+  --well-edge: rgb(0 0 0 / 0.55);
+  --well-edge-hover: rgb(0 0 0 / 0.8);
+  --well-shadow: rgb(0 0 0 / 0.6);
+}
+
+.input:not(.input-ghost, :disabled),
+.select:not(.select-ghost, :disabled),
+.textarea:not(.textarea-ghost, :disabled) {
+  background-color: var(--well);
+  border-color: var(--well-edge);
+  box-shadow: inset 0 1px 2px var(--well-shadow);
+}
+
+/* A raised button's edge hangs 1px below its box. A field is 1px taller and
+   hangs that pixel below its box too, so both take the same room in a row
+   and end on the same line whatever the row's alignment. */
+@layer components {
+  .input,
+  .select {
+    height: calc(3rem + 1px);
+    margin-bottom: -1px;
+  }
+  .select {
+    min-height: calc(3rem + 1px);
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .input-xs,
+  .select-xs {
+    height: calc(1.5rem + 1px);
+    min-height: calc(1.5rem + 1px);
+  }
+  .input-sm,
+  .select-sm {
+    height: calc(2rem + 1px);
+    min-height: calc(2rem + 1px);
+  }
+  .input-lg,
+  .select-lg {
+    height: calc(4rem + 1px);
+    min-height: calc(4rem + 1px);
+  }
+}
+
+.input:not(.input-ghost, :disabled):hover,
+.select:not(.select-ghost, :disabled):hover,
+.textarea:not(.textarea-ghost, :disabled):hover {
+  border-color: var(--well-edge-hover);
+}
+
+.btn-primary,
+.map-button-cluster__btn--active {
+  --raise-edge: color-mix(in oklab, oklch(var(--p)) 45%, black);
+}
+.btn-secondary {
+  --raise-edge: color-mix(in oklab, oklch(var(--s)) 45%, black);
+}
+.btn-accent {
+  --raise-edge: color-mix(in oklab, oklch(var(--a)) 45%, black);
+}
+.btn-neutral {
+  --raise-edge: color-mix(in oklab, oklch(var(--n)) 45%, black);
+}
+.btn-info {
+  --raise-edge: color-mix(in oklab, oklch(var(--in)) 45%, black);
+}
+.btn-success {
+  --raise-edge: color-mix(in oklab, oklch(var(--su)) 45%, black);
+}
+.btn-warning {
+  --raise-edge: color-mix(in oklab, oklch(var(--wa)) 45%, black);
+}
+.btn-error {
+  --raise-edge: color-mix(in oklab, oklch(var(--er)) 45%, black);
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-accent,
+.btn-neutral,
+.btn-info,
+.btn-success,
+.btn-warning,
+.btn-error,
+.map-button-cluster__btn--active {
+  --raise-ambient: var(--raise-ambient-filled);
+  --raise-highlight: rgb(255 255 255 / 0.25);
+}
+
+/* An outline button is raised like any other: the outline gives way to the
+   plate, and at rest its face matches a regular button while a coloured
+   variant keeps its coloured label. */
+.btn-outline:where(
+    :not(:hover, :active, .btn-active, .btn-disabled, :disabled)
+  ) {
+  --raise-edge: inherit;
+  --raise-ambient: inherit;
+  --raise-highlight: transparent;
+  background-color: oklch(var(--b2));
+}
+
+.layer-tile:has(.layer-tile__input:checked) {
+  --raise-ring: oklch(var(--p) / 0.5);
+}
+
+/* A closed modal never animates. Firefox can style the page once before the
+   stylesheet lands; the hidden modals are then visible, and DaisyUI's 200ms
+   fade would play them out on every load. Opening still fades in. */
+.modal:not(.modal-open, [open], :target, .modal-toggle:checked + .modal) {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .map-button-cluster__btn,
+  .layer-tile {
+    transition-duration: 0ms;
+  }
 }
 
 /* Stat values — tabular nums */

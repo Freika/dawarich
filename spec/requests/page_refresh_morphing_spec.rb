@@ -29,8 +29,8 @@ RSpec.describe 'Page refresh morphing', type: :request do
   end
 
   describe 'controllers that stay on replace' do
-    it 'leaves the chart-bearing stats index alone' do
-      get stats_path
+    it 'leaves the chart-bearing insights page alone' do
+      get insights_path(year: 'all')
 
       expect(response.body).not_to include('turbo-refresh-method')
     end
