@@ -143,6 +143,14 @@ defmodule Dawarich.ReleaseMigrationsTest do
     assert Ledger.removed_versions() == Enum.reject(listed, &(&1 in shipped))
   end
 
+  test "pre-release versions are neither shipped nor part of any released state" do
+    shipped = RailsTree.versions("migrate")
+    released = RailsTree.states() |> Enum.flat_map(& &1["schema_added"]) |> MapSet.new()
+
+    assert Ledger.prerelease_versions() != []
+    assert Enum.filter(Ledger.prerelease_versions(), &(&1 in shipped or &1 in released)) == []
+  end
+
   test "the floor is 1.0.0's state and every state before it, with the migrations db/migrate still ships" do
     {through_floor, _ported} = RailsTree.split_at(Floor.release())
     assert "1.0.0" in List.last(through_floor)["releases"]

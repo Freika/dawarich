@@ -4,9 +4,17 @@ defmodule Dawarich.ReleaseMigrator.Ledger do
   alias Dawarich.ReleaseMigrator.Floor
 
   @removed_versions ~w[20251228163703]
+  @prerelease_versions ~w[
+    20250123145954 20250221121905 20250221125032 20250221144509 20250221151930
+    20250913194134 20250914094851 20250914095157 20250928000001 20260310000004
+    20260310000005 20260310000007 20260325163025 20260326152648 20260421000001
+    20260508140000 20260508173900 20260508173923 20260831140000 20260901130000
+  ]
   @schema_rb_define_versions ~w[20241030152025 20250930150256]
 
   def removed_versions, do: @removed_versions
+
+  def prerelease_versions, do: @prerelease_versions
 
   def schema_rb_define_versions, do: @schema_rb_define_versions
 
@@ -37,7 +45,13 @@ defmodule Dawarich.ReleaseMigrator.Ledger do
 
   defp classify_supported(ledger, known) do
     known = MapSet.new(known)
-    tolerated = MapSet.new(@removed_versions ++ @schema_rb_define_versions ++ Floor.versions())
+
+    tolerated =
+      MapSet.new(
+        @removed_versions ++
+          @prerelease_versions ++ @schema_rb_define_versions ++ Floor.versions()
+      )
+
     unknown = ledger |> MapSet.difference(known) |> MapSet.difference(tolerated)
     pending = known |> MapSet.difference(ledger) |> Enum.sort()
 
