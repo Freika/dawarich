@@ -93,6 +93,7 @@ defmodule Dawarich.Test.ParityHTML do
     do: [text |> String.replace(~r/\s+/, " ") |> String.trim()]
 
   defp node({tag, _attrs, _children}) when tag in @dropped_elements, do: []
+  defp node({"turbo-frame", _attrs, children}), do: normalize(children)
 
   defp node({tag, attrs, children}) do
     case delete_action(tag, Map.new(attrs), children) do
@@ -197,6 +198,7 @@ defmodule Dawarich.Test.ParityHTML do
   defp dropped?("id", "native-" <> _, _attrs), do: true
 
   defp dropped?("data-map-" <> _, _value, _attrs), do: true
+  defp dropped?("data-native-" <> _, _value, _attrs), do: true
   defp dropped?(name, _value, _attrs), do: Regex.match?(@dropped_attribute, name)
 
   defp value("meta", "content", _value, %{"name" => name})

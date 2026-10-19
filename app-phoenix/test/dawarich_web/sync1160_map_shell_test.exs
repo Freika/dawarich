@@ -59,7 +59,7 @@ defmodule DawarichWeb.Sync1160MapShellTest do
     id = user()
     {:ok, view, _} = open(id, "/map/v2?panel=layers")
     refute has_element?(view, "[data-testid=map-button-family]")
-    assert has_element?(view, "[data-testid=map-button-tools]", "Tools")
+    assert has_element?(view, "[data-testid=map-button-create][aria-label=Tools]")
 
     [[family]] =
       Repo.query!(

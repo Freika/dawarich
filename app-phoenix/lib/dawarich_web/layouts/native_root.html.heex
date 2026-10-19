@@ -23,5 +23,5 @@
     <.favicon />
     <.head_scripts self_hosted={@self_hosted} native />
   </head>
-  <body class="min-h-screen flex flex-col">{@inner_content}</body>
+  <body class={assigns[:body_class] || "min-h-screen flex flex-col"}>{@inner_content}</body>
 </html>

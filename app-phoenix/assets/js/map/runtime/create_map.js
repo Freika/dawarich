@@ -36,8 +36,12 @@ export function createMapRuntime({
   function publish(value) {
     presentationState = value
     if (element.dataset) element.dataset.mapState = value
-    const loading = element.querySelector?.("[data-map-loading]")
-    if (loading) loading.hidden = value !== "loading"
+    const loading =
+      element.querySelector?.("[data-map-loading]") ??
+      element.closest?.("[data-native-map-root]")?.querySelector?.("[data-map-loading]")
+    if (loading?.classList?.contains("map-progress-badge"))
+      loading.classList.toggle("visible", value === "loading")
+    else if (loading) loading.hidden = value !== "loading"
   }
 
   function destroy() {

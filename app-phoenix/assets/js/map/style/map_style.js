@@ -2,6 +2,9 @@ import { resolveTheme } from "../../poster/data/theme_loader.js"
 import { buildBasemapStyle } from "../../poster/render/style_builder.js"
 import { enabledPoiKinds, TILE_LAYER_CATEGORIES } from "./layer_categories.js"
 
+const attribution =
+  '<a href="https://github.com/protomaps/basemaps">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>'
+
 export function applyMapStyle(style, config) {
   if (config.styleName === "custom")
     return buildBasemapStyle({
@@ -30,10 +33,11 @@ export function applyMapStyle(style, config) {
         layer.filter?.[2] ?? [">=", ["zoom"], 0],
       ]
   }
-  if (config.tilesUrl && result.sources?.protomaps)
+  if (result.sources?.protomaps)
     result.sources.protomaps = {
       ...result.sources.protomaps,
-      tiles: [config.tilesUrl],
+      ...(config.tilesUrl && { tiles: [config.tilesUrl] }),
+      attribution: result.sources.protomaps.attribution || attribution,
     }
   return result
 }

@@ -53,7 +53,7 @@ export function createHostSearch({
   const scope = createRequestScope()
   const padding = panelPadding({
     container: map.getContainer?.(),
-    overlay: () => root?.querySelector("#native-map-panel"),
+    overlay: () => root?.querySelector("#map-settings-panel.open"),
   })
   const click = async (event) => {
     const id = event.target.closest?.("[data-track-id]")?.dataset.trackId

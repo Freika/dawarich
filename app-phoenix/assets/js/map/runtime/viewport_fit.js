@@ -49,7 +49,7 @@ export function createViewportFit(reader, element) {
           overlay: () =>
             element
               ?.closest?.("[data-native-map-root]")
-              ?.querySelector("#native-map-panel"),
+              ?.querySelector("#map-settings-panel.open"),
         })(),
         maxZoom: 15,
         duration: 0,

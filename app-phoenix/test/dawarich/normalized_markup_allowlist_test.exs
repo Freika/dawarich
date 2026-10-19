@@ -6,10 +6,17 @@ defmodule Dawarich.NormalizedMarkupAllowlistTest do
     rails = ~s(<div class="map w-full"><input type="search" class="input"></div>)
 
     native =
-      ~s(<div id="native-map" phx-hook="Map" data-map-config="{}" class="map w-full">) <>
+      ~s(<div id="native-map" phx-hook="Map" data-map-config="{}" data-native-map-root class="map w-full">) <>
         ~s(<input id="native-map-search" phx-update="ignore" data-map-search type="search" class="input"></div>)
 
     assert ParityHTML.normalize(native) == ParityHTML.normalize(rails)
+  end
+
+  test "a Turbo frame counts only through its contents" do
+    assert ParityHTML.normalize(
+             ~s(<div><turbo-frame id="x" class="contents"><span class="a"></span></turbo-frame></div>)
+           ) ==
+             ParityHTML.normalize(~s(<div><span class="a"></span></div>))
   end
 
   test "ids, classes and other data attributes still count" do

@@ -114,7 +114,7 @@ export function createTrackSelection({
           geometry: feature.geometry,
           padding: panelPadding({
             container: map.getContainer(),
-            overlay: () => root.querySelector("#native-map-panel"),
+            overlay: () => root.querySelector("#map-settings-panel.open"),
           }),
         })
       endpoints(feature)

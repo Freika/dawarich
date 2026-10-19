@@ -315,13 +315,13 @@ defmodule DawarichWeb.NativeM6HostTest do
            }
 
     render_async(view, 5000)
-    assert has_element?(view, "#native-map-viewport #native-map-panel #native-timeline-feed")
-    refute has_element?(view, "#native-map-controls #native-map-panel")
+    assert has_element?(view, "#maps-maplibre-container #native-map-panel #native-timeline-feed")
+    assert has_element?(view, "#map-settings-panel.open.timeline-expanded #native-map-panel")
     assert has_element?(view, "#native-track-info", "Track ##{track}")
     assert_push_event(view, "track:selection", %{id: ^track, points: false})
     view |> element("#native-track-info [phx-click=\"track:close\"]") |> render_click()
     assert_push_event(view, "track:selection", %{id: nil, points: false})
-    assert has_element?(view, "#native-map-viewport #native-map-panel")
+    assert has_element?(view, "#maps-maplibre-container #native-map-panel")
     refute has_element?(view, "#native-track-info")
     render_hook(view, "map:select", %{"kind" => "track", "id" => -1})
     refute has_element?(view, "#native-track-info")
@@ -503,7 +503,7 @@ defmodule DawarichWeb.NativeM6HostTest do
     render_patch(view, "/map/v2?panel=timeline&date=today")
     render_async(view, 5000)
     current = String.slice(config(view)["range"]["startAt"], 0, 10)
-    assert has_element?(view, "#native-map-page[data-selected-date='#{current}']")
+    assert has_element?(view, "#maps-maplibre-container[data-native-selected-date='#{current}']")
 
     assert has_element?(
              view,
