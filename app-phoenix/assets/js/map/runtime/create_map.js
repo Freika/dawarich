@@ -39,9 +39,8 @@ export function createMapRuntime({
     const loading =
       element.querySelector?.("[data-map-loading]") ??
       element.closest?.("[data-native-map-root]")?.querySelector?.("[data-map-loading]")
-    if (loading?.classList?.contains("map-progress-badge"))
-      loading.classList.toggle("visible", value === "loading")
-    else if (loading) loading.hidden = value !== "loading"
+    if (loading) loading.hidden = value !== "loading"
+    loading?.classList?.toggle?.("visible", value === "loading")
   }
 
   function destroy() {
