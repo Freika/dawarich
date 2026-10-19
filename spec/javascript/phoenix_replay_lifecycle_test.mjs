@@ -77,7 +77,7 @@ test("closing replay releases rAF and photo/marker listeners", async () => {
     point("2026-06-01T08:01:00Z", 13.5),
   ])
   await opened
-  assert.equal(f.layers.size, 1)
+  assert.equal(f.layers.size, 2)
   assert.equal(f.handlers.size, 1)
   f.replay.play()
   f.step()

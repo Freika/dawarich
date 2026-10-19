@@ -4,6 +4,8 @@ import { createStepper } from "./playback.js"
 
 const SOURCE = "native-replay-marker"
 const LAYER = SOURCE
+const PULSE = `${LAYER}-pulse`
+const ORANGE = "#f97316"
 
 export function createReplay({
   map,
@@ -46,12 +48,37 @@ export function createReplay({
     if (source) return source.setData(data)
     map.addSource(SOURCE, { type: "geojson", data })
     map.addLayer({
+      id: PULSE,
+      type: "circle",
+      source: SOURCE,
+      paint: {
+        "circle-color": ORANGE,
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 0, 10, 20, 50],
+        "circle-opacity": 0.3,
+      },
+    })
+    map.addLayer({
       id: LAYER,
       type: "circle",
       source: SOURCE,
-      paint: { "circle-radius": 8, "circle-color": "#2563eb" },
+      paint: {
+        "circle-color": ORANGE,
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 0, 8, 20, 24],
+        "circle-stroke-width": 3,
+        "circle-stroke-color": "#ffffff",
+      },
     })
     map.on("click", LAYER, onMarkerClick)
+  }
+
+  function flyTo(point, fast) {
+    const coordinates = manager.getCoordinates(point)
+    if (!coordinates || !map.flyTo) return
+    map.flyTo({
+      center: [coordinates.lon, coordinates.lat],
+      zoom: Math.max(map.getZoom?.() ?? 0, 14),
+      duration: fast ? 100 : 500,
+    })
   }
 
   function removeMarker() {
@@ -59,6 +86,7 @@ export function createReplay({
       map.off("click", LAYER, onMarkerClick)
       map.removeLayer(LAYER)
     }
+    if (map.getLayer(PULSE)) map.removeLayer(PULSE)
     if (map.getSource(SOURCE)) map.removeSource(SOURCE)
   }
 
@@ -73,7 +101,10 @@ export function createReplay({
     manager.setPoints(points)
     minute = manager.findNearestMinuteWithPoints(0) ?? 0
     const point = manager.getPointAtPosition(minute)
-    if (point) marker(point)
+    if (point) {
+      marker(point)
+      flyTo(point, true)
+    }
     onState({ day: manager.getCurrentDay(), minute })
     return "ready"
   }
@@ -123,7 +154,10 @@ export function createReplay({
     minute = value
     const nearest = manager.findNearestMinuteWithPoints(value)
     const point = nearest === null ? null : manager.getPointAtPosition(nearest)
-    if (point) marker(point)
+    if (point) {
+      marker(point)
+      flyTo(point, playing)
+    }
     onPoint(point)
     onState({ day: manager.getCurrentDay(), minute, dayChanged: true })
     if (playing) starting = true
