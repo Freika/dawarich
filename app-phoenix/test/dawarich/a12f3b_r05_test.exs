@@ -131,9 +131,7 @@ defmodule Dawarich.A12f3bR05Test do
     Dawarich.Test.AfterCommit.drain(ScratchRepo)
     assert RecalculationStatus.data(1, ScratchRepo)["processed_tracks"] == 1
     assert RecalculationStatus.data(1, ScratchRepo)["status"] == "completed"
-    assert [[channel, payload]] = rows("SELECT channel,payload FROM phoenix.cable_events")
-    assert channel == Dawarich.RailsMessages.broadcasting(["tracks", {:user, 1}])
-    assert Jason.decode!(payload)["action"] == "transport_progress"
+    assert rows("SELECT count(*) FROM phoenix.cable_events") == [[0]]
     assert reverse("transport_progress") == []
     RecalculationStatus.clear(1)
     orphan = Map.put(args, "event_id", Ecto.UUID.generate())

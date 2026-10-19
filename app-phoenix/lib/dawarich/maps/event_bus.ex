@@ -4,15 +4,23 @@ defmodule Dawarich.Maps.EventBus do
   @family [:membership, :consent, :request, :invitation, :lapse, :location]
 
   def subscribe(topic) do
-    if native?(topic) do
-      case Phoenix.PubSub.subscribe(Dawarich.PubSub, topic) do
-        :ok -> {:ok, topic}
-        error -> error
-      end
-    else
-      Bus.subscribe(topic)
+    cond do
+      native?(topic) and topic in Registry.keys(Dawarich.PubSub, self()) ->
+        {:ok, {:shared, topic}}
+
+      native?(topic) ->
+        case Phoenix.PubSub.subscribe(Dawarich.PubSub, topic) do
+          :ok -> {:ok, topic}
+          error -> error
+        end
+
+      true ->
+        Bus.subscribe(topic)
     end
   end
+
+  def unsubscribe(_topic, {:shared, _}), do: :ok
+  def unsubscribe(topic, _ref), do: unsubscribe(topic)
 
   def unsubscribe(topic) do
     if native?(topic),

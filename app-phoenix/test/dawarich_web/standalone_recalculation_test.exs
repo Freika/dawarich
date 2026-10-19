@@ -271,6 +271,10 @@ defmodule DawarichWeb.StandaloneRecalculationTest do
       assert :ok = Dawarich.Transportation.AfterCommit.progress(Repo, progress, intent)
     end
 
+    assert rows("SELECT count(*) FROM phoenix.cable_events WHERE channel=$1", [
+             Dawarich.RailsMessages.broadcasting(["tracks", {:user, id}])
+           ]) == [[0]]
+
     assert rows("SELECT count(*) FROM phoenix.transportation_recalculations") == [[0]]
     assert web(session, "text/html").status == 302
   end

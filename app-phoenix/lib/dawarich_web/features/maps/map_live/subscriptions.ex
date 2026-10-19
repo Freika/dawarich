@@ -34,7 +34,7 @@ defmodule DawarichWeb.MapLive.Subscriptions do
         socket
 
       state ->
-        Enum.each(Map.keys(state.topics), fn topic -> state.bus.unsubscribe(topic) end)
+        Enum.each(state.topics, fn {topic, ref} -> state.bus.unsubscribe(topic, ref) end)
         assign(socket, :native_subscriptions, %{state | topics: %{}})
     end
   end
@@ -44,10 +44,14 @@ defmodule DawarichWeb.MapLive.Subscriptions do
 
     case state && state.bus.event(message) do
       {:message, topic, payload} when is_binary(payload) ->
-        admit_message(socket, topic, payload)
+        if Map.has_key?(state.topics, topic),
+          do: admit_message(socket, topic, payload),
+          else: {:ignored, socket}
 
       {:domain_message, topic} ->
-        admit_message(socket, topic, nil)
+        if Map.has_key?(state.topics, topic),
+          do: admit_message(socket, topic, nil),
+          else: {:ignored, socket}
 
       {:subscribed, topic} ->
         if Map.has_key?(state.topics, topic),
@@ -106,7 +110,7 @@ defmodule DawarichWeb.MapLive.Subscriptions do
     removed = Map.keys(state.topics) -- Map.keys(desired)
 
     Enum.each(removed, fn topic ->
-      state.bus.unsubscribe(topic)
+      state.bus.unsubscribe(topic, state.topics[topic])
     end)
 
     topics = Map.take(state.topics, Map.keys(desired))
