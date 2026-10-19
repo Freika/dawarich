@@ -2,7 +2,7 @@ defmodule Dawarich.Test.ParityHTML do
   @moduledoc false
   import Kernel, except: [node: 1]
 
-  @dropped_attribute ~r/^(phx-|data-phx-|data-testid$|data-confirm$|data-status-display$|data-points-count$|data-controller$|data-action$|data-turbo|data-[a-z0-9-]+-(target|value|outlet|class|param)$)/
+  @dropped_attribute ~r/^(phx-|data-phx-|data-testid$|data-confirm$|data-disable-with$|data-status-display$|data-points-count$|data-controller$|data-action$|data-turbo|data-[a-z0-9-]+-(target|value|outlet|class|param)$)/
   @dropped_elements ~w(turbo-cable-stream-source)
 
   def normalize(html) when is_binary(html),

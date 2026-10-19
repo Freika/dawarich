@@ -20,7 +20,7 @@ function hookFixture() {
     closest: () => root,
     querySelector(selector) {
       return fields[
-        Object.keys(fields).find((name) => selector.includes(`area[${name}]`))
+        Object.keys(fields).find((name) => selector.includes(`"${name}"`))
       ]
     },
     addEventListener: (event, handler) => listeners.set(event, handler),

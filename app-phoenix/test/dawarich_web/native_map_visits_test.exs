@@ -73,16 +73,18 @@ defmodule DawarichWeb.NativeMapVisitsTest do
     render_hook(view, "visit:new", %{"latitude" => 52.5, "longitude" => 13.4})
 
     view
-    |> form("#native-visit-form",
-      visit: %{name: "Cafe", started_at: "2024-06-15T13:00", ended_at: "2024-06-15T12:00"}
+    |> form(
+      "#native-visit-form",
+      %{name: "Cafe", started_at: "2024-06-15T13:00", ended_at: "2024-06-15T12:00"}
     )
     |> render_submit()
 
     assert Accounts.get(c.id).settings["enabled_map_layers"] == ["Points"]
 
     view
-    |> form("#native-visit-form",
-      visit: %{name: "Cafe", started_at: "2024-06-15T12:00", ended_at: "2024-06-15T13:00"}
+    |> form(
+      "#native-visit-form",
+      %{name: "Cafe", started_at: "2024-06-15T12:00", ended_at: "2024-06-15T13:00"}
     )
     |> render_submit()
 
@@ -94,8 +96,9 @@ defmodule DawarichWeb.NativeMapVisitsTest do
     render_hook(view, "visit:edit", %{"id" => to_string(visit)})
 
     view
-    |> form("#native-visit-form",
-      visit: %{name: "Office", started_at: "2024-06-15T12:00", ended_at: "2024-06-15T14:00"}
+    |> form(
+      "#native-visit-form",
+      %{name: "Office", started_at: "2024-06-15T12:00", ended_at: "2024-06-15T14:00"}
     )
     |> render_submit()
 
@@ -109,8 +112,9 @@ defmodule DawarichWeb.NativeMapVisitsTest do
     assert has_element?(view, "#native-visit-dialog")
 
     view
-    |> form("#native-visit-form",
-      visit: %{name: "Cafe", started_at: "2024-03-31T03:30", ended_at: "2024-03-31T04:30"}
+    |> form(
+      "#native-visit-form",
+      %{name: "Cafe", started_at: "2024-03-31T03:30", ended_at: "2024-03-31T04:30"}
     )
     |> render_submit()
 
@@ -135,16 +139,16 @@ defmodule DawarichWeb.NativeMapVisitsTest do
       "ended_at" => "not a time"
     })
 
-    assert has_element?(view, "#native-visit-form input[name='visit[name]'][value='Cafe <b>']")
+    assert has_element?(view, "#native-visit-form input[name='name'][value='Cafe <b>']")
 
     assert has_element?(
              view,
-             "#native-visit-form input[name='visit[started_at]'][value='2024-03-31T01:30']"
+             "#native-visit-form input[name='started_at'][value='2024-03-31T01:30']"
            )
 
     assert has_element?(
              view,
-             "#native-visit-form input[name='visit[ended_at]'][value='2024-03-31T03:30']"
+             "#native-visit-form input[name='ended_at'][value='2024-03-31T03:30']"
            )
   end
 
@@ -156,8 +160,8 @@ defmodule DawarichWeb.NativeMapVisitsTest do
     view = open(c)
 
     render_hook(view, "visit:edit", %{"id" => to_string(visit)})
-    assert has_element?(view, "#native-visit-form input[name='visit[started_at]']")
-    view |> form("#native-visit-form", visit: %{name: "Renamed"}) |> render_submit()
+    assert has_element?(view, "#native-visit-form input[name='started_at']")
+    view |> form("#native-visit-form", %{name: "Renamed"}) |> render_submit()
     assert name_and_place(visit) == ["Renamed", home]
 
     render_hook(view, "visit:edit", %{"id" => to_string(visit)})

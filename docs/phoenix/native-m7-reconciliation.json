@@ -14971,6 +14971,12 @@
       ]
     },
     {
+      "file": "app-phoenix/test/dawarich_web/native_map_modals_parity_test.exs",
+      "markers": [
+        "test/fixtures"
+      ]
+    },
+    {
       "file": "app-phoenix/test/dawarich_web/native_pages_hotwire_free_test.exs",
       "markers": [
         "phoenix/js"

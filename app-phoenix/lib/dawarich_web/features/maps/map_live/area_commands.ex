@@ -29,6 +29,9 @@ defmodule DawarichWeb.MapLive.AreaCommands do
     end
   end
 
+  def handle_event("area:save", %{"name" => _} = params, socket),
+    do: handle_event("area:save", %{"area" => Map.take(params, @fields)}, socket)
+
   def handle_event("area:save", %{"area" => params}, socket) when is_map(params) do
     case socket.assigns[:area_dialog] do
       %{id: id} = dialog ->

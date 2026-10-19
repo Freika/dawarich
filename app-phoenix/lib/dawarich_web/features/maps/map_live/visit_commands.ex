@@ -56,6 +56,9 @@ defmodule DawarichWeb.MapLive.VisitCommands do
     end
   end
 
+  def handle_event("visit:save", %{"name" => _} = params, socket),
+    do: handle_event("visit:save", %{"visit" => Map.take(params, @form)}, socket)
+
   def handle_event("visit:save", %{"visit" => attrs}, socket) when is_map(attrs) do
     with_dialog(socket, fn current ->
       form = Map.merge(current.form, Map.take(attrs, @form))

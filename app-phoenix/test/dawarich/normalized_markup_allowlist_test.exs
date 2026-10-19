@@ -58,6 +58,12 @@ defmodule Dawarich.NormalizedMarkupAllowlistTest do
              ParityHTML.normalize(~s(<button type="button">Reset</button>))
   end
 
+  test "a Rails disable-with submit label counts as wiring" do
+    assert ParityHTML.normalize(
+             ~s(<input type="submit" value="Create" data-disable-with="Creating...">)
+           ) == ParityHTML.normalize(~s(<input type="submit" value="Create">))
+  end
+
   test "ids, classes and other data attributes still count" do
     refute ParityHTML.normalize(~s(<div id="map" class="a"></div>)) ==
              ParityHTML.normalize(~s(<div class="a"></div>))

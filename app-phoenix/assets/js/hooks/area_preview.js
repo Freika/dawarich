@@ -6,7 +6,7 @@ export const AreaPreview = {
       const values = Object.fromEntries(
         ["latitude", "longitude", "radius"].map((name) => [
           name,
-          Number(this.el.querySelector(`[name="area[${name}]"]`)?.value),
+          Number(this.el.querySelector(`[name="${name}"]`)?.value),
         ]),
       )
       const { latitude, longitude } = values

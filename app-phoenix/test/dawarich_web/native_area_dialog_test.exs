@@ -22,16 +22,16 @@ defmodule DawarichWeb.NativeAreaDialogTest do
 
     view = open(c.actor, Dawarich.Test.NativeM6IntegrationRouter)
     render_hook(view, "area:new", %{"latitude" => 52.5, "longitude" => 13.4})
-    view |> form("#native-area-form", area: %{name: "Home", radius: "-5"}) |> render_submit()
+    view |> form("#native-area-form", %{name: "Home", radius: "-5"}) |> render_submit()
     assert Accounts.get(c.actor.id).settings["enabled_map_layers"] == ["Points"]
-    view |> form("#native-area-form", area: %{name: "Home", radius: "100"}) |> render_submit()
+    view |> form("#native-area-form", %{name: "Home", radius: "100"}) |> render_submit()
     assert Accounts.get(c.actor.id).settings["enabled_map_layers"] == ["Points", "Areas"]
     assert Accounts.get(c.actor.id).settings["timezone"] == "UTC"
     [[id]] = rows("SELECT id FROM areas WHERE user_id=$1", [c.actor.id])
     assert_push_event(view, "map:config", %{"areasEnabled" => true})
     render_hook(view, "settings:map_layers", %{"layers" => ["Points"]})
     render_hook(view, "area:edit", %{"id" => to_string(id)})
-    view |> form("#native-area-form", area: %{name: "Office", radius: "250"}) |> render_submit()
+    view |> form("#native-area-form", %{name: "Office", radius: "250"}) |> render_submit()
     assert Accounts.get(c.actor.id).settings["enabled_map_layers"] == ["Points"]
     render_hook(view, "area:delete", %{"id" => to_string(id)})
     assert Accounts.get(c.actor.id).settings["enabled_map_layers"] == ["Points"]
@@ -41,15 +41,15 @@ defmodule DawarichWeb.NativeAreaDialogTest do
   test "Area invalid radius keeps dialog and no row", c do
     view = open(c.actor)
     render_hook(view, "area:new", %{"latitude" => 52.52, "longitude" => 13.405})
-    assert has_element?(view, "#native-area-dialog input[name='area[latitude]'][value='52.52']")
+    assert has_element?(view, "#native-area-dialog input[name='latitude'][value='52.52']")
 
     html =
       view
-      |> form("#native-area-form", area: %{name: "Home", radius: "-5"})
+      |> form("#native-area-form", %{name: "Home", radius: "-5"})
       |> render_submit()
 
     assert html =~ "Radius must be greater than 0"
-    assert has_element?(view, "#native-area-dialog input[name='area[radius]'][value='-5']")
+    assert has_element?(view, "#native-area-dialog input[name='radius'][value='-5']")
     assert rows("SELECT count(*) FROM areas WHERE user_id=$1", [c.actor.id]) == [[0]]
     refute_push_event(view, "map:invalidate", %{})
 
@@ -68,11 +68,11 @@ defmodule DawarichWeb.NativeAreaDialogTest do
 
     view = open(c.actor)
     render_hook(view, "area:edit", %{"id" => to_string(id)})
-    assert has_element?(view, "#native-area-dialog input[name='area[name]'][value='Home']")
+    assert has_element?(view, "#native-area-dialog input[name='name'][value='Home']")
 
     view
-    |> form("#native-area-form", area: %{name: "Office", radius: "250"})
-    |> render_submit(%{"area" => %{"latitude" => "52.51", "longitude" => "13.41"}})
+    |> form("#native-area-form", %{name: "Office", radius: "250"})
+    |> render_submit(%{"latitude" => "52.51", "longitude" => "13.41"})
 
     refute has_element?(view, "#native-area-dialog")
     assert_push_event(view, "map:invalidate", %{resource: "areas", id: ^id})

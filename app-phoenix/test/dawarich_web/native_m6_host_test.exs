@@ -112,12 +112,12 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, "[data-native-map-root] #native-area-dialog[phx-hook=AreaPreview]")
 
     view
-    |> form("#native-area-form", area: %{name: "Home", radius: "-5"})
+    |> form("#native-area-form", %{name: "Home", radius: "-5"})
     |> render_submit()
 
     assert has_element?(
              view,
-             "#native-area-dialog[phx-hook=AreaPreview] input[name='area[radius]'][value='-5']"
+             "#native-area-dialog[phx-hook=AreaPreview] input[name='radius'][value='-5']"
            )
 
     render_hook(view, "area:close", %{})
@@ -138,7 +138,7 @@ defmodule DawarichWeb.NativeM6HostTest do
     render_hook(view, "visit:new", %{"latitude" => 52.5, "longitude" => 13.4})
 
     for name <- ~w(name started_at ended_at) do
-      assert has_element?(view, "#native-visit-form input[name='visit[#{name}]'][required]")
+      assert has_element?(view, "#native-visit-form input[name='#{name}'][required]")
     end
 
     render_hook(view, "visit:close", %{})
@@ -177,7 +177,7 @@ defmodule DawarichWeb.NativeM6HostTest do
     {:ok, view, _} = open(id, @second)
     render_hook(view, "area:new", %{"latitude" => 52.52, "longitude" => 13.405})
     assert has_element?(view, "#native-area-dialog input[value='52.52']")
-    view |> form("#native-area-form", area: %{name: "Home", radius: "-5"}) |> render_submit()
+    view |> form("#native-area-form", %{name: "Home", radius: "-5"}) |> render_submit()
     assert has_element?(view, "#native-area-dialog [role=alert]")
     render_hook(view, "area:close", %{})
     refute has_element?(view, "#native-area-dialog")
