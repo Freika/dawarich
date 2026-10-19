@@ -17,3 +17,11 @@ Categories:
 | `/map` realtime | Hidden tab | MapLibre's render loop pauses; debounced timers still fire | No refresh at all until the tab is visible | contract | An idle hidden tab must not cost backend requests | ADR-0025 |
 | `/map` realtime | Local resource changes (visits, places, areas, points, tracks) | Targeted layer reloads | Full layer refresh | contract | User actions, not a flood source; scoped refresh later if the bench shows a cost | plan A3 |
 | `/map` | New-location toast | `Toast.info("New location recorded")` | Not shown yet | — | Pending: the native map has no toast component yet (plan C2) | open |
+| `/map` panel | Tab switching | Client-side tab toggle | `panel=` URL patch through LiveView | wiring | Tabs are server-rendered LiveView state | plan C2 |
+| `/map` tools | Select-area button after cancel | Restores a different icon with hard-coded English | Restores its original icon and translated label | contract | Locale and markup must survive a cancel | plan C2 |
+| `/map` settings | Re-classify my history | `button_to` nested inside the settings form; the parser drops the inner form and the button submits the settings form | Own hidden form via the `form=` attribute | contract | Rails 1.16.0 bug, reported to Eugene | plan C2 |
+| `/map` timeline | Calendar prev/next links | `href` to the Turbo-stream calendar URL | `href="#"` with a LiveView event | wiring | The retired frame endpoint answers 410; navigation is a LiveView event | plan C2 |
+| `/map` timeline | Calendar extras | — | `aria-busy` on the calendar, `aria-current="date"` on the selected day | contract | Accessibility state the tests read; invisible | plan C2 |
+| `/map` timeline | Journey track card container | `turbo-frame.hidden.track-info-panel`, lazily loaded | `div.track-info-panel`, card rendered by LiveView when open | wiring | No Turbo; same classes and placement | plan C2 |
+| `/map` timeline | Hidden form tokens | `authenticity_token` carries the Rails token | Empty value | contract | LiveView submits through the socket; no Rails token is exposed | plan C2 |
+| `/map` timeline | Feed range longer than 31 days | The feed frame rendered a 32-day range (`feed_range_en`) | `Timeline.Query` answers `:limit` past 31 days | contract | Native timeline query cap (DB request budget) | plan C2 |
