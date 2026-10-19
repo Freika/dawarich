@@ -26,7 +26,7 @@ export function createSearchUi({
         return option
       }),
     )
-    results.hidden = items.length === 0
+    results.classList.toggle("hidden", items.length === 0)
   }
 
   function clearTimer() {
