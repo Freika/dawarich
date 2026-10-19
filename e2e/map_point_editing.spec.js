@@ -39,7 +39,24 @@ async function openEditor(
     await page.getByTestId("map-button-settings").click()
     await edit.click()
     await page.locator("#native-map-panel-close").click()
-    await expect(page.locator("#map-settings-panel")).not.toHaveClass(/\bopen\b/)
+    await expect(page.locator("#map-settings-panel")).not.toHaveClass(
+      /\bopen\b/,
+    )
+    await expect
+      .poll(() =>
+        page.locator("#native-map").evaluate((element) => {
+          const panel = document.querySelector("#map-settings-panel")
+          const canvas = element.querySelector("canvas.maplibregl-canvas")
+          return (
+            panel.getBoundingClientRect().right <= 0 &&
+            Math.abs(
+              canvas.getBoundingClientRect().width -
+                element.getBoundingClientRect().width,
+            ) < 1
+          )
+        }),
+      )
+      .toBe(true)
   }
   await expect(edit).toHaveAttribute("aria-pressed", "true")
   await waitForMapLibre(page)
