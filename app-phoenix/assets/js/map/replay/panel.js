@@ -18,8 +18,16 @@ export function createReplayPanel({ elements, replay, translate }) {
     bindings.push(() => element.removeEventListener(type, handler))
   }
 
+  function hide(element, hidden) {
+    if (!element) return
+    element.hidden = hidden
+    element.classList?.toggle("hidden", hidden)
+  }
+
   function setPlaying(playing) {
     elements.play.setAttribute("aria-pressed", String(playing))
+    hide(elements.playIcon, playing)
+    hide(elements.pauseIcon, !playing)
   }
 
   function showMinute(minute) {
@@ -27,12 +35,11 @@ export function createReplayPanel({ elements, replay, translate }) {
     scrubber.set(minute)
     if (elements.cycle) {
       const count = manager.getPointCountAtMinute(minute)
-      elements.cycle.hidden = count < 2
-      elements.cycle.style.display = count < 2 ? "none" : ""
+      hide(elements.cycle, count < 2)
       elements.cycleCount.textContent = `${manager.cycleIndex + 1} / ${count}`
     }
     elements.time.textContent = manager.formatCurrentMinute(minute)
-    elements.noData.hidden = manager.hasDataAtMinute(minute)
+    hide(elements.noData, manager.hasDataAtMinute(minute))
     if (!elements.noData.hidden)
       elements.noData.textContent = translate("replay.no_data_at_this_time")
   }
@@ -59,8 +66,8 @@ export function createReplayPanel({ elements, replay, translate }) {
       current: manager.currentDayIndex + 1,
       total: manager.getDayCount(),
     })
-    elements.prev.disabled = !manager.canGoPrev()
-    elements.next.disabled = !manager.canGoNext()
+    if (elements.prev) elements.prev.disabled = !manager.canGoPrev()
+    if (elements.next) elements.next.disabled = !manager.canGoNext()
     scrubber.setRange(manager.getCurrentDayLengthMinutes())
   }
 
@@ -85,8 +92,8 @@ export function createReplayPanel({ elements, replay, translate }) {
     elements.speedLabel.textContent = `${speed}x`
     replay.setSpeed(speed)
   })
-  bind(elements.prev, "click", () => changeDay(-1))
-  bind(elements.next, "click", () => changeDay(1))
+  if (elements.prev) bind(elements.prev, "click", () => changeDay(-1))
+  if (elements.next) bind(elements.next, "click", () => changeDay(1))
   bind(elements.follow, "click", () => replay.recenter())
 
   if (elements.cycle) {

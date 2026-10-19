@@ -10,7 +10,8 @@ defmodule DawarichWeb.MapPanelsParityTest do
     {"tab-layers", ~s([data-tab-content="layers"])},
     {"tab-tools", ~s([data-tab-content="tools"])},
     {"tab-settings", ~s([data-tab-content="settings"])},
-    {"tab-timeline", ~s([data-tab-content="timeline-feed"])}
+    {"tab-timeline", ~s([data-tab-content="timeline-feed"])},
+    {"replay-panel", ".replay-panel"}
   ]
 
   setup do

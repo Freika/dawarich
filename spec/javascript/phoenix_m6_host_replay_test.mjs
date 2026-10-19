@@ -116,7 +116,7 @@ test("native replay survives a replaced launcher and releases root click ownersh
   const f = fixture()
   const panel = new Element()
   panel.hidden = true
-  f.nodes.set("[data-map-replay-panel]", panel)
+  f.nodes.set("[data-native-replay-panel]", panel)
   f.nodes.set("[data-map-replay-open]", new Element())
   try {
     await f.owner.mount()
@@ -145,7 +145,7 @@ test("native replay survives superseded range refreshes without overriding expli
     const f = fixture()
     f.map.fitBounds = () => {}
     const panel = new Element()
-    f.nodes.set("[data-map-replay-panel]", panel)
+    f.nodes.set("[data-native-replay-panel]", panel)
     try {
       await f.owner.mount()
       let snapshots = 0

@@ -100,10 +100,9 @@ defmodule DawarichWeb.NativeM6HostTest do
   test "native map replay remains mounted through a day patch", %{id: id} do
     {:ok, view, _} = open(id, @second)
     assert has_element?(view, "[data-map-replay-open]")
-    assert has_element?(view, "[data-replay-density]")
-    assert has_element?(view, "[data-replay-photos]")
+    assert has_element?(view, ".replay-density-container")
     render_patch(view, @first)
-    assert has_element?(view, "#native-map-replay [data-replay=scrubber]")
+    assert has_element?(view, "#native-map-replay.replay-panel input.replay-scrubber")
     render_async(view, 5000)
   end
 

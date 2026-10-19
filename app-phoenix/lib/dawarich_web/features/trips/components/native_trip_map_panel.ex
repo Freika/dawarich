@@ -31,7 +31,15 @@ defmodule DawarichWeb.NativeTripMapPanel do
         "map.maplibre.button_cluster.video_studio",
         %{}
       )}</button>
-      <DawarichWeb.NativeMapReplay.panel :if={@state == :path} id={@id <> "-replay"} locale={@locale} />
+      <DawarichWeb.MapReplay.opener :if={@state == :path} id={@id <> "-replay"} locale={@locale} />
+      <DawarichWeb.MapReplay.replay_panel
+        :if={@state == :path}
+        id={@id <> "-replay"}
+        locale={@locale}
+        show_day_nav
+        native
+        hook="native"
+      />
       <DawarichWeb.NativeMapHost.map_host
         :if={@state in [:path, :plan]}
         id={@id}

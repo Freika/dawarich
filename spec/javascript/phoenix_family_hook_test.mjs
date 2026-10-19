@@ -43,6 +43,7 @@ test("family hook clear before lazy import prevents allocation and releases hand
     "map:layer",
     "map:settings",
     "place:focus",
+    "timeline:fit",
     "track:selection",
     "visit:selection",
   ])

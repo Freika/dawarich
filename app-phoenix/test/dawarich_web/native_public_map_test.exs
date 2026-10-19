@@ -75,7 +75,7 @@ defmodule DawarichWeb.NativePublicMapTest do
     {view, html, cookie} = open()
     assert html =~ "phx-hook=\"PublicMap\""
     assert html =~ "Public map"
-    assert has_element?(view, "#native-public-replay [data-replay=scrubber]")
+    assert has_element?(view, "#native-public-replay.replay-panel input.replay-scrubber")
     state = inspect(:sys.get_state(view.pid), limit: :infinity)
     refute state =~ "synthetic-public-phrase"
     refute state =~ cookie

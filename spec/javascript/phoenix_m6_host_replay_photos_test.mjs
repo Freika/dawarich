@@ -2,6 +2,11 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { Element, fixture } from "./support/native_m6_host_fixture.mjs"
 
+const photoStack = (f) =>
+  f.map
+    .getContainer()
+    .children.find((node) => node.className === "replay-photo-stack")
+
 test("closing replay releases photo popups density listeners and day-owned thumbnails", async () => {
   const markers = [],
     popups = []
@@ -46,10 +51,8 @@ test("closing replay releases photo popups density listeners and day-owned thumb
     },
   }
   const f = fixture({}, { library })
-  const density = new Element(),
-    stack = new Element()
-  f.nodes.set("[data-replay-density]", density)
-  f.nodes.set("[data-replay-photos]", stack)
+  const density = new Element()
+  f.nodes.set('[data-native-replay-target="replayDensityContainer"]', density)
   f.reader.read = async () => ({ data: new Blob(["synthetic"]) })
   const points = [
     { timestamp: 1774771200, longitude: 13, latitude: 52 },
@@ -69,9 +72,9 @@ test("closing replay releases photo popups density listeners and day-owned thumb
   })
   await f.owner.mount()
   await f.owner.replay.open()
+  const stack = photoStack(f)
   assert.equal(density.children.length, 48)
   assert.equal(markers.length, 1)
-  const firstBar = density.children[0]
   const firstCard = stack.children[0]
   firstCard.emit("click", { stopPropagation() {} })
   assert.equal(popups.length, 1)
@@ -87,7 +90,6 @@ test("closing replay releases photo popups density listeners and day-owned thumb
   assert.equal(markers[2].removed, true)
   assert.equal(stack.children.length, 0)
   assert.equal(density.children.length, 0)
-  assert.equal(firstBar.listeners.get("click").size, 0)
   assert.equal(firstCard.listeners.get("click").size, 0)
   f.owner.destroy()
 })
@@ -112,8 +114,6 @@ test("changing replay dates removes old photos before loading the replacement ra
     },
   }
   const f = fixture({}, { library })
-  const stack = new Element()
-  f.nodes.set("[data-replay-photos]", stack)
   f.reader.read = async () => ({ data: new Blob(["synthetic"]) })
   f.owner.source.snapshot = async () => ({
     points: [{ timestamp: 1774771200, longitude: 13, latitude: 52 }],
@@ -123,6 +123,7 @@ test("changing replay dates removes old photos before loading the replacement ra
   })
   await f.owner.mount()
   await f.owner.replay.open()
+  const stack = photoStack(f)
   assert.equal(markers.length, 1)
   let resolve
   f.owner.source.snapshot = () =>

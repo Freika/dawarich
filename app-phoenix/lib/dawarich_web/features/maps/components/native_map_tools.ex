@@ -39,7 +39,7 @@ defmodule DawarichWeb.NativeMapTools do
     <DawarichWeb.NativePlaceDrawer.drawer detail={assigns[:place_detail]} locale={@locale} />
     <DawarichWeb.NativeMapPlace.dialog dialog={assigns[:place_dialog]} locale={@locale} />
     <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale={@locale} />
-    <DawarichWeb.NativeMapReplay.panel id="native-map-replay" locale={@locale} opener={false} />
+    <DawarichWeb.MapReplay.replay_panel id="native-map-replay" locale={@locale} native hook="native" />
     <DawarichWeb.NativePosterStudio.poster_studio
       themes={@page.themes}
       posters={@posters}

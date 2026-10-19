@@ -263,7 +263,7 @@ test("native replay cycle visibility follows multiple and single-point scrubbing
   const sought = []
   const replay = { manager, seek: (minute) => sought.push(minute), pause() {} }
   const panel = createReplayPanel({ elements, replay, translate })
-  const visible = () => elements.cycle.style.display !== "none"
+  const visible = () => !elements.cycle.hidden
   for (const [minute, show] of [
     [480, true],
     [481, false],

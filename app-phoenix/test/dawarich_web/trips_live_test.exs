@@ -438,8 +438,17 @@ defmodule DawarichWeb.TripsLiveTest do
 
     test "native trip replay and studios retain day navigation and fixed range", %{user: user} do
       {view, html} = native_as(user, "/trips/883901")
-      assert has_element?(view, "[data-map-replay-panel] [data-replay=prev]")
-      assert has_element?(view, "[data-map-replay-panel] [data-replay=next]")
+
+      assert has_element?(
+               view,
+               "[data-native-replay-panel] [data-native-replay-target=replayPrevDayButton]"
+             )
+
+      assert has_element?(
+               view,
+               "[data-native-replay-panel] [data-native-replay-target=replayNextDayButton]"
+             )
+
       refute has_element?(view, "#native-poster-studio input[type=date]")
       assert html =~ "9 May 2026 – 12 May 2026"
       assert has_element?(view, "#native-poster-gallery-list")

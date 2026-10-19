@@ -21,7 +21,7 @@ test("native host shortcuts activate owned controls ignore editors modifiers rep
   }
   const replay = new Element();
   replay.hidden = true;
-  f.nodes.set("[data-map-replay-panel]", replay);
+  f.nodes.set("[data-native-replay-panel]", replay);
   const opener = new Element();
   opener.click = () => {
     activated.push("replay-open");
@@ -33,7 +33,7 @@ test("native host shortcuts activate owned controls ignore editors modifiers rep
     activated.push("replay-close");
     replay.hidden = true;
   };
-  f.nodes.set("[data-map-replay-close]", closer);
+  f.nodes.set('[data-native-replay-action="toggleReplay"]', closer);
   assert.equal(await f.owner.mount(), "ready");
   const key = (key, extra = {}) => ({
     key,

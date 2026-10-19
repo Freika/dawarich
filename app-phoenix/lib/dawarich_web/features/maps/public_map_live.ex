@@ -131,10 +131,18 @@ defmodule DawarichWeb.PublicMapLive do
           gallery_days={@public_gallery_days}
           locale={@locale || "en"}
         />
-        <DawarichWeb.NativeMapReplay.panel
+        <DawarichWeb.MapReplay.opener
           :if={@map_visible}
           id="native-public-replay"
           locale={@locale || "en"}
+        />
+        <DawarichWeb.MapReplay.replay_panel
+          :if={@map_visible}
+          id="native-public-replay"
+          locale={@locale || "en"}
+          show_day_nav
+          native
+          hook="native"
         />
         <DawarichWeb.NativeMapHost.map_host
           :if={@map_visible}

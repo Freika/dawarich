@@ -2,6 +2,13 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { Element, fixture } from "./support/native_m6_host_fixture.mjs"
 
+const replaySelector = (key) =>
+  ({
+    cyclePrev: '[data-native-replay-action="replayCyclePrev"]',
+    cycleNext: '[data-native-replay-action="replayCycleNext"]',
+  })[key] ?? `[data-native-replay-target="${REPLAY_TARGETS[key]}"]`
+const REPLAY_TARGETS = {"play": "replayPlayButton", "speed": "replaySpeedSlider", "speedLabel": "replaySpeedLabel", "day": "replayDayDisplay", "dayCount": "replayDayCount", "time": "replayTimeDisplay", "velocity": "replaySpeedDisplay", "noData": "replayDataIndicator", "follow": "replayFollowButton", "scrubber": "replayScrubber", "prev": "replayPrevDayButton", "next": "replayNextDayButton", "cycle": "replayCycleControls", "cycleCount": "replayPointCounter"}
+
 test("native map host replay binds day scrubber and speed then unbinds panel on close", async () => {
   const f = fixture()
   const controls = Object.fromEntries(
@@ -21,7 +28,7 @@ test("native map host replay binds day scrubber and speed then unbinds panel on 
     ].map((key) => [key, new Element()]),
   )
   for (const [key, control] of Object.entries(controls))
-    f.nodes.set(`[data-replay="${key}"]`, control)
+    f.nodes.set(replaySelector(key), control)
   await f.owner.mount()
   f.owner.source.snapshot = async () => ({
     points: [

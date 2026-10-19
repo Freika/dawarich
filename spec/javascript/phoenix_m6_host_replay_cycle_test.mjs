@@ -2,6 +2,13 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { Element, fixture } from "./support/native_m6_host_fixture.mjs"
 
+const replaySelector = (key) =>
+  ({
+    cyclePrev: '[data-native-replay-action="replayCyclePrev"]',
+    cycleNext: '[data-native-replay-action="replayCycleNext"]',
+  })[key] ?? `[data-native-replay-target="${REPLAY_TARGETS[key]}"]`
+const REPLAY_TARGETS = {"play": "replayPlayButton", "speed": "replaySpeedSlider", "speedLabel": "replaySpeedLabel", "day": "replayDayDisplay", "dayCount": "replayDayCount", "time": "replayTimeDisplay", "velocity": "replaySpeedDisplay", "noData": "replayDataIndicator", "follow": "replayFollowButton", "scrubber": "replayScrubber", "prev": "replayPrevDayButton", "next": "replayNextDayButton", "cycle": "replayCycleControls", "cycleCount": "replayPointCounter"}
+
 test("native replay cycles colocated minute points without creating another clock", async () => {
   const f = fixture()
   const controls = Object.fromEntries(
@@ -25,7 +32,7 @@ test("native replay cycles colocated minute points without creating another cloc
     ].map((key) => [key, new Element()]),
   )
   for (const [key, value] of Object.entries(controls))
-    f.nodes.set(`[data-replay="${key}"]`, value)
+    f.nodes.set(replaySelector(key), value)
   f.owner.source.snapshot = async () => ({
     points: [13, 14].map((longitude) => ({
       timestamp: 1774861200,

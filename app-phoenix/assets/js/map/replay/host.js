@@ -22,29 +22,53 @@ export function installHostReplay({
     active = false,
     latest = {},
     generation = 0,
-    reopening = false
+    reopening = false,
+    stack = null
+  const photoStack = () => {
+    const parent = map.getContainer?.()
+    if (!parent || stack) return stack
+    stack = parent.ownerDocument.createElement("div")
+    stack.className = "replay-photo-stack"
+    parent.appendChild(stack)
+    return stack
+  }
   const translate = mapTranslate(() => owner.config)
-  const keys = [
-    "play",
-    "speed",
-    "speedLabel",
-    "prev",
-    "next",
-    "day",
-    "dayCount",
-    "time",
-    "velocity",
-    "noData",
-    "follow",
-    "scrubber",
-  ]
-  const elements = Object.fromEntries(
-    [...keys, "cycle", "cyclePrev", "cycleNext", "cycleCount"].map((key) => [
-      key,
-      root?.querySelector(`[data-replay="${key}"]`),
-    ]),
-  )
-  const container = root?.querySelector("[data-map-replay-panel]")
+  const targets = {
+    play: "replayPlayButton",
+    speed: "replaySpeedSlider",
+    speedLabel: "replaySpeedLabel",
+    day: "replayDayDisplay",
+    dayCount: "replayDayCount",
+    time: "replayTimeDisplay",
+    velocity: "replaySpeedDisplay",
+    noData: "replayDataIndicator",
+    follow: "replayFollowButton",
+    scrubber: "replayScrubber",
+    prev: "replayPrevDayButton",
+    next: "replayNextDayButton",
+    cycle: "replayCycleControls",
+    cycleCount: "replayPointCounter",
+    playIcon: "replayPlayIcon",
+    pauseIcon: "replayPauseIcon",
+  }
+  const keys = Object.keys(targets).slice(0, 10)
+  const find = (selector) => root?.querySelector(selector)
+  const elements = {
+    ...Object.fromEntries(
+      Object.entries(targets).map(([key, name]) => [
+        key,
+        find(`[data-native-replay-target="${name}"]`),
+      ]),
+    ),
+    cyclePrev: find('[data-native-replay-action="replayCyclePrev"]'),
+    cycleNext: find('[data-native-replay-action="replayCycleNext"]'),
+  }
+  const container = find("[data-native-replay-panel]")
+  const show = (visible) => {
+    if (!container) return
+    container.hidden = !visible
+    container.classList?.toggle("hidden", !visible)
+  }
   function ensure() {
     if (runtime && runtime.manager.timezone !== owner.config.range.timezone) {
       runtime.close()
@@ -93,20 +117,21 @@ export function installHostReplay({
         const photoModule = library?.Marker ? await import("./photos.js") : null
         if (!active || current !== generation || lifetime.destroyed)
           return "cancelled"
-        if (container) container.hidden = false
+        show(true)
         panel?.destroy()
         if (keys.every((key) => elements[key]))
           panel = createReplayPanel({ elements, replay: runtime, translate })
         panel?.onState(latest)
         density?.destroy()
         photos?.destroy()
-        const densityRoot = root?.querySelector("[data-replay-density]")
+        const densityRoot = find(
+          '[data-native-replay-target="replayDensityContainer"]',
+        )
         if (densityRoot)
           density = createReplayDensity({
             container: densityRoot,
             document: root.ownerDocument,
             manager: runtime.manager,
-            seek: (minute) => runtime.seek(minute),
           })
         if (library?.Marker)
           photos = photoModule.createReplayPhotos({
@@ -115,7 +140,7 @@ export function installHostReplay({
             library,
             reader,
             document: root?.ownerDocument ?? map.getContainer().ownerDocument,
-            container: root?.querySelector("[data-replay-photos]"),
+            container: photoStack(),
             manager: runtime.manager,
             labels: owner.config.photoLabels,
           })
@@ -138,7 +163,9 @@ export function installHostReplay({
       photos?.destroy()
       photos = null
       runtime?.close()
-      if (container) container.hidden = true
+      stack?.remove()
+      stack = null
+      show(false)
     },
     play: () => ensure().play(),
     pause: () => runtime?.pause(),
@@ -164,7 +191,7 @@ export function installHostReplay({
     root?.querySelector("[data-map-replay-open]")?.focus()
   }
   bindTool(root, "[data-map-replay-open]", open, lifetime)
-  bindTool(root, "[data-map-replay-close]", close, lifetime)
+  bindTool(root, '[data-native-replay-action="toggleReplay"]', close, lifetime)
   const update = owner.update,
     reconnect = owner.reconnect
   owner.update = async (next) => {
