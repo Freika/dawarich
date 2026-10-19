@@ -68,6 +68,7 @@ defmodule DawarichWeb.NativeMapTabs do
       selected_date={@selected_date}
       tags={@page.timeline_tags}
       track_info={assigns[:track_info]}
+      segments={assigns[:segment_drawer]}
       editing={if(match?(%{inline: true}, assigns[:visit_dialog]), do: @visit_dialog)}
       unit={@map_config["distanceUnit"] || "km"}
     />

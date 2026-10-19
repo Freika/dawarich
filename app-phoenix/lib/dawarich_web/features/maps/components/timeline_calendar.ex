@@ -11,8 +11,42 @@ defmodule DawarichWeb.TimelineCalendar do
   attr :track, :map, required: true
   attr :unit, :string, required: true
   attr :locale, :string, required: true
+  attr :native, :boolean, default: false
+  slot :segments
+
+  def track_info_frame(%{native: true} = assigns) do
+    ~H"""
+    <div id="native-track-info" class="track-info-card" data-native-track-id={@track.id}>
+      <.track_card track={@track} unit={@unit} locale={@locale} native />
+      <div class="track-info-segments">{render_slot(@segments)}</div>
+    </div>
+    """
+  end
 
   def track_info_frame(assigns) do
+    ~H"""
+    <turbo-frame id={"track-info-#{@track.id}"}>
+      <div class="track-info-card">
+        <.track_card track={@track} unit={@unit} locale={@locale} />
+        <turbo-frame
+          id={"track-#{@track.id}-segments"}
+          class="track-info-segments"
+          src={"/tracks/#{@track.id}/segments"}
+          loading="lazy"
+        >
+          <.skeleton lines={2} />
+        </turbo-frame>
+      </div>
+    </turbo-frame>
+    """
+  end
+
+  attr :track, :map, required: true
+  attr :unit, :string, required: true
+  attr :locale, :string, required: true
+  attr :native, :boolean, default: false
+
+  defp track_card(assigns) do
     track = assigns.track
     unit = assigns.unit
 
@@ -34,59 +68,51 @@ defmodule DawarichWeb.TimelineCalendar do
       )
 
     ~H"""
-    <turbo-frame id={"track-info-#{@track.id}"}>
-      <div class="track-info-card">
-        <div class="track-info-card__id">{s(@locale, "track")}{@track.id}</div>
-        <div class="track-info-stats">
-          <span><span class="track-info-stats__label">{s(@locale, "dist")}</span>
-          <strong>{Ruby.to_s(@distance)} {@unit}</strong></span>
-          <span><span class="track-info-stats__label">{s(@locale, "avg")}</span>
-          <strong>{Ruby.to_s(@speed)} {@speed_label}</strong></span>
-          <span :if={(@track.elevation_gain || 0) > 0}><span class="track-info-stats__label">↑</span>
-          <strong>{t(@locale, "units.meters", %{value: @track.elevation_gain})}</strong></span>
-          <span :if={(@track.elevation_loss || 0) > 0}><span class="track-info-stats__label">↓</span>
-          <strong>{t(@locale, "units.meters", %{value: @track.elevation_loss})}</strong></span>
-          <span id={"track-info-mode-#{@track.id}"} class="track-info-mode capitalize">{@mode_label}</span>
-        </div>
-        <div class="track-info-actions">
-          <label class="track-info-toggle">
-            <input
-              type="checkbox"
-              class="toggle toggle-xs toggle-success"
-              data-track-id={@track.id}
-              data-action="change->maps--maplibre#toggleTrackPoints"
-            />
-            <span>{s(@locale, "show_points")}</span>
-          </label>
-          <button
-            type="button"
-            class="btn btn-xs btn-ghost gap-1 px-2"
-            data-action="click->maps--maplibre#replayTrack"
-            data-track-start={@track.started_at}
-          >
-            <Icon.icon name="play" id="track-replay-play-icon" class="w-3 h-3" />
-            <Icon.icon name="pause" id="track-replay-pause-icon" class="w-3 h-3 hidden" />
-            <span id="track-replay-label">{s(@locale, "replay")}</span>
-          </button>
-          <a
-            class="btn btn-xs btn-ghost gap-1 px-2"
-            data-turbo="false"
-            href={"/tracks/#{@track.id}/share_link/new"}
-          >
-            <Icon.icon name="share" class="w-3 h-3" />
-            <span>{s(@locale, "share")}</span>
-          </a>
-        </div>
-        <turbo-frame
-          id={"track-#{@track.id}-segments"}
-          class="track-info-segments"
-          src={"/tracks/#{@track.id}/segments"}
-          loading="lazy"
-        >
-          <.skeleton lines={2} />
-        </turbo-frame>
-      </div>
-    </turbo-frame>
+    <div class="track-info-card__id">{s(@locale, "track")}{@track.id}</div>
+    <div class="track-info-stats">
+      <span><span class="track-info-stats__label">{s(@locale, "dist")}</span>
+      <strong>{Ruby.to_s(@distance)} {@unit}</strong></span>
+      <span><span class="track-info-stats__label">{s(@locale, "avg")}</span>
+      <strong>{Ruby.to_s(@speed)} {@speed_label}</strong></span>
+      <span :if={(@track.elevation_gain || 0) > 0}><span class="track-info-stats__label">↑</span>
+      <strong>{t(@locale, "units.meters", %{value: @track.elevation_gain})}</strong></span>
+      <span :if={(@track.elevation_loss || 0) > 0}><span class="track-info-stats__label">↓</span>
+      <strong>{t(@locale, "units.meters", %{value: @track.elevation_loss})}</strong></span>
+      <span id={"track-info-mode-#{@track.id}"} class="track-info-mode capitalize">{@mode_label}</span>
+    </div>
+    <div class="track-info-actions">
+      <label class="track-info-toggle">
+        <input
+          type="checkbox"
+          class="toggle toggle-xs toggle-success"
+          data-track-id={@track.id}
+          data-action={!@native && "change->maps--maplibre#toggleTrackPoints"}
+          data-native-track-points={@native}
+          checked={@native && @track[:points]}
+          phx-click={@native && "track:points"}
+        />
+        <span>{s(@locale, "show_points")}</span>
+      </label>
+      <button
+        type="button"
+        class="btn btn-xs btn-ghost gap-1 px-2"
+        data-action={!@native && "click->maps--maplibre#replayTrack"}
+        data-native-track-replay={@native}
+        data-track-start={@track.started_at}
+      >
+        <Icon.icon name="play" id="track-replay-play-icon" class="w-3 h-3" />
+        <Icon.icon name="pause" id="track-replay-pause-icon" class="w-3 h-3 hidden" />
+        <span id="track-replay-label">{s(@locale, "replay")}</span>
+      </button>
+      <a
+        class="btn btn-xs btn-ghost gap-1 px-2"
+        data-turbo={!@native && "false"}
+        href={"/tracks/#{@track.id}/share_link/new"}
+      >
+        <Icon.icon name="share" class="w-3 h-3" />
+        <span>{s(@locale, "share")}</span>
+      </a>
+    </div>
     """
   end
 

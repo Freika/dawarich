@@ -10,8 +10,9 @@ defmodule DawarichWeb.NativeTimelineFeed do
     Icon,
     NativeSelectionActions,
     NativeTimelineDayNav,
-    NativeTrackInfo,
+    NativeSegmentEditor,
     StatsCards,
+    TimelineCalendar,
     TimelineEntries,
     TimelineFormat,
     TimelineJourney
@@ -27,6 +28,7 @@ defmodule DawarichWeb.NativeTimelineFeed do
   attr :csrf, :string, default: ""
   attr :editing, :map, default: nil
   attr :track_info, :map, default: nil
+  attr :segments, :map, default: nil
   attr :unit, :string, default: "km"
   attr :locale, :string, required: true
 
@@ -92,6 +94,7 @@ defmodule DawarichWeb.NativeTimelineFeed do
         selected_visit={@selected_visit}
         editing={@editing}
         track_info={@track_info}
+        segments={@segments}
         unit={@unit}
       />
       <button
@@ -125,6 +128,7 @@ defmodule DawarichWeb.NativeTimelineFeed do
   attr :selected_visit, :any, default: nil
   attr :editing, :map, default: nil
   attr :track_info, :map, default: nil
+  attr :segments, :map, default: nil
   attr :unit, :string, default: "km"
 
   defp day(assigns) do
@@ -217,7 +221,16 @@ defmodule DawarichWeb.NativeTimelineFeed do
                   open={!!(@track_info && entry.track_id && @track_info.id == entry.track_id)}
                 >
                   <:panel>
-                    <NativeTrackInfo.card track={@track_info} unit={@unit} locale={@locale} />
+                    <TimelineCalendar.track_info_frame
+                      track={@track_info}
+                      unit={@unit}
+                      locale={@locale}
+                      native
+                    >
+                      <:segments>
+                        <NativeSegmentEditor.drawer drawer={@segments} unit={@unit} locale={@locale} />
+                      </:segments>
+                    </TimelineCalendar.track_info_frame>
                   </:panel>
                 </TimelineJourney.journey_entry>
             <% end %>

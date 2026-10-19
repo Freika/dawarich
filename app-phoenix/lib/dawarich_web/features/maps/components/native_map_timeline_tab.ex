@@ -15,6 +15,7 @@ defmodule DawarichWeb.NativeMapTimelineTab do
   attr :tags, :list, default: []
   attr :track_info, :any, default: nil
   attr :editing, :map, default: nil
+  attr :segments, :map, default: nil
   attr :unit, :string, default: "km"
 
   def tab(assigns) do
@@ -104,6 +105,7 @@ defmodule DawarichWeb.NativeMapTimelineTab do
               selected_visit={@selected_visit}
               editing={@editing}
               track_info={@track_info}
+              segments={@segments}
               unit={@unit}
               locale={@locale}
             />

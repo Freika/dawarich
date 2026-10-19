@@ -38,7 +38,6 @@ defmodule DawarichWeb.NativeMapTools do
     <DawarichWeb.NativePointAddress.drawer address={assigns[:point_address]} locale={@locale} />
     <DawarichWeb.NativePlaceDrawer.drawer detail={assigns[:place_detail]} locale={@locale} />
     <DawarichWeb.NativeMapPlace.dialog dialog={assigns[:place_dialog]} locale={@locale} />
-    <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale={@locale} />
     <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale={@locale} />
     <DawarichWeb.NativeMapReplay.panel id="native-map-replay" locale={@locale} opener={false} />
     <DawarichWeb.NativePosterStudio.poster_studio

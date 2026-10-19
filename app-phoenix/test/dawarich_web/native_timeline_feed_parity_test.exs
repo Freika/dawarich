@@ -56,6 +56,45 @@ defmodule DawarichWeb.NativeTimelineFeedParityTest do
     end
   end
 
+  for name <- ~w(track_km_en track_mi_en) do
+    @name name
+    test "#{@name} renders the Rails track card markup" do
+      state = FrameSeeds.load(@name)
+      user = FrameSeeds.seed!(state)
+      locale = DawarichWeb.Locale.resolve(nil, user, %{})
+      id = state["path"] |> String.split("/") |> Enum.at(3)
+      {:ok, track} = Maps.Timeline.track(Maps.principal(user, locale), id)
+      unit = Dawarich.Timeline.Days.unit(Dawarich.UserSettings.get(user))
+
+      native =
+        render_component(&DawarichWeb.TimelineCalendar.track_info_frame/1,
+          track: track,
+          unit: unit,
+          locale: locale,
+          native: true
+        )
+
+      rails = File.read!(Path.join(@dir, @name <> ".html"))
+      assert card(native) == card(rails)
+    end
+  end
+
+  defp card(html) do
+    html
+    |> normalized()
+    |> Enum.flat_map(fn
+      {"div", attrs, children} ->
+        [{"div", attrs, Enum.reject(children, &segments?/1)}]
+
+      other ->
+        [other]
+    end)
+  end
+
+  defp segments?({"div", [{"class", "track-info-segments"}], _}), do: true
+  defp segments?({"div", [{"class", "space-y-2 p-3"}], _}), do: true
+  defp segments?(_), do: false
+
   defp dump(name, phoenix, rails) do
     if dir = System.get_env("PARITY_DUMP") do
       File.mkdir_p!(dir)

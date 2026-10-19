@@ -125,7 +125,7 @@ test("native track clicks send only owned scalar commands and replay seeks the s
     f.root.emit("click", {
       target: {
         closest: (selector) =>
-          selector === "[data-track-replay]"
+          selector === "[data-native-track-replay]"
             ? {
                 dataset: { trackStart: "2026-03-30T11:00:00+02:00" },
               }
@@ -138,7 +138,7 @@ test("native track clicks send only owned scalar commands and replay seeks the s
     f.root.emit("click", {
       target: {
         closest: (selector) =>
-          selector === "[data-track-replay]"
+          selector === "[data-native-track-replay]"
             ? {
                 dataset: { trackStart: "2026-03-30T11:00:00+02:00" },
               }

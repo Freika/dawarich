@@ -50,6 +50,18 @@ defmodule DawarichWeb.MapDataFramesTest do
     assert get_resp_header(conn, "cache-control") == ["no-store"]
   end
 
+  defp open_track(user) do
+    {:ok, view, _} =
+      Phoenix.LiveViewTest.live(
+        RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id),
+        "/map/v2?panel=timeline&date=2026-10-03&start_at=2026-10-03T00:00:00&end_at=2026-10-03T23:59:59"
+      )
+
+    Phoenix.LiveViewTest.render_async(view, 5000)
+    Phoenix.LiveViewTest.render_hook(view, "track:toggle", %{"id" => "8370"})
+    view
+  end
+
   defp open(user) do
     {:ok, view, _} =
       Phoenix.LiveViewTest.live(
@@ -75,9 +87,8 @@ defmodule DawarichWeb.MapDataFramesTest do
     row!()
     refused(user |> no_token() |> request())
     refused(user.id |> RailsUser.signed_in() |> request())
-    view = open(user)
-    render_hook(view, "segments:open", %{"track_id" => "8370"})
-    assert has_element?(view, "#native-segment-drawer")
+    view = open_track(user)
+    assert has_element?(view, "#native-track-info #native-segment-drawer")
     refute has_element?(view, "#native-segment-drawer input[name=authenticity_token]")
   end
 
@@ -141,9 +152,8 @@ defmodule DawarichWeb.MapDataFramesTest do
 
   test "native segment admission race clears the drawer before any write", %{user: user} do
     row!()
-    view = open(user)
-    render_hook(view, "segments:open", %{"track_id" => "8370"})
-    assert has_element?(view, "#native-segment-drawer")
+    view = open_track(user)
+    assert has_element?(view, "#native-track-info #native-segment-drawer")
     Repo.query!("DELETE FROM track_segments WHERE track_id=8370")
     Repo.query!("DELETE FROM tracks WHERE id=8370")
     render_hook(view, "segments:open", %{"track_id" => "8370"})

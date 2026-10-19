@@ -57,15 +57,15 @@ defmodule DawarichWeb.MapFramesTest do
     } do
       view = native_map(user)
       render_hook(view, "track:toggle", %{"id" => "7221"})
-      assert has_element?(view, "#native-track-info[data-track-id='7221']", "12.3 km")
+      assert has_element?(view, "#native-track-info[data-native-track-id='7221']", "12.3 km")
 
       assert has_element?(
                view,
-               "[data-track-replay][data-track-start='2026-09-27T07:00:00+02:00']"
+               "[data-native-track-replay][data-track-start='2026-09-27T07:00:00+02:00']"
              )
 
       assert has_element?(view, "a[href='/tracks/7221/share_link/new']")
-      assert has_element?(view, "button[phx-click='segments:open'][phx-value-track_id='7221']")
+      assert has_element?(view, "#native-track-info .track-info-segments #native-segment-drawer")
       refute has_element?(view, "turbo-frame, [data-controller]")
       refute render(view) =~ "↓"
     end
@@ -94,7 +94,7 @@ defmodule DawarichWeb.MapFramesTest do
 
       view = native_map(user)
       render_hook(view, "track:toggle", %{"id" => "7221"})
-      assert has_element?(view, "#native-track-info[data-track-id='7221']")
+      assert has_element?(view, "#native-track-info[data-native-track-id='7221']")
       render_hook(view, "track:toggle", %{"id" => "7222"})
       refute has_element?(view, "#native-track-info")
       assert :sys.get_state(view.pid).socket.assigns.track_info == nil

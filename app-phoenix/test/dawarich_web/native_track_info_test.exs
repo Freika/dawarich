@@ -27,16 +27,17 @@ defmodule DawarichWeb.NativeTrackInfoTest do
 
     for locale <- Dawarich.I18n.available_locales() do
       html =
-        render_component(&DawarichWeb.NativeTrackInfo.card/1,
+        render_component(&DawarichWeb.TimelineCalendar.track_info_frame/1,
           track: track,
           unit: "mi",
-          locale: locale
+          locale: locale,
+          native: true
         )
 
       refute html =~ "translation_missing"
       assert html =~ "1.0 mi"
       assert html =~ "track:points"
-      assert html =~ "data-track-replay"
+      assert html =~ "data-native-track-replay"
 
       leg =
         render_component(&DawarichWeb.TimelineJourney.journey_entry/1,

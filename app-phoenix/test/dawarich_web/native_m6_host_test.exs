@@ -210,8 +210,9 @@ defmodule DawarichWeb.NativeM6HostTest do
       source: "inferred"
     })
 
-    {:ok, view, _} = open(id, @second)
-    render_hook(view, "segments:open", %{"track_id" => to_string(track)})
+    {:ok, view, _} = open(id, @second <> "&panel=timeline")
+    render_async(view, 5000)
+    render_hook(view, "track:toggle", %{"id" => to_string(track)})
 
     assert has_element?(
              view,
@@ -243,10 +244,10 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, "#native-track-info .track-info-stats", "1.0 km")
     assert has_element?(view, "#native-track-info .track-info-stats", "Avg")
     assert has_element?(view, "#native-segment-drawer")
-    assert has_element?(view, "#native-track-info input[data-track-points]")
-    assert has_element?(view, "#native-track-info [data-track-replay]")
+    assert has_element?(view, "#native-track-info input[data-native-track-points]")
+    assert has_element?(view, "#native-track-info [data-native-track-replay]")
     assert_push_event(view, "track:selection", %{id: ^track, points: false})
-    view |> element("#native-track-info input[data-track-points]") |> render_click()
+    view |> element("#native-track-info input[data-native-track-points]") |> render_click()
     assert_push_event(view, "track:selection", %{id: ^track, points: true})
     view |> element(row) |> render_click()
     refute has_element?(view, "#native-track-info")
@@ -283,7 +284,7 @@ defmodule DawarichWeb.NativeM6HostTest do
     |> render_click()
 
     assert_push_event(view, "track:selection", %{id: ^track, points: false})
-    control = "#native-map-panel #native-track-info input[data-track-points]"
+    control = "#native-map-panel #native-track-info input[data-native-track-points]"
     view |> element(control) |> render_click()
     assert_push_event(view, "track:selection", %{id: ^track, points: true})
     assert has_element?(view, control <> "[checked]")
@@ -318,7 +319,7 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, "#map-settings-panel.open.timeline-expanded #native-map-panel")
     assert has_element?(view, "#native-track-info", "Track ##{track}")
     assert_push_event(view, "track:selection", %{id: ^track, points: false})
-    view |> element("#native-track-info [phx-click=\"track:close\"]") |> render_click()
+    view |> element(".journey-leg[phx-value-id='#{track}']") |> render_click()
     assert_push_event(view, "track:selection", %{id: nil, points: false})
     assert has_element?(view, "#maps-maplibre-container #native-map-panel")
     refute has_element?(view, "#native-track-info")

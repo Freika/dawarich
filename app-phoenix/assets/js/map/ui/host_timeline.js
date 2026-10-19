@@ -82,7 +82,7 @@ export function createHostTimeline({
     else pushEvent("track:close", {})
   }
   async function replayClick(event) {
-    const control = event.target.closest?.("[data-track-replay]")
+    const control = event.target.closest?.("[data-native-track-replay]")
     if (!control) return
     const time = new Date(control.dataset.trackStart)
     if (!Number.isFinite(time.getTime())) return
