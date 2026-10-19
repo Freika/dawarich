@@ -199,6 +199,11 @@ defmodule Dawarich.Test.ParityHTML do
 
   defp dropped?("data-map-" <> _, _value, _attrs), do: true
   defp dropped?("data-native-" <> _, _value, _attrs), do: true
+
+  defp dropped?("aria-label", _value, %{"type" => type})
+       when type not in ~w(hidden submit button),
+       do: true
+
   defp dropped?(name, _value, _attrs), do: Regex.match?(@dropped_attribute, name)
 
   defp value("meta", "content", _value, %{"name" => name})

@@ -14,6 +14,7 @@ defmodule DawarichWeb.NativeMapTabs do
             id="native-map-search"
             type="text"
             placeholder={p(@locale, "enter_name_of_a_place")}
+            aria-label={p(@locale, "search_for_a_place")}
             class="input input-bordered w-full"
             autocomplete="off"
             phx-update="ignore"

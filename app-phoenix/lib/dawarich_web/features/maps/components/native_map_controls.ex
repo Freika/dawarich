@@ -83,6 +83,7 @@ defmodule DawarichWeb.NativeMapControls do
                 value={@window.start_local}
                 name="start_at"
                 id="start_at"
+                aria-label={s(@locale, "start_date_and_time")}
               />
             </div>
             <div
@@ -96,6 +97,7 @@ defmodule DawarichWeb.NativeMapControls do
                 value={@window.end_local}
                 name="end_at"
                 id="end_at"
+                aria-label={s(@locale, "end_date_and_time")}
               />
             </div>
             <div

@@ -2,7 +2,7 @@ const panels = {
   t: "timeline",
   l: "layers",
   "/": "search",
-  c: "tools",
+  c: "create",
   f: "family",
   s: "settings",
 };

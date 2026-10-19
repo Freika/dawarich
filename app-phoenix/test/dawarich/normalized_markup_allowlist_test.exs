@@ -19,6 +19,14 @@ defmodule Dawarich.NormalizedMarkupAllowlistTest do
              ParityHTML.normalize(~s(<div><span class="a"></span></div>))
   end
 
+  test "an accessible name on a form control counts as an addition, not as markup" do
+    assert ParityHTML.normalize(~s(<input type="text" aria-label="Search" class="input">)) ==
+             ParityHTML.normalize(~s(<input type="text" class="input">))
+
+    refute ParityHTML.normalize(~s(<button type="button" aria-label="Close"></button>)) ==
+             ParityHTML.normalize(~s(<button type="button"></button>))
+  end
+
   test "ids, classes and other data attributes still count" do
     refute ParityHTML.normalize(~s(<div id="map" class="a"></div>)) ==
              ParityHTML.normalize(~s(<div class="a"></div>))
