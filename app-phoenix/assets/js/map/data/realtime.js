@@ -12,7 +12,7 @@ const kinds = new Set([
   "progress",
   "reconnect",
 ])
-const delays = { points: 1000, tracks: 1000, family: 1000, reconnect: 1000 }
+const delays = { points: 1000, tracks: 1000, family: 1000 }
 export function createRealtime({
   run,
   timers = globalThis,

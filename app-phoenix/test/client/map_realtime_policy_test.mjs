@@ -86,6 +86,19 @@ test("a map edit does not wait behind a pending track refresh", async () => {
   assert.deepEqual(runs, [{ kinds: ["tracks", "map_edits"] }])
 })
 
+test("a reconnect refreshes at once instead of joining a later edit batch", async () => {
+  const timers = fakeTimers(),
+    runs = []
+  const realtime = createRealtime({
+    run: (batch) => runs.push(batch),
+    timers,
+    document: fakeDocument(),
+  })
+  realtime.reconnect()
+  await timers.advance(0)
+  assert.deepEqual(runs, [{ kinds: ["reconnect"] }])
+})
+
 test("a hidden tab defers every refresh until it becomes visible", async () => {
   const timers = fakeTimers(),
     runs = [],
