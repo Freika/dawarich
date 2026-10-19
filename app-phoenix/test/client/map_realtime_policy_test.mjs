@@ -136,13 +136,13 @@ function owner(log) {
 
 test("track updates refresh only the track tiles", async () => {
   const log = []
-  await owner(log).realtime({ kinds: ["tracks"] })
+  await owner(log).reconnect({ kinds: ["tracks"] })
   assert.deepEqual(log, ["tracks", "edit.filters"])
 })
 
 test("new points refresh point tiles, visited countries and the recent point", async () => {
   const log = []
-  await owner(log).realtime({ kinds: ["points"] })
+  await owner(log).reconnect({ kinds: ["points"] })
   assert.deepEqual(log, [
     "recent.prepare",
     "points",
@@ -152,35 +152,28 @@ test("new points refresh point tiles, visited countries and the recent point", a
   ])
 })
 
-test("map edits reconcile the editor and refresh points, tracks and visited countries", async () => {
-  const log = []
-  await owner(log).realtime({ kinds: ["map_edits"] })
-  assert.deepEqual(log, [
-    "edit.reconcile",
-    "points",
-    "density.invalidate",
-    "density.update",
-    "tracks",
-    "edit.filters",
-  ])
-})
-
 test("family updates reload family locations only", async () => {
   const log = []
-  await owner(log).realtime({ kinds: ["family"] })
+  await owner(log).reconnect({ kinds: ["family"] })
   assert.deepEqual(log, ["family"])
 })
 
 test("import and notification progress never refresh the map", async () => {
   const log = []
-  await owner(log).realtime({ kinds: ["imports", "progress", "sharing"] })
+  await owner(log).reconnect({ kinds: ["imports", "progress", "sharing"] })
   assert.deepEqual(log, [])
 })
 
 test("reconnects and local resource changes keep the full refresh", async () => {
-  for (const kinds of [["reconnect"], ["map"], ["tracks", "reconnect"]]) {
+  for (const kinds of [
+    ["reconnect"],
+    ["map"],
+    ["map_edits"],
+    ["tracks", "reconnect"],
+    [],
+  ]) {
     const log = []
-    await owner(log).realtime({ kinds })
+    await owner(log).reconnect({ kinds })
     assert.deepEqual(log, ["full"])
   }
 })

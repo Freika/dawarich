@@ -1,21 +1,27 @@
-const full = new Set(["map", "reconnect", "trip", "public"])
+const scoped = new Set([
+  "points",
+  "tracks",
+  "family",
+  "imports",
+  "progress",
+  "sharing",
+])
 
 export function installRealtimeActions(owner, parts) {
-  owner.realtime = async (batch = {}) => {
-    const kinds = new Set(batch.kinds ?? [])
-    if ([...kinds].some((kind) => full.has(kind))) return owner.reconnect(batch)
-    const { layers, density, family, recent, editing, editor } = parts()
-    const edits = kinds.has("map_edits"),
-      points = kinds.has("points"),
-      tracks = kinds.has("tracks") || edits
-    if (edits) await editing?.reconcile(batch)
-    if (points) recent?.prepare({ kinds: ["points"] })
-    if (points || edits) {
+  const reconnect = owner.reconnect
+  owner.reconnect = async (batch) => {
+    const kinds = new Set(batch?.kinds ?? [])
+    if (kinds.size === 0 || [...kinds].some((kind) => !scoped.has(kind)))
+      return reconnect.call(owner, batch)
+    const { layers, density, family, recent, editor } = parts()
+    const points = kinds.has("points")
+    if (points) {
+      recent?.prepare({ kinds: ["points"] })
       layers?.points.refresh()
       density?.invalidate()
       await density?.update(owner.config)
     }
-    if (tracks) {
+    if (kinds.has("tracks")) {
       layers?.tracks.refresh()
       editor?.reapplyTileFilters?.()
     }
