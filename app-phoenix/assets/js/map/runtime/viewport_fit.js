@@ -49,7 +49,7 @@ export function createViewportFit(reader, element) {
           overlay: () =>
             element
               ?.closest?.("[data-native-map-root]")
-              ?.querySelector("#map-settings-panel.open"),
+              ?.querySelector(".map-button-cluster"),
         })(),
         maxZoom: 15,
         duration: 0,
