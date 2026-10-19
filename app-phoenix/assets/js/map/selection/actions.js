@@ -1,3 +1,5 @@
+import { createVisitCards } from "./visit_card.js"
+
 const MAX_BULK = 500
 
 export function createSelectionActions({
@@ -8,22 +10,16 @@ export function createSelectionActions({
   confirm = (message) => globalThis.confirm(message),
 }) {
   const checked = new Set()
+  const cards = createVisitCards({ document, translate })
+  const find = (selector) => container.querySelector?.(selector) ?? null
+  const deleteButton = find("[data-map-delete-points]")
+  const deleteText = find("[data-map-delete-points-text]")
+  const anomaliesButton = find("[data-map-delete-anomalies]")
+  const anomaliesText = find("[data-map-delete-anomalies-text]")
+  const visitsBox = find("[data-map-selected-visits]")
   let error = null
+  let alert = null
   let destroyed = false
-
-  const node = (tag, text, attributes = {}) => {
-    const child = document.createElement(tag)
-    if (text != null) child.textContent = text
-    for (const [name, value] of Object.entries(attributes))
-      child.setAttribute(name, value)
-    return child
-  }
-
-  const button = (text, attributes, onClick) => {
-    const child = node("button", text, { type: "button", ...attributes })
-    child.addEventListener("click", onClick)
-    return child
-  }
 
   async function settle(promise, failure) {
     const result = await promise
@@ -43,116 +39,102 @@ export function createSelectionActions({
     return settle(selection.deletePoints(ids), "selection.delete_points_failed")
   }
 
-  function visitRow(visit) {
-    const id = String(visit.id)
-    const row = node("li", null, {
-      class: "flex flex-wrap items-center gap-1 min-w-0",
-    })
-    const box = node("input", null, {
-      type: "checkbox",
-      "data-visit-select": id,
-      "aria-label": visit.name || id,
-    })
-    box.checked = checked.has(id)
-    box.addEventListener("change", () => {
-      if (box.checked) checked.add(id)
-      else checked.delete(id)
-      render()
-    })
-    row.append(
-      box,
-      node("span", visit.name || "", {
-        class: "min-w-0 [overflow-wrap:anywhere]",
+  const anomalies = () =>
+    selection.state.points.filter((point) => point.anomaly === true)
+
+  const onDelete = () =>
+    points(
+      selection.state.points.map((point) => point.id),
+      translate("selection.confirm_delete_points", {
+        count: selection.state.points.length,
       }),
     )
-    if (visit.status === "suggested")
-      row.append(
-        button(translate("common.confirm"), { "data-visit-confirm": id }, () =>
-          visits("confirm", [id], "messages.failed_to_confirm_visits"),
-        ),
-      )
-    row.append(
-      button(translate("common.delete"), { "data-visit-delete": id }, () =>
-        visits("delete", [id], "messages.failed_to_delete_visit"),
-      ),
+  const onAnomalies = () => {
+    const rows = anomalies()
+    return points(
+      rows.map((point) => point.id),
+      translate("selection.confirm_delete_anomaly_points", {
+        count: rows.length,
+      }),
     )
-    return row
+  }
+  deleteButton?.addEventListener("click", onDelete)
+  anomaliesButton?.addEventListener("click", onAnomalies)
+
+  function visitCard(visit) {
+    const id = String(visit.id)
+    return cards.card(visit, {
+      selected: checked.has(id),
+      onSelect: (on) => {
+        if (on) checked.add(id)
+        else checked.delete(id)
+        render()
+      },
+      onConfirm: () =>
+        visits("confirm", [id], "messages.failed_to_confirm_visits"),
+      onDelete: () => visits("delete", [id], "messages.failed_to_delete_visit"),
+    })
   }
 
-  function bulkRow() {
-    const ids = [...checked]
-    const row = node(
-      "div",
-      translate("visits.selected", { count: ids.length }),
-      {
-        class: "flex flex-wrap gap-1",
-      },
-    )
-    const disabled = ids.length > MAX_BULK
-    for (const [action, label, failure] of [
-      ["merge", "visits.merge", "messages.failed_to_merge_visits"],
-      ["confirm", "common.confirm", "messages.failed_to_confirm_visits"],
-      ["delete", "common.delete", "messages.failed_to_delete_visit"],
-    ]) {
-      const child = button(translate(label), { "data-bulk": action }, () =>
-        visits(action, ids, failure),
-      )
-      child.disabled = disabled
-      row.append(child)
+  function renderVisits() {
+    if (!visitsBox) return
+    const rows = selection.state.visits
+    if (rows.length === 0) {
+      visitsBox.replaceChildren()
+      visitsBox.classList.add("hidden")
+      return
     }
-    return row
+    const list = rows.map(visitCard)
+    if (checked.size >= 2) {
+      const ids = [...checked]
+      const last = list.findLast((card) =>
+        checked.has(card.getAttribute("data-visit-id")),
+      )
+      const bulk = cards.bulk(ids.length, {
+        disabled: ids.length > MAX_BULK,
+        merge: () => visits("merge", ids, "messages.failed_to_merge_visits"),
+        confirm: () =>
+          visits("confirm", ids, "messages.failed_to_confirm_visits"),
+        remove: () => visits("delete", ids, "messages.failed_to_delete_visit"),
+      })
+      list.splice(list.indexOf(last) + 1, 0, bulk)
+    }
+    visitsBox.replaceChildren(cards.list(rows.length, list))
+    visitsBox.classList.remove("hidden")
   }
 
   function render() {
     if (destroyed) return
     const { state } = selection
-    const anomalies = state.points.filter((point) => point.anomaly === true)
-    const children = [
-      node("p", translate("selection.points", { count: state.points.length })),
-      node("p", translate("selection.visits", { count: state.visits.length })),
-    ]
-    if (error)
-      children.push(node("p", error, { role: "alert", class: "text-error" }))
-    if (state.points.length > 0)
-      children.push(
-        button(translate("common.delete"), { "data-points": "all" }, () =>
-          points(
-            state.points.map((point) => point.id),
-            translate("selection.confirm_delete_points", {
-              count: state.points.length,
-            }),
-          ),
-        ),
-      )
-    if (anomalies.length > 0)
-      children.push(
-        button(
-          translate("selection.delete_anomaly_points", {
-            count: anomalies.length,
-          }),
-          { "data-points": "anomalies" },
-          () =>
-            points(
-              anomalies.map((point) => point.id),
-              translate("selection.confirm_delete_anomaly_points", {
-                count: anomalies.length,
-              }),
-            ),
-        ),
-      )
-    if (state.visits.length > 0) {
-      const list = node("ul", null, { class: "space-y-1" })
-      list.append(...state.visits.map(visitRow))
-      children.push(list)
+    if (deleteText)
+      deleteText.textContent = translate("selection.delete_points", {
+        count: state.points.length,
+      })
+    const noisy = anomalies()
+    anomaliesButton?.classList.toggle("hidden", noisy.length === 0)
+    if (anomaliesText)
+      anomaliesText.textContent = translate("selection.delete_anomaly_points", {
+        count: noisy.length,
+      })
+    alert?.remove()
+    alert = null
+    if (error) {
+      alert = document.createElement("p")
+      alert.className = "text-error text-sm"
+      alert.setAttribute("role", "alert")
+      alert.textContent = error
+      container.prepend?.(alert)
     }
-    if (checked.size >= 2) children.push(bulkRow())
-    container.replaceChildren(...children)
+    renderVisits()
   }
 
   function destroy() {
     destroyed = true
     checked.clear()
-    container.replaceChildren()
+    deleteButton?.removeEventListener("click", onDelete)
+    anomaliesButton?.removeEventListener("click", onAnomalies)
+    alert?.remove()
+    visitsBox?.replaceChildren()
   }
 
   render()

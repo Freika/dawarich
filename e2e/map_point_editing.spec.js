@@ -35,8 +35,8 @@ async function openEditor(
   await closeOnboardingModal(page)
   await waitForMapLibre(page)
   const edit = page.getByTestId("native-edit-points")
-  if ((await edit.getAttribute("aria-pressed")) !== "true") {
-    await page.getByTestId("map-button-settings").click()
+  if (!(await edit.isChecked())) {
+    await page.getByTestId("map-button-layers").click()
     await edit.click()
     await page.locator("#native-map-panel-close").click()
     await expect(page.locator("#map-settings-panel")).not.toHaveClass(
@@ -58,7 +58,7 @@ async function openEditor(
       )
       .toBe(true)
   }
-  await expect(edit).toHaveAttribute("aria-pressed", "true")
+  await expect(edit).toBeChecked()
   await waitForMapLibre(page)
 
   await page.evaluate(

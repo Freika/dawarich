@@ -85,7 +85,7 @@ test("native selection root draws rectangle highlights admitted points and clear
     assert.equal(f.sources.has("selection-source"), false)
     assert.equal(f.sources.has("selected-points-source"), false)
     assert.equal(f.map.dragPan.isEnabled(), true)
-    assert.equal(panel.hidden, true)
+    assert.equal(panel.classList.contains("hidden"), true)
   } finally {
     f.owner.destroy()
   }

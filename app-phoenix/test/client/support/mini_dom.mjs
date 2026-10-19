@@ -64,7 +64,10 @@ class Element {
   append(...nodes) {
     for (const node of nodes)
       if (typeof node === "string") this.text += node
-      else this.children.push(node)
+      else {
+        node.parent = this
+        this.children.push(node)
+      }
   }
   appendChild(node) {
     this.append(node)
@@ -97,13 +100,28 @@ class Element {
   all() {
     return this.children.flatMap((child) => [child, ...child.all()])
   }
+  matches(selector) {
+    const attribute = selector.match(/^\[([\w-]+)(?:="([^"]*)")?\]$/)
+    if (attribute)
+      return attribute[2] === undefined
+        ? attribute[1] in this.attributes
+        : this.attributes[attribute[1]] === attribute[2]
+    if (selector.startsWith("."))
+      return this.classList.contains(selector.slice(1))
+    return this.tagName === selector.toUpperCase()
+  }
   querySelectorAll(selector) {
-    const cls = selector.startsWith(".") ? selector.slice(1) : null
-    return this.all().filter((node) =>
-      cls
-        ? node.classList.contains(cls)
-        : node.tagName === selector.toUpperCase(),
-    )
+    return this.all().filter((node) => node.matches(selector))
+  }
+  prepend(...nodes) {
+    for (const node of nodes) node.parent = this
+    this.children.unshift(...nodes)
+  }
+  remove() {
+    if (this.parent)
+      this.parent.children = this.parent.children.filter(
+        (child) => child !== this,
+      )
   }
   querySelector(selector) {
     return this.querySelectorAll(selector)[0] ?? null

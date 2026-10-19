@@ -50,7 +50,7 @@ export function createHostSelection({
             ? (button?.dataset.mapDrawMessage ?? "")
             : ""
       if (panel) {
-        panel.hidden = !selection.state.bounds
+        panel.classList.toggle("hidden", !selection.state.bounds)
         actions?.render()
       }
     },

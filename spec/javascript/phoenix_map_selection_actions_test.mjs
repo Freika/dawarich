@@ -2,37 +2,35 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { createSelectionActions } from "../../app-phoenix/assets/js/map/selection/actions.js"
 import { createAreaSelection } from "../../app-phoenix/assets/js/map/selection/state.js"
+import { miniDocument } from "../../app-phoenix/test/client/support/mini_dom.mjs"
 
 const bounds = { minLng: 13.3, maxLng: 13.5, minLat: 52.4, maxLat: 52.6 }
-
-function element(tag) {
-  const listeners = new Map()
-  const node = {
-    tag,
-    children: [],
-    textContent: "",
-    attributes: {},
-    checked: false,
-    disabled: false,
-    addEventListener: (type, fn) => listeners.set(type, fn),
-    setAttribute(name, value) {
-      node.attributes[name] = value
-    },
-    append(...children) {
-      node.children.push(...children)
-    },
-    replaceChildren(...children) {
-      node.children = children
-    },
-    listeners,
-  }
-  return node
-}
-
-const all = (node) => [node, ...node.children.flatMap(all)]
-const find = (root, name, value) =>
-  all(root).find((node) => node.attributes[name] === value)
 const translate = (key, vars = {}) => `${key}${JSON.stringify(vars)}`
+
+function selectionDom() {
+  const document = miniDocument()
+  const container = document.createElement("div")
+  container.className = "hidden mt-4 space-y-2"
+  const button = (attribute, text, className) => {
+    const element = document.createElement("button")
+    element.className = className
+    element.setAttribute(attribute, "")
+    const label = document.createElement("span")
+    label.setAttribute(`${attribute}-text`, "")
+    label.textContent = text
+    element.append(label)
+    return element
+  }
+  const visits = document.createElement("div")
+  visits.className = "hidden mt-4 max-h-full overflow-y-auto"
+  visits.setAttribute("data-map-selected-visits", "")
+  container.append(
+    button("data-map-delete-points", "Delete Selected Points", "btn"),
+    button("data-map-delete-anomalies", "Delete Anomaly Points", "hidden btn"),
+    visits,
+  )
+  return { document, container, visits }
+}
 
 function mapMock() {
   const handlers = new Map()
@@ -50,7 +48,6 @@ function mapMock() {
 function selectionWith(points, visits, replies) {
   const pushed = []
   let loads = 0
-  const changes = []
   const map = mapMock()
   const selection = createAreaSelection({
     map,
@@ -65,9 +62,9 @@ function selectionWith(points, visits, replies) {
       pushed.push([event, payload])
       reply(replies.shift())
     },
-    onChange: () => changes.push(loads),
+    onChange: () => {},
   })
-  return { selection, map, pushed, changes, loads: () => loads }
+  return { selection, map, pushed, loads: () => loads }
 }
 
 async function loaded(selection, map) {
@@ -79,59 +76,79 @@ async function loaded(selection, map) {
   await selection.ready
 }
 
-test("selection actions confirm or merge checked visits and refresh the selection", async () => {
-  const visits = [
-    { id: 4, name: "Cafe", status: "suggested" },
-    { id: 5, name: "Gym", status: "suggested" },
-  ]
-  const ctx = selectionWith([{ id: 1 }], visits, [{ ok: true }])
+const visitRows = [
+  {
+    id: 4,
+    name: "Cafe",
+    status: "suggested",
+    started_at: "2026-10-16T08:00:00Z",
+    ended_at: "2026-10-16T09:00:00Z",
+    duration: 60,
+  },
+  {
+    id: 5,
+    name: "Gym",
+    status: "suggested",
+    started_at: "2026-10-16T10:00:00Z",
+    ended_at: "2026-10-16T10:30:00Z",
+    duration: 30,
+  },
+]
+
+test("selected visits render Rails cards and an inline bulk merge for two checked", async () => {
+  const ctx = selectionWith([{ id: 1 }], visitRows, [{ ok: true }])
   await loaded(ctx.selection, ctx.map)
-  const container = element("section")
+  const { document, container, visits } = selectionDom()
   const actions = createSelectionActions({
     container,
-    document: { createElement: element },
+    document,
     translate,
     selection: ctx.selection,
     confirm: () => true,
   })
 
-  assert.equal(find(container, "data-bulk", "merge"), undefined)
+  assert.equal(
+    container.querySelector("[data-map-delete-points-text]").textContent,
+    'selection.delete_points{"count":1}',
+  )
+  assert.equal(visits.classList.contains("hidden"), false)
+  assert.equal(visits.querySelectorAll(".visit-card").length, 2)
+  assert.equal(visits.querySelector("[data-bulk-merge]"), null)
   for (const id of ["4", "5"]) {
-    const box = find(container, "data-visit-select", id)
+    const box = visits.querySelector(`[data-visit-select="${id}"]`)
     box.checked = true
-    box.listeners.get("change")()
+    box.dispatch("change")
   }
-  await find(container, "data-bulk", "merge").listeners.get("click")()
+  const merge = visits.querySelector("[data-bulk-merge]")
+  assert.ok(merge)
+  await merge.dispatch("click")
+  await new Promise((resolve) => setImmediate(resolve))
   assert.deepEqual(ctx.pushed, [
     ["visits:bulk", { action: "merge", ids: ["4", "5"] }],
   ])
   assert.equal(ctx.loads(), 2)
-  assert.equal(find(container, "data-visit-select", "4"), undefined)
-  assert.ok(find(container, "data-visit-select", "5"))
-  assert.equal(find(container, "data-bulk", "merge"), undefined)
-  assert.ok(ctx.changes.length >= 2)
+  assert.equal(visits.querySelector('[data-visit-select="4"]'), null)
+  assert.ok(visits.querySelector('[data-visit-select="5"]'))
+  assert.equal(visits.querySelector("[data-bulk-merge]"), null)
 
   actions.destroy()
-  assert.deepEqual(container.children, [])
+  assert.deepEqual(visits.children, [])
 })
 
-test("visit bulk refusal keeps the selection and shows the error", async () => {
-  const visits = [
-    { id: 4, name: "Cafe", status: "suggested" },
-    { id: 5, name: "Gym", status: "suggested" },
-  ]
-  const ctx = selectionWith([], visits, [{ error: "missing" }])
+test("visit refusal keeps the selection and shows the error", async () => {
+  const ctx = selectionWith([], visitRows, [{ error: "missing" }])
   await loaded(ctx.selection, ctx.map)
-  const container = element("section")
+  const { document, container } = selectionDom()
   createSelectionActions({
     container,
-    document: { createElement: element },
+    document,
     translate,
     selection: ctx.selection,
     confirm: () => true,
   })
 
-  await find(container, "data-visit-delete", "4").listeners.get("click")()
+  container.querySelector('[data-visit-delete="4"]').dispatch("click")
+  await new Promise((resolve) => setImmediate(resolve))
   assert.deepEqual(ctx.pushed, [
     ["visits:bulk", { action: "delete", ids: ["4"] }],
   ])
@@ -140,26 +157,29 @@ test("visit bulk refusal keeps the selection and shows the error", async () => {
     ctx.selection.state.visits.map((visit) => visit.id),
     [4, 5],
   )
-  assert.ok(find(container, "role", "alert"))
+  assert.ok(container.querySelector('[role="alert"]'))
 })
 
-test("anomaly delete sends only anomaly point ids after confirmation", async () => {
+test("anomaly delete shows its Rails button and sends only anomaly ids after confirmation", async () => {
   const points = [{ id: 1 }, { id: 2, anomaly: true }, { id: 3, anomaly: true }]
   const ctx = selectionWith(points, [], [{ ok: true, count: 2 }])
   await loaded(ctx.selection, ctx.map)
-  const container = element("section")
+  const { document, container } = selectionDom()
   let asked = 0
   createSelectionActions({
     container,
-    document: { createElement: element },
+    document,
     translate,
     selection: ctx.selection,
     confirm: () => ++asked > 1,
   })
 
-  await find(container, "data-points", "anomalies").listeners.get("click")()
+  const button = container.querySelector("[data-map-delete-anomalies]")
+  assert.equal(button.classList.contains("hidden"), false)
+  button.dispatch("click")
   assert.deepEqual(ctx.pushed, [])
-  await find(container, "data-points", "anomalies").listeners.get("click")()
+  button.dispatch("click")
+  await new Promise((resolve) => setImmediate(resolve))
   assert.deepEqual(ctx.pushed, [["points:bulk_delete", { point_ids: [2, 3] }]])
   assert.deepEqual(
     ctx.selection.state.points.map((point) => point.id),
