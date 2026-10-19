@@ -142,7 +142,7 @@ defmodule DawarichWeb.NativeMapPage do
   defp title(locale, panel) do
     case @titles[panel] do
       nil -> t(locale, "map.maplibre.settings_panel.layers", %{})
-      key -> t(locale, "map.maplibre.button_cluster." <> key, %{})
+      key -> t(locale, "javascript.map_panel." <> key, %{})
     end
   end
 

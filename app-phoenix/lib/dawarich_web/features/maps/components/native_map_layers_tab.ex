@@ -68,6 +68,7 @@ defmodule DawarichWeb.NativeMapLayersTab do
             type="checkbox"
             class="layer-tile__input"
             aria-describedby={"layer-tile-#{tile.target}-description"}
+            data-maps--maplibre-target={tile.target}
             checked={tile.checked}
             disabled={@restricted && tile.pro}
             data-map-layer={tile.key}
