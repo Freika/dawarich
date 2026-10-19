@@ -294,6 +294,6 @@ export function mountHost({
     onDestroy: preferences.destroy,
   });
   retry = installMapRetry({ owner, root: element, layers: () => layers, density: () => density });
-  installRealtimeActions(owner, () => ({ layers, density, recent, editing, editor: editing?.editor, family: aux?.family }));
+  installRealtimeActions(owner, () => ({ layers, density, recent, family: aux?.family }));
   return owner;
 }

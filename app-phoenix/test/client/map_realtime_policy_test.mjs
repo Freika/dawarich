@@ -137,7 +137,7 @@ function owner(log) {
 test("track updates refresh only the track tiles", async () => {
   const log = []
   await owner(log).reconnect({ kinds: ["tracks"] })
-  assert.deepEqual(log, ["tracks", "edit.filters"])
+  assert.deepEqual(log, ["tracks"])
 })
 
 test("new points refresh point tiles, visited countries and the recent point", async () => {
