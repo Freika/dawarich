@@ -210,9 +210,11 @@ export function createMapRuntime({
     },
     async update(next) {
       if (lifetime.destroyed) return "cancelled"
+      const unchanged = JSON.stringify(next) === JSON.stringify(current)
       current = next
       viewport?.updateNamespace(next.namespace)
       if (map && !attached) return mounting
+      if (!map && mounting && unchanged) return mounting
       operations.reset()
       reader.reset()
       if (!map) mounting = null
