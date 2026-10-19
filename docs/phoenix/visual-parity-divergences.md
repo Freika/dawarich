@@ -12,7 +12,7 @@ Categories:
 |---|---|---|---|---|---|---|
 | `/map` realtime | Recent point after a new point | Reads the point from the `PointsChannel` payload | One `GET /native/map/data/points?per_page=1` per debounced refresh | contract | M6 receipts carry no coordinates | ADR-0025 |
 | `/map` realtime | Family member update | `familyLayer.updateMember(member)` from the broadcast | One family locations + history reload, 1 s after the first event | contract | Family receipts are domain events without member data | ADR-0025 |
-| `/map` realtime | Map edit (`point_moved`) | `editor.applyRealtime(event.data)` | Editor reconcile reads the affected track | contract | Receipts carry no edit payload | ADR-0025 |
+| `/map` realtime | Map edit (`point_moved`) | Points + tracks refresh, `editor.applyRealtime(event.data)` | Immediate full refresh; editor reconcile reads the affected track | contract | Receipts carry no edit payload; the scoped edit path lost selected-track and editor state (G44) | ADR-0025 |
 | `/map` realtime | Socket reconnect | Toast only | Full layer refresh | contract | Native layers cannot know what they missed while disconnected | ADR-0025 |
 | `/map` realtime | Hidden tab | MapLibre's render loop pauses; debounced timers still fire | No refresh at all until the tab is visible | contract | An idle hidden tab must not cost backend requests | ADR-0025 |
 | `/map` realtime | Local resource changes (visits, places, areas, points, tracks) | Targeted layer reloads | Full layer refresh | contract | User actions, not a flood source; scoped refresh later if the bench shows a cost | plan A3 |
