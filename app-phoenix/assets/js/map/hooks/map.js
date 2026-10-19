@@ -9,7 +9,6 @@ export const MapHook = {
     this.mapTrackSelection = null
     this.mapVisitSelection = null
     this.mapPlaceFocus = null
-    this.mapDayFit = null
     this.mapRealtime = null
     this.mapInvalidations = []
     this.mapHandlers = [
@@ -26,19 +25,9 @@ export const MapHook = {
         this.mapPlaceFocus = { center: [longitude, latitude], zoom: 16 }
         if (this.mapReady) this.mapOwner?.map?.jumpTo(this.mapPlaceFocus)
       }),
-      this.handleEvent("timeline:fit", ({ bounds } = {}) => {
-        const { sw_lng, sw_lat, ne_lng, ne_lat } = bounds || {}
-        if (
-          this.mapDestroyed ||
-          this.mapRevoked ||
-          ![sw_lng, sw_lat, ne_lng, ne_lat].every(Number.isFinite)
-        )
-          return
-        this.mapDayFit = [
-          [sw_lng, sw_lat],
-          [ne_lng, ne_lat],
-        ]
-        if (this.mapReady) this.fitDay()
+      this.handleEvent("timeline:fit", ({ bounds }) => {
+        if (this.mapReady) this.mapOwner?.fitDay?.(bounds)
+        else this.mapDayFit = bounds
       }),
       this.handleEvent("visit:selection", (payload) => {
         if (this.mapDestroyed || this.mapRevoked) return
@@ -123,7 +112,7 @@ export const MapHook = {
       if (entry)
         this.mapOwner.openStudio?.(new URL(entry).searchParams.get("studio"))
       if (this.mapPlaceFocus) this.mapOwner?.map?.jumpTo(this.mapPlaceFocus)
-      if (this.mapDayFit) this.fitDay()
+      this.mapOwner.fitDay?.(this.mapDayFit)
       for (const receipt of this.mapInvalidations)
         this.mapRealtime.invalidate(receipt)
       this.mapInvalidations = []
@@ -131,11 +120,6 @@ export const MapHook = {
       this.mapRealtime?.destroy()
       if (!this.mapDestroyed) this.el.dataset.mapState = "failed"
     }
-  },
-  fitDay() {
-    const bounds = this.mapDayFit
-    this.mapDayFit = null
-    this.mapOwner?.map?.fitBounds?.(bounds, { padding: 60, duration: 500 })
   },
   reconnected() {
     if (this.mapReady) return this.mapRealtime?.reconnect()

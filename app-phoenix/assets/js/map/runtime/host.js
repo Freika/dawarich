@@ -12,6 +12,7 @@ import { createHostTimeline } from "../ui/host_timeline.js";
 import { createHostTools } from "../ui/host_tools.js";
 import { createHostVisits } from "../ui/host_visits.js";
 import { createRangeRequests } from "../ui/navigation.js";
+import { installDayFit } from "../ui/day_fit.js";
 import { installStudios } from "../ui/studios.js";
 import { createHostAuxLayers } from "./aux_layers.js";
 import { createMapRuntime } from "./create_map.js";
@@ -75,6 +76,7 @@ export function mountHost({
       attach ??
       (({ map, config, lifetime }) => {
         installStudios({ element, owner, lifetime });
+        installDayFit({ owner, lifetime });
         recent = createHostRecentPoint({ map, reader, lifetime, config });
         installHostReplay({
           onActive: (active) =>
