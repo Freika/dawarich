@@ -89,7 +89,11 @@ defmodule DawarichWeb.MapDataFramesTest do
     refused(user.id |> RailsUser.signed_in() |> request())
     view = open_track(user)
     assert has_element?(view, "#native-track-info #native-segment-drawer")
-    refute has_element?(view, "#native-segment-drawer input[name=authenticity_token]")
+
+    refute has_element?(
+             view,
+             "#native-segment-drawer input[name=authenticity_token]:not([value=''])"
+           )
   end
 
   test "native address drawer uses normalized fields without list fallback", %{user: user} do

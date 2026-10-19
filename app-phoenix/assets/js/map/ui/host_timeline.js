@@ -34,9 +34,9 @@ export function createHostTimeline({
     hover.clear()
   }
   async function enter(event) {
-    const row = event.target.closest?.("[data-track-id]")
-    const id = row?.dataset.trackId
-    const segmentId = row?.dataset.segmentId
+    const row = event.target.closest?.("[data-native-segment-id], [data-track-id]")
+    const id = row?.dataset.nativeTrackId || row?.dataset.trackId
+    const segmentId = row?.dataset.nativeSegmentId
     const key = `${id}:${segmentId || ""}`
     if (!id || selected === key) return
     clear()
@@ -120,12 +120,14 @@ export function createHostTimeline({
         : null
     enter({
       target: {
-        closest: () => ({ dataset: { trackId: String(id), segmentId } }),
+        closest: () => ({
+          dataset: { trackId: String(id), nativeSegmentId: segmentId },
+        }),
       },
     })
     hovered = root?.querySelector(
       segmentId
-        ? `[data-segment-id="${segmentId}"]`
+        ? `[data-native-segment-id="${segmentId}"]`
         : `[data-track-id="${id}"]`,
     )
     hovered?.setAttribute("data-track-hovered", "true")

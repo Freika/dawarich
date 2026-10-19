@@ -214,14 +214,22 @@ defmodule DawarichWeb.NativeM6HostTest do
     render_async(view, 5000)
     render_hook(view, "track:toggle", %{"id" => to_string(track)})
 
+    row = "#native-segment-#{track * 10}"
+
     assert has_element?(
              view,
-             "#native-segment-#{track * 10}[data-segment-id='#{track * 10}'][data-track-id='#{track}']"
+             "#{row}[data-native-segment-id='#{track * 10}'][data-native-track-id='#{track}']"
            )
 
-    view |> form("#native-segment-form-#{track * 10}", mode: "walking") |> render_change()
+    view
+    |> form("#{row} form", track_segment: %{transportation_mode: "walking"})
+    |> render_change()
+
     assert_push_event(view, "map:invalidate", %{resource: "tracks", id: ^track})
-    assert has_element?(view, "#native-segment-#{track * 10} [data-corrected]")
+    assert has_element?(view, "#{row} [aria-label='Manually corrected']")
+    view |> form("#{row} form") |> render_submit(%{reset: "true"})
+    assert_push_event(view, "map:invalidate", %{resource: "tracks", id: ^track})
+    refute has_element?(view, "#{row} [aria-label='Manually corrected']")
     render_hook(view, "segments:close", %{})
     refute has_element?(view, "#native-segment-drawer")
   end

@@ -2,6 +2,7 @@ defmodule DawarichWeb.SegmentLegs do
   @moduledoc false
   use DawarichWeb, :html
   alias DawarichWeb.{Icon, SegmentFormat, TimelineFormat}
+  alias Phoenix.LiveView.JS
   alias Dawarich.ReleaseMigrations.Effects.Support.RubyFloat, as: FloatText
 
   attr :display, :map, required: true
@@ -10,6 +11,7 @@ defmodule DawarichWeb.SegmentLegs do
   attr :locale, :string, required: true
   attr :csrf, :string, required: true
   attr :unit, :string, required: true
+  attr :native, :boolean, default: false
 
   def legs(assigns) do
     ~H"""
@@ -51,11 +53,16 @@ defmodule DawarichWeb.SegmentLegs do
                   else: "segment-leg"
               }
               title={if item.kind == :uncertain, do: s(@locale, "mode_unclear")}
-              data-controller="segment-mode-editor"
-              data-segment-mode-editor-segment-id-value={item.segment_id || ""}
-              data-segment-mode-editor-track-id-value={@track_id}
-              data-segment-mode-editor-mode-value={item.mode || "unknown"}
-              data-action="mouseenter->segment-mode-editor#hover mouseleave->segment-mode-editor#unhover"
+              data-controller={!@native && "segment-mode-editor"}
+              data-segment-mode-editor-segment-id-value={!@native && (item.segment_id || "")}
+              data-segment-mode-editor-track-id-value={!@native && @track_id}
+              data-segment-mode-editor-mode-value={!@native && (item.mode || "unknown")}
+              data-action={
+                !@native &&
+                  "mouseenter->segment-mode-editor#hover mouseleave->segment-mode-editor#unhover"
+              }
+              data-native-segment-id={@native && item.segment_id}
+              data-native-track-id={@native && @track_id}
             >
               <Icon.icon
                 name={
@@ -77,6 +84,7 @@ defmodule DawarichWeb.SegmentLegs do
                 user={@user}
                 locale={@locale}
                 csrf={@csrf}
+                native={@native}
               />
               <.numbers item={item} locale={@locale} unit={@unit} />
             </div>
@@ -93,6 +101,7 @@ defmodule DawarichWeb.SegmentLegs do
       action={"/tracks/#{@track_id}/segments/#{@segment_id}"}
       accept-charset="UTF-8"
       method="post"
+      phx-change={@native && JS.push("segment:mode", value: %{segment_id: @segment_id})}
     >
       <input type="hidden" name="_method" value="patch" />
       <input type="hidden" name="authenticity_token" value={@csrf} />
@@ -104,10 +113,14 @@ defmodule DawarichWeb.SegmentLegs do
           aria-label={
             t(@locale, "tracks.segments.segment_row.transportation_mode_currently", %{mode: @label})
           }
-          data-action="change->segment-mode-editor#submit"
+          data-action={!@native && "change->segment-mode-editor#submit"}
           data-testid={"leg-mode-select-#{@segment_id}"}
           name="track_segment[transportation_mode]"
-          id="track_segment_transportation_mode"
+          id={
+            if @native,
+              do: "native-leg-mode-#{@segment_id}",
+              else: "track_segment_transportation_mode"
+          }
         >
           <option
             :for={{label, value} <- SegmentFormat.modes_for_mode(@mode, @user, @locale)}

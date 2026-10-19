@@ -152,11 +152,65 @@ defmodule DawarichWeb.MapDataParityTest do
         assert ParityHTML.stimulus(native, "[data-testid]") ==
                  ParityHTML.stimulus(expected, "[data-testid]"),
                "#{name}: test IDs differ"
+
+        if state["kind"] == "segments", do: native_segments(ctx, path, expected)
       end
     end
 
     endpoint(state, user, rails, name, fallback)
   end
+
+  defp native_segments(ctx, path, expected) do
+    track_id = path |> String.split("/", trim: true) |> Enum.at(1)
+
+    {:ok, page} =
+      Dawarich.LocationCommands.Segments.list(
+        Dawarich.Maps.principal(ctx.user, ctx.locale),
+        track_id
+      )
+
+    html =
+      render_component(&DawarichWeb.NativeSegmentEditor.drawer/1,
+        drawer: %{track_id: page.track_id, segments: page.segments, modes: page.modes, error: nil},
+        unit: get_in(ctx.user.settings, ["maps", "distance_unit"]) || "km",
+        locale: ctx.locale,
+        now: ctx.now
+      )
+
+    native =
+      html
+      |> String.replace(
+        ~r/ name="authenticity_token" value="[^"]*"/,
+        ~s( name="authenticity_token")
+      )
+      |> ParityHTML.normalize()
+      |> unwrap_rows()
+
+    rails =
+      expected
+      |> String.replace(
+        ~r/ name="authenticity_token" value="[^"]*"/,
+        ~s( name="authenticity_token")
+      )
+      |> String.replace(~s( id="track_segment_transportation_mode"), "")
+      |> ParityHTML.normalize()
+
+    assert native == rails,
+           "#{ctx.name} native: " <> ParityHTML.first_difference(native, rails)
+  end
+
+  defp unwrap_rows(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &unwrap_rows/1)
+
+  defp unwrap_rows({"div", attrs, children} = node) do
+    class = attrs |> Map.new() |> Map.get("class", "")
+
+    if class == "track-segments-list" or String.starts_with?(class, "segment-row "),
+      do: unwrap_rows(children),
+      else: [put_elem(node, 2, unwrap_rows(children))]
+  end
+
+  defp unwrap_rows({tag, attrs, children}), do: [{tag, attrs, unwrap_rows(children)}]
+  defp unwrap_rows(text), do: [text]
 
   defp seed(%{"user" => nil}), do: nil
 

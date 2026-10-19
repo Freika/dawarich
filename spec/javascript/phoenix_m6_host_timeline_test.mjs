@@ -263,8 +263,8 @@ test("native selected segments retain parent identity color and source endpoint 
 test("native segment row and map hover use the owned exact segment geometry and clear the previous row", async () => {
   const f = fixture({ tracksEnabled: true })
   const rows = [new Element(), new Element()]
-  f.nodes.set('[data-segment-id="19"]', rows[0])
-  f.nodes.set('[data-segment-id="20"]', rows[1])
+  f.nodes.set('[data-native-segment-id="19"]', rows[0])
+  f.nodes.set('[data-native-segment-id="20"]', rows[1])
   const track = {
     type: "Feature",
     geometry: {
@@ -305,7 +305,7 @@ test("native segment row and map hover use the owned exact segment geometry and 
     await f.owner.timeline.select({ id: 7 })
     f.root.emit("pointerover", {
       target: {
-        closest: () => ({ dataset: { trackId: "7", segmentId: "19" } }),
+        closest: () => ({ dataset: { trackId: "7", nativeSegmentId: "19" } }),
       },
     })
     await new Promise((resolve) => setImmediate(resolve))
@@ -346,7 +346,7 @@ test("native segment row and map hover use the owned exact segment geometry and 
     const enter = () =>
       f.root.emit("pointerover", {
         target: {
-          closest: () => ({ dataset: { trackId: "7", segmentId: "19" } }),
+          closest: () => ({ dataset: { trackId: "7", nativeSegmentId: "19" } }),
         },
       })
     track.properties.segments[0].coordinates = undefined
@@ -391,7 +391,7 @@ test("native segment row and map hover use the owned exact segment geometry and 
     f.root.emit("pointerout")
     f.root.emit("pointerover", {
       target: {
-        closest: () => ({ dataset: { trackId: "7", segmentId: "foreign" } }),
+        closest: () => ({ dataset: { trackId: "7", nativeSegmentId: "foreign" } }),
       },
     })
     await new Promise((resolve) => setImmediate(resolve))
@@ -557,7 +557,7 @@ test("selected index-based segments render the canonical track slice for map hov
     assert.equal(rendered.properties.color, "#3B82F6")
     f.root.emit("pointerover", {
       target: {
-        closest: () => ({ dataset: { trackId: "7", segmentId: "19" } }),
+        closest: () => ({ dataset: { trackId: "7", nativeSegmentId: "19" } }),
       },
     })
     assert.deepEqual(

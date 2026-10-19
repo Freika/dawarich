@@ -147,9 +147,10 @@ defmodule DawarichWeb.NativeMapPage do
   end
 
   defp selected_date(assigns) do
-    case Date.from_iso8601(assigns.map_url["date"] || "") do
-      {:ok, date} -> Date.to_iso8601(date)
-      _ -> Date.to_iso8601(assigns.page.window.start_date)
+    case {assigns.map_url["date"], Date.from_iso8601(assigns.map_url["date"] || "")} do
+      {_, {:ok, date}} -> Date.to_iso8601(date)
+      {"today", _} -> Date.to_iso8601(assigns.page.window.start_date)
+      _ -> nil
     end
   end
 end

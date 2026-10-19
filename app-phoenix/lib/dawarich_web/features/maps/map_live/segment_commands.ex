@@ -11,6 +11,14 @@ defmodule DawarichWeb.MapLive.SegmentCommands do
     end
   end
 
+  def handle_event(
+        "segment:mode",
+        %{"segment_id" => id, "track_segment" => %{"transportation_mode" => mode}},
+        socket
+      )
+      when is_binary(mode),
+      do: handle_event("segment:mode", %{"segment_id" => id, "mode" => mode}, socket)
+
   def handle_event("segment:mode", %{"segment_id" => id, "mode" => mode}, socket)
       when is_binary(mode),
       do: write(socket, &Segments.override(&1, &2, id, mode))
