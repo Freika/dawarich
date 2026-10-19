@@ -4157,6 +4157,7 @@ de:
       day_count: Tag %{current} von %{total}
       point_count: Punkt %{current} von %{total}
       speed: "%{speed} km/h"
+      speed_mph: "%{speed} mph"
       no_data: Keine Daten
     places:
       create_new: Neuer Ort erstellen

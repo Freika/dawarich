@@ -21,6 +21,7 @@ export class ReplayPanel {
     this.onPlayStateChange = opts.onPlayStateChange || null
     this._getPhotos = opts.getPhotos || null
     this._onReplayPhotosActive = opts.onReplayPhotosActive || (() => {})
+    this._distanceUnit = opts.distanceUnit || (() => "km")
     this._replayPhotoLayer = null
     this._photoIndex = null
     this._replayPhotoStack = null
@@ -390,12 +391,18 @@ export class ReplayPanel {
     if (velocity !== null && velocity !== undefined && velocity !== "") {
       const speedMs = parseFloat(velocity)
       if (!Number.isNaN(speedMs) && speedMs > 0) {
-        this.c.replaySpeedDisplayTarget.textContent = translate(
-          "replay.speed",
-          {
-            speed: Math.round(speedMs * 3.6),
-          },
-        )
+        const speedKmh = speedMs * 3.6
+        if (this._distanceUnit() === "mi") {
+          this.c.replaySpeedDisplayTarget.textContent = translate(
+            "replay.speed_mph",
+            { speed: Math.round(speedKmh * 0.621371) },
+          )
+        } else {
+          this.c.replaySpeedDisplayTarget.textContent = translate(
+            "replay.speed",
+            { speed: Math.round(speedKmh) },
+          )
+        }
         return
       }
     }

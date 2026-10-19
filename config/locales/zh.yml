@@ -4172,6 +4172,7 @@ zh:
       day_count: 第 %{current} 天，共 %{total} 天
       point_count: 第 %{current} 个轨迹点，共 %{total} 个
       speed: "%{speed} 公里/小时"
+      speed_mph: "%{speed} 英里/小时"
       no_data: 无数据
     places:
       create_new: 创建新地点

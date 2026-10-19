@@ -1952,6 +1952,7 @@ export default class extends Controller {
       controller: this,
       map: this.map,
       timezone: this.timezoneValue,
+      distanceUnit: () => this.settings?.distance_unit || "km",
       markerLayer: () => this.layerManager?.getLayer("replayMarker"),
       loadPoints: async () => {
         await this.mapDataManager.ensurePointsLoaded()

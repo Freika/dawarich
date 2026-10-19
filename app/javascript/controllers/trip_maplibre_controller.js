@@ -59,6 +59,7 @@ export default class extends Controller {
   static values = {
     apiKey: String,
     timezone: String,
+    distanceUnit: { type: String, default: "km" },
     startedAt: String,
     endedAt: String,
     tripId: Number,
@@ -677,6 +678,7 @@ export default class extends Controller {
         dayRoutesLayer: this.dayRoutesLayer,
         element: this.element,
         timezone: this.timezoneValue,
+        distanceUnit: () => this.distanceUnitValue,
         allPoints: this.allPoints,
         getPhotos: () =>
           this.photosActive && this.photosGeoJSON

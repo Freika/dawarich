@@ -5342,6 +5342,7 @@ fr:
       day_count: Jour %{current} sur %{total}
       point_count: Point %{current} sur %{total}
       speed: "%{speed} km/h"
+      speed_mph: "%{speed} mph"
       no_data: Aucune donnée disponible
     places:
       create_new: Créer un nouveau lieu
