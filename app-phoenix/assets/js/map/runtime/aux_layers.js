@@ -55,6 +55,9 @@ export function createHostAuxLayers({
     get photos() {
       return photos
     },
+    get family() {
+      return family
+    },
     destroy() {
       family?.destroy()
       photos?.remove()

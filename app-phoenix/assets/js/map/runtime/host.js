@@ -23,6 +23,7 @@ import { waitForStyle } from "./style_ready.js";
 import { createLayerPreferences } from "./layer_preferences.js";
 import { installHostSource } from "./studio_source.js";
 import { installMapRetry } from "./retry.js";
+import { installRealtimeActions } from "./realtime_actions.js";
 import { createViewportFit } from "./viewport_fit.js";
 export { createMapRuntime };
 export function mountHost({
@@ -293,5 +294,6 @@ export function mountHost({
     onDestroy: preferences.destroy,
   });
   retry = installMapRetry({ owner, root: element, layers: () => layers, density: () => density });
+  installRealtimeActions(owner, () => ({ layers, density, recent, family: aux?.family }));
   return owner;
 }

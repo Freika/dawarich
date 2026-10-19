@@ -1,16 +1,26 @@
-export function createRefresh({ run, timers = globalThis }) {
+export function createRefresh({ run, timers = globalThis, delay = () => 0 }) {
   let closed = false,
     timer = null,
+    dueAt = 0,
     running = false,
     dirty = false,
     pending = null,
     settle = null
+  const now = () => timers.now?.() ?? Date.now()
   function promise() {
     if (!pending)
       pending = new Promise((resolve) => {
         settle = resolve
       })
     return pending
+  }
+  function arm() {
+    const wait = delay(),
+      due = now() + wait
+    if (timer !== null && dueAt <= due) return
+    if (timer !== null) timers.clearTimeout(timer)
+    dueAt = due
+    timer = timers.setTimeout(flush, wait)
   }
   async function flush() {
     timer = null
@@ -25,7 +35,7 @@ export function createRefresh({ run, timers = globalThis }) {
     }
     running = false
     if (closed) return
-    if (dirty) timer = timers.setTimeout(flush, 0)
+    if (dirty) arm()
     else {
       settle?.(result)
       pending = null
@@ -37,7 +47,7 @@ export function createRefresh({ run, timers = globalThis }) {
       if (closed) return Promise.resolve("cancelled")
       const result = promise()
       if (running) dirty = true
-      else if (timer === null) timer = timers.setTimeout(flush, 0)
+      else arm()
       return result
     },
     destroy() {

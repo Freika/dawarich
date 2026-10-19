@@ -96,10 +96,10 @@ defmodule Dawarich.Mail.OauthAccountLinkWorkerTest do
   test "job logs contain neither the link URL nor the recipient email" do
     previous = Logger.level()
     Logger.configure(level: :info)
-    :ok = Oban.Telemetry.attach_default_logger(level: :info)
+    :ok = Dawarich.JobLogger.attach()
 
     on_exit(fn ->
-      Oban.Telemetry.detach_default_logger()
+      Dawarich.JobLogger.detach()
       Logger.configure(level: previous)
     end)
 
@@ -113,7 +113,6 @@ defmodule Dawarich.Mail.OauthAccountLinkWorkerTest do
     assert_received {:mail, %{to: @email}}
     assert args["event_id"] == event_id
     assert log =~ "Dawarich.Mail.OauthAccountLinkWorker"
-    assert log =~ "[FILTERED]"
     refute log =~ event_id
     refute log =~ "dawarich.example.test"
     refute log =~ @token

@@ -59,7 +59,7 @@ defmodule Dawarich.Maps.Realtime do
   def topics(_, _), do: {:error, :not_found}
 
   defp map_topics(scope, user, opts) do
-    topics = user_topics(user.id)
+    topics = stream_topics(user.id)
 
     topics =
       if Dawarich.UserSettings.get(user)["live_map_enabled"] == false,
@@ -81,8 +81,10 @@ defmodule Dawarich.Maps.Realtime do
     end
   end
 
+  defp stream_topics(id), do: Map.new(~w(points tracks map_edits), &{stream([&1, {:user, id}]), &1})
+
   defp user_topics(id) do
-    Map.new(~w(points tracks map_edits), &{stream([&1, {:user, id}]), &1})
+    stream_topics(id)
     |> Map.put("imports:user:#{id}:native", "imports")
     |> Map.put("notifications:user:#{id}", "progress")
     |> Map.put("sharing:user:#{id}", "sharing")

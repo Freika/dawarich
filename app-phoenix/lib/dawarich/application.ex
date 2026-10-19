@@ -94,7 +94,7 @@ defmodule Dawarich.Application do
     Dawarich.Experimental.create_cache_table()
 
     if jobs_runtime?() do
-      Oban.Telemetry.attach_default_logger(level: :info, events: [:job, :peer])
+      Dawarich.JobLogger.attach()
     end
 
     Front.log(plan)

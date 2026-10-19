@@ -9,6 +9,8 @@ defmodule Dawarich.Test.NativeMapBus do
     {:ok, make_ref()}
   end
 
+  def unsubscribe(topic, _ref), do: unsubscribe(topic)
+
   def unsubscribe(topic) do
     send(
       Application.get_env(:dawarich, :native_map_bus_owner, self()),

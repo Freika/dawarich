@@ -37,6 +37,22 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
     Subscriptions.release(socket)
   end
 
+  test "a Family topic the chrome already watches is delivered once and survives release", %{
+    scope: scope,
+    socket: socket
+  } do
+    family!()
+    family_layer!(true)
+    :ok = Phoenix.PubSub.subscribe(Dawarich.PubSub, "family:user:881401")
+    socket = Subscriptions.sync(socket, %{kind: :map, scope: scope})
+    :ok = Dawarich.Families.Events.broadcast(scope.user.id, :consent)
+    assert_receive {:domain_changed, 881_401, :consent}
+    refute_receive {:domain_changed, 881_401, :consent}, 50
+    Subscriptions.release(socket)
+    :ok = Dawarich.Families.Events.broadcast(scope.user.id, :consent)
+    assert_receive {:domain_changed, 881_401, :consent}
+  end
+
   test "native map Family delivery invalidates only an admitted enabled membership", %{
     scope: scope,
     socket: socket
@@ -176,7 +192,12 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
     scope: scope,
     socket: socket
   } do
-    socket = Subscriptions.sync(socket, %{kind: :map, scope: scope}, bus: NativeMapBus)
+    socket =
+      Subscriptions.sync(socket, %{kind: :map, scope: scope},
+        bus: NativeMapBus,
+        admission_ttl_ms: 0
+      )
+
     topic = RailsMessages.broadcasting(["points", {:user, 881_401}])
     assert_receive {:native_subscribe, ^topic}
     Repo.query!("UPDATE users SET deleted_at=now() WHERE id=$1", [881_401])
@@ -188,6 +209,61 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
     assert_receive {:native_unsubscribe, ^topic}
     assert hd(socket.private.live_temp[:push_events]) == ["map:clear", %{code: "stale_session"}]
     refute inspect(socket.assigns) =~ "[52,13"
+  end
+
+  test "the map reuses one admission for every message inside the window", %{
+    scope: scope,
+    socket: socket
+  } do
+    socket = Subscriptions.sync(socket, %{kind: :map, scope: scope}, bus: NativeMapBus)
+    topic = RailsMessages.broadcasting(["tracks", {:user, 881_401}])
+
+    reads =
+      queries(fn ->
+        Enum.reduce(1..100, socket, fn n, socket ->
+          assert {:delivered, socket} =
+                   Subscriptions.deliver(socket, {:native_message, topic, "track-#{n}"})
+
+          socket
+        end)
+      end)
+
+    assert reads == []
+    Subscriptions.release(socket)
+  end
+
+  test "a revoked map session is refused on the first message after the window", %{
+    scope: scope,
+    socket: socket
+  } do
+    socket =
+      Subscriptions.sync(socket, %{kind: :map, scope: scope},
+        bus: NativeMapBus,
+        admission_ttl_ms: 40
+      )
+
+    topic = RailsMessages.broadcasting(["tracks", {:user, 881_401}])
+    Repo.query!("UPDATE users SET deleted_at=now() WHERE id=$1", [881_401])
+    assert {:delivered, socket} = Subscriptions.deliver(socket, {:native_message, topic, "a"})
+    Process.sleep(50)
+    assert {:refused, socket} = Subscriptions.deliver(socket, {:native_message, topic, "b"})
+    assert hd(socket.private.live_temp[:push_events]) == ["map:clear", %{code: "stale_session"}]
+  end
+
+  test "Family domain messages re-admit inside the map window", %{
+    scope: scope,
+    socket: socket
+  } do
+    family!()
+    family_layer!(true)
+    socket = Subscriptions.sync(socket, %{kind: :map, scope: scope}, bus: NativeMapBus)
+    topic = "family:user:881401"
+    Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [881_401])
+
+    assert {:ignored, socket} =
+             Subscriptions.deliver(socket, {:native_message, topic, "synthetic-family-update"})
+
+    refute Map.has_key?(socket.assigns.native_subscriptions.topics, topic)
   end
 
   test "reconnect refreshes revision without replaying duplicate edits", %{
@@ -239,6 +315,71 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
     socket = Subscriptions.sync(socket, descriptor, bus: NativeMapBus)
     assert {:ignored, _} = Subscriptions.deliver(socket, {:native_message, "foreign", "private"})
     Subscriptions.release(socket)
+  end
+
+  test "the map listens only to the streams the Rails map listens to", %{
+    scope: scope,
+    socket: socket
+  } do
+    socket = Subscriptions.sync(socket, %{kind: :map, scope: scope}, bus: NativeMapBus)
+    kinds = socket.assigns.native_subscriptions.topics |> Map.keys() |> Enum.sort()
+
+    assert kinds ==
+             Enum.sort(
+               for(
+                 stream <- ~w(points tracks map_edits),
+                 do: RailsMessages.broadcasting([stream, {:user, 881_401}])
+               )
+             )
+
+    for kind <- [:imports, :notifications, :sharing] do
+      message = {:domain_changed, 881_401, kind}
+      assert {:ignored, _} = Subscriptions.deliver(socket, message)
+    end
+
+    assert socket.private.live_temp[:push_events] in [nil, []]
+    Subscriptions.release(socket)
+  end
+
+  test "a domain message for a topic the map does not hold costs no admission", %{
+    scope: scope,
+    socket: socket
+  } do
+    socket = Subscriptions.sync(socket, %{kind: :map, scope: scope})
+
+    assert queries(fn ->
+             assert {:ignored, _} =
+                      Subscriptions.deliver(socket, {:domain_changed, 881_401, :notifications})
+           end) == []
+
+    Subscriptions.release(socket)
+  end
+
+  defp queries(fun) do
+    owner = self()
+    key = {__MODULE__, make_ref()}
+
+    :telemetry.attach(
+      key,
+      [:dawarich, :repo, :query],
+      fn _, _, metadata, _ -> if self() == owner, do: send(owner, {key, metadata.query}) end,
+      nil
+    )
+
+    try do
+      fun.()
+      collect(key, [])
+    after
+      :telemetry.detach(key)
+    end
+  end
+
+  defp collect(key, acc) do
+    receive do
+      {^key, query} -> collect(key, [query | acc])
+    after
+      0 -> Enum.reverse(acc)
+    end
   end
 
   test "native live mode preference releases only point delivery and resubscribes once", %{

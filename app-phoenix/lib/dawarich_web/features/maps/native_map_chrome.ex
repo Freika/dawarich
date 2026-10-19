@@ -64,6 +64,7 @@ defmodule DawarichWeb.NativeMapChrome do
     {:halt, refresh(socket)}
   end
 
+  defp event(event, _, socket) when event in ~w(map:ready map:failed), do: {:cont, socket}
   defp event(_, _, socket), do: {:cont, refresh(socket)}
 
   def header(assigns) do

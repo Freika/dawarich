@@ -50,22 +50,9 @@ defmodule Dawarich.Transportation.AfterCommit do
   defp publish_progress(repo, payload, intent) do
     user = payload["user_id"]
     RecalculationStatus.increment(user, payload["event_id"], DateTime.utc_now(), repo)
-    status = RecalculationStatus.data(user, repo)
 
     Dawarich.AfterCommit.once(repo, intent, fn ->
       RecalculationFence.progress(repo, user, payload["event_id"])
-
-      :ok =
-        Dawarich.Cable.broadcast_to(
-          "tracks",
-          {:user, user},
-          %{
-            "action" => "transport_progress",
-            "status" => status
-          },
-          repo: repo
-        )
-
       :ok
     end)
   end
