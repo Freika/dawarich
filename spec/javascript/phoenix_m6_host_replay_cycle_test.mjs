@@ -10,7 +10,9 @@ const replaySelector = (key) =>
 const REPLAY_TARGETS = {"play": "replayPlayButton", "speed": "replaySpeedSlider", "speedLabel": "replaySpeedLabel", "day": "replayDayDisplay", "dayCount": "replayDayCount", "time": "replayTimeDisplay", "velocity": "replaySpeedDisplay", "noData": "replayDataIndicator", "follow": "replayFollowButton", "scrubber": "replayScrubber", "prev": "replayPrevDayButton", "next": "replayNextDayButton", "cycle": "replayCycleControls", "cycleCount": "replayPointCounter"}
 
 test("native replay cycles colocated minute points without creating another clock", async () => {
-  const f = fixture()
+  const f = fixture({
+    uiLabels: { "replay.point_count": "Point {current} of {total}" },
+  })
   const controls = Object.fromEntries(
     [
       "play",
@@ -43,13 +45,13 @@ test("native replay cycles colocated minute points without creating another cloc
   await f.owner.mount()
   await f.owner.replay.open()
   assert.equal(controls.cycle.hidden, false)
-  assert.equal(controls.cycleCount.textContent, "1 / 2")
+  assert.equal(controls.cycleCount.textContent, "Point 1 of 2")
   controls.cycleNext.emit("click")
   assert.equal(
     f.sources.get("native-replay-marker").data.geometry.coordinates[0],
     14,
   )
-  assert.equal(controls.cycleCount.textContent, "2 / 2")
+  assert.equal(controls.cycleCount.textContent, "Point 2 of 2")
   controls.cyclePrev.emit("click")
   assert.equal(
     f.sources.get("native-replay-marker").data.geometry.coordinates[0],

@@ -36,7 +36,10 @@ export function createReplayPanel({ elements, replay, translate }) {
     if (elements.cycle) {
       const count = manager.getPointCountAtMinute(minute)
       hide(elements.cycle, count < 2)
-      elements.cycleCount.textContent = `${manager.cycleIndex + 1} / ${count}`
+      elements.cycleCount.textContent = translate("replay.point_count", {
+        current: (manager.cycleIndex % count) + 1,
+        total: count,
+      })
     }
     elements.time.textContent = manager.formatCurrentMinute(minute)
     hide(elements.noData, manager.hasDataAtMinute(minute))
