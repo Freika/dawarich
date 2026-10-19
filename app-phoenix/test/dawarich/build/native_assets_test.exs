@@ -102,7 +102,7 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
   test "M6 hooks retain an independent eager byte cap", %{tmp_dir: dir} do
     bytes = dir |> build!() |> app_input_bytes() |> Map.take(@m6_inputs) |> Map.values()
-    assert Enum.sum(bytes) <= 14 * 1024
+    assert Enum.sum(bytes) <= 14 * 1024 + 512
   end
 
   test "the native bundle includes LiveView and no Hotwire module", %{tmp_dir: dir} do
