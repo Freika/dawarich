@@ -4,6 +4,8 @@ import { registerRTLTextPlugin } from "../style/rtl.js"
 import { createLifecycle } from "./lifecycle.js"
 import { createOperations } from "./operation.js"
 
+const RESIZE_SETTLE_MS = 150
+
 export function createMapRuntime({
   element,
   config,
@@ -119,11 +121,18 @@ export function createMapRuntime({
         element.ownerDocument.defaultView?.ResizeObserver ??
         globalThis.ResizeObserver
       if (Observer) {
+        let settle = null
         const observer = new Observer(() => {
-          if (!lifetime.destroyed) owned.resize()
+          timers.clearTimeout(settle)
+          settle = timers.setTimeout(() => {
+            if (!lifetime.destroyed) owned.resize()
+          }, RESIZE_SETTLE_MS)
         })
         observer.observe(element)
-        lifetime.own(() => observer.disconnect())
+        lifetime.own(() => {
+          observer.disconnect()
+          timers.clearTimeout(settle)
+        })
       }
       if (
         current.navigationControls !== false &&
