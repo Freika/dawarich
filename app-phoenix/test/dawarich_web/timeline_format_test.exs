@@ -62,11 +62,12 @@ defmodule DawarichWeb.TimelineFormatTest do
            }
   end
 
-  test "native visit card safely displays the normalized place address" do
+  test "native visit row escapes markup in place-derived names" do
     entry = %{
       visit_id: 1160,
-      name: "Manual",
-      place: %{name: "Manual", address: "<script>street</script> 12, City"},
+      name: nil,
+      editable_name: nil,
+      place: %{name: "<script>street</script> 12, City", lat: 51.3, lng: 12.3},
       area: nil,
       status: "confirmed",
       confidence_band: nil,
@@ -82,15 +83,19 @@ defmodule DawarichWeb.TimelineFormatTest do
     }
 
     html =
-      Phoenix.LiveViewTest.render_component(&DawarichWeb.NativeTimelineEntries.visit/1,
+      Phoenix.LiveViewTest.render_component(&DawarichWeb.TimelineEntries.visit_entry/1,
         entry: entry,
-        locale: "en"
+        locale: "en",
+        native: true,
+        ctx: %{redetected: false, csrf: "", api_key: ""}
       )
 
     doc = LazyHTML.from_document(html)
 
-    assert LazyHTML.query(doc, "[data-testid=visit-address-1160]") |> LazyHTML.text() ==
-             entry.place.address
+    assert LazyHTML.query(doc, "[data-testid=visit-name-1160]") |> LazyHTML.text() ==
+             "<script>street</script> 12"
+
+    assert LazyHTML.query(doc, ".visit-row__address") |> LazyHTML.text() == "City"
 
     assert Enum.count(LazyHTML.query(doc, "script")) == 0
   end

@@ -14,6 +14,7 @@ defmodule DawarichWeb.NativeMapTimelineTab do
   attr :selected_date, :string, default: nil
   attr :tags, :list, default: []
   attr :track_info, :any, default: nil
+  attr :editing, :map, default: nil
   attr :unit, :string, default: "km"
 
   def tab(assigns) do
@@ -101,9 +102,11 @@ defmodule DawarichWeb.NativeMapTimelineTab do
               filter={@filter}
               selection={@selection}
               selected_visit={@selected_visit}
+              editing={@editing}
+              track_info={@track_info}
+              unit={@unit}
               locale={@locale}
             />
-            <DawarichWeb.NativeTrackInfo.card track={@track_info} unit={@unit} locale={@locale} />
           <% else %>
             <div class="timeline-main__empty">
               {p(@locale, "pick_a_day_in_the_calendar_to_see_visits")}

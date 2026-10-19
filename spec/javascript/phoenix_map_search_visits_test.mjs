@@ -26,8 +26,22 @@ function element(tag) {
     tag,
     children: [],
     textContent: "",
+    className: "",
     hidden: false,
     attributes: {},
+    classList: {
+      toggle(name, force) {
+        const names = new Set(node.className.split(/\s+/).filter(Boolean))
+        const on = force ?? !names.has(name)
+        if (on) names.add(name)
+        else names.delete(name)
+        node.className = [...names].join(" ")
+        return on
+      },
+      add: (name) => node.classList.toggle(name, true),
+      remove: (name) => node.classList.toggle(name, false),
+      contains: (name) => node.className.split(/\s+/).includes(name),
+    },
     addEventListener: (type, fn) => listeners.set(type, fn),
     setAttribute(name, value) {
       node.attributes[name] = value
@@ -95,7 +109,9 @@ test("visit results group by profile-zone year and open a prefilled create dialo
   await opened
 
   assert.ok(texts(container).includes("Cafe <b>"))
-  assert.ok(all(container).some((node) => node.tag === "details"))
+  assert.ok(
+    all(container).some((node) => node.className === "year-section"),
+  )
   const visit = all(container).find(
     (node) => node.attributes["data-visit-index"] === "0",
   )

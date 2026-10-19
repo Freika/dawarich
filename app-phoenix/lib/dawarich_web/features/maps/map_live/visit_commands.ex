@@ -26,6 +26,18 @@ defmodule DawarichWeb.MapLive.VisitCommands do
     end
   end
 
+  def handle_event("visit:inline", %{"id" => id}, socket) do
+    case socket.assigns[:visit_dialog] do
+      %{inline: true, id: current} when current != nil ->
+        if to_string(current) == to_string(id),
+          do: {:noreply, assign(socket, :visit_dialog, nil)},
+          else: inline(socket, id)
+
+      _ ->
+        inline(socket, id)
+    end
+  end
+
   def handle_event("visit:edit", %{"id" => id}, socket) do
     scope = socket.assigns.current_scope
 
@@ -127,6 +139,13 @@ defmodule DawarichWeb.MapLive.VisitCommands do
       {:ok, notes} -> notes
       _ -> []
     end
+  end
+
+  defp inline(socket, id) do
+    {:noreply, socket} = handle_event("visit:edit", %{"id" => id}, socket)
+
+    dialog = socket.assigns.visit_dialog
+    {:noreply, assign(socket, :visit_dialog, dialog && Map.put(dialog, :inline, true))}
   end
 
   defp with_dialog(socket, fun) do

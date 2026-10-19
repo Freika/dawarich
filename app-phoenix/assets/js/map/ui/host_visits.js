@@ -68,7 +68,7 @@ export function createHostVisits({
         })(),
       });
       root
-        ?.querySelector(`#native-visit-${id}`)
+        ?.querySelector(`#visit_entry_${id}`)
         ?.scrollIntoView?.({ block: "nearest" });
     } catch {
     } finally {
@@ -93,13 +93,13 @@ export function createHostVisits({
     paints.clear();
   }
   function enter(event) {
-    const row = event.target.closest?.("[data-entry]");
-    if (!row || !["visit", "journey"].includes(row.dataset.entry)) return;
+    const row = event.target.closest?.("[data-entry-type]");
+    if (!row || !["visit", "journey"].includes(row.dataset.entryType)) return;
     leave();
     const start = Date.parse(row.dataset.startedAt) / 1000;
     const end = Date.parse(row.dataset.endedAt) / 1000;
     if (!Number.isFinite(start) || !Number.isFinite(end)) return;
-    const visit = row.dataset.entry === "visit";
+    const visit = row.dataset.entryType === "visit";
     const id = Number(row.dataset.visitId);
     const opacity = visit ? ["case", ["==", ["get", "id"], id], 1, 0.15] : 0.05;
     paint("visits", "circle-opacity", opacity, 0.9);

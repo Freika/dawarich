@@ -3,6 +3,7 @@ defmodule Dawarich.Maps.Timeline do
   alias Dawarich.{MapWindow, Maps, RubyInteger}
   alias Dawarich.Visits.Timeline, as: Source
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
+  alias Dawarich.Formatting.StatsFormat
 
   @bounds ~w(start_at end_at)
 
@@ -28,6 +29,7 @@ defmodule Dawarich.Maps.Timeline do
              redetected: page.redetected,
              requested_date: window.start_date,
              restricted: page.restricted,
+             alert_href: alert_href(page.restricted, actor, now, opts),
              unit: Dawarich.Timeline.Days.unit(Dawarich.UserSettings.get(actor)),
              next_cursor: page.next_cursor,
              revision: page.revision,
@@ -64,6 +66,18 @@ defmodule Dawarich.Maps.Timeline do
       {key, if(Ruby.blank?(value), do: Integer.to_string(DateTime.to_unix(now)), else: value)}
     end)
   end
+
+  defp alert_href(false, _actor, _now, _opts), do: nil
+
+  defp alert_href(_restricted, actor, now, opts),
+    do:
+      StatsFormat.upgrade_url(
+        actor,
+        now,
+        source_options(opts)[:self_hosted],
+        "data_window",
+        "timeline_feed"
+      )
 
   defp source_options(opts),
     do:

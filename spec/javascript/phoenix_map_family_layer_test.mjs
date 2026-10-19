@@ -157,7 +157,7 @@ test("main map Family layer reads admitted locations history and renders safe ce
   button.click()
   assert.deepEqual(f.flights, [{ center: [13.5, 52.4], zoom: 15 }])
   assert.equal(f.status.textContent, "Zentriert")
-  assert.equal(f.polls.size, 1)
+  assert.equal(f.polls.size, 0)
   f.owner.destroy()
   assert.equal(f.polls.size, 0)
   assert.equal(f.released, 1)
@@ -197,13 +197,12 @@ test("Family refresh failure clears previous visible data without failing the ma
   assert.deepEqual(f.paints.at(-1), [[]])
   f.owner.destroy()
 })
-test("destroyed Family layer cannot restart its polling or publish late rows", async () => {
+test("destroyed Family layer never polls and cannot publish late rows", async () => {
   const f = fixture()
   await f.owner.update(f.config)
-  const poll = [...f.polls][0]
+  assert.equal(f.polls.size, 0)
   f.owner.destroy()
   const count = f.reads.length
-  await poll()
   await f.owner.update(f.config)
   assert.equal(f.reads.length, count)
   assert.deepEqual(f.list.children, [])

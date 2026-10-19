@@ -360,16 +360,13 @@ defmodule DawarichWeb.NativeM6HostTest do
            }
 
     render_async(view, 5000)
-    assert has_element?(view, "#native-visit-#{visit}.visit-row--selected.bg-base-200")
+    assert has_element?(view, "#visit_entry_#{visit}.visit-row--selected")
 
-    assert has_element?(
-             view,
-             "#native-visit-#{visit} button.visit-row__time[phx-click='visit:select']"
-           )
+    assert has_element?(view, "li#visit_entry_#{visit}[phx-click='visit:select'][role=button]")
 
     refute has_element?(view, "#native-visit-dialog")
     assert_push_event(view, "visit:selection", %{id: ^visit})
-    view |> element("#native-visit-#{visit} button.visit-row__time") |> render_click()
+    view |> element("li#visit_entry_#{visit}") |> render_click()
     assert_push_event(view, "visit:selection", %{id: ^visit})
     render_patch(view, @second)
     render_async(view, 5000)
@@ -460,7 +457,7 @@ defmodule DawarichWeb.NativeM6HostTest do
 
     {:ok, view, _} = open(id, path)
     render_async(view, 5000)
-    assert has_element?(view, "#native-visit-#{visit}.visit-row--selected")
+    assert has_element?(view, "#visit_entry_#{visit}.visit-row--selected")
     assert_push_event(view, "visit:selection", %{id: ^visit})
     refute has_element?(view, "#native-visit-dialog")
     assert config(view)["range"]["startAt"] =~ "2026-03-30T00:00:00"
@@ -476,7 +473,7 @@ defmodule DawarichWeb.NativeM6HostTest do
 
     render_patch(view, String.replace(path, "visit_id=#{visit}", "visit_id=#{foreign_visit}"))
     refute has_element?(view, ".visit-row--selected")
-    refute has_element?(view, "#native-visit-#{foreign_visit}")
+    refute has_element?(view, "#visit_entry_#{foreign_visit}")
     refute_push_event(view, "visit:selection", %{id: ^foreign_visit}, 0)
     render_patch(view, String.replace(path, "visit_id=#{visit}", "visit_id=-1"))
     refute has_element?(view, ".visit-row--selected")
@@ -693,8 +690,43 @@ defmodule DawarichWeb.NativeM6HostTest do
              ".timeline-rail__section-header a[data-testid=tags-manage-link][href='/tags'][target='_blank']"
            )
 
-    view |> element("#native-timeline-filter-clear") |> render_click()
+    view |> element("#native-timeline-filter") |> render_change(%{"q" => ""})
     assert has_element?(view, ".timeline-rail input[name=q][value='']")
+  end
+
+  test "a timeline visit row renames inline the way the Rails editor does", %{id: id} do
+    place = Dawarich.Test.FrameSeeds.place!(id, id * 10, "Cafe")
+
+    visit =
+      Dawarich.Test.FrameSeeds.visit!(id, id * 10, %{
+        place_id: place,
+        name: "Old name",
+        started_at: ~N[2026-03-30 09:00:00],
+        ended_at: ~N[2026-03-30 10:00:00]
+      })
+
+    {:ok, view, _} = open(id, @second <> "&panel=timeline")
+    render_async(view, 5000)
+    row = "#visit_entry_#{visit}"
+    assert has_element?(view, "#{row} .visit-row__editor.hidden")
+
+    view |> element("#{row} .visit-edit-btn") |> render_click()
+    assert has_element?(view, "#{row} .visit-edit-btn[aria-expanded=true]")
+    refute has_element?(view, "#{row} .visit-row__editor.hidden")
+    refute has_element?(view, "#native-visit-dialog")
+
+    view
+    |> form("#{row} .visit-editor__name-form", visit: %{name: "New name"})
+    |> render_submit()
+
+    render_async(view, 5000)
+    assert rows("SELECT name FROM visits WHERE id=$1", [visit]) == [["New name"]]
+    assert has_element?(view, "#{row} .visit-row__editor.hidden")
+    assert has_element?(view, "#{row} [data-testid=visit-name-#{visit}]", "New name")
+
+    view |> element("#{row} .visit-edit-btn") |> render_click()
+    view |> element("#{row} .visit-edit-btn") |> render_click()
+    assert has_element?(view, "#{row} .visit-row__editor.hidden")
   end
 
   test "native production host edits a visit adds its note and opens an owned point address", %{

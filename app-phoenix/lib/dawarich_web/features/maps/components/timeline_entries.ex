@@ -4,12 +4,18 @@ defmodule DawarichWeb.TimelineEntries do
 
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.{Icon, LocalizedTime, TimelineFormat}
+  alias Phoenix.LiveView.JS
 
   @row_actions "click->timeline-feed#selectVisit keydown.enter->timeline-feed#selectVisit keydown.space->timeline-feed#selectVisit mouseenter->timeline-feed#entryHover mouseleave->timeline-feed#entryUnhover"
 
   attr :entry, :map, required: true
   attr :locale, :string, required: true
   attr :ctx, :map, required: true
+  attr :native, :boolean, default: false
+  attr :checked, :boolean, default: false
+  attr :selected, :boolean, default: false
+  attr :hidden, :boolean, default: false
+  attr :editing, :map, default: nil
 
   def visit_entry(assigns) do
     entry = assigns.entry
@@ -24,7 +30,9 @@ defmodule DawarichWeb.TimelineEntries do
         ["visit-row"] ++
           if(all_day, do: ["visit-row--all-day"], else: []) ++
           if(TimelineFormat.subdued?(entry, gating), do: ["visit-row--subdued"], else: []) ++
-          if(TimelineFormat.low_confidence?(entry, gating), do: ["visit-row--lowconf"], else: []),
+          if(TimelineFormat.low_confidence?(entry, gating), do: ["visit-row--lowconf"], else: []) ++
+          if(assigns.selected, do: ["visit-row--selected"], else: []) ++
+          if(assigns.hidden, do: ["visit-row--hidden"], else: []),
         " "
       )
 
@@ -52,12 +60,16 @@ defmodule DawarichWeb.TimelineEntries do
       tabindex="0"
       role="button"
       aria-label={"#{@name} · #{@start_label}"}
-      data-action={@row_actions}
+      data-action={!@native && @row_actions}
+      phx-click={@native && "visit:select"}
+      phx-keydown={@native && "visit:select"}
+      phx-key={@native && "Enter"}
+      phx-value-id={@native && @entry.visit_id}
       data-entry-type="visit"
       data-started-at={@entry.started_at}
       data-ended-at={@entry.ended_at}
       data-search-tokens={TimelineFormat.search_tokens(@entry)}
-      data-controller={@controllers}
+      data-controller={!@native && @controllers}
       {@coord_attrs}
     >
       <span class="visit-row__check">
@@ -65,7 +77,12 @@ defmodule DawarichWeb.TimelineEntries do
           type="checkbox"
           data-timeline-feed-target="rowCheck"
           data-visit-id={@entry.visit_id}
-          data-action="change->timeline-feed#rowCheckChanged click->timeline-feed#stopPropagation"
+          data-action={
+            !@native && "change->timeline-feed#rowCheckChanged click->timeline-feed#stopPropagation"
+          }
+          checked={@checked}
+          phx-click={@native && "timeline:select"}
+          phx-value-id={@native && @entry.visit_id}
           aria-label={v(@locale, "select_visit_for_merge")}
           tabindex="-1"
         />
@@ -99,9 +116,11 @@ defmodule DawarichWeb.TimelineEntries do
           class="visit-edit-btn"
           data-testid="visit-edit"
           data-visit-editor-target="button"
-          aria-expanded="false"
+          aria-expanded={to_string(@editing != nil)}
           title={v(@locale, "edit")}
-          data-action="click->visit-editor#toggle"
+          data-action={!@native && "click->visit-editor#toggle"}
+          phx-click={@native && "visit:inline"}
+          phx-value-id={@native && @entry.visit_id}
         >
           <Icon.icon name="square-pen" class="w-3 h-3" />
           <span class="sr-only">{v(@locale, "edit")}</span>
@@ -112,10 +131,21 @@ defmodule DawarichWeb.TimelineEntries do
         )}</span>
       </div>
       <div
-        class="visit-row__editor hidden"
+        class={["visit-row__editor", !@editing && "hidden"]}
         data-visit-editor-target="panel"
-        data-action="click->timeline-feed#stopPropagation keydown->timeline-feed#stopPropagation"
+        data-action={
+          !@native && "click->timeline-feed#stopPropagation keydown->timeline-feed#stopPropagation"
+        }
       >
+        <p
+          :for={error <- (@editing && @editing.errors) || []}
+          class="text-error text-xs [overflow-wrap:anywhere]"
+          role="alert"
+        >
+          {if is_binary(error),
+            do: error,
+            else: t(@locale, "controllers.api.v1.settings.something_went_wrong", %{})}
+        </p>
         <label class="visit-editor__label" for={"visit-editor-name-#{@entry.visit_id}"}>{v(
           @locale,
           "name"
@@ -125,6 +155,7 @@ defmodule DawarichWeb.TimelineEntries do
           action={"/visits/#{@entry.visit_id}"}
           accept-charset="UTF-8"
           method="post"
+          phx-submit={@native && "visit:save"}
         >
           <input type="hidden" name="_method" value="patch" />
           <input type="hidden" name="authenticity_token" value={@ctx.csrf} />
@@ -147,14 +178,28 @@ defmodule DawarichWeb.TimelineEntries do
         </form>
         <%= if @coords do %>
           <label class="visit-editor__label">{v(@locale, "attached_place")}</label>
-          <div class="visit-row__place-search" data-visit-place-search-target="mount"></div>
+          <div class="visit-row__place-search" data-visit-place-search-target="mount">
+            <DawarichWeb.NativeVisitInlinePlaces.places
+              :if={@editing}
+              editing={@editing}
+              locale={@locale}
+            />
+          </div>
         <% end %>
         <div class="visit-editor__foot">
-          <form class="button_to" method="post" action={"/visits/#{@entry.visit_id}"}>
+          <form
+            class="button_to"
+            method="post"
+            action={"/visits/#{@entry.visit_id}"}
+            phx-submit={@native && JS.push("visit:delete", value: %{id: @entry.visit_id})}
+          >
             <input type="hidden" name="_method" value="delete" />
             <button
               data-testid="visit-delete"
-              data-turbo-confirm={v(@locale, "delete_this_visit_your_location_points_stay")}
+              data-turbo-confirm={
+                !@native && v(@locale, "delete_this_visit_your_location_points_stay")
+              }
+              data-confirm={@native && v(@locale, "delete_this_visit_your_location_points_stay")}
               class="btn btn-xs btn-ghost text-error"
               type="submit"
             >

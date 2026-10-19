@@ -158,11 +158,7 @@ test("native track clicks send only owned scalar commands and replay seeks the s
 test("map track hover mirrors the native journey row and removes its owned hover drawing", async () => {
   const f = fixture({ tracksEnabled: true })
   const row = new Element()
-  const classes = new Set()
-  row.classList = {
-    add: (value) => classes.add(value),
-    remove: (value) => classes.delete(value),
-  }
+  const classes = { has: (value) => row.classList.contains(value) }
   const canvas = { style: { cursor: "" } }
   f.map.getCanvas = () => canvas
   f.nodes.set('[data-track-id="7"]', row)
@@ -458,7 +454,7 @@ test("native timeline keyboard steps profile calendar dates ignores text inputs 
   const f = fixture({ panel: "timeline" })
   const document = new Element()
   f.root.ownerDocument = document
-  f.root.dataset.selectedDate = "2026-03-29"
+  f.root.dataset.nativeSelectedDate = "2026-03-29"
   const key = (name, target = { closest: () => null }) => ({
     key: name,
     target,
@@ -471,7 +467,7 @@ test("native timeline keyboard steps profile calendar dates ignores text inputs 
       f.pushed.filter(({ event }) => event === "calendar:day").at(-1).payload,
       { date: "2026-03-28" },
     )
-    f.root.dataset.selectedDate = "2026-03-30"
+    f.root.dataset.nativeSelectedDate = "2026-03-30"
     document.emit("keydown", key("ArrowRight"))
     assert.deepEqual(
       f.pushed.filter(({ event }) => event === "calendar:day").at(-1).payload,

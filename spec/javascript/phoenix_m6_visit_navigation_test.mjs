@@ -100,10 +100,10 @@ test("native visit timeline hover dims other markers and overlapping time paints
     f.root.emit("pointerover", {
       target: {
         closest: (selector) =>
-          selector === "[data-entry]"
+          selector === "[data-entry-type]"
             ? {
                 dataset: {
-                  entry: "visit",
+                  entryType: "visit",
                   visitId: "7",
                   startedAt: visits[0].started_at,
                   endedAt: visits[0].ended_at,

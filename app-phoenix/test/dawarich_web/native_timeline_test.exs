@@ -41,7 +41,8 @@ defmodule DawarichWeb.NativeTimelineTest do
         tags={[%{name: "Food", color: "#ff0000", icon: "🍕"}, %{name: "Sport", color: nil, icon: nil}]}
         locale="en"
       />
-      <form id="native-timeline-filter" phx-change="timeline:filter" phx-submit="timeline:filter"></form>
+      <form id="native-timeline-filter" phx-change="timeline:filter" phx-submit="timeline:filter">
+      </form>
       """
     end
   end
@@ -125,22 +126,22 @@ defmodule DawarichWeb.NativeTimelineTest do
              ".timeline-rail__tags button[data-tag-name=food][aria-pressed=true]"
            )
 
-    assert has_element?(view, "[data-entry='visit']", "Bakery")
-    refute has_element?(view, "[data-entry='visit']", "Gym")
-    refute has_element?(view, "[data-entry='visit']", "Office")
+    assert has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)", "Bakery")
+    refute has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)", "Gym")
+    refute has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)", "Office")
 
     view |> element(".timeline-rail__tags button[data-tag-name=sport]") |> render_click()
-    assert has_element?(view, "[data-entry='visit']", "Gym")
-    assert has_element?(view, "[data-entry='visit']", "Bakery")
+    assert has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)", "Gym")
+    assert has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)", "Bakery")
 
     view |> element(".timeline-rail__tags button[data-tag-name=food]") |> render_click()
-    refute has_element?(view, "[data-entry='visit']", "Bakery")
-    assert has_element?(view, "[data-entry='visit']", "Gym")
+    refute has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)", "Bakery")
+    assert has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)", "Gym")
 
     view |> element("#native-timeline-filter") |> render_change(%{"q" => "bakery"})
     assert has_element?(view, "#native-timeline-filter-clear")
     view |> element("#native-timeline-filter-clear") |> render_click()
-    assert has_element?(view, "[data-entry='visit']", "Office")
+    assert has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)", "Office")
 
     assert has_element?(
              view,
@@ -218,25 +219,22 @@ defmodule DawarichWeb.NativeTimelineTest do
     render_hook(view, "load", %{"start_at" => "2026-03-30T00:00", "end_at" => "2026-03-30T23:59"})
     render_async(view, 5_000)
 
-    assert has_element?(view, "#native-visit-#{visit}[data-status='suggested']", "Bakery")
+    assert has_element?(view, "#visit_entry_#{visit}[data-status='suggested']", "Bakery")
+
+    refute has_element?(view, "#visit_entry_#{visit} button[phx-click='visit:status']")
 
     assert has_element?(
              view,
-             "#native-visit-#{visit} button[phx-click='visit:status'][phx-value-status='confirmed']"
+             "#visit_entry_#{visit} button.visit-edit-btn[phx-click='visit:inline']"
            )
 
     assert has_element?(
              view,
-             "#native-visit-#{visit} button[phx-click='visit:status'][phx-value-status='declined']"
+             "#visit_entry_#{visit} .visit-row__editor.hidden form.button_to[phx-submit] button[data-confirm]"
            )
 
-    assert has_element?(
-             view,
-             "#native-visit-#{visit} button[phx-click='visit:delete'][data-confirm]"
-           )
-
-    assert has_element?(view, "[data-track-id='#{track}'][data-entry='journey']", "30m")
-    assert has_element?(view, "[data-entry='gap']")
+    assert has_element?(view, "[data-track-id='#{track}'][data-entry-type='journey']", "30m")
+    assert has_element?(view, "[data-entry-type='gap']")
     assert has_element?(view, "button[phx-click='calendar:day'][phx-value-date='2026-03-29']")
     assert has_element?(view, "button[phx-click='calendar:day'][phx-value-date='2026-03-31']")
   end
@@ -257,15 +255,15 @@ defmodule DawarichWeb.NativeTimelineTest do
     view = open(id, nil)
     render_hook(view, "load", %{"start_at" => "2026-03-30T00:00", "end_at" => "2026-03-30T23:59"})
     render_async(view, 5_000)
-    assert has_element?(view, "[data-entry='visit']", "Bakery")
-    assert has_element?(view, "[data-entry='visit']", "Gym")
+    assert has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)", "Bakery")
+    assert has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)", "Gym")
 
     view |> element("#native-timeline-filter") |> render_change(%{"q" => "bak"})
-    assert has_element?(view, "[data-entry='visit']", "Bakery")
-    refute has_element?(view, "[data-entry='visit']", "Gym")
+    assert has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)", "Bakery")
+    refute has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)", "Gym")
 
     view |> element("#native-timeline-filter") |> render_change(%{"q" => "zzz"})
-    refute has_element?(view, "[data-entry='visit']")
+    refute has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)")
 
     assert has_element?(
              view,
@@ -274,7 +272,7 @@ defmodule DawarichWeb.NativeTimelineTest do
            )
 
     view |> element("#native-timeline-filter-clear") |> render_click()
-    assert has_element?(view, "[data-entry='visit']", "Gym")
+    assert has_element?(view, "[data-entry-type='visit']:not(.visit-row--hidden)", "Gym")
   end
 
   defp feed(date) do

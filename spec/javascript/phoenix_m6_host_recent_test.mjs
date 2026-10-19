@@ -141,7 +141,7 @@ test("native live marker survives a panel refresh superseding its point invalida
     started = resolve
   })
   f.reader.read = (resource) => {
-    if (resource === "family_locations") {
+    if (resource === "points" && !release) {
       started()
       return new Promise((resolve) => {
         release = resolve
@@ -151,10 +151,9 @@ test("native live marker survives a panel refresh superseding its point invalida
   }
   const delivery = f.owner.reconnect({ kinds: ["points"] })
   await reading
-  f.reader.read = async (resource) => result(resource, [row])
   try {
     await f.owner.update({ ...f.owner.config, panel: "family" })
-    release(result("family_locations"))
+    release(result("points", [row]))
     await delivery
     assert.deepEqual(
       f.sources.get("recent-point-source")?.data.features[0]?.geometry
@@ -162,7 +161,7 @@ test("native live marker survives a panel refresh superseding its point invalida
       [13.41, 52.51],
     )
   } finally {
-    release(result("family_locations"))
+    release(result("points", [row]))
     await delivery
     f.owner.destroy()
   }

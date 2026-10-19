@@ -9,6 +9,7 @@ defmodule DawarichWeb.NativeMapVisit do
   attr :locale, :string, required: true
 
   def dialog(%{dialog: nil} = assigns), do: ~H""
+  def dialog(%{dialog: %{inline: true}} = assigns), do: ~H""
 
   def dialog(assigns) do
     ~H"""

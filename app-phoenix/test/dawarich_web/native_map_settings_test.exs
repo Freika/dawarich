@@ -81,6 +81,27 @@ defmodule DawarichWeb.NativeMapSettingsTest do
     })
   end
 
+  test "unsaved advanced drafts keep their typed values across later edits", %{view: view} do
+    form = element(view, "#native-map-settings-form")
+
+    draft = %{
+      "metersBetweenRoutes" => "750",
+      "minutesBetweenRoutes" => "30",
+      "fogOfWarRadius" => "300"
+    }
+
+    render_change(form, Map.put(draft, "_target", ["metersBetweenRoutes"]))
+
+    render_change(
+      form,
+      %{draft | "minutesBetweenRoutes" => "45"} |> Map.put("_target", ["minutesBetweenRoutes"])
+    )
+
+    assert has_element?(view, "input[name=metersBetweenRoutes][value='750']")
+    assert has_element?(view, "input[name=minutesBetweenRoutes][value='45']")
+    assert has_element?(view, "input[name=fogOfWarRadius][value='300']")
+  end
+
   test "save refusal leaves server settings unchanged", %{id: id, view: view} do
     before = stored(id)
 

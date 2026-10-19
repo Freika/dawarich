@@ -61,6 +61,13 @@ defmodule DawarichWeb.MapLive.SettingsForm do
     end
   end
 
+  def draft(params) do
+    for {_section, fields} <- @tracked,
+        {name, _key, _label} <- fields,
+        into: %{},
+        do: {name, params[name]}
+  end
+
   def dirty(params, saved, locale) do
     for {section, fields} <- @tracked, into: %{} do
       changed =

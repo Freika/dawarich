@@ -14,6 +14,7 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
           saved: settings,
           draft_modes: nil,
           dirty: %{},
+          draft: %{},
           error: nil,
           notice: nil,
           restricted: MapSettings.restricted?(scope) != {:ok, false},
@@ -131,6 +132,7 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
         %{
           settings
           | draft_modes: SettingsForm.modes(params),
+            draft: SettingsForm.draft(params),
             dirty: SettingsForm.dirty(params, saved, socket.assigns[:locale] || "en")
         }
       end)
@@ -142,7 +144,7 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
   end
 
   def handle_event("settings:apply", params, socket) do
-    socket = update(socket, &%{&1 | dirty: %{}})
+    socket = update(socket, &%{&1 | dirty: %{}, draft: %{}})
     save(socket, DawarichWeb.MapLive.SettingsForm.advanced(params))
   end
 
@@ -180,7 +182,7 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
     do: save(socket, %{"track_color" => MapForm.defaults()["track_color"]})
 
   def handle_event("settings:reset", _params, socket),
-    do: save(socket, MapForm.defaults())
+    do: socket |> update(&%{&1 | dirty: %{}, draft: %{}}) |> save(MapForm.defaults())
 
   def handle_event("settings:theme_preset", %{"key" => key}, socket) do
     case MapForm.preset(key) do

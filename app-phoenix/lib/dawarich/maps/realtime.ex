@@ -81,7 +81,8 @@ defmodule Dawarich.Maps.Realtime do
     end
   end
 
-  defp stream_topics(id), do: Map.new(~w(points tracks map_edits), &{stream([&1, {:user, id}]), &1})
+  defp stream_topics(id),
+    do: Map.new(~w(points tracks map_edits), &{stream([&1, {:user, id}]), &1})
 
   defp user_topics(id) do
     stream_topics(id)

@@ -39,12 +39,13 @@ defmodule DawarichWeb.NativeTrackInfoTest do
       assert html =~ "data-track-replay"
 
       leg =
-        render_component(&DawarichWeb.NativeTimelineEntries.journey/1,
+        render_component(&DawarichWeb.TimelineJourney.journey_entry/1,
           entry: entry,
-          locale: locale
+          locale: locale,
+          native: true
         )
 
-      assert leg =~ "disabled"
+      refute leg =~ "translation_missing"
       refute leg =~ "track:toggle"
       refute leg =~ "segments:open"
       refute leg =~ "turbo-frame"

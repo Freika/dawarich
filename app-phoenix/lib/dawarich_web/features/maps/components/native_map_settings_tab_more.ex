@@ -11,13 +11,24 @@ defmodule DawarichWeb.NativeMapSettingsTabMore do
 
   def sections(assigns) do
     dirty = (assigns.settings && assigns.settings[:dirty]) || %{}
+    draft = (assigns.settings && assigns.settings[:draft]) || %{}
+    saved = assigns.saved
+    value = fn name, key -> if draft == %{}, do: saved[key], else: draft[name] end
 
     assigns =
       assign(assigns,
         dirty: dirty,
-        radius: assigns.saved["fog_of_war_meters"] |> int(1000) |> clamp(5, 2000),
-        threshold: assigns.saved["fog_of_war_threshold"] |> int(1) |> clamp(1, 10),
-        city: assigns.saved["min_minutes_spent_in_city"] |> int(60) |> clamp(5, 120)
+        meters: value.("metersBetweenRoutes", "meters_between_routes") || "500",
+        minutes: value.("minutesBetweenRoutes", "minutes_between_routes") || "30",
+        gps:
+          if(draft == %{},
+            do: saved["gps_filtering_enabled"] != false,
+            else: draft["gpsFilteringEnabled"] == "on"
+          ),
+        radius: value.("fogOfWarRadius", "fog_of_war_meters") |> int(1000) |> clamp(5, 2000),
+        threshold: value.("fogOfWarThreshold", "fog_of_war_threshold") |> int(1) |> clamp(1, 10),
+        city:
+          value.("minMinutesSpentInCity", "min_minutes_spent_in_city") |> int(60) |> clamp(5, 120)
       )
 
     ~H"""
@@ -33,7 +44,7 @@ defmodule DawarichWeb.NativeMapSettingsTabMore do
         label={p(@locale, "track_split_distance")}
         unit={p(@locale, "track_split_distance_unit")}
         hint={p(@locale, "track_split_distance_hint")}
-        value={@saved["meters_between_routes"] || "500"}
+        value={@meters}
       />
       <DawarichWeb.NativeMapSettingsFields.number
         id="minutes-between-routes"
@@ -42,7 +53,7 @@ defmodule DawarichWeb.NativeMapSettingsTabMore do
         label={p(@locale, "track_split_time")}
         unit={p(@locale, "track_split_time_unit")}
         hint={p(@locale, "track_split_time_hint")}
-        value={@saved["minutes_between_routes"] || "30"}
+        value={@minutes}
       />
       <button type="button" class="btn btn-sm btn-outline btn-block" phx-click="settings:recalculate">
         <Icon.icon name="refresh-ccw" class="size-6" />
@@ -93,7 +104,7 @@ defmodule DawarichWeb.NativeMapSettingsTabMore do
             type="checkbox"
             name="gpsFilteringEnabled"
             class="toggle toggle-primary"
-            checked={@saved["gps_filtering_enabled"] != false}
+            checked={@gps}
           />
           <span class="label-text font-medium">{p(@locale, "gps_noise_filtering")}</span>
         </label>

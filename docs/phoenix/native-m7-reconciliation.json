@@ -14944,6 +14944,12 @@
       ]
     },
     {
+      "file": "app-phoenix/test/dawarich_web/map_panels_parity_test.exs",
+      "markers": [
+        "test/fixtures"
+      ]
+    },
+    {
       "file": "app-phoenix/test/dawarich_web/map_shell_parity_test.exs",
       "markers": [
         "test/fixtures",
@@ -14968,6 +14974,12 @@
       "file": "app-phoenix/test/dawarich_web/native_pages_hotwire_free_test.exs",
       "markers": [
         "phoenix/js"
+      ]
+    },
+    {
+      "file": "app-phoenix/test/dawarich_web/native_timeline_feed_parity_test.exs",
+      "markers": [
+        "test/fixtures"
       ]
     },
     {

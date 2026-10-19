@@ -4,7 +4,14 @@ import { Element, fixture } from "./support/native_m6_host_fixture.mjs"
 
 test("native host selection action deletes accepted points and clears its DOM on destroy", async () => {
   const f = fixture(),
-    panel = new Element()
+    panel = new Element(),
+    remove = new Element(),
+    text = new Element()
+  const parts = {
+    "[data-map-delete-points]": remove,
+    "[data-map-delete-points-text]": text,
+  }
+  panel.querySelector = (selector) => parts[selector] ?? null
   f.nodes.set("[data-map-selection]", panel)
   f.reader.pages = async () => [{ id: 7, anomaly: true }]
   f.reader.read = async () => ({ data: [] })
@@ -14,8 +21,7 @@ test("native host selection action deletes accepted points and clears its DOM on
   f.map.emit("mousedown", { point: { x: 1, y: 2 } })
   f.map.emit("mouseup", { point: { x: 3, y: 4 } })
   await f.owner.selection.ready
-  const remove = panel.children.find((item) => item["data-points"] === "all")
-  assert.ok(remove)
+  assert.equal(panel.classList.contains("hidden"), false)
   const original = globalThis.confirm
   globalThis.confirm = () => true
   try {
@@ -29,5 +35,5 @@ test("native host selection action deletes accepted points and clears its DOM on
     globalThis.confirm = original
     f.owner.destroy()
   }
-  assert.deepEqual(panel.children, [])
+  assert.equal(panel.classList.contains("hidden"), true)
 })

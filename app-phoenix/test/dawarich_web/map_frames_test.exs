@@ -164,25 +164,22 @@ defmodule DawarichWeb.MapFramesTest do
 
       view = native_map(user)
       assert has_element?(view, "#native-timeline-feed [data-day='2026-09-27']")
-      assert has_element?(view, "#native-visit-7121[data-started-at='2026-09-27T08:00:00+02:00']")
-      assert has_element?(view, "#native-visit-7122")
-      assert has_element?(view, "[data-track-id='7223'][data-entry=journey]")
+      assert has_element?(view, "#visit_entry_7121[data-started-at='2026-09-27T08:00:00+02:00']")
+      assert has_element?(view, "#visit_entry_7122")
+      assert has_element?(view, "[data-track-id='7223'][data-entry-type=journey]")
 
       assert has_element?(
                view,
-               "#native-visit-7121 button[phx-click='visit:edit'][phx-value-id='7121']"
+               "#visit_entry_7121 button[phx-click='visit:inline'][phx-value-id='7121']"
              )
 
-      assert has_element?(
-               view,
-               "#native-visit-7121 button[phx-click='visit:delete'][phx-value-id='7121']"
-             )
+      assert has_element?(view, "#visit_entry_7121 form.button_to[phx-submit*='visit:delete']")
 
       assert render(view) =~ "Karl-Liebknecht-Straße 10, Leipzig"
 
       refute has_element?(
                view,
-               "turbo-frame, #native-timeline-feed input[name=authenticity_token]"
+               "turbo-frame, #native-timeline-feed input[name=authenticity_token]:not([value=''])"
              )
     end
 
@@ -224,8 +221,12 @@ defmodule DawarichWeb.MapFramesTest do
       assert request.().status == 410
       assert request.() |> get_resp_header("set-cookie") == []
       view = native_map(user)
-      assert has_element?(view, "#native-visit-7123 button[phx-click='visit:edit']")
-      refute has_element?(view, "#native-timeline-feed input[name=authenticity_token]")
+      assert has_element?(view, "#visit_entry_7123 button[phx-click='visit:inline']")
+
+      refute has_element?(
+               view,
+               "#native-timeline-feed input[name=authenticity_token]:not([value=''])"
+             )
     end
 
     test "native empty day keeps navigation for the requested date", %{user: user} do
@@ -234,7 +235,7 @@ defmodule DawarichWeb.MapFramesTest do
       assert has_element?(view, "button[phx-click='calendar:day'][phx-value-date='2026-09-26']")
       assert has_element?(view, "button[phx-click='calendar:day'][phx-value-date='2026-09-28']")
       assert render(view) =~ "No visits tracked this day"
-      refute has_element?(view, "[data-entry=visit], [data-entry=journey]")
+      refute has_element?(view, "[data-entry-type=visit], [data-entry-type=journey]")
     end
   end
 

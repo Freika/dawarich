@@ -299,7 +299,11 @@ defmodule DawarichWeb.MapLiveTest do
     assert has_element?(view, "input[data-tile-category=road_labels][checked]")
     refute has_element?(view, "input[data-poi-group=cycling][checked]")
     assert has_element?(view, "input[name='enabledTransportationModes[]'][value=train][checked]")
-    refute has_element?(view, "input[name='enabledTransportationModes[]'][value=walking][checked]")
+
+    refute has_element?(
+             view,
+             "input[name='enabledTransportationModes[]'][value=walking][checked]"
+           )
 
     assert has_element?(view, "#native-transport-apply[disabled]")
 
@@ -309,6 +313,7 @@ defmodule DawarichWeb.MapLiveTest do
       "_target" => ["enabledTransportationModes"],
       "enabledTransportationModes" => ["walking"]
     })
+
     refute has_element?(view, "#native-transport-apply[disabled]")
     assert Dawarich.Accounts.get(user.id).settings["enabled_transportation_modes"] == ["train"]
   end

@@ -100,7 +100,18 @@ function element(tag) {
     tag,
     children: [],
     textContent: "",
+    className: "",
     hidden: false,
+    classList: {
+      toggle(name, force) {
+        const names = new Set(node.className.split(/\s+/).filter(Boolean))
+        const on = force ?? !names.has(name)
+        if (on) names.add(name)
+        else names.delete(name)
+        node.className = [...names].join(" ")
+        return on
+      },
+    },
     dataset: {},
     attributes: {},
     value: "",
@@ -162,7 +173,7 @@ test("Escape cancels search listener and selection", async () => {
   await pending.promise
   await Promise.resolve()
   assert.equal(results.children.length, 1)
-  assert.equal(results.children[0].textContent, "<b>Berlin</b>")
+  assert.equal(results.children[0].children[0].textContent, "<b>Berlin</b>")
 
   input.listeners.get("keydown")({ key: "ArrowDown", preventDefault() {} })
   input.listeners.get("keydown")({ key: "Escape", preventDefault() {} })

@@ -37,6 +37,9 @@ async function openEditor(
   const edit = page.getByTestId("native-edit-points")
   if (!(await edit.isChecked())) {
     await page.getByTestId("map-button-layers").click()
+    const points = page.getByTestId("map-layer-points")
+    if (!(await points.isChecked())) await points.locator("xpath=..").click()
+    await expect(edit).toBeVisible()
     await edit.click()
     await page.locator("#native-map-panel-close").click()
     await expect(page.locator("#map-settings-panel")).not.toHaveClass(

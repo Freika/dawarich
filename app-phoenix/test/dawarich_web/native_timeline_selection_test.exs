@@ -69,14 +69,14 @@ defmodule DawarichWeb.NativeTimelineSelectionTest do
     assert has_element?(view, "#native-timeline-selection button[disabled]")
 
     for visit <- [first, second] do
-      view |> element("#native-visit-#{visit} input[type=checkbox]") |> render_click()
+      view |> element("#visit_entry_#{visit} input[type=checkbox]") |> render_click()
     end
 
     assert has_element?(view, "#native-timeline-selection", "2")
 
     view
-    |> element("#native-timeline-selection button[data-selection-action=merge]")
-    |> render_click()
+    |> element("#native-timeline-selection form[action='/visits/merge']")
+    |> render_submit()
 
     assert_push_event(view, "map:invalidate", %{resource: "visits"})
     render_async(view, 5_000)
@@ -124,12 +124,16 @@ defmodule DawarichWeb.NativeTimelineSelectionTest do
     sure = visit!(c.id, place, "Sure", "10:00", "11:00", 1, 2)
     view = load(c.id)
 
-    assert has_element?(view, "#native-visit-#{low}.visit-row--lowconf")
-    refute has_element?(view, "#native-visit-#{sure}.visit-row--lowconf")
+    assert has_element?(view, "#visit_entry_#{low}.visit-row--lowconf")
+    refute has_element?(view, "#visit_entry_#{sure}.visit-row--lowconf")
     toggle = element(view, "[data-day='2026-03-30'] .timeline-lowconf-toggle")
     assert render(toggle) =~ "1 low-confidence stop"
     assert render(toggle) =~ "timeline-day--show-lowconf"
-    assert has_element?(view, "#native-visit-#{sure} button[phx-click='visit:edit']")
+
+    assert has_element?(
+             view,
+             "#visit_entry_#{sure} button.visit-edit-btn[phx-click='visit:inline']"
+           )
   end
 
   defp load(id) do
