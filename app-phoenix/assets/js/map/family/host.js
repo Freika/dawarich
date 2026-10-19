@@ -13,7 +13,6 @@ export function createMapFamilyLayer({
   let overlay,
     overlayLocale,
     config,
-    poll,
     destroyed = false,
     rendered;
   const list = () => root?.querySelector("#native-family-members");
@@ -27,10 +26,6 @@ export function createMapFamilyLayer({
     if (status()) status().textContent = "";
     if (empty()) empty().hidden = !config?.familyEnabled;
   }
-  function stop() {
-    if (poll !== undefined) timers.clearInterval(poll);
-    poll = undefined;
-  }
   const scope = (value) => JSON.stringify([
     value?.familyEnabled, value?.namespace, value?.range, value?.locale,
   ]);
@@ -40,7 +35,6 @@ export function createMapFamilyLayer({
     requests.reset();
     if (!preserve) clearView();
     if (!config?.familyEnabled) {
-      stop();
       overlay?.destroy();
       overlay = null;
     }
@@ -186,8 +180,6 @@ export function createMapFamilyLayer({
     } finally {
       operation.close();
     }
-    if (!destroyed && config.familyEnabled && poll === undefined)
-      poll = timers.setInterval(() => update(config), 30000);
   }
   return {
     update,
@@ -196,7 +188,6 @@ export function createMapFamilyLayer({
       if (destroyed) return;
       destroyed = true;
       requests.destroy();
-      stop();
       clearView();
       overlay?.destroy();
       overlay = null;

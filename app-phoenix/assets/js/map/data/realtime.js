@@ -12,25 +12,41 @@ const kinds = new Set([
   "progress",
   "reconnect",
 ])
-export function createRealtime(options) {
-  const pending = new Set()
-  const refresh = createRefresh({
-      ...options,
-      run: () => {
-        const batch = { kinds: [...pending] }
-        pending.clear()
-        return options.run(batch)
-      },
-    }),
+const delays = { points: 1000, tracks: 1000, family: 1000, reconnect: 1000 }
+export function createRealtime({
+  run,
+  timers = globalThis,
+  document = globalThis.document,
+}) {
+  const pending = new Set(),
     seen = new Map()
+  const hidden = () => document?.visibilityState === "hidden"
+  const refresh = createRefresh({
+    timers,
+    delay: () =>
+      pending.size
+        ? Math.min(...[...pending].map((kind) => delays[kind] ?? 0))
+        : 0,
+    run: () => {
+      if (hidden()) return "deferred"
+      const batch = { kinds: [...pending] }
+      pending.clear()
+      return run(batch)
+    },
+  })
+  const schedule = () =>
+    hidden() ? Promise.resolve("deferred") : refresh.schedule()
+  const visible = () => {
+    if (!hidden() && pending.size > 0) refresh.schedule()
+  }
+  document?.addEventListener?.("visibilitychange", visible)
   return {
     invalidate(receipt = {}) {
-      if (!kinds.has(receipt.kind ?? "map")) return Promise.resolve("ignored")
+      const kind = receipt.kind ?? "map"
+      if (!kinds.has(kind)) return Promise.resolve("ignored")
       if (receipt.revision !== undefined) {
-        const kind = receipt.kind ?? "map",
-          revision = receipt.revision
+        const revision = receipt.revision
         if (
-          !kinds.has(kind) ||
           !Number.isSafeInteger(revision) ||
           revision < 1 ||
           revision <= (seen.get(kind) ?? 0)
@@ -38,14 +54,15 @@ export function createRealtime(options) {
           return Promise.resolve("ignored")
         seen.set(kind, revision)
       }
-      pending.add(receipt.kind ?? "map")
-      return refresh.schedule()
+      pending.add(kind)
+      return schedule()
     },
     reconnect: () => {
       pending.add("reconnect")
-      return refresh.schedule()
+      return schedule()
     },
     destroy: () => {
+      document?.removeEventListener?.("visibilitychange", visible)
       pending.clear()
       refresh.destroy()
     },

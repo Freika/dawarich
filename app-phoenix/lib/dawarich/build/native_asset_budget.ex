@@ -2,7 +2,7 @@ defmodule Dawarich.Build.NativeAssetBudget do
   @moduledoc false
   @caps %{
     app: %{raw: 200_000, gzip: 65_000},
-    map: %{raw: 131_500, gzip: 46_000},
+    map: %{raw: 132_500, gzip: 46_000},
     poster: %{raw: 60_000, gzip: 26_000},
     video: %{raw: 100_000, gzip: 36_000}
   }
