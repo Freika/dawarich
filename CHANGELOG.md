@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Replay mode shows the current speed in mph when the distance unit is set to miles, on the map, trip pages and shared trips.
+
 ## [1.16.0] - 2026-10-17, Berlin
 
 ### Added

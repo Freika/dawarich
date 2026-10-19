@@ -10,6 +10,7 @@ export default class extends Controller {
     showPhotos: Boolean,
     byDay: Boolean,
     timezone: String,
+    distanceUnit: { type: String, default: "km" },
     metersBetweenRoutes: { type: Number, default: 500 },
     minutesBetweenRoutes: { type: Number, default: 60 },
   }
@@ -230,6 +231,7 @@ export default class extends Controller {
         dayRoutesLayer: this.dayRoutesLayer,
         element: this.element,
         timezone: this.timezoneValue,
+        distanceUnit: () => this.distanceUnitValue,
         allPoints: this.allPoints,
         getPhotos: () =>
           (this.photoMarkers || []).map(({ photo }) => ({
