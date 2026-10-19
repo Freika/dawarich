@@ -1,3 +1,5 @@
+import { layerAbove } from "./order.js"
+
 export function isAbortedRequest(error) {
   return error?.name === "AbortError" || error?.message === "AbortError"
 }
@@ -20,7 +22,9 @@ export class BaseLayer {
     layers.forEach((layerConfig) => {
       if (!this.map.getLayer(layerConfig.id)) {
         const before =
-          beforeId && this.map.getLayer(beforeId) ? beforeId : undefined
+          beforeId && this.map.getLayer(beforeId)
+            ? beforeId
+            : layerAbove(this.map, layerConfig.id)
         this.map.addLayer(layerConfig, before)
       }
     })

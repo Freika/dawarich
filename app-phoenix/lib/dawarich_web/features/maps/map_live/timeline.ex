@@ -1,6 +1,7 @@
 defmodule DawarichWeb.MapLive.Timeline do
   @moduledoc false
   import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [push_event: 3]
   alias DawarichWeb.MapLive.Runs
 
   @params ~w(start_at end_at cursor)
@@ -60,10 +61,23 @@ defmodule DawarichWeb.MapLive.Timeline do
 
   def handle_async({:timeline, run}, result, socket) do
     case socket.assigns[:timeline] do
-      %{run: ^run} = timeline -> {:noreply, assign(socket, :timeline, settle(timeline, result))}
-      _ -> {:noreply, socket}
+      %{run: ^run} = timeline ->
+        settled = settle(timeline, result)
+        {:noreply, socket |> assign(:timeline, settled) |> fit(settled)}
+
+      _ ->
+        {:noreply, socket}
     end
   end
+
+  defp fit(socket, %{status: :ready, params: params, feed: %{days: [%{bounds: %{} = bounds} | _]}})
+       when not is_map_key(params, "cursor") do
+    if socket.assigns[:timeline_keep_camera],
+      do: assign(socket, :timeline_keep_camera, false),
+      else: push_event(socket, "timeline:fit", %{bounds: bounds})
+  end
+
+  defp fit(socket, _timeline), do: assign(socket, :timeline_keep_camera, false)
 
   defp settle(timeline, {:ok, {:ok, feed}}), do: %{timeline | status: :ready, feed: feed}
   defp settle(timeline, {:ok, {:error, reason}}), do: %{timeline | status: {:error, reason}}

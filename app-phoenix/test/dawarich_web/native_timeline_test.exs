@@ -239,6 +239,28 @@ defmodule DawarichWeb.NativeTimelineTest do
     assert has_element?(view, "button[phx-click='calendar:day'][phx-value-date='2026-03-31']")
   end
 
+  test "a settled feed fits the map to its first day like the Rails day frame", %{id: id} do
+    rows(
+      "INSERT INTO visits(user_id,name,started_at,ended_at,duration,status,confidence,demo,created_at,updated_at) VALUES($1,'Bakery','2026-03-30 07:00:00','2026-03-30 07:40:00',2400,1,2,false,now(),now())",
+      [id]
+    )
+
+    [[place]] =
+      rows(
+        "INSERT INTO places(user_id,name,latitude,longitude,lonlat,source,created_at,updated_at) VALUES($1,'Cafe',52.5,13.4,ST_SetSRID(ST_MakePoint(13.4,52.5),4326)::geography,0,now(),now()) RETURNING id",
+        [id]
+      )
+
+    rows("UPDATE visits SET place_id=$2 WHERE user_id=$1", [id, place])
+    view = open(id, nil)
+    render_hook(view, "load", %{"start_at" => "2026-03-30T00:00", "end_at" => "2026-03-30T23:59"})
+    render_async(view, 5_000)
+
+    assert_push_event(view, "timeline:fit", %{
+      bounds: %{sw_lat: _, sw_lng: _, ne_lat: _, ne_lng: _}
+    })
+  end
+
   test "timeline filters keep only matching visits and offer a reset", %{id: id} do
     for {name, hour} <- [{"Bakery", 7}, {"Gym", 9}] do
       rows(

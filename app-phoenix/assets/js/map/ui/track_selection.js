@@ -1,5 +1,6 @@
 import { createRequestScope } from "../data/request_scope.js"
 import { pointFeature, segmentFeature } from "../edit/editable_track_data.js"
+import { layerAbove } from "../layers/order.js"
 import { panelPadding } from "./padding.js"
 import { fitRoute } from "./search_results.js"
 
@@ -97,7 +98,7 @@ export function createTrackSelection({
           "line-color": getConfig().trackColor || "#6366F1",
           "line-width": 5,
         },
-      })
+      }, layerAbove(map, LINE))
       map.addLayer({
         id: SEGMENTS,
         type: "line",
@@ -107,7 +108,7 @@ export function createTrackSelection({
           "line-color": ["coalesce", ["get", "color"], "#6366F1"],
           "line-width": 6,
         },
-      })
+      }, layerAbove(map, SEGMENTS))
       if (map.fitBounds)
         fitRoute({
           map,

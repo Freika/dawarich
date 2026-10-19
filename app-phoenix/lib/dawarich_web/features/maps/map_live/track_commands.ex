@@ -16,6 +16,7 @@ defmodule DawarichWeb.MapLive.TrackCommands do
               range: socket.assigns.map_range,
               date: socket.assigns.map_url["date"]
             })
+            |> assign(:timeline_keep_camera, true)
 
           DawarichWeb.MapLive.Commands.handle_event("map:panel", %{"panel" => "timeline"}, socket)
 

@@ -1,5 +1,6 @@
 import { getVisitMarkerColor } from "../algorithms/marker_theme.js";
 import { BaseLayer } from "./base.js";
+import { layerAbove } from "./order.js";
 import { createPlaceLabels } from "./place_labels.js";
 
 export class VisitsLayer extends BaseLayer {
@@ -118,7 +119,7 @@ export class VisitsLayer extends BaseLayer {
     const layers = this.getLayerConfigs();
     layers.forEach((layerConfig) => {
       if (!this.map.getLayer(layerConfig.id)) {
-        this.map.addLayer(layerConfig);
+        this.map.addLayer(layerConfig, layerAbove(this.map, layerConfig.id));
       }
     });
 

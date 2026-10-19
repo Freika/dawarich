@@ -350,9 +350,12 @@ defmodule DawarichWeb.NativeM6HostTest do
 
   test "native visit pin selects its profile-local day and owned row without opening an editor",
        %{id: id} do
+    place = Dawarich.Test.FrameSeeds.place!(id, id * 10, "Late place")
+
     visit =
       Dawarich.Test.FrameSeeds.visit!(id, id * 10, %{
         name: "Late visit",
+        place_id: place,
         started_at: ~N[2026-03-30 22:30:00],
         ended_at: ~N[2026-03-30 23:30:00]
       })
@@ -369,6 +372,7 @@ defmodule DawarichWeb.NativeM6HostTest do
            }
 
     render_async(view, 5000)
+    refute_push_event(view, "timeline:fit", _, 0)
     assert has_element?(view, "#visit_entry_#{visit}.visit-row--selected")
 
     assert has_element?(view, "li#visit_entry_#{visit}[phx-click='visit:select'][role=button]")

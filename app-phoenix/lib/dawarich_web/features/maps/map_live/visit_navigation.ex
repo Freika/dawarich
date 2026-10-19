@@ -23,6 +23,7 @@ defmodule DawarichWeb.MapLive.VisitNavigation do
           {:noreply,
            socket
            |> assign(:pending_visit, %{id: visit.id, target: target})
+           |> assign(:timeline_keep_camera, true)
            |> push_patch(to: Commands.path(socket.assigns.map_url, target))}
         end
 
