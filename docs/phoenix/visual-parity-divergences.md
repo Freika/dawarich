@@ -25,3 +25,4 @@ Categories:
 | `/map` timeline | Journey track card container | `turbo-frame.hidden.track-info-panel`, lazily loaded | `div.track-info-panel`, card rendered by LiveView when open | wiring | No Turbo; same classes and placement | plan C2 |
 | `/map` timeline | Hidden form tokens | `authenticity_token` carries the Rails token | Empty value | contract | LiveView submits through the socket; no Rails token is exposed | plan C2 |
 | `/map` timeline | Feed range longer than 31 days | The feed frame rendered a 32-day range (`feed_range_en`) | `Timeline.Query` answers `:limit` past 31 days | contract | Native timeline query cap (DB request budget) | plan C2 |
+| `/map` timeline | Segment mode selects | Every row and leg select has `id="track_segment_transportation_mode"` (duplicate ids) | Unique `native-segment-mode-<id>` / `native-leg-mode-<id>` ids | contract | LiveView needs unique DOM ids | plan C2 |
