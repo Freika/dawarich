@@ -14,10 +14,10 @@ defmodule DawarichWeb.NativeDemoBanner do
     ~H"""
     <div
       id="demo-data-banner"
-      class="fixed bottom-0 left-1/2 -translate-x-1/2 z-30 mb-[calc(1rem+env(safe-area-inset-bottom))] max-w-[calc(100vw-2rem)]"
+      class="fixed bottom-0 left-1/2 -translate-x-1/2 z-30 mb-[calc(1rem+env(safe-area-inset-bottom))]"
     >
-      <div class="alert alert-info shadow-lg py-1.5 px-3 flex flex-wrap items-center gap-1.5 rounded-lg text-sm">
-        <span class="font-medium min-w-0">{t(@locale, "layouts.map.you_re_viewing_demo_data", %{})}</span>
+      <div class="alert alert-info shadow-lg py-1.5 px-3 flex items-center gap-1.5 rounded-lg whitespace-nowrap text-sm">
+        <span class="font-medium">{t(@locale, "layouts.map.you_re_viewing_demo_data", %{})}</span>
         <span :if={@removing} class="loading loading-spinner loading-xs text-info"></span>
         <button
           id="native-demo-remove"

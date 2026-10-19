@@ -46,3 +46,34 @@ test("a changed configuration during mounting restarts with the new style", asyn
   assert.deepEqual(styles, ["light", "dark"])
   owner.destroy()
 })
+
+test("the map attribution is compact without the MapLibre credit, as on Rails", async () => {
+  const options = []
+  class FakeMap {
+    constructor(opts) {
+      options.push(opts)
+    }
+    remove() {}
+    addControl() {}
+  }
+  const element = {
+    dataset: {},
+    querySelector: () => null,
+    ownerDocument: {
+      defaultView: null,
+      createElement: () => ({ style: {}, remove() {} }),
+    },
+    appendChild() {},
+  }
+  const owner = createMapRuntime({
+    element,
+    config: { styleName: "light", range: { startAt: "a" } },
+    reader: { destroy() {}, reset() {} },
+    loadLibrary: async () => ({ Map: FakeMap }),
+    loadStyle: async () => ({ version: 8, sources: {}, layers: [] }),
+  })
+  owner.mount()
+  await ticks()
+  assert.deepEqual(options[0]?.attributionControl, { compact: true })
+  owner.destroy()
+})

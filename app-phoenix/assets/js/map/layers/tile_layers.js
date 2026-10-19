@@ -1,7 +1,7 @@
-import { TileExclusions } from "./tile_exclusions.js"
-import { PointsMvtLayer } from "./points_mvt.js"
-import { TracksMvtLayer } from "./tracks_mvt.js"
 import { createTileFreshness } from "../data/tile_freshness.js"
+import { PointsMvtLayer } from "./points_mvt.js"
+import { TileExclusions } from "./tile_exclusions.js"
+import { TracksMvtLayer } from "./tracks_mvt.js"
 
 export function createBaseLayers({
   map,
@@ -26,7 +26,7 @@ export function createBaseLayers({
   })
   function mount() {
     if (destroyed) return
-    for (const layer of [points, tracks]) {
+    for (const layer of [tracks, points]) {
       layer.startAt = current.range?.startAt ?? null
       layer.endAt = current.range?.endAt ?? null
       layer.importId = current.range?.importId ?? null

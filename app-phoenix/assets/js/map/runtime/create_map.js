@@ -38,7 +38,9 @@ export function createMapRuntime({
     if (element.dataset) element.dataset.mapState = value
     const loading =
       element.querySelector?.("[data-map-loading]") ??
-      element.closest?.("[data-native-map-root]")?.querySelector?.("[data-map-loading]")
+      element
+        .closest?.("[data-native-map-root]")
+        ?.querySelector?.("[data-map-loading]")
     if (loading?.classList?.contains("map-progress-badge"))
       loading.classList.toggle("visible", value === "loading")
     else if (loading) loading.hidden = value !== "loading"
@@ -105,6 +107,7 @@ export function createMapRuntime({
       map = new library.Map({
         center: [0, 0],
         zoom: 2,
+        attributionControl: { compact: true },
         ...current.mapOptions,
         container: root,
         style,
