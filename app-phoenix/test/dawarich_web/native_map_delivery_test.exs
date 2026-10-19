@@ -192,7 +192,12 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
     scope: scope,
     socket: socket
   } do
-    socket = Subscriptions.sync(socket, %{kind: :map, scope: scope}, bus: NativeMapBus)
+    socket =
+      Subscriptions.sync(socket, %{kind: :map, scope: scope},
+        bus: NativeMapBus,
+        admission_ttl_ms: 0
+      )
+
     topic = RailsMessages.broadcasting(["points", {:user, 881_401}])
     assert_receive {:native_subscribe, ^topic}
     Repo.query!("UPDATE users SET deleted_at=now() WHERE id=$1", [881_401])
@@ -204,6 +209,61 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
     assert_receive {:native_unsubscribe, ^topic}
     assert hd(socket.private.live_temp[:push_events]) == ["map:clear", %{code: "stale_session"}]
     refute inspect(socket.assigns) =~ "[52,13"
+  end
+
+  test "the map reuses one admission for every message inside the window", %{
+    scope: scope,
+    socket: socket
+  } do
+    socket = Subscriptions.sync(socket, %{kind: :map, scope: scope}, bus: NativeMapBus)
+    topic = RailsMessages.broadcasting(["tracks", {:user, 881_401}])
+
+    reads =
+      queries(fn ->
+        Enum.reduce(1..100, socket, fn n, socket ->
+          assert {:delivered, socket} =
+                   Subscriptions.deliver(socket, {:native_message, topic, "track-#{n}"})
+
+          socket
+        end)
+      end)
+
+    assert reads == []
+    Subscriptions.release(socket)
+  end
+
+  test "a revoked map session is refused on the first message after the window", %{
+    scope: scope,
+    socket: socket
+  } do
+    socket =
+      Subscriptions.sync(socket, %{kind: :map, scope: scope},
+        bus: NativeMapBus,
+        admission_ttl_ms: 40
+      )
+
+    topic = RailsMessages.broadcasting(["tracks", {:user, 881_401}])
+    Repo.query!("UPDATE users SET deleted_at=now() WHERE id=$1", [881_401])
+    assert {:delivered, socket} = Subscriptions.deliver(socket, {:native_message, topic, "a"})
+    Process.sleep(50)
+    assert {:refused, socket} = Subscriptions.deliver(socket, {:native_message, topic, "b"})
+    assert hd(socket.private.live_temp[:push_events]) == ["map:clear", %{code: "stale_session"}]
+  end
+
+  test "Family domain messages re-admit inside the map window", %{
+    scope: scope,
+    socket: socket
+  } do
+    family!()
+    family_layer!(true)
+    socket = Subscriptions.sync(socket, %{kind: :map, scope: scope}, bus: NativeMapBus)
+    topic = "family:user:881401"
+    Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [881_401])
+
+    assert {:ignored, socket} =
+             Subscriptions.deliver(socket, {:native_message, topic, "synthetic-family-update"})
+
+    refute Map.has_key?(socket.assigns.native_subscriptions.topics, topic)
   end
 
   test "reconnect refreshes revision without replaying duplicate edits", %{
@@ -266,7 +326,8 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
 
     assert kinds ==
              Enum.sort(
-               for(stream <- ~w(points tracks map_edits),
+               for(
+                 stream <- ~w(points tracks map_edits),
                  do: RailsMessages.broadcasting([stream, {:user, 881_401}])
                )
              )

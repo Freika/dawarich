@@ -13,14 +13,16 @@ defmodule DawarichWeb.MapLive.Subscriptions do
           bus: Keyword.get(opts, :bus, Dawarich.Maps.EventBus),
           opts: Keyword.take(opts, [:now, :self_hosted]),
           seen: [],
-          revision: 0
+          revision: 0,
+          ttl: Keyword.get(opts, :admission_ttl_ms, ttl(descriptor.kind)),
+          admitted: nil
         }
 
     socket = assign(socket, :native_subscriptions, %{state | descriptor: descriptor})
 
     if connected?(socket) do
-      case Realtime.topics(descriptor, state.opts) do
-        {:ok, desired} -> reconcile(socket, desired)
+      case admit(socket) do
+        {:ok, socket, desired} -> reconcile(socket, desired)
         {:error, reason} -> refuse(socket, reason)
       end
     else
@@ -66,8 +68,8 @@ defmodule DawarichWeb.MapLive.Subscriptions do
   def reconnect(socket) do
     state = socket.assigns[:native_subscriptions]
 
-    case state && Realtime.topics(state.descriptor, state.opts) do
-      {:ok, desired} -> socket |> reconcile(desired) |> invalidate("reconnect")
+    case state && admit(socket) do
+      {:ok, socket, desired} -> socket |> reconcile(desired) |> invalidate("reconnect")
       {:error, reason} -> refuse(socket, reason)
       _ -> socket
     end
@@ -76,9 +78,8 @@ defmodule DawarichWeb.MapLive.Subscriptions do
   defp admit_message(socket, topic, payload) do
     state = socket.assigns.native_subscriptions
 
-    case Realtime.topics(state.descriptor, state.opts) do
-      {:ok, desired} ->
-        socket = reconcile(socket, desired)
+    case admitted(socket, topic) do
+      {:ok, socket, desired} ->
         fingerprint = if is_binary(payload), do: :crypto.hash(:sha256, topic <> payload)
 
         cond do
@@ -103,6 +104,36 @@ defmodule DawarichWeb.MapLive.Subscriptions do
         {:refused, refuse(socket, reason)}
     end
   end
+
+  defp ttl(:map), do: 5_000
+  defp ttl(_kind), do: 0
+
+  defp admitted(socket, topic) do
+    case socket.assigns.native_subscriptions do
+      %{ttl: ttl, admitted: {at, desired}} when ttl > 0 ->
+        if now() - at < ttl and not String.starts_with?(topic, ["family:", "sharing:"]),
+          do: {:ok, socket, desired},
+          else: readmit(socket)
+
+      _ ->
+        readmit(socket)
+    end
+  end
+
+  defp readmit(socket) do
+    with {:ok, socket, desired} <- admit(socket), do: {:ok, reconcile(socket, desired), desired}
+  end
+
+  defp admit(socket) do
+    state = socket.assigns.native_subscriptions
+
+    with {:ok, desired} <- Realtime.topics(state.descriptor, state.opts) do
+      state = %{state | admitted: {now(), desired}}
+      {:ok, assign(socket, :native_subscriptions, state), desired}
+    end
+  end
+
+  defp now, do: System.monotonic_time(:millisecond)
 
   defp reconcile(socket, desired) do
     state = socket.assigns.native_subscriptions
