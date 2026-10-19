@@ -13,7 +13,8 @@ test("native host search selects a bounded suggestion and fits canonical timelin
   const replace = results.replaceChildren.bind(results)
   results.replaceChildren = (...items) => {
     replace(...items)
-    if (items.length) populated()
+    if (items.some((item) => item.className?.startsWith("search-result-item")))
+      populated()
   }
   f.nodes.set("[data-map-search]", input)
   f.nodes.set("[data-map-suggestions]", results)
@@ -66,18 +67,22 @@ test("native host search selects a bounded suggestion and fits canonical timelin
 test("native search keeps repeated completed selections until an outside map click", async () => {
   const f = fixture()
   const visits = new Element()
-  f.nodes.set("[data-map-search-visits]", visits)
+  f.nodes.set("[data-map-suggestions]", visits)
   f.reader.read = async () => ({ data: { locations: [], total_locations: 0 } })
   f.map.flyTo = () => {}
   await f.owner.mount()
   try {
     for (let i = 0; i < 2; i++) {
-      await f.owner.search.results.open({ name: `Berlin ${i}`, lat: 52, lon: 13 })
-      assert.equal(visits.hidden, false)
+      await f.owner.search.results.open({
+        name: `Berlin ${i}`,
+        lat: 52,
+        lon: 13,
+      })
+      assert.equal(visits.classList.contains("hidden"), false)
       assert.ok(visits.children.length > 0)
     }
     f.map.emit("click", { originalEvent: { target: f.element } })
-    assert.equal(visits.hidden, true)
+    assert.equal(visits.classList.contains("hidden"), true)
     assert.deepEqual(visits.children, [])
   } finally {
     f.owner.destroy()

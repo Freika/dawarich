@@ -20,20 +20,18 @@ defmodule DawarichWeb.NativeMapTabs do
             phx-update="ignore"
             data-map-search
           />
-          <ul
+          <div
             id="native-map-suggestions"
             data-map-suggestions
-            role="listbox"
             phx-update="ignore"
             class="absolute z-50 w-full mt-1 bg-base-100 rounded-lg shadow-lg border border-base-300 hidden max-height:400px;  overflow-y-auto"
           >
-          </ul>
+          </div>
         </div>
         <p class="text-xs text-base-content/60 mt-2">
           {p(@locale, "search_for_a_location_to_find_places_you_visited")}
         </p>
       </div>
-      <section id="native-map-search-visits" data-map-search-visits phx-update="ignore"></section>
     </div>
 
     <div class={tab_class(@panel, "layers")} data-tab-content="layers">

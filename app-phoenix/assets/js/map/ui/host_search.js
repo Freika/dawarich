@@ -16,7 +16,7 @@ export function createHostSearch({
   getConfig,
 }) {
   const search = createLocationSearch({ reader })
-  const container = root?.querySelector("[data-map-search-visits]")
+  const container = root?.querySelector("[data-map-suggestions]")
   const visits = container
     ? createVisitResults({
         container,
@@ -42,6 +42,7 @@ export function createHostSearch({
       results,
       document,
       search,
+      translate: mapTranslate(getConfig),
       onSelect: (item) =>
         visits
           ? visits.open(item)

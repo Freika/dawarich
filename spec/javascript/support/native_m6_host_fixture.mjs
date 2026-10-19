@@ -35,6 +35,31 @@ export class Element {
     return { left: 0, right: 800, top: 0, bottom: 600, width: 800, height: 600 }
   }
   remove() {}
+  get classList() {
+    const names = () =>
+      new Set(
+        String(this.className ?? "")
+          .split(/\s+/)
+          .filter(Boolean),
+      )
+    const write = (set) => {
+      this.className = [...set].join(" ")
+    }
+    return {
+      contains: (name) => names().has(name),
+      add: (...list) => write(new Set([...names(), ...list])),
+      remove: (...list) =>
+        write(new Set([...names()].filter((name) => !list.includes(name)))),
+      toggle: (name, force) => {
+        const on = force ?? !names().has(name)
+        const set = names()
+        if (on) set.add(name)
+        else set.delete(name)
+        write(set)
+        return on
+      },
+    }
+  }
 }
 
 export function fixture(config = {}, options = {}) {

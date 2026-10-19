@@ -27,24 +27,30 @@ export function createVisitResults({
   let controller = null
   let destroyed = false
 
-  const node = (tag, text, className) => {
+  const node = (className, text, tag = "div") => {
     const child = document.createElement(tag)
+    if (className) child.className = className
     if (text != null) child.textContent = text
-    if (className) child.setAttribute("class", className)
     return child
   }
 
   function show(...children) {
     container.replaceChildren(...children)
-    container.hidden = false
+    container.classList.remove("hidden")
   }
 
   function stamp(date, options) {
-    return new Intl.DateTimeFormat(undefined, {
-      timeZone: timezone(),
-      ...options,
-    }).format(new Date(date))
+    return new Intl.DateTimeFormat(
+      document.documentElement?.lang || undefined,
+      {
+        timeZone: timezone(),
+        ...options,
+      },
+    ).format(new Date(date))
   }
+
+  const short = (date) =>
+    stamp(date, { month: "short", day: "numeric", year: "numeric" })
 
   function pick(location, visit) {
     if (destroyed) return
@@ -63,48 +69,103 @@ export function createVisitResults({
     })
   }
 
-  function locationNode(location) {
-    const visits = location.visits || []
-    const wrapper = node("section", null, "border-b min-w-0")
-    const name =
-      location.place_name ||
-      location.address ||
-      translate("map_info.location_coordinates", {
-        latitude: location.coordinates?.[0]?.toFixed(4),
-        longitude: location.coordinates?.[1]?.toFixed(4),
-      })
-    wrapper.append(
-      node("p", name, "font-medium text-sm [overflow-wrap:anywhere]"),
+  function yearSection(location, index, year, yearVisits, visits) {
+    const section = node("year-section")
+    const toggle = node(
+      "year-toggle p-3 hover:bg-base-300 cursor-pointer border-b flex justify-between items-center",
     )
-    if (location.address && location.place_name !== location.address)
-      wrapper.append(
-        node("p", location.address, "text-xs [overflow-wrap:anywhere]"),
-      )
-    wrapper.append(
+    toggle.setAttribute("data-location-index", String(index))
+    toggle.setAttribute("data-year", year)
+    const arrow = node(
+      "year-arrow text-base-content/40 transition-transform",
+      "▶",
+      "span",
+    )
+    const counts = node("flex items-center gap-2")
+    counts.append(
       node(
-        "p",
-        translate("selection.visits", { count: location.total_visits }),
         "text-xs text-primary",
+        translate("selection.visits", { count: yearVisits.length }),
+        "span",
+      ),
+      arrow,
+    )
+    toggle.append(node("text-sm font-medium", year, "span"), counts)
+    const list = node("year-visits hidden")
+    list.setAttribute("id", `year-${index}-${year}`)
+    toggle.addEventListener("click", () => {
+      const hidden = list.classList.toggle("hidden")
+      arrow.style.transform = hidden ? "rotate(0deg)" : "rotate(90deg)"
+    })
+    for (const visit of yearVisits) {
+      const item = node(
+        "visit-item text-xs py-2 px-4 border-b hover:bg-base-300 cursor-pointer",
+      )
+      item.setAttribute("data-location-index", String(index))
+      item.setAttribute("data-visit-index", String(visits.indexOf(visit)))
+      const line = node("flex justify-between items-start")
+      line.append(
+        node(
+          null,
+          `📍 ${stamp(visit.date, { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}`,
+        ),
+        node(
+          "text-xs text-base-content/60",
+          visit.duration_estimate || translate("common.not_available"),
+        ),
+      )
+      item.append(line)
+      item.addEventListener("click", () => pick(location, visit))
+      list.append(item)
+    }
+    section.append(toggle, list)
+    return section
+  }
+
+  function locationNode(location, index) {
+    const visits = location.visits || []
+    const sorted = [...visits].sort(
+      (a, b) => new Date(a.date) - new Date(b.date),
+    )
+    const wrapper = node("location-result border-b")
+    wrapper.setAttribute("data-location-index", String(index))
+    const summary = node("p-4")
+    summary.append(
+      node(
+        "font-medium text-sm",
+        location.place_name ||
+          location.address ||
+          translate("map_info.location_coordinates", {
+            latitude: location.coordinates?.[0]?.toFixed(4),
+            longitude: location.coordinates?.[1]?.toFixed(4),
+          }),
       ),
     )
+    if (location.address && location.place_name !== location.address)
+      summary.append(
+        node("text-xs text-base-content/60 mt-1", location.address),
+      )
+    const meta = node("flex justify-between items-center mt-3")
+    meta.append(
+      node(
+        "text-xs text-primary",
+        translate("selection.visits", { count: location.total_visits }),
+      ),
+      node(
+        "text-xs text-base-content/60",
+        translate("search.first_last", {
+          first: short(sorted[0].date),
+          last: short(sorted[sorted.length - 1].date),
+        }),
+      ),
+    )
+    summary.append(meta)
+    const years = node("border-t bg-base-200")
     for (const [year, yearVisits] of Object.entries(
       groupVisitsByYear(visits, timezone()),
-    )) {
-      const group = node("details", null, "border-t")
-      group.append(node("summary", `${year} · ${yearVisits.length}`, "text-sm"))
-      for (const visit of yearVisits) {
-        const row = node(
-          "button",
-          `${stamp(visit.date, { dateStyle: "medium", timeStyle: "short" })} · ${visit.duration_estimate || translate("common.not_available")}`,
-          "btn btn-ghost btn-xs w-full justify-between",
-        )
-        row.setAttribute("type", "button")
-        row.setAttribute("data-visit-index", String(visits.indexOf(visit)))
-        row.addEventListener("click", () => pick(location, visit))
-        group.append(row)
-      }
-      wrapper.append(group)
-    }
+    ))
+      years.append(yearSection(location, index, year, yearVisits, visits))
+    wrapper.append(summary, years)
     return wrapper
   }
 
@@ -115,33 +176,50 @@ export function createVisitResults({
     controller = new AbortController()
     const current = generation
     flyTo({ lat: location.lat, lon: location.lon, zoom: 15 })
-    show(node("p", translate("search.searching_for_visits")))
+    const waiting = node("p-4 text-sm text-base-content/60")
+    const heading = node("flex items-center gap-2 mb-2")
+    heading.append(
+      node("loading loading-spinner loading-sm", null, "span"),
+      node("font-medium", translate("search.searching_for_visits"), "span"),
+    )
+    waiting.append(heading, node("text-xs", location.name))
+    show(waiting)
     try {
       const data = await search.visits(location, { signal: controller.signal })
       if (destroyed || current !== generation) return
       const locations = (data?.locations || []).filter(
         (item) => (item.visits || []).length > 0,
       )
-      if (locations.length === 0)
-        return show(
-          node("p", translate("visits.none_found")),
+      if (locations.length === 0) {
+        const empty = node("p-6 text-center text-base-content/60")
+        empty.append(
+          node("text-3xl mb-3", "📍"),
+          node("text-sm font-medium", translate("visits.none_found")),
           node(
-            "p",
+            "text-xs mt-1",
             translate("visits.none_found_for", { query: location.name }),
           ),
         )
-      show(
+        return show(empty)
+      }
+      const header = node("p-4 border-b bg-base-200")
+      header.append(
         node(
-          "p",
-          translate("search.locations_found", { count: data.total_locations }),
           "text-sm font-medium",
+          translate("search.locations_found", { count: data.total_locations }),
         ),
-        ...locations.map(locationNode),
+        node(
+          "text-xs text-base-content/60 mt-1",
+          translate("search.for_query", { query: location.name }),
+        ),
       )
+      show(header, ...locations.map(locationNode))
     } catch (error) {
       if (destroyed || current !== generation || error?.name === "AbortError")
         return
-      show(node("p", translate("search.visits_load_failed"), "text-error"))
+      show(
+        node("p-3 text-sm text-error", translate("search.visits_load_failed")),
+      )
     }
   }
 
@@ -149,7 +227,7 @@ export function createVisitResults({
     generation++
     controller?.abort()
     container.replaceChildren()
-    container.hidden = true
+    container.classList.add("hidden")
   }
 
   function destroy() {

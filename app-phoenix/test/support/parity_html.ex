@@ -200,6 +200,9 @@ defmodule Dawarich.Test.ParityHTML do
   defp dropped?("data-map-" <> _, _value, _attrs), do: true
   defp dropped?("data-native-" <> _, _value, _attrs), do: true
 
+  defp dropped?("checked", _value, %{"type" => "checkbox"} = attrs),
+    do: not Map.has_key?(attrs, "name")
+
   defp dropped?("aria-label", _value, %{"type" => type})
        when type not in ~w(hidden submit button),
        do: true

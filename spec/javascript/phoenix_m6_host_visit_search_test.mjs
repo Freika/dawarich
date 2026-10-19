@@ -7,7 +7,7 @@ const all = (node) => [node, ...node.children.flatMap(all)]
 test("native host visit search groups in profile year and opens a scoped visit dialog", async () => {
   const f = fixture(),
     panel = new Element()
-  f.nodes.set("[data-map-search-visits]", panel)
+  f.nodes.set("[data-map-suggestions]", panel)
   f.map.flyTo = () => {}
   f.reader.read = async () => ({
     data: {
@@ -32,7 +32,7 @@ test("native host visit search groups in profile year and opens a scoped visit d
   })
   await f.owner.mount()
   await f.owner.search.results.open({ name: "Cafe", lat: 52, lon: 13 })
-  assert.ok(all(panel).some((node) => node.textContent === "2024 · 1"))
+  assert.ok(all(panel).some((node) => node["data-year"] === "2024"))
   all(panel)
     .find((node) => node["data-visit-index"] === "0")
     .emit("click")

@@ -27,6 +27,17 @@ defmodule Dawarich.NormalizedMarkupAllowlistTest do
              ParityHTML.normalize(~s(<button type="button"></button>))
   end
 
+  test "a server-checked unnamed checkbox counts as state, since Rails checks it in the browser" do
+    assert ParityHTML.normalize(~s(<input type="checkbox" class="toggle" checked>)) ==
+             ParityHTML.normalize(~s(<input type="checkbox" class="toggle">))
+
+    refute ParityHTML.normalize(~s(<input type="checkbox" name="keep" checked>)) ==
+             ParityHTML.normalize(~s(<input type="checkbox" name="keep">))
+
+    refute ParityHTML.normalize(~s(<input type="radio" value="points" checked>)) ==
+             ParityHTML.normalize(~s(<input type="radio" value="points">))
+  end
+
   test "ids, classes and other data attributes still count" do
     refute ParityHTML.normalize(~s(<div id="map" class="a"></div>)) ==
              ParityHTML.normalize(~s(<div class="a"></div>))
