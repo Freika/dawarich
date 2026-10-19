@@ -26,7 +26,10 @@ function fakeMap() {
     getStyle: () => ({ layers }),
     setLayoutProperty() {},
     setPaintProperty() {},
-    setFilter() {},
+    filters: 0,
+    setFilter() {
+      this.filters++
+    },
     on(name, handler) {
       handlers[name] = [...(handlers[name] ?? []), handler]
     },
@@ -59,5 +62,20 @@ test("the tracks layer sits below the points and heatmap layers, as on Rails", (
   for (const id of railsOrder) map.removeLayer(id)
   map.emit("style.load")
   assert.deepEqual(order(map), railsOrder)
+  base.destroy()
+})
+
+test("an unchanged configuration sets no layer filter, so MapLibre keeps its tiles", () => {
+  const map = fakeMap()
+  const base = createBaseLayers({ map, config: config("2026-10-16T00:00") })
+  map.emit("style.load")
+  base.update(config("2026-10-16T00:00"))
+  base.update(config("2026-10-16T00:00"))
+  assert.equal(map.filters, 0)
+
+  base.update({ ...config("2026-10-16T00:00"), flightWindows: [[1, 2]] })
+  assert.equal(map.filters, 3)
+  base.update({ ...config("2026-10-16T00:00"), flightWindows: [[1, 2]] })
+  assert.equal(map.filters, 3)
   base.destroy()
 })

@@ -26,8 +26,9 @@ export class TracksMvtLayer extends BaseLayer {
   }
 
   add(data, beforeId = null) {
+    const fresh = !this.map.getLayer(this.id)
     super.add(data, beforeId)
-    if (this.flightWindows.length) this._applyFlightFilter()
+    if (fresh && this.flightWindows.length) this._applyFlightFilter()
     this._tileErrorReported = false
     this._watchTileErrors()
     this._emptyTracksReported = false
@@ -129,6 +130,7 @@ export class TracksMvtLayer extends BaseLayer {
   }
 
   setFlightWindows(windows = []) {
+    if (JSON.stringify(windows) === JSON.stringify(this.flightWindows)) return
     this.flightWindows = windows
     this._applyFlightFilter()
   }
