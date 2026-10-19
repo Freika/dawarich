@@ -17,11 +17,12 @@ defmodule DawarichWeb.NativeTimelineCalendar do
     assigns = assign(assigns, display_summary: summary, loading: loading)
 
     ~H"""
-    <section
+    <div
       id="native-timeline-calendar"
-      class={["timeline-calendar min-w-0", @loading && "timeline-calendar--loading"]}
+      class={["timeline-calendar", @loading && "timeline-calendar--loading"]}
+      data-testid="timeline-calendar"
       data-month={@display_summary && @display_summary.month}
-      aria-busy={to_string(@calendar.status == :loading)}
+      aria-busy={to_string(@loading)}
     >
       <p :if={match?({:error, _}, @calendar.status)} class="alert alert-error text-xs" role="alert">
         {t(@locale, "javascript.messages.failed_to_load_visit_details", %{})}
@@ -33,7 +34,7 @@ defmodule DawarichWeb.NativeTimelineCalendar do
         locale={@locale}
         selected_date={@selected_date}
       />
-    </section>
+    </div>
     """
   end
 
@@ -60,52 +61,39 @@ defmodule DawarichWeb.NativeTimelineCalendar do
       )
 
     ~H"""
-    <div class="flex items-center justify-between mb-2 gap-2">
-      <button
+    <div class="flex items-center justify-between mb-2">
+      <.nav
         id="native-calendar-prev"
-        type="button"
-        class="btn btn-ghost btn-xs btn-square"
-        phx-click="calendar:month"
-        phx-value-month={@prev}
-        aria-label={t(@locale, "map.timeline_feeds.calendar.previous_month", %{})}
-      >
-        <Icon.icon name="chevron-left" class="w-4 h-4" />
-      </button>
-      <div class="font-semibold text-sm min-w-0 text-center" data-testid="calendar-title">
-        {@title}
-      </div>
-      <button
+        testid="calendar-prev"
+        month={@prev}
+        icon="chevron-left"
+        label={t(@locale, "map.timeline_feeds.calendar.previous_month", %{})}
+      />
+      <div class="font-semibold text-sm" data-testid="calendar-title">{@title}</div>
+      <.nav
         id="native-calendar-next"
-        type="button"
-        class="btn btn-ghost btn-xs btn-square"
-        phx-click="calendar:month"
-        phx-value-month={@next}
-        aria-label={t(@locale, "map.timeline_feeds.calendar.next_month", %{})}
-      >
-        <Icon.icon name="chevron-right" class="w-4 h-4" />
-      </button>
+        testid="calendar-next"
+        month={@next}
+        icon="chevron-right"
+        label={t(@locale, "map.timeline_feeds.calendar.next_month", %{})}
+      />
     </div>
     <div class="grid grid-cols-7 gap-0.5 text-[10px] text-base-content/60 mb-1">
       <div :for={label <- @initials} class="text-center">{label}</div>
     </div>
     <div class="grid grid-cols-7 gap-0.5">
-      <span
-        :for={_ <- if @loading, do: 1..42, else: []}
-        data-testid="calendar-skeleton"
-        aria-hidden="true"
-        class="h-8 rounded bg-base-200 animate-pulse"
-      ></span>
       <button
         :for={cell <- List.flatten(@summary.weeks)}
         type="button"
         class={[
-          TimelineFormat.cell_classes(cell),
+          if(@loading, do: skeleton_classes(cell), else: TimelineFormat.cell_classes(cell)),
           cell.date == @selected_date && "cal-cell--selected"
         ]}
         aria-current={if cell.date == @selected_date, do: "date"}
         data-day={cell.date}
+        data-testid="calendar-day"
         data-tracked-seconds={cell.tracked_seconds}
-        disabled={cell.disabled}
+        disabled={@loading or cell.disabled}
         phx-click="calendar:day"
         phx-value-date={cell.date}
       >
@@ -115,10 +103,49 @@ defmodule DawarichWeb.NativeTimelineCalendar do
     """
   end
 
+  attr :id, :string, required: true
+  attr :testid, :string, required: true
+  attr :month, :string, required: true
+  attr :icon, :string, required: true
+  attr :label, :string, required: true
+
+  defp nav(assigns) do
+    ~H"""
+    <a
+      id={@id}
+      href="#"
+      data-testid={@testid}
+      data-target-month={@month}
+      class="btn btn-ghost btn-xs btn-square"
+      aria-label={@label}
+      phx-click="calendar:month"
+      phx-value-month={@month}
+    >
+      <Icon.icon name={@icon} class="w-4 h-4" />
+    </a>
+    """
+  end
+
+  defp skeleton_classes(cell),
+    do: "cal-cell heat-0 cal-cell--dark-text" <> if(cell.in_month, do: "", else: " out-of-month")
+
   defp preview(calendar) do
     with month when is_binary(month) <- calendar[:month],
-         {:ok, _} <- Date.from_iso8601(month <> "-01") do
-      %{month: month, weeks: []}
+         {:ok, first} <- Date.from_iso8601(month <> "-01") do
+      start = Date.add(first, 1 - Date.day_of_week(first))
+
+      cells =
+        for offset <- 0..41 do
+          day = Date.add(start, offset)
+
+          %{
+            date: Date.to_iso8601(day),
+            in_month: day.month == first.month,
+            tracked_seconds: nil
+          }
+        end
+
+      %{month: month, weeks: Enum.chunk_every(cells, 7)}
     else
       _ -> calendar.summary
     end

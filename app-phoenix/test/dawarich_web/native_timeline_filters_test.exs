@@ -165,14 +165,14 @@ defmodule DawarichWeb.NativeTimelineFiltersTest do
            )
 
     assert has_element?(view, "[data-testid=calendar-title]", "January 2026")
-    assert has_element?(view, "[data-testid=calendar-skeleton]")
-    refute has_element?(view, "button.cal-cell")
+    assert has_element?(view, ".timeline-calendar--loading button.cal-cell.heat-0[disabled]")
+    refute has_element?(view, "button.cal-cell:not([disabled])")
     render_hook(view, "calendar:month", %{"month" => "2026-02"})
     send(slow, :release)
     render_async(view, 2000)
     assert has_element?(view, "[data-testid=calendar-title]", "February 2026")
     refute has_element?(view, ".timeline-calendar--loading")
-    refute has_element?(view, "[data-testid=calendar-skeleton]")
+    refute has_element?(view, "button.cal-cell:not(.out-of-month)[disabled]")
     render_hook(view, "calendar:stale", %{})
     assert has_element?(view, "[data-testid=calendar-title]", "February 2026")
   end
