@@ -184,7 +184,7 @@ defmodule Dawarich.Test.ParityHTML do
     else
       kept =
         attrs
-        |> Enum.reject(fn {name, value} -> dropped?(name, value) end)
+        |> Enum.reject(fn {name, value} -> dropped?(name, value, attrs) end)
         |> Enum.map(fn {name, value} -> {name, value(tag, name, value, attrs)} end)
         |> Enum.sort()
 
@@ -192,8 +192,12 @@ defmodule Dawarich.Test.ParityHTML do
     end
   end
 
-  defp dropped?("id", "phx-" <> _), do: true
-  defp dropped?(name, _value), do: Regex.match?(@dropped_attribute, name)
+  defp dropped?("id", "phx-" <> _, _attrs), do: true
+
+  defp dropped?("id", "native-" <> _, _attrs), do: true
+
+  defp dropped?("data-map-" <> _, _value, _attrs), do: true
+  defp dropped?(name, _value, _attrs), do: Regex.match?(@dropped_attribute, name)
 
   defp value("meta", "content", _value, %{"name" => name})
        when name in ["csrf-token", "phoenix-csrf-token"],
