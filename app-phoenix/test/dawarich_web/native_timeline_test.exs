@@ -33,12 +33,15 @@ defmodule DawarichWeb.NativeTimelineTest do
 
     def render(assigns) do
       ~H"""
-      <DawarichWeb.NativeTimelineFeed.feed
+      <DawarichWeb.NativeMapTimelineTab.tab
+        open
+        calendar={nil}
         timeline={assigns[:timeline]}
         filter={assigns[:timeline_filter]}
         tags={[%{name: "Food", color: "#ff0000", icon: "🍕"}, %{name: "Sport", color: nil, icon: nil}]}
         locale="en"
       />
+      <form id="native-timeline-filter" phx-change="timeline:filter" phx-submit="timeline:filter"></form>
       """
     end
   end
@@ -115,33 +118,33 @@ defmodule DawarichWeb.NativeTimelineTest do
     render_hook(view, "load", %{"start_at" => "2026-03-30T00:00", "end_at" => "2026-03-30T23:59"})
     render_async(view, 5_000)
 
-    view |> element("#native-timeline-tags button[data-tag-name=food]") |> render_click()
+    view |> element(".timeline-rail__tags button[data-tag-name=food]") |> render_click()
 
     assert has_element?(
              view,
-             "#native-timeline-tags button[data-tag-name=food][aria-pressed=true]"
+             ".timeline-rail__tags button[data-tag-name=food][aria-pressed=true]"
            )
 
     assert has_element?(view, "[data-entry='visit']", "Bakery")
     refute has_element?(view, "[data-entry='visit']", "Gym")
     refute has_element?(view, "[data-entry='visit']", "Office")
 
-    view |> element("#native-timeline-tags button[data-tag-name=sport]") |> render_click()
+    view |> element(".timeline-rail__tags button[data-tag-name=sport]") |> render_click()
     assert has_element?(view, "[data-entry='visit']", "Gym")
     assert has_element?(view, "[data-entry='visit']", "Bakery")
 
-    view |> element("#native-timeline-tags button[data-tag-name=food]") |> render_click()
+    view |> element(".timeline-rail__tags button[data-tag-name=food]") |> render_click()
     refute has_element?(view, "[data-entry='visit']", "Bakery")
     assert has_element?(view, "[data-entry='visit']", "Gym")
 
-    view |> form("#native-timeline-filter", %{"q" => "bakery"}) |> render_change()
+    view |> element("#native-timeline-filter") |> render_change(%{"q" => "bakery"})
     assert has_element?(view, "#native-timeline-filter-clear")
     view |> element("#native-timeline-filter-clear") |> render_click()
     assert has_element?(view, "[data-entry='visit']", "Office")
 
     assert has_element?(
              view,
-             "#native-timeline-tags button[data-tag-name=sport][aria-pressed=false]"
+             ".timeline-rail__tags button[data-tag-name=sport][aria-pressed=false]"
            )
   end
 
@@ -257,11 +260,11 @@ defmodule DawarichWeb.NativeTimelineTest do
     assert has_element?(view, "[data-entry='visit']", "Bakery")
     assert has_element?(view, "[data-entry='visit']", "Gym")
 
-    view |> form("#native-timeline-filter", %{"q" => "bak"}) |> render_change()
+    view |> element("#native-timeline-filter") |> render_change(%{"q" => "bak"})
     assert has_element?(view, "[data-entry='visit']", "Bakery")
     refute has_element?(view, "[data-entry='visit']", "Gym")
 
-    view |> form("#native-timeline-filter", %{"q" => "zzz"}) |> render_change()
+    view |> element("#native-timeline-filter") |> render_change(%{"q" => "zzz"})
     refute has_element?(view, "[data-entry='visit']")
 
     assert has_element?(

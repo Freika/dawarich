@@ -264,7 +264,7 @@ defmodule DawarichWeb.MapLiveTest do
     assert :sys.get_state(view.pid).socket.assigns.calendar.summary.month == "2026-05"
 
     chips =
-      render(view) |> LazyHTML.from_fragment() |> LazyHTML.query("#native-timeline-tags button")
+      render(view) |> LazyHTML.from_fragment() |> LazyHTML.query(".timeline-rail__tags button")
 
     assert Enum.count(chips) == 8
 

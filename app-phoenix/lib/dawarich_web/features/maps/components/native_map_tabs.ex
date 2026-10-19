@@ -57,29 +57,19 @@ defmodule DawarichWeb.NativeMapTabs do
       page={@page}
     />
 
-    <div class={tab_class(@panel, "timeline")} data-tab-content="timeline-feed">
-      <section :if={@timeline_open} id="native-map-panel">
-        <DawarichWeb.NativeTimelineCalendar.calendar
-          calendar={assigns[:calendar]}
-          locale={@locale}
-          selected_date={@selected_date}
-        />
-        <DawarichWeb.NativeTimelineFeed.feed
-          timeline={assigns[:timeline]}
-          selected_date={@selected_date}
-          filter={assigns[:timeline_filter]}
-          selection={assigns[:timeline_selection]}
-          selected_visit={assigns[:selected_visit]}
-          tags={@page.timeline_tags}
-          locale={@locale}
-        />
-        <DawarichWeb.NativeTrackInfo.card
-          track={assigns[:track_info]}
-          unit={@map_config["distanceUnit"] || "km"}
-          locale={@locale}
-        />
-      </section>
-    </div>
+    <DawarichWeb.NativeMapTimelineTab.tab
+      locale={@locale}
+      open={@timeline_open}
+      calendar={assigns[:calendar]}
+      timeline={assigns[:timeline]}
+      filter={assigns[:timeline_filter]}
+      selection={assigns[:timeline_selection]}
+      selected_visit={assigns[:selected_visit]}
+      selected_date={@selected_date}
+      tags={@page.timeline_tags}
+      track_info={assigns[:track_info]}
+      unit={@map_config["distanceUnit"] || "km"}
+    />
 
     <DawarichWeb.NativeMapToolsTab.tab
       locale={@locale}

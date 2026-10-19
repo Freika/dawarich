@@ -685,16 +685,16 @@ defmodule DawarichWeb.NativeM6HostTest do
 
     {:ok, view, _} = open(id, @second <> "&panel=timeline")
     render_async(view, 5000)
-    view |> form("#native-timeline-filter", %{"q" => "Bakery"}) |> render_change()
-    assert has_element?(view, "#native-timeline-filter input[value='bakery'][autocomplete=off]")
+    view |> element("#native-timeline-filter") |> render_change(%{"q" => "Bakery"})
+    assert has_element?(view, ".timeline-rail input[name=q][value='Bakery'][autocomplete=off]")
 
     assert has_element?(
              view,
-             "#native-timeline-tags a[data-testid=tags-manage-link][href='/tags'][target='_blank']"
+             ".timeline-rail__section-header a[data-testid=tags-manage-link][href='/tags'][target='_blank']"
            )
 
     view |> element("#native-timeline-filter-clear") |> render_click()
-    assert has_element?(view, "#native-timeline-filter input[value='']")
+    assert has_element?(view, ".timeline-rail input[name=q][value='']")
   end
 
   test "native production host edits a visit adds its note and opens an owned point address", %{

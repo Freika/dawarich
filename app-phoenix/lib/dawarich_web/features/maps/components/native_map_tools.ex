@@ -6,6 +6,13 @@ defmodule DawarichWeb.NativeMapTools do
     ~H"""
     <form id="native-map-visit-filter" phx-change="map:visits_filter" class="hidden"></form>
     <form id="native-reclassify" phx-submit="settings:reclassify" class="hidden"></form>
+    <form
+      id="native-timeline-filter"
+      phx-change="timeline:filter"
+      phx-submit="timeline:filter"
+      class="hidden"
+    >
+    </form>
     <p
       id="native-map-edit-error"
       data-map-edit-error

@@ -9,7 +9,8 @@ defmodule DawarichWeb.MapPanelsParityTest do
     {"tab-search", ~s([data-tab-content="search"])},
     {"tab-layers", ~s([data-tab-content="layers"])},
     {"tab-tools", ~s([data-tab-content="tools"])},
-    {"tab-settings", ~s([data-tab-content="settings"])}
+    {"tab-settings", ~s([data-tab-content="settings"])},
+    {"tab-timeline", ~s([data-tab-content="timeline-feed"])}
   ]
 
   setup do
@@ -95,6 +96,7 @@ defmodule DawarichWeb.MapPanelsParityTest do
     end)
   end
 
+  defp user_tag?({"div", [{"class", "timeline-rail__section"}], _}), do: true
   defp user_tag?(_), do: false
 
   defp dump(name, phoenix, rails) do

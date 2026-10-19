@@ -19,7 +19,6 @@ defmodule DawarichWeb.NativeTimelineFeed do
   attr :filter, :map, default: nil
   attr :selection, :map, default: nil
   attr :selected_visit, :any, default: nil
-  attr :tags, :list, default: []
   attr :locale, :string, required: true
 
   def feed(%{timeline: nil} = assigns), do: ~H""
@@ -45,46 +44,6 @@ defmodule DawarichWeb.NativeTimelineFeed do
       )
 
     ~H"""
-    <form
-      id="native-timeline-filter"
-      phx-change="timeline:filter"
-      phx-submit="timeline:filter"
-      class="flex flex-wrap gap-2 min-w-0"
-    >
-      <input
-        type="search"
-        autocomplete="off"
-        name="q"
-        value={@query}
-        class="input input-sm input-bordered min-w-0 flex-1"
-        aria-label={t(@locale, "javascript.places.search_placeholder", %{})}
-      />
-    </form>
-    <div :if={@tags != []} id="native-timeline-tags" class="flex flex-wrap gap-1 min-w-0">
-      <a
-        data-testid="tags-manage-link"
-        href="/tags"
-        target="_blank"
-        rel="noopener"
-        class="link min-w-0 [overflow-wrap:anywhere]"
-        title={t(@locale, "map.maplibre.settings_panel.manage_tags_in_a_new_tab", %{})}
-      >{t(@locale, "map.maplibre.settings_panel.manage", %{})}</a>
-      <button
-        :for={tag <- @tags}
-        type="button"
-        class={[
-          "tag-chip tag-chip--toggle",
-          String.downcase(tag.name) in @active && "tag-chip--active"
-        ]}
-        data-tag-name={String.downcase(tag.name)}
-        aria-pressed={to_string(String.downcase(tag.name) in @active)}
-        style={tag_style(tag.color)}
-        phx-click="timeline:tag"
-        phx-value-tag={tag.name}
-      >
-        <span class="[overflow-wrap:anywhere]">{if tag.icon not in [nil, ""], do: "#{tag.icon} "}{tag.name}</span>
-      </button>
-    </div>
     <section
       id="native-timeline-feed"
       class="min-w-0"
@@ -149,12 +108,6 @@ defmodule DawarichWeb.NativeTimelineFeed do
 
     %{day | entries: entries}
   end
-
-  defp tag_style(color) when is_binary(color) do
-    if color =~ ~r/\A#[0-9a-fA-F]{3,8}\z/, do: "background-color: #{color};"
-  end
-
-  defp tag_style(_color), do: nil
 
   attr :day, :map, required: true
   attr :locale, :string, required: true
