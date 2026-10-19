@@ -390,34 +390,21 @@ test("current ordinary map refresh deadline ends loading emits failure and rejec
   assert.equal(jobs.size, 0)
 })
 
-test("container resize updates the viewport and destruction disconnects the observer", async () => {
-  let notify,
-    observed,
-    disconnected = 0,
-    resized = 0
+test("container resizes are left to MapLibre, as on Rails", async () => {
+  let observers = 0
   class ResizeObserver {
-    constructor(callback) {
-      notify = callback
+    constructor() {
+      observers++
     }
-    observe(target) {
-      observed = target
-    }
-    disconnect() {
-      disconnected++
-    }
+    observe() {}
+    disconnect() {}
   }
   const f = fixture({
     window: Object.assign(new EventTarget(), { ResizeObserver }),
   })
   await f.runtime.mount()
-  f.runtime.map.resize = () => resized++
-  assert.equal(observed, f.element)
-  notify()
-  assert.equal(resized, 1)
+  assert.equal(observers, 0)
   f.runtime.destroy()
-  assert.equal(disconnected, 1)
-  notify()
-  assert.equal(resized, 1)
 })
 
 test("native runtime exposes the latest published state through refresh and disposal", async () => {
