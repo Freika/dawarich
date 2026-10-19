@@ -10,7 +10,9 @@ defmodule DawarichWeb.NativeMapHost do
   attr :config, :map, required: true
   attr :hook, :string, default: "Map"
   attr :locale, :string, default: "en"
-  attr :class, :string, default: "relative min-w-0 h-full w-full"
+  attr :class, :any, default: "relative min-w-0 h-full w-full"
+  attr :style, :string, default: nil
+  attr :loading, :boolean, default: true
 
   def map_host(assigns) do
     locale =
@@ -64,12 +66,18 @@ defmodule DawarichWeb.NativeMapHost do
     <div
       id={@id}
       class={@class}
+      style={@style}
       phx-hook={@hook}
       phx-update="ignore"
       data-map-config={@serialized_config}
       data-map-state="loading"
     >
-      <p data-map-loading role="status" class="absolute top-2 left-2 z-10 rounded bg-base-100 p-2">
+      <p
+        :if={@loading}
+        data-map-loading
+        role="status"
+        class="absolute top-2 left-2 z-10 rounded bg-base-100 p-2"
+      >
         {DawarichWeb.Translate.t(@locale, "javascript.common.loading", %{})}
       </p>
     </div>

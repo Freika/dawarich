@@ -51,6 +51,13 @@ export const MapHook = {
       ),
       this.handleEvent("map:config", (payload) => {
         this.mapConfig = payload
+        if (typeof payload.panel === "string") {
+          this.el.classList.toggle("panel-open", payload.panel !== "")
+          this.el.classList.toggle(
+            "panel-timeline-expanded",
+            payload.panel === "timeline",
+          )
+        }
         return this.mapOwner?.update({ ...this.mapOwner.config, ...payload })
       }),
       this.handleEvent("map:invalidate", (receipt = {}) => {

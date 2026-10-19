@@ -8,8 +8,14 @@ test("native host shortcuts activate owned controls ignore editors modifiers rep
   const document = new Element();
   f.root.ownerDocument = document;
   const activated = [];
-  for (const name of ["timeline", "layers", "search", "tools", "settings"]) {
-    f.nodes.set(`[data-testid="map-button-${name}"]`, {
+  for (const [name, testid] of [
+    ["timeline", "timeline"],
+    ["layers", "layers"],
+    ["search", "search"],
+    ["tools", "create"],
+    ["settings", "settings"],
+  ]) {
+    f.nodes.set(`[data-testid="map-button-${testid}"]`, {
       click: () => activated.push(name),
     });
   }

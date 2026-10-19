@@ -146,7 +146,7 @@ export function createHostTimeline({
       )
     )
       return
-    const date = root?.dataset.selectedDate
+    const date = root?.dataset.nativeSelectedDate
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) return
     const day = new Date(`${date}T00:00:00Z`)
     if (

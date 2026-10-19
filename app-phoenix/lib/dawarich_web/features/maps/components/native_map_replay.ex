@@ -4,10 +4,12 @@ defmodule DawarichWeb.NativeMapReplay do
   import DawarichWeb.Translate, only: [t: 3]
   attr :id, :string, required: true
   attr :locale, :string, required: true
+  attr :opener, :boolean, default: true
 
   def panel(assigns) do
     ~H"""
     <button
+      :if={@opener}
       type="button"
       data-map-replay-open
       class="btn btn-sm h-auto min-h-10 whitespace-normal"

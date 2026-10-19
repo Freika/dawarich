@@ -266,6 +266,45 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
     refute Map.has_key?(socket.assigns.native_subscriptions.topics, topic)
   end
 
+  test "a live point outside the map's date range refreshes nothing, as on Rails", %{
+    scope: scope,
+    socket: socket
+  } do
+    range = %{startAt: "2026-10-16T00:00:00+02:00", endAt: "2026-10-18T00:00:00+02:00"}
+    socket = %{socket | assigns: Map.put(socket.assigns, :map_range, range)}
+    socket = Subscriptions.sync(socket, %{kind: :map, scope: scope}, bus: NativeMapBus)
+    topic = RailsMessages.broadcasting(["points", {:user, 881_401}])
+    point = fn time -> Jason.encode!([52.5, 13.4, 90, 35, time, 1.4, 900, "Germany"]) end
+    inside = DateTime.to_unix(~U[2026-10-17 10:00:00Z])
+    early = DateTime.to_unix(~U[2026-10-15 10:00:00Z])
+    late = DateTime.to_unix(~U[2026-10-18 10:00:00Z])
+
+    assert {:ignored, socket} =
+             Subscriptions.deliver(socket, {:native_message, topic, point.(early)})
+
+    assert {:ignored, socket} =
+             Subscriptions.deliver(socket, {:native_message, topic, point.(late)})
+
+    assert {:delivered, _} =
+             Subscriptions.deliver(socket, {:native_message, topic, point.(inside)})
+  end
+
+  test "a range reaching now keeps its end open for live points", %{scope: scope, socket: socket} do
+    now = DateTime.utc_now()
+
+    range = %{
+      startAt: DateTime.to_iso8601(DateTime.add(now, -3600)),
+      endAt: DateTime.to_iso8601(DateTime.add(now, 60))
+    }
+
+    socket = %{socket | assigns: Map.put(socket.assigns, :map_range, range)}
+    socket = Subscriptions.sync(socket, %{kind: :map, scope: scope}, bus: NativeMapBus)
+    topic = RailsMessages.broadcasting(["points", {:user, 881_401}])
+    later = DateTime.to_unix(DateTime.add(now, 600))
+    payload = Jason.encode!([52.5, 13.4, 90, 35, later, 1.4, 901, "Germany"])
+    assert {:delivered, _} = Subscriptions.deliver(socket, {:native_message, topic, payload})
+  end
+
   test "reconnect refreshes revision without replaying duplicate edits", %{
     scope: scope,
     socket: socket

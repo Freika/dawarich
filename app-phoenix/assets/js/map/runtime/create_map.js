@@ -4,6 +4,8 @@ import { registerRTLTextPlugin } from "../style/rtl.js"
 import { createLifecycle } from "./lifecycle.js"
 import { createOperations } from "./operation.js"
 
+const RESIZE_SETTLE_MS = 150
+
 export function createMapRuntime({
   element,
   config,
@@ -36,8 +38,14 @@ export function createMapRuntime({
   function publish(value) {
     presentationState = value
     if (element.dataset) element.dataset.mapState = value
-    const loading = element.querySelector?.("[data-map-loading]")
-    if (loading) loading.hidden = value !== "loading"
+    const loading =
+      element.querySelector?.("[data-map-loading]") ??
+      element
+        .closest?.("[data-native-map-root]")
+        ?.querySelector?.("[data-map-loading]")
+    if (loading?.classList?.contains("map-progress-badge"))
+      loading.classList.toggle("visible", value === "loading")
+    else if (loading) loading.hidden = value !== "loading"
   }
 
   function destroy() {
@@ -101,6 +109,7 @@ export function createMapRuntime({
       map = new library.Map({
         center: [0, 0],
         zoom: 2,
+        attributionControl: { compact: true },
         ...current.mapOptions,
         container: root,
         style,
@@ -112,11 +121,18 @@ export function createMapRuntime({
         element.ownerDocument.defaultView?.ResizeObserver ??
         globalThis.ResizeObserver
       if (Observer) {
+        let settle = null
         const observer = new Observer(() => {
-          if (!lifetime.destroyed) owned.resize()
+          timers.clearTimeout(settle)
+          settle = timers.setTimeout(() => {
+            if (!lifetime.destroyed) owned.resize()
+          }, RESIZE_SETTLE_MS)
         })
         observer.observe(element)
-        lifetime.own(() => observer.disconnect())
+        lifetime.own(() => {
+          observer.disconnect()
+          timers.clearTimeout(settle)
+        })
       }
       if (
         current.navigationControls !== false &&

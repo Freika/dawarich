@@ -86,6 +86,9 @@ defmodule DawarichWeb.MapLive.Subscriptions do
           not Map.has_key?(desired, topic) ->
             {:ignored, socket}
 
+          outside_range?(socket, desired[topic], payload) ->
+            {:ignored, socket}
+
           fingerprint && fingerprint in state.seen ->
             {:ignored, socket}
 
@@ -104,6 +107,35 @@ defmodule DawarichWeb.MapLive.Subscriptions do
         {:refused, refuse(socket, reason)}
     end
   end
+
+  defp outside_range?(socket, "points", payload) when is_binary(payload) do
+    with %{startAt: first, endAt: last} <- socket.assigns[:map_range],
+         {:ok, start, _} <- DateTime.from_iso8601(first),
+         {:ok, finish, _} <- DateTime.from_iso8601(last),
+         {:ok, [_, _, _, _, time | _]} <- Jason.decode(payload),
+         {:ok, at} <- point_time(time) do
+      DateTime.before?(at, start) or
+        (DateTime.after?(at, finish) and DateTime.before?(finish, DateTime.utc_now()))
+    else
+      _ -> false
+    end
+  end
+
+  defp outside_range?(_socket, _kind, _payload), do: false
+
+  defp point_time(time) when is_number(time) do
+    unit = if time < 10_000_000_000, do: :second, else: :millisecond
+    DateTime.from_unix(trunc(time), unit)
+  end
+
+  defp point_time(time) when is_binary(time) do
+    case DateTime.from_iso8601(time) do
+      {:ok, at, _} -> {:ok, at}
+      error -> error
+    end
+  end
+
+  defp point_time(_time), do: :error
 
   defp ttl(:map), do: 5_000
   defp ttl(_kind), do: 0

@@ -64,7 +64,7 @@ export function createHostVisits({
         duration: 600,
         padding: panelPadding({
           container: map.getContainer(),
-          overlay: () => root?.querySelector("#native-map-panel"),
+          overlay: () => root?.querySelector(".map-button-cluster"),
         })(),
       });
       root

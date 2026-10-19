@@ -11,6 +11,7 @@ defmodule DawarichWeb.MapLive.Native do
     {:ok,
      socket
      |> assign(:page_title, t(socket.assigns.locale, "map.maplibre.index.map", %{}))
+     |> assign(:body_class, "h-screen !h-[100dvh] overflow-hidden relative")
      |> DawarichWeb.NativeMapChrome.load(refresh: false)
      |> DawarichWeb.MapLive.SettingsCommands.load()
      |> DawarichWeb.NativePosterGallery.mount(), layout: false}

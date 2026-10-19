@@ -46,3 +46,102 @@ test("a changed configuration during mounting restarts with the new style", asyn
   assert.deepEqual(styles, ["light", "dark"])
   owner.destroy()
 })
+
+test("the map attribution is compact without the MapLibre credit, as on Rails", async () => {
+  const options = []
+  class FakeMap {
+    constructor(opts) {
+      options.push(opts)
+    }
+    remove() {}
+    addControl() {}
+  }
+  const element = {
+    dataset: {},
+    querySelector: () => null,
+    ownerDocument: {
+      defaultView: null,
+      createElement: () => ({ style: {}, remove() {} }),
+    },
+    appendChild() {},
+  }
+  const owner = createMapRuntime({
+    element,
+    config: { styleName: "light", range: { startAt: "a" } },
+    reader: { destroy() {}, reset() {} },
+    loadLibrary: async () => ({ Map: FakeMap }),
+    loadStyle: async () => ({ version: 8, sources: {}, layers: [] }),
+  })
+  owner.mount()
+  await ticks()
+  assert.deepEqual(options[0]?.attributionControl, { compact: true })
+  owner.destroy()
+})
+
+test("container resizes during the panel slide resize the map once, as Rails does after the transition", async () => {
+  let observe = null
+  let resizes = 0
+  const pending = new Map()
+  let clock = 0
+  const timers = {
+    setTimeout: (fn, ms) => {
+      const id = Symbol()
+      pending.set(id, { fn, at: clock + ms })
+      return id
+    },
+    clearTimeout: (id) => pending.delete(id),
+  }
+  const advance = (ms) => {
+    clock += ms
+    for (const [id, { fn, at }] of [...pending])
+      if (at <= clock) {
+        pending.delete(id)
+        fn()
+      }
+  }
+  class FakeMap {
+    remove() {}
+    addControl() {}
+    resize() {
+      resizes++
+    }
+  }
+  class Observer {
+    constructor(callback) {
+      observe = callback
+    }
+    observe() {}
+    disconnect() {}
+  }
+  const element = {
+    dataset: {},
+    querySelector: () => null,
+    ownerDocument: {
+      defaultView: {
+        ResizeObserver: Observer,
+        addEventListener() {},
+        removeEventListener() {},
+      },
+      createElement: () => ({ style: {}, remove() {} }),
+    },
+    appendChild() {},
+  }
+  const owner = createMapRuntime({
+    element,
+    config: { styleName: "light", range: { startAt: "a" } },
+    reader: { destroy() {}, reset() {} },
+    loadLibrary: async () => ({ Map: FakeMap }),
+    loadStyle: async () => ({ version: 8, sources: {}, layers: [] }),
+    timers,
+  })
+  owner.mount()
+  await ticks()
+  for (let frame = 0; frame < 5; frame++) {
+    observe()
+    advance(60)
+  }
+  assert.equal(resizes, 0)
+  advance(400)
+  assert.equal(resizes, 1)
+  owner.destroy()
+})

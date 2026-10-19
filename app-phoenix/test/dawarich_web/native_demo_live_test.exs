@@ -126,6 +126,21 @@ defmodule DawarichWeb.NativeDemoLiveTest do
     assert flash["notice"] == "Demo data removed."
   end
 
+  test "the demo banner keeps the Rails single-line layout", c do
+    {:ok, _} = Onboarding.load_demo(c.scope, DemoData.fixtures())
+    view = open(c.id, nil)
+
+    assert has_element?(
+             view,
+             ~s|#demo-data-banner[class="fixed bottom-0 left-1/2 -translate-x-1/2 z-30 mb-[calc(1rem+env(safe-area-inset-bottom))]"]|
+           )
+
+    assert has_element?(
+             view,
+             ~s|#demo-data-banner > div[class="alert alert-info shadow-lg py-1.5 px-3 flex items-center gap-1.5 rounded-lg whitespace-nowrap text-sm"]|
+           )
+  end
+
   test "reconnect reconciles committed demo state", c do
     view = open(c.id, nil)
     refute has_element?(view, "#demo-data-banner")
