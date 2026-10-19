@@ -652,17 +652,14 @@ defmodule DawarichWeb.NativeM6HostTest do
     {:ok, view, _} = open(id, @second <> "&panel=settings")
 
     view
-    |> form("#native-appearance-form", %{"maps_maplibre_tiles_url" => "javascript:bad"})
-    |> render_submit()
+    |> element("#native-map-settings-form")
+    |> render_change(%{"_target" => ["vectorTilesUrl"], "vectorTilesUrl" => "javascript:bad"})
 
-    assert has_element?(view, "#native-map-settings [role=alert]")
+    assert has_element?(view, "[data-tab-content=settings] [role=alert]")
 
     view
-    |> form("#native-appearance-form", %{
-      "maps_maplibre_style" => "dark",
-      "maps_maplibre_tiles_url" => ""
-    })
-    |> render_submit()
+    |> element("#native-map-settings-form")
+    |> render_change(%{"_target" => ["mapStyle"], "mapStyle" => "dark"})
 
     assert_push_event(view, "map:settings", %{settings: %{"maps_maplibre_style" => "dark"}})
     assert Dawarich.Accounts.get(id).settings["maps_maplibre_style"] == "dark"
@@ -835,7 +832,7 @@ defmodule DawarichWeb.NativeM6HostTest do
     {:ok, view, _} = open(id, @second)
     initial = config(view)["revision"]
     view |> element("[data-testid=map-button-settings]") |> render_click()
-    assert has_element?(view, "#native-map-settings")
+    assert has_element?(view, "[data-tab-content=settings].active #native-map-settings-form")
     assert config(view)["revision"] == initial
     view |> element("[data-testid=map-button-timeline]") |> render_click()
     render_async(view, 5000)
@@ -1022,9 +1019,9 @@ defmodule DawarichWeb.NativeM6HostTest do
     {:ok, view, _} = open(id, @second <> "&panel=settings")
 
     view
-    |> form("#native-advanced-form", %{
-      "meters_between_routes" => "901",
-      "minutes_between_routes" => "37"
+    |> form("#native-map-settings-form", %{
+      "metersBetweenRoutes" => "901",
+      "minutesBetweenRoutes" => "37"
     })
     |> render_submit()
 

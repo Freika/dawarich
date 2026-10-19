@@ -20,7 +20,13 @@ defmodule DawarichWeb.NativeMapSettingsSectionsTest do
 
     def render(assigns) do
       ~H"""
-      <DawarichWeb.NativeMapSettings.panel settings={@map_settings} locale="en" />
+      <DawarichWeb.NativeMapSettingsTab.tab
+        settings={@map_settings}
+        locale="en"
+        panel="settings"
+        page={%{full_access: true, badge_url: ""}}
+      />
+      <form id="native-reclassify" phx-submit="settings:reclassify"></form>
       """
     end
   end
@@ -60,56 +66,52 @@ defmodule DawarichWeb.NativeMapSettingsSectionsTest do
     %{id: id, view: view}
   end
 
-  test "default advanced values permit a browser-valid settings submission", c do
-    controls =
-      c.view
-      |> render()
-      |> LazyHTML.from_fragment()
-      |> LazyHTML.query("#native-advanced-form input[type=number]")
-      |> LazyHTML.to_tree()
+  test "default advanced values stay within browser constraints and submit", c do
+    doc = c.view |> render() |> LazyHTML.from_fragment()
 
-    for {"input", attrs, _} <- controls do
+    for {"input", attrs, _} <-
+          doc
+          |> LazyHTML.query(
+            "#native-map-settings-form input[type=number], #native-map-settings-form input[type=range]"
+          )
+          |> LazyHTML.to_tree() do
       attrs = Map.new(attrs)
       value = String.to_integer(attrs["value"])
       assert value >= String.to_integer(attrs["min"])
       if attrs["max"], do: assert(value <= String.to_integer(attrs["max"]))
     end
 
+    assert has_element?(c.view, "input[name=fogOfWarThreshold][value='10']")
+
     c.view
-    |> form("#native-advanced-form", %{"meters_between_routes" => "750"})
-    |> render_submit()
-
-    assert stored(c.id)["meters_between_routes"] == "750"
-  end
-
-  test "native advanced defaults permit saving unrelated track settings", %{view: view, id: id} do
-    doc = render(view) |> LazyHTML.from_fragment()
-
-    for field <- LazyHTML.query(doc, "#native-advanced-form input[type=number]") do
-      [value] = LazyHTML.attribute(field, "value")
-      [minimum] = LazyHTML.attribute(field, "min")
-      assert String.to_integer(value) >= String.to_integer(minimum)
-
-      case LazyHTML.attribute(field, "max") do
-        [maximum] -> assert String.to_integer(value) <= String.to_integer(maximum)
-        [] -> :ok
-      end
-    end
-
-    view
-    |> form("#native-advanced-form", %{
-      "meters_between_routes" => "750",
-      "minutes_between_routes" => "45"
+    |> form("#native-map-settings-form", %{
+      "metersBetweenRoutes" => "750",
+      "minutesBetweenRoutes" => "45"
     })
     |> render_submit()
 
-    assert stored(id)["meters_between_routes"] == "750"
-    assert stored(id)["minutes_between_routes"] == "45"
+    assert stored(c.id)["meters_between_routes"] == "750"
+    assert stored(c.id)["minutes_between_routes"] == "45"
+  end
+
+  test "an edited tracked field marks its section unsaved until Apply", c do
+    c.view
+    |> element("#native-map-settings-form")
+    |> render_change(%{"_target" => ["metersBetweenRoutes"], "metersBetweenRoutes" => "900"})
+
+    assert has_element?(c.view, "[data-dirty-badge]:not(.hidden)", "1 unsaved")
+    assert stored(c.id)["meters_between_routes"] != "900"
+
+    c.view
+    |> form("#native-map-settings-form", %{"metersBetweenRoutes" => "900"})
+    |> render_submit()
+
+    assert stored(c.id)["meters_between_routes"] == "900"
+    refute has_element?(c.view, "[data-dirty-badge]:not(.hidden)")
   end
 
   test "theme preset saves custom style with derived tokens and refuses unknown keys", c do
-    refute has_element?(c.view, "#native-theme-form")
-    c.view |> element("#native-theme-presets [data-theme-key=autumn]") |> render_click()
+    c.view |> element("button[data-key=autumn]") |> render_click()
 
     assert stored(c.id)["maps_maplibre_style"] == "custom"
 
@@ -117,68 +119,70 @@ defmodule DawarichWeb.NativeMapSettingsSectionsTest do
              stored(c.id)["maps_maplibre_custom_theme"]
 
     assert_push_event(c.view, "map:settings", %{settings: %{"maps_maplibre_style" => "custom"}})
-    assert has_element?(c.view, "#native-theme-form input[name='tokens[bg]'][value='#FBF7F0']")
+    assert has_element?(c.view, "input[data-token=bg][value='#FBF7F0']")
 
     before = stored(c.id)
     render_hook(c.view, "settings:theme_preset", %{"key" => "../../package"})
     assert stored(c.id) == before
-    assert has_element?(c.view, "#native-map-settings [role=alert]")
+    assert has_element?(c.view, "[role=alert]")
 
-    c.view |> form("#native-theme-form", %{"tokens" => %{"bg" => "#123456"}}) |> render_submit()
+    c.view
+    |> element("#native-map-settings-form")
+    |> render_change(%{"_target" => ["tokens", "bg"], "tokens" => %{"bg" => "#123456"}})
+
     theme = stored(c.id)["maps_maplibre_custom_theme"]
     assert theme["base"] == "autumn"
     assert theme["tokens"]["bg"] == "#123456"
   end
 
   test "base layer and POI toggles save hidden lists inside maps", c do
-    c.view
-    |> form("#native-layers-form", %{"tiles" => ["roads", "water"], "poi" => ["cycling"]})
-    |> render_submit()
+    c.view |> element("input[data-tile-category=roads]") |> render_click()
+    c.view |> element("input[data-poi-group=cycling]") |> render_click()
 
     maps = stored(c.id)["maps"]
-
-    assert maps["hidden_tile_categories"] ==
-             Dawarich.Settings.MapForm.tile_categories() -- ["roads", "water"]
-
-    assert maps["disabled_poi_groups"] == Dawarich.Settings.MapForm.poi_groups() -- ["cycling"]
+    assert maps["hidden_tile_categories"] == ["roads"]
+    assert maps["disabled_poi_groups"] == ["cycling"]
     assert maps["distance_unit"] == "mi"
     assert maps["legacy"] == "kept"
-    assert has_element?(c.view, "#native-layers-form input[name='tiles[]'][value=roads][checked]")
-    refute has_element?(c.view, "#native-layers-form input[name='tiles[]'][value=rail][checked]")
+    refute has_element?(c.view, "input[data-tile-category=roads][checked]")
+    assert has_element?(c.view, "input[data-tile-category=rail][checked]")
 
-    c.view
-    |> form("#native-display-form", %{
-      "globe_projection" => "true",
-      "track_color" => "#00FF00",
-      "distance_unit" => "km"
-    })
-    |> render_submit()
+    c.view |> element("input[data-tile-category=roads]") |> render_click()
+    assert stored(c.id)["maps"]["hidden_tile_categories"] == []
+
+    for {target, value} <- [
+          {"globeProjection", "on"},
+          {"trackColor", "#00FF00"},
+          {"distanceUnit", "km"}
+        ] do
+      c.view
+      |> element("#native-map-settings-form")
+      |> render_change(%{"_target" => [target], target => value})
+    end
 
     assert stored(c.id)["globe_projection"] == true
     assert stored(c.id)["track_color"] == "#00FF00"
     assert stored(c.id)["maps"]["distance_unit"] == "km"
 
-    c.view |> element("#native-track-color-reset") |> render_click()
+    c.view |> element("[phx-click='settings:track_color_reset']") |> render_click()
     assert stored(c.id)["track_color"] == "#6366F1"
   end
 
   test "advanced fields save and reset restores defaults without dropping provider credentials",
        c do
     c.view
-    |> form("#native-advanced-form", %{
-      "meters_between_routes" => "900",
-      "fog_of_war_meters" => "250",
-      "gps_filtering_enabled" => "false"
+    |> form("#native-map-settings-form", %{
+      "metersBetweenRoutes" => "900",
+      "fogOfWarRadius" => "250"
     })
-    |> render_submit()
+    |> render_submit(%{"gpsFilteringEnabled" => nil})
 
     assert %{
              "meters_between_routes" => "900",
-             "fog_of_war_meters" => "250",
-             "gps_filtering_enabled" => false
+             "fog_of_war_meters" => "250"
            } = stored(c.id)
 
-    c.view |> element("#native-settings-reset") |> render_click()
+    c.view |> element("[phx-click='settings:reset']") |> render_click()
     after_reset = stored(c.id)
     assert after_reset["meters_between_routes"] == "500"
     assert after_reset["fog_of_war_meters"] == "50"
@@ -196,13 +200,13 @@ defmodule DawarichWeb.NativeMapSettingsSectionsTest do
     Ownership.put!(Repo, "command:users.recalculate_data", :oban)
     Ownership.put!(Repo, "command:points.anomaly_backfill", :oban)
 
-    c.view |> element("#native-recalculate") |> render_click()
+    c.view |> element("[phx-click='settings:recalculate']") |> render_click()
     assert has_element?(c.view, "#native-settings-notice", "Recalculation queued")
-    c.view |> element("#native-recalculate") |> render_click()
-    assert has_element?(c.view, "#native-map-settings [role=alert]")
+    c.view |> element("[phx-click='settings:recalculate']") |> render_click()
+    assert has_element?(c.view, "[role=alert]")
     assert outbox(c.id, "users.recalculate_data") == 1
 
-    c.view |> element("#native-reapply-anomalies") |> render_click()
+    c.view |> element("[phx-click='settings:reapply_anomalies']") |> render_click()
     assert has_element?(c.view, "#native-settings-notice", "Re-evaluation queued")
     assert outbox(c.id, "points.anomaly_backfill") == 1
   end

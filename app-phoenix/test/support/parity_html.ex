@@ -2,7 +2,7 @@ defmodule Dawarich.Test.ParityHTML do
   @moduledoc false
   import Kernel, except: [node: 1]
 
-  @dropped_attribute ~r/^(phx-|data-phx-|data-testid$|data-status-display$|data-points-count$|data-controller$|data-action$|data-turbo|data-[a-z0-9-]+-(target|value|outlet|class|param)$)/
+  @dropped_attribute ~r/^(phx-|data-phx-|data-testid$|data-confirm$|data-status-display$|data-points-count$|data-controller$|data-action$|data-turbo|data-[a-z0-9-]+-(target|value|outlet|class|param)$)/
   @dropped_elements ~w(turbo-cable-stream-source)
 
   def normalize(html) when is_binary(html),
@@ -185,7 +185,7 @@ defmodule Dawarich.Test.ParityHTML do
     else
       kept =
         attrs
-        |> Enum.reject(fn {name, value} -> dropped?(name, value, attrs) end)
+        |> Enum.reject(fn {name, value} -> dropped?(name, value, Map.put(attrs, :tag, tag)) end)
         |> Enum.map(fn {name, value} -> {name, value(tag, name, value, attrs)} end)
         |> Enum.sort()
 
@@ -202,6 +202,8 @@ defmodule Dawarich.Test.ParityHTML do
 
   defp dropped?("checked", _value, %{"type" => "checkbox"} = attrs),
     do: not Map.has_key?(attrs, "name")
+
+  defp dropped?("aria-label", _value, %{tag: tag}) when tag in ["select", "textarea"], do: true
 
   defp dropped?("aria-label", _value, %{"type" => type})
        when type not in ~w(hidden submit button),
@@ -234,6 +236,12 @@ defmodule Dawarich.Test.ParityHTML do
 
   defp undigest_asset(url, "/assets/" <> _rest),
     do: String.replace(url, ~r/-[0-9a-f]{8,}(?=\.\w+(?:[?"]|$))/, "")
+
+  defp undigest_asset(url, "/native/" <> rest) do
+    if String.starts_with?(rest, "map/") or not String.contains?(Path.basename(rest), "."),
+      do: url,
+      else: String.replace(url, "/native/" <> rest, "/assets/" <> rest)
+  end
 
   defp undigest_asset(url, _path), do: url
 

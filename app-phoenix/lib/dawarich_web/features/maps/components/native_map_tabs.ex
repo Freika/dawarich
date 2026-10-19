@@ -50,13 +50,12 @@ defmodule DawarichWeb.NativeMapTabs do
       />
     </div>
 
-    <div class={tab_class(@panel, "settings")} data-tab-content="settings">
-      <DawarichWeb.NativeMapSettings.panel
-        :if={@panel == "settings"}
-        settings={assigns[:map_settings]}
-        locale={@locale}
-      />
-    </div>
+    <DawarichWeb.NativeMapSettingsTab.tab
+      locale={@locale}
+      panel={@panel}
+      settings={assigns[:map_settings]}
+      page={@page}
+    />
 
     <div class={tab_class(@panel, "timeline")} data-tab-content="timeline-feed">
       <section :if={@timeline_open} id="native-map-panel">

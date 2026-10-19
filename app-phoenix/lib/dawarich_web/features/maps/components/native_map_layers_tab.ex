@@ -84,7 +84,7 @@ defmodule DawarichWeb.NativeMapLayersTab do
             tile.description
           )}</span>
           <span :if={tile.pro && @restricted} class="layer-tile__badge">
-            <DawarichWeb.MapParts.pro_badge restricted url={@page.badge_url} locale={@locale} />
+            <DawarichWeb.MapParts.pro_badge restricted url={@page[:badge_url] || ""} locale={@locale} />
           </span>
         </label>
       </div>
@@ -174,6 +174,7 @@ defmodule DawarichWeb.NativeMapLayersTab do
             type="text"
             id="visits-search"
             placeholder={p(@locale, "filter_by_name")}
+            aria-label={p(@locale, "filter_by_name")}
             class="input input-sm input-bordered w-full"
             form="native-map-visit-filter"
             name="query"
@@ -182,6 +183,7 @@ defmodule DawarichWeb.NativeMapLayersTab do
           />
           <select
             class="select select-bordered select-sm w-full py-0"
+            aria-label={p(@locale, "visits")}
             form="native-map-visit-filter"
             name="status"
           >

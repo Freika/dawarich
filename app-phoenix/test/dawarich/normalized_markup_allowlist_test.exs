@@ -23,6 +23,9 @@ defmodule Dawarich.NormalizedMarkupAllowlistTest do
     assert ParityHTML.normalize(~s(<input type="text" aria-label="Search" class="input">)) ==
              ParityHTML.normalize(~s(<input type="text" class="input">))
 
+    assert ParityHTML.normalize(~s(<select aria-label="Status" class="select"></select>)) ==
+             ParityHTML.normalize(~s(<select class="select"></select>))
+
     refute ParityHTML.normalize(~s(<button type="button" aria-label="Close"></button>)) ==
              ParityHTML.normalize(~s(<button type="button"></button>))
   end
@@ -36,6 +39,23 @@ defmodule Dawarich.NormalizedMarkupAllowlistTest do
 
     refute ParityHTML.normalize(~s(<input type="radio" value="points" checked>)) ==
              ParityHTML.normalize(~s(<input type="radio" value="points">))
+  end
+
+  test "a native static asset counts as the same Rails asset" do
+    assert ParityHTML.normalize(
+             ~s|<div style="background-image: url('/native/poster_themes/noir.webp')"></div>|
+           ) ==
+             ParityHTML.normalize(
+               ~s|<div style="background-image: url('/assets/poster_themes/noir-ec3281207d007aa3.webp')"></div>|
+             )
+
+    refute ParityHTML.normalize(~s(<a href="/native/map/data/points"></a>)) ==
+             ParityHTML.normalize(~s(<a href="/assets/map/data/points"></a>))
+  end
+
+  test "a LiveView confirmation prompt counts as wiring, since Rails asks from its controller" do
+    assert ParityHTML.normalize(~s(<button type="button" data-confirm="Sure?">Reset</button>)) ==
+             ParityHTML.normalize(~s(<button type="button">Reset</button>))
   end
 
   test "ids, classes and other data attributes still count" do

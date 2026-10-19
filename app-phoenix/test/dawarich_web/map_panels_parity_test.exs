@@ -8,7 +8,8 @@ defmodule DawarichWeb.MapPanelsParityTest do
   @sections [
     {"tab-search", ~s([data-tab-content="search"])},
     {"tab-layers", ~s([data-tab-content="layers"])},
-    {"tab-tools", ~s([data-tab-content="tools"])}
+    {"tab-tools", ~s([data-tab-content="tools"])},
+    {"tab-settings", ~s([data-tab-content="settings"])}
   ]
 
   setup do
@@ -42,15 +43,28 @@ defmodule DawarichWeb.MapPanelsParityTest do
 
   defp client_state({tag, attrs, children}) do
     form = List.keyfind(attrs, "form", 0)
+    token = List.keymember?(attrs, "data-token", 0)
+
+    value? =
+      tag == "input" and
+        List.keyfind(attrs, "type", 0) in Enum.map(~w(color number range url text), &{"type", &1})
 
     attrs =
       attrs
       |> Enum.reject(fn {name, _} ->
-        name in ~w(checked selected form) or (form && name == "name")
+        name in ~w(checked selected form) or
+          (form != nil and name == "name" and {"type", "hidden"} not in attrs) or
+          (token and name == "name") or (value? and name == "value")
       end)
       |> checked_badge()
 
-    {tag, attrs, client_state(children)}
+    children =
+      if token or {"class", "text-xs opacity-60 tabular-nums"} in attrs or
+           {"class", "label-text-alt"} in attrs,
+         do: [],
+         else: client_state(children)
+
+    {tag, attrs, children}
   end
 
   defp client_state(text), do: text

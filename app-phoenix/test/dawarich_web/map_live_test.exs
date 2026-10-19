@@ -118,7 +118,7 @@ defmodule DawarichWeb.MapLiveTest do
     end
 
     view |> element("[data-testid=map-button-settings]") |> render_click()
-    assert has_element?(view, "#native-map-settings")
+    assert has_element?(view, "[data-tab-content=settings].active #native-map-settings-form")
     assert has_element?(view, "#native-map[phx-update=ignore]")
     refute render(view) =~ "MapShell"
   end
@@ -294,28 +294,21 @@ defmodule DawarichWeb.MapLiveTest do
     })
 
     {:ok, view, _} = live_as(user, "/map/v2?panel=settings")
-    assert has_element?(view, "#native-theme-presets [data-theme-key=blueprint]")
-    refute has_element?(view, "#native-layers-form input[name='tiles[]'][value=roads][checked]")
-
-    assert has_element?(
-             view,
-             "#native-layers-form input[name='tiles[]'][value=road_labels][checked]"
-           )
-
-    refute has_element?(view, "#native-layers-form input[name='poi[]'][value=cycling][checked]")
-
-    assert has_element?(
-             view,
-             "#native-transport-form input[name='modes[]'][value=train][checked]"
-           )
-
-    refute has_element?(
-             view,
-             "#native-transport-form input[name='modes[]'][value=walking][checked]"
-           )
+    assert has_element?(view, "button[data-key=blueprint]")
+    refute has_element?(view, "input[data-tile-category=roads][checked]")
+    assert has_element?(view, "input[data-tile-category=road_labels][checked]")
+    refute has_element?(view, "input[data-poi-group=cycling][checked]")
+    assert has_element?(view, "input[name='enabledTransportationModes[]'][value=train][checked]")
+    refute has_element?(view, "input[name='enabledTransportationModes[]'][value=walking][checked]")
 
     assert has_element?(view, "#native-transport-apply[disabled]")
-    view |> form("#native-transport-form", %{"modes" => ["walking"]}) |> render_change()
+
+    view
+    |> element("#native-map-settings-form")
+    |> render_change(%{
+      "_target" => ["enabledTransportationModes"],
+      "enabledTransportationModes" => ["walking"]
+    })
     refute has_element?(view, "#native-transport-apply[disabled]")
     assert Dawarich.Accounts.get(user.id).settings["enabled_transportation_modes"] == ["train"]
   end

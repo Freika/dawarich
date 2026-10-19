@@ -20,7 +20,12 @@ defmodule DawarichWeb.NativeMapSettingsTest do
 
     def render(assigns) do
       ~H"""
-      <DawarichWeb.NativeMapSettings.panel settings={@map_settings} locale="en" />
+      <DawarichWeb.NativeMapSettingsTab.tab
+        settings={@map_settings}
+        locale="en"
+        panel="settings"
+        page={%{full_access: true, badge_url: ""}}
+      />
       """
     end
   end
@@ -54,16 +59,18 @@ defmodule DawarichWeb.NativeMapSettingsTest do
     assert has_element?(view, "#native-transport-apply[disabled]")
 
     view
-    |> form("#native-transport-form", %{"modes" => ["walking", "cycling"]})
-    |> render_change()
+    |> element("#native-map-settings-form")
+    |> render_change(%{
+      "_target" => ["enabledTransportationModes"],
+      "enabledTransportationModes" => ["walking", "cycling"]
+    })
 
     assert has_element?(view, "#native-transport-apply:not([disabled])")
+    assert has_element?(view, "[data-dirty-scope=transportation] summary", "")
     assert stored(id) == before
     assert reclassify(id) == 0
 
-    view
-    |> form("#native-transport-form", %{"modes" => ["walking", "cycling"]})
-    |> render_submit()
+    view |> element("#native-transport-apply") |> render_click()
 
     assert stored(id)["enabled_transportation_modes"] == ["walking", "cycling"]
     assert reclassify(id) == 1
@@ -79,18 +86,22 @@ defmodule DawarichWeb.NativeMapSettingsTest do
 
     html =
       view
-      |> form("#native-appearance-form", %{"maps_maplibre_tiles_url" => "javascript:alert(1)"})
-      |> render_submit()
+      |> element("#native-map-settings-form")
+      |> render_change(%{
+        "_target" => ["vectorTilesUrl"],
+        "vectorTilesUrl" => "javascript:alert(1)"
+      })
 
     assert html =~ "Tile URL must include"
     assert stored(id) == before
     refute_push_event(view, "map:settings", %{})
 
     view
-    |> form("#native-appearance-form", %{
-      "maps_maplibre_tiles_url" => "https://tiles.example.test/{z}/{x}/{y}.png"
+    |> element("#native-map-settings-form")
+    |> render_change(%{
+      "_target" => ["vectorTilesUrl"],
+      "vectorTilesUrl" => "https://tiles.example.test/{z}/{x}/{y}.png"
     })
-    |> render_submit()
 
     assert stored(id)["maps_maplibre_tiles_url"] == "https://tiles.example.test/{z}/{x}/{y}.png"
 
@@ -117,12 +128,10 @@ defmodule DawarichWeb.NativeMapSettingsTest do
     view: view,
     id: id
   } do
-    assert has_element?(view, "#native-advanced-form", "Show new points in real-time")
+    assert has_element?(view, "#native-map-settings-form", "Show new points in real-time")
 
     for {enabled, notice} <- [{false, "Live mode disabled"}, {true, "Live mode enabled"}] do
-      view
-      |> form("#native-advanced-form", %{"live_map_enabled" => to_string(enabled)})
-      |> render_submit()
+      view |> element("[phx-click='settings:live']") |> render_click()
 
       assert stored(id)["live_map_enabled"] == enabled
       assert has_element?(view, "#native-settings-notice[role=status]", notice)

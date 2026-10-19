@@ -13,6 +13,7 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
         assign(socket, :map_settings, %{
           saved: settings,
           draft_modes: nil,
+          dirty: %{},
           error: nil,
           notice: nil,
           restricted: MapSettings.restricted?(scope) != {:ok, false},
@@ -121,20 +122,59 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
     save(socket, attrs)
   end
 
-  def handle_event("settings:transport_change", params, socket),
-    do: {:noreply, update(socket, &%{&1 | draft_modes: modes(params), error: nil})}
+  def handle_event("settings:form", %{"_target" => target} = params, socket) do
+    alias DawarichWeb.MapLive.SettingsForm
+    saved = socket.assigns.map_settings.saved
 
-  def handle_event("settings:transport_apply", params, socket),
-    do: save(socket, %{"enabled_transportation_modes" => modes(params)})
+    socket =
+      update(socket, fn settings ->
+        %{
+          settings
+          | draft_modes: SettingsForm.modes(params),
+            dirty: SettingsForm.dirty(params, saved, socket.assigns[:locale] || "en")
+        }
+      end)
 
-  def handle_event("settings:appearance", params, socket),
-    do: save(socket, MapForm.appearance(params))
+    case SettingsForm.immediate(target, params, saved) do
+      nil -> {:noreply, socket}
+      attrs -> save(socket, attrs)
+    end
+  end
 
-  def handle_event("settings:layers", params, socket),
-    do: save(socket, MapForm.layers(params))
+  def handle_event("settings:apply", params, socket) do
+    socket = update(socket, &%{&1 | dirty: %{}})
+    save(socket, DawarichWeb.MapLive.SettingsForm.advanced(params))
+  end
 
-  def handle_event("settings:advanced", params, socket),
-    do: save(socket, MapForm.advanced(params))
+  def handle_event("settings:tile_category", %{"category" => key, "enabled" => value}, socket)
+      when value in ["true", "false"],
+      do: toggle_list(socket, "hidden_tile_categories", MapForm.tile_categories(), key, value)
+
+  def handle_event("settings:poi_group", %{"group" => key, "enabled" => value}, socket)
+      when value in ["true", "false"],
+      do: toggle_list(socket, "disabled_poi_groups", MapForm.poi_groups(), key, value)
+
+  def handle_event("settings:live", %{"enabled" => value}, socket)
+      when value in ["true", "false"],
+      do: save(socket, %{"live_map_enabled" => value == "true"})
+
+  def handle_event("settings:reclassify", _params, socket) do
+    create =
+      &Dawarich.Tracks.WebRecalculation.create(Dawarich.Repo, &1, %{now: DateTime.utc_now()})
+
+    case Dawarich.Maps.with_actor(socket.assigns.current_scope, create) do
+      {:ok, _} -> {:noreply, update(socket, &%{&1 | notice: :reclassify, error: nil})}
+      _ -> {:noreply, update(socket, &%{&1 | error: :reclassify, notice: nil})}
+    end
+  end
+
+  def handle_event("settings:transport_apply", _params, socket),
+    do:
+      save(socket, %{
+        "enabled_transportation_modes" =>
+          socket.assigns.map_settings.draft_modes ||
+            socket.assigns.map_settings.saved["enabled_transportation_modes"]
+      })
 
   def handle_event("settings:track_color_reset", _params, socket),
     do: save(socket, %{"track_color" => MapForm.defaults()["track_color"]})
@@ -150,19 +190,6 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
       {:error, reason} ->
         {:noreply, update(socket, &%{&1 | error: reason, notice: nil})}
     end
-  end
-
-  def handle_event("settings:theme", %{"tokens" => tokens}, socket) when is_map(tokens) do
-    base =
-      case socket.assigns[:map_settings] do
-        %{saved: %{"maps_maplibre_custom_theme" => %{"base" => base}}} when is_binary(base) ->
-          base
-
-        _ ->
-          "noir"
-      end
-
-    save(socket, MapForm.theme(base, tokens))
   end
 
   def handle_event("settings:recalculate", _params, socket),
@@ -190,7 +217,11 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
            &%{
              &1
              | saved: settings,
-               draft_modes: nil,
+               draft_modes:
+                 if(Map.has_key?(attrs, "enabled_transportation_modes"),
+                   do: nil,
+                   else: &1.draft_modes
+                 ),
                error: nil,
                notice: save_notice(attrs, settings)
            }
@@ -218,6 +249,17 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
     end
   end
 
-  defp modes(%{"modes" => modes}) when is_list(modes), do: Enum.filter(modes, &is_binary/1)
-  defp modes(_), do: []
+  defp toggle_list(socket, key, choices, item, value) do
+    maps = socket.assigns.map_settings.saved["maps"] || %{}
+    hidden = maps[key] || []
+
+    if item in choices do
+      hidden =
+        if value == "true", do: List.delete(hidden, item), else: Enum.uniq(hidden ++ [item])
+
+      save(socket, %{"maps" => Map.put(maps, key, hidden)})
+    else
+      {:noreply, socket}
+    end
+  end
 end
