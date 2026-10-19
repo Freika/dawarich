@@ -45,11 +45,19 @@ defmodule DawarichWeb.BrowserMapAuth do
       |> register_before_send(fn response ->
         response
         |> put_resp_header("vary", "Cookie")
-        |> put_resp_header("cache-control", "private, no-store")
+        |> cache_control()
       end)
 
     Auth.admit(conn, actor, require_active: false)
   end
+
+  defp cache_control(%{path_info: ["native", "map", "data", "tiles" | _]} = conn) do
+    if get_resp_header(conn, "cache-control") == [],
+      do: put_resp_header(conn, "cache-control", "private, no-store"),
+      else: conn
+  end
+
+  defp cache_control(conn), do: put_resp_header(conn, "cache-control", "private, no-store")
 
   defp api_user(user) do
     user
