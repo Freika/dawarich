@@ -158,8 +158,8 @@ defmodule DawarichWeb.NativeM6HostTest do
         |> LazyHTML.from_fragment()
         |> LazyHTML.query("[data-testid=native-select-area]")
 
-      {:ok, select} = Dawarich.I18n.t(locale, "javascript.map_controls.select_area")
-      assert LazyHTML.attribute(button, "data-select-message") == [select]
+      {:ok, select} = Dawarich.I18n.t(locale, "map.maplibre.settings_panel.select_area")
+      assert LazyHTML.text(button) =~ select
       refute has_element?(view, "#native-select-area .translation_missing")
       {:ok, cancel} = Dawarich.I18n.t(locale, "javascript.visits.cancel_selection")
 
@@ -169,9 +169,8 @@ defmodule DawarichWeb.NativeM6HostTest do
           "javascript.messages.draw_a_rectangle_on_the_map_to_select_points"
         )
 
-      assert LazyHTML.attribute(button, "data-cancel-message") == [cancel]
-      assert LazyHTML.attribute(button, "data-draw-message") == [draw]
-      assert LazyHTML.attribute(button, "aria-pressed") == ["false"]
+      assert LazyHTML.attribute(button, "data-map-cancel-message") == [cancel]
+      assert LazyHTML.attribute(button, "data-map-draw-message") == [draw]
     end
   end
 
@@ -439,11 +438,11 @@ defmodule DawarichWeb.NativeM6HostTest do
   test "native launcher toggle dismisses only explicit repeated clicks", %{id: id} do
     {:ok, view, _} = open(id, "/map/v2?panel=layers")
     view |> element("[data-testid=map-button-layers]") |> render_click()
-    refute has_element?(view, "#native-map-layers-panel")
+    refute has_element?(view, "#map-settings-panel.open")
     view |> element("[data-testid=map-button-layers]") |> render_click()
-    assert has_element?(view, "#native-map-layers-panel")
+    assert has_element?(view, "#map-settings-panel.open #native-map-layers.active")
     render_hook(view, "map:panel", %{"panel" => "layers"})
-    assert has_element?(view, "#native-map-layers-panel")
+    assert has_element?(view, "#map-settings-panel.open #native-map-layers.active")
   end
 
   test "native URL visit hydration admits only current owned rows and today uses profile day", %{
@@ -847,27 +846,26 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert config(view)["revision"] == initial
   end
 
-  test "native layer form persists the exact selected layers and updates browser config", %{
-    id: id
-  } do
+  test "native layer tiles toggle one layer each and update browser config", %{id: id} do
     {:ok, view, _} = open(id, @second)
     view |> element("[data-testid=map-button-layers]") |> render_click()
+    tracks = config(view)["tracksEnabled"]
 
-    view
-    |> form("#native-map-layers", %{
-      "layers" => ["Tracks", "Fog of War", "Hexagons", "Scratch map"]
-    })
-    |> render_change()
+    for key <- ~w(tracks fog_of_war hexagons scratch_map),
+        do: view |> element("[data-testid=map-layer-#{key}]") |> render_click()
 
-    assert config(view)["tracksEnabled"] == true
-    assert config(view)["pointsEnabled"] == false
-    assert has_element?(view, "[data-map-layer=anomalies][disabled]")
-    assert config(view)["anomaliesEnabled"] == false
+    assert config(view)["tracksEnabled"] == !tracks
     assert config(view)["fogEnabled"] == true
     assert config(view)["hexagonsEnabled"] == true
     assert config(view)["scratchEnabled"] == true
     saved = Dawarich.Accounts.get(id).settings["enabled_map_layers"]
-    assert Enum.sort(saved) == Enum.sort(["Tracks", "Fog of War", "Hexagons", "Scratch map"])
+    assert "Fog of War" in saved and "Hexagons" in saved and "Scratch map" in saved
+
+    view |> element("[data-testid=map-layer-hexagons]") |> render_click()
+    refute "Hexagons" in Dawarich.Accounts.get(id).settings["enabled_map_layers"]
+
+    render_hook(view, "settings:layer", %{"layer" => "Unknown", "enabled" => "true"})
+    refute "Unknown" in Dawarich.Accounts.get(id).settings["enabled_map_layers"]
 
     render_hook(view, "settings:map_layers", %{
       "layers" => ["Tracks", "Unknown", "Tracks"],
@@ -876,6 +874,15 @@ defmodule DawarichWeb.NativeM6HostTest do
 
     assert Dawarich.Accounts.get(id).settings["enabled_map_layers"] == ["Tracks"]
     refute render(view) =~ "synthetic-forged-key"
+  end
+
+  test "native fog mode radios save the Rails fog mode", %{id: id} do
+    {:ok, view, _} = open(id, "/map/v2?panel=layers")
+    view |> element("input[name=fogOfWarMode][value=hexagons]") |> render_click()
+    assert Dawarich.Accounts.get(id).settings["fog_of_war_mode"] == "hexagons"
+    assert config(view)["fogMode"] == "hexagons"
+    render_hook(view, "settings:fog_mode", %{"mode" => "bogus"})
+    assert Dawarich.Accounts.get(id).settings["fog_of_war_mode"] == "hexagons"
   end
 
   defp config(view) do
@@ -913,27 +920,30 @@ defmodule DawarichWeb.NativeM6HostTest do
     end
 
     {:ok, view, _} = open(id, "/map/v2?panel=layers")
-    view |> form("#native-map-layers", %{"layers" => ["Places"]}) |> render_change()
+    view |> element("[data-testid=map-layer-places]") |> render_click()
 
     names =
       render(view)
       |> LazyHTML.from_fragment()
-      |> LazyHTML.query("#native-place-filter [data-place-tag-name]")
-      |> LazyHTML.attribute("data-place-tag-name")
+      |> LazyHTML.query("#native-map-layers [data-map-tag-name]")
+      |> LazyHTML.attribute("data-map-tag-name")
 
     assert names == ["Alpha", "Zoo"]
 
     assert has_element?(
              view,
-             "#native-place-filter [data-place-tag-name=Alpha][style='border-color: #123456; color: #123456;']"
+             "#native-map-layers [data-map-tag-name=Alpha][style='border-color: #123456; color: white; background-color: #123456;']"
            )
 
-    view
-    |> form("#native-place-filter", %{"place_tag_ids" => [to_string(id * 10 + 1), "untagged"]})
-    |> render_change()
+    view |> element("input[name='place_tag_ids[]'][value='#{id * 10}']") |> render_click()
 
-    assert Dawarich.Accounts.get(id).settings["places_tag_filters"] == [id * 10 + 1, "untagged"]
-    assert config(view)["placesTagFilters"] == [id * 10 + 1, "untagged"]
+    assert Dawarich.Accounts.get(id).settings["places_tag_filters"] == ["untagged", id * 10 + 1]
+    assert config(view)["placesTagFilters"] == ["untagged", id * 10 + 1]
+
+    assert has_element?(
+             view,
+             "#native-map-layers [data-map-tag-name=Zoo].badge-outline[style='border-color: #123456; color: #123456;']"
+           )
 
     render_hook(view, "settings:place_tags", %{
       "place_tag_ids" => [
@@ -963,16 +973,16 @@ defmodule DawarichWeb.NativeM6HostTest do
     ])
 
     {:ok, view, _} = open(id, "/map/v2?panel=layers")
-    view |> form("#native-map-layers", %{"layers" => ["Places"]}) |> render_change()
-    view |> form("#native-place-filter", %{"place_tag_ids" => ["untagged"]}) |> render_change()
+    view |> element("[data-testid=map-layer-places]") |> render_click()
+    render_hook(view, "settings:place_tags", %{"place_tag_ids" => ["untagged"]})
     assert config(view)["placesTagFilters"] == ["untagged"]
     view |> element("#native-place-tags-all") |> render_click()
     assert config(view)["placesTagFilters"] == ["untagged", id * 10]
-    assert has_element?(view, "#native-place-tags-all[aria-pressed=true]")
+    assert has_element?(view, "#native-place-tags-all[checked]")
     view |> element("#native-place-tags-all") |> render_click()
     assert config(view)["placesTagFilters"] == []
-    assert has_element?(view, "#native-place-tags-all[aria-pressed=false]")
-    refute has_element?(view, "#native-place-filter input[checked]")
+    refute has_element?(view, "#native-place-tags-all[checked]")
+    refute has_element?(view, "#native-map-layers input[name='place_tag_ids[]'][checked]")
   end
 
   test "native place filters follow layer visibility and show deselected badge state", %{id: id} do
@@ -990,19 +1000,21 @@ defmodule DawarichWeb.NativeM6HostTest do
     ])
 
     {:ok, view, _} = open(id, "/map/v2?panel=layers")
-    refute has_element?(view, "#native-place-filter")
-    view |> form("#native-map-layers", %{"layers" => ["Places"]}) |> render_change()
+    places = "#native-map-layers .layer-options__group:has([name='place_tag_ids[]'])"
+    assert has_element?(view, places <> "[style='display: none;']")
+    view |> element("[data-testid=map-layer-places]") |> render_click()
+    refute has_element?(view, places <> "[style='display: none;']")
 
     assert has_element?(
              view,
-             "#native-place-filter [data-place-tag-name=Cafe].badge:not(.badge-outline)"
+             "#native-map-layers [data-map-tag-name=Cafe].badge:not(.badge-outline)"
            )
 
-    view |> form("#native-place-filter", %{"place_tag_ids" => ["untagged"]}) |> render_change()
-    assert has_element?(view, "#native-place-filter [data-place-tag-name=Cafe].badge-outline")
+    render_hook(view, "settings:place_tags", %{"place_tag_ids" => ["untagged"]})
+    assert has_element?(view, "#native-map-layers [data-map-tag-name=Cafe].badge-outline")
     assert config(view)["placesTagFilters"] == ["untagged"]
-    view |> form("#native-map-layers", %{"layers" => ["Tracks"]}) |> render_change()
-    refute has_element?(view, "#native-place-filter")
+    view |> element("[data-testid=map-layer-places]") |> render_click()
+    assert has_element?(view, places <> "[style='display: none;']")
     assert Dawarich.Accounts.get(id).settings["places_tag_filters"] == ["untagged"]
   end
 

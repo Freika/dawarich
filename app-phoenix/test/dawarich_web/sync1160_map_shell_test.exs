@@ -45,13 +45,19 @@ defmodule DawarichWeb.Sync1160MapShellTest do
         html
         |> LazyHTML.from_document()
         |> LazyHTML.query(
-          "#native-map-layers-panel .translation_missing, #native-place-filter .translation_missing, #native-map-controls > nav .translation_missing"
+          "#native-map-layers .translation_missing, #native-map-controls > nav .translation_missing"
         )
         |> LazyHTML.attribute("title")
 
       assert missing == []
-      assert has_element?(view, "#native-place-filter")
+
+      assert has_element?(
+               view,
+               "#native-map-layers input[name='place_tag_ids[]'][value=untagged]"
+             )
+
       assert has_element?(view, "#native-map-visit-filter")
+      assert has_element?(view, "#visits-search[form=native-map-visit-filter]")
     end
   end
 
@@ -90,22 +96,34 @@ defmodule DawarichWeb.Sync1160MapShellTest do
   defp layer_controls do
     id = user()
     {:ok, view, _} = open(id, "/map/v2?panel=layers")
-    assert has_element?(view, "#native-map-layers input[name=fog_mode][value=points]")
+
+    assert has_element?(
+             view,
+             "#native-map-layers input[name=fogOfWarMode][value=points][checked]"
+           )
+
     refute has_element?(view, "[data-map-layer=flights]")
 
-    view
-    |> form("#native-map-layers", %{
+    render_hook(view, "settings:map_layers", %{
       "layers" => ["Points", "Visits", "Fog of War"],
       "fog_mode" => "hexagons"
     })
-    |> render_change()
 
     assert config(view)["fogMode"] == "hexagons"
-    assert has_element?(view, "#native-map-visit-filter input[name=query]")
+
+    assert has_element?(
+             view,
+             "#native-map-layers input[name=fogOfWarMode][value=hexagons][checked]"
+           )
+
+    refute has_element?(
+             view,
+             "#native-map-layers .layer-options__group:has(#visits-search)[style]"
+           )
 
     view
-    |> form("#native-map-visit-filter", %{"query" => "🏖️", "status" => "confirmed"})
-    |> render_change()
+    |> element("#native-map-visit-filter")
+    |> render_change(%{"query" => "🏖️", "status" => "confirmed"})
 
     assert config(view)["visitFilter"] == %{"query" => "🏖️", "status" => "confirmed"}
 
@@ -124,10 +142,10 @@ defmodule DawarichWeb.Sync1160MapShellTest do
     {:ok, view, _} = open(id, "/map/v2?panel=layers")
     render_click(view, "map:anomalies", %{"enabled" => "true"})
     assert config(view)["anomaliesEnabled"] == true
-    view |> form("#native-map-layers", %{"layers" => ["Tracks"]}) |> render_change()
+    render_hook(view, "settings:map_layers", %{"layers" => ["Tracks"]})
     assert config(view)["anomaliesEnabled"] == false
-    assert has_element?(view, "[data-map-layer=anomalies][disabled]")
-    view |> form("#native-map-layers", %{"layers" => ["Points", "Tracks"]}) |> render_change()
+    assert has_element?(view, "[data-map-layer=anomalies][checked]")
+    render_hook(view, "settings:map_layers", %{"layers" => ["Points", "Tracks"]})
     assert config(view)["anomaliesEnabled"] == true
     render_patch(view, "/map/v2?panel=layers&date=2026-01-01")
     assert config(view)["anomaliesEnabled"] == true

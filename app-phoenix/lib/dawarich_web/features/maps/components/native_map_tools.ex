@@ -4,6 +4,7 @@ defmodule DawarichWeb.NativeMapTools do
 
   def overlays(assigns) do
     ~H"""
+    <form id="native-map-visit-filter" phx-change="map:visits_filter" class="hidden"></form>
     <p
       id="native-map-edit-error"
       data-map-edit-error

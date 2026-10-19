@@ -31,9 +31,12 @@ test("native selection root draws rectangle highlights admitted points and clear
     button = new Element(),
     status = new Element(),
     panel = new Element()
-  button.dataset.selectMessage = "Select Area"
-  button.dataset.cancelMessage = "Cancel Selection"
-  button.dataset.drawMessage = "Draw a rectangle"
+  const label = { textContent: "Select Area" }
+  button.childNodes = [label]
+  button.children = [label]
+  button.ownerDocument = { createTextNode: (text) => ({ textContent: text }) }
+  button.dataset.mapCancelMessage = "Cancel Selection"
+  button.dataset.mapDrawMessage = "Draw a rectangle"
   f.nodes.set('[data-testid="native-select-area"]', button)
   f.nodes.set("[data-map-tool-status]", status)
   f.nodes.set("[data-map-selection]", panel)
@@ -45,7 +48,8 @@ test("native selection root draws rectangle highlights admitted points and clear
   try {
     await f.owner.mount()
     button.emit("click")
-    assert.equal(button.textContent, "Cancel Selection")
+    assert.match(button.innerHTML, /<line x1="18"/)
+    assert.equal(button.children.at(-1).textContent.trim(), "Cancel Selection")
     assert.equal(status.textContent, "Draw a rectangle")
     f.map.emit("mousedown", { point: { x: 1, y: 2 } })
     f.map.emit("mousemove", { point: { x: 3, y: 4 } })
@@ -76,7 +80,7 @@ test("native selection root draws rectangle highlights admitted points and clear
       "#ef4444",
     )
     button.emit("click")
-    assert.equal(button.textContent, "Select Area")
+    assert.deepEqual(button.children, [label])
     assert.equal(status.textContent, "")
     assert.equal(f.sources.has("selection-source"), false)
     assert.equal(f.sources.has("selected-points-source"), false)

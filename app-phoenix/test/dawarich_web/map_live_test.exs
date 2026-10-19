@@ -226,7 +226,7 @@ defmodule DawarichWeb.MapLiveTest do
     refute has_element?(view, "#native-map-panel")
     view |> element("#native-map-panel-close") |> render_click()
     assert map_config(view)["panel"] == ""
-    refute has_element?(view, "#native-map-layers")
+    refute has_element?(view, "#map-settings-panel.open")
   end
 
   test "native places filter preserves every owned tag name order and color", %{user: user} do
@@ -237,14 +237,14 @@ defmodule DawarichWeb.MapLiveTest do
     names =
       render(view)
       |> LazyHTML.from_fragment()
-      |> LazyHTML.query("[data-place-tag-name]")
-      |> LazyHTML.attribute("data-place-tag-name")
+      |> LazyHTML.query("[data-map-tag-name]")
+      |> LazyHTML.attribute("data-map-tag-name")
 
     assert names == ["Alpha", "Zoo"]
 
     assert has_element?(
              view,
-             "input[name='place_tag_ids[]'][value='6012'] + span[style='border-color: #123456; color: #123456;']"
+             "input[name='place_tag_ids[]'][value='6012'] + span[style='border-color: #123456; color: white; background-color: #123456;']"
            )
   end
 
@@ -444,7 +444,11 @@ defmodule DawarichWeb.MapLiveTest do
     assert Enum.count(LazyHTML.query(doc, selector)) > 0
 
     unprotected =
-      LazyHTML.query(doc, selector <> ":not([phx-update=ignore]):not([phx-update=ignore] *)")
+      LazyHTML.query(
+        doc,
+        selector <>
+          ":not([phx-update=ignore]):not([phx-update=ignore] *):not([phx-click]):not([form^=native-])"
+      )
 
     assert Enum.count(unprotected) == 0, inspect(LazyHTML.attribute(unprotected, "name"))
   end

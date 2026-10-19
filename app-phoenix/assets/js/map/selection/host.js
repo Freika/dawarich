@@ -5,6 +5,9 @@ import { createSelectionDrawing } from "./drawing.js"
 import { createSelectionQuery } from "./query.js"
 import { createAreaSelection } from "./state.js"
 
+const CANCEL_ICON =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
+
 export function createHostSelection({
   map,
   root,
@@ -17,6 +20,7 @@ export function createHostSelection({
   const drawing = createSelectionDrawing(map)
   const button = root?.querySelector('[data-testid="native-select-area"]')
   const status = root?.querySelector("[data-map-tool-status]")
+  const idle = [...(button?.childNodes ?? [])]
   let actions
   const selection = createAreaSelection({
     map,
@@ -30,15 +34,20 @@ export function createHostSelection({
         drawing.highlight(selection.state.points)
       } else drawing.clear()
       if (button) {
-        button.textContent = selection.state.active
-          ? button.dataset.cancelMessage
-          : button.dataset.selectMessage
+        if (selection.state.active) {
+          const doc = button.ownerDocument ?? globalThis.document
+          button.innerHTML = CANCEL_ICON
+          if (doc)
+            button.append(
+              doc.createTextNode(` ${button.dataset.mapCancelMessage} `),
+            )
+        } else button.replaceChildren(...idle)
         button.setAttribute("aria-pressed", String(selection.state.active))
       }
       if (status)
         status.textContent =
           selection.state.active && !selection.state.bounds
-            ? (button?.dataset.drawMessage ?? "")
+            ? (button?.dataset.mapDrawMessage ?? "")
             : ""
       if (panel) {
         panel.hidden = !selection.state.bounds

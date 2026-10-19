@@ -67,6 +67,42 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
     end
   end
 
+  def handle_event("settings:layer", %{"layer" => layer, "enabled" => value}, socket)
+      when value in ["true", "false"] do
+    layers = socket.assigns.map_settings.saved["enabled_map_layers"] || []
+
+    if layer in DawarichWeb.NativeMapPanels.layers() and layer != "Family Members" do
+      layers =
+        if value == "true", do: Enum.uniq(layers ++ [layer]), else: List.delete(layers, layer)
+
+      save(socket, %{"enabled_map_layers" => layers})
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("settings:fog_mode", %{"mode" => mode}, socket)
+      when mode in ["points", "hexagons"],
+      do: save(socket, %{"fog_of_war_mode" => mode})
+
+  def handle_event("settings:place_tag", %{"tag" => tag, "enabled" => value}, socket)
+      when value in ["true", "false"] do
+    choices = ["untagged" | Enum.map(socket.assigns.page.tags, & &1.id)]
+    chosen = Enum.find(choices, &(to_string(&1) == tag))
+    current = socket.assigns.map_settings.saved["places_tag_filters"] || choices
+
+    if chosen do
+      filters =
+        if value == "true",
+          do: Enum.filter(choices, &(&1 in current or &1 == chosen)),
+          else: List.delete(current, chosen)
+
+      save(socket, %{"places_tag_filters" => filters})
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("settings:map_layers", params, socket) do
     layers =
       List.wrap(params["layers"])

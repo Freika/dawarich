@@ -34,20 +34,13 @@ defmodule DawarichWeb.NativeMapTabs do
       </div>
     </div>
 
-    <div class={tab_class(@panel, "layers")} data-tab-content="layers">
-      <DawarichWeb.NativeMapPanels.layer_panel
-        :if={@panel == "layers" && assigns[:map_settings]}
-        locale={@locale}
-        settings={@map_settings}
-        config={@map_config}
-      />
-      <DawarichWeb.NativePlaceFilters.filters
-        :if={@panel == "layers" && assigns[:map_settings] && @map_config["placesEnabled"]}
-        tags={@page.tags}
-        filters={@map_settings.saved["places_tag_filters"]}
-        locale={@locale}
-      />
-    </div>
+    <DawarichWeb.NativeMapLayersTab.tab
+      locale={@locale}
+      panel={@panel}
+      settings={assigns[:map_settings]}
+      config={@map_config}
+      page={@page}
+    />
 
     <div :if={@page.family} class={tab_class(@panel, "family")} data-tab-content="family">
       <DawarichWeb.NativeMapFamily.panel
@@ -58,14 +51,6 @@ defmodule DawarichWeb.NativeMapTabs do
     </div>
 
     <div class={tab_class(@panel, "settings")} data-tab-content="settings">
-      <button
-        type="button"
-        data-testid="native-edit-points"
-        class="btn btn-sm"
-        phx-click="settings:point_edit"
-        phx-value-enabled={to_string(!@map_config["editEnabled"])}
-        aria-pressed={to_string(@map_config["editEnabled"])}
-      >{p(@locale, "edit_points")}</button>
       <DawarichWeb.NativeMapSettings.panel
         :if={@panel == "settings"}
         settings={assigns[:map_settings]}
@@ -97,51 +82,13 @@ defmodule DawarichWeb.NativeMapTabs do
       </section>
     </div>
 
-    <div class={tab_class(@panel, "tools")} data-tab-content="tools">
-      <button type="button" data-testid="native-create-visit" class="btn btn-sm">{t(
-        @locale,
-        "javascript.visits.create_new",
-        %{}
-      )}</button>
-      <button type="button" data-testid="native-create-place" class="btn btn-sm">{t(
-        @locale,
-        "javascript.places.create_new",
-        %{}
-      )}</button>
-      <button type="button" data-testid="native-create-area" class="btn btn-sm">{t(
-        @locale,
-        "javascript.areas.create_new",
-        %{}
-      )}</button>
-      <button
-        type="button"
-        data-testid="native-select-area"
-        class="btn btn-sm"
-        phx-update="ignore"
-        id="native-select-area"
-        aria-pressed="false"
-        data-select-message={t(@locale, "javascript.map_controls.select_area", %{})}
-        data-cancel-message={t(@locale, "javascript.visits.cancel_selection", %{})}
-        data-draw-message={
-          t(@locale, "javascript.messages.draw_a_rectangle_on_the_map_to_select_points", %{})
-        }
-      >{t(@locale, "javascript.map_controls.select_area", %{})}</button>
-      <section
-        id="native-map-selection"
-        data-map-selection
-        phx-update="ignore"
-        class="min-w-0 max-w-full"
-        tabindex="0"
-      >
-      </section>
-      <DawarichWeb.NativeMapEnrichment.tool
-        :if={@panel == "tools" && @page.full_access && @page.immich}
-        enrichment={assigns[:enrichment]}
-        start_date={String.slice(@page.window.start, 0, 10)}
-        end_date={String.slice(@page.window.end, 0, 10)}
-        locale={@locale}
-      />
-    </div>
+    <DawarichWeb.NativeMapToolsTab.tab
+      locale={@locale}
+      panel={@panel}
+      page={@page}
+      restricted={!!(assigns[:map_settings] && @map_settings.restricted)}
+      enrichment={assigns[:enrichment]}
+    />
 
     <div
       :if={assigns[:self_hosted] == false}
