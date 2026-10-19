@@ -112,11 +112,17 @@ defmodule Dawarich.AirTrail.ImportFlightsWorkerTest do
   test "a flight the store rejects fails with a fixed reason and logs no flight data" do
     flight = AirTrailStub.flight(%{"id" => nil})
     user_id = configured!(AirTrailStub.start(self(), 200, fixture_body(flight)))
-    Oban.Telemetry.attach_default_logger(level: :warning, events: [:job])
-    on_exit(fn -> Oban.Telemetry.detach_default_logger() end)
+    previous = Logger.level()
+    Logger.configure(level: :info)
+    :ok = Dawarich.JobLogger.attach()
+
+    on_exit(fn ->
+      Dawarich.JobLogger.detach()
+      Logger.configure(level: previous)
+    end)
 
     log =
-      capture_log(fn ->
+      capture_log([level: :info], fn ->
         assert run(user_id) == {:error, {:store_failed, :not_null_violation}}
       end)
 
