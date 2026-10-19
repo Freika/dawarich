@@ -14944,6 +14944,13 @@
       ]
     },
     {
+      "file": "app-phoenix/test/dawarich_web/map_shell_parity_test.exs",
+      "markers": [
+        "test/fixtures",
+        "fixtures/"
+      ]
+    },
+    {
       "file": "app-phoenix/test/dawarich_web/map_writes_parity_test.exs",
       "markers": [
         "test/fixtures",

@@ -37,7 +37,6 @@ defmodule DawarichWeb.NativeMapControls do
           type="button"
           class="btn btn-primary w-96"
           phx-click={JS.toggle_class("hidden", to: "#native-map-date-panel")}
-          aria-controls="native-map-date-panel"
         >
           <span><Icon.icon name="chevron-down" class="size-6" /></span>
           <span class="ml-2">{human_date(@locale, @window.start_date)}</span>
