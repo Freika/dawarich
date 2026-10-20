@@ -40,10 +40,9 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
     assert has_element?(view, "#native-family-sharing")
 
     view
-    |> form("#native-family-sharing",
+    |> render_hook("family:sharing", %{
       sharing: %{enabled: "true", duration: "1h", share_history: "true", history_window: "7d"}
-    )
-    |> render_change()
+    })
 
     sharing = Dawarich.Accounts.get(id).settings["family"]["location_sharing"]
     assert sharing["enabled"] == true
@@ -53,7 +52,7 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
 
     assert has_element?(
              view,
-             "#native-family-sharing input[name='sharing[enabled]'][type=checkbox][checked]"
+             "#native-family-sharing input[data-native-sharing-field=enabled][type=checkbox][checked]"
            )
 
     Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [id], log: false)
@@ -94,12 +93,12 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
   test "native map family confirmation consumes one admitted action and cancellation has no effects",
        %{id: id} do
     {:ok, view, _} = open(id)
-    view |> element("[data-family-action=remove_member]") |> render_click()
+    view |> element("[data-native-family-action=remove_member]") |> render_click()
     assert has_element?(view, "#family-confirm[data-pending=true]", "family-command-#{id + 1}")
     render_click(view, "family_cancel_confirm", %{})
     render_click(view, "family_confirm", %{})
     assert count("family_memberships", "user_id", id + 1) == 1
-    view |> element("[data-family-action=remove_member]") |> render_click()
+    view |> element("[data-native-family-action=remove_member]") |> render_click()
     render_click(view, "family_confirm", %{})
     render_click(view, "family_confirm", %{})
     assert count("family_memberships", "user_id", id + 1) == 0
@@ -124,12 +123,12 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
     render_click(member, "family:member", %{"id" => to_string(id)})
     assert count("family_memberships", "user_id", id) == 1
     {:ok, owner, _} = open(id)
-    assert has_element?(owner, "[data-family-action=remove_member]")
+    assert has_element?(owner, "[data-native-family-action=remove_member]")
     render_click(owner, "family:member", %{"id" => to_string(id + 2)})
     assert count("family_memberships", "user_id", id + 2) == 1
     render_click(owner, "family:member", %{"id" => to_string(id + 1)})
     assert count("family_memberships", "user_id", id + 1) == 0
-    refute has_element?(owner, "[data-family-member-id='#{id + 1}']")
+    refute has_element?(owner, "[data-native-family-member-id='#{id + 1}']")
     assert has_element?(owner, "[role=alert]", "removed")
   end
 
@@ -169,7 +168,12 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
   } do
     Dawarich.Jobs.Ownership.put!(Repo, "command:mail.family_location_request", :oban)
     {:ok, view, _} = open(id)
-    assert has_element?(view, "[phx-click='family:request'][phx-value-id='#{id + 1}']")
+
+    assert has_element?(
+             view,
+             "form[action='/family/location_requests?target_user_id=#{id + 1}'][phx-submit*='family:request']"
+           )
+
     render_click(view, "family:request", %{"id" => to_string(id + 2)})
     assert count("family_location_requests", "family_id", id) == 0
     render_click(view, "family:request", %{"id" => to_string(id + 1)})
@@ -184,7 +188,7 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
     id: id
   } do
     {:ok, owner, _} = open(id)
-    assert has_element?(owner, "[data-family-action=delete]")
+    assert has_element?(owner, "[data-native-family-action=delete]")
     render_click(owner, "family:destroy", %{})
     assert count("families", "id", id) == 1
     assert has_element?(owner, "[role=alert]", "members")
@@ -192,7 +196,7 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
 
     assert has_element?(
              member,
-             "[data-family-action=remove_member]"
+             "[data-native-family-action=remove_member]"
            )
 
     render_click(member, "family:member", %{"id" => to_string(id + 1)})

@@ -338,7 +338,14 @@ RSpec.describe 'Phoenix fixtures: family documents as Rails renders them', type:
       allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
       %w[en de es fr pl ca zh].each { |locale| capture_family_sharing_stream(owner, locale) }
       expect(File.exist?(dir.join('owner_en.json'))).to be(true)
-      expect(Dir[dir.join('*.json')].length).to eq(294)
+      Family::Membership.where(user: member).delete_all
+      family.family_invitations.delete_all
+      owner.reload
+      %w[en de es fr pl ca zh].each do |locale|
+        owner.update_columns(settings: owner.settings.merge('locale' => locale))
+        capture_family("owner_alone_#{locale}", owner, '/family', locale:)
+      end
+      expect(Dir[dir.join('*.json')].length).to eq(301)
     end
   end
 end

@@ -12985,12 +12985,6 @@
       ]
     },
     {
-      "file": "app-phoenix/test/client/native_family_confirmation_test.mjs",
-      "markers": [
-        "assets/js/app.js"
-      ]
-    },
-    {
       "file": "app-phoenix/test/dawarich/a12f3b_e13_purge_retry_test.exs",
       "markers": [
         "test/fixtures",
@@ -18092,5 +18086,47 @@
     ],
     "full_suite": "not run; controller-owned",
     "browser_acceptance": "not run; discovery only"
+  },
+  "d3_rails_1160_rerecording": {
+    "reference": "Rails 1.16.0",
+    "recorders": [
+      "app-phoenix/scripts/parity/a10_fixtures_spec.rb",
+      "app-phoenix/scripts/parity/achievement_public_fixtures_spec.rb",
+      "app-phoenix/scripts/parity/achievement_actions_fixtures_spec.rb",
+      "app-phoenix/scripts/parity/achievement_unlocks_fixtures_spec.rb",
+      "app-phoenix/scripts/parity/family_pages_fixtures_spec.rb"
+    ],
+    "corpus": [
+      "achievements_ui",
+      "achievement_public",
+      "achievement_actions",
+      "achievement_unlocks",
+      "family_pages"
+    ],
+    "readers": [
+      {
+        "file": "app-phoenix/test/dawarich_web/achievements_parity_test.exs",
+        "name": "#{@fixture[\"name\"]} retains source card values SVG and initial no-effects",
+        "contract": "Full normalized Rails page DOM, source values/SVG, and no initial writes; retarget_corpus tag removed."
+      },
+      {
+        "file": "app-phoenix/test/dawarich_web/family_pages_parity_test.exs",
+        "name": "family GET corpus #{@name} preserves scoped state and visible inputs in all shipped locales",
+        "contract": "301 route/state/locale leaves; admitted page DOM plus native map, confirmation, credential-reveal and upgrade boundaries."
+      },
+      {
+        "file": "app-phoenix/test/dawarich_web/achievement_public_test.exs",
+        "name": "native public and embed documents preserve source cards SVG metadata and privacy",
+        "contract": "Complete achievement content, SVG, metadata, owner locale, embedding and revocation privacy."
+      }
+    ],
+    "retained": "All behavior/data/security fixtures and historical register rows remain. Only Rails-emitted fixture bytes are refreshed by the assigned recorders; no corpus pruning or expectation generation from Phoenix.",
+    "reader_handoffs": [
+      {
+        "file": "app-phoenix/test/client/native_family_confirmation_test.mjs",
+        "old": "phoenix_html app.js/direct-command source probe",
+        "successor": "Same two named cases exercise FamilyConfirm and the native preparation/confirmation protocol; cancellation, single dispatch and teardown remain mutation-protected. No external fixture dependency remains."
+      }
+    ]
   }
 }

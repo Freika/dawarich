@@ -4,6 +4,7 @@ defmodule DawarichWeb.AchievementCard do
   import DawarichWeb.Icon, only: [icon: 1]
 
   attr :native, :boolean, default: false
+  attr :native_key, :string, default: nil
   attr :card, :map, required: true
   attr :locale, :string, required: true
   attr :small, :boolean, default: false
@@ -61,6 +62,10 @@ defmodule DawarichWeb.AchievementCard do
 
     ~H"""
     <div
+      id={@native && @native_key && "native-achievement-" <> @native_key}
+      phx-click={@native && @modal && DawarichWeb.NativeAchievementParts.open(@native_key)}
+      phx-keydown={@native && @modal && DawarichWeb.NativeAchievementParts.open(@native_key)}
+      phx-key={@native && @modal && "Enter"}
       class={[
         "ach-card-wrap ach-spectral-wrap",
         @celebrate && "ach-card-wrap--celebrate",
@@ -81,7 +86,7 @@ defmodule DawarichWeb.AchievementCard do
       }
       data-share-key={@share && @share["key"]}
       data-share-shared={@share && to_string(@share["shared"])}
-      data-share-manager={@share && "/achievements/" <> @share["key"] <> "/sharing"}
+      data-share-toggle={@share && "/achievements/" <> @share["key"] <> "/toggle_sharing"}
       data-share-url={
         @share && @share["shared"] && @share["uuid"] && "/shared/achievements/" <> @share["uuid"]
       }
@@ -92,6 +97,12 @@ defmodule DawarichWeb.AchievementCard do
       >
         <div class="card-light" aria-hidden="true"></div>
         <div
+          id={
+            @native &&
+              "native-achievement-material-#{@native_key || @card["geography_key"] || @card["name"]}-#{@modal}-#{@card["locked"]}"
+          }
+          phx-hook={@native && "AchievementMaterial"}
+          phx-update={@native && "ignore"}
           class="spectral-material"
           data-achievement-card-target={!@native && "material"}
           aria-hidden="true"

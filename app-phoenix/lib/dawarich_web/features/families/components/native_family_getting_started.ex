@@ -1,81 +1,82 @@
 defmodule DawarichWeb.NativeFamilyGettingStarted do
   @moduledoc false
   use DawarichWeb, :html
-  attr :page, :map, required: true
-  attr :locale, :string, required: true
-  attr :self_hosted, :boolean, required: true
 
   def getting_started(assigns) do
     assigns =
-      assign(
-        assigns,
-        :invite?,
-        assigns.page.owner? && assigns.page.member_count == 1 && assigns.page.invitations == []
+      assign(assigns,
+        invite?:
+          assigns.page.owner? and assigns.page.member_count == 1 and
+            assigns.page.invitations == []
       )
 
     ~H"""
-    <section
-      :if={@invite? || !@page.me.sharing.enabled?}
-      id="family-getting-started"
-      class="min-w-0 border border-primary/30 bg-primary/5 rounded-xl p-5 my-4 [overflow-wrap:anywhere]"
-    >
-      <div class="flex flex-col lg:flex-row min-w-0 gap-5">
-        <div class="flex-1 min-w-0">
-          <h2 class="text-lg font-semibold">
-            {g(@locale, if(@invite?, do: "invite_title", else: "sharing_title"))}
-          </h2>
-          <p class="text-sm my-3">
-            {g(@locale, if(@invite?, do: "invite_body", else: "sharing_body"))}
-          </p>
-          <a
-            :if={@invite?}
-            href="#native-family-invite"
-            class="btn btn-primary btn-sm h-auto whitespace-normal"
-          >{t(@locale, "families.show.invite", %{})}</a>
-          <p :if={!@self_hosted} class="text-xs">
-            {g(@locale, "seats", %{used: @page.member_count, total: 5})}
-          </p>
-          <p :if={!@self_hosted} class="text-xs">
-            {g(@locale, "members_lose_access_when_your_plan_ends")}
-          </p>
-          <p :if={@page.owner? && @page.trial_ends} class="text-xs">
-            {g(@locale, "trial_ends_on", %{
-              date: DawarichWeb.LocalizedDate.l(@locale, @page.trial_ends, "long")
-            })}
-          </p>
-        </div>
-        <div class="min-w-0 lg:w-64">
-          <h3 class="text-sm font-medium">{g(@locale, "app_title")}</h3>
-          <p class="text-xs mb-3">{g(@locale, "app_body")}</p>
-          <div class="flex flex-wrap min-w-0 gap-2">
-            <a
-              href="https://apps.apple.com/de/app/dawarich/id6739544999"
-              target="_blank"
-              rel="noopener"
-            ><img
-              src={
-                DawarichWeb.Assets.stylesheet_path(
-                  "Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg"
-                )
-              }
-              alt="App Store"
-              class="h-[34px] max-w-full"
-            /></a>
-            <a
-              href="https://play.google.com/store/apps/details?id=app.dawarich.Dawarich"
-              target="_blank"
-              rel="noopener"
-            ><img
-              src={
-                DawarichWeb.Assets.stylesheet_path("GetItOnGooglePlay_Badge_Web_color_English.svg")
-              }
-              alt="Google Play"
-              class="h-[34px] max-w-full"
-            /></a>
+    <div id="family-getting-started-slot">
+      <div
+        :if={@invite? or !@page.me.sharing.enabled?}
+        id="family-getting-started"
+        class="border border-primary/30 bg-primary/5 rounded-xl p-5 mb-4"
+      >
+        <div class="flex flex-col lg:flex-row lg:items-start gap-5">
+          <div class="flex-1 min-w-0">
+            <%= if @invite? do %>
+              <h2 class="text-lg font-semibold mb-1">{g(@locale, "invite_title")}</h2>
+              <p class="text-sm text-base-content/70 mb-3">{g(@locale, "invite_body")}</p>
+              <DawarichWeb.NativeFamilyInvitations.invite_form
+                locale={@locale}
+                family_id={get_in(@page, [:family, :id])}
+                onboarding
+              />
+              <p :if={!@self_hosted} class="text-xs text-base-content/50 mt-2">
+                {g(@locale, "seats", %{used: @page.member_count, total: 5})}
+              </p>
+              <p :if={!@self_hosted} class="text-xs text-base-content/50 mt-1">
+                {g(@locale, "members_lose_access_when_your_plan_ends")}
+              </p>
+            <% else %>
+              <h2 class="text-lg font-semibold mb-1">{g(@locale, "sharing_title")}</h2>
+              <p class="text-sm text-base-content/70">{g(@locale, "sharing_body")}</p>
+            <% end %>
+            <p :if={@page.owner? and @page.trial_ends} class="text-xs text-base-content/60 mt-3">
+              <DawarichWeb.Icon.icon name="clock" class="w-3.5 h-3.5 inline" />
+              {g(@locale, "trial_ends_on", %{
+                date: DawarichWeb.LocalizedDate.l(@locale, @page.trial_ends, "long")
+              })}
+            </p>
+          </div>
+          <div class="lg:w-64 lg:border-l lg:border-primary/20 lg:pl-5">
+            <h3 class="text-sm font-medium mb-1">{g(@locale, "app_title")}</h3>
+            <p class="text-xs text-base-content/60 mb-3">{g(@locale, "app_body")}</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <a
+                href="https://apps.apple.com/de/app/dawarich/id6739544999"
+                class="inline-block"
+                target="_blank"
+                rel="noopener"
+              ><img
+                src={
+                  DawarichWeb.Assets.stylesheet_path(
+                    "Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg"
+                  )
+                }
+                class="h-[34px]"
+              /></a>
+              <a
+                href="https://play.google.com/store/apps/details?id=app.dawarich.Dawarich"
+                class="inline-block"
+                target="_blank"
+                rel="noopener"
+              ><img
+                src={
+                  DawarichWeb.Assets.stylesheet_path("GetItOnGooglePlay_Badge_Web_color_English.svg")
+                }
+                class="h-[34px]"
+              /></a>
+            </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
     """
   end
 

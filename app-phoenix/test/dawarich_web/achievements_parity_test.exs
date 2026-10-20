@@ -43,7 +43,7 @@ defmodule DawarichWeb.AchievementsParityTest do
     @fixture path |> File.read!() |> Jason.decode!()
     @external_resource path
 
-    @tag retarget_corpus: @fixture["name"] == "en-detail-progress"
+    @tag achievement_case: @fixture["name"]
     test "#{@fixture["name"]} retains source card values SVG and initial no-effects" do
       fixture = @fixture
       user_id = fixture["user_id"]
@@ -69,6 +69,10 @@ defmodule DawarichWeb.AchievementsParityTest do
 
       html = RailsUser.signed_in(user_id) |> get(fixture["path"]) |> html_response(200)
       rails = File.read!(Path.join(@root, fixture["name"] <> ".html"))
+
+      actual = Dawarich.Test.ParityHTML.fragment(html, ".ach-page")
+      expected = Dawarich.Test.ParityHTML.normalize(rails)
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
 
       for selector <- [".card-title", ".card-description", ".metric", ".rarity", ".earned"] do
         assert texts(html, ".ach-card " <> selector) == texts(rails, ".ach-card " <> selector)

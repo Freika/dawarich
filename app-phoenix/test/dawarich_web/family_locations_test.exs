@@ -140,7 +140,7 @@ defmodule DawarichWeb.FamilyLocationsTest do
 
     assert Enum.count(LazyHTML.query(doc, "[data-testid=family-last-seen]")) == 2
 
-    assert Enum.count(LazyHTML.query(doc, "[data-family-member-id]")) == 2
+    assert Enum.count(LazyHTML.query(doc, "[data-native-family-member-id]")) == 2
     Repo.query!("DELETE FROM points WHERE user_id IN (90101, 90102)")
 
     empty =

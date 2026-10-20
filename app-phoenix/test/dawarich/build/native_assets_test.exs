@@ -16,7 +16,8 @@ defmodule Dawarich.Build.NativeAssetsTest do
   @m4_inputs [
     {~w(js/hooks/archive_checksum.js js/uploaders/direct.js), 8416},
     {~w(js/hooks/credential_qr.js js/hooks/credential_value.js), 4256},
-    {~w(js/hooks/family_confirm.js js/hooks/family_invitation_clipboard.js), 2918},
+    {~w(js/hooks/family_confirm.js js/hooks/family_invitation_clipboard.js js/hooks/achievement_family.js),
+     3200},
     {~w(js/hooks/sharing_controls.js js/hooks/clipboard.js), 6365},
     {~w(js/map/shared/lazy_maps.js js/map/shared/shared_erase.js js/hooks/index.js), 3748}
   ]

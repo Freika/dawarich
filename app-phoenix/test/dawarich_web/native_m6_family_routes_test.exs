@@ -39,8 +39,7 @@ defmodule DawarichWeb.NativeM6FamilyRoutesTest do
     refute has_element?(view, "[data-controller], [data-action], turbo-frame")
 
     view
-    |> form("#native-family-sharing", sharing: %{enabled: "true", duration: "1h"})
-    |> render_change()
+    |> render_hook("family:sharing", %{sharing: %{enabled: "true", duration: "1h"}})
 
     assert Dawarich.Accounts.get(id).settings["family"]["location_sharing"]["enabled"] == true
 

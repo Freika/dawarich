@@ -11,6 +11,16 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
     %{user: user}
   end
 
+  @tag collection_title: true
+  test "collection title follows detail and summary navigation", %{user: user} do
+    {:ok, view, _} = live(NativeAchievementsUI.conn(user, "/achievements"))
+    render_patch(view, "/achievements/country_de")
+    assert :sys.get_state(view.pid).socket.assigns.page_title == "Germany Explorer"
+    render_patch(view, "/achievements")
+    assert has_element?(view, "h1", "Achievements")
+    assert :sys.get_state(view.pid).socket.assigns.page_title == "Achievements"
+  end
+
   for field <- ~w(q status) do
     @tag malformed_native_event: true
     test "achievement rejects map #{field} filters in place without losing selection or writing",
@@ -47,14 +57,14 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
     {:ok, view, _} =
       live(NativeAchievementsUI.conn(user, "/achievements/continent_europe?q=France"))
 
-    assert has_element?(view, "#achievement-filter")
+    assert has_element?(view, "#native-achievement-filter")
     render_click(view, "select_card", %{"key" => "country_fr"})
-    assert has_element?(view, "#achievement-dialog [data-selected-key='country_fr']")
+    assert has_element?(view, "#native-achievement-dialog [data-selected-key='country_fr']")
     render_patch(view, "/achievements/continent_europe?status=locked&q=France")
-    assert has_element?(view, "#achievement-dialog [data-selected-key='country_fr']")
+    assert has_element?(view, "#native-achievement-dialog [data-selected-key='country_fr']")
     assert has_element?(view, "input[name=q][value=France]")
     render_patch(view, "/achievements/continent_europe?page=99")
-    refute has_element?(view, "#achievement-dialog [data-selected-key]")
+    refute has_element?(view, "#native-achievement-dialog [data-selected-key]")
     render_patch(view, "/achievements/continent_europe")
     assert length(:sys.get_state(view.pid).socket.assigns.data.view.children) <= 12
     Repo.query!("UPDATE users SET deleted_at=now() WHERE id=$1", [user.id], log: false)
@@ -69,11 +79,11 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
       live(NativeAchievementsUI.conn(user, "/achievements/continent_europe?q=France"))
 
     render_click(view, "select_card", %{"key" => "country_fr"})
-    assert_push_event(view, "close-dialog", %{id: "achievement-dialog"})
-    assert has_element?(view, "#achievement-dialog [data-selected-key='country_fr']")
+    assert_push_event(view, "close-dialog", %{id: "native-achievement-dialog"})
+    assert has_element?(view, "#native-achievement-dialog [data-selected-key='country_fr']")
     render_click(view, "close_card", %{})
-    assert_push_event(view, "close-dialog", %{id: "achievement-dialog"})
-    refute has_element?(view, "#achievement-dialog [data-selected-key]")
+    assert_push_event(view, "close-dialog", %{id: "native-achievement-dialog"})
+    refute has_element?(view, "#native-achievement-dialog [data-selected-key]")
   end
 
   test "card dialog Escape and close return focus to the chosen card", %{user: user} do
@@ -86,13 +96,13 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
 
     assert has_element?(
              view,
-             "#achievement-dialog[phx-window-keydown*='close_card'][phx-key='Escape']"
+             "#native-achievement-dialog[phx-window-keydown*='close_card'][phx-key='Escape']"
            )
 
-    assert has_element?(view, "#close-achievement-card[phx-click*='pop_focus']")
-    assert has_element?(view, "#achievement-country_fr[phx-click*='push_focus']")
+    assert has_element?(view, "#native-close-achievement-card[phx-click*='pop_focus']")
+    assert has_element?(view, "#native-achievement-country_fr[phx-click*='push_focus']")
     render_click(view, "close_card", %{})
-    refute has_element?(view, "#achievement-dialog [data-selected-key]")
+    refute has_element?(view, "#native-achievement-dialog [data-selected-key]")
   end
 
   test "connected render and reconnect do not celebrate twice", %{user: user} do
@@ -118,9 +128,9 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
              ).rows
 
     {:ok, first, _} = live(conn)
-    assert has_element?(first, "[data-celebrate=true]")
+    assert has_element?(first, ".ach-card-wrap--celebrate")
     {:ok, second, _} = live(NativeAchievementsUI.conn(user, "/achievements/country_de"))
-    refute has_element?(second, "[data-celebrate=true]")
+    refute has_element?(second, ".ach-card-wrap--celebrate")
 
     refute :erlang.term_to_binary(:sys.get_state(first.pid).socket.assigns) =~
              Accounts.get(user.id).encrypted_password
@@ -140,7 +150,7 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
     )
 
     render_patch(view, "/achievements/country_de")
-    refute has_element?(view, "#achievement-share-output")
+    refute has_element?(view, "#achievement-share-output[value]")
 
     Repo.query!(
       "UPDATE users SET encrypted_password='changed-00000000000000000000000' WHERE id=$1",

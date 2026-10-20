@@ -49,25 +49,40 @@ defmodule DawarichWeb.FamilyPagesTest do
     assert_form_isolated(document(ctx.member, "/family/location_requests/94001"))
     assert String.contains?(owner, "Leipzig Fixture Family")
     expect_element(owner, "a[href='/family/edit']")
-    expect_element(owner, "[data-family-action=remove_member][data-family-target='92002']")
+
+    expect_element(
+      owner,
+      "[data-native-family-action=remove_member][data-native-family-target='92002']"
+    )
 
     expect_element(
       owner,
       "#native-family-invite[phx-submit='family:invite'] input[name='family_invitation[email]']"
     )
 
-    expect_element(owner, "#native-family-sharing[phx-change='family:sharing']")
+    expect_element(
+      owner,
+      "#native-family-sharing[phx-hook=FamilySharing][data-native-sharing-event='family:sharing']"
+    )
 
     expect_element(
       owner,
-      "[data-family-action=cancel_invitation][data-family-target='93001']"
+      "[data-native-family-action=cancel_invitation][data-native-family-target='93001']"
     )
 
     member = document(ctx.member, "/family?locale=de")
     expect_element(member, "a[href='/family/edit']", false)
     expect_element(member, "#native-family-invite", false)
-    expect_element(member, "[data-family-action=remove_member][data-family-target='92002']")
-    expect_element(member, "[phx-click='family:request'][phx-value-id='90101']")
+
+    expect_element(
+      member,
+      "[data-native-family-action=remove_member][data-native-family-target='92002']"
+    )
+
+    expect_element(
+      member,
+      "form[action='/family/location_requests?target_user_id=90101'][phx-submit*='family:request']"
+    )
 
     for html <- [owner, member],
         marker <- ~w(data-lat= a9fpl-fixture- data-controller data-action turbo-frame),
