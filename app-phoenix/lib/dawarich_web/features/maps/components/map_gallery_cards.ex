@@ -70,7 +70,7 @@ defmodule DawarichWeb.MapGalleryCards do
             phx-value-id={if @native, do: @poster.id}
             data-confirm={if @native, do: p(@locale, "delete_this_poster")}
             data-turbo-confirm={if !@native, do: p(@locale, "delete_this_poster")}
-            href={"/posters/#{@poster.id}"}
+            href={if @native, do: "#", else: "/posters/#{@poster.id}"}
           >{p(@locale, "delete")}</a>
         </div>
       </div>

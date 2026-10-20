@@ -70,7 +70,7 @@ defmodule DawarichWeb.RouteVideoCard do
             phx-value-id={if @native, do: @video.id}
             data-confirm={if @native, do: v(@locale, "delete_this_video")}
             data-turbo-confirm={if !@native, do: v(@locale, "delete_this_video")}
-            href={"/route_videos/#{@video.id}"}
+            href={if @native, do: "#", else: "/route_videos/#{@video.id}"}
           >{v(@locale, "delete")}</a>
         </div>
       </div>

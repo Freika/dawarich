@@ -18,11 +18,16 @@ defmodule DawarichWeb.NativeMapStudioCardsTest do
 
     rails = render_component(&MapGalleryCards.poster_card/1, attrs)
     native = render_component(&MapGalleryCards.poster_card/1, attrs ++ [native: true])
-    assert ParityHTML.normalize(native) == ParityHTML.normalize(rails)
+
+    assert native
+           |> String.replace(~s(href="#"), ~s(href="/posters/42"))
+           |> ParityHTML.normalize() ==
+             ParityHTML.normalize(rails)
+
     doc = LazyHTML.from_fragment(native)
 
     assert doc
-           |> LazyHTML.query("a[phx-click='poster:delete'][href='/posters/42']")
+           |> LazyHTML.query("a[phx-click='poster:delete'][href='#']")
            |> Enum.count() == 1
 
     refute native =~ "data-turbo"
@@ -46,14 +51,20 @@ defmodule DawarichWeb.NativeMapStudioCardsTest do
     native =
       render_component(&RouteVideoCard.route_video_card/1, attrs ++ [native: true, target: 7])
 
-    assert ParityHTML.normalize(native) == ParityHTML.normalize(rails)
+    assert native
+           |> String.replace(~s(href="#"), ~s(href="/route_videos/52"))
+           |> ParityHTML.normalize() ==
+             ParityHTML.normalize(rails)
+
     doc = LazyHTML.from_fragment(native)
     [restore] = doc |> LazyHTML.query("button[phx-click]") |> LazyHTML.attribute("phx-click")
 
     assert [["dispatch", %{"to" => "#video-studio", "detail" => %{"recipe" => _}}]] =
              Jason.decode!(restore)
 
-    assert doc |> LazyHTML.query("a[phx-click='video:delete'][phx-target='7']") |> Enum.count() ==
+    assert doc
+           |> LazyHTML.query("a[phx-click='video:delete'][phx-target='7'][href='#']")
+           |> Enum.count() ==
              1
 
     refute native =~ "data-action"
