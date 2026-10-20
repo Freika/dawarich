@@ -5,11 +5,11 @@ require 'rails_helper'
 RSpec.describe 'map/timeline_feeds/_day' do
   let(:user) { create(:user) }
 
-  def visit_entry(id:, name:, start_hm:, end_hm:, duration:, points: 12)
+  def visit_entry(id:, name:, start_hm:, end_hm:, duration:, points: 12, timezone: nil)
     {
       type: 'visit', visit_id: id, name: name, status: 'confirmed', point_count: points, tags: [],
       started_at: "2026-02-23T#{start_hm}:00+00:00", ended_at: "2026-02-23T#{end_hm}:00+00:00",
-      duration: duration, place: nil, area: nil
+      duration: duration, place: nil, area: nil, timezone: timezone
     }
   end
 
@@ -26,7 +26,8 @@ RSpec.describe 'map/timeline_feeds/_day' do
   let(:entries) do
     [
       visit_entry(id: 1, name: 'Saturn, Przemysłowa, Krakow, Lesser Poland Voivodeship',
-                  start_hm: '09:59', end_hm: '10:24', duration: 24, points: 33),
+                  start_hm: '09:59', end_hm: '10:24', duration: 24, points: 33,
+                  timezone: 'Europe/Warsaw'),
       journey_entry(id: 11, mode: 'driving', start_hm: '11:04', end_hm: '14:43',
                     duration: 12_000, distance: 170.1),
       visit_entry(id: 2, name: 'Arge, Chyżne, Lesser Poland Voivodeship',
@@ -92,5 +93,9 @@ RSpec.describe 'map/timeline_feeds/_day' do
 
   it 'prints each visit duration once, opposite its arrival time' do
     expect(rendered).to have_css('.visit-row__duration', text: '24m')
+  end
+
+  it 'renders a visit arrival in the visit location timezone' do
+    expect(rendered).to have_css('.visit-row__time', text: '03:59')
   end
 end

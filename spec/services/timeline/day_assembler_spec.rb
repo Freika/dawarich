@@ -1062,4 +1062,41 @@ RSpec.describe Timeline::DayAssembler do
       expect(entry[:confidence_band]).to eq(:low)
     end
   end
+
+  describe 'local timezone exposure' do
+    it 'uses the visit location timezone for its timeline entry' do
+      kansas_city = create(:place, latitude: 39.0997, longitude: -94.5786)
+      visit = create(:visit, user: user, place: kansas_city,
+                             started_at: Time.zone.parse('2026-01-15 02:30:00 UTC'),
+                             ended_at: Time.zone.parse('2026-01-15 03:00:00 UTC'),
+                             duration: 30)
+
+      entry = described_class.new(
+        user,
+        start_at: '2026-01-15T00:00:00Z',
+        end_at: '2026-01-16T00:00:00Z'
+      ).call.first[:entries].find { |timeline_entry| timeline_entry[:visit_id] == visit.id }
+
+      expect(entry[:timezone]).to eq('America/Chicago')
+    end
+
+    it 'uses the journey start and end location timezones' do
+      track = create(
+        :track,
+        user: user,
+        start_at: Time.zone.parse('2026-01-15 15:00:00 UTC'),
+        end_at: Time.zone.parse('2026-01-15 16:00:00 UTC'),
+        original_path: 'LINESTRING(-94.5786 39.0997, -74.0060 40.7128)'
+      )
+
+      entry = described_class.new(
+        user,
+        start_at: '2026-01-15T00:00:00Z',
+        end_at: '2026-01-16T00:00:00Z'
+      ).call.first[:entries].find { |timeline_entry| timeline_entry[:track_id] == track.id }
+
+      expect(entry[:started_at_timezone]).to eq('America/Chicago')
+      expect(entry[:ended_at_timezone]).to eq('America/New_York')
+    end
+  end
 end

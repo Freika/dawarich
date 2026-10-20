@@ -34,6 +34,8 @@ module Timeline
 
       return [] if visits.empty? && tracks.empty?
 
+      @visit_locations = load_visit_locations(visits)
+      @track_locations = load_track_locations(tracks)
       @segment_stats = load_segment_stats(tracks)
 
       @visit_point_counts = Point.where(visit_id: visits.map(&:id)).group(:visit_id).count
@@ -59,6 +61,7 @@ module Timeline
         tags: build_tags(visit.place),
         started_at: visit.started_at.iso8601,
         ended_at: visit.ended_at.iso8601,
+        timezone: timezone_for(*visit_location(visit)),
         duration: visit.duration,
         place: visit.place ? build_place(visit.place) : nil,
         area: visit.area ? build_area(visit.area) : nil
@@ -90,6 +93,54 @@ module Timeline
       return @visit_point_counts.fetch(visit.id, 0) if @visit_point_counts
 
       visit.points.count
+    end
+
+    def load_visit_locations(visits)
+      visit_ids = visits.reject { |visit| visit.place || visit.area }.map(&:id)
+      return {} if visit_ids.empty?
+
+      first_point_locations(:visit_id, visit_ids)
+    end
+
+    def load_track_locations(tracks)
+      track_ids = tracks.map(&:id)
+      return {} if track_ids.empty?
+
+      Track.where(id: track_ids)
+           .pluck(
+             :id,
+             Arel.sql('ST_Y(ST_StartPoint(original_path::geometry))'),
+             Arel.sql('ST_X(ST_StartPoint(original_path::geometry))'),
+             Arel.sql('ST_Y(ST_EndPoint(original_path::geometry))'),
+             Arel.sql('ST_X(ST_EndPoint(original_path::geometry))')
+           )
+           .to_h do |id, start_latitude, start_longitude, end_latitude, end_longitude|
+        [id, { start: [start_latitude, start_longitude], end: [end_latitude, end_longitude] }]
+      end
+    end
+
+    def first_point_locations(foreign_key, ids)
+      Point.where(foreign_key => ids)
+           .group(foreign_key)
+           .pluck(
+             foreign_key,
+             Arel.sql('(array_agg(ST_Y(lonlat::geometry) ORDER BY timestamp ASC))[1]'),
+             Arel.sql('(array_agg(ST_X(lonlat::geometry) ORDER BY timestamp ASC))[1]')
+           )
+           .to_h do |id, latitude, longitude|
+        [id, [latitude, longitude]]
+      end
+    end
+
+    def visit_location(visit)
+      return [visit.place.lat, visit.place.lon] if visit.place&.lat && visit.place.lon
+      return [visit.area.latitude, visit.area.longitude] if visit.area
+
+      @visit_locations&.fetch(visit.id, nil) || first_point_locations(:visit_id, [visit.id]).values.first || []
+    end
+
+    def timezone_for(latitude = nil, longitude = nil)
+      Timeline::TimezoneLookup.call(latitude, longitude)
     end
 
     def fetch_tracks
@@ -229,12 +280,17 @@ module Timeline
     def build_journey_entry(track, date: nil, day_share: 1.0)
       start_day = track.start_at.in_time_zone(timezone).to_date
       continuation = date.present? && date != start_day
+      locations = @track_locations&.fetch(track.id, nil)
+      start_location = locations&.fetch(:start, nil)
+      end_location = locations&.fetch(:end, nil)
 
       {
         type: 'journey',
         track_id: track.id,
         started_at: track.start_at.iso8601,
         ended_at: track.end_at.iso8601,
+        started_at_timezone: timezone_for(*(start_location || [])),
+        ended_at_timezone: timezone_for(*(end_location || [])),
         duration: track.duration,
         distance: convert_distance(track.distance),
         distance_unit: distance_unit,

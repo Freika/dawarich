@@ -7,7 +7,7 @@
      style="--tl-leg-extra: <%= journey_leg_extra_height(entry[:minutes] * 60) %>px"
      data-entry-type="gap">
   <div class="gap-leg">
-    <div class="gap-leg__time"><%= l(Time.zone.parse(entry[:started_at]), format: :hour_minute) %></div>
+    <div class="gap-leg__time"><%= timeline_time_label(entry, entry[:started_at], timezone_key: :timezone) %></div>
     <div class="gap-leg__rail-col" aria-hidden="true"></div>
     <div class="gap-leg__summary">
       <%= t('.untracked', duration: format_duration_short(entry[:minutes] * 60)) %>

@@ -117,6 +117,7 @@ module TimelineHelper
   # consecutive rows would invent gaps inside a tracked drive.
   def timeline_entries_with_gaps(entries)
     covered_until = nil
+    covered_timezone = nil
     threshold = timeline_gap_min_minutes
 
     Array(entries).flat_map do |entry|
@@ -124,13 +125,17 @@ module TimelineHelper
       ended_at = Time.iso8601(entry[:ended_at].to_s)
       gap_minutes = covered_until ? ((started_at - covered_until) / 60).floor : 0
       gap_start = covered_until
-      covered_until = [covered_until, ended_at].compact.max
+      gap_timezone = covered_timezone
+      if covered_until.nil? || ended_at > covered_until
+        covered_until = ended_at
+        covered_timezone = entry[:timezone] || entry[:ended_at_timezone] || entry[:started_at_timezone]
+      end
 
       next [entry] if gap_minutes < threshold
 
       # Stamped with where the record stops rather than where it resumes —
       # that is the moment the user is being told about.
-      [{ type: 'gap', minutes: gap_minutes, started_at: gap_start.iso8601 }, entry]
+      [{ type: 'gap', minutes: gap_minutes, started_at: gap_start.iso8601, timezone: gap_timezone }, entry]
     end
   end
 
@@ -172,14 +177,20 @@ module TimelineHelper
   end
 
   def visit_entry_times(entry)
-    started = Time.zone.parse(entry[:started_at].to_s)
-    ended = Time.zone.parse(entry[:ended_at].to_s)
+    display_timezone = entry[:timezone].presence || Time.zone
+    started = Time.zone.parse(entry[:started_at].to_s).in_time_zone(display_timezone)
+    ended = Time.zone.parse(entry[:ended_at].to_s).in_time_zone(display_timezone)
     {
       start_at: started,
       ended_at: ended,
       start_label: I18n.l(started, format: :hour_minute),
       end_label: I18n.l(ended, format: :hour_minute)
     }
+  end
+
+  def timeline_time_label(entry, timestamp, timezone_key:)
+    display_timezone = entry[timezone_key].presence || Time.zone
+    I18n.l(Time.zone.parse(timestamp.to_s).in_time_zone(display_timezone), format: :hour_minute)
   end
 
   def visit_entry_status(entry)
