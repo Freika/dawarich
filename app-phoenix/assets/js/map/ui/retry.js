@@ -7,7 +7,6 @@ export function createMapRetry({ root, translate, run }) {
     const message = {
       areas_reload_failed: ["error", "messages.failed_to_reload_areas"],
       selection_refresh_failed: ["error", "selection.map_refresh_failed"],
-      map_refresh_failed: ["error", "messages.failed_to_load_location_data_please_try_again"],
       photos_load_failed: ["error", "messages.failed_to_load_photos"],
       photo_sources_partial: ["warning", "messages.some_photo_sources_unavailable"],
       photos_unconfigured: ["error", "messages.failed_to_load_photos"],
@@ -22,7 +21,7 @@ export function createMapRetry({ root, translate, run }) {
     if (destroyed || !root?.ownerDocument?.body) return
     if (current?.code === code) return
     if (current) Toast.dismiss(current.node)
-    const key = code.startsWith("scratch")
+    const key = code === "map_refresh_failed" ? "messages.failed_to_load_location_data_please_try_again" : code.startsWith("scratch")
       ? "messages.failed_to_load_visited_countries" : "messages.failed_to_load_map_tiles"
     const entry = { code }
     entry.node = Toast.retry(translate(key), translate("messages.retry"), async () => {

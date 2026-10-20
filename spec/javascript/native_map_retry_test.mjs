@@ -87,6 +87,27 @@ test("native retry retains a failed read and retires listeners on teardown", asy
   assert.equal(toasts().length, 0)
 })
 
+test("visited-country metadata failures retain a persistent action that reruns the failed read", async t => {
+  const { root, toasts } = fixture(t)
+  const calls = []
+  const retry = createMapRetry({ root, translate: key => key, run: async code => calls.push(code) })
+  t.after(() => retry.destroy())
+  retry.fail("map_refresh_failed")
+  retry.fail("map_refresh_failed")
+  assert.equal(toasts().length, 1)
+  const toast = toasts()[0]
+  assert.equal(toast.children[0].textContent, "messages.failed_to_load_location_data_please_try_again")
+  const button = toast.querySelector("button")
+  assert.ok(button)
+  t.mock.timers.tick(20000)
+  assert.equal(toast.classList.contains("removing"), false)
+  button.click()
+  await Promise.resolve()
+  assert.deepEqual(calls, ["map_refresh_failed"])
+  t.mock.timers.tick(300)
+  assert.equal(toasts().length, 0)
+})
+
 test("native retry remains inside map hook ownership during shell patches", async t => {
   const { document, toasts } = fixture(t)
   const { fixture: hostFixture } = await import("./support/native_m6_host_fixture.mjs")
