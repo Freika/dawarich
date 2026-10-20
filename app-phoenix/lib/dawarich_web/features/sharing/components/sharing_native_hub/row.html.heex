@@ -43,6 +43,7 @@
     <button
       class="btn btn-ghost btn-sm btn-square text-warning"
       type="submit"
+      phx-click={Phoenix.LiveView.JS.push_focus()}
       title={l(@locale, "revoke_link")}
       aria-label={l(@locale, "revoke")}
     ><.icon name="shield" class="w-4 h-4" /></button>

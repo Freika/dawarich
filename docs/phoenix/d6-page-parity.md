@@ -106,7 +106,9 @@ control replace the extra native link and submit action. Achievement controls
 match the source toolbar inside their dedicated native route, retaining its
 existing copy action. Native modal closing returns to the fixed resource route;
 Escape belongs to its own dialog, so cancelling a confirmation does not close
-the underlying manager. Shared-list forms preserve scoped confirmation using a
+the underlying manager. Confirmation buttons push the native focus target before
+form submission disables them; confirmation removal pops it after cancellation.
+Shared-list forms preserve scoped confirmation using a
 non-shadowing native row identifier. All actions still revalidate the account
 and resource through NativeSharingAuth and the existing contexts.
 

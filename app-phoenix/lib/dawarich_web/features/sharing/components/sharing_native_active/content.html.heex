@@ -41,7 +41,11 @@
           phx-submit="sharing_prepare"
         >
           <input type="hidden" name="action" value={action} />
-          <button class="btn btn-outline btn-sm" type="submit"><.icon
+          <button
+            class="btn btn-outline btn-sm"
+            type="submit"
+            phx-click={Phoenix.LiveView.JS.push_focus()}
+          ><.icon
             name="refresh-ccw"
             class="w-4 h-4"
           /> {s(@locale, key)}</button>
@@ -50,7 +54,11 @@
       <form class="button_to" phx-submit="sharing_prepare">
         <input type="hidden" name="action" value="revoke" />
         <input :if={@list} type="hidden" name="_id" value={@share.id} />
-        <button class="btn btn-warning btn-sm" type="submit"><.icon name="shield" class="w-4 h-4" /> {s(
+        <button
+          class="btn btn-warning btn-sm"
+          type="submit"
+          phx-click={Phoenix.LiveView.JS.push_focus()}
+        ><.icon name="shield" class="w-4 h-4" /> {s(
           @locale,
           "revoke"
         )}</button>

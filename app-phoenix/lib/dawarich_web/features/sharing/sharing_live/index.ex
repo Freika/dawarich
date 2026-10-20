@@ -164,6 +164,7 @@ defmodule DawarichWeb.SharingLive.Index do
         id="sharing-confirm"
         aria-labelledby="sharing-confirm-title"
         phx-hook="SharingDialog"
+        phx-remove={Phoenix.LiveView.JS.pop_focus()}
         data-pending="true"
         class="modal"
       >

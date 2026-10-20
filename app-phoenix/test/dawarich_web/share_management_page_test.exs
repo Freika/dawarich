@@ -98,19 +98,61 @@ defmodule DawarichWeb.ShareManagementPageTest do
 
     assert Repo.query!(
              "SELECT revoked_at IS NOT NULL FROM shared_links WHERE id=$1::text::uuid",
-             [share.id], log: false).rows == [[true]]
+             [share.id],
+             log: false
+           ).rows == [[true]]
 
     [[foreign]] =
       Repo.query!(
         "SELECT id::text FROM shared_links WHERE user_id<>$1 AND revoked_at IS NULL LIMIT 1",
-        [c.actor.id], log: false).rows
+        [c.actor.id],
+        log: false
+      ).rows
 
     render_submit(view, "sharing_prepare", %{"action" => "revoke", "_id" => foreign})
     assert :sys.get_state(view.pid).socket.assigns.confirmation == nil
 
     assert Repo.query!(
              "SELECT revoked_at IS NULL FROM shared_links WHERE id=$1::text::uuid",
-             [foreign], log: false).rows == [[true]]
+             [foreign],
+             log: false
+           ).rows == [[true]]
+  end
+
+  test "source confirmation forms retain native focus commands through cancellation", c do
+    for path <- ~w(/share_links/hub?tab=shared /share_links/live/new /trips/99101/share_link/new) do
+      {:ok, view, html} = live(connection(c.actor.id), path)
+
+      forms =
+        html |> LazyHTML.from_document() |> LazyHTML.query("form[phx-submit=sharing_prepare]")
+
+      assert Enum.count(forms) > 0
+
+      for form <- forms do
+        [command] = form |> LazyHTML.query("button") |> LazyHTML.attribute("phx-click")
+        assert Jason.decode!(command) == [["push_focus", %{}]]
+      end
+
+      params =
+        if String.contains?(path, "tab=shared"),
+          do: %{
+            "action" => "revoke",
+            "_id" => hd(:sys.get_state(view.pid).socket.assigns.page.shares).id
+          },
+          else: %{"action" => "revoke"}
+
+      render_submit(view, "sharing_prepare", params)
+
+      [command] =
+        render(view)
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#sharing-confirm")
+        |> LazyHTML.attribute("phx-remove")
+
+      assert Jason.decode!(command) == [["pop_focus", %{}]]
+      render_click(view, "sharing_cancel", %{})
+      refute has_element?(view, "#sharing-confirm")
+    end
   end
 
   test "manager frame hints do not change owned admission and foreign resources return safely",
