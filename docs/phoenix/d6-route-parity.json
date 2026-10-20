@@ -365,19 +365,6 @@
       "status": "existing behavior coverage"
     },
     {
-      "path": "/auth/dawarich",
-      "methods": [
-        "GET"
-      ],
-      "states": [
-        "mobile JWT handoff"
-      ],
-      "evidence": [
-        "standalone_auth_review_test.exs"
-      ],
-      "status": "existing behavior coverage"
-    },
-    {
       "path": "/s/:id",
       "methods": [
         "GET",
@@ -607,42 +594,76 @@
     {
       "path": "/posters",
       "methods": [
-        "POST",
-        "DELETE"
+        "POST"
       ],
       "states": [
         "create",
-        "delete",
-        "gallery",
-        "embedded studio",
-        "trip studio"
+        "embedded map studio",
+        "trip studio",
+        "gallery controls"
       ],
       "evidence": [
         "posters_parity_test.exs",
         "route_video_parity_test.exs",
         "native_map_studios_parity_test.exs"
       ],
-      "status": "existing embedded studio DOM verified; remaining pages pending"
+      "status": "existing embedded map studio DOM verified; trip variants need audit and parity"
     },
     {
       "path": "/route_videos",
       "methods": [
-        "POST",
-        "DELETE"
+        "POST"
       ],
       "states": [
         "create",
-        "delete",
-        "gallery",
-        "embedded studio",
-        "trip studio"
+        "embedded map studio",
+        "trip studio",
+        "gallery controls"
       ],
       "evidence": [
         "posters_parity_test.exs",
         "route_video_parity_test.exs",
         "native_map_studios_parity_test.exs"
       ],
-      "status": "existing embedded studio DOM verified; remaining pages pending"
+      "status": "existing embedded map studio DOM verified; trip variants need audit and parity"
+    },
+    {
+      "path": "/posters/:id",
+      "methods": [
+        "DELETE"
+      ],
+      "states": [
+        "own row",
+        "foreign row",
+        "missing row"
+      ],
+      "evidence": [
+        "posters_parity_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    },
+    {
+      "path": "/route_videos/:id",
+      "methods": [
+        "DELETE"
+      ],
+      "states": [
+        "own row",
+        "foreign row",
+        "missing row"
+      ],
+      "evidence": [
+        "route_video_parity_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    }
+  ],
+  "external_auth_links": [
+    {
+      "path": "/auth/dawarich",
+      "host": "Manager",
+      "owner": "external service; not a Dawarich route",
+      "source": "app/helpers/application_helper.rb:216"
     }
   ]
 }

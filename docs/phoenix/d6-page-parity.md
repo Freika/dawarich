@@ -33,7 +33,7 @@ The route/state inventory is [d6-route-parity.json](d6-route-parity.json).
 The browser capture manifest adds password edit and unlock request pages.
 Provider-only login, invitation variants, full validation-error DOM, account
 linking DOM, static trip/track shares, unsupported share types, public reports,
-all eight management page DOMs and standalone studios still require completion
+all eight management page DOMs and trip studio variants still require completion
 or explicit contract differences. Existing behavior coverage is not evidence of
 DOM parity for these remaining routes. The controller's parity bench remains
 read-only; pixel and request equality acceptance have not been run for this
@@ -41,3 +41,7 @@ worktree.
 
 AFFiNE counterpart: Dawarich — D6 auth and public shell parity implementation
 (document `9917Tg2C9kvp-BU5-kQj7`).
+
+The Manager `/auth/dawarich` URL is an external handoff, listed separately from
+Dawarich routes in the inventory. Poster/video HTTP resources expose create and
+destroy; the page DOM belongs to the embedded map/trip studio callers.
