@@ -55,6 +55,24 @@ defmodule DawarichWeb.BackgroundJobsLiveTest do
     GenServer.stop(view.pid)
   end
 
+  test "cancelled visits confirmation leaves its opener reusable without changing settings", c do
+    {:ok, view, _} = live(NativeAdminUI.conn(c.target), "/settings/background_jobs")
+    before = Accounts.settings(c.target.id)
+
+    for _ <- 1..2 do
+      refute has_element?(view, "#native-visits-toggle[phx-disable-with]")
+      refute has_element?(view, "#native-visits-toggle[disabled]")
+      view |> element("#native-visits-toggle") |> render_click()
+      assert :sys.get_state(view.pid).socket.assigns.visits_pending
+      view |> element("#cancel-visits") |> render_click()
+      refute :sys.get_state(view.pid).socket.assigns.visits_pending
+      assert Accounts.settings(c.target.id) == before
+    end
+
+    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
+    assert Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[0]]
+  end
+
   test "visits toggle persists exact strings and survives reload with no queued jobs", c do
     {:ok, view, _} = live(NativeAdminUI.conn(c.target), "/settings/background_jobs")
 

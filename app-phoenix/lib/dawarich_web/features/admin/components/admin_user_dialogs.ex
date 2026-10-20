@@ -24,7 +24,14 @@ defmodule DawarichWeb.AdminUserDialogs do
       )
 
     ~H"""
-    <dialog id="create_user" class="modal" open={@open} phx-mounted={JS.ignore_attributes("open")}>
+    <dialog
+      id="create_user"
+      class="modal"
+      open={@open}
+      phx-mounted={JS.ignore_attributes("open")}
+      phx-window-keydown={JS.push("close_create") |> JS.dispatch("dawarich:close-dialog")}
+      phx-key="Escape"
+    >
       <div class="modal-box">
         <h2 class="text-2xl font-bold">{label(@locale, "create_a_new_user")}</h2>
         <p :if={@error} role="alert" class="text-error">{@error}</p>
@@ -50,6 +57,7 @@ defmodule DawarichWeb.AdminUserDialogs do
             <label for="user_password">{label(@locale, "password")}</label>
             <input
               id="user_password"
+              phx-patch-focused
               type="password"
               name="user[password]"
               autocomplete="new-password"
@@ -76,14 +84,12 @@ defmodule DawarichWeb.AdminUserDialogs do
           </div>
         </form>
       </div>
-      <form
-        method="dialog"
-        class="modal-backdrop"
-        phx-submit={
+      <form method="dialog" class="modal-backdrop">
+        <button phx-click={
           JS.push("close_create") |> JS.dispatch("dawarich:close-dialog", to: "#create_user")
-        }
-      >
-        <button>{label(@locale, "close")}</button>
+        }>
+          {label(@locale, "close")}
+        </button>
       </form>
     </dialog>
     <dialog id="delete_user" class="modal" open={@open} phx-mounted={JS.ignore_attributes("open")}>
@@ -96,13 +102,14 @@ defmodule DawarichWeb.AdminUserDialogs do
           )}
         </p>
         <div class="modal-action">
-          <form
-            method="dialog"
-            phx-submit={
-              JS.push("cancel_delete") |> JS.dispatch("dawarich:close-dialog", to: "#delete_user")
-            }
-          >
-            <button id="native-cancel-delete" class="btn">{label(@locale, "cancel")}</button>
+          <form method="dialog">
+            <button
+              id="native-cancel-delete"
+              class="btn"
+              phx-click={
+                JS.push("cancel_delete") |> JS.dispatch("dawarich:close-dialog", to: "#delete_user")
+              }
+            >{label(@locale, "cancel")}</button>
           </form>
           <form
             id="native-delete-user-form"
@@ -123,14 +130,12 @@ defmodule DawarichWeb.AdminUserDialogs do
           </form>
         </div>
       </div>
-      <form
-        method="dialog"
-        class="modal-backdrop"
-        phx-submit={
+      <form method="dialog" class="modal-backdrop">
+        <button phx-click={
           JS.push("cancel_delete") |> JS.dispatch("dawarich:close-dialog", to: "#delete_user")
-        }
-      >
-        <button>{label(@locale, "close")}</button>
+        }>
+          {label(@locale, "close")}
+        </button>
       </form>
     </dialog>
     """

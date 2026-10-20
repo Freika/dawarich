@@ -98,7 +98,6 @@
               JS.push("open_visits")
               |> JS.dispatch("dawarich:open-dialog", to: "#background-visits-confirm")
             }
-            phx-disable-with={label(@locale, if(@data.visits, do: "disable", else: "enable"))}
             class={if(@data.visits, do: "btn btn-error", else: "btn btn-success")}
           >{label(@locale, if(@data.visits, do: "disable", else: "enable"))}</a>
         </div>

@@ -38,6 +38,37 @@ defmodule DawarichWeb.AdminUsersDialogsTest do
     c
   end
 
+  test "create dialog Escape resets credentials even when the reopened field has focus", c do
+    {:ok, view, _} = live(NativeAdminUI.conn(c.actor), "/settings/users")
+    view |> element("button", "Add new user") |> render_click()
+    before = :sys.get_state(view.pid).socket.assigns.form_version
+    assert has_element?(view, "#create_user #user_password[phx-patch-focused]")
+    view |> element("#create_user") |> render_keydown(%{"key" => "Escape"})
+    refute :sys.get_state(view.pid).socket.assigns.create_open
+    assert :sys.get_state(view.pid).socket.assigns.form_version > before
+    view |> element("button", "Add new user") |> render_click()
+    assert has_element?(view, "#create_user #user_password:not([value])")
+    refute has_element?(view, "#create_user form[phx-change]")
+  end
+
+  test "dialog dismissal avoids submit focus restoration while preserving cancellation", c do
+    {:ok, view, _} = live(NativeAdminUI.conn(c.actor), "/settings/users")
+    refute has_element?(view, "form[method=dialog][phx-submit]")
+    assert has_element?(view, "#create_user[phx-window-keydown][phx-key='Escape']")
+    render_hook(view, "open_create", %{})
+    view |> element("#create_user .modal-backdrop button") |> render_click()
+    refute :sys.get_state(view.pid).socket.assigns.create_open
+    render_hook(view, "open_delete", %{"id" => to_string(c.target.id)})
+
+    view
+    |> element("#delete_user form[method=dialog]:not(.modal-backdrop) button")
+    |> render_click()
+
+    assert :sys.get_state(view.pid).socket.assigns.delete_id == nil
+    assert Accounts.get(c.target.id) != nil
+    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
+  end
+
   test "create dialog submits credentials as one event and never keeps the password", c do
     {:ok, view, _} = live(NativeAdminUI.conn(c.actor), "/settings/users")
     render_hook(view, "open_create", %{})
@@ -87,7 +118,11 @@ defmodule DawarichWeb.AdminUsersDialogsTest do
   test "cancel delete queues nothing", c do
     {:ok, view, _} = live(NativeAdminUI.conn(c.actor), "/settings/users")
     render_hook(view, "open_delete", %{"id" => to_string(c.target.id)})
-    view |> form("#delete_user form[method=dialog]:not(.modal-backdrop)") |> render_submit()
+
+    view
+    |> element("#delete_user form[method=dialog]:not(.modal-backdrop) button")
+    |> render_click()
+
     assert Accounts.get(c.target.id) != nil
     assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
     assert :sys.get_state(view.pid).socket.assigns.delete_id == nil
