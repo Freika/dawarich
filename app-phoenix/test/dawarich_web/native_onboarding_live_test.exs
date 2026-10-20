@@ -80,6 +80,72 @@ defmodule DawarichWeb.NativeOnboardingLiveTest do
     assert completed(id) == nil
   end
 
+  test "onboarding renders the multipart import controls on the shared native transport", %{
+    id: id
+  } do
+    {:ok, view, _} =
+      live_isolated(Phoenix.ConnTest.build_conn(), Host,
+        session: %{"user_id" => id, "auto" => true}
+      )
+
+    assert has_element?(
+             view,
+             "#native-onboarding-import-screen form.contents[method=post][enctype='multipart/form-data'][phx-hook=ArchiveChecksum]"
+           )
+
+    assert has_element?(
+             view,
+             "#native-onboarding-upload input[type=file][name='import[files][]'][multiple]"
+           )
+
+    assert has_element?(view, "#native-onboarding-upload input[type=submit][disabled]")
+    refute has_element?(view, "#native-onboarding-import-screen a[href='/imports/new']")
+    assert completed(id) == nil
+    Dawarich.Jobs.Ownership.put!(Repo, "command:imports.process_gpx", :oban)
+
+    bytes =
+      "<gpx><trk><trkseg><trkpt lat=\"52.5\" lon=\"13.4\"><time>2026-03-01T12:00:00Z</time></trkpt></trkseg></trk></gpx>"
+
+    name = "onboarding-#{id}.gpx"
+
+    input =
+      file_input(view, "#native-onboarding-upload", :files, [
+        %{name: name, content: bytes, type: "application/gpx+xml"}
+      ])
+
+    view |> form("#native-onboarding-upload") |> render_change(input)
+    [entry] = input.entries
+
+    view
+    |> element("#native-onboarding-upload")
+    |> render_hook("archive_checksum", %{
+      "ref" => entry["ref"],
+      "checksum" => Base.encode64(:crypto.hash(:md5, bytes))
+    })
+
+    render_upload(input, name, 50)
+    view |> element("#native-onboarding-upload") |> render_hook("start_imports", %{})
+    assert rows("SELECT count(*) FROM imports WHERE user_id=$1", [id]) == [[0]]
+    render_upload(input, name, 50)
+    [[key]] = rows("SELECT key FROM active_storage_blobs WHERE filename=$1", [name])
+    storage = Dawarich.Imports.StorageContext.storage()
+    path = Dawarich.Storage.disk_path(storage.root, key)
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, bytes)
+    on_exit(fn -> File.rm(path) end)
+    assert has_element?(view, "#native-onboarding-upload input[type=submit]:not([disabled])")
+    view |> form("#native-onboarding-upload") |> render_submit()
+    assert_redirect(view, "/imports")
+    assert rows("SELECT name FROM imports WHERE user_id=$1", [id]) == [[name]]
+
+    assert rows(
+             "SELECT count(*) FROM active_storage_attachments WHERE record_type='Import' AND record_id IN (SELECT id FROM imports WHERE user_id=$1)",
+             [id]
+           ) == [[1]]
+
+    assert completed(id) == nil
+  end
+
   defp completed(id),
     do:
       rows("SELECT settings->'onboarding_completed' FROM users WHERE id=$1", [id]) |> hd() |> hd()

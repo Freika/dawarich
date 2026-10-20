@@ -608,7 +608,7 @@
         },
         {
           "file": "T/dawarich_web/onboarding_modal_test.exs",
-          "name": "deferred onboarding import entry links to complete native uploads without changing dismiss policy"
+          "name": "inline onboarding import uses the native upload transport without changing dismiss policy"
         },
         {
           "file": "T/dawarich_web/achievement_unlock_reveal_test.exs",
@@ -2798,7 +2798,7 @@
         },
         {
           "file": "T/dawarich_web/onboarding_modal_test.exs",
-          "name": "deferred onboarding import entry links to complete native uploads without changing dismiss policy"
+          "name": "inline onboarding import uses the native upload transport without changing dismiss policy"
         }
       ],
       "authority": "integ-m7 merged reader refresh; mechanism retirement retains named native behavior and external corpus"
@@ -2811,7 +2811,7 @@
       "successors": [
         {
           "file": "T/dawarich_web/onboarding_modal_test.exs",
-          "name": "deferred onboarding import entry links to complete native uploads without changing dismiss policy"
+          "name": "inline onboarding import uses the native upload transport without changing dismiss policy"
         }
       ],
       "authority": "integ-m7 merged reader refresh; mechanism retirement retains named native behavior and external corpus"
@@ -8141,7 +8141,7 @@
         },
         {
           "file": "T/dawarich_web/onboarding_modal_test.exs",
-          "name": "deferred onboarding import entry links to complete native uploads without changing dismiss policy"
+          "name": "inline onboarding import uses the native upload transport without changing dismiss policy"
         }
       ],
       "authority": "integ-m7 merged reader refresh; mechanism retirement retains named native behavior and external corpus"
@@ -12526,7 +12526,7 @@
         },
         {
           "file": "T/dawarich_web/onboarding_modal_test.exs",
-          "name": "deferred onboarding import entry links to complete native uploads without changing dismiss policy"
+          "name": "inline onboarding import uses the native upload transport without changing dismiss policy"
         },
         {
           "file": "T/dawarich_web/achievement_unlock_reveal_test.exs",

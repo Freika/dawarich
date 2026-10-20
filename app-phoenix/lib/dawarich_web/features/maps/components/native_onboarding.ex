@@ -8,13 +8,6 @@ defmodule DawarichWeb.NativeOnboarding do
   alias Phoenix.LiveView.JS
 
   @screens ~w(native-onboarding-choice-screen native-onboarding-import-screen native-onboarding-track-screen)
-  @formats [
-    {"google_maps", "records_json_semantic_history_phone_takeout_json"},
-    {"gpx", "track_files_gpx"},
-    {"geojson", "feature_collections_json"},
-    {"owntracks", "recorder_files_rec"},
-    {"kml", "kml_files_kml_kmz"}
-  ]
 
   def show(screen, event \\ nil) do
     js =
@@ -40,7 +33,7 @@ defmodule DawarichWeb.NativeOnboarding do
         demo_loaded: assigns.navbar.imports.demo,
         demo_loading: Map.get(assigns, :demo_status) == :loading,
         target: Map.get(assigns, :target),
-        formats: @formats,
+        upload: Map.get(assigns, :upload),
         legacy_trial: user.status == 2 and user.subscription_source in [nil, 0],
         auto: Map.get(assigns, :auto_open, false) == true and assigns.navbar.onboarding == true
       )
@@ -156,34 +149,13 @@ defmodule DawarichWeb.NativeOnboarding do
             </button>
           </div>
         </div>
-        <div id="native-onboarding-import-screen" class="hidden">
-          <div class="flex items-center gap-2 mb-4">
-            <button
-              class="btn btn-ghost btn-sm btn-circle"
-              phx-click={!@http && show("native-onboarding-choice-screen")}
-              data-auth-onboarding-screen={@http && "native-onboarding-choice-screen"}
-            >
-              <Icon.icon name="arrow-left" class="w-4 h-4" />
-            </button>
-            <h3 class="text-xl font-bold">{tm(@locale, "import_your_data")}</h3>
-          </div>
-          <div class="card bg-base-100 shadow-sm mb-4">
-            <div class="card-body p-4">
-              <h4 class="card-title text-sm">{tm(@locale, "supported_formats")}</h4>
-              <ul class="text-xs space-y-1">
-                <li :for={{label, text} <- @formats}>
-                  <strong>{tm(@locale, label)}</strong> {tm(@locale, text)}
-                </li>
-              </ul>
-              <div :if={@legacy_trial} class="text-xs text-warning mt-2 font-medium">
-                {tm(@locale, "trial_limitations_max_5_imports_10mb_per_file_current_imports")} {@navbar.imports.count}/5
-              </div>
-            </div>
-          </div>
-          <div class="flex justify-end">
-            <a class="btn btn-primary" href="/imports/new">{tm(@locale, "import_files")}</a>
-          </div>
-        </div>
+        <DawarichWeb.OnboardingImport.screen
+          locale={@locale}
+          http={@http}
+          legacy_trial={@legacy_trial}
+          imports={@navbar.imports.count}
+          upload={@upload}
+        />
         <.track_screen
           locale={@locale}
           base_url={@base_url}

@@ -8,9 +8,18 @@ defmodule DawarichWeb.OnboardingLiveComponent do
   @timeout 30_000
 
   def update(assigns, socket) do
+    socket =
+      socket
+      |> assign(assigns)
+      |> assign(current_user: assigns.scope.user, current_scope: assigns.scope)
+
+    socket =
+      if socket.assigns[:upload_kind] == :imports,
+        do: socket,
+        else: DawarichWeb.ImportsUpload.configure(socket)
+
     {:ok,
      socket
-     |> assign(assigns)
      |> assign_new(:completed, fn -> false end)
      |> assign_new(:demo_status, fn -> :idle end)
      |> assign_new(:demo_run, fn -> nil end)
@@ -57,6 +66,9 @@ defmodule DawarichWeb.OnboardingLiveComponent do
     end
   end
 
+  def handle_event(event, params, socket),
+    do: DawarichWeb.ImportsUpload.event(event, params, socket)
+
   def handle_async(:demo_load, {:ok, {run, result}}, %{assigns: %{demo_run: run}} = socket) do
     case result do
       {:ok, %{landing: landing}} -> {:noreply, push_navigate(socket, to: landing)}
@@ -88,6 +100,15 @@ defmodule DawarichWeb.OnboardingLiveComponent do
         auto_open={@auto_open and not @completed}
         target={@myself}
         demo_status={@demo_status}
+        upload={
+          %{
+            upload: @uploads.files,
+            limits: @upload_limits,
+            error: @upload_error,
+            fallback: @upload_fallback,
+            target: @myself
+          }
+        }
       />
       <p
         :if={@demo_status == :failed}
