@@ -5,7 +5,10 @@ defmodule DawarichWeb.FamilyInvitationDocument do
 
   def document(assigns) do
     ~H"""
-    <div class="min-h-screen bg-gradient-to-br from-base-100 to-base-200 py-12 px-4 mx-auto">
+    <div
+      id="native-family-invitation-document"
+      class="min-h-screen bg-gradient-to-br from-base-100 to-base-200 py-12 px-4 mx-auto"
+    >
       <div class="max-w-4xl mx-auto min-w-0 [overflow-wrap:anywhere]">
         <div class="text-center mb-12">
           <div class="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-primary mb-6 shadow-xl">

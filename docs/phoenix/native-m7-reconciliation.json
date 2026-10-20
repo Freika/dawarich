@@ -18124,7 +18124,7 @@
       {
         "file": "app-phoenix/test/dawarich_web/family_pages_parity_test.exs",
         "name": "family GET corpus #{@name} preserves scoped state and visible inputs in all shipped locales",
-        "contract": "301 route/state/locale leaves; admitted page DOM plus native map, confirmation, credential-reveal and upgrade boundaries."
+        "contract": "301 route/state/locale leaves; admitted page DOM plus native map, confirmation, credential-reveal and upgrade boundaries. Includes 49 Rails application-shell sidecars from the existing family recorder, compared through D1 chrome wiring normalization."
       },
       {
         "file": "app-phoenix/test/dawarich_web/achievement_public_test.exs",

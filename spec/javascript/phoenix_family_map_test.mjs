@@ -15,7 +15,10 @@ function fixture(options = {}) {
     layers = new Map(),
     events = new Map(),
     intervals = new Set(),
-    popups = []
+    popups = [],
+    flights = [],
+    clicks = new Set(),
+    receipts = []
   let maps = 0,
     removed = 0,
     reads = []
@@ -68,6 +71,7 @@ function fixture(options = {}) {
       layers.delete(id)
     }
     fitBounds() {}
+    flyTo(options) { flights.push(options) }
   }
   class Popup {
     constructor() {
@@ -100,7 +104,13 @@ function fixture(options = {}) {
     ...options.timers,
   }
   const empty = { hidden: false, style: {} }
+  const root = {
+    addEventListener: (name, fn) => { if (name === "click") clicks.add(fn) },
+    removeEventListener: (name, fn) => { if (name === "click") clicks.delete(fn) },
+    contains: (row) => row?.admitted === true,
+  }
   const element = {
+    closest: () => root,
     querySelector: (selector) =>
       selector === "[data-family-empty]" ? empty : null,
     dataset: {
@@ -158,10 +168,18 @@ function fixture(options = {}) {
     isOffline: options.isOffline,
     loadLibrary: async () => ({ Map: MapView, Popup }),
     loadStyle: async () => ({ version: 8, sources: {}, layers: [] }),
-    pushEvent() {},
+    pushEvent: (event, receipt) => receipts.push({ event, receipt }),
   })
   return {
     owner,
+    flights,
+    receipts,
+    clicks,
+    click(id, options = {}) {
+      const row = { dataset: { nativeFamilyMemberId: String(id) }, admitted: true, ...options }
+      for (const fn of clicks) fn({ target: { closest: (selector) =>
+        selector === "[data-native-family-member-id]" ? row : null } })
+    },
     releaseLoad: () => releaseLoad(),
     empty,
     reader,
@@ -585,4 +603,69 @@ test("native Family offline owns erasure refresh and window listener teardown la
   window.dispatchEvent(new Event("offline"))
   await new Promise(resolve => setImmediate(resolve))
   assert.equal(f.reads.length, reads)
+})
+
+
+test("family member row focuses admitted coordinates at Rails zoom 15 over 1000 ms without a receipt", async () => {
+  const f = fixture()
+  try {
+    await f.owner.mount()
+    const reads = f.reads.length, receipts = structuredClone(f.receipts)
+    f.click(7)
+    assert.deepEqual(f.flights, [{ center: [13, 52], zoom: 15, duration: 1000 }])
+    assert.equal(f.reads.length, reads)
+    assert.deepEqual(f.receipts, receipts)
+    f.click(8)
+    f.click(7, { admitted: false })
+    assert.equal(f.flights.length, 1)
+  } finally {
+    f.owner.destroy()
+  }
+  assert.equal(f.clicks.size, 0)
+})
+
+test("family row focus forgets locations during refresh clear offline expiry and destruction", async () => {
+  const window = new EventTarget()
+  const f = fixture({ window })
+  try {
+    await f.owner.mount()
+    const pendingRead = defer(), admittedRead = f.reader.read
+    f.reader.read = () => pendingRead.promise
+    const refreshing = f.owner.reconnect()
+    await Promise.resolve()
+    f.click(7)
+    assert.equal(f.flights.length, 0)
+    f.owner.clear()
+    pendingRead.resolve({ data: { locations: [{ user_id: 7, longitude: 14, latitude: 53 }], members: [] } })
+    await refreshing
+    f.click(7)
+    assert.equal(f.flights.length, 0)
+    f.reader.read = admittedRead
+    await f.owner.reconnect()
+    f.click(7)
+    assert.equal(f.flights.length, 1)
+    f.owner.clear()
+    f.click(7)
+    assert.equal(f.flights.length, 1)
+    await f.owner.reconnect()
+    window.dispatchEvent(new Event("offline"))
+    f.click(7)
+    assert.equal(f.flights.length, 1)
+    window.dispatchEvent(new Event("online"))
+    await new Promise(resolve => setImmediate(resolve))
+    f.owner.lease({ milliseconds: 0 })
+    f.click(7)
+    assert.equal(f.flights.length, 1)
+    f.owner.clear()
+    await f.owner.reconnect()
+    window.dispatchEvent(new Event("pagehide"))
+    f.click(7)
+    assert.equal(f.flights.length, 1)
+    assert.equal(f.clicks.size, 0)
+  } finally {
+    f.owner.destroy()
+  }
+  f.click(7)
+  assert.equal(f.flights.length, 1)
+  assert.equal(f.clicks.size, 0)
 })
