@@ -90,6 +90,7 @@ defmodule Dawarich.Families.Snapshot do
   defp epoch(repo, id, now, hosted) do
     family = WebCreate.family(repo, id)
     actor = actor(repo, id)
+    actor = actor && Map.delete(actor, :points_count)
     family_id = if family, do: family.id
 
     rows =
