@@ -35,7 +35,7 @@ defmodule DawarichWeb.ImportsProviderEventsTest do
 
     assert has_element?(
              view,
-             "button[phx-click=request_provider][phx-value-job=start_immich_import]"
+             "a[phx-click=request_provider][phx-value-job=start_immich_import]"
            )
 
     Repo.query!("UPDATE users SET settings=settings-'immich_api_key' WHERE id=$1", [c.user.id],
@@ -60,7 +60,7 @@ defmodule DawarichWeb.ImportsProviderEventsTest do
            ]
 
     assert render(view) =~ "Job was successfully created."
-    assert has_element?(view, "button[phx-click=request_provider][disabled]")
+    assert has_element?(view, "a[phx-click=request_provider][aria-disabled=true]")
   end
 
   test "unconfigured or forged job names publish nothing and expose no credentials", c do

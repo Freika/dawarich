@@ -37,7 +37,86 @@ defmodule DawarichWeb.ImportsExportsParityTest do
         NativeExportCorpus.assert_page(html, rails)
       end
 
+      selector =
+        if String.starts_with?(@page["path"], "/imports"),
+          do: "[data-testid=native-imports-root]",
+          else: "[data-testid=native-exports-root]"
+
+      native =
+        html
+        |> Dawarich.Test.DataPageParity.action_paths()
+        |> Dawarich.Test.DataPageParity.resilience()
+
+      native =
+        Regex.replace(
+          ~r/(<button[^>]*data-testid="import-delete"[^>]*?) aria-label="[^"]*"/,
+          native,
+          "\\1"
+        )
+
+      native =
+        Regex.replace(
+          ~r/(<a[^>]*href="\/exports\/[0-9]+"[^>]*?) aria-label="[^"]*"/,
+          native,
+          "\\1"
+        )
+
+      native = ParityHTML.without(native, ["dialog"], selector)
+      expected = ParityHTML.normalize(rails)
+      assert native == expected, ParityHTML.first_difference(native, expected)
+
       assert html =~ ">#{@page["title"]}</title>"
+    end
+  end
+
+  test "native import and export lists shrink inside the page and wrap empty actions" do
+    for path <- ["/imports", "/exports"], id <- [9701, 9705], locale <- ["en", "de"] do
+      html = get(RailsUser.signed_in(id), path <> "?locale=" <> locale) |> html_response(200)
+      doc = LazyHTML.from_document(html)
+      root = "[data-testid=native-#{String.trim_leading(path, "/")}-root]"
+      assert Enum.count(LazyHTML.query(doc, root <> ".min-w-0")) == 1
+
+      for link <- LazyHTML.query(doc, root <> " .text-center > a.btn") do
+        assert [classes] = LazyHTML.attribute(link, "class")
+        assert "whitespace-normal" in String.split(classes)
+        assert "h-auto" in String.split(classes)
+      end
+    end
+  end
+
+  test "native data action links retain their Rails routes without document navigation" do
+    now = NaiveDateTime.utc_now()
+
+    Dawarich.Repo.insert_all("notifications", [
+      %{
+        id: 97_010_990,
+        user_id: 9701,
+        title: "Action route",
+        content: "Synthetic notification",
+        kind: 0,
+        created_at: now,
+        updated_at: now
+      }
+    ])
+
+    Dawarich.Test.FrameSeeds.place!(9701, 97_010_990, "Synthetic action place")
+
+    for {id, path} <- [
+          {9707, "/imports"},
+          {9701, "/exports"},
+          {9701, "/notifications"},
+          {9701, "/places"},
+          {9701, "/points"}
+        ] do
+      html = get(RailsUser.signed_in(id), path) |> html_response(200)
+      controls = html |> LazyHTML.from_document() |> LazyHTML.query("a[phx-click]")
+      assert Enum.count(controls) > 0, path
+
+      for control <- controls do
+        assert LazyHTML.attribute(control, "href") == ["#"], path
+        assert [route] = LazyHTML.attribute(control, "data-native-href")
+        assert String.starts_with?(route, "/"), path
+      end
     end
   end
 

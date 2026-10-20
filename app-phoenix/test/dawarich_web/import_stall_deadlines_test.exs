@@ -46,11 +46,11 @@ defmodule DawarichWeb.ImportStallDeadlinesTest do
   test "extraction recovery controls appear at their six-hour deadline without a domain message",
        c do
     view = open(c, "/imports/133411")
-    refute has_element?(view, "button[phx-click=remove_extraction]")
+    refute has_element?(view, "form[phx-submit=remove_extraction] button[type=submit]")
     token = scheduled_token(view, DateTime.add(c.now, 60))
     advance(c, 60)
     send(view.pid, {:import_stall_deadline, token})
-    assert has_element?(view, "button[phx-click=remove_extraction]")
+    assert has_element?(view, "form[phx-submit=remove_extraction] button[type=submit]")
 
     assert render(view) =~
              DawarichWeb.Translate.t("en", "imports.extraction_card.start_over", %{})
@@ -70,10 +70,10 @@ defmodule DawarichWeb.ImportStallDeadlinesTest do
     send(view.pid, {:import_stall_deadline, old})
     render(view)
     assert state(view).assigns.now == c.now
-    refute has_element?(view, "button[phx-click=remove_extraction]")
+    refute has_element?(view, "form[phx-submit=remove_extraction] button[type=submit]")
     advance(c, 3660)
     send(view.pid, {:import_stall_deadline, current})
-    assert has_element?(view, "button[phx-click=remove_extraction]")
+    assert has_element?(view, "form[phx-submit=remove_extraction] button[type=submit]")
 
     started(c, 7200)
     wake(view)

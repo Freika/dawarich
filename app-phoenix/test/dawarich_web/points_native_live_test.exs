@@ -15,7 +15,7 @@ defmodule DawarichWeb.PointsNativeLiveTest do
 
   test "point range order and pagination survive patch back and forward", %{user: user} do
     {:ok, view, _} = live(NativeAdminUI.conn(user), @path)
-    view |> form("#point_filters", @params) |> render_submit()
+    view |> form("#native-point-filters", Map.delete(@params, "order_by")) |> render_submit()
     patch = assert_patch(view)
     assert URI.decode_query(URI.parse(patch).query)["order_by"] == "asc"
     assert URI.decode_query(URI.parse(patch).query)["start_at"] == @params["start_at"]
@@ -33,13 +33,13 @@ defmodule DawarichWeb.PointsNativeLiveTest do
     for {locale, export} <- [{"en", "Export"}, {"de", "Export"}] do
       {:ok, view, _} = live(NativeAdminUI.conn(user), @path <> "&locale=" <> locale)
       assert has_element?(view, "#point_160000")
-      assert has_element?(view, "button[phx-click='export'][phx-value-format='json']", export)
+      assert has_element?(view, "a[phx-click='export'][phx-value-format='json']", "GeoJSON")
       refute Map.has_key?(:sys.get_state(view.pid).socket.assigns.query, "locale")
-      view |> element("button[phx-click='export'][phx-value-format='json']") |> render_click()
+      view |> element("a[phx-click='export'][phx-value-format='json']") |> render_click()
       assert has_element?(view, "#points_dialog_title", export)
       view |> element("#points_cancel") |> render_click()
       refute has_element?(view, "#points_dialog")
-      view |> form("#point_filters", @params) |> render_submit()
+      view |> form("#native-point-filters", Map.delete(@params, "order_by")) |> render_submit()
 
       assert URI.decode_query(URI.parse(assert_patch(view)).query)["start_at"] ==
                @params["start_at"]

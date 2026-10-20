@@ -5,8 +5,8 @@ const loadPicker = () =>
 
 export const EmojiPicker = {
   mounted() {
-    this.button = this.el.querySelector("[data-emoji-toggle]")
-    this.container = this.el.querySelector("[data-emoji-container]")
+    this.button = this.el.querySelector("[data-native-emoji]")
+    this.container = this.el.querySelector("[data-native-picker]")
     this.input = this.el.querySelector("input[type='hidden']")
     this.toggle = (event) => {
       event.preventDefault()

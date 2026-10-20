@@ -73,7 +73,7 @@ defmodule DawarichWeb.ImportsLive.New do
             {t(@locale, "imports.form.supported_import_formats", %{})}
           </h3>
           <ul class="text-xs space-y-1.5">
-            <li :for={{name, files} <- @formats} class="flex flex-wrap min-w-0 items-center gap-1.5">
+            <li :for={{name, files} <- @formats} class="flex items-center gap-1.5">
               <.icon name="circle-check" class="w-3.5 h-3.5 text-success shrink-0" />
               <strong>{t(@locale, "imports.form." <> name, %{})}</strong> {t(
                 @locale,

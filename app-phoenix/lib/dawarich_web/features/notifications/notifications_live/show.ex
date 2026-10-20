@@ -72,23 +72,34 @@ defmodule DawarichWeb.NotificationsLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="mx-auto md:w-2/3 w-full min-w-0" data-testid="native-notifications-detail">
-      <div :if={@notification} class="mx-auto min-w-0">
+    <div class="mx-auto md:w-2/3 w-full flex" data-testid="native-notifications-detail">
+      <div :if={@notification} class="mx-auto">
         <.card notification={@notification} locale={@locale} now={@now} show_content />
-        <div class="my-5 flex flex-wrap gap-2 min-w-0">
-          <a class="btn btn-small h-auto whitespace-normal" href="/notifications">{t(
+        <div class="my-5">
+          <a class="btn btn-small" href="/notifications">{t(
             @locale,
             "notifications.show.back_to_notifications",
             %{}
           )}</a>
-          <button
-            type="button"
-            class="btn btn-small btn-warning h-auto whitespace-normal"
-            phx-click={
-              JS.push("choose_notification_delete")
-              |> JS.dispatch("dawarich:open-dialog", to: "#notification-delete-dialog")
-            }
-          >{t(@locale, "notifications.show.destroy_this_notification", %{})}</button>
+          <div class="inline-block ml-2">
+            <form
+              class="button_to"
+              method="post"
+              action={"/notifications/#{@notification.id}"}
+              phx-submit={
+                JS.push("choose_notification_delete")
+                |> JS.dispatch("dawarich:open-dialog", to: "#notification-delete-dialog")
+              }
+            >
+              <input type="hidden" name="_method" value="delete" />
+              <button type="submit" class="btn btn-small btn-warning">{t(
+                @locale,
+                "notifications.show.destroy_this_notification",
+                %{}
+              )}</button>
+              <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
+            </form>
+          </div>
         </div>
       </div>
       <.dialog

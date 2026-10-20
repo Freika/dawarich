@@ -182,10 +182,12 @@ defmodule Dawarich.PointList do
       rows =
         Repo.query!(
           """
-          SELECT id, name, created_at FROM public.imports
-          WHERE user_id=$1 AND (name ILIKE $2 OR id=$3)
-          ORDER BY (id=$3) DESC NULLS LAST, created_at DESC
-          LIMIT 50
+          SELECT id, name, created_at FROM (
+            SELECT id, name, created_at FROM public.imports
+            WHERE user_id=$1 AND (name ILIKE $2 OR id=$3)
+            ORDER BY (id=$3) DESC NULLS LAST, created_at DESC
+            LIMIT 50
+          ) options ORDER BY created_at DESC
           """,
           [user_id, "%" <> search <> "%", Dawarich.RubyInteger.to_i(selected)],
           log: false
