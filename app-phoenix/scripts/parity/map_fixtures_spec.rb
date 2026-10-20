@@ -158,6 +158,52 @@ RSpec.describe 'Phoenix fixtures: the map page as Rails renders it', type: :requ
 
   def tag!(user, id, name, color: nil, icon: nil) = Tag.create!(id:, user:, name:, color:, icon:)
 
+  it 'records Rails 1.16.0 family and links tabs and launchers for membership and hosting states' do
+    travel_to now do
+      owner = reader(6811, plan: :family)
+      member = reader(6812)
+      outsider = reader(6813)
+      family = Family.create!(name: 'Map fixture family', creator: owner)
+      Family::Membership.create!(family:, user: owner, role: :owner)
+      Family::Membership.create!(family:, user: member, role: :member)
+      sections = []
+      [false, true].each do |sharing|
+        [owner, member].each { |user| user.update_family_location_sharing!(sharing, duration: 'permanent') }
+        if sharing
+          [owner, member].each do |user|
+            Point.create!(user:, timestamp: now.to_i, lonlat: 'POINT(13.4 52.5)')
+          end
+        end
+        { owner: owner, member: member }.each do |role, user|
+          expect(Families::Locations.new(user).call.empty?).to eq(!sharing)
+          sections << family_links_section("#{role}_#{sharing ? 'with' : 'without'}_locations", user, true)
+        end
+      end
+      sections << family_links_section('non_member_self_hosted', outsider, true)
+      sections << family_links_section('non_member_cloud', outsider, false)
+      path = File.expand_path('../../test/fixtures/map_ui/rails-1.16.0-family-links.html', __dir__)
+      FixtureRecording.verify(path, sections.join("\n"))
+    end
+  end
+
+  def family_links_section(name, user, self_hosted)
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
+    stub_const('SELF_HOSTED', self_hosted)
+    Rails.cache.clear
+    InstanceSettings::Resolver.reset!
+    reset!
+    sign_in user
+    get '/map?locale=en'
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML5(response.body)
+    selectors = '[data-tab-content="family"], [data-tab-content="links"], [data-tab="family"], [data-tab="links"]'
+    nodes = doc.css(selectors)
+    expect(nodes.count { |node| node['data-tab-content'] == 'family' }).to eq(user.in_family? ? 1 : 0)
+    expect(nodes.count { |node| node['data-tab-content'] == 'links' }).to eq(self_hosted ? 0 : 1)
+    sign_out user
+    "<!-- section:#{name} -->\n#{nodes.map(&:to_html).join("\n")}\n"
+  end
+
   def place!(user, id, name, lat, lon, legacy: false)
     place = Place.create!(id:, user:, name:, latitude: lat, longitude: lon, lonlat: "POINT(#{lon} #{lat})")
     place.update_columns(lonlat: nil) if legacy

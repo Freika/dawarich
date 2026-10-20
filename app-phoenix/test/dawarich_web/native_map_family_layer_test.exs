@@ -28,7 +28,7 @@ defmodule DawarichWeb.NativeMapFamilyLayerTest do
 
     conn = RailsUser.signed_in(id) |> RailsUser.connecting_as(id) |> get("/map/v2?panel=family")
     {:ok, view, html} = live(conn)
-    assert has_element?(view, "#native-map-family-layer input[type=checkbox]")
+    assert has_element?(view, "input[form=native-map-family-layer][type=checkbox]")
 
     view
     |> form("#native-map-family-layer", %{"enabled" => "true"})
@@ -48,7 +48,7 @@ defmodule DawarichWeb.NativeMapFamilyLayerTest do
     refute Map.has_key?(config, "locations")
     refute Map.has_key?(config, "api_key")
     refute html =~ "synthetic-family-layer-key"
-    assert has_element?(view, "#native-family-members[phx-update=ignore]")
+    assert has_element?(view, "#native-family-list[phx-update=ignore] #native-family-members")
     view |> form("#native-map-family-layer", %{"enabled" => "false"}) |> render_change()
     refute "Family Members" in Dawarich.Accounts.get(id).settings["enabled_map_layers"]
     render_async(view, 5000)

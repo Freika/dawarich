@@ -16,6 +16,7 @@ function fixture() {
     isConnected: true,
     hidden: false,
     dataset: {},
+    style: {},
     children: [],
     setAttribute(k, v) {
       this[k] = v
@@ -31,14 +32,15 @@ function fixture() {
     },
   })
   const list = node(),
+    group = node(),
     empty = node(),
     status = node()
   const root = {
     querySelector(s) {
       return s === "#native-family-members"
         ? list
-        : s === "[data-map-family-empty]"
-          ? empty
+        : s === "#native-family-list"
+          ? group
           : status
     },
     ownerDocument: {
@@ -150,12 +152,17 @@ test("main map Family layer reads admitted locations history and renders safe ce
     end_at: f.config.range.endAt,
   })
   assert.equal(f.list.hidden, false)
-  const button = f.nodes.find((n) => n.type === "button")
-  assert.match(button.textContent, /<member>/)
-  assert.equal(button.children[0].textContent, "<script>Street & City</script>")
-  assert.equal(button.children[0].innerHTML, undefined)
+  const button = f.list.children[0]
+  assert.match(button.children[1].children[0].textContent, /<member>/)
+  assert.equal(
+    button.children[1].children[1].textContent,
+    "<script>Street & City</script>",
+  )
+  assert.equal(button.children[1].children[1].innerHTML, undefined)
   button.click()
-  assert.deepEqual(f.flights, [{ center: [13.5, 52.4], zoom: 15 }])
+  assert.deepEqual(f.flights, [
+    { center: [13.5, 52.4], zoom: 15, duration: 1500 },
+  ])
   assert.equal(f.status.textContent, "Zentriert")
   assert.equal(f.polls.size, 0)
   f.owner.destroy()
@@ -298,7 +305,10 @@ test("new Family refresh keeps latest admitted rows when an older reader ignores
     })
     await old
     assert.equal(f.paints.at(-1)[0][0].user_id, 8)
-    assert.match(f.list.children[0].textContent, /Current/)
+    assert.match(
+      f.list.children[0].children[1].children[0].textContent,
+      /Current/,
+    )
   } finally {
     f.owner.destroy()
   }
@@ -348,7 +358,7 @@ test("main map Family list retains source update timestamp in the profile timezo
   }
   try {
     await f.owner.update(f.config)
-    const button = f.nodes.find((n) => n.type === "button")
+    const button = f.list.children[0]
     const expected = new Intl.DateTimeFormat("de", {
       month: "short",
       day: "numeric",
@@ -356,7 +366,7 @@ test("main map Family list retains source update timestamp in the profile timezo
       minute: "2-digit",
       timeZone: "Europe/Berlin",
     }).format(new Date("2026-06-02T12:34:00Z"))
-    assert.ok(button.textContent.includes(expected))
+    assert.ok(button.children[1].children.at(-2).textContent.includes(expected))
   } finally {
     f.owner.destroy()
   }
@@ -404,7 +414,9 @@ test("Family refresh preserves admitted centering controls while unchanged data 
     await refreshing
     assert.equal(f.list.children[0], button)
     button.click()
-    assert.deepEqual(f.flights, [{ center: [13.5, 52.4], zoom: 15 }])
+    assert.deepEqual(f.flights, [
+      { center: [13.5, 52.4], zoom: 15, duration: 1500 },
+    ])
   } finally {
     release()
     await refreshing
@@ -434,10 +446,16 @@ test("Family unchanged refresh updates sharing age at its next day boundary", as
   }
   try {
     await f.owner.update(config)
-    assert.equal(f.list.children[0].children.at(-1).textContent, "1 day")
+    assert.equal(
+      f.list.children[0].children[1].children.at(-1).textContent,
+      "1 day",
+    )
     now += 86400000
     await f.owner.update(config)
-    assert.equal(f.list.children[0].children.at(-1).textContent, "2 days")
+    assert.equal(
+      f.list.children[0].children[1].children.at(-1).textContent,
+      "2 days",
+    )
   } finally {
     f.owner.destroy()
   }

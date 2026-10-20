@@ -15488,6 +15488,18 @@
       "markers": [
         "test/fixtures"
       ]
+    },
+    {
+      "file": "app-phoenix/test/dawarich_web/native_map_family_links_parity_test.exs",
+      "markers": [
+        "test/fixtures"
+      ]
+    },
+    {
+      "file": "spec/javascript/phoenix_family_row_parity_test.mjs",
+      "markers": [
+        "test/fixtures"
+      ]
     }
   ],
   "reader_markers": [
