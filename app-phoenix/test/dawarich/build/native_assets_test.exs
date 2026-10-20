@@ -224,6 +224,9 @@ defmodule Dawarich.Build.NativeAssetsTest do
            )
 
     refute "js/map/ui/retry.js" in closure_inputs.(roots.map)
+    refute "js/map/replay/runtime.js" in closure_inputs.(roots.map)
+    refute "js/map/replay/panel.js" in closure_inputs.(roots.map)
+    refute "js/map/replay/density.js" in closure_inputs.(roots.map)
 
     refute Enum.any?(closure_inputs.(roots.poster), &String.contains?(&1, "mp4-muxer"))
     refute Enum.any?(closure_inputs.(roots.video), &String.contains?(&1, "fflate"))
