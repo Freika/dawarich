@@ -42,8 +42,14 @@ defmodule DawarichWeb.TagsLiveFormTest do
 
   defp form(view), do: element(view, "#native-tag-form")
 
-  defp fill(params),
-    do: Map.merge(%{"name" => "Gym", "icon" => "🏋️", "color" => "#ef4444"}, params)
+  defp fill(params) do
+    params =
+      if Map.has_key?(params, "privacy_radius_meters"),
+        do: Map.put_new(params, "slider_radius", params["privacy_radius_meters"]),
+        else: params
+
+    Map.merge(%{"name" => "Gym", "icon" => "🏋️", "color" => "#ef4444"}, params)
+  end
 
   for name <- ~w(tags_edit tags_edit_blank) do
     @name name
@@ -120,6 +126,23 @@ defmodule DawarichWeb.TagsLiveFormTest do
 
     assert assert_redirect(view, "/tags")["notice"] == "Tag was successfully created."
     assert tag_rows(user) == [["Gym", "🏋️", "#ef4444", nil, false]]
+  end
+
+  test "radius submit uses the current slider before its change reply arrives", %{user: user} do
+    {:ok, view, _} = live_as(user, "/tags/new")
+
+    view
+    |> form()
+    |> render_submit(%{
+      "tag" =>
+        fill(%{
+          "privacy_enabled" => "true",
+          "privacy_radius_meters" => "1000",
+          "slider_radius" => "2350"
+        })
+    })
+
+    assert tag_rows(user) == [["Gym", "🏋️", "#ef4444", 2350, false]]
   end
 
   test "one submit stores exactly one row", %{user: user} do

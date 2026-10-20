@@ -72,6 +72,11 @@ defmodule DawarichWeb.TagsLive.Form do
   end
 
   def handle_event("save", %{"tag" => params}, socket) do
+    params =
+      if Map.has_key?(params, "slider_radius"),
+        do: Map.put(params, "privacy_radius_meters", params["slider_radius"]),
+        else: params
+
     scope = socket.assigns.current_scope
 
     result =
