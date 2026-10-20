@@ -12976,6 +12976,32 @@
         }
       ],
       "authority": "D6 public month uses Rails public-monthly-stats-map id; native M6 hook/config/privacy assertions retained"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/public_native_render_test.exs",
+        "name": "public optional sections route and gallery reflect only authorized settings"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/public_native_render_test.exs",
+          "name": "public optional sections route and gallery reflect only authorized settings"
+        }
+      ],
+      "authority": "D6 public trip renders the source country/distance summary directly; test checks the semantic summary instead of the removed extra metrics wrapper, retaining show_stats refusal"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/native_m6_public_routes_test.exs",
+        "name": "native public resource preserves descriptions day selection and flag refusals"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/native_m6_public_routes_test.exs",
+          "name": "native public resource preserves descriptions day selection and flag refusals"
+        }
+      ],
+      "authority": "D6 Rails day rows own the native day click directly; source-hidden extra Select button removed; selected-day event/state and revocation refusal retained"
     }
   ],
   "readers": [

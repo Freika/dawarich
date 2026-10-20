@@ -448,3 +448,109 @@ test("public refresh accepts renewed read leases but refuses shortened deadlines
     f.owner.destroy()
   }
 })
+
+test("public runtime owns local day hover without extra reads and stops it after refusal or destroy", async () => {
+  const root = new EventTarget()
+  root.querySelector = () => null
+  root.querySelectorAll = () => []
+  const selected = [],
+    pins = [],
+    previews = []
+  const f = fixture({
+    createLayers: () => ({
+      show() {},
+      clear() {},
+      destroy() {},
+      selectDay: (day) => {
+        pins.push(day)
+        selected.push(day)
+      },
+      previewDay: (day) => {
+        previews.push(day)
+        selected.push(day)
+      },
+      getDayColor: () => "#6366f1",
+    }),
+  })
+  f.element.closest = () => root
+  function hover(type, day) {
+    const row = { dataset: { publicDay: day }, closest: () => root }
+    const event = new Event(type)
+    Object.defineProperty(event, "target", { value: { closest: () => row } })
+    root.dispatchEvent(event)
+  }
+  await f.owner.mount()
+  const reads = f.calls.length
+  f.owner.selectDay("2026-10-08")
+  hover("mouseover", "2026-10-09")
+  hover("mouseout", "2026-10-09")
+  assert.deepEqual(selected, ["2026-10-08", "2026-10-09", "2026-10-08"])
+  assert.deepEqual(pins, ["2026-10-08"])
+  assert.deepEqual(previews, ["2026-10-09", "2026-10-08"])
+  assert.equal(f.calls.length, reads)
+  f.reader.read = async () => {
+    throw new Error("revoked")
+  }
+  assert.equal(await f.owner.reconnect(), "failed")
+  hover("mouseover", "2026-10-09")
+  assert.equal(selected.length, 3)
+  f.owner.destroy()
+  hover("mouseover", "2026-10-09")
+  assert.equal(selected.length, 3)
+})
+
+test("public day preview preserves the viewport and ignores days without route data", async () => {
+  const { createPublicLayers } = await import(
+    "../../app-phoenix/assets/js/map/public/layers.js"
+  )
+  const sources = new Map(),
+    layers = new Map(),
+    fits = [],
+    paint = []
+  const map = {
+    getSource: (id) => sources.get(id),
+    getLayer: (id) => layers.get(id),
+    addSource: (id, value) => sources.set(id, value),
+    removeSource: (id) => sources.delete(id),
+    addLayer: (value) => layers.set(value.id, value),
+    removeLayer: (id) => layers.delete(id),
+    on() {},
+    off() {},
+    getCanvas: () => ({ style: {} }),
+    fitBounds: (...args) => fits.push(args),
+    setPaintProperty: (...args) => paint.push(args),
+    isStyleLoaded: () => true,
+  }
+  const library = {
+    LngLatBounds: class {
+      constructor() {
+        this.points = []
+      }
+      extend(point) {
+        this.points.push(point)
+        return this
+      }
+      isEmpty() {
+        return this.points.length === 0
+      }
+    },
+  }
+  const owner = createPublicLayers({ map, library })
+  owner.show(
+    { points: [points[0], [13.001, 52.001, points[0][2] + 20]], route: [] },
+    { ...config, byDay: true },
+  )
+  const day = new Date(points[0][2] * 1000).toISOString().slice(0, 10)
+  const beforeFits = fits.length
+  assert.equal(owner.previewDay(day), true)
+  assert.ok(paint.length > 0)
+  assert.equal(fits.length, beforeFits)
+  const beforePaint = paint.length
+  assert.equal(owner.previewDay("2026-01-01"), false)
+  assert.equal(paint.length, beforePaint)
+  assert.equal(owner.selectDay("2026-01-01"), false)
+  assert.equal(fits.length, beforeFits)
+  assert.equal(owner.selectDay(day), true)
+  assert.equal(fits.length, beforeFits + 1)
+  owner.destroy()
+})

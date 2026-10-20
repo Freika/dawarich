@@ -36,7 +36,7 @@ defmodule Dawarich.Maps.PublicPresentation do
       |> Map.put(:ended_at, %{local: resource[:ended_at]})
       |> Map.put(:settings, %{
         unit: resource[:unit],
-        factor: Dawarich.Distance.convert(1, resource[:unit] || "km")
+        factor: 1 / Dawarich.Distance.convert(1, resource[:unit] || "km")
       })
       |> Map.put(:flags, Dawarich.CountryNames.table())
 

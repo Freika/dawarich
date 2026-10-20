@@ -86,11 +86,19 @@ export function createPublicLayers({ map, library, onDay = () => {} }) {
       render()
     },
     clear,
+    getDayColor: (day) => days.getDayColor(day),
+    previewDay(day) {
+      if (day && !days.getDayColor(day)) return false
+      day ? days.selectDay(day) : days.selectAllDays()
+      return true
+    },
     selectDay(day) {
+      if (day && !days.getDayColor(day)) return false
       selected = day
       day ? days.selectDay(day) : days.selectAllDays()
       const bounds = day ? days.getDayBounds(day) : days.getFullBounds()
-      if (bounds) map.fitBounds(bounds, { padding: 40, maxZoom: 15 })
+      if (bounds) map.fitBounds(bounds, { padding: day ? 60 : 40, maxZoom: 15 })
+      return true
     },
     destroy() {
       clear()

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: the public shared-link pages as Rails renders them', type: :request do
   include ActiveSupport::Testing::TimeHelpers
@@ -228,4 +229,43 @@ RSpec.describe 'Phoenix fixtures: the public shared-link pages as Rails renders 
     Rack::Attack.cache.store = store
     Rack::Attack.enabled = false
   end
+  it 'records static resource main DOM in every locale' do
+    travel_to now do
+      insert!
+      user = User.find(9901)
+      trip = Trip.create!(id: 990_101, user: user, name: 'Public fixture trip',
+        started_at: Time.utc(2026, 5, 10, 8), ended_at: Time.utc(2026, 5, 11, 9),
+        distance: 4000, visited_countries: [], skip_calculation_enqueue: true,
+        description: '<p>Public fixture notes</p>')
+      Note.create!(user: user, attachable: trip, noted_at: Time.utc(2026, 5, 10, 12), body: 'Public day note')
+      factory = RGeo::Geographic.spherical_factory(srid: 4326)
+      track = Track.create!(id: 990_102, user: user,
+        start_at: Time.utc(2026, 5, 10, 8), end_at: Time.utc(2026, 5, 10, 9),
+        original_path: factory.line_string([factory.point(0, 0), factory.point(0.01, 0.01)]),
+        distance: 1500, duration: 3600, avg_speed: 1.5, elevation_gain: 10, elevation_loss: 4,
+        dominant_mode: :walking)
+      cases = []
+      %w[trip track].each_with_index do |type, index|
+        %w[full minimal].each_with_index do |state, offset|
+          settings = %w[show_route show_stats show_days show_day_notes show_description show_photos].index_with { state == 'full' }
+          settings['show_photos'] = false
+          id = link_id(101 + index * 2 + offset)
+          SharedLink.create!(id: id, user: user, resource_type: type,
+            resource_id: type == 'trip' ? trip.id : track.id, name: 'Public fixture share', settings: settings)
+          %w[en de es fr pl ca zh].each do |locale|
+            reset!
+            get "/s/#{id}", params: { locale: locale }
+            expect(response).to have_http_status(:ok)
+            name = "#{type}_#{state}_#{locale}"
+            main = Nokogiri::HTML5(response.body).at_css('main')
+            expect(main).to be_present
+            FixtureRecording.verify(dir.join("pages/#{name}.html"), main.inner_html)
+            cases << { name: name, type: type, locale: locale, id: id, settings: settings }
+          end
+        end
+      end
+      FixtureRecording.verify(dir.join('resources.json'), JSON.pretty_generate(cases) + "\n")
+    end
+  end
+
 end

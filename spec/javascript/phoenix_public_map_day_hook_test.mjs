@@ -91,3 +91,31 @@ test("a public day arriving at readiness is applied once", async () => {
   assert.deepEqual(f.selected, ["2026-10-04"])
   f.hook.destroyed()
 })
+
+test("public hover stays local to its map and leaving restores the selected day", async () => {
+  const { bindPublicDays } = await import(
+    "../../app-phoenix/assets/js/map/public/day_hover.js"
+  )
+  const roots = [new EventTarget(), new EventTarget()]
+  const selected = [[], []]
+  const stops = roots.map((root, i) =>
+    bindPublicDays(root, {
+      preview: (day) => selected[i].push(day),
+      selected: () => "2026-10-01",
+    }),
+  )
+  function hover(root, type, day, owner = root) {
+    const row = { dataset: { publicDay: day }, closest: () => owner }
+    const event = new Event(type)
+    Object.defineProperty(event, "target", { value: { closest: () => row } })
+    root.dispatchEvent(event)
+  }
+  hover(roots[0], "mouseover", "2026-10-02")
+  hover(roots[0], "mouseover", "malformed")
+  hover(roots[0], "mouseout", "2026-10-02")
+  hover(roots[0], "mouseover", "2026-10-03", roots[1])
+  assert.deepEqual(selected, [["2026-10-02", "2026-10-01"], []])
+  stops.forEach((stop) => stop())
+  hover(roots[0], "mouseover", "2026-10-03")
+  assert.equal(selected[0].length, 2)
+})

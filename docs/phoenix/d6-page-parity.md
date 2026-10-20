@@ -40,7 +40,7 @@ credentials to the invitation acceptance route; malformed/duplicate parameters
 remain refused. Source provider buttons are shared across auth callers, with
 per-action CSRF for the request session.
 
-Static trip/track shares, unsupported share types, public achievement full pages,
+Unsupported/missing-resource share states, public achievement full pages,
 all eight management page DOMs and trip studio variants still require completion
 or explicit contract differences. Existing behavior coverage is not evidence of
 DOM parity for these remaining routes. The controller's parity bench remains
@@ -65,3 +65,15 @@ Chart.js loading and owned teardown. The public month loading overlay follows
 map settlement. Both reports use application chrome, as Rails does; its sign-out
 action receives the viewer's CSRF without exposing the share owner's account.
 Bounded public names retain full country/city totals and more indicators.
+
+Static public trip and track content now reuse `SharedResourcePage` with the
+scoped native map host, owned replay controls and authorized day galleries.
+The existing sharing recorder adds 28 full/minimal fragments in seven locales,
+including a real day note. Day hover/focus and day-color/selection updates live in the lazy map runtime,
+with scoped DOM observation and owned teardown; click and keyboard
+selection keep server admission. Trip distance factors now use meters per
+unit, and public duration uses nominative translations without changing the
+shared relative-time helper. Hidden track statistics remain out of its title;
+that source privacy difference and replay/gallery wiring are registered.
+Explicit heading constraints retain 390 px fit for long names. The static CSS
+change removes only the retired 70vh map-height utility.

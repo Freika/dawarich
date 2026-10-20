@@ -389,9 +389,13 @@
       ],
       "evidence": [
         "sharing_parity_test.exs",
-        "native_m6_public_routes_test.exs"
+        "native_m6_public_routes_test.exs",
+        "sharing/resources.json",
+        "public_presentation_test.exs",
+        "public_native_gallery_test.exs",
+        "phoenix_public_map_day_hook_test.mjs"
       ],
-      "status": "live/timeline/prompt/not-found main DOM verified; static/unsupported pending"
+      "status": "live/timeline/prompt/not-found and static trip/track main DOM verified; static full/minimal and notes in seven locales; hidden-track-statistics title retained as privacy contract; unsupported/missing-resource presentation audit pending"
     },
     {
       "path": "/s/:id/unlock",

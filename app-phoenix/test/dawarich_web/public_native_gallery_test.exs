@@ -65,6 +65,8 @@ defmodule DawarichWeb.PublicNativeGalleryTest do
     {:ok, view, html} =
       live(put_private(conn, :live_view_connect_info, %{session: get_session(conn)}))
 
+    assert has_element?(view, "details[data-public-day][phx-click='public:day']")
+    refute has_element?(view, "details[data-public-day][phx-keydown]")
     refute has_element?(view, "#native-public-resource img")
     refute String.contains?(html, "private-photo")
     render_hook(view, "public:gallery", %{"day" => "2026-05-10", "open" => true})

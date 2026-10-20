@@ -27,4 +27,24 @@ defmodule Dawarich.PublicPresentationTest do
     refute Map.has_key?(safe, "latitude")
     refute Map.has_key?(safe, "longitude")
   end
+
+  test "native public trip stats use meters per display unit" do
+    for {unit, meters} <- [{"km", 1000}, {"mi", 1609.34}] do
+      page = %{
+        link: %{type: "trip"},
+        resource: %{
+          photos: [],
+          days: [],
+          unit: unit,
+          distance: meters,
+          started_at: ~N[2026-03-01 00:00:00],
+          ended_at: ~N[2026-03-02 00:00:00]
+        }
+      }
+
+      data = Dawarich.Maps.PublicPresentation.project(page, false).resource
+      assert_in_delta data.settings.factor, meters, 0.00001
+      assert DawarichWeb.TripFormat.distance(data.distance, data.settings.factor) == 1
+    end
+  end
 end

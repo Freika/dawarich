@@ -85,7 +85,7 @@ defmodule DawarichWeb.PublicNativeRenderTest do
 
       if enabled, do: assert(has_element?(view, "#native-public-replay"))
 
-      assert has_element?(view, "#native-public-metrics") == enabled
+      assert has_element?(view, "#native-public-resource .mb-6 > div.mb-4 > p.text-sm") == enabled
       assert has_element?(view, "[data-public-day]") == enabled
       assert has_element?(view, "#native-public-description") == enabled
       if enabled, do: assert(String.contains?(html, "Safe notes"))

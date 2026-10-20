@@ -225,11 +225,18 @@ defmodule DawarichWeb.NativeM6PublicRoutesTest do
     first = hd(days)
 
     view
-    |> element("[data-public-day='#{first}'] button[phx-click='public:day']")
+    |> element("[data-public-day='#{first}'][phx-click='public:day']")
     |> render_click()
 
     assert_push_event(view, "public:day", %{day: first})
     assert has_element?(view, "[data-public-day='#{first}'][data-public-day-selected=true]")
+
+    view
+    |> element("[data-public-day='#{first}'][phx-keydown='public:day']")
+    |> render_keydown(%{"key" => "Enter"})
+
+    assert_push_event(view, "public:day", %{day: nil})
+    assert has_element?(view, "[data-public-day='#{first}'][data-public-day-selected=false]")
 
     rows("UPDATE shared_links SET settings=$2 WHERE id=$1::text::uuid", [
       uuid,

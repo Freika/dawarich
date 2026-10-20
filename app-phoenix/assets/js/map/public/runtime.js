@@ -1,3 +1,4 @@
+import { bindPublicDays, syncPublicDays } from "./day_hover.js"
 import { cancelled } from "../data/request_scope.js"
 import { createStudioSource } from "../data/studio_source.js"
 import { installHostReplay } from "../replay/host.js"
@@ -43,12 +44,21 @@ export function mountPublic({
 }) {
   const initial = JSON.parse(element.dataset.mapConfig ?? "{}")
   reader ??= createPublicReader({ shareId: initial.shareId })
+  let selectedDay = null,
+    root
+  const syncDays = () =>
+    syncPublicDays(
+      root,
+      (day) => current && layers?.getDayColor?.(day),
+      current ? selectedDay : null,
+    )
   let library, layers, photos, current
   function clear() {
     current = null
     layers?.clear()
     photos?.remove()
     photos = null
+    syncDays()
   }
   async function readGrant({ signal, purpose }) {
     const { data: metadata } = await reader.read("metadata", {}, { signal })
@@ -92,6 +102,16 @@ export function mountPublic({
         library,
         onDay: (day) => pushEvent("public:day", { day }),
       })
+      root = element.closest?.("[data-native-map-root]")
+      lifetime.own(
+        bindPublicDays(root, {
+          preview: (day) => layers?.previewDay(day),
+          selected: () => selectedDay,
+          allowed: () => current != null,
+          hasDay: (day) => !!layers?.getDayColor?.(day),
+          sync: syncDays,
+        }),
+      )
       lifetime.own(() => {
         clear()
         layers.destroy()
@@ -104,6 +124,7 @@ export function mountPublic({
       clear()
       current = { ...config, ...data.metadata, revision: config.revision }
       layers.show(data, current)
+      syncDays()
       if (current.photosEnabled) {
         const pending = Promise.resolve(
           loadPhotos({
@@ -171,7 +192,11 @@ export function mountPublic({
   })
   const update = owner.update
   owner.update = (next) => update.call(owner, { ...owner.config, ...next })
-  owner.selectDay = (day) => layers?.selectDay(day)
+  owner.selectDay = (day) => {
+    if (layers?.selectDay(day) === false) return
+    selectedDay = day
+    syncDays()
+  }
   const destroy = owner.destroy
   owner.destroy = () => {
     owner.source.destroy()

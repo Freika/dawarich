@@ -10,8 +10,8 @@ defmodule Dawarich.Build.RailsParityTest do
   @i18n "593e3da1c7e0affcfd62bd56d12106e9a74ca0928c484f642b2c9d4e9292b595"
   @achievements "e3bac66c27a142a0b8b760a576bfb66154ac509aaff809bd43bcbbd22ddec87d"
   @importmap "8ef0825a17e16ab708f3c7fb2b642901773edd201928901de85f7aed5b4f5faa"
-  @assets "00bab7e5e184c0e8bc00e6c9afc2ff397422fd564746544118ec85f5470d912d"
-  @manifest "efb7faf879efffcb28d4e87284fd53f9457a5fa30f93ce1396d0e866b184ac31"
+  @assets "a1dd4cc96f307725275e55593ae85a24fce3f5b813fe7bab6d6681c8f4207343"
+  @manifest "6b1a414c019852078e06f983fcb0c3de60cb6f6a7926e2e4a08abeba4f22e61c"
 
   setup_all do
     root = Build.root()

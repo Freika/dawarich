@@ -13,6 +13,10 @@ defmodule DawarichWeb.SharedResourcePage do
 
   attr :native, :boolean, default: false
 
+  attr :map_config, :map, default: nil
+  attr :selected_day, :string, default: nil
+  attr :gallery_days, :any, default: MapSet.new()
+
   def resource(assigns) do
     ~H"""
     <.trip
@@ -21,6 +25,10 @@ defmodule DawarichWeb.SharedResourcePage do
       link={@link}
       resource={@resource}
       native={@native}
+      live={not is_nil(@map_config)}
+      map_config={@map_config}
+      selected_day={@selected_day}
+      gallery_days={@gallery_days}
     />
     <.track
       :if={@link.type == "track"}
@@ -28,6 +36,10 @@ defmodule DawarichWeb.SharedResourcePage do
       link={@link}
       resource={@resource}
       native={@native}
+      live={not is_nil(@map_config)}
+      map_config={@map_config}
+      selected_day={@selected_day}
+      gallery_days={@gallery_days}
     />
     """
   end
@@ -88,6 +100,51 @@ defmodule DawarichWeb.SharedResourcePage do
         }),
       else: data
   end
+
+  defp interaction(link, day, gallery, native, false, _selected),
+    do: row_data(link, day, gallery, native)
+
+  defp interaction(link, day, gallery, native, true, selected) do
+    data = row_data(link, day, gallery, native)
+
+    data =
+      Map.merge(data, %{
+        "id" => "native-public-day-#{day.date}",
+        "data-public-day" => to_string(day.date),
+        "data-public-day-selected" => to_string(selected == to_string(day.date))
+      })
+
+    data = if gallery, do: Map.put(data, "phx-hook", "PublicGallery"), else: data
+
+    data =
+      if gallery,
+        do: Map.put(data, "phx-mounted", Phoenix.LiveView.JS.ignore_attributes("open")),
+        else: data
+
+    if link.settings["show_route"] != false,
+      do:
+        Map.merge(
+          data,
+          %{
+            "phx-click" => "public:day",
+            "phx-value-day" => to_string(day.date)
+          }
+          |> Map.merge(
+            if gallery,
+              do: %{},
+              else: %{
+                "role" => "button",
+                "tabindex" => "0",
+                "phx-keydown" => "public:day",
+                "phx-key" => "Enter"
+              }
+          )
+        ),
+      else: data
+  end
+
+  defp public_number(value),
+    do: value |> Kernel.*(1.0) |> Dawarich.RubyFloat.round(1) |> Float.to_string()
 
   defp distance(value, unit) do
     number = Dawarich.Distance.convert(value || 0, unit)

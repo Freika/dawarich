@@ -1,10 +1,24 @@
-<div class="container mx-auto px-4 my-5" {wrapper(@link, @resource, @native)}>
+<div
+  id={if @live, do: "native-public-resource"}
+  class={["container mx-auto px-4 my-5", @live && "min-w-0 [overflow-wrap:anywhere]"]}
+  {wrapper(@link, @resource, @native)}
+>
   <div class={"flex flex-col lg:flex-row gap-6 " <> if(@link.settings["show_route"] != false, do: "lg:h-[calc(100dvh-9.75rem)]", else: "")}>
     <div
       :if={@link.settings["show_route"] != false}
       class="w-full lg:w-3/5 h-[50vh] lg:h-full shrink-0 relative"
     >
+      <DawarichWeb.NativeMapHost.map_host
+        :if={@live}
+        id="native-public-map"
+        hook="PublicMap"
+        config={@map_config}
+        locale={@locale}
+        class="w-full h-full rounded-lg overflow-hidden bg-base-200 relative"
+        loading={false}
+      />
       <div
+        :if={!@live}
         id={if @native, do: "native-public-canvas"}
         data-public-canvas={@native}
         data-public-map={@native}
@@ -14,12 +28,21 @@
       >
         <.replay_panel :if={!@native} locale={@locale} stimulus="shared-trip-map" show_day_nav />
       </div>
-      <.replay_panel :if={@native} locale={@locale} native show_day_nav />
+      <.replay_panel
+        :if={@native}
+        locale={@locale}
+        native
+        show_day_nav
+        id={if @live, do: "native-public-replay"}
+        hook={if @live, do: "native", else: "public"}
+      />
     </div>
     <div class={"w-full " <> if(@link.settings["show_route"] != false, do: "lg:w-2/5 lg:h-full lg:overflow-y-auto", else: "max-w-2xl mx-auto")}>
       <div class="mb-6">
         <div class="flex flex-wrap min-w-0 items-start justify-between gap-3 mb-1">
-          <h1 class="text-3xl font-bold leading-tight">{@resource.name}</h1>
+          <h1 class="text-3xl font-bold leading-tight min-w-0 max-w-full [overflow-wrap:anywhere]">
+            {@resource.name}
+          </h1>
           <span
             class="badge badge-success badge-sm shrink-0 gap-1"
             aria-label={
@@ -49,18 +72,21 @@
           href={"/map/v2?" <> URI.encode_query(%{start_at: NaiveDateTime.to_iso8601(@resource.started), end_at: NaiveDateTime.to_iso8601(@resource.ended)})}
           class="btn btn-sm btn-outline mb-4"
         >{t(@locale, "shared_links.family.your_map", %{})}</a>
-        <div :if={@link.settings["show_stats"] == true} data-public-stats={@native}>
-          <.countries page={@resource} locale={@locale} />
-        </div>
+        <.countries :if={@link.settings["show_stats"] == true} page={@resource} locale={@locale} />
       </div>
       <div
         :if={@resource.description not in [nil, ""]}
         class="mb-6"
+        id={if @live, do: "native-public-description"}
         data-public-description={@native}
       >
         <h3 class="text-lg font-semibold mb-2">{s(@locale, "trip_notes")}</h3>
         <div class="prose max-w-none">
-          {Phoenix.HTML.raw(Dawarich.TripDescription.html(@resource.description))}
+          {Phoenix.HTML.raw(
+            if @live,
+              do: @resource.description,
+              else: Dawarich.TripDescription.html(@resource.description)
+          )}
         </div>
       </div>
       <div :if={@link.settings["show_route"] != false} class="flex items-center gap-2 mb-4">
@@ -68,7 +94,8 @@
           type="button"
           class="btn btn-sm btn-outline gap-1"
           data-shared-trip-map-target={if !@native, do: "replayToggleBtn"}
-          data-public-replay={@native}
+          data-public-replay={@native and !@live}
+          data-native-map-tool={if @live, do: "replay"}
           data-action={if !@native, do: "click->shared-trip-map#toggleReplay"}
         >
           <.icon name="play" class="w-4 h-4" /><span>{s(@locale, "replay")}</span>
@@ -78,8 +105,8 @@
         <%= for day <- @resource.days do %>
           <%= if day.note || day.photos != [] do %>
             <details
-              class="collapse collapse-arrow bg-base-200 rounded-lg"
-              {row_data(@link, day, true, @native)}
+              class={"collapse collapse-arrow bg-base-200 rounded-lg" <> if(@link.settings["show_route"] != false, do: " cursor-pointer transition-colors hover:bg-base-300", else: "")}
+              {interaction(@link, day, true, @native, @live, @selected_day)}
             >
               <summary class="collapse-title flex flex-wrap min-w-0 items-center gap-2 text-sm font-medium min-h-0 cursor-pointer">
                 <.day_header locale={@locale} day={day} unit={@resource.settings.unit} />
@@ -111,13 +138,29 @@
                   data-lazy-gallery-target={if !@native, do: "content"}
                   data-public-gallery-content={@native}
                 >
+                  <div
+                    :if={@live and MapSet.member?(@gallery_days, to_string(day.date))}
+                    class="grid grid-cols-3 gap-2 mt-3"
+                  >
+                    <div
+                      :for={photo <- day.photos}
+                      class="aspect-square overflow-hidden rounded-lg"
+                    >
+                      <img
+                        src={"/native/public/maps/#{@link.id}/photos/#{URI.encode_www_form(photo["id"])}/thumbnail?" <> URI.encode_query(%{source: photo["source"]})}
+                        loading="lazy"
+                        alt=""
+                        class="h-full w-full object-cover"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </details>
           <% else %>
             <div
-              class="bg-base-200 rounded-lg px-4 py-3 flex flex-wrap min-w-0 items-center gap-2 text-sm font-medium"
-              {row_data(@link, day, false, @native)}
+              class={"bg-base-200 rounded-lg px-4 py-3 flex flex-wrap min-w-0 items-center gap-2 text-sm font-medium" <> if(@link.settings["show_route"] != false, do: " cursor-pointer transition-colors hover:bg-base-300", else: "")}
+              {interaction(@link, day, false, @native, @live, @selected_day)}
             >
               <.day_header locale={@locale} day={day} unit={@resource.settings.unit} />
             </div>

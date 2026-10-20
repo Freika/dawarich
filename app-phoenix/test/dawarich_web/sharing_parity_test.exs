@@ -90,6 +90,92 @@ defmodule DawarichWeb.SharingParityTest do
              [csrf["meta"]]
   end
 
+  @resources File.read!("test/fixtures/sharing/resources.json") |> Jason.decode!()
+  for entry <- @resources do
+    @entry entry
+    test "static resource #{@entry["name"]} matches Rails 1.16.0" do
+      alias Dawarich.Test.{TripsSeeds, FrameSeeds, ParityHTML}
+
+      TripsSeeds.trip!(%{
+        id: 990_101,
+        user_id: 9901,
+        name: "Public fixture trip",
+        distance: 4000,
+        visited_countries: [],
+        started_at: ~N[2026-05-10 08:00:00],
+        ended_at: ~N[2026-05-11 09:00:00]
+      })
+
+      Dawarich.Repo.query!(
+        "INSERT INTO action_text_rich_texts(record_type,record_id,name,body,created_at,updated_at) VALUES('Trip',990101,'description','<p>Public fixture notes</p>',NOW(),NOW())",
+        [],
+        log: false
+      )
+
+      Dawarich.Repo.insert_all("notes", [
+        %{
+          user_id: 9901,
+          attachable_type: "Trip",
+          attachable_id: 990_101,
+          noted_at: ~N[2026-05-10 12:00:00],
+          body: "Public day note",
+          created_at: ~N[2026-05-10 12:00:00],
+          updated_at: ~N[2026-05-10 12:00:00]
+        }
+      ])
+
+      FrameSeeds.track!(9901, 990_102, %{
+        start_at: ~N[2026-05-10 08:00:00],
+        end_at: ~N[2026-05-10 09:00:00],
+        distance: 1500,
+        duration: 3600,
+        avg_speed: 1.5,
+        dominant_mode: 2,
+        elevation_gain: 10,
+        elevation_loss: 4
+      })
+
+      TripsSeeds.shared_link!(%{
+        id: @entry["id"],
+        user_id: 9901,
+        resource_type: if(@entry["type"] == "trip", do: 0, else: 1),
+        trip_id: if(@entry["type"] == "trip", do: 990_101, else: 990_102)
+      })
+
+      Dawarich.Repo.query!(
+        "UPDATE shared_links SET name=$2,settings=$3 WHERE id=$1::text::uuid",
+        [@entry["id"], "Public fixture share", @entry["settings"]],
+        log: false
+      )
+
+      html =
+        get(build_conn(), "/s/#{@entry["id"]}?locale=#{@entry["locale"]}") |> html_response(200)
+
+      if dir = System.get_env("PARITY_DUMP") do
+        File.mkdir_p!(dir)
+        File.write!(Path.join(dir, @entry["name"] <> ".phoenix.html"), html)
+      end
+
+      actual = static_dom(html, "main")
+      source = SharingSeeds.page(@entry["name"] <> ".html")
+
+      source =
+        if @entry["type"] == "track" and @entry["settings"]["show_stats"] == false do
+          assert html |> LazyHTML.from_document() |> LazyHTML.query("main h1") |> LazyHTML.text() |> String.trim() ==
+                   "Public fixture share"
+
+          assert source =~ " · "
+          Regex.replace(~r/(<h1[^>]*>).*?(<\/h1>)/s, source, "\\1Public fixture share\\2")
+        else
+          source
+        end
+
+      expected = static_dom("<main>" <> source <> "</main>", "main")
+
+      assert actual == expected, ParityHTML.first_difference(actual, expected)
+    end
+  end
+
   for page <- @pages,
       page["verb"] == "get",
       String.starts_with?(page["name"], ["live_", "timeline_", "expired_", "revoked_", "unknown_"]) do
@@ -261,4 +347,82 @@ defmodule DawarichWeb.SharingParityTest do
       end
     end
   end
+
+  @static_classes %{
+    "text-3xl font-bold leading-tight min-w-0 max-w-full [overflow-wrap:anywhere]" =>
+      "text-3xl font-bold leading-tight",
+    "text-3xl font-bold mb-2 min-w-0 max-w-full [overflow-wrap:anywhere]" =>
+      "text-3xl font-bold mb-2",
+    "collapse-title flex flex-wrap min-w-0 items-center gap-2 text-sm font-medium min-h-0 cursor-pointer" =>
+      "collapse-title flex items-center gap-2 text-sm font-medium min-h-0 cursor-pointer",
+    "container mx-auto px-4 my-5 min-w-0 [overflow-wrap:anywhere]" =>
+      "container mx-auto px-4 my-5",
+    "container mx-auto px-4 py-6 min-w-0 [overflow-wrap:anywhere]" =>
+      "container mx-auto px-4 py-6",
+    "w-full lg:w-3/5 h-[50vh] lg:h-full shrink-0 relative" =>
+      "w-full lg:w-3/5 h-[50vh] lg:h-full shrink-0",
+    "flex flex-wrap min-w-0 items-start justify-between gap-3 mb-1" =>
+      "flex items-start justify-between gap-3 mb-1",
+    "bg-base-200 rounded-lg px-4 py-3 flex flex-wrap min-w-0 items-center gap-2 text-sm font-medium cursor-pointer transition-colors hover:bg-base-300" =>
+      "bg-base-200 rounded-lg px-4 py-3 flex items-center gap-2 text-sm font-medium cursor-pointer transition-colors hover:bg-base-300"
+  }
+  defp static_dom(html, selector) do
+    html
+    |> LazyHTML.from_document()
+    |> LazyHTML.query(selector)
+    |> LazyHTML.to_tree()
+    |> static_tree()
+    |> Dawarich.Test.ParityHTML.normalize()
+  end
+
+  defp static_tree(nodes) when is_list(nodes) do
+    nodes = Enum.reject(nodes, &(is_binary(&1) and String.trim(&1) == ""))
+    static_siblings(nodes)
+  end
+
+  defp static_tree({tag, attrs, children}) do
+    day = Map.new(attrs)["id"] || ""
+
+    attrs =
+      if Map.new(attrs)["phx-hook"] == "PublicMap",
+        do: Enum.reject(attrs, &(&1 == {"style", ""})),
+        else: attrs
+
+    attrs =
+      Enum.flat_map(attrs, fn
+        {key, _} = attr when key in ["role", "tabindex"] ->
+          if String.starts_with?(day, "native-public-day-"), do: [], else: [attr]
+
+        {"id", "shared-trip-map"} ->
+          [{"id", "native-public-map"}]
+
+        {"class", value} ->
+          [{"class", Map.get(@static_classes, value, value)}]
+
+        {"data-public-day", value} ->
+          if Map.new(attrs)["phx-click"] == "public:day", do: [{"data-day-key", value}], else: []
+
+        {"data-public-" <> key, value} ->
+          [{"data-native-public-" <> key, value}]
+
+        attr ->
+          [attr]
+      end)
+
+    {tag, attrs, static_tree(children)}
+  end
+
+  defp static_tree(text), do: text
+
+  defp static_siblings([{"div", attrs, children} = map, {"div", replay_attrs, _} = replay | rest]) do
+    if Map.new(attrs)["phx-hook"] == "PublicMap" and
+         Map.new(replay_attrs)["id"] == "native-public-replay" do
+      [static_tree({"div", attrs, children ++ [replay]}) | static_siblings(rest)]
+    else
+      [static_tree(map) | static_siblings([replay | rest])]
+    end
+  end
+
+  defp static_siblings([first | rest]), do: [static_tree(first) | static_siblings(rest)]
+  defp static_siblings([]), do: []
 end

@@ -105,55 +105,22 @@ defmodule DawarichWeb.PublicMapLive do
   end
 
   def render(assigns) do
-    link = assigns.public_presentation && assigns.public_presentation.link
-    visible = link && (link.type not in ["trip", "track"] || link.settings["show_route"] != false)
-    resource = assigns.public_presentation && assigns.public_presentation.resource
-
-    title =
-      (resource && resource[:name]) || (assigns.public_config && assigns.public_config["title"])
-
-    assigns = assign(assigns, map_visible: visible, public_title: title)
-
     ~H"""
     <DawarichWeb.NativePublicChrome.header {assigns} />
     <main
       data-native-map-root
-      {if !DawarichWeb.PublicMapShell.simple?(@public_presentation), do: %{class: "mx-auto w-full min-w-0 max-w-7xl p-4"}, else: %{}}
       data-map-ready={to_string(@public_map_ready)}
     >
       <%= cond do %>
         <% @public_config && DawarichWeb.PublicMapShell.simple?(@public_presentation) -> %>
           <DawarichWeb.PublicMapShell.content {assigns} />
         <% @public_config -> %>
-          <h1 class="mb-4 break-words text-3xl font-bold [overflow-wrap:anywhere]">
-            {@public_title}
-          </h1>
           <DawarichWeb.NativePublicResource.resource
             presentation={@public_presentation}
+            config={@public_config}
             selected_day={@public_selected_day}
             gallery_days={@public_gallery_days}
             locale={@locale || "en"}
-          />
-          <DawarichWeb.MapReplay.opener
-            :if={@map_visible}
-            id="native-public-replay"
-            locale={@locale || "en"}
-          />
-          <DawarichWeb.MapReplay.replay_panel
-            :if={@map_visible}
-            id="native-public-replay"
-            locale={@locale || "en"}
-            show_day_nav
-            native
-            hook="native"
-          />
-          <DawarichWeb.NativeMapHost.map_host
-            :if={@map_visible}
-            id="native-public-map"
-            hook="PublicMap"
-            config={@public_config}
-            locale={@locale || "en"}
-            class="h-[70vh] min-h-80 w-full min-w-0 rounded-lg"
           />
         <% true -> %>
           <DawarichWeb.PublicMapShell.unavailable {assigns} />
