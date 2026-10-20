@@ -107,6 +107,19 @@ defmodule DawarichWeb.ImportsPagesParityTest do
       if not String.contains?(@page["path"], "/download") do
         NativeImportCorpus.assert_page(html, rails, fields: @page["path"] != "/imports/new")
 
+        if @page["path"] == "/imports/new",
+          do:
+            assert(
+              LazyHTML.attribute(
+                LazyHTML.query(LazyHTML.from_document(html), "[data-testid=import-submit]"),
+                "disabled"
+              ) == [""]
+            )
+
+        native = presentation(html, "[data-testid=native-imports-root]")
+        expected = presentation(rails)
+        assert native == expected, ParityHTML.first_difference(native, expected)
+
         assert Enum.count(
                  LazyHTML.query(
                    LazyHTML.from_document(html),
@@ -126,6 +139,46 @@ defmodule DawarichWeb.ImportsPagesParityTest do
       assert html =~ ">#{@page["title"]}</title>"
     end
   end
+
+  defp presentation(html, selector \\ nil) do
+    html = Dawarich.Test.DataPageParity.resilience(html)
+
+    nodes =
+      if selector,
+        do: LazyHTML.query(LazyHTML.from_document(html), selector),
+        else: LazyHTML.from_fragment(html)
+
+    nodes |> LazyHTML.to_tree() |> native_wiring() |> ParityHTML.normalize()
+  end
+
+  defp native_wiring(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &native_node/1)
+
+  defp native_node({tag, attrs, children}) do
+    map = Map.new(attrs)
+
+    cond do
+      tag == "div" and Regex.match?(~r/^import-[0-9]+-extraction$/, map["id"] || "") ->
+        native_wiring(children)
+
+      map["id"] == "import-checksum-progress" or Map.has_key?(map, "data-phx-upload-ref") ->
+        []
+
+      true ->
+        attrs =
+          Enum.reject(attrs, fn {key, _} ->
+            (key == "aria-label" and map["data-testid"] == "import-delete") or
+              key == "data-direct-upload-url" or
+              (map["id"] == "phx-import-upload" and
+                 key in ~w(data-upload-kind data-upload-name data-max-entries data-preparation-bytes data-preparation-original-bytes)) or
+              (tag == "dialog" and key == "aria-labelledby") or
+              (tag == "input" and map["data-testid"] == "import-submit" and key == "disabled")
+          end)
+
+        [{tag, attrs, native_wiring(children)}]
+    end
+  end
+
+  defp native_node(other), do: [other]
 
   defp wiring(html) do
     html = String.replace(html, ~s(<turbo-frame data-turbo="false"), "<turbo-frame")

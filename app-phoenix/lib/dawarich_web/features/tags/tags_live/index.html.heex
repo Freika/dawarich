@@ -1,10 +1,9 @@
 <div class="w-full my-5">
-  <div class="flex flex-wrap gap-3 md:items-center md:justify-between mb-6">
-    <h1 class="text-3xl font-bold min-w-0">{t(@locale, "tags.index.tags", %{})}</h1>
+  <.page_header title={t(@locale, "tags.index.tags", %{})}>
     <.link navigate={~p"/tags/new"} class="btn btn-primary btn-sm">
       <.icon name="circle-plus" class="w-4 h-4" /> {t(@locale, "tags.index.new_tag", %{})}
     </.link>
-  </div>
+  </.page_header>
   <div :if={@tags_count > 0} class="border border-base-300 rounded-xl overflow-x-auto">
     <table class="table table-sm w-full">
       <thead class="bg-base-200">
@@ -26,7 +25,7 @@
           </th>
         </tr>
       </thead>
-      <tbody id="tags" phx-update="stream">
+      <tbody id="native-tags" phx-update="stream">
         <tr
           :for={{dom_id, tag} <- @streams.tags}
           id={dom_id}
@@ -56,25 +55,38 @@
           <td class="px-4 py-3 text-right tabular-nums">{tag.places_count}</td>
           <td class="px-4 py-3 text-right">
             <div class="flex gap-1 justify-end">
-              <.link
-                navigate={~p"/tags/#{tag.id}/edit"}
-                class="btn btn-ghost btn-xs"
-                aria-label={t(@locale, "tags.index.edit_tag", %{})}
-                title={t(@locale, "tags.index.edit_tag", %{})}
+              <div class="tooltip" data-tip={t(@locale, "tags.index.edit_tag", %{})}>
+                <.link
+                  navigate={~p"/tags/#{tag.id}/edit"}
+                  class="btn btn-ghost btn-xs"
+                  aria-label={t(@locale, "tags.index.edit_tag", %{})}
+                >
+                  <.icon name="square-pen" class="w-4 h-4" />
+                </.link>
+              </div>
+              <div
+                class="tooltip tooltip-left"
+                data-tip={t(@locale, "tags.index.delete_tag", %{})}
               >
-                <.icon name="square-pen" class="w-4 h-4" />
-              </.link>
-              <button
-                type="button"
-                class="btn btn-ghost btn-xs text-error hover:bg-error/10"
-                phx-click="delete"
-                phx-value-id={tag.id}
-                data-confirm={t(@locale, "tags.index.are_you_sure", %{})}
-                aria-label={t(@locale, "tags.index.delete_tag", %{})}
-                title={t(@locale, "tags.index.delete_tag", %{})}
-              >
-                <.icon name="trash-2" class="w-4 h-4" />
-              </button>
+                <form
+                  class="button_to"
+                  method="post"
+                  action={"/tags/#{tag.id}"}
+                  phx-submit="delete"
+                  phx-value-id={tag.id}
+                >
+                  <input type="hidden" name="_method" value="delete" />
+                  <button
+                    type="submit"
+                    class="btn btn-ghost btn-xs text-error hover:bg-error/10"
+                    aria-label={t(@locale, "tags.index.delete_tag", %{})}
+                    data-confirm={t(@locale, "tags.index.are_you_sure", %{})}
+                  >
+                    <.icon name="trash-2" class="w-4 h-4" />
+                  </button>
+                  <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
+                </form>
+              </div>
             </div>
           </td>
         </tr>

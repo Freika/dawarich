@@ -39,13 +39,13 @@ defmodule DawarichWeb.NativeM6TripStudiosTest do
 
     {:ok, view, html} = live(conn)
     assert has_element?(view, "[phx-hook=Trip]")
-    assert has_element?(view, "#native-poster-studio[phx-hook=PosterStudio]")
-    assert has_element?(view, "#native-video-studio[phx-hook=VideoStudio]")
+    assert has_element?(view, "#poster-studio[phx-hook=PosterStudio]")
+    assert has_element?(view, "#video-studio[phx-hook=VideoStudio]")
     refute has_element?(view, "#native-poster-dates")
     refute html =~ "synthetic-trip-secret"
     render_hook(view, "poster:save", %{})
     assert_reply(view, %{status: "failed"})
     send(view.pid, {DawarichWeb.VideoStudioLiveComponent, {:saved, 1, []}})
-    assert has_element?(view, "#native-video-gallery-list")
+    assert has_element?(view, "#route-video-gallery-list")
   end
 end

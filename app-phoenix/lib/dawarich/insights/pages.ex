@@ -14,6 +14,7 @@ defmodule Dawarich.Insights.Pages do
       locked = if period.restricted, do: available -- years, else: []
 
       data = %{
+        active: scope.user.status == 1,
         available: available,
         locked: locked,
         all_time: period.all_time,

@@ -47,6 +47,11 @@ defmodule DawarichWeb.PlacesParityTest do
     html = RailsUser.signed_in(user.id) |> get(state["path"]) |> html_response(200)
     title = state["title"] |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
+    native =
+      ParityHTML.fragment(Dawarich.Test.DataPageParity.action_paths(html), "[data-native-places]")
+
+    expected = ParityHTML.normalize(rails)
+    assert native == expected, ParityHTML.first_difference(native, expected)
     assert cells(html) == cells(rails)
     assert page_links(html) == page_links(rails)
     assert html =~ "data-native-places"

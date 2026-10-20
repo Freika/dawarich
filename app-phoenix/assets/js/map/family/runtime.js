@@ -27,6 +27,16 @@ export function mountFamily({
     empty.style.display = visible ? "" : "none"
   }
   let overlay, library, overlayLocale, leaseTimer, leaseToken
+  let locations = [], currentMap
+  const root = element.closest?.("#family-shell")
+  const focusMember = ({ target }) => {
+    const row = target.closest?.("[data-native-family-member-id]")
+    if (!row || !root.contains(row) || unavailable() || now() >= leaseDeadline) return
+    const member = locations.find(({ user_id }) => String(user_id) === row.dataset.nativeFamilyMemberId)
+    if (member) currentMap?.flyTo({
+      center: [member.longitude, member.latitude], zoom: 15, duration: 1000,
+    })
+  }
   const window = element.ownerDocument?.defaultView
   let offline = window?.navigator?.onLine === false
   const unavailable = () => offline || isOffline() || window?.liveSocket?.isConnected?.() === false
@@ -47,6 +57,12 @@ export function mountFamily({
     attach: ({ map, config, lifetime }) =>
       waitForStyle(map, lifetime).then(() => {
         const ready = () => {
+          root?.addEventListener("click", focusMember)
+          lifetime.own(() => {
+            locations = []
+            currentMap = null
+            root?.removeEventListener("click", focusMember)
+          })
           overlayLocale = JSON.stringify([config.locale, config.familyTime])
           overlay = createFamilyOverlay({
             map,
@@ -74,6 +90,8 @@ export function mountFamily({
         })
         overlayLocale = desired
       }
+      locations = []
+      currentMap = map
       overlay.clear()
       showEmpty(true)
       reads.reset()
@@ -100,7 +118,8 @@ export function mountFamily({
         operation.check()
         read.check()
         if (unavailable() || now() >= leaseDeadline) return
-        overlay.replace(latest.data.locations, history.data.members)
+        locations = latest.data.locations
+        overlay.replace(locations, history.data.members)
         showEmpty(latest.data.locations.length === 0)
       } finally {
         read.close()
@@ -130,6 +149,7 @@ export function mountFamily({
   }
   owner.lease({ milliseconds: initial.consentLeaseMs ?? 30000 })
   owner.clear = () => {
+    locations = []
     leaseToken = null
     leaseDeadline = now() + 30000
     reads.reset()
@@ -150,6 +170,9 @@ export function mountFamily({
   const destroy = owner.destroy
   owner.destroy = () => {
     destroyed = true
+    locations = []
+    currentMap = null
+    root?.removeEventListener("click", focusMember)
     window?.removeEventListener("offline", onOffline)
     window?.removeEventListener("online", onOnline)
     timers.clearTimeout(leaseTimer)

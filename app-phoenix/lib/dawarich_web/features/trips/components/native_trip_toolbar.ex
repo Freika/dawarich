@@ -26,7 +26,7 @@ defmodule DawarichWeb.NativeTripToolbar do
         phx-value-layer={layer}
         class="btn btn-sm btn-outline gap-1"
         title={s(@locale, title)}
-        aria-pressed={if(layer == "plan", do: to_string(@page.config["planEnabled"]))}
+        aria-pressed={to_string(@page.config[layer <> "Enabled"])}
       >
         <Icon.icon name={icon} class="w-4 h-4" /><span class="hidden sm:inline">{s(@locale, layer)}</span>
       </button>
@@ -36,7 +36,12 @@ defmodule DawarichWeb.NativeTripToolbar do
         data-map-replay-open
         title={s(@locale, "replay_the_trip")}
       ><Icon.icon name="play" class="w-4 h-4" /><span class="hidden sm:inline">{s(@locale, "replay")}</span></button>
-      <button type="button" class="btn btn-sm btn-outline gap-1" phx-click="trip:days:all"><Icon.icon
+      <button
+        type="button"
+        class="btn btn-sm btn-outline gap-1"
+        phx-click="trip:days:all"
+        aria-expanded={to_string(@expanded)}
+      ><Icon.icon
         name="chevron-down"
         class="w-4 h-4"
       /><span class="hidden sm:inline">{t(

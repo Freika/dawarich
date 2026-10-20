@@ -65,6 +65,26 @@ defmodule DawarichWeb.TagsLiveTest do
     )
   end
 
+  for name <- ~w(tags_empty tags_list) do
+    @name name
+    test "#{@name} matches Rails 1.16.0 DOM" do
+      state = File.read!("test/fixtures/map_data/#{@name}.json") |> Jason.decode!()
+      user = FrameSeeds.seed!(state)
+      html = get(RailsUser.signed_in(user.id), state["path"]) |> html_response(200)
+
+      native =
+        Dawarich.Test.ParityHTML.fragment(
+          Regex.replace(~r/ aria-label="[^"]*"/, html, ""),
+          "div.px-4.flex-1 > div.flex > *"
+        )
+
+      expected =
+        File.read!("test/fixtures/map_data/#{@name}.html") |> Dawarich.Test.ParityHTML.normalize()
+
+      assert native == expected, Dawarich.Test.ParityHTML.first_difference(native, expected)
+    end
+  end
+
   test "a guest is sent to sign in and comes back to tags afterwards" do
     conn = get(Phoenix.ConnTest.build_conn(), "/tags")
 
@@ -79,7 +99,7 @@ defmodule DawarichWeb.TagsLiveTest do
     tag!(foreign, 83912, %{name: "Foreign secret"})
 
     {:ok, view, html} = live_as(user, "/tags")
-    row = view |> element("#tags-83911") |> render()
+    row = view |> element("#native-tag-83911") |> render()
 
     assert row =~ "#Home &amp; &lt;café&gt;"
     assert row =~ "☕"
@@ -96,10 +116,10 @@ defmodule DawarichWeb.TagsLiveTest do
     place_tagging!(user, 83913, 839_102)
     {:ok, view, _html} = live_as(user, "/tags")
 
-    html = view |> element("#tags-83913 button[phx-click='delete']") |> render_click()
+    html = view |> element("#native-tag-83913 form[phx-submit='delete']") |> render_submit()
 
-    refute has_element?(view, "#tags-83913")
-    assert has_element?(view, "#tags-83914")
+    refute has_element?(view, "#native-tag-83913")
+    assert has_element?(view, "#native-tag-83914")
     assert html =~ "Tag was successfully deleted."
     assert Repo.query!("SELECT count(*) FROM taggings WHERE tag_id=83913").rows == [[0]]
   end
@@ -109,7 +129,7 @@ defmodule DawarichWeb.TagsLiveTest do
     {:ok, view, html} = live_as(user, "/tags")
     refute html =~ "No tags yet"
 
-    view |> element("#tags-83915 button[phx-click='delete']") |> render_click()
+    view |> element("#native-tag-83915 form[phx-submit='delete']") |> render_submit()
 
     assert render(view) =~ "No tags yet"
   end
@@ -123,7 +143,7 @@ defmodule DawarichWeb.TagsLiveTest do
     for id <- ["83916", "abc", "99999999999999999999"],
         do: render_click(view, "delete", %{"id" => id})
 
-    assert has_element?(view, "#tags-83917")
+    assert has_element?(view, "#native-tag-83917")
     assert Repo.query!("SELECT count(*) FROM tags WHERE id IN (83916, 83917)").rows == [[2]]
   end
 

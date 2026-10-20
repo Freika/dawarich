@@ -15197,6 +15197,8 @@
     {
       "file": "app-phoenix/test/dawarich_web/tags_live_test.exs",
       "markers": [
+        "test/fixtures",
+        "fixtures/",
         "phoenix/js"
       ]
     },
@@ -15511,6 +15513,13 @@
       "file": "app-phoenix/test/dawarich_web/layout_parity_test.exs",
       "markers": [
         "test/fixtures/"
+      ]
+    },
+    {
+      "file": "app-phoenix/test/dawarich_web/tags_live_form_test.exs",
+      "markers": [
+        "test/fixtures",
+        "fixtures/"
       ]
     }
   ],
@@ -18124,7 +18133,7 @@
       {
         "file": "app-phoenix/test/dawarich_web/family_pages_parity_test.exs",
         "name": "family GET corpus #{@name} preserves scoped state and visible inputs in all shipped locales",
-        "contract": "301 route/state/locale leaves; admitted page DOM plus native map, confirmation, credential-reveal and upgrade boundaries."
+        "contract": "301 route/state/locale leaves; admitted page DOM plus native map, confirmation, credential-reveal and upgrade boundaries. Includes 49 Rails application-shell sidecars from the existing family recorder, compared through D1 chrome wiring normalization."
       },
       {
         "file": "app-phoenix/test/dawarich_web/achievement_public_test.exs",
@@ -18140,5 +18149,38 @@
         "successor": "Same two named cases exercise FamilyConfirm and the native preparation/confirmation protocol; cancellation, single dispatch and teardown remain mutation-protected. No external fixture dependency remains."
       }
     ]
+  },
+  "d2_rails_1160_continuation": {
+    "reference": "Rails 1.16.0",
+    "recorders": [
+      "app-phoenix/scripts/parity/insights_details_fixtures_spec.rb",
+      "app-phoenix/scripts/parity/trips_fixtures_spec.rb"
+    ],
+    "corpus": [
+      "insights/overview-corpus.json",
+      "insights/overview-*.html",
+      "insights/residency-*.html",
+      "trips/remaining/presentation.json",
+      "trips/remaining/presentation/*.html"
+    ],
+    "readers": [
+      {
+        "file": "app-phoenix/test/dawarich_web/insights_details_parity_test.exs",
+        "name": "Rails 1.16.0 Insights overview preserves header period summary months tracking years and locked states"
+      },
+      {
+        "file": "app-phoenix/test/dawarich_web/insights_details_parity_test.exs",
+        "name": "Rails 1.16.0 residency preserves year calendar ribbon and distance presentation"
+      },
+      {
+        "file": "app-phoenix/test/dawarich_web/trips_show_parity_test.exs",
+        "name": "Rails 1.16.0 trip validation and managed forms retain exact source DOM"
+      },
+      {
+        "file": "app-phoenix/test/dawarich_web/trips_show_parity_test.exs",
+        "name": "Rails 1.16.0 complete trip envelope retains source path and planned map placement"
+      }
+    ],
+    "retained": "Existing reader files remain in readers; no reader or external behavior/data/security fixture is removed. New records are emitted by Rails request recorders; native DOM is not used as an expected fixture."
   }
 }

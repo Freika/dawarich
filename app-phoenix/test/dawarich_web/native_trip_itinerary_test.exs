@@ -65,15 +65,16 @@ defmodule DawarichWeb.NativeTripItineraryTest do
              "#native-trip-itinerary [data-controller], #native-trip-itinerary [data-action]"
            )
 
+    refute :sys.get_state(view.pid).socket.assigns.page.config["planEnabled"]
     view |> element("#native-trip-itinerary [phx-click='trip:plan:focus']") |> render_click()
     assert_push_event(view, "trip:focus", %{longitude: 13.4, latitude: 52.5})
     assert :sys.get_state(view.pid).socket.assigns.page.config["planEnabled"]
     view |> element("[phx-value-layer=plan]") |> render_click()
     assert_push_event(view, "map:config", %{"planEnabled" => false})
-    refute has_element?(view, "#native-trip-itinerary [phx-click='trip:plan:focus']")
+    assert has_element?(view, "#native-trip-itinerary [phx-click='trip:plan:focus']")
     render_click(view, "trip:plan:focus", %{"id" => to_string(id * 1000)})
-    refute_push_event(view, "trip:focus", _, 0)
-    view |> element("[phx-value-layer=plan]") |> render_click()
+    assert_push_event(view, "trip:focus", %{longitude: 13.4, latitude: 52.5})
+    assert_push_event(view, "map:config", %{"planEnabled" => true})
 
     Repo.query!(
       "UPDATE planned_stops SET longitude=$1 WHERE id=$2",

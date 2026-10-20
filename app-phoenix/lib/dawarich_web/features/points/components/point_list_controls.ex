@@ -14,83 +14,104 @@ defmodule DawarichWeb.PointListControls do
 
   def controls(assigns) do
     ~H"""
-    <div class="border border-base-300 rounded-xl bg-base-200/50 p-4 mb-5 min-w-0">
-      <.form for={@form} id="point_filters" phx-submit="filter">
-        <input type="hidden" name="order_by" value={@query["order_by"]} />
-        <div class="flex flex-col flex-wrap gap-3 md:flex-row md:items-end">
-          <div class="flex-1 min-w-0">
-            <label for="start_at" class="block text-sm">Start at</label>
+    <div class="border border-base-300 rounded-xl bg-base-200/50 p-4 mb-5">
+      <form
+        id="native-point-filters"
+        action={F.url("/points", Map.take(@query, ["import_id"]))}
+        accept-charset="UTF-8"
+        method="get"
+        phx-submit="filter"
+      >
+        <div class="flex flex-col gap-3 md:flex-row md:items-end">
+          <div class="flex-1">
+            <label
+              for="start_at"
+              class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1 block"
+            >Start at</label>
             <input
               type="datetime-local"
               name="start_at"
               id="start_at"
               max="9999-12-31T23:59"
-              class="input input-bordered input-sm w-full min-w-0"
+              class="input input-bordered input-sm w-full"
               value={@window.start_local}
             />
           </div>
-          <div class="flex-1 min-w-0">
-            <label for="end_at" class="block text-sm">End at</label>
+          <div class="flex-1">
+            <label
+              for="end_at"
+              class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1 block"
+            >End at</label>
             <input
               type="datetime-local"
               name="end_at"
               id="end_at"
               max="9999-12-31T23:59"
-              class="input input-bordered input-sm w-full min-w-0"
+              class="input input-bordered input-sm w-full"
               value={@window.end_local}
             />
           </div>
-          <div class="flex-1 min-w-0">
-            <label for="import_id" class="block text-sm">Import</label>
+          <div class="flex-1">
+            <label
+              for="import"
+              class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1 block"
+            >Import</label>
             <select
+              aria-label="Import"
               name="import_id"
               id="import_id"
-              class="select select-bordered select-sm w-full min-w-0"
+              class="select select-bordered select-sm text-sm w-full"
             >
               <option value="">{t(@locale, "points.index.all_imports", %{})}</option>
               <option
                 :for={entry <- @imports}
                 value={entry.id}
-                selected={@query["import_id"] == to_string(entry.id)}
+                selected={if @query["import_id"] == to_string(entry.id), do: "selected"}
               >
                 {entry.name}
               </option>
             </select>
           </div>
-          <div class="flex-1 min-w-0">
-            <label for="import_search" class="block text-sm">{t(@locale, "points.index.search", %{})}: Import</label>
-            <input
-              type="search"
-              name="import_search"
-              id="import_search"
-              value={@query["import_search"]}
-              class="input input-bordered input-sm w-full min-w-0"
-            />
-          </div>
-          <button
+          <input
             type="submit"
-            class="btn btn-primary btn-sm h-auto min-h-8 whitespace-normal"
+            name="commit"
+            value={t(@locale, "points.index.search", %{})}
+            class="btn btn-primary btn-sm"
             phx-disable-with={t(@locale, "points.index.search", %{})}
-          >{t(@locale, "points.index.search", %{})}</button>
+          />
         </div>
-      </.form>
+      </form>
     </div>
-    <div class="flex flex-wrap min-w-0 items-center justify-between gap-3 mb-4">
-      <div class="text-sm break-words">{@summary}</div>
-      <div class="flex flex-wrap gap-2">
-        <button
-          :for={{format, label} <- [{"json", "geojson"}, {"gpx", "gpx"}]}
-          type="button"
-          class="btn btn-outline btn-xs h-auto whitespace-normal"
-          phx-click="export"
-          phx-value-format={format}
-        >
-          <.icon name="arrow-big-down" class="w-3.5 h-3.5" /> {t(@locale, "points.index.export", %{})}: {t(
-            @locale,
-            "points.index." <> label,
-            %{}
-          )}
-        </button>
+    <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4">
+      <div class="text-sm text-base-content/50">{@summary}</div>
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="dropdown dropdown-end">
+          <label tabindex="0" class="btn btn-outline btn-xs gap-1">
+            <.icon name="arrow-big-down" class="w-3.5 h-3.5" /> {t(
+              @locale,
+              "points.index.export",
+              %{}
+            )}
+            <.icon name="chevron-down" class="w-3 h-3" />
+          </label>
+          <ul
+            tabindex="0"
+            class="dropdown-content z-[50] menu p-2 shadow-lg bg-base-100 rounded-lg w-48 mt-1 border border-base-300"
+          >
+            <li :for={
+              {format, label, icon} <- [{"json", "geojson", "earth"}, {"gpx", "gpx", "route"}]
+            }>
+              <a
+                href="#"
+                data-native-href={export_url(@window, format)}
+                phx-click="export"
+                phx-value-format={format}
+              >
+                <.icon name={icon} class="w-4 h-4" /> {t(@locale, "points.index." <> label, %{})}
+              </a>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
     """
@@ -117,6 +138,14 @@ defmodule DawarichWeb.PointListControls do
     """
   end
 
+  def export_url(window, format),
+    do:
+      F.url("/exports", %{
+        "start_at" => F.datetime_param(window.start, window.zone),
+        "end_at" => F.datetime_param(window.end, window.zone),
+        "file_format" => format
+      })
+
   def bulk_action(query),
     do:
       F.url(
@@ -126,6 +155,10 @@ defmodule DawarichWeb.PointListControls do
 
   def order_url(query) do
     next = if query["order_by"] == "asc", do: "desc", else: "asc"
-    F.url("/points", query |> Map.drop(["page"]) |> Map.put("order_by", next))
+
+    F.url(
+      "/points",
+      query |> Map.take(~w(import_id start_at end_at)) |> Map.put("order_by", next)
+    )
   end
 end

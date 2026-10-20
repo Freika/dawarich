@@ -15,31 +15,45 @@ defmodule DawarichWeb.NativeTripMapPanel do
     assigns = assign(assigns, :id, assigns.id || "native-trip-map-#{assigns.config["tripId"]}")
 
     ~H"""
-    <div :if={@state in [:path, :plan]} class="relative min-w-0 w-full h-full">
+    <DawarichWeb.NativeMapHost.map_host
+      :if={@state == :path}
+      id={@id}
+      config={@config}
+      locale={@locale}
+      hook="Trip"
+      loading={false}
+      class="w-full h-full rounded-lg overflow-hidden relative"
+    >
+      <div
+        data-native-trip-loading
+        class="absolute bottom-4 left-4 z-10 bg-base-100/80 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center gap-2 hidden"
+      >
+        <span class="loading loading-spinner loading-sm"></span>
+        <span class="text-sm">{t(@locale, "trips.show.loading_route_data", %{})}</span>
+      </div>
       <DawarichWeb.MapReplay.replay_panel
-        :if={@state == :path}
         id={@id <> "-replay"}
         locale={@locale}
         show_day_nav
         native
         hook="native"
       />
+    </DawarichWeb.NativeMapHost.map_host>
+    <div :if={@state == :plan} class="relative h-full w-full overflow-hidden rounded-lg">
       <DawarichWeb.NativeMapHost.map_host
-        :if={@state in [:path, :plan]}
         id={@id}
         config={@config}
         locale={@locale}
         hook="Trip"
-        class="relative min-w-0 w-full h-full min-h-80 overflow-hidden rounded-lg"
+        loading={false}
+        class="h-full w-full"
       />
-      <p
-        :if={@state == :plan}
-        data-trip-map-state={@state}
-        role="status"
-        class="min-w-0 [overflow-wrap:anywhere] p-3"
-      >
-        <span :if={@state == :plan}>{t(@locale, "trips.show.planned_route", %{})} · </span>
-        {t(@locale, "trips.show." <> plan_key(@future), %{})}
+      <p class="trip-plan-caption" role="status" data-trip-map-state={@state}>
+        <Icon.icon name="map" class="size-4 shrink-0" />
+        <span class="min-w-0">
+          <span class="font-medium">{t(@locale, "trips.show.planned_route", %{})}</span>
+          <span class="text-base-content/60"> · {t(@locale, "trips.show." <> plan_key(@future), %{})}</span>
+        </span>
       </p>
     </div>
     <div

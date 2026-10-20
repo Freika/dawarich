@@ -72,8 +72,8 @@ defmodule DawarichWeb.PointsLiveTest do
 
     refute html =~ "point_837201"
     refute html =~ "point_837202"
-    assert attr(html, "#point_filters input[name='authenticity_token']", "value") == []
-    assert attr(html, "#point_filters", "phx-submit") == ["filter"]
+    assert attr(html, "#native-point-filters input[name='authenticity_token']", "value") == []
+    assert attr(html, "#native-point-filters", "phx-submit") == ["filter"]
     assert attr(html, "input[name='start_at']", "value") == ["2026-03-01T10:00"]
     assert attr(html, "select[name='import_id'] option", "value") == ["", "83711"]
 
@@ -154,7 +154,7 @@ defmodule DawarichWeb.PointsLiveTest do
     fill(user, 1)
     Repo.query!("UPDATE points SET import_id = 83711 WHERE user_id = $1", [user.id])
     {:ok, _view, html} = live_as(user, "/points?#{@range}&import_id=83711&order_by=asc")
-    assert attr(html, "#point_filters", "phx-submit") == ["filter"]
+    assert attr(html, "#native-point-filters", "phx-submit") == ["filter"]
     assert attr(html, "[phx-click='select_point']", "phx-value-id") == ["837101"]
     assert attr(html, "input[name='start_at']", "value") == ["2026-03-01T10:00"]
     assert attr(html, "select[name='import_id'] option[selected]", "value") == ["83711"]

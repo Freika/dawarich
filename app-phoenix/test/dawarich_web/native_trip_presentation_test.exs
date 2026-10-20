@@ -38,8 +38,8 @@ defmodule DawarichWeb.NativeTripPresentationTest do
 
     {:ok, view, html} = open(id)
     assert has_element?(view, "#trip-shell h1", "Trip <outside>")
-    assert has_element?(view, "#native-trip-summary", "20 km")
-    assert has_element?(view, "#native-trip-summary", "2 days")
+    assert has_element?(view, "#native-trip-header", "20 km")
+    assert has_element?(view, "#native-trip-header", "2 days")
     assert has_element?(view, "#native-trip-day-2026-06-02", "Coffee <outside>")
     assert has_element?(view, "#native-trip-day-2026-06-01")
     assert has_element?(view, "#native-trip-day-2026-06-03")

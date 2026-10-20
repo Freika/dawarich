@@ -252,13 +252,13 @@ defmodule DawarichWeb.NotificationsLiveTest do
 
     test "native mark-all and confirmed delete-all preserve notices and paging", %{user: user} do
       {:ok, view, _html} = live_as(user)
-      assert has_element?(view, "button", "Mark all as read")
+      assert has_element?(view, "a", "Mark all as read")
       render_patch(view, "/notifications?page=2")
 
       render_click(view, "mark_all_as_read", %{})
       assert_patch(view, "/notifications")
       assert render(view) =~ "All notifications marked as read."
-      refute has_element?(view, "button", "Mark all as read")
+      refute has_element?(view, "a", "Mark all as read")
 
       render_patch(view, "/notifications?page=2")
       render_click(view, "choose_notifications_delete_all", %{})
@@ -266,7 +266,7 @@ defmodule DawarichWeb.NotificationsLiveTest do
       assert_patch(view, "/notifications")
       assert render(view) =~ "All notifications where successfully destroyed."
       assert rows(view) == 0
-      refute has_element?(view, "button", "Delete all")
+      refute has_element?(view, "a", "Delete all")
     end
 
     test "native controls require a socket confirmation and preserve ordinary detail reads", %{
@@ -283,7 +283,7 @@ defmodule DawarichWeb.NotificationsLiveTest do
 
       assert index
              |> LazyHTML.query(
-               "[data-testid=native-notifications-root] button[phx-click=mark_all_as_read]"
+               "[data-testid=native-notifications-root] a[phx-click=mark_all_as_read]"
              )
              |> Enum.count() == 1
 
@@ -480,7 +480,7 @@ defmodule DawarichWeb.NotificationsLiveTest do
       Dawarich.Notifications.Events.broadcast(user.id)
       assert has_element?(view, "#notifications-badge", "3")
       assert has_element?(view, "#notifications-list a", "Nav 3")
-      view |> element("button", "Mark all as read") |> render_click()
+      view |> element("a", "Mark all as read") |> render_click()
       assert has_element?(view, "#notifications-badge.hidden")
     end
 

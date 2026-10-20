@@ -57,8 +57,8 @@ defmodule DawarichWeb.InsightsLiveTest do
     {:ok, view, _} = live_as(user, "/insights")
     assert :sys.get_state(view.pid).socket.assigns.data.year == 2024
     assert :sys.get_state(view.pid).socket.assigns.data.totals.distance == 50
-    assert has_element?(view, "[data-testid=insights-activity-summary]", "5 active days")
-    assert has_element?(view, "[data-residency-day='2024-03-07'][aria-label*='14 km']")
+    assert has_element?(view, "[data-testid=year-calendar-streaks]", "5 active days")
+    assert has_element?(view, "[data-date='2024-03-07'][aria-label*='14 km']")
     assert has_element?(view, "#insights-residency-ready")
     refute render(view) =~ "turbo-frame"
   end
@@ -80,12 +80,12 @@ defmodule DawarichWeb.InsightsLiveTest do
   end
 
   test "a year without stats says so with Rails' wording", %{user: user} do
-    {:ok, _view, html} = live_as(user, "/insights?year=2020")
+    {:ok, view, html} = live_as(user, "/insights?year=2020")
 
     assert html =~
              "No stats data available for 2020. Stats are calculated from your tracked points."
 
-    assert html =~ "0 active days"
+    assert has_element?(view, "[data-testid=year-calendar-streaks]", "0 active days")
   end
 
   test "native locked year retains Pro access and generates an upgrade only on action", %{

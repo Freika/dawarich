@@ -48,6 +48,15 @@ defmodule DawarichWeb.FamiliesLive.NativeMap do
   def terminate(_, socket), do: DawarichWeb.NativeFamilyConsent.cancel(socket)
 
   defp maybe_chrome(%{assigns: %{current_scope: nil}} = socket), do: socket
-  defp maybe_chrome(socket), do: DawarichWeb.NativeMapChrome.load(socket)
+
+  defp maybe_chrome(socket) do
+    socket
+    |> DawarichWeb.NativeMapChrome.load()
+    |> assign(
+      body_class: "min-h-screen flex flex-col",
+      viewport: "width=device-width,initial-scale=1"
+    )
+  end
+
   def render(assigns), do: DawarichWeb.NativeFamilyPage.page(assigns)
 end

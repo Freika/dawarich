@@ -4,10 +4,21 @@ defmodule DawarichWeb.NativeFamilyPage do
   import DawarichWeb.Icon, only: [icon: 1]
 
   def page(assigns) do
+    assigns =
+      assigns
+      |> assign(:inner_content, content(assigns))
+      |> assign(:request_path, assigns[:request_path] || "/family")
+      |> assign(:self_hosted, assigns[:self_hosted] != false)
+
     ~H"""
-    <DawarichWeb.NativeMapChrome.header {assigns} />
-    <DawarichWeb.Chrome.flash locale={@locale} flash={@flash} native />
-    <div :if={@page} id="family-shell" data-native-map-root>
+    <DawarichWeb.Layouts.app :if={@page && @current_scope} {assigns} />
+    <p :if={@map_error} role="alert">{to_string(@map_error)}</p>
+    """
+  end
+
+  defp content(assigns) do
+    ~H"""
+    <div :if={@page} id="family-shell" class="contents" data-native-map-root>
       <div id="native-family-page" class="w-full my-5">
         <DawarichWeb.FamilyNativeControls.errors errors={@errors} />
         <DawarichWeb.ListParts.page_header title={@page.presentation.family.name}>
@@ -73,7 +84,6 @@ defmodule DawarichWeb.NativeFamilyPage do
         locale={@locale}
       />
     </div>
-    <p :if={@map_error} role="alert">{to_string(@map_error)}</p>
     """
   end
 

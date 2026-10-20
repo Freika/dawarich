@@ -62,6 +62,25 @@ defmodule Dawarich.Build.NativeStaticTest do
     assert css =~ ~S(.bg-secondary\/10{background-color:)
   end
 
+  test "native Insights calendar and ribbon retain source grid focus and timeline styles", %{
+    tmp_dir: dir
+  } do
+    root = sources!(dir)
+    static = Path.join(dir, "static")
+    assert NativeAssets.build!(root, static) == :ok
+    css = File.read!(Path.join(static, "native/application.css"))
+
+    for selector <- [
+          ".year-calendar__body",
+          ".year-calendar[data-mode=both]",
+          ".year-calendar[data-focus]",
+          ".country-ribbon__lane",
+          ".country-ribbon__segment"
+        ] do
+      assert css =~ selector, selector
+    end
+  end
+
   test "missing declared native asset fails build before release", %{tmp_dir: dir} do
     root = sources!(dir)
     File.rm!(Path.join(root, "app/assets/fonts/poster/inter-400.woff2"))

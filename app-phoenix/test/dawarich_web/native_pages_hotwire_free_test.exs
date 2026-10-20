@@ -257,12 +257,17 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
 
         forms = for html <- [static, connected], html =~ ~s(phx-submit="save"), do: html
 
-        for html <- forms,
-            do:
-              assert(
-                html =~ ~r/<(?:button|input)[^>]*type="submit"[^>]*phx-disable-with/,
-                "#{path} submit"
+        for html <- forms do
+          for form <- LazyHTML.query(LazyHTML.from_document(html), "form[phx-submit=save]") do
+            controls =
+              LazyHTML.query(
+                form,
+                "button[type=submit][phx-disable-with], input[type=submit][phx-disable-with]"
               )
+
+            assert Enum.count(controls) > 0, "#{path} submit"
+          end
+        end
 
         forms != []
       end
