@@ -9,8 +9,8 @@ defmodule DawarichWeb.EmbeddedStudios do
 
   def poster_config(locale, url) do
     DawarichWeb.NativePosterStudio.config(locale, url)
-    |> Jason.decode!()
-    |> Map.put("controls", DawarichWeb.NativePosterSections.control_options(locale))
+    |> Jason.decode!(objects: :ordered_objects)
+    |> put_in(["controls"], DawarichWeb.NativePosterSections.control_options(locale))
     |> Jason.encode!()
   end
 

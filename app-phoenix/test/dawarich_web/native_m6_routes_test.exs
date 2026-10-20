@@ -18,7 +18,7 @@ defmodule DawarichWeb.NativeM6RoutesTest do
       conn = RailsUser.signed_in(id) |> RailsUser.connecting_as(id) |> get(path)
       {:ok, view, html} = live(conn)
       assert has_element?(view, "#native-map[phx-hook=Map]")
-      assert has_element?(view, "#native-video-studio[phx-hook=VideoStudio]")
+      assert has_element?(view, "#video-studio[phx-hook=VideoStudio]")
       assert html =~ "/native/app"
 
       for marker <- ~w(data-controller data-action importmap synthetic-route-secret),

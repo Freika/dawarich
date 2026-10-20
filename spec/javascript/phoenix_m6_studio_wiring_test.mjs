@@ -16,7 +16,7 @@ function setup(f) {
     const studio = new Element()
     studio.dispatchEvent = (event) => events.push({ kind, event })
     f.nodes.set(`[data-testid="map-button-${kind}"]`, button)
-    f.nodes.set(`#native-${kind}-studio`, studio)
+    f.nodes.set(`#${kind}-studio`, studio)
   }
   return events
 }
@@ -54,7 +54,7 @@ test("studio switching works in both directions with the same source and stops a
   events[0].event.detail.openVideo(f.owner.source)
   assert.equal(events[1].kind, "video")
   f.root.emit("dawarich:studio-switch", {
-    target: f.nodes.get("#native-video-studio"),
+    target: f.nodes.get("#video-studio"),
     detail: { studio: "poster", source: f.owner.source },
   })
   assert.equal(events[2].kind, "poster")

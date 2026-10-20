@@ -109,17 +109,33 @@ defmodule DawarichWeb.MapLiveTest do
   test "native map and studios survive a server panel patch with keyed owners", %{user: user} do
     {:ok, view, _} = live_as(user, "/map/v2")
 
-    for {id, hook} <- [
-          {"native-map", "Map"},
-          {"native-poster-studio", "PosterStudio"},
-          {"native-video-studio", "VideoStudio"}
-        ] do
-      assert has_element?(view, "##{id}[phx-hook='#{hook}']")
+    owners = fn ->
+      doc = render(view) |> LazyHTML.from_fragment()
+
+      for {id, hook} <- [
+            {"native-map", "Map"},
+            {"poster-studio", "PosterStudio"},
+            {"video-studio", "VideoStudio"}
+          ] do
+        assert has_element?(view, "##{id}[phx-hook='#{hook}']")
+        {id, doc |> LazyHTML.query("##{id}") |> LazyHTML.attribute("phx-target")}
+      end
     end
 
+    before = owners.()
+    assert has_element?(view, "#video-studio-owner > #video-studio[phx-target]")
     view |> element("[data-testid=map-button-settings]") |> render_click()
     assert has_element?(view, "[data-tab-content=settings].active #native-map-settings-form")
-    assert has_element?(view, "#native-map[phx-update=ignore]")
+    assert owners.() == before
+
+    for id <- ~w(native-map native-poster-stage native-video-stage),
+        do: assert(has_element?(view, "##{id}[phx-update=ignore]"))
+
+    for id <- ~w(poster-gallery-list route-video-gallery-list) do
+      assert has_element?(view, "##{id}")
+      refute has_element?(view, "[phx-update=ignore] ##{id}")
+    end
+
     refute render(view) =~ "MapShell"
   end
 
@@ -141,7 +157,7 @@ defmodule DawarichWeb.MapLiveTest do
     user: user
   } do
     {:ok, view, _} = live_as(user, "/map/v2")
-    video = config(view, "#native-video-studio", "data-video-config")
+    video = config(view, "#video-studio", "data-native-video-config")
     assert Enum.any?(Map.values(video["strings"]), &String.contains?(&1, "%{format}"))
     refute has_element?(view, "script#i18n-translations")
     assert map_size(map_config(view)["uiLabels"]) > 0
@@ -351,17 +367,17 @@ defmodule DawarichWeb.MapLiveTest do
 
     for selector <- [
           "[data-testid=map-button-poster]",
-          "[data-poster-date-start]",
-          "[data-video-start]",
-          "[data-video-end]"
+          "[data-native-poster-date-start]",
+          "[data-native-video-start]",
+          "[data-native-video-end]"
         ],
         do: assert(has_element?(view, selector))
 
     [raw] =
       render(view)
       |> LazyHTML.from_fragment()
-      |> LazyHTML.query("#native-poster-studio")
-      |> LazyHTML.attribute("data-poster-config")
+      |> LazyHTML.query("#poster-studio")
+      |> LazyHTML.attribute("data-native-poster-config")
 
     ordered =
       Jason.decode!(raw, objects: :ordered_objects).values
@@ -370,15 +386,16 @@ defmodule DawarichWeb.MapLiveTest do
     assert Enum.map(ordered, &elem(&1, 0)) ==
              ~w(inter-400 inter-700 oswald-400 oswald-700 playfair-display-400 playfair-display-700 jetbrains-mono-400 jetbrains-mono-700)
 
-    assert config(view, "#native-poster-studio", "data-poster-config")["fonts"]["oswald-700"] =~
+    assert config(view, "#poster-studio", "data-native-poster-config")["fonts"]["oswald-700"] =~
              ~r{\A/native/poster/oswald-700(-[0-9a-f]+)?\.woff2\z}
 
     refute html =~ "/rails/active_storage/direct_uploads"
 
-    assert render_hook(element(view, "#native-video-studio"), "video:upload_target", %{
-             "byte_size" => 0
-           }) =~
-             "native-video-studio"
+    render_hook(element(view, "#video-studio"), "video:upload_target", %{"byte_size" => 0})
+    assert_reply(view, %{ok: false, error: error})
+    assert is_binary(error) and error != ""
+    render_hook(element(view, "#poster-studio"), "poster:save", %{})
+    assert_reply(view, %{status: "failed"})
   end
 
   test "PRINT_ORDER_URL overrides the native order endpoint", %{user: user} do
@@ -386,7 +403,7 @@ defmodule DawarichWeb.MapLiveTest do
     on_exit(fn -> System.delete_env("PRINT_ORDER_URL") end)
     {:ok, view, _} = live_as(user, "/map/v2")
 
-    assert config(view, "#native-poster-studio", "data-poster-config")["printOrderUrl"] ==
+    assert config(view, "#poster-studio", "data-native-poster-config")["printOrderUrl"] ==
              "http://localhost:3001/api/orders"
   end
 
@@ -424,9 +441,9 @@ defmodule DawarichWeb.MapLiveTest do
 
     {:ok, view, _} = live_as(user, "/map/v2")
     src = Dawarich.MapGallery.blob_path(%{id: 6032, filename: "a6.png"})
-    assert has_element?(view, "#native-poster-gallery-list #poster_6031 img[src='#{src}']")
+    assert has_element?(view, "#poster-gallery-list #poster_6031 img[src='#{src}']")
     assert has_element?(view, "#poster_6031 a[href='#{src}?disposition=attachment']")
-    view |> element("#poster_6031 button[phx-click='poster:delete']") |> render_click()
+    view |> element("#poster_6031 a[phx-click='poster:delete']") |> render_click()
     refute has_element?(view, "#poster_6031")
     assert Repo.query!("SELECT id FROM posters WHERE id=6031").rows == []
     refute has_element?(view, "turbo-cable-stream-source")
