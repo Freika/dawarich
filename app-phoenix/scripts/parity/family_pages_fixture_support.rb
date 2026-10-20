@@ -118,6 +118,11 @@ module FamilyPagesFixtureSupport
              end,
              'session' => { 'user_return_to' => session[:user_return_to] },
              'actors' => family_actors, 'rows' => family_rows }
+    if status == 200 && URI.parse(path).path == '/family'
+      shell = doc.at_css('body > div.container').dup
+      shell.at_css('div.w-full > div.flex').inner_html = '<native-family-content></native-family-content>'
+      FixtureRecording.verify(dir.join("#{name}.shell.html"), shell.to_html)
+    end
     FixtureRecording.verify(dir.join("#{name}.html"), html)
     FixtureRecording.verify(dir.join("#{name}.json"),
                             "#{Oj.dump(data, mode: :strict, float_precision: 0, indent: 2)}\n")

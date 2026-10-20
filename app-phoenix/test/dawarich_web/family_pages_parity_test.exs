@@ -65,6 +65,13 @@ defmodule DawarichWeb.FamilyPagesParityTest do
                 ),
               else: rails
 
+          if String.starts_with?(state["path"], "/family?") do
+            rails_shell = File.read!(Path.join(@dir, @name <> ".shell.html"))
+
+            assert shell(html) == shell(rails_shell),
+                   Dawarich.Test.ParityHTML.first_difference(shell(html), shell(rails_shell))
+          end
+
           if not invitation_path?(state["path"]) do
             selector =
               if String.starts_with?(state["path"], "/family?"),
@@ -145,6 +152,26 @@ defmodule DawarichWeb.FamilyPagesParityTest do
       end
     end
   end
+
+  defp shell(html) do
+    html
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.to_tree()
+    |> shell_content()
+    |> LazyHTML.from_tree()
+    |> LazyHTML.to_html()
+    |> Dawarich.Test.LayoutFixtures.region(".container")
+  end
+
+  defp shell_content(nodes) when is_list(nodes), do: Enum.map(nodes, &shell_content/1)
+
+  defp shell_content({tag, attrs, children}) do
+    if Map.new(attrs)["class"] == "flex w-full min-w-0 gap-5",
+      do: {tag, attrs, [{"native-family-content", [], []}]},
+      else: {tag, attrs, shell_content(children)}
+  end
+
+  defp shell_content(other), do: other
 
   defp presentation(nodes, state) do
     nodes |> contract_nodes(state) |> Dawarich.Test.ParityHTML.normalize()
@@ -426,8 +453,12 @@ defmodule DawarichWeb.FamilyPagesParityTest do
         Map.merge(assigns, %{
           page: map_page,
           map_error: nil,
-          current_user: nil,
-          navbar: nil,
+          current_user: user,
+          navbar: Dawarich.Navbar.load(user, now: now, self_hosted: state["self_hosted"]),
+          suggested_locale: nil,
+          query_params: %{},
+          flash_messages: [],
+          native: true,
           flash: %{},
           request_path: "/family"
         })

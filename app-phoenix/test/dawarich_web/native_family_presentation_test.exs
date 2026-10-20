@@ -73,6 +73,22 @@ defmodule DawarichWeb.NativeFamilyPresentationTest do
     assert :sys.get_state(view.pid).socket.assigns.page_title == nil
   end
 
+  @tag family_application_shell: true
+  test "family application chrome and footer disappear with fresh membership refusal", %{id: id} do
+    {:ok, view, _} = open(id)
+    assert :sys.get_state(view.pid).socket.assigns.body_class == "min-h-screen flex flex-col"
+
+    assert :sys.get_state(view.pid).socket.assigns.viewport ==
+             "width=device-width,initial-scale=1"
+
+    assert has_element?(view, ".container.mx-auto.flex.flex-col.flex-1 > .navbar")
+    assert has_element?(view, ".container > .w-full.px-4 > .flex > #family-shell.contents")
+    assert has_element?(view, ".container > .mt-auto footer")
+    Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [id], log: false)
+    render_hook(view, "map:ready", %{})
+    refute has_element?(view, ".container, .navbar, footer, #native-family-map, #getting_started")
+  end
+
   @tag family_unique_inputs: true
   test "native family onboarding and sidebar have distinct invitation email controls", %{id: id} do
     Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [id + 1], log: false)
