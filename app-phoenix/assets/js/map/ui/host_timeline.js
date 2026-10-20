@@ -27,7 +27,7 @@ export function createHostTimeline({
   let pointing = false
   function clear() {
     hovered?.setAttribute("data-track-hovered", "false")
-    hovered?.classList?.remove("bg-base-200")
+    hovered?.classList?.remove("bg-base-200", "highlighted")
     hovered = null
     selected = null
     requests.reset()
@@ -127,11 +127,11 @@ export function createHostTimeline({
     })
     hovered = root?.querySelector(
       segmentId
-        ? `[data-native-segment-id="${segmentId}"]`
+        ? `.segment-leg[data-native-segment-id="${segmentId}"]`
         : `[data-track-id="${id}"]`,
     )
     hovered?.setAttribute("data-track-hovered", "true")
-    hovered?.classList?.add("bg-base-200")
+    hovered?.classList?.add(segmentId ? "highlighted" : "bg-base-200")
   }
   function leave() {
     clear()

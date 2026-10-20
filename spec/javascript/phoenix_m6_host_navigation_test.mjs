@@ -21,17 +21,20 @@ test("native host shortcuts activate owned controls ignore editors modifiers rep
   }
   const replay = new Element();
   replay.hidden = true;
+  replay.className = "replay-panel hidden";
   f.nodes.set("[data-native-replay-panel]", replay);
   const opener = new Element();
   opener.click = () => {
     activated.push("replay-open");
     replay.hidden = false;
+    replay.className = "replay-panel";
   };
   f.nodes.set("[data-map-replay-open]", opener);
   const closer = new Element();
   closer.click = () => {
     activated.push("replay-close");
     replay.hidden = true;
+    replay.className = "replay-panel hidden";
   };
   f.nodes.set('[data-native-replay-action="toggleReplay"]', closer);
   assert.equal(await f.owner.mount(), "ready");

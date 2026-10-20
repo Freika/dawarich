@@ -22,7 +22,9 @@ export function installHostShortcuts({ root, lifetime }) {
     const key = event.key?.toLowerCase();
     const selector =
       key === "r"
-        ? root.querySelector("[data-native-replay-panel]")?.hidden === false
+        ? root
+            .querySelector("[data-native-replay-panel]")
+            ?.classList.contains("hidden") === false
           ? '[data-native-replay-action="toggleReplay"]'
           : "[data-map-replay-open]"
         : panels[key] && `[data-testid="map-button-${panels[key]}"]`;

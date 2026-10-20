@@ -274,6 +274,31 @@ test("F and C shortcuts use admitted Family and Tools buttons and release docume
   assert.equal(disposed, true)
 })
 
+test("R opens a class-hidden replay panel and closes a shown one", () => {
+  let keydown
+  const clicks = []
+  const panel = { hidden: false, classList: new Set(["replay-panel", "hidden"]) }
+  panel.classList.contains = panel.classList.has
+  const controls = {
+    "[data-map-replay-open]": { click: () => clicks.push("open") },
+    '[data-native-replay-action="toggleReplay"]': { click: () => clicks.push("close") },
+    "[data-native-replay-panel]": panel,
+  }
+  installHostShortcuts({
+    root: {
+      ownerDocument: { addEventListener: (_n, f) => (keydown = f) },
+      querySelector: (selector) => controls[selector],
+    },
+    lifetime: { own() {} },
+  })
+  const press = () =>
+    keydown({ key: "r", target: { closest: () => null }, preventDefault() {} })
+  press()
+  panel.classList.delete("hidden")
+  press()
+  assert.deepEqual(clicks, ["open", "close"])
+})
+
 test("anomaly preference survives document reload and Points visibility without borrowing another user preference", async () => {
   const { fixture: host } = await import(
     "../../../spec/javascript/support/native_m6_host_fixture.mjs"

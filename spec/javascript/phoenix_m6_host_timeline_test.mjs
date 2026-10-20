@@ -263,8 +263,8 @@ test("native selected segments retain parent identity color and source endpoint 
 test("native segment row and map hover use the owned exact segment geometry and clear the previous row", async () => {
   const f = fixture({ tracksEnabled: true })
   const rows = [new Element(), new Element()]
-  f.nodes.set('[data-native-segment-id="19"]', rows[0])
-  f.nodes.set('[data-native-segment-id="20"]', rows[1])
+  f.nodes.set('.segment-leg[data-native-segment-id="19"]', rows[0])
+  f.nodes.set('.segment-leg[data-native-segment-id="20"]', rows[1])
   const track = {
     type: "Feature",
     geometry: {
@@ -333,6 +333,8 @@ test("native segment row and map hover use the owned exact segment geometry and 
     f.map.emit("mousemove", { point: { x: 30, y: 30 } })
     assert.equal(rows[0]["data-track-hovered"], "false")
     assert.equal(rows[1]["data-track-hovered"], "true")
+    assert.equal(rows[0].classList.contains("highlighted"), false)
+    assert.equal(rows[1].classList.contains("highlighted"), true)
     assert.deepEqual(
       f.sources.get("native-timeline-hover").data.geometry.coordinates,
       [
