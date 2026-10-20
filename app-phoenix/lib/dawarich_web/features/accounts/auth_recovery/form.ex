@@ -42,12 +42,12 @@ defmodule DawarichWeb.AuthRecovery.Form do
 
   defp text(assigns, key), do: t(assigns.locale, assigns.scope <> key, %{})
 
-  defp described(invalid, field, hint \\ nil),
-    do:
-      Enum.join(
-        Enum.reject([hint, if(field in invalid, do: "error_explanation")], &is_nil/1),
-        " "
-      )
+  defp described(invalid, field, hint \\ nil) do
+    case Enum.reject([hint, if(field in invalid, do: "error_explanation")], &is_nil/1) do
+      [] -> nil
+      ids -> Enum.join(ids, " ")
+    end
+  end
 
   defp config(:password_new),
     do:

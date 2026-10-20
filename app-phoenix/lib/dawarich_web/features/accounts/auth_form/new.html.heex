@@ -1,20 +1,15 @@
 <div class="hero min-h-content bg-base-200">
-  <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
-    <div class="text-center lg:text-left min-w-0 [overflow-wrap:anywhere]">
-      <h1 class="text-4xl sm:text-5xl font-bold text-base-content">
+  <div class="hero-content grid w-full my-10 gap-y-8 lg:grid-cols-[minmax(0,28rem)_24rem] lg:justify-center lg:gap-x-20">
+    <div class="text-center lg:text-left lg:self-end">
+      <h1 class="text-5xl font-bold text-base-content">
         {t(@locale, "devise.sessions.new.login_now", %{})}
       </h1>
-      <p class="py-6 text-base-content opacity-70">
+      <p class="pt-6 text-base-content opacity-70">
         {t(@locale, "devise.sessions.new.and_take_control_over_your_location_data", %{})}
       </p>
-      <ul class="space-y-3 mb-4">
-        <li :for={benefit <- ~w(import map stats privacy)}>
-          <strong>{t(@locale, "devise.sessions.new.benefits." <> benefit <> ".title", %{})}</strong>
-          <p>{t(@locale, "devise.sessions.new.benefits." <> benefit <> ".body", %{})}</p>
-        </li>
-      </ul>
+
     </div>
-    <div class="card flex-shrink-0 w-full max-w-sm min-w-0 shadow-2xl bg-base-100 px-5 py-5">
+    <div class="card flex-shrink-0 w-full max-w-sm mx-auto border border-base-content/10 bg-base-100 px-5 py-5 lg:col-start-2 lg:row-span-2 lg:self-center">
       <form
         :if={@email_password}
         class="new_user"
@@ -33,7 +28,7 @@
           )}</span></label><input
             autofocus="autofocus"
             autocomplete="email"
-            class="input input-bordered min-w-0 w-full"
+            class="input input-bordered"
             type="email"
             value={@email}
             name="user[email]"
@@ -47,7 +42,7 @@
             %{}
           )}</span></label><input
             autocomplete="current-password"
-            class="input input-bordered min-w-0 w-full"
+            class="input input-bordered"
             type="password"
             name="user[password]"
             id="user_password"
@@ -122,5 +117,6 @@
         <button type="submit" class="btn btn-primary w-full h-auto min-h-12 whitespace-normal">{provider.label}</button>
       </form>
     </div>
+    <DawarichWeb.AuthFeatures.list locale={@locale} kind="sign_in" />
   </div>
 </div>

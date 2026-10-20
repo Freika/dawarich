@@ -6,20 +6,17 @@
 />
 <div class="form-control">
   <label class="label" for="user_password"><span class="label-text">{text(assigns, "new_password")}</span></label>
-  <em id="password-hint" class="text-base-content opacity-60 text-sm">(12 {text(
-    assigns,
-    "characters_minimum"
-  )}</em>
   <input
     autofocus="autofocus"
     autocomplete="new-password"
-    class="input input-bordered w-full min-w-0"
+    class="input input-bordered w-full"
     type="password"
     name="user[password]"
     id="user_password"
     aria-invalid={if "password" in @invalid, do: "true"}
     aria-describedby={described(@invalid, "password", "password-hint")}
   />
+  <span id="password-hint" class="label-text-alt text-base-content/60 mt-1">{t(@locale, "devise.registrations.new.characters_minimum", %{"count" => 12})}</span>
 </div>
 <div class="form-control">
   <label class="label" for="user_password_confirmation"><span class="label-text">{text(
@@ -28,7 +25,7 @@
   )}</span></label>
   <input
     autocomplete="new-password"
-    class="input input-bordered w-full min-w-0"
+    class="input input-bordered w-full"
     type="password"
     name="user[password_confirmation]"
     id="user_password_confirmation"

@@ -1,18 +1,13 @@
 <div class="hero bg-base-200">
-  <div class="hero-content flex-col lg:flex-row-reverse w-full my-10 items-start gap-10">
-    <div class="text-center lg:text-left max-w-md min-w-0 [overflow-wrap:anywhere]">
+  <div class="hero-content grid w-full my-10 gap-y-8 lg:grid-cols-[minmax(0,28rem)_24rem] lg:justify-center lg:gap-x-20">
+    <div class="text-center lg:text-left lg:self-end">
       <h1 class="text-4xl font-bold text-base-content">{text(@locale, "almost_there")}</h1>
-      <p class="py-6 text-base-content/70">
+      <p class="pt-6 text-base-content/70">
         {text(@locale, "only_a_few_steps_left_until_you_get_control_over")}
       </p>
-      <ol class="list-decimal list-inside space-y-2 text-base-content/80">
-        <li :for={step <- ~w(account mobile_app import)}>
-          <strong>{text(@locale, "steps." <> step <> ".title")}</strong>
-          <p>{text(@locale, "steps." <> step <> ".body")}</p>
-        </li>
-      </ol>
+
     </div>
-    <div class="card flex-shrink-0 w-full max-w-sm min-w-0 shadow-lg bg-base-100 px-5 py-5">
+    <div class="card flex-shrink-0 w-full max-w-sm mx-auto border border-base-content/10 bg-base-100 px-5 py-5 lg:col-start-2 lg:row-span-2 lg:self-center">
       <form
         class="new_user"
         id="new_user"
@@ -48,9 +43,9 @@
             name="user[email]"
             value={@email}
             autocomplete="email"
-            autofocus
+            autofocus="autofocus"
             readonly={@invitation != nil}
-            class="input input-bordered w-full min-w-0"
+            class="input input-bordered w-full"
           />
         </div>
         <div class="form-control">
@@ -64,7 +59,7 @@
             name="user[password]"
             autocomplete="new-password"
             aria-describedby="password-hint"
-            class="input input-bordered w-full min-w-0"
+            class="input input-bordered w-full"
           />
           <span id="password-hint" class="label-text-alt text-base-content/60 mt-1">{DawarichWeb.Translate.t(
             @locale,
@@ -82,7 +77,7 @@
             id="user_password_confirmation"
             name="user[password_confirmation]"
             autocomplete="new-password"
-            class="input input-bordered w-full min-w-0"
+            class="input input-bordered w-full"
           />
         </div>
         <div class="form-control mt-6">
@@ -95,12 +90,13 @@
         </div>
       </form>
       <div class="mt-5 space-y-2 text-sm">
-        <a class="link link-hover text-base-content/70" href="/users/sign_in">{DawarichWeb.Translate.t(
+        <div><a class="link link-hover text-base-content/70" href="/users/sign_in">{DawarichWeb.Translate.t(
           @locale,
           "devise.shared.links.log_in",
           %{}
-        )}</a>
+        )}</a></div>
       </div>
     </div>
+    <DawarichWeb.AuthFeatures.list locale={@locale} kind="sign_up" />
   </div>
 </div>

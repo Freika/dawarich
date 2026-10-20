@@ -113,6 +113,22 @@ defmodule DawarichWeb.NativeAuthIntegrationTest do
            )
   end
 
+  test "recovery pages admit locale navigation through the standalone dispatcher", c do
+    for locale <- ~w(en de es fr pl ca zh),
+        path <-
+          ~w(/users/password/new /users/unlock/new /users/password/edit?reset_password_token=synthetic-reset) do
+      separator = if String.contains?(path, "?"), do: "&", else: "?"
+      conn = fetch(c.guest, path <> separator <> "locale=" <> locale)
+      assert conn.status == 200
+      assert conn.resp_body =~ ~s(lang="#{locale}")
+      assert_native(conn)
+    end
+
+    for query <- ~w(locale=invalid locale=en&locale=de locale%5Bnested%5D=en locale=%FF) do
+      assert fetch(c.guest, "/users/password/new?" <> query).status == 422
+    end
+  end
+
   test "every auth document and error response is Hotwire free with exactly one accessible label",
        c do
     for path <-

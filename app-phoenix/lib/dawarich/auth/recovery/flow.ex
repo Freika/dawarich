@@ -185,10 +185,10 @@ defmodule Dawarich.Auth.Recovery.Flow do
 
   defp parameters(params) when is_map(params) do
     allowed =
-      ~w(authenticity_token commit utf8 _method user[email] user[password] user[password_confirmation] user[reset_password_token] reset_password_token unlock_token)
+      ~w(locale authenticity_token commit utf8 _method user[email] user[password] user[password_confirmation] user[reset_password_token] reset_password_token unlock_token)
 
     if Enum.all?(params, fn {key, value} ->
-         key in allowed and
+         key in allowed and (key != "locale" or value in ~w(en de es fr pl ca zh)) and
            (is_nil(value) or
               (is_binary(value) and String.valid?(value) and not String.contains?(value, <<0>>)))
        end),

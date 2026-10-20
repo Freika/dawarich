@@ -3,6 +3,21 @@ defmodule DawarichWeb.AuthOtp.FormTest do
   alias Dawarich.Test.NativeAuthHTTP
   alias DawarichWeb.AuthOtp.Form
 
+  test "challenge layout matches Rails 1.16.0 in every locale" do
+    for locale <- ~w(en de es fr pl ca zh) do
+      html =
+        Form.page(%{__changed__: nil, locale: locale, rails_csrf_token: "CSRF"})
+        |> Phoenix.HTML.Safe.to_iodata()
+        |> IO.iodata_to_binary()
+        |> String.replace("data-auth-form", "data-native-auth-form")
+
+      source = File.read!("test/fixtures/auth/otp/challenge_#{locale}.html")
+      actual = Dawarich.Test.ParityHTML.normalize(html)
+      expected = Dawarich.Test.ParityHTML.normalize(source)
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+    end
+  end
+
   test "challenge form preserves source navigation fields labels and empty code" do
     assert Code.ensure_loaded?(Form)
 
