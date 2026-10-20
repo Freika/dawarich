@@ -13,6 +13,7 @@
   <div class="collapse-content space-y-2">
     <select
       class="select select-bordered select-sm py-0 w-full"
+      aria-label={p(@locale, "layout")}
       data-native-poster-layout
     ></select>
     <p class="text-xs opacity-60" data-native-poster-layout-dims></p>
@@ -175,6 +176,7 @@
         step="5"
         value="100"
         class="range range-primary range-xs"
+        aria-label={p(@locale, "track_opacity")}
         data-native-poster-opacity
       />
     </div>
@@ -193,6 +195,7 @@
         step="10"
         value="100"
         class="range range-primary range-xs"
+        aria-label={p(@locale, "track_width")}
         data-native-poster-width
       />
     </div>

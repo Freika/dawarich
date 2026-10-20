@@ -1,9 +1,16 @@
 defmodule DawarichWeb.NativeMapStudiosParityTest do
   use Dawarich.DataCase, async: true
   import Phoenix.ConnTest
-  alias Dawarich.Test.{ParityHTML, RailsUser}
+  alias Dawarich.Test.{NativeAdminUI, ParityHTML, RailsUser}
   @endpoint DawarichWeb.Endpoint
   @fixture "test/fixtures/map_ui/rails-1.16.0-studios.html"
+  @accessible_controls %{
+    "data-native-poster-date-start" => "Start date and time",
+    "data-native-poster-date-end" => "End date and time",
+    "data-native-poster-layout" => "Layout",
+    "data-native-poster-opacity" => "Track opacity",
+    "data-native-poster-width" => "Track width"
+  }
 
   setup do
     id = System.unique_integer([:positive])
@@ -25,7 +32,9 @@ defmodule DawarichWeb.NativeMapStudiosParityTest do
   for kind <- ~w(poster video) do
     test "the map #{kind} studio matches Rails 1.16.0", %{html: html} do
       name = unquote(kind) <> "-studio"
-      phoenix = ParityHTML.fragment(html, "#" <> name)
+      studio = html |> LazyHTML.from_document() |> LazyHTML.query("#" <> name)
+      assert NativeAdminUI.labels(LazyHTML.to_html(studio)) == []
+      phoenix = studio |> LazyHTML.to_tree() |> studio_accessibility() |> ParityHTML.normalize()
       phoenix = if unquote(kind) == "poster", do: poster_resilience(phoenix), else: phoenix
 
       rails =
@@ -58,6 +67,21 @@ defmodule DawarichWeb.NativeMapStudiosParityTest do
       assert phoenix == rails, ParityHTML.first_difference(phoenix, rails)
     end
   end
+
+  defp studio_accessibility(nodes) when is_list(nodes),
+    do: Enum.map(nodes, &studio_accessibility/1)
+
+  defp studio_accessibility({tag, attrs, children}) do
+    additions =
+      for {key, label} <- @accessible_controls, {^key, _} <- attrs do
+        assert {"aria-label", label} in attrs
+        {"aria-label", label}
+      end
+
+    {tag, attrs -- additions, studio_accessibility(children)}
+  end
+
+  defp studio_accessibility(text), do: text
 
   @poster_resilience %{
     "flex flex-wrap items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2 lg:flex-nowrap" =>

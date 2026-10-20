@@ -26,12 +26,14 @@
         <input
           type="datetime-local"
           class="input input-bordered input-sm"
+          aria-label={t(@locale, "shared.map.date_navigation_v2.start_date_and_time", %{})}
           data-native-poster-date-start
         />
         <span class="text-xs opacity-60">–</span>
         <input
           type="datetime-local"
           class="input input-bordered input-sm"
+          aria-label={t(@locale, "shared.map.date_navigation_v2.end_date_and_time", %{})}
           data-native-poster-date-end
         />
         <button type="button" class="btn btn-sm btn-primary" data-native-poster-load>
