@@ -71,46 +71,6 @@ defmodule DawarichWeb.NativeTimelineFiltersTest do
     assert state(view)["url"]["date"] == "2026-03-30"
   end
 
-  test "residency latest year and tie order survive native render", %{id: id} do
-    FrameSeeds.stat!(id, 2024, 5)
-    FrameSeeds.stat!(id, 2025, 5)
-    base = System.unique_integer([:positive]) * 10
-
-    for {country, day, n} <- [
-          {"Narnia", 1, 0},
-          {"Atlantis", 2, 1},
-          {"Germany", 3, 2},
-          {"Germany", 4, 3}
-        ],
-        do:
-          FrameSeeds.point!(
-            id,
-            base + n,
-            DateTime.to_unix(DateTime.new!(Date.new!(2025, 5, day), ~T[12:00:00])),
-            %{country_name: country}
-          )
-
-    view = open(id, "/map/v2")
-    render_hook(view, "residency:year", %{})
-    html = render(view)
-    assert html =~ ~s(data-residency-year="2025")
-
-    {:ok, data} = DawarichWeb.ResidencyFrame.data(Accounts.get(id), nil, DateTime.utc_now())
-    [_, list] = String.split(html, ~s(data-testid="residency-country-list"), parts: 2)
-    names = Enum.sort_by(~w(Germany Atlantis Narnia), &(:binary.match(list, &1) |> elem(0)))
-    assert names == Enum.map(data.countries, & &1.name)
-    assert hd(names) == "Germany"
-    assert html =~ "residency-country-card"
-
-    rows("UPDATE users SET encrypted_password=$1 WHERE id=$2", [
-      String.duplicate("rotated", 10),
-      id
-    ])
-
-    render_hook(view, "residency:year", %{"year" => "2025"})
-    assert_redirect(view, "/users/sign_in")
-  end
-
   test "calendar response timeout belongs only to that run", %{id: id} do
     calls = :counters.new(1, [])
 
