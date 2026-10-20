@@ -106,7 +106,7 @@ defmodule DawarichWeb.StatsLive.NativePage do
           DateTime.utc_now(),
           false,
           "data_window",
-          "stats_index"
+          if(socket.assigns.live_action == :month, do: "stats_month", else: "stats_index")
         )
 
       {:noreply, redirect(socket, external: url)}
@@ -167,7 +167,7 @@ defmodule DawarichWeb.StatsLive.NativePage do
   @impl true
   def render(assigns) do
     ~H"""
-    <main class="min-w-0 w-full my-5">
+    <main :if={@live_action != :month} class="min-w-0 w-full my-5">
       <h1 class="text-3xl font-bold break-words">{@page_title}</h1>
       <NativeParts.page
         :if={@data}
@@ -182,11 +182,6 @@ defmodule DawarichWeb.StatsLive.NativePage do
         class="btn btn-primary my-4 max-w-full whitespace-normal"
         phx-click="update"
       >{t(@locale, "stats.index.update_stats", %{})}</button>
-      <button
-        :if={@live_action == :month && @data && !@data.restricted && @data.data.stat}
-        class="btn whitespace-normal"
-        phx-click="open_share"
-      >{t(@locale, "stats.month.share", %{})}</button>
       <NativeParts.dialog
         :if={@data && @stats_dialog}
         dialog={@stats_dialog}
@@ -194,6 +189,19 @@ defmodule DawarichWeb.StatsLive.NativePage do
         locale={@locale}
       />
     </main>
+    <NativeParts.page
+      :if={@data && @live_action == :month}
+      data={@data}
+      locale={@locale}
+      mode={:month}
+      month_layer={@month_layer}
+    />
+    <NativeParts.dialog
+      :if={@data && @stats_dialog && @live_action == :month}
+      dialog={@stats_dialog}
+      data={@data}
+      locale={@locale}
+    />
     """
   end
 

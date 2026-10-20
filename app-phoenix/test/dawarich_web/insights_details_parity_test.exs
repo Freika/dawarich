@@ -28,6 +28,103 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
 
   @parts ~w(year_comparison activity_breakdown location_clusters monthly_digest travel_patterns movement_wellness)
 
+  test "Rails 1.16.0 insights details preserves card grid and chart containers" do
+    for request <- @corpus["requests"] do
+      query = request["path"] |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
+      user = Dawarich.Accounts.get(request["user_id"])
+      scope = Dawarich.Accounts.Scope.for_user(user, query["locale"] || "en")
+
+      {:ok, data} =
+        DawarichWeb.InsightsLive.NativePage.details(scope, {query, [self_hosted: false]})
+
+      html =
+        render_component(&DawarichWeb.InsightsLive.NativeParts.details/1,
+          data: data,
+          locale: scope.locale,
+          query: query,
+          path: "/insights/details"
+        )
+
+      rails = File.read!(Path.join(@dir, request["fixture"]))
+      actual = details_dom(html)
+      expected = details_dom(rails)
+
+      assert actual == expected,
+             request["fixture"] <> ": " <> ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  test "direct native Insights details preserves the source response without overview controls" do
+    request = hd(@corpus["requests"])
+    query = request["path"] |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
+    user = Dawarich.Accounts.get(request["user_id"])
+    scope = Dawarich.Accounts.Scope.for_user(user, "en")
+    {:ok, data} = Dawarich.Insights.Pages.overview(scope, query, self_hosted: true)
+
+    {:ok, details} =
+      DawarichWeb.InsightsLive.NativePage.details(scope, {query, [self_hosted: true]})
+
+    html =
+      render_component(&DawarichWeb.InsightsLive.NativeView.render/1,
+        data: data,
+        details: %{state: :ready, value: details},
+        residency: nil,
+        locale: "en",
+        query: query,
+        live_action: :details,
+        dialog: nil,
+        refresh_state: nil,
+        page_title: "Insights",
+        calendar_mode: "both",
+        calendar_country: nil
+      )
+
+    actual = details_dom(html)
+    expected = details_dom(File.read!(Path.join(@dir, request["fixture"])))
+    assert actual == expected, ParityHTML.first_difference(actual, expected)
+
+    loading =
+      render_component(&DawarichWeb.InsightsLive.NativeDirect.render/1,
+        data: data,
+        details: nil,
+        locale: "en",
+        query: query
+      )
+
+    assert loading
+           |> LazyHTML.from_fragment()
+           |> LazyHTML.query("#insights-details-loading[role=status]")
+           |> Enum.count() == 1
+  end
+
+  defp details_dom(html) do
+    html
+    |> Dawarich.Test.ChartkickHTML.without_charts()
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.to_tree()
+    |> details_nodes()
+    |> ParityHTML.normalize()
+  end
+
+  defp details_nodes(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &details_node/1)
+
+  defp details_node({"section", attrs, children}) do
+    assert Map.new(attrs)["id"] in ~w(insights-details-ready insights-details-pending)
+    assert Map.new(attrs)["class"] == "contents"
+    details_nodes(children)
+  end
+
+  defp details_node({"div", attrs, children}) do
+    if Map.new(attrs)["id"] == "chart-1" do
+      [{"div", Enum.reject(attrs, fn {key, _} -> key == "data-chart" end), []}]
+    else
+      [{"div", attrs, details_nodes(children)}]
+    end
+  end
+
+  defp details_node({tag, attrs, children}), do: [{tag, attrs, details_nodes(children)}]
+  defp details_node(other), do: [other]
+
   test "fresh and persisted activity preserve source corpus order" do
     for {state, order} <- [
           {"fresh", ~w(walking stationary flying)},
@@ -201,7 +298,7 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
         [raw] =
           html
           |> LazyHTML.from_document()
-          |> LazyHTML.query("#insights-monthly-chart")
+          |> LazyHTML.query("#chart-1")
           |> LazyHTML.attribute("data-chart")
 
         assert Jason.decode!(raw)["data"] ==

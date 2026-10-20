@@ -22,8 +22,8 @@ defmodule DawarichWeb.InsightsLive.NativeMonthly do
     <%= if @digest do %>
       <div class="card bg-base-200">
         <div class="card-body p-5">
-          <div class="flex flex-wrap min-w-0 justify-between items-center">
-            <h2 class="card-title text-lg flex flex-wrap min-w-0 items-center gap-2">
+          <div class="flex justify-between items-center">
+            <h2 class="card-title text-lg flex items-center gap-2">
               <Icon.icon name="calendar" class="w-5 h-5 text-primary" /> {MonthFormat.title(
                 @locale,
                 @digest
@@ -87,7 +87,8 @@ defmodule DawarichWeb.InsightsLive.NativeMonthly do
           <div class="mt-4">
             <div class="text-sm font-medium mb-2">{tr(@locale, "weekly_pattern")}</div><div class="h-32">
               <NativeChart.chart
-                id="insights-monthly-chart"
+                id="chart-1"
+                rails
                 height="120px"
                 label={tr(@locale, "weekly_pattern")}
                 revision={@data.revision}
@@ -172,7 +173,7 @@ defmodule DawarichWeb.InsightsLive.NativeMonthly do
     <% else %>
       <div :if={@data.available_months != []} class="card bg-base-200">
         <div class="card-body p-5">
-          <h2 class="card-title text-lg flex flex-wrap min-w-0 items-center gap-2">
+          <h2 class="card-title text-lg flex items-center gap-2">
             <Icon.icon name="calendar" class="w-5 h-5 text-primary" /> {tr(@locale, "monthly_digest")}
           </h2>
           <p class="text-base-content/60">{tr(@locale, "select_a_month_to_view_its_digest")}</p>

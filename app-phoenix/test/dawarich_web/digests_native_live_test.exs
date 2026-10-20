@@ -42,7 +42,7 @@ defmodule DawarichWeb.DigestsNativeLiveTest do
     refute Enum.any?(sql, &String.contains?(&1, "time_spent_by_location"))
     refute Map.has_key?(data, :monthly_distances)
     {:ok, view, _} = live(NativeAdminUI.conn(user), "/digests/2024")
-    assert has_element?(view, "#digest-upgrade")
+    assert has_element?(view, "#native-digest-upgrade")
     refute has_element?(view, "[phx-hook=NativeChart]")
 
     refute :erlang.term_to_binary(:sys.get_state(view.pid).socket.assigns) =~
@@ -66,7 +66,7 @@ defmodule DawarichWeb.DigestsNativeLiveTest do
       [raw] =
         html
         |> LazyHTML.from_document()
-        |> LazyHTML.query("#digest-monthly-chart[phx-hook=NativeChart]")
+        |> LazyHTML.query("#chart-1[phx-hook=NativeChart]")
         |> LazyHTML.attribute("data-chart")
 
       assert Jason.decode!(raw)["data"] == [["Mär", 38], ["Apr", 12]]

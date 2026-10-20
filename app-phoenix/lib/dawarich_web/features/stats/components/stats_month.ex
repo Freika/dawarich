@@ -136,7 +136,11 @@ defmodule DawarichWeb.StatsMonth do
     </div>
     <.places_card locale={@locale} toponyms={@stat.toponyms} />
     <div class="flex flex-wrap gap-4 mt-8 justify-center">
-      <a href={"/stats/#{@year}"} class="btn btn-outline">{t(@locale, "stats.month.back_to", %{})} {@year}</a>
+      <a href={"/insights?year=#{@year}"} class="btn btn-outline">{t(
+        @locale,
+        "stats.month.back_to",
+        %{}
+      )} {@year}</a>
       <a
         :if={!@sharing_allowed}
         class="btn btn-primary h-auto whitespace-normal"

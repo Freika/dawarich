@@ -28,11 +28,11 @@ defmodule DawarichWeb.Sync1160TripsLiveTest do
 
       {:ok, view, html} = live(conn)
       refute html =~ "translation_missing"
-      assert has_element?(view, "#trip-filters input[name='filters[q]']")
-      refute has_element?(view, "#trip-filters[phx-change]")
+      assert has_element?(view, "#native-trip-filters input[name='q']")
+      refute has_element?(view, "#native-trip-filters[phx-change]")
 
       view
-      |> form("#trip-filters", %{"filters" => %{"q" => " Beach ", "sort" => "name"}})
+      |> form("#native-trip-filters", %{"q" => " Beach ", "sort" => "name"})
       |> render_submit()
 
       assert_patch(view, "/trips?q=Beach&sort=name")

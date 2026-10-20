@@ -26,6 +26,7 @@ defmodule DawarichWeb.NativeTripResource do
     socket
     |> assign(
       page_title: nil,
+      trip_confirmation: nil,
       selected_day: nil,
       note_editor: nil,
       trip_layers: %{},

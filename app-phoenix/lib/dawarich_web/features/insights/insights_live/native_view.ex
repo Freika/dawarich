@@ -5,14 +5,15 @@ defmodule DawarichWeb.InsightsLive.NativeView do
 
   def render(assigns) do
     ~H"""
-    <main class="w-full min-w-0 my-5">
+    <DawarichWeb.InsightsLive.NativeDirect.render :if={@live_action == :details} {assigns} />
+    <main :if={@live_action != :details} class="w-full min-w-0 my-5">
       <h1 class="text-3xl font-bold break-words">{@page_title}</h1>
       <NativeParts.overview
         :if={@data}
         data={@data}
         query={@query}
         locale={@locale}
-        path={if(@live_action == :details, do: "/insights/details", else: "/insights")}
+        path="/insights"
       />
       <p
         :if={@data && (@data.year_locked || @data.restricted)}
@@ -34,7 +35,7 @@ defmodule DawarichWeb.InsightsLive.NativeView do
         read={@details}
         locale={@locale}
         query={@query}
-        path={if(@live_action == :details, do: "/insights/details", else: "/insights")}
+        path="/insights"
       />
       <NativeParts.read
         :if={@residency}
@@ -46,7 +47,7 @@ defmodule DawarichWeb.InsightsLive.NativeView do
         read={@residency}
         locale={@locale}
         query={@query}
-        path={if(@live_action == :details, do: "/insights/details", else: "/insights")}
+        path="/insights"
       />
       <DawarichWeb.StatsLive.NativeParts.dialog
         :if={@dialog && @data && @data.all_time}

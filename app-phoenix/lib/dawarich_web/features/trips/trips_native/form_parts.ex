@@ -10,6 +10,7 @@ defmodule DawarichWeb.TripsNative.FormParts do
   attr :status, :atom, required: true
   attr :rich_description_sgid, :string, default: nil
   attr :locale, :string, required: true
+  attr :preview, :map, default: %{}
 
   def trip_form(assigns) do
     assigns =
@@ -22,14 +23,17 @@ defmodule DawarichWeb.TripsNative.FormParts do
       )
 
     ~H"""
-    <.form
-      for={%{}}
-      as={:trip}
-      id="trip-form"
+    <form
+      action={if @trip.id, do: "/trips/#{@trip.id}", else: "/trips"}
+      accept-charset="UTF-8"
+      method="post"
+      id="native-trip-form"
       phx-change="validate"
       phx-submit="save"
       class="contents"
     >
+      <input :if={@trip.id} type="hidden" name="_method" value="patch" />
+      <input type="hidden" name="authenticity_token" value="" />
       <div
         :if={@errors != []}
         id="error_explanation"
@@ -52,8 +56,13 @@ defmodule DawarichWeb.TripsNative.FormParts do
       <div class="flex flex-col gap-6 lg:flex-row">
         <div class="w-full lg:w-1/2">
           <div
-            class="h-[40vh] w-full overflow-hidden rounded-lg bg-base-200 lg:h-full lg:min-h-[24rem]"
-            data-trip-preview-host={@trip.id || "new"}
+            class="h-[40vh] w-full overflow-hidden rounded-lg lg:h-full lg:min-h-[24rem]"
+            data-native-trip-preview-host={@trip.id || "new"}
+            id="native-trip-form-preview"
+            phx-hook="MapPreview"
+            phx-update="ignore"
+            data-map-config={Jason.encode!(@preview)}
+            data-map-state="loading"
           >
           </div>
         </div>
@@ -80,24 +89,27 @@ defmodule DawarichWeb.TripsNative.FormParts do
           <div class="form-control">
             <label class="mb-1.5 text-sm font-medium" for="trip_name">{label(@locale, "name")}</label>
             <input
-              class={["input input-bordered w-full read-only:bg-base-200", invalid(@errors, "name")]}
+              class={[
+                "input input-bordered w-full read-only:bg-base-200 read-only:text-base-content/60",
+                invalid(@errors, "name")
+              ]}
               type="text"
               readonly={@trip.managed}
-              value={@values["name"]}
+              value={if @values["name"] not in [nil, ""], do: @values["name"]}
               name="trip[name]"
               id="trip_name"
               aria-invalid={invalid?(@errors, "name") && "true"}
             />
           </div>
           <div class="flex flex-col gap-4 sm:flex-row lg:flex-col xl:flex-row">
-            <div :for={field <- ~w(started_at ended_at)} class="form-control w-full min-w-0">
+            <div :for={field <- ~w(started_at ended_at)} class="form-control w-full">
               <label class="mb-1.5 text-sm font-medium" for={"trip_#{field}"}>{label(@locale, field)}</label>
               <input
                 class={[
-                  "input input-bordered w-full min-w-0 tabular-nums read-only:bg-base-200",
+                  "input input-bordered w-full min-w-0 tabular-nums read-only:bg-base-200 read-only:text-base-content/60",
                   invalid(@errors, field)
                 ]}
-                value={@values[field]}
+                value={if @values[field] not in [nil, ""], do: @values[field]}
                 type="datetime-local"
                 readonly={@trip.managed}
                 name={"trip[#{field}]"}
@@ -107,11 +119,12 @@ defmodule DawarichWeb.TripsNative.FormParts do
             </div>
           </div>
           <div class="form-control">
-            <span class="mb-1.5 text-sm font-medium" id="trip-description-label">
+            <label class="mb-1.5 text-sm font-medium" for="trip_description">
               {label(@locale, "description")}
-            </span>
+            </label>
             <DawarichWeb.TripRichText.editor
               id="trip-description"
+              editor_id="trip_description"
               name="trip[rich_description_sgid]"
               value={@rich_description_sgid}
               label={label(@locale, "description")}
@@ -119,7 +132,13 @@ defmodule DawarichWeb.TripsNative.FormParts do
             />
           </div>
           <div class="flex flex-wrap items-center gap-2 pt-1">
-            <button type="submit" class="btn btn-primary" phx-disable-with={@submit}>{@submit}</button>
+            <input
+              type="submit"
+              name="commit"
+              value={@submit}
+              class="btn btn-primary"
+              phx-disable-with={@submit}
+            />
             <.link
               class="btn btn-ghost"
               navigate={if @trip.id, do: "/trips/#{@trip.id}", else: "/trips"}
@@ -129,7 +148,7 @@ defmodule DawarichWeb.TripsNative.FormParts do
           </div>
         </div>
       </div>
-    </.form>
+    </form>
     """
   end
 

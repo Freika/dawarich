@@ -7,6 +7,7 @@ defmodule DawarichWeb.TripsLive.NativeMap do
     do:
       {:ok,
        assign(socket,
+         trip_confirmation: nil,
          selected_day: nil,
          note_editor: nil,
          expanded_days: false,
@@ -18,14 +19,26 @@ defmodule DawarichWeb.TripsLive.NativeMap do
     do:
       {:ok,
        socket
-       |> assign(selected_day: nil, note_editor: nil, expanded_days: false, trip_layers: %{})
+       |> assign(
+         trip_confirmation: nil,
+         selected_day: nil,
+         note_editor: nil,
+         expanded_days: false,
+         trip_layers: %{}
+       )
        |> DawarichWeb.NativePosterGallery.mount()
        |> DawarichWeb.NativeTripResource.attach()
        |> DawarichWeb.NativeMapChrome.load(), layout: false}
 
   def handle_params(%{"id" => id}, _, socket) do
     socket =
-      assign(socket, selected_day: nil, note_editor: nil, expanded_days: false, trip_layers: %{})
+      assign(socket,
+        trip_confirmation: nil,
+        selected_day: nil,
+        note_editor: nil,
+        expanded_days: false,
+        trip_layers: %{}
+      )
 
     case DawarichWeb.NativeTripState.load(socket, DawarichWeb.NativeTripState.identity(id)) do
       {:ok, socket} ->
@@ -43,7 +56,17 @@ defmodule DawarichWeb.TripsLive.NativeMap do
   end
 
   def handle_event(event, payload, socket)
-      when event in ~w(trip:delete trip:recalculate trip:export),
+      when event in ~w(trip:delete trip:recalculate trip:note:delete),
+      do: DawarichWeb.NativeTripConfirmation.open(event, payload, socket)
+
+  def handle_event("trip:confirmation:accept", _, socket),
+    do: DawarichWeb.NativeTripConfirmation.accept(socket)
+
+  def handle_event("trip:confirmation:cancel", _, socket),
+    do: DawarichWeb.NativeTripConfirmation.cancel(socket)
+
+  def handle_event(event, payload, socket)
+      when event == "trip:export",
       do: DawarichWeb.NativeTripEffects.handle_event(event, payload, socket)
 
   def handle_event(event, payload, socket)
@@ -107,8 +130,8 @@ defmodule DawarichWeb.TripsLive.NativeMap do
     ~H"""
     <DawarichWeb.NativeMapChrome.header {assigns} />
     <DawarichWeb.Chrome.flash locale={@locale} flash={@flash} native={true} />
-    <main :if={@page} id="trip-shell" data-native-map-root class="w-full min-w-0 p-4">
-      <div class="flex min-w-0 flex-col gap-6 lg:flex-row lg:h-[calc(100dvh-9.75rem)]">
+    <main :if={@page} id="trip-shell" data-native-map-root class="container mx-auto px-4 my-5">
+      <div class="flex flex-col lg:flex-row gap-6 lg:h-[calc(100dvh-9.75rem)]">
         <div class="w-full min-w-0 lg:w-3/5 h-[50vh] lg:h-full shrink-0">
           <DawarichWeb.NativeTripMapPanel.panel
             config={@page.config}
@@ -152,6 +175,7 @@ defmodule DawarichWeb.TripsLive.NativeMap do
         fixed_range_label={@page.range_label}
       />
     </main>
+    <DawarichWeb.NativeTripConfirmation.dialog confirmation={@trip_confirmation} locale={@locale} />
     <p :if={@map_error} role="alert">{to_string(@map_error)}</p>
     """
   end
