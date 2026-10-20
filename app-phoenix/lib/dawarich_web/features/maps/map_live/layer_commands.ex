@@ -14,8 +14,9 @@ defmodule DawarichWeb.MapLive.LayerCommands do
     {:noreply, socket |> assign(:map_config, config) |> push_event("map:config", config)}
   end
 
-  def handle_event("map:flights", _params, socket) do
-    enabled = Map.get(socket.assigns.map_config, "flightsPreferred", true) != true
+  def handle_event("map:flights", %{"enabled" => value}, socket)
+      when value in [true, false, "true", "false"] do
+    enabled = value in [true, "true"]
 
     config =
       socket.assigns.map_config
@@ -23,6 +24,11 @@ defmodule DawarichWeb.MapLive.LayerCommands do
       |> Map.put("flightsEnabled", enabled and socket.assigns.map_config["airtrailConfigured"])
 
     {:noreply, socket |> assign(:map_config, config) |> push_event("map:config", config)}
+  end
+
+  def handle_event("map:flights", params, socket) when not is_map_key(params, "enabled") do
+    enabled = Map.get(socket.assigns.map_config, "flightsPreferred", true) != true
+    handle_event("map:flights", %{"enabled" => enabled}, socket)
   end
 
   def handle_event("map:anomalies", %{"enabled" => value}, socket)

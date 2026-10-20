@@ -6,7 +6,7 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
   @http_chrome_cap 2 * 1024
   @places_cap 2 * 1024
-  @m6_inputs ~w(js/map/hooks/map_state.js js/map/hooks/map.js js/map/hooks/family.js js/map/hooks/map_preview.js js/onboarding/hook.js js/poster/hook.js js/map/hooks/public_map.js js/map/hooks/trip.js js/video/hook.js js/onboarding/dialog.js)
+  @m6_inputs ~w(js/hooks/layer_toggle.js js/map/hooks/map_state.js js/map/hooks/map.js js/map/hooks/family.js js/map/hooks/map_preview.js js/onboarding/hook.js js/poster/hook.js js/map/hooks/public_map.js js/map/hooks/trip.js js/video/hook.js js/onboarding/dialog.js)
   @other_slack 1024
   @chrome_inputs ~w(js/analytics_events.js js/hooks/achievement_unlocks.js js/hooks/changelog_widget.js)
   @chrome_base_bytes 6_707 + 548
@@ -102,7 +102,7 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
   test "M6 hooks retain an independent eager byte cap", %{tmp_dir: dir} do
     bytes = dir |> build!() |> app_input_bytes() |> Map.take(@m6_inputs) |> Map.values()
-    assert Enum.sum(bytes) <= 14 * 1024 + 512
+    assert Enum.sum(bytes) <= 15 * 1024 + 512
   end
 
   test "the native bundle includes LiveView and no Hotwire module", %{tmp_dir: dir} do
