@@ -28,7 +28,7 @@ defmodule DawarichWeb.SettingsLive.TrekTrips do
 
   @impl true
   def handle_event("import", params, socket) do
-    ids = get_in(params, ["selection", "trip_ids"]) || []
+    ids = params["trip_ids"] || get_in(params, ["selection", "trip_ids"]) || []
 
     case Trek.import_trips(socket.assigns.current_scope, socket.assigns.source.id, ids) do
       {:ok, result} ->

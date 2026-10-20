@@ -202,20 +202,15 @@ defmodule DawarichWeb.AccountProfile do
             </.field_error>
           </div>
           <div class="form-control mt-6">
-            <button type="submit" class="btn btn-primary w-full sm:w-auto">
-              {t(@locale, "devise.registrations.edit.save_changes", %{})}
-            </button>
+            <input
+              type="submit"
+              name="commit"
+              class="btn btn-primary w-full sm:w-auto"
+              value={t(@locale, "devise.registrations.edit.save_changes", %{})}
+            />
           </div>
         </form>
-        <div class="mt-5 space-y-2 text-sm">
-          <div>
-            <a class="link link-hover text-base-content/70" href="/users/unlock/new">{t(
-              @locale,
-              "devise.shared.links.didn_t_receive_unlock_instructions",
-              %{}
-            )}</a>
-          </div>
-        </div>
+        <div class="mt-5 space-y-2 text-sm"></div>
       </div>
     </div>
     """

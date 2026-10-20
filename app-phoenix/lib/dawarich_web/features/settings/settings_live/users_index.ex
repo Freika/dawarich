@@ -2,7 +2,6 @@ defmodule DawarichWeb.SettingsLive.UsersIndex do
   @moduledoc false
   use DawarichWeb, :live_view
   import DawarichWeb.ListParts, only: [page_header: 1]
-  import DawarichWeb.CoreComponents, only: [input: 1]
   alias Dawarich.Admin.Users
   alias DawarichWeb.{AdminUI, AdminUserDialogs, AdminUsersTable, Paginator, SettingsParts}
   alias Phoenix.LiveView.JS

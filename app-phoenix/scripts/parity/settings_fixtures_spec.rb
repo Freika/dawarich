@@ -798,8 +798,10 @@ skip_family_sync: true)
       doc.at_css('body > div.container > div.w-full > div.flex')&.inner_html
     end
 
-    def two_factor_case(name, id)
+    def two_factor_case(name, id, self_hosted: true)
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
       actor = two_factor_actor(id)
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
       client = two_factor_browser(actor)
       suffix = name[/_(de|es|fr|pl|ca|zh)$/, 1]
       kind = suffix ? name.delete_suffix("_#{suffix}") : name
@@ -994,6 +996,19 @@ skip_family_sync: true)
         html[name] = page if page
       end
       { requests: requests, otp: two_factor_otp, exclusions: two_factor_exclusions, html: html }
+    end
+
+    it 'records D5 Cloud two factor management pages' do
+      travel_to now do
+        rows = %w[disabled enabled setup verify_bad verify_good disabled_de enabled_de setup_de verify_bad_de verify_good_de].each_with_index.map do |name, index|
+          row, html = two_factor_case(name, 74_800 + index, self_hosted: false)
+          expect(row['status']).to eq(name.start_with?('verify_bad') ? 422 : 200)
+          row['self_hosted'] = false
+          two_factor_fixture("cloud/#{name}.html", html, json: false)
+          row
+        end
+        two_factor_fixture('cloud/requests.json', rows)
+      end
     end
 
     it 'records A11c review blank secret behavior' do
@@ -1628,6 +1643,16 @@ skip_family_sync: true)
           hint = I18n.t('settings.visits.redetect_panel.on_the_lite_plan_re_detection_covers_your_visible_12')
           expect(response.body).to include(hint)
         end
+        [[true, 'self_hosted_en', 'en', :pro], [true, 'self_hosted_de', 'de', :pro],
+         [false, 'cloud_de', 'de', :pro], [false, 'lite_de', 'de', :lite]].each_with_index do |(self_hosted, name, locale, plan), index|
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
+          translated = a8_settings_user(8842 + index, plan:, settings: { 'locale' => locale })
+          a8_settings_capture(name, translated, :get, '/settings/visits')
+        end
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        translated_cooldown = a8_settings_user(8846, settings: { 'locale' => 'de' })
+        translated_cooldown.update_columns(visits_redetected_at: now - 3599)
+        a8_settings_capture('cooldown_recent_de', translated_cooldown.reload, :get, '/settings/visits')
         a8_settings_capture('signed_out', nil, :get, '/settings/visits', status: 302) do
           expect(response).to redirect_to('/users/sign_in')
         end
@@ -1807,6 +1832,8 @@ skip_family_sync: true)
     allow_any_instance_of(Supporter::VerifyEmail).to receive(:call).and_return(supporter)
     allow_any_instance_of(Supporter::VerifyGithubUsername).to receive(:call).and_return(supporter)
     allow_any_instance_of(UserHelper).to receive(:settings_time_zone_options).and_return(zones)
+    return if ENV['D5_SETTINGS_ONLY'] == '1' && path.start_with?('/insights')
+
     sign_in user
     get path
     expect(response).to have_http_status(:ok)
@@ -1839,6 +1866,8 @@ skip_family_sync: true)
 
     travel_to now do
       capture('general_en', member(5321), '/settings/general')
+      capture('general_de', member(5327, settings: { 'locale' => 'de' }), '/settings/general')
+      capture('general_cloud_de', member(5328, settings: { 'locale' => 'de' }), '/settings/general', self_hosted: false)
       capture('general_supporter_en',
               member(5322, consent: :granted, settings: { 'supporter_email' => 'a5s3-fan@dawarich.test' }),
               '/settings/general', supporter: { supporter: true, platform: 'patreon' })
@@ -1872,6 +1901,16 @@ skip_family_sync: true)
       end
       capture('integrations_default_en', connected, '/settings/integrations')
       capture('integrations_unknown_en', connected, '/settings/integrations?service=geocoding')
+      connected.update_columns(settings: connected.settings.merge('locale' => 'de'))
+      connected.reload
+      %w[immich photoprism airtrail teslamate trek].each do |service|
+        capture("integrations_#{service}_de", connected, "/settings/integrations?service=#{service}")
+      end
+      capture('integrations_cloud_de', connected, '/settings/integrations', self_hosted: false)
+      capture('integrations_lite_de', member(5315, plan: :lite, settings: { 'locale' => 'de' }),
+              '/settings/integrations', self_hosted: false)
+      capture('integrations_cloud_oauth_de', member(5316, provider: 'github', settings: { 'locale' => 'de' }),
+              '/settings/integrations', self_hosted: false)
       admin = member(5312, admin: true, settings: { 'airtrail_url' => 'https://airtrail.a5s3.test',
                                                     'airtrail_last_synced_at' => 'not a time' })
       capture('integrations_admin_en', admin, '/settings/integrations')
@@ -1890,6 +1929,28 @@ skip_family_sync: true)
       capture('account_pending_en', member(5336, status: :pending_payment), '/users/edit', self_hosted: false)
       capture('account_expired_en', member(5337, active_until: now - 2.days), '/users/edit', self_hosted: false)
       capture('account_cloud_oauth_en', member(5338, provider: 'google_oauth2'), '/users/edit', self_hosted: false)
+
+      capture('account_de', member(5339, settings: { 'locale' => 'de' }), '/users/edit')
+      capture('account_cloud_de', member(5340, settings: { 'locale' => 'de' }), '/users/edit', self_hosted: false)
+      capture('account_trial_de', member(5341, status: :trial, active_until: now + 5.days,
+                                      settings: { 'locale' => 'de' }), '/users/edit', self_hosted: false)
+      trek_user = member(5342)
+      source(53_421, trek_user, 'https://trek-selection.example.invalid')
+      trek_source = TripSource.find(53_421)
+      trips = [
+        { 'id' => 'dated', 'title' => 'Synthetic journey', 'start_date' => '2026-09-01', 'end_date' => '2026-09-03' },
+        { 'id' => 'archived', 'title' => 'Archived journey', 'archived' => true,
+          'start_date' => '2026-08-01', 'end_date' => '2026-08-02' },
+        { 'id' => 'undated', 'title' => '' }
+      ]
+      allow_any_instance_of(Trek::Client).to receive(:trips).and_return(trips)
+      %w[en de].each do |locale|
+        trek_user.update_columns(settings: trek_user.settings.merge('locale' => locale))
+        trek_user.reload
+        capture("trek_selection_#{locale}", trek_user, "/settings/trek_sources/#{trek_source.id}/select_trips")
+        path = fixtures.join("settings/trek_selection_#{locale}.json")
+        write_json(path, JSON.parse(path.read).merge('remote_trips' => trips, 'selected' => []))
+      end
 
       reader = member(5301)
       stat(53_011, reader, 2024, 3, 38_400, daily_distance: daily(2024, 3, { 5 => 10_000, 6 => 5_400, 7 => 14_000,

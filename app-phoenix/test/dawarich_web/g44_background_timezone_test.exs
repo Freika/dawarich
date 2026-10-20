@@ -56,7 +56,7 @@ defmodule DawarichWeb.G44BackgroundTimezoneTest do
        c do
     before = Accounts.settings(c.actor.id)
     saved = toggle(c.actor)
-    assert has_element?(saved, "#visits-toggle", "Enable")
+    assert has_element?(saved, "#native-visits-toggle", "Enable")
 
     assert Accounts.settings(c.actor.id) ==
              UserSettings.safe(before, %{"TIME_ZONE" => "UTC"})
@@ -68,9 +68,9 @@ defmodule DawarichWeb.G44BackgroundTimezoneTest do
            ) == [[0, true], [0, true]]
 
     assert [[8, false], [9, false]] == jobs(c.actor.id)
-    saved |> element("#visits-toggle") |> render_click()
+    saved |> element("#native-visits-toggle") |> render_click()
     saved |> element("#confirm-visits") |> render_click()
-    assert has_element?(saved, "#visits-toggle", "Disable")
+    assert has_element?(saved, "#native-visits-toggle", "Disable")
     assert Accounts.settings(c.actor.id)["visits_suggestions_enabled"] == "true"
     assert [[8, false], [9, false]] == jobs(c.actor.id)
   end
@@ -106,7 +106,7 @@ defmodule DawarichWeb.G44BackgroundTimezoneTest do
   defp toggle(actor) do
     conn = RailsUser.signed_in(actor.id) |> RailsUser.connecting_as(actor.id)
     {:ok, view, _} = live(conn, "/settings/background_jobs")
-    view |> element("#visits-toggle") |> render_click()
+    view |> element("#native-visits-toggle") |> render_click()
     view |> element("#confirm-visits") |> render_click()
     view
   end

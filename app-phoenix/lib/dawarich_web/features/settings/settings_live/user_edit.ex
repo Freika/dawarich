@@ -1,7 +1,6 @@
 defmodule DawarichWeb.SettingsLive.UserEdit do
   @moduledoc false
   use DawarichWeb, :live_view
-  import DawarichWeb.CoreComponents, only: [input: 1]
   alias Dawarich.{Accounts, Admin.Access, Admin.Users}
   alias DawarichWeb.{AdminUI, SettingsParts}
   @statuses ~w(inactive active trial pending_payment)

@@ -20,7 +20,7 @@ defmodule DawarichWeb.AdminUsersTable do
         </tr>
       </thead>
       <tbody>
-        <tr :for={user <- @rows} data-user-id={user.id}>
+        <tr :for={user <- @rows} data-native-user-id={user.id}>
           <td>
             <div>
               <.link

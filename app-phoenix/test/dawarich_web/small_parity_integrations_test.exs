@@ -167,7 +167,7 @@ defmodule DawarichWeb.SmallParityIntegrationsTest do
 
       html =
         view
-        |> form("#integration-settings")
+        |> form("#native-integration-settings")
         |> render_submit(%{
           "settings" => %{"immich_url" => url, "immich_api_key" => "synthetic-immich-key"},
           "refresh_photos_cache" => "1"

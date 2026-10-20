@@ -153,6 +153,8 @@ defmodule DawarichWeb.SettingsParts do
   attr :supporter, :boolean, required: true
   attr :platform, :string, default: nil
 
+  attr :rails_csrf_token, :string, default: nil
+
   def supporter_card(assigns), do: DawarichWeb.Components.SupporterCard.card(assigns)
 
   attr :locale, :string, required: true

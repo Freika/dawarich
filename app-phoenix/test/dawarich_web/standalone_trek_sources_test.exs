@@ -63,7 +63,7 @@ defmodule DawarichWeb.StandaloneTrekSourcesTest do
     {:ok, _view, html} = live(conn)
     doc = LazyHTML.from_document(html)
 
-    assert LazyHTML.query(doc, "#trek-trips[phx-submit=import]") |> Enum.count() == 1
+    assert LazyHTML.query(doc, "#native-trek-trips[phx-submit=import]") |> Enum.count() == 1
 
     assert LazyHTML.query(doc, "input[value=selected][checked]") |> Enum.count() == 1
     assert LazyHTML.query(doc, "input[disabled]") |> Enum.count() == 2

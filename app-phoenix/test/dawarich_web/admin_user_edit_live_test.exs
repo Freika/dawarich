@@ -87,7 +87,12 @@ defmodule DawarichWeb.AdminUserEditLiveTest do
              ) == false
 
       assert String.contains?(NativeAdminUI.html(view), "synthetic-edit-password") == false
-      assert has_element?(view, "input[type=password][value='']")
+
+      assert has_element?(
+               view,
+               "input[type=password]:not([value]), input[type=password][value='']"
+             )
+
       refute has_element?(view, "form.edit_user[phx-change]")
       assert :sys.get_state(view.pid).socket.assigns.form_version > before
       assert has_element?(view, "input[name='user[email]'][value='#{email}']")
