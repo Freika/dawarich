@@ -1,12 +1,12 @@
 # D2 page parity implementation
 
-Status: partial implementation; remaining page coverage and browser/visual acceptance pending. Updated 2026-10-20.
+Status: partial implementation; remaining page coverage and visual acceptance pending. Updated 2026-10-20.
 
 The trips index, new/edit forms, trip-detail content column, insights details grid, monthly statistics, digest index/review and public digest content have named normalized DOM comparisons in the existing parity test files. They use the existing Rails request recorders and external E2E fixture corpus. Trip recordings include German, filtering, no matches, empty accounts, pagination and new/edit forms. Month and digest recordings retain the existing locale and plan variants. Trip content comparisons cover six source scenarios with days, notes, descriptions, units and time zones. Direct Insights details renders its own response rather than the overview controls; restricted reads retain the six source locked cards and native upgrade actions.
 
 Rails 1.16.0 redirects `/stats` and `/stats/:year` to Insights. Their historical fixtures remain data-contract evidence. The focused stats recorder refreshes month, private digest and public digest pages independently rather than replacing old index/year HTML with redirect bodies. Public digest comparisons cover the content; shared public document chrome belongs to D6.
 
-Native forms retain LiveView validation and signed rich-description uploads. The description label targets the native Trix element, using Rails' editor class. The existing lazy MapPreview hook renders the original owned trip or plan in edit forms and refreshes a cookie-scoped date range after date changes, resolved in the user's timezone. Filters retain the Rails field names and presentation; pagination retains normalized filters plus `locale` and `view`, and an out-of-range page retains the no-match state. Credential-shaped unknown parameters remain excluded.
+Native forms retain LiveView validation and signed rich-description uploads. The description label targets the native Trix element, using Rails' editor class. The existing lazy MapPreview hook renders the original owned trip or plan in edit forms and refreshes a cookie-scoped date range after date changes, resolved in the user's timezone and the form's configured fallback when that setting is blank. Filters retain the Rails field names and presentation; pagination retains normalized filters plus `locale` and `view`, and an out-of-range page retains the no-match state. Credential-shaped unknown parameters remain excluded.
 
 Digest generation menus follow Rails' active status check; command authorization remains independently enforced. Trip deletion, recalculation and note deletion wait for native confirmation. Cancel has no effect; acceptance uses the existing scoped command and re-admission. Escape, initial focus containment and focus return belong to the native dialog.
 
@@ -16,6 +16,6 @@ The explicit editor, readiness, chart, map-reader, sharing and generation wiring
 
 The controller's D2 report records assertion RED, GREEN, named mutation and restored GREEN evidence. Browser specs retain source values, commands and ownership checks while using the current form, chart and icon-control identities. Local test and discovery results are distinct from browser execution or pixel acceptance. The common track brief explicitly authorizes the Mac mini runner and private-ref transfer; it is the required browser acceptance route.
 
-Remaining family work includes complete trip-detail document/map/state coverage, managed/validation form DOM cases, and Insights overview parity. English/German mobile browser execution, all four viewport/theme pixel comparisons and idle/burst request gates remain pending acceptance.
+Remaining family work includes complete trip-detail document/map/state coverage, managed/validation form DOM cases, and Insights overview parity. The shared map host has no child slot for source replay/loading placement; controller coordination must settle that host boundary while D2 preserves the C1/C2 owner. English/German mobile checks run through the required mini packet; the controller report records its exact commits and results. All four viewport/theme pixel comparisons and idle/burst request gates remain pending acceptance.
 
 AFFiNE counterpart: `Dawarich — D2 page parity implementation` (document `4WrpNiyokEc66L2u5v-J6`; readback verified).
