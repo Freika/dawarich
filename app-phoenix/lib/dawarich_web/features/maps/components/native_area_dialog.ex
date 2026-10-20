@@ -14,17 +14,16 @@ defmodule DawarichWeb.NativeAreaDialog do
     assigns = assign(assigns, :radius, assigns.dialog.form["radius"])
 
     ~H"""
-    <div
-      id="native-area-dialog"
-      phx-hook="AreaPreview"
-      phx-window-keydown={close()}
-      phx-key="escape"
-    >
+    <div>
       <div
+        id="native-area-dialog"
+        phx-hook="AreaPreview"
         class="modal z-[10000] modal-open"
         role="dialog"
         aria-modal="true"
         phx-mounted={JS.focus_first(to: "#native-area-form")}
+        phx-window-keydown={close()}
+        phx-key="escape"
       >
         <div class="modal-box max-w-xl">
           <h3 class="font-bold text-lg mb-4">

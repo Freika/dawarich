@@ -13,12 +13,15 @@ defmodule DawarichWeb.NativeMapVisit do
 
   def dialog(assigns) do
     ~H"""
-    <div id="native-visit-dialog" phx-window-keydown={close()} phx-key="escape">
+    <div>
       <div
+        id="native-visit-dialog"
         class="modal z-[10000] modal-open"
         role="dialog"
         aria-modal="true"
         phx-mounted={JS.focus_first(to: "#native-visit-form")}
+        phx-window-keydown={close()}
+        phx-key="escape"
       >
         <div class="modal-box max-w-2xl">
           <h3 class="font-bold text-lg mb-4">

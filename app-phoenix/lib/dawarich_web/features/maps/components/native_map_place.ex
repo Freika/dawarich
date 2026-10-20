@@ -12,13 +12,16 @@ defmodule DawarichWeb.NativeMapPlace do
 
   def dialog(assigns) do
     ~H"""
-    <div
-      id="native-place-dialog"
-      phx-hook="OrdinaryDialog"
-      phx-window-keydown={close()}
-      phx-key="escape"
-    >
-      <div class="modal z-[10000] modal-open" role="dialog" aria-modal="true">
+    <div>
+      <div
+        id="native-place-dialog"
+        phx-hook="OrdinaryDialog"
+        class="modal z-[10000] modal-open"
+        role="dialog"
+        aria-modal="true"
+        phx-window-keydown={close()}
+        phx-key="escape"
+      >
         <div class="modal-box max-w-2xl">
           <h3 class="font-bold text-lg mb-4">
             {if @dialog.id,
