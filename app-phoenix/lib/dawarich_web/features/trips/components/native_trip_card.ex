@@ -17,17 +17,48 @@ defmodule DawarichWeb.NativeTripCard do
         id={"trip-#{@trip.id}"}
       >
         <%= cond do %>
-          <% @trip.preview in [:path, :plan] -> %>
-            <DawarichWeb.NativeMapPreview.preview
-              id={"native-trip-preview-#{@trip.id}"}
-              config={%{"tripId" => @trip.id, "styleName" => @settings.style, "interactive" => false}}
-              locale={@locale}
-              class="w-full aspect-[16/10] min-w-0 bg-base-200"
-            />
-            <span
-              :if={@trip.preview == :plan}
-              class="trip-plan-caption trip-plan-caption--compact"
-            >{t(@locale, "trips.trip.plan", %{})}</span>
+          <% @trip.preview == :path -> %>
+            <div
+              id={"map-#{@trip.id}"}
+              class="bg-base-200"
+              style="width: 100%; aspect-ratio: 16/10;"
+              phx-hook="MapPreview"
+              phx-update="ignore"
+              data-map-state="loading"
+              data-map-config={
+                Jason.encode!(%{
+                  "tripId" => @trip.id,
+                  "styleName" => @settings.style,
+                  "interactive" => false,
+                  "locale" => @locale
+                })
+              }
+            >
+            </div>
+          <% @trip.preview == :plan -> %>
+            <div style="width: 100%; aspect-ratio: 16/10;" class="relative bg-base-200">
+              <div
+                id={"native-trip-preview-#{@trip.id}"}
+                class="h-full w-full"
+                phx-hook="MapPreview"
+                phx-update="ignore"
+                data-map-state="loading"
+                data-map-config={
+                  Jason.encode!(%{
+                    "tripId" => @trip.id,
+                    "styleName" => @settings.style,
+                    "interactive" => false,
+                    "locale" => @locale
+                  })
+                }
+              >
+              </div>
+              <span class="trip-plan-caption trip-plan-caption--compact">{t(
+                @locale,
+                "trips.trip.plan",
+                %{}
+              )}</span>
+            </div>
           <% @trip.distance -> %>
             <div
               style="width: 100%; aspect-ratio: 16/10;"
@@ -51,7 +82,7 @@ defmodule DawarichWeb.NativeTripCard do
             </div>
         <% end %>
         <div class="px-4 py-3">
-          <h3 class="font-semibold text-base group-hover:text-primary transition-colors [overflow-wrap:anywhere]">
+          <h3 class="font-semibold text-base group-hover:text-primary transition-colors truncate">
             {@trip.name}
           </h3>
           <p class="text-xs text-base-content/50 mt-0.5">
@@ -61,7 +92,7 @@ defmodule DawarichWeb.NativeTripCard do
               %{}
             )} {LocalizedDate.l(@locale, @trip.ended_on, "day_month_year")}
           </p>
-          <div class="flex flex-wrap min-w-0 items-center justify-between gap-2 mt-3">
+          <div class="flex items-center justify-between mt-3">
             <span class="text-sm font-medium tabular-nums">
               {TripFormat.distance(@trip.distance, @settings.factor)} {@settings.unit}
             </span>

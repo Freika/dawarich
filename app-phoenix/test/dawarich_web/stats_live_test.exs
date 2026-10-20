@@ -300,7 +300,7 @@ defmodule DawarichWeb.StatsLiveTest do
       html = RailsUser.signed_in(user.id) |> get("/stats/2024/2") |> html_response(200)
       assert html =~ ">February 2024 Monthly Digest | Dawarich</title>"
 
-      assert texts(html, "[role=status]") |> Enum.join() =~
+      assert texts(html, ".alert") |> Enum.join() =~
                "No location data available for this month"
 
       refute html =~ "stat-page-card"
@@ -308,11 +308,11 @@ defmodule DawarichWeb.StatsLiveTest do
 
     test "a month compares itself with the year's average and the previous month", %{user: user} do
       {:ok, view, _html} = live_as(user, "/stats/2024/4")
-      assert has_element?(view, "#stats-month-distance", "~12 km")
-      assert has_element?(view, "main p", "52% less than your average this year")
-      assert has_element?(view, "#stats-month-active-days", "1/30")
-      assert has_element?(view, "main p", "3 days less than previous month")
-      assert has_element?(view, "main p", "1 country less than previous month")
+      assert has_element?(view, "#native-stats-month-distance", "~12 km")
+      assert has_element?(view, ".stat-desc", "52% less than your average this year")
+      assert has_element?(view, "#native-stats-month-active-days", "1/30")
+      assert has_element?(view, ".stat-desc", "3 days less than previous month")
+      assert has_element?(view, ".stat-desc", "1 country less than previous month")
     end
 
     test "the peak day links to the map with the user's zoned day bounds", %{user: user} do
@@ -321,9 +321,18 @@ defmodule DawarichWeb.StatsLiveTest do
       href =
         "/map/v2?end_at=2024-03-07+23%3A59%3A59+%2B0100&start_at=2024-03-07+00%3A00%3A00+%2B0100"
 
-      assert has_element?(view, ~s(#stats-peak-day[href="#{href}"]), "March 07 (14 km)")
+      assert has_element?(view, "#native-stats-peak-day", "March 07 (14 km)")
+
+      [actual] =
+        view
+        |> render()
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#native-stats-peak-day")
+        |> LazyHTML.attribute("href")
+
+      assert URI.decode_query(URI.parse(actual).query) == URI.decode_query(URI.parse(href).query)
       assert render(view) =~ "Mar 08 - Mar 14"
-      assert has_element?(view, ~s(a.btn[href="/stats/2024"]), "← Back to 2024")
+      assert has_element?(view, ~s(a.btn[href="/insights?year=2024"]), "← Back to 2024")
     end
 
     test "the API key never becomes a bare socket assign that a crash report would dump in clear",
@@ -381,8 +390,8 @@ defmodule DawarichWeb.StatsLiveTest do
       assert has_element?(view, "[data-testid=insights-locked-year]", "2023")
       assert has_element?(view, "button[phx-click=upgrade]")
       {:ok, month, _html} = live_as(user, "/stats/#{today.year}/#{today.month}")
-      refute has_element?(month, "button[phx-click=open_share]")
-      assert has_element?(month, "#stats-window-alert[role=alert]")
+      assert has_element?(month, "button[phx-click=open_share]")
+      assert has_element?(month, ".alert-info[role=alert]")
       refute has_element?(month, "#sharing_modal")
     end
   end

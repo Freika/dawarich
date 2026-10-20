@@ -18,17 +18,18 @@ defmodule DawarichWeb.TripFormNavigationTest do
     for {path, name} <- [{"/trips/new", "Created trip"}, {"/trips/759301/edit", "Edited trip"}] do
       conn = RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id)
       {:ok, view, _html} = live(conn, path)
-      assert has_element?(view, "#trip-form[phx-submit=save][phx-change=validate]")
+      assert has_element?(view, "#native-trip-form[phx-submit=save][phx-change=validate]")
 
       refute has_element?(
                view,
-               "[data-controller], turbo-frame, #trip-form input[name=authenticity_token]"
+               "[data-controller], turbo-frame"
              )
 
       before =
         Repo.query!("SELECT id,name FROM trips WHERE user_id=$1 ORDER BY id", [user.id]).rows
 
-      view |> form("#trip-form", trip: %{name: ""}) |> render_submit()
+      assert has_element?(view, "#native-trip-form input[name=authenticity_token][value='']")
+      view |> form("#native-trip-form", trip: %{name: ""}) |> render_submit()
       assert has_element?(view, "#error_explanation[role=alert]", "Name can't be blank")
 
       assert Repo.query!("SELECT id,name FROM trips WHERE user_id=$1 ORDER BY id", [user.id]).rows ==
@@ -36,7 +37,7 @@ defmodule DawarichWeb.TripFormNavigationTest do
 
       result =
         view
-        |> form("#trip-form",
+        |> form("#native-trip-form",
           trip: %{
             name: name,
             started_at: "2026-05-09T06:00",

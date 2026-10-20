@@ -15,7 +15,7 @@ defmodule Dawarich.DataCaseSandboxTest do
     :ok = DataCase.setup_sandbox(%{async: false})
     TripsSeeds.user!(9_951)
     {:ok, view, _html} = TripsNativeUI.live_as(9_951, "/trips/new")
-    assert has_element?(view, "#trip-form")
+    assert has_element?(view, "#native-trip-form")
     assert has_element?(view, "input#trip_name")
   end
 end

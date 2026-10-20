@@ -15,23 +15,6 @@ defmodule DawarichWeb.NativeTripMapPanel do
 
     ~H"""
     <div class="relative min-w-0 w-full h-full">
-      <button
-        type="button"
-        data-testid="map-button-poster"
-        disabled={!@has_path}
-        class="btn btn-sm h-auto whitespace-normal"
-      >{t(@locale, "map.maplibre.button_cluster.poster_studio", %{})}</button>
-      <button
-        type="button"
-        disabled={!@has_path}
-        data-testid="map-button-video"
-        class="btn btn-sm h-auto whitespace-normal"
-      >{t(
-        @locale,
-        "map.maplibre.button_cluster.video_studio",
-        %{}
-      )}</button>
-      <DawarichWeb.MapReplay.opener :if={@state == :path} id={@id <> "-replay"} locale={@locale} />
       <DawarichWeb.MapReplay.replay_panel
         :if={@state == :path}
         id={@id <> "-replay"}

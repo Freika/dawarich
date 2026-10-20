@@ -8,6 +8,7 @@ defmodule DawarichWeb.TripRichText do
   attr :revision, :integer, default: 1
   attr :label, :string, required: true
   attr :locale, :string, required: true
+  attr :editor_id, :string, default: nil
 
   def editor(assigns) do
     ~H"""
@@ -21,8 +22,9 @@ defmodule DawarichWeb.TripRichText do
     >
       <input type="hidden" id={"#{@id}-input"} name={@name} value={@value} />
       <trix-editor
+        id={@editor_id}
         input={"#{@id}-input"}
-        class="trix-content textarea textarea-bordered w-full min-h-48"
+        class="trix-content-editor"
         role="textbox"
         aria-multiline="true"
         aria-label={@label}

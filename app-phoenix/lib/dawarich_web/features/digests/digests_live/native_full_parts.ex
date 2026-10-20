@@ -24,7 +24,7 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
       class="card bg-base-200 shadow-xl mb-8"
     >
       <div class="card-body text-center items-center">
-        <h2 class="card-title flex-wrap">
+        <h2 class="card-title">
           <Icon.icon name="star" class="size-6" /> {t(
             @locale,
             "users.digests.show.first_time_visits",
@@ -36,7 +36,7 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
           <div class="flex flex-wrap gap-2 justify-center">
             <span
               :for={country <- @digest.first_time_countries}
-              class="badge badge-success badge-lg h-auto whitespace-normal [overflow-wrap:anywhere]"
+              class="badge badge-success badge-lg"
             >{country}</span>
           </div>
         </div>
@@ -45,7 +45,7 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
           <div class="flex flex-wrap gap-2 justify-center">
             <span
               :for={city <- Enum.take(@digest.first_time_cities, 10)}
-              class="badge badge-outline h-auto whitespace-normal [overflow-wrap:anywhere]"
+              class="badge badge-outline"
             >{city}</span>
             <span
               :if={(@digest[:first_time_cities_count] || length(@digest.first_time_cities)) > 10}
@@ -61,7 +61,7 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
     </div>
     <div :if={@digest.monthly_distances != []} class="card bg-base-200 shadow-xl mb-8">
       <div class="card-body text-center items-center">
-        <h2 class="card-title flex-wrap">
+        <h2 class="card-title">
           <Icon.icon name="activity" class="size-6" /> {t(
             @locale,
             "users.digests.show.your_year_month_by_month",
@@ -70,7 +70,8 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
         </h2>
         <div class="w-full h-64 bg-base-100 rounded-lg p-4">
           <NativeChart.chart
-            id="digest-monthly-chart"
+            id="chart-1"
+            rails
             revision={
               :crypto.hash(
                 :sha256,
@@ -95,7 +96,7 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
     </div>
     <div :if={@digest.top_countries != []} class="card bg-base-200 shadow-xl mb-8">
       <div class="card-body text-center items-center">
-        <h2 class="card-title flex-wrap">
+        <h2 class="card-title">
           <Icon.icon name="map-pin" class="size-6" /> {t(
             @locale,
             "users.digests.show.where_you_spent_the_most_time",
@@ -105,11 +106,11 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
         <div class="space-y-4 w-full">
           <div
             :for={{country, index} <- Enum.with_index(Enum.take(@digest.top_countries, 5))}
-            class="flex flex-wrap min-w-0 gap-2 justify-between items-center p-3 bg-base-100 rounded-lg"
+            class="flex justify-between items-center p-3 bg-base-100 rounded-lg"
           >
-            <div class="flex flex-wrap min-w-0 gap-3">
+            <div class="flex items-center gap-3">
               <span class={"badge badge-lg #{Enum.at(@ranks, index)}"}>{index + 1}</span>
-              <span class="font-semibold [overflow-wrap:anywhere]"><span class="mr-1"><Icon.country_flag
+              <span class="font-semibold"><span class="mr-1"><Icon.country_flag
                 name={country["name"]}
                 table={@table}
               /></span> {country["name"]}</span>
@@ -117,8 +118,8 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
             <span class="text-gray-600">{DigestFormat.time_spent(@locale, country["minutes"])}</span>
           </div>
           <%= if @untracked > 0 do %>
-            <div class="flex flex-wrap min-w-0 gap-2 justify-between items-center p-3 bg-base-100 rounded-lg border-2 border-dashed border-gray-200">
-              <div class="flex flex-wrap min-w-0 gap-3">
+            <div class="flex justify-between items-center p-3 bg-base-100 rounded-lg border-2 border-dashed border-gray-200">
+              <div class="flex items-center gap-3">
                 <span class="badge badge-lg badge-ghost">?</span>
                 <span class="text-gray-500 italic">{t(
                   @locale,
@@ -147,7 +148,7 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
     </div>
     <div class="card bg-base-200 shadow-xl mb-8">
       <div class="card-body text-center items-center">
-        <h2 class="card-title flex-wrap">
+        <h2 class="card-title">
           <Icon.icon name="earth" class="size-6" /> {t(
             @locale,
             "users.digests.show.countries_cities",
@@ -157,8 +158,8 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
         <div class="space-y-4 w-full">
           <%= if @digest.toponyms != [] do %>
             <div :for={{country, index} <- Enum.with_index(@digest.toponyms)} class="space-y-2">
-              <div class="flex flex-wrap min-w-0 gap-2 justify-between items-center">
-                <span class="font-semibold [overflow-wrap:anywhere]"><span class="mr-1"><Icon.country_flag
+              <div class="flex justify-between items-center">
+                <span class="font-semibold"><span class="mr-1"><Icon.country_flag
                   name={country["country"]}
                   table={@table}
                 /></span> {country["country"]}</span>
@@ -187,7 +188,7 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
     </div>
     <div class="card bg-slate-800 text-white shadow-xl mb-8">
       <div class="card-body text-center items-center">
-        <h2 class="card-title flex-wrap text-white">
+        <h2 class="card-title text-white">
           <Icon.icon name="trophy" class="size-6" /> {t(
             @locale,
             "users.digests.show.all_time_stats",

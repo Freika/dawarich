@@ -55,7 +55,9 @@
       <div class="w-full h-48 bg-base-200 rounded-lg p-4 relative">
         <%= if @native do %>
           <NativeChart.chart
-            id="public-digest-chart"
+            id="chart-1"
+            height="200px"
+            rails
             public
             label={t(@locale, "users.digests.public_year.year_by_month", %{})}
             revision={Integer.to_string(@digest.year)}

@@ -156,17 +156,23 @@ defmodule DawarichWeb.InsightsLive.NativeParts do
     ~H"""
     <section
       id={if(@data.state == :ready, do: "insights-details-ready", else: "insights-details-pending")}
-      class="min-w-0 [&_.card-title]:flex-wrap [&_.card-body]:min-w-0 [&_span]:break-words [&_span]:[overflow-wrap:anywhere]"
+      class="contents"
     >
-      <YearComparison.render data={@data} locale={@locale} />
-      <Activity.render data={@data} locale={@locale} />
-      <Locations.render data={@data} locale={@locale} />
-      <DawarichWeb.InsightsLive.NativeMonthly.render
-        :if={!@data.all_time}
-        data={Map.put(@data, :monthly, @data.monthly && @data.monthly.source)}
-        locale={@locale}
-      />
-      <Travel.render data={@data} locale={@locale} />
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="space-y-6">
+          <YearComparison.render data={@data} locale={@locale} />
+          <Activity.render data={@data} locale={@locale} />
+          <Locations.render data={@data} locale={@locale} />
+        </div>
+        <div class="space-y-6">
+          <DawarichWeb.InsightsLive.NativeMonthly.render
+            :if={!@data.all_time}
+            data={Map.put(@data, :monthly, @data.monthly && @data.monthly.source)}
+            locale={@locale}
+          />
+          <Travel.render data={@data} locale={@locale} />
+        </div>
+      </div>
       <Wellness.render data={@data} locale={@locale} />
     </section>
     """

@@ -74,7 +74,10 @@ defmodule DawarichWeb.InsightsLive.NativePage do
          assign(socket, details: %{state: :restricted}, residency: %{state: :restricted})}
       else
         socket = refresh(socket, scope, false)
-        {:noreply, socket |> start(:details) |> start(:residency)}
+        socket = start(socket, :details)
+
+        {:noreply,
+         if(socket.assigns.live_action == :details, do: socket, else: start(socket, :residency))}
       end
     else
       {:error, reason} -> {:noreply, NativeDataAuth.refuse(socket, reason)}

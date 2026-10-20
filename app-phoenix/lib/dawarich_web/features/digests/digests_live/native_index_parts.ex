@@ -10,27 +10,27 @@ defmodule DawarichWeb.DigestsLive.NativeIndexParts do
 
     ~H"""
     <div class="max-w-screen-2xl mx-auto my-5 px-4">
-      <div class="flex flex-wrap min-w-0 gap-2 justify-between mb-6">
-        <h1 class="text-3xl font-bold flex flex-wrap min-w-0 gap-2 break-words">
+      <div class="page-header-row mb-6">
+        <h1 class="text-3xl font-bold flex items-center gap-2">
           <Icon.icon name="earth" class="size-6" /> {t(
             @locale,
             "users.digests.index.year_end_digests",
             %{}
           )}
         </h1>
-        <details :if={@available_years != [] and @generate} class="dropdown dropdown-end">
-          <summary tabindex="0" class="btn btn-primary">
+        <div :if={@available_years != [] and @generate} class="dropdown dropdown-end">
+          <label tabindex="0" class="btn btn-primary">
             <Icon.icon
               name="calendar-plus-2"
               class="size-6"
             /> {t(@locale, "users.digests.index.generate_digest", %{})}
-          </summary>
+          </label>
           <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
             <li :for={year <- @available_years}>
-              <button class="text-base whitespace-normal" phx-click="generate" phx-value-year={year}>{year}</button>
+              <a href="#" class="text-base" phx-click="generate" phx-value-year={year}>{year}</a>
             </li>
           </ul>
-        </details>
+        </div>
       </div>
       <%= if @digests == [] do %>
         <div class="card bg-base-200 shadow-xl">
@@ -65,7 +65,7 @@ defmodule DawarichWeb.DigestsLive.NativeIndexParts do
             class="card bg-base-200 shadow-xl hover:shadow-2xl transition-shadow"
           >
             <div class="card-body">
-              <h2 class="card-title flex-wrap text-2xl justify-between">
+              <h2 class="card-title text-2xl justify-between">
                 <a class="hover:text-primary" href={"/digests/#{digest.year}"}>{digest.year}</a>
                 <span :if={digest.sharing_enabled} class="badge badge-success badge-sm">{t(
                   @locale,

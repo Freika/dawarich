@@ -27,7 +27,8 @@ defmodule DawarichWeb.NativeTripsLive.Form do
          {:ok, trip} <- Pages.form(scope, id, DateTime.utc_now()) do
       {:noreply,
        assign(socket,
-         trip: Map.take(trip, [:id, :name, :managed, :trek_url]),
+         trip: Map.take(trip, [:id, :name, :managed, :trek_url, :style, :values]),
+         preview: preview(trip, trip.values, scope, socket.assigns.locale),
          values: trip.values,
          errors: [],
          status: :ready,
@@ -44,8 +45,19 @@ defmodule DawarichWeb.NativeTripsLive.Form do
       when event in ~w(validate save),
       do: {:noreply, socket}
 
-  def handle_event("validate", %{"trip" => params}, socket) when is_map(params),
-    do: {:noreply, assign(socket, values: scalar(params, socket.assigns.values))}
+  def handle_event("validate", %{"trip" => params}, socket) when is_map(params) do
+    with {:ok, scope} <- Access.scope(socket) do
+      values = scalar(params, socket.assigns.values)
+
+      {:noreply,
+       assign(socket,
+         values: values,
+         preview: preview(socket.assigns.trip, values, scope, socket.assigns.locale)
+       )}
+    else
+      error -> {:noreply, refuse(socket, error)}
+    end
+  end
 
   def handle_event("save", %{"trip" => params}, socket) when is_map(params) do
     values = scalar(params, socket.assigns.values)
@@ -125,12 +137,15 @@ defmodule DawarichWeb.NativeTripsLive.Form do
   defp title(locale, id),
     do: t(locale, if(id, do: "trips.edit.editing_trip", else: "trips.new.new_trip"), %{})
 
+  defp preview(trip, values, scope, locale),
+    do: DawarichWeb.TripsNative.FormPreview.config(trip, values, scope.user, locale)
+
   @impl true
   def render(assigns) do
     ~H"""
     <div class="mx-auto my-5 w-full md:w-2/3">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
-        <h1 class="text-3xl font-bold min-w-0">{title(@locale, @trip && @trip.id)}</h1>
+        <h1 class="text-3xl font-bold">{title(@locale, @trip && @trip.id)}</h1>
       </div>
       <div :if={@status == :unavailable} role="alert" class="alert alert-error mb-4">
         {t(@locale, "controllers.application.admin_action_failed", %{})}
@@ -143,6 +158,7 @@ defmodule DawarichWeb.NativeTripsLive.Form do
         status={@status}
         rich_description_sgid={@rich_description_sgid}
         locale={@locale}
+        preview={@preview}
       />
     </div>
     """

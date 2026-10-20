@@ -287,12 +287,12 @@ defmodule DawarichWeb.InsightsNativeLifecycleTest do
     assert html =~ "Berlin"
     assert html =~ "Germany"
     assert html =~ "+50%"
-    assert has_element?(view, "#insights-monthly-chart[phx-hook=NativeChart]")
+    assert has_element?(view, "#chart-1[phx-hook=NativeChart]")
 
     [raw] =
       html
       |> LazyHTML.from_document()
-      |> LazyHTML.query("#insights-monthly-chart")
+      |> LazyHTML.query("#chart-1")
       |> LazyHTML.attribute("data-chart")
 
     assert Enum.map(Jason.decode!(raw)["data"], &List.last/1) |> Enum.sum() == 3

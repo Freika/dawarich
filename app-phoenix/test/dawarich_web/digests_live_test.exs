@@ -68,7 +68,7 @@ defmodule DawarichWeb.DigestsLiveTest do
        %{user: user} do
     stat!(user.id, %{year: 2022, month: 5})
     {:ok, view, _html} = live_as(user, "/digests")
-    assert has_element?(view, ~s(button[phx-click="generate"][phx-value-year="2022"]), "2022")
+    assert has_element?(view, ~s(a[phx-click="generate"][phx-value-year="2022"]), "2022")
     assert render(view) =~ "Or you can manually generate one for a previous year."
     render_click(view, "generate", %{"year" => "2022"})
     assert render(view) =~ "2022 is being generated"
@@ -85,7 +85,7 @@ defmodule DawarichWeb.DigestsLiveTest do
     )
 
     {:ok, inactive, _html} = live_as(user, "/digests")
-    refute has_element?(inactive, "button[phx-click=generate]")
+    refute has_element?(inactive, "a[phx-click=generate]")
     refute render(inactive) =~ "Or you can manually generate"
     assert has_element?(inactive, "h2", "No Year-End Digests Yet")
   end
@@ -98,16 +98,16 @@ defmodule DawarichWeb.DigestsLiveTest do
     assert html =~ ">2024 Year in Review | Dawarich</title>"
     assert has_element?(view, "p", "That's 0.1% of Earth's circumference!")
     assert has_element?(view, "p.positive", "+150% compared to 2023")
-    assert has_element?(view, "#digest-monthly-chart[phx-hook=NativeChart]")
+    assert has_element?(view, "#chart-1[phx-hook=NativeChart]")
     assert has_element?(view, ".card-title", "All-Time Stats")
     System.put_env("SELF_HOSTED", "false")
     System.put_env("JWT_SECRET_KEY", "phoenix-a5-jwt-fixture-secret-not-for-production")
     on_exit(fn -> for key <- ~w(SELF_HOSTED JWT_SECRET_KEY), do: System.delete_env(key) end)
     Dawarich.Repo.query!("UPDATE users SET plan = 0 WHERE id = $1", [user.id])
     {:ok, lite, _html} = live_as(user, "/digests/2024")
-    refute has_element?(lite, "#digest-monthly-chart")
+    refute has_element?(lite, "#chart-1")
     refute has_element?(lite, ".card-title", "All-Time Stats")
-    assert has_element?(lite, "#digest-upgrade button[phx-click=upgrade]")
+    assert has_element?(lite, "#native-digest-upgrade button[phx-click=upgrade]")
     render_click(lite, "upgrade", %{})
     assert_redirect(lite)
   end
@@ -171,7 +171,7 @@ defmodule DawarichWeb.DigestsLiveTest do
     [raw] =
       html
       |> LazyHTML.from_document()
-      |> LazyHTML.query("#digest-monthly-chart")
+      |> LazyHTML.query("#chart-1")
       |> LazyHTML.attribute("data-chart")
 
     assert Jason.decode!(raw)["data"] == [["Mär", 38], ["Apr", 12]]
