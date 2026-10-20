@@ -1,6 +1,7 @@
 import { createRequestScope } from "../data/request_scope.js";
 import { createFamilyOverlay } from "./overlay.js";
 import { familyMemberRow } from "./rows.js";
+import { mapNotify } from "../ui/notify.js";
 
 export function createMapFamilyLayer({
   map,
@@ -17,14 +18,13 @@ export function createMapFamilyLayer({
     destroyed = false,
     rendered;
   const list = () => root?.querySelector("#native-family-members");
-  const status = () => root?.querySelector("#native-family-status");
+  const notify = mapNotify(() => config);
   const group = () => root?.querySelector("#native-family-list");
   function clearView() {
     rendered = null;
     overlay?.clear();
     list()?.replaceChildren();
     if (list()) list().hidden = true;
-    if (status()) status().textContent = "";
     if (group()) group().style.display = "none";
   }
   const scope = (value) =>
@@ -76,11 +76,7 @@ export function createMapFamilyLayer({
               zoom: 15,
               duration: 1500,
             });
-            if (status())
-              status().textContent =
-                status().dataset.centered ||
-                config.uiLabels?.["messages.centered_on_family_member"] ||
-                "";
+            void notify("success", "messages.centered_on_family_member");
           },
         );
       }),
@@ -93,12 +89,6 @@ export function createMapFamilyLayer({
       empty.textContent = config.uiLabels?.["family.none_sharing"] || "";
       container.replaceChildren(empty);
     }
-    const loaded =
-      config.uiLabels?.[
-        `family.loaded_members.${rows.length === 1 ? "one" : "other"}`
-      ];
-    if (status() && rows.length > 0 && loaded)
-      status().textContent = loaded.replace("{count}", String(rows.length));
   }
   async function update(next, { signal } = {}) {
     if (destroyed) return;
@@ -117,18 +107,28 @@ export function createMapFamilyLayer({
     }
     const operation = requests.begin(signal);
     try {
-      const [latest, history] = await operation.wait(
-        Promise.all([
-          reader.read("family_locations", {}, { signal: operation.signal }),
-          config.range?.startAt && config.range?.endAt
-            ? reader.read(
-                "family_history",
-                { start_at: config.range.startAt, end_at: config.range.endAt },
-                { signal: operation.signal },
-              )
-            : Promise.resolve({ data: { members: [] } }),
-        ]),
+      const latest = await operation.wait(
+        reader.read("family_locations", {}, { signal: operation.signal }),
       );
+      operation.check();
+      void notify("success", "family.loaded_members", {
+        count: (latest.data.locations || []).length,
+      });
+      const history =
+        config.range?.startAt && config.range?.endAt
+          ? await operation.wait(
+              reader
+                .read(
+                  "family_history",
+                  {
+                    start_at: config.range.startAt,
+                    end_at: config.range.endAt,
+                  },
+                  { signal: operation.signal },
+                )
+                .catch(() => ({ data: { members: [] } })),
+            )
+          : { data: { members: [] } };
       operation.check();
       const rows = (latest.data.locations || []).filter(
         (row) =>
@@ -139,8 +139,17 @@ export function createMapFamilyLayer({
       );
       overlay.replace(rows, history.data.members || []);
       render(rows, history.data.members || []);
-    } catch {
-      if (operation.revision === requests.revision) clearView();
+    } catch (error) {
+      if (operation.revision === requests.revision) {
+        clearView();
+        if (!operation.signal.aborted)
+          void notify(
+            error.status === 403 ? "info" : "error",
+            error.status === 403
+              ? "messages.family_feature_not_available"
+              : "messages.failed_to_load_family_members",
+          );
+      }
     } finally {
       operation.close();
     }

@@ -32,16 +32,14 @@ function fixture() {
     },
   })
   const list = node(),
-    group = node(),
-    empty = node(),
-    status = node()
+    group = node()
   const root = {
     querySelector(s) {
       return s === "#native-family-members"
         ? list
         : s === "#native-family-list"
           ? group
-          : status
+          : null
     },
     ownerDocument: {
       createElement() {
@@ -130,7 +128,6 @@ function fixture() {
     flights,
     list,
     nodes,
-    status,
     config,
     get released() {
       return released
@@ -163,7 +160,6 @@ test("main map Family layer reads admitted locations history and renders safe ce
   assert.deepEqual(f.flights, [
     { center: [13.5, 52.4], zoom: 15, duration: 1500 },
   ])
-  assert.equal(f.status.textContent, "Zentriert")
   assert.equal(f.polls.size, 0)
   f.owner.destroy()
   assert.equal(f.polls.size, 0)
@@ -372,13 +368,11 @@ test("main map Family list retains source update timestamp in the profile timezo
   }
 })
 
-test("main map Family loaded status retains singular and plural counts", async () => {
+test("main map Family loaded list retains singular and plural member counts", async () => {
   const f = fixture()
-  f.config.uiLabels["family.loaded_members.one"] = "Ein Mitglied"
-  f.config.uiLabels["family.loaded_members.other"] = "{count} Mitglieder"
   try {
     await f.owner.update(f.config)
-    assert.equal(f.status.textContent, "Ein Mitglied")
+    assert.equal(f.list.children.length, 1)
     const read = f.reader.read
     f.reader.read = async (resource, params) => {
       const result = await read(resource, params)
@@ -387,7 +381,7 @@ test("main map Family loaded status retains singular and plural counts", async (
       return result
     }
     await f.owner.update(f.config)
-    assert.equal(f.status.textContent, "2 Mitglieder")
+    assert.equal(f.list.children.length, 2)
   } finally {
     f.owner.destroy()
   }
