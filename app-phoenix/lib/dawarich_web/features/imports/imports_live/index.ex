@@ -156,16 +156,16 @@ defmodule DawarichWeb.ImportsLive.Index do
               class="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-lg w-52 mt-1 border border-base-300"
             >
               <li :for={{job, key} <- @integrations}>
-                <button
-                  type="button"
+                <a
+                  href="#"
+                  data-native-href={"/settings/background_jobs?job_name=#{job}"}
                   phx-click="request_provider"
                   phx-value-job={job}
-                  disabled={MapSet.member?(@provider_requests, job)}
+                  aria-disabled={if(MapSet.member?(@provider_requests, job), do: "true")}
                   data-confirm={t(@locale, "imports.index.are_you_sure", %{})}
-                  class="min-w-0 whitespace-normal [overflow-wrap:anywhere]"
                 >
                   <.icon name="camera" class="w-4 h-4" /> {t(@locale, key, %{})}
-                </button>
+                </a>
               </li>
             </ul>
           </div>
@@ -205,7 +205,7 @@ defmodule DawarichWeb.ImportsLive.Index do
             />
           </div>
           <div class="border border-base-300 rounded-xl overflow-x-auto">
-            <table class="table w-full table-fixed max-sm:[&_th]:p-1 max-sm:[&_td]:p-1 max-sm:text-xs max-sm:[&_.whitespace-nowrap]:whitespace-normal [overflow-wrap:anywhere]">
+            <table class="table w-full">
               <thead class="bg-base-200">
                 <tr>
                   <th

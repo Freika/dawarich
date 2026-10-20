@@ -15,11 +15,11 @@ defmodule DawarichWeb.ImportsExtractionDialog do
     <dialog
       id={"extraction-dialog-#{@id}"}
       class="modal"
-      aria-labelledby={@native && "extraction-title-#{@id}"}
+      aria-labelledby={@native && "native-extraction-title-#{@id}"}
       phx-update={if(!@native, do: "ignore")}
     >
-      <div class="modal-box max-w-xl min-w-0 [overflow-wrap:anywhere]">
-        <h3 id={@native && "extraction-title-#{@id}"} class="font-bold text-lg">
+      <div class="modal-box max-w-xl">
+        <h3 id={@native && "native-extraction-title-#{@id}"} class="font-bold text-lg">
           {text(@locale, "extract_additional_data_from_this_import")}
         </h3>
         <div class="prose prose-sm mt-4 text-base-content/80">
@@ -49,13 +49,13 @@ defmodule DawarichWeb.ImportsExtractionDialog do
         <form
           data-turbo-frame={!@native && "import-#{@id}-extraction"}
           phx-submit={@native && "extract_import"}
-          action={!@native && "/imports/#{@id}/extraction"}
+          action={"/imports/#{@id}/extraction"}
           accept-charset="UTF-8"
           method="post"
         >
-          <input :if={!@native} type="hidden" name="authenticity_token" value={@csrf} />
+          <input type="hidden" name="authenticity_token" value={@csrf} />
           <div class="form-control mt-4">
-            <label class="label cursor-pointer justify-start gap-3 min-w-0">
+            <label class="label cursor-pointer justify-start gap-3">
               <input name="trust_source" type="hidden" value="false" /><input
                 class="checkbox checkbox-primary"
                 type="checkbox"
@@ -65,10 +65,10 @@ defmodule DawarichWeb.ImportsExtractionDialog do
                 id="trust_source"
               />
               <div>
-                <div class="label-text font-medium whitespace-normal">
+                <div class="label-text font-medium">
                   {text(@locale, "trust_the_source_app_s_classification")}
                 </div>
-                <div class="label-text-alt text-base-content/60 whitespace-normal">
+                <div class="label-text-alt text-base-content/60">
                   {text(
                     @locale,
                     "when_checked_transportation_modes_driving_walking_cycling_transit_the_so"

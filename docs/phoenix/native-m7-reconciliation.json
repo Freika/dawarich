@@ -15197,6 +15197,8 @@
     {
       "file": "app-phoenix/test/dawarich_web/tags_live_test.exs",
       "markers": [
+        "test/fixtures",
+        "fixtures/",
         "phoenix/js"
       ]
     },
@@ -15505,6 +15507,13 @@
       "file": "spec/javascript/phoenix_family_row_parity_test.mjs",
       "markers": [
         "test/fixtures"
+      ]
+    },
+    {
+      "file": "app-phoenix/test/dawarich_web/tags_live_form_test.exs",
+      "markers": [
+        "test/fixtures",
+        "fixtures/"
       ]
     }
   ],

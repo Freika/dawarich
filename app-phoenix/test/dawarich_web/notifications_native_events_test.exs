@@ -124,9 +124,12 @@ defmodule DawarichWeb.NotificationsNativeEventsTest do
 
     refute html
            |> LazyHTML.from_document()
-           |> LazyHTML.query("[data-testid=native-notifications-detail] form")
+           |> LazyHTML.query(
+             "[data-testid=native-notifications-detail] form[action]:not([phx-submit])"
+           )
            |> Enum.any?()
 
+    assert has_element?(view, "form.button_to[phx-submit]")
     render_click(view, "confirm_notification_delete", %{"id" => id})
     assert Notifications.get(c.user.id, id)
     render_click(view, "choose_notification_delete", %{"id" => "foreign"})

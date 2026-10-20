@@ -90,8 +90,8 @@ defmodule DawarichWeb.PointsLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="w-full min-w-0 my-5">
-      <h1 class="text-3xl font-bold mb-6 break-words">{t(@locale, "points.index.points", %{})}</h1>
+    <div class="w-full my-5">
+      <DawarichWeb.ListParts.page_header title={t(@locale, "points.index.points", %{})} />
       <div
         :if={@point_dialog}
         id="points_dialog"
@@ -148,7 +148,7 @@ defmodule DawarichWeb.PointsLive.Index do
           query={@query}
           page={@page}
           total_pages={@total_pages}
-          class="flex flex-wrap justify-center mb-4"
+          class="flex justify-center mb-4"
         />
         <PointListTable.table
           locale={@locale}
@@ -163,7 +163,7 @@ defmodule DawarichWeb.PointsLive.Index do
           query={@query}
           page={@page}
           total_pages={@total_pages}
-          class="flex flex-wrap justify-center mt-4"
+          class="flex justify-center mt-4"
         />
       <% end %>
     </div>

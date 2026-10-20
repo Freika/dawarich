@@ -116,7 +116,7 @@ defmodule DawarichWeb.ExportsNativeEventsTest do
 
   test "native export delete confirms once and foreign ids do nothing", c do
     {:ok, view, _} = live_as(c.user)
-    assert has_element?(view, ~s(#export_111010 button[aria-label="Delete export"]))
+    assert has_element?(view, ~s(#export_111010 a[aria-label="Delete export"]))
     render_hook(view, "confirm_export_delete", %{"id" => "111010"})
     assert [[1]] = rows("SELECT count(*) FROM exports WHERE id=111010")
     render_hook(view, "choose_export_delete", %{"id" => "111020"})

@@ -49,18 +49,19 @@ defmodule DawarichWeb.ImportRow do
     ~H"""
     <tr
       data-import-id={@import.id}
+      data-import-status={@import.status}
       id={"import_#{@import.id}"}
       data-points-total={to_string(@import.processed)}
       class="hover:bg-base-200/50 transition-colors"
     >
       <td class="px-4 py-3">
-        <div class="flex flex-wrap min-w-0 items-center gap-3">
+        <div class="flex items-center gap-3">
           <div class={"w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 " <> @css}>
             <.brand :if={@source_icon == :google} name="google" class="w-4 h-4" />
             <.icon :if={@source_icon != :google} name={@source_icon} class="w-4 h-4" />
           </div>
           <div>
-            <div class="font-medium min-w-0 [overflow-wrap:anywhere]">
+            <div class="font-medium">
               <a href={"/imports/#{@import.id}"} class="link link-hover">{@import.name}</a>
               <span :if={@import.demo} class="badge badge-accent badge-sm ml-1">{t(
                 @locale,
@@ -110,7 +111,7 @@ defmodule DawarichWeb.ImportRow do
         <.human_datetime locale={@locale} at={@import.created} />
       </td>
       <td class="px-4 py-3 text-right">
-        <div class="flex flex-wrap items-center gap-1 justify-end">
+        <div class="flex items-center gap-1 justify-end">
           <%= case @state do %>
             <% :deleting -> %>
               <span class="loading loading-spinner loading-sm"></span>
@@ -198,7 +199,9 @@ defmodule DawarichWeb.ImportRow do
 
   defp delete_link(assigns) do
     ~H"""
-    <form phx-submit="delete_import">
+    <form phx-submit="delete_import" action={"/imports/#{@id}"} method="post">
+      <input type="hidden" name="_method" value="delete" />
+      <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
       <input
         type="hidden"
         name="import_id"

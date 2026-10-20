@@ -15,7 +15,7 @@ defmodule DawarichWeb.ImportEdit do
 
     ~H"""
     <div class="mx-auto md:w-2/3 w-full" data-testid="native-imports-root">
-      <h1 class="font-bold text-4xl [overflow-wrap:anywhere]">
+      <h1 class="font-bold text-4xl">
         {text(@locale, "imports.edit.editing_import")}
       </h1>
       <form
@@ -23,12 +23,12 @@ defmodule DawarichWeb.ImportEdit do
         phx-update={if(!@native, do: "ignore")}
         phx-submit={@native && "save_import"}
         class="form-body mt-4"
-        action={!@native && "/imports/#{@record.id}"}
+        action={"/imports/#{@record.id}"}
         accept-charset="UTF-8"
         method="post"
       >
-        <input :if={!@native} type="hidden" name="_method" value="patch" />
-        <input :if={!@native} type="hidden" name="authenticity_token" value={@csrf} />
+        <input type="hidden" name="_method" value="patch" />
+        <input type="hidden" name="authenticity_token" value={@csrf} />
         <div :if={@invalid_source} class="alert alert-error mb-4" role="alert">
           <ul>
             <li>{source_error(@locale)}</li>
@@ -37,7 +37,7 @@ defmodule DawarichWeb.ImportEdit do
         <div class="form-control">
           <label for="import_name">{attribute(@locale, "name")}</label>
           <input
-            class="input input-bordered w-full min-w-0"
+            class="input input-bordered"
             type="text"
             value={@record.name}
             name="import[name]"
@@ -59,16 +59,16 @@ defmodule DawarichWeb.ImportEdit do
             <.source_select locale={@locale} sources={@sources} source={@record.source} />
           <% end %>
         </div>
-        <div class="my-4 flex flex-wrap gap-2">
+        <div class="my-4">
           <input
             type="submit"
             name="commit"
             value={@submit}
-            class="rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer"
+            class="btn btn-primary"
             data-disable-with={@submit}
           />
           <a
-            class="rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer"
+            class="btn"
             href="/imports"
           >{text(@locale, "imports.edit.back_to_imports")}</a>
         </div>
@@ -85,7 +85,7 @@ defmodule DawarichWeb.ImportEdit do
 
   defp source_select(assigns) do
     ~H"""
-    <select class="select select-bordered w-full min-w-0" name="import[source]" id="import_source">
+    <select class="select select-bordered" name="import[source]" id="import_source">
       <option value="" label=" "></option>
       <option
         :for={{source, index} <- Enum.with_index(@sources)}

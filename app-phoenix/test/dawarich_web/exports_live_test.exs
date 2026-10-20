@@ -114,7 +114,7 @@ defmodule DawarichWeb.ExportsLiveTest do
 
       assert count(
                content(html),
-               ~s(#export_720121 button[aria-label="Delete export"][phx-click])
+               ~s(#export_720121 a[aria-label="Delete export"][phx-click])
              ) == 1
 
       refute has_element?(view, "[data-turbo-method]")

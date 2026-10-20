@@ -32,7 +32,7 @@ function withHook(run) {
     },
   }
   const hook = Object.assign(Object.create(PlaceDraft), {
-    el: { dataset: { userId: "1" }, querySelector: () => form },
+    el: { dataset: { nativeUserId: "1" }, querySelector: () => form },
     pushEvent: (event, payload) => events.push([event, payload]),
   })
   try {
@@ -70,9 +70,9 @@ test("Places reconnect recovers only the idle whitelisted draft once without sub
 test("Places reconnect discards a different actor and never recovers absent accepted forms", () => {
   withHook((hook, events, removeForm) => {
     hook.disconnected()
-    hook.el.dataset.userId = "2"
+    hook.el.dataset.nativeUserId = "2"
     hook.reconnected()
-    hook.el.dataset.userId = "1"
+    hook.el.dataset.nativeUserId = "1"
     hook.reconnected()
     removeForm()
     hook.disconnected()

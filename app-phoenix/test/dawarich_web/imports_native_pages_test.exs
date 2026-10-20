@@ -26,7 +26,7 @@ defmodule DawarichWeb.ImportsNativePagesTest do
 
   test "new native page labels bounded multi-file uploads without a legacy endpoint", c do
     {:ok, view, html} = live_as(c.user, "/imports/new")
-    assert has_element?(view, "label[for=import_files]")
+    assert has_element?(view, "label.form-control input#import_files")
     assert has_element?(view, "input#import_files[multiple][data-native-selection]")
 
     assert has_element?(
@@ -34,7 +34,7 @@ defmodule DawarichWeb.ImportsNativePagesTest do
              "#phx-import-upload[data-upload-kind=imports][phx-submit=start_imports]"
            )
 
-    assert has_element?(view, "#phx-import-upload button[type=submit][disabled]")
+    assert has_element?(view, "#phx-import-upload input[type=submit][disabled]")
     refute html =~ "/rails/active_storage/direct_uploads"
     refute has_element?(view, "#phx-import-upload[phx-update=ignore], [data-controller=upload]")
   end

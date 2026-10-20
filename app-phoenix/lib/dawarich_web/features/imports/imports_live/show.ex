@@ -121,10 +121,10 @@ defmodule DawarichWeb.ImportsLive.Show do
   def render(assigns) do
     ~H"""
     <div
-      class="mx-auto md:w-2/3 w-full min-w-0"
+      class="mx-auto md:w-2/3 w-full flex"
       data-testid="native-imports-root"
     >
-      <div class="mx-auto min-w-0 [overflow-wrap:anywhere]">
+      <div class="mx-auto">
         <p
           :if={@notice}
           class="py-2 px-3 bg-green-50 mb-5 text-green-500 font-medium rounded-lg inline-block"
@@ -133,7 +133,7 @@ defmodule DawarichWeb.ImportsLive.Show do
           {@notice}
         </p>
         <div id={"import_#{@record.id}"}>
-          <table class="table table-fixed w-full max-sm:[&_th]:p-1 max-sm:[&_td]:p-1 max-sm:text-xs max-sm:[&_.tooltip:before]:left-auto max-sm:[&_.tooltip:before]:right-0 max-sm:[&_.tooltip:before]:translate-x-0">
+          <table class="table">
             <thead>
               <tr>
                 <th>{t(@locale, "imports.import.name", %{})}</th>
@@ -161,16 +161,18 @@ defmodule DawarichWeb.ImportsLive.Show do
           native={true}
         />
         <a
-          class="mt-2 rounded-lg py-3 px-5 bg-secondary-content inline-block font-medium"
+          class="btn mt-2"
           href={"/imports/#{@record.id}/edit"}
         >{t(@locale, "imports.show.edit_this_import", %{})}</a>
         <div class="inline-block ml-2">
-          <form phx-submit="delete_import">
+          <form phx-submit="delete_import" action={"/imports/#{@record.id}"} method="post">
+            <input type="hidden" name="_method" value="delete" />
+            <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
             <input type="hidden" name="import_id" value={@record.id} />
             <button
               type="submit"
               data-testid="import-delete"
-              class="mt-2 rounded-lg py-3 px-5 bg-secondary-content font-medium"
+              class="btn btn-outline btn-error mt-2"
               data-confirm={
                 t(
                   @locale,
@@ -182,7 +184,7 @@ defmodule DawarichWeb.ImportsLive.Show do
           </form>
         </div>
         <a
-          class="ml-2 rounded-lg py-3 px-5 bg-secondary-content inline-block font-medium"
+          class="btn mt-2 ml-2"
           href="/imports"
         >{t(@locale, "imports.show.back_to_imports", %{})}</a>
       </div>

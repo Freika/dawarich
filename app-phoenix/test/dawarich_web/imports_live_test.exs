@@ -164,7 +164,7 @@ defmodule DawarichWeb.ImportsLiveTest do
         offered =
           page
           |> LazyHTML.query(
-            ~s(.dropdown-content button[phx-click="request_provider"][data-confirm="Are you sure?"])
+            ~s(.dropdown-content a[phx-click="request_provider"][data-confirm="Are you sure?"])
           )
           |> LazyHTML.attribute("phx-value-job")
 

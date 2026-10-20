@@ -40,10 +40,76 @@ defmodule DawarichWeb.TagsLiveFormTest do
         [user.id]
       ).rows
 
-  defp form(view), do: element(view, "#tag-form")
+  defp form(view), do: element(view, "#native-tag-form")
 
   defp fill(params),
     do: Map.merge(%{"name" => "Gym", "icon" => "🏋️", "color" => "#ef4444"}, params)
+
+  for name <- ~w(tags_edit tags_edit_blank) do
+    @name name
+    test "#{@name} matches Rails 1.16.0 form DOM" do
+      state = File.read!("test/fixtures/map_data/#{@name}.json") |> Jason.decode!()
+      user = FrameSeeds.seed!(state)
+      html = get(RailsUser.signed_in(user.id), state["path"]) |> html_response(200)
+      native = tag_presentation(html)
+
+      expected =
+        File.read!("test/fixtures/map_data/#{@name}.html") |> Dawarich.Test.ParityHTML.normalize()
+
+      assert native == expected, Dawarich.Test.ParityHTML.first_difference(native, expected)
+    end
+  end
+
+  defp tag_presentation(html) do
+    html
+    |> LazyHTML.from_document()
+    |> LazyHTML.query("div.px-4.flex-1 > div.flex > *")
+    |> LazyHTML.to_tree()
+    |> tag_wiring()
+    |> Dawarich.Test.ParityHTML.normalize()
+  end
+
+  defp tag_wiring(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &tag_node/1)
+
+  defp tag_node({tag, attrs, children}) do
+    map = Map.new(attrs)
+
+    if tag == "input" and map["type"] == "hidden" and map["name"] == "tag[privacy_enabled]" do
+      []
+    else
+      attrs =
+        Enum.flat_map(attrs, fn {key, value} ->
+          cond do
+            Map.has_key?(map, "data-native-picker") and key == "hidden" ->
+              []
+
+            Map.has_key?(map, "data-native-picker") and key == "class" ->
+              [{key, "hidden " <> value}]
+
+            key == "aria-label" and tag == "button" ->
+              []
+
+            tag == "input" and
+              map["name"] in ~w(tag[privacy_enabled] tag[custom_color] tag[slider_radius]) and
+              key in ~w(name value) and map["type"] == "checkbox" ->
+              []
+
+            tag == "input" and map["type"] in ~w(color range) and key == "name" ->
+              []
+
+            tag == "label" and key == "for" and value == "native-tag-radius" ->
+              [{key, "tag_privacy_radius_meters"}]
+
+            true ->
+              [{key, value}]
+          end
+        end)
+
+      [{tag, attrs, tag_wiring(children)}]
+    end
+  end
+
+  defp tag_node(other), do: [other]
 
   test "a valid new tag is created and the user lands on the list with the Rails notice", %{
     user: user
@@ -81,10 +147,10 @@ defmodule DawarichWeb.TagsLiveFormTest do
       })
 
     assert html =~ "Name has already been taken"
-    assert has_element?(view, "#tag-form [role=alert]")
+    assert has_element?(view, "#native-tag-form [role=alert]")
     assert has_element?(view, "input[name='tag[name]'][value='Gym']")
     assert has_element?(view, "input[name='tag[icon]'][value='🎾']")
-    assert has_element?(view, "input[name='tag[color]'][value='#3b82f6'][checked]")
+    assert has_element?(view, "input[name='tag[color]'][value='#3b82f6']")
     assert has_element?(view, "input[name='tag[privacy_radius_meters]'][value='750']")
     assert length(tag_rows(user)) == 1
   end
@@ -115,7 +181,7 @@ defmodule DawarichWeb.TagsLiveFormTest do
       "tag" => fill(%{"color" => "#ef4444", "custom_color" => "#abcdef"})
     })
 
-    assert has_element?(view, "input[name='tag[color]'][value='#abcdef'][checked]")
+    assert has_element?(view, "input[name='tag[color]'][value='#abcdef']")
 
     view
     |> form()
@@ -159,11 +225,11 @@ defmodule DawarichWeb.TagsLiveFormTest do
       })
 
     refute html =~ "Name can&#39;t be blank"
-    refute has_element?(view, "#tag-form [role=alert]")
+    refute has_element?(view, "#native-tag-form [role=alert]")
 
     html = view |> form() |> render_submit(%{"tag" => %{"name" => "", "icon" => "🏠"}})
     assert html =~ "Name can&#39;t be blank"
-    assert has_element?(view, "#tag-form [role=alert]")
+    assert has_element?(view, "#native-tag-form [role=alert]")
   end
 
   test "the radius label follows the slider while editing", %{user: user} do
@@ -187,7 +253,7 @@ defmodule DawarichWeb.TagsLiveFormTest do
     assert html =~ "Edit Tag"
     assert has_element?(view, "input[name='tag[name]'][value='Home']")
     assert has_element?(view, "input[name='tag[icon]'][value='🏠']")
-    assert has_element?(view, "input[name='tag[color]'][value='#6ab0a4'][checked]")
+    assert has_element?(view, "input[name='tag[color]'][value='#6ab0a4']")
     assert has_element?(view, "input[name='tag[privacy_radius_meters]'][value='300']")
 
     view
@@ -233,6 +299,14 @@ defmodule DawarichWeb.TagsLiveFormTest do
     source = File.read!(Path.expand("../../../app/helpers/tags_helper.rb", __DIR__))
     [_, list] = Regex.run(~r/COMMON_TAG_EMOJIS = %w\[(.*?)\]/s, source)
     assert static in String.split(list)
+
+    expected =
+      File.read!("test/fixtures/map_data/tags_new.html")
+      |> String.replace("☕", static)
+      |> Dawarich.Test.ParityHTML.normalize()
+
+    native = tag_presentation(conn.resp_body)
+    assert native == expected, Dawarich.Test.ParityHTML.first_difference(native, expected)
   end
 
   test "opening the new form from the list also starts with a Rails emoji", %{user: user} do

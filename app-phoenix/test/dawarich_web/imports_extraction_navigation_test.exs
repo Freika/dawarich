@@ -22,7 +22,7 @@ defmodule DawarichWeb.ImportsExtractionNavigationTest do
 
     assert has_element?(
              view,
-             ~s(#import-759901-extraction button[phx-click=remove_extraction]),
+             ~s(#import-759901-extraction form[phx-submit=remove_extraction] button[type=submit]),
              "Remove extracted data"
            )
 

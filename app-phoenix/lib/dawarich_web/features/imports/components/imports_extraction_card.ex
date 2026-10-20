@@ -69,8 +69,8 @@ defmodule DawarichWeb.ImportsExtractionCard do
       phx-hook={!@native && "RailsStimulus"}
     >
       <div class="card bg-base-200 mt-6 max-w-2xl">
-        <div class="card-body min-w-0 [overflow-wrap:anywhere]">
-          <div class="flex flex-wrap min-w-0 items-center gap-2 mb-2">
+        <div class="card-body">
+          <div class="flex items-center gap-2 mb-2">
             <.icon name="layer" class="w-5 h-5 text-base-content/60" />
             <h3 class="text-lg font-semibold">{text(@locale, "additional_data")}</h3>
             <span class={"badge badge-sm " <> @badge}><span
@@ -186,34 +186,25 @@ defmodule DawarichWeb.ImportsExtractionCard do
 
   attr :native, :boolean, default: false
 
-  defp remove_button(%{native: true} = assigns) do
-    ~H"""
-    <button
-      type="button"
-      phx-click="remove_extraction"
-      class="btn btn-sm btn-ghost text-error"
-      data-confirm={
-        Translate.t(
-          @locale,
-          "imports.extraction_remove_button.remove_the_visits_places_and_tracks_this_extraction_created_your",
-          %{}
-        )
-      }
-    >
-      {Translate.t(@locale, "imports.extraction_remove_button.remove_extracted_data", %{})}
-    </button>
-    """
-  end
-
   defp remove_button(assigns) do
     ~H"""
     <form
       data-turbo-confirm={
-        Translate.t(
-          @locale,
-          "imports.extraction_remove_button.remove_the_visits_places_and_tracks_this_extraction_created_your",
-          %{}
-        )
+        !@native &&
+          Translate.t(
+            @locale,
+            "imports.extraction_remove_button.remove_the_visits_places_and_tracks_this_extraction_created_your",
+            %{}
+          )
+      }
+      phx-submit={@native && "remove_extraction"}
+      data-confirm={
+        @native &&
+          Translate.t(
+            @locale,
+            "imports.extraction_remove_button.remove_the_visits_places_and_tracks_this_extraction_created_your",
+            %{}
+          )
       }
       class="button_to"
       method="post"

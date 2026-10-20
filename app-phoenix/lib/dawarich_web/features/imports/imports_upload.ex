@@ -112,7 +112,11 @@ defmodule DawarichWeb.ImportsUpload do
     ~H"""
     <form
       id="phx-import-upload"
-      class="space-y-4 min-w-0"
+      class="contents"
+      action="/imports"
+      accept-charset="UTF-8"
+      method="post"
+      enctype="multipart/form-data"
       phx-hook="ArchiveChecksum"
       data-upload-kind="imports"
       data-upload-name="files"
@@ -122,29 +126,36 @@ defmodule DawarichWeb.ImportsUpload do
       phx-change="validate_files"
       phx-submit="start_imports"
     >
-      <label for="import_files" class="block">{t(
-        @locale,
-        "imports.form.select_one_or_multiple_files",
-        %{}
-      )}</label>
-      <input
-        id="import_files"
-        type="file"
-        multiple
-        accept={@accept}
-        data-native-selection
-        data-testid="import-file-input"
-        class="file-input file-input-bordered w-full min-w-0"
-      />
+      <input type="hidden" name="authenticity_token" value="" />
+      <label class="form-control w-full max-w-xs my-5">
+        <div class="label">
+          <span class="label-text">{t(@locale, "imports.form.select_one_or_multiple_files", %{})}</span>
+        </div>
+        <input type="hidden" name="import[files][]" value="" />
+        <input
+          id="import_files"
+          type="file"
+          multiple="multiple"
+          accept={@accept}
+          name="import[files][]"
+          data-native-selection
+          data-testid="import-file-input"
+          class="file-input file-input-bordered w-full max-w-xs"
+        />
+        <div class="text-sm text-gray-500 mt-2">
+          {t(
+            @locale,
+            "imports.form.files_will_be_uploaded_directly_to_storage_please_be_patient",
+            %{}
+          )}
+        </div>
+      </label>
       <.live_file_input
         upload={@upload}
         class="hidden"
         aria-label={t(@locale, "imports.form.select_one_or_multiple_files", %{})}
         data-idle-timeout={@limits.idle_timeout}
       />
-      <p class="text-sm [overflow-wrap:anywhere]">
-        {t(@locale, "imports.form.files_will_be_uploaded_directly_to_storage_please_be_patient", %{})}
-      </p>
       <span
         id="import-checksum-progress"
         data-checksum-progress
@@ -182,13 +193,17 @@ defmodule DawarichWeb.ImportsUpload do
       <p :for={error <- upload_errors(@upload)} role="alert" class="text-error">
         {upload_error(@locale, error)}
       </p>
-      <button
-        type="submit"
-        data-testid="import-submit"
-        class="btn btn-primary max-w-full whitespace-normal"
-        disabled={!@ready}
-        phx-disable-with={t(@locale, "devise.registrations.edit.importing", %{})}
-      >{t(@locale, "helpers.submit.create", %{"model" => "Import"})}</button>
+      <div class="inline">
+        <input
+          type="submit"
+          name="commit"
+          data-testid="import-submit"
+          class="btn btn-primary"
+          disabled={!@ready}
+          phx-disable-with={t(@locale, "devise.registrations.edit.importing", %{})}
+          value={t(@locale, "helpers.submit.create", %{"model" => "Import"})}
+        />
+      </div>
     </form>
     """
   end

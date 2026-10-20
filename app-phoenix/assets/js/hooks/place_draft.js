@@ -13,7 +13,7 @@ export const PlaceDraft = {
     )
     place.tag_ids = data.getAll("place[tag_ids][]")
     this.draft = {
-      user: this.el.dataset.userId,
+      user: this.el.dataset.nativeUserId ?? this.el.dataset.userId,
       id: form.dataset.nativePlaceId ?? form.dataset.placeId,
       place,
     }
@@ -24,11 +24,17 @@ export const PlaceDraft = {
   reconnected() {
     const saved = this.draft
     this.draft = null
-    if (saved?.user === this.el.dataset.userId) {
-      this.pushEvent(this.el.dataset.nativeDraftEvent || "recover_place_draft", {
-        id: saved.id,
-        place: saved.place,
-      })
+    if (
+      saved &&
+      saved.user === (this.el.dataset.nativeUserId ?? this.el.dataset.userId)
+    ) {
+      this.pushEvent(
+        this.el.dataset.nativeDraftEvent || "recover_place_draft",
+        {
+          id: saved.id,
+          place: saved.place,
+        },
+      )
     }
   },
 }

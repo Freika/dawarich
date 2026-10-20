@@ -1,8 +1,8 @@
 <div
   id="native-places"
   phx-hook="PlaceDraft"
-  data-user-id={@current_user.id}
-  class="w-full my-5 min-w-0"
+  data-native-user-id={@current_user.id}
+  class="w-full my-5"
   data-native-places="1"
 >
   <div class="overflow-x-auto pb-1">
@@ -19,11 +19,6 @@
       )}</a>
     </div>
   </div>
-  <button type="button" class="btn btn-primary my-3" phx-click="open_create">{t(
-    @locale,
-    "shared.place_creation_modal.create_new_place",
-    %{}
-  )}</button>
   <PlaceForm.form
     :if={@form_state}
     state={@form_state}
@@ -38,12 +33,12 @@
     locale={@locale}
   />
   <p :if={@error} role="alert" class="text-error [overflow-wrap:anywhere]">{@error}</p>
-  <div id="places" class="min-w-0">
+  <div id="places" class="min-w-full">
     <%= if @entries == [] do %>
       <div class="hero min-h-80 bg-base-200">
-        <div class="hero-content text-center min-w-0">
-          <div class="max-w-md min-w-0 [overflow-wrap:anywhere]">
-            <h1 class="text-4xl font-bold">{t(@locale, "places.index.hello_there", %{})}</h1>
+        <div class="hero-content text-center">
+          <div class="max-w-md">
+            <h1 class="text-5xl font-bold">{t(@locale, "places.index.hello_there", %{})}</h1>
             <p class="py-6">
               {t(
                 @locale,
@@ -55,7 +50,7 @@
         </div>
       </div>
     <% else %>
-      <div class="flex justify-center my-5 overflow-x-auto">
+      <div class="flex justify-center my-5">
         <.paginator
           locale={@locale}
           path="/places"
@@ -77,28 +72,17 @@
           </thead>
           <tbody>
             <tr :for={place <- @entries}>
-              <td class="[overflow-wrap:anywhere]">
-                <button
-                  type="button"
-                  class="link text-left [overflow-wrap:anywhere]"
-                  phx-click="open_detail"
-                  phx-value-id={place.id}
-                >{place.name}</button>
-              </td>
+              <td>{place.name}</td>
               <td><.human_datetime locale={@locale} at={place.created} /></td>
               <td>{coordinates(place)}</td>
               <td>
-                <button type="button" class="btn" phx-click="open_edit" phx-value-id={place.id}>{t(
-                  @locale,
-                  "places.drawer.edit",
-                  %{}
-                )}</button>
-                <button
-                  type="button"
-                  class="btn btn-error"
+                <a
+                  href="#"
+                  data-native-href={"/places/#{place.id}" <> if(@query["page"], do: "?" <> URI.encode_query(%{"page" => @query["page"]}), else: "")}
+                  class="btn btn-ghost btn-xs text-error hover:bg-error/10"
                   phx-click="request_delete"
                   phx-value-id={place.id}
-                >{t(@locale, "places.index.delete", %{})}</button>
+                >{t(@locale, "places.index.delete", %{})}</a>
               </td>
             </tr>
           </tbody>

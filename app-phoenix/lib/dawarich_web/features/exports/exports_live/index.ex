@@ -119,7 +119,7 @@ defmodule DawarichWeb.ExportsLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="w-full my-5 min-w-0" data-testid="native-exports-root">
+    <div class="w-full my-5" data-testid="native-exports-root">
       <.page_header title={t(@locale, "exports.index.exports", %{})} />
       <div id="exports" class="min-w-full">
         <div
@@ -152,7 +152,7 @@ defmodule DawarichWeb.ExportsLive.Index do
             />
           </div>
           <div class="border border-base-300 rounded-xl overflow-x-auto">
-            <table class="table w-full table-fixed max-sm:[&_th]:p-1 max-sm:[&_td]:p-1 max-sm:text-xs max-sm:[&_.whitespace-nowrap]:whitespace-normal [overflow-wrap:anywhere]">
+            <table class="table w-full">
               <thead class="bg-base-200">
                 <tr>
                   <th
