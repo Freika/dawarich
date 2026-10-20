@@ -31,7 +31,7 @@ defmodule DawarichWeb.AdminUsersLiveTest do
 
     view |> element("a[rel=next]", "»") |> render_click()
     assert_patch(view, "/settings/users?page=2")
-    assert has_element?(view, "tr[data-user-id='10803']")
+    assert has_element?(view, "tr[data-native-user-id='10803']")
     assert :sys.get_state(view.pid).socket.assigns.create_open
 
     assert view
@@ -42,18 +42,18 @@ defmodule DawarichWeb.AdminUsersLiveTest do
            |> LazyHTML.attribute("id") == form_id
 
     render_patch(view, "/settings/users")
-    assert has_element?(view, "tr[data-user-id='10829']")
-    view |> form("#users-search", %{"search" => "tie-10803"}) |> render_submit()
+    assert has_element?(view, "tr[data-native-user-id='10829']")
+    view |> form("#native-users-search", %{"search" => "tie-10803"}) |> render_submit()
     assert_patch(view, "/settings/users?search=tie-10803")
     assert has_element?(view, "input[name=search][value='tie-10803']")
-    assert has_element?(view, "tr[data-user-id='10803']")
-    refute has_element?(view, "tr[data-user-id='10829']")
-    view |> element("#clear-users-search") |> render_click()
+    assert has_element?(view, "tr[data-native-user-id='10803']")
+    refute has_element?(view, "tr[data-native-user-id='10829']")
+    view |> element("#native-clear-users-search") |> render_click()
     assert_patch(view, "/settings/users")
     RailsUser.insert!(%{id: 10830, email: "literal%_@example.invalid"})
-    view |> form("#users-search", %{"search" => "%_"}) |> render_submit()
-    assert has_element?(view, "tr[data-user-id='10830']")
-    refute has_element?(view, "tr[data-user-id='10802']")
+    view |> form("#native-users-search", %{"search" => "%_"}) |> render_submit()
+    assert has_element?(view, "tr[data-native-user-id='10830']")
+    refute has_element?(view, "tr[data-native-user-id='10802']")
     assert NativeAdminUI.labels(render(view)) == []
   end
 
@@ -64,7 +64,7 @@ defmodule DawarichWeb.AdminUsersLiveTest do
       html =
         view
         |> form("#phx-registration-settings")
-        |> render_submit(%{"registration_enabled" => value})
+        |> render_change(%{"registration_enabled" => value})
 
       assert Dawarich.Auth.RegistrationSetting.fetch() == {:ok, expected}
 

@@ -25,7 +25,54 @@ defmodule DawarichWeb.SettingsParityTest do
     end)
   end
 
-  @fixtures Path.wildcard("test/fixtures/settings/*.json")
+  for name <-
+        ~w(general_en general_de general_cloud_de general_supporter_en general_unverified_en general_nosmtp_en general_cloud_en general_admin_en) do
+    @general_name name
+    test "#{@general_name} renders the Rails 1.16.0 general settings DOM" do
+      state = @dir |> Path.join(@general_name <> ".json") |> File.read!() |> Jason.decode!()
+      {:ok, now, 0} = DateTime.from_iso8601(state["now"])
+      user = seed!(state)
+      locale = DawarichWeb.Locale.resolve(nil, user, %{})
+
+      context = %{
+        locale: locale,
+        now: now,
+        self_hosted: state["self_hosted"],
+        current_user: user,
+        smtp: state["smtp"],
+        two_factor: state["two_factor"],
+        supporter: state["supporter"],
+        rails_csrf_token: "CSRF",
+        zones: Enum.map(@corpus["time_zone_options"], fn [label, iana] -> {label, iana} end)
+      }
+
+      {:ok, socket} =
+        DawarichWeb.SettingsLive.General.mount(%{}, %{}, %Phoenix.LiveView.Socket{
+          assigns: Map.put(context, :__changed__, %{})
+        })
+
+      html = render_component(&DawarichWeb.SettingsLive.General.render/1, socket.assigns)
+      rails = File.read!(Path.join(@dir, @general_name <> ".html"))
+      Dawarich.Test.SettingsParity.dump(@general_name, rails, html)
+
+      html =
+        if state["self_hosted"] and state["smtp"] and user.admin do
+          assert LazyHTML.from_fragment(html)
+                 |> LazyHTML.query("#native-send-test-email")
+                 |> LazyHTML.attribute("href") == ["#"]
+
+          String.replace(html, "href=\"#\"", "href=\"/settings/general/test_email\"")
+        else
+          html
+        end
+
+      actual = Dawarich.Test.ParityHTML.normalize(html)
+      expected = Dawarich.Test.ParityHTML.normalize(rails)
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  @fixtures Path.wildcard("test/fixtures/settings/insights_*.json")
   if length(@fixtures) < 10,
     do: raise("expected 10 settings fixtures, found #{length(@fixtures)}")
 

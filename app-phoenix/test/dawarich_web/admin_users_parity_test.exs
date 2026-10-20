@@ -51,9 +51,18 @@ defmodule DawarichWeb.AdminUsersParityTest do
       ids =
         LazyHTML.from_fragment(html)
         |> LazyHTML.query("tbody tr")
-        |> LazyHTML.attribute("data-user-id")
+        |> LazyHTML.attribute("data-native-user-id")
 
       assert ids == Enum.map(state["visible_ids"], &to_string/1)
+      rails = File.read!(Path.join(@dir, @name <> ".html"))
+      Dawarich.Test.SettingsParity.dump("users_" <> @name, rails, html)
+      actual_dom = Dawarich.Test.ParityHTML.fragment(html, ".min-h-content")
+      rails = Regex.replace(~r/ (?:onclick|onchange)="[^"]*"/, rails, "")
+      expected_dom = Dawarich.Test.ParityHTML.fragment(rails, ".min-h-content")
+
+      assert actual_dom == expected_dom,
+             Dawarich.Test.ParityHTML.first_difference(actual_dom, expected_dom)
+
       assert page.data.search == params["search"]
       assert page.data.registration == state["registration"]
       assert DawarichWeb.Layouts.page_title("en", page.page_title) == state["title"]
@@ -85,6 +94,30 @@ defmodule DawarichWeb.AdminUsersParityTest do
           )
         )
 
+      rails = File.read!(Path.join(@dir, name <> ".html"))
+      Dawarich.Test.SettingsParity.dump("users_" <> name, rails, html)
+      actual_dom = show_dom(html)
+
+      rails =
+        Enum.reduce(
+          [
+            {"flex items-center justify-between",
+             "flex flex-wrap items-center justify-between gap-4"},
+            {"text-2xl font-bold", "text-2xl font-bold break-all"},
+            {"flex gap-2", "flex flex-wrap gap-2"},
+            {"flex items-center gap-2", "flex flex-wrap items-center gap-2"},
+            {"btn btn-outline btn-sm",
+             "btn btn-outline btn-sm h-auto min-h-8 py-1 whitespace-normal"}
+          ],
+          rails,
+          fn {from, to}, html -> String.replace(html, "class=\"#{from}\"", "class=\"#{to}\"") end
+        )
+
+      expected_dom = show_dom(rails)
+
+      assert actual_dom == expected_dom,
+             Dawarich.Test.ParityHTML.first_difference(actual_dom, expected_dom)
+
       assert page.target.id == state["target"]["id"]
       assert page.target.email == state["target"]["email"]
       assert page.counts == state["target"]["counts"]
@@ -94,7 +127,8 @@ defmodule DawarichWeb.AdminUsersParityTest do
       assert page.target.current_sign_in_ip == state["target"]["current_sign_in_ip"]
 
       button =
-        LazyHTML.from_fragment(html) |> LazyHTML.query("#admin-user-copy[phx-hook=Clipboard]")
+        LazyHTML.from_fragment(html)
+        |> LazyHTML.query("#native-admin-user-copy[phx-hook=Clipboard]")
 
       assert LazyHTML.attribute(button, "data-clipboard-text") == [state["target"]["api_key"]]
       assert html =~ String.slice(state["target"]["api_key"], 0, 8) <> String.duplicate("•", 24)
@@ -161,6 +195,37 @@ defmodule DawarichWeb.AdminUsersParityTest do
                Enum.at(~w(inactive active trial pending_payment), status)
              ]
     end
+  end
+
+  for name <- ~w(edit_self edit_target edit_inactive edit_active edit_trial edit_pending_payment) do
+    @edit_name name
+    @tag :d5_user_edit
+    test "user edit #{@edit_name} renders the Rails 1.16.0 form DOM" do
+      state = fixture(@edit_name)
+      context = seed_detail!(state)
+      assert {:ok, page} = UserEdit.page(%{"id" => to_string(state["target"]["id"])}, context)
+      html = render_component(&UserEdit.render/1, Map.merge(context, page))
+      rails = File.read!(Path.join(@dir, @edit_name <> ".html"))
+      Dawarich.Test.SettingsParity.dump("users_" <> @edit_name, rails, html)
+      actual = Dawarich.Test.ParityHTML.normalize(html)
+      expected = Dawarich.Test.ParityHTML.normalize(rails)
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  defp show_dom(html) do
+    html =
+      Regex.replace(
+        ~r/ (?:data-clipboard-text|data-copied-label|data-failed-label|data-status-id)="[^"]*"/,
+        html,
+        ""
+      )
+
+    Dawarich.Test.ParityHTML.without(
+      html,
+      ["#rotate_api_key", "#native-admin-user-copy-status"],
+      ".min-h-content"
+    )
   end
 
   defp seed_detail!(state) do

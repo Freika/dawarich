@@ -11,7 +11,7 @@
   <div class="flex flex-col w-full my-10">
     <div class="w-10/12 mx-auto space-y-6">
       <div class="flex flex-wrap items-center justify-between gap-4">
-        <div class="min-w-0">
+        <div>
           <h2 class="text-2xl font-bold break-all">{@target.email}</h2>
           <div class="flex gap-2 mt-2">
             <span class={if(@target.admin, do: "badge badge-primary", else: "badge badge-ghost")}>{label(
@@ -102,15 +102,14 @@
         <div class="card bg-base-200">
           <div class="card-body">
             <h3 class="card-title">{label(@locale, "api_key")}</h3>
-            <div id="admin-user-clipboard" class="flex flex-wrap items-center gap-2">
+            <div id="native-admin-user-clipboard" class="flex flex-wrap items-center gap-2">
               <code class="bg-base-300 px-3 py-2 rounded-lg text-sm flex-1 break-all">{String.slice(
                 @target_user.api_key,
                 0,
                 8
               )}{String.duplicate("•", 24)}</code>
               <button
-                id="admin-user-copy"
-                type="button"
+                id="native-admin-user-copy"
                 class="btn btn-ghost btn-sm"
                 phx-hook="Clipboard"
                 data-clipboard-text={@target_user.api_key}
@@ -118,23 +117,37 @@
                 data-failed-label={
                   t(@locale, "javascript.messages.failed_to_copy_please_copy_manually", %{})
                 }
-                data-status-id="admin-user-copy-status"
+                data-status-id="native-admin-user-copy-status"
               >
                 <.icon name="copy" class="inline-block w-4" /> {label(@locale, "copy")}
               </button>
-              <span id="admin-user-copy-status" role="status" aria-live="polite" class="text-sm"></span>
+              <span
+                id="native-admin-user-copy-status"
+                role="status"
+                aria-live="polite"
+                class="sr-only"
+              ></span>
             </div>
             <div class="card-actions mt-4">
-              <button
-                id="open-rotate"
-                type="button"
-                class="btn btn-warning btn-sm"
-                phx-click={
-                  JS.push("open_rotate")
-                  |> JS.dispatch("dawarich:open-dialog", to: "#rotate_api_key")
-                }
-                disabled={MapSet.member?(@security_accepted, "rotate_api_key")}
-              >{label(@locale, "regenerate_api_key")}</button>
+              <form
+                class="button_to"
+                method="post"
+                action={"/settings/users/#{@target.id}/regenerate_api_key"}
+                phx-submit="open_rotate"
+              >
+                <button
+                  id="native-open-rotate"
+                  type="submit"
+                  class="btn btn-warning btn-sm"
+                  phx-click={JS.dispatch("dawarich:open-dialog", to: "#rotate_api_key")}
+                  disabled={MapSet.member?(@security_accepted, "rotate_api_key")}
+                >{label(@locale, "regenerate_api_key")}</button>
+                <input
+                  type="hidden"
+                  name="authenticity_token"
+                  value={assigns[:rails_csrf_token] || Plug.CSRFProtection.get_csrf_token()}
+                />
+              </form>
             </div>
           </div>
         </div>
@@ -142,14 +155,25 @@
           <div class="card-body">
             <h3 class="card-title">{label(@locale, "actions")}</h3>
             <div class="flex flex-col gap-3">
-              <button
-                id="send-password-reset"
-                type="button"
-                class="btn btn-outline btn-sm h-auto min-h-8 py-1 whitespace-normal"
-                phx-click="send_password_reset"
-                phx-disable-with={label(@locale, "send_password_reset_email")}
-                disabled={MapSet.member?(@security_accepted, "send_password_reset")}
-              >{label(@locale, "send_password_reset_email")}</button>
+              <form
+                class="button_to"
+                method="post"
+                action={"/settings/users/#{@target.id}/send_password_reset"}
+                phx-submit="send_password_reset"
+              >
+                <button
+                  id="native-send-password-reset"
+                  type="submit"
+                  class="btn btn-outline btn-sm h-auto min-h-8 py-1 whitespace-normal"
+                  phx-disable-with={label(@locale, "send_password_reset_email")}
+                  disabled={MapSet.member?(@security_accepted, "send_password_reset")}
+                >{label(@locale, "send_password_reset_email")}</button>
+                <input
+                  type="hidden"
+                  name="authenticity_token"
+                  value={assigns[:rails_csrf_token] || Plug.CSRFProtection.get_csrf_token()}
+                />
+              </form>
               <.link
                 class="btn btn-primary btn-sm"
                 navigate={"/settings/users/#{@target.id}/edit"}

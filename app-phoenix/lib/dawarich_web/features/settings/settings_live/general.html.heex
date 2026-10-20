@@ -11,7 +11,20 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <div class="card bg-base-200 shadow-xl">
-      <.form for={@form} id="general-settings" phx-change="change" phx-submit="save">
+      <form
+        id="native-general-settings"
+        action="/settings/general"
+        accept-charset="UTF-8"
+        method="post"
+        phx-change="change"
+        phx-submit="save"
+      >
+        <input type="hidden" name="_method" value="patch" />
+        <input
+          type="hidden"
+          name="authenticity_token"
+          value={assigns[:rails_csrf_token] || Plug.CSRFProtection.get_csrf_token()}
+        />
         <div class="card-body">
           <div class="space-y-8 animate-fade-in">
             <div id="email-digests">
@@ -20,9 +33,9 @@
                 {t(@locale, "settings.general.index.email_preferences", %{})}
               </h2>
               <div :if={@smtp} class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
-                <.input
-                  field={@form[:monthly_digest_emails_enabled]}
-                  type="checkbox"
+                <.toggle
+                  name="monthly_digest_emails_enabled"
+                  checked={@form[:monthly_digest_emails_enabled].value in [true, "true", "1", 1]}
                   label={t(@locale, "settings.general.index.monthly_digest_emails", %{})}
                   hint={
                     t(
@@ -32,9 +45,9 @@
                     )
                   }
                 />
-                <.input
-                  field={@form[:yearly_digest_emails_enabled]}
-                  type="checkbox"
+                <.toggle
+                  name="yearly_digest_emails_enabled"
+                  checked={@form[:yearly_digest_emails_enabled].value in [true, "true", "1", 1]}
                   label={t(@locale, "settings.general.index.year_end_digest_emails", %{})}
                   hint={
                     t(
@@ -44,9 +57,9 @@
                     )
                   }
                 />
-                <.input
-                  field={@form[:news_emails_enabled]}
-                  type="checkbox"
+                <.toggle
+                  name="news_emails_enabled"
+                  checked={@form[:news_emails_enabled].value in [true, "true", "1", 1]}
                   label={t(@locale, "settings.general.index.news_updates", %{})}
                   hint={
                     t(
@@ -58,15 +71,15 @@
                 />
                 <div :if={test_email?(assigns)} class="border-t border-base-content/10 pt-4">
                   <div class="flex flex-wrap items-center gap-3">
-                    <button
-                      id="send-test-email"
-                      type="button"
+                    <a
+                      id="native-send-test-email"
+                      href="#"
                       class="btn btn-outline btn-sm"
                       phx-click="send_test_email"
                       phx-disable-with={t(@locale, "settings.general.index.send_test_email", %{})}
                     >
                       {t(@locale, "settings.general.index.send_test_email", %{})}
-                    </button>
+                    </a>
                     <span class="text-sm text-base-content/70">
                       {t(@locale, "settings.general.index.test_email_worker_hint", %{})}
                     </span>
@@ -108,7 +121,7 @@
                         class="peer sr-only"
                         type="radio"
                         value={code}
-                        checked={code == @form[:locale].value}
+                        checked={code == @form[:locale].value && "checked"}
                         name={@form[:locale].name}
                         id={"locale_" <> code}
                       />
@@ -140,19 +153,27 @@
                 {t(@locale, "settings.general.index.timezone", %{})}
               </h2>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
-                <.input
-                  field={@form[:timezone]}
-                  type="select"
-                  options={@zones}
-                  label={t(@locale, "settings.general.index.your_timezone", %{})}
-                />
-                <p class="text-sm text-base-content/70 mt-1">
-                  {t(
+                <div class="form-control">
+                  <label class="label"><span class="label-text font-medium">{t(
                     @locale,
-                    "settings.general.index.all_dates_and_times_will_be_displayed_in_this_timezone",
+                    "settings.general.index.your_timezone",
                     %{}
-                  )}
-                </p>
+                  )}</span></label>
+                  <select id="timezone" name="timezone" class="select select-bordered w-full"><option
+                    :for={{label, zone} <- @zones}
+                    value={zone}
+                    selected={zone == @form[:timezone].value && "selected"}
+                  >
+                    {label}
+                  </option></select>
+                  <p class="text-sm text-base-content/70 mt-1">
+                    {t(
+                      @locale,
+                      "settings.general.index.all_dates_and_times_will_be_displayed_in_this_timezone",
+                      %{}
+                    )}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -162,9 +183,9 @@
                 {t(@locale, "settings.general.index.supporter_badge", %{})}
               </h2>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
-                <.input
-                  field={@form[:show_supporter_badge]}
-                  type="checkbox"
+                <.toggle
+                  name="show_supporter_badge"
+                  checked={@form[:show_supporter_badge].value in [true, "true", "1", 1]}
                   label={t(@locale, "settings.general.index.show_supporter_badge_in_navbar", %{})}
                   hint={
                     t(
@@ -178,16 +199,16 @@
             </div>
           </div>
           <div class="card-actions justify-end mt-6">
-            <button
+            <input
               type="submit"
+              name="commit"
               class="btn btn-primary"
+              value={t(@locale, "settings.general.index.save_changes", %{})}
               phx-disable-with={t(@locale, "settings.general.index.save_changes", %{})}
-            >
-              {t(@locale, "settings.general.index.save_changes", %{})}
-            </button>
+            />
           </div>
         </div>
-      </.form>
+      </form>
     </div>
 
     <.supporter_card
@@ -196,11 +217,13 @@
       user={@current_user}
       supporter={@supporter}
       platform={@platform}
+      rails_csrf_token={assigns[:rails_csrf_token] || Plug.CSRFProtection.get_csrf_token()}
     />
     <.consent_card
       :if={@self_hosted}
       locale={@locale}
       granted={@current_user.changelog_consent == 1}
+      rails_csrf_token={assigns[:rails_csrf_token] || Plug.CSRFProtection.get_csrf_token()}
       native
     />
   </div>

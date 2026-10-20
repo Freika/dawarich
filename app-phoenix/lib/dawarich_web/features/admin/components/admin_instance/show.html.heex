@@ -25,47 +25,48 @@
         {t(@locale, "admin.settings.show.geocoding.chain_hint", %{})}
       </p>
     </section>
-    <div id="instance-settings-sections">
-      <div class="flex flex-col lg:flex-row gap-6 items-start">
-        <nav
-          class="w-full lg:w-64 shrink-0"
-          aria-label={t(@locale, "admin.settings.show.sections_nav", %{})}
-        >
-          <p class="mb-2 text-[10px] font-bold uppercase tracking-[0.05em] text-base-content/70">
-            {t(@locale, "admin.settings.show.geocoding.title", %{})}
-          </p>
-          <div class="space-y-2">
-            <.section_link
-              :for={item <- sections()}
-              locale={@locale}
-              item={item}
-              section={@section}
-              data={@data}
-            />
-          </div>
-          <div class="mt-6">
-            <.section_link locale={@locale} item="points" section={@section} data={@data} />
-            <div class="mt-2" data-testid="experimental-navigation">
-              <.section_link locale={@locale} item="experimental" section={@section} data={@data} />
-            </div>
-          </div>
-        </nav>
-        <div class="flex-1 min-w-0 w-full">
-          <AdminExperimental.section
-            :if={@section == "experimental"}
+    <div
+      id="native-instance-settings-sections"
+      class="flex flex-col lg:flex-row gap-6 items-start"
+    >
+      <nav
+        class="w-full lg:w-64 shrink-0"
+        aria-label={t(@locale, "admin.settings.show.sections_nav", %{})}
+      >
+        <p class="mb-2 text-[10px] font-bold uppercase tracking-[0.05em] text-base-content/70">
+          {t(@locale, "admin.settings.show.geocoding.title", %{})}
+        </p>
+        <div class="space-y-2">
+          <.section_link
+            :for={item <- sections()}
             locale={@locale}
-            data={@data}
-            testing={@testing}
-            saves={@saves}
-          />
-          <.pane
-            :if={@section != "experimental"}
-            locale={@locale}
-            data={@data}
+            item={item}
             section={@section}
-            saves={@saves}
+            data={@data}
           />
         </div>
+        <div class="mt-6">
+          <.section_link locale={@locale} item="points" section={@section} data={@data} />
+          <div class="mt-2" data-testid="experimental-navigation">
+            <.section_link locale={@locale} item="experimental" section={@section} data={@data} />
+          </div>
+        </div>
+      </nav>
+      <div class="flex-1 min-w-0 w-full">
+        <AdminExperimental.section
+          :if={@section == "experimental"}
+          locale={@locale}
+          data={@data}
+          testing={@testing}
+          saves={@saves}
+        />
+        <.pane
+          :if={@section != "experimental"}
+          locale={@locale}
+          data={@data}
+          section={@section}
+          saves={@saves}
+        />
       </div>
     </div>
   </div>

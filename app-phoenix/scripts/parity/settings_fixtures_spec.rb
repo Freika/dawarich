@@ -1807,6 +1807,8 @@ skip_family_sync: true)
     allow_any_instance_of(Supporter::VerifyEmail).to receive(:call).and_return(supporter)
     allow_any_instance_of(Supporter::VerifyGithubUsername).to receive(:call).and_return(supporter)
     allow_any_instance_of(UserHelper).to receive(:settings_time_zone_options).and_return(zones)
+    return if ENV['D5_SETTINGS_ONLY'] == '1' && path.start_with?('/insights')
+
     sign_in user
     get path
     expect(response).to have_http_status(:ok)
@@ -1839,6 +1841,8 @@ skip_family_sync: true)
 
     travel_to now do
       capture('general_en', member(5321), '/settings/general')
+      capture('general_de', member(5327, settings: { 'locale' => 'de' }), '/settings/general')
+      capture('general_cloud_de', member(5328, settings: { 'locale' => 'de' }), '/settings/general', self_hosted: false)
       capture('general_supporter_en',
               member(5322, consent: :granted, settings: { 'supporter_email' => 'a5s3-fan@dawarich.test' }),
               '/settings/general', supporter: { supporter: true, platform: 'patreon' })

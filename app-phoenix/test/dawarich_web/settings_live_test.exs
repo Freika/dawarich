@@ -92,7 +92,7 @@ defmodule DawarichWeb.SettingsLiveTest do
       {:ok, view, html} = live_as(user, "/settings/general")
       assert html =~ "https://dawarich.app/docs/self-hosting/configuration/smtp/"
       refute has_element?(view, "input[name='monthly_digest_emails_enabled']")
-      refute has_element?(view, "#send-test-email")
+      refute has_element?(view, "#native-send-test-email")
     end
 
     test "the legacy digest key sets both toggles; news stays on by default", %{user: user} do

@@ -58,8 +58,21 @@ defmodule DawarichWeb.AdminPagesParityTest do
         })
 
       rails = File.read!(Path.join(@dir, @name <> ".html"))
+      Dawarich.Test.SettingsParity.dump("instance_" <> @name, rails, html)
       expected = facts(rails)
       assert Map.take(facts(html), Map.keys(expected)) == expected
+
+      actual_dom =
+        Dawarich.Test.ParityHTML.without(
+          html,
+          ["[data-testid=experimental-navigation]"],
+          ".min-h-content"
+        )
+
+      expected_dom = Dawarich.Test.ParityHTML.normalize(rails)
+
+      assert actual_dom == expected_dom,
+             Dawarich.Test.ParityHTML.first_difference(actual_dom, expected_dom)
 
       assert DawarichWeb.Layouts.page_title(
                "en",
