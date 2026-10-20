@@ -322,7 +322,7 @@ defmodule DawarichWeb.TripsLiveTest do
 
       assert has_element?(
                view,
-               "form[phx-submit='trip:delete'] button[data-confirm='Delete this trip? This cannot be undone.']"
+               "form[phx-submit='trip:delete'] button[type=submit]:not([data-confirm])"
              )
 
       refute has_element?(view, "[data-testid=trip-header-actions] .badge-success")
@@ -373,7 +373,7 @@ defmodule DawarichWeb.TripsLiveTest do
 
       assert has_element?(
                view,
-               "form[phx-submit='trip:recalculate'] button[data-confirm]:not([disabled])",
+               "form[phx-submit='trip:recalculate'] button[type=submit]:not([data-confirm]):not([disabled])",
                "Recalculate"
              )
     end
@@ -407,7 +407,7 @@ defmodule DawarichWeb.TripsLiveTest do
 
       assert has_element?(
                view,
-               "#native-trip-day-2026-05-10 form[phx-submit='trip:note:delete'] button[data-confirm='Delete this note?']"
+               "#native-trip-day-2026-05-10 form[phx-submit='trip:note:delete'] button[type=submit]:not([data-confirm])"
              )
 
       view

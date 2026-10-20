@@ -51,7 +51,7 @@ defmodule DawarichWeb.NativeTripConfirmation do
       phx-window-keydown="trip:confirmation:cancel"
       phx-key="Escape"
       phx-mounted={JS.push_focus() |> JS.focus_first(to: "#native-trip-confirmation .modal-action")}
-      phx-remove={JS.pop_focus()}
+      phx-remove={JS.pop_focus() |> JS.focus(to: return_to(@confirmation))}
     >
       <.focus_wrap id="native-trip-confirmation-focus" class="modal-box min-w-0">
         <h2 id="native-trip-confirmation-title" class="font-bold [overflow-wrap:anywhere]">
@@ -73,6 +73,13 @@ defmodule DawarichWeb.NativeTripConfirmation do
     </dialog>
     """
   end
+
+  defp return_to(%{event: "trip:note:delete", payload: %{"day" => day}}),
+    do:
+      "#trip-shell [data-note-display='#{day}'] form[phx-submit='trip:note:delete'] button[type=submit]"
+
+  defp return_to(%{event: event}),
+    do: "#trip-shell form[phx-submit='#{event}'] button[type=submit]"
 
   defp message("trip:delete"), do: "trips.show.delete_this_trip_this_cannot_be_undone"
 

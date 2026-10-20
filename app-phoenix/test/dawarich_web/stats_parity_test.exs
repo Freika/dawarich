@@ -108,6 +108,7 @@ defmodule DawarichWeb.StatsParityTest do
             assert classes =~ "[&_.stat-desc]:whitespace-normal"
           end
 
+          assert_unique_ids(html)
           actual = digest_dom(html)
           expected = digest_dom(rails)
 
@@ -146,6 +147,7 @@ defmodule DawarichWeb.StatsParityTest do
           rails =
             File.read!(Path.join(@dir, "public/" <> Path.basename(file, ".json") <> ".html"))
 
+          assert_unique_ids(html)
           actual = monthly_dom(html)
           expected = monthly_dom(rails)
 
@@ -155,6 +157,30 @@ defmodule DawarichWeb.StatsParityTest do
           Repo.rollback(:checked)
         end)
     end
+  end
+
+  test "native digest flag identifiers and fragment references belong to each occurrence" do
+    html =
+      Enum.map_join(0..1, fn index ->
+        render_component(&DawarichWeb.NativeDigestFlag.flag/1,
+          name: "United Kingdom",
+          table: [{"United Kingdom", "GB"}],
+          id: "native-digest-private-2024-time-#{index}"
+        )
+      end)
+
+    ids = html |> LazyHTML.from_fragment() |> LazyHTML.query("[id]") |> LazyHTML.attribute("id")
+    assert length(ids) > 0
+    assert length(Enum.uniq(ids)) == length(ids)
+    assert Enum.all?(ids, &String.starts_with?(&1, "native-digest-private-2024-time-"))
+
+    for [_, reference] <- Regex.scan(~r/(?:url\(\#|href="\#)([^)"]+)/, html),
+        do: assert(reference in ids)
+  end
+
+  defp assert_unique_ids(html) do
+    ids = html |> LazyHTML.from_fragment() |> LazyHTML.query("[id]") |> LazyHTML.attribute("id")
+    assert ids |> Enum.frequencies() |> Enum.filter(fn {_, count} -> count > 1 end) == []
   end
 
   defp digest_dom(html) do
@@ -181,6 +207,20 @@ defmodule DawarichWeb.StatsParityTest do
   defp monthly_nodes(nodes), do: Enum.flat_map(nodes, &monthly_node/1)
 
   defp monthly_node({tag, attrs, children}) do
+    attrs =
+      Enum.map(attrs, fn {key, value} ->
+        if key in ~w(id href xlink:href clip-path fill stroke mask filter style aria-labelledby aria-describedby) do
+          {key,
+           String.replace(
+             value,
+             ~r/native-digest-(?:private|public)--?\d+-(?:time|places)-\d+-/,
+             ""
+           )}
+        else
+          {key, value}
+        end
+      end)
+
     values = Map.new(attrs)
 
     cond do

@@ -42,6 +42,19 @@ defmodule DawarichWeb.TripsShowParityTest do
              1
 
     assert has_element?(view, "#native-trip-confirmation[role=dialog]")
+
+    [removal] =
+      view
+      |> render()
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("#native-trip-confirmation")
+      |> LazyHTML.attribute("phx-remove")
+
+    assert Enum.any?(Jason.decode!(removal), fn [command, options] ->
+             command == "focus" &&
+               options["to"] == "#trip-shell form[phx-submit='trip:delete'] button[type=submit]"
+           end)
+
     render_click(view, "trip:confirmation:cancel", %{})
     refute has_element?(view, "#native-trip-confirmation")
 
@@ -114,11 +127,85 @@ defmodule DawarichWeb.TripsShowParityTest do
     for page <- pages["pages"], String.starts_with?(page["name"], "show_") do
       html = RailsUser.signed_in(page["user_id"]) |> get(page["path"]) |> html_response(200)
       rails = @dir |> Path.join("pages/#{page["name"]}.html") |> File.read!()
+
+      [dropdown] =
+        html
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#native-trip-header .dropdown")
+        |> LazyHTML.attribute("class")
+
+      assert dropdown == "dropdown lg:dropdown-end"
       actual = detail_dom(html)
       expected = detail_dom(rails)
 
       assert actual == expected,
              page["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  test "Rails 1.16.0 trip map status shells preserve empty calculating and future presentation" do
+    corpus = @dir |> Path.join("map_states.json") |> File.read!() |> Jason.decode!()
+    {:ok, now, 0} = DateTime.from_iso8601(corpus["now"])
+
+    for entry <- corpus["cases"] do
+      {:error, :checked} =
+        Dawarich.Repo.transaction(fn ->
+          Dawarich.Repo.query!(
+            "UPDATE trips SET path=NULL,distance=0,source_identifier=$2 WHERE id=$1",
+            [entry["trip_id"], entry["attrs"]["source_identifier"]],
+            log: false
+          )
+
+          if entry["attrs"]["started_at"] do
+            first =
+              entry["attrs"]["started_at"]
+              |> DateTime.from_iso8601()
+              |> elem(1)
+              |> DateTime.to_naive()
+
+            last =
+              entry["attrs"]["ended_at"]
+              |> DateTime.from_iso8601()
+              |> elem(1)
+              |> DateTime.to_naive()
+
+            Dawarich.Repo.query!(
+              "UPDATE trips SET started_at=$2,ended_at=$3 WHERE id=$1",
+              [entry["trip_id"], first, last],
+              log: false
+            )
+          end
+
+          user = Dawarich.Accounts.get(entry["user_id"])
+          scope = Dawarich.Maps.principal(user, entry["locale"])
+          {:ok, page} = Dawarich.Maps.Trip.view(scope, entry["trip_id"], now: now)
+          assert to_string(page.presentation.map_state) == entry["state"]
+
+          html =
+            render_component(&DawarichWeb.NativeTripMapPanel.panel/1,
+              config: page.config,
+              locale: entry["locale"],
+              state: page.presentation.map_state,
+              has_path: page.presentation.has_path,
+              future: page.presentation.future_start
+            )
+
+          actual =
+            html
+            |> String.replace(~r/ data-trip-map-state="[a-z]+"/, "")
+            |> ParityHTML.normalize()
+
+          expected =
+            @dir
+            |> Path.join("map_states/#{entry["name"]}.html")
+            |> File.read!()
+            |> ParityHTML.normalize()
+
+          assert actual == expected,
+                 entry["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
+
+          Dawarich.Repo.rollback(:checked)
+        end)
     end
   end
 
@@ -163,6 +250,7 @@ defmodule DawarichWeb.TripsShowParityTest do
 
   defp detail_class(value) do
     value
+    |> String.replace("dropdown lg:dropdown-end", "dropdown dropdown-end")
     |> String.replace("w-full min-w-0 lg:w-2/5", "w-full lg:w-2/5")
     |> String.replace(
       "flex flex-wrap items-start justify-between gap-3 mb-1",

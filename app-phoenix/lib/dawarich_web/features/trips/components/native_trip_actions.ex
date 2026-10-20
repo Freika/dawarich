@@ -20,7 +20,7 @@ defmodule DawarichWeb.NativeTripActions do
             title={s(@locale, "open_in_map")}
             aria-label={s(@locale, "open_in_map")}
           ><Icon.icon name="map" class="w-4 h-4" /></a>
-          <div class="dropdown dropdown-end">
+          <div class="dropdown lg:dropdown-end">
             <label tabindex="0" class="btn btn-sm btn-ghost" title={s(@locale, "download_trip")}><Icon.icon
               name="download"
               class="w-4 h-4"

@@ -1317,6 +1317,39 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
     end
   end
 
+  it 'records Rails trip map status shells' do
+    travel_to now do
+      create_users!
+      insert!
+      future = { started_at: '2030-07-01T08:00:00Z', ended_at: '2030-07-02T18:00:00Z' }
+      states = { calculating: {}, empty: future, future: future.merge(source_identifier: 'Synthetic future') }
+      FileUtils.mkdir_p(dir.join('map_states'))
+      cases = states.flat_map do |state, attrs|
+        %w[en de].map do |locale|
+          entry = { name: "#{state}_#{locale}", user_id: 9803, trip_id: 980_301, locale:,
+                    state:, attrs: { path: nil, distance: 0, source_identifier: nil }.merge(attrs) }
+          ActiveRecord::Base.transaction(requires_new: true) do
+            values = entry[:attrs].dup
+            %i[started_at ended_at].each { |key| values[key] = utc(values[key]) if values[key] }
+            Trip.find(entry[:trip_id]).update_columns(values)
+            reset!
+            Rails.cache.clear
+            sign_in User.find(entry[:user_id])
+            get "/trips/#{entry[:trip_id]}", params: { locale: }
+            expect(response).to have_http_status(:ok)
+            doc = Nokogiri::HTML5(response.body)
+            column = doc.at_css('#trip-shell .lg\\:w-3\\/5')
+            FixtureRecording.verify(dir.join("map_states/#{entry[:name]}.html"), column.inner_html)
+            sign_out :user
+            raise ActiveRecord::Rollback
+          end
+          entry
+        end
+      end
+      write_json('map_states.json', { now: now.iso8601, cases: })
+    end
+  end
+
   it 'writes the day-data corpus' do
     travel_to now do
       create_users!

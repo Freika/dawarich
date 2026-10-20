@@ -2,7 +2,7 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
   @moduledoc false
   use DawarichWeb, :html
 
-  alias DawarichWeb.{NativeChart, DigestFormat, Icon, StatsFormat, YearCards}
+  alias DawarichWeb.{NativeChart, NativeDigestFlag, DigestFormat, Icon, StatsFormat, YearCards}
 
   @ranks ~w(badge-primary badge-secondary badge-accent badge-info badge-success)
 
@@ -110,7 +110,8 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
           >
             <div class="flex items-center gap-3">
               <span class={"badge badge-lg #{Enum.at(@ranks, index)}"}>{index + 1}</span>
-              <span class="font-semibold"><span class="mr-1"><Icon.country_flag
+              <span class="font-semibold"><span class="mr-1"><NativeDigestFlag.flag
+                id={"native-digest-private-#{@digest.year}-time-#{index}"}
                 name={country["name"]}
                 table={@table}
               /></span> {country["name"]}</span>
@@ -159,7 +160,8 @@ defmodule DawarichWeb.DigestsLive.NativeFullParts do
           <%= if @digest.toponyms != [] do %>
             <div :for={{country, index} <- Enum.with_index(@digest.toponyms)} class="space-y-2">
               <div class="flex justify-between items-center">
-                <span class="font-semibold"><span class="mr-1"><Icon.country_flag
+                <span class="font-semibold"><span class="mr-1"><NativeDigestFlag.flag
+                  id={"native-digest-private-#{@digest.year}-places-#{index}"}
                   name={country["country"]}
                   table={@table}
                 /></span> {country["country"]}</span>
