@@ -35,20 +35,23 @@ defmodule DawarichWeb.NativeMapLinks do
     assigns = assign(assigns, :links, @links)
 
     ~H"""
-    <section id="native-map-links" class="w-full min-w-0 max-w-96 bg-base-100 p-3 space-y-6">
-      <div :for={{heading, links} <- @links} class="min-w-0">
-        <h2 class="font-semibold [overflow-wrap:anywhere]">{label(@locale, heading)}</h2>
-        <div class="flex min-w-0 flex-col gap-2">
-          <a
-            :for={{href, key} <- links}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="link [overflow-wrap:anywhere]"
-          >{if key, do: label(@locale, key), else: "X"}</a>
+    <div id="native-map-links" class="space-y-6">
+      <%= for {{heading, links}, index} <- Enum.with_index(@links) do %>
+        <div :if={index > 0} class="divider"></div>
+        <div>
+          <h4 class="font-semibold text-base mb-3">{label(@locale, heading)}</h4>
+          <div class="flex flex-col gap-2">
+            <a
+              :for={{href, key} <- links}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="link-hover text-sm"
+            >{if key, do: label(@locale, key), else: "X"}</a>
+          </div>
         </div>
-      </div>
-    </section>
+      <% end %>
+    </div>
     """
   end
 

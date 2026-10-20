@@ -42,9 +42,14 @@ defmodule DawarichWeb.NativeMapTabs do
       page={@page}
     />
 
+    <DawarichWeb.NativeMapFamily.controls
+      :if={@page.family && assigns[:map_settings]}
+      locale={@locale}
+      settings={@map_settings}
+    />
     <div :if={@page.family} class={tab_class(@panel, "family")} data-tab-content="family">
       <DawarichWeb.NativeMapFamily.panel
-        :if={@panel == "family" && assigns[:map_settings]}
+        :if={assigns[:map_settings]}
         locale={@locale}
         settings={@map_settings}
       />
@@ -86,7 +91,7 @@ defmodule DawarichWeb.NativeMapTabs do
       class={tab_class(@panel, "links")}
       data-tab-content="links"
     >
-      <DawarichWeb.NativeMapLinks.links :if={@panel == "links"} locale={@locale} />
+      <DawarichWeb.NativeMapLinks.links locale={@locale} />
     </div>
 
     <div :if={@panel == "insights"} class="tab-content active" data-tab-content="insights">
