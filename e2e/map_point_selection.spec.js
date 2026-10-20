@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { closeOnboardingModal } from "./helpers/navigation.js"
-import { waitForMapLibre } from "./v2/helpers/setup.js"
+import { closeOnboardingModal, waitForMapLibre } from "./helpers/native_map.js"
 
 let pointId
 test.beforeEach(async ({ page }) => {
