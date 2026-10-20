@@ -22,7 +22,7 @@ defmodule DawarichWeb.AuthAccountLink.Response do
     assigns = %{
       locale: conn.assigns.locale,
       __changed__: nil,
-      flash: %{},
+      flash: get_in(pending.session, ["flash", "flashes"]) || %{},
       page_title: Form.title(conn.assigns.locale),
       provider_label: label(pending.pending, conn.assigns.locale),
       user_email: pending.user.email,

@@ -103,8 +103,8 @@ defmodule DawarichWeb.AuthHandler do
               {:ok, raw, conn} ->
                 conn = put_private(conn, :dawarich_raw_body, raw)
 
-                case Admission.form(raw, conn.query_string) do
-                  {:ok, params} -> action(conn, params, opts)
+                case DawarichWeb.AuthNavigation.credentials(conn, raw, opts) do
+                  {:ok, params, conn} -> action(conn, params, opts)
                   _ -> fallback(conn, opts)
                 end
 

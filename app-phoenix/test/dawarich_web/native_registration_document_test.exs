@@ -21,7 +21,12 @@ defmodule DawarichWeb.NativeRegistrationDocumentTest do
   end
 
   test "native signup preserves invitation field policy and empty rejected credentials" do
-    invitation = %{token: "synthetic-invitation", email: "invite@example.test"}
+    invitation = %{
+      token: "synthetic-invitation",
+      email: "invite@example.test",
+      name: "Synthetic family",
+      inviter: "inviter@example.invalid"
+    }
 
     html =
       DawarichWeb.AuthRegistration.Form.render(

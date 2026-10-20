@@ -113,6 +113,103 @@ defmodule DawarichWeb.NativeAuthIntegrationTest do
            )
   end
 
+  test "fresh HTTP auth pages issue valid provider action CSRF", _c do
+    names = ~w(OIDC_CLIENT_ID OIDC_CLIENT_SECRET ALLOW_EMAIL_PASSWORD_LOGIN)
+    saved = Map.new(names, &{&1, System.get_env(&1)})
+
+    System.put_env(%{
+      "OIDC_CLIENT_ID" => "synthetic-client",
+      "OIDC_CLIENT_SECRET" => "synthetic-secret",
+      "ALLOW_EMAIL_PASSWORD_LOGIN" => "true"
+    })
+
+    on_exit(fn ->
+      for {key, value} <- saved,
+          do: if(value, do: System.put_env(key, value), else: System.delete_env(key))
+    end)
+
+    for path <- ~w(/users/sign_in /users/sign_up /users/password/new /users/unlock/new) do
+      conn = get(build_conn(), path)
+      assert conn.status == 200
+      session = RailsFormRequests.rails_session(conn)
+
+      tokens =
+        conn.resp_body
+        |> LazyHTML.from_document()
+        |> LazyHTML.query(
+          "form[action='/users/auth/openid_connect'] input[name=authenticity_token]"
+        )
+        |> LazyHTML.attribute("value")
+
+      assert length(tokens) == 1
+
+      assert Enum.all?(
+               tokens,
+               &Dawarich.Auth.ActionCsrf.valid?(session, &1, "POST", "/users/auth/openid_connect")
+             )
+    end
+  end
+
+  test "invitation auth pages retain context and credentials return to its acceptance page", c do
+    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+    family_id = System.unique_integer([:positive])
+
+    Repo.insert_all("families", [
+      %{
+        id: family_id,
+        creator_id: c.actor.id,
+        name: "Auth fixture family",
+        created_at: now,
+        updated_at: now
+      }
+    ])
+
+    Repo.insert_all("family_invitations", [
+      %{
+        family_id: family_id,
+        invited_by_id: c.actor.id,
+        email: "auth-invitee@example.invalid",
+        token: "synthetic-auth-invitation",
+        status: 0,
+        expires_at: NaiveDateTime.add(now, 3600),
+        created_at: now,
+        updated_at: now
+      }
+    ])
+
+    conn = fetch(c.guest, "/users/sign_in?invitation_token=synthetic-auth-invitation&locale=de")
+    assert conn.status == 200
+    assert conn.resp_body =~ "Auth fixture family"
+    session = RailsFormRequests.rails_session(conn)
+    assert session["invitation_token"] == "synthetic-auth-invitation"
+    assert fetch(session, "/users/sign_in").resp_body =~ "Auth fixture family"
+    assert fetch(session, "/users/sign_up").resp_body =~ "auth-invitee@example.invalid"
+
+    Repo.query!(
+      "UPDATE users SET encrypted_password=$2 WHERE id=$1",
+      [c.actor.id, Bcrypt.hash_pwd_salt("synthetic-password12", log_rounds: 4)],
+      log: false
+    )
+
+    response =
+      submit(session, "/users/sign_in", %{
+        "user[email]" => c.actor.email,
+        "user[password]" => "synthetic-password12",
+        "invitation_token" => "synthetic-auth-invitation"
+      })
+
+    assert response.status == 303
+
+    assert get_resp_header(response, "location") == [
+             "http://www.example.com/invitations/synthetic-auth-invitation"
+           ]
+
+    for query <-
+          ~w(invitation_token=a&invitation_token=b invitation_token%5Bnested%5D=a invitation_token=%FF invitation_token=a&locale=invalid) do
+      assert fetch(c.guest, "/users/sign_in?" <> query).status == 422
+    end
+  end
+
   test "recovery pages admit locale navigation through the standalone dispatcher", c do
     for locale <- ~w(en de es fr pl ca zh),
         path <-

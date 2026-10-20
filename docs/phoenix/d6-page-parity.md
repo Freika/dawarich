@@ -31,8 +31,16 @@ phrase input's accessible name, are recorded in
 
 The route/state inventory is [d6-route-parity.json](d6-route-parity.json).
 The browser capture manifest adds password edit and unlock request pages.
-Provider-only login, invitation variants, full validation-error DOM, account
-linking DOM, static trip/track shares, unsupported share types,
+Auth pages also cover disabled registration, provider-only and credential/provider
+combinations, invitations, Cloud signup controls and validation errors across all
+seven locales. Confirmation routes are explicitly unavailable, matching Rails'
+non-confirmable User. Account-link challenge/alert DOM extends its existing test.
+Invitation sign-in stores context through locale navigation and returns valid
+credentials to the invitation acceptance route; malformed/duplicate parameters
+remain refused. Source provider buttons are shared across auth callers, with
+per-action CSRF for the request session.
+
+Static trip/track shares, unsupported share types, public achievement full pages,
 all eight management page DOMs and trip studio variants still require completion
 or explicit contract differences. Existing behavior coverage is not evidence of
 DOM parity for these remaining routes. The controller's parity bench remains

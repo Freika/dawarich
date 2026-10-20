@@ -10,6 +10,9 @@
         <p class="text-sm text-base-content/70 mt-2">
           {instructions(@locale, @user_email, @provider_label)}
         </p>
+        <div :if={!Dawarich.Auth.Recovery.Token.blank?(@flash["alert"])} class="alert alert-error mt-4">
+          {@flash["alert"]}
+        </div>
         <form
           class="space-y-4 mt-4"
           data-auth-form

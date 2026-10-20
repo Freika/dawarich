@@ -21,7 +21,7 @@
         "native_auth_integration_test.exs",
         "auth_otp/form_test.exs"
       ],
-      "status": "default credential DOM and OTP DOM verified; variants pending"
+      "status": "credential, disabled-registration, provider-only, provider-with-credentials and invitation DOM verified in seven locales; locale/invitation admission and post-login target verified"
     },
     {
       "path": "/users/sign_out",
@@ -50,7 +50,7 @@
         "auth_pages_parity_test.exs",
         "native_registration_document_test.exs"
       ],
-      "status": "default self-hosted DOM verified; variants pending"
+      "status": "self-hosted, invitation and Cloud controls DOM verified in seven locales"
     },
     {
       "path": "/users",
@@ -64,7 +64,7 @@
       "evidence": [
         "native_registration_document_test.exs"
       ],
-      "status": "existing behavior coverage"
+      "status": "registration validation error DOM verified in seven locales; existing creation/security tests retained"
     },
     {
       "path": "/users/password/new",
@@ -79,7 +79,7 @@
         "auth_pages_parity_test.exs",
         "native_auth_integration_test.exs"
       ],
-      "status": "DOM verified in seven locales"
+      "status": "DOM verified in seven locales; provider entry and native error accessibility retained"
     },
     {
       "path": "/users/password/edit",
@@ -94,7 +94,7 @@
         "auth_pages_parity_test.exs",
         "native_auth_integration_test.exs"
       ],
-      "status": "DOM verified in seven locales"
+      "status": "DOM verified in seven locales; provider entry and native error accessibility retained"
     },
     {
       "path": "/users/unlock/new",
@@ -109,7 +109,7 @@
         "auth_pages_parity_test.exs",
         "native_auth_integration_test.exs"
       ],
-      "status": "DOM verified in seven locales"
+      "status": "DOM verified in seven locales; provider entry and native error accessibility retained"
     },
     {
       "path": "/users/password",
@@ -126,7 +126,7 @@
       "evidence": [
         "auth_recovery_activation_test.exs"
       ],
-      "status": "existing behavior coverage; error DOM pending"
+      "status": "invalid-token error DOM verified in seven locales; existing reset/recovery behavior tests retained"
     },
     {
       "path": "/users/unlock",
@@ -142,7 +142,7 @@
       "evidence": [
         "auth_recovery_activation_test.exs"
       ],
-      "status": "existing behavior coverage; error DOM pending"
+      "status": "invalid-token error DOM verified in seven locales; existing token/email behavior tests retained"
     },
     {
       "path": "/users/otp_challenge",
@@ -168,8 +168,11 @@
       "states": [
         "route unavailable: Rails User does not enable confirmable"
       ],
-      "evidence": [],
-      "status": "source inventory; explicit refusal parity pending"
+      "evidence": [
+        "auth_pages_parity_test.exs",
+        "auth/pages/confirmation_routes.json"
+      ],
+      "status": "Rails route refusal recorder and native route-info refusal verified"
     },
     {
       "path": "/users/confirmation",
@@ -180,8 +183,11 @@
       "states": [
         "route unavailable: Rails User does not enable confirmable"
       ],
-      "evidence": [],
-      "status": "source inventory; explicit refusal parity pending"
+      "evidence": [
+        "auth_pages_parity_test.exs",
+        "auth/pages/confirmation_routes.json"
+      ],
+      "status": "Rails route refusal recorder and native route-info refusal verified"
     },
     {
       "path": "/users/auth/github",
@@ -321,7 +327,7 @@
       "evidence": [
         "auth_account_link/http_test.exs"
       ],
-      "status": "existing behavior coverage; DOM pending"
+      "status": "challenge and alert DOM verified in seven locales; email-token confirmation redirect behavior retained"
     },
     {
       "path": "/auth/account_link/challenge",
@@ -336,7 +342,7 @@
       "evidence": [
         "auth_account_link/form_test.exs"
       ],
-      "status": "existing behavior coverage; DOM pending"
+      "status": "challenge and alert DOM verified in seven locales; email-token confirmation redirect behavior retained"
     },
     {
       "path": "/auth/account_link/email",

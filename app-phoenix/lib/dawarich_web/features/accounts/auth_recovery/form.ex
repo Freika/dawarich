@@ -4,7 +4,7 @@ defmodule DawarichWeb.AuthRecovery.Form do
   alias Dawarich.Auth.Recovery.{Messages, Token}
   embed_templates "form/*"
 
-  def render(view, csrf, values, locale, registration_enabled) do
+  def render(view, csrf, values, locale, registration_enabled, opts \\ []) do
     {scope, title, description, submit, path} = config(view)
     error = values[:error]
 
@@ -18,6 +18,7 @@ defmodule DawarichWeb.AuthRecovery.Form do
 
     assigns = %{
       __changed__: nil,
+      providers: Keyword.get(opts, :providers, []),
       view: view,
       csrf: csrf,
       token: if(Token.blank?(values[:token]), do: nil, else: values[:token]),

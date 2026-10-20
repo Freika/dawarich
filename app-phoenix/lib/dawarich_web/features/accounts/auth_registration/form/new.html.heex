@@ -1,7 +1,16 @@
 <div class="hero bg-base-200">
   <div class="hero-content grid w-full my-10 gap-y-8 lg:grid-cols-[minmax(0,28rem)_24rem] lg:justify-center lg:gap-x-20">
     <div class="text-center lg:text-left lg:self-end">
-      <h1 class="text-4xl font-bold text-base-content">{text(@locale, "almost_there")}</h1>
+      <%= if @invitation do %>
+        <h1 class="text-4xl font-bold text-base-content">{text(@locale, "join_family", %{family: @invitation.name})}</h1>
+        <p class="py-6 text-base-content/70">{text(@locale, "you_ve_been_invited_by")} <strong>{@invitation.inviter}</strong> {text(@locale, "to_join_their_family_create_your_account_to_accept_the")}</p>
+        <div class="alert alert-info mb-4">
+          <DawarichWeb.Icon.icon name="info" class="h-5 w-5 shrink-0" />
+          <span class="text-sm">{text(@locale, "invitation_email_notice", %{email: @invitation.email})}</span>
+        </div>
+      <% else %>
+        <h1 class="text-4xl font-bold text-base-content">{text(@locale, "almost_there")}</h1>
+      <% end %>
       <p class="pt-6 text-base-content/70">
         {text(@locale, "only_a_few_steps_left_until_you_get_control_over")}
       </p>
@@ -21,46 +30,36 @@
           :if={@invitation}
           type="hidden"
           name="user[invitation_token]"
+          id="user_invitation_token"
           value={@invitation.token}
         />
-        <div
-          :if={@messages != []}
-          id="error_explanation"
-          class="alert alert-error mb-4"
-          data-auth-error-summary
-          tabindex="-1"
-          role="alert"
-        >
-          <ul>
-            <li :for={message <- @messages}>{message}</li>
-          </ul>
-        </div>
+        <DawarichWeb.AuthErrors.summary :if={@messages != []} locale={@locale} messages={@messages} />
         <div class="form-control">
-          <label class="label" for="user_email"><span class="label-text">{text(@locale, "email")}</span></label>
-          <input
+          <DawarichWeb.AuthErrors.field error={"email" in @invalid}><label class="label" for="user_email"><span class="label-text">{text(@locale, "email")}</span></label></DawarichWeb.AuthErrors.field>
+          <DawarichWeb.AuthErrors.field error={"email" in @invalid}><input
             type="email"
             id="user_email"
             name="user[email]"
             value={@email}
             autocomplete="email"
             autofocus="autofocus"
-            readonly={@invitation != nil}
-            class="input input-bordered w-full"
-          />
+            readonly={if @invitation, do: "readonly"}
+            class={"input input-bordered w-full" <> if(@invitation, do: " input-disabled", else: "")}
+          /></DawarichWeb.AuthErrors.field>
         </div>
         <div class="form-control">
-          <label class="label" for="user_password"><span class="label-text">{text(
+          <DawarichWeb.AuthErrors.field error={"password" in @invalid}><label class="label" for="user_password"><span class="label-text">{text(
             @locale,
             "password"
-          )}</span></label>
-          <input
+          )}</span></label></DawarichWeb.AuthErrors.field>
+          <DawarichWeb.AuthErrors.field error={"password" in @invalid}><input
             type="password"
             id="user_password"
             name="user[password]"
             autocomplete="new-password"
             aria-describedby="password-hint"
             class="input input-bordered w-full"
-          />
+          /></DawarichWeb.AuthErrors.field>
           <span id="password-hint" class="label-text-alt text-base-content/60 mt-1">{DawarichWeb.Translate.t(
             @locale,
             "devise.registrations.new.characters_minimum",
@@ -68,33 +67,44 @@
           )}</span>
         </div>
         <div class="form-control">
-          <label class="label" for="user_password_confirmation"><span class="label-text">{text(
+          <DawarichWeb.AuthErrors.field error={"password_confirmation" in @invalid}><label class="label" for="user_password_confirmation"><span class="label-text">{text(
             @locale,
             "password_confirmation"
-          )}</span></label>
-          <input
+          )}</span></label></DawarichWeb.AuthErrors.field>
+          <DawarichWeb.AuthErrors.field error={"password_confirmation" in @invalid}><input
             type="password"
             id="user_password_confirmation"
             name="user[password_confirmation]"
             autocomplete="new-password"
             class="input input-bordered w-full"
-          />
+          /></DawarichWeb.AuthErrors.field>
         </div>
+        <%= if !@self_hosted do %>
+          <div :if={!@invitation} class="form-control">
+            <label class="label" for="user_signup_intent"><span class="label-text">{text(@locale, "how_do_you_plan_to_use_dawarich")}</span></label>
+            <select name="user[signup_intent]" id="user_signup_intent" class="select select-bordered w-full">
+              <option value="cloud">{text(@locale, "i_want_to_use_the_cloud_version")}</option>
+              <option value="self_hosted_demo">{text(@locale, "i_m_self_hosting_and_exploring_the_demo")}</option>
+            </select>
+          </div>
+          <div class="cf-turnstile mt-4" data-sitekey={@sitekey} data-theme="auto"></div>
+        <% end %>
         <div class="form-control mt-6">
           <input
             type="submit"
             name="commit"
-            value={text(@locale, "sign_up")}
+            value={text(@locale, if(@invitation, do: "create_account_join_family", else: "sign_up"))}
             class="btn btn-primary"
           />
         </div>
       </form>
-      <div class="mt-5 space-y-2 text-sm">
+      <div :if={!@invitation} class="mt-5 space-y-2 text-sm">
         <div><a class="link link-hover text-base-content/70" href="/users/sign_in">{DawarichWeb.Translate.t(
           @locale,
           "devise.shared.links.log_in",
           %{}
         )}</a></div>
+        <DawarichWeb.AuthProviders.buttons providers={@providers} />
       </div>
     </div>
     <DawarichWeb.AuthFeatures.list locale={@locale} kind="sign_up" />

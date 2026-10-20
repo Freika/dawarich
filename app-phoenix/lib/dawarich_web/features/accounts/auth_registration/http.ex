@@ -127,8 +127,8 @@ defmodule DawarichWeb.AuthRegistration.Http do
           |> send_resp(302, "")
           |> halt()
 
-        {:error, %{messages: messages, email: email}} ->
-          form(conn, email, messages, context, 422)
+        {:error, %{messages: messages, email: email, errors: errors}} ->
+          form(conn, email, messages, context, 422, errors)
 
         {:error, :denied} ->
           redirect(conn, "/", nil, 302)
@@ -139,7 +139,7 @@ defmodule DawarichWeb.AuthRegistration.Http do
     end
   end
 
-  defp form(conn, email, messages, context, status) do
+  defp form(conn, email, messages, context, status, errors \\ []) do
     conn =
       conn
       |> fetch_query_params()
@@ -157,7 +157,12 @@ defmodule DawarichWeb.AuthRegistration.Http do
         email,
         messages,
         context.invitation,
-        context.locale
+        context.locale,
+        self_hosted: context.self_hosted,
+        invalid: Enum.map(errors, fn {key, _, _} -> to_string(key) end),
+        sitekey: System.get_env("TURNSTILE_SITE_KEY", ""),
+        providers:
+          DawarichWeb.AuthProviderEntries.for_request(assign(conn, :rails_session, session)).providers
       )
 
     conn

@@ -32,7 +32,7 @@ defmodule DawarichWeb.AuthResponse do
           ),
         else: conn
 
-    redirect(conn, return_to(session))
+    redirect(conn, DawarichWeb.AuthNavigation.return_to(session, return_to(session)))
   end
 
   def already_authenticated(conn) do
@@ -102,14 +102,15 @@ defmodule DawarichWeb.AuthResponse do
 
     token = RailsCsrf.masked_token(session)
 
-    public = DawarichWeb.AuthProviderEntries.for_request(conn)
+    public = DawarichWeb.AuthProviderEntries.for_request(assign(conn, :rails_session, session))
 
     body =
       AuthForm.render(token, email,
         locale: conn.assigns.locale,
         registration_enabled: conn.private[:auth_registration_enabled],
         email_password: public.email_password,
-        providers: public.providers
+        providers: public.providers,
+        invitation: DawarichWeb.AuthNavigation.invitation(session)
       )
 
     conn = conn |> AuthCookie.session(encoded) |> DawarichWeb.RailsHeaders.call([])

@@ -187,7 +187,9 @@ defmodule DawarichWeb.AuthRecovery.Http do
         token,
         result.assigns,
         conn.assigns.locale,
-        context.registration_enabled
+        context.registration_enabled,
+        providers:
+          DawarichWeb.AuthProviderEntries.for_request(assign(conn, :rails_session, session)).providers
       )
 
     conn

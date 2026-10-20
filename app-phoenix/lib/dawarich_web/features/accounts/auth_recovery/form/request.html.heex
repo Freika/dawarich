@@ -15,27 +15,13 @@
       >
         <input :if={@view == :password_edit} type="hidden" name="_method" value="put" />
         <input type="hidden" name="authenticity_token" value={@csrf} />
-        <div
-          :if={@errors}
-          id="error_explanation"
-          class="alert alert-error mb-4 min-w-0 [overflow-wrap:anywhere]"
-          role="alert"
-          tabindex="-1"
-          data-auth-error-summary
-        >
-          <DawarichWeb.Icon.icon name="circle-x" class="size-6 shrink-0" />
-          <div class="min-w-0">
-            <h3 class="font-bold">{@errors.heading}</h3><ul class="text-sm mt-1">
-              <li :for={message <- @errors.messages}>{message}</li>
-            </ul>
-          </div>
-        </div>
+        <DawarichWeb.AuthErrors.summary :if={@errors} locale={@locale} messages={@errors.messages} heading={@errors.heading} />
         <%= if @view == :password_edit do %>
           <.reset {assigns} />
         <% else %>
           <div class="form-control">
-            <label class="label" for="user_email"><span class="label-text">{text(assigns, "email")}</span></label>
-            <input
+            <DawarichWeb.AuthErrors.field error={"email" in @invalid}><label class="label" for="user_email"><span class="label-text">{text(assigns, "email")}</span></label></DawarichWeb.AuthErrors.field>
+            <DawarichWeb.AuthErrors.field error={"email" in @invalid}><input
               autofocus="autofocus"
               autocomplete="email"
               class="input input-bordered w-full"
@@ -45,7 +31,7 @@
               id="user_email"
               aria-invalid={if "email" in @invalid, do: "true"}
               aria-describedby={described(@invalid, "email")}
-            />
+            /></DawarichWeb.AuthErrors.field>
           </div>
         <% end %>
         <div class="form-control mt-6">
@@ -65,6 +51,7 @@
             %{}
           )}</a>
         </div>
+        <DawarichWeb.AuthProviders.buttons providers={@providers} />
       </div>
     </div>
   </div>

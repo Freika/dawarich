@@ -46,7 +46,13 @@ defmodule DawarichWeb.AuthOtp.Response do
         conn
       end
 
-    redirect(conn, result.session["user_return_to"] || "/")
+    redirect(
+      conn,
+      DawarichWeb.AuthNavigation.return_to(
+        result.session,
+        result.session["user_return_to"] || "/"
+      )
+    )
   end
 
   def expired(conn, cleared, context \\ %{}) do

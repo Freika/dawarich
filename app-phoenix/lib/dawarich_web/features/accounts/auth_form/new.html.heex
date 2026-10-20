@@ -1,13 +1,21 @@
 <div class="hero min-h-content bg-base-200">
   <div class="hero-content grid w-full my-10 gap-y-8 lg:grid-cols-[minmax(0,28rem)_24rem] lg:justify-center lg:gap-x-20">
     <div class="text-center lg:text-left lg:self-end">
-      <h1 class="text-5xl font-bold text-base-content">
-        {t(@locale, "devise.sessions.new.login_now", %{})}
-      </h1>
-      <p class="pt-6 text-base-content opacity-70">
-        {t(@locale, "devise.sessions.new.and_take_control_over_your_location_data", %{})}
-      </p>
-
+      <%= if @invitation do %>
+        <h1 class="text-5xl font-bold text-base-content">{t(@locale, "devise.sessions.new.sign_in_to_join_family", %{family: @invitation.name})}</h1>
+        <p class="py-6 text-base-content opacity-70">
+          {t(@locale, "devise.sessions.new.you_ve_been_invited_by", %{})} <strong>{@invitation.inviter}</strong> {t(@locale, "devise.sessions.new.to_join_their_family_sign_in_to_your_account_to", %{})}
+        </p>
+        <div :if={@email_password} class="alert alert-info">
+          <p class="text-sm">
+            {t(@locale, "devise.sessions.new.don_t_have_an_account_yet", %{})}
+            <a class="font-semibold underline" href={"/users/sign_up?" <> URI.encode_query(%{invitation_token: @invitation.token})}>{t(@locale, "devise.sessions.new.create_one_here", %{})}</a>
+          </p>
+        </div>
+      <% else %>
+        <h1 class="text-5xl font-bold text-base-content">{t(@locale, "devise.sessions.new.login_now", %{})}</h1>
+        <p class="pt-6 text-base-content opacity-70">{t(@locale, "devise.sessions.new.and_take_control_over_your_location_data", %{})}</p>
+      <% end %>
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm mx-auto border border-base-content/10 bg-base-100 px-5 py-5 lg:col-start-2 lg:row-span-2 lg:self-center">
       <form
@@ -20,6 +28,7 @@
         method="post"
       >
         <input type="hidden" name="authenticity_token" value={@token} />
+        <input :if={@invitation} type="hidden" name="invitation_token" id="invitation_token" value={@invitation.token} />
         <div class="form-control">
           <label class="label" for="user_email"><span class="label-text">{t(
             @locale,
@@ -65,12 +74,12 @@
           <input
             type="submit"
             name="commit"
-            value={t(@locale, "devise.sessions.new.log_in", %{})}
+            value={t(@locale, "devise.sessions.new." <> if(@invitation, do: "sign_in_accept_invitation", else: "log_in"), %{})}
             class="btn btn-primary"
           />
         </div>
       </form>
-      <div :if={@email_password} class="mt-5 space-y-2 text-sm">
+      <div :if={@email_password && !@invitation} class="mt-5 space-y-2 text-sm">
         <div :if={@registration_enabled}>
           <a class="link link-hover text-base-content/70" href="/users/sign_up">{t(
             @locale,
@@ -93,30 +102,13 @@
             %{}
           )}</a>
         </div>
+        <DawarichWeb.AuthProviders.buttons providers={@providers} />
       </div>
-      <p :if={!@email_password} class="text-center mb-4">
-        {t(
-          @locale,
-          "devise.sessions.new.sign_in_using_your_organization_s_identity_provider",
-          %{}
-        )}
-      </p>
-      <form
-        :for={provider <- @providers}
-        action={provider.action}
-        method={String.downcase(provider.method)}
-        data-auth-form
-        class="mt-2"
-      >
-        <input
-          :if={provider.method == "POST"}
-          type="hidden"
-          name="authenticity_token"
-          value={provider.csrf}
-        />
-        <button type="submit" class="btn btn-primary w-full h-auto min-h-12 whitespace-normal">{provider.label}</button>
-      </form>
+      <div :if={!@email_password} class="text-center mb-4">
+        <p class="text-base-content opacity-70 mb-4">{t(@locale, "devise.sessions.new.sign_in_using_your_organization_s_identity_provider", %{})}</p>
+      </div>
+      <DawarichWeb.AuthProviders.buttons :if={!@email_password} providers={@providers} wrapper_class="form-control mt-2" />
     </div>
-    <DawarichWeb.AuthFeatures.list locale={@locale} kind="sign_in" />
+    <DawarichWeb.AuthFeatures.list :if={!@invitation} locale={@locale} kind="sign_in" />
   </div>
 </div>
