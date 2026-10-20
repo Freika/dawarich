@@ -68,6 +68,20 @@ defmodule DawarichWeb.NativeMapStudiosParityTest do
     end
   end
 
+  test "studio patches preserve browser top-layer presentation", %{html: html} do
+    for kind <- ~w(poster video) do
+      [mounted] =
+        html
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#" <> kind <> "-studio")
+        |> LazyHTML.attribute("phx-mounted")
+
+      assert [["ignore_attrs", %{"attrs" => attrs}]] = Jason.decode!(mounted)
+      assert "style" in attrs
+      assert "popover" in attrs
+    end
+  end
+
   defp studio_accessibility(nodes) when is_list(nodes),
     do: Enum.map(nodes, &studio_accessibility/1)
 

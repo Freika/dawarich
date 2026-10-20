@@ -67,3 +67,23 @@ test("embedded poster catalogues populate once with localized labels and order s
   assert.equal(nodes["size-options"].children[0].dataset.nativePosterPrintSize, "print-30x40")
   assert.match(nodes["size-options"].children[0].children[1].textContent, /€44.99/)
 })
+
+test("embedded studios enter the browser top layer without leaving their LiveView owner", () => {
+  const classes = new Set(["hidden"])
+  const calls = []
+  const root = {
+    classList: { remove: (c) => classes.delete(c), add: (c) => classes.add(c), contains: (c) => classes.has(c) },
+    style: {},
+    showPopover() { calls.push(["show", this.popover, { ...this.style }, classes.has("hidden")]) },
+    hidePopover() { calls.push(["hide", classes.has("hidden")]) },
+  }
+  const panel = studioPanel(root, null)
+  panel.showModal()
+  panel.showModal()
+  assert.deepEqual(calls, [["show", "manual", { margin: "0", border: "0", padding: "0", width: "100%", height: "100%" }, false]])
+  panel.close()
+  panel.close()
+  assert.deepEqual(calls.at(-1), ["hide", false])
+  assert.equal(calls.length, 2)
+  assert.equal(panel.open, false)
+})

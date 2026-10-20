@@ -688,3 +688,19 @@ test("reopening the studio keeps layout, title and colours in sync with its cont
   assert.equal(library.live.size, 0)
   delete globalThis.fetch
 })
+
+test("embedded frame sizing excludes native preview and backdrop across resize cycles", () => {
+  const style = { paddingLeft: "24", paddingRight: "24", paddingTop: "24", paddingBottom: "24", marginTop: "8", marginBottom: "0" }
+  const frame = { dataset: { nativePosterFrame: "" }, offsetHeight: 0 }
+  const stage = { clientWidth: 900, clientHeight: 800, children: [
+    { dataset: { nativePosterBackdrop: "" }, offsetHeight: 800 }, frame,
+    { dataset: {}, offsetHeight: 32 }, { dataset: {}, offsetHeight: 16 },
+  ] }
+  const sizing = { getComputedStyle: () => style }
+  const first = fitFrame(stage, 0.75, sizing)
+  assert.deepEqual(first, { width: 495, height: 660 })
+  frame.offsetHeight = first.height
+  assert.deepEqual(fitFrame(stage, 0.75, sizing), first)
+  stage.clientHeight = 304
+  assert.deepEqual(fitFrame(stage, 1, sizing), { width: 184, height: 184 })
+})

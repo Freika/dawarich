@@ -14,8 +14,20 @@ export function studioPanel(root, dialog) {
   if (dialog) return dialog
   return {
     get open() { return !root.classList.contains("hidden") },
-    showModal() { root.classList.remove("hidden") },
-    close() { root.classList.add("hidden") },
+    showModal() {
+      if (this.open) return
+      root.classList.remove("hidden")
+      if (root.showPopover) {
+        root.popover = "manual"
+        Object.assign(root.style, { margin: "0", border: "0", padding: "0", width: "100%", height: "100%" })
+        root.showPopover()
+      }
+    },
+    close() {
+      if (!this.open) return
+      root.hidePopover?.()
+      root.classList.add("hidden")
+    },
     onCancel(close) {
       const escape = (event) => {
         if (event.key === "Escape" && !root.classList.contains("hidden")) {

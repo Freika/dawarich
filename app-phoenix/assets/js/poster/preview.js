@@ -63,8 +63,8 @@ export function fitFrame(
   const controlsHeight = [...stage.children]
     .filter(
       (el) =>
-        !("posterFrame" in (el.dataset ?? {})) &&
-        !("posterBackdrop" in (el.dataset ?? {})),
+        !["posterFrame", "posterBackdrop", "nativePosterFrame", "nativePosterBackdrop"]
+          .some((name) => name in (el.dataset ?? {})),
     )
     .reduce((sum, el) => {
       const childStyles = getComputedStyle(el)
