@@ -35,19 +35,16 @@ export function createInfoCard({
   confirm = (message) => globalThis.confirm(message),
 }) {
   const find = (name) => root?.querySelector(`[data-native-info-${name}]`)
-  const card = find("display")
-  const title = find("title")
-  const content = find("content")
-  const actions = find("actions")
   const translate = mapTranslate(getConfig)
   let entity = null
 
   function show(heading, html, buttons = []) {
+    const card = find("display")
     if (!card) return
     entity = null
-    title.textContent = heading
-    content.innerHTML = html
-    actions.innerHTML = buttons
+    find("title").textContent = heading
+    find("content").innerHTML = html
+    find("actions").innerHTML = buttons
       .map(
         ({ action, id, type, label }) =>
           `<button class="btn btn-sm ${action === "delete" ? "btn-error" : "btn-primary"}" data-native-info-action="${action}" data-id="${id}" data-entity-type="${type}">${label}</button>`,
@@ -58,7 +55,7 @@ export function createInfoCard({
   }
 
   function close() {
-    card?.classList.add("hidden")
+    find("display")?.classList.add("hidden")
   }
 
   function point(properties, geometry) {
@@ -93,7 +90,7 @@ export function createInfoCard({
     if (!id) return
     entity = { type: "point", id }
     pushEvent("address:open", { id }, (reply) => {
-      const frame = content.querySelector(`#point-address-${id}`)
+      const frame = find("content")?.querySelector(`#point-address-${id}`)
       if (frame && reply?.text && entity?.id === id)
         frame.innerHTML = `<div><span class="font-semibold">${translate("points.address.address")}</span> ${escape(reply.text)}</div>`
     })
@@ -157,12 +154,13 @@ export function createInfoCard({
   }
 
   const click = (event) => {
-    const button = event.target?.closest?.("[data-native-info-action]")
+    if (!event.target?.closest?.("[data-native-info-display]")) return
+    const button = event.target.closest("[data-native-info-action]")
     if (button) return act(button.dataset)
     if (event.target?.closest?.("[data-native-info-close]")) close()
   }
-  card?.addEventListener("click", click)
-  lifetime?.own(() => card?.removeEventListener("click", click))
+  root?.addEventListener("click", click)
+  lifetime?.own(() => root?.removeEventListener("click", click))
 
   return { show, close, point, place, area, select }
 }

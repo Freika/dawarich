@@ -24,12 +24,9 @@ function fixture({ confirmed = true } = {}) {
   const listeners = {}
   const pushes = []
   const confirms = []
-  nodes["[data-native-info-display]"].addEventListener = (name, fn) => {
-    listeners[name] = fn
-  }
-  nodes["[data-native-info-display]"].removeEventListener = () => {}
-  nodes["[data-native-info-content]"].querySelector = (selector) =>
+  const frameLookup = (selector) =>
     selector === "#point-address-7" ? (nodes.frame ??= node()) : null
+  nodes["[data-native-info-content]"].querySelector = frameLookup
   const labels = {
     "messages.edit": "Edit",
     "messages.delete": "Delete",
@@ -49,7 +46,13 @@ function fixture({ confirmed = true } = {}) {
     "map.confirm_delete_point_permanently": "Delete point?",
   }
   const card = createInfoCard({
-    root: { querySelector: (selector) => nodes[selector] },
+    root: {
+      querySelector: (selector) => nodes[selector],
+      addEventListener: (name, fn) => {
+        listeners[name] = fn
+      },
+      removeEventListener: () => {},
+    },
     pushEvent: (event, payload, reply) => {
       pushes.push([event, payload])
       if (event === "address:open") reply?.({ text: "Main St 1 & Co" })
@@ -69,11 +72,13 @@ function fixture({ confirmed = true } = {}) {
     listeners.click({
       target: {
         closest: (selector) =>
-          selector === "[data-native-info-action]" && dataset.action
-            ? { dataset }
-            : selector === "[data-native-info-close]" && dataset.close
-              ? {}
-              : null,
+          selector === "[data-native-info-display]"
+            ? {}
+            : selector === "[data-native-info-action]" && dataset.action
+              ? { dataset }
+              : selector === "[data-native-info-close]" && dataset.close
+                ? {}
+                : null,
       },
     })
   return { card, nodes, pushes, confirms, click }
@@ -145,3 +150,20 @@ test("the close button hides the card", () => {
   f.click({ close: true })
   assert.equal(f.nodes["[data-native-info-display]"].classes.has("hidden"), true)
 })
+
+test("a card node replaced by a patch still fills and routes its actions", () => {
+  const f = fixture()
+  const fresh = {}
+  for (const name of ["display", "title", "content", "actions"]) {
+    const old = f.nodes[`[data-native-info-${name}]`]
+    fresh[name] = { ...old, innerHTML: "", textContent: "", classes: new Set(["hidden"]) }
+    Object.defineProperty(fresh[name], "classList", Object.getOwnPropertyDescriptor(old, "classList"))
+    f.nodes[`[data-native-info-${name}]`] = fresh[name]
+  }
+  f.card.place({ id: 4, name: "Moved" })
+  assert.equal(fresh.title.textContent, "Moved")
+  assert.equal(fresh.display.classes.has("hidden"), false)
+  f.click({ action: "edit", id: "4", entityType: "place" })
+  assert.deepEqual(f.pushes.at(-1), ["place:edit", { id: "4" }])
+})
+
