@@ -54,10 +54,7 @@
       </h2>
       <div class="w-full h-48 bg-base-200 rounded-lg p-4 relative">
         <%= if @native do %>
-          <NativeChart.chart
-            id="public-digest-chart"
-            public
-            label={t(@locale, "users.digests.public_year.year_by_month", %{})}
+          <DawarichWeb.PublicReportChart.chart
             revision={Integer.to_string(@digest.year)}
             data={DigestFormat.monthly_chart(@locale, @digest.monthly_distances, @unit)}
             options={

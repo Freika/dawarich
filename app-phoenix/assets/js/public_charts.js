@@ -7,7 +7,7 @@ export function initializeCharts(root = document, factory = createAdapter) {
   const adapters = Array.from(root.querySelectorAll("[data-chart]")).map(
     (element) => {
       if (mounted.has(element)) return mounted.get(element)
-      const adapter = factory(element.querySelector("[data-chart-plot]"))
+      const adapter = factory(element.matches?.("[data-chart-plot]") ? element : element.querySelector("[data-chart-plot]"))
       let alive = true
       const entry = {
         destroy() {
@@ -46,6 +46,23 @@ export function initializePublicCharts(
   }
 }
 
+export function trackPreviewLoading(element, createObserver = (changed) => new MutationObserver(changed)) {
+  const loading = element.closest?.("[data-native-public-map-frame]")?.querySelector("[data-native-map-loading]")
+  if (loading == null) return () => {}
+  let alive = true
+  const changed = () => {
+    if (alive) loading.hidden = ["ready", "failed"].includes(element.dataset.mapState)
+  }
+  const observer = createObserver(changed)
+  observer.observe(element, { attributes: true, attributeFilter: ["data-map-state"] })
+  changed()
+  return () => {
+    if (!alive) return
+    alive = false
+    observer.disconnect()
+  }
+}
+
 export function initializePublicPreviews(
   root = document,
   target = window,
@@ -54,8 +71,10 @@ export function initializePublicPreviews(
   let alive = true
   const owners = []
   const elements = Array.from(root.querySelectorAll("[phx-hook=MapPreview]"))
+  const loadingStops = elements.map((element) => trackPreviewLoading(element))
   const cleanup = () => {
     alive = false
+    for (const stop of loadingStops) stop()
     for (const owner of owners) owner.destroy()
     owners.length = 0
   }

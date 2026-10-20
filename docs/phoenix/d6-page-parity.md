@@ -32,7 +32,7 @@ phrase input's accessible name, are recorded in
 The route/state inventory is [d6-route-parity.json](d6-route-parity.json).
 The browser capture manifest adds password edit and unlock request pages.
 Provider-only login, invitation variants, full validation-error DOM, account
-linking DOM, static trip/track shares, unsupported share types, public reports,
+linking DOM, static trip/track shares, unsupported share types,
 all eight management page DOMs and trip studio variants still require completion
 or explicit contract differences. Existing behavior coverage is not evidence of
 DOM parity for these remaining routes. The controller's parity bench remains
@@ -49,3 +49,11 @@ destroy; the page DOM belongs to the embedded map/trip studio callers.
 OTP keeps bounded input width and heading wrapping at 390 px. The Rails
 size-32 large-text input otherwise forces 432–434 px page width in en/de; the
 OTP parity test normalizes only these documented resilience classes.
+
+Public month and digest content now reuse their Rails-compatible public components.
+The existing stats recorder adds 28 public fixtures (seven locales, full and
+partial owners). Native charts mount in the source plot container, with lazy
+Chart.js loading and owned teardown. The public month loading overlay follows
+map settlement. Both reports use application chrome, as Rails does; its sign-out
+action receives the viewer's CSRF without exposing the share owner's account.
+Bounded public names retain full country/city totals and more indicators.

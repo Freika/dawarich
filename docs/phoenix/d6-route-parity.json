@@ -415,9 +415,12 @@
       ],
       "evidence": [
         "sharing_endpoint_test.exs",
-        "native_public_pages_test.exs"
+        "native_public_pages_test.exs",
+        "public_report_delivery_test.exs",
+        "stats/public_reports/pages.json",
+        "phoenix_chart_test.mjs"
       ],
-      "status": "pending"
+      "status": "content DOM verified in seven locales for full and partial owners; bounded totals, viewer CSRF and delivery guards verified; browser acceptance pending"
     },
     {
       "path": "/shared/digest/:uuid",
@@ -433,9 +436,12 @@
       ],
       "evidence": [
         "sharing_endpoint_test.exs",
-        "native_public_pages_test.exs"
+        "native_public_pages_test.exs",
+        "public_report_delivery_test.exs",
+        "stats/public_reports/pages.json",
+        "phoenix_chart_test.mjs"
       ],
-      "status": "pending"
+      "status": "content DOM verified in seven locales for full and partial owners; bounded totals, viewer CSRF and delivery guards verified; browser acceptance pending"
     },
     {
       "path": "/shared/achievements/:uuid",

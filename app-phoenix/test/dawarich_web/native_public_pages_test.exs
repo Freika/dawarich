@@ -4,6 +4,142 @@ defmodule DawarichWeb.NativePublicPagesTest do
   import Phoenix.ConnTest
   alias Dawarich.Test.{RailsUser, StatsSeeds}
 
+  test "native public month main DOM matches the Rails public month fixture" do
+    cases =
+      File.read!("test/fixtures/stats/public_reports/pages.json")
+      |> Jason.decode!()
+      |> Enum.filter(&(&1["kind"] == "month"))
+
+    assert length(cases) == 14
+    source = hd(cases)
+
+    user =
+      RailsUser.insert!(%{
+        id: 5293,
+        email: "public-month-parity@example.invalid",
+        settings: %{"timezone" => "Europe/Berlin", "maps" => %{"distance_unit" => "km"}}
+      })
+
+    StatsSeeds.stat!(user.id, %{
+      year: 2024,
+      month: 3,
+      distance: 1000,
+      daily_distance: [[1, 1000]],
+      sharing_uuid: Ecto.UUID.dump!(source["uuid"]),
+      sharing_settings: %{"enabled" => true}
+    })
+
+    for entry <- cases do
+      source =
+        Map.put(
+          entry,
+          "html",
+          File.read!("test/fixtures/stats/public_reports/" <> entry["html_file"])
+        )
+
+      Repo.query!(
+        "UPDATE users SET plan=$2 WHERE id=$1",
+        [user.id, if(entry["full"], do: 1, else: 0)],
+        log: false
+      )
+
+      conn =
+        build_conn("GET", "/shared/month/" <> source["uuid"])
+        |> Map.put(:params, %{})
+        |> Map.put(:path_params, %{"uuid" => source["uuid"]})
+        |> assign(:locale, source["locale"])
+        |> assign(:base_url, "http://www.example.com")
+        |> assign(:current_user, nil)
+        |> assign(:self_hosted, source["full"])
+        |> assign(:now, DateTime.utc_now())
+        |> DawarichWeb.NativePublicPage.call(:month)
+
+      assert conn.status == 200
+      actual = report_dom(conn.resp_body, "main div.container.mx-auto.px-4.py-8", source["html"])
+
+      expected =
+        source["html"]
+        |> Dawarich.Test.ChartkickHTML.without_charts()
+        |> Dawarich.Test.ParityHTML.normalize()
+
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  test "native public digest main DOM matches the Rails public digest fixture" do
+    Repo.insert_all("countries", [
+      %{
+        name: "Germany",
+        iso_a2: "DE",
+        iso_a3: "DEU",
+        created_at: ~N[2026-09-26 12:00:00],
+        updated_at: ~N[2026-09-26 12:00:00]
+      }
+    ])
+
+    cases =
+      File.read!("test/fixtures/stats/public_reports/pages.json")
+      |> Jason.decode!()
+      |> Enum.filter(&(&1["kind"] == "digest"))
+
+    assert length(cases) == 14
+    source = hd(cases)
+
+    user =
+      RailsUser.insert!(%{
+        id: 5293,
+        email: "public-digest-parity@example.invalid",
+        settings: %{"timezone" => "Europe/Berlin", "maps" => %{"distance_unit" => "km"}}
+      })
+
+    StatsSeeds.digest!(user.id, %{
+      year: 2024,
+      distance: 50000,
+      toponyms: [StatsSeeds.toponym("Germany", ["Berlin"])],
+      first_time_visits: %{"countries" => ["Germany"], "cities" => ["Berlin"]},
+      monthly_distances: %{"3" => 1000},
+      time_spent_by_location: %{"countries" => [%{"name" => "Germany", "minutes" => 1000}]},
+      sharing_uuid: Ecto.UUID.dump!(source["uuid"]),
+      sharing_settings: %{"enabled" => true}
+    })
+
+    for entry <- cases do
+      source =
+        Map.put(
+          entry,
+          "html",
+          File.read!("test/fixtures/stats/public_reports/" <> entry["html_file"])
+        )
+
+      Repo.query!(
+        "UPDATE users SET plan=$2 WHERE id=$1",
+        [user.id, if(entry["full"], do: 1, else: 0)],
+        log: false
+      )
+
+      conn =
+        build_conn("GET", "/shared/digest/" <> source["uuid"])
+        |> Map.put(:params, %{})
+        |> Map.put(:path_params, %{"uuid" => source["uuid"]})
+        |> assign(:locale, source["locale"])
+        |> assign(:base_url, "http://www.example.com")
+        |> assign(:current_user, nil)
+        |> assign(:self_hosted, source["full"])
+        |> assign(:now, DateTime.utc_now())
+        |> DawarichWeb.NativePublicPage.call(:digest)
+
+      assert conn.status == 200
+      actual = report_dom(conn.resp_body, "main div.max-w-xl.mx-auto.px-4.py-8", source["html"])
+
+      expected =
+        source["html"]
+        |> Dawarich.Test.ChartkickHTML.without_charts()
+        |> Dawarich.Test.ParityHTML.normalize()
+
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+    end
+  end
+
   test "public digest rendering keeps source totals localized chart values and no owner key or private chrome" do
     RailsUser.insert!(%{
       id: 19002,
@@ -97,6 +233,45 @@ defmodule DawarichWeb.NativePublicPagesTest do
 
     assert conn.status == 200
     text = LazyHTML.from_document(conn.resp_body) |> LazyHTML.text()
+    assert text =~ ~r/61\s+cities/
+    assert text =~ ~r/\+56\s+more/
+    assert text =~ "City 5"
+    refute text =~ "City 6"
+  end
+
+  test "bounded public month names preserve full country and city totals" do
+    user = RailsUser.insert!(%{id: 19005, email: "public-month-counts@example.invalid"})
+    uuid = Ecto.UUID.generate()
+
+    places =
+      [StatsSeeds.toponym("Germany", Enum.map(1..61, &"City #{&1}"))] ++
+        Enum.map(1..50, &StatsSeeds.toponym("Country #{&1}", ["Town #{&1}"])) ++
+        [StatsSeeds.toponym("Germany", ["Berlin"])]
+
+    StatsSeeds.stat!(user.id, %{
+      year: 2024,
+      month: 3,
+      toponyms: places,
+      sharing_uuid: Ecto.UUID.dump!(uuid),
+      sharing_settings: %{"enabled" => true}
+    })
+
+    conn =
+      build_conn("GET", "/shared/month/" <> uuid)
+      |> Map.put(:params, %{})
+      |> Map.put(:path_params, %{"uuid" => uuid})
+      |> assign(:locale, "en")
+      |> assign(:base_url, "http://www.example.com")
+      |> assign(:current_user, nil)
+      |> assign(:self_hosted, true)
+      |> assign(:now, DateTime.utc_now())
+      |> DawarichWeb.NativePublicPage.call(:month)
+
+    assert conn.status == 200
+    doc = LazyHTML.from_document(conn.resp_body)
+    values = doc |> LazyHTML.query(".stat-value") |> Enum.map(&LazyHTML.text/1)
+    assert "51" in values
+    text = LazyHTML.text(doc)
     assert text =~ ~r/61\s+cities/
     assert text =~ ~r/\+56\s+more/
     assert text =~ "City 5"
@@ -286,4 +461,34 @@ defmodule DawarichWeb.NativePublicPagesTest do
     assert Enum.count(LazyHTML.query(doc, "input[name=authenticity_token]")) == 1
     refute html =~ "data-disable-with"
   end
+
+  defp report_dom(html, selector, source) do
+    dom = LazyHTML.from_document(html)
+
+    actual =
+      dom
+      |> LazyHTML.query("[data-chart]")
+      |> LazyHTML.attribute("data-chart")
+      |> Enum.map(&Jason.decode!/1)
+
+    expected = Dawarich.Test.ChartkickHTML.charts(source)
+    assert Enum.map(actual, & &1["data"]) == Enum.map(expected, & &1.data)
+    assert Enum.map(actual, & &1["kind"]) == Enum.map(expected, & &1.type)
+    assert Enum.map(actual, & &1["options"]) == Enum.map(expected, & &1.options)
+
+    dom
+    |> LazyHTML.query(selector)
+    |> LazyHTML.to_tree()
+    |> chart_wiring()
+    |> Dawarich.Test.ParityHTML.normalize()
+  end
+
+  defp chart_wiring(nodes) when is_list(nodes), do: Enum.map(nodes, &chart_wiring/1)
+
+  defp chart_wiring({tag, attrs, children}) do
+    attrs = Enum.reject(attrs, fn {key, _} -> key in ~w(data-chart data-chart-plot) end)
+    {tag, attrs, chart_wiring(children)}
+  end
+
+  defp chart_wiring(text), do: text
 end

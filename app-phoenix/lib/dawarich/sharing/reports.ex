@@ -108,7 +108,7 @@ defmodule Dawarich.Sharing.Reports do
     visited = Dawarich.Stats.Toponyms.visited(places)
 
     totals = %{
-      countries: length(visited),
+      countries: length(Dawarich.Stats.Toponyms.countries(visited)),
       cities: length(Dawarich.Stats.Toponyms.cities(visited))
     }
 

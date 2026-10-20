@@ -131,7 +131,11 @@ defmodule DawarichWeb.NativePublicPage do
       request_path: conn.request_path,
       base_url: conn.assigns[:base_url] || DawarichWeb.RequestURL.base(conn),
       self_hosted: conn.assigns[:self_hosted] == true,
-      rails_csrf_token: nil,
+      rails_csrf_token: conn.assigns[:rails_csrf_token],
+      suggested_locale: conn.assigns[:suggested_locale],
+      query_params: conn.assigns[:query_params] || %{},
+      flash: %{},
+      flash_messages: conn.assigns[:flash_messages] || [],
       now: conn.assigns[:now] || DateTime.utc_now(),
       locale: conn.assigns[:locale] || "en"
     }

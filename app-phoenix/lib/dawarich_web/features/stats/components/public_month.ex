@@ -7,7 +7,14 @@ defmodule DawarichWeb.PublicMonth do
   @colors ~w(#570df8 #f000b8 #ffea00 #00d084 #3abff8 #ff5724 #8e24aa #3949ab #00897b #d81b60 #5e35b1 #039be5 #43a047 #f4511e #6d4c41 #757575 #546e7a #d32f2f)
 
   def document(assigns) do
-    assigns = assign(assigns, :visited, Toponyms.visited(assigns.stat.toponyms))
+    assigns =
+      assign(assigns,
+        visited: Toponyms.visited(assigns.stat.toponyms),
+        native: assigns[:native] == true,
+        country_total:
+          get_in(assigns, [:totals, :countries]) ||
+            length(Toponyms.countries(assigns.stat.toponyms))
+      )
 
     ~H"""
     <div class="container mx-auto px-4 py-8">
@@ -55,7 +62,7 @@ defmodule DawarichWeb.PublicMonth do
         </div>
         <div class="stat place-items-center text-center">
           <div class="stat-title">{t(@locale, "stats.public_month.countries_visited", %{})}</div>
-          <div class="stat-value">{length(Toponyms.countries(@visited))}</div>
+          <div class="stat-value">{@country_total}</div>
           <div class="stat-desc">{t(@locale, "stats.public_month.different_countries", %{})}</div>
         </div>
       </div>
@@ -74,23 +81,36 @@ defmodule DawarichWeb.PublicMonth do
               </div>
             </div>
           </div>
-          <div class="w-full h-96 border border-base-300 relative overflow-hidden">
+          <div
+            class="w-full h-96 border border-base-300 relative overflow-hidden"
+            data-native-public-map-frame={@native}
+          >
+            <%= if @native do %>
+              <DawarichWeb.NativeMapPreview.preview
+                id="public-monthly-stats-map"
+                config={@map_config}
+                locale={@locale}
+                class="w-full h-full"
+              />
+            <% else %>
+              <div
+                phx-hook="RailsStimulus"
+                id="public-monthly-stats-map"
+                class="w-full h-full"
+                data-controller="public-stat-map"
+                data-public-stat-map-year-value={@year}
+                data-public-stat-map-month-value={@month}
+                data-public-stat-map-uuid-value={@uuid}
+                data-public-stat-map-data-bounds-value={
+                  if @data_bounds, do: Jason.encode!(@data_bounds), else: ""
+                }
+                data-public-stat-map-hexagons-available-value={to_string(@hexagons)}
+                data-public-stat-map-timezone-value={@timezone}
+              >
+              </div>
+            <% end %>
             <div
-              phx-hook="RailsStimulus"
-              id="public-monthly-stats-map"
-              class="w-full h-full"
-              data-controller="public-stat-map"
-              data-public-stat-map-year-value={@year}
-              data-public-stat-map-month-value={@month}
-              data-public-stat-map-uuid-value={@uuid}
-              data-public-stat-map-data-bounds-value={
-                if @data_bounds, do: Jason.encode!(@data_bounds), else: ""
-              }
-              data-public-stat-map-hexagons-available-value={to_string(@hexagons)}
-              data-public-stat-map-timezone-value={@timezone}
-            >
-            </div>
-            <div
+              data-native-map-loading={@native}
               id="map-loading"
               class="absolute inset-0 bg-base-200 bg-opacity-80 flex items-center justify-center z-50"
             >
@@ -114,12 +134,20 @@ defmodule DawarichWeb.PublicMonth do
             )}
           </h2>
           <div class="w-full h-48 bg-base-200 rounded-lg p-4 relative">
-            <Chartkick.column_chart
-              id="chart-1"
-              height="200px"
-              data={for [day, meters] <- @stat.daily, do: [day, StatsFormat.rounded(meters, "km")]}
-              options={options(@locale)}
-            />
+            <%= if @native do %>
+              <DawarichWeb.PublicReportChart.chart
+                data={for [day, meters] <- @stat.daily, do: [day, StatsFormat.rounded(meters, "km")]}
+                options={Map.new(options(@locale))}
+                revision={"#{@year}-#{@month}"}
+              />
+            <% else %>
+              <Chartkick.column_chart
+                id="chart-1"
+                height="200px"
+                data={for [day, meters] <- @stat.daily, do: [day, StatsFormat.rounded(meters, "km")]}
+                options={options(@locale)}
+              />
+            <% end %>
           </div>
           <div class="text-sm opacity-70 text-center mt-2">
             {t(@locale, "stats.public_month.peak_day", %{})}
@@ -155,8 +183,8 @@ defmodule DawarichWeb.PublicMonth do
           <div class="space-y-4">
             <div :for={{country, index} <- Enum.with_index(@visited)} class="space-y-2">
               <div class="flex justify-between items-center">
-                <span class="font-semibold">{country["country"]}</span><span class="text-sm">{length(
-                  country["cities"]
+                <span class="font-semibold">{country["country"]}</span><span class="text-sm">{city_count(
+                  country
                 )} {t(@locale, "stats.public_month.cities", %{})}</span>
               </div>
               <progress class="progress progress-primary w-full" value={100 - index * 20} max="100"></progress>
@@ -169,8 +197,8 @@ defmodule DawarichWeb.PublicMonth do
               <div :for={city <- Enum.take(country["cities"], 5)} class="badge badge-outline">
                 {city["city"]}
               </div>
-              <div :if={length(country["cities"]) > 5} class="badge badge-ghost">
-                +{length(country["cities"]) - 5} {t(@locale, "stats.public_month.more", %{})}
+              <div :if={city_count(country) > 5} class="badge badge-ghost">
+                +{city_count(country) - 5} {t(@locale, "stats.public_month.more", %{})}
               </div>
             <% end %>
           </div>
@@ -192,6 +220,8 @@ defmodule DawarichWeb.PublicMonth do
     </div>
     """
   end
+
+  defp city_count(country), do: country["cities_count"] || length(country["cities"])
 
   defp options(locale),
     do: [

@@ -334,6 +334,40 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
     end
   end
 
+  it 'D6 records public report content in every locale and owner entitlement state' do
+    allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
+    Country.create!(name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU',
+                    geom: 'MULTIPOLYGON (((0 0,0 1,1 1,1 0,0 0)))')
+    Rails.cache.delete(Country::NAMES_TO_ISO_A2_CACHE_KEY)
+    travel_to now do
+      user = reader(5293)
+      month = stat(52_931, user, 2024, 3, 1000, daily_distance: [[1, 1000]])
+      year = digest(52_932, user, 2024, toponyms: [toponym('Germany', 'Berlin')],
+                    first_time_visits: { 'countries' => ['Germany'], 'cities' => ['Berlin'] },
+                    monthly_distances: { '3' => 1000 },
+                    time_spent_by_location: { 'countries' => [{ 'name' => 'Germany', 'minutes' => 1000 }] })
+      no_geocoding
+      rows = %w[en de es fr pl ca zh].flat_map do |locale|
+        [true, false].flat_map do |full|
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(full)
+          user.update_columns(plan: User.plans[full ? :pro : :lite])
+          [[month, 'month', 'div.container.mx-auto.px-4.py-8'],
+           [year, 'digest', 'div.max-w-xl.mx-auto.px-4.py-8']].map do |record, kind, selector|
+            record.update_columns(sharing_settings: { 'enabled' => true, 'expiration' => nil })
+            get "/shared/#{kind}/#{record.sharing_uuid}", params: { locale: }
+            expect(response.status).to eq(200)
+            fragment = Nokogiri::HTML5(response.body).at_css(selector).to_html
+            expect([user.email, user.api_key].none? { fragment.include?(_1) }).to eq(true)
+            name = "#{kind}_#{full ? 'full' : 'partial'}_#{locale}"
+            verify_fixture(fixtures.join("stats/public_reports/#{name}.html"), fragment)
+            { name:, kind:, locale:, full:, uuid: record.sharing_uuid, html_file: "#{name}.html" }
+          end
+        end
+      end
+      write_json(fixtures.join('stats/public_reports/pages.json'), rows)
+    end
+  end
+
   it 'reads back Q06 routing errors after ActionCable subscriber initialization' do
     subscriber = ActionCable.server.pubsub
     allow(File).to receive(:write).and_call_original

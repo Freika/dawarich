@@ -12963,6 +12963,19 @@
         }
       ],
       "authority": "2026-10-17 dead-code removal: the Rails-markup PosterStudio was unrouted; the native studio test proves default date controls and the trip fixed range without them"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/public_report_delivery_test.exs",
+        "name": "public monthly report mounts native M6 preview without private geometry"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/public_report_delivery_test.exs",
+          "name": "public monthly report mounts native M6 preview without private geometry"
+        }
+      ],
+      "authority": "D6 public month uses Rails public-monthly-stats-map id; native M6 hook/config/privacy assertions retained"
     }
   ],
   "readers": [
@@ -15521,6 +15534,13 @@
     },
     {
       "file": "app-phoenix/test/dawarich_web/auth_pages_parity_test.exs",
+      "markers": [
+        "test/fixtures",
+        "fixtures/"
+      ]
+    },
+    {
+      "file": "app-phoenix/test/dawarich_web/native_public_pages_test.exs",
       "markers": [
         "test/fixtures",
         "fixtures/"

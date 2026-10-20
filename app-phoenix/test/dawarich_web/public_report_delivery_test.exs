@@ -31,7 +31,7 @@ defmodule DawarichWeb.PublicReportDeliveryTest do
 
     [json] =
       doc
-      |> LazyHTML.query("#public-month-map[phx-hook='MapPreview']")
+      |> LazyHTML.query("#public-monthly-stats-map[phx-hook='MapPreview']")
       |> LazyHTML.attribute("data-map-config")
 
     config = Jason.decode!(json)
@@ -42,6 +42,54 @@ defmodule DawarichWeb.PublicReportDeliveryTest do
     assert Enum.empty?(
              LazyHTML.query(doc, "[data-controller], script[type=importmap], [data-api-key]")
            )
+  end
+
+  test "public report navbar keeps the viewer's action CSRF without exposing its owner", %{
+    uuid: uuid
+  } do
+    RailsUser.insert!(%{
+      id: 19022,
+      email: "report-viewer@example.invalid",
+      settings: %{"onboarding_completed" => true}
+    })
+
+    Repo.query!("UPDATE users SET api_key=$2 WHERE id=$1", [19021, "synthetic-report-owner-key"],
+      log: false
+    )
+
+    session = RailsUser.session(19022)
+
+    conn =
+      build_conn()
+      |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
+      |> clock_conn()
+      |> get("/shared/month/#{uuid}")
+
+    assert conn.status == 200
+
+    tokens =
+      conn.resp_body
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("form[action='/users/sign_out'] input[name=authenticity_token]")
+      |> LazyHTML.attribute("value")
+
+    assert length(tokens) == 2
+
+    valid =
+      Enum.all?(
+        tokens,
+        &Dawarich.Auth.ActionCsrf.valid?(session, &1, "DELETE", "/users/sign_out")
+      )
+
+    assert valid
+
+    owner_visible =
+      String.contains?(conn.resp_body, [
+        "synthetic-report-owner-key",
+        "report-delivery@example.invalid"
+      ])
+
+    refute owner_visible
   end
 
   for kind <- [:digest, :month] do

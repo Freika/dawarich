@@ -230,3 +230,49 @@ test("public monthly initializer shares one preview owner across repeated initia
   second()
   assert.equal(removed, 1)
 })
+
+test("public report charts mount directly into their Rails plot container", async () => {
+  const { initializeCharts } = await import("../../app-phoenix/assets/js/public_charts.js")
+  const plot = {
+    dataset: { chart: JSON.stringify(payload(1, "rails-plot")) },
+    matches: (selector) => selector === "[data-chart-plot]",
+    querySelector: () => null,
+  }
+  let target
+  const stop = initializeCharts({ querySelectorAll: () => [plot] }, (element) => {
+    target = element
+    return { update: () => Promise.resolve(), destroy() {} }
+  })
+  assert.equal(target, plot)
+  stop()
+})
+
+test("public month loading clears on map settlement and observers stop on document leave", async () => {
+  const { trackPreviewLoading } = await import("../../app-phoenix/assets/js/public_charts.js")
+  const loading = { hidden: false }
+  const plot = {
+    dataset: { mapState: "loading" },
+    closest: () => ({ querySelector: () => loading }),
+  }
+  let changed
+  let disconnected = 0
+  const stop = trackPreviewLoading(plot, (callback) => {
+    changed = callback
+    return { observe() {}, disconnect() { disconnected += 1 } }
+  })
+  assert.equal(loading.hidden, false)
+  for (const state of ["ready", "failed"]) {
+    plot.dataset.mapState = state
+    changed()
+    assert.equal(loading.hidden, true)
+  }
+  plot.dataset.mapState = "loading"
+  changed()
+  assert.equal(loading.hidden, false)
+  stop()
+  stop()
+  assert.equal(disconnected, 1)
+  plot.dataset.mapState = "ready"
+  changed()
+  assert.equal(loading.hidden, false)
+})
