@@ -86,6 +86,7 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
     refute has_element?(view, "#native-achievement-dialog [data-selected-key]")
   end
 
+  @tag keyboard_card: true
   test "card dialog Escape and close return focus to the chosen card", %{user: user} do
     {:ok, view, html} =
       live(NativeAchievementsUI.conn(user, "/achievements/continent_europe?q=France"))
@@ -99,6 +100,12 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
              "#native-achievement-dialog[phx-window-keydown*='close_card'][phx-key='Escape']"
            )
 
+    assert has_element?(
+             view,
+             "#native-achievement-country_fr[phx-keyup*='push_focus'][phx-key=Enter]"
+           )
+
+    refute has_element?(view, "#native-achievement-country_fr[phx-keydown]")
     assert has_element?(view, "#native-close-achievement-card[phx-click*='pop_focus']")
     assert has_element?(view, "#native-achievement-country_fr[phx-click*='push_focus']")
     render_click(view, "close_card", %{})

@@ -64,7 +64,7 @@ defmodule DawarichWeb.AchievementCard do
     <div
       id={@native && @native_key && "native-achievement-" <> @native_key}
       phx-click={@native && @modal && DawarichWeb.NativeAchievementParts.open(@native_key)}
-      phx-keydown={@native && @modal && DawarichWeb.NativeAchievementParts.open(@native_key)}
+      phx-keyup={@native && @modal && DawarichWeb.NativeAchievementParts.open(@native_key)}
       phx-key={@native && @modal && "Enter"}
       class={[
         "ach-card-wrap ach-spectral-wrap",
