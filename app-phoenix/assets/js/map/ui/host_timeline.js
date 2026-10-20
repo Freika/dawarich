@@ -109,7 +109,9 @@ export function createHostTimeline({
     const features = available.length
       ? map.queryRenderedFeatures?.(event.point, { layers: available }) || []
       : []
-    const feature = features[0]
+    const feature = features.find(
+      (item) => item.layer?.id === "native-selected-track-segments",
+    ) || features[0]
     const id = Number(feature?.properties?.track_id || feature?.properties?.id)
     if (!Number.isSafeInteger(id) || id <= 0) return leave()
     pointing = true
