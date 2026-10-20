@@ -243,6 +243,80 @@ defmodule DawarichWeb.NativeMapEntitiesTest do
            ]
   end
 
+  test "reconnected map create restores only its draft without writing", c do
+    view = open(c)
+
+    render_hook(view, "place:recover", %{
+      "id" => "",
+      "place" => %{
+        "name" => "Unsent draft",
+        "note" => "Retained note",
+        "latitude" => "52.52",
+        "longitude" => "13.405",
+        "source" => "forged"
+      }
+    })
+
+    assert has_element?(
+             view,
+             "#native-place-form input[name='place[name]'][value='Unsent draft']"
+           )
+
+    assert has_element?(view, "#native-place-form textarea", "Retained note")
+    assert rows("SELECT id FROM places WHERE user_id=$1", [c.id]) == []
+    render_hook(view, "place:close", %{})
+    render_hook(view, "place:new", %{"latitude" => 52.52, "longitude" => 13.405})
+    assert has_element?(view, "#native-place-form input[name='place[name]'][value='']")
+    refute render(view) =~ "Retained note"
+  end
+
+  test "reconnected map edit reloads ownership and never replays a save", c do
+    owned = place!(c.id)
+    foreign = place!(c.other)
+    before = snapshot(c.id)
+
+    attrs = %{
+      "name" => "Edit draft",
+      "note" => "Unsent",
+      "latitude" => "52.5",
+      "longitude" => "13.4"
+    }
+
+    view = open(c)
+    render_hook(view, "place:recover", %{"id" => to_string(owned), "place" => attrs})
+    assert has_element?(view, "#native-place-form input[name='place[name]'][value='Edit draft']")
+    assert has_element?(view, "#native-place-form[data-native-place-id='#{owned}']")
+    assert snapshot(c.id) == before
+    render_hook(view, "place:close", %{})
+    render_hook(view, "place:recover", %{"id" => to_string(foreign), "place" => attrs})
+    refute has_element?(view, "#native-place-dialog")
+    assert snapshot(c.id) == before
+  end
+
+  test "reconnected map create refuses malformed coordinates and revoked actors", c do
+    view = open(c)
+    attrs = %{"name" => "Draft", "latitude" => "999", "longitude" => "13.4"}
+
+    render_hook(view, "place:recover", %{
+      "id" => "",
+      "place" => Map.put(attrs, "latitude", "52.5")
+    })
+
+    assert has_element?(view, "#native-place-dialog")
+    render_hook(view, "place:close", %{})
+    render_hook(view, "place:recover", %{"id" => "", "place" => attrs})
+    refute has_element?(view, "#native-place-dialog")
+    Repo.query!("UPDATE users SET status=3 WHERE id=$1", [c.id])
+
+    render_hook(view, "place:recover", %{
+      "id" => "",
+      "place" => Map.put(attrs, "latitude", "52.5")
+    })
+
+    refute has_element?(view, "#native-place-dialog")
+    assert rows("SELECT id FROM places WHERE user_id=$1", [c.id]) == []
+  end
+
   defp finished(pid) do
     ref = Process.monitor(pid)
     assert_receive {:DOWN, ^ref, :process, ^pid, _}, 2_000

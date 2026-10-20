@@ -29,6 +29,20 @@ defmodule DawarichWeb.MapLive.EntityCommands do
     end
   end
 
+  def handle_event("place:recover", %{"id" => id, "place" => attrs}, socket)
+      when is_binary(id) and is_map(attrs) do
+    with {:ok, _tags} <- Entities.tags(socket.assigns.current_scope),
+         {:noreply, socket} <-
+           if(id == "",
+             do: handle_event("place:new", attrs, socket),
+             else: handle_event("place:edit", %{"id" => id}, socket)
+           ) do
+      handle_event("place:change", %{"place" => attrs}, socket)
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
   def handle_event("place:change", %{"place" => attrs}, socket) when is_map(attrs) do
     case socket.assigns[:place_dialog] do
       %{form: form} = current ->

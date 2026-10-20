@@ -167,6 +167,15 @@ defmodule DawarichWeb.BrowserMapDataTest do
     [[owned]] = Repo.query!("SELECT id FROM points WHERE user_id = $1", [id]).rows
     assert hd(rows)["id"] == owned
     assert get_resp_header(conn, "vary") == ["Cookie"]
+
+    nearby = read(id, "/places/nearby?latitude=0&longitude=0&extra=1")
+    assert nearby.status == 200
+    assert Jason.decode!(nearby.resp_body) == %{"places" => []}
+    assert [runtime] = get_resp_header(nearby, "x-runtime")
+    assert runtime =~ ~r/\A\d+\.\d{6}\z/
+    assert get_resp_header(nearby, "x-dawarich-response") == ["Hey, I'm alive!"]
+    assert get_resp_header(nearby, "vary") == ["Cookie"]
+    assert get_resp_header(nearby, "cache-control") == ["private, no-store"]
     assert get(build_conn(), "/native/map/data" <> path).status == 401
 
     assert get(

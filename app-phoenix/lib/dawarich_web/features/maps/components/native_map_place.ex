@@ -36,6 +36,8 @@ defmodule DawarichWeb.NativeMapPlace do
           <form
             id="native-place-form"
             phx-change="place:change"
+            data-native-form-status="idle"
+            data-native-place-id={@dialog.id || ""}
             phx-submit="place:save"
             action="/places"
             accept-charset="UTF-8"

@@ -127,6 +127,10 @@ Public map refresh compares grant fields independently from the request lease de
 
 ## Browser timing regressions
 
+Map place forms retain unsent name, note, coordinates and tags through a LiveView reconnect using the actor-scoped `PlaceDraft` hook and `place:recover`. Recovery reloads edit ownership and account admission, restores whitelisted fields without submitting, and discards the client draft on departure. The map modal must remain inside its persistent draft hook even while closed. This restores the pre-parity native reconnect protection.
+
+The cookie nearby endpoint retains the shared API responder's numeric `X-Runtime`, matching Rails 1.16.0's timing header. Timing is not a backend ownership signal; browser checks retain `Vary: Cookie`, `private, no-store`, anonymous refusal and foreign-place isolation. Place measurements pass their expected locale explicitly. Segment hover helpers sample an unobstructed canvas pixel and verify that the rendered segment at that pixel has the requested id before moving the pointer; timeline highlighting still requires the segment's own leg.
+
 Map config echoes are idempotent after layer-preference normalization. Reapplying the current config shares the preceding update result and preserves reader generation, pending editor reads and selected timeline geometry; changed configs retain their existing invalidation. `map_config_echo_test.mjs` holds real cookie-reader responses to verify this without timing assumptions.
 
 Point-edit history browser setup and cleanup acknowledge preceding LiveView commands with a `map:ready` reply and drain the client settings/config promises they started before selecting or moving points. A checked input, idle camera or loaded tiles alone does not establish that server settings reached the editor. Style changes use the persisted appearance control; calling `owner.settings()` alone changes only client state, which a subsequent authoritative server config can replace. This contract is mirrored in AFFiNE's `Dawarich — Native map layer browser regressions`.
