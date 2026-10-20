@@ -39,6 +39,7 @@ defmodule Dawarich.Test.NativeMapShellProbe do
 
   def render(assigns) do
     ~H"""
+    <DawarichWeb.Chrome.flash flash={@flash} locale="en" native />
     <output id="state">{Jason.encode!(%{url: @map_url, revision: @map_revision})}</output>
     <DawarichWeb.NativeMapControls.date_navigation
       url={@map_url}

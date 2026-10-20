@@ -74,7 +74,7 @@ defmodule DawarichWeb.NativeSegmentEditorTest do
            ]
 
     render_hook(view, "segment:mode", %{"segment_id" => to_string(segment), "mode" => "flying"})
-    assert has_element?(view, "p.alert-error[role=alert]")
+    assert has_element?(view, "#flash-messages .alert-error[role=alert]")
   end
 
   test "native segment correction keeps persisted feedback without replacing the map", c do
@@ -87,7 +87,8 @@ defmodule DawarichWeb.NativeSegmentEditorTest do
     })
     |> render_change()
 
-    assert has_element?(view, "p[role=status]", "Segment updated")
+    assert has_element?(view, "#flash-messages .alert-success", "Segment updated")
+    refute has_element?(view, "#native-segment-drawer [role=status]")
     assert has_element?(view, "#native-segment-#{c.track * 10} [aria-label='Manually corrected']")
     assert rows("SELECT source FROM track_segments WHERE id=$1", [c.track * 10]) == [["user"]]
 
@@ -96,8 +97,7 @@ defmodule DawarichWeb.NativeSegmentEditorTest do
       "mode" => "flying"
     })
 
-    assert has_element?(view, "p.alert-error[role=alert]")
-    refute has_element?(view, "p[role=status]")
+    assert has_element?(view, "#flash-messages .alert-error[role=alert]")
   end
 
   defp open(id) do

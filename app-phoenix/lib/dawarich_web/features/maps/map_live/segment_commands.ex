@@ -1,12 +1,13 @@
 defmodule DawarichWeb.MapLive.SegmentCommands do
   @moduledoc false
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3]
+  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
+  import DawarichWeb.Translate, only: [t: 3]
   alias Dawarich.LocationCommands.Segments
 
   def handle_event("segments:open", %{"track_id" => track_id}, socket) do
     case Segments.list(socket.assigns.current_scope, track_id) do
-      {:ok, page} -> {:noreply, assign(socket, :segment_drawer, drawer(page, nil))}
+      {:ok, page} -> {:noreply, assign(socket, :segment_drawer, drawer(page))}
       _ -> {:noreply, assign(socket, :segment_drawer, nil)}
     end
   end
@@ -33,24 +34,19 @@ defmodule DawarichWeb.MapLive.SegmentCommands do
 
   defp write(socket, command) do
     case socket.assigns[:segment_drawer] do
-      %{track_id: track_id} = current ->
+      %{track_id: track_id} ->
         scope = socket.assigns.current_scope
 
-        case command.(scope, track_id) do
-          {:ok, _result} ->
-            drawer =
-              case Segments.list(scope, track_id) do
-                {:ok, fresh} -> drawer(fresh, nil)
-                {:error, reason} -> %{current | error: reason}
-              end
-
-            {:noreply,
-             socket
-             |> assign(:segment_drawer, Map.put(drawer, :notice, :updated))
-             |> push_event("map:invalidate", %{resource: "tracks", id: track_id})}
-
+        with {:ok, _result} <- command.(scope, track_id),
+             {:ok, fresh} <- Segments.list(scope, track_id) do
+          {:noreply,
+           socket
+           |> assign(:segment_drawer, drawer(fresh))
+           |> put_flash(:success, message(socket, "segment_updated"))
+           |> push_event("map:invalidate", %{resource: "tracks", id: track_id})}
+        else
           {:error, reason} ->
-            {:noreply, assign(socket, :segment_drawer, %{current | error: reason})}
+            {:noreply, put_flash(socket, :error, message(socket, error(reason)))}
         end
 
       _ ->
@@ -58,6 +54,12 @@ defmodule DawarichWeb.MapLive.SegmentCommands do
     end
   end
 
-  defp drawer(page, error),
-    do: %{track_id: page.track_id, segments: page.segments, modes: page.modes, error: error}
+  defp error(code) when code in [:mode_not_enabled, :reprocess_failed], do: to_string(code)
+  defp error(_code), do: "reprocess_failed"
+
+  defp message(socket, key),
+    do: t(socket.assigns.locale, "controllers.tracks.segments." <> key, %{})
+
+  defp drawer(page),
+    do: %{track_id: page.track_id, segments: page.segments, modes: page.modes}
 end
