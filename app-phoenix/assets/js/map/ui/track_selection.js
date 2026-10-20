@@ -1,3 +1,4 @@
+import { mapNotify } from "./notify.js"
 import { createRequestScope } from "../data/request_scope.js"
 import { pointFeature, segmentFeature } from "../edit/editable_track_data.js"
 import { layerAbove } from "../layers/order.js"
@@ -144,7 +145,10 @@ export function createTrackSelection({
         })
       }
     } catch {
-      if (!destroyed && operation.revision === requests.revision) clear()
+      if (!destroyed && operation.revision === requests.revision) {
+        mapNotify(getConfig)("error", points ? "messages.failed_to_load_track_points" : "messages.failed_to_load_track_details")
+        clear()
+      }
     } finally {
       operation.close()
     }

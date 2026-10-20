@@ -1,3 +1,4 @@
+import { mapNotify } from "../ui/notify.js"
 import { createRequestScope } from "../data/request_scope.js"
 import { RecentPointLayer } from "../layers/recent_point.js"
 export function createHostRecentPoint({ map, reader, lifetime, config }) {
@@ -85,6 +86,7 @@ export function createHostRecentPoint({ map, reader, lifetime, config }) {
         timestamp: row.timestamp,
       })
       layer.show()
+      mapNotify(() => state)("info", "messages.new_location_recorded")
       map.flyTo({
         center: [lon, lat],
         zoom: Math.max(map.getZoom(), 14),

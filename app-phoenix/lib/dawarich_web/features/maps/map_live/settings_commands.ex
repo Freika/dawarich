@@ -4,6 +4,7 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
   import Phoenix.LiveView, only: [push_event: 3]
   alias Dawarich.Settings.Map, as: MapSettings
   alias Dawarich.Settings.MapForm
+  alias DawarichWeb.MapLive.{Toast, SettingsToast}
 
   def load(socket) do
     scope = socket.assigns.current_scope
@@ -149,7 +150,12 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
 
   def handle_event("settings:apply", params, socket) do
     socket = update(socket, &%{&1 | dirty: %{}, draft: %{}})
-    save(socket, DawarichWeb.MapLive.SettingsForm.advanced(params))
+
+    save(
+      socket,
+      DawarichWeb.MapLive.SettingsForm.advanced(params),
+      "messages.settings_updated_successfully"
+    )
   end
 
   def handle_event("settings:tile_category", %{"category" => key}, socket),
@@ -193,8 +199,11 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
       {:ok, theme} ->
         save(socket, %{"maps_maplibre_style" => "custom", "maps_maplibre_custom_theme" => theme})
 
-      {:error, reason} ->
-        {:noreply, update(socket, &%{&1 | error: reason, notice: nil})}
+      {:error, _reason} ->
+        {:noreply,
+         socket
+         |> update(&%{&1 | error: nil, notice: nil})
+         |> Toast.push(:error, "messages.failed_to_update_settings")}
     end
   end
 
@@ -206,15 +215,15 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
 
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
-  defp queue(socket, :ok, kind),
-    do: {:noreply, update(socket, &%{&1 | notice: kind, error: nil})}
+  defp queue(socket, result, kind),
+    do:
+      {:noreply,
+       socket |> update(&%{&1 | notice: nil, error: nil}) |> SettingsToast.queue(result, kind)}
 
-  defp queue(socket, {:error, reason}, kind),
-    do: {:noreply, update(socket, &%{&1 | error: {kind, reason}, notice: nil})}
+  defp save(socket, attrs, success_key \\ nil)
+  defp save(socket, attrs, _success_key) when map_size(attrs) == 0, do: {:noreply, socket}
 
-  defp save(socket, attrs) when map_size(attrs) == 0, do: {:noreply, socket}
-
-  defp save(socket, attrs) do
+  defp save(socket, attrs, success_key) do
     case MapSettings.update(socket.assigns.current_scope, attrs) do
       {:ok, %{settings: settings, recalculation_triggered: triggered}} ->
         {:noreply,
@@ -229,23 +238,21 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
                    else: &1.draft_modes
                  ),
                error: nil,
-               notice: save_notice(attrs, settings)
+               notice: nil
            }
          )
+         |> SettingsToast.saved(attrs, settings, triggered)
+         |> SettingsToast.success(success_key)
          |> push_event("map:settings", %{settings: settings, recalculation_triggered: triggered})}
 
-      {:error, {:invalid, errors}} ->
-        {:noreply, update(socket, &%{&1 | error: Enum.join(errors, ", "), notice: nil})}
+      {:error, {:invalid, _errors}} ->
+        {:noreply,
+         socket |> update(&%{&1 | error: nil, notice: nil}) |> SettingsToast.invalid(attrs)}
 
       {:error, reason} ->
-        {:noreply, update(socket, &%{&1 | error: reason, notice: nil})}
+        {:noreply,
+         socket |> update(&%{&1 | error: nil, notice: nil}) |> SettingsToast.failed(reason)}
     end
-  end
-
-  defp save_notice(attrs, settings) do
-    if Map.has_key?(attrs, "live_map_enabled"),
-      do: {:live, settings["live_map_enabled"] != false},
-      else: nil
   end
 
   defp update(socket, fun) do

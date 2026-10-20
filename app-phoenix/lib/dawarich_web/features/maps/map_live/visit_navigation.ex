@@ -28,7 +28,10 @@ defmodule DawarichWeb.MapLive.VisitNavigation do
         end
 
       _ ->
-        {:noreply, clear(socket)}
+        {:noreply,
+         socket
+         |> clear()
+         |> DawarichWeb.MapLive.Toast.push(:error, "messages.failed_to_load_visit_details")}
     end
   end
 

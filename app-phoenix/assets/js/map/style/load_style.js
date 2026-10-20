@@ -1,3 +1,4 @@
+import { mapNotify } from "../ui/notify.js"
 import { classifyBasemapUrl, styleDocumentFailed } from "./basemap_url.js"
 import { composeRasterFallback, composeVectorFallback } from "./fallback.js"
 import { applyMapStyle } from "./map_style.js"
@@ -47,6 +48,7 @@ export async function fetchStyle(
       return await read(config.tilesUrl)
     } catch (error) {
       if (signal?.aborted) throw error
+      mapNotify(() => config)("error", "settings.custom_style_load_failed")
       return applyMapStyle(await read("/maps_maplibre/styles/light.json"), {
         ...config,
         styleName: "light",

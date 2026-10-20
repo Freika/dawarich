@@ -105,15 +105,14 @@ defmodule DawarichWeb.NativeMapSettingsTest do
   test "save refusal leaves server settings unchanged", %{id: id, view: view} do
     before = stored(id)
 
-    html =
-      view
-      |> element("#native-map-settings-form")
-      |> render_change(%{
-        "_target" => ["vectorTilesUrl"],
-        "vectorTilesUrl" => "javascript:alert(1)"
-      })
+    view
+    |> element("#native-map-settings-form")
+    |> render_change(%{
+      "_target" => ["vectorTilesUrl"],
+      "vectorTilesUrl" => "javascript:alert(1)"
+    })
 
-    assert html =~ "Tile URL must include"
+    assert_push_event(view, "map:toast", %{type: :error, key: "settings.invalid_tile_url"})
     assert stored(id) == before
     refute_push_event(view, "map:settings", %{})
 
@@ -151,11 +150,11 @@ defmodule DawarichWeb.NativeMapSettingsTest do
   } do
     assert has_element?(view, "#native-map-settings-form", "Show new points in real-time")
 
-    for {enabled, notice} <- [{false, "Live mode disabled"}, {true, "Live mode enabled"}] do
+    for {enabled, key} <- [{false, "live_map.disabled"}, {true, "live_map.enabled"}] do
       view |> element("[phx-click='settings:live']") |> render_click()
 
       assert stored(id)["live_map_enabled"] == enabled
-      assert has_element?(view, "#native-settings-notice[role=status]", notice)
+      assert_push_event(view, "map:toast", %{type: :info, key: ^key})
     end
   end
 end

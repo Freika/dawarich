@@ -136,7 +136,8 @@ test("native visit timeline hover dims other markers and overlapping time paints
 
 test("native visit hover and pin commands preserve armed drawing and point edit modes", async () => {
   const f = setup()
-  const status = { textContent: "placing" }
+  const status = { textContent: "" }
+  f.root.dataset.mapToolArmed = "visit"
   f.nodes.set("[data-map-tool-status]", status)
   try {
     await f.owner.mount()
@@ -149,7 +150,7 @@ test("native visit hover and pin commands preserve armed drawing and point edit 
       f.pushed.filter(({ event }) => event === "map:select").length,
       0,
     )
-    status.textContent = ""
+    delete f.root.dataset.mapToolArmed
     f.owner.config.editEnabled = true
     f.canvas.style.cursor = "move"
     f.map.emit("mousemove", { point: { x: 1, y: 2 } })

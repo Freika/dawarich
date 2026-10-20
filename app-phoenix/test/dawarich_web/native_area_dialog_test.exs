@@ -106,9 +106,9 @@ defmodule DawarichWeb.NativeAreaDialogTest do
     view = open(c.actor)
     render_hook(view, "area:edit", %{"id" => to_string(id)})
     assert view |> element("#native-area-delete") |> render() =~ "Delete"
-    html = view |> element("#native-area-delete") |> render_click()
+    view |> element("#native-area-delete") |> render_click()
 
-    assert html =~ "Failed to delete area"
+    assert_push_event(view, "map:toast", %{type: :error, key: "messages.failed_to_delete_area"})
     assert has_element?(view, "#native-area-dialog")
     assert rows("SELECT count(*) FROM areas WHERE id=$1", [id]) == [[1]]
     refute_push_event(view, "map:invalidate", %{})

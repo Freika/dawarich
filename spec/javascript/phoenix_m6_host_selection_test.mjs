@@ -50,7 +50,7 @@ test("native selection root draws rectangle highlights admitted points and clear
     button.emit("click")
     assert.match(button.innerHTML, /<line x1="18"/)
     assert.equal(button.children.at(-1).textContent.trim(), "Cancel Selection")
-    assert.equal(status.textContent, "Draw a rectangle")
+    assert.equal(status.textContent ?? "", "")
     f.map.emit("mousedown", { point: { x: 1, y: 2 } })
     f.map.emit("mousemove", { point: { x: 3, y: 4 } })
     assert.deepEqual(
@@ -81,7 +81,7 @@ test("native selection root draws rectangle highlights admitted points and clear
     )
     button.emit("click")
     assert.deepEqual(button.children, [label])
-    assert.equal(status.textContent, "")
+    assert.equal(status.textContent ?? "", "")
     assert.equal(f.sources.has("selection-source"), false)
     assert.equal(f.sources.has("selected-points-source"), false)
     assert.equal(f.map.dragPan.isEnabled(), true)

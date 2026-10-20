@@ -16,7 +16,7 @@ Categories:
 | `/map` realtime | Socket reconnect | Toast only | Full layer refresh | contract | Native layers cannot know what they missed while disconnected | ADR-0025 |
 | `/map` realtime | Hidden tab | MapLibre's render loop pauses; debounced timers still fire | No refresh at all until the tab is visible | contract | An idle hidden tab must not cost backend requests | ADR-0025 |
 | `/map` realtime | Local resource changes (visits, places, areas, points, tracks) | Targeted layer reloads | Full layer refresh | contract | User actions, not a flood source; scoped refresh later if the bench shows a cost | plan A3 |
-| `/map` | New-location toast | `Toast.info("New location recorded")` | Not shown yet | — | Pending: the native map has no toast component yet (plan C2) | open |
+| `/map` | New-location toast | `Toast.info("New location recorded")` | Same client toast after a new current-range point is delivered in live mode | — | Rails 1.16.0 DOM, styles and duration ported; covered by the recent-point and toast client tests | closed (C2) |
 | `/map` panel | Tab switching | Client-side tab toggle | `panel=` URL patch through LiveView | wiring | Tabs are server-rendered LiveView state | plan C2 |
 | `/map` tools | Select-area button after cancel | Restores a different icon with hard-coded English | Restores its original icon and translated label | contract | Locale and markup must survive a cancel | plan C2 |
 | `/map` settings | Re-classify my history | `button_to` nested inside the settings form; the parser drops the inner form and the button submits the settings form | Own hidden form via the `form=` attribute | contract | Rails 1.16.0 bug, reported to Eugene | plan C2 |

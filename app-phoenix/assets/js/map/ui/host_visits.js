@@ -1,3 +1,4 @@
+import { mapNotify } from "./notify.js";
 import { timeOverlapOpacityExpr } from "../algorithms/time_overlap.js";
 import { createRequestScope } from "../data/request_scope.js";
 import { panelPadding } from "./padding.js";
@@ -71,6 +72,7 @@ export function createHostVisits({
         ?.querySelector(`#visit_entry_${id}`)
         ?.scrollIntoView?.({ block: "nearest" });
     } catch {
+      if (operation.revision === requests.revision && !destroyed) mapNotify(getConfig)("error", "messages.failed_to_load_visit_details");
     } finally {
       operation.close();
     }

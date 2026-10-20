@@ -18,4 +18,12 @@ defmodule DawarichWeb.NativeMapLabelsPluralTest do
 
     assert labels["areas.confirm_delete_named"] =~ "{name}"
   end
+
+  test "toast labels resolve Rails messages and preserve countdown and selection bindings" do
+    labels = DawarichWeb.NativeMapLabels.labels("en")
+    assert labels["messages.new_location_recorded"] == "New location recorded"
+    assert labels["layer_preview.started"] =~ "{seconds}"
+    assert labels["layer_preview.started"] =~ "{layer}"
+    assert labels["selection.selected"] =~ "{items}"
+  end
 end

@@ -37,7 +37,7 @@ export function mountHost({
   refresh,
 }) {
   let retry;
-  const fail = (code) => { retry?.fail(code); pushEvent("map:failed", { code }); };
+  const fail = (code, bindings) => { retry?.fail(code === "map_refresh_failed" && owner.selection?.state.deletingPoints ? "selection_refresh_failed" : code, bindings); pushEvent("map:failed", { code }); };
   const requests = createRangeRequests({ pushEvent });
   const freshness = createTileFreshness();
   const fit = createViewportFit(reader, element);
@@ -45,7 +45,7 @@ export function mountHost({
   const blocked = () =>
     owner.config.editEnabled ||
     owner.selection.state.active ||
-    !!root?.querySelector("[data-map-tool-status]")?.textContent?.trim();
+    !!root?.dataset?.mapToolArmed;
   let library, layers, editing, enrichment, timeline, density, aux;
   let entities, recent, tools;
   const initial = JSON.parse(element.dataset.mapConfig ?? "{}");
@@ -146,7 +146,7 @@ export function mountHost({
           map,
           config,
           freshness,
-          onError: fail,
+          onError: fail, onEmptyTracks: () => retry?.notice("info", "messages.tracks_pending"),
         });
         lifetime.own(() => layers.destroy());
         editing = createHostEditing({
@@ -241,7 +241,7 @@ export function mountHost({
         if (recent) await operation.wait(recent.baseline({ signal }));
       }),
     events: {
-      refreshed: (receipt) => pushEvent("map:ready", receipt),
+      refreshed: (receipt) => { if (owner.selection) owner.selection.state.deletingPoints = false; delete element.dataset.areaReloadPending; pushEvent("map:ready", receipt); },
       error: (receipt) => fail(receipt.code),
     },
   });

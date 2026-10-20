@@ -499,7 +499,7 @@ test("empty native tool status whitespace permits track clicks and hover while a
   const status = new Element()
   const canvas = { style: {} }
   f.map.getCanvas = () => canvas
-  status.textContent = "\n        "
+  delete f.root.dataset.mapToolArmed
   f.nodes.set("[data-map-tool-status]", status)
   f.map.queryRenderedFeatures = (_point, { layers }) =>
     layers.includes("points-mvt")
@@ -519,7 +519,7 @@ test("empty native tool status whitespace permits track clicks and hover while a
     f.map.emit("mousemove", { point: { x: 20, y: 20 } })
     assert.equal(f.map.getCanvas().style.cursor, "pointer")
     const count = f.pushed.filter(({ event }) => event === "map:select").length
-    status.textContent = "Click to place a visit"
+    f.root.dataset.mapToolArmed = "place"
     f.map.emit("click", { point: { x: 20, y: 20 } })
     assert.equal(
       f.pushed.filter(({ event }) => event === "map:select").length,
@@ -574,7 +574,7 @@ test("selected index-based segments render the canonical track slice for map hov
 test("native map track hits ignore blank tool markup but refuse armed placement", async () => {
   const f = fixture({ tracksEnabled: true })
   const status = new Element()
-  status.textContent = "\n  "
+  delete f.root.dataset.mapToolArmed
   f.nodes.set("[data-map-tool-status]", status)
   f.map.queryRenderedFeatures = (_point, { layers }) =>
     layers.includes("points-mvt")
@@ -587,7 +587,7 @@ test("native map track hits ignore blank tool markup but refuse armed placement"
       f.pushed.filter(({ event }) => event === "map:select").length,
       1,
     )
-    status.textContent = "Click to place the visit"
+    f.root.dataset.mapToolArmed = "place"
     f.map.emit("click", { point: { x: 20, y: 20 } })
     assert.equal(
       f.pushed.filter(({ event }) => event === "map:select").length,

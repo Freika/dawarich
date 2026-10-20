@@ -1,6 +1,6 @@
 defmodule DawarichWeb.MapLive.PointCommands do
   @moduledoc false
-  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
+  import Phoenix.LiveView, only: [push_event: 3]
   alias Dawarich.LocationCommands.Points
 
   def handle_event("point:move", %{"point_id" => id} = params, socket) do
@@ -21,11 +21,11 @@ defmodule DawarichWeb.MapLive.PointCommands do
   def handle_event("point:delete", %{"point_id" => id}, socket) do
     case Points.delete(socket.assigns.current_scope, id) do
       :ok ->
-        socket = feedback(socket, :notice, "point_deleted_successfully")
+        socket = feedback(socket, :success, "point_deleted_successfully")
         {:reply, %{ok: true}, push_event(socket, "map:invalidate", %{resource: "points"})}
 
       {:error, reason} ->
-        {:reply, %{error: code(reason)}, feedback(socket, :alert, "failed_to_delete_point")}
+        {:reply, %{error: code(reason)}, feedback(socket, :error, "failed_to_delete_point")}
     end
   end
 
@@ -35,6 +35,14 @@ defmodule DawarichWeb.MapLive.PointCommands do
         {:reply, %{ok: true, count: count},
          push_event(socket, "map:invalidate", %{resource: "points"})}
 
+      {:error, {:invalid, "too_many_points_selected"} = reason} ->
+        {:reply,
+         %{
+           error: code(reason),
+           limit: Dawarich.Points.ApiWrites.bulk_destroy_limit(),
+           requested: length(ids)
+         }, socket}
+
       {:error, reason} ->
         {:reply, %{error: code(reason)}, socket}
     end
@@ -43,12 +51,7 @@ defmodule DawarichWeb.MapLive.PointCommands do
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
   defp feedback(socket, kind, key),
-    do:
-      put_flash(
-        socket,
-        kind,
-        DawarichWeb.Translate.t(socket.assigns.locale, "javascript.messages." <> key, %{})
-      )
+    do: DawarichWeb.MapLive.Toast.push(socket, kind, "messages." <> key)
 
   defp plain(term), do: term |> DawarichWeb.Api.Respond.encode() |> Jason.decode!()
 

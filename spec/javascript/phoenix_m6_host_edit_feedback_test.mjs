@@ -1,8 +1,15 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { Toast } from "../../app-phoenix/assets/js/map/ui/toast.js"
+import { toastDocument } from "../../app-phoenix/test/client/support/toast_dom.mjs"
 import { Element, fixture } from "./support/native_m6_host_fixture.mjs"
 
-test("native map point conflict restores canonical position and shows its translated error", async () => {
+test("native map point conflict restores canonical position and shows its translated error", async t => {
+  globalThis.document = toastDocument()
+  Toast.container = null
+  const messages = []
+  t.mock.method(Toast, "error", message => messages.push(message))
+  t.after(() => { delete globalThis.document })
   const f = fixture({
       editEnabled: true,
       uiLabels: { "messages.point_edit_conflict": "Point changed elsewhere" },
@@ -31,6 +38,8 @@ test("native map point conflict restores canonical position and shows its transl
   await pending
   assert.deepEqual(editor._point(7).geometry.coordinates, [13.5, 52.5])
   assert.deepEqual(editor.edits.history.entries, [])
-  assert.equal(error.textContent, "Point changed elsewhere")
+  await new Promise(resolve => setImmediate(resolve))
+  assert.deepEqual(messages, ["Point changed elsewhere"])
+  assert.equal(error.textContent ?? "", "")
   f.owner.destroy()
 })

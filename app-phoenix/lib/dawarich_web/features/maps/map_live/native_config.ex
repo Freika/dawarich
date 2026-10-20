@@ -8,6 +8,7 @@ defmodule DawarichWeb.MapLive.NativeConfig do
 
     Map.merge(config, %{
       "panel" => panel || "",
+      "upgradeUrl" => Map.get(page || %{}, :upgrade_url, ""),
       "styleName" => saved["maps_maplibre_style"] || "light",
       "customTheme" => saved["maps_maplibre_custom_theme"],
       "tilesFallback" => saved["maps_maplibre_tiles_fallback"] == true,
