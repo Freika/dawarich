@@ -43,6 +43,44 @@ defmodule DawarichWeb.NativeMapModalsParityTest do
            ParityHTML.first_difference(shape(native), shape(rails("modal-area")))
   end
 
+  test "the create-place modal renders the Rails modal markup with its tag chips" do
+    tag = %{id: 3, name: "Favorite", icon: "⭐", color: "#3357FF"}
+
+    dialog = %{
+      id: nil,
+      form: %{"name" => "", "latitude" => "52.5", "longitude" => "13.4", "note" => ""},
+      errors: [],
+      tags: [tag],
+      nearby: nil
+    }
+
+    native =
+      render_component(&DawarichWeb.NativeMapPlace.dialog/1, dialog: dialog, locale: "en")
+
+    rails = rails("modal-place")
+
+    assert without_tags(shape(native)) == without_tags(shape(rails)),
+           ParityHTML.first_difference(without_tags(shape(native)), without_tags(shape(rails)))
+
+    assert first_tag(shape(native)) == first_tag(shape(rails))
+  end
+
+  defp without_tags(nodes) when is_list(nodes),
+    do: nodes |> Enum.reject(&tag_chip?/1) |> Enum.map(&without_tags/1)
+
+  defp without_tags({tag, attrs, children}), do: {tag, attrs, without_tags(children)}
+  defp without_tags(text), do: text
+
+  defp first_tag(nodes) when is_list(nodes), do: Enum.find_value(nodes, &first_tag/1)
+
+  defp first_tag({_, _, children} = node),
+    do: if(tag_chip?(node), do: node, else: first_tag(children))
+
+  defp first_tag(_), do: nil
+
+  defp tag_chip?({"label", [{"class", "cursor-pointer"}], _}), do: true
+  defp tag_chip?(_), do: false
+
   defp rails(name) do
     @fixture
     |> File.read!()

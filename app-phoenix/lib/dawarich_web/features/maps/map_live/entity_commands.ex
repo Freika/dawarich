@@ -31,6 +31,7 @@ defmodule DawarichWeb.MapLive.EntityCommands do
       %{form: form} = current ->
         draft =
           attrs
+          |> Map.put_new("tag_ids", [])
           |> Map.take(~w(name latitude longitude note tag_ids))
           |> Map.filter(fn
             {"tag_ids", ids} -> is_list(ids) and Enum.all?(ids, &is_binary/1)
@@ -48,7 +49,13 @@ defmodule DawarichWeb.MapLive.EntityCommands do
   def handle_event("place:save", %{"place" => attrs}, socket) when is_map(attrs) do
     case socket.assigns[:place_dialog] do
       %{id: id, form: form} = current ->
-        form = Map.merge(form, Map.take(attrs, ~w(name latitude longitude note tag_ids)))
+        form =
+          Map.merge(
+            form,
+            attrs
+            |> Map.put_new("tag_ids", [])
+            |> Map.take(~w(name latitude longitude note tag_ids))
+          )
 
         case Entities.save_place(socket.assigns.current_scope, id, form) do
           {:ok, saved} ->
@@ -100,8 +107,14 @@ defmodule DawarichWeb.MapLive.EntityCommands do
 
       current ->
         scope = socket.assigns.current_scope
-        loader = socket.assigns[:nearby_loader] || (&Entities.nearby(&1, &2))
-        params = Map.take(params, ~w(latitude longitude))
+        loader = socket.assigns[:nearby_loader] || (&nearby/2)
+        radius = radius(params["radius"])
+
+        params =
+          current.form
+          |> Map.take(~w(latitude longitude))
+          |> Map.merge(Map.take(params, ~w(latitude longitude)))
+          |> then(&if(radius, do: Map.put(&1, "radius", radius), else: &1))
 
         {run, socket} =
           DawarichWeb.MapLive.Runs.start(
@@ -112,7 +125,28 @@ defmodule DawarichWeb.MapLive.EntityCommands do
             socket.assigns[:nearby_timeout] || 10_000
           )
 
-        {:noreply, assign(socket, :place_dialog, %{current | nearby_run: run})}
+        {:noreply,
+         assign(socket, :place_dialog, %{
+           current
+           | nearby_run: run,
+             nearby_radius: radius || current.nearby_radius
+         })}
+    end
+  end
+
+  def handle_event("place:nearby_pick", %{"index" => index}, socket) do
+    with %{nearby: [_ | _] = places, form: form} = current <- socket.assigns[:place_dialog],
+         {index, ""} <- Integer.parse(to_string(index)),
+         %{} = place <- Enum.at(places, index) do
+      picked =
+        for key <- ~w(name latitude longitude),
+            place[key] != nil,
+            into: %{},
+            do: {key, to_string(place[key])}
+
+      {:noreply, assign(socket, :place_dialog, %{current | form: Map.merge(form, picked)})}
+    else
+      _ -> {:noreply, socket}
     end
   end
 
@@ -146,6 +180,28 @@ defmodule DawarichWeb.MapLive.EntityCommands do
   defp text(values) when is_list(values), do: Enum.map(values, &to_string/1)
   defp text(value), do: to_string(value)
 
+  defp nearby(scope, %{"radius" => radius} = params),
+    do: Entities.nearby(scope, params, radius: radius)
+
+  defp nearby(scope, params), do: Entities.nearby(scope, params)
+
+  defp radius(value) when is_binary(value) do
+    case Float.parse(value) do
+      {radius, ""} when radius > 0 and radius <= 1.5 -> radius
+      _ -> nil
+    end
+  end
+
+  defp radius(_value), do: nil
+
   defp dialog(id, form, tags),
-    do: %{id: id, form: form, errors: [], nearby: [], nearby_run: nil, tags: tags}
+    do: %{
+      id: id,
+      form: form,
+      errors: [],
+      nearby: nil,
+      nearby_radius: 0.5,
+      nearby_run: nil,
+      tags: tags
+    }
 end

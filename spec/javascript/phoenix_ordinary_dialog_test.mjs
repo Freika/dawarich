@@ -21,7 +21,7 @@ test("initial dialog focus cannot reclaim the note field on a later animation fr
   const hook = Object.assign(Object.create(OrdinaryDialog), {
     el: {
       querySelector: (selector) =>
-        selector === "[data-dialog-initial-focus]" ? name : null,
+        selector === "[data-native-dialog-initial-focus]" ? name : null,
       addEventListener() {},
       removeEventListener() {},
     },

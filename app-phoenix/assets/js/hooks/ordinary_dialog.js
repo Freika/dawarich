@@ -1,7 +1,7 @@
 export const OrdinaryDialog = {
   mounted() {
     this.el
-      .querySelector?.("[data-dialog-initial-focus]")
+      .querySelector?.("[data-native-dialog-initial-focus]")
       ?.focus({ preventScroll: true })
     this.onKey = (event) => {
       if (event.key !== "Tab") return

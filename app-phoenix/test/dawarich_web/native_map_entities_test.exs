@@ -172,6 +172,52 @@ defmodule DawarichWeb.NativeMapEntitiesTest do
            ]
   end
 
+  test "picking a nearby suggestion fills the place like the Rails modal and load more widens the radius",
+       c do
+    test_pid = self()
+
+    nearby = fn _scope, params ->
+      send(test_pid, {:radius, params["radius"]})
+
+      {:ok,
+       [%{"name" => "Cafe Rot", "latitude" => 52.53, "longitude" => 13.41, "street" => "Main 1"}]}
+    end
+
+    agent = start_supervised!({Agent, fn -> nearby end})
+    view = open(c, agent)
+    render_hook(view, "place:new", %{"latitude" => 52.52, "longitude" => 13.405})
+    assert has_element?(view, "#native-place-form", "Open modal to load nearby suggestions")
+    render_hook(view, "place:nearby", %{"latitude" => "52.52", "longitude" => "13.405"})
+    assert_receive {:radius, nil}
+    render_async(view)
+
+    view |> element("#native-place-form .card[phx-value-index='0']") |> render_click()
+    assert has_element?(view, "#native-place-form input[name='place[name]'][value='Cafe Rot']")
+    assert has_element?(view, "#native-place-form input[name='place[latitude]'][value='52.53']")
+
+    view |> element("#native-place-form a[phx-click='place:nearby']") |> render_click()
+    assert_receive {:radius, 1.0}
+  end
+
+  test "unchecking every tag clears the place tags", c do
+    [[tag]] =
+      rows(
+        "INSERT INTO tags(user_id,name,created_at,updated_at) VALUES($1,'Food',now(),now()) RETURNING id",
+        [c.id]
+      )
+
+    view = open(c, nil)
+    render_hook(view, "place:new", %{"latitude" => 52.52, "longitude" => 13.405})
+
+    view
+    |> form("#native-place-form", place: %{name: "Tagged", tag_ids: [to_string(tag)]})
+    |> render_change()
+
+    assert has_element?(view, "input[name='place[tag_ids][]'][value='#{tag}'][checked]")
+    render_hook(view, "place:change", %{"place" => %{"name" => "Tagged"}})
+    refute has_element?(view, "input[name='place[tag_ids][]'][value='#{tag}'][checked]")
+  end
+
   test "malformed place draft fields leave the owned form usable", c do
     view = open(c)
     render_hook(view, "place:new", %{"latitude" => 52.52, "longitude" => 13.405})
