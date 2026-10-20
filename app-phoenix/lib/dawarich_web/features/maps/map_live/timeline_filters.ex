@@ -2,7 +2,7 @@ defmodule DawarichWeb.MapLive.TimelineFilters do
   @moduledoc false
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_patch: 2]
-  alias Dawarich.{Entitlements, Maps, RubyInteger}
+  alias Dawarich.Maps
   alias DawarichWeb.MapLive.Commands
 
   @timeout 15_000
@@ -41,24 +41,6 @@ defmodule DawarichWeb.MapLive.TimelineFilters do
 
       _ ->
         {:noreply, socket}
-    end
-  end
-
-  def handle_event("residency:year", params, socket) do
-    year = if is_binary(params["year"]), do: RubyInteger.to_i(params["year"])
-    now = DateTime.utc_now()
-    hosted = Dawarich.ReleaseMigration.self_hosted?()
-
-    result =
-      Maps.with_actor(socket.assigns.current_scope, fn actor ->
-        if Entitlements.full_access?(actor, hosted, now),
-          do: DawarichWeb.ResidencyFrame.data(actor, year, now),
-          else: {:error, :pro_required}
-      end)
-
-    case result do
-      {:ok, data} -> {:noreply, assign(socket, :residency, data)}
-      _ -> {:noreply, assign(socket, :residency, nil)}
     end
   end
 

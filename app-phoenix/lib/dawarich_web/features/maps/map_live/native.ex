@@ -109,16 +109,6 @@ defmodule DawarichWeb.MapLive.Native do
             socket
           end
 
-        socket =
-          if params["panel"] == "insights" and old_panel != "insights" do
-            {:noreply, next} =
-              DawarichWeb.MapLive.TimelineFilters.handle_event("residency:year", %{}, socket)
-
-            next
-          else
-            socket
-          end
-
         {:noreply, DawarichWeb.MapLive.VisitNavigation.hydrate(socket)}
 
       {:error, reason} ->
@@ -206,9 +196,6 @@ defmodule DawarichWeb.MapLive.Native do
     do: DawarichWeb.MapLive.PointCommands.handle_event(event, payload, socket)
 
   def handle_event("calendar:" <> _ = event, payload, socket),
-    do: DawarichWeb.MapLive.TimelineFilters.handle_event(event, payload, socket)
-
-  def handle_event("residency:" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.TimelineFilters.handle_event(event, payload, socket)
 
   def handle_event("segment" <> _ = event, payload, socket),

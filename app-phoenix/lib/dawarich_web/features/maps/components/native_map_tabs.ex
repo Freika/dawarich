@@ -88,10 +88,6 @@ defmodule DawarichWeb.NativeMapTabs do
     >
       <DawarichWeb.NativeMapLinks.links :if={@panel == "links"} locale={@locale} />
     </div>
-
-    <div :if={@panel == "insights"} class="tab-content active" data-tab-content="insights">
-      <DawarichWeb.NativeResidency.card residency={assigns[:residency]} locale={@locale} />
-    </div>
     """
   end
 
