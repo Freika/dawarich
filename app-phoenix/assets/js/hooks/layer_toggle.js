@@ -18,7 +18,6 @@ export const LayerToggle = {
         this.reconnected()
       })
     }
-    this.el.addEventListener("click", this.layerClick)
   },
   reconnected() {
     this.pending = null
