@@ -12973,6 +12973,12 @@
       ]
     },
     {
+      "file": "app-phoenix/test/client/layer_toggle_test.mjs",
+      "markers": [
+        "assets/js/app.js"
+      ]
+    },
+    {
       "file": "app-phoenix/test/client/native_account_menu_patch_test.mjs",
       "markers": [
         "assets/js/app.js"
