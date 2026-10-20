@@ -87,3 +87,33 @@ test("embedded studios enter the browser top layer without leaving their LiveVie
   assert.equal(calls.length, 2)
   assert.equal(panel.open, false)
 })
+
+
+test("embedded studios restore their launcher focus after Escape and discard stale launchers", () => {
+  const classes = new Set(["hidden"])
+  const events = new EventTarget()
+  const focus = []
+  const launcher = { isConnected: true, focus: (options) => focus.push(options) }
+  events.activeElement = launcher
+  const root = {
+    ownerDocument: events,
+    classList: { remove: (c) => classes.delete(c), add: (c) => classes.add(c), contains: (c) => classes.has(c) },
+  }
+  const panel = studioPanel(root, null)
+  const destroy = panel.onCancel(() => panel.close())
+  panel.showModal()
+  events.activeElement = { isConnected: true, focus: () => assert.fail("focused a studio control") }
+  panel.showModal()
+  const escape = new Event("keydown"); escape.key = "Escape"
+  events.dispatchEvent(escape)
+  assert.equal(panel.open, false)
+  assert.deepEqual(focus, [{ preventScroll: true }])
+  panel.close()
+  assert.equal(focus.length, 1)
+  events.activeElement = launcher
+  panel.showModal()
+  launcher.isConnected = false
+  panel.close()
+  assert.equal(focus.length, 1)
+  destroy()
+})
