@@ -69,13 +69,12 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
     end
   end
 
-  def handle_event("settings:layer", %{"layer" => layer, "enabled" => value}, socket)
-      when value in ["true", "false"] do
+  def handle_event("settings:layer", %{"layer" => layer}, socket) do
     layers = socket.assigns.map_settings.saved["enabled_map_layers"] || []
 
     if layer in DawarichWeb.NativeMapPanels.layers() and layer != "Family Members" do
       layers =
-        if value == "true", do: Enum.uniq(layers ++ [layer]), else: List.delete(layers, layer)
+        if layer in layers, do: List.delete(layers, layer), else: layers ++ [layer]
 
       save(socket, %{"enabled_map_layers" => layers})
     else

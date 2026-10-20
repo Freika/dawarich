@@ -14,14 +14,13 @@ defmodule DawarichWeb.MapLive.LayerCommands do
     {:noreply, socket |> assign(:map_config, config) |> push_event("map:config", config)}
   end
 
-  def handle_event("map:flights", %{"enabled" => value}, socket) when value in ~w(true false) do
+  def handle_event("map:flights", _params, socket) do
+    enabled = Map.get(socket.assigns.map_config, "flightsPreferred", true) != true
+
     config =
       socket.assigns.map_config
-      |> Map.put("flightsPreferred", value == "true")
-      |> Map.put(
-        "flightsEnabled",
-        value == "true" and socket.assigns.map_config["airtrailConfigured"]
-      )
+      |> Map.put("flightsPreferred", enabled)
+      |> Map.put("flightsEnabled", enabled and socket.assigns.map_config["airtrailConfigured"])
 
     {:noreply, socket |> assign(:map_config, config) |> push_event("map:config", config)}
   end

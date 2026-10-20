@@ -135,6 +135,10 @@ defmodule DawarichWeb.Sync1160MapShellTest do
     render_patch(view, "/map/v2?panel=layers&date=2026-01-01")
     assert has_element?(view, "[data-map-layer=flights]")
     assert config(view)["flightsEnabled"] == true
+    view |> element("[data-map-layer=flights]") |> render_click()
+    assert config(view)["flightsEnabled"] == false
+    view |> element("[data-map-layer=flights]") |> render_click()
+    assert config(view)["flightsEnabled"] == true
   end
 
   test "anomalies preference survives hiding points and native parameter refresh" do

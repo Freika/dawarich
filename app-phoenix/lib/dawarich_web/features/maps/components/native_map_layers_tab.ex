@@ -75,7 +75,6 @@ defmodule DawarichWeb.NativeMapLayersTab do
             data-testid={"map-layer-" <> tile.key}
             phx-click={if(tile.layer == :flights, do: "map:flights", else: "settings:layer")}
             phx-value-layer={if(tile.layer != :flights, do: tile.layer)}
-            phx-value-enabled={to_string(!tile.checked)}
           />
           <Icon.icon name={tile.icon} class="layer-tile__icon" />
           <span class="layer-tile__label">{p(@locale, tile.key)}</span>

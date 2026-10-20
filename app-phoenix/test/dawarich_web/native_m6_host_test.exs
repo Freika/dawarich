@@ -908,6 +908,14 @@ defmodule DawarichWeb.NativeM6HostTest do
     render_hook(view, "settings:layer", %{"layer" => "Unknown", "enabled" => "true"})
     refute "Unknown" in Dawarich.Accounts.get(id).settings["enabled_map_layers"]
 
+    tracks_on = "Tracks" in Dawarich.Accounts.get(id).settings["enabled_map_layers"]
+
+    render_hook(view, "settings:layer", %{"layer" => "Tracks"})
+    assert "Tracks" in Dawarich.Accounts.get(id).settings["enabled_map_layers"] == !tracks_on
+    render_hook(view, "settings:layer", %{"layer" => "Tracks"})
+
+    assert "Tracks" in Dawarich.Accounts.get(id).settings["enabled_map_layers"] == tracks_on
+
     render_hook(view, "settings:map_layers", %{
       "layers" => ["Tracks", "Unknown", "Tracks"],
       "immich_api_key" => "synthetic-forged-key"
