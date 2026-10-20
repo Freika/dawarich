@@ -35,6 +35,7 @@ defmodule DawarichWeb.InsightsLive.NativeHeader do
             id="insights-update"
             href={if @data.all_time, do: "/stats/update_all", else: "/stats/#{@data.year}/all/update"}
             phx-click="update"
+            phx-hook="InsightsUpdate"
             class="btn btn-sm btn-ghost"
           >
             <.icon name="refresh-ccw" class="w-4 h-4" /> {t(@locale, "stats.index.update_stats", %{})}

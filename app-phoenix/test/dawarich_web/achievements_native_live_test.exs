@@ -11,6 +11,29 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
     %{user: user}
   end
 
+  @tag share_output_label: true
+  test "achievement share output keeps a localized name before sharing and in both panels" do
+    for locale <- ["en", "de"], panel <- [nil, "link", "embed"], shared <- [false, true] do
+      html =
+        render_component(&DawarichWeb.NativeAchievementDialog.dialog/1,
+          locale: locale,
+          selected: nil,
+          panel: panel,
+          share_url: if(shared, do: "/shared/achievements/synthetic"),
+          base_url: "https://example.invalid"
+        )
+
+      names =
+        html
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("#achievement-share-output")
+        |> LazyHTML.attribute("aria-label")
+
+      key = if panel == "embed", do: "embed_code", else: "public_link"
+      assert names == [DawarichWeb.Translate.t(locale, "achievements.modal." <> key, %{})]
+    end
+  end
+
   @tag collection_title: true
   test "collection title follows detail and summary navigation", %{user: user} do
     {:ok, view, _} = live(NativeAchievementsUI.conn(user, "/achievements"))

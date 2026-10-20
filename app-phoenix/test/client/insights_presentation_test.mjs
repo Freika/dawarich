@@ -1,6 +1,7 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { InsightsCalendar, InsightsRace } from "../../assets/js/insights/presentation.js"
+import * as presentation from "../../assets/js/insights/presentation.js"
+const { InsightsCalendar, InsightsRace, InsightsUpdate } = presentation
 
 function node(extra = {}) {
   const classes = new Set(["hidden"])
@@ -74,5 +75,17 @@ test("native Insights presentation ignores library loading completed after depar
   assert.equal(mounting instanceof Promise, true)
   owner.destroyed()
   await mounting
+  assert.equal(root.listeners.size, 0)
+})
+
+test("native Insights refresh cancels HTTP navigation and releases its click listener", () => {
+  assert.equal(typeof InsightsUpdate?.mounted, "function")
+  const root = node()
+  const owner = { ...InsightsUpdate, el: root }
+  owner.mounted()
+  let prevented = false
+  root.listeners.get("click")({ preventDefault() { prevented = true } })
+  assert.equal(prevented, true)
+  owner.destroyed()
   assert.equal(root.listeners.size, 0)
 })

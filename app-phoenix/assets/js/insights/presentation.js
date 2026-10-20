@@ -19,3 +19,13 @@ function lazy(name) {
 }
 export const InsightsCalendar = lazy("InsightsCalendar")
 export const InsightsRace = lazy("InsightsRace")
+
+export const InsightsUpdate = {
+  mounted() {
+    this.cancelNavigation = (event) => event.preventDefault()
+    this.el.addEventListener("click", this.cancelNavigation)
+  },
+  destroyed() {
+    this.el.removeEventListener("click", this.cancelNavigation)
+  },
+}

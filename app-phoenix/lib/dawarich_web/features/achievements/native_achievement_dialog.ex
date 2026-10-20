@@ -51,6 +51,7 @@ defmodule DawarichWeb.NativeAchievementDialog do
           <input
             id="achievement-share-output"
             type="text"
+            aria-label={s(@locale, if(@panel == "embed", do: "embed_code", else: "public_link"))}
             readonly
             class="ach-modal-output input input-bordered input-sm"
             value={@output}
