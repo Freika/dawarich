@@ -1,8 +1,7 @@
-let draft
 export const PlaceDraft = {
   disconnected() {
     const form = this.el.querySelector(
-      'form[data-form-status="idle"][data-place-id]',
+      'form[data-form-status="idle"][data-place-id],form[data-native-form-status="idle"][data-native-place-id]',
     )
     if (!form) return
     const data = new FormData(form)
@@ -13,13 +12,20 @@ export const PlaceDraft = {
       ]),
     )
     place.tag_ids = data.getAll("place[tag_ids][]")
-    draft = { user: this.el.dataset.userId, id: form.dataset.placeId, place }
+    this.draft = {
+      user: this.el.dataset.userId,
+      id: form.dataset.nativePlaceId ?? form.dataset.placeId,
+      place,
+    }
+  },
+  destroyed() {
+    this.draft = null
   },
   reconnected() {
-    const saved = draft
-    draft = null
+    const saved = this.draft
+    this.draft = null
     if (saved?.user === this.el.dataset.userId) {
-      this.pushEvent("recover_place_draft", {
+      this.pushEvent(this.el.dataset.nativeDraftEvent || "recover_place_draft", {
         id: saved.id,
         place: saved.place,
       })

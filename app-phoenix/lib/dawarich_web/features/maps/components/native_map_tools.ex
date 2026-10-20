@@ -34,7 +34,14 @@ defmodule DawarichWeb.NativeMapTools do
     >
     </p>
     <DawarichWeb.NativeMapVisit.dialog dialog={assigns[:visit_dialog]} locale={@locale} />
-    <DawarichWeb.NativeMapPlace.dialog dialog={assigns[:place_dialog]} locale={@locale} />
+    <div
+      id="native-map-place-draft"
+      phx-hook="PlaceDraft"
+      data-user-id={@current_scope.user.id}
+      data-native-draft-event="place:recover"
+    >
+      <DawarichWeb.NativeMapPlace.dialog dialog={assigns[:place_dialog]} locale={@locale} />
+    </div>
     <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale={@locale} />
     <DawarichWeb.MapReplay.replay_panel id="native-map-replay" locale={@locale} native hook="native" />
     <DawarichWeb.NativePosterStudio.poster_studio

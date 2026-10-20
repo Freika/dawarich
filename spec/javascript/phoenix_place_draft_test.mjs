@@ -80,3 +80,20 @@ test("Places reconnect discards a different actor and never recovers absent acce
     assert.deepEqual(events, [])
   })
 })
+
+test("Map reconnect restores the scoped draft once through its recovery event and clears on departure", () => {
+  withHook((hook, events) => {
+    hook.el.dataset.nativeDraftEvent = "place:recover"
+    hook.disconnected()
+    hook.reconnected()
+    hook.reconnected()
+    assert.equal(events.length, 1)
+    assert.equal(events[0][0], "place:recover")
+    assert.equal(events[0][1].place.name, "Draft")
+    assert.equal(events[0][1].place.source, undefined)
+    hook.disconnected()
+    hook.destroyed()
+    hook.reconnected()
+    assert.equal(events.length, 1)
+  })
+})
