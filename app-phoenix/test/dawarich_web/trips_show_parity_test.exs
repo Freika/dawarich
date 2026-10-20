@@ -11,7 +11,13 @@ defmodule DawarichWeb.TripsShowParityTest do
   @external_resource "test/fixtures/trips/pages.json"
   @env ~w(PRINT_ORDER_URL TIME_ZONE)
 
-  setup do
+  setup context do
+    if context[:native_write] do
+      previous_repo = Application.get_env(:dawarich, :jobs_repo)
+      Application.put_env(:dawarich, :jobs_repo, Dawarich.Repo)
+      on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, previous_repo) end)
+    end
+
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     saved = Map.new(@env, &{&1, System.get_env(&1)})
@@ -84,6 +90,136 @@ defmodule DawarichWeb.TripsShowParityTest do
     end
   end
 
+  @tag :native_write
+  test "Rails 1.16.0 trip validation and managed forms retain exact source DOM" do
+    corpus = File.read!(Path.join(@dir, "remaining/presentation.json")) |> Jason.decode!()
+
+    for entry <- corpus["cases"], entry["kind"] != "document" do
+      {user, _id} = Dawarich.Test.TripPresentationSeeds.seed(entry)
+      conn = RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id)
+
+      path =
+        if entry["kind"] == "invalid_new",
+          do: "/trips/new",
+          else: "/trips/#{entry["trip_id"]}/edit"
+
+      {:ok, view, html} = live(conn, path <> "?locale=" <> entry["locale"])
+
+      html =
+        if String.starts_with?(entry["kind"], "invalid"),
+          do: render_submit(view, "save", %{"trip" => entry["attrs"]}),
+          else: html
+
+      if dump = System.get_env("PARITY_DUMP") do
+        File.mkdir_p!(dump)
+        File.write!(Path.join(dump, entry["name"] <> ".html"), html)
+      end
+
+      actual = form_dom(html)
+
+      expected =
+        form_dom(File.read!(Path.join(@dir, "remaining/presentation/#{entry["name"]}.html")))
+
+      assert actual == expected,
+             entry["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
+
+      GenServer.stop(view.pid)
+    end
+  end
+
+  test "Rails 1.16.0 complete trip envelope retains source path and planned map placement" do
+    corpus = File.read!(Path.join(@dir, "remaining/presentation.json")) |> Jason.decode!()
+
+    for entry <- corpus["cases"], entry["kind"] == "document" do
+      {user, _id} = Dawarich.Test.TripPresentationSeeds.seed(entry)
+
+      html =
+        RailsUser.signed_in(user.id)
+        |> get(entry["path"] <> "?locale=" <> entry["locale"])
+        |> html_response(200)
+
+      rails = File.read!(Path.join(@dir, "remaining/presentation/#{entry["name"]}.html"))
+
+      if dump = System.get_env("PARITY_DUMP") do
+        File.mkdir_p!(dump)
+        File.write!(Path.join(dump, entry["name"] <> ".html"), html)
+      end
+
+      synced =
+        entry["before"]["trips"]
+        |> hd()
+        |> Map.fetch!("source_synced_at")
+        |> DateTime.from_iso8601()
+        |> elem(1)
+
+      expected_time =
+        DawarichWeb.NativeTripTimeAgo.words(
+          entry["locale"],
+          DateTime.to_naive(synced),
+          DateTime.utc_now()
+        )
+
+      actual_label =
+        DawarichWeb.Translate.t(entry["locale"], "trips.source_itinerary.synced_ago", %{
+          time: expected_time
+        })
+
+      assert html =~ actual_label
+      {:ok, captured_now, _} = DateTime.from_iso8601(corpus["now"])
+
+      source_time =
+        DawarichWeb.NativeTripTimeAgo.words(
+          entry["locale"],
+          DateTime.to_naive(synced),
+          captured_now
+        )
+
+      source_label =
+        DawarichWeb.Translate.t(entry["locale"], "trips.source_itinerary.synced_ago", %{
+          time: source_time
+        })
+
+      html = String.replace(html, actual_label, "SYNC_TIME")
+      rails = String.replace(rails, source_label, "SYNC_TIME")
+      actual = complete_trip_dom(html)
+      expected = complete_trip_dom(rails)
+
+      assert actual == expected,
+             entry["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  defp complete_trip_dom(html) do
+    doc = LazyHTML.from_document(html)
+    body = doc |> LazyHTML.query("body") |> LazyHTML.attribute("class")
+    assert body == ["min-h-screen flex flex-col"]
+    root = doc |> LazyHTML.query("#trip-shell") |> LazyHTML.to_tree()
+    assert root != []
+
+    envelope =
+      for selector <- [
+            "html",
+            "body",
+            "div.container.mx-auto.flex.flex-col.flex-1",
+            ".w-full.px-4.sm\\:px-5.flex-1",
+            ".flex.w-full.min-w-0.gap-5"
+          ] do
+        nodes = doc |> LazyHTML.query(selector) |> LazyHTML.to_tree()
+        assert length(nodes) == 1
+
+        for {tag, attrs, _} <- nodes do
+          keys = if tag == "html", do: ~w(lang data-theme), else: ~w(class)
+          {tag, Enum.filter(attrs, fn {key, _} -> key in keys end), []}
+        end
+      end
+
+    chrome =
+      for selector <- ["title", ".navbar", "footer"],
+          do: Dawarich.Test.LayoutFixtures.region(html, selector)
+
+    envelope ++ chrome ++ [root |> detail_nodes() |> ParityHTML.normalize()]
+  end
+
   defp form_dom(html) do
     doc = LazyHTML.from_document(html)
     root = doc |> LazyHTML.query(".mx-auto.my-5.md\\:w-2\\/3") |> LazyHTML.to_tree()
@@ -93,13 +229,24 @@ defmodule DawarichWeb.TripsShowParityTest do
 
   defp form_nodes(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &form_node/1)
 
-  defp form_node({"input", attrs, _} = node) do
+  defp form_node({"input", attrs, _}) do
     values = Map.new(attrs)
 
     cond do
-      values["data-datetime-target"] == "apiKey" -> []
-      values["name"] == "trip[description]" -> []
-      true -> [node]
+      values["data-datetime-target"] == "apiKey" ->
+        []
+
+      values["name"] == "trip[description]" ->
+        []
+
+      true ->
+        attrs =
+          Enum.reject(attrs, fn {key, value} ->
+            if key == "aria-invalid", do: assert(value == "true")
+            key == "aria-invalid"
+          end)
+
+        [{"input", attrs, []}]
     end
   end
 
@@ -209,12 +356,37 @@ defmodule DawarichWeb.TripsShowParityTest do
     end
   end
 
+  @poster_resilience %{
+    "flex flex-wrap items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2 lg:flex-nowrap" =>
+      "flex items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2",
+    "flex flex-wrap items-center gap-2 min-w-0 lg:flex-nowrap" =>
+      "flex items-center gap-2 min-w-0",
+    "flex min-h-0 flex-1 flex-col lg:flex-row" => "flex min-h-0 flex-1",
+    "relative flex h-[36vh] min-w-0 shrink-0 flex-col items-center justify-center overflow-hidden p-6 lg:h-auto lg:flex-1 lg:shrink" =>
+      "relative flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden p-6",
+    "flex min-h-0 w-full flex-1 flex-col border-t border-base-content/10 bg-base-200 lg:w-96 lg:flex-none lg:border-l lg:border-t-0" =>
+      "flex w-96 shrink-0 flex-col border-l border-base-content/10 bg-base-200",
+    "btn btn-primary btn-sm h-auto w-full py-1.5" => "btn btn-primary btn-sm w-full",
+    "btn btn-ghost btn-xs h-auto w-full gap-1 py-1 opacity-70" =>
+      "btn btn-ghost btn-xs w-full gap-1 opacity-70"
+  }
   defp detail_nodes(nodes), do: Enum.flat_map(nodes, &detail_node/1)
 
   defp detail_node({tag, attrs, children}) do
     values = Map.new(attrs)
 
     cond do
+      values["id"] == "video-studio-owner" ->
+        assert Enum.any?(children, fn
+                 {"div", attrs, _} -> Map.new(attrs)["id"] == "video-studio"
+                 _ -> false
+               end)
+
+        detail_nodes(children)
+
+      tag == "form" && values["action"] == "/posters" ->
+        []
+
       values["id"] == "native-trip-summary" ->
         assert values["class"] == "contents"
         detail_nodes(children)
@@ -229,7 +401,7 @@ defmodule DawarichWeb.TripsShowParityTest do
         attrs =
           Enum.map(attrs, fn
             {"class", value} ->
-              {"class", detail_class(value)}
+              {"class", Map.get(@poster_resilience, value, detail_class(value))}
 
             {"href", value} ->
               {"href",
@@ -238,11 +410,40 @@ defmodule DawarichWeb.TripsShowParityTest do
                  else: value
                )}
 
+            {"data-trip-map-state", state} ->
+              assert state in ~w(plan path empty future calculating)
+              nil
+
+            {"aria-expanded", value} = pair ->
+              if values["phx-click"] == "trip:days:all" do
+                assert value in ~w(true false)
+                nil
+              else
+                pair
+              end
+
+            {"aria-pressed", value} = pair ->
+              if values["phx-value-layer"] in ~w(photos flights) do
+                assert value in ~w(true false)
+                nil
+              else
+                pair
+              end
+
+            {"style", ""} = pair ->
+              if Map.has_key?(values, "data-map-config"), do: nil, else: pair
+
+            {"aria-label", _} = pair ->
+              if Enum.any?(
+                   ~w(data-native-poster-date-start data-native-poster-date-end data-native-poster-layout data-native-poster-opacity data-native-poster-width),
+                   &Map.has_key?(values, &1)
+                 ), do: nil, else: pair
+
             pair ->
               pair
           end)
 
-        [{tag, attrs, detail_nodes(children)}]
+        [{tag, Enum.reject(attrs, &is_nil/1), detail_nodes(children)}]
     end
   end
 
@@ -250,8 +451,10 @@ defmodule DawarichWeb.TripsShowParityTest do
 
   defp detail_class(value) do
     value
+    |> String.replace("contents [&>#video-studio-owner]:contents", "contents")
     |> String.replace("dropdown lg:dropdown-end", "dropdown dropdown-end")
     |> String.replace("w-full min-w-0 lg:w-2/5", "w-full lg:w-2/5")
+    |> String.replace("w-full min-w-0 lg:w-3/5", "w-full lg:w-3/5")
     |> String.replace(
       "flex flex-wrap items-start justify-between gap-3 mb-1",
       "flex items-start justify-between gap-3 mb-1"

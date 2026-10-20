@@ -209,7 +209,11 @@ defmodule DawarichWeb.A12f3aQClosureTest do
         |> get("/insights/details?year=all")
 
       assert conn.status == row["status"]
-      assert String.contains?(conn.resp_body, ~s(id="insights-period"))
+      refute String.contains?(conn.resp_body, ~s(data-testid="insights-period"))
+
+      assert String.contains?(conn.resp_body, ~s(id="insights-details-loading")) or
+               String.contains?(conn.resp_body, ~s(id="insights-locked"))
+
       refute String.contains?(conn.resp_body, "turbo-frame")
       assert String.contains?(conn.resp_body, "<!DOCTYPE")
       assert get_resp_header(conn, "cache-control") == [row["cache_control"]]

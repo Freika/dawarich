@@ -199,11 +199,14 @@ defmodule DawarichWeb.StatsLiveTest do
                  "#{total} #{unit}"
                ]
 
-        assert texts(html, "article > a:first-child") == ["2024", "2023"]
+        assert texts(html, "[data-testid=insights-year-card] h3 > a") == ["2024", "2023"]
         cards = if unit == "km", do: ["50 km", "20 km"], else: ["31 mi", "12 mi"]
 
         assert Enum.map(
-                 texts(html, "[data-testid=insights-year-card] > p:first-of-type"),
+                 texts(
+                   html,
+                   "[data-testid=insights-year-card] .text-lg.font-semibold.tabular-nums"
+                 ),
                  &String.trim/1
                ) ==
                  cards
@@ -221,19 +224,19 @@ defmodule DawarichWeb.StatsLiveTest do
       assert :sys.get_state(view.pid).socket.assigns.data.consolidated.index.points.percentage ==
                100
 
-      assert has_element?(view, "#insights-tracking", "1 points without data")
+      assert has_element?(view, "#native-insights-tracking", "1 points without data")
       assert has_element?(view, "#insights-update", "Update stats")
-      assert texts(html, "article > a:first-child") == ["2024", "2023"]
+      assert texts(html, "[data-testid=insights-year-card] h3 > a") == ["2024", "2023"]
 
       assert has_element?(
                view,
-               "[data-testid=insights-year-card] summary",
+               "[data-testid=insights-year-card] label[for]",
                "2 countries, 2 cities"
              )
 
       assert has_element?(
                view,
-               "[data-testid=insights-year-card] summary",
+               "[data-testid=insights-year-card] label[for]",
                "1 countries, 1 cities"
              )
 
@@ -386,9 +389,9 @@ defmodule DawarichWeb.StatsLiveTest do
 
       {:ok, view, _html} = live_as(user, "/insights?year=all")
 
-      assert has_element?(view, "#insights-locked[role=status]")
+      assert has_element?(view, "#native-insights-window-alert[role=alert]")
       assert has_element?(view, "[data-testid=insights-locked-year]", "2023")
-      assert has_element?(view, "button[phx-click=upgrade]")
+      assert has_element?(view, "a[phx-click=upgrade]")
       {:ok, month, _html} = live_as(user, "/stats/#{today.year}/#{today.month}")
       assert has_element?(month, "button[phx-click=open_share]")
       assert has_element?(month, ".alert-info[role=alert]")

@@ -11,14 +11,270 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
   @dir Path.expand("../fixtures/insights", __DIR__)
   @corpus @dir |> Path.join("details-corpus.json") |> File.read!() |> Jason.decode!()
 
-  setup do
+  setup context do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     InsightsSeeds.start_cache!()
-    InsightsSeeds.corpus!(@corpus)
+
+    corpus =
+      if context[:overview],
+        do: File.read!(Path.join(@dir, "overview-corpus.json")) |> Jason.decode!(),
+        else: @corpus
+
+    InsightsSeeds.corpus!(corpus)
+
+    if context[:overview] do
+      for point <- corpus["points"] do
+        Dawarich.Test.TripsSeeds.point!(%{
+          id: point["id"],
+          user_id: point["user_id"],
+          timestamp: point["timestamp"],
+          at: [point["lon"], point["lat"]]
+        })
+
+        Dawarich.Repo.query!(
+          "UPDATE points SET country_name=$2,city=$3,reverse_geocoded_at=$4 WHERE id=$1",
+          [point["id"], point["country_name"], point["city"], ~N[2026-06-15 10:00:00]],
+          log: false
+        )
+      end
+
+      Dawarich.Repo.query!(
+        "UPDATE users SET points_count=$1 WHERE id=9601",
+        [corpus["points_count"]],
+        log: false
+      )
+    end
 
     :ok
   end
+
+  @tag :overview
+  test "Rails 1.16.0 Insights overview preserves header period summary months tracking years and locked states" do
+    corpus = File.read!(Path.join(@dir, "overview-corpus.json")) |> Jason.decode!()
+
+    for request <- corpus["requests"] do
+      if request["name"] == "overview-geocoding-en" do
+        Dawarich.Test.StatsSeeds.geocoding!()
+
+        Dawarich.Repo.query!(
+          "INSERT INTO tracks (id,user_id,start_at,end_at,original_path,created_at,updated_at) VALUES ($1,9601,'2024-03-05 09:00:00','2024-03-05 09:10:00',ST_GeomFromText('LINESTRING(12.3731 51.3397,12.3731 51.3417)',4326),'2026-06-15 10:00:00','2026-06-15 10:00:00')",
+          [corpus["track_id"]],
+          log: false
+        )
+
+        Dawarich.Stats.PointCounts.fetch(9601, true, ~U[2026-06-15 10:00:00Z],
+          repo: Dawarich.Repo
+        )
+      end
+
+      Dawarich.Repo.query!("UPDATE users SET plan=$1 WHERE id=9601", [request["plan"]],
+        log: false
+      )
+
+      query = URI.decode_query(URI.parse(request["path"]).query)
+      scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(9601), query["locale"])
+
+      {:ok, data} =
+        Dawarich.Insights.Pages.overview(scope, query,
+          now: ~U[2026-06-15 10:00:00Z],
+          self_hosted: request["self_hosted"]
+        )
+
+      html =
+        render_component(&DawarichWeb.InsightsLive.NativeView.render/1,
+          live_action: :index,
+          data: Map.put(data, :more, false),
+          query: query,
+          locale: scope.locale,
+          page_title: "Insights",
+          details: nil,
+          residency: nil,
+          dialog: nil,
+          calendar_mode: "both",
+          calendar_country: nil,
+          refresh_state: nil
+        )
+
+      if data.year_locked do
+        assert html =~ "[&_.tooltip:before]:right-0"
+      end
+
+      actual = overview_dom(html)
+      expected = overview_dom(File.read!(Path.join(@dir, request["name"] <> ".html")))
+
+      if dump = System.get_env("PARITY_DUMP") do
+        raw =
+          if !data.year_locked && !data.restricted && !data.all_time do
+            {:ok, residency} =
+              Dawarich.Insights.ResidencyPage.load(scope, query,
+                now: ~U[2026-06-15 10:00:00Z],
+                self_hosted: request["self_hosted"]
+              )
+
+            render_component(&DawarichWeb.InsightsLive.NativeView.render/1,
+              live_action: :index,
+              data: Map.put(data, :more, false),
+              query: query,
+              locale: scope.locale,
+              page_title: "Insights",
+              details: nil,
+              residency: %{state: :ready, value: residency},
+              dialog: nil,
+              calendar_mode: "both",
+              calendar_country: nil,
+              refresh_state: nil
+            )
+          else
+            html
+          end
+
+        File.mkdir_p!(dump)
+        File.write!(Path.join(dump, request["name"] <> ".html"), raw)
+        File.mkdir_p!(dump)
+
+        File.write!(
+          Path.join(dump, request["name"] <> "-actual"),
+          inspect(actual, limit: :infinity, pretty: true)
+        )
+
+        File.write!(
+          Path.join(dump, request["name"] <> "-expected"),
+          inspect(expected, limit: :infinity, pretty: true)
+        )
+      end
+
+      assert actual == expected,
+             request["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  @tag :overview
+  test "Rails 1.16.0 residency preserves year calendar ribbon and distance presentation" do
+    for locale <- ~w(en de), year <- [2024, 2026, 2022] do
+      scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(9601), locale)
+      opts = [now: ~U[2026-06-15 10:00:00Z], self_hosted: true]
+
+      {:ok, overview} =
+        Dawarich.Insights.Pages.overview(scope, %{"year" => to_string(year)}, opts)
+
+      {:ok, data} =
+        Dawarich.Insights.ResidencyPage.load(scope, %{"year" => to_string(year)}, opts)
+
+      html =
+        render_component(&DawarichWeb.InsightsLive.NativeParts.residency/1,
+          data: data,
+          heatmap: overview.heatmap,
+          race: overview.consolidated.race,
+          locale: locale,
+          unit: "km",
+          query: %{},
+          path: "/insights"
+        )
+
+      for row <-
+            html
+            |> LazyHTML.from_fragment()
+            |> LazyHTML.query("[data-testid=insights-distance-row]") do
+        assert hd(LazyHTML.attribute(row, "class")) =~ "[&>section]:min-w-0"
+      end
+
+      actual = overview_dom(html)
+      suffix = if year == 2024, do: locale, else: "#{year}-#{locale}"
+      expected = overview_dom(File.read!(Path.join(@dir, "residency-#{suffix}.html")))
+
+      if dump = System.get_env("PARITY_DUMP") do
+        File.mkdir_p!(dump)
+
+        File.write!(
+          Path.join(dump, "residency-#{locale}-actual"),
+          inspect(actual, limit: :infinity, pretty: true)
+        )
+
+        File.write!(
+          Path.join(dump, "residency-#{locale}-expected"),
+          inspect(expected, limit: :infinity, pretty: true)
+        )
+      end
+
+      assert actual == expected, locale <> ": " <> ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  defp overview_dom(html) do
+    html
+    |> Dawarich.Test.ChartkickHTML.without_charts()
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.to_tree()
+    |> overview_nodes()
+    |> ParityHTML.normalize()
+  end
+
+  defp overview_nodes(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &overview_node/1)
+
+  defp overview_node({tag, attrs, children}) do
+    values = Map.new(attrs)
+
+    cond do
+      String.starts_with?(values["id"] || "", "chart-year-locked-") ->
+        [{tag, Enum.reject(attrs, fn {key, _} -> key == "data-chart" end), []}]
+
+      values["id"] == "stats-count-pending" ->
+        assert values["class"] == "sr-only"
+        []
+
+      values["id"] in ~w(insights-residency-loading insights-details-loading insights-residency-ready insights-locked) ->
+        assert values["class"] in [
+                 "contents",
+                 "contents [&_.tooltip:before]:left-auto [&_.tooltip:before]:right-0 [&_.tooltip:before]:translate-x-0"
+               ]
+
+        overview_nodes(children)
+
+      true ->
+        attrs =
+          Enum.flat_map(attrs, fn
+            {"class", value} ->
+              [{"class", String.replace(value, " [&>section]:min-w-0", "")}]
+
+            {key, _} when key in ~w(role aria-label) and tag == "i" ->
+              assert Map.has_key?(values, "data-date")
+              assert values["role"] == "img" && values["aria-label"] != ""
+              []
+
+            {"id", id} when id in ~w(insights-upgrade insights-update) ->
+              []
+
+            {"href", "/auth/dawarich?" <> _} ->
+              [{"href", "#"}]
+
+            {"data-empty", _} ->
+              []
+
+            {"id", "stats-count-ready"} ->
+              []
+
+            {"onclick", value}
+            when value in ["countries_visited.showModal()", "cities_visited.showModal()"] ->
+              []
+
+            {"data-url", value} ->
+              assert String.starts_with?(value, "/insights/routes/")
+              []
+
+            {"data-style", value} ->
+              assert value == "light"
+              []
+
+            pair ->
+              [pair]
+          end)
+
+        [{tag, attrs, overview_nodes(children)}]
+    end
+  end
+
+  defp overview_node(other), do: [other]
 
   test "fragments are keyed with the template digest Rails renders insights/details with" do
     data = %{selected: 2024, max_stat_updated: nil, unit: "km"}
@@ -51,6 +307,39 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
 
       assert actual == expected,
              request["fixture"] <> ": " <> ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  test "monthly source links patch their owning overview or direct response document" do
+    scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(9601), "en")
+
+    {:ok, data} =
+      DawarichWeb.InsightsLive.NativePage.details(
+        scope,
+        {%{"year" => "2024", "month" => "4"}, [self_hosted: true]}
+      )
+
+    for path <- ["/insights", "/insights/details"] do
+      html =
+        render_component(&DawarichWeb.InsightsLive.NativeParts.details/1,
+          data: data,
+          locale: "en",
+          query: %{},
+          path: path
+        )
+
+      links =
+        html |> LazyHTML.from_fragment() |> LazyHTML.query("a[href^='/insights/details?month=']")
+
+      assert Enum.count(links) > 0
+
+      for link <- links do
+        [href] = LazyHTML.attribute(link, "href")
+        clicks = LazyHTML.attribute(link, "phx-click")
+        assert length(clicks) == 1
+        assert [["patch", %{"href" => target}]] = Jason.decode!(hd(clicks))
+        assert target == path <> "?" <> URI.parse(href).query
+      end
     end
   end
 

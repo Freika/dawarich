@@ -34,8 +34,8 @@ defmodule DawarichWeb.NativeM6TripRoutesTest do
     conn = RailsUser.signed_in(id) |> RailsUser.connecting_as(id) |> get(path)
     {:ok, view, html} = live(conn)
     assert has_element?(view, "#native-trip-map-#{id * 10}[phx-hook=Trip]")
-    assert has_element?(view, "#native-video-studio[phx-hook=VideoStudio]")
-    assert has_element?(view, "#native-poster-studio[phx-hook=PosterStudio]")
+    assert has_element?(view, "#video-studio[phx-hook=VideoStudio]")
+    assert has_element?(view, "#poster-studio[phx-hook=PosterStudio]")
     assert String.contains?(html, "/native/app")
     refute String.contains?(html, "synthetic-trip-route-key")
 

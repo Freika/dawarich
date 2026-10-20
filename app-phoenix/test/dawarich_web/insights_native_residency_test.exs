@@ -29,16 +29,22 @@ defmodule DawarichWeb.InsightsNativeResidencyTest do
       )
 
     doc = LazyHTML.from_document(html)
-    assert Enum.count(LazyHTML.query(doc, "[data-residency-day]")) == 366
+    assert Enum.count(LazyHTML.query(doc, "[data-date]")) == 366
 
     assert LazyHTML.attribute(
-             LazyHTML.query(doc, "[data-residency-day='2024-03-01']"),
+             LazyHTML.query(doc, "[data-date='2024-03-01']"),
              "aria-label"
            )
            |> hd() =~ "Germany"
 
-    assert html =~ "0.5%"
+    assert page.total == 2
+    assert has_country_calendar?(doc)
     assert html =~ "2 days"
     refute html =~ "turbo-frame"
   end
+
+  defp has_country_calendar?(doc),
+    do:
+      Enum.count(LazyHTML.query(doc, ".year-calendar[data-mode=both] [data-country=Germany]")) ==
+        2
 end

@@ -2,6 +2,7 @@ import { NativeHeatmap } from "../charts/heatmap.js"
 import { NativeChart } from "../charts/hook.js"
 import { MapMatchingDemo } from "../demo/hook.js"
 import { RichText } from "../editor/hook.js"
+import { InsightsCalendar, InsightsRace } from "../insights/presentation.js"
 import { InsightsYearMap } from "../insights/year_map_hook.js"
 import { FamilyHook } from "../map/hooks/family.js"
 import { MapHook } from "../map/hooks/map.js"
@@ -36,6 +37,8 @@ import {
 } from "./sharing_controls.js"
 
 export const hooks = {
+  InsightsCalendar,
+  InsightsRace,
   PublicGallery,
   InsightsYearMap,
   OrdinaryDialog,
