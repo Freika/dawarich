@@ -1,7 +1,6 @@
 defmodule DawarichWeb.AuthHttpChrome do
   @moduledoc false
   use DawarichWeb, :html
-  alias DawarichWeb.Icon
 
   attr :locale, :string, required: true
   attr :flash, :map, default: %{}
@@ -20,23 +19,14 @@ defmodule DawarichWeb.AuthHttpChrome do
       id="flash-messages"
       class="fixed top-5 right-5 max-w-[calc(100vw-2.5rem)] flex flex-col gap-2 z-50 pointer-events-none"
     >
-      <div
+      <DawarichWeb.Chrome.flash_message
         :for={{type, message} <- @messages}
-        role="alert"
-        tabindex="-1"
-        data-auth-error-summary={type in ["alert", "error"]}
-        data-auth-flash
-        data-auth-flash-timeout={if type in ["notice", "success"], do: "5000", else: "0"}
-        class={"alert #{if type in ["notice", "success"], do: "alert-success", else: "alert-error"} shadow-lg min-w-0 pointer-events-none"}
-      >
-        <span class="min-w-0 [overflow-wrap:anywhere]">{message}</span>
-        <button
-          type="button"
-          class="btn btn-sm btn-circle btn-ghost pointer-events-auto shrink-0"
-          data-auth-flash-dismiss
-          aria-label={t(@locale, "shared.flash_message.close", %{})}
-        ><Icon.icon name="x" class="size-4" /></button>
-      </div>
+        type={type}
+        message={message}
+        locale={@locale}
+        native
+        http
+      />
     </div>
     """
   end

@@ -6,7 +6,7 @@
       data-suffix={if @page_title, do: page_title(@locale, "")}
       phx-no-format
     >{page_title(@locale, @page_title)}</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="viewport" content={assigns[:viewport] || "width=device-width,initial-scale=1"} />
     <.pwa_meta locale={@locale} />
     <meta name="csrf-param" content="authenticity_token" />
     <meta name="csrf-token" content={@rails_csrf_token} />

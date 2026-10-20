@@ -16,7 +16,7 @@ defmodule DawarichWeb.Chrome do
 
     ~H"""
     <div
-      class="fixed top-5 right-5 w-96 max-w-[calc(100vw-2.5rem)] flex flex-col gap-2 z-50 pointer-events-none"
+      class="fixed top-5 right-5 max-w-[calc(100vw-2.5rem)] flex flex-col gap-2 z-50 pointer-events-none"
       id="flash-messages"
     >
       <%= for {type, message} <- @messages do %>
@@ -31,6 +31,8 @@ defmodule DawarichWeb.Chrome do
   attr :locale, :string, required: true
   attr :native, :boolean, default: false
 
+  attr :http, :boolean, default: false
+
   def flash_message(assigns) do
     assigns =
       assign(assigns,
@@ -43,9 +45,13 @@ defmodule DawarichWeb.Chrome do
     ~H"""
     <div
       id={@id}
+      tabindex={@http && "-1"}
+      data-auth-error-summary={@http && to_string(@type) in ["alert", "error"]}
+      data-auth-flash={@http}
+      data-auth-flash-timeout={@http && @timeout}
       data-controller={!@native && "removals"}
       data-removals-timeout-value={!@native && @timeout}
-      phx-mounted={@timeout == 5000 && JS.dispatch("dawarich:flash-timeout")}
+      phx-mounted={!@http && @timeout == 5000 && JS.dispatch("dawarich:flash-timeout")}
       role="alert"
       class={"native-flash alert #{@class} shadow-lg z-[6000] min-w-0 max-w-full pointer-events-none"}
     >
@@ -55,7 +61,8 @@ defmodule DawarichWeb.Chrome do
       <button
         type="button"
         data-action={!@native && "click->removals#remove"}
-        phx-click={dismiss(@type)}
+        phx-click={!@http && dismiss(@type)}
+        data-auth-flash-dismiss={@http}
         class="btn btn-sm btn-circle btn-ghost pointer-events-auto shrink-0"
         aria-label={t(@locale, "shared.flash_message.close", %{})}
       >

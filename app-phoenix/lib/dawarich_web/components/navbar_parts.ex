@@ -71,17 +71,20 @@ defmodule DawarichWeb.NavbarParts do
 
   def family_indicator(%{native: true} = assigns) do
     ~H"""
-    <span
-      id={@id}
-      class={"tooltip tooltip-bottom inline-block w-2 h-2 #{if @sharing, do: "bg-green-500 animate-pulse", else: "bg-gray-400"} rounded-full"}
-      data-tip={
-        t(
-          @locale,
-          "families.navbar_indicator.#{if @sharing, do: "location_shared", else: "location_not_shared"}",
-          %{}
-        )
-      }
-    ></span>
+    <div>
+      <div
+        id={@id}
+        class={"tooltip tooltip-bottom w-2 h-2 #{if @sharing, do: "bg-green-500 animate-pulse", else: "bg-gray-400"} rounded-full"}
+        data-tip={
+          t(
+            @locale,
+            "families.navbar_indicator.#{if @sharing, do: "location_shared", else: "location_not_shared"}",
+            %{}
+          )
+        }
+      >
+      </div>
+    </div>
     """
   end
 
@@ -121,7 +124,7 @@ defmodule DawarichWeb.NavbarParts do
   def version_indicator(assigns) do
     ~H"""
     <div id="version-indicator" class="relative inline-flex items-center">
-      <div class={"badge mx-4 #{if @version.update, do: "badge-outline"}"}>
+      <div class={"badge hidden sm:inline-flex mx-4 #{if @version.update, do: "badge-outline"}"}>
         <a
           href="https://github.com/Freika/dawarich/releases/latest"
           target="_blank"
@@ -138,14 +141,14 @@ defmodule DawarichWeb.NavbarParts do
                 )
               }
             >
-              <span class="hidden sm:inline">{@version.number}{t(
+              {@version.number}{t(
                 @locale,
                 "shared.navbar.version_indicator.nbsp",
                 %{}
-              )}</span>
+              )}
             </span>
           <% else %>
-            <span class="hidden sm:inline">{@version.number}</span>
+            {@version.number}
           <% end %>
         </a>
       </div>

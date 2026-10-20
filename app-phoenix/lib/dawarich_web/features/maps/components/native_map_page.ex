@@ -124,6 +124,13 @@ defmodule DawarichWeb.NativeMapPage do
         <DawarichWeb.NativeMapTools.overlays {assigns} />
       </div>
     </div>
+    <div
+      :if={@page}
+      id="map-footer"
+      class="fixed bottom-[env(safe-area-inset-bottom)] left-0 right-0 z-30 hidden"
+    >
+      <DawarichWeb.Chrome.legal_footer locale={@locale} now={@now} />
+    </div>
     <.live_component
       :if={@current_scope && @page}
       module={DawarichWeb.OnboardingLiveComponent}

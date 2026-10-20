@@ -25,7 +25,7 @@ defmodule DawarichWeb.Navbar do
     ~H"""
     <div class="navbar bg-base-100 h-16">
       <div class="navbar-start">
-        <details class="dropdown xl:hidden">
+        <details :if={@current_user} class="dropdown xl:hidden">
           <summary
             class="btn btn-ghost list-none"
             aria-label={t(@locale, "shared.navbar.open_navigation_menu", %{})}
@@ -64,30 +64,28 @@ defmodule DawarichWeb.Navbar do
                 href={Dawarich.SubscriptionToken.url(@current_user, @now)}
               >{t(@locale, "shared.navbar.subscribe", %{})}</a>
             </li>
-            <%= if @current_user do %>
-              <div class="divider my-1"></div>
-              <li>
-                <.theme_toggle
-                  locale={@locale}
-                  theme={@current_user.theme}
-                  class="flex items-center gap-2"
-                  label
-                  native={@native}
-                />
-              </li>
-              <li>
-                <details>
-                  <summary>
-                    <Icon.icon name="message-circle-question-mark" class="size-6" /> {t(
-                      @locale,
-                      "shared.navbar.help",
-                      %{}
-                    )}
-                  </summary>
-                  <ul class="p-2 bg-base-100"><.help_links locale={@locale} /></ul>
-                </details>
-              </li>
-            <% end %>
+            <div class="divider my-1"></div>
+            <li>
+              <.theme_toggle
+                locale={@locale}
+                theme={@current_user.theme}
+                class="flex items-center gap-2"
+                label
+                native={@native}
+              />
+            </li>
+            <li>
+              <details>
+                <summary>
+                  <Icon.icon name="message-circle-question-mark" class="size-6" /> {t(
+                    @locale,
+                    "shared.navbar.help",
+                    %{}
+                  )}
+                </summary>
+                <ul class="p-2 bg-base-100"><.help_links locale={@locale} /></ul>
+              </details>
+            </li>
           </ul>
         </details>
         <a
@@ -112,7 +110,7 @@ defmodule DawarichWeb.Navbar do
           <.theme_toggle locale={@locale} theme={@current_user.theme} native={@native} />
         </div>
       </div>
-      <div class="navbar-center hidden xl:flex">
+      <div :if={@current_user} class="navbar-center hidden xl:flex">
         <ul class="menu menu-horizontal px-1">
           <.main_links
             mobile={false}
@@ -126,6 +124,7 @@ defmodule DawarichWeb.Navbar do
         </ul>
       </div>
       <.navbar_end
+        request_path={@request_path}
         current_user={@current_user}
         data={@data}
         locale={@locale}

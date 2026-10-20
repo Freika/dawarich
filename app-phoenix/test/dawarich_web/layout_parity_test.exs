@@ -21,6 +21,15 @@ defmodule DawarichWeb.LayoutParityTest do
     end)
   end
 
+  test "chrome exceptions do not normalize unrelated markup" do
+    for {actual, expected} <- [
+          {~s(<span class="size-6 shrink-0">text</span>), ~s(<span class="size-6">text</span>)},
+          {~s(<span tabindex="-1">text</span>), ~s(<span>text</span>)}
+        ] do
+      refute LayoutFixtures.region(actual, "span") == LayoutFixtures.region(expected, "span")
+    end
+  end
+
   test "normalizes tokens only for the manager authentication link" do
     other_one = ~s(<a href="/billing?token=one">billing</a>)
     other_two = ~s(<a href="/billing?token=two">billing</a>)
@@ -141,6 +150,28 @@ defmodule DawarichWeb.LayoutParityTest do
     end
   end
 
+  for name <- LayoutFixtures.names() do
+    @name name
+    test "Rails chrome regions match exactly for #{@name}" do
+      {rails, meta} = LayoutFixtures.load(@name)
+      phoenix = LayoutFixtures.render(meta["state"])
+
+      for selector <- [
+            ".navbar",
+            "footer",
+            "[data-testid=locale-suggestion]",
+            "body > div.container.mx-auto.flex.flex-col.flex-1",
+            "body > div.fixed:first-child"
+          ] do
+        actual = LayoutFixtures.region(phoenix, selector)
+        expected = LayoutFixtures.region(rails, selector)
+
+        assert actual == expected,
+               ParityHTML.first_difference(actual, expected, "#{@name} #{selector}")
+      end
+    end
+  end
+
   test "the locale suggestion banner carries a dismissible key matching Rails' localStorage format" do
     html =
       render_component(&DawarichWeb.Layouts.app/1,
@@ -173,11 +204,13 @@ defmodule DawarichWeb.LayoutParityTest do
 
       assert destinations(phoenix) == destinations(rails)
 
-      assert phoenix =~ ~s(href="/users/sign_in")
+      refute phoenix =~ ~s(href="/users/sign_in")
     end
   end
 
-  for name <- LayoutFixtures.names() |> Enum.reject(&String.starts_with?(&1, "navbar_")) do
+  for name <-
+        LayoutFixtures.names()
+        |> Enum.filter(&File.exists?("test/fixtures/layout/#{&1}.head.html")) do
     @name name
 
     test "the head matches Rails for #{name}" do
@@ -194,7 +227,53 @@ defmodule DawarichWeb.LayoutParityTest do
     end
   end
 
+  for locale <- ~w(en de) do
+    @locale locale
+    test "the shared public layout retains Rails header and footer in #{@locale}" do
+      rails =
+        File.read!("test/fixtures/layout_public_shells.json")
+        |> Jason.decode!()
+        |> Enum.find(&(&1["locale"] == @locale))
+
+      document =
+        render_component(&DawarichWeb.SharedPages.document/1,
+          page: :not_found,
+          locale: @locale,
+          base_url: "http://www.example.com",
+          rails_csrf_token: nil
+        )
+
+      assert document
+             |> LazyHTML.from_document()
+             |> LazyHTML.query("html")
+             |> LazyHTML.attribute("lang") == [@locale]
+
+      assert document
+             |> LazyHTML.from_document()
+             |> LazyHTML.query("html")
+             |> LazyHTML.attribute("data-theme") == []
+
+      header =
+        render_component(&DawarichWeb.NativePublicChrome.header/1,
+          locale: @locale,
+          base_url: "http://www.example.com",
+          current_scope: nil
+        )
+
+      footer = render_component(&DawarichWeb.NativePublicChrome.footer/1, locale: @locale)
+
+      for {selector, component} <- [{"header", header}, {"footer", footer}],
+          native <- [component, document] do
+        actual = LayoutFixtures.public_region(native, selector)
+        expected = LayoutFixtures.public_region(rails["html"], selector)
+        assert actual == expected, ParityHTML.first_difference(actual, expected)
+      end
+    end
+  end
+
   defp destinations(html) do
+    html = html |> LayoutFixtures.region("body") |> LazyHTML.from_tree() |> LazyHTML.to_html()
+
     html
     |> LazyHTML.from_document()
     |> LazyHTML.query("body a[href]")
@@ -237,6 +316,17 @@ defmodule DawarichWeb.LayoutParityTest do
       assert LazyHTML.query(dom, "[role=alert]") |> LazyHTML.text() =~ "Gespeichert & <b>ok</b>"
       assert LazyHTML.query(dom, "button[aria-label]") |> Enum.count() == 1
       refute html =~ "<b>ok</b>"
+      actual = LayoutFixtures.region(html, "[role=alert]")
+      expected = LayoutFixtures.region(@flash["html"], "[role=alert]")
+      assert actual == expected, ParityHTML.first_difference(actual, expected)
+
+      http =
+        render_component(&DawarichWeb.AuthHttpChrome.flash/1,
+          locale: @flash["locale"],
+          flash_messages: [{@flash["type"], "Gespeichert & <b>ok</b>"}]
+        )
+
+      assert LayoutFixtures.region(http, "[role=alert]") == expected
     end
   end
 end

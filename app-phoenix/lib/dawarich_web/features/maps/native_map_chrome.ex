@@ -10,6 +10,8 @@ defmodule DawarichWeb.NativeMapChrome do
     end
 
     socket
+    |> assign(:body_class, "h-screen !h-[100dvh] overflow-hidden relative")
+    |> assign(:viewport, "width=device-width,initial-scale=1,viewport-fit=cover")
     |> then(&if(Keyword.get(opts, :refresh, true), do: refresh(&1), else: &1))
     |> attach_hook(:native_chrome, :handle_event, &event/3)
     |> attach_hook(:native_chrome_info, :handle_info, &info/2)
@@ -47,12 +49,35 @@ defmodule DawarichWeb.NativeMapChrome do
     end
   end
 
+  defp info({:domain_changed, owner, :notifications}, socket)
+       when owner == socket.assigns.current_user.id do
+    coalesce(owner, 100)
+
+    case Dawarich.Notifications.unread(socket.assigns.current_scope) do
+      {:ok, unread} ->
+        {:cont, assign(socket, :navbar, Map.put(socket.assigns.navbar, :unread, unread))}
+
+      _ ->
+        {:halt, DawarichWeb.NotificationSession.Native.refuse(socket)}
+    end
+  end
+
   defp info({:domain_changed, owner, kind}, socket)
        when owner == socket.assigns.current_user.id and
-              kind in [:membership, :consent, :request, :invitation, :lapse, :notifications],
+              kind in [:membership, :consent, :request, :invitation, :lapse],
        do: {:cont, refresh(socket)}
 
   defp info(_, socket), do: {:cont, socket}
+
+  defp coalesce(_, 0), do: :ok
+
+  defp coalesce(owner, remaining) do
+    receive do
+      {:domain_changed, ^owner, :notifications} -> coalesce(owner, remaining - 1)
+    after
+      0 -> :ok
+    end
+  end
 
   defp event("changelog_consent", %{"decision" => decision}, socket)
        when decision in ~w(granted declined) do
@@ -65,7 +90,7 @@ defmodule DawarichWeb.NativeMapChrome do
   end
 
   defp event(event, _, socket) when event in ~w(map:ready map:failed), do: {:cont, socket}
-  defp event(_, _, socket), do: {:cont, refresh(socket)}
+  defp event(_, _, socket), do: {:cont, socket}
 
   def header(assigns) do
     ~H"""

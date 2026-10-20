@@ -15,7 +15,7 @@
       class="alert alert-info rounded-none py-2 px-4 text-sm flex items-start gap-2"
       data-testid="locale-suggestion"
       data-dismissible-key-value={"locale_suggestion_#{@suggested_locale}"}
-      id={assigns[:native] && "locale-suggestion"}
+      id={assigns[:native] && "native-locale-suggestion"}
       phx-hook={assigns[:native] && "Dismissible"}
       lang={@suggested_locale}
     >

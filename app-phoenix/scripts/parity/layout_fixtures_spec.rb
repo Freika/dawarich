@@ -18,7 +18,7 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
     get path, headers: headers
     expect(response).to have_http_status(:ok)
     doc = Nokogiri::HTML5(response.body)
-    content = doc.at_css('body > div.container > div.w-full > div.flex')
+    content = doc.at_css(state[:layout] == 'map' ? 'body > div.absolute' : 'body > div.container > div.w-full > div.flex')
     raise "#{path} does not render layouts/application" unless content
 
     content.children.remove
@@ -106,7 +106,15 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
     user.update_columns(settings: original)
   end
 
-  before { FileUtils.mkdir_p(dir) }
+  before do
+    FileUtils.mkdir_p(dir)
+    if PhoenixSchema.table?('registration_setting')
+      ActiveRecord::Base.connection.execute(
+        'INSERT INTO phoenix.registration_setting (id, enabled) VALUES (true, true) ' \
+        'ON CONFLICT (id) DO UPDATE SET enabled = true'
+      )
+    end
+  end
 
   it 'rejects a fixture containing a JWT-shaped value and unsigned stream name' do
     doc = Nokogiri::HTML5.fragment(
@@ -230,7 +238,7 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
 'expires_at' => (now + 1.day).iso8601 } }))
       shot('navbar_family_sharing_de', member, self_hosted: true)
       shot('navbar_family_owner_en', owner, self_hosted: true)
-      shot('navbar_active_stats_en', navbar_user('navbar-stats@dawarich.test'), '/stats', self_hosted: true)
+      shot('navbar_active_stats_en', navbar_user('navbar-stats@dawarich.test'), '/insights', self_hosted: true)
 
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       stub_const('SELF_HOSTED', false)
@@ -255,6 +263,10 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
            **cloud)
       shot('navbar_cloud_expired_en',
            navbar_user('navbar-expired@dawarich.test', status: 1, active_until: now - 3.days), **cloud)
+      shot('navbar_cloud_lite_en',
+           navbar_user('navbar-lite@dawarich.test', status: 1, plan: 0, active_until: now + 300.days), **cloud)
+      shot('navbar_cloud_pro_en',
+           navbar_user('navbar-pro@dawarich.test', status: 1, plan: 1, active_until: now + 300.days), **cloud)
       shot('navbar_cloud_family_plan_en',
            navbar_user('navbar-family-plan@dawarich.test', status: 1, plan: 2, active_until: now + 300.days), **cloud)
       lapsed_owner = navbar_user('navbar-lapsed-owner@dawarich.test', status: 1, plan: 1, active_until: now + 300.days)
@@ -264,6 +276,70 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
       Family::Membership.create!(family: lapsed_family, user: lapsed, role: :member)
       shot('navbar_cloud_lapsed_member_en', lapsed, **cloud)
     end
+  end
+
+  it 'writes application map and guest chrome across deployment modes' do
+    travel_to now do
+      stub_const('MANAGER_URL', 'https://manager.dawarich.test')
+      %w[en de].each do |locale|
+        [true, false].each do |self_hosted|
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
+          stub_const('SELF_HOSTED', self_hosted)
+          routes = self_hosted ? %w[sign_in password/new] : %w[sign_in sign_up password/new]
+          routes.each do |route|
+            mode = self_hosted ? 'self_hosted' : 'cloud'
+            capture("guest_#{mode}_#{route.tr('/', '_')}_#{locale}", "/users/#{route}?locale=#{locale}",
+                    { user: nil, self_hosted:, locale: })
+          end
+        end
+        { self_hosted: 1, cloud_lite: 0, cloud_pro: 1 }.each do |mode, plan|
+          self_hosted = mode == :self_hosted
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
+          stub_const('SELF_HOSTED', self_hosted)
+          %w[light dark].each do |theme|
+            user = navbar_user("chrome-#{mode}-#{theme}-#{locale}@dawarich.test", theme:, plan:,
+                                status: 1, active_until: now + 300.days)
+            user.update_columns(settings: user.settings.merge('locale' => locale))
+            reset!
+            sign_in user
+            state = navbar_state(user, self_hosted:, manager_url: 'https://manager.dawarich.test')
+            capture("chrome_#{mode}_#{theme}_#{locale}", '/notifications', state)
+            capture("map_chrome_#{mode}_#{theme}_#{locale}", '/map/v2', state.merge(layout: 'map'))
+            sign_out user
+          end
+        end
+      end
+    end
+  end
+
+  it 'records the public shared layout header footer and document attributes' do
+    shells = %w[en de].map do |locale|
+      html = I18n.with_locale(locale) do
+        ApplicationController.renderer.new(http_host: 'www.example.com').render(inline: '', layout: 'shared')
+      end
+      doc = Nokogiri::HTML5(html)
+      scrub!(doc)
+      assert_safe!(doc)
+      { locale:, html: doc.to_html }
+    end
+    FixtureRecording.verify(dir.join('../layout_public_shells.json'), "#{JSON.pretty_generate(shells)}\n")
+  end
+
+  it 'records Rails notification burst query costs' do
+    user = navbar_user('chrome-budget@dawarich.test')
+    notification = user.notifications.create!(title: 'Chrome burst', content: 'Synthetic', kind: :info)
+    notification.user
+    queries = 0
+    count = ->(*args) do
+      payload = args.last
+      queries += 1 if payload[:sql].match?(/\ASELECT/i) && !payload[:cached]
+    end
+    ActiveSupport::Notifications.subscribed(count, 'sql.active_record') do
+      12.times { notification.broadcast_notification }
+    end
+    FixtureRecording.verify(dir.join('../layout_request_budget.json'), "#{JSON.pretty_generate(
+      burst: 12, rails: { http: 0, queries: }, source: 'Notification#broadcast_notification'
+    )}\n")
   end
 
   it 'writes the subscription token Rails generates for fixed inputs' do

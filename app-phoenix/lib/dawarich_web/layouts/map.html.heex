@@ -9,12 +9,18 @@
       self_hosted={@self_hosted}
       rails_csrf_token={@rails_csrf_token}
       now={@now}
+      native={assigns[:native] == true}
     />
   </div>
 </div>
 <div class="fixed top-[calc(4rem+env(safe-area-inset-top))] w-full z-50">
   <div class="container mx-auto px-5">
-    <.flash locale={@locale} flash={@flash} flash_messages={@flash_messages} />
+    <.flash
+      locale={@locale}
+      flash={@flash}
+      flash_messages={@flash_messages}
+      native={assigns[:native] == true}
+    />
   </div>
 </div>
 <div
