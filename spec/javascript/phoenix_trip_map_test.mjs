@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
+import { createReader } from "../../app-phoenix/assets/js/map/data/reader.js"
 import { mountTrip } from "../../app-phoenix/assets/js/map/trip/runtime.js"
 
 const defer = () => {
@@ -82,7 +83,7 @@ function fixture(config = {}, options = {}) {
     ownerDocument: { createElement: () => ({ style: {}, remove() {} }) },
     appendChild() {},
   }
-  const reader = {
+  const reader = options.reader ?? {
     read: async (resource, params, options) => {
       reads.push({ resource, params, options })
       return { data: resource === "trip" ? structuredClone(metadata) : flights }
@@ -365,4 +366,60 @@ test("Trip config and reconnect wait for attachment then paint latest geometry o
   } finally {
     f.owner.destroy()
   }
+})
+
+test("trip refresh preserves a pending replay snapshot and panel opening", async () => {
+  const pending = defer()
+  const requested = defer()
+  let hold = false
+  const reader = createReader({
+    origin: "https://native.test",
+    fetch: async (url) => {
+      const resource = new URL(url).pathname.split("/").at(-1)
+      if (hold && resource === "7") {
+        requested.resolve()
+        await pending.promise
+      }
+      return new Response(JSON.stringify(
+        resource === "7" ? metadata : resource === "points" ? points : flights,
+      ), { headers: { "x-total-pages": "1" } })
+    },
+  })
+  const fork = reader.fork
+  let snapshotReader
+  reader.fork = () => (snapshotReader = fork())
+  const f = fixture({}, { reader })
+  const { Element } = await import("./support/native_m6_host_fixture.mjs")
+  const root = new Element(), panel = new Element()
+  panel.hidden = true
+  root.querySelector = selector => selector === "[data-native-replay-panel]" ? panel : null
+  f.element.closest = () => root
+  try {
+    assert.equal(await f.owner.mount(), "ready")
+    const sources = new Map(), layers = new Map()
+    Object.assign(f.owner.map, {
+      getSource: id => sources.get(id),
+      addSource: (id, value) => sources.set(id, { ...value, setData() {} }),
+      removeSource: id => sources.delete(id),
+      getLayer: id => layers.get(id),
+      addLayer: layer => layers.set(layer.id, layer),
+      removeLayer: id => layers.delete(id),
+      on() {},
+    })
+    hold = true
+    const opening = f.owner.replay.open()
+    await requested.promise
+    const generation = reader.revision
+    const updating = f.owner.reconnect()
+    pending.resolve()
+    assert.equal(await opening, "ready")
+    assert.equal(await updating, "ready")
+    assert.equal(reader.revision, generation + 1)
+    assert.equal(panel.hidden, false)
+    assert.equal(sources.has("native-replay-marker"), true)
+  } finally {
+    pending.resolve()
+    f.owner.destroy()
+  }
+  assert.equal(snapshotReader.revision, 1)
 })

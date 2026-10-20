@@ -104,6 +104,7 @@ export function mountTrip({
       error: (receipt) => pushEvent("map:failed", receipt),
     },
   })
+  const snapshotReader = reader.fork?.() ?? reader
   owner.source = createStudioSource({
     fixedRange: true,
     getState: () => ({
@@ -111,7 +112,7 @@ export function mountTrip({
       revision: owner.config.revision,
     }),
     readSnapshot: async (state, { purpose, signal }) => {
-      const { data } = await reader.read(
+      const { data } = await snapshotReader.read(
         "trip",
         { id: state.tripId },
         { signal },
@@ -119,7 +120,7 @@ export function mountTrip({
       if (JSON.stringify(data.config.range) !== JSON.stringify(state.range))
         throw cancelled()
       const snapshot = await readRouteSnapshot(
-        reader,
+        snapshotReader,
         { ...state, range: data.config.range },
         {
           purpose,
@@ -135,6 +136,7 @@ export function mountTrip({
   const destroy = owner.destroy
   owner.destroy = () => {
     owner.source.destroy()
+    if (snapshotReader !== reader) snapshotReader.destroy()
     destroy()
   }
   return owner
