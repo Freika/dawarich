@@ -18,7 +18,7 @@ Public live and timeline pages use `PublicMapShell` for the Rails main section,
 heading, status rows and map container. The native scoped map host, readiness,
 revocation and expiry handling remain in `PublicMapLive`. Live/timeline pages no
 longer expose the native replay launcher, which Rails does not render there.
-Trip/track replay remains. The phrase and unavailable states reuse the existing
+Trip replay remains where Rails renders it; tracks have no replay launcher. The phrase and unavailable states reuse the existing
 Rails-compatible `SharedPages` components; the public HTTP unlock token stays
 bound to the link and session.
 
@@ -40,8 +40,8 @@ credentials to the invitation acceptance route; malformed/duplicate parameters
 remain refused. Source provider buttons are shared across auth callers, with
 per-action CSRF for the request session.
 
-All eight management page DOMs still require completion. Existing behavior coverage is not evidence of
-DOM parity for these remaining routes. The controller's parity bench remains
+The eight management routes now have source DOM comparisons alongside their
+existing behavior corpus. The controller's parity bench remains
 read-only; pixel and request equality acceptance have not been run for this
 worktree.
 
@@ -91,3 +91,29 @@ counter effect retained; Rails returns a specialized missing-resource body with
 partial can render; the native grant stays closed with 404 and no access count.
 The existing sharing recorder now records these source results in seven locales,
 and SharingParityTest checks the explicit native envelope and data refusal.
+
+
+Management uses the source modal chrome, creation controls, active cards, hub
+panels and report-sharing controls. The existing share-management recorder adds
+56 type/state/locale documents and 42 report/achievement fragments. Its existing
+parity module adds 196 comparisons across seven locales; the hub compares its
+selected panel and omits inactive controls. Date inputs use explicit local-date
+inputs in pure fixture comparisons and the viewer timezone in real requests.
+Every native manager retains named controls and unique ids.
+
+Month/digest controls autosave on change; their source readonly URL and copy
+control replace the extra native link and submit action. Achievement controls
+match the source toolbar inside their dedicated native route, retaining its
+existing copy action. Native modal closing returns to the fixed resource route;
+Escape belongs to its own dialog, so cancelling a confirmation does not close
+the underlying manager. Shared-list forms preserve scoped confirmation using a
+non-shadowing native row identifier. All actions still revalidate the account
+and resource through NativeSharingAuth and the existing contexts.
+
+Phrases remain absent from LiveView state. Initial generation and explicit copy
+use the existing authenticated HTTP endpoints; browser-owned readonly fields
+and manual-copy status clear on update, disconnect and teardown. Public URL
+inputs select locally and own their selection listener. Source label associations,
+hidden-checkbox duplicate ids, native confirmations and these request/DOM wiring
+contracts are listed in the visual divergence register. Final family browser and
+integrated controller-bench acceptance remain pending.

@@ -82,6 +82,37 @@ defmodule DawarichWeb.ShareManagementPageTest do
            ).rows == [[3]]
   end
 
+  test "shared-list forms revoke only the chosen owned row after confirmation", c do
+    {:ok, view, _} = live(connection(c.actor.id), "/share_links/hub?tab=shared")
+    share = :sys.get_state(view.pid).socket.assigns.page.shares |> hd()
+    view |> form("#native-sharing-row-#{share.id} form") |> render_submit()
+
+    assert :sys.get_state(view.pid).socket.assigns.confirmation.resource == %{
+             type: :shared,
+             owner_id: c.actor.id,
+             id: share.id
+           }
+
+    render_click(view, "sharing_confirm", %{})
+    refute has_element?(view, "#native-sharing-row-#{share.id}")
+
+    assert Repo.query!(
+             "SELECT revoked_at IS NOT NULL FROM shared_links WHERE id=$1::text::uuid",
+             [share.id], log: false).rows == [[true]]
+
+    [[foreign]] =
+      Repo.query!(
+        "SELECT id::text FROM shared_links WHERE user_id<>$1 AND revoked_at IS NULL LIMIT 1",
+        [c.actor.id], log: false).rows
+
+    render_submit(view, "sharing_prepare", %{"action" => "revoke", "_id" => foreign})
+    assert :sys.get_state(view.pid).socket.assigns.confirmation == nil
+
+    assert Repo.query!(
+             "SELECT revoked_at IS NULL FROM shared_links WHERE id=$1::text::uuid",
+             [foreign], log: false).rows == [[true]]
+  end
+
   test "manager frame hints do not change owned admission and foreign resources return safely",
        c do
     for path <- ~w(/share_links/live/new /trips/99101/share_link/new) do

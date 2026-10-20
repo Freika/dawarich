@@ -1,0 +1,51 @@
+<div
+  id={"native-sharing-row-#{@share.id}"}
+  data-share-id={@share.id}
+  phx-hook="SharingReveal"
+  data-url={"/native/sharing/#{@share.id}/url"}
+  data-copied-label={t(@locale, "javascript.messages.copied_to_clipboard", %{})}
+  data-failed-label={t(@locale, "javascript.messages.failed_to_copy_please_copy_manually", %{})}
+  class="flex items-center gap-2 p-2 rounded-lg border border-base-300"
+>
+  <span class="badge badge-sm whitespace-nowrap">{t(
+    @locale,
+    "enums.shared_link.resource_type." <> @share.type,
+    %{}
+  )}</span>
+  <input
+    type="text"
+    readonly
+    value={url(@base_url, @share.id)}
+    aria-label={t(@locale, "shared_links.modal_active.public_link", %{})}
+    class="input input-bordered input-sm flex-1 font-mono text-xs"
+  />
+  <button
+    type="button"
+    data-reveal
+    class="btn btn-ghost btn-sm btn-square"
+    title={l(@locale, "copy_link")}
+    aria-label={l(@locale, "copy_link")}
+  ><.icon name="copy" class="w-4 h-4" /></button>
+  <a
+    href={"/s/" <> @share.id}
+    target="_blank"
+    rel="noopener"
+    class="btn btn-ghost btn-sm btn-square"
+    title={l(@locale, "open_in_new_tab")}
+    aria-label={l(@locale, "open_in_new_tab")}
+  ><.icon name="external-link" class="w-4 h-4" /></a>
+  <form class="button_to" title={l(@locale, "revoke_link")} phx-submit="sharing_prepare">
+    <input type="hidden" name="action" value="revoke" /><input
+      type="hidden"
+      name="_id"
+      value={@share.id}
+    />
+    <button
+      class="btn btn-ghost btn-sm btn-square text-warning"
+      type="submit"
+      title={l(@locale, "revoke_link")}
+      aria-label={l(@locale, "revoke")}
+    ><.icon name="shield" class="w-4 h-4" /></button>
+  </form>
+  <span role="status" aria-live="polite" data-status></span>
+</div>

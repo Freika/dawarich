@@ -1,0 +1,60 @@
+<section data-share-id={@share.id}>
+  <div class="flex items-center gap-2 mb-4">
+    <h3 id="native-active-sharing-title" class="font-bold text-lg">{s(@locale, "sharing")}</h3>
+    <span class="badge badge-success badge-sm gap-1"><span class="w-1.5 h-1.5 rounded-full bg-success-content/80"></span>{if @family,
+      do: t(@locale, "shared_links.family.label", %{}),
+      else: s(@locale, "public")}</span>
+  </div>
+  <p :if={@subtitle} class="text-sm text-base-content/70 mb-5">{@subtitle}</p>
+  <div class="space-y-4">
+    <.reveal share={@share} locale={@locale} field="url" url={@url} family={@family} />
+    <.reveal
+      :if={@share[:protected?] and !@family}
+      share={@share}
+      locale={@locale}
+      field="phrase"
+      url={@url}
+      family={@family}
+    />
+    <div class="flex flex-wrap gap-4 text-sm text-base-content/70">
+      <span>{s(@locale, "view_count", %{count: @share.view_count})}</span>
+      <span class="flex items-center gap-1.5"><.icon name="clock" class="w-4 h-4" />
+      <%= if @share.last_accessed_at do %>
+        {s(@locale, "last_viewed")} {last_viewed(@locale, @share.last_accessed_at)}
+      <% else %>
+        {s(@locale, "not_viewed_yet")}
+      <% end %></span>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-base-300">
+      <div class="flex flex-wrap gap-2">
+        <form
+          :for={
+            {action, key} <-
+              if(@list,
+                do: [],
+                else:
+                  [{"regenerate", "regenerate_url"}] ++
+                    if(@family, do: [], else: [{"regenerate_phrase", "regenerate_phrase"}])
+              )
+          }
+          class="button_to"
+          phx-submit="sharing_prepare"
+        >
+          <input type="hidden" name="action" value={action} />
+          <button class="btn btn-outline btn-sm" type="submit"><.icon
+            name="refresh-ccw"
+            class="w-4 h-4"
+          /> {s(@locale, key)}</button>
+        </form>
+      </div>
+      <form class="button_to" phx-submit="sharing_prepare">
+        <input type="hidden" name="action" value="revoke" />
+        <input :if={@list} type="hidden" name="_id" value={@share.id} />
+        <button class="btn btn-warning btn-sm" type="submit"><.icon name="shield" class="w-4 h-4" /> {s(
+          @locale,
+          "revoke"
+        )}</button>
+      </form>
+    </div>
+  </div>
+</section>

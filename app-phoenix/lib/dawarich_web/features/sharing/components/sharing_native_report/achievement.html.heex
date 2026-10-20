@@ -1,0 +1,44 @@
+<div class="flex flex-wrap gap-2">
+  <form class="button_to" hidden={@enabled} phx-submit="report_sharing_update">
+    <button class="btn btn-sm btn-primary" type="submit"><.icon
+      name="share"
+      class="w-4 h-4"
+      aria_hidden={true}
+    />{t(@locale, "achievements.ui.enable_sharing", %{})}</button><input
+      type="hidden"
+      name="enabled"
+      value="true"
+    />
+  </form>
+  <form class="button_to" hidden={!@enabled} phx-submit="report_sharing_update">
+    <button class="btn btn-sm btn-ghost" type="submit"><.icon
+      name="lock"
+      class="w-4 h-4"
+      aria_hidden={true}
+    />{t(@locale, "achievements.ui.disable_sharing", %{})}</button><input
+      type="hidden"
+      name="enabled"
+      value="false"
+    />
+  </form>
+  <a href={if @enabled, do: @url, else: "#"} class="btn btn-sm btn-outline" hidden={!@enabled}><.icon
+    name="external-link"
+    class="w-4 h-4"
+    aria_hidden={true}
+  />{t(@locale, "achievements.ui.public_link", %{})}</a>
+  <span
+    :if={@native_copy and @enabled}
+    id="native-achievement-share-copy"
+    phx-hook="SharingReveal"
+    data-native-public-url={@url}
+    data-copied-label={t(@locale, "javascript.messages.copied_to_clipboard", %{})}
+    data-failed-label={t(@locale, "javascript.messages.failed_to_copy_please_copy_manually", %{})}
+  >
+    <button id="native-report-share-copy" type="button" class="btn btn-sm btn-outline" data-reveal>{t(
+      @locale,
+      "shared.sharing_link.copy",
+      %{}
+    )}</button>
+    <span id="native-report-copy-status" role="status" aria-live="polite" data-status></span>
+  </span>
+</div>

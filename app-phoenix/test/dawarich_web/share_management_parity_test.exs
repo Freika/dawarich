@@ -1,5 +1,6 @@
 defmodule DawarichWeb.ShareManagementParityTest do
   use Dawarich.IngestCase, async: false
+  require Phoenix.LiveViewTest
   alias Dawarich.{Sharing, Repo}
   alias Dawarich.Test.FrameSeeds
 
@@ -21,6 +22,420 @@ defmodule DawarichWeb.ShareManagementParityTest do
     "failed_live_replacement"
     | for(name <- @cases, locale <- ~w(en de es fr pl ca zh), do: name <> "_" <> locale)
   ]
+
+  for kind <- ~w(live timeline trip track), locale <- ~w(en de es fr pl ca zh) do
+    @dom_name "dom/#{kind}_empty_#{locale}"
+    @dom_kind String.to_existing_atom(kind)
+    @dom_locale locale
+    @tag :management_dom
+    test "native #{@dom_kind} creation controls in #{@dom_locale} match source DOM" do
+      state = File.read!(Path.join(@dir, @dom_name <> ".json")) |> Jason.decode!()
+      actor = FrameSeeds.seed_management!(@dom_name)
+
+      if @dom_kind == :track,
+        do:
+          FrameSeeds.track!(actor.id, 99103, %{
+            start_at: ~N[2026-10-03 10:00:00],
+            end_at: ~N[2026-10-03 11:00:00],
+            distance: 1500,
+            dominant_mode: 1
+          })
+
+      {:ok, now, _} = DateTime.from_iso8601(state["now"])
+      scope = Dawarich.Accounts.Scope.for_user(actor, @dom_locale)
+
+      resource =
+        %{type: @dom_kind, owner_id: actor.id}
+        |> then(fn r ->
+          if @dom_kind in [:trip, :track],
+            do: Map.put(r, :id, if(@dom_kind == :trip, do: 99101, else: 99103)),
+            else: r
+        end)
+
+      {:ok, page} = Sharing.page(scope, resource, %{}, now: now, self_hosted: true)
+
+      html =
+        Phoenix.LiveViewTest.render_component(&DawarichWeb.SharingNativeForm.form/1,
+          resource: resource,
+          page: page,
+          locale: @dom_locale,
+          values: %{},
+          user: actor,
+          today: ~D[2026-10-03]
+        )
+
+      actual = management_form_dom(html)
+      expected = File.read!(Path.join(@dir, @dom_name <> ".html")) |> management_form_dom()
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  for kind <- ~w(live timeline trip track), locale <- ~w(en de es fr pl ca zh) do
+    @active_name "dom/#{kind}_active_#{locale}"
+    @active_kind String.to_existing_atom(kind)
+    @active_locale locale
+    @tag :management_active_dom
+    test "native #{@active_kind} active controls in #{@active_locale} match source DOM" do
+      state = File.read!(Path.join(@dir, @active_name <> ".json")) |> Jason.decode!()
+      actor = FrameSeeds.seed_management!(@active_name)
+
+      if @active_kind == :track,
+        do:
+          FrameSeeds.track!(actor.id, 99103, %{
+            start_at: ~N[2026-10-03 10:00:00],
+            end_at: ~N[2026-10-03 11:00:00],
+            distance: 1500,
+            dominant_mode: 1
+          })
+
+      {:ok, now, _} = DateTime.from_iso8601(state["now"])
+      scope = Dawarich.Accounts.Scope.for_user(actor, @active_locale)
+
+      resource =
+        %{type: @active_kind, owner_id: actor.id}
+        |> then(fn r ->
+          if @active_kind in [:trip, :track],
+            do: Map.put(r, :id, if(@active_kind == :trip, do: 99101, else: 99103)),
+            else: r
+        end)
+
+      {:ok, page} = Sharing.page(scope, resource, %{}, now: now, self_hosted: true)
+
+      html =
+        Phoenix.LiveViewTest.render_component(&DawarichWeb.SharingNativeActive.active/1,
+          share: page.share,
+          locale: @active_locale,
+          subtitle: DawarichWeb.SharingNativeActive.subtitle(resource, page, @active_locale),
+          base_url: "http://www.example.com"
+        )
+
+      actual = management_active_dom(html)
+      expected = File.read!(Path.join(@dir, @active_name <> ".html")) |> management_active_dom()
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  @frame_names for(
+                 kind <- ~w(live timeline trip track),
+                 state <- ~w(empty active),
+                 locale <- ~w(en de es fr pl ca zh),
+                 do: "dom/#{kind}_#{state}_#{locale}"
+               ) ++
+                 for(
+                   state <-
+                     ~w(empty_live empty_timeline empty_make active_live active_timeline active_shared),
+                   locale <- ~w(en de es fr pl ca zh),
+                   do: "hub_#{state}_#{locale}"
+                 )
+  for name <- @frame_names do
+    @frame_name name
+    @tag :management_frame_dom
+    test "native manager #{@frame_name} matches source modal and selected panel DOM" do
+      state = File.read!(Path.join(@dir, @frame_name <> ".json")) |> Jason.decode!()
+      actor = FrameSeeds.seed_management!(@frame_name)
+      base = resource(state["path"], actor.id)
+
+      if base.type == :track,
+        do:
+          FrameSeeds.track!(actor.id, 99103, %{
+            start_at: ~N[2026-10-03 10:00:00],
+            end_at: ~N[2026-10-03 11:00:00],
+            distance: 1500,
+            dominant_mode: 1
+          })
+
+      locale = actor.settings["locale"]
+      {:ok, now, _} = DateTime.from_iso8601(state["now"])
+      query = Plug.Conn.Query.decode(URI.parse(state["path"]).query || "")
+      scope = Dawarich.Accounts.Scope.for_user(actor, locale)
+      {:ok, page} = Sharing.page(scope, base, query, now: now, self_hosted: true)
+      tab = if base.type == :hub, do: page.tab, else: "live"
+
+      html =
+        Phoenix.LiveViewTest.render_component(&DawarichWeb.SharingLive.Index.render/1,
+          current_user: actor,
+          current_scope: scope,
+          base_resource: base,
+          resource: DawarichWeb.SharingResource.selected(base, tab),
+          page: page,
+          locale: locale,
+          tab: tab,
+          query_params: query,
+          errors: [],
+          form_values: %{},
+          confirmation: nil,
+          base_url: "http://www.example.com",
+          today: ~D[2026-10-03]
+        )
+
+      assert Dawarich.Test.NativeAdminUI.labels(html) == []
+      ids = html |> LazyHTML.from_fragment() |> LazyHTML.query("[id]") |> LazyHTML.attribute("id")
+      assert length(ids) == MapSet.size(MapSet.new(ids))
+
+      if dir = System.get_env("PARITY_DUMP") do
+        File.mkdir_p!(dir)
+        File.write!(Path.join(dir, String.replace(@frame_name, "/", "_") <> ".html"), html)
+      end
+
+      actual = management_frame_dom(html, tab)
+      expected = File.read!(Path.join(@dir, @frame_name <> ".html")) |> management_frame_dom(tab)
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  @report_cases File.read!(Path.join(@dir, "dom/report_pages.json")) |> Jason.decode!()
+  for entry <- @report_cases do
+    @report entry
+    @tag :management_report_dom
+    test "native management #{@report["name"]} matches source sharing controls" do
+      type = String.to_existing_atom(@report["kind"])
+
+      resource =
+        case type do
+          :month -> %{type: type, owner_id: 98111, year: 2024, month: 3}
+          :digest -> %{type: type, owner_id: 98111, year: 2024}
+          :achievement -> %{type: type, owner_id: 98111, key: "country_de"}
+        end
+
+      page =
+        if type == :achievement,
+          do: %{enabled: @report["enabled"], uuid: @report["uuid"]},
+          else: %{
+            uuid: @report["uuid"],
+            settings: %{
+              "enabled" => @report["enabled"],
+              "expiration" => if(type == :month, do: "1h", else: "24h")
+            }
+          }
+
+      html =
+        Phoenix.LiveViewTest.render_component(&DawarichWeb.SharingNativeReport.form/1,
+          resource: resource,
+          page: page,
+          locale: @report["locale"],
+          base_url: "http://www.example.com"
+        )
+
+      if dir = System.get_env("PARITY_DUMP") do
+        File.mkdir_p!(dir)
+        File.write!(Path.join(dir, @report["name"] <> ".html"), html)
+      end
+
+      actual = management_report_dom(html, type)
+
+      expected =
+        File.read!(Path.join(@dir, "dom/#{@report["name"]}.html")) |> management_report_dom(type)
+
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+      assert Dawarich.Test.NativeAdminUI.labels(html) == []
+    end
+  end
+
+  defp management_report_dom(html, type) do
+    document = LazyHTML.from_fragment(html)
+
+    tree =
+      if type == :achievement,
+        do: LazyHTML.to_tree(document),
+        else: document |> LazyHTML.query(".modal-box") |> LazyHTML.to_tree()
+
+    tree |> report_close_wiring() |> form_wiring() |> Dawarich.Test.ParityHTML.normalize()
+  end
+
+  defp report_close_wiring(nodes) when is_list(nodes), do: Enum.map(nodes, &report_close_wiring/1)
+
+  defp report_close_wiring({tag, attrs, children}) do
+    if tag in ~w(a button) and
+         Map.new(attrs)["class"] == "btn btn-sm btn-circle btn-ghost absolute right-2 top-2" do
+      {"close-action", Enum.reject(attrs, fn {key, _} -> key in ~w(href type) end),
+       report_close_wiring(children)}
+    else
+      {tag, attrs, report_close_wiring(children)}
+    end
+  end
+
+  defp report_close_wiring(other), do: other
+
+  defp management_frame_dom(html, tab) do
+    html
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.query(".modal")
+    |> LazyHTML.to_tree()
+    |> frame_wiring(tab)
+    |> form_wiring()
+    |> Dawarich.Test.ParityHTML.normalize()
+  end
+
+  defp frame_wiring(nodes, tab) when is_list(nodes),
+    do: Enum.flat_map(nodes, &frame_wiring(&1, tab))
+
+  defp frame_wiring({"section", attrs, children}, tab) do
+    if Map.new(attrs)["data-share-id"],
+      do: frame_wiring(children, tab),
+      else: [{"section", attrs, frame_wiring(children, tab)}]
+  end
+
+  defp frame_wiring({tag, attrs, children}, tab) do
+    values = Map.new(attrs)
+    panel = tag == "div" and values["style"] == "min-height: 24rem;" and values["data-tab"]
+
+    if panel && values["data-tab"] != tab do
+      []
+    else
+      attrs =
+        Enum.map(attrs, fn
+          {"class", "hidden pt-2"} -> {"class", "pt-2"}
+          {"class", "tab tab-active"} -> {"class", "tab"}
+          attr -> attr
+        end)
+
+      attrs =
+        if values["role"] == "tab",
+          do: Enum.reject(attrs, fn {k, _} -> k in ~w(href aria-selected) end),
+          else: attrs
+
+      attrs =
+        if values["class"] == "modal modal-open",
+          do: Enum.reject(attrs, fn {k, _} -> k in ~w(role aria-modal aria-labelledby) end),
+          else: attrs
+
+      attrs = Enum.reject(attrs, fn {k, _} -> k == "data-share-id" end)
+
+      {tag, attrs} =
+        case {tag, values["data-testid"]} do
+          {"button", "hub-make-" <> kind} ->
+            {"a",
+             Enum.reject(attrs, fn {k, _} -> k == "type" end) ++
+               [{"href", "/map/v2?studio=" <> kind}]}
+
+          other ->
+            {elem(other, 0), attrs}
+        end
+
+      [{tag, attrs, frame_wiring(children, tab)}]
+    end
+  end
+
+  defp frame_wiring(other, _tab), do: [other]
+
+  defp management_active_dom(html) do
+    document = LazyHTML.from_fragment(html)
+
+    selector =
+      if Enum.empty?(LazyHTML.query(document, "section[data-share-id]")),
+        do: ".modal-box",
+        else: "section[data-share-id]"
+
+    [{_, _, children}] = document |> LazyHTML.query(selector) |> LazyHTML.to_tree()
+
+    children
+    |> Enum.reject(fn
+      {"a", attrs, _} ->
+        Map.get(Map.new(attrs), "class") ==
+          "btn btn-sm btn-circle btn-ghost absolute right-3 top-3"
+
+      _ ->
+        false
+    end)
+    |> form_wiring()
+    |> Dawarich.Test.ParityHTML.normalize()
+  end
+
+  defp management_form_dom(html) do
+    html
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.query("form:not(.button_to)")
+    |> LazyHTML.to_tree()
+    |> form_wiring()
+    |> Dawarich.Test.ParityHTML.normalize()
+  end
+
+  defp form_wiring(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &form_wiring/1)
+
+  defp form_wiring({"input", attrs, _}) do
+    attrs =
+      Enum.map(attrs, fn {key, value} ->
+        {key, if(key in ~w(checked required readonly), do: "", else: value)}
+      end)
+
+    values = Map.new(attrs)
+
+    cond do
+      values["name"] in ~w(authenticity_token utf8 _method action id _id) ->
+        []
+
+      values["name"] == "enabled" and values["value"] == "0" ->
+        []
+
+      values["id"] == "share-phrase" ->
+        [
+          {"input",
+           Enum.reject(attrs, fn {k, _} -> k in ~w(value data-private-reveal onclick) end) ++
+             [{"value", ""}], []}
+        ]
+
+      values["name"] == "shared_link[magic_phrase]" ->
+        [
+          {"input",
+           attrs
+           |> Enum.reject(fn {k, _} -> k in ~w(value id autocomplete data-url) end)
+           |> Kernel.++([{"value", ""}, {"id", "shared_link_magic_phrase"}]), []}
+        ]
+
+      values["type"] == "hidden" ->
+        [{"input", Enum.reject(attrs, fn {k, _} -> k == "id" end), []}]
+
+      true ->
+        [{"input", Enum.reject(attrs, fn {k, _} -> k == "onclick" end), []}]
+    end
+  end
+
+  defp form_wiring({"span", attrs, _} = node) do
+    if Map.new(attrs)["data-status"] != nil, do: [], else: [node]
+  end
+
+  defp form_wiring({tag, attrs, children}) do
+    attrs = Enum.reject(attrs, fn {key, _} -> key in ~w(data-reveal onclick) end)
+
+    attrs =
+      Enum.map(attrs, fn {key, value} ->
+        {key, if(key in ~w(hidden selected), do: "", else: value)}
+      end)
+
+    attrs =
+      if tag == "button" and
+           Map.new(attrs)["class"] == "btn btn-sm btn-circle btn-ghost absolute right-2 top-2",
+         do: List.keystore(attrs, "type", 0, {"type", "button"}),
+         else: attrs
+
+    attrs =
+      if Map.new(attrs)["phx-hook"] == "SharingReveal",
+        do:
+          Enum.reject(attrs, fn {k, _} ->
+            k in ~w(data-url data-copied-label data-failed-label)
+          end),
+        else: attrs
+
+    attrs =
+      if tag == "button" and Map.new(attrs)["phx-hook"] == "Clipboard",
+        do:
+          Enum.reject(attrs, fn {key, _} ->
+            key in ~w(data-clipboard-text data-clipboard-url data-copied-label data-failed-label data-status-id)
+          end),
+        else: attrs
+
+    attrs =
+      if tag == "form",
+        do: Enum.reject(attrs, fn {key, _} -> key in ~w(action method accept-charset id) end),
+        else: attrs
+
+    attrs =
+      if tag == "label", do: Enum.reject(attrs, fn {key, _} -> key == "for" end), else: attrs
+
+    [{tag, attrs, form_wiring(children)}]
+  end
+
+  defp form_wiring(other), do: [other]
 
   @domain_names for type <- ~w(track timeline),
                     action <-

@@ -30,6 +30,78 @@ RSpec.describe 'Phoenix fixtures: authenticated share management', type: :reques
     ActionController::Base.allow_forgery_protection = false
   end
 
+  it 'records creation and active modal DOM for every share type and locale' do
+    travel_to(now) do
+      FileUtils.mkdir_p(dir.join('dom'))
+      user = management_actor(98_101)
+      foreign = management_actor(98_102)
+      management_trip(user, 99_101)
+      management_trip(foreign, 99_102)
+      Track.insert!({ id: 99_103, user_id: user.id, start_at: now, end_at: now + 1.hour,
+                      distance: 1500, dominant_mode: 1, original_path: 'LINESTRING(12.37 51.33,12.38 51.34)',
+                      created_at: now, updated_at: now })
+      %w[en de es fr pl ca zh].each do |locale|
+        user.update_columns(settings: user.settings.merge('locale' => locale))
+        %w[empty active].each do |state|
+          SharedLink.where(user_id: [user.id, foreign.id]).delete_all
+          management_seed(user, foreign) if state == 'active'
+          { 'live' => '/share_links/live/new', 'timeline' => '/share_links/timeline/new',
+            'trip' => '/trips/99101/share_link/new', 'track' => '/tracks/99103/share_link/new' }.each do |kind, path|
+            capture_management("dom/#{kind}_#{state}_#{locale}", user, :get, path)
+          end
+        end
+      end
+    end
+  end
+
+  it 'records month digest and achievement sharing controls in every locale' do
+    travel_to(now) do
+      FileUtils.mkdir_p(dir.join('dom'))
+      actor = management_actor(98_111)
+      month = Stat.create!(id: 98_111, user: actor, year: 2024, month: 3, distance: 1000, daily_distance: [],
+                           toponyms: [], sharing_settings: {})
+      digest = Users::Digest.create!(
+        id: 98_111, user: actor, year: 2024, period_type: :yearly, distance: 1000,
+        toponyms: [], first_time_visits: {}, time_spent_by_location: {}, year_over_year: {},
+        all_time_stats: {}, monthly_distances: {}, sharing_settings: {}
+      )
+      progress = create(
+        :achievement_progress, id: 98_111, user: actor, achievement_key: 'country_de',
+        sharing_enabled: false, sharing_uuid: 'd6000000-0000-4000-8000-000000098111'
+      )
+      sign_in actor
+      rows = %w[en de es fr pl ca zh].flat_map do |locale|
+        actor.update_columns(settings: actor.settings.merge('locale' => locale))
+        [false, true].flat_map do |enabled|
+          month.update_columns(sharing_settings: { 'enabled' => enabled, 'expiration' => '1h' })
+          digest.update_columns(sharing_settings: { 'enabled' => enabled, 'expiration' => '24h' })
+          progress.update_columns(sharing_enabled: enabled)
+          { 'month' => ['/stats/2024/3', month], 'digest' => ['/digests/2024', digest],
+            'achievement' => ['/achievements/country_de', progress] }.map do |kind, (path, record)|
+            get path
+            expect(response.status).to eq(200)
+            document = Nokogiri::HTML5(response.body)
+            fragment = if kind == 'achievement'
+                         actions = document.at_css('.ach-set-header .flex.flex-wrap.gap-2').dup
+                         actions.element_children.reject do |node|
+                           node.name == 'form' || node['data-card-modal-target'] == 'publicLink'
+                         end.each(&:remove)
+                         actions
+                       else
+                         document.at_css('#sharing_modal')
+                       end
+            expect(fragment).to be_present
+            fragment.css('input[name="authenticity_token"]').each { |input| input['value'] = 'CSRF' }
+            name = "report_#{kind}_#{enabled ? 'enabled' : 'disabled'}_#{locale}"
+            FixtureRecording.verify(dir.join("dom/#{name}.html"), fragment.to_html)
+            { name: name, kind: kind, locale: locale, enabled: enabled, uuid: record.sharing_uuid, source_path: path }
+          end
+        end
+      end
+      FixtureRecording.verify(dir.join('dom/report_pages.json'), "#{JSON.pretty_generate(rows)}\n")
+    end
+  end
+
   def management_pages(user, foreign, locale)
     SharedLink.where(user_id: [user.id, foreign.id]).delete_all
     capture_management("hub_guest_#{locale}", nil, :get, "/share_links/hub?locale=#{locale}")

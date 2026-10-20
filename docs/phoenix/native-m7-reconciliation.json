@@ -13054,6 +13054,32 @@
         }
       ],
       "authority": "D6 trip studios use the source-shaped embedded owner ids while retaining exact private map path/settings and credential privacy assertions"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/report_sharing_native_test.exs",
+        "name": "report and achievement sharing entrypoints perform scoped native writes and return safely"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/report_sharing_native_test.exs",
+          "name": "report and achievement sharing entrypoints perform scoped native writes and return safely"
+        }
+      ],
+      "authority": "D6 source report UI displays its public URL in a readonly input; achievement retains source public-link action and native copy. Scoped writes, safe resource return, foreign refusal, visibility and copy assertions remain."
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/achievement_sharing_test.exs",
+        "name": "native achievement fixture values preserve enablement uuid state and public links"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/achievement_sharing_test.exs",
+          "name": "native achievement fixture values preserve enablement uuid state and public links"
+        }
+      ],
+      "authority": "D6 achievement manager uses source toolbar link/hidden state rather than the old data-public-share convenience marker; exact persisted UUID and native terminal refusal assertions remain."
     }
   ],
   "readers": [

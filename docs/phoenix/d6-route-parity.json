@@ -487,9 +487,13 @@
       ],
       "evidence": [
         "share_management_parity_test.exs",
-        "sharing_native_events_test.exs"
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
       ],
-      "status": "pending"
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
     },
     {
       "path": "/share_links/live/new",
@@ -504,9 +508,13 @@
       ],
       "evidence": [
         "share_management_parity_test.exs",
-        "sharing_native_events_test.exs"
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
       ],
-      "status": "pending"
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
     },
     {
       "path": "/share_links/timeline/new",
@@ -521,9 +529,13 @@
       ],
       "evidence": [
         "share_management_parity_test.exs",
-        "sharing_native_events_test.exs"
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
       ],
-      "status": "pending"
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
     },
     {
       "path": "/trips/:trip_id/share_link/new",
@@ -538,9 +550,13 @@
       ],
       "evidence": [
         "share_management_parity_test.exs",
-        "sharing_native_events_test.exs"
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
       ],
-      "status": "pending"
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
     },
     {
       "path": "/tracks/:track_id/share_link/new",
@@ -555,9 +571,13 @@
       ],
       "evidence": [
         "share_management_parity_test.exs",
-        "sharing_native_events_test.exs"
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
       ],
-      "status": "pending"
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
     },
     {
       "path": "/stats/:year/:month/sharing",
@@ -572,9 +592,13 @@
       ],
       "evidence": [
         "share_management_parity_test.exs",
-        "sharing_native_events_test.exs"
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
       ],
-      "status": "pending"
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
     },
     {
       "path": "/digests/:year/sharing",
@@ -589,9 +613,13 @@
       ],
       "evidence": [
         "share_management_parity_test.exs",
-        "sharing_native_events_test.exs"
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
       ],
-      "status": "pending"
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
     },
     {
       "path": "/achievements/:key/sharing",
@@ -606,9 +634,13 @@
       ],
       "evidence": [
         "share_management_parity_test.exs",
-        "sharing_native_events_test.exs"
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
       ],
-      "status": "pending"
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
     },
     {
       "path": "/posters",
@@ -624,7 +656,6 @@
       "evidence": [
         "posters_parity_test.exs",
         "route_video_parity_test.exs",
-        "native_map_studios_parity_test.exs",
         "native_map_studios_parity_test.exs",
         "posters/trip_{poster,video}_{locale}.html"
       ],
@@ -644,7 +675,6 @@
       "evidence": [
         "posters_parity_test.exs",
         "route_video_parity_test.exs",
-        "native_map_studios_parity_test.exs",
         "native_map_studios_parity_test.exs",
         "posters/trip_{poster,video}_{locale}.html"
       ],

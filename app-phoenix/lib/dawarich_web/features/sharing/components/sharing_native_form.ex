@@ -1,111 +1,33 @@
 defmodule DawarichWeb.SharingNativeForm do
   @moduledoc false
   use DawarichWeb, :html
+  embed_templates "sharing_native_form/*"
   attr :resource, :map, required: true
   attr :page, :map, required: true
   attr :locale, :string, required: true
   attr :values, :map, required: true
   attr :user, :any, required: true
+  attr :today, :any, default: nil
 
   def form(assigns) do
     today =
-      Dawarich.UserTimeZone.local(
-        Dawarich.UserSettings.get(assigns.user),
-        NaiveDateTime.utc_now()
-      ).local
-      |> NaiveDateTime.to_date()
+      assigns.today ||
+        Dawarich.UserTimeZone.local(
+          Dawarich.UserSettings.get(assigns.user),
+          NaiveDateTime.utc_now()
+        ).local
+        |> NaiveDateTime.to_date()
 
-    assigns = assign(assigns, today: today, type: Atom.to_string(assigns.resource.type))
+    assigns =
+      assign(assigns,
+        today: today,
+        type: Atom.to_string(assigns.resource.type),
+        family:
+          assigns.resource.type == :trip &&
+            Dawarich.SharedLinks.FamilyAudience.family_id(assigns.user.id, DateTime.utc_now())
+      )
 
-    ~H"""
-    <form id="sharing-form" phx-submit="sharing_create" class="space-y-4 min-w-0">
-      <div :if={@resource.type == :timeline} class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <label :for={key <- ~w(start_date end_date)} class="form-control min-w-0">
-          <span>{s(@locale, @type, key)}</span>
-          <input
-            type="date"
-            name={"shared_link[#{key}]"}
-            value={@values[key] || to_string(@page[key |> String.to_existing_atom()] || @today)}
-            required
-            class="input input-bordered w-full min-w-0"
-          />
-        </label>
-      </div>
-      <label class="form-control min-w-0">
-        <span>{s(@locale, @type, "magic_phrase_optional")}</span>
-        <input
-          id="native-share-phrase"
-          type="text"
-          name="shared_link[magic_phrase]"
-          value=""
-          autocomplete="off"
-          phx-hook="SharingPhrase"
-          data-url="/native/sharing/phrase"
-          class="input input-bordered w-full min-w-0"
-        />
-        <span class="text-xs">{s(@locale, @type, "leave_blank_to_share_without_a_phrase_or_use_the")}</span>
-      </label>
-      <label class="form-control min-w-0">
-        <span>{t(@locale, "shared_links.expires_field.expires_optional", %{})}</span>
-        <input
-          type="date"
-          name="shared_link[expires_at]"
-          min={Date.to_iso8601(Date.add(@today, 1))}
-          value={@values["expires_at"] || Date.to_iso8601(Date.add(@today, 7))}
-          class="input input-bordered w-full min-w-0"
-        />
-        <span class="text-xs">{t(
-          @locale,
-          "shared_links.expires_field.stays_active_through_the_end_of_the_day_before_the",
-          %{}
-        )}</span>
-      </label>
-      <label
-        :if={
-          @resource.type == :trip and
-            Dawarich.SharedLinks.FamilyAudience.family_id(@user.id, DateTime.utc_now())
-        }
-        class="form-control min-w-0"
-      >
-        <span>{t(@locale, "shared_links.family.audience", %{})}</span>
-        <select name="shared_link[audience]" class="select select-bordered min-w-0">
-          <option
-            :for={value <- ~w(public family)}
-            value={value}
-            selected={@values["audience"] == value}
-          >
-            {t(
-              @locale,
-              "shared_links.family." <> if(value == "family", do: "only", else: "public_link"),
-              %{}
-            )}
-          </option>
-        </select>
-      </label>
-      <label
-        :for={{key, checked} <- sections(@resource.type)}
-        class="flex flex-wrap items-center gap-3 min-w-0"
-      >
-        <input type="hidden" name={"shared_link[settings][#{key}]"} value="0" />
-        <input
-          type="checkbox"
-          name={"shared_link[settings][#{key}]"}
-          value="1"
-          checked={
-            get_in(@values, ["settings", key]) == "1" or
-              (!is_map_key(@values, "settings") and checked)
-          }
-          class="checkbox"
-        />
-        <span class="min-w-0">{s(@locale, @type, label(@resource.type, key))}</span>
-      </label>
-      <button
-        type="submit"
-        phx-disable-with={s(@locale, @type, "create_share_link")}
-        class="btn btn-primary h-auto whitespace-normal"
-      >{s(@locale, @type, "create_share_link")}</button>
-    </form>
-    """
+    controls(assigns)
   end
 
   defp sections(:live), do: [{"show_route", false}]
@@ -132,4 +54,26 @@ defmodule DawarichWeb.SharingNativeForm do
   defp label(:trip, "show_photos"), do: "photos_on_map"
   defp label(_, key), do: key
   defp s(locale, type, key), do: t(locale, "shared_links.modal_#{type}_create_form." <> key, %{})
+
+  defp checked(values, key, default),
+    do:
+      if(is_map_key(values, "settings"),
+        do: get_in(values, ["settings", key]) in ["1", true],
+        else: default
+      )
+
+  defp close(%{type: :trip, id: id}), do: "/trips/#{id}"
+  defp close(_), do: "/map/v2"
+
+  defp warning(locale) do
+    location =
+      s(locale, "live", "current_location_in_real_time")
+      |> Phoenix.HTML.html_escape()
+      |> Phoenix.HTML.safe_to_string()
+
+    t(locale, "shared_links.modal_live_create_form.this_shares_your_location_with_anyone_html", %{
+      location: Phoenix.HTML.raw("<strong>#{location}</strong>")
+    })
+    |> Phoenix.HTML.raw()
+  end
 end

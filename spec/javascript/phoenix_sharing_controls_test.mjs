@@ -228,3 +228,115 @@ test("editing the phrase cancels a pending generator without erasing the user's 
   assert.equal(el.value, "")
   assert.equal(el.listeners.size, 0)
 })
+
+test("sharing reveal fields select locally and erase private values at every boundary", async () => {
+  setup()
+  navigator.clipboard.writeText = async () => {}
+  globalThis.fetch = async () => ({
+    ok: true,
+    redirected: false,
+    headers: { get: () => "text/plain" },
+    text: async () => "transient-fixture-phrase",
+  })
+  for (const privateValue of [true, false]) {
+    const action = button(),
+      status = { textContent: "" },
+      field = button()
+    Object.assign(field, {
+      tagName: "INPUT",
+      value: privateValue ? "" : "https://www.example.com/s/fixture",
+      hasAttribute: (name) => name === "data-private-reveal" && privateValue,
+      select() {
+        this.selected = (this.selected || 0) + 1
+      },
+    })
+    const initial = field.value
+    const el = {
+      dataset: {
+        url: "/native/sharing/id/phrase",
+        copiedLabel: "copied",
+        failedLabel: "failed",
+      },
+      querySelector(selector) {
+        return selector === "[data-reveal]"
+          ? action
+          : selector === "[data-status]"
+            ? status
+            : field
+      },
+    }
+    const instance = hook(SharingReveal, el)
+    await instance.listener()
+    assert.equal(
+      field.value,
+      privateValue ? "transient-fixture-phrase" : initial,
+    )
+    field.listeners.get("click")()
+    assert.equal(field.selected, 1)
+    instance.beforeUpdate()
+    assert.equal(field.value, privateValue ? "" : initial)
+    await instance.listener()
+    instance.disconnected()
+    assert.equal(field.value, privateValue ? "" : initial)
+    await instance.listener()
+    instance.destroyed()
+    assert.equal(field.value, privateValue ? "" : initial)
+    assert.equal(field.listeners.size, 0)
+    assert.ok(!Object.values(instance).includes("transient-fixture-phrase"))
+  }
+})
+
+for (const kind of ["month", "digest", "achievements"]) {
+  test(`report ${kind} copy stays local and resolves its complete public URL`, async (t) => {
+    setup()
+    const previous = Object.getOwnPropertyDescriptor(globalThis, "window")
+    t.after(() =>
+      previous
+        ? Object.defineProperty(globalThis, "window", previous)
+        : delete globalThis.window,
+    )
+    globalThis.window = {
+      isSecureContext: true,
+      location: { origin: "https://dawarich.example" },
+    }
+    const writes = [],
+      action = button(),
+      status = { textContent: "" },
+      field = button()
+    Object.assign(field, {
+      tagName: "INPUT",
+      value: `/shared/${kind}/fixture`,
+      hasAttribute: () => false,
+      select() {
+        this.selected = true
+      },
+    })
+    navigator.clipboard.writeText = async (value) => writes.push(value)
+    globalThis.fetch = async () => {
+      throw Error("unexpected report request")
+    }
+    const instance = hook(SharingReveal, {
+      dataset: {
+        nativePublicUrl: field.value,
+        copiedLabel: "copied",
+        failedLabel: "failed",
+      },
+      querySelector(selector) {
+        return selector === "[data-reveal]"
+          ? action
+          : selector === "[data-status]"
+            ? status
+            : field
+      },
+    })
+    await instance.listener()
+    assert.deepEqual(writes, [
+      `https://dawarich.example/shared/${kind}/fixture`,
+    ])
+    field.listeners.get("click")()
+    assert.equal(field.selected, true)
+    instance.destroyed()
+    assert.equal(field.listeners.size, 0)
+    assert.equal(field.value, `/shared/${kind}/fixture`)
+  })
+}

@@ -1,0 +1,152 @@
+<form id="sharing-form" phx-submit="sharing_create">
+  <div :if={@resource.type == :live} class="alert alert-warning text-sm mb-4">
+    <span>{warning(@locale)}</span>
+  </div>
+  <div :if={@resource.type == :timeline} class="grid grid-cols-2 gap-3">
+    <div :for={key <- ~w(start_date end_date)} class="form-control">
+      <label class="label" for={"shared_link_#{key}"}><span class="label-text">{s(
+        @locale,
+        @type,
+        key
+      )}</span></label>
+      <input
+        type="date"
+        name={"shared_link[#{key}]"}
+        id={"shared_link_#{key}"}
+        value={
+          Map.get(
+            @values,
+            key,
+            @page[String.to_existing_atom(key)] ||
+              if(key == "start_date", do: Date.add(@today, -7), else: @today)
+          )
+        }
+        required
+        class="input input-bordered"
+      />
+    </div>
+  </div>
+  <div :if={@family} class="form-control mb-4">
+    <label for="shared_link_audience" class="label-text mb-1">{t(
+      @locale,
+      "shared_links.family.audience",
+      %{}
+    )}</label>
+    <select id="shared_link_audience" name="shared_link[audience]" class="select select-bordered">
+      <option
+        :for={value <- ~w(public family)}
+        value={value}
+        selected={@values["audience"] == value}
+      >
+        {t(
+          @locale,
+          "shared_links.family." <> if(value == "family", do: "only", else: "public_link"),
+          %{}
+        )}
+      </option>
+    </select>
+    <p class="text-sm text-base-content/70 mt-2">{t(@locale, "shared_links.family.hint", %{})}</p>
+  </div>
+  <div class={if @resource.type == :timeline, do: "form-control mt-4", else: "form-control"}>
+    <label class="label" for="native-share-phrase"><span class="label-text">{s(
+      @locale,
+      @type,
+      "magic_phrase_optional"
+    )}</span></label>
+    <input
+      id="native-share-phrase"
+      type="text"
+      name="shared_link[magic_phrase]"
+      value=""
+      autocomplete="off"
+      phx-hook="SharingPhrase"
+      data-url="/native/sharing/phrase"
+      class="input input-bordered"
+    />
+    <span class="label-text-alt mt-1">{s(
+      @locale,
+      @type,
+      "leave_blank_to_share_without_a_phrase_or_use_the"
+    )}</span>
+  </div>
+  <div class="form-control mt-4">
+    <label class="label" for="shared_link_expires_at"><span class="label-text">{t(
+      @locale,
+      "shared_links.expires_field.expires_optional",
+      %{}
+    )}</span></label>
+    <input
+      type="date"
+      id="shared_link_expires_at"
+      name="shared_link[expires_at]"
+      min={Date.to_iso8601(Date.add(@today, 1))}
+      value={Map.get(@values, "expires_at", Date.to_iso8601(Date.add(@today, 7)))}
+      class="input input-bordered"
+    />
+    <span class="label-text-alt mt-1">{t(
+      @locale,
+      "shared_links.expires_field.stays_active_through_the_end_of_the_day_before_the",
+      %{}
+    )}</span>
+    <span class="label-text-alt">{t(
+      @locale,
+      "shared_links.expires_field.defaults_to_one_week_from_today_leave_blank_for_a",
+      %{}
+    )}</span>
+  </div>
+  <div class="form-control mt-4">
+    <span :if={@resource.type == :trip} class="label-text font-semibold">{t(
+      @locale,
+      "shared_links.family.sections",
+      %{}
+    )}</span>
+    <label
+      :for={{key, default} <- sections(@resource.type)}
+      class={
+        if @resource.type == :live,
+          do: "label cursor-pointer justify-start gap-3",
+          else: "label cursor-pointer"
+      }
+    >
+      <span :if={@resource.type != :live} class="label-text">{s(
+        @locale,
+        @type,
+        label(@resource.type, key)
+      )}</span>
+      <input
+        :if={@resource.type != :live}
+        type="hidden"
+        name={"shared_link[settings][#{key}]"}
+        value="0"
+      />
+      <input
+        id={"shared_link_settings_#{key}"}
+        type="checkbox"
+        name={"shared_link[settings][#{key}]"}
+        value="1"
+        checked={checked(@values, key, default)}
+        class={if @resource.type == :live, do: "checkbox checkbox-primary", else: "checkbox"}
+      />
+      <span :if={@resource.type == :live} class="label-text">{s(
+        @locale,
+        @type,
+        label(@resource.type, key)
+      )}</span>
+    </label>
+    <span :if={@resource.type == :live} class="label-text-alt mt-1">{s(
+      @locale,
+      @type,
+      "also_show_the_path_travelled_since_this_link_was_created"
+    )}</span>
+  </div>
+  <div class="modal-action">
+    <a href={close(@resource)} class="btn btn-ghost">{s(@locale, @type, "cancel")}</a>
+    <input
+      type="submit"
+      name="commit"
+      value={s(@locale, @type, "create_share_link")}
+      phx-disable-with={s(@locale, @type, "create_share_link")}
+      class="btn btn-primary"
+    />
+  </div>
+</form>

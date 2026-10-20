@@ -1,7 +1,7 @@
 defmodule DawarichWeb.SharingLive.Index do
   @moduledoc false
   use DawarichWeb, :live_view
-  alias DawarichWeb.{NativeSharingAuth, SharingResource, SharingNativeForm, SharingNativeActive}
+  alias DawarichWeb.NativeSharingAuth
   @impl true
   def mount(_, _, socket),
     do: {:ok, assign(socket, errors: [], form_values: %{}, confirmation: nil)}
@@ -65,9 +65,11 @@ defmodule DawarichWeb.SharingLive.Index do
         _ -> nil
       end
 
+    id = params["id"] || params["_id"]
+
     resource =
-      if is_binary(params["id"]),
-        do: %{type: :shared, owner_id: socket.assigns.current_user.id, id: params["id"]},
+      if is_binary(id),
+        do: %{type: :shared, owner_id: socket.assigns.current_user.id, id: id},
         else: socket.assigns.resource
 
     if not is_nil(action) and
@@ -142,16 +144,6 @@ defmodule DawarichWeb.SharingLive.Index do
   defp selected(_page, %{type: :hub}, _), do: nil
   defp selected(page, _, _), do: page[:share]
 
-  defp heading(locale, base) do
-    if base.type in [:month, :digest, :achievement],
-      do: t(locale, "stats.month.share", %{}),
-      else:
-        if(base.type == :hub,
-          do: t(locale, "share_links.hubs.frame.share", %{}),
-          else: t(locale, "shared_links.modal_#{base.type}_create_form.create_share_link", %{})
-        )
-  end
-
   defp confirmation_key(:regenerate),
     do: "shared_links.modal_active.generate_a_new_url_the_current_url_will_stop_working"
 
@@ -165,76 +157,8 @@ defmodule DawarichWeb.SharingLive.Index do
     assigns = assign(assigns, share: selected(assigns.page, assigns.base_resource, assigns.tab))
 
     ~H"""
-    <section
-      id="native-sharing"
-      class="w-full max-w-3xl mx-auto my-5 min-w-0 [overflow-wrap:anywhere]"
-    >
-      <header class="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h1 class="text-2xl font-bold min-w-0">{heading(@locale, @base_resource)}</h1>
-        <a
-          href={SharingResource.back(@base_resource)}
-          class="btn btn-ghost btn-sm h-auto whitespace-normal"
-        >{t(@locale, "shared_links.modal_live_create_form.cancel", %{})}</a>
-      </header>
-      <p :for={error <- @errors} role="alert" class="alert alert-error mb-3">{error}</p>
-      <nav :if={@base_resource.type == :hub} role="tablist" class="flex flex-wrap gap-2 mb-4">
-        <.link
-          :for={
-            {tab, key} <- [
-              {"live", "live_location"},
-              {"timeline", "time_period"},
-              {"make", "make_something"},
-              {"shared", "shared"}
-            ]
-          }
-          patch={"/share_links/hub?" <> Plug.Conn.Query.encode(Map.put(@query_params || %{},"tab",tab))}
-          role="tab"
-          aria-selected={@tab == tab}
-          data-testid={"hub-tab-#{tab}"}
-          class="btn btn-outline btn-sm h-auto whitespace-normal"
-        >
-          {t(@locale, "share_links.hubs.body." <> key, %{})}
-        </.link>
-      </nav>
-      <p :if={@base_resource.type in [:trip, :track]} class="mb-4 min-w-0 [overflow-wrap:anywhere]">
-        {@page.trip.name}
-      </p>
-      <%= cond do %>
-        <% @base_resource.type in [:month, :digest, :achievement] -> %>
-          <DawarichWeb.SharingNativeReport.form
-            resource={@base_resource}
-            page={@page}
-            locale={@locale}
-          />
-        <% @base_resource.type == :hub and @tab == "make" -> %>
-          <div class="flex flex-wrap gap-3">
-            <a
-              :for={type <- ~w(video poster)}
-              href={"/map/v2?studio=" <> type}
-              class="btn btn-outline h-auto whitespace-normal"
-              data-testid={"hub-make-#{type}"}
-            >{t(@locale, "share_links.hubs.body.make_#{type}", %{})}</a>
-          </div>
-        <% @base_resource.type == :hub and @tab == "shared" -> %>
-          <article
-            :for={share <- @page.shares}
-            data-share-id={share.id}
-            class="border rounded-xl p-4 mb-3 min-w-0"
-          >
-            <h2 class="font-bold">{share.name}</h2>
-            <SharingNativeActive.active share={share} locale={@locale} list={true} />
-          </article>
-        <% @share != nil -> %>
-          <SharingNativeActive.active share={@share} locale={@locale} />
-        <% true -> %>
-          <SharingNativeForm.form
-            resource={@resource}
-            page={@page}
-            locale={@locale}
-            values={@form_values}
-            user={@current_user}
-          />
-      <% end %>
+    <div id="native-sharing">
+      <DawarichWeb.SharingNativeFrame.frame {assigns} />
       <dialog
         :if={@confirmation}
         id="sharing-confirm"
@@ -266,7 +190,7 @@ defmodule DawarichWeb.SharingLive.Index do
           </div>
         </div>
       </dialog>
-    </section>
+    </div>
     """
   end
 end

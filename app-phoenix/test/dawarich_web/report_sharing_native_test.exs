@@ -34,6 +34,29 @@ defmodule DawarichWeb.ReportSharingNativeTest do
         "expiration" => expiration
       })
 
+  defp public_control?(view) do
+    has_element?(view, "input[data-native-report-share-url][value*='/shared/']") or
+      has_element?(view, "a[href^='/shared/achievements/']:not([hidden])")
+  end
+
+  test "month and digest controls autosave changes and clear disabled public URLs", c do
+    for path <- ~w(/stats/2024/3/sharing /digests/2024/sharing) do
+      {:ok, view, _} = open(c.user, path)
+
+      view
+      |> form("#report-sharing-form", %{"enabled" => "1", "expiration" => "12h"})
+      |> render_change()
+
+      assert values(view).settings["enabled"] == true
+      assert values(view).settings["expiration"] == "12h"
+      assert public_control?(view)
+      view |> form("#report-sharing-form", %{"enabled" => "0"}) |> render_change()
+      assert values(view).settings["enabled"] == false
+      assert values(view).settings["expiration"] == nil
+      refute public_control?(view)
+    end
+  end
+
   test "report and achievement sharing entrypoints perform scoped native writes and return safely",
        c do
     for {path, back} <- [
@@ -46,8 +69,12 @@ defmodule DawarichWeb.ReportSharingNativeTest do
       refute has_element?(view, "[data-controller],turbo-frame")
       submit(view, "1")
       assert is_binary(values(view).uuid)
-      assert has_element?(view, "a[data-public-share]")
-      assert has_element?(view, "#report-share-copy[data-clipboard-url=true]")
+      assert public_control?(view)
+
+      assert has_element?(
+               view,
+               "[phx-hook=SharingReveal][data-native-public-url] #native-report-share-copy"
+             )
 
       foreign =
         RailsUser.insert!(%{id: 154_072, email: "foreign-report@example.invalid", plan: 2})
@@ -60,9 +87,9 @@ defmodule DawarichWeb.ReportSharingNativeTest do
                  %{"enabled" => "0"}
                )
 
-      assert has_element?(view, "a[data-public-share]")
+      assert public_control?(view)
       submit(view, "0")
-      refute has_element?(view, "a[data-public-share]")
+      refute public_control?(view)
       Repo.query!("DELETE FROM users WHERE id=154072", [], log: false)
     end
   end

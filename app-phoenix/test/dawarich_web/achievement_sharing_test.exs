@@ -103,9 +103,8 @@ defmodule DawarichWeb.AchievementSharingTest do
         )
 
       if result.enabled,
-        do:
-          assert(has_element?(view, "a[data-public-share][href='/shared/achievements/#{uuid}']")),
-        else: refute(has_element?(view, "[data-public-share]"))
+        do: assert(has_element?(view, "a[href='/shared/achievements/#{uuid}']:not([hidden])")),
+        else: refute(has_element?(view, "a[href^='/shared/achievements/']:not([hidden])"))
     end
   end
 
