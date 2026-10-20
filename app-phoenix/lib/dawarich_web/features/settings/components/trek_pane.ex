@@ -6,6 +6,7 @@ defmodule DawarichWeb.TrekPane do
 
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.LocalizedDate
+  alias Phoenix.LiveView.JS
 
   attr :locale, :string, required: true
   attr :sources, :list, required: true
@@ -16,10 +17,17 @@ defmodule DawarichWeb.TrekPane do
     ~H"""
     <div class="space-y-6 max-w-3xl">
       <div
-        id="trek-source-card"
+        id="trek-source-form"
         class="rounded-box border border-base-content/10 bg-base-200"
       >
-        <.form for={@form} id="trek-source-form" phx-submit="trek-create">
+        <form
+          id="native-trek-source-form"
+          action="/settings/trek_sources"
+          accept-charset="UTF-8"
+          method="post"
+          phx-submit="trek-create"
+        >
+          <input type="hidden" name="authenticity_token" value={Plug.CSRFProtection.get_csrf_token()} />
           <div class="card-body space-y-5">
             <div class="flex items-center gap-3">
               <.service_icon service="trek" css="size-6" />
@@ -73,14 +81,16 @@ defmodule DawarichWeb.TrekPane do
               )}</span>
             </div>
             <div class="card-actions">
-              <button
+              <input
                 type="submit"
+                name="commit"
+                value={t(@locale, "settings.integrations.trek.connect", %{})}
                 class="btn btn-primary"
                 phx-disable-with={t(@locale, "settings.integrations.trek.connect", %{})}
-              >{t(@locale, "settings.integrations.trek.connect", %{})}</button>
+              />
             </div>
           </div>
-        </.form>
+        </form>
       </div>
 
       <div :for={source <- @sources} class="rounded-box border border-base-content/10 bg-base-200">
@@ -102,15 +112,25 @@ defmodule DawarichWeb.TrekPane do
                   class="btn btn-primary btn-sm"
                   navigate={"/settings/trek_sources/#{source.id}/select_trips"}
                 >{t(@locale, "settings.integrations.trek.choose_trips", %{})}</.link>
-                <button
-                  id={"trek-sync-#{source.id}"}
-                  type="button"
-                  class="btn btn-outline btn-sm"
-                  phx-click="trek-sync"
-                  phx-value-id={source.id}
-                  phx-disable-with={t(@locale, "settings.integrations.trek.sync_now", %{})}
-                  disabled={MapSet.member?(@queued, to_string(source.id))}
-                >{t(@locale, "settings.integrations.trek.sync_now", %{})}</button>
+                <form
+                  class="button_to"
+                  method="post"
+                  action={"/settings/trek_sources/#{source.id}/sync"}
+                  phx-submit={JS.push("trek-sync", value: %{id: to_string(source.id)})}
+                >
+                  <button
+                    id={"native-trek-sync-#{source.id}"}
+                    type="submit"
+                    class="btn btn-outline btn-sm"
+                    phx-disable-with={t(@locale, "settings.integrations.trek.sync_now", %{})}
+                    disabled={MapSet.member?(@queued, to_string(source.id))}
+                  >{t(@locale, "settings.integrations.trek.sync_now", %{})}</button>
+                  <input
+                    type="hidden"
+                    name="authenticity_token"
+                    value={Plug.CSRFProtection.get_csrf_token()}
+                  />
+                </form>
               <% source.status == "disabled" -> %>
                 <a class="btn btn-outline btn-sm" href="#trek-source-form">{t(
                   @locale,
@@ -119,15 +139,26 @@ defmodule DawarichWeb.TrekPane do
                 )}</a>
               <% true -> %>
             <% end %>
-            <button
-              id={"trek-delete-#{source.id}"}
-              type="button"
-              class="btn btn-ghost btn-sm text-error"
-              phx-click="trek-delete"
-              phx-value-id={source.id}
-              data-confirm={t(@locale, "settings.integrations.trek.disconnect_confirmation", %{})}
-              phx-disable-with={t(@locale, "settings.integrations.trek.disconnect", %{})}
-            >{t(@locale, "settings.integrations.trek.disconnect", %{})}</button>
+            <form
+              class="button_to"
+              method="post"
+              action={"/settings/trek_sources/#{source.id}"}
+              phx-submit={JS.push("trek-delete", value: %{id: to_string(source.id)})}
+            >
+              <input type="hidden" name="_method" value="delete" />
+              <button
+                id={"native-trek-delete-#{source.id}"}
+                type="submit"
+                class="btn btn-ghost btn-sm text-error"
+                data-confirm={t(@locale, "settings.integrations.trek.disconnect_confirmation", %{})}
+                phx-disable-with={t(@locale, "settings.integrations.trek.disconnect", %{})}
+              >{t(@locale, "settings.integrations.trek.disconnect", %{})}</button>
+              <input
+                type="hidden"
+                name="authenticity_token"
+                value={Plug.CSRFProtection.get_csrf_token()}
+              />
+            </form>
           </div>
         </div>
       </div>

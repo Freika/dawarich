@@ -64,7 +64,7 @@ defmodule DawarichWeb.TrekSourcesLiveTest do
     {:ok, view, _} = page(c.user)
 
     view
-    |> form("#trek-source-form")
+    |> form("#native-trek-source-form")
     |> render_submit(%{"trip_source" => %{"base_url" => c.url, "api_key" => "synthetic-trek"}})
 
     [[id]] = rows("SELECT id FROM trip_sources WHERE user_id=$1", [c.user.id])
@@ -117,12 +117,12 @@ defmodule DawarichWeb.TrekSourcesLiveTest do
     )
 
     {:ok, view, _} = page(c.user)
-    html = view |> element("#trek-sync-#{id}") |> render_click()
+    html = view |> form("form[action='/settings/trek_sources/#{id}/sync']") |> render_submit()
     assert html =~ escaped("sync.sync_queued")
     render_hook(view, "trek-sync", %{"id" => to_string(id)})
     assert rows("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [id]) == [[1]]
-    assert has_element?(view, "#trek-delete-#{id}[data-confirm][phx-disable-with]")
-    html = view |> element("#trek-delete-#{id}") |> render_click()
+    assert has_element?(view, "#native-trek-delete-#{id}[data-confirm][phx-disable-with]")
+    html = view |> form("form[action='/settings/trek_sources/#{id}']") |> render_submit()
     assert html =~ escaped("destroy.source_removed_trips_kept")
     assert rows("SELECT id FROM trip_sources WHERE id=$1", [id]) == []
 

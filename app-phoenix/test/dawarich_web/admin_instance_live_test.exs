@@ -205,7 +205,7 @@ defmodule DawarichWeb.AdminInstanceLiveTest do
 
     assert html =~ "Something went wrong. Please try again."
     assert render(view) =~ "Something went wrong. Please try again."
-    refute has_element?(view, "#instance-settings-sections")
+    refute has_element?(view, "#native-instance-settings-sections")
     assert Process.alive?(view.pid)
   end
 

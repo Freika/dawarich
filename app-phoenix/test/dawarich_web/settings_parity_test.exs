@@ -153,7 +153,9 @@ defmodule DawarichWeb.SettingsParityTest do
 
       Repo.query!(
         "UPDATE users SET visits_redetected_at=$1 WHERE id=$2",
-        [naive(row["visits_redetected_at"]), user.id], log: false)
+        [naive(row["visits_redetected_at"]), user.id],
+        log: false
+      )
 
       {:ok, now, 0} = DateTime.from_iso8601(state["now"])
       locale = DawarichWeb.Locale.resolve(nil, user, %{})
@@ -191,6 +193,81 @@ defmodule DawarichWeb.SettingsParityTest do
       actual = Dawarich.Test.ParityHTML.normalize(html)
       expected = Dawarich.Test.ParityHTML.normalize(rails)
       assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  @tag :d5_integrations
+  test "integration service and account states render the Rails 1.16.0 settings DOM" do
+    files = Path.wildcard("test/fixtures/settings/integrations_*.json")
+    assert length(files) == 19
+
+    for file <- files do
+      Dawarich.FixtureCleanup.delete!(Repo, ~w(trip_sources stats users))
+      state = file |> File.read!() |> Jason.decode!()
+      user = seed!(state)
+      {:ok, now, 0} = DateTime.from_iso8601(state["now"])
+      locale = DawarichWeb.Locale.resolve(nil, user, %{})
+      principal = Dawarich.Accounts.Principal.project(user)
+
+      context = %{
+        current_user: principal,
+        current_scope: Dawarich.Accounts.Scope.for_user(principal, locale),
+        locale: locale,
+        self_hosted: state["self_hosted"],
+        now: now,
+        two_factor: state["two_factor"],
+        rails_csrf_token: "CSRF"
+      }
+
+      {:ok, socket} =
+        DawarichWeb.SettingsLive.Integrations.mount(%{}, %{}, %Phoenix.LiveView.Socket{
+          assigns: Map.put(context, :__changed__, %{})
+        })
+
+      params = URI.decode_query(URI.parse(state["path"]).query || "")
+
+      {:noreply, socket} =
+        DawarichWeb.SettingsLive.Integrations.handle_params(params, state["path"], socket)
+
+      html = render_component(&DawarichWeb.SettingsLive.Integrations.render/1, socket.assigns)
+      rails = File.read!(Path.rootname(file) <> ".html")
+      name = Path.basename(file, ".json")
+      ids = LazyHTML.from_fragment(html) |> LazyHTML.query("[id]") |> LazyHTML.attribute("id")
+      assert Enum.uniq(ids) == ids, name <> ": SVG and form ids must be unique"
+
+      for [reference] <-
+            Regex.scan(~r/(?:url\(["']?#|href="#)([^)"'\s]+)/, html, capture: :all_but_first) do
+        assert reference in ids, name <> ": local SVG and fragment references must resolve"
+      end
+
+      Dawarich.Test.SettingsParity.dump(name, rails, html)
+
+      html =
+        String.replace(
+          html,
+          ~r/native-integration-(?:nav|pane)-(?:immich|photoprism|airtrail)-/,
+          ""
+        )
+
+      for key <-
+            ~w(immich_api_key photoprism_api_key airtrail_api_key teslamate_password teslamate_api_token),
+          value = state["user"]["settings"][key],
+          is_binary(value) and value != "" do
+        refute html =~ value
+        refute inspect(socket.assigns, limit: :infinity) =~ value
+      end
+
+      rails =
+        Regex.replace(~r/<input\b[^>]*\btype="password"[^>]*>/, rails, fn input ->
+          Regex.replace(~r/ value="[^"]+"/, input, " value=\"********\"")
+        end)
+
+      rails = Regex.replace(~r/ onchange="[^"]*"/, rails, "")
+      actual = Dawarich.Test.ParityHTML.normalize(html)
+      expected = Dawarich.Test.ParityHTML.normalize(rails)
+
+      assert actual == expected,
+             name <> ": " <> Dawarich.Test.ParityHTML.first_difference(actual, expected)
     end
   end
 

@@ -52,25 +52,29 @@
            "this_job_will_process_reverse_geocoding_for_all_points_that"}
         ]
       }
-      class="card bg-base-300 w-full sm:w-96 shadow-xl m-5"
+      class="card bg-base-300 w-full sm:w-96 shadow-xl my-5 sm:m-5"
     >
       <div class="card-body">
         <h2 class="card-title">{label(@locale, job)}</h2><p>{label(@locale, hint)}</p>
         <div class="card-actions justify-end">
-          <button
-            id={"open-#{job}"}
-            type="button"
+          <a
+            id={"native-open-#{job}"}
+            href="#"
             class="btn btn-primary"
             phx-click={
               JS.push("open_job", value: %{name: job})
               |> JS.dispatch("dawarich:open-dialog", to: "#background-job-confirm")
             }
             disabled={MapSet.member?(@accepted_jobs, job)}
-          >{label(@locale, "start_job")}</button>
+            aria-disabled={MapSet.member?(@accepted_jobs, job) && "true"}
+          >{label(@locale, "start_job")}</a>
         </div>
       </div>
     </div>
-    <div :if={@current_user.admin == true} class="card bg-base-300 w-full sm:w-96 shadow-xl m-5">
+    <div
+      :if={@current_user.admin == true}
+      class="card bg-base-300 w-full sm:w-96 shadow-xl my-5 sm:m-5"
+    >
       <div class="card-body">
         <h2 class="card-title">{label(@locale, "background_jobs_dashboard")}</h2>
         <p>{label(@locale, "this_will_open_the_background_jobs_dashboard_in_a_new")}</p>
@@ -82,21 +86,21 @@
         </div>
       </div>
     </div>
-    <div class="card bg-base-300 w-full sm:w-96 shadow-xl m-5">
+    <div class="card bg-base-300 w-full sm:w-96 shadow-xl my-5 sm:m-5">
       <div class="card-body">
         <h2 class="card-title">{label(@locale, "visits_suggestions")}</h2>
         <p>{label(@locale, "enable_or_disable_visits_suggestions_it_s_a_background_task")}</p>
         <div class="card-actions justify-end">
-          <button
-            id="visits-toggle"
-            type="button"
+          <a
+            id="native-visits-toggle"
+            href="#"
             phx-click={
               JS.push("open_visits")
               |> JS.dispatch("dawarich:open-dialog", to: "#background-visits-confirm")
             }
             phx-disable-with={label(@locale, if(@data.visits, do: "disable", else: "enable"))}
             class={if(@data.visits, do: "btn btn-error", else: "btn btn-success")}
-          >{label(@locale, if(@data.visits, do: "disable", else: "enable"))}</button>
+          >{label(@locale, if(@data.visits, do: "disable", else: "enable"))}</a>
         </div>
       </div>
     </div>

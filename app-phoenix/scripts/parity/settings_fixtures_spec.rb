@@ -1901,6 +1901,16 @@ skip_family_sync: true)
       end
       capture('integrations_default_en', connected, '/settings/integrations')
       capture('integrations_unknown_en', connected, '/settings/integrations?service=geocoding')
+      connected.update_columns(settings: connected.settings.merge('locale' => 'de'))
+      connected.reload
+      %w[immich photoprism airtrail teslamate trek].each do |service|
+        capture("integrations_#{service}_de", connected, "/settings/integrations?service=#{service}")
+      end
+      capture('integrations_cloud_de', connected, '/settings/integrations', self_hosted: false)
+      capture('integrations_lite_de', member(5315, plan: :lite, settings: { 'locale' => 'de' }),
+              '/settings/integrations', self_hosted: false)
+      capture('integrations_cloud_oauth_de', member(5316, provider: 'github', settings: { 'locale' => 'de' }),
+              '/settings/integrations', self_hosted: false)
       admin = member(5312, admin: true, settings: { 'airtrail_url' => 'https://airtrail.a5s3.test',
                                                     'airtrail_last_synced_at' => 'not a time' })
       capture('integrations_admin_en', admin, '/settings/integrations')

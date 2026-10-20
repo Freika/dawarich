@@ -159,7 +159,12 @@
                     "settings.general.index.your_timezone",
                     %{}
                   )}</span></label>
-                  <select id="timezone" name="timezone" class="select select-bordered w-full"><option
+                  <select
+                    id="timezone"
+                    name="timezone"
+                    class="select select-bordered w-full"
+                    aria-label={t(@locale, "settings.general.index.your_timezone", %{})}
+                  ><option
                     :for={{label, zone} <- @zones}
                     value={zone}
                     selected={zone == @form[:timezone].value && "selected"}

@@ -2,7 +2,7 @@ defmodule DawarichWeb.IntegrationPanes do
   @moduledoc false
   use DawarichWeb, :html
 
-  import DawarichWeb.Icon, only: [icon: 1, brand: 1]
+  import DawarichWeb.Icon, only: [icon: 1]
 
   @brands ~w(immich photoprism airtrail)
   @lucide %{"teslamate" => "car", "trek" => "map-pin-check"}
@@ -15,10 +15,17 @@ defmodule DawarichWeb.IntegrationPanes do
 
   attr :service, :string, required: true
   attr :css, :string, required: true
+  attr :location, :string, default: "nav"
 
   def service_icon(assigns) do
     ~H"""
-    <.brand :if={@service in brands()} name={@service} class={@css <> " shrink-0"} />
+    <%= if @service in brands() do %>
+      {DawarichWeb.IntegrationBrand.svg(
+        @service,
+        @css <> " shrink-0",
+        "native-integration-#{@location}-#{@service}"
+      )}
+    <% end %>
     <.icon
       :if={@service not in brands()}
       name={lucide(@service)}
@@ -125,18 +132,12 @@ defmodule DawarichWeb.IntegrationPanes do
   attr :form, :any, required: true
   slot :inner_block, required: true
 
-  def form_head(assigns) do
-    ~H"""
-    <.form for={@form} id="integration-settings" phx-change="change" phx-submit="save">
-      {render_slot(@inner_block)}
-    </.form>
-    """
-  end
+  def form_head(assigns), do: DawarichWeb.IntegrationForms.form_head(assigns)
 
   def heading(assigns) do
     ~H"""
     <div class="flex items-center gap-3">
-      <.icon name="link" class="size-6 shrink-0" />
+      <.service_icon service={@service} css="size-6" location="pane" />
       <h2 class="text-xl font-semibold">
         {t(@locale, "settings.integrations.index.#{@service}_integration", %{})}
       </h2>
@@ -179,12 +180,9 @@ defmodule DawarichWeb.IntegrationPanes do
   def key_field(assigns) do
     ~H"""
     <div class="form-control w-full max-w-md">
-      <DawarichWeb.CoreComponents.input
-        field={@form[@service <> "_api_key"]}
-        type="password"
-        display={secret_display(@form[@service <> "_api_key"].value)}
-        phx-update="ignore"
-        label_class="label font-medium"
+      <DawarichWeb.IntegrationForms.secret_field
+        form={@form}
+        key={@service <> "_api_key"}
         placeholder={t(@locale, "settings.integrations.index.xxxxxxxxxxxxxx", %{})}
         label={t(@locale, "settings.integrations.index.#{@service}_api_key", %{})}
       />
@@ -242,39 +240,14 @@ defmodule DawarichWeb.IntegrationPanes do
     """
   end
 
-  def save(assigns) do
-    ~H"""
-    <button
-      type="submit"
-      class="btn btn-primary"
-      phx-disable-with={t(@locale, "settings.integrations.index.save_test_connection", %{})}
-    >{t(@locale, "settings.integrations.index.save_test_connection", %{})}</button>
-    """
-  end
+  def save(assigns), do: DawarichWeb.IntegrationForms.save(assigns)
 
   attr :locale, :string, required: true
   attr :service, :string, required: true
   attr :queued, :any, default: MapSet.new()
   slot :inner_block, required: true
 
-  def sync_row(assigns) do
-    ~H"""
-    <div class="border-t border-base-content/10 px-8 py-5">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>{render_slot(@inner_block)}</div>
-        <button
-          id="integration-sync"
-          type="button"
-          class="btn btn-primary btn-sm"
-          phx-click="sync"
-          phx-disable-with={t(@locale, "settings.integrations.index.sync_now", %{})}
-          disabled={MapSet.member?(@queued, @service)}
-        >{t(@locale, "settings.integrations.index.sync_now", %{})}</button>
-      </div>
-    </div>
-    """
-  end
+  def sync_row(assigns), do: DawarichWeb.IntegrationForms.sync_row(assigns)
 
-  def secret_display("********"), do: "********"
-  def secret_display(_value), do: ""
+  def secret_display(value), do: DawarichWeb.IntegrationForms.secret_display(value)
 end

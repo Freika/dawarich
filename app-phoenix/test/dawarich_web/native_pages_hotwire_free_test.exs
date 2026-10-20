@@ -30,7 +30,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     :native_notifications,
     :native_data
   ]
-  @secret_free_change_forms ["integration-settings"]
+  @secret_free_change_forms ["native-integration-settings"]
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -259,7 +259,10 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
 
         for html <- forms,
             do:
-              assert(html =~ ~r/<button[^>]*type="submit"[^>]*phx-disable-with/, "#{path} submit")
+              assert(
+                html =~ ~r/<(?:button|input)[^>]*type="submit"[^>]*phx-disable-with/,
+                "#{path} submit"
+              )
 
         forms != []
       end

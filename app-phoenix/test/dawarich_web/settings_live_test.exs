@@ -204,7 +204,7 @@ defmodule DawarichWeb.SettingsLiveTest do
 
       refute has_element?(view, "a[data-testid='integration-photoprism'][data-status]")
       assert has_element?(view, "input#settings_immich_url[value='https://immich.a5s3.test']")
-      assert has_element?(view, "#integration-settings[phx-submit='save']")
+      assert has_element?(view, "#native-integration-settings[phx-submit='save']")
     end
 
     test "an unknown service shows Immich; a self-hosted admin's old geocoding link goes to Instance settings",
@@ -292,7 +292,7 @@ defmodule DawarichWeb.SettingsLiveTest do
 
       assert has_element?(
                view,
-               "#trek-delete-53931[data-confirm]"
+               "#native-trek-delete-53931[data-confirm]"
              )
     end
 

@@ -60,7 +60,7 @@ defmodule DawarichWeb.BackgroundJobsLiveTest do
 
     for expected <- ["false", "true", "false"] do
       before = Accounts.settings(c.target.id)["visits_suggestions_enabled"]
-      view |> element("#visits-toggle") |> render_click()
+      view |> element("#native-visits-toggle") |> render_click()
       assert Accounts.settings(c.target.id)["visits_suggestions_enabled"] == before
       html = view |> element("#confirm-visits") |> render_click()
       assert Accounts.settings(c.target.id)["visits_suggestions_enabled"] == expected
@@ -84,7 +84,7 @@ defmodule DawarichWeb.BackgroundJobsLiveTest do
     assert Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[0]]
 
     for {job, force} <- [{"start_reverse_geocoding", true}, {"continue_reverse_geocoding", false}] do
-      view |> element("#open-#{job}") |> render_click()
+      view |> element("#native-open-#{job}") |> render_click()
       html = view |> element("#confirm-background-job") |> render_click()
 
       assert html =~
@@ -95,7 +95,7 @@ defmodule DawarichWeb.BackgroundJobsLiveTest do
       assert_push_event(view, "close-dialog", %{id: "background-job-confirm"})
       render_hook(view, "open_job", %{"name" => job})
       render_hook(view, "request_job", %{})
-      assert has_element?(view, "#open-#{job}[disabled]")
+      assert has_element?(view, "#native-open-#{job}[disabled]")
 
       assert [[1]] =
                Repo.query!(
@@ -122,7 +122,7 @@ defmodule DawarichWeb.BackgroundJobsLiveTest do
     assert render_hook(view, "request_job", %{}) =~
              NativeAdminUI.escaped("controllers.application.admin_action_failed")
 
-    refute has_element?(view, "#open-start_reverse_geocoding[disabled]")
+    refute has_element?(view, "#native-open-start_reverse_geocoding[disabled]")
     Dawarich.Jobs.Ownership.put!(Repo, "command:geocoding.reverse_point", :oban)
     render_hook(view, "request_job", %{})
     assert Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[1]]
@@ -232,7 +232,7 @@ defmodule DawarichWeb.BackgroundJobsLiveTest do
     assert :sys.get_state(view.pid).socket.assigns.health == nil
     refute has_element?(view, "#phoenix-jobs")
     refute has_element?(view, "a[href='/sidekiq']")
-    assert has_element?(view, "#visits-toggle")
+    assert has_element?(view, "#native-visits-toggle")
     assert Process.alive?(view.pid)
   end
 
