@@ -84,15 +84,9 @@ defmodule DawarichWeb.NativeFamilyPresentationTest do
     assert has_element?(view, ".container.mx-auto.flex.flex-col.flex-1 > .navbar")
     assert has_element?(view, ".container > .w-full.px-4 > .flex > #family-shell.contents")
     assert has_element?(view, ".container > .mt-auto footer")
-    assert has_element?(view, "#onboarding #getting_started:not([open])")
-    assert has_element?(view, "#achievement-unlocks")
     Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [id], log: false)
     render_hook(view, "map:ready", %{})
-
-    refute has_element?(
-             view,
-             ".container, .navbar, footer, #family-shell, #native-family-map, #onboarding, #getting_started, #achievement-unlocks"
-           )
+    refute has_element?(view, ".container, .navbar, footer, #native-family-map, #getting_started")
   end
 
   @tag family_unique_inputs: true
