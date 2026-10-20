@@ -2,6 +2,10 @@
   display: none !important;
 }
 
+dialog.modal:not([open]) {
+  display: none;
+}
+
 .native-flash a,
 .native-flash button {
   pointer-events: auto;
