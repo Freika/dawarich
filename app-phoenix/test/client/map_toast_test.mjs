@@ -59,3 +59,21 @@ test("Rails retry stays until its action dismisses and clearAll dismisses persis
   t.mock.timers.tick(300)
   assert.equal(Toast.container.children.length, 0)
 })
+
+test("persistent retries bound their surface and leave only recovery buttons interactive", t => {
+  t.mock.timers.enable({ apis: ["setTimeout"] })
+  globalThis.document = toastDocument()
+  Toast.container = null
+  let retries = 0
+  const toast = Toast.retry("Die Kartendaten konnten nicht geladen werden. " + "Ungetrennt".repeat(20), "Erneut versuchen", () => retries++)
+  assert.match(Toast.container.style.cssText, /width: min\(300px, calc\(100vw - 40px\)\);/)
+  assert.match(Toast.container.style.cssText, /overflow-x: clip;/)
+  assert.match(toast.style.cssText, /max-width: 100%;/)
+  assert.match(document.head.textContent, /\.toast-container > \.toast \{[^}]*position: relative;[^}]*min-width: 0;[^}]*white-space: normal;[^}]*pointer-events: none;/)
+  assert.match(document.head.textContent, /\.toast-container > \.toast button \{[^}]*pointer-events: auto;/)
+  assert.match(toast.children[0].style.cssText, /overflow-wrap: anywhere;/)
+  t.mock.timers.tick(20000)
+  assert.equal(toast.classList.contains("removing"), false)
+  toast.children[1].click()
+  assert.equal(retries, 1)
+})
