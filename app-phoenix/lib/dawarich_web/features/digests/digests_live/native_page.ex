@@ -154,7 +154,10 @@ defmodule DawarichWeb.DigestsLive.NativePage do
         %{}
       )}</.link>
     </nav>
-    <div :if={@data && @live_action == :show} class="max-w-xl mx-auto my-5">
+    <div
+      :if={@data && @live_action == :show}
+      class="max-w-xl min-w-0 mx-auto my-5 [&_.stat-title]:whitespace-normal [&_.stat-desc]:whitespace-normal"
+    >
       <NativeParts.summary locale={@locale} digest={@data} unit={@data.unit} />
       <NativeFullParts.full
         :if={!@data.restricted}

@@ -35,6 +35,7 @@ defmodule DawarichWeb.TripsShowParityTest do
   test "native trip destructive actions require confirmation and cancel keeps the trip" do
     conn = RailsUser.signed_in(9803) |> RailsUser.connecting_as(9803)
     {:ok, view, _} = live(conn, "/trips/980301")
+    refute has_element?(view, "form[phx-submit='trip:delete'] [data-confirm]")
     render_click(view, "trip:delete", %{})
 
     assert Dawarich.Repo.query!("SELECT id FROM trips WHERE id=980301", [], log: false).num_rows ==

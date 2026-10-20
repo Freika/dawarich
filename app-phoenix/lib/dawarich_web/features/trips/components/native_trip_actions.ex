@@ -65,7 +65,6 @@ defmodule DawarichWeb.NativeTripActions do
               type="submit"
               class="btn btn-sm btn-ghost text-error"
               title={s(@locale, "delete_trip")}
-              data-confirm={s(@locale, "delete_this_trip_this_cannot_be_undone")}
             ><Icon.icon name="trash-2" class="w-4 h-4" /></button>
             <input type="hidden" name="authenticity_token" value="" />
           </form>

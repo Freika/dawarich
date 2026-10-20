@@ -96,6 +96,18 @@ defmodule DawarichWeb.StatsParityTest do
             )
 
           rails = File.read!(Path.rootname(file) <> ".html")
+
+          if mode == :show do
+            [classes] =
+              html
+              |> LazyHTML.from_fragment()
+              |> LazyHTML.query(".max-w-xl")
+              |> LazyHTML.attribute("class")
+
+            assert classes =~ "[&_.stat-title]:whitespace-normal"
+            assert classes =~ "[&_.stat-desc]:whitespace-normal"
+          end
+
           actual = digest_dom(html)
           expected = digest_dom(rails)
 
@@ -145,7 +157,14 @@ defmodule DawarichWeb.StatsParityTest do
     end
   end
 
-  defp digest_dom(html), do: monthly_dom(html)
+  defp digest_dom(html) do
+    html
+    |> String.replace(
+      "max-w-xl min-w-0 mx-auto my-5 [&_.stat-title]:whitespace-normal [&_.stat-desc]:whitespace-normal",
+      "max-w-xl mx-auto my-5"
+    )
+    |> monthly_dom()
+  end
 
   defp monthly_dom(html) do
     html

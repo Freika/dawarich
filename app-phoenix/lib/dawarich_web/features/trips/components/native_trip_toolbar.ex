@@ -59,7 +59,6 @@ defmodule DawarichWeb.NativeTripToolbar do
           <button
             class="btn btn-outline btn-sm"
             type="submit"
-            data-confirm={r(@locale, "recalculate_this_trip_s_path_distance_and_countries_from_your")}
           ><Icon.icon name="refresh-ccw" class="w-4 h-4" /> {r(@locale, "recalculate")}</button>
           <input type="hidden" name="authenticity_token" value="" />
         </form>

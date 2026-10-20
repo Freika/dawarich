@@ -58,7 +58,6 @@ defmodule DawarichWeb.NativeTripNote do
               <button
                 type="submit"
                 class="btn btn-xs btn-ghost text-error"
-                data-confirm={t(@locale, "trips.notes.note.delete_this_note", %{})}
               >{t(@locale, "trips.notes.note.delete", %{})}</button>
               <input type="hidden" name="authenticity_token" value="" />
             </form>
