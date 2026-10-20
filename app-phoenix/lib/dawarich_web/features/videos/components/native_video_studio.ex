@@ -37,7 +37,15 @@ defmodule DawarichWeb.NativeVideoStudio do
   attr :locale, :string, required: true
   attr :fixed_range_label, :string, default: nil
   attr :target, :any, default: nil
+  attr :videos, :list, default: []
   slot :gallery
+
+  attr :native, :boolean, default: false
+
+  def video_studio(%{native: true} = assigns) do
+    assigns = assign(assigns, :config, config(assigns.locale))
+    DawarichWeb.EmbeddedStudios.video(assign(assigns, :target, assigns[:target]))
+  end
 
   def video_studio(assigns) do
     assigns = assign(assigns, :config, config(assigns.locale))

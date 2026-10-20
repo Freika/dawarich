@@ -1,0 +1,122 @@
+<div class="hidden space-y-2" data-native-poster-order-section>
+  <div class="divider my-0 text-xs font-medium opacity-50">{p(@locale, "order_a_print")}</div>
+
+  <div class="space-y-1.5" data-native-poster-order-cta>
+    <button type="button" class="btn btn-secondary btn-sm w-full" data-native-poster-order-open>
+      <Icon.icon name="package" class="h-4 w-4" />
+      {p(@locale, "order_a_printed_poster")}
+    </button>
+    <p class="text-xs flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span class="badge badge-success badge-outline badge-sm">{p(@locale, "free_eu_shipping")}</span>
+      <span class="badge badge-outline badge-sm">200 gsm premium matte</span>
+    </p>
+  </div>
+
+  <div
+    class="hidden rounded-lg border border-base-300 bg-base-100 p-3 space-y-2"
+    data-native-poster-size-picker
+  >
+    <p class="text-sm font-semibold">{p(@locale, "choose_a_print_size")}</p>
+    <p class="text-xs flex flex-wrap items-center gap-x-1.5 gap-y-1">
+      <span class="badge badge-success badge-outline badge-sm">{p(@locale, "free_eu_shipping")}</span>
+      <span class="badge badge-outline badge-sm">200 gsm premium matte</span>
+    </p>
+    <div class="space-y-1" data-native-poster-size-options></div>
+    <button type="button" class="btn btn-ghost btn-xs w-full" data-native-poster-size-cancel>{p(
+      @locale,
+      "cancel"
+    )}</button>
+  </div>
+
+  <div
+    class="hidden rounded-lg border border-base-300 bg-base-100 p-3 space-y-2"
+    data-native-poster-order-dialog
+  >
+    <p class="text-sm font-semibold" data-native-poster-order-summary></p>
+    <p class="text-xs flex flex-wrap items-center gap-x-1.5 gap-y-1">
+      <span class="badge badge-success badge-outline badge-sm">{p(@locale, "free_eu_shipping")}</span>
+      <span class="badge badge-outline badge-sm">200 gsm premium matte</span>
+      <span class="opacity-60">{p(@locale, "pay_via_stripe")}</span>
+    </p>
+    <p class="text-xs opacity-70 leading-snug">
+      {p(@locale, "printed_by_gelato_exactly_as_previewed_made_to_order_so")}
+    </p>
+    <p class="text-xs text-error hidden" data-native-poster-order-error></p>
+    <div class="flex gap-2" data-native-poster-order-actions>
+      <button type="button" class="btn btn-primary btn-sm flex-1" data-native-poster-order-confirm>{p(
+        @locale,
+        "order_this_poster"
+      )}</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-native-poster-order-back>{p(
+        @locale,
+        "back"
+      )}</button>
+    </div>
+
+    <ol class="hidden space-y-3" data-native-poster-order-steps>
+      <li
+        class="space-y-1.5 opacity-40"
+        data-native-poster-order-step="prepare"
+        data-step="prepare"
+      >
+        <p class="flex items-center gap-1.5 text-xs font-medium">
+          <span
+            class="hidden h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent"
+            data-role="spinner"
+          ></span>
+          <span class="hidden text-success" data-role="done"><Icon.icon
+            name="circle-check"
+            class="h-3.5 w-3.5"
+          /></span>
+          <span>{p(@locale, "preparing_poster")}</span>
+        </p>
+        <progress class="progress progress-primary hidden h-1.5 w-full" data-role="bar"></progress>
+      </li>
+      <li class="space-y-1.5 opacity-40" data-native-poster-order-step="upload" data-step="upload">
+        <p class="flex items-center gap-1.5 text-xs font-medium">
+          <span
+            class="hidden h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent"
+            data-role="spinner"
+          ></span>
+          <span class="hidden text-success" data-role="done"><Icon.icon
+            name="circle-check"
+            class="h-3.5 w-3.5"
+          /></span>
+          <span>{p(@locale, "uploading_poster")}</span>
+        </p>
+        <progress
+          class="progress progress-primary hidden h-1.5 w-full"
+          value="0"
+          max="100"
+          data-role="bar"
+          data-native-poster-upload-bar
+        ></progress>
+      </li>
+      <li
+        class="space-y-1.5 opacity-40"
+        data-native-poster-order-step="checkout"
+        data-step="checkout"
+      >
+        <p class="text-xs font-medium">{p(@locale, "continue_to_order")}</p>
+        <a
+          class="btn btn-primary btn-sm btn-disabled w-full"
+          aria-disabled="true"
+          target="_blank"
+          rel="noopener"
+          data-native-poster-checkout
+        >{p(@locale, "continue_to_payment")}</a>
+        <a
+          class="link hidden text-xs"
+          target="_blank"
+          rel="noopener"
+          data-native-poster-order-page
+        >{p(@locale, "checkout_not_working_open_your_order_page")}</a>
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs hidden w-full"
+          data-native-poster-order-done
+        >{p(@locale, "close")}</button>
+      </li>
+    </ol>
+  </div>
+</div>

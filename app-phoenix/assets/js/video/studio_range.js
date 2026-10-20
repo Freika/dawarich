@@ -1,3 +1,4 @@
+import { studioQuery } from "../studios/dom.js"
 import {
   formatDateTimeRange,
   selectableDateTimeRange,
@@ -5,7 +6,7 @@ import {
 } from "./date_range.js"
 import { rangeRestorePlan, readProvenance } from "./state.js"
 
-const find = (root, name) => root.querySelector(`[data-video-${name}]`)
+const find = (root, name) => studioQuery(root, `[data-video-${name}]`)
 
 export function createRangeControls(ctx) {
   const { root, video, t } = ctx

@@ -807,15 +807,15 @@ defmodule DawarichWeb.NativeM6HostTest do
 
   test "map studio owners save through scoped callbacks and keep the host alive", %{id: id} do
     {:ok, view, html} = open(id, @second)
-    assert has_element?(view, "#native-poster-studio[phx-hook=PosterStudio]")
-    assert has_element?(view, "#native-video-studio[phx-hook=VideoStudio]")
+    assert has_element?(view, "#poster-studio[phx-hook=PosterStudio]")
+    assert has_element?(view, "#video-studio[phx-hook=VideoStudio]")
     refute html =~ "synthetic-m6-host-key"
     render_hook(view, "poster:save", %{})
     assert_reply(view, %{status: "failed"})
     send(view.pid, {DawarichWeb.VideoStudioLiveComponent, {:saved, 1, []}})
-    assert has_element?(view, "#native-video-gallery-list")
+    assert has_element?(view, "#route-video-gallery-list")
     render_patch(view, @first)
-    assert has_element?(view, "#native-poster-studio")
+    assert has_element?(view, "#poster-studio")
     render_async(view, 5000)
   end
 
@@ -825,7 +825,7 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert_reply(view, %{status: "failed"})
 
     view
-    |> element("#native-video-studio")
+    |> element("#video-studio")
     |> render_hook("video:upload_target", %{
       "byte_size" => 0,
       "checksum" => "invalid",
@@ -836,11 +836,11 @@ defmodule DawarichWeb.NativeM6HostTest do
     html = render(view)
 
     for marker <-
-          ~w(data-controller data-action turbo stimulus route-video-gallery-list video-studio#),
+          ~w(data-controller data-action turbo stimulus video-studio#),
         do: refute(html =~ marker)
 
-    assert has_element?(view, "#native-video-studio[phx-hook=VideoStudio]")
-    assert has_element?(view, "#native-poster-studio[phx-hook=PosterStudio]")
+    assert has_element?(view, "#video-studio[phx-hook=VideoStudio]")
+    assert has_element?(view, "#poster-studio[phx-hook=PosterStudio]")
   end
 
   test "German studio host localizes expired gallery commands and invalid save replies", %{id: id} do
@@ -862,10 +862,10 @@ defmodule DawarichWeb.NativeM6HostTest do
     {:ok, view, _} = open(id, @second, "de")
     delete = DawarichWeb.Translate.t("de", "route_videos.route_video.delete", %{})
     restore = DawarichWeb.Translate.t("de", "route_videos.route_video.re_render", %{})
-    assert has_element?(view, "#native-route-video-#{id * 10} [data-video-delete]", delete)
-    assert has_element?(view, "#native-route-video-#{id * 10} [data-video-restore]", restore)
-    refute has_element?(view, "#native-route-video-#{id * 10} [data-video-download]")
-    view |> element("#native-video-studio") |> render_hook("video:save", %{})
+    assert has_element?(view, "#route_video_#{id * 10} [phx-click='video:delete']", delete)
+    assert has_element?(view, "#route_video_#{id * 10} button[data-settings]", restore)
+    refute has_element?(view, "#route_video_#{id * 10} a[href*='disposition=attachment']")
+    view |> element("#video-studio") |> render_hook("video:save", %{})
     error = DawarichWeb.Translate.t("de", "controllers.route_videos.failed_to_save", %{})
     assert_reply(view, %{ok: false, error: ^error})
     assert has_element?(view, "#native-map")

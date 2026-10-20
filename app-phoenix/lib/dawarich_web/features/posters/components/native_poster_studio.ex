@@ -49,6 +49,19 @@ defmodule DawarichWeb.NativePosterStudio do
   attr :posters, :list, default: []
   attr :print_order_url, :string, default: ""
 
+  attr :native, :boolean, default: false
+
+  def poster_studio(%{native: true} = assigns) do
+    assigns =
+      assign(
+        assigns,
+        :config,
+        DawarichWeb.EmbeddedStudios.poster_config(assigns.locale, assigns.print_order_url)
+      )
+
+    DawarichWeb.EmbeddedStudios.poster(assign(assigns, :target, assigns[:target]))
+  end
+
   def poster_studio(assigns) do
     assigns = assign(assigns, :config, config(assigns.locale, assigns.print_order_url))
 

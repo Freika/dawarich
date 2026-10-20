@@ -14,6 +14,7 @@ defmodule DawarichWeb.VideoStudioLiveComponent do
     {:ok,
      socket
      |> assign(assigns)
+     |> assign_new(:native, fn -> false end)
      |> assign_new(:fixed_range_label, fn -> nil end)
      |> then(fn socket -> assign_new(socket, :videos, fn -> gallery(socket) end) end)}
   end
@@ -85,6 +86,8 @@ defmodule DawarichWeb.VideoStudioLiveComponent do
         locale={@locale}
         fixed_range_label={@fixed_range_label}
         target={@myself}
+        native={@native}
+        videos={@videos}
       >
         <:gallery>
           <details

@@ -1,0 +1,206 @@
+<div
+  id="poster-studio"
+  phx-hook="PosterStudio"
+  data-native-poster-config={@config}
+  phx-target={@target}
+  data-native-studio="poster"
+  phx-mounted={JS.ignore_attributes(["class", "data-poster-state"])}
+  class="fixed inset-0 hidden bg-base-300"
+  style="z-index: 60"
+>
+  <div class="flex h-full flex-col">
+    <header class="flex flex-wrap items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2 lg:flex-nowrap">
+      <div class="flex items-center gap-3 shrink-0">
+        <h2 class="text-sm font-semibold tracking-wide flex items-center gap-2">
+          <Icon.icon name="map" class="h-4 w-4 opacity-70" />
+          {p(@locale, "poster_studio")}
+        </h2>
+        <.switcher locale={@locale} current="poster" />
+      </div>
+
+      <div
+        id="native-poster-dates"
+        phx-update="ignore"
+        class="flex flex-wrap items-center gap-2 min-w-0 lg:flex-nowrap"
+      >
+        <input
+          type="datetime-local"
+          class="input input-bordered input-sm"
+          data-native-poster-date-start
+        />
+        <span class="text-xs opacity-60">–</span>
+        <input
+          type="datetime-local"
+          class="input input-bordered input-sm"
+          data-native-poster-date-end
+        />
+        <button type="button" class="btn btn-sm btn-primary" data-native-poster-load>
+          <span
+            class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
+            data-native-poster-load-spinner
+          ></span>
+          <span data-native-poster-load-label>{p(@locale, "load")}</span>
+        </button>
+        <div class="hidden items-center gap-1 lg:flex">
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost"
+            data-native-poster-range="today"
+            data-range="today"
+          >{p(
+            @locale,
+            "today"
+          )}</button>
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost"
+            data-native-poster-range="week"
+            data-range="week"
+          >{p(
+            @locale,
+            "last_7_days"
+          )}</button>
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost"
+            data-native-poster-range="month"
+            data-range="month"
+          >{p(
+            @locale,
+            "last_month"
+          )}</button>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-circle shrink-0"
+        title={p(@locale, "close_studio")}
+        data-native-poster-close
+      >
+        <Icon.icon name="x" class="size-6" />
+      </button>
+    </header>
+
+    <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
+      <div
+        class="relative flex h-[36vh] min-w-0 shrink-0 flex-col items-center justify-center overflow-hidden p-6 lg:h-auto lg:flex-1 lg:shrink"
+        id="native-poster-stage"
+        phx-update="ignore"
+        data-native-poster-stage
+      >
+        <img
+          class="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-500"
+          style="filter: blur(22px) brightness(0.5) saturate(1.15); transform: scale(1.15)"
+          alt=""
+          data-native-poster-backdrop
+        />
+        <div
+          class="relative shrink-0 overflow-hidden shadow-2xl"
+          data-native-poster-frame
+        >
+          <div style="position: absolute; inset: 0" data-native-poster-map></div>
+          <canvas
+            class="absolute inset-0 h-full w-full"
+            style="pointer-events: none"
+            data-native-poster-overlay
+          ></canvas>
+        </div>
+        <div class="mt-4 flex items-center gap-2">
+          <button type="button" class="btn btn-sm" data-native-poster-recenter>
+            <Icon.icon name="compass" class="h-4 w-4" />
+            {p(@locale, "recenter")}
+          </button>
+        </div>
+        <p class="mt-2 text-xs opacity-60">
+          {p(@locale, "drag_to_pan_scroll_to_zoom_the_frame_is_what")}
+        </p>
+      </div>
+
+      <aside class="flex min-h-0 w-full flex-1 flex-col border-t border-base-content/10 bg-base-200 lg:w-96 lg:flex-none lg:border-l lg:border-t-0">
+        <div class="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+          <.poster_controls locale={@locale} themes={@themes} /><details
+            id="native-poster-gallery"
+            phx-mounted={JS.ignore_attributes("open")}
+            class="collapse collapse-arrow bg-base-100 rounded-lg"
+          >
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+                <Icon.icon name="camera" class="h-4 w-4 opacity-70 shrink-0" />
+                {p(@locale, "recent_posters")}
+              </span>
+            </summary>
+            <div class="collapse-content space-y-3">
+              <p class="text-xs opacity-60">
+                {p(@locale, "server_rendered_posters_from_save_to_gallery_they_stay_here")}
+              </p>
+              <div id="poster-gallery-list" class="space-y-3">
+                <MapGalleryCards.poster_card
+                  :for={poster <- @posters}
+                  native
+                  poster={poster}
+                  locale={@locale}
+                />
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div
+          id="native-poster-actions"
+          phx-update="ignore"
+          class="space-y-2 border-t border-base-content/10 p-3"
+        >
+          <div class="text-xs opacity-70 space-y-0.5" data-native-poster-summary></div>
+
+          <div class="divider my-0 text-xs font-medium opacity-50">
+            {p(@locale, "export_a_file")}
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="form-control">
+              <span class="label-text text-xs">{p(@locale, "format")}</span>
+              <select
+                class="select select-bordered select-sm py-0"
+                data-native-poster-format
+              >
+                <option value="png" selected>{p(@locale, "png")}</option>
+                <option value="pdf">{p(@locale, "pdf")}</option>
+              </select>
+            </label>
+            <label class="form-control" data-native-poster-dpi-field>
+              <span class="label-text text-xs">{p(@locale, "print_dpi")}</span>
+              <select
+                class="select select-bordered select-sm py-0"
+                data-native-poster-dpi
+              >
+                <option value="150">150</option>
+                <option value="300" selected>300</option>
+              </select>
+            </label>
+          </div>
+          <button
+            type="button"
+            class="btn btn-primary btn-sm h-auto w-full py-1.5"
+            data-native-poster-download
+          >
+            <Icon.icon name="download" class="h-4 w-4" />
+            {p(@locale, "download")}
+          </button>
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs h-auto w-full gap-1 py-1 opacity-70"
+            data-native-poster-save
+            title={p(@locale, "render_this_area_server_side_as_the_classic_3_4")}
+          >
+            <Icon.icon name="camera" class="h-3.5 w-3.5" />
+            {p(@locale, "save_to_gallery")}
+          </button>
+          <p class="text-xs text-warning hidden" data-native-poster-save-notice></p>
+
+          <.poster_order locale={@locale} />
+          <p class="text-xs opacity-70" data-native-poster-status></p>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>

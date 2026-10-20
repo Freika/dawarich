@@ -1,3 +1,5 @@
+import { populatePosterControls } from "../studios/poster_controls.js"
+import { studioQueryAll, studioQuery, studioValue, studioPanel } from "../studios/dom.js"
 import { createLifecycle } from "../map/runtime/lifecycle.js"
 import { bindPosterControls } from "./controls.js"
 import { ensurePosterFont, POSTER_FONTS } from "./data/fonts.js"
@@ -24,12 +26,13 @@ export function mountPosterStudio({
   window: win = globalThis.window,
   exports = createPosterExports(),
 }) {
-  const find = (name) => root.querySelector(`[data-poster-${name}]`)
-  const config = JSON.parse(root.dataset.posterConfig ?? "{}")
+  const find = (name) => studioQuery(root, `[data-poster-${name}]`)
+  const config = JSON.parse(studioValue(root, "posterConfig") ?? "{}")
+  populatePosterControls(root, config)
   const strings = config.strings ?? {}
   const owned = createLifecycle()
-  const swatches = [...root.querySelectorAll("[data-poster-swatch]")]
-  const dialog = find("dialog")
+  const swatches = [...studioQueryAll(root, "[data-poster-swatch]")]
+  const dialog = studioPanel(root, find("dialog"))
   const setStatus = (text) => {
     const status = find("status")
     if (status) status.textContent = text
@@ -122,8 +125,7 @@ export function mountPosterStudio({
     loadLibrary,
     maxDimensionPx,
     layoutLabel: (id) =>
-      root
-        .querySelector(`[data-poster-layout] option[value="${id}"]`)
+      studioQuery(root, `[data-poster-layout] option[value="${id}"]`)
         ?.textContent?.trim() ?? id,
   })
   const closeStudio = () => {
@@ -136,11 +138,13 @@ export function mountPosterStudio({
     exports.cancel()
     order.cancel()
   })
-  on(dialog, "cancel", (event) => {
+  owned.own(dialog.onCancel?.(closeStudio) ?? (() => {}))
+  on(find("close"), "click", closeStudio)
+  on(dialog.onCancel ? null : dialog, "cancel", (event) => {
     event.preventDefault()
     closeStudio()
   })
-  on(dialog, "close", closeStudio)
+  on(dialog.onCancel ? null : dialog, "close", closeStudio)
   on(find("recenter"), "click", () => studio.recenter())
   for (const swatch of swatches) {
     on(swatch, "click", () =>

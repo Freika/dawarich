@@ -1,10 +1,11 @@
+import { studioQuery } from "../studios/dom.js"
 import { formatLabel, themeName } from "./controls.js"
 import { formatFor } from "./state.js"
 import { buildStatRows } from "./video_stats.js"
 
 export function renderSummary(root, ctx) {
   const { width, height } = formatFor(ctx.settings)
-  renderStats(root.querySelector("[data-video-summary]"), {
+  renderStats(studioQuery(root, "[data-video-summary]"), {
     stats: ctx.stats,
     settings: ctx.settings,
     t: ctx.t,

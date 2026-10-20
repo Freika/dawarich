@@ -1,10 +1,11 @@
+import { studioQueryAll, studioValue } from "../studios/dom.js"
 const TEXT_FIELDS = ["title", "subtitle", "coords", "font"]
 
 export function bindTextControls({ root, find, on, sync, studio, ensureFont }) {
   const toggle = find("text-toggle")
-  const layers = [...root.querySelectorAll("[data-poster-layer]")]
-  const tokens = [...root.querySelectorAll("[data-poster-token]")]
-  const tokenValues = [...root.querySelectorAll("[data-poster-token-value]")]
+  const layers = [...studioQueryAll(root, "[data-poster-layer]")]
+  const tokens = [...studioQueryAll(root, "[data-poster-token]")]
+  const tokenValues = [...studioQueryAll(root, "[data-poster-token-value]")]
   let seededTokens = null
 
   const label = (name, value) => {
@@ -14,7 +15,7 @@ export function bindTextControls({ root, find, on, sync, studio, ensureFont }) {
   const tokenLabel = (input) => {
     const element = tokenValues.find(
       (candidate) =>
-        candidate.dataset.posterTokenValue === input.dataset.posterToken,
+        studioValue(candidate, "posterTokenValue") === studioValue(input, "posterToken"),
     )
     if (element) element.textContent = input.value.toUpperCase()
   }
@@ -44,7 +45,7 @@ export function bindTextControls({ root, find, on, sync, studio, ensureFont }) {
         hidden: new Set(
           layers
             .filter((toggleInput) => !toggleInput.checked)
-            .map((toggleInput) => toggleInput.dataset.posterLayer),
+            .map((toggleInput) => studioValue(toggleInput, "posterLayer")),
         ),
       }),
     )
@@ -58,7 +59,7 @@ export function bindTextControls({ root, find, on, sync, studio, ensureFont }) {
   }
   for (const input of tokens) {
     on(input, "input", () => {
-      studio.setToken(input.dataset.posterToken, input.value)
+      studio.setToken(studioValue(input, "posterToken"), input.value)
       tokenLabel(input)
     })
   }
@@ -73,7 +74,7 @@ export function bindTextControls({ root, find, on, sync, studio, ensureFont }) {
     sync(find("coords"), "checked", state.coords)
     sync(find("font"), "value", state.fontKey)
     for (const layer of layers)
-      sync(layer, "checked", !state.hidden.has(layer.dataset.posterLayer))
+      sync(layer, "checked", !state.hidden.has(studioValue(layer, "posterLayer")))
     for (const name of ["opacity", "width"])
       sync(find(name), "value", String(state[name]))
     label("opacity", state.opacity)
@@ -81,7 +82,7 @@ export function bindTextControls({ root, find, on, sync, studio, ensureFont }) {
     if (studio.tokens && studio.tokens !== seededTokens) {
       seededTokens = studio.tokens
       for (const input of tokens) {
-        const value = studio.tokens[input.dataset.posterToken]
+        const value = studio.tokens[studioValue(input, "posterToken")]
         if (value) input.value = value
         tokenLabel(input)
       }
