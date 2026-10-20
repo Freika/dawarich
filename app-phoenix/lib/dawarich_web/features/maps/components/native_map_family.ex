@@ -10,14 +10,6 @@ defmodule DawarichWeb.NativeMapFamily do
     <form id="native-map-family-layer" phx-change="settings:family_layer" hidden>
       <input type="hidden" name="enabled" value="false" />
     </form>
-    <p
-      id="native-family-status"
-      phx-update="ignore"
-      role="status"
-      class="sr-only"
-      data-centered={t(@locale, "javascript.messages.centered_on_family_member", %{})}
-    >
-    </p>
     """
   end
 
