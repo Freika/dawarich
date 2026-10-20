@@ -40,9 +40,7 @@ credentials to the invitation acceptance route; malformed/duplicate parameters
 remain refused. Source provider buttons are shared across auth callers, with
 per-action CSRF for the request session.
 
-Unsupported/missing-resource share states, public achievement full pages,
-all eight management page DOMs and trip studio variants still require completion
-or explicit contract differences. Existing behavior coverage is not evidence of
+All eight management page DOMs still require completion. Existing behavior coverage is not evidence of
 DOM parity for these remaining routes. The controller's parity bench remains
 read-only; pixel and request equality acceptance have not been run for this
 worktree.
@@ -77,3 +75,19 @@ shared relative-time helper. Hidden track statistics remain out of its title;
 that source privacy difference and replay/gallery wiring are registered.
 Explicit heading constraints retain 390 px fit for long names. The static CSS
 change removes only the retired 70vh map-height utility.
+
+
+The public achievement test now compares the complete body for every recorded
+locale, embed and card state. Its existing source recorder already covers these
+pages; no duplicate recorder was added. Trip poster/video studios now reuse the
+shared embedded source-shaped controls, compared in all seven locales through
+NativeMapStudiosParityTest and the existing posters recorder. Poster dates stay
+fixed; the native video runtime keeps its admitted fixed route while using the
+source control DOM. Existing gallery, callback and scoped-refusal checks remain.
+
+Missing trip/track resources use the native generic 404, with the existing access
+counter effect retained; Rails returns a specialized missing-resource body with
+200. An unknown persisted resource enum crashes Rails before its unsupported
+partial can render; the native grant stays closed with 404 and no access count.
+The existing sharing recorder now records these source results in seven locales,
+and SharingParityTest checks the explicit native envelope and data refusal.

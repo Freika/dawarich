@@ -135,6 +135,33 @@ RSpec.describe 'Phoenix fixtures: the public shared-link pages as Rails renders 
     entries + unlocks
   end
 
+  it 'records missing and unsupported resource presentation in every locale' do
+    travel_to(now) do
+      insert!
+      SharedLink.where(id: link_id(1)).update_all(resource_type: 99)
+      entries = %w[en de es fr pl ca zh].flat_map do |locale|
+        { 'unsupported' => 1, 'missing_trip' => 7, 'missing_track' => 8 }.map do |kind, number|
+          name = "#{kind}_#{locale}"
+          if kind == 'unsupported'
+            expect { get "/s/#{link_id(number)}", params: { locale: } }.to raise_error(NoMethodError)
+            next({ 'name' => name, 'kind' => kind, 'locale' => locale, 'path' => "/s/#{link_id(number)}?locale=#{locale}", 'source_error' => 'NoMethodError' })
+          end
+          get "/s/#{link_id(number)}", params: { locale: }
+          expect(response.status).to eq(200)
+          html = Nokogiri::HTML5(response.body).at_css('main').inner_html
+          path = dir.join("pages/refusal_#{name}.html")
+          if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+            File.write(path, html)
+          else
+            expect(path.read).to eq(html)
+          end
+          { 'name' => name, 'kind' => kind, 'locale' => locale, 'path' => "/s/#{link_id(number)}?locale=#{locale}", 'source_status' => response.status }
+        end
+      end
+      write_json('resource_refusals.json', { cases: entries })
+    end
+  end
+
   def unlocks
     additions = %w[es fr pl ca zh].map do |locale|
       reset!

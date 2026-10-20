@@ -389,3 +389,35 @@ RSpec.describe 'Phoenix fixtures: poster persistence and generation', type: :req
     end
   end
 end
+
+RSpec.describe 'Phoenix fixtures: trip studio page controls', type: :request do
+  include PosterFixtureSupport
+
+  let(:now) { Time.utc(2026, 10, 3, 10) }
+
+  it 'records trip poster and video controls in every locale' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+    actor = poster_actor(97_501)
+    trip = Trip.new(id: 97_501, user: actor, name: 'Studio fixture trip',
+                    started_at: Time.utc(2026, 5, 9, 6), ended_at: Time.utc(2026, 5, 12, 20))
+    trip.skip_calculation_enqueue = true
+    trip.save!
+    sign_in actor
+    %w[en de es fr pl ca zh].each do |locale|
+      get trip_path(trip), params: { locale: }
+      expect(response.status).to eq(200)
+      document = Nokogiri::HTML5(response.body)
+      %w[poster video].each do |kind|
+        studio = document.at_css("##{kind}-studio")
+        expect(studio).to be_present
+        html = poster_html(studio.to_html)
+        path = Rails.root.join("app-phoenix/test/fixtures/posters/trip_#{kind}_#{locale}.html")
+        if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+          File.write(path, html)
+        else
+          expect(path.read).to eq(html)
+        end
+      end
+    end
+  end
+end

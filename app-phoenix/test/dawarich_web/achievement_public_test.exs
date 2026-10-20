@@ -76,6 +76,21 @@ defmodule DawarichWeb.AchievementPublicTest do
     end
   end
 
+  test "public achievement complete body matches source in every locale and embed state" do
+    corpus = File.read!("#{@root}/public.json") |> Jason.decode!()
+
+    for row <- corpus, row["status"] == 200 and row["method"] == "GET" do
+      seed(row)
+      result = request(row["method"], row["path"], row["params"])
+      assert result.status == 200
+      actual = ParityHTML.fragment(result.resp_body, "body")
+      expected = File.read!("#{@root}/#{row["html_file"]}") |> ParityHTML.fragment("body")
+
+      assert actual == expected,
+             row["name"] <> ": " <> inspect(ParityHTML.first_difference(actual, expected))
+    end
+  end
+
   test "preserves embedding and not-found redirect header flash and HEAD semantics" do
     rows = File.read!("#{@root}/public.json") |> Jason.decode!()
     visible = Enum.find(rows, &(&1["name"] == "en_direct"))

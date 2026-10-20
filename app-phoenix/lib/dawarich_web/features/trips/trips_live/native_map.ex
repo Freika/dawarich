@@ -141,6 +141,7 @@ defmodule DawarichWeb.TripsLive.NativeMap do
         print_order_url={@page.studio.print_order_url}
         locale={@locale}
         fixed_range_label={@page.range_label}
+        native={true}
       />
       <.live_component
         module={DawarichWeb.VideoStudioLiveComponent}
@@ -150,6 +151,7 @@ defmodule DawarichWeb.TripsLive.NativeMap do
         base_url={assigns[:base_url] || ""}
         themes={@page.studio.themes}
         fixed_range_label={@page.range_label}
+        native={true}
       />
     </main>
     <p :if={@map_error} role="alert">{to_string(@map_error)}</p>

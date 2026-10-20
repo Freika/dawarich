@@ -161,7 +161,11 @@ defmodule DawarichWeb.SharingParityTest do
 
       source =
         if @entry["type"] == "track" and @entry["settings"]["show_stats"] == false do
-          assert html |> LazyHTML.from_document() |> LazyHTML.query("main h1") |> LazyHTML.text() |> String.trim() ==
+          assert html
+                 |> LazyHTML.from_document()
+                 |> LazyHTML.query("main h1")
+                 |> LazyHTML.text()
+                 |> String.trim() ==
                    "Public fixture share"
 
           assert source =~ " · "
@@ -345,6 +349,49 @@ defmodule DawarichWeb.SharingParityTest do
           assert html =~ ~s(<html lang="#{@page["html_lang"]}">)
         end
       end
+    end
+  end
+
+  @refusals (File.read!("test/fixtures/sharing/resource_refusals.json")
+             |> Jason.decode!())["cases"]
+  for entry <- @refusals do
+    @refusal entry
+    test "public resource #{@refusal["name"]} retains closed admission and generic unavailable DOM" do
+      id = URI.parse(@refusal["path"]).path |> String.split("/") |> List.last()
+
+      if @refusal["kind"] == "unsupported" do
+        Dawarich.Repo.query!("UPDATE shared_links SET resource_type=99 WHERE id=$1::text::uuid", [
+          id
+        ])
+
+        assert @refusal["source_error"] == "NoMethodError"
+      else
+        assert @refusal["source_status"] == 200
+        source = SharingSeeds.page("refusal_#{@refusal["name"]}.html")
+        assert source =~ "hero min-h-[60vh]"
+      end
+
+      before = SharingSeeds.view_count(id)
+      response = get(build_conn(), @refusal["path"])
+      assert response.status == 404
+      assert header(response, "cache-control") == "private, no-store"
+
+      expected =
+        SharingSeeds.page("not_found_revoked_#{@refusal["locale"]}.html")
+        |> Dawarich.Test.ParityHTML.fragment("main")
+
+      actual = Dawarich.Test.ParityHTML.fragment(response.resp_body, "main")
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+
+      assert response.resp_body
+             |> LazyHTML.from_document()
+             |> LazyHTML.query("[phx-hook=PublicMap]")
+             |> Enum.empty?()
+
+      assert get(build_conn(), "/native/public/maps/#{id}/metadata").status == 404
+
+      assert SharingSeeds.view_count(id) ==
+               before + if(@refusal["kind"] == "unsupported", do: 0, else: 1)
     end
   end
 

@@ -393,9 +393,10 @@
         "sharing/resources.json",
         "public_presentation_test.exs",
         "public_native_gallery_test.exs",
-        "phoenix_public_map_day_hook_test.mjs"
+        "phoenix_public_map_day_hook_test.mjs",
+        "sharing/resource_refusals.json"
       ],
-      "status": "live/timeline/prompt/not-found and static trip/track main DOM verified; static full/minimal and notes in seven locales; hidden-track-statistics title retained as privacy contract; unsupported/missing-resource presentation audit pending"
+      "status": "live/timeline/prompt/not-found and static trip/track main DOM verified in seven locales; missing resources retain native 404 and generic unavailable body; unknown persisted enum crashes Rails and remains closed native 404; these explicit contract differences are registered"
     },
     {
       "path": "/s/:id/unlock",
@@ -467,9 +468,11 @@
       ],
       "evidence": [
         "sharing_endpoint_test.exs",
-        "native_public_pages_test.exs"
+        "native_public_pages_test.exs",
+        "achievement_public_test.exs",
+        "achievement_public/public.json"
       ],
-      "status": "pending"
+      "status": "complete body DOM verified against existing source recorder for all locale, embed and card states; availability/HEAD/privacy guards preserved"
     },
     {
       "path": "/share_links/hub",
@@ -621,9 +624,11 @@
       "evidence": [
         "posters_parity_test.exs",
         "route_video_parity_test.exs",
-        "native_map_studios_parity_test.exs"
+        "native_map_studios_parity_test.exs",
+        "native_map_studios_parity_test.exs",
+        "posters/trip_{poster,video}_{locale}.html"
       ],
-      "status": "existing embedded map studio DOM verified; trip variants need audit and parity"
+      "status": "map studio DOM preserved; trip variants now compare both complete control DOMs in all seven locales, with source fixed poster range and native fixed video-range runtime; browser acceptance pending"
     },
     {
       "path": "/route_videos",
@@ -639,9 +644,11 @@
       "evidence": [
         "posters_parity_test.exs",
         "route_video_parity_test.exs",
-        "native_map_studios_parity_test.exs"
+        "native_map_studios_parity_test.exs",
+        "native_map_studios_parity_test.exs",
+        "posters/trip_{poster,video}_{locale}.html"
       ],
-      "status": "existing embedded map studio DOM verified; trip variants need audit and parity"
+      "status": "map studio DOM preserved; trip variants now compare both complete control DOMs in all seven locales, with source fixed poster range and native fixed video-range runtime; browser acceptance pending"
     },
     {
       "path": "/posters/:id",

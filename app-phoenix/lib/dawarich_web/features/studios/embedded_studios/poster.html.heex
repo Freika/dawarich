@@ -19,6 +19,7 @@
       </div>
 
       <div
+        :if={is_nil(assigns[:fixed_range_label])}
         id="native-poster-dates"
         phx-update="ignore"
         class="flex flex-wrap items-center gap-2 min-w-0 lg:flex-nowrap"
@@ -72,6 +73,14 @@
             "last_month"
           )}</button>
         </div>
+      </div>
+
+      <div
+        :if={assigns[:fixed_range_label]}
+        class="flex items-center gap-2 min-w-0 text-sm opacity-70"
+      >
+        <Icon.icon name="calendar-clock" class="h-4 w-4" />
+        <span>{@fixed_range_label}</span>
       </div>
 
       <button

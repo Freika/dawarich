@@ -13002,6 +13002,58 @@
         }
       ],
       "authority": "D6 Rails day rows own the native day click directly; source-hidden extra Select button removed; selected-day event/state and revocation refusal retained"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/native_m6_trip_routes_test.exs",
+        "name": "canonical trip route owns native commands studios and fresh resource refusals"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/native_m6_trip_routes_test.exs",
+          "name": "canonical trip route owns native commands studios and fresh resource refusals"
+        }
+      ],
+      "authority": "D6 trip caller reuses source-shaped embedded studios: poster fixed range and both scoped native gallery owners retained; selectors follow poster-studio/video-studio and source gallery ids"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/native_m6_trip_studios_test.exs",
+        "name": "trip studio owners keep fixed dates and handle gallery callbacks"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/native_m6_trip_studios_test.exs",
+          "name": "trip studio owners keep fixed dates and handle gallery callbacks"
+        }
+      ],
+      "authority": "D6 trip caller reuses source-shaped embedded studios: poster fixed range and both scoped native gallery owners retained; selectors follow poster-studio/video-studio and source gallery ids"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/trips_live_test.exs",
+        "name": "native trip replay and studios retain day navigation and fixed range"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/trips_live_test.exs",
+          "name": "native trip replay and studios retain day navigation and fixed range"
+        }
+      ],
+      "authority": "D6 trip caller reuses source-shaped embedded studios: poster fixed range and both scoped native gallery owners retained; selectors follow poster-studio/video-studio and source gallery ids"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/trips_live_test.exs",
+        "name": "native trip title and range settings retain cookie geometry without credentials"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/trips_live_test.exs",
+          "name": "native trip title and range settings retain cookie geometry without credentials"
+        }
+      ],
+      "authority": "D6 trip studios use the source-shaped embedded owner ids while retaining exact private map path/settings and credential privacy assertions"
     }
   ],
   "readers": [

@@ -1,15 +1,15 @@
 defmodule DawarichWeb.NativeMapStudiosParityTest do
   use Dawarich.DataCase, async: true
   import Phoenix.ConnTest
-  alias Dawarich.Test.{NativeAdminUI, ParityHTML, RailsUser}
+  alias Dawarich.Test.{NativeAdminUI, ParityHTML, RailsUser, TripsSeeds}
   @endpoint DawarichWeb.Endpoint
   @fixture "test/fixtures/map_ui/rails-1.16.0-studios.html"
   @accessible_controls %{
-    "data-native-poster-date-start" => "Start date and time",
-    "data-native-poster-date-end" => "End date and time",
-    "data-native-poster-layout" => "Layout",
-    "data-native-poster-opacity" => "Track opacity",
-    "data-native-poster-width" => "Track width"
+    "data-native-poster-date-start" => "shared.map.date_navigation_v2.start_date_and_time",
+    "data-native-poster-date-end" => "shared.map.date_navigation_v2.end_date_and_time",
+    "data-native-poster-layout" => "posters.studio.layout",
+    "data-native-poster-opacity" => "posters.studio.track_opacity",
+    "data-native-poster-width" => "posters.studio.track_width"
   }
 
   setup do
@@ -26,7 +26,7 @@ defmodule DawarichWeb.NativeMapStudiosParityTest do
       |> get("/map?start_at=2026-10-16&end_at=2026-10-18&locale=en")
       |> html_response(200)
 
-    %{html: html}
+    %{html: html, user_id: id}
   end
 
   for kind <- ~w(poster video) do
@@ -34,7 +34,10 @@ defmodule DawarichWeb.NativeMapStudiosParityTest do
       name = unquote(kind) <> "-studio"
       studio = html |> LazyHTML.from_document() |> LazyHTML.query("#" <> name)
       assert NativeAdminUI.labels(LazyHTML.to_html(studio)) == []
-      phoenix = studio |> LazyHTML.to_tree() |> studio_accessibility() |> ParityHTML.normalize()
+
+      phoenix =
+        studio |> LazyHTML.to_tree() |> studio_accessibility("en") |> ParityHTML.normalize()
+
       phoenix = if unquote(kind) == "poster", do: poster_resilience(phoenix), else: phoenix
 
       rails =
@@ -68,6 +71,35 @@ defmodule DawarichWeb.NativeMapStudiosParityTest do
     end
   end
 
+  for locale <- ~w(en de es fr pl ca zh), kind <- ~w(poster video) do
+    @locale locale
+    @kind kind
+    test "the trip #{@kind} studio in #{@locale} matches Rails 1.16.0", %{user_id: id} do
+      TripsSeeds.trip!(%{id: id * 10, user_id: id, name: "Studio fixture trip"})
+
+      html =
+        RailsUser.signed_in(id)
+        |> get("/trips/#{id * 10}?locale=#{@locale}")
+        |> html_response(200)
+
+      studio = html |> LazyHTML.from_document() |> LazyHTML.query("##{@kind}-studio")
+      assert Enum.count(studio) == 1
+      assert NativeAdminUI.labels(LazyHTML.to_html(studio)) == []
+
+      actual =
+        studio |> LazyHTML.to_tree() |> studio_accessibility(@locale) |> ParityHTML.normalize()
+
+      actual = if @kind == "poster", do: poster_resilience(actual), else: actual
+
+      expected =
+        File.read!("test/fixtures/posters/trip_#{@kind}_#{@locale}.html")
+        |> ParityHTML.normalize()
+        |> without_save_form()
+
+      assert actual == expected, ParityHTML.first_difference(actual, expected)
+    end
+  end
+
   test "studio patches preserve browser top-layer presentation", %{html: html} do
     for kind <- ~w(poster video) do
       [mounted] =
@@ -82,20 +114,21 @@ defmodule DawarichWeb.NativeMapStudiosParityTest do
     end
   end
 
-  defp studio_accessibility(nodes) when is_list(nodes),
-    do: Enum.map(nodes, &studio_accessibility/1)
+  defp studio_accessibility(nodes, locale) when is_list(nodes),
+    do: Enum.map(nodes, &studio_accessibility(&1, locale))
 
-  defp studio_accessibility({tag, attrs, children}) do
+  defp studio_accessibility({tag, attrs, children}, locale) do
     additions =
-      for {key, label} <- @accessible_controls, {^key, _} <- attrs do
+      for {key, path} <- @accessible_controls, {^key, _} <- attrs do
+        label = DawarichWeb.Translate.t(locale, path, %{})
         assert {"aria-label", label} in attrs
         {"aria-label", label}
       end
 
-    {tag, attrs -- additions, studio_accessibility(children)}
+    {tag, attrs -- additions, studio_accessibility(children, locale)}
   end
 
-  defp studio_accessibility(text), do: text
+  defp studio_accessibility(text, _locale), do: text
 
   @poster_resilience %{
     "flex flex-wrap items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2 lg:flex-nowrap" =>
