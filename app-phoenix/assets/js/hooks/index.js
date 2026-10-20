@@ -21,6 +21,7 @@ import { CredentialQr } from "./credential_qr.js"
 import { CredentialValue } from "./credential_value.js"
 import { Dismissible } from "./dismissible.js"
 import { EmojiPicker } from "./emoji_picker.js"
+import { FamilySharing, FamilyInviteScroll, AchievementClipboard, AchievementMaterial } from "./achievement_family.js"
 import { FamilyConfirm } from "./family_confirm.js"
 import { FamilyInvitationClipboard } from "./family_invitation_clipboard.js"
 import { LayerToggle } from "./layer_toggle.js"
@@ -46,8 +47,12 @@ export const hooks = {
   SharingReveal,
   FamilyMap,
   FamilyConfirm,
+  FamilySharing,
+  FamilyInviteScroll,
   FamilyInvitationClipboard,
   AchievementUnlocks,
+  AchievementClipboard,
+  AchievementMaterial,
   ArchiveChecksum,
   AreaPreview,
   ChangelogWidget,

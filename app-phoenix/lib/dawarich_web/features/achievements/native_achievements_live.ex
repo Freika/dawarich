@@ -12,6 +12,7 @@ defmodule DawarichWeb.NativeAchievementsLive do
          data: nil,
          selected: nil,
          share_url: nil,
+         panel: nil,
          page_title: t(socket.assigns.locale, "achievements.ui.title", %{})
        )}
 
@@ -28,12 +29,15 @@ defmodule DawarichWeb.NativeAchievementsLive do
           selected: selected,
           share_url: url(selected),
           page_title:
-            if(data.view[:set], do: data.view.set["name"], else: socket.assigns.page_title)
+            if(data.view[:set],
+              do: data.view.set["name"],
+              else: t(socket.assigns.locale, "achievements.ui.title", %{})
+            )
         )
 
       socket =
         if is_nil(selected),
-          do: push_event(socket, "close-dialog", %{id: "achievement-dialog"}),
+          do: push_event(socket, "close-dialog", %{id: "native-achievement-dialog"}),
           else: socket
 
       {:noreply, socket}
@@ -68,7 +72,7 @@ defmodule DawarichWeb.NativeAchievementsLive do
          {:ok, scope} <- NativeDataAuth.scope(socket),
          {:ok, fresh} <- Pages.load(scope, query),
          selected when not is_nil(selected) <- find(fresh, key) do
-      {:noreply, assign(socket, selected: selected, share_url: url(selected))}
+      {:noreply, assign(socket, selected: selected, share_url: url(selected), panel: nil)}
     else
       _ -> {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
     end
@@ -78,15 +82,30 @@ defmodule DawarichWeb.NativeAchievementsLive do
     do:
       {:noreply,
        socket
-       |> assign(selected: nil, share_url: nil)
-       |> push_event("close-dialog", %{id: "achievement-dialog"})}
+       |> assign(selected: nil, share_url: nil, panel: nil)
+       |> push_event("close-dialog", %{id: "native-achievement-dialog"})}
 
-  def handle_event("share_card", %{"enabled" => enabled}, socket) do
+  def handle_event("share_collection", %{"enabled" => enabled}, socket) do
+    with %{view: %{set: set}, query: query} <- socket.assigns.data,
+         {:ok, scope} <- NativeDataAuth.scope(socket),
+         {:ok, _} <- Commands.share(scope, set["key"], %{"enabled" => enabled == "true"}),
+         {:ok, data} <- Pages.load(scope, query) do
+      {:noreply, assign(socket, data: data)}
+    else
+      _ -> {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
+    end
+  end
+
+  def handle_event("share_card", %{"enabled" => enabled} = params, socket) do
     with selected when not is_nil(selected) <- socket.assigns.selected,
          key when is_binary(key) <- selected.share_key,
          {:ok, scope} <- NativeDataAuth.scope(socket),
          {:ok, result} <- Commands.share(scope, key, %{"enabled" => enabled == "true"}) do
-      {:noreply, assign(socket, share_url: if(result.enabled, do: result.url, else: nil))}
+      {:noreply,
+       assign(socket,
+         share_url: if(result.enabled, do: result.url, else: nil),
+         panel: params["panel"] || "link"
+       )}
     else
       _ -> {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
     end
@@ -105,6 +124,7 @@ defmodule DawarichWeb.NativeAchievementsLive do
       share_url={@share_url}
       locale={@locale}
       base_url={@base_url}
+      panel={@panel}
     />
     """
   end

@@ -51,6 +51,33 @@ defmodule Dawarich.FamiliesSnapshotRaceTest do
     }
   end
 
+  for reader <- [:page, :locations] do
+    @tag point_count_snapshot: true
+    test "#{reader} keeps its family grant when ingestion updates only the actor point count",
+         c do
+      opts = [
+        now: @now,
+        self_hosted: true,
+        after_read: fn result ->
+          Repo.query!(
+            "UPDATE users SET points_count=COALESCE(points_count,0)+1 WHERE id=$1",
+            [c.scope.user.id], log: false)
+
+          result
+        end
+      ]
+
+      result =
+        case unquote(reader) do
+          :page -> Families.page(c.scope, :show, opts)
+          :locations -> Families.locations(c.scope, opts)
+        end
+
+      assert {:ok, page} = result
+      assert is_map(page)
+    end
+  end
+
   test "guarded family refusal leaves the surrounding ingestion transaction usable", c do
     Repo.transaction(fn ->
       assert_raise ArgumentError, "synthetic unsupported family input", fn ->

@@ -116,7 +116,7 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
     view = open(user)
 
     view
-    |> form("#native-family-sharing",
+    |> render_hook("family:sharing", %{
       sharing:
         Map.merge(
           %{
@@ -127,8 +127,7 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
           },
           attrs
         )
-    )
-    |> render_change()
+    })
 
     :ok
   end
@@ -138,8 +137,8 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
 
   defp confirm(view, action, id, prompt) do
     selector =
-      "[data-family-action='#{action}']" <>
-        if(id, do: "[data-family-target='#{id}']", else: "")
+      "[data-native-family-action='#{action}']" <>
+        if(id, do: "[data-native-family-target='#{id}']", else: "")
 
     effects =
       "SELECT (SELECT count(*) FROM families), (SELECT count(*) FROM family_memberships)"

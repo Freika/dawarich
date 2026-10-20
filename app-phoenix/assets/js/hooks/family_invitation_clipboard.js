@@ -11,7 +11,7 @@ export const FamilyInvitationClipboard = {
       this.controller = controller
       this.el.disabled = true
       try {
-        const response = await fetch(this.el.dataset.revealPath, {
+        const response = await fetch(this.el.dataset.nativeRevealPath || this.el.dataset.revealPath, {
           credentials: "same-origin",
           cache: "no-store",
           signal: controller.signal,
@@ -34,7 +34,7 @@ export const FamilyInvitationClipboard = {
         )
         if (generation !== this.generation) return
         this.report(
-          copied ? this.el.dataset.copiedLabel : this.el.dataset.failedLabel,
+          copied ? (this.el.dataset.nativeCopiedLabel || this.el.dataset.copiedLabel) : (this.el.dataset.nativeFailedLabel || this.el.dataset.failedLabel),
         )
         if (!copied)
           this.clearRecovery = manualCopy(
@@ -43,7 +43,7 @@ export const FamilyInvitationClipboard = {
           )
       } catch {
         if (generation === this.generation)
-          this.report(this.el.dataset.failedLabel)
+          this.report((this.el.dataset.nativeFailedLabel || this.el.dataset.failedLabel))
       } finally {
         if (generation === this.generation) this.el.disabled = false
       }

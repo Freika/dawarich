@@ -53,11 +53,11 @@ defmodule DawarichWeb.AchievementsLiveTest do
     progress(%{"earned" => %{"DE-BY" => "2026-07-19T10:00:00Z"}})
     {:ok, view, _html} = live_as(user, "/achievements/country_de")
     render_click(view, "select_card", %{"key" => "country_de"})
-    assert has_element?(view, "#achievement-dialog [data-selected-key=country_de]")
+    assert has_element?(view, "#native-achievement-dialog [data-selected-key=country_de]")
     render_click(view, "share_card", %{"enabled" => "true"})
     assert has_element?(view, "#achievement-share-output[value*='/shared/achievements/']")
     render_click(view, "share_card", %{"enabled" => "false"})
-    refute has_element?(view, "#achievement-share-output")
+    refute has_element?(view, "#achievement-share-output[value]")
   end
 
   test "native collection renders and connects with missing exploration untouched", %{user: user} do
@@ -115,15 +115,19 @@ defmodule DawarichWeb.AchievementsLiveTest do
                  )
       end
 
-      assert Enum.count(LazyHTML.query(actual, "#native-achievements .ach-grid button")) == 13
+      assert Enum.count(LazyHTML.query(actual, "#native-achievements .ach-card")) == 13
 
       assert LazyHTML.query(actual, ".ach-page .ach-silhouette-svg path")
              |> LazyHTML.attribute("d") ==
                LazyHTML.query(expected, ".ach-silhouette-svg path") |> LazyHTML.attribute("d")
 
-      assert has_element?(view, "#achievement-filter[phx-submit=filter] input[maxlength='100']")
+      assert has_element?(
+               view,
+               "#native-achievement-filter[phx-submit=filter] input[maxlength='100']"
+             )
+
       render_click(view, "select_card", %{"key" => "country_de"})
-      assert has_element?(view, "#achievement-dialog [data-selected-key=country_de]")
+      assert has_element?(view, "#native-achievement-dialog [data-selected-key=country_de]")
       assert has_element?(view, "a[rel=next][data-phx-link=patch]")
       assert has_element?(view, "a[href='/achievements/continent_europe']")
       assert Enum.count(LazyHTML.query(actual, "meta[name='csrf-token']")) == 1
@@ -136,7 +140,7 @@ defmodule DawarichWeb.AchievementsLiveTest do
     fixture = File.read!(Path.join(@root, "en-complete-first.json")) |> Jason.decode!()
     progress(fixture["seed_state"])
     {:ok, first, _} = live_as(user, "/achievements/country_de")
-    assert has_element?(first, "[data-celebrate=true]")
+    assert has_element?(first, ".ach-card-wrap--celebrate")
 
     assert [[stamp]] =
              Dawarich.Repo.query!(
@@ -148,7 +152,7 @@ defmodule DawarichWeb.AchievementsLiveTest do
     assert offset == 7200
 
     {:ok, second, _} = live_as(user, "/achievements/country_de")
-    refute has_element?(second, "[data-celebrate=true]")
+    refute has_element?(second, ".ach-card-wrap--celebrate")
   end
 
   test "the connected mount reuses the silhouettes the first render built", %{user: user} do
@@ -182,7 +186,7 @@ defmodule DawarichWeb.AchievementsLiveTest do
     progress(%{"earned" => %{"DE" => "2026-07-01T10:00:00Z", "DE-BY" => "2026-07-01T10:00:00Z"}})
     {:ok, view, _} = live_as(user, "/achievements/country_de")
     render_submit(view, "filter", %{"q" => "", "status" => "unlocked"})
-    assert has_element?(view, "#achievement-status option[value=unlocked][selected]")
+    assert has_element?(view, "#status option[value=unlocked][selected]")
 
     assert :sys.get_state(view.pid).socket.assigns.data.view.children |> Enum.map(& &1["name"]) ==
              ["Bavaria"]
@@ -203,10 +207,10 @@ defmodule DawarichWeb.AchievementsLiveTest do
     {:ok, view, html} =
       live_as(user, "/achievements/continent_europe?q=%3Cscript%3E&status=locked")
 
-    assert has_element?(view, "#native-achievements p[role=status]")
+    assert has_element?(view, "#native-achievements .ach-empty[role=status]")
     assert has_element?(view, "input[name='q'][value='<script>']")
     refute html =~ "<script>"
-    assert has_element?(view, "#achievement-filter a[data-phx-link=patch]")
+    assert has_element?(view, "#native-achievement-filter a[data-phx-link=patch]")
   end
 
   test "native opaque achievement settings refuse HTTP before writes and clear joined projections",

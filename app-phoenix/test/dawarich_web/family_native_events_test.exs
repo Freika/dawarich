@@ -83,7 +83,7 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
   test "native member confirmation gates cancellation and repeated removal cannot affect the owner",
        ctx do
     {view, _} = open(ctx.owner, "/family")
-    selector = "button[data-family-action=remove_member][data-family-target='92002']"
+    selector = "[data-native-family-action=remove_member][data-native-family-target='92002']"
     assert has_element?(view, selector)
     assert row("SELECT count(*) FROM family_memberships WHERE id=92002") == [[1]]
     view |> element(selector) |> render_click()
@@ -102,7 +102,7 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
     {view, _} = open(ctx.owner, "/family")
 
     view
-    |> element("button[data-family-action=remove_member][data-family-target='92002']")
+    |> element("[data-native-family-action=remove_member][data-native-family-target='92002']")
     |> render_click()
 
     render_click(view, "family_confirm", %{})
@@ -141,7 +141,7 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
 
     assert has_element?(
              view,
-             "[data-family-action=cancel_invitation][data-family-target='#{id}']"
+             "[data-native-family-action=cancel_invitation][data-native-family-target='#{id}']"
            )
 
     refute Map.has_key?(
@@ -153,7 +153,7 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
            )
 
     view
-    |> element("[data-family-action=cancel_invitation][data-family-target='#{id}']")
+    |> element("[data-native-family-action=cancel_invitation][data-native-family-target='#{id}']")
     |> render_click()
 
     render_click(view, "family_confirm", %{})
@@ -161,7 +161,7 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
 
     refute has_element?(
              view,
-             "[data-family-action=cancel_invitation][data-family-target='#{id}']"
+             "[data-native-family-action=cancel_invitation][data-native-family-target='#{id}']"
            )
   end
 
@@ -183,9 +183,18 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
     assert config["enabled"] and config["share_history"]
     refute config["history_before_sharing"]
     assert config["duration"] == "6h" and config["history_window"] == "30d"
-    assert has_element?(view, "input[name='sharing[share_history]'][type=checkbox][checked]")
+
+    assert has_element?(
+             view,
+             "input[data-native-sharing-field=share_history][type=checkbox][checked]"
+           )
+
     assert render(view) =~ "Location sharing enabled for 6 hours"
-    assert has_element?(view, "select[name='sharing[duration]'] option[value='6h'][selected]")
+
+    assert has_element?(
+             view,
+             "select[data-native-sharing-field=duration] option[value='6h'][selected]"
+           )
 
     render_change(view, "family:sharing", %{
       "sharing" => %{
@@ -195,22 +204,33 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
       }
     })
 
-    assert has_element?(view, "input[name='sharing[enabled]'][type=checkbox][checked]")
+    assert has_element?(view, "input[data-native-sharing-field=enabled][type=checkbox][checked]")
 
     assert has_element?(
              view,
              "#family-navbar-indicator[data-tip='Location is being shared with your family']"
            )
 
-    refute has_element?(view, "input[name='sharing[share_history]'][type=checkbox][checked]")
-    assert has_element?(view, "select[name='sharing[duration]'] option[value='1h'][selected]")
+    refute has_element?(
+             view,
+             "input[data-native-sharing-field=share_history][type=checkbox][checked]"
+           )
+
+    assert has_element?(
+             view,
+             "select[data-native-sharing-field=duration] option[value='1h'][selected]"
+           )
 
     render_change(view, "family:sharing", %{
       "sharing" => %{"enabled" => "0", "share_history" => "1"}
     })
 
-    refute has_element?(view, "input[name='sharing[enabled]'][type=checkbox][checked]")
-    refute has_element?(view, "input[name='sharing[share_history]'][type=checkbox][checked]")
+    refute has_element?(view, "input[data-native-sharing-field=enabled][type=checkbox][checked]")
+
+    refute has_element?(
+             view,
+             "input[data-native-sharing-field=share_history][type=checkbox][checked]"
+           )
   end
 
   test "only the request target can accept or decline and closing a request dialog does not write",
