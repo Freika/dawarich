@@ -128,7 +128,7 @@ export function createInfoCard({
     entity = { type: "area", id, name: properties.name }
   }
 
-  function act({ action, id, entityType }) {
+  function act({ nativeInfoAction: action, id, entityType }) {
     if (action === "edit") {
       pushEvent(entityType === "area" ? "area:edit" : "place:edit", { id })
     } else if (entityType === "area") {

@@ -75,7 +75,13 @@ function fixture({ confirmed = true } = {}) {
           selector === "[data-native-info-display]"
             ? {}
             : selector === "[data-native-info-action]" && dataset.action
-              ? { dataset }
+              ? {
+                  dataset: {
+                    nativeInfoAction: dataset.action,
+                    id: dataset.id,
+                    entityType: dataset.entityType,
+                  },
+                }
               : selector === "[data-native-info-close]" && dataset.close
                 ? {}
                 : null,
