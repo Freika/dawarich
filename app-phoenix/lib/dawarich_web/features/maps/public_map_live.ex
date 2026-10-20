@@ -118,84 +118,45 @@ defmodule DawarichWeb.PublicMapLive do
     <DawarichWeb.NativePublicChrome.header {assigns} />
     <main
       data-native-map-root
-      class="mx-auto w-full min-w-0 max-w-7xl p-4"
+      {if !DawarichWeb.PublicMapShell.simple?(@public_presentation), do: %{class: "mx-auto w-full min-w-0 max-w-7xl p-4"}, else: %{}}
       data-map-ready={to_string(@public_map_ready)}
     >
-      <%= if @public_config do %>
-        <h1 class="mb-4 break-words text-3xl font-bold [overflow-wrap:anywhere]">
-          {@public_title}
-        </h1>
-        <DawarichWeb.NativePublicResource.resource
-          presentation={@public_presentation}
-          selected_day={@public_selected_day}
-          gallery_days={@public_gallery_days}
-          locale={@locale || "en"}
-        />
-        <DawarichWeb.MapReplay.opener
-          :if={@map_visible}
-          id="native-public-replay"
-          locale={@locale || "en"}
-        />
-        <DawarichWeb.MapReplay.replay_panel
-          :if={@map_visible}
-          id="native-public-replay"
-          locale={@locale || "en"}
-          show_day_nav
-          native
-          hook="native"
-        />
-        <DawarichWeb.NativeMapHost.map_host
-          :if={@map_visible}
-          id="native-public-map"
-          hook="PublicMap"
-          config={@public_config}
-          locale={@locale || "en"}
-          class="h-[70vh] min-h-80 w-full min-w-0 rounded-lg"
-        />
-      <% else %>
-        <%= if @public_error == :locked do %>
-          <section class="mx-auto max-w-md py-8 text-center">
-            <h1 class="text-3xl font-bold">
-              {t(@locale, "shared.links.phrase_prompt.enter_the_magic_phrase", %{})}
-            </h1>
-            <p class="py-4">
-              {t(
-                @locale,
-                "shared.links.phrase_prompt.this_shared_link_is_protected_ask_the_owner_for_the",
-                %{}
-              )}
-            </p>
-            <form action={"/s/#{@public_capability.id}/unlock"} method="post" class="form-control">
-              <input type="hidden" name="authenticity_token" value={@public_unlock_token} />
-              <label for="public-phrase" class="label">{t(
-                @locale,
-                "shared.links.phrase_prompt.magic_phrase",
-                %{}
-              )}</label>
-              <input
-                id="public-phrase"
-                name="phrase"
-                type="text"
-                required
-                class="input input-bordered w-full min-w-0"
-              />
-              <button class="btn btn-primary mt-4 h-auto min-h-12 whitespace-normal">{t(
-                @locale,
-                "shared.links.phrase_prompt.unlock",
-                %{}
-              )}</button>
-            </form>
-          </section>
-        <% else %>
-          <section role="status" class="mx-auto max-w-md py-8 text-center">
-            <h1 class="text-3xl font-bold">
-              {t(@locale, "shared.links.not_found.this_shared_link_is_no_longer_available", %{})}
-            </h1>
-            <p class="py-4">
-              {t(@locale, "shared.links.not_found.the_owner_may_have_revoked_the_link_or_it_may", %{})}
-            </p>
-          </section>
-        <% end %>
+      <%= cond do %>
+        <% @public_config && DawarichWeb.PublicMapShell.simple?(@public_presentation) -> %>
+          <DawarichWeb.PublicMapShell.content {assigns} />
+        <% @public_config -> %>
+          <h1 class="mb-4 break-words text-3xl font-bold [overflow-wrap:anywhere]">
+            {@public_title}
+          </h1>
+          <DawarichWeb.NativePublicResource.resource
+            presentation={@public_presentation}
+            selected_day={@public_selected_day}
+            gallery_days={@public_gallery_days}
+            locale={@locale || "en"}
+          />
+          <DawarichWeb.MapReplay.opener
+            :if={@map_visible}
+            id="native-public-replay"
+            locale={@locale || "en"}
+          />
+          <DawarichWeb.MapReplay.replay_panel
+            :if={@map_visible}
+            id="native-public-replay"
+            locale={@locale || "en"}
+            show_day_nav
+            native
+            hook="native"
+          />
+          <DawarichWeb.NativeMapHost.map_host
+            :if={@map_visible}
+            id="native-public-map"
+            hook="PublicMap"
+            config={@public_config}
+            locale={@locale || "en"}
+            class="h-[70vh] min-h-80 w-full min-w-0 rounded-lg"
+          />
+        <% true -> %>
+          <DawarichWeb.PublicMapShell.unavailable {assigns} />
       <% end %>
     </main>
     <DawarichWeb.NativePublicChrome.footer :if={!@current_scope} locale={@locale} />

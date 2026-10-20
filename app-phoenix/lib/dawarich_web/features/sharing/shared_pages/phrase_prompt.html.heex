@@ -21,12 +21,13 @@
         <input
           type="hidden"
           name="authenticity_token"
-          value={form_token(@rails_session, @link.id)}
+          value={assigns[:token] || form_token(@rails_session, @link.id)}
         />
         <input
           required="required"
           autofocus="autofocus"
           class="input input-bordered w-full"
+          aria-label={t(@locale, "shared.links.phrase_prompt.magic_phrase", %{})}
           placeholder={t(@locale, "shared.links.phrase_prompt.magic_phrase", %{})}
           type="text"
           name="phrase"

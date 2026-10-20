@@ -90,6 +90,28 @@ defmodule DawarichWeb.SharingParityTest do
              [csrf["meta"]]
   end
 
+  for page <- @pages,
+      page["verb"] == "get",
+      String.starts_with?(page["name"], ["live_", "timeline_", "expired_", "revoked_", "unknown_"]) do
+    @shell page
+    test "public shell #{@shell["name"]} matches Rails 1.16.0" do
+      conn = request(@shell, unlocked(@shell))
+
+      actual =
+        conn.resp_body
+        |> String.replace(~s(id="native-public-map"), ~s(id="native-canonical-public-map"))
+
+      source =
+        SharingSeeds.page("#{@shell["name"]}.html")
+        |> String.replace(~s(id="shared-live-map"), ~s(id="native-canonical-public-map"))
+        |> String.replace(~s(id="shared-trip-map"), ~s(id="native-canonical-public-map"))
+
+      actual = Dawarich.Test.ParityHTML.fragment(actual, "main")
+      expected = Dawarich.Test.ParityHTML.fragment(source, "main")
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+    end
+  end
+
   for page <- @pages do
     @page page
 
@@ -171,7 +193,13 @@ defmodule DawarichWeb.SharingParityTest do
               |> Jason.decode!()
 
             link = Enum.find(SharingSeeds.fixture("seed.json")["shared_links"], &(&1["id"] == id))
-            assert text(doc, "main h1") == link["name"]
+
+            assert text(doc, "main h1") ==
+                     if(link["resource_type"] == 2,
+                       do: text(LazyHTML.from_fragment(rails), "main h1"),
+                       else: link["name"]
+                     )
+
             assert config["shareId"] == id
 
             route =
@@ -204,6 +232,14 @@ defmodule DawarichWeb.SharingParityTest do
                        Date.from_iso8601!(link["settings"]["end_date"])
             end
           else
+            if @page["status"] in [401, 404] do
+              actual = Dawarich.Test.ParityHTML.fragment(html, "main")
+              expected = Dawarich.Test.ParityHTML.fragment(rails, "main")
+
+              assert actual == expected,
+                     Dawarich.Test.ParityHTML.first_difference(actual, expected)
+            end
+
             assert Enum.empty?(LazyHTML.query(doc, "#native-public-map"))
 
             assert text(doc, "main h1") ==

@@ -15518,6 +15518,13 @@
       "markers": [
         "test/fixtures/"
       ]
+    },
+    {
+      "file": "app-phoenix/test/dawarich_web/auth_pages_parity_test.exs",
+      "markers": [
+        "test/fixtures",
+        "fixtures/"
+      ]
     }
   ],
   "reader_markers": [

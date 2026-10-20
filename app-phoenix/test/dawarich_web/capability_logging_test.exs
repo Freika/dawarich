@@ -131,7 +131,7 @@ defmodule DawarichWeb.CapabilityLoggingTest do
     for id <- ids do
       locked = get(build_conn(), "/s/" <> id)
       assert locked.status == 401
-      assert locked.resp_body =~ "public-phrase"
+      assert locked.resp_body =~ ~s(name="phrase")
       refute locked.resp_body =~ "id=\"native-public-map\""
 
       unlocked =

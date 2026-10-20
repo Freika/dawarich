@@ -90,7 +90,7 @@ defmodule DawarichWeb.NativeM6PublicRoutesTest do
 
     locked = get(build_conn(), "/s/#{uuid}")
     assert locked.status == 401
-    assert locked.resp_body =~ "public-phrase"
+    assert locked.resp_body =~ ~s(name="phrase")
     rows("UPDATE shared_links SET revoked_at=now() WHERE id=$1::text::uuid", [uuid])
     revoked = get(build_conn(), "/s/#{uuid}")
     assert revoked.status == 404
