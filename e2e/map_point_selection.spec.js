@@ -113,7 +113,7 @@ test("a merged marker zooms until a single point can be selected", async ({
     .toBe("zoom-in")
   await page.mouse.click(position.x, position.y)
 
-  const info = page.locator("#native-point-address, #native-map-point-summary")
+  const info = page.locator("#native-map-info")
   await expect.poll(() => mapZoom(page)).toBe(18)
   await expect(info.getByRole("button", { name: "Delete" })).toHaveCount(0)
 
@@ -160,9 +160,9 @@ test("a merged marker zooms until a single point can be selected", async ({
   position = await markerPosition(page)
   await page.mouse.click(position.x, position.y)
 
-  await expect(page.locator("#native-point-address")).toBeVisible()
+  await expect(info).toBeVisible()
   await expect(info.getByRole("button", { name: "Delete" })).toBeVisible()
-  await expect(page.locator("#native-map-point-summary")).toContainText(
+  await expect(info.locator("[data-native-info-content]")).toContainText(
     "52.500000, 13.400000",
   )
 })
@@ -174,8 +174,8 @@ test("overlapping points at maximum zoom cannot delete an arbitrary point", asyn
   const position = await markerPosition(page)
   await page.mouse.click(position.x, position.y)
 
-  const info = page.locator("#native-point-address, #native-map-point-summary")
-  await expect(page.locator("#native-map-point-summary")).toContainText(
+  const info = page.locator("#native-map-info")
+  await expect(info.locator("[data-native-info-content]")).toContainText(
     "2 overlapping points",
   )
   await expect(info.getByRole("button", { name: "Delete" })).toHaveCount(0)
@@ -240,10 +240,10 @@ test("a point takes click priority over an overlapping route", async ({
 
   const position = await markerPosition(page)
   await page.mouse.click(position.x, position.y)
-  const info = page.locator("#native-point-address, #native-map-point-summary")
-  await expect(page.locator("#native-map-point-summary")).toContainText(
+  const info = page.locator("#native-map-info")
+  await expect(info.locator("[data-native-info-content]")).toContainText(
     "52.500000, 13.400000",
   )
   await expect(page.locator("#native-track-info")).toHaveCount(0)
-  await expect(page.locator("#native-point-address")).toBeVisible()
+  await expect(info.getByRole("button", { name: "Delete" })).toBeVisible()
 })
