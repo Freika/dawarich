@@ -7,7 +7,7 @@ defmodule DawarichWeb.AdminUsersParityTest do
   alias DawarichWeb.SettingsLive.{UsersIndex, UserShow, UserEdit}
 
   @dir "test/fixtures/admin_users"
-  @cases ~w(list list_page2 list_out list_literal list_empty registration_disabled)
+  @cases ~w(list list_de list_page2 list_out list_literal list_empty registration_disabled)
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -70,6 +70,54 @@ defmodule DawarichWeb.AdminUsersParityTest do
       for row <- page.data.rows do
         assert html =~ row.email
         refute row.status == 3 and html =~ "Pending payment"
+      end
+    end
+  end
+
+  @tag :d5_user_dialogs
+  test "create and selected delete dialogs render the Rails 1.16.0 DOM" do
+    for name <- ~w(list list_de) do
+      Dawarich.FixtureCleanup.delete!(Repo, ~w(areas imports exports tracks users))
+      state = fixture(name)
+      context = seed!(state)
+      {:ok, page} = UsersIndex.page(%{}, context)
+      target = Enum.find(page.data.rows, &(&1.id != context.current_user.id))
+
+      html =
+        render_component(&DawarichWeb.AdminUserDialogs.dialogs/1,
+          locale: context.locale,
+          rows: page.data.rows,
+          create_email: "",
+          form_version: 0,
+          delete_id: target.id,
+          csrf: "CSRF"
+        )
+
+      rails = File.read!(Path.join(@dir, name <> ".html"))
+
+      for {native, source} <- [
+            {"#create_user", "#create_user"},
+            {"#delete_user", "#delete_user_#{target.id}"}
+          ] do
+        expected =
+          rails
+          |> String.replace("delete_user_#{target.id}", "delete_user")
+          |> Dawarich.Test.ParityHTML.fragment(native)
+
+        actual = Dawarich.Test.ParityHTML.fragment(html, native)
+        assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+
+        source_html =
+          rails |> LazyHTML.from_fragment() |> LazyHTML.query(source) |> LazyHTML.to_html()
+
+        native_html =
+          html |> LazyHTML.from_fragment() |> LazyHTML.query(native) |> LazyHTML.to_html()
+
+        Dawarich.Test.SettingsParity.dump(
+          "users_dialog_#{name}_#{String.trim_leading(native, "#")}",
+          source_html,
+          native_html
+        )
       end
     end
   end
@@ -311,7 +359,7 @@ defmodule DawarichWeb.AdminUsersParityTest do
     Dawarich.State.put_registration_enabled(Repo, state["registration"])
 
     %{
-      locale: "en",
+      locale: state["user"]["settings"]["locale"] || "en",
       form_version: 0,
       current_user: Accounts.get(state["user"]["id"]),
       current_scope: Dawarich.Accounts.Scope.for_user(Accounts.get(state["user"]["id"]), "en"),

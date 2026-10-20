@@ -73,12 +73,12 @@ defmodule DawarichWeb.AccountLiveTest do
     {:ok, view, html} = live_as(session)
     refute html =~ "account-live-old-key"
     assert revealed_key(session) == "account-live-old-key"
-    assert has_element?(view, "#rotate-api-key[data-confirm][phx-disable-with]")
+    assert has_element?(view, "#native-rotate-api-key[data-confirm][phx-disable-with]")
 
     Dawarich.TtlCache.put({DawarichWeb.RateLimit, "account-live-old-key"}, %{plan: 1}, 60_000)
     assert api_status("account-live-old-key") == 200
 
-    html = view |> element("#rotate-api-key") |> render_click()
+    html = view |> element("#native-rotate-api-key") |> render_click()
 
     refute api_key() == "account-live-old-key"
     refute html =~ api_key()
@@ -114,7 +114,7 @@ defmodule DawarichWeb.AccountLiveTest do
     ])
 
     assert {:error, {:redirect, %{to: "/users/sign_in"}}} =
-             view |> element("#rotate-api-key") |> render_click()
+             view |> element("#native-rotate-api-key") |> render_click()
 
     assert api_key() == "account-live-old-key"
   end
@@ -125,7 +125,7 @@ defmodule DawarichWeb.AccountLiveTest do
     {:ok, view, _html} = live_as(session)
 
     assert {:error, {:redirect, %{to: "/users/sign_in"}}} =
-             view |> element("#rotate-api-key") |> render_click()
+             view |> element("#native-rotate-api-key") |> render_click()
 
     assert api_key() == "account-live-old-key"
   end
@@ -134,11 +134,11 @@ defmodule DawarichWeb.AccountLiveTest do
     session: session
   } do
     {:ok, view, _html} = live_as(session)
-    assert has_element?(view, "#export-data[data-confirm][phx-disable-with]")
+    assert has_element?(view, "#native-export-data[data-confirm][phx-disable-with]")
 
     {:ok, exports} =
       view
-      |> element("#export-data")
+      |> element("#native-export-data")
       |> render_click()
       |> follow_redirect(conn_for(session), "/exports")
 
@@ -200,7 +200,7 @@ defmodule DawarichWeb.AccountLiveTest do
     refute page =~ "wrong-password-123"
     refute inspect(:sys.get_state(view.pid)) =~ "wrong-password-123"
 
-    view |> element("#rotate-api-key") |> render_click()
+    view |> element("#native-rotate-api-key") |> render_click()
     refute api_key() == "account-live-old-key"
 
     again =

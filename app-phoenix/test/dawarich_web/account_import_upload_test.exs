@@ -147,7 +147,7 @@ defmodule DawarichWeb.AccountImportUploadTest do
     File.mkdir_p!(Path.dirname(path))
     File.write!(path, String.duplicate("z", 2048))
     on_exit(fn -> File.rm(path) end)
-    assert has_element?(view, "#import-form button[type=submit]:not([disabled])")
+    assert has_element?(view, "#import-form input[type=submit]:not([disabled])")
 
     html = view |> form("#import-form") |> render_submit()
 
@@ -178,7 +178,7 @@ defmodule DawarichWeb.AccountImportUploadTest do
 
   test "importing without a completed upload starts nothing" do
     {:ok, view, _html} = live_as()
-    assert has_element?(view, "#import-form button[type=submit][disabled]")
+    assert has_element?(view, "#import-form input[type=submit][disabled]")
 
     render_hook(view, "import_archive", %{})
     assert imports() == [[0]]

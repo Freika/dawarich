@@ -54,7 +54,7 @@ defmodule DawarichWeb.AdminUsersDialogsTest do
              ) == false
 
       assert String.contains?(NativeAdminUI.html(view), "synthetic-create-password") == false
-      assert has_element?(view, "#create-user-password[value='']")
+      assert has_element?(view, "#create_user #user_password:not([value])")
       refute has_element?(view, "#create_user form[phx-change]")
     end
 
@@ -74,12 +74,12 @@ defmodule DawarichWeb.AdminUsersDialogsTest do
 
     html =
       view
-      |> form("#create_user form")
+      |> form("#create_user form[phx-submit='create_user']")
       |> render_submit(%{"user" => %{"email" => c.target.email, "password" => "short"}})
 
     assert html =~ "already been taken"
-    assert has_element?(view, "#create-user-email[value='#{c.target.email}']")
-    assert has_element?(view, "#create-user-password[value='']")
+    assert has_element?(view, "#create_user #user_email[value='#{c.target.email}']")
+    assert has_element?(view, "#create_user #user_password:not([value])")
     assert :sys.get_state(view.pid).socket.assigns.create_open
     assert Repo.query!("SELECT count(*) FROM users").rows == [[2]]
   end
@@ -87,7 +87,7 @@ defmodule DawarichWeb.AdminUsersDialogsTest do
   test "cancel delete queues nothing", c do
     {:ok, view, _} = live(NativeAdminUI.conn(c.actor), "/settings/users")
     render_hook(view, "open_delete", %{"id" => to_string(c.target.id)})
-    view |> element("#cancel-delete") |> render_click()
+    view |> form("#delete_user form[method=dialog]:not(.modal-backdrop)") |> render_submit()
     assert Accounts.get(c.target.id) != nil
     assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
     assert :sys.get_state(view.pid).socket.assigns.delete_id == nil
@@ -97,7 +97,7 @@ defmodule DawarichWeb.AdminUsersDialogsTest do
        c do
     {:ok, view, _} = live(NativeAdminUI.conn(c.actor), "/settings/users")
     render_hook(view, "open_delete", %{"id" => to_string(c.target.id)})
-    html = view |> element("#confirm-delete") |> render_click()
+    html = view |> form("#native-delete-user-form") |> render_submit()
     assert Accounts.get(c.target.id) == nil
     assert Accounts.get(c.actor.id) != nil
 

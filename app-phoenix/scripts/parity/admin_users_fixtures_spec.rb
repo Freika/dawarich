@@ -113,6 +113,9 @@ original_path: 'LINESTRING(0 0,0.001 0.001)' }.merge(stamps))
       suffix = kind == 'edit' ? '/edit' : ''
       results << capture(name, actor, "/settings/users/#{user.id}#{suffix}", kind:, target: user)
     end
+    actor.update_columns(settings: actor.settings.merge('locale' => 'de'))
+    actor.reload
+    results << capture('list_de', actor, '/settings/users', kind: 'list')
     results
   end
 
@@ -132,7 +135,7 @@ original_path: 'LINESTRING(0 0,0.001 0.001)' }.merge(stamps))
     cases = management_cases
     expect(cases.map { |capture| capture.fetch('name') })
       .to eq(%w[list list_page2 list_out list_literal list_empty registration_disabled show_target show_self
-                edit_target edit_self])
+                edit_target edit_self list_de])
     cases.each do |capture|
       expect(capture.fetch('status')).to eq(200)
       doc = Nokogiri::HTML5.fragment(capture.fetch('html'))

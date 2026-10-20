@@ -271,6 +271,94 @@ defmodule DawarichWeb.SettingsParityTest do
     end
   end
 
+  @tag :d5_trek_selection
+  test "TREK selection matches dated, archived and undated Rails trip rows in English and German" do
+    for file <- Path.wildcard("test/fixtures/settings/trek_selection_*.json") do
+      state = file |> File.read!() |> Jason.decode!()
+      locale = state["user"]["settings"]["locale"]
+
+      assigns = %{
+        locale: locale,
+        source: %{id: hd(state["trip_sources"])["id"]},
+        rails_csrf_token: "CSRF",
+        trips: state["remote_trips"],
+        selected: state["selected"],
+        loading: false,
+        form: Phoenix.Component.to_form(%{}, as: :selection)
+      }
+
+      html = render_component(&DawarichWeb.TrekSelection.native_form/1, assigns)
+      ids = LazyHTML.from_fragment(html) |> LazyHTML.query("[id]") |> LazyHTML.attribute("id")
+      assert Enum.uniq(ids) == ids
+      rails = File.read!(Path.rootname(file) <> ".html")
+      Dawarich.Test.SettingsParity.dump(Path.basename(file, ".json"), rails, html)
+
+      expected =
+        rails |> String.replace(" id=\"trip_ids_\"", "") |> Dawarich.Test.ParityHTML.normalize()
+
+      actual = Dawarich.Test.ParityHTML.normalize(html)
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  @tag :d5_account
+  test "account profile, plans, credential slots and data dialogs match Rails 1.16.0" do
+    files = Path.wildcard("test/fixtures/settings/account_*.json")
+    assert length(files) == 11
+    System.put_env("MANAGER_URL", "")
+
+    for file <- files do
+      Dawarich.FixtureCleanup.delete!(Repo, ~w(trip_sources stats users))
+      state = file |> File.read!() |> Jason.decode!()
+      user = seed!(state)
+      principal = Dawarich.Accounts.Principal.project(user)
+      {:ok, now, 0} = DateTime.from_iso8601(state["now"])
+      locale = DawarichWeb.Locale.resolve(nil, user, %{})
+
+      context = %{
+        current_user: principal,
+        current_scope: Dawarich.Accounts.Scope.for_user(principal, locale),
+        locale: locale,
+        self_hosted: state["self_hosted"],
+        now: now,
+        rails_csrf_token: "CSRF",
+        base_url: "http://www.example.com"
+      }
+
+      {:ok, socket} =
+        DawarichWeb.AccountLive.Edit.mount(%{}, %{}, %Phoenix.LiveView.Socket{
+          endpoint: DawarichWeb.Endpoint,
+          assigns: Map.put(context, :__changed__, %{})
+        })
+
+      html = render_component(&DawarichWeb.AccountLive.Edit.render/1, socket.assigns)
+      refute html =~ state["user"]["api_key"]
+      refute inspect(socket.assigns, limit: :infinity) =~ state["user"]["api_key"]
+      assert html =~ "phx-hook=\"CredentialQr\""
+      assert html =~ "data-auto-reveal=\"true\""
+      assert html =~ "data-native-selection"
+
+      assert LazyHTML.attribute(
+               LazyHTML.query(LazyHTML.from_fragment(html), "#native-rotate-api-key"),
+               "href"
+             ) == ["#"]
+
+      assert LazyHTML.attribute(
+               LazyHTML.query(LazyHTML.from_fragment(html), "#native-export-data"),
+               "href"
+             ) == ["#"]
+
+      rails = File.read!(Path.rootname(file) <> ".html")
+      Dawarich.Test.SettingsParity.dump(Path.basename(file, ".json"), rails, html)
+      actual = Dawarich.Test.AccountParity.normalize(html, state["user"]["api_key"])
+      expected = Dawarich.Test.AccountParity.normalize(rails, state["user"]["api_key"])
+
+      assert actual == expected,
+             Path.basename(file) <>
+               ": " <> Dawarich.Test.ParityHTML.first_difference(actual, expected)
+    end
+  end
+
   defp factor_dom(html) do
     html
     |> String.replace(~r/\sdata-auth-(?:form|settings-navigation)(?:="[^"]*")?/, "")

@@ -13,7 +13,6 @@ defmodule DawarichWeb.TrialLive.Resume do
 
     %{
       page_title: nil,
-      rails_js: true,
       checkout_url: System.fetch_env!("MANAGER_URL") <> "/checkout?token=" <> token
     }
   end
@@ -28,17 +27,25 @@ defmodule DawarichWeb.TrialLive.Resume do
           <p class="py-6">
             {label(@locale, "your_account_is_almost_ready_to_start_tracking_your_location")}
           </p>
-          <a class="btn btn-primary btn-lg" data-turbo="false" href={@checkout_url}>{label(
+          <a class="btn btn-primary btn-lg" href={@checkout_url}>{label(
             @locale,
             "resume_checkout"
           )}</a>
           <div class="mt-6 text-sm">
-            <a
-              data-turbo-method="delete"
-              data-turbo-confirm={label(@locale, "are_you_sure_this_cannot_be_undone")}
-              class="link link-hover text-base-content/60"
-              href="/users"
-            >{label(@locale, "or_delete_my_account")}</a>
+            <form
+              id="native-trial-delete-account"
+              action="/users"
+              method="post"
+              accept-charset="UTF-8"
+            >
+              <input type="hidden" name="_method" value="delete" />
+              <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
+              <button
+                type="submit"
+                data-confirm={label(@locale, "are_you_sure_this_cannot_be_undone")}
+                class="link link-hover text-base-content/60"
+              >{label(@locale, "or_delete_my_account")}</button>
+            </form>
           </div>
         </div>
       </div>

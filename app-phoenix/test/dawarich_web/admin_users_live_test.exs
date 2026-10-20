@@ -23,7 +23,7 @@ defmodule DawarichWeb.AdminUsersLiveTest do
 
     form_id =
       view
-      |> element("#create_user form")
+      |> element("#create_user form[phx-submit='create_user']")
       |> render()
       |> LazyHTML.from_fragment()
       |> LazyHTML.query("form")
@@ -35,7 +35,7 @@ defmodule DawarichWeb.AdminUsersLiveTest do
     assert :sys.get_state(view.pid).socket.assigns.create_open
 
     assert view
-           |> element("#create_user form")
+           |> element("#create_user form[phx-submit='create_user']")
            |> render()
            |> LazyHTML.from_fragment()
            |> LazyHTML.query("form")

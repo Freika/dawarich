@@ -1930,6 +1930,28 @@ skip_family_sync: true)
       capture('account_expired_en', member(5337, active_until: now - 2.days), '/users/edit', self_hosted: false)
       capture('account_cloud_oauth_en', member(5338, provider: 'google_oauth2'), '/users/edit', self_hosted: false)
 
+      capture('account_de', member(5339, settings: { 'locale' => 'de' }), '/users/edit')
+      capture('account_cloud_de', member(5340, settings: { 'locale' => 'de' }), '/users/edit', self_hosted: false)
+      capture('account_trial_de', member(5341, status: :trial, active_until: now + 5.days,
+                                      settings: { 'locale' => 'de' }), '/users/edit', self_hosted: false)
+      trek_user = member(5342)
+      source(53_421, trek_user, 'https://trek-selection.example.invalid')
+      trek_source = TripSource.find(53_421)
+      trips = [
+        { 'id' => 'dated', 'title' => 'Synthetic journey', 'start_date' => '2026-09-01', 'end_date' => '2026-09-03' },
+        { 'id' => 'archived', 'title' => 'Archived journey', 'archived' => true,
+          'start_date' => '2026-08-01', 'end_date' => '2026-08-02' },
+        { 'id' => 'undated', 'title' => '' }
+      ]
+      allow_any_instance_of(Trek::Client).to receive(:trips).and_return(trips)
+      %w[en de].each do |locale|
+        trek_user.update_columns(settings: trek_user.settings.merge('locale' => locale))
+        trek_user.reload
+        capture("trek_selection_#{locale}", trek_user, "/settings/trek_sources/#{trek_source.id}/select_trips")
+        path = fixtures.join("settings/trek_selection_#{locale}.json")
+        write_json(path, JSON.parse(path.read).merge('remote_trips' => trips, 'selected' => []))
+      end
+
       reader = member(5301)
       stat(53_011, reader, 2024, 3, 38_400, daily_distance: daily(2024, 3, { 5 => 10_000, 6 => 5_400, 7 => 14_000,
                                                                              20 => 9_000 }),

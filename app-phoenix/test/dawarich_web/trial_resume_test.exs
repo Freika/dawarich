@@ -40,20 +40,41 @@ defmodule DawarichWeb.TrialResumeTest do
     doc = LazyHTML.from_document(conn.resp_body)
 
     [location] =
-      doc |> LazyHTML.query(".hero a[data-turbo='false']") |> LazyHTML.attribute("href")
+      doc |> LazyHTML.query(".hero a[href*=checkout]") |> LazyHTML.attribute("href")
 
     token = URI.decode_query(URI.parse(location).query)["token"]
     [_, payload, _] = String.split(token, ".")
     claims = payload |> Base.url_decode64!(padding: false) |> Jason.decode!()
     assert claims["variant"] == "reverse_trial"
 
-    assert ParityHTML.fragment(String.replace(conn.resp_body, token, "TOKEN"), ".hero") ==
+    assert ParityHTML.fragment(trial_dom(String.replace(conn.resp_body, token, "TOKEN")), ".hero") ==
              ParityHTML.normalize(
                File.read!("test/fixtures/trial_home/resume_cloud_pending.html")
              )
 
     assert get_resp_header(conn, "cache-control") == ["no-store"]
     assert get_resp_header(conn, "pragma") == ["no-cache"]
+  end
+
+  @tag :d5_trial_native
+  test "resume deletion uses a confirmed CSRF-protected native HTTP form" do
+    context = %{current_user: Accounts.get(10001), locale: "en", rails_csrf_token: "CSRF"}
+    page = Resume.page(context, now: @now, jti: @jti)
+    html = render_component(&Resume.render/1, Map.merge(context, page))
+    refute page[:rails_js] == true
+    refute html =~ "data-turbo"
+    doc = LazyHTML.from_fragment(html)
+    assert LazyHTML.attribute(LazyHTML.query(doc, "form"), "action") == ["/users"]
+    assert LazyHTML.attribute(LazyHTML.query(doc, "form"), "method") == ["post"]
+    assert LazyHTML.attribute(LazyHTML.query(doc, "input[name=_method]"), "value") == ["delete"]
+
+    assert LazyHTML.attribute(LazyHTML.query(doc, "input[name=authenticity_token]"), "value") == [
+             "CSRF"
+           ]
+
+    assert LazyHTML.attribute(LazyHTML.query(doc, "button[data-confirm]"), "data-confirm") == [
+             "Are you sure? This cannot be undone."
+           ]
   end
 
   setup do
@@ -116,12 +137,12 @@ defmodule DawarichWeb.TrialResumeTest do
   test "pending resume has reverse-trial checkout link and Rails account deletion action" do
     for mode <- ~w(cloud self_hosted) do
       System.put_env("SELF_HOSTED", if(mode == "cloud", do: "false", else: "true"))
-      context = %{current_user: Accounts.get(10001), locale: "en"}
+      context = %{current_user: Accounts.get(10001), locale: "en", rails_csrf_token: "CSRF"}
       page = Resume.page(context, now: @now, jti: @jti)
       html = render_component(&Resume.render/1, Map.merge(context, page))
       state = fixture("resume_#{mode}_pending")
       doc = LazyHTML.from_fragment(html)
-      [location] = doc |> LazyHTML.query("a[data-turbo='false']") |> LazyHTML.attribute("href")
+      [location] = doc |> LazyHTML.query("a[href*=checkout]") |> LazyHTML.attribute("href")
       token = URI.decode_query(URI.parse(location).query)["token"]
       [header, payload, signature] = String.split(token, ".")
       assert Base.url_decode64!(header, padding: false) == state["jwt"]["header_json"]
@@ -132,10 +153,16 @@ defmodule DawarichWeb.TrialResumeTest do
 
       rails = File.read!("test/fixtures/trial_home/resume_#{mode}_pending.html")
 
-      assert ParityHTML.normalize(String.replace(html, token, "TOKEN")) ==
+      assert ParityHTML.normalize(trial_dom(String.replace(html, token, "TOKEN"))) ==
                ParityHTML.normalize(rails)
 
-      assert ParityHTML.stimulus(html, "a") == ParityHTML.stimulus(rails, "a")
+      refute html =~ "data-turbo"
+
+      Dawarich.Test.SettingsParity.dump(
+        "trial_resume_#{mode}",
+        rails,
+        String.replace(html, token, "TOKEN")
+      )
 
       session =
         DawarichWeb.RailsAuth.live_session(%{
@@ -145,6 +172,16 @@ defmodule DawarichWeb.TrialResumeTest do
 
       assert false == String.contains?(Jason.encode!(session), token)
     end
+  end
+
+  defp trial_dom(html) do
+    Regex.replace(
+      ~r/<form id="native-trial-delete-account"[^>]*>.*?<button[^>]*>(.*?)<\/button>\s*<\/form>/s,
+      html,
+      fn _, text ->
+        ~s(<a class="link link-hover text-base-content/60" href="/users">#{text}</a>)
+      end
+    )
   end
 
   defp prepared do
