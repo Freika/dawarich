@@ -1,7 +1,7 @@
 defmodule Dawarich.Build.ClassSourceTest do
   use ExUnit.Case, async: false
 
-  @css "33f391705f3ac4ddb39a0a5674b19ebb5c89b5a124c74bf89646492d801b3c99"
+  @css "39f6ceed71ec9c4e5673e6aa36e1abd78ca9c31615d0980f1ffb35301cd7693b"
 
   @moduletag :tmp_dir
 
