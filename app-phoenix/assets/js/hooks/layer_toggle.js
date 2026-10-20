@@ -1,6 +1,11 @@
 export const LayerToggle = {
   mounted() {
     this.pending = null
+    this.el.dawarichLayerUpdate = incoming => {
+      if (this.pending === null) return
+      incoming.toggleAttribute("checked", this.pending.enabled)
+      incoming.checked = this.pending.enabled
+    }
     this.layerClick = event => {
       event.stopPropagation()
       const choice = {
@@ -15,11 +20,6 @@ export const LayerToggle = {
     }
     this.el.addEventListener("click", this.layerClick)
   },
-  beforeUpdate(incoming) {
-    if (this.pending === null) return
-    incoming.toggleAttribute("checked", this.pending.enabled)
-    incoming.checked = this.pending.enabled
-  },
   reconnected() {
     this.pending = null
     this.el.checked = this.el.dataset.nativeChecked === "true"
@@ -28,5 +28,6 @@ export const LayerToggle = {
   destroyed() {
     this.pending = null
     this.el.removeEventListener("click", this.layerClick)
+    delete this.el.dawarichLayerUpdate
   },
 }

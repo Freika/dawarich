@@ -1,6 +1,20 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { readFile } from "node:fs/promises"
+import vm from "node:vm"
 import { LayerToggle } from "../../assets/js/hooks/layer_toggle.js"
+
+let options
+const source = await readFile(new URL("../../assets/js/app.js", import.meta.url), "utf8")
+vm.runInNewContext(source.replace(/^import(?:[^\n]*from )?[^\n]+\n/gm, ""), {
+  Socket: class {}, hooks: {}, Direct: {}, initializeAnalyticsEvents() {},
+  LiveSocket: class {
+    constructor(_path, _socket, config) { options = config }
+    connect() {}
+  },
+  document: { querySelector: () => null },
+  window: { addEventListener() {} },
+})
 
 class Input extends EventTarget {
   constructor(checked = true) {
@@ -10,6 +24,7 @@ class Input extends EventTarget {
     this.attrs = new Map([["phx-click", "settings:layer"], ["phx-value-layer", "Points"]])
     this.toggleAttribute("checked", checked)
   }
+  matches() { return false }
   getAttribute(key) { return this.attrs.get(key) ?? null }
   toggleAttribute(key, value) { value ? this.attrs.set(key, "") : this.attrs.delete(key) }
   click() {
@@ -24,7 +39,7 @@ function fixture() {
   hook.mounted()
   const patch = checked => {
     const incoming = new Input(checked)
-    hook.beforeUpdate(incoming)
+    options.dom.onBeforeElUpdated(hook.el, incoming)
     hook.el.checked = incoming.checked
     hook.el.dataset = incoming.dataset
   }
@@ -72,6 +87,7 @@ test("layer departure removes its listener and reconnect releases a pending brow
   hook.destroyed()
   hook.el.click()
   assert.equal(sent.length, count)
+  assert.equal(hook.el.dawarichLayerUpdate, undefined)
   const checked = hook.el.checked
   sent.at(-1)[2]()
   assert.equal(hook.el.checked, checked)
