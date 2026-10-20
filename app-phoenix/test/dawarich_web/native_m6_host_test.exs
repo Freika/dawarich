@@ -887,6 +887,37 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert config(view)["revision"] == initial
   end
 
+  test "native setting toggles flip saved state on every click without a rendered value", %{
+    id: id
+  } do
+    {:ok, view, _} = open(id, @second)
+    settings = fn -> Dawarich.Accounts.get(id).settings end
+    maps = fn key -> (settings.()["maps"] || %{})[key] || [] end
+    tile = hd(Dawarich.Settings.MapForm.tile_categories())
+    poi = hd(Dawarich.Settings.MapForm.poi_groups())
+    filters = fn -> settings.()["places_tag_filters"] end
+
+    cases = [
+      {"map:anomalies", %{}, fn -> config(view)["anomaliesPreferred"] == true end},
+      {"settings:point_edit", %{}, fn -> settings.()["point_dragging_enabled"] == true end},
+      {"settings:live", %{}, fn -> settings.()["live_map_enabled"] != false end},
+      {"settings:tile_category", %{"category" => tile},
+       fn -> tile in maps.("hidden_tile_categories") end},
+      {"settings:poi_group", %{"group" => poi}, fn -> poi in maps.("disabled_poi_groups") end},
+      {"settings:place_tags_all", %{}, fn -> filters.() in [nil, ["untagged"]] end},
+      {"settings:place_tag", %{"tag" => "untagged"},
+       fn -> "untagged" in (filters.() || ["untagged"]) end}
+    ]
+
+    for {event, params, read} <- cases do
+      before = read.()
+      render_hook(view, event, params)
+      assert read.() == !before, event
+      render_hook(view, event, params)
+      assert read.() == before, event
+    end
+  end
+
   test "native layer tiles toggle one layer each and update browser config", %{id: id} do
     {:ok, view, _} = open(id, @second)
     view |> element("[data-testid=map-button-layers]") |> render_click()

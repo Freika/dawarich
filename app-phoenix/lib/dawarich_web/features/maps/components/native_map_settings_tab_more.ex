@@ -166,7 +166,6 @@ defmodule DawarichWeb.NativeMapSettingsTabMore do
               checked={@saved["live_map_enabled"] != false}
               phx-click="settings:live"
               data-map-live-toggle
-              phx-value-enabled={to_string(@saved["live_map_enabled"] == false)}
             />
             <span class="label-text font-medium">{p(@locale, "live_mode")}</span>
           </label>

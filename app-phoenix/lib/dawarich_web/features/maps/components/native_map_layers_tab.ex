@@ -99,7 +99,6 @@ defmodule DawarichWeb.NativeMapLayersTab do
               data-testid="map-layer-anomalies"
               checked={@config["anomaliesPreferred"]}
               phx-click="map:anomalies"
-              phx-value-enabled={to_string(!@config["anomaliesPreferred"])}
             />
             <span class="label-text">{p(@locale, "anomalies")}</span>
           </label>
@@ -115,7 +114,6 @@ defmodule DawarichWeb.NativeMapLayersTab do
               disabled={@restricted}
               checked={@config["editEnabled"]}
               phx-click="settings:point_edit"
-              phx-value-enabled={to_string(!@config["editEnabled"])}
             />
             <span class="label-text">{p(@locale, "edit_points")}</span>
           </label>
@@ -214,7 +212,6 @@ defmodule DawarichWeb.NativeMapLayersTab do
               id="native-place-tags-all"
               checked={@all_tags}
               phx-click="settings:place_tags_all"
-              phx-value-enabled={to_string(!@all_tags)}
             />
             <span class="label-text text-sm">{p(@locale, "enable_all_tags")}</span>
           </label>
@@ -258,7 +255,6 @@ defmodule DawarichWeb.NativeMapLayersTab do
         checked={@checked}
         phx-click="settings:place_tag"
         phx-value-tag={@value}
-        phx-value-enabled={to_string(!@checked)}
       />
       <span
         class={["badge badge-sm transition-all peer-checked:scale-105", !@checked && "badge-outline"]}

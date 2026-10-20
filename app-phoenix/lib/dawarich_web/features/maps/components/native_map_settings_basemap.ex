@@ -66,7 +66,6 @@ defmodule DawarichWeb.NativeMapSettingsBasemap do
             checked={key not in @hidden_tiles}
             phx-click="settings:tile_category"
             phx-value-category={key}
-            phx-value-enabled={to_string(key in @hidden_tiles)}
           />
           <div>
             <span class="label-text text-sm font-medium">{p(@locale, label)}</span>
@@ -110,7 +109,6 @@ defmodule DawarichWeb.NativeMapSettingsBasemap do
             checked={key not in @disabled_poi}
             phx-click="settings:poi_group"
             phx-value-group={key}
-            phx-value-enabled={to_string(key in @disabled_poi)}
           />
           <div>
             <span class="label-text text-sm font-medium">{p(@locale, label)}</span>

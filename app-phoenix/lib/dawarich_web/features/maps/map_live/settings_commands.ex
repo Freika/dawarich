@@ -34,10 +34,16 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
     save(socket, %{"point_dragging_enabled" => enabled, "enabled_map_layers" => layers})
   end
 
-  def handle_event("settings:place_tags_all", %{"enabled" => value}, socket)
-      when value in ["true", "false"] do
+  def handle_event("settings:point_edit", _params, socket) do
+    enabled = socket.assigns.map_settings.saved["point_dragging_enabled"] != true
+    handle_event("settings:point_edit", %{"enabled" => enabled}, socket)
+  end
+
+  def handle_event("settings:place_tags_all", _params, socket) do
     choices = ["untagged" | Enum.map(socket.assigns.page.tags, & &1.id)]
-    save(socket, %{"places_tag_filters" => if(value == "true", do: choices, else: [])})
+    filters = socket.assigns.map_settings.saved["places_tag_filters"]
+    all? = is_nil(filters) or Enum.sort(filters) == Enum.sort(choices)
+    save(socket, %{"places_tag_filters" => if(all?, do: [], else: choices)})
   end
 
   def handle_event("settings:place_tags", params, socket) do
@@ -86,17 +92,16 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
       when mode in ["points", "hexagons"],
       do: save(socket, %{"fog_of_war_mode" => mode})
 
-  def handle_event("settings:place_tag", %{"tag" => tag, "enabled" => value}, socket)
-      when value in ["true", "false"] do
+  def handle_event("settings:place_tag", %{"tag" => tag}, socket) do
     choices = ["untagged" | Enum.map(socket.assigns.page.tags, & &1.id)]
     chosen = Enum.find(choices, &(to_string(&1) == tag))
     current = socket.assigns.map_settings.saved["places_tag_filters"] || choices
 
     if chosen do
       filters =
-        if value == "true",
-          do: Enum.filter(choices, &(&1 in current or &1 == chosen)),
-          else: List.delete(current, chosen)
+        if chosen in current,
+          do: List.delete(current, chosen),
+          else: Enum.filter(choices, &(&1 in current or &1 == chosen))
 
       save(socket, %{"places_tag_filters" => filters})
     else
@@ -147,17 +152,17 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
     save(socket, DawarichWeb.MapLive.SettingsForm.advanced(params))
   end
 
-  def handle_event("settings:tile_category", %{"category" => key, "enabled" => value}, socket)
-      when value in ["true", "false"],
-      do: toggle_list(socket, "hidden_tile_categories", MapForm.tile_categories(), key, value)
+  def handle_event("settings:tile_category", %{"category" => key}, socket),
+    do: toggle_list(socket, "hidden_tile_categories", MapForm.tile_categories(), key)
 
-  def handle_event("settings:poi_group", %{"group" => key, "enabled" => value}, socket)
-      when value in ["true", "false"],
-      do: toggle_list(socket, "disabled_poi_groups", MapForm.poi_groups(), key, value)
+  def handle_event("settings:poi_group", %{"group" => key}, socket),
+    do: toggle_list(socket, "disabled_poi_groups", MapForm.poi_groups(), key)
 
-  def handle_event("settings:live", %{"enabled" => value}, socket)
-      when value in ["true", "false"],
-      do: save(socket, %{"live_map_enabled" => value == "true"})
+  def handle_event("settings:live", _params, socket),
+    do:
+      save(socket, %{
+        "live_map_enabled" => socket.assigns.map_settings.saved["live_map_enabled"] == false
+      })
 
   def handle_event("settings:reclassify", _params, socket) do
     create =
@@ -250,13 +255,12 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
     end
   end
 
-  defp toggle_list(socket, key, choices, item, value) do
+  defp toggle_list(socket, key, choices, item) do
     maps = socket.assigns.map_settings.saved["maps"] || %{}
     hidden = maps[key] || []
 
     if item in choices do
-      hidden =
-        if value == "true", do: List.delete(hidden, item), else: Enum.uniq(hidden ++ [item])
+      hidden = if item in hidden, do: List.delete(hidden, item), else: hidden ++ [item]
 
       save(socket, %{"maps" => Map.put(maps, key, hidden)})
     else

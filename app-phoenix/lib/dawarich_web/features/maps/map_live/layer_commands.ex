@@ -38,5 +38,10 @@ defmodule DawarichWeb.MapLive.LayerCommands do
     {:noreply, socket |> assign(:map_config, config) |> push_event("map:config", config)}
   end
 
+  def handle_event("map:anomalies", params, socket) when not is_map_key(params, "enabled"),
+    do: handle_event("map:anomalies", %{"enabled" => flip(socket, "anomaliesPreferred")}, socket)
+
   def handle_event(_, _, socket), do: {:noreply, socket}
+
+  defp flip(socket, key), do: to_string(socket.assigns.map_config[key] != true)
 end
