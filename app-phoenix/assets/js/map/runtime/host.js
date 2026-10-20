@@ -268,8 +268,11 @@ export function mountHost({
     (receipt) => { density?.invalidate(); return editing?.reconcile(receipt); },
   );
   const update = owner.update;
+  let updating;
   owner.update = (config) => {
     config = preferences.update(config);
+    if (JSON.stringify(config) === JSON.stringify(owner.config))
+      return updating ?? Promise.resolve(owner.presentationState);
     if (config.revision !== owner.config.revision) {
       enrichment?.clear();
       owner.selection?.cancel();
@@ -279,7 +282,7 @@ export function mountHost({
     timeline?.config(config);
     owner.visits?.config(config);
     editing?.config(config);
-    const updating = update.call(owner, config);
+    updating = update.call(owner, config);
     requests.config(config);
     return updating;
   };

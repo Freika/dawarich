@@ -127,6 +127,10 @@ Public map refresh compares grant fields independently from the request lease de
 
 ## Browser timing regressions
 
+Map config echoes are idempotent after layer-preference normalization. Reapplying the current config shares the preceding update result and preserves reader generation, pending editor reads and selected timeline geometry; changed configs retain their existing invalidation. `map_config_echo_test.mjs` holds real cookie-reader responses to verify this without timing assumptions.
+
+Point-edit history browser setup and cleanup acknowledge preceding LiveView commands with a `map:ready` reply and drain the client settings/config promises they started before selecting or moving points. A checked input, idle camera or loaded tiles alone does not establish that server settings reached the editor. Style changes use the persisted appearance control; calling `owner.settings()` alone changes only client state, which a subsequent authoritative server config can replace. This contract is mirrored in AFFiNE's `Dawarich — Native map layer browser regressions`.
+
 Registration assertions select the locale used by their labels explicitly, including when the shared account previously chose another language. A connected LiveView alone does not establish the language of its controls.
 
 Family tests complete the localized tab's map admission before reloading the other tab, and await fresh map-read completion, rendered consent state and the existing `map:ready` acknowledgement before the next consent change. A locale parameter persists account settings; overlapping that write with the other tab's guarded snapshot can produce `grant_changed`. Snapshot refusal remains fail-closed. Consent revocation, retained canvases and fresh reconnect reads remain required.
