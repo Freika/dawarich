@@ -23,6 +23,7 @@ import { Dismissible } from "./dismissible.js"
 import { EmojiPicker } from "./emoji_picker.js"
 import { FamilyConfirm } from "./family_confirm.js"
 import { FamilyInvitationClipboard } from "./family_invitation_clipboard.js"
+import { LayerToggle } from "./layer_toggle.js"
 import { OrdinaryDialog } from "./ordinary_dialog.js"
 import { PublicGallery } from "./public_gallery.js"
 import { PlaceDraft } from "./place_draft.js"
@@ -38,6 +39,7 @@ export const hooks = {
   InsightsYearMap,
   OrdinaryDialog,
   PlaceDraft,
+  LayerToggle,
   SharedMap,
   SharingDialog,
   SharingPhrase,

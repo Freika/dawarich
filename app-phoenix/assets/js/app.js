@@ -6,6 +6,7 @@ import { hooks } from "./hooks/index.js"
 import { Direct } from "./uploaders/direct.js"
 
 const keepOpen = (from, to) => {
+  from.dawarichLayerUpdate?.(to)
   const account = 'dialog,.navbar-end details:has([href="/users/sign_out"],form[action="/users/sign_out"])'
   if (from.matches(account) && to.matches(account))
     to.toggleAttribute("open", from.hasAttribute("open"))

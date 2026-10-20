@@ -43,6 +43,7 @@ defmodule DawarichWeb.NativeMapLayersTab do
           key: key,
           description: description,
           pro: pro,
+          preview: restricted && layer in ["Heatmap", "Fog of War", "Scratch map"],
           checked:
             if(layer == :flights, do: !!assigns.config["flightsEnabled"], else: layer in enabled)
         }
@@ -66,18 +67,17 @@ defmodule DawarichWeb.NativeMapLayersTab do
         <label :for={tile <- @tiles} class="layer-tile" title={p(@locale, tile.description)}>
           <input
             type="checkbox"
+            id={"native-map-layer-" <> tile.key}
+            phx-hook={if(!tile.preview, do: "LayerToggle")}
+            data-native-checked={to_string(tile.checked)}
             class="layer-tile__input"
             aria-describedby={"layer-tile-#{tile.target}-description"}
             data-maps--maplibre-target={tile.target}
             checked={tile.checked}
             disabled={@restricted && tile.pro && tile.layer == "Hexagons"}
-            data-native-preview-layer={
-              if(@restricted && tile.layer in ["Heatmap", "Fog of War", "Scratch map"],
-                do: tile.layer
-              )
-            }
+            data-native-preview-layer={if(tile.preview, do: tile.layer)}
             data-native-preview-key={
-              if(@restricted && tile.layer in ["Heatmap", "Fog of War", "Scratch map"],
+              if(tile.preview,
                 do:
                   %{
                     "Heatmap" => "heatmapEnabled",
@@ -89,7 +89,7 @@ defmodule DawarichWeb.NativeMapLayersTab do
             data-map-layer={tile.key}
             data-testid={"map-layer-" <> tile.key}
             phx-click={
-              if(@restricted && tile.layer in ["Heatmap", "Fog of War", "Scratch map"],
+              if(tile.preview,
                 do: nil,
                 else: if(tile.layer == :flights, do: "map:flights", else: "settings:layer")
               )
