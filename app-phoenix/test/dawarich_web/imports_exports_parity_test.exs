@@ -42,7 +42,10 @@ defmodule DawarichWeb.ImportsExportsParityTest do
           do: "[data-testid=native-imports-root]",
           else: "[data-testid=native-exports-root]"
 
-      native = Dawarich.Test.DataPageParity.action_paths(html)
+      native =
+        html
+        |> Dawarich.Test.DataPageParity.action_paths()
+        |> Dawarich.Test.DataPageParity.resilience()
 
       native =
         Regex.replace(
@@ -63,6 +66,21 @@ defmodule DawarichWeb.ImportsExportsParityTest do
       assert native == expected, ParityHTML.first_difference(native, expected)
 
       assert html =~ ">#{@page["title"]}</title>"
+    end
+  end
+
+  test "native import and export lists shrink inside the page and wrap empty actions" do
+    for path <- ["/imports", "/exports"], id <- [9701, 9705], locale <- ["en", "de"] do
+      html = get(RailsUser.signed_in(id), path <> "?locale=" <> locale) |> html_response(200)
+      doc = LazyHTML.from_document(html)
+      root = "[data-testid=native-#{String.trim_leading(path, "/")}-root]"
+      assert Enum.count(LazyHTML.query(doc, root <> ".min-w-0")) == 1
+
+      for link <- LazyHTML.query(doc, root <> " .text-center > a.btn") do
+        assert [classes] = LazyHTML.attribute(link, "class")
+        assert "whitespace-normal" in String.split(classes)
+        assert "h-auto" in String.split(classes)
+      end
     end
   end
 

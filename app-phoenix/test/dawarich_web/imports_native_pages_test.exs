@@ -24,6 +24,16 @@ defmodule DawarichWeb.ImportsNativePagesTest do
   defp live_as(user, path),
     do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
 
+  test "native import detail bounds its table and extraction at narrow widths", c do
+    for locale <- ["en", "de"] do
+      {:ok, view, _} = live_as(c.user, "/imports/759101?locale=#{locale}")
+      assert has_element?(view, "[data-testid=native-imports-root].min-w-0 > .min-w-0.max-w-full")
+      assert has_element?(view, "#import_759101.overflow-x-auto > table")
+      assert has_element?(view, "#import-759101-extraction .card-body > .flex.flex-wrap")
+      assert has_element?(view, "#extraction-dialog-759101 .label > .min-w-0")
+    end
+  end
+
   test "new native page labels bounded multi-file uploads without a legacy endpoint", c do
     {:ok, view, html} = live_as(c.user, "/imports/new")
     assert has_element?(view, "label.form-control input#import_files")

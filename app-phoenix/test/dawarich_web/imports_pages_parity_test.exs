@@ -141,6 +141,8 @@ defmodule DawarichWeb.ImportsPagesParityTest do
   end
 
   defp presentation(html, selector \\ nil) do
+    html = Dawarich.Test.DataPageParity.resilience(html)
+
     nodes =
       if selector,
         do: LazyHTML.query(LazyHTML.from_document(html), selector),

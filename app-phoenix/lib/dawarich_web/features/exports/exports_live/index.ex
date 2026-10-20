@@ -119,7 +119,7 @@ defmodule DawarichWeb.ExportsLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="w-full my-5" data-testid="native-exports-root">
+    <div class="w-full min-w-0 my-5" data-testid="native-exports-root">
       <.page_header title={t(@locale, "exports.index.exports", %{})} />
       <div id="exports" class="min-w-full">
         <div
@@ -135,7 +135,10 @@ defmodule DawarichWeb.ExportsLive.Index do
               %{}
             )}
           </p>
-          <a href={@points_url} class="btn btn-primary"><.icon name="map-pin" class="w-4 h-4" /> {t(
+          <a href={@points_url} class="btn btn-primary h-auto min-h-12 whitespace-normal"><.icon
+            name="map-pin"
+            class="w-4 h-4"
+          /> {t(
             @locale,
             "exports.index.go_to_points",
             %{}

@@ -70,7 +70,7 @@ defmodule DawarichWeb.ImportsExtractionCard do
     >
       <div class="card bg-base-200 mt-6 max-w-2xl">
         <div class="card-body">
-          <div class="flex items-center gap-2 mb-2">
+          <div class={["flex items-center gap-2 mb-2", @native && "flex-wrap"]}>
             <.icon name="layer" class="w-5 h-5 text-base-content/60" />
             <h3 class="text-lg font-semibold">{text(@locale, "additional_data")}</h3>
             <span class={"badge badge-sm " <> @badge}><span

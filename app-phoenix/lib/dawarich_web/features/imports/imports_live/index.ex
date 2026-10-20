@@ -139,7 +139,7 @@ defmodule DawarichWeb.ImportsLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <div data-testid="native-imports-root" class="w-full my-5">
+    <div data-testid="native-imports-root" class="w-full min-w-0 my-5">
       <.page_header title={t(@locale, "imports.index.imports", %{})}>
         <div :if={@integrations != []} class="join">
           <a href="/imports/new" class="btn btn-primary btn-sm join-item"><.icon
@@ -188,7 +188,10 @@ defmodule DawarichWeb.ImportsLive.Index do
               %{}
             )}
           </p>
-          <a href="/imports/new" class="btn btn-primary"><.icon name="circle-plus" class="w-4 h-4" /> {t(
+          <a href="/imports/new" class="btn btn-primary h-auto min-h-12 whitespace-normal"><.icon
+            name="circle-plus"
+            class="w-4 h-4"
+          /> {t(
             @locale,
             "imports.index.create_your_first_import",
             %{}

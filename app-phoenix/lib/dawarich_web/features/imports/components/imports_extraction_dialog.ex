@@ -18,7 +18,7 @@ defmodule DawarichWeb.ImportsExtractionDialog do
       aria-labelledby={@native && "native-extraction-title-#{@id}"}
       phx-update={if(!@native, do: "ignore")}
     >
-      <div class="modal-box max-w-xl">
+      <div class={["modal-box max-w-xl", @native && "min-w-0 [overflow-wrap:anywhere]"]}>
         <h3 id={@native && "native-extraction-title-#{@id}"} class="font-bold text-lg">
           {text(@locale, "extract_additional_data_from_this_import")}
         </h3>
@@ -64,7 +64,7 @@ defmodule DawarichWeb.ImportsExtractionDialog do
                 name="trust_source"
                 id="trust_source"
               />
-              <div>
+              <div class={@native && "min-w-0"}>
                 <div class="label-text font-medium">
                   {text(@locale, "trust_the_source_app_s_classification")}
                 </div>
@@ -77,7 +77,7 @@ defmodule DawarichWeb.ImportsExtractionDialog do
               </div>
             </label>
           </div>
-          <div class="modal-action">
+          <div class={["modal-action", @native && "flex-wrap"]}>
             <button
               type="button"
               class="btn btn-ghost"

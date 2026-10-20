@@ -121,10 +121,10 @@ defmodule DawarichWeb.ImportsLive.Show do
   def render(assigns) do
     ~H"""
     <div
-      class="mx-auto md:w-2/3 w-full flex"
+      class="mx-auto md:w-2/3 w-full min-w-0 flex"
       data-testid="native-imports-root"
     >
-      <div class="mx-auto">
+      <div class="mx-auto min-w-0 max-w-full">
         <p
           :if={@notice}
           class="py-2 px-3 bg-green-50 mb-5 text-green-500 font-medium rounded-lg inline-block"
@@ -132,7 +132,7 @@ defmodule DawarichWeb.ImportsLive.Show do
         >
           {@notice}
         </p>
-        <div id={"import_#{@record.id}"}>
+        <div id={"import_#{@record.id}"} class="overflow-x-auto">
           <table class="table">
             <thead>
               <tr>
@@ -161,10 +161,10 @@ defmodule DawarichWeb.ImportsLive.Show do
           native={true}
         />
         <a
-          class="btn mt-2"
+          class="btn mt-2 max-w-full h-auto min-h-12 whitespace-normal"
           href={"/imports/#{@record.id}/edit"}
         >{t(@locale, "imports.show.edit_this_import", %{})}</a>
-        <div class="inline-block ml-2">
+        <div class="inline-block ml-2 max-w-full">
           <form phx-submit="delete_import" action={"/imports/#{@record.id}"} method="post">
             <input type="hidden" name="_method" value="delete" />
             <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
@@ -172,7 +172,7 @@ defmodule DawarichWeb.ImportsLive.Show do
             <button
               type="submit"
               data-testid="import-delete"
-              class="btn btn-outline btn-error mt-2"
+              class="btn btn-outline btn-error mt-2 max-w-full h-auto min-h-12 whitespace-normal"
               data-confirm={
                 t(
                   @locale,
@@ -184,7 +184,7 @@ defmodule DawarichWeb.ImportsLive.Show do
           </form>
         </div>
         <a
-          class="btn mt-2 ml-2"
+          class="btn mt-2 ml-2 max-w-full h-auto min-h-12 whitespace-normal"
           href="/imports"
         >{t(@locale, "imports.show.back_to_imports", %{})}</a>
       </div>
