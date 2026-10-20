@@ -9,3 +9,11 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+@media (max-width: 639px) {
+  body:has(#family-shell, #native-family-invitation-document) #version-indicator .dropdown-open > .card {
+    position: fixed;
+    right: 1rem;
+    max-width: calc(100vw - 2rem);
+  }
+}
