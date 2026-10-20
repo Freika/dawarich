@@ -35,14 +35,15 @@ test("native creation guidance belongs to the armed tool and clears after click 
   try {
     await f.owner.mount()
     visit.emit("click")
-    assert.equal(status.textContent, "Localized visit placement")
+    assert.equal(f.root.dataset.mapToolArmed, "visit")
+    assert.equal(status.textContent ?? "", "")
     f.root.emit("keydown", { key: "Escape" })
     f.map.emit("click", { lngLat: { lat: 52, lng: 13 } })
     assert.equal(
       f.pushed.some((item) => item.event === "visit:new"),
       false,
     )
-    assert.equal(status.textContent, "")
+    assert.equal(status.textContent ?? "", "")
     visit.emit("click")
     area.emit("click")
     f.map.emit("click", { lngLat: { lat: 52, lng: 13 } })
@@ -53,10 +54,10 @@ test("native creation guidance belongs to the armed tool and clears after click 
     assert.equal(f.pushed.filter((item) => item.event === "area:new").length, 1)
     visit.emit("click")
     f.map.emit("click", { lngLat: { lat: 52, lng: 13 } })
-    assert.equal(status.textContent, "")
+    assert.equal(status.textContent ?? "", "")
     visit.emit("click")
     f.owner.destroy()
-    assert.equal(status.textContent, "")
+    assert.equal(status.textContent ?? "", "")
     assert.equal(f.root.listeners.get("keydown").size, 0)
   } finally {
     f.owner.destroy()
@@ -88,10 +89,10 @@ test("whitespace-only creation guidance permits place selection while armed guid
   assert.equal(title.textContent, "Owned place")
   assert.equal(opened(), 1)
   assert.equal(f.pushed.some((item) => item.event === "map:select"), false)
-  status.textContent = "Place placement active"
+  f.root.dataset.mapToolArmed = "place"
   select()
   assert.equal(opened(), 1)
-  status.textContent = " \n "
+  delete f.root.dataset.mapToolArmed
   select()
   assert.equal(opened(), 2)
   f.owner.destroy()

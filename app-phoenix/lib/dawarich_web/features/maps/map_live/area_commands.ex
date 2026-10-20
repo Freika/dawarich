@@ -25,7 +25,10 @@ defmodule DawarichWeb.MapLive.AreaCommands do
         open(socket, %{id: area["id"], form: form, errors: []})
 
       _ ->
-        {:noreply, assign(socket, :area_dialog, nil)}
+        {:noreply,
+         socket
+         |> assign(:area_dialog, nil)
+         |> DawarichWeb.MapLive.Toast.push(:error, "messages.failed_to_load_area_details")}
     end
   end
 
@@ -45,7 +48,7 @@ defmodule DawarichWeb.MapLive.AreaCommands do
         case result do
           {:ok, area} ->
             socket = if is_nil(id), do: enable_layer(socket), else: socket
-            saved(socket, area["id"])
+            saved(socket, area["id"], if(is_nil(id), do: "area_created_successfully", else: nil))
 
           {:error, {:invalid, errors}} ->
             open(socket, %{dialog | form: form, errors: errors})
@@ -60,15 +63,16 @@ defmodule DawarichWeb.MapLive.AreaCommands do
   end
 
   def handle_event("area:delete", %{"id" => id}, socket) do
+    socket = DawarichWeb.MapLive.Toast.push(socket, :info, "messages.deleting_area")
+
     case Areas.delete_area(socket.assigns.current_scope, id) do
       :ok ->
-        saved(socket, id)
+        saved(socket, id, "area_deleted_successfully")
 
       {:error, _} ->
-        case socket.assigns[:area_dialog] do
-          nil -> {:noreply, socket}
-          dialog -> open(socket, %{dialog | errors: [delete_failure(socket)]})
-        end
+        socket = DawarichWeb.MapLive.Toast.push(socket, :error, "messages.failed_to_delete_area")
+
+        {:noreply, socket}
     end
   end
 
@@ -79,7 +83,12 @@ defmodule DawarichWeb.MapLive.AreaCommands do
 
   defp open(socket, dialog), do: {:noreply, assign(socket, :area_dialog, dialog)}
 
-  defp saved(socket, id) do
+  defp saved(socket, id, key) do
+    socket =
+      if key,
+        do: DawarichWeb.MapLive.Toast.push(socket, :success, "messages." <> key),
+        else: socket
+
     {:noreply,
      socket
      |> assign(:area_dialog, nil)
@@ -108,7 +117,4 @@ defmodule DawarichWeb.MapLive.AreaCommands do
   defp failure(socket),
     do:
       t(socket.assigns[:locale] || "en", "controllers.api.v1.settings.something_went_wrong", %{})
-
-  defp delete_failure(socket),
-    do: t(socket.assigns[:locale] || "en", "javascript.messages.failed_to_delete_area", %{})
 end

@@ -22,7 +22,10 @@ defmodule DawarichWeb.MapLive.EntityCommands do
         {:noreply, assign(socket, :place_dialog, dialog(place["id"], form, tags(socket)))}
 
       _ ->
-        {:noreply, assign(socket, :place_dialog, nil)}
+        {:noreply,
+         socket
+         |> assign(:place_dialog, nil)
+         |> DawarichWeb.MapLive.Toast.push(:error, "messages.failed_to_load_place_details")}
     end
   end
 

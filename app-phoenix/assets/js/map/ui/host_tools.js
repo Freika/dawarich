@@ -1,3 +1,4 @@
+import { mapNotify } from "./notify.js"
 import { createAreaEditor } from "./area_editor.js"
 import { createEntityEditor } from "./entity_editor.js"
 import { installHostShortcuts } from "./shortcuts.js"
@@ -21,9 +22,9 @@ export function bindTool(root, selector, callback, lifetime) {
 
 export function createHostTools({ map, root, pushEvent, lifetime, getConfig }) {
   installHostShortcuts({ root, lifetime })
-  const status = root?.querySelector("[data-map-tool-status]")
+  const notify = mapNotify(getConfig)
   const clear = () => {
-    if (status) status.textContent = ""
+    if (root?.dataset) delete root.dataset.mapToolArmed
   }
   const send = (...args) => {
     clear()
@@ -33,7 +34,8 @@ export function createHostTools({ map, root, pushEvent, lifetime, getConfig }) {
   const arm = (kind) => {
     area.disarm()
     entity.arm(kind)
-    if (status) status.textContent = status.dataset[`${kind}Message`] ?? ""
+    if (root?.dataset) root.dataset.mapToolArmed = kind
+    notify("info", kind === "visit" ? "messages.click_on_the_map_to_place_a_visit_esc_to" : "messages.click_on_the_map_to_place_a_place")
     map.getCanvas().focus?.()
   }
   lifetime.own(clear)
@@ -64,6 +66,7 @@ export function createHostTools({ map, root, pushEvent, lifetime, getConfig }) {
       entity.disarm()
       clear()
       area.arm()
+      if (root?.dataset) root.dataset.mapToolArmed = "area"
       map.getCanvas().focus?.()
     },
     lifetime,

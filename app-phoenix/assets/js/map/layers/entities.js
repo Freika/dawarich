@@ -179,15 +179,17 @@ export function createEntityLayers({
           operation.check();
           return [layer, data];
         };
-        pending.push(load());
+        pending.push(load().catch(error => {
+          if (!signal?.aborted && operation.revision === operations.revision)
+            onError?.(`${kind}_load_failed`);
+          throw error;
+        }));
       }
       const loaded = await operation.wait(Promise.all(pending));
       operation.check();
       for (const [layer, data] of loaded) layer.update(data);
       visitPresentation();
     } catch (error) {
-      if (operation.revision === operations.revision && !signal?.aborted)
-        onError?.("entity_load_failed");
       throw error;
     } finally {
       operation.close();

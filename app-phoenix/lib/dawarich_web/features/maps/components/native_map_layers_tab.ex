@@ -70,10 +70,30 @@ defmodule DawarichWeb.NativeMapLayersTab do
             aria-describedby={"layer-tile-#{tile.target}-description"}
             data-maps--maplibre-target={tile.target}
             checked={tile.checked}
-            disabled={@restricted && tile.pro}
+            disabled={@restricted && tile.pro && tile.layer == "Hexagons"}
+            data-native-preview-layer={
+              if(@restricted && tile.layer in ["Heatmap", "Fog of War", "Scratch map"],
+                do: tile.layer
+              )
+            }
+            data-native-preview-key={
+              if(@restricted && tile.layer in ["Heatmap", "Fog of War", "Scratch map"],
+                do:
+                  %{
+                    "Heatmap" => "heatmapEnabled",
+                    "Fog of War" => "fogEnabled",
+                    "Scratch map" => "scratchEnabled"
+                  }[tile.layer]
+              )
+            }
             data-map-layer={tile.key}
             data-testid={"map-layer-" <> tile.key}
-            phx-click={if(tile.layer == :flights, do: "map:flights", else: "settings:layer")}
+            phx-click={
+              if(@restricted && tile.layer in ["Heatmap", "Fog of War", "Scratch map"],
+                do: nil,
+                else: if(tile.layer == :flights, do: "map:flights", else: "settings:layer")
+              )
+            }
             phx-value-layer={if(tile.layer != :flights, do: tile.layer)}
           />
           <Icon.icon name={tile.icon} class="layer-tile__icon" />

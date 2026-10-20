@@ -124,7 +124,7 @@ defmodule DawarichWeb.NativeMapSettingsSectionsTest do
     before = stored(c.id)
     render_hook(c.view, "settings:theme_preset", %{"key" => "../../package"})
     assert stored(c.id) == before
-    assert has_element?(c.view, "[role=alert]")
+    assert_push_event(c.view, "map:toast", %{type: :error})
 
     c.view
     |> element("#native-map-settings-form")
@@ -201,13 +201,17 @@ defmodule DawarichWeb.NativeMapSettingsSectionsTest do
     Ownership.put!(Repo, "command:points.anomaly_backfill", :oban)
 
     c.view |> element("[phx-click='settings:recalculate']") |> render_click()
-    assert has_element?(c.view, "#native-settings-notice", "Recalculation queued")
+
+    assert_push_event(c.view, "map:toast", %{type: :success, key: "settings.recalculation_queued"})
+
     c.view |> element("[phx-click='settings:recalculate']") |> render_click()
-    assert has_element?(c.view, "[role=alert]")
+    assert_push_event(c.view, "map:toast", %{type: :error})
     assert outbox(c.id, "users.recalculate_data") == 1
 
     c.view |> element("[phx-click='settings:reapply_anomalies']") |> render_click()
-    assert has_element?(c.view, "#native-settings-notice", "Re-evaluation queued")
+
+    assert_push_event(c.view, "map:toast", %{type: :success, key: "settings.re_evaluation_queued"})
+
     assert outbox(c.id, "points.anomaly_backfill") == 1
   end
 

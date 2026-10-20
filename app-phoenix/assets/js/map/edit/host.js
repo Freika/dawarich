@@ -1,3 +1,4 @@
+import { mapNotify } from "../ui/notify.js"
 import { createEditReconciliation } from "./reconcile.js"
 import { mapTranslate } from "../ui/translate.js"
 import { PointDragGesture } from "./drag.js"
@@ -68,8 +69,7 @@ export function createHostEditing({
       layers.tracks.refresh()
     },
     onError: (message) => {
-      const error = root?.querySelector("[data-map-edit-error]")
-      if (error) error.textContent = message
+      mapNotify(() => ({ uiLabels: { message } }))("error", "message")
     },
     onMoved: (response) => {
       reconciliation.remember(response)

@@ -7,6 +7,8 @@ export function createSelectionActions({
   document,
   translate,
   selection,
+  notify = () => {},
+  upgradeUrl = () => "",
   confirm = (message) => globalThis.confirm(message),
 }) {
   const checked = new Set()
@@ -17,26 +19,42 @@ export function createSelectionActions({
   const anomaliesButton = find("[data-map-delete-anomalies]")
   const anomaliesText = find("[data-map-delete-anomalies-text]")
   const visitsBox = find("[data-map-selected-visits]")
-  let error = null
-  let alert = null
   let destroyed = false
 
-  async function settle(promise, failure) {
+  async function settle(promise, failure, success, bindings = {}) {
     const result = await promise
     if (destroyed) return result
-    error = result.status === "error" ? translate(failure) : null
+    notify(result.status === "error" ? "error" : "success", result.status === "error" ? result.failure ?? failure : success, { ...bindings, ...result.bindings, count: result.count ?? bindings.count })
     if (result.status !== "error") checked.clear()
     render()
     return result
   }
 
   function visits(action, ids, failure) {
-    return settle(selection.bulkVisits(action, ids), failure)
+    const singular = ids.length === 1
+    if (!singular || action === "merge") notify("info", `messages.${{ confirm: "confirming_visits", delete: "deleting_visits", merge: "merging_visits" }[action]}`)
+    const success = action === "merge" ? "messages.visits_merged_successfully" : singular ? `messages.visit_${action === "confirm" ? "confirmed" : "deleted"}` : `visits.${action === "confirm" ? "confirmed" : "deleted"}_count`
+    return settle(selection.bulkVisits(action, ids), singular && action === "confirm" ? "messages.failed_to_confirm_visit" : failure, success, { count: ids.length })
   }
 
-  function points(ids, prompt) {
-    if (ids.length === 0 || !confirm(prompt)) return Promise.resolve(null)
-    return settle(selection.deletePoints(ids), "selection.delete_points_failed")
+  function points(ids, prompt, anomaly = false) {
+    if (ids.length === 0) {
+      notify("error", anomaly ? "messages.no_anomaly_points_in_selection" : "messages.no_points_selected")
+      return Promise.resolve(null)
+    }
+    if (!confirm(prompt)) return Promise.resolve(null)
+    notify("info", anomaly ? "messages.deleting_anomaly_points" : "messages.deleting_points")
+    return settle(selection.deletePoints(ids).then(result => {
+      if (result.status !== "error") return result
+      const key = result.error === "forbidden"
+        ? `${translate("selection.write_api_requires_pro")} — ${upgradeUrl()}`
+        : result.error === "too_many_points_selected"
+          ? anomaly ? "selection.too_many_points" : "selection.too_many_selected_points"
+          : "selection.delete_points_failed"
+      result.failure = key
+      result.bindings = { requested: result.requested, limit: result.limit }
+      return result
+    }), "selection.delete_points_failed", anomaly ? "selection.anomaly_points_deleted" : "selection.points_deleted")
   }
 
   const anomalies = () =>
@@ -56,6 +74,7 @@ export function createSelectionActions({
       translate("selection.confirm_delete_anomaly_points", {
         count: rows.length,
       }),
+      true,
     )
   }
   deleteButton?.addEventListener("click", onDelete)
@@ -95,7 +114,7 @@ export function createSelectionActions({
         merge: () => visits("merge", ids, "messages.failed_to_merge_visits"),
         confirm: () =>
           visits("confirm", ids, "messages.failed_to_confirm_visits"),
-        remove: () => visits("delete", ids, "messages.failed_to_delete_visit"),
+        remove: () => visits("delete", ids, "messages.failed_to_delete_visits"),
       })
       list.splice(list.indexOf(last) + 1, 0, bulk)
     }
@@ -116,15 +135,6 @@ export function createSelectionActions({
       anomaliesText.textContent = translate("selection.delete_anomaly_points", {
         count: noisy.length,
       })
-    alert?.remove()
-    alert = null
-    if (error) {
-      alert = document.createElement("p")
-      alert.className = "text-error text-sm"
-      alert.setAttribute("role", "alert")
-      alert.textContent = error
-      container.prepend?.(alert)
-    }
     renderVisits()
   }
 
@@ -133,7 +143,6 @@ export function createSelectionActions({
     checked.clear()
     deleteButton?.removeEventListener("click", onDelete)
     anomaliesButton?.removeEventListener("click", onAnomalies)
-    alert?.remove()
     visitsBox?.replaceChildren()
   }
 

@@ -74,7 +74,7 @@ export class HexagonLayer extends BaseLayer {
       })
     } catch (error) {
       if (error.name !== "AbortError" || error.cause === "deadline")
-        this.onError?.("hexagons_load_failed")
+        this.onError?.("hexagons_load_failed", { error: error.message })
       throw error
     }
   }

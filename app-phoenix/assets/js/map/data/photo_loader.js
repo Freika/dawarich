@@ -51,7 +51,7 @@ export function createPhotoLoader({
               onPage: (response) => {
                 if (!warned && response.headers?.get("x-photo-source-errors")) {
                   warned = true
-                  onError?.("photo_sources_partial")
+                  onError?.("photo_sources_partial", { sources: response.headers.get("x-photo-source-errors").split(",").join(", ") })
                 }
               },
             },

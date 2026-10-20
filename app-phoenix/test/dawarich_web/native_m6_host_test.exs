@@ -559,7 +559,8 @@ defmodule DawarichWeb.NativeM6HostTest do
     refute has_element?(view, "#native-timeline-feed")
   end
 
-  test "native production host opens the calendar with profile dates and has no map residency tab", %{id: id} do
+  test "native production host opens the calendar with profile dates and has no map residency tab",
+       %{id: id} do
     Dawarich.Test.FrameSeeds.stat!(id, 2025, 5)
 
     Dawarich.Test.FrameSeeds.point!(id, id * 10, DateTime.to_unix(~U[2025-05-01 12:00:00Z]), %{
@@ -1160,12 +1161,17 @@ defmodule DawarichWeb.NativeM6HostTest do
     Dawarich.Test.FrameSeeds.point!(id, point, DateTime.to_unix(~U[2026-03-30 09:00:00Z]), %{})
     {:ok, view, _} = open(id, @second)
     render_hook(view, "point:delete", %{"point_id" => to_string(point)})
-    assert has_element?(view, "#flash-messages [role=alert]", "Point deleted successfully")
+
+    assert_push_event(view, "map:toast", %{
+      type: :success,
+      key: "messages.point_deleted_successfully"
+    })
+
     render_hook(view, "lv:clear-flash", %{})
     refute has_element?(view, "#flash-messages [role=alert]")
     render_hook(view, "point:delete", %{"point_id" => to_string(point)})
     assert_reply(view, %{error: "not_found"})
-    assert has_element?(view, "#flash-messages [role=alert]", "Failed to delete point")
+    assert_push_event(view, "map:toast", %{type: :error, key: "messages.failed_to_delete_point"})
   end
 
   defp open(id, path, locale \\ "en") do

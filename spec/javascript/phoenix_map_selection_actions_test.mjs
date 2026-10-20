@@ -136,6 +136,7 @@ test("selected visits render Rails cards and an inline bulk merge for two checke
 })
 
 test("visit refusal keeps the selection and shows the error", async () => {
+  const notices = []
   const ctx = selectionWith([], visitRows, [{ error: "missing" }])
   await loaded(ctx.selection, ctx.map)
   const { document, container } = selectionDom()
@@ -144,6 +145,7 @@ test("visit refusal keeps the selection and shows the error", async () => {
     document,
     translate,
     selection: ctx.selection,
+    notify: (...args) => notices.push(args),
     confirm: () => true,
   })
 
@@ -157,7 +159,9 @@ test("visit refusal keeps the selection and shows the error", async () => {
     ctx.selection.state.visits.map((visit) => visit.id),
     [4, 5],
   )
-  assert.ok(container.querySelector('[role="alert"]'))
+  assert.equal(container.querySelector('[role="alert"]'), null)
+  assert.equal(notices[0][0], "error")
+  assert.equal(notices[0][1], "messages.failed_to_delete_visit")
 })
 
 test("anomaly delete shows its Rails button and sends only anomaly ids after confirmation", async () => {

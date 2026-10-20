@@ -1,10 +1,17 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { Toast } from "../../app-phoenix/assets/js/map/ui/toast.js"
+import { toastDocument } from "../../app-phoenix/test/client/support/toast_dom.mjs"
 import { fixture } from "./support/native_m6_host_fixture.mjs"
 
 const row = { id: 37, latitude: 52.51, longitude: 13.41, timestamp: 1774782000 }
-test("native point delivery renders the current range marker only when enabled and fences late reads", async () => {
-  const f = fixture({ liveEnabled: true }),
+test("native point delivery renders the current range marker only when enabled and fences late reads", async t => {
+  globalThis.document = toastDocument()
+  Toast.container = null
+  const messages = []
+  t.mock.method(Toast, "info", message => messages.push(message))
+  t.after(() => { delete globalThis.document })
+  const f = fixture({ liveEnabled: true, uiLabels: { "messages.new_location_recorded": "New location recorded" } }),
     flights = []
   f.map.flyTo = (value) => flights.push(value)
   f.reader.read = async (resource) => ({
@@ -28,6 +35,8 @@ test("native point delivery renders the current range marker only when enabled a
   )
   assert.equal(flights.length, 1)
   assert.equal(flights[0].zoom, 14)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.deepEqual(messages, ["New location recorded"])
   await f.owner.update({ ...f.owner.config, liveEnabled: false })
   await f.owner.reconnect({ kinds: ["points"] })
   assert.equal(flights.length, 1)

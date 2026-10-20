@@ -5,6 +5,8 @@ defmodule Dawarich.Points.ApiWrites do
   alias Dawarich.MapApi.PointRecord
   @limit 5000
 
+  def bulk_destroy_limit, do: @limit
+
   def bulk_destroy(repo, user, params, ctx) do
     with :ok <- Api.guard(user, ctx) do
       ids = params["point_ids"]

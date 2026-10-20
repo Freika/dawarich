@@ -44,15 +44,9 @@ export const MapHook = {
         if (this.mapReady)
           return this.mapOwner?.timeline?.select(this.mapTrackSelection)
       }),
-      this.handleEvent("map:layer", (payload) =>
-        this.mapOwner?.layer?.(payload),
-      ),
-      this.handleEvent("map:settings", (payload) =>
-        this.mapOwner?.settings?.(payload),
-      ),
-      this.handleEvent("enrichment:matches", (payload) =>
-        this.mapOwner?.enrichment?.matches(payload),
-      ),
+      this.handleEvent("map:layer", p => this.mapOwner?.layer?.(p)),
+      this.handleEvent("map:settings", p => this.mapOwner?.settings?.(p)),
+      this.handleEvent("enrichment:matches", p => this.mapOwner?.enrichment?.matches(p)),
       this.handleEvent("map:config", (payload) => {
         this.mapConfig = payload
         if (typeof payload.panel === "string") {
@@ -121,7 +115,9 @@ export const MapHook = {
       if (!this.mapDestroyed) this.el.dataset.mapState = "failed"
     }
   },
+  disconnected() { this.mapOwner?.connectionToast?.(false) },
   reconnected() {
+    this.mapOwner?.connectionToast?.(true)
     if (this.mapReady) return this.mapRealtime?.reconnect()
     if (this.mapInvalidations?.length < 32) this.mapInvalidations.push({})
   },

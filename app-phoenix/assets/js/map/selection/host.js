@@ -1,6 +1,6 @@
+import { mapNotify } from "../ui/notify.js"
 import { bindTool } from "../ui/host_tools.js"
 import { mapTranslate } from "../ui/translate.js"
-import { createSelectionActions } from "./actions.js"
 import { createSelectionDrawing } from "./drawing.js"
 import { createSelectionQuery } from "./query.js"
 import { createAreaSelection } from "./state.js"
@@ -19,11 +19,14 @@ export function createHostSelection({
   const panel = root?.querySelector("[data-map-selection]")
   const drawing = createSelectionDrawing(map)
   const button = root?.querySelector('[data-testid="native-select-area"]')
-  const status = root?.querySelector("[data-map-tool-status]")
+  const translate = mapTranslate(getConfig)
+  const notify = mapNotify(getConfig)
   const idle = [...(button?.childNodes ?? [])]
-  let actions
+  let actions, pendingActions, destroyed = false
   const selection = createAreaSelection({
     map,
+    notify,
+    translate,
     query: createSelectionQuery({ reader }),
     getRange: () => getConfig().range,
     pushEvent,
@@ -44,24 +47,24 @@ export function createHostSelection({
         } else button.replaceChildren(...idle)
         button.setAttribute("aria-pressed", String(selection.state.active))
       }
-      if (status)
-        status.textContent =
-          selection.state.active && !selection.state.bounds
-            ? (button?.dataset.mapDrawMessage ?? "")
-            : ""
       if (panel) {
         panel.classList.toggle("hidden", !selection.state.bounds)
         actions?.render()
+        if (selection.state.bounds) return loadActions()
       }
     },
   })
-  if (panel)
+  async function loadActions() {
+    if (!panel || actions || destroyed) return
+    pendingActions ??= import("./actions.js")
+    const { createSelectionActions } = await pendingActions
+    if (destroyed || actions || !selection.state.bounds) return
     actions = createSelectionActions({
       container: panel,
       document: root.ownerDocument ?? globalThis.document,
-      translate: mapTranslate(getConfig),
-      selection,
+      translate, notify, selection, upgradeUrl: () => getConfig().upgradeUrl ?? "",
     })
+  }
   bindTool(
     root,
     '[data-testid="native-select-area"]',
@@ -79,8 +82,9 @@ export function createHostSelection({
   }
   root?.addEventListener("keydown", onEscape)
   lifetime.own(() => {
+    destroyed = true
     root?.removeEventListener("keydown", onEscape)
-    selection.cancel()
+    selection.cancel(false)
     actions?.destroy()
     drawing.clear()
   })
