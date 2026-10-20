@@ -45,3 +45,7 @@ AFFiNE counterpart: Dawarich — D6 auth and public shell parity implementation
 The Manager `/auth/dawarich` URL is an external handoff, listed separately from
 Dawarich routes in the inventory. Poster/video HTTP resources expose create and
 destroy; the page DOM belongs to the embedded map/trip studio callers.
+
+OTP keeps bounded input width and heading wrapping at 390 px. The Rails
+size-32 large-text input otherwise forces 432–434 px page width in en/de; the
+OTP parity test normalizes only these documented resilience classes.

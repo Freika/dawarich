@@ -10,6 +10,14 @@ defmodule DawarichWeb.AuthOtp.FormTest do
         |> Phoenix.HTML.Safe.to_iodata()
         |> IO.iodata_to_binary()
         |> String.replace("data-auth-form", "data-native-auth-form")
+        |> String.replace(
+          "text-center lg:text-left min-w-0 [overflow-wrap:anywhere]",
+          "text-center lg:text-left"
+        )
+        |> String.replace(
+          "input input-bordered w-full min-w-0 text-center text-2xl tracking-widest",
+          "input input-bordered text-center text-2xl tracking-widest"
+        )
 
       source = File.read!("test/fixtures/auth/otp/challenge_#{locale}.html")
       actual = Dawarich.Test.ParityHTML.normalize(html)
