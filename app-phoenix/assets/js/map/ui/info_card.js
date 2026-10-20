@@ -101,7 +101,7 @@ export function createInfoCard({
       ? `<div class="text-xs opacity-70" data-testid="place-name-lock">${translate("map_info.place_name_locked")}</div>`
       : ""
     show(
-      escape(properties.name) || translate("map_info.place"),
+      properties.name || translate("map_info.place"),
       `<div class="space-y-2">${lock}</div>`,
       properties.id
         ? [{ action: "edit", id: properties.id, type: "place", label: translate("messages.edit") }]
@@ -112,7 +112,7 @@ export function createInfoCard({
   function area(properties) {
     const { radius, latitude, longitude, id } = properties
     show(
-      escape(properties.name) || translate("map_info.area"),
+      properties.name || translate("map_info.area"),
       `<div class="space-y-2">${radius ? line(translate("map_info.radius"), `${Math.round(radius)}m`) : ""}${
         latitude && longitude
           ? line(translate("map_info.center"), `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`)

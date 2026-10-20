@@ -93,7 +93,7 @@ function fixture({ confirmed = true } = {}) {
 test("a place click fills the Rails info card and opens the Tools tab", () => {
   const f = fixture()
   f.card.place({ id: 3, name: "Café & Bar", nameLocked: true })
-  assert.equal(f.nodes["[data-native-info-title]"].textContent, "Café &amp; Bar")
+  assert.equal(f.nodes["[data-native-info-title]"].textContent, "Café & Bar")
   assert.match(
     f.nodes["[data-native-info-content]"].innerHTML,
     /data-testid="place-name-lock">Name locked</,
@@ -173,3 +173,15 @@ test("a card node replaced by a patch still fills and routes its actions", () =>
   assert.deepEqual(f.pushes.at(-1), ["place:edit", { id: "4" }])
 })
 
+
+for (const kind of ["place", "area"]) {
+  test(`${kind} title renders the real name as text without interpreting markup`, () => {
+    const f = fixture()
+    const title = f.nodes["[data-native-info-title]"]
+    Object.defineProperty(title, "innerHTML", {
+      set() { assert.fail("entity titles must use a text node") },
+    })
+    f.card[kind]({ id: 3, name: "A & B <img src=x onerror=alert(1)>" })
+    assert.equal(title.textContent, "A & B <img src=x onerror=alert(1)>")
+  })
+}
