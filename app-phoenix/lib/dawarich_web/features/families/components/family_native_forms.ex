@@ -76,7 +76,7 @@ defmodule DawarichWeb.FamilyNativeForms do
   def edit(assigns) do
     ~H"""
     <div class="bg-base-200 rounded-lg p-6">
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
         <h1 class="text-2xl font-bold text-base-content">{s(@locale, "edit.title")}</h1><a
           class="btn btn-ghost"
           href="/family"
@@ -102,12 +102,12 @@ defmodule DawarichWeb.FamilyNativeForms do
             <div :for={{key, value} <- info(@page, @locale)}>
               <dt class="text-sm font-medium text-base-content opacity-60">
                 {s(@locale, "edit." <> key)}
-              </dt><dd class="text-sm text-base-content">{value}</dd>
+              </dt><dd class="text-sm text-base-content [overflow-wrap:anywhere]">{value}</dd>
             </div>
           </dl>
         </div>
-        <div class="flex items-center justify-between pt-4">
-          <div class="flex space-x-3">
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-4">
+          <div class="flex flex-wrap gap-3">
             <input
               type="submit"
               name="commit"

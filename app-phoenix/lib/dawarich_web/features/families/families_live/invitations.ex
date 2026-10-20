@@ -16,7 +16,7 @@ defmodule DawarichWeb.FamiliesLive.Invitations do
     <div id="native-family-invitations-shell" class="container mx-auto px-4 py-8">
       <div class="max-w-4xl mx-auto">
         <div class="bg-base-200 rounded-lg p-6">
-          <div class="flex items-center justify-between mb-6">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
             <h1 class="text-2xl font-bold text-base-content">{s(@locale, "title")}</h1><a
               class="btn btn-neutral"
               href={if @page.live?, do: "/family", else: "/family/new"}
@@ -27,10 +27,10 @@ defmodule DawarichWeb.FamiliesLive.Invitations do
             <div class="space-y-4">
               <div
                 :for={invitation <- @page.invitations}
-                class="flex items-center justify-between p-4 bg-base-100 rounded-lg"
+                class="flex flex-wrap items-center justify-between gap-3 p-4 bg-base-100 rounded-lg"
                 data-native-invitation-id={invitation.id}
               >
-                <div>
+                <div class="min-w-0 [overflow-wrap:anywhere]">
                   <div class="font-medium text-base-content">{invitation.email}</div><div class="text-sm text-base-content opacity-60">
                     {s(@locale, "invited_on")} {DawarichWeb.LocalizedDate.l(
                       @locale,
@@ -45,7 +45,7 @@ defmodule DawarichWeb.FamiliesLive.Invitations do
                     )}
                   </div>
                 </div>
-                <div class="flex space-x-2">
+                <div class="flex flex-wrap gap-2">
                   <button
                     id={"native-invitation-copy-#{invitation.id}"}
                     type="button"

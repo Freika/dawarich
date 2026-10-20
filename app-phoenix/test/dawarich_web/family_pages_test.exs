@@ -34,6 +34,21 @@ defmodule DawarichWeb.FamilyPagesTest do
     assert found == expected, selector
   end
 
+  @tag family_mobile_actions: true
+  test "native family edit and invitation actions wrap without hiding commands", ctx do
+    edit = document(ctx.owner, "/family/edit")
+    expect_element(edit, "#native-family-form > .flex.flex-wrap.gap-3")
+    expect_element(edit, "#native-family-form .flex.flex-wrap.gap-3 input[type=submit]")
+    expect_element(edit, "[data-native-family-action=delete]")
+    expect_element(edit, "dd[class*=overflow-wrap]")
+
+    invitations = document(ctx.owner, "/family/invitations")
+    expect_element(invitations, "[data-native-invitation-id].flex-wrap")
+    expect_element(invitations, "[data-native-invitation-id] .flex.flex-wrap.gap-2")
+    expect_element(invitations, "[data-native-family-action=cancel_invitation]")
+    expect_element(invitations, "[data-native-invitation-id] [class*=overflow-wrap]")
+  end
+
   test "native Family owner and member controls retain policy and inactive refusal", ctx do
     Repo.query!(
       "UPDATE family_invitations SET expires_at=$1 WHERE token=$2",

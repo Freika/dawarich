@@ -60,7 +60,9 @@ defmodule DawarichWeb.FamilyPagesParityTest do
                 String.replace(
                   rails,
                   ~s(id="family_invitation_email"),
-                  ~s(id="native-family-onboarding-email"), global: false),
+                  ~s(id="native-family-onboarding-email"),
+                  global: false
+                ),
               else: rails
 
           if not invitation_path?(state["path"]) do
@@ -153,6 +155,7 @@ defmodule DawarichWeb.FamilyPagesParityTest do
 
   defp contract_nodes({tag, attrs, children}, state) do
     data = Map.new(attrs)
+    attrs = mobile_actions(attrs, tag, state)
 
     cond do
       data["id"] == "native-family-map" or data["data-family-map-target"] == "map" ->
@@ -205,6 +208,36 @@ defmodule DawarichWeb.FamilyPagesParityTest do
   end
 
   defp contract_nodes(other, _), do: other
+
+  defp mobile_actions(attrs, tag, state) do
+    if URI.parse(state["path"]).path in ["/family/edit", "/family/invitations"] do
+      classes = %{
+        "flex items-center justify-between mb-6" =>
+          "flex flex-wrap items-center justify-between gap-2 mb-6",
+        "flex items-center justify-between pt-4" =>
+          "flex flex-wrap items-center justify-between gap-3 pt-4",
+        "flex space-x-3" => "flex flex-wrap gap-3",
+        "flex items-center justify-between p-4 bg-base-100 rounded-lg" =>
+          "flex flex-wrap items-center justify-between gap-3 p-4 bg-base-100 rounded-lg",
+        "flex space-x-2" => "flex flex-wrap gap-2"
+      }
+
+      attrs
+      |> Enum.reject(&(&1 == {"class", "min-w-0 [overflow-wrap:anywhere]"}))
+      |> Enum.map(fn
+        {"class", "text-sm text-base-content"} when tag == "dd" ->
+          {"class", "text-sm text-base-content [overflow-wrap:anywhere]"}
+
+        {"class", value} ->
+          {"class", Map.get(classes, value, value)}
+
+        attr ->
+          attr
+      end)
+    else
+      attrs
+    end
+  end
 
   defp invitation_view(state, token) do
     row = Enum.find(state["rows"]["family_invitations"], &(&1["token"] == token))
