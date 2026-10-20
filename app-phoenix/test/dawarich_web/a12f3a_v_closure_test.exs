@@ -176,7 +176,7 @@ defmodule DawarichWeb.A12f3aVClosureTest do
       env("SELF_HOSTED", mode)
       conn = RailsUser.signed_in(ctx.user.id) |> get("/settings/visits")
       assert conn.status == 200
-      assert conn.resp_body =~ ~s(id="visit-detection-settings")
+      assert conn.resp_body =~ ~s(id="native-visit-detection-settings")
 
       assert {:ok, _} =
                Dawarich.Settings.update_visits(

@@ -56,7 +56,7 @@ defmodule DawarichWeb.VisitSettingsLiveTest do
 
     html =
       view
-      |> form("#visit-detection-settings")
+      |> form("#native-visit-detection-settings")
       |> render_submit(%{
         "settings" => %{
           "visit_radius_meters" => "150",
@@ -81,7 +81,7 @@ defmodule DawarichWeb.VisitSettingsLiveTest do
     {:ok, view, _html} = live_as(user)
 
     view
-    |> form("#visit-detection-settings")
+    |> form("#native-visit-detection-settings")
     |> render_change(%{"settings" => %{"visit_radius_meters" => "77"}})
 
     render_hook(view, "redetect", %{})
@@ -92,11 +92,11 @@ defmodule DawarichWeb.VisitSettingsLiveTest do
 
   test "redetection asks first, queues once and the button stays off afterwards", %{user: user} do
     {:ok, view, _html} = live_as(user)
-    button = "#redetect-visits"
+    button = "#native-redetect-visits"
     assert has_element?(view, button <> "[data-confirm][phx-disable-with]")
     refute has_element?(view, button <> "[disabled]")
 
-    html = view |> element(button) |> render_click()
+    html = view |> form("form[action='/visits/redetections']") |> render_submit()
 
     assert html =~
              escaped(
@@ -121,7 +121,7 @@ defmodule DawarichWeb.VisitSettingsLiveTest do
     assert redetections() == [[0]]
 
     {:ok, view, _html} = live_as(user)
-    assert has_element?(view, "#redetect-visits[disabled]")
+    assert has_element?(view, "#native-redetect-visits[disabled]")
 
     assert render(view) =~
              Translate.t("en", "settings.visits.redetect_panel.available_again_at", %{})
@@ -134,7 +134,7 @@ defmodule DawarichWeb.VisitSettingsLiveTest do
     )
 
     {:ok, view, _html} = live_as(user)
-    view |> element("#redetect-visits") |> render_click()
+    view |> form("form[action='/visits/redetections']") |> render_submit()
     assert redetections() == [[1]]
 
     Repo.query!("UPDATE users SET visits_redetected_at=now() WHERE id=$1", [user.id])

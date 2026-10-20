@@ -798,8 +798,10 @@ skip_family_sync: true)
       doc.at_css('body > div.container > div.w-full > div.flex')&.inner_html
     end
 
-    def two_factor_case(name, id)
+    def two_factor_case(name, id, self_hosted: true)
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
       actor = two_factor_actor(id)
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
       client = two_factor_browser(actor)
       suffix = name[/_(de|es|fr|pl|ca|zh)$/, 1]
       kind = suffix ? name.delete_suffix("_#{suffix}") : name
@@ -994,6 +996,19 @@ skip_family_sync: true)
         html[name] = page if page
       end
       { requests: requests, otp: two_factor_otp, exclusions: two_factor_exclusions, html: html }
+    end
+
+    it 'records D5 Cloud two factor management pages' do
+      travel_to now do
+        rows = %w[disabled enabled setup verify_bad verify_good disabled_de enabled_de setup_de verify_bad_de verify_good_de].each_with_index.map do |name, index|
+          row, html = two_factor_case(name, 74_800 + index, self_hosted: false)
+          expect(row['status']).to eq(name.start_with?('verify_bad') ? 422 : 200)
+          row['self_hosted'] = false
+          two_factor_fixture("cloud/#{name}.html", html, json: false)
+          row
+        end
+        two_factor_fixture('cloud/requests.json', rows)
+      end
     end
 
     it 'records A11c review blank secret behavior' do
@@ -1628,6 +1643,16 @@ skip_family_sync: true)
           hint = I18n.t('settings.visits.redetect_panel.on_the_lite_plan_re_detection_covers_your_visible_12')
           expect(response.body).to include(hint)
         end
+        [[true, 'self_hosted_en', 'en', :pro], [true, 'self_hosted_de', 'de', :pro],
+         [false, 'cloud_de', 'de', :pro], [false, 'lite_de', 'de', :lite]].each_with_index do |(self_hosted, name, locale, plan), index|
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
+          translated = a8_settings_user(8842 + index, plan:, settings: { 'locale' => locale })
+          a8_settings_capture(name, translated, :get, '/settings/visits')
+        end
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        translated_cooldown = a8_settings_user(8846, settings: { 'locale' => 'de' })
+        translated_cooldown.update_columns(visits_redetected_at: now - 3599)
+        a8_settings_capture('cooldown_recent_de', translated_cooldown.reload, :get, '/settings/visits')
         a8_settings_capture('signed_out', nil, :get, '/settings/visits', status: 302) do
           expect(response).to redirect_to('/users/sign_in')
         end
