@@ -13,7 +13,7 @@ defmodule DawarichWeb.InsightsLive.NativeView do
         data={@data}
         query={@query}
         locale={@locale}
-        path={if(@live_action == :details, do: "/insights/details", else: "/insights")}
+        path="/insights"
       />
       <p
         :if={@data && (@data.year_locked || @data.restricted)}
@@ -35,7 +35,7 @@ defmodule DawarichWeb.InsightsLive.NativeView do
         read={@details}
         locale={@locale}
         query={@query}
-        path={if(@live_action == :details, do: "/insights/details", else: "/insights")}
+        path="/insights"
       />
       <NativeParts.read
         :if={@residency}
@@ -47,7 +47,7 @@ defmodule DawarichWeb.InsightsLive.NativeView do
         read={@residency}
         locale={@locale}
         query={@query}
-        path={if(@live_action == :details, do: "/insights/details", else: "/insights")}
+        path="/insights"
       />
       <DawarichWeb.StatsLive.NativeParts.dialog
         :if={@dialog && @data && @data.all_time}

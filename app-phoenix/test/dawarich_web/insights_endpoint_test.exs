@@ -55,6 +55,18 @@ defmodule DawarichWeb.InsightsEndpointTest do
     read_response(client)
   end
 
+  defp assert_details_document(html) do
+    document = LazyHTML.from_document(html)
+
+    assert document
+           |> LazyHTML.query(
+             "#insights-details-loading, #insights-details-ready, #insights-details-pending"
+           )
+           |> Enum.count() == 1
+
+    assert document |> LazyHTML.query("#insights-period") |> Enum.count() == 0
+  end
+
   test "old framed native details requests receive the full authorized native document", ctx do
     frame = [{"Cookie", ctx.cookie}, {"Turbo-Frame", "insights_details"}]
 
@@ -62,7 +74,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
              phoenix(ctx.port, request("/insights/details?year=all", frame))
 
     assert body =~ "<!DOCTYPE html>"
-    assert body =~ ~s(id="insights-period")
+    assert_details_document(body)
     assert body =~ "navbar"
     refute body =~ "turbo-frame"
     refute body =~ "type=\"importmap\""
@@ -74,7 +86,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
 
     assert body =~ "<!DOCTYPE html>"
     assert body =~ ~s(<div class="navbar bg-base-100 h-16">)
-    assert body =~ ~s(id="insights-period")
+    assert_details_document(body)
   end
 
   test "a signed-in visit to / is redirected to the map by Phoenix", ctx do
@@ -127,7 +139,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
     assert {200, _headers, body} =
              phoenix(ctx.port, request("/insights/details?year=all", [{"Cookie", ctx.cookie}]))
 
-    assert body =~ ~s(id="insights-period")
+    assert_details_document(body)
   end
 
   test "a non-string year or month fails natively", ctx do
@@ -170,14 +182,14 @@ defmodule DawarichWeb.InsightsEndpointTest do
       if state == "corrupt", do: Dawarich.Redis.cache_command(["SET", key, "corrupt fixture"])
       assert {200, headers, body} = phoenix(ctx.port, request(target, frame))
       assert values(headers, "content-type") == ["text/html; charset=utf-8"]
-      assert body =~ ~s(id="insights-period")
+      assert_details_document(body)
       assert body =~ "<!DOCTYPE"
     end
 
     assert Dawarich.Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
     Application.put_env(:dawarich, :rails_routes, ["insights"])
     assert {200, _, body} = phoenix(ctx.port, request(target, frame))
-    assert body =~ ~s(id="insights-period")
+    assert_details_document(body)
     Application.put_env(:dawarich, :rails_routes, [])
     stop_supervised!(Dawarich.Redis.Cache)
     assert {200, _headers, _body} = phoenix(ctx.port, request(target, frame))
@@ -186,7 +198,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
   test "native disconnected and connected details ignore source HTML cache without writes" do
     before = digests()
     conn = get(RailsUser.signed_in(9301), "/insights/details?year=all")
-    assert html_response(conn, 200) =~ ~s(id="insights-period")
+    assert_details_document(html_response(conn, 200))
     assert {:ok, []} = Dawarich.Redis.cache_command(["KEYS", "views/*"])
     user = Dawarich.Accounts.get(9301)
     data = Dawarich.Insights.Details.load(user, %{"year" => "all"})
@@ -205,7 +217,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
     for key <- keys, do: Dawarich.Redis.cache_command(["DEL", key])
     GenServer.stop(view.pid)
     {:ok, view, html} = live(RailsUser.connecting_as(conn, 9301))
-    assert html =~ ~s(id="insights-period")
+    assert_details_document(html)
     refute render_async(view, 5000) =~ "source mount fragment"
     assert {:ok, []} = Dawarich.Redis.cache_command(["KEYS", "views/*"])
     assert digests() == before
@@ -220,7 +232,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
     assert {200, _headers, body} =
              phoenix(ctx.port, request("/insights/details?year=2024&month=4", frame))
 
-    assert body =~ ~s(id="insights-period")
+    assert_details_document(body)
     assert digests() == before
   end
 
@@ -233,7 +245,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
     for target <- ["/insights/details?year=2024&month=4", "/insights/details?year=2024&month=3"] do
       if target =~ "month=3", do: InsightsSeeds.warm!()
       assert {200, _headers, body} = phoenix(ctx.port, request(target, cookie))
-      assert body =~ ~s(id="insights-period")
+      assert_details_document(body)
     end
 
     assert digests() == before
@@ -250,7 +262,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
     target = "/insights/details?year=2024&month=4"
 
     assert {200, _headers, body} = phoenix(ctx.port, request(target, [{"Cookie", ctx.cookie}]))
-    assert body =~ ~s(id="insights-period")
+    assert_details_document(body)
   end
 
   test "a native read that cannot access the database fails natively", ctx do
@@ -262,7 +274,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
 
   test "connected native details render persisted values without HTML fragments" do
     conn = get(RailsUser.signed_in(9301), "/insights/details?year=all")
-    assert html_response(conn, 200) =~ ~s(id="insights-period")
+    assert_details_document(html_response(conn, 200))
     assert {:ok, []} = Dawarich.Redis.cache_command(["KEYS", "views/*"])
     {:ok, "OK"} = Dawarich.Redis.cache_command(["FLUSHDB"])
     {:ok, view, _html} = live(RailsUser.connecting_as(conn, 9301))

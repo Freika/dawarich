@@ -18,7 +18,8 @@ defmodule DawarichWeb.TripsNative.FormPreview do
 
   defp range(values, user) do
     zone = Dawarich.UserTimeZone.zone(Dawarich.UserSettings.get(user))
-    zone = Dawarich.TimeZoneName.to_iana(zone || System.get_env("TIME_ZONE", "UTC"))
+    zone = if zone in [nil, ""], do: System.get_env("TIME_ZONE", "UTC"), else: zone
+    zone = Dawarich.TimeZoneName.to_iana(zone)
 
     with {:ok, first} <- stamp(values["started_at"], zone),
          {:ok, last} <- stamp(values["ended_at"], zone),

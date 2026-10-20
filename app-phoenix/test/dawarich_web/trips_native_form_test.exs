@@ -87,6 +87,27 @@ defmodule DawarichWeb.TripsNativeFormTest do
     assert rows("SELECT count(*) FROM trips WHERE user_id=9951") == [[0]]
   end
 
+  test "trip preview matches form fallback for blank timezones" do
+    previous = System.get_env("TIME_ZONE")
+    System.put_env("TIME_ZONE", "UTC")
+
+    on_exit(fn ->
+      if previous, do: System.put_env("TIME_ZONE", previous), else: System.delete_env("TIME_ZONE")
+    end)
+
+    user = Dawarich.Accounts.get(9_951)
+    user = %{user | settings: Map.put(user.settings, "timezone", "")}
+    values = %{"started_at" => "2026-05-09T08:00", "ended_at" => "2026-05-12T22:00"}
+
+    config =
+      DawarichWeb.TripsNative.FormPreview.config(%{id: nil, style: "light"}, values, user, "en")
+
+    assert config["range"] == %{
+             "startAt" => "2026-05-09T08:00:00Z",
+             "endAt" => "2026-05-12T22:00:00Z"
+           }
+  end
+
   test "trip validation keeps dates name and rich draft without persisting" do
     {:ok, view, _html} = TripsNativeUI.live_as(9_951, "/trips/new")
     draft = "<div>Unsaved draft</div>"

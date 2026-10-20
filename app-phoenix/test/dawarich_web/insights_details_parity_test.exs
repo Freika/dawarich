@@ -82,6 +82,19 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
     actual = details_dom(html)
     expected = details_dom(File.read!(Path.join(@dir, request["fixture"])))
     assert actual == expected, ParityHTML.first_difference(actual, expected)
+
+    loading =
+      render_component(&DawarichWeb.InsightsLive.NativeDirect.render/1,
+        data: data,
+        details: nil,
+        locale: "en",
+        query: query
+      )
+
+    assert loading
+           |> LazyHTML.from_fragment()
+           |> LazyHTML.query("#insights-details-loading[role=status]")
+           |> Enum.count() == 1
   end
 
   defp details_dom(html) do

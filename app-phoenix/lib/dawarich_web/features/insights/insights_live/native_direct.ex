@@ -21,9 +21,9 @@ defmodule DawarichWeb.InsightsLive.NativeDirect do
       <.locked name="movement_wellness" locale={@locale} />
     </section>
     <NativeParts.read
-      :if={@details && @data && !@data.restricted}
+      :if={@data && !@data.restricted}
       kind="details"
-      read={@details}
+      read={@details || %{state: :loading}}
       locale={@locale}
       query={@query}
       path="/insights/details"
