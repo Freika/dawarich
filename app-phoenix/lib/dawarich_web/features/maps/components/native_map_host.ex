@@ -14,6 +14,8 @@ defmodule DawarichWeb.NativeMapHost do
   attr :style, :string, default: nil
   attr :loading, :boolean, default: true
 
+  slot :inner_block
+
   def map_host(assigns) do
     locale =
       if assigns.locale in Dawarich.I18n.available_locales(), do: assigns.locale, else: "en"
@@ -79,7 +81,9 @@ defmodule DawarichWeb.NativeMapHost do
         class="absolute top-2 left-2 z-10 rounded bg-base-100 p-2"
       >
         {DawarichWeb.Translate.t(@locale, "javascript.common.loading", %{})}
-      </p>
+      </p>{render_slot(
+        @inner_block
+      )}
     </div>
     """
   end

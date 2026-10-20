@@ -740,6 +740,58 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
         expect(JobOutbox.where(aggregate_id: trip.id, command_type: 'trips.calculate').count).to eq(1)
       end
     end
+    it 'records full trip documents and validation managed form responses' do
+      travel_to now do
+        Country.insert!({ name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU' }.merge(remaining_stamps))
+        captures = []
+        cases = [
+          { kind: :document, plan: :toggle }, { kind: :document, plan: :active },
+          { kind: :document, plan: :future }, { kind: :form, plan: :active },
+          { kind: :form, plan: :stopped }, { kind: :form, plan: :no_source },
+          { kind: :invalid_new, attrs: { name: '', started_at: '', ended_at: '' } },
+          { kind: :invalid_edit, attrs: { name: '', ended_at: '' } },
+          { kind: :invalid_edit, attrs: { started_at: '2026-10-05T10:00', ended_at: '2026-10-03T10:00' } }
+        ]
+        cases.each_with_index do |entry, index|
+          %w[en de].each_with_index do |locale, offset|
+            user = remaining_user(97_100 + index * 2 + offset)
+            id = 9_710_000 + index * 100 + offset * 20
+            trip = remaining_trip(user, id)
+            remaining_plan(user, trip, id, entry[:plan]) if entry[:plan]
+            trip.update_columns(path: nil) if %i[active future].include?(entry[:plan])
+            if entry[:plan] == :future
+              trip.update_columns(started_at: utc('2030-10-05T10:00:00Z'),
+                                  ended_at: utc('2030-10-06T10:00:00Z'))
+            end
+            trip.update_columns(trip_source_id: nil) if entry[:plan] == :no_source
+            before = remaining_graph(user.reload, id)
+            method, path = case entry[:kind]
+                           when :document then [:get, "/trips/#{id}"]
+                           when :form then [:get, "/trips/#{id}/edit"]
+                           when :invalid_new then [:post, '/trips']
+                           else [:patch, "/trips/#{id}"]
+                           end
+            reset!
+            I18n.locale = :en
+            Rails.cache.clear
+            sign_in user
+            remaining_request(user, method, "#{path}?locale=#{locale}", { trip: entry[:attrs] || {} }, 'text/html')
+            expect(response.status).to eq(entry[:kind].to_s.start_with?('invalid') ? 422 : 200)
+            doc = Nokogiri::HTML5(response.body)
+            expect(doc.at_css('#error_explanation')).to be_present if entry[:kind].to_s.start_with?('invalid')
+            doc.css('input[name="authenticity_token"]').each { _1['value'] = 'CSRF' }
+            doc.css('meta[name="csrf-token"]').each { _1['content'] = 'CSRF' }
+            doc.css('[nonce]').each { _1['nonce'] = 'NONCE' }
+            name = "#{entry[:kind]}-#{index}-#{locale}"
+            FixtureRecording.verify(dir.join("presentation/#{name}.html"), doc.to_html)
+            captures << entry.merge(name:, locale:, user_id: user.id, trip_id: id, method:, path:, before:,
+                                    status: response.status)
+          end
+        end
+        FixtureRecording.verify(dir.join('presentation.json'),
+                                "#{JSON.pretty_generate({ now: now.iso8601, cases: captures }.as_json)}\n")
+      end
+    end
   end
 
   context 'A8 route videos' do

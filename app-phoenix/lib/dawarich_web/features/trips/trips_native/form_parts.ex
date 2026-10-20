@@ -79,7 +79,7 @@ defmodule DawarichWeb.TripsNative.FormParts do
                 href={@trip.trek_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="link link-hover inline-flex items-center gap-1"
+                class="link link-hover inline-flex items-center gap-1 whitespace-nowrap"
               >{t(@locale, "trips.source_itinerary.open_in_trek", %{})}<.icon
                 name="external-link"
                 class="size-3.5"
@@ -87,35 +87,37 @@ defmodule DawarichWeb.TripsNative.FormParts do
             </p>
           </div>
           <div class="form-control">
-            <label class="mb-1.5 text-sm font-medium" for="trip_name">{label(@locale, "name")}</label>
-            <input
-              class={[
-                "input input-bordered w-full read-only:bg-base-200 read-only:text-base-content/60",
-                invalid(@errors, "name")
-              ]}
-              type="text"
-              readonly={@trip.managed}
-              value={if @values["name"] not in [nil, ""], do: @values["name"]}
-              name="trip[name]"
-              id="trip_name"
-              aria-invalid={invalid?(@errors, "name") && "true"}
-            />
+            <.field errors={@errors} name="name">
+              <label class="mb-1.5 text-sm font-medium" for="trip_name">{label(@locale, "name")}</label>
+            </.field>
+            <.field errors={@errors} name="name">
+              <input
+                class="input input-bordered w-full read-only:bg-base-200 read-only:text-base-content/60"
+                type="text"
+                readonly={if @trip.managed, do: "readonly"}
+                value={@values["name"]}
+                name="trip[name]"
+                id="trip_name"
+                aria-invalid={invalid?(@errors, "name") && "true"}
+              />
+            </.field>
           </div>
           <div class="flex flex-col gap-4 sm:flex-row lg:flex-col xl:flex-row">
             <div :for={field <- ~w(started_at ended_at)} class="form-control w-full">
-              <label class="mb-1.5 text-sm font-medium" for={"trip_#{field}"}>{label(@locale, field)}</label>
-              <input
-                class={[
-                  "input input-bordered w-full min-w-0 tabular-nums read-only:bg-base-200 read-only:text-base-content/60",
-                  invalid(@errors, field)
-                ]}
-                value={if @values[field] not in [nil, ""], do: @values[field]}
-                type="datetime-local"
-                readonly={@trip.managed}
-                name={"trip[#{field}]"}
-                id={"trip_#{field}"}
-                aria-invalid={invalid?(@errors, field) && "true"}
-              />
+              <.field errors={@errors} name={field}>
+                <label class="mb-1.5 text-sm font-medium" for={"trip_#{field}"}>{label(@locale, field)}</label>
+              </.field>
+              <.field errors={@errors} name={field}>
+                <input
+                  class="input input-bordered w-full min-w-0 tabular-nums read-only:bg-base-200 read-only:text-base-content/60"
+                  value={if @values[field] not in [nil, ""], do: @values[field]}
+                  type="datetime-local"
+                  readonly={if @trip.managed, do: "readonly"}
+                  name={"trip[#{field}]"}
+                  id={"trip_#{field}"}
+                  aria-invalid={invalid?(@errors, field) && "true"}
+                />
+              </.field>
             </div>
           </div>
           <div class="form-control">
@@ -153,7 +155,19 @@ defmodule DawarichWeb.TripsNative.FormParts do
   end
 
   defp invalid?(errors, field), do: Enum.any?(errors, &(elem(&1, 0) == field))
-  defp invalid(errors, field), do: invalid?(errors, field) && "input-error"
+  attr :errors, :list, required: true
+  attr :name, :string, required: true
+  slot :inner_block, required: true
+
+  defp field(assigns) do
+    ~H"""
+    <%= if invalid?(@errors, @name) do %>
+      <div class="field_with_errors">{render_slot(@inner_block)}</div>
+    <% else %>
+      {render_slot(@inner_block)}
+    <% end %>
+    """
+  end
 
   defp label(locale, field) do
     case Dawarich.I18n.t(locale, "activerecord.attributes.trip.#{field}") do

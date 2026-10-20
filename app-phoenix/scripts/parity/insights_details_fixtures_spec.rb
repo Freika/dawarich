@@ -321,6 +321,73 @@ RSpec.describe 'Phoenix fixtures: the insights details frame and the cache entri
                                    "#{JSON.pretty_generate(index_rows.as_json)}\n")
   end
 
+  it 'records Rails overview and residency presentation states' do
+    random = Random.new(1160)
+    allow_any_instance_of(ActionView::Base).to receive(:rand) { |_view, range| random.rand(range) }
+    details_isolated do
+      reader = reader!
+      Stat.create!(user: reader, year: 2026, month: 6, distance: 3000, daily_distance: [['1', 3000]],
+                   toponyms: [{ 'country' => 'Germany', 'cities' => [{ 'city' => 'Leipzig' }] }])
+      reader.update_columns(points_count: reader.points.count)
+      captures = []
+      [true, false].each do |self_hosted|
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
+        reader.update_columns(plan: self_hosted ? :pro : :lite)
+        %w[en de].each do |locale|
+          ['', '?year=2024', '?year=all', '?year=2026&month=6', '?year=2022'].each_with_index do |query, index|
+            reset!
+            I18n.locale = :en
+            Rails.cache.clear
+            sign_in reader.reload
+            path = "/insights#{query}#{query.empty? ? '?' : '&'}locale=#{locale}"
+            get path
+            expect(response).to have_http_status(:ok)
+            name = "overview-#{self_hosted ? 'full' : 'lite'}-#{locale}-#{index}"
+            doc = Nokogiri::HTML5(response.body)
+            root = doc.at_css('body > div.container > div.w-full > div.flex > .w-full.my-5')
+            expect(root).to be_present
+            FixtureRecording.verify(dir.join("#{name}.html"), root.to_html)
+            captures << { name:, path:, self_hosted:, plan: reader.plan_before_type_cast }
+          end
+          next unless self_hosted
+
+          [2024, 2026, 2022].each do |year|
+            get "/map/residency?year=#{year}&locale=#{locale}", headers: { 'Turbo-Frame' => 'residency-content' }
+            expect(response).to have_http_status(:ok)
+            suffix = year == 2024 ? locale : "#{year}-#{locale}"
+            FixtureRecording.verify(dir.join("residency-#{suffix}.html"), response.body)
+          end
+        end
+      end
+      reader.update_columns(plan: :pro)
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(Geocoding::Config).to receive(:for).and_return(instance_double(Geocoding::Config, enabled?: true))
+      track = create(:track, user: reader, start_at: zone.parse('2024-03-05 10:00'),
+                     end_at: zone.parse('2024-03-05 10:10'),
+                     original_path: 'LINESTRING(12.3731 51.3397, 12.3731 51.3417)')
+      %w[en de].each do |locale|
+        reset!
+        Rails.cache.clear
+        sign_in reader.reload
+        path = "/insights?year=all&locale=#{locale}"
+        get path
+        expect(response.status).to eq(200)
+        root = Nokogiri::HTML5(response.body).at_css('body > div.container > div.w-full > div.flex > .w-full.my-5')
+        name = "overview-geocoding-#{locale}"
+        FixtureRecording.verify(dir.join("#{name}.html"), root.to_html)
+        captures << { name:, path:, self_hosted: true, plan: reader.plan_before_type_cast, geocoding: true }
+      end
+      reader.update_columns(plan: :pro)
+      corpus = rows([reader]).merge('cache' => [], 'requests' => captures,
+                                    'points' => reader.points.order(:id).map do |point|
+                                      point.attributes.slice('id', 'user_id', 'timestamp', 'country_name', 'city',
+                                                             'reverse_geocoded_at')
+                                           .merge('lon' => point.lonlat.x, 'lat' => point.lonlat.y)
+                                    end, 'points_count' => reader.points.count, 'track_id' => track.id)
+      FixtureRecording.verify(dir.join('overview-corpus.json'), "#{JSON.pretty_generate(corpus.as_json)}\n")
+    end
+  end
+
   it 'writes the activity card Rails renders for fresh and persisted JSON key order' do
     fresh = { 'walking' => { 'duration' => 600, 'percentage' => 14 },
               'stationary' => { 'duration' => 1800, 'percentage' => 43 },

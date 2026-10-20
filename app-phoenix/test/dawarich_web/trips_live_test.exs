@@ -301,8 +301,8 @@ defmodule DawarichWeb.TripsLiveTest do
                %{"tracker_id" => "phone", "start_at" => 1_778_313_600, "end_at" => 1_778_314_200}
              ]
 
-      assert has_element?(view, "#native-poster-studio")
-      assert has_element?(view, "#native-video-studio")
+      assert has_element?(view, "#poster-studio")
+      assert has_element?(view, "#video-studio")
     end
 
     test "native trip actions retain studios exports edit delete and sharing", %{user: user} do
@@ -451,9 +451,9 @@ defmodule DawarichWeb.TripsLiveTest do
                "[data-native-replay-panel] [data-native-replay-target=replayNextDayButton]"
              )
 
-      refute has_element?(view, "#native-poster-studio input[type=date]")
+      refute has_element?(view, "#poster-studio input[type=date]")
       assert html =~ "9 May 2026 – 12 May 2026"
-      assert has_element?(view, "#native-poster-gallery-list")
+      assert has_element?(view, "#poster-gallery-list")
     end
 
     test "native trip delivery uses admitted topics without a signed DOM stream", %{user: user} do

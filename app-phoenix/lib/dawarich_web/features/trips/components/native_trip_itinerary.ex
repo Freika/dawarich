@@ -37,7 +37,7 @@ defmodule DawarichWeb.NativeTripItinerary do
         </div>
         <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/60">
           <span :if={@plan.trip.source_synced_at}>{it(@locale, "synced_ago", %{
-            time: DawarichWeb.TimeAgo.words(@locale, @plan.trip.source_synced_at, @now)
+            time: DawarichWeb.NativeTripTimeAgo.words(@locale, @plan.trip.source_synced_at, @now)
           })}</span>
           <span :if={@plan.days != []} class="tabular-nums">{it(@locale, "days_count", %{
             count: length(@plan.days)

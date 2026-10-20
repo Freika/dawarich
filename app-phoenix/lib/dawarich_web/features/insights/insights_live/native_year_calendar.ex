@@ -1,8 +1,10 @@
 defmodule DawarichWeb.InsightsLive.NativeYearCalendar do
   @moduledoc false
   use DawarichWeb, :html
+  import DawarichWeb.Icon, only: [icon: 1]
   alias Dawarich.Insights.Heatmap
-  alias DawarichWeb.{LocalizedDate, StatsFormat}
+  alias DawarichWeb.LocalizedDate
+  alias DawarichWeb.InsightsLive.{NativeCalendarData, NativeCalendarControls}
   attr :data, :map, required: true
   attr :heatmap, :any, default: nil
   attr :locale, :string, required: true
@@ -11,150 +13,137 @@ defmodule DawarichWeb.InsightsLive.NativeYearCalendar do
   attr :unit, :string, default: "km"
 
   def render(assigns) do
-    first = Date.new!(assigns.data.year, 1, 1)
+    heatmap = assigns.heatmap || Heatmap.build([], assigns.data.year, assigns.data.today)
+    weeks = Heatmap.weeks(assigns.data.year)
 
     assigns =
       assign(assigns,
-        dates: Enum.to_list(Date.range(first, Date.new!(first.year, 12, 31))),
-        daily: Map.new(assigns.data.daily, fn [date, country] -> {date, country} end),
-        lanes: Enum.take(assigns.data.countries, 8)
+        heatmap: heatmap,
+        weeks: weeks,
+        labels: Heatmap.month_labels(weeks, assigns.data.year, assigns.locale),
+        cells:
+          NativeCalendarData.cells(
+            assigns.data,
+            heatmap,
+            assigns.locale,
+            assigns.unit,
+            assigns.country,
+            if(assigns.data.countries == [], do: "distance", else: assigns.mode)
+          ),
+        colors: NativeCalendarData.colors(assigns.data.countries)
       )
 
     ~H"""
     <section
+      class="card bg-base-200 mb-6"
       data-testid="year-calendar"
-      data-mode={@mode}
-      data-country={@country}
-      class="min-w-0 my-4"
+      aria-labelledby="year-calendar-title"
+      id="native-year-calendar"
+      phx-hook="InsightsCalendar"
+      data-native-target-date={Heatmap.most_recent(@heatmap.daily)}
+      data-native-no-data={t(@locale, "insights.year_calendar.no_data", %{})}
     >
-      <h3>{t(@locale, "insights.activity_heatmap.activity_overview", %{})}</h3>
-      <div
-        :if={@data.countries != []}
-        role="group"
-        aria-label={t(@locale, "insights.year_calendar.mode", %{})}
-        class="flex flex-wrap gap-2"
-      >
-        <button
-          :for={mode <- ~w(both distance countries)}
-          phx-click="calendar_mode"
-          phx-value-mode={mode}
-          aria-pressed={to_string(mode == @mode)}
-          class="btn btn-sm"
-        >{t(@locale, "insights.year_calendar.mode_#{mode}", %{})}</button>
-      </div>
-      <div
-        :if={@data.countries != []}
-        role="group"
-        aria-label={t(@locale, "map.residency.show.days_per_country", %{})}
-        class="flex flex-wrap gap-2"
-      >
-        <button
-          :for={country <- @data.countries}
-          phx-click="calendar_country"
-          phx-value-country={country.name}
-          aria-pressed={to_string(country.name == @country)}
-          class="btn btn-sm"
-        >{country.name} {country.days}</button>
-      </div>
-      <div class="grid grid-cols-7 gap-1" role="list">
-        <div
-          :for={date <- @dates}
-          :if={Date.compare(date, @data[:today] || Date.new!(@data.year, 12, 31)) != :gt}
-          role="listitem"
-          data-residency-day={Date.to_iso8601(date)}
-          data-country={@daily[date]}
-          aria-label={label(@locale, date, @daily[date], meters(@heatmap, date), @unit, @mode)}
-          title={label(@locale, date, @daily[date], meters(@heatmap, date), @unit, @mode)}
-          class={"rounded p-1 text-xs min-w-0 break-words #{if @country && @country != @daily[date], do: "opacity-30", else: ""} #{shade(@mode, @daily[date], @heatmap, date)}"}
-        >
-          <time datetime={Date.to_iso8601(date)}>{LocalizedDate.l(@locale, date, "short_month_day")}</time>
-          <span :if={@mode != "distance"}>{@daily[date]}</span>
-          <span :if={@mode != "countries" && meters(@heatmap, date) > 0}>{StatsFormat.distance(
-            @locale,
-            meters(@heatmap, date),
-            @unit
-          )}</span>
+      <div class="card-body p-5 gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h2 id="year-calendar-title" class="flex items-center gap-2 text-xl font-bold min-w-0">
+            <.icon name="calendar" class="w-5 h-5 text-base-content/60 shrink-0" /> {t(
+              @locale,
+              "insights.activity_heatmap.activity_overview",
+              %{}
+            )}
+          </h2>
+          <p
+            class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-base-content/70"
+            data-testid="year-calendar-streaks"
+          >
+            <span><strong class="text-base-content tabular-nums">{@heatmap.active_days}</strong> {t(
+              @locale,
+              "insights.activity_heatmap.active_days",
+              %{}
+            )}</span>
+            <span>
+              {t(@locale, "insights.activity_streak.longest_streak", %{})}:
+              <strong class="text-base-content tabular-nums">{@heatmap.longest_streak} {t(
+                @locale,
+                "insights.activity_streak.day",
+                %{count: @heatmap.longest_streak}
+              )}</strong>
+              <span :if={@heatmap.longest_start && @heatmap.longest_end} class="text-base-content/50">({LocalizedDate.l(
+                @locale,
+                @heatmap.longest_start,
+                "short_month_day"
+              )} – {LocalizedDate.l(@locale, @heatmap.longest_end, "short_month_day")})</span>
+            </span>
+            <span><strong class="text-base-content tabular-nums">{@heatmap.current_streak} {t(
+              @locale,
+              "insights.activity_streak.day",
+              %{count: @heatmap.current_streak}
+            )}</strong> {t(@locale, "insights.activity_streak.current", %{})}</span>
+          </p>
+        </div>
+        <div class={"grid gap-5 items-start #{if @data.countries != [], do: "lg:grid-cols-[minmax(0,1fr)_14rem]"}"}>
+          <div class="relative min-w-0">
+            <div class="overflow-x-auto" data-native-calendar-scroller>
+              <div
+                class="year-calendar mx-auto pb-1"
+                style={"--weeks: #{length(@weeks)}"}
+                data-mode={if @data.countries == [], do: "distance", else: @mode}
+                data-focus={@country}
+              >
+                <div class="year-calendar__months" aria-hidden="true">
+                  <span :for={label <- @labels} style={"grid-column: #{label.index + 2} / span 4"}>{label.name}</span>
+                </div>
+                <div class="year-calendar__body">
+                  <span
+                    :for={day <- ["mon", nil, "wed", nil, "fri", nil, nil]}
+                    class="year-calendar__day"
+                    aria-hidden="true"
+                  >{day && t(@locale, "insights.activity_heatmap." <> day, %{})}</span>
+                  <i
+                    :for={cell <- @cells}
+                    class={cell.class}
+                    {if cell.style, do: %{style: cell.style}, else: %{}}
+                    role={if cell.date, do: "img"}
+                    aria-label={cell.aria}
+                    data-date={cell.date}
+                    data-label={cell.label}
+                    data-distance={cell.distance}
+                    data-country={cell.country}
+                  ></i>
+                </div>
+              </div>
+            </div>
+            <div
+              class="mt-2 flex items-center justify-end gap-1.5 text-xs text-base-content/60"
+              aria-hidden="true"
+            >
+              <span>{t(@locale, "insights.activity_heatmap.less", %{})}</span>
+              <i
+                :for={alpha <- [0.32, 0.5, 0.72, 1]}
+                class="year-calendar__swatch"
+                style={"--a: #{alpha}"}
+              ></i>
+              <span>{t(@locale, "insights.activity_heatmap.more", %{})}</span>
+            </div>
+            <div
+              data-native-calendar-tooltip
+              class="hidden absolute z-10 pointer-events-none rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-xs shadow-lg"
+            >
+              <div data-native-tooltip-date class="font-semibold"></div>
+              <div data-native-tooltip-detail class="text-base-content/70"></div>
+            </div>
+          </div>
+          <NativeCalendarControls.render
+            :if={@data.countries != []}
+            data={@data}
+            colors={@colors}
+            mode={@mode}
+            country={@country}
+            locale={@locale}
+          />
         </div>
       </div>
-      <p :if={@data[:zone] not in [nil, "UTC", "Etc/UTC"]} data-testid="year-calendar-timezone-note">
-        {t(@locale, "insights.year_calendar.timezone_note", %{zone: @data.zone})}
-      </p>
-    </section>
-    <section :if={@lanes != []} data-testid="country-ribbon" class="min-w-0 my-4">
-      <h3>{t(@locale, "insights.country_ribbon.title", %{year: @data.year})}</h3>
-      <div :for={country <- @lanes} data-testid="country-ribbon-lane" class="my-2 min-w-0">
-        <h4>{country.name} · {country.days}</h4>
-        <div class="relative h-8 bg-base-200 rounded">
-          <span
-            :for={{first, last} <- country.periods}
-            role="img"
-            tabindex="0"
-            style={segment_style(first, last, @data.year)}
-            class="absolute h-6 rounded bg-primary/50"
-            aria-label={segment(@locale, country.name, first, last)}
-            title={segment(@locale, country.name, first, last)}
-          >{LocalizedDate.l(@locale, first, "short_month_day")} – {LocalizedDate.l(
-            @locale,
-            last,
-            "short_month_day"
-          )}</span>
-        </div>
-      </div>
-      <p :if={(@data[:country_count] || length(@data.countries)) > length(@lanes)}>
-        {t(@locale, "insights.country_ribbon.more_countries", %{
-          count: (@data[:country_count] || length(@data.countries)) - length(@lanes)
-        })}
-      </p>
     </section>
     """
   end
-
-  defp segment_style(first, last, year) do
-    start = Date.new!(year, 1, 1)
-    size = if Calendar.ISO.leap_year?(year), do: 366, else: 365
-    first = Enum.max([first, start], Date)
-    last = Enum.min([last, Date.new!(year, 12, 31)], Date)
-
-    "left: #{Date.diff(first, start) / size * 100}%; width: #{max(Date.diff(last, first) + 1, 1) / size * 100}%;"
-  end
-
-  defp meters(nil, _), do: 0
-  defp meters(heatmap, date), do: Map.get(heatmap.daily, Date.to_iso8601(date), 0)
-
-  defp shade("countries", country, _, _),
-    do: if(country, do: "bg-primary/20", else: "bg-base-200")
-
-  defp shade("both", country, heatmap, date) when not is_nil(country) do
-    if meters(heatmap, date) == 0,
-      do: "bg-primary/20",
-      else: shade("distance", nil, heatmap, date)
-  end
-
-  defp shade(_, _, nil, _), do: "bg-base-300"
-
-  defp shade(_, _, heatmap, date),
-    do: Heatmap.level_class(Heatmap.level(meters(heatmap, date), heatmap.levels))
-
-  defp label(locale, date, country, meters, unit, mode),
-    do:
-      Enum.join(
-        Enum.reject(
-          [
-            LocalizedDate.l(locale, date, "medium"),
-            if(mode != "distance", do: country),
-            if(mode != "countries", do: StatsFormat.distance(locale, meters, unit))
-          ],
-          &is_nil/1
-        ),
-        ": "
-      )
-
-  defp segment(locale, country, first, last),
-    do:
-      t(locale, "insights.country_ribbon.segment", %{
-        country: country,
-        from: LocalizedDate.l(locale, first, "short_month_day"),
-        to: LocalizedDate.l(locale, last, "short_month_day"),
-        count: Date.diff(last, first) + 1
-      })
 end

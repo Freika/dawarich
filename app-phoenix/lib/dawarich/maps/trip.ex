@@ -204,7 +204,7 @@ defmodule Dawarich.Maps.Trip do
       "styleName" => page.settings.style,
       "photosEnabled" => page.settings.photos,
       "flightsEnabled" => page.settings.airtrail,
-      "planEnabled" => page.plan_on_map,
+      "planEnabled" => page.map_state == :plan,
       "mapState" => to_string(page.map_state)
     }
 

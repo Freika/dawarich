@@ -9,6 +9,7 @@ defmodule DawarichWeb.StatsNativeLiveTest do
 
   setup do
     %{target: user} = NativeAdminUI.setup!()
+    geocoding!()
     stat!(user.id, %{year: 2024, month: 3, distance: 1000, daily_distance: [[1, 1000]]})
 
     stat!(user.id, %{year: 2025, month: 3, distance: 3000, daily_distance: [[1, 1000], [2, 2000]]})
@@ -56,24 +57,32 @@ defmodule DawarichWeb.StatsNativeLiveTest do
              "a[href='#{DawarichWeb.StatsFormat.year_map_path(2025)}']"
            )
 
-    assert has_element?(view, "[data-testid=insights-year-card] details", "Germany")
-    assert has_element?(view, "[data-testid=insights-year-card] details", "Berlin")
-    assert has_element?(view, "[data-testid=insights-year-card] > a[href='/insights?year=2024']")
+    assert has_element?(view, "[data-testid=insights-year-card] [role=dialog]", "Germany")
+    assert has_element?(view, "[data-testid=insights-year-card] [role=dialog]", "Berlin")
+
+    assert has_element?(
+             view,
+             "[data-testid=insights-year-card] h3 > a[href='/insights?year=2024']"
+           )
+
     render_click(view, "open_year_places", %{"year" => "1900"})
     refute has_element?(view, "#stats-dialog")
   end
 
   test "stats year patches change data and survive browser history", %{user: user} do
     {:ok, view, _html} = live(NativeAdminUI.conn(user), "/insights?year=2025")
+    render_async(view)
     assert has_element?(view, "[data-testid=insights-month]")
     assert :sys.get_state(view.pid).socket.assigns.data.year == 2025
     render_patch(view, "/insights?year=2024")
+    render_async(view)
 
     assert :sys.get_state(view.pid).socket.assigns.data.consolidated.months
            |> Enum.map(& &1.distance)
            |> Enum.sum() == 1000
 
     render_patch(view, "/insights?year=2025")
+    render_async(view)
 
     assert :sys.get_state(view.pid).socket.assigns.data.consolidated.months
            |> Enum.map(& &1.distance)
@@ -226,7 +235,7 @@ defmodule DawarichWeb.StatsNativeLiveTest do
 
     {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=all&locale=de")
     assert has_element?(view, "[data-testid=insights-year-card]", "12 km")
-    assert has_element?(view, "[data-testid=insights-year-card] summary", "1")
+    assert has_element?(view, "[data-testid=insights-year-card] label[for]", "1")
     view |> element("button[phx-value-kind=countries]") |> render_click()
     assert has_element?(view, "#stats-dialog li", "Germany")
     render_click(view, "close_dialog", %{})
@@ -264,8 +273,12 @@ defmodule DawarichWeb.StatsNativeLiveTest do
     user: user
   } do
     {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2025")
+    render_async(view)
     render_click(view, "update", %{})
+    render_async(view)
+    render_async(view)
     render_click(view, "update", %{})
+    render_async(view)
 
     assert Dawarich.Repo.query!(
              "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Stats.CalculateMonthWorker'",
@@ -273,8 +286,12 @@ defmodule DawarichWeb.StatsNativeLiveTest do
              log: false
            ).rows == [[12]]
 
+    render_async(view)
     render_patch(view, "/insights?year=2024")
+    render_async(view)
+    render_async(view)
     render_click(view, "update", %{})
+    render_async(view)
 
     assert Dawarich.Repo.query!(
              "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Stats.CalculateMonthWorker'",
@@ -326,9 +343,9 @@ defmodule DawarichWeb.StatsNativeLiveTest do
     on_exit(fn -> System.delete_env("JWT_SECRET_KEY") end)
     Dawarich.Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [user.id], log: false)
     {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=all")
-    assert has_element?(view, "#insights-locked[role=status]")
+    assert has_element?(view, "#native-insights-window-alert[role=alert]")
     assert has_element?(view, "[data-testid=insights-locked-year]")
-    assert has_element?(view, "button[phx-click=upgrade]")
+    assert has_element?(view, "a[phx-click=upgrade]")
     raw = :erlang.term_to_binary(:sys.get_state(view.pid).socket.assigns)
     refute raw =~ "token="
     refute raw =~ user.api_key
@@ -524,10 +541,12 @@ defmodule DawarichWeb.StatsNativeLiveTest do
     end)
 
     {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2025")
+    render_async(view)
     assert Dawarich.Stats.PageRefresh.topic(user.id) in Registry.keys(Dawarich.PubSub, view.pid)
     before = :sys.get_state(view.pid).socket
     assert Enum.sum(Enum.map(before.assigns.data.consolidated.months, & &1.distance)) == 12000
     render_click(view, "update", %{})
+    render_async(view)
 
     [[id, args]] =
       Dawarich.Repo.query!(
@@ -545,6 +564,7 @@ defmodule DawarichWeb.StatsNativeLiveTest do
            ).rows == [[0]]
 
     render_patch(view, "/insights?year=2025")
+    render_async(view)
 
     assert :sys.get_state(view.pid).socket.assigns.data.consolidated.months
            |> Enum.map(& &1.distance)

@@ -1,7 +1,7 @@
 defmodule DawarichWeb.InsightsLive.NativeParts do
   @moduledoc false
   use DawarichWeb, :html
-  alias DawarichWeb.{InsightsParts, HeatmapParts, LocalizedDate}
+  alias DawarichWeb.InsightsParts
   alias DawarichWeb.InsightsDetails.{YearComparison, Activity, Locations, Travel, Wellness}
 
   attr :data, :map, required: true
@@ -11,82 +11,20 @@ defmodule DawarichWeb.InsightsLive.NativeParts do
 
   def overview(assigns) do
     ~H"""
-    <form id="insights-period" phx-submit="period" class="flex flex-wrap min-w-0 gap-2 my-4">
-      <label for="insights-year">{t(@locale, "insights.header.by_year", %{})}</label>
-      <select id="insights-year" name="period[year]" class="select max-w-full">
-        <option value="all" selected={@data.all_time}>
-          {t(@locale, "insights.header.all_time", %{})}
-        </option>
-        <option :for={year <- @data.available} value={year} selected={year == @data.year}>
-          {year}
-        </option>
-        <option :if={@data.year && @data.year not in @data.available} value={@data.year} selected>
-          {@data.year}
-        </option>
-      </select>
-      <label for="insights-month">{t(@locale, "insights.details.monthly_digest", %{})}</label>
-      <select id="insights-month" name="period[month]" class="select max-w-full">
-        <option value="">{t(@locale, "insights.header.all_time", %{})}</option>
-        <option :for={month <- 1..12} value={month} selected={month == @data[:selected_month]}>
-          {LocalizedDate.month_name(@locale, @data.year || @data.period.today.year, month)}
-        </option>
-      </select>
-      <button class="btn whitespace-normal" type="submit">{t(
-        @locale,
-        "javascript.common.confirm",
-        %{}
-      )}</button>
-    </form>
-    <nav class="flex flex-wrap gap-2" aria-label={t(@locale, "insights.header.by_year", %{})}>
-      <.link :if={@data.period.page > 1} patch={page_path(@path, @query, @data.period.page - 1)}>{t(
-        @locale,
-        "views.pagination.previous",
-        %{}
-      )}</.link>
-      <.link :if={@data.more} patch={page_path(@path, @query, @data.period.page + 1)}>{t(
-        @locale,
-        "views.pagination.next",
-        %{}
-      )}</.link>
-    </nav>
-    <%= if !@data.year_locked do %>
-      <InsightsParts.stats_row
-        locale={@locale}
-        totals={@data.totals}
-        all_time={@data.all_time}
-        year={@data.year}
-        unit={@data.unit}
-      />
-      <DawarichWeb.InsightsLive.NativeConsolidated.render data={@data} locale={@locale} />
-      <section
-        :if={!@data.all_time && !@data.restricted}
-        data-testid="insights-activity-summary"
-        class="my-4"
-      >
-        <p>{@data.heatmap.active_days} {t(@locale, "insights.activity_heatmap.active_days", %{})}</p>
-        <HeatmapParts.streak
-          locale={@locale}
-          heatmap={@data.heatmap}
-          current_year={@data.year == @data.period.today.year}
-        />
-      </section>
-      <div :if={!@data.all_time && @data.restricted} class="flex flex-wrap min-w-0 gap-4">
-        <HeatmapParts.heatmap
-          native={true}
-          zone={@data.period.zone}
-          locale={@locale}
-          heatmap={@data.heatmap}
-          year={@data.year}
-          today={@data.period.today}
-          unit={@data.unit}
-        />
-        <HeatmapParts.streak
-          locale={@locale}
-          heatmap={@data.heatmap}
-          current_year={@data.year == @data.period.today.year}
-        />
-      </div>
-    <% end %>
+    <DawarichWeb.InsightsLive.NativeHeader.render data={@data} locale={@locale} />
+    <InsightsParts.stats_row
+      :if={!@data.year_locked}
+      locale={@locale}
+      totals={@data.totals}
+      all_time={@data.all_time}
+      year={@data.year}
+      unit={@data.unit}
+    />
+    <DawarichWeb.InsightsLive.NativeConsolidated.render
+      :if={!@data.year_locked}
+      data={@data}
+      locale={@locale}
+    />
     """
   end
 
@@ -100,6 +38,8 @@ defmodule DawarichWeb.InsightsLive.NativeParts do
   attr :calendar_country, :any, default: nil
   attr :heatmap, :any, default: nil
   attr :unit, :string, default: "km"
+
+  attr :race, :any, default: nil
 
   def read(assigns) do
     ~H"""
@@ -134,6 +74,7 @@ defmodule DawarichWeb.InsightsLive.NativeParts do
       />
       <.residency
         :if={@kind == "residency"}
+        race={@race}
         calendar_mode={@calendar_mode}
         calendar_country={@calendar_country}
         heatmap={@heatmap}
@@ -167,6 +108,7 @@ defmodule DawarichWeb.InsightsLive.NativeParts do
         <div class="space-y-6">
           <DawarichWeb.InsightsLive.NativeMonthly.render
             :if={!@data.all_time}
+            path={@path}
             data={Map.put(@data, :monthly, @data.monthly && @data.monthly.source)}
             locale={@locale}
           />
@@ -188,11 +130,11 @@ defmodule DawarichWeb.InsightsLive.NativeParts do
   attr :heatmap, :any, default: nil
   attr :unit, :string, default: "km"
 
+  attr :race, :any, default: nil
+
   def residency(assigns) do
     ~H"""
-    <section id="insights-residency-ready" class="min-w-0 my-4">
-      <h2 class="text-xl break-words">{t(@locale, "map.residency.show.days_per_country", %{})}</h2>
-      <p>{@data.total} / {if(Calendar.ISO.leap_year?(@data.year), do: 366, else: 365)}</p>
+    <section id="insights-residency-ready" class="contents">
       <DawarichWeb.InsightsLive.NativeYearCalendar.render
         data={@data}
         locale={@locale}
@@ -201,30 +143,41 @@ defmodule DawarichWeb.InsightsLive.NativeParts do
         heatmap={@heatmap}
         unit={@unit}
       />
-      <p :if={@data.countries == []} class="break-words">
-        {t(@locale, "map.residency.show.no_country_data_for", %{})} {@data.year}
+      <%= if @data.countries != [] && @race do %>
+        <div
+          class="mb-6 grid gap-6 lg:grid-cols-2 [&>section]:mb-0 [&>section]:min-w-0"
+          data-testid="insights-distance-row"
+        >
+          <DawarichWeb.InsightsLive.NativeCountryRibbon.render data={@data} locale={@locale} />
+          <DawarichWeb.InsightsLive.NativeRace.render
+            race={@race}
+            locale={@locale}
+            unit={@unit}
+            today={@data.today}
+          />
+        </div>
+      <% else %>
+        <DawarichWeb.InsightsLive.NativeCountryRibbon.render
+          :if={@data.countries != []}
+          data={@data}
+          locale={@locale}
+        />
+        <DawarichWeb.InsightsLive.NativeRace.render
+          :if={@race}
+          race={@race}
+          locale={@locale}
+          unit={@unit}
+          today={@data.today}
+        />
+      <% end %>
+      <p
+        :if={@data.countries == []}
+        class="mb-6 text-sm text-base-content/60"
+        data-testid="residency-no-countries"
+      >
+        {t(@locale, "map.residency.show.points_need_reverse_geocoding_to_detect_countries", %{})}
       </p>
-      <details :for={country <- @data.countries} class="min-w-0 my-2">
-        <summary class="flex flex-wrap min-w-0 gap-2 [overflow-wrap:anywhere]">
-          <DawarichWeb.Icon.flag
-            :if={country.iso}
-            code={String.downcase(country.iso)}
-            class="w-6 h-4"
-          /> {country.name} {country.days} ({country.year_percentage}%)
-          <span :if={country.warning}>{t(
-            @locale,
-            "map.residency.show.exceeds_183_day_threshold_common_in_many_tax_jurisdictions",
-            %{}
-          )}</span>
-        </summary>
-        <p :for={{first, last} <- country.periods} class="break-words">
-          {LocalizedDate.l(@locale, first, "medium")} – {LocalizedDate.l(@locale, last, "medium")} · {Date.diff(
-            last,
-            first
-          ) + 1} {t(@locale, "map.residency.show.days", %{})}
-        </p>
-      </details>
-      <nav class="flex flex-wrap gap-2 min-w-0">
+      <nav :if={@data.page > 1 || @data.more} class="flex flex-wrap gap-2 min-w-0">
         <.link :if={@data.page > 1} patch={residency_path(@path, @query, @data.page - 1)}>{t(
           @locale,
           "views.pagination.previous",
@@ -239,9 +192,6 @@ defmodule DawarichWeb.InsightsLive.NativeParts do
     </section>
     """
   end
-
-  defp page_path(path, query, page),
-    do: path <> "?" <> URI.encode_query(Map.put(query, "page", page))
 
   defp residency_path(path, query, page),
     do: path <> "?" <> URI.encode_query(Map.put(query, "residency_page", page))
