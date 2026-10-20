@@ -41,15 +41,3 @@ test("entity click pushes one create, disarms, destroy removes listener", () => 
   editor.arm("place")
   assert.equal(map.handlers.size, 0)
 })
-
-test("point address request carries only the point id", () => {
-  const pushed = []
-  const editor = createEntityEditor({
-    map: mapMock(),
-    pushEvent: (event, payload) => pushed.push([event, payload]),
-  })
-  editor.address({ id: 7, properties: { street: "Main St" } })
-  editor.destroy()
-  editor.address({ id: 8 })
-  assert.deepEqual(pushed, [["address:open", { id: 7 }]])
-})

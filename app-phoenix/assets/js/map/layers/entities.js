@@ -17,6 +17,7 @@ export function createEntityLayers({
   reader,
   library,
   onSelect,
+  onInfo,
   onError,
   timers = globalThis,
 }) {
@@ -33,7 +34,6 @@ export function createEntityLayers({
   let current = {},
     presentation = {},
     selection,
-    popup,
     destroyed = false;
   const definitions = {
     visits: {
@@ -68,13 +68,8 @@ export function createEntityLayers({
     visits.setStatusFilter(presentation.status);
     visits.setDayRoute(presentation.dayRoute);
   }
-  function closePopup() {
-    popup?.remove();
-    popup = null;
-  }
   function restore() {
     if (destroyed) return;
-    closePopup();
     for (const layer of Object.values(resources))
       if (layer && !map.getSource(layer.sourceId)) layer.add(layer.data);
     if (selection && !map.getSource(selection.sourceId))
@@ -91,12 +86,12 @@ export function createEntityLayers({
         (feature) => feature.properties.id === candidate,
       );
       if (!feature) return;
-      closePopup();
-      if (kind === "anomalies")
-        popup = new library.Popup({ closeButton: true, closeOnClick: true })
-          .setLngLat(event.lngLat ?? feature.geometry.coordinates)
-          .setHTML(layer.buildPopupContent(feature.properties))
-          .addTo(map);
+      const content =
+        kind === "anomalies"
+          ? layer.buildPopupContent(feature.properties)
+          : undefined;
+      if (onInfo?.({ kind: identity, properties: feature.properties, content }))
+        return;
       onSelect?.({ kind: identity, id: feature.properties.id });
     };
     clicks[kind] = { id, click };
@@ -115,7 +110,6 @@ export function createEntityLayers({
     const operation = operations.begin(signal);
     current = config;
     pendingUpdates++;
-    closePopup();
     try {
       const pending = [];
       for (const [kind, definition] of Object.entries(definitions)) {
@@ -232,7 +226,6 @@ export function createEntityLayers({
       if (destroyed) return;
       destroyed = true;
       operations.destroy();
-      closePopup();
       map.off("style.load", restore);
       map.off("moveend", moved);
       for (const kind of Object.keys(resources)) remove(kind);

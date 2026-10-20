@@ -747,7 +747,7 @@
       "successors": [
         {
           "file": "T/dawarich_web/map_data_frames_test.exs",
-          "name": "native address drawer uses normalized fields without list fallback"
+          "name": "native info card address uses normalized fields without list fallback"
         }
       ],
       "authority": "integ-m7 merged reader refresh; mechanism retirement retains named native behavior and external corpus"

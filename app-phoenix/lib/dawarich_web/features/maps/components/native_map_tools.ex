@@ -33,10 +33,7 @@ defmodule DawarichWeb.NativeMapTools do
       class="min-w-0 [overflow-wrap:anywhere]"
     >
     </p>
-    <p id="native-map-point-summary" data-map-point-summary phx-update="ignore" role="status" />
     <DawarichWeb.NativeMapVisit.dialog dialog={assigns[:visit_dialog]} locale={@locale} />
-    <DawarichWeb.NativePointAddress.drawer address={assigns[:point_address]} locale={@locale} />
-    <DawarichWeb.NativePlaceDrawer.drawer detail={assigns[:place_detail]} locale={@locale} />
     <DawarichWeb.NativeMapPlace.dialog dialog={assigns[:place_dialog]} locale={@locale} />
     <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale={@locale} />
     <DawarichWeb.MapReplay.replay_panel id="native-map-replay" locale={@locale} native hook="native" />

@@ -1,13 +1,6 @@
 import { mapTranslate } from "./translate.js"
 
-export function createPointSelection({
-  map,
-  root,
-  pushEvent,
-  lifetime,
-  getConfig,
-}) {
-  const summary = root?.querySelector("[data-map-point-summary]")
+export function createPointSelection({ map, lifetime, getConfig, info }) {
   const translate = mapTranslate(getConfig)
   function select(event) {
     const feature = event.features?.[0]
@@ -18,29 +11,19 @@ export function createPointSelection({
       Number(point.point_count ?? 1),
     )
     if (point.cluster || count > 1) {
-      pushEvent("address:close", {})
       const zoom = map.getZoom()
       const next = Math.min(zoom + 2, map.getMaxZoom?.() ?? 22)
-      if (summary) summary.textContent = ""
       if (next > zoom)
         map.easeTo?.({ center: event.lngLat, zoom: next, duration: 350 })
-      else if (summary)
-        summary.textContent = translate("map_info.overlapping_points", {
-          count: count || 2,
-        })
+      else
+        info.show(
+          translate("map_info.location_point"),
+          `<p>${translate("map_info.overlapping_points", { count: count || 2 })}</p>`,
+        )
       return
     }
-    const coordinates = feature.geometry?.coordinates
-    if (
-      summary &&
-      coordinates?.length === 2 &&
-      coordinates.every(Number.isFinite)
-    )
-      summary.textContent = translate("map_info.location_coordinates", {
-        latitude: coordinates[1].toFixed(6),
-        longitude: coordinates[0].toFixed(6),
-      })
-    pushEvent("address:open", { id: point.id })
+    if (point.id == null) return
+    info.point(point, feature.geometry)
   }
   const hover = (event) => {
     const point = event.features?.[0]?.properties

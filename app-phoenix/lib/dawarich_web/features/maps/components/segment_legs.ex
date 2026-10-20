@@ -97,11 +97,13 @@ defmodule DawarichWeb.SegmentLegs do
   defp mode(assigns) do
     ~H"""
     <form
+      id={@native && "native-leg-form-#{@segment_id}"}
       class="segment-leg__form"
       action={"/tracks/#{@track_id}/segments/#{@segment_id}"}
       accept-charset="UTF-8"
       method="post"
       phx-change={@native && JS.push("segment:mode", value: %{segment_id: @segment_id})}
+      phx-auto-recover={@native && "ignore"}
     >
       <input type="hidden" name="_method" value="patch" />
       <input type="hidden" name="authenticity_token" value={@csrf} />

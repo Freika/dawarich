@@ -141,6 +141,19 @@ defmodule DawarichWeb.Sync1160MapShellTest do
     assert config(view)["flightsEnabled"] == true
   end
 
+  test "Tools keeps the Rails info card for map clicks and no native drawers" do
+    id = user()
+    {:ok, view, _} = open(id, "/map/v2?panel=tools")
+    card = "#native-map-info[data-native-info-display][phx-update=ignore].hidden"
+    assert has_element?(view, "#{card} h4.card-title[data-native-info-title]")
+    assert has_element?(view, "#{card} button[data-native-info-close]")
+    assert has_element?(view, "#{card} .space-y-2.text-sm[data-native-info-content]")
+    assert has_element?(view, "#{card} .card-actions[data-native-info-actions]")
+    refute has_element?(view, "#native-place-drawer")
+    refute has_element?(view, "#native-point-address")
+    refute has_element?(view, "[data-map-point-summary]")
+  end
+
   test "anomalies preference survives hiding points and native parameter refresh" do
     id = user()
     {:ok, view, _} = open(id, "/map/v2?panel=layers")

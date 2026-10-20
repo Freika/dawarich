@@ -741,7 +741,7 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, "#{row} .visit-row__editor.hidden")
   end
 
-  test "native production host edits a visit adds its note and opens an owned point address", %{
+  test "native production host edits a visit adds its note and replies an owned point address", %{
     id: id
   } do
     place = Dawarich.Test.FrameSeeds.place!(id, id * 10, "Cafe")
@@ -764,9 +764,8 @@ defmodule DawarichWeb.NativeM6HostTest do
     render_hook(view, "visit:close", %{})
     refute has_element?(view, "#native-visit-dialog")
     render_hook(view, "address:open", %{"id" => to_string(id * 10)})
-    assert has_element?(view, "#native-point-address")
-    render_hook(view, "address:close", %{})
-    refute has_element?(view, "#native-point-address")
+    assert_reply(view, %{text: text})
+    assert is_binary(text)
   end
 
   test "native production host selects visits confirms bulk and toggles timeline tags", %{id: id} do
@@ -1121,27 +1120,19 @@ defmodule DawarichWeb.NativeM6HostTest do
            }
   end
 
-  test "native point drawer deletes its owned point and closes after persistence", %{id: id} do
+  test "native info card deletes its owned point after persistence", %{id: id} do
     point = id * 10
     Dawarich.Test.FrameSeeds.point!(id, point, DateTime.to_unix(~U[2026-03-30 09:00:00Z]), %{})
     {:ok, view, _} = open(id, @second)
-    render_hook(view, "address:open", %{"id" => to_string(point)})
-
-    assert has_element?(
-             view,
-             "#native-point-address button[phx-click='point:delete'][data-confirm]"
-           )
-
-    view |> element("#native-point-address button[phx-click='point:delete']") |> render_click()
+    render_hook(view, "point:delete", %{"point_id" => to_string(point)})
     assert_reply(view, %{ok: true})
     assert_push_event(view, "map:invalidate", %{resource: "points"})
-    refute has_element?(view, "#native-point-address")
     assert rows("SELECT count(*) FROM points WHERE id=$1", [point]) == [[0]]
     render_hook(view, "address:open", %{"id" => to_string(point)})
-    refute has_element?(view, "#native-point-address")
+    assert_reply(view, %{text: nil})
   end
 
-  test "native point drawer keeps the current address when a foreign delete is refused", %{id: id} do
+  test "native info card refuses a foreign point delete without effects", %{id: id} do
     other = System.unique_integer([:positive])
     RailsUser.insert!(%{id: other, email: "point-other-#{other}@dawarich.test"})
     point = id * 10
@@ -1157,11 +1148,8 @@ defmodule DawarichWeb.NativeM6HostTest do
           )
 
     {:ok, view, _} = open(id, @second)
-    render_hook(view, "address:open", %{"id" => to_string(point)})
-    assert has_element?(view, "#native-point-address button[phx-value-point_id='#{point}']")
     render_hook(view, "point:delete", %{"point_id" => to_string(foreign)})
     assert_reply(view, %{error: "not_found"})
-    assert has_element?(view, "#native-point-address button[phx-value-point_id='#{point}']")
     assert rows("SELECT count(*) FROM points WHERE id IN ($1,$2)", [point, foreign]) == [[2]]
   end
 

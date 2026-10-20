@@ -119,18 +119,14 @@ defmodule DawarichWeb.MapLive.VisitCommands do
   end
 
   def handle_event("address:open", %{"id" => id}, socket) do
-    case VisitEditing.point(socket.assigns.current_scope, id) do
-      {:ok, point} ->
-        address = %{id: point.id, text: DawarichWeb.PointListFormat.address(point, false)}
-        {:noreply, assign(socket, :point_address, address)}
+    text =
+      case VisitEditing.point(socket.assigns.current_scope, id) do
+        {:ok, point} -> DawarichWeb.PointListFormat.address(point, false)
+        _ -> nil
+      end
 
-      _ ->
-        {:noreply, assign(socket, :point_address, nil)}
-    end
+    {:reply, %{text: text}, socket}
   end
-
-  def handle_event("address:close", _params, socket),
-    do: {:noreply, assign(socket, :point_address, nil)}
 
   def handle_event("visit:place_" <> _ = event, params, socket),
     do: DawarichWeb.MapLive.VisitPlaceCommands.handle_event(event, params, socket)

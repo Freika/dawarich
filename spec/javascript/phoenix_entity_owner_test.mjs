@@ -347,10 +347,12 @@ test("native entity host loads on demand and exposes only owned selection receip
   assert.equal(removed, 1)
 })
 
-test("entity range replacement refreshes anomaly popup locale and closes the older popup", async () => {
+test("entity range replacement refreshes the anomaly info card locale", async () => {
   const f = fixture()
+  const cards = []
   const owner = createEntityLayers({
     ...f,
+    onInfo: (receipt) => cards.push(receipt),
     reader: {
       pages: async () => [
         {
@@ -375,7 +377,8 @@ test("entity range replacement refreshes anomaly popup locale and closes the old
   }
   await owner.update(state)
   f.map.emit("click:anomalies", { features: [{ properties: { id: 1 } }] })
-  assert.ok(f.popups[0].html.includes("Time"))
+  assert.equal(cards[0].kind, "point")
+  assert.ok(cards[0].content.includes("Time"))
   await owner.update({
     ...state,
     range: { ...config.range, timezone: "Europe/Berlin" },
@@ -385,11 +388,10 @@ test("entity range replacement refreshes anomaly popup locale and closes the old
       "anomalies.low_accuracy": "Genauigkeit {accuracy}/{threshold}",
     },
   })
-  assert.equal(f.popups[0].removed, true)
   f.map.emit("click:anomalies", { features: [{ properties: { id: 1 } }] })
-  assert.ok(f.popups[1].html.includes("Zeit"))
-  assert.ok(f.popups[1].html.includes("Genauigkeit 101/100"))
-  assert.ok(!f.popups[1].html.includes("Time"))
+  assert.ok(cards[1].content.includes("Zeit"))
+  assert.ok(cards[1].content.includes("Genauigkeit 101/100"))
+  assert.ok(!cards[1].content.includes("Time"))
+  assert.equal(f.popups.length, 0)
   owner.destroy()
-  assert.ok(f.popups.every((popup) => popup.removed))
 })

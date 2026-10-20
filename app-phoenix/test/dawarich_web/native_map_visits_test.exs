@@ -20,7 +20,6 @@ defmodule DawarichWeb.NativeMapVisitsTest do
     def render(assigns) do
       ~H"""
       <DawarichWeb.NativeMapVisit.dialog dialog={assigns[:visit_dialog]} locale="en" />
-      <DawarichWeb.NativePointAddress.drawer address={assigns[:point_address]} locale="en" />
       """
     end
   end
@@ -237,7 +236,7 @@ defmodule DawarichWeb.NativeMapVisitsTest do
     assert rows("SELECT count(*) FROM notes", []) == [[1]]
   end
 
-  test "point address drawer shows only an owned point address", c do
+  test "point address replies only an owned point address for the info card", c do
     own = point!(c.id, %{"street" => "Main St", "city" => "Berlin", "country" => "Germany"})
 
     foreign =
@@ -246,12 +245,10 @@ defmodule DawarichWeb.NativeMapVisitsTest do
     view = open(c)
 
     render_hook(view, "address:open", %{"id" => to_string(foreign)})
-    refute has_element?(view, "#native-point-address")
+    assert_reply(view, %{text: nil})
     render_hook(view, "address:open", %{"id" => to_string(own)})
-    assert has_element?(view, "#native-point-address", "Main St, Berlin, Germany")
-    assert :sys.get_state(view.pid).socket.assigns.point_address |> Map.keys() == [:id, :text]
-    render_hook(view, "address:close", %{})
-    refute has_element?(view, "#native-point-address")
+    assert_reply(view, %{text: "Main St, Berlin, Germany"})
+    refute Map.has_key?(:sys.get_state(view.pid).socket.assigns, :point_address)
   end
 
   defp open(c) do

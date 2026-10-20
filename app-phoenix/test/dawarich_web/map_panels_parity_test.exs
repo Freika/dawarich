@@ -99,6 +99,7 @@ defmodule DawarichWeb.MapPanelsParityTest do
   end
 
   defp user_tag?({"div", [{"class", "timeline-rail__section"}], _}), do: true
+
   defp user_tag?({"form", attrs, children}),
     do: {"action", "/imports"} in attrs or ({"method", "dialog"} in attrs and children == [])
 

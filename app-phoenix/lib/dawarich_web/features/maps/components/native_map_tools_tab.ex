@@ -76,15 +76,19 @@ defmodule DawarichWeb.NativeMapToolsTab do
           locale={@locale}
         />
 
-        <div class="hidden mt-4">
+        <div id="native-map-info" class="hidden mt-4" data-native-info-display phx-update="ignore">
           <div class="card bg-base-200 shadow-md">
             <div class="card-body p-4">
               <div class="flex justify-between items-start mb-2">
-                <h4 class="card-title text-base"></h4>
-                <button class="btn btn-ghost btn-xs btn-circle" title={p(@locale, "close")}>✕</button>
+                <h4 class="card-title text-base" data-native-info-title></h4>
+                <button
+                  class="btn btn-ghost btn-xs btn-circle"
+                  title={p(@locale, "close")}
+                  data-native-info-close
+                >✕</button>
               </div>
-              <div class="space-y-2 text-sm"></div>
-              <div class="card-actions justify-end mt-3"></div>
+              <div class="space-y-2 text-sm" data-native-info-content></div>
+              <div class="card-actions justify-end mt-3" data-native-info-actions></div>
             </div>
           </div>
         </div>

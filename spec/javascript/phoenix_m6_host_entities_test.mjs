@@ -72,25 +72,27 @@ test("whitespace-only creation guidance permits place selection while armed guid
     resource === "places"
       ? [{ id: 7, name: "Owned place", latitude: 52, longitude: 13 }]
       : []
+  const title = new Element()
+  f.nodes.set("[data-native-info-display]", new Element())
+  f.nodes.set("[data-native-info-title]", title)
+  f.nodes.set("[data-native-info-content]", new Element())
+  f.nodes.set("[data-native-info-actions]", new Element())
   await f.owner.mount()
   const select = () =>
     f.map.emit("click:places", { features: [{ properties: { id: 7 } }] })
+  const opened = () =>
+    f.pushed.filter(
+      (item) => item.event === "map:panel" && item.payload.panel === "tools",
+    ).length
   select()
-  assert.deepEqual(
-    f.pushed.filter((item) => item.event === "map:select"),
-    [
-      {
-        event: "map:select",
-        payload: { kind: "place", id: 7 },
-        reply: undefined,
-      },
-    ],
-  )
+  assert.equal(title.textContent, "Owned place")
+  assert.equal(opened(), 1)
+  assert.equal(f.pushed.some((item) => item.event === "map:select"), false)
   status.textContent = "Place placement active"
   select()
-  assert.equal(f.pushed.filter((item) => item.event === "map:select").length, 1)
+  assert.equal(opened(), 1)
   status.textContent = " \n "
   select()
-  assert.equal(f.pushed.filter((item) => item.event === "map:select").length, 2)
+  assert.equal(opened(), 2)
   f.owner.destroy()
 })

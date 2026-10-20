@@ -8,4 +8,14 @@ defmodule DawarichWeb.NativeMapLabelsPluralTest do
     assert labels["search.no_locations"] != "search.no_locations"
     assert labels["map_info.duration_hours_minutes"] =~ "{hours}"
   end
+
+  test "info card labels resolve the Rails map_info, action and confirm texts" do
+    labels = DawarichWeb.NativeMapLabels.labels("de")
+
+    for key <-
+          ~w(map_info.location_point map_info.coordinates map_info.time map_info.battery map_info.altitude map_info.speed map_info.radius map_info.center map_info.place map_info.area map_info.place_name_locked messages.edit messages.delete messages.anomaly_point map.confirm_delete_point_permanently points.address.address),
+        do: assert(labels[key] not in [nil, key], key)
+
+    assert labels["areas.confirm_delete_named"] =~ "{name}"
+  end
 end

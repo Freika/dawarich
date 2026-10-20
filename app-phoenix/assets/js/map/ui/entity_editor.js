@@ -25,16 +25,11 @@ export function createEntityEditor({ map, pushEvent }) {
     map.getCanvas().style.cursor = "crosshair"
   }
 
-  function address(feature) {
-    if (destroyed || feature?.id == null) return
-    pushEvent("address:open", { id: feature.id })
-  }
-
   function destroy() {
     if (destroyed) return
     destroyed = true
     disarm()
   }
 
-  return { arm, disarm, address, destroy }
+  return { arm, disarm, destroy }
 }

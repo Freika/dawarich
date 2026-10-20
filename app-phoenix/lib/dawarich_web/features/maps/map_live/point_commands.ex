@@ -1,6 +1,5 @@
 defmodule DawarichWeb.MapLive.PointCommands do
   @moduledoc false
-  import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   alias Dawarich.LocationCommands.Points
 
@@ -22,12 +21,6 @@ defmodule DawarichWeb.MapLive.PointCommands do
   def handle_event("point:delete", %{"point_id" => id}, socket) do
     case Points.delete(socket.assigns.current_scope, id) do
       :ok ->
-        socket =
-          if to_string(socket.assigns[:point_address] && socket.assigns.point_address.id) ==
-               to_string(id),
-             do: assign(socket, :point_address, nil),
-             else: socket
-
         socket = feedback(socket, :notice, "point_deleted_successfully")
         {:reply, %{ok: true}, push_event(socket, "map:invalidate", %{resource: "points"})}
 

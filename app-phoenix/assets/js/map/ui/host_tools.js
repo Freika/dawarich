@@ -1,6 +1,7 @@
 import { createAreaEditor } from "./area_editor.js"
 import { createEntityEditor } from "./entity_editor.js"
 import { installHostShortcuts } from "./shortcuts.js"
+import { createInfoCard } from "./info_card.js"
 import { createPointSelection } from "./point_selection.js"
 
 export function bindTool(root, selector, callback, lifetime) {
@@ -49,7 +50,8 @@ export function createHostTools({ map, root, pushEvent, lifetime, getConfig }) {
     () => arm("visit"),
     lifetime,
   )
-  createPointSelection({ map, root, pushEvent, lifetime, getConfig })
+  const info = createInfoCard({ root, pushEvent, getConfig, lifetime })
+  createPointSelection({ map, lifetime, getConfig, info })
   const area = createAreaEditor({ map, pushEvent: send })
   lifetime.own(area.destroy)
   const preview = ({ detail }) => (detail ? area.preview(detail) : area.clear())
@@ -74,5 +76,5 @@ export function createHostTools({ map, root, pushEvent, lifetime, getConfig }) {
   }
   root?.addEventListener("keydown", cancel)
   lifetime.own(() => root?.removeEventListener("keydown", cancel))
-  return { area, entity }
+  return { area, entity, info }
 }

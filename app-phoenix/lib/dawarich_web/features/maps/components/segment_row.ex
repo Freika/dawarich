@@ -74,6 +74,7 @@ defmodule DawarichWeb.SegmentRow do
       class="segment-row__icon"
     />
     <form
+      id={@native && "native-segment-form-#{@segment.id}"}
       class="contents"
       data-turbo-frame={!@native && "segment-row-#{@segment.id}"}
       action={"/tracks/#{@segment.track_id}/segments/#{@segment.id}"}
@@ -81,6 +82,7 @@ defmodule DawarichWeb.SegmentRow do
       method="post"
       phx-change={@native && JS.push("segment:mode", value: %{segment_id: @segment.id})}
       phx-submit={@native && JS.push("segment:reset", value: %{segment_id: @segment.id})}
+      phx-auto-recover={@native && "ignore"}
     >
       <input type="hidden" name="_method" value="patch" />
       <input type="hidden" name="authenticity_token" value={@csrf} />

@@ -96,7 +96,7 @@ defmodule DawarichWeb.MapDataFramesTest do
            )
   end
 
-  test "native address drawer uses normalized fields without list fallback", %{user: user} do
+  test "native info card address uses normalized fields without list fallback", %{user: user} do
     Repo.query!(
       "UPDATE points SET city='Fallback', country_name='Germany', geodata='{}'::jsonb WHERE id=837001"
     )
@@ -109,8 +109,8 @@ defmodule DawarichWeb.MapDataFramesTest do
 
     view = open(user)
     render_hook(view, "address:open", %{"id" => "837001"})
-    assert has_element?(view, "#native-point-address")
-    refute has_element?(view, "#native-point-address", "Fallback")
+    assert_reply(view, %{text: text})
+    refute (text || "") =~ "Fallback"
 
     Repo.query!("UPDATE points SET geodata=$1 WHERE id=837001", [
       %{
@@ -123,7 +123,7 @@ defmodule DawarichWeb.MapDataFramesTest do
     ])
 
     render_hook(view, "address:open", %{"id" => "837001"})
-    assert has_element?(view, "#native-point-address", "Synthetic Street, Leipzig, Germany")
+    assert_reply(view, %{text: "Synthetic Street, Leipzig, Germany"})
   end
 
   test "direct foreign malformed and query-writing retired frames refuse without effects", %{

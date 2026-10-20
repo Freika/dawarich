@@ -9,11 +9,17 @@ function setup(zoom) {
       "map_info.location_coordinates": "{latitude}, {longitude}",
     },
   })
-  const summary = new Element()
-  f.nodes.set("[data-map-point-summary]", summary)
+  const card = new Element()
+  const content = new Element()
+  const actions = new Element()
+  card.className = "hidden mt-4"
+  f.nodes.set("[data-native-info-display]", card)
+  f.nodes.set("[data-native-info-title]", new Element())
+  f.nodes.set("[data-native-info-content]", content)
+  f.nodes.set("[data-native-info-actions]", actions)
   f.map.getZoom = () => zoom
   f.map.getMaxZoom = () => 22
-  return { ...f, summary }
+  return { ...f, card, content, actions }
 }
 
 test("native merged point zooms toward an individually selectable marker", async () => {
@@ -47,14 +53,12 @@ test("native overlapping points at maximum zoom expose no arbitrary deletion tar
       lngLat: { lng: 13.4, lat: 52.5 },
       features: [{ properties: { id: 7, count: 2 } }],
     })
-    assert.equal(f.summary.textContent, "2 overlapping points")
+    assert.equal(f.content.innerHTML, "<p>2 overlapping points</p>")
+    assert.equal(f.actions.innerHTML, "")
+    assert.equal(f.card.classList.contains("hidden"), false)
     assert.equal(
       f.pushed.some(({ event }) => event === "address:open"),
       false,
-    )
-    assert.equal(
-      f.pushed.some(({ event }) => event === "address:close"),
-      true,
     )
   } finally {
     f.owner.destroy()

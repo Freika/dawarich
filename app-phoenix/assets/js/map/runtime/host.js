@@ -46,14 +46,8 @@ export function mountHost({
     owner.config.editEnabled ||
     owner.selection.state.active ||
     !!root?.querySelector("[data-map-tool-status]")?.textContent?.trim();
-  let library;
-  let layers;
-  let editing;
-  let enrichment;
-  let timeline;
-  let density;
-  let aux;
-  let entities, recent;
+  let library, layers, editing, enrichment, timeline, density, aux;
+  let entities, recent, tools;
   const initial = JSON.parse(element.dataset.mapConfig ?? "{}");
   const preferences = createLayerPreferences({
     namespace: initial.namespace,
@@ -141,7 +135,7 @@ export function mountHost({
           entities: () => entities,
           blocked,
         });
-        createHostTools({
+        tools = createHostTools({
           getConfig: () => owner.config,
           map,
           root,
@@ -234,6 +228,7 @@ export function mountHost({
             map,
             reader,
             library,
+            onInfo: (receipt) => !blocked() && tools?.info.select(receipt),
             onSelect: (receipt) => {
               if (!blocked()) pushEvent("map:select", receipt);
             },
