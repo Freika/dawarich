@@ -18,6 +18,8 @@ defmodule DawarichWeb.MapGalleryCards do
   attr :poster, :map, required: true
   attr :locale, :string, required: true
 
+  attr :native, :boolean, default: false
+
   def poster_card(assigns) do
     image = assigns.poster.files["image"]
     pdf = assigns.poster.files["print_pdf"]
@@ -63,8 +65,11 @@ defmodule DawarichWeb.MapGalleryCards do
           )}</a>
           <a
             class="btn btn-xs btn-ghost"
-            data-turbo-method="delete"
-            data-turbo-confirm={p(@locale, "delete_this_poster")}
+            data-turbo-method={if !@native, do: "delete"}
+            phx-click={if @native, do: "poster:delete"}
+            phx-value-id={if @native, do: @poster.id}
+            data-confirm={if @native, do: p(@locale, "delete_this_poster")}
+            data-turbo-confirm={if !@native, do: p(@locale, "delete_this_poster")}
             href={"/posters/#{@poster.id}"}
           >{p(@locale, "delete")}</a>
         </div>

@@ -2,9 +2,9 @@ import { bindTool } from "./host_tools.js"
 
 export function installStudios({ element, owner, lifetime }) {
   const root = element.closest?.("[data-native-map-root]")
+  const panel = (studio) => root?.querySelector(`#${studio}-studio`) ?? root?.querySelector(`#native-${studio}-studio`)
   const dispatch = (studio, detail) => {
-    root
-      ?.querySelector(`#native-${studio}-studio`)
+    panel(studio)
       ?.dispatchEvent(
         new CustomEvent(`dawarich:${studio}-studio-open`, { detail }),
       )
@@ -31,7 +31,7 @@ export function installStudios({ element, owner, lifetime }) {
   lifetime.own(() => delete owner.openStudio)
   const switchStudio = (event) => {
     if (
-      event.target === root?.querySelector("#native-video-studio") &&
+      event.target === panel("video") &&
       event.detail?.studio === "poster" &&
       event.detail.source === owner.source
     )

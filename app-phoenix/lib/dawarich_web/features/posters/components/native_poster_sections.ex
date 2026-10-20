@@ -46,6 +46,24 @@ defmodule DawarichWeb.NativePosterSections do
     {"boundaries", "boundaries", false}
   ]
 
+  def control_options(locale) do
+    %{
+      layouts:
+        Enum.map(@layouts, fn {category, ids} ->
+          %{
+            label: js(locale, "categories." <> category),
+            options: Enum.map(ids, &%{value: &1, label: js(locale, "layouts." <> &1)})
+          }
+        end),
+      fonts: Enum.map(@fonts, fn {key, label, _} -> %{value: key, label: label} end),
+      sizes:
+        Enum.map(
+          ~w(print-30x40 print-50x70 print-70x100),
+          &%{value: &1, label: js(locale, "layouts." <> &1)}
+        )
+    }
+  end
+
   attr :themes, :list, required: true
   attr :locale, :string, required: true
 

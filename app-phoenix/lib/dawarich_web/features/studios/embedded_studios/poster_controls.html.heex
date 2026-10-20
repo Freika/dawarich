@@ -1,0 +1,200 @@
+<details
+  id="native-poster_controls-1"
+  phx-update="ignore"
+  open
+  class="collapse collapse-arrow bg-base-100 rounded-lg"
+>
+  <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+    <span class="flex items-center gap-2">
+      <Icon.icon name="grid2x2" class="h-4 w-4 opacity-70 shrink-0" />
+      {p(@locale, "layout")}
+    </span>
+  </summary>
+  <div class="collapse-content space-y-2">
+    <select
+      class="select select-bordered select-sm py-0 w-full"
+      data-native-poster-layout
+    ></select>
+    <p class="text-xs opacity-60" data-native-poster-layout-dims></p>
+  </div>
+</details>
+
+<details
+  id="native-poster_controls-2"
+  phx-update="ignore"
+  open
+  class="collapse collapse-arrow bg-base-100 rounded-lg"
+>
+  <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+    <span class="flex items-center gap-2">
+      <Icon.icon name="palette" class="h-4 w-4 opacity-70 shrink-0" />
+      {p(@locale, "theme")}
+    </span>
+  </summary>
+  <div class="collapse-content space-y-2">
+    <div class="grid grid-cols-6 gap-1.5">
+      <%= for theme <- @themes do %>
+        <button
+          type="button"
+          class="w-full overflow-hidden rounded-md border border-base-300 ring-primary ring-offset-base-100 transition hover:scale-105 focus:outline-none focus-visible:ring-2"
+          style={"height: 32px; background-image: url('#{Assets.stylesheet_path("poster_themes/#{theme.key}.webp")}'); background-size: cover; background-position: center;"}
+          title={theme.name}
+          aria-label={p(@locale, "theme_aria_label", %{theme: theme.name})}
+          data-native-poster-swatch
+          data-key={theme.key}
+          data-name={theme.name}
+        ></button>
+      <% end %>
+    </div>
+    <p class="text-xs opacity-70" data-native-poster-theme-label></p>
+    <details
+      id="native-poster_controls-3"
+      phx-update="ignore"
+      class="collapse collapse-arrow bg-base-200 rounded-lg"
+    >
+      <summary class="collapse-title text-sm min-h-0 cursor-pointer select-none">
+        {p(@locale, "customize_colors")}
+      </summary>
+      <div class="collapse-content space-y-1">
+        <%= for {token, label} <- tokens() do %>
+          <label class="flex items-center gap-2">
+            <input
+              type="color"
+              class="h-7 w-9 cursor-pointer rounded border border-base-300 bg-base-100 p-0.5"
+              data-native-poster-token={token}
+              data-token={token}
+            />
+            <span class="label-text text-sm flex-1">{p(@locale, label)}</span>
+            <span
+              class="text-xs opacity-60 tabular-nums"
+              data-native-poster-token-value={token}
+              data-token={token}
+            ></span>
+          </label>
+        <% end %>
+      </div>
+    </details>
+  </div>
+</details>
+
+<details
+  id="native-poster_controls-4"
+  phx-update="ignore"
+  open
+  class="collapse collapse-arrow bg-base-100 rounded-lg"
+>
+  <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+    <span class="flex items-center gap-2">
+      <Icon.icon name="square-pen" class="h-4 w-4 opacity-70 shrink-0" />
+      {p(@locale, "text")}
+    </span>
+  </summary>
+  <div class="collapse-content space-y-2">
+    <label class="label cursor-pointer justify-start gap-3 py-1">
+      <input
+        type="checkbox"
+        class="toggle toggle-sm toggle-primary"
+        checked
+        data-native-poster-text-toggle
+      />
+      <span class="label-text text-sm">{p(@locale, "show_text")}</span>
+    </label>
+    <label class="form-control">
+      <span class="label-text text-xs">{p(@locale, "title")}</span>
+      <input
+        type="text"
+        class="input input-bordered input-sm w-full"
+        placeholder={p(@locale, "berlin")}
+        data-native-poster-title
+      />
+    </label>
+    <label class="form-control">
+      <span class="label-text text-xs">{p(@locale, "subtitle")}</span>
+      <input
+        type="text"
+        class="input input-bordered input-sm w-full"
+        placeholder={p(@locale, "germany")}
+        data-native-poster-subtitle
+      />
+    </label>
+    <label class="label cursor-pointer justify-start gap-3 py-1">
+      <input
+        type="checkbox"
+        class="toggle toggle-sm toggle-primary"
+        checked
+        data-native-poster-coords
+      />
+      <span class="label-text text-sm">{p(@locale, "coordinates_line")}</span>
+    </label>
+    <label class="form-control">
+      <span class="label-text text-xs">{p(@locale, "font")}</span>
+      <select
+        class="select select-bordered select-sm py-0 w-full"
+        data-native-poster-font
+      ></select>
+    </label>
+  </div>
+</details>
+
+<details
+  id="native-poster_controls-5"
+  phx-update="ignore"
+  class="collapse collapse-arrow bg-base-100 rounded-lg"
+>
+  <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+    <span class="flex items-center gap-2">
+      <Icon.icon name="layer" class="h-4 w-4 opacity-70 shrink-0" />
+      {p(@locale, "layers")}
+    </span>
+  </summary>
+  <div class="collapse-content space-y-1">
+    <%= for {key, label, default_on} <- layers() do %>
+      <label class="label cursor-pointer justify-start gap-3 py-1">
+        <input
+          type="checkbox"
+          class="toggle toggle-sm toggle-primary"
+          data-native-poster-layer={key}
+          data-layer-category={key}
+          checked={default_on}
+        />
+        <span class="label-text text-sm">{p(@locale, label)}</span>
+      </label>
+    <% end %>
+    <div class="pt-2">
+      <div class="flex items-center justify-between py-1">
+        <span class="label-text text-xs">{p(@locale, "track_opacity")}</span>
+        <span
+          class="text-xs font-medium tabular-nums opacity-80"
+          data-native-poster-opacity-label
+        ></span>
+      </div>
+      <input
+        type="range"
+        min="10"
+        max="100"
+        step="5"
+        value="100"
+        class="range range-primary range-xs"
+        data-native-poster-opacity
+      />
+    </div>
+    <div class="pt-2">
+      <div class="flex items-center justify-between py-1">
+        <span class="label-text text-xs">{p(@locale, "track_width")}</span>
+        <span
+          class="text-xs font-medium tabular-nums opacity-80"
+          data-native-poster-width-label
+        ></span>
+      </div>
+      <input
+        type="range"
+        min="50"
+        max="300"
+        step="10"
+        value="100"
+        class="range range-primary range-xs"
+        data-native-poster-width
+      />
+    </div>
+  </div>
+</details>

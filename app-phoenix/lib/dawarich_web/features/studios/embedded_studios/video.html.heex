@@ -1,0 +1,209 @@
+<div
+  id="video-studio"
+  phx-hook="VideoStudio"
+  data-native-video-config={@config}
+  phx-target={@target}
+  data-native-studio="video"
+  phx-mounted={JS.ignore_attributes(["class", "data-video-state"])}
+  class="fixed inset-0 hidden bg-base-300"
+  style="z-index: 60"
+>
+  <div class="flex h-full flex-col">
+    <header class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 border-b border-base-content/10 bg-base-200 px-3 py-2 sm:px-4 lg:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
+      <div class="flex items-center gap-3 shrink-0">
+        <h2 class="text-sm font-semibold tracking-wide flex items-center gap-2">
+          <Icon.icon name="video" class="h-4 w-4 opacity-70" />
+          {v(@locale, "video_studio")}
+        </h2>
+        <.switcher locale={@locale} current="video" />
+      </div>
+      <div
+        class="col-span-2 row-start-2 flex min-w-0 items-center gap-2 lg:col-span-1 lg:row-start-auto lg:justify-self-center"
+        role="group"
+        aria-label={t(@locale, "shared.map.date_navigation_v2.start_date_and_time", %{}) <> " — " <> t(@locale, "shared.map.date_navigation_v2.end_date_and_time", %{})}
+        id="native-video-range-controls"
+        phx-update="ignore"
+        data-native-video-range-controls
+      >
+        <label class="min-w-0 flex-1 lg:w-56 lg:flex-none">
+          <span class="sr-only">{t(
+            @locale,
+            "shared.map.date_navigation_v2.start_date_and_time",
+            %{}
+          )}</span>
+          <input
+            type="datetime-local"
+            class="input input-bordered input-sm w-full"
+            max="9999-12-31T23:59"
+            aria-label={t(@locale, "shared.map.date_navigation_v2.start_date_and_time", %{})}
+            data-native-video-start
+          />
+        </label>
+        <span class="text-xs opacity-60">–</span>
+        <label class="min-w-0 flex-1 lg:w-56 lg:flex-none">
+          <span class="sr-only">{t(
+            @locale,
+            "shared.map.date_navigation_v2.end_date_and_time",
+            %{}
+          )}</span>
+          <input
+            type="datetime-local"
+            class="input input-bordered input-sm w-full"
+            max="9999-12-31T23:59"
+            aria-label={t(@locale, "shared.map.date_navigation_v2.end_date_and_time", %{})}
+            data-native-video-end
+          />
+        </label>
+        <button type="button" class="btn btn-sm btn-primary shrink-0" data-native-video-load>
+          <span
+            class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
+            data-native-video-load-spinner
+          ></span>
+          <span>{t(@locale, "posters.studio.load", %{})}</span>
+        </button>
+      </div>
+      <div
+        class="min-w-0 items-center gap-2 text-sm opacity-70 lg:flex lg:justify-self-center"
+        id="native-video-range-display"
+        phx-update="ignore"
+        data-native-video-range-display
+      >
+        <Icon.icon name="calendar-clock" class="h-4 w-4 shrink-0" />
+        <span class="truncate" data-native-video-range-label></span>
+      </div>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-circle shrink-0 justify-self-end"
+        title={v(@locale, "close_studio")}
+        aria-label={v(@locale, "close_studio")}
+        data-native-video-close
+      >
+        <Icon.icon name="x" class="size-6" />
+      </button>
+    </header>
+
+    <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
+      <div
+        class="relative flex h-[36vh] min-w-0 shrink-0 flex-col items-center justify-center overflow-hidden p-4 sm:p-6 lg:h-auto lg:flex-1 lg:shrink"
+        id="native-video-stage"
+        phx-update="ignore"
+        data-native-video-stage
+      >
+        <div
+          class="relative shrink-0 overflow-hidden border border-base-content/15 bg-base-100"
+          data-native-video-frame
+        >
+          <div style="position: absolute; inset: 0" data-native-video-preview></div>
+
+          <canvas
+            class="absolute inset-0 h-full w-full"
+            style="pointer-events: none"
+            data-native-video-overlay
+          ></canvas>
+          <video
+            class="absolute inset-0 hidden h-full w-full bg-black"
+            data-native-video-result
+            controls
+            playsinline
+          ></video>
+        </div>
+        <p class="mt-2 max-w-lg shrink-0 text-center text-xs leading-relaxed opacity-60">
+          {v(@locale, "rendered_on_your_device_nothing_leaves_the_browser_until_you_save")}
+        </p>
+      </div>
+
+      <aside class="flex min-h-0 w-full flex-1 flex-col border-t border-base-content/10 bg-base-200 lg:w-96 lg:flex-none lg:border-l lg:border-t-0">
+        <div class="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+          <.video_controls locale={@locale} themes={@themes} /><details
+            id="native-video-gallery"
+            phx-mounted={JS.ignore_attributes("open")}
+            class="collapse collapse-arrow rounded-lg border border-base-content/10 bg-base-100"
+          >
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+                <Icon.icon name="camera" class="h-4 w-4 opacity-70 shrink-0" />
+                {v(@locale, "recent_videos")}
+              </span>
+            </summary>
+            <div class="collapse-content space-y-3">
+              <p class="text-xs opacity-60">
+                {v(@locale, "videos_from_save_to_gallery_they_stay_here")}
+              </p>
+              <div id="route-video-gallery-list" class="space-y-3">
+                <RouteVideoCard.route_video_card
+                  :for={video <- @videos}
+                  native
+                  video={video}
+                  locale={@locale}
+                  target={@target}
+                />
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div
+          id="native-video-actions"
+          phx-update="ignore"
+          class="shrink-0 space-y-2 border-t border-base-content/10 bg-base-100 p-3"
+        >
+          <label class="form-control">
+            <span class="label-text text-xs">{v(@locale, "name")}</span>
+            <input
+              type="text"
+              class="input input-bordered input-sm w-full"
+              data-native-video-name
+            />
+          </label>
+
+          <div class="hidden space-y-0.5 text-xs opacity-70 sm:block" data-native-video-summary>
+          </div>
+
+          <div class="divider my-0 text-xs font-medium opacity-50">
+            {v(@locale, "render_a_video")}
+          </div>
+
+          <div class="h-1 w-full overflow-hidden rounded-full bg-base-content/10">
+            <div
+              class="h-full origin-left rounded-full bg-primary transition-transform duration-150"
+              style="transform: scaleX(0)"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+              data-native-video-progress
+            >
+            </div>
+          </div>
+          <p class="min-h-4 text-xs opacity-70" aria-live="polite" data-native-video-status></p>
+
+          <button
+            type="button"
+            class="btn btn-primary btn-sm w-full"
+            data-native-video-render
+            data-testid="video-render"
+          >
+            <Icon.icon name="play" class="h-4 w-4" />
+            {v(@locale, "render_video")}
+          </button>
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs w-full gap-1 opacity-70 hidden"
+            data-native-video-cancel
+          >{v(@locale, "cancel")}</button>
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs w-full gap-1 opacity-70"
+            disabled
+            data-native-video-save
+            data-testid="video-save"
+            title={v(@locale, "keep_this_video_in_your_gallery")}
+          >
+            <Icon.icon name="camera" class="h-3.5 w-3.5" />
+            {v(@locale, "save_to_gallery")}
+          </button>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>

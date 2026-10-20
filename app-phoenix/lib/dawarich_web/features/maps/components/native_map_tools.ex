@@ -38,6 +38,7 @@ defmodule DawarichWeb.NativeMapTools do
     <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale={@locale} />
     <DawarichWeb.MapReplay.replay_panel id="native-map-replay" locale={@locale} native hook="native" />
     <DawarichWeb.NativePosterStudio.poster_studio
+      native
       themes={@page.themes}
       posters={@posters}
       print_order_url={@page.print_order_url}
@@ -46,6 +47,7 @@ defmodule DawarichWeb.NativeMapTools do
     <.live_component
       module={DawarichWeb.VideoStudioLiveComponent}
       id="video-studio-owner"
+      native={true}
       scope={@current_scope}
       locale={@locale}
       base_url={assigns[:base_url] || ""}

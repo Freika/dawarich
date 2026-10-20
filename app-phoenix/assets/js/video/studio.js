@@ -1,3 +1,4 @@
+import { studioQuery, studioValue, studioPanel } from "../studios/dom.js"
 import { createLifecycle } from "../map/runtime/lifecycle.js"
 import { bindVideoControls, syncVideoControls } from "./controls.js"
 import { ensureHudFonts } from "./hud_fonts.js"
@@ -28,11 +29,13 @@ export function mountVideoStudio({ root, source, request, deps = {} }) {
   const upload = deps.upload ?? uploadRenderedVideo
   const ensureFonts = deps.ensureFonts ?? ensureHudFonts
   const supported = deps.isSupported ?? (() => isVideoExportSupported())
-  const config = JSON.parse(root.dataset.videoConfig ?? "{}")
+  const config = JSON.parse(studioValue(root, "videoConfig") ?? "{}")
   const strings = config.strings ?? {}
   const t = (key, values) => interpolate(strings[key], values)
-  const el = (name) => root.querySelector(`[data-video-${name}]`)
+  const el = (name) => studioQuery(root, `[data-video-${name}]`)
+  const panel = studioPanel(root, el("dialog"))
   const owned = createLifecycle()
+  owned.own(panel.onCancel?.(() => close()) ?? (() => {}))
   const runs = createRenderRuns()
   const video = createVideoSource(source)
   let openController = null
@@ -179,7 +182,7 @@ export function mountVideoStudio({ root, source, request, deps = {} }) {
       opened = true
       const gen = ctx.bump()
       openController = new AbortController()
-      el("dialog")?.showModal?.()
+      panel.showModal()
       range.setBusy(true)
       el("close")?.focus?.()
       try {
@@ -256,8 +259,7 @@ export function mountVideoStudio({ root, source, request, deps = {} }) {
     ctx.clearResult()
     range.setBusy(false)
     ctx.setRendering(false)
-    const dialog = el("dialog")
-    if (dialog?.open) dialog.close()
+    if (panel.open) panel.close()
   }
 
   function switchStudio() {

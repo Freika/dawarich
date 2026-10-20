@@ -1,3 +1,4 @@
+import { studioQueryAll, studioValue } from "../studios/dom.js"
 import { PRINT_PRODUCTS, printProductFor } from "./data/print_products.js"
 import { submitPrintOrder } from "./order.js"
 import { interpolate } from "./strings.js"
@@ -45,16 +46,16 @@ export function bindOrderControls({
   let current = null
 
   find("order-section")?.classList.toggle("hidden", !printOrderUrl)
-  const sizes = [...root.querySelectorAll("[data-poster-print-size]")]
+  const sizes = [...studioQueryAll(root, "[data-poster-print-size]")]
   for (const size of sizes) {
     const price = size.querySelector("[data-poster-print-price]")
     if (price)
       price.textContent =
-        PRINT_PRODUCTS[size.dataset.posterPrintSize].priceLabel
+        PRINT_PRODUCTS[studioValue(size, "posterPrintSize")].priceLabel
     on(size, "click", () => {
       const layout = find("layout")
       if (!layout) return
-      layout.value = size.dataset.posterPrintSize
+      layout.value = studioValue(size, "posterPrintSize")
       layout.dispatchEvent(new Event("change"))
     })
   }
@@ -70,8 +71,8 @@ export function bindOrderControls({
     find("size-picker")?.classList.contains("hidden") === false
 
   function setStep(name, state) {
-    const element = [...root.querySelectorAll("[data-poster-order-step]")].find(
-      (candidate) => candidate.dataset.posterOrderStep === name,
+    const element = [...studioQueryAll(root, "[data-poster-order-step]")].find(
+      (candidate) => studioValue(candidate, "posterOrderStep") === name,
     )
     if (!element) return
     element.classList.toggle("opacity-40", state === "pending")

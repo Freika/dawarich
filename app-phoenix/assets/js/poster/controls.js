@@ -1,3 +1,4 @@
+import { studioQueryAll, studioQuery, studioValue } from "../studios/dom.js"
 import { createLifecycle } from "../map/runtime/lifecycle.js"
 import { presetRange, toLocalDateTimeInput } from "./dates.js"
 import { bindLayoutControls } from "./layout_controls.js"
@@ -13,7 +14,7 @@ export function bindPosterControls({
   now = () => new Date(),
 }) {
   const owned = createLifecycle()
-  const find = (name) => root.querySelector(`[data-poster-${name}]`)
+  const find = (name) => studioQuery(root, `[data-poster-${name}]`)
   const on = (element, type, handler) => {
     if (!element) return
     element.addEventListener(type, handler)
@@ -93,9 +94,9 @@ export function bindPosterControls({
   }
 
   on(find("load"), "click", () => applyDates())
-  for (const preset of root.querySelectorAll("[data-poster-range]")) {
+  for (const preset of studioQueryAll(root, "[data-poster-range]")) {
     on(preset, "click", () => {
-      const range = presetRange(preset.dataset.posterRange, now(), timeZone())
+      const range = presetRange(studioValue(preset, "posterRange"), now(), timeZone())
       const start = find("date-start")
       const end = find("date-end")
       if (start) start.value = range.start

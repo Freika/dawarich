@@ -4,10 +4,14 @@ defmodule DawarichWeb.RouteVideoCard do
   import DawarichWeb.Translate, only: [t: 3]
   alias Dawarich.MapGallery
   alias DawarichWeb.LocalizedTime
+  alias Phoenix.LiveView.JS
   @stored 0
 
   attr :video, :map, required: true
   attr :locale, :string, required: true
+
+  attr :native, :boolean, default: false
+  attr :target, :any, default: nil
 
   def route_video_card(assigns) do
     file = assigns.video.files["file"]
@@ -44,7 +48,15 @@ defmodule DawarichWeb.RouteVideoCard do
             <button
               type="button"
               class="btn btn-xs btn-ghost"
-              data-action="video-studio#restoreSettings"
+              data-action={if !@native, do: "video-studio#restoreSettings"}
+              phx-click={
+                if @native,
+                  do:
+                    JS.dispatch("dawarich:video-studio-open",
+                      to: "#video-studio",
+                      detail: %{recipe: @video.settings_json}
+                    )
+              }
               data-settings={@video.settings_json}
             >
               {v(@locale, "re_render")}
@@ -52,8 +64,12 @@ defmodule DawarichWeb.RouteVideoCard do
           <% end %>
           <a
             class="btn btn-xs btn-ghost"
-            data-turbo-method="delete"
-            data-turbo-confirm={v(@locale, "delete_this_video")}
+            data-turbo-method={if !@native, do: "delete"}
+            phx-click={if @native, do: "video:delete"}
+            phx-target={if @native, do: @target}
+            phx-value-id={if @native, do: @video.id}
+            data-confirm={if @native, do: v(@locale, "delete_this_video")}
+            data-turbo-confirm={if !@native, do: v(@locale, "delete_this_video")}
             href={"/route_videos/#{@video.id}"}
           >{v(@locale, "delete")}</a>
         </div>
