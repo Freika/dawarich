@@ -63,7 +63,7 @@ defmodule DawarichWeb.OnboardingScreens do
     ~H"""
     <div
       data-onboarding-modal-target={!@native && "trackScreen"}
-      id={@native && "onboarding-track-screen"}
+      id={@native && "native-onboarding-track-screen"}
       class="hidden"
     >
       <div class="flex items-center gap-2 mb-4">
@@ -71,9 +71,9 @@ defmodule DawarichWeb.OnboardingScreens do
           class="btn btn-ghost btn-sm btn-circle"
           data-action={!@native && "onboarding-modal#showChoice"}
           phx-click={
-            @native && !@http && DawarichWeb.NativeOnboarding.show("onboarding-choice-screen")
+            @native && !@http && DawarichWeb.NativeOnboarding.show("native-onboarding-choice-screen")
           }
-          data-auth-onboarding-screen={@http && "onboarding-choice-screen"}
+          data-auth-onboarding-screen={@http && "native-onboarding-choice-screen"}
         >
           <Icon.icon name="arrow-left" class="w-4 h-4" />
         </button>
@@ -122,7 +122,7 @@ defmodule DawarichWeb.OnboardingScreens do
             <div class="flex justify-center">
               <div
                 :if={@native}
-                id="onboarding-api-qr"
+                id="native-onboarding-api-qr"
                 class="bg-white p-3 rounded-lg shadow-inner"
                 phx-hook={!@http && "CredentialQr"}
                 phx-update={!@http && "ignore"}
@@ -152,12 +152,12 @@ defmodule DawarichWeb.OnboardingScreens do
               type="button"
               class="link link-primary"
               data-action={!@native && "onboarding-modal#showImport"}
-              data-auth-onboarding-screen={@http && "onboarding-import-screen"}
+              data-auth-onboarding-screen={@http && "native-onboarding-import-screen"}
               data-auth-track-event={@http && "onboarding_import_selected"}
               phx-click={
                 @native && !@http &&
                   DawarichWeb.NativeOnboarding.show(
-                    "onboarding-import-screen",
+                    "native-onboarding-import-screen",
                     "onboarding_import_selected"
                   )
               }
@@ -169,7 +169,7 @@ defmodule DawarichWeb.OnboardingScreens do
         <button
           class="btn btn-primary"
           data-action={!@native && "onboarding-modal#dismiss"}
-          form={@native && "onboarding-dismiss"}
+          form={@native && "native-onboarding-dismiss"}
         >
           {tm(@locale, "got_it_let_s_start")}
         </button>

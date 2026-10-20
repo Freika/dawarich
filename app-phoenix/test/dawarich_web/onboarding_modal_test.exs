@@ -8,7 +8,7 @@ defmodule DawarichWeb.OnboardingModalTest do
   alias DawarichWeb.RailsCsrf
 
   @endpoint DawarichWeb.Endpoint
-  @modal "dialog#getting_started[phx-hook=Onboarding][data-auto=false]"
+  @modal "dialog#getting_started[phx-hook=Onboarding][data-native-auto=false]"
   @host "#achievement-unlocks[phx-hook=AchievementUnlocks]"
 
   setup do
@@ -53,8 +53,8 @@ defmodule DawarichWeb.OnboardingModalTest do
     html = dead(user)
     expected = Dawarich.QrSvg.api_key("http://www.example.com/", "a51b-k-5470", 3)
 
-    assert count(html, "#onboarding-api-qr[phx-hook=CredentialQr]") == 1
-    assert count(html, "#onboarding-api-qr svg") == 0
+    assert count(html, "#native-onboarding-api-qr[phx-hook=CredentialQr]") == 1
+    assert count(html, "#native-onboarding-api-qr svg") == 0
     refute html =~ "a51b-k-5470"
     session = RailsUser.session(user.id)
 

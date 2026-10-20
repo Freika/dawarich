@@ -187,7 +187,7 @@ test("HTTP onboarding forwards each existing analytics event once and stops afte
   const f = fixture()
   const selections = ["track", "import"].map((screen) => {
     const button = new Element()
-    button.dataset.authOnboardingScreen = `onboarding-${screen}-screen`
+    button.dataset.authOnboardingScreen = `native-onboarding-${screen}-screen`
     button.dataset.authTrackEvent = `onboarding_${screen}_selected`
     return button
   })
@@ -206,7 +206,7 @@ test("HTTP onboarding forwards each existing analytics event once and stops afte
     reveals += 1
   })
   f.doc.getElementById = (id) =>
-    id === "onboarding-api-qr" ? qr : { classList: { toggle() {} } }
+    id === "native-onboarding-api-qr" ? qr : { classList: { toggle() {} } }
   const observed = []
   f.win.sa_event = (event) => observed.push(event)
   const dispose = initializeAuthChrome(f.doc, f.win)

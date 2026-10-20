@@ -7,7 +7,7 @@ defmodule DawarichWeb.NativeOnboarding do
   alias DawarichWeb.Icon
   alias Phoenix.LiveView.JS
 
-  @screens ~w(onboarding-choice-screen onboarding-import-screen onboarding-track-screen)
+  @screens ~w(native-onboarding-choice-screen native-onboarding-import-screen native-onboarding-track-screen)
   @formats [
     {"google_maps", "records_json_semantic_history_phone_takeout_json"},
     {"gpx", "track_files_gpx"},
@@ -22,8 +22,8 @@ defmodule DawarichWeb.NativeOnboarding do
       |> JS.show(to: "##{screen}")
 
     js =
-      if screen == "onboarding-track-screen",
-        do: JS.dispatch(js, "dawarich:reveal-qr", to: "#onboarding-api-qr"),
+      if screen == "native-onboarding-track-screen",
+        do: JS.dispatch(js, "dawarich:reveal-qr", to: "#native-onboarding-api-qr"),
         else: js
 
     if event, do: JS.dispatch(js, "dawarich:track", detail: %{event: event}), else: js
@@ -50,13 +50,13 @@ defmodule DawarichWeb.NativeOnboarding do
       id="getting_started"
       class="modal"
       phx-hook={@target && "Onboarding"}
-      data-auto={@target && to_string(@auto)}
-      data-user-id={@target && @current_user.id}
+      data-native-auto={@target && to_string(@auto)}
+      data-native-user-id={@target && @current_user.id}
       phx-target={@target}
     >
-      <form id="onboarding-dismiss" method="dialog"></form>
+      <form id="native-onboarding-dismiss" method="dialog"></form>
       <div class="modal-box max-w-2xl bg-base-200">
-        <div id="onboarding-choice-screen">
+        <div id="native-onboarding-choice-screen">
           <div class="text-center mb-6">
             <h3 class="text-2xl font-bold text-primary mb-2">{tm(@locale, "welcome_to_dawarich")}</h3>
             <p class="text-base-content/70">
@@ -65,10 +65,11 @@ defmodule DawarichWeb.NativeOnboarding do
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
-              type="button"
               class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-primary/40 hover:border-primary sm:col-span-2"
-              phx-click={!@http && show("onboarding-track-screen", "onboarding_track_selected")}
-              data-auth-onboarding-screen={@http && "onboarding-track-screen"}
+              phx-click={
+                !@http && show("native-onboarding-track-screen", "onboarding_track_selected")
+              }
+              data-auth-onboarding-screen={@http && "native-onboarding-track-screen"}
               data-auth-track-event={@http && "onboarding_track_selected"}
             >
               <div class="card-body p-5">
@@ -83,10 +84,11 @@ defmodule DawarichWeb.NativeOnboarding do
               </div>
             </button>
             <button
-              type="button"
               class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-secondary"
-              phx-click={!@http && show("onboarding-import-screen", "onboarding_import_selected")}
-              data-auth-onboarding-screen={@http && "onboarding-import-screen"}
+              phx-click={
+                !@http && show("native-onboarding-import-screen", "onboarding_import_selected")
+              }
+              data-auth-onboarding-screen={@http && "native-onboarding-import-screen"}
               data-auth-track-event={@http && "onboarding_import_selected"}
             >
               <div class="card-body p-5">
@@ -102,7 +104,6 @@ defmodule DawarichWeb.NativeOnboarding do
             <button
               :if={@target}
               id="native-demo-load"
-              type="button"
               disabled={@demo_loaded or @demo_loading}
               phx-click={
                 JS.dispatch("dawarich:track", detail: %{event: "onboarding_demo_selected"})
@@ -150,18 +151,17 @@ defmodule DawarichWeb.NativeOnboarding do
             </a>
           </div>
           <div class="text-center mt-6">
-            <button class="btn btn-ghost btn-sm" form="onboarding-dismiss">
+            <button class="btn btn-ghost btn-sm" form="native-onboarding-dismiss">
               {tm(@locale, "skip_for_now")}
             </button>
           </div>
         </div>
-        <div id="onboarding-import-screen" class="hidden">
+        <div id="native-onboarding-import-screen" class="hidden">
           <div class="flex items-center gap-2 mb-4">
             <button
-              type="button"
               class="btn btn-ghost btn-sm btn-circle"
-              phx-click={!@http && show("onboarding-choice-screen")}
-              data-auth-onboarding-screen={@http && "onboarding-choice-screen"}
+              phx-click={!@http && show("native-onboarding-choice-screen")}
+              data-auth-onboarding-screen={@http && "native-onboarding-choice-screen"}
             >
               <Icon.icon name="arrow-left" class="w-4 h-4" />
             </button>
@@ -214,7 +214,7 @@ defmodule DawarichWeb.NativeOnboarding do
       <div class="flex items-center gap-2 mb-2">
         <span :if={@loading} class="loading loading-spinner loading-md text-accent"></span>
         <Icon.icon :if={!@loading} name="map" class="w-6 h-6 text-accent" />
-        <h4 class="text-lg font-semibold min-w-0">
+        <h4 class="text-lg font-semibold">
           {cond do
             @loading -> t(@locale, "javascript.demo.creating", %{})
             @loaded -> t(@locale, "javascript.demo.already_loaded", %{})

@@ -76,7 +76,7 @@ defmodule DawarichWeb.OnboardingQrTest do
     refute html =~ @key
     refute html =~ key_qr
     assert html =~ ~s(phx-hook="CredentialQr")
-    assert html =~ ~s(id="onboarding-api-qr")
+    assert html =~ ~s(id="native-onboarding-api-qr")
     refute html =~ ~s(phx-hook="Onboarding")
   end
 

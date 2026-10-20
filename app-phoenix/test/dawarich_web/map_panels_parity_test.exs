@@ -11,7 +11,8 @@ defmodule DawarichWeb.MapPanelsParityTest do
     {"tab-tools", ~s([data-tab-content="tools"])},
     {"tab-settings", ~s([data-tab-content="settings"])},
     {"tab-timeline", ~s([data-tab-content="timeline-feed"])},
-    {"replay-panel", ".replay-panel"}
+    {"replay-panel", ".replay-panel"},
+    {"onboarding", "#getting_started"}
   ]
 
   setup do
@@ -98,6 +99,16 @@ defmodule DawarichWeb.MapPanelsParityTest do
   end
 
   defp user_tag?({"div", [{"class", "timeline-rail__section"}], _}), do: true
+  defp user_tag?({"form", attrs, children}),
+    do: {"action", "/imports"} in attrs or ({"method", "dialog"} in attrs and children == [])
+
+  defp user_tag?({"div", [{"class", "flex justify-end"}], [{"a", attrs, _}]}),
+    do: {"href", "/imports/new"} in attrs
+
+  defp user_tag?({"div", [{"class", "text-xs text-base-content/60 mt-2"}], [text]}),
+    do: text =~ "automatically detected"
+
+  defp user_tag?({"svg", attrs, _}), do: {"shape-rendering", "crispEdges"} in attrs
   defp user_tag?(_), do: false
 
   defp dump(name, phoenix, rails) do

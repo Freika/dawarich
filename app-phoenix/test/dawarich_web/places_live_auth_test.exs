@@ -106,8 +106,8 @@ defmodule DawarichWeb.PlacesLiveAuthTest do
     html = render(view)
     doc = LazyHTML.from_fragment(html)
 
-    LazyHTML.query(doc, "#onboarding-api-qr[phx-hook=CredentialQr]") |> Enum.count() == 1 and
-      LazyHTML.query(doc, "#onboarding-api-qr svg") |> Enum.empty?()
+    LazyHTML.query(doc, "#native-onboarding-api-qr[phx-hook=CredentialQr]") |> Enum.count() == 1 and
+      LazyHTML.query(doc, "#native-onboarding-api-qr svg") |> Enum.empty?()
   end
 
   defp assert_credentials_absent(view, secrets) do

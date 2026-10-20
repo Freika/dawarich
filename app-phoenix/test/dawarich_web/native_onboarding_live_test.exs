@@ -55,12 +55,12 @@ defmodule DawarichWeb.NativeOnboardingLiveTest do
       )
 
     assert html =~ ~s(phx-hook="Onboarding")
-    assert has_element?(view, "dialog#getting_started[data-auto='true']")
+    assert has_element?(view, "dialog#getting_started[data-native-auto='true']")
     refute render(view) =~ "synthetic-onboard-key"
 
     view |> element("dialog#getting_started") |> render_hook("onboarding:complete", %{})
     assert completed(id) == true
-    refute has_element?(view, "dialog#getting_started[data-auto='true']")
+    refute has_element?(view, "dialog#getting_started[data-native-auto='true']")
   end
 
   test "manual-only pages never auto-open and revoked owners cannot complete", %{id: id} do
@@ -69,7 +69,7 @@ defmodule DawarichWeb.NativeOnboardingLiveTest do
         session: %{"user_id" => id, "auto" => false}
       )
 
-    assert has_element?(view, "dialog#getting_started[data-auto='false']")
+    assert has_element?(view, "dialog#getting_started[data-native-auto='false']")
 
     rows("UPDATE users SET encrypted_password=$1 WHERE id=$2", [
       String.duplicate("rotated", 10),

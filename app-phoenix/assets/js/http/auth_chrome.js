@@ -49,9 +49,9 @@ export function initializeAuthChrome(doc = document, win = window) {
   for (const button of doc.querySelectorAll("[data-auth-onboarding-screen]")) {
     listen(button, "click", () => {
       for (const id of [
-        "onboarding-choice-screen",
-        "onboarding-import-screen",
-        "onboarding-track-screen",
+        "native-onboarding-choice-screen",
+        "native-onboarding-import-screen",
+        "native-onboarding-track-screen",
       ])
         doc
           .getElementById(id)
@@ -59,9 +59,9 @@ export function initializeAuthChrome(doc = document, win = window) {
             "hidden",
             id !== button.dataset.authOnboardingScreen,
           )
-      if (button.dataset.authOnboardingScreen === "onboarding-track-screen")
+      if (button.dataset.authOnboardingScreen === "native-onboarding-track-screen")
         doc
-          .getElementById("onboarding-api-qr")
+          .getElementById("native-onboarding-api-qr")
           ?.dispatchEvent(new Event("dawarich:http-reveal-qr"))
       if (button.dataset.authTrackEvent)
         win.dispatchEvent(

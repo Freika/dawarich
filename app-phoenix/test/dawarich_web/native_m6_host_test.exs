@@ -185,9 +185,9 @@ defmodule DawarichWeb.NativeM6HostTest do
 
   test "native map onboarding completion persists through its mounted component", %{id: id} do
     {:ok, view, _} = open(id, @second)
-    assert has_element?(view, "#getting_started[phx-hook=Onboarding][data-auto=true]")
+    assert has_element?(view, "#getting_started[phx-hook=Onboarding][data-native-auto=true]")
     view |> element("#getting_started") |> render_hook("onboarding:complete", %{})
-    assert has_element?(view, "#getting_started[data-auto=false]")
+    assert has_element?(view, "#getting_started[data-native-auto=false]")
     assert Dawarich.Accounts.get(id).settings["onboarding_completed"] == true
   end
 
