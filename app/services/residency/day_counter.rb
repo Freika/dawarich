@@ -117,20 +117,27 @@ module Residency
         start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
         end_of_year = start_of_year.end_of_year
 
+        # Points geocoded from OSM store names like "United States" while points
+        # resolved against the countries table store the Natural Earth spelling
+        # ("United States of America"). Grouping on the raw column splits one
+        # country across two rows, which can drop each half below the 183-day
+        # residency threshold. Resolve through the canonical alias map first.
         sql = <<~SQL.squish
           SELECT
-            DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
-            country_name,
+            DATE(to_timestamp(points.timestamp) AT TIME ZONE 'UTC') as point_date,
+            COALESCE(country_aliases.canonical, points.country_name) as country_name,
             COUNT(*) as point_count
           FROM points
-          WHERE user_id = $1
-            AND timestamp >= $2
-            AND timestamp <= $3
-            AND country_name IS NOT NULL
-            AND country_name != ''
-            AND (anomaly IS NOT TRUE)
-          GROUP BY point_date, country_name
-          ORDER BY point_date, country_name COLLATE "C"
+          LEFT JOIN #{Countries::NameAliases.values_sql} AS country_aliases(alias, canonical)
+            ON country_aliases.alias = points.country_name
+          WHERE points.user_id = $1
+            AND points.timestamp >= $2
+            AND points.timestamp <= $3
+            AND points.country_name IS NOT NULL
+            AND points.country_name != ''
+            AND (points.anomaly IS NOT TRUE)
+          GROUP BY point_date, COALESCE(country_aliases.canonical, points.country_name)
+          ORDER BY point_date, COALESCE(country_aliases.canonical, points.country_name) COLLATE "C"
         SQL
 
         ActiveRecord::Base.connection.exec_query(
