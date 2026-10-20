@@ -10,7 +10,9 @@ were refreshed from the current Rails templates, verified against the tag.
 Recovery locale navigation accepts the supported locale values while retaining
 closed admission for unknown locales, duplicate keys, malformed encoding and
 nested parameters. The standalone dispatcher still owns these HTTP forms.
-Auth error accessibility and duplicate-submit handling remain native.
+Auth error accessibility and duplicate-submit handling remain native. Recovery
+headings keep `min-w-0 [overflow-wrap:anywhere]`: a browser probe of the Rails
+German unlock page measured 533 px at a 390 px viewport without this fix.
 
 Public live and timeline pages use `PublicMapShell` for the Rails main section,
 heading, status rows and map container. The native scoped map host, readiness,
@@ -36,3 +38,6 @@ or explicit contract differences. Existing behavior coverage is not evidence of
 DOM parity for these remaining routes. The controller's parity bench remains
 read-only; pixel and request equality acceptance have not been run for this
 worktree.
+
+AFFiNE counterpart: Dawarich — D6 auth and public shell parity implementation
+(document `9917Tg2C9kvp-BU5-kQj7`).

@@ -28,6 +28,14 @@ defmodule DawarichWeb.AuthPagesParityTest do
 
       html = String.replace(html, "data-auth-form", "data-native-auth-form")
       html = String.replace(html, ~s(for="user_remember_me" ), "")
+
+      html =
+        String.replace(
+          html,
+          ~s(class="text-center lg:text-left min-w-0 [overflow-wrap:anywhere]"),
+          ~s(class="text-center lg:text-left")
+        )
+
       phoenix = ParityHTML.normalize(html)
 
       rails =
