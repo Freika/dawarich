@@ -56,6 +56,23 @@ defmodule DawarichWeb.NativeRegistrationDocumentTest do
     assert Enum.count(LazyHTML.query(dom, "[data-auth-error-summary][tabindex='-1']")) == 1
   end
 
+  test "disabled signup remembers an explicit locale before redirecting to sign-in", c do
+    Dawarich.State.put_registration_enabled(Repo, false)
+
+    for {requested, previous} <- [{"en", "de"}, {"de", "en"}] do
+      response =
+        build_conn()
+        |> put_req_cookie(
+          "_dawarich_session",
+          RailsUser.cookie(Map.put(c.guest, "locale", previous))
+        )
+        |> get("/users/sign_up?locale=" <> requested)
+
+      assert response.status == 302
+      assert RailsFormRequests.rails_session(response)["locale"] == requested
+    end
+  end
+
   test "signup validation creates no user or intent", c do
     before = Repo.query!("SELECT count(*) FROM users", [], log: false).rows
     intents = Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows

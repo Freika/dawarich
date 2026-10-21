@@ -22,6 +22,12 @@ for (const locale of ["en", "de"]) {
       await page.locator(`a[href="/settings/theme?theme=${target}"]`).filter({ visible: true }).click()
       await expect(page.locator("html")).toHaveAttribute("data-theme", target === "light" ? "dawarich" : "dawarich-dark")
       await expect(page).toHaveURL(/\/tags(?:\?|$)/)
+      const grain = await page.evaluate(() => {
+        const style = getComputedStyle(document.body, "::before")
+        return { image: style.backgroundImage, opacity: style.opacity }
+      })
+      expect(grain.image).toContain("filter='url%28/%23n%29'")
+      expect(grain.opacity).toBe(target === "light" ? "0.03" : "0.04")
       if (width === 390)
         await page.locator('summary[aria-controls="mobile-navigation-menu"]').click()
       const restore = current === "dawarich" ? "light" : "dark"

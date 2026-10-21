@@ -97,7 +97,7 @@ defmodule DawarichWeb.NotificationsLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="w-full my-5" data-testid="native-notifications-root">
+    <div class="w-full my-5 pl-5" data-testid="native-notifications-root">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
         <h1 class="text-3xl font-bold">{t(@locale, "notifications.index.notifications", %{})}</h1>
         <div :if={@unread_on_page? or @notifications != []} class="flex flex-wrap gap-2">

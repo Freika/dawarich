@@ -123,6 +123,7 @@ function fixture(config = {}, options = {}) {
       disposed++
     },
     selectDay() {},
+    days: { getDayColor: (day) => day === "2026-04-20" ? "#6366F1" : undefined },
   }
   const owner = mountTrip({
     element,
@@ -422,4 +423,18 @@ test("trip refresh preserves a pending replay snapshot and panel opening", async
     f.owner.destroy()
   }
   assert.equal(snapshotReader.revision, 1)
+})
+
+test("loaded trip day colors reach the matching accordion dots", async () => {
+  const f = fixture()
+  const dots = ["2026-04-20", "2026-04-21"].map(day => ({ dataset: { dayDot: day }, style: {} }))
+  const { Element } = await import("./support/native_m6_host_fixture.mjs")
+  const root = new Element()
+  root.querySelector = () => null
+  root.querySelectorAll = (selector) => selector === "[data-day-dot]" ? dots : []
+  f.element.closest = () => root
+  assert.equal(await f.owner.mount(), "ready")
+  assert.equal(dots[0].style.backgroundColor, "#6366F1")
+  assert.equal(dots[1].style.backgroundColor, undefined)
+  f.owner.destroy()
 })

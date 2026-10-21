@@ -25,6 +25,18 @@ defmodule DawarichWeb.TripsIndexParityTest do
     :ok
   end
 
+  test "trip index uses the application shell without a second page padding layer" do
+    html = RailsUser.signed_in(9805) |> get("/trips") |> html_response(200)
+    dom = LazyHTML.from_document(html)
+    assert Enum.count(LazyHTML.query(dom, ".container > .navbar")) == 1
+
+    assert Enum.count(LazyHTML.query(dom, ".w-full.px-4 > .flex > #native-trips-index.contents")) ==
+             1
+
+    assert Enum.count(LazyHTML.query(dom, "footer")) == 1
+    refute html =~ ~s(id="native-trips-index" class="w-full min-w-0 p-4")
+  end
+
   test "trip pagination retains harmless extras without retaining credential query fields" do
     conn = RailsUser.signed_in(9805) |> RailsUser.connecting_as(9805)
 

@@ -80,5 +80,12 @@ defmodule DawarichWeb.NativeDataAuth do
         )
       )
 
-  defp redact(user), do: %{Principal.project(user) | settings: %{}}
+  defp redact(user) do
+    settings = %{
+      "onboarding_completed" =>
+        Dawarich.UserSettings.get(user)["onboarding_completed"] not in [nil, false]
+    }
+
+    %{Principal.project(user) | settings: settings}
+  end
 end

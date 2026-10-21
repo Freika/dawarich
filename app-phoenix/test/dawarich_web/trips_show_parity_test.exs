@@ -38,6 +38,18 @@ defmodule DawarichWeb.TripsShowParityTest do
     :ok
   end
 
+  test "trip day dots keep their native color across unrelated LiveView patches" do
+    html = RailsUser.signed_in(9803) |> get("/trips/980301") |> html_response(200)
+    dots = html |> LazyHTML.from_document() |> LazyHTML.query("[data-day-dot]")
+    assert Enum.count(dots) > 0
+
+    for dot <- dots do
+      assert LazyHTML.attribute(dot, "phx-update") == ["ignore"]
+      [day] = LazyHTML.attribute(dot, "data-day-dot")
+      assert LazyHTML.attribute(dot, "id") == ["native-trip-day-dot-" <> day]
+    end
+  end
+
   test "native trip destructive actions require confirmation and cancel keeps the trip" do
     conn = RailsUser.signed_in(9803) |> RailsUser.connecting_as(9803)
     {:ok, view, _} = live(conn, "/trips/980301")

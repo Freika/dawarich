@@ -343,6 +343,24 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
     end
   end
 
+  test "direct Insights details stay in one full-width application flex child" do
+    html =
+      render_component(&DawarichWeb.InsightsLive.NativeDirect.render/1,
+        data: %{restricted: true},
+        details: nil,
+        locale: "en",
+        query: %{}
+      )
+
+    dom = LazyHTML.from_fragment(html)
+
+    assert Enum.count(LazyHTML.query(dom, "#native-insights-details.w-full > #insights-locked")) ==
+             1
+
+    assert Enum.count(LazyHTML.query(dom, "#native-insights-details > #insights-locked > div")) ==
+             2
+  end
+
   test "direct native Insights details preserves the source response without overview controls" do
     request = hd(@corpus["requests"])
     query = request["path"] |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
@@ -404,10 +422,15 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
   end
 
   defp details_node({"div", attrs, children}) do
-    if Map.new(attrs)["id"] == "chart-1" do
-      [{"div", Enum.reject(attrs, fn {key, _} -> key == "data-chart" end), []}]
+    if Map.new(attrs)["id"] == "native-insights-details" do
+      assert Map.new(attrs)["class"] == "w-full"
+      details_nodes(children)
     else
-      [{"div", attrs, details_nodes(children)}]
+      if Map.new(attrs)["id"] == "chart-1" do
+        [{"div", Enum.reject(attrs, fn {key, _} -> key == "data-chart" end), []}]
+      else
+        [{"div", attrs, details_nodes(children)}]
+      end
     end
   end
 

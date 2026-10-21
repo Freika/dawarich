@@ -87,6 +87,39 @@ defmodule DawarichWeb.NativeDataAuthTest do
     assert is_nil(NativeDataAuth.refuse(socket, :unavailable).redirected)
   end
 
+  test "data-page navbar respects completed onboarding without retaining private settings", %{
+    socket: socket,
+    user: user
+  } do
+    Dawarich.Repo.query!(
+      "UPDATE users SET settings = $2 WHERE id = $1",
+      [
+        user.id,
+        %{"onboarding_completed" => true, "immich_api_key" => "synthetic-provider-secret"}
+      ],
+      log: false
+    )
+
+    assert {:cont, admitted} = NativeDataAuth.authorize(socket, :params)
+
+    navbar =
+      Dawarich.Navbar.load(admitted.assigns.current_user,
+        now: DateTime.utc_now(),
+        self_hosted: true
+      )
+
+    refute navbar.onboarding
+    refute :erlang.term_to_binary(admitted.assigns) =~ "synthetic-provider-secret"
+
+    Dawarich.Repo.query!("UPDATE users SET settings = '{}' WHERE id = $1", [user.id], log: false)
+    assert {:cont, admitted} = NativeDataAuth.authorize(socket, :params)
+
+    assert Dawarich.Navbar.load(admitted.assigns.current_user,
+             now: DateTime.utc_now(),
+             self_hosted: true
+           ).onboarding
+  end
+
   test "admitted socket assigns never retain credential or provider settings", %{
     socket: socket,
     user: user

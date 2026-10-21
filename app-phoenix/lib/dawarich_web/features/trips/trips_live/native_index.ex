@@ -29,7 +29,11 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
     socket =
       if socket.assigns.current_scope, do: DawarichWeb.NativeMapChrome.load(socket), else: socket
 
-    {:ok, socket, layout: false}
+    {:ok,
+     assign(socket,
+       body_class: "min-h-screen flex flex-col",
+       viewport: "width=device-width,initial-scale=1"
+     ), layout: false}
   end
 
   @impl true
@@ -115,10 +119,19 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :inner_content, content(assigns))
+
     ~H"""
-    <DawarichWeb.NativeMapChrome.header {assigns} />
-    <DawarichWeb.Chrome.flash locale={@locale} flash={@flash} native={true} />
-    <main :if={@current_scope && !@map_error} id="native-trips-index" class="w-full min-w-0 p-4">
+    <DawarichWeb.Layouts.app :if={@current_scope && !@map_error} {assigns} />
+    <p :if={@map_error} data-native-trip-index-refused role="alert">
+      {t(@locale, "controllers.api.v1.settings.something_went_wrong", %{})}
+    </p>
+    """
+  end
+
+  defp content(assigns) do
+    ~H"""
+    <main id="native-trips-index" class="contents">
       <div class="w-full my-5">
         <div id="trips" class="min-w-full">
           <.page_header title={t(@locale, "trips.index.trips", %{})}>
@@ -235,9 +248,6 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
         </div>
       </div>
     </main>
-    <p :if={@map_error} data-native-trip-index-refused role="alert">
-      {t(@locale, "controllers.api.v1.settings.something_went_wrong", %{})}
-    </p>
     """
   end
 end

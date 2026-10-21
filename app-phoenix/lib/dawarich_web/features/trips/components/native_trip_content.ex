@@ -40,6 +40,8 @@ defmodule DawarichWeb.NativeTripContent do
             <span
               class="inline-block w-3 h-3 rounded-full flex-shrink-0 bg-base-content/30"
               data-day-dot={Date.to_iso8601(day.date)}
+              id={"native-trip-day-dot-#{Date.to_iso8601(day.date)}"}
+              phx-update="ignore"
             ></span>
             <span>{LocalizedDate.l(@locale, day.date, "short_month_day_weekday")}</span>
             <%= if day.stats do %>

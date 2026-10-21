@@ -21,7 +21,7 @@ defmodule DawarichWeb.StatsLive.NativeMonthParts do
           stat: data.data.stat,
           previous: data.data.previous,
           average_km: data.data.average_km,
-          bg_url: "/native/" <> StatsFormat.month_background(data.month)
+          bg_url: DawarichWeb.Assets.native_path(StatsFormat.month_background(data.month))
         })
       )
 

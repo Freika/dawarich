@@ -12,6 +12,16 @@ defmodule Dawarich.Digests.PagesTest do
     %{scope: Scope.for_user(user, "de"), foreign: foreign}
   end
 
+  test "digest index includes stored current and future yearly reviews like Rails", %{
+    scope: scope
+  } do
+    digest!(scope.user.id, %{year: 2025, distance: 1000})
+    digest!(scope.user.id, %{year: 2026, distance: 2000})
+    digest!(scope.user.id, %{year: 2027, distance: 3000})
+    assert {:ok, index} = Pages.index(scope, %{}, now: @now, self_hosted: true)
+    assert Enum.map(index.digests, & &1.year) == [2027, 2026, 2025]
+  end
+
   test "digest scoped reads preserve yearly ownership and never retain raw private fields", %{
     scope: scope,
     foreign: foreign

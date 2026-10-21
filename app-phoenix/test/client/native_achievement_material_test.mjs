@@ -20,3 +20,28 @@ test("a discarded lazy card import never touches departed DOM", async () => {
   await mounting
   assert.equal(mounts, 0)
 })
+
+test("offscreen achievement cards wait for the Rails 160px visibility margin", async (t) => {
+  const previous = globalThis.IntersectionObserver
+  let visible, options, disconnected = 0, imports = 0, mounts = 0
+  globalThis.IntersectionObserver = class {
+    constructor(callback, config) { visible = callback; options = config }
+    observe() {}
+    disconnect() { disconnected++ }
+  }
+  t.after(() => { globalThis.IntersectionObserver = previous })
+  const hook = { ...AchievementMaterial, el: {}, loader: async () => {
+    imports++
+    return { initializeAchievementCard() { mounts++; return () => {} } }
+  } }
+  await hook.mounted()
+  assert.equal(imports, 0)
+  assert.deepEqual(options, { rootMargin: "160px" })
+  visible([{ isIntersecting: false }])
+  assert.equal(imports, 0)
+  await visible([{ isIntersecting: true }])
+  assert.equal(imports, 1)
+  assert.equal(mounts, 1)
+  hook.destroyed()
+  assert.ok(disconnected > 0)
+})

@@ -30,7 +30,13 @@ defmodule DawarichWeb.TripRichText do
         aria-label={@label}
       >
       </trix-editor>
-      <p data-rich-status class="text-sm text-error mt-1" role="status" aria-live="polite"></p>
+      <p
+        data-rich-status
+        class="text-sm text-error mt-1 empty:hidden"
+        role="status"
+        aria-live="polite"
+      >
+      </p>
     </div>
     """
   end

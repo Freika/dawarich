@@ -5,6 +5,7 @@
   "fixture_disposition": "retain external corpus unchanged",
   "pending_cleanup": [],
   "renames": [
+    {"old": {"file": "T/dawarich_web/digests_live_test.exs", "name": "the index lists past digests newest first with Rails' totals, and hides the unfinished year"}, "successors": [{"file": "T/dawarich_web/digests_live_test.exs", "name": "the index lists stored yearly digests newest first with Rails' totals"}], "authority": "E1 integrated Rails 1.16.0 parity: stored current-year yearly digests are visible; generation still refuses the unfinished year. Ownership, totals, bounded pagination and Lite projection remain."},
     {
       "old": {
         "file": "T/dawarich_web/auth_gate_endpoint_test.exs",

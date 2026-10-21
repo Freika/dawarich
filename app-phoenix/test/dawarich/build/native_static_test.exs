@@ -81,6 +81,36 @@ defmodule Dawarich.Build.NativeStaticTest do
     end
   end
 
+  test "native month hero images resolve through the digested asset pipeline", %{tmp_dir: dir} do
+    static = Path.join(dir, "static")
+    NativeAssets.build!(Dawarich.RailsRoot.root(), static)
+    Phoenix.Digester.compile(static, static, true)
+    options = Plug.Static.init(at: "/", from: static)
+
+    for month <- 1..12 do
+      logical = Dawarich.Formatting.StatsFormat.month_background(month)
+      path = Assets.stylesheet_path(static, logical)
+      assert path =~ ~r{^/native/backgrounds/months/.+-[a-f0-9]+\.jpg$}
+      image = Plug.Static.call(conn(:get, path), options)
+      assert image.status == 200
+      assert Plug.Conn.get_resp_header(image, "content-type") == ["image/jpeg"]
+
+      assert image.resp_body ==
+               File.read!(Dawarich.RailsRoot.join("app/assets/images/" <> logical))
+    end
+  end
+
+  test "native document grain preserves Rails compiled SVG filter and theme opacity", %{
+    tmp_dir: dir
+  } do
+    static = Path.join(dir, "static")
+    NativeAssets.build!(Dawarich.RailsRoot.root(), static)
+    css = File.read!(Path.join(static, "native/application.css"))
+    assert css =~ "filter='url%28/%23n%29'"
+    assert css =~ ~r/body:{1,2}before\{[^}]*opacity:\.03/
+    assert css =~ ~r/\[data-theme=["']?dawarich-dark["']?\] body:{1,2}before\{opacity:\.04/
+  end
+
   test "missing declared native asset fails build before release", %{tmp_dir: dir} do
     root = sources!(dir)
     File.rm!(Path.join(root, "app/assets/fonts/poster/inter-400.woff2"))

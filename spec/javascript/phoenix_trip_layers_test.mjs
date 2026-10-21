@@ -18,7 +18,7 @@ function fixture() {
     layers = new Map(),
     events = new Map(),
     paints = new Map(),
-    popups = []
+    popups = [], fits = []
   const map = {
     getSource: (id) => sources.get(id),
     getLayer: (id) => layers.get(id),
@@ -38,7 +38,7 @@ function fixture() {
     setPaintProperty(id, k, v) {
       paints.set(`${id}:${k}`, v)
     },
-    fitBounds() {},
+    fitBounds(bounds, options) { fits.push({ bounds, options }) },
     on(e, a, b) {
       const key = b ? `${e}:${a}` : e
       events.set(key, new Set([...(events.get(key) ?? []), b ?? a]))
@@ -77,7 +77,7 @@ function fixture() {
     }
   }
   const library = { LngLatBounds, Popup }
-  return { map, library, sources, layers, events, paints, popups }
+  return { map, library, sources, layers, events, paints, popups, fits }
 }
 test("trip day routes preserve profile day colors and saved gap settings", () => {
   const f = fixture(),
@@ -153,4 +153,21 @@ test("trip flight popup closes with its owned layer", () => {
   })
   layer.remove()
   assert.equal(f.popups[0].removed, true)
+})
+
+test("trip initially fits its overview and loaded day routes without resetting a later viewport", () => {
+  const f = fixture()
+  const owner = createTripLayers({ map: f.map, library: f.library })
+  const data = { config: { range: { timezone: "UTC" }, routeOptions: {} }, path: [[13, 52], [14, 53]] }
+  owner.update(data, { points: [] }, {})
+  assert.equal(f.fits.length, 1)
+  assert.deepEqual(f.fits[0].bounds.coords, data.path)
+  const snapshot = { points: [point(1, "2026-03-29T10:00Z"), point(2, "2026-03-29T10:01Z", 13.001)] }
+  owner.update(data, snapshot, {})
+  assert.equal(f.fits.length, 2)
+  assert.deepEqual(f.fits[1].options, { padding: 50, maxZoom: 15 })
+  owner.update(data, snapshot, {})
+  for (const render of f.events.get("style.load")) render()
+  assert.equal(f.fits.length, 2)
+  owner.destroy()
 })

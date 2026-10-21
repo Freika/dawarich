@@ -51,6 +51,23 @@ defmodule DawarichWeb.NativeChartTest do
     end
   end
 
+  test "Rails chart accessible rows are clipped by a box rather than a table" do
+    html =
+      render_component(&DawarichWeb.NativeChart.chart/1,
+        rails: true,
+        id: "monthly",
+        data: Enum.map(1..31, &[&1, &1]),
+        revision: "ready",
+        label: "Daily Activity",
+        height: "200px"
+      )
+
+    dom = LazyHTML.from_fragment(html)
+    assert Enum.count(LazyHTML.query(dom, "#monthly > div.sr-only > table")) == 1
+    assert Enum.count(LazyHTML.query(dom, "table tr")) == 31
+    assert LazyHTML.query(dom, "caption") |> LazyHTML.text() == "Daily Activity"
+  end
+
   test "heatmap links preserve zoned day bounds without a controller" do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
 

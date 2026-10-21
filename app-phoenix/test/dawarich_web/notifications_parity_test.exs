@@ -12,6 +12,20 @@ defmodule DawarichWeb.NotificationsParityTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
   end
 
+  test "native notification header retains the Rails subscription gap without a transport element" do
+    id = System.unique_integer([:positive])
+    RailsUser.insert!(%{id: id, email: "notification-spacing-#{id}@example.invalid"})
+    html = get(RailsUser.signed_in(id), "/notifications") |> html_response(200)
+
+    root =
+      html
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("[data-testid=native-notifications-root]")
+
+    assert LazyHTML.attribute(root, "class") == ["w-full my-5 pl-5"]
+    refute html =~ "turbo-cable-stream-source"
+  end
+
   for file <- Path.wildcard("test/fixtures/notifications/*.json") do
     @name Path.basename(file, ".json")
 
@@ -44,7 +58,12 @@ defmodule DawarichWeb.NotificationsParityTest do
 
       native =
         ParityHTML.without(
-          Dawarich.Test.DataPageParity.action_paths(html),
+          html
+          |> String.replace(
+            ~s(class="w-full my-5 pl-5" data-testid="native-notifications-root"),
+            ~s(class="w-full my-5" data-testid="native-notifications-root")
+          )
+          |> Dawarich.Test.DataPageParity.action_paths(),
           ["dialog"],
           "[data-testid^=native-notifications-]"
         )

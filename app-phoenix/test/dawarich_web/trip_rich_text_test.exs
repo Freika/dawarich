@@ -63,6 +63,27 @@ defmodule DawarichWeb.TripRichTextTest do
     assert LazyHTML.query(doc, "[data-rich-status][role='status']") |> Enum.count() == 1
   end
 
+  test "an empty upload status consumes no editor spacing while errors remain live" do
+    html =
+      Phoenix.LiveViewTest.render_component(&DawarichWeb.TripRichText.editor/1,
+        id: "trip-description",
+        name: "trip[rich_description_sgid]",
+        value: "",
+        label: "Description",
+        locale: "en"
+      )
+
+    status =
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("[data-rich-status][role=status][aria-live=polite]")
+
+    assert LazyHTML.attribute(status, "class")
+           |> hd()
+           |> String.split()
+           |> Enum.member?("empty:hidden")
+  end
+
   test "a reserved upload claims only the actor's own fresh blob, once" do
     owner = socket(9_801)
     {reply, owner} = reserve(owner)

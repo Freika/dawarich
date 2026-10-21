@@ -45,13 +45,15 @@ defmodule DawarichWeb.NativeChart do
         style={"height: #{@height}; width: 100%"}
       >
       </div>
-      <table class="sr-only">
-        <caption>{@label}</caption><tbody>
-          <tr :for={row <- @rows}>
-            <td>{List.first(row)}</td><td>{List.last(row)}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="sr-only">
+        <table>
+          <caption>{@label}</caption><tbody>
+            <tr :for={row <- @rows}>
+              <td>{List.first(row)}</td><td>{List.last(row)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
     <section
       :if={!@rails}

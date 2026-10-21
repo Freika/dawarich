@@ -39,7 +39,7 @@ defmodule DawarichWeb.DigestsLiveTest do
         monthly_distances: %{"3" => 38_400, "4" => 11_600}
       })
 
-  test "the index lists past digests newest first with Rails' totals, and hides the unfinished year",
+  test "the index lists stored yearly digests newest first with Rails' totals",
        %{user: user} do
     full_digest(user.id, 2024)
 
@@ -57,7 +57,7 @@ defmodule DawarichWeb.DigestsLiveTest do
     assert html
            |> LazyHTML.from_document()
            |> LazyHTML.query("h2.card-title > a")
-           |> Enum.map(&LazyHTML.text/1) == ["2024", "2023"]
+           |> Enum.map(&LazyHTML.text/1) == [to_string(Date.utc_today().year), "2024", "2023"]
 
     assert has_element?(view, ~s(a.btn[href="/digests/2024"]), "View Details")
     assert has_element?(view, ".stat-value.text-primary", "50 km")

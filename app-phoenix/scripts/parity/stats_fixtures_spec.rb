@@ -327,6 +327,12 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
   end
 
   it 're-records Rails 1.16.0 month and digest pages' do
+    original_index = Users::DigestsController.instance_method(:index)
+    reference = IO.popen(['git', 'show', '1.16.0:app/controllers/users/digests_controller.rb'], &:read)
+    expect($?.success?).to be(true)
+    index = reference.match(/^  def index\n.*?^  end$/m).to_s
+    expect(index).not_to be_empty
+    Users::DigestsController.class_eval(index, 'app/controllers/users/digests_controller.rb', 11)
     geom = 'MULTIPOLYGON (((-78.637074 15.862087, -78.640411 15.864, -78.636871 15.867296, -78.637074 15.862087)))'
     states = Dir[fixtures.join('stats/{month*,digest*}.json')].sort
     states.each do |file|
@@ -359,6 +365,8 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
         raise ActiveRecord::Rollback
       end
     end
+  ensure
+    Users::DigestsController.define_method(:index, original_index) if original_index
   end
 
   it 'records Q06 and Q07 insights redirects with their original jobs and flashes' do

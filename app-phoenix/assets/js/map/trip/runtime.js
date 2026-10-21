@@ -75,6 +75,11 @@ export function mountTrip({
       )
       operation.check()
       layers.update(data, snapshot, loadedConfig)
+      const root = element.closest?.("[data-native-map-root]")
+      for (const dot of root?.querySelectorAll?.("[data-day-dot]") ?? []) {
+        const color = layers.days?.getDayColor(dot.dataset.dayDot)
+        if (color) dot.style.backgroundColor = color
+      }
       photos?.remove()
       photos = null
       if (loadedConfig.photosEnabled) {

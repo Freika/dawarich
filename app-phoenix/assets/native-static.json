@@ -84,6 +84,19 @@
     ["app-phoenix/assets/static/favicon/browserconfig.xml", "favicon/browserconfig.xml"],
     ["app-phoenix/assets/static/posthog.js", "posthog.js"],
     ["vendor/javascript/mapbox-gl-rtl-text.js", "mapbox-gl-rtl-text.js"],
-    ["vendor/javascript/mapbox-gl-rtl-text.LICENSE.txt", "mapbox-gl-rtl-text.LICENSE.txt"]
+    ["vendor/javascript/mapbox-gl-rtl-text.LICENSE.txt", "mapbox-gl-rtl-text.LICENSE.txt"],
+    ["app/assets/images/backgrounds/months/ahmad-hasan-xEYWelDHYF0-unsplash.jpg", "backgrounds/months/ahmad-hasan-xEYWelDHYF0-unsplash.jpg"],
+    ["app/assets/images/backgrounds/months/ainars-cekuls-buAAKQiMfoI-unsplash.jpg", "backgrounds/months/ainars-cekuls-buAAKQiMfoI-unsplash.jpg"],
+    ["app/assets/images/backgrounds/months/anne-nygard-VwzfdVT6_9s-unsplash.jpg", "backgrounds/months/anne-nygard-VwzfdVT6_9s-unsplash.jpg"],
+    ["app/assets/images/backgrounds/months/babi-hdNa4GCCgbg-unsplash.jpg", "backgrounds/months/babi-hdNa4GCCgbg-unsplash.jpg"],
+    ["app/assets/images/backgrounds/months/foto-phanatic-8LaUOtP-de4-unsplash.jpg", "backgrounds/months/foto-phanatic-8LaUOtP-de4-unsplash.jpg"],
+    ["app/assets/images/backgrounds/months/gracehues-photography-AYtup7uqimA-unsplash.jpg", "backgrounds/months/gracehues-photography-AYtup7uqimA-unsplash.jpg"],
+    ["app/assets/images/backgrounds/months/henry-schneider-FqKPySIaxuE-unsplash.jpg", "backgrounds/months/henry-schneider-FqKPySIaxuE-unsplash.jpg"],
+    ["app/assets/images/backgrounds/months/irina-iriser-fKAl8Oid6zM-unsplash.jpg", "backgrounds/months/irina-iriser-fKAl8Oid6zM-unsplash.jpg"],
+    ["app/assets/images/backgrounds/months/liana-mikah-6B05zlnPOEc-unsplash.jpg", "backgrounds/months/liana-mikah-6B05zlnPOEc-unsplash.jpg"],
+    ["app/assets/images/backgrounds/months/lily-Rg1nSqXNPN4-unsplash.jpg", "backgrounds/months/lily-Rg1nSqXNPN4-unsplash.jpg"],
+    ["app/assets/images/backgrounds/months/milan-de-clercq-YtllSzi2JLY-unsplash.jpg", "backgrounds/months/milan-de-clercq-YtllSzi2JLY-unsplash.jpg"],
+    ["app/assets/images/backgrounds/months/nadiia-ploshchenko-ZnDtJaIec_E-unsplash.jpg", "backgrounds/months/nadiia-ploshchenko-ZnDtJaIec_E-unsplash.jpg"],
+    ["app/assets/images/backgrounds/months/pascal-debrunner-dppGOhcPBW0-unsplash.jpg", "backgrounds/months/pascal-debrunner-dppGOhcPBW0-unsplash.jpg"]
   ]
 }

@@ -7,8 +7,8 @@ defmodule Dawarich.Digests.Pages do
     with {:ok, scope, period} <- Period.admit(scope, params, :digest, opts) do
       rows =
         Repo.query!(
-          "SELECT year,distance,toponyms,first_time_visits,sharing_settings->>'enabled' FROM digests WHERE user_id=$1 AND period_type=1 AND year<$2 ORDER BY year DESC LIMIT 51 OFFSET $3",
-          [scope.user.id, period.today.year, (period.page - 1) * 50],
+          "SELECT year,distance,toponyms,first_time_visits,sharing_settings->>'enabled' FROM digests WHERE user_id=$1 AND period_type=1 ORDER BY year DESC LIMIT 51 OFFSET $2",
+          [scope.user.id, (period.page - 1) * 50],
           log: false
         ).rows
 

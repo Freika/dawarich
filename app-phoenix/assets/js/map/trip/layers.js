@@ -48,7 +48,9 @@ export function createTripLayers({
   let current = null,
     selected = null,
     destroyed = false,
-    flights = null
+    flights = null,
+    overviewFitted = false,
+    routesFitted = false
   const days = new DayRoutesLayer(map, { library, labels }),
     plan = new TripPlanLayer(map, { library, numbered: true })
   function clear() {
@@ -68,6 +70,10 @@ export function createTripLayers({
         groupDays(snapshot.points, data.config.range.timezone),
         data.config.routeOptions,
       )
+      if (!routesFitted && days.getFullBounds()) {
+        map.fitBounds(days.getFullBounds(), { padding: 50, maxZoom: 15 })
+        routesFitted = true
+      }
       days.setupInteractions({
         onDayClick(day) {
           selected = day
@@ -97,9 +103,15 @@ export function createTripLayers({
         paint: {
           "line-color": "#6366F1",
           "line-width": 3,
-          "line-opacity": 0.6,
+          "line-opacity": 0.8,
         },
       })
+      if (!overviewFitted && !routesFitted) {
+        const bounds = new library.LngLatBounds()
+        for (const coordinate of data.path) bounds.extend(coordinate)
+        if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50, maxZoom: 15 })
+        overviewFitted = true
+      }
     }
     if (config.planEnabled && data.plan) plan.add(data.plan)
   }

@@ -433,11 +433,7 @@ defmodule DawarichWeb.StatsParityTest do
   defp source(user, params, context, :digest) do
     values =
       if params == %{},
-        do:
-          Dawarich.Digests.index(
-            user.id,
-            Dawarich.Stats.context(user, context.now, context.self_hosted)
-          ),
+        do: rails1160_digest_index(user, context),
         else: %{digest: Dawarich.Digests.get(user.id, Dawarich.RubyInteger.to_i(params["year"]))}
 
     key =
@@ -473,6 +469,23 @@ defmodule DawarichWeb.StatsParityTest do
       :page_title,
       DawarichWeb.Translate.t(context.locale, key, %{year: params["year"]})
     )
+  end
+
+  defp rails1160_digest_index(user, context) do
+    source =
+      Dawarich.Digests.index(
+        user.id,
+        Dawarich.Stats.context(user, context.now, context.self_hosted)
+      )
+
+    years =
+      Repo.query!(
+        "SELECT year FROM digests WHERE user_id=$1 AND period_type=1 ORDER BY year DESC",
+        [user.id],
+        log: false
+      ).rows
+
+    %{source | digests: Enum.map(years, fn [year] -> Dawarich.Digests.get(user.id, year) end)}
   end
 
   defp native_stats(user, params, context, source, rails) do

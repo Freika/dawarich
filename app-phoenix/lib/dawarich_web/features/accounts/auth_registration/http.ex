@@ -60,7 +60,11 @@ defmodule DawarichWeb.AuthRegistration.Http do
           do: Map.put(session, "pending_import_ticket", params["import_ticket"]),
           else: session
 
-      conn = assign(conn, :rails_session, session)
+      conn =
+        conn
+        |> assign(:rails_session, session)
+        |> fetch_query_params()
+        |> DawarichWeb.Locale.call([])
 
       context =
         if params["locale"] || conn.assigns.rails_session["locale"],
