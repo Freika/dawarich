@@ -3,7 +3,7 @@
 # Track segmentation logic for splitting GPS points into meaningful track segments.
 #
 # This module provides the core algorithm for determining where one track ends
-# and another begins, based primarily on time gaps between consecutive points.
+# and another begins, based on time gaps and long stationary stops.
 #
 # How it works:
 # 1. Analyzes consecutive GPS points to detect gaps that indicate separate journeys
@@ -13,6 +13,8 @@
 #
 # Segmentation criteria:
 # - Time threshold: Gap longer than X minutes indicates a new track
+# - Stationary stop: Staying within 100 meters of one place for longer than X minutes
+#   ends a track (see Tracks::StationaryStops)
 # - Minimum segment size: Segments must have at least 2 points to form a track
 #
 # ❗️ Frontend Parity (see CLAUDE.md "Route Drawing Implementation")
@@ -20,6 +22,7 @@
 # returns kilometers while the UI exposes a value in meters. That unit mismatch
 # effectively disables distance-based splitting, so we mirror that behavior on the
 # backend to keep server-generated tracks identical to what users see on the map.
+# Stationary stops are a server-only boundary: the map does not split routes on them.
 #
 # The module is designed to be included in classes that need segmentation logic
 # and requires the including class to implement time_threshold_minutes methods.
@@ -50,9 +53,10 @@ module Tracks::Segmentation
 
     segments = []
     current_segment = []
+    stationary_breaks = long_stationary_breaks(points)
 
-    points.each do |point|
-      if should_start_new_segment?(point, current_segment.last)
+    points.each_with_index do |point, index|
+      if stationary_breaks.include?(index) || should_start_new_segment?(point, current_segment.last)
         # Finalize current segment if it has enough points
         segments << current_segment if current_segment.size >= 2
         current_segment = [point]
@@ -69,6 +73,12 @@ module Tracks::Segmentation
 
   # Alias for backwards compatibility with TimeChunkProcessorJob
   alias split_points_into_segments_geocoder split_points_into_segments
+
+  def long_stationary_breaks(points)
+    samples = points.map { |point| [point.timestamp, point.lonlat&.x, point.lonlat&.y] }
+
+    Tracks::StationaryStops.break_indexes(samples, time_threshold_minutes.to_i * 60)
+  end
 
   def should_start_new_segment?(current_point, previous_point)
     return false if previous_point.nil?
