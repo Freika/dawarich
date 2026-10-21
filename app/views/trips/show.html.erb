@@ -59,8 +59,10 @@
               <p class="font-medium"><%= t('.no_locations_recorded') %></p>
               <p class="mt-1 text-sm text-base-content/60"><%= t('.no_locations_recorded_hint') %></p>
             <% else %>
-              <p class="text-base-content/60"><%= t('.trip_path_is_being_calculated') %></p>
-              <div class="loading loading-spinner loading-lg mt-4"></div>
+              <div data-trip-maplibre-target="pathPending">
+                <p class="text-base-content/60"><%= t('.trip_path_is_being_calculated') %></p>
+                <div class="loading loading-spinner loading-lg mt-4"></div>
+              </div>
             <% end %>
           </div>
         </div>
