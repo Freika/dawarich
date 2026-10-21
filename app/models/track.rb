@@ -138,7 +138,8 @@ class Track < ApplicationRecord
 
     # Tracked points keep realtime boundaries in place: without them, untracked points
     # on both sides of an already tracked stretch would join into one segment.
-    # Filter them out only after calculating the segment boundaries.
+    # Filter them out only after calculating the segment boundaries, and break wherever
+    # the track changes so the untracked points around a tracked stretch stay apart.
     sql = <<~SQL
       WITH points_with_gaps AS (
         SELECT
@@ -147,6 +148,7 @@ class Track < ApplicationRecord
           lonlat,
           tracker_id,
           track_id,
+          LAG(track_id) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_track_id,
           LAG(lonlat) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_lonlat,
           LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_timestamp,
           ST_Distance(
@@ -164,6 +166,7 @@ class Track < ApplicationRecord
             WHEN time_diff_seconds > $4 THEN 1
             WHEN distance_meters > $5 THEN 1
             WHEN stop_breaks.id IS NOT NULL THEN 1
+            #{'WHEN track_id IS DISTINCT FROM prev_track_id THEN 1' if untracked_only}
             ELSE 0
           END as is_break
         FROM points_with_gaps

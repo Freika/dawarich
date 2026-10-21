@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
-- End tracks when a device stays within 100 m for longer than the minutes-between-routes setting, even if it keeps reporting locations; regenerate existing tracks to apply the fix. (#3356)
+- End tracks when a device stays within 100 m for longer than the minutes-between-routes setting, even if it keeps reporting locations, while preserving overnight visit detection; regenerate existing tracks to apply the fix. (#3356)
 - Emoji in place, area, visit and family member names now render correctly on the map instead of a placeholder glyph (#2365).
 - Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
 

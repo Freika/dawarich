@@ -67,6 +67,20 @@ RSpec.describe Track, type: :model do
 
       expect(segments).to be_empty
     end
+
+    it 'keeps untracked points on both sides of an existing track in separate segments' do
+      points = (0..39).map do |index|
+        create(:point, user: user, tracker_id: 'synthetic-feed', timestamp: base_time + index * 60,
+                       lonlat: "POINT(#{-140.0 + index * 0.001} -40.0)")
+      end
+      track = create(:track, user: user, tracker_id: 'synthetic-feed')
+      Point.where(id: points[10..29].map(&:id)).update_all(track_id: track.id)
+
+      segments = described_class.get_segments_with_points(user.id, base_time, points.last.timestamp, 30, 500,
+                                                          untracked_only: true)
+
+      expect(segments.map { |segment| segment[:points] }).to eq([points.first(10), points.last(10)])
+    end
   end
 
   describe 'associations' do

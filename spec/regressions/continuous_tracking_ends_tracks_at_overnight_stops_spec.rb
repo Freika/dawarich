@@ -15,6 +15,16 @@ RSpec.describe 'Continuous tracking ends tracks at overnight stops' do
     # These made-up coordinates are in the South Pacific, away from homes.
     (0..300).map { |index| create_feed_point(index) }
   end
+  let(:realtime_feed) do
+    # One extra moving report completes the final two-point realtime batch.
+    (0..301).map do |index|
+      travel_to(Time.zone.at(start_timestamp + index * 5.minutes.to_i)) do
+        point = create_feed_point(index)
+        Tracks::IncrementalGenerator.new(user).call
+        point
+      end
+    end
+  end
 
   before do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
@@ -56,14 +66,7 @@ RSpec.describe 'Continuous tracking ends tracks at overnight stops' do
   end
 
   it 'ends the arrival track when realtime points arrive one at a time throughout the overnight stop' do
-    # One extra moving report completes the final two-point realtime batch.
-    feed = (0..301).map do |index|
-      travel_to(Time.zone.at(start_timestamp + index * 5.minutes.to_i)) do
-        point = create_feed_point(index)
-        Tracks::IncrementalGenerator.new(user).call
-        point
-      end
-    end
+    feed = realtime_feed
 
     arrival_track = feed.first.reload.track
     departure_track = feed.last.reload.track
@@ -74,6 +77,28 @@ RSpec.describe 'Continuous tracking ends tracks at overnight stops' do
     expect(arrival_track.end_at.to_i).to be_between(feed[12].timestamp, feed[18].timestamp)
     expect(feed[19..287].map { |point| point.reload.track_id }).to all(be_nil)
     expect(departure_track.start_at.to_i).to eq(feed[288].timestamp)
+  end
+
+  it 'detects a visit at the overnight stop after realtime track generation' do
+    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+    feed = realtime_feed
+
+    expect(feed.first.reload.track_id).to be_present
+    expect(feed.last.reload.track_id).to be_present
+    expect(feed.last.track_id).not_to eq(feed.first.track_id)
+    expect(user.tracks.joins(:track_segments)).to be_present
+
+    visits = Visits::Detection::Runner.new(user, start_at: start_timestamp, end_at: feed.last.timestamp).call
+
+    expect(visits.size).to eq(1)
+    visit = visits.first.reload
+    expect(visit).to be_suggested
+    expect(visit.detection_version).to eq(Visits::Detection::VERSION)
+    expect(visit.started_at.to_i).to be_within(15.minutes.to_i).of(feed[12].timestamp)
+    expect(visit.ended_at.to_i).to be_within(15.minutes.to_i).of(feed[288].timestamp)
+    expect(visit.center[0]).to be_within(0.0001).of(-40.0)
+    expect(visit.center[1]).to be_within(0.0001).of(-139.976)
+    expect(feed[19..287].map { |point| point.reload.visit_id }).to all(eq(visit.id))
   end
 
   def create_feed_point(index)
