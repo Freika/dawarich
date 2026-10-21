@@ -18,8 +18,8 @@ defmodule Dawarich.DataCase do
   end
 
   def setup_sandbox(context) do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-    unless context[:async], do: Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    owner = Ecto.Adapters.SQL.Sandbox.start_owner!(Repo, shared: not context[:async])
+    ExUnit.Callbacks.on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(owner) end)
     :ok
   end
 

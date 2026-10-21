@@ -9,8 +9,7 @@ defmodule DawarichWeb.SettingsLiveTest do
   @endpoint DawarichWeb.Endpoint
 
   setup do
-    owner = Ecto.Adapters.SQL.Sandbox.start_owner!(Dawarich.Repo, shared: true)
-    on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(owner) end)
+    :ok = Dawarich.DataCase.setup_sandbox(%{async: false})
 
     user =
       RailsUser.insert!(%{

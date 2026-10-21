@@ -12,8 +12,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
   alias Dawarich.Test.{InsightsSeeds, RailsUser, TripsSeeds}
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
-    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
+    :ok = Dawarich.DataCase.setup_sandbox(%{async: false})
     Dawarich.State.put_registration_enabled(Dawarich.Repo, false)
     upstream = listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})

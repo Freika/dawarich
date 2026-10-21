@@ -26,9 +26,9 @@ The variables in these examples must be set by the developer/controller; they ar
 
 ## Test fixture isolation
 
-`NativeAdminUI.setup!/0` gives connected UI tests a separate shared SQL sandbox owner, stopped in `on_exit` after ExUnit shuts down supervised LiveViews and their async reads. Checking out in the test process instead returns the connection as soon as that process exits, while a supervised Insights reader can still be querying. The named `Sync1160InsightsTest` teardown barrier releases a real details read only after the test process has exited and verifies it finishes before the owner stops.
+`DataCase.setup_sandbox/1` gives tests a separate SQL sandbox owner, shared only for synchronous tests, and stops it in `on_exit` after ExUnit shuts down supervised LiveViews and their async reads. `NativeAdminUI.setup!/0` delegates to this fixture. Checking out in the test process instead returns the connection as soon as that process exits, while a supervised Insights reader can still be querying. The named `Sync1160InsightsTest` teardown barrier releases a real details read only after the test process has exited and verifies it finishes before the owner stops.
 
-Fixtures that mount Insights outside that helper, including the Settings route test, need the same independent owner lifetime.
+Fixtures that mount Insights outside that helper, including Settings, Stats and the Insights endpoint/live tests, also delegate to `DataCase.setup_sandbox/1` with their existing synchronous/shared setting. Async mount-budget tests retain individual sandbox connections and caller allowance through `DataCase`.
 
 The Stats period-command test holds details/residency readers after admission and waits for both entry acknowledgements before each command or patch. It verifies deduplication and sharing while cards are loading, without racing a shared checkout or requiring unrelated cold reads to fit the message-assertion deadline. Real card/cache/residency reads remain covered by the Insights tests.
 

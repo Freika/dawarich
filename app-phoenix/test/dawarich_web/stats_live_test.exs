@@ -9,8 +9,7 @@ defmodule DawarichWeb.StatsLiveTest do
   @endpoint DawarichWeb.Endpoint
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
-    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
+    :ok = Dawarich.DataCase.setup_sandbox(%{async: false})
 
     user =
       RailsUser.insert!(%{
