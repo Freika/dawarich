@@ -95,6 +95,7 @@ defmodule DawarichWeb.Sync1160InsightsTest do
   test "consolidated insights offers tracked counts country lists newest six previews and twelve months",
        %{user: user} do
     {:ok, view, html} = live(NativeAdminUI.conn(user), "/insights?year=all")
+    render_async(view)
     assert has_element?(view, "#native-insights-tracking")
     assert has_element?(view, "[data-testid=insights-year-card]", "2025")
 
@@ -106,6 +107,7 @@ defmodule DawarichWeb.Sync1160InsightsTest do
     assert has_element?(view, "[role=dialog]", "France")
     render_click(view, "close_dialog", %{})
     render_patch(view, "/insights?year=2025")
+    render_async(view)
 
     assert Enum.count(
              LazyHTML.query(LazyHTML.from_document(render(view)), "[data-testid=insights-month]")
@@ -114,6 +116,7 @@ defmodule DawarichWeb.Sync1160InsightsTest do
     assert has_element?(view, "a[href='/stats/2025/3']")
     assert has_element?(view, "[data-testid=insights-month][data-empty=true]", "January")
     render_patch(view, "/insights?year=2020")
+    render_async(view)
     assert has_element?(view, "[data-testid=insights-month]", "March")
   end
 
@@ -295,5 +298,61 @@ defmodule DawarichWeb.Sync1160InsightsTest do
       refute String.contains?(html, "%{"), locale
       assert String.contains?(html, "km"), locale
     end
+  end
+
+  test "Insights readers keep their database through supervised LiveView teardown", %{user: user} do
+    {:ok, result} = Agent.start(fn -> :not_finished end)
+    previous = Application.get_env(:dawarich, :native_insights_readers)
+
+    on_exit(fn ->
+      try do
+        assert Agent.get(result, & &1) == :read_after_test_exit
+      after
+        Agent.stop(result)
+
+        if previous,
+          do: Application.put_env(:dawarich, :native_insights_readers, previous),
+          else: Application.delete_env(:dawarich, :native_insights_readers)
+      end
+    end)
+
+    test_pid = self()
+
+    reader = fn scope, inputs ->
+      send(test_pid, {:reading, self()})
+
+      receive do
+        :finish_during_teardown ->
+          refute Process.alive?(test_pid)
+          assert {:ok, _} = DawarichWeb.InsightsLive.NativePage.details(scope, inputs)
+          Agent.update(result, fn _ -> :read_after_test_exit end)
+          {:error, :unavailable}
+      end
+    end
+
+    Application.put_env(:dawarich, :native_insights_readers, %{details: reader})
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=all")
+    assert_receive {:reading, reader_pid}
+    assert Process.alive?(view.pid)
+
+    start_supervised!(
+      {Task,
+       fn ->
+         Process.flag(:trap_exit, true)
+         send(test_pid, :teardown_barrier_ready)
+
+         receive do
+           {:EXIT, _, :shutdown} ->
+             monitor = Process.monitor(reader_pid)
+             send(reader_pid, :finish_during_teardown)
+
+             receive do
+               {:DOWN, ^monitor, :process, ^reader_pid, _} -> :ok
+             end
+         end
+       end}
+    )
+
+    assert_receive :teardown_barrier_ready
   end
 end

@@ -4,8 +4,8 @@ defmodule Dawarich.Test.NativeAdminUI do
   alias Dawarich.Test.RailsUser
 
   def setup! do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    owner = Ecto.Adapters.SQL.Sandbox.start_owner!(Repo, shared: true)
+    ExUnit.Callbacks.on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(owner) end)
     previous = Map.new(~w(SELF_HOSTED DAWARICH_RAILS), &{&1, System.get_env(&1)})
     System.put_env("SELF_HOSTED", "true")
     System.put_env("DAWARICH_RAILS", "off")
