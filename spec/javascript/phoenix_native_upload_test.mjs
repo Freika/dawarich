@@ -215,7 +215,7 @@ test("multi-file preparation reports monotonic aggregate progress and preserves 
       querySelector: () => status,
       addEventListener() {}, removeEventListener() {},
     },
-    upload: (name, files) => batches.push([name, files]),
+    uploadTo: (_target, name, files) => batches.push([name, files]),
     pushEvent: (...args) => events.push(args),
   });
   hook.mounted();
@@ -239,7 +239,7 @@ test("retained prepared files share the bounded preparation budget and fall back
   const events = [], batches = [];
   const hook = Object.assign(Object.create(ArchiveChecksum), {
     el: {dataset: {uploadKind: "imports", uploadName: "files", preparationBytes: String(8*1024*1024)}, querySelector: () => null, addEventListener() {}, removeEventListener() {}},
-    upload: (_name, files) => batches.push(files),
+    uploadTo: (_target, _name, files) => batches.push(files),
     pushEvent: (...args) => events.push(args),
   });
   hook.mounted();
@@ -256,7 +256,7 @@ test("selection count refuses before any file is prepared or uploaded", async ()
   const events = [], batches = [];
   const hook = Object.assign(Object.create(ArchiveChecksum), {
     el: {dataset: {uploadKind: "imports", uploadName: "files", maxEntries: "1"}, querySelector: () => null, addEventListener() {}, removeEventListener() {}},
-    upload: (...args) => batches.push(args), pushEvent: (...args) => events.push(args),
+    uploadTo: (...args) => batches.push(args), pushEvent: (...args) => events.push(args),
   });
   hook.mounted();
   await hook.select([new File(["<gpx/>"], "first.gpx"), new File(["<gpx/>"], "second.gpx")]);

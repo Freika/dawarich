@@ -106,3 +106,27 @@ test("component uploads send preparation events and files to their owning compon
   await hook.select([new File(["a"], "a.zip"), new File(["b"], "b.zip")])
   assert.deepEqual(events, [[el, "upload_selection_error", { kind: "too_many_files" }]])
 })
+
+test("page uploads stay inside their form when onboarding has the same upload name", async () => {
+  const { ArchiveChecksum } = await import("../../app-phoenix/assets/js/hooks/archive_checksum.js")
+  const uploads = [], events = []
+  const el = {
+    dataset: { uploadKind: "imports", uploadName: "files" },
+    getAttribute: () => null,
+    addEventListener() {},
+    querySelector: () => null,
+  }
+  const hook = Object.assign(Object.create(ArchiveChecksum), {
+    el,
+    upload: () => assert.fail("page upload searched the whole LiveView"),
+    uploadTo: (target, name, files) => uploads.push([target, name, files]),
+    pushEvent: (...args) => events.push(args),
+  })
+  hook.mounted()
+  await hook.select([new File(["zip"], "page.zip", { type: "application/zip" })])
+  assert.equal(uploads.length, 1)
+  assert.equal(uploads[0][0], el)
+  assert.equal(uploads[0][1], "files")
+  assert.equal(uploads[0][2][0].meta().original_filename, "page.zip")
+  assert.deepEqual(events, [])
+})

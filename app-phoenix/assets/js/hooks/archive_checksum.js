@@ -162,9 +162,7 @@ export const ArchiveChecksum = {
       }
       check(controller.signal)
       if (generation === this.generation) {
-        if (this.el.getAttribute?.("phx-target"))
-          this.uploadTo(this.el, this.el.dataset.uploadName, prepared)
-        else this.upload(this.el.dataset.uploadName, prepared)
+        this.uploadTo(this.el, this.el.dataset.uploadName, prepared)
       }
     } catch (error) {
       if (error.name !== "AbortError")
