@@ -21,6 +21,7 @@ defmodule DawarichWeb.OnboardingLiveComponent do
     {:ok,
      socket
      |> assign_new(:completed, fn -> false end)
+     |> assign_new(:banner, fn -> false end)
      |> assign_new(:demo_status, fn -> :idle end)
      |> assign_new(:demo_run, fn -> nil end)
      |> assign_new(:demo_loader, fn -> nil end)
@@ -118,7 +119,7 @@ defmodule DawarichWeb.OnboardingLiveComponent do
       >
         {@failure}
       </p>
-      <DawarichWeb.NativeDemoBanner.banner :if={@demo} locale={@locale} target={@myself} />
+      <DawarichWeb.NativeDemoBanner.banner :if={@demo and @banner} locale={@locale} target={@myself} />
     </div>
     """
   end

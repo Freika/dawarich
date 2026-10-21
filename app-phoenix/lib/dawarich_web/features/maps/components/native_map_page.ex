@@ -141,6 +141,7 @@ defmodule DawarichWeb.NativeMapPage do
       base_url={assigns[:base_url] || ""}
       rails_csrf_token=""
       auto_open={true}
+      banner={true}
     />
     <div :if={@map_error} role="alert">{to_string(@map_error)}</div>
     """

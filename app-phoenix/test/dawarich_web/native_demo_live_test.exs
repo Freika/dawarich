@@ -17,7 +17,8 @@ defmodule DawarichWeb.NativeDemoLiveTest do
          scope: Maps.principal(user, "en"),
          navbar: navbar,
          loader: session["loader"] && Agent.get(session["loader"], & &1),
-         timeout: session["timeout"] || 5_000
+         timeout: session["timeout"] || 5_000,
+         banner: Map.get(session, "banner", true)
        )}
     end
 
@@ -34,6 +35,7 @@ defmodule DawarichWeb.NativeDemoLiveTest do
         auto_open={false}
         demo_loader={@loader}
         demo_timeout={@timeout}
+        banner={@banner}
       />
       """
     end
@@ -141,6 +143,13 @@ defmodule DawarichWeb.NativeDemoLiveTest do
            )
   end
 
+  test "the demo banner stays on the map page like the Rails map layout", c do
+    {:ok, _} = Onboarding.load_demo(c.scope, DemoData.fixtures())
+    assert has_element?(open(c.id, nil), "#demo-data-banner")
+    refute has_element?(open(c.id, nil, 5_000, false), "#demo-data-banner")
+    assert has_element?(open(c.id, nil, 5_000, false), "#native-demo-load[disabled]")
+  end
+
   test "reconnect reconciles committed demo state", c do
     view = open(c.id, nil)
     refute has_element?(view, "#demo-data-banner")
@@ -152,12 +161,12 @@ defmodule DawarichWeb.NativeDemoLiveTest do
     assert has_element?(reconnected, "#native-demo-load[disabled]")
   end
 
-  defp open(id, loader, timeout \\ 5_000) do
+  defp open(id, loader, timeout \\ 5_000, banner \\ true) do
     loader = loader && start_supervised!({Agent, fn -> loader end}, id: make_ref())
 
     {:ok, view, _} =
       live_isolated(Phoenix.ConnTest.build_conn(), Host,
-        session: %{"user_id" => id, "loader" => loader, "timeout" => timeout}
+        session: %{"user_id" => id, "loader" => loader, "timeout" => timeout, "banner" => banner}
       )
 
     view
