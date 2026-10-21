@@ -13,6 +13,11 @@ defmodule Dawarich.CountryNamesTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+
+    Repo.query!("CREATE TEMP VIEW countries AS SELECT * FROM public.countries ORDER BY id", [],
+      log: false
+    )
+
     stamp = NaiveDateTime.utc_now(:second)
 
     Repo.insert_all(

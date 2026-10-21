@@ -32,7 +32,7 @@ Fixtures that mount Insights outside that helper, including Settings, Stats and 
 
 The Stats period-command test holds details/residency readers after admission and waits for both entry acknowledgements before each command or patch. It verifies deduplication and sharing while cards are loading, without racing a shared checkout or requiring unrelated cold reads to fit the message-assertion deadline. Real card/cache/residency reads remain covered by the Insights tests.
 
-CountryCodes compatibility fixtures use a transaction-local ordered view over the real country table. This supplies a known row sequence for Ruby hash first-position/last-value assertions; an unordered table scan does not promise insertion order. Production country queries and Rails compatibility remain unchanged.
+CountryCodes and CountryNames compatibility fixtures use a transaction-local ordered view over the real country table. This supplies a known row sequence for Ruby hash first-position/last-value and empty-name first-match flag assertions; an unordered table scan does not promise insertion order. Production country queries and Rails compatibility remain unchanged.
 
 Whole-format import recordings pin parent and initial-child identities. Compose their setup with the storage/environment fixture only; do not create an unrelated auto-ID lease import first. A generated row can already occupy a recorded identity before `SeedIds` has a chance to advance its sequence. `A12f3bImportsFixture.setup/1` accepts an existing context for these cases, while `setup/0` retains its lease fixture.
 
