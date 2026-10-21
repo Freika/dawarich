@@ -5,13 +5,17 @@ defmodule DawarichWeb.FamiliesLive.NativeMap do
 
   def mount(_, _, %{assigns: %{current_scope: nil}} = socket), do: {:ok, socket, layout: false}
 
-  def mount(_, _, socket),
-    do:
-      {:ok,
-       socket
-       |> assign(confirmation: nil, errors: [])
-       |> DawarichWeb.NativeFamilyResource.attach()
-       |> maybe_chrome(), layout: false}
+  def mount(_, _, socket) do
+    socket =
+      socket
+      |> assign(confirmation: nil, errors: [])
+      |> DawarichWeb.NativeFamilyResource.attach()
+
+    case socket.assigns[:map_error] do
+      :not_found -> {:ok, outside_family(socket), layout: false}
+      _ -> {:ok, maybe_chrome(socket), layout: false}
+    end
+  end
 
   def handle_params(_, _, %{assigns: %{current_scope: nil}} = socket), do: {:noreply, socket}
 
@@ -46,6 +50,19 @@ defmodule DawarichWeb.FamiliesLive.NativeMap do
   end
 
   def terminate(_, socket), do: DawarichWeb.NativeFamilyConsent.cancel(socket)
+
+  defp outside_family(socket),
+    do:
+      socket
+      |> put_flash(
+        :alert,
+        DawarichWeb.Translate.t(
+          socket.assigns.locale,
+          "controllers.families.you_are_not_in_a_family",
+          %{}
+        )
+      )
+      |> redirect(to: "/family/new")
 
   defp maybe_chrome(%{assigns: %{current_scope: nil}} = socket), do: socket
 

@@ -41,6 +41,16 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
     )
   end
 
+  test "a user without a family is redirected to the new family page like Rails" do
+    id = System.unique_integer([:positive])
+    RailsUser.insert!(%{id: id, email: "no-family-#{id}@dawarich.test"})
+    conn = get(RailsUser.signed_in(id), "/family")
+    assert redirected_to(conn, 302) == "/family/new"
+
+    assert {:error, {:redirect, %{to: "/family/new"}}} =
+             live(RailsUser.signed_in(id) |> RailsUser.connecting_as(id), "/family")
+  end
+
   test "late location refusal erases the native presentation before rendering", c do
     view = open(c.owner)
     socket = :sys.get_state(view.pid).socket
