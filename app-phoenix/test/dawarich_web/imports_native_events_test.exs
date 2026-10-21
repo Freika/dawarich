@@ -130,7 +130,13 @@ defmodule DawarichWeb.ImportsNativeEventsTest do
     )
 
     send(view.pid, {:domain_changed, c.user.id, :imports})
-    assert has_element?(view, "button[phx-click=remove_extraction]", "Remove extracted data")
+
+    assert has_element?(
+             view,
+             "form[phx-submit=remove_extraction] button[type=submit]",
+             "Remove extracted data"
+           )
+
     render_hook(view, "remove_extraction", %{})
 
     assert [[2]] =

@@ -34,6 +34,21 @@ defmodule DawarichWeb.FamilyPagesTest do
     assert found == expected, selector
   end
 
+  @tag family_mobile_actions: true
+  test "native family edit and invitation actions wrap without hiding commands", ctx do
+    edit = document(ctx.owner, "/family/edit")
+    expect_element(edit, "#native-family-form > .flex.flex-wrap.gap-3")
+    expect_element(edit, "#native-family-form .flex.flex-wrap.gap-3 input[type=submit]")
+    expect_element(edit, "[data-native-family-action=delete]")
+    expect_element(edit, "dd[class*=overflow-wrap]")
+
+    invitations = document(ctx.owner, "/family/invitations")
+    expect_element(invitations, "[data-native-invitation-id].flex-wrap")
+    expect_element(invitations, "[data-native-invitation-id] .flex.flex-wrap.gap-2")
+    expect_element(invitations, "[data-native-family-action=cancel_invitation]")
+    expect_element(invitations, "[data-native-invitation-id] [class*=overflow-wrap]")
+  end
+
   test "native Family owner and member controls retain policy and inactive refusal", ctx do
     Repo.query!(
       "UPDATE family_invitations SET expires_at=$1 WHERE token=$2",
@@ -49,25 +64,40 @@ defmodule DawarichWeb.FamilyPagesTest do
     assert_form_isolated(document(ctx.member, "/family/location_requests/94001"))
     assert String.contains?(owner, "Leipzig Fixture Family")
     expect_element(owner, "a[href='/family/edit']")
-    expect_element(owner, "[data-family-action=remove_member][data-family-target='92002']")
+
+    expect_element(
+      owner,
+      "[data-native-family-action=remove_member][data-native-family-target='92002']"
+    )
 
     expect_element(
       owner,
       "#native-family-invite[phx-submit='family:invite'] input[name='family_invitation[email]']"
     )
 
-    expect_element(owner, "#native-family-sharing[phx-change='family:sharing']")
+    expect_element(
+      owner,
+      "#native-family-sharing[phx-hook=FamilySharing][data-native-sharing-event='family:sharing']"
+    )
 
     expect_element(
       owner,
-      "[data-family-action=cancel_invitation][data-family-target='93001']"
+      "[data-native-family-action=cancel_invitation][data-native-family-target='93001']"
     )
 
     member = document(ctx.member, "/family?locale=de")
     expect_element(member, "a[href='/family/edit']", false)
     expect_element(member, "#native-family-invite", false)
-    expect_element(member, "[data-family-action=remove_member][data-family-target='92002']")
-    expect_element(member, "[phx-click='family:request'][phx-value-id='90101']")
+
+    expect_element(
+      member,
+      "[data-native-family-action=remove_member][data-native-family-target='92002']"
+    )
+
+    expect_element(
+      member,
+      "form[action='/family/location_requests?target_user_id=90101'][phx-submit*='family:request']"
+    )
 
     for html <- [owner, member],
         marker <- ~w(data-lat= a9fpl-fixture- data-controller data-action turbo-frame),

@@ -17,7 +17,11 @@ defmodule DawarichWeb.ApiKeyParts do
           {t(@locale, "devise.registrations.api_key.current_api_key", %{})}
         </p>
         <div class="mt-2 rounded-xl bg-base-300/70 p-3">
-          <.credential :if={@native} id="account-current-key" />
+          <.credential
+            :if={@native}
+            id="account-current-key"
+            css="block break-all text-sm sm:text-base"
+          />
           <code :if={not @native} class="block break-all text-sm sm:text-base" phx-no-format>{@user.api_key}</code>
         </div>
         <p class="mt-3 text-sm text-base-content/70">
@@ -110,9 +114,9 @@ defmodule DawarichWeb.ApiKeyParts do
       </div>
 
       <div>
-        <button
-          id="rotate-api-key"
-          type="button"
+        <a
+          id="native-rotate-api-key"
+          href="#"
           class="btn btn-primary w-full sm:w-auto"
           phx-click="rotate_api_key"
           phx-disable-with={t(@locale, "devise.registrations.api_key.generate_new_api_key", %{})}
@@ -125,7 +129,7 @@ defmodule DawarichWeb.ApiKeyParts do
           }
         >
           {t(@locale, "devise.registrations.api_key.generate_new_api_key", %{})}
-        </button>
+        </a>
       </div>
     </div>
     """
@@ -133,6 +137,7 @@ defmodule DawarichWeb.ApiKeyParts do
 
   attr :id, :string, required: true
   attr :path, :string, default: nil
+  attr :css, :string, default: "mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"
 
   defp credential(assigns) do
     ~H"""
@@ -141,7 +146,7 @@ defmodule DawarichWeb.ApiKeyParts do
       phx-hook="CredentialValue"
       phx-update="ignore"
       data-path={@path}
-      class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"
+      class={@css}
     ></code>
     """
   end

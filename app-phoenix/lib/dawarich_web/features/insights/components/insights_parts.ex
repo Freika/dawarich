@@ -134,6 +134,7 @@ defmodule DawarichWeb.InsightsParts do
   attr :title, :string, required: true
   attr :href, :string, required: true
   attr :badge, :string, required: true
+  attr :native, :boolean, default: false
 
   def locked_card(assigns) do
     ~H"""
@@ -143,6 +144,7 @@ defmodule DawarichWeb.InsightsParts do
           {@title}
           <a
             href={@badge}
+            phx-click={@native && "upgrade"}
             target="_blank"
             rel="noopener noreferrer"
             class="tooltip tooltip-bottom"
@@ -169,7 +171,13 @@ defmodule DawarichWeb.InsightsParts do
             <p class="text-sm text-base-content/50 mt-1">
               {t(@locale, "insights.pro_locked_card.available_on_pro", %{})}
             </p>
-            <a href={@href} class="btn btn-sm btn-primary mt-2" target="_blank" rel="noopener">
+            <a
+              href={@href}
+              phx-click={@native && "upgrade"}
+              class="btn btn-sm btn-primary mt-2"
+              target="_blank"
+              rel="noopener"
+            >
               {t(@locale, "insights.pro_locked_card.upgrade_to_pro", %{})}
             </a>
           </div>

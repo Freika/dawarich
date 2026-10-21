@@ -2,6 +2,7 @@ import { NativeHeatmap } from "../charts/heatmap.js"
 import { NativeChart } from "../charts/hook.js"
 import { MapMatchingDemo } from "../demo/hook.js"
 import { RichText } from "../editor/hook.js"
+import { InsightsCalendar, InsightsRace, InsightsUpdate } from "../insights/presentation.js"
 import { InsightsYearMap } from "../insights/year_map_hook.js"
 import { FamilyHook } from "../map/hooks/family.js"
 import { MapHook } from "../map/hooks/map.js"
@@ -21,6 +22,7 @@ import { CredentialQr } from "./credential_qr.js"
 import { CredentialValue } from "./credential_value.js"
 import { Dismissible } from "./dismissible.js"
 import { EmojiPicker } from "./emoji_picker.js"
+import { FamilySharing, FamilyInviteScroll, AchievementClipboard, AchievementMaterial } from "./achievement_family.js"
 import { FamilyConfirm } from "./family_confirm.js"
 import { FamilyInvitationClipboard } from "./family_invitation_clipboard.js"
 import { LayerToggle } from "./layer_toggle.js"
@@ -35,6 +37,9 @@ import {
 } from "./sharing_controls.js"
 
 export const hooks = {
+  InsightsCalendar,
+  InsightsRace,
+  InsightsUpdate,
   PublicGallery,
   InsightsYearMap,
   OrdinaryDialog,
@@ -46,8 +51,12 @@ export const hooks = {
   SharingReveal,
   FamilyMap,
   FamilyConfirm,
+  FamilySharing,
+  FamilyInviteScroll,
   FamilyInvitationClipboard,
   AchievementUnlocks,
+  AchievementClipboard,
+  AchievementMaterial,
   ArchiveChecksum,
   AreaPreview,
   ChangelogWidget,

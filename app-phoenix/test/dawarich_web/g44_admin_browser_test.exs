@@ -53,7 +53,7 @@ defmodule DawarichWeb.G44AdminBrowserTest do
   test "native browser visits confirmation persists without dispatching a job", c do
     conn = RailsUser.signed_in(c.actor.id) |> RailsUser.connecting_as(c.actor.id)
     {:ok, view, _} = live(conn, "/settings/background_jobs")
-    view |> element("#visits-toggle") |> render_click()
+    view |> element("#native-visits-toggle") |> render_click()
     assert Accounts.settings(c.actor.id)["visits_suggestions_enabled"] == nil
     view |> element("#confirm-visits") |> render_click()
     assert Accounts.settings(c.actor.id)["visits_suggestions_enabled"] == "false"
@@ -62,8 +62,8 @@ defmodule DawarichWeb.G44AdminBrowserTest do
              [0]
            ]
 
-    assert has_element?(view, "#visits-toggle", "Enable")
-    view |> element("#visits-toggle") |> render_click()
+    assert has_element?(view, "#native-visits-toggle", "Enable")
+    view |> element("#native-visits-toggle") |> render_click()
     view |> element("#confirm-visits") |> render_click()
     assert Accounts.settings(c.actor.id)["visits_suggestions_enabled"] == "true"
   end

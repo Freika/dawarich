@@ -5,6 +5,10 @@ defmodule DawarichWeb.InsightsLive.NativeMonthly do
   alias DawarichWeb.{NativeChart, Icon, LocalizedDate}
   alias DawarichWeb.InsightsDetails.{Format, MonthFormat}
 
+  attr :data, :map, required: true
+  attr :locale, :string, required: true
+  attr :path, :string, default: "/insights/details"
+
   def render(assigns) do
     data = assigns.data
     digest = data.monthly
@@ -22,8 +26,8 @@ defmodule DawarichWeb.InsightsLive.NativeMonthly do
     <%= if @digest do %>
       <div class="card bg-base-200">
         <div class="card-body p-5">
-          <div class="flex flex-wrap min-w-0 justify-between items-center">
-            <h2 class="card-title text-lg flex flex-wrap min-w-0 items-center gap-2">
+          <div class="flex justify-between items-center">
+            <h2 class="card-title text-lg flex items-center gap-2">
               <Icon.icon name="calendar" class="w-5 h-5 text-primary" /> {MonthFormat.title(
                 @locale,
                 @digest
@@ -31,10 +35,14 @@ defmodule DawarichWeb.InsightsLive.NativeMonthly do
             </h2>
             <div class="join">
               <%= if link = MonthFormat.adjacent(@data.year, @data.selected_month, @data.available_months, -1) do %>
-                <.link class="join-item btn btn-xs btn-ghost" patch={link}><Icon.icon
+                <a
+                  class="join-item btn btn-xs btn-ghost"
+                  href={link}
+                  phx-click={Phoenix.LiveView.JS.patch(native_path(@path, link))}
+                ><Icon.icon
                   name="chevron-left"
                   class="w-4 h-4"
-                /></.link>
+                /></a>
               <% else %>
                 <button class="join-item btn btn-xs btn-ghost btn-disabled"><Icon.icon
                   name="chevron-left"
@@ -51,18 +59,27 @@ defmodule DawarichWeb.InsightsLive.NativeMonthly do
                   class="dropdown-content z-[1] menu p-2 shadow bg-base-200 rounded-box w-40"
                 >
                   <li :for={month <- @data.available_months}>
-                    <.link
+                    <a
                       class={if(month == @data.selected_month, do: "active", else: "")}
-                      patch={MonthFormat.path(@data.year, month)}
-                    >{LocalizedDate.month_name(@locale, @data.year, month)}</.link>
+                      href={MonthFormat.path(@data.year, month)}
+                      phx-click={
+                        Phoenix.LiveView.JS.patch(
+                          native_path(@path, MonthFormat.path(@data.year, month))
+                        )
+                      }
+                    >{LocalizedDate.month_name(@locale, @data.year, month)}</a>
                   </li>
                 </ul>
               </div>
               <%= if link = MonthFormat.adjacent(@data.year, @data.selected_month, @data.available_months, 1) do %>
-                <.link class="join-item btn btn-xs btn-ghost" patch={link}><Icon.icon
+                <a
+                  class="join-item btn btn-xs btn-ghost"
+                  href={link}
+                  phx-click={Phoenix.LiveView.JS.patch(native_path(@path, link))}
+                ><Icon.icon
                   name="chevron-right"
                   class="w-4 h-4"
-                /></.link>
+                /></a>
               <% else %>
                 <button class="join-item btn btn-xs btn-ghost btn-disabled"><Icon.icon
                   name="chevron-right"
@@ -87,7 +104,8 @@ defmodule DawarichWeb.InsightsLive.NativeMonthly do
           <div class="mt-4">
             <div class="text-sm font-medium mb-2">{tr(@locale, "weekly_pattern")}</div><div class="h-32">
               <NativeChart.chart
-                id="insights-monthly-chart"
+                id="chart-1"
+                rails
                 height="120px"
                 label={tr(@locale, "weekly_pattern")}
                 revision={@data.revision}
@@ -172,16 +190,19 @@ defmodule DawarichWeb.InsightsLive.NativeMonthly do
     <% else %>
       <div :if={@data.available_months != []} class="card bg-base-200">
         <div class="card-body p-5">
-          <h2 class="card-title text-lg flex flex-wrap min-w-0 items-center gap-2">
+          <h2 class="card-title text-lg flex items-center gap-2">
             <Icon.icon name="calendar" class="w-5 h-5 text-primary" /> {tr(@locale, "monthly_digest")}
           </h2>
           <p class="text-base-content/60">{tr(@locale, "select_a_month_to_view_its_digest")}</p>
           <div class="flex flex-wrap gap-2 mt-2">
-            <.link
+            <a
               :for={month <- @data.available_months}
               class="btn btn-sm btn-outline"
-              patch={MonthFormat.path(@data.year, month)}
-            >{LocalizedDate.month_name(@locale, @data.year, month)}</.link>
+              href={MonthFormat.path(@data.year, month)}
+              phx-click={
+                Phoenix.LiveView.JS.patch(native_path(@path, MonthFormat.path(@data.year, month)))
+              }
+            >{LocalizedDate.month_name(@locale, @data.year, month)}</a>
           </div>
         </div>
       </div>
@@ -200,4 +221,6 @@ defmodule DawarichWeb.InsightsLive.NativeMonthly do
       {"building", digest["cities_count"] || Digests.cities_count(digest["toponyms"] || []),
        "cities"}
     ]
+
+  defp native_path(path, source), do: path <> "?" <> URI.parse(source).query
 end

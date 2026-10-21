@@ -34,7 +34,10 @@ defmodule Dawarich.Test.NativeNotificationCorpus do
   defp reads(doc) do
     doc
     |> LazyHTML.query("a[href]")
-    |> Enum.reject(&(LazyHTML.attribute(&1, "data-turbo-method") != []))
+    |> Enum.reject(
+      &(LazyHTML.attribute(&1, "data-turbo-method") != [] or
+          LazyHTML.attribute(&1, "phx-click") != [])
+    )
     |> Enum.map(&{LazyHTML.attribute(&1, "href"), words(&1)})
   end
 

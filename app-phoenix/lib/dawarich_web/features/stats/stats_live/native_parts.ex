@@ -11,7 +11,7 @@ defmodule DawarichWeb.StatsLive.NativeParts do
 
   def page(assigns) do
     ~H"""
-    <div class="min-w-0">
+    <div :if={@mode != :month} class="min-w-0">
       <section
         :if={@data.restricted}
         id="stats-window-alert"
@@ -106,7 +106,7 @@ defmodule DawarichWeb.StatsLive.NativeParts do
           )}</.link>
         </nav>
       <% else %>
-        <p>{@data.year}<span :if={@mode == :month}> / {@data.month}</span></p>
+        <p>{@data.year}</p>
         <%= if @mode == :year do %>
           <NativeChart.chart
             id="stats-native-chart"
@@ -129,36 +129,15 @@ defmodule DawarichWeb.StatsLive.NativeParts do
             </p>
             <.link href={StatsFormat.year_map_path(@data.year)}>{t(@locale, "stats.year.map", %{})}</.link>
           </article>
-        <% else %>
-          <DawarichWeb.StatsLive.NativeMonthParts.summary data={@data} locale={@locale} />
-          <DawarichWeb.StatsLive.NativeMonthMap.render
-            data={@data}
-            locale={@locale}
-            layer={@month_layer}
-          />
-          <%= if @data.data.stat do %>
-            <NativeChart.chart
-              id="stats-native-chart"
-              data={
-                Enum.map(@data.data.stat.daily, fn [day, meters] ->
-                  [day, Period.rounded(meters, @data.unit)]
-                end)
-              }
-              revision={revision(@data.data.stat.daily)}
-              label={t(@locale, "stats.year.distance", %{})}
-              options={%{suffix: " " <> @data.unit}}
-            />
-            <.link :if={@data.peak} id="stats-peak-day" href={peak_path(@data)}>{StatsFormat.peak_text(
-              @locale,
-              @data.year,
-              @data.month,
-              @data.peak,
-              @data.unit
-            )}</.link>
-          <% end %>
         <% end %>
       <% end %>
     </div>
+    <DawarichWeb.StatsLive.NativeMonthParts.summary
+      :if={@mode == :month}
+      data={@data}
+      locale={@locale}
+      layer={@month_layer}
+    />
     """
   end
 
@@ -181,9 +160,4 @@ defmodule DawarichWeb.StatsLive.NativeParts do
         {meters, month} <- Enum.with_index(distances, 1),
         do: [LocalizedDate.month_name(locale, year, month), Period.rounded(meters, unit)]
       )
-
-  defp peak_path(data) do
-    {first, last} = data.bounds
-    "/map/v2?" <> URI.encode_query(%{"start_at" => first, "end_at" => last})
-  end
 end

@@ -97,25 +97,27 @@ defmodule DawarichWeb.NotificationsLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="w-full my-5 min-w-0" data-testid="native-notifications-root">
-      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6 min-w-0">
+    <div class="w-full my-5" data-testid="native-notifications-root">
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
         <h1 class="text-3xl font-bold">{t(@locale, "notifications.index.notifications", %{})}</h1>
-        <div :if={@unread_on_page? or @notifications != []} class="flex flex-wrap gap-2 min-w-0">
-          <button
+        <div :if={@unread_on_page? or @notifications != []} class="flex flex-wrap gap-2">
+          <a
             :if={@unread_on_page?}
-            type="button"
-            class="btn btn-sm btn-primary h-auto min-h-8 whitespace-normal"
+            href="#"
+            data-native-href="/notifications/mark_as_read"
+            class="btn btn-sm btn-primary"
             phx-click="mark_all_as_read"
-          >{t(@locale, "notifications.index.mark_all_as_read", %{})}</button>
-          <button
+          >{t(@locale, "notifications.index.mark_all_as_read", %{})}</a>
+          <a
             :if={@notifications != []}
-            type="button"
-            class="btn btn-sm btn-warning h-auto min-h-8 whitespace-normal"
+            href="#"
+            data-native-href="/notifications/destroy_all"
+            class="btn btn-sm btn-warning"
             phx-click={
               JS.push("choose_notifications_delete_all")
               |> JS.dispatch("dawarich:open-dialog", to: "#notifications-delete-dialog")
             }
-          >{t(@locale, "notifications.index.delete_all", %{})}</button>
+          >{t(@locale, "notifications.index.delete_all", %{})}</a>
         </div>
       </div>
       <div class="flex justify-center mb-4">
@@ -127,7 +129,7 @@ defmodule DawarichWeb.NotificationsLive.Index do
           total_pages={@total_pages}
         />
       </div>
-      <div id="notifications" class="w-full max-w-2xl mx-auto min-w-0">
+      <div id="notifications" class="w-full max-w-2xl mx-auto">
         <.card
           :for={notification <- @notifications}
           notification={notification}

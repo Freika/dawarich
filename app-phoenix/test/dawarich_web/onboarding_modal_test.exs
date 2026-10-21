@@ -36,7 +36,7 @@ defmodule DawarichWeb.OnboardingModalTest do
   test "native data pages connect the onboarding dialog and unlock host without credential islands",
        %{user: user} do
     html = dead(user)
-    assert count(html, "#getting_started a[href='/imports/new']") == 1
+    assert count(html, "#getting_started form#native-onboarding-upload") == 1
     assert count(html, "#getting_started form[data-controller='upload']") == 0
     assert count(html, @modal) == 1
     assert count(html, @host) == 1
@@ -44,7 +44,7 @@ defmodule DawarichWeb.OnboardingModalTest do
     {:ok, view, _html} = live_as(user)
     assert has_element?(view, @modal)
     assert has_element?(view, @host)
-    assert has_element?(view, "#getting_started a[href='/imports/new']")
+    assert has_element?(view, "#getting_started form#native-onboarding-upload")
     refute has_element?(view, "#getting_started form[data-controller='upload']")
   end
 
@@ -77,13 +77,13 @@ defmodule DawarichWeb.OnboardingModalTest do
     refute state =~ "scale(3)"
   end
 
-  test "deferred onboarding import entry links to complete native uploads without changing dismiss policy",
+  test "inline onboarding import uses the native upload transport without changing dismiss policy",
        %{user: user} do
     session = RailsUser.session(user.id)
     conn = build_conn() |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
     html = conn |> get("/stats/2026/10") |> html_response(200)
-    assert count(html, "#getting_started a[href='/imports/new']") == 1
-    assert count(html, "#getting_started form[action='/imports']") == 0
+    assert count(html, "#getting_started form#native-onboarding-upload") == 1
+    assert count(html, "#getting_started form[action='/imports']") == 1
 
     [token] =
       html

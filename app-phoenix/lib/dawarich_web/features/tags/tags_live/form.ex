@@ -56,6 +56,11 @@ defmodule DawarichWeb.TagsLive.Form do
   def handle_event("validate", %{"tag" => params} = event, socket) do
     params = chosen_color(params, event["_target"])
 
+    params =
+      if event["_target"] == ["tag", "slider_radius"],
+        do: Map.put(params, "privacy_radius_meters", params["slider_radius"]),
+        else: params
+
     changeset =
       socket.assigns.current_scope
       |> Tags.change_tag(socket.assigns.tag, params)
@@ -67,6 +72,11 @@ defmodule DawarichWeb.TagsLive.Form do
   end
 
   def handle_event("save", %{"tag" => params}, socket) do
+    params =
+      if Map.has_key?(params, "slider_radius"),
+        do: Map.put(params, "privacy_radius_meters", params["slider_radius"]),
+        else: params
+
     scope = socket.assigns.current_scope
 
     result =

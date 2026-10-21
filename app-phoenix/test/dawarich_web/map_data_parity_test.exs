@@ -42,7 +42,12 @@ defmodule DawarichWeb.MapDataParityTest do
 
   test "all declared map-data oracle cases are present" do
     expected =
-      for name <- @points ++ @segments, suffix <- [".json", ".html"], do: name <> suffix
+      for name <-
+            @points ++
+              @segments ++
+              ~w(tags_edit tags_edit_blank tags_edit_guest tags_empty tags_foreign_edit tags_guest tags_list tags_new tags_new_guest),
+          suffix <- [".json", ".html"],
+          do: name <> suffix
 
     expected = expected ++ ~w(address_empty.target.html address_full.target.html)
     assert @dir |> File.ls!() |> Enum.sort() == Enum.sort(expected)
@@ -115,6 +120,34 @@ defmodule DawarichWeb.MapDataParityTest do
 
       if state["kind"] == "points" do
         assert_checkbox_ids(native, expected, name)
+
+        export_class =
+          "dropdown dropdown-end max-sm:[&>.dropdown-content]:start-0 max-sm:[&>.dropdown-content]:end-auto"
+
+        assert native
+               |> LazyHTML.from_fragment()
+               |> LazyHTML.query(".dropdown")
+               |> LazyHTML.attribute("class") == [export_class]
+
+        native_dom =
+          Regex.replace(
+            ~r/id="point_ids_[0-9]+"/,
+            Dawarich.Test.DataPageParity.action_paths(
+              String.replace(
+                native,
+                ~s(class="#{export_class}"),
+                ~s(class="dropdown dropdown-end")
+              ),
+              :fragment
+            ),
+            ~s(id="point_ids_")
+          )
+          |> ParityHTML.normalize()
+
+        expected_dom = ParityHTML.normalize(expected)
+
+        assert native_dom == expected_dom,
+               name <> ": " <> ParityHTML.first_difference(native_dom, expected_dom)
 
         query = fn html, selector ->
           html |> LazyHTML.from_fragment() |> LazyHTML.query(selector)

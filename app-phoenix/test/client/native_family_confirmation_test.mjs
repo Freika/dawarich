@@ -3,89 +3,67 @@ import { readFile } from "node:fs/promises"
 import test from "node:test"
 import vm from "node:vm"
 
-const entry = await readFile(
-  new URL("../../assets/js/app.js", import.meta.url),
-  "utf8",
-)
-const pages = await Promise.all(
-  ["native_family_page", "native_family_invitations"].map((name) =>
-    readFile(
-      new URL(`../../lib/dawarich_web/features/families/components/${name}.ex`, import.meta.url),
-      "utf8",
-    ),
-  ),
-)
-const html = await readFile(
-  new URL(
-    "../../deps/phoenix_html/priv/static/phoenix_html.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
+const root = new URL("../../", import.meta.url)
+const controls = await readFile(new URL("lib/dawarich_web/features/families/components/family_native_controls.ex", root), "utf8")
+const confirmation = await readFile(new URL("lib/dawarich_web/native_family_confirmation.ex", root), "utf8")
+const hookSource = await readFile(new URL("assets/js/hooks/family_confirm.js", root), "utf8")
+const { FamilyConfirm } = vm.runInNewContext(hookSource.replace("export const FamilyConfirm =", "const FamilyConfirm =") + "\n;({ FamilyConfirm })")
 
-function click(action, decision) {
-  assert.match(entry, /import "phoenix_html"/)
-  const button = pages
-    .join("\n")
-    .match(
-      new RegExp(`<button\\b[^>]*phx-click="family:${action}"[^>]*>`, "s"),
-    )?.[0]
-  assert.match(button || "", /data-confirm=/)
+function dialog() {
   const listeners = new Map()
-  let prompts = 0
-  let commands = 0
-  class Event {
-    constructor(type) {
-      this.type = type
-      this.defaultPrevented = false
-    }
-    preventDefault() {
-      this.defaultPrevented = true
-    }
-    stopImmediatePropagation() {
-      this.stopped = true
-    }
-  }
-  const window = {
-    CustomEvent: Event,
-    addEventListener(type, handler) {
-      const handlers = listeners.get(type) || []
-      handlers.push(handler)
-      listeners.set(type, handlers)
+  const commands = []
+  const el = {
+    open: true,
+    dataset: { pending: "true" },
+    addEventListener: (name, fn) => listeners.set(name, fn),
+    removeEventListener: (name, fn) => {
+      assert.equal(listeners.get(name), fn)
+      listeners.delete(name)
     },
-    confirm() {
-      prompts += 1
-      return decision
+    close() {
+      this.open = false
+      listeners.get("close")?.()
     },
   }
-  vm.runInNewContext(html, { window })
-  window.addEventListener("click", () => {
-    commands += 1
-  })
-  const element = {
-    getAttribute: (key) =>
-      key === "data-confirm" ? "Synthetic family confirmation" : null,
-    dispatchEvent(event) {
-      event.target = this
-      for (const handler of listeners.get(event.type) || []) handler(event)
-      return !event.defaultPrevented
-    },
-  }
-  const event = new Event("click")
-  event.target = element
-  for (const handler of listeners.get("click")) {
-    handler(event)
-    if (event.stopped) break
-  }
-  return { prompts, commands }
+  const hook = { ...FamilyConfirm, el, pushEvent: (name) => commands.push(name) }
+  hook.mounted()
+  return { hook, el, listeners, commands }
 }
 
 test("native family cancelled member deletion and invitation confirmations dispatch no command", () => {
-  for (const action of ["member", "destroy", "cancel"])
-    assert.deepEqual(click(action, false), { prompts: 1, commands: 0 })
+  assert.match(controls, /JS\.push\("family_prepare_confirm"/)
+  assert.match(confirmation, /confirmation: nil.*socket\),\s*do: \{:noreply, socket\}/s)
+  for (const mode of ["escape", "close", "cancel-button"]) {
+    const { hook, el, listeners, commands } = dialog()
+    let prevented = false
+    if (mode === "escape") listeners.get("cancel")({ preventDefault() { prevented = true } })
+    if (mode === "close") el.close()
+    if (mode === "cancel-button") {
+      assert.match(controls, /JS\.push\("family_cancel_confirm"\)/)
+      commands.push("family_cancel_confirm")
+      el.dataset.pending = "false"
+      hook.updated()
+    }
+    assert.deepEqual(commands, ["family_cancel_confirm"])
+    assert.equal(el.open, false)
+    assert.equal(prevented, mode === "escape")
+    hook.destroyed()
+    assert.equal(listeners.size, 0)
+  }
 })
 
 test("native family accepted member deletion and invitation confirmations dispatch one command", () => {
-  for (const action of ["member", "destroy", "cancel"])
-    assert.deepEqual(click(action, true), { prompts: 1, commands: 1 })
+  const command = controls.match(/phx-click="(family_confirm)"/)?.[1]
+  assert.equal(command, "family_confirm")
+  for (const action of ["remove_member", "delete", "cancel_invitation"]) {
+    assert.match(confirmation, new RegExp(`"${action}" ->`))
+    const { hook, el, commands, listeners } = dialog()
+    commands.push(command)
+    el.dataset.pending = "false"
+    hook.updated()
+    assert.deepEqual(commands, ["family_confirm"])
+    assert.equal(el.open, false)
+    hook.destroyed()
+    assert.equal(listeners.size, 0)
+  }
 })

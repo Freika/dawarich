@@ -464,6 +464,8 @@ defmodule DawarichWeb.NativePublicPagesTest do
 
   defp report_dom(html, selector, source) do
     dom = LazyHTML.from_document(html)
+    ids = LazyHTML.query(dom, "[id]") |> LazyHTML.attribute("id")
+    assert length(ids) == length(Enum.uniq(ids))
 
     actual =
       dom
@@ -487,6 +489,15 @@ defmodule DawarichWeb.NativePublicPagesTest do
 
   defp chart_wiring({tag, attrs, children}) do
     attrs = Enum.reject(attrs, fn {key, _} -> key in ~w(data-chart data-chart-plot) end)
+
+    attrs =
+      Enum.map(attrs, fn {key, value} ->
+        if key in ~w(id href xlink:href clip-path fill stroke mask filter style aria-labelledby aria-describedby),
+          do:
+            {key, String.replace(value, ~r/native-digest-public--?\d+-(?:time|places)-\d+-/, "")},
+          else: {key, value}
+      end)
+
     {tag, attrs, chart_wiring(children)}
   end
 

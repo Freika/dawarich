@@ -7,6 +7,7 @@ defmodule DawarichWeb.TripsLive.NativeMap do
     do:
       {:ok,
        assign(socket,
+         trip_confirmation: nil,
          selected_day: nil,
          note_editor: nil,
          expanded_days: false,
@@ -18,14 +19,30 @@ defmodule DawarichWeb.TripsLive.NativeMap do
     do:
       {:ok,
        socket
-       |> assign(selected_day: nil, note_editor: nil, expanded_days: false, trip_layers: %{})
+       |> assign(
+         trip_confirmation: nil,
+         selected_day: nil,
+         note_editor: nil,
+         expanded_days: false,
+         trip_layers: %{}
+       )
        |> DawarichWeb.NativePosterGallery.mount()
        |> DawarichWeb.NativeTripResource.attach()
-       |> DawarichWeb.NativeMapChrome.load(), layout: false}
+       |> DawarichWeb.NativeMapChrome.load()
+       |> assign(
+         body_class: "min-h-screen flex flex-col",
+         viewport: "width=device-width,initial-scale=1"
+       ), layout: false}
 
   def handle_params(%{"id" => id}, _, socket) do
     socket =
-      assign(socket, selected_day: nil, note_editor: nil, expanded_days: false, trip_layers: %{})
+      assign(socket,
+        trip_confirmation: nil,
+        selected_day: nil,
+        note_editor: nil,
+        expanded_days: false,
+        trip_layers: %{}
+      )
 
     case DawarichWeb.NativeTripState.load(socket, DawarichWeb.NativeTripState.identity(id)) do
       {:ok, socket} ->
@@ -43,7 +60,17 @@ defmodule DawarichWeb.TripsLive.NativeMap do
   end
 
   def handle_event(event, payload, socket)
-      when event in ~w(trip:delete trip:recalculate trip:export),
+      when event in ~w(trip:delete trip:recalculate trip:note:delete),
+      do: DawarichWeb.NativeTripConfirmation.open(event, payload, socket)
+
+  def handle_event("trip:confirmation:accept", _, socket),
+    do: DawarichWeb.NativeTripConfirmation.accept(socket)
+
+  def handle_event("trip:confirmation:cancel", _, socket),
+    do: DawarichWeb.NativeTripConfirmation.cancel(socket)
+
+  def handle_event(event, payload, socket)
+      when event == "trip:export",
       do: DawarichWeb.NativeTripEffects.handle_event(event, payload, socket)
 
   def handle_event(event, payload, socket)
@@ -103,58 +130,5 @@ defmodule DawarichWeb.TripsLive.NativeMap do
     end
   end
 
-  def render(assigns) do
-    ~H"""
-    <DawarichWeb.NativeMapChrome.header {assigns} />
-    <DawarichWeb.Chrome.flash locale={@locale} flash={@flash} native={true} />
-    <main :if={@page} id="trip-shell" data-native-map-root class="w-full min-w-0 p-4">
-      <div class="flex min-w-0 flex-col gap-6 lg:flex-row lg:h-[calc(100dvh-9.75rem)]">
-        <div class="w-full min-w-0 lg:w-3/5 h-[50vh] lg:h-full shrink-0">
-          <DawarichWeb.NativeTripMapPanel.panel
-            config={@page.config}
-            locale={@locale}
-            state={@page.presentation.map_state}
-            has_path={@page.presentation.has_path}
-            future={@page.presentation.future_start}
-          />
-        </div>
-        <div class="w-full min-w-0 lg:w-2/5 lg:h-full lg:overflow-y-auto">
-          <DawarichWeb.NativeTripActions.actions page={@page.presentation} locale={@locale} />
-          <DawarichWeb.NativeTripToolbar.toolbar
-            page={@page}
-            expanded={@expanded_days}
-            locale={@locale}
-          />
-          <DawarichWeb.NativeTripContent.content
-            page={@page.presentation}
-            locale={@locale}
-            selected_day={@selected_day}
-            note_editor={@note_editor}
-            expanded_days={@expanded_days}
-            plan_enabled={@page.config["planEnabled"]}
-          />
-        </div>
-      </div>
-      <DawarichWeb.NativePosterStudio.poster_studio
-        themes={@page.studio.themes}
-        posters={@posters}
-        print_order_url={@page.studio.print_order_url}
-        locale={@locale}
-        fixed_range_label={@page.range_label}
-        native={true}
-      />
-      <.live_component
-        module={DawarichWeb.VideoStudioLiveComponent}
-        id="video-studio-owner"
-        scope={@current_scope}
-        locale={@locale}
-        base_url={assigns[:base_url] || ""}
-        themes={@page.studio.themes}
-        fixed_range_label={@page.range_label}
-        native={true}
-      />
-    </main>
-    <p :if={@map_error} role="alert">{to_string(@map_error)}</p>
-    """
-  end
+  def render(assigns), do: DawarichWeb.NativeTripDocument.render(assigns)
 end

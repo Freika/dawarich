@@ -1,142 +1,81 @@
 defmodule DawarichWeb.NativeFamilyPage do
   @moduledoc false
   use DawarichWeb, :html
+  import DawarichWeb.Icon, only: [icon: 1]
 
   def page(assigns) do
+    assigns =
+      assigns
+      |> assign(:inner_content, content(assigns))
+      |> assign(:request_path, assigns[:request_path] || "/family")
+      |> assign(:self_hosted, assigns[:self_hosted] != false)
+
     ~H"""
-    <DawarichWeb.NativeMapChrome.header {assigns} />
-    <DawarichWeb.Chrome.flash locale={@locale} flash={@flash} native />
-    <main :if={@page} id="family-shell" data-native-map-root class="min-w-0 max-w-full w-full p-4">
-      <DawarichWeb.FamilyNativeControls.errors errors={@errors} />
-      <h1 class="text-3xl font-bold [overflow-wrap:anywhere]">{@page.presentation.family.name}</h1>
-      <p class="text-sm mb-4">
-        {t(@locale, "families.show.members_created", %{
-          count: @page.presentation.member_count,
-          date:
-            DawarichWeb.LocalizedDate.l(@locale, @page.presentation.family.created_date, "month_year")
-        })}
-      </p>
-      <DawarichWeb.NativeFamilyGettingStarted.getting_started
-        page={@page.presentation}
-        locale={@locale}
-        self_hosted={@self_hosted != false}
-      />
-      <div class="flex flex-col lg:flex-row min-w-0 gap-4">
-        <div class="w-full min-w-0 lg:w-3/5 min-h-80">
-          <DawarichWeb.FamilyMap.family_map config={@page.config} locale={@locale} />
+    <DawarichWeb.Layouts.app :if={@page && @current_scope} {assigns} />
+    <p :if={@map_error} role="alert">{to_string(@map_error)}</p>
+    """
+  end
+
+  defp content(assigns) do
+    ~H"""
+    <div :if={@page} id="family-shell" class="contents" data-native-map-root>
+      <div id="native-family-page" class="w-full my-5">
+        <DawarichWeb.FamilyNativeControls.errors errors={@errors} />
+        <DawarichWeb.ListParts.page_header title={@page.presentation.family.name}>
+          <div class="flex items-center gap-2">
+            <a :if={@page.presentation.owner?} href="/family/edit" class="btn btn-outline btn-sm"><.icon
+              name="square-pen"
+              class="w-4 h-4"
+            /> {s(@locale, "edit")}</a>
+            <button
+              :if={@page.presentation.owner? && @page.presentation.can_invite?}
+              class="btn btn-primary btn-sm"
+              id="native-family-invite-scroll"
+              phx-hook="FamilyInviteScroll"
+            ><.icon name="circle-plus" class="w-4 h-4" /> {s(@locale, "invite")}</button>
+          </div>
+        </DawarichWeb.ListParts.page_header>
+        <div class="text-sm text-base-content/50 -mt-4 mb-6">
+          {s(@locale, "members_created", %{
+            count: @page.presentation.member_count,
+            date:
+              DawarichWeb.LocalizedDate.l(
+                @locale,
+                @page.presentation.family.created_date,
+                "month_year"
+              )
+          })}
         </div>
-        <div class="w-full min-w-0 lg:w-2/5 space-y-3">
-          <a
-            :if={@page.presentation.owner?}
-            href="/family/edit"
-            class="btn btn-sm btn-outline h-auto whitespace-normal"
-          >{t(@locale, "families.show.edit", %{})}</a>
-          <a
-            :if={@page.presentation.owner? && @page.presentation.can_invite?}
-            href="#native-family-invite"
-            class="btn btn-sm h-auto whitespace-normal"
-          >
-            {t(@locale, "families.show.invite", %{})}
-          </a>
-          <DawarichWeb.NativeFamilySharing.sharing
-            member={@page.presentation.me}
-            locale={@locale}
-            now={@now}
-          />
-          <section id="native-family-members" class="min-w-0 border rounded-xl p-3">
-            <h2>
-              {t(@locale, "families.show.members", %{})}
-              {if @self_hosted,
-                do: "(#{@page.presentation.member_count})",
-                else:
-                  t(@locale, "families.getting_started.seats", %{
-                    used: @page.presentation.member_count,
-                    total: 5
-                  })}
-            </h2>
-            <div
-              :for={member <- @page.presentation.members}
-              data-family-member-id={member.id}
-              class="min-w-0 py-3 border-b [overflow-wrap:anywhere]"
-            >
-              <p>{member.email}</p>
-              <span :if={member.role == 0}>{t(@locale, "families.show.owner", %{})}</span>
-              <span :if={member.id == @page.presentation.actor_id}>{t(
-                @locale,
-                "families.show.you",
-                %{}
-              )}</span>
-              <p :if={!member.sharing.enabled?}>{t(@locale, "families.show.not_sharing", %{})}</p>
-              <p :if={member.sharing.enabled?}>
-                {t(@locale, "families.show.sharing_status", %{
-                  duration:
-                    if(member.sharing.duration == "permanent",
-                      do: t(@locale, "families.show.always", %{}),
-                      else:
-                        t(@locale, "families.show.for_duration", %{duration: member.sharing.duration})
-                    )
-                })}
-              </p>
-              <p
-                :if={member.sharing.enabled? && member.latest_timestamp}
-                data-testid="family-last-seen"
-              >
-                {t(@locale, "common.time_ago", %{
-                  time:
-                    DawarichWeb.TimeAgo.words(
-                      @locale,
-                      DateTime.from_unix!(member.latest_timestamp),
-                      @now
-                    )
-                })}
-              </p>
-              <DawarichWeb.FamilyNativeControls.confirm_button
-                :if={
-                  @page.presentation.owner? && member.id != @page.presentation.actor_id &&
-                    member.role != 0
-                }
-                action="remove_member"
-                id={member.membership_id}
-                label={t(@locale, "families.show.remove", %{})}
-                class="btn btn-sm text-error h-auto whitespace-normal"
-              />
-              <button
-                :if={
-                  member.id != @page.presentation.actor_id && !member.sharing.enabled? &&
-                    !@page.presentation.pending_requests[member.id]
-                }
-                type="button"
-                phx-click="family:request"
-                phx-value-id={member.id}
-                class="btn btn-sm h-auto whitespace-normal"
-              >{t(@locale, "families.show.request", %{})}</button>
-              <span :if={@page.presentation.pending_requests[member.id]}>{t(
-                @locale,
-                "families.show.requested",
-                %{}
-              )}</span>
-            </div>
-          </section>
-          <DawarichWeb.NativeFamilyInvitations.invitations
-            self_hosted={@self_hosted != false}
-            page={@page.presentation}
-            locale={@locale}
-            now={@now}
-            base_url={@base_url || ""}
-          />
-          <DawarichWeb.FamilyNativeControls.confirm_button
-            :if={@page.presentation.owner?}
-            action="delete"
-            label={t(@locale, "families.show.delete_family", %{})}
-            class="btn btn-sm text-error h-auto whitespace-normal"
-          />
-          <DawarichWeb.FamilyNativeControls.confirm_button
-            :if={!@page.presentation.owner?}
-            action="remove_member"
-            id={@page.presentation.me.membership_id}
-            label={t(@locale, "families.show.leave_family", %{})}
-            class="btn btn-sm text-warning h-auto whitespace-normal"
-          />
+        <DawarichWeb.NativeFamilyGettingStarted.getting_started
+          page={@page.presentation}
+          locale={@locale}
+          self_hosted={@self_hosted != false}
+        />
+        <div class="flex flex-col lg:flex-row gap-4" style="min-height: 500px;">
+          <div class="w-full lg:w-3/5 min-h-full">
+            <DawarichWeb.FamilyMap.family_map config={@page.config} locale={@locale} />
+          </div>
+          <div class="w-full lg:w-2/5 flex flex-col gap-4">
+            <DawarichWeb.NativeFamilySharing.sharing
+              member={@page.presentation.me}
+              locale={@locale}
+              now={@now}
+            />
+            <DawarichWeb.NativeFamilyPageMembers.members
+              page={@page.presentation}
+              locale={@locale}
+              now={@now}
+              self_hosted={@self_hosted}
+            />
+            <DawarichWeb.NativeFamilyInvitations.invitations
+              self_hosted={@self_hosted != false}
+              page={@page.presentation}
+              locale={@locale}
+              now={@now}
+              base_url={@base_url || ""}
+            />
+            <DawarichWeb.FamilyNativeControls.danger page={@page.presentation} locale={@locale} />
+          </div>
         </div>
       </div>
       <DawarichWeb.FamilyNativeControls.confirmation
@@ -144,8 +83,9 @@ defmodule DawarichWeb.NativeFamilyPage do
         page={@page.presentation}
         locale={@locale}
       />
-    </main>
-    <p :if={@map_error} role="alert">{to_string(@map_error)}</p>
+    </div>
     """
   end
+
+  defp s(locale, key, bindings \\ %{}), do: t(locale, "families.show." <> key, bindings)
 end

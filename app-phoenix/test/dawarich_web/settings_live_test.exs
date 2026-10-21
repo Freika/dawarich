@@ -92,7 +92,7 @@ defmodule DawarichWeb.SettingsLiveTest do
       {:ok, view, html} = live_as(user, "/settings/general")
       assert html =~ "https://dawarich.app/docs/self-hosting/configuration/smtp/"
       refute has_element?(view, "input[name='monthly_digest_emails_enabled']")
-      refute has_element?(view, "#send-test-email")
+      refute has_element?(view, "#native-send-test-email")
     end
 
     test "the legacy digest key sets both toggles; news stays on by default", %{user: user} do
@@ -204,7 +204,7 @@ defmodule DawarichWeb.SettingsLiveTest do
 
       refute has_element?(view, "a[data-testid='integration-photoprism'][data-status]")
       assert has_element?(view, "input#settings_immich_url[value='https://immich.a5s3.test']")
-      assert has_element?(view, "#integration-settings[phx-submit='save']")
+      assert has_element?(view, "#native-integration-settings[phx-submit='save']")
     end
 
     test "an unknown service shows Immich; a self-hosted admin's old geocoding link goes to Instance settings",
@@ -292,7 +292,7 @@ defmodule DawarichWeb.SettingsLiveTest do
 
       assert has_element?(
                view,
-               "#trek-delete-53931[data-confirm]"
+               "#native-trek-delete-53931[data-confirm]"
              )
     end
 

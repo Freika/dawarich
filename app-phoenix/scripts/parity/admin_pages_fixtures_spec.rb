@@ -138,7 +138,10 @@ RSpec.describe 'Phoenix fixtures: admin instance and background pages', type: :r
                 'nil' => [false, { 'visits_suggestions_enabled' => nil }],
                 'queued' => [false, { queue_key => now.iso8601 }],
                 'recalculated' => [false, { queue_key => now.iso8601, done_key => now.iso8601 }],
-                'neither' => [false, {}] }
+                'neither' => [false, {}], 'admin_de' => [true, { 'locale' => 'de' }],
+                'nonadmin_de' => [false, { 'locale' => 'de' }],
+                'queued_de' => [false, { 'locale' => 'de', queue_key => now.iso8601 }],
+                'bool_false_de' => [false, { 'locale' => 'de', 'visits_suggestions_enabled' => false }] }
     user = actor(10_001, admin: false)
     results = configs.map do |name, (admin, settings)|
       user.update_columns(admin:,
@@ -148,8 +151,12 @@ RSpec.describe 'Phoenix fixtures: admin instance and background pages', type: :r
         .merge('kind' => 'background', 'notice' => user.gps_noise_recheck_pending?,
                'visits' => user.safe_settings.visits_suggestions_enabled?)
     end
+    user.update_columns(admin: false, settings: { 'timezone' => 'Europe/Berlin', 'onboarding_completed' => true })
+    user.reload
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
     results << capture('background_cloud', user, '/settings/background_jobs')
+    user.update_columns(settings: user.settings.merge('locale' => 'de'))
+    results << capture('background_cloud_de', user.reload, '/settings/background_jobs')
     allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
     results << capture('background_guest', nil, '/settings/background_jobs')
     results

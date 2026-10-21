@@ -8,11 +8,13 @@ defmodule DawarichWeb.StatsCards do
   attr :locale, :string, required: true
   attr :href, :string, required: true
 
+  attr :native, :boolean, default: false
+
   def plan_alert(assigns) do
     ~H"""
     <div
-      data-controller="removals"
-      data-removals-timeout-value="0"
+      data-controller={unless @native, do: "removals"}
+      data-removals-timeout-value={unless @native, do: "0"}
       role="alert"
       class="alert alert-info shadow-lg my-4 !flex !flex-row !items-center justify-between gap-4"
     >
@@ -25,14 +27,19 @@ defmodule DawarichWeb.StatsCards do
         )}</span>
       </div>
       <div class="flex items-center gap-2 flex-shrink-0">
-        <a href={@href} class="btn btn-sm btn-primary" target="_blank" rel="noopener">{t(
+        <a :if={!@native} href={@href} class="btn btn-sm btn-primary" target="_blank" rel="noopener">{t(
           @locale,
           "shared.plan_data_window_alert.upgrade_to_pro",
           %{}
         )}</a>
+        <button :if={@native} class="btn btn-sm btn-primary" phx-click="upgrade">{t(
+          @locale,
+          "shared.plan_data_window_alert.upgrade_to_pro",
+          %{}
+        )}</button>
         <button
           type="button"
-          data-action="click->removals#remove"
+          data-action={unless @native, do: "click->removals#remove"}
           phx-click={JS.hide(to: {:closest, "[role='alert']"}, transition: "fade-out", time: 150)}
           class="btn btn-sm btn-circle btn-ghost"
           aria-label={t(@locale, "shared.plan_data_window_alert.close", %{})}

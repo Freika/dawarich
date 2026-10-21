@@ -156,6 +156,7 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
   end
 
   def capture(name, user, path, self_hosted: true, point_counts: { geocoded: 77, without_data: 1 })
+    reset!
     Rails.cache.clear
     allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
     allow(DawarichSettings).to receive(:store_geodata?).and_return(InstanceSettings::Resolver.value(:store_geodata))
@@ -322,6 +323,41 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
     @closure_action_cases ||= rows.transform_values { [] }
     rows.each do |id, cases|
       @closure_action_cases[id].concat(cases)
+    end
+  end
+
+  it 're-records Rails 1.16.0 month and digest pages' do
+    geom = 'MULTIPOLYGON (((-78.637074 15.862087, -78.640411 15.864, -78.636871 15.867296, -78.637074 15.862087)))'
+    states = Dir[fixtures.join('stats/{month*,digest*}.json')].sort
+    states.each do |file|
+      state = JSON.parse(File.read(file))
+      ActiveRecord::Base.transaction(requires_new: true) do
+        state.fetch('countries').each do |name, iso_a2, iso_a3|
+          Country.create!(name:, iso_a2:, iso_a3:, geom:)
+        end
+        attrs = state.fetch('user')
+        user = reader(attrs.fetch('id'))
+        user.update_columns(attrs.except('id').merge('active_until' => Time.iso8601(attrs.fetch('active_until'))))
+        state.fetch('stats').each { Stat.insert_all!([_1.merge('user_id' => user.id)]) }
+        state.fetch('digests').each { Users::Digest.insert_all!([_1.merge('user_id' => user.id)]) }
+        state.fetch('instance_settings').each { InstanceSetting.create!(_1) }
+        InstanceSettings::Resolver.reset!
+        travel_to Time.iso8601(state.fetch('now')) do
+          capture(File.basename(file, '.json'), user.reload, state.fetch('path'),
+                  self_hosted: state.fetch('self_hosted'), point_counts: state.fetch('point_counts').symbolize_keys)
+          if state.fetch('path').start_with?('/digests/')
+            public_digest = user.digests.yearly.find_by!(year: state.fetch('path').split('/').last.to_i)
+            public_digest.update_columns(sharing_settings: { 'enabled' => true })
+            reset!
+            locale = user.settings['locale'] || 'en'
+            get "/shared/digest/#{public_digest.sharing_uuid}", params: { locale: }
+            expect(response).to have_http_status(:ok)
+            body = Nokogiri::HTML5(response.body).at_css('div.max-w-xl.mx-auto.px-4.py-8').to_html
+            verify_fixture(fixtures.join("stats/public/#{File.basename(file, '.json')}.html"), body)
+          end
+        end
+        raise ActiveRecord::Rollback
+      end
     end
   end
 

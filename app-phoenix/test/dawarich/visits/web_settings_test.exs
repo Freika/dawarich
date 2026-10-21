@@ -163,7 +163,7 @@ defmodule Dawarich.Visits.WebSettingsTest do
 
     assert body =~ ">Visit detection | Dawarich</title>"
     assert has_element?(view, "#settings_visit_radius_meters[value='231']")
-    assert has_element?(view, "#redetect-visits[disabled]")
+    assert has_element?(view, "#native-redetect-visits[disabled]")
     assert has_element?(view, "#settings-navigation a[href='/settings/visits'].tab-active")
   end
 

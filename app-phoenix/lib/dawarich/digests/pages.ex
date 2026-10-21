@@ -29,7 +29,7 @@ defmodule Dawarich.Digests.Pages do
          restricted: period.restricted,
          unit: period.unit,
          period: period,
-         active: Dawarich.Digests.Commands.active?(scope.user, period.now)
+         active: scope.user.status == 1
        }}
     end
   rescue

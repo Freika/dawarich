@@ -101,6 +101,9 @@ defmodule DawarichWeb.ImportsUpload do
   defp error_key(_), do: "native_upload.upload"
 
   def form(assigns) do
+    assigns = assigns |> Map.put_new(:variant, :page) |> Map.put_new(:target, nil)
+    assigns = assign(assigns, onboarding: assigns.variant == :onboarding)
+
     assigns =
       assign(
         assigns,
@@ -111,8 +114,13 @@ defmodule DawarichWeb.ImportsUpload do
 
     ~H"""
     <form
-      id="phx-import-upload"
-      class="space-y-4 min-w-0"
+      id={if @onboarding, do: "native-onboarding-upload", else: "phx-import-upload"}
+      class="contents"
+      method="post"
+      action="/imports"
+      enctype="multipart/form-data"
+      accept-charset="UTF-8"
+      phx-target={@target}
       phx-hook="ArchiveChecksum"
       data-upload-kind="imports"
       data-upload-name="files"
@@ -122,33 +130,49 @@ defmodule DawarichWeb.ImportsUpload do
       phx-change="validate_files"
       phx-submit="start_imports"
     >
-      <label for="import_files" class="block">{t(
-        @locale,
-        "imports.form.select_one_or_multiple_files",
-        %{}
-      )}</label>
-      <input
-        id="import_files"
-        type="file"
-        multiple
-        accept={@accept}
-        data-native-selection
-        data-testid="import-file-input"
-        class="file-input file-input-bordered w-full min-w-0"
-      />
+      <input type="hidden" name="authenticity_token" value="" />
+      <label class={
+        if @onboarding, do: "form-control w-full mb-4", else: "form-control w-full max-w-xs my-5"
+      }>
+        <div class="label">
+          <span class="label-text">{t(
+            @locale,
+            if(@onboarding,
+              do: "map.onboarding_modal.select_one_or_multiple_files",
+              else: "imports.form.select_one_or_multiple_files"
+            ),
+            %{}
+          )}</span>
+        </div>
+        <input type="hidden" name="import[files][]" value="" />
+        <.selection onboarding={@onboarding} accept={if @onboarding, do: nil, else: @accept} />
+        <div class={
+          if @onboarding, do: "text-xs text-base-content/60 mt-2", else: "text-sm text-gray-500 mt-2"
+        }>
+          {t(
+            @locale,
+            if(@onboarding,
+              do: "map.onboarding_modal.files_will_be_uploaded_directly_to_storage_please_be_patient",
+              else: "imports.form.files_will_be_uploaded_directly_to_storage_please_be_patient"
+            ),
+            %{}
+          )}
+        </div>
+      </label>
       <.live_file_input
         upload={@upload}
+        data-native-upload-transport
         class="hidden"
         aria-label={t(@locale, "imports.form.select_one_or_multiple_files", %{})}
         data-idle-timeout={@limits.idle_timeout}
       />
-      <p class="text-sm [overflow-wrap:anywhere]">
-        {t(@locale, "imports.form.files_will_be_uploaded_directly_to_storage_please_be_patient", %{})}
-      </p>
       <span
-        id="import-checksum-progress"
+        id={
+          if @onboarding, do: "native-onboarding-checksum-progress", else: "import-checksum-progress"
+        }
         data-checksum-progress
         phx-update="ignore"
+        class={@onboarding && @upload.entries == [] && "hidden"}
         aria-live="polite"
       ></span>
       <p :if={@fallback} role="status">{t(@locale, "native_upload.raw_fallback", %{})}</p>
@@ -165,6 +189,7 @@ defmodule DawarichWeb.ImportsUpload do
             type="button"
             class="btn btn-sm"
             phx-click="cancel_upload"
+            phx-target={@target}
             phx-value-ref={entry.ref}
             aria-label={t(@locale, "devise.registrations.edit.cancel", %{})}
           >{t(@locale, "devise.registrations.edit.cancel", %{})}</button>
@@ -182,14 +207,41 @@ defmodule DawarichWeb.ImportsUpload do
       <p :for={error <- upload_errors(@upload)} role="alert" class="text-error">
         {upload_error(@locale, error)}
       </p>
-      <button
-        type="submit"
-        data-testid="import-submit"
-        class="btn btn-primary max-w-full whitespace-normal"
-        disabled={!@ready}
-        phx-disable-with={t(@locale, "devise.registrations.edit.importing", %{})}
-      >{t(@locale, "helpers.submit.create", %{"model" => "Import"})}</button>
+      <div class={if @onboarding, do: "flex justify-end", else: "inline"}>
+        <input
+          type="submit"
+          name="commit"
+          value={
+            if @onboarding,
+              do: t(@locale, "map.onboarding_modal.import_files", %{}),
+              else: t(@locale, "helpers.submit.create", %{"model" => "Import"})
+          }
+          class="btn btn-primary"
+          data-testid={if @onboarding, do: "onboarding-import-submit", else: "import-submit"}
+          disabled={!@ready}
+          phx-disable-with={t(@locale, "devise.registrations.edit.importing", %{})}
+        />
+      </div>
     </form>
+    """
+  end
+
+  defp selection(assigns) do
+    ~H"""
+    <input
+      id={if @onboarding, do: "files", else: "import_files"}
+      type="file"
+      name="import[files][]"
+      multiple="multiple"
+      accept={assigns[:accept]}
+      data-native-selection
+      data-testid={if @onboarding, do: "onboarding-import-file-input", else: "import-file-input"}
+      class={
+        if @onboarding,
+          do: "file-input file-input-bordered w-full",
+          else: "file-input file-input-bordered w-full max-w-xs"
+      }
+    />
     """
   end
 

@@ -148,6 +148,29 @@ defmodule DawarichWeb.InsightsNativeLifecycleTest do
     DawarichWeb.DataAsync.cancel_all(failed)
   end
 
+  @tag refresh_navigation: true
+  test "Insights refresh retains source destinations with native navigation cancellation", %{
+    user: user
+  } do
+    for {path, href} <- [
+          {"/insights?year=all", "/stats/update_all"},
+          {"/insights?year=2025", "/stats/2025/all/update"}
+        ] do
+      {:ok, view, _} = live(NativeAdminUI.conn(user), path)
+      render_async(view, 5000)
+
+      assert has_element?(
+               view,
+               "#insights-update[href='#{href}'][phx-click=update][phx-hook=InsightsUpdate]"
+             )
+
+      render_click(element(view, "#insights-update"))
+      render_async(view, 5000)
+      assert :sys.get_state(view.pid).socket.assigns.flash["notice"] == "Stats are being updated"
+      assert Process.alive?(view.pid)
+    end
+  end
+
   defp paused_readers do
     Process.flag(:trap_exit, true)
 
@@ -287,12 +310,12 @@ defmodule DawarichWeb.InsightsNativeLifecycleTest do
     assert html =~ "Berlin"
     assert html =~ "Germany"
     assert html =~ "+50%"
-    assert has_element?(view, "#insights-monthly-chart[phx-hook=NativeChart]")
+    assert has_element?(view, "#chart-1[phx-hook=NativeChart]")
 
     [raw] =
       html
       |> LazyHTML.from_document()
-      |> LazyHTML.query("#insights-monthly-chart")
+      |> LazyHTML.query("#chart-1")
       |> LazyHTML.attribute("data-chart")
 
     assert Enum.map(Jason.decode!(raw)["data"], &List.last/1) |> Enum.sum() == 3

@@ -2,8 +2,9 @@ defmodule DawarichWeb.TripsIndexParityTest do
   use Dawarich.JobsCase, async: false
 
   import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
 
-  alias Dawarich.Test.{RailsUser, TripsSeeds}
+  alias Dawarich.Test.{ParityHTML, RailsUser, TripsSeeds}
 
   @endpoint DawarichWeb.Endpoint
   @dir "test/fixtures/trips"
@@ -22,6 +23,41 @@ defmodule DawarichWeb.TripsIndexParityTest do
     )
 
     :ok
+  end
+
+  test "trip pagination retains harmless extras without retaining credential query fields" do
+    conn = RailsUser.signed_in(9805) |> RailsUser.connecting_as(9805)
+
+    {:ok, view, _} =
+      live(conn, "/trips?page=2&view=cards&locale=en&access_token=synthetic-query-value")
+
+    query = :sys.get_state(view.pid).socket.assigns.query
+    keys = Map.keys(query)
+    refute "access_token" in keys
+    assert query["view"] == "cards"
+    assert query["locale"] == "en"
+    refute has_element?(view, "#trips [role=navigation] a[href*=access_token]")
+  end
+
+  test "Rails 1.16.0 trip index DOM preserves filters empty states and preview shells" do
+    pages = @dir |> Path.join("pages.json") |> File.read!() |> Jason.decode!()
+
+    for page <- Enum.sort_by(pages["pages"], &String.contains?(&1["path"], "locale=")),
+        String.starts_with?(page["name"], "index_") do
+      html = RailsUser.signed_in(page["user_id"]) |> get(page["path"]) |> html_response(200)
+      rails = @dir |> Path.join("pages/#{page["name"]}.html") |> File.read!()
+      actual = index_dom(html)
+      expected = index_dom(rails)
+
+      assert actual == expected,
+             page["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  defp index_dom(html) do
+    html
+    |> String.replace(~r/\b(selected|disabled)="\1"/, "\\1=\"\"")
+    |> ParityHTML.fragment("#trips")
   end
 
   for page <-
@@ -63,7 +99,7 @@ defmodule DawarichWeb.TripsIndexParityTest do
                )
 
         assert native_links != []
-        refute Enum.any?(native_links, &String.contains?(&1, "view="))
+        assert Enum.any?(native_links, &String.contains?(&1, "view=cards"))
       end
 
       assert previews(actual, "[phx-hook=MapPreview]", "data-map-config") ==

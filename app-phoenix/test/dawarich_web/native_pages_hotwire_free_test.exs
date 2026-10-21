@@ -30,7 +30,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     :native_notifications,
     :native_data
   ]
-  @secret_free_change_forms ["integration-settings"]
+  @secret_free_change_forms ["native-integration-settings"]
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -257,9 +257,17 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
 
         forms = for html <- [static, connected], html =~ ~s(phx-submit="save"), do: html
 
-        for html <- forms,
-            do:
-              assert(html =~ ~r/<button[^>]*type="submit"[^>]*phx-disable-with/, "#{path} submit")
+        for html <- forms do
+          for form <- LazyHTML.query(LazyHTML.from_document(html), "form[phx-submit=save]") do
+            controls =
+              LazyHTML.query(
+                form,
+                "button[type=submit][phx-disable-with], input[type=submit][phx-disable-with]"
+              )
+
+            assert Enum.count(controls) > 0, "#{path} submit"
+          end
+        end
 
         forms != []
       end
@@ -542,7 +550,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
       events =
         case path do
           "/family" ->
-            assert has_element?(view, ~s(button[data-family-action=remove_member]))
+            assert has_element?(view, ~s([data-native-family-action=remove_member]))
             nil
 
           "/share_links/live/new" ->

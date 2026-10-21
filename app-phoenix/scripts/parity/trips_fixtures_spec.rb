@@ -740,6 +740,58 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
         expect(JobOutbox.where(aggregate_id: trip.id, command_type: 'trips.calculate').count).to eq(1)
       end
     end
+    it 'records full trip documents and validation managed form responses' do
+      travel_to now do
+        Country.insert!({ name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU' }.merge(remaining_stamps))
+        captures = []
+        cases = [
+          { kind: :document, plan: :toggle }, { kind: :document, plan: :active },
+          { kind: :document, plan: :future }, { kind: :form, plan: :active },
+          { kind: :form, plan: :stopped }, { kind: :form, plan: :no_source },
+          { kind: :invalid_new, attrs: { name: '', started_at: '', ended_at: '' } },
+          { kind: :invalid_edit, attrs: { name: '', ended_at: '' } },
+          { kind: :invalid_edit, attrs: { started_at: '2026-10-05T10:00', ended_at: '2026-10-03T10:00' } }
+        ]
+        cases.each_with_index do |entry, index|
+          %w[en de].each_with_index do |locale, offset|
+            user = remaining_user(97_100 + index * 2 + offset)
+            id = 9_710_000 + index * 100 + offset * 20
+            trip = remaining_trip(user, id)
+            remaining_plan(user, trip, id, entry[:plan]) if entry[:plan]
+            trip.update_columns(path: nil) if %i[active future].include?(entry[:plan])
+            if entry[:plan] == :future
+              trip.update_columns(started_at: utc('2030-10-05T10:00:00Z'),
+                                  ended_at: utc('2030-10-06T10:00:00Z'))
+            end
+            trip.update_columns(trip_source_id: nil) if entry[:plan] == :no_source
+            before = remaining_graph(user.reload, id)
+            method, path = case entry[:kind]
+                           when :document then [:get, "/trips/#{id}"]
+                           when :form then [:get, "/trips/#{id}/edit"]
+                           when :invalid_new then [:post, '/trips']
+                           else [:patch, "/trips/#{id}"]
+                           end
+            reset!
+            I18n.locale = :en
+            Rails.cache.clear
+            sign_in user
+            remaining_request(user, method, "#{path}?locale=#{locale}", { trip: entry[:attrs] || {} }, 'text/html')
+            expect(response.status).to eq(entry[:kind].to_s.start_with?('invalid') ? 422 : 200)
+            doc = Nokogiri::HTML5(response.body)
+            expect(doc.at_css('#error_explanation')).to be_present if entry[:kind].to_s.start_with?('invalid')
+            doc.css('input[name="authenticity_token"]').each { _1['value'] = 'CSRF' }
+            doc.css('meta[name="csrf-token"]').each { _1['content'] = 'CSRF' }
+            doc.css('[nonce]').each { _1['nonce'] = 'NONCE' }
+            name = "#{entry[:kind]}-#{index}-#{locale}"
+            FixtureRecording.verify(dir.join("presentation/#{name}.html"), doc.to_html)
+            captures << entry.merge(name:, locale:, user_id: user.id, trip_id: id, method:, path:, before:,
+                                    status: response.status)
+          end
+        end
+        FixtureRecording.verify(dir.join('presentation.json'),
+                                "#{JSON.pretty_generate({ now: now.iso8601, cases: captures }.as_json)}\n")
+      end
+    end
   end
 
   context 'A8 route videos' do
@@ -1269,6 +1321,11 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
       ['index_many_page3', 9805, '/trips?page=3'], ['index_many_page0', 9805, '/trips?page=0'],
       ['index_many_page_negative', 9805, '/trips?page=-1'], ['index_many_page_2abc', 9805, '/trips?page=2abc'],
       ['index_many_page_out', 9805, '/trips?page=4'], ['index_many_extra_param', 9805, '/trips?page=2&view=cards'],
+      ['index_states_de', 9801, '/trips?locale=de'], ['index_empty_de', 9804, '/trips?locale=de'],
+      ['index_filtered_de', 9801, '/trips?locale=de&q=Leipzig&sort=name&year=2026&month=5&country=Germany'],
+      ['index_no_matches', 9801, '/trips?q=absent&year=2030&country=Atlantis'],
+      ['form_new', 9801, '/trips/new'], ['form_new_de', 9801, '/trips/new?locale=de'],
+      ['form_edit', 9803, '/trips/980302/edit'], ['form_edit_de', 9803, '/trips/980302/edit?locale=de'],
       ['show_leipzig', 9801, '/trips/980101'], ['show_grenzgang', 9801, '/trips/980102'],
       ['show_short_hop', 9801, '/trips/980106'], ['show_ny', 9802, '/trips/980201'],
       ['show_utc', 9803, '/trips/980301'], ['show_described', 9803, '/trips/980302']
@@ -1276,8 +1333,11 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
   end
 
   def capture(name, user_id, path)
+    reset!
+    user = User.find(user_id)
+    user.update_columns(settings: user.settings.except('locale'))
     Rails.cache.clear
-    sign_in User.find(user_id)
+    sign_in user
     get path
     expect(response).to have_http_status(:ok)
     doc = Nokogiri::HTML5(response.body)
@@ -1306,6 +1366,39 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
       write_json('pages.json', { pages: pages.map { |name, user_id, path| capture(name, user_id, path) } })
       write_json('seed.json', { users:, countries:, sources:, trips:, points:, notes:, rich_texts:, shared_links:,
                                 posters:, route_videos: })
+    end
+  end
+
+  it 'records Rails trip map status shells' do
+    travel_to now do
+      create_users!
+      insert!
+      future = { started_at: '2030-07-01T08:00:00Z', ended_at: '2030-07-02T18:00:00Z' }
+      states = { calculating: {}, empty: future, future: future.merge(source_identifier: 'Synthetic future') }
+      FileUtils.mkdir_p(dir.join('map_states'))
+      cases = states.flat_map do |state, attrs|
+        %w[en de].map do |locale|
+          entry = { name: "#{state}_#{locale}", user_id: 9803, trip_id: 980_301, locale:,
+                    state:, attrs: { path: nil, distance: 0, source_identifier: nil }.merge(attrs) }
+          ActiveRecord::Base.transaction(requires_new: true) do
+            values = entry[:attrs].dup
+            %i[started_at ended_at].each { |key| values[key] = utc(values[key]) if values[key] }
+            Trip.find(entry[:trip_id]).update_columns(values)
+            reset!
+            Rails.cache.clear
+            sign_in User.find(entry[:user_id])
+            get "/trips/#{entry[:trip_id]}", params: { locale: }
+            expect(response).to have_http_status(:ok)
+            doc = Nokogiri::HTML5(response.body)
+            column = doc.at_css('#trip-shell .lg\\:w-3\\/5')
+            FixtureRecording.verify(dir.join("map_states/#{entry[:name]}.html"), column.inner_html)
+            sign_out :user
+            raise ActiveRecord::Rollback
+          end
+          entry
+        end
+      end
+      write_json('map_states.json', { now: now.iso8601, cases: })
     end
   end
 

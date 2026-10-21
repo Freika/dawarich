@@ -2,7 +2,6 @@ defmodule DawarichWeb.SettingsLive.Visits do
   @moduledoc false
   use DawarichWeb, :live_view
   on_mount {DawarichWeb.AccountSettings, :default}
-  import DawarichWeb.CoreComponents, only: [input: 1]
   import DawarichWeb.ListParts, only: [page_header: 1]
   import DawarichWeb.SettingsParts, only: [navigation: 1]
   import DawarichWeb.VisitRedetectPanel, only: [panel: 1]
@@ -123,7 +122,20 @@ defmodule DawarichWeb.SettingsLive.Visits do
         native
       />
       <div class="card bg-base-200 shadow-xl mb-6">
-        <.form for={@form} id="visit-detection-settings" phx-change="change" phx-submit="save">
+        <form
+          id="native-visit-detection-settings"
+          action="/settings/visits"
+          accept-charset="UTF-8"
+          method="post"
+          phx-change="change"
+          phx-submit="save"
+        >
+          <input type="hidden" name="_method" value="patch" />
+          <input
+            type="hidden"
+            name="authenticity_token"
+            value={assigns[:rails_csrf_token] || Plug.CSRFProtection.get_csrf_token()}
+          />
           <div class="card-body">
             <h2 class="text-2xl font-bold mb-2">
               {text(@locale, "tune_how_dawarich_decides_where_you_actually_were")}
@@ -131,11 +143,13 @@ defmodule DawarichWeb.SettingsLive.Visits do
             <p class="text-sm opacity-80 mb-4">
               {text(@locale, "these_settings_control_how_the_app_groups_your_gps_points")}
             </p>
-            <div :for={{name, label, hint, min, max} <- @fields} class="mb-4">
-              <.input
-                field={@form[name]}
+            <div :for={{name, label, hint, min, max} <- @fields} class="form-control mb-4">
+              <label for={@form[name].id} class="label-text font-semibold">{text(@locale, label)}</label>
+              <input
                 type="number"
-                label={text(@locale, label)}
+                name={@form[name].name}
+                id={@form[name].id}
+                value={@form[name].value}
                 min={min}
                 max={max}
                 step="1"
@@ -144,16 +158,16 @@ defmodule DawarichWeb.SettingsLive.Visits do
               <span class="text-xs opacity-70 mt-1">{text(@locale, hint)}</span>
             </div>
             <div class="card-actions justify-end">
-              <button
+              <input
                 type="submit"
+                name="commit"
+                value={text(@locale, "save_settings")}
                 class="btn btn-primary"
                 phx-disable-with={text(@locale, "save_settings")}
-              >
-                {text(@locale, "save_settings")}
-              </button>
+              />
             </div>
           </div>
-        </.form>
+        </form>
       </div>
       <.panel
         locale={@locale}
@@ -161,6 +175,7 @@ defmodule DawarichWeb.SettingsLive.Visits do
         queued={@queued}
         restricted={@restricted}
         available_at={@available_at}
+        rails_csrf_token={assigns[:rails_csrf_token]}
       />
     </div>
     """

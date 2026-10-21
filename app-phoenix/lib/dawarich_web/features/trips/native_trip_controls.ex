@@ -39,13 +39,21 @@ defmodule DawarichWeb.NativeTripControls do
       |> Enum.flat_map(& &1.stops)
       |> Enum.find(&(to_string(&1.id) == to_string(id)))
 
-    if socket.assigns.page.config["planEnabled"] && stop do
+    if socket.assigns.page.presentation.plan_on_map && stop do
       longitude = coordinate(stop.longitude)
       latitude = coordinate(stop.latitude)
 
       if is_number(longitude) and longitude >= -180 and longitude <= 180 and
            is_number(latitude) and latitude >= -90 and latitude <= 90 do
-        push_event(socket, "trip:focus", %{longitude: longitude, latitude: latitude})
+        page = put_in(socket.assigns.page, [:config, "planEnabled"], true)
+
+        socket
+        |> assign(
+          page: page,
+          trip_layers: Map.put(socket.assigns.trip_layers, "planEnabled", true)
+        )
+        |> push_event("map:config", page.config)
+        |> push_event("trip:focus", %{longitude: longitude, latitude: latitude})
       else
         socket
       end

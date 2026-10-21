@@ -25,6 +25,7 @@ defmodule DawarichWeb.AchievementPublicTest do
     :ok
   end
 
+  @tag public_dom: true
   test "native public and embed documents preserve source cards SVG metadata and privacy" do
     corpus =
       File.read!("#{@root}/public.json")
@@ -39,7 +40,7 @@ defmodule DawarichWeb.AchievementPublicTest do
       html = result.resp_body
       expected = File.read!("#{@root}/#{row["html_file"]}")
 
-      for selector <- [".ach-card", ".ach-public-attribution"] do
+      for selector <- [".ach-page", ".ach-card", ".ach-public-attribution"] do
         assert ParityHTML.fragment(html, selector) == ParityHTML.fragment(expected, selector)
       end
 

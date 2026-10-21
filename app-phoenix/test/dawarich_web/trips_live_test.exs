@@ -68,12 +68,12 @@ defmodule DawarichWeb.TripsLiveTest do
                "a.block.group[href='/trips/883101'] > #trip-883101[data-trip-id='883101']"
              )
 
-      assert has_element?(view, "#native-trip-preview-883101[phx-hook=MapPreview]")
+      assert has_element?(view, "#map-883101[phx-hook=MapPreview]")
 
       config =
         html
         |> LazyHTML.from_fragment()
-        |> LazyHTML.query("#native-trip-preview-883101")
+        |> LazyHTML.query("#map-883101")
         |> LazyHTML.attribute("data-map-config")
         |> hd()
         |> Jason.decode!()
@@ -134,7 +134,7 @@ defmodule DawarichWeb.TripsLiveTest do
 
       config =
         view
-        |> element("#native-trip-preview-883301")
+        |> element("#map-883301")
         |> render()
         |> LazyHTML.from_fragment()
         |> LazyHTML.query("[data-map-config]")
@@ -161,7 +161,7 @@ defmodule DawarichWeb.TripsLiveTest do
       assert ids(render_patch(view, "/trips?page=2")) == ~w(883401)
 
       {:ok, far, html} = live_as(user, "/trips?page=3")
-      assert html =~ "No trips yet"
+      assert html =~ "No trips match these filters"
       refute has_element?(far, "[role='navigation']")
     end
 
@@ -193,7 +193,7 @@ defmodule DawarichWeb.TripsLiveTest do
     test "the process keeps no trip path once the list has rendered", %{user: user} do
       trip!(user, 883_601)
       {:ok, view, html} = live_as(user, "/trips")
-      assert html =~ "native-trip-preview-883601"
+      assert html =~ "map-883601"
       entries = :sys.get_state(view.pid).socket.assigns.entries
       assert Enum.map(entries, & &1.id) == [883_601]
       refute Enum.any?(entries, &Map.has_key?(&1, :path_json))
@@ -312,22 +312,21 @@ defmodule DawarichWeb.TripsLiveTest do
 
       assert has_element?(
                view,
-               "[data-testid=trip-header-actions] a[href='/trips/883901/edit']",
-               "Edit"
+               "[data-testid=trip-header-actions] a[href='/trips/883901/edit'][title='Edit trip']"
              )
 
       for format <- ~w(gpx json),
           do: assert(has_element?(view, "[phx-click='trip:export'][phx-value-format=#{format}]"))
 
-      assert has_element?(view, "a[href='/trips/883901/share_link/new']", "Share")
+      assert has_element?(view, "a[href='/trips/883901/share_link/new'][title='Share trip']")
 
       assert has_element?(
                view,
-               "[phx-click='trip:delete'][data-confirm='Delete this trip? This cannot be undone.']"
+               "form[phx-submit='trip:delete'] button[type=submit]:not([data-confirm])"
              )
 
       refute has_element?(view, "[data-testid=trip-header-actions] .badge-success")
-      refute has_element?(view, "#trip-shell [name=authenticity_token]")
+      refute has_element?(view, "#trip-shell [name=authenticity_token]:not([value=''])")
     end
 
     test "native trip badge retains only the active owned share", %{user: user} do
@@ -357,7 +356,7 @@ defmodule DawarichWeb.TripsLiveTest do
     } do
       {view, _} = native_as(user, "/trips/883901")
       refute has_element?(view, "[phx-value-layer=flights]")
-      assert has_element?(view, "[phx-click='trip:recalculate'][disabled]", "Recalculating…")
+      assert has_element?(view, "button.btn-outline[disabled]", "Recalculating…")
 
       pilot =
         TripsSeeds.user!(8833, %{
@@ -374,7 +373,7 @@ defmodule DawarichWeb.TripsLiveTest do
 
       assert has_element?(
                view,
-               "[phx-click='trip:recalculate'][data-confirm]:not([disabled])",
+               "form[phx-submit='trip:recalculate'] button[type=submit]:not([data-confirm]):not([disabled])",
                "Recalculate"
              )
     end
@@ -382,7 +381,7 @@ defmodule DawarichWeb.TripsLiveTest do
     test "native trip countries retain rounded distance duration and sorted flags", %{user: user} do
       {view, html} = native_as(user, "/trips/883901")
       assert render(view) =~ ~r/12 km\s+·\s+3 days, 14 hours\s+·\s+2 countries/
-      assert attribute(html, "#native-trip-summary svg[title]", "title") == ["France", "Germany"]
+      assert attribute(html, "#native-trip-header svg[title]", "title") == ["France", "Germany"]
     end
 
     test "native trip Berlin days retain stats note editing and empty-day creation", %{user: user} do
@@ -408,7 +407,7 @@ defmodule DawarichWeb.TripsLiveTest do
 
       assert has_element?(
                view,
-               "[phx-click='trip:note:delete'][phx-value-day='2026-05-10'][data-confirm='Delete this note?']"
+               "#native-trip-day-2026-05-10 form[phx-submit='trip:note:delete'] button[type=submit]:not([data-confirm])"
              )
 
       view
@@ -433,7 +432,10 @@ defmodule DawarichWeb.TripsLiveTest do
                "Save note"
              )
 
-      refute has_element?(view, "#trip-shell input[name='_method']")
+      assert has_element?(
+               view,
+               "#trip-shell form[phx-submit] input[name='_method'][value=delete]"
+             )
     end
 
     test "native trip replay and studios retain day navigation and fixed range", %{user: user} do

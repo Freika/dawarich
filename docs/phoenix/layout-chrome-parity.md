@@ -34,3 +34,9 @@ Both E2E trees contain `chrome/layout.spec.js` for English/German desktop/mobile
 The generated CSS changes only by adding `.sm\:inline-flex{display:inline-flex}` for Rails' version-badge visibility. The base hash is `33f391705f3ac4ddb39a0a5674b19ebb5c89b5a124c74bf89646492d801b3c99`; D1 generates `39f6ceed71ec9c4e5673e6aa36e1abd78ca9c31615d0980f1ffb35301cd7693b`. The controller plan reserves committed CSS and pin updates for integration. The class-source digest assertion therefore needs that integration repin; the source-closure, deterministic CSS and remaining budget checks pass without changing the pins.
 
 Rails bugs fixed: none. Existing native text-resilience safeguards are retained and registered.
+
+## Browser acceptance fix round 1
+
+The guest chrome browser journey follows the sign-in form's `/users/password/new` link, then requires the recovery URL and the navbar Login link. It still checks the absence of private navigation, both flash icons, local dismissal and mobile overflow. The app and external E2E copies are identical.
+
+The initial browser failure occurred after successful flash dismissal: manually requesting `/users/password/new?locale=en` returned 422 before rendering the layout. Rails 1.16.0 accepts the query (`ApplicationController#switch_locale`), and the recorded guest recovery fixture includes Login. Native `Auth.Recovery.Flow.parameters/1` rejects `locale`. This is an outstanding D6 auth-query parity defect, outside D1's file ownership; following the source form's canonical link exercises D1 chrome without changing recovery admission. No Rails defect is fixed.

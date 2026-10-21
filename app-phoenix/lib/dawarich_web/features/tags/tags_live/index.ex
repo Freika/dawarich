@@ -2,6 +2,7 @@ defmodule DawarichWeb.TagsLive.Index do
   @moduledoc false
   use DawarichWeb, :live_view
   use DawarichWeb, :verified_routes
+  import DawarichWeb.ListParts, only: [page_header: 1]
   import DawarichWeb.Icon, only: [icon: 1]
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias Dawarich.Tags
@@ -13,7 +14,7 @@ defmodule DawarichWeb.TagsLive.Index do
     {:ok,
      socket
      |> assign(page_title: nil, tags_count: length(tags))
-     |> stream(:tags, tags)}
+     |> stream(:tags, tags, dom_id: &"native-tag-#{&1.id}")}
   end
 
   @impl true

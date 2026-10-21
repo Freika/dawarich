@@ -76,7 +76,7 @@ defmodule Dawarich.Trips.Pages do
   defp form_projection(user, id, now) do
     case WebForm.load(Repo, user, id, %{now: now}) do
       {:ok, form} ->
-        {:ok, Map.take(form, [:id, :name, :values, :description, :managed, :trek_url])}
+        {:ok, Map.take(form, [:id, :name, :values, :description, :managed, :trek_url, :style])}
 
       {:error, :not_found} ->
         {:error, :not_found}

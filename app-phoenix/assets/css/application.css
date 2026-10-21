@@ -11,3 +11,5 @@
 @import "./brand_fonts.css";
 
 @import "./native_shell.css";
+
+@import "../../../app/assets/stylesheets/insights_calendar.css";

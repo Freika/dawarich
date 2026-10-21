@@ -3,7 +3,7 @@ defmodule DawarichWeb.TeslamatePane do
   use DawarichWeb, :html
 
   import DawarichWeb.IntegrationPanes,
-    only: [form_head: 1, heading: 1, ssl_toggle: 1, save: 1, sync_row: 1, secret_display: 1]
+    only: [form_head: 1, heading: 1, ssl_toggle: 1, save: 1, sync_row: 1]
 
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
@@ -64,11 +64,10 @@ defmodule DawarichWeb.TeslamatePane do
               />
             </div>
             <div class="form-control w-full">
-              <DawarichWeb.CoreComponents.input
-                field={@form["teslamate_password"]}
-                type="password"
-                display={secret_display(@form["teslamate_password"].value)}
-                phx-update="ignore"
+              <DawarichWeb.IntegrationForms.secret_field
+                form={@form}
+                key="teslamate_password"
+                span={false}
                 label_class="label label-text font-medium"
                 autocomplete="current-password"
                 label={t(@locale, "settings.integrations.index.teslamate_password", %{})}
@@ -76,11 +75,10 @@ defmodule DawarichWeb.TeslamatePane do
             </div>
           </div>
           <div class="form-control w-full max-w-md">
-            <DawarichWeb.CoreComponents.input
-              field={@form["teslamate_api_token"]}
-              type="password"
-              display={secret_display(@form["teslamate_api_token"].value)}
-              phx-update="ignore"
+            <DawarichWeb.IntegrationForms.secret_field
+              form={@form}
+              key="teslamate_api_token"
+              span={false}
               label_class="label label-text font-medium"
               label={t(@locale, "settings.integrations.index.teslamate_api_token", %{})}
             />

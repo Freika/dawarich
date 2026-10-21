@@ -4,6 +4,8 @@ defmodule Dawarich.Achievements.Pages do
   alias Dawarich.Achievements.{Collection, PublicCard, UiText}
 
   def load(subject, params, opts \\ []) do
+    request_query = if is_map(params), do: Map.take(params, ~w(q status page locale)), else: %{}
+
     with {:ok, scope} <- DataAccess.admit(subject, settings: true),
          {:ok, params} <- normalize(params),
          [[state]] <-
@@ -21,6 +23,7 @@ defmodule Dawarich.Achievements.Pages do
       {:ok,
        %{
          view: view,
+         request_query: request_query,
          query: params,
          celebrations: keys,
          threshold:

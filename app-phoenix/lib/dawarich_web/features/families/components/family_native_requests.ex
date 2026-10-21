@@ -1,78 +1,112 @@
 defmodule DawarichWeb.FamilyNativeRequests do
   @moduledoc false
   use DawarichWeb, :html
-  alias DawarichWeb.FamilyNativeControls
 
   def request(assigns) do
     ~H"""
-    <section
-      id="family-request-shell"
-      class="container mx-auto max-w-lg py-8 min-w-0 [overflow-wrap:anywhere]"
-    >
-      <FamilyNativeControls.errors errors={@errors} />
-      <div class="card bg-base-200 p-5 space-y-4">
-        <h1 class="text-2xl font-semibold">{s(@locale, "location_request")}</h1>
-        <dl class="space-y-4">
-          <div>
-            <dt>{s(@locale, "requested_by")}</dt><dd>{@page.request.requester_email}</dd>
+    <div id="native-family-request-shell" class="container mx-auto max-w-lg py-8 px-4">
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title text-2xl mb-4">{s(@locale, "location_request")}</h2>
+          <DawarichWeb.FamilyNativeControls.errors errors={@errors} />
+          <div class="space-y-4">
+            <div>
+              <span class="text-sm text-base-content/60">{s(@locale, "requested_by")}</span><p class="text-lg font-medium">
+                {@page.request.requester_email}
+              </p>
+            </div>
+            <div>
+              <span class="text-sm text-base-content/60">{s(@locale, "requested")}</span><p class="text-lg">
+                {t(@locale, "common.time_ago", %{
+                  time: DawarichWeb.TimeAgo.words(@locale, @page.request.created_at, @now)
+                })}
+              </p>
+            </div>
+            <%= if @page.request.display == :pending do %>
+              <div>
+                <span class="text-sm text-base-content/60">{s(@locale, "expires")}</span><p class="text-lg">
+                  {t(@locale, "common.time_from_now", %{
+                    time: DawarichWeb.TimeAgo.words(@locale, @page.request.expires_at, @now)
+                  })}
+                </p>
+              </div>
+              <form
+                id="native-family-request"
+                class="space-y-4 mt-6"
+                action={"/family/location_requests/#{@page.request.id}/accept"}
+                accept-charset="UTF-8"
+                method="post"
+                phx-submit={Phoenix.LiveView.JS.push("family_respond", value: %{decision: "accept"})}
+              >
+                <input type="hidden" name="_method" value="patch" /><input
+                  type="hidden"
+                  name="authenticity_token"
+                  value={@rails_csrf_token}
+                />
+                <div class="form-control">
+                  <label class="label"><span class="label-text">{s(@locale, "share_location_for")}</span></label><select
+                    name="duration"
+                    class="select select-bordered w-full"
+                    aria-label={s(@locale, "share_location_for")}
+                  ><option :for={{value, key} <- durations()} value={value} selected={value == "24h"}>
+                    {s(@locale, key)}
+                  </option></select>
+                </div>
+                <div class="flex gap-3 mt-6">
+                  <input
+                    type="submit"
+                    name="commit"
+                    value={s(@locale, "accept_share_location")}
+                    class="btn btn-primary flex-1"
+                    phx-disable-with={s(@locale, "accept_share_location")}
+                  />
+                </div>
+              </form>
+              <form
+                class="button_to"
+                method="post"
+                action={"/family/location_requests/#{@page.request.id}/decline"}
+                phx-submit={Phoenix.LiveView.JS.push("family_respond", value: %{decision: "decline"})}
+              >
+                <input type="hidden" name="_method" value="patch" /><button
+                  class="btn btn-outline btn-warning w-full mt-2"
+                  type="submit"
+                >{s(@locale, "decline")}</button><input
+                  type="hidden"
+                  name="authenticity_token"
+                  value={@rails_csrf_token}
+                />
+              </form>
+            <% else %>
+              <div class="mt-4">
+                <div
+                  data-request-status={@page.request.display}
+                  class={"badge badge-#{status_class(@page.request.display)} badge-lg"}
+                >
+                  {s(@locale, to_string(@page.request.display))}
+                </div>
+              </div>
+              <div :if={@page.request.responded_at}>
+                <span class="text-sm text-base-content/60">{s(@locale, "responded")}</span><p>
+                  {t(@locale, "common.time_ago", %{
+                    time: DawarichWeb.TimeAgo.words(@locale, @page.request.responded_at, @now)
+                  })}
+                </p>
+              </div>
+            <% end %>
           </div>
-          <div>
-            <dt>{s(@locale, "requested")}</dt><dd>
-              {t(@locale, "common.time_ago", %{
-                time: DawarichWeb.TimeAgo.words(@locale, @page.request.created_at, @now)
-              })}
-            </dd>
+          <div class="card-actions justify-end mt-6">
+            <a class="btn btn-ghost" href="/family">{s(@locale, "back_to_family")}</a>
           </div>
-          <div :if={@page.request.display == :pending}>
-            <dt>{s(@locale, "expires")}</dt><dd>
-              {t(@locale, "common.time_from_now", %{
-                time: DawarichWeb.TimeAgo.words(@locale, @page.request.expires_at, @now)
-              })}
-            </dd>
-          </div>
-        </dl>
-        <%= if @page.request.display == :pending do %>
-          <form id="native-family-request" phx-submit="family_respond" class="space-y-4">
-            <input type="hidden" name="decision" value="accept" />
-            <label for="native-request-duration" class="label label-text">{s(
-              @locale,
-              "share_location_for"
-            )}</label>
-            <select id="native-request-duration" name="duration" class="select select-bordered w-full">
-              <option :for={{value, key} <- durations()} value={value} selected={value == "24h"}>
-                {s(@locale, key)}
-              </option>
-            </select>
-            <button
-              type="submit"
-              class="btn btn-primary w-full h-auto whitespace-normal"
-              phx-disable-with={s(@locale, "accept_share_location")}
-            >{s(@locale, "accept_share_location")}</button>
-          </form>
-          <button
-            type="button"
-            class="btn btn-outline btn-warning w-full h-auto whitespace-normal"
-            phx-click="family_respond"
-            phx-value-decision="decline"
-          >{s(@locale, "decline")}</button>
-        <% else %>
-          <span data-request-status={@page.request.display} class="badge badge-lg h-auto">{s(
-            @locale,
-            to_string(@page.request.display)
-          )}</span>
-          <p :if={@page.request.responded_at}>
-            {s(@locale, "responded")} {t(@locale, "common.time_ago", %{
-              time: DawarichWeb.TimeAgo.words(@locale, @page.request.responded_at, @now)
-            })}
-          </p>
-        <% end %>
-        <a href="/family" class="btn btn-ghost h-auto whitespace-normal">{s(@locale, "back_to_family")}</a>
+        </div>
       </div>
-      <FamilyNativeControls.confirmation confirmation={@confirmation} page={@page} locale={@locale} />
-    </section>
+    </div>
     """
   end
 
+  defp status_class(:expired), do: "error"
+  defp status_class(:accepted), do: "success"
+  defp status_class(_), do: "warning"
   defp s(locale, key), do: t(locale, "family.location_requests.show." <> key, %{})
 
   defp durations,

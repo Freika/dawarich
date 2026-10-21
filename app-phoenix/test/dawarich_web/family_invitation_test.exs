@@ -200,10 +200,13 @@ defmodule DawarichWeb.FamilyInvitationTest do
 
     assert element?(
              html,
-             "#native-family-request[phx-submit='family_respond'] input[name='decision'][value='accept']"
+             "#native-family-request[phx-submit*='family_respond'][phx-submit*='accept']"
            )
 
-    assert element?(html, "button[phx-click='family_respond'][phx-value-decision='decline']")
+    assert element?(
+             html,
+             "form[action='/family/location_requests/94001/decline'][phx-submit*='family_respond'][phx-submit*='decline']"
+           )
 
     assert element?(html, "select[name='duration'] option[value='24h'][selected]")
 
@@ -236,7 +239,7 @@ defmodule DawarichWeb.FamilyInvitationTest do
 
     assert element?(
              index,
-             "[data-invitation-id] button[phx-click]"
+             "[data-native-invitation-id] [data-native-family-action=cancel_invitation][phx-click]"
            )
 
     member_index =
@@ -245,7 +248,10 @@ defmodule DawarichWeb.FamilyInvitationTest do
       |> get("/family/invitations")
       |> html_response(200)
 
-    refute element?(member_index, "[data-invitation-id] button[phx-click]")
+    refute element?(
+             member_index,
+             "[data-native-invitation-id] [data-native-family-action=cancel_invitation][phx-click]"
+           )
   end
 
   test "debug SQL logs from the invitation landing never carry the invitation token" do

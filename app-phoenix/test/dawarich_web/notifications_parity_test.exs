@@ -3,7 +3,7 @@ defmodule DawarichWeb.NotificationsParityTest do
 
   import Phoenix.ConnTest
 
-  alias Dawarich.Test.{NativeNotificationCorpus, RailsUser}
+  alias Dawarich.Test.{NativeNotificationCorpus, ParityHTML, RailsUser}
 
   @endpoint DawarichWeb.Endpoint
   @dir "test/fixtures/notifications"
@@ -41,6 +41,16 @@ defmodule DawarichWeb.NotificationsParityTest do
       rails = File.read!(Path.join(@dir, @name <> ".html"))
 
       NativeNotificationCorpus.assert_page(html, rails)
+
+      native =
+        ParityHTML.without(
+          Dawarich.Test.DataPageParity.action_paths(html),
+          ["dialog"],
+          "[data-testid^=native-notifications-]"
+        )
+
+      expected = ParityHTML.normalize(rails)
+      assert native == expected, ParityHTML.first_difference(native, expected)
 
       assert html =~ ">#{state["title"]}</title>"
     end

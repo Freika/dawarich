@@ -22,6 +22,7 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
         filter_form: to_form(%{}, as: "filters"),
         filter_options: %{years: [], countries: []},
         filtered: false,
+        has_trips: false,
         settings: nil
       )
 
@@ -32,7 +33,7 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
   end
 
   @impl true
-  def handle_params(params, _, socket) do
+  def handle_params(params, uri, socket) do
     with true <- valid_page?(params["page"]) and valid_page?(params["family_page"]),
          page = DawarichWeb.TripsGate.page_number(params["page"]),
          family_page = DawarichWeb.TripsGate.page_number(params["family_page"]),
@@ -46,7 +47,12 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
        |> assign(
          page: page,
          family_page: family_page,
-         query: query(result.query),
+         query:
+           Map.merge(
+             URI.decode_query(URI.parse(uri).query || "") |> Map.take(~w(locale view)),
+             query(result.query)
+           ),
+         has_trips: result.options.years != [],
          filters: result.query,
          filter_form: to_form(query(result.query), as: "filters"),
          filter_options: result.options,
@@ -73,7 +79,7 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
   defp valid_page?(_), do: false
 
   @impl true
-  def handle_event("trips:filter", %{"filters" => filters}, socket) when is_map(filters) do
+  def handle_event("trips:filter", filters, socket) when is_map(filters) do
     if Enum.all?(filters, fn {key, value} ->
          key in ~w(q sort year month country) and is_binary(value)
        end) do
@@ -122,21 +128,24 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
             /> {t(@locale, "trips.index.new_trip", %{})}</a>
           </.page_header>
           <DawarichWeb.TripsNative.Filters.filters
+            :if={@has_trips}
             locale={@locale}
             form={@filter_form}
             options={@filter_options}
             query={@filters}
           />
           <div
-            :if={@entries == [] and @filtered}
+            :if={@entries == [] and @has_trips}
             data-testid="trips-no-matches"
-            class="text-center py-12"
+            class="text-center py-12 px-8 bg-base-200 rounded-xl border border-base-300"
           >
-            <h3>{t(@locale, "trips.index.no_matching_trips", %{})}</h3>
-            <p>{t(@locale, "trips.index.try_other_filters", %{})}</p>
-            <.link patch="/trips">{t(@locale, "trips.index.show_all_trips", %{})}</.link>
+            <h3 class="text-lg font-bold mb-2">{t(@locale, "trips.index.no_matching_trips", %{})}</h3>
+            <p class="text-base-content/50 mb-5 max-w-sm mx-auto">
+              {t(@locale, "trips.index.try_other_filters", %{})}
+            </p>
+            <.link patch="/trips" class="btn btn-sm">{t(@locale, "trips.index.show_all_trips", %{})}</.link>
           </div>
-          <%= if @entries == [] and !@filtered do %>
+          <%= if !@has_trips do %>
             <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-300">
               <h3 class="text-xl font-bold mb-3">{t(@locale, "trips.index.no_trips_yet", %{})}</h3>
               <p class="text-base-content/50 mb-6 max-w-sm mx-auto">

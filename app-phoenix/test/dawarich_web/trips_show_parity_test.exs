@@ -2,15 +2,22 @@ defmodule DawarichWeb.TripsShowParityTest do
   use Dawarich.JobsCase, async: false
 
   import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
 
-  alias Dawarich.Test.{NativeTripCorpus, RailsUser, TripsSeeds}
+  alias Dawarich.Test.{NativeTripCorpus, ParityHTML, RailsUser, TripsSeeds}
 
   @endpoint DawarichWeb.Endpoint
   @dir "test/fixtures/trips"
   @external_resource "test/fixtures/trips/pages.json"
   @env ~w(PRINT_ORDER_URL TIME_ZONE)
 
-  setup do
+  setup context do
+    if context[:native_write] do
+      previous_repo = Application.get_env(:dawarich, :jobs_repo)
+      Application.put_env(:dawarich, :jobs_repo, Dawarich.Repo)
+      on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, previous_repo) end)
+    end
+
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     saved = Map.new(@env, &{&1, System.get_env(&1)})
@@ -29,6 +36,445 @@ defmodule DawarichWeb.TripsShowParityTest do
     )
 
     :ok
+  end
+
+  test "native trip destructive actions require confirmation and cancel keeps the trip" do
+    conn = RailsUser.signed_in(9803) |> RailsUser.connecting_as(9803)
+    {:ok, view, _} = live(conn, "/trips/980301")
+    refute has_element?(view, "form[phx-submit='trip:delete'] [data-confirm]")
+    render_click(view, "trip:delete", %{})
+
+    assert Dawarich.Repo.query!("SELECT id FROM trips WHERE id=980301", [], log: false).num_rows ==
+             1
+
+    assert has_element?(view, "#native-trip-confirmation[role=dialog]")
+
+    [removal] =
+      view
+      |> render()
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("#native-trip-confirmation")
+      |> LazyHTML.attribute("phx-remove")
+
+    assert Enum.any?(Jason.decode!(removal), fn [command, options] ->
+             command == "focus" &&
+               options["to"] == "#trip-shell form[phx-submit='trip:delete'] button[type=submit]"
+           end)
+
+    render_click(view, "trip:confirmation:cancel", %{})
+    refute has_element?(view, "#native-trip-confirmation")
+
+    assert Dawarich.Repo.query!("SELECT id FROM trips WHERE id=980301", [], log: false).num_rows ==
+             1
+
+    render_click(view, "trip:delete", %{})
+    render_click(view, "trip:confirmation:accept", %{})
+    assert_redirect(view, "/trips")
+
+    assert Dawarich.Repo.query!("SELECT id FROM trips WHERE id=980301", [], log: false).num_rows ==
+             0
+  end
+
+  test "Rails 1.16.0 new and edit trip forms preserve fields preview and actions" do
+    pages = @dir |> Path.join("pages.json") |> File.read!() |> Jason.decode!()
+
+    for page <- Enum.sort_by(pages["pages"], &String.contains?(&1["path"], "locale=")),
+        String.starts_with?(page["name"], "form_") do
+      html = RailsUser.signed_in(page["user_id"]) |> get(page["path"]) |> html_response(200)
+      rails = @dir |> Path.join("pages/#{page["name"]}.html") |> File.read!()
+      actual = form_dom(html)
+      expected = form_dom(rails)
+
+      assert actual == expected,
+             page["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  @tag :native_write
+  test "Rails 1.16.0 trip validation and managed forms retain exact source DOM" do
+    corpus = File.read!(Path.join(@dir, "remaining/presentation.json")) |> Jason.decode!()
+
+    for entry <- corpus["cases"], entry["kind"] != "document" do
+      {user, _id} = Dawarich.Test.TripPresentationSeeds.seed(entry)
+      conn = RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id)
+
+      path =
+        if entry["kind"] == "invalid_new",
+          do: "/trips/new",
+          else: "/trips/#{entry["trip_id"]}/edit"
+
+      {:ok, view, html} = live(conn, path <> "?locale=" <> entry["locale"])
+
+      html =
+        if String.starts_with?(entry["kind"], "invalid"),
+          do: render_submit(view, "save", %{"trip" => entry["attrs"]}),
+          else: html
+
+      if dump = System.get_env("PARITY_DUMP") do
+        File.mkdir_p!(dump)
+        File.write!(Path.join(dump, entry["name"] <> ".html"), html)
+      end
+
+      actual = form_dom(html)
+
+      expected =
+        form_dom(File.read!(Path.join(@dir, "remaining/presentation/#{entry["name"]}.html")))
+
+      assert actual == expected,
+             entry["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
+
+      GenServer.stop(view.pid)
+    end
+  end
+
+  test "Rails 1.16.0 complete trip envelope retains source path and planned map placement" do
+    corpus = File.read!(Path.join(@dir, "remaining/presentation.json")) |> Jason.decode!()
+
+    for entry <- corpus["cases"], entry["kind"] == "document" do
+      {user, _id} = Dawarich.Test.TripPresentationSeeds.seed(entry)
+
+      html =
+        RailsUser.signed_in(user.id)
+        |> get(entry["path"] <> "?locale=" <> entry["locale"])
+        |> html_response(200)
+
+      rails = File.read!(Path.join(@dir, "remaining/presentation/#{entry["name"]}.html"))
+
+      if dump = System.get_env("PARITY_DUMP") do
+        File.mkdir_p!(dump)
+        File.write!(Path.join(dump, entry["name"] <> ".html"), html)
+      end
+
+      synced =
+        entry["before"]["trips"]
+        |> hd()
+        |> Map.fetch!("source_synced_at")
+        |> DateTime.from_iso8601()
+        |> elem(1)
+
+      expected_time =
+        DawarichWeb.NativeTripTimeAgo.words(
+          entry["locale"],
+          DateTime.to_naive(synced),
+          DateTime.utc_now()
+        )
+
+      actual_label =
+        DawarichWeb.Translate.t(entry["locale"], "trips.source_itinerary.synced_ago", %{
+          time: expected_time
+        })
+
+      assert html =~ actual_label
+      {:ok, captured_now, _} = DateTime.from_iso8601(corpus["now"])
+
+      source_time =
+        DawarichWeb.NativeTripTimeAgo.words(
+          entry["locale"],
+          DateTime.to_naive(synced),
+          captured_now
+        )
+
+      source_label =
+        DawarichWeb.Translate.t(entry["locale"], "trips.source_itinerary.synced_ago", %{
+          time: source_time
+        })
+
+      html = String.replace(html, actual_label, "SYNC_TIME")
+      rails = String.replace(rails, source_label, "SYNC_TIME")
+      actual = complete_trip_dom(html)
+      expected = complete_trip_dom(rails)
+
+      assert actual == expected,
+             entry["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  defp complete_trip_dom(html) do
+    doc = LazyHTML.from_document(html)
+    body = doc |> LazyHTML.query("body") |> LazyHTML.attribute("class")
+    assert body == ["min-h-screen flex flex-col"]
+    root = doc |> LazyHTML.query("#trip-shell") |> LazyHTML.to_tree()
+    assert root != []
+
+    envelope =
+      for selector <- [
+            "html",
+            "body",
+            "div.container.mx-auto.flex.flex-col.flex-1",
+            ".w-full.px-4.sm\\:px-5.flex-1",
+            ".flex.w-full.min-w-0.gap-5"
+          ] do
+        nodes = doc |> LazyHTML.query(selector) |> LazyHTML.to_tree()
+        assert length(nodes) == 1
+
+        for {tag, attrs, _} <- nodes do
+          keys = if tag == "html", do: ~w(lang data-theme), else: ~w(class)
+          {tag, Enum.filter(attrs, fn {key, _} -> key in keys end), []}
+        end
+      end
+
+    chrome =
+      for selector <- ["title", ".navbar", "footer"],
+          do: Dawarich.Test.LayoutFixtures.region(html, selector)
+
+    envelope ++ chrome ++ [root |> detail_nodes() |> ParityHTML.normalize()]
+  end
+
+  defp form_dom(html) do
+    doc = LazyHTML.from_document(html)
+    root = doc |> LazyHTML.query(".mx-auto.my-5.md\\:w-2\\/3") |> LazyHTML.to_tree()
+    assert root != []
+    root |> form_nodes() |> ParityHTML.normalize()
+  end
+
+  defp form_nodes(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &form_node/1)
+
+  defp form_node({"input", attrs, _}) do
+    values = Map.new(attrs)
+
+    cond do
+      values["data-datetime-target"] == "apiKey" ->
+        []
+
+      values["name"] == "trip[description]" ->
+        []
+
+      true ->
+        attrs =
+          Enum.reject(attrs, fn {key, value} ->
+            if key == "aria-invalid", do: assert(value == "true")
+            key == "aria-invalid"
+          end)
+
+        [{"input", attrs, []}]
+    end
+  end
+
+  defp form_node({"trix-editor", attrs, _}) do
+    assert Map.new(attrs)["class"] == "trix-content-editor"
+    [{"native-rich-editor", [], []}]
+  end
+
+  defp form_node({tag, attrs, children}) do
+    if Map.new(attrs)["id"] == "trip-description" do
+      for {"trix-editor", editor_attrs, _} <- children,
+          do: assert(Map.new(editor_attrs)["class"] == "trix-content-editor")
+
+      [{"native-rich-editor", [], []}]
+    else
+      [{tag, attrs, form_nodes(children)}]
+    end
+  end
+
+  defp form_node(other), do: [other]
+
+  test "Rails 1.16.0 trip detail preserves header toolbar days notes and description DOM" do
+    pages = @dir |> Path.join("pages.json") |> File.read!() |> Jason.decode!()
+
+    for page <- pages["pages"], String.starts_with?(page["name"], "show_") do
+      html = RailsUser.signed_in(page["user_id"]) |> get(page["path"]) |> html_response(200)
+      rails = @dir |> Path.join("pages/#{page["name"]}.html") |> File.read!()
+
+      [dropdown] =
+        html
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#native-trip-header .dropdown")
+        |> LazyHTML.attribute("class")
+
+      assert dropdown == "dropdown lg:dropdown-end"
+      actual = detail_dom(html)
+      expected = detail_dom(rails)
+
+      assert actual == expected,
+             page["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  test "Rails 1.16.0 trip map status shells preserve empty calculating and future presentation" do
+    corpus = @dir |> Path.join("map_states.json") |> File.read!() |> Jason.decode!()
+    {:ok, now, 0} = DateTime.from_iso8601(corpus["now"])
+
+    for entry <- corpus["cases"] do
+      {:error, :checked} =
+        Dawarich.Repo.transaction(fn ->
+          Dawarich.Repo.query!(
+            "UPDATE trips SET path=NULL,distance=0,source_identifier=$2 WHERE id=$1",
+            [entry["trip_id"], entry["attrs"]["source_identifier"]],
+            log: false
+          )
+
+          if entry["attrs"]["started_at"] do
+            first =
+              entry["attrs"]["started_at"]
+              |> DateTime.from_iso8601()
+              |> elem(1)
+              |> DateTime.to_naive()
+
+            last =
+              entry["attrs"]["ended_at"]
+              |> DateTime.from_iso8601()
+              |> elem(1)
+              |> DateTime.to_naive()
+
+            Dawarich.Repo.query!(
+              "UPDATE trips SET started_at=$2,ended_at=$3 WHERE id=$1",
+              [entry["trip_id"], first, last],
+              log: false
+            )
+          end
+
+          user = Dawarich.Accounts.get(entry["user_id"])
+          scope = Dawarich.Maps.principal(user, entry["locale"])
+          {:ok, page} = Dawarich.Maps.Trip.view(scope, entry["trip_id"], now: now)
+          assert to_string(page.presentation.map_state) == entry["state"]
+
+          html =
+            render_component(&DawarichWeb.NativeTripMapPanel.panel/1,
+              config: page.config,
+              locale: entry["locale"],
+              state: page.presentation.map_state,
+              has_path: page.presentation.has_path,
+              future: page.presentation.future_start
+            )
+
+          actual =
+            html
+            |> String.replace(~r/ data-trip-map-state="[a-z]+"/, "")
+            |> ParityHTML.normalize()
+
+          expected =
+            @dir
+            |> Path.join("map_states/#{entry["name"]}.html")
+            |> File.read!()
+            |> ParityHTML.normalize()
+
+          assert actual == expected,
+                 entry["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
+
+          Dawarich.Repo.rollback(:checked)
+        end)
+    end
+  end
+
+  @poster_resilience %{
+    "flex flex-wrap items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2 lg:flex-nowrap" =>
+      "flex items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2",
+    "flex flex-wrap items-center gap-2 min-w-0 lg:flex-nowrap" =>
+      "flex items-center gap-2 min-w-0",
+    "flex min-h-0 flex-1 flex-col lg:flex-row" => "flex min-h-0 flex-1",
+    "relative flex h-[36vh] min-w-0 shrink-0 flex-col items-center justify-center overflow-hidden p-6 lg:h-auto lg:flex-1 lg:shrink" =>
+      "relative flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden p-6",
+    "flex min-h-0 w-full flex-1 flex-col border-t border-base-content/10 bg-base-200 lg:w-96 lg:flex-none lg:border-l lg:border-t-0" =>
+      "flex w-96 shrink-0 flex-col border-l border-base-content/10 bg-base-200",
+    "btn btn-primary btn-sm h-auto w-full py-1.5" => "btn btn-primary btn-sm w-full",
+    "btn btn-ghost btn-xs h-auto w-full gap-1 py-1 opacity-70" =>
+      "btn btn-ghost btn-xs w-full gap-1 opacity-70"
+  }
+  defp detail_nodes(nodes), do: Enum.flat_map(nodes, &detail_node/1)
+
+  defp detail_node({tag, attrs, children}) do
+    values = Map.new(attrs)
+
+    cond do
+      values["id"] == "video-studio-owner" ->
+        assert Enum.any?(children, fn
+                 {"div", attrs, _} -> Map.new(attrs)["id"] == "video-studio"
+                 _ -> false
+               end)
+
+        detail_nodes(children)
+
+      tag == "form" && values["action"] == "/posters" ->
+        []
+
+      values["id"] == "native-trip-summary" ->
+        assert values["class"] == "contents"
+        detail_nodes(children)
+
+      Map.has_key?(values, "data-note-form") and values["class"] == "hidden" ->
+        []
+
+      tag == "input" and values["type"] == "hidden" and values["name"] == "day" ->
+        []
+
+      true ->
+        attrs =
+          Enum.map(attrs, fn
+            {"class", value} ->
+              {"class", Map.get(@poster_resilience, value, detail_class(value))}
+
+            {"href", value} ->
+              {"href",
+               if(Regex.match?(~r{^/trips/\d+/export\?file_format=(gpx|json)$}, value),
+                 do: "#",
+                 else: value
+               )}
+
+            {"data-trip-map-state", state} ->
+              assert state in ~w(plan path empty future calculating)
+              nil
+
+            {"aria-expanded", value} = pair ->
+              if values["phx-click"] == "trip:days:all" do
+                assert value in ~w(true false)
+                nil
+              else
+                pair
+              end
+
+            {"aria-pressed", value} = pair ->
+              if values["phx-value-layer"] in ~w(photos flights) do
+                assert value in ~w(true false)
+                nil
+              else
+                pair
+              end
+
+            {"style", ""} = pair ->
+              if Map.has_key?(values, "data-map-config"), do: nil, else: pair
+
+            {"aria-label", _} = pair ->
+              if Enum.any?(
+                   ~w(data-native-poster-date-start data-native-poster-date-end data-native-poster-layout data-native-poster-opacity data-native-poster-width),
+                   &Map.has_key?(values, &1)
+                 ), do: nil, else: pair
+
+            pair ->
+              pair
+          end)
+
+        [{tag, Enum.reject(attrs, &is_nil/1), detail_nodes(children)}]
+    end
+  end
+
+  defp detail_node(other), do: [other]
+
+  defp detail_class(value) do
+    value
+    |> String.replace("contents [&>#video-studio-owner]:contents", "contents")
+    |> String.replace("dropdown lg:dropdown-end", "dropdown dropdown-end")
+    |> String.replace("w-full min-w-0 lg:w-2/5", "w-full lg:w-2/5")
+    |> String.replace("w-full min-w-0 lg:w-3/5", "w-full lg:w-3/5")
+    |> String.replace(
+      "flex flex-wrap items-start justify-between gap-3 mb-1",
+      "flex items-start justify-between gap-3 mb-1"
+    )
+    |> String.replace(
+      "flex flex-wrap items-center gap-1 shrink-0",
+      "flex items-center gap-1 shrink-0"
+    )
+    |> String.replace("leading-tight min-w-0 [overflow-wrap:anywhere]", "leading-tight")
+    |> String.replace("collapse-title flex flex-wrap", "collapse-title flex")
+    |> String.replace("prose max-w-none [overflow-wrap:anywhere]", "prose max-w-none")
+  end
+
+  defp detail_dom(html) do
+    html
+    |> LazyHTML.from_document()
+    |> LazyHTML.query("#trip-shell .lg\\:w-2\\/5")
+    |> LazyHTML.to_tree()
+    |> detail_nodes()
+    |> ParityHTML.normalize()
   end
 
   for page <-

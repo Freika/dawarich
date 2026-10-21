@@ -51,15 +51,26 @@
     <% end %>
   </div>
   <div :if={@data.geocoding.enabled} class="shrink-0 sm:text-right">
-    <button
-      id="test-geocoding"
-      type="button"
-      class="btn btn-sm btn-outline"
-      phx-click="test_geocoding"
-      disabled={MapSet.member?(@testing, :geocoding)}
-    >{if MapSet.member?(@testing, :geocoding),
-      do: t(@locale, "admin.settings.show.geocoding.testing", %{}),
-      else: t(@locale, "admin.settings.show.geocoding.test", %{})}</button>
+    <form
+      class="inline-block"
+      method="post"
+      action="/admin/settings/test_geocoding"
+      phx-submit="test_geocoding"
+    >
+      <button
+        id="native-test-geocoding"
+        type="submit"
+        class="btn btn-sm btn-outline"
+        disabled={MapSet.member?(@testing, :geocoding)}
+      >{if MapSet.member?(@testing, :geocoding),
+        do: t(@locale, "admin.settings.show.geocoding.testing", %{}),
+        else: t(@locale, "admin.settings.show.geocoding.test", %{})}</button>
+      <input
+        type="hidden"
+        name="authenticity_token"
+        value={assigns[:rails_csrf_token] || Plug.CSRFProtection.get_csrf_token()}
+      />
+    </form>
     <p class="mt-1.5 text-xs text-base-content/70">
       {t(@locale, "admin.settings.show.geocoding.test_hint", %{})}
     </p>

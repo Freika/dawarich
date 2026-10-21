@@ -68,7 +68,7 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
 
       html =
         view
-        |> form("#integration-settings")
+        |> form("#native-integration-settings")
         |> render_submit(%{"settings" => %{secret => "********"}})
 
       assert html =~ escaped("services.settings.update.updated")
@@ -83,7 +83,7 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
       secret = if service == "teslamate", do: "teslamate_password", else: service <> "_api_key"
 
       view
-      |> form("#integration-settings")
+      |> form("#native-integration-settings")
       |> render_change(%{
         "settings" => %{(service <> "_url") => c.url, secret => "synthetic-new"}
       })
@@ -92,7 +92,7 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
 
       html =
         view
-        |> form("#integration-settings")
+        |> form("#native-integration-settings")
         |> render_submit(%{
           "settings" => %{(service <> "_url") => c.url, secret => "synthetic-new"}
         })
@@ -109,7 +109,7 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
 
     html =
       view
-      |> form("#integration-settings")
+      |> form("#native-integration-settings")
       |> render_submit(%{"settings" => %{"immich_url" => c.url <> "/fail"}})
 
     assert html =~
@@ -133,12 +133,12 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
         store(c.user, %{"timezone" => "UTC", secret => stored})
         {:ok, view, _} = live_as(c.user, service)
         params = %{"settings" => %{(service <> "_url") => c.url, secret => "synthetic-typed"}}
-        view |> form("#integration-settings") |> render_change(params)
+        view |> form("#native-integration-settings") |> render_change(params)
         refute server_html(view) =~ "synthetic-typed"
         refute inspect(:sys.get_state(view.pid), limit: :infinity) =~ "synthetic-typed"
         assert has_element?(view, "#settings_#{secret}[phx-update='ignore']")
         refute Accounts.settings(c.user.id)[secret] == "synthetic-typed"
-        view |> form("#integration-settings") |> render_submit(params)
+        view |> form("#native-integration-settings") |> render_submit(params)
         assert Process.alive?(view.pid)
         assert Accounts.settings(c.user.id)[secret] == "synthetic-typed"
       end
@@ -188,7 +188,7 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
     assert has_element?(view, "#settings_airtrail_url")
 
     view
-    |> form("#integration-settings")
+    |> form("#native-integration-settings")
     |> render_change(%{"settings" => %{"airtrail_skip_ssl_verification" => "true"}})
 
     assert has_element?(view, "#airtrail-ssl-warning:not(.hidden)")
@@ -207,11 +207,11 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
           {"teslamate", "imports.teslamate_sync"}
         ] do
       {:ok, view, _} = live_as(c.user, service)
-      refute has_element?(view, "#integration-sync")
+      refute has_element?(view, "#native-integration-sync")
       store(c.user, Map.put(Accounts.settings(c.user.id), service <> "_url", c.url))
       Dawarich.Jobs.Ownership.put!(Repo, "command:" <> kind, :oban)
       {:ok, view, _} = live_as(c.user, service)
-      html = view |> element("#integration-sync") |> render_click()
+      html = view |> form("form[phx-submit=sync]") |> render_submit()
       assert html =~ escaped("controllers.settings.background_jobs.job_was_successfully_created")
       render_hook(view, "sync", %{})
 
@@ -221,7 +221,7 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
              ).rows == [[1]]
 
       assert has_element?(view, "[data-testid='integration-#{service}'][aria-current='page']")
-      assert has_element?(view, "#integration-sync[disabled]")
+      assert has_element?(view, "#native-integration-sync[disabled]")
     end
   end
 
@@ -245,13 +245,13 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
     Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [c.user.id])
     {:ok, view, html} = live_as(c.user, "immich")
     assert html =~ escaped("settings.integrations.index.upgrade_to_pro")
-    refute has_element?(view, "#integration-settings")
+    refute has_element?(view, "#native-integration-settings")
     System.put_env("SELF_HOSTED", "true")
     {:ok, view, _} = live_as(c.user, "immich")
     Repo.query!("UPDATE users SET active_until=now()-interval '1 day' WHERE id=$1", [c.user.id])
 
     view
-    |> form("#integration-settings")
+    |> form("#native-integration-settings")
     |> render_submit(%{"settings" => %{"immich_api_key" => "blocked"}})
 
     assert_redirect(view, "/")

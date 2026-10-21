@@ -94,10 +94,15 @@
         )}
       </h2>
       <ul class="space-y-2 w-full">
-        <%= for country <- Enum.take(@digest.top_countries, 3) do %>
+        <%= for {country, index} <- Enum.with_index(Enum.take(@digest.top_countries, 3)) do %>
           <li class="flex justify-between items-center p-3 bg-base-200 rounded-lg">
             <span class="font-semibold">
-              <span class="mr-1"><Icon.country_flag name={country["name"]} table={@table} /></span>
+              <span class="mr-1"><NativeDigestFlag.flag
+                name={country["name"]}
+                table={@table}
+                id={"native-digest-public-#{@digest.year}-time-#{index}"}
+                native={@native}
+              /></span>
               {country["name"]}
             </span>
             <span class="text-gray-600">{DigestFormat.time_spent(@locale, country["minutes"])}</span>
@@ -121,7 +126,12 @@
         <div class="space-y-2">
           <div class="flex justify-between items-center">
             <span class="font-semibold">
-              <span class="mr-1"><Icon.country_flag name={country["country"]} table={@table} /></span>
+              <span class="mr-1"><NativeDigestFlag.flag
+                name={country["country"]}
+                table={@table}
+                id={"native-digest-public-#{@digest.year}-places-#{index}"}
+                native={@native}
+              /></span>
               {country["country"]}
             </span>
             <span class="text-sm">{country["cities_count"] || length(country["cities"] || [])} {t(

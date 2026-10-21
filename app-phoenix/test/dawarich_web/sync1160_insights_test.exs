@@ -95,7 +95,7 @@ defmodule DawarichWeb.Sync1160InsightsTest do
   test "consolidated insights offers tracked counts country lists newest six previews and twelve months",
        %{user: user} do
     {:ok, view, html} = live(NativeAdminUI.conn(user), "/insights?year=all")
-    assert has_element?(view, "#insights-tracking")
+    assert has_element?(view, "#native-insights-tracking")
     assert has_element?(view, "[data-testid=insights-year-card]", "2025")
 
     assert Enum.count(
@@ -146,7 +146,7 @@ defmodule DawarichWeb.Sync1160InsightsTest do
     {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2025")
     render_async(view)
     assert has_element?(view, "[data-testid=year-calendar]")
-    assert has_element?(view, "[data-testid=country-ribbon-lane]", "France")
+    assert has_element?(view, "[data-testid=country-ribbon]", "France")
 
     assert Enum.count(
              LazyHTML.query(
@@ -158,12 +158,12 @@ defmodule DawarichWeb.Sync1160InsightsTest do
     assert has_element?(view, "[data-testid=country-ribbon]", "+2 more countries")
     assert has_element?(view, "[data-testid=distance-race]")
     render_click(view, "calendar_mode", %{"mode" => "countries"})
-    assert has_element?(view, "[data-testid=year-calendar][data-mode=countries]")
+    assert has_element?(view, "[data-testid=year-calendar] .year-calendar[data-mode=countries]")
     render_click(view, "calendar_country", %{"country" => "France"})
-    assert has_element?(view, "[data-testid=year-calendar][data-country=France]")
+    assert has_element?(view, "[data-testid=year-calendar] .year-calendar[data-focus=France]")
     render_patch(view, "/insights?year=2024")
     render_async(view)
-    refute has_element?(view, "[data-testid=year-calendar][data-country=France]")
+    refute has_element?(view, "[data-testid=year-calendar] .year-calendar[data-focus=France]")
   end
 
   test "calendar distinguishes distance intensity and preserves country-only mode", %{user: user} do
@@ -195,29 +195,35 @@ defmodule DawarichWeb.Sync1160InsightsTest do
     for mode <- ~w(both distance) do
       render_click(view, "calendar_mode", %{"mode" => mode})
 
-      for {day, shade} <- [
-            {1, "bg-success/30"},
-            {3, "bg-success/50"},
-            {4, "bg-success/70"},
-            {5, "bg-success"},
-            {6, "bg-base-300"}
-          ] do
-        selector = "[data-residency-day='2025-04-0#{day}']"
-        html = view |> render() |> LazyHTML.from_document() |> LazyHTML.query(selector)
-        assert shade in (html |> LazyHTML.attribute("class") |> hd() |> String.split())
-      end
+      assert has_element?(view, ".year-calendar[data-mode='#{mode}']")
 
-      country_only_shade = if mode == "both", do: "bg-primary/20", else: "bg-base-300"
+      for {day, alpha} <- [{1, "0.32"}, {3, "0.5"}, {4, "0.72"}, {5, "1"}, {6, "0.32"}] do
+        selector = "[data-date='2025-04-0#{day}']"
+
+        [style] =
+          view
+          |> render()
+          |> LazyHTML.from_document()
+          |> LazyHTML.query(selector)
+          |> LazyHTML.attribute("style")
+
+        assert String.ends_with?(style, "--a: " <> alpha)
+      end
 
       assert has_element?(
                view,
-               "[data-residency-day='2025-04-07'][class~='#{country_only_shade}']"
+               "[data-date='2025-04-07'][data-country=France]:not([data-distance])"
              )
     end
 
     render_click(view, "calendar_mode", %{"mode" => "countries"})
-    assert has_element?(view, "[data-residency-day='2025-04-01'][class~='bg-primary/20']")
-    assert has_element?(view, "[data-residency-day='2025-04-05'][class~='bg-base-200']")
+
+    assert has_element?(
+             view,
+             ".year-calendar[data-mode=countries] [data-date='2025-04-01'][data-country=France]"
+           )
+
+    assert has_element?(view, "[data-date='2025-04-05']:not([data-country])[data-distance]")
   end
 
   test "recalculation commands return the corresponding consolidated insights period", %{

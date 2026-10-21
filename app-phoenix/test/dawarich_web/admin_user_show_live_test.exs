@@ -48,7 +48,7 @@ defmodule DawarichWeb.AdminUserShowLiveTest do
 
     assert has_element?(
              view,
-             "#admin-user-copy[phx-hook=Clipboard][data-clipboard-text='#{c.target.api_key}']"
+             "#native-admin-user-copy[phx-hook=Clipboard][data-clipboard-text='#{c.target.api_key}']"
            )
 
     assert html =~ "synthet" <> "i"
@@ -64,7 +64,7 @@ defmodule DawarichWeb.AdminUserShowLiveTest do
     before = Accounts.get(c.actor.id)
     render_hook(view, "rotate_api_key", %{})
     assert Accounts.get(c.target.id).api_key == c.target.api_key
-    view |> element("#open-rotate") |> render_click()
+    view |> form("form[action$='/regenerate_api_key']") |> render_submit()
     html = view |> element("#confirm-rotate") |> render_click()
     key = Accounts.get(c.target.id).api_key
     assert key != c.target.api_key
@@ -72,7 +72,7 @@ defmodule DawarichWeb.AdminUserShowLiveTest do
 
     assert NativeAdminUI.html(view)
            |> LazyHTML.from_fragment()
-           |> LazyHTML.query("#admin-user-copy")
+           |> LazyHTML.query("#native-admin-user-copy")
            |> LazyHTML.attribute("data-clipboard-text") == [key]
 
     assert html =~
@@ -84,7 +84,7 @@ defmodule DawarichWeb.AdminUserShowLiveTest do
   test "password reset dispatch stores targeted digest and one sealed mail with Rails notice",
        c do
     {:ok, view, _} = show(c)
-    html = view |> element("#send-password-reset") |> render_click()
+    html = view |> form("form[action$='/send_password_reset']") |> render_submit()
 
     assert [[true]] =
              Repo.query!("SELECT reset_password_token IS NOT NULL FROM users WHERE id=$1", [
@@ -122,7 +122,7 @@ defmodule DawarichWeb.AdminUserShowLiveTest do
     render_hook(view, "send_password_reset", %{})
     render_hook(view, "send_password_reset", %{})
     assert Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[1]]
-    assert has_element?(view, "#send-password-reset[disabled]")
+    assert has_element?(view, "#native-send-password-reset[disabled]")
   end
 
   test "failed security effects unlock explicit retry", c do
@@ -136,7 +136,7 @@ defmodule DawarichWeb.AdminUserShowLiveTest do
     assert render_hook(view, "send_password_reset", %{}) =~
              NativeAdminUI.escaped("controllers.application.admin_action_failed")
 
-    refute has_element?(view, "#send-password-reset[disabled]")
+    refute has_element?(view, "#native-send-password-reset[disabled]")
     assert Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[0]]
     Application.put_env(:dawarich, Users, %{oban: ShowUIOban})
     render_hook(view, "send_password_reset", %{})
@@ -213,7 +213,7 @@ defmodule DawarichWeb.AdminUserShowLiveTest do
 
   test "open rotation dialog has exactly one label per control", c do
     {:ok, view, _} = show(c)
-    view |> element("#open-rotate") |> render_click()
+    view |> form("form[action$='/regenerate_api_key']") |> render_submit()
     socket = :sys.get_state(view.pid).socket
     html = rendered_to_string(view.module.render(Map.put(socket.assigns, :dialog_open, true)))
     assert Enum.count(LazyHTML.query(LazyHTML.from_fragment(html), "#rotate_api_key[open]")) == 1

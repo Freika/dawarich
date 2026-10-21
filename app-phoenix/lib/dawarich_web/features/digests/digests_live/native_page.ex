@@ -138,78 +138,58 @@ defmodule DawarichWeb.DigestsLive.NativePage do
   @impl true
   def render(assigns) do
     ~H"""
-    <main class="min-w-0 [&_.stat-title]:whitespace-normal [&_.stat-desc]:whitespace-normal [&_.card-body]:min-w-0 [&_.card-title]:flex-wrap [&_span]:[overflow-wrap:anywhere]">
-      <NativeIndexParts.render :if={@data && @live_action == :index} data={@data} locale={@locale} />
-      <nav :if={@data && @live_action == :index} class="flex flex-wrap gap-2">
-        <.link :if={@data.page > 1} patch={"/digests?page=#{@data.page-1}"}>{t(
-          @locale,
-          "views.pagination.previous",
-          %{}
-        )}</.link>
-        <.link :if={@data.more} patch={"/digests?page=#{@data.page+1}"}>{t(
+    <NativeIndexParts.render :if={@data && @live_action == :index} data={@data} locale={@locale} />
+    <nav
+      :if={@data && @live_action == :index && (@data.page > 1 || @data.more)}
+      class="flex flex-wrap gap-2"
+    >
+      <.link :if={@data.page > 1} patch={"/digests?page=#{@data.page-1}"}>{t(
+        @locale,
+        "views.pagination.previous",
+        %{}
+      )}</.link>
+      <.link :if={@data.more} patch={"/digests?page=#{@data.page+1}"}>{t(
+        @locale,
+        "views.pagination.next",
+        %{}
+      )}</.link>
+    </nav>
+    <div
+      :if={@data && @live_action == :show}
+      class="max-w-xl min-w-0 mx-auto my-5 [&_.stat-title]:whitespace-normal [&_.stat-desc]:whitespace-normal"
+    >
+      <NativeParts.summary locale={@locale} digest={@data} unit={@data.unit} />
+      <NativeFullParts.full
+        :if={!@data.restricted}
+        locale={@locale}
+        digest={@data}
+        unit={@data.unit}
+        table={@table}
+      />
+      <DawarichWeb.DigestsLive.NativeReviewActions.upgrade
+        :if={@data.restricted}
+        locale={@locale}
+        href="#"
+      />
+      <nav :if={@data.period.page > 1 || @data.places_more} class="flex flex-wrap min-w-0 gap-2">
+        <.link
+          :if={@data.period.page > 1}
+          patch={"/digests/#{@data.year}?page=#{@data.period.page-1}"}
+        >{t(@locale, "views.pagination.previous", %{})}</.link>
+        <.link :if={@data.places_more} patch={"/digests/#{@data.year}?page=#{@data.period.page+1}"}>{t(
           @locale,
           "views.pagination.next",
           %{}
         )}</.link>
       </nav>
-      <div :if={@data && @live_action == :show} class="max-w-xl mx-auto my-5 min-w-0">
-        <NativeParts.summary locale={@locale} digest={@data} unit={@data.unit} />
-        <NativeFullParts.full
-          :if={!@data.restricted}
-          locale={@locale}
-          digest={@data}
-          unit={@data.unit}
-          table={@table}
-        />
-        <section :if={@data.restricted} id="digest-upgrade" class="card bg-base-200 my-4">
-          <h2 class="card-title flex-wrap">
-            {t(@locale, "users.digests.show.want_more_insights", %{})}
-          </h2>
-          <p>
-            {t(@locale, "users.digests.show.upgrade_to_pro_to_see_your_full_year_in_review", %{})}
-          </p>
-          <button class="btn btn-primary whitespace-normal" phx-click="upgrade">{t(
-            @locale,
-            "users.digests.show.upgrade_to_pro",
-            %{}
-          )}</button>
-        </section>
-        <nav class="flex flex-wrap min-w-0 gap-2">
-          <.link
-            :if={@data.period.page > 1}
-            patch={"/digests/#{@data.year}?page=#{@data.period.page-1}"}
-          >{t(@locale, "views.pagination.previous", %{})}</.link>
-          <.link :if={@data.places_more} patch={"/digests/#{@data.year}?page=#{@data.period.page+1}"}>{t(
-            @locale,
-            "views.pagination.next",
-            %{}
-          )}</.link>
-        </nav>
-        <div class="flex flex-wrap min-w-0 gap-2">
-          <.link class="btn whitespace-normal" navigate="/digests">{t(
-            @locale,
-            "users.digests.show.back_to_all_digests",
-            %{}
-          )}</.link>
-          <button class="btn whitespace-normal" phx-click="open_share">{t(
-            @locale,
-            "users.digests.show.share",
-            %{}
-          )}</button>
-          <button class="btn whitespace-normal" phx-click="delete">{t(
-            @locale,
-            "users.digests.show.delete",
-            %{}
-          )}</button>
-        </div>
-      </div>
-      <DawarichWeb.DigestsLive.NativeDialogs.render
-        dialog={@dialog}
-        data={@data}
-        share={@share}
-        locale={@locale}
-      />
-    </main>
+      <DawarichWeb.DigestsLive.NativeReviewActions.actions locale={@locale} year={@data.year} />
+    </div>
+    <DawarichWeb.DigestsLive.NativeDialogs.render
+      dialog={@dialog}
+      data={@data}
+      share={@share}
+      locale={@locale}
+    />
     """
   end
 

@@ -41,7 +41,8 @@ defmodule DawarichWeb.NativeTripStatesTest do
              "No locations were recorded"
            )
 
-    refute has_element?(view, "[data-map-replay-open]")
+    assert has_element?(view, "[data-map-replay-open]")
+    refute has_element?(view, "[data-native-replay-panel]")
 
     Repo.query!(
       "UPDATE trips SET started_at=$1, ended_at=$2,source_identifier='planned' WHERE id=$3",

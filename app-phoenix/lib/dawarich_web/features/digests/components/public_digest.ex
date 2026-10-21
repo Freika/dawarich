@@ -2,7 +2,7 @@ defmodule DawarichWeb.PublicDigest do
   @moduledoc false
   use DawarichWeb, :html
   alias Dawarich.Digests
-  alias DawarichWeb.{Chartkick, DigestFormat, Icon, YearCards}
+  alias DawarichWeb.{Chartkick, NativeDigestFlag, DigestFormat, Icon, YearCards}
   embed_templates "public_digest/*", suffix: "_template"
 
   def document(assigns) do

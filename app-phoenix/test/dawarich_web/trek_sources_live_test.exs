@@ -64,7 +64,7 @@ defmodule DawarichWeb.TrekSourcesLiveTest do
     {:ok, view, _} = page(c.user)
 
     view
-    |> form("#trek-source-form")
+    |> form("#native-trek-source-form")
     |> render_submit(%{"trip_source" => %{"base_url" => c.url, "api_key" => "synthetic-trek"}})
 
     [[id]] = rows("SELECT id FROM trip_sources WHERE user_id=$1", [c.user.id])
@@ -75,7 +75,7 @@ defmodule DawarichWeb.TrekSourcesLiveTest do
              Translate.t("en", "settings.trek_sources.create.connected_choose_trips", %{})
 
     {:ok, selection, _} = live(conn_for(c.user), to)
-    assert has_element?(selection, "#trek-trips")
+    assert has_element?(selection, "#native-trek-trips")
     assert rows("SELECT count(*) FROM trip_sources WHERE user_id=$1", [c.user.id]) == [[1]]
     assert_receive {:native_provider_request, "/api/v1/trips"}
     assert_receive {:native_provider_request, "/api/v1/trips"}
@@ -117,12 +117,12 @@ defmodule DawarichWeb.TrekSourcesLiveTest do
     )
 
     {:ok, view, _} = page(c.user)
-    html = view |> element("#trek-sync-#{id}") |> render_click()
+    html = view |> form("form[action='/settings/trek_sources/#{id}/sync']") |> render_submit()
     assert html =~ escaped("sync.sync_queued")
     render_hook(view, "trek-sync", %{"id" => to_string(id)})
     assert rows("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [id]) == [[1]]
-    assert has_element?(view, "#trek-delete-#{id}[data-confirm][phx-disable-with]")
-    html = view |> element("#trek-delete-#{id}") |> render_click()
+    assert has_element?(view, "#native-trek-delete-#{id}[data-confirm][phx-disable-with]")
+    html = view |> form("form[action='/settings/trek_sources/#{id}']") |> render_submit()
     assert html =~ escaped("destroy.source_removed_trips_kept")
     assert rows("SELECT id FROM trip_sources WHERE id=$1", [id]) == []
 
@@ -139,7 +139,7 @@ defmodule DawarichWeb.TrekSourcesLiveTest do
     assert has_element?(view, "input[value='dated']:not([disabled])")
     assert has_element?(view, "input[value='undated'][disabled]")
     assert has_element?(view, "input[value='archived'][disabled]")
-    view |> form("#trek-trips") |> render_submit(%{"selection" => %{"trip_ids" => ["dated"]}})
+    view |> form("#native-trek-trips") |> render_submit(%{"trip_ids" => ["dated"]})
     {to, flash} = assert_redirect(view)
     assert to == "/settings/integrations?service=trek"
 
@@ -155,11 +155,17 @@ defmodule DawarichWeb.TrekSourcesLiveTest do
     loading = Translate.t("en", "javascript.common.loading", %{})
     static = conn_for(c.user) |> get(path(id)) |> html_response(200)
     assert static =~ loading
-    assert static =~ ~r/<button[^>]*type="submit"[^>]*disabled/
+
+    assert Enum.count(
+             LazyHTML.query(
+               LazyHTML.from_document(static),
+               "#native-trek-trips input[type=submit][disabled]"
+             )
+           ) == 1
 
     {:ok, view, _} = live(conn_for(c.user), path(id))
     refute render(view) =~ loading
-    assert has_element?(view, "#trek-trips button[type=submit]:not([disabled])")
+    assert has_element?(view, "#native-trek-trips input[type=submit]:not([disabled])")
   end
 
   test "foreign malformed and HTML selection paths answer 404; provider errors disable the source",
@@ -173,7 +179,7 @@ defmodule DawarichWeb.TrekSourcesLiveTest do
 
     alias_page = get(conn_for(c.user), path(id) <> ".html")
     assert alias_page.status == 200
-    assert alias_page.resp_body =~ ~s(id="trek-trips")
+    assert alias_page.resp_body =~ ~s(id="native-trek-trips")
     rows("UPDATE trip_sources SET base_url=$2 WHERE id=$1", [id, c.url <> "/fail"])
 
     assert {:error, {:redirect, %{to: "/settings/integrations?service=trek", flash: flash}}} =

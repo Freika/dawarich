@@ -50,7 +50,7 @@ defmodule DawarichWeb.NativeFamilyPresentationTest do
 
     assert has_element?(
              view,
-             "[data-family-member-id='#{id + 1}']",
+             "[data-native-family-member-id='#{id + 1}']",
              "native-family-#{id + 1}@dawarich.test"
            )
 
@@ -73,13 +73,37 @@ defmodule DawarichWeb.NativeFamilyPresentationTest do
     assert :sys.get_state(view.pid).socket.assigns.page_title == nil
   end
 
+  @tag family_application_shell: true
+  test "family application chrome and footer disappear with fresh membership refusal", %{id: id} do
+    {:ok, view, _} = open(id)
+    assert :sys.get_state(view.pid).socket.assigns.body_class == "min-h-screen flex flex-col"
+
+    assert :sys.get_state(view.pid).socket.assigns.viewport ==
+             "width=device-width,initial-scale=1"
+
+    assert has_element?(view, ".container.mx-auto.flex.flex-col.flex-1 > .navbar")
+    assert has_element?(view, ".container > .w-full.px-4 > .flex > #family-shell.contents")
+    assert has_element?(view, ".container > .mt-auto footer")
+    Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [id], log: false)
+    render_hook(view, "map:ready", %{})
+    refute has_element?(view, ".container, .navbar, footer, #native-family-map, #getting_started")
+  end
+
+  @tag family_unique_inputs: true
+  test "native family onboarding and sidebar have distinct invitation email controls", %{id: id} do
+    Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [id + 1], log: false)
+    {:ok, view, _} = open(id)
+    assert has_element?(view, "#native-family-onboarding-email[name='family_invitation[email]']")
+    assert has_element?(view, "#family_invitation_email[name='family_invitation[email]']")
+  end
+
   test "native family setup guidance follows fresh invitations and sharing with one editor", %{
     id: id
   } do
     Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [id + 1], log: false)
     Dawarich.Jobs.Ownership.put!(Repo, "command:mail.family_invitation", :oban)
     {:ok, view, _} = open(id)
-    assert has_element?(view, "#family-getting-started", "Invite")
+    assert has_element?(view, "#native-family-onboarding-invite input[type=submit][value=Invite]")
 
     assert render(view)
            |> LazyHTML.from_fragment()
@@ -93,14 +117,12 @@ defmodule DawarichWeb.NativeFamilyPresentationTest do
     assert has_element?(view, "#family-getting-started", "sharing")
 
     view
-    |> form("#native-family-sharing", sharing: %{enabled: "true", duration: "permanent"})
-    |> render_change()
+    |> render_hook("family:sharing", %{sharing: %{enabled: "true", duration: "permanent"}})
 
     refute has_element?(view, "#family-getting-started")
 
     view
-    |> form("#native-family-sharing", sharing: %{enabled: "false", duration: "permanent"})
-    |> render_change()
+    |> render_hook("family:sharing", %{sharing: %{enabled: "false", duration: "permanent"}})
 
     assert has_element?(view, "#family-getting-started", "sharing")
   end

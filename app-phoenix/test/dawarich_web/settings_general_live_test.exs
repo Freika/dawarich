@@ -74,13 +74,13 @@ defmodule DawarichWeb.SettingsGeneralLiveTest do
   defp save(view, params),
     do:
       view
-      |> form("#general-settings")
+      |> form("#native-general-settings")
       |> render_submit(
         Map.merge(
           %{
-            "monthly_digest_emails_enabled" => "true",
-            "yearly_digest_emails_enabled" => "true",
-            "news_emails_enabled" => "true",
+            "monthly_digest_emails_enabled" => "1",
+            "yearly_digest_emails_enabled" => "1",
+            "news_emails_enabled" => "1",
             "locale" => "en",
             "timezone" => "Europe/Berlin"
           },
@@ -102,8 +102,8 @@ defmodule DawarichWeb.SettingsGeneralLiveTest do
 
     html =
       save(view, %{
-        "monthly_digest_emails_enabled" => "false",
-        "news_emails_enabled" => "false",
+        "monthly_digest_emails_enabled" => "0",
+        "news_emails_enabled" => "0",
         "timezone" => "Asia/Tokyo"
       })
 
@@ -113,7 +113,11 @@ defmodule DawarichWeb.SettingsGeneralLiveTest do
     assert Dawarich.UserSettings.cast(settings["monthly_digest_emails_enabled"]) == false
     assert Dawarich.UserSettings.cast(settings["news_emails_enabled"]) == false
     assert Dawarich.UserSettings.cast(settings["yearly_digest_emails_enabled"]) == true
-    assert has_element?(view, "#general-settings select option[value='Asia/Tokyo'][selected]")
+
+    assert has_element?(
+             view,
+             "#native-general-settings select option[value='Asia/Tokyo'][selected]"
+           )
   end
 
   test "a save that finds no account shows the Rails alert instead of crashing", %{user: user} do
@@ -153,7 +157,7 @@ defmodule DawarichWeb.SettingsGeneralLiveTest do
   test "picking a language without saving keeps the choice on the page", %{user: user} do
     {:ok, view, _html} = live_as(user)
 
-    view |> form("#general-settings") |> render_change(%{"locale" => "fr"})
+    view |> form("#native-general-settings") |> render_change(%{"locale" => "fr"})
 
     assert has_element?(view, "input[name='locale'][value='fr'][checked]")
     assert stored(user)["locale"] == "en"
@@ -163,15 +167,15 @@ defmodule DawarichWeb.SettingsGeneralLiveTest do
     user: user
   } do
     {:ok, view, _html} = live_as(user)
-    refute has_element?(view, "#send-test-email")
+    refute has_element?(view, "#native-send-test-email")
     assert render_hook(view, "send_test_email", %{}) =~ "not authorized"
     assert jobs(user) == [[0]]
 
     Repo.query!("UPDATE users SET admin=true WHERE id=$1", [user.id])
     {:ok, view, _html} = live_as(user)
-    assert has_element?(view, "#send-test-email[type=button][phx-disable-with]")
+    assert has_element?(view, "#native-send-test-email[href='#'][phx-disable-with]")
 
-    html = view |> element("#send-test-email") |> render_click()
+    html = view |> element("#native-send-test-email") |> render_click()
 
     email = Repo.query!("SELECT email FROM users WHERE id=$1", [user.id]).rows |> hd() |> hd()
     assert html =~ text("en", "test_email_queued", %{"email" => email})
@@ -179,15 +183,15 @@ defmodule DawarichWeb.SettingsGeneralLiveTest do
 
     System.delete_env("SMTP_SERVER")
     {:ok, view, _html} = live_as(user)
-    refute has_element?(view, "#send-test-email")
+    refute has_element?(view, "#native-send-test-email")
   end
 
   test "unsupported SMTP authentication refuses test email without enqueueing", %{user: user} do
     System.put_env("SMTP_AUTHENTICATION", "unsupported")
     Repo.query!("UPDATE users SET admin=true WHERE id=$1", [user.id])
     {:ok, view, _} = live_as(user)
-    assert has_element?(view, "#send-test-email")
-    html = view |> element("#send-test-email") |> render_click()
+    assert has_element?(view, "#native-send-test-email")
+    html = view |> element("#native-send-test-email") |> render_click()
     assert html =~ text("en", "smtp_not_configured")
     assert Process.alive?(view.pid)
     assert jobs(user) == [[0]]
@@ -201,8 +205,8 @@ defmodule DawarichWeb.SettingsGeneralLiveTest do
     Repo.query!("UPDATE users SET admin=true WHERE id=$1", [user.id])
     {:ok, view, html} = live_as(user)
 
-    refute has_element?(view, "#send-test-email")
-    refute has_element?(view, "#supporter-form")
+    refute has_element?(view, "#native-send-test-email")
+    refute has_element?(view, "#native-supporter-form")
     refute has_element?(view, "#changelog-consent-setting")
     refute html =~ "/settings/background_jobs"
     assert render_hook(view, "send_test_email", %{}) =~ "not authorized"
@@ -228,7 +232,7 @@ defmodule DawarichWeb.SettingsGeneralLiveTest do
     end)
 
     {:ok, view, _html} = live_as(user)
-    verify = fn params -> view |> form("#supporter-form") |> render_submit(params) end
+    verify = fn params -> view |> form("#native-supporter-form") |> render_submit(params) end
 
     assert verify.(%{"supporter_email" => " "}) =~
              text("en", "please_enter_an_email_address_or_github_username")
@@ -243,7 +247,7 @@ defmodule DawarichWeb.SettingsGeneralLiveTest do
                platform: "Github"
              })
 
-    assert has_element?(view, "#general-settings input[name='show_supporter_badge']")
+    assert has_element?(view, "#native-general-settings input[name='show_supporter_badge']")
   end
 
   def handle_query(_event, _measurements, meta, pid),

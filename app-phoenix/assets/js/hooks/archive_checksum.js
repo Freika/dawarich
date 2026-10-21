@@ -29,6 +29,11 @@ export async function base64Md5(
 }
 
 export const ArchiveChecksum = {
+  sendUploadEvent(event, payload) {
+    if (this.el.getAttribute?.("phx-target"))
+      return this.pushEventTo(this.el, event, payload)
+    return this.pushEvent(event, payload)
+  },
   mounted() {
     this.generation = 0
     this.controllers = new Set()
@@ -47,7 +52,7 @@ export const ArchiveChecksum = {
         this.abort()
     }
     this.onError = (event) =>
-      this.pushEvent("upload_preparation_error", { stage: event.detail.stage })
+      this.sendUploadEvent("upload_preparation_error", { stage: event.detail.stage })
     this.el.addEventListener("dawarich:upload-error", this.onError)
     this.el.addEventListener("change", this.onChange)
     this.el.addEventListener("click", this.onCancel)
@@ -81,10 +86,10 @@ export const ArchiveChecksum = {
         },
       })
       if (!controller.signal.aborted && generation === this.generation)
-        this.pushEvent("archive_checksum", { ref, checksum })
+        this.sendUploadEvent("archive_checksum", { ref, checksum })
     } catch (error) {
       if (error.name !== "AbortError")
-        this.pushEvent("upload_preparation_error", { stage: "checksum" })
+        this.sendUploadEvent("upload_preparation_error", { stage: "checksum" })
     } finally {
       this.controllers.delete(controller)
     }
@@ -105,7 +110,7 @@ export const ArchiveChecksum = {
     try {
       const maxEntries = Number(this.el.dataset.maxEntries) || 20
       if (files.length > maxEntries) {
-        this.pushEvent("upload_selection_error", { kind: "too_many_files" })
+        this.sendUploadEvent("upload_selection_error", { kind: "too_many_files" })
         return
       }
       for (const [index, file] of Array.from(files).entries()) {
@@ -136,7 +141,7 @@ export const ArchiveChecksum = {
           })
         } catch (error) {
           if (error.name !== "AbortError")
-            this.pushEvent("upload_preparation_error", { stage: "checksum" })
+            this.sendUploadEvent("upload_preparation_error", { stage: "checksum" })
           return
         }
         check(controller.signal)
@@ -150,17 +155,18 @@ export const ArchiveChecksum = {
         prepared.push(item.file)
         if (item.clientWrapped) retained += item.file.size
         if (item.fallback)
-          this.pushEvent("upload_preparation_fallback", {
+          this.sendUploadEvent("upload_preparation_fallback", {
             kind: item.fallback,
             filename: file.name,
           })
       }
       check(controller.signal)
-      if (generation === this.generation)
-        this.upload(this.el.dataset.uploadName, prepared)
+      if (generation === this.generation) {
+        this.uploadTo(this.el, this.el.dataset.uploadName, prepared)
+      }
     } catch (error) {
       if (error.name !== "AbortError")
-        this.pushEvent("upload_preparation_error", { stage: "preparation" })
+        this.sendUploadEvent("upload_preparation_error", { stage: "preparation" })
     } finally {
       this.controllers.delete(controller)
     }

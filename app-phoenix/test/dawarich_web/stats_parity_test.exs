@@ -17,6 +17,264 @@ defmodule DawarichWeb.StatsParityTest do
     on_exit(fn -> System.delete_env("JWT_SECRET_KEY") end)
   end
 
+  test "Rails 1.16.0 monthly stats DOM preserves summary map charts and places" do
+    for file <- Path.wildcard(Path.join(@dir, "month_*.json")) do
+      {:error, :checked} =
+        Repo.transaction(fn ->
+          state = file |> File.read!() |> Jason.decode!()
+          {:ok, now, 0} = DateTime.from_iso8601(state["now"])
+          user = seed!(Map.put(state, "point_counts", nil), now)
+          locale = DawarichWeb.Locale.resolve(nil, user, %{})
+          scope = Dawarich.Accounts.Scope.for_user(user, locale)
+          {_kind, params} = route(state["path"])
+
+          {:ok, data} =
+            Dawarich.Stats.Pages.month(scope, params, now: now, self_hosted: state["self_hosted"])
+
+          html =
+            render_component(&DawarichWeb.StatsLive.NativeParts.page/1,
+              data: data,
+              locale: locale,
+              mode: :month
+            )
+
+          rails = File.read!(Path.rootname(file) <> ".html")
+
+          if data.data.stat do
+            assert Enum.count(
+                     LazyHTML.query(LazyHTML.from_fragment(html), "[phx-click=open_share]")
+                   ) ==
+                     2
+          end
+
+          actual = monthly_dom(html)
+          expected = monthly_dom(rails)
+
+          assert actual == expected,
+                 Path.basename(file) <> ": " <> ParityHTML.first_difference(actual, expected)
+
+          Repo.rollback(:checked)
+        end)
+    end
+  end
+
+  test "Rails 1.16.0 digest index and review DOM preserves cards charts and actions" do
+    for file <- Path.wildcard(Path.join(@dir, "digest*.json")) do
+      {:error, :checked} =
+        Repo.transaction(fn ->
+          state = file |> File.read!() |> Jason.decode!()
+          {:ok, now, 0} = DateTime.from_iso8601(state["now"])
+          user = seed!(Map.put(state, "point_counts", nil), now)
+          locale = DawarichWeb.Locale.resolve(nil, user, %{})
+          scope = Dawarich.Accounts.Scope.for_user(user, locale)
+          {_kind, params} = route(state["path"])
+          mode = if params == %{}, do: :index, else: :show
+
+          {:ok, data} =
+            if mode == :index,
+              do:
+                Dawarich.Digests.Pages.index(scope, params,
+                  now: now,
+                  self_hosted: state["self_hosted"]
+                ),
+              else:
+                Dawarich.Digests.Pages.get(scope, params,
+                  now: now,
+                  self_hosted: state["self_hosted"]
+                )
+
+          data = if mode == :show, do: Dawarich.Digests.PageWindow.prepare(data), else: data
+
+          html =
+            render_component(&DawarichWeb.DigestsLive.NativePage.render/1,
+              data: data,
+              locale: locale,
+              live_action: mode,
+              table: Dawarich.CountryNames.table(),
+              dialog: nil,
+              share: nil
+            )
+
+          rails = File.read!(Path.rootname(file) <> ".html")
+
+          if mode == :show do
+            [classes] =
+              html
+              |> LazyHTML.from_fragment()
+              |> LazyHTML.query(".max-w-xl")
+              |> LazyHTML.attribute("class")
+
+            assert classes =~ "[&_.stat-title]:whitespace-normal"
+            assert classes =~ "[&_.stat-desc]:whitespace-normal"
+          end
+
+          assert_unique_ids(html)
+          actual = digest_dom(html)
+          expected = digest_dom(rails)
+
+          assert actual == expected,
+                 Path.basename(file) <> ": " <> ParityHTML.first_difference(actual, expected)
+
+          Repo.rollback(:checked)
+        end)
+    end
+  end
+
+  test "Rails 1.16.0 public digest content preserves summary full cards and chart container" do
+    for file <- Path.wildcard(Path.join(@dir, "digest_*.json")) do
+      {:error, :checked} =
+        Repo.transaction(fn ->
+          state = file |> File.read!() |> Jason.decode!()
+          {:ok, now, 0} = DateTime.from_iso8601(state["now"])
+          user = seed!(Map.put(state, "point_counts", nil), now)
+          locale = DawarichWeb.Locale.resolve(nil, user, %{})
+          scope = Dawarich.Accounts.Scope.for_user(user, locale)
+          {_kind, params} = route(state["path"])
+
+          {:ok, data} =
+            Dawarich.Digests.Pages.get(scope, params, now: now, self_hosted: state["self_hosted"])
+
+          html =
+            render_component(&DawarichWeb.PublicDigest.document/1,
+              digest: data,
+              full: !data.restricted,
+              unit: data.unit,
+              locale: locale,
+              table: Dawarich.CountryNames.table(),
+              native: true
+            )
+
+          rails =
+            File.read!(Path.join(@dir, "public/" <> Path.basename(file, ".json") <> ".html"))
+
+          assert_unique_ids(html)
+          actual = monthly_dom(html)
+          expected = monthly_dom(rails)
+
+          assert actual == expected,
+                 Path.basename(file) <> ": " <> ParityHTML.first_difference(actual, expected)
+
+          Repo.rollback(:checked)
+        end)
+    end
+  end
+
+  test "native digest flag identifiers and fragment references belong to each occurrence" do
+    html =
+      Enum.map_join(0..1, fn index ->
+        render_component(&DawarichWeb.NativeDigestFlag.flag/1,
+          name: "United Kingdom",
+          table: [{"United Kingdom", "GB"}],
+          id: "native-digest-private-2024-time-#{index}"
+        )
+      end)
+
+    ids = html |> LazyHTML.from_fragment() |> LazyHTML.query("[id]") |> LazyHTML.attribute("id")
+    assert length(ids) > 0
+    assert length(Enum.uniq(ids)) == length(ids)
+    assert Enum.all?(ids, &String.starts_with?(&1, "native-digest-private-2024-time-"))
+
+    for [_, reference] <- Regex.scan(~r/(?:url\(\#|href="\#)([^)"]+)/, html),
+        do: assert(reference in ids)
+  end
+
+  defp assert_unique_ids(html) do
+    ids = html |> LazyHTML.from_fragment() |> LazyHTML.query("[id]") |> LazyHTML.attribute("id")
+    assert ids |> Enum.frequencies() |> Enum.filter(fn {_, count} -> count > 1 end) == []
+  end
+
+  defp digest_dom(html) do
+    html
+    |> String.replace(
+      "max-w-xl min-w-0 mx-auto my-5 [&_.stat-title]:whitespace-normal [&_.stat-desc]:whitespace-normal",
+      "max-w-xl mx-auto my-5"
+    )
+    |> monthly_dom()
+  end
+
+  defp monthly_dom(html) do
+    html
+    |> Dawarich.Test.NativeM4Corpus.reports()
+    |> ChartkickHTML.without_charts()
+    |> String.replace("http://www.example.com/native/", "/native/")
+    |> String.replace("http://www.example.com/assets/", "/assets/")
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.to_tree()
+    |> monthly_nodes()
+    |> ParityHTML.normalize()
+  end
+
+  defp monthly_nodes(nodes), do: Enum.flat_map(nodes, &monthly_node/1)
+
+  defp monthly_node({tag, attrs, children}) do
+    attrs =
+      Enum.map(attrs, fn {key, value} ->
+        if key in ~w(id href xlink:href clip-path fill stroke mask filter style aria-labelledby aria-describedby) do
+          {key,
+           String.replace(
+             value,
+             ~r/native-digest-(?:private|public)--?\d+-(?:time|places)-\d+-/,
+             ""
+           )}
+        else
+          {key, value}
+        end
+      end)
+
+    values = Map.new(attrs)
+
+    cond do
+      values["phx-click"] == "open_share" ->
+        []
+
+      values["phx-click"] == "stats:layer" ->
+        [
+          {tag, Enum.reject(attrs, fn {key, _} -> key == "aria-pressed" end),
+           monthly_nodes(children)}
+        ]
+
+      values["phx-click"] == "generate" ->
+        [
+          {tag,
+           Enum.map(attrs, fn
+             {"href", _} -> {"href", "#"}
+             pair -> pair
+           end), monthly_nodes(children)}
+        ]
+
+      tag == "a" and String.starts_with?(values["href"] || "", "/digests?year=") ->
+        [
+          {tag,
+           Enum.map(attrs, fn
+             {"href", _} -> {"href", "#"}
+             pair -> pair
+           end), monthly_nodes(children)}
+        ]
+
+      values["data-stat-page-target"] == "loading" ->
+        []
+
+      values["id"] == "stat-page-card" ->
+        [
+          {tag,
+           Enum.reject(attrs, fn {key, _} ->
+             key in ~w(data-api-key data-year data-month data-tiles-url data-tiles-fallback)
+           end), monthly_nodes(children)}
+        ]
+
+      values["id"] == "chart-1" or String.starts_with?(values["id"] || "", "chart-month-daily-") ->
+        [{tag, Enum.reject(attrs, fn {key, _} -> key == "data-chart" end), []}]
+
+      tag == "a" and String.starts_with?(values["href"] || "", "/auth/dawarich?") ->
+        [{"button", [{"class", values["class"]}], monthly_nodes(children)}]
+
+      true ->
+        [{tag, attrs, monthly_nodes(children)}]
+    end
+  end
+
+  defp monthly_node(other), do: [other]
+
   for html <- Path.wildcard("test/fixtures/stats/*.html"),
       file = Path.rootname(html) <> ".json" do
     @name Path.basename(file, ".json")

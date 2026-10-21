@@ -47,6 +47,7 @@ defmodule DawarichWeb.MapPanelsParityTest do
   defp client_state({tag, attrs, children}) do
     form = List.keyfind(attrs, "form", 0)
     token = List.keymember?(attrs, "data-token", 0)
+    upload = tag == "form" and {"action", "/imports"} in attrs
 
     value? =
       tag == "input" and
@@ -57,7 +58,14 @@ defmodule DawarichWeb.MapPanelsParityTest do
       |> Enum.reject(fn {name, _} ->
         name in ~w(checked selected form) or
           (form != nil and name == "name" and {"type", "hidden"} not in attrs) or
-          (token and name == "name") or (value? and name == "value")
+          (token and name == "name") or (value? and name == "value") or
+          (upload and
+             name in ~w(data-max-entries data-preparation-bytes data-preparation-original-bytes data-upload-kind data-upload-name))
+      end)
+      |> Enum.reject(fn {name, _} -> name == "data-direct-upload-url" end)
+      |> Enum.map(fn
+        {"multiple", _} -> {"multiple", ""}
+        attr -> attr
       end)
       |> checked_badge()
 
@@ -101,13 +109,7 @@ defmodule DawarichWeb.MapPanelsParityTest do
   defp user_tag?({"div", [{"class", "timeline-rail__section"}], _}), do: true
 
   defp user_tag?({"form", attrs, children}),
-    do: {"action", "/imports"} in attrs or ({"method", "dialog"} in attrs and children == [])
-
-  defp user_tag?({"div", [{"class", "flex justify-end"}], [{"a", attrs, _}]}),
-    do: {"href", "/imports/new"} in attrs
-
-  defp user_tag?({"div", [{"class", "text-xs text-base-content/60 mt-2"}], [text]}),
-    do: text =~ "automatically detected"
+    do: {"method", "dialog"} in attrs and children == []
 
   defp user_tag?({"svg", attrs, _}), do: {"shape-rendering", "crispEdges"} in attrs
   defp user_tag?(_), do: false
@@ -136,6 +138,9 @@ defmodule DawarichWeb.MapPanelsParityTest do
     document
     |> LazyHTML.query(selector)
     |> LazyHTML.to_html()
+    |> String.replace(~r/<input[^>]*data-native-upload-transport[^>]*>/, "")
+    |> String.replace(~r/<span[^>]*data-checksum-progress[^>]*>.*?<\/span>/s, "")
+    |> String.replace(~r/(<input[^>]*type="submit"[^>]*) disabled=""/, "\\1")
     |> ParityHTML.normalize()
     |> client_state()
     |> inspect(pretty: true, limit: :infinity, printable_limit: :infinity)

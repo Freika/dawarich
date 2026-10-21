@@ -28,8 +28,11 @@ defmodule DawarichWeb.NativeTripEffectsTest do
     id: id
   } do
     {:ok, view, _} = open(id)
-    assert has_element?(view, "[phx-click='trip:delete'][data-confirm]")
-    view |> element("[phx-click='trip:delete']") |> render_click()
+    assert has_element?(view, "form[phx-submit='trip:delete'] button[type=submit]")
+    refute has_element?(view, "form[phx-submit='trip:delete'] [data-confirm]")
+    view |> form("[phx-submit='trip:delete']", %{}) |> render_submit()
+    assert has_element?(view, "#native-trip-confirmation")
+    render_click(view, "trip:confirmation:accept", %{})
     assert_redirect(view, "/trips")
     assert Repo.query!("SELECT id FROM trips WHERE id=$1", [id * 10], log: false).rows == []
   end
@@ -37,10 +40,13 @@ defmodule DawarichWeb.NativeTripEffectsTest do
   test "native trip recalculation queues once and preserves cooldown feedback", %{id: id} do
     Dawarich.Jobs.Ownership.put!(Repo, "command:trips.calculate", :oban)
     {:ok, view, _} = open(id)
-    assert has_element?(view, "[phx-click='trip:recalculate'][data-confirm]")
-    view |> element("[phx-click='trip:recalculate']") |> render_click()
+    assert has_element?(view, "form[phx-submit='trip:recalculate'] button[type=submit]")
+    refute has_element?(view, "form[phx-submit='trip:recalculate'] [data-confirm]")
+    view |> form("[phx-submit='trip:recalculate']", %{}) |> render_submit()
+    assert has_element?(view, "#native-trip-confirmation")
+    render_click(view, "trip:confirmation:accept", %{})
     assert has_element?(view, "#flash-messages", "Recalculating")
-    assert has_element?(view, "[phx-click='trip:recalculate'][disabled]")
+    assert has_element?(view, "button.btn-outline[disabled]")
 
     assert [[%{"trip_id" => trip_id, "distance_unit" => "km"}]] =
              Repo.query!(
@@ -51,6 +57,7 @@ defmodule DawarichWeb.NativeTripEffectsTest do
 
     assert trip_id == id * 10
     render_click(view, "trip:recalculate", %{})
+    render_click(view, "trip:confirmation:accept", %{})
     assert has_element?(view, "#flash-messages", "Already recalculating")
 
     assert [[1]] =
@@ -98,7 +105,9 @@ defmodule DawarichWeb.NativeTripEffectsTest do
   test "native trip recalculation refusal leaves its resource and job graph unchanged", %{id: id} do
     Dawarich.Jobs.Ownership.put!(Repo, "command:trips.calculate", :sidekiq)
     {:ok, view, _} = open(id)
-    view |> element("[phx-click='trip:recalculate']") |> render_click()
+    view |> form("[phx-submit='trip:recalculate']", %{}) |> render_submit()
+    assert has_element?(view, "#native-trip-confirmation")
+    render_click(view, "trip:confirmation:accept", %{})
     assert has_element?(view, "#flash-messages", "Recalculation failed")
     assert has_element?(view, "#trip-shell")
 
@@ -153,7 +162,9 @@ defmodule DawarichWeb.NativeTripEffectsTest do
     end
 
     {:ok, view, _} = open(id)
-    view |> element("[phx-click='trip:delete']") |> render_click()
+    view |> form("[phx-submit='trip:delete']", %{}) |> render_submit()
+    assert has_element?(view, "#native-trip-confirmation")
+    render_click(view, "trip:confirmation:accept", %{})
     assert_redirect(view, "/trips")
 
     assert [[^foreign_note, ^other]] =

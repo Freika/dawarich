@@ -57,19 +57,70 @@ defmodule DawarichWeb.TripsNativeFormTest do
     |> hd()
   end
 
+  test "trip form preview uses cookie scoped native reader and zoned date changes" do
+    {:ok, view, _} = TripsNativeUI.live_as(9_951, "/trips/new")
+    selector = "#native-trip-form-preview[phx-hook=MapPreview]"
+    assert has_element?(view, selector)
+
+    view
+    |> form("#native-trip-form",
+      trip: %{started_at: "2026-05-09T08:00", ended_at: "2026-05-12T22:00"}
+    )
+    |> render_change()
+
+    [encoded] =
+      view
+      |> render()
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query(selector)
+      |> LazyHTML.attribute("data-map-config")
+
+    config = Jason.decode!(encoded)
+    assert config["interactive"] == true
+
+    assert config["range"] == %{
+             "startAt" => "2026-05-09T06:00:00Z",
+             "endAt" => "2026-05-12T20:00:00Z"
+           }
+
+    refute Map.has_key?(config, "apiKey")
+    assert rows("SELECT count(*) FROM trips WHERE user_id=9951") == [[0]]
+  end
+
+  test "trip preview matches form fallback for blank timezones" do
+    previous = System.get_env("TIME_ZONE")
+    System.put_env("TIME_ZONE", "UTC")
+
+    on_exit(fn ->
+      if previous, do: System.put_env("TIME_ZONE", previous), else: System.delete_env("TIME_ZONE")
+    end)
+
+    user = Dawarich.Accounts.get(9_951)
+    user = %{user | settings: Map.put(user.settings, "timezone", "")}
+    values = %{"started_at" => "2026-05-09T08:00", "ended_at" => "2026-05-12T22:00"}
+
+    config =
+      DawarichWeb.TripsNative.FormPreview.config(%{id: nil, style: "light"}, values, user, "en")
+
+    assert config["range"] == %{
+             "startAt" => "2026-05-09T08:00:00Z",
+             "endAt" => "2026-05-12T22:00:00Z"
+           }
+  end
+
   test "trip validation keeps dates name and rich draft without persisting" do
     {:ok, view, _html} = TripsNativeUI.live_as(9_951, "/trips/new")
     draft = "<div>Unsaved draft</div>"
 
     view
-    |> form("#trip-form",
+    |> form("#native-trip-form",
       trip: %{name: "", started_at: "2026-05-03T08:00", ended_at: "2026-05-01T08:00"}
     )
     |> render_change(%{"trip" => %{"rich_description_sgid" => draft}})
 
     html =
       view
-      |> form("#trip-form",
+      |> form("#native-trip-form",
         trip: %{name: "", started_at: "2026-05-03T08:00", ended_at: "2026-05-01T08:00"}
       )
       |> render_submit(%{"trip" => %{"rich_description_sgid" => draft}})
@@ -94,7 +145,7 @@ defmodule DawarichWeb.TripsNativeFormTest do
     assert value =~ "data-trix-attachment"
 
     view
-    |> form("#trip-form",
+    |> form("#native-trip-form",
       trip: %{name: "Renamed", started_at: "2026-05-09T08:00", ended_at: "2026-05-12T22:00"}
     )
     |> render_submit(%{
@@ -128,7 +179,7 @@ defmodule DawarichWeb.TripsNativeFormTest do
 
     assert {:error, {:redirect, %{to: "/users/sign_in"}}} =
              view
-             |> form("#trip-form", trip: %{name: "Hijacked"})
+             |> form("#native-trip-form", trip: %{name: "Hijacked"})
              |> render_submit()
 
     assert rows("SELECT name FROM trips WHERE id=995302") == [["trip 995302"]]

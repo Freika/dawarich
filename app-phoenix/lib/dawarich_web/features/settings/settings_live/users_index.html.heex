@@ -8,85 +8,108 @@
     two_factor={@two_factor}
     native
   />
-  <div class="w-10/12 mx-auto my-6 card bg-base-200 compact">
-    <div class="card-body flex flex-wrap items-center justify-between">
-      <h3 class="font-semibold">{t(@locale, "settings.users.index.user_registration", %{})}</h3>
-      <.form
-        :if={assigns[:registration_form]}
-        for={@registration_form}
-        id="phx-registration-settings"
-        phx-submit="update_registration"
-        class="flex flex-wrap items-center gap-3"
-      >
-        <.input
-          field={@registration_form[:registration_enabled]}
-          type="rails_checkbox"
-          label={
-            t(
+  <div class="w-10/12 mx-auto my-6">
+    <div class="card bg-base-200 compact">
+      <div class="card-body flex-row items-center justify-between">
+        <div>
+          <h3 class="font-semibold">
+            {t(@locale, "settings.users.index.user_registration", %{})}
+          </h3>
+          <p class="text-sm text-base-content/70">
+            {t(
               @locale,
               "settings.users.index.allow_new_users_to_register_via_email_and_password",
               %{}
-            )
-          }
-        />
-        <button
-          type="submit"
-          class="btn btn-sm"
-          phx-disable-with={t(@locale, "settings.users.edit.update", %{})}
-        >{t(@locale, "settings.users.edit.update", %{})}</button>
-      </.form>
+            )}
+          </p>
+        </div>
+        <form
+          id="phx-registration-settings"
+          class="flex items-center gap-3"
+          action="/settings/users/update_registration_settings"
+          accept-charset="UTF-8"
+          method="post"
+          phx-change="update_registration"
+          phx-submit="update_registration"
+        >
+          <input type="hidden" name="_method" value="patch" />
+          <input
+            type="hidden"
+            name="authenticity_token"
+            value={assigns[:rails_csrf_token] || Plug.CSRFProtection.get_csrf_token()}
+          />
+          <input type="hidden" name="registration_enabled" value="0" />
+          <input
+            type="checkbox"
+            name="registration_enabled"
+            value="1"
+            class="toggle toggle-primary"
+            checked={@data.registration}
+            aria-label={
+              t(
+                @locale,
+                "settings.users.index.allow_new_users_to_register_via_email_and_password",
+                %{}
+              )
+            }
+          />
+        </form>
+      </div>
     </div>
   </div>
-  <div class="w-10/12 mx-auto my-10">
-    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-      <button
-        class="btn"
-        phx-click={
-          JS.push("open_create") |> JS.dispatch("dawarich:open-dialog", to: "#create_user")
-        }
-      >{t(@locale, "settings.users.index.add_new_user", %{})}</button>
-      <form id="users-search" phx-submit="search" class="flex flex-wrap gap-2">
-        <label class="sr-only" for="users-search-value">{t(
-          @locale,
-          "settings.users.index.search_by_email",
-          %{}
-        )}</label>
-        <input
-          id="users-search-value"
-          type="text"
-          name="search"
-          value={@data.search || ""}
-          placeholder={t(@locale, "settings.users.index.search_by_email", %{})}
-          class="input input-bordered input-sm w-full sm:w-64"
-        />
+  <div class="flex flex-col lg:flex-row w-full my-10 space-x-4">
+    <div class="overflow-x-auto w-10/12 mx-auto">
+      <div class="flex items-center justify-between mb-4">
         <button
-          type="submit"
-          class="btn btn-sm btn-ghost"
-          phx-disable-with={t(@locale, "settings.users.index.search", %{})}
-        >{t(@locale, "settings.users.index.search", %{})}</button>
-        <.link
-          :if={@data.search not in [nil, ""]}
-          id="clear-users-search"
-          patch="/settings/users"
-          class="btn btn-sm btn-ghost"
-        >{t(@locale, "settings.users.index.clear", %{})}</.link>
-      </form>
-    </div>
-    <div class="overflow-x-auto">
+          class="btn"
+          phx-click={
+            JS.push("open_create") |> JS.dispatch("dawarich:open-dialog", to: "#create_user")
+          }
+        >{t(@locale, "settings.users.index.add_new_user", %{})}</button>
+        <form
+          id="native-users-search"
+          class="flex gap-2"
+          action="/settings/users"
+          accept-charset="UTF-8"
+          method="get"
+          phx-submit="search"
+        >
+          <input
+            type="text"
+            name="search"
+            value={@data.search || ""}
+            placeholder={t(@locale, "settings.users.index.search_by_email", %{})}
+            class="input input-bordered input-sm w-64"
+            aria-label={t(@locale, "settings.users.index.search_by_email", %{})}
+          />
+          <button
+            type="submit"
+            class="btn btn-sm btn-ghost"
+            phx-disable-with={t(@locale, "settings.users.index.search", %{})}
+          >{t(@locale, "settings.users.index.search", %{})}</button>
+          <.link
+            :if={@data.search not in [nil, ""]}
+            id="native-clear-users-search"
+            patch="/settings/users"
+            class="btn btn-sm btn-ghost"
+          >{t(@locale, "settings.users.index.clear", %{})}</.link>
+        </form>
+      </div>
       <AdminUsersTable.table locale={@locale} rows={@data.rows} actor={@current_user} />
-    </div>
-    <div class="mt-4 overflow-x-auto">
-      <Paginator.paginator
-        locale={@locale}
-        path="/settings/users"
-        query={@query}
-        page={@data.page}
-        total_pages={@data.pages}
-      />
+      <div class="mt-4">
+        <Paginator.paginator
+          locale={@locale}
+          path="/settings/users"
+          query={@query}
+          page={@data.page}
+          total_pages={@data.pages}
+        />
+      </div>
     </div>
   </div>
 </div>
 <AdminUserDialogs.dialogs
+  csrf={@rails_csrf_token}
   locale={@locale}
   rows={@data.rows}
   create_email={@create_email}

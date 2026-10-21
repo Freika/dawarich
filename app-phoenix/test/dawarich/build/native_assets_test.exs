@@ -11,12 +11,13 @@ defmodule Dawarich.Build.NativeAssetsTest do
   @chrome_inputs ~w(js/analytics_events.js js/hooks/achievement_unlocks.js js/hooks/changelog_widget.js)
   @chrome_base_bytes 6_707 + 548
   @places_inputs ~w(js/hooks/place_draft.js js/hooks/ordinary_dialog.js)
-  @m5_inputs ~w(js/charts/hook.js js/charts/heatmap.js js/editor/hook.js js/insights/year_map_hook.js)
+  @m5_inputs ~w(js/charts/hook.js js/charts/heatmap.js js/editor/hook.js js/insights/year_map_hook.js js/insights/presentation.js)
   @other_base_bytes 335_463 - 16_713 - 1_844 - 1_632 - 232 + 22 + 31 + 389
   @m4_inputs [
     {~w(js/hooks/archive_checksum.js js/uploaders/direct.js), 8416},
     {~w(js/hooks/credential_qr.js js/hooks/credential_value.js), 4256},
-    {~w(js/hooks/family_confirm.js js/hooks/family_invitation_clipboard.js), 2918},
+    {~w(js/hooks/family_confirm.js js/hooks/family_invitation_clipboard.js js/hooks/achievement_family.js),
+     3200},
     {~w(js/hooks/sharing_controls.js js/hooks/clipboard.js), 6365},
     {~w(js/map/shared/lazy_maps.js js/map/shared/shared_erase.js js/hooks/index.js), 3748}
   ]
@@ -89,6 +90,8 @@ defmodule Dawarich.Build.NativeAssetsTest do
     inputs = dir |> build!() |> app_input_bytes()
     assert Map.fetch!(inputs, "js/insights/year_map_hook.js") <= 2 * 1024
     refute Map.has_key?(inputs, "js/insights/year_map.js")
+    assert Map.fetch!(inputs, "js/insights/presentation.js") <= 2 * 1024
+    refute Map.has_key?(inputs, "js/insights/presentation_runtime.js")
 
     bytes =
       inputs
@@ -223,6 +226,9 @@ defmodule Dawarich.Build.NativeAssetsTest do
            )
 
     refute "js/map/ui/retry.js" in closure_inputs.(roots.map)
+    refute "js/map/replay/runtime.js" in closure_inputs.(roots.map)
+    refute "js/map/replay/panel.js" in closure_inputs.(roots.map)
+    refute "js/map/replay/density.js" in closure_inputs.(roots.map)
 
     refute Enum.any?(closure_inputs.(roots.poster), &String.contains?(&1, "mp4-muxer"))
     refute Enum.any?(closure_inputs.(roots.video), &String.contains?(&1, "fflate"))

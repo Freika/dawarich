@@ -7,6 +7,19 @@
   "renames": [
     {
       "old": {
+        "file": "T/dawarich_web/auth_gate_endpoint_test.exs",
+        "name": "credentials on: the invitation variant of the sign-in page stays with Rails"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/auth_gate_endpoint_test.exs",
+          "name": "credentials on: invitation sign-in is served locally without upstream requests"
+        }
+      ],
+      "authority": "D6 integration: native invitation GET successor retains credential gate and zero upstream requests; real invitation acceptance remains in NativeAuthIntegrationTest"
+    },
+    {
+      "old": {
         "file": "T/dawarich/a12f3b_h01_test.exs",
         "name": "part B handback occurs before native effects and final native transport errors are source compatible"
       },
@@ -608,7 +621,7 @@
         },
         {
           "file": "T/dawarich_web/onboarding_modal_test.exs",
-          "name": "deferred onboarding import entry links to complete native uploads without changing dismiss policy"
+          "name": "inline onboarding import uses the native upload transport without changing dismiss policy"
         },
         {
           "file": "T/dawarich_web/achievement_unlock_reveal_test.exs",
@@ -2798,7 +2811,7 @@
         },
         {
           "file": "T/dawarich_web/onboarding_modal_test.exs",
-          "name": "deferred onboarding import entry links to complete native uploads without changing dismiss policy"
+          "name": "inline onboarding import uses the native upload transport without changing dismiss policy"
         }
       ],
       "authority": "integ-m7 merged reader refresh; mechanism retirement retains named native behavior and external corpus"
@@ -2811,7 +2824,7 @@
       "successors": [
         {
           "file": "T/dawarich_web/onboarding_modal_test.exs",
-          "name": "deferred onboarding import entry links to complete native uploads without changing dismiss policy"
+          "name": "inline onboarding import uses the native upload transport without changing dismiss policy"
         }
       ],
       "authority": "integ-m7 merged reader refresh; mechanism retirement retains named native behavior and external corpus"
@@ -8141,7 +8154,7 @@
         },
         {
           "file": "T/dawarich_web/onboarding_modal_test.exs",
-          "name": "deferred onboarding import entry links to complete native uploads without changing dismiss policy"
+          "name": "inline onboarding import uses the native upload transport without changing dismiss policy"
         }
       ],
       "authority": "integ-m7 merged reader refresh; mechanism retirement retains named native behavior and external corpus"
@@ -12526,7 +12539,7 @@
         },
         {
           "file": "T/dawarich_web/onboarding_modal_test.exs",
-          "name": "deferred onboarding import entry links to complete native uploads without changing dismiss policy"
+          "name": "inline onboarding import uses the native upload transport without changing dismiss policy"
         },
         {
           "file": "T/dawarich_web/achievement_unlock_reveal_test.exs",
@@ -13097,12 +13110,6 @@
     },
     {
       "file": "app-phoenix/test/client/native_account_menu_patch_test.mjs",
-      "markers": [
-        "assets/js/app.js"
-      ]
-    },
-    {
-      "file": "app-phoenix/test/client/native_family_confirmation_test.mjs",
       "markers": [
         "assets/js/app.js"
       ]
@@ -15320,6 +15327,8 @@
     {
       "file": "app-phoenix/test/dawarich_web/tags_live_test.exs",
       "markers": [
+        "test/fixtures",
+        "fixtures/",
         "phoenix/js"
       ]
     },
@@ -15638,6 +15647,13 @@
     },
     {
       "file": "app-phoenix/test/dawarich_web/auth_pages_parity_test.exs",
+      "markers": [
+        "test/fixtures",
+        "fixtures/"
+      ]
+    },
+    {
+      "file": "app-phoenix/test/dawarich_web/tags_live_form_test.exs",
       "markers": [
         "test/fixtures",
         "fixtures/"
@@ -18235,5 +18251,80 @@
     ],
     "full_suite": "not run; controller-owned",
     "browser_acceptance": "not run; discovery only"
+  },
+  "d3_rails_1160_rerecording": {
+    "reference": "Rails 1.16.0",
+    "recorders": [
+      "app-phoenix/scripts/parity/a10_fixtures_spec.rb",
+      "app-phoenix/scripts/parity/achievement_public_fixtures_spec.rb",
+      "app-phoenix/scripts/parity/achievement_actions_fixtures_spec.rb",
+      "app-phoenix/scripts/parity/achievement_unlocks_fixtures_spec.rb",
+      "app-phoenix/scripts/parity/family_pages_fixtures_spec.rb"
+    ],
+    "corpus": [
+      "achievements_ui",
+      "achievement_public",
+      "achievement_actions",
+      "achievement_unlocks",
+      "family_pages"
+    ],
+    "readers": [
+      {
+        "file": "app-phoenix/test/dawarich_web/achievements_parity_test.exs",
+        "name": "#{@fixture[\"name\"]} retains source card values SVG and initial no-effects",
+        "contract": "Full normalized Rails page DOM, source values/SVG, and no initial writes; retarget_corpus tag removed."
+      },
+      {
+        "file": "app-phoenix/test/dawarich_web/family_pages_parity_test.exs",
+        "name": "family GET corpus #{@name} preserves scoped state and visible inputs in all shipped locales",
+        "contract": "301 route/state/locale leaves; admitted page DOM plus native map, confirmation, credential-reveal and upgrade boundaries. Includes 49 Rails application-shell sidecars from the existing family recorder, compared through D1 chrome wiring normalization."
+      },
+      {
+        "file": "app-phoenix/test/dawarich_web/achievement_public_test.exs",
+        "name": "native public and embed documents preserve source cards SVG metadata and privacy",
+        "contract": "Complete achievement content, SVG, metadata, owner locale, embedding and revocation privacy."
+      }
+    ],
+    "retained": "All behavior/data/security fixtures and historical register rows remain. Only Rails-emitted fixture bytes are refreshed by the assigned recorders; no corpus pruning or expectation generation from Phoenix.",
+    "reader_handoffs": [
+      {
+        "file": "app-phoenix/test/client/native_family_confirmation_test.mjs",
+        "old": "phoenix_html app.js/direct-command source probe",
+        "successor": "Same two named cases exercise FamilyConfirm and the native preparation/confirmation protocol; cancellation, single dispatch and teardown remain mutation-protected. No external fixture dependency remains."
+      }
+    ]
+  },
+  "d2_rails_1160_continuation": {
+    "reference": "Rails 1.16.0",
+    "recorders": [
+      "app-phoenix/scripts/parity/insights_details_fixtures_spec.rb",
+      "app-phoenix/scripts/parity/trips_fixtures_spec.rb"
+    ],
+    "corpus": [
+      "insights/overview-corpus.json",
+      "insights/overview-*.html",
+      "insights/residency-*.html",
+      "trips/remaining/presentation.json",
+      "trips/remaining/presentation/*.html"
+    ],
+    "readers": [
+      {
+        "file": "app-phoenix/test/dawarich_web/insights_details_parity_test.exs",
+        "name": "Rails 1.16.0 Insights overview preserves header period summary months tracking years and locked states"
+      },
+      {
+        "file": "app-phoenix/test/dawarich_web/insights_details_parity_test.exs",
+        "name": "Rails 1.16.0 residency preserves year calendar ribbon and distance presentation"
+      },
+      {
+        "file": "app-phoenix/test/dawarich_web/trips_show_parity_test.exs",
+        "name": "Rails 1.16.0 trip validation and managed forms retain exact source DOM"
+      },
+      {
+        "file": "app-phoenix/test/dawarich_web/trips_show_parity_test.exs",
+        "name": "Rails 1.16.0 complete trip envelope retains source path and planned map placement"
+      }
+    ],
+    "retained": "Existing reader files remain in readers; no reader or external behavior/data/security fixture is removed. New records are emitted by Rails request recorders; native DOM is not used as an expected fixture."
   }
 }

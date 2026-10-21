@@ -48,7 +48,8 @@ defmodule Dawarich.Test.NativeImportCorpus do
     doc
     |> LazyHTML.query("a[href]")
     |> Enum.reject(fn node ->
-      LazyHTML.attribute(node, "data-turbo-method") != []
+      LazyHTML.attribute(node, "data-turbo-method") != [] or
+        LazyHTML.attribute(node, "phx-click") != []
     end)
     |> Enum.map(fn node -> {LazyHTML.attribute(node, "href"), words(node)} end)
   end

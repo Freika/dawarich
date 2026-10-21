@@ -3,7 +3,6 @@ defmodule DawarichWeb.SettingsLive.General do
   use DawarichWeb, :live_view
   use DawarichWeb, :verified_routes
 
-  import DawarichWeb.CoreComponents, only: [input: 1]
   import DawarichWeb.Icon, only: [icon: 1, flag: 1]
   import DawarichWeb.ListParts, only: [page_header: 1]
   import DawarichWeb.SettingsParts

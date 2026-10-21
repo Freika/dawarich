@@ -86,7 +86,7 @@ defmodule DawarichWeb.DigestsNativeActionsTest do
       )
 
       assert {:ok, index} = Dawarich.Digests.Pages.index(scope, %{}, opts)
-      assert index.active
+      assert index.active == (status == 1)
       assert {:ok, %{year: 2024}} = Commands.generate(scope, params, Ecto.UUID.generate(), opts)
 
       assert {:ok, %{enabled: true}} =
@@ -100,7 +100,7 @@ defmodule DawarichWeb.DigestsNativeActionsTest do
       for until <- [~N[2026-10-10 10:00:00], ~N[2026-10-09 10:00:00], nil] do
         Repo.query!("UPDATE users SET active_until=$1 WHERE id=$2", [until, user.id], log: false)
         assert {:ok, expired} = Dawarich.Digests.Pages.index(scope, %{}, opts)
-        refute expired.active
+        assert expired.active == (status == 1)
         before_jobs = Repo.query!("SELECT count(*) FROM public.job_outbox", [], log: false).rows
         assert {:error, :inactive} = Commands.generate(scope, params, Ecto.UUID.generate(), opts)
 

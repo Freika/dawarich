@@ -979,12 +979,13 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     assert values(headers, "location") == ["https://a/users/sign_in"]
   end
 
-  test "credentials on: the invitation variant of the sign-in page stays with Rails", ctx do
+  test "credentials on: invitation sign-in is served locally without upstream requests", ctx do
     Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
     registration("false")
 
     path = "/users/sign_in?invitation_token=abc"
-    local_response(ctx, get(path), 422)
+    {200, _, body} = local_response(ctx, get(path), 200)
+    assert body =~ ~s(action="/users/sign_in")
 
     {session, _cookie} = guest()
     session = Map.put(session, "invitation_token", "abc")

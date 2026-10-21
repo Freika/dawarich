@@ -5,6 +5,7 @@ defmodule Dawarich.Insights.Consolidation do
 
   def load(scope, period, rows, params, opts) do
     if period.all_time do
+      geocoding = Dawarich.Geocoding.Config.resolve(Repo)
       {:ok, index} = Stats.Pages.index(scope, Map.take(params, ~w(page places_page)), opts)
 
       years =
@@ -21,6 +22,8 @@ defmodule Dawarich.Insights.Consolidation do
         |> Enum.map(& &1.year)
 
       %{
+        geocoding: geocoding.enabled,
+        store_geodata: geocoding.store_geodata,
         style: Dawarich.UserSettings.get(scope.user)["maps_maplibre_style"] || "light",
         index: index,
         map_years: years,
@@ -39,6 +42,7 @@ defmodule Dawarich.Insights.Consolidation do
             month: month,
             empty: is_nil(stat),
             distance: if(stat, do: stat.distance, else: 0),
+            toponyms: if(stat, do: stat.toponyms, else: []),
             locked: not Stats.in_window?(%{year: period.year, month: month}, period.cutoff)
           }
         end

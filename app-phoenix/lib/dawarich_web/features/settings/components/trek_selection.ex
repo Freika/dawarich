@@ -7,23 +7,33 @@ defmodule DawarichWeb.TrekSelection do
   def native_form(assigns) do
     ~H"""
     <div class="container max-w-3xl mx-auto px-4 my-8">
-      <h1 class="text-2xl font-bold">{label(@locale, "title")}</h1>
+      <DawarichWeb.ListParts.page_header title={label(@locale, "title")} />
       <p class="text-base-content/60 mb-6">{label(@locale, "subtitle")}</p>
-      <.form for={@form} id="trek-trips" phx-submit="import" class="space-y-3">
-        <input type="hidden" name="selection[trip_ids][]" value="" />
+      <form
+        id="native-trek-trips"
+        action={"/settings/trek_sources/#{@source.id}/import_trips"}
+        accept-charset="UTF-8"
+        method="post"
+        phx-submit="import"
+        class="space-y-3"
+      >
+        <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
         <p :if={@loading} role="status" class="text-base-content/60">
           {Translate.t(@locale, "javascript.common.loading", %{})}
         </p>
         <label
           :for={trip <- @trips}
-          class="flex items-start gap-3 rounded-box border border-base-content/10 bg-base-200 p-4"
+          class={"flex items-start gap-3 rounded-box border border-base-content/10 bg-base-200 p-4 " <> if(Sources.selectable?(trip), do: "cursor-pointer hover:border-primary/50", else: "opacity-60")}
         >
           <input
             type="checkbox"
-            name="selection[trip_ids][]"
+            name="trip_ids[]"
+            id={"native-trek-trip-#{trip["id"]}"}
             value={to_string(trip["id"])}
-            checked={to_string(trip["id"]) in @selected and Sources.selectable?(trip)}
-            disabled={not Sources.selectable?(trip)}
+            checked={
+              if(to_string(trip["id"]) in @selected and Sources.selectable?(trip), do: "checked")
+            }
+            disabled={if(not Sources.selectable?(trip), do: "disabled")}
             class="checkbox checkbox-primary mt-1"
           />
           <span>
@@ -41,19 +51,21 @@ defmodule DawarichWeb.TrekSelection do
             )}</span>
           </span>
         </label>
-        <div class="flex flex-wrap gap-2 pt-3">
-          <button
+        <div class="flex gap-2 pt-3">
+          <input
             type="submit"
+            name="commit"
+            value={label(@locale, "import_selected")}
             class="btn btn-primary"
             disabled={@loading}
             phx-disable-with={label(@locale, "import_selected")}
-          >{label(@locale, "import_selected")}</button>
+          />
           <.link navigate="/settings/integrations?service=trek" class="btn btn-ghost">{label(
             @locale,
             "back"
           )}</.link>
         </div>
-      </.form>
+      </form>
     </div>
     """
   end

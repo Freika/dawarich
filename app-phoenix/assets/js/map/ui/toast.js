@@ -13,7 +13,9 @@ export class Toast {
       z-index: 9999;
       display: flex;
       flex-direction: column;
+      width: min(300px, calc(100vw - 40px));
       max-width: calc(100vw - 40px);
+      overflow-x: clip;
       gap: 12px;
       pointer-events: none;
     `
@@ -89,7 +91,7 @@ export class Toast {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       font-size: 14px;
       font-weight: 500;
-      max-width: 300px;
+      max-width: 100%;
       line-height: 1.4;
       display: flex;
       align-items: center;

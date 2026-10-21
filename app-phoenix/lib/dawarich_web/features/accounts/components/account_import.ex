@@ -90,14 +90,14 @@ defmodule DawarichWeb.AccountImport do
             >
               {t(@locale, "devise.registrations.edit.cancel", %{})}
             </button>
-            <button
+            <input
               type="submit"
+              name="commit"
+              value={t(@locale, "devise.registrations.edit.import_data", %{})}
               class="btn btn-primary w-full sm:w-auto"
               disabled={not @can_import}
               phx-disable-with={t(@locale, "devise.registrations.edit.importing", %{})}
-            >
-              {t(@locale, "devise.registrations.edit.import_data", %{})}
-            </button>
+            />
           </div>
         </form>
       </div>

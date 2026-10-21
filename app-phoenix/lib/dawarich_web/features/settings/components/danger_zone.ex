@@ -41,9 +41,9 @@ defmodule DawarichWeb.DangerZone do
           </p>
         </div>
         <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <button
-            id="export-data"
-            type="button"
+          <a
+            id="native-export-data"
+            href="#"
             class="btn btn-primary w-full sm:w-auto"
             phx-click="export_data"
             phx-disable-with={t(@locale, "devise.registrations.edit.export_my_data", %{})}
@@ -52,7 +52,7 @@ defmodule DawarichWeb.DangerZone do
             }
           >
             {t(@locale, "devise.registrations.edit.export_my_data", %{})}
-          </button>
+          </a>
           <button
             type="button"
             class="btn btn-outline w-full sm:w-auto"
@@ -153,7 +153,12 @@ defmodule DawarichWeb.DangerZone do
                   class="btn w-full sm:w-auto"
                   phx-click={JS.dispatch("dawarich:close-dialog", to: "#delete_account_modal")}
                 >{t(@locale, "devise.registrations.edit.cancel", %{})}</button>
-                <button type="submit" class="btn btn-error w-full sm:w-auto">{@submit}</button>
+                <input
+                  type="submit"
+                  name="commit"
+                  value={@submit}
+                  class="btn btn-error w-full sm:w-auto"
+                />
               </div>
             </form>
           </div>

@@ -180,7 +180,7 @@ export async function settings(page, locale, zone) {
   const navigation = changesLocale
     ? page.waitForNavigation({ waitUntil: "load" })
     : null
-  await page.locator('#general-settings button[type="submit"]').click()
+  await page.locator('#native-general-settings input[type="submit"]').click()
   if (navigation) await navigation
   await expect(page.locator("html")).toHaveAttribute("lang", locale)
   await readyPage(page)

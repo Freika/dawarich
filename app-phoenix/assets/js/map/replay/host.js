@@ -1,8 +1,5 @@
 import { bindTool } from "../ui/host_tools.js"
 import { mapTranslate } from "../ui/translate.js"
-import { createReplayDensity } from "./density.js"
-import { createReplayPanel } from "./panel.js"
-import { createReplay } from "./runtime.js"
 
 export function installHostReplay({
   owner,
@@ -13,6 +10,7 @@ export function installHostReplay({
   reader,
   onActive = () => {},
 }) {
+  let controls = null
   let runtime = null,
     panel = null,
     density = null,
@@ -74,7 +72,7 @@ export function installHostReplay({
       runtime.close()
       runtime = null
     }
-    runtime ??= createReplay({
+    runtime ??= controls.createReplay({
       map,
       timezone: owner.config.range.timezone,
       loadDay: async (_range, { signal }) => {
@@ -112,6 +110,8 @@ export function installHostReplay({
       onActive(true)
       range = JSON.stringify(next)
       try {
+        controls ??= await import("./controls.js")
+        if (!active || current !== generation || lifetime.destroyed) return "cancelled"
         const result = await ensure().open(next)
         if (result !== "ready" || !active) return result
         const photoModule = library?.Marker ? await import("./photos.js") : null
@@ -120,7 +120,7 @@ export function installHostReplay({
         show(true)
         panel?.destroy()
         if (keys.every((key) => elements[key]))
-          panel = createReplayPanel({ elements, replay: runtime, translate })
+          panel = controls.createReplayPanel({ elements, replay: runtime, translate })
         panel?.onState(latest)
         density?.destroy()
         photos?.destroy()
@@ -128,7 +128,7 @@ export function installHostReplay({
           '[data-native-replay-target="replayDensityContainer"]',
         )
         if (densityRoot)
-          density = createReplayDensity({
+          density = controls.createReplayDensity({
             container: densityRoot,
             document: root.ownerDocument,
             manager: runtime.manager,
@@ -167,7 +167,7 @@ export function installHostReplay({
       stack = null
       show(false)
     },
-    play: () => ensure().play(),
+    play: () => runtime?.play(),
     pause: () => runtime?.pause(),
     seek: (minute) => runtime?.seek(minute),
     setSpeed: (speed) => runtime?.setSpeed(speed),

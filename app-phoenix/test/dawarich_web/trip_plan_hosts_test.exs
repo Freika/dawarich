@@ -257,11 +257,12 @@ defmodule DawarichWeb.TripPlanHostsTest do
       marker =
         cond do
           selector == "#trip-shell" -> "trip-shell"
-          selector == "#trips" -> "native-trip-preview"
+          selector == "#trips" -> ~s(phx-hook="MapPreview")
           true -> "trip-form"
         end
 
-      assert conn.resp_body =~ marker
+      present = String.contains?(conn.resp_body, marker)
+      assert present, entry["name"]
     end
 
     {user, id} = seed(Enum.find(@effects, &(&1["name"] == "managed_update")))
