@@ -9,12 +9,13 @@
 #
 # How it works:
 # 1. Queries for untracked points within the lookback window (default: 6 hours)
-# 2. Uses SQL-based segmentation with user's time/distance thresholds
+# 2. Segments by the user's time threshold, ignoring distance as in bulk generation
 # 3. Creates tracks using the TrackBuilder module
 # 4. Optionally merges new tracks with recent preceding tracks
 #
-# The lookback window is intentionally short to keep this fast. Older untracked
-# points are handled by the daily generation job (Tracks::DailyGenerationJob).
+# The lookback window is intentionally short to keep this fast. Untracked points
+# after the user's latest track are handled by Tracks::DailyGenerationJob; older
+# gaps between existing tracks need a manual track recalculation.
 #
 # Used by:
 # - Tracks::RealtimeGenerationJob
@@ -58,7 +59,6 @@ class Tracks::IncrementalGenerator
       lookback_start,
       Time.current.to_i,
       time_threshold_minutes,
-      distance_threshold_meters,
       untracked_only: true
     )
   end
@@ -69,10 +69,6 @@ class Tracks::IncrementalGenerator
 
   def time_threshold_minutes
     user.safe_settings.minutes_between_routes.to_i
-  end
-
-  def distance_threshold_meters
-    user.safe_settings.meters_between_routes.to_i
   end
 
   def threshold_seconds

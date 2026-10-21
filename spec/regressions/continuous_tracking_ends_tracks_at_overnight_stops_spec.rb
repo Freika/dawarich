@@ -55,7 +55,7 @@ RSpec.describe 'Continuous tracking ends tracks at overnight stops' do
   end
 
   it 'separates the journeys in SQL segmentation of the full feed' do
-    segments = Track.get_segments_with_points(user.id, start_timestamp, points.last.timestamp, 30, 500)
+    segments = Track.get_segments_with_points(user.id, start_timestamp, points.last.timestamp, 30)
     first_segment = segments.find { |segment| segment[:points].any? { |point| point.id == points.first.id } }
     last_segment = segments.find { |segment| segment[:points].any? { |point| point.id == points.last.id } }
 

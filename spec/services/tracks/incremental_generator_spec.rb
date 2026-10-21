@@ -69,6 +69,22 @@ RSpec.describe Tracks::IncrementalGenerator do
       end
     end
 
+    context 'when consecutive untracked points exceed the distance threshold' do
+      let(:base_time) { 1.hour.ago.to_i }
+      let!(:points) do
+        3.times.map do |index|
+          create(:point, user: user, timestamp: base_time + index.minutes.to_i,
+                         lonlat: "POINT(#{-140 + index * 0.0127} -45)")
+        end
+      end
+
+      it 'creates one track containing all points' do
+        expect { generator.call }.to change(Track, :count).by(1)
+
+        expect(user.tracks.sole.points).to match_array(points)
+      end
+    end
+
     context 'when points span multiple segments' do
       let(:base_time) { 3.hours.ago.to_i }
 
@@ -85,11 +101,7 @@ lonlat: 'POINT(-75.007 41.7138)')
       end
 
       it 'creates tracks for separate segments' do
-        # With a 2-hour gap between segments (exceeds 30-minute threshold),
-        # the SQL segmentation creates 2 separate segments.
-        # However, with our merge logic, tracks ending within the threshold
-        # may be merged. The important thing is that tracks ARE created.
-        expect { generator.call }.to change(Track, :count).by_at_least(1)
+        expect { generator.call }.to change(Track, :count).by(2)
       end
     end
 
