@@ -40,6 +40,17 @@ RSpec.describe 'Foursquare Swarm data export import' do
 
     after { FileUtils.rm_f(zip_path) }
 
+    it 'does not count the photo folder against the archive limits' do
+      stub_const('Imports::ZipExtractor::MAX_FILES', 5)
+      Zip::File.open(zip_path) do |zip|
+        5.times { |i| zip.get_output_stream("pix/photo#{i}.jpg") { |f| f.write('jpeg') } }
+      end
+
+      Imports::ZipExtractor.new(archive, user.id, zip_path).call
+
+      expect(user.imports.pluck(:source)).to eq(['swarm'])
+    end
+
     it 'imports only the checkins files, tagged as Swarm' do
       Imports::ZipExtractor.new(archive, user.id, zip_path).call
 

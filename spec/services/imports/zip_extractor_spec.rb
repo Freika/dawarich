@@ -205,7 +205,7 @@ RSpec.describe Imports::ZipExtractor do
         path = Rails.root.join('tmp', "test_too_many_files_#{SecureRandom.hex(4)}.zip").to_s
         ::Zip::File.open(path, create: true) do |zipfile|
           3.times do |index|
-            zipfile.get_output_stream("entry_#{index}.txt") { |file| file.write('metadata') }
+            zipfile.get_output_stream("entry_#{index}.json") { |file| file.write('{}') }
           end
         end
         path

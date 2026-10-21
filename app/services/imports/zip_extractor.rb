@@ -75,7 +75,8 @@ module Imports
     end
 
     def extractable_entry?(entry)
-      !entry.directory? && !entry.name.include?('..') && !entry.name.start_with?('/')
+      !entry.directory? && !entry.name.include?('..') && !entry.name.start_with?('/') &&
+        SUPPORTED_EXTENSIONS.include?(File.extname(entry.name).downcase)
     end
 
     def extract_entry(entry, dest)
