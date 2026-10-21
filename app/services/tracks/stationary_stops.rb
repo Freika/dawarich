@@ -30,6 +30,28 @@ class Tracks::StationaryStops
     (2 * threshold_seconds) + 1
   end
 
+  # A track that starts at a departure must never be joined to the track before it.
+  def self.departure?(track, threshold_seconds)
+    first_point = track.points.order(:timestamp).first
+    return false unless first_point
+
+    Track.stationary_break_point_ids(track.user_id, first_point.timestamp, first_point.timestamp, threshold_seconds)
+         .include?(first_point.id)
+  end
+
+  # Realtime adds a stop's first threshold of dwell to the arrival track before the stop
+  # can be recognized. Returns those trailing points, keeping the arrival and its journey.
+  def self.dwell_tail_point_ids(track, threshold_seconds)
+    end_timestamp = track.end_at.to_i
+    window_start = [track.start_at.to_i, end_timestamp - (2 * threshold_seconds)].max
+    breaks = Track.stationary_break_point_ids(track.user_id, window_start, end_timestamp + threshold_seconds,
+                                              threshold_seconds).to_set
+    ids = track.points.order(timestamp: :desc).pluck(:id)
+    tail = ids.take_while { |id| breaks.include?(id) }
+
+    ids.size - tail.size >= 2 ? tail : []
+  end
+
   def initialize(samples, threshold_seconds)
     @samples = samples
     @threshold_seconds = threshold_seconds

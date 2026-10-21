@@ -73,9 +73,8 @@ RSpec.describe 'Continuous tracking ends tracks at overnight stops' do
     expect(arrival_track).to be_present
     expect(departure_track).to be_present
     expect(departure_track.id).not_to eq(arrival_track.id)
-    # Realtime cannot recognize a long stop before the dwell threshold is reached.
-    expect(arrival_track.end_at.to_i).to be_between(feed[12].timestamp, feed[18].timestamp)
-    expect(feed[19..287].map { |point| point.reload.track_id }).to all(be_nil)
+    expect(arrival_track.end_at.to_i).to eq(feed[12].timestamp)
+    expect(feed[13..287].map { |point| point.reload.track_id }).to all(be_nil)
     expect(departure_track.start_at.to_i).to eq(feed[288].timestamp)
   end
 
@@ -99,6 +98,91 @@ RSpec.describe 'Continuous tracking ends tracks at overnight stops' do
     expect(visit.center[0]).to be_within(0.0001).of(-40.0)
     expect(visit.center[1]).to be_within(0.0001).of(-139.976)
     expect(feed[19..287].map { |point| point.reload.visit_id }).to all(eq(visit.id))
+  end
+
+  [[15, 20], [10, 25], [30, 40]].each do |threshold, stop_minutes|
+    context "with a #{stop_minutes}-minute stop and a #{threshold}-minute threshold" do
+      it 'keeps the journeys apart after the boundary merge in bulk generation' do
+        stop_user = short_stop_user(threshold)
+        feed = short_stop_rows(stop_minutes).map { |minute, lon| create_short_stop_point(stop_user, minute, lon) }
+
+        process_bulk(stop_user, feed)
+
+        expect(feed.first.reload.track_id).to be_present
+        expect(feed.last.reload.track_id).to be_present
+        expect(feed.last.track_id).not_to eq(feed.first.track_id)
+      end
+
+      it 'keeps the journeys apart and ends the arrival track at the arrival in realtime generation' do
+        stop_user = short_stop_user(threshold)
+        feed = feed_in_realtime(stop_user, short_stop_rows(stop_minutes))
+        arrival_track = feed.first.reload.track
+        departure_track = feed[-10].reload.track
+
+        expect(arrival_track).to be_present
+        expect(departure_track).to be_present
+        expect(departure_track.id).not_to eq(arrival_track.id)
+        expect(arrival_track.end_at.to_i).to eq(feed[30].timestamp)
+        expect(feed[31...(30 + stop_minutes)].map { |point| point.reload.track_id }).to all(be_nil)
+        expect(departure_track.start_at.to_i).to eq(feed[30 + stop_minutes].timestamp)
+      end
+    end
+  end
+
+  it 'keeps a stop shorter than the threshold inside one track in bulk and realtime generation' do
+    bulk_user = short_stop_user(30)
+    bulk_feed = short_stop_rows(10).map { |minute, lon| create_short_stop_point(bulk_user, minute, lon) }
+    process_bulk(bulk_user, bulk_feed)
+
+    realtime_feed = feed_in_realtime(short_stop_user(30), short_stop_rows(10))
+
+    expect(bulk_feed.last.reload.track_id).to be_present
+    expect(bulk_feed.last.track_id).to eq(bulk_feed.first.reload.track_id)
+    expect(realtime_feed[-10].reload.track_id).to be_present
+    expect(realtime_feed[-10].track_id).to eq(realtime_feed.first.reload.track_id)
+  end
+
+  def short_stop_user(threshold)
+    create(:user, settings: { 'minutes_between_routes' => threshold, 'meters_between_routes' => 500 })
+  end
+
+  # Thirty minutes of walking, a stop at the last walking position reported every
+  # minute, and thirty more minutes of walking.
+  def short_stop_rows(stop_minutes)
+    stop_lon = -140.0 + 30 * 0.0015
+    (0..30).map { |minute| [minute, -140.0 + minute * 0.0015] } +
+      (31..(30 + stop_minutes)).map { |minute| [minute, stop_lon] } +
+      (1..30).map { |step| [30 + stop_minutes + step, stop_lon + step * 0.0015] }
+  end
+
+  def create_short_stop_point(stop_user, minute, lon)
+    create(:point, user: stop_user, tracker_id: 'synthetic-short-stop',
+                   timestamp: start_timestamp + minute * 60, lonlat: "POINT(#{lon} -40.0)")
+  end
+
+  def process_bulk(stop_user, feed)
+    chunk = {
+      chunk_id: SecureRandom.uuid,
+      start_timestamp: start_timestamp, end_timestamp: feed.last.timestamp,
+      buffer_start_timestamp: start_timestamp, buffer_end_timestamp: feed.last.timestamp
+    }
+    session = Tracks::SessionManager.create_for_user(stop_user.id)
+    session.mark_started(1)
+    travel_to(Time.zone.at(feed.last.timestamp)) do
+      Tracks::TimeChunkProcessorJob.perform_now(stop_user.id, session.session_id, chunk)
+      Tracks::BoundaryDetector.new(stop_user).resolve_cross_chunk_tracks
+    end
+    session.cleanup_session
+  end
+
+  def feed_in_realtime(stop_user, rows)
+    rows.map do |minute, lon|
+      travel_to(Time.zone.at(start_timestamp + minute * 60)) do
+        point = create_short_stop_point(stop_user, minute, lon)
+        Tracks::IncrementalGenerator.new(stop_user).call
+        point
+      end
+    end
   end
 
   def create_feed_point(index)
