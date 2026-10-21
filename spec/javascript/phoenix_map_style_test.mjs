@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import { test } from "node:test"
 import {
   fetchStyle,
@@ -20,6 +21,22 @@ const base = {
 const response = (ok = true) => ({
   ok,
   json: async () => structuredClone(base),
+})
+
+test("bundled palette sources use the Rails vector tiles instead of retired PMTiles URLs", async () => {
+  const tiles = "https://tyles.dwri.xyz/planet/{z}/{x}/{y}.mvt"
+  for (const styleName of ["light", "dark", "white", "black", "grayscale"]) {
+    const source = JSON.parse(readFileSync(new URL(`../../public/maps_maplibre/styles/${styleName}.json`, import.meta.url)))
+    const original = structuredClone(source)
+    for (const tilesUrl of [undefined, "https://custom.test/{z}/{x}/{y}.mvt"]) {
+      const style = await fetchStyle({ styleName, tilesUrl }, { fetch: async () => ({ ok: true, json: async () => source }) })
+      assert.deepEqual(style.sources.protomaps, {
+        type: "vector", tiles: [tilesUrl || tiles], minzoom: 0, maxzoom: 15,
+        attribution: source.sources.protomaps.attribution || '<a href="https://github.com/protomaps/basemaps">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
+      })
+      assert.deepEqual(source, original)
+    }
+  }
 })
 
 test("native style loader preserves raster vector overlays and resolves relative style assets", async () => {

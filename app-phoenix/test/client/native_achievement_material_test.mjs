@@ -45,3 +45,21 @@ test("offscreen achievement cards wait for the Rails 160px visibility margin", a
   hook.destroyed()
   assert.ok(disconnected > 0)
 })
+
+test("material visibility observes the card box rather than its display-contents slot", async (t) => {
+  const previous = globalThis.IntersectionObserver
+  const card = {}, observed = []
+  globalThis.IntersectionObserver = class {
+    constructor() {}
+    observe(element) { observed.push(element) }
+    disconnect() {}
+  }
+  t.after(() => { globalThis.IntersectionObserver = previous })
+  const hook = {
+    ...AchievementMaterial,
+    el: { closest(selector) { return selector === ".ach-card-wrap" ? card : null } },
+  }
+  await hook.mounted()
+  assert.deepEqual(observed, [card])
+  hook.destroyed()
+})

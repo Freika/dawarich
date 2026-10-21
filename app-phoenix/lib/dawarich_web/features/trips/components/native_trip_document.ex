@@ -24,7 +24,7 @@ defmodule DawarichWeb.NativeTripDocument do
       :if={@page}
       id="trip-shell"
       data-native-map-root
-      class="contents [&>#video-studio-owner]:contents"
+      class="w-full min-w-0 pl-5 [&>#video-studio-owner]:contents"
     >
       <div class="container mx-auto px-4 my-5">
         <div class="flex flex-col lg:flex-row gap-6 lg:h-[calc(100dvh-9.75rem)]">
@@ -37,7 +37,7 @@ defmodule DawarichWeb.NativeTripDocument do
               future={@page.presentation.future_start}
             />
           </div>
-          <div class="w-full min-w-0 lg:w-2/5 lg:h-full lg:overflow-y-auto">
+          <div class="w-full min-w-0 lg:min-w-[auto] lg:w-2/5 lg:h-full lg:overflow-y-auto">
             <DawarichWeb.NativeTripActions.actions page={@page.presentation} locale={@locale} />
             <DawarichWeb.NativeTripToolbar.toolbar
               page={@page}

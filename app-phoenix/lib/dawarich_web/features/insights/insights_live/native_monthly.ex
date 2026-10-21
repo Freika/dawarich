@@ -110,7 +110,19 @@ defmodule DawarichWeb.InsightsLive.NativeMonthly do
                 label={tr(@locale, "weekly_pattern")}
                 revision={@data.revision}
                 data={MonthFormat.chart(@locale, @digest, @data.unit)}
-                options={%{suffix: " " <> @data.unit, colors: ["#3abff8"]}}
+                options={
+                  %{
+                    suffix: " " <> @data.unit,
+                    colors: ["#3abff8"],
+                    library: %{
+                      plugins: %{legend: %{display: false}},
+                      scales: %{
+                        x: %{grid: %{display: false}},
+                        y: %{grid: %{color: "rgba(0,0,0,0.1)"}, ticks: %{display: false}}
+                      }
+                    }
+                  }
+                }
               />
             </div>
           </div>

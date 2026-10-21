@@ -8,8 +8,8 @@ defmodule DawarichWeb.NativeTripActions do
   def actions(assigns) do
     ~H"""
     <div id="native-trip-header" class="mb-6">
-      <div class="flex flex-wrap items-start justify-between gap-3 mb-1">
-        <h1 class="text-3xl font-bold leading-tight min-w-0 [overflow-wrap:anywhere]">
+      <div class="flex flex-wrap lg:flex-nowrap items-start justify-between gap-3 mb-1">
+        <h1 class="text-3xl font-bold leading-tight min-w-0 [overflow-wrap:anywhere] lg:min-w-[auto] lg:[overflow-wrap:normal]">
           {@page.name}
         </h1>
         <div class="flex flex-wrap items-center gap-1 shrink-0" data-testid="trip-header-actions">

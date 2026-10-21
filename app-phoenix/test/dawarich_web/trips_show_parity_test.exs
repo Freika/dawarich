@@ -280,6 +280,29 @@ defmodule DawarichWeb.TripsShowParityTest do
 
   defp form_node(other), do: [other]
 
+  test "trip document preserves the source subscription gap and desktop header flow" do
+    pages = @dir |> Path.join("pages.json") |> File.read!() |> Jason.decode!()
+    page = Enum.find(pages["pages"], &String.starts_with?(&1["name"], "show_"))
+    html = RailsUser.signed_in(page["user_id"]) |> get(page["path"]) |> html_response(200)
+    doc = LazyHTML.from_document(html)
+
+    assert LazyHTML.attribute(LazyHTML.query(doc, "#trip-shell"), "class") ==
+             ["w-full min-w-0 pl-5 [&>#video-studio-owner]:contents"]
+
+    assert LazyHTML.attribute(
+             LazyHTML.query(doc, "#native-trip-header > div:first-child"),
+             "class"
+           ) ==
+             ["flex flex-wrap lg:flex-nowrap items-start justify-between gap-3 mb-1"]
+
+    assert LazyHTML.attribute(LazyHTML.query(doc, "#native-trip-header h1"), "class") ==
+             [
+               "text-3xl font-bold leading-tight min-w-0 [overflow-wrap:anywhere] lg:min-w-[auto] lg:[overflow-wrap:normal]"
+             ]
+
+    assert html =~ "w-full min-w-0 lg:min-w-[auto] lg:w-2/5 lg:h-full lg:overflow-y-auto"
+  end
+
   test "Rails 1.16.0 trip detail preserves header toolbar days notes and description DOM" do
     pages = @dir |> Path.join("pages.json") |> File.read!() |> Jason.decode!()
 
@@ -463,19 +486,22 @@ defmodule DawarichWeb.TripsShowParityTest do
 
   defp detail_class(value) do
     value
-    |> String.replace("contents [&>#video-studio-owner]:contents", "contents")
+    |> String.replace("w-full min-w-0 pl-5 [&>#video-studio-owner]:contents", "contents")
     |> String.replace("dropdown lg:dropdown-end", "dropdown dropdown-end")
-    |> String.replace("w-full min-w-0 lg:w-2/5", "w-full lg:w-2/5")
+    |> String.replace("w-full min-w-0 lg:min-w-[auto] lg:w-2/5", "w-full lg:w-2/5")
     |> String.replace("w-full min-w-0 lg:w-3/5", "w-full lg:w-3/5")
     |> String.replace(
-      "flex flex-wrap items-start justify-between gap-3 mb-1",
+      "flex flex-wrap lg:flex-nowrap items-start justify-between gap-3 mb-1",
       "flex items-start justify-between gap-3 mb-1"
     )
     |> String.replace(
       "flex flex-wrap items-center gap-1 shrink-0",
       "flex items-center gap-1 shrink-0"
     )
-    |> String.replace("leading-tight min-w-0 [overflow-wrap:anywhere]", "leading-tight")
+    |> String.replace(
+      "leading-tight min-w-0 [overflow-wrap:anywhere] lg:min-w-[auto] lg:[overflow-wrap:normal]",
+      "leading-tight"
+    )
     |> String.replace("collapse-title flex flex-wrap", "collapse-title flex")
     |> String.replace("prose max-w-none [overflow-wrap:anywhere]", "prose max-w-none")
   end

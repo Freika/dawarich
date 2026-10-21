@@ -310,6 +310,43 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
     end
   end
 
+  test "native monthly weekly chart retains the Rails hidden ticks and grid options" do
+    scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(9601), "en")
+
+    {:ok, data} =
+      DawarichWeb.InsightsLive.NativePage.details(
+        scope,
+        {%{"year" => "2024", "month" => "4"}, [self_hosted: true]}
+      )
+
+    html =
+      render_component(&DawarichWeb.InsightsLive.NativeParts.details/1,
+        data: data,
+        locale: "en",
+        query: %{},
+        path: "/insights/details"
+      )
+
+    [payload] =
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("#chart-1")
+      |> LazyHTML.attribute("data-chart")
+
+    options = Jason.decode!(payload)["options"]
+
+    assert options["library"] == %{
+             "plugins" => %{"legend" => %{"display" => false}},
+             "scales" => %{
+               "x" => %{"grid" => %{"display" => false}},
+               "y" => %{
+                 "grid" => %{"color" => "rgba(0,0,0,0.1)"},
+                 "ticks" => %{"display" => false}
+               }
+             }
+           }
+  end
+
   test "monthly source links patch their owning overview or direct response document" do
     scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(9601), "en")
 

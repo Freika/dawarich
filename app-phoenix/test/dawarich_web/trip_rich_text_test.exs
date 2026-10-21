@@ -82,6 +82,8 @@ defmodule DawarichWeb.TripRichTextTest do
            |> hd()
            |> String.split()
            |> Enum.member?("empty:hidden")
+
+    assert [{"p", _, []}] = LazyHTML.to_tree(status)
   end
 
   test "a reserved upload claims only the actor's own fresh blob, once" do

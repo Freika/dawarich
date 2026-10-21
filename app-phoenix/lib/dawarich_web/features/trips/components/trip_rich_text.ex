@@ -35,8 +35,7 @@ defmodule DawarichWeb.TripRichText do
         class="text-sm text-error mt-1 empty:hidden"
         role="status"
         aria-live="polite"
-      >
-      </p>
+      />
     </div>
     """
   end

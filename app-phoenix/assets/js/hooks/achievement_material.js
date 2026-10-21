@@ -18,7 +18,7 @@ export const AchievementMaterial = {
       },
       { rootMargin: "160px" },
     )
-    this.observer.observe(this.el)
+    this.observer.observe(this.el.closest?.(".ach-card-wrap") || this.el)
   },
   destroyed() {
     this.departed = true
