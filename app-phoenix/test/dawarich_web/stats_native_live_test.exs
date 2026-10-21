@@ -37,6 +37,13 @@ defmodule DawarichWeb.StatsNativeLiveTest do
     assert config["layer"] == "heatmap"
     view |> element("[phx-click='stats:layer'][phx-value-layer='points']") |> render_click()
     assert has_element?(view, "#monthly-stats-map[data-map-config*=points]")
+    view |> element("[phx-click='stats:layer'][phx-value-layer='points']") |> render_click()
+    assert has_element?(view, "#monthly-stats-map[data-map-config*=none]")
+    refute has_element?(view, "[phx-click='stats:layer'][aria-pressed=true]")
+    view |> element("[phx-click='stats:layer'][phx-value-layer='heatmap']") |> render_click()
+    assert has_element?(view, "#monthly-stats-map[data-map-config*=heatmap]")
+    view |> element("[phx-click='stats:layer'][phx-value-layer='heatmap']") |> render_click()
+    assert has_element?(view, "#monthly-stats-map[data-map-config*=points]")
     refute has_element?(view, "[data-controller], [phx-hook='RailsStimulus'], turbo-frame")
   end
 

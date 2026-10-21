@@ -23,6 +23,7 @@ defmodule DawarichWeb.NativeMapPreview do
     config =
       assigns.config
       |> Map.take(@fields)
+      |> Map.put("rtlUrl", DawarichWeb.Assets.stylesheet_path("mapbox-gl-rtl-text.js"))
       |> Map.put("locale", locale)
       |> Map.put("labels", labels)
       |> Map.put(

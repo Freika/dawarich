@@ -100,6 +100,33 @@ defmodule Dawarich.Build.NativeStaticTest do
     end
   end
 
+  test "native previews resolve the RTL worker without a retired asset request", %{tmp_dir: dir} do
+    html =
+      Phoenix.LiveViewTest.render_component(&DawarichWeb.NativeMapPreview.preview/1,
+        id: "monthly-map",
+        config: %{"kind" => "owned_stats"},
+        locale: "en"
+      )
+
+    [json] =
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("[data-map-config]")
+      |> LazyHTML.attribute("data-map-config")
+
+    assert Jason.decode!(json)["rtlUrl"] == "/native/mapbox-gl-rtl-text.js"
+    static = Path.join(dir, "static")
+    File.mkdir_p!(Path.join(static, "native"))
+
+    File.cp!(
+      Dawarich.RailsRoot.join("vendor/javascript/mapbox-gl-rtl-text.js"),
+      Path.join(static, "native/mapbox-gl-rtl-text.js")
+    )
+
+    options = Plug.Static.init(at: "/", from: static)
+    assert Plug.Static.call(conn(:get, Jason.decode!(json)["rtlUrl"]), options).status == 200
+  end
+
   test "native document grain preserves Rails compiled SVG filter and theme opacity", %{
     tmp_dir: dir
   } do

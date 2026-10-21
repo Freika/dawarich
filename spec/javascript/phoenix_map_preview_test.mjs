@@ -1,4 +1,6 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import { runInNewContext } from "node:vm"
 import { test } from "node:test"
 import {
   createPreviewGate,
@@ -438,17 +440,24 @@ test("readonly trip previews preserve every saved style and omit navigation cont
   }
 })
 
-test("owned monthly preview reads cookie hexagons and bounded points", async () => {
+test("owned monthly preview matches Rails point heatmap and reader theme controls", async () => {
   const { createPreviewOwner } = await import(
     "../../app-phoenix/assets/js/map/preview/owner.js"
   )
   const sources = new Map(),
     layers = new Map(),
     listeners = new Map()
-  const reads = []
+  const reads = [],
+    controls = [],
+    styles = [],
+    fits = []
+  let mapOptions
   const element = {
     dataset: {},
-    ownerDocument: { createElement: () => ({ style: {}, remove() {} }) },
+    ownerDocument: {
+      documentElement: { dataset: { theme: "dawarich-dark" } },
+      createElement: () => ({ style: {}, remove() {} }),
+    },
     appendChild() {},
   }
   const map = {
@@ -462,7 +471,12 @@ test("owned monthly preview reads cookie hexagons and bounded points", async () 
     getLayer: (id) => layers.get(id),
     removeSource: (id) => sources.delete(id),
     removeLayer: (id) => layers.delete(id),
-    fitBounds() {},
+    fitBounds(bounds, options) {
+      fits.push({ bounds, options })
+    },
+    addControl(control, position) {
+      controls.push({ control, position })
+    },
     remove() {},
     getCanvas: () => ({ style: {} }),
     setFeatureState() {},
@@ -474,7 +488,11 @@ test("owned monthly preview reads cookie hexagons and bounded points", async () 
     },
     pages: async (resource, params) => {
       reads.push([resource, params])
-      return [{ latitude: 52, longitude: 13, timestamp: 1 }]
+      return [
+        { latitude: 52, longitude: 13, timestamp: 1 },
+        { latitude: 0, longitude: 13 },
+        { latitude: "invalid", longitude: 14 },
+      ]
     },
     reset() {},
     destroy() {},
@@ -492,18 +510,74 @@ test("owned monthly preview reads cookie hexagons and bounded points", async () 
     },
     reader,
     loadLibrary: async () => ({
+      NavigationControl: class {
+        constructor(options) {
+          this.kind = "navigation"
+          this.options = options
+        }
+      },
+      AttributionControl: class {
+        constructor(options) {
+          this.kind = "attribution"
+          this.options = options
+        }
+      },
+      ScaleControl: class {
+        constructor(options) {
+          this.kind = "scale"
+          this.options = options
+        }
+      },
       Map: class {
-        constructor() {
+        constructor(options) {
+          mapOptions = options
           Object.assign(this, map)
         }
       },
     }),
-    loadStyle: async () => ({}),
+    loadStyle: async (config) => {
+      styles.push(config)
+      return {}
+    },
   })
   assert.equal(await owner.mount(), "ready")
-  assert.equal(sources.has("hexagons"), true)
-  assert.equal(reads[0][0], "hexagons")
-  assert.equal(reads[0][1].start_date, "2025-04-01T00:00:00Z")
+  const source = readFileSync(
+    new URL(
+      "../../app/javascript/controllers/stat_page_controller.js",
+      import.meta.url,
+    ),
+    "utf8",
+  )
+  const paint = JSON.parse(
+    JSON.stringify(
+      runInNewContext(
+        "(" + source.match(/const HEATMAP_PAINT = (\{[\s\S]*?\n\})/)[1] + ")",
+      ),
+    ),
+  )
+  assert.equal(layers.get("stat-heatmap").type, "heatmap")
+  assert.deepEqual(layers.get("stat-heatmap").paint, paint)
+  assert.deepEqual(
+    sources.get("stat-points").data.features.map((f) => f.geometry.coordinates),
+    [[13, 52]],
+  )
+  assert.equal(reads[0][0], "points")
+  assert.equal(reads[0][1].start_at, "2025-04-01T00:00:00Z")
+  assert.equal(styles[0].styleName, "dark")
+  assert.deepEqual(
+    controls.map(({ control, position }) => [
+      control.kind,
+      control.options,
+      position,
+    ]),
+    [
+      ["navigation", { showCompass: false }, "top-right"],
+      ["attribution", { compact: true }, undefined],
+      ["scale", { maxWidth: 100 }, "bottom-right"],
+    ],
+  )
+  assert.equal(mapOptions.attributionControl, false)
+  assert.deepEqual(fits[0].options, { padding: 40, maxZoom: 14, duration: 0 })
   assert.equal(
     await owner.update({
       kind: "owned_stats",
@@ -512,9 +586,22 @@ test("owned monthly preview reads cookie hexagons and bounded points", async () 
     }),
     "ready",
   )
-  assert.equal(reads.at(-2)[0], "points")
-  assert.equal(reads.at(-1)[0], "bounds")
-  assert.equal(sources.has("hexagons"), false)
-  assert.equal(layers.has("preview-points"), true)
+  assert.equal(reads.at(-1)[0], "points")
+  assert.equal(
+    reads.some(
+      ([resource]) => resource === "hexagons" || resource === "bounds",
+    ),
+    false,
+  )
+  assert.equal(layers.get("stat-circles").layout.visibility, "visible")
+  assert.equal(layers.get("stat-heatmap").layout.visibility, "none")
+  assert.equal(layers.get("stat-circles").paint["circle-color"], "#570df8")
+  await owner.update({
+    kind: "owned_stats",
+    layer: "none",
+    range: { startAt: "2025-04-01T00:00:00Z", endAt: "2025-04-30T23:59:59Z" },
+  })
+  assert.equal(layers.get("stat-circles").layout.visibility, "none")
+  assert.equal(layers.get("stat-heatmap").layout.visibility, "none")
   owner.destroy()
 })

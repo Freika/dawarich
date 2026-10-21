@@ -6,6 +6,7 @@ import { createMapRuntime } from "../runtime/create_map.js"
 import { waitForStyle } from "../runtime/style_ready.js"
 import { fetchStyle } from "../style/load_style.js"
 import { TripPlanLayer } from "../trip/plan.js"
+import { createMonthPoints } from "./month_points.js"
 export function createPreviewOwner({
   element,
   config,
@@ -34,10 +35,10 @@ export function createPreviewOwner({
     if (!current) return
     clear()
     const { data, state } = current
-    if (
-      state.kind === "stats" ||
-      (state.kind === "owned_stats" && state.layer !== "points")
-    ) {
+    if (state.kind === "owned_stats") {
+      stats = createMonthPoints({ map })
+      stats.show(data.points ?? [], state.layer)
+    } else if (state.kind === "stats") {
       stats = createStatsLayer({
         map,
         library,
@@ -46,27 +47,6 @@ export function createPreviewOwner({
         labels: state.labels,
       })
       stats.show(data)
-    } else if (state.kind === "owned_stats" && state.layer === "points") {
-      map.addSource("preview-points", {
-        type: "geojson",
-        data: {
-          type: "FeatureCollection",
-          features: (data.points ?? []).map((p) => ({
-            type: "Feature",
-            properties: {},
-            geometry: {
-              type: "Point",
-              coordinates: [Number(p.longitude), Number(p.latitude)],
-            },
-          })),
-        },
-      })
-      map.addLayer({
-        id: "preview-points",
-        type: "circle",
-        source: "preview-points",
-        paint: { "circle-radius": 3, "circle-color": "#6366F1" },
-      })
     } else if (data.path?.length) {
       const lines = RouteSegmenter.unwrapCoordinates(
         data.path.map(([longitude, latitude]) => ({ longitude, latitude })),
@@ -102,17 +82,29 @@ export function createPreviewOwner({
       plan.add(data.plan)
     }
   }
-  return createMapRuntime({
-    element,
-    config: {
-      ...config,
-      navigationControls: config.interactive === true,
-      mapOptions: {
-        center: [0, 0],
-        zoom: 2,
-        interactive: config.interactive === true,
-      },
+  const configuration = (state) => ({
+    ...state,
+    navigationControls:
+      state.kind === "owned_stats" ? false : state.interactive === true,
+    ...(state.kind === "owned_stats"
+      ? {
+          styleName:
+            element.ownerDocument.documentElement?.dataset.theme ===
+            "dawarich-dark"
+              ? "dark"
+              : "light",
+        }
+      : {}),
+    mapOptions: {
+      center: state.kind === "owned_stats" ? [13.404954, 52.520008] : [0, 0],
+      zoom: state.kind === "owned_stats" ? 10 : 2,
+      interactive: state.interactive === true,
+      ...(state.kind === "owned_stats" ? { attributionControl: false } : {}),
     },
+  })
+  const owner = createMapRuntime({
+    element,
+    config: configuration(config),
     reader,
     loadLibrary: async (options) => {
       library = await loadLibrary(options)
@@ -121,6 +113,20 @@ export function createPreviewOwner({
     loadStyle,
     attach: ({ map: owned, lifetime, operation }) => {
       map = owned
+      if (config.kind === "owned_stats") {
+        if (library.NavigationControl)
+          map.addControl(
+            new library.NavigationControl({ showCompass: false }),
+            "top-right",
+          )
+        if (library.AttributionControl)
+          map.addControl(new library.AttributionControl({ compact: true }))
+        if (library.ScaleControl)
+          map.addControl(
+            new library.ScaleControl({ maxWidth: 100 }),
+            "bottom-right",
+          )
+      }
       lifetime.own(() => {
         current = null
         clear()
@@ -135,16 +141,6 @@ export function createPreviewOwner({
         data = (
           await operation.wait(
             reader.read("hexagons", { uuid: state.uuid }, { signal }),
-          )
-        ).data
-      else if (state.kind === "owned_stats" && state.layer !== "points")
-        data = (
-          await operation.wait(
-            reader.read(
-              "hexagons",
-              { start_date: state.range.startAt, end_date: state.range.endAt },
-              { signal },
-            ),
           )
         ).data
       else if (state.tripId)
@@ -174,28 +170,11 @@ export function createPreviewOwner({
         }
       }
       if (!data) data = { path: [] }
-      const bounds =
-        state.kind === "owned_stats"
-          ? (
-              await operation.wait(
-                reader.read(
-                  "bounds",
-                  {
-                    start_date: state.range.startAt,
-                    end_date: state.range.endAt,
-                  },
-                  { signal },
-                ),
-              )
-            ).data
-          : state.bounds
+      const bounds = state.bounds
       operation.check()
       current = { data, state }
       render()
-      if (
-        (state.kind === "stats" || state.kind === "owned_stats") &&
-        bounds?.point_count > 0
-      ) {
+      if (state.kind === "stats" && bounds?.point_count > 0) {
         const b = bounds
         map.fitBounds(
           [
@@ -217,4 +196,7 @@ export function createPreviewOwner({
       },
     },
   })
+  const update = owner.update.bind(owner)
+  owner.update = (next) => update(configuration(next))
+  return owner
 }

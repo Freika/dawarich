@@ -64,7 +64,12 @@ defmodule DawarichWeb.StatsLive.NativePage do
   def handle_event("stats:layer", %{"layer" => layer}, socket) when layer in ~w(heatmap points) do
     with {:ok, _} <- NativeDataAuth.scope(socket),
          true <- socket.assigns.live_action == :month and not is_nil(socket.assigns.data) do
-      {:noreply, assign(socket, :month_layer, layer)}
+      next =
+        if socket.assigns.month_layer == layer,
+          do: if(layer == "heatmap", do: "points", else: "none"),
+          else: layer
+
+      {:noreply, assign(socket, :month_layer, next)}
     else
       _ -> {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
     end
