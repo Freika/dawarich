@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - Dense map point tiles render about 2.5 times faster: PostgreSQL JIT compilation is turned off for the tile query only.
 - The points page and the points API no longer count all matching points on every request; the total is cached and refreshed whenever points change, so large accounts page through points much faster. Response headers are unchanged.
+- Pages render two to three times faster: the API key QR code in the getting-started dialog and the SVG icons are generated once per process instead of on every page view.
 - Track generation loads only the point columns it needs, and the five-minute place-name refresh skips months whose points did not change.
 
 ### Fixed
