@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Single-process mode for small self-hosted instances: set `SIDEKIQ_EMBEDDED=true` and `WEB_CONCURRENCY=0` (or use `docker/docker-compose.embedded.yml`) to run background jobs and schedules inside the web process instead of a separate Sidekiq container. On a typical instance this roughly halves memory use; background work then shares the web process CPU. The default setup with a separate Sidekiq service is unchanged.
+
+### Changed
+- Dense map point tiles render about 2.5 times faster: PostgreSQL JIT compilation is turned off for the tile query only.
+- The points page and the points API no longer count all matching points on every request; the total is cached and refreshed whenever points change, so large accounts page through points much faster. Response headers are unchanged.
+- Track generation loads only the point columns it needs, and the five-minute place-name refresh skips months whose points did not change.
+
 ### Fixed
 - Drives reported with a speed of 0 (OwnTracks, background Android) are no longer classified as stationary: a zero speed that the distance between points clearly contradicts is replaced by the speed from distance and time. Choose Recalculate tracks & stats to reclassify existing tracks (#3887)
 - Real-time tracks now split only on the time gap, like imported history and the map, so sparsely sampled driving points are no longer left without a track. Choose Recalculate tracks & stats to fill gaps recorded before this release (#3638)
