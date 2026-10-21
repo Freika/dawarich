@@ -31,7 +31,7 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
         subject
 
         (1..12).each do |month|
-          expect(Stats::CalculateMonth).to have_received(:new).with(user.id, year, month)
+          expect(Stats::CalculateMonth).to have_received(:new).with(user.id, year, month, notify_on_failure: true)
         end
       end
 
@@ -76,7 +76,7 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
 
         [2023, 2024].each do |y|
           (1..12).each do |month|
-            expect(Stats::CalculateMonth).to have_received(:new).with(user.id, y, month)
+            expect(Stats::CalculateMonth).to have_received(:new).with(user.id, y, month, notify_on_failure: true)
           end
         end
       end

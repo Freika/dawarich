@@ -64,6 +64,39 @@ RSpec.describe Achievements::GridDwellCalculator do
     expect(result['TT-01']).to eq(1800)
   end
 
+  context 'with a disputed area over part of a region' do
+    before { create(:disputed_area, geom: 'POLYGON ((10 10, 10 12, 11 12, 11 10, 10 10))') }
+
+    it 'credits no region to points inside it' do
+      6.times { |i| create(:point, user:, longitude: 10.5, latitude: 11.0, timestamp: base_ts + (i * 600)) }
+      6.times { |i| create(:point, user:, longitude: 11.5, latitude: 11.0, timestamp: base_ts + 20_000 + (i * 600)) }
+
+      expect(described_class.new(user, table: 'regions').call).to eq('TT-01' => 3000)
+    end
+
+    it 'does not bridge dwell across a stay inside it' do
+      create(:point, user:, longitude: 11.5, latitude: 11.0, timestamp: base_ts)
+      create(:point, user:, longitude: 10.5, latitude: 11.0, timestamp: base_ts + 600)
+      create(:point, user:, longitude: 11.5, latitude: 11.0, timestamp: base_ts + 1200)
+
+      expect(described_class.new(user, table: 'regions').call).to eq({})
+    end
+
+    it 'credits no region to a point inside it even when its cell centre lies outside' do
+      create(:disputed_area, geom: 'POLYGON ((11.6 10, 11.6 12, 11.603 12, 11.603 10, 11.6 10))')
+      6.times { |i| create(:point, user:, longitude: 11.601, latitude: 11.0, timestamp: base_ts + (i * 600)) }
+
+      expect(described_class.new(user, table: 'regions').call).to eq({})
+    end
+
+    it 'dates the first visit from points outside it' do
+      create(:point, user:, longitude: 10.5, latitude: 11.0, timestamp: base_ts)
+      create(:point, user:, longitude: 11.5, latitude: 11.0, timestamp: base_ts + 600)
+
+      expect(described_class.new(user, table: 'regions').first_seen).to eq('TT-01' => base_ts + 600)
+    end
+  end
+
   it 'rejects an unknown source table' do
     expect { described_class.new(user, table: 'users') }.to raise_error(ArgumentError, /unsupported source/)
   end

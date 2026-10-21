@@ -6,6 +6,7 @@ import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_ho
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
+import { anomaliesVisible } from "maps_maplibre/utils/layer_dependencies"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
@@ -341,7 +342,7 @@ export default class extends Controller {
       if (this.settings?.familyEnabled) {
         this.loadFamilyMembers()
       }
-      if (this.settings?.anomaliesEnabled) {
+      if (anomaliesVisible(SettingsManager.getSettings())) {
         this.layerVisibilityManager.refreshAnomalies({ enabled: true })
       }
     })
@@ -507,7 +508,7 @@ export default class extends Controller {
     this.layerManager.getLayer("map-editor")?.close()
     this._clearDayHighlight?.()
     await this.loadMapData({ fitBounds })
-    if (this.settings?.anomaliesEnabled) {
+    if (anomaliesVisible(SettingsManager.getSettings())) {
       this.layerVisibilityManager.refreshAnomalies({ enabled: true })
     }
     this.refreshTimelineFeedIfActive?.()
@@ -1641,7 +1642,15 @@ export default class extends Controller {
         statusDiv.className = "text-xs text-info/70"
         statusDiv.dataset.memberInfo = location.user_id
 
-        info.append(emailDiv, timeDiv, statusDiv)
+        info.append(emailDiv)
+        if (location.address) {
+          const addressDiv = document.createElement("div")
+          addressDiv.className = "text-xs text-base-content/70 truncate"
+          addressDiv.title = location.address
+          addressDiv.textContent = location.address
+          info.append(addressDiv)
+        }
+        info.append(timeDiv, statusDiv)
         row.append(avatar, info)
         return row
       }),

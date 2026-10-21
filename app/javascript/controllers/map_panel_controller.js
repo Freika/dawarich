@@ -19,6 +19,7 @@ export default class extends Controller {
   static titleKeys = {
     search: "map_panel.search",
     layers: "map_panel.layers",
+    family: "map_panel.family",
     "timeline-feed": "map_panel.timeline",
     tools: "map_panel.tools",
     links: "map_panel.links",
@@ -78,6 +79,8 @@ export default class extends Controller {
         T: "timeline-feed",
         l: "layers",
         L: "layers",
+        f: "family",
+        F: "family",
         "/": "search",
         c: "tools",
         C: "tools",
@@ -85,7 +88,7 @@ export default class extends Controller {
         S: "settings",
       }
       const tab = keyToTab[e.key]
-      if (tab) {
+      if (tab && document.querySelector(`[data-tab-content="${tab}"]`)) {
         e.preventDefault()
         this.requestTab(tab)
         return

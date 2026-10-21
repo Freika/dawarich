@@ -54,7 +54,7 @@ class Settings::GeneralController < ApplicationController
     Rails.cache.delete(Supporter::VerifyEmail.new(email).cache_key) if email.present?
     Rails.cache.delete(Supporter::VerifyGithubUsername.new(github_username).cache_key) if github_username.present?
 
-    if current_user.reload.supporter?
+    if current_user.reload.supporter? && current_user.supporter_platform != 'app_store'
       platform = current_user.supporter_platform&.titleize
       notice = I18n.t(
         'controllers.settings.general.verified_thank_you_for_supporting_dawarich_via_platform',

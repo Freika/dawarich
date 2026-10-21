@@ -20,7 +20,8 @@ class Api::VisitSerializer
       place: {
         latitude: visit.place&.lat || visit.area&.latitude,
         longitude: visit.place&.lon || visit.area&.longitude,
-        id: visit.place&.id
+        id: visit.place&.id,
+        address: visit.place&.address_line
       }
     }
   end

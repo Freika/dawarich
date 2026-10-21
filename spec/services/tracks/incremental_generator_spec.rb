@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::IncrementalGenerator do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) do
     create(:user, settings: {
              'minutes_between_routes' => 30,
@@ -12,6 +14,25 @@ RSpec.describe Tracks::IncrementalGenerator do
   let(:generator) { described_class.new(user) }
 
   describe '#call' do
+    it 'stops extending an arrival track after continuous stationary reports exceed the threshold' do
+      start = Time.utc(2025, 2, 10, 18)
+      feed = (0..24).map do |index|
+        travel_to(start + index * 5.minutes) do
+          point = create(:point, user: user, tracker_id: 'synthetic-realtime-stop',
+                                 timestamp: Time.current.to_i,
+                                 lonlat: "POINT(#{-140.0 + [index, 3].min * 0.002} -40.0)")
+          described_class.new(user).call
+          point
+        end
+      end
+
+      arrival_track = feed.first.reload.track
+      expect(arrival_track).to be_present
+      expect(user.tracks.count).to eq(1)
+      expect(arrival_track.end_at.to_i).to be_between(feed[3].timestamp, feed[9].timestamp)
+      expect(feed[10..].map { |point| point.reload.track_id }).to all(be_nil)
+    end
+
     context 'when there are no untracked points' do
       it 'returns nil and creates no tracks' do
         expect { generator.call }.not_to change(Track, :count)

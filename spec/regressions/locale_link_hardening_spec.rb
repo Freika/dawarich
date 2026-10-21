@@ -17,7 +17,7 @@ RSpec.describe 'Locale link hardening', type: :request do
   end
 
   it 'keeps the link on this host when the query string carries a host' do
-    get_with_suggestion root_path, params: { host: 'evil.example.com' }
+    get_with_suggestion new_user_session_path, params: { host: 'evil.example.com' }
 
     expect(response).to have_http_status(:ok)
 
@@ -28,16 +28,16 @@ RSpec.describe 'Locale link hardening', type: :request do
   end
 
   it 'renders when the query string carries routing keys' do
-    get_with_suggestion root_path, params: { controller: 'nope', action: 'nope' }
+    get_with_suggestion new_user_session_path, params: { controller: 'nope', action: 'nope' }
 
     expect(response).to have_http_status(:ok)
-    expect(suggestion_href(response.body)).to start_with('/?')
+    expect(suggestion_href(response.body)).to start_with('/users/sign_in?')
   end
 
   it 'preserves unrelated query parameters' do
-    get_with_suggestion root_path, params: { utm_source: 'newsletter' }
+    get_with_suggestion new_user_session_path, params: { utm_source: 'newsletter' }
 
-    expect(suggestion_href(response.body)).to eq('/?locale=de&utm_source=newsletter')
+    expect(suggestion_href(response.body)).to eq('/users/sign_in?locale=de&utm_source=newsletter')
   end
 
   it 'points at a reachable path when a form re-renders after a validation error' do

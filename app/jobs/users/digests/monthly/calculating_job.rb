@@ -7,7 +7,7 @@ class Users::Digests::Monthly::CalculatingJob < ApplicationJob
     user = find_user_or_skip(user_id) || return
 
     I18n.with_locale(user.locale) do
-      Stats::CalculateMonth.new(user_id, year, month).call
+      Stats::CalculateMonth.new(user_id, year, month, notify_on_failure: false).call
       Users::Digests::CalculateMonth.new(user_id, year, month).call
 
       Users::Digests::Monthly::EmailSendingJob.perform_later(user_id, year, month)

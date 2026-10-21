@@ -1,0 +1,23 @@
+<% stats_by_month = @year_stats.index_by(&:month) %>
+<% longest = @month_distances.map(&:last).max.to_f %>
+
+<section class="card bg-base-200 mb-6" aria-labelledby="insights-months-title">
+  <div class="card-body p-5 gap-4">
+    <h2 id="insights-months-title" class="text-xl font-bold"><%= t('.title') %></h2>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+      <% @month_distances.each.with_index(1) do |(month_name, distance), month| %>
+        <% if (stat = stats_by_month[month]) %>
+          <%= render 'stats/stat', stat: stat, share: longest.positive? ? distance / longest : 0 %>
+        <% else %>
+          <div class="rounded-lg border border-dashed border-base-300 px-3 py-2.5 text-base-content/40">
+            <div class="truncate text-sm font-medium"><%= month_name %></div>
+            <div class="mt-1 text-lg font-semibold">—</div>
+            <div class="text-xs" aria-hidden="true">&nbsp;</div>
+            <div class="mt-2 h-1 rounded-full bg-base-300/60" aria-hidden="true"></div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</section>
