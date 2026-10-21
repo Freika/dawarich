@@ -6,6 +6,11 @@ defmodule Dawarich.Insights.CountryCodesTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+
+    Repo.query!("CREATE TEMP VIEW countries AS SELECT * FROM public.countries ORDER BY id", [],
+      log: false
+    )
+
     InsightsSeeds.start_cache!()
   end
 
