@@ -1082,7 +1082,7 @@ en:
         track_generation: Track generation
         track_split_distance: Distance gap between Tracks
         track_split_distance_unit: m
-        track_split_distance_hint: Start a new Track when consecutive points are farther apart.
+        track_split_distance_hint: "Tracks from different devices are joined when one ends within this distance of where the next starts. Distance between points does not start a new Track."
         track_split_time: Time gap between Tracks
         track_split_time_unit: min
         track_split_time_hint: "Longer gaps start a new Track and let Trips use another device’s recording. After changing this, press Recalculate on affected Trip pages to update saved routes and distances."
