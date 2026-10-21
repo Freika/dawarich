@@ -226,6 +226,18 @@ defmodule DawarichWeb.InsightsNativeLifecycleTest do
     render_async(reconnected, 5000)
     assert has_element?(reconnected, "#insights-details-ready")
 
+    for current <- [view, reconnected] do
+      weekdays =
+        current
+        |> NativeAdminUI.html()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("#insights-details-ready .grid.grid-cols-2 .flex.gap-1 .text-xs")
+        |> Enum.map(&LazyHTML.text/1)
+        |> Enum.map(&String.trim/1)
+
+      assert weekdays == ~w(Mon 0 Tue 0 Wed 0 Thu 0 Fri 0 Sat 3 Sun 0)
+    end
+
     assert Dawarich.Repo.query!(
              "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Stats.PageRefreshWorker'",
              [],

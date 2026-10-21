@@ -40,4 +40,26 @@ defmodule Dawarich.Build.NativeM5RegisterTest do
         ],
         do: assert(String.contains?(row, text))
   end
+
+  test "cold Insights weekly differences retain the completed-read witness and source cause" do
+    register = File.read!("parity/expected_diffs.md")
+
+    row =
+      register
+      |> String.split("\n")
+      |> Enum.find(&String.starts_with?(&1, "| ED-E1-INSIGHTS-COLD-WEEKLY |"))
+
+    assert is_binary(row)
+
+    for text <- [
+          "load_yearly_patterns",
+          "load_monthly_digest",
+          "insights_controller.rb:41-42",
+          "reconnect reads a finished refresh without generating again"
+        ],
+        do: assert(String.contains?(row, text))
+
+    visual = File.read!("../docs/phoenix/visual-parity-divergences.md")
+    assert visual =~ "ED-E1-INSIGHTS-COLD-WEEKLY"
+  end
 end
