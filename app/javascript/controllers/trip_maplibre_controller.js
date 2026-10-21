@@ -23,6 +23,7 @@ import Flash from "./flash_controller"
 export default class extends Controller {
   static targets = [
     "map",
+    "pathPending",
     "daysAccordion",
     "expandAllBtn",
     "loadingIndicator",
@@ -93,12 +94,32 @@ export default class extends Controller {
     this.onPlanFocus = (event) => this.focusPlanStop(event.detail || {})
     window.addEventListener("trip-plan:focus", this.onPlanFocus)
 
+    if (this.hasPathPendingTarget) {
+      // Recover path updates broadcast before the stream subscribes or reconnects.
+      const sources = document.querySelectorAll("turbo-cable-stream-source")
+      this.pathObserver = new MutationObserver((mutations) => {
+        if (mutations.some(({ target }) => target.hasAttribute("connected"))) {
+          this.syncPendingPath()
+        }
+      })
+      sources.forEach((source) => {
+        this.pathObserver.observe(source, {
+          attributes: true,
+          attributeFilter: ["connected"],
+        })
+      })
+      if ([...sources].some((source) => source.hasAttribute("connected"))) {
+        this.syncPendingPath()
+      }
+    }
+
     if (this.hasMapTarget) {
       await this.initializeMap()
     }
   }
 
   disconnect() {
+    this.pathObserver?.disconnect()
     window.removeEventListener("trip-plan:focus", this.onPlanFocus)
     this.planLayer?.remove()
     this.planLayer = null
@@ -119,6 +140,45 @@ export default class extends Controller {
       this.map = null
     }
     this.mapInitializing = false
+  }
+
+  async syncPendingPath() {
+    if (!this.hasPathPendingTarget) return
+    // A request made mid-fetch may follow a newer path save, so rerun once.
+    if (this.syncingPath) {
+      this.pathSyncQueued = true
+      return
+    }
+
+    this.syncingPath = true
+    try {
+      const response = await fetch(window.location.href, {
+        headers: { Accept: "text/html" },
+        credentials: "same-origin",
+      })
+      if (!response.ok)
+        throw new Error(`Trip path sync failed: ${response.status}`)
+
+      const latest = new DOMParser().parseFromString(
+        await response.text(),
+        "text/html",
+      )
+      if (
+        this.element.isConnected &&
+        this.hasPathPendingTarget &&
+        latest.querySelector('[data-trip-maplibre-target="map"]')
+      ) {
+        Turbo.visit(window.location.href, { action: "replace" })
+      }
+    } catch (error) {
+      console.warn("Could not synchronize trip path", error)
+    } finally {
+      this.syncingPath = false
+      if (this.pathSyncQueued) {
+        this.pathSyncQueued = false
+        this.syncPendingPath()
+      }
+    }
   }
 
   async mapTargetConnected() {

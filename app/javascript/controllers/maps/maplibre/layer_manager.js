@@ -73,6 +73,8 @@ export class LayerManager {
     this._addTracksMvtLayer()
     this._addAnomaliesLayer()
     this._addPointsMvtLayer()
+    // Photos load before tile layers, so raise their clusters above them.
+    this.layers.photosLayer?.raiseAbove("points-mvt")
     this._addRecentPointLayer()
     this._addReplayMarkerLayer()
     this._addFogLayer(EMPTY_GEOJSON)
