@@ -121,3 +121,24 @@ inputs select locally and own their selection listener. Source label association
 hidden-checkbox duplicate ids, native confirmations and these request/DOM wiring
 contracts are listed in the visual divergence register. Final family browser and
 integrated controller-bench acceptance remain pending.
+
+
+## Page-parity integration and public achievement material
+
+The D6 integration keeps D2's public digest content and unique flag SVG ids with
+D6's bounded public projection and independent lazy chart adapter. Trip pages
+use D2's full application document and optional map-host children; source studio
+controls and the native replay opener remain. Recovery locale navigation remains
+covered by `NativeAuthIntegrationTest`.
+
+Full and embed achievement HTTP documents load `public_achievements.js`. Its
+entry stays below 2 KiB and dynamically imports the existing achievement card and
+spectral material renderer. It loads no LiveSocket. Pagehide disposes card motion
+listeners, animation frames and material resize observers, then restores fallback
+markup. Persisted pageshow mounts a fresh generation; stale imports cannot mount
+after departure or into a new generation. Failed imports retain the fallback.
+The existing achievement public HTTP/corpus test and native asset graph test are
+extended; `public_achievements_test.mjs` covers lifecycle ownership. The existing
+`achievements/collection.spec.js` public/revocation journey now requires rendered
+material on full and embed pages. Controller mini acceptance on the final app/E2E
+identities remains pending; local browser probes are isolated evidence only.

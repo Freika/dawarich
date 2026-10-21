@@ -438,6 +438,43 @@ defmodule Dawarich.Build.NativeAssetsTest do
         do: (acc -> Map.update(acc, input, meta["bytesInOutput"], &(&1 + meta["bytesInOutput"])))
   end
 
+  @tag :public_material_entry
+  test "public achievement entry stays below 2 KiB and keeps the material renderer lazy", %{
+    tmp_dir: dir
+  } do
+    build!(dir)
+
+    outputs =
+      dir |> Path.join("meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    entry =
+      Enum.find(outputs, fn {path, _} -> Path.basename(path) == "public_achievements.js" end)
+
+    assert entry != nil
+    {path, _} = entry
+    graph = eager(outputs, [path], MapSet.new())
+    assert Enum.sum(Enum.map(graph, &outputs[&1]["bytes"])) <= 2 * 1024
+    sources = Enum.flat_map(graph, &Map.keys(outputs[&1]["inputs"]))
+
+    refute Enum.any?(
+             sources,
+             &Regex.match?(
+               ~r/phoenix|spectral_material|achievements\/card|maplibre|chartkick|trix/,
+               &1
+             )
+           )
+
+    lazy_sources =
+      for entry <- graph,
+          %{"kind" => "dynamic-import", "path" => target} <- outputs[entry]["imports"],
+          dependency <- eager(outputs, [target], MapSet.new()),
+          {input, _} <- outputs[dependency]["inputs"],
+          do: input
+
+    assert "js/achievements/card.js" in lazy_sources
+    assert "js/achievements/spectral_material.js" in lazy_sources
+  end
+
   test "charts and editor stay lazy with a bounded eager stub and an independent public entry", %{
     tmp_dir: dir
   } do

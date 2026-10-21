@@ -45,6 +45,8 @@ defmodule DawarichWeb.AchievementPublicHTML do
       href={Assets.stylesheet_path(name <> ".css")}
       data-turbo-track={!@native && "reload"}
     />
+    <script :if={@native} type="module" src={Assets.native_path("public_achievements.js")}>
+    </script>
     <meta property="og:title" content={@view.name <> " — Dawarich"} />
     <meta property="og:description" content={@view.description} />
     <meta property="og:type" content="website" />

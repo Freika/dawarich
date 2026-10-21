@@ -77,6 +77,31 @@ defmodule DawarichWeb.AchievementPublicTest do
     end
   end
 
+  @tag :public_material_entry
+  test "public achievement HTTP documents load the native material entry in full and embed states" do
+    corpus = File.read!("#{@root}/public.json") |> Jason.decode!()
+
+    for row <- corpus, row["status"] == 200 and row["method"] == "GET" do
+      seed(row)
+      result = request(row["method"], row["path"], row["params"])
+      assert result.status == 200
+
+      if dump = System.get_env("PARITY_DUMP") do
+        File.mkdir_p!(dump)
+        File.write!(Path.join(dump, row["name"] <> ".phoenix.html"), result.resp_body)
+      end
+
+      doc = LazyHTML.from_document(result.resp_body)
+      scripts = LazyHTML.query(doc, "script[type=module]") |> LazyHTML.attribute("src")
+      assert scripts == [DawarichWeb.Assets.native_path("public_achievements.js")]
+
+      assert Enum.count(LazyHTML.query(doc, ".spectral-material[phx-hook=AchievementMaterial]")) ==
+               1
+
+      refute result.resp_body =~ "app.js"
+    end
+  end
+
   test "public achievement complete body matches source in every locale and embed state" do
     corpus = File.read!("#{@root}/public.json") |> Jason.decode!()
 
