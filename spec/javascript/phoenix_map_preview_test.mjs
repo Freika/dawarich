@@ -605,3 +605,78 @@ test("owned monthly preview matches Rails point heatmap and reader theme control
   assert.equal(layers.get("stat-heatmap").layout.visibility, "none")
   owner.destroy()
 })
+
+test("dark trip form previews paint the saved light palette instead of the reader theme", async () => {
+  const { createPreviewOwner } = await import(
+    "../../app-phoenix/assets/js/map/preview/owner.js"
+  )
+  const { readFile } = await import("node:fs/promises")
+  const { fetchStyle } = await import(
+    "../../app-phoenix/assets/js/map/style/load_style.js"
+  )
+  const styles = []
+  for (const tripId of [undefined, 7]) {
+    const owner = createPreviewOwner({
+      element: {
+        dataset: {},
+        ownerDocument: {
+          documentElement: { dataset: { theme: "dawarich-dark" } },
+          createElement: () => ({ style: {}, remove() {} }),
+        },
+        appendChild() {},
+      },
+      config: { interactive: true, styleName: "light", tripId },
+      reader: {
+        read: async () => ({ data: { path: [] } }),
+        reset() {},
+        destroy() {},
+      },
+      loadStyle: (config, options) =>
+        fetchStyle(config, {
+          ...options,
+          fetch: async (url) => ({
+            ok: true,
+            json: async () => JSON.parse(await readFile(
+              new URL(`../../public${url}`, import.meta.url), "utf8",
+            )),
+          }),
+        }),
+      loadLibrary: async () => ({
+        Map: class {
+          constructor(options) {
+            styles.push(options.style)
+          }
+          loaded() {
+            return true
+          }
+          on() {}
+          off() {}
+          getSource() {}
+          getLayer() {}
+          remove() {}
+        },
+      }),
+    })
+    try {
+      assert.equal(await owner.mount(), "ready")
+      assert.equal(owner.config.styleName, "light")
+      const palette = styles.at(-1)
+      const background = palette.layers.find(layer => layer.id === "background")
+      assert.equal(
+        background.paint["background-color"],
+        "#cccccc",
+      )
+      assert.equal(
+        palette.layers.find(layer => layer.id === "earth").paint["fill-color"],
+        "#e2dfda",
+      )
+      assert.equal(palette.sources.protomaps.url, undefined)
+      assert.match(
+        palette.sources.protomaps.tiles[0],
+        /\/planet\/\{z\}\/\{x\}\/\{y\}\.mvt$/,
+      )
+    } finally {
+      owner.destroy()
+    }
+  }
+})
