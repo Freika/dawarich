@@ -66,7 +66,7 @@ defmodule DawarichWeb.StandaloneTrekSourcesTest do
     assert LazyHTML.query(doc, "#native-trek-trips[phx-submit=import]") |> Enum.count() == 1
 
     assert LazyHTML.query(doc, "input[value=selected][checked]") |> Enum.count() == 1
-    assert LazyHTML.query(doc, "input[disabled]") |> Enum.count() == 2
+    assert LazyHTML.query(doc, "input[type=checkbox][disabled]") |> Enum.count() == 2
     assert html =~ "&lt;script&gt;"
     Task.await(task)
     task = provider(c, remote)

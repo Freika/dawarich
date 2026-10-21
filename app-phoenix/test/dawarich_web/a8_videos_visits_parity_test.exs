@@ -38,6 +38,8 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
     settings/cooldown_exact_hour settings/lite_hint settings/family_access settings/signed_out
     settings/navigation_default settings/navigation_suggested settings/navigation_declined
     settings/navigation_empty settings/redetect_allowed settings/redetect_recent
+    settings/self_hosted_en settings/self_hosted_de settings/cloud_de settings/lite_de
+    settings/cooldown_recent_de
     videos/playable_card videos/expired_card videos/all_recipe_keys videos/untitled
     videos/unknown_recipe videos/unicode_recipe_65 videos/exact_ceiling videos/wrong_mime
     videos/over_ceiling videos/invalid_signature videos/pre_attach_error
