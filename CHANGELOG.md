@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Credit country dwell time and first-visit dates for points without a country tag, so continent achievements count the same countries as their explored regions; stored progress is recalculated and may unlock countries (#3784)
+
 ## [1.16.0] - 2026-10-17, Berlin
 
 ### Added
