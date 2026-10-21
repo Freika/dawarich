@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_14_120100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -472,6 +472,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_14_120100) do
     t.index ["trip_id"], name: "index_planned_unplanned_places_on_trip_id"
   end
 
+  create_table "point_revisions", force: :cascade do |t|
+    t.date "month", null: false
+    t.uuid "revision", default: -> { "gen_random_uuid()" }, null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "month"], name: "index_point_revisions_on_user_id_and_month", unique: true
+  end
+
   create_table "point_sources", id: :serial, force: :cascade do |t|
     t.integer "battery_status"
     t.string "bssid"
@@ -912,4 +919,88 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_14_120100) do
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.points_revision_delete()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO point_revisions (user_id, month, revision)
+      SELECT user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date, gen_random_uuid()
+      FROM (SELECT user_id, timestamp FROM old_points) AS changed
+      WHERE user_id IS NOT NULL AND timestamp IS NOT NULL
+      GROUP BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ORDER BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.points_revision_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO point_revisions (user_id, month, revision)
+      SELECT user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date, gen_random_uuid()
+      FROM (SELECT user_id, timestamp FROM new_points) AS changed
+      WHERE user_id IS NOT NULL AND timestamp IS NOT NULL
+      GROUP BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ORDER BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.points_revision_truncate()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO point_revisions (user_id, month, revision)
+      SELECT user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date, gen_random_uuid()
+      FROM (SELECT user_id, timestamp FROM points) AS changed
+      WHERE user_id IS NOT NULL AND timestamp IS NOT NULL
+      GROUP BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ORDER BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.points_revision_update()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO point_revisions (user_id, month, revision)
+      SELECT user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date, gen_random_uuid()
+      FROM (SELECT user_id, timestamp FROM old_points UNION ALL SELECT user_id, timestamp FROM new_points) AS changed
+      WHERE user_id IS NOT NULL AND timestamp IS NOT NULL
+      GROUP BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ORDER BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER points_revision_delete AFTER DELETE ON public.points REFERENCING OLD TABLE AS old_points FOR EACH STATEMENT EXECUTE FUNCTION points_revision_delete()
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER points_revision_insert AFTER INSERT ON public.points REFERENCING NEW TABLE AS new_points FOR EACH STATEMENT EXECUTE FUNCTION points_revision_insert()
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER points_revision_truncate BEFORE TRUNCATE ON public.points FOR EACH STATEMENT EXECUTE FUNCTION points_revision_truncate()
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER points_revision_update AFTER UPDATE ON public.points REFERENCING OLD TABLE AS old_points NEW TABLE AS new_points FOR EACH STATEMENT EXECUTE FUNCTION points_revision_update()
+  SQL
 end
