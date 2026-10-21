@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- Keep photo clusters and their counts visible above tracks, heatmaps and points on the map (#3770)
 - Refresh the trip map after the live stream subscribes or reconnects when path calculation finished before subscription (#3736)
 - End tracks when a device stays within 100 m for longer than the minutes-between-routes setting, even if it keeps reporting locations, so overnight stops can be suggested as visits again; regenerate existing tracks to apply the fix. (#3356)
 
