@@ -190,17 +190,6 @@ module InsightsHelper
     1 # Any activity is at least level 1
   end
 
-  def activity_level_class(level)
-    case level
-    when 0 then 'bg-base-300'
-    when 1 then 'bg-success/30'
-    when 2 then 'bg-success/50'
-    when 3 then 'bg-success/70'
-    when 4 then 'bg-success'
-    else 'bg-base-300'
-    end
-  end
-
   def format_heatmap_distance(meters, unit)
     return '0' if meters.nil? || meters.to_i.zero?
 

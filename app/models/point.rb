@@ -129,6 +129,11 @@ class Point < ApplicationRecord
     reverse_geocoded_at.present?
   end
 
+  def address_line
+    props = Geocoding::ResultNormalizer.from_data(geodata)[:properties]
+    props.values_at('street', 'city', 'country').compact_blank.join(', ').presence
+  end
+
   def lon
     lonlat.x
   end

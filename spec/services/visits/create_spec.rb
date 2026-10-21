@@ -225,8 +225,20 @@ RSpec.describe Visits::Create do
         expect { service.call }.to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
       end
 
-      it 'does not enqueue for a confirmed visit, whose name the user asserted' do
+      it 'enqueues address lookup for a confirmed visit sent without an address' do
         service = described_class.new(user, valid_params)
+
+        expect { service.call }.to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
+      end
+
+      it 'enqueues address lookup for a confirmed visit whose address fields are all blank' do
+        service = described_class.new(user, valid_params.merge(address: { street: '', city: ' ' }))
+
+        expect { service.call }.to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
+      end
+
+      it 'does not enqueue for a confirmed visit that brought its own address' do
+        service = described_class.new(user, valid_params.merge(address: { street: 'Poststraße', city: 'Berlin' }))
 
         expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
       end

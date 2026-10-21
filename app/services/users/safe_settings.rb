@@ -338,6 +338,10 @@ class Users::SafeSettings
     settings['supporter_github_username']
   end
 
+  def app_store_supporter?
+    ActiveModel::Type::Boolean.new.cast(settings['app_store_supporter']) == true
+  end
+
   def show_supporter_badge?
     value = settings['show_supporter_badge']
     return true if value.nil?

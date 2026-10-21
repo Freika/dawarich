@@ -4,8 +4,13 @@ module Achievements
   # Shared, cached SVG geometry for the whole collection, earned or locked.
   class RegionSilhouettes
     TOLERANCE = 0.02
+    # Boundary sources disagree along disputed lines, leaving hairline slivers
+    # and stranded fragments; drop small pieces only where they touch the cut.
+    DISPUTED_EDGE = 0.002
+    FRAGMENT_SHARE = 0.01
+    FRAGMENT_REACH = 0.03
 
-    CACHE_VERSION = 3
+    CACHE_VERSION = 5
     CACHE_TTL = 1.week
 
     SOURCES = {
@@ -90,9 +95,23 @@ module Achievements
       quoted = codes.map { |code| ApplicationRecord.connection.quote(code) }.join(', ')
 
       <<~SQL.squish
-        SELECT #{@source[:column]} AS code, geom::geometry AS g0
-        FROM #{@source[:table]}
-        WHERE #{@source[:column]} IN (#{quoted})
+        SELECT code,
+               CASE WHEN mask IS NULL THEN g ELSE (
+                 SELECT ST_Collect(part.geom)
+                 FROM ST_Dump(ST_CollectionExtract(ST_Difference(ST_MakeValid(g), mask), 3)) AS part
+                 WHERE ST_Area(part.geom) >= #{FRAGMENT_SHARE} * ST_Area(g)
+                    OR NOT ST_DWithin(part.geom, mask, #{FRAGMENT_REACH})
+               ) END AS g0
+        FROM (
+          SELECT code, g, (
+            SELECT ST_Buffer(ST_Union(d.geom), #{DISPUTED_EDGE}) FROM disputed_areas d WHERE ST_Intersects(d.geom, g)
+          ) AS mask
+          FROM (
+            SELECT #{@source[:column]} AS code, geom::geometry AS g
+            FROM #{@source[:table]}
+            WHERE #{@source[:column]} IN (#{quoted})
+          ) source
+        ) masked
       SQL
     end
 

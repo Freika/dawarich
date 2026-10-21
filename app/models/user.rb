@@ -338,8 +338,7 @@ class User < ApplicationRecord
   end
 
   # Aggregate countries from all stats' toponyms
-  # Only counts a country if the user spent meaningful time in at least one city
-  # (i.e., the country has non-empty cities array in at least one month)
+  # Includes countries even when no city meets the minimum stay threshold
   def countries_visited_uncached
     countries = Set.new
 
@@ -350,7 +349,6 @@ class User < ApplicationRecord
       toponyms.each do |toponym|
         next unless toponym.is_a?(Hash)
         next if toponym['country'].blank?
-        next unless toponym['cities'].is_a?(Array) && toponym['cities'].any?
 
         countries.add(toponym['country'])
       end
@@ -409,7 +407,12 @@ class User < ApplicationRecord
     end
 
     if safe_settings.supporter_github_username.present?
-      return Supporter::VerifyGithubUsername.new(safe_settings.supporter_github_username).call
+      github_info = Supporter::VerifyGithubUsername.new(safe_settings.supporter_github_username).call
+      return github_info if github_info[:supporter]
+    end
+
+    if DawarichSettings.self_hosted? && safe_settings.app_store_supporter?
+      return { supporter: true, platform: 'app_store' }
     end
 
     { supporter: false }

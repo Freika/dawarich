@@ -167,6 +167,9 @@ module Visits
         latitude: latitude,
         longitude: longitude,
         lonlat: "POINT(#{longitude} #{latitude})",
+        city: address[:city].presence,
+        country: address[:country].presence,
+        geodata: address_geodata,
         source: :manual,
         user_named: !suggested?,
         machine_named: suggested?
@@ -176,14 +179,32 @@ module Visits
       nil
     end
 
+    # Suggested places need a name; manual places sent without an address need
+    # one filled in. A user-given name is locked and survives the lookup.
     def enqueue_name_fetching
-      return unless suggested?
+      return unless suggested? || address_geodata.empty?
       return if @created_place.nil?
       return unless Geocoding::Config.for(user).enabled?
 
       Places::NameFetchingJob.perform_later(@created_place.id)
     rescue StandardError => e
       ExceptionReporter.call(e, "Failed to enqueue place name fetching: #{e.message}")
+    end
+
+    def address
+      @address ||= params[:address].presence || {}
+    end
+
+    # Stored in the Photon shape the rest of the app reads from places.geodata.
+    def address_geodata
+      properties = {
+        'street' => address[:street],
+        'housenumber' => address[:house_number],
+        'postcode' => address[:postcode],
+        'city' => address[:city],
+        'country' => address[:country]
+      }.compact_blank
+      properties.empty? ? {} : { 'properties' => properties }
     end
 
     def suggested?
