@@ -281,7 +281,22 @@ defmodule DawarichWeb.SharingEndpointTest do
     ])
 
     assert {404, _, body} = phoenix(serve(), get("/s/#{@timeline}"))
-    assert String.contains?(body, "role=\"status\"")
+    dom = LazyHTML.from_document(body)
+
+    assert dom |> LazyHTML.query("main h1") |> LazyHTML.text() |> String.trim() ==
+             DawarichWeb.Translate.t(
+               "en",
+               "shared.links.not_found.this_shared_link_is_no_longer_available",
+               %{}
+             )
+
+    assert Enum.empty?(
+             LazyHTML.query(
+               dom,
+               "#native-public-map, [data-native-replay-panel], [data-map-replay-open]"
+             )
+           )
+
     assert SharingSeeds.view_count(@timeline) == 0
   end
 

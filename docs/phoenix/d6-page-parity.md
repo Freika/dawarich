@@ -72,7 +72,9 @@ with scoped DOM observation and owned teardown; click and keyboard
 selection keep server admission. Trip distance factors now use meters per
 unit, and public duration uses nominative translations without changing the
 shared relative-time helper. Hidden track statistics remain out of its title;
-that source privacy difference and replay/gallery wiring are registered.
+that source privacy difference and replay/gallery wiring are registered. The
+source replay button uses the existing scoped native runtime opener; public
+sharing journeys verify both opening and closing its panel.
 Explicit heading constraints retain 390 px fit for long names. The static CSS
 change removes only the retired 70vh map-height utility.
 

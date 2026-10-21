@@ -156,6 +156,14 @@ defmodule DawarichWeb.SharingParityTest do
         File.write!(Path.join(dir, @entry["name"] <> ".phoenix.html"), html)
       end
 
+      openers = html |> LazyHTML.from_document() |> LazyHTML.query("[data-map-replay-open]")
+
+      assert Enum.count(openers) ==
+               if(@entry["type"] == "trip" and @entry["settings"]["show_route"] != false,
+                 do: 1,
+                 else: 0
+               )
+
       actual = static_dom(html, "main")
       source = SharingSeeds.page(@entry["name"] <> ".html")
 

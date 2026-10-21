@@ -95,7 +95,7 @@
           class="btn btn-sm btn-outline gap-1"
           data-shared-trip-map-target={if !@native, do: "replayToggleBtn"}
           data-public-replay={@native and !@live}
-          data-native-map-tool={if @live, do: "replay"}
+          data-map-replay-open={@live}
           data-action={if !@native, do: "click->shared-trip-map#toggleReplay"}
         >
           <.icon name="play" class="w-4 h-4" /><span>{s(@locale, "replay")}</span>
