@@ -279,13 +279,41 @@ defmodule DawarichWeb.StatsNativeLiveTest do
   test "stats period commands publish once per selection and sharing keeps source expiration", %{
     user: user
   } do
+    test_pid = self()
+    previous = Application.get_env(:dawarich, :native_insights_readers)
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:dawarich, :native_insights_readers, previous),
+        else: Application.delete_env(:dawarich, :native_insights_readers)
+    end)
+
+    readers =
+      Map.new([:details, :residency], fn kind ->
+        {kind,
+         fn _, _ ->
+           monitor = Process.monitor(test_pid)
+           send(test_pid, {:period_reading, kind})
+
+           receive do
+             {:DOWN, ^monitor, :process, ^test_pid, _} -> {:error, :unavailable}
+           end
+         end}
+      end)
+
+    Application.put_env(:dawarich, :native_insights_readers, readers)
+
+    await_readers = fn ->
+      assert_receive {:period_reading, :details}
+      assert_receive {:period_reading, :residency}
+    end
+
     {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2025")
-    render_async(view)
+    await_readers.()
     render_click(view, "update", %{})
-    render_async(view)
-    render_async(view)
+    await_readers.()
     render_click(view, "update", %{})
-    render_async(view)
+    await_readers.()
 
     assert Dawarich.Repo.query!(
              "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Stats.CalculateMonthWorker'",
@@ -293,12 +321,10 @@ defmodule DawarichWeb.StatsNativeLiveTest do
              log: false
            ).rows == [[12]]
 
-    render_async(view)
     render_patch(view, "/insights?year=2024")
-    render_async(view)
-    render_async(view)
+    await_readers.()
     render_click(view, "update", %{})
-    render_async(view)
+    await_readers.()
 
     assert Dawarich.Repo.query!(
              "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Stats.CalculateMonthWorker'",

@@ -28,6 +28,10 @@ The variables in these examples must be set by the developer/controller; they ar
 
 `NativeAdminUI.setup!/0` gives connected UI tests a separate shared SQL sandbox owner, stopped in `on_exit` after ExUnit shuts down supervised LiveViews and their async reads. Checking out in the test process instead returns the connection as soon as that process exits, while a supervised Insights reader can still be querying. The named `Sync1160InsightsTest` teardown barrier releases a real details read only after the test process has exited and verifies it finishes before the owner stops.
 
+Fixtures that mount Insights outside that helper, including the Settings route test, need the same independent owner lifetime.
+
+The Stats period-command test holds details/residency readers after admission and waits for both entry acknowledgements before each command or patch. It verifies deduplication and sharing while cards are loading, without racing a shared checkout or requiring unrelated cold reads to fit the message-assertion deadline. Real card/cache/residency reads remain covered by the Insights tests.
+
 Whole-format import recordings pin parent and initial-child identities. Compose their setup with the storage/environment fixture only; do not create an unrelated auto-ID lease import first. A generated row can already occupy a recorded identity before `SeedIds` has a chance to advance its sequence. `A12f3bImportsFixture.setup/1` accepts an existing context for these cases, while `setup/0` retains its lease fixture.
 
 In a shared SQL sandbox, drain a LiveView's async reads with `render_async/1` before changing authorization data or patching the view, and drain the patched reads before the next change. Canceling a task during its checkout can disconnect the shared holder while the test owner is still alive. Clock tests should settle the reads before expiring access so they exercise re-admission without racing the sandbox connection.

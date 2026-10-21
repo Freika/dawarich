@@ -147,7 +147,7 @@ defmodule Dawarich.ReleaseMigrationsTest do
     shipped = RailsTree.versions("migrate")
     released = RailsTree.states() |> Enum.flat_map(& &1["schema_added"]) |> MapSet.new()
 
-    assert Ledger.prerelease_versions() != []
+    assert [_ | _] = Ledger.prerelease_versions()
     assert Enum.filter(Ledger.prerelease_versions(), &(&1 in shipped or &1 in released)) == []
   end
 

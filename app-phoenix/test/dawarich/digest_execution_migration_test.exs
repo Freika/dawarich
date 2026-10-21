@@ -33,6 +33,11 @@ defmodule Dawarich.DigestExecutionMigrationTest do
           )
         )
 
+      on_exit(fn ->
+        :code.purge(module)
+        :code.delete(module)
+      end)
+
       assert :ok =
                Ecto.Migrator.up(Repo, 20_261_007_235_900, module, prefix: "phoenix", log: false)
 
