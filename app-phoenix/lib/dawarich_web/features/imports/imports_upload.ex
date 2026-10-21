@@ -4,7 +4,7 @@ defmodule DawarichWeb.ImportsUpload do
   import Phoenix.LiveView
   alias Dawarich.{Imports, Uploads}
 
-  def configure(socket) do
+  def configure(socket, name \\ :files) do
     limits = Uploads.Policy.limits()
 
     socket
@@ -12,11 +12,12 @@ defmodule DawarichWeb.ImportsUpload do
       checksums: %{},
       upload_refs: %{},
       upload_kind: :imports,
+      upload_name: name,
       upload_limits: limits,
       upload_error: nil,
       upload_fallback: false
     )
-    |> allow_upload(:files,
+    |> allow_upload(name,
       accept: :any,
       max_entries: limits.max_entries,
       max_file_size: limits.max_bytes,
@@ -29,7 +30,7 @@ defmodule DawarichWeb.ImportsUpload do
 
   def event("archive_checksum", %{"ref" => ref, "checksum" => checksum}, socket)
       when is_binary(checksum) do
-    refs = Enum.map(socket.assigns.uploads.files.entries, & &1.ref)
+    refs = Enum.map(socket.assigns.uploads[socket.assigns.upload_name].entries, & &1.ref)
 
     if ref in refs and checksum =~ ~r/\A[A-Za-z0-9+\/]{22}==\z/,
       do:
@@ -38,13 +39,13 @@ defmodule DawarichWeb.ImportsUpload do
   end
 
   def event("cancel_upload", %{"ref" => ref}, socket) do
-    if Enum.any?(socket.assigns.uploads.files.entries, &(&1.ref == ref)) do
+    if Enum.any?(socket.assigns.uploads[socket.assigns.upload_name].entries, &(&1.ref == ref)) do
       if owned = socket.assigns.upload_refs[ref],
         do: Uploads.cancel(socket.assigns.current_scope, owned)
 
       {:noreply,
        socket
-       |> cancel_upload(:files, ref)
+       |> cancel_upload(socket.assigns.upload_name, ref)
        |> update(:checksums, &Map.delete(&1, ref))
        |> update(:upload_refs, &Map.delete(&1, ref))}
     else
@@ -64,13 +65,15 @@ defmodule DawarichWeb.ImportsUpload do
       do: {:noreply, assign(socket, upload_fallback: true)}
 
   def event("start_imports", _, socket) do
-    case uploaded_entries(socket, :files) do
+    case uploaded_entries(socket, socket.assigns.upload_name) do
       {[_ | _] = entries, []} ->
         refs = Enum.map(entries, &socket.assigns.upload_refs[&1.ref])
 
         case Imports.create(socket.assigns.current_scope, refs) do
           {:ok, ids} ->
-            consume_uploaded_entries(socket, :files, fn _, _ -> {:ok, :claimed} end)
+            consume_uploaded_entries(socket, socket.assigns.upload_name, fn _, _ ->
+              {:ok, :claimed}
+            end)
 
             {:noreply,
              socket
@@ -123,7 +126,7 @@ defmodule DawarichWeb.ImportsUpload do
       phx-target={@target}
       phx-hook="ArchiveChecksum"
       data-upload-kind="imports"
-      data-upload-name="files"
+      data-upload-name={@upload.name}
       data-max-entries={@limits.max_entries}
       data-preparation-bytes={@limits.preparation_bytes}
       data-preparation-original-bytes={@limits.preparation_original_bytes}

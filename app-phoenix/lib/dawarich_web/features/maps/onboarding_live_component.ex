@@ -16,7 +16,7 @@ defmodule DawarichWeb.OnboardingLiveComponent do
     socket =
       if socket.assigns[:upload_kind] == :imports,
         do: socket,
-        else: DawarichWeb.ImportsUpload.configure(socket)
+        else: DawarichWeb.ImportsUpload.configure(socket, :onboarding_files)
 
     {:ok,
      socket
@@ -103,7 +103,7 @@ defmodule DawarichWeb.OnboardingLiveComponent do
         demo_status={@demo_status}
         upload={
           %{
-            upload: @uploads.files,
+            upload: @uploads[@upload_name],
             limits: @upload_limits,
             error: @upload_error,
             fallback: @upload_fallback,

@@ -100,7 +100,7 @@ defmodule DawarichWeb.ImportsLive.New do
         </div>
       </div>
       <DawarichWeb.ImportsUpload.form
-        upload={@uploads.files}
+        upload={@uploads[@upload_name]}
         locale={@locale}
         accept={@accept}
         limits={@upload_limits}

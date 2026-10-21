@@ -32,3 +32,11 @@ Touched external browser specs:
 - `stats/stats-year-month.spec.js`
 
 The existing trips, Insights, achievements, imports, notifications, account and background-job browser families remain part of controller acceptance. No mini execution, SSH, push, merge, full suite or bench write is performed by this round.
+
+## Fix round 1: upload names within a LiveView
+
+The imports page and the shell's onboarding component coexist on `/imports/new`. LiveView looks up programmatic upload inputs by name across that view, so form-scoped `uploadTo` still fails when both transports are named `files`.
+
+`ImportsUpload.configure/2` retains `:files` for the page and accepts `:onboarding_files` for onboarding. Checksum lookup, cancellation, completion and consumption use the configured name; the hook's `data-upload-name` comes from the upload configuration that renders the live file input. Both visible Rails file controls retain `import[files][]`.
+
+`ImportsLiveUploadTest` renders both forms, checks their distinct transport names and matching hook names, then completes and submits the page upload with one persisted import and attachment. `NativeOnboardingLiveTest` retains its completed onboarding upload journey with the separate name. Reusing `:files` for onboarding is the named regression mutation.

@@ -109,7 +109,7 @@ defmodule DawarichWeb.NativeOnboardingLiveTest do
     name = "onboarding-#{id}.gpx"
 
     input =
-      file_input(view, "#native-onboarding-upload", :files, [
+      file_input(view, "#native-onboarding-upload", :onboarding_files, [
         %{name: name, content: bytes, type: "application/gpx+xml"}
       ])
 

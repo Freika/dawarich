@@ -56,6 +56,40 @@ defmodule DawarichWeb.ImportsLiveUploadTest do
 
   defp count(table), do: Repo.query!("SELECT count(*) FROM " <> table, [], log: false).rows
 
+  test "page upload completes with distinct onboarding transport names in the same LiveView", c do
+    {:ok, view, html} = live_as(c.user)
+    document = LazyHTML.from_document(html)
+
+    [page_name] =
+      document
+      |> LazyHTML.query("#phx-import-upload [data-native-upload-transport]")
+      |> LazyHTML.attribute("name")
+
+    [onboarding_name] =
+      document
+      |> LazyHTML.query("#native-onboarding-upload [data-native-upload-transport]")
+      |> LazyHTML.attribute("name")
+
+    refute page_name == onboarding_name
+    assert has_element?(view, "#phx-import-upload[data-upload-name='#{page_name}']")
+    assert has_element?(view, "#native-onboarding-upload[data-upload-name='#{onboarding_name}']")
+
+    for form <- ~w(phx-import-upload native-onboarding-upload) do
+      assert has_element?(view, "##{form} input[type=file][name='import[files][]']")
+    end
+
+    upload = select(view, ~w(page-with-onboarding.gpx))
+    render_upload(upload, "page-with-onboarding.gpx")
+    store("page-with-onboarding.gpx")
+    assert has_element?(view, "#phx-import-upload progress[value='100']")
+    assert has_element?(view, "#phx-import-upload input[type=submit]:not([disabled])")
+    refute has_element?(view, "#native-onboarding-upload [data-entry-ref]")
+    view |> form("#phx-import-upload") |> render_submit()
+    assert_redirect(view, "/imports")
+    assert count("imports") == [[1]]
+    assert count("active_storage_attachments") == [[1]]
+  end
+
   test "only a fully completed authorized upload batch starts imports", c do
     {:ok, view, _} = live_as(c.user)
 
