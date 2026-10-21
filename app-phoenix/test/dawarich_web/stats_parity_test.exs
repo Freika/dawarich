@@ -263,7 +263,7 @@ defmodule DawarichWeb.StatsParityTest do
         ]
 
       values["id"] == "chart-1" or String.starts_with?(values["id"] || "", "chart-month-daily-") ->
-        [{tag, Enum.reject(attrs, fn {key, _} -> key == "data-chart" end), []}]
+        [{tag, Enum.reject(attrs, fn {key, _} -> key in ~w(data-chart data-chart-plot) end), []}]
 
       tag == "a" and String.starts_with?(values["href"] || "", "/auth/dawarich?") ->
         [{"button", [{"class", values["class"]}], monthly_nodes(children)}]
