@@ -40,3 +40,24 @@ as read performance when benchmarking this profile. No request-time approximate
 count or periodically corrected `users.points_count` is used for exact totals.
 
 See `single-process.md` for the independent Puma/Sidekiq memory profile.
+
+## Background refresh work
+
+`Tracks::TimeChunkProcessorJob` projects only ID, timestamp, coordinates, and
+device identity for buffered segmentation. Its locked orphan re-read also loads
+both altitude columns for elevation calculations and preloads device sources.
+Neither bulk read loads raw payloads or geodata. Locking, ownership checks,
+track boundaries, distances, and elevation behavior are preserved.
+
+Toponym reconciliation still visits a bounded number of statistics per run,
+but compares a checkpoint before streaming the month's points. The checkpoint
+includes revisions for the UTC months intersecting the local month, timezone,
+minimum city duration, canonical country names, and the stored toponyms.
+Unchanged months skip the cursor entirely. Point updates and deletions, settings
+changes, and manually damaged results trigger a refresh. Adjacent UTC months
+may conservatively invalidate a local month.
+
+The dirty-day queue still forces its refresh and cache invalidation; retries,
+missing-month discovery, full-stat scheduling, and sweep watermarks retain their
+existing behavior. Checkpoints expire after seven days, so cache eviction or
+expiry causes a bounded reconciliation scan rather than stale statistics.

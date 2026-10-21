@@ -64,6 +64,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
     # per-chunk grouping at one dimension query instead of one per point.
     relation = user.points
                    .not_anomaly
+                   .select(:id, :timestamp, :lonlat, :source_id, :tracker_id)
                    .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
                    .order(:timestamp)
                    .preload(:source)
