@@ -121,6 +121,7 @@ class Imports::Create
     when 'tcx'                          then Tcx::Importer
     when 'fit'                          then Fit::Importer
     when 'polarsteps'                   then Polarsteps::Importer
+    when 'swarm'                        then Swarm::Importer
     when 'zip'
       raise ArgumentError, I18n.t('services.imports.create.zip_unclassified')
     else

@@ -84,6 +84,13 @@ class Imports::SourceDetector
         }
       ]
     },
+    swarm: {
+      required_keys: %w[count items],
+      nested_patterns: [
+        ['items', 0, 'timeZoneOffset'],
+        ['items', 0, 'venue', 'id']
+      ]
+    },
     owntracks: {
       structure: :rec_file_lines,
       line_pattern: /"_type":"location"/
@@ -273,6 +280,8 @@ class Imports::SourceDetector
       :google_photos
     elsif content.include?('"arrived"') && content.include?('"departed"') && content.include?('"segment-')
       :polarsteps
+    elsif content.include?('"items"') && content.include?('"createdAt"') && content.include?('"timeZoneOffset"')
+      :swarm
     end
   end
 

@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Import your check-in history from a Foursquare Swarm data export. Upload the whole export archive or its `checkins*.json` files: every check-in becomes a point, and every check-in at a venue becomes a visit at a place named after that venue. A visit lasts until your next check-in, at most two hours. The other files in the archive (tips, photos, ratings) are skipped.
+
 ### Fixed
 - End tracks when a device stays within 100 m for longer than the minutes-between-routes setting, even if it keeps reporting locations, so overnight stops can be suggested as visits again; regenerate existing tracks to apply the fix. (#3356)
 

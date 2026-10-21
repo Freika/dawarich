@@ -34,7 +34,7 @@ class Import < ApplicationRecord
     google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6, photoprism_api: 7,
     user_data_archive: 8, kml: 9,
     csv: 10, tcx: 11, fit: 12, polarsteps: 13, google_photos: 14,
-    mobile_photo_library: 15
+    mobile_photo_library: 15, swarm: 16
   }, allow_nil: true
 
   enum :additional_data_extraction_status, {
