@@ -5,12 +5,12 @@ defmodule DawarichWeb.PointListControls do
   import DawarichWeb.Paginator, only: [paginator: 1]
   alias DawarichWeb.PointListFormat, as: F
 
-  attr :locale, :string, required: true
-  attr :window, :map, required: true
-  attr :imports, :list, required: true
-  attr :query, :map, required: true
-  attr :summary, :any, required: true
-  attr :form, :any, required: true
+  attr(:locale, :string, required: true)
+  attr(:window, :map, required: true)
+  attr(:imports, :list, required: true)
+  attr(:query, :map, required: true)
+  attr(:summary, :any, required: true)
+  attr(:form, :any, required: true)
 
   def controls(assigns) do
     ~H"""
@@ -85,7 +85,7 @@ defmodule DawarichWeb.PointListControls do
     <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4">
       <div class="text-sm text-base-content/50">{@summary}</div>
       <div class="flex flex-wrap items-center gap-2">
-        <div class="dropdown dropdown-end">
+        <div class="dropdown dropdown-end max-sm:[&>.dropdown-content]:start-0 max-sm:[&>.dropdown-content]:end-auto">
           <label tabindex="0" class="btn btn-outline btn-xs gap-1">
             <.icon name="arrow-big-down" class="w-3.5 h-3.5" /> {t(
               @locale,
@@ -117,11 +117,11 @@ defmodule DawarichWeb.PointListControls do
     """
   end
 
-  attr :locale, :string, required: true
-  attr :query, :map, required: true
-  attr :page, :integer, required: true
-  attr :total_pages, :integer, required: true
-  attr :class, :string, required: true
+  attr(:locale, :string, required: true)
+  attr(:query, :map, required: true)
+  attr(:page, :integer, required: true)
+  attr(:total_pages, :integer, required: true)
+  attr(:class, :string, required: true)
 
   def pagination(assigns) do
     ~H"""

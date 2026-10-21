@@ -121,10 +121,25 @@ defmodule DawarichWeb.MapDataParityTest do
       if state["kind"] == "points" do
         assert_checkbox_ids(native, expected, name)
 
+        export_class =
+          "dropdown dropdown-end max-sm:[&>.dropdown-content]:start-0 max-sm:[&>.dropdown-content]:end-auto"
+
+        assert native
+               |> LazyHTML.from_fragment()
+               |> LazyHTML.query(".dropdown")
+               |> LazyHTML.attribute("class") == [export_class]
+
         native_dom =
           Regex.replace(
             ~r/id="point_ids_[0-9]+"/,
-            Dawarich.Test.DataPageParity.action_paths(native, :fragment),
+            Dawarich.Test.DataPageParity.action_paths(
+              String.replace(
+                native,
+                ~s(class="#{export_class}"),
+                ~s(class="dropdown dropdown-end")
+              ),
+              :fragment
+            ),
             ~s(id="point_ids_")
           )
           |> ParityHTML.normalize()
