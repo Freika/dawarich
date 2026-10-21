@@ -1,0 +1,35 @@
+<input
+  type="hidden"
+  value={@token}
+  name="user[reset_password_token]"
+  id="user_reset_password_token"
+/>
+<div class="form-control">
+  <DawarichWeb.AuthErrors.field error={"password" in @invalid}><label class="label" for="user_password"><span class="label-text">{text(assigns, "new_password")}</span></label></DawarichWeb.AuthErrors.field>
+  <DawarichWeb.AuthErrors.field error={"password" in @invalid}><input
+    autofocus="autofocus"
+    autocomplete="new-password"
+    class="input input-bordered w-full"
+    type="password"
+    name="user[password]"
+    id="user_password"
+    aria-invalid={if "password" in @invalid, do: "true"}
+    aria-describedby={described(@invalid, "password", "password-hint")}
+  /></DawarichWeb.AuthErrors.field>
+  <span id="password-hint" class="label-text-alt text-base-content/60 mt-1">{t(@locale, "devise.registrations.new.characters_minimum", %{"count" => 12})}</span>
+</div>
+<div class="form-control">
+  <DawarichWeb.AuthErrors.field error={"password_confirmation" in @invalid}><label class="label" for="user_password_confirmation"><span class="label-text">{text(
+    assigns,
+    "confirm_new_password"
+  )}</span></label></DawarichWeb.AuthErrors.field>
+  <DawarichWeb.AuthErrors.field error={"password_confirmation" in @invalid}><input
+    autocomplete="new-password"
+    class="input input-bordered w-full"
+    type="password"
+    name="user[password_confirmation]"
+    id="user_password_confirmation"
+    aria-invalid={if "password_confirmation" in @invalid, do: "true"}
+    aria-describedby={described(@invalid, "password_confirmation")}
+  /></DawarichWeb.AuthErrors.field>
+</div>

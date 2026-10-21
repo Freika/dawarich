@@ -60,6 +60,36 @@ RSpec.describe Trip, type: :model do
     end
   end
 
+  describe 'calculation routing' do
+    let(:user) { create(:user) }
+
+    it 'enqueues the Sidekiq fan-out while Sidekiq owns trip calculations' do
+      expect { create(:trip, user:) }.to have_enqueued_job(Trips::CalculateAllJob).with(an_instance_of(Integer), 'km')
+      expect(JobOutbox.count).to eq(0)
+    end
+
+    it 'writes one deduplicated command in the save transaction once Oban owns them' do
+      job_owner!('command:trips.calculate', :oban)
+
+      trip = nil
+      expect { trip = create(:trip, user:) }.not_to have_enqueued_job(Trips::CalculateAllJob)
+      expect(JobOutbox.sole).to have_attributes(command_type: 'trips.calculate', aggregate_id: trip.id,
+                                                dedupe_key: trip.id.to_s,
+                                                payload: { 'trip_id' => trip.id, 'distance_unit' => 'km' })
+    end
+
+    it 'produces nothing when the trip is not saved' do
+      job_owner!('command:trips.calculate', :oban)
+
+      Trip.transaction do
+        create(:trip, user:)
+        raise ActiveRecord::Rollback
+      end
+
+      expect(JobOutbox.count).to eq(0)
+    end
+  end
+
   describe '#photo_previews' do
     let(:photo_data) do
       [

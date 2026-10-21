@@ -56,6 +56,37 @@ RSpec.describe Family::Invitations::SendingJob, type: :job do
       end
     end
 
+    describe 'ownership of command:mail.family_invitation' do
+      before do
+        invitation
+        JobOutbox.delete_all
+        ActionMailer::Base.deliveries.clear
+      end
+
+      it 'owned by oban forwards and sends nothing' do
+        job_owner!('command:mail.family_invitation', :oban)
+        job = described_class.new(invitation.id)
+
+        expect { job.perform_now }.not_to(change { ActionMailer::Base.deliveries.size })
+        expect(JobOutbox.find(job.job_id)).to have_attributes(
+          command_type: 'mail.family_invitation', aggregate_id: invitation.id,
+          dedupe_key: "family-invitation:#{invitation.id}",
+          payload: { 'invitation_id' => invitation.id, 'locale' => 'en' }
+        )
+      end
+
+      it 'owned by sidekiq sends only while pending' do
+        job_owner!('command:mail.family_invitation', :sidekiq)
+        allow(FamilyMailer).to receive(:default).and_return(FamilyMailer.default.merge(from: 'noreply@example.test'))
+        accepted = create(:family_invitation, family: family, invited_by: user, status: :accepted)
+
+        expect { described_class.perform_now(accepted.id) }.not_to(change { ActionMailer::Base.deliveries.size })
+        expect { described_class.perform_now(invitation.id) }.to change { ActionMailer::Base.deliveries.size }.by(1)
+        expect(ActionMailer::Base.deliveries.last.to).to eq([invitation.email])
+        expect(JobOutbox.count).to eq(0)
+      end
+    end
+
     context 'integration test' do
       before do
         ActionMailer::Base.deliveries.clear

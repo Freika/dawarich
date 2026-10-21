@@ -16,6 +16,8 @@ class Tracks::BackfillScheduler
   end
 
   def call
+    return Tracks::BackfillState.new(@user_id, @timestamps).call if Tracks::BackfillState.table?
+
     return if @timestamps.empty?
 
     earliest = @timestamps.min
@@ -39,6 +41,8 @@ class Tracks::BackfillScheduler
   end
 
   def pop_range
+    return Tracks::BackfillState.pop_range(@user_id) if Tracks::BackfillState.table?
+
     redis_pool.with do |redis|
       bounds = redis.call('EVAL', POP_RANGE_SCRIPT, 2, range_key, schedule_key)
       return nil if bounds.blank?

@@ -1,13 +1,49 @@
 #!/bin/sh
-# Cloud web, worker and release processes share an image, but no process should
-# run migrations or seeds implicitly when a container restarts.
-set -eu
 
-unset BUNDLE_PATH
-unset BUNDLE_BIN
+set -e
 
-if [ "$(id -u)" = 0 ]; then
-  exec gosu 32767:32767 "$0" "$@"
+. "$(dirname "$0")/entrypoint-env-guard.sh"
+. "$(dirname "$0")/entrypoint-common.sh"
+validate_cloud_drain_argv "$0" "$@"
+case "${DAWARICH_PHOENIX_LIFECYCLE-false}:${SELF_HOSTED-true}" in
+  true:false)
+    if ! is_server_command "$@"; then
+      echo "Native Cloud web requires a supported server command" >&2
+      exit 1
+    fi
+    ;;
+  *) validate_phoenix_lifecycle ;;
+esac
+
+bootstrap "$0" "$@"
+if phoenix_lifecycle_is_native && [ "${SELF_HOSTED-true}" = false ]; then
+  unset DAWARICH_RAILS_ARGS DAWARICH_NATIVE_ARGS DAWARICH_PROCESS_ROLE
+  dawarich eval 'Dawarich.Release.halt_unless_ready()' || exit "$?"
+  exec_native_phoenix "$@"
+fi
+echo "⚠️ Starting Rails environment: $RAILS_ENV ⚠️"
+sanitize_integer_env WEB_CONCURRENCY 1
+wait_for_database
+
+rm -f "$APP_PATH/tmp/pids/server.pid"
+
+if is_server_command "$@"; then
+  ready=0
+  dawarich eval 'Dawarich.Release.halt_unless_ready()' || ready=$?
+  if [ "$ready" -eq 0 ]; then
+    exec_under_phoenix "$@"
+  fi
+  if phoenix_lifecycle_is_native; then
+    echo "Native lifecycle readiness failed; web boot stops here" >&2
+    exit "$ready"
+  fi
+  case "$ready" in
+    3) cause="Phoenix schemas are missing, unreadable or behind this image" ;;
+    4) cause="the Erlang cookie file cannot be read" ;;
+    5) cause="PostgreSQL did not answer the Phoenix readiness check" ;;
+    *) cause="the Phoenix readiness check failed with exit status $ready" ;;
+  esac
+  echo "$cause; starting Rails without the Phoenix supervisor" >&2
 fi
 
 exec bundle exec "$@"

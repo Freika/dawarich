@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::TrackBuilder do
+  include ActiveSupport::Testing::TimeHelpers
+
+  around { |example| freeze_time { example.run } }
+
   # Create a test class that includes the concern for testing
   let(:test_class) do
     Class.new do

@@ -10,10 +10,10 @@ RSpec.describe 'Users::Digests transitional aliases', type: :job do
   # name (the transitional alias) verifies the autoload path resolves the
   # class without raising NameError, and that the resulting instance can
   # actually run the wrapped job's logic.
-  def execute_legacy_payload(job_class_name, arguments, queue_name:)
+  def execute_legacy_payload(job_class_name, arguments, queue_name:, job_id: SecureRandom.uuid)
     job_data = {
       'job_class'           => job_class_name,
-      'job_id'              => SecureRandom.uuid,
+      'job_id'              => job_id,
       'provider_job_id'     => nil,
       'queue_name'          => queue_name,
       'priority'            => nil,
@@ -67,6 +67,24 @@ RSpec.describe 'Users::Digests transitional aliases', type: :job do
   end
 
   describe 'Users::Digests::CalculatingJob' do
+    it 'legacy calculation payload forwards to the yearly key without changing its ActiveJob ID' do
+      user = create(:user)
+      job_owner!('command:digests.calculate_year', :oban)
+      id = SecureRandom.uuid
+      Time.use_zone('Asia/Tokyo') do
+        2.times do
+          execute_legacy_payload('Users::Digests::CalculatingJob', [user.id, '2025'], queue_name: 'digests', job_id: id)
+        end
+      end
+
+      row = JobOutbox.where(event_id: id).sole
+      expect(row).to have_attributes(command_type: 'digests.calculate_year', aggregate_id: user.id,
+                                     payload: { 'user_id' => user.id, 'year' => 2025, 'time_zone' => 'Asia/Tokyo' })
+      expect(row.metadata).to eq('producer' => 'Users::Digests::CalculatingJob')
+      expect(enqueued_jobs).to be_empty
+      expect(Users::Digests::CalculatingJob.new.queue_name).to eq('digests')
+    end
+
     it 'resolves to a real class via constantize' do
       expect { 'Users::Digests::CalculatingJob'.constantize }.not_to raise_error
     end

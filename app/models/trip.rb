@@ -34,8 +34,9 @@ class Trip < ApplicationRecord
   after_create :enqueue_calculation_jobs, if: :should_enqueue_calculation_jobs?
   after_update :enqueue_calculation_jobs, if: :should_recalculate_after_update?
 
-  def enqueue_calculation_jobs
-    Trips::CalculateAllJob.perform_later(id, user.safe_settings.distance_unit)
+  def enqueue_calculation_jobs(distance_unit = user.safe_settings.distance_unit)
+    JobCommands.produce('trips.calculate', { 'trip_id' => id, 'distance_unit' => distance_unit },
+                        aggregate_id: id, dedupe_key: id.to_s, producer: 'Trip#enqueue_calculation_jobs')
   end
 
   def source_imported?

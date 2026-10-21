@@ -1,0 +1,90 @@
+defmodule DawarichWeb.NativeMapHost do
+  @moduledoc false
+  use Phoenix.Component
+
+  @fields ~w(liveEnabled namespace revision editEnabled panel customTheme tilesFallback tilesUrl hiddenTileCategories disabledPoiGroups distanceUnit title styleUrl range mapOptions epoch pointsEnabled tracksEnabled heatmapEnabled trackColor styleName flightsEnabled fogEnabled fogMode fogRadius hexagonsEnabled scratchEnabled photosEnabled visitsEnabled placesEnabled areasEnabled familyEnabled visitFilter anomaliesEnabled anomaliesPreferred placesTagFilters tripId planEnabled routeOptions shareId publicType routeEnabled validUntil byDay)
+  @range ~w(startAt endAt importId timezone)
+  @options ~w(center zoom minZoom maxZoom bearing pitch projection interactive attributionControl)
+
+  attr :id, :string, required: true
+  attr :config, :map, required: true
+  attr :hook, :string, default: "Map"
+  attr :locale, :string, default: "en"
+  attr :class, :any, default: "relative min-w-0 h-full w-full"
+  attr :style, :string, default: nil
+  attr :loading, :boolean, default: true
+
+  slot :inner_block
+
+  def map_host(assigns) do
+    locale =
+      if assigns.locale in Dawarich.I18n.available_locales(), do: assigns.locale, else: "en"
+
+    {:ok, label} = Dawarich.I18n.t(locale, "javascript.hexagons.points", %{"count" => "{count}"})
+
+    photo_labels =
+      Map.new(
+        ~w(common.unknown search.unknown_location map_info.video map_info.photo map_info.coordinates map_info.source),
+        fn key ->
+          {:ok, value} = Dawarich.I18n.t(locale, "javascript." <> key)
+          {key, value}
+        end
+      )
+
+    entity_labels =
+      Map.new(
+        ~w(map_info.time map_info.reason map_info.start map_info.end anomalies.low_accuracy anomalies.impossible_speed),
+        fn key ->
+          {:ok, value} =
+            Dawarich.I18n.t(locale, "javascript." <> key, %{
+              "accuracy" => "{accuracy}",
+              "threshold" => "{threshold}"
+            })
+
+          {key, value}
+        end
+      )
+
+    config =
+      assigns.config
+      |> Map.take(@fields)
+      |> Map.put("rtlUrl", DawarichWeb.Assets.stylesheet_path("mapbox-gl-rtl-text.js"))
+      |> Map.put("locale", locale)
+      |> Map.put("uiLabels", DawarichWeb.NativeMapLabels.labels(locale))
+      |> Map.put("photoLabels", photo_labels)
+      |> Map.put("entityLabels", entity_labels)
+      |> Map.put("hexagonLabel", label |> LazyHTML.from_fragment() |> LazyHTML.text())
+      |> Map.update(
+        "routeOptions",
+        %{},
+        &Map.take(&1, ~w(distanceThresholdMeters timeThresholdMinutes))
+      )
+      |> Map.update("range", %{}, &Map.take(&1, @range))
+      |> Map.update("mapOptions", %{}, &Map.take(&1, @options))
+
+    assigns = assign(assigns, locale: locale, serialized_config: Jason.encode!(config))
+
+    ~H"""
+    <div
+      id={@id}
+      class={@class}
+      style={@style}
+      phx-hook={@hook}
+      phx-update="ignore"
+      data-map-config={@serialized_config}
+      data-map-state="loading"
+    >
+      <p
+        :if={@loading}
+        data-map-loading
+        role="status"
+        class="absolute top-2 left-2 z-10 rounded bg-base-100 p-2"
+      >
+        {DawarichWeb.Translate.t(@locale, "javascript.common.loading", %{})}
+      </p>{render_slot(
+        @inner_block
+      )}
+    </div>
+    """
+  end
+end

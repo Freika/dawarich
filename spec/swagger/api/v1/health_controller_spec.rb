@@ -12,7 +12,16 @@ describe 'Health API', type: :request do
       response '200', 'Healthy' do
         schema type: :object,
                properties: {
-                 status: { type: :string, example: 'ok', description: 'Application health status' }
+                 status: { type: :string, example: 'ok', description: 'Application health status' },
+                 phoenix: {
+                   type: :object,
+                   properties: {
+                     status: {
+                       type: :string, enum: %w[ok stale absent unknown], description: 'Phoenix in this container'
+                     },
+                     alarm: { type: :boolean, description: 'Jobs owned by Phoenix are not being processed' }
+                   }
+                 }
                }
 
         header 'X-Dawarich-Response',

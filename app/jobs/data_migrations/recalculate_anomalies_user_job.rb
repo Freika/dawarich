@@ -75,6 +75,9 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
   end
 
   def perform(user_id, attempt: 1)
+    return if ReleaseCommands.forward_recalculation(self, 'release.anomalies_user',
+                                                    { 'user_id' => user_id, 'attempt' => attempt })
+
     user = User.find_by(id: user_id)
     return release_slot if user.nil?
     return release_slot if recalculated?(user)
@@ -88,7 +91,7 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
     end
 
     # Three outcomes, and nil is not the same as false: the backfill returns
-    # `false` when the advisory lock was busy, but `nil` when a shutdown
+    # `false` when the backfill lease was busy, but `nil` when a shutdown
     # interrupted it — ActiveJob's continuation swallows the return value and
     # puts the job back on the queue itself. Retrying an interrupted run would
     # repeat the whole reset and filter pass against the copy already resuming,

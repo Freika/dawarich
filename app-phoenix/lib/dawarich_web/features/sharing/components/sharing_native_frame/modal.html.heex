@@ -1,0 +1,93 @@
+<div
+  id="native-sharing-dialog"
+  phx-hook="OrdinaryDialog"
+  class="modal modal-open"
+  style="z-index: 10000;"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby={
+    if @share != nil and @base_resource.type != :hub,
+      do: "native-active-sharing-title",
+      else: "native-sharing-title"
+  }
+  phx-keydown={Phoenix.LiveView.JS.navigate(@close)}
+  phx-key="Escape"
+  phx-mounted={Phoenix.LiveView.JS.focus(to: "#native-sharing-close")}
+>
+  <div class="modal-box max-w-xl">
+    <.link
+      id="native-sharing-close"
+      data-native-dialog-initial-focus
+      navigate={@close}
+      class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3"
+      aria-label={
+        t(
+          @locale,
+          if(@base_resource.type == :hub,
+            do: "share_links.hubs.modal.close",
+            else: "shared_links.modal.close"
+          ),
+          %{}
+        )
+      }
+    >✕</.link>
+    <%= cond do %>
+      <% @base_resource.type == :hub -> %>
+        <h3 id="native-sharing-title" class="font-bold text-lg mb-4">{@title}</h3>
+        <div id="share-hub-body"><SharingNativeHub.body {assigns} /></div>
+      <% @base_resource.type in [:month, :digest, :achievement] -> %>
+        <h3 id="native-sharing-title" class="font-bold text-lg mb-4">{@title}</h3>
+        <DawarichWeb.SharingNativeReport.form
+          resource={@base_resource}
+          page={@page}
+          locale={@locale}
+          native_copy={true}
+          base_url={assigns[:base_url] || ""}
+        />
+      <% @share != nil -> %>
+        <SharingNativeActive.active
+          share={@share}
+          locale={@locale}
+          base_url={assigns[:base_url] || ""}
+          subtitle={
+            SharingNativeActive.subtitle(@resource, Map.put(@page, :share, @share), @locale)
+          }
+        />
+      <% true -> %>
+        <h3 id="native-sharing-title" class="font-bold text-lg mb-1">{@title}</h3>
+        <p class="text-sm text-base-content/70 mb-5">
+          {t(
+            @locale,
+            if(@base_resource.type == :trip,
+              do: "shared_links.family.choose_audience",
+              else: "shared_links.modal.anyone_with_the_link_will_be_able_to_view_this"
+            ),
+            %{}
+          )}
+        </p>
+        <SharingNativeForm.form
+          resource={@resource}
+          page={@page}
+          locale={@locale}
+          values={@form_values}
+          user={@current_user}
+          today={assigns[:today]}
+        />
+    <% end %>
+    <p :for={error <- @errors} role="alert" class="alert alert-error mb-3">{error}</p>
+  </div>
+  <.link
+    navigate={@close}
+    class="modal-backdrop"
+    aria-label={
+      t(
+        @locale,
+        if(@base_resource.type == :hub,
+          do: "share_links.hubs.modal.close",
+          else: "shared_links.modal.close"
+        ),
+        %{}
+      )
+    }
+  ></.link>
+</div>

@@ -10,6 +10,8 @@ RSpec.describe Stats::GeocodedDays do
   let(:key) { "#{described_class::VERSION_KEY_PREFIX}:#{member}" }
 
   before do
+    ActiveRecord::Base.connection.execute('DROP TABLE phoenix.stats_geocoded_days')
+    PhoenixSchema.reset!
     config = Sidekiq.redis(&:config)
     @redis = config.new_client
     @other = config.new_client

@@ -28,7 +28,9 @@ module Visits
       return block.call unless advisory_locks_enabled?
 
       ident = @photon[:osm_id].presence || "#{@photon[:name]}:#{@photon[:latitude]}:#{@photon[:longitude]}"
-      ActiveRecord::Base.with_advisory_lock("select_place:#{@user.id}:#{ident}", &block)
+      ActiveRecord::Base.transaction do
+        ActiveRecord::Base.with_advisory_lock("select_place:#{@user.id}:#{ident}", transaction: true, &block)
+      end
     end
 
     def find_by_name_and_proximity

@@ -7,10 +7,26 @@ RSpec.describe 'Reverse geocoding backlog' do
   let!(:point) { create(:point, user: user, reverse_geocoded_at: Time.current) }
 
   before do
+    without_phoenix_state!
     configure_instance_geocoding
     point.update_columns(reverse_geocoded_at: nil)
     Sidekiq.redis { |r| r.del(Point.geocode_dedup_key(point.id)) }
     ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+  end
+
+  context 'with PostgreSQL claims' do
+    before { phoenix_state! }
+
+    it 'persists a legacy claim without enqueueing duplicate work' do
+      PhoenixClaims.claim(Point.geocode_dedup_key(point.id), 10)
+
+      point.async_reverse_geocode
+
+      expect(ReverseGeocodingJob).not_to have_been_enqueued
+      expect(ActiveRecord::Base.connection.select_value(
+               "SELECT expires_at::text FROM phoenix.once_claims WHERE key = '#{Point.geocode_dedup_key(point.id)}'"
+             )).to eq('infinity')
+    end
   end
 
   it 'does not duplicate pending jobs across continue and repeated nightly runs' do

@@ -21,10 +21,12 @@ RSpec.describe 'Account deletion confirmation retry after a failed request' do
 
   it 'releases the rate limit when the job adapter rejects enqueueing' do
     adapter = ActiveJob::Base.queue_adapter
-    allow(adapter).to receive(:enqueue).and_raise(ActiveJob::EnqueueError, 'Queue unavailable')
+    %i[enqueue enqueue_at].each do |method|
+      allow(adapter).to receive(method).and_raise(ActiveJob::EnqueueError, 'Queue unavailable')
+    end
 
     expect { request_confirmation }.to raise_error(ActiveJob::EnqueueError)
-    allow(adapter).to receive(:enqueue).and_call_original
+    %i[enqueue enqueue_at].each { |method| allow(adapter).to receive(method).and_call_original }
 
     expect(request_confirmation.status).to eq(:sent)
     expect(enqueued_jobs.count { |job| job[:job] == Users::MailerSendingJob }).to eq(1)

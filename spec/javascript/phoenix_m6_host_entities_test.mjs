@@ -1,0 +1,99 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+import { Element, fixture } from "./support/native_m6_host_fixture.mjs"
+
+test("native map host arms place creation and enables its owned entity layer", async () => {
+  const f = fixture()
+  const button = new Element()
+  f.nodes.set('[data-testid="native-create-place"]', button)
+  await f.owner.mount()
+  button.emit("click")
+  f.map.emit("click", { lngLat: { lat: 52, lng: 13 } })
+  assert.deepEqual(
+    f.pushed.find((item) => item.event === "place:new").payload,
+    { latitude: 52, longitude: 13 },
+  )
+  await f.owner.layer({ layer: "places", enabled: true })
+  assert.equal(f.owner.config.placesEnabled, true)
+  assert.equal(
+    f.reads.some((item) => item.resource === "places"),
+    true,
+  )
+  f.owner.destroy()
+  assert.equal(f.root.listeners.get("click").size, 0)
+})
+
+test("native creation guidance belongs to the armed tool and clears after click Escape and destroy", async () => {
+  const f = fixture(),
+    status = new Element(),
+    visit = new Element(),
+    area = new Element()
+  status.dataset.visitMessage = "Localized visit placement"
+  f.nodes.set("[data-map-tool-status]", status)
+  f.nodes.set('[data-testid="native-create-visit"]', visit)
+  f.nodes.set('[data-testid="native-create-area"]', area)
+  try {
+    await f.owner.mount()
+    visit.emit("click")
+    assert.equal(f.root.dataset.mapToolArmed, "visit")
+    assert.equal(status.textContent ?? "", "")
+    f.root.emit("keydown", { key: "Escape" })
+    f.map.emit("click", { lngLat: { lat: 52, lng: 13 } })
+    assert.equal(
+      f.pushed.some((item) => item.event === "visit:new"),
+      false,
+    )
+    assert.equal(status.textContent ?? "", "")
+    visit.emit("click")
+    area.emit("click")
+    f.map.emit("click", { lngLat: { lat: 52, lng: 13 } })
+    assert.equal(
+      f.pushed.some((item) => item.event === "visit:new"),
+      false,
+    )
+    assert.equal(f.pushed.filter((item) => item.event === "area:new").length, 1)
+    visit.emit("click")
+    f.map.emit("click", { lngLat: { lat: 52, lng: 13 } })
+    assert.equal(status.textContent ?? "", "")
+    visit.emit("click")
+    f.owner.destroy()
+    assert.equal(status.textContent ?? "", "")
+    assert.equal(f.root.listeners.get("keydown").size, 0)
+  } finally {
+    f.owner.destroy()
+  }
+})
+
+test("whitespace-only creation guidance permits place selection while armed guidance blocks it", async () => {
+  const f = fixture({ placesEnabled: true }),
+    status = new Element()
+  status.textContent = "\n  "
+  f.nodes.set("[data-map-tool-status]", status)
+  f.reader.pages = async (resource) =>
+    resource === "places"
+      ? [{ id: 7, name: "Owned place", latitude: 52, longitude: 13 }]
+      : []
+  const title = new Element()
+  f.nodes.set("[data-native-info-display]", new Element())
+  f.nodes.set("[data-native-info-title]", title)
+  f.nodes.set("[data-native-info-content]", new Element())
+  f.nodes.set("[data-native-info-actions]", new Element())
+  await f.owner.mount()
+  const select = () =>
+    f.map.emit("click:places", { features: [{ properties: { id: 7 } }] })
+  const opened = () =>
+    f.pushed.filter(
+      (item) => item.event === "map:panel" && item.payload.panel === "tools",
+    ).length
+  select()
+  assert.equal(title.textContent, "Owned place")
+  assert.equal(opened(), 1)
+  assert.equal(f.pushed.some((item) => item.event === "map:select"), false)
+  f.root.dataset.mapToolArmed = "place"
+  select()
+  assert.equal(opened(), 1)
+  delete f.root.dataset.mapToolArmed
+  select()
+  assert.equal(opened(), 2)
+  f.owner.destroy()
+})

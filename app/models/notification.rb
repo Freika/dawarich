@@ -50,8 +50,6 @@ class Notification < ApplicationRecord
     Turbo::StreamsChannel.broadcast_refresh_to([user, :notification_pages])
   end
 
-  private
-
   def broadcast_notification_update
     self.class.broadcast_badge_for(user)
     if read?

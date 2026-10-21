@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::ParallelGenerator do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:generator) { described_class.new(user, **options) }
   let(:options) { {} }
@@ -50,6 +52,30 @@ RSpec.describe Tracks::ParallelGenerator do
   describe '#call' do
     let!(:point1) { create(:point, user: user, timestamp: 2.days.ago.to_i) }
     let!(:point2) { create(:point, user: user, timestamp: 1.day.ago.to_i) }
+
+    it 'Sidekiq-owned: runs today’s generation' do
+      job_owner!(Tracks::GenerationCommand::OWNER_KEY, :sidekiq)
+
+      expect(generator.call).to be_a(Tracks::SessionManager)
+      expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued
+    end
+
+    it 'Oban-owned: forwards one command and touches nothing' do
+      track = create(:track, user: user, start_at: 2.days.ago, end_at: 1.day.ago)
+      event_id = SecureRandom.uuid
+      owned_generator = described_class.new(user, mode: :daily, event_id:)
+      job_owner!(Tracks::GenerationCommand::OWNER_KEY, :oban)
+
+      expect { expect(owned_generator.call).to eq(:forwarded) }.not_to have_enqueued_job
+      expect(JobOutbox.sole).to have_attributes(event_id:, command_type: 'tracks.generate_range',
+                                                payload: Tracks::GenerationCommand.payload(
+                                                  user.id, start_at: nil, end_at: nil, mode: :daily,
+                                                  untracked_only: false,
+                                                  import_id: nil, job_queue: nil
+                                                ))
+      expect(Track.exists?(track.id)).to be true
+      expect(Tracks::SessionManager.new(user.id).session_exists?).to be false
+    end
 
     context 'with successful execution' do
       it 'returns a session manager' do
@@ -281,10 +307,10 @@ RSpec.describe Tracks::ParallelGenerator do
         generator.send(:enqueue_chunk_jobs, session_id, chunks)
 
         expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(
-          user.id, session_id, chunks[0].merge(untracked_only: false)
+          user.id, session_id, chunks[0].merge(untracked_only: false, import_id: nil)
         )
         expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(
-          user.id, session_id, chunks[1].merge(untracked_only: false)
+          user.id, session_id, chunks[1].merge(untracked_only: false, import_id: nil)
         )
       end
     end
@@ -354,6 +380,8 @@ RSpec.describe Tracks::ParallelGenerator do
       end
 
       describe '#daily_time_range' do
+        around { |example| freeze_time { example.run } }
+
         let(:day) { 2.days.ago.to_date }
         let(:generator) { described_class.new(user, start_at: day) }
 

@@ -52,6 +52,20 @@ RSpec.describe DataMigrations::CleanupNullIslandJob do
     expect(zero_point.reload.anomaly).to be(true)
   end
 
+  it 'follow_up is repeat-safe' do
+    recalculations = lambda do
+      enqueued_jobs.map { |job| [job[:job], job[:args]] }
+                   .select { |job, _| [Stats::CalculatingJob, Tracks::RecalculateJob].include?(job) }
+    end
+    described_class.follow_up(user)
+    first = recalculations.call
+    clear_enqueued_jobs
+
+    expect { described_class.follow_up(user) }.not_to change(Visit, :count)
+    expect(first).to contain_exactly([Stats::CalculatingJob, [user.id, 2024, 5]], [Tracks::RecalculateJob, [track.id]])
+    expect(recalculations.call).to eq(first)
+  end
+
   describe 'fan out' do
     it 'enqueues a per-user job for every user with (0,0) points' do
       other_user = create(:user)

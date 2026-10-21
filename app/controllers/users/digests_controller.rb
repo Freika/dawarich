@@ -9,7 +9,7 @@ class Users::DigestsController < ApplicationController
   before_action :set_digest, only: %i[show destroy]
 
   def index
-    @digests = current_user.digests.yearly.order(year: :desc)
+    @digests = current_user.digests.yearly.where(year: ...Time.current.year).order(year: :desc)
     @available_years = available_years_for_generation
   end
 

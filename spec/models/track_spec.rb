@@ -3,6 +3,57 @@
 require 'rails_helper'
 
 RSpec.describe Track, type: :model do
+  describe 'realtime producer payloads' do
+    let(:user) { create(:user) }
+    let(:track) do
+      build(:track, id: 409, user: user, start_at: Time.utc(2023, 11, 14, 22),
+                    end_at: Time.utc(2023, 11, 14, 22, 30), original_path: 'LINESTRING(13 52, 14 53)',
+                    distance: 1500, avg_speed: 25, duration: 1800, elevation_gain: 50,
+                    elevation_loss: 20, elevation_max: 100, elevation_min: 50, dominant_mode: :walking)
+    end
+    let(:track_payload) do
+      { id: 409, start_at: '2023-11-14T23:00:00+01:00', end_at: '2023-11-14T23:30:00+01:00',
+        distance: 1500, avg_speed: 25.0, duration: 1800, elevation_gain: 50, elevation_loss: 20,
+        elevation_max: 100, elevation_min: 50, original_path: 'LINESTRING (13 52, 14 53)' }
+    end
+
+    it 'broadcasts the complete geojson_updated feature' do
+      expect(TracksChannel).to receive(:broadcast_to).with(
+        user, { action: 'geojson_updated', track: {
+          type: 'Feature', geometry: { type: 'LineString', coordinates: [[13.0, 52.0], [14.0, 53.0]] },
+          properties: { id: 409, color: '#6366F1', start_at: '2023-11-14T23:00:00+01:00',
+                        end_at: '2023-11-14T23:30:00+01:00', distance: 1500, avg_speed: 25.0, duration: 1800,
+                        revision: 0, dominant_mode: 'walking', dominant_mode_emoji: '🚶', mode_timeline: [] }
+        } }
+      )
+
+      track.broadcast_geojson_updated
+    end
+
+    it 'broadcasts the complete created track serializer payload' do
+      expect(TracksChannel).to receive(:broadcast_to).with(user, { action: 'created', track: track_payload })
+
+      track.send(:broadcast_track_created)
+    end
+
+    it 'broadcasts the complete updated track serializer payload' do
+      expect(TracksChannel).to receive(:broadcast_to).with(user, { action: 'updated', track: track_payload })
+
+      track.send(:broadcast_track_updated)
+    end
+
+    it 'broadcasts the destroyed track id' do
+      expect(TracksChannel).to receive(:broadcast_to).with(user, { action: 'destroyed', track_id: 409 })
+
+      track.send(:broadcast_track_destroyed)
+    end
+  end
+
+  it 'broadcast helpers are public' do
+    expect(described_class.new).to respond_to(:broadcast_track_update)
+    expect(described_class).to respond_to(:broadcast_destroyed)
+  end
+
   describe 'associations' do
     it { is_expected.to belong_to(:user) }
     it { is_expected.to have_many(:points).dependent(:nullify) }
@@ -368,7 +419,7 @@ RSpec.describe Track, type: :model do
         create(:track_segment, track: track, transportation_mode: :unknown,
                                distance: 200, duration: 60)
         create(:track_segment, track: track, transportation_mode: :driving,
-                               distance: 60,  duration: 30)
+                               distance: 60, duration: 30)
       end
 
       it 'prefers the real moving mode over unknown' do

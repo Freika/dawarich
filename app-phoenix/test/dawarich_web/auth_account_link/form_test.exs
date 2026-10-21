@@ -1,0 +1,138 @@
+defmodule DawarichWeb.AuthAccountLink.FormTest do
+  use ExUnit.Case, async: true
+  alias Dawarich.Test.NativeAuthHTTP
+  alias DawarichWeb.AuthAccountLink.Form
+
+  test "account-link challenge and alert DOM match Rails in every locale" do
+    source = File.read!("test/fixtures/auth/account_link/requests.json") |> Jason.decode!()
+
+    for locale <- ~w(en de es fr pl ca zh), state <- ["challenge", "challenge_alert"] do
+      expected = File.read!("test/fixtures/auth/account_link/#{state}_#{locale}.html")
+
+      alert =
+        expected
+        |> LazyHTML.from_document()
+        |> LazyHTML.query(".card-body .alert")
+        |> LazyHTML.text()
+        |> String.trim()
+
+      html =
+        Form.page(%{
+          __changed__: nil,
+          locale: locale,
+          provider_label: "OpenID Connect",
+          user_email: source["challenge_#{locale}"]["before"]["email"],
+          confirm_csrf_token: "CSRF",
+          email_csrf_token: "CSRF",
+          flash: %{"alert" => alert}
+        })
+        |> Phoenix.HTML.Safe.to_iodata()
+        |> IO.iodata_to_binary()
+
+      html = String.replace(html, "data-auth-form", "data-native-auth-form")
+
+      html =
+        Enum.reduce(
+          [
+            {"card-body min-w-0 [overflow-wrap:anywhere]", "card-body"},
+            {"card-title flex-wrap", "card-title"},
+            {"input input-bordered w-full min-w-0", "input input-bordered w-full"},
+            {"btn btn-primary w-full h-auto min-h-12 whitespace-normal",
+             "btn btn-primary w-full"},
+            {"btn btn-ghost w-full h-auto min-h-12 whitespace-normal", "btn btn-ghost w-full"}
+          ],
+          html,
+          fn {native, rails}, acc ->
+            String.replace(acc, ~s(class="#{native}"), ~s(class="#{rails}"))
+          end
+        )
+
+      actual = Dawarich.Test.ParityHTML.normalize(html)
+      expected = Dawarich.Test.ParityHTML.fragment(expected, ".min-h-content")
+      assert actual == expected, Dawarich.Test.ParityHTML.first_difference(actual, expected)
+    end
+  end
+
+  test "account-link challenge preserves all-locale fields and translations and escapes target data" do
+    assert Code.ensure_loaded?(Form)
+    source = File.read!("test/fixtures/auth/account_link/requests.json") |> Jason.decode!()
+
+    for locale <- ~w(en de es fr pl ca zh) do
+      assigns = %{
+        __changed__: nil,
+        locale: locale,
+        provider_label: "OpenID Connect",
+        user_email: source["challenge_#{locale}"]["before"]["email"],
+        confirm_csrf_token: "CSRF",
+        email_csrf_token: "CSRF",
+        password: "a11e-rejected-password",
+        flash: %{}
+      }
+
+      html = Form.page(assigns) |> Phoenix.HTML.Safe.to_iodata() |> IO.iodata_to_binary()
+      expected = File.read!("test/fixtures/auth/account_link/challenge_#{locale}.html")
+      assert NativeAuthHTTP.fields(html) == NativeAuthHTTP.fields(expected)
+
+      for selector <- ["h2", "label", "p", "a"],
+          do:
+            assert(
+              NativeAuthHTTP.text(html, selector) ==
+                NativeAuthHTTP.text(expected, ".card-body " <> selector)
+            )
+
+      title = expected |> LazyHTML.from_document() |> LazyHTML.query("title") |> LazyHTML.text()
+      assert title =~ Form.title(locale)
+      forms = html |> LazyHTML.from_fragment() |> LazyHTML.query("form") |> LazyHTML.to_tree()
+      assert length(forms) == 2
+
+      for {{"form", attrs, children}, path} <-
+            Enum.zip(forms, ["/auth/account_link/challenge", "/auth/account_link/email"]) do
+        attrs = Map.new(attrs)
+        assert attrs["method"] == "post" and attrs["action"] == path
+        assert Map.has_key?(attrs, "data-auth-form")
+
+        [token] =
+          children
+          |> LazyHTML.from_tree()
+          |> LazyHTML.query("input[name=authenticity_token]")
+          |> LazyHTML.to_tree()
+
+        {"input", token_attrs, _} = token
+        assert Map.new(token_attrs)["value"] == "CSRF"
+      end
+
+      [{"input", attrs, _}] =
+        html
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("input[name=password]")
+        |> LazyHTML.to_tree()
+
+      attrs = Map.new(attrs)
+      assert attrs["value"] in [nil, ""]
+      assert attrs["autocomplete"] == "current-password"
+      assert attrs["required"] != nil and attrs["autofocus"] != nil
+      refute html =~ "a11e-rejected-password"
+      refute html =~ "phx-submit"
+    end
+
+    html =
+      Form.page(%{
+        __changed__: nil,
+        locale: "en",
+        provider_label: "<script>a11e-label</script>",
+        user_email: "<input name=evil>a11e@example.invalid",
+        confirm_csrf_token: "CSRF",
+        email_csrf_token: "CSRF",
+        flash: %{}
+      })
+      |> Phoenix.HTML.Safe.to_iodata()
+      |> IO.iodata_to_binary()
+
+    assert html =~ "&lt;script&gt;" and html =~ "&lt;input"
+
+    assert html
+           |> LazyHTML.from_fragment()
+           |> LazyHTML.query("script, input[name=evil]")
+           |> LazyHTML.to_tree() == []
+  end
+end

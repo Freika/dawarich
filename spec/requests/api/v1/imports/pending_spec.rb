@@ -153,6 +153,20 @@ RSpec.describe 'POST /api/v1/imports/pending' do
 
       expect(response).to have_http_status(:too_many_requests)
     end
+
+    context 'on a self-hosted instance' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'never rate-limits, even after 61 requests from the same IP' do
+        61.times do
+          post '/api/v1/imports/pending',
+               params: params,
+               headers: headers.merge('REMOTE_ADDR' => '5.6.7.8')
+        end
+
+        expect(response).not_to have_http_status(:too_many_requests)
+      end
+    end
   end
 
   context 'storage quota' do

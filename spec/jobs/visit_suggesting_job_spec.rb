@@ -146,6 +146,60 @@ RSpec.describe VisitSuggestingJob, type: :job do
     end
   end
 
+  describe 'Oban-owned forwarding' do
+    before do
+      Sidekiq.redis { |redis| redis.del("visit_realtime:user:#{user.id}") }
+      job_owner!('command:visits.suggest', :oban)
+    end
+
+    it "forwards calendar stepping in the user's zone for a string range" do
+      user.update!(settings: user.settings.merge('timezone' => 'Europe/Berlin'))
+      allow(Visits::Suggest).to receive(:new)
+
+      described_class.perform_now(user_id: user.id, start_at: start_at.to_s, end_at: end_at.to_s)
+
+      row = JobOutbox.sole
+      expect(row.payload).to include('stepping' => 'calendar', 'time_zone' => 'Europe/Berlin')
+      expect(row.payload['start_at']).to eq(Time.zone.parse(start_at.to_s).to_i)
+      expect(row.payload['end_at']).to eq(Time.zone.parse(end_at.to_s).to_i)
+      expect(Visits::Suggest).not_to have_received(:new)
+    end
+
+    it 'forwards fixed stepping for a Time range' do
+      allow(Visits::Suggest).to receive(:new)
+
+      described_class.perform_now(user_id: user.id, start_at: start_at, end_at: end_at)
+
+      expect(JobOutbox.sole.payload).to include('stepping' => 'fixed')
+    end
+
+    it "falls back to the instance zone when the user's saved zone is unknown, like with_user_timezone" do
+      user.update!(settings: user.settings.merge('timezone' => 'Mars/Base'))
+      allow(Visits::Suggest).to receive(:new)
+
+      described_class.perform_now(user_id: user.id, start_at: start_at, end_at: end_at)
+
+      expect(JobOutbox.sole.payload).to include('time_zone' => 'Etc/UTC')
+    end
+
+    it 'writes plan_restricted for a plan-restricted user' do
+      allow_any_instance_of(User).to receive(:plan_restricted?).and_return(true)
+      allow(Visits::Suggest).to receive(:new)
+
+      described_class.perform_now(user_id: user.id, start_at: start_at, end_at: end_at)
+
+      expect(JobOutbox.sole.payload).to include('plan_restricted' => true)
+    end
+
+    it 'does not forward when suggestions are disabled for the user' do
+      user.update!(settings: user.settings.merge('visits_suggestions_enabled' => 'false'))
+
+      described_class.perform_now(user_id: user.id, start_at: start_at, end_at: end_at)
+
+      expect(JobOutbox.count).to eq(0)
+    end
+  end
+
   describe 'queue name' do
     it 'uses the visit_suggesting queue' do
       expect(described_class.queue_name).to eq('visit_suggesting')

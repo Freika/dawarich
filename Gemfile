@@ -71,7 +71,7 @@ gem 'sprockets-rails'
 gem 'stimulus-rails'
 gem 'tailwindcss-rails', '= 3.3.2'
 gem 'turbo-rails', '>= 2.0.17'
-gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
+gem 'tzinfo-data'
 gem 'webrick' # Required by Yabeda::Prometheus::Exporter.start_metrics_server! on Ruby 3.0+
 gem 'with_advisory_lock'
 gem 'yabeda-activerecord'
@@ -96,7 +96,7 @@ end
 
 group :test do
   gem 'capybara'
-  gem 'fakeredis'
+  gem 'fakeredis', require: ENV['E2E_PROXY_STACK'] != '1'
   gem 'selenium-webdriver'
   gem 'shoulda-matchers'
   gem 'simplecov', require: false

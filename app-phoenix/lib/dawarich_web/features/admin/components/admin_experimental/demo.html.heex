@@ -1,0 +1,47 @@
+<figure
+  class="overflow-hidden rounded-box border border-base-content/10 bg-base-100"
+  data-testid="map-matching-example"
+  id="map-matching-demo"
+  phx-hook="MapMatchingDemo"
+  phx-update="ignore"
+>
+  <div class="relative">
+    <div
+      class="h-72 w-full bg-base-300 sm:h-80"
+      role="img"
+      aria-label={t(@locale, "admin.settings.show.map_matching.example_alt", %{})}
+      data-demo-map
+      data-testid="map-matching-demo-map"
+    >
+    </div>
+    <div
+      class="pointer-events-none absolute inset-0 grid place-items-center bg-base-200"
+      data-demo-loading
+    >
+      <span class="loading loading-spinner loading-md text-primary" aria-hidden="true"></span>
+    </div>
+    <div
+      class="pointer-events-none absolute left-3 top-3 max-w-[calc(100%-1.5rem)] rounded-full border border-base-content/10 bg-base-100/90 px-3 py-1.5 text-xs font-semibold shadow-sm"
+      data-testid="map-matching-demo-source"
+    >
+      Berlin · 2.8 km · Valhalla
+    </div>
+    <div
+      class="absolute bottom-10 left-3 right-3 flex flex-wrap justify-center gap-1 rounded-lg border border-base-content/10 bg-base-100/90 p-1 shadow-lg"
+      aria-label={t(@locale, "admin.settings.show.map_matching.title", %{})}
+    >
+      <button
+        :for={mode <- ["original", "matched"]}
+        type="button"
+        class={"btn btn-sm h-auto min-h-8 py-2 whitespace-normal " <> if(mode == "matched", do: "btn-success", else: "btn-ghost btn-outline")}
+        aria-pressed={to_string(mode == "matched")}
+        data-mode={mode}
+      >
+        {t(@locale, "admin.settings.show.map_matching." <> mode <> "_label", %{})}
+      </button>
+    </div>
+  </div>
+  <figcaption class="border-t border-base-content/10 px-4 py-3 text-xs text-base-content/70 [text-wrap:pretty]">
+    {t(@locale, "admin.settings.show.map_matching.example_caption", %{})}
+  </figcaption>
+</figure>

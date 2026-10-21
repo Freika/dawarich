@@ -50,4 +50,18 @@ RSpec.describe Stats::RecalculationDebouncer do
       Sidekiq.redis { |redis| expect(redis.exists(redis_key)).to eq(0) }
     end
   end
+
+  context 'with phoenix.once_claims' do
+    before { phoenix_state! }
+
+    it 'schedules one job per burst from the claim row, slides the row and lets the job clear it' do
+      expect { 3.times { debouncer.trigger } }.to have_enqueued_job(Stats::FullRecalculationJob).exactly(:once)
+      expire_claim_in(redis_key, '10 seconds')
+      expect { debouncer.trigger }.not_to have_enqueued_job(Stats::FullRecalculationJob)
+      expect(claim_seconds(redis_key)).to be_between(299, 300)
+      debouncer.clear
+      expect { debouncer.trigger }.to have_enqueued_job(Stats::FullRecalculationJob).exactly(:once)
+      expect(Sidekiq.redis { |r| r.exists(redis_key) }).to eq(0)
+    end
+  end
 end

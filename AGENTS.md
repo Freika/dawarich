@@ -24,3 +24,12 @@ Write short, imperative commit subjects (`Add globe_projection setting`) and inc
 
 ## Security & Configuration Tips
 Start from `.env.example` or `.env.template` and store secrets in encrypted Rails credentials; never commit files from `gps-env/` or real trace data. Rotate API keys, scrub sensitive coordinates in fixtures, and use the synthetic traces in `db/seeds.rb` when demonstrating imports.
+
+
+## Phoenix Native Frontend (milestone 7 implementation guidance)
+
+`app-phoenix` is the native Phoenix application; root `app/` remains Rails. Read [native development](docs/phoenix/native-frontend-development.md), [architecture context](docs/phoenix/native-frontend-context.md) and [test successors](docs/phoenix/native-m7-test-retargets.md) for Phoenix work. These implementation instructions are finalized; release acceptance and the production runbook remain pending X4/X5. Rails workflows and lifecycle/Cloud defaults are unchanged.
+
+Use the controller's targeted runner with private database/Redis and warnings-as-errors. Current Mix requires Elixir 1.20; the approved m7 runner supplies 1.20.4/OTP 27.3.4.1. Root `make test` is not the Phoenix gate. Full ExUnit needs an explicit FULL GATE brief and the controller's seedrun; standalone G44 runs at stage acceptance, not during implementation. New ExUnit modules are async unless they touch global state; record exceptions in the assigned plan.
+
+Keep user behavior/data/security fixtures through named native successors. Contexts take `Accounts.Scope`; library hooks remain lazy and own teardown. Native forms, confirmations, local refusals and session boundaries must not regain Turbo/Stimulus islands, a controller registry or request-level Rails fallback. Merge A/B asset/routing deliveries before their final package acceptance: never delete root Rails asset sources or useful renderer/font/worker/data inputs based on a lexical scan. Protected lifecycle/entrypoint guards need a separate explicit brief.

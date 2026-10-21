@@ -104,6 +104,49 @@ RSpec.describe Areas::RelabelVisitsJob do
     expect { described_class.perform_now(-1) }.not_to raise_error
   end
 
+  describe 'when Oban owns visit relabeling' do
+    before { job_owner!('command:areas.relabel_visits', :oban) }
+
+    it 'forwards an old queued payload when Oban owns the key and labels nothing' do
+      visit = visit_at(lat0, lon0)
+
+      described_class.perform_now(area.id)
+
+      expect(JobOutbox.pending.sole).to have_attributes(
+        command_type: 'areas.relabel_visits', payload: { 'area_id' => area.id }, dedupe_key: area.id.to_s
+      )
+      expect(visit.reload.area_id).to be_nil
+    end
+
+    it 'forwards inside the transaction that holds the owner lock' do
+      area_id = area.id
+      events = []
+      callback = ->(*, payload) { events << payload[:sql] }
+
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { described_class.perform_now(area_id) }
+
+      lock = events.index { _1.include?('FOR SHARE') }
+      insert = events.index { _1.match?(/\AINSERT INTO .*job_outbox/) }
+      release = (lock...events.size).find { events[_1].match?(/\A(RELEASE SAVEPOINT|COMMIT)/) }
+      expect([lock, insert, release]).to all(be_an(Integer))
+      expect(insert).to be_between(lock, release).exclusive
+    end
+
+    it 'writes a relabel command instead of enqueueing when Oban owns the key' do
+      clear_enqueued_jobs
+
+      expect { area.update!(radius: 250) }.not_to have_enqueued_job(described_class)
+      expect(JobOutbox.pending.where(command_type: 'areas.relabel_visits', aggregate_id: area.id)).to exist
+    end
+
+    it 'collapses a second pending relabel of the same area' do
+      area.update!(radius: 250)
+      area.update!(radius: 300)
+
+      expect(JobOutbox.pending.where(command_type: 'areas.relabel_visits', aggregate_id: area.id).count).to eq(1)
+    end
+  end
+
   describe 'enqueueing from Area lifecycle' do
     it 'enqueues on create and on geometry changes, but not on rename' do
       new_area = nil

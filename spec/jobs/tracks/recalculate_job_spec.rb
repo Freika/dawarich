@@ -15,9 +15,22 @@ RSpec.describe Tracks::RecalculateJob, type: :job do
       allow(ExceptionReporter).to receive(:call)
     end
 
-    it 'recalculates path and distance for the track' do
+    it 'Sidekiq-owned recalculates' do
+      job_owner!(described_class::OWNER_KEY, :sidekiq)
       expect(Tracks::Recalculator).to receive(:call).with(instance_of(Track))
       described_class.perform_now(track.id)
+    end
+
+    it 'Oban-owned forwards' do
+      job_owner!(described_class::OWNER_KEY, :oban)
+      job = described_class.new(track.id)
+
+      expect { job.perform_now }
+        .not_to(change { track.reload.attributes.slice('original_path', 'distance', 'duration', 'avg_speed') })
+
+      expect(JobOutbox.sole).to have_attributes(
+        command_type: 'tracks.recalculate', aggregate_id: track.id, event_id: job.job_id
+      )
     end
 
     it 'uses the Track after-commit broadcast instead of broadcasting twice' do

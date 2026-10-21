@@ -1,5 +1,5 @@
 <% stats = place_dwell_stats(place) %>
-<div class="place-drawer" data-place-id="<%= place.id %>">
+<div class="place-drawer place-drawer--open" data-place-id="<%= place.id %>">
   <header class="place-drawer__header">
     <div class="place-drawer__icon">
       <%# Tag.icon is validated to be emoji/symbol (see Tag#icon_is_not_ascii_letter),
@@ -24,6 +24,7 @@
       <% end %>
       <p class="place-drawer__source"><%= t('.source') %> <%= t("enums.place.source.#{place.source}") %></p>
     </div>
+    <button type="button" class="btn btn-ghost btn-sm btn-circle" aria-label="<%= t('map.maplibre.settings_panel.close') %>" data-action="place-detail#close">✕</button>
   </header>
 
   <section class="place-drawer__stats">
@@ -57,8 +58,8 @@
 
   <section class="place-drawer__notes">
     <%= form_with model: place, method: :patch, data: { turbo_frame: 'place-drawer' } do |f| %>
-      <%= f.label :note, t('.notes'), class: 'place-drawer__notes-label' %>
-      <%= f.text_area :note, rows: 3, class: 'place-drawer__notes-input' %>
+      <%= f.label :note, t('.notes'), for: 'place-drawer-note', class: 'place-drawer__notes-label' %>
+      <%= f.text_area :note, id: 'place-drawer-note', rows: 3, class: 'place-drawer__notes-input' %>
       <%= f.submit t('.save'), class: 'place-drawer__notes-submit' %>
     <% end %>
   </section>
@@ -82,12 +83,13 @@
   </section>
 
   <footer class="place-drawer__actions">
-    <button type="button" class="place-drawer__action place-drawer__action--rename" disabled><%= t('.rename') %></button>
+    <button type="button" class="place-drawer__action place-drawer__action--edit" data-action="maps--maplibre#handleEdit" data-id="<%= place.id %>" data-entity-type="place"><%= t('.edit') %></button>
     <button type="button" class="place-drawer__action place-drawer__action--merge" disabled><%= t('.merge') %></button>
     <%= button_to t('.delete'),
-                  places_path(place),
+                  place_path(place),
                   method: :delete,
                   class: 'place-drawer__action place-drawer__action--delete',
+                  form: { data: { action: 'turbo:submit-end->place-detail#deleted', place_detail_id_param: place.id } },
                   data: { turbo_confirm: t('.delete_this_place_this_cannot_be_undone') } %>
   </footer>
 </div>

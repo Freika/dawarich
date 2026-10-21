@@ -2,8 +2,19 @@
 
 class Users::Digests::Monthly::EmailSendingJob < ApplicationJob
   queue_as :mailers
+  OWNER_KEY = 'command:mail.digest.monthly'
 
   def perform(user_id, year, month)
+    result = JobOwnership.with_owner(OWNER_KEY) { send_digest(user_id, year, month) }
+    return unless result == :not_owner
+
+    Users::Digests::MailCommands.forward(:monthly, user_id, year, month,
+                                         event_id: job_id, producer: self.class.name)
+  end
+
+  private
+
+  def send_digest(user_id, year, month)
     user = find_user_or_skip(user_id) || return
     digest = user.digests.monthly.find_by(year: year, month: month)
 
@@ -12,7 +23,9 @@ class Users::Digests::Monthly::EmailSendingJob < ApplicationJob
     return if digest.sent_at.present?
     return if digest.distance.to_i.zero?
 
-    Users::DigestsMailer.with(user: user, digest: digest).monthly_digest.deliver_later
+    Users::Digests::MailCommands.enqueue do
+      Users::DigestsMailer.with(user: user, digest: digest).monthly_digest.deliver_later
+    end
     digest.update!(sent_at: Time.current)
   end
 end

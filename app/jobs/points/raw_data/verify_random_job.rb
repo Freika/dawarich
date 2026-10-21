@@ -10,8 +10,11 @@ module Points
       queue_as :archival
 
       SAMPLE_SIZE = 10
+      OWNER_KEY = 'cron:raw_data_verify_job'
 
       def perform
+        return if JobOwnership.oban?(OWNER_KEY)
+
         archives = Points::RawDataArchive
                    .order(Arel.sql('RANDOM()'))
                    .limit(SAMPLE_SIZE)
@@ -21,7 +24,8 @@ module Points
         verifier = Verifier.new
 
         archives.each do |archive|
-          verifier.verify_specific_archive(archive.id)
+          result = JobOwnership.with_owner(OWNER_KEY) { verifier.verify_specific_archive(archive.id) }
+          break if result == :not_owner
         end
       rescue StandardError => e
         ExceptionReporter.call(e, 'Archive verification spot-check failed')

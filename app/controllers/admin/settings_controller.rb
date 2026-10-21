@@ -26,6 +26,7 @@ module Admin
       @geocoding = Geocoding::Config.resolved_config
       @legacy_user_geocoding = ServiceSetting.service_geocoding.where(active: true).exists?
       @section = params[:section].presence_in(SECTIONS.keys) || default_section
+      @phoenix_jobs = { summary: JobHealth.compute(ENV.fetch('DAWARICH_PHOENIX_NODE', nil)), gauges: JobHealth.gauges }
     end
 
     def update

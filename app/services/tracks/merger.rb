@@ -34,11 +34,11 @@ class Tracks::Merger
     return false if invalid_merge?
 
     ActiveRecord::Base.transaction do
-      # Auto segments are regenerated after the merge. Time-anchored corrected
-      # segments survive (they are valid regardless of track boundaries);
-      # legacy index-anchored ones cannot be trusted across a merge.
-      @older_track.track_segments.auto_classified.delete_all
-      @newer_track.track_segments.auto_classified.delete_all
+      # Inferred segments are regenerated after the merge. Time-anchored
+      # corrections and source segments survive (they are valid regardless of
+      # track boundaries); legacy index-anchored ones cannot be trusted across a merge.
+      @older_track.track_segments.clear_inference
+      @newer_track.track_segments.clear_inference
       @newer_track.track_segments.where.not(start_at: nil).update_all(track_id: @older_track.id)
       @newer_track.track_segments.delete_all
 

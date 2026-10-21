@@ -19,6 +19,13 @@ RSpec.describe Points::RawData::ArchiveJob, type: :job do
       end
     end
 
+    it 'Oban-owned: enqueues no ArchiveUserJob' do
+      create(:user)
+      job_owner!('cron:raw_data_archive_job', :oban)
+
+      expect { described_class.perform_now }.not_to have_enqueued_job(Points::RawData::ArchiveUserJob)
+    end
+
     context 'when ARCHIVE_RAW_DATA is not true' do
       before do
         allow(ENV).to receive(:[]).with('ARCHIVE_RAW_DATA').and_return('false')

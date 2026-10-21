@@ -51,7 +51,9 @@ class AddUniqueIndexToVisits < ActiveRecord::Migration[8.0]
       UPDATE points SET visit_id = #{STRAGGLER_TABLE}.keeper
       FROM #{STRAGGLER_TABLE} WHERE points.visit_id = #{STRAGGLER_TABLE}.id
     SQL
-    execute("DELETE FROM place_visits WHERE visit_id IN (SELECT id FROM #{STRAGGLER_TABLE})")
+    if table_exists?(:place_visits)
+      execute("DELETE FROM place_visits WHERE visit_id IN (SELECT id FROM #{STRAGGLER_TABLE})")
+    end
     execute("DELETE FROM visits WHERE id IN (SELECT id FROM #{STRAGGLER_TABLE})")
   ensure
     execute("DROP TABLE IF EXISTS #{STRAGGLER_TABLE}")

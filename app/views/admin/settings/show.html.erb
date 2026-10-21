@@ -7,6 +7,8 @@
   <div class="max-w-5xl">
     <p class="max-w-3xl mb-6 text-base-content/70 [text-wrap:pretty]"><%= t('.intro') %></p>
 
+    <%= render 'admin/settings/phoenix_jobs', phoenix_jobs: @phoenix_jobs %>
+
     <section aria-labelledby="instance-settings-geocoding" class="mb-8">
       <h2 id="instance-settings-geocoding" class="text-xl font-semibold"><%= t('.geocoding.title') %></h2>
       <p class="mt-1 mb-4 max-w-3xl text-base-content/70 [text-wrap:pretty]"><%= t('.geocoding.description') %></p>

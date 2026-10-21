@@ -1,0 +1,58 @@
+<div class="hero min-h-content bg-base-200">
+  <div class="hero-content grid w-full my-10 gap-y-8 lg:grid-cols-[minmax(0,28rem)_24rem] lg:justify-center lg:items-center lg:gap-x-20">
+    <div class="text-center lg:text-left min-w-0 [overflow-wrap:anywhere]">
+      <h1 class="text-5xl font-bold text-base-content">{text(assigns, @title)}</h1>
+      <p class="pt-6 text-base-content opacity-70">{text(assigns, @description)}</p>
+    </div>
+    <div class="card flex-shrink-0 w-full max-w-sm mx-auto border border-base-content/10 bg-base-100 px-5 py-5">
+      <form
+        class={@form_id}
+        id={@form_id}
+        action={@path}
+        accept-charset="UTF-8"
+        method="post"
+        data-auth-form
+      >
+        <input :if={@view == :password_edit} type="hidden" name="_method" value="put" />
+        <input type="hidden" name="authenticity_token" value={@csrf} />
+        <DawarichWeb.AuthErrors.summary :if={@errors} locale={@locale} messages={@errors.messages} heading={@errors.heading} />
+        <%= if @view == :password_edit do %>
+          <.reset {assigns} />
+        <% else %>
+          <div class="form-control">
+            <DawarichWeb.AuthErrors.field error={"email" in @invalid}><label class="label" for="user_email"><span class="label-text">{text(assigns, "email")}</span></label></DawarichWeb.AuthErrors.field>
+            <DawarichWeb.AuthErrors.field error={"email" in @invalid}><input
+              autofocus="autofocus"
+              autocomplete="email"
+              class="input input-bordered w-full"
+              type="email"
+              value=""
+              name="user[email]"
+              id="user_email"
+              aria-invalid={if "email" in @invalid, do: "true"}
+              aria-describedby={described(@invalid, "email")}
+            /></DawarichWeb.AuthErrors.field>
+          </div>
+        <% end %>
+        <div class="form-control mt-6">
+          <input
+            type="submit"
+            name="commit"
+            value={text(assigns, @submit)}
+            class="btn btn-primary w-full"
+          />
+        </div>
+      </form>
+      <div class="mt-5 space-y-2 text-sm">
+        <div :for={{path, key} <- @links}>
+          <a class="link link-hover text-base-content/70" href={path}>{t(
+            @locale,
+            "devise.shared.links." <> key,
+            %{}
+          )}</a>
+        </div>
+        <DawarichWeb.AuthProviders.buttons providers={@providers} />
+      </div>
+    </div>
+  </div>
+</div>

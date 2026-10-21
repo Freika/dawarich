@@ -1,0 +1,19 @@
+<span
+  class="inline-block w-3 h-3 rounded-full flex-shrink-0 bg-base-content/30"
+  data-day-dot={to_string(@day.date)}
+></span>
+<span>{LocalizedDate.l(@locale, @day.date, "short_month_day_weekday")}</span>
+<%= if @day.stats do %>
+  <span class="text-base-content/50 text-xs">{LocalizedDate.time(
+    @locale,
+    @day.stats.first,
+    "hour_minute"
+  )} – {LocalizedDate.time(@locale, @day.stats.last, "hour_minute")}</span>
+  <span class="text-base-content/50 ml-auto mr-6 text-xs">{distance(@day.stats.distance, @unit)}</span>
+<% else %>
+  <span class="text-base-content/50 ml-auto mr-6 text-xs">{t(
+    @locale,
+    "shared.links.trip_day_header.no_data",
+    %{}
+  )}</span>
+<% end %>

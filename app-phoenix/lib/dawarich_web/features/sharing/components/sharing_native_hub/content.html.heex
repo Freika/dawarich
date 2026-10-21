@@ -1,0 +1,67 @@
+<div>
+  <div role="tablist" class="tabs tabs-bordered mb-2">
+    <.link
+      :for={
+        {tab, key} <-
+          [{"live", "live_location"}, {"timeline", "time_period"}, {"make", "make_something"}] ++
+            if(@page.shares == [], do: [], else: [{"shared", "shared"}])
+      }
+      role="tab"
+      class={if @tab == tab, do: "tab tab-active", else: "tab"}
+      aria-selected={@tab == tab}
+      data-tab={tab}
+      patch={"/share_links/hub?" <> Plug.Conn.Query.encode(Map.put(@query_params || %{}, "tab", tab))}
+      data-testid={"hub-tab-#{tab}"}
+    >{s(@locale, key)}</.link>
+  </div>
+  <div style="min-height: 24rem;" data-tab={@tab} class="pt-2">
+    <%= cond do %>
+      <% @tab == "make" -> %>
+        <p class="text-sm opacity-70 mb-4">{s(@locale, "make_something_intro")}</p>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <a
+            :for={kind <- ~w(video poster)}
+            href={"/map/v2?studio=" <> kind}
+            class="flex flex-col items-start gap-1 rounded-lg border border-base-content/10 bg-base-200 p-4 text-left transition hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            data-testid={"hub-make-#{kind}"}
+          >
+            <span class="flex items-center gap-2 font-medium"><.icon
+              name={if kind == "video", do: "video", else: "image"}
+              class="h-4 w-4 opacity-70"
+            />{s(@locale, "make_" <> kind)}</span>
+            <span class="text-xs opacity-60">{s(@locale, "make_" <> kind <> "_hint")}</span>
+          </a>
+        </div>
+      <% @tab == "shared" -> %>
+        <div class="space-y-2">
+          <.row
+            :for={share <- @page.shares}
+            share={share}
+            locale={@locale}
+            base_url={assigns[:base_url]}
+          />
+        </div>
+      <% @share != nil -> %>
+        <SharingNativeActive.active
+          share={@share}
+          locale={@locale}
+          base_url={assigns[:base_url] || ""}
+          subtitle={
+            if @tab == "live",
+              do: s(@locale, "your_live_location_is_shared_via_a_public_link"),
+              else:
+                SharingNativeActive.subtitle(@resource, Map.put(@page, :share, @share), @locale)
+          }
+        />
+      <% true -> %>
+        <SharingNativeForm.form
+          resource={@resource}
+          page={@page}
+          locale={@locale}
+          values={@form_values}
+          user={@current_user}
+          today={assigns[:today]}
+        />
+    <% end %>
+  </div>
+</div>

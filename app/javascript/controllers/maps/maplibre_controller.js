@@ -5,6 +5,7 @@ import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
+import { familyMemberColor } from "maps_maplibre/utils/family_member_color"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { anomaliesVisible } from "maps_maplibre/utils/layer_dependencies"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
@@ -40,6 +41,8 @@ export default class extends Controller {
     userPlan: { type: String, default: "pro" },
     upgradeUrl: { type: String, default: "" },
     importId: { type: String, default: "" },
+    placeLatitude: Number,
+    placeLongitude: Number,
   }
 
   static targets = [
@@ -158,6 +161,10 @@ export default class extends Controller {
     if (urlParams.get("panel") === "timeline") {
       this.settings.visitsEnabled = true
       this.settingsController.settings.visitsEnabled = true
+    }
+    if (this.hasPlaceLatitudeValue && this.hasPlaceLongitudeValue) {
+      this.settings.placesEnabled = true
+      this.settingsController.settings.placesEnabled = true
     }
 
     // Sync toggle states with loaded settings
@@ -317,9 +324,11 @@ export default class extends Controller {
     // Format initial dates
     this.startDateValue = DateManager.formatDateForAPI(
       new Date(this.startDateValue),
+      this.timezoneValue,
     )
     this.endDateValue = DateManager.formatDateForAPI(
       new Date(this.endDateValue),
+      this.timezoneValue,
     )
 
     // Snapshot the load-time window so realtime filtering can tell the default
@@ -338,7 +347,7 @@ export default class extends Controller {
       })
     }
 
-    this.loadMapData().then(() => {
+    this.loadMapData({ fitBounds: !this.hasPlaceLatitudeValue }).then(() => {
       if (this.settings?.familyEnabled) {
         this.loadFamilyMembers()
       }
@@ -404,6 +413,12 @@ export default class extends Controller {
         vectorTilesUrl: this.settings.vectorTilesUrl,
         tilesFallback: this.settings.tilesFallback === true,
         ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
+        ...(this.hasPlaceLatitudeValue && this.hasPlaceLongitudeValue
+          ? {
+              center: [this.placeLongitudeValue, this.placeLatitudeValue],
+              zoom: 13,
+            }
+          : {}),
       },
       this.apiKeyValue,
     )
@@ -463,6 +478,7 @@ export default class extends Controller {
   monthChanged(event) {
     const { startDate, endDate } = DateManager.parseMonthSelector(
       event.target.value,
+      this.timezoneValue,
     )
     this.startDateValue = startDate
     this.endDateValue = endDate
@@ -492,14 +508,10 @@ export default class extends Controller {
 
   async navigateTimelineDateRange({ startAt, endAt, fitBounds = true }) {
     if (!startAt || !endAt) return
+    const timelineNavigating = this.timelineNavigationPending()
 
-    const toApiDate = (local) => {
-      const d = new Date(local)
-      if (Number.isNaN(d.getTime())) return null
-      return DateManager.formatDateForAPI(d)
-    }
-    const start = toApiDate(startAt)
-    const end = toApiDate(endAt)
+    const start = DateManager.formatLocalDateForAPI(startAt, this.timezoneValue)
+    const end = DateManager.formatLocalDateForAPI(endAt, this.timezoneValue)
     if (!start || !end) return
 
     this.startDateValue = start
@@ -511,7 +523,7 @@ export default class extends Controller {
     if (anomaliesVisible(SettingsManager.getSettings())) {
       this.layerVisibilityManager.refreshAnomalies({ enabled: true })
     }
-    this.refreshTimelineFeedIfActive?.()
+    if (!timelineNavigating) this.refreshTimelineFeedIfActive?.()
     this.debouncedLoadFamilyHistory?.()
   }
 
@@ -736,10 +748,12 @@ export default class extends Controller {
    * Called when the timeline-feed tab becomes active.
    * Sets the Turbo Frame src to trigger server-rendered HTML load.
    */
-  loadTimelineFeed() {
+  loadTimelineFeed({ reload = false } = {}) {
     if (!this.hasTimelineFeedContainerTarget) return
+    if (this.timelineNavigationPending()) return
 
     const frame = this.timelineFeedContainerTarget
+    if (reload) frame.removeAttribute("src")
     const url = `/map/timeline_feeds?start_at=${encodeURIComponent(this.startDateValue)}&end_at=${encodeURIComponent(this.endDateValue)}`
 
     if (frame.getAttribute("src") !== url) {
@@ -759,11 +773,14 @@ export default class extends Controller {
     const activeTab = this.element.querySelector(
       '.tab-content.active[data-tab-content="timeline-feed"]',
     )
-    if (activeTab && this.hasTimelineFeedContainerTarget) {
-      // Force reload by clearing cached src
-      this.timelineFeedContainerTarget.removeAttribute("src")
-      this.loadTimelineFeed()
-    }
+    if (activeTab) this.loadTimelineFeed({ reload: true })
+  }
+
+  timelineNavigationPending() {
+    return (
+      this.hasTimelineFeedContainerTarget &&
+      this.timelineFeedContainerTarget.hasAttribute("data-navigation-pending")
+    )
   }
 
   /**
@@ -812,8 +829,12 @@ export default class extends Controller {
     const DIM = 0.04
 
     // Compute day boundaries as Unix seconds
-    const dayStart = new Date(`${day}T00:00:00`).getTime() / 1000
-    const dayEnd = new Date(`${day}T23:59:59`).getTime() / 1000
+    const unixSeconds = (wallTime) =>
+      new Date(
+        DateManager.formatLocalDateForAPI(wallTime, this.timezoneValue),
+      ).getTime() / 1000
+    const dayStart = unixSeconds(`${day}T00:00:00`)
+    const dayEnd = unixSeconds(`${day}T23:59:00`) + 59
 
     // ISO boundaries for visit layers (lexicographic comparison)
     const isoStart = `${day}T00:00:00`
@@ -1322,6 +1343,10 @@ export default class extends Controller {
   filterPlacesByTags(event) {
     return this.placesManager.filterPlacesByTags(event)
   }
+
+  handlePlaceDeleted(event) {
+    return this.placesManager.handlePlaceDeleted(event)
+  }
   toggleAllPlaceTags(event) {
     return this.placesManager.toggleAllPlaceTags(event)
   }
@@ -1529,10 +1554,6 @@ export default class extends Controller {
       const familyLayer = this.layerManager.getLayer("family")
       if (familyLayer) {
         if (members.length > 0) {
-          // Assign colors consistent with member markers
-          for (const member of members) {
-            member.color = this.getFamilyMemberColor(member.user_id)
-          }
           familyLayer.loadMemberHistory(members)
         } else {
           familyLayer.clearHistory()
@@ -1592,7 +1613,7 @@ export default class extends Controller {
       ...locations.map((location) => {
         const emailInitial =
           (location.name || location.email)?.charAt(0)?.toUpperCase() || "?"
-        const color = this.getFamilyMemberColor(location.user_id)
+        const color = familyMemberColor(location.user_id)
         const lastSeen = new Date(location.updated_at).toLocaleString(
           document.documentElement.lang || undefined,
           {
@@ -1655,23 +1676,6 @@ export default class extends Controller {
         return row
       }),
     )
-  }
-
-  getFamilyMemberColor(userId) {
-    const colors = [
-      "#3b82f6",
-      "#10b981",
-      "#f59e0b",
-      "#ef4444",
-      "#8b5cf6",
-      "#ec4899",
-    ]
-    // Use user ID to get consistent color
-    const hash = userId
-      .toString()
-      .split("")
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    return colors[hash % colors.length]
   }
 
   centerOnFamilyMember(event) {
@@ -2029,10 +2033,13 @@ export default class extends Controller {
     await this.replayPanel.ensureOpen()
     if (!this.replayPanel.manager?.hasData()) return
 
-    const targetDay = `${trackDate.getFullYear()}-${String(trackDate.getMonth() + 1).padStart(2, "0")}-${String(trackDate.getDate()).padStart(2, "0")}`
+    const targetDay = DateManager.formatDateForAPI(
+      trackDate,
+      this.timezoneValue,
+    ).slice(0, 10)
     this.replayPanel.goToDay(targetDay)
 
-    const startMinute = trackDate.getHours() * 60 + trackDate.getMinutes()
+    const startMinute = this.replayPanel.manager.minuteOfDay(trackDate)
     this.replayPanel.setMinute(startMinute)
     this.replayPanel.startPlayback()
   }

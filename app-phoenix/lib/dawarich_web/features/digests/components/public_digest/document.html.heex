@@ -1,0 +1,63 @@
+<div class="max-w-xl mx-auto px-4 py-8">
+  <div
+    class="hero text-white rounded-lg shadow-lg mb-8"
+    style="background: linear-gradient(135deg, #0f766e, #0284c7);"
+  >
+    <div class="hero-content text-center py-12">
+      <div class="max-w-lg">
+        <h1 class="text-4xl font-bold">
+          {t(@locale, "users.digests.public_year.year_year_in_review", %{year: @digest.year})}
+        </h1>
+        <p class="py-4">
+          {t(@locale, "users.digests.public_year.your_journey_by_the_numbers", %{})}
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="stats shadow mx-auto mb-8 w-full">
+    <div class="stat place-items-center text-center">
+      <div class="stat-title">
+        {t(@locale, "users.digests.public_year.distance_traveled", %{})}
+      </div>
+      <div class="stat-value">
+        {DigestFormat.distance_with_unit(@locale, @digest.distance, @unit)}
+      </div>
+      <div class="stat-desc">{DigestFormat.comparison_text(@locale, @digest.distance)}</div>
+    </div>
+    <div class="stat place-items-center text-center">
+      <div class="stat-title">
+        {t(@locale, "users.digests.public_year.countries_visited", %{})}
+      </div>
+      <div class="stat-value text-secondary">{@totals.countries}</div>
+      <div class={"stat-desc #{if @digest.first_time_countries != [], do: "text-success", else: "invisible"}"}>
+        {t(@locale, "users.digests.public_year.first_time_count", %{
+          count: @totals.first_countries
+        })}
+      </div>
+    </div>
+    <div class="stat place-items-center text-center">
+      <div class="stat-title">{t(@locale, "users.digests.public_year.cities_explored", %{})}</div>
+      <div class="stat-value text-accent">{@totals.cities}</div>
+      <div class={"stat-desc #{if @digest.first_time_cities != [], do: "text-success", else: "invisible"}"}>
+        {t(@locale, "users.digests.public_year.first_time_count", %{
+          count: @totals.first_cities
+        })}
+      </div>
+    </div>
+  </div>
+  <.full_content_template :if={@full} {assigns} />
+  <div class="text-center py-8">
+    <div class="text-sm text-gray-500">
+      {t(@locale, "users.digests.public_year.track_your_own_adventures_with", %{})}
+      <a
+        href="https://dawarich.app?utm_source=shared_digest&utm_medium=referral&utm_campaign=year_in_review"
+        class="link link-primary"
+        target="_blank"
+      >{t(@locale, "users.digests.public_year.dawarich", %{})}</a> {t(
+        @locale,
+        "users.digests.public_year.your_personal_memories_mapper",
+        %{}
+      )}
+    </div>
+  </div>
+</div>

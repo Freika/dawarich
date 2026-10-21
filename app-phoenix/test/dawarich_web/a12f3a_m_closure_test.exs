@@ -1,0 +1,226 @@
+defmodule DawarichWeb.A12f3aMClosureTest do
+  use Dawarich.JobsCase, async: false
+  import Phoenix.ConnTest
+  import Plug.Conn
+  alias Dawarich.{MapWindow, Repo}
+  alias Dawarich.Test.{FrameSeeds, ParityHTML, RailsUser}
+  alias DawarichWeb.{MapFrames, MapFramesGate}
+  @endpoint DawarichWeb.Endpoint
+  @frame "text/html, application/xhtml+xml"
+
+  setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    previous = Map.new(~w(SELF_HOSTED MANAGER_URL JWT_SECRET_KEY), &{&1, System.get_env(&1)})
+    System.put_env("MANAGER_URL", "https://manager.example.test")
+    System.put_env("JWT_SECRET_KEY", "synthetic-map-closure-test-secret")
+
+    on_exit(fn ->
+      for {key, value} <- previous,
+          do: if(value, do: System.put_env(key, value), else: System.delete_env(key))
+    end)
+
+    :ok
+  end
+
+  @tag a12f3a_m01: true
+  test "M01: native map selection retains source ranges and legacy settings without Rails effects" do
+    capture = load("m01")
+    {:ok, now, 0} = DateTime.from_iso8601(capture["now"])
+    settings = capture["settings"]
+    env = Map.reject(capture["env"], fn {_, v} -> is_nil(v) end)
+    user = FrameSeeds.user!(89001, settings)
+
+    for mode <- ["true", "false", nil] do
+      self_hosted(mode)
+
+      for row <- capture["cases"] do
+        window = MapWindow.build(row["params"], settings, now, nil, env)
+
+        for key <- ~w(start end iana start_local end_local) do
+          assert Map.fetch!(window, String.to_existing_atom(key)) == row["expected"][key]
+        end
+
+        assert window.calendar_month == row["expected"]["calendar"]
+
+        for path <- [row["path"], String.replace(row["path"], "/map/v2", "/map")] do
+          conn = RailsUser.signed_in(user.id) |> get(path)
+          assert conn.status == 200
+          assert conn.resp_body =~ "id=\"native-map\""
+
+          config =
+            conn.resp_body
+            |> LazyHTML.from_document()
+            |> LazyHTML.query("#native-map")
+            |> LazyHTML.attribute("data-map-config")
+            |> hd()
+            |> Jason.decode!()
+
+          assert DateTime.compare(
+                   elem(DateTime.from_iso8601(config["range"]["startAt"]), 1),
+                   elem(DateTime.from_iso8601(window.start), 1)
+                 ) == :eq
+
+          assert DateTime.compare(
+                   elem(DateTime.from_iso8601(config["range"]["endAt"]), 1),
+                   elem(DateTime.from_iso8601(window.end), 1)
+                 ) == :eq
+
+          assert config["range"]["timezone"] == window.iana
+          refute conn.resp_body =~ "data-controller"
+          assert head(RailsUser.signed_in(user.id), path).resp_body == ""
+        end
+      end
+
+      assert redirected_to(get(build_conn(), "/map")) == "http://www.example.com/users/sign_in"
+    end
+
+    assert effects() == {0, 0}
+  end
+
+  @tag a12f3a_m02: true
+  test "M02: legacy map redirects matches current Rails contract without a native-owner Rails effect" do
+    user = FrameSeeds.user!(89002)
+
+    for mode <- ["true", "false", nil] do
+      self_hosted(mode)
+
+      for row <- load("m02")["cases"], signed <- [true, false] do
+        conn = if signed, do: RailsUser.signed_in(user.id), else: build_conn()
+
+        conn =
+          if row["method"] == "head", do: head(conn, row["path"]), else: get(conn, row["path"])
+
+        assert conn.status == row["status"]
+        assert get_resp_header(conn, "location") == [row["location"]]
+        assert conn.resp_body == row["body"]
+      end
+    end
+
+    assert effects() == {0, 0}
+  end
+
+  @tag a12f3a_m03: true
+  test "M03: timeline source data matches Rails while its retired frame refuses without effects" do
+    check_frames("m03", :index, &MapFramesGate.feed?/2)
+  end
+
+  @tag a12f3a_m04: true
+  test "M04: calendar source cells match Rails while its retired frame refuses without effects" do
+    check_frames("m04", :calendar, &MapFramesGate.calendar?/2)
+  end
+
+  @tag a12f3a_m05: true
+  test "M05: track-info source data matches Rails while its retired frame refuses without effects" do
+    check_frames("m05", :track_info, &MapFramesGate.track?/2)
+    user = Dawarich.Accounts.get(7111)
+    assert :not_found = MapFrames.body(:track_info, %{user: user, id: "999999", locale: "en"})
+    other = FrameSeeds.user!(89005)
+    assert :not_found = MapFrames.body(:track_info, %{user: other, id: "7481", locale: "en"})
+  end
+
+  @tag a12f3a_m06: true
+  test "M06: residency frame and ties matches current Rails contract without a native-owner Rails effect" do
+    check_frames("m06", :residency, &MapFramesGate.residency?/2)
+    self_hosted("false")
+
+    for row <- load("m06")["access_cases"] do
+      user = FrameSeeds.seed!(row)
+      conn = get(RailsUser.signed_in(user.id), row["path"])
+      assert conn.status == row["status"]
+      assert get_resp_header(conn, "location") == [row["location"]]
+      assert conn.resp_body == row["body"]
+
+      assert conn.private.dawarich_rails_session_changes["flash"]["flashes"]["alert"] ==
+               row["session"]["alert"]
+    end
+  end
+
+  defp check_frames(name, action, gate) do
+    [first | _] = cases = load(name)["cases"]
+    user = FrameSeeds.seed!(first)
+    {:ok, now, 0} = DateTime.from_iso8601(first["now"])
+    before_rows = Repo.query!("SELECT count(*) FROM points WHERE user_id = $1", [user.id]).rows
+
+    for mode <- ["true", "false", nil] do
+      self_hosted(mode)
+
+      for row <- cases do
+        %URI{path: path, query: query} = URI.parse(row["path"])
+        query = Plug.Conn.Query.decode(query || "")
+
+        params = %{"id" => Enum.at(String.split(path, "/", trim: true), 2)}
+        retired = name in ~w(m03 m04 m05)
+
+        ctx = %{
+          user: user,
+          locale: query["locale"] || "en",
+          query: query,
+          id: params["id"],
+          now: now,
+          self_hosted: mode != "false",
+          csrf: "CSRF",
+          csrf_changes: %{},
+          stream: false
+        }
+
+        assert gate.(build_conn(:get, row["path"]) |> put_req_header("accept", @frame), params)
+
+        if row["calendar_cells"] do
+          summary = Dawarich.Timeline.MonthSummary.build(user, query["month"], nil, now)
+
+          cells =
+            Enum.map(List.flatten(summary.weeks), fn cell ->
+              Map.new(cell, fn {k, v} -> {to_string(k), v} end)
+            end)
+
+          assert cells == row["calendar_cells"]
+        end
+
+        if row["error"] do
+          assert {:error, 500} = MapFrames.body(action, ctx)
+
+          assert get(RailsUser.signed_in(user.id), row["path"]).status ==
+                   if(retired, do: 410, else: 500)
+        else
+          assert {:ok, type, html} = MapFrames.body(action, ctx)
+          assert type == row["content_type"]
+
+          assert ParityHTML.normalize(IO.iodata_to_binary(html)) ==
+                   ParityHTML.normalize(row["body"])
+
+          conn =
+            RailsUser.signed_in(user.id) |> put_req_header("accept", @frame) |> get(row["path"])
+
+          if retired do
+            assert conn.status == 410
+            assert conn.resp_body =~ "available through the native map"
+            assert get_resp_header(conn, "cache-control") == ["no-store"]
+          else
+            assert conn.status == row["status"]
+            assert get_resp_header(conn, "content-type") == [type <> "; charset=utf-8"]
+            assert get_resp_header(conn, "vary") == List.wrap(row["vary"])
+          end
+
+          assert head(RailsUser.signed_in(user.id), row["path"]).resp_body == ""
+        end
+      end
+    end
+
+    assert Repo.query!("SELECT count(*) FROM points WHERE user_id = $1", [user.id]).rows ==
+             before_rows
+
+    assert effects() == {0, 0}
+  end
+
+  defp effects do
+    {Repo.query!("SELECT count(*) FROM public.job_outbox", []).rows |> hd() |> hd(),
+     Dawarich.ScratchRepo.query!("SELECT count(*) FROM oban.oban_jobs", []).rows |> hd() |> hd()}
+  end
+
+  defp load(name),
+    do: "test/fixtures/map_frames/a12f3a-#{name}.json" |> File.read!() |> Jason.decode!()
+
+  defp self_hosted(nil), do: System.delete_env("SELF_HOSTED")
+  defp self_hosted(mode), do: System.put_env("SELF_HOSTED", mode)
+end

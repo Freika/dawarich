@@ -46,7 +46,8 @@ namespace :demo do
     puts "\n📍 Importing GeoJSON data from #{geojson_path}..."
     import = user.imports.create!(
       name: "Demo Data Import - #{Time.current.strftime('%Y-%m-%d %H:%M')}",
-      source: :geojson
+      source: :geojson,
+      skip_background_processing: true
     )
 
     begin

@@ -1,0 +1,142 @@
+<div
+  id="sharing_modal"
+  class="modal modal-open"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="native-report-title"
+  phx-hook="OrdinaryDialog"
+  phx-keydown={Phoenix.LiveView.JS.navigate(@close)}
+  phx-key="Escape"
+>
+  <div class="modal-box">
+    <form method="dialog">
+      <.link
+        navigate={@close}
+        class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+        data-native-dialog-initial-focus
+      >✕</.link>
+    </form>
+    <h3 id="native-report-title" class="font-bold text-lg mb-4 flex items-center gap-2">
+      <.icon name="link" class="size-6" />{s(@locale, @scope, "sharing_settings")}
+    </h3>
+    <div>
+      <form
+        id="report-sharing-form"
+        phx-submit="report_sharing_update"
+        phx-change="report_sharing_update"
+      >
+        <input type="hidden" name="enabled" value="0" />
+        <div class="form-control mb-4">
+          <label class="label cursor-pointer"><span class="label-text font-medium">{s(
+            @locale,
+            @scope,
+            "enable_public_access"
+          )}</span><input
+            type="checkbox"
+            name="enabled"
+            value="1"
+            checked={@enabled}
+            class="toggle toggle-primary"
+          /></label>
+          <div class="label">
+            <span class="label-text-alt text-gray-500">{s(
+              @locale,
+              @scope,
+              if(@resource.type == :month,
+                do: "allow_others_to_view_this_monthly_digest_auto_saves_on",
+                else: "allow_others_to_view_this_year_end_digest_auto_saves"
+              )
+            )}</span>
+          </div>
+        </div>
+        <div class={if @enabled, do: "", else: "hidden"}>
+          <div class="form-control mb-4">
+            <label class="label" for="native-report-expiration"><span class="label-text font-medium">{s(
+              @locale,
+              @scope,
+              "link_expiration"
+            )}</span></label>
+            <select
+              id="native-report-expiration"
+              name="expiration"
+              class="select select-bordered w-full"
+            ><option
+              :for={
+                {label, value} <- [
+                  {"1 hour", "1h"},
+                  {"12 hours", "12h"},
+                  {"24 hours", "24h"},
+                  {"1 week", "1w"},
+                  {"1 month", "1m"}
+                ]
+              }
+              value={value}
+              selected={value == @expiration}
+            >
+              {label}
+            </option></select>
+          </div>
+          <div
+            id="sharing-link-display"
+            class="form-control mb-4"
+            phx-hook="SharingReveal"
+            data-native-public-url={if @enabled, do: @url, else: ""}
+            data-copied-label={t(@locale, "javascript.messages.copied_to_clipboard", %{})}
+            data-failed-label={
+              t(@locale, "javascript.messages.failed_to_copy_please_copy_manually", %{})
+            }
+          >
+            <label class="label" for="native-report-share-url"><span class="label-text font-medium">{t(
+              @locale,
+              "shared.sharing_link.sharing_link",
+              %{}
+            )}</span></label>
+            <div class="join w-full">
+              <input
+                id="native-report-share-url"
+                type="text"
+                readonly
+                class="input input-bordered join-item flex-1"
+                value={if @enabled, do: @url, else: ""}
+                data-native-report-share-url
+              />
+              <button
+                id="native-report-share-copy"
+                type="button"
+                class="btn btn-outline join-item"
+                data-reveal
+              ><.icon name="copy" class="size-6" />{t(@locale, "shared.sharing_link.copy", %{})}</button>
+            </div>
+            <div class="label">
+              <span class="label-text-alt text-gray-500">{t(
+                @locale,
+                "shared.sharing_link.share_this_link_to_allow_others_to_view_your_stats",
+                %{}
+              )}</span>
+            </div>
+            <span id="native-report-copy-status" role="status" aria-live="polite" data-status></span>
+          </div>
+        </div>
+      </form>
+      <div class="alert alert-info mb-4">
+        <.icon name="info" class="size-6" /><div>
+          <h3 class="font-bold">{s(@locale, @scope, "privacy_protection")}</h3><div class="text-sm">
+            {s(@locale, @scope, "exact_coordinates_are_hidden")}<br />{s(
+              @locale,
+              @scope,
+              "personal_information_is_not_included"
+            )}
+          </div>
+        </div>
+      </div>
+      <div class="modal-action">
+        <button
+          type="button"
+          class="btn btn-primary"
+          phx-click={Phoenix.LiveView.JS.navigate(@close)}
+        >{s(@locale, @scope, "done")}</button>
+      </div>
+      <p :for={error <- @errors} role="alert" class="alert alert-error mb-3">{error}</p>
+    </div>
+  </div>
+</div>

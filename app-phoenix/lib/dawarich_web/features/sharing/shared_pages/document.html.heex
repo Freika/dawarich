@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang={@locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title(assigns)}</title>
+    <meta name="csrf-param" content="authenticity_token" /><meta
+      name="csrf-token"
+      content={@rails_csrf_token}
+    />
+    <.favicon />
+    <.pwa_meta locale={@locale} />
+    <link
+      rel="stylesheet"
+      href={Assets.stylesheet_path("tailwind.css")}
+    />
+    <link
+      rel="stylesheet"
+      href={Assets.stylesheet_path("inter-font.css")}
+    />
+    <link
+      rel="stylesheet"
+      href={Assets.stylesheet_path("application.css")}
+    />
+    <meta name="phoenix-csrf-token" content={Phoenix.Controller.get_csrf_token()} />
+    <script defer phx-track-static type="module" src={Assets.native_path("app.js")}>
+    </script>
+    <.metadata {assigns} />
+  </head>
+  <body class="bg-base-100 [overflow-wrap:anywhere]">
+    <DawarichWeb.NativePublicChrome.header {assigns} current_scope={nil} />
+    <.content {assigns} />
+    <DawarichWeb.NativePublicChrome.footer locale={@locale} />
+  </body>
+</html>

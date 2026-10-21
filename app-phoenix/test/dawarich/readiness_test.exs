@@ -1,0 +1,71 @@
+defmodule Dawarich.ReadinessTest do
+  use Dawarich.DataCase, async: false
+
+  test "ready requires current native ledgers database and required Redis" do
+    redis = start_supervised!({Redix, Application.fetch_env!(:dawarich, :redis)[:url]})
+
+    opts = [
+      repo: Repo,
+      env: %{"SELF_HOSTED" => "true", "DAWARICH_PHOENIX_LIFECYCLE" => "true"},
+      redis: fn -> Dawarich.Redis.command(["PING"], redis) end
+    ]
+
+    Repo.query!("SET LOCAL timezone = 'UTC'", [], log: false)
+    assert Dawarich.Readiness.check(opts) == :ready
+
+    for table <-
+          ~w(public.schema_migrations phoenix.phoenix_schema_migrations oban.phoenix_schema_migrations) do
+      %{rows: [[version]]} =
+        Repo.query!(
+          "DELETE FROM #{table} WHERE version = (SELECT max(version) FROM #{table}) RETURNING version",
+          [],
+          log: false
+        )
+
+      assert Dawarich.Readiness.check(opts) == {:unavailable, :lifecycle}
+      Repo.query!("INSERT INTO #{table}(version) VALUES($1)", [version], log: false)
+      assert Dawarich.Readiness.check(opts) == :ready
+    end
+
+    assert Dawarich.Readiness.check(
+             release: fn _ -> :ready end,
+             database: fn -> {:ok, %{rows: [[1]]}} end,
+             redis: fn -> {:ok, "PONG"} end
+           ) == :ready
+
+    assert Dawarich.Readiness.check(
+             release: fn _ -> :schemas_behind end,
+             database: fn -> {:ok, %{rows: [[1]]}} end,
+             redis: fn -> {:ok, "PONG"} end
+           ) == {:unavailable, :lifecycle}
+  end
+
+  test "database and Redis failure return unavailable without exposing connection data" do
+    secret = "synthetic-private-database-password"
+
+    healthy = [
+      release: fn _ -> :ready end,
+      database: fn -> {:ok, %{rows: [[1]]}} end,
+      redis: fn -> {:ok, "PONG"} end
+    ]
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        for {key, failure, reason} <- [
+              {:database, fn -> {:error, secret} end, :database},
+              {:database, fn -> raise secret end, :database},
+              {:release, fn _ -> :no_connection end, :lifecycle},
+              {:release, fn _ -> raise secret end, :lifecycle},
+              {:redis, fn -> {:error, secret} end, :redis},
+              {:redis, fn -> exit(secret) end, :redis}
+            ] do
+          result = Dawarich.Readiness.check(Keyword.put(healthy, key, failure))
+          assert result == {:unavailable, reason}
+          refute inspect(result) =~ secret
+        end
+      end)
+
+    refute log =~ secret
+    assert log =~ "Readiness check failed"
+  end
+end

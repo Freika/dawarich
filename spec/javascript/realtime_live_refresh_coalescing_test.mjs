@@ -2,6 +2,34 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
+const helperDateSource = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/realtime_date_filter.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
+const helperDateUrl = `data:text/javascript;base64,${Buffer.from(helperDateSource).toString("base64")}`
+const helperSource = (
+  await readFile(
+    new URL(
+      "../../app/javascript/maps_maplibre/utils/realtime_points.js",
+      import.meta.url,
+    ),
+    "utf8",
+  )
+)
+  .replace('import { translate } from "i18n"', "const translate = (key) => key")
+  .replace(
+    'import { Toast } from "maps_maplibre/components/toast"',
+    "const Toast = { info() {}, retry() {} }",
+  )
+  .replace(
+    '"maps_maplibre/utils/realtime_date_filter"',
+    JSON.stringify(helperDateUrl),
+  )
+const helperUrl = `data:text/javascript;base64,${Buffer.from(helperSource).toString("base64")}`
+
 const source = await readFile(
   new URL(
     "../../app/javascript/controllers/maps/maplibre_realtime_controller.js",
@@ -24,12 +52,12 @@ const stubbedSource = source
     "const Toast = { info() {}, retry() {} }",
   )
   .replace(
-    'import { pointMatchesActiveDateRange } from "maps_maplibre/utils/realtime_date_filter"',
-    "const pointMatchesActiveDateRange = () => true",
-  )
-  .replace(
     'import { SettingsManager } from "maps_maplibre/utils/settings_manager"',
     "const SettingsManager = {}",
+  )
+  .replace(
+    /import \{\s*handleNewPoint,[\s\S]*?\} from "maps_maplibre\/utils\/realtime_points"/,
+    `import { handleNewPoint, refreshLiveLayers, updateRecentPoint, zoomToPoint } from "${helperUrl}"`,
   )
 const { default: RealtimeController } = await import(
   `data:text/javascript;base64,${Buffer.from(stubbedSource).toString("base64")}`

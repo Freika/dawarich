@@ -1,0 +1,722 @@
+{
+  "reference": "Rails 1.16.0",
+  "status": "partial",
+  "routes": [
+    {
+      "path": "/users/sign_in",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "states": [
+        "credentials",
+        "disabled registration",
+        "providers only",
+        "invitation",
+        "rejected credentials",
+        "OTP challenge"
+      ],
+      "evidence": [
+        "auth_pages_parity_test.exs",
+        "native_auth_integration_test.exs",
+        "auth_otp/form_test.exs"
+      ],
+      "status": "credential, disabled-registration, provider-only, provider-with-credentials and invitation DOM verified in seven locales; locale/invitation admission and post-login target verified"
+    },
+    {
+      "path": "/users/sign_out",
+      "methods": [
+        "DELETE"
+      ],
+      "states": [
+        "session ended"
+      ],
+      "evidence": [
+        "native_auth_integration_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    },
+    {
+      "path": "/users/sign_up",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "self hosted",
+        "invitation",
+        "Cloud"
+      ],
+      "evidence": [
+        "auth_pages_parity_test.exs",
+        "native_registration_document_test.exs"
+      ],
+      "status": "self-hosted, invitation and Cloud controls DOM verified in seven locales"
+    },
+    {
+      "path": "/users",
+      "methods": [
+        "POST"
+      ],
+      "states": [
+        "registration success",
+        "validation refused"
+      ],
+      "evidence": [
+        "native_registration_document_test.exs"
+      ],
+      "status": "registration validation error DOM verified in seven locales; existing creation/security tests retained"
+    },
+    {
+      "path": "/users/password/new",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "request",
+        "locale navigation"
+      ],
+      "evidence": [
+        "auth_pages_parity_test.exs",
+        "native_auth_integration_test.exs"
+      ],
+      "status": "DOM verified in seven locales; provider entry and native error accessibility retained"
+    },
+    {
+      "path": "/users/password/edit",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "reset token form",
+        "locale navigation"
+      ],
+      "evidence": [
+        "auth_pages_parity_test.exs",
+        "native_auth_integration_test.exs"
+      ],
+      "status": "DOM verified in seven locales; provider entry and native error accessibility retained"
+    },
+    {
+      "path": "/users/unlock/new",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "request",
+        "locale navigation"
+      ],
+      "evidence": [
+        "auth_pages_parity_test.exs",
+        "native_auth_integration_test.exs"
+      ],
+      "status": "DOM verified in seven locales; provider entry and native error accessibility retained"
+    },
+    {
+      "path": "/users/password",
+      "methods": [
+        "POST",
+        "PUT",
+        "PATCH"
+      ],
+      "states": [
+        "email request",
+        "reset",
+        "validation refused"
+      ],
+      "evidence": [
+        "auth_recovery_activation_test.exs"
+      ],
+      "status": "invalid-token error DOM verified in seven locales; existing reset/recovery behavior tests retained"
+    },
+    {
+      "path": "/users/unlock",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "states": [
+        "token unlock",
+        "email request",
+        "invalid token"
+      ],
+      "evidence": [
+        "auth_recovery_activation_test.exs"
+      ],
+      "status": "invalid-token error DOM verified in seven locales; existing token/email behavior tests retained"
+    },
+    {
+      "path": "/users/otp_challenge",
+      "methods": [
+        "POST"
+      ],
+      "states": [
+        "pending challenge",
+        "wrong code",
+        "completion"
+      ],
+      "evidence": [
+        "auth_otp/form_test.exs",
+        "native_otp_document_test.exs"
+      ],
+      "status": "challenge DOM verified in seven locales"
+    },
+    {
+      "path": "/users/confirmation/new",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "route unavailable: Rails User does not enable confirmable"
+      ],
+      "evidence": [
+        "auth_pages_parity_test.exs",
+        "auth/pages/confirmation_routes.json"
+      ],
+      "status": "Rails route refusal recorder and native route-info refusal verified"
+    },
+    {
+      "path": "/users/confirmation",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "states": [
+        "route unavailable: Rails User does not enable confirmable"
+      ],
+      "evidence": [
+        "auth_pages_parity_test.exs",
+        "auth/pages/confirmation_routes.json"
+      ],
+      "status": "Rails route refusal recorder and native route-info refusal verified"
+    },
+    {
+      "path": "/users/auth/github",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "states": [
+        "provider initiation"
+      ],
+      "evidence": [
+        "standalone_auth_review_test.exs"
+      ],
+      "status": "existing behavior coverage; provider button DOM pending"
+    },
+    {
+      "path": "/users/auth/github/callback",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "states": [
+        "provider completion",
+        "failure"
+      ],
+      "evidence": [
+        "standalone_auth_review_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    },
+    {
+      "path": "/users/auth/google_oauth2",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "states": [
+        "provider initiation"
+      ],
+      "evidence": [
+        "standalone_auth_review_test.exs"
+      ],
+      "status": "existing behavior coverage; provider button DOM pending"
+    },
+    {
+      "path": "/users/auth/google_oauth2/callback",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "states": [
+        "provider completion",
+        "failure"
+      ],
+      "evidence": [
+        "standalone_auth_review_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    },
+    {
+      "path": "/users/auth/openid_connect",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "states": [
+        "provider initiation"
+      ],
+      "evidence": [
+        "standalone_auth_review_test.exs"
+      ],
+      "status": "existing behavior coverage; provider button DOM pending"
+    },
+    {
+      "path": "/users/auth/openid_connect/callback",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "states": [
+        "provider completion",
+        "failure"
+      ],
+      "evidence": [
+        "standalone_auth_review_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    },
+    {
+      "path": "/users/auth/apple",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "provider initiation"
+      ],
+      "evidence": [
+        "standalone_auth_review_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    },
+    {
+      "path": "/users/auth/apple/callback",
+      "methods": [
+        "POST"
+      ],
+      "states": [
+        "provider completion",
+        "failure"
+      ],
+      "evidence": [
+        "standalone_auth_review_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    },
+    {
+      "path": "/users/auth/failure",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "provider failure redirect"
+      ],
+      "evidence": [
+        "standalone_auth_review_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    },
+    {
+      "path": "/auth/account_link",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "email token confirmation"
+      ],
+      "evidence": [
+        "auth_account_link/http_test.exs"
+      ],
+      "status": "challenge and alert DOM verified in seven locales; email-token confirmation redirect behavior retained"
+    },
+    {
+      "path": "/auth/account_link/challenge",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "states": [
+        "password challenge",
+        "rejected password"
+      ],
+      "evidence": [
+        "auth_account_link/form_test.exs"
+      ],
+      "status": "challenge and alert DOM verified in seven locales; email-token confirmation redirect behavior retained"
+    },
+    {
+      "path": "/auth/account_link/email",
+      "methods": [
+        "POST"
+      ],
+      "states": [
+        "email fallback"
+      ],
+      "evidence": [
+        "auth_account_link/http_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    },
+    {
+      "path": "/auth/ios/success",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "mobile handoff"
+      ],
+      "evidence": [
+        "standalone_auth_review_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    },
+    {
+      "path": "/s/:id",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "states": [
+        "live",
+        "timeline",
+        "phrase prompt",
+        "not found",
+        "revoked",
+        "expired",
+        "static trip",
+        "static track",
+        "unsupported"
+      ],
+      "evidence": [
+        "sharing_parity_test.exs",
+        "native_m6_public_routes_test.exs",
+        "sharing/resources.json",
+        "public_presentation_test.exs",
+        "public_native_gallery_test.exs",
+        "phoenix_public_map_day_hook_test.mjs",
+        "sharing/resource_refusals.json"
+      ],
+      "status": "live/timeline/prompt/not-found and static trip/track main DOM verified in seven locales; missing resources retain native 404 and generic unavailable body; unknown persisted enum crashes Rails and remains closed native 404; these explicit contract differences are registered"
+    },
+    {
+      "path": "/s/:id/unlock",
+      "methods": [
+        "POST"
+      ],
+      "states": [
+        "correct phrase",
+        "wrong phrase"
+      ],
+      "evidence": [
+        "sharing_parity_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    },
+    {
+      "path": "/shared/month/:uuid",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "states": [
+        "available",
+        "expired",
+        "revoked",
+        "missing owner"
+      ],
+      "evidence": [
+        "sharing_endpoint_test.exs",
+        "native_public_pages_test.exs",
+        "public_report_delivery_test.exs",
+        "stats/public_reports/pages.json",
+        "phoenix_chart_test.mjs"
+      ],
+      "status": "content DOM verified in seven locales for full and partial owners; bounded totals, viewer CSRF and delivery guards verified; browser acceptance pending"
+    },
+    {
+      "path": "/shared/digest/:uuid",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "states": [
+        "available",
+        "expired",
+        "revoked",
+        "missing owner"
+      ],
+      "evidence": [
+        "sharing_endpoint_test.exs",
+        "native_public_pages_test.exs",
+        "public_report_delivery_test.exs",
+        "stats/public_reports/pages.json",
+        "phoenix_chart_test.mjs"
+      ],
+      "status": "content DOM verified in seven locales for full and partial owners; bounded totals, viewer CSRF and delivery guards verified; browser acceptance pending"
+    },
+    {
+      "path": "/shared/achievements/:uuid",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "states": [
+        "available",
+        "expired",
+        "revoked",
+        "missing owner"
+      ],
+      "evidence": [
+        "sharing_endpoint_test.exs",
+        "native_public_pages_test.exs",
+        "achievement_public_test.exs",
+        "achievement_public/public.json"
+      ],
+      "status": "complete body DOM verified against existing source recorder for all locale, embed and card states; availability/HEAD/privacy guards preserved"
+    },
+    {
+      "path": "/share_links/hub",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "empty",
+        "active",
+        "validation error",
+        "revoked"
+      ],
+      "evidence": [
+        "share_management_parity_test.exs",
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
+      ],
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
+    },
+    {
+      "path": "/share_links/live/new",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "empty",
+        "active",
+        "validation error",
+        "revoked"
+      ],
+      "evidence": [
+        "share_management_parity_test.exs",
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
+      ],
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
+    },
+    {
+      "path": "/share_links/timeline/new",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "empty",
+        "active",
+        "validation error",
+        "revoked"
+      ],
+      "evidence": [
+        "share_management_parity_test.exs",
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
+      ],
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
+    },
+    {
+      "path": "/trips/:trip_id/share_link/new",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "empty",
+        "active",
+        "validation error",
+        "revoked"
+      ],
+      "evidence": [
+        "share_management_parity_test.exs",
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
+      ],
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
+    },
+    {
+      "path": "/tracks/:track_id/share_link/new",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "empty",
+        "active",
+        "validation error",
+        "revoked"
+      ],
+      "evidence": [
+        "share_management_parity_test.exs",
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
+      ],
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
+    },
+    {
+      "path": "/stats/:year/:month/sharing",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "empty",
+        "active",
+        "validation error",
+        "revoked"
+      ],
+      "evidence": [
+        "share_management_parity_test.exs",
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
+      ],
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
+    },
+    {
+      "path": "/digests/:year/sharing",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "empty",
+        "active",
+        "validation error",
+        "revoked"
+      ],
+      "evidence": [
+        "share_management_parity_test.exs",
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
+      ],
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
+    },
+    {
+      "path": "/achievements/:key/sharing",
+      "methods": [
+        "GET"
+      ],
+      "states": [
+        "empty",
+        "active",
+        "validation error",
+        "revoked"
+      ],
+      "evidence": [
+        "share_management_parity_test.exs",
+        "sharing_native_events_test.exs",
+        "share_management/dom",
+        "report_sharing_native_test.exs",
+        "phoenix_sharing_controls_test.mjs",
+        "phoenix_clipboard_test.mjs"
+      ],
+      "status": "source control DOM verified in seven locales; 196 creation/active/modal/hub/report comparisons across the management family; native scope, HTTP-only phrases, confirmations and fixed return routes retained; standalone achievement copy and selected-panel projection registered; browser acceptance pending"
+    },
+    {
+      "path": "/posters",
+      "methods": [
+        "POST"
+      ],
+      "states": [
+        "create",
+        "embedded map studio",
+        "trip studio",
+        "gallery controls"
+      ],
+      "evidence": [
+        "posters_parity_test.exs",
+        "route_video_parity_test.exs",
+        "native_map_studios_parity_test.exs",
+        "posters/trip_{poster,video}_{locale}.html"
+      ],
+      "status": "map studio DOM preserved; trip variants now compare both complete control DOMs in all seven locales, with source fixed poster range and native fixed video-range runtime; browser acceptance pending"
+    },
+    {
+      "path": "/route_videos",
+      "methods": [
+        "POST"
+      ],
+      "states": [
+        "create",
+        "embedded map studio",
+        "trip studio",
+        "gallery controls"
+      ],
+      "evidence": [
+        "posters_parity_test.exs",
+        "route_video_parity_test.exs",
+        "native_map_studios_parity_test.exs",
+        "posters/trip_{poster,video}_{locale}.html"
+      ],
+      "status": "map studio DOM preserved; trip variants now compare both complete control DOMs in all seven locales, with source fixed poster range and native fixed video-range runtime; browser acceptance pending"
+    },
+    {
+      "path": "/posters/:id",
+      "methods": [
+        "DELETE"
+      ],
+      "states": [
+        "own row",
+        "foreign row",
+        "missing row"
+      ],
+      "evidence": [
+        "posters_parity_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    },
+    {
+      "path": "/route_videos/:id",
+      "methods": [
+        "DELETE"
+      ],
+      "states": [
+        "own row",
+        "foreign row",
+        "missing row"
+      ],
+      "evidence": [
+        "route_video_parity_test.exs"
+      ],
+      "status": "existing behavior coverage"
+    }
+  ],
+  "external_auth_links": [
+    {
+      "path": "/auth/dawarich",
+      "host": "Manager",
+      "owner": "external service; not a Dawarich route",
+      "source": "app/helpers/application_helper.rb:216"
+    }
+  ]
+}

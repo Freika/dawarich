@@ -114,8 +114,9 @@ namespace :e2e do
   end
 
   desc 'Reset demo + lite + family users to a clean state and re-seed canonical e2e data'
-  task reset_and_seed: :environment do
+  task reset_and_seed: %i[environment seed_instance] do
     assert_safe_environment!
+    DawarichSettings.set_registration_enabled(true)
 
     puts '🧹 Resetting e2e users...'
     Rake::Task['e2e:reset'].invoke
@@ -181,6 +182,9 @@ namespace :e2e do
         settings: (user.settings || {}).merge('onboarding_completed' => true)
       )
     end
+
+    puts "\n📊 Seeding the stats and insights fixture users..."
+    Rake::Task['e2e:seed_stats_fixtures'].invoke
   end
 
   desc 'Plant a deterministic set of anomaly points on the demo user (idempotent).'
@@ -292,6 +296,14 @@ namespace :e2e do
              )
     holder.tags = tags
     holder.save!
+    if ENV['E2E_PROXY_STACK'] == '1'
+      user.tags.find_or_create_by!(name: 'Release adoption fixture') { |tag| tag.demo = true }
+      user.imports.find_or_create_by!(name: 'Release adoption marker', demo: true) do |import|
+        import.source = :geojson
+        import.status = :completed
+        import.skip_background_processing = true
+      end
+    end
     puts "  ↪ tag-holder place ##{holder.id} \"#{holder.name}\" has tags #{holder.reload.tags.map(&:name).inspect}"
   end
 
@@ -329,7 +341,11 @@ namespace :e2e do
     step_seconds = span_seconds / (point_count - 1)
     base_lat = 52.5200
     base_lon = 13.4050
-    step_deg = 0.0005
+    step_deg = if tracker_id == 'e2e-journey-track' && ENV['E2E_PROXY_STACK'] == '1'
+                 0.005
+               else
+                 0.0005
+               end
 
     points = []
     point_count.times do |i|

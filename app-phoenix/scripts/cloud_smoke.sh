@@ -1,0 +1,237 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/../.."
+
+IMAGE="${IMAGE:-dawarich:a0c-local}"
+WAIT="${SMOKE_WAIT_SECONDS:-300}"
+net=a0c-cloud
+run="a0c-smoke=$$"
+
+fail() {
+  echo "$1" >&2
+  exit 1
+}
+
+case "${DOCKER_HOST:-$(docker context inspect --format '{{.Endpoints.docker.Host}}' 2>/dev/null)}" in
+  unix://*) ;;
+  *) fail "the Docker engine is not local; never run this against a remote engine such as dawarich-swarm" ;;
+esac
+if docker ps -a --format '{{.Names}}' | grep -q '^a0c_'; then
+  fail "a0c_* containers already exist; remove them first"
+fi
+port=0
+curl -s -m 5 -o /dev/null http://127.0.0.1:3901/ || port=$?
+[ "$port" = 7 ] || fail "port 3901 is in use"
+
+work="$(mktemp -d)"
+cleanup() {
+  ec=$?
+  if [ "$ec" -ne 0 ]; then
+    for c in a0c_bouncer a0c_probe a0c_web a0c_worker; do
+      docker logs --tail 40 "$c" 2>&1 | sed "s/^/[$c] /" >&2 || true
+    done
+  fi
+  docker rm -fv $(docker ps -aq --filter "label=$run") >/dev/null 2>&1 || true
+  docker network rm $(docker network ls -q --filter "label=$run") >/dev/null 2>&1 || true
+  docker rmi -f a0c-pgbouncer:local >/dev/null 2>&1 || true
+  rm -rf "$work"
+  exit "$ec"
+}
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+
+procfile() {
+  sed -n "s/^$1: //p" Procfile.cloud
+}
+
+sql() {
+  docker exec a0c_db psql -U postgres -d dawarich_cloud -Atc "$1"
+}
+
+app() {
+  docker run --init --label "$run" --network "$net" --env-file "$work/env" "$@"
+}
+
+proc_user() {
+  docker exec "$1" sh -c "ps -o user= -p \"\$(pgrep -o -f '$2')\"" | tr -d ' '
+}
+
+under_beam() {
+  docker exec "$1" sh -c 'p=$(pgrep -o -f "^puma [0-9]"); while [ -n "$p" ] && [ "$p" -gt 1 ]; do [ "$(ps -o comm= -p "$p")" = beam.smp ] && exit 0; p=$(ps -o ppid= -p "$p" | tr -d " "); done; exit 1'
+}
+
+wait_until() {
+  tries=0
+  until eval "$1"; do
+    tries=$((tries + 1))
+    [ "$tries" -lt "$WAIT" ] || fail "$2"
+    sleep 1
+  done
+}
+
+healthy='curl -fsS -m 5 http://127.0.0.1:3901/api/v1/health 2>/dev/null | grep -q "\"status\""'
+
+docker network create --label "$run" "$net" >/dev/null
+docker run -d --name a0c_db --label "$run" --network "$net" -e POSTGRES_PASSWORD=postgres postgis/postgis:17-3.5-alpine >/dev/null
+docker run -d --name a0c_redis --label "$run" --network "$net" redis:7.4-alpine >/dev/null
+
+mkdir "$work/bouncer"
+cat >"$work/bouncer/pgbouncer.ini" <<'EOF'
+[databases]
+dawarich_cloud = host=a0c_db port=5432 dbname=dawarich_cloud
+
+[pgbouncer]
+listen_addr = 0.0.0.0
+listen_port = 6432
+unix_socket_dir =
+auth_type = scram-sha-256
+auth_file = /etc/pgbouncer/userlist.txt
+pool_mode = transaction
+server_round_robin = 1
+default_pool_size = 4
+min_pool_size = 2
+max_prepared_statements = 200
+EOF
+echo '"dawarich_cloud" "cloud"' >"$work/bouncer/userlist.txt"
+cat >"$work/bouncer/Dockerfile" <<'EOF'
+FROM debian:trixie-slim
+RUN apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends pgbouncer \
+    && rm -rf /var/lib/apt/lists/*
+COPY pgbouncer.ini userlist.txt /etc/pgbouncer/
+USER nobody
+CMD ["pgbouncer", "/etc/pgbouncer/pgbouncer.ini"]
+EOF
+df -h /System/Volumes/Data
+[ "$(df -k /System/Volumes/Data | awk 'NR == 2 { print $4 }')" -ge 10485760 ] || fail "less than 10 GiB free before the pooler build"
+build_rc=0
+docker build -q -t a0c-pgbouncer:local "$work/bouncer" >/dev/null || build_rc=$?
+docker builder prune -af
+[ "$build_rc" -eq 0 ] || fail "pooler build failed (exit $build_rc)"
+docker run -d --name a0c_bouncer --label "$run" --network "$net" a0c-pgbouncer:local >/dev/null
+
+wait_until '[ "$(docker logs a0c_db 2>&1 | grep -c "ready to accept connections")" -ge 2 ]' "database did not start"
+docker exec -i a0c_db psql -v ON_ERROR_STOP=1 -q -U postgres <<'EOF'
+CREATE ROLE dawarich_cloud LOGIN PASSWORD 'cloud';
+CREATE DATABASE dawarich_cloud;
+\c dawarich_cloud
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+GRANT USAGE, CREATE ON SCHEMA public TO dawarich_cloud;
+EOF
+
+cat >"$work/env" <<EOF
+RAILS_ENV=production
+PORT=3000
+DATABASE_HOST=a0c_bouncer
+DATABASE_PORT=6432
+DATABASE_USERNAME=dawarich_cloud
+DATABASE_PASSWORD=cloud
+DATABASE_NAME=dawarich_cloud
+DATABASE_ADVISORY_LOCKS=false
+REDIS_URL=redis://a0c_redis:6379
+SECRET_KEY_BASE=$(od -An -N64 -tx1 /dev/urandom | tr -d ' \n')
+AUTH_JWT_SECRET_KEY=$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')
+SUBSCRIPTION_WEBHOOK_SECRET=$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')
+APPLICATION_HOSTS=localhost,127.0.0.1
+WEB_CONCURRENCY=1
+EOF
+sed -e 's/^DATABASE_HOST=.*/DATABASE_HOST=a0c_db/' -e 's/^DATABASE_PORT=.*/DATABASE_PORT=5432/' \
+  -e 's/^DATABASE_USERNAME=.*/DATABASE_USERNAME=postgres/' -e 's/^DATABASE_PASSWORD=.*/DATABASE_PASSWORD=postgres/' \
+  "$work/env" >"$work/admin.env"
+echo DISABLE_DATABASE_ENVIRONMENT_CHECK=1 >>"$work/admin.env"
+
+app -d --name a0c_probe "$IMAGE" cloud-entrypoint.sh true >/dev/null
+wait_until '[ "$(docker inspect -f "{{.State.Status}}" a0c_probe)" = exited ]' "the web entrypoint did not get through PgBouncer"
+[ "$(docker inspect -f '{{.State.ExitCode}}' a0c_probe)" = 0 ] || fail "the web entrypoint failed on an empty database"
+docker rm a0c_probe >/dev/null
+[ "$(sql "SELECT to_regclass('public.schema_migrations') IS NULL")" = t ] || fail "the web entrypoint migrated"
+docker exec a0c_db psql -w "host=a0c_bouncer port=6432 dbname=dawarich_cloud user=dawarich_cloud" -c 'SELECT 1' 2>&1 \
+  | grep -q 'no password supplied' || fail "PgBouncer accepts a login without a password"
+
+docker run --rm --label "$run" --network "$net" --env-file "$work/admin.env" "$IMAGE" bin/rails db:schema:load >/dev/null
+sql "DO \$\$ DECLARE t record; BEGIN FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'spatial_ref_sys' LOOP EXECUTE format('ALTER TABLE public.%I OWNER TO dawarich_cloud', t.tablename); END LOOP; END \$\$" >/dev/null
+
+if app --rm -e SELF_HOSTED=false "$IMAGE" $(procfile release) >"$work/release1.log" 2>&1; then
+  cat "$work/release1.log" >&2
+  fail "a Cloud release succeeded although the Phoenix migrations could not run"
+fi
+cat "$work/release1.log" >&2
+if ! grep -q 'Phoenix migrations failed; the deploy stops here' "$work/release1.log"; then
+  fail "the Cloud release hid the Phoenix failure"
+fi
+app --rm "$IMAGE" $(procfile release) >"$work/release1-self-hosted.log" 2>&1 \
+  || { cat "$work/release1-self-hosted.log" >&2; fail "a self-hosted release failed on the missing CREATE privilege"; }
+grep -q 'Phoenix migrations failed; web containers will start Rails without the Phoenix supervisor' "$work/release1-self-hosted.log" \
+  || fail "the self-hosted release hid the Phoenix failure"
+grep -q 'permission denied for database dawarich_cloud' "$work/release1.log" \
+  || { cat "$work/release1.log" >&2; fail "the release's Phoenix failure is not the missing CREATE privilege"; }
+[ "$(sql "SELECT to_regnamespace('phoenix') IS NULL AND to_regnamespace('oban') IS NULL")" = t ] \
+  || fail "Phoenix schemas appeared without the CREATE privilege"
+
+app -d --name a0c_web -p 127.0.0.1:3901:5000 "$IMAGE" $(procfile web) >/dev/null
+wait_until "$healthy" "Rails did not come up without Phoenix"
+if docker exec a0c_web pgrep -x beam.smp >/dev/null; then
+  fail "Phoenix started without its schemas"
+fi
+[ "$(proc_user a0c_web '^puma [0-9]')" = 32767 ] || fail "Puma runs as root or is missing"
+docker logs a0c_web 2>&1 | grep -q 'schemas are missing, unreadable or behind this image; starting Rails without the Phoenix supervisor' \
+  || fail "fail-open warning missing or without its cause"
+docker rm -f a0c_web >/dev/null
+
+sql "CREATE SCHEMA phoenix AUTHORIZATION dawarich_cloud; CREATE SCHEMA oban AUTHORIZATION dawarich_cloud" >/dev/null
+app --rm "$IMAGE" $(procfile release) >"$work/release2.log" 2>&1 || { cat "$work/release2.log" >&2; fail "second release failed"; }
+if grep -q 'Phoenix migrations failed' "$work/release2.log"; then
+  cat "$work/release2.log" >&2
+  fail "Phoenix migrations failed with pre-created schemas"
+fi
+oban_ledger_count="$(sql "SELECT count(*) FROM oban.phoenix_schema_migrations")"
+oban_migration_count="$(find app-phoenix/priv/repo/oban_migrations -name '*.exs' -type f | wc -l | tr -d ' ')"
+[ "$oban_ledger_count" = "$oban_migration_count" ] || fail "oban ledger incomplete: expected $oban_migration_count, got $oban_ledger_count"
+[ "$(sql "SELECT to_regclass('phoenix.phoenix_schema_migrations') IS NOT NULL")" = t ] || fail "phoenix ledger missing"
+
+app -d --name a0c_web -p 127.0.0.1:3901:5000 "$IMAGE" $(procfile web) >/dev/null
+wait_until "$healthy" "web did not come up under Phoenix"
+docker logs a0c_web 2>&1 | grep -q 'Phoenix listens on .*:5000 and proxies to Puma on 127\.0\.0\.1:' \
+  || fail "Phoenix does not front Puma on 5000"
+docker exec a0c_web sh -c 'cat /proc/net/tcp /proc/net/tcp6' | awk '$4 == "0A" {print $2}' >"$work/listeners"
+grep -q ':1388$' "$work/listeners" || fail "nothing listens on 5000"
+if grep -v ':1388$' "$work/listeners" | grep -vqE '^([0-9A-F]{6}7F|00000000000000000000000001000000):'; then
+  fail "a listener other than Phoenix's is reachable from outside the Cloud container"
+fi
+[ "$(curl -s -m 10 -o /dev/null -w '%{http_code}' http://127.0.0.1:3901/users/sign_in)" = 200 ] \
+  || fail "a Rails page did not come through Phoenix and PgBouncer"
+docker exec a0c_web curl -sS -m 10 -D - --output - -H 'Origin: http://127.0.0.1:5000' \
+  -H 'Sec-WebSocket-Protocol: actioncable-v1-json' ws://127.0.0.1:5000/cable 2>/dev/null | LC_ALL=C tr -d '\r' >"$work/cable" || true
+grep -q '^HTTP/1.1 101' "$work/cable" || fail "the Cloud /cable upgrade did not come through Phoenix"
+[ "$(docker exec a0c_web ps -o user=,comm= -C beam.smp | tr -s ' ' | sed 's/^ //')" = "32767 beam.smp" ] \
+  || fail "the BEAM is missing or runs as root"
+under_beam a0c_web || fail "Puma is missing or not a descendant of the BEAM"
+[ "$(proc_user a0c_web '^puma [0-9]')" = 32767 ] || fail "Puma runs as root"
+[ "$(docker exec a0c_web stat -c %u /var/app/tmp/dawarich.cookie)" = 32767 ] || fail "cookie not owned by the app user"
+[ "$(docker exec a0c_web timeout 30 dawarich rpc 'IO.puts(Oban.config().prefix)')" = oban ] || fail "rpc failed"
+i=0
+while [ "$i" -lt 20 ]; do
+  [ "$(docker exec a0c_web timeout 30 dawarich rpc 'IO.inspect(Dawarich.Accounts.get(1))')" = nil ] \
+    || fail "a Phoenix user lookup failed through PgBouncer"
+  i=$((i + 1))
+done
+docker stop a0c_web >/dev/null
+[ "$(docker inspect -f '{{.State.ExitCode}}' a0c_web)" = 0 ] || fail "unclean web stop"
+docker logs a0c_web 2>&1 | tail -20 | grep -qi goodbye || fail "puma did not shut down gracefully"
+docker rm a0c_web >/dev/null
+app -d --name a0c_web -e DAWARICH_PROXY=off -p 127.0.0.1:3901:5000 "$IMAGE" $(procfile web) >/dev/null
+wait_until "$healthy" "web did not come up with DAWARICH_PROXY=off"
+docker logs a0c_web 2>&1 | grep -q 'Phoenix proxy off (DAWARICH_PROXY=off)' || fail "the Cloud kill switch was not honoured"
+under_beam a0c_web || fail "Puma is not under the BEAM with the kill switch"
+docker stop a0c_web >/dev/null
+[ "$(docker inspect -f '{{.State.ExitCode}}' a0c_web)" = 0 ] || fail "unclean web stop with the kill switch"
+
+app -d --name a0c_worker "$IMAGE" $(procfile worker) >/dev/null
+wait_until 'docker exec a0c_worker pgrep -f "^sidekiq [0-9]" >/dev/null' "sidekiq did not boot"
+[ "$(proc_user a0c_worker '^sidekiq [0-9]')" = 32767 ] || fail "Sidekiq runs as root or is missing"
+docker stop a0c_worker >/dev/null
+[ "$(docker inspect -f '{{.State.ExitCode}}' a0c_worker)" = 0 ] || fail "unclean sidekiq stop"
+
+[ "$(sql "SELECT count(*) FROM users")" = 0 ] || fail "seeds ran"
+echo "cloud smoke: ok"

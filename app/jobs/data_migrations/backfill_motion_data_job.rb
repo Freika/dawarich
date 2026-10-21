@@ -6,6 +6,8 @@ class DataMigrations::BackfillMotionDataJob < ApplicationJob
   BATCH_SIZE = 1000
 
   def perform(batch_size: BATCH_SIZE)
+    return if ReleaseCommands.forwarded?(self, 'release.motion_data', { 'batch_size' => batch_size })
+
     Rails.logger.info('Starting motion_data backfill job')
 
     processed = 0

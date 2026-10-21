@@ -4,11 +4,12 @@ module Trek
   class SyncSchedulingJob < ApplicationJob
     queue_as :imports
 
-    def perform
-      TripSource.active.where(provider: 'trek').find_each do |source|
-        next unless source.sync_allowed?
-
-        Trek::SyncJob.perform_later(source.id)
+    def perform(marker = nil)
+      commands = Integrations::SchedulingCommands
+      slot = commands.slot(self, marker)
+      scope = TripSource.active.where(provider: 'trek')
+      commands.sweep(scope, 'trek', 'cron:trek_sync_job', slot) do |ids, kind, at|
+        commands.schedule_trek(ids, kind, at)
       end
     end
   end

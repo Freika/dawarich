@@ -13,6 +13,7 @@ import {
 } from "maps_maplibre/utils/geojson_transformers"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import { DateManager } from "./date_manager"
 
 /**
  * Handles map interaction events (clicks, info display)
@@ -236,7 +237,10 @@ export class EventHandlers {
     const visitId = Number(properties.id)
     const startedAt =
       typeof properties.started_at === "string" ? properties.started_at : null
-    const date = startedAt ? startedAt.slice(0, 10) : null
+    const date = DateManager.dayInTimeZone(
+      startedAt,
+      this.controller.timezoneValue,
+    )
 
     document.dispatchEvent(
       new CustomEvent("timeline:open-visit", {
@@ -266,37 +270,15 @@ export class EventHandlers {
    * Handle place click
    */
   handlePlaceClick(e) {
-    const feature = e.features[0]
-    const properties = feature.properties
+    const place = e.features[0]
+    if (!place?.properties?.id) return
 
-    const content = `
-      <div class="space-y-2">
-        ${properties.tag ? `<div class="badge badge-sm badge-primary">${escapeHtml(properties.tag)}</div>` : ""}
-        ${properties.description ? `<div>${escapeHtml(properties.description)}</div>` : ""}
-        ${
-          properties.nameLocked
-            ? `<div class="text-xs opacity-70" data-testid="place-name-lock">${translate("map_info.place_name_locked")}</div>`
-            : ""
-        }
-      </div>
-    `
-
-    const actions = properties.id
-      ? [
-          {
-            type: "button",
-            handler: "handleEdit",
-            id: properties.id,
-            entityType: "place",
-            label: translate("messages.edit"),
-          },
-        ]
-      : []
-
-    this.controller.showInfo(
-      escapeHtml(properties.name) || translate("map_info.place"),
-      content,
-      actions,
+    this.map.flyTo({
+      center: place.geometry.coordinates,
+      zoom: Math.max(this.map.getZoom(), 13),
+    })
+    document.dispatchEvent(
+      new CustomEvent("place:open", { detail: { id: place.properties.id } }),
     )
   }
 
@@ -415,6 +397,7 @@ export class EventHandlers {
     const clickedFeature = e.features[0]
     if (!clickedFeature) return
 
+    e.preventDefault?.()
     const properties = clickedFeature.properties
     const fullFeature = clickedFeature
     const generation = ++this._trackSelectionGeneration
@@ -432,11 +415,12 @@ export class EventHandlers {
     }
     this._loadTrackSegments(properties.id, fullFeature, generation)
 
-    // Derive the day from the track's start. `start_at` comes from our own
-    // serializer as an ISO8601 string — safe to slice the date portion.
     const startAt =
       typeof properties.start_at === "string" ? properties.start_at : null
-    const date = startAt ? startAt.slice(0, 10) : null
+    const date = DateManager.dayInTimeZone(
+      startAt,
+      this.controller.timezoneValue,
+    )
     const trackId = Number(properties.id)
 
     document.dispatchEvent(

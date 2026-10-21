@@ -19,6 +19,14 @@ RSpec.describe 'GET /trial/welcome', type: :request do
 
   before { Rails.cache.clear }
 
+  around do |example|
+    if example.metadata[:legacy_welcome]
+      with_legacy_welcome { example.run }
+    else
+      example.run
+    end
+  end
+
   it 'signs in the user and redirects to the map with a welcome flash' do
     get "/trial/welcome?token=#{token}"
     expect(response).to have_http_status(:found)
@@ -148,7 +156,7 @@ RSpec.describe 'GET /trial/welcome', type: :request do
       expect(response.headers['Referrer-Policy']).to eq('no-referrer')
     end
 
-    it 'consumes the jti atomically via Rails.cache.write(unless_exist: true)' do
+    it 'unmigrated welcome still writes the original cache DB0 NX entry', :legacy_welcome do
       Rails.cache.clear
       t = issue_welcome_token(user)
 
@@ -170,7 +178,7 @@ RSpec.describe 'GET /trial/welcome', type: :request do
       expect(consume_writes.first[:unless_exist]).to be(true)
     end
 
-    it 'rejects a second visit when the atomic write returns false (lost the race)' do
+    it 'rejects a second visit when the atomic write returns false (lost the race)', :legacy_welcome do
       Rails.cache.clear
       t = issue_welcome_token(user)
 
@@ -191,6 +199,70 @@ RSpec.describe 'GET /trial/welcome', type: :request do
       get "/trial/welcome?token=#{t}"
       expect(response).to redirect_to(new_user_session_path)
       expect(flash[:alert]).to include('already been used')
+    end
+
+    it 'Rails welcome consumes PG claim and rejects a PG replay with no cache write' do
+      phoenix_state!
+      signed = issue_welcome_token(user, jti: 'a13g-rails-pg', exp: 30.minutes.from_now.to_i)
+      expect(Rails.cache).not_to receive(:write)
+      count = user.reload.sign_in_count
+      get '/trial/welcome', params: { token: signed }
+      expect(response).to redirect_to(%r{/map/v\d})
+      key = "trial_welcome:consumed:sha256:#{Digest::SHA256.hexdigest('a13g-rails-pg')}"
+      expect(claim_seconds(key)).to be_between(1798, 1800)
+      expect(user.reload.sign_in_count).to eq(count + 1)
+      get '/trial/welcome', params: { token: signed }
+      expect(response).to redirect_to(%r{/map/v\d})
+      expect(user.reload.sign_in_count).to eq(count + 1)
+      guest = ActionDispatch::Integration::Session.new(Rails.application)
+      guest.get('/trial/welcome', params: { token: signed })
+      expect(guest.response.status).to eq(302)
+      expect(guest.response.headers['Location']).to end_with(new_user_session_path)
+      expect(user.reload.sign_in_count).to eq(count + 1)
+    end
+
+    %w[NUL large].each do |kind|
+      it "PG Rails welcome preserves signed #{kind} jti source replay outcomes" do
+        phoenix_state!
+        jti = if kind == 'NUL'
+                "a13g-legacy-#{0.chr}-nul"
+              else
+                Array.new(128) { |index| Digest::SHA256.hexdigest("a13g-legacy-large-#{index}") }.join
+              end
+        signed = issue_welcome_token(user, jti: jti)
+        client = ActionDispatch::Integration::Session.new(Rails.application)
+        count = user.reload.sign_in_count
+        client.get('/trial/welcome', params: { token: signed })
+        expect(client.response.status).to eq(302)
+        expect(client.response.headers['Location']).to match(%r{/map/v\d\z})
+        expect(user.reload.sign_in_count).to eq(count + 1)
+        client.get('/trial/welcome', params: { token: signed })
+        expect(client.response.status).to eq(302)
+        expect(client.response.headers['Location']).to match(%r{/map/v\d\z})
+        guest = ActionDispatch::Integration::Session.new(Rails.application)
+        guest.get('/trial/welcome', params: { token: signed })
+        expect(guest.response.status).to eq(302)
+        expect(guest.response.headers['Location']).to end_with(new_user_session_path)
+        expect(guest.response.headers).to include('Cache-Control' => 'no-store', 'Pragma' => 'no-cache',
+                                                  'Referrer-Policy' => 'no-referrer')
+        expect(user.reload.sign_in_count).to eq(count + 1)
+        key = "trial_welcome:consumed:sha256:#{Digest::SHA256.hexdigest(jti)}"
+        expect(claim_seconds(key)).to be_between(1798, 1800)
+        expect(Rails.cache.read("trial_welcome:consumed:#{jti}")).to be_nil
+      end
+    end
+
+    it 'PG welcome claim error prevents sign-in and never uses Redis' do
+      phoenix_state!
+      signed = issue_welcome_token(user)
+      count = user.reload.sign_in_count
+      expect(Rails.cache).not_to receive(:write)
+      connection = ActiveRecord::Base.connection
+      connection.execute('ALTER TABLE phoenix.once_claims RENAME COLUMN expires_at TO unavailable')
+      expect do
+        connection.transaction(requires_new: true) { get '/trial/welcome', params: { token: signed } }
+      end.to raise_error(ActiveRecord::StatementInvalid)
+      expect(user.reload.sign_in_count).to eq(count)
     end
   end
 end

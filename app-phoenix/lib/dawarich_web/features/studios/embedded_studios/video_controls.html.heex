@@ -1,0 +1,142 @@
+<details
+  id="native-video_controls-1"
+  phx-update="ignore"
+  class="collapse collapse-arrow rounded-lg border border-base-content/10 bg-base-100"
+>
+  <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+    <span class="flex items-center gap-2">
+      <Icon.icon name="grid2x2" class="h-4 w-4 opacity-70 shrink-0" />
+      {v(@locale, "format")}
+    </span>
+  </summary>
+  <div class="collapse-content space-y-2">
+    <div
+      class="grid grid-cols-3 gap-1 rounded-lg bg-base-200 p-1"
+      role="radiogroup"
+      aria-label={v(@locale, "format")}
+    >
+      <%= for option <- formats(@locale) do %>
+        <button
+          type="button"
+          class="btn btn-sm h-auto min-h-20 flex-col gap-2 border-0 px-2 py-3"
+          role="radio"
+          title={option.label}
+          aria-label={option.label}
+          data-native-video-format={option.key}
+          data-format={option.key}
+          data-format-label={option.label}
+        >
+          <span class="flex h-8 w-12 items-center justify-center" aria-hidden="true">
+            <span class={option.preview <> " rounded-sm border-2 border-current opacity-80"}></span>
+          </span>
+          <span class="min-w-0 text-center leading-tight">
+            <span class="block truncate text-xs font-medium">{option.short}</span>
+            <span class="block text-[10px] font-bold uppercase tracking-[0.05em] opacity-60">{option.ratio}</span>
+          </span>
+        </button>
+      <% end %>
+    </div>
+    <p class="text-center text-xs tabular-nums opacity-60" data-native-video-format-dims></p>
+  </div>
+</details>
+
+<details
+  id="native-video_controls-2"
+  phx-update="ignore"
+  open
+  class="collapse collapse-arrow rounded-lg border border-base-content/10 bg-base-100"
+>
+  <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+    <span class="flex items-center gap-2">
+      <Icon.icon name="cloud-fog" class="h-4 w-4 opacity-70 shrink-0" />
+      {v(@locale, "visualization")}
+    </span>
+  </summary>
+  <div class="collapse-content space-y-3">
+    <div>
+      <span class="label-text text-xs">{v(@locale, "mode")}</span>
+      <div
+        class="mt-1 grid grid-cols-2 gap-1 rounded-lg bg-base-200 p-1"
+        role="radiogroup"
+        aria-label={v(@locale, "mode")}
+      >
+        <button
+          type="button"
+          class="btn btn-sm h-auto min-h-10 justify-center gap-2 border-0 px-3 py-2"
+          role="radio"
+          data-native-video-mode="route"
+          data-visualization-mode="route"
+        >
+          <Icon.icon name="route" class="h-4 w-4 shrink-0" />
+          <span class="truncate">{v(@locale, "mode_route")}</span>
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm h-auto min-h-10 justify-center gap-2 border-0 px-3 py-2"
+          role="radio"
+          data-native-video-mode="fog"
+          data-visualization-mode="fog"
+        >
+          <Icon.icon name="cloud-fog" class="h-4 w-4 shrink-0" />
+          <span class="truncate">{v(@locale, "mode_fog")}</span>
+        </button>
+      </div>
+    </div>
+    <div
+      class="space-y-3 rounded-md border border-base-content/10 bg-base-200/60 p-3"
+      data-native-video-fog-controls
+    >
+      <div class="flex items-center gap-2">
+        <label
+          for="video-fog-color"
+          class="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-md border border-base-content/10 bg-base-100 p-2 transition-colors hover:bg-base-200"
+        >
+          <input
+            id="video-fog-color"
+            type="color"
+            class="h-9 w-11 shrink-0 cursor-pointer rounded border border-base-content/15 bg-base-100 p-1"
+            aria-label={v(@locale, "fog_color")}
+            data-native-video-setting="fog_color"
+            data-setting="fog_color"
+          />
+          <span class="min-w-0">
+            <span class="block text-xs">{v(@locale, "fog_color")}</span>
+            <span
+              class="block truncate text-xs tabular-nums opacity-60"
+              data-native-video-label="fog_color"
+            ></span>
+          </span>
+        </label>
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm shrink-0"
+          data-native-video-reset="fog_color"
+        >{v(@locale, "reset")}</button>
+      </div>
+      <div class="flex items-center justify-between">
+        <label id="video-fog-opacity-label" for="video-fog-opacity" class="label-text text-xs">{v(
+          @locale,
+          "fog_opacity"
+        )}</label>
+        <output
+          class="text-xs font-medium tabular-nums opacity-80"
+          for="video-fog-opacity"
+          data-native-video-label="fog_opacity"
+        ></output>
+      </div>
+      <input
+        id="video-fog-opacity"
+        type="range"
+        min="0"
+        max="100"
+        step="5"
+        class="range range-primary range-xs"
+        aria-labelledby="video-fog-opacity-label"
+        data-native-video-setting="fog_opacity"
+        data-setting="fog_opacity"
+      />
+    </div>
+  </div>
+</details>
+
+<.video_route_controls locale={@locale} themes={@themes} />

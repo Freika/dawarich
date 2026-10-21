@@ -16,10 +16,12 @@
 #
 class Tracks::RealtimeGenerationJob < ApplicationJob
   queue_as :tracks
+  OWNER_KEY = 'command:tracks.generate_realtime'
 
   def perform(user_id)
     # Always clear debounce key first so new triggers aren't blocked
     Tracks::RealtimeDebouncer.new(user_id).clear
+    return forward(user_id) if JobOwnership.with_owner(OWNER_KEY) { :sidekiq } == :not_owner
 
     user = find_user_or_skip(user_id) || return
     return unless user.active? || user.trial?
@@ -28,7 +30,7 @@ class Tracks::RealtimeGenerationJob < ApplicationJob
     Tracks::IncrementalGenerator.new(user).call
 
     # Enqueue reverse geocoding for recent ungeocoded points
-    enqueue_reverse_geocoding(user)
+    Tracks::RealtimeGeocodeFollowUp.call(user)
   rescue Tracks::PerUserLock::AcquisitionTimeout => e
     # Expected contention: another generation/visit job already holds this user's
     # lock. Re-arm the debouncer so the points are retried once it releases,
@@ -41,13 +43,8 @@ class Tracks::RealtimeGenerationJob < ApplicationJob
 
   private
 
-  def enqueue_reverse_geocoding(user)
-    config = Geocoding::Config.for(user.id)
-    return unless config.enabled?
-
-    user.points
-        .not_reverse_geocoded
-        .where('created_at > ?', 5.minutes.ago)
-        .find_each { |point| point.async_reverse_geocode(config: config) }
+  def forward(user_id)
+    JobCommands.forward('tracks.generate_realtime', { 'user_id' => user_id }, event_id: job_id,
+                        aggregate_id: user_id, producer: self.class.name)
   end
 end

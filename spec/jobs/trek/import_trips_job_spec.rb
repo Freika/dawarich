@@ -10,6 +10,24 @@ RSpec.describe Trek::ImportTripsJob do
     stub_host_addresses('trek.example.test', '93.184.216.34')
   end
 
+  it 'forwards once to the owner and retains failed rehome selections' do
+    job_owner!('command:imports.trek_import', :oban)
+    job = described_class.new(source.id, ['12'], 'current-selection', 100)
+    allow(Trek::Sync).to receive(:new) { raise 'provider executed without admitted owner' }
+    2.times { job.perform_now }
+    payload = { 'source_id' => source.id, 'identifiers' => ['12'],
+                'selection_token' => 'current-selection', 'offset' => 100 }
+    expect(JobOutbox.pending.pluck(:event_id, :command_type, :payload))
+      .to eq([[job.job_id, 'imports.trek_import', payload]])
+    allow(described_class.queue_adapter).to receive(:enqueue_at).and_raise(RedisClient::CannotConnectError)
+    expect(JobCommands.rehome!('imports.trek_import', by: 'spec'))
+      .to eq({ moved: 0, left: 1, error: 'RedisClient::CannotConnectError' })
+    expect(JobOutbox.pending.count).to eq(1)
+    allow(described_class.queue_adapter).to receive(:enqueue_at).and_call_original
+    expect(JobCommands.rehome!('imports.trek_import', by: 'spec')).to eq({ moved: 1, left: 0 })
+    expect(enqueued_jobs.last[:args]).to eq([source.id, ['12'], 'current-selection', 100])
+  end
+
   it 'imports the selected trips and stops previously selected trips that were removed' do
     previous_trip = create(
       :trip, user: user, trip_source: source, source_identifier: 'previous', source_status: :active

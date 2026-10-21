@@ -1,0 +1,121 @@
+defmodule Dawarich.Places.Orphans do
+  @moduledoc false
+  require Logger
+
+  def delete(repo, user_id, place_id, opts \\ []) do
+    if eligible?(repo, user_id, place_id, "", opts) do
+      {:ok, result} = repo.transaction(fn -> delete_locked(repo, user_id, place_id, opts) end)
+      result
+    else
+      false
+    end
+  end
+
+  def delete_batch(repo, user_id, place_ids, opts \\ [])
+
+  def delete_batch(_repo, _user_id, [], _opts), do: []
+
+  def delete_batch(repo, user_id, place_ids, opts) do
+    filter =
+      if opts[:account_deletion], do: "", else: "AND p.source=1 AND (p.note IS NULL OR p.note='')"
+
+    {:ok, ids} =
+      repo.transaction(fn ->
+        repo.query!(
+          "SELECT source, note FROM places WHERE id=ANY($1) AND user_id=$2 ORDER BY id FOR UPDATE",
+          [place_ids, user_id],
+          log: false
+        )
+
+        ids =
+          repo.query!(
+            """
+            SELECT p.id FROM places p
+            WHERE p.id=ANY($1) AND p.user_id=$2 #{filter}
+              AND NOT EXISTS(SELECT 1 FROM visits v WHERE v.place_id=p.id)
+              AND NOT EXISTS(SELECT 1 FROM place_visits pv WHERE pv.place_id=p.id)
+              AND NOT EXISTS(SELECT 1 FROM taggings t WHERE t.taggable_id=p.id AND t.taggable_type='Place')
+            ORDER BY p.id
+            """,
+            [place_ids, user_id],
+            log: false
+          ).rows
+          |> List.flatten()
+
+        if ids != [] do
+          repo.query!("DELETE FROM places WHERE id=ANY($1) AND user_id=$2", [ids, user_id],
+            log: false
+          )
+        end
+
+        ids
+      end)
+
+    ids
+  end
+
+  defp delete_locked(repo, user_id, place_id, opts) do
+    repo.query!("SAVEPOINT guarded_orphan", [], log: false)
+
+    try do
+      result =
+        if eligible?(repo, user_id, place_id, " FOR UPDATE", opts) do
+          repo.query!("DELETE FROM places WHERE id=$1 AND user_id=$2", [place_id, user_id],
+            log: false
+          )
+
+          true
+        else
+          false
+        end
+
+      repo.query!("RELEASE SAVEPOINT guarded_orphan", [], log: false)
+      result
+    rescue
+      error in Postgrex.Error ->
+        if error.postgres.code == :foreign_key_violation && !Keyword.get(opts, :sweep, false) do
+          repo.query!("ROLLBACK TO SAVEPOINT guarded_orphan", [], log: false)
+          repo.query!("RELEASE SAVEPOINT guarded_orphan", [], log: false)
+          Logger.warning("orphan deletion retained place after foreign key conflict")
+          false
+        else
+          reraise error, __STACKTRACE__
+        end
+    end
+  end
+
+  defp eligible?(repo, user_id, place_id, lock, opts) do
+    case repo.query!(
+           "SELECT source, note FROM places WHERE id=$1 AND user_id=$2" <> lock,
+           [place_id, user_id],
+           log: false
+         ).rows do
+      [[1, note]] ->
+        blank?(note, opts) &&
+          repo.query!(
+            "SELECT 1 FROM visits WHERE place_id=$1 LIMIT 1",
+            [place_id],
+            log: false
+          ).rows == [] &&
+          repo.query!(
+            "SELECT 1 FROM place_visits WHERE place_id=$1 LIMIT 1",
+            [place_id],
+            log: false
+          ).rows == [] &&
+          repo.query!(
+            "SELECT 1 FROM taggings WHERE taggable_id=$1 AND taggable_type='Place' LIMIT 1",
+            [place_id],
+            log: false
+          ).rows == []
+
+      _ ->
+        false
+    end
+  end
+
+  defp blank?(nil, _opts), do: true
+
+  defp blank?(note, opts) do
+    if Keyword.get(opts, :sweep, false), do: note == "", else: String.trim(note) == ""
+  end
+end

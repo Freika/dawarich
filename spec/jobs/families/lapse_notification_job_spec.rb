@@ -52,6 +52,27 @@ RSpec.describe Families::LapseNotificationJob, type: :job do
     expect(mailer).to have_received(:deliver_now).once
   end
 
+  it 'owned by oban forwards with lapse_at' do
+    access_until = Time.utc(2026, 9, 30, 12)
+    family.update_columns(access_until:)
+    member
+    JobOutbox.delete_all
+    job_owner!('command:mail.family_lapse', :oban)
+    mailer = stub_mailer
+    job = described_class.new(member.id, family.id)
+
+    job.perform_now
+
+    expect(mailer).not_to have_received(:deliver_now)
+    expect(Families::LapseNotice.notified?(member.reload)).to be false
+    expect(JobOutbox.find(job.job_id)).to have_attributes(
+      command_type: 'mail.family_lapse', aggregate_id: member.id,
+      dedupe_key: "family-lapse:#{family.id}:#{member.id}:2026-09-30T12:00:00Z",
+      payload: { 'user_id' => member.id, 'family_id' => family.id, 'locale' => 'en',
+                 'lapse_at' => '2026-09-30T12:00:00Z' }
+    )
+  end
+
   it 'ignores a member that no longer exists' do
     expect { described_class.perform_now(-1, family.id) }.not_to raise_error
   end

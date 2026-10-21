@@ -109,6 +109,21 @@ RSpec.describe Users::ImportData::Imports, type: :service do
       end
     end
 
+    context 'with an import exported while it was still being imported and extracted' do
+      let(:imports_data) do
+        [{ 'name' => 'Timeline.json', 'source' => 'google_phone_takeout', 'status' => 'processing',
+           'additional_data_extraction_status' => 'running', 'created_at' => '2024-01-01T00:00:00Z' }]
+      end
+
+      it 'restores it without holding its points for an extraction that will never run' do
+        service.call
+
+        restored = user.imports.find_by!(name: 'Timeline.json')
+        expect(Import.awaiting_extraction).not_to include(restored)
+        expect(restored.additional_data_extraction_status).to eq('not_attempted')
+      end
+    end
+
     context 'with duplicate imports' do
       before do
         # Create an existing import with same name, source, and created_at

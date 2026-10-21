@@ -13,7 +13,7 @@ module Points
 
         lock_key = "archive_raw_data:#{user_id}"
 
-        lock_acquired = ActiveRecord::Base.with_advisory_lock(lock_key, timeout_seconds: 0) do
+        lock_acquired = PhoenixLease.try_hold(lock_key) do
           stats = Archiver.new.archive_user(user_id)
           Rails.logger.info("Archive complete for user #{user_id}: #{stats}")
           true

@@ -19,6 +19,10 @@ class Cache::UserPreheatingJob < ApplicationJob
     write("dawarich/user_#{user.id}_total_distance", total_distance(user))
 
     Cache::PreheatInsightsDigests.new(user).call
+
+    payload = { 'user_id' => user.id, 'time_zone' => Time.zone.name, 'source_job_id' => job_id }
+    JobCommands.produce('cache.preheat_user', payload, aggregate_id: user.id, producer: self.class.name,
+                        scheduled_at: scheduled_at || Time.current) { :source_complete }
   end
 
   private

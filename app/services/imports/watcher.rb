@@ -6,7 +6,7 @@ class Imports::Watcher
   WATCHED_DIR_PATH = Rails.root.join('tmp/imports/watched')
   SUPPORTED_FORMATS = %w[.gpx .json .rec .csv .tcx .fit .zip .geojson .kml .kmz].freeze
 
-  def call
+  def call(owner_key: nil)
     user_directories.each do |user_email|
       user = User.find_by(email: user_email)
 
@@ -16,7 +16,9 @@ class Imports::Watcher
       file_names = file_names(user_directory_path)
 
       file_names.each do |file_name|
-        create_import(user, user_directory_path, file_name)
+        work = -> { create_import(user, user_directory_path, file_name) }
+        result = owner_key ? JobOwnership.with_owner(owner_key, &work) : work.call
+        return :not_owner if result == :not_owner
       end
     end
   end

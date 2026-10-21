@@ -6,6 +6,23 @@ RSpec.describe Points::Destroyer do
   let(:user) { create(:user) }
 
   describe '#call' do
+    it 'returns destroyed points and schedules months in ascending id order despite descending insertion' do
+      high = Point.maximum(:id).to_i + 100
+      june = Time.zone.local(2024, 6, 2, 9).to_i
+      july = Time.zone.local(2024, 7, 1, 8).to_i
+      create(:point, user: user, track: nil, id: high, timestamp: june)
+      create(:point, user: user, track: nil, id: high - 1, timestamp: july)
+      ActiveRecord::Base.connection.execute('SET LOCAL enable_indexscan=off')
+      ActiveRecord::Base.connection.execute('SET LOCAL enable_bitmapscan=off')
+
+      destroyed = described_class.new(user, [high, high - 1]).call
+
+      expect(destroyed.map(&:id)).to eq([high - 1, high])
+      expect(destroyed.map(&:timestamp)).to eq([july, june])
+      jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.select { |job| job[:job] == Stats::CalculatingJob }
+      expect(jobs.map { |job| job[:args] }).to eq([[user.id, 2024, 7], [user.id, 2024, 6]])
+    end
+
     context 'with tracked and untracked points across months' do
       let(:track1) { create(:track, user: user) }
       let(:track2) { create(:track, user: user) }
@@ -52,7 +69,7 @@ RSpec.describe Points::Destroyer do
 
         expect { described_class.new(user, point_ids).call }
           .to have_enqueued_job(Achievements::CheckJob).with(user.id)
-        expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([may_point.timestamp])
+        expect(Achievements::PendingChecks.read(user.id).first).to eq(may_point.timestamp)
       end
 
       it 'returns the destroyed points' do

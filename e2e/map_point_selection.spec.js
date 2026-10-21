@@ -1,28 +1,31 @@
 import { expect, test } from "@playwright/test"
+import { closeOnboardingModal, waitForMapLibre } from "./helpers/native_map.js"
+
+let pointId
+test.beforeEach(async ({ page }) => {
+  const response = await page.request.get(
+    "/native/map/data/points?start_at=2025-10-15T00:00&end_at=2025-10-15T23:59&per_page=1",
+  )
+  expect(response.ok()).toBe(true)
+  const points = await response.json()
+  expect(points.length).toBeGreaterThan(0)
+  pointId = points[0].id
+})
 
 const LOCATION = [13.4, 52.5]
 
 async function addPointMarker(page, { count = 2, zoom = 16 } = {}) {
-  await page.route("**/points/900001/address", (route) =>
-    route.fulfill({
-      contentType: "text/html",
-      body: '<turbo-frame id="point-address-900001">Berlin</turbo-frame>',
-    }),
-  )
-  await page.goto("/map/v2")
-  await page.waitForFunction(() => {
-    const controller = window.Stimulus?.getControllerForElementAndIdentifier(
-      document.querySelector("#maps-maplibre-container"),
-      "maps--maplibre",
-    )
-    return controller?.map?.loaded() && controller?.map?.getLayer("points-mvt")
-  })
+  await page.goto("/map/v2?locale=en")
+  await closeOnboardingModal(page)
+  await waitForMapLibre(page)
   await page.evaluate(
-    ({ coordinates, count, zoom }) => {
-      const map = window.Stimulus.getControllerForElementAndIdentifier(
-        document.querySelector("#maps-maplibre-container"),
-        "maps--maplibre",
-      ).map
+    ({ coordinates, count, zoom, id }) => {
+      const map = (() => {
+        const el = document.querySelector("#native-map")
+        return window.liveSocket
+          ?.getViewByEl(el.closest("[data-phx-session]"))
+          ?.getHook(el)?.mapOwner
+      })().map
       map.jumpTo({ center: coordinates, zoom })
       map.removeLayer("points-mvt")
       map.addSource("selection-points", {
@@ -34,7 +37,7 @@ async function addPointMarker(page, { count = 2, zoom = 16 } = {}) {
               type: "Feature",
               geometry: { type: "Point", coordinates },
               properties: {
-                id: 900001,
+                id,
                 count,
                 timestamp: 1_700_000_000,
                 longitude: String(coordinates[0]),
@@ -51,13 +54,15 @@ async function addPointMarker(page, { count = 2, zoom = 16 } = {}) {
         paint: { "circle-radius": 9, "circle-color": "#3b82f6" },
       })
     },
-    { coordinates: LOCATION, count, zoom },
+    { coordinates: LOCATION, count, zoom, id: pointId },
   )
   await page.waitForFunction((coordinates) => {
-    const map = window.Stimulus.getControllerForElementAndIdentifier(
-      document.querySelector("#maps-maplibre-container"),
-      "maps--maplibre",
-    ).map
+    const map = (() => {
+      const el = document.querySelector("#native-map")
+      return window.liveSocket
+        ?.getViewByEl(el.closest("[data-phx-session]"))
+        ?.getHook(el)?.mapOwner
+    })().map
     return (
       map.queryRenderedFeatures(map.project(coordinates), {
         layers: ["points-mvt"],
@@ -68,10 +73,12 @@ async function addPointMarker(page, { count = 2, zoom = 16 } = {}) {
 
 async function markerPosition(page) {
   return page.evaluate((coordinates) => {
-    const map = window.Stimulus.getControllerForElementAndIdentifier(
-      document.querySelector("#maps-maplibre-container"),
-      "maps--maplibre",
-    ).map
+    const map = (() => {
+      const el = document.querySelector("#native-map")
+      return window.liveSocket
+        ?.getViewByEl(el.closest("[data-phx-session]"))
+        ?.getHook(el)?.mapOwner
+    })().map
     const projected = map.project(coordinates)
     const rect = map.getCanvas().getBoundingClientRect()
     return { x: rect.left + projected.x, y: rect.top + projected.y }
@@ -80,10 +87,12 @@ async function markerPosition(page) {
 
 async function mapZoom(page) {
   return page.evaluate(() => {
-    const controller = window.Stimulus.getControllerForElementAndIdentifier(
-      document.querySelector("#maps-maplibre-container"),
-      "maps--maplibre",
-    )
+    const controller = (() => {
+      const el = document.querySelector("#native-map")
+      return window.liveSocket
+        ?.getViewByEl(el.closest("[data-phx-session]"))
+        ?.getHook(el)?.mapOwner
+    })()
     return controller.map.getZoom()
   })
 }
@@ -103,37 +112,44 @@ test("a merged marker zooms until a single point can be selected", async ({
     .toBe("zoom-in")
   await page.mouse.click(position.x, position.y)
 
-  const info = page.locator('[data-maps--maplibre-target="infoDisplay"]')
+  const info = page.locator("#native-map-info")
   await expect.poll(() => mapZoom(page)).toBe(18)
   await expect(info.getByRole("button", { name: "Delete" })).toHaveCount(0)
 
-  await page.evaluate((coordinates) => {
-    const controller = window.Stimulus.getControllerForElementAndIdentifier(
-      document.querySelector("#maps-maplibre-container"),
-      "maps--maplibre",
-    )
-    controller.map.getSource("selection-points").setData({
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          geometry: { type: "Point", coordinates },
-          properties: {
-            id: 900001,
-            count: 1,
-            timestamp: 1_700_000_000,
-            longitude: String(coordinates[0]),
-            latitude: String(coordinates[1]),
+  await page.evaluate(
+    ({ coordinates, id }) => {
+      const controller = (() => {
+        const el = document.querySelector("#native-map")
+        return window.liveSocket
+          ?.getViewByEl(el.closest("[data-phx-session]"))
+          ?.getHook(el)?.mapOwner
+      })()
+      controller.map.getSource("selection-points").setData({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: { type: "Point", coordinates },
+            properties: {
+              id,
+              count: 1,
+              timestamp: 1_700_000_000,
+              longitude: String(coordinates[0]),
+              latitude: String(coordinates[1]),
+            },
           },
-        },
-      ],
-    })
-  }, LOCATION)
+        ],
+      })
+    },
+    { coordinates: LOCATION, id: pointId },
+  )
   await page.waitForFunction((coordinates) => {
-    const map = window.Stimulus.getControllerForElementAndIdentifier(
-      document.querySelector("#maps-maplibre-container"),
-      "maps--maplibre",
-    ).map
+    const map = (() => {
+      const el = document.querySelector("#native-map")
+      return window.liveSocket
+        ?.getViewByEl(el.closest("[data-phx-session]"))
+        ?.getHook(el)?.mapOwner
+    })().map
     return (
       map.queryRenderedFeatures(map.project(coordinates), {
         layers: ["points-mvt"],
@@ -145,7 +161,9 @@ test("a merged marker zooms until a single point can be selected", async ({
 
   await expect(info).toBeVisible()
   await expect(info.getByRole("button", { name: "Delete" })).toBeVisible()
-  await expect(info).toContainText("52.500000, 13.400000")
+  await expect(info.locator("[data-native-info-content]")).toContainText(
+    "52.500000, 13.400000",
+  )
 })
 
 test("overlapping points at maximum zoom cannot delete an arbitrary point", async ({
@@ -155,8 +173,10 @@ test("overlapping points at maximum zoom cannot delete an arbitrary point", asyn
   const position = await markerPosition(page)
   await page.mouse.click(position.x, position.y)
 
-  const info = page.locator('[data-maps--maplibre-target="infoDisplay"]')
-  await expect(info).toContainText("2 overlapping points")
+  const info = page.locator("#native-map-info")
+  await expect(info.locator("[data-native-info-content]")).toContainText(
+    "2 overlapping points",
+  )
   await expect(info.getByRole("button", { name: "Delete" })).toHaveCount(0)
   expect(await mapZoom(page)).toBe(22)
 })
@@ -166,10 +186,12 @@ test("a point takes click priority over an overlapping route", async ({
 }) => {
   await addPointMarker(page, { count: 1 })
   await page.evaluate((coordinates) => {
-    const map = window.Stimulus.getControllerForElementAndIdentifier(
-      document.querySelector("#maps-maplibre-container"),
-      "maps--maplibre",
-    ).map
+    const map = (() => {
+      const el = document.querySelector("#native-map")
+      return window.liveSocket
+        ?.getViewByEl(el.closest("[data-phx-session]"))
+        ?.getHook(el)?.mapOwner
+    })().map
     map.removeLayer("tracks-mvt")
     map.addSource("overlapping-route", {
       type: "geojson",
@@ -199,16 +221,14 @@ test("a point takes click priority over an overlapping route", async ({
       },
       "points-mvt",
     )
-    window.__overlappingTrackSelections = 0
-    document.addEventListener("timeline:open-track", () => {
-      window.__overlappingTrackSelections += 1
-    })
   }, LOCATION)
   await page.waitForFunction((coordinates) => {
-    const map = window.Stimulus.getControllerForElementAndIdentifier(
-      document.querySelector("#maps-maplibre-container"),
-      "maps--maplibre",
-    ).map
+    const map = (() => {
+      const el = document.querySelector("#native-map")
+      return window.liveSocket
+        ?.getViewByEl(el.closest("[data-phx-session]"))
+        ?.getHook(el)?.mapOwner
+    })().map
     return ["points-mvt", "tracks-mvt"].every(
       (layer) =>
         map.queryRenderedFeatures(map.project(coordinates), {
@@ -219,7 +239,10 @@ test("a point takes click priority over an overlapping route", async ({
 
   const position = await markerPosition(page)
   await page.mouse.click(position.x, position.y)
-  const info = page.locator('[data-maps--maplibre-target="infoDisplay"]')
-  await expect(info).toContainText("52.500000, 13.400000")
-  expect(await page.evaluate(() => window.__overlappingTrackSelections)).toBe(0)
+  const info = page.locator("#native-map-info")
+  await expect(info.locator("[data-native-info-content]")).toContainText(
+    "52.500000, 13.400000",
+  )
+  await expect(page.locator("#native-track-info")).toHaveCount(0)
+  await expect(info.getByRole("button", { name: "Delete" })).toBeVisible()
 })

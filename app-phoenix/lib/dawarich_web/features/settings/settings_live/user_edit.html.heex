@@ -1,0 +1,94 @@
+<div :if={@target} class="min-h-content w-full">
+  <SettingsParts.navigation
+    locale={@locale}
+    active="users"
+    self_hosted={@self_hosted}
+    admin={@current_user.admin == true}
+    two_factor={@two_factor}
+    native
+  />
+  <div class="flex w-full my-10 space-x-4">
+    <div class="overflow-x-auto w-4/12 mx-auto">
+      <h1 class="text-2xl font-bold">{label(@locale, "editing_user")}</h1>
+      <p class="text-base-content/70 mb-4">{@target.email}</p>
+      <form
+        id={
+          if @form_version == 0,
+            do: "edit_user_#{@target.id}",
+            else: "native-edit-user-form-#{@form_version}"
+        }
+        class="edit_user"
+        action={"/settings/users/#{@target.id}"}
+        accept-charset="UTF-8"
+        method="post"
+        phx-submit="update_user"
+      >
+        <input type="hidden" name="_method" value="put" />
+        <input
+          type="hidden"
+          name="authenticity_token"
+          value={assigns[:rails_csrf_token] || Plug.CSRFProtection.get_csrf_token()}
+        />
+        <div class="form-control">
+          <label for="user_email">{label(@locale, "email")}</label>
+          <input
+            value={@form[:email].value}
+            class="input input-bordered"
+            type="email"
+            name="user[email]"
+            id="user_email"
+          />
+        </div>
+        <div class="form-control mt-4">
+          <label for="user_password">{label(@locale, "password")}
+          <span class="text-base-content/50 text-sm">{label(
+            @locale,
+            "leave_blank_to_keep_current"
+          )}</span></label>
+          <input
+            autocomplete="new-password"
+            class="input input-bordered"
+            type="password"
+            name="user[password]"
+            id="user_password"
+          />
+        </div>
+        <div class="form-control mt-4">
+          <label class="label cursor-pointer justify-start gap-4">
+            <input name="user[admin]" type="hidden" value="0" />
+            <input
+              class="toggle toggle-primary"
+              type="checkbox"
+              value="1"
+              name="user[admin]"
+              id="user_admin"
+              checked={@form[:admin].value in [true, "true", "1", 1] && "checked"}
+            />
+            <span class="label-text">{label(@locale, "admin")}</span>
+          </label>
+        </div>
+        <div class="form-control mt-4">
+          <label for="user_status">{label(@locale, "status")}</label>
+          <select class="select select-bordered w-full" name="user[status]" id="user_status">
+            <option
+              :for={{name, value} <- statuses()}
+              value={value}
+              selected={@form[:status].value == value && "selected"}
+            >
+              {t(@locale, "enums.user.status." <> name, %{})}
+            </option>
+          </select>
+        </div>
+        <div class="form-control mt-5">
+          <input
+            type="submit"
+            name="commit"
+            value={label(@locale, "update")}
+            class="btn btn-primary"
+            phx-disable-with={label(@locale, "update")}
+          />
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

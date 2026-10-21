@@ -1,0 +1,332 @@
+defmodule Dawarich.RuntimeConfigTest do
+  use ExUnit.Case, async: false
+
+  @runtime Path.expand("../../config/runtime.exs", __DIR__)
+  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS DAWARICH_RAILS_ROUTES DAWARICH_PHOENIX_AUTH RAILS_MAX_THREADS REDIS_URL RAILS_JOB_QUEUE_DB RAILS_CACHE_DB DAWARICH_CABLE_TRANSPORT MAP_MATCHING_CONCURRENCY)
+
+  setup do
+    saved = Map.new(@vars, &{&1, System.get_env(&1)})
+    Enum.each(@vars, &System.delete_env/1)
+
+    on_exit(fn ->
+      Enum.each(saved, fn
+        {name, nil} -> System.delete_env(name)
+        {name, value} -> System.put_env(name, value)
+      end)
+    end)
+  end
+
+  defp prod(env \\ %{}) do
+    Enum.each(env, fn {name, value} -> System.put_env(name, value) end)
+    config = Config.Reader.read!(@runtime, env: :prod)[:dawarich]
+    {config[Dawarich.Repo], config[Oban]}
+  end
+
+  defp redis(env) do
+    Enum.each(env, fn {name, value} -> System.put_env(name, value) end)
+    Config.Reader.read!(@runtime, env: :prod)[:dawarich][:redis]
+  end
+
+  test "Cable defaults to Redis and accepts only explicit pg or redis transport" do
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:cable][:transport] == :redis
+
+    for {value, transport} <- [{"pg", :pg}, {"redis", :redis}] do
+      System.put_env("DAWARICH_CABLE_TRANSPORT", value)
+      assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:cable][:transport] == transport
+    end
+
+    System.put_env("DAWARICH_CABLE_TRANSPORT", "")
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:cable][:transport] == :redis
+
+    for value <- ["postgres", "PG", " pg "] do
+      System.put_env("DAWARICH_CABLE_TRANSPORT", value)
+
+      assert_raise ArgumentError, ~r/DAWARICH_CABLE_TRANSPORT/, fn ->
+        Config.Reader.read!(@runtime, env: :prod)
+      end
+    end
+  end
+
+  test "sizes the pool from the queue limits and enables Oban's services" do
+    {repo, oban} = prod()
+
+    assert oban[:queues] == [
+             app_version_checking: 1,
+             mailers: 2,
+             trips: 2,
+             route_videos: 1,
+             maintenance: 1,
+             exports: 1,
+             posters: 1,
+             projections: 1,
+             imports: 1,
+             tracks: 2,
+             map_matching: 2,
+             reverse_geocoding: 2,
+             visit_suggesting: 1,
+             extractions: 1
+           ]
+
+    assert repo[:pool_size] == 27
+    assert oban[:peer] == Oban.Peers.Database
+    assert oban[:stager] == {Oban.Stager, []}
+    assert oban[:pruner] == false
+    assert oban[:lifeline] == [rescue_after: {60, :minute}]
+    assert oban[:shutdown_grace_period] == 12_000
+  end
+
+  test "the pool also covers Phoenix-served requests, one connection per Puma thread" do
+    assert {repo, _} = prod(%{"RAILS_MAX_THREADS" => "10"})
+    assert repo[:pool_size] == 32
+
+    assert {repo, _} = prod(%{"RAILS_MAX_THREADS" => ""})
+    assert repo[:pool_size] == 27
+  end
+
+  test "reads the routes handed back to Rails, trimmed and without blanks" do
+    System.put_env("DAWARICH_RAILS_ROUTES", " notifications, ,stats ")
+
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:rails_routes] == [
+             "notifications",
+             "stats"
+           ]
+
+    System.delete_env("DAWARICH_RAILS_ROUTES")
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:rails_routes] == []
+  end
+
+  test "wave-4 workers run on a configured queue and time out before Lifeline" do
+    {_repo, oban} = prod()
+
+    for worker <- [
+          Dawarich.Imports.UpdatePointsCountWorker,
+          Dawarich.AirTrail.ImportFlightsWorker
+        ] do
+      assert Keyword.has_key?(oban[:queues], worker.__opts__()[:queue])
+      assert worker.timeout(%Oban.Job{}) < :timer.minutes(60)
+    end
+  end
+
+  test "every wave-5 worker's queue is configured and times out before Lifeline" do
+    {_repo, oban} = prod()
+
+    for worker <- [
+          Dawarich.Tracks.RangeWorker,
+          Dawarich.Tracks.RealtimeWorker,
+          Dawarich.Tracks.RecalculateWorker,
+          Dawarich.Tracks.DailyWorker,
+          Dawarich.Transportation.ReclassifyTrackWorker,
+          Dawarich.Tracks.ChunkWorker,
+          Dawarich.Tracks.BoundaryWorker
+        ] do
+      assert Keyword.has_key?(oban[:queues], worker.__opts__()[:queue])
+      assert worker.timeout(%Oban.Job{}) < :timer.minutes(60)
+    end
+  end
+
+  test "the wave-5b queues and pool" do
+    {repo, oban} = prod()
+
+    assert Enum.take(oban[:queues], -3) == [
+             reverse_geocoding: 2,
+             visit_suggesting: 1,
+             extractions: 1
+           ]
+
+    assert repo[:pool_size] == Enum.sum(Keyword.values(oban[:queues])) + 3 + 5
+    assert repo[:pool_size] == 27
+
+    assert {repo10, oban10} = prod(%{"RAILS_MAX_THREADS" => "10"})
+    assert repo10[:pool_size] == Enum.sum(Keyword.values(oban10[:queues])) + 3 + 10
+    assert repo10[:pool_size] == 32
+  end
+
+  test "every wave-5b worker's queue is configured and times out before Lifeline" do
+    {_repo, oban} = prod()
+
+    for worker <- [
+          Dawarich.Geocoding.ReversePointWorker,
+          Dawarich.Geocoding.ReversePlaceWorker,
+          Dawarich.Visits.SuggestWorker,
+          Dawarich.Visits.RedetectWorker,
+          Dawarich.EnhancedImport.ExtractGpxWorker,
+          Dawarich.EnhancedImport.DestroyGpxWorker
+        ] do
+      assert Keyword.has_key?(oban[:queues], worker.__opts__()[:queue])
+      assert worker.timeout(%Oban.Job{}) < :timer.minutes(60)
+    end
+
+    assert Dawarich.Visits.RedetectWorker.timeout(%Oban.Job{args: %{"step" => "start"}}) <
+             :timer.minutes(60)
+
+    prod_extraction_timeout_ms =
+      Config.Reader.read!(@runtime, env: :prod)[:dawarich][:extraction_timeout_ms]
+
+    assert prod_extraction_timeout_ms <= :timer.minutes(50)
+  end
+
+  test "every wave-6 worker runs on a configured queue and times out before Lifeline" do
+    {repo, oban} = prod()
+
+    for worker <- [
+          Dawarich.ReleaseOperations.PointBackfill,
+          Dawarich.ReleaseOperations.RouteOpacity,
+          Dawarich.ReleaseOperations.OnboardingCompleted,
+          Dawarich.ReleaseOperations.OrphanedTracks,
+          Dawarich.ReleaseOperations.TracksDedup,
+          Dawarich.ReleaseOperations.PlacesUserId,
+          Dawarich.ReleaseOperations.PlaceNameLocks,
+          Dawarich.ReleaseOperations.TimeAnchor,
+          Dawarich.ReleaseOperations.Transportation,
+          Dawarich.ReleaseOperations.VisitsFleetRedetect,
+          Dawarich.ReleaseOperations.NullIsland,
+          Dawarich.ReleaseOperations.MotionData,
+          Dawarich.ReleaseOperations.Altitude,
+          Dawarich.RawData.ArchiveWorker,
+          Dawarich.RawData.VerifyWorker,
+          Dawarich.RawData.ClearWorker
+        ] do
+      assert worker.__opts__()[:queue] == :maintenance, inspect(worker)
+      assert Keyword.has_key?(oban[:queues], :maintenance)
+      timeout = worker.timeout(%Oban.Job{})
+      assert is_integer(timeout) and timeout < :timer.minutes(60), inspect(worker)
+    end
+
+    assert oban[:queues][:maintenance] == 1
+    assert repo[:pool_size] == 27
+  end
+
+  test "GPX extraction uses the measured M2 production timeout" do
+    timeout = Config.Reader.read!(@runtime, env: :prod)[:dawarich][:extraction_timeout_ms]
+    assert timeout == :timer.minutes(8)
+  end
+
+  test "falls back to the host name when HOSTNAME is missing or not a single word" do
+    {:ok, host} = :inet.gethostname()
+
+    assert {_, oban} = prod()
+    assert oban[:node] == to_string(host)
+
+    assert {_, oban} = prod(%{"HOSTNAME" => "has space"})
+    assert oban[:node] == to_string(host)
+  end
+
+  test "keeps Rails' database name fallback" do
+    assert {repo, _} = prod()
+    assert repo[:database] == "dawarich_production"
+  end
+
+  test "maps libpq's require, verify-* and disable sslmodes, preferring the URL's to PGSSLMODE" do
+    assert {repo, _} = prod(%{"PGSSLMODE" => "require"})
+    assert repo[:ssl] == [verify: :verify_none]
+
+    System.delete_env("PGSSLMODE")
+
+    assert {repo, _} =
+             prod(%{
+               "DATABASE_URL" => "postgis://u:p@db.example:6432/dawarich?sslmode=verify-full"
+             })
+
+    assert repo[:ssl] == true
+    refute repo[:url] =~ "sslmode"
+
+    assert {repo, _} = prod(%{"PGSSLMODE" => "disable"})
+    assert repo[:ssl] == true
+
+    System.delete_env("DATABASE_URL")
+    assert {repo, _} = prod(%{"PGSSLMODE" => "disable"})
+    assert repo[:ssl] == false
+
+    assert {repo, _} =
+             prod(%{"PGSSLMODE" => "verify-ca", "PGSSLROOTCERT" => "/etc/ssl/db-root.crt"})
+
+    assert repo[:ssl] == [cacertfile: "/etc/ssl/db-root.crt"]
+  end
+
+  test "Redis uses Sidekiq's database" do
+    assert redis(%{"REDIS_URL" => "redis://r:6379"}) ==
+             [url: "redis://r:6379", database: 1, cache_database: 0]
+
+    assert redis(%{"REDIS_URL" => "redis://r:6379", "RAILS_JOB_QUEUE_DB" => "4"}) ==
+             [url: "redis://r:6379", database: 4, cache_database: 0]
+  end
+
+  test "cache database defaults to 0 and follows RAILS_CACHE_DB" do
+    assert redis(%{"REDIS_URL" => "redis://r"})[:cache_database] == 0
+
+    assert redis(%{"REDIS_URL" => "redis://r", "RAILS_CACHE_DB" => "3"})[:cache_database] == 3
+  end
+
+  test "connects over IPv6 when the database host has no IPv4 address" do
+    assert {repo, _} = prod(%{"DATABASE_HOST" => "::1"})
+    assert repo[:socket_options] == [:inet6]
+
+    System.put_env("DATABASE_HOST", "127.0.0.1")
+    assert {repo, _} = prod()
+    assert repo[:socket_options] == []
+
+    assert {repo, _} = prod(%{"DATABASE_URL" => "postgres://u:p@[::1]:5432/dawarich"})
+    assert repo[:socket_options] == [:inet6]
+  end
+
+  test "reads the auth flows an operator hands to Phoenix: lower-cased, trimmed, none by default" do
+    System.put_env(
+      "DAWARICH_PHOENIX_AUTH",
+      " Credentials, ,recovery, Two_Factor, OTP, Account_Link "
+    )
+
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:phoenix_auth] == [
+             "credentials",
+             "recovery",
+             "two_factor",
+             "otp",
+             "account_link"
+           ]
+
+    System.delete_env("DAWARICH_PHOENIX_AUTH")
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:phoenix_auth] == []
+  end
+
+  @tag :a12f4_a04_1
+  test "candidate obsolete flags refuse even when empty before runtime children" do
+    names =
+      ~w(DAWARICH_RAILS DAWARICH_PROXY DAWARICH_RAILS_ROUTES DAWARICH_RAILS_SLICES DAWARICH_RAILS_ARGS DAWARICH_PHOENIX_AUTH DAWARICH_OBAN_JOB_KEYS DAWARICH_PHOENIX_LIFECYCLE DAWARICH_BEHIND_PHOENIX DAWARICH_PHOENIX_NODE DAWARICH_CLOUD_DRAIN_ONLY)
+
+    for name <- names, value <- ["", "off", "true", "synthetic-env-value"] do
+      error =
+        assert_raise ArgumentError, fn ->
+          Dawarich.Standalone.validate_candidate_env!(%{name => value})
+        end
+
+      assert error.message ==
+               "#{name} is obsolete in the native candidate; remove it and use native commands"
+
+      refute error.message =~ "synthetic-env-value"
+    end
+
+    assert Dawarich.Standalone.validate_candidate_env!(%{}) == :ok
+    assert Dawarich.Release.Lifecycle.mode(%{}) == {:ok, :rails}
+    assert Dawarich.Application.plan(nil, %{}) == :none
+  end
+
+  @tag :a12f4_a04_2
+  test "retained deployment configuration is not a candidate ownership kill switch" do
+    env = %{
+      "RAILS_ENV" => "production",
+      "RACK_ENV" => "production",
+      "SECRET_KEY_BASE" => "synthetic-not-a-production-secret",
+      "REDIS_URL" => "redis://localhost/1",
+      "RAILS_JOB_QUEUE_DB" => "1",
+      "RAILS_CACHE_DB" => "0",
+      "RAILS_WS_DB" => "2",
+      "RAILS_MAX_THREADS" => "5",
+      "SMTP_ADDRESS" => "smtp.dawarich.test",
+      "SENTRY_DSN" => "https://synthetic@sentry.dawarich.test/1",
+      "SELF_HOSTED" => "false",
+      "ALLOW_EMAIL_PASSWORD_REGISTRATION" => "false",
+      "RAILS_WIRE_DATA_KEY" => "retained"
+    }
+
+    assert Dawarich.Standalone.validate_candidate_env!(env) == :ok
+  end
+end

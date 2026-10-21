@@ -1,0 +1,87 @@
+<section
+  id={if @live, do: "native-public-resource"}
+  class={["container mx-auto px-4 py-6", @live && "min-w-0 [overflow-wrap:anywhere]"]}
+>
+  <h1 class="text-3xl font-bold mb-2 min-w-0 max-w-full [overflow-wrap:anywhere]">
+    {if @live and @link.settings["show_stats"] != true,
+      do: @link.name,
+      else: track_label(@locale, @resource)}
+  </h1>
+  <DawarichWeb.NativeMapHost.map_host
+    :if={@live and @link.settings["show_route"] != false}
+    id="native-public-map"
+    hook="PublicMap"
+    config={@map_config}
+    locale={@locale}
+    style="height: 60vh; min-height: 400px;"
+    class="rounded-lg overflow-hidden bg-base-200 my-6"
+    loading={false}
+  />
+  <div
+    :if={!@live and (!@native or @link.settings["show_route"] != false)}
+    id={if @native, do: "native-public-canvas", else: "shared-trip-map"}
+    phx-update={if @native, do: "ignore"}
+    data-public-map={@native}
+    data-public-canvas={@native}
+    data-controller={if !@native, do: "shared-trip-map"}
+    data-shared-trip-map-link-id-value={if !@native, do: @link.id}
+    data-shared-trip-map-show-photos-value={
+      if !@native, do: to_string(@link.settings["show_photos"] == true)
+    }
+    style="height: 60vh; min-height: 400px;"
+    class="rounded-lg overflow-hidden bg-base-200 my-6"
+  >
+  </div>
+  <div
+    :if={@link.settings["show_stats"] == true}
+    class={
+      if @live,
+        do: "stats shadow w-full",
+        else: "stats stats-vertical sm:stats-horizontal shadow w-full"
+    }
+    id={if @live, do: "native-public-metrics"}
+    data-public-stats={@native}
+  >
+    <div :if={@resource.distance} class="stat">
+      <div class="stat-title">{t(@locale, "shared.links.track.distance", %{})}</div>
+      <div class="stat-value text-2xl">
+        {public_number(Dawarich.Distance.convert(@resource.distance, @resource.settings.unit))} {@resource.settings.unit}
+      </div>
+    </div>
+    <div :if={@resource.track_duration && @resource.track_duration > 0} class="stat">
+      <div class="stat-title">{t(@locale, "shared.links.track.duration", %{})}</div>
+      <div class="stat-value text-2xl">
+        {DawarichWeb.SharedDuration.words(
+          @locale,
+          ~N[1970-01-01 00:00:00],
+          NaiveDateTime.add(~N[1970-01-01 00:00:00], @resource.track_duration)
+        )}
+      </div>
+    </div>
+    <div :if={@resource.speed} class="stat">
+      <div class="stat-title">{t(@locale, "shared.links.track.avg_speed", %{})}</div>
+      <div class="stat-value text-2xl">
+        {t(
+          @locale,
+          if(@resource.settings.unit == "mi", do: "units.speed_mph", else: "units.speed_kmh"),
+          %{
+            value:
+              public_number(
+                @resource.speed * if(@resource.settings.unit == "mi", do: 0.621371, else: 1)
+              )
+          }
+        )}
+      </div>
+    </div>
+    <div
+      :for={
+        {key, value} <- [{"elevation_gain", @resource.gain}, {"elevation_loss", @resource.loss}]
+      }
+      :if={value && value > 0}
+      class="stat"
+    >
+      <div class="stat-title">{t(@locale, "shared.links.track." <> key, %{})}</div>
+      <div class="stat-value text-2xl">{t(@locale, "units.meters", %{value: round(value)})}</div>
+    </div>
+  </div>
+</section>

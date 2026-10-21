@@ -19,6 +19,12 @@ module EnhancedImport
       'gpx' => 'EnhancedImport::Adapters::GpxAdapter'
     }.freeze
 
+    SEGMENT_SOURCE_LABELS = [
+      Adapters::GooglePhoneTakeoutAdapter::SOURCE_LABEL,
+      Adapters::GoogleSemanticHistoryAdapter::SOURCE_LABEL,
+      Adapters::PolarstepsAdapter::SOURCE_LABEL
+    ].freeze
+
     def self.supported?(source)
       SUPPORTED_SOURCES.include?(source.to_s)
     end

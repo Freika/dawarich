@@ -6,7 +6,7 @@ RSpec.describe Jobs::Create do
   describe '#call' do
     before do
       allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
-      Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+      clear_geocode_claims!
     end
 
     context 'when job_name is start_reverse_geocoding' do
@@ -23,7 +23,7 @@ RSpec.describe Jobs::Create do
 
       it 'enqueues reverse geocoding for all user points' do
         created_points = points # force creation before the service call
-        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+        clear_geocode_claims!
 
         expect do
           described_class.new(job_name, user.id).call
@@ -53,7 +53,7 @@ RSpec.describe Jobs::Create do
       it 'enqueues reverse geocoding for all user points without address' do
         _with_address = points_with_address # force creation
         without_address = points_without_address # force creation
-        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+        clear_geocode_claims!
 
         expect do
           described_class.new(job_name, user.id).call
@@ -137,7 +137,7 @@ RSpec.describe Jobs::Create do
 
       it 'is not blocked because force is false' do
         create(:point, user:, country: nil, city: nil, timestamp: 1.day.ago)
-        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+        clear_geocode_claims!
 
         expect do
           described_class.new('continue_reverse_geocoding', user.id).call
@@ -151,11 +151,11 @@ RSpec.describe Jobs::Create do
 
       before do
         configure_instance_geocoding
-        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+        clear_geocode_claims!
       end
 
       it 'skips continue_reverse_geocoding when a dedup key already claims the point' do
-        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: 86_400) }
+        PhoenixClaims.claim(Point.geocode_dedup_key(point.id), 86_400)
 
         expect do
           described_class.new('continue_reverse_geocoding', user.id).call
@@ -165,12 +165,13 @@ RSpec.describe Jobs::Create do
       it 'claims the dedup key for points enqueued via continue_reverse_geocoding' do
         described_class.new('continue_reverse_geocoding', user.id).call
 
-        ttl = Sidekiq.redis { |r| r.ttl(Point.geocode_dedup_key(point.id)) }
-        expect(ttl).to eq(-1)
+        expect(ActiveRecord::Base.connection.select_value(
+                 "SELECT expires_at::text FROM phoenix.once_claims WHERE key = '#{Point.geocode_dedup_key(point.id)}'"
+               )).to eq('infinity')
       end
 
       it 'clears the dedup key when start_reverse_geocoding force-runs over an existing claim' do
-        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: 86_400) }
+        PhoenixClaims.claim(Point.geocode_dedup_key(point.id), 86_400)
 
         expect do
           described_class.new('start_reverse_geocoding', user.id).call
@@ -184,7 +185,19 @@ RSpec.describe Jobs::Create do
           described_class.new('continue_reverse_geocoding', user.id).call
         end.to raise_error(StandardError, 'queue down')
 
-        expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
+        expect(claim_seconds(Point.geocode_dedup_key(point.id))).to be_nil
+      end
+
+      it 'Oban-owned continue_reverse_geocoding writes a batch instead of enqueueing' do
+        job_owner!('command:geocoding.reverse_point', :oban)
+
+        expect do
+          described_class.new('continue_reverse_geocoding', user.id).call
+        end.not_to have_enqueued_job(ReverseGeocodingJob)
+
+        row = JobOutbox.sole
+        expect(row).to have_attributes(command_type: 'geocoding.reverse_point', aggregate_id: user.id)
+        expect(row.payload).to eq('user_id' => user.id, 'point_ids' => [point.id], 'force' => false)
       end
     end
   end

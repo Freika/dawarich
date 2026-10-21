@@ -193,7 +193,7 @@ export class LayerVisibilityManager {
     }
 
     const intercepted = gatedToggle({
-      layerName: translate("layers.scratch_map"),
+      layerName: translate("messages.scratch_map"),
       userPlan: this.controller.userPlanValue,
       toggle,
       showFn: showScratch,

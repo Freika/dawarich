@@ -28,8 +28,9 @@ RSpec.describe 'Extracted segments span their track and set a dominant mode' do
   it 'stretches a degenerate segment across the track points' do
     segment, = EnhancedImport::Writers::SegmentWriter.new.upsert(track, extracted_segment(0.9))
 
-    expect(segment.start_index).to eq(0)
-    expect(segment.end_index).to eq(4)
+    timestamps = track.points.order(:timestamp).pluck(:timestamp)
+
+    expect(segment).to have_attributes(start_at: Time.zone.at(timestamps.first), end_at: Time.zone.at(timestamps.last))
   end
 
   describe 'confidence coming from Google as a string' do

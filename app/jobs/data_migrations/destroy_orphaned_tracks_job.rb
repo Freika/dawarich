@@ -6,6 +6,8 @@ class DataMigrations::DestroyOrphanedTracksJob < ApplicationJob
   BATCH_SIZE = 1000
 
   def perform
+    return if ReleaseCommands.forwarded?(self, 'release.orphaned_tracks', {})
+
     total = 0
 
     loop do

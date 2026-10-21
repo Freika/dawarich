@@ -4,10 +4,9 @@ class Families::MemberSyncJob < ApplicationJob
   queue_as :families
 
   def perform(family_id)
-    family = Family.find_by(id: family_id)
-
-    return unless family
-
-    Families::SyncMembers.new(family: family).call
+    Families::JobCommands.execute('member_sync', family_id, job_id: job_id) do
+      family = Family.find_by(id: family_id)
+      Families::SyncMembers.new(family: family).call if family
+    end
   end
 end

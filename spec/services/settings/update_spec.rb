@@ -60,7 +60,9 @@ RSpec.describe Settings::Update do
     end
 
     context 'when updating basic settings' do
-      let(:settings_params) { { 'immich_url' => 'https://immich.test', 'photoprism_url' => 'https://photoprism.test' } }
+      let(:settings_params) do
+        { 'immich_url' => 'https://immich.test///', 'photoprism_url' => 'https://photoprism.test/' }
+      end
       let(:service) { described_class.new(user, settings_params) }
 
       it 'updates the user settings' do

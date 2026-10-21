@@ -3,6 +3,31 @@
 require 'rails_helper'
 
 RSpec.describe 'Shared::Digests', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
+  describe 'bounded public sharing expiry' do
+    after { travel_back }
+
+    { '1h' => 1.hour, '12h' => 12.hours, '24h' => 24.hours }.each do |term, duration|
+      it "serves a #{term} link before expiry and refuses it after expiry" do
+        travel_to(Time.zone.local(2026, 9, 25, 12))
+        digest = create(:users_digest, year: 2024)
+        digest.enable_sharing!(expiration: term)
+
+        get shared_users_digest_path(digest.sharing_uuid)
+        expect(response).to have_http_status(:ok)
+
+        travel duration - 1.second
+        get shared_users_digest_path(digest.sharing_uuid)
+        expect(response).to have_http_status(:ok)
+
+        travel 2.seconds
+        get shared_users_digest_path(digest.sharing_uuid)
+        expect(response).to redirect_to(root_path)
+      end
+    end
+  end
+
   context 'public sharing' do
     let(:user) { create(:user) }
     let(:digest) { create(:users_digest, :with_sharing_enabled, user:, year: 2024) }
