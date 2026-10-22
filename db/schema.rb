@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_22_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -679,6 +679,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_180000) do
     t.index ["user_id"], name: "index_tags_on_user_id"
   end
 
+  create_table "track_revisions", force: :cascade do |t|
+    t.date "month", null: false
+    t.uuid "revision", default: -> { "gen_random_uuid()" }, null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "month"], name: "index_track_revisions_on_user_id_and_month", unique: true
+  end
+
   create_table "track_segments", force: :cascade do |t|
     t.float "avg_acceleration"
     t.float "avg_speed"
@@ -1002,5 +1009,101 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_180000) do
   SQL
   execute <<~SQL
     CREATE TRIGGER points_revision_update AFTER UPDATE ON public.points REFERENCING OLD TABLE AS old_points NEW TABLE AS new_points FOR EACH STATEMENT EXECUTE FUNCTION points_revision_update()
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.tracks_revision_delete()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO track_revisions (user_id, month, revision)
+      SELECT changed.user_id, months.month::date, gen_random_uuid()
+      FROM (SELECT user_id, start_at, end_at FROM old_tracks) AS changed
+      CROSS JOIN LATERAL generate_series(
+        date_trunc('month', changed.start_at), date_trunc('month', changed.end_at), interval '1 month'
+      ) AS months(month)
+      WHERE changed.user_id IS NOT NULL AND changed.start_at IS NOT NULL AND changed.end_at IS NOT NULL
+      GROUP BY changed.user_id, months.month
+      ORDER BY changed.user_id, months.month
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.tracks_revision_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO track_revisions (user_id, month, revision)
+      SELECT changed.user_id, months.month::date, gen_random_uuid()
+      FROM (SELECT user_id, start_at, end_at FROM new_tracks) AS changed
+      CROSS JOIN LATERAL generate_series(
+        date_trunc('month', changed.start_at), date_trunc('month', changed.end_at), interval '1 month'
+      ) AS months(month)
+      WHERE changed.user_id IS NOT NULL AND changed.start_at IS NOT NULL AND changed.end_at IS NOT NULL
+      GROUP BY changed.user_id, months.month
+      ORDER BY changed.user_id, months.month
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.tracks_revision_truncate()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO track_revisions (user_id, month, revision)
+      SELECT changed.user_id, months.month::date, gen_random_uuid()
+      FROM (SELECT user_id, start_at, end_at FROM tracks) AS changed
+      CROSS JOIN LATERAL generate_series(
+        date_trunc('month', changed.start_at), date_trunc('month', changed.end_at), interval '1 month'
+      ) AS months(month)
+      WHERE changed.user_id IS NOT NULL AND changed.start_at IS NOT NULL AND changed.end_at IS NOT NULL
+      GROUP BY changed.user_id, months.month
+      ORDER BY changed.user_id, months.month
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.tracks_revision_update()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO track_revisions (user_id, month, revision)
+      SELECT changed.user_id, months.month::date, gen_random_uuid()
+      FROM (SELECT user_id, start_at, end_at FROM old_tracks UNION ALL SELECT user_id, start_at, end_at FROM new_tracks) AS changed
+      CROSS JOIN LATERAL generate_series(
+        date_trunc('month', changed.start_at), date_trunc('month', changed.end_at), interval '1 month'
+      ) AS months(month)
+      WHERE changed.user_id IS NOT NULL AND changed.start_at IS NOT NULL AND changed.end_at IS NOT NULL
+      GROUP BY changed.user_id, months.month
+      ORDER BY changed.user_id, months.month
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER tracks_revision_delete AFTER DELETE ON public.tracks REFERENCING OLD TABLE AS old_tracks FOR EACH STATEMENT EXECUTE FUNCTION tracks_revision_delete()
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER tracks_revision_insert AFTER INSERT ON public.tracks REFERENCING NEW TABLE AS new_tracks FOR EACH STATEMENT EXECUTE FUNCTION tracks_revision_insert()
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER tracks_revision_truncate BEFORE TRUNCATE ON public.tracks FOR EACH STATEMENT EXECUTE FUNCTION tracks_revision_truncate()
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER tracks_revision_update AFTER UPDATE ON public.tracks REFERENCING OLD TABLE AS old_tracks NEW TABLE AS new_tracks FOR EACH STATEMENT EXECUTE FUNCTION tracks_revision_update()
   SQL
 end
