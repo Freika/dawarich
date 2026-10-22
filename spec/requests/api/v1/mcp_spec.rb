@@ -221,6 +221,14 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
       expect(entry).not_to include('editable_name', 'place_id', 'suggested_places')
     end
 
+    it 'includes the Visit Radius of the visit place' do
+      place.update!(visit_radius: 120)
+
+      entry = timeline.dig('result', 'structuredContent', 'days', 0, 'entries', 0)
+
+      expect(entry.dig('place', 'visit_radius')).to eq(120)
+    end
+
     it 'reports journey durations in minutes' do
       create(:track, user: user, start_at: day + 13.hours, end_at: day + 13.hours + 30.minutes, duration: 1800)
 
@@ -380,6 +388,32 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
       expect(search(query: 'riquet').dig('structuredContent', 'total_count')).to eq(1)
       expect(search(query: 'austria').dig('structuredContent', 'total_count')).to eq(1)
       expect(search(query: 'office').dig('structuredContent', 'total_count')).to eq(1)
+    end
+
+    it 'names a visit without a custom name after its place' do
+      visit_at(1.day.ago, name: nil, status: :suggested, place: leipzig)
+
+      visit = search(query: 'leipzig').dig('structuredContent', 'visits', 0)
+
+      expect(visit['name']).to eq('Hauptbahnhof')
+    end
+
+    it 'includes the Visit Radius of the visit place' do
+      leipzig.update!(visit_radius: 80)
+      visit_at(1.day.ago, place: leipzig)
+
+      visit = search(query: 'leipzig').dig('structuredContent', 'visits', 0)
+
+      expect(visit.dig('place', 'visit_radius')).to eq(80)
+    end
+
+    it 'finds a visit without a place by its location label' do
+      visit_at(1.day.ago, name: nil, status: :suggested, location_label: 'Karl-Liebknecht-Strasse 12')
+
+      result = search(query: 'liebknecht')
+
+      expect(result.dig('structuredContent', 'total_count')).to eq(1)
+      expect(result.dig('structuredContent', 'visits', 0, 'name')).to eq('Karl-Liebknecht-Strasse 12')
     end
 
     it 'excludes declined visits and other users visits' do

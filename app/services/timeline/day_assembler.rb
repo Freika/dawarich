@@ -265,7 +265,8 @@ module Timeline
         lat: place.lat,
         lng: place.lon,
         city: place.city,
-        country: place.country
+        country: place.country,
+        visit_radius: place.visit_radius
       }
     end
 
