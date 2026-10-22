@@ -33,7 +33,8 @@ x-app: &app
     JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY}
     SUBSCRIPTION_WEBHOOK_SECRET: ${SUBSCRIPTION_WEBHOOK_SECRET:?set SUBSCRIPTION_WEBHOOK_SECRET}
     SIDEKIQ_CRON_POLL_INTERVAL: ${SIDEKIQ_CRON_POLL_INTERVAL:?set 0 while Dokku workers own schedules, 30 after the handoff}
-    SIDEKIQ_METRICS_URL: http://worker:9394/metrics
+    # dokploy-network is shared with other stacks, so "worker" is ambiguous.
+    SIDEKIQ_METRICS_URL: http://dawarich-production-worker:9394/metrics
   networks:
     - dokploy-network
 
@@ -61,6 +62,10 @@ services:
   worker:
     <<: *app
     command: ["sidekiq", "-C", "config/sidekiq.yml"]
+    networks:
+      dokploy-network:
+        aliases:
+          - dawarich-production-worker
     expose:
       - "9394"
     healthcheck:
