@@ -186,4 +186,19 @@ RSpec.describe Visits::Detection::PlaceAttributor do
       expect(result[:place]).to be_nil
     end
   end
+  it 'keeps the standalone POI tie order when stay point IDs are reversed' do
+    points = %w[First Second].map do |name|
+      create(:point, user: user, geodata: {
+               'features' => [{ 'properties' => { 'type' => 'cafe', 'name' => name } }]
+             })
+    end
+    input = stay(point_ids: points.map(&:id).reverse)
+    baseline = attribute(input)
+    baseline[:place].destroy!
+
+    batched = described_class.new(user, policy).call_batch([input]).sole
+
+    expect(batched[:evidence]).to eq(baseline[:evidence])
+    expect(batched[:name]).to eq(baseline[:name])
+  end
 end

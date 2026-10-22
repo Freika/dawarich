@@ -43,12 +43,12 @@ module Visits
 
       def call_batch(stays)
         ids = stays.flat_map { |stay| stay[:point_ids] }.uniq
-        @geodata_by_id = ids.each_slice(1000).flat_map do |batch|
-          user.points.where(id: batch).where.not(geodata: {}).select(:id, :geodata).to_a
-        end.index_by(&:id)
+        @geocoded_ids = ids.each_slice(1000).flat_map do |batch|
+          user.points.where(id: batch).where.not(geodata: {}).pluck(:id)
+        end.to_set
         stays.map { |stay| call(stay) }
       ensure
-        @geodata_by_id = nil
+        @geocoded_ids = nil
       end
 
       private
@@ -85,11 +85,9 @@ module Visits
       def poi_vote(stay)
         return nil if stay[:point_ids].blank?
 
-        geodata_points = if @geodata_by_id
-                           stay[:point_ids].filter_map { |id| @geodata_by_id[id] }
-                         else
-                           user.points.where(id: stay[:point_ids]).where.not(geodata: {}).select(:id, :geodata).to_a
-                         end
+        return nil if @geocoded_ids && stay[:point_ids].none? { |id| @geocoded_ids.include?(id) }
+
+        geodata_points = user.points.where(id: stay[:point_ids]).where.not(geodata: {}).select(:id, :geodata).to_a
         return nil if geodata_points.empty?
 
         Visits::Names::Suggester.new(geodata_points).call
