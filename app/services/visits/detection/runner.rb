@@ -10,6 +10,7 @@ module Visits
     # clamping and the entry seam live in Visits::SmartDetect.
     class Runner
       BATCH_THRESHOLD_DAYS = 31
+      MIN_SPLIT_SECONDS = 1.hour.to_i
 
       attr_reader :skipped_ranges
 
@@ -47,6 +48,35 @@ module Visits
 
         @start_at = [@start_at, earliest.to_i].min if earliest
         @end_at = [@end_at, latest.to_i].max if latest
+        widen_window_back_across_silence
+      end
+
+      # A stay can fall silent before the window opens (arrival fixes, a
+      # silent night, departure fixes). Re-detect from its arrival so
+      # GapBridger sees both sides of the silence. Tracking that resumed
+      # elsewhere can't be bridged, so it isn't worth the wider scan.
+      def widen_window_back_across_silence
+        previous = user.visits.machine_detected
+                       .where(ended_at: Time.zone.at(start_at - policy.bridge_cap_s)...Time.zone.at(start_at))
+                       .order(ended_at: :desc).first
+        return unless previous
+
+        lat, lon, last_owned_ts = owned_fixes_summary(previous)
+        center = lat ? [lat.to_f, lon.to_f] : previous.center
+        silence_start = [previous.ended_at.to_i, last_owned_ts.to_i].max
+        lookahead_end = [silence_start + policy.bridge_cap_s, end_at].min
+        next_point = CandidateLoader.eligible_points(user)
+                                    .where(timestamp: (silence_start + 1)..lookahead_end)
+                                    .order(:timestamp).first
+        return unless next_point && within_stay_radius?(center, [next_point.lat, next_point.lon])
+
+        @start_at = previous.started_at.to_i
+      end
+
+      def owned_fixes_summary(visit)
+        Point.where(user_id: user.id, visit_id: visit.id)
+             .pick(Arel.sql('AVG(ST_Y(lonlat::geometry))'), Arel.sql('AVG(ST_X(lonlat::geometry))'),
+                   Arel.sql('MAX(timestamp)'))
       end
 
       # Persist runs even with zero stays: detection finding nothing is the
@@ -54,6 +84,8 @@ module Visits
       def run_batch(batch_start, batch_end)
         evidence = CandidateLoader.new(user, start_at: batch_start, end_at: batch_end, policy: policy).call
         if evidence[:skipped]
+          return split_batch(batch_start, batch_end) if batch_end - batch_start > MIN_SPLIT_SECONDS
+
           @skipped_ranges << [batch_start, batch_end]
           return []
         end
@@ -64,6 +96,15 @@ module Visits
 
         Persister.new(user, start_at: batch_start, end_at: batch_end, policy: policy)
                  .call(attributed, points_by_id: points_by_id)
+      end
+
+      # Halves stitch back together through stitch_adjacent, like month edges.
+      def split_batch(batch_start, batch_end)
+        mid = batch_start + ((batch_end - batch_start) / 2)
+        Rails.logger.info(
+          "[Visits::Detection::Runner split] user_id=#{user.id} range=#{batch_start}..#{batch_end} mid=#{mid}"
+        )
+        run_batch(batch_start, mid) + run_batch(mid + 1, batch_end)
       end
 
       def detect_stays(evidence, points_by_id)
@@ -165,11 +206,13 @@ module Visits
       end
 
       def same_place?(previous, visit)
-        a = @stitch_centers.fetch(previous.id)
-        b = @stitch_centers.fetch(visit.id)
-        return false unless a&.first && b&.first
+        within_stay_radius?(@stitch_centers.fetch(previous.id), @stitch_centers.fetch(visit.id))
+      end
 
-        Geocoder::Calculations.distance_between(a, b, units: :km) * 1000 <= policy.stay_radius_m
+      def within_stay_radius?(here, there)
+        return false unless here&.first && there&.first
+
+        Geocoder::Calculations.distance_between(here, there, units: :km) * 1000 <= policy.stay_radius_m
       end
 
       def no_points_between?(from_ts, to_ts)

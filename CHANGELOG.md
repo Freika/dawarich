@@ -32,6 +32,9 @@ This release makes Dawarich lighter and faster. Measured on a test instance with
 - Track generation loads only the point columns it needs, and the five-minute place-name refresh skips months whose points did not change.
 
 ### Fixed
+- Overnight stays where the phone goes quiet, for example arriving home in the evening and leaving in the morning, are now suggested as one visit across the silence instead of a few minutes after arrival. Choose Re-run detection on full history on the Visits page to fix past stays.
+- Points synced from TeslaMate now get suggested visits; choose Re-run detection on full history to cover earlier drives. On Dawarich Cloud, trial accounts are now included in the nightly visit run.
+- Re-running detection on full history no longer skips months with more than 100,000 points; it detects them in smaller windows.
 - Trips with long recordings open quickly: the trips list, trip page, trip form and shared trip page draw routes from map tiles instead of sending every recorded coordinate, and the trip page downloads points only when Replay, the poster or the video studio is opened (#3867, #3783)
 - Import jobs for accounts pending deletion are now skipped instead of failing, and where PostgreSQL advisory locks are enabled (the default) account deletion waits for running imports to finish.
 - Opening a calculated trip whose countries could not be determined, for example without a reverse geocoder, no longer recalculates its path, distance and countries on every view; TREK sync no longer does either. If your points get countries later, press Recalculate on the trip page (#3868)
