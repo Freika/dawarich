@@ -62,6 +62,15 @@ RSpec.describe Places::OrphanCleanupJob, type: :job do
       expect(Place.exists?(orphan.id)).to be(false)
     end
 
+    it 'keeps discovered Places the user renamed' do
+      place = create(:place, user: user, source: :photon)
+      place.update!(name: 'Grandma')
+
+      described_class.new.perform(user.id)
+
+      expect(Place.exists?(place.id)).to be(true)
+    end
+
     it 'keeps Places that back legacy Areas' do
       place = create(:place, user: user, source: :photon)
       area = create(:area, user: user)
