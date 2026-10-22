@@ -6,11 +6,37 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+This release makes Dawarich lighter and faster. Measured on a test instance with 100,000 points, compared with 1.16.0:
+
+- Memory: about 240 MiB at idle instead of 510 MiB, and 400 MiB instead of 770 MiB after load, now that Puma and Sidekiq run in one process.
+- Pages: map, trips, insights and points render two to three times faster (map 47 ms → 14 ms).
+- Map tiles: dense point tiles render in 200 ms instead of 560 ms. While new points keep arriving, tiles for other months are revalidated in about 5 ms instead of being rebuilt.
+- Imports: a 200,000-point Google Records import finishes in 132 s instead of 175 s. Peak memory no longer grows with file size: about 60 MiB for 2.4 million points.
+
+### Added
+- Single-process mode runs background jobs and schedules inside Puma with `SIDEKIQ_EMBEDDED=true` and `WEB_CONCURRENCY=0`.
+
+### Changed
+- Stitching detected visits reads batched coordinates instead of loading every point field for each visit.
+- Visit detection fetches point geodata for groups of stays instead of checking each stay separately.
+- Large Google Records, Phone Takeout, GeoJSON, Polarsteps and photo-library JSON imports, and the Records device-tag backfill, read the file incrementally in batches instead of loading the entire file into memory first. Files with invalid UTF-8 still import through the previous parser.
+- Cached SVG icons use bounded argument keys instead of serializing and hashing arguments on each render.
+- Locale lookups are memoized between reloads, preserving fallbacks, interpolation and plural forms.
+- HTML pages skip automatic ETag body hashing, while explicit validators and JSON/API conditional requests keep working.
+- The default `docker/docker-compose.yml` now runs Puma and Sidekiq in one process, with two background threads and 60 seconds to shut down. Before upgrading an existing stack, stop `dawarich_sidekiq` using its old Compose file; queued jobs remain in Redis and are picked up by the web process. See `docs/deployment/single-process.md` for upgrade steps.
+- Map track tiles are revalidated the same way, against per-month revisions of tracks and their points, and their queries also run without PostgreSQL JIT compilation.
+- Map point tiles are revalidated against per-month point revisions kept by the database. Points arriving in one month no longer force browsers to re-download tiles for other months of the same year, and changes made outside the usual write paths, such as bulk updates, now refresh the affected tiles.
+- Dense map point tiles render about 2.5 times faster: PostgreSQL JIT compilation is turned off for the tile query only.
+- The points page and the points API no longer count all matching points on every request; the total is cached and refreshed whenever points change, so large accounts page through points much faster. Response headers are unchanged.
+- Pages render two to three times faster: the API key QR code in the getting-started dialog and the SVG icons are generated once per process instead of on every page view.
+- Track generation loads only the point columns it needs, and the five-minute place-name refresh skips months whose points did not change.
+
 ### Fixed
 - Opening a calculated trip whose countries could not be determined, for example without a reverse geocoder, no longer recalculates its path, distance and countries on every view; TREK sync no longer does either. If your points get countries later, press Recalculate on the trip page (#3868)
 - "Where you spent" on Insights counts days and year boundaries in your timezone, so a stay across New Year no longer shows the first days of the year at the end of the ribbon (#3869)
 - The year digest counts time by country and travel patterns in your timezone, so a day around New Year is no longer added to the wrong year or split across two days. Choose Recalculate tracks & stats to refresh digests of past years.
 - Drives reported with a speed of 0 (OwnTracks, background Android) are no longer classified as stationary: a zero speed that the distance between points clearly contradicts is replaced by the speed from distance and time. Choose Recalculate tracks & stats to reclassify existing tracks (#3887)
+- GeoJSON and account-archive imports keep values below 1 that carry 17 or more significant digits; such a longitude, for example `-0.12345678901234567`, was stored as `-128`. Oj is updated to 3.17.7.
 - Real-time tracks now split only on the time gap, like imported history and the map, so sparsely sampled driving points are no longer left without a track. Choose Recalculate tracks & stats to fill gaps recorded before this release (#3638)
 - Credit country dwell time and first-visit dates for points without a country tag, so continent achievements count the same countries as their explored regions; stored progress is recalculated and may unlock countries (#3784)
 - Keep photo clusters and their counts visible above tracks, heatmaps and points on the map (#3770)

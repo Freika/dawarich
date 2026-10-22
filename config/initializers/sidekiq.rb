@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+Yabeda::Sidekiq.config.declare_process_metrics = true if ENV['SIDEKIQ_EMBEDDED'] == 'true'
+
 Sidekiq.configure_server do |config|
   config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
   config.logger = Sidekiq::Logger.new($stdout)

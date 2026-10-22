@@ -99,7 +99,7 @@ module Achievements
     end
 
     def call
-      rows = ApplicationRecord.connection.select_rows(sql)
+      rows = Achievements::PlannedRows.select(sql)
       @country_ids_populated = country_ids_populated?(rows)
       return spatial_fallback unless @country_ids_populated
 
@@ -110,14 +110,14 @@ module Achievements
     def first_seen(since: @since)
       use_country_ids = @country_ids_populated
       if use_country_ids.nil?
-        rows = ApplicationRecord.connection.select_rows(sql(FIRST_SEEN_SQL))
+        rows = Achievements::PlannedRows.select(sql(FIRST_SEEN_SQL))
         use_country_ids = country_ids_populated?(rows)
       end
       unless use_country_ids
         return GridDwellCalculator.new(@user, table: 'countries', since: since, through: @through).first_seen
       end
 
-      rows = ApplicationRecord.connection.select_rows(sql(FIRST_SEEN_SQL, since: since)) if rows.nil? || since != @since
+      rows = Achievements::PlannedRows.select(sql(FIRST_SEEN_SQL, since: since)) if rows.nil? || since != @since
       rows.reject { |code, _timestamp, _coverage| code.nil? }
           .to_h { |code, timestamp, _coverage| [code, timestamp.to_i] }
     end

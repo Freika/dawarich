@@ -79,9 +79,11 @@ module Visits
       def attribute_and_score(stays, points_by_id)
         attributor = PlaceAttributor.new(user, policy)
 
-        stays.map do |stay|
-          attributed = stay.merge(attributor.call(stay))
-          attributed.merge(StayScoring.attributes(attributed, points_by_id, policy))
+        stays.each_slice(100).flat_map do |batch|
+          batch.zip(attributor.call_batch(batch)).map do |stay, attribution|
+            attributed = stay.merge(attribution)
+            attributed.merge(StayScoring.attributes(attributed, points_by_id, policy))
+          end
         end
       end
 
@@ -105,6 +107,7 @@ module Visits
       def stitch_adjacent(created)
         return created if created.size < 2
 
+        @stitch_centers = load_stitch_centers(created)
         survivors = []
         created.sort_by(&:started_at).each do |visit|
           previous = survivors.last
@@ -115,6 +118,31 @@ module Visits
           end
         end
         survivors
+      ensure
+        @stitch_centers = nil
+      end
+
+      def load_stitch_centers(visits)
+        ActiveRecord::Associations::Preloader.new(records: visits, associations: %i[area place]).call
+        centers = {}
+        point_visits = visits.reject do |visit|
+          centers[visit.id] = visit.center if visit.area || visit.place
+        end
+        point_visits.each_slice(100) do |batch|
+          rows = Point.where(user_id: user.id, visit_id: batch.map(&:id))
+                      .pluck(:visit_id, Arel.sql('ST_Y(lonlat::geometry)'), Arel.sql('ST_X(lonlat::geometry)'))
+                      .group_by(&:first)
+          batch.each do |visit|
+            points = rows.fetch(visit.id, [])
+            centers[visit.id] = if points.empty?
+                                  [0, 0]
+                                else
+                                  [points.sum { |point| point[1] } / points.size.to_f,
+                                   points.sum { |point| point[2] } / points.size.to_f]
+                                end
+          end
+        end
+        centers
       end
 
       def stitchable?(previous, visit)
@@ -137,8 +165,8 @@ module Visits
       end
 
       def same_place?(previous, visit)
-        a = previous.center
-        b = visit.center
+        a = @stitch_centers.fetch(previous.id)
+        b = @stitch_centers.fetch(visit.id)
         return false unless a&.first && b&.first
 
         Geocoder::Calculations.distance_between(a, b, units: :km) * 1000 <= policy.stay_radius_m
