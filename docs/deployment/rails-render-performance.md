@@ -2,7 +2,7 @@
 
 ## Response validators
 
-`Dawarich::SelectiveETag` replaces `Rack::ETag` in the Rails middleware stack.
+`Dawarich::SelectiveEtag` replaces `Rack::ETag` in the Rails middleware stack.
 It skips automatic body digests for `text/html`, whose per-response CSRF token
 prevents useful ETag reuse. `Rack::ConditionalGet` remains outside it. Explicit
 ETags and Last-Modified headers, including those from `fresh_when` and `stale?`,
