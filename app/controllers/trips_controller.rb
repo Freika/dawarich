@@ -35,7 +35,7 @@ class TripsController < ApplicationController
     load_video_studio_context
 
     return if @trip.source_imported? && @trip.started_at > Time.current
-    return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
+    return unless !@trip.route_present? || @trip.distance.blank? || @trip.visited_countries.blank?
 
     Trips::CalculateAllJob.perform_later(@trip.id, @distance_unit)
   end
@@ -159,7 +159,7 @@ class TripsController < ApplicationController
   end
 
   def show_plan_map?
-    return false if @trip.path.present?
+    return false if @trip.route_present?
 
     (@trip.source_imported? && @trip.started_at > Time.current) || @day_stats.empty?
   end

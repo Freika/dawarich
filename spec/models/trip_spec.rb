@@ -207,6 +207,36 @@ RSpec.describe Trip, type: :model do
     end
   end
 
+  describe '.with_route_summary' do
+    let(:user) { create(:user) }
+    let!(:routed_trip) do
+      create(:trip, user:, skip_calculation_enqueue: true,
+                    path: 'LINESTRING(-140.5 -40.25, -139.75 -40.5, -140 -39.75)')
+    end
+    let!(:unrouted_trip) { create(:trip, user:, path: nil, skip_calculation_enqueue: true) }
+
+    it 'reports route presence and bounds without loading the path' do
+      summary = described_class.with_route_summary.find(routed_trip.id)
+
+      expect(summary.route_present?).to be(true)
+      expect(summary.route_bounds).to eq([[-140.5, -40.5], [-139.75, -39.75]])
+      expect { summary.path }.to raise_error(ActiveModel::MissingAttributeError)
+    end
+
+    it 'reports a missing route' do
+      summary = described_class.with_route_summary.find(unrouted_trip.id)
+
+      expect(summary.route_present?).to be(false)
+      expect(summary.route_bounds).to be_nil
+    end
+
+    it 'answers from the path on a full record' do
+      expect(routed_trip.reload.route_present?).to be(true)
+      expect(routed_trip.route_bounds).to eq([[-140.5, -40.5], [-139.75, -39.75]])
+      expect(unrouted_trip.reload.route_present?).to be(false)
+    end
+  end
+
   describe '#plan_geojson' do
     let(:trip) { create(:trip) }
 

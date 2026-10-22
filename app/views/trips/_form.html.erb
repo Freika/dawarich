@@ -21,7 +21,7 @@
         class="h-[40vh] w-full overflow-hidden rounded-lg lg:h-full lg:min-h-[24rem]"
         data-controller="trip-maplibre-preview"
         data-trip-maplibre-preview-path-value="<%= trip.path&.coordinates&.to_json %>"
-        <% if trip.persisted? && trip.path.blank? && (plan = trip.plan_geojson) %>data-trip-maplibre-preview-plan-value="<%= plan.to_json %>"<% end %>
+        <% if trip.persisted? && !trip.route_present? && (plan = trip.plan_geojson) %>data-trip-maplibre-preview-plan-value="<%= plan.to_json %>"<% end %>
         data-trip-maplibre-preview-interactive-value="true"
         data-trip-maplibre-preview-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">
       </div>

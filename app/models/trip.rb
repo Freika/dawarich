@@ -31,6 +31,35 @@ class Trip < ApplicationRecord
 
   attr_accessor :skip_calculation_enqueue
 
+  scope :with_route_summary, lambda {
+    select(
+      *(column_names - ['path']).map { |column| arel_table[column] },
+      Arel.sql('trips.path IS NOT NULL AS route_present'),
+      Arel.sql('ST_XMin(trips.path) AS route_min_lon'), Arel.sql('ST_YMin(trips.path) AS route_min_lat'),
+      Arel.sql('ST_XMax(trips.path) AS route_max_lon'), Arel.sql('ST_YMax(trips.path) AS route_max_lat')
+    )
+  }
+
+  def route_present?
+    return self[:route_present] if has_attribute?(:route_present)
+
+    path.present?
+  end
+
+  def route_bounds
+    return unless route_present?
+
+    if has_attribute?(:route_min_lon)
+      [[self[:route_min_lon], self[:route_min_lat]], [self[:route_max_lon], self[:route_max_lat]]].map do |pair|
+        pair.map(&:to_f)
+      end
+    else
+      xs = path.points.map(&:x)
+      ys = path.points.map(&:y)
+      [[xs.min, ys.min], [xs.max, ys.max]]
+    end
+  end
+
   after_create :enqueue_calculation_jobs, if: :should_enqueue_calculation_jobs?
   after_update :enqueue_calculation_jobs, if: :should_recalculate_after_update?
 

@@ -3,7 +3,7 @@
        data-trip-id="<%= trip.id %>" id="trip-<%= trip.id %>">
 
     <%# Map thumbnail %>
-    <% if trip.path.present? %>
+    <% if trip.route_present? %>
       <div style="width: 100%; aspect-ratio: 16/10;"
             id="map-<%= trip.id %>"
             class="bg-base-200"

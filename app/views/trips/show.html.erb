@@ -1,7 +1,7 @@
 <% content_for :title, @trip.name %>
 
 <%= turbo_stream_from @trip %>
-<% plan_toggle = @trip.path.present? && @trip_plan.present? %>
+<% plan_toggle = @trip.route_present? && @trip_plan.present? %>
 
 <div class="container mx-auto px-4 my-5" data-controller="trip-maplibre"
      data-trip-maplibre-api-key-value="<%= current_user.api_key %>"
@@ -21,7 +21,7 @@
   <div class="flex flex-col lg:flex-row gap-6 lg:h-[calc(100dvh-9.75rem)]">
     <%# Left: Map card (static, fits between navbar and footer) %>
     <div class="w-full lg:w-3/5 h-[50vh] lg:h-full shrink-0">
-      <% if @trip.path.present? %>
+      <% if @trip.route_present? %>
         <div class="w-full h-full rounded-lg overflow-hidden relative"
              data-trip-maplibre-target="map">
           <div data-trip-maplibre-target="loadingIndicator"
@@ -103,16 +103,16 @@
                     data-trip-maplibre-target="posterBtn"
                     data-action="click->trip-maplibre#openPosterStudio"
                     aria-label="<%= t('.create_poster') %>"
-                    title="<%= t(@trip.path.blank? ? '.poster_unavailable' : '.create_poster') %>"
-                    <% if @trip.path.blank? %>disabled<% end %>>
+                    title="<%= t(@trip.route_present? ? '.create_poster' : '.poster_unavailable') %>"
+                    <% unless @trip.route_present? %>disabled<% end %>>
               <%= icon 'image', class: 'w-4 h-4' %>
             </button>
             <button type="button"
                     class="btn btn-sm btn-ghost"
                     data-action="click->trip-maplibre#openVideoStudio"
                     aria-label="<%= t('.create_video') %>"
-                    title="<%= t(@trip.path.blank? ? '.video_unavailable' : '.create_video') %>"
-                    <% if @trip.path.blank? %>disabled<% end %>>
+                    title="<%= t(@trip.route_present? ? '.create_video' : '.video_unavailable') %>"
+                    <% unless @trip.route_present? %>disabled<% end %>>
               <%= icon 'video', class: 'w-4 h-4' %>
             </button>
             <%= link_to edit_trip_path(@trip),
