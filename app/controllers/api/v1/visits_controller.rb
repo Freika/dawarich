@@ -249,6 +249,7 @@ class Api::V1::VisitsController < ApiController
 
     visit.clear_echoed_name if attributes['place_id'].present? && !user_provided_name
     visit.assign_attributes(attributes)
+    visit.name = nil if attributes['place_id'].present? && visit.name.present? && visit.name == visit.place&.name
 
     if attributes['place_id'].present? && !user_provided_name && visit.place.present?
       visit.location_label = visit.place.name

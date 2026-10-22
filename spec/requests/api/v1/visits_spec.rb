@@ -341,6 +341,36 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       expect(JSON.parse(response.body)['name']).to eq('Roastery')
     end
 
+    it 'does not store the new place name as a custom name when switching places' do
+      visit = create(:visit, user:, place: cafe, name: nil, status: :suggested)
+      roastery = create(:place, user:, name: 'Roastery')
+
+      put "/api/v1/visits/#{visit.id}", params: { visit: { place_id: roastery.id, name: 'Roastery' } },
+                                        headers: auth_headers
+
+      expect(visit.reload.place).to eq(roastery)
+      expect(visit.name).to be_nil
+    end
+
+    it 'does not store an echoed location label as a custom name' do
+      visit = create(:visit, user:, place: nil, name: nil, location_label: 'Main Street 5', status: :suggested)
+
+      put "/api/v1/visits/#{visit.id}", params: { visit: { name: 'Main Street 5' } }, headers: auth_headers
+
+      expect(visit.reload.name).to be_nil
+      expect(visit.location_label).to eq('Main Street 5')
+    end
+
+    it 'clears a custom name when the name is sent empty' do
+      visit = create(:visit, user:, place: cafe, name: 'Morning coffee', status: :confirmed)
+
+      put "/api/v1/visits/#{visit.id}", params: { visit: { name: '' } }, headers: auth_headers
+
+      expect(visit.reload.name).to be_nil
+      get "/api/v1/visits/#{visit.id}", headers: auth_headers
+      expect(JSON.parse(response.body)['name']).to eq('Coffee Shop')
+    end
+
     it 'stores a name that differs from the displayed name' do
       visit = create(:visit, user:, place: cafe, name: nil, status: :suggested)
 
