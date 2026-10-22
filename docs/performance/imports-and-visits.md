@@ -34,3 +34,16 @@ persisted point fields for 2,003 Records locations with the direct importer,
 checks progress offsets, invalid bytes and malformed tails, and forbids
 `Oj.load` and `File.read` for the converted paths. Neighboring importer specs
 cover downloads, integrity checks, rejected entries and duplicates.
+
+## Visit attribution
+
+`Visits::Detection::Runner` attributes up to 100 stays together. Its attributor
+fetches only IDs and nonempty geodata for the union of those stays' point IDs,
+in chunks of 1,000. Each stay votes from its own subset, and the query remains
+scoped to the user. The cache is released at the end of the attribution batch.
+Standalone attribution loads its relation once rather than first asking whether
+it exists. Geocoder calls, known-place ranking, area precedence, POI naming,
+and point ownership keep their existing behavior.
+
+Regression coverage checks one geodata query for three stays, identical visit
+attributes on rerun, and a POI vote mixed with another user's point IDs.

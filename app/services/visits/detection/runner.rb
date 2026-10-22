@@ -79,9 +79,11 @@ module Visits
       def attribute_and_score(stays, points_by_id)
         attributor = PlaceAttributor.new(user, policy)
 
-        stays.map do |stay|
-          attributed = stay.merge(attributor.call(stay))
-          attributed.merge(StayScoring.attributes(attributed, points_by_id, policy))
+        stays.each_slice(100).flat_map do |batch|
+          batch.zip(attributor.call_batch(batch)).map do |stay, attribution|
+            attributed = stay.merge(attribution)
+            attributed.merge(StayScoring.attributes(attributed, points_by_id, policy))
+          end
         end
       end
 

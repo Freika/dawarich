@@ -67,8 +67,14 @@ RSpec.describe Visits::Detection::PlaceAttributor do
                            'features' => [{ 'properties' => { 'type' => 'cafe', 'name' => 'Café Central' } }]
                          })
 
+    foreign = create_list(:point, 4, geodata: {
+                            'features' => [{ 'properties' => { 'type' => 'cafe', 'name' => 'Foreign Café' } }]
+                          })
     result = nil
-    expect { result = attribute(stay(point_ids: points.map(&:id))) }.to change { Place.count }.by(1)
+    expect do
+      result = described_class.new(user,
+                                   policy).call_batch([stay(point_ids: points.map(&:id) + foreign.map(&:id))]).sole
+    end.to change { Place.count }.by(1)
 
     expect(result[:evidence]).to eq(:poi)
     expect(result[:name]).to eq('Café Central')
