@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Import your check-in history from a Foursquare Swarm data export. Upload the whole export archive or its `checkins*.json` files: every check-in becomes a point, and every check-in at a venue becomes a visit at a place named after that venue. A visit lasts until your next check-in, at most two hours. The other files in the archive (tips, photos, ratings) are skipped.
 
 ### Fixed
+- The visits API answers with a bad-request error (`Invalid time range`, previously `Invalid date format`) for malformed or reversed date ranges, and for area queries that send only one of `start_at` and `end_at`; creating a visit rejects impossible dates such as 30 February instead of moving them into March.
 - Import archives with many photos or other unsupported files no longer fail with "Archive too large" or "Too many files"; only the files Dawarich can import count towards those limits.
 ### Changed
 - Reverse geocoding can use more background threads. Without a requests-per-second limit on the geocoding provider, each Sidekiq process now keeps one thread for other work instead of limiting geocoding to a third of one process's threads; with a limit, geocoding gets one thread per request per second, rounded up. `REVERSE_GEOCODING_CONCURRENCY` still overrides this. If you use Geoapify, LocationIQ or the public Nominatim, set a requests-per-second limit in the geocoding settings or `REVERSE_GEOCODING_RPS`, since Dawarich does not limit those providers on its own.

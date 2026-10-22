@@ -491,6 +491,22 @@ RSpec.describe Visits::Create do
       end
     end
 
+    context 'when an unexpected visit creation error occurs' do
+      subject(:service) { described_class.new(user, valid_params) }
+
+      before do
+        visits_association = user.visits
+        allow(user).to receive(:visits).and_return(visits_association)
+        allow(visits_association).to receive(:create!).and_raise(StandardError, 'unexpected failure')
+      end
+
+      it 'reports the error' do
+        expect(ExceptionReporter).to receive(:call).with(instance_of(StandardError), include('unexpected failure'))
+
+        expect(service.call).to be(false)
+      end
+    end
+
     describe 'no suggested_places attachment on manual visit creation' do
       let(:user)  { create(:user) }
       let(:place) { create(:place, user: user, latitude: 52.5126, longitude: 13.4012) }

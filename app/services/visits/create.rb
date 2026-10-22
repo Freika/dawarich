@@ -127,11 +127,7 @@ module Visits
     end
 
     def parse_time(value)
-      return nil if value.blank?
-
-      Time.zone.parse(value.to_s)
-    rescue ArgumentError
-      nil
+      Visits::TimeValue.parse(value)
     end
 
     def find_or_create_place

@@ -196,8 +196,25 @@ RSpec.describe Visits::FindWithinBoundingBox do
           }
         end
 
-        it 'ignores the partial date range' do
-          expect(result).to include(visit_inside_1, visit_inside_2, old_visit_inside)
+        it 'rejects the partial date range' do
+          expect { result }.to raise_error(Visits::InvalidTimeRange)
+        end
+      end
+
+      context 'when the time range is reversed' do
+        let(:params) do
+          {
+            sw_lat: sw_lat.to_s,
+            sw_lng: sw_lng.to_s,
+            ne_lat: ne_lat.to_s,
+            ne_lng: ne_lng.to_s,
+            start_at: Time.zone.now.iso8601,
+            end_at: 1.day.ago.iso8601
+          }
+        end
+
+        it 'rejects the reversed range' do
+          expect { result }.to raise_error(Visits::InvalidTimeRange)
         end
       end
 
@@ -209,6 +226,41 @@ RSpec.describe Visits::FindWithinBoundingBox do
             ne_lat: ne_lat.to_s,
             ne_lng: ne_lng.to_s,
             start_at: 'not-a-date',
+            end_at: Time.zone.now.iso8601
+          }
+        end
+
+        it 'rejects the malformed range' do
+          expect { result }.to raise_error(Visits::InvalidTimeRange)
+        end
+      end
+
+      context 'when times come in a non-ISO format the API accepted before' do
+        let(:params) do
+          {
+            sw_lat: sw_lat.to_s,
+            sw_lng: sw_lng.to_s,
+            ne_lat: ne_lat.to_s,
+            ne_lng: ne_lng.to_s,
+            start_at: 1.day.ago.utc.strftime('%Y-%m-%d %H:%M:%S'),
+            end_at: Time.zone.now.utc.to_s
+          }
+        end
+
+        it 'still filters by the range' do
+          expect(result).to include(visit_inside_1, visit_inside_2)
+          expect(result).not_to include(old_visit_inside)
+        end
+      end
+
+      context 'when a calendar timestamp is impossible' do
+        let(:params) do
+          {
+            sw_lat: sw_lat.to_s,
+            sw_lng: sw_lng.to_s,
+            ne_lat: ne_lat.to_s,
+            ne_lng: ne_lng.to_s,
+            start_at: '2025-02-30T12:00:00Z',
             end_at: Time.zone.now.iso8601
           }
         end

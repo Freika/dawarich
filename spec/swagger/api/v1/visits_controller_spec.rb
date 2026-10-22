@@ -14,8 +14,12 @@ describe 'Visits API', type: :request do
       tags 'Visits'
       produces 'application/json'
       parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer token'
-      parameter name: :start_at, in: :query, type: :string, required: false, description: 'Start date (ISO 8601)'
-      parameter name: :end_at, in: :query, type: :string, required: false, description: 'End date (ISO 8601)'
+      parameter name: :start_at, in: :query, type: :string, required: false,
+                description: 'ISO 8601; pair with end_at; must not be later than end_at; ' \
+                             'optional only for complete bounding-box selections'
+      parameter name: :end_at, in: :query, type: :string, required: false,
+                description: 'ISO 8601; pair with start_at; must not be earlier than start_at; ' \
+                             'optional only for complete bounding-box selections'
       parameter name: :selection, in: :query, type: :string, required: false,
                 description: 'Set to "true" for area-based search'
       parameter name: :sw_lat, in: :query, type: :number, required: false,
@@ -55,6 +59,17 @@ describe 'Visits API', type: :request do
                  },
                  required: %w[id name status started_at ended_at duration]
                }
+
+        run_test!
+      end
+
+      response '400', 'invalid or missing time range' do
+        let(:start_at) { 'not-a-date' }
+        let(:end_at) { Time.current.iso8601 }
+
+        schema type: :object,
+               properties: { error: { type: :string } },
+               required: %w[error]
 
         run_test!
       end
