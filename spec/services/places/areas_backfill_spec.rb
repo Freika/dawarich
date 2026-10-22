@@ -233,6 +233,16 @@ RSpec.describe Places::AreasBackfill do
       expect(visit.area_id).to be_nil
     end
 
+    it 'checks the Place a reattributed dual-linked Suggested Visit leaves for orphaning' do
+      user = create(:user)
+      area = create(:area, user: user, name: 'Campus', latitude: 52.437, longitude: 13.539, radius: 500)
+      discovered = create(:place, user: user, source: :photon, latitude: 52.437, longitude: 13.539, visit_radius: 300)
+      create(:place, user: user, latitude: 52.437, longitude: 13.539, visit_radius: 25)
+      create(:visit, user: user, area: area, place: discovered, status: :suggested)
+
+      expect { backfill.call }.to have_enqueued_job(Places::DeleteIfOrphanJob).with(discovered.id)
+    end
+
     it 'weights Visit points by accuracy when reattributing a dual-linked Suggested Visit' do
       user = create(:user)
       area = create(:area, user: user, name: 'Campus', latitude: 52.437, longitude: 13.539, radius: 500)

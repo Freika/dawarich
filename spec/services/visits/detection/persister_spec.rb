@@ -179,14 +179,13 @@ RSpec.describe Visits::Detection::Persister do
     expect(note.reload.attachable_id).to eq(noted.id)
   end
 
-  it 'preserves places referenced only through suggested-place joins' do
+  it 'enqueues cleanup for places referenced only through suggested-place joins' do
     place = create(:place, user: user)
     stale = visit_row(0, 900)
     PlaceVisit.create!(visit: stale, place: place)
 
-    persist([stay(7200, 10_800)])
-
-    expect(Place.exists?(place.id)).to be(true)
+    expect { persist([stay(7200, 10_800)]) }
+      .to have_enqueued_job(Places::DeleteIfOrphanJob).with(place.id).once
   end
 
   it 'reclaims late points even when the regenerated rows look identical' do
@@ -250,14 +249,13 @@ RSpec.describe Visits::Detection::Persister do
     expect(user.visits.count).to eq(1)
   end
 
-  it 'preserves places when replacing machine output' do
+  it 'enqueues one place cleanup per distinct place when replacing machine output' do
     place = create(:place, user: user)
     visit_row(0, 900).update_columns(place_id: place.id)
     visit_row(1800, 2700).update_columns(place_id: place.id)
 
-    persist([stay(7200, 10_800)])
-
-    expect(Place.exists?(place.id)).to be(true)
+    expect { persist([stay(7200, 10_800)]) }
+      .to have_enqueued_job(Places::DeleteIfOrphanJob).with(place.id).once
   end
 
   it 'clears the point cache and join rows of replaced machine visits' do

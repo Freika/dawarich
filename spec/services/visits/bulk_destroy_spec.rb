@@ -25,13 +25,12 @@ RSpec.describe Visits::BulkDestroy do
         expect(Visit.active.where(id: visit3.id)).to exist
       end
 
-      it 'preserves places attached to removed visits' do
+      it 'enqueues orphan-place checks for the affected places' do
         place = create(:place, user: user, source: :photon)
-        visit_with_place = create(:visit, user: user, place: place)
+        visit_with_place = create(:visit, user: user, place: place, area: nil)
 
         expect { described_class.new(user, [visit_with_place.id]).call }
-          .not_to(change { Place.exists?(place.id) })
-        expect(enqueued_jobs).not_to include(job: Places::DeleteIfOrphanJob)
+          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(place.id)
       end
 
       it 'leaves other users\' visits untouched' do

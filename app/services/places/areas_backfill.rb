@@ -183,7 +183,9 @@ module Places
         if place_conflict?(visit, selected.id)
           record_visit_conflict(visit)
         else
+          left_place_id = visit.place_id
           visit.update_columns(place_id: selected.id, area_id: nil)
+          Places::DeleteIfOrphanJob.perform_later(left_place_id) if left_place_id != selected.id
           report[:dual_suggested_visits_reattributed] += 1
         end
       else

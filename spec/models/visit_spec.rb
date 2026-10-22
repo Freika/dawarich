@@ -103,33 +103,77 @@ RSpec.describe Visit, type: :model do
     end
   end
 
-  describe 'place durability' do
-    let(:user) { create(:user) }
-    let(:place) { create(:place, user: user, source: :photon) }
-    let!(:visit) { create(:visit, user: user, place: place) }
+  describe 'self-cleanup callbacks' do
+    include ActiveJob::TestHelper
 
-    it 'preserves a place when the visit is reassigned' do
-      visit.update!(place: create(:place, user: user))
+    let(:user)      { create(:user) }
+    let(:old_place) { create(:place, user: user, source: :photon) }
+    let(:new_place) { create(:place, user: user, source: :photon) }
+    let!(:visit)    { create(:visit, user: user, place: old_place, area: nil) }
 
-      expect(Place.exists?(place.id)).to be(true)
+    describe 'after_commit on: :update' do
+      it 'enqueues orphan-check for the previous place when place_id changes' do
+        expect { visit.update!(place: new_place) }
+          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
+      end
+
+      it 'deletes the previous place after the job runs when it is orphan' do
+        perform_enqueued_jobs { visit.update!(place: new_place) }
+
+        expect(Place.exists?(old_place.id)).to be false
+      end
+
+      it 'does not enqueue when an unrelated attribute changes' do
+        expect { visit.update!(name: 'Renamed') }
+          .not_to have_enqueued_job(Places::DeleteIfOrphanJob)
+      end
+
+      it 'keeps the old place when it is still referenced by another visit' do
+        create(:visit, user: user, place: old_place, area: nil)
+
+        perform_enqueued_jobs { visit.update!(place: new_place) }
+
+        expect(Place.exists?(old_place.id)).to be true
+      end
     end
 
-    it 'preserves a place when the visit is declined' do
-      visit.update!(status: :declined)
-
-      expect(Place.exists?(place.id)).to be(true)
+    describe 'on decline' do
+      it 'enqueues orphan-check because declined visits no longer keep a place alive' do
+        expect { visit.update!(status: :declined) }
+          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
+      end
     end
 
-    it 'preserves a place when the visit is soft-deleted' do
-      visit.soft_delete!
+    describe 'on soft delete' do
+      it 'enqueues orphan-check when a visit is tombstoned' do
+        expect { visit.soft_delete! }
+          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
+      end
 
-      expect(Place.exists?(place.id)).to be(true)
+      it 'deletes the place after the job runs when only the tombstone references it' do
+        perform_enqueued_jobs { visit.soft_delete! }
+
+        expect(Place.exists?(old_place.id)).to be false
+      end
     end
 
-    it 'preserves a place when the visit is destroyed' do
-      visit.destroy!
+    describe 'after_destroy_commit' do
+      it 'enqueues orphan-check for the destroyed visit place' do
+        expect { visit.destroy! }
+          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
+      end
 
-      expect(Place.exists?(place.id)).to be(true)
+      it 'deletes the place after the job runs when it is orphan' do
+        perform_enqueued_jobs { visit.destroy! }
+
+        expect(Place.exists?(old_place.id)).to be false
+      end
+
+      it 'is a no-op when visit had no place' do
+        orphan_visit = create(:visit, user: user, place: nil, area: nil)
+
+        expect { orphan_visit.destroy! }.not_to raise_error
+      end
     end
   end
 

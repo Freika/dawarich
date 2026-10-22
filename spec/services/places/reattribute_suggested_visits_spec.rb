@@ -84,6 +84,29 @@ RSpec.describe Places::ReattributeSuggestedVisits do
     expect(visit.reload).to have_attributes(place_id: specific.id, location_label: 'Cafe')
   end
 
+  it 'checks the Place a Suggested Visit leaves for orphaning' do
+    discovered = create(:place, user: user, name: 'Somewhere', source: :photon, latitude: lat, longitude: lon,
+                                visit_radius: 200)
+    visit_at(10, place: discovered, location_label: discovered.name)
+    specific = create(:place, user: user, name: 'Cafe', latitude: lat, longitude: lon, visit_radius: 25)
+
+    expect { described_class.new(user: user, changed_place: specific).call }
+      .to have_enqueued_job(Places::DeleteIfOrphanJob).with(discovered.id).once
+  end
+
+  it 'deletes a discovered Place once its last Suggested Visit moves to another Place' do
+    discovered = create(:place, user: user, name: 'Somewhere', source: :photon, latitude: lat, longitude: lon,
+                                visit_radius: 200)
+    visit_at(10, place: discovered, location_label: discovered.name)
+    specific = create(:place, user: user, name: 'Cafe', latitude: lat, longitude: lon, visit_radius: 25)
+
+    perform_enqueued_jobs(only: Places::DeleteIfOrphanJob) do
+      described_class.new(user: user, changed_place: specific).call
+    end
+
+    expect(Place.exists?(discovered.id)).to be(false)
+  end
+
   it 'does not alter Confirmed Visits' do
     original = create(:place, user: user, name: 'Original', latitude: lat, longitude: lon, visit_radius: 100)
     confirmed = visit_at(10, place: original, status: :confirmed, location_label: original.name)

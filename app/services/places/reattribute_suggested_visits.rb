@@ -18,6 +18,7 @@ module Places
 
       search_radius = user.places.maximum(:visit_radius).to_i
       changed_at = []
+      left_place_ids = []
 
       user.visits.machine_detected.where(id: centers.keys).includes(:place).find_each do |visit|
         winner = user.places.attribution_for(*centers.fetch(visit.id), search_radius:)
@@ -26,8 +27,10 @@ module Places
         next if Visit.machine_detected.where(id: visit.id).update_all(attributes).zero?
 
         changed_at << visit.started_at
+        left_place_ids << visit.place_id if attributes.key?(:place_id) && visit.place_id
       end
 
+      ActiveJob.perform_all_later(left_place_ids.uniq.map { |id| Places::DeleteIfOrphanJob.new(id) })
       Visits::Detection::MachineVisitWipe.bust_month_caches(user, changed_at)
       changed_at.size
     end
