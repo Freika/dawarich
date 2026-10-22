@@ -460,6 +460,7 @@ Rails.application.routes.draw do
         get ':id/trip',   to: 'trips#show'
         get ':id/points', to: 'points#index'
         get ':id/route',  to: 'points#route'
+        get ':id/tiles/:z/:x/:y.mvt', to: 'tiles#show', defaults: { format: :mvt }
         get ':id/photos', to: 'photos#index'
         get ':id/photos/:photo_id/thumbnail', to: 'photos#thumbnail', constraints: { photo_id: %r{[^/]+} }
       end
