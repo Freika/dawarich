@@ -1239,6 +1239,8 @@ fr:
       dawarich_mobile_app_export_json: Export de l'app Dawarich (.json)
       polarsteps: 'Polarsteps :'
       locations_json_json: fichier locations.json (.json)
+      swarm: 'Foursquare Swarm :'
+      swarm_checkins_json: 'export de données (checkins*.json, .zip)'
       zip: 'ZIP :'
       archives_containing_any_of_the_above_zip: Archives contenant l'une des options
         ci-dessus (.zip)
@@ -3745,6 +3747,7 @@ fr:
         tcx: TCX
         fit: FIT
         polarsteps: Polarsteps
+        swarm: Foursquare Swarm
         google_photos: Google Photos
         mobile_photo_library: Photothèque mobile
     place:

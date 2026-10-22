@@ -658,6 +658,8 @@ es:
       dawarich_mobile_app_export_json: Exportación de la app Dawarich (.json)
       polarsteps: 'Polarsteps:'
       locations_json_json: locations.json (.json)
+      swarm: 'Foursquare Swarm:'
+      swarm_checkins_json: 'Exportación de datos (checkins*.json, .zip)'
       zip: 'ZIP:'
       archives_containing_any_of_the_above_zip: Archivos que contienen cualquiera de los formatos anteriores (.zip)
       file_format_is_automatically_detected_during_upload: El formato del archivo se detecta automáticamente durante la subida.
@@ -2749,6 +2751,7 @@ es:
         tcx: TCX
         fit: FIT
         polarsteps: Polarsteps
+        swarm: Foursquare Swarm
         google_photos: Fotos de Google
         mobile_photo_library: Fototeca del móvil
     place:

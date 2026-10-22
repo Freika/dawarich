@@ -613,6 +613,8 @@ zh:
       location_data_csv: 位置数据 (.csv)
       polarsteps: Polarsteps：
       locations_json_json: locations.json (.json)
+      swarm: Foursquare Swarm：
+      swarm_checkins_json: '数据导出（checkins*.json、.zip）'
       zip: ZIP：
       archives_containing_any_of_the_above_zip: 包含上述任何内容的压缩包 (.zip)
       file_format_is_automatically_detected_during_upload: 上传过程中会自动检测文件格式。
@@ -2801,6 +2803,7 @@ zh:
         tcx: TCX
         fit: FIT
         polarsteps: Polarsteps
+        swarm: Foursquare Swarm
         google_photos: Google 相册
         mobile_photo_library: 手机照片库
     place:
