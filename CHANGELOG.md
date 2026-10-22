@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Single-process mode runs background jobs and schedules inside Puma with `SIDEKIQ_EMBEDDED=true` and `WEB_CONCURRENCY=0`.
 
 ### Changed
+- Stitching detected visits reads batched coordinates instead of loading every point field for each visit.
 - Visit detection fetches point geodata for groups of stays instead of checking each stay separately.
 - Large Google Records, Polarsteps and photo-library JSON imports stream in batches instead of loading the entire file into memory.
 - Cached SVG icons use bounded argument keys instead of serializing and hashing arguments on each render.

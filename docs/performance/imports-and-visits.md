@@ -38,12 +38,32 @@ cover downloads, integrity checks, rejected entries and duplicates.
 ## Visit attribution
 
 `Visits::Detection::Runner` attributes up to 100 stays together. Its attributor
-fetches only IDs and nonempty geodata for the union of those stays' point IDs,
-in chunks of 1,000. Each stay votes from its own subset, and the query remains
-scoped to the user. The cache is released at the end of the attribution batch.
-Standalone attribution loads its relation once rather than first asking whether
-it exists. Geocoder calls, known-place ranking, area precedence, POI naming,
+fetches the IDs of points with nonempty geodata for the union of those stays'
+point IDs, in chunks of 1,000. Empty votes need no further query. Positive votes
+load their geodata using the original per-stay relation, preserving database row
+order for tied POI votes. Each stay votes from its own subset, and both queries
+remain scoped to the user. The ID set is released at the end of the attribution
+batch. Standalone attribution loads its relation once rather than first asking
+whether it exists. Geocoder calls, known-place ranking, area precedence, POI naming,
 and point ownership keep their existing behavior.
 
 Regression coverage checks one geodata query for three stays, identical visit
 attributes on rerun, and a POI vote mixed with another user's point IDs.
+
+## Visit stitching
+
+Stitching preloads area/place references and reads only visit ID and coordinates
+for point-derived centers, in groups of 100 visits. Centers use the same Ruby
+floating-point sum and the same area → place → point precedence. No complete
+Point objects or geodata are retained on the returned visits. The center of a
+surviving fragment remains its original center during subsequent joins, as in
+the existing association-cache behavior; merge-gap, silence, anchor and rescore
+rules are unchanged.
+
+Persistence still creates each visit under its existing savepoint and claims
+unowned points. Profiling identifies these writes as the remaining major cost;
+removing them would change collision handling, validation, callbacks or locking.
+
+The runner regression forbids full-row point reads during stitching. The visit
+evaluation suite also compares the detected timeline with its committed
+synthetic-scenario baseline.

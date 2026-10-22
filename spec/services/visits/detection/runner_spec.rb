@@ -218,4 +218,20 @@ RSpec.describe Visits::Detection::Runner do
     ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
   end
 
+  it 'stitches from projected centers without loading full point rows per visit' do
+    3.times { |i| seed_scenario(:home_gap, at: start_time + i * 3.days) }
+    queries = []
+    subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
+      sql = payload[:sql]
+      queries << sql if sql.start_with?('SELECT') && sql.include?('FROM "points"') &&
+                        (sql.include?('"points"."raw_data"') || sql.include?('"points".*'))
+    end
+    created = described_class.new(user, start_at: start_time.to_i - 3600,
+                                 end_at: (start_time + 8.days).to_i).call
+
+    expect(created.size).to eq(3)
+    expect(queries).to be_empty
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
+  end
 end
