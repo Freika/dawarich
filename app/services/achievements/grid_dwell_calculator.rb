@@ -81,11 +81,11 @@ module Achievements
     end
 
     def call
-      ApplicationRecord.connection.select_rows(sql).to_h { |code, dwell| [code, dwell.to_i] }
+      Achievements::PlannedRows.select(sql).to_h { |code, dwell| [code, dwell.to_i] }
     end
 
     def first_seen
-      ApplicationRecord.connection.select_rows(sql(FIRST_SEEN_SQL)).to_h { |code, timestamp| [code, timestamp.to_i] }
+      Achievements::PlannedRows.select(sql(FIRST_SEEN_SQL)).to_h { |code, timestamp| [code, timestamp.to_i] }
     end
 
     private

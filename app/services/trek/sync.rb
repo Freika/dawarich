@@ -303,7 +303,7 @@ module Trek
 
     def enqueue_calculation_if_needed!(trip, force: false)
       return if trip.started_at > Time.current
-      return unless force || trip.path.blank? || trip.distance.blank? || trip.visited_countries.blank?
+      return unless force || trip.calculation_missing?
 
       trip.enqueue_calculation_jobs
     end

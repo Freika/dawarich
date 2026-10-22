@@ -6,9 +6,21 @@ class Users::ImportDataJob < ApplicationJob
   sidekiq_options retry: false
 
   def perform(import_id)
-    import = Import.find(import_id)
-    user = import.user
+    user_id = Import.where(id: import_id).pick(:user_id)
+    return unless user_id
 
+    Users::DataLock.with_shared(user_id) do
+      import = Import.find_by(id: import_id, user_id: user_id)
+      user = import&.user
+      return unless user
+
+      process_import(import, user)
+    end
+  end
+
+  private
+
+  def process_import(import, user)
     archive_path = download_import_archive(import)
 
     raise StandardError, "Archive file not found: #{archive_path}" unless File.exist?(archive_path)
@@ -17,10 +29,6 @@ class Users::ImportDataJob < ApplicationJob
     User.where(id: user.id).update_all(points_count: user.points.count)
 
     Rails.logger.info "Import completed successfully for user #{user.email}: #{import_stats}"
-  rescue ActiveRecord::RecordNotFound => e
-    ExceptionReporter.call(e, "Import job failed for import_id #{import_id} - import not found")
-
-    raise e
   rescue StandardError => e
     handle_import_failure(import, user, e)
 
@@ -28,8 +36,6 @@ class Users::ImportDataJob < ApplicationJob
   ensure
     cleanup_archive(archive_path)
   end
-
-  private
 
   def handle_import_failure(import, user, error)
     user_id = user&.id || import&.user_id || 'unknown'

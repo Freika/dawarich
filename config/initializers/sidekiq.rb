@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+Yabeda::Sidekiq.config.declare_process_metrics = true if ENV['SIDEKIQ_EMBEDDED'] == 'true'
+
+Sidekiq::Cron.configuration.cron_poll_interval =
+  Integer(ENV.fetch('SIDEKIQ_CRON_POLL_INTERVAL', ''), exception: false) || 30
+
 Sidekiq.configure_server do |config|
   config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
   config.logger = Sidekiq::Logger.new($stdout)

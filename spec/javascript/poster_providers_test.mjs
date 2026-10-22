@@ -104,36 +104,14 @@ test("MapPageProvider loads canonical tracks on demand and reads map dates", asy
 test("buildTripGeojson merges day-route collections when present", () => {
   const day1 = { features: [lineString([[13.4, 52.5]])] }
   const day2 = { features: [lineString([[13.5, 52.6]])] }
-  const geojson = buildTripGeojson({
-    dayRouteCollections: [day1, day2],
-    pathData: JSON.stringify([
-      [1, 1],
-      [2, 2],
-    ]),
-  })
+  const geojson = buildTripGeojson({ dayRouteCollections: [day1, day2] })
   assert.equal(geojson.features.length, 2)
   assert.deepEqual(geojson.features[0], day1.features[0])
 })
 
-test("buildTripGeojson falls back to the path overview line", () => {
-  const geojson = buildTripGeojson({
-    dayRouteCollections: [{ features: [] }],
-    pathData: JSON.stringify([
-      [13.4, 52.5],
-      [13.5, 52.6],
-    ]),
-  })
-  assert.equal(geojson.features.length, 1)
-  assert.equal(geojson.features[0].geometry.type, "LineString")
-  assert.deepEqual(geojson.features[0].geometry.coordinates, [
-    [13.4, 52.5],
-    [13.5, 52.6],
-  ])
-})
-
-test("buildTripGeojson yields an empty collection for degenerate input", () => {
-  for (const pathData of [null, "not json", JSON.stringify([[1, 1]])]) {
-    const geojson = buildTripGeojson({ dayRouteCollections: [], pathData })
+test("buildTripGeojson yields an empty collection before points load", () => {
+  for (const dayRouteCollections of [[], [{ features: [] }], [null]]) {
+    const geojson = buildTripGeojson({ dayRouteCollections })
     assert.deepEqual(geojson, { type: "FeatureCollection", features: [] })
   }
 })
