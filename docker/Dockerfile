@@ -49,6 +49,7 @@ RUN apt-get update -qq \
     ca-certificates \
     librsvg2-bin fonts-dejavu-core fonts-noto-cjk \
     gosu \
+    procps \
     && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
 
