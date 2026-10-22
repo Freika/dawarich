@@ -32,6 +32,7 @@ This release makes Dawarich lighter and faster. Measured on a test instance with
 - Track generation loads only the point columns it needs, and the five-minute place-name refresh skips months whose points did not change.
 
 ### Fixed
+- Import jobs for accounts pending deletion are now skipped instead of failing, and where PostgreSQL advisory locks are enabled (the default) account deletion waits for running imports to finish.
 - Opening a calculated trip whose countries could not be determined, for example without a reverse geocoder, no longer recalculates its path, distance and countries on every view; TREK sync no longer does either. If your points get countries later, press Recalculate on the trip page (#3868)
 - "Where you spent" on Insights counts days and year boundaries in your timezone, so a stay across New Year no longer shows the first days of the year at the end of the ribbon (#3869)
 - The year digest counts time by country and travel patterns in your timezone, so a day around New Year is no longer added to the wrong year or split across two days. Choose Recalculate tracks & stats to refresh digests of past years.
