@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Reverse geocoding can use more background threads. Without a requests-per-second limit on the geocoding provider, each Sidekiq process now keeps one thread for other work instead of limiting geocoding to a third of one process's threads; with a limit, geocoding gets one thread per request per second, rounded up. `REVERSE_GEOCODING_CONCURRENCY` still overrides this. If you use Geoapify, LocationIQ or the public Nominatim, set a requests-per-second limit in the geocoding settings or `REVERSE_GEOCODING_RPS`, since Dawarich does not limit those providers on its own.
+- Geocoding lookups keep their connection to the provider open between requests instead of opening a new HTTPS connection for every lookup.
+
+### Fixed
+- Stop writing every raw geocoding response, including addresses and coordinates, to the log.
 This release makes Dawarich lighter and faster. Measured on a test instance with 100,000 points, compared with 1.16.0:
 
 - Memory: about 240 MiB at idle instead of 510 MiB, and 400 MiB instead of 770 MiB after load, now that Puma and Sidekiq run in one process.
