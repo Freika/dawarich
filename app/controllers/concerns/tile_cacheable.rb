@@ -55,7 +55,8 @@ module TileCacheable
 
     send_data tile, type: 'application/vnd.mapbox-vector-tile', disposition: 'inline'
   rescue Points::VectorTileQuery::InvalidTileCoordinatesError,
-         Tracks::VectorTileQuery::InvalidTileCoordinatesError
+         Tracks::VectorTileQuery::InvalidTileCoordinatesError,
+         Trips::RoutesTileQuery::InvalidTileCoordinatesError
     force_uncacheable_response
     render json: { error: 'Invalid tile coordinates' }, status: :bad_request
   rescue ActiveRecord::QueryCanceled
