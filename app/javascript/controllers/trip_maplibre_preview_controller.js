@@ -2,18 +2,25 @@ import { Controller } from "@hotwired/stimulus"
 import { MapInitializer } from "controllers/maps/maplibre/map_initializer"
 import * as maplibregl from "maplibre-gl"
 import { TripPlanLayer } from "maps_maplibre/layers/trip_plan_layer"
+import { ApiClient } from "maps_maplibre/services/api_client"
 import { RouteSegmenter } from "maps_maplibre/utils/route_segmenter"
 
+const TILE_SOURCE = "trip-route-tiles"
+const TILE_LAYER = "trip-route-tiles-layer"
+
 /**
- * Lightweight MapLibre controller for trip path previews.
- * Renders the trip path as a single line. Used as a static, non-interactive
- * preview on trip cards, and as an interactive live preview on the trip
- * form, where it redraws when the date range changes (coordinates-updated).
- * A trip without a recorded path shows its plan instead, when it has one.
+ * Lightweight MapLibre controller for trip route previews.
+ * Draws the trip route from vector tiles as a single line. Used as a static,
+ * non-interactive preview on trip cards, and as an interactive live preview
+ * on the trip form, where it shows the tracks of the chosen date range
+ * (trip-range-updated). A trip without a recorded route shows its plan
+ * instead, when it has one.
  */
 export default class extends Controller {
   static values = {
-    path: String,
+    tilesUrl: String,
+    bounds: Array,
+    apiKey: String,
     lines: String,
     linesUrl: String,
     plan: String,
@@ -23,12 +30,16 @@ export default class extends Controller {
   }
 
   async connect() {
-    this.map = await MapInitializer.initialize(this.element, {
-      mapStyle: this.mapStyleValue,
-      center: [0, 0],
-      zoom: 2,
-      showControls: this.interactiveValue,
-    })
+    this.map = await MapInitializer.initialize(
+      this.element,
+      {
+        mapStyle: this.mapStyleValue,
+        center: [0, 0],
+        zoom: 2,
+        showControls: this.interactiveValue,
+      },
+      this.apiKeyValue || null,
+    )
 
     if (!this.interactiveValue) {
       this.map.dragPan.disable()
@@ -40,13 +51,8 @@ export default class extends Controller {
       this.map.keyboard.disable()
     }
 
-    this.onCoordinatesUpdated = (event) => {
-      this.updateFromPoints(event.detail.coordinates)
-    }
-    this.element.addEventListener(
-      "coordinates-updated",
-      this.onCoordinatesUpdated,
-    )
+    this.onRangeUpdated = (event) => this.showRange(event.detail)
+    this.element.addEventListener("trip-range-updated", this.onRangeUpdated)
 
     this.onPlanFocus = (event) => {
       const { longitude, latitude } = event.detail || {}
@@ -56,7 +62,9 @@ export default class extends Controller {
     window.addEventListener("trip-plan:focus", this.onPlanFocus)
 
     this.map.on("load", () => {
-      if (this.hasLinesUrlValue) this.loadLines()
+      this.mapLoaded = true
+      if (this.pendingRange) this._renderTiles(...this.pendingRange)
+      else if (this.hasLinesUrlValue) this.loadLines()
       else if (!this.showRoute()) this.showPlan()
     })
   }
@@ -85,23 +93,40 @@ export default class extends Controller {
 
   showRoute() {
     if (this.showLines()) return true
-    if (!this.hasPathValue || !this.pathValue) return false
+    if (!this.tilesUrlValue) return false
 
-    let coordinates
-    try {
-      coordinates = JSON.parse(this.pathValue)
-    } catch (_e) {
-      return false
-    }
-
-    if (!coordinates.length) return false
-
-    const segment = coordinates.map(([lon, lat]) => ({
-      longitude: lon,
-      latitude: lat,
-    }))
-    this._renderSegment(segment)
+    this._renderTiles(this.tilesUrlValue, "trip_routes", this.boundsValue)
     return true
+  }
+
+  async showRange({ startAt, endAt }) {
+    if (!this.map) return
+    this.rangeRequest = (this.rangeRequest || 0) + 1
+    const request = this.rangeRequest
+
+    let extent
+    try {
+      extent = await new ApiClient(this.apiKeyValue).fetchHistoryBounds({
+        start_at: startAt,
+        end_at: endAt,
+      })
+    } catch (error) {
+      console.error("Failed to load the trip range:", error)
+      return
+    }
+    if (!this.map || !extent || request !== this.rangeRequest) return
+
+    const params = new URLSearchParams({ start_at: startAt, end_at: endAt })
+    const tiles = [
+      `/api/v1/tiles/tracks/{z}/{x}/{y}.mvt?${params}`,
+      "tracks",
+      [
+        [extent.min_lng, extent.min_lat],
+        [extent.max_lng, extent.max_lat],
+      ],
+    ]
+    if (this.mapLoaded) this._renderTiles(...tiles)
+    else this.pendingRange = tiles
   }
 
   showLines() {
@@ -142,31 +167,34 @@ export default class extends Controller {
     this.planLayer.add(plan)
   }
 
-  /**
-   * Redraw the route from raw point objects (latitude/longitude/timestamp),
-   * e.g. when the trip form's date range changes.
-   */
-  updateFromPoints(points) {
-    if (!this.map || !points) return
-
-    const segment = points
-      .slice()
-      .sort((a, b) => a.timestamp - b.timestamp)
-      .map((point) => ({
-        longitude: Number(point.longitude),
-        latitude: Number(point.latitude),
-      }))
-      .filter((p) => !Number.isNaN(p.longitude) && !Number.isNaN(p.latitude))
-
-    this._renderSegment(segment)
-  }
-
-  _renderSegment(segment) {
-    if (!segment.length) return
+  _renderTiles(tilesUrl, sourceLayer, bounds) {
     this.planLayer?.remove()
     this.planLayer = null
+    if (this.map.getLayer(TILE_LAYER)) this.map.removeLayer(TILE_LAYER)
+    if (this.map.getSource(TILE_SOURCE)) this.map.removeSource(TILE_SOURCE)
 
-    this._renderLines(RouteSegmenter.unwrapCoordinates(segment))
+    this.map.addSource(TILE_SOURCE, {
+      type: "vector",
+      tiles: [tilesUrl],
+      minzoom: 0,
+      maxzoom: 22,
+    })
+    this.map.addLayer({
+      id: TILE_LAYER,
+      type: "line",
+      source: TILE_SOURCE,
+      "source-layer": sourceLayer,
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: {
+        "line-color": "#6366F1",
+        "line-width": 3,
+        "line-opacity": 0.9,
+      },
+    })
+
+    if (bounds?.length === 2) {
+      this.map.fitBounds(bounds, { padding: 20, maxZoom: 15, animate: false })
+    }
   }
 
   _renderLines(lineStrings) {
@@ -215,10 +243,7 @@ export default class extends Controller {
   }
 
   disconnect() {
-    this.element.removeEventListener(
-      "coordinates-updated",
-      this.onCoordinatesUpdated,
-    )
+    this.element.removeEventListener("trip-range-updated", this.onRangeUpdated)
     window.removeEventListener("trip-plan:focus", this.onPlanFocus)
     if (this.map) {
       this.map.remove()

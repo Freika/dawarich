@@ -1090,7 +1090,7 @@ zh:
         track_generation: 轨迹生成
         track_split_distance: 轨迹之间的距离间隔
         track_split_distance_unit: 米
-        track_split_distance_hint: 连续点之间的距离超过此值时开始新轨迹。
+        track_split_distance_hint: "不同设备记录的轨迹，如果一条的终点与下一条的起点在此距离内，则合并为一条。点与点之间的距离不会开始新轨迹。"
         track_split_time: 轨迹之间的时间间隔
         track_split_time_unit: 分钟
         track_split_time_hint: "超过此间隔会开始新轨迹，并允许行程使用另一台设备的记录。修改后，请在受影响的行程页面点击“重新计算”，以更新已保存的路线和距离。"

@@ -21,6 +21,56 @@ RSpec.describe Achievements::CountryDwellCalculator do
     expect(result['TT']).to eq(1800)
   end
 
+  context 'with at least 90 percent country id coverage' do
+    let!(:other_country) do
+      create(:country, name: 'Otherland', iso_a2: 'UU', iso_a3: 'UUU',
+                       geom: 'MULTIPOLYGON (((20 10, 20 12, 22 12, 22 10, 20 10)))')
+    end
+
+    def insert_points(country_ids:, longitude:, from:)
+      Point.insert_all!(country_ids.each_with_index.map do |country_id, index|
+        { user_id: user.id, country_id:, lonlat: "POINT(#{longitude} 11)",
+          timestamp: from + index * 600, created_at: Time.current, updated_at: Time.current }
+      end)
+    end
+
+    before { insert_points(country_ids: [country.id] * 18, longitude: 11.5, from: base_ts) }
+
+    it 'credits and dates a country visited only by untagged points' do
+      insert_points(country_ids: [nil, nil], longitude: 20.5, from: base_ts + 20_000)
+      calculator = described_class.new(user)
+
+      expect(calculator.call).to eq('TT' => 10_200, 'UU' => 600)
+      expect(calculator.first_seen).to eq('TT' => base_ts, 'UU' => base_ts + 20_000)
+      expect(described_class.new(user).first_seen).to eq(calculator.first_seen)
+    end
+
+    it 'counts the pair between tagged and untagged points in the same country once' do
+      insert_points(country_ids: [nil, other_country.id], longitude: 20.5, from: base_ts + 20_000)
+      calculator = described_class.new(user)
+
+      expect(calculator.call).to eq('TT' => 10_200, 'UU' => 600)
+      expect(calculator.first_seen['UU']).to eq(base_ts + 20_000)
+    end
+
+    it 'credits no country to untagged points outside every country' do
+      insert_points(country_ids: [nil, nil], longitude: 30.5, from: base_ts + 20_000)
+      calculator = described_class.new(user)
+
+      expect(calculator.call).to eq('TT' => 10_200)
+      expect(calculator.first_seen).to eq('TT' => base_ts)
+    end
+
+    it 'excludes untagged points inside disputed areas' do
+      create(:disputed_area, geom: 'POLYGON ((20 10, 20 12, 21 12, 21 10, 20 10))')
+      insert_points(country_ids: [nil, nil], longitude: 20.5, from: base_ts + 20_000)
+      calculator = described_class.new(user)
+
+      expect(calculator.call).to eq('TT' => 10_200)
+      expect(calculator.first_seen).to eq('TT' => base_ts)
+    end
+  end
+
   context 'with a disputed area' do
     before { create(:disputed_area, geom: 'POLYGON ((10 10, 10 12, 11 12, 11 10, 10 10))') }
 

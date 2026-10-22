@@ -72,8 +72,7 @@ function setup(
 ) {
   const c = new TripController()
   Object.assign(c, {
-    dayRoutesLayer: { dayRouteData: new Map([["2026-04-20", fc(features)]]) },
-    pathDataValue: "[[0,0],[1,1]]",
+    dayRouteCollections: [fc(features)],
     flightsActive: true,
     flightsGeoJSON: fc([flight]),
     flightsLayer: { visible: true, data: arcs.arcifyFlights(fc([flight])) },
@@ -113,10 +112,7 @@ test("turning Flights off restores the GPS poster without mutating an open snaps
     features.map((f) => f.properties.id),
   )
   assert.deepEqual(ids(active), ["ground", "partial", "flight"])
-  assert.equal(
-    c.dayRoutesLayer.dayRouteData.values().next().value.features,
-    features,
-  )
+  assert.equal(c.dayRouteCollections[0].features, features)
 })
 test("a hidden or not-yet-loaded flight layer does not mask the poster", () => {
   const { c, editor } = setup()
@@ -127,7 +123,7 @@ test("a hidden or not-yet-loaded flight layer does not mask the poster", () => {
   editor.provider = c.posterProvider()
   assert.deepEqual(ids(editor.trackGeojson), ["ground", "masked", "partial"])
 })
-test("a wholly masked GPS route stays hidden instead of returning through the path fallback", () => {
+test("a wholly masked GPS route stays hidden", () => {
   const { editor } = setup([line("masked", at("10"), at("12"))])
   assert.deepEqual(ids(editor.trackGeojson), ["flight"])
 })
@@ -142,11 +138,11 @@ test("missing flight times retain GPS while still displaying the flight", () => 
     "flight",
   ])
 })
-test("the untimed overview fallback is retained when day routes have not loaded", () => {
+test("before points load the poster shows only the flights", () => {
   const { c, editor } = setup()
-  c.dayRoutesLayer = null
+  c.dayRouteCollections = []
   editor.provider = c.posterProvider()
-  assert.deepEqual(ids(editor.trackGeojson), [undefined, "flight"])
+  assert.deepEqual(ids(editor.trackGeojson), ["flight"])
 })
 
 test("an explicit empty poster snapshot survives, and legacy providers still render GPS", () => {

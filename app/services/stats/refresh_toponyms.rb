@@ -2,11 +2,12 @@
 
 module Stats
   class RefreshToponyms
-    def initialize(user, year, month, invalidate_cache: false)
+    def initialize(user, year, month, invalidate_cache: false, only_if_changed: false)
       @user = user
       @year = year
       @month = month
       @invalidate_cache = invalidate_cache
+      @only_if_changed = only_if_changed
     end
 
     def call
@@ -14,6 +15,9 @@ module Stats
       Stat.transaction do
         stat = user.stats.select(:id, :toponyms).lock.find_by(year: year, month: month)
         return !points.exists? unless stat
+
+        source = source_signature
+        return true if @only_if_changed && Rails.cache.read(checkpoint_key) == signature(source, stat[:toponyms])
 
         value = Toponyms.new(
           each_point,
@@ -24,6 +28,7 @@ module Stats
           stat.update_columns(toponyms: value, updated_at: Time.current)
           changed = true
         end
+        Rails.cache.write(checkpoint_key, signature(source, value), expires_in: 7.days)
       end
       if changed || @invalidate_cache
         ActiveRecord.after_all_transactions_commit do
@@ -39,6 +44,29 @@ module Stats
     private
 
     attr_reader :user, :year, :month
+
+    def checkpoint_key
+      "stats/toponyms_source/v1/#{user.id}/#{year}/#{month}"
+    end
+
+    def source_signature
+      first = ActiveSupport::TimeZone[user.timezone_iana].local(year, month, 1)
+      [Points::Revision.for_user(user.id, start_at: first.to_i, end_at: first.next_month.to_i - 1),
+       user.timezone_iana, user.safe_settings.min_minutes_spent_in_city,
+       Country.order(:id).pluck(:id, :name)]
+    end
+
+    def signature(source, toponyms)
+      Digest::SHA256.hexdigest(canonical([source, toponyms]).to_json)
+    end
+
+    def canonical(value)
+      case value
+      when Hash then value.sort.to_h.transform_values { |entry| canonical(entry) }
+      when Array then value.map { |entry| canonical(entry) }
+      else value
+      end
+    end
 
     def preserve_sweep_watermark
       return if user.stats_swept_at

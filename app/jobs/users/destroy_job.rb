@@ -5,6 +5,10 @@ class Users::DestroyJob < ApplicationJob
 
   sidekiq_options retry: 3
 
+  retry_on Users::DataLock::Busy, wait: 5.minutes, attempts: 48 do |job, error|
+    ExceptionReporter.call(error, "User deletion gave up waiting for imports for user_id #{job.arguments.first}")
+  end
+
   def perform(user_id)
     user = User.deleted.find_by(id: user_id)
 
@@ -26,6 +30,8 @@ class Users::DestroyJob < ApplicationJob
     # User cannot be deleted (e.g., owns a family with members) — not transient, retrying won't help
     Rails.logger.error "User deletion blocked for user_id #{user_id}: #{e.message}"
     ExceptionReporter.call(e, "User deletion blocked for user_id #{user_id}")
+  rescue Users::DataLock::Busy
+    raise
   rescue StandardError => e
     ExceptionReporter.call(e, "User deletion failed for user_id #{user_id}")
     raise

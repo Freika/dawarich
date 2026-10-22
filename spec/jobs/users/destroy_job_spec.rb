@@ -119,6 +119,19 @@ RSpec.describe Users::DestroyJob, type: :job do
       end
     end
 
+    context 'when an import holds the user-data lock' do
+      before do
+        user.mark_as_deleted!
+        allow(destroy_service).to receive(:call).and_raise(Users::DataLock::Busy)
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'retries later without reporting an error' do
+        expect { described_class.perform_now(user.id) }.to have_enqueued_job(described_class).with(user.id)
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
     context 'when deletion fails with RecordInvalid' do
       before do
         user.mark_as_deleted!

@@ -96,6 +96,27 @@ RSpec.describe Visits::Detection::Runner do
     expect((created.first.ended_at - created.first.started_at) / 60).to be_within(10).of(120)
   end
 
+  it 'splits a window over the candidate cap instead of skipping it' do
+    scenario = seed_scenario(:home_gap)
+    stub_const('Visits::Detection::CandidateLoader::MAX_CANDIDATE_POINTS', scenario[:points].size - 1)
+    runner = described_class.new(user, start_at: start_time.to_i - 3600, end_at: start_time.to_i + (2 * 24 * 3600))
+
+    created = runner.call
+
+    expect(runner.skipped_ranges).to be_empty
+    expect(created.size).to eq(1)
+    expect(created.first.started_at.to_i).to eq(scenario[:expected][:stays].first[:start_ts])
+  end
+
+  it 'still reports a window that stays over the cap at the smallest split' do
+    seed_scenario(:home_gap)
+    stub_const('Visits::Detection::CandidateLoader::MAX_CANDIDATE_POINTS', 0)
+    runner = described_class.new(user, start_at: start_time.to_i - 3600, end_at: start_time.to_i + (2 * 24 * 3600))
+
+    expect(runner.call).to be_empty
+    expect(runner.skipped_ranges).not_to be_empty
+  end
+
   it 'never stitches across a point-less anchor sitting in the silence' do
     month_edge = Time.zone.parse('2026-02-01 00:00:00')
     [-30, -27, -24, -21, -18, -15].each do |m|
@@ -185,6 +206,60 @@ RSpec.describe Visits::Detection::Runner do
     expect(user.visits.order(:started_at).pluck(:started_at, :ended_at)).to eq(before_rerun)
   end
 
+  describe 'a stay that fell silent before the window opened' do
+    let(:home) { [51.3402, 12.3712] }
+    let(:arrived_at) { Time.zone.parse('2026-01-05 19:00:00 UTC') }
+    let(:resumed_at) { arrived_at + 9.hours }
+
+    def fix(at, lat, lon)
+      create(:point, user: user, lonlat: "POINT(#{lon} #{lat})", timestamp: at.to_i, accuracy: 10)
+    end
+
+    def run_realtime_window(ending_at)
+      described_class.new(user, start_at: ending_at - 6.hours, end_at: ending_at).call
+    end
+
+    def resume_at_home
+      (0..3).each { |i| fix(resumed_at + i.minutes, home[0] + ((i % 3) * 0.00001), home[1]) }
+      run_realtime_window(resumed_at + 3.minutes)
+    end
+
+    def visit_tuples
+      user.visits.reload.order(:started_at).pluck(:status, :started_at, :ended_at)
+    end
+
+    before do
+      (0..6).each { |i| fix(arrived_at + i.minutes, home[0] + ((i % 3) * 0.00001), home[1]) }
+      run_realtime_window(arrived_at + 6.minutes)
+    end
+
+    it 'bridges the silence when tracking resumes at the same place' do
+      resume_at_home
+
+      expect(user.visits.count).to eq(1)
+      expect(user.visits.first.started_at).to eq(arrived_at)
+      expect(user.visits.first.ended_at).to be >= resumed_at + 3.minutes
+    end
+
+    it 'keeps the stay apart when tracking resumed elsewhere first' do
+      fix(arrived_at + 4.hours, 51.35, 12.38)
+      resume_at_home
+
+      expect(user.visits.order(:started_at).first.ended_at).to eq(arrived_at + 6.minutes)
+    end
+
+    it 'trims around a confirmed visit in the silence like a full re-detection' do
+      create(:visit, user: user, status: :confirmed,
+                     started_at: arrived_at + 2.hours, ended_at: arrived_at + 3.hours, duration: 60)
+      resume_at_home
+      incremental = visit_tuples
+
+      Visits::Detection::HistoryRedetect.new(user).call
+
+      expect(incremental).to eq(visit_tuples)
+    end
+  end
+
   it 'respects a user tombstone across re-runs (I1)' do
     seed_scenario(:home_gap)
     run
@@ -194,5 +269,44 @@ RSpec.describe Visits::Detection::Runner do
 
     expect(created).to be_empty
     expect(user.visits.active.count).to eq(0)
+  end
+
+  it 'batches point geodata reads across stays without changing detected visits' do
+    3.times { |i| seed_scenario(:home_gap, at: start_time + i * 3.days) }
+    queries = []
+    subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
+      sql = payload[:sql]
+      queries << sql if sql.start_with?('SELECT') && sql.include?('"points"."geodata" !=') &&
+                        sql.include?('FROM "points"')
+    end
+    created = described_class.new(user, start_at: start_time.to_i - 3600,
+                                 end_at: (start_time + 8.days).to_i).call
+    ActiveSupport::Notifications.unsubscribe(subscriber)
+
+    expect(created.size).to eq(3)
+    expect(queries.size).to be <= 1
+    first = user.visits.order(:started_at).pluck(:started_at, :ended_at, :name, :confidence, :confidence_breakdown)
+    described_class.new(user, start_at: start_time.to_i - 3600, end_at: (start_time + 8.days).to_i).call
+    expect(user.visits.order(:started_at).pluck(:started_at, :ended_at, :name, :confidence,
+                                                :confidence_breakdown)).to eq(first)
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
+  end
+
+  it 'stitches from projected centers without loading full point rows per visit' do
+    3.times { |i| seed_scenario(:home_gap, at: start_time + i * 3.days) }
+    queries = []
+    subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
+      sql = payload[:sql]
+      queries << sql if sql.start_with?('SELECT') && sql.include?('FROM "points"') &&
+                        (sql.include?('"points"."raw_data"') || sql.include?('"points".*'))
+    end
+    created = described_class.new(user, start_at: start_time.to_i - 3600,
+                                 end_at: (start_time + 8.days).to_i).call
+
+    expect(created.size).to eq(3)
+    expect(queries).to be_empty
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
   end
 end

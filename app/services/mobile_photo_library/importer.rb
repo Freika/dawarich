@@ -25,12 +25,12 @@ class MobilePhotoLibrary::Importer
   end
 
   def call
-    payload = load_json_data
-    validate_payload!(payload)
+    stream = Imports::JsonStream.new(resolve_file_path, keys: ['points'])
+    validate_payload!(stream.metadata)
 
     processed = 0
     rejected = 0
-    payload.fetch('points').each_slice(BATCH_SIZE) do |batch|
+    stream.each.each_slice(BATCH_SIZE) do |batch|
       records = batch.filter_map { |point| build_point(point) }
       rejected += batch.length - records.length
       bulk_insert_points(records)

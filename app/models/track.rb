@@ -130,8 +130,9 @@ class Track < ApplicationRecord
       .first
   end
 
+  # Splits on time gaps only, ignoring distance for map parity, as in Tracks::Segmentation.
   def self.segment_points_in_sql(user_id, start_timestamp, end_timestamp, time_threshold_minutes,
-                                 distance_threshold_meters, untracked_only: false)
+                                 untracked_only: false)
     time_threshold_seconds = time_threshold_minutes * 60
 
     stop_break_ids = stationary_break_point_ids(user_id, start_timestamp, end_timestamp, time_threshold_seconds)
@@ -164,13 +165,12 @@ class Track < ApplicationRecord
           CASE
             WHEN prev_lonlat IS NULL THEN 1
             WHEN time_diff_seconds > $4 THEN 1
-            WHEN distance_meters > $5 THEN 1
             WHEN stop_breaks.id IS NOT NULL THEN 1
             #{'WHEN track_id IS DISTINCT FROM prev_track_id THEN 1' if untracked_only}
             ELSE 0
           END as is_break
         FROM points_with_gaps
-        LEFT JOIN unnest($6::bigint[]) AS stop_breaks(id) ON stop_breaks.id = points_with_gaps.id
+        LEFT JOIN unnest($5::bigint[]) AS stop_breaks(id) ON stop_breaks.id = points_with_gaps.id
       ),
       segments AS (
         SELECT *,
@@ -195,8 +195,7 @@ class Track < ApplicationRecord
     results = Point.connection.exec_query(
       sql,
       'segment_points_in_sql',
-      [user_id, start_timestamp, end_timestamp, time_threshold_seconds, distance_threshold_meters,
-       "{#{stop_break_ids.join(',')}}"]
+      [user_id, start_timestamp, end_timestamp, time_threshold_seconds, "{#{stop_break_ids.join(',')}}"]
     )
 
     # Convert results to segment data
@@ -234,13 +233,12 @@ class Track < ApplicationRecord
 
   # Get actual Point objects for each segment with pre-calculated distances
   def self.get_segments_with_points(user_id, start_timestamp, end_timestamp, time_threshold_minutes,
-                                    distance_threshold_meters, untracked_only: false)
+                                    untracked_only: false)
     segments_data = segment_points_in_sql(
       user_id,
       start_timestamp,
       end_timestamp,
       time_threshold_minutes,
-      distance_threshold_meters,
       untracked_only: untracked_only
     )
 

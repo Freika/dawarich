@@ -19,6 +19,42 @@ RSpec.describe Users::Digests::CalculateYear do
       end
     end
 
+    context 'when the user timezone differs from the application timezone' do
+      let(:user) { create(:user, settings: { 'timezone' => 'Pacific/Auckland' }) }
+
+      before do
+        create(:stat, user:, year: 2024, month: 1, distance: 1_000, toponyms: [])
+        # Auckland is UTC+13 in summer: local January 1, January 2 (twice) and January 1, 2025.
+        create(:point, user:, country_name: 'New Zealand', timestamp: Time.utc(2023, 12, 31, 12).to_i)
+        create(:point, user:, country_name: 'New Zealand', timestamp: Time.utc(2024, 1, 1, 11, 30).to_i)
+        create(:point, user:, country_name: 'New Zealand', timestamp: Time.utc(2024, 1, 2, 2).to_i)
+        create(:point, user:, country_name: 'Fiji', timestamp: Time.utc(2024, 12, 31, 12).to_i)
+      end
+
+      it 'counts country days and year bounds in the user timezone' do
+        countries = calculate_digest.time_spent_by_location['countries']
+
+        expect(countries).to eq([{ 'name' => 'New Zealand', 'minutes' => 2 * 1440 }])
+      end
+    end
+
+    context 'when travel patterns are computed for a user in another timezone' do
+      let(:user) { create(:user, settings: { 'timezone' => 'Pacific/Auckland' }) }
+
+      before do
+        create(:stat, user:, year: 2024, month: 1, distance: 1_000, toponyms: [])
+        # Local January 1, 2024 at 11:00 and local January 1, 2025 at 01:00.
+        create(:point, user:, timestamp: Time.utc(2023, 12, 31, 22).to_i)
+        create(:point, user:, timestamp: Time.utc(2024, 12, 31, 12).to_i)
+      end
+
+      it 'takes the year window in the user timezone' do
+        expect(calculate_digest.travel_patterns['time_of_day']).to eq(
+          'night' => 0, 'morning' => 100, 'afternoon' => 0, 'evening' => 0
+        )
+      end
+    end
+
     context 'when user has stats for the year' do
       let!(:january_stat) do
         create(:stat, user: user, year: 2024, month: 1, distance: 50_000, toponyms: [

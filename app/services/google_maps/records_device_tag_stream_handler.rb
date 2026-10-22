@@ -45,7 +45,7 @@ class GoogleMaps::RecordsDeviceTagStreamHandler < Oj::Saj
     @depth -= 1
   end
 
-  def add_value(value, key = nil)
+  def add_value(value, key)
     return unless @in_locations && location_level?
 
     case normalize(key)

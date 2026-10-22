@@ -249,6 +249,7 @@ class Tracks::VectorTileQuery
   def with_statement_timeout
     conn = Track.connection
     conn.transaction do
+      conn.exec_query('SET LOCAL jit = off', 'TracksVectorTileQuery JIT')
       conn.exec_query("SET LOCAL statement_timeout = #{VectorTileTimeout.query_timeout_ms}",
                       'TracksVectorTileQuery Timeout')
       yield conn

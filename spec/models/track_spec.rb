@@ -15,7 +15,7 @@ RSpec.describe Track, type: :model do
                          lonlat: "POINT(#{-140.0 + step * 0.002} -40.0)")
         end
 
-        segments = described_class.get_segments_with_points(user.id, base_time, points.last.timestamp, 60, 500)
+        segments = described_class.get_segments_with_points(user.id, base_time, points.last.timestamp, 60)
 
         expected = stop_intervals == 12 ? [points] : [points.first(3), points.last(3)]
         expect(segments.map { |segment| segment[:points] }).to eq(expected)
@@ -28,7 +28,7 @@ RSpec.describe Track, type: :model do
                        lonlat: "POINT(#{-140.0 + index * 0.00075} -40.0)")
       end
 
-      segments = described_class.get_segments_with_points(user.id, base_time, points.last.timestamp, 30, 500)
+      segments = described_class.get_segments_with_points(user.id, base_time, points.last.timestamp, 30)
 
       expect(segments.map { |segment| segment[:points] }).to eq([points])
     end
@@ -46,7 +46,7 @@ RSpec.describe Track, type: :model do
         create_point.call(stop.last.timestamp + index * 10, approach.last.lon + index * 0.0015)
       end
 
-      segments = described_class.get_segments_with_points(user.id, base_time, departure.last.timestamp, 30, 500)
+      segments = described_class.get_segments_with_points(user.id, base_time, departure.last.timestamp, 30)
                                 .map { |segment| segment[:points] }
 
       expect(segments.size).to eq(2)
@@ -63,7 +63,7 @@ RSpec.describe Track, type: :model do
       create(:point, user: user, tracker_id: 'synthetic-feed', timestamp: base_time + 3610,
                      lonlat: 'POINT(-140.0 -40.0)')
 
-      segments = described_class.get_segments_with_points(user.id, base_time + 3600, stop.last.timestamp, 30, 500)
+      segments = described_class.get_segments_with_points(user.id, base_time + 3600, stop.last.timestamp, 30)
 
       expect(segments).to be_empty
     end
@@ -76,7 +76,7 @@ RSpec.describe Track, type: :model do
       track = create(:track, user: user, tracker_id: 'synthetic-feed')
       Point.where(id: points[10..29].map(&:id)).update_all(track_id: track.id)
 
-      segments = described_class.get_segments_with_points(user.id, base_time, points.last.timestamp, 30, 500,
+      segments = described_class.get_segments_with_points(user.id, base_time, points.last.timestamp, 30,
                                                           untracked_only: true)
 
       expect(segments.map { |segment| segment[:points] }).to eq([points.first(10), points.last(10)])

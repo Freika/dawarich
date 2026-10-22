@@ -93,6 +93,19 @@ RSpec.describe Geojson::Importer do
       end
     end
 
+    it 'keeps long sub-degree coordinates in place' do
+      geojson = '{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point",' \
+                '"coordinates":[-0.12345678901234567,51.50735090000001]},"properties":{"timestamp":1609459201}}]}'
+
+      Tempfile.create(['sub-degree', '.geojson']) do |file|
+        file.write(geojson)
+        file.flush
+        described_class.new(import, user.id, file.path).call
+      end
+
+      expect(user.points.sole.lonlat.x).to be_within(1e-9).of(-0.12345678901234567)
+    end
+
     it 'scrubs invalid UTF-8 without loading the full document' do
       invalid_utf8 = <<~JSON.b.sub('INVALID', "invalid \xFF")
         {
