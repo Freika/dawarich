@@ -7,7 +7,7 @@ module Geocoding
       merged = merged_configuration(config)
       lookup.define_singleton_method(:configuration) { merged }
       lookup.singleton_class.send(:private, :configuration)
-      lookup
+      lookup.extend(PersistentHttp::Lookup)
     end
 
     def self.merged_configuration(config)
