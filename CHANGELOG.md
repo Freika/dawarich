@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Areas are now Places with a Visit Radius (up to 50 km), keeping their notes and Visits. The map shows Places with optional boundaries, and the Create Area tool is gone: create a Place with a Visit Radius on the map or from a Visit instead.
 - API: `/api/v1/areas` and the Visit `area_id` field are deprecated in favour of `/api/v1/places` and `place_id`. Visit responses add `display_name`, `custom_name` (the stored Visit name, if any) and `location_label`; `name` still returns the name to show. Breaking: `place` is now `null` for Visits without a Place or Area.
 - The MCP `get_timeline` and `search_visits` tools include each Place's `visit_radius`, and `search_visits` names visits like the timeline and matches location labels.
+- Exports still include `areas.jsonl` so older Dawarich versions can import them, and importing an older backup turns its Areas into Places.
 
 ## [1.16.1] - 2026-10-22, Berlin
 
