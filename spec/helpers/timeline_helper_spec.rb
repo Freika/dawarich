@@ -155,6 +155,29 @@ RSpec.describe TimelineHelper, type: :helper do
       expect(result[:start_at]).to be_a(Time)
       expect(result[:ended_at]).to be_a(Time)
     end
+
+    it 'converts UTC times to local timezone when timezone is provided' do
+      entry = { started_at: '2026-01-15T08:00:00Z', ended_at: '2026-01-15T09:00:00Z', timezone: 'America/Chicago' }
+      result = helper.visit_entry_times(entry)
+
+      expect(result[:start_label]).to eq('02:00')
+      expect(result[:end_label]).to eq('03:00')
+    end
+  end
+
+  describe '#timeline_time_label' do
+    it 'returns time in entry timezone when provided' do
+      entry = { timezone: 'America/Chicago' }
+      expect(helper.timeline_time_label(entry, '2026-01-15T08:00:00Z', timezone_key: :timezone)).to eq('02:00')
+    end
+
+    it 'falls back to Time.zone when timezone is missing' do
+      entry = {}
+      allow(Time).to receive(:zone).and_return(double('TimeZone', parse: ->(t) { Time.parse(t) }))
+      allow(I18n).to receive(:l).and_return('08:00')
+      helper.timeline_time_label(entry, '2026-01-15T08:00:00Z', timezone_key: :timezone)
+      expect(I18n).to have_received(:l).with(kind_of(Time), format: :hour_minute)
+    end
   end
 
   describe '#visit_entry_status' do
