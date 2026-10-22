@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+This release makes Dawarich lighter and faster. Measured on a test instance with 100,000 points, compared with 1.16.0:
+
+- Memory: about 240 MiB at idle instead of 510 MiB, and 400 MiB instead of 770 MiB after load, now that Puma and Sidekiq run in one process.
+- Pages: map, trips, insights and points render two to three times faster (map 47 ms → 14 ms).
+- Map tiles: dense point tiles render in 200 ms instead of 560 ms. While new points keep arriving, tiles for other months are revalidated in about 5 ms instead of being rebuilt.
+- Imports: a 200,000-point Google Records import finishes in 132 s instead of 175 s. Peak memory no longer grows with file size: about 60 MiB for 2.4 million points.
+
 ### Added
 - Single-process mode runs background jobs and schedules inside Puma with `SIDEKIQ_EMBEDDED=true` and `WEB_CONCURRENCY=0`.
 
