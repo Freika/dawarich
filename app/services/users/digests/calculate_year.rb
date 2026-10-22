@@ -11,6 +11,19 @@ module Users
       end
 
       def call
+        Time.use_zone(user.timezone_iana) { calculate }
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+        @attempts = @attempts.to_i + 1
+        raise if @attempts >= 3
+
+        retry
+      end
+
+      private
+
+      attr_reader :user, :year
+
+      def calculate
         return nil if monthly_stats.empty?
 
         digest = find_or_build_digest
@@ -28,16 +41,7 @@ module Users
 
         digest.save!
         digest
-      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
-        @attempts = @attempts.to_i + 1
-        raise if @attempts >= 3
-
-        retry
       end
-
-      private
-
-      attr_reader :user, :year
 
       def find_or_build_digest
         existing = user.digests.yearly.where(year: year).order(:id).to_a
