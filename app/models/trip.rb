@@ -76,6 +76,10 @@ class Trip < ApplicationRecord
     Trips::CalculateAllJob.perform_later(id, user.safe_settings.distance_unit)
   end
 
+  def calculation_missing?
+    !route_present? || distance.blank?
+  end
+
   def source_imported?
     source_identifier.present?
   end

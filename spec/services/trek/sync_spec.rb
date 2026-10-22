@@ -133,6 +133,23 @@ RSpec.describe Trek::Sync do
       end.to have_enqueued_job(Trips::CalculateAllJob).exactly(:once)
     end
 
+    it 'does not recalculate an unchanged calculated trip whose countries stayed empty' do
+      past_payload = payload.deep_dup
+      past_payload[:start_date] = 2.days.ago.to_date.to_s
+      past_payload[:end_date] = 1.day.from_now.to_date.to_s
+      past_payload[:days][0][:date] = past_payload[:start_date]
+      stub_trip(past_payload)
+      trip, = described_class.new(source).import!('12')
+      trip.update_columns(path: 'LINESTRING(1 1, 2 2)', distance: 100, visited_countries: [])
+      clear_enqueued_jobs
+
+      stub_trip(past_payload)
+
+      expect do
+        described_class.new(source).import!('12')
+      end.not_to have_enqueued_job(Trips::CalculateAllJob)
+    end
+
     it 'uses the source owner timezone when parsing TREK local dates' do
       user.update!(settings: user.settings.merge('timezone' => 'America/Los_Angeles'))
       stub_trip(payload)

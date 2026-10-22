@@ -87,6 +87,10 @@ Simply install one of the supported apps on your device and configure it to send
    ```
 3. Access the app at `http://localhost:3000`.
 
+The default stack runs Puma and background jobs in one Ruby process. When upgrading
+from a separate worker, stop the old worker before switching; queued jobs stay in Redis.
+See [single-process deployment and upgrade notes](docs/deployment/single-process.md).
+
 **To stop the app**, press `Ctrl+C`.
 
 You can use default values or create a `.env` file based on `.env.example` to customize your setup.

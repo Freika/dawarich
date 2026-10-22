@@ -14,18 +14,21 @@ class Api::V1::PointsController < ApiController
     start_at = params[:start_at].present? ? safe_timestamp(params[:start_at]) : nil
     end_at   = params[:end_at].present? ? safe_timestamp(params[:end_at]) : Time.zone.now.to_i
     order    = params[:order] || 'desc'
+    query_end = Points::ReadSummary.end_timestamp(current_api_user.id, end_at)
+    readable = Points::ReadSummary.plan_scope(current_api_user.points, current_api_user)
+    readable = readable.none unless query_end
 
     points = if ActiveModel::Type::Boolean.new.cast(params[:anomalies_only])
-               scoped_points.anomaly
+               readable.anomaly
              elsif ActiveModel::Type::Boolean.new.cast(params[:include_anomalies])
-               scoped_points
+               readable
              else
-               scoped_points.not_anomaly
+               readable.not_anomaly
              end
 
     points = points
              .without_raw_data
-             .where(timestamp: start_at..end_at)
+             .where(timestamp: start_at..query_end)
 
     points = points.where(import_id: params[:import_id]) if params[:import_id].present?
 
@@ -46,7 +49,7 @@ class Api::V1::PointsController < ApiController
     end
 
     cache_count, cache_max_ts, cache_max_updated =
-      points.pick(Arel.sql('COUNT(*)'), Arel.sql('MAX(timestamp)'), Arel.sql('MAX(updated_at)'))
+      Points::ReadSummary.new(points, user_id: current_api_user.id).call
     fresh_when(
       etag: points_index_etag(start_at, end_at, order, cache_max_ts, cache_count, cache_max_updated),
       last_modified: cache_max_ts && Time.zone.at(cache_max_ts),
@@ -79,9 +82,10 @@ class Api::V1::PointsController < ApiController
     # so the frontend can show how many points fall outside the 12-month data window.
     if current_api_user.plan_restricted?
       total_in_range = current_api_user.points
-                                       .where(timestamp: start_at..end_at)
+                                       .where(timestamp: start_at..query_end)
       total_in_range = total_in_range.where(import_id: params[:import_id]) if params[:import_id].present?
-      total_in_range = total_in_range.count
+      total_in_range = total_in_range.none unless query_end
+      total_in_range = Points::ReadSummary.new(total_in_range, user_id: current_api_user.id).call.first
       response.set_header('X-Total-Points-In-Range', total_in_range.to_s)
       response.set_header('X-Scoped-Points', total_count.to_s)
     end

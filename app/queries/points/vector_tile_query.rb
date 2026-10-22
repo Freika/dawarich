@@ -240,6 +240,7 @@ class Points::VectorTileQuery
   def with_statement_timeout
     conn = Point.connection
     conn.transaction do
+      conn.exec_query('SET LOCAL jit = off', 'VectorTileQuery JIT')
       conn.exec_query("SET LOCAL statement_timeout = #{VectorTileTimeout.query_timeout_ms}",
                       'VectorTileQuery Timeout')
       yield conn

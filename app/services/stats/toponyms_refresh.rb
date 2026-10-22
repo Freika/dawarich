@@ -52,7 +52,7 @@ module Stats
         break unless within_budget?
 
         user = User.find_by(id: user_id)
-        refresh(user, year, month) if user
+        refresh(user, year, month, only_if_changed: true) if user
         Sidekiq.redis { |redis| redis.set(CURSOR_KEY, id) }
       end
     end
@@ -103,14 +103,15 @@ module Stats
       end
     end
 
-    def refresh(user, year, month, invalidate_cache: false)
+    def refresh(user, year, month, invalidate_cache: false, only_if_changed: false)
       key = [user.id, year, month]
       return @results[key] if @results.key?(key)
 
       return false unless within_budget?
 
       @remaining -= 1
-      if RefreshToponyms.new(user, year, month, invalidate_cache: invalidate_cache).call
+      if RefreshToponyms.new(user, year, month, invalidate_cache: invalidate_cache,
+                             only_if_changed: only_if_changed).call
         @results[key] = true
       else
         schedule_full(user.id, year, month)
