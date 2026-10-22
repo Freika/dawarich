@@ -111,6 +111,63 @@ RSpec.describe Users::ImportData::Points, type: :service do
       end
     end
 
+    context 'when a Point from an archive made before Places references a suggested visit' do
+      let!(:visit) do
+        create(:visit, user: user, name: nil, location_label: 'Corner Cafe',
+                       started_at: Time.zone.parse('2024-01-01 10:00:00 UTC'),
+                       ended_at: Time.zone.parse('2024-01-01 11:00:00 UTC'))
+      end
+      let(:points_data) do
+        [
+          {
+            'timestamp' => 1_704_106_800,
+            'lonlat' => 'POINT(13.4050 52.5200)',
+            'visit_reference' => {
+              'name' => 'Corner Cafe',
+              'started_at' => visit.started_at.iso8601,
+              'ended_at' => visit.ended_at.iso8601
+            }
+          }
+        ]
+      end
+
+      it 'restores the point-to-visit association from the old visit name' do
+        service.call
+
+        expect(user.points.last.visit).to eq(visit)
+      end
+    end
+
+    context 'when the referenced visit gained a Place on import that the Point does not name' do
+      let(:place) { create(:place, user: user, name: 'Old corner') }
+      let!(:visit) do
+        create(:visit, user: user, place: place, name: nil, location_label: 'Old corner',
+                       started_at: Time.zone.parse('2024-01-01 10:00:00 UTC'),
+                       ended_at: Time.zone.parse('2024-01-01 11:00:00 UTC'))
+      end
+      let(:points_data) do
+        [
+          {
+            'timestamp' => 1_704_106_800,
+            'lonlat' => 'POINT(13.4050 52.5200)',
+            'visit_reference' => {
+              'name' => nil,
+              'location_label' => 'Old corner',
+              'started_at' => visit.started_at.iso8601,
+              'ended_at' => visit.ended_at.iso8601,
+              'place_reference' => nil
+            }
+          }
+        ]
+      end
+
+      it 'falls back to the labelled visit key' do
+        service.call
+
+        expect(user.points.last.visit).to eq(visit)
+      end
+    end
+
     context 'when same-window visits belong to different Places' do
       let(:started_at) { Time.zone.parse('2024-01-01 10:00:00 UTC') }
       let(:home) { create(:place, user: user, name: 'Home', latitude: 40, longitude: -74) }

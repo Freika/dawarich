@@ -182,6 +182,38 @@ RSpec.describe Users::ImportData::Visits, type: :service do
       end
     end
 
+    context 'with a visit from an archive made before Places' do
+      let(:legacy_row) do
+        {
+          'name' => 'Corner Cafe',
+          'started_at' => '2024-01-01T09:00:00Z',
+          'ended_at' => '2024-01-01T10:00:00Z',
+          'duration' => 3600,
+          'status' => 'suggested'
+        }
+      end
+
+      it 'keeps a suggested name only as its label, like the upgrade backfill' do
+        described_class.new(user, [legacy_row]).call
+
+        expect(user.visits.sole).to have_attributes(name: nil, location_label: 'Corner Cafe')
+      end
+
+      it 'keeps a confirmed name and copies it into the label' do
+        described_class.new(user, [legacy_row.merge('status' => 'confirmed')]).call
+
+        expect(user.visits.sole).to have_attributes(name: 'Corner Cafe', location_label: 'Corner Cafe')
+      end
+
+      it 'does not duplicate the visit the upgrade backfill already relabelled' do
+        create(:visit, user:, name: nil, location_label: 'Corner Cafe',
+                       started_at: Time.zone.parse('2024-01-01T09:00:00Z'),
+                       ended_at: Time.zone.parse('2024-01-01T10:00:00Z'))
+
+        expect { described_class.new(user, [legacy_row]).call }.not_to(change { user.visits.count })
+      end
+    end
+
     context 'with nil place_reference' do
       let(:visits_data) do
         [
@@ -200,7 +232,7 @@ RSpec.describe Users::ImportData::Visits, type: :service do
         service = described_class.new(user, visits_data)
         service.call
 
-        visit = user.visits.find_by(name: 'Unknown Visit')
+        visit = user.visits.find_by(location_label: 'Unknown Visit')
         expect(visit).to be_present
         expect(visit.place).to be_nil
       end

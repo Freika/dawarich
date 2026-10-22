@@ -1009,16 +1009,6 @@ de:
       settings: Einstellungen
       setup_guide: Einrichtungsanleitung
     maplibre:
-      area_creation_modal:
-        create_new_area: Neues Gebiet erstellen
-        area_name: Gebietsname *
-        radius: Radius
-        meters: Meter
-        cancel: Abbrechen
-        e_g_home_office_gym: z. B. Zuhause, Büro, Fitnessstudio …
-        radius_in_meters: Radius in Metern
-        create_area: Gebiet erstellen
-        creating: Wird erstellt...
       button_cluster:
         video_studio: "Video-Studio"
         map_controls: Kartensteuerung
@@ -1200,9 +1190,7 @@ de:
         pick_a_day_in_the_calendar_to_see_visits: Wähle einen Tag im Kalender aus, um Aufenthalte zu sehen.
         create_visit: Aufenthalt erstellen
         create_place: Ort erstellen
-        select_area: Bereich auswählen
         select_data_on_map: Daten auf der Karte auswählen
-        create_area: Bereich erstellen
         replay: Wiedergabe
         enrich_photos: Fotos bereichern
         close: Schließen
@@ -1407,6 +1395,8 @@ de:
       merge: Verbinden
       select_place_to_merge: Doppelten Ort auswählen
       no_matching_places: Keine passenden Orte gefunden
+      search_places: Orte suchen
+      search: Suchen
       merge_confirmation: Den ausgewählten Ort mit „%{survivor}“ zusammenführen? Aufenthalte, Tags und Notizen werden hierher verschoben.
       notes: Notizen
       save: Speichern
@@ -4042,9 +4032,6 @@ de:
       click_on_the_map_to_place_a_visit_esc_to: Klicke auf die Karte, um einen Aufenthalt zu platzieren (Esc zum Abbrechen)
       visit_creation_modal_not_available: Dialog zum Erstellen eines Aufenthalts ist nicht verfügbar
       visit_creation_controller_not_available: Controller für Aufenthalt-Erstellung nicht verfügbar
-      area_drawer_controller_not_available: Controller für Flächenzeichnung nicht verfügbar
-      area_created_successfully: Fläche erfolgreich erstellt!
-      failed_to_reload_areas: Gebiete konnten nicht neu geladen werden
       family_feature_not_available: Familienfunktion nicht verfügbar
       failed_to_load_family_members: Familienmitglieder konnten nicht geladen werden
       centered_on_family_member: Auf Familienmitglied zentriert

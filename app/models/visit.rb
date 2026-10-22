@@ -77,6 +77,10 @@ class Visit < ApplicationRecord
     name.presence || place&.name || location_label.presence || area&.name || DEFAULT_NAME
   end
 
+  def clear_echoed_name
+    self.name = nil if name.present? && name.in?([place&.name, area&.name, DEFAULT_NAME])
+  end
+
   def self.display_name_sql
     <<~SQL.squish
       COALESCE(

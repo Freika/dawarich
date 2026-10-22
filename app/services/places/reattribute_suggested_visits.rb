@@ -75,7 +75,7 @@ module Places
       attributes[:place_id] = winner&.id if visit.place_id != winner&.id
 
       label = winner&.name
-      label = nil if winner.nil? && visit.location_label == visit.place&.name
+      label = visit.location_label if winner.nil? && visit.location_label != visit.place&.name
       attributes[:location_label] = label if label != visit.location_label
       attributes
     end

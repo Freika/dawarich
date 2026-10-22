@@ -104,7 +104,6 @@ export class LayerManager {
     subscribe("click", "visits", handlers.handleVisitClick)
     subscribe("click", "photos", handlers.handlePhotoClick)
     subscribe("click", "places", handlers.handlePlaceClick)
-    subscribe("click", "places-radius-fill", handlers.handlePlaceClick)
     subscribe("click", "places-radius-outline", handlers.handlePlaceClick)
 
     // Anomalies click handler
@@ -159,11 +158,7 @@ export class LayerManager {
     subscribe("mouseleave", "photos", () => {
       this.map.getCanvas().style.cursor = ""
     })
-    const placeLayers = [
-      "places",
-      "places-radius-fill",
-      "places-radius-outline",
-    ]
+    const placeLayers = ["places", "places-radius-outline"]
     placeLayers.forEach((layerId) => {
       subscribe("mouseenter", layerId, () => {
         this.map.getCanvas().style.cursor = "pointer"
@@ -382,6 +377,10 @@ export class LayerManager {
         boundariesVisible: this.settings.placeBoundariesEnabled || false,
       })
       this.layers.placesLayer.add(placesGeoJSON)
+      if (this.map.getLayer("visits")) {
+        this.map.moveLayer("places-radius-fill", "visits")
+        this.map.moveLayer("places-radius-outline", "visits")
+      }
     } else {
       this.layers.placesLayer.update(placesGeoJSON)
     }

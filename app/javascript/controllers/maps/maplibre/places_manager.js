@@ -40,7 +40,10 @@ export class PlacesManager {
 
           await this.initializePlaceTagFilters()
 
-          const loadedPlaces = placesLayer.data?.features?.length || 0
+          const loadedPlaces =
+            placesLayer.data?.features?.filter(
+              (feature) => feature.properties?.featureKind === "center",
+            ).length || 0
           this.controller.updateLoadingCounts({
             counts: { places: loadedPlaces },
             isComplete: true,

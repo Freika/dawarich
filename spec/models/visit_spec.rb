@@ -176,4 +176,33 @@ RSpec.describe Visit, type: :model do
       expect(counts).not_to include('suggested')
     end
   end
+
+  describe '#clear_echoed_name' do
+    let(:user) { create(:user) }
+    let(:place) { create(:place, user:, name: 'Old Cafe') }
+
+    it 'drops a name that only repeated the current Place' do
+      visit = build(:visit, user:, place:, name: 'Old Cafe', location_label: 'Old Cafe')
+
+      visit.clear_echoed_name
+
+      expect(visit.name).to be_nil
+    end
+
+    it 'keeps a custom name even when the upgrade copied it into the label' do
+      visit = build(:visit, user:, place:, name: 'Dinner with Anna', location_label: 'Dinner with Anna')
+
+      visit.clear_echoed_name
+
+      expect(visit.name).to eq('Dinner with Anna')
+    end
+
+    it 'drops the unknown-location placeholder name' do
+      visit = build(:visit, user:, place:, name: Visit::DEFAULT_NAME)
+
+      visit.clear_echoed_name
+
+      expect(visit.name).to be_nil
+    end
+  end
 end

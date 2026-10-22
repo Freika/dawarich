@@ -959,16 +959,6 @@ ca:
       settings: Configuració
       setup_guide: guia de configuració
     maplibre:
-      area_creation_modal:
-        create_new_area: Crea una àrea nova
-        area_name: Nom de l'àrea *
-        radius: Radi
-        meters: metres
-        cancel: Cancel·la
-        e_g_home_office_gym: p. ex. Casa, Feina, Gimnàs...
-        radius_in_meters: Radi en metres
-        create_area: Crea l'àrea
-        creating: Creant...
       button_cluster:
         map_controls: Controls del mapa
         timeline: Línia de temps
@@ -1147,9 +1137,7 @@ ca:
         pick_a_day_in_the_calendar_to_see_visits: Tria un dia al calendari per veure les visites.
         create_visit: Crea una visita
         create_place: Crea un lloc
-        select_area: Selecciona una àrea
         select_data_on_map: Selecciona dades al mapa
-        create_area: Crea una àrea
         replay: Reproducció
         enrich_photos: Enriqueix fotos
         close: Tanca
@@ -1357,6 +1345,8 @@ ca:
       merge: Fusiona
       select_place_to_merge: Selecciona el lloc duplicat
       no_matching_places: No s'han trobat llocs coincidents
+      search_places: Cerca llocs
+      search: Cerca
       merge_confirmation: "Vols fusionar el lloc seleccionat amb \"%{survivor}\"? Les visites, etiquetes i notes s'hi traslladaran."
       notes: Notes
       save: Desa
@@ -3989,9 +3979,6 @@ ca:
       click_on_the_map_to_place_a_visit_esc_to: Fes clic al mapa per col·locar una visita (Esc per cancel·lar)
       visit_creation_modal_not_available: Diàleg de creació de visites no disponible
       visit_creation_controller_not_available: Controlador de creació de visites no disponible
-      area_drawer_controller_not_available: Controlador de dibuix d'àrees no disponible
-      area_created_successfully: Àrea creada correctament!
-      failed_to_reload_areas: No s'han pogut tornar a carregar les àrees
       family_feature_not_available: Funció de família no disponible
       failed_to_load_family_members: No s'han pogut carregar els membres de la família
       centered_on_family_member: Centrat en el membre de la família

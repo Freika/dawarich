@@ -38,9 +38,13 @@ module Places
         area.skip_visit_relabel = true
         area.update!(attributes)
         place.user_named = true
+        place_attributes = attributes.to_h.symbolize_keys.slice(*PLACE_FIELDS.keys).transform_keys(PLACE_FIELDS)
+        if place_attributes.key?(:visit_radius)
+          place_attributes[:visit_radius] = Place.normalize_visit_radius(place_attributes[:visit_radius])
+        end
         # Coordinates are the location data the user explicitly chose to persist.
         # codeql[rb/clear-text-storage-sensitive-data]
-        place.update!(attributes.to_h.symbolize_keys.slice(*PLACE_FIELDS.keys).transform_keys(PLACE_FIELDS))
+        place.update!(place_attributes)
       end
 
       place

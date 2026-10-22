@@ -9,6 +9,7 @@ RSpec.describe '/api/v1/areas', type: :request do
     it 'renders a successful response' do
       get api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" }
       expect(response).to be_successful
+      expect(response.headers['Deprecation']).to eq('true')
     end
 
     it 'serves a legacy Area whose stored radius is not positive' do
@@ -138,6 +139,30 @@ RSpec.describe '/api/v1/areas', type: :request do
       delete api_v1_area_url(area), headers: { 'Authorization' => "Bearer #{user.api_key}" }
 
       expect(response).to have_http_status(:ok)
+    end
+  end
+
+  context "with another user's Area" do
+    let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
+    let!(:other_area) { create(:area, user: create(:user), name: 'Theirs') }
+
+    it 'does not show it' do
+      get api_v1_area_url(other_area), headers: headers
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'does not update it' do
+      patch api_v1_area_url(other_area), headers: headers, params: { area: { name: 'Mine' } }
+
+      expect(response).to have_http_status(:not_found)
+      expect(other_area.reload.name).to eq('Theirs')
+    end
+
+    it 'does not delete it' do
+      expect { delete api_v1_area_url(other_area), headers: headers }.not_to change(Area, :count)
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 end

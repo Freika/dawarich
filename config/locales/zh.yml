@@ -966,16 +966,6 @@ zh:
       settings: 设置
       setup_guide: 设置指南
     maplibre:
-      area_creation_modal:
-        create_new_area: 创建新区域
-        area_name: 区域名称 *
-        radius: 半径
-        meters: 米
-        cancel: 取消
-        e_g_home_office_gym: 例如家庭、办公室、健身房...
-        radius_in_meters: 半径（米）
-        create_area: 创建区域
-        creating: 创建...
       button_cluster:
         map_controls: 地图控件
         timeline: 时间线
@@ -1162,9 +1152,7 @@ zh:
         pick_a_day_in_the_calendar_to_see_visits: 在日历中选择一天以查看到访记录。
         create_visit: 创建到访记录
         create_place: 创建地点
-        select_area: 选择区域
         select_data_on_map: 在地图上选择数据
-        create_area: 创建区域
         replay: 重播
         enrich_photos: 为照片补充 GPS 坐标
         close: 关闭
@@ -1372,6 +1360,8 @@ zh:
       merge: 合并
       select_place_to_merge: 选择重复地点
       no_matching_places: 未找到匹配的地点
+      search_places: 搜索地点
+      search: 搜索
       merge_confirmation: 将所选地点合并到“%{survivor}”？访问、标签和备注都会移到这里。
       notes: 备注
       save: 保存
@@ -4056,9 +4046,6 @@ zh:
       click_on_the_map_to_place_a_visit_esc_to: 点击地图以添加到访记录（Esc 取消）
       visit_creation_modal_not_available: 到访记录创建模式不可用
       visit_creation_controller_not_available: 到访记录创建控制器不可用
-      area_drawer_controller_not_available: 区域抽屉控制器不可用
-      area_created_successfully: 区域创建成功！
-      failed_to_reload_areas: 无法重新加载区域
       family_feature_not_available: 家庭功能不可用
       failed_to_load_family_members: 无法加载家庭成员
       centered_on_family_member: 已定位到家庭成员

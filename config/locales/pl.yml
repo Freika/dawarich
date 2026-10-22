@@ -963,16 +963,6 @@ pl:
       settings: Ustawienia
       setup_guide: instrukcji konfiguracji
     maplibre:
-      area_creation_modal:
-        create_new_area: Utwórz nowy obszar
-        area_name: Nazwa obszaru *
-        radius: Promień
-        meters: metry
-        cancel: Anuluj
-        e_g_home_office_gym: np. Dom, Biuro, Siłownia...
-        radius_in_meters: Promień w metrach
-        create_area: Utwórz obszar
-        creating: Tworzenie...
       button_cluster:
         map_controls: Sterowanie mapą
         timeline: Oś czasu
@@ -1154,9 +1144,7 @@ pl:
         pick_a_day_in_the_calendar_to_see_visits: Wybierz dzień w kalendarzu, aby zobaczyć wizyty.
         create_visit: Utwórz wizytę
         create_place: Utwórz miejsce
-        select_area: Wybierz obszar
         select_data_on_map: Wybierz dane na mapie
-        create_area: Utwórz obszar
         replay: Odtwórz
         enrich_photos: Uzupełnij zdjęcia
         close: Zamknij
@@ -1361,6 +1349,8 @@ pl:
       merge: Scal
       select_place_to_merge: Wybierz zduplikowane miejsce
       no_matching_places: Nie znaleziono pasujących miejsc
+      search_places: Szukaj miejsc
+      search: Szukaj
       merge_confirmation: Połączyć wybrane miejsce z „%{survivor}”? Wizyty, tagi i notatki zostaną tutaj przeniesione.
       notes: Notatki
       save: Zapisz
@@ -4051,9 +4041,6 @@ pl:
       click_on_the_map_to_place_a_visit_esc_to: Kliknij na mapie, aby dodać wizytę (Esc aby anulować)
       visit_creation_modal_not_available: Okno tworzenia wizyty jest niedostępne
       visit_creation_controller_not_available: Kontroler tworzenia wizyty jest niedostępny
-      area_drawer_controller_not_available: Kontroler panelu obszaru jest niedostępny
-      area_created_successfully: Obszar utworzony pomyślnie!
-      failed_to_reload_areas: Nie udało się odświeżyć obszarów
       family_feature_not_available: Funkcja rodziny jest niedostępna
       failed_to_load_family_members: Nie udało się załadować członków rodziny
       centered_on_family_member: Wycentrowano na członku rodziny

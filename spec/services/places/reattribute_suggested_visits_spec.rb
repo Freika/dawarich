@@ -64,6 +64,16 @@ RSpec.describe Places::ReattributeSuggestedVisits do
     expect(visit.reload).to have_attributes(place_id: nil, location_label: nil)
   end
 
+  it 'keeps a detached Visit label that did not come from the Place' do
+    place = create(:place, user: user, name: 'Cafe', latitude: lat, longitude: lon, visit_radius: 50)
+    visit = visit_at(20, place: place, location_label: 'Main Street 5')
+    place.update!(latitude: lat + north(500))
+
+    described_class.new(user: user, changed_place: place).call
+
+    expect(visit.reload).to have_attributes(place_id: nil, location_label: 'Main Street 5')
+  end
+
   it 'replaces the association using radius, distance, then stable ID precedence' do
     broad = create(:place, user: user, name: 'Campus', latitude: lat, longitude: lon, visit_radius: 200)
     visit = visit_at(10, place: broad, location_label: broad.name)

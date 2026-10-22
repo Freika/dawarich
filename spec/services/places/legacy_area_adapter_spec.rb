@@ -95,6 +95,14 @@ RSpec.describe Places::LegacyAreaAdapter do
     expect([place.lat, place.lon]).to eq([52.6, 13.5])
   end
 
+  it 'caps an oversized legacy radius on update as it does on create' do
+    area, place = adapter.create(name: 'Region', latitude: 52.5, longitude: 13.4, radius: 60_000)
+
+    adapter.update(area, radius: 70_000)
+
+    expect(place.reload.visit_radius).to eq(Place::MAX_VISIT_RADIUS)
+  end
+
   it 'deletes the Place and Area shell while preserving Visits' do
     area, place = adapter.create(name: 'Home', latitude: 52.5, longitude: 13.4, radius: 90)
     visit = create(:visit, user:, area:, place:)

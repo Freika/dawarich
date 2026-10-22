@@ -133,6 +133,15 @@ RSpec.describe Places::AreasBackfill do
       expect(visit.area_id).to be_nil
     end
 
+    it "never attaches another user's Visit that points at the Area to the Area owner's Place" do
+      area = create(:area)
+      foreign = create(:visit, user: create(:user), area: area, place: nil)
+
+      backfill.call
+
+      expect(foreign.reload).to have_attributes(place_id: nil, area_id: area.id)
+    end
+
     it 'reassigns only one of two Area-only Visits that share a start time' do
       area = create(:area)
       started_at = Time.zone.parse('2026-09-01 12:00:00')
@@ -251,6 +260,7 @@ RSpec.describe Places::AreasBackfill do
 
       backfill.call
 
+      expect(backfill.report).to include(visit_labels_copied: 4, suggested_visit_names_cleared: 1)
       expect(suggested.reload).to have_attributes(name: nil, location_label: 'Detected address')
       expect(confirmed.reload).to have_attributes(name: 'Dinner with Anna', location_label: 'Dinner with Anna')
       expect(imported.reload).to have_attributes(name: 'Imported stop', location_label: 'Imported stop')

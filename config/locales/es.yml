@@ -1009,16 +1009,6 @@ es:
       settings: Ajustes
       setup_guide: guía de configuración
     maplibre:
-      area_creation_modal:
-        create_new_area: Crear nueva área
-        area_name: Nombre del área *
-        radius: Radio
-        meters: metros
-        cancel: Cancelar
-        e_g_home_office_gym: e.g. Casa, Oficina, Gimnasio...
-        radius_in_meters: Radio en metros
-        create_area: Crear área
-        creating: Creando…
       button_cluster:
         video_studio: "Estudio de vídeo"
         map_controls: Controles del mapa
@@ -1200,9 +1190,7 @@ es:
         pick_a_day_in_the_calendar_to_see_visits: Seleciona un día en el calendario para ver visitas.
         create_visit: Crear visita
         create_place: Crear lugar
-        select_area: Seleccionar área
         select_data_on_map: Seleccionar datos en el mapa
-        create_area: Crear área
         replay: Reproducir
         enrich_photos: Mejorar Fotos
         close: Cerrar
@@ -1407,6 +1395,8 @@ es:
       merge: Unir
       select_place_to_merge: Seleccionar lugar duplicado
       no_matching_places: No se encontraron lugares coincidentes
+      search_places: Buscar lugares
+      search: Buscar
       merge_confirmation: "¿Unir el lugar seleccionado con \"%{survivor}\"? Las visitas, etiquetas y notas se moverán aquí."
       notes: Notas
       save: Guardar
@@ -3987,9 +3977,6 @@ es:
       click_on_the_map_to_place_a_visit_esc_to: Haz clic en el mapa para colocar una visita (Pulsa Esc para cancelar)
       visit_creation_modal_not_available: Modal de creación de visitas no disponible
       visit_creation_controller_not_available: No se puede crear la visita
-      area_drawer_controller_not_available: No se puede abrir el controlador de área
-      area_created_successfully: Área creada con éxito!
-      failed_to_reload_areas: Falló al recargar áreas
       family_feature_not_available: La característica de familia no está disponible
       failed_to_load_family_members: Falló al cargar miembros de la familia
       centered_on_family_member: Centrado en un miembro de la familia

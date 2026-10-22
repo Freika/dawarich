@@ -164,7 +164,7 @@ class Users::ImportData::Points
       ended_at = visit.ended_at.utc.iso8601
       exact_key = [visit.name, visit.location_label, started_at, ended_at, place_identity(visit.place)]
       labeled_legacy_key = [visit.name, visit.location_label, started_at, ended_at]
-      legacy_key = [visit.name, started_at, ended_at]
+      legacy_key = [visit.name.presence || visit.location_label, started_at, ended_at]
 
       @visits_lookup[exact_key] = visit
       add_unambiguous_visit_key(labeled_legacy_key, visit)
@@ -285,16 +285,16 @@ class Users::ImportData::Points
     started_at = normalize_timestamp_for_lookup(visit_reference['started_at'])
     ended_at = normalize_timestamp_for_lookup(visit_reference['ended_at'])
 
-    visit_key = if visit_reference.key?('place_reference')
-                  [visit_reference['name'], visit_reference['location_label'], started_at, ended_at,
-                   place_identity(visit_reference['place_reference'])]
-                elsif visit_reference.key?('location_label')
-                  [visit_reference['name'], visit_reference['location_label'], started_at, ended_at]
-                else
-                  [visit_reference['name'], started_at, ended_at]
-                end
+    name = visit_reference['name']
+    label = visit_reference['location_label']
+    visit_keys = []
+    if visit_reference.key?('place_reference')
+      visit_keys << [name, label, started_at, ended_at, place_identity(visit_reference['place_reference'])]
+    end
+    visit_keys << [name, label, started_at, ended_at] if visit_reference.key?('location_label')
+    visit_keys << [name.presence || label, started_at, ended_at]
 
-    visit = visits_lookup[visit_key]
+    visit = visit_keys.lazy.filter_map { |key| visits_lookup[key] }.first
     if visit
       attributes['visit_id'] = visit.id
       logger.debug "Resolved visit reference: #{visit_reference['name']} -> #{visit.id}"

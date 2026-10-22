@@ -4,6 +4,7 @@ class AddPlaceVisitRadiusAndVisitLabels < ActiveRecord::Migration[8.0]
   VISIT_RADIUS_CONSTRAINT = 'places_visit_radius_positive'
 
   def up
+    execute("SET LOCAL lock_timeout = '5s'")
     add_column :places, :visit_radius, :integer, default: 50, null: false unless column_exists?(:places, :visit_radius)
 
     unless check_constraint_exists?(:places, name: VISIT_RADIUS_CONSTRAINT)
@@ -15,7 +16,8 @@ class AddPlaceVisitRadiusAndVisitLabels < ActiveRecord::Migration[8.0]
   end
 
   def down
-    change_column_null :visits, :name, false, 'Unknown place'
+    execute('UPDATE visits SET name = location_label WHERE name IS NULL AND location_label IS NOT NULL')
+    change_column_null :visits, :name, false, 'Unknown Location'
     remove_column :visits, :location_label if column_exists?(:visits, :location_label)
 
     if check_constraint_exists?(:places, name: VISIT_RADIUS_CONSTRAINT)

@@ -246,6 +246,7 @@ class Api::V1::VisitsController < ApiController
     # so the edit survives re-detection.
     attributes['status'] = 'confirmed' if visit.suggested? && attributes['status'].blank?
 
+    visit.clear_echoed_name if attributes['place_id'].present? && !user_provided_name
     visit.assign_attributes(attributes)
 
     if attributes['place_id'].present? && !user_provided_name && visit.place.present?

@@ -153,17 +153,21 @@ module Places
     def migrate_visits_for(mapping)
       reassign_area_only_visits(mapping)
 
-      Visit.where(area_id: mapping.area_id).find_each(batch_size: batch_size) do |visit|
+      area_visits(mapping).find_each(batch_size: batch_size) do |visit|
         migrate_visit_association(visit, mapping)
       end
     end
 
+    def area_visits(mapping)
+      Visit.where(user_id: mapping.area.user_id, area_id: mapping.area_id)
+    end
+
     def reassign_area_only_visits(mapping)
       occupied = Visit.where(user_id: mapping.place.user_id, place_id: mapping.place_id).select(:started_at)
-      first_per_start = Visit.where(area_id: mapping.area_id, place_id: nil)
-                             .where.not(started_at: occupied)
-                             .select('DISTINCT ON (started_at) id')
-                             .order(:started_at, :id)
+      first_per_start = area_visits(mapping).where(place_id: nil)
+                                            .where.not(started_at: occupied)
+                                            .select('DISTINCT ON (started_at) id')
+                                            .order(:started_at, :id)
 
       report[:area_only_visits_reassigned] += Visit.where(id: first_per_start).update_all(
         ['place_id = ?, area_id = NULL, location_label = COALESCE(location_label, ?)',

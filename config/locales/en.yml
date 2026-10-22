@@ -959,16 +959,6 @@ en:
       settings: Settings
       setup_guide: setup guide
     maplibre:
-      area_creation_modal:
-        create_new_area: Create New Area
-        area_name: Area Name *
-        radius: Radius
-        meters: meters
-        cancel: Cancel
-        e_g_home_office_gym: e.g. Home, Office, Gym...
-        radius_in_meters: Radius in meters
-        create_area: Create Area
-        creating: Creating...
       button_cluster:
         map_controls: Map controls
         timeline: Timeline
@@ -1150,9 +1140,7 @@ en:
         pick_a_day_in_the_calendar_to_see_visits: Pick a day in the calendar to see visits.
         create_visit: Create Visit
         create_place: Create Place
-        select_area: Select Area
         select_data_on_map: Select data on map
-        create_area: Create Area
         replay: Replay
         enrich_photos: Enrich Photos
         close: Close
@@ -1357,6 +1345,8 @@ en:
       merge: Merge
       select_place_to_merge: Select duplicate place
       no_matching_places: No matching places found
+      search_places: Search places
+      search: Search
       merge_confirmation: Merge the selected place into "%{survivor}"? Visits, tags, and notes will be moved here.
       notes: Notes
       save: Save
@@ -3981,9 +3971,6 @@ en:
       click_on_the_map_to_place_a_visit_esc_to: Click on the map to place a visit (Esc to cancel)
       visit_creation_modal_not_available: Visit creation modal not available
       visit_creation_controller_not_available: Visit creation controller not available
-      area_drawer_controller_not_available: Area drawer controller not available
-      area_created_successfully: Area created successfully!
-      failed_to_reload_areas: Failed to reload areas
       family_feature_not_available: Family feature not available
       failed_to_load_family_members: Failed to load family members
       centered_on_family_member: Centered on family member

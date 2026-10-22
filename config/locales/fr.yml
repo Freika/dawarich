@@ -1638,16 +1638,6 @@ fr:
       settings: Paramètres
       setup_guide: Guide de configuration
     maplibre:
-      area_creation_modal:
-        create_new_area: Créer un nouveau secteur
-        area_name: Nom du secteur *
-        radius: Rayon
-        meters: mètres
-        cancel: Annuler
-        e_g_home_office_gym: Par exemple, domicile, bureau, gymnase...
-        radius_in_meters: Rayon en mètres
-        create_area: Créer un secteur
-        creating: En création...
       button_cluster:
         video_studio: "Studio vidéo"
         map_controls: Contrôles de la carte
@@ -1869,9 +1859,7 @@ fr:
           pour voir les visites.
         create_visit: Créer Visite
         create_place: Créer Lieu
-        select_area: Sélectionner une zone
         select_data_on_map: Sélectionner des données sur la carte
-        create_area: Créer Zone
         replay: Rejouer
         enrich_photos: Enrichir les photos
         close: Fermer
@@ -2100,6 +2088,8 @@ fr:
       merge: Fusionner
       select_place_to_merge: Sélectionner le lieu en double
       no_matching_places: Aucun lieu correspondant trouvé
+      search_places: Rechercher des lieux
+      search: Rechercher
       merge_confirmation: Fusionner le lieu sélectionné avec « %{survivor} » ? Les visites, étiquettes et notes seront déplacées ici.
       notes: Notes
       save: Enregistrer
@@ -5212,9 +5202,6 @@ fr:
       visit_creation_modal_not_available: Fenêtre de création de visite non disponible
       visit_creation_controller_not_available: Contrôleur de création de visite non
         disponible
-      area_drawer_controller_not_available: Contrôleur de zone non disponible
-      area_created_successfully: Zone créée avec succès !
-      failed_to_reload_areas: Échec du rechargement des zones
       family_feature_not_available: Fonctionnalité famille non disponible
       failed_to_load_family_members: Échec du chargement des membres de la famille
       centered_on_family_member: Centré sur un membre de la famille

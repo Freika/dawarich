@@ -50,13 +50,14 @@ class Users::ImportData::Visits
   attr_reader :user, :visits_data, :legacy_area_place_references, :legacy_area_places_by_name
 
   def find_existing_visit(attributes)
-    user.visits.find_by(
-      name: attributes['name'],
-      location_label: attributes['location_label'],
-      started_at: attributes['started_at'],
-      ended_at: attributes['ended_at'],
-      place_id: attributes[:place]&.id || attributes['place_id']
-    )
+    user.visits
+        .where(
+          started_at: attributes['started_at'],
+          ended_at: attributes['ended_at'],
+          place_id: attributes[:place]&.id || attributes['place_id']
+        )
+        .find_by("COALESCE(NULLIF(visits.name, ''), visits.location_label) IS NOT DISTINCT FROM ?",
+                 attributes['name'].presence || attributes['location_label'])
   end
 
   def create_visit_record(attributes)
@@ -65,8 +66,7 @@ class Users::ImportData::Visits
 
   def prepare_visit_attributes(visit_data)
     attributes = visit_data.except('place_reference', 'area_id')
-    legacy_area_id = visit_data['area_id']
-    attributes['location_label'] ||= visit_data['name'] if legacy_area_id.present?
+    normalize_pre_places_labels(attributes) unless visit_data.key?('location_label')
 
     reference = visit_data['place_reference'] || legacy_place_reference(visit_data)
     if reference
@@ -75,6 +75,11 @@ class Users::ImportData::Visits
     end
 
     attributes
+  end
+
+  def normalize_pre_places_labels(attributes)
+    attributes['location_label'] = attributes['name']
+    attributes['name'] = nil if attributes['status'].to_s == 'suggested'
   end
 
   def legacy_place_reference(visit_data)

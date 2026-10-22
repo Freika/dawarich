@@ -19,8 +19,6 @@ class PlacesController < ApplicationController
     @place = current_user.places.includes(:tags).find(params[:id])
     @recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
     @merge_candidates = merge_candidates_for(@place)
-
-    render layout: false
   end
 
   def create
@@ -61,7 +59,7 @@ class PlacesController < ApplicationController
             recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
             merge_candidates = merge_candidates_for(@place)
             render turbo_stream: [
-              turbo_stream.replace(
+              turbo_stream.update(
                 'place-drawer',
                 partial: 'places/drawer',
                 locals: { place: @place, recent_visits: recent_visits, merge_candidates: merge_candidates }
@@ -111,7 +109,7 @@ status: :see_other
   end
 
   def confirm
-    @place.update!(source: :manual, name_locked_at: Time.current)
+    @place.update!(source: :manual, name_locked_at: (Time.current unless @place.name == Place::DEFAULT_NAME))
     @place.adopt!
 
     redirect_to places_url(filter: params[:filter], page: params[:page]),
@@ -130,7 +128,7 @@ status: :see_other
     respond_to do |format|
       format.turbo_stream do
         render turbo_stream: [
-          turbo_stream.replace(
+          turbo_stream.update(
             'place-drawer',
             partial: 'places/drawer',
             locals: { place: @place, recent_visits: @recent_visits, merge_candidates: @merge_candidates }
@@ -226,6 +224,7 @@ status: :see_other
       return false unless @place.save
 
       add_tags if tag_ids.present?
+      visit&.clear_echoed_name
       visit&.update!(place: @place, area: nil, location_label: @place.name, status: :confirmed)
     end
 

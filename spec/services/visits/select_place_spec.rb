@@ -48,6 +48,15 @@ RSpec.describe Visits::SelectPlace do
       expect(visit.reload).to have_attributes(area_id: nil, place_id: be_present)
     end
 
+    it 'drops a Visit name that only repeated the previous Place' do
+      visit.update!(place: create(:place, user:, name: 'Old Cafe'), name: 'Old Cafe')
+
+      described_class.new(user: user, visit: visit, photon: photon_payload).call
+
+      expect(visit.reload.name).to be_nil
+      expect(visit.display_name).to eq('Café Bravo')
+    end
+
     it 'locks the name of a place the user picked so reverse geocoding cannot rewrite it' do
       place = described_class.new(user: user, visit: visit, photon: photon_payload).call
 

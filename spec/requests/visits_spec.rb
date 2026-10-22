@@ -207,6 +207,17 @@ RSpec.describe '/visits', type: :request do
         expect_turbo_stream_action('replace', "visit_entry_#{visit.id}")
       end
 
+      it 'drops a Visit name that only repeated the previous Place' do
+        old_place = create(:place, user:, name: 'Old Cafe')
+        visit.update!(place: old_place, name: 'Old Cafe', location_label: 'Old Cafe')
+        place = create(:place, user:, name: 'Coffee Shop')
+
+        patch visit_url(visit), params: { visit: { place_id: place.id } }, as: :turbo_stream
+
+        expect(visit.reload.name).to be_nil
+        expect(visit.display_name).to eq('Coffee Shop')
+      end
+
       it 'clears the legacy Area association when a Place is selected' do
         place = create(:place, user:, name: 'Coffee Shop')
 

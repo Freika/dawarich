@@ -36,6 +36,15 @@ RSpec.describe '/places', type: :request do
       expect(response.body).to include(confirm_place_path(suggested))
       expect(response.body).to include('Confirm')
     end
+
+    it 'links each Place to its details, where it can be merged' do
+      place = create(:place, user:, name: 'My Home')
+
+      get places_url
+
+      links = Nokogiri::HTML(response.body).css("a[href='#{place_path(place)}']").map { |link| link.text.strip }
+      expect(links).to include('My Home')
+    end
   end
 
   describe 'PATCH /places/:id/confirm' do
@@ -49,6 +58,23 @@ RSpec.describe '/places', type: :request do
       expect(place.reload).to have_attributes(source: 'manual')
       expect(place).to be_name_locked
       expect(Place.unconfirmed_for(user)).not_to include(place)
+    end
+
+    it 'does not lock the placeholder name so geocoding can still rename the Place' do
+      place = create(:place, user:, source: :photon, name: Place::DEFAULT_NAME)
+
+      patch confirm_place_url(place)
+
+      expect(place.reload).to have_attributes(source: 'manual', name_locked_at: nil)
+    end
+
+    it "does not confirm another user's Place" do
+      other_place = create(:place, user: create(:user), source: :photon)
+
+      patch confirm_place_url(other_place)
+
+      expect(response).to have_http_status(:not_found)
+      expect(other_place.reload.source).to eq('photon')
     end
   end
 
@@ -117,6 +143,16 @@ RSpec.describe '/places', type: :request do
             status: 'confirmed'
           )
           expect(response.body).to include("data-visit-id=\"#{visit.id}\"")
+        end
+
+        it 'drops a Visit name that only repeated its legacy Area' do
+          legacy_area = create(:area, user:, name: 'Old corner')
+          visit = create(:visit, user:, area: legacy_area, name: 'Old corner', location_label: 'Old corner')
+
+          post places_url, params: valid_params.merge(visit_id: visit.id), as: :turbo_stream
+
+          expect(visit.reload.name).to be_nil
+          expect(visit.display_name).to eq('Coffee Shop')
         end
 
         it 'does not create a Place when the Visit belongs to another user' do
@@ -286,7 +322,7 @@ RSpec.describe '/places', type: :request do
       expect(response).to have_http_status(:ok)
       expect(visit.reload.place).to eq(survivor)
       expect(Place.exists?(duplicate.id)).to be(false)
-      expect_turbo_stream_action('replace', 'place-drawer')
+      expect_turbo_stream_action('update', 'place-drawer')
     end
 
     it 'does not merge another users Place' do
@@ -296,6 +332,16 @@ RSpec.describe '/places', type: :request do
         post merge_place_url(survivor),
              params: { duplicate_place_id: other_place.id },
              as: :turbo_stream
+      end.not_to change(Place, :count)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "does not merge into another user's survivor Place" do
+      other_survivor = create(:place, user: create(:user))
+
+      expect do
+        post merge_place_url(other_survivor), params: { duplicate_place_id: duplicate.id }, as: :turbo_stream
       end.not_to change(Place, :count)
 
       expect(response).to have_http_status(:not_found)
@@ -334,6 +380,25 @@ RSpec.describe '/places', type: :request do
 
         expect(response.body).to include('turbo-frame')
         expect(response.body).to include('id="place-drawer"')
+      end
+
+      it 'renders inside the application layout for a direct visit' do
+        get place_url(place)
+
+        expect(response.body).to include('<html')
+      end
+
+      it 'deletes the Place from the drawer through its member route' do
+        get place_url(place)
+
+        delete_method = "form[action='#{place_path(place)}'] input[name='_method'][value='delete']"
+        expect(Nokogiri::HTML(response.body).at_css(delete_method)).to be_present
+      end
+
+      it 'renders the merge search without missing translations' do
+        get place_url(place)
+
+        expect(response.body).not_to include('translation_missing')
       end
 
       it 'renders the place name, city, and country' do
@@ -515,7 +580,7 @@ RSpec.describe '/places', type: :request do
   describe 'PATCH /update from drawer frame' do
     let!(:place) { create(:place, user:, name: 'Drawer Place') }
 
-    it 'returns a turbo_stream that replaces the place-drawer frame' do
+    it 'returns a turbo_stream that refreshes the place-drawer frame in place' do
       patch place_url(place),
             params: { place: { note: 'Updated note' } },
             headers: { 'Turbo-Frame' => 'place-drawer' },
@@ -523,7 +588,7 @@ RSpec.describe '/places', type: :request do
 
       expect(place.reload.note).to eq('Updated note')
       expect_turbo_stream_response
-      expect_turbo_stream_action('replace', 'place-drawer')
+      expect_turbo_stream_action('update', 'place-drawer')
     end
   end
 

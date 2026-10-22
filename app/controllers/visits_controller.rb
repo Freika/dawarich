@@ -304,7 +304,10 @@ class VisitsController < ApplicationController
   def update_visit_label_from_place(place_id)
     place = current_user.places.find_by(id: place_id) ||
             @visit.suggested_places.find_by(id: place_id)
-    @visit.location_label = place.name if place && place.name.present?
+    return unless place
+
+    @visit.clear_echoed_name
+    @visit.location_label = place.name if place.name.present?
   end
 
   def confirming_suggested_visit?(params_to_update = visit_params)

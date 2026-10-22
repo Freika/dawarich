@@ -377,6 +377,16 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         expect(visit.place_id).to eq(new_place.id)
       end
 
+      it 'drops a Visit name that only repeated the previous Place' do
+        old_place = create(:place, name: 'Old Cafe', user:)
+        visit.update!(place: old_place, name: 'Old Cafe', location_label: 'Old Cafe')
+
+        put "/api/v1/visits/#{visit.id}", params: { visit: { place_id: new_place.id } }, headers: auth_headers
+
+        expect(visit.reload.name).to be_nil
+        expect(visit.display_name).to eq('Coffee Shop')
+      end
+
       it 'clears the legacy Area association when a Place is selected' do
         put "/api/v1/visits/#{visit.id}",
             params: { visit: { place_id: new_place.id } },
