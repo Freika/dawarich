@@ -77,11 +77,17 @@ export class TripRoutesTileLayer {
   }
 
   setExcludedWindows(windows) {
-    const normalized = [
-      ...new Set((windows || []).map(([from, to]) => `${from}-${to}`)),
-    ]
-      .map((pair) => pair.split("-").map(Number))
-      .sort((a, b) => a[0] - b[0] || a[1] - b[1])
+    const normalized = []
+    for (const [from, to] of (windows || [])
+      .map(([from, to]) => [
+        Math.floor(from),
+        Math.max(Math.ceil(to), Math.floor(from) + 1),
+      ])
+      .sort((a, b) => a[0] - b[0])) {
+      const last = normalized.at(-1)
+      if (last && from <= last[1]) last[1] = Math.max(last[1], to)
+      else normalized.push([from, to])
+    }
     if (JSON.stringify(normalized) === JSON.stringify(this.excludedWindows))
       return
 
@@ -140,7 +146,9 @@ export class TripRoutesTileLayer {
   }
 
   toBounds(pair) {
-    return pair ? new maplibregl.LngLatBounds(pair[0], pair[1]) : null
+    return pair?.length === 2
+      ? new maplibregl.LngLatBounds(pair[0], pair[1])
+      : null
   }
 
   setupInteractions({ onDayClick } = {}) {

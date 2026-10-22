@@ -99,6 +99,21 @@ RSpec.describe 'Api::V1::Shared::Tiles', type: :request do
     expect(response).not_to have_http_status(:not_modified)
   end
 
+  it "keeps a Lite owner's routes before the data window off the shared map" do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    owner.update!(plan: :lite)
+    old_start = 2.years.ago.change(hour: 10)
+    trip.update_columns(started_at: old_start.beginning_of_day, ended_at: old_start.end_of_day)
+    [-140.02, -140.021, -140.022].each_with_index do |longitude, index|
+      create(:point, user: owner, track: nil, timestamp: (old_start + (index * 5).minutes).to_i,
+                     lonlat: "POINT(#{longitude} -40)")
+    end
+
+    get tile_path
+
+    expect(response).to have_http_status(:no_content)
+  end
+
   it 'does not accept exclusion windows' do
     get tile_path, params: { exclude: '1-2' }
 

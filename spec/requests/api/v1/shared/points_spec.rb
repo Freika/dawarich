@@ -42,6 +42,18 @@ RSpec.describe 'Api::V1::Shared::Points', type: :request do
       expect(timestamps).not_to include(Time.utc(2026, 4, 6, 10, 5).to_i)
     end
 
+    it "leaves out a Lite owner's points before the data window" do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      owner.update!(plan: :lite)
+      old = 2.years.ago.change(hour: 10)
+      trip.update_columns(started_at: old.beginning_of_day, ended_at: old.end_of_day)
+      create(:point, user: owner, timestamp: old.to_i, latitude: 60.0, longitude: 10.0)
+
+      get "/api/v1/shared/#{link.id}/points"
+
+      expect(JSON.parse(response.body)).to eq([])
+    end
+
     it 'returns [lon, lat, ts] tuples' do
       get "/api/v1/shared/#{link.id}/points"
       body = JSON.parse(response.body)

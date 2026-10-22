@@ -131,6 +131,17 @@ test("draws the trip tiles with one colour per day", () => {
   assert.equal(layer.getDayBounds("2026-01-02"), null)
 })
 
+test("has no bounds when the server sent none", () => {
+  const layer = new TripRoutesTileLayer(fakeMap(), {
+    ...options,
+    fullBounds: [],
+    dayBounds: { "2026-01-01": [] },
+  })
+
+  assert.equal(layer.getFullBounds(), null)
+  assert.equal(layer.getDayBounds("2026-01-01"), null)
+})
+
 test("highlights a selected day and restores all days", () => {
   const map = fakeMap()
   const layer = new TripRoutesTileLayer(map, options)
@@ -161,6 +172,23 @@ test("asks the server to leave out excluded windows", () => {
 
   layer.setExcludedWindows([])
   assert.deepEqual(source.tiles, [options.tilesUrl])
+})
+
+test("sends whole-second windows the server accepts, merging overlaps", () => {
+  const map = fakeMap()
+  const layer = new TripRoutesTileLayer(map, options)
+  const source = Object.values(map.sources)[0]
+
+  layer.setExcludedWindows([
+    [100.4, 200.6],
+    [150, 250],
+    [250, 260],
+    [300.5, 300.5],
+  ])
+
+  assert.deepEqual(source.tiles, [
+    `${options.tilesUrl}&exclude=100-260,300-301`,
+  ])
 })
 
 test("emphasises the hovered day with its endpoints and reports clicks", () => {

@@ -127,6 +127,17 @@ RSpec.describe Trips::RoutesTileQuery do
     expect(features.map { |row| row['day'] }).to eq(['2026-01-01'])
   end
 
+  it 'follows untracked points that leave the tile instead of cutting across' do
+    [[minutes_after(1, 9), -140.02], [minutes_after(1, 9, 10), -142.0], [minutes_after(1, 9, 20), -140.03]]
+      .each do |time, longitude|
+        create(:point, user:, track: nil, timestamp: time.to_i, lonlat: "POINT(#{longitude} -40)")
+      end
+
+    longitudes = features.flat_map { |row| coordinates(row).map(&:first) }
+
+    expect(longitudes).to include(-142.0)
+  end
+
   it 'leaves out tracks before a Lite plan data window' do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
     user.update!(plan: :lite)

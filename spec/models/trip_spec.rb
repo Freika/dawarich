@@ -308,6 +308,19 @@ RSpec.describe Trip, type: :model do
       expect(described_class.find(trip.id).cached_primary_device_windows).not_to eq(first)
     end
 
+    it 'recomputes the device windows once live points build a track' do
+      recorded_point('phone', 1, 13)
+      recorded_point('phone', 2, 13.01)
+      recorded_point('watch', 3, 14)
+      first = described_class.find(trip.id).cached_primary_device_windows
+
+      late = recorded_point('watch', 5, 14.01)
+      create(:track, user:, tracker_id: 'watch', start_at: Time.zone.at(late.timestamp - 60),
+                     end_at: Time.zone.at(late.timestamp))
+
+      expect(described_class.find(trip.id).cached_primary_device_windows).not_to eq(first)
+    end
+
     it 'selects primary device points from cached windows without scanning for windows' do
       phone = [recorded_point('phone', 1, 13), recorded_point('phone', 2, 13.01)]
       recorded_point('watch', 1, 14)

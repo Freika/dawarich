@@ -181,6 +181,41 @@ test("a new date range shows the tracks of that range", async (t) => {
   ])
 })
 
+test("a range chosen before the map loads is drawn once it loads", async (t) => {
+  const originalWindow = globalThis.window
+  t.after(() => {
+    globalThis.window = originalWindow
+  })
+  globalThis.window = { addEventListener() {}, removeEventListener() {} }
+  env.bounds = { min_lng: 2, min_lat: 48, max_lng: 3, max_lat: 49 }
+  const controller = new PreviewController()
+  Object.assign(controller, {
+    element: element(),
+    mapStyleValue: "light",
+    interactiveValue: true,
+    hasLinesUrlValue: false,
+    hasLinesValue: false,
+    hasPlanValue: false,
+    apiKeyValue: "secret-key",
+    tilesUrlValue: "/api/v1/tiles/trips/7/{z}/{x}/{y}.mvt?v=1",
+    boundsValue: [
+      [13.4, 52.5],
+      [13.5, 52.55],
+    ],
+  })
+  await controller.connect()
+  const map = env.maps.at(-1)
+
+  await controller.element.listeners["trip-range-updated"]({
+    detail: { startAt: "2026-01-01T10:00", endAt: "2026-01-02T10:00" },
+  })
+  assert.deepEqual(map.sources, {})
+
+  map.handlers.load()
+
+  assert.equal(lineLayer(map)["source-layer"], "tracks")
+})
+
 test("changing the form dates downloads no points", async (t) => {
   const requests = []
   const dispatched = []

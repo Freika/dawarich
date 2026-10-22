@@ -109,3 +109,13 @@ test("replay downloads the shared points once, when opened", async (t) => {
     { longitude: 13.4, latitude: 52.5, timestamp: 1767261600 },
   ])
 })
+
+test("leaving the page before replay points arrive starts no replay", async (t) => {
+  const { controller } = await opened(t)
+
+  const toggling = controller.toggleReplay()
+  controller.disconnect()
+  await toggling
+
+  assert.deepEqual(env.panels.at(-1).points, [])
+})

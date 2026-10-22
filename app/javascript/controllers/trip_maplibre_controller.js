@@ -265,11 +265,15 @@ export default class extends Controller {
 
   setPointsLoading(loading) {
     this.showLoading(loading)
-    for (const name of ["posterBtn", "videoBtn", "replayToggleBtn"]) {
-      const capitalized = name.charAt(0).toUpperCase() + name.slice(1)
-      if (!this[`has${capitalized}Target`]) continue
-
-      const button = this[`${name}Target`]
+    if (loading) {
+      this.busyButtons = ["posterBtn", "videoBtn", "replayToggleBtn"]
+        .filter(
+          (name) => this[`has${name[0].toUpperCase()}${name.slice(1)}Target`],
+        )
+        .map((name) => this[`${name}Target`])
+        .filter((button) => !button.disabled)
+    }
+    for (const button of this.busyButtons || []) {
       button.disabled = loading
       if (loading) button.setAttribute("aria-busy", "true")
       else button.removeAttribute("aria-busy")
@@ -595,9 +599,13 @@ export default class extends Controller {
   }
 
   applyFlightMask() {
+    const tripStart = Date.parse(this.startedAtValue) / 1000
+    const tripEnd = Date.parse(this.endedAtValue) / 1000
     const windows =
       this.flightsActive && this.flightsLayer?.visible
-        ? flightWindows(this.flightsGeoJSON)
+        ? flightWindows(this.flightsGeoJSON).filter(
+            ([from, to]) => to >= tripStart && from <= tripEnd,
+          )
         : []
     this.dayRoutesLayer?.setExcludedWindows(windows)
   }

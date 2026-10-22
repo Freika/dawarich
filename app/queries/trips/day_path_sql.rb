@@ -2,11 +2,12 @@
 
 module Trips
   class DayPathSql
-    def initialize(points_scope:, timezone:, gap_seconds:, excluded_sql: nil)
+    def initialize(points_scope:, timezone:, gap_seconds:, excluded_sql: nil, segment_sql: nil)
       @points_scope = points_scope
       @timezone = timezone
       @gap_seconds = gap_seconds.to_i
       @excluded_sql = excluded_sql.presence || 'false'
+      @segment_sql = segment_sql.presence || 'true'
     end
 
     def sql(track_id_sql:)
@@ -35,6 +36,7 @@ module Trips
           AND previous_day = day
           AND sequence - previous_sequence = 1
           AND timestamp - previous_timestamp <= #{@gap_seconds}
+          AND #{@segment_sql}
         GROUP BY day
       SQL
     end

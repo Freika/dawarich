@@ -61,7 +61,7 @@ module Api
             trip = link.resource
             return [] if trip.nil?
 
-            outside_privacy_zones(trip.primary_device_points.order(:timestamp))
+            outside_privacy_zones(trip.shared_route_points.order(:timestamp))
           when :track
             track = link.resource
             return [] if track.nil?

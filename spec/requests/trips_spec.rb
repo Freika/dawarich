@@ -64,6 +64,22 @@ RSpec.describe '/trips', type: :request do
       expect(response).to be_successful
     end
 
+    it 'lists trips shared by the family without loading their paths' do
+      owner = create(:user)
+      family = create(:family, creator: owner)
+      create(:family_membership, :owner, family:, user: owner)
+      create(:family_membership, family:, user:)
+      shared = create(:trip, user: owner, path: 'LINESTRING(13.4 52.5, 13.45 52.52)')
+      create(:shared_link, user: owner, resource_type: :trip, resource_id: shared.id,
+                           settings: { 'audience' => 'family', 'family_id' => family.id, 'show_route' => true })
+
+      queries = capture_sql { get trips_url }
+
+      expect(response.body).to include(shared.name)
+      expect(queries.grep(/FROM "trips"/).none? { |sql| sql.include?('"trips".*') || sql.include?('"trips"."path"') })
+        .to be(true)
+    end
+
     it 'previews recorded routes from tiles without loading the path' do
       trip = create(:trip, user:, path: 'LINESTRING(13.4 52.5, 13.45 52.52, 13.5 52.55)')
 

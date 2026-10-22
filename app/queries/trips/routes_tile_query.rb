@@ -52,7 +52,7 @@ module Trips
         SELECT ST_AsMVT(tile_features.*, #{quote(LAYER_NAME)}, #{EXTENT}, 'geom') AS tile,
           COUNT(*) AS feature_count
         FROM (
-          SELECT track_id, day, #{mvt_geom('source_geom')} AS geom FROM visible_features
+          SELECT day, #{mvt_geom('source_geom')} AS geom FROM visible_features
         ) AS tile_features
         WHERE geom IS NOT NULL
       SQL
@@ -90,7 +90,7 @@ module Trips
           UNION ALL
           SELECT NULL::bigint, to_char(untracked.day, 'YYYY-MM-DD'), #{zone_clip('untracked.path')},
             untracked.start_timestamp, untracked.end_timestamp
-          FROM (#{day_paths(untracked_points_scope).sql(track_id_sql: nil)}) AS untracked
+          FROM (#{untracked_day_paths.sql(track_id_sql: nil)}) AS untracked
           WHERE untracked.path IS NOT NULL
         ), visible_features AS (
           SELECT * FROM features
@@ -126,14 +126,15 @@ module Trips
       conditions.join(' OR ')
     end
 
-    def day_paths(points_scope)
-      Trips::DayPathSql.new(points_scope:, timezone: @timezone, excluded_sql:,
+    def day_paths(points_scope, segment_sql: nil)
+      Trips::DayPathSql.new(points_scope:, timezone: @timezone, excluded_sql:, segment_sql:,
                             gap_seconds: trip.user.safe_settings.minutes_between_routes.to_i * 60)
     end
 
-    def untracked_points_scope
-      @points_scope.where(track_id: nil)
-                   .where("ST_Intersects(points.lonlat::geometry, ST_Transform(#{envelope(UNTRACKED_MARGIN)}, 4326))")
+    def untracked_day_paths
+      day_paths(@points_scope.where(track_id: nil), segment_sql: <<~SQL.squish)
+        ST_Intersects(ST_MakeLine(previous_position, position), ST_Transform(#{envelope(UNTRACKED_MARGIN)}, 4326))
+      SQL
     end
 
     def excluded_sql

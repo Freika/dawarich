@@ -220,7 +220,10 @@ export default class extends Controller {
         dayRoutesLayer: this.dayRoutesLayer,
         element: this.element,
         timezone: this.timezoneValue,
-        loadPoints: () => this.ensurePoints(),
+        loadPoints: async () => {
+          const points = await this.ensurePoints()
+          return this.map ? points : []
+        },
         getPhotos: () =>
           (this.photoMarkers || []).map(({ photo }) => ({
             id: photo.id,

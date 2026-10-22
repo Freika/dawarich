@@ -96,7 +96,10 @@ function setup(t) {
     fetchFlights: () =>
       Promise.resolve({
         type: "FeatureCollection",
-        features: [{ window: [10, 20] }],
+        features: [
+          { window: [1767225600, 1767229200] },
+          { window: [1600000000, 1600003600] },
+        ],
       }),
     initialize: async (...args) => {
       env.initializeCalls.push(args)
@@ -238,7 +241,7 @@ test("flights ask the tiles to leave out the flight windows", async (t) => {
   const { controller, env } = await connected(t)
 
   await controller.toggleFlights()
-  assert.deepEqual(env.tileLayers[0].excluded, [[10, 20]])
+  assert.deepEqual(env.tileLayers[0].excluded, [[1767225600, 1767229200]])
 
   await controller.toggleFlights()
   assert.deepEqual(env.tileLayers[0].excluded, [])
@@ -252,4 +255,14 @@ test("the map target connecting before the controller builds one map", async (t)
   await targetConnected
 
   assert.equal(env.initializeCalls.length, 1)
+})
+
+test("loading points leaves buttons the server disabled switched off", async (t) => {
+  const { controller } = await connected(t)
+  controller.posterBtnTarget.disabled = true
+
+  await controller.ensurePoints()
+
+  assert.equal(controller.posterBtnTarget.disabled, true)
+  assert.equal(controller.replayToggleBtnTarget.disabled, false)
 })

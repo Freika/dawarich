@@ -62,7 +62,9 @@ export default class extends Controller {
     window.addEventListener("trip-plan:focus", this.onPlanFocus)
 
     this.map.on("load", () => {
-      if (this.hasLinesUrlValue) this.loadLines()
+      this.mapLoaded = true
+      if (this.pendingRange) this._renderTiles(...this.pendingRange)
+      else if (this.hasLinesUrlValue) this.loadLines()
       else if (!this.showRoute()) this.showPlan()
     })
   }
@@ -115,14 +117,16 @@ export default class extends Controller {
     if (!this.map || !extent || request !== this.rangeRequest) return
 
     const params = new URLSearchParams({ start_at: startAt, end_at: endAt })
-    this._renderTiles(
+    const tiles = [
       `/api/v1/tiles/tracks/{z}/{x}/{y}.mvt?${params}`,
       "tracks",
       [
         [extent.min_lng, extent.min_lat],
         [extent.max_lng, extent.max_lat],
       ],
-    )
+    ]
+    if (this.mapLoaded) this._renderTiles(...tiles)
+    else this.pendingRange = tiles
   }
 
   showLines() {

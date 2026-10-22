@@ -101,8 +101,9 @@ class Trip < ApplicationRecord
   end
 
   def recording_devices_cache_key
-    ['trip_recording_devices/v1', id, started_at.to_i, ended_at.to_i,
+    ['trip_recording_devices/v2', id, started_at.to_i, ended_at.to_i,
      Points::TileEpoch.etag_component(user_id, started_at.to_i, ended_at.to_i),
+     Tracks::TileEpoch.etag_component(user_id, started_at.to_i, ended_at.to_i),
      user.safe_settings.minutes_between_routes]
   end
 
@@ -129,11 +130,15 @@ class Trip < ApplicationRecord
     end
   end
 
-  def primary_device_points(windows = nil)
-    scope = points.left_joins(:source)
-    return scope unless windows || multiple_recording_devices?
+  def shared_route_points
+    user.plan_restricted? ? primary_device_points.merge(user.scoped_points) : primary_device_points
+  end
 
-    windows = (windows || cached_primary_device_windows).map do |window|
+  def primary_device_points
+    scope = points.left_joins(:source)
+    return scope unless multiple_recording_devices?
+
+    windows = cached_primary_device_windows.map do |window|
       self.class.sanitize_sql_array(['(?, ?::bigint, ?::bigint)',
                                      window[:tracker_id], window[:start_at], window[:end_at]])
     end
