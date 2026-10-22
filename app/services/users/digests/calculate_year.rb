@@ -140,7 +140,8 @@ module Users
       end
 
       def fetch_daily_country_stats
-        start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
+        timezone = user.timezone_iana
+        start_of_year = ActiveSupport::TimeZone[timezone].local(year, 1, 1, 0, 0, 0)
         end_of_year = start_of_year.end_of_year
         lower_bound = if user.plan_restricted?
                         [start_of_year.to_i, user.data_window_start.to_i].max
@@ -150,7 +151,7 @@ module Users
 
         sql = <<~SQL
           SELECT
-            DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
+            DATE(to_timestamp(timestamp) AT TIME ZONE #{ActiveRecord::Base.connection.quote(timezone)}) as point_date,
             country_name,
             MIN(timestamp) as min_timestamp,
             MAX(timestamp) as max_timestamp
