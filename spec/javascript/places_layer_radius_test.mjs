@@ -24,6 +24,10 @@ class BaseLayer {
     this.visible = false
     this.setVisibility(false)
   }
+
+  update(data) {
+    this.data = data
+  }
 }
 
 function recordingMap() {
@@ -37,7 +41,26 @@ function recordingMap() {
   }
 }
 
-const context = { BaseLayer }
+class HtmlLabelManager {
+  constructor() {
+    this.features = []
+    this.visible = true
+  }
+
+  sync(features) {
+    this.features = features
+  }
+
+  setVisibility(visible) {
+    this.visible = visible
+  }
+
+  clear() {
+    this.features = []
+  }
+}
+
+const context = { BaseLayer, HtmlLabelManager }
 vm.createContext(context)
 const source = (await readFile(layerPath, "utf8"))
   .replace(/^import .*\n/gm, "")
@@ -53,7 +76,6 @@ test("Places layer renders the Visit Radius boundary and center together", () =>
     "places-radius-fill",
     "places-radius-outline",
     "places",
-    "places-labels",
   ])
   assert.equal(configs[0].type, "fill")
   assert.equal(configs[1].type, "line")
@@ -68,7 +90,7 @@ test("Place boundaries stay hidden until the boundaries toggle is on", () => {
   assert.equal(map.visibility["places-radius-fill"], "none")
   assert.equal(map.visibility["places-radius-outline"], "none")
   assert.equal(map.visibility.places, "visible")
-  assert.equal(map.visibility["places-labels"], "visible")
+  assert.equal(layer.labels.visible, true)
 
   layer.setBoundariesVisible(true)
   assert.equal(map.visibility["places-radius-fill"], "visible")
@@ -77,6 +99,7 @@ test("Place boundaries stay hidden until the boundaries toggle is on", () => {
   layer.hide()
   assert.equal(map.visibility["places-radius-fill"], "none")
   assert.equal(map.visibility.places, "none")
+  assert.equal(layer.labels.visible, false)
 })
 
 test("Place boundaries follow the saved toggle on first render", () => {
@@ -85,4 +108,25 @@ test("Place boundaries follow the saved toggle on first render", () => {
 
   layer.setVisibility(true)
   assert.equal(map.visibility["places-radius-fill"], "visible")
+})
+
+test("Place labels are drawn once per Place, at its center", () => {
+  const layer = new context.PlacesLayer(recordingMap())
+  const boundary = {
+    type: "Feature",
+    geometry: { type: "Polygon", coordinates: [[[13.4, 52.5]]] },
+    properties: { id: 7, name: "Cafe", featureKind: "boundary" },
+  }
+  const center = {
+    type: "Feature",
+    geometry: { type: "Point", coordinates: [13.4, 52.5] },
+    properties: { id: 7, name: "Cafe", featureKind: "center" },
+  }
+
+  layer.update({ type: "FeatureCollection", features: [boundary, center] })
+
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(layer.labels.features)),
+    JSON.parse(JSON.stringify([center])),
+  )
 })
