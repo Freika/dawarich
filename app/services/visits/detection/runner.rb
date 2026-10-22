@@ -47,6 +47,24 @@ module Visits
 
         @start_at = [@start_at, earliest.to_i].min if earliest
         @end_at = [@end_at, latest.to_i].max if latest
+        widen_window_back_across_silence
+      end
+
+      # A stay can fall silent before the window opens (arrival fixes, a
+      # silent night, departure fixes). Re-detect from its arrival so
+      # GapBridger sees both sides of the silence. Tracking that resumed
+      # elsewhere can't be bridged, so it isn't worth the wider scan.
+      def widen_window_back_across_silence
+        previous = user.visits.machine_detected
+                       .where(ended_at: Time.zone.at(start_at - policy.bridge_cap_s)...Time.zone.at(start_at))
+                       .order(ended_at: :desc).first
+        return unless previous
+
+        next_point = Point.where(user_id: user.id).where('timestamp > ?', previous.ended_at.to_i)
+                          .order(:timestamp).first
+        return unless next_point && within_stay_radius?(previous.center, [next_point.lat, next_point.lon])
+
+        @start_at = previous.started_at.to_i
       end
 
       # Persist runs even with zero stays: detection finding nothing is the
@@ -137,11 +155,13 @@ module Visits
       end
 
       def same_place?(previous, visit)
-        a = previous.center
-        b = visit.center
-        return false unless a&.first && b&.first
+        within_stay_radius?(previous.center, visit.center)
+      end
 
-        Geocoder::Calculations.distance_between(a, b, units: :km) * 1000 <= policy.stay_radius_m
+      def within_stay_radius?(here, there)
+        return false unless here&.first && there&.first
+
+        Geocoder::Calculations.distance_between(here, there, units: :km) * 1000 <= policy.stay_radius_m
       end
 
       def no_points_between?(from_ts, to_ts)
