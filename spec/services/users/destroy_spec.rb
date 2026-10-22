@@ -12,6 +12,12 @@ RSpec.describe Users::Destroy do
     end
 
     context 'with minimal user data' do
+      it 'holds an exclusive user-data lock while deleting associated records' do
+        expect(Users::DataLock).to receive(:with_exclusive).with(user.id).and_call_original
+
+        service.call
+      end
+
       it 'hard deletes the user record' do
         expect { service.call }.to change { User.unscoped.count }.by(-1)
       end
