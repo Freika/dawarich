@@ -302,8 +302,7 @@ RSpec.describe Trip, type: :model do
       end
       expect(queries.size).to eq(1)
 
-      late = recorded_point('watch', 5, 14.01)
-      Points::TileEpoch.bump(user.id, timestamps: [late.timestamp])
+      recorded_point('watch', 5, 14.01)
 
       expect(described_class.find(trip.id).cached_primary_device_windows).not_to eq(first)
     end

@@ -105,10 +105,12 @@ class Trip < ApplicationRecord
   end
 
   def recording_devices_cache_key
-    ['trip_recording_devices/v2', id, started_at.to_i, ended_at.to_i,
-     Points::TileEpoch.etag_component(user_id, started_at.to_i, ended_at.to_i),
-     Tracks::TileEpoch.etag_component(user_id, started_at.to_i, ended_at.to_i),
-     user.safe_settings.minutes_between_routes]
+    @recording_devices_cache_key ||= begin
+      range = { start_at: started_at.to_i, end_at: ended_at.to_i }
+      ['trip_recording_devices/v3', id, started_at.to_i, ended_at.to_i,
+       Points::Revision.for_user(user_id, **range), Tracks::Revision.for_user(user_id, **range),
+       user.safe_settings.minutes_between_routes]
+    end
   end
 
   def plan_geojson

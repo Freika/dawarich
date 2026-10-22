@@ -72,8 +72,7 @@ RSpec.describe 'Api::V1::Tiles::Trips', type: :request do
     get tile_path, headers: auth.merge('If-None-Match' => etag)
     expect(response).to have_http_status(:not_modified)
 
-    late = create(:point, user:, track: nil, timestamp: Time.utc(2026, 1, 2, 9).to_i, lonlat: 'POINT(-140.03 -40)')
-    Points::TileEpoch.bump(user.id, timestamps: [late.timestamp])
+    create(:point, user:, track: nil, timestamp: Time.utc(2026, 1, 2, 9).to_i, lonlat: 'POINT(-140.03 -40)')
     get tile_path, headers: auth.merge('If-None-Match' => etag)
 
     expect(response).to have_http_status(:ok)

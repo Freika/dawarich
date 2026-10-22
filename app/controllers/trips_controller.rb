@@ -166,8 +166,11 @@ class TripsController < ApplicationController
   end
 
   def compute_day_stats
-    cache_key = ['trip_day_stats/v4', @trip.updated_at.to_i, @timezone, *@trip.recording_devices_cache_key]
+    window = (current_user.data_window_start.to_date if current_user.plan_restricted?)
+    cache_key = ['trip_day_stats/v5', @trip.updated_at.to_i, @timezone, window, *@trip.recording_devices_cache_key]
 
-    Rails.cache.fetch(cache_key, expires_in: 1.hour) { @trip.day_stats(@timezone) }
+    Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+      @trip.day_stats(@timezone, points_scope: @trip.plan_scoped_route_points)
+    end
   end
 end

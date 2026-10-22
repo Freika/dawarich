@@ -54,6 +54,14 @@ RSpec.describe 'Api::V1::Shared::Points', type: :request do
       expect(JSON.parse(response.body)).to eq([])
     end
 
+    it 'returns no points when the owner hides the route' do
+      link.update!(settings: link.settings.merge('show_route' => false))
+
+      get "/api/v1/shared/#{link.id}/points"
+
+      expect(JSON.parse(response.body)).to eq([])
+    end
+
     it 'returns [lon, lat, ts] tuples' do
       get "/api/v1/shared/#{link.id}/points"
       body = JSON.parse(response.body)

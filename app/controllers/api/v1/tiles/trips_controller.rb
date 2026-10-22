@@ -51,8 +51,7 @@ class Api::V1::Tiles::TripsController < ApiController
   end
 
   def tile_epoch_component
-    [Tracks::TileEpoch.etag_component(current_api_user.id, cacheable_start_at, cacheable_end_at),
-     @trip.recording_devices_cache_key, @trip.updated_at.to_i]
+    [@trip.recording_devices_cache_key, @trip.updated_at.to_i]
   end
 
   def range_requested?

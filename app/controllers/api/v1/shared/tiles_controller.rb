@@ -71,7 +71,6 @@ module Api
           [
             TILE_SCHEMA_VERSION, link.id, link.updated_at.to_i, trip.updated_at.to_i,
             Digest::SHA256.hexdigest(privacy_zones.to_json),
-            ::Tracks::TileEpoch.etag_component(link.user_id, trip.started_at.to_i, trip.ended_at.to_i),
             trip.recording_devices_cache_key, link.user.timezone_iana,
             (link.user.data_window_start.to_date if link.user.plan_restricted?), params[:z], params[:x], params[:y]
           ]

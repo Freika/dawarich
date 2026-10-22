@@ -140,6 +140,20 @@ RSpec.describe '/trips', type: :request do
       expect(response.body.bytesize).to be < 400_000
     end
 
+    it "lists no days before a Lite user's data window" do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :lite)
+      old = 2.years.ago.change(hour: 10)
+      old_trip = create(:trip, user:, started_at: old.beginning_of_day, ended_at: old.end_of_day,
+                               path: 'LINESTRING(13.4 52.5, 13.5 52.55)', skip_calculation_enqueue: true)
+      create(:point, user:, timestamp: old.to_i, lonlat: 'POINT(13.4 52.5)')
+
+      get trip_url(old_trip)
+
+      wrapper = Nokogiri::HTML(response.body).at_css('[data-controller="trip-maplibre"]')
+      expect(JSON.parse(wrapper['data-trip-maplibre-day-keys-value'])).to eq([])
+    end
+
     it 'renders the recalculate button' do
       get trip_url(trip)
 
