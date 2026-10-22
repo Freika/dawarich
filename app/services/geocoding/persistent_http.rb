@@ -2,7 +2,7 @@
 
 module Geocoding
   class PersistentHttp
-    THREAD_KEY = :geocoding_http_connections
+    THREAD_KEY = :geocoding_http_connection
 
     module Lookup
       private
@@ -13,8 +13,11 @@ module Geocoding
     end
 
     def self.reset!
-      Thread.current[THREAD_KEY]&.each_value { |connection| connection.finish if connection.started? }
+      _key, connection = Thread.current[THREAD_KEY]
       Thread.current[THREAD_KEY] = nil
+      connection.finish if connection&.started?
+    rescue IOError, SystemCallError
+      nil
     end
 
     def initialize(client)
@@ -24,31 +27,29 @@ module Geocoding
     def start(host, port, use_ssl:, open_timeout:, read_timeout:)
       key = [@client.proxy_address, @client.proxy_port, @client.proxy_user, @client.proxy_pass,
              host, port, use_ssl, open_timeout, read_timeout]
-      connections = Thread.current[THREAD_KEY] ||= {}
       completed = false
-      response = yield(connections[key] ||= connect(host, port, use_ssl, open_timeout, read_timeout))
+      response = yield(checkout(key, host, port, use_ssl, open_timeout, read_timeout))
       completed = true
       response
     ensure
-      discard(connections, key) unless completed
+      self.class.reset! unless completed
     end
 
     private
 
-    def discard(connections, key)
-      connection = connections&.delete(key)
-      connection.finish if connection&.started?
-    rescue IOError, SystemCallError
-      nil
-    end
+    def checkout(key, host, port, use_ssl, open_timeout, read_timeout)
+      cached_key, connection = Thread.current[THREAD_KEY]
+      return connection if cached_key == key
 
-    def connect(host, port, use_ssl, open_timeout, read_timeout)
-      @client.new(host, port).tap do |http|
+      self.class.reset!
+      connection = @client.new(host, port).tap do |http|
         http.use_ssl = use_ssl
         http.open_timeout = open_timeout
         http.read_timeout = read_timeout
         http.start
       end
+      Thread.current[THREAD_KEY] = [key, connection]
+      connection
     end
   end
 end

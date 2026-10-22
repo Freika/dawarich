@@ -13,9 +13,7 @@ Sidekiq.configure_server do |config|
   end
 
   config.on(:startup) do
-    Dawarich::ReverseGeocodingLimits.configure!(
-      config, override: ENV['REVERSE_GEOCODING_CONCURRENCY'].presence&.to_i
-    )
+    Dawarich::ReverseGeocodingLimits.configure!(config)
   rescue StandardError => e
     Rails.logger.warn("[ReverseGeocodingLimits] failed to apply: #{e.class}: #{e.message}")
   end

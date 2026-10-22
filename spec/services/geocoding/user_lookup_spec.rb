@@ -10,18 +10,19 @@ RSpec.describe Geocoding::UserLookup do
                    geometry: { type: 'Point', coordinates: [12.3712, 51.3402] } }] }.to_json
   end
 
-  let(:connections) { Queue.new }
+  let(:connections) { [] }
   let(:requests) { Queue.new }
-  let(:handler_delay) { ->(_latitude) { 0 } }
+  let(:release) { Queue.new }
+  let(:held_latitude) { nil }
   let(:server) do
     WEBrick::HTTPServer.new(
-      BindAddress: '127.0.0.1', Port: 0, RequestTimeout: 0.5,
+      BindAddress: '127.0.0.1', Port: 0, RequestTimeout: 10,
       Logger: WEBrick::Log.new(File::NULL), AccessLog: [],
       AcceptCallback: ->(socket) { connections << socket }
     ).tap do |http|
       http.mount_proc('/') do |request, response|
         requests << request.request_line
-        sleep(handler_delay.call(request.query['lat']))
+        release.pop if request.query['lat'] == held_latitude
         response['Content-Type'] = 'application/json'
         response.body = photon_body(request.query['lat'])
       end
@@ -35,6 +36,7 @@ RSpec.describe Geocoding::UserLookup do
     thread = Thread.new { server.start }
     example.run
   ensure
+    release << true
     server.shutdown
     thread.join
     Geocoding::PersistentHttp.reset!
@@ -50,6 +52,16 @@ RSpec.describe Geocoding::UserLookup do
     described_class.build(lookup_config).search(Geocoder::Query.new([latitude, longitude], lookup: :photon))
   end
 
+  def eventually(seconds = 2)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds
+    loop do
+      return true if yield
+      return false if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+
+      Thread.pass
+    end
+  end
+
   it 'sends consecutive lookups over one connection' do
     3.times { |i| expect(reverse(51.34 + i, 12.37)).not_to be_empty }
 
@@ -59,35 +71,47 @@ RSpec.describe Geocoding::UserLookup do
 
   it 'reconnects after the server drops an idle connection' do
     reverse(51.34, 12.37)
-    sleep 1
+    connections.first.close
 
     expect(reverse(51.35, 12.37).first.city).to eq('51.35')
     expect(connections.size).to eq(2)
   end
 
-  context 'when the server is slow' do
-    let(:handler_delay) { ->(_latitude) { 0.6 } }
+  context 'when the server does not answer in time' do
+    let(:held_latitude) { '1.0' }
 
     it 'raises a lookup timeout and recovers on the next lookup' do
       Geocoder.configure(timeout: 0.2)
-      expect { reverse(51.34, 12.37) }.to raise_error(Geocoder::LookupTimeout)
+      expect { Timeout.timeout(2) { reverse(1.0, 12.37) } }.to raise_error(Geocoder::LookupTimeout)
+      release << true
 
       Geocoder.configure(timeout: 5)
-      expect(reverse(51.35, 12.37)).not_to be_empty
+      expect(reverse(2.0, 12.37).first.city).to eq('2.0')
     ensure
       Geocoder.configure(timeout: 5)
     end
   end
 
   context 'when a lookup is interrupted while waiting for its response' do
-    let(:handler_delay) { ->(latitude) { latitude == '1.0' ? 0.5 : 0 } }
+    let(:held_latitude) { '1.0' }
 
     it 'does not hand that response to the next lookup' do
-      expect { Timeout.timeout(0.1) { reverse(1.0, 12.37) } }.to raise_error(Timeout::Error)
-      sleep 0.7
+      expect { Timeout.timeout(0.2) { reverse(1.0, 12.37) } }.to raise_error(Timeout::Error)
+      release << true
 
       expect(reverse(2.0, 12.37).first.city).to eq('2.0')
     end
+  end
+
+  it 'closes the previous connection when the lookup settings change' do
+    reverse(51.34, 12.37)
+    Geocoder.configure(timeout: 4)
+
+    reverse(51.35, 12.37)
+
+    expect(eventually { connections.first.closed? }).to be(true)
+  ensure
+    Geocoder.configure(timeout: 5)
   end
 
   it 'routes through a configured proxy' do

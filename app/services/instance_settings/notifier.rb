@@ -25,6 +25,7 @@ module InstanceSettings
         return unless parsed.is_a?(Hash) && parsed['key'].present?
 
         Resolver.reset!
+        Dawarich::ReverseGeocodingLimits.refresh! if Sidekiq.server?
       rescue JSON::ParserError => e
         Rails.logger.warn("[InstanceSettings] ignoring malformed notification: #{e.message}")
       end
