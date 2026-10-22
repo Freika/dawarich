@@ -1,0 +1,81 @@
+# Dawarich Cloud production on Dokploy (Raw Compose).
+# Database and Redis are external. Replicas default to zero; migrations run only
+# through the one-off release profile, never on container start.
+name: dawarich-production
+
+x-app: &app
+  image: ${DAWARICH_IMAGE:?set DAWARICH_IMAGE to an immutable image digest}
+  pull_policy: always
+  init: true
+  entrypoint: ["cloud-entrypoint.sh"]
+  env_file: .env
+  environment:
+    RAILS_ENV: production
+    RACK_ENV: production
+    SELF_HOSTED: "false"
+    APPLICATION_PROTOCOL: https
+    DOMAIN: ${DOMAIN:?set DOMAIN}
+    APPLICATION_HOSTS: ${APPLICATION_HOSTS:?set APPLICATION_HOSTS}
+    DAWARICH_URL: https://${DOMAIN:?set DOMAIN}
+    MANAGER_URL: ${MANAGER_URL:?set MANAGER_URL}
+    STORAGE_BACKEND: ${STORAGE_BACKEND:?set STORAGE_BACKEND to the live production value}
+    DATABASE_HOST: ${DATABASE_HOST:?set DATABASE_HOST}
+    DATABASE_PORT: ${DATABASE_PORT:?set DATABASE_PORT}
+    DATABASE_NAME: ${DATABASE_NAME:?set DATABASE_NAME}
+    DATABASE_USERNAME: ${DATABASE_USERNAME:?set DATABASE_USERNAME}
+    DATABASE_PASSWORD: ${DATABASE_PASSWORD:?set DATABASE_PASSWORD}
+    # PgBouncer transaction pooling cannot hold session advisory locks.
+    DATABASE_ADVISORY_LOCKS: "false"
+    REDIS_URL: ${REDIS_URL:?set REDIS_URL}
+    RAILS_MASTER_KEY: ${RAILS_MASTER_KEY:?set RAILS_MASTER_KEY}
+    SECRET_KEY_BASE: ${SECRET_KEY_BASE:?set SECRET_KEY_BASE}
+    AUTH_JWT_SECRET_KEY: ${AUTH_JWT_SECRET_KEY:?set AUTH_JWT_SECRET_KEY}
+    JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY}
+    SUBSCRIPTION_WEBHOOK_SECRET: ${SUBSCRIPTION_WEBHOOK_SECRET:?set SUBSCRIPTION_WEBHOOK_SECRET}
+    SIDEKIQ_CRON_POLL_INTERVAL: ${SIDEKIQ_CRON_POLL_INTERVAL:?set 0 while Dokku workers own schedules, 30 after the handoff}
+    SIDEKIQ_METRICS_URL: http://worker:9394/metrics
+  networks:
+    - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
+
+services:
+  web:
+    <<: *app
+    command: ["puma", "-C", "config/puma.rb"]
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--header", "Host: ${DOMAIN:?set DOMAIN}", "--header", "X-Forwarded-Proto: https", "http://127.0.0.1:3000/api/v1/ready"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+    restart: unless-stopped
+    stop_grace_period: 60s
+    deploy:
+      replicas: ${WEB_REPLICAS:-0}
+
+  worker:
+    <<: *app
+    command: ["sidekiq", "-C", "config/sidekiq.yml"]
+    expose:
+      - "9394"
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f '[s]idekiq' >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+    restart: unless-stopped
+    stop_grace_period: 120s
+    deploy:
+      replicas: ${WORKER_REPLICAS:-0}
+
+  release:
+    <<: *app
+    profiles: ["release"]
+    command: ["rails", "db:migrate"]
+    restart: "no"
