@@ -12,6 +12,15 @@ class Trip < ApplicationRecord
   DEVICE_SQL = 'COALESCE(CASE WHEN points.source_id IS NULL THEN points.tracker_id ' \
                "ELSE point_sources.tracker_id END, '')"
 
+  DAY_ENDPOINT_COLUMNS = [
+    'ST_XMin(ST_Extent(points.lonlat::geometry))', 'ST_YMin(ST_Extent(points.lonlat::geometry))',
+    'ST_XMax(ST_Extent(points.lonlat::geometry))', 'ST_YMax(ST_Extent(points.lonlat::geometry))',
+    '(ARRAY_AGG(ST_X(points.lonlat::geometry) ORDER BY points.timestamp))[1]',
+    '(ARRAY_AGG(ST_Y(points.lonlat::geometry) ORDER BY points.timestamp))[1]',
+    '(ARRAY_AGG(ST_X(points.lonlat::geometry) ORDER BY points.timestamp DESC))[1]',
+    '(ARRAY_AGG(ST_Y(points.lonlat::geometry) ORDER BY points.timestamp DESC))[1]'
+  ].map { |column| Arel.sql(column) }.freeze
+
   has_rich_text :description
 
   belongs_to :user
@@ -83,33 +92,48 @@ class Trip < ApplicationRecord
     @primary_device_windows ||= build_primary_device_windows
   end
 
+  def cached_primary_device_windows
+    recording_devices[:windows]
+  end
+
+  def multiple_recording_devices?
+    recording_devices[:multiple]
+  end
+
+  def recording_devices_cache_key
+    ['trip_recording_devices/v1', id, started_at.to_i, ended_at.to_i,
+     Points::TileEpoch.etag_component(user_id, started_at.to_i, ended_at.to_i),
+     user.safe_settings.minutes_between_routes]
+  end
+
   def plan_geojson
     Trips::PlanGeojson.new(self).call
   end
 
-  def day_stats(timezone)
+  def day_stats(timezone, points_scope: primary_device_points)
     day_expr = "(to_timestamp(points.timestamp) AT TIME ZONE #{self.class.connection.quote(timezone)})::date"
-    rows = primary_device_points.reorder(nil).group(Arel.sql(day_expr)).pluck(
+    rows = points_scope.reorder(nil).group(Arel.sql(day_expr)).pluck(
       Arel.sql(day_expr),
       Arel.sql('MIN(points.timestamp)'),
       Arel.sql('MAX(points.timestamp)'),
-      Arel.sql('COALESCE(ST_Length(ST_MakeLine(points.lonlat::geometry ORDER BY points.timestamp)::geography), 0)')
+      Arel.sql('COALESCE(ST_Length(ST_MakeLine(points.lonlat::geometry ORDER BY points.timestamp)::geography), 0)'),
+      *DAY_ENDPOINT_COLUMNS
     )
 
-    rows.each_with_object({}) do |(day, first_ts, last_ts, distance_m), stats|
+    rows.each_with_object({}) do |(day, first_ts, last_ts, distance_m, *geometry), stats|
       stats[day] = {
         first_time: Time.at(first_ts).in_time_zone(timezone),
         last_time: Time.at(last_ts).in_time_zone(timezone),
         distance_m: distance_m.to_f
-      }
+      }.merge(day_geometry(geometry))
     end
   end
 
-  def primary_device_points
+  def primary_device_points(windows = nil)
     scope = points.left_joins(:source)
-    return scope if device_windows.map(&:first).uniq.size <= 1
+    return scope unless windows || multiple_recording_devices?
 
-    windows = primary_device_windows.map do |window|
+    windows = (windows || cached_primary_device_windows).map do |window|
       self.class.sanitize_sql_array(['(?, ?::bigint, ?::bigint)',
                                      window[:tracker_id], window[:start_at], window[:end_at]])
     end
@@ -176,6 +200,21 @@ class Trip < ApplicationRecord
     else
       windows << { tracker_id:, start_at:, end_at: }
     end
+  end
+
+  def recording_devices
+    @recording_devices ||= Rails.cache.fetch(recording_devices_cache_key, expires_in: 1.hour) do
+      { windows: primary_device_windows, multiple: device_windows.map(&:first).uniq.size > 1 }
+    end
+  end
+
+  def day_geometry(values)
+    min_lon, min_lat, max_lon, max_lat, first_lon, first_lat, last_lon, last_lat = values.map(&:to_f)
+    {
+      bounds: [[min_lon, min_lat], [max_lon, max_lat]],
+      first_coordinates: [first_lon, first_lat],
+      last_coordinates: [last_lon, last_lat]
+    }
   end
 
   def device_windows

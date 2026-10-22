@@ -281,6 +281,69 @@ RSpec.describe Trip, type: :model do
                      lonlat: "POINT(#{longitude} 52)")
     end
 
+    def window_queries(&)
+      queries = []
+      callback = lambda do |*, payload|
+        queries << payload[:sql] if payload[:sql].include?('session_number')
+      end
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record', &)
+      queries
+    end
+
+    it 'computes the primary device windows once and reuses them until points change' do
+      recorded_point('phone', 1, 13)
+      recorded_point('phone', 2, 13.01)
+      recorded_point('watch', 3, 14)
+
+      first = nil
+      queries = window_queries do
+        first = described_class.find(trip.id).cached_primary_device_windows
+        described_class.find(trip.id).cached_primary_device_windows
+      end
+      expect(queries.size).to eq(1)
+
+      late = recorded_point('watch', 5, 14.01)
+      Points::TileEpoch.bump(user.id, timestamps: [late.timestamp])
+
+      expect(described_class.find(trip.id).cached_primary_device_windows).not_to eq(first)
+    end
+
+    it 'selects primary device points from cached windows without scanning for windows' do
+      phone = [recorded_point('phone', 1, 13), recorded_point('phone', 2, 13.01)]
+      recorded_point('watch', 1, 14)
+      described_class.find(trip.id).cached_primary_device_windows
+
+      ids = nil
+      queries = window_queries { ids = described_class.find(trip.id).primary_device_points.pluck(:id) }
+
+      expect(queries).to be_empty
+      expect(ids).to eq(phone.map(&:id))
+    end
+
+    it 'reports the bounds and endpoints of each day' do
+      recorded_point('phone', 1, 13)
+      recorded_point('phone', 2, 13.5)
+      recorded_point('phone', 25, 14)
+      recorded_point('phone', 26, 14.25)
+
+      stats = trip.day_stats('UTC')
+
+      expect(stats[Date.new(2026, 1, 1)]).to include(
+        bounds: [[13.0, 52.0], [13.5, 52.0]], first_coordinates: [13.0, 52.0], last_coordinates: [13.5, 52.0]
+      )
+      expect(stats[Date.new(2026, 1, 2)][:bounds]).to eq([[14.0, 52.0], [14.25, 52.0]])
+    end
+
+    it 'computes day stats from a narrower points scope' do
+      kept = recorded_point('phone', 1, 13)
+      hidden = recorded_point('phone', 2, 13.5)
+
+      stats = trip.day_stats('UTC', points_scope: trip.primary_device_points.where.not(id: hidden.id))
+
+      expect(stats[Date.new(2026, 1, 1)]).to include(bounds: [[13.0, 52.0], [13.0, 52.0]],
+                                                     last_coordinates: [kept.lon, kept.lat])
+    end
+
     it 'keeps both remainders when recordings share their handoff timestamp' do
       first = [recorded_point('phone', 1, 13), recorded_point('phone', 2, 13.01), recorded_point('phone', 3, 13.02)]
       recorded_point('watch', 3, 14)

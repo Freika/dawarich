@@ -165,9 +165,7 @@ class TripsController < ApplicationController
   end
 
   def compute_day_stats
-    max_points_updated = @trip.points.maximum(:updated_at).to_i
-    cache_key = ['trip_day_stats/v3', @trip.id, @trip.updated_at.to_i, max_points_updated, @timezone,
-                 @trip.user.safe_settings.minutes_between_routes]
+    cache_key = ['trip_day_stats/v4', @trip.updated_at.to_i, @timezone, *@trip.recording_devices_cache_key]
 
     Rails.cache.fetch(cache_key, expires_in: 1.hour) { @trip.day_stats(@timezone) }
   end
