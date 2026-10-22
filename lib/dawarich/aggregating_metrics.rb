@@ -33,6 +33,7 @@ module Dawarich
     def call(env)
       status, headers, body = @local_app.call(env)
       return [status, headers, body] unless status == 200
+      return [status, headers, body] if EmbeddedSidekiq.enabled? && ENV['SIDEKIQ_METRICS_URL'].blank?
 
       local = read_body(body)
       remote = fetch_remote_metrics
