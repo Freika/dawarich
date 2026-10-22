@@ -2,17 +2,17 @@
 
 <%= t('.hi') %> <%= @family.owner.email %>!
 
-<%= t('.we_re_excited_to_let_you_know_that') %> <%= @user.email %> <%= t('.has_just_joined_your_family') %><%= @family.name %><%= t('.on_dawarich') %>
+<%= t('.member_joined_family_text', email: @user.email, family: @family.name) %>
 
 <%= t('.now_you_can') %>
-<%= t('.see_2') %> <%= @user.email %><%= t('.s_current_location_if_they_ve_enabled_sharing') %>
+<%= t('.see_current_location_text', email: @user.email) %>
 <%= t('.stay_connected_with_your_growing_family_2') %>
-<%= t('.share_your_location_with_2') %> <%= @user.email %>
+<%= t('.share_location_with_text', email: @user.email) %>
 <%= t('.manage_family_members_and_settings_from_your_family_page_2') %>
 
 <%= t('.tip_you_can_manage_your_family_members_and_privacy_settings') %>
 
-<%= t('.your_family_now_has') %> <%= @family.member_count %> <%= t('.member') %><%= @family.member_count == 1 ? '' : 's' %>.
+<%= t('.member_count', count: @family.member_count) %>
 
 <%= t('.best_regards') %>
 <%= t('.evgenii_from_dawarich') %>

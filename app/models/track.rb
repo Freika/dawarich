@@ -33,9 +33,18 @@ class Track < ApplicationRecord
   after_update :recalculate_path_and_distance!, if: lambda {
     points.exists? && (saved_change_to_start_at? || saved_change_to_end_at?)
   }
-  after_create :broadcast_track_created
-  after_update :broadcast_track_updated
-  after_destroy :broadcast_track_destroyed
+  after_create_commit :broadcast_track_created
+  after_update_commit :broadcast_track_updated
+  after_destroy_commit :broadcast_track_destroyed
+
+  # Track tiles carry this row's geometry and properties, so any write must
+  # invalidate the tile epoch. Previous start/end years are collected in
+  # before_update (not read from saved_changes at commit time) because the
+  # recalculate_path_and_distance! callback performs a nested save that
+  # overwrites saved_changes before after_commit fires.
+  before_update :collect_tile_epoch_stamps
+  after_commit :bump_tile_epoch, on: %i[create destroy]
+  after_commit :flush_tile_epoch_stamps, on: :update
 
   scope :by_mode, ->(mode) { where(dominant_mode: mode) }
   scope :with_unknown_mode, -> { where(dominant_mode: :unknown) }
@@ -62,13 +71,33 @@ class Track < ApplicationRecord
     ids = Array(ids).uniq
     return 0 if ids.empty?
 
-    owners = where(id: ids).pluck(:id, :user_id)
-    return 0 if owners.empty?
+    rows = []
+    transaction do
+      rows = where(id: ids).where.missing(:points)
+                           .lock('FOR UPDATE OF tracks')
+                           .pluck(:id, :user_id, :start_at, :end_at)
+      next if rows.empty?
 
-    TrackSegment.where(track_id: ids).delete_all
-    deleted = where(id: ids).delete_all
+      orphan_ids = rows.map(&:first)
+      TrackSegment.where(track_id: orphan_ids).delete_all
+      where(id: orphan_ids).delete_all
+    end
+    return 0 if rows.empty?
+
+    owners = rows.map { |id, user_id, _, _| [id, user_id] }
+    deleted = rows.size
+    # delete_all skips after_commit, so the epoch bump (like the broadcast
+    # below) must be replayed explicitly or deleted tracks 304 forever.
+    rows.group_by { |_, user_id, _, _| user_id }.each do |user_id, user_rows|
+      stamps = user_rows.flat_map { |_, _, start_at, end_at| [start_at.to_i, end_at.to_i] }
+      # Range covers multi-year interiors; still one bump call per user.
+      Tracks::TileEpoch.bump_range(user_id, stamps.min, stamps.max)
+    end
     broadcast_destroyed(owners)
     deleted
+  rescue ActiveRecord::InvalidForeignKey
+    Rails.logger.info("event=tracks.orphan_delete_aborted count=#{ids.size}")
+    0
   end
 
   def self.broadcast_destroyed(track_owner_pairs)
@@ -101,17 +130,17 @@ class Track < ApplicationRecord
       .first
   end
 
+  # Splits on time gaps only, ignoring distance for map parity, as in Tracks::Segmentation.
   def self.segment_points_in_sql(user_id, start_timestamp, end_timestamp, time_threshold_minutes,
-                                 distance_threshold_meters, untracked_only: false)
+                                 untracked_only: false)
     time_threshold_seconds = time_threshold_minutes * 60
 
-    where_clause = if untracked_only
-                     'WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3 AND track_id IS NULL'
-                   else
-                     'WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3'
-                   end
-    where_clause += ' AND (anomaly IS NOT TRUE)'
+    stop_break_ids = stationary_break_point_ids(user_id, start_timestamp, end_timestamp, time_threshold_seconds)
 
+    # Tracked points keep realtime boundaries in place: without them, untracked points
+    # on both sides of an already tracked stretch would join into one segment.
+    # Filter them out only after calculating the segment boundaries, and break wherever
+    # the track changes so the untracked points around a tracked stretch stay apart.
     sql = <<~SQL
       WITH points_with_gaps AS (
         SELECT
@@ -119,6 +148,8 @@ class Track < ApplicationRecord
           timestamp,
           lonlat,
           tracker_id,
+          track_id,
+          LAG(track_id) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_track_id,
           LAG(lonlat) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_lonlat,
           LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_timestamp,
           ST_Distance(
@@ -127,17 +158,19 @@ class Track < ApplicationRecord
           ) as distance_meters,
           (timestamp - LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp)) as time_diff_seconds
         FROM points
-        #{where_clause}
+        WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3 AND (anomaly IS NOT TRUE)
       ),
       segment_breaks AS (
-        SELECT *,
+        SELECT points_with_gaps.*,
           CASE
             WHEN prev_lonlat IS NULL THEN 1
             WHEN time_diff_seconds > $4 THEN 1
-            WHEN distance_meters > $5 THEN 1
+            WHEN stop_breaks.id IS NOT NULL THEN 1
+            #{'WHEN track_id IS DISTINCT FROM prev_track_id THEN 1' if untracked_only}
             ELSE 0
           END as is_break
         FROM points_with_gaps
+        LEFT JOIN unnest($5::bigint[]) AS stop_breaks(id) ON stop_breaks.id = points_with_gaps.id
       ),
       segments AS (
         SELECT *,
@@ -153,6 +186,7 @@ class Track < ApplicationRecord
         max(timestamp) as end_timestamp,
         sum(COALESCE(distance_meters, 0)) as total_distance_meters
       FROM segments
+      #{'WHERE track_id IS NULL' if untracked_only}
       GROUP BY tracker_id, segment_id
       HAVING count(*) >= 2
       ORDER BY tracker_id NULLS FIRST, segment_id
@@ -161,7 +195,7 @@ class Track < ApplicationRecord
     results = Point.connection.exec_query(
       sql,
       'segment_points_in_sql',
-      [user_id, start_timestamp, end_timestamp, time_threshold_seconds, distance_threshold_meters]
+      [user_id, start_timestamp, end_timestamp, time_threshold_seconds, "{#{stop_break_ids.join(',')}}"]
     )
 
     # Convert results to segment data
@@ -181,15 +215,30 @@ class Track < ApplicationRecord
     segments_data
   end
 
+  # Stop detection reads tracked points and the history before the window too, so a
+  # stop is recognized however the realtime lookback window cuts it.
+  def self.stationary_break_point_ids(user_id, start_timestamp, end_timestamp, threshold_seconds)
+    history_start = start_timestamp - Tracks::StationaryStops.history_seconds(threshold_seconds)
+
+    Point.not_anomaly
+         .where(user_id: user_id, timestamp: history_start..end_timestamp)
+         .order(:tracker_id, :timestamp)
+         .pluck(:tracker_id, :id, :timestamp, Arel.sql('ST_X(lonlat::geometry)'), Arel.sql('ST_Y(lonlat::geometry)'))
+         .chunk_while { |previous, row| previous[0] == row[0] }
+         .flat_map do |rows|
+           Tracks::StationaryStops.break_indexes(rows.map { |row| row[2..] }, threshold_seconds)
+                                  .map { |index| rows[index][1] }
+         end
+  end
+
   # Get actual Point objects for each segment with pre-calculated distances
   def self.get_segments_with_points(user_id, start_timestamp, end_timestamp, time_threshold_minutes,
-                                    distance_threshold_meters, untracked_only: false)
+                                    untracked_only: false)
     segments_data = segment_points_in_sql(
       user_id,
       start_timestamp,
       end_timestamp,
       time_threshold_minutes,
-      distance_threshold_meters,
       untracked_only: untracked_only
     )
 
@@ -221,17 +270,19 @@ class Track < ApplicationRecord
 
   MOVING_DISTANCE_THRESHOLD_M = 50
 
+  # update_column skips after_commit, and dominant_mode is a tile property —
+  # bump the epoch explicitly or annotated tracks 304 with the old mode.
   def update_dominant_mode!
     segments = track_segments.reload
-    return update_column(:dominant_mode, :unknown) if segments.empty?
-
-    update_column(:dominant_mode, self.class.pick_dominant_mode(segments) || :unknown)
+    mode = segments.empty? ? :unknown : (self.class.pick_dominant_mode(segments) || :unknown)
+    update_column(:dominant_mode, mode)
+    Tracks::TileEpoch.bump_range(user_id, start_at.to_i, end_at.to_i)
   end
 
   def self.pick_dominant_mode(segments)
     distance_by_mode = Hash.new(0)
     duration_by_mode = Hash.new(0)
-    segments.each do |s|
+    segments.sort_by { |segment| segment.id || Float::INFINITY }.each do |s|
       distance_by_mode[s.transportation_mode] += s.distance.to_i
       duration_by_mode[s.transportation_mode] += s.duration.to_i
     end
@@ -258,18 +309,54 @@ class Track < ApplicationRecord
     Rails.logger.info "[Track#broadcast_geojson_updated] Broadcast complete for track #{id}"
   end
 
+  # Used by composite mutations which publish a richer, versioned event after
+  # commit. The flag is instance-local and consumed by the next update commit.
+  def suppress_next_update_broadcast!
+    @suppress_next_update_broadcast = true
+  end
+
   private
+
+  def bump_tile_epoch
+    Tracks::TileEpoch.bump_range(user_id, start_at.to_i, end_at.to_i)
+  rescue StandardError => e
+    report_post_commit_failure('tile_epoch', e)
+  end
+
+  def collect_tile_epoch_stamps
+    stamps = (@tile_epoch_stamps ||= [])
+    [start_at_was, end_at_was, start_at, end_at].compact.each { |time| stamps << time.to_i }
+  end
+
+  def flush_tile_epoch_stamps
+    stamps = @tile_epoch_stamps
+    @tile_epoch_stamps = nil
+    return bump_tile_epoch if stamps.blank?
+
+    # Range, not per-stamp years: a multi-year track's INTERIOR years must
+    # invalidate too, or a moved track 304s inside them.
+    Tracks::TileEpoch.bump_range(user_id, stamps.min, stamps.max)
+  rescue StandardError => e
+    report_post_commit_failure('tile_epoch', e)
+  end
 
   def broadcast_track_created
     broadcast_track_update('created')
   end
 
   def broadcast_track_updated
+    if @suppress_next_update_broadcast
+      @suppress_next_update_broadcast = false
+      return
+    end
+
     broadcast_track_update('updated')
   end
 
   def broadcast_track_destroyed
     TracksChannel.broadcast_to(user, { action: 'destroyed', track_id: id })
+  rescue StandardError => e
+    report_post_commit_failure('broadcast_destroyed', e)
   end
 
   def broadcast_track_update(action)
@@ -279,5 +366,24 @@ class Track < ApplicationRecord
         track: TrackSerializer.new(self).call
       }
     )
+  rescue StandardError => e
+    report_post_commit_failure("broadcast_#{action}", e)
+  end
+
+  def report_post_commit_failure(event, error)
+    Rails.logger.error(
+      "event=track.post_commit_failed operation=#{event} error_class=#{error.class} track_id=#{id}"
+    )
+    ActiveSupport::Notifications.instrument('track.post_commit_failure', operation: event)
+    record_post_commit_failure_metric(event)
+    ExceptionReporter.call(error, "Failed Track post-commit #{event}")
+  rescue StandardError
+    nil
+  end
+
+  def record_post_commit_failure_metric(event)
+    Yabeda.dawarich_map.post_commit_failures_total.increment({ operation: "track_#{event}" })
+  rescue StandardError => e
+    Rails.logger.warn("event=track.metrics_failed error_class=#{e.class}")
   end
 end

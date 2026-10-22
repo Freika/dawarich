@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { MapInitializer } from "controllers/maps/maplibre/map_initializer"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
+import { TripPlanLayer } from "maps_maplibre/layers/trip_plan_layer"
 import { RouteSegmenter } from "maps_maplibre/utils/route_segmenter"
 
 /**
@@ -8,10 +9,15 @@ import { RouteSegmenter } from "maps_maplibre/utils/route_segmenter"
  * Renders the trip path as a single line. Used as a static, non-interactive
  * preview on trip cards, and as an interactive live preview on the trip
  * form, where it redraws when the date range changes (coordinates-updated).
+ * A trip without a recorded path shows its plan instead, when it has one.
  */
 export default class extends Controller {
   static values = {
     path: String,
+    lines: String,
+    linesUrl: String,
+    plan: String,
+    numbered: { type: Boolean, default: false },
     mapStyle: { type: String, default: "light" },
     interactive: { type: Boolean, default: false },
   }
@@ -42,28 +48,98 @@ export default class extends Controller {
       this.onCoordinatesUpdated,
     )
 
+    this.onPlanFocus = (event) => {
+      const { longitude, latitude } = event.detail || {}
+      if (Number.isFinite(longitude) && Number.isFinite(latitude))
+        this.planLayer?.focus(longitude, latitude)
+    }
+    window.addEventListener("trip-plan:focus", this.onPlanFocus)
+
     this.map.on("load", () => {
-      this.showRoute()
+      if (this.hasLinesUrlValue) this.loadLines()
+      else if (!this.showRoute()) this.showPlan()
     })
   }
 
+  async loadLines() {
+    let lines
+    try {
+      const response = await fetch(this.linesUrlValue, {
+        headers: { Accept: "application/json" },
+      })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      lines = (await response.json()).lines || []
+    } catch (error) {
+      console.error("Failed to load routes:", error)
+      return
+    }
+    if (!this.map) return
+
+    if (lines.length) {
+      this.linesValue = JSON.stringify(lines)
+      this.showLines()
+    } else {
+      this.element.closest("[data-map-wrapper]")?.remove()
+    }
+  }
+
   showRoute() {
-    if (!this.hasPathValue || !this.pathValue) return
+    if (this.showLines()) return true
+    if (!this.hasPathValue || !this.pathValue) return false
 
     let coordinates
     try {
       coordinates = JSON.parse(this.pathValue)
     } catch (_e) {
-      return
+      return false
     }
 
-    if (!coordinates.length) return
+    if (!coordinates.length) return false
 
     const segment = coordinates.map(([lon, lat]) => ({
       longitude: lon,
       latitude: lat,
     }))
     this._renderSegment(segment)
+    return true
+  }
+
+  showLines() {
+    if (!this.hasLinesValue || !this.linesValue) return false
+
+    let lines
+    try {
+      lines = JSON.parse(this.linesValue)
+    } catch (_e) {
+      return false
+    }
+    if (!lines.length) return false
+
+    this._renderLines(
+      lines.flatMap((line) =>
+        RouteSegmenter.unwrapCoordinates(
+          line.map(([lon, lat]) => ({ longitude: lon, latitude: lat })),
+        ),
+      ),
+    )
+    return true
+  }
+
+  showPlan() {
+    if (!this.hasPlanValue || !this.planValue) return
+
+    let plan
+    try {
+      plan = JSON.parse(this.planValue)
+    } catch (_e) {
+      return
+    }
+    if (!plan?.features?.length) return
+
+    this.planLayer = new TripPlanLayer(this.map, {
+      numbered: this.numberedValue,
+    })
+    this.planLayer.add(plan)
   }
 
   /**
@@ -87,8 +163,13 @@ export default class extends Controller {
 
   _renderSegment(segment) {
     if (!segment.length) return
+    this.planLayer?.remove()
+    this.planLayer = null
 
-    const lineStrings = RouteSegmenter.unwrapCoordinates(segment)
+    this._renderLines(RouteSegmenter.unwrapCoordinates(segment))
+  }
+
+  _renderLines(lineStrings) {
     const data = {
       type: "Feature",
       geometry: {
@@ -138,6 +219,7 @@ export default class extends Controller {
       "coordinates-updated",
       this.onCoordinatesUpdated,
     )
+    window.removeEventListener("trip-plan:focus", this.onPlanFocus)
     if (this.map) {
       this.map.remove()
       this.map = null

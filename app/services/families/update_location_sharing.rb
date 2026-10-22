@@ -3,12 +3,13 @@
 class Families::UpdateLocationSharing
   Result = Struct.new(:success?, :payload, :status, keyword_init: true)
 
-  def initialize(user:, enabled:, duration:, share_history: nil, history_window: nil)
+  def initialize(user:, enabled:, duration:, share_history: nil, history_window: nil, history_before_sharing: nil)
     @user = user
     @enabled_param = enabled
     @duration_param = duration
     @share_history_param = share_history
     @history_window_param = history_window
+    @history_before_sharing_param = history_before_sharing
     @boolean_caster = ActiveModel::Type::Boolean.new
   end
 
@@ -27,11 +28,13 @@ class Families::UpdateLocationSharing
   attr_reader :user, :enabled_param, :duration_param, :share_history_param, :history_window_param, :boolean_caster
 
   def update_location_sharing
+    consent = @history_before_sharing_param
     user.update_family_location_sharing!(
       enabled?,
       duration: duration_param,
       share_history: share_history_param.nil? ? nil : boolean_caster.cast(share_history_param),
-      history_window: history_window_param
+      history_window: history_window_param,
+      history_before_sharing: consent.nil? ? nil : boolean_caster.cast(consent)
     )
   end
 

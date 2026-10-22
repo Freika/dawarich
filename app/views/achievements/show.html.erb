@@ -1,0 +1,147 @@
+<% content_for :title, @set.name %>
+<% collection_label = t("achievements.ui.#{@set.level == :country ? 'countries' : 'regions'}") %>
+
+<%= tag.div class: 'w-full my-5 ach-page', data: achievement_modal_data do %>
+  <nav class="breadcrumbs text-sm mb-3" aria-label="<%= t('achievements.ui.breadcrumb') %>">
+    <ul>
+      <li><%= link_to t('achievements.ui.title'), achievements_path %></li>
+      <% if @set.parent_key %>
+        <li><%= link_to @set.definition.continent, achievement_path(@set.parent_key) %></li>
+      <% end %>
+      <li aria-current="page"><%= @set.place %></li>
+    </ul>
+  </nav>
+  <div class="ach-layout">
+    <%= render 'sidebar', continents: @continents, summary: @summary, active_key: @sidebar_key %>
+    <div class="ach-main">
+      <div class="ach-set-header">
+        <%= render layout: 'shared/page_header', locals: { title: @set.name } do %>
+          <%= link_to '#collection', class: 'btn btn-sm btn-ghost ach-collection-jump', data: { turbo: false } do %>
+            <%= t('achievements.ui.browse_children', collection: collection_label.downcase) %>
+            <%= icon 'chevron-down', class: 'w-4 h-4', 'aria-hidden': true %>
+          <% end %>
+          <%= button_to toggle_sharing_achievement_path(@set.definition.key), method: :patch,
+                        params: { enabled: true }, class: 'btn btn-sm btn-primary',
+                        form: { hidden: @set.sharing_enabled?, data: { card_modal_target: 'createForm',
+                                                                     action: 'submit->card-modal#createPublicLink', turbo: false } } do %>
+            <%= icon 'share', class: 'w-4 h-4', 'aria-hidden': true %>
+            <%= t('achievements.ui.enable_sharing') %>
+          <% end %>
+          <%= button_to toggle_sharing_achievement_path(@set.definition.key), method: :patch,
+                        params: { enabled: false }, class: 'btn btn-sm btn-ghost',
+                        form: { hidden: !@set.sharing_enabled?, data: { card_modal_target: 'disableForm', turbo: false } } do %>
+            <%= icon 'lock', class: 'w-4 h-4', 'aria-hidden': true %>
+            <%= t('achievements.ui.disable_sharing') %>
+          <% end %>
+          <%= link_to @set.sharing_enabled? ? shared_achievement_path(@set.sharing_uuid) : '#',
+                      class: 'btn btn-sm btn-outline', hidden: !@set.sharing_enabled?,
+                      data: { card_modal_target: 'publicLink' } do %>
+            <%= icon 'external-link', class: 'w-4 h-4', 'aria-hidden': true %>
+            <%= t('achievements.ui.public_link') %>
+          <% end %>
+        <% end %>
+      </div>
+      <div class="ach-set-layout">
+        <section class="ach-set-hero" aria-label="<%= @set.name %>">
+          <div class="ach-set-details">
+            <p class="ach-progress-summary">
+              <%= t("achievements.ui.#{@set.level == :country ? 'countries_progress' : 'regions_progress'}",
+                    count: @set.display_count, total: @set.target) %>
+            </p>
+            <progress class="progress progress-primary" value="<%= @set.percent %>" max="100"
+                      aria-label="<%= t('achievements.ui.collection_progress', collection: collection_label) %>"><%= @set.percent %>%</progress>
+            <p class="ach-muted ach-progress-caption">
+              <% if @set.completed? %>
+                <%= t('achievements.ui.completed_on', date: l(@set.completed_on, format: :long)) %>
+              <% else %>
+                <%= t('achievements.ui.remaining', count: @set.target - @set.display_count) %>
+              <% end %>
+            </p>
+            <p class="ach-muted ach-threshold-note">
+              <%= t('achievements.ui.threshold_note', count: @threshold_minutes) %>
+            </p>
+          </div>
+          <figure class="ach-set-preview" data-card-modal-target="featured">
+            <%= render 'card', celebrate: @set.celebrate?, modal: true,
+                               share: { key: @set.definition.key, shared: @set.sharing_enabled?, uuid: @set.sharing_uuid },
+                               **@set.card_attributes %>
+            <figcaption class="ach-preview-hint"><%= t('achievements.ui.preview_hint') %></figcaption>
+          </figure>
+        </section>
+
+        <section id="collection" aria-labelledby="collection-heading" tabindex="-1">
+          <div class="ach-collection-header">
+            <div class="ach-section-heading">
+              <h2 id="collection-heading"><%= collection_label %> <span class="ach-muted">(<%= @set.target %>)</span></h2>
+              <% if @children.any? %>
+                <nav class="ach-collection-pager" aria-label="<%= t('achievements.ui.collection_pages') %>">
+                  <span class="ach-page-range ach-muted"><%= achievement_page_range(@children) %></span>
+                  <% { prev: @children.prev_page, next: @children.next_page }.each do |direction, page| %>
+                    <% if page %>
+                      <%= link_to achievement_path(@set.definition.key, page:, q: @query.presence,
+                                                   status: @filter_status, anchor: 'collection'),
+                                  class: 'btn btn-sm btn-ghost', rel: direction,
+                                  aria: { label: t("achievements.ui.#{direction}_page") } do %>
+                        <%= icon(direction == :prev ? 'chevron-left' : 'chevron-right', class: 'w-4 h-4', 'aria-hidden': true) %>
+                      <% end %>
+                    <% end %>
+                  <% end %>
+                </nav>
+              <% end %>
+            </div>
+            <%= form_with url: achievement_path(@set.definition.key, anchor: 'collection'), method: :get,
+                          class: 'ach-collection-toolbar', html: { role: 'search' }, data: { turbo: false } do |form| %>
+              <div class="ach-search-field">
+                <% search_label = t('achievements.ui.search_children', collection: collection_label.downcase) %>
+                <%= form.label :q, search_label, class: 'sr-only' %>
+                <%= icon 'search', class: 'w-4 h-4', 'aria-hidden': true %>
+                <%= form.search_field :q, value: @query, placeholder: search_label,
+                                      maxlength: 100, class: 'input input-bordered input-sm w-full' %>
+              </div>
+              <div class="ach-status-field">
+                <%= form.label :status, t('achievements.ui.card_status'), class: 'sr-only' %>
+                <%= form.select :status, achievement_status_options(@set), { selected: @filter_status },
+                                class: 'select select-bordered select-sm w-full' %>
+              </div>
+              <%= form.submit t('achievements.ui.apply'), class: 'btn btn-sm' %>
+              <% if @query.present? || @filter_status != 'all' %>
+                <%= link_to t('achievements.ui.clear'), achievement_path(@set.definition.key, anchor: 'collection'), class: 'btn btn-sm btn-ghost' %>
+              <% end %>
+            <% end %>
+          </div>
+
+          <div class="ach-collection-content">
+            <% if @children.any? %>
+              <div class="ach-child-grid" data-testid="achievement-children">
+                <% @children.each do |region_card| %>
+                  <% key = region_card[:key] %>
+                  <% card = region_card.except(:key, :code, :share, :share_key) %>
+                  <% if key %>
+                    <%= link_to achievement_path(key), class: 'ach-card-link' do %>
+                      <%= render 'card', size: :sm, **card %>
+                    <% end %>
+                  <% else %>
+                    <%= render 'card', size: :sm, modal: true, share: region_card[:share], **card %>
+                  <% end %>
+                <% end %>
+              </div>
+              <div class="ach-pagination">
+                <p class="ach-muted text-sm"><%= achievement_page_range(@children) %></p>
+                <%= paginate @children, params: { anchor: 'collection' } %>
+              </div>
+            <% else %>
+              <div class="ach-empty" role="status">
+                <%= icon 'search', class: 'w-6 h-6', 'aria-hidden': true %>
+                <h3><%= t('achievements.ui.no_results') %></h3>
+                <p><%= t('achievements.ui.no_results_hint') %></p>
+                <%= link_to t('achievements.ui.clear'), achievement_path(@set.definition.key, anchor: 'collection'), class: 'btn btn-sm btn-outline' %>
+              </div>
+            <% end %>
+          </div>
+        </section>
+      </div>
+      <%= render 'attribution' %>
+    </div>
+  </div>
+  <%= render 'card_modal' %>
+<% end %>

@@ -17,12 +17,23 @@ class DataMigrations::RecalculatePerTrackerTracksJob < ApplicationJob
     backfilled = backfill_google_records_devices(user)
     backfilled += Points::TrackerIdBackfiller.new(user).call
 
-    return unless backfilled.positive? || user.tracks.where(tracker_id: nil).exists?
+    return unless backfilled.positive? || tracks_need_recalculation?(user)
 
-    Users::RecalculateDataJob.perform_now(user.id, notify: false)
+    # perform_now consumes retry_on errors and silently moves the retry to
+    # :stats. Let lock failures reach this migration so its own retry can run.
+    Users::RecalculateDataJob.new.perform(user.id, notify: false)
   end
 
   private
+
+  def tracks_need_recalculation?(user)
+    return true if user.tracks.where(tracker_id: nil).exists?
+    return true if user.points.where(track_id: nil).exists?
+
+    # A failed attempt may already have backfilled the point IDs. Detect the
+    # remaining stale ownership rather than relying on the backfill count.
+    user.points.joins(:track).where('points.tracker_id IS DISTINCT FROM tracks.tracker_id').exists?
+  end
 
   def backfill_google_records_devices(user)
     user.imports.where(source: :google_records).sum do |import|

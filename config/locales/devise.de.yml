@@ -1,0 +1,65 @@
+de:
+  devise:
+    confirmations:
+      confirmed: Deine E-Mail-Adresse wurde erfolgreich bestätigt.
+      send_instructions: In ein paar Minuten erhältst du eine E-Mail mit Anweisungen, wie du deine E-Mail-Adresse bestätigen kannst.
+      send_paranoid_instructions: Falls deine E-Mail-Adresse in unserer Datenbank existiert, erhältst du in ein paar Minuten eine E-Mail mit Anweisungen, wie du deine E-Mail-Adresse bestätigen kannst.
+    failure:
+      already_authenticated: Du bist bereits angemeldet.
+      inactive: Dein Konto ist noch nicht aktiviert.
+      invalid: Ungültiges %{authentication_keys} oder Passwort.
+      locked: Dein Konto ist gesperrt.
+      last_attempt: Du hast noch einen weiteren Versuch, bevor dein Konto gesperrt wird.
+      not_found_in_database: Ungültiges %{authentication_keys} oder Passwort.
+      timeout: Deine Sitzung ist abgelaufen. Bitte melde dich erneut an, um fortzufahren.
+      unauthenticated: Du musst dich anmelden oder registrieren, bevor du weitermachst.
+      unconfirmed: Du musst deine E-Mail-Adresse bestätigen, bevor du weitermachst.
+      deleted: Dein Konto wurde gelöscht.
+    mailer:
+      confirmation_instructions:
+        subject: Bestätigungsanweisungen
+      reset_password_instructions:
+        subject: Anweisungen zum Zurücksetzen des Passworts
+      unlock_instructions:
+        subject: Entsperrungsanweisungen
+      email_changed:
+        subject: E-Mail geändert
+      password_change:
+        subject: Passwort geändert
+    omniauth_callbacks:
+      failure: 'Authentifizierung mit %{kind} fehlgeschlagen: %{reason}.'
+      success: Erfolgreich mit %{kind} authentifiziert.
+    passwords:
+      no_token: Du kannst diese Seite nicht ohne Weiterleitung von einer E-Mail zum Passwort-Reset betreten. Falls du von einer E-Mail zum Passwort-Reset kommst, stelle sicher, dass du die vollständige URL verwendet hast.
+      send_instructions: In ein paar Minuten erhältst du eine E-Mail mit Anweisungen, wie du dein Passwort zurücksetzen kannst.
+      send_paranoid_instructions: Falls deine E-Mail-Adresse in unserer Datenbank vorhanden ist, erhältst du in ein paar Minuten einen Link zum Passwort-Reset an deine E-Mail-Adresse.
+      updated: Dein Passwort wurde erfolgreich geändert. Du bist jetzt angemeldet.
+      updated_not_active: Dein Passwort wurde erfolgreich geändert.
+    registrations:
+      destroyed: Dein Konto wird gelöscht. Auf Wiedersehen!
+      cannot_delete: Du kannst dein Konto nicht löschen, solange du ein Familienkonto mit anderen Mitgliedern besitzt.
+      signed_up: Willkommen! Du hast dich erfolgreich angemeldet.
+      signed_up_but_inactive: Du hast dich erfolgreich angemeldet. Allerdings konnten wir dich nicht anmelden, weil dein Konto noch nicht aktiviert ist.
+      signed_up_but_locked: Du hast dich erfolgreich angemeldet. Allerdings konnten wir dich nicht anmelden, weil dein Konto gesperrt ist.
+      signed_up_but_unconfirmed: Eine E-Mail mit einem Bestätigungslink wurde an deine E-Mail-Adresse gesendet. Bitte folge dem Link, um dein Konto zu aktivieren.
+      update_needs_confirmation: Du hast dein Konto erfolgreich aktualisiert, aber wir müssen deine neue E-Mail-Adresse überprüfen. Bitte prüfe deine E-Mail und folge dem Bestätigungslink, um deine neue E-Mail-Adresse zu bestätigen.
+      updated: Dein Konto wurde erfolgreich aktualisiert.
+      updated_but_not_signed_in: Dein Konto wurde erfolgreich aktualisiert, aber da dein Passwort geändert wurde, musst du dich erneut anmelden.
+    sessions:
+      signed_in: Erfolgreich angemeldet.
+      signed_out: Erfolgreich abgemeldet.
+      already_signed_out: Erfolgreich abgemeldet.
+    unlocks:
+      send_instructions: Du erhältst in ein paar Minuten eine E-Mail mit Anweisungen, wie du dein Konto entsperren kannst.
+      send_paranoid_instructions: Falls dein Konto existiert, erhältst du in ein paar Minuten eine E-Mail mit Anweisungen, wie du es entsperren kannst.
+      unlocked: Dein Konto wurde erfolgreich entsperrt. Bitte melde dich an, um fortzufahren.
+  errors:
+    messages:
+      already_confirmed: war bereits bestätigt, bitte versuche dich anzumelden
+      confirmation_period_expired: muss innerhalb von %{period} bestätigt werden, bitte fordere einen neuen an
+      expired: ist abgelaufen, bitte fordere einen neuen an
+      not_found: nicht gefunden
+      not_locked: war nicht gesperrt
+      not_saved:
+        one: '1 Fehler hat das Speichern von %{resource} verhindert:'
+        other: '%{count} Fehler haben das Speichern von %{resource} verhindert:'

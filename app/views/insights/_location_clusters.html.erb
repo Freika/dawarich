@@ -21,7 +21,7 @@
             <div class="grid grid-cols-2 gap-2 text-center">
               <div>
                 <div class="text-xl font-bold"><%= location[:visit_count] %></div>
-                <div class="text-xs text-base-content/60"><%= 'visit'.pluralize(location[:visit_count]) %></div>
+                <div class="text-xs text-base-content/60"><%= t('.visit_count', count: location[:visit_count]) %></div>
               </div>
               <div>
                 <div class="text-xl font-bold"><%= format_location_time(location[:total_duration]) %></div>

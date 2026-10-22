@@ -2,15 +2,25 @@
 
 class TripsController < ApplicationController
   include FlashStreamable
-  include PosterStudioContext
+  include VideoStudioContext
 
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[new create recalculate]
   before_action :set_trip, only: %i[show edit update destroy recalculate export]
-  before_action :set_coordinates, only: %i[show edit]
 
   def index
-    @trips = current_user.trips.order(started_at: :desc).page(params[:page]).per(6)
+    trips_query = Trips::IndexQuery.new(current_user, params)
+    @filters = trips_query.filters
+    @has_trips = current_user.trips.exists?
+    @trip_years = @has_trips ? trips_query.years : []
+    @trip_countries = @has_trips ? trips_query.countries : []
+    @trips = trips_query.call
+                        .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
+                        .page(params[:page]).per(6)
+    @family_trip_links = SharedLink.family_trips_for(current_user).index_by(&:resource_id)
+    @family_trips = Trip.where(id: @family_trip_links.keys)
+                        .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
+                        .order(started_at: :desc).page(params[:family_page]).per(6)
   end
 
   def show
@@ -20,16 +30,18 @@ class TripsController < ApplicationController
     @photos_by_day = @trip.photos_by_day(@timezone)
     @day_notes = @trip.notes.index_by(&:date)
     @day_stats = compute_day_stats
-    load_poster_studio_context
+    @trip_plan = @trip.plan_geojson
+    @plan_map = @trip_plan if show_plan_map?
+    load_video_studio_context
 
-    return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
+    return if @trip.source_imported? && @trip.started_at > Time.current
+    return unless @trip.calculation_missing?
 
     Trips::CalculateAllJob.perform_later(@trip.id, @distance_unit)
   end
 
   def new
     @trip = Trip.new
-    @coordinates = []
   end
 
   def edit; end
@@ -142,39 +154,21 @@ class TripsController < ApplicationController
     @trip = current_user.trips.find(params[:id])
   end
 
-  def set_coordinates
-    @coordinates = @trip.points.pluck(
-      Arel.sql('ST_Y(lonlat::geometry)'), Arel.sql('ST_X(lonlat::geometry)'),
-      :battery, :altitude, :timestamp, :velocity, :id, :country
-    ).map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s, _8.to_s] }
-  end
-
   def trip_params
     params.require(:trip).permit(:name, :started_at, :ended_at, :description)
   end
 
+  def show_plan_map?
+    return false if @trip.path.present?
+
+    (@trip.source_imported? && @trip.started_at > Time.current) || @day_stats.empty?
+  end
+
   def compute_day_stats
     max_points_updated = @trip.points.maximum(:updated_at).to_i
-    cache_key = "trip_day_stats/v2/#{@trip.id}/#{@trip.updated_at.to_i}/#{max_points_updated}/#{@timezone}"
+    cache_key = ['trip_day_stats/v3', @trip.id, @trip.updated_at.to_i, max_points_updated, @timezone,
+                 @trip.user.safe_settings.minutes_between_routes]
 
-    Rails.cache.fetch(cache_key, expires_in: 1.hour) do
-      tz_quoted = ActiveRecord::Base.connection.quote(@timezone)
-      day_expr  = "(to_timestamp(timestamp) AT TIME ZONE #{tz_quoted})::date"
-
-      rows = @trip.points.reorder(nil).group(Arel.sql(day_expr)).pluck(
-        Arel.sql(day_expr),
-        Arel.sql('MIN(timestamp)'),
-        Arel.sql('MAX(timestamp)'),
-        Arel.sql('COALESCE(ST_Length(ST_MakeLine(lonlat::geometry ORDER BY timestamp)::geography), 0)')
-      )
-
-      rows.each_with_object({}) do |(day, first_ts, last_ts, distance_m), acc|
-        acc[day] = {
-          first_time: Time.at(first_ts).in_time_zone(@timezone),
-          last_time:  Time.at(last_ts).in_time_zone(@timezone),
-          distance_m: distance_m.to_f
-        }
-      end
-    end
+    Rails.cache.fetch(cache_key, expires_in: 1.hour) { @trip.day_stats(@timezone) }
   end
 end

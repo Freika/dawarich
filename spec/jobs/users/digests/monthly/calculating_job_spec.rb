@@ -54,10 +54,30 @@ RSpec.describe Users::Digests::Monthly::CalculatingJob, type: :job do
       end.to change { user.reload.notifications.where(kind: :error).count }.by(1)
     end
 
+    it 'creates the notification in the user saved locale' do
+      user.update!(settings: { 'locale' => 'fr' })
+
+      I18n.with_locale(:en) { described_class.new.perform(user.id, year, month) }
+
+      expect(user.notifications.last.title).to eq('Échec du calcul du récapitulatif mensuel')
+    end
+
     it 'does not enqueue the email job' do
       expect do
         described_class.new.perform(user.id, year, month)
       end.not_to have_enqueued_job(Users::Digests::Monthly::EmailSendingJob)
     end
+  end
+
+  it 'runs the calculation services in the user saved locale' do
+    user.update!(settings: { 'locale' => 'fr' })
+    stats_calculator = instance_double(Stats::CalculateMonth)
+    digest_calculator = instance_double(Users::Digests::CalculateMonth)
+    allow(Stats::CalculateMonth).to receive(:new).and_return(stats_calculator)
+    allow(Users::Digests::CalculateMonth).to receive(:new).and_return(digest_calculator)
+    allow(stats_calculator).to receive(:call) { expect(I18n.locale).to eq(:fr) }
+    allow(digest_calculator).to receive(:call) { expect(I18n.locale).to eq(:fr) }
+
+    I18n.with_locale(:en) { described_class.new.perform(user.id, year, month) }
   end
 end

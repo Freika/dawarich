@@ -3,6 +3,119 @@
 require 'rails_helper'
 
 RSpec.describe User, type: :model do
+  describe '#preferred_locale' do
+    it 'normalizes a supported string locale' do
+      user = build(:user, settings: { 'locale' => ' FR ' })
+
+      expect(user.preferred_locale).to eq(:fr)
+    end
+
+    it 'treats malformed and unsupported locale values as unset' do
+      [false, 42, { 'language' => 'fr' }, %w[fr], 'xx'].each do |locale|
+        user = build(:user, settings: { 'locale' => locale })
+
+        expect { user.preferred_locale }.not_to raise_error
+        expect(user.preferred_locale).to be_nil
+      end
+    end
+
+    it 'treats a malformed settings container as unset' do
+      [false, []].each do |settings|
+        user = build(:user, settings:)
+
+        expect { user.preferred_locale }.not_to raise_error
+        expect(user.preferred_locale).to be_nil
+      end
+    end
+  end
+
+  describe '#persist_locale!' do
+    it 'normalizes a malformed settings container before saving the locale' do
+      user = create(:user)
+      user.update_column(:settings, [])
+
+      expect { user.reload.persist_locale!(:fr) }.not_to raise_error
+
+      expect(user.reload.settings).to eq('locale' => 'fr')
+      expect(user.preferred_locale).to eq(:fr)
+    end
+  end
+
+  describe '#safe_settings read/write gate alignment' do
+    let(:gated_settings) do
+      {
+        'globe_projection' => true,
+        'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map'],
+        'maps' => { 'distance_unit' => 'km', 'hidden_tile_categories' => ['roads'],
+                    'disabled_poi_groups' => ['shopping'] }
+      }
+    end
+
+    def stripped?(user)
+      ss = user.safe_settings
+      ss.globe_projection == false || !ss.enabled_map_layers.include?('Heatmap') ||
+        !ss.maps.key?('hidden_tile_categories')
+    end
+
+    context 'when cloud :lite user is not in a family' do
+      let(:user) do
+        create(:user, plan: :lite, status: :active, active_until: 1.year.from_now,
+                      subscription_source: :paddle, skip_auto_trial: true, settings: gated_settings)
+      end
+
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'gates gated map settings on read, matching plan_restricted?' do
+        expect(user.plan_restricted?).to be true
+        expect(stripped?(user)).to be true
+      end
+    end
+
+    context 'when cloud :lite user joins a paid :family and keeps their own subscription' do
+      let(:owner) do
+        create(:user, plan: :family, status: :active, active_until: 1.year.from_now,
+                      subscription_source: :paddle, skip_auto_trial: true)
+      end
+      let(:family) { create(:family, creator: owner) }
+      let(:invitation) { create(:family_invitation, family: family, invited_by: owner, email: member.email) }
+      let(:member) do
+        create(:user, plan: :lite, status: :active, active_until: 1.year.from_now,
+                      subscription_source: :paddle, skip_auto_trial: true,
+                      email: 'member@example.com', settings: gated_settings)
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        create(:family_membership, :owner, family: family, user: owner)
+        Families::AcceptInvitation.new(invitation: invitation, user: member).call
+        member.reload
+      end
+
+      it 'keeps the :lite plan column but treats the member as non-restricted on read' do
+        expect(member.plan).to eq('lite')
+        expect(member.plan_restricted?).to be false
+        expect(stripped?(member)).to be false
+      end
+    end
+
+    context 'when self-hosted, regardless of plan column' do
+      let(:user) { create(:user, plan: :lite, skip_auto_trial: true, settings: gated_settings) }
+
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'does not gate gated map settings on read, matching plan_restricted?' do
+        expect(user.plan_restricted?).to be false
+        expect(stripped?(user)).to be false
+      end
+    end
+  end
+
+  describe 'visit detection v3 stamp' do
+    it 'marks new accounts as v3-native so confidence gating applies from day one' do
+      expect(create(:user).reload.visits_redetected_at).to be_present
+    end
+  end
+
   describe 'associations' do
     it { is_expected.to have_many(:imports).dependent(:destroy) }
     it { is_expected.to have_many(:stats) }
@@ -39,6 +152,22 @@ RSpec.describe User, type: :model do
 
     it 'has integer value 2 for family' do
       expect(User.plans['family']).to eq(2)
+    end
+  end
+
+  describe '#persist_locale!' do
+    it 'updates only the locale when its settings snapshot is stale' do
+      stale_user = create(:user)
+      User.where(id: stale_user.id).update_all(
+        settings: stale_user.settings.merge('concurrent_preference' => 'preserved')
+      )
+
+      stale_user.persist_locale!(:de)
+
+      expect(stale_user.reload.settings).to include(
+        'locale' => 'de',
+        'concurrent_preference' => 'preserved'
+      )
     end
   end
 
@@ -454,6 +583,61 @@ RSpec.describe User, type: :model do
   describe 'methods' do
     let(:user) { create(:user) }
 
+    describe '#supporter_info with the app_store_supporter flag' do
+      context 'when self-hosted' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+        it 'reports an App Store supporter' do
+          user.settings['app_store_supporter'] = true
+
+          expect(user.supporter?).to be true
+          expect(user.supporter_platform).to eq('app_store')
+        end
+
+        it 'accepts the flag stored as a string' do
+          user.settings['app_store_supporter'] = 'true'
+
+          expect(user.supporter?).to be true
+        end
+
+        it 'keeps the platform of an already verified supporter' do
+          stub_request(:get, %r{verify\.dawarich\.app/api/v1/verify\?email_hash=})
+            .to_return(status: 200, body: { supporter: true, platform: 'patreon' }.to_json,
+                       headers: { 'Content-Type' => 'application/json' })
+          user.settings['supporter_email'] = 'fan@example.com'
+          user.settings['app_store_supporter'] = true
+
+          expect(user.supporter_platform).to eq('patreon')
+        end
+
+        it 'falls back to the flag when the GitHub username is not a supporter' do
+          stub_request(:get, %r{verify\.dawarich\.app/api/v1/verify\?github_username=})
+            .to_return(status: 200, body: { supporter: false }.to_json,
+                       headers: { 'Content-Type' => 'application/json' })
+          user.settings['supporter_github_username'] = 'nobody'
+          user.settings['app_store_supporter'] = true
+
+          expect(user.supporter_platform).to eq('app_store')
+        end
+
+        it 'is not a supporter when the flag is false' do
+          user.settings['app_store_supporter'] = false
+
+          expect(user.supporter?).to be false
+        end
+      end
+
+      context 'when on Dawarich Cloud' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+        it 'ignores the flag' do
+          user.settings['app_store_supporter'] = true
+
+          expect(user.supporter?).to be false
+        end
+      end
+    end
+
     describe '#oauth_user?' do
       it 'returns true when provider is set' do
         user.update_columns(provider: 'google_oauth2', uid: '12345')
@@ -516,16 +700,30 @@ RSpec.describe User, type: :model do
       end
 
       it 'returns array of countries from stats toponyms' do
-        expect(subject).to include('Germany', 'France')
-        expect(subject.count).to eq(2)
+        expect(subject).to include('Germany', 'France', 'Belgium')
+        expect(subject.count).to eq(3)
       end
 
       it 'excludes nil and empty country names' do
         expect(subject).not_to include(nil, '')
       end
 
-      it 'excludes drive-through countries with no qualifying cities' do
-        expect(subject).not_to include('Belgium')
+      it 'includes drive-through countries with no qualifying cities' do
+        expect(subject).to include('Belgium')
+      end
+
+      it 'selects only fields required for toponym aggregation' do
+        queries = []
+        callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+
+        ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+          user.countries_visited
+        end
+
+        row_query = queries.find { |sql| sql.include?('FROM "stats"') }
+        expect(row_query).to include('"stats"."id", "stats"."toponyms"')
+        expect(row_query).not_to include('"stats".*')
+        expect(row_query).not_to include('h3_hex_ids')
       end
     end
 
@@ -550,6 +748,20 @@ RSpec.describe User, type: :model do
 
       it 'excludes nil and empty city names' do
         expect(subject).not_to include(nil, '')
+      end
+
+      it 'selects only fields required for toponym aggregation' do
+        queries = []
+        callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+
+        ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+          user.cities_visited
+        end
+
+        row_query = queries.find { |sql| sql.include?('FROM "stats"') }
+        expect(row_query).to include('"stats"."id", "stats"."toponyms"')
+        expect(row_query).not_to include('"stats".*')
+        expect(row_query).not_to include('h3_hex_ids')
       end
     end
 
@@ -576,12 +788,12 @@ RSpec.describe User, type: :model do
                ])
       end
 
-      it 'returns number of countries with qualifying cities' do
-        expect(subject).to eq(2)
+      it 'returns number of countries in stats toponyms' do
+        expect(subject).to eq(3)
       end
 
-      it 'excludes drive-through countries with empty cities' do
-        expect(user.countries_visited).not_to include('Belgium')
+      it 'includes drive-through countries with empty cities' do
+        expect(user.countries_visited).to include('Belgium')
       end
     end
 
@@ -610,17 +822,6 @@ RSpec.describe User, type: :model do
       let!(:not_reverse_geocoded_point) { create(:point, user:, reverse_geocoded_at: nil) }
 
       it 'returns number of reverse geocoded points' do
-        expect(subject).to eq(1)
-      end
-    end
-
-    describe '#total_reverse_geocoded_points_without_data' do
-      subject { user.total_reverse_geocoded_points_without_data }
-
-      let!(:reverse_geocoded_point) { create(:point, :reverse_geocoded, :with_geodata, user:) }
-      let!(:reverse_geocoded_point_without_data) { create(:point, :reverse_geocoded, user:, geodata: {}) }
-
-      it 'returns number of reverse geocoded points without data' do
         expect(subject).to eq(1)
       end
     end

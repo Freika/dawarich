@@ -59,6 +59,44 @@ RSpec.describe 'Api::V1::Owntracks::Points', type: :request do
         end
       end
 
+      context 'when a family member shares their location' do
+        let(:family) { create(:family, creator: user) }
+        let(:relative) { create(:user) }
+
+        before do
+          create(:family_membership, family: family, user: user, role: :owner)
+          create(:family_membership, family: family, user: relative)
+          relative.update_family_location_sharing!(true, duration: 'permanent')
+          create(:point, user: relative, timestamp: 1.hour.ago.to_i)
+        end
+
+        it 'answers with their card and location for OwnTracks to show' do
+          post "/api/v1/owntracks/points?api_key=#{user.api_key}", params: point_params
+
+          expect(response).to have_http_status(:ok)
+          expect(JSON.parse(response.body).map { _1['_type'] }).to eq(%w[card location])
+        end
+      end
+
+      context 'when formatting family locations fails' do
+        before do
+          allow(OwnTracks::FriendsFormatter).to receive(:new).and_raise(StandardError, 'boom')
+          allow(Rails.logger).to receive(:error)
+          allow(Sentry).to receive(:capture_exception)
+        end
+
+        it 'still accepts the point rather than making OwnTracks resend it' do
+          expect do
+            post "/api/v1/owntracks/points?api_key=#{user.api_key}", params: point_params
+          end.to change(Point, :count).by(1)
+
+          expect(response).to have_http_status(:ok)
+          expect(JSON.parse(response.body)).to eq([])
+          expect(Rails.logger).to have_received(:error).with(/OwnTracks friends formatting failed/)
+          expect(Sentry).to have_received(:capture_exception)
+        end
+      end
+
       context 'when user is inactive but active_until is in the future' do
         before do
           user.update(status: :inactive, active_until: 1.day.from_now)

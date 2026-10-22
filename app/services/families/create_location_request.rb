@@ -54,20 +54,22 @@ class Families::CreateLocationRequest
   end
 
   def create_notification!(request)
-    safe_email = ERB::Util.html_escape(requester.email)
-    link = ActionController::Base.helpers.link_to(
-      I18n.t('services.families.create_location_request.view_request'),
-      Rails.application.routes.url_helpers.family_location_request_path(request),
-      class: 'link link-primary'
-    )
+    I18n.with_locale(target_user.locale) do
+      safe_email = ERB::Util.html_escape(requester.email)
+      link = ActionController::Base.helpers.link_to(
+        I18n.t('services.families.create_location_request.view_request'),
+        Rails.application.routes.url_helpers.family_location_request_path(request),
+        class: 'link link-primary'
+      )
 
-    Notification.create!(
-      user: target_user,
-      kind: :info,
-      title: I18n.t('services.families.create_location_request.location_request'),
-      content: I18n.t('services.families.create_location_request.safe_email_is_requesting_your_location_link',
-                      email: safe_email, link: link)
-    )
+      Notification.create!(
+        user: target_user,
+        kind: :info,
+        title: I18n.t('services.families.create_location_request.location_request'),
+        content: I18n.t('services.families.create_location_request.safe_email_is_requesting_your_location_link',
+                        email: safe_email, link: link)
+      )
+    end
   rescue StandardError => e
     ExceptionReporter.call(e, "Failed to create notification for location request: #{e.message}")
   end

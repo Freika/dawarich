@@ -133,5 +133,25 @@ RSpec.describe Imports::SecureFileDownloader do
       expect(File.exist?(path)).to be(true)
       File.unlink(path) if File.exist?(path)
     end
+
+    context 'with a file larger than the digest read buffer' do
+      let(:file_content) { 'x' * 1.megabyte }
+
+      it 'never reads the complete tempfile into one Ruby String' do
+        read_sizes = []
+        trace = TracePoint.new(:c_return) do |event|
+          next unless event.method_id == :read
+          next unless event.return_value.is_a?(String)
+
+          read_sizes << event.return_value.bytesize
+        end
+
+        path = trace.enable { subject.download_to_temp_file }
+
+        expect(read_sizes).not_to include(file_content.bytesize)
+      ensure
+        File.unlink(path) if path && File.exist?(path)
+      end
+    end
   end
 end

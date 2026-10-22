@@ -11,13 +11,18 @@ class Imports::Create
   end
 
   def call
-    import.update!(status: :processing, raw_points: 0, doubles: 0)
-    broadcast_status_update
-
     temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
     inner_file_path = nil
 
     dispatch = Archive::Unzipper.inspect_archive(temp_file_path)
+
+    if dispatch.kind == :user_data_archive
+      route_user_data_archive
+      return
+    end
+
+    import.update!(status: :processing, raw_points: 0, doubles: 0)
+    broadcast_status_update
 
     case dispatch.kind
     when :multi_entry
@@ -52,6 +57,11 @@ class Imports::Create
 
   private
 
+  def route_user_data_archive
+    import.update!(source: :user_data_archive)
+    import.process_user_data_archive!
+  end
+
   def post_import_processing
     run_post_import_step('points_count') { User.where(id: user.id).update_all(points_count: user.points.count) }
     run_post_import_step('filter_anomalies') { filter_anomalies(user, import) }
@@ -74,13 +84,15 @@ class Imports::Create
 
     @post_import_failure_notified = true
 
-    Notifications::Create.new(
-      user:,
-      kind: :warning,
-      title: I18n.t('services.imports.create.import_post_processing_incomplete'),
-      content: I18n.t('services.imports.create.your_import_name_finished_and_all_points_were_saved_but',
-                      name: import.name, step: step.tr('_', ' '))
-    ).call
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :warning,
+        title: I18n.t('services.imports.create.import_post_processing_incomplete'),
+        content: I18n.t('services.imports.create.your_import_name_finished_and_all_points_were_saved_but',
+                        name: import.name, step: step.tr('_', ' '))
+      ).call
+    end
   rescue StandardError => e
     ExceptionReporter.call(e, 'Failed to create post-import failure notification')
   end
@@ -99,6 +111,7 @@ class Imports::Create
     when 'google_phone_takeout'         then GoogleMaps::PhoneTakeoutImporter
     when 'google_records'               then GoogleMaps::RecordsStorageImporter
     when 'google_photos'                then GooglePhotos::Importer
+    when 'mobile_photo_library'         then MobilePhotoLibrary::Importer
     when 'owntracks'                    then OwnTracks::Importer
     when 'gpx'                          then Gpx::TrackImporter
     when 'kml'                          then Kml::Importer
@@ -124,31 +137,49 @@ class Imports::Create
     return unless import.points.count.zero?
 
     if import.doubles.to_i.positive?
-      Notification.create!(
-        user_id: import.user_id,
-        title: I18n.t('services.imports.create.import_completed_with_no_new_points'),
-        content: I18n.t('services.imports.create.your_file_name_contained_raw_points_points_all_of_which',
-                        name: import.name, raw_points: import.raw_points),
-        kind: :info
-      )
+      I18n.with_locale(import.user.locale) do
+        Notification.create!(
+          user_id: import.user_id,
+          title: I18n.t('services.imports.create.import_completed_with_no_new_points'),
+          content: I18n.t('services.imports.create.your_file_name_contained_raw_points_points_all_of_which',
+                          name: import.name, raw_points: import.raw_points),
+          kind: :info
+        )
+      end
     else
-      Notification.create!(
-        user_id: import.user_id,
-        title: I18n.t('services.imports.create.import_completed_with_no_points'),
-        content: zero_points_content(import),
-        kind: :warning
-      )
+      I18n.with_locale(import.user.locale) do
+        Notification.create!(
+          user_id: import.user_id,
+          title: I18n.t('services.imports.create.import_completed_with_no_points'),
+          content: zero_points_content(import),
+          kind: :warning
+        )
+      end
     end
   end
 
   def zero_points_content(import)
-    if import.gpx? || import.kml?
-      "Your file #{import.name} imported 0 points. No location points with " \
-        'timestamps were found. GPX and KML imports require a per-point ' \
-        '<time>/<when> value for each coordinate.'
+    trackless_gpx_content(import) || generic_zero_points_content(import)
+  end
+
+  def trackless_gpx_content(import)
+    data = import.raw_data || {}
+    return if data['trackpoints_seen'].to_i.positive?
+
+    if data['waypoints_seen'].to_i.positive?
+      I18n.t('services.imports.create.zero_points_waypoints_only',
+             name: import.name, count: data['waypoints_seen'].to_i)
+    elsif data['route_points_seen'].to_i.positive?
+      I18n.t('services.imports.create.zero_points_route_only',
+             name: import.name, count: data['route_points_seen'].to_i)
+    end
+  end
+
+  def generic_zero_points_content(import)
+    if import.gpx? || import.kml? || import.geojson?
+      I18n.t('services.imports.create.zero_points_with_timestamps', name: import.name)
     else
-      "Your file #{import.name} imported 0 points. No new location points " \
-        'were found in this file.'
+      I18n.t('services.imports.create.zero_points', name: import.name)
     end
   end
 
@@ -164,6 +195,8 @@ class Imports::Create
     import.years_and_months_tracked.each do |year, month|
       Stats::CalculatingJob.perform_later(user_id, year, month)
     end
+
+    Achievements::CheckJob.schedule(user_id, oldest_timestamp: import.points.minimum(:timestamp))
   end
 
   def schedule_visit_suggesting(user_id, import)
@@ -202,14 +235,17 @@ class Imports::Create
   end
 
   def create_import_failed_notification(import, user, error)
-    message = import_failed_message(import, error)
-
-    Notifications::Create.new(
-      user:,
-      kind: :error,
-      title: I18n.t('services.imports.create.import_failed'),
-      content: message
-    ).call
+    # The message is built inside the block: translating it a line earlier left
+    # the notification with a title in the reader's language and a body in
+    # whatever language the request happened to run in.
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user:,
+        kind: :error,
+        title: I18n.t('services.imports.create.import_failed'),
+        content: import_failed_message(import, error)
+      ).call
+    end
   end
 
   def detect_source_from_file(file_path)
@@ -220,9 +256,14 @@ class Imports::Create
 
   def import_failed_message(import, error)
     if DawarichSettings.self_hosted?
-      "Import \"#{import.name}\" failed: #{error.message}, stacktrace: #{error.backtrace.join("\n")}"
+      I18n.t(
+        'services.imports.create.import_failed_self_hosted',
+        name: import.name,
+        message: error.message,
+        backtrace: error.backtrace.join("\n")
+      )
     else
-      "Import \"#{import.name}\" failed, please contact us at hi@dawarich.com"
+      I18n.t('services.imports.create.import_failed_cloud', name: import.name)
     end
   end
 end

@@ -2,18 +2,19 @@
   <button type="button"
           class="map-button-cluster__btn"
           data-action="click->map-panel#openTab"
+          aria-expanded="false"
           data-tab="timeline-feed"
           data-testid="map-button-timeline"
           aria-label="<%= t('.timeline') %>"
           aria-keyshortcuts="T"
           title="<%= t('.timeline_t') %>">
     <%= icon 'calendar-clock' %>
-    <%= render 'map/timeline_feeds/suggestions_badge', count: @suggestions_pending_count.to_i %>
   </button>
 
   <button type="button"
           class="map-button-cluster__btn"
           data-action="click->map-panel#openTab"
+          aria-expanded="false"
           data-tab="layers"
           data-testid="map-button-layers"
           aria-label="<%= t('.layers') %>"
@@ -25,6 +26,7 @@
   <button type="button"
           class="map-button-cluster__btn"
           data-action="click->map-panel#openTab"
+          aria-expanded="false"
           data-tab="search"
           data-testid="map-button-search"
           aria-label="<%= t('.search') %>"
@@ -33,15 +35,30 @@
     <%= icon 'search' %>
   </button>
 
+  <% if family_feature_available? && current_user.in_family? %>
+    <button type="button"
+            class="map-button-cluster__btn"
+            data-action="click->map-panel#openTab"
+            aria-expanded="false"
+            data-tab="family"
+            data-testid="map-button-family"
+            aria-label="<%= t('.family') %>"
+            aria-keyshortcuts="F"
+            title="<%= t('.family_f') %>">
+      <%= icon 'users' %>
+    </button>
+  <% end %>
+
   <button type="button"
           class="map-button-cluster__btn map-button-cluster__btn--create"
           data-action="click->map-panel#openTab"
+          aria-expanded="false"
           data-tab="tools"
           data-testid="map-button-create"
-          aria-label="<%= t('.create') %>"
+          aria-label="<%= t('.tools') %>"
           aria-keyshortcuts="C"
-          title="<%= t('.create_c') %>">
-    <%= icon 'circle-plus' %>
+          title="<%= t('.tools_c') %>">
+    <%= icon 'wrench' %>
   </button>
 
   <button type="button"
@@ -63,11 +80,21 @@
     <%= icon 'image' %>
   </button>
 
+  <button type="button"
+          class="map-button-cluster__btn"
+          data-action="click->map-panel#openVideoStudio"
+          data-testid="map-button-video"
+          aria-label="<%= t('.video_studio') %>"
+          title="<%= t('.video_studio') %>">
+    <%= icon 'video' %>
+  </button>
+
   <div class="map-button-cluster__divider" aria-hidden="true"></div>
 
   <button type="button"
           class="map-button-cluster__btn map-button-cluster__btn--muted"
           data-action="click->map-panel#openTab"
+          aria-expanded="false"
           data-tab="settings"
           data-testid="map-button-settings"
           aria-label="<%= t('.settings') %>"
@@ -84,6 +111,7 @@
     <button type="button"
             class="map-button-cluster__btn map-button-cluster__btn--muted"
             data-action="click->map-panel#openTab"
+          aria-expanded="false"
             data-tab="links"
             data-testid="map-button-links"
             aria-label="<%= t('.links') %>"

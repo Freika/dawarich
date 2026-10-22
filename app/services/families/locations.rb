@@ -9,11 +9,12 @@ class Families::Locations
 
   MAX_POINTS_PER_MEMBER = 5000
 
-  def call
+  def call(excluding: nil)
     return [] unless family_feature_available?
     return [] unless user.in_family?
 
     sharing_members = family_members_with_sharing_enabled
+    sharing_members = sharing_members.reject { _1.id == excluding } if excluding
     return [] unless sharing_members.any?
 
     build_family_locations(sharing_members)
@@ -37,22 +38,28 @@ class Families::Locations
 
   def family_members_with_sharing_enabled
     user.family.members
+        .includes(:family_membership)
+        .reject { _1.id == user.id }
         .select(&:family_sharing_enabled?)
   end
 
   def build_family_locations(sharing_members)
     latest_points =
-      sharing_members.map { _1.points.order(timestamp: :desc).first }.compact
+      sharing_members.map { _1.points.without_raw_data.complete.not_anomaly.order(timestamp: :desc).first }.compact
+
+    with_address = Geocoding::Config.for(user).enabled?
 
     latest_points.map do |point|
       {
         user_id: point.user_id,
+        address: (point.address_line if with_address),
         email: point.user.email,
+        name: point.user.display_name,
         email_initial: point.user.email.first.upcase,
         latitude: point.lat,
         longitude: point.lon,
-        timestamp: point.timestamp.to_i,
-        updated_at: Time.zone.at(point.timestamp.to_i),
+        timestamp: point.timestamp,
+        updated_at: Time.zone.at(point.timestamp),
         battery: point.battery,
         battery_status: point.battery_status
       }
@@ -78,6 +85,7 @@ class Families::Locations
       {
         user_id: member.id,
         email: member.email,
+        name: member.display_name,
         email_initial: member.email.first.upcase,
         sharing_since: member.family_sharing_started_at&.iso8601,
         points: sampled.pluck(

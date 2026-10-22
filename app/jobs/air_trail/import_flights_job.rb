@@ -18,15 +18,17 @@ module AirTrail
     private
 
     def notify_sync_failed(user, error)
-      Notifications::Create.new(
-        user: user,
-        title: I18n.t('jobs.air_trail.import_flights_job.airtrail_sync_failed'),
-        content: I18n.t(
-          'jobs.air_trail.import_flights_job.your_airtrail_flight_sync_failed_with_error_message_check_your',
-          message: error.message
-        ),
-        kind: :error
-      ).call
+      I18n.with_locale(user.locale) do
+        Notifications::Create.new(
+          user: user,
+          title: I18n.t('jobs.air_trail.import_flights_job.airtrail_sync_failed'),
+          content: I18n.t(
+            'jobs.air_trail.import_flights_job.your_airtrail_flight_sync_failed_with_error_message_check_your',
+            message: error.message
+          ),
+          kind: :error
+        ).call
+      end
     end
   end
 end

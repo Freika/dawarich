@@ -16,8 +16,10 @@ RSpec.describe Visits::PlaceFinder do
     }
   end
 
+  let(:geocoding_configured) { true }
+
   before do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+    configure_instance_geocoding if geocoding_configured
     allow(DawarichSettings).to receive(:store_geodata?).and_return(false)
   end
 
@@ -65,11 +67,13 @@ RSpec.describe Visits::PlaceFinder do
         .to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
     end
 
-    it 'does not enqueue Places::NameFetchingJob when reverse geocoding is disabled' do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+    context 'when reverse geocoding is disabled' do
+      let(:geocoding_configured) { false }
 
-      expect { described_class.new(user).find_or_create_place(visit_data) }
-        .not_to have_enqueued_job(Places::NameFetchingJob)
+      it 'does not enqueue Places::NameFetchingJob' do
+        expect { described_class.new(user).find_or_create_place(visit_data) }
+          .not_to have_enqueued_job(Places::NameFetchingJob)
+      end
     end
   end
 

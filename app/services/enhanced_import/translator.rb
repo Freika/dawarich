@@ -8,13 +8,15 @@ module EnhancedImport
       google_phone_takeout
       google_semantic_history
       polarsteps
+      gpx
     ].freeze
 
     ADAPTER_LOOKUP = {
       'google_records' => 'EnhancedImport::Adapters::GoogleRecordsAdapter',
       'google_phone_takeout' => 'EnhancedImport::Adapters::GooglePhoneTakeoutAdapter',
       'google_semantic_history' => 'EnhancedImport::Adapters::GoogleSemanticHistoryAdapter',
-      'polarsteps' => 'EnhancedImport::Adapters::PolarstepsAdapter'
+      'polarsteps' => 'EnhancedImport::Adapters::PolarstepsAdapter',
+      'gpx' => 'EnhancedImport::Adapters::GpxAdapter'
     }.freeze
 
     def self.supported?(source)

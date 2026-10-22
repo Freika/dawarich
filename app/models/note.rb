@@ -30,6 +30,15 @@ class Note < ApplicationRecord
   scope :ordered, -> { order(noted_at: :desc) }
   scope :for_user, ->(user) { where(user: user) }
 
+  def self.body_digest(body)
+    Digest::SHA256.hexdigest(body.to_s)
+  end
+
+  # Written by a synchronization and not edited since.
+  def synced_from_source?
+    source_digest.present? && source_digest == self.class.body_digest(body)
+  end
+
   def date
     noted_at&.utc&.to_date
   end

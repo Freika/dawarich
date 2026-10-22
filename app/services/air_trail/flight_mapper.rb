@@ -19,8 +19,8 @@ module AirTrail
         external_id: @f['id'],
         flight_date: @f['date'],
         date_precision: @f['datePrecision'] || 'day',
-        departure_time: parse_time(@f['departure']),
-        arrival_time: parse_time(@f['arrival']),
+        departure_time: first_time('departure', 'takeoffActual', 'takeoffScheduled', 'departureScheduled'),
+        arrival_time: first_time('arrival', 'landingActual', 'landingScheduled', 'arrivalScheduled'),
         from_code: from['icao'], from_name: from['name'],
         from_lat: from['lat'], from_lon: from['lon'],
         to_code: to['icao'], to_name: to['name'],
@@ -41,6 +41,14 @@ module AirTrail
       value.present? ? Time.zone.parse(value) : nil
     rescue ArgumentError
       nil
+    end
+
+    # AirTrail only fills departure/arrival once a flight has actual times; a
+    # flight added by its number carries scheduled times instead. Fall back to
+    # whatever AirTrail has, otherwise the flight cannot be placed in time (nor
+    # masked on the map).
+    def first_time(*keys)
+      parse_time(keys.map { |key| @f[key] }.find(&:present?))
     end
 
     def haversine(lat1, lon1, lat2, lon2)

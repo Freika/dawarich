@@ -30,6 +30,7 @@ export default class extends Controller {
     userTrial: { type: Boolean, default: false },
     maxImports: { type: Number, default: 0 },
     currentImportsCount: { type: Number, default: 0 },
+    preserveOriginalFilename: { type: Boolean, default: false },
   }
 
   connect() {
@@ -83,11 +84,15 @@ export default class extends Controller {
 
     const prepared = await this.prepareForUpload(filesToUpload)
 
-    this.totalBytes = prepared.reduce((sum, f) => sum + f.size, 0)
+    this.totalBytes = prepared.reduce(
+      (sum, upload) => sum + upload.file.size,
+      0,
+    )
     this.fileProgress = {}
 
     let completed = 0
-    prepared.forEach((file, index) => {
+    prepared.forEach((preparedUpload, index) => {
+      const { file } = preparedUpload
       this.fileProgress[index] = 0
       const upload = new DirectUpload(file, this.urlValue, {
         directUploadWillStoreFileWithXHR: (request) => {
@@ -109,7 +114,7 @@ export default class extends Controller {
           )
         } else {
           this.fileProgress[index] = file.size
-          this.addHiddenField(blob.signed_id)
+          this.addHiddenField(blob.signed_id, preparedUpload)
         }
         if (completed === prepared.length) this.uploadComplete()
       })
@@ -120,12 +125,20 @@ export default class extends Controller {
     const result = []
     for (const original of files) {
       if (!shouldZip(original)) {
-        result.push(original)
+        result.push({
+          file: original,
+          originalFilename: original.name,
+          clientWrapped: false,
+        })
         continue
       }
       try {
         const zipped = await zipSingleFile(original)
-        result.push(zipped)
+        result.push({
+          file: zipped,
+          originalFilename: original.name,
+          clientWrapped: true,
+        })
       } catch (err) {
         console.error(
           "Client-side zip failed, uploading raw:",
@@ -136,7 +149,11 @@ export default class extends Controller {
           "warning",
           translate("upload.compression_failed", { name: original.name }),
         )
-        result.push(original)
+        result.push({
+          file: original,
+          originalFilename: original.name,
+          clientWrapped: false,
+        })
       }
     }
     return result
@@ -248,11 +265,17 @@ export default class extends Controller {
     if (pct) pct.textContent = `${percent.toFixed(1)}%`
   }
 
-  addHiddenField(signedId) {
+  addHiddenField(signedId, preparedUpload) {
     const field = document.createElement("input")
     field.type = "hidden"
     field.name = this.fieldNameValue
-    field.value = signedId
+    field.value = this.preserveOriginalFilenameValue
+      ? JSON.stringify({
+          signed_id: signedId,
+          original_filename: preparedUpload.originalFilename,
+          client_wrapped: preparedUpload.clientWrapped,
+        })
+      : signedId
     this.element.appendChild(field)
   }
 

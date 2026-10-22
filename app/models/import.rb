@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Import < ApplicationRecord
+  ELEMENT_COUNT_KEYS = %w[waypoints_seen trackpoints_seen route_points_seen].freeze
+
   belongs_to :user
   has_many :points, dependent: :destroy
   has_many :extracted_visits, class_name: 'Visit', dependent: :nullify
@@ -8,6 +10,7 @@ class Import < ApplicationRecord
   has_many :extracted_tracks, class_name: 'Track', dependent: :nullify
 
   has_one_attached :file
+  has_one_attached :prepared_download
 
   # Flag to skip background processing during user data import
   attr_accessor :skip_background_processing
@@ -30,7 +33,8 @@ class Import < ApplicationRecord
     google_semantic_history: 0, owntracks: 1, google_records: 2,
     google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6, photoprism_api: 7,
     user_data_archive: 8, kml: 9,
-    csv: 10, tcx: 11, fit: 12, polarsteps: 13, google_photos: 14
+    csv: 10, tcx: 11, fit: 12, polarsteps: 13, google_photos: 14,
+    mobile_photo_library: 15
   }, allow_nil: true
 
   enum :additional_data_extraction_status, {
@@ -81,6 +85,25 @@ class Import < ApplicationRecord
 
   def additional_data_extraction_supported?
     EnhancedImport::Translator.supported?(source)
+  end
+
+  def additional_data_extraction_unavailable?
+    !additional_data_extraction_supported?
+  end
+
+  def gpx_without_waypoints?
+    return false unless gpx?
+
+    counts = raw_data || {}
+    return false unless ELEMENT_COUNT_KEYS.any? { |key| counts.key?(key) }
+
+    counts['waypoints_seen'].to_i.zero?
+  end
+
+  def resolved_additional_data_extraction_status
+    return 'not_attempted' if additional_data_extraction_unsupported? && additional_data_extraction_supported?
+
+    additional_data_extraction_status
   end
 
   def extraction_counts
@@ -181,6 +204,7 @@ class Import < ApplicationRecord
     return false unless saved_change_to_status? && completed?
     return false unless additional_data_extraction_supported?
     return false unless additional_data_extraction_not_attempted?
+    return false if gpx_without_waypoints?
 
     true
   end

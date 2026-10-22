@@ -1,0 +1,6 @@
+<div class="max-w-lg mx-auto py-12" data-testid="import-download-preparing">
+  <h1 class="text-2xl font-bold"><%= t('.preparing') %></h1>
+  <p class="my-4"><%= t('.automatic_download') %></p>
+  <%= link_to t('.original_archive'), @download.original_url, class: 'btn btn-outline', data: { turbo: false } %>
+  <%= link_to t('.back'), imports_path, class: 'btn btn-ghost' %>
+</div>

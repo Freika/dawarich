@@ -87,7 +87,7 @@ class Points::DeviceTagBackfiller
       mapping[timestamp] = existing.nil? || existing == device_tag ? device_tag : :contested
     end
 
-    stream_source { |io| Oj.saj_parse(handler, io) }
+    stream_source { |io| Imports::SajParser.parse(io, handler) }
 
     mapping
   end
@@ -104,7 +104,7 @@ class Points::DeviceTagBackfiller
       record_contested(contested, [timestamp, lat_e7.to_i, lon_e7.to_i], device_tag)
     end
 
-    stream_source { |io| Oj.saj_parse(handler, io) }
+    stream_source { |io| Imports::SajParser.parse(io, handler) }
 
     contested.reject { |_, tag| tag == :contested }
   end

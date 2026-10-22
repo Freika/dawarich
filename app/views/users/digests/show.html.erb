@@ -6,7 +6,7 @@
   <div class="hero text-white rounded-lg shadow-lg mb-8" style="background: linear-gradient(135deg, #0f766e, #0284c7);">
     <div class="hero-content text-center py-12 relative w-full">
       <div class="max-w-lg">
-        <h1 class="text-4xl font-bold"><%= @digest.year %> <%= t('.year_in_review') %></h1>
+        <h1 class="text-4xl font-bold"><%= t('.year_year_in_review', year: @digest.year) %></h1>
         <p class="py-4"><%= t('.your_journey_by_the_numbers') %></p>
         <button class="btn btn-outline btn-sm text-neutral border-neutral hover:bg-white hover:text-primary"
                 onclick="sharing_modal.showModal()">
@@ -104,7 +104,7 @@
           <div class="w-full h-64 bg-base-100 rounded-lg p-4">
             <%= column_chart(
               @digest.monthly_distances.sort_by { |month, _| month.to_i }.map { |month, distance_meters|
-                [Date::ABBR_MONTHNAMES[month.to_i], Users::Digest.convert_distance(distance_meters.to_i, @distance_unit).round]
+                [I18n.t('date.abbr_month_names')[month.to_i], Users::Digest.convert_distance(distance_meters.to_i, @distance_unit).round]
               },
               height: '250px',
               suffix: " #{@distance_unit}",

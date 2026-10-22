@@ -28,7 +28,7 @@ class Jobs::Create
   private
 
   def bulk_enqueue(points_relation, force:)
-    return unless DawarichSettings.reverse_geocoding_enabled?
+    return unless geocoding_config.enabled?
 
     points_relation.in_batches(of: BULK_ENQUEUE_BATCH_SIZE) do |batch|
       ids = batch.pluck(:id)
@@ -46,14 +46,7 @@ class Jobs::Create
   end
 
   def claim_dedup_keys(ids)
-    results = Sidekiq.redis do |redis|
-      redis.pipelined do |pipe|
-        ids.each do |id|
-          pipe.set(Point.geocode_dedup_key(id), 1, nx: true, ex: Point::GEOCODE_DEDUP_TTL)
-        end
-      end
-    end
-    ids.zip(results).filter_map { |id, claimed| id if claimed }
+    Point.claim_geocode_ids(ids)
   end
 
   def clear_dedup_keys(ids)
@@ -85,13 +78,14 @@ class Jobs::Create
   end
 
   def paid_provider?
-    DawarichSettings.geoapify_enabled? || DawarichSettings.locationiq_enabled?
+    geocoding_config.paid_provider?
   end
 
   def paid_provider_name
-    return 'locationiq' if DawarichSettings.locationiq_enabled?
-    return 'geoapify' if DawarichSettings.geoapify_enabled?
+    (geocoding_config.provider || 'unknown').to_s
+  end
 
-    'unknown'
+  def geocoding_config
+    @geocoding_config ||= Geocoding::Config.for(user)
   end
 end

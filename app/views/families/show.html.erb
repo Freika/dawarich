@@ -6,12 +6,12 @@
     <div class="flex items-center gap-2">
       <% if policy(@family).update? %>
         <%= link_to edit_family_path, class: "btn btn-outline btn-sm" do %>
-          <%= icon 'square-pen', class: 'w-4 h-4' %> <%= t('.edit') %>
+          <%= icon 'square-pen', class: 'w-4 h-4' %> <%= t('families.show.edit') %>
         <% end %>
       <% end %>
       <% if policy(@family).invite? && @family.can_add_members? %>
         <button class="btn btn-primary btn-sm" onclick="document.getElementById('invite-section').scrollIntoView({behavior:'smooth'})">
-          <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('.invite') %>
+          <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('families.show.invite') %>
         </button>
       <% end %>
     </div>
@@ -21,6 +21,11 @@
     <%= t('.members_created', count: @member_count, date: l(@family.created_at.to_date, format: :month_year)) %>
   </div>
 
+  <%= render 'families/getting_started',
+        family: @family,
+        user: current_user,
+        pending_invitations: @pending_invitations %>
+
   <%# Main layout: Map + Sidebar %>
   <div class="flex flex-col lg:flex-row gap-4" style="min-height: 500px;"
        data-controller="family-map"
@@ -29,7 +34,7 @@
     <%# Left: Map %>
     <div class="w-full lg:w-3/5 min-h-full">
       <div class="border border-base-300 rounded-xl overflow-hidden h-full relative"
-           data-family-map-target="map">
+           data-family-map-target="map" style="min-height: 300px;">
         <% if @member_locations.empty? %>
           <div class="absolute inset-0 flex items-center justify-center bg-base-200 z-10">
             <div class="text-center">
@@ -60,7 +65,14 @@
       <div class="border border-base-300 rounded-xl overflow-hidden">
         <div class="bg-base-200 px-4 py-2.5">
           <h3 class="text-xs font-medium uppercase tracking-wider text-base-content/50">
-            <%= t('.members') %> <span class="text-base-content/30">(<%= @members.count %>)</span>
+            <%= t('.members') %>
+            <span class="text-base-content/30">
+              <% if DawarichSettings.self_hosted? %>
+                (<%= @members.count %>)
+              <% else %>
+                <%= t('families.getting_started.seats', used: @members.count, total: Family::MAX_MEMBERS) %>
+              <% end %>
+            </span>
           </h3>
         </div>
         <div class="divide-y divide-base-200">
@@ -100,7 +112,7 @@
                       </span>
                       <% if location %>
                         <span class="text-xs text-base-content/40">
-                          <%= t('.middot') %> <%= time_ago_in_words(Time.zone.at(location[:timestamp])) %> <%= t('.ago') %>
+                          <%= t('.middot') %> <%= t('common.time_ago', time: relative_distance_in_words(Time.zone.at(location[:timestamp]))) %>
                         </span>
                       <% end %>
                     <% else %>
@@ -153,7 +165,7 @@
                   <div class="min-w-0 flex-1 mr-2">
                     <div class="text-sm font-medium"><%= invitation.email %></div>
                     <div class="text-xs text-base-content/40">
-                      <%= t('.invited_ago_expires', ago: time_ago_in_words(invitation.created_at), date: l(invitation.expires_at.to_date, format: :short_month_day_padded)) %>
+                      <%= t('.invited_ago_expires', ago: relative_distance_in_words(invitation.created_at), date: l(invitation.expires_at.to_date, format: :short_month_day_padded)) %>
                     </div>
                     <div class="text-xs text-base-content/50 font-mono break-all select-all mt-1">
                       <%= public_invitation_url(invitation.token) %>
@@ -193,12 +205,19 @@
                       class: "btn btn-primary btn-sm" %>
               </div>
             <% end %>
+            <% unless DawarichSettings.self_hosted? %>
+              <p class="text-xs text-base-content/50 mt-2">
+                <%= t('families.getting_started.members_lose_access_when_your_plan_ends') %>
+              </p>
+            <% end %>
           </div>
         <% elsif policy(@family).invite? %>
           <div class="px-4 py-3 border-t border-base-200">
             <p class="text-xs text-warning">
               <%= icon 'triangle-alert', class: 'w-3.5 h-3.5 inline' %>
-              <%= t('.family_at_capacity') %><%= @family.class::MAX_MEMBERS %> <%= t('.members_max') %>
+              <%= t('.family_at_capacity',
+                    count: @family.member_count + @family.pending_invitations_count,
+                    max: @family.class::MAX_MEMBERS) %>
             </p>
           </div>
         <% end %>

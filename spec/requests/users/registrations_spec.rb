@@ -27,6 +27,13 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(response.body).to include('Create Account &amp; Join Family')
       end
 
+      it 'renders the French invitation heading as one complete sentence' do
+        get new_user_registration_path(invitation_token: invitation.token, locale: 'fr')
+
+        expect(response.body).to include("Rejoindre #{family.name} !")
+        expect(response.body).not_to include('Rejoindre.')
+      end
+
       it 'pre-fills email field with invitation email' do
         get new_user_registration_path(invitation_token: invitation.token)
 
@@ -51,7 +58,7 @@ RSpec.describe 'Users::Registrations', type: :request do
         get new_user_registration_path
 
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include('Almost there!')
+        expect(response.body).to include('Almost there')
         expect(response.body).to include('control over your location data')
         expect(response.body).not_to include('Join')
         expect(response.body).to include('Sign up')
@@ -84,6 +91,14 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(new_user).to be_present
         expect(new_user.family).to eq(family)
         expect(family.reload.members).to include(new_user)
+      end
+
+      it 'persists the chosen locale before creating the welcome notification' do
+        post user_registration_path, params: request_params.merge(locale: 'fr')
+
+        new_user = User.find_by!(email: invitation.email)
+        expect(new_user.preferred_locale).to eq(:fr)
+        expect(new_user.notifications.last.title).to eq('Bienvenue dans la famille !')
       end
 
       it 'redirects to family page after successful registration' do
@@ -171,6 +186,15 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(response).to redirect_to(root_path)
         expect(flash[:alert]).to include('Registration is not available')
       end
+
+      it 'rejects a user param that is not a hash without erroring' do
+        expect do
+          post user_registration_path, params: { user: 'test@example.com' }
+        end.not_to change(User, :count)
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to include('Registration is not available')
+      end
     end
 
     context 'when email/password registration is enabled' do
@@ -223,6 +247,44 @@ RSpec.describe 'Users::Registrations', type: :request do
 
         expect(response).to redirect_to(family_path)
       end
+
+      it 'allows account creation when the email differs only in case' do
+        expect do
+          post user_registration_path, params: {
+            user: {
+              email: invitation.email.upcase,
+              password: 'password123456',
+              password_confirmation: 'password123456'
+            },
+            invitation_token: invitation.token
+          }
+        end.to change(User, :count).by(1)
+
+        expect(response).to redirect_to(family_path)
+      end
+
+      it 'prevents account creation for a different email' do
+        expect do
+          post user_registration_path, params: {
+            user: {
+              email: 'someone.else@example.com',
+              password: 'password123456',
+              password_confirmation: 'password123456'
+            },
+            invitation_token: invitation.token
+          }
+        end.not_to change(User, :count)
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq('This invitation is not for your email address.')
+        expect(invitation.reload.status).to eq('pending')
+      end
+
+      it 'renders the registration page when the user param is not a hash' do
+        get new_user_registration_path(invitation_token: invitation.token, user: 'someone.else@example.com')
+
+        expect(response).to have_http_status(:ok)
+      end
     end
 
     context 'when accessing registration with expired invitation' do
@@ -258,7 +320,7 @@ RSpec.describe 'Users::Registrations', type: :request do
         get new_user_registration_path
 
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include('Almost there!')
+        expect(response.body).to include('Almost there')
       end
 
       it 'creates the account and redirects to Manager checkout (reverse_trial default)' do

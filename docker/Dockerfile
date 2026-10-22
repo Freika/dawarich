@@ -47,6 +47,7 @@ RUN apt-get update -qq \
     libjemalloc2 libjemalloc-dev \
     cmake \
     ca-certificates \
+    librsvg2-bin fonts-dejavu-core fonts-noto-cjk \
     gosu \
     && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
@@ -121,9 +122,10 @@ RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
 RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
     && chmod -R 777 tmp
 
-# Copy public directory to temp location for syncing with volume at runtime
-# This allows new static files to be added to the persistent volume
-RUN cp -r public /tmp/public_assets
+# Stage a pristine copy of public/ for the entrypoint to sync into the
+# persistent volume at runtime. Lives under the app dir, not /tmp, so
+# tmpfs-mounted /tmp cannot make the sync silently skip.
+RUN cp -r public $APP_PATH/public_dist
 
 # Copy entrypoint scripts and grant execution permissions
 COPY ./docker/entrypoint-env-guard.sh /usr/local/bin/entrypoint-env-guard.sh
@@ -133,6 +135,9 @@ RUN chmod +x /usr/local/bin/web-entrypoint.sh
 
 COPY ./docker/sidekiq-entrypoint.sh /usr/local/bin/sidekiq-entrypoint.sh
 RUN chmod +x /usr/local/bin/sidekiq-entrypoint.sh
+
+COPY ./docker/cloud-entrypoint.sh /usr/local/bin/cloud-entrypoint.sh
+RUN chmod +x /usr/local/bin/cloud-entrypoint.sh
 
 EXPOSE $RAILS_PORT
 

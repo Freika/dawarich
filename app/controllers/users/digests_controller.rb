@@ -50,15 +50,15 @@ status: :see_other
   end
 
   def available_years_for_generation
-    tracked_years = current_user.stats.select(:year).distinct.pluck(:year)
+    tracked_years = current_user.scoped_stats.select(:year).distinct.pluck(:year)
     existing_digests = current_user.digests.yearly.pluck(:year)
 
     (tracked_years - existing_digests - [Time.current.year]).sort.reverse
   end
 
   def valid_year?(year)
-    return false if year < 1970 || year > Time.current.year
+    return false if year < 1970 || year >= Time.current.year
 
-    current_user.stats.exists?(year: year)
+    current_user.scoped_stats.exists?(year: year)
   end
 end

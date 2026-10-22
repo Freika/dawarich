@@ -22,7 +22,7 @@ class Api::V1::LocationsController < ApiController
 
   def suggestions
     if search_query.present? && search_query.length >= 2
-      suggestions = LocationSearch::GeocodingService.new(search_query).search
+      suggestions = LocationSearch::GeocodingService.new(search_query, user: current_api_user).search
 
       # Format suggestions for the frontend
       formatted_suggestions = suggestions.map do |suggestion|
@@ -56,7 +56,9 @@ class Api::V1::LocationsController < ApiController
       limit: params[:limit]&.to_i || 50,
       date_from: parse_date(params[:date_from]),
       date_to: parse_date(params[:date_to]),
-      radius_override: params[:radius_override]&.to_i
+      radius_override: params[:radius_override]&.to_i,
+      place_name: params[:name],
+      address: params[:address]
     }
   end
 

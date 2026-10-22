@@ -47,7 +47,7 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     const LAYER_COLOR_DEFAULTS = ${JSON.stringify(LAYER_COLOR_DEFAULTS)}
     const SettingsManager = globalThis.__settingsManagerTestDouble
     const getMapStyle = globalThis.__settingsManagerGetMapStyle
-    const translate = (key) => key
+    const translate = globalThis.__settingsManagerTranslate ?? ((key) => key)
     ${basemapUrlSource.replace(/^export /gm, "")}
   `
   const url = `data:text/javascript;base64,${Buffer.from(`${dependencies}\n${withoutImports}`).toString("base64")}`
@@ -91,6 +91,38 @@ test("basemap URLs also accept raster XYZ, style.json and suffixless style URLs"
   )
 })
 
+test("Track generation thresholds load and persist with their existing backend keys", async () => {
+  const originalFetch = globalThis.fetch
+  let saved
+  globalThis.fetch = async (_url, options = {}) => {
+    if (options.method === "PATCH") {
+      saved = JSON.parse(options.body).settings
+      return { ok: true, json: async () => ({ settings: saved }) }
+    }
+    return {
+      ok: true,
+      json: async () => ({
+        settings: {
+          meters_between_routes: "1200",
+          minutes_between_routes: "45",
+        },
+      }),
+    }
+  }
+
+  try {
+    SettingsManager.apiKey = "test-key"
+    const loaded = await SettingsManager.loadFromBackend()
+    assert.equal(loaded.metersBetweenRoutes, 1200)
+    assert.equal(loaded.minutesBetweenRoutes, 45)
+    await SettingsManager.saveToBackend(loaded)
+    assert.equal(saved.meters_between_routes, "1200")
+    assert.equal(saved.minutes_between_routes, "45")
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 test("multiple setting updates are persisted in one complete snapshot", async () => {
   SettingsManager.cachedSettings = {
     mapStyle: "light",
@@ -108,7 +140,7 @@ test("multiple setting updates are persisted in one complete snapshot", async ()
   assert.equal(snapshots.length, 1)
   assert.deepEqual(snapshots[0], {
     mapStyle: "light",
-    routeColor: "#0000ff",
+    routeColor: "#111111",
     trackColor: "#6366F1",
   })
 })
@@ -131,7 +163,7 @@ test("settings writes are serialized so a newer snapshot persists last", async (
     return settings
   }
 
-  const staleSave = SettingsManager.updateSetting("routeColor", "#333333")
+  const staleSave = SettingsManager.updateSetting("trackColor", "#333333")
   await Promise.resolve()
   const resetSave = SettingsManager.updateSettings(LAYER_COLOR_DEFAULTS)
   await Promise.resolve()
@@ -141,7 +173,7 @@ test("settings writes are serialized so a newer snapshot persists last", async (
   await Promise.all([staleSave, resetSave])
   assert.deepEqual(snapshots.at(-1), {
     mapStyle: "light",
-    routeColor: "#0000ff",
+    routeColor: "#111111",
     trackColor: "#6366F1",
   })
 })
@@ -160,11 +192,10 @@ test("resetting layer colors cancels stale debounced saves", async () => {
   const controller = new SettingsController({
     element: { querySelector: () => null },
   })
-  controller.applyRouteColor = () => {}
   controller.applyTrackColor = () => {}
   controller.layerColorTimers = {
-    routeColor: setTimeout(
-      () => settingsManager.updateSetting("routeColor", "#111111"),
+    trackColor: setTimeout(
+      () => settingsManager.updateSetting("trackColor", "#111111"),
       10,
     ),
   }
@@ -300,4 +331,49 @@ test("a stale style.load after the fallback does not double-reload", async () =>
   controller.map.emit("style.load")
 
   assert.deepEqual(restored, ["loadMapData"])
+})
+
+test("track color picker drives the tiled Tracks layer", async () => {
+  const settingsManager = {
+    getSettings: () => ({}),
+    getSetting: () => false,
+    updateSetting: () => {},
+  }
+  const { SettingsController } = await loadSettingsController(settingsManager)
+  const colorCalls = []
+  const controller = new SettingsController({
+    element: { querySelector: () => null },
+    map: { getLayer: () => null },
+    layerManager: {
+      getLayer: (name) =>
+        name === "tracks-mvt"
+          ? { setColors: (colors) => colorCalls.push(colors) }
+          : null,
+    },
+  })
+
+  controller.applyTrackColor("#abcdef")
+
+  assert.deepEqual(colorCalls, [{ trackColor: "#abcdef" }])
+})
+
+test("style rebuild reloads enabled family labels after the new layers exist", async () => {
+  const controller = await styleSwapController()
+  const seen = []
+  controller.controller.settings.familyEnabled = true
+  controller.controller.loadMapData = async () => seen.push("layers")
+  controller.controller.loadFamilyMembers = async () => seen.push("family")
+  await controller.restoreStyleLayers()
+  assert.deepEqual(seen, ["layers", "family"])
+
+  seen.length = 0
+  controller.controller._disconnected = true
+  await controller.restoreStyleLayers()
+  assert.deepEqual(seen, ["layers"])
+
+  seen.length = 0
+  controller.controller._disconnected = false
+  controller.controller.settings.familyEnabled = false
+  await controller.restoreStyleLayers()
+  assert.deepEqual(seen, ["layers"])
 })

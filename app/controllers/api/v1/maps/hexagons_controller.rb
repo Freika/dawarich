@@ -39,7 +39,10 @@ class Api::V1::Maps::HexagonsController < ApiController
     result = Maps::BoundsCalculator.new(
       user: context[:user] || context[:target_user],
       start_date: context[:start_date],
-      end_date: context[:end_date]
+      end_date: context[:end_date],
+      import_id: context[:stat] ? nil : params[:import_id],
+      robust: params[:robust] == 'true',
+      respect_plan_scope: !context[:stat]
     ).call
 
     if result[:success]
@@ -59,6 +62,8 @@ class Api::V1::Maps::HexagonsController < ApiController
     render json: { error: e.message }, status: :not_found
   rescue Maps::BoundsCalculator::NoDateRangeError => e
     render json: { error: e.message }, status: :bad_request
+  rescue ActiveRecord::QueryCanceled
+    render json: { error: 'History bounds request timed out' }, status: :service_unavailable
   end
 
   def fog

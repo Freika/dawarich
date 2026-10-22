@@ -1,7 +1,7 @@
 <% content_for :title, t('.insights') %>
 <%= render 'shared/chartkick_scripts' %>
 
-<% insights_cache_key = [current_user.id, "insights", @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit] %>
+<% insights_cache_key = [current_user.id, "insights", I18n.locale, @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit] %>
 
 <div class="w-full my-5">
   <%= render 'header' %>
@@ -9,8 +9,8 @@
 
   <% if @year_locked %>
     <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-      <% %w[Total\ Distance Countries Cities Days\ Traveling].each do |title| %>
-        <%= render 'pro_locked_card', title: title, utm_content: "insights_#{title.parameterize}" %>
+      <% %w[total_distance countries cities days_traveling].each do |metric| %>
+        <%= render 'pro_locked_card', title: t(".#{metric}"), utm_content: "insights_#{metric}" %>
       <% end %>
     </div>
     <div class="flex flex-col lg:flex-row gap-6">
@@ -38,15 +38,27 @@
   <% else %>
     <%= render 'stats_row' %>
 
-    <!-- Heatmap and Streak Row -->
-    <div class="flex flex-col lg:flex-row gap-6">
-      <% cache insights_cache_key + ["activity_heatmap"], expires_in: 24.hours do %>
-        <%= render 'activity_heatmap' %>
+    <% if @all_time %>
+      <%= render 'tracking_summary' %>
+      <%= render 'year_cards' if @stats_by_year.any? || @locked_years.any? %>
+    <% else %>
+      <%= render 'months' %>
+      <% if current_user.full_access? %>
+        <%= turbo_frame_tag "residency-content", src: map_residency_path(year: @selected_year), loading: :lazy do %>
+          <%= render 'days_per_country_skeleton' %>
+        <% end %>
+      <% elsif @activity_heatmap %>
+        <% cache insights_cache_key + ['year_calendar'], expires_in: 24.hours do %>
+          <%= render 'year_calendar', year: @selected_year, activity: @activity_heatmap %>
+        <% end %>
       <% end %>
-      <% cache insights_cache_key + ["activity_streak"], expires_in: 24.hours do %>
-        <%= render 'activity_streak' %>
+      <% if !current_user.full_access? && current_user.stats.exists?(year: @selected_year - 1) %>
+        <div class="mb-6" data-testid="distance-race-locked">
+          <%= render 'pro_locked_card', title: t('insights.distance_race.title', year: @selected_year, previous: @selected_year - 1),
+                                        utm_content: 'distance_race' %>
+        </div>
       <% end %>
-    </div>
+    <% end %>
 
     <!-- Lazy-loaded below-the-fold details -->
     <%= turbo_frame_tag "insights_details", src: details_insights_path(year: @selected_year, month: params[:month]), loading: :lazy do %>

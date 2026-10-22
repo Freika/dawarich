@@ -79,6 +79,24 @@ RSpec.describe Tracks::Deduplicator do
       end
     end
 
+    context 'when duplicate tracks still own points' do
+      let(:start_time) { 2.hours.ago }
+      let(:end_time) { 1.hour.ago }
+
+      let!(:older) { create(:track, user: user, start_at: start_time, end_at: end_time, tracker_id: 'a') }
+      let!(:newer) { create(:track, user: user, start_at: start_time, end_at: end_time, tracker_id: 'b') }
+
+      it 'detaches their points instead of aborting on the foreign key' do
+        point = create(:point, user: user, track: older)
+
+        expect { described_class.new(user).call }.not_to raise_error
+
+        expect(Track.exists?(older.id)).to be false
+        expect(Track.exists?(newer.id)).to be true
+        expect(point.reload.track_id).to be_nil
+      end
+    end
+
     context 'when another user has tracks with the same timestamps' do
       let(:other_user) { create(:user) }
       let(:start_time) { 2.hours.ago }

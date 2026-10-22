@@ -30,7 +30,7 @@
           <%= f.label :status do %>
             <%= t('.status') %>
           <% end %>
-          <%= f.select :status, User.statuses.keys.map { |s| [s.capitalize, s] }, {}, class: "select select-bordered w-full" %>
+          <%= f.select :status, User.statuses.keys.map { |status| [t("enums.user.status.#{status}"), status] }, {}, class: "select select-bordered w-full" %>
         </div>
         <div class="form-control mt-5">
           <%= f.submit t('.update'), class: "btn btn-primary" %>

@@ -49,6 +49,36 @@ RSpec.describe Tracks::SessionManager do
       # Check that the key exists and will expire
       expect(Rails.cache.exist?(manager.send(:cache_key))).to be true
     end
+
+    it 'retries transient cache pool timeouts while initializing counters' do
+      pool = instance_double(ConnectionPool)
+      redis = instance_double(Redis)
+      attempts = 0
+      allow(Rails.cache).to receive(:write).and_return(true)
+      allow(Rails.cache).to receive(:redis).and_return(pool)
+      allow(pool).to receive(:with) do |&block|
+        attempts += 1
+        raise ConnectionPool::TimeoutError, 'Waited 5.0 sec, 0/5 available' if attempts < 3
+
+        block.call(redis)
+      end
+      allow(redis).to receive(:set)
+
+      expect(manager.create_session(metadata)).to eq(manager)
+      expect(attempts).to eq(3)
+    end
+
+    it 'raises after cache pool retries are exhausted' do
+      pool = instance_double(ConnectionPool)
+      allow(Rails.cache).to receive(:write).and_return(true)
+      allow(Rails.cache).to receive(:redis).and_return(pool)
+      allow(pool).to receive(:with).and_raise(ConnectionPool::TimeoutError, 'Waited 5.0 sec, 0/5 available')
+
+      expect { manager.create_session(metadata) }
+        .to raise_error(ConnectionPool::TimeoutError)
+
+      expect(pool).to have_received(:with).exactly(3).times
+    end
   end
 
   describe '#get_session_data' do

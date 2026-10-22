@@ -31,11 +31,35 @@ class SharedLink < ApplicationRecord
   validate :resource_id_matches_type
   validate :timeline_dates_present_and_ordered
   validate :expires_at_in_future
+  validate :valid_family_audience, if: -> { new_record? || will_save_change_to_settings? }
 
   scope :active, lambda {
     where(revoked_at: nil)
       .where('expires_at IS NULL OR expires_at > ?', Time.current)
   }
+
+  def self.family_trips_for(viewer)
+    family = viewer&.family
+    return none unless family&.access_live?
+
+    active.where(resource_type: :trip, user_id: family.members.select(:id))
+          .where("settings ->> 'audience' = 'family' AND settings ->> 'family_id' = ?", family.id.to_s)
+          .where.not(user_id: viewer.id)
+  end
+
+  def family_only?
+    settings['audience'] == 'family'
+  end
+
+  def accessible_to?(viewer)
+    return true unless family_only?
+    return false unless viewer
+
+    family = user&.family
+    return false unless family&.access_live? && family.id.to_s == settings['family_id'].to_s
+
+    family.family_memberships.exists?(user_id: viewer.id)
+  end
 
   def resource
     case resource_type.to_sym
@@ -63,6 +87,13 @@ class SharedLink < ApplicationRecord
   end
 
   private
+
+  def valid_family_audience
+    return unless family_only?
+    return if trip? && user&.family&.access_live? && user.family.id.to_s == settings['family_id'].to_s
+
+    errors.add(:base, I18n.t('shared_links.family.unavailable'))
+  end
 
   def resource_id_matches_type
     needs_id = RESOURCE_TYPES_REQUIRING_ID.include?(resource_type)

@@ -15,9 +15,9 @@ class Immich::EnrichPhotos
     if user.safe_settings.immich_api_key.blank?
       return error_result(I18n.t('services.immich.configuration.api_key_missing'))
     end
-    return { enriched: 0, failed: 0, errors: [] } if assets.empty?
+    return { enriched: 0, pending: 0, failed: 0, errors: [] } if assets.empty?
 
-    enriched = 0
+    submitted = []
     failed = 0
     errors = []
 
@@ -25,17 +25,28 @@ class Immich::EnrichPhotos
       result = update_asset(asset)
 
       if result[:success]
-        enriched += 1
+        submitted << asset
       else
         failed += 1
         errors << { immich_asset_id: asset['immich_asset_id'], error: result[:error] }
       end
     end
 
-    { enriched:, failed:, errors: }
+    schedule_verification(submitted) if submitted.any?
+
+    { enriched: 0, pending: submitted.size, failed:, errors: }
   end
 
   private
+
+  def schedule_verification(submitted)
+    notification = user.notifications.create!(
+      kind: :info,
+      title: I18n.t('services.immich.enrich_photos.checking_title'),
+      content: I18n.t('services.immich.enrich_photos.checking', count: submitted.size)
+    )
+    Immich::VerifyEnrichmentJob.set(wait: 10.seconds).perform_later(notification.id, submitted, immich_url)
+  end
 
   def update_asset(asset)
     options = {
@@ -52,11 +63,13 @@ class Immich::EnrichPhotos
     if response.success?
       { success: true }
     else
+      message = Rack::Utils::HTTP_STATUS_CODES.fetch(response.code, 'Unknown status')
       { success: false,
-error: I18n.t('services.immich.enrich_photos.http_code_message', code: response.code, message: response.message) }
+        error: I18n.t('services.immich.enrich_photos.http_code_message', code: response.code, message:) }
     end
-  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED => e
-    { success: false, error: e.message }
+  rescue *Photos::ConnectionErrors::HANDLED => e
+    { success: false,
+      error: I18n.t('services.immich.connection_tester.immich_connection_failed_message', message: e.class.name) }
   end
 
   def immich_url
@@ -72,6 +85,6 @@ error: I18n.t('services.immich.enrich_photos.http_code_message', code: response.
   end
 
   def error_result(message)
-    { error: message, enriched: 0, failed: 0, errors: [] }
+    { error: message, enriched: 0, pending: 0, failed: 0, errors: [] }
   end
 end

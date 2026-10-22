@@ -5,15 +5,15 @@
     <p style="color: #374151; line-height: 1.6;"><%= t('.hi') %> <%= @family.owner.email %>!</p>
 
     <p style="color: #374151; line-height: 1.6;">
-      <%= t('.we_re_excited_to_let_you_know_that') %> <strong><%= @user.email %></strong> <%= t('.has_just_joined_your_family') %><strong><%= @family.name %></strong><%= t('.on_dawarich') %>
+      <%= t('.member_joined_family_html', email: @user.email, family: @family.name) %>
     </p>
 
     <div style="background-color: #f3f4f6; padding: 20px; border-radius: 6px; margin: 20px 0;">
       <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 18px;"><%= t('.now_you_can') %></h3>
       <ul style="color: #374151; line-height: 1.6; margin: 0; padding-left: 20px;">
-        <li style="margin-bottom: 8px;"><%= t('.see') %> <%= @user.email %><%= t('.s_current_location_if_they_ve_enabled_sharing') %></li>
+        <li style="margin-bottom: 8px;"><%= t('.see_current_location_html', email: @user.email) %></li>
         <li style="margin-bottom: 8px;"><%= t('.stay_connected_with_your_growing_family') %></li>
-        <li style="margin-bottom: 8px;"><%= t('.share_your_location_with') %> <%= @user.email %></li>
+        <li style="margin-bottom: 8px;"><%= t('.share_location_with_html', email: @user.email) %></li>
         <li><%= t('.manage_family_members_and_settings_from_your_family_page') %></li>
       </ul>
     </div>
@@ -25,7 +25,7 @@
     </div>
 
     <p style="color: #374151; line-height: 1.6;">
-      <%= t('.your_family_now_has') %> <strong><%= @family.member_count %></strong> <%= t('.member') %><%= @family.member_count == 1 ? '' : 's' %>.
+      <%= t('.member_count_html', count: @family.member_count) %>
     </p>
 
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">

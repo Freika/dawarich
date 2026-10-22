@@ -47,6 +47,14 @@ RSpec.describe Points::Destroyer do
           .and have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 7).exactly(:once)
       end
 
+      it 'rebuilds achievement dwell from the oldest deleted point' do
+        clear_achievement_checks(user.id)
+
+        expect { described_class.new(user, point_ids).call }
+          .to have_enqueued_job(Achievements::CheckJob).with(user.id)
+        expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([may_point.timestamp])
+      end
+
       it 'returns the destroyed points' do
         expect(described_class.new(user, point_ids).call.map(&:id)).to match_array(point_ids)
       end
@@ -61,6 +69,35 @@ RSpec.describe Points::Destroyer do
         expect { described_class.new(user, [own_point.id, foreign_point.id]).call }
           .to change { user.points.count }.by(-1)
           .and change { other_user.points.count }.by(0)
+      end
+    end
+
+    context 'when deleting the current achievement cursor' do
+      let(:base_ts) { DateTime.new(2026, 1, 1).to_i }
+      let(:germany_geom) { 'MULTIPOLYGON (((11 48, 11 49, 12 49, 12 48, 11 48)))' }
+      let!(:region) { create(:region, code: 'DE-BY', geom: germany_geom) }
+      let!(:country) { create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU', geom: germany_geom) }
+      let!(:points) do
+        8.times.map do |index|
+          create(:point, user: user, longitude: 11.5, latitude: 48.5,
+                         timestamp: base_ts + (index * 600), country_id: country.id)
+        end
+      end
+
+      before do
+        clear_achievement_checks(user.id)
+        Achievements::RegionSetChecker.new(user, notify: false).call
+      end
+
+      it 'executes an exact rebuild when the deleted timestamp equals the cursor' do
+        progress = Achievements::Progress.find_by!(user: user, achievement_key: 'exploration')
+        expect(progress.state['dwell']['DE-BY']).to eq(4_200)
+
+        perform_enqueued_jobs(only: Achievements::CheckJob) do
+          described_class.new(user, points.last.id).call
+        end
+
+        expect(progress.reload.state['dwell']['DE-BY']).to eq(3_600)
       end
     end
 

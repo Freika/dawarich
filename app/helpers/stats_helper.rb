@@ -20,18 +20,19 @@ module StatsHelper
   end
 
   def countries_and_cities_stat_for_month(stat)
-    visited = stat.toponyms.select { |t| t['country'].present? && t['cities']&.any? }
-    countries = visited.count
+    visited = stat.toponyms.select { |t| t['country'].present? }
+    countries = visited.map { |t| t['country'] }.uniq.count
     cities = visited.sum { _1['cities'].count }
 
     I18n.t('helpers.stats.countries_and_cities', countries:, cities:)
   end
 
   def distance_traveled(user, stat)
-    distance_unit = user.safe_settings.distance_unit
-    value = Stat.convert_distance(stat.distance, distance_unit).round
+    formatted_distance(user, stat.distance)
+  end
 
-    I18n.t('helpers.stats.distance', value: number_with_delimiter(value), unit: distance_unit)
+  def flight_distance_traveled(user, stat)
+    formatted_distance(user, stat.flight_distance)
   end
 
   def active_days(stat)
@@ -42,7 +43,7 @@ module StatsHelper
   end
 
   def countries_visited(stat)
-    stat.toponyms.count { |t| t['country'].present? && t['cities']&.any? }
+    stat.toponyms.filter_map { |t| t['country'].presence }.uniq.count
   end
 
   def peak_day(stat)
@@ -75,6 +76,13 @@ module StatsHelper
 
   private
 
+  def formatted_distance(user, meters)
+    distance_unit = user.safe_settings.distance_unit
+    value = Stat.convert_distance(meters, distance_unit).round
+
+    I18n.t('helpers.stats.distance', value: number_with_delimiter(value), unit: distance_unit)
+  end
+
   def collect_countries_and_cities(year_stats)
     countries = []
     cities = []
@@ -84,7 +92,7 @@ module StatsHelper
       toponyms.each do |t|
         city_names = (t['cities'] || []).filter_map { |c| c['city'] }
         cities.concat(city_names)
-        countries << normalize_country_name(t['country']) if city_names.any? && t['country'].present?
+        countries << normalize_country_name(t['country']) if t['country'].present?
       end
     end
 
@@ -99,6 +107,7 @@ module StatsHelper
         country = normalize_country_name(toponym['country'])
         next if country.blank?
 
+        grouped[country]
         (toponym['cities'] || []).each do |city_data|
           city = city_data['city']
           grouped[country] << city if city.present?

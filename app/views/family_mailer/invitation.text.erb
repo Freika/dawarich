@@ -2,7 +2,7 @@
 
 <%= t('.hi_there') %>
 
-<%= @invited_by.email %> <%= t('.has_invited_you_to_join_their_family') %><%= @family.name %><%= t('.on_dawarich') %>
+<%= t('.invited_by_family_text', email: @invited_by.email, family: @family.name) %>
 
 <%= t('.by_joining_this_family_you_ll_be_able_to') %>
 <%= t('.share_your_current_location_with_family_members_2') %>

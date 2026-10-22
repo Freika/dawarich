@@ -4,10 +4,10 @@
   <div class="max-w-lg mx-auto">
     <div class="card bg-base-200 shadow-xl">
       <div class="card-body">
-        <h2 class="card-title"><%= t('.link') %> <%= @provider_label %> <%= t('.to_your_dawarich_account') %></h2>
+        <h2 class="card-title"><%= t('.link_provider_to_your_dawarich_account', provider: @provider_label) %></h2>
 
         <p class="text-sm text-base-content/70 mt-2">
-          <%= t('.we_found_an_existing_dawarich_account_for') %> <strong><%= @user_email %></strong><%= t('.enter_your_password_to_link_your') %> <%= @provider_label %> <%= t('.identity_to_that_account_and_sign_in') %>
+          <%= t('.existing_account_link_instructions_html', email: tag.strong(@user_email), provider: @provider_label) %>
         </p>
 
         <% if flash[:alert].present? %>

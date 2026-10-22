@@ -4,6 +4,18 @@ class Imports::SourceDetector
   class UnknownSourceError < StandardError; end
 
   DETECTION_RULES = {
+    mobile_photo_library: {
+      required_keys: %w[type version points],
+      required_values: {
+        'type' => MobilePhotoLibrary::Importer::FORMAT_TYPE,
+        'version' => MobilePhotoLibrary::Importer::FORMAT_VERSION
+      },
+      nested_patterns: [
+        ['points', 0, 'timestamp'],
+        ['points', 0, 'latitude'],
+        ['points', 0, 'longitude']
+      ]
+    },
     google_semantic_history: {
       required_keys: ['timelineObjects'],
       nested_patterns: [
@@ -234,8 +246,13 @@ class Imports::SourceDetector
     content = read_for_raw_detection
     return nil if content.blank?
 
-    if content.include?('"semanticSegments"') &&
-       (content.include?('"startTime"') || content.include?('"visit"') || content.include?('"activity"'))
+    # Real exports exceed MAX_DETECTION_BYTES, so the structured rules cannot
+    # parse them and this branch has to carry the version check itself.
+    if content.include?(%("#{MobilePhotoLibrary::Importer::FORMAT_TYPE}")) && content.include?('"points"') &&
+       content.match?(/"version"\s*:\s*#{MobilePhotoLibrary::Importer::FORMAT_VERSION}\b/)
+      :mobile_photo_library
+    elsif content.include?('"semanticSegments"') &&
+          (content.include?('"startTime"') || content.include?('"visit"') || content.include?('"activity"'))
       :google_phone_takeout
     elsif content.include?('"timelineObjects"') &&
           (content.include?('"activitySegment"') || content.include?('"placeVisit"'))

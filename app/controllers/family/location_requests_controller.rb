@@ -29,33 +29,27 @@ class Family::LocationRequestsController < ApplicationController
   end
 
   def accept
-    unless actionable?
-      alert = I18n.t('controllers.family.location_requests.this_request_has_expired_or_already_been_responded_to')
-      redirect_to family_path,
-                  alert: alert
-      return
-    end
+    result = Families::RespondToLocationRequest.new(
+      request: @request, responder: current_user, decision: :accept, duration: params[:duration]
+    ).call
 
-    duration = params[:duration] || @request.suggested_duration
-    ActiveRecord::Base.transaction do
-      current_user.update_family_location_sharing!(true, duration: duration)
-      @request.update!(status: :accepted, responded_at: Time.current)
+    if result.success?
+      redirect_to family_path, notice: I18n.t('controllers.family.location_requests.location_sharing_enabled')
+    else
+      redirect_to family_path, alert: result.payload[:message]
     end
-
-    redirect_to family_path, notice: I18n.t('controllers.family.location_requests.location_sharing_enabled')
   end
 
   def decline
-    unless actionable?
-      alert = I18n.t('controllers.family.location_requests.this_request_has_expired_or_already_been_responded_to')
-      redirect_to family_path,
-                  alert: alert
-      return
+    result = Families::RespondToLocationRequest.new(
+      request: @request, responder: current_user, decision: :decline
+    ).call
+
+    if result.success?
+      redirect_to family_path, notice: I18n.t('controllers.family.location_requests.location_request_declined')
+    else
+      redirect_to family_path, alert: result.payload[:message]
     end
-
-    @request.update!(status: :declined, responded_at: Time.current)
-
-    redirect_to family_path, notice: I18n.t('controllers.family.location_requests.location_request_declined')
   end
 
   private
@@ -75,9 +69,5 @@ class Family::LocationRequestsController < ApplicationController
     return if current_user&.in_family?
 
     redirect_to root_path, alert: I18n.t('controllers.family.location_requests.you_must_be_part_of_a_family')
-  end
-
-  def actionable?
-    @request.pending? && @request.expires_at > Time.current
   end
 end

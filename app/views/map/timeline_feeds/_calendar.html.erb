@@ -48,9 +48,6 @@
                   data-tracked-seconds="<%= cell[:tracked_seconds] %>"
                   <% if cell[:disabled] %>disabled<% end %>>
             <span class="cal-cell__day"><%= calendar_day_number(cell) %></span>
-            <% if cell[:suggested_count].to_i.positive? %>
-              <span class="suggestion-dot" aria-label="<%= t('.has_suggested_visits') %>"></span>
-            <% end %>
           </button>
         <% end %>
       <% end %>

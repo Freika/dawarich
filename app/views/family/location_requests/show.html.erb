@@ -11,13 +11,13 @@
 
         <div>
           <span class="text-sm text-base-content/60"><%= t('.requested') %></span>
-          <p class="text-lg"><%= time_ago_in_words(@request.created_at) %> <%= t('.ago') %></p>
+          <p class="text-lg"><%= t('common.time_ago', time: relative_distance_in_words(@request.created_at)) %></p>
         </div>
 
         <% if @request.pending? && @request.expires_at > Time.current %>
           <div>
             <span class="text-sm text-base-content/60"><%= t('.expires') %></span>
-            <p class="text-lg"><%= time_ago_in_words(@request.expires_at) %> <%= t('.from_now') %></p>
+            <p class="text-lg"><%= t('common.time_from_now', time: relative_distance_in_words(@request.expires_at)) %></p>
           </div>
 
           <%= form_with url: accept_family_location_request_path(@request), method: :patch, class: "space-y-4 mt-6" do |f| %>
@@ -55,7 +55,7 @@
           <% if @request.responded_at.present? %>
             <div>
               <span class="text-sm text-base-content/60"><%= t('.responded') %></span>
-              <p><%= time_ago_in_words(@request.responded_at) %> <%= t('.ago') %></p>
+              <p><%= t('common.time_ago', time: relative_distance_in_words(@request.responded_at)) %></p>
             </div>
           <% end %>
         <% end %>

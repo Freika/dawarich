@@ -52,9 +52,10 @@ export class SearchManager {
 
     // Clear results when clicking outside
     this._documentClickHandler = (e) => {
+      const eventPath = e.composedPath()
       if (
-        !this.searchInput.contains(e.target) &&
-        !this.resultsContainer.contains(e.target)
+        !eventPath.includes(this.searchInput) &&
+        !eventPath.includes(this.resultsContainer)
       ) {
         // Delay to allow animations to complete
         setTimeout(() => {
@@ -747,9 +748,12 @@ export class SearchManager {
    */
   escapeHtml(str) {
     if (!str) return ""
-    const div = document.createElement("div")
-    div.textContent = str
-    return div.innerHTML
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
   }
 
   /**

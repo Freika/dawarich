@@ -5,7 +5,7 @@
     <p style="color: #374151; line-height: 1.6;"><%= t('.hi_there') %></p>
 
     <p style="color: #374151; line-height: 1.6;">
-      <strong><%= @invited_by.email %></strong> <%= t('.has_invited_you_to_join_their_family') %><strong><%= @family.name %></strong><%= t('.on_dawarich') %>
+      <%= t('.invited_by_family_html', email: @invited_by.email, family: @family.name) %>
     </p>
 
     <div style="background-color: #f3f4f6; padding: 20px; border-radius: 6px; margin: 20px 0;">

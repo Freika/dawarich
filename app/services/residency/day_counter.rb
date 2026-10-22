@@ -48,7 +48,7 @@ module Residency
         }
       end
 
-      countries.sort_by { |c| -c[:days] }
+      countries.sort_by { |c| [-c[:days], c[:country_name]] }
     end
 
     def build_periods(sorted_dates)
@@ -107,19 +107,20 @@ module Residency
           by_date[row['point_date'].to_s] << { country: row['country_name'], count: row['point_count'].to_i }
         end
 
-        by_date.transform_values { |entries| entries.max_by { |e| e[:count] }[:country] }
+        by_date.transform_values { |entries| entries.min_by { |e| [-e[:count], e[:country]] }[:country] }
       end
     end
 
     # Single query returning date/country/count — used by both country_days and daily_countries
     def daily_country_counts
       @daily_country_counts ||= begin
-        start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
+        timezone = user.timezone_iana
+        start_of_year = ActiveSupport::TimeZone[timezone].local(year, 1, 1, 0, 0, 0)
         end_of_year = start_of_year.end_of_year
 
         sql = <<~SQL.squish
           SELECT
-            DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
+            DATE(to_timestamp(timestamp) AT TIME ZONE #{ActiveRecord::Base.connection.quote(timezone)}) as point_date,
             country_name,
             COUNT(*) as point_count
           FROM points
@@ -130,7 +131,7 @@ module Residency
             AND country_name != ''
             AND (anomaly IS NOT TRUE)
           GROUP BY point_date, country_name
-          ORDER BY point_date
+          ORDER BY point_date, country_name COLLATE "C"
         SQL
 
         ActiveRecord::Base.connection.exec_query(

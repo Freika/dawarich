@@ -114,6 +114,18 @@ RSpec.describe 'Users::AppleOauth', type: :request do
       expect(response).to redirect_to(root_path)
     end
 
+    it 'shows deletion guidance when Apple omits email for an identity pending deletion' do
+      existing = create(:user, provider: 'apple', uid: '000777.web.apple', email: 'web-user@example.com')
+      existing.mark_as_deleted!
+      allow(verifier_double).to receive(:call).and_return(valid_claims.merge(email: ''))
+      state = perform_request_phase
+
+      post '/users/auth/apple/callback', params: { id_token: 'fake-jwt', state: state }
+
+      expect(response).to redirect_to(new_user_session_path)
+      expect(flash[:alert]).to include('being deleted')
+    end
+
     it 'rejects callbacks whose state cookie is missing' do
       post '/users/auth/apple/callback', params: { id_token: 'fake-jwt', state: 'anything' }
       expect(response).to redirect_to(new_user_session_path)

@@ -1,4 +1,5 @@
 <tr data-import-id="<%= import.id %>"
+    data-import-status="<%= import.status %>"
     id="<%= dom_id(import) %>"
     data-points-total="<%= import.processed %>"
     class="hover:bg-base-200/50 transition-colors">
@@ -62,7 +63,7 @@
         </div>
         <% if import.file.present? %>
           <div class="tooltip" data-tip="<%= t('.download_file') %>">
-            <%= link_to rails_blob_path(import.file, disposition: 'attachment'), class: "btn btn-ghost btn-xs", download: import.name do %>
+            <%= link_to download_import_path(import), class: "btn btn-ghost btn-xs", data: { turbo: false } do %>
               <%= icon 'arrow-big-down', class: 'w-4 h-4' %>
             <% end %>
           </div>

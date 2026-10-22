@@ -139,7 +139,7 @@ RSpec.describe Point, type: :model do
       end
 
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        configure_instance_geocoding
         allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
         Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
       end
@@ -153,16 +153,18 @@ RSpec.describe Point, type: :model do
       end
 
       context 'when point is imported' do
-        let(:point) { build(:point, import_id: 1) }
+        let(:point) { create(:point, import: create(:import)) }
 
         it 'enqueues ReverseGeocodeJob' do
+          clear_dedup_key(point.id)
           expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
         end
       end
 
       context 'when reverse geocoding is disabled' do
         before do
-          allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+          InstanceSetting.delete_all
+          InstanceSettings::Resolver.reset!
         end
 
         it 'does not enqueue ReverseGeocodeJob' do
@@ -177,12 +179,11 @@ RSpec.describe Point, type: :model do
           expect { point.async_reverse_geocode }.not_to have_enqueued_job(ReverseGeocodingJob)
         end
 
-        it 'sets a 24h-TTL Redis key for the point id' do
+        it 'keeps the Redis claim until the pending job finishes' do
           point.save
 
           ttl = Sidekiq.redis { |r| r.ttl(Point.geocode_dedup_key(point.id)) }
-          expect(ttl).to be > 0
-          expect(ttl).to be <= 86_400
+          expect(ttl).to eq(-1)
         end
       end
 

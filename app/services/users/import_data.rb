@@ -115,10 +115,12 @@ class Users::ImportData
 
         FileUtils.mkdir_p(File.dirname(extraction_path))
 
-        # Manual extraction to bypass size validation for large files
+        # The directory size is untrusted. Bound decompressed output too;
+        # checking one extra byte detects overflow without writing past the cap.
         entry.get_input_stream do |input|
           File.open(extraction_path, 'wb') do |output|
-            IO.copy_stream(input, output)
+            IO.copy_stream(input, output, MAX_ENTRY_SIZE)
+            raise "Archive entry #{entry.name} exceeds maximum allowed size" if input.read(1)
           end
         end
       end
@@ -233,22 +235,27 @@ class Users::ImportData
       "#{@import_stats[:files_restored]} files restored, " \
       "#{@import_stats[:notifications_created]} notifications"
 
-    ::Notifications::Create.new(
-      user: user,
-      title: I18n.t('services.users.import_data.data_import_completed'),
-      content: I18n.t('services.users.import_data.your_data_has_been_imported_successfully_summary', summary: summary),
-      kind: :info
-    ).call
+    I18n.with_locale(user.locale) do
+      ::Notifications::Create.new(
+        user: user,
+        title: I18n.t('services.users.import_data.data_import_completed'),
+        content: I18n.t('services.users.import_data.your_data_has_been_imported_successfully_summary',
+                        summary: summary),
+        kind: :info
+      ).call
+    end
   end
 
   def create_failure_notification(error)
-    ::Notifications::Create.new(
-      user: user,
-      title: I18n.t('services.users.import_data.data_import_failed'),
-      content: I18n.t('services.users.import_data.your_data_import_failed_with_error_message_please_check_the',
-                      message: error.message),
-      kind: :error
-    ).call
+    I18n.with_locale(user.locale) do
+      ::Notifications::Create.new(
+        user: user,
+        title: I18n.t('services.users.import_data.data_import_failed'),
+        content: I18n.t('services.users.import_data.your_data_import_failed_with_error_message_please_check_the',
+                        message: error.message),
+        kind: :error
+      ).call
+    end
   end
 
   def validate_import_completeness(expected_counts)

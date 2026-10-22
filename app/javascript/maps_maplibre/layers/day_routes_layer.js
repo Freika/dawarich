@@ -1,5 +1,5 @@
 import { translate } from "i18n"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { maskLines } from "../utils/flight_mask"
 import { RouteSegmenter } from "../utils/route_segmenter"
 

@@ -2,7 +2,8 @@
 <%= form_with model: SharedLink.new, url: paths[:create], method: :post,
               data: { turbo_frame: "share-link-modal" } do |f| %>
   <div class="alert alert-warning text-sm mb-4">
-    <span><%= t('.this_shares_your') %> <strong><%= t('.current_location_in_real_time') %></strong> <%= t('.with_anyone_who_has_the_link_until_it_expires_or') %></span>
+    <span><%= t('.this_shares_your_location_with_anyone_html',
+                 location: content_tag(:strong, t('.current_location_in_real_time'))) %></span>
   </div>
   <div class="form-control">
     <label class="label"><span class="label-text"><%= t('.magic_phrase_optional') %></span></label>

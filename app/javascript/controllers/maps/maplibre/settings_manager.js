@@ -62,7 +62,6 @@ export class SettingsController {
     const toggleMap = {
       pointsToggle: "pointsVisible",
       pointsEditToggle: "pointDraggingEnabled",
-      routesToggle: "routesVisible",
       heatmapToggle: "heatmapEnabled",
       hexagonsToggle: "hexagonsEnabled",
       visitsToggle: "visitsEnabled",
@@ -72,7 +71,6 @@ export class SettingsController {
       fogToggle: "fogEnabled",
       scratchToggle: "scratchEnabled",
       familyToggle: "familyEnabled",
-      speedColoredToggle: "speedColoredRoutes",
       tracksToggle: "tracksEnabled",
       flightsToggle: "flightsEnabled",
       anomaliesToggle: "anomaliesEnabled",
@@ -103,6 +101,8 @@ export class SettingsController {
       }
     })
 
+    this.syncPointsEditAvailability()
+
     // Show/hide visits search based on initial toggle state
     if (controller.hasVisitsToggleTarget && controller.hasVisitsSearchTarget) {
       controller.visitsSearchTarget.style.display = controller
@@ -131,12 +131,6 @@ export class SettingsController {
         : "none"
     }
 
-    // Sync route opacity slider
-    if (controller.hasRouteOpacityRangeTarget) {
-      controller.routeOpacityRangeTarget.value =
-        (this.settings.routeOpacity || 1.0) * 100
-    }
-
     // Sync layer color pickers
     Object.entries(LAYER_COLOR_DEFAULTS).forEach(([key, fallback]) => {
       const color = this.settings[key] || fallback
@@ -156,6 +150,14 @@ export class SettingsController {
       'input[name="vectorTilesUrl"]',
     )
     if (tilesUrlInput) tilesUrlInput.value = this.settings.vectorTilesUrl || ""
+
+    const tilesFallbackInput = controller.element.querySelector(
+      'input[name="tilesFallback"]',
+    )
+    if (tilesFallbackInput) {
+      tilesFallbackInput.checked = this.settings.tilesFallback === true
+    }
+    this.syncTilesFallbackAvailability()
 
     // Sync map style dropdown. Setting .value doesn't fire "change", so
     // notify the map-theme-editor controller separately — it shows/hides
@@ -211,25 +213,9 @@ export class SettingsController {
       }
     }
 
-    // Sync route generation settings
-    const metersBetweenInput = controller.element.querySelector(
-      'input[name="metersBetweenRoutes"]',
-    )
-    if (metersBetweenInput) {
-      metersBetweenInput.value = this.settings.metersBetweenRoutes || 500
-      if (controller.hasMetersBetweenValueTarget) {
-        controller.metersBetweenValueTarget.textContent = `${metersBetweenInput.value}m`
-      }
-    }
-
-    const minutesBetweenInput = controller.element.querySelector(
-      'input[name="minutesBetweenRoutes"]',
-    )
-    if (minutesBetweenInput) {
-      minutesBetweenInput.value = this.settings.minutesBetweenRoutes || 60
-      if (controller.hasMinutesBetweenValueTarget) {
-        controller.minutesBetweenValueTarget.textContent = `${minutesBetweenInput.value}min`
-      }
+    for (const name of ["metersBetweenRoutes", "minutesBetweenRoutes"]) {
+      const input = controller.element.querySelector(`input[name="${name}"]`)
+      if (input) input.value = this.settings[name]
     }
 
     // Sync city statistics settings
@@ -243,69 +229,12 @@ export class SettingsController {
       }
     }
 
-    const maxGapInput = controller.element.querySelector(
-      'input[name="maxGapMinutesInCity"]',
-    )
-    if (maxGapInput) {
-      maxGapInput.value = this.settings.maxGapMinutesInCity || 120
-      if (controller.hasMaxGapMinutesValueTarget) {
-        controller.maxGapMinutesValueTarget.textContent = `${maxGapInput.value} min`
-      }
-    }
-
-    // Sync visit detection settings
-    const stayMaxGapInput = controller.element.querySelector(
-      'input[name="stayMaxGapMinutes"]',
-    )
-    if (stayMaxGapInput) {
-      stayMaxGapInput.value = this.settings.stayMaxGapMinutes || 60
-      if (controller.hasStayMaxGapMinutesValueTarget) {
-        controller.stayMaxGapMinutesValueTarget.textContent = `${stayMaxGapInput.value} min`
-      }
-    }
-
     // Sync GPS noise filtering settings
     const gpsFilteringToggle = controller.element.querySelector(
       'input[name="gpsFilteringEnabled"]',
     )
     if (gpsFilteringToggle) {
       gpsFilteringToggle.checked = this.settings.gpsFilteringEnabled !== false
-    }
-
-    // Sync speed-colored routes settings
-    if (controller.hasSpeedColorScaleInputTarget) {
-      const colorScale =
-        this.settings.speedColorScale ||
-        "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
-      controller.speedColorScaleInputTarget.value = colorScale
-    }
-    if (
-      controller.hasSpeedColorScaleContainerTarget &&
-      controller.hasSpeedColoredToggleTarget
-    ) {
-      const isEnabled = controller.speedColoredToggleTarget.checked
-      controller.speedColorScaleContainerTarget.classList.toggle(
-        "hidden",
-        !isEnabled,
-      )
-    }
-
-    // Sync points rendering mode radio buttons
-    const pointsRenderingRadios = controller.element.querySelectorAll(
-      'input[name="pointsRenderingMode"]',
-    )
-    pointsRenderingRadios.forEach((radio) => {
-      radio.checked =
-        radio.value === (this.settings.pointsRenderingMode || "raw")
-    })
-
-    // Sync speed-colored routes toggle
-    const speedColoredRoutesToggle = controller.element.querySelector(
-      'input[name="speedColoredRoutes"]',
-    )
-    if (speedColoredRoutesToggle) {
-      speedColoredRoutesToggle.checked =
-        this.settings.speedColoredRoutes || false
     }
 
     // Sync transportation mode settings
@@ -320,14 +249,6 @@ export class SettingsController {
    */
   async syncTransportationSettings() {
     const controller = this.controller
-    const distanceUnit = this.getDistanceUnit()
-    const isMetric = distanceUnit === "km"
-
-    // Sync expert mode toggle
-    if (controller.hasTransportationExpertToggleTarget) {
-      controller.transportationExpertToggleTarget.checked =
-        this.settings.transportationExpertMode || false
-    }
 
     // Sync enabled transportation modes allowlist
     if (controller.hasEnabledModeCheckboxTarget) {
@@ -337,170 +258,6 @@ export class SettingsController {
         controller.enabledModeCheckboxTargets.forEach((checkbox) => {
           checkbox.checked = enabledSet.has(checkbox.value)
         })
-      }
-    }
-
-    // Show/hide expert settings based on toggle state
-    if (controller.hasTransportationExpertSettingsTarget) {
-      const isExpertMode = this.settings.transportationExpertMode || false
-      controller.transportationExpertSettingsTarget.classList.toggle(
-        "hidden",
-        !isExpertMode,
-      )
-    }
-
-    // Update speed unit labels
-    if (controller.hasSpeedUnitLabelTarget) {
-      const speedUnit = isMetric ? "km/h" : "mph"
-      controller.speedUnitLabelTargets.forEach((label) => {
-        label.textContent = speedUnit
-      })
-    }
-
-    // Update distance unit labels
-    if (controller.hasDistanceUnitLabelTarget) {
-      const distUnit = isMetric ? "km" : "mi"
-      controller.distanceUnitLabelTargets.forEach((label) => {
-        label.textContent = distUnit
-      })
-    }
-
-    // Sync basic transportation thresholds
-    const basicThresholds = this.settings.transportationThresholds || {}
-    const speedUnit = isMetric ? "km/h" : "mph"
-    const distUnit = isMetric ? "km" : "mi"
-
-    const basicInputMap = {
-      walkingMaxSpeed: {
-        input: "walkingMaxSpeedInput",
-        value: "walkingMaxSpeedValue",
-      },
-      cyclingMaxSpeed: {
-        input: "cyclingMaxSpeedInput",
-        value: "cyclingMaxSpeedValue",
-      },
-      drivingMaxSpeed: {
-        input: "drivingMaxSpeedInput",
-        value: "drivingMaxSpeedValue",
-      },
-      flyingMinSpeed: {
-        input: "flyingMinSpeedInput",
-        value: "flyingMinSpeedValue",
-      },
-    }
-
-    Object.entries(basicInputMap).forEach(([settingKey, targets]) => {
-      const hasInputTarget = `has${targets.input.charAt(0).toUpperCase()}${targets.input.slice(1)}Target`
-      const hasValueTarget = `has${targets.value.charAt(0).toUpperCase()}${targets.value.slice(1)}Target`
-
-      if (controller[hasInputTarget]) {
-        const value = basicThresholds[settingKey]
-        if (value !== undefined) {
-          const displayValue = this.toDisplaySpeed(value, isMetric)
-          controller[`${targets.input}Target`].value = displayValue
-          if (controller[hasValueTarget]) {
-            controller[`${targets.value}Target`].textContent =
-              `${displayValue} ${speedUnit}`
-          }
-        }
-      }
-    })
-
-    // Sync expert transportation thresholds
-    const expertThresholds = this.settings.transportationExpertThresholds || {}
-
-    // Speed thresholds (need unit conversion)
-    const expertSpeedInputs = {
-      stationaryMaxSpeed: {
-        input: "stationaryMaxSpeedInput",
-        value: "stationaryMaxSpeedValue",
-      },
-      trainMinSpeed: {
-        input: "trainMinSpeedInput",
-        value: "trainMinSpeedValue",
-      },
-    }
-
-    Object.entries(expertSpeedInputs).forEach(([settingKey, targets]) => {
-      const hasInputTarget = `has${targets.input.charAt(0).toUpperCase()}${targets.input.slice(1)}Target`
-      const hasValueTarget = `has${targets.value.charAt(0).toUpperCase()}${targets.value.slice(1)}Target`
-
-      if (controller[hasInputTarget]) {
-        const value = expertThresholds[settingKey]
-        if (value !== undefined) {
-          const displayValue = this.toDisplaySpeed(value, isMetric)
-          controller[`${targets.input}Target`].value = displayValue
-          if (controller[hasValueTarget]) {
-            controller[`${targets.value}Target`].textContent =
-              `${displayValue} ${speedUnit}`
-          }
-        }
-      }
-    })
-
-    // Acceleration thresholds (no unit conversion needed - always m/s²)
-    const accelInputs = {
-      runningVsCyclingAccel: {
-        input: "runningVsCyclingAccelInput",
-        value: "runningVsCyclingAccelValue",
-      },
-      cyclingVsDrivingAccel: {
-        input: "cyclingVsDrivingAccelInput",
-        value: "cyclingVsDrivingAccelValue",
-      },
-    }
-
-    Object.entries(accelInputs).forEach(([settingKey, targets]) => {
-      const hasInputTarget = `has${targets.input.charAt(0).toUpperCase()}${targets.input.slice(1)}Target`
-      const hasValueTarget = `has${targets.value.charAt(0).toUpperCase()}${targets.value.slice(1)}Target`
-
-      if (controller[hasInputTarget]) {
-        const value = expertThresholds[settingKey]
-        if (value !== undefined) {
-          controller[`${targets.input}Target`].value = value
-          if (controller[hasValueTarget]) {
-            controller[`${targets.value}Target`].textContent = `${value} m/s²`
-          }
-        }
-      }
-    })
-
-    // Time thresholds (no unit conversion needed - always seconds)
-    const timeInputs = {
-      minSegmentDuration: {
-        input: "minSegmentDurationInput",
-        value: "minSegmentDurationValue",
-      },
-      timeGapThreshold: {
-        input: "timeGapThresholdInput",
-        value: "timeGapThresholdValue",
-      },
-    }
-
-    Object.entries(timeInputs).forEach(([settingKey, targets]) => {
-      const hasInputTarget = `has${targets.input.charAt(0).toUpperCase()}${targets.input.slice(1)}Target`
-      const hasValueTarget = `has${targets.value.charAt(0).toUpperCase()}${targets.value.slice(1)}Target`
-
-      if (controller[hasInputTarget]) {
-        const value = expertThresholds[settingKey]
-        if (value !== undefined) {
-          controller[`${targets.input}Target`].value = value
-          if (controller[hasValueTarget]) {
-            controller[`${targets.value}Target`].textContent = `${value} sec`
-          }
-        }
-      }
-    })
-
-    // Distance threshold (needs unit conversion)
-    if (controller.hasMinFlightDistanceInputTarget) {
-      const value = expertThresholds.minFlightDistanceKm
-      if (value !== undefined) {
-        const displayValue = this.toDisplayDistance(value, isMetric)
-        controller.minFlightDistanceInputTarget.value = displayValue
-        if (controller.hasMinFlightDistanceValueTarget) {
-          controller.minFlightDistanceValueTarget.textContent = `${displayValue} ${distUnit}`
-        }
       }
     }
 
@@ -576,8 +333,6 @@ export class SettingsController {
    * Apply transportation settings with confirmation
    */
   async applyTransportationSettings() {
-    const _controller = this.controller
-
     // Show confirmation dialog
     const confirmed = confirm(
       translate("settings.confirm_transportation_recalculation"),
@@ -585,115 +340,28 @@ export class SettingsController {
 
     if (!confirmed) return
 
-    // Collect all threshold values from inputs
-    await this.saveTransportationThresholds()
+    await this.saveEnabledTransportationModes()
   }
 
   /**
-   * Save all transportation thresholds to backend
+   * Save the enabled transportation modes allowlist to backend.
+   * (Threshold settings are gone — detection tunes itself.)
    */
-  async saveTransportationThresholds() {
+  async saveEnabledTransportationModes() {
     const controller = this.controller
-    const isMetric = this.getDistanceUnit() === "km"
 
-    // Collect basic thresholds
-    const transportationThresholds = {}
-    const basicInputs = [
-      "walkingMaxSpeed",
-      "cyclingMaxSpeed",
-      "drivingMaxSpeed",
-      "flyingMinSpeed",
-    ]
+    if (!controller.hasEnabledModeCheckboxTarget) return
 
-    basicInputs.forEach((name) => {
-      const targetName = `${name}InputTarget`
-      const hasTarget = `has${name.charAt(0).toUpperCase()}${name.slice(1)}InputTarget`
-      if (controller[hasTarget]) {
-        const value = parseFloat(controller[targetName].value)
-        transportationThresholds[name] = this.toMetricSpeed(value, isMetric)
-      }
-    })
+    const enabledTransportationModes = controller.enabledModeCheckboxTargets
+      .filter((checkbox) => checkbox.checked)
+      .map((checkbox) => checkbox.value)
 
-    // Collect expert thresholds
-    const transportationExpertThresholds = {}
+    this.settings.enabledTransportationModes = enabledTransportationModes
 
-    // Speed thresholds
-    const expertSpeedInputs = ["stationaryMaxSpeed", "trainMinSpeed"]
-    expertSpeedInputs.forEach((name) => {
-      const targetName = `${name}InputTarget`
-      const hasTarget = `has${name.charAt(0).toUpperCase()}${name.slice(1)}InputTarget`
-      if (controller[hasTarget]) {
-        const value = parseFloat(controller[targetName].value)
-        transportationExpertThresholds[name] = this.toMetricSpeed(
-          value,
-          isMetric,
-        )
-      }
-    })
-
-    // Acceleration thresholds (no conversion)
-    const accelInputs = ["runningVsCyclingAccel", "cyclingVsDrivingAccel"]
-    accelInputs.forEach((name) => {
-      const targetName = `${name}InputTarget`
-      const hasTarget = `has${name.charAt(0).toUpperCase()}${name.slice(1)}InputTarget`
-      if (controller[hasTarget]) {
-        transportationExpertThresholds[name] = parseFloat(
-          controller[targetName].value,
-        )
-      }
-    })
-
-    // Time thresholds (no conversion)
-    const timeInputs = ["minSegmentDuration", "timeGapThreshold"]
-    timeInputs.forEach((name) => {
-      const targetName = `${name}InputTarget`
-      const hasTarget = `has${name.charAt(0).toUpperCase()}${name.slice(1)}InputTarget`
-      if (controller[hasTarget]) {
-        transportationExpertThresholds[name] = parseInt(
-          controller[targetName].value,
-          10,
-        )
-      }
-    })
-
-    // Distance threshold
-    if (controller.hasMinFlightDistanceInputTarget) {
-      const value = parseFloat(controller.minFlightDistanceInputTarget.value)
-      transportationExpertThresholds.minFlightDistanceKm =
-        this.toMetricDistance(value, isMetric)
-    }
-
-    // Collect enabled transportation modes allowlist
-    let enabledTransportationModes = null
-    if (controller.hasEnabledModeCheckboxTarget) {
-      enabledTransportationModes = controller.enabledModeCheckboxTargets
-        .filter((checkbox) => checkbox.checked)
-        .map((checkbox) => checkbox.value)
-    }
-
-    // Update settings object
-    this.settings.transportationThresholds = transportationThresholds
-    this.settings.transportationExpertThresholds =
-      transportationExpertThresholds
-    if (enabledTransportationModes !== null) {
-      this.settings.enabledTransportationModes = enabledTransportationModes
-    }
-
-    // Save to backend
     const result = await SettingsManager.updateSetting(
-      "transportationThresholds",
-      transportationThresholds,
+      "enabledTransportationModes",
+      enabledTransportationModes,
     )
-    await SettingsManager.updateSetting(
-      "transportationExpertThresholds",
-      transportationExpertThresholds,
-    )
-    if (enabledTransportationModes !== null) {
-      await SettingsManager.updateSetting(
-        "enabledTransportationModes",
-        enabledTransportationModes,
-      )
-    }
 
     // Check result and update UI
     if (result && result.status === "locked") {
@@ -861,35 +529,14 @@ export class SettingsController {
 
     const controller = this.controller
 
-    // Get all transportation threshold inputs
-    const inputTargets = [
-      "walkingMaxSpeedInput",
-      "cyclingMaxSpeedInput",
-      "drivingMaxSpeedInput",
-      "flyingMinSpeedInput",
-      "stationaryMaxSpeedInput",
-      "trainMinSpeedInput",
-      "runningVsCyclingAccelInput",
-      "cyclingVsDrivingAccelInput",
-      "minSegmentDurationInput",
-      "timeGapThresholdInput",
-      "minFlightDistanceInput",
-      "transportationExpertToggle",
-    ]
-
-    inputTargets.forEach((targetName) => {
-      const hasTarget = `has${targetName.charAt(0).toUpperCase()}${targetName.slice(1)}Target`
-      if (controller[hasTarget]) {
-        const element = controller[`${targetName}Target`]
-        element.disabled = locked
-        // Add visual styling for disabled state
-        if (locked) {
-          element.classList.add("opacity-50", "cursor-not-allowed")
-        } else {
-          element.classList.remove("opacity-50", "cursor-not-allowed")
-        }
-      }
-    })
+    // Lock the enabled-mode checkboxes
+    if (controller.hasEnabledModeCheckboxTarget) {
+      controller.enabledModeCheckboxTargets.forEach((checkbox) => {
+        checkbox.disabled = locked
+        checkbox.classList.toggle("opacity-50", locked)
+        checkbox.classList.toggle("cursor-not-allowed", locked)
+      })
+    }
 
     // Also disable/enable the apply button
     if (controller.hasTransportationApplyButtonTarget) {
@@ -899,35 +546,6 @@ export class SettingsController {
       } else {
         controller.transportationApplyButtonTarget.classList.remove(
           "btn-disabled",
-        )
-      }
-    }
-
-    // Gray out the basic and expert settings containers
-    if (controller.hasTransportationBasicSettingsTarget) {
-      if (locked) {
-        controller.transportationBasicSettingsTarget.classList.add(
-          "opacity-50",
-          "pointer-events-none",
-        )
-      } else {
-        controller.transportationBasicSettingsTarget.classList.remove(
-          "opacity-50",
-          "pointer-events-none",
-        )
-      }
-    }
-
-    if (controller.hasTransportationExpertSettingsTarget) {
-      if (locked) {
-        controller.transportationExpertSettingsTarget.classList.add(
-          "opacity-50",
-          "pointer-events-none",
-        )
-      } else {
-        controller.transportationExpertSettingsTarget.classList.remove(
-          "opacity-50",
-          "pointer-events-none",
         )
       }
     }
@@ -969,96 +587,6 @@ export class SettingsController {
       this.recalculationPollTimer = null
     }
   }
-
-  /**
-   * Toggle transportation expert mode visibility
-   */
-  toggleTransportationExpertMode(event) {
-    const isExpertMode = event.target.checked
-    const controller = this.controller
-
-    if (controller.hasTransportationExpertSettingsTarget) {
-      controller.transportationExpertSettingsTarget.classList.toggle(
-        "hidden",
-        !isExpertMode,
-      )
-    }
-
-    // Save the expert mode setting
-    this.settings.transportationExpertMode = isExpertMode
-    SettingsManager.updateSetting("transportationExpertMode", isExpertMode)
-  }
-
-  /**
-   * Update the display value for a transportation threshold slider (real-time feedback)
-   */
-  updateTransportationThresholdDisplay(event) {
-    const input = event.target
-    const name = input.name
-    const value = parseFloat(input.value)
-    const controller = this.controller
-    const isMetric = this.getDistanceUnit() === "km"
-
-    // Map input names to value target names and units
-    const displayMap = {
-      // Basic speed thresholds
-      walkingMaxSpeed: {
-        target: "walkingMaxSpeedValue",
-        unit: isMetric ? "km/h" : "mph",
-      },
-      cyclingMaxSpeed: {
-        target: "cyclingMaxSpeedValue",
-        unit: isMetric ? "km/h" : "mph",
-      },
-      drivingMaxSpeed: {
-        target: "drivingMaxSpeedValue",
-        unit: isMetric ? "km/h" : "mph",
-      },
-      flyingMinSpeed: {
-        target: "flyingMinSpeedValue",
-        unit: isMetric ? "km/h" : "mph",
-      },
-      // Expert speed thresholds
-      stationaryMaxSpeed: {
-        target: "stationaryMaxSpeedValue",
-        unit: isMetric ? "km/h" : "mph",
-      },
-      trainMinSpeed: {
-        target: "trainMinSpeedValue",
-        unit: isMetric ? "km/h" : "mph",
-      },
-      // Acceleration thresholds
-      runningVsCyclingAccel: {
-        target: "runningVsCyclingAccelValue",
-        unit: "m/s²",
-      },
-      cyclingVsDrivingAccel: {
-        target: "cyclingVsDrivingAccelValue",
-        unit: "m/s²",
-      },
-      // Time thresholds
-      minSegmentDuration: { target: "minSegmentDurationValue", unit: "sec" },
-      timeGapThreshold: { target: "timeGapThresholdValue", unit: "sec" },
-      // Distance threshold
-      minFlightDistanceKm: {
-        target: "minFlightDistanceValue",
-        unit: isMetric ? "km" : "mi",
-      },
-    }
-
-    const mapping = displayMap[name]
-    if (!mapping) return
-
-    const targetName = mapping.target
-    const hasTarget = `has${targetName.charAt(0).toUpperCase()}${targetName.slice(1)}Target`
-
-    if (controller[hasTarget]) {
-      controller[`${targetName}Target`].textContent = `${value} ${mapping.unit}`
-    }
-  }
-
-  // ===== Unit Conversion Helpers =====
-
   /**
    * Get user's preferred distance unit
    * @returns {string} 'km' or 'mi'
@@ -1066,50 +594,6 @@ export class SettingsController {
   getDistanceUnit() {
     // Try to get from settings, default to 'km'
     return this.settings?.distance_unit || "km"
-  }
-
-  /**
-   * Convert speed from metric (km/h) to display unit
-   * @param {number} kmh - Speed in km/h
-   * @param {boolean} isMetric - Whether to display in metric
-   * @returns {number} Speed in display unit
-   */
-  toDisplaySpeed(kmh, isMetric) {
-    if (isMetric) return kmh
-    return Math.round(kmh * 0.621371 * 10) / 10 // km/h to mph, round to 1 decimal
-  }
-
-  /**
-   * Convert speed from display unit to metric (km/h)
-   * @param {number} value - Speed in display unit
-   * @param {boolean} isMetric - Whether value is in metric
-   * @returns {number} Speed in km/h
-   */
-  toMetricSpeed(value, isMetric) {
-    if (isMetric) return value
-    return Math.round((value / 0.621371) * 10) / 10 // mph to km/h
-  }
-
-  /**
-   * Convert distance from metric (km) to display unit
-   * @param {number} km - Distance in km
-   * @param {boolean} isMetric - Whether to display in metric
-   * @returns {number} Distance in display unit
-   */
-  toDisplayDistance(km, isMetric) {
-    if (isMetric) return km
-    return Math.round(km * 0.621371 * 10) / 10 // km to mi
-  }
-
-  /**
-   * Convert distance from display unit to metric (km)
-   * @param {number} value - Distance in display unit
-   * @param {boolean} isMetric - Whether value is in metric
-   * @returns {number} Distance in km
-   */
-  toMetricDistance(value, isMetric) {
-    if (isMetric) return value
-    return Math.round((value / 0.621371) * 10) / 10 // mi to km
   }
 
   /**
@@ -1159,15 +643,22 @@ export class SettingsController {
         SettingsManager.getSetting("hiddenTileCategories") || [],
       disabledPoiGroups: SettingsManager.getSetting("disabledPoiGroups") || [],
       customTheme: SettingsManager.getSetting("customTheme"),
+      tilesFallback: SettingsManager.getSetting("tilesFallback") === true,
     }
   }
 
   // Reload layers after a style change. setStyle replaces the whole style
   // document — including the projection — so globe mode must be restored
   // or every style/theme change silently drops back to mercator.
-  restoreStyleLayers() {
+  async restoreStyleLayers() {
     this.restoreGlobeProjection()
-    this.controller.loadMapData()
+    await this.controller.loadMapData()
+    if (
+      this.controller.settings?.familyEnabled &&
+      !this.controller._disconnected
+    ) {
+      await this.controller.loadFamilyMembers()
+    }
   }
 
   applyUserStyleUrl(styleUrl, styleName) {
@@ -1271,38 +762,43 @@ export class SettingsController {
     }
 
     await SettingsManager.updateSetting("fogOfWarMode", mode)
+    await this.controller.layerVisibilityManager?.reapplyPointsRenderer()
   }
 
   togglePointsEditing(event) {
     const enabled = event.target.checked
 
-    this.layerManager.getLayer("points")?.setEditMode(enabled)
+    this.layerManager.getLayer("map-editor")?.setEditable(enabled)
 
     SettingsManager.updateSetting("pointDraggingEnabled", enabled)
   }
 
-  updateRouteOpacity(event) {
-    const opacity = parseInt(event.target.value, 10) / 100
+  syncPointsEditAvailability() {
+    const controller = this.controller
+    if (!controller.hasPointsEditToggleTarget) return
 
-    const routesLayer = this.layerManager.getLayer("routes")
-    if (routesLayer && this.map.getLayer("routes")) {
-      this.map.setPaintProperty("routes", "line-opacity", opacity)
+    const input = controller.pointsEditToggleTarget
+    const gated = isGatedPlan(controller.userPlanValue)
+
+    input.disabled = gated
+    input.checked =
+      SettingsManager.getSetting("pointDraggingEnabled") === true && !gated
+
+    // A hover tooltip cannot explain a disabled control to touch or keyboard,
+    // so the reason also renders as a line under the row.
+    if (controller.hasPointsEditUnavailableNoteTarget) {
+      const note = controller.pointsEditUnavailableNoteTarget
+      note.textContent = ""
+      note.classList.add("hidden")
     }
 
-    SettingsManager.updateSetting("routeOpacity", opacity)
+    const label = input.closest("label")
+    if (!label) return
+    label.classList.toggle("opacity-40", gated)
+    label.style.cursor = gated ? "not-allowed" : ""
   }
 
-  /**
-   * Layer colors (routes / tracks): paint applies immediately, the save
-   * is debounced because color inputs fire rapidly while dragging.
-   */
-  updateRouteColor(event) {
-    const color = event.target.value
-    this.applyRouteColor(color)
-    this.syncLayerColorLabel("routeColor", color)
-    this.scheduleLayerColorSave("routeColor", color)
-  }
-
+  /** Track color applies immediately; saving is debounced while dragging. */
   updateTrackColor(event) {
     const color = event.target.value
     this.applyTrackColor(color)
@@ -1322,28 +818,11 @@ export class SettingsController {
       this.syncLayerColorLabel(key, color)
     })
     SettingsManager.updateSettings(LAYER_COLOR_DEFAULTS)
-    this.applyRouteColor(LAYER_COLOR_DEFAULTS.routeColor)
     this.applyTrackColor(LAYER_COLOR_DEFAULTS.trackColor)
   }
 
-  applyRouteColor(color) {
-    if (this.map.getLayer("routes")) {
-      this.map.setPaintProperty("routes", "line-color", [
-        "case",
-        ["has", "color"],
-        ["get", "color"],
-        color,
-      ])
-    }
-    if (this.map.getLayer("routes-base")) {
-      this.map.setPaintProperty("routes-base", "line-color", color)
-    }
-  }
-
   applyTrackColor(color) {
-    if (this.map.getLayer("tracks")) {
-      this.map.setPaintProperty("tracks", "line-color", color)
-    }
+    this.layerManager.getLayer("tracks-mvt")?.setColors({ trackColor: color })
   }
 
   syncLayerColorLabel(key, color) {
@@ -1390,13 +869,17 @@ export class SettingsController {
    * The Custom style draws no labels or POIs, so their toggles are
    * disabled while it's active, with a tooltip explaining why. A raster or
    * foreign-style basemap carries no Protomaps layers at all, so there every
-   * toggle goes dead, not just the unsupported ones.
+   * toggle goes dead, not just the unsupported ones — except under a raster
+   * basemap with the fallback on, where the default vector stack is composed
+   * underneath and the toggles still control what shows through the gaps.
    */
   syncStyleDependentToggles(styleName) {
     const basemap = classifyBasemapUrl(
       SettingsManager.getSetting("vectorTilesUrl"),
     )
-    const foreignBasemap = basemap === "raster" || basemap === "style"
+    const fallback = SettingsManager.getSetting("tilesFallback") === true
+    const foreignBasemap =
+      (basemap === "raster" && !fallback) || basemap === "style"
     const custom = styleName === "custom"
     const inputs = this.controller.element.querySelectorAll(
       "input[data-tile-category], input[data-poi-group]",
@@ -1436,7 +919,41 @@ export class SettingsController {
     }
 
     SettingsManager.updateSetting("vectorTilesUrl", raw || null)
+    this.syncTilesFallbackAvailability()
     this.applyMapStyle(SettingsManager.getSetting("mapStyle"))
+  }
+
+  async updateTilesFallback(event) {
+    await SettingsManager.updateSetting("tilesFallback", event.target.checked)
+    this.applyMapStyle(SettingsManager.getSetting("mapStyle"))
+  }
+
+  /**
+   * The fallback only means something for XYZ tile URLs. A style document
+   * replaces the whole style, leaving nothing to draw the default basemap
+   * under, and with no custom URL there is nothing to fall back from.
+   */
+  syncTilesFallbackAvailability() {
+    const input = this.controller.element.querySelector(
+      'input[name="tilesFallback"]',
+    )
+    if (!input) return
+
+    const basemap = classifyBasemapUrl(
+      SettingsManager.getSetting("vectorTilesUrl"),
+    )
+    const unavailable = basemap !== "raster" && basemap !== "vector"
+    input.disabled = unavailable
+
+    const label = input.closest("label")
+    if (!label) return
+    label.classList.toggle("opacity-40", unavailable)
+    label.classList.toggle("tooltip", unavailable)
+    if (unavailable) {
+      label.dataset.tip = translate("settings.tiles_fallback_unavailable")
+    } else {
+      delete label.dataset.tip
+    }
   }
 
   /**
@@ -1446,110 +963,17 @@ export class SettingsController {
     event.preventDefault()
 
     const formData = new FormData(event.target)
-    const isMetric = this.getDistanceUnit() === "km"
 
     const settings = {
-      routeOpacity: parseFloat(formData.get("routeOpacity")) / 100,
       fogOfWarRadius: parseInt(formData.get("fogOfWarRadius"), 10),
       fogOfWarThreshold: parseInt(formData.get("fogOfWarThreshold"), 10),
       metersBetweenRoutes: parseInt(formData.get("metersBetweenRoutes"), 10),
       minutesBetweenRoutes: parseInt(formData.get("minutesBetweenRoutes"), 10),
-      pointsRenderingMode: formData.get("pointsRenderingMode"),
-      speedColoredRoutes: formData.get("speedColoredRoutes") === "on",
       minMinutesSpentInCity: parseInt(
         formData.get("minMinutesSpentInCity"),
         10,
       ),
-      maxGapMinutesInCity: parseInt(formData.get("maxGapMinutesInCity"), 10),
       gpsFilteringEnabled: formData.get("gpsFilteringEnabled") === "on",
-    }
-
-    if (formData.has("stayMaxGapMinutes")) {
-      settings.stayMaxGapMinutes = parseInt(
-        formData.get("stayMaxGapMinutes"),
-        10,
-      )
-    }
-
-    // Collect transportation thresholds if present (convert from display units to metric)
-    const basicThresholdFields = [
-      "walkingMaxSpeed",
-      "cyclingMaxSpeed",
-      "drivingMaxSpeed",
-      "flyingMinSpeed",
-    ]
-    const transportationThresholds = {}
-    let hasTransportationThresholds = false
-
-    basicThresholdFields.forEach((field) => {
-      const value = formData.get(field)
-      if (value !== null && value !== "") {
-        transportationThresholds[field] = this.toMetricSpeed(
-          parseFloat(value),
-          isMetric,
-        )
-        hasTransportationThresholds = true
-      }
-    })
-
-    if (hasTransportationThresholds) {
-      settings.transportationThresholds = transportationThresholds
-    }
-
-    // Collect expert thresholds if expert mode is on
-    const expertModeValue = formData.get("transportationExpertMode")
-    if (expertModeValue === "on") {
-      settings.transportationExpertMode = true
-
-      const expertThresholds = {}
-      let hasExpertThresholds = false
-
-      // Speed thresholds
-      const expertSpeedFields = ["stationaryMaxSpeed", "trainMinSpeed"]
-      expertSpeedFields.forEach((field) => {
-        const value = formData.get(field)
-        if (value !== null && value !== "") {
-          expertThresholds[field] = this.toMetricSpeed(
-            parseFloat(value),
-            isMetric,
-          )
-          hasExpertThresholds = true
-        }
-      })
-
-      // Acceleration thresholds (no conversion)
-      const accelFields = ["runningVsCyclingAccel", "cyclingVsDrivingAccel"]
-      accelFields.forEach((field) => {
-        const value = formData.get(field)
-        if (value !== null && value !== "") {
-          expertThresholds[field] = parseFloat(value)
-          hasExpertThresholds = true
-        }
-      })
-
-      // Time thresholds (no conversion)
-      const timeFields = ["minSegmentDuration", "timeGapThreshold"]
-      timeFields.forEach((field) => {
-        const value = formData.get(field)
-        if (value !== null && value !== "") {
-          expertThresholds[field] = parseInt(value, 10)
-          hasExpertThresholds = true
-        }
-      })
-
-      // Distance threshold
-      const minFlightDistance = formData.get("minFlightDistanceKm")
-      if (minFlightDistance !== null && minFlightDistance !== "") {
-        expertThresholds.minFlightDistanceKm = this.toMetricDistance(
-          parseFloat(minFlightDistance),
-          isMetric,
-        )
-        hasExpertThresholds = true
-      }
-
-      if (hasExpertThresholds) {
-        settings.transportationExpertThresholds = expertThresholds
-      }
     }
 
     // Update controller settings and dataLoader BEFORE applying,
@@ -1579,18 +1003,6 @@ export class SettingsController {
    * Apply settings to map without reload
    */
   async applySettingsToMap(settings) {
-    // Update route opacity
-    if (settings.routeOpacity !== undefined) {
-      const routesLayer = this.layerManager.getLayer("routes")
-      if (routesLayer && this.map.getLayer("routes")) {
-        this.map.setPaintProperty(
-          "routes",
-          "line-opacity",
-          settings.routeOpacity,
-        )
-      }
-    }
-
     // Update fog of war settings
     if (
       settings.fogOfWarRadius !== undefined ||
@@ -1607,15 +1019,6 @@ export class SettingsController {
         }
       }
     }
-
-    // For settings that require data reload
-    if (
-      settings.pointsRenderingMode ||
-      settings.speedColoredRoutes !== undefined
-    ) {
-      Toast.info(translate("messages.reloading_map_data_with_new_settings"))
-      await this.controller.loadMapData()
-    }
   }
 
   // Display value update methods
@@ -1631,33 +1034,9 @@ export class SettingsController {
     }
   }
 
-  updateMetersBetweenDisplay(event) {
-    if (this.controller.hasMetersBetweenValueTarget) {
-      this.controller.metersBetweenValueTarget.textContent = `${event.target.value}m`
-    }
-  }
-
-  updateMinutesBetweenDisplay(event) {
-    if (this.controller.hasMinutesBetweenValueTarget) {
-      this.controller.minutesBetweenValueTarget.textContent = `${event.target.value}min`
-    }
-  }
-
   updateMinMinutesInCityDisplay(event) {
     if (this.controller.hasMinMinutesInCityValueTarget) {
       this.controller.minMinutesInCityValueTarget.textContent = `${event.target.value} min`
-    }
-  }
-
-  updateMaxGapMinutesDisplay(event) {
-    if (this.controller.hasMaxGapMinutesValueTarget) {
-      this.controller.maxGapMinutesValueTarget.textContent = `${event.target.value} min`
-    }
-  }
-
-  updateStayMaxGapMinutesDisplay(event) {
-    if (this.controller.hasStayMaxGapMinutesValueTarget) {
-      this.controller.stayMaxGapMinutesValueTarget.textContent = `${event.target.value} min`
     }
   }
 

@@ -316,6 +316,19 @@ RSpec.describe Users::ExportData::Points, type: :service do
 
           expect(result).to eq(result.sort)
         end
+
+        it 'does not instantiate Point models before running the export query' do
+          instantiated = 0
+          callback = lambda do |_name, _start, _finish, _id, payload|
+            instantiated += payload[:record_count] if payload[:class_name] == 'Point'
+          end
+
+          ActiveSupport::Notifications.subscribed(callback, 'instantiation.active_record') do
+            monthly_service.call
+          end
+
+          expect(instantiated).to eq(0)
+        end
       end
 
       context 'with no points' do

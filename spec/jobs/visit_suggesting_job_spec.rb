@@ -122,7 +122,7 @@ RSpec.describe VisitSuggestingJob, type: :job do
 
     before do
       Sidekiq.redis { |redis| redis.del(redis_key) }
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+      configure_instance_geocoding
     end
 
     after { Sidekiq.redis { |redis| redis.del(redis_key) } }

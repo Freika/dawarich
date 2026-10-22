@@ -1,4 +1,4 @@
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { arcifyFlights } from "../utils/flight_arcs"
 import { escapeHtml } from "../utils/geojson_transformers"
 import { BaseLayer } from "./base_layer"

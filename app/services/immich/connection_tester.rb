@@ -19,7 +19,7 @@ error: I18n.t('services.immich.connection_tester.immich_api_key_is_missing') }
     end
 
     test_connection
-  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, JSON::ParserError => e
+  rescue *Photos::ConnectionErrors::HANDLED => e
     { success: false,
 error: I18n.t('services.immich.connection_tester.immich_connection_failed_message', message: e.message) }
   end

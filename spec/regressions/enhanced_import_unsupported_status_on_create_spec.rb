@@ -6,7 +6,7 @@ RSpec.describe 'Extraction availability is resolved when an import is created' d
   let(:user) { create(:user) }
 
   it 'marks a source without an adapter as unsupported' do
-    import = create(:import, user: user, source: :gpx)
+    import = create(:import, user: user, source: :kml)
 
     expect(import.additional_data_extraction_unsupported?).to be true
   end
@@ -44,7 +44,7 @@ RSpec.describe 'Extraction availability is resolved when an import is created' d
   end
 
   it 'does not offer the extraction call to action for an unsupported import' do
-    import = create(:import, user: user, source: :gpx)
+    import = create(:import, user: user, source: :kml)
 
     rendered = ApplicationController.render(
       partial: 'imports/extraction_card',

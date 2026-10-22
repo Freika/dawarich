@@ -13,10 +13,8 @@ RSpec.describe 'Start Reverse Geocoding force-reruns already-geocoded points',
   end
 
   before do
-    allow(DawarichSettings).to receive_messages(
-      reverse_geocoding_enabled?: true,
-      store_geodata?:             true
-    )
+    configure_instance_geocoding
+    allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
     allow(Geocoder).to receive(:search).and_return(
       [double(city: 'New City', country: 'New Country', data: { 'address' => {} })]
     )

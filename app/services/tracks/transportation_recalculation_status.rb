@@ -27,7 +27,25 @@ module Tracks
       Rails.cache.read(cache_key) || { 'status' => 'idle' }
     end
 
+    def enqueue
+      User.with_advisory_lock("transportation_recalculation:#{user_id}") do
+        return false if in_progress?
+
+        begin
+          raise IOError, 'Reclassification status could not be reserved' unless start(total_tracks: 0)
+
+          job = yield
+          raise ActiveJob::EnqueueError, 'Reclassification could not be queued' unless job.try(:successfully_enqueued?)
+        rescue StandardError => e
+          fail(e.message)
+          raise
+        end
+        true
+      end
+    end
+
     def start(total_tracks:)
+      reset_counter
       Rails.cache.write(
         cache_key,
         {
@@ -38,6 +56,31 @@ module Tracks
         },
         expires_in: CACHE_TTL
       )
+    end
+
+    # Atomic-ish progress bump used by fan-out per-track jobs. The raw counter
+    # is race-free under Rails.cache.increment; the merged status hash is
+    # advisory display state.
+    def increment_processed!
+      # A retried per-track job can report after completion; rewriting the
+      # hash would resurrect the short-lived 'completed' entry with CACHE_TTL.
+      return data['processed_tracks'].to_i if current_status == 'completed'
+
+      total = data['total_tracks']
+      return data['processed_tracks'].to_i if total&.zero?
+
+      count = Rails.cache.increment(counter_key, 1, expires_in: CACHE_TTL) || 1
+      update_progress(processed_tracks: count, total_tracks: total)
+      complete if total&.positive? && count >= total
+      count
+    end
+
+    def reset_counter
+      Rails.cache.write(counter_key, 0, raw: true, expires_in: CACHE_TTL)
+    end
+
+    def counter_key
+      "#{cache_key}:processed_counter"
     end
 
     def update_progress(processed_tracks:, total_tracks:)

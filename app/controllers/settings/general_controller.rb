@@ -1,11 +1,19 @@
 # frozen_string_literal: true
 
 class Settings::GeneralController < ApplicationController
+  include FlashStreamable
+
+  self.page_refresh_morphing = true
+
   before_action :authenticate_user!
+  before_action :ensure_supported_settings, only: %i[update verify_supporter]
+  before_action :authenticate_self_hosted!, only: :test_email
+  before_action :authenticate_admin!, only: :test_email
 
   def index; end
 
   def update
+    update_locale
     update_timezone
     update_email_settings
     update_supporter_settings
@@ -14,6 +22,18 @@ class Settings::GeneralController < ApplicationController
       redirect_to settings_general_index_path, notice: I18n.t('controllers.settings.general.settings_updated')
     else
       redirect_to settings_general_index_path, alert: I18n.t('controllers.settings.general.failed_to_update_settings')
+    end
+  end
+
+  def test_email
+    type, message = run_email_test
+
+    respond_to do |format|
+      format.turbo_stream { render turbo_stream: stream_flash(type, message) }
+      format.html do
+        flash_key = type == :notice ? :notice : :alert
+        redirect_to settings_general_index_path, flash_key => message
+      end
     end
   end
 
@@ -34,7 +54,7 @@ class Settings::GeneralController < ApplicationController
     Rails.cache.delete(Supporter::VerifyEmail.new(email).cache_key) if email.present?
     Rails.cache.delete(Supporter::VerifyGithubUsername.new(github_username).cache_key) if github_username.present?
 
-    if current_user.reload.supporter?
+    if current_user.reload.supporter? && current_user.supporter_platform != 'app_store'
       platform = current_user.supporter_platform&.titleize
       notice = I18n.t(
         'controllers.settings.general.verified_thank_you_for_supporting_dawarich_via_platform',
@@ -49,6 +69,42 @@ class Settings::GeneralController < ApplicationController
   end
 
   private
+
+  def ensure_supported_settings
+    return if current_user.settings.is_a?(Hash)
+
+    redirect_to settings_general_index_path,
+                alert: I18n.t('controllers.settings.general.failed_to_update_settings'), status: :see_other
+  end
+
+  def run_email_test
+    return [:alert, t('controllers.settings.general.smtp_not_configured')] unless DawarichSettings.email_configured?
+
+    UsersMailer.with(user: current_user).test_email.deliver_later
+    [:notice, t('controllers.settings.general.test_email_queued', email: current_user.email)]
+  rescue StandardError => e
+    Rails.logger.error("Test email delivery failed: #{e.class}: #{e.message}")
+    [:alert, t('controllers.settings.general.test_email_failed', error: test_email_error_description(e))]
+  end
+
+  def test_email_error_description(error)
+    safe = error.is_a?(SocketError) || error.is_a?(Timeout::Error) ||
+           error.is_a?(OpenSSL::SSL::SSLError) || error.is_a?(SystemCallError) ||
+           error.is_a?(ArgumentError) ||
+           error.class.name.start_with?('Net::SMTP')
+
+    safe ? "#{error.class}: #{error.message}" : error.class.name
+  end
+
+  # Written here rather than left to the locale around_action: that one saves
+  # with `update_all`, which the `current_user.save` below would overwrite with
+  # the settings this request loaded.
+  def update_locale
+    locale = supported_locale(params[:locale])
+    return unless locale
+
+    current_user.settings['locale'] = locale.to_s
+  end
 
   def update_timezone
     return unless params.key?(:timezone) && ActiveSupport::TimeZone[params[:timezone]]

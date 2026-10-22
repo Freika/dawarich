@@ -30,14 +30,26 @@ RSpec.describe 'Photoprism date filters are sent as plain dates' do
 
   it 'reduces a minute-precision start_date to the plain after date Photoprism accepts' do
     stub_empty
-    Photoprism::RequestPhotos.new(user, start_date: '2026-06-21T00:00+02:00').call
+    Photoprism::RequestPhotos.new(user, start_date: '2026-06-21T09:00+02:00').call
     expect(captured('after')).to eq('2026-06-21')
   end
 
   it 'sends before as a plain date one day past end_date' do
     stub_empty
-    Photoprism::RequestPhotos.new(user, start_date: '2026-06-21', end_date: '2026-06-23T00:00+02:00').call
+    Photoprism::RequestPhotos.new(user, start_date: '2026-06-21', end_date: '2026-06-23T09:00+02:00').call
     expect(captured('before')).to eq('2026-06-24')
+  end
+
+  it 'derives after from the UTC instant when the offset crosses midnight' do
+    stub_empty
+    Photoprism::RequestPhotos.new(user, start_date: '2026-06-21T00:00+02:00').call
+    expect(captured('after')).to eq('2026-06-20')
+  end
+
+  it 'derives before from the UTC instant when the offset crosses midnight' do
+    stub_empty
+    Photoprism::RequestPhotos.new(user, start_date: '2026-06-21', end_date: '2026-06-23T00:00+02:00').call
+    expect(captured('before')).to eq('2026-06-23')
   end
 
   it 'defaults the after date and does not raise when start_date is nil' do
@@ -54,7 +66,8 @@ RSpec.describe 'Photoprism date filters are sent as plain dates' do
 
   it 'excludes photos taken after a precise end_date' do
     stub_request(:get, /photoprism\.local/).to_return(
-      { status: 200, body: [{ 'TakenAtLocal' => '2026-06-23T18:00:00Z' }].to_json,
+      { status: 200,
+        body: [{ 'TakenAt' => '2026-06-23T16:00:00Z', 'TakenAtLocal' => '2026-06-23T18:00:00Z' }].to_json,
         headers: { 'Content-Type' => 'application/json' } },
       { status: 200, body: [].to_json, headers: { 'Content-Type' => 'application/json' } }
     )

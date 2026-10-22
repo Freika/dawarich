@@ -10,6 +10,18 @@ const basemapUrlSource = await readFile(
   "utf8",
 )
 
+const tileFreshnessSource = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/tile_freshness.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
+
+// Date.now() collides when two loads land in the same millisecond, and the
+// cached module keeps the previous test's fakes.
+let moduleLoadCount = 0
+
 async function loadMapInitializer({ getMapStyle, Toast }) {
   const source = await readFile(
     new URL(
@@ -18,18 +30,23 @@ async function loadMapInitializer({ getMapStyle, Toast }) {
     ),
     "utf8",
   )
-  const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
+  const withoutImports = source
+    .replace('import.meta.resolve("mapbox-gl-rtl-text")', '"/assets/rtl.js"')
+    .replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
   const dependencies = `
     const maplibregl = globalThis.__mapInitializerMaplibre
     const getMapStyle = globalThis.__mapInitializerGetMapStyle
     const Toast = globalThis.__mapInitializerToast
+    const registerRTLTextPlugin = () => {}
     const translate = (key) => key
     ${basemapUrlSource.replace(/^export /gm, "")}
+    ${tileFreshnessSource}
   `
   globalThis.__mapInitializerGetMapStyle = getMapStyle
   globalThis.__mapInitializerToast = Toast
   const url = `data:text/javascript;base64,${Buffer.from(`${dependencies}\n${withoutImports}`).toString("base64")}`
-  return await import(`${url}#${Date.now()}`)
+  moduleLoadCount += 1
+  return await import(`${url}#${moduleLoadCount}`)
 }
 
 class FakeMap {
@@ -93,6 +110,86 @@ async function initializeWithCustomStyle({ emitOnConstruct } = {}) {
   return state
 }
 
+async function transformRequestWithApiKey(apiKey) {
+  const state = { map: null }
+  globalThis.__mapInitializerMaplibre = {
+    Map: class extends FakeMap {
+      constructor(options) {
+        super(options)
+        state.map = this
+      }
+    },
+    NavigationControl: class {},
+    AttributionControl: class {},
+  }
+  const { MapInitializer } = await loadMapInitializer({
+    getMapStyle: async () => ({ version: 8, sources: {}, layers: [] }),
+    Toast: { error: () => {} },
+  })
+
+  globalThis.window = { location: { origin: "https://app.example" } }
+  await MapInitializer.initialize({}, {}, apiKey)
+
+  return state.map.options.transformRequest
+}
+
+async function loadedInitializer() {
+  const state = { map: null }
+  globalThis.__mapInitializerMaplibre = {
+    Map: class extends FakeMap {
+      constructor(options) {
+        super(options)
+        state.map = this
+      }
+    },
+    NavigationControl: class {},
+    AttributionControl: class {},
+  }
+  const module = await loadMapInitializer({
+    getMapStyle: async () => ({ version: 8, sources: {}, layers: [] }),
+    Toast: { error: () => {} },
+  })
+  globalThis.window = { location: { origin: "https://app.example" } }
+  await module.MapInitializer.initialize({}, {}, "secret-key")
+  return { ...module, transformRequest: state.map.options.transformRequest }
+}
+
+test("authorizes same-origin tile requests", async (t) => {
+  t.after(() => {
+    delete globalThis.window
+  })
+  const transformRequest = await transformRequestWithApiKey("secret-key")
+
+  const result = transformRequest("/api/v1/tiles/points/1/2/3.mvt")
+
+  assert.equal(result.headers.Authorization, "Bearer secret-key")
+})
+
+test("never sends the api key to another origin", async (t) => {
+  t.after(() => {
+    delete globalThis.window
+  })
+  const transformRequest = await transformRequestWithApiKey("secret-key")
+
+  // Every shape a hostile custom basemap or third-party style could produce
+  const foreign = [
+    "https://evil.example/api/v1/tiles/points/1/2/3.mvt",
+    "//evil.example/api/v1/tiles/points/1/2/3.mvt",
+    "https://app.example@evil.example/api/v1/tiles/points/1/2/3.mvt",
+    "https://app.example.evil.example/api/v1/tiles/points/1/2/3.mvt",
+    "http://app.example/api/v1/tiles/points/1/2/3.mvt",
+    "https://app.example:8443/api/v1/tiles/points/1/2/3.mvt",
+  ]
+
+  for (const url of foreign) {
+    assert.equal(
+      transformRequest(url).headers,
+      undefined,
+      `api key leaked to ${url}`,
+    )
+  }
+})
+
 test("falls back from an unavailable initial custom style URL", async () => {
   const state = await initializeWithCustomStyle({
     emitOnConstruct: (map) =>
@@ -123,4 +220,27 @@ test("stops watching for style errors once the custom style loads", async () => 
 
   assert.deepEqual(state.map.setStyles, [])
   assert.deepEqual(state.errors, [])
+})
+
+test("a refreshed tile layer is requested with a fresh version", async (t) => {
+  t.after(() => {
+    delete globalThis.window
+  })
+  const { transformRequest, bumpTileVersion } = await loadedInitializer()
+  const version = () =>
+    new URL(
+      transformRequest("/api/v1/tiles/tracks/1/2/3.mvt").url,
+    ).searchParams.get("_")
+
+  const before = version()
+  bumpTileVersion("/api/v1/tiles/tracks/")
+
+  assert.equal(before, null)
+  assert.ok(version())
+  assert.equal(
+    new URL(
+      transformRequest("/api/v1/tiles/points/1/2/3.mvt").url,
+    ).searchParams.get("_"),
+    null,
+  )
 })

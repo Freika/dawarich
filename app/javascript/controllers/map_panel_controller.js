@@ -19,6 +19,7 @@ export default class extends Controller {
   static titleKeys = {
     search: "map_panel.search",
     layers: "map_panel.layers",
+    family: "map_panel.family",
     "timeline-feed": "map_panel.timeline",
     tools: "map_panel.tools",
     links: "map_panel.links",
@@ -78,6 +79,8 @@ export default class extends Controller {
         T: "timeline-feed",
         l: "layers",
         L: "layers",
+        f: "family",
+        F: "family",
         "/": "search",
         c: "tools",
         C: "tools",
@@ -85,9 +88,9 @@ export default class extends Controller {
         S: "settings",
       }
       const tab = keyToTab[e.key]
-      if (tab) {
+      if (tab && document.querySelector(`[data-tab-content="${tab}"]`)) {
         e.preventDefault()
-        this.openTabByName(tab)
+        this.requestTab(tab)
         return
       }
 
@@ -164,7 +167,48 @@ export default class extends Controller {
     const button = event.currentTarget
     const tabName = button?.dataset?.tab
     if (!tabName) return
+
+    this.requestTab(tabName)
+  }
+
+  /**
+   * A deliberate user gesture — a cluster button click or its keyboard
+   * shortcut. Asking for the tab already on screen dismisses the panel, the
+   * way the header X does. Programmatic callers use openTabByName instead, so
+   * a visit or track click can switch to Timeline without dismissing it.
+   */
+  requestTab(tabName) {
+    if (this.panelShowingTab(tabName)) {
+      this.closePanel()
+      return
+    }
+
     this.openTabByName(tabName)
+  }
+
+  panelShowingTab(tabName) {
+    const panel = document.querySelector(".map-control-panel")
+    if (!panel?.classList.contains("open")) return false
+
+    const activeContent = panel.querySelector("[data-tab-content].active")
+
+    return activeContent?.dataset?.tabContent === tabName
+  }
+
+  closePanel() {
+    const mapContainer = document.getElementById("maps-maplibre-container")
+    const maplibreController =
+      mapContainer &&
+      this.application.getControllerForElementAndIdentifier(
+        mapContainer,
+        "maps--maplibre",
+      )
+
+    if (maplibreController?.toggleSettings) {
+      maplibreController.toggleSettings()
+    }
+
+    this.markActiveClusterButton(null)
   }
 
   // The poster button skips the panel entirely — the full-screen studio
@@ -173,13 +217,17 @@ export default class extends Controller {
     document.dispatchEvent(new CustomEvent("poster-studio:open"))
   }
 
+  openVideoStudio() {
+    document.dispatchEvent(new CustomEvent("video-studio:open"))
+  }
+
   /**
    * Programmatic equivalent of openTab(event). Opens the settings panel
    * (via the maps--maplibre controller) and activates the given tab on the
-   * panel's map-panel controller instance. The panel only closes via the
-   * header X button — clicking a cluster button for the already-active tab
-   * is a no-op so map-driven flows (visit/track click → switch to timeline)
-   * don't accidentally dismiss the panel.
+   * panel's map-panel controller instance. This path never closes the panel,
+   * so map-driven flows (visit/track click → switch to timeline) can't
+   * accidentally dismiss it. User gestures go through requestTab, which
+   * toggles.
    */
   openTabByName(tabName) {
     const panel = document.querySelector(".map-control-panel")
@@ -218,12 +266,13 @@ export default class extends Controller {
    * dismissed (no tab is "active" because the panel itself is hidden).
    */
   markActiveClusterButton(activeTab) {
-    const buttons = document.querySelectorAll(".map-button-cluster__btn")
+    const buttons = document.querySelectorAll(
+      ".map-button-cluster__btn[data-tab]",
+    )
     for (const btn of buttons) {
-      btn.classList.toggle(
-        "map-button-cluster__btn--active",
-        Boolean(activeTab) && btn.dataset.tab === activeTab,
-      )
+      const isActive = Boolean(activeTab) && btn.dataset.tab === activeTab
+      btn.classList.toggle("map-button-cluster__btn--active", isActive)
+      btn.setAttribute("aria-expanded", String(isActive))
     }
   }
 

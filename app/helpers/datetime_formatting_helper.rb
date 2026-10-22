@@ -44,6 +44,12 @@ module DatetimeFormattingHelper
     )
   end
 
+  def relative_distance_in_words(time)
+    options = I18n.locale == :de ? { scope: 'datetime.distance_in_words.dative' } : {}
+
+    time_ago_in_words(time, **options)
+  end
+
   def format_duration_short(seconds)
     return I18n.t('units.minutes_compact', value: 0) if seconds.nil? || seconds.to_i.zero?
 

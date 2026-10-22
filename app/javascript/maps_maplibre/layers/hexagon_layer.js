@@ -1,5 +1,5 @@
 import { translate } from "i18n"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { Toast } from "../components/toast"
 import { resolutionForZoom } from "../utils/h3_resolution"
 import { ProgressiveLoader } from "../utils/progressive_loader"

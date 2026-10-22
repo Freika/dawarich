@@ -87,5 +87,23 @@ RSpec.describe DawarichSettings do
       expect(described_class.features_for(subscriber)[:family]).to be true
       expect(described_class.features_for(non_subscriber)[:family]).to be false
     end
+
+    it 'reports reverse geocoding as off when the instance has no provider' do
+      expect(described_class.features_for(create(:user))[:reverse_geocoding]).to be false
+    end
+
+    it 'reports reverse geocoding for everyone when the instance stores a provider' do
+      configure_instance_geocoding
+
+      expect(described_class.features_for(create(:user))[:reverse_geocoding]).to be true
+      expect(described_class.features_for(create(:user))[:reverse_geocoding]).to be true
+    end
+
+    it 'reports reverse geocoding for everyone when the environment pins a provider' do
+      ENV['GEOAPIFY_API_KEY'] = 'env-key'
+      InstanceSettings::Resolver.reset!
+
+      expect(described_class.features_for(create(:user))[:reverse_geocoding]).to be true
+    end
   end
 end

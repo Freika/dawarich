@@ -5,7 +5,14 @@ class Api::V1::Traccar::PointsController < ApiController
   before_action :validate_points_limit, only: %i[create]
 
   def create
-    Traccar::PointCreator.new(point_params, current_api_user.id).call
+    result = Traccar::PointCreator.new(point_params, current_api_user.id).call
+
+    if result.blank?
+      Rails.logger.warn('Traccar point rejected: unsupported or invalid payload')
+
+      return render json: { error: I18n.t('controllers.api.v1.traccar.points.point_creation_failed') },
+                    status: :unprocessable_content
+    end
 
     render json: [], status: :ok
   rescue ActiveRecord::RecordInvalid, ActiveRecord::StatementInvalid, ArgumentError => e
@@ -20,7 +27,7 @@ class Api::V1::Traccar::PointsController < ApiController
 
   def point_params
     params.permit(
-      :device_id,
+      :device_id, :id, :lat, :lon, :timestamp, :accuracy, :altitude, :speed, :bearing, :batt, :charge, :alarm,
       location: [
         :timestamp, :latitude, :longitude, :accuracy, :speed, :heading, :altitude,
         :is_moving, :odometer, :event, :manual,

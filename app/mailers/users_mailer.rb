@@ -51,6 +51,15 @@ class UsersMailer < ApplicationMailer
     mail(to: @user.email, subject: I18n.t('mailers.users.otp_account_locked.subject'))
   end
 
+  def test_email
+    @user = params[:user]
+    return unless @user.reload.admin? && @user.deleted_at.nil?
+
+    mail(to: @user.email, subject: I18n.t('mailers.users.test_email.subject')).tap do |message|
+      message.raise_delivery_errors = true
+    end
+  end
+
   def trial_expired; end
 
   def trial_expires_soon; end

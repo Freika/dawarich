@@ -47,6 +47,16 @@ before_fork do
   GC.compact
 end
 
+# Instance settings are cached per process. `preload_app!` above means a thread
+# started during preload lives in the master and dies at fork, so the subscriber
+# has to be started per worker or every request-serving process would keep a
+# stale snapshot until the next restart.
+before_worker_boot do
+  InstanceSettings::Notifier.start
+rescue StandardError => e
+  Rails.logger.warn("[InstanceSettings] subscriber failed to start: #{e.class}: #{e.message}")
+end
+
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 
@@ -55,4 +65,18 @@ plugin :tmp_restart
 if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
   activate_control_app
   plugin :yabeda
+end
+
+require_relative '../lib/dawarich/embedded_sidekiq'
+
+if Dawarich::EmbeddedSidekiq.enabled?
+  raise_exception_on_sigterm false
+  if ENV.fetch('WEB_CONCURRENCY', 2).to_i.positive?
+    before_worker_boot { Dawarich::EmbeddedSidekiq.start }
+    before_worker_shutdown { Dawarich::EmbeddedSidekiq.stop }
+  else
+    after_booted { Dawarich::EmbeddedSidekiq.start }
+    after_stopped { Dawarich::EmbeddedSidekiq.stop }
+    before_restart { Dawarich::EmbeddedSidekiq.stop }
+  end
 end

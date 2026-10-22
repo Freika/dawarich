@@ -1,0 +1,43 @@
+<div class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl">
+  <%= form_with scope: :settings, url: settings_integrations_path, method: :patch, data: { turbo: false } do |f| %>
+    <%= hidden_field_tag :service, 'photoprism' %>
+    <div class="card-body space-y-5">
+      <div class="flex items-center gap-3">
+        <%= integration_icon('photoprism', css: 'size-6') %>
+        <h2 class="text-xl font-semibold"><%= t('settings.integrations.index.photoprism_integration') %></h2>
+      </div>
+      <div class="form-control w-full max-w-md">
+        <%= f.label :photoprism_url, class: 'label' do %>
+          <span class="label-text font-medium"><%= t('settings.integrations.index.photoprism_url') %></span>
+        <% end %>
+        <%= f.url_field :photoprism_url, value: current_user.safe_settings.photoprism_url, class: 'input input-bordered w-full', placeholder: 'http://192.168.0.1:2342' %>
+        <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.integrations.index.the_base_url_of_your_photoprism_instance') %></span>
+      </div>
+      <div class="form-control w-full max-w-md">
+        <%= f.label :photoprism_api_key, class: 'label' do %>
+          <span class="label-text font-medium"><%= t('settings.integrations.index.photoprism_api_key') %></span>
+        <% end %>
+        <%= f.password_field :photoprism_api_key, value: current_user.safe_settings.photoprism_api_key, class: 'input input-bordered w-full', placeholder: t('settings.integrations.index.xxxxxxxxxxxxxx') %>
+        <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.integrations.index.found_in_your_photoprism_settings_under_library') %></span>
+      </div>
+      <div class="form-control">
+        <label class="label cursor-pointer justify-start gap-3">
+          <%= f.check_box :photoprism_skip_ssl_verification,
+              checked: current_user.safe_settings.photoprism_skip_ssl_verification,
+              class: 'toggle toggle-warning',
+              onchange: "document.getElementById('photoprism-ssl-warning').classList.toggle('hidden', !this.checked)" %>
+          <span class="label-text"><%= t('settings.integrations.index.skip_ssl_certificate_verification_self_signed_certificates') %></span>
+        </label>
+        <div id="photoprism-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.photoprism_skip_ssl_verification %>">
+          <%= icon 'triangle-alert' %>
+          <span>
+            <strong><%= t('settings.integrations.index.security_warning') %></strong> <%= t('settings.integrations.index.disabling_ssl_verification_makes_your_connection_vulnerable_to_man_in') %>
+          </span>
+        </div>
+      </div>
+      <div class="card-actions">
+        <%= f.submit t('settings.integrations.index.save_test_connection'), class: 'btn btn-primary' %>
+      </div>
+    </div>
+  <% end %>
+</div>

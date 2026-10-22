@@ -11,7 +11,7 @@ module ApplicationHelper
       json_escape(translations.to_json).html_safe,
       id: 'i18n-translations',
       type: 'application/json',
-      data: { turbo_permanent: true }
+      data: { turbo_track: 'reload' }
     )
   end
 
@@ -75,7 +75,8 @@ module ApplicationHelper
   end
 
   def onboarding_modal_showable?(user)
-    !user.settings&.dig('onboarding_completed')
+    settings = user.settings
+    settings.nil? || (settings.is_a?(Hash) && !settings['onboarding_completed'])
   end
 
   def trial_button_class(user)
@@ -201,16 +202,7 @@ module ApplicationHelper
   end
 
   def preferred_map_path(params = {})
-    signed_in =
-      begin
-        user_signed_in?
-      rescue Devise::MissingWarden
-        false
-      end
-    return map_v2_path(params) unless signed_in
-
-    preferred_version = current_user.safe_settings.maps&.dig('preferred_version')
-    preferred_version == 'v1' ? map_v1_path(params) : map_v2_path(params)
+    map_v2_path(params)
   end
 
   # Generates a user-specific upgrade URL that authenticates the user
@@ -279,16 +271,16 @@ module ApplicationHelper
   def status_badge(record)
     badge_class = STATUS_BADGE_CLASSES[record.status] || 'bg-base-200 text-base-content/50'
 
-    badge_css = "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium #{badge_class}"
+    badge_css = 'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ' \
+                "whitespace-nowrap #{badge_class}"
     badge = content_tag(:span, I18n.t("statuses.#{record.status}"), class: badge_css)
 
-    if record.failed? && record.respond_to?(:error_message) && record.error_message.present?
-      error_icon = content_tag(:span, icon('circle-alert', class: %w[w-3.5 h-3.5 text-error]),
-                               class: 'tooltip tooltip-left cursor-help inline-flex items-center ml-1',
-                               data: { tip: record.error_message })
-      safe_join([badge, error_icon])
-    else
-      badge
-    end
+    return badge unless record.failed? && record.respond_to?(:error_message) && record.error_message.present?
+
+    error_icon = content_tag(:span, icon('circle-alert', class: %w[w-3.5 h-3.5 text-error]),
+                             class: 'tooltip tooltip-left cursor-help inline-flex items-center',
+                             data: { tip: record.error_message })
+    content_tag(:span, safe_join([badge, error_icon]),
+                class: 'inline-flex items-center gap-1 whitespace-nowrap')
   end
 end

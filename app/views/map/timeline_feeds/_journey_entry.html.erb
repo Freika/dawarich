@@ -1,21 +1,10 @@
 <%
-  # No emoji for unknown — the row is meant to read as a connector between
-  # visits, and a leading "?" reads like a broken render rather than info.
-  mode_config = {
-    'walking'    => { emoji: "\u{1F6B6}", verb: 'walked' },
-    'running'    => { emoji: "\u{1F3C3}", verb: 'ran' },
-    'cycling'    => { emoji: "\u{1F6B4}", verb: 'cycled' },
-    'driving'    => { emoji: "\u{1F697}", verb: 'drove' },
-    'bus'        => { emoji: "\u{1F68C}", verb: 'bus' },
-    'train'      => { emoji: "\u{1F686}", verb: 'train' },
-    'flying'     => { emoji: "✈️", verb: 'flew' },
-    'boat'       => { emoji: "⛵", verb: 'sailed' },
-    'motorcycle' => { emoji: "\u{1F3CD}️", verb: 'rode' },
-    'stationary' => { emoji: "\u{1F6D1}", verb: 'stayed' },
-    'unknown'    => { emoji: nil, verb: 'traveled' }
-  }
-  mode = entry[:dominant_mode].presence || 'unknown'
-  config = mode_config[mode] || mode_config['unknown']
+  # The verb carries the mode; no glyph is repeated alongside it. Unknown gets
+  # no icon at all — the row reads as a connector between visits, and a
+  # stand-in marker there looks like a broken render rather than information.
+  mode = entry[:dominant_mode].presence
+  mode = 'unknown' unless Track::TRANSPORTATION_MODES.key?(mode&.to_sym)
+  verb = t("transportation_verbs.#{mode}")
   continuation_date = entry[:continuation_of_date]
   if continuation_date
     leg_time = l(Time.zone.parse(entry[:ended_at]), format: :hour_minute)
@@ -24,13 +13,24 @@
     distance_text = day_distance > 0 ? "#{day_distance} #{entry[:distance_unit]} of #{entry[:distance]} #{entry[:distance_unit]}" : nil
   else
     leg_time = l(Time.zone.parse(entry[:started_at]), format: :hour_minute)
-    duration = format_duration_short(entry[:duration])
+    moving = entry[:moving_duration].to_i
+    # When dwell dominates the track span (short ride, long stand), the span
+    # duration misleads — show the time actually spent moving instead.
+    duration = if moving.positive? && moving < entry[:duration].to_i * 0.8
+                 t('.duration_moving', duration: format_duration_short(moving))
+               else
+                 format_duration_short(entry[:duration])
+               end
     distance_text = entry[:distance] > 0 ? "#{entry[:distance]} #{entry[:distance_unit]}" : nil
   end
   track_id = entry[:track_id]
   frame_id = "track-info-#{track_id}"
+  # Time is the vertical axis: the rail through a leg grows with how long the
+  # leg took, so a three-hour drive outweighs a nine-minute hop on sight.
+  leg_extra = journey_leg_extra_height(entry[:day_duration] || entry[:duration])
 %>
 <div class="timeline-entry timeline-entry--journey"
+     style="--tl-leg-extra: <%= leg_extra %>px"
      data-action="mouseenter->timeline-feed#entryHover mouseleave->timeline-feed#entryUnhover"
      data-entry-type="journey"
      data-started-at="<%= entry[:started_at] %>"
@@ -46,15 +46,12 @@
          data-track-start="<%= entry[:started_at] %>"
        <% end %>>
     <div class="journey-leg__time"><%= leg_time %></div>
-    <div class="journey-leg__rail-col" aria-hidden="true">
-      <span class="journey-leg__rail"></span>
-    </div>
+    <div class="journey-leg__rail-col" aria-hidden="true"></div>
     <div class="journey-leg__summary">
       <% if continuation_date %>
         <span class="journey-leg__verb"><%= t('.continued_from_date_arrived', date: l(Date.parse(continuation_date), format: :short_month_day)) %></span>
       <% else %>
-        <% if config[:emoji] %><span class="journey-leg__emoji"><%= config[:emoji] %></span><% end %>
-        <span class="journey-leg__verb"><%= config[:verb] %></span>
+        <span class="journey-leg__verb"><%= verb %></span>
       <% end %>
       <% if distance_text %>
         <span class="journey-leg__sep"><%= t('.middot') %></span>

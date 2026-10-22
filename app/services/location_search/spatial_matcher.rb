@@ -14,8 +14,7 @@ module LocationSearch
 
       ActiveRecord::Base.connection.exec_query(safe_query)
                         .map { |row| format_point_result(row) }
-                        .sort_by { |point| point[:timestamp] }
-                        .reverse # Most recent first
+                        .sort_by { |point| [-point[:timestamp], point[:id]] }
     end
 
     private
@@ -46,7 +45,7 @@ module LocationSearch
           AND ST_DWithin(p.lonlat, search_point.geom, ?)
           #{date_filter_sql}
           #{plan_filter_sql}
-        ORDER BY p.timestamp DESC
+        ORDER BY p.timestamp DESC, p.id ASC
       SQL
 
       # Combine bind values: longitude, latitude, user_id, radius, then date filters, then plan filter
@@ -74,15 +73,18 @@ module LocationSearch
       filters = []
       bind_values = []
 
+      # `in_time_zone` rather than `to_time`: the latter reads midnight in the
+      # container's zone, which is UTC in every deployment, so a day boundary
+      # would land hours away from the one the date was written in.
       if date_options[:date_from]
-        timestamp_from = date_options[:date_from].to_time.to_i
+        timestamp_from = date_options[:date_from].in_time_zone.to_i
         filters << 'p.timestamp >= ?'
         bind_values << timestamp_from
       end
 
       if date_options[:date_to]
         # Add one day to include the entire end date
-        timestamp_to = (date_options[:date_to] + 1.day).to_time.to_i
+        timestamp_to = (date_options[:date_to] + 1.day).in_time_zone.to_i
         filters << 'p.timestamp < ?'
         bind_values << timestamp_to
       end

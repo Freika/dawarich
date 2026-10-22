@@ -12,6 +12,11 @@ RSpec.describe 'Api::V1::Settings', type: :request do
 
       expect(response).to have_http_status(:success)
       expect(response.parsed_body['settings']['timezone']).to eq('UTC')
+      expect(response.parsed_body['settings']).to include(
+        'points_tiled_rendering' => true,
+        'points_rendering_mode' => 'raw',
+        'route_color' => '#0000ff'
+      )
     end
 
     it 'returns custom timezone when set' do
@@ -38,9 +43,10 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(user.reload.settings['route_opacity'].to_f).to eq(0.3)
       end
 
-      it 'returns the updated settings' do
+      it 'accepts and returns deprecated route settings for API compatibility' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { route_opacity: 0.3 } }
 
+        expect(user.reload.settings['route_opacity'].to_f).to eq(0.3)
         expect(response.parsed_body['settings']['route_opacity'].to_f).to eq(0.3)
       end
 
@@ -84,6 +90,30 @@ RSpec.describe 'Api::V1::Settings', type: :request do
 
         expect(response).to have_http_status(:success)
         expect(user.reload.safe_settings.point_dragging_enabled?).to be false
+      end
+
+      it 'updates points_tiled_rendering' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { points_tiled_rendering: true } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.points_tiled_rendering?).to be true
+      end
+
+      it 'returns points_tiled_rendering as permanently enabled' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { points_tiled_rendering: true } }
+
+        expect(response.parsed_body['settings']['points_tiled_rendering']).to be(true)
+      end
+
+      it 'turns points_tiled_rendering back off' do
+        user.update!(settings: user.settings.merge('points_tiled_rendering' => true))
+
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { points_tiled_rendering: false } }
+
+        expect(response).to have_http_status(:success)
+        stored = ActiveModel::Type::Boolean.new.cast(user.reload.settings['points_tiled_rendering'])
+        expect(stored).to be false
+        expect(user.safe_settings.points_tiled_rendering?).to be true
       end
 
       it 'updates fog_of_war_mode' do
@@ -131,6 +161,17 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(user.safe_settings.track_color).to eq('#654321')
       end
 
+      it 'persists Places tag filters across map reconnects' do
+        filters = [11, 'untagged']
+
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { places_tag_filters: filters } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.places_tag_filters).to eq(filters)
+        expect(response.parsed_body.dig('settings', 'places_tag_filters')).to eq(filters)
+      end
+
       it 'updates maps_maplibre_tiles_url' do
         patch "/api/v1/settings?api_key=#{api_key}",
               params: { settings: { maps_maplibre_tiles_url: 'https://tiles.example.com/{z}/{x}/{y}.mvt' } }
@@ -138,6 +179,18 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(response).to have_http_status(:success)
         expect(user.reload.safe_settings.maps_maplibre_tiles_url)
           .to eq('https://tiles.example.com/{z}/{x}/{y}.mvt')
+      end
+
+      it 'updates maps_maplibre_tiles_fallback' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { maps_maplibre_tiles_fallback: true } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.maps_maplibre_tiles_fallback?).to be true
+      end
+
+      it 'defaults maps_maplibre_tiles_fallback to false so custom tiles stay the only source' do
+        expect(user.safe_settings.maps_maplibre_tiles_fallback?).to be false
       end
 
       it 'rejects a maps_maplibre_tiles_url missing a coordinate placeholder' do
@@ -309,6 +362,7 @@ RSpec.describe 'Api::V1::Settings', type: :request do
                   settings: {
                     maps_maplibre_style: 'custom',
                     maps_maplibre_tiles_url: 'https://tiles.example.com/{z}/{x}/{y}.mvt',
+                    maps_maplibre_tiles_fallback: true,
                     route_color: '#123456',
                     track_color: '#654321',
                     maps_maplibre_custom_theme: { base: 'blueprint', tokens: { bg: '#111111' } }
@@ -320,6 +374,7 @@ RSpec.describe 'Api::V1::Settings', type: :request do
           settings = lite_user.reload.safe_settings
           expect(settings.maps_maplibre_style).to eq('light')
           expect(settings.maps_maplibre_tiles_url).to be_nil
+          expect(settings.maps_maplibre_tiles_fallback?).to be false
           expect(settings.route_color).to eq('#0000ff')
           expect(settings.track_color).to eq('#6366F1')
           expect(settings.maps_maplibre_custom_theme['base']).to eq('noir')
@@ -350,36 +405,12 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(theme['tokens']['bg']).to eq('#000000')
       end
 
-      it 'updates stay_max_gap_minutes' do
+      it 'ignores the retired stay_max_gap_minutes setting' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
 
         expect(response).to have_http_status(:success)
-        expect(user.reload.safe_settings.stay_max_gap_minutes).to eq(90)
-      end
-
-      it 'returns updated stay_max_gap_minutes in response' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
-
-        expect(response.parsed_body['settings']['stay_max_gap_minutes']).to eq(90)
-      end
-
-      it 'clamps stay_max_gap_minutes above the maximum on read' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 1000 } }
-
-        expect(response.parsed_body['settings']['stay_max_gap_minutes']).to eq(720)
-      end
-
-      it 'clamps stay_max_gap_minutes below the minimum on read' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 1 } }
-
-        expect(response.parsed_body['settings']['stay_max_gap_minutes']).to eq(5)
-      end
-
-      it 'preserves stay_max_gap_minutes when a patch omits it' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { stay_max_gap_minutes: 90 } }
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { route_opacity: 0.3 } }
-
-        expect(user.reload.safe_settings.stay_max_gap_minutes).to eq(90)
+        expect(user.reload.settings['stay_max_gap_minutes']).to be_nil
+        expect(response.parsed_body['settings']).not_to have_key('stay_max_gap_minutes')
       end
 
       context 'when user is inactive' do
@@ -425,22 +456,15 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       end
     end
 
-    context 'with transportation thresholds' do
-      let(:threshold_params) do
-        {
-          settings: {
-            transportation_thresholds: {
-              walking_max_speed: 8,
-              cycling_max_speed: 50
-            }
-          }
-        }
+    context 'with a changed transportation mode allowlist' do
+      let(:allowlist_params) do
+        { settings: { enabled_transportation_modes: %w[walking cycling driving] } }
       end
 
-      it 'triggers recalculation when thresholds change' do
+      it 'triggers reclassification' do
         expect do
-          patch "/api/v1/settings?api_key=#{api_key}", params: threshold_params
-        end.to have_enqueued_job(Tracks::TransportationModeRecalculationJob).with(user.id)
+          patch "/api/v1/settings?api_key=#{api_key}", params: allowlist_params
+        end.to have_enqueued_job(TransportationModes::UserReclassifyJob).with(user.id)
 
         expect(response).to have_http_status(:success)
         expect(response.parsed_body['recalculation_triggered']).to be true
@@ -452,7 +476,7 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         end
 
         it 'returns locked status' do
-          patch "/api/v1/settings?api_key=#{api_key}", params: threshold_params
+          patch "/api/v1/settings?api_key=#{api_key}", params: allowlist_params
 
           expect(response).to have_http_status(:locked)
           expect(response.parsed_body['status']).to eq('locked')
@@ -498,6 +522,57 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       expect(response.parsed_body['status']).to eq('processing')
       expect(response.parsed_body['total_tracks']).to eq(100)
       expect(response.parsed_body['processed_tracks']).to eq(50)
+    end
+  end
+
+  describe 'PATCH /update with app_store_supporter' do
+    it 'stores the flag sent by the mobile app' do
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { app_store_supporter: true } }, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings['app_store_supporter']).to be true
+    end
+
+    it 'clears the flag when the subscription lapses' do
+      user.settings['app_store_supporter'] = true
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { app_store_supporter: false } }, as: :json
+
+      expect(user.reload.settings['app_store_supporter']).to be false
+    end
+
+    def report_supporter(active, install)
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { app_store_supporter: active, app_store_supporter_install: install } }, as: :json
+      expect(response).to have_http_status(:success)
+    end
+
+    it 'keeps the flag while another install is still subscribed' do
+      report_supporter(true, 'install-a')
+      report_supporter(true, 'install-b')
+      report_supporter(false, 'install-a')
+
+      expect(user.reload.settings['app_store_supporter']).to be true
+    end
+
+    it 'clears the flag once every reporting install has lapsed' do
+      report_supporter(true, 'install-a')
+      report_supporter(true, 'install-b')
+      report_supporter(false, 'install-a')
+      report_supporter(false, 'install-b')
+
+      expect(user.reload.settings['app_store_supporter']).to be false
+    end
+
+    it 'counts an install once however often it reports' do
+      report_supporter(true, 'install-a')
+      report_supporter(true, 'install-a')
+      report_supporter(false, 'install-a')
+
+      expect(user.reload.settings['app_store_supporter']).to be false
     end
   end
 

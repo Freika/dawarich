@@ -1,0 +1,74 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe Visits::UserRedetectJob do
+  let(:user) { create(:user) }
+  let(:base_ts) { Time.zone.parse('2026-01-05 09:00:00 UTC').to_i }
+
+  before do
+    allow(DawarichSettings).to receive_messages(reverse_geocoding_enabled?: false, store_geodata?: false)
+  end
+
+  it 'redetects the user history and stamps visits_redetected_at' do
+    6.times do |i|
+      create(:point, user: user, latitude: 51.3402, longitude: 12.3712,
+                     lonlat: 'POINT(12.3712 51.3402)', timestamp: base_ts + (i * 60), accuracy: 10)
+    end
+
+    described_class.perform_now(user.id)
+
+    expect(user.visits.count).to eq(1)
+    expect(user.reload.visits_redetected_at).to be_present
+  end
+
+  it 'quietly skips deleted users' do
+    expect { described_class.perform_now(-1) }.not_to raise_error
+  end
+
+  it 'skips users who disabled visit suggestions' do
+    user.update_columns(visits_redetected_at: nil)
+    user.update!(settings: user.settings.merge('visits_suggestions_enabled' => false))
+    create(:point, user: user, latitude: 51.3402, longitude: 12.3712,
+                   lonlat: 'POINT(12.3712 51.3402)', timestamp: base_ts, accuracy: 10)
+
+    described_class.perform_now(user.id)
+
+    expect(user.visits.count).to eq(0)
+    expect(user.reload.visits_redetected_at).to be_nil
+  end
+
+  it 'does not stamp visits_redetected_at when months fail' do
+    user.update_columns(visits_redetected_at: nil)
+    create(:point, user: user, latitude: 51.3402, longitude: 12.3712,
+                   lonlat: 'POINT(12.3712 51.3402)', timestamp: base_ts, accuracy: 10)
+    allow(Visits::SmartDetect).to receive(:new).and_raise(ActiveRecord::StatementInvalid, 'boom')
+
+    described_class.perform_now(user.id)
+
+    expect(user.reload.visits_redetected_at).to be_nil
+  end
+
+  it 'does not blow up the fleet when the per-user lock is busy' do
+    allow(Tracks::PerUserLock).to receive(:with_user_lock)
+      .and_raise(Tracks::PerUserLock::AcquisitionTimeout, 'busy')
+
+    expect { described_class.perform_now(user.id) }.not_to raise_error
+  end
+
+  it 're-enqueues itself with a delay when the per-user lock is busy' do
+    allow(Tracks::PerUserLock).to receive(:with_user_lock)
+      .and_raise(Tracks::PerUserLock::AcquisitionTimeout, 'busy')
+
+    expect { described_class.perform_now(user.id) }
+      .to have_enqueued_job(described_class).with(user.id, 1)
+  end
+
+  it 'gives up after the retry budget instead of re-enqueueing forever' do
+    allow(Tracks::PerUserLock).to receive(:with_user_lock)
+      .and_raise(Tracks::PerUserLock::AcquisitionTimeout, 'busy')
+
+    expect { described_class.perform_now(user.id, 3) }
+      .not_to have_enqueued_job(described_class)
+  end
+end

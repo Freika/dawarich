@@ -6,10 +6,9 @@ RSpec.describe Settings::Update do
   let(:user) { create(:user) }
 
   before do
-    allow(Resolv).to receive(:getaddress).and_call_original
-    allow(Resolv).to receive(:getaddress).with('immich.test').and_return('93.184.216.34')
-    allow(Resolv).to receive(:getaddress).with('photoprism.test').and_return('93.184.216.34')
-    allow(Resolv).to receive(:getaddress).with('airtrail.test').and_return('93.184.216.34')
+    stub_host_addresses('immich.test', '93.184.216.34')
+    stub_host_addresses('photoprism.test', '93.184.216.34')
+    stub_host_addresses('airtrail.test', '93.184.216.34')
   end
 
   describe '#call' do
@@ -28,6 +27,35 @@ RSpec.describe Settings::Update do
 
         expect(result[:notices]).to include('AirTrail connection verified')
         expect(user.reload.settings['airtrail_url']).to eq('https://airtrail.test')
+      end
+    end
+
+    context 'when the TeslaMateApi URL changes' do
+      let(:settings_params) { { 'teslamate_url' => 'https://teslamate-new.test' } }
+      let(:service) { described_class.new(user, settings_params) }
+
+      before do
+        user.update!(settings: user.settings.merge(
+          'teslamate_url' => 'https://teslamate-old.test',
+          'teslamate_last_synced_at' => '2026-09-01T12:00:00Z',
+          'teslamate_last_synced_url' => 'https://teslamate-old.test',
+          'teslamate_processing_pending' => true,
+          'teslamate_processing_pending_url' => 'https://teslamate-old.test'
+        ))
+        stub_host_addresses('teslamate-new.test', '93.184.216.34')
+        allow_any_instance_of(TeslaMate::ConnectionTester).to receive(:call)
+          .and_return({ success: true, message: 'TeslaMateApi connection verified' })
+      end
+
+      it 'clears the previous source checkpoint' do
+        service.call
+
+        settings = user.reload.settings
+        expect(settings['teslamate_url']).to eq('https://teslamate-new.test')
+        expect(settings['teslamate_last_synced_at']).to be_nil
+        expect(settings['teslamate_last_synced_url']).to be_nil
+        expect(settings['teslamate_processing_pending']).to be(false)
+        expect(settings['teslamate_processing_pending_url']).to be_nil
       end
     end
 
@@ -100,6 +128,12 @@ RSpec.describe Settings::Update do
           expect(result[:notices]).to include('Immich connection verified')
           expect(result[:alerts]).to be_empty
         end
+
+        it 'records the successful connection status' do
+          service.call
+
+          expect(user.reload.settings['immich_connection_status']).to eq('ok')
+        end
       end
 
       context 'when connection test fails' do
@@ -112,6 +146,12 @@ RSpec.describe Settings::Update do
           result = service.call
 
           expect(result[:alerts]).to include('Immich connection failed: 500')
+        end
+
+        it 'records the failed connection status' do
+          service.call
+
+          expect(user.reload.settings['immich_connection_status']).to eq('failed')
         end
       end
     end
@@ -148,6 +188,45 @@ RSpec.describe Settings::Update do
       end
     end
 
+    context 'when another process writes settings during the connection test' do
+      let(:settings_params) { { 'immich_url' => 'https://immich.test', 'immich_api_key' => 'new-key' } }
+      let(:service) { described_class.new(user, settings_params) }
+
+      before do
+        allow_any_instance_of(Immich::ConnectionTester).to receive(:call) do
+          concurrent_user = User.find(user.id)
+          concurrent_user.update!(settings: concurrent_user.settings.merge('concurrent_key' => 'kept'))
+          { success: true, message: 'Immich connection verified' }
+        end
+      end
+
+      it 'does not clobber the concurrent write' do
+        service.call
+
+        expect(user.reload.settings['concurrent_key']).to eq('kept')
+        expect(user.settings['immich_url']).to eq('https://immich.test')
+        expect(user.settings['immich_connection_status']).to eq('ok')
+      end
+    end
+
+    context 'when only the ssl verification toggle changes' do
+      let(:settings_params) { { 'immich_skip_ssl_verification' => '1' } }
+      let(:service) { described_class.new(user, settings_params) }
+
+      before do
+        user.update(settings: { 'immich_url' => 'https://immich.test', 'immich_api_key' => 'existing-key' })
+        allow_any_instance_of(Immich::ConnectionTester).to receive(:call)
+          .and_return({ success: true, message: 'Immich connection verified' })
+      end
+
+      it 'retests the connection and refreshes the recorded status' do
+        result = service.call
+
+        expect(result[:notices]).to include('Immich connection verified')
+        expect(user.reload.settings['immich_connection_status']).to eq('ok')
+      end
+    end
+
     context 'when immich settings have not changed' do
       let(:service) { described_class.new(user, settings_params) }
 
@@ -162,12 +241,18 @@ RSpec.describe Settings::Update do
 
         service.call
       end
+
+      it 'does not record a connection status' do
+        service.call
+
+        expect(user.reload.settings['immich_connection_status']).to be_nil
+      end
     end
 
     context 'when not self-hosted and URL points to a blocked address' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-        allow(Resolv).to receive(:getaddress).with('169.254.169.254').and_return('169.254.169.254')
+        stub_host_addresses('169.254.169.254', '169.254.169.254')
       end
 
       let(:settings_params) { { 'immich_url' => 'http://169.254.169.254/latest' } }

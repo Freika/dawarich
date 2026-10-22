@@ -122,9 +122,13 @@ export class VisitPlaceSearch {
           return
         }
       }
-      await this.postJson(`/api/v1/visits/${this.visitId}/select_place`, {
-        photon: place,
-      })
+      if (place.id) {
+        await this.patchVisit({ place_id: place.id })
+      } else {
+        await this.postJson(`/api/v1/visits/${this.visitId}/select_place`, {
+          photon: place,
+        })
+      }
       this.done()
     } catch (_e) {
       this.renderError()
@@ -133,7 +137,7 @@ export class VisitPlaceSearch {
 
   async selectArea(area) {
     try {
-      await this.patchVisit({ area_id: area.id })
+      await this.patchVisit({ area_id: area.id, status: "confirmed" })
       this.done()
     } catch (_e) {
       this.renderError()
@@ -150,7 +154,11 @@ export class VisitPlaceSearch {
           source: "manual",
         },
       })
-      await this.patchVisit({ place_id: created.id, name: created.name })
+      await this.patchVisit({
+        place_id: created.id,
+        name: created.name,
+        status: "confirmed",
+      })
       this.done()
     } catch (_e) {
       this.renderError()

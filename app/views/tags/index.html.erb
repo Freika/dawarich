@@ -1,7 +1,7 @@
 <div class="w-full my-5">
   <%= render layout: 'shared/page_header', locals: { title: t('.tags') } do %>
     <%= link_to new_tag_path, class: "btn btn-primary btn-sm" do %>
-      <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('.new_tag') %>
+      <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('tags.index.new_tag') %>
     <% end %>
   <% end %>
 

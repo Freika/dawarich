@@ -23,6 +23,14 @@ RSpec.describe Import::ProcessJob, type: :job do
       expect { perform }.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 3)
     end
 
+    it 'processes the import in the user saved locale' do
+      user.update!(settings: { 'locale' => 'fr' })
+      allow(Import).to receive(:find_by).with(id: import.id, user_id: user.id).and_return(import)
+      allow(import).to receive(:process!) { expect(I18n.locale).to eq(:fr) }
+
+      I18n.with_locale(:en) { perform }
+    end
+
     it 'holds a shared user-data lock while processing' do
       expect(Users::DataLock).to receive(:with_shared).with(user.id).and_call_original
 

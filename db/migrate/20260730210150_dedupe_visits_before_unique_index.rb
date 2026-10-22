@@ -25,7 +25,7 @@ class DedupeVisitsBeforeUniqueIndex < ActiveRecord::Migration[8.0]
   def build_plan
     execute("DROP TABLE IF EXISTS #{PLAN_TABLE}")
     execute(<<~SQL.squish)
-      CREATE TEMPORARY TABLE #{PLAN_TABLE} AS
+      CREATE UNLOGGED TABLE #{PLAN_TABLE} AS
       SELECT min(id) AS keeper, array_agg(id) AS ids
       FROM visits
       WHERE place_id IS NOT NULL

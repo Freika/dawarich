@@ -20,6 +20,7 @@ export class Toast {
       z-index: 9999;
       display: flex;
       flex-direction: column;
+      max-width: calc(100vw - 40px);
       gap: 12px;
       pointer-events: none;
     `
@@ -60,12 +61,22 @@ export class Toast {
         }
       }
 
-      .toast {
-        pointer-events: auto;
+      .toast-container > .toast {
+        position: relative;
+        inset: auto;
+        min-width: 0;
+        white-space: normal;
+        flex-direction: row;
+        flex-wrap: wrap;
+        pointer-events: none;
         animation: toast-slide-in 0.3s ease-out;
       }
 
-      .toast.removing {
+      .toast-container > .toast button {
+        pointer-events: auto;
+      }
+
+      .toast-container > .toast.removing {
         animation: toast-slide-out 0.3s ease-out;
       }
     `
@@ -78,12 +89,15 @@ export class Toast {
    * @param {string} type - Toast type: 'success', 'error', 'info', 'warning'
    * @param {number} duration - Duration in milliseconds (default 3000)
    */
-  static show(message, type = "info", duration = 3000) {
+  static show(message, type = "info", duration = 3000, action = null) {
     Toast.init()
 
     const toast = document.createElement("div")
     toast.className = `toast toast-${type}`
-    toast.textContent = message
+    const messageElement = document.createElement("span")
+    messageElement.style.cssText = "min-width: 0; overflow-wrap: anywhere;"
+    messageElement.textContent = message
+    toast.appendChild(messageElement)
 
     toast.style.cssText = `
       padding: 12px 20px;
@@ -95,7 +109,32 @@ export class Toast {
       font-weight: 500;
       max-width: 300px;
       line-height: 1.4;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     `
+
+    if (action?.label && action?.callback) {
+      const button = document.createElement("button")
+      button.type = "button"
+      button.textContent = action.label
+      button.style.cssText = `
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        border-radius: 6px;
+        padding: 4px 8px;
+        color: white;
+        font-weight: 700;
+        min-width: 0;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      `
+      button.addEventListener("click", () => {
+        Toast.dismiss(toast)
+        action.callback()
+      })
+      toast.appendChild(button)
+    }
 
     Toast.container.appendChild(toast)
 
@@ -153,6 +192,10 @@ export class Toast {
    */
   static error(message, duration = 4000) {
     return Toast.show(message, "error", duration)
+  }
+
+  static retry(message, label, callback) {
+    return Toast.show(message, "error", 0, { label, callback })
   }
 
   /**

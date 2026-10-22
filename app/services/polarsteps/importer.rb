@@ -16,34 +16,29 @@ class Polarsteps::Importer
   end
 
   def call
-    json = load_json_data
-    locations = extract_locations(json)
-
-    points_data = locations.filter_map { |loc| build_point(loc) }
-
-    points_data.each_slice(BATCH_SIZE).with_index do |batch, batch_index|
+    locations = Imports::JsonStream.new(resolve_file_path, keys: ['locations'], root_array: true)
+    records = locations.each.lazy.filter_map { |loc| build_point(loc) }
+    records.each_slice(BATCH_SIZE).each_with_index do |batch, batch_index|
       bulk_insert_points(batch)
       broadcast_import_progress(import, (batch_index + 1) * BATCH_SIZE)
     end
+  ensure
+    cleanup_temp_file
   end
 
   private
 
-  def extract_locations(json)
-    return json['locations'] if json.is_a?(Hash) && json['locations'].is_a?(Array)
-    return json if json.is_a?(Array)
-
-    []
-  end
-
   def build_point(loc)
     return nil unless loc.is_a?(Hash)
 
-    lat = loc['lat']
-    lon = loc['lon'] || loc['lng']
+    location = loc['location'].is_a?(Hash) ? loc['location'] : {}
+    lat = location['lat'] || loc['lat']
+    lon = location['lon'] || location['lng'] || loc['lon'] || loc['lng']
     return nil if lat.nil? || lon.nil?
 
-    timestamp = parse_timestamp(loc['time'] || loc['timestamp'])
+    timestamp = parse_timestamp(
+      loc['time'] || loc['timestamp'] || loc['arrived'] || loc['departed'] || loc['start_time'] || loc['end_time']
+    )
     return nil if timestamp.nil?
 
     {
@@ -58,6 +53,8 @@ class Polarsteps::Importer
 
   def parse_timestamp(value)
     return nil if value.nil?
+
+    return Time.zone.at(value.to_f).to_i if value.is_a?(Numeric) || value.to_s.match?(/\A-?\d+(?:\.\d+)?\z/)
 
     Time.zone.parse(value.to_s)&.to_i
   rescue ArgumentError, TypeError

@@ -45,7 +45,7 @@ class AddUniqueIndexToVisits < ActiveRecord::Migration[8.0]
   # without its points ever being moved, orphaning them or failing the FK.
   def collapse_stragglers
     execute("DROP TABLE IF EXISTS #{STRAGGLER_TABLE}")
-    execute("CREATE TEMPORARY TABLE #{STRAGGLER_TABLE} AS #{losers_sql}")
+    execute("CREATE UNLOGGED TABLE #{STRAGGLER_TABLE} AS #{losers_sql}")
 
     execute(<<~SQL.squish)
       UPDATE points SET visit_id = #{STRAGGLER_TABLE}.keeper

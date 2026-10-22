@@ -11,6 +11,13 @@ class ApiController < ApplicationController
 
   private
 
+  # API payloads are a machine contract, not UI copy. Clients send their device
+  # `Accept-Language`, which would otherwise translate every error and message
+  # string and break anyone matching on them.
+  def switch_locale(&block)
+    I18n.with_locale(I18n.default_locale, &block)
+  end
+
   def set_user_time_zone(&block)
     if current_api_user
       timezone = current_api_user.timezone

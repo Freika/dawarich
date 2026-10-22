@@ -1,70 +1,89 @@
 <%= render 'shared/trix_scripts' %>
+<% managed_by_trek = trip.persisted? && trip.source_imported? && trip.source_active? %>
 <%= form_with(model: trip, class: "contents") do |form| %>
   <% if trip.errors.any? %>
-    <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
-      <h2><%= t('.errors_prohibited_save', count: trip.errors.count) %></h2>
-
-      <ul>
-        <% trip.errors.each do |error| %>
-          <li><%= error.full_message %></li>
-        <% end %>
-      </ul>
+    <div id="error_explanation" class="alert alert-error mb-4 items-start" role="alert">
+      <%= icon 'circle-alert', class: 'size-5 shrink-0' %>
+      <div class="min-w-0">
+        <h2 class="font-semibold"><%= t('.errors_prohibited_save', count: trip.errors.count) %></h2>
+        <ul class="mt-1 list-disc pl-5 text-sm">
+          <% trip.errors.each do |error| %>
+            <li><%= error.full_message %></li>
+          <% end %>
+        </ul>
+      </div>
     </div>
   <% end %>
 
-  <div class="flex flex-col lg:flex-row gap-4 my-4">
+  <div class="flex flex-col gap-6 lg:flex-row">
     <div class="w-full lg:w-1/2">
       <div
-        class="w-full h-[40vh] lg:h-full rounded-lg overflow-hidden"
+        class="h-[40vh] w-full overflow-hidden rounded-lg lg:h-full lg:min-h-[24rem]"
         data-controller="trip-maplibre-preview"
         data-trip-maplibre-preview-path-value="<%= trip.path&.coordinates&.to_json %>"
+        <% if trip.persisted? && trip.path.blank? && (plan = trip.plan_geojson) %>data-trip-maplibre-preview-plan-value="<%= plan.to_json %>"<% end %>
         data-trip-maplibre-preview-interactive-value="true"
         data-trip-maplibre-preview-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">
       </div>
     </div>
 
-    <div
-      class="w-full lg:w-1/2 space-y-4"
-      data-controller="datetime">
+    <div class="w-full space-y-5 lg:w-1/2" data-controller="datetime">
+      <% if managed_by_trek %>
+        <div class="flex items-start gap-3 rounded-lg border border-base-content/10 p-3 text-sm">
+          <%= icon 'info', class: 'mt-0.5 size-4 shrink-0 text-base-content/60' %>
+          <p class="min-w-0 text-base-content/70">
+            <%= t('.managed_by_trek_hint') %>
+            <% if (trek_url = trek_trip_url(trip)) %>
+              <%= link_to trek_url, target: '_blank', rel: 'noopener noreferrer',
+                                    class: 'link link-hover inline-flex items-center gap-1 whitespace-nowrap' do %>
+                <%= t('trips.source_itinerary.open_in_trek') %><%= icon 'external-link', class: 'size-3.5' %>
+              <% end %>
+            <% end %>
+          </p>
+        </div>
+      <% end %>
 
       <div class="form-control">
-        <%= form.label :name %>
-        <%= form.text_field :name, class: 'input input-bordered w-full' %>
+        <%= form.label :name, class: 'mb-1.5 text-sm font-medium' %>
+        <%= form.text_field :name, class: 'input input-bordered w-full read-only:bg-base-200 read-only:text-base-content/60', readonly: managed_by_trek %>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-4">
+      <div class="flex flex-col gap-4 sm:flex-row lg:flex-col xl:flex-row">
         <div class="form-control w-full">
           <input type="hidden" data-datetime-target="apiKey" value="<%= current_user.api_key %>">
-          <%= form.label :started_at %>
+          <%= form.label :started_at, class: 'mb-1.5 text-sm font-medium' %>
           <%= form.datetime_field :started_at,
               include_seconds: false,
-              class: 'input input-bordered w-full',
+              class: 'input input-bordered w-full min-w-0 tabular-nums read-only:bg-base-200 read-only:text-base-content/60',
               value: trip.started_at,
+              readonly: managed_by_trek,
               data: {
                 datetime_target: "startedAt",
                 action: "change->datetime#updateCoordinates"
               } %>
         </div>
         <div class="form-control w-full">
-          <%= form.label :ended_at %>
+          <%= form.label :ended_at, class: 'mb-1.5 text-sm font-medium' %>
           <%= form.datetime_field :ended_at,
-             include_seconds: false,
-             class: 'input input-bordered w-full',
-             value: trip.ended_at,
-             data: {
-               datetime_target: "endedAt",
-               action: "change->datetime#updateCoordinates"
-             } %>
+              include_seconds: false,
+              class: 'input input-bordered w-full min-w-0 tabular-nums read-only:bg-base-200 read-only:text-base-content/60',
+              value: trip.ended_at,
+              readonly: managed_by_trek,
+              data: {
+                datetime_target: "endedAt",
+                action: "change->datetime#updateCoordinates"
+              } %>
         </div>
       </div>
 
       <div class="form-control">
-        <%= form.label :description %>
+        <%= form.label :description, class: 'mb-1.5 text-sm font-medium' %>
         <%= form.rich_text_area :description, class: 'trix-content-editor' %>
       </div>
 
-      <div>
-        <%= form.submit class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer" %>
+      <div class="flex flex-wrap items-center gap-2 pt-1">
+        <%= form.submit class: 'btn btn-primary' %>
+        <%= link_to t('.cancel'), (trip.persisted? ? trip_path(trip) : trips_path), class: 'btn btn-ghost' %>
       </div>
     </div>
   </div>

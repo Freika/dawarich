@@ -1,0 +1,82 @@
+{
+  "walk": {
+    "point_accuracy": 1.0,
+    "boundary_f1": 1.0,
+    "per_mode": {
+      "walking": {
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    }
+  },
+  "commute_mixed": {
+    "point_accuracy": 0.6,
+    "boundary_f1": 0.0,
+    "per_mode": {
+      "driving": {
+        "precision": 0.75,
+        "recall": 1.0
+      },
+      "walking": {
+        "precision": 0.0,
+        "recall": 0.0
+      }
+    }
+  },
+  "run": {
+    "point_accuracy": 0.0,
+    "boundary_f1": 1.0,
+    "per_mode": {
+      "cycling": {
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "running": {
+        "precision": 0.0,
+        "recall": 0.0
+      }
+    }
+  },
+  "bike_errand": {
+    "point_accuracy": 0.8333,
+    "boundary_f1": 0.0,
+    "per_mode": {
+      "cycling": {
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "walking": {
+        "precision": 0.0,
+        "recall": 0.0
+      }
+    }
+  },
+  "train_trip": {
+    "point_accuracy": 0.0,
+    "boundary_f1": 0.0,
+    "per_mode": {
+      "driving": {
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "walking": {
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "train": {
+        "precision": 0.0,
+        "recall": 0.0
+      }
+    }
+  },
+  "sparse_drive": {
+    "point_accuracy": 1.0,
+    "boundary_f1": 1.0,
+    "per_mode": {
+      "driving": {
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    }
+  }
+}

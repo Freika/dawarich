@@ -44,7 +44,9 @@ module SharedLinks
         'shared-trip-map-link-id-value': @link.id,
         'shared-trip-map-show-photos-value': @ctx.show_photos?,
         'shared-trip-map-by-day-value': true,
-        'shared-trip-map-timezone-value': timezone
+        'shared-trip-map-timezone-value': timezone,
+        'shared-trip-map-meters-between-routes-value': @link.user.safe_settings.meters_between_routes,
+        'shared-trip-map-minutes-between-routes-value': @link.user.safe_settings.minutes_between_routes
       }
     end
 
@@ -82,6 +84,11 @@ module SharedLinks
       return {} unless show_map?
 
       { day_key: day_key, action: ROW_ACTIONS, 'shared-trip-map-day-key-param': day_key }
+    end
+
+    def gallery_row_data(day_key)
+      data = row_data(day_key)
+      data.merge(controller: 'lazy-gallery', action: [data[:action], 'toggle->lazy-gallery#toggle'].compact.join(' '))
     end
   end
 end

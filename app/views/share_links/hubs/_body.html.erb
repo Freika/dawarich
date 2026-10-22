@@ -25,6 +25,8 @@
        data-action="click->hub-tabs#select" data-testid="hub-tab-live"><%= t('.live_location') %></a>
     <a role="tab" class="tab" data-hub-tabs-target="tab" data-tab="timeline"
        data-action="click->hub-tabs#select" data-testid="hub-tab-timeline"><%= t('.time_period') %></a>
+    <a role="tab" class="tab" data-hub-tabs-target="tab" data-tab="make"
+       data-action="click->hub-tabs#select" data-testid="hub-tab-make"><%= t('.make_something') %></a>
     <% if hub.any_shares? %>
       <a role="tab" class="tab" data-hub-tabs-target="tab" data-tab="shared"
          data-action="click->hub-tabs#select" data-testid="hub-tab-shared"><%= t('.shared') %></a>
@@ -47,6 +49,33 @@
     <% else %>
       <%= render 'shared_links/modal_timeline_create_form', resource: nil, paths: timeline_paths, close_path: map_v2_path %>
     <% end %>
+  </div>
+
+  <%# A link hands someone your live data; these hand them a file instead —
+      nothing stays shared after you post it. %>
+  <div data-hub-tabs-target="panel" style="min-height: 24rem;" data-tab="make" class="hidden pt-2"
+       data-controller="studio-launcher">
+    <p class="text-sm opacity-70 mb-4"><%= t('.make_something_intro') %></p>
+    <div class="grid gap-3 sm:grid-cols-2">
+      <button type="button"
+              class="flex flex-col items-start gap-1 rounded-lg border border-base-content/10 bg-base-200 p-4 text-left transition hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              data-action="studio-launcher#openVideo" data-testid="hub-make-video">
+        <span class="flex items-center gap-2 font-medium">
+          <%= icon 'video', class: 'h-4 w-4 opacity-70' %>
+          <%= t('.make_video') %>
+        </span>
+        <span class="text-xs opacity-60"><%= t('.make_video_hint') %></span>
+      </button>
+      <button type="button"
+              class="flex flex-col items-start gap-1 rounded-lg border border-base-content/10 bg-base-200 p-4 text-left transition hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              data-action="studio-launcher#openPoster" data-testid="hub-make-poster">
+        <span class="flex items-center gap-2 font-medium">
+          <%= icon 'image', class: 'h-4 w-4 opacity-70' %>
+          <%= t('.make_poster') %>
+        </span>
+        <span class="text-xs opacity-60"><%= t('.make_poster_hint') %></span>
+      </button>
+    </div>
   </div>
 
   <% if hub.any_shares? %>

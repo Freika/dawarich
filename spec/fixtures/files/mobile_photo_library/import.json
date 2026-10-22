@@ -1,0 +1,17 @@
+{
+  "type": "DawarichPhotoLibrary",
+  "version": 1,
+  "points": [
+    {
+      "timestamp": 1718447400,
+      "latitude": 48.12345,
+      "longitude": 11.54321,
+      "altitude": 34.5
+    },
+    {
+      "timestamp": 1718448000000,
+      "latitude": 52.52,
+      "longitude": 13.405
+    }
+  ]
+}

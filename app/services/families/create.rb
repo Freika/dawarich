@@ -14,9 +14,10 @@ module Families
       message: ->(*) { I18n.t('services.families.create.family_name_must_be_50_characters_or_less') }
     }
 
-    def initialize(user:, name:)
+    def initialize(user:, name:, notify: true)
       @user = user
       @name = name&.strip
+      @notify = notify
       @error_message = nil
     end
 
@@ -90,12 +91,16 @@ module Families
     end
 
     def send_notification
-      Notification.create!(
-        user: user,
-        kind: :info,
-        title: I18n.t('services.families.create.family_created'),
-        content: I18n.t('services.families.create.you_ve_successfully_created_the_family_name', name: family.name)
-      )
+      return unless @notify
+
+      I18n.with_locale(user.locale) do
+        Notification.create!(
+          user: user,
+          kind: :info,
+          title: I18n.t('services.families.create.family_created'),
+          content: I18n.t('services.families.create.you_ve_successfully_created_the_family_name', name: family.name)
+        )
+      end
     rescue StandardError => e
       # Don't fail the entire operation if notification fails
       ExceptionReporter.call(e, "Unexpected error in Families::Create: #{e.message}")

@@ -10,7 +10,7 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
     let(:end_at)   { 1.day.ago.end_of_day }
 
     before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+      configure_instance_geocoding
       allow_any_instance_of(Visits::TimeChunks).to receive(:call).and_return([[start_at, end_at]])
       create(:point, user: target_user)
       create(:point, user: other_user)

@@ -30,9 +30,9 @@ module PlanScopable
   end
 
   def scoped_visits
-    return visits unless plan_restricted?
+    return visits.active unless plan_restricted?
 
-    visits.where('started_at >= ?', data_window_start)
+    visits.active.where('started_at >= ?', data_window_start)
   end
 
   def scoped_stats

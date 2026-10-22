@@ -32,20 +32,22 @@ module UrlValidatable
   # Blocked everywhere. Nothing in this list is a legitimate integration
   # target on either deployment topology.
   ALWAYS_BLOCKED_RANGES = [
-    IPAddr.new('0.0.0.0/8'),       # invalid / "this network"
-    IPAddr.new('169.254.0.0/16'),  # link-local + cloud metadata (AWS / GCP / OpenStack 169.254.169.254)
-    IPAddr.new('224.0.0.0/4'),     # IPv4 multicast
-    IPAddr.new('240.0.0.0/4'),     # IPv4 reserved
-    IPAddr.new('fe80::/10'),       # IPv6 link-local (no scope-id support in URL form)
-    IPAddr.new('ff00::/8')         # IPv6 multicast
+    IPAddr.new('0.0.0.0/8'),           # invalid / "this network"
+    IPAddr.new('169.254.169.254/32'),  # cloud metadata (AWS / GCP / OpenStack)
+    IPAddr.new('224.0.0.0/4'),         # IPv4 multicast
+    IPAddr.new('240.0.0.0/4'),         # IPv4 reserved
+    IPAddr.new('fe80::/10'),           # IPv6 link-local (no scope-id support in URL form)
+    IPAddr.new('ff00::/8')             # IPv6 multicast
   ].freeze
 
   # Additional ranges blocked on cloud only. Self-hosters routinely point
-  # at these (Docker bridge networks, LAN, loopback, Tailscale CGNAT).
+  # at these (Docker bridge networks, LAN, loopback, Tailscale CGNAT,
+  # container host-gateway link-local).
   CLOUD_ONLY_BLOCKED_RANGES = [
     IPAddr.new('10.0.0.0/8'),      # RFC1918
     IPAddr.new('100.64.0.0/10'),   # CGNAT (Tailscale uses this)
     IPAddr.new('127.0.0.0/8'),     # IPv4 loopback
+    IPAddr.new('169.254.0.0/16'),  # IPv4 link-local (podman/pasta host-gateway)
     IPAddr.new('172.16.0.0/12'),   # RFC1918
     IPAddr.new('192.0.0.0/24'),    # IETF protocol assignments
     IPAddr.new('192.168.0.0/16'),  # RFC1918
@@ -57,6 +59,10 @@ module UrlValidatable
   private
 
   def validate_integration_url!(url)
+    resolve_integration_url!(url)
+  end
+
+  def resolve_integration_url!(url)
     return if url.blank?
 
     uri = URI.parse(url)
@@ -72,13 +78,22 @@ module UrlValidatable
       raise BlockedUrlError, I18n.t('services.concerns.url_validatable.embedded_credentials')
     end
 
-    ip = IPAddr.new(Resolv.getaddress(uri.host))
-    if blocked_ranges.any? { |range| range.include?(ip) }
+    # #native unwraps IPv4-mapped and IPv4-compatible IPv6 addresses, which
+    # would otherwise clear every IPv4 range below: IPAddr#include? is false
+    # across address families while the OS still routes to the bare IPv4 host.
+    addresses = Addrinfo.getaddrinfo(uri.hostname, nil, nil, :STREAM)
+                        .map { |info| IPAddr.new(info.ip_address).native }.uniq
+    raise SocketError if addresses.empty?
+
+    blocked = addresses.find { |ip| blocked_ranges.any? { |range| range.include?(ip) } }
+    if blocked
+      Rails.logger.warn("Integration URL #{uri.host} resolves to blocked address #{blocked}")
       raise BlockedUrlError, I18n.t('services.concerns.url_validatable.blocked_address')
     end
+    addresses.first.to_s
   rescue URI::InvalidURIError
     raise BlockedUrlError, I18n.t('services.concerns.url_validatable.invalid_format')
-  rescue Resolv::ResolvError
+  rescue SocketError
     raise BlockedUrlError, I18n.t('services.concerns.url_validatable.unresolvable_host', host: uri.host)
   end
 

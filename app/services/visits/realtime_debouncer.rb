@@ -13,7 +13,7 @@ class Visits::RealtimeDebouncer
   end
 
   def trigger
-    return unless DawarichSettings.reverse_geocoding_enabled?
+    return unless Geocoding::Config.for(@user_id).enabled?
     return unless user_opted_in?
 
     redis_pool.with do |redis|

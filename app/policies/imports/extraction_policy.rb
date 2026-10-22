@@ -6,6 +6,7 @@ module Imports
       user.present? &&
         record.user == user &&
         record.additional_data_extraction_supported? &&
+        !record.gpx_without_waypoints? &&
         !in_flight?
     end
 

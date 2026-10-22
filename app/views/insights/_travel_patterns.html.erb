@@ -27,7 +27,7 @@
       <div>
         <div class="text-sm font-medium mb-2"><%= t('.day_of_week') %></div>
         <div class="flex gap-1">
-          <% days = %w[Mon Tue Wed Thu Fri Sat Sun] %>
+          <% days = t('date.abbr_day_names').rotate %>
           <% max_distance = @day_of_week.max.to_f %>
           <% distance_unit = current_user.safe_settings.distance_unit %>
           <% @day_of_week.each_with_index do |distance_meters, idx| %>
@@ -46,7 +46,7 @@
           <% season_colors = { 'winter' => 'info', 'spring' => 'success', 'summer' => 'warning', 'fall' => 'error' } %>
           <% %w[winter spring summer fall].each do |season| %>
             <div class="flex items-center gap-2">
-              <span class="w-14 capitalize"><%= season.capitalize %></span>
+              <span class="w-14 capitalize"><%= t("services.insights.travel_insight_generator.seasons.#{season}") %></span>
               <progress class="progress progress-<%= season_colors[season] %> flex-1 h-2"
                         value="<%= @seasonality[season] || 0 %>" max="100"></progress>
               <span class="w-10 text-right text-base-content/60"><%= @seasonality[season] || 0 %>%</span>

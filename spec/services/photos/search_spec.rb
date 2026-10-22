@@ -160,6 +160,13 @@ RSpec.describe Photos::Search do
       allow_any_instance_of(Api::PhotoSerializer).to receive(:call).and_return(serialized_photo)
     end
 
+    it 'ignores cached results from before archived assets were excluded' do
+      Rails.cache.write("photos_search/#{user.id}/#{args[:start_date]}/#{args[:end_date]}", [{ id: 'archived' }])
+      allow_any_instance_of(Immich::RequestPhotos).to receive(:call).and_return([immich_photo])
+
+      expect(described_class.cached(user, **args)).to eq([serialized_photo])
+    end
+
     it 'returns the search results' do
       allow_any_instance_of(Immich::RequestPhotos).to receive(:call).and_return([immich_photo])
 

@@ -24,6 +24,15 @@ RSpec.describe 'Trial::Resume', type: :request do
         expect(response.body).to include('Finish setting up your account')
       end
 
+      it 'explains the free-trial checkout clearly in French' do
+        get trial_resume_path(locale: 'fr')
+        rendered_copy = Nokogiri::HTML(response.body).text.squish
+
+        expect(rendered_copy).to include('finalisez votre abonnement')
+        expect(rendered_copy).to include("Aucun montant ne sera débité pendant l'essai gratuit de 7 jours")
+        expect(rendered_copy).not_to include('compléter le paiement')
+      end
+
       it 'sends Cache-Control: no-store so proxies do not cache the embedded JWT' do
         get trial_resume_path
 

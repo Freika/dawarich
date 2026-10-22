@@ -1,6 +1,6 @@
 <%= render 'shared/chartkick_scripts' %>
 
-<% insights_cache_key = [current_user.id, "insights", @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit] %>
+<% insights_cache_key = [current_user.id, "insights", I18n.locale, @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit] %>
 
 <%= turbo_frame_tag "insights_details" do %>
   <!-- Two Column Layout -->

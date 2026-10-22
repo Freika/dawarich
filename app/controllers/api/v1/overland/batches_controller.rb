@@ -8,6 +8,9 @@ class Api::V1::Overland::BatchesController < ApiController
     Overland::PointsCreator.new(batch_params, current_api_user.id).call
 
     render json: { result: 'ok' }, status: :created
+  rescue Points::TimestampParser::InvalidTimestampError => e
+    Rails.logger.warn("Batch validation failed: #{e.message}")
+    render json: { error: e.message }, status: :unprocessable_content
   rescue StandardError => e
     Rails.logger.error("Batch creation failed: #{e.class}: #{e.message}")
     Sentry.capture_exception(e) if defined?(Sentry)

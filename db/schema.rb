@@ -10,11 +10,37 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_22_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
   enable_extension "postgis"
+
+  create_table "achievement_progresses", force: :cascade do |t|
+    t.string "achievement_key", null: false
+    t.datetime "created_at", null: false
+    t.boolean "sharing_enabled", default: false, null: false
+    t.string "sharing_uuid"
+    t.jsonb "state", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["sharing_uuid"], name: "index_achievement_progresses_on_sharing_uuid", unique: true
+    t.index ["user_id", "achievement_key"], name: "index_achievement_progresses_on_user_id_and_achievement_key", unique: true
+  end
+
+  create_table "achievement_unlock_events", force: :cascade do |t|
+    t.string "claim_token"
+    t.datetime "claimed_at"
+    t.datetime "created_at", null: false
+    t.string "key", null: false
+    t.string "kind", null: false
+    t.datetime "seen_at"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "id"], name: "index_achievement_unlock_events_pending", where: "(seen_at IS NULL)"
+    t.index ["user_id", "kind", "key"], name: "index_achievement_unlock_events_on_user_kind_key", unique: true
+    t.index ["user_id"], name: "index_achievement_unlock_events_on_user_id"
+  end
 
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
@@ -86,6 +112,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.datetime "created_at", null: false
     t.bigint "distance", default: 0, null: false
     t.jsonb "first_time_visits", default: {}
+    t.bigint "flight_distance", default: 0, null: false
     t.integer "month"
     t.jsonb "monthly_distances", default: {}
     t.integer "period_type", default: 0, null: false
@@ -107,6 +134,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.index ["year"], name: "index_digests_on_year"
   end
 
+  create_table "disputed_areas", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.geometry "geom", limit: {srid: 4326, type: "geometry"}, null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["geom"], name: "index_disputed_areas_on_geom", using: :gist
+  end
+
   create_table "exports", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "end_at"
@@ -126,6 +161,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
   end
 
   create_table "families", force: :cascade do |t|
+    t.datetime "access_until"
     t.datetime "created_at", null: false
     t.bigint "creator_id", null: false
     t.string "name", limit: 50, null: false
@@ -246,6 +282,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.index ["user_id"], name: "index_imports_on_user_id"
   end
 
+  create_table "instance_settings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "encrypted_value"
+    t.string "key", null: false
+    t.datetime "updated_at", null: false
+    t.jsonb "value"
+    t.index ["key"], name: "index_instance_settings_on_key", unique: true
+  end
+
   create_table "notes", force: :cascade do |t|
     t.bigint "attachable_id"
     t.string "attachable_type"
@@ -253,6 +298,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.datetime "created_at", null: false
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
     t.datetime "noted_at"
+    t.string "source_digest"
     t.string "title"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
@@ -315,13 +361,138 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.datetime "reverse_geocoded_at"
     t.integer "source", default: 0
     t.datetime "updated_at", null: false
-    t.bigint "user_id"
+    t.bigint "user_id", null: false
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
     t.index "user_id, ((geodata ->> 'external_place_id'::text))", name: "idx_places_user_external_place_id", unique: true, where: "((geodata ->> 'external_place_id'::text) IS NOT NULL)"
     t.index ["demo"], name: "index_places_on_demo_true", where: "(demo = true)"
     t.index ["import_id"], name: "idx_places_import_id_extracted", where: "(import_id IS NOT NULL)"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
     t.index ["user_id"], name: "index_places_on_user_id"
+  end
+
+  create_table "planned_accommodations", force: :cascade do |t|
+    t.string "address"
+    t.string "check_in_at"
+    t.string "check_out_at"
+    t.datetime "created_at", null: false
+    t.date "ends_on"
+    t.decimal "latitude", precision: 10, scale: 6
+    t.decimal "longitude", precision: 10, scale: 6
+    t.string "name", null: false
+    t.text "notes"
+    t.date "starts_on"
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id"], name: "index_planned_accommodations_on_trip_id"
+  end
+
+  create_table "planned_day_notes", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.string "noted_at"
+    t.bigint "planned_day_id", null: false
+    t.integer "position", null: false
+    t.datetime "updated_at", null: false
+    t.index ["planned_day_id", "position"], name: "index_planned_day_notes_on_planned_day_id_and_position", unique: true
+    t.index ["planned_day_id"], name: "index_planned_day_notes_on_planned_day_id"
+  end
+
+  create_table "planned_days", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.date "date", null: false
+    t.text "notes"
+    t.integer "position", null: false
+    t.string "title"
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id", "date"], name: "index_planned_days_on_trip_id_and_date", unique: true
+    t.index ["trip_id"], name: "index_planned_days_on_trip_id"
+  end
+
+  create_table "planned_reservations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "ends_at"
+    t.string "location"
+    t.text "notes"
+    t.bigint "planned_day_id"
+    t.string "reservation_type"
+    t.datetime "starts_at"
+    t.string "status"
+    t.string "title", null: false
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["planned_day_id"], name: "index_planned_reservations_on_planned_day_id"
+    t.index ["trip_id"], name: "index_planned_reservations_on_trip_id"
+  end
+
+  create_table "planned_stops", force: :cascade do |t|
+    t.string "address"
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.integer "duration_minutes"
+    t.string "ends_at"
+    t.decimal "latitude", precision: 10, scale: 6
+    t.decimal "longitude", precision: 10, scale: 6
+    t.string "name", null: false
+    t.text "notes"
+    t.bigint "planned_day_id", null: false
+    t.integer "position", null: false
+    t.string "starts_at"
+    t.string "transport_mode"
+    t.datetime "updated_at", null: false
+    t.index ["planned_day_id", "position"], name: "index_planned_stops_on_planned_day_id_and_position", unique: true
+    t.index ["planned_day_id"], name: "index_planned_stops_on_planned_day_id"
+  end
+
+  create_table "planned_travellers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.boolean "owner", default: false, null: false
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id"], name: "index_planned_travellers_on_trip_id"
+  end
+
+  create_table "planned_unplanned_places", force: :cascade do |t|
+    t.string "address"
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.integer "duration_minutes"
+    t.string "ends_at"
+    t.decimal "latitude", precision: 10, scale: 6
+    t.decimal "longitude", precision: 10, scale: 6
+    t.string "name", null: false
+    t.text "notes"
+    t.integer "position", null: false
+    t.string "starts_at"
+    t.string "transport_mode"
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id", "position"], name: "index_planned_unplanned_places_on_trip_id_and_position", unique: true
+    t.index ["trip_id"], name: "index_planned_unplanned_places_on_trip_id"
+  end
+
+  create_table "point_revisions", force: :cascade do |t|
+    t.date "month", null: false
+    t.uuid "revision", default: -> { "gen_random_uuid()" }, null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "month"], name: "index_point_revisions_on_user_id_and_month", unique: true
+  end
+
+  create_table "point_sources", id: :serial, force: :cascade do |t|
+    t.integer "battery_status"
+    t.string "bssid"
+    t.integer "connection"
+    t.datetime "created_at", null: false
+    t.string "digest", limit: 32, null: false
+    t.text "in_regions", array: true
+    t.text "inrids", array: true
+    t.string "ssid"
+    t.string "topic"
+    t.string "tracker_id"
+    t.integer "trigger"
+    t.datetime "updated_at", null: false
+    t.index ["digest"], name: "index_point_sources_on_digest", unique: true
   end
 
   create_table "points", force: :cascade do |t|
@@ -345,6 +516,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.bigint "import_id"
     t.text "in_regions", default: [], array: true
     t.text "inrids", default: [], array: true
+    t.integer "lock_version", default: 0, null: false
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
     t.integer "mode"
     t.jsonb "motion_data", default: {}, null: false
@@ -353,6 +525,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.bigint "raw_data_archive_id"
     t.boolean "raw_data_archived", default: false, null: false
     t.datetime "reverse_geocoded_at"
+    t.integer "source_id"
     t.string "ssid"
     t.integer "timestamp"
     t.string "topic"
@@ -366,18 +539,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.bigint "visit_id"
     t.index ["id"], name: "index_points_on_not_reverse_geocoded", where: "(reverse_geocoded_at IS NULL)"
     t.index ["import_id"], name: "index_points_on_import_id"
-    t.index ["lonlat", "timestamp", "user_id"], name: "index_points_on_lonlat_timestamp_user_id", unique: true
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
     t.index ["track_id", "timestamp"], name: "idx_points_track_id_timestamp"
-    t.index ["track_id"], name: "index_points_on_track_id"
-    t.index ["user_id", "country_name"], name: "idx_points_user_country_name"
-    t.index ["user_id", "geodata"], name: "index_points_on_user_id_and_empty_geodata", where: "(geodata = '{}'::jsonb)"
+    t.index ["user_id", "created_at"], name: "index_points_on_user_id_and_created_at"
     t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
-    t.index ["user_id", "timestamp"], name: "idx_points_user_visit_null_timestamp", where: "(visit_id IS NULL)"
-    t.index ["user_id", "timestamp"], name: "index_points_on_user_id_and_timestamp", order: { timestamp: :desc }
+    t.index ["user_id", "timestamp", "lonlat"], name: "index_points_on_user_id_timestamp_lonlat", unique: true
     t.index ["user_id"], name: "idx_points_user_id_legacy_tracker", where: "((tracker_id)::text = ANY (ARRAY[('google-maps-timeline-export'::character varying)::text, ('google-maps-phone-timeline-export'::character varying)::text]))"
-    t.index ["user_id"], name: "index_points_on_user_id"
     t.index ["visit_id"], name: "index_points_on_visit_id"
   end
 
@@ -409,6 +577,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.index ["user_id"], name: "index_posters_on_user_id"
   end
 
+  create_table "regions", force: :cascade do |t|
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.geometry "geom", limit: {srid: 4326, type: "multi_polygon"}, null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_regions_on_code", unique: true
+    t.index ["geom"], name: "index_regions_on_geom", using: :gist
+  end
+
+  create_table "route_videos", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expired_at"
+    t.string "name", null: false
+    t.jsonb "settings", default: {}, null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_route_videos_on_user_id_and_created_at"
+  end
+
+  create_table "service_settings", force: :cascade do |t|
+    t.boolean "active", default: false, null: false
+    t.jsonb "config", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.text "credentials"
+    t.string "provider", null: false
+    t.integer "service", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "service", "provider"], name: "index_service_settings_on_user_id_and_service_and_provider", unique: true
+    t.index ["user_id", "service"], name: "index_service_settings_on_user_service_active", unique: true, where: "active"
+    t.index ["user_id"], name: "index_service_settings_on_user_id"
+  end
+
   create_table "shared_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "expires_at"
@@ -428,11 +630,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
   end
 
   create_table "stats", force: :cascade do |t|
+    t.integer "calculation_version", default: 0, null: false
     t.datetime "created_at", null: false
     t.jsonb "daily_distance", default: {}
     t.bigint "distance", null: false
+    t.bigint "flight_distance", default: 0, null: false
     t.jsonb "h3_hex_ids", default: {}
     t.integer "month", null: false
+    t.datetime "repair_deferred_at"
     t.jsonb "sharing_settings", default: {}
     t.uuid "sharing_uuid"
     t.jsonb "toponyms"
@@ -474,22 +679,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.index ["user_id"], name: "index_tags_on_user_id"
   end
 
+  create_table "track_revisions", force: :cascade do |t|
+    t.date "month", null: false
+    t.uuid "revision", default: -> { "gen_random_uuid()" }, null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "month"], name: "index_track_revisions_on_user_id_and_month", unique: true
+  end
+
   create_table "track_segments", force: :cascade do |t|
     t.float "avg_acceleration"
     t.float "avg_speed"
     t.integer "confidence", default: 0
+    t.float "confidence_score"
     t.datetime "corrected_at"
     t.datetime "created_at", null: false
     t.integer "distance"
     t.integer "duration"
-    t.integer "end_index", null: false
+    t.timestamptz "end_at"
+    t.integer "end_index"
     t.float "max_speed"
+    t.geometry "path", limit: {srid: 4326, type: "line_string"}
     t.string "source"
-    t.integer "start_index", null: false
+    t.timestamptz "start_at"
+    t.integer "start_index"
     t.bigint "track_id", null: false
     t.integer "transportation_mode", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["corrected_at"], name: "index_track_segments_on_corrected_at", where: "(corrected_at IS NOT NULL)"
+    t.index ["track_id", "start_at"], name: "idx_track_segments_track_start_at_unique", unique: true, where: "(start_at IS NOT NULL)"
     t.index ["track_id", "start_index", "end_index"], name: "index_track_segments_on_track_and_indices"
     t.index ["track_id", "start_index"], name: "idx_track_segments_track_start_index_unique", unique: true
     t.index ["track_id", "transportation_mode"], name: "index_track_segments_on_track_id_and_transportation_mode"
@@ -508,6 +725,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.integer "elevation_min"
     t.datetime "end_at", null: false
     t.bigint "import_id"
+    t.integer "lock_version", default: 0, null: false
     t.geometry "original_path", limit: {srid: 4326, type: "line_string"}, null: false
     t.datetime "start_at", null: false
     t.string "tracker_id"
@@ -517,25 +735,60 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.index ["demo"], name: "index_tracks_on_demo_true", where: "(demo = true)"
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
     t.index ["import_id"], name: "idx_tracks_import_id_extracted", where: "(import_id IS NOT NULL)"
+    t.index ["original_path"], name: "index_tracks_on_original_path", using: :gist
     t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
     t.index ["user_id", "tracker_id", "end_at"], name: "idx_tracks_user_tracker_end_at"
     t.index ["user_id"], name: "index_tracks_on_user_id"
   end
 
+  create_table "trip_sources", force: :cascade do |t|
+    t.text "api_key"
+    t.string "base_url", null: false
+    t.datetime "created_at", null: false
+    t.boolean "importing", default: false, null: false
+    t.text "last_error"
+    t.datetime "last_synced_at"
+    t.string "provider", null: false
+    t.string "selection_token"
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "provider", "base_url"], name: "index_trip_sources_on_user_id_and_provider_and_base_url", unique: true
+    t.index ["user_id"], name: "index_trip_sources_on_user_id"
+  end
+
   create_table "trips", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "demo", default: false, null: false
-    t.integer "distance"
+    t.bigint "distance"
     t.datetime "ended_at", null: false
     t.datetime "last_recalculated_at"
     t.string "name", null: false
     t.geometry "path", limit: {srid: 4326, type: "line_string"}
+    t.string "source_digest"
+    t.string "source_identifier"
+    t.jsonb "source_snapshot", default: {}, null: false
+    t.integer "source_status"
+    t.datetime "source_synced_at"
     t.datetime "started_at", null: false
+    t.bigint "trip_source_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.jsonb "visited_countries", default: {}, null: false
     t.index ["demo"], name: "index_trips_on_demo_true", where: "(demo = true)"
+    t.index ["trip_source_id", "source_identifier"], name: "index_trips_on_source_identifier", unique: true, where: "((trip_source_id IS NOT NULL) AND (source_identifier IS NOT NULL))"
+    t.index ["trip_source_id"], name: "index_trips_on_trip_source_id"
     t.index ["user_id"], name: "index_trips_on_user_id"
+  end
+
+  create_table "user_achievements", force: :cascade do |t|
+    t.string "achievement_key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "earned_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "achievement_key"], name: "index_user_achievements_on_user_id_and_achievement_key", unique: true
   end
 
   create_table "users", force: :cascade do |t|
@@ -570,6 +823,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.jsonb "settings", default: {"fog_of_war_meters" => "100", "meters_between_routes" => "1000", "minutes_between_routes" => "60"}
     t.integer "sign_in_count", default: 0, null: false
     t.string "signup_variant"
+    t.datetime "stats_swept_at"
     t.integer "status", default: 0
     t.integer "subscription_source", default: 0, null: false
     t.string "theme", default: "dark", null: false
@@ -581,7 +835,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.string "utm_medium"
     t.string "utm_source"
     t.string "utm_term"
-    t.datetime "visits_redetected_at"
+    t.datetime "visits_redetected_at", default: -> { "CURRENT_TIMESTAMP" }
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -602,7 +856,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.integer "confidence", limit: 2
     t.jsonb "confidence_breakdown", default: {}, null: false
     t.datetime "created_at", null: false
+    t.datetime "deleted_at"
     t.boolean "demo", default: false, null: false
+    t.integer "detection_version", limit: 2
     t.integer "duration", null: false
     t.datetime "ended_at", null: false
     t.bigint "import_id"
@@ -621,6 +877,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 
+  add_foreign_key "achievement_progresses", "users"
+  add_foreign_key "achievement_unlock_events", "users", on_delete: :cascade
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
@@ -639,19 +897,213 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_120000) do
   add_foreign_key "pending_imports", "users", column: "claimed_by_user_id", on_delete: :nullify
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
+  add_foreign_key "planned_accommodations", "trips"
+  add_foreign_key "planned_day_notes", "planned_days"
+  add_foreign_key "planned_days", "trips"
+  add_foreign_key "planned_reservations", "planned_days"
+  add_foreign_key "planned_reservations", "trips"
+  add_foreign_key "planned_stops", "planned_days"
+  add_foreign_key "planned_travellers", "trips"
+  add_foreign_key "planned_unplanned_places", "trips"
   add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :restrict
+  add_foreign_key "points", "tracks"
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "points_raw_data_archives", "users"
   add_foreign_key "posters", "users"
+  add_foreign_key "route_videos", "users"
+  add_foreign_key "service_settings", "users"
   add_foreign_key "shared_links", "users", on_delete: :cascade
   add_foreign_key "stats", "users"
   add_foreign_key "taggings", "tags"
   add_foreign_key "tags", "users"
   add_foreign_key "track_segments", "tracks"
   add_foreign_key "tracks", "users"
+  add_foreign_key "trip_sources", "users"
+  add_foreign_key "trips", "trip_sources"
   add_foreign_key "trips", "users"
+  add_foreign_key "user_achievements", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.points_revision_delete()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO point_revisions (user_id, month, revision)
+      SELECT user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date, gen_random_uuid()
+      FROM (SELECT user_id, timestamp FROM old_points) AS changed
+      WHERE user_id IS NOT NULL AND timestamp IS NOT NULL
+      GROUP BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ORDER BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.points_revision_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO point_revisions (user_id, month, revision)
+      SELECT user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date, gen_random_uuid()
+      FROM (SELECT user_id, timestamp FROM new_points) AS changed
+      WHERE user_id IS NOT NULL AND timestamp IS NOT NULL
+      GROUP BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ORDER BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.points_revision_truncate()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO point_revisions (user_id, month, revision)
+      SELECT user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date, gen_random_uuid()
+      FROM (SELECT user_id, timestamp FROM points) AS changed
+      WHERE user_id IS NOT NULL AND timestamp IS NOT NULL
+      GROUP BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ORDER BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.points_revision_update()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO point_revisions (user_id, month, revision)
+      SELECT user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date, gen_random_uuid()
+      FROM (SELECT user_id, timestamp FROM old_points UNION ALL SELECT user_id, timestamp FROM new_points) AS changed
+      WHERE user_id IS NOT NULL AND timestamp IS NOT NULL
+      GROUP BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ORDER BY user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER points_revision_delete AFTER DELETE ON public.points REFERENCING OLD TABLE AS old_points FOR EACH STATEMENT EXECUTE FUNCTION points_revision_delete()
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER points_revision_insert AFTER INSERT ON public.points REFERENCING NEW TABLE AS new_points FOR EACH STATEMENT EXECUTE FUNCTION points_revision_insert()
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER points_revision_truncate BEFORE TRUNCATE ON public.points FOR EACH STATEMENT EXECUTE FUNCTION points_revision_truncate()
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER points_revision_update AFTER UPDATE ON public.points REFERENCING OLD TABLE AS old_points NEW TABLE AS new_points FOR EACH STATEMENT EXECUTE FUNCTION points_revision_update()
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.tracks_revision_delete()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO track_revisions (user_id, month, revision)
+      SELECT changed.user_id, months.month::date, gen_random_uuid()
+      FROM (SELECT user_id, start_at, end_at FROM old_tracks) AS changed
+      CROSS JOIN LATERAL generate_series(
+        date_trunc('month', changed.start_at), date_trunc('month', changed.end_at), interval '1 month'
+      ) AS months(month)
+      WHERE changed.user_id IS NOT NULL AND changed.start_at IS NOT NULL AND changed.end_at IS NOT NULL
+      GROUP BY changed.user_id, months.month
+      ORDER BY changed.user_id, months.month
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.tracks_revision_insert()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO track_revisions (user_id, month, revision)
+      SELECT changed.user_id, months.month::date, gen_random_uuid()
+      FROM (SELECT user_id, start_at, end_at FROM new_tracks) AS changed
+      CROSS JOIN LATERAL generate_series(
+        date_trunc('month', changed.start_at), date_trunc('month', changed.end_at), interval '1 month'
+      ) AS months(month)
+      WHERE changed.user_id IS NOT NULL AND changed.start_at IS NOT NULL AND changed.end_at IS NOT NULL
+      GROUP BY changed.user_id, months.month
+      ORDER BY changed.user_id, months.month
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.tracks_revision_truncate()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO track_revisions (user_id, month, revision)
+      SELECT changed.user_id, months.month::date, gen_random_uuid()
+      FROM (SELECT user_id, start_at, end_at FROM tracks) AS changed
+      CROSS JOIN LATERAL generate_series(
+        date_trunc('month', changed.start_at), date_trunc('month', changed.end_at), interval '1 month'
+      ) AS months(month)
+      WHERE changed.user_id IS NOT NULL AND changed.start_at IS NOT NULL AND changed.end_at IS NOT NULL
+      GROUP BY changed.user_id, months.month
+      ORDER BY changed.user_id, months.month
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION public.tracks_revision_update()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO track_revisions (user_id, month, revision)
+      SELECT changed.user_id, months.month::date, gen_random_uuid()
+      FROM (SELECT user_id, start_at, end_at FROM old_tracks UNION ALL SELECT user_id, start_at, end_at FROM new_tracks) AS changed
+      CROSS JOIN LATERAL generate_series(
+        date_trunc('month', changed.start_at), date_trunc('month', changed.end_at), interval '1 month'
+      ) AS months(month)
+      WHERE changed.user_id IS NOT NULL AND changed.start_at IS NOT NULL AND changed.end_at IS NOT NULL
+      GROUP BY changed.user_id, months.month
+      ORDER BY changed.user_id, months.month
+      ON CONFLICT (user_id, month) DO UPDATE SET revision = EXCLUDED.revision;
+      RETURN NULL;
+    END;
+    $function$
+
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER tracks_revision_delete AFTER DELETE ON public.tracks REFERENCING OLD TABLE AS old_tracks FOR EACH STATEMENT EXECUTE FUNCTION tracks_revision_delete()
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER tracks_revision_insert AFTER INSERT ON public.tracks REFERENCING NEW TABLE AS new_tracks FOR EACH STATEMENT EXECUTE FUNCTION tracks_revision_insert()
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER tracks_revision_truncate BEFORE TRUNCATE ON public.tracks FOR EACH STATEMENT EXECUTE FUNCTION tracks_revision_truncate()
+  SQL
+  execute <<~SQL
+    CREATE TRIGGER tracks_revision_update AFTER UPDATE ON public.tracks REFERENCING OLD TABLE AS old_tracks NEW TABLE AS new_tracks FOR EACH STATEMENT EXECUTE FUNCTION tracks_revision_update()
+  SQL
 end

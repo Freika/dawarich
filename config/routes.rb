@@ -29,10 +29,20 @@ Rails.application.routes.draw do
 
   authenticate :user, ->(u) { u.admin? } do
     mount Flipper::UI.app(Flipper) => '/admin/flipper'
+
+    namespace :admin do
+      resource :settings, only: %i[show update] do
+        post :test_geocoding
+      end
+    end
   end
 
-  # We want to return a nice error message if the user is not authorized to access Sidekiq
-  match '/sidekiq' => redirect { |_, request|
+  # We want to return a nice error message if the user is not authorized to access Sidekiq.
+  # A temporary (302) redirect is intentional: the auth/role/env state that gates
+  # /sidekiq can change between requests, so the outcome must be re-evaluated on
+  # every visit. A 301 would be permanently cached by browsers with no reference
+  # to the current user, locking out visitors who later become authorized.
+  match '/sidekiq' => redirect(status: 302) { |_, request|
                         request.flash[:error] = 'You are not authorized to perform this action.'
                         '/'
                       }, via: :get
@@ -41,9 +51,17 @@ Rails.application.routes.draw do
     resources :general, only: [:index]
     patch 'general', to: 'general#update'
     post 'general/verify_supporter', to: 'general#verify_supporter', as: :verify_supporter
+    post 'general/test_email', to: 'general#test_email', as: :test_email
 
     resources :integrations, only: [:index]
     patch 'integrations', to: 'integrations#update'
+    resources :trek_sources, only: %i[create destroy] do
+      member do
+        get :select_trips
+        post :import_trips
+        post :sync
+      end
+    end
 
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
@@ -59,9 +77,6 @@ Rails.application.routes.draw do
         patch 'update_registration_settings'
       end
     end
-
-    resources :maps, only: %i[index]
-    patch 'maps', to: 'maps#update'
 
     resource :two_factor, only: %i[show create destroy], controller: 'two_factor' do
       post :verify, on: :member
@@ -97,6 +112,7 @@ Rails.application.routes.draw do
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
   resources :imports do
+    get :download, on: :member
     resource :extraction, only: %i[create destroy], controller: 'imports/extractions'
   end
   resources :tracks, only: [] do
@@ -130,6 +146,7 @@ Rails.application.routes.draw do
   end
   resources :exports, only: %i[index create destroy]
   resources :posters, only: %i[create destroy]
+  resources :route_videos, only: %i[create destroy]
   resources :trips do
     member do
       post :recalculate
@@ -201,18 +218,30 @@ Rails.application.routes.draw do
       put :update_all
     end
   end
+  post 'achievements/unlocks/next', to: 'achievements/unlocks#next', as: :next_achievement_unlock
+  post 'achievements/unlocks/:id/seen', to: 'achievements/unlocks#seen', as: :seen_achievement_unlock
+  post 'achievements/unlocks/dismiss', to: 'achievements/unlocks#dismiss', as: :dismiss_achievement_unlocks
+  resources :achievements, only: %i[index show], param: :key do
+    member do
+      patch :toggle_sharing
+    end
+  end
   resources :insights, only: :index do
     collection do
       get :details
+      get 'routes/:year', action: :routes, as: :routes, constraints: { year: /\d{4}/ }
     end
   end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
-  get 'stats/:year/:month', to: 'stats#month', constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
+  get 'stats/:year/:month', to: 'stats#month', as: :month_stats,
+                            constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
   put 'stats/:year/:month/update',
       to: 'stats#update',
       as: :update_year_month_stats,
       constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
   get 'shared/month/:uuid', to: 'shared/stats#show', as: :shared_stat
+  get 'shared/achievements/:uuid/og.png', to: 'shared/achievements#image', as: :shared_achievement_image
+  get 'shared/achievements/:uuid', to: 'shared/achievements#show', as: :shared_achievement
 
   # Sharing management endpoint (requires auth)
   patch 'stats/:year/:month/sharing',
@@ -267,7 +296,7 @@ Rails.application.routes.draw do
 
   # Map namespace with versioning
   namespace :map do
-    get '/v1', to: 'leaflet#index', as: :v1
+    get '/v1', to: redirect(path: '/map/v2')
     get '/v2', to: 'maplibre#index', as: :v2
     resources :timeline_feeds, only: [:index] do
       get :track_info, on: :member
@@ -277,13 +306,15 @@ Rails.application.routes.draw do
   end
 
   # Backward compatibility redirects
-  get '/map', to: 'map/leaflet#index'
+  get '/map', to: 'map/maplibre#index'
   get '/maps/v2', to: redirect('/map/v2')
 
   namespace :api do
     namespace :v1 do
+      match 'mcp', to: 'mcp#handle', via: %i[get post delete]
       get   'photos', to: 'photos#index'
       get   'health', to: 'health#index'
+      get   'ready', to: 'health#ready'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
@@ -319,6 +350,7 @@ Rails.application.routes.draw do
         end
       end
       resources :points, only: %i[index create update destroy] do
+        resource :position, only: :update, controller: 'points/positions'
         collection do
           delete :bulk_destroy
           post :reapply_anomaly_filter
@@ -330,6 +362,7 @@ Rails.application.routes.draw do
         collection do
           post 'merge', to: 'visits#merge'
           post 'bulk_update', to: 'visits#bulk_update'
+          post 'batch', to: 'visits#batch'
         end
       end
       resource :plan, only: [:show], controller: 'plan'
@@ -364,11 +397,17 @@ Rails.application.routes.draw do
 
       namespace :countries do
         resources :borders, only: :index
+        resources :visited, only: :index
         resources :visited_cities, only: :index
       end
 
       namespace :points do
         get 'tracked_months', to: 'tracked_months#index'
+      end
+
+      namespace :tiles do
+        get 'points/:z/:x/:y.mvt', to: 'points#show', defaults: { format: :mvt }
+        get 'tracks/:z/:x/:y.mvt', to: 'tracks#show', defaults: { format: :mvt }
       end
 
       resources :photos, only: %i[index] do
@@ -400,9 +439,17 @@ Rails.application.routes.draw do
       end
 
       namespace :families do
+        resource :mine, only: [:show], controller: 'mine'
+        resource :sharing, only: [:update], controller: 'sharing'
         resources :locations, only: [:index] do
           collection do
             get :history
+          end
+        end
+        resources :location_requests, only: [:create] do
+          member do
+            post :accept
+            post :decline
           end
         end
       end

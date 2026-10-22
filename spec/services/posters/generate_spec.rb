@@ -35,10 +35,18 @@ RSpec.describe Posters::Generate do
     it 'renders with the poster distance, opacity, subtitle and track' do
       expect(Posters::NativeRenderer).to receive(:new).with(
         poster: poster, track: track, distance: 6000, route_opacity: 1.0, route_width: 1.0,
-        subtitle: '1 Apr 2026 – 30 Apr 2026'
+        subtitle: 'Apr 1, 2026 – Apr 30, 2026'
       ).and_return(renderer)
 
       run_generate
+    end
+
+    it 'localizes the subtitle dates' do
+      expect(Posters::NativeRenderer).to receive(:new).with(
+        hash_including(subtitle: '1 avr. 2026 – 30 avr. 2026')
+      ).and_return(renderer)
+
+      I18n.with_locale(:fr) { run_generate }
     end
 
     it 'records a render phase on the poster' do
@@ -275,6 +283,69 @@ RSpec.describe Posters::Generate do
 
       expect(poster.reload).to be_failed
       expect(poster.settings['error']).to match(/does not pass through/)
+    end
+  end
+
+  context 'when uploading the rendered files fails' do
+    let(:upload_counter) { Enumerator.produce(1) { |number| number + 1 } }
+
+    before do
+      allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track)
+      upload = allow_any_instance_of(ActiveStorage::Blob).to receive(:upload_without_unfurling)
+      upload.and_wrap_original do |method, *args|
+        raise ActiveStorage::IntegrityError, 'upload failed' if upload_counter.next == 2
+
+        method.call(*args)
+      end
+    end
+
+    it 'purges blobs created before the failure' do
+      blob_count = ActiveStorage::Blob.count
+
+      run_generate
+
+      expect(poster.reload).to be_failed
+      expect(ActiveStorage::Blob.count).to eq(blob_count)
+    end
+  end
+
+  context 'when the attachment transaction cannot commit' do
+    before do
+      allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track)
+      allow(Poster).to receive(:transaction) do |**options, &block|
+        ActiveRecord::Base.transaction(**options) do
+          block.call
+          raise ActiveRecord::StatementInvalid, 'commit failed'
+        end
+      end
+    end
+
+    it 'purges the uploaded blobs after rollback' do
+      blob_count = ActiveStorage::Blob.count
+
+      run_generate
+
+      expect(poster.reload).to be_failed
+      expect(ActiveStorage::Blob.count).to eq(blob_count)
+    end
+  end
+
+  context 'when the poster is deleted while rendering' do
+    before do
+      allow_any_instance_of(Posters::TrackBuilder).to receive(:call).and_return(track)
+      allow(renderer).to receive(:call) do
+        Poster.find(poster.id).delete
+        { png: 'png-bytes', pdf: 'pdf-bytes' }
+      end
+    end
+
+    it 'does not recreate attachments for the deleted poster' do
+      blob_count = ActiveStorage::Blob.count
+
+      expect { run_generate }.not_to raise_error
+
+      expect(ActiveStorage::Attachment.where(record_type: 'Poster', record_id: poster.id)).to be_empty
+      expect(ActiveStorage::Blob.count).to eq(blob_count)
     end
   end
 
