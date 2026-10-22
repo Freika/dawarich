@@ -9,8 +9,9 @@ RSpec.describe 'Streaming JSON imports' do
 
   after { File.delete(path) if File.exist?(path) }
 
-  def without_whole_document
+  def without_whole_document(strict: true)
     expect(Oj).not_to receive(:load)
+    expect(Oj).not_to receive(:saj_parse) if strict
     expect(File).not_to receive(:read).with(path)
     yield
   end
@@ -48,7 +49,7 @@ RSpec.describe 'Streaming JSON imports' do
               '"timestamp":"2024-01-01T00:00:00Z","deviceTag":"phoneBYTE"}]}'
     content = content.b.sub('BYTE', "\xFF".b)
     import.file.attach(io: StringIO.new(content), filename: 'records.json', content_type: 'application/json')
-    without_whole_document { GoogleMaps::RecordsStorageImporter.new(import, user.id).call }
+    without_whole_document(strict: false) { GoogleMaps::RecordsStorageImporter.new(import, user.id).call }
     expect(user.points.sole.tracker_id).to eq("google-records-device-phone\uFFFD")
     File.binwrite(path, content.sub(/\]\}\z/, '],'))
     expect { GoogleMaps::RecordsStorageImporter.new(import, user.id, path).call }.to raise_error(JSON::ParserError)

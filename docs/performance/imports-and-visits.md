@@ -27,7 +27,26 @@ still parse monthly files whole: those files are bounded by a calendar month.
 Google Photos imports also retain whole-document parsing because each JSON
 sidecar describes one photo. The enhanced base adapter retains its general
 whole-document helper for the monthly semantic adapter; Polarsteps no longer
-uses it. Phone Takeout and GeoJSON already have streaming readers.
+uses it.
+
+All SAJ readers go through `Imports::SajParser`: Records, Phone Takeout,
+GeoJSON, the enhanced Phone Takeout adapter and the Records device-tag
+backfill. It validates the file with `Oj::Parser.new(:validate)`, rewinds, and
+streams it with `Oj::Parser.new(:saj)`. `Oj.saj_parse` reads the whole IO into
+one string before parsing, so a 288 MiB file added 289 MiB of RSS against 1 MiB
+for `Oj::Parser`. Only files the strict validator rejects, such as those with
+invalid UTF-8, fall back to `Oj.saj_parse`, keeping its scrubbing and its
+`Oj::ParseError` on truncated input. Validation of a 302 MB file takes 0.4 s.
+Oj 3.17.7 is required: 3.17.6's `Oj::Parser` dropped the decimal point from
+fractions below 1 with 17 or more significant digits.
+
+Peak RSS over the idle process for a Records import on 2 CPUs (synthetic
+fixtures, 100 MB and 302 MB):
+
+| Locations | Before streaming | `Oj.saj_parse` stream | `Oj::Parser` stream |
+|---:|---:|---:|---:|
+| 800,000 | +394 MiB | +115 MiB | +73 MiB |
+| 2,400,000 | — | +308 MiB | +61 MiB |
 
 Regression coverage: `spec/services/imports/streaming_json_spec.rb` compares all
 persisted point fields for 2,003 Records locations with the direct importer,

@@ -24,7 +24,7 @@ class Imports::JsonStream
 
   def parse(block)
     handler = Imports::JsonStreamHandler.new(keys: @keys, root_array: @root_array, &block)
-    File.open(@path, 'rb') { |io| Oj.saj_parse(handler, io) }
+    File.open(@path, 'rb') { |io| Imports::SajParser.parse(io, handler) }
     handler
   end
 end

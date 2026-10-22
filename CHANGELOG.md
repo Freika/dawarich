@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - Stitching detected visits reads batched coordinates instead of loading every point field for each visit.
 - Visit detection fetches point geodata for groups of stays instead of checking each stay separately.
-- Large Google Records, Polarsteps and photo-library JSON imports stream in batches instead of loading the entire file into memory.
+- Large Google Records, Phone Takeout, GeoJSON, Polarsteps and photo-library JSON imports, and the Records device-tag backfill, read the file incrementally in batches instead of loading the entire file into memory first. Files with invalid UTF-8 still import through the previous parser.
 - Cached SVG icons use bounded argument keys instead of serializing and hashing arguments on each render.
 - Locale lookups are memoized between reloads, preserving fallbacks, interpolation and plural forms.
 - HTML pages skip automatic ETag body hashing, while explicit validators and JSON/API conditional requests keep working.
@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 - Drives reported with a speed of 0 (OwnTracks, background Android) are no longer classified as stationary: a zero speed that the distance between points clearly contradicts is replaced by the speed from distance and time. Choose Recalculate tracks & stats to reclassify existing tracks (#3887)
+- GeoJSON and account-archive imports keep values below 1 that carry 17 or more significant digits; such a longitude, for example `-0.12345678901234567`, was stored as `-128`. Oj is updated to 3.17.7.
 - Real-time tracks now split only on the time gap, like imported history and the map, so sparsely sampled driving points are no longer left without a track. Choose Recalculate tracks & stats to fill gaps recorded before this release (#3638)
 - Credit country dwell time and first-visit dates for points without a country tag, so continent achievements count the same countries as their explored regions; stored progress is recalculated and may unlock countries (#3784)
 - Keep photo clusters and their counts visible above tracks, heatmaps and points on the map (#3770)

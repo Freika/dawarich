@@ -18,7 +18,7 @@ module EnhancedImport
           on_profile: ->(value) { profile = value }
         )
 
-        stream_file { |io| Oj.saj_parse(handler, io) }
+        stream_file { |io| Imports::SajParser.parse(io, handler) }
 
         Array(profile&.dig('frequentPlaces')).each do |place|
           extracted_place = build_frequent_place(place)

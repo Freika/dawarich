@@ -45,7 +45,7 @@ class Imports::JsonStreamHandler < Oj::Saj
     finish_collection
   end
 
-  def add_value(value, key = nil)
+  def add_value(value, key)
     append(value.is_a?(String) ? normalize(value) : value, normalize(key))
   end
 
