@@ -13,7 +13,7 @@ const source = await readFile(
 test("trip routes use the saved route gap settings", () => {
   assert.match(
     source,
-    /addDayRoutes\(this\.pointsByDay, \{\s*distanceThresholdMeters: this\.metersBetweenRoutesValue,\s*timeThresholdMinutes: this\.minutesBetweenRoutesValue,/,
+    /buildDayRouteCollections\(pointsByDay, \{\s*distanceThresholdMeters: this\.metersBetweenRoutesValue,\s*timeThresholdMinutes: this\.minutesBetweenRoutesValue,/,
   )
 })
 

@@ -151,7 +151,8 @@ class TripsController < ApplicationController
   private
 
   def set_trip
-    @trip = current_user.trips.find(params[:id])
+    trips = action_name == 'show' ? current_user.trips.with_route_summary : current_user.trips
+    @trip = trips.find(params[:id])
   end
 
   def trip_params

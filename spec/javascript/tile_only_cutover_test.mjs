@@ -49,7 +49,7 @@ test("Trip day-route presentation remains separate", async () => {
     "../../app/javascript/controllers/shared_trip_map_controller.js",
   )
 
-  assert.match(tripController, /DayRoutesLayer/)
+  assert.match(tripController, /TripRoutesTileLayer/)
   assert.match(sharedController, /DayRoutesLayer/)
 })
 

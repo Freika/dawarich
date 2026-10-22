@@ -92,6 +92,23 @@ RSpec.describe '/trips', type: :request do
       ).to be(true)
     end
 
+    it 'draws the route from tiles instead of embedding the path' do
+      coordinates = Array.new(50_000) { |i| "#{13 + (i * 0.00001)} #{52 + (i * 0.00001)}" }
+      Trip.where(id: trip.id).update_all(['path = ST_GeomFromText(?, 4326)', "LINESTRING(#{coordinates.join(', ')})"])
+
+      get trip_url(trip)
+
+      wrapper = Nokogiri::HTML(response.body).at_css('[data-controller="trip-maplibre"]')
+      expect(wrapper.key?('data-trip-maplibre-path-data-value')).to be(false)
+      expect(wrapper['data-trip-maplibre-tiles-url-value'])
+        .to start_with("/api/v1/tiles/trips/#{trip.id}/{z}/{x}/{y}.mvt")
+      expect(JSON.parse(wrapper['data-trip-maplibre-day-keys-value'])).not_to be_empty
+      bounds = JSON.parse(wrapper['data-trip-maplibre-full-bounds-value'])
+      expect(bounds.map { |pair| pair.map { _1.round(5) } }).to eq([[13.0, 52.0], [13.49999, 52.49999]])
+      expect(response.body).not_to include('13.00001')
+      expect(response.body.bytesize).to be < 400_000
+    end
+
     it 'renders the recalculate button' do
       get trip_url(trip)
 
