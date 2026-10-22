@@ -483,6 +483,12 @@ RSpec.describe Visits::Create do
       it 'returns false' do
         expect(service.call).to be(false)
       end
+
+      it 'calls ExceptionReporter' do
+        expect(ExceptionReporter).to receive(:call)
+
+        service.call
+      end
     end
 
     context 'when an unexpected visit creation error occurs' do

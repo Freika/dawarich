@@ -127,14 +127,7 @@ module Visits
     end
 
     def parse_time(value)
-      return nil if value.blank?
-
-      parts = Date._parse(value.to_s)
-      return nil if parts.values_at(:year, :mon, :mday).all? && !Date.valid_date?(*parts.values_at(:year, :mon, :mday))
-
-      Time.zone.parse(value.to_s)
-    rescue ArgumentError
-      nil
+      Visits::TimeValue.parse(value)
     end
 
     def find_or_create_place

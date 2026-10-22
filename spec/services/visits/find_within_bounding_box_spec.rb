@@ -235,6 +235,24 @@ RSpec.describe Visits::FindWithinBoundingBox do
         end
       end
 
+      context 'when times come in a non-ISO format the API accepted before' do
+        let(:params) do
+          {
+            sw_lat: sw_lat.to_s,
+            sw_lng: sw_lng.to_s,
+            ne_lat: ne_lat.to_s,
+            ne_lng: ne_lng.to_s,
+            start_at: 1.day.ago.utc.strftime('%Y-%m-%d %H:%M:%S'),
+            end_at: Time.zone.now.utc.to_s
+          }
+        end
+
+        it 'still filters by the range' do
+          expect(result).to include(visit_inside_1, visit_inside_2)
+          expect(result).not_to include(old_visit_inside)
+        end
+      end
+
       context 'when a calendar timestamp is impossible' do
         let(:params) do
           {

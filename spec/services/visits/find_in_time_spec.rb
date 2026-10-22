@@ -154,6 +154,14 @@ RSpec.describe Visits::FindInTime do
       end
     end
 
+    context 'when times come in a non-ISO format the API accepted before' do
+      let(:params) { { start_at: '2026-01-15 09:00:00 UTC', end_at: '2026-01-15 16:00:00 +0100' } }
+
+      it 'accepts them' do
+        expect { described_class.new(user, params).call }.not_to raise_error
+      end
+    end
+
     context 'when a calendar timestamp is impossible' do
       let(:params) do
         {
