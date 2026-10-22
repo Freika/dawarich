@@ -240,6 +240,7 @@ class Api::V1::VisitsController < ApiController
     attributes = attributes.except('latitude', 'longitude')
     attributes['area_id'] = nil if attributes['place_id'].present?
     attributes['name'] = attributes['name'].presence if attributes.key?('name')
+    attributes.delete('name') if visit.name.blank? && attributes['name'] == visit.display_name
     user_provided_name = attributes['name'].present?
     # Editing a suggested visit is an assertion that it happened — mirror the
     # web controller and confirm it unless the request set a status itself,

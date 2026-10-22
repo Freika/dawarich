@@ -290,6 +290,66 @@ RSpec.describe 'Api::V1::Visits', type: :request do
     end
   end
 
+  describe 'name compatibility for API v1 clients' do
+    let(:cafe) { create(:place, user:, name: 'Coffee Shop') }
+
+    it 'returns the displayed name as name for a visit without a custom name' do
+      visit = create(:visit, user:, place: cafe, name: nil, status: :suggested)
+
+      get "/api/v1/visits/#{visit.id}", headers: auth_headers
+
+      json_response = JSON.parse(response.body)
+      expect(json_response['name']).to eq('Coffee Shop')
+      expect(json_response['custom_name']).to be_nil
+    end
+
+    it 'returns the location label as name for a visit without a place' do
+      visit = create(:visit, user:, place: nil, name: nil, location_label: 'Main Street 5', status: :suggested)
+
+      get "/api/v1/visits/#{visit.id}", headers: auth_headers
+
+      expect(JSON.parse(response.body)['name']).to eq('Main Street 5')
+    end
+
+    it 'returns the custom name as both name and custom_name' do
+      visit = create(:visit, user:, place: cafe, name: 'Morning coffee', status: :confirmed)
+
+      get "/api/v1/visits/#{visit.id}", headers: auth_headers
+
+      json_response = JSON.parse(response.body)
+      expect(json_response['name']).to eq('Morning coffee')
+      expect(json_response['custom_name']).to eq('Morning coffee')
+    end
+
+    it 'does not store an echoed displayed name as a custom name' do
+      visit = create(:visit, user:, place: cafe, name: nil, status: :suggested)
+
+      put "/api/v1/visits/#{visit.id}", params: { visit: { name: 'Coffee Shop', status: 'confirmed' } },
+                                        headers: auth_headers
+
+      expect(visit.reload.name).to be_nil
+      expect(visit.status).to eq('confirmed')
+    end
+
+    it 'keeps showing the new place name after an echoed update and a place rename' do
+      visit = create(:visit, user:, place: cafe, name: nil, status: :suggested)
+
+      put "/api/v1/visits/#{visit.id}", params: { visit: { name: 'Coffee Shop' } }, headers: auth_headers
+      cafe.update!(name: 'Roastery')
+      get "/api/v1/visits/#{visit.id}", headers: auth_headers
+
+      expect(JSON.parse(response.body)['name']).to eq('Roastery')
+    end
+
+    it 'stores a name that differs from the displayed name' do
+      visit = create(:visit, user:, place: cafe, name: nil, status: :suggested)
+
+      put "/api/v1/visits/#{visit.id}", params: { visit: { name: 'Morning coffee' } }, headers: auth_headers
+
+      expect(visit.reload.name).to eq('Morning coffee')
+    end
+  end
+
   describe 'PUT /api/v1/visits/:id' do
     let(:visit) { create(:visit, user:) }
 

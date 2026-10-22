@@ -46,7 +46,9 @@ describe 'Visits API', type: :request do
                  type: :object,
                  properties: {
                    id: { type: :integer },
-                   name: { type: :string, nullable: true, description: 'User-defined Visit Name' },
+                   name: { type: :string,
+                           description: 'Displayed name: the custom Visit Name, Place name, or Location Label' },
+                   custom_name: { type: :string, nullable: true, description: 'User-defined Visit Name' },
                    display_name: { type: :string, description: 'Visit Name, Place name, or Location Label' },
                    location_label: { type: :string, nullable: true },
                    place_id: { type: :integer, nullable: true },
