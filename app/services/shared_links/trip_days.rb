@@ -25,7 +25,10 @@ module SharedLinks
           has_data: row.present?,
           first_time: row && row[:first_time],
           last_time: row && row[:last_time],
-          distance_label: row && distance_label(row[:distance_m])
+          distance_label: row && distance_label(row[:distance_m]),
+          bounds: row && row[:bounds],
+          first_coordinates: row && row[:first_coordinates],
+          last_coordinates: row && row[:last_coordinates]
         }
       end
     end
@@ -39,31 +42,17 @@ module SharedLinks
     end
 
     def day_stats
-      tz_quoted = ActiveRecord::Base.connection.quote(@timezone)
-      day_expr  = "(to_timestamp(timestamp) AT TIME ZONE #{tz_quoted})::date"
-
-      points_outside_privacy_zones.reorder(nil).group(Arel.sql(day_expr)).pluck(
-        Arel.sql(day_expr),
-        Arel.sql('MIN(timestamp)'),
-        Arel.sql('MAX(timestamp)'),
-        Arel.sql('COALESCE(ST_Length(ST_MakeLine(lonlat::geometry ORDER BY timestamp)::geography), 0)')
-      ).each_with_object({}) do |(day, first_ts, last_ts, distance_m), acc|
-        date = day.is_a?(Date) ? day : Date.parse(day.to_s)
-        acc[date] = {
-          first_time: Time.at(first_ts).in_time_zone(@timezone),
-          last_time:  Time.at(last_ts).in_time_zone(@timezone),
-          distance_m: distance_m.to_f
-        }
-      end
+      @trip.day_stats(@timezone, points_scope: points_outside_privacy_zones)
     end
 
     def points_outside_privacy_zones
+      points = @trip.plan_scoped_route_points
       zones = privacy_zones
-      return @trip.points if zones.empty?
+      return points if zones.empty?
 
-      condition = zones.map { 'ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)' }
+      condition = zones.map { 'ST_DWithin(points.lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)' }
                        .join(' OR ')
-      @trip.points.where.not(condition, *zones.flat_map { |z| [z[:lon], z[:lat], z[:radius]] })
+      points.where.not(condition, *zones.flat_map { |z| [z[:lon], z[:lat], z[:radius]] })
     end
 
     def privacy_zones

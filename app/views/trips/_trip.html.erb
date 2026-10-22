@@ -3,12 +3,14 @@
        data-trip-id="<%= trip.id %>" id="trip-<%= trip.id %>">
 
     <%# Map thumbnail %>
-    <% if trip.path.present? %>
+    <% if trip.route_present? %>
       <div style="width: 100%; aspect-ratio: 16/10;"
             id="map-<%= trip.id %>"
             class="bg-base-200"
             data-controller="trip-maplibre-preview"
-            data-trip-maplibre-preview-path-value="<%= trip.path.coordinates.to_json %>"
+            data-trip-maplibre-preview-tiles-url-value="<%= trip_routes_tile_template(trip) %>"
+            data-trip-maplibre-preview-bounds-value="<%= trip.route_bounds.to_json %>"
+            data-trip-maplibre-preview-api-key-value="<%= current_user.api_key %>"
             data-trip-maplibre-preview-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">
       </div>
     <% elsif (plan = trip.plan_geojson) %>

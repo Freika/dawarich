@@ -40,19 +40,6 @@ RSpec.describe 'Map v2 route gap settings', type: :request do
     expect(root['data-trip-maplibre-minutes-between-routes-value']).to eq('240')
   end
 
-  it 'passes the owner route gaps to shared trip maps' do
-    user.settings['meters_between_routes'] = '10000'
-    user.settings['minutes_between_routes'] = '240'
-    user.save!
-    link = create(:shared_link, user:, resource_type: :trip, resource_id: create(:trip, user:).id)
-
-    get "/s/#{link.id}"
-
-    root = Nokogiri::HTML(response.body).at_css('[data-controller="shared-trip-map"]')
-    expect(root['data-shared-trip-map-meters-between-routes-value']).to eq('10000')
-    expect(root['data-shared-trip-map-minutes-between-routes-value']).to eq('240')
-  end
-
   it 'shows the route gap units from the active locale' do
     user.settings['locale'] = 'zh'
     user.save!

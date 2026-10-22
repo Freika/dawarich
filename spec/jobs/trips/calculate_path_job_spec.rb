@@ -23,4 +23,12 @@ RSpec.describe Trips::CalculatePathJob do
 
     expect(Turbo::StreamsChannel).not_to have_received(:broadcast_refresh_to)
   end
+
+  it 'leaves the recording devices cached for the trip page and its map tiles' do
+    trip = create(:trip, :with_points, user:, path: nil)
+
+    described_class.perform_now(trip.id)
+
+    expect(Rails.cache.exist?(Trip.find(trip.id).recording_devices_cache_key)).to be(true)
+  end
 end

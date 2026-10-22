@@ -25,6 +25,10 @@ module TripsHelper
     end
   end
 
+  def trip_routes_tile_template(trip)
+    "/api/v1/tiles/trips/#{trip.id}/{z}/{x}/{y}.mvt?v=#{trip.updated_at.to_i}"
+  end
+
   def trek_trip_url(trip)
     source = trip.trip_source
     return if source.blank? || trip.source_identifier.blank?

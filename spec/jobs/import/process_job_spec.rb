@@ -25,10 +25,32 @@ RSpec.describe Import::ProcessJob, type: :job do
 
     it 'processes the import in the user saved locale' do
       user.update!(settings: { 'locale' => 'fr' })
-      allow(Import).to receive(:find).with(import.id).and_return(import)
+      allow(Import).to receive(:find_by).with(id: import.id, user_id: user.id).and_return(import)
       allow(import).to receive(:process!) { expect(I18n.locale).to eq(:fr) }
 
       I18n.with_locale(:en) { perform }
+    end
+
+    it 'holds a shared user-data lock while processing' do
+      expect(Users::DataLock).to receive(:with_shared).with(user.id).and_call_original
+
+      perform
+    end
+
+    context 'when the import owner is soft-deleted' do
+      before { user.mark_as_deleted! }
+
+      it 'skips processing' do
+        expect { perform }.not_to change(Point, :count)
+      end
+    end
+
+    context 'when the import was deleted' do
+      before { import.destroy! }
+
+      it 'skips processing' do
+        expect { perform }.not_to raise_error
+      end
     end
 
     context 'when there is an error' do
