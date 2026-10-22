@@ -82,6 +82,40 @@ RSpec.describe 'Visit detection across an overnight tracking silence' do
     expect(realtime).to eq(full_redetection_state)
   end
 
+  def run_day_window(day)
+    VisitSuggestingJob.perform_now(
+      user_id: user.id, start_at: day.beginning_of_day.iso8601, end_at: day.end_of_day.iso8601
+    )
+  end
+
+  it 'bridges when the arrival visit is attributed to a place away from its fixes' do
+    stream.each { |fix| create_point(fix) }
+    run_day_window(arrived_at.to_date)
+    far_place = create(:place, user: user, latitude: home[0] + 0.003, longitude: home[1],
+                               lonlat: "POINT(#{home[1]} #{home[0] + 0.003})")
+    user.visits.update_all(place_id: far_place.id)
+
+    run_day_window(arrived_at.to_date + 1)
+
+    visits = detected_state[:visits]
+    expect(visits.size).to eq(1)
+    expect(visits.first.first).to eq(arrived_at.to_i)
+    expect(visits.first.last).to be >= (arrived_at + 9.hours).to_i
+  end
+
+  it 'bridges past an anomalous fix recorded right after the arrival' do
+    stream.each { |fix| create_point(fix) }
+    create(:point, user: user, lonlat: "POINT(#{home[1] + 0.05} #{home[0]})",
+                   timestamp: (arrived_at + 7.minutes).to_i, accuracy: 10, anomaly: true)
+
+    run_nightly_day_windows
+
+    visits = detected_state[:visits]
+    expect(visits.size).to eq(1)
+    expect(visits.first.first).to eq(arrived_at.to_i)
+    expect(visits.first.last).to be >= (arrived_at + 9.hours).to_i
+  end
+
   it 'nightly per-day windows bridge the silence the way a full re-detection does' do
     stream.each { |fix| create_point(fix) }
 

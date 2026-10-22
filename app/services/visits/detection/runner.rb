@@ -61,11 +61,22 @@ module Visits
                        .order(ended_at: :desc).first
         return unless previous
 
-        next_point = Point.where(user_id: user.id).where('timestamp > ?', previous.ended_at.to_i)
-                          .order(:timestamp).first
-        return unless next_point && within_stay_radius?(previous.center, [next_point.lat, next_point.lon])
+        lat, lon, last_owned_ts = owned_fixes_summary(previous)
+        center = lat ? [lat.to_f, lon.to_f] : previous.center
+        silence_start = [previous.ended_at.to_i, last_owned_ts.to_i].max
+        lookahead_end = [silence_start + policy.bridge_cap_s, end_at].min
+        next_point = CandidateLoader.eligible_points(user)
+                                    .where(timestamp: (silence_start + 1)..lookahead_end)
+                                    .order(:timestamp).first
+        return unless next_point && within_stay_radius?(center, [next_point.lat, next_point.lon])
 
         @start_at = previous.started_at.to_i
+      end
+
+      def owned_fixes_summary(visit)
+        Point.where(user_id: user.id, visit_id: visit.id)
+             .pick(Arel.sql('AVG(ST_Y(lonlat::geometry))'), Arel.sql('AVG(ST_X(lonlat::geometry))'),
+                   Arel.sql('MAX(timestamp)'))
       end
 
       # Persist runs even with zero stays: detection finding nothing is the
@@ -90,6 +101,9 @@ module Visits
       # Halves stitch back together through stitch_adjacent, like month edges.
       def split_batch(batch_start, batch_end)
         mid = batch_start + ((batch_end - batch_start) / 2)
+        Rails.logger.info(
+          "[Visits::Detection::Runner split] user_id=#{user.id} range=#{batch_start}..#{batch_end} mid=#{mid}"
+        )
         run_batch(batch_start, mid) + run_batch(mid + 1, batch_end)
       end
 
