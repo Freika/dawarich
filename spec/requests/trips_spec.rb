@@ -64,6 +64,21 @@ RSpec.describe '/trips', type: :request do
       expect(response).to be_successful
     end
 
+    it 'previews recorded routes from tiles without loading the path' do
+      trip = create(:trip, user:, path: 'LINESTRING(13.4 52.5, 13.45 52.52, 13.5 52.55)')
+
+      queries = capture_sql { get trips_url }
+
+      card = Nokogiri::HTML(response.body).at_css("#trip-#{trip.id} [data-controller='trip-maplibre-preview']")
+      expect(card['data-trip-maplibre-preview-path-value']).to be_nil
+      expect(card['data-trip-maplibre-preview-tiles-url-value']).to start_with("/api/v1/tiles/trips/#{trip.id}/")
+      expect(card['data-trip-maplibre-preview-api-key-value']).to eq(user.api_key)
+      expect(JSON.parse(card['data-trip-maplibre-preview-bounds-value'])).to eq([[13.4, 52.5], [13.5, 52.55]])
+      expect(response.body).not_to include('13.45')
+      expect(queries.grep(/FROM "trips"/).none? { |sql| sql.include?('"trips".*') || sql.include?('"trips"."path"') })
+        .to be(true)
+    end
+
     context 'when trip path is not yet calculated' do
       let!(:trip_without_path) { create(:trip, user:, path: nil, distance: nil) }
 
@@ -489,6 +504,18 @@ RSpec.describe '/trips', type: :request do
       expect(
         queries.none? { |sql| sql.include?('ST_Y(lonlat::geometry)') && sql.include?('"points"."battery"') }
       ).to be(true)
+    end
+
+    it 'previews the saved route from tiles' do
+      trip.update_columns(path: 'LINESTRING(13.4 52.5, 13.45 52.52, 13.5 52.55)')
+
+      get edit_trip_url(trip)
+
+      preview = Nokogiri::HTML(response.body).at_css("[data-controller='trip-maplibre-preview']")
+      expect(preview['data-trip-maplibre-preview-path-value']).to be_nil
+      expect(preview['data-trip-maplibre-preview-tiles-url-value']).to start_with("/api/v1/tiles/trips/#{trip.id}/")
+      expect(JSON.parse(preview['data-trip-maplibre-preview-bounds-value'])).to eq([[13.4, 52.5], [13.5, 52.55]])
+      expect(response.body).not_to include('13.45')
     end
 
     it 'ends the form with saving and cancelling back to the trip' do

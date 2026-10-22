@@ -14,7 +14,7 @@ class TripsController < ApplicationController
     @has_trips = current_user.trips.exists?
     @trip_years = @has_trips ? trips_query.years : []
     @trip_countries = @has_trips ? trips_query.countries : []
-    @trips = trips_query.call
+    @trips = trips_query.call.with_route_summary
                         .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
                         .page(params[:page]).per(6)
     @family_trip_links = SharedLink.family_trips_for(current_user).index_by(&:resource_id)
@@ -151,7 +151,7 @@ class TripsController < ApplicationController
   private
 
   def set_trip
-    trips = action_name == 'show' ? current_user.trips.with_route_summary : current_user.trips
+    trips = %w[show edit].include?(action_name) ? current_user.trips.with_route_summary : current_user.trips
     @trip = trips.find(params[:id])
   end
 

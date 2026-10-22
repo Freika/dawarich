@@ -12,7 +12,7 @@
      data-trip-maplibre-trip-name-value="<%= @trip.name %>"
      data-trip-maplibre-meters-between-routes-value="<%= current_user.safe_settings.meters_between_routes %>"
      data-trip-maplibre-minutes-between-routes-value="<%= current_user.safe_settings.minutes_between_routes %>"
-     data-trip-maplibre-tiles-url-value="<%= "/api/v1/tiles/trips/#{@trip.id}/{z}/{x}/{y}.mvt?v=#{@trip.updated_at.to_i}" %>"
+     data-trip-maplibre-tiles-url-value="<%= trip_routes_tile_template(@trip) %>"
      data-trip-maplibre-day-keys-value="<%= @day_stats.keys.map(&:iso8601).to_json %>"
      data-trip-maplibre-day-bounds-value="<%= @day_stats.to_h { |day, stats| [day.iso8601, stats[:bounds]] }.to_json %>"
      data-trip-maplibre-day-endpoints-value="<%= @day_stats.to_h { |day, stats| [day.iso8601, { first: stats[:first_coordinates], last: stats[:last_coordinates] }] }.to_json %>"
