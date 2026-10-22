@@ -50,7 +50,7 @@ test("Trip day-route presentation remains separate", async () => {
   )
 
   assert.match(tripController, /TripRoutesTileLayer/)
-  assert.match(sharedController, /DayRoutesLayer/)
+  assert.match(sharedController, /TripRoutesTileLayer/)
 })
 
 test("Scratch membership cannot block canonical tile layers during startup", async () => {

@@ -61,7 +61,7 @@ module Api
             trip = link.resource
             return [] if trip.nil?
 
-            outside_privacy_zones(trip.points.order(:timestamp))
+            outside_privacy_zones(trip.primary_device_points.order(:timestamp))
           when :track
             track = link.resource
             return [] if track.nil?
@@ -81,7 +81,7 @@ module Api
           zones = privacy_zones
           return points if zones.empty?
 
-          condition = zones.map { 'ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)' }
+          condition = zones.map { 'ST_DWithin(points.lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)' }
                            .join(' OR ')
           points.where.not(condition, *zones.flat_map { |z| [z[:lon], z[:lat], z[:radius]] })
         end
