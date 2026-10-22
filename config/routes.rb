@@ -408,6 +408,7 @@ Rails.application.routes.draw do
       namespace :tiles do
         get 'points/:z/:x/:y.mvt', to: 'points#show', defaults: { format: :mvt }
         get 'tracks/:z/:x/:y.mvt', to: 'tracks#show', defaults: { format: :mvt }
+        get 'trips/:trip_id/:z/:x/:y.mvt', to: 'trips#show', defaults: { format: :mvt }
       end
 
       resources :photos, only: %i[index] do
@@ -459,6 +460,7 @@ Rails.application.routes.draw do
         get ':id/trip',   to: 'trips#show'
         get ':id/points', to: 'points#index'
         get ':id/route',  to: 'points#route'
+        get ':id/tiles/:z/:x/:y.mvt', to: 'tiles#show', defaults: { format: :mvt }
         get ':id/photos', to: 'photos#index'
         get ':id/photos/:photo_id/thumbnail', to: 'photos#thumbnail', constraints: { photo_id: %r{[^/]+} }
       end

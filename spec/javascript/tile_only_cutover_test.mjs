@@ -49,8 +49,8 @@ test("Trip day-route presentation remains separate", async () => {
     "../../app/javascript/controllers/shared_trip_map_controller.js",
   )
 
-  assert.match(tripController, /DayRoutesLayer/)
-  assert.match(sharedController, /DayRoutesLayer/)
+  assert.match(tripController, /TripRoutesTileLayer/)
+  assert.match(sharedController, /TripRoutesTileLayer/)
 })
 
 test("Scratch membership cannot block canonical tile layers during startup", async () => {

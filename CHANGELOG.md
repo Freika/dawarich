@@ -32,6 +32,7 @@ This release makes Dawarich lighter and faster. Measured on a test instance with
 - Track generation loads only the point columns it needs, and the five-minute place-name refresh skips months whose points did not change.
 
 ### Fixed
+- Trips with long recordings open quickly: the trips list, trip page, trip form and shared trip page draw routes from map tiles instead of sending every recorded coordinate, and the trip page downloads points only when Replay, the poster or the video studio is opened (#3867, #3783)
 - Import jobs for accounts pending deletion are now skipped instead of failing, and where PostgreSQL advisory locks are enabled (the default) account deletion waits for running imports to finish.
 - Opening a calculated trip whose countries could not be determined, for example without a reverse geocoder, no longer recalculates its path, distance and countries on every view; TREK sync no longer does either. If your points get countries later, press Recalculate on the trip page (#3868)
 - "Where you spent" on Insights counts days and year boundaries in your timezone, so a stay across New Year no longer shows the first days of the year at the end of the ribbon (#3869)

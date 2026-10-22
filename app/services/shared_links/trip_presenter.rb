@@ -44,10 +44,8 @@ module SharedLinks
         'shared-trip-map-link-id-value': @link.id,
         'shared-trip-map-show-photos-value': @ctx.show_photos?,
         'shared-trip-map-by-day-value': true,
-        'shared-trip-map-timezone-value': timezone,
-        'shared-trip-map-meters-between-routes-value': @link.user.safe_settings.meters_between_routes,
-        'shared-trip-map-minutes-between-routes-value': @link.user.safe_settings.minutes_between_routes
-      }
+        'shared-trip-map-timezone-value': timezone
+      }.merge(route_data)
     end
 
     def days
@@ -84,6 +82,28 @@ module SharedLinks
       return {} unless show_map?
 
       { day_key: day_key, action: ROW_ACTIONS, 'shared-trip-map-day-key-param': day_key }
+    end
+
+    def route_data
+      recorded = days.select { |day| day[:has_data] }
+      keyed = recorded.index_by { |day| day[:date].iso8601 }
+
+      {
+        'shared-trip-map-tiles-url-value': "/api/v1/shared/#{@link.id}/tiles/{z}/{x}/{y}.mvt",
+        'shared-trip-map-day-keys-value': keyed.keys,
+        'shared-trip-map-day-bounds-value': keyed.transform_values { |day| day[:bounds] },
+        'shared-trip-map-day-endpoints-value': keyed.transform_values do |day|
+          { first: day[:first_coordinates], last: day[:last_coordinates] }
+        end,
+        'shared-trip-map-full-bounds-value': full_bounds(recorded.map { |day| day[:bounds] })
+      }
+    end
+
+    def full_bounds(day_bounds)
+      return [] if day_bounds.empty?
+
+      corners = day_bounds.flatten(1)
+      [[corners.map(&:first).min, corners.map(&:last).min], [corners.map(&:first).max, corners.map(&:last).max]]
     end
 
     def gallery_row_data(day_key)
