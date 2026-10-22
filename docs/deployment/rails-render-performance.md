@@ -27,3 +27,20 @@ to invalidate them normally. No rendered translation strings are cached.
 Verification: `spec/initializers/i18n_memoization_spec.rb` counts calls to the
 underlying Simple lookup implementation, verifies warm calls make none, and
 checks both runtime translation updates and changed locale files after reload.
+
+## SVG icons
+
+The process-local icon cache uses a `Concurrent::Map` with at most 1,024
+entries. Keys snapshot names, libraries, variants and nested arguments into
+frozen structures. Hashes preserve insertion order and have a distinct type
+marker from arrays; native equality distinguishes keys even when their hashes
+collide. Caller-owned arguments remain mutable. Cache hits perform no Marshal
+serialization or SHA digest. Miss insertion and bounded cache rotation share
+a mutex, while hits read the map directly. At capacity, a new combination clears
+the cache before insertion; icons then render normally again. Cached SVG bytes
+and HTML-safe output remain identical to the uncached helper.
+
+Verification: `spec/initializers/rails_icons_cache_spec.rb` checks output,
+reuse, colliding hashes, argument mutation, attribute order and eviction.
+These are rendering optimizations; controller latency benchmarks remain a
+separate check under representative workloads.

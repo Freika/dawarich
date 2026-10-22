@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Single-process mode runs background jobs and schedules inside Puma with `SIDEKIQ_EMBEDDED=true` and `WEB_CONCURRENCY=0`.
 
 ### Changed
+- Cached SVG icons use bounded argument keys instead of serializing and hashing arguments on each render.
 - Locale lookups are memoized between reloads, preserving fallbacks, interpolation and plural forms.
 - HTML pages skip automatic ETag body hashing, while explicit validators and JSON/API conditional requests keep working.
 - The default `docker/docker-compose.yml` now runs Puma and Sidekiq in one process, with two background threads and 60 seconds to shut down. Before upgrading an existing stack, stop `dawarich_sidekiq` using its old Compose file; queued jobs remain in Redis and are picked up by the web process. See `docs/deployment/single-process.md` for upgrade steps.
