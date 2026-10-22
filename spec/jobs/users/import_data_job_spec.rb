@@ -128,6 +128,17 @@ RSpec.describe Users::ImportDataJob, type: :job do
       end
     end
 
+    context 'when the import owner is soft-deleted' do
+      before { user.mark_as_deleted! }
+
+      it 'skips the import without notifying' do
+        expect(Users::ImportData).not_to receive(:new)
+        expect(::Notifications::Create).not_to receive(:new)
+
+        job.perform(import.id)
+      end
+    end
+
     context 'when import does not exist' do
       let(:non_existent_import_id) { 999_999 }
 

@@ -2,33 +2,47 @@
 
 module Users
   module DataLock
+    extend Visits::AdvisoryLockable
+
     NAMESPACE = 0x4441_5741_0000_0000
     MAX_USER_ID = (1 << 32) - 1
 
+    class Busy < StandardError; end
+
     def self.with_shared(user_id, &)
-      with_lock(user_id, shared: true, &)
+      return yield unless advisory_locks_enabled?
+
+      key = lock_key(user_id)
+      ActiveRecord::Base.connection_pool.with_connection do |connection|
+        connection.execute("SELECT pg_advisory_lock_shared(#{key})")
+        hold(connection, "SELECT pg_advisory_unlock_shared(#{key})", &)
+      end
     end
 
     def self.with_exclusive(user_id, &)
-      with_lock(user_id, shared: false, &)
-    end
+      return yield unless advisory_locks_enabled?
 
-    def self.with_lock(user_id, shared:)
       key = lock_key(user_id)
-      lock_function = shared ? 'pg_advisory_lock_shared' : 'pg_advisory_lock'
-      unlock_function = shared ? 'pg_advisory_unlock_shared' : 'pg_advisory_unlock'
-
       ActiveRecord::Base.connection_pool.with_connection do |connection|
-        connection.execute("SELECT #{lock_function}(#{key})")
-
-        begin
-          yield
-        ensure
-          connection.execute("SELECT #{unlock_function}(#{key})")
+        unless connection.select_value("SELECT pg_try_advisory_lock(#{key})")
+          raise Busy, "user #{user_id} has an import in progress"
         end
+
+        hold(connection, "SELECT pg_advisory_unlock(#{key})", &)
       end
     end
-    private_class_method :with_lock
+
+    def self.hold(connection, unlock_sql)
+      yield
+    ensure
+      begin
+        connection.execute(unlock_sql)
+      rescue ActiveRecord::ActiveRecordError, PG::Error => e
+        Rails.logger.warn("Users::DataLock: unlock failed: #{e.class}: #{e.message}")
+        connection.throw_away!
+      end
+    end
+    private_class_method :hold
 
     def self.lock_key(user_id)
       id = Integer(user_id)

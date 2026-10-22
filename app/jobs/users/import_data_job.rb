@@ -21,8 +21,6 @@ class Users::ImportDataJob < ApplicationJob
   private
 
   def process_import(import, user)
-    archive_path = nil
-
     archive_path = download_import_archive(import)
 
     raise StandardError, "Archive file not found: #{archive_path}" unless File.exist?(archive_path)
