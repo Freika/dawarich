@@ -23,6 +23,30 @@ RSpec.describe OidcConfig do
     it 'is false when client secret is missing' do
       expect(described_class.enabled?(base_env.merge('OIDC_CLIENT_SECRET' => nil))).to be false
     end
+
+    it 'is true when the secret is missing but PKCE is enabled' do
+      env = base_env.merge('OIDC_CLIENT_SECRET' => nil, 'OIDC_PKCE_ENABLED' => 'true')
+
+      expect(described_class.enabled?(env)).to be true
+    end
+
+    it 'is false when client id is missing even with PKCE enabled' do
+      env = base_env.merge('OIDC_CLIENT_ID' => '', 'OIDC_PKCE_ENABLED' => 'true')
+
+      expect(described_class.enabled?(env)).to be false
+    end
+  end
+
+  describe '.public_client?' do
+    it 'is true when PKCE is enabled without a client secret' do
+      env = base_env.merge('OIDC_CLIENT_SECRET' => nil, 'OIDC_PKCE_ENABLED' => 'true')
+
+      expect(described_class.public_client?(env)).to be true
+    end
+
+    it 'is false when a client secret is present' do
+      expect(described_class.public_client?(base_env.merge('OIDC_PKCE_ENABLED' => 'true'))).to be false
+    end
   end
 
   describe '.build' do
@@ -87,6 +111,52 @@ RSpec.describe OidcConfig do
       expect(config[:client_options][:authorization_endpoint]).to eq('/authorize')
     end
 
+    context 'manual-mode port parsing' do
+      let(:manual_env) do
+        base_env.merge('OIDC_HOST' => 'auth.example.com')
+      end
+
+      it 'uses the documented default when OIDC_PORT is absent' do
+        expect(described_class.build(manual_env)[:client_options][:port]).to eq(443)
+      end
+
+      it 'falls back to the default when OIDC_PORT is blank' do
+        env = manual_env.merge('OIDC_PORT' => '')
+        expect(described_class.build(env)[:client_options][:port]).to eq(443)
+      end
+
+      it 'defaults to 80 when OIDC_SCHEME is http and OIDC_PORT is blank' do
+        %w[http HTTP].each do |scheme|
+          env = manual_env.merge('OIDC_SCHEME' => scheme, 'OIDC_PORT' => '')
+          expect(described_class.build(env)[:client_options][:port]).to eq(80)
+        end
+      end
+
+      it 'falls back to the default when OIDC_PORT is outside 1..65535' do
+        %w[0 -1 65536].each do |value|
+          env = manual_env.merge('OIDC_PORT' => value)
+          port = described_class.build(env)[:client_options][:port]
+          expect(port).to eq(443), "expected port 443 for OIDC_PORT=#{value.inspect}, got #{port}"
+        end
+      end
+
+      it 'warns when a non-blank OIDC_PORT is discarded' do
+        allow(Rails.logger).to receive(:warn)
+
+        described_class.build(manual_env.merge('OIDC_PORT' => 'abc'))
+
+        expect(Rails.logger).to have_received(:warn).with(/OIDC_PORT="abc"/)
+      end
+
+      it 'falls back to the default when OIDC_PORT is non-numeric' do
+        %w[abc 0x10 ${PORT} ---].each do |value|
+          env = manual_env.merge('OIDC_PORT' => value)
+          port = described_class.build(env)[:client_options][:port]
+          expect(port).to eq(443), "expected port 443 for OIDC_PORT=#{value.inspect}, got #{port}"
+        end
+      end
+    end
+
     it 'defaults the redirect URI from APPLICATION_URL' do
       config = described_class.build(base_env)
 
@@ -119,6 +189,26 @@ RSpec.describe OidcConfig do
           built = described_class.build(base_env.merge('OIDC_PKCE_ENABLED' => value))
           expect(built[:pkce]).to be(false), "expected pkce to be false when OIDC_PKCE_ENABLED=#{value.inspect}"
         end
+      end
+    end
+
+    context 'public client (PKCE without a client secret)' do
+      let(:public_env) { base_env.merge('OIDC_CLIENT_SECRET' => nil, 'OIDC_PKCE_ENABLED' => 'true') }
+
+      it 'sends no client authentication on the token request' do
+        expect(described_class.build(public_env)[:client_auth_method]).to eq(:none)
+      end
+
+      it 'leaves the client secret unset' do
+        expect(described_class.build(public_env)[:client_options][:secret]).to be_nil
+      end
+
+      it 'still enables PKCE' do
+        expect(described_class.build(public_env)[:pkce]).to be true
+      end
+
+      it 'keeps the default client authentication when a secret is present' do
+        expect(described_class.build(base_env)).not_to have_key(:client_auth_method)
       end
     end
   end

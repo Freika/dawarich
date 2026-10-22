@@ -21,7 +21,7 @@ Devise.setup do |config|
   config.mailer_sender = ENV['SMTP_FROM']
 
   # Configure the class responsible to send e-mails.
-  # config.mailer = 'Devise::Mailer'
+  config.mailer = 'DeviseMailer'
 
   # Configure the parent class responsible to send e-mails.
   # config.parent_mailer = 'ActionMailer::Base'
@@ -295,11 +295,12 @@ Devise.setup do |config|
     end
 
     Rails.logger.info "OIDC: PKCE #{oidc_config[:pkce] ? 'enabled' : 'disabled'}"
+    Rails.logger.info 'OIDC: Public client (no client secret, PKCE only)' if OidcConfig.public_client?
     Rails.logger.info "OIDC: Client ID: #{oidc_config[:client_options][:identifier]}, " \
                       "Redirect URI: #{oidc_config[:client_options][:redirect_uri]}"
     config.omniauth :openid_connect, oidc_config
   else
-    Rails.logger.warn 'OIDC: Not configured (missing OIDC_CLIENT_ID or OIDC_CLIENT_SECRET)'
+    Rails.logger.warn 'OIDC: Not configured (set OIDC_CLIENT_ID plus either OIDC_CLIENT_SECRET or OIDC_PKCE_ENABLED=true)'
   end
 
   # ==> Warden configuration

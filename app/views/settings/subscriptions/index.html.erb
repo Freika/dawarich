@@ -1,4 +1,4 @@
-<% content_for :title, "Subscriptions" %>
+<% content_for :title, t('.subscriptions') %>
 
 <div class="min-h-content w-full my-5">
   <%= render 'settings/navigation' %>
@@ -6,23 +6,23 @@
   <div class="hero bg-base-200 min-h-80">
     <div class="hero-content text-center">
       <div class="max-w-md">
-        <h1 class="text-5xl font-bold">Hello there!</h1>
+        <h1 class="text-5xl font-bold"><%= t('.hello_there') %></h1>
         <% if current_user.active_until&.future? %>
           <p class="py-6">
-            You are currently subscribed to Dawarich, hurray!
+            <%= t('.you_are_currently_subscribed_to_dawarich_hurray') %>
           </p>
 
           <p>
-            Your subscription will be valid for the next <span class="text-accent"><%= days_left(current_user.active_until) %></span>.
+            <%= t('.your_subscription_will_be_valid_for_the_next') %> <span class="text-accent"><%= days_left(current_user.active_until) %></span>.
           </p>
 
-          <%= link_to 'Manage subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary my-4' %>
+          <%= link_to t('.manage_subscription'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary my-4' %>
         <% else %>
           <p class="py-6">
-            You are currently not subscribed to Dawarich. How about we fix that?
+            <%= t('.you_are_currently_not_subscribed_to_dawarich_how_about_we') %>
           </p>
 
-          <%= link_to 'Manage subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary my-4' %>
+          <%= link_to t('.manage_subscription'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary my-4' %>
         <% end %>
       </div>
     </div>

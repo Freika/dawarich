@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<gpx version="1.1" creator="overpass-turbo" xmlns="http://www.topografix.com/GPX/1/1">
+  <wpt lat="51.3402000" lon="12.3712000">
+    <name>Leipzig Hauptbahnhof</name>
+  </wpt>
+  <wpt lat="51.3397000" lon="12.3731000">
+    <name>Augustusplatz</name>
+  </wpt>
+  <trk>
+    <name>Planned walk</name>
+    <trkseg>
+      <trkpt lat="51.3400000" lon="12.3710000"><ele>113</ele></trkpt>
+      <trkpt lat="51.3401000" lon="12.3715000"><ele>114</ele></trkpt>
+      <trkpt lat="51.3403000" lon="12.3720000"><ele>115</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

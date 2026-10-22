@@ -16,9 +16,11 @@ class Points::Destroyer
     return destroyed if destroyed.empty?
 
     User.update_counters(user.id, points_count: -destroyed.count)
+    Points::TileEpoch.bump(user.id, timestamps: destroyed.map(&:timestamp))
 
     enqueue_stats_recalculation(destroyed)
     enqueue_track_recalculation(destroyed)
+    enqueue_achievement_recalculation(destroyed)
 
     destroyed
   end
@@ -47,5 +49,9 @@ class Points::Destroyer
       "enqueuing Tracks::RecalculateJob for #{track_ids.size} tracks: #{track_ids.inspect}"
     )
     track_ids.each { |track_id| Tracks::RecalculateJob.perform_later(track_id) }
+  end
+
+  def enqueue_achievement_recalculation(destroyed)
+    Achievements::CheckJob.schedule(user.id, oldest_timestamp: destroyed.map(&:timestamp).min)
   end
 end

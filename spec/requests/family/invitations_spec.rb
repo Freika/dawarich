@@ -52,7 +52,7 @@ RSpec.describe 'Family::Invitations', type: :request do
       it 'redirects with error message' do
         get "/invitations/#{invitation.token}"
         expect(response).to redirect_to(root_path)
-        follow_redirect!
+        follow_redirect! while response.redirect?
         expect(response.body).to include('This invitation has expired')
       end
     end
@@ -63,7 +63,7 @@ RSpec.describe 'Family::Invitations', type: :request do
       it 'redirects with error message' do
         get "/invitations/#{invitation.token}"
         expect(response).to redirect_to(root_path)
-        follow_redirect!
+        follow_redirect! while response.redirect?
         expect(response.body).to include('This invitation is no longer valid')
       end
     end
@@ -93,7 +93,7 @@ RSpec.describe 'Family::Invitations', type: :request do
       it 'redirects with success message' do
         post '/family/invitations', params: valid_params
         expect(response).to redirect_to(family_path)
-        follow_redirect!
+        follow_redirect! while response.redirect?
         expect(response.body).to include('Invitation sent successfully!')
       end
     end
@@ -114,7 +114,7 @@ RSpec.describe 'Family::Invitations', type: :request do
         invitation # create the existing invitation
         post '/family/invitations', params: duplicate_params
         expect(response).to redirect_to(family_path)
-        follow_redirect!
+        follow_redirect! while response.redirect?
         expect(response.body).to include('Invitation already sent to this email')
       end
     end
@@ -168,7 +168,7 @@ RSpec.describe 'Family::Invitations', type: :request do
     it 'redirects with success message' do
       delete "/family/invitations/#{invitation.token}"
       expect(response).to redirect_to(family_path)
-      follow_redirect!
+      follow_redirect! while response.redirect?
       expect(response.body).to include('Invitation cancelled')
     end
 
@@ -230,6 +230,25 @@ RSpec.describe 'Family::Invitations', type: :request do
       # 4. Verify invitee is now in family
       expect(invitee.reload.family).to eq(family)
       expect(created_invitation.reload.status).to eq('accepted')
+    end
+  end
+
+  describe 'the public invitation page after the family period ends' do
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+    let(:owner) do
+      create(:user, plan: :family, status: :active, active_until: 1.year.from_now, skip_auto_trial: true)
+    end
+    let(:lapsed_family) { create(:family, creator: owner, access_until: 1.day.ago) }
+    let!(:owner_seat) { create(:family_membership, :owner, user: owner, family: lapsed_family) }
+    let(:invite) { create(:family_invitation, family: lapsed_family, invited_by: owner) }
+
+    it 'warns the invitee instead of offering a join that would be refused' do
+      get public_invitation_path(invite.token)
+
+      expect(response.body).to include(
+        CGI.escapeHTML(I18n.t('family.invitations.show.this_family_s_plan_is_currently_inactive_you_can_accept'))
+      )
     end
   end
 end

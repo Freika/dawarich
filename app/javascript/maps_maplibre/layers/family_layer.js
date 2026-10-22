@@ -1,16 +1,20 @@
-import maplibregl from "maplibre-gl"
+import { translate } from "i18n"
+import * as maplibregl from "maplibre-gl"
 import { escapeHtml } from "../utils/geojson_transformers"
+import { HtmlLabelManager } from "../utils/html_label_manager"
 import { BaseLayer } from "./base_layer"
 
-/**
- * Family layer showing family member locations
- * Each member has unique color
- */
 export class FamilyLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "family", ...options })
     this.memberColors = {}
     this._historyFeatures = []
+    this.labels = new HtmlLabelManager(map, {
+      className: "map-html-label map-html-label--family",
+      anchor: "top",
+      offset: [0, 14],
+      visible: this.visible,
+    })
     this._popup = new maplibregl.Popup({
       closeButton: false,
       closeOnClick: false,
@@ -28,17 +32,6 @@ export class FamilyLayer extends BaseLayer {
       if (!hits.length) this._hidePopup()
     }
     this._onCanvasLeave = () => this._hidePopup()
-  }
-
-  add(data) {
-    super.add(data)
-    this._attachHoverHandlers()
-  }
-
-  remove() {
-    this._detachHoverHandlers()
-    this._hidePopup()
-    super.remove()
   }
 
   _attachHoverHandlers() {
@@ -83,13 +76,13 @@ export class FamilyLayer extends BaseLayer {
           minute: "2-digit",
           hour12: false,
         })
-      : "Unknown"
+      : translate("common.unknown")
 
-    const name = props.name || "Family member"
+    const name = props.name || translate("family.member")
     const html = `
       <div style="min-width:160px">
         <div style="font-weight:600;margin-bottom:4px">${escapeHtml(name)}</div>
-        <div style="font-size:12px;opacity:0.8">Last seen: ${escapeHtml(lastSeen)}</div>
+        <div style="font-size:12px;opacity:0.8">${translate("live_share.last_seen_short")}: ${escapeHtml(lastSeen)}</div>
       </div>
     `
 
@@ -120,25 +113,6 @@ export class FamilyLayer extends BaseLayer {
           "circle-stroke-width": 2,
           "circle-stroke-color": "#ffffff",
           "circle-opacity": 0.9,
-        },
-      },
-
-      // Member labels
-      {
-        id: `${this.id}-labels`,
-        type: "symbol",
-        source: this.sourceId,
-        layout: {
-          "text-field": ["get", "name"],
-          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-          "text-size": 12,
-          "text-offset": [0, 1.5],
-          "text-anchor": "top",
-        },
-        paint: {
-          "text-color": "#111827",
-          "text-halo-color": "#ffffff",
-          "text-halo-width": 2,
         },
       },
 
@@ -173,12 +147,30 @@ export class FamilyLayer extends BaseLayer {
   }
 
   getLayerIds() {
-    return [
-      this.id,
-      `${this.id}-labels`,
-      `${this.id}-pulse`,
-      `${this.id}-history`,
-    ]
+    return [this.id, `${this.id}-pulse`, `${this.id}-history`]
+  }
+
+  add(data) {
+    super.add(data)
+    this._attachHoverHandlers()
+    this.labels.sync(data?.features || [])
+  }
+
+  update(data) {
+    super.update(data)
+    this.labels.sync(data?.features || [])
+  }
+
+  remove() {
+    this._detachHoverHandlers()
+    this._hidePopup()
+    this.labels.clear()
+    super.remove()
+  }
+
+  setVisibility(visible) {
+    super.setVisibility(visible)
+    this.labels?.setVisibility(visible)
   }
 
   /**
@@ -213,7 +205,7 @@ export class FamilyLayer extends BaseLayer {
       },
       properties: {
         id: memberId,
-        name: member.email || member.name,
+        name: member.name || member.email,
         email: member.email,
         color: color,
         lastUpdate: Date.now(),
@@ -343,7 +335,7 @@ export class FamilyLayer extends BaseLayer {
       },
       properties: {
         id: location.user_id,
-        name: location.email || "Unknown",
+        name: location.name || location.email || translate("common.unknown"),
         email: location.email,
         color: location.color || this.getMemberColor(location.user_id),
         lastUpdate: Date.now(),

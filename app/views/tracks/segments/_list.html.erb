@@ -1,0 +1,31 @@
+<%= turbo_frame_tag "track-#{track.id}-segments", class: "track-segments-list" do %>
+  <% if segments.empty? %>
+    <p class="text-sm text-base-content/60"><%= t('tracks.segments.index.no_segments_for_this_track_yet') %></p>
+  <% else %>
+    <% display = TrackSegments::DisplayLegs.call(segments) %>
+    <%# Wrapper exists so CSS can swap the condensed list for the editable one
+        when the disclosure opens. Turbo preserves the destination frame's own
+        attributes on load, so the frame's class is not dependable here. %>
+    <% if display %>
+      <div class="track-segments">
+        <%= render partial: 'tracks/segments/legs', locals: { track: track, display: display } %>
+        <%# Rows live in their own element so CSS can order them above the
+            summary — the toggle stays put at the bottom of the card instead of
+            jumping upward as the condensed list is swapped out beneath it. %>
+        <details class="segment-rawlist">
+          <summary data-testid="segment-rawlist-toggle-<%= track.id %>"><%= t('.all_segments', count: segments.size) %></summary>
+          <div class="segment-rawlist__rows">
+            <% segments.each do |segment| %>
+              <%= render partial: 'tracks/segments/segment_row', locals: { segment: segment } %>
+            <% end %>
+          </div>
+        </details>
+      </div>
+    <% else %>
+      <%# Legacy index-anchored or all-stationary tracks: raw rows only %>
+      <% segments.each do |segment| %>
+        <%= render partial: 'tracks/segments/segment_row', locals: { segment: segment } %>
+      <% end %>
+    <% end %>
+  <% end %>
+<% end %>

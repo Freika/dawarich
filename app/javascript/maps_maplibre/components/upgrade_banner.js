@@ -1,3 +1,5 @@
+import { translate } from "i18n"
+
 /**
  * Persistent, dismissible map overlay banner for upgrade prompts.
  * Singleton: only one banner is visible at a time.
@@ -47,11 +49,11 @@ export class UpgradeBanner {
     cta.href = url
     cta.target = "_blank"
     cta.rel = "noopener noreferrer"
-    cta.textContent = "Upgrade to Pro"
+    cta.textContent = translate("common.upgrade_to_pro")
 
     const dismissBtn = document.createElement("button")
     dismissBtn.className = "map-upgrade-banner-dismiss"
-    dismissBtn.setAttribute("aria-label", "Dismiss")
+    dismissBtn.setAttribute("aria-label", translate("common.dismiss"))
     dismissBtn.textContent = "\u2715"
     dismissBtn.addEventListener("click", () => UpgradeBanner.dismiss())
 

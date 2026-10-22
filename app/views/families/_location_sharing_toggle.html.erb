@@ -28,7 +28,7 @@
       <div class="grid grid-cols-[auto_auto_1fr] items-center gap-x-3 gap-y-2">
 
         <%# Row 1: Live location %>
-        <span class="text-sm text-base-content/60 text-right whitespace-nowrap">Live location:</span>
+        <span class="text-sm text-base-content/60 text-right whitespace-nowrap"><%= t('.live_location') %></span>
 
         <input type="checkbox"
                class="toggle toggle-primary toggle-md"
@@ -42,18 +42,18 @@
             <select class="select select-bordered select-md"
                     data-location-sharing-toggle-target="durationSelect"
                     data-action="change->location-sharing-toggle#changeDuration">
-              <option value="permanent" <%= 'selected' if member.family_sharing_duration == 'permanent' %>>Always</option>
-              <option value="1h" <%= 'selected' if member.family_sharing_duration == '1h' %>>1 hour</option>
-              <option value="6h" <%= 'selected' if member.family_sharing_duration == '6h' %>>6 hours</option>
-              <option value="12h" <%= 'selected' if member.family_sharing_duration == '12h' %>>12 hours</option>
-              <option value="24h" <%= 'selected' if member.family_sharing_duration == '24h' %>>24 hours</option>
+              <option value="permanent" <%= 'selected' if member.family_sharing_duration == 'permanent' %>><%= t('.always') %></option>
+              <option value="1h" <%= 'selected' if member.family_sharing_duration == '1h' %>><%= t('.hour') %></option>
+              <option value="6h" <%= 'selected' if member.family_sharing_duration == '6h' %>><%= t('.hours') %></option>
+              <option value="12h" <%= 'selected' if member.family_sharing_duration == '12h' %>><%= t('.hours_2') %></option>
+              <option value="24h" <%= 'selected' if member.family_sharing_duration == '24h' %>><%= t('.hours_3') %></option>
             </select>
           </div>
 
           <% if member.family_sharing_enabled? && member.family_sharing_expires_at.present? %>
             <span class="text-xs text-base-content/50"
                   data-location-sharing-toggle-target="expirationInfo">
-              Expires in <%= time_ago_in_words(member.family_sharing_expires_at) %>
+              <%= t('.expires_in_time', time: relative_distance_in_words(member.family_sharing_expires_at)) %>
             </span>
           <% else %>
             <span class="text-xs text-base-content/50 hidden"
@@ -69,7 +69,7 @@
         <div class="<%= 'hidden' unless member.family_sharing_enabled? %> contents"
              data-location-sharing-toggle-target="historyContainer">
 
-          <span class="text-sm text-base-content/60 text-right whitespace-nowrap">Location history:</span>
+          <span class="text-sm text-base-content/60 text-right whitespace-nowrap"><%= t('.location_history') %></span>
 
           <input type="checkbox"
                  class="toggle toggle-secondary toggle-md"
@@ -82,17 +82,15 @@
             <select class="select select-bordered select-md"
                     data-location-sharing-toggle-target="historyWindowSelect"
                     data-action="change->location-sharing-toggle#changeHistoryWindow">
-              <option value="24h" <%= 'selected' if member.family_history_window == '24h' %>>Last 24 hours</option>
-              <option value="7d" <%= 'selected' if member.family_history_window == '7d' %>>Last 7 days</option>
-              <option value="30d" <%= 'selected' if member.family_history_window == '30d' %>>Last 30 days</option>
-              <option value="all" <%= 'selected' if member.family_history_window == 'all' %>>Since sharing started</option>
+              <option value="24h" <%= 'selected' if member.family_history_window == '24h' %>><%= t('.last_24_hours') %></option>
+              <option value="7d" <%= 'selected' if member.family_history_window == '7d' %>><%= t('.last_7_days') %></option>
+              <option value="30d" <%= 'selected' if member.family_history_window == '30d' %>><%= t('.last_30_days') %></option>
+              <option value="all" <%= 'selected' if member.family_history_window == 'all' %>><%= t('.since_sharing_started') %></option>
             </select>
           </div>
 
           <p class="col-span-full text-xs text-base-content/50 leading-snug">
-            A separate setting from live location. When on, family can view your recent
-            track — not just your current position — on the new map (v2). Only points
-            recorded after you enable this are ever shared.
+            <%= t('.a_separate_setting_from_live_location_when_on_family_can') %>
           </p>
 
         </div>

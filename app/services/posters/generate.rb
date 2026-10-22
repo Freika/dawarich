@@ -2,9 +2,12 @@
 
 module Posters
   class Generate
-    MAX_DISTANCE = 20_000
+    MAX_DISTANCE = 5_000_000
     MIN_DISTANCE = 500
-    METERS_PER_DEGREE = 111_320.0
+    MIN_ROUTE_WIDTH = 0.5
+    MAX_ROUTE_WIDTH = 3.0
+    TILE_PIXELS = 512
+    METERS_PER_PIXEL_AT_ZOOM_0 = 40_075_016.686 / TILE_PIXELS
 
     def initialize(poster)
       @poster = poster
@@ -16,18 +19,16 @@ module Posters
       @poster.update!(status: :processing)
 
       track = build_track
-      return fail_with('No location data found for the selected period.') if track.nil?
+      return fail_with(I18n.t('services.posters.generate.no_location_data')) if track.nil?
 
-      unless track_intersects_area?(track)
-        return fail_with('Your track does not pass through the selected map area. ' \
-                         'Recenter the map or adjust the dates.')
-      end
+      return fail_with(I18n.t('services.posters.generate.track_outside_area')) unless track_intersects_area?(track)
 
       render_natively(track)
-      @poster.update!(status: :completed)
+    rescue ActiveRecord::RecordNotFound
+      nil
     rescue StandardError => e
       ExceptionReporter.call(e, "Poster render failed for poster #{@poster.id}")
-      fail_with('Poster generation failed. Please try again later.')
+      fail_with(I18n.t('services.posters.generate.failed'))
     end
 
     private
@@ -49,10 +50,27 @@ module Posters
         track: track,
         distance: distance,
         route_opacity: route_opacity,
+        route_width: route_width,
         subtitle: subtitle
       ).call
-      attach_image(result[:png])
-      attach_print_pdf(result[:pdf])
+
+      blobs = []
+      create_blob(blobs, result[:png], "poster_#{@poster.id}.png", 'image/png')
+      create_blob(blobs, result[:pdf], "poster_#{@poster.id}.pdf", 'application/pdf')
+      attached = false
+
+      Poster.transaction do
+        current_poster = Poster.lock.find_by(id: @poster.id)
+        return unless current_poster
+
+        @poster = current_poster
+        @poster.image.attach(blobs.first)
+        @poster.print_pdf.attach(blobs.second)
+        @poster.update!(status: :completed)
+      end
+      attached = true
+    ensure
+      blobs&.each { |blob| blob.purge if !attached && blob.persisted? }
     end
 
     def route_opacity
@@ -62,6 +80,13 @@ module Posters
       raw.clamp(0.05, 1.0)
     end
 
+    def route_width
+      raw = @poster.settings.fetch('route_width', 100).to_f
+      return 1.0 if raw <= 0
+
+      (raw / 100.0).clamp(MIN_ROUTE_WIDTH, MAX_ROUTE_WIDTH)
+    end
+
     def distance
       @poster.settings.fetch('distance', 6000).to_i.clamp(MIN_DISTANCE, MAX_DISTANCE)
     end
@@ -69,41 +94,75 @@ module Posters
     def track_intersects_area?(track)
       lat = @poster.settings['lat'].to_f
       lon = @poster.settings['lon'].to_f
-      lat_delta = (distance / 3.0) / METERS_PER_DEGREE
-      lon_delta = (distance / 4.0) / (METERS_PER_DEGREE * Math.cos(lat * Math::PI / 180).abs.clamp(0.01, 1.0))
+      south, north = frame_latitude_bounds(lat)
+      lon_delta = frame_longitude_delta(lat)
 
       track['coordinates'].any? do |segment|
         segment.any? do |pt_lon, pt_lat|
-          pt_lat.between?(lat - lat_delta, lat + lat_delta) &&
-            pt_lon.between?(lon - lon_delta, lon + lon_delta)
+          pt_lat.between?(south, north) && longitude_within?(pt_lon, lon, lon_delta)
         end
       end
+    end
+
+    def frame_latitude_bounds(lat)
+      half = Math::PI * frame_size[:height] / frame_world_pixels(lat)
+      centre = Math.log(Math.tan((Math::PI / 4) + (lat * Math::PI / 360)))
+
+      [mercator_to_latitude(centre - half), mercator_to_latitude(centre + half)]
+    end
+
+    def frame_longitude_delta(lat)
+      180.0 * frame_size[:width] / frame_world_pixels(lat)
+    end
+
+    def frame_world_pixels(lat)
+      meters_per_pixel = (2 * distance / 3.0) / frame_size[:height]
+      zoom = Math.log2(METERS_PER_PIXEL_AT_ZOOM_0 * cos_latitude(lat) / meters_per_pixel)
+
+      TILE_PIXELS * (2**zoom)
+    end
+
+    def mercator_to_latitude(mercator_y)
+      ((2 * Math.atan(Math::E**mercator_y)) - (Math::PI / 2)) * 180 / Math::PI
+    end
+
+    def cos_latitude(lat)
+      Math.cos(lat * Math::PI / 180).abs.clamp(0.01, 1.0)
+    end
+
+    def longitude_within?(pt_lon, lon, lon_delta)
+      return true if lon_delta >= 180.0
+
+      (((pt_lon - lon + 180.0) % 360.0) - 180.0).abs <= lon_delta
+    end
+
+    def frame_size
+      Posters::NativeRenderer::SIZE
     end
 
     def subtitle
       start_at = Time.zone.parse(@poster.settings['start_at']).utc
       end_at = Time.zone.parse(@poster.settings['end_at']).utc
 
-      "#{start_at.strftime('%-d %b %Y')} – #{end_at.strftime('%-d %b %Y')}"
+      "#{I18n.l(start_at.to_date, format: :medium)} – #{I18n.l(end_at.to_date, format: :medium)}"
     end
 
-    def attach_image(image)
-      @poster.image.attach(
-        io: StringIO.new(image),
-        filename: "poster_#{@poster.id}.png",
-        content_type: 'image/png'
+    def create_blob(blobs, content, filename, content_type)
+      io = StringIO.new(content)
+      blob = ActiveStorage::Blob.create_after_unfurling!(
+        io: io,
+        filename: filename,
+        content_type: content_type
       )
-    end
-
-    def attach_print_pdf(pdf)
-      @poster.print_pdf.attach(
-        io: StringIO.new(pdf),
-        filename: "poster_#{@poster.id}.pdf",
-        content_type: 'application/pdf'
-      )
+      blobs << blob
+      blob.upload_without_unfurling(io)
     end
 
     def fail_with(message)
+      current_poster = Poster.find_by(id: @poster.id)
+      return unless current_poster
+
+      @poster = current_poster
       @poster.update!(status: :failed, settings: @poster.settings.merge('error' => message))
     end
 

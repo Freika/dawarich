@@ -1,12 +1,22 @@
 # frozen_string_literal: true
 
 class Settings::IntegrationsController < ApplicationController
+  FLASH_MESSAGE_BYTES = 512
+
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[update]
   before_action :require_pro!, only: %i[update]
 
   def index
+    return redirect_to admin_settings_path if old_geocoding_link_for_admin?
+
     @pro_required = !current_user.full_access?
+    return if @pro_required
+
+    @services = Integrations::Status::SERVICES
+    @service = params[:service].presence_in(@services) || @services.first
+    @statuses = Integrations::Status.for(current_user)
+    @trek_sources = current_user.trip_sources.where(provider: 'trek').order(:created_at) if @service == 'trek'
   end
 
   def update
@@ -16,19 +26,29 @@ class Settings::IntegrationsController < ApplicationController
       refresh_photos_cache: params[:refresh_photos_cache].present?
     ).call
 
-    flash[:notice] = result[:notices].join('. ') if result[:notices].any?
-    flash[:alert] = result[:alerts].join('. ') if result[:alerts].any?
+    flash[:notice] = flash_message(result[:notices]) if result[:notices].any?
+    flash[:alert] = flash_message(result[:alerts]) if result[:alerts].any?
 
-    redirect_to settings_integrations_path
+    redirect_to settings_integrations_path(service: params[:service].presence)
   end
 
   private
+
+  def flash_message(messages)
+    messages.join('. ').truncate_bytes(FLASH_MESSAGE_BYTES)
+  end
+
+  def old_geocoding_link_for_admin?
+    params[:service] == 'geocoding' && current_user.admin? && DawarichSettings.self_hosted?
+  end
 
   def settings_params
     params.require(:settings).permit(
       :immich_url, :immich_api_key, :immich_skip_ssl_verification,
       :photoprism_url, :photoprism_api_key, :photoprism_skip_ssl_verification,
-      :airtrail_url, :airtrail_api_key, :airtrail_skip_ssl_verification
+      :airtrail_url, :airtrail_api_key, :airtrail_skip_ssl_verification,
+      :teslamate_url, :teslamate_username, :teslamate_password, :teslamate_api_token,
+      :teslamate_skip_ssl_verification
     )
   end
 end

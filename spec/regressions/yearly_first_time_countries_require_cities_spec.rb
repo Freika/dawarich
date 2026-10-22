@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Yearly first-time visits ignore countries without qualifying cities' do
+RSpec.describe 'Yearly first-time visits include countries without qualifying cities' do
   let(:user) { create(:user) }
 
   let!(:previous_year_stat) do
@@ -26,12 +26,21 @@ RSpec.describe 'Yearly first-time visits ignore countries without qualifying cit
     Users::Digests::MonthlyFirstTimeVisitsCalculator.new(user, 2026, 4).call['countries']
   end
 
-  it 'does not report a country whose cities array is empty' do
-    expect(yearly_first_time_countries).to be_empty
+  it 'reports a new country whose cities array is empty' do
+    expect(yearly_first_time_countries).to eq(['France'])
   end
 
   it 'agrees with the monthly calculator on the same data' do
     expect(yearly_first_time_countries).to eq(monthly_first_time_countries)
+  end
+
+  it 'does not report a previously visited country even when the previous visit had no qualifying city' do
+    previous_year_stat.update!(toponyms: previous_year_stat.toponyms + [
+      { 'country' => 'France', 'cities' => [] }
+    ])
+
+    expect(yearly_first_time_countries).to be_empty
+    expect(monthly_first_time_countries).to be_empty
   end
 
   it 'still reports genuinely new countries with qualifying cities' do
@@ -39,6 +48,6 @@ RSpec.describe 'Yearly first-time visits ignore countries without qualifying cit
       { 'country' => 'Spain', 'cities' => [{ 'city' => 'Madrid', 'stayed_for' => 300 }] }
     ])
 
-    expect(yearly_first_time_countries).to eq(['Spain'])
+    expect(yearly_first_time_countries).to eq(%w[France Spain])
   end
 end

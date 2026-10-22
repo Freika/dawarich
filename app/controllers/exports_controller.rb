@@ -25,19 +25,21 @@ class ExportsController < ApplicationController
       end_at: params[:end_at]
     )
 
-    redirect_to exports_url, notice: 'Export was successfully initiated. Please wait until it\'s finished.'
+    redirect_to exports_url,
+                notice: I18n.t('controllers.exports.export_was_successfully_initiated_please_wait_until_it_s_finished')
   rescue StandardError => e
     export&.destroy
 
     ExceptionReporter.call(e)
 
-    redirect_to exports_url, alert: 'Export failed to initiate. Please try again.', status: :unprocessable_content
+    redirect_to exports_url, alert: I18n.t('controllers.exports.export_failed_to_initiate_please_try_again'),
+status: :unprocessable_content
   end
 
   def destroy
     @export.destroy
 
-    redirect_to exports_url, notice: 'Export was successfully destroyed.', status: :see_other
+    redirect_to exports_url, notice: I18n.t('controllers.exports.export_was_successfully_destroyed'), status: :see_other
   end
 
   private

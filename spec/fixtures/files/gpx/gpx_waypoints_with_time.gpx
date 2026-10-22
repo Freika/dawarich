@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<gpx version="1.1" creator="OsmAnd~" xmlns="http://www.topografix.com/GPX/1/1" xmlns:osmand="https://osmand.net">
+  <wpt lat="51.3402000" lon="12.3712000">
+    <name>Leipzig Hauptbahnhof</name>
+    <time>2026-01-27T10:00:00Z</time>
+    <type>Transport</type>
+  </wpt>
+  <wpt lat="51.3397000" lon="12.3731000">
+    <name>Augustusplatz</name>
+    <time>2026-01-27T11:00:00Z</time>
+    <type>Sights</type>
+  </wpt>
+</gpx>

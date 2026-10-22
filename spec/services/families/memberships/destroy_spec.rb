@@ -38,6 +38,16 @@ RSpec.describe Families::Memberships::Destroy do
         expect(owner_notification.content).to include(family.name)
       end
 
+      it 'localizes each notification for its recipient' do
+        member.update!(settings: { 'locale' => 'fr' })
+        user.update!(settings: { 'locale' => 'en' })
+
+        I18n.with_locale(:fr) { service.call }
+
+        expect(member.notifications.last.title).to eq('Famille quittée')
+        expect(user.notifications.last.title).to eq('Family Member Left')
+      end
+
       it 'returns true' do
         expect(service.call).to be true
       end

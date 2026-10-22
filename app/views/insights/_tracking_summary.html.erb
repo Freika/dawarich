@@ -1,0 +1,50 @@
+<% cache [current_user.id, 'insights_tracking_summary', I18n.locale, current_user.stats.maximum(:updated_at), @points_total, reverse_geocoding_enabled_for?(current_user)], expires_in: 24.hours do %>
+  <div class="flex flex-wrap items-center gap-x-5 gap-y-2 mb-6 text-sm text-base-content/70">
+    <span>
+      <strong class="text-base-content tabular-nums"><%= number_with_delimiter @points_total %></strong>
+      <%= t('stats.index.geopoints_tracked') %>
+    </span>
+
+    <% if reverse_geocoding_enabled_for?(current_user) %>
+      <% if DawarichSettings.store_geodata? %>
+        <span>
+          <strong class="text-base-content tabular-nums"><%= number_with_delimiter @points_reverse_geocoded %></strong>
+          <%= t('stats.reverse_geocoding_stats.reverse_geocoded_points') %>
+          (<%= t('stats.reverse_geocoding_stats.percent_of_total', percent: number_with_precision(@points_reverse_geocoded_percentage, precision: 1, strip_insignificant_zeros: true)) %>)
+        </span>
+        <% if @points_reverse_geocoded_without_data.to_i.positive? %>
+          <span class="tooltip underline decoration-dotted" data-tip="<%= t('stats.reverse_geocoding_stats.points_that_were_reverse_geocoded_but_had_no_data') %>">
+            <%= number_with_delimiter @points_reverse_geocoded_without_data %> <%= t('stats.reverse_geocoding_stats.points_without_data') %>
+          </span>
+        <% end %>
+      <% end %>
+
+      <button type="button" class="link link-hover" onclick="countries_visited.showModal()">
+        <strong class="text-base-content tabular-nums"><%= number_with_delimiter current_user.total_countries %></strong>
+        <%= t('stats.reverse_geocoding_stats.countries_visited') %>
+      </button>
+      <button type="button" class="link link-hover" onclick="cities_visited.showModal()">
+        <strong class="text-base-content tabular-nums"><%= number_with_delimiter current_user.total_cities %></strong>
+        <%= t('stats.reverse_geocoding_stats.cities_visited') %>
+      </button>
+
+      <% { 'countries_visited' => current_user.countries_visited, 'cities_visited' => current_user.cities_visited }.each do |id, names| %>
+        <dialog id="<%= id %>" class="modal">
+          <div class="modal-box">
+            <h3 class="font-bold text-lg mb-3"><%= t("stats.reverse_geocoding_stats.#{id}") %></h3>
+            <ul class="space-y-1">
+              <% names.each do |name| %>
+                <li><%= name %></li>
+              <% end %>
+            </ul>
+          </div>
+          <form method="dialog" class="modal-backdrop">
+            <button><%= t('stats.reverse_geocoding_stats.close') %></button>
+          </form>
+        </dialog>
+      <% end %>
+    <% end %>
+
+    <span class="text-xs text-base-content/50 basis-full"><%= t('stats.index.all_stats_data_above_except_for_total_distance_and_number') %></span>
+  </div>
+<% end %>

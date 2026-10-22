@@ -1,7 +1,7 @@
-<% content_for :title, "Backup Codes" %>
+<% content_for :title, t('.backup_codes') %>
 
 <div class="min-h-content w-full my-5">
-  <%= render 'shared/page_header', title: 'Two-Factor Authentication Enabled' %>
+  <%= render 'shared/page_header', title: t('.two_factor_authentication_enabled') %>
   <%= render 'settings/navigation' %>
 
   <div class="max-w-lg">
@@ -9,12 +9,11 @@
       <div class="card-body">
         <div class="flex items-center gap-3 mb-4">
           <%= icon 'shield-check', class: "text-success w-8 h-8" %>
-          <h2 class="text-xl font-bold">Save your backup codes</h2>
+          <h2 class="text-xl font-bold"><%= t('.save_your_backup_codes') %></h2>
         </div>
 
         <div class="alert alert-warning mb-4">
-          <span>Store these codes in a safe place. Each code can only be used once.
-          If you lose access to your authenticator app, you can use these codes to sign in.</span>
+          <span><%= t('.store_these_codes_in_a_safe_place_each_code_can') %></span>
         </div>
 
         <div class="bg-base-100 rounded-lg p-4 mb-4">
@@ -25,7 +24,7 @@
           </div>
         </div>
 
-        <%= link_to 'Done', settings_two_factor_path, class: 'btn btn-primary w-full' %>
+        <%= link_to t('.done'), settings_two_factor_path, class: 'btn btn-primary w-full' %>
       </div>
     </div>
   </div>

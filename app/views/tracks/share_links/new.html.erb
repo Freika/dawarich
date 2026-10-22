@@ -1,8 +1,8 @@
 <%= render 'shared_links/modal',
            resource: @track,
            share: @share,
-           title: "Share #{track_share_label(@track, current_user.safe_settings.distance_unit)}",
-           subtitle: "This track is shared via a public link.",
+           title: t('.share_track', track: track_share_label(@track, current_user.safe_settings.distance_unit)),
+           subtitle: t('.this_track_is_shared_via_a_public_link'),
            close_path: map_v2_path,
            paths: {
              create:            track_share_link_path(@track),

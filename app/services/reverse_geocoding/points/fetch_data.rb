@@ -13,11 +13,26 @@ class ReverseGeocoding::Points::FetchData
   end
 
   def call
-    return if point.blank?
-    return if point.reverse_geocoded? && !@force
-    return unless point.timestamp.present? && point.lonlat.present?
+    stale_retries = 0
+    begin
+      return if point.blank?
+      return if point.reverse_geocoded? && !@force
+      return unless point.timestamp.present? && point.lonlat.present?
 
-    update_point_with_geocoding_data
+      update_point_with_geocoding_data
+    rescue ActiveRecord::StaleObjectError => e
+      stale_retries += 1
+      if stale_retries > WRITE_MAX_RETRIES
+        Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
+        ExceptionReporter.call(e)
+        return
+      end
+
+      # The provider response belongs to the old location. Read the current
+      # point and repeat the lookup instead of retrying only the stale write.
+      @point = Point.find_by(id: point.id)
+      retry
+    end
   end
 
   private
@@ -30,16 +45,17 @@ class ReverseGeocoding::Points::FetchData
   ].freeze
 
   def update_point_with_geocoding_data
-    response = Geocoder.search([point.lat, point.lon]).first
+    response = Geocoding::Search.call(user: point.user_id, query: [point.lat, point.lon]).first
 
     if response.blank?
       with_write_retry { point.update!(reverse_geocoded_at: Time.current) }
+      invalidate_point_tiles
       return
     end
 
     return if response.data['error'].present?
 
-    country_record = Country.find_by(name: response.country) if response.country
+    country_record = find_country(response) if response.country
 
     with_write_retry do
       point.update!(
@@ -49,7 +65,13 @@ class ReverseGeocoding::Points::FetchData
         geodata: DawarichSettings.store_geodata? ? response.data : {},
         reverse_geocoded_at: Time.current
       )
+      if point.saved_change_to_city? || point.saved_change_to_country_name? || point.saved_change_to_country_id?
+        user_id = point.user_id
+        timestamp = point.timestamp
+        ActiveRecord.after_all_transactions_commit { Stats::GeocodedDays.mark(user_id, timestamp) }
+      end
     end
+    invalidate_point_tiles
   rescue *ReverseGeocoding::ProviderErrors::TRANSIENT => e
     Rails.logger.warn("Reverse geocoding provider error for point #{point.id}: #{e.message}")
   rescue OpenSSL::SSL::SSLError => e
@@ -59,9 +81,38 @@ class ReverseGeocoding::Points::FetchData
       Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
       ExceptionReporter.call(e)
     end
+  rescue ActiveRecord::StaleObjectError
+    raise
   rescue StandardError => e
     Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
     ExceptionReporter.call(e)
+  end
+
+  def invalidate_point_tiles
+    user_id = point.user_id
+    timestamp = point.timestamp
+    ActiveRecord.after_all_transactions_commit { Points::TileEpoch.bump(user_id, timestamps: [timestamp]) }
+  end
+
+  def find_country(response)
+    code = begin
+      response.country_code if response.respond_to?(:country_code)
+    rescue StandardError
+      nil
+    end
+
+    country = Country.matching_name(response.country)
+    country = nil if code.present? && country&.iso_a2 != code.upcase
+    country ||= Country.find_by(iso_a2: code.upcase) if code.present?
+
+    if country.nil?
+      Rails.logger.warn(
+        "[ReverseGeocoding] no country record for #{response.country.inspect}; " \
+        'add it to Countries::NameAliases if it is a known naming variant'
+      )
+    end
+
+    country
   end
 
   def with_write_retry

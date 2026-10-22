@@ -73,4 +73,14 @@ RSpec.describe SharedLinks::TripDays do
     expect(jan16[:has_data]).to be true
     expect(jan16[:first_time].strftime('%H:%M')).to eq('00:30')
   end
+
+  it 'localizes weekday and month labels' do
+    august_trip = create(:trip, user:, started_at: Time.utc(2025, 8, 4), ended_at: Time.utc(2025, 8, 4, 23, 59))
+
+    rows = I18n.with_locale(:fr) do
+      described_class.new(august_trip, timezone: 'Etc/UTC', unit: 'km').call
+    end
+
+    expect(rows.first).to include(weekday: 'lundi', label: '4 août')
+  end
 end

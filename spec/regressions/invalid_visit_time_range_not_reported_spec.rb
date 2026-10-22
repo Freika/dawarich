@@ -19,7 +19,7 @@ RSpec.describe 'Invalid visit time range reporting' do
 
     expect(ExceptionReporter).not_to receive(:call)
     expect(service.call).to be(false)
-    expect(service.errors).to include('Ended at must be greater than')
+    expect(service.errors).to include('ended_at must be after started_at')
     expect(user.visits).to be_empty
   end
 
@@ -28,7 +28,7 @@ RSpec.describe 'Invalid visit time range reporting' do
 
     expect(ExceptionReporter).not_to receive(:call)
     expect(service.call).to be(false)
-    expect(service.errors).to include('Invalid time range')
+    expect(service.errors).to include('invalid timestamps')
     expect(user.visits).to be_empty
   end
 
@@ -37,7 +37,7 @@ RSpec.describe 'Invalid visit time range reporting' do
 
     expect(ExceptionReporter).not_to receive(:call)
     expect(service.call).to be(false)
-    expect(service.errors).to include('Invalid time range')
+    expect(service.errors).to include('invalid timestamps')
     expect(user.visits).to be_empty
   end
 end

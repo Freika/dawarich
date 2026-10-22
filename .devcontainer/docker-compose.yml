@@ -46,6 +46,7 @@ services:
       timeout: 10s
   dawarich_db:
     image: postgis/postgis:17-3.5-alpine
+    # image: imresamu/postgis:17-3.5-alpine # If you're on ARM architecture, use this image instead
     container_name: dawarich_db
     volumes:
       - dawarich_db_data:/var/lib/postgresql/data

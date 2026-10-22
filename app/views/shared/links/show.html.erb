@@ -1,9 +1,9 @@
-<% content_for(:title, "#{@link.name} — Shared on Dawarich") %>
+<% content_for(:title, t('.name_shared_on_dawarich', name: @link.name)) %>
 
 <% content_for :head do %>
   <meta property="og:type" content="article">
   <meta property="og:title" content="<%= @link.name %>">
-  <meta property="og:description" content="Shared from Dawarich">
+  <meta property="og:description" content="<%= t('.shared_from_dawarich') %>">
   <meta property="og:image" content="<%= image_url('og_default.png') %>">
   <meta name="twitter:card" content="summary_large_image">
 <% end %>

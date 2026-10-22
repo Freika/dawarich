@@ -1,19 +1,17 @@
 <turbo-frame id="note-<%= trip.id %>-<%= note.date %>">
   <div data-note-display="<%= note.date %>">
-    <div class="whitespace-pre-wrap text-sm text-base-content/80 mb-3">
-      <%= note.body %>
-    </div>
+    <div class="whitespace-pre-wrap text-sm text-base-content/80 mb-3"><%= note.body %></div>
     <div class="flex gap-2">
       <button class="btn btn-xs btn-ghost"
               data-action="click->trip-maplibre#showNoteForm"
               data-date="<%= note.date %>">
-        Edit
+        <%= t('.edit') %>
       </button>
-      <%= button_to "Delete",
+      <%= button_to t('.delete'),
           trip_note_path(trip, note),
           method: :delete,
           class: "btn btn-xs btn-ghost text-error",
-          data: { turbo_confirm: "Delete this note?" } %>
+          data: { turbo_confirm: t('.delete_this_note') } %>
     </div>
   </div>
 
@@ -36,14 +34,14 @@
         <textarea name="note[body]"
                   class="textarea textarea-bordered w-full min-h-[100px]"
                   maxlength="10000"
-                  placeholder="Write your notes for this day..."><%= note.body %></textarea>
+                  placeholder="<%= t('.write_your_notes_for_this_day') %>"><%= note.body %></textarea>
       </div>
 
       <div class="flex gap-2">
-        <%= form.submit "Update note", class: "btn btn-primary btn-sm" %>
+        <%= form.submit t('.update_note'), class: "btn btn-primary btn-sm" %>
         <button type="button" class="btn btn-ghost btn-sm"
                 data-action="click->trip-maplibre#hideNoteForm"
-                data-date="<%= note.date %>">Cancel</button>
+                data-date="<%= note.date %>"><%= t('.cancel') %></button>
       </div>
     <% end %>
   </div>

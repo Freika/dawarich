@@ -22,25 +22,41 @@ module Visits
 
     def validate
       if visit_ids.blank?
-        errors << 'No visits selected'
+        errors << I18n.t('services.visits.bulk_update.none_selected')
         return
       end
 
       return if Visit.statuses.keys.include?(status)
 
-      errors << 'Invalid status'
+      errors << I18n.t('services.visits.bulk_update.invalid_status')
     end
 
     def update_visits
-      visits = user.visits.where(id: visit_ids)
+      # scoped_visits so hidden rows (tombstones, declines, plan-archived)
+      # can never be resurrected through a bulk status toggle.
+      visits = user.scoped_visits.where(id: visit_ids)
 
       if visits.empty?
-        errors << 'No matching visits found'
+        errors << I18n.t('services.visits.bulk_update.none_found')
         return false
       end
 
+      # Captured before update_all: declined visits drop out of scoped_visits.
+      declined_place_ids = status == 'declined' ? visits.where.not(place_id: nil).distinct.pluck(:place_id) : []
+      tz = user.safe_settings.timezone.presence || 'UTC'
+      months = visits.distinct.pluck(:started_at).compact
+                     .map { |time| time.in_time_zone(tz).to_date.beginning_of_month }.uniq
+
       updated_count = visits.update_all(status: status)
       # rubocop:enable Rails/SkipsModelValidations
+
+      # update_all skips AR callbacks, so declining here must enqueue the
+      # orphan-place check the model runs on single-record declines.
+      declined_place_ids.each { |place_id| Places::DeleteIfOrphanJob.perform_later(place_id) }
+
+      ActiveRecord.after_all_transactions_commit do
+        months.each { |month| Rails.cache.delete(Timeline::MonthSummary.cache_key_for(user, month)) }
+      end
 
       { count: updated_count, visits: visits }
     end

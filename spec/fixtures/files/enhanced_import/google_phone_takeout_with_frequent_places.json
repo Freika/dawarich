@@ -1,0 +1,18 @@
+{
+  "userLocationProfile": {
+    "frequentPlaces": [
+      {
+        "placeId": "ChIJ_HOME_FREQUENT",
+        "label": "Home",
+        "placeLocation": "52.520000°, 13.405000°",
+        "semanticType": "INFERRED_HOME"
+      },
+      {
+        "placeId": "ChIJ_WORK_FREQUENT",
+        "label": "Work",
+        "placeLocation": "52.530000°, 13.420000°",
+        "semanticType": "INFERRED_WORK"
+      }
+    ]
+  }
+}

@@ -13,27 +13,27 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Welcome to Dawarich!</h1>
+      <h1><%= t('.welcome_to_dawarich') %></h1>
     </div>
     <div class="content">
-      <p>Hi <%= @user.email %>, this is Evgenii from Dawarich.</p>
+      <p><%= t('.hi') %> <%= @user.email %><%= t('.this_is_evgenii_from_dawarich') %></p>
 
-      <p>Welcome to Dawarich! I'm excited to have you on board.</p>
+      <p><%= t('.welcome_to_dawarich_i_m_excited_to_have_you_on') %></p>
 
-      <p>Your 7-day free trial has started. During this time, you can:</p>
+      <p><%= t('.your_7_day_free_trial_has_started_during_this_time') %></p>
       <ul>
-        <li>Track your location data</li>
-        <li>View your movement patterns on beautiful maps</li>
-        <li>Analyze your travel statistics</li>
-        <li>Export your data in various formats</li>
+        <li><%= t('.track_your_location_data') %></li>
+        <li><%= t('.view_your_movement_patterns_on_beautiful_maps') %></li>
+        <li><%= t('.analyze_your_travel_statistics') %></li>
+        <li><%= t('.export_your_data_in_various_formats') %></li>
       </ul>
 
-      <a href="https://my.dawarich.app?utm_source=email&utm_medium=email&utm_campaign=welcome&utm_content=start_exploring" class="cta">Start Exploring Dawarich</a>
+      <a href="https://my.dawarich.app?utm_source=email&utm_medium=email&utm_campaign=welcome&utm_content=start_exploring" class="cta"><%= t('.start_exploring_dawarich') %></a>
 
-      <p>If you have any questions, feel free to drop me a message at hi@dawarich.app or just reply to this email.</p>
+      <p><%= t('.if_you_have_any_questions_feel_free_to_drop_me') %></p>
 
-      <p>Happy tracking!<br>
-      Evgenii from Dawarich</p>
+      <p><%= t('.happy_tracking') %><br>
+      <%= t('.evgenii_from_dawarich') %></p>
     </div>
   </div>
 </body>

@@ -14,6 +14,12 @@ class PointsController < ApplicationController
               .page(params[:page])
               .per(50)
 
+    @points = @points.extending(Points::ReadSummary::Pagination)
+    @points.cached_total_count = Points::ReadSummary.new(@points.except(:limit, :offset),
+                                                         user_id: current_user.id).call.first
+
+    @points.load
+
     @start_at = Time.zone.at(start_at)
     @end_at = Time.zone.at(end_at)
 
@@ -29,14 +35,14 @@ class PointsController < ApplicationController
 
     if point_ids.blank?
       redirect_to points_url(preserved_params),
-                  alert: 'No points selected.',
+                  alert: I18n.t('controllers.points.no_points_selected'),
                   status: :see_other and return
     end
 
     Points::Destroyer.new(current_user, point_ids).call
 
     redirect_to points_url(preserved_params),
-                notice: 'Points were successfully destroyed.',
+                notice: I18n.t('controllers.points.points_were_successfully_destroyed'),
                 status: :see_other
   end
 
@@ -69,13 +75,11 @@ class PointsController < ApplicationController
   end
 
   def user_points
-    current_user.scoped_points
+    Points::ReadSummary.plan_scope(current_user.points, current_user)
   end
 
   def apply_plan_window(relation)
-    return relation unless current_user.plan_restricted?
-
-    relation.where('timestamp >= ?', current_user.data_window_start.to_i)
+    Points::ReadSummary.plan_scope(relation, current_user)
   end
 
   def order_by

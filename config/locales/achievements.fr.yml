@@ -1,0 +1,116 @@
+fr:
+  achievements:
+    unlocks:
+      kicker: Nouvelle découverte
+      announcement: Carte débloquée
+      remaining:
+        one: Dernière carte de cette pile
+        other: "%{count} cartes dans cette pile"
+      next: Carte suivante
+      done: Terminé
+      dismiss: Fermer cette pile
+      view: Voir %{name} dans votre collection
+    ui:
+      title: Succès
+      summary: Résumé
+      continents: Continents
+      countries: Pays
+      regions: Régions
+      world_explored: Monde exploré
+      collection_hint: Explorez votre collection par continent, pays et région.
+      collection_navigation: Collections de succès
+      browse: Parcourir la collection
+      breadcrumb: Fil d’Ariane
+      getting_started: Enregistrez ou importez des données de localisation pour découvrir ces cartes.
+      import_data: Importer des données
+      collection_progress: "%{collection} explorée"
+      completed_on: "Débloqué le %{date}"
+      remaining:
+        one: 1 restant à explorer
+        other: "%{count} restants à explorer"
+      share: Partager
+      enable_sharing: Créer un lien public
+      countries_progress: "%{count} pays visités sur %{total}"
+      regions_progress: "%{count} régions explorées sur %{total}"
+      browse_children: "Parcourir %{collection}"
+      search_children: "Rechercher dans %{collection}"
+      collection_pages: Pages de la collection
+      prev_page: Page précédente
+      next_page: Page suivante
+      disable_sharing: Désactiver le partage
+      public_link: Lien public
+      preview_hint: Sélectionnez la carte pour l’examiner de plus près.
+      search_cards: Rechercher des cartes
+      card_status: État de la carte
+      apply: Appliquer
+      clear: Effacer les filtres
+      page_range: "%{first}–%{last} sur %{total} cartes"
+      no_results: Aucune carte correspondante
+      no_results_hint: Essayez un autre nom ou effacez les filtres pour voir toute la collection.
+      about_boundaries: À propos des limites
+      boundaries_note: "La détection des régions repose sur des limites approximatives. Sources :"
+      threshold_note:
+        one: Un lieu compte après %{count} minute de présence.
+        other: Un lieu compte après %{count} minutes de présence.
+      status:
+        all: Toutes les cartes
+        unlocked: Débloquées
+        in_progress: En cours
+        locked: Verrouillées
+    cards:
+      explorer_name: "Explorateur de %{place}"
+      date_format: "%-d %b %Y"
+      description:
+        continent: "Passez du temps dans les %{count} pays et territoires de %{place}."
+        regions: "Passez du temps dans les %{count} régions de %{place}."
+        country: "Passez du temps en %{place}."
+      status:
+        locked: Verrouillée
+        unlocked: Débloquée
+        unlocked_on: "Débloquée · %{date}"
+        in_progress: En cours
+        visited: Visité
+      metric:
+        explored: Exploré
+        not_yet_explored: Pas encore exploré
+        percent_explored: "%{percent} % exploré"
+        countries: "%{count}/%{total} pays"
+        regions: "%{count}/%{total} régions"
+      rarity:
+        common: Commune
+        rare: Rare
+        epic: Épique
+        legendary: Légendaire
+      boundary_unavailable: Limite indisponible
+      open_label: "Ouvrir %{name} — %{status}"
+      progress_label: Progression de l'exploration
+      details_regions: "%{count}/%{total} régions"
+    modal:
+      detail: Détail du succès
+      close: Fermer
+      share: Partager
+      embed: Intégrer
+      public_link: Lien public
+      embed_code: Code d'intégration
+      iframe_title: Succès Dawarich
+      copy: Copier
+      copied: Copié
+      stop_sharing: Arrêter le partage
+      share_error: Impossible de mettre à jour le partage. Veuillez réessayer.
+      copy_error: Impossible de copier automatiquement. Sélectionnez le lien ou le code et copiez-le manuellement.
+    public:
+      not_found: Le succès partagé est introuvable ou n'est plus disponible
+      social_description: "%{progress} exploré. Enregistré avec Dawarich."
+      tracked_with_html: "Enregistré avec %{link}"
+    notifications:
+      region_title: "%{region} explorée !"
+      region_content: "%{achievement} : %{count}/%{total} régions visitées."
+      country_content: "%{achievement} : %{count}/%{total} pays visités."
+      digest_title: "%{count} nouvelles zones explorées !"
+      digest_content: Vos dernières données ont débloqué de nouvelles zones — consultez-les sur la page Succès.
+      completion_title: "%{achievement} terminé !"
+      completion_country: Vous avez exploré ce pays.
+      completion_target_regions: "Vous avez exploré %{count} régions."
+      completion_all_regions: "Vous avez exploré les %{count} régions."
+      completion_target_countries: "Vous avez exploré %{count} pays."
+      completion_all_countries: "Vous avez exploré les %{count} pays."

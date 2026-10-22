@@ -1,15 +1,15 @@
-<% content_for(:title, "Enter phrase — Dawarich") %>
+<% content_for(:title, t('.enter_phrase_dawarich')) %>
 <section class="hero min-h-[60vh]">
   <div class="hero-content text-center">
     <div class="max-w-md">
-      <h1 class="text-3xl font-bold">Enter the magic phrase</h1>
-      <p class="py-4">This shared link is protected. Ask the owner for the phrase.</p>
+      <h1 class="text-3xl font-bold"><%= t('.enter_the_magic_phrase') %></h1>
+      <p class="py-4"><%= t('.this_shared_link_is_protected_ask_the_owner_for_the') %></p>
       <% if flash.now[:error] %>
         <div class="alert alert-error mb-4"><%= flash.now[:error] %></div>
       <% end %>
       <%= form_with url: unlock_public_shared_link_path(@link.id), method: :post, local: true, class: "form-control" do |f| %>
-        <%= f.text_field :phrase, required: true, autofocus: true, class: "input input-bordered w-full", placeholder: "magic phrase" %>
-        <%= f.submit "Unlock", class: "btn btn-primary mt-4" %>
+        <%= f.text_field :phrase, required: true, autofocus: true, class: "input input-bordered w-full", placeholder: t('.magic_phrase') %>
+        <%= f.submit t('.unlock'), class: "btn btn-primary mt-4" %>
       <% end %>
     </div>
   </div>

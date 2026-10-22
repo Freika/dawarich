@@ -10,7 +10,7 @@ RSpec.describe 'Families Locations API', type: :request do
     get 'Retrieves family members\' locations' do
       tags 'Families'
       description 'Returns the last known locations of all family members who have enabled location sharing. ' \
-                  'Requires the family feature to be enabled and the user to be part of a family.'
+                  'Requires the Family plan (any plan on self-hosted instances) and the user to be part of a family.'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
 
@@ -35,6 +35,19 @@ RSpec.describe 'Families Locations API', type: :request do
       end
 
       response '404', 'user not in a family' do
+        run_test!
+      end
+
+      response '403', 'family plan required' do
+        schema type: :object,
+               properties: {
+                 error: { type: :string, description: "Always 'family_plan_required'" },
+                 message: { type: :string, description: 'Human-readable explanation' },
+                 upgrade_url: { type: :string, nullable: true, description: 'URL to upgrade to the Family plan' }
+               }
+
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
         run_test!
       end
 
@@ -96,6 +109,22 @@ RSpec.describe 'Families Locations API', type: :request do
       end
 
       response '404', 'user not in a family' do
+        let(:start_at) { 1.day.ago.iso8601 }
+        let(:end_at) { Time.current.iso8601 }
+
+        run_test!
+      end
+
+      response '403', 'family plan required' do
+        schema type: :object,
+               properties: {
+                 error: { type: :string, description: "Always 'family_plan_required'" },
+                 message: { type: :string, description: 'Human-readable explanation' },
+                 upgrade_url: { type: :string, nullable: true, description: 'URL to upgrade to the Family plan' }
+               }
+
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
         let(:start_at) { 1.day.ago.iso8601 }
         let(:end_at) { Time.current.iso8601 }
 

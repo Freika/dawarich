@@ -1,5 +1,5 @@
 # Base-Image for Ruby and Node.js
-FROM ruby:3.4.6-alpine
+FROM ruby:3.4.9-slim
 
 ENV APP_PATH=/var/app
 ENV BUNDLE_VERSION=2.5.21
@@ -8,23 +8,27 @@ ENV TMP_PATH=/tmp/
 ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
 
-# Install dependencies for application
-RUN apk -U add --no-cache \
-    build-base \
+# Install dependencies for application (mirrors docker/Dockerfile)
+RUN apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
     git \
-    postgresql-dev \
+    curl \
+    ca-certificates \
     postgresql-client \
+    libpq-dev \
     libxml2-dev \
     libxslt-dev \
+    libyaml-dev \
+    zlib1g-dev \
+    libgeos-dev \
     nodejs \
-    yarn \
+    npm \
     imagemagick \
     tzdata \
     less \
-    yaml-dev \
-    # gcompat for nokogiri on mac m1
-    gcompat \
-    && rm -rf /var/cache/apk/* \
+    && rm -rf /var/lib/apt/lists/* \
     && mkdir -p $APP_PATH
 
 RUN gem update --system 3.6.2 && gem install bundler --version "$BUNDLE_VERSION" \

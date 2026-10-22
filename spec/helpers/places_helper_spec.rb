@@ -41,6 +41,16 @@ RSpec.describe PlacesHelper, type: :helper do
         expect(stats[:total_hours]).to eq(2.0)
         expect(stats[:avg_label]).to eq('1h 0m')
       end
+
+      it 'excludes tombstoned visits from dwell stats' do
+        create(:visit, place: place, user: user, duration: 600, deleted_at: 1.hour.ago,
+                       started_at: 3.days.ago, ended_at: 3.days.ago + 600.minutes)
+
+        stats = helper.place_dwell_stats(place)
+
+        expect(stats[:visit_count]).to eq(2)
+        expect(stats[:total_hours]).to eq(2.0)
+      end
     end
 
     it 'joins city and country with a comma' do

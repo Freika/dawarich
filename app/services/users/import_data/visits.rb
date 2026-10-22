@@ -56,7 +56,7 @@ class Users::ImportData::Visits
 
   def create_visit_record(visit_data)
     visit_attributes = prepare_visit_attributes(visit_data)
-    user.visits.create!(visit_attributes)
+    ActiveRecord::Base.transaction(requires_new: true) { user.visits.create!(visit_attributes) }
   end
 
   def prepare_visit_attributes(visit_data)

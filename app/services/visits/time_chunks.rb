@@ -9,10 +9,7 @@ module Visits
     end
 
     def call
-      # If the start date is in the future or equal to the end date,
-      # handle as a special case extending to the end of the start's year
-      # or if the start and end are in the same year, return the year chunk
-      return [start_at..start_at.end_of_year] if start_in_future? || same_year?
+      return [start_at..end_at] if start_in_future? || same_year?
 
       # First chunk: from start_at to end of that year
       first_end = start_at.end_of_year

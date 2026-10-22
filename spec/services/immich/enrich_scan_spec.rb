@@ -148,6 +148,77 @@ RSpec.describe Immich::EnrichScan do
           :latitude, :longitude, :time_delta_seconds, :match_method
         )
       end
+
+      it 'selects only fields required for temporal matching' do
+        queries = []
+        callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+
+        ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { service.call }
+
+        point_query = queries.find { |sql| sql.include?('FROM "points"') }
+        expect(point_query).to include(
+          '"points"."id"', '"points"."timestamp"', '"points"."lonlat"'
+        )
+        expect(point_query).not_to include('"points".*', 'raw_data', 'geodata', 'motion_data')
+      end
+    end
+
+    context 'when a photo is bracketed by points across the pole' do
+      let(:immich_response_body) do
+        {
+          'assets' => {
+            'total' => 1,
+            'count' => 1,
+            'items' => [photo_without_geodata]
+          }
+        }.to_json
+      end
+
+      before do
+        create(:point, user:,
+               latitude: 80, longitude: -90,
+               lonlat: 'POINT(-90 80)',
+               timestamp: Time.utc(2024, 1, 15, 10, 20).to_i)
+        create(:point, user:,
+               latitude: 80, longitude: 90,
+               lonlat: 'POINT(90 80)',
+               timestamp: Time.utc(2024, 1, 15, 10, 26).to_i)
+      end
+
+      it 'interpolates along the great-circle route' do
+        match = service.call[:matches].first
+
+        expect(match[:latitude]).to be_within(0.01).of(90)
+      end
+    end
+
+    context 'when a photo is bracketed by equivalent antimeridian points' do
+      let(:immich_response_body) do
+        {
+          'assets' => {
+            'total' => 1,
+            'count' => 1,
+            'items' => [photo_without_geodata]
+          }
+        }.to_json
+      end
+
+      before do
+        create(:point, user:,
+               latitude: 0, longitude: -180,
+               lonlat: 'POINT(-180 0)',
+               timestamp: Time.utc(2024, 1, 15, 10, 20).to_i)
+        create(:point, user:,
+               latitude: 0, longitude: 180,
+               lonlat: 'POINT(180 0)',
+               timestamp: Time.utc(2024, 1, 15, 10, 26).to_i)
+      end
+
+      it 'keeps the interpolated location on the antimeridian' do
+        match = service.call[:matches].first
+
+        expect(match[:longitude].abs).to be_within(0.01).of(180)
+      end
     end
 
     context 'when no Dawarich points exist in the time range' do

@@ -10,7 +10,7 @@
       <%# Blurred placeholder chart %>
       <div class="opacity-20 blur-[3px] pointer-events-none select-none" aria-hidden="true">
         <%= column_chart(
-          (1..12).map { |m| [Date::MONTHNAMES[m], rand(5_000..80_000)] },
+          (1..12).map { |month| [l(Date.new(year, month, 1), format: :month_name), rand(5_000..80_000)] },
           id: "chart-year-locked-#{year}",
           height: '200px',
           suffix: " #{current_user.safe_settings.distance_unit}",
@@ -26,10 +26,10 @@
       <%# Centered lock overlay — only covers chart area %>
       <div class="absolute inset-0 flex flex-col items-center justify-center">
         <%= icon 'lock', class: 'w-6 h-6 opacity-30' %>
-        <p class="text-sm text-base-content/50 mt-1">Available on Pro</p>
+        <p class="text-sm text-base-content/50 mt-1"><%= t('.available_on_pro') %></p>
         <a href="<%= upgrade_url(utm_medium: 'stats', utm_content: "stats_year_#{year}") %>"
            class="btn btn-sm btn-primary mt-2" target="_blank" rel="noopener">
-          Upgrade to Pro
+          <%= t('.upgrade_to_pro') %>
         </a>
       </div>
     </div>

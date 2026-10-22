@@ -34,7 +34,7 @@ class Api::V1::AreasController < ApiController
   def destroy
     @area.destroy!
 
-    render json: { message: 'Area was successfully deleted' }, status: :ok
+    render json: { message: I18n.t('controllers.api.v1.areas.area_was_successfully_deleted') }, status: :ok
   end
 
   private

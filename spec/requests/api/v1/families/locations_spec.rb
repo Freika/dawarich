@@ -36,7 +36,7 @@ RSpec.describe 'Api::V1::Families::Locations', type: :request do
         expect(json_response['sharing_enabled']).to be true
       end
 
-      it 'includes the requesting user own location when they have sharing enabled' do
+      it 'excludes the requesting user location even when sharing is enabled' do
         user.update_family_location_sharing!(true, duration: 'permanent')
         create(:point, user: user, timestamp: 1.hour.ago.to_i)
         create(:point, user: other_user, timestamp: 2.hours.ago.to_i)
@@ -45,7 +45,7 @@ RSpec.describe 'Api::V1::Families::Locations', type: :request do
 
         json_response = JSON.parse(response.body)
         user_ids = json_response['locations'].map { |l| l['user_id'] }
-        expect(user_ids).to include(user.id)
+        expect(user_ids).not_to include(user.id)
         expect(user_ids).to include(other_user.id)
       end
     end
@@ -76,6 +76,36 @@ RSpec.describe 'Api::V1::Families::Locations', type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response['error']).to eq('User is not part of a family')
       end
+    end
+  end
+
+  describe 'sibling endpoints when the Entitlement has lapsed' do
+    # The state endpoint answers a Lapsed user successfully so the client can
+    # explain itself; the data endpoints must keep refusing, or lapsing would
+    # not actually revoke access.
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :family, status: :inactive, active_until: 1.day.ago)
+      family.update!(access_until: 1.day.ago)
+    end
+
+    it 'refuses locations' do
+      get '/api/v1/families/locations', params: { api_key: user.api_key }
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it 'refuses history' do
+      get '/api/v1/families/locations/history',
+          params: { api_key: user.api_key, start_at: 1.day.ago.iso8601, end_at: Time.current.iso8601 }
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it 'refuses sharing updates' do
+      patch '/api/v1/families/sharing', params: { api_key: user.api_key, enabled: true }
+
+      expect(response).to have_http_status(:forbidden)
     end
   end
 

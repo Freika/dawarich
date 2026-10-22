@@ -11,6 +11,73 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     pt.reload
   end
 
+  before do
+    configure_instance_geocoding
+  end
+
+  context 'when the geocoder name differs from the seeded Natural Earth name' do
+    let!(:usa) { create(:country, name: 'United States of America', iso_a2: 'US', iso_a3: 'USA') }
+
+    before do
+      allow(Geocoder).to receive(:search).and_return(
+        [double(city: 'Chicago', country: 'United States', data: {})]
+      )
+    end
+
+    it 'resolves the country through the alias map' do
+      expect { fetch_data }.to change { point.reload.country_id }.from(nil).to(usa.id)
+    end
+  end
+
+  context 'when the geocoder result carries a country code' do
+    let!(:usa) { create(:country, name: 'United States of America', iso_a2: 'US', iso_a3: 'USA') }
+
+    before do
+      allow(Geocoder).to receive(:search).and_return(
+        [double(city: 'Chicago', country: 'United States', country_code: 'us', data: {})]
+      )
+    end
+
+    it 'resolves by ISO code, which no naming scheme can break' do
+      expect { fetch_data }.to change { point.reload.country_id }.from(nil).to(usa.id)
+    end
+  end
+
+  context 'when the ISO code and the name point at different countries' do
+    let!(:usa) { create(:country, name: 'United States of America', iso_a2: 'US', iso_a3: 'USA') }
+    let!(:germany) { create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU') }
+
+    before do
+      allow(Geocoder).to receive(:search).and_return(
+        [double(city: 'Berlin', country: 'United States', country_code: 'DE', data: {})]
+      )
+    end
+
+    it 'trusts the ISO code over the name' do
+      expect { fetch_data }.to change { point.reload.country_id }.from(nil).to(germany.id)
+    end
+  end
+
+  context 'when neither the code nor any name variant resolves' do
+    before do
+      allow(Geocoder).to receive(:search).and_return(
+        [double(city: 'Nowhere', country: 'Atlantis', data: {})]
+      )
+      allow(Rails.logger).to receive(:warn)
+    end
+
+    it 'flags the unresolved name so operators can extend the alias map' do
+      fetch_data
+
+      expect(Rails.logger).to have_received(:warn).with(/"Atlantis"/)
+    end
+
+    it 'still records the geocoding result' do
+      expect { fetch_data }.to change { point.reload.country_name }.to('Atlantis')
+      expect(point.reload.country_id).to be_nil
+    end
+  end
+
   context 'when Geocoder returns city and country' do
     let!(:germany) do
       Country.find_by(name: 'Germany') || create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')
@@ -138,6 +205,66 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     end
   end
 
+  context 'when the point moves while geocoding is in progress' do
+    let(:new_coordinates) { [52.5, 13.4] }
+    let(:new_location) { 'POINT(13.4 52.5)' }
+
+    it 'discards the old response and geocodes the current coordinates' do
+      original_coordinates = [point.lat, point.lon]
+      queries = []
+
+      allow(Geocoding::Search).to receive(:call) do |query:, **|
+        queries << query
+        if queries.one?
+          Point.find(point.id).update!(lonlat: new_location)
+          [double(city: 'Old city', country: nil, data: { 'location' => 'old' })]
+        else
+          [double(city: 'Berlin', country: nil, data: { 'location' => 'new' })]
+        end
+      end
+
+      fetch_data
+
+      expect(queries).to eq([original_coordinates, new_coordinates])
+      expect(point.reload).to have_attributes(city: 'Berlin', geodata: { 'location' => 'new' })
+      expect(point.reverse_geocoded_at).to be_present
+    end
+
+    it 'retries against current coordinates when the old lookup was empty' do
+      queries = []
+      allow(Geocoding::Search).to receive(:call) do |query:, **|
+        queries << query
+        if queries.one?
+          Point.find(point.id).update!(lonlat: new_location)
+          []
+        else
+          [double(city: 'Berlin', country: nil, data: {})]
+        end
+      end
+
+      fetch_data
+
+      expect(queries.last).to eq(new_coordinates)
+      expect(point.reload.city).to eq('Berlin')
+    end
+
+    it 'stops after the retry budget when the point keeps moving' do
+      attempts = 0
+      allow(ExceptionReporter).to receive(:call)
+      allow(Geocoding::Search).to receive(:call) do
+        attempts += 1
+        Point.find(point.id).update!(lonlat: "POINT(#{attempts} #{attempts})")
+        [double(city: 'Stale city', country: nil, data: {})]
+      end
+
+      fetch_data
+
+      expect(attempts).to eq(described_class::WRITE_MAX_RETRIES + 1)
+      expect(point.reload.reverse_geocoded_at).to be_nil
+      expect(ExceptionReporter).to have_received(:call).with(an_instance_of(ActiveRecord::StaleObjectError))
+    end
+  end
+
   context 'when Geocoder returns country name that does not exist in database' do
     before do
       allow(Geocoder).to receive(:search).and_return(
@@ -209,6 +336,29 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     end
 
     it 'does not report a handled provider outage as an application exception' do
+      expect { fetch_data }.not_to raise_error
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Reverse geocoding provider error for point #{point.id}/)
+    end
+  end
+
+  context 'when the geocoder provider is unreachable' do
+    before do
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+    end
+
+    it 'does not report a refused connection as an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(Errno::ECONNREFUSED)
+
+      expect { fetch_data }.not_to raise_error
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Reverse geocoding provider error for point #{point.id}/)
+    end
+
+    it 'does not report an unresolvable hostname as an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(SocketError)
+
       expect { fetch_data }.not_to raise_error
       expect(ExceptionReporter).not_to have_received(:call)
       expect(Rails.logger).to have_received(:warn).with(/Reverse geocoding provider error for point #{point.id}/)

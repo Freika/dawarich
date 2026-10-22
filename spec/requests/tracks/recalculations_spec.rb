@@ -8,11 +8,11 @@ RSpec.describe 'Tracks::Recalculations', type: :request do
   before { sign_in user }
 
   describe 'POST /tracks/recalculation' do
-    it 'enqueues TransportationModeRecalculationJob and returns turbo-stream' do
+    it 'enqueues UserReclassifyJob and returns turbo-stream' do
       expect do
         post tracks_recalculation_path,
              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
-      end.to have_enqueued_job(Tracks::TransportationModeRecalculationJob).with(user.id)
+      end.to have_enqueued_job(TransportationModes::UserReclassifyJob).with(user.id)
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
@@ -26,7 +26,7 @@ RSpec.describe 'Tracks::Recalculations', type: :request do
       expect do
         post tracks_recalculation_path,
              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
-      end.not_to have_enqueued_job(Tracks::TransportationModeRecalculationJob)
+      end.not_to have_enqueued_job(TransportationModes::UserReclassifyJob)
 
       expect(response.body).to include('already running')
     end

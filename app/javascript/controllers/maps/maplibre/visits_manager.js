@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
@@ -335,7 +336,7 @@ export class VisitsManager {
     this.disarmCreateVisit()
 
     this.controller.map.getCanvas().style.cursor = "crosshair"
-    Toast.info("Click on the map to place a visit (Esc to cancel)")
+    Toast.info(translate("messages.click_on_the_map_to_place_a_visit_esc_to"))
 
     this.handleCreateVisitClick = (e) => {
       const { lng, lat } = e.lngLat
@@ -378,7 +379,7 @@ export class VisitsManager {
     )
 
     if (!modalElement) {
-      Toast.error("Visit creation modal not available")
+      Toast.error(translate("messages.visit_creation_modal_not_available"))
       return
     }
 
@@ -391,7 +392,7 @@ export class VisitsManager {
     if (controller) {
       controller.open(lat, lng, this.controller)
     } else {
-      Toast.error("Visit creation controller not available")
+      Toast.error(translate("messages.visit_creation_controller_not_available"))
     }
   }
 

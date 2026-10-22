@@ -1,8 +1,12 @@
+import { HtmlLabelManager } from "../utils/html_label_manager"
+import { getVisitMarkerColor } from "../utils/marker_theme"
 import { BaseLayer } from "./base_layer"
 
 /**
- * Visits layer showing suggested, confirmed, and declined visits.
- * Green = confirmed, Amber = suggested, Grey = declined.
+ * Visits layer. Every visit draws in one colour — the same colour the
+ * timeline's rail dot uses — because showing a visit is asserting it, and
+ * confirmed / suggested / declined is not a visual state. Status still
+ * drives filtering (setStatusFilter), just not appearance.
  *
  * Adds a halo ring for the currently selected visit, a dashed day-route
  * polyline through the day's visits in chronological order, and support
@@ -14,7 +18,12 @@ export class VisitsLayer extends BaseLayer {
     this.dayRouteSourceId = `${this.sourceId}-day-route`
     this.dayRouteLayerId = `${this.id}-day-route`
     this.haloLayerId = `${this.id}-halo`
-    this.labelsLayerId = `${this.id}-labels`
+    this.labels = new HtmlLabelManager(map, {
+      className: "map-html-label map-html-label--visits",
+      anchor: "top",
+      offset: [0, 16],
+      visible: this.visible,
+    })
   }
 
   getSourceConfig() {
@@ -70,43 +79,17 @@ export class VisitsLayer extends BaseLayer {
         source: this.sourceId,
         paint: {
           "circle-radius": 12,
-          "circle-color": [
-            "case",
-            ["==", ["get", "status"], "confirmed"],
-            "#22c55e",
-            ["==", ["get", "status"], "declined"],
-            "#9ca3af",
-            "#eab308", // suggested (default)
-          ],
+          "circle-color": getVisitMarkerColor(),
           "circle-stroke-width": 2,
           "circle-stroke-color": "#ffffff",
           "circle-opacity": 0.9,
-        },
-      },
-
-      // Visit labels
-      {
-        id: this.labelsLayerId,
-        type: "symbol",
-        source: this.sourceId,
-        layout: {
-          "text-field": ["get", "name"],
-          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-          "text-size": 11,
-          "text-offset": [0, 1.5],
-          "text-anchor": "top",
-        },
-        paint: {
-          "text-color": "#111827",
-          "text-halo-color": "#ffffff",
-          "text-halo-width": 2,
         },
       },
     ]
   }
 
   getLayerIds() {
-    return [this.dayRouteLayerId, this.haloLayerId, this.id, this.labelsLayerId]
+    return [this.dayRouteLayerId, this.haloLayerId, this.id]
   }
 
   /**
@@ -135,12 +118,14 @@ export class VisitsLayer extends BaseLayer {
     })
 
     this.setVisibility(this.visible)
+    this.labels.sync(data?.features || [])
   }
 
   /**
    * Override remove() so we also clean up the day-route source.
    */
   remove() {
+    this.labels.clear()
     this.getLayerIds().forEach((layerId) => {
       if (this.map.getLayer(layerId)) {
         this.map.removeLayer(layerId)
@@ -168,6 +153,16 @@ export class VisitsLayer extends BaseLayer {
     if (source?.setData) {
       source.setData(data)
     }
+    this.labels.sync(data?.features || [])
+  }
+
+  setVisibility(visible) {
+    super.setVisibility(visible)
+    this.labels?.setVisibility(visible)
+  }
+
+  setLabelOpacity(resolver) {
+    this.labels.setOpacity(resolver)
   }
 
   /**
@@ -203,9 +198,7 @@ export class VisitsLayer extends BaseLayer {
         : ["match", ["get", "status"], allowed, true, false]
 
     this.map.setFilter(this.id, filter)
-    if (this.map.getLayer(this.labelsLayerId)) {
-      this.map.setFilter(this.labelsLayerId, filter)
-    }
+    this.labels.setFilter((f) => allowed.includes(f.properties.status))
   }
 
   /**

@@ -2,15 +2,25 @@
 
 class TripsController < ApplicationController
   include FlashStreamable
-  include PosterStudioContext
+  include VideoStudioContext
 
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[new create recalculate]
   before_action :set_trip, only: %i[show edit update destroy recalculate export]
-  before_action :set_coordinates, only: %i[show edit]
 
   def index
-    @trips = current_user.trips.order(started_at: :desc).page(params[:page]).per(6)
+    trips_query = Trips::IndexQuery.new(current_user, params)
+    @filters = trips_query.filters
+    @has_trips = current_user.trips.exists?
+    @trip_years = @has_trips ? trips_query.years : []
+    @trip_countries = @has_trips ? trips_query.countries : []
+    @trips = trips_query.call.with_route_summary
+                        .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
+                        .page(params[:page]).per(6)
+    @family_trip_links = SharedLink.family_trips_for(current_user).index_by(&:resource_id)
+    @family_trips = Trip.with_route_summary.where(id: @family_trip_links.keys)
+                        .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
+                        .order(started_at: :desc).page(params[:family_page]).per(6)
   end
 
   def show
@@ -20,16 +30,18 @@ class TripsController < ApplicationController
     @photos_by_day = @trip.photos_by_day(@timezone)
     @day_notes = @trip.notes.index_by(&:date)
     @day_stats = compute_day_stats
-    load_poster_studio_context
+    @trip_plan = @trip.plan_geojson
+    @plan_map = @trip_plan if show_plan_map?
+    load_video_studio_context
 
-    return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
+    return if @trip.source_imported? && @trip.started_at > Time.current
+    return unless @trip.calculation_missing?
 
     Trips::CalculateAllJob.perform_later(@trip.id, @distance_unit)
   end
 
   def new
     @trip = Trip.new
-    @coordinates = []
   end
 
   def edit; end
@@ -38,7 +50,8 @@ class TripsController < ApplicationController
     @trip = current_user.trips.build(trip_params)
 
     if @trip.save
-      redirect_to @trip, notice: 'Trip was successfully created. Data is being calculated in the background.'
+      redirect_to @trip,
+                  notice: I18n.t('controllers.trips.trip_was_successfully_created_data_is_being_calculated_in_the')
     else
       render :new, status: :unprocessable_content
     end
@@ -47,7 +60,7 @@ class TripsController < ApplicationController
   def update
     if @trip.update(trip_params)
       @trip.adopt!
-      redirect_to @trip, notice: 'Trip was successfully updated.', status: :see_other
+      redirect_to @trip, notice: I18n.t('controllers.trips.trip_was_successfully_updated'), status: :see_other
     else
       render :edit, status: :unprocessable_content
     end
@@ -55,7 +68,7 @@ class TripsController < ApplicationController
 
   def destroy
     @trip.destroy!
-    redirect_to trips_url, notice: 'Trip was successfully destroyed.', status: :see_other
+    redirect_to trips_url, notice: I18n.t('controllers.trips.trip_was_successfully_destroyed'), status: :see_other
   end
 
   def recalculate
@@ -65,14 +78,14 @@ class TripsController < ApplicationController
                            .update_all(last_recalculated_at: Time.current)
 
     if affected.zero?
+      notice = I18n.t('controllers.trips.already_recalculating_this_page_will_update_when_it_s_done')
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: stream_flash(:notice,
-                                            'Already recalculating — this page will update when it\'s done.')
+          render turbo_stream: stream_flash(:notice, notice)
         end
         format.html do
           redirect_to trip_path(@trip),
-                      notice: 'Already recalculating — this page will update when it\'s done.'
+                      notice: notice
         end
       end
       return
@@ -88,12 +101,15 @@ class TripsController < ApplicationController
           turbo_stream.replace('trip_recalculate_frame',
                                partial: 'trips/recalculate_button',
                                locals: { trip: @trip }),
-          stream_flash(:notice, 'Recalculating — the page will update automatically when it\'s ready.')
+          stream_flash(
+            :notice,
+            I18n.t('controllers.trips.recalculating_the_page_will_update_automatically_when_it_s_ready')
+          )
         ]
       end
       format.html do
         redirect_to trip_path(@trip),
-                    notice: 'Recalculating — the page will update automatically when it\'s ready.'
+                    notice: I18n.t('controllers.trips.recalculating_the_page_will_update_automatically_when_it_s_ready')
       end
     end
   end
@@ -105,7 +121,7 @@ class TripsController < ApplicationController
 
     unless EXPORTABLE_FORMATS.include?(file_format)
       redirect_to trip_path(@trip),
-                  alert: 'Unsupported export format. Choose GPX or GeoJSON.',
+                  alert: I18n.t('controllers.trips.unsupported_export_format_choose_gpx_or_geojson'),
                   status: :unprocessable_content
       return
     end
@@ -124,53 +140,37 @@ class TripsController < ApplicationController
     )
 
     redirect_to exports_url,
-                notice: "Trip export initiated. Check the Exports page when it's ready."
+                notice: I18n.t('controllers.trips.trip_export_initiated_check_the_exports_page_when_it_s')
   rescue StandardError => e
     ExceptionReporter.call(e)
     redirect_to trip_path(@trip),
-                alert: 'Export failed to initiate. Please try again.',
+                alert: I18n.t('controllers.trips.export_failed_to_initiate_please_try_again'),
                 status: :unprocessable_content
   end
 
   private
 
   def set_trip
-    @trip = current_user.trips.find(params[:id])
-  end
-
-  def set_coordinates
-    @coordinates = @trip.points.pluck(
-      Arel.sql('ST_Y(lonlat::geometry)'), Arel.sql('ST_X(lonlat::geometry)'),
-      :battery, :altitude, :timestamp, :velocity, :id, :country
-    ).map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s, _8.to_s] }
+    trips = %w[show edit].include?(action_name) ? current_user.trips.with_route_summary : current_user.trips
+    @trip = trips.find(params[:id])
   end
 
   def trip_params
     params.require(:trip).permit(:name, :started_at, :ended_at, :description)
   end
 
+  def show_plan_map?
+    return false if @trip.route_present?
+
+    (@trip.source_imported? && @trip.started_at > Time.current) || @day_stats.empty?
+  end
+
   def compute_day_stats
-    max_points_updated = @trip.points.maximum(:updated_at).to_i
-    cache_key = "trip_day_stats/v2/#{@trip.id}/#{@trip.updated_at.to_i}/#{max_points_updated}/#{@timezone}"
+    window = (current_user.data_window_start.to_date if current_user.plan_restricted?)
+    cache_key = ['trip_day_stats/v5', @trip.updated_at.to_i, @timezone, window, *@trip.recording_devices_cache_key]
 
     Rails.cache.fetch(cache_key, expires_in: 1.hour) do
-      tz_quoted = ActiveRecord::Base.connection.quote(@timezone)
-      day_expr  = "(to_timestamp(timestamp) AT TIME ZONE #{tz_quoted})::date"
-
-      rows = @trip.points.reorder(nil).group(Arel.sql(day_expr)).pluck(
-        Arel.sql(day_expr),
-        Arel.sql('MIN(timestamp)'),
-        Arel.sql('MAX(timestamp)'),
-        Arel.sql('COALESCE(ST_Length(ST_MakeLine(lonlat::geometry ORDER BY timestamp)::geography), 0)')
-      )
-
-      rows.each_with_object({}) do |(day, first_ts, last_ts, distance_m), acc|
-        acc[day] = {
-          first_time: Time.at(first_ts).in_time_zone(@timezone),
-          last_time:  Time.at(last_ts).in_time_zone(@timezone),
-          distance_m: distance_m.to_f
-        }
-      end
+      @trip.day_stats(@timezone, points_scope: @trip.plan_scoped_route_points)
     end
   end
 end

@@ -14,46 +14,46 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Explore Dawarich Features</h1>
+      <h1><%= t('.explore_dawarich_features') %></h1>
     </div>
     <div class="content">
-      <p>Hi <%= @user.email %>, this is Evgenii from Dawarich.</p>
+      <p><%= t('.hi') %> <%= @user.email %><%= t('.this_is_evgenii_from_dawarich') %></p>
 
-      <p>You're now 2 days into your Dawarich trial! I hope you're enjoying tracking your location data.</p>
+      <p><%= t('.you_re_now_2_days_into_your_dawarich_trial_i') %></p>
 
-      <p>Here are some powerful features you might want to explore:</p>
+      <p><%= t('.here_are_some_powerful_features_you_might_want_to_explore') %></p>
 
       <div class="feature">
-        <h3>✈️ Reliving your travels</h3>
-        <p>Revisit your past journeys with detailed maps and insights.</p>
+        <h3><%= t('.reliving_your_travels') %></h3>
+        <p><%= t('.revisit_your_past_journeys_with_detailed_maps_and_insights') %></p>
       </div>
 
       <div class="feature">
-        <h3>📊 Statistics & Analytics</h3>
-        <p>View detailed insights about distances traveled and time spent in different locations.</p>
+        <h3><%= t('.statistics_analytics') %></h3>
+        <p><%= t('.view_detailed_insights_about_distances_traveled_and_time_spent_in') %></p>
       </div>
 
       <div class="feature">
-        <h3>🗺️ Interactive Maps</h3>
-        <p>Visualize your tracks on beautiful maps with different layers and styling options.</p>
+        <h3><%= t('.interactive_maps') %></h3>
+        <p><%= t('.visualize_your_tracks_on_beautiful_maps_with_different_layers_and') %></p>
       </div>
 
       <div class="feature">
-        <h3>📍 Places & Visits</h3>
-        <p>Discover the places you've visited and get automatic visit detection for frequently visited locations.</p>
+        <h3><%= t('.places_visits') %></h3>
+        <p><%= t('.discover_the_places_you_ve_visited_and_get_automatic_visit') %></p>
       </div>
 
       <div class="feature">
-        <h3>📤 Data Export</h3>
-        <p>Export your location data in multiple formats (GPX, GeoJSON) for backup or use with other applications.</p>
+        <h3><%= t('.data_export') %></h3>
+        <p><%= t('.export_your_location_data_in_multiple_formats_gpx_geojson_for') %></p>
       </div>
 
-      <a href="https://my.dawarich.app?utm_source=email&utm_medium=email&utm_campaign=explore_features&utm_content=continue_exploring" class="cta">Continue Exploring</a>
+      <a href="https://my.dawarich.app?utm_source=email&utm_medium=email&utm_campaign=explore_features&utm_content=continue_exploring" class="cta"><%= t('.continue_exploring') %></a>
 
-      <p>You have <strong>5 days</strong> left in your trial. Make the most of it!</p>
+      <p><%= t('.you_have') %> <strong><%= t('.days') %></strong> <%= t('.left_in_your_trial_make_the_most_of_it') %></p>
 
-      <p>Best regards,<br>
-      Evgenii from Dawarich</p>
+      <p><%= t('.best_regards') %><br>
+      <%= t('.evgenii_from_dawarich') %></p>
     </div>
   </div>
 </body>

@@ -5,6 +5,8 @@ class Settings::UsersController < ApplicationController
   before_action :authenticate_user!
   before_action :authenticate_admin!, except: %i[export import]
 
+  around_action :serialize_admin_access_changes, only: %i[update destroy]
+
   def index
     @users = filtered_users.order(created_at: :desc).page(params[:page]).per(25)
   end
@@ -25,10 +27,11 @@ class Settings::UsersController < ApplicationController
     update_params = filtered_user_params
 
     if @user.update(update_params)
-      redirect_to settings_users_url, notice: 'User was successfully updated.'
+      redirect_to settings_users_url, notice: I18n.t('controllers.settings.users.user_was_successfully_updated')
     else
       redirect_to settings_users_url,
-                  alert: "User could not be updated: #{@user.errors.full_messages.to_sentence}",
+                  alert: I18n.t('controllers.settings.users.user_could_not_be_updated_to_sentence',
+                                errors: @user.errors.full_messages.to_sentence),
                   status: :see_other
     end
   end
@@ -41,10 +44,11 @@ class Settings::UsersController < ApplicationController
     )
 
     if @user.save
-      redirect_to settings_users_url, notice: 'User was successfully created'
+      redirect_to settings_users_url, notice: I18n.t('controllers.settings.users.user_was_successfully_created')
     else
       redirect_to settings_users_url,
-                  alert: "User could not be created: #{@user.errors.full_messages.to_sentence}",
+                  alert: I18n.t('controllers.settings.users.user_could_not_be_created_to_sentence',
+                                errors: @user.errors.full_messages.to_sentence),
                   status: :see_other
     end
   end
@@ -52,9 +56,16 @@ class Settings::UsersController < ApplicationController
   def destroy
     @user = User.find(params[:id])
 
+    if @user.id == current_user.id || (@user.admin? && @user.active? && sole_admin?)
+      redirect_to settings_users_url,
+                  alert: I18n.t('controllers.settings.users.cannot_delete_yourself_or_last_admin'),
+                  status: :see_other
+      return
+    end
+
     unless @user.can_delete_account?
       redirect_to settings_users_url,
-                  alert: 'Cannot delete account while being owner of a family which has other members.',
+                  alert: I18n.t('controllers.settings.users.cannot_delete_account_while_being_owner_of_a_family_which'),
                   status: :see_other
       return
     end
@@ -62,21 +73,22 @@ class Settings::UsersController < ApplicationController
     Users::DestroyJob.perform_later(@user.id) if @user.mark_as_deleted_atomically!
 
     redirect_to settings_users_url,
-                notice: 'User deletion has been initiated. The account will be fully removed shortly.'
+                notice: I18n.t('controllers.settings.users.user_deletion_has_been_initiated_the_account_will_be_fully')
   end
 
   def regenerate_api_key
     @user = User.find(params[:id])
     @user.update!(api_key: SecureRandom.hex(32))
 
-    redirect_to settings_user_url(@user), notice: 'API key has been regenerated.'
+    redirect_to settings_user_url(@user), notice: I18n.t('controllers.settings.users.api_key_has_been_regenerated')
   end
 
   def send_password_reset
     @user = User.find(params[:id])
     @user.send_reset_password_instructions
 
-    redirect_to settings_user_url(@user), notice: 'Password reset email has been sent.'
+    redirect_to settings_user_url(@user),
+                notice: I18n.t('controllers.settings.users.password_reset_email_has_been_sent')
   end
 
   def update_registration_settings
@@ -84,18 +96,21 @@ class Settings::UsersController < ApplicationController
     DawarichSettings.set_registration_enabled(enabled)
 
     status = enabled ? 'enabled' : 'disabled'
-    redirect_to settings_users_url, notice: "User registration has been #{status}."
+    redirect_to settings_users_url,
+                notice: I18n.t('controllers.settings.users.user_registration_has_been_status', status: status)
   end
 
   def export
     current_user.export_data
 
-    redirect_to exports_path, notice: 'Your data is being exported. You will receive a notification when it is ready.'
+    redirect_to exports_path,
+                notice: I18n.t('controllers.settings.users.your_data_is_being_exported_you_will_receive_a_notification')
   end
 
   def import
     if params[:archive].blank?
-      redirect_to edit_user_registration_path, alert: 'Please select a ZIP archive to import.'
+      redirect_to edit_user_registration_path,
+                  alert: I18n.t('controllers.settings.users.please_select_a_zip_archive_to_import')
       return
     end
 
@@ -104,18 +119,29 @@ class Settings::UsersController < ApplicationController
 
     if import.save
       redirect_to edit_user_registration_path,
-                  notice: 'Your data import has been started. You will receive a notification when it completes.'
+                  notice: I18n.t('controllers.settings.users.your_data_import_has_been_started_you_will_receive_a')
     else
       redirect_to edit_user_registration_path,
-                  alert: 'Failed to start import. Please try again.'
+                  alert: I18n.t('controllers.settings.users.failed_to_start_import_please_try_again')
     end
   rescue StandardError => e
     ExceptionReporter.call(e, 'User data import failed to start')
     redirect_to edit_user_registration_path,
-                alert: 'An error occurred while starting the import. Please try again.'
+                alert: I18n.t('controllers.settings.users.an_error_occurred_while_starting_the_import_please_try_again')
   end
 
   private
+
+  def serialize_admin_access_changes
+    User.with_advisory_lock('admin_access_changes') do
+      actor = User.find_by(id: current_user.id)
+      if actor&.admin?
+        yield
+      else
+        user_not_authorized
+      end
+    end
+  end
 
   def filtered_users
     return User.all if params[:search].blank?
@@ -134,13 +160,13 @@ class Settings::UsersController < ApplicationController
   end
 
   def last_admin_protection_needed?
-    return false unless @user.admin? && sole_admin?
+    return false unless @user.admin? && @user.active? && sole_admin?
 
     removing_admin_role? || disabling_user?
   end
 
   def removing_admin_role?
-    user_params.key?(:admin) && user_params[:admin].to_s == '0'
+    user_params.key?(:admin) && !ActiveModel::Type::Boolean.new.cast(user_params[:admin])
   end
 
   def disabling_user?
@@ -148,14 +174,14 @@ class Settings::UsersController < ApplicationController
   end
 
   def sole_admin?
-    User.where(admin: true).count == 1
+    User.where(admin: true, status: :active).count == 1
   end
 
   def last_admin_alert_message
     if removing_admin_role?
-      'Cannot remove admin role from the last admin user.'
+      I18n.t('controllers.settings.users.cannot_remove_last_admin_role')
     else
-      'Cannot disable the last admin user.'
+      I18n.t('controllers.settings.users.cannot_disable_last_admin')
     end
   end
 
@@ -193,7 +219,8 @@ class Settings::UsersController < ApplicationController
     unless ['application/zip', 'application/x-zip-compressed'].include?(archive_file.content_type) ||
            File.extname(archive_file.original_filename).downcase == '.zip'
 
-      redirect_to edit_user_registration_path, alert: 'Please upload a valid ZIP file.' and return
+      redirect_to edit_user_registration_path,
+                  alert: I18n.t('controllers.settings.users.please_upload_a_valid_zip_file') and return
     end
   end
 
@@ -201,7 +228,7 @@ class Settings::UsersController < ApplicationController
     unless ['application/zip', 'application/x-zip-compressed'].include?(blob.content_type) ||
            File.extname(blob.filename.to_s).downcase == '.zip'
 
-      raise StandardError, 'Please upload a valid ZIP file.'
+      raise StandardError, I18n.t('controllers.settings.users.please_upload_a_valid_zip_file')
     end
   end
 end

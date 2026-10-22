@@ -1,0 +1,13 @@
+<%
+  active = section == @section
+  status = instance_section_status(section, settings: @settings, unreadable_keys: @unreadable_keys, geocoding: @geocoding)
+%>
+<%= link_to admin_settings_path(section: section),
+            class: "flex items-center gap-3 rounded-box border p-3 transition-colors " \
+                   "#{active ? 'border-primary/60 bg-base-200' : 'border-base-content/10 hover:border-base-content/25'}",
+            aria: { current: active ? 'page' : nil },
+            data: { testid: "instance-settings-section-#{section}", status: status } do %>
+  <%= icon instance_section_icon(section), class: 'size-5 shrink-0 text-base-content/70' %>
+  <span class="font-medium flex-1 truncate"><%= instance_section_title(section) %></span>
+  <%= instance_section_status_icon(status) if status %>
+<% end %>

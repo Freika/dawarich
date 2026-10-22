@@ -43,22 +43,34 @@ RSpec.describe ImportPolicy, type: :policy do
   end
 
   describe 'new?' do
-    context 'when user is active' do
-      before { allow(user).to receive(:active?).and_return(true) }
-
-      it 'allows active users to access new imports form' do
+    context 'when the user subscription window is open' do
+      it 'allows users to access new imports form' do
         policy = ImportPolicy.new(user, Import.new)
 
         expect(policy).to permit(:new)
       end
     end
 
-    context 'when user is not active' do
-      before { allow(user).to receive(:active?).and_return(false) }
+    context 'when the user subscription window has closed' do
+      let(:user) { create(:user).tap { |u| u.update!(status: :inactive, active_until: 1.day.ago) } }
 
-      it 'denies inactive users from accessing new imports form' do
+      it 'denies users from accessing new imports form' do
         policy = ImportPolicy.new(user, Import.new)
 
+        expect(policy).not_to permit(:new)
+      end
+    end
+
+    context 'when an expired trial user has status: trial but active_until in the past' do
+      let(:user) do
+        create(:user).tap { |u| u.update_columns(status: User.statuses[:trial], active_until: 6.days.ago) }
+      end
+
+      it 'denies access to new imports form — gates must not diverge from create' do
+        policy = ImportPolicy.new(user, Import.new)
+
+        expect(user).to be_trial
+        expect(user.active_until).to be_past
         expect(policy).not_to permit(:new)
       end
     end
@@ -71,22 +83,34 @@ RSpec.describe ImportPolicy, type: :policy do
   end
 
   describe 'create?' do
-    context 'when user is active' do
-      before { allow(user).to receive(:active?).and_return(true) }
-
-      it 'allows active users to create imports' do
+    context 'when the user subscription window is open' do
+      it 'allows users to create imports' do
         policy = ImportPolicy.new(user, Import.new)
 
         expect(policy).to permit(:create)
       end
     end
 
-    context 'when user is not active' do
-      before { allow(user).to receive(:active?).and_return(false) }
+    context 'when the user subscription window has closed' do
+      let(:user) { create(:user).tap { |u| u.update!(status: :inactive, active_until: 1.day.ago) } }
 
-      it 'denies inactive users from creating imports' do
+      it 'denies users from creating imports' do
         policy = ImportPolicy.new(user, Import.new)
 
+        expect(policy).not_to permit(:create)
+      end
+    end
+
+    context 'when an expired trial user has status: trial but active_until in the past' do
+      let(:user) do
+        create(:user).tap { |u| u.update_columns(status: User.statuses[:trial], active_until: 6.days.ago) }
+      end
+
+      it 'denies import creation — matches authenticate_active_user!' do
+        policy = ImportPolicy.new(user, Import.new)
+
+        expect(user).to be_trial
+        expect(user.active_until).to be_past
         expect(policy).not_to permit(:create)
       end
     end

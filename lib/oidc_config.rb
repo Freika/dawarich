@@ -5,10 +5,16 @@ module OidcConfig
   DEFAULT_TOKEN_ENDPOINT = '/token'
   DEFAULT_USERINFO_ENDPOINT = '/userinfo'
   DEFAULT_PORT = 443
+  DEFAULT_HTTP_PORT = 80
+  PORT_RANGE = (1..65_535)
   DEFAULT_SCHEME = 'https'
 
   def self.enabled?(env = ENV)
-    env['OIDC_CLIENT_ID'].to_s.strip != '' && env['OIDC_CLIENT_SECRET'].to_s.strip != ''
+    env['OIDC_CLIENT_ID'].to_s.strip != '' && (env['OIDC_CLIENT_SECRET'].to_s.strip != '' || pkce_enabled?(env))
+  end
+
+  def self.public_client?(env = ENV)
+    env['OIDC_CLIENT_SECRET'].to_s.strip == '' && pkce_enabled?(env)
   end
 
   def self.build(env = ENV)
@@ -26,11 +32,18 @@ module OidcConfig
       }
     }
 
-    if env['OIDC_ISSUER'].to_s.strip != ''
-      config[:issuer] = normalize_issuer(env['OIDC_ISSUER'])
+    config[:client_auth_method] = :none if public_client?(env)
+
+    issuer = normalize_issuer(env['OIDC_ISSUER'].to_s)
+
+    config[:issuer] = issuer if issuer != ''
+
+    if issuer != '' && env['OIDC_DISCOVERY'].to_s.strip.downcase != 'false'
       config[:discovery] = true
     elsif env['OIDC_HOST'].to_s.strip != ''
       config[:client_options].merge!(manual_endpoints(env))
+      jwks_uri = env['OIDC_JWKS_URI'].to_s.strip
+      config[:client_options][:jwks_uri] = jwks_uri unless jwks_uri.empty?
     end
 
     config
@@ -38,9 +51,16 @@ module OidcConfig
 
   # Discovery expects the bare issuer; the gem appends the well-known path
   # itself. Configs pasting the full discovery URL would otherwise request a
-  # doubled path and fail with an opaque NoMethodError.
+  # doubled path and fail with an opaque NoMethodError. An issuer identifier
+  # carries no fragment, so anything after "#" is a pasting artefact too.
   def self.normalize_issuer(issuer)
-    issuer.strip.sub(%r{/\.well-known/openid-configuration/?\z}, '')
+    normalized = issuer.strip
+    fragment = normalized.slice!(/#.*\z/m)
+    normalized = normalized.strip.sub(%r{/\.well-known/openid-configuration/?\z}, '')
+
+    return normalized unless fragment.to_s.start_with?('#.well-known', '#/.well-known')
+
+    normalized.sub(%r{\A([a-z][a-z0-9+.-]*://[^/]+)/\z}i, '\1')
   end
 
   def self.pkce_enabled?(env = ENV)
@@ -59,11 +79,31 @@ module OidcConfig
     {
       host: env['OIDC_HOST'],
       scheme: env.fetch('OIDC_SCHEME', DEFAULT_SCHEME),
-      port: env.fetch('OIDC_PORT', DEFAULT_PORT).to_i,
+      port: parse_port(env['OIDC_PORT'], env.fetch('OIDC_SCHEME', DEFAULT_SCHEME)),
       authorization_endpoint: env.fetch('OIDC_AUTHORIZATION_ENDPOINT', DEFAULT_AUTHORIZATION_ENDPOINT),
       token_endpoint: env.fetch('OIDC_TOKEN_ENDPOINT', DEFAULT_TOKEN_ENDPOINT),
       userinfo_endpoint: env.fetch('OIDC_USERINFO_ENDPOINT', DEFAULT_USERINFO_ENDPOINT)
     }
   end
   private_class_method :manual_endpoints
+
+  def self.parse_port(value, scheme)
+    default = scheme.to_s.casecmp('http').zero? ? DEFAULT_HTTP_PORT : DEFAULT_PORT
+    port_str = value.to_s.strip
+    return default if port_str.empty?
+
+    port = Integer(port_str, 10)
+    return port if PORT_RANGE.cover?(port)
+
+    warn_invalid_port(port_str, default)
+  rescue ArgumentError
+    warn_invalid_port(port_str, default)
+  end
+  private_class_method :parse_port
+
+  def self.warn_invalid_port(port_str, default)
+    Rails.logger.warn("OIDC: ignoring invalid OIDC_PORT=#{port_str.inspect}, using #{default}")
+    default
+  end
+  private_class_method :warn_invalid_port
 end

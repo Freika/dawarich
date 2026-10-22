@@ -68,12 +68,13 @@ RSpec.describe 'Api::V1::Traccar::Points', type: :request do
       context 'when payload is malformed' do
         before { payload[:location][:timestamp] = 'not-a-date' }
 
-        it 'returns ok and does not create a point' do
+        it 'rejects the request and does not create a point' do
           expect do
             post "/api/v1/traccar/points?api_key=#{user.api_key}", params: payload, as: :json
           end.not_to change(Point, :count)
 
-          expect(response).to have_http_status(:ok)
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(JSON.parse(response.body)).to include('error')
         end
       end
 

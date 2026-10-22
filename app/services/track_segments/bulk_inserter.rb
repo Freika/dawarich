@@ -14,7 +14,7 @@ module TrackSegments
     def call
       return [] if segment_data.empty?
 
-      TrackSegment.insert_all(rows)
+      TrackSegment.insert_all(rows, unique_by: 'idx_track_segments_track_start_at_unique')
       segment_data
     end
 
@@ -28,14 +28,15 @@ module TrackSegments
         {
           track_id: track.id,
           transportation_mode: TrackSegment.transportation_modes.fetch(data[:mode].to_s),
-          start_index: data[:start_index],
-          end_index: data[:end_index],
+          start_at: data[:start_at],
+          end_at: data[:end_at],
+          path: data[:path_wkt] && "SRID=4326;#{data[:path_wkt]}",
           distance: data[:distance],
           duration: data[:duration],
           avg_speed: data[:avg_speed],
           max_speed: data[:max_speed],
-          avg_acceleration: data[:avg_acceleration],
           confidence: TrackSegment.confidences.fetch(data[:confidence].to_s),
+          confidence_score: data[:confidence_score],
           source: data[:source],
           created_at: now,
           updated_at: now

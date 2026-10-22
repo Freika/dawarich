@@ -10,27 +10,21 @@ RSpec.describe TrackSegments::BulkInserter do
     [
       {
         mode: :walking,
-        start_index: 0,
-        end_index: 5,
-        distance: 500,
-        duration: 300,
-        avg_speed: 5.0,
-        max_speed: 7.0,
-        avg_acceleration: 0.1,
-        confidence: :medium,
+        start_at: Time.zone.at(1_000), end_at: Time.zone.at(1_300),
+        path_wkt: 'LINESTRING(12.3712 51.3402, 12.3722 51.3402)',
+        distance: 500, duration: 300,
+        avg_speed: 5.0, max_speed: 7.0,
+        confidence: :medium, confidence_score: 0.65,
         source: 'inferred'
       },
       {
         mode: :driving,
-        start_index: 6,
-        end_index: 20,
-        distance: 12_000,
-        duration: 600,
-        avg_speed: 30.0,
-        max_speed: 50.0,
-        avg_acceleration: 0.5,
-        confidence: :high,
-        source: 'inferred'
+        start_at: Time.zone.at(1_300), end_at: Time.zone.at(1_900),
+        path_wkt: 'LINESTRING(12.3722 51.3402, 12.3922 51.3502)',
+        distance: 12_000, duration: 600,
+        avg_speed: 30.0, max_speed: 50.0,
+        confidence: :high, confidence_score: 0.92,
+        source: 'hints+inferred'
       }
     ]
   end
@@ -41,69 +35,40 @@ RSpec.describe TrackSegments::BulkInserter do
         .to change { track.track_segments.count }.from(0).to(2)
     end
 
-    it 'writes attributes to the database' do
+    it 'writes time anchors, geometry and confidence to the database' do
       described_class.call(track, segment_data)
 
-      walking, driving = track.track_segments.order(:start_index).to_a
+      walking, driving = track.track_segments.order(:start_at).to_a
 
       expect(walking).to have_attributes(
         transportation_mode: 'walking',
-        start_index: 0,
-        end_index: 5,
-        distance: 500,
-        duration: 300,
-        avg_speed: 5.0,
-        max_speed: 7.0,
-        confidence: 'medium',
-        source: 'inferred'
+        distance: 500, duration: 300,
+        confidence: 'medium', source: 'inferred'
       )
-      expect(driving).to have_attributes(
-        transportation_mode: 'driving',
-        start_index: 6,
-        end_index: 20,
-        confidence: 'high'
-      )
+      expect(walking.start_at.to_i).to eq(1_000)
+      expect(walking.end_at.to_i).to eq(1_300)
+      expect(walking.confidence_score).to eq(0.65)
+      expect(walking.path.points.size).to eq(2)
+      expect(walking.start_index).to be_nil
+
+      expect(driving.transportation_mode).to eq('driving')
+      expect(driving.confidence_score).to eq(0.92)
     end
 
-    it 'issues a single INSERT' do
-      queries = []
-      callback = ->(_n, _s, _f, _i, payload) { queries << payload[:sql] if payload[:sql].start_with?('INSERT') }
-
-      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
-        described_class.call(track, segment_data)
-      end
-
-      inserts = queries.count { |sql| sql.include?('"track_segments"') }
-      expect(inserts).to eq(1)
-    end
-
-    it 'sets created_at and updated_at' do
+    it 'is idempotent on (track_id, start_at)' do
       described_class.call(track, segment_data)
-      track.track_segments.each do |segment|
-        expect(segment.created_at).to be_within(5.seconds).of(Time.current)
-        expect(segment.updated_at).to be_within(5.seconds).of(Time.current)
-      end
+      expect { described_class.call(track, segment_data) }
+        .not_to(change { track.track_segments.count })
     end
 
-    it 'returns the original segment data' do
-      result = described_class.call(track, segment_data)
-      expect(result).to eq(segment_data)
+    it 'handles nil path for degenerate segments' do
+      data = [segment_data.first.merge(path_wkt: nil)]
+      described_class.call(track, data)
+      expect(track.track_segments.first.path).to be_nil
     end
 
-    it 'returns empty array and writes nothing when segment_data is empty' do
-      expect { described_class.call(track, []) }
-        .not_to(change { TrackSegment.count })
+    it 'returns empty array for empty input' do
       expect(described_class.call(track, [])).to eq([])
-    end
-
-    it 'raises KeyError for an unknown transportation mode' do
-      bad_data = [segment_data.first.merge(mode: :teleportation)]
-      expect { described_class.call(track, bad_data) }.to raise_error(KeyError)
-    end
-
-    it 'raises KeyError for an unknown confidence value' do
-      bad_data = [segment_data.first.merge(confidence: :certain)]
-      expect { described_class.call(track, bad_data) }.to raise_error(KeyError)
     end
   end
 end

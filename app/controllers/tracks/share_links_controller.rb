@@ -10,7 +10,7 @@ module Tracks
       @track = current_user.tracks.find_by(id: params[:track_id])
       return if @track
 
-      render plain: 'Not found', status: :not_found
+      render plain: I18n.t('controllers.tracks.share_links.not_found'), status: :not_found
     end
 
     def active_share_scope

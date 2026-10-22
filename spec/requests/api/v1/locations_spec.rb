@@ -80,7 +80,9 @@ RSpec.describe Api::V1::LocationsController, type: :request do
                           limit: 50,
                           date_from: nil,
                           date_to: nil,
-                          radius_override: nil
+                          radius_override: nil,
+                          place_name: nil,
+                          address: nil
                         ))
             .and_return(double(call: mock_search_result))
 
@@ -108,11 +110,32 @@ RSpec.describe Api::V1::LocationsController, type: :request do
                             limit: 20,
                             date_from: Date.parse('2024-01-01'),
                             date_to: Date.parse('2024-03-31'),
-                            radius_override: 200
+                            radius_override: 200,
+                            place_name: nil,
+                            address: nil
                           ))
               .and_return(double(call: mock_search_result))
 
             get '/api/v1/locations', params: params, headers: headers
+          end
+        end
+
+        context 'when an address result is selected' do
+          it 'passes its display metadata to the point finder' do
+            expect(LocationSearch::PointFinder)
+              .to receive(:new)
+              .with(user, hash_including(
+                            place_name: 'Kaufland Mitte',
+                            address: 'Alexanderplatz 1, Berlin'
+                          ))
+              .and_return(double(call: mock_search_result))
+
+            get '/api/v1/locations', params: {
+              lat: latitude,
+              lon: longitude,
+              name: 'Kaufland Mitte',
+              address: 'Alexanderplatz 1, Berlin'
+            }, headers: headers
           end
         end
 

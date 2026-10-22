@@ -41,6 +41,23 @@ RSpec.describe Posters::NativeRenderer do
       expect(result[:pdf]).to eq('PDF:Berlin')
     end
 
+    it 'carries the track width multiplier into the job' do
+      job = JSON.parse(
+        described_class.new(
+          poster: poster, track: track, distance: 15_000, route_opacity: 0.6,
+          route_width: 2.5, subtitle: '1 Oct 2025 – 31 Oct 2025', command: fake_command
+        ).call[:png]
+      )
+
+      expect(job['trackWidth']).to eq(2.5)
+    end
+
+    it 'defaults the track width multiplier to 1' do
+      job = JSON.parse(build_renderer.call[:png])
+
+      expect(job['trackWidth']).to eq(1)
+    end
+
     it 'renders the explicit settings title when present' do
       poster.settings['title'] = 'My Trip'
 

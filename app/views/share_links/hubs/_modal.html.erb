@@ -1,15 +1,15 @@
 <div class="modal modal-open" data-controller="share-link-modal" style="z-index: 10000;">
   <div class="modal-box max-w-xl">
     <%= link_to map_v2_path, class: "btn btn-sm btn-circle btn-ghost absolute right-3 top-3",
-                data: { turbo_frame: "_top", action: "share-link-modal#close" }, aria: { label: "Close" } do %>
+                data: { turbo_frame: "_top", action: "share-link-modal#close" }, aria: { label: t('.close') } do %>
       ✕
     <% end %>
-    <h3 class="font-bold text-lg mb-4">Share</h3>
+    <h3 class="font-bold text-lg mb-4"><%= t('.share') %></h3>
 
     <div id="share-hub-body">
       <%= render 'share_links/hubs/body', hub: hub, active_tab: active_tab, errors: local_assigns[:errors] %>
     </div>
   </div>
   <%= link_to '', map_v2_path, class: "modal-backdrop",
-              data: { turbo_frame: "_top", action: "share-link-modal#close" }, aria: { label: "Close" } %>
+              data: { turbo_frame: "_top", action: "share-link-modal#close" }, aria: { label: t('.close') } %>
 </div>

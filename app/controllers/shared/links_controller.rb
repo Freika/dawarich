@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Shared::LinksController < ApplicationController
-  layout 'shared'
+  layout :viewer_layout
 
   skip_before_action :verify_authenticity_token, only: %i[show unlock]
   before_action :set_noindex
@@ -20,21 +20,31 @@ class Shared::LinksController < ApplicationController
       redirect_to public_shared_link_path(@link.id)
     else
       Rails.logger.warn("Shared link unlock failed: link=#{@link.id} ip=#{request.remote_ip}")
-      flash.now[:error] = "That phrase didn't work. Try again."
+      flash.now[:error] = I18n.t('controllers.shared.links.incorrect_phrase')
       render :phrase_prompt, status: :unauthorized
     end
   end
 
   private
 
+  def viewer_layout
+    @link&.family_only? ? 'application' : 'shared'
+  end
+
   def load_link
     @link = SharedLink.active.find_by(id: params[:id])
-    return if @link
+    if @link&.accessible_to?(current_user)
+      response.set_header('Cache-Control', 'private, no-store') if @link.family_only?
+      return
+    end
+
+    @link = nil
 
     render 'shared/links/not_found', status: :not_found, layout: 'shared'
   end
 
   def verify_phrase
+    return if @link.family_only?
     return if @link.magic_phrase.blank?
     return if cookies.encrypted[unlock_cookie_key] == @link.unlock_token
 
@@ -46,7 +56,7 @@ class Shared::LinksController < ApplicationController
       value: @link.unlock_token,
       expires: @link.expires_at || 30.days.from_now,
       httponly: true,
-      secure: Rails.env.production?,
+      secure: request.ssl?,
       same_site: :lax
     }
   end

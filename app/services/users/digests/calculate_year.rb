@@ -11,6 +11,19 @@ module Users
       end
 
       def call
+        Time.use_zone(user.timezone_iana) { calculate }
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+        @attempts = @attempts.to_i + 1
+        raise if @attempts >= 3
+
+        retry
+      end
+
+      private
+
+      attr_reader :user, :year
+
+      def calculate
         return nil if monthly_stats.empty?
 
         digest = find_or_build_digest
@@ -28,16 +41,7 @@ module Users
 
         digest.save!
         digest
-      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
-        @attempts = @attempts.to_i + 1
-        raise if @attempts >= 3
-
-        retry
       end
-
-      private
-
-      attr_reader :user, :year
 
       def find_or_build_digest
         existing = user.digests.yearly.where(year: year).order(:id).to_a
@@ -114,7 +118,7 @@ module Users
 
       def format_top_countries(country_minutes)
         country_minutes
-          .sort_by { |_, minutes| -minutes }
+          .sort_by { |name, minutes| [-minutes, name] }
           .first(10)
           .map { |name, minutes| { 'name' => name, 'minutes' => minutes } }
       end
@@ -140,23 +144,29 @@ module Users
       end
 
       def fetch_daily_country_stats
-        start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
+        timezone = user.timezone_iana
+        start_of_year = ActiveSupport::TimeZone[timezone].local(year, 1, 1, 0, 0, 0)
         end_of_year = start_of_year.end_of_year
+        lower_bound = if user.plan_restricted?
+                        [start_of_year.to_i, user.data_window_start.to_i].max
+                      else
+                        start_of_year.to_i
+                      end
 
         sql = <<~SQL
           SELECT
-            DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
+            DATE(to_timestamp(timestamp) AT TIME ZONE #{ActiveRecord::Base.connection.quote(timezone)}) as point_date,
             country_name,
             MIN(timestamp) as min_timestamp,
             MAX(timestamp) as max_timestamp
           FROM points
           WHERE user_id = #{user.id}
-            AND timestamp >= #{start_of_year.to_i}
+            AND timestamp >= #{lower_bound}
             AND timestamp <= #{end_of_year.to_i}
             AND country_name IS NOT NULL
             AND country_name != ''
           GROUP BY point_date, country_name
-          ORDER BY point_date, min_timestamp
+          ORDER BY point_date, min_timestamp, country_name COLLATE "C"
         SQL
 
         ActiveRecord::Base.connection.execute(sql).to_a

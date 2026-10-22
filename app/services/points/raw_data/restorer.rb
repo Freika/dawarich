@@ -14,14 +14,14 @@ module Points
 
         total_restored = 0
         total_missing = 0
+        total_skipped = 0
 
         begin
-          Point.transaction do
-            archives.each do |archive|
-              result = restore_archive_to_db(archive)
-              total_restored += result[:restored]
-              total_missing += result[:missing]
-            end
+          archives.each do |archive|
+            result = restore_archive_to_db(archive)
+            total_restored += result[:restored]
+            total_missing += result[:missing]
+            total_skipped += result[:skipped]
           end
 
           Rails.logger.info("✓ Restored #{total_restored} points")
@@ -30,6 +30,12 @@ module Points
             Rails.logger.warn(
               "⚠ #{total_missing} archived points no longer exist in database " \
               "for user #{user_id}, #{year}-#{month}. Their raw_data cannot be restored."
+            )
+          end
+
+          if total_skipped.positive?
+            Rails.logger.warn(
+              "Skipped #{total_skipped} point snapshots no longer linked to their source archive"
             )
           end
 
@@ -77,20 +83,25 @@ module Points
 
       private
 
+      # Each archive batch commits independently so row locks stay bounded.
+      # If a later batch fails, a retry resumes from the still-linked points;
+      # completed batches are already safely detached from their archive.
       def restore_archive_to_db(archive)
         decompressed = download_and_decompress(archive)
         archived_data = parse_archived_data(decompressed)
 
         total_restored = 0
         total_missing = 0
+        total_skipped = 0
 
         archived_data.each_slice(BATCH_SIZE) do |batch|
-          result = restore_batch(batch)
+          result = restore_batch(batch, archive.id)
           total_restored += result[:restored]
           total_missing += result[:missing]
+          total_skipped += result[:skipped]
         end
 
-        { restored: total_restored, missing: total_missing }
+        { restored: total_restored, missing: total_missing, skipped: total_skipped }
       end
 
       def parse_archived_data(decompressed)
@@ -100,21 +111,35 @@ module Points
         end
       end
 
-      def restore_batch(batch)
-        point_ids = batch.map(&:first)
-        existing_ids = Point.where(id: point_ids).pluck(:id).to_set
+      def restore_batch(batch, archive_id)
+        Point.with_write_contention_retry do
+          Point.transaction do
+            point_ids = batch.map(&:first)
+            existing_ids = Point.where(id: point_ids).pluck(:id).to_set
+            linked_ids = Point.raw_data_lock_order.where(
+              id: point_ids,
+              raw_data_archived: true,
+              raw_data_archive_id: archive_id
+            ).lock.pluck(:id)
 
-        missing_ids = point_ids.reject { |id| existing_ids.include?(id) }
-        if missing_ids.any?
-          Rails.logger.warn(
-            "Points no longer in database (skipping restore): #{missing_ids.join(', ')}"
-          )
+            missing_ids = point_ids.reject { |id| existing_ids.include?(id) }
+            if missing_ids.any?
+              Rails.logger.warn(
+                "Points no longer in database (skipping restore): #{missing_ids.join(', ')}"
+              )
+            end
+
+            data_by_id = batch.to_h
+            restorable = linked_ids.filter_map { |id| [id, data_by_id[id]] if data_by_id.key?(id) }
+            batch_update_points(restorable) if restorable.any?
+
+            {
+              restored: restorable.size,
+              missing: missing_ids.size,
+              skipped: (existing_ids - linked_ids.to_set).size
+            }
+          end
         end
-
-        restorable = batch.select { |id, _| existing_ids.include?(id) }
-        batch_update_points(restorable) if restorable.any?
-
-        { restored: restorable.size, missing: missing_ids.size }
       end
 
       def batch_update_points(entries)
@@ -129,13 +154,16 @@ module Points
 
       def restore_archive_to_cache(archive, cache_key_prefix)
         decompressed = download_and_decompress(archive)
+        linked_ids = Point.where(raw_data_archived: true, raw_data_archive_id: archive.id).pluck(:id).to_set
         count = 0
 
         decompressed.each_line do |line|
           data = JSON.parse(line)
+          id = data['id']
+          next unless linked_ids.include?(id)
 
           Rails.cache.write(
-            "#{cache_key_prefix}:#{data['id']}",
+            "#{cache_key_prefix}:#{id}:#{archive.id}",
             data['raw_data'],
             expires_in: 1.hour
           )

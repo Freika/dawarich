@@ -5,9 +5,12 @@ module ApplicationCable
     identified_by :current_user, :current_share
 
     def connect
+      share = verified_live_share
+
       if (verified_user = env['warden']&.user)
         self.current_user = verified_user
-      elsif (share = verified_live_share)
+        self.current_share = share
+      elsif share
         self.current_user = nil
         self.current_share = share
       else

@@ -2,12 +2,10 @@
 
 require 'rails_helper'
 require 'geocoder/results/photon'
+require 'geocoder/results/geoapify'
 
 RSpec.describe Places::Search do
-  before do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-  end
-
+  let(:user) { create(:user) }
   let(:lat) { 52.5126 }
   let(:lon) { 13.4012 }
 
@@ -22,10 +20,12 @@ RSpec.describe Places::Search do
   end
 
   describe '#call' do
+    before { configure_instance_geocoding }
+
     it 'returns nearby matches in the select_place shape' do
       allow(Geocoder).to receive(:search).and_return([photon(name: 'Café Bravo', plat: lat, plon: lon)])
 
-      results = described_class.new(query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
+      results = described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
 
       expect(results.size).to eq(1)
       expect(results.first).to include(name: 'Café Bravo', source: 'photon')
@@ -36,7 +36,76 @@ RSpec.describe Places::Search do
         .with('Bravo', hash_including(bias: { latitude: lat, longitude: lon }))
         .and_return([])
 
-      described_class.new(query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
+      described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
+    end
+
+    it 'passes a bounding box to Photon matching visit coordinates and radius' do
+      min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
+      expected_bbox = "#{min_lon.round(6)},#{min_lat.round(6)},#{max_lon.round(6)},#{max_lat.round(6)}"
+
+      expect(Geocoder).to receive(:search)
+        .with('Bravo', hash_including(params: { bbox: expected_bbox }))
+        .and_return([])
+
+      described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
+    end
+
+    it 'omits the bounding box when search radius crosses the 180th meridian' do
+      expect(Geocoder).to receive(:search)
+        .with('Bravo', satisfy { |opts| opts[:params].nil? || !opts[:params].key?(:bbox) })
+        .and_return([])
+
+      described_class.new(user: user, query: 'Bravo', latitude: 0.0, longitude: 179.999, radius: 5.0).call
+    end
+
+    it 'omits the bounding box when searching near polar latitudes' do
+      expect(Geocoder).to receive(:search)
+        .with('Bravo', satisfy { |opts| opts[:params].nil? || !opts[:params].key?(:bbox) })
+        .and_return([])
+
+      described_class.new(user: user, query: 'Bravo', latitude: 89.5, longitude: lon, radius: 1.0).call
+    end
+
+    it 'formats viewbox and bounded: 1 when provider is nominatim' do
+      InstanceSetting.delete_all
+      configure_instance_geocoding(nominatim_api_host: 'nominatim.example.com')
+
+      min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
+      expected_viewbox = "#{min_lon.round(6)},#{max_lat.round(6)},#{max_lon.round(6)},#{min_lat.round(6)}"
+
+      expect(Geocoder).to receive(:search)
+        .with('Bravo', hash_including(params: { viewbox: expected_viewbox, bounded: 1 }))
+        .and_return([])
+
+      described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
+    end
+
+    it 'formats rect filter when provider is geoapify' do
+      InstanceSetting.delete_all
+      configure_instance_geocoding(geoapify_api_key: 'test-api-key')
+
+      min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
+      expected_rect = "rect:#{min_lon.round(6)},#{min_lat.round(6)},#{max_lon.round(6)},#{max_lat.round(6)}"
+
+      expect(Geocoder).to receive(:search)
+        .with('Bravo', hash_including(params: { filter: expected_rect }))
+        .and_return([])
+
+      described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
+    end
+
+    it 'formats viewbox and bounded: 1 when provider is locationiq' do
+      InstanceSetting.delete_all
+      configure_instance_geocoding(locationiq_api_key: 'test-api-key')
+
+      min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
+      expected_viewbox = "#{min_lon.round(6)},#{max_lat.round(6)},#{max_lon.round(6)},#{min_lat.round(6)}"
+
+      expect(Geocoder).to receive(:search)
+        .with('Bravo', hash_including(params: { viewbox: expected_viewbox, bounded: 1 }))
+        .and_return([])
+
+      described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
     end
 
     it 'filters out results beyond the radius' do
@@ -45,7 +114,7 @@ RSpec.describe Places::Search do
 
       allow(Geocoder).to receive(:search).and_return([near, far])
 
-      results = described_class.new(query: 'xx', latitude: lat, longitude: lon, radius: 1.0).call
+      results = described_class.new(user: user, query: 'xx', latitude: lat, longitude: lon, radius: 1.0).call
 
       expect(results.map { |r| r[:name] }).to eq(['Near'])
     end
@@ -56,25 +125,171 @@ RSpec.describe Places::Search do
 
       allow(Geocoder).to receive(:search).and_return([farther, nearest])
 
-      results = described_class.new(query: 'xx', latitude: lat, longitude: lon, radius: 5.0).call
+      results = described_class.new(user: user, query: 'xx', latitude: lat, longitude: lon, radius: 5.0).call
 
       expect(results.map { |r| r[:name] }).to eq(%w[Nearest Farther])
     end
 
+    describe 'Geoapify results (datasource-nested OSM metadata)' do
+      let(:geoapify_result) do
+        instance_double(
+          Geocoder::Result::Geoapify,
+          data: {
+            'type' => 'Feature',
+            'geometry' => { 'type' => 'Point', 'coordinates' => [lon, lat] },
+            'properties' => {
+              'name' => 'Madison Square Garden', 'city' => 'New York',
+              'country' => 'United States', 'lon' => lon, 'lat' => lat,
+              'result_type' => 'building',
+              'datasource' => { 'sourcename' => 'openstreetmap', 'osm_type' => 'W', 'osm_id' => 138_141_251 }
+            }
+          },
+          latitude: lat, longitude: lon, address: 'Madison Square Garden'
+        )
+      end
+
+      it 'surfaces osm_id and osm_type from datasource in the suggestion payload' do
+        allow(Geocoder).to receive(:search).and_return([geoapify_result])
+
+        results = described_class.new(user: user, query: 'msg', latitude: lat, longitude: lon, radius: 1.0).call
+
+        expect(results.first[:osm_id]).to eq(138_141_251)
+        expect(results.first[:osm_type]).to eq('W')
+      end
+    end
+
     it 'returns [] for a query shorter than 2 chars' do
       expect(Geocoder).not_to receive(:search)
-      expect(described_class.new(query: 'a', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(described_class.new(user: user, query: 'a', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
     end
 
-    it 'returns [] when reverse geocoding is disabled' do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-      expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+    it 'returns an empty list when the rate limiter skips the lookup' do
+      allow(Geocoding::RateLimiter).to receive(:throttle).and_return(nil)
+
+      expect(described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
     end
 
-    it 'rescues Geocoder errors and returns []' do
+    it 'handles invalid provider requests without reporting an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::InvalidRequest)
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+
+      expect(described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Place search provider error: Geocoder::InvalidRequest/)
+    end
+
+    it 'keeps the search text out of the handled provider error log' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::InvalidRequest)
+      allow(Rails.logger).to receive(:warn)
+
+      described_class.new(user: user, query: 'Bergmannstraße 1', latitude: lat, longitude: lon, radius: 1.0).call
+
+      expect(Rails.logger).to have_received(:warn).with(satisfy { |line| !line.include?('Bergmannstraße') })
+    end
+
+    it 'handles transient provider outages without reporting an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::LookupTimeout.new('execution expired'))
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+
+      expect(described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Place search provider error: Geocoder::LookupTimeout/)
+    end
+
+    it 'handles a dropped TLS connection without reporting an application exception' do
+      allow(Geocoder).to receive(:search).and_raise(OpenSSL::SSL::SSLError, 'unexpected eof while reading')
+      allow(ExceptionReporter).to receive(:call)
+      allow(Rails.logger).to receive(:warn)
+
+      expect(described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(ExceptionReporter).not_to have_received(:call)
+      expect(Rails.logger).to have_received(:warn).with(/Place search provider error/)
+    end
+
+    it 'logs a reported error so self-hosted instances are not left silent' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(Geocoder).to receive(:search).and_raise(StandardError, 'photon down')
+      allow(Rails.logger).to receive(:error)
+
+      expect(described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(Rails.logger).to have_received(:error).with(/Place search failed: StandardError/)
+    end
+
+    it 'reports a misconfigured provider' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::RequestDenied)
+      allow(ExceptionReporter).to receive(:call)
+
+      expect(described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(ExceptionReporter).to have_received(:call).with(instance_of(Geocoder::RequestDenied), anything)
+    end
+
+    it 'reports a rate-limited provider' do
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::OverQueryLimitError)
+      allow(ExceptionReporter).to receive(:call)
+
+      expect(described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(ExceptionReporter).to have_received(:call).with(instance_of(Geocoder::OverQueryLimitError), anything)
+    end
+
+    it 'reports unexpected errors and returns []' do
       allow(Geocoder).to receive(:search).and_raise(StandardError, 'photon down')
       expect(ExceptionReporter).to receive(:call).with(instance_of(StandardError), anything)
-      expect(described_class.new(query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+    end
+
+    it 'keeps the query and coordinates out of the exception report' do
+      allow(Geocoder).to receive(:search).and_raise(StandardError, 'photon down')
+      allow(ExceptionReporter).to receive(:call)
+
+      described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call
+
+      expect(ExceptionReporter).to have_received(:call) do |_error, context|
+        expect(context).not_to include('cafe', lat.to_s, lon.to_s)
+      end
+    end
+  end
+
+  describe 'instance provider routing' do
+    before do
+      use_real_geocoding_lookups
+      allow(Geocoder).to receive(:search).and_call_original
+      allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
+    end
+
+    it 'routes forward search through the instance provider' do
+      configure_instance_geocoding(photon_api_host: 'photon.mine.example.com', photon_api_use_https: true)
+      stub_request(:get, %r{https://photon\.mine\.example\.com/api})
+        .to_return(status: 200, body: { type: 'FeatureCollection', features: [] }.to_json,
+                   headers: { 'Content-Type' => 'application/json' })
+
+      described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call
+
+      expect(WebMock).to have_requested(:get, %r{https://photon\.mine\.example\.com/api})
+    end
+
+    it 'passes the bounding box to the instance photon endpoint' do
+      configure_instance_geocoding(photon_api_host: 'photon.mine.example.com', photon_api_use_https: true)
+      min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
+      expected_bbox = "#{min_lon.round(6)},#{min_lat.round(6)},#{max_lon.round(6)},#{max_lat.round(6)}"
+
+      stub_request(:get, %r{https://photon\.mine\.example\.com/api})
+        .with(query: hash_including('bbox' => expected_bbox))
+        .to_return(status: 200, body: { type: 'FeatureCollection', features: [] }.to_json,
+                   headers: { 'Content-Type' => 'application/json' })
+
+      described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call
+
+      expect(WebMock).to have_requested(:get, %r{https://photon\.mine\.example\.com/api})
+        .with(query: hash_including('bbox' => expected_bbox))
+    end
+
+    it 'returns an empty list without HTTP when the instance has no provider' do
+      result = described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call
+
+      expect(result).to eq([])
+      expect(WebMock).not_to have_requested(:get, /.*/)
     end
   end
 end

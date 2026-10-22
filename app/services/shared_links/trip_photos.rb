@@ -26,7 +26,11 @@ module SharedLinks
     private
 
     def mappable_photos
-      Photos::Mappable.new(search_photos, privacy_zones: Users::PrivacyZones.new(@link.user).call).call
+      Photos::Mappable.new(
+        search_photos,
+        privacy_zones: Users::PrivacyZones.new(@link.user).call,
+        max: nil
+      ).call
     end
 
     def search_photos

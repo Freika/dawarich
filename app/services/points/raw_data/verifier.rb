@@ -102,7 +102,10 @@ module Points
       end
 
       def download_and_verify_content(archive)
-        return { success: false, error: 'File not attached' } unless archive.file.attached?
+        unless archive.file.attached?
+          return { success: false,
+error: I18n.t('services.points.raw_data.verifier.file_not_attached') }
+        end
 
         begin
           raw_content = archive.file.blob.download
@@ -110,21 +113,29 @@ module Points
           # Only I/O errors get the download_failed label — it exempts the
           # archive from the verified_at unset, so decrypt/integrity errors
           # must never be classified here.
-          return { success: false, error: "File download failed: #{e.message}" }
+          return { success: false,
+error: I18n.t('services.points.raw_data.verifier.file_download_failed_message', message: e.message) }
         end
 
-        return { success: false, error: 'File is empty' } if raw_content.bytesize.zero?
+        if raw_content.bytesize.zero?
+          return { success: false,
+error: I18n.t('services.points.raw_data.verifier.file_is_empty') }
+        end
 
         verify_content_integrity(raw_content, archive)
       rescue StandardError => e
-        { success: false, error: "Decryption failed: #{e.message}" }
+        { success: false,
+error: I18n.t('services.points.raw_data.verifier.decryption_failed_message', message: e.message) }
       end
 
       def verify_content_integrity(raw_content, archive)
         stored_checksum = archive.metadata&.dig('content_checksum')
         if stored_checksum.present?
           actual_checksum = Digest::SHA256.hexdigest(raw_content)
-          return { success: false, error: 'Content checksum mismatch' } if actual_checksum != stored_checksum
+          if actual_checksum != stored_checksum
+            return { success: false,
+error: I18n.t('services.points.raw_data.verifier.content_checksum_mismatch') }
+          end
         end
 
         compressed_content = Encryption.decrypt_if_needed(raw_content, archive)
@@ -138,16 +149,21 @@ module Points
         if point_ids.count != archive.point_count
           return {
             success: false,
-            error: "Point count mismatch: expected #{archive.point_count}, found #{point_ids.count}"
+            error: I18n.t('services.points.raw_data.verifier.point_count_mismatch_expected_point_count_found_count',
+                          point_count: archive.point_count, count: point_ids.count)
           }
         end
 
         id_checksum = calculate_checksum(point_ids)
-        return { success: false, error: 'Point IDs checksum mismatch' } if id_checksum != archive.point_ids_checksum
+        if id_checksum != archive.point_ids_checksum
+          return { success: false,
+error: I18n.t('services.points.raw_data.verifier.point_ids_checksum_mismatch') }
+        end
 
         { success: true, point_ids: point_ids, sampled_data: parse_result[:sampled_data] }
       rescue StandardError => e
-        { success: false, error: "Decompression/parsing failed: #{e.message}" }
+        { success: false,
+error: I18n.t('services.points.raw_data.verifier.decompression_parsing_failed_message', message: e.message) }
       end
 
       def verify_existing_points(archive, point_ids, sampled_data)
@@ -233,8 +249,11 @@ module Points
         if mismatches.any?
           return {
             success: false,
-            error: "Raw data mismatch detected in #{mismatches.count} point(s). " \
-                   "First mismatch: Point #{mismatches.first[:point_id]}"
+            error: I18n.t(
+              'services.points.raw_data.verifier.raw_data_mismatch_detected_in_count_point_s_first_mismatch',
+              count: mismatches.count,
+              point_id: mismatches.first[:point_id]
+            )
           }
         end
 

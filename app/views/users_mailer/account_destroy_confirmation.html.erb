@@ -14,22 +14,22 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Confirm account deletion</h1>
+      <h1><%= t('.confirm_account_deletion') %></h1>
     </div>
     <div class="content">
-      <p>Hi <%= @user.email %>,</p>
+      <p><%= t('.hi') %> <%= @user.email %>,</p>
 
-      <p>We received a request to delete your Dawarich account. <strong>This is your last chance to stop the deletion.</strong> Once confirmed, all your location history, tracks, areas, visits, trips, and family memberships will be permanently removed.</p>
+      <p><%= t('.we_received_a_request_to_delete_your_dawarich_account') %> <strong><%= t('.this_is_your_last_chance_to_stop_the_deletion') %></strong> <%= t('.once_confirmed_all_your_location_history_tracks_areas_visits_trips') %></p>
 
-      <p><a href="<%= @link_url %>" class="cta">Permanently delete my account</a></p>
+      <p><a href="<%= @link_url %>" class="cta"><%= t('.permanently_delete_my_account') %></a></p>
 
       <div class="notice">
-        <p><strong>Didn't request this?</strong> Ignore this email — the link expires in 1 hour and your account remains untouched. If you keep getting these emails, change your password immediately.</p>
+        <p><strong><%= t('.didn_t_request_this') %></strong> <%= t('.ignore_this_email_the_link_expires_in_1_hour_and') %></p>
       </div>
 
-      <p>If you have an active Apple or Google subscription, remember to cancel it in your platform settings to avoid further charges.</p>
+      <p><%= t('.if_you_have_an_active_apple_or_google_subscription_remember') %></p>
 
-      <p style="font-size: 12px; color: #6b7280;">Link: <%= @link_url %></p>
+      <p style="font-size: 12px; color: #6b7280;"><%= t('.link') %> <%= @link_url %></p>
     </div>
   </div>
 </body>

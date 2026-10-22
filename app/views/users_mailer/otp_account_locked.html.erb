@@ -14,22 +14,22 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Account temporarily locked</h1>
+      <h1><%= t('.account_temporarily_locked') %></h1>
     </div>
     <div class="content">
-      <p>Hi <%= @user.email %>,</p>
+      <p><%= t('.hi') %> <%= @user.email %>,</p>
 
-      <p>Your Dawarich account has been <strong>temporarily locked</strong> because 10 consecutive failed two-factor authentication attempts were detected.</p>
+      <p><%= t('.your_dawarich_account_has_been') %> <strong><%= t('.temporarily_locked') %></strong> <%= t('.because_10_consecutive_failed_two_factor_authentication_attempts_were_de') %></p>
 
-      <p>The lock will automatically lift after <strong>30 minutes</strong>. No action is required if this was you.</p>
+      <p><%= t('.the_lock_will_automatically_lift_after') %> <strong><%= t('.minutes') %></strong><%= t('.no_action_is_required_if_this_was_you') %></p>
 
       <div class="notice">
-        <p><strong>Didn't recognise this activity?</strong> Someone may be trying to access your account. We recommend resetting your password immediately.</p>
+        <p><strong><%= t('.didn_t_recognise_this_activity') %></strong> <%= t('.someone_may_be_trying_to_access_your_account_we_recommend') %></p>
       </div>
 
-      <p><a href="<%= new_user_password_url %>" class="cta">Reset your password</a></p>
+      <p><a href="<%= new_user_password_url %>" class="cta"><%= t('.reset_your_password') %></a></p>
 
-      <p>If you need further assistance, contact us at <a href="mailto:security@dawarich.app">security@dawarich.app</a>.</p>
+      <p><%= t('.if_you_need_further_assistance_contact_us_at') %> <a href="mailto:security@dawarich.app"><%= t('.security_dawarich_app') %></a>.</p>
     </div>
   </div>
 </body>

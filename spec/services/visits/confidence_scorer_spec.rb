@@ -55,4 +55,34 @@ RSpec.describe Visits::ConfidenceScorer do
   it 'treats nil accuracies as the default 50 m without error' do
     expect { score(accuracies: [nil, nil]) }.not_to raise_error
   end
+
+  describe 'detection v2 inputs' do
+    it 'scores a mostly-bridged stay below its fully-tracked twin' do
+      tracked = score(bridged_fraction: 0.0)
+      bridged = score(bridged_fraction: 0.9)
+
+      expect(bridged[:score]).to be < tracked[:score]
+      expect(bridged[:breakdown][:bridged]).to be_present
+    end
+
+    it 'scores a movement-corroborated stay above an uncorroborated twin' do
+      expect(score(corroborated: true)[:score]).to be > score(corroborated: false)[:score]
+    end
+
+    it 'omitting the new inputs leaves the original component set untouched' do
+      breakdown = score[:breakdown]
+
+      expect(breakdown).not_to have_key(:bridged)
+      expect(breakdown).not_to have_key(:corroboration)
+    end
+
+    it 'ranks attribution evidence: area above poi above address' do
+      area = score(place_match: :area)[:score]
+      poi = score(place_match: :poi)[:score]
+      address = score(place_match: :address)[:score]
+
+      expect(area).to be > poi
+      expect(poi).to be > address
+    end
+  end
 end

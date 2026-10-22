@@ -23,6 +23,36 @@ RSpec.describe Import::ProcessJob, type: :job do
       expect { perform }.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 3)
     end
 
+    it 'processes the import in the user saved locale' do
+      user.update!(settings: { 'locale' => 'fr' })
+      allow(Import).to receive(:find_by).with(id: import.id, user_id: user.id).and_return(import)
+      allow(import).to receive(:process!) { expect(I18n.locale).to eq(:fr) }
+
+      I18n.with_locale(:en) { perform }
+    end
+
+    it 'holds a shared user-data lock while processing' do
+      expect(Users::DataLock).to receive(:with_shared).with(user.id).and_call_original
+
+      perform
+    end
+
+    context 'when the import owner is soft-deleted' do
+      before { user.mark_as_deleted! }
+
+      it 'skips processing' do
+        expect { perform }.not_to change(Point, :count)
+      end
+    end
+
+    context 'when the import was deleted' do
+      before { import.destroy! }
+
+      it 'skips processing' do
+        expect { perform }.not_to raise_error
+      end
+    end
+
     context 'when there is an error' do
       before do
         allow_any_instance_of(OwnTracks::Importer).to receive(:call).and_raise(StandardError)

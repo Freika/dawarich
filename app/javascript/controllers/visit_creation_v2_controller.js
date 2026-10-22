@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 
 /**
@@ -46,10 +47,10 @@ export default class extends Controller {
 
     // Set modal title and button for creation
     if (this.hasModalTitleTarget) {
-      this.modalTitleTarget.textContent = "Create New Visit"
+      this.modalTitleTarget.textContent = translate("visits.create_new")
     }
     if (this.hasSubmitButtonTarget) {
-      this.submitButtonTarget.textContent = "Create Visit"
+      this.submitButtonTarget.textContent = translate("visits.create")
     }
 
     // Set default times
@@ -77,10 +78,10 @@ export default class extends Controller {
 
     // Set modal title and button for editing
     if (this.hasModalTitleTarget) {
-      this.modalTitleTarget.textContent = "Edit Visit"
+      this.modalTitleTarget.textContent = translate("visits.edit")
     }
     if (this.hasSubmitButtonTarget) {
-      this.submitButtonTarget.textContent = "Update Visit"
+      this.submitButtonTarget.textContent = translate("visits.update")
     }
 
     // Fill form with visit data

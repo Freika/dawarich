@@ -8,6 +8,8 @@ RSpec.describe 'Visits::FullHistoryRedetectJob serializes concurrent runs' do
   let(:redis_key) { "tracks:per_user_lock:#{user.id}" }
 
   before do
+    # New accounts are born re-detected (DB default), which starts the cooldown.
+    user.update!(visits_redetected_at: 2.hours.ago)
     Sidekiq.redis { |r| r.del(redis_key) }
     3.times do |i|
       create(:point, user: user,

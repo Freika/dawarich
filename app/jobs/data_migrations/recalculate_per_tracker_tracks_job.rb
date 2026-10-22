@@ -11,21 +11,46 @@ class DataMigrations::RecalculatePerTrackerTracksJob < ApplicationJob
     user = User.find_by(id: user_id)
     return unless user
 
-    backfilled = Points::TrackerIdBackfiller.new(user).call
+    # Read deviceTag out of the uploaded Records.json first: the importer never
+    # stored it in raw_data, so this is the only accurate source. Whatever it
+    # cannot resolve falls through to the raw_data/import-based backfiller.
+    backfilled = backfill_google_records_devices(user)
+    backfilled += Points::TrackerIdBackfiller.new(user).call
 
-    return unless backfilled.positive? || user.tracks.where(tracker_id: nil).exists?
+    return unless backfilled.positive? || tracks_need_recalculation?(user)
 
-    Users::RecalculateDataJob.perform_now(user.id, notify: false)
+    # perform_now consumes retry_on errors and silently moves the retry to
+    # :stats. Let lock failures reach this migration so its own retry can run.
+    Users::RecalculateDataJob.new.perform(user.id, notify: false)
   end
 
   private
+
+  def tracks_need_recalculation?(user)
+    return true if user.tracks.where(tracker_id: nil).exists?
+    return true if user.points.where(track_id: nil).exists?
+
+    # A failed attempt may already have backfilled the point IDs. Detect the
+    # remaining stale ownership rather than relying on the backfill count.
+    user.points.joins(:track).where('points.tracker_id IS DISTINCT FROM tracks.tracker_id').exists?
+  end
+
+  def backfill_google_records_devices(user)
+    user.imports.where(source: :google_records).sum do |import|
+      Points::DeviceTagBackfiller.new(import).call
+    end
+  end
 
   def enqueue_pending_users
     user_ids = User
                .where(
                  'EXISTS (SELECT 1 FROM tracks WHERE tracks.user_id = users.id AND tracks.tracker_id IS NULL) ' \
-                 'OR EXISTS (SELECT 1 FROM points WHERE points.user_id = users.id AND points.tracker_id IN (?))',
-                 Points::TrackerIdBackfiller::LEGACY_CONSTANTS
+                 'OR EXISTS (SELECT 1 FROM points WHERE points.user_id = users.id AND points.tracker_id IN (?)) ' \
+                 'OR EXISTS (SELECT 1 FROM points INNER JOIN imports ON imports.id = points.import_id ' \
+                 'WHERE points.user_id = users.id AND imports.source = ? AND points.tracker_id LIKE ?)',
+                 Points::TrackerIdBackfiller::LEGACY_CONSTANTS,
+                 Import.sources[:google_records],
+                 "#{Points::DeviceTagBackfiller::LEGACY_IMPORT_PREFIX}%"
                )
                .pluck(:id)
     return if user_ids.empty?

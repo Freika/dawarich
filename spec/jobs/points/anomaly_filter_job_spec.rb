@@ -5,6 +5,10 @@ require 'rails_helper'
 RSpec.describe Points::AnomalyFilterJob do
   include ActiveJob::TestHelper
 
+  it 'runs on the points queue so flags land before realtime track generation' do
+    expect(described_class.new.queue_name).to eq('points')
+  end
+
   it 'retries transient database deadlocks' do
     filter = instance_double(Points::AnomalyFilter)
     allow(Points::AnomalyFilter).to receive(:new).with(42, 100, 200).and_return(filter)

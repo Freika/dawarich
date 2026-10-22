@@ -1,12 +1,8 @@
 # frozen_string_literal: true
 
-# Per-user altitude backfill. Processes non-archived points via PK cursor,
-# then streams each archive. Designed for 41M+ point databases:
-# - PK cursor avoids seq scan and offset drift
-# - Only selects id, altitude, raw_data (no lonlat, geodata, etc.)
-# - Archives streamed line-by-line (no full decompression in memory)
-# - Per-user scope keeps each job small and retryable
 class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
+  include Resumable
+
   queue_as :data_migrations
 
   BATCH_SIZE = 1000
@@ -16,24 +12,25 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
 
     stats = { updated: 0, skipped: 0, archived: 0 }
 
-    backfill_from_raw_data(user_id, batch_size, stats)
-    backfill_from_archives(user_id, batch_size, stats)
+    step :backfill_from_raw_data, start: 0 do |step|
+      backfill_from_raw_data(user_id, batch_size, stats, step)
+    end
+
+    step :backfill_from_archives, start: 0 do |step|
+      backfill_from_archives(user_id, batch_size, stats, step)
+    end
 
     Rails.logger.info("Altitude backfill for user #{user_id} complete: #{stats}")
   end
 
   private
 
-  # PK-cursor walk: fetches batch_size rows ordered by ID, then uses the last ID
-  # to fetch the next batch. O(batch_size) per query via the PK index — no seq scan.
-  def backfill_from_raw_data(user_id, batch_size, stats)
-    last_id = 0
-
+  def backfill_from_raw_data(user_id, batch_size, stats, step)
     loop do
       points = Point
                .where(user_id: user_id)
                .where.not(raw_data: {})
-               .where('id > ?', last_id)
+               .where('id > ?', step.cursor)
                .order(:id)
                .limit(batch_size)
                .select(:id, :altitude, :raw_data)
@@ -50,15 +47,27 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
       end
 
       stats[:skipped] += points.size - updates.size
-      last_id = points.last.id
+      step.set!(points.last.id)
     end
   end
 
-  def backfill_from_archives(user_id, batch_size, stats)
-    Points::RawDataArchive.where(user_id: user_id).find_each do |archive|
-      process_archive(archive, batch_size, stats)
-    rescue StandardError => e
-      Rails.logger.error("Failed to process archive #{archive.id}: #{e.message}")
+  def backfill_from_archives(user_id, batch_size, stats, step)
+    loop do
+      archives = Points::RawDataArchive
+                 .where(user_id: user_id)
+                 .where('id > ?', step.cursor)
+                 .order(:id)
+                 .limit(batch_size)
+
+      break if archives.empty?
+
+      archives.each do |archive|
+        process_archive(archive, batch_size, stats)
+      rescue StandardError => e
+        Rails.logger.error("Failed to process archive #{archive.id}: #{e.message}")
+      end
+
+      step.set!(archives.last.id)
     end
   end
 
@@ -114,7 +123,6 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
     update
   end
 
-  # Streams archive line-by-line without materializing the full decompressed content.
   def stream_archive_lines(archive, &block)
     encrypted = archive.file.blob.download
     decrypted = Points::RawData::Encryption.decrypt_if_needed(encrypted, archive)

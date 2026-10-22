@@ -10,7 +10,7 @@ module Trips
       @trip = current_user.trips.find_by(id: params[:trip_id])
       return if @trip
 
-      render plain: 'Not found', status: :not_found
+      render plain: I18n.t('controllers.trips.share_links.not_found'), status: :not_found
     end
 
     def active_share_scope
@@ -30,7 +30,7 @@ module Trips
         user: current_user,
         resource_type: :trip,
         resource_id: @trip.id,
-        name: "Trip: #{@trip.name}"
+        name: I18n.t('controllers.trips.share_links.default_name', trip: @trip.name)
       }
     end
 
@@ -38,15 +38,26 @@ module Trips
       {
         resource_type: :trip,
         resource_id:   @trip.id,
-        name:          create_params[:name].presence || "Trip: #{@trip.name}",
-        magic_phrase:  create_params[:magic_phrase].presence,
+        name:          create_params[:name].presence || I18n.t('controllers.trips.share_links.default_name',
+                                                               trip: @trip.name),
+        magic_phrase:  (create_params[:magic_phrase].presence unless family_share?),
         expires_at:    expiry_from(create_params[:expires_at]),
-        settings:      SharedLink.default_settings_for(:trip).merge(extracted_settings)
+        settings:      SharedLink.default_settings_for(:trip).merge(extracted_settings).merge(audience_settings)
       }
     end
 
     def create_params
-      params.fetch(:shared_link, {}).permit(:name, :magic_phrase, :expires_at)
+      params.fetch(:shared_link, {}).permit(:name, :magic_phrase, :expires_at, :audience)
+    end
+
+    def family_share?
+      create_params[:audience] == 'family'
+    end
+
+    def audience_settings
+      return {} unless family_share?
+
+      { 'audience' => 'family', 'family_id' => current_user.family&.id }
     end
   end
 end

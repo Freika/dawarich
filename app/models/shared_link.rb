@@ -31,11 +31,35 @@ class SharedLink < ApplicationRecord
   validate :resource_id_matches_type
   validate :timeline_dates_present_and_ordered
   validate :expires_at_in_future
+  validate :valid_family_audience, if: -> { new_record? || will_save_change_to_settings? }
 
   scope :active, lambda {
     where(revoked_at: nil)
       .where('expires_at IS NULL OR expires_at > ?', Time.current)
   }
+
+  def self.family_trips_for(viewer)
+    family = viewer&.family
+    return none unless family&.access_live?
+
+    active.where(resource_type: :trip, user_id: family.members.select(:id))
+          .where("settings ->> 'audience' = 'family' AND settings ->> 'family_id' = ?", family.id.to_s)
+          .where.not(user_id: viewer.id)
+  end
+
+  def family_only?
+    settings['audience'] == 'family'
+  end
+
+  def accessible_to?(viewer)
+    return true unless family_only?
+    return false unless viewer
+
+    family = user&.family
+    return false unless family&.access_live? && family.id.to_s == settings['family_id'].to_s
+
+    family.family_memberships.exists?(user_id: viewer.id)
+  end
 
   def resource
     case resource_type.to_sym
@@ -64,12 +88,19 @@ class SharedLink < ApplicationRecord
 
   private
 
+  def valid_family_audience
+    return unless family_only?
+    return if trip? && user&.family&.access_live? && user.family.id.to_s == settings['family_id'].to_s
+
+    errors.add(:base, I18n.t('shared_links.family.unavailable'))
+  end
+
   def resource_id_matches_type
     needs_id = RESOURCE_TYPES_REQUIRING_ID.include?(resource_type)
     if needs_id && resource_id.blank?
-      errors.add(:resource_id, 'is required for this resource type')
+      errors.add(:resource_id, I18n.t('models.shared_link.is_required_for_this_resource_type'))
     elsif !needs_id && resource_id.present?
-      errors.add(:resource_id, 'must be blank for this resource type')
+      errors.add(:resource_id, I18n.t('models.shared_link.must_be_blank_for_this_resource_type'))
     end
   end
 
@@ -77,7 +108,7 @@ class SharedLink < ApplicationRecord
     return if expires_at.blank?
     return unless new_record? || will_save_change_to_expires_at?
 
-    errors.add(:expires_at, 'must be in the future') if expires_at <= Time.current
+    errors.add(:expires_at, I18n.t('models.shared_link.must_be_in_the_future')) if expires_at <= Time.current
   end
 
   def timeline_dates_present_and_ordered
@@ -87,7 +118,7 @@ class SharedLink < ApplicationRecord
     end_date   = settings['end_date'].presence
 
     if start_date.blank? || end_date.blank?
-      errors.add(:settings, 'must include start_date and end_date for timeline shares')
+      errors.add(:settings, I18n.t('models.shared_link.must_include_start_date_and_end_date_for_timeline_shares'))
       return
     end
 
@@ -95,11 +126,14 @@ class SharedLink < ApplicationRecord
     parsed_end   = safe_parse_date(end_date)
 
     if parsed_start.nil? || parsed_end.nil?
-      errors.add(:settings, 'start_date and end_date must be parseable as dates')
+      errors.add(:settings, I18n.t('models.shared_link.start_date_and_end_date_must_be_parseable_as_dates'))
       return
     end
 
-    errors.add(:settings, 'end_date must be on or after start_date') if parsed_end < parsed_start
+    return unless parsed_end < parsed_start
+
+    errors.add(:settings,
+               I18n.t('models.shared_link.end_date_must_be_on_or_after_start_date'))
   end
 
   def safe_parse_date(value)

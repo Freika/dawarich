@@ -2,6 +2,13 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
+const segmenterSource = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/route_segmenter.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
 const source = await readFile(
   new URL(
     "../../app/javascript/poster_studio/data/providers.js",
@@ -9,7 +16,8 @@ const source = await readFile(
   ),
   "utf8",
 )
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(segmenterSource.replace(/^export /gm, "") + withoutImports).toString("base64")}`
 const { buildTripGeojson, MapPageProvider, TripProvider } = await import(
   moduleUrl
 )
@@ -56,17 +64,17 @@ test("TripProvider defaults to an empty collection and blank title", () => {
   assert.equal(provider.defaultTitle(), "")
 })
 
-test("MapPageProvider reads layers and dates from the maps controller", (t) => {
-  const layers = {
-    routes: { data: { type: "FeatureCollection", features: [] } },
-    tracks: {
-      data: { type: "FeatureCollection", features: [lineString([[0, 0]])] },
-    },
+test("MapPageProvider loads canonical tracks on demand and reads map dates", async (t) => {
+  const tracks = {
+    type: "FeatureCollection",
+    features: [lineString([[0, 0]])],
   }
   const fakeController = {
-    layerManager: { getLayer: (name) => layers[name] },
+    mapDataManager: { ensurePointsLoaded: async () => {} },
+    api: { fetchTracks: async () => tracks },
     startDateValue: "2026-01-01T00:00",
     endDateValue: "2026-01-31T23:59",
+    timezoneValue: "Europe/Berlin",
   }
   const originalDocument = globalThis.document
   globalThis.document = { getElementById: () => ({}) }
@@ -78,51 +86,32 @@ test("MapPageProvider reads layers and dates from the maps controller", (t) => {
   })
 
   assert.equal(provider.trackSource(), "tracks")
-  assert.equal(provider.trackGeojson(), layers.tracks.data)
+  assert.deepEqual(provider.trackGeojson(), {
+    type: "FeatureCollection",
+    features: [],
+  })
+  await provider.ensureTrackLoaded()
+  assert.equal(provider.trackGeojson(), tracks)
   assert.deepEqual(provider.dateRange(), {
     startAt: "2026-01-01T00:00",
     endAt: "2026-01-31T23:59",
   })
   assert.equal(provider.defaultTitle(), "")
+  assert.equal(provider.timeZone(), "Europe/Berlin")
   assert.equal(provider.supportsDateNavigation, true)
-
-  layers.routes.data.features.push(lineString([[1, 1]]))
-  assert.equal(provider.trackSource(), "routes")
 })
 
 test("buildTripGeojson merges day-route collections when present", () => {
   const day1 = { features: [lineString([[13.4, 52.5]])] }
   const day2 = { features: [lineString([[13.5, 52.6]])] }
-  const geojson = buildTripGeojson({
-    dayRouteCollections: [day1, day2],
-    pathData: JSON.stringify([
-      [1, 1],
-      [2, 2],
-    ]),
-  })
+  const geojson = buildTripGeojson({ dayRouteCollections: [day1, day2] })
   assert.equal(geojson.features.length, 2)
   assert.deepEqual(geojson.features[0], day1.features[0])
 })
 
-test("buildTripGeojson falls back to the path overview line", () => {
-  const geojson = buildTripGeojson({
-    dayRouteCollections: [{ features: [] }],
-    pathData: JSON.stringify([
-      [13.4, 52.5],
-      [13.5, 52.6],
-    ]),
-  })
-  assert.equal(geojson.features.length, 1)
-  assert.equal(geojson.features[0].geometry.type, "LineString")
-  assert.deepEqual(geojson.features[0].geometry.coordinates, [
-    [13.4, 52.5],
-    [13.5, 52.6],
-  ])
-})
-
-test("buildTripGeojson yields an empty collection for degenerate input", () => {
-  for (const pathData of [null, "not json", JSON.stringify([[1, 1]])]) {
-    const geojson = buildTripGeojson({ dayRouteCollections: [], pathData })
+test("buildTripGeojson yields an empty collection before points load", () => {
+  for (const dayRouteCollections of [[], [{ features: [] }], [null]]) {
+    const geojson = buildTripGeojson({ dayRouteCollections })
     assert.deepEqual(geojson, { type: "FeatureCollection", features: [] })
   }
 })

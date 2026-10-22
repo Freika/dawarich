@@ -6,7 +6,7 @@ class Users::ExportData::Places
   end
 
   def call
-    user.places.as_json(except: %w[user_id id])
+    user.places.as_json(except: %w[user_id id import_id])
   end
 
   private

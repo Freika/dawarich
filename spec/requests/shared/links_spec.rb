@@ -51,6 +51,26 @@ RSpec.describe 'Shared::Links', type: :request do
       expect(response.body).to include('Norway 2026')
     end
 
+    it 'hands the map its tiles and day extents without the points inside privacy zones' do
+      home = create(:place, user: owner, latitude: 60.0, longitude: 10.0)
+      create(:tagging, tag: create(:tag, user: owner, privacy_radius_meters: 1_000), taggable: home)
+      create(:point, user: owner, lonlat: 'POINT(10.0 60.0)', timestamp: Time.utc(2026, 4, 2, 9).to_i)
+      create(:point, user: owner, lonlat: 'POINT(11.0 61.0)', timestamp: Time.utc(2026, 4, 2, 10).to_i)
+      create(:point, user: owner, lonlat: 'POINT(11.5 61.5)', timestamp: Time.utc(2026, 4, 2, 11).to_i)
+      create(:point, user: owner, lonlat: 'POINT(12.0 62.0)', timestamp: Time.utc(2026, 4, 3, 10).to_i)
+
+      get "/s/#{link.id}"
+
+      data = Nokogiri::HTML(response.body).at_css('[data-controller="shared-trip-map"]')
+      expect(data['data-shared-trip-map-tiles-url-value']).to eq("/api/v1/shared/#{link.id}/tiles/{z}/{x}/{y}.mvt")
+      expect(JSON.parse(data['data-shared-trip-map-day-keys-value'])).to eq(%w[2026-04-02 2026-04-03])
+      day_bounds = JSON.parse(data['data-shared-trip-map-day-bounds-value'])
+      expect(day_bounds['2026-04-02']).to eq([[11.0, 61.0], [11.5, 61.5]])
+      expect(JSON.parse(data['data-shared-trip-map-day-endpoints-value'])['2026-04-02'])
+        .to eq('first' => [11.0, 61.0], 'last' => [11.5, 61.5])
+      expect(JSON.parse(data['data-shared-trip-map-full-bounds-value'])).to eq([[11.0, 61.0], [12.0, 62.0]])
+    end
+
     it 'sets X-Robots-Tag noindex on the active response' do
       get "/s/#{link.id}"
       expect(response.headers['X-Robots-Tag']).to include('noindex')

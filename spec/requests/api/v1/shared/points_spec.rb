@@ -27,6 +27,41 @@ RSpec.describe 'Api::V1::Shared::Points', type: :request do
       expect(body.size).to eq(1)
     end
 
+    it 'returns only the points of the device that recorded the trip' do
+      phone = Array.new(4) do |i|
+        create(:point, user: owner, tracker_id: 'phone', lonlat: "POINT(13.40#{i} 52.52)",
+                       timestamp: Time.utc(2026, 4, 6, 10, i * 10).to_i)
+      end
+      create(:point, user: owner, tracker_id: 'watch', lonlat: 'POINT(12.38 51.34)',
+                     timestamp: Time.utc(2026, 4, 6, 10, 5).to_i)
+
+      get "/api/v1/shared/#{link.id}/points"
+
+      timestamps = JSON.parse(response.body).map(&:last)
+      expect(timestamps).to include(*phone.map(&:timestamp))
+      expect(timestamps).not_to include(Time.utc(2026, 4, 6, 10, 5).to_i)
+    end
+
+    it "leaves out a Lite owner's points before the data window" do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      owner.update!(plan: :lite)
+      old = 2.years.ago.change(hour: 10)
+      trip.update_columns(started_at: old.beginning_of_day, ended_at: old.end_of_day)
+      create(:point, user: owner, timestamp: old.to_i, latitude: 60.0, longitude: 10.0)
+
+      get "/api/v1/shared/#{link.id}/points"
+
+      expect(JSON.parse(response.body)).to eq([])
+    end
+
+    it 'returns no points when the owner hides the route' do
+      link.update!(settings: link.settings.merge('show_route' => false))
+
+      get "/api/v1/shared/#{link.id}/points"
+
+      expect(JSON.parse(response.body)).to eq([])
+    end
+
     it 'returns [lon, lat, ts] tuples' do
       get "/api/v1/shared/#{link.id}/points"
       body = JSON.parse(response.body)
@@ -187,9 +222,9 @@ RSpec.describe 'Api::V1::Shared::Points', type: :request do
     end
 
     before do
-      create(:point, user: owner, timestamp: Time.utc(2026, 4, 5).to_i,  latitude: 60.0, longitude: 10.0)
-      create(:point, user: owner, timestamp: Time.utc(2026, 3, 1).to_i,  latitude: 60.0, longitude: 10.0)
-      create(:point, user: owner, timestamp: Time.utc(2026, 6, 1).to_i,  latitude: 60.0, longitude: 10.0)
+      create(:point, user: owner, timestamp: Time.utc(2026, 4, 5).to_i, latitude: 60.0, longitude: 10.0)
+      create(:point, user: owner, timestamp: Time.utc(2026, 3, 1).to_i, latitude: 60.0, longitude: 10.0)
+      create(:point, user: owner, timestamp: Time.utc(2026, 6, 1).to_i, latitude: 60.0, longitude: 10.0)
       create(:point, user: create(:user), timestamp: Time.utc(2026, 4, 5).to_i, latitude: 60.0, longitude: 10.0)
     end
 

@@ -27,7 +27,6 @@ RSpec.describe 'GET /auth/account_link', type: :request do
 
     before do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-      allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false)
       allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
       allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
       stub_const('MANAGER_URL', 'https://manager.example.com')
@@ -175,6 +174,14 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
       expect(response.body).to include(email)
     end
 
+    it 'renders complete French account-link instructions' do
+      trigger_collision
+      get auth_account_link_challenge_path(locale: 'fr')
+
+      expect(response.body).to include('Associer OpenID Connect à votre compte Dawarich')
+      expect(response.body).to include('Saisissez votre mot de passe pour y associer votre identité OpenID Connect')
+    end
+
     it 'redirects to sign-in when no pending link in session' do
       get auth_account_link_challenge_path
       expect(response).to redirect_to(new_user_session_path)
@@ -259,7 +266,6 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
 
     before do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-      allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(false)
       allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
       allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
       stub_const('MANAGER_URL', 'https://manager.example.com')
@@ -294,7 +300,7 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
   end
 
   describe 'POST /auth/account_link/email' do
-    it 'enqueues the OAuth link mailer when a pending link is present' do
+    it 'enqueues the OAuth link mailer and flashes the affirmative notice on the genuine first send' do
       trigger_collision
       expect do
         post email_fallback_auth_account_link_path
@@ -302,6 +308,8 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
         .with(user.id, 'oauth_account_link', hash_including(:provider_label, :link_url))
 
       expect(response).to redirect_to(new_user_session_path)
+      expect(flash[:notice]).to match(/we sent a confirmation link/i)
+      expect(flash[:alert]).to be_nil
     end
 
     it 'does not re-send within the rate-limit window' do
@@ -311,6 +319,25 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
       expect do
         post email_fallback_auth_account_link_path
       end.not_to have_enqueued_job(Users::MailerSendingJob)
+    end
+
+    it 'flashes a distinct rate-limit alert (not the affirmative notice) when the resend is rate-limited' do
+      trigger_collision
+      # Pre-seed the per-account rate-limit cache key, as if a prior send within
+      # the 1-hour window already occurred.
+      Rails.cache.write(
+        "#{Auth::FindOrCreateOauthUser::LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{user.id}",
+        true,
+        expires_in: Auth::FindOrCreateOauthUser::LINK_EMAIL_RATE_LIMIT_WINDOW
+      )
+
+      expect do
+        post email_fallback_auth_account_link_path
+      end.not_to have_enqueued_job(Users::MailerSendingJob)
+
+      expect(response).to redirect_to(new_user_session_path)
+      expect(flash[:alert]).to match(/confirmation link was already sent|wait before requesting/i)
+      expect(flash[:notice]).to be_nil
     end
   end
 end

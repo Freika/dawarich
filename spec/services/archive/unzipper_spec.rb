@@ -39,6 +39,53 @@ RSpec.describe Archive::Unzipper do
       File.delete(path) if path && File.exist?(path)
     end
 
+    it 'classifies a Dawarich v2 profile export as :user_data_archive' do
+      manifest = {
+        format_version: 2,
+        dawarich_version: '1.9.1',
+        exported_at: '2026-09-14T12:00:00Z',
+        counts: { points: 1 },
+        files: { points: ['points/2026/2026-09.jsonl'] }
+      }
+      path = make_zip(
+        'manifest.json' => manifest.to_json,
+        'settings.jsonl' => "{}\n"
+      )
+
+      expect(described_class.inspect_archive(path).kind).to eq(:user_data_archive)
+    ensure
+      File.delete(path) if path && File.exist?(path)
+    end
+
+    it 'classifies a legacy Dawarich profile export as :user_data_archive' do
+      data = '{"counts":{"points":1},"settings":{"timezone":"UTC"},"points":[' \
+             "#{'0,' * 40_000}0]}"
+      path = make_zip('data.json' => data, 'files/import.json' => '{}')
+
+      expect(described_class.inspect_archive(path).kind).to eq(:user_data_archive)
+    ensure
+      File.delete(path) if path && File.exist?(path)
+    end
+
+    it 'does not classify an unrelated manifest as a user data archive' do
+      path = make_zip(
+        'manifest.json' => { format_version: 2, files: [] }.to_json,
+        'track.gpx' => '<gpx/>'
+      )
+
+      expect(described_class.inspect_archive(path).kind).to eq(:multi_entry)
+    ensure
+      File.delete(path) if path && File.exist?(path)
+    end
+
+    it 'does not classify an unrelated data.json as a user data archive' do
+      path = make_zip('data.json' => { locations: [] }.to_json)
+
+      expect(described_class.inspect_archive(path).kind).to eq(:single_entry)
+    ensure
+      File.delete(path) if path && File.exist?(path)
+    end
+
     it 'classifies a single-entry zip with an unsupported inner extension as :multi_entry' do
       path = make_zip('readme.txt' => 'hi')
       result = described_class.inspect_archive(path)

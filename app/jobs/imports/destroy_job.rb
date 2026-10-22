@@ -42,6 +42,13 @@ class Imports::DestroyJob < ApplicationJob
         }
       }
     )
+
+    Turbo::StreamsChannel.broadcast_replace_to(
+      [import.user, :imports],
+      target: ActionView::RecordIdentifier.dom_id(import),
+      partial: 'imports/table_row',
+      locals: { import: import, timezone: import.user.safe_settings.timezone }
+    )
   end
 
   def broadcast_deletion_complete(import)
@@ -53,6 +60,10 @@ class Imports::DestroyJob < ApplicationJob
           id: import.id
         }
       }
+    )
+
+    Turbo::StreamsChannel.broadcast_remove_to(
+      [import.user, :imports], target: ActionView::RecordIdentifier.dom_id(import)
     )
   end
 end

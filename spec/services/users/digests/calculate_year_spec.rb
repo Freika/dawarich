@@ -19,6 +19,42 @@ RSpec.describe Users::Digests::CalculateYear do
       end
     end
 
+    context 'when the user timezone differs from the application timezone' do
+      let(:user) { create(:user, settings: { 'timezone' => 'Pacific/Auckland' }) }
+
+      before do
+        create(:stat, user:, year: 2024, month: 1, distance: 1_000, toponyms: [])
+        # Auckland is UTC+13 in summer: local January 1, January 2 (twice) and January 1, 2025.
+        create(:point, user:, country_name: 'New Zealand', timestamp: Time.utc(2023, 12, 31, 12).to_i)
+        create(:point, user:, country_name: 'New Zealand', timestamp: Time.utc(2024, 1, 1, 11, 30).to_i)
+        create(:point, user:, country_name: 'New Zealand', timestamp: Time.utc(2024, 1, 2, 2).to_i)
+        create(:point, user:, country_name: 'Fiji', timestamp: Time.utc(2024, 12, 31, 12).to_i)
+      end
+
+      it 'counts country days and year bounds in the user timezone' do
+        countries = calculate_digest.time_spent_by_location['countries']
+
+        expect(countries).to eq([{ 'name' => 'New Zealand', 'minutes' => 2 * 1440 }])
+      end
+    end
+
+    context 'when travel patterns are computed for a user in another timezone' do
+      let(:user) { create(:user, settings: { 'timezone' => 'Pacific/Auckland' }) }
+
+      before do
+        create(:stat, user:, year: 2024, month: 1, distance: 1_000, toponyms: [])
+        # Local January 1, 2024 at 11:00 and local January 1, 2025 at 01:00.
+        create(:point, user:, timestamp: Time.utc(2023, 12, 31, 22).to_i)
+        create(:point, user:, timestamp: Time.utc(2024, 12, 31, 12).to_i)
+      end
+
+      it 'takes the year window in the user timezone' do
+        expect(calculate_digest.travel_patterns['time_of_day']).to eq(
+          'night' => 0, 'morning' => 100, 'afternoon' => 0, 'evening' => 0
+        )
+      end
+    end
+
     context 'when user has stats for the year' do
       let!(:january_stat) do
         create(:stat, user: user, year: 2024, month: 1, distance: 50_000, toponyms: [
@@ -329,6 +365,66 @@ RSpec.describe Users::Digests::CalculateYear do
         digest = described_class.new(user.id, year).call
 
         expect(digest.all_time_stats['total_distance']).to eq('5000')
+      end
+    end
+
+    context 'when a Lite user requests a boundary year straddling the 12-month window' do
+      include ActiveSupport::Testing::TimeHelpers
+
+      let(:user) { create(:user, :lite_plan) }
+      let(:year) { 2025 }
+
+      around { |example| travel_to(Time.utc(2026, 9, 6, 12)) { example.run } }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+        create(:stat, user: user, year: year, month: 1, distance: 1_000, toponyms: [
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'stayed_for' => 1440 }] }
+               ])
+        create(:stat, user: user, year: year, month: 3, distance: 1_000, toponyms: [
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Lyon', 'stayed_for' => 1440 }] }
+               ])
+        create(:stat, user: user, year: year, month: 12, distance: 1_000, toponyms: [
+                 { 'country' => 'Russia', 'cities' => [{ 'city' => 'Moscow', 'stayed_for' => 1440 }] }
+               ])
+
+        # Raw points: two out-of-window (Jan, France) and two in-window (Dec, Russia)
+        create(:point, user: user, timestamp: Time.utc(2025, 1, 1, 10, 0).to_i,
+                        country_name: 'France', city: 'Paris')
+        create(:point, user: user, timestamp: Time.utc(2025, 1, 2, 10, 0).to_i,
+                        country_name: 'France', city: 'Paris')
+        create(:point, user: user, timestamp: Time.utc(2025, 12, 1, 10, 0).to_i,
+                        country_name: 'Russia', city: 'Moscow')
+        create(:point, user: user, timestamp: Time.utc(2025, 12, 2, 10, 0).to_i,
+                        country_name: 'Russia', city: 'Moscow')
+      end
+
+      it 'scopes time_spent_by_location countries to the in-window subset' do
+        digest = described_class.new(user.id, year).call
+
+        countries = digest.time_spent_by_location['countries'].map { |c| c['name'] }
+
+        expect(countries).to contain_exactly('Russia')
+        expect(countries).not_to include('France')
+      end
+
+      it 'keeps time_spent_by_location countries consistent with toponyms' do
+        digest = described_class.new(user.id, year).call
+
+        toponym_countries = digest.toponyms.map { |t| t['country'] }
+        time_spent_countries = digest.time_spent_by_location['countries'].map { |c| c['name'] }
+
+        expect(toponym_countries).to contain_exactly('Russia')
+        expect(time_spent_countries).to all(be_in(toponym_countries))
+      end
+
+      it 'keeps seasonality consistent with the scoped monthly_distances' do
+        digest = described_class.new(user.id, year).call
+
+        # March (France, out of window) must be 0; spring (Mar-May) must be 0
+        expect(digest.monthly_distances['3']).to eq('0')
+        expect(digest.travel_patterns['seasonality']['spring']).to eq(0)
       end
     end
   end

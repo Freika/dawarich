@@ -31,7 +31,7 @@ class StatsSerializer
   end
 
   def yearly_stats
-    user.stats.group_by(&:year).sort.reverse.map do |year, stats|
+    user.stats.select(:id, :year, :month, :distance, :toponyms).group_by(&:year).sort.reverse.map do |year, stats|
       countries, cities = countries_and_cities_from_stats(stats)
 
       {
@@ -76,7 +76,7 @@ class StatsSerializer
       toponyms.each do |toponym|
         next unless toponym.is_a?(Hash)
         next if toponym['country'].blank?
-        next unless toponym['cities'].is_a?(Array) && toponym['cities'].any?
+        next unless toponym['cities'].is_a?(Array)
 
         countries.add(toponym['country'])
         toponym['cities'].each do |city|

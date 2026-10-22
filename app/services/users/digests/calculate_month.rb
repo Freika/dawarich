@@ -21,6 +21,7 @@ module Users
 
           digest.assign_attributes(
             distance: stat.distance,
+            flight_distance: stat.flight_distance,
             toponyms: stat.toponyms || [],
             monthly_distances: (stat.daily_distance || []).to_h.transform_keys(&:to_s),
             time_spent_by_location: calculate_time_spent,
@@ -33,6 +34,11 @@ module Users
           digest.save!
           digest
         end
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+        @attempts = @attempts.to_i + 1
+        raise if @attempts >= 3
+
+        retry
       end
 
       private

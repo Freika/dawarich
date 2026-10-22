@@ -3,22 +3,22 @@
   <div class="card-body p-5">
     <h2 class="card-title text-lg flex items-center gap-2">
       <%= icon 'activity', class: 'w-5 h-5 text-primary' %>
-      Activity Breakdown
+      <%= t('.activity_breakdown') %>
     </h2>
 
     <div class="space-y-3 mt-3">
       <%
         activity_config = {
-          'driving' => { icon: 'car', label: 'Driving' },
-          'walking' => { icon: 'footprints', label: 'Walking' },
-          'stationary' => { icon: 'user', label: 'Stationary' },
-          'cycling' => { icon: 'bike', label: 'Cycling' },
-          'flying' => { icon: 'plane', label: 'Flying' },
-          'train' => { icon: 'train-front', label: 'Train' },
-          'running' => { icon: 'line-squiggle', label: 'Running' },
-          'bus' => { icon: 'bus', label: 'Bus' },
-          'boat' => { icon: 'ship', label: 'Boat' },
-          'motorcycle' => { icon: 'bike', label: 'Motorcycle' }
+          'driving' => { icon: 'car', label: t('.driving') },
+          'walking' => { icon: 'footprints', label: t('.walking') },
+          'stationary' => { icon: 'user', label: t('.stationary') },
+          'cycling' => { icon: 'bike', label: t('.cycling') },
+          'flying' => { icon: 'plane', label: t('.flying') },
+          'train' => { icon: 'train-front', label: t('.train') },
+          'running' => { icon: 'line-squiggle', label: t('.running') },
+          'bus' => { icon: 'bus', label: t('.bus') },
+          'boat' => { icon: 'ship', label: t('.boat') },
+          'motorcycle' => { icon: 'bike', label: t('.motorcycle') }
         }
 
         sorted_activities = @activity_breakdown
@@ -28,11 +28,11 @@
 
       <% if sorted_activities.empty? %>
         <div class="text-sm text-base-content/60 text-center py-4">
-          No activity data available for this period
+          <%= t('.no_activity_data_available_for_this_period') %>
         </div>
       <% else %>
         <% sorted_activities.each do |mode, data| %>
-          <% config = activity_config[mode] || { icon: 'circle', label: mode.humanize } %>
+          <% config = activity_config[mode] || { icon: 'circle', label: t("transportation_modes.#{mode}", default: t('transportation_modes.unknown')) } %>
           <div class="flex items-center gap-3">
             <div class="w-6 flex justify-center text-base-content/70">
               <%= icon config[:icon], class: 'w-4 h-4' %>

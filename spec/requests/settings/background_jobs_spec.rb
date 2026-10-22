@@ -53,6 +53,15 @@ RSpec.describe '/settings/background_jobs', type: :request do
             end.to have_enqueued_job(EnqueueBackgroundJob)
           end
         end
+        context 'when job name is start_teslamate_sync' do
+          it 'queues the sync and returns to the TeslaMate pane' do
+            expect do
+              post settings_background_jobs_url, params: { job_name: 'start_teslamate_sync' }
+            end.to have_enqueued_job(EnqueueBackgroundJob).with('start_teslamate_sync', user.id)
+
+            expect(response).to redirect_to(settings_integrations_path(service: 'teslamate'))
+          end
+        end
       end
 
       context 'when user is an admin' do
@@ -188,6 +197,44 @@ RSpec.describe '/settings/background_jobs', type: :request do
           end
         end
       end
+    end
+  end
+
+  describe 'GPS noise re-check notice' do
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+    let(:job) { DataMigrations::RecalculateAnomaliesUserJob }
+    let(:user) { create(:user) }
+
+    before { sign_in user }
+
+    it 'tells an account handed to a rebuild that a re-check is queued' do
+      user.update!(settings: user.settings.merge(job::QUEUED_SETTINGS_KEY => Time.current.iso8601))
+
+      get settings_background_jobs_url
+
+      expect(response.body).to include('queued for a one-time re-check')
+    end
+
+    it 'says nothing once the rebuild has stamped the account' do
+      user.update!(
+        settings: user.settings.merge(
+          job::QUEUED_SETTINGS_KEY => Time.current.iso8601,
+          job::RECALCULATED_SETTINGS_KEY => Time.current.iso8601
+        )
+      )
+
+      get settings_background_jobs_url
+
+      expect(response.body).not_to include('queued for a one-time re-check')
+    end
+
+    it 'says nothing to an account the dispatcher never handed out' do
+      create(:point, user: user)
+
+      get settings_background_jobs_url
+
+      expect(response.body).not_to include('queued for a one-time re-check')
     end
   end
 end
