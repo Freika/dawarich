@@ -10,6 +10,7 @@ module Visits
     # clamping and the entry seam live in Visits::SmartDetect.
     class Runner
       BATCH_THRESHOLD_DAYS = 31
+      MIN_SPLIT_SECONDS = 1.hour.to_i
 
       attr_reader :skipped_ranges
 
@@ -54,6 +55,8 @@ module Visits
       def run_batch(batch_start, batch_end)
         evidence = CandidateLoader.new(user, start_at: batch_start, end_at: batch_end, policy: policy).call
         if evidence[:skipped]
+          return split_batch(batch_start, batch_end) if batch_end - batch_start > MIN_SPLIT_SECONDS
+
           @skipped_ranges << [batch_start, batch_end]
           return []
         end
@@ -64,6 +67,12 @@ module Visits
 
         Persister.new(user, start_at: batch_start, end_at: batch_end, policy: policy)
                  .call(attributed, points_by_id: points_by_id)
+      end
+
+      # Halves stitch back together through stitch_adjacent, like month edges.
+      def split_batch(batch_start, batch_end)
+        mid = batch_start + ((batch_end - batch_start) / 2)
+        run_batch(batch_start, mid) + run_batch(mid + 1, batch_end)
       end
 
       def detect_stays(evidence, points_by_id)

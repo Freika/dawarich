@@ -96,6 +96,27 @@ RSpec.describe Visits::Detection::Runner do
     expect((created.first.ended_at - created.first.started_at) / 60).to be_within(10).of(120)
   end
 
+  it 'splits a window over the candidate cap instead of skipping it' do
+    scenario = seed_scenario(:home_gap)
+    stub_const('Visits::Detection::CandidateLoader::MAX_CANDIDATE_POINTS', scenario[:points].size - 1)
+    runner = described_class.new(user, start_at: start_time.to_i - 3600, end_at: start_time.to_i + (2 * 24 * 3600))
+
+    created = runner.call
+
+    expect(runner.skipped_ranges).to be_empty
+    expect(created.size).to eq(1)
+    expect(created.first.started_at.to_i).to eq(scenario[:expected][:stays].first[:start_ts])
+  end
+
+  it 'still reports a window that stays over the cap at the smallest split' do
+    seed_scenario(:home_gap)
+    stub_const('Visits::Detection::CandidateLoader::MAX_CANDIDATE_POINTS', 0)
+    runner = described_class.new(user, start_at: start_time.to_i - 3600, end_at: start_time.to_i + (2 * 24 * 3600))
+
+    expect(runner.call).to be_empty
+    expect(runner.skipped_ranges).not_to be_empty
+  end
+
   it 'never stitches across a point-less anchor sitting in the silence' do
     month_edge = Time.zone.parse('2026-02-01 00:00:00')
     [-30, -27, -24, -21, -18, -15].each do |m|
