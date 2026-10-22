@@ -4,14 +4,15 @@ require 'rails_helper'
 require 'webrick'
 
 RSpec.describe Geocoding::UserLookup do
-  let(:photon_body) do
+  def photon_body(city)
     { type: 'FeatureCollection',
-      features: [{ type: 'Feature', properties: { city: 'Leipzig', country: 'Germany' },
+      features: [{ type: 'Feature', properties: { city: city, country: 'Germany' },
                    geometry: { type: 'Point', coordinates: [12.3712, 51.3402] } }] }.to_json
   end
+
   let(:connections) { Queue.new }
   let(:requests) { Queue.new }
-  let(:handler_delay) { 0 }
+  let(:handler_delay) { ->(_latitude) { 0 } }
   let(:server) do
     WEBrick::HTTPServer.new(
       BindAddress: '127.0.0.1', Port: 0, RequestTimeout: 0.5,
@@ -20,9 +21,9 @@ RSpec.describe Geocoding::UserLookup do
     ).tap do |http|
       http.mount_proc('/') do |request, response|
         requests << request.request_line
-        sleep(handler_delay)
+        sleep(handler_delay.call(request.query['lat']))
         response['Content-Type'] = 'application/json'
-        response.body = photon_body
+        response.body = photon_body(request.query['lat'])
       end
     end
   end
@@ -60,12 +61,12 @@ RSpec.describe Geocoding::UserLookup do
     reverse(51.34, 12.37)
     sleep 1
 
-    expect(reverse(51.35, 12.37).first.city).to eq('Leipzig')
+    expect(reverse(51.35, 12.37).first.city).to eq('51.35')
     expect(connections.size).to eq(2)
   end
 
   context 'when the server is slow' do
-    let(:handler_delay) { 0.6 }
+    let(:handler_delay) { ->(_latitude) { 0.6 } }
 
     it 'raises a lookup timeout and recovers on the next lookup' do
       Geocoder.configure(timeout: 0.2)
@@ -75,6 +76,17 @@ RSpec.describe Geocoding::UserLookup do
       expect(reverse(51.35, 12.37)).not_to be_empty
     ensure
       Geocoder.configure(timeout: 5)
+    end
+  end
+
+  context 'when a lookup is interrupted while waiting for its response' do
+    let(:handler_delay) { ->(latitude) { latitude == '1.0' ? 0.5 : 0 } }
+
+    it 'does not hand that response to the next lookup' do
+      expect { Timeout.timeout(0.1) { reverse(1.0, 12.37) } }.to raise_error(Timeout::Error)
+      sleep 0.7
+
+      expect(reverse(2.0, 12.37).first.city).to eq('2.0')
     end
   end
 

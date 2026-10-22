@@ -25,10 +25,22 @@ module Geocoding
       key = [@client.proxy_address, @client.proxy_port, @client.proxy_user, @client.proxy_pass,
              host, port, use_ssl, open_timeout, read_timeout]
       connections = Thread.current[THREAD_KEY] ||= {}
-      yield(connections[key] ||= connect(host, port, use_ssl, open_timeout, read_timeout))
+      completed = false
+      response = yield(connections[key] ||= connect(host, port, use_ssl, open_timeout, read_timeout))
+      completed = true
+      response
+    ensure
+      discard(connections, key) unless completed
     end
 
     private
+
+    def discard(connections, key)
+      connection = connections&.delete(key)
+      connection.finish if connection&.started?
+    rescue IOError, SystemCallError
+      nil
+    end
 
     def connect(host, port, use_ssl, open_timeout, read_timeout)
       @client.new(host, port).tap do |http|
