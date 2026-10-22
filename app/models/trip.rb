@@ -130,7 +130,7 @@ class Trip < ApplicationRecord
     end
   end
 
-  def shared_route_points
+  def plan_scoped_route_points
     user.plan_restricted? ? primary_device_points.merge(user.scoped_points) : primary_device_points
   end
 

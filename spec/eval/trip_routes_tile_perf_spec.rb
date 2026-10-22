@@ -55,4 +55,31 @@ RSpec.describe 'Trip route tile performance', :eval do
 
     expect(timings.values).to all(be < 2.0)
   end
+
+  it 'builds tiles of a trip whose points have no tracks yet within two seconds' do
+    user = create(:user, settings: { 'timezone' => 'UTC', 'minutes_between_routes' => 30 })
+    start = Time.utc(2025, 1, 1)
+    trip = create(:trip, user:, started_at: start, ended_at: start + 300.days, path: nil,
+                         skip_calculation_enqueue: true)
+    ActiveRecord::Base.connection.execute(<<~SQL.squish)
+      INSERT INTO points (user_id, tracker_id, timestamp, lonlat, created_at, updated_at)
+      SELECT #{user.id}, 'phone', #{start.to_i} + (s / 80) * 86400 + 36000 + (s % 80) * 20,
+        ST_SetSRID(ST_MakePoint(-140 + (s % 80) * 0.001, -40 + (s / 80) * 0.0001), 4326)::geography, now(), now()
+      FROM generate_series(0, 39999) AS s
+    SQL
+    ActiveRecord::Base.connection.execute('ANALYZE points')
+
+    trip = Trip.find(trip.id)
+    timings = [5, 11, 14].to_h do |zoom|
+      x, y = tile_for(-139.97, -39.98, zoom)
+      query = Trips::RoutesTileQuery.new(trip:, z: zoom, x:, y:, timezone: 'UTC',
+                                         points_scope: trip.primary_device_points)
+      result = nil
+      seconds = Benchmark.realtime { result = query.call }
+      puts "untracked z#{zoom}: #{seconds.round(2)}s, #{result.feature_count} features"
+      [zoom, seconds]
+    end
+
+    expect(timings.values).to all(be < 2.0)
+  end
 end

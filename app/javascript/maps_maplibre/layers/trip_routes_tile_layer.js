@@ -6,6 +6,7 @@ const SOURCE_ID = "trip-routes"
 const LAYER_ID = "trip-routes-layer"
 const SOURCE_LAYER = "trip_routes"
 const FALLBACK_COLOR = "#6366F1"
+const MAX_EXCLUDED_WINDOWS = 50
 
 export class TripRoutesTileLayer {
   constructor(
@@ -88,6 +89,7 @@ export class TripRoutesTileLayer {
       if (last && from <= last[1]) last[1] = Math.max(last[1], to)
       else normalized.push([from, to])
     }
+    normalized.splice(MAX_EXCLUDED_WINDOWS)
     if (JSON.stringify(normalized) === JSON.stringify(this.excludedWindows))
       return
 

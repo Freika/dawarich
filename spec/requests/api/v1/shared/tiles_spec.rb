@@ -114,6 +114,18 @@ RSpec.describe 'Api::V1::Shared::Tiles', type: :request do
     expect(response).to have_http_status(:no_content)
   end
 
+  it 'revalidates the tiles once the owner moves to a plan with a data window' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    owner.update!(plan: :pro)
+    get tile_path
+    etag = response.headers['ETag']
+
+    owner.update!(plan: :lite)
+    get tile_path, headers: { 'If-None-Match' => etag }
+
+    expect(response).not_to have_http_status(:not_modified)
+  end
+
   it 'does not accept exclusion windows' do
     get tile_path, params: { exclude: '1-2' }
 

@@ -191,6 +191,20 @@ test("sends whole-second windows the server accepts, merging overlaps", () => {
   ])
 })
 
+test("sends no more windows than the server accepts", () => {
+  const map = fakeMap()
+  const layer = new TripRoutesTileLayer(map, options)
+
+  layer.setExcludedWindows(
+    Array.from({ length: 60 }, (_, i) => [i * 100, i * 100 + 10]),
+  )
+
+  const exclude = new URLSearchParams(
+    Object.values(map.sources)[0].tiles[0].split("?")[1],
+  ).get("exclude")
+  assert.equal(exclude.split(",").length, 50)
+})
+
 test("emphasises the hovered day with its endpoints and reports clicks", () => {
   const map = fakeMap()
   const layer = new TripRoutesTileLayer(map, options)

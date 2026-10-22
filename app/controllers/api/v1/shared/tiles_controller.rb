@@ -63,7 +63,7 @@ module Api
         def tile_query
           ::Trips::RoutesTileQuery.new(
             trip:, z: params[:z], x: params[:x], y: params[:y], timezone: link.user.timezone_iana,
-            points_scope: trip.shared_route_points, privacy_zones:
+            points_scope: trip.plan_scoped_route_points, privacy_zones:
           )
         end
 

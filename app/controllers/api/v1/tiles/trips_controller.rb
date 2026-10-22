@@ -42,13 +42,8 @@ class Api::V1::Tiles::TripsController < ApiController
   def tile_query
     Trips::RoutesTileQuery.new(
       trip: @trip, z: params[:z], x: params[:x], y: params[:y], timezone: current_api_user.timezone_iana,
-      points_scope:, exclude_windows:
+      points_scope: @trip.plan_scoped_route_points, exclude_windows:
     )
-  end
-
-  def points_scope
-    scope = @trip.primary_device_points
-    current_api_user.plan_restricted? ? scope.merge(current_api_user.scoped_points) : scope
   end
 
   def tile_schema_version

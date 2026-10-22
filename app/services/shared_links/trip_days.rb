@@ -46,7 +46,7 @@ module SharedLinks
     end
 
     def points_outside_privacy_zones
-      points = @trip.shared_route_points
+      points = @trip.plan_scoped_route_points
       zones = privacy_zones
       return points if zones.empty?
 
