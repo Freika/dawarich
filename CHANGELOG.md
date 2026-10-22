@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Locale lookups are memoized between reloads, preserving fallbacks, interpolation and plural forms.
 - HTML pages skip automatic ETag body hashing, while explicit validators and JSON/API conditional requests keep working.
 - The default `docker/docker-compose.yml` now runs Puma and Sidekiq in one process, with two background threads and 60 seconds to shut down. Before upgrading an existing stack, stop `dawarich_sidekiq` using its old Compose file; queued jobs remain in Redis and are picked up by the web process. See `docs/deployment/single-process.md` for upgrade steps.
+- Map point tiles are revalidated against per-month point revisions kept by the database. Points arriving in one month no longer force browsers to re-download tiles for other months of the same year, and changes made outside the usual write paths, such as bulk updates, now refresh the affected tiles.
 - Dense map point tiles render about 2.5 times faster: PostgreSQL JIT compilation is turned off for the tile query only.
 - The points page and the points API no longer count all matching points on every request; the total is cached and refreshed whenever points change, so large accounts page through points much faster. Response headers are unchanged.
 - Pages render two to three times faster: the API key QR code in the getting-started dialog and the SVG icons are generated once per process instead of on every page view.
