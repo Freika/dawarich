@@ -4,21 +4,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.17.0] - 2026-10-23, Berlin
 
-### Added
-
-- Import your check-in history from a Foursquare Swarm data export. Upload the whole export archive or its `checkins*.json` files: every check-in becomes a point, and every check-in at a venue becomes a visit at a place named after that venue. A visit lasts until your next check-in, at most two hours. The other files in the archive (tips, photos, ratings) are skipped.
-
-### Fixed
-- The visits API answers with a bad-request error (`Invalid time range`, previously `Invalid date format`) for malformed or reversed date ranges, and for area queries that send only one of `start_at` and `end_at`; creating a visit rejects impossible dates such as 30 February instead of moving them into March.
-- Import archives with many photos or other unsupported files no longer fail with "Archive too large" or "Too many files"; only the files Dawarich can import count towards those limits.
-### Changed
-- Reverse geocoding can use more background threads. Without a requests-per-second limit on the geocoding provider, each Sidekiq process now keeps one thread for other work instead of limiting geocoding to a third of one process's threads; with a limit, geocoding gets one thread per request per second, rounded up. `REVERSE_GEOCODING_CONCURRENCY` still overrides this. If you use Geoapify, LocationIQ or the public Nominatim, set a requests-per-second limit in the geocoding settings or `REVERSE_GEOCODING_RPS`, since Dawarich does not limit those providers on its own.
-- Geocoding lookups keep their connection to the provider open between requests instead of opening a new HTTPS connection for every lookup.
-
-### Fixed
-- Stop writing every raw geocoding response, including addresses and coordinates, to the log.
 This release makes Dawarich lighter and faster. Measured on a test instance with 100,000 points, compared with 1.16.0:
 
 - Memory: about 240 MiB at idle instead of 510 MiB, and 400 MiB instead of 770 MiB after load, now that Puma and Sidekiq run in one process.
@@ -27,9 +14,14 @@ This release makes Dawarich lighter and faster. Measured on a test instance with
 - Imports: a 200,000-point Google Records import finishes in 132 s instead of 175 s. Peak memory no longer grows with file size: about 60 MiB for 2.4 million points.
 
 ### Added
+
+- Import your check-in history from a Foursquare Swarm data export. Upload the whole export archive or its `checkins*.json` files: every check-in becomes a point, and every check-in at a venue becomes a visit at a place named after that venue. A visit lasts until your next check-in, at most two hours. The other files in the archive (tips, photos, ratings) are skipped.
 - Single-process mode runs background jobs and schedules inside Puma with `SIDEKIQ_EMBEDDED=true` and `WEB_CONCURRENCY=0`.
 
 ### Changed
+
+- Reverse geocoding can use more background threads. Without a requests-per-second limit on the geocoding provider, each Sidekiq process now keeps one thread for other work instead of limiting geocoding to a third of one process's threads; with a limit, geocoding gets one thread per request per second, rounded up. `REVERSE_GEOCODING_CONCURRENCY` still overrides this. If you use Geoapify, LocationIQ or the public Nominatim, set a requests-per-second limit in the geocoding settings or `REVERSE_GEOCODING_RPS`, since Dawarich does not limit those providers on its own.
+- Geocoding lookups keep their connection to the provider open between requests instead of opening a new HTTPS connection for every lookup.
 - Stitching detected visits reads batched coordinates instead of loading every point field for each visit.
 - Visit detection fetches point geodata for groups of stays instead of checking each stay separately.
 - Large Google Records, Phone Takeout, GeoJSON, Polarsteps and photo-library JSON imports, and the Records device-tag backfill, read the file incrementally in batches instead of loading the entire file into memory first. Files with invalid UTF-8 still import through the previous parser.
@@ -45,6 +37,10 @@ This release makes Dawarich lighter and faster. Measured on a test instance with
 - Track generation loads only the point columns it needs, and the five-minute place-name refresh skips months whose points did not change.
 
 ### Fixed
+
+- The visits API answers with a bad-request error (`Invalid time range`, previously `Invalid date format`) for malformed or reversed date ranges, and for area queries that send only one of `start_at` and `end_at`; creating a visit rejects impossible dates such as 30 February instead of moving them into March.
+- Import archives with many photos or other unsupported files no longer fail with "Archive too large" or "Too many files"; only the files Dawarich can import count towards those limits.
+- Stop writing every raw geocoding response, including addresses and coordinates, to the log.
 - Overnight stays where the phone goes quiet, for example arriving home in the evening and leaving in the morning, are now suggested as one visit across the silence instead of a few minutes after arrival. Choose Re-run detection on full history on the Visits page to fix past stays.
 - Points synced from TeslaMate now get suggested visits; choose Re-run detection on full history to cover earlier drives. On Dawarich Cloud, trial accounts are now included in the nightly visit run.
 - Re-running detection on full history no longer skips months with more than 100,000 points; it detects them in smaller windows.
