@@ -17,23 +17,6 @@ const collections = await import(
     `import { RouteSegmenter } from "${segmenterUrl}"\n${stripImports(await read("maps_maplibre/utils/day_route_collections.js"))}`,
   )
 )
-const { DayRoutesLayer } = await import(
-  moduleUrl(
-    `import { RouteSegmenter } from "${segmenterUrl}"
-     const translate = (key) => key
-     const maplibregl = { LngLatBounds: class { extend() {} isEmpty() { return false } } }
-     const maskLines = (geojson) => geojson
-     ${stripImports(await read("maps_maplibre/layers/day_routes_layer.js"))}`,
-  )
-)
-
-const fakeMap = () => ({
-  getSource: () => null,
-  getLayer: () => null,
-  addSource() {},
-  addLayer() {},
-})
-
 const pointsByDay = {
   "2026-01-02": [
     { longitude: 13.1, latitude: 52.1, timestamp: 1767351600 },
@@ -47,22 +30,31 @@ const pointsByDay = {
   "2026-01-03": [{ longitude: 14, latitude: 53, timestamp: 1767438000 }],
 }
 
-test("builds the same day routes the day routes layer drew", () => {
-  const layer = new DayRoutesLayer(fakeMap())
-  layer.addDayRoutes(pointsByDay, { timeThresholdMinutes: 60 })
-
+test("builds one coloured route collection per day with movement", () => {
   const built = collections.buildDayRouteCollections(pointsByDay, {
     timeThresholdMinutes: 60,
   })
 
-  assert.deepEqual(built, [...layer.dayRouteData.values()])
+  assert.deepEqual(
+    built.map((collection) =>
+      collection.features.map((feature) => [
+        feature.properties.dayKey,
+        feature.properties.color,
+        feature.geometry.coordinates.length,
+      ]),
+    ),
+    [[["2026-01-01", "#6366F1", 3]], [["2026-01-02", "#F43F5E", 2]]],
+  )
 })
 
-test("keeps the day palette of the day routes layer", () => {
-  for (const days of [1, 3, 12, 20]) {
-    assert.deepEqual(
-      collections.generateDayPalette(days),
-      DayRoutesLayer.generateDayPalette(days),
-    )
-  }
+test("colours days from the fixed palette, then evenly around the hue wheel", () => {
+  assert.deepEqual(collections.generateDayPalette(3), [
+    "#6366F1",
+    "#F43F5E",
+    "#10B981",
+  ])
+  const many = collections.generateDayPalette(20)
+  assert.equal(many.length, 20)
+  assert.equal(many[0], "hsl(0, 70%, 55%)")
+  assert.equal(many[1], "hsl(18, 70%, 55%)")
 })

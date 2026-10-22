@@ -89,7 +89,6 @@ export default class extends Controller {
     this.flightsGeoJSON = null
     this.flightsActive = false
     this.planLayer = null
-    this.mapInitializing = false
     this.allPoints = []
     this.replayPanel = null
 

@@ -99,7 +99,8 @@ export default class extends Controller {
 
   async showRange({ startAt, endAt }) {
     if (!this.map) return
-    const request = (this.rangeRequest = (this.rangeRequest || 0) + 1)
+    this.rangeRequest = (this.rangeRequest || 0) + 1
+    const request = this.rangeRequest
 
     let extent
     try {

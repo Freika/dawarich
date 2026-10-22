@@ -243,3 +243,13 @@ test("flights ask the tiles to leave out the flight windows", async (t) => {
   await controller.toggleFlights()
   assert.deepEqual(env.tileLayers[0].excluded, [])
 })
+
+test("the map target connecting before the controller builds one map", async (t) => {
+  const { controller, env } = setup(t)
+
+  const targetConnected = controller.mapTargetConnected()
+  await controller.connect()
+  await targetConnected
+
+  assert.equal(env.initializeCalls.length, 1)
+})
