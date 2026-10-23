@@ -18,8 +18,9 @@ module Timeline
     # the day chips — a 200 m jog across a parking lot is not a story.
     CHIP_MIN_DISTANCE = 0.5
 
-    def initialize(user, start_at:, end_at:, distance_unit: 'km')
+    def initialize(user, start_at:, end_at:, distance_unit: 'km', privacy_zone_masker: nil)
       @user = user
+      @privacy_zone_masker = privacy_zone_masker
       @start_at = start_at.present? ? Time.zone.parse(start_at) : nil
       @end_at = end_at.present? ? Time.zone.parse(end_at) : nil
       @distance_unit = distance_unit
@@ -190,8 +191,7 @@ module Timeline
       {
         id: area.id,
         name: area.name,
-        lat: area.latitude.to_f,
-        lng: area.longitude.to_f,
+        **visible_coordinates(area.latitude.to_f, area.longitude.to_f),
         radius: area.radius
       }
     end
@@ -212,7 +212,8 @@ module Timeline
       if visit.place.present?
         key = visit.place.name.to_s.strip.downcase
         unless key.empty?
-          seen[key] = { id: visit.place.id, name: visit.place.name, lat: visit.place.lat, lng: visit.place.lon }
+          seen[key] = { id: visit.place.id, name: visit.place.name,
+                        **visible_coordinates(visit.place.lat, visit.place.lon) }
         end
       end
 
@@ -220,7 +221,7 @@ module Timeline
         key = p.name.to_s.strip.downcase
         next if key.empty?
 
-        seen[key] ||= { id: p.id, name: p.name, lat: p.lat, lng: p.lon }
+        seen[key] ||= { id: p.id, name: p.name, **visible_coordinates(p.lat, p.lon) }
       end
 
       seen.values
@@ -262,8 +263,7 @@ module Timeline
     def build_place(place)
       {
         name: place.name,
-        lat: place.lat,
-        lng: place.lon,
+        **visible_coordinates(place.lat, place.lon),
         city: place.city,
         country: place.country
       }
@@ -309,12 +309,26 @@ module Timeline
             .to_h
     end
 
+    def visible_coordinates(lat, lng)
+      return { lat: nil, lng: nil } if @privacy_zone_masker&.in_zone?(lng, lat)
+
+      { lat:, lng: }
+    end
+
+    def masked_path_sql
+      path = 'original_path::geometry'
+      return path unless @privacy_zone_masker&.any?
+
+      "CASE WHEN #{@privacy_zone_masker.touches_sql(path)} THEN #{@privacy_zone_masker.clip_sql(path)} ELSE #{path} END"
+    end
+
     def build_bounds(visits, tracks)
       lats = []
       lngs = []
 
       visits.each do |visit|
         next unless visit.place
+        next if @privacy_zone_masker&.in_zone?(visit.place.lon, visit.place.lat)
 
         lats << visit.place.lat
         lngs << visit.place.lon
@@ -350,7 +364,7 @@ module Timeline
           ST_XMax(extent) AS max_lng,
           ST_YMax(extent) AS max_lat
         FROM (
-          SELECT ST_Extent(original_path::geometry) AS extent
+          SELECT ST_Extent(#{masked_path_sql}) AS extent
           FROM tracks
           WHERE id IN (?) AND original_path IS NOT NULL
         ) sub
