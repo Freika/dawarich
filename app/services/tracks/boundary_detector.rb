@@ -167,12 +167,11 @@ class Tracks::BoundaryDetector
         .to_a
   end
 
-  # Time gap that still counts as "adjacent" for boundary merging.
-  # Floors at 30 minutes so we never tighten behavior for users who set a
-  # smaller minutes_between_routes; widens past 30 minutes when the user has
-  # explicitly opted into longer gaps as part of the same journey.
+  # Time gap that still counts as "adjacent" for boundary merging. It matches
+  # the gap Tracks::Segmentation splits on, so a track cut at a chunk boundary
+  # is rejoined exactly when continuous data would have kept it whole.
   def adjacency_window
-    [time_threshold_minutes.minutes, 30.minutes].max
+    time_threshold_minutes.minutes
   end
 
   # Find tracks that might be connected to the given track
