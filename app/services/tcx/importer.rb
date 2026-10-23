@@ -40,24 +40,25 @@ class Tcx::Importer
     return [] if activity.blank?
 
     sport = activity['Sport']
+    tracker_id = tracker_id_for(activity)
     laps = Array.wrap(activity['Lap'])
 
-    laps.flat_map { |lap| parse_lap(lap, sport) }.compact
+    laps.flat_map { |lap| parse_lap(lap, sport, tracker_id) }.compact
   end
 
-  def parse_lap(lap, sport)
+  def parse_lap(lap, sport, tracker_id)
     tracks = Array.wrap(lap['Track'])
 
-    tracks.flat_map { |track| parse_track(track, sport) }.compact
+    tracks.flat_map { |track| parse_track(track, sport, tracker_id) }.compact
   end
 
-  def parse_track(track, sport)
+  def parse_track(track, sport, tracker_id)
     trackpoints = Array.wrap(track['Trackpoint'])
 
-    trackpoints.filter_map { |tp| prepare_point(tp, sport) }
+    trackpoints.filter_map { |tp| prepare_point(tp, sport, tracker_id) }
   end
 
-  def prepare_point(trackpoint, sport)
+  def prepare_point(trackpoint, sport, tracker_id)
     position = trackpoint['Position']
     return if position.blank?
 
@@ -77,6 +78,7 @@ class Tcx::Importer
       import_id: import.id,
       user_id: user_id,
       motion_data: { 'activity_type' => map_activity_type(sport) }.compact,
+      tracker_id: tracker_id,
       created_at: Time.current,
       updated_at: Time.current
     }
@@ -92,6 +94,14 @@ class Tcx::Importer
     speed = tpx['Speed'] if tpx.is_a?(Hash)
 
     speed&.to_f&.round(1)
+  end
+
+  def tracker_id_for(activity)
+    creator = activity['Creator']
+    return unless creator.is_a?(Hash)
+
+    name = creator['Name']
+    name.is_a?(String) ? name.strip.presence : nil
   end
 
   def importer_name
