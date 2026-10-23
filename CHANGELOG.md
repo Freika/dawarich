@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Imports uploaded before 1.14.4 no longer show a `.zip` suffix in their names: `ride.gpx.zip` becomes `ride.gpx`. Imports you renamed yourself, and imports whose new name is already taken by another of your imports, keep their current names. (#3062)
+- Downloading a GPX or KML import now returns the original file instead of a ZIP archive when its filename has accented letters such as `ü` or characters such as `:`. Files with characters such as `:` in the name also no longer get `.zip` added to their import name. (#3062)
+
 ## [1.17.0] - 2026-10-23, Berlin
 
 Dawarich gets lighter and faster in this release. On a test account with a million points over three years, compared with 1.16.0:
