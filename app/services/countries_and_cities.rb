@@ -9,6 +9,16 @@ class CountriesAndCities
   BRIDGE_CAP_SECONDS = Visits::Detection::Policy::BRIDGE_CAP_S
   MIN_TRANSIT_RUN_POINTS = 2
 
+  def self.not_flyover_sql(column = 'velocity')
+    <<~SQL.squish
+      (CASE
+        WHEN #{column} ~ '^[[:space:]]*[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[[:space:]]*$'
+          THEN #{column}::double precision
+        ELSE 0
+      END * #{MS_TO_KMH}) <= #{FLYOVER_VELOCITY_THRESHOLD_KMH}
+    SQL
+  end
+
   def initialize(points, min_minutes_spent_in_city: 60)
     @points = points
     @min_minutes_spent_in_city = min_minutes_spent_in_city

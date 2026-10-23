@@ -165,6 +165,7 @@ module Users
             AND timestamp <= #{end_of_year.to_i}
             AND country_name IS NOT NULL
             AND country_name != ''
+            AND #{CountriesAndCities.not_flyover_sql}
           GROUP BY point_date, country_name
           ORDER BY point_date, min_timestamp, country_name COLLATE "C"
         SQL
