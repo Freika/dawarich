@@ -60,6 +60,77 @@ RSpec.describe Points::VectorTileQuery do
     end
   end
 
+  describe 'dwell time' do
+    let(:started_at) { 1_720_000_000 }
+
+    it 'assigns elapsed seconds to each point and zero to the final point' do
+      [10, 30, 50].each_with_index do |east, index|
+        create_point_at(east, 10, timestamp: started_at + (60 * index))
+      end
+
+      rows = feature_rows(z: 14, x: 8192, y: 8191).sort_by { |row| row['timestamp'] }
+
+      expect(rows.pluck('dwell')).to eq([60, 60, 0])
+    end
+
+    it 'caps long gaps between nearby stationary samples' do
+      create_point_at(10, 10, timestamp: started_at)
+      create_point_at(30, 10, timestamp: started_at + 3_600)
+
+      rows = feature_rows(z: 14, x: 8192, y: 8191).sort_by { |row| row['timestamp'] }
+
+      expect(rows.pluck('dwell')).to eq([300, 0])
+    end
+
+    it 'does not credit an hour outside the tile to the exit point' do
+      create_point_at(2_380, 10, timestamp: started_at)
+      exit_point = create_point_at(2_400, 10, timestamp: started_at + 1)
+      create_point_at(3_000, 10, timestamp: started_at + 2)
+      create_point_at(1_000, 10, timestamp: started_at + 3_601)
+      create_point_at(1_020, 10, timestamp: started_at + 3_602)
+
+      rows = feature_rows(z: 14, x: 8192, y: 8191)
+
+      expect(rows.sum { |row| row['count'] }).to eq(4)
+      expect(rows.find { |row| row['id'] == exit_point.id }.fetch('dwell')).to eq(0)
+      expect(rows.sum { |row| row['dwell'] }).to eq(2)
+    end
+
+    it 'does not turn distant recording pauses into stops at lower zooms' do
+      create_point_at(10, 10, timestamp: started_at)
+      create_point_at(2_000, 10, timestamp: started_at + 3_600)
+
+      [2, 10, 14].each do |zoom|
+        rows = feature_rows(z: zoom, x: 1 << (zoom - 1), y: (1 << (zoom - 1)) - 1)
+
+        expect(rows.sum { |row| row['count'] }).to eq(2)
+        expect(rows.sum { |row| row['dwell'] }).to eq(0)
+      end
+    end
+
+    it 'sums elapsed time within each cell' do
+      create_point_at(10, 10, timestamp: started_at)
+      create_point_at(30, 10, timestamp: started_at + 60)
+      create_point_at(2_000, 10, timestamp: started_at + 120)
+
+      rows = feature_rows(z: 10, x: 512, y: 511)
+
+      expect(rows.find { |row| row['count'] == 2 }.fetch('dwell')).to eq(120)
+      expect(rows.sum { |row| row['dwell'] }).to eq(120)
+    end
+
+    it 'preserves total dwell below the point-attribute zoom tier' do
+      create_point_at(10, 10, timestamp: started_at)
+      create_point_at(30, 10, timestamp: started_at + 60)
+      create_point_at(2_000_000, 1_000_000, timestamp: started_at + 120)
+
+      rows = feature_rows(z: 2, x: 2, y: 1)
+
+      expect(rows.size).to eq(2)
+      expect(rows.pluck('dwell')).to contain_exactly(120, 0)
+    end
+  end
+
   describe 'emitted coordinates' do
     it 'carries the stored ST_Y/ST_X values as latitude/longitude properties' do
       point = create_point_at(10, 10)

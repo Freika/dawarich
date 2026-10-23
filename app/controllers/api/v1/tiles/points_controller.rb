@@ -5,7 +5,7 @@ class Api::V1::Tiles::PointsController < ApiController
 
   # ETag material — bump when the tile SQL or its emitted properties change,
   # so a deploy invalidates cached tiles.
-  TILE_SCHEMA_VERSION = 4
+  TILE_SCHEMA_VERSION = 5
 
   private
 
