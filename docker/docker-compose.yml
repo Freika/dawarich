@@ -113,7 +113,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: ${APP_CPU_LIMIT:-0.50}
+          cpus: ${APP_CPU_LIMIT:-1.00}
           memory: ${APP_MEMORY_LIMIT:-4G}
 
 

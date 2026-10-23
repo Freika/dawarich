@@ -36,7 +36,7 @@ Background jobs now run inside the `dawarich_app` container, in the same process
      ```
 
      `WEB_CONCURRENCY` must be `0`: every extra web process would start its own set of job threads.
-3. Move any setting you had only on `dawarich_sidekiq`, such as SMTP, OIDC or reverse geocoding, to `dawarich_app`. If your `.env` sets `BACKGROUND_PROCESSING_CONCURRENCY=10` from the old `.env.example`, remove it or set it to `2`, and remove `RAILS_MAX_THREADS` if it is set.
+3. Move any setting you had only on `dawarich_sidekiq`, such as SMTP, OIDC or reverse geocoding, to `dawarich_app`. If your `.env` sets `BACKGROUND_PROCESSING_CONCURRENCY=10` from the old `.env.example`, remove it or set it to `2`, and remove `RAILS_MAX_THREADS` if it is set. If it sets `APP_CPU_LIMIT=0.50` from the old `.env.example`, raise it to `1.00`.
 4. Start the stack and check that three containers are running: `dawarich_db`, `dawarich_redis` and `dawarich_app`.
 
    ```bash
@@ -53,6 +53,7 @@ Don't start the old worker again next to the new setup. Larger instances, or one
 
 ### Changed
 
+- The app container in the default `docker/docker-compose.yml` is limited to one CPU core instead of half a core, since it also runs background jobs. Set `APP_CPU_LIMIT` to change it.
 - The Docker image now ships Node.js 22 LTS from the official Node.js build instead of Debian's Node.js 20 package, which no longer receives upstream security fixes. Node.js runs the server-side poster renderer. #3888
 - The points page and the points API page through large accounts much faster.
 - Reverse geocoding gets through a backlog faster: it uses as many background threads as your provider's rate limit allows and keeps its connection to the provider open. If you use Geoapify, LocationIQ or the public Nominatim, set a requests-per-second limit in the geocoding settings or `REVERSE_GEOCODING_RPS`, since Dawarich does not limit those providers on its own.
