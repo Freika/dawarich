@@ -147,6 +147,10 @@ Don't start the old worker again next to the new setup. Larger instances, or one
 - Prometheus metrics from web and Sidekiq no longer produce duplicate series when label order differs (#3769).
 - KMZ imports no longer repeatedly re-import their own archive and fill the import queue and storage (#3766).
 
+### Added
+
+- Mobile achievements API for browsing lifetime collections, searching and filtering cards, sharing public collection links, and acknowledging newly earned achievements. Unlocks use the same claim mechanism across web and mobile, and account responses advertise achievements support. (#3796)
+
 ## [1.15.3] - 2026-09-30, Berlin
 
 ### Added
