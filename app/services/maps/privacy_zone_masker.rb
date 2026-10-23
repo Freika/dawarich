@@ -89,6 +89,16 @@ module Maps
       clipped && JSON.parse(clipped, symbolize_names: true)
     end
 
+    def clip_wkt(wkt)
+      return wkt unless any? && wkt.present?
+
+      source = "ST_GeomFromText(#{ActiveRecord::Base.connection.quote(wkt)}, 4326)"
+      ActiveRecord::Base.connection.select_value(<<~SQL.squish)
+        SELECT CASE WHEN ST_IsEmpty(clipped) THEN NULL ELSE ST_AsText(clipped) END
+        FROM (SELECT CASE WHEN #{touches_sql(source)} THEN #{clip_sql(source)} ELSE #{source} END AS clipped) AS result
+      SQL
+    end
+
     def clipped_geojson_text(geojson_text)
       source = "ST_SetSRID(ST_GeomFromGeoJSON(#{ActiveRecord::Base.connection.quote(geojson_text)}), 4326)"
       ActiveRecord::Base.connection.select_value(<<~SQL.squish)

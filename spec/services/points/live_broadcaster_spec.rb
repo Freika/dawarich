@@ -34,6 +34,39 @@ RSpec.describe Points::LiveBroadcaster do
       end
     end
 
+    context 'when a point falls inside a privacy zone' do
+      let(:upserted_results) do
+        [
+          { 'id' => 1, 'timestamp' => 1_700_000_000, 'latitude' => 52.444, 'longitude' => 13.500 },
+          { 'id' => 2, 'timestamp' => 1_700_000_060, 'latitude' => 52.600, 'longitude' => 13.700 }
+        ]
+      end
+
+      let(:payloads) do
+        [
+          { timestamp: 1_700_000_000, battery: 85, altitude: 100, velocity: '5.0' },
+          { timestamp: 1_700_000_060, battery: 80, altitude: 110, velocity: '10.0' }
+        ]
+      end
+
+      before do
+        user.settings['live_map_enabled'] = true
+        user.save!
+        tag = create(:tag, :privacy_zone, user: user, privacy_radius_meters: 1000)
+        place = create(:place, user: user, latitude: 52.444, longitude: 13.500, lonlat: 'POINT(13.5 52.444)')
+        create(:tagging, tag: tag, taggable: place)
+      end
+
+      it 'broadcasts the out-of-zone point but not the in-zone point' do
+        expect(PointsChannel).to receive(:broadcast_to).once.with(
+          user,
+          [52.6, 13.7, '80', '110', '1700000060', '10.0', '2', '']
+        )
+
+        described_class.new(user.id, upserted_results, payloads).call
+      end
+    end
+
     context 'when live_map_enabled is false' do
       before do
         user.settings['live_map_enabled'] = false
