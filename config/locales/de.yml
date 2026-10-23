@@ -980,16 +980,6 @@ de:
       skip_for_now: Jetzt überspringen
       import_your_data: Importiere deine Daten
       supported_formats: Unterstützte Formate
-      google_maps: 'Google Maps:'
-      records_json_semantic_history_phone_takeout_json: Records.json, Semantic History, Phone Takeout (.json)
-      gpx: 'GPX:'
-      track_files_gpx: Track-Dateien (.gpx)
-      geojson: 'GeoJSON:'
-      feature_collections_json: Feature-Sammlungen (.json)
-      owntracks: 'OwnTracks:'
-      recorder_files_rec: Recorder-Dateien (.rec)
-      kml: 'KML:'
-      kml_files_kml_kmz: KML-Dateien (.kml, .kmz)
       file_format_is_automatically_detected_during_upload: Das Dateiformat wird beim Hochladen automatisch erkannt.
       trial_limitations_max_5_imports_10mb_per_file_current_imports: 'Testzeitraum-Begrenzungen: Maximal 5 Importe, 10 MB pro Datei. Aktuelle Importe:'
       select_one_or_multiple_files: Wähle eine oder mehrere Dateien

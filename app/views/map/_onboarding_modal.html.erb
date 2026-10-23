@@ -101,13 +101,7 @@
         <div class="card bg-base-100 shadow-sm mb-4">
           <div class="card-body p-4">
             <h4 class="card-title text-sm"><%= t('.supported_formats') %></h4>
-            <ul class="text-xs space-y-1">
-              <li><strong><%= t('.google_maps') %></strong> <%= t('.records_json_semantic_history_phone_takeout_json') %></li>
-              <li><strong><%= t('.gpx') %></strong> <%= t('.track_files_gpx') %></li>
-              <li><strong><%= t('.geojson') %></strong> <%= t('.feature_collections_json') %></li>
-              <li><strong><%= t('.owntracks') %></strong> <%= t('.recorder_files_rec') %></li>
-              <li><strong><%= t('.kml') %></strong> <%= t('.kml_files_kml_kmz') %></li>
-            </ul>
+            <%= render "imports/supported_formats" %>
             <div class="text-xs text-base-content/60 mt-2">
               <%= t('.file_format_is_automatically_detected_during_upload') %>
             </div>

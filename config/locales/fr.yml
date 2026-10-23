@@ -1601,17 +1601,6 @@ fr:
       skip_for_now: Passer pour l'instant
       import_your_data: Importer vos données
       supported_formats: Formats pris en charge
-      google_maps: 'Cartes Google :'
-      records_json_semantic_history_phone_takeout_json: Records.json, historique
-        sémantique, Phone Takeout (.json)
-      gpx: 'GPX :'
-      track_files_gpx: Fichiers de suivi (.gpx)
-      geojson: 'GeoJSON :'
-      feature_collections_json: Collections d'entités (.json)
-      owntracks: 'OwnTracks :'
-      recorder_files_rec: Fichiers d'enregistrement (.rec)
-      kml: 'KML :'
-      kml_files_kml_kmz: Fichiers KML (.kml, .kmz)
       file_format_is_automatically_detected_during_upload: Le format du fichier est
         détecté automatiquement lors du téléversement.
       trial_limitations_max_5_imports_10mb_per_file_current_imports: 'Les limitations
