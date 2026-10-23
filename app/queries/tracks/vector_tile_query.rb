@@ -31,6 +31,10 @@ class Tracks::VectorTileQuery
   # z8 tile for identical visual output. A sub-pixel track collapsing to
   # nothing at coarse zoom is correct, matching the points quantization.
   SIMPLIFY_SKIP_ZOOM = 14
+  # Geography segmentize triples dense-tile cost, so only tracks with a gap
+  # wider than GREAT_CIRCLE_MIN_GAP_DEGREES pay for great-circle vertices.
+  GREAT_CIRCLE_MIN_GAP_DEGREES = 0.5
+  GREAT_CIRCLE_STEP_METERS = 10_000
 
   # rubocop:disable Naming/MethodParameterName
   def initialize(scope:, z:, x:, y:, clip_points_scope: nil, clip_import_id: nil,
@@ -224,10 +228,15 @@ class Tracks::VectorTileQuery
   end
 
   def simplified_geom(geometry)
-    geom = "ST_Transform(#{geometry}, 3857)"
+    geom = "ST_Transform(#{great_circle_geom(geometry)}, 3857)"
     return geom if z >= SIMPLIFY_SKIP_ZOOM
 
     "ST_Simplify(#{geom}, #{simplify_tolerance})"
+  end
+
+  def great_circle_geom(geometry)
+    "CASE WHEN ST_NPoints(ST_Segmentize(#{geometry}, #{GREAT_CIRCLE_MIN_GAP_DEGREES})) > ST_NPoints(#{geometry}) " \
+      "THEN ST_Segmentize((#{geometry})::geography, #{GREAT_CIRCLE_STEP_METERS})::geometry ELSE #{geometry} END"
   end
 
   # One display pixel in meters at this zoom (Task 8 benchmark tunes the
