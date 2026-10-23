@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe DataMigrations::UnwrapLegacyImportNamesJob, type: :job do
+RSpec.describe DataMigrations::UnwrapLegacyImportsJob, type: :job do
   let(:user) { create(:user) }
 
   def legacy_import(name, blob_filename: name, metadata: {}, owner: user)
@@ -51,6 +51,22 @@ RSpec.describe DataMigrations::UnwrapLegacyImportNamesJob, type: :job do
 
     expect(legacy.reload.name).to eq('route.kml.zip')
     expect(other_user_legacy.reload.name).to eq('route.kml')
+  end
+
+  it 'lets downloads that fell back to the stored archive be prepared again' do
+    wrapped = { 'dawarich_client_wrapped' => true, 'dawarich_original_filename' => 'Grüne Runde.gpx' }
+    fell_back = legacy_import('Grüne Runde.gpx', blob_filename: 'Grüne Runde.gpx.zip', metadata: wrapped)
+    fell_back.prepared_download.attach(fell_back.file.blob)
+    prepared = legacy_import('morning.gpx', blob_filename: 'morning.gpx.zip', metadata: wrapped)
+    prepared.prepared_download.attach(io: StringIO.new('<gpx/>'), filename: 'morning.gpx')
+
+    described_class.perform_now
+
+    expect(fell_back.reload.prepared_download).not_to be_attached
+    expect(fell_back.file).to be_attached
+    expect(ActiveStorage::Blob.exists?(fell_back.file.blob_id)).to be(true)
+    expect(prepared.reload.prepared_download).to be_attached
+    expect(prepared.file).to be_attached
   end
 
   it 'skips imports without an attached file' do
