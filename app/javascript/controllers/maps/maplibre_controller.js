@@ -1256,6 +1256,12 @@ export default class extends Controller {
   updateTrackColor(event) {
     return this.settingsController.updateTrackColor(event)
   }
+  toggleSpeedColoredRoutes(event) {
+    return this.settingsController.toggleSpeedColoredRoutes(event)
+  }
+  updateSpeedColorScale(event) {
+    return this.settingsController.updateSpeedColorScale(event)
+  }
   resetLayerColors() {
     return this.settingsController.resetLayerColors()
   }

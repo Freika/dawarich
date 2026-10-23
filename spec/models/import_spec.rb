@@ -151,7 +151,8 @@ RSpec.describe Import, type: :model do
         fit: 12,
         polarsteps: 13,
         google_photos: 14,
-        mobile_photo_library: 15
+        mobile_photo_library: 15,
+        swarm: 16
       )
     end
   end

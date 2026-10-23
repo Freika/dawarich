@@ -1,3 +1,8 @@
+# Node.js comes from the official image (Debian's nodejs package is the
+# upstream-EOL 20.x line). bookworm-slim is the variant that still ships
+# linux/arm/v7; the binary runs unchanged on the trixie-based Ruby image.
+FROM node:22.23.4-bookworm-slim AS node
+
 # Runtime libraries for the prebuilt maplibre-native Node binding
 # (vendor/poster_renderer). The binary is built on Ubuntu 24.04 and links
 # lib versions Debian doesn't ship (libicu74, libjpeg8) — vendor exactly
@@ -49,14 +54,14 @@ RUN apt-get update -qq \
     ca-certificates \
     librsvg2-bin fonts-dejavu-core fonts-noto-cjk \
     gosu \
+    procps \
     && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js from Debian repositories (supports all architectures including armv7)
-RUN apt-get update -qq \
-    && apt-get install -y nodejs npm \
-    && npm install -g yarn \
-    && rm -rf /var/lib/apt/lists/*
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
 # Headless GL stack for the in-container poster renderer (maplibre-native):
 # software rendering via Mesa + a virtual X display. No browser involved.
@@ -105,7 +110,7 @@ COPY ../. ./
 RUN npm ci --no-audit --no-fund && rm -rf ~/.npm
 
 # Poster renderer dependencies — prebuilt maplibre-native binaries exist for
-# x64/arm64 only (Debian's Node 20 = ABI 115, which the release ships). On
+# x64/arm64 only (Node 22 = ABI 127, which the release ships). On
 # armv7 the renderer is skipped; server-side poster rendering is unavailable
 # there.
 RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \

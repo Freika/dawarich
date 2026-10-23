@@ -14,11 +14,11 @@ class TripsController < ApplicationController
     @has_trips = current_user.trips.exists?
     @trip_years = @has_trips ? trips_query.years : []
     @trip_countries = @has_trips ? trips_query.countries : []
-    @trips = trips_query.call
+    @trips = trips_query.call.with_route_summary
                         .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
                         .page(params[:page]).per(6)
     @family_trip_links = SharedLink.family_trips_for(current_user).index_by(&:resource_id)
-    @family_trips = Trip.where(id: @family_trip_links.keys)
+    @family_trips = Trip.with_route_summary.where(id: @family_trip_links.keys)
                         .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
                         .order(started_at: :desc).page(params[:family_page]).per(6)
   end
@@ -35,7 +35,7 @@ class TripsController < ApplicationController
     load_video_studio_context
 
     return if @trip.source_imported? && @trip.started_at > Time.current
-    return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
+    return unless @trip.calculation_missing?
 
     Trips::CalculateAllJob.perform_later(@trip.id, @distance_unit)
   end
@@ -151,7 +151,8 @@ class TripsController < ApplicationController
   private
 
   def set_trip
-    @trip = current_user.trips.find(params[:id])
+    trips = %w[show edit].include?(action_name) ? current_user.trips.with_route_summary : current_user.trips
+    @trip = trips.find(params[:id])
   end
 
   def trip_params
@@ -159,16 +160,17 @@ class TripsController < ApplicationController
   end
 
   def show_plan_map?
-    return false if @trip.path.present?
+    return false if @trip.route_present?
 
     (@trip.source_imported? && @trip.started_at > Time.current) || @day_stats.empty?
   end
 
   def compute_day_stats
-    max_points_updated = @trip.points.maximum(:updated_at).to_i
-    cache_key = ['trip_day_stats/v3', @trip.id, @trip.updated_at.to_i, max_points_updated, @timezone,
-                 @trip.user.safe_settings.minutes_between_routes]
+    window = (current_user.data_window_start.to_date if current_user.plan_restricted?)
+    cache_key = ['trip_day_stats/v5', @trip.updated_at.to_i, @timezone, window, *@trip.recording_devices_cache_key]
 
-    Rails.cache.fetch(cache_key, expires_in: 1.hour) { @trip.day_stats(@timezone) }
+    Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+      @trip.day_stats(@timezone, points_scope: @trip.plan_scoped_route_points)
+    end
   end
 end

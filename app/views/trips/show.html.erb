@@ -1,7 +1,7 @@
 <% content_for :title, @trip.name %>
 
 <%= turbo_stream_from @trip %>
-<% plan_toggle = @trip.path.present? && @trip_plan.present? %>
+<% plan_toggle = @trip.route_present? && @trip_plan.present? %>
 
 <div class="container mx-auto px-4 my-5" data-controller="trip-maplibre"
      data-trip-maplibre-api-key-value="<%= current_user.api_key %>"
@@ -12,8 +12,12 @@
      data-trip-maplibre-trip-name-value="<%= @trip.name %>"
      data-trip-maplibre-meters-between-routes-value="<%= current_user.safe_settings.meters_between_routes %>"
      data-trip-maplibre-minutes-between-routes-value="<%= current_user.safe_settings.minutes_between_routes %>"
-     data-trip-maplibre-path-data-value="<%= @trip.path&.coordinates&.to_json %>"
-     data-trip-maplibre-device-windows-value="<%= @trip.primary_device_windows.to_json %>"
+     data-trip-maplibre-tiles-url-value="<%= trip_routes_tile_template(@trip) %>"
+     data-trip-maplibre-day-keys-value="<%= @day_stats.keys.map(&:iso8601).to_json %>"
+     data-trip-maplibre-day-bounds-value="<%= @day_stats.to_h { |day, stats| [day.iso8601, stats[:bounds]] }.to_json %>"
+     data-trip-maplibre-day-endpoints-value="<%= @day_stats.to_h { |day, stats| [day.iso8601, { first: stats[:first_coordinates], last: stats[:last_coordinates] }] }.to_json %>"
+     data-trip-maplibre-full-bounds-value="<%= @trip.route_bounds.to_json %>"
+     data-trip-maplibre-device-windows-value="<%= @trip.cached_primary_device_windows.to_json %>"
      <% if plan_toggle %>data-trip-maplibre-plan-value="<%= @trip_plan.to_json %>"<% end %>
      data-trip-maplibre-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">
 
@@ -21,7 +25,7 @@
   <div class="flex flex-col lg:flex-row gap-6 lg:h-[calc(100dvh-9.75rem)]">
     <%# Left: Map card (static, fits between navbar and footer) %>
     <div class="w-full lg:w-3/5 h-[50vh] lg:h-full shrink-0">
-      <% if @trip.path.present? %>
+      <% if @trip.route_present? %>
         <div class="w-full h-full rounded-lg overflow-hidden relative"
              data-trip-maplibre-target="map">
           <div data-trip-maplibre-target="loadingIndicator"
@@ -59,8 +63,10 @@
               <p class="font-medium"><%= t('.no_locations_recorded') %></p>
               <p class="mt-1 text-sm text-base-content/60"><%= t('.no_locations_recorded_hint') %></p>
             <% else %>
-              <p class="text-base-content/60"><%= t('.trip_path_is_being_calculated') %></p>
-              <div class="loading loading-spinner loading-lg mt-4"></div>
+              <div data-trip-maplibre-target="pathPending">
+                <p class="text-base-content/60"><%= t('.trip_path_is_being_calculated') %></p>
+                <div class="loading loading-spinner loading-lg mt-4"></div>
+              </div>
             <% end %>
           </div>
         </div>
@@ -101,16 +107,17 @@
                     data-trip-maplibre-target="posterBtn"
                     data-action="click->trip-maplibre#openPosterStudio"
                     aria-label="<%= t('.create_poster') %>"
-                    title="<%= t(@trip.path.blank? ? '.poster_unavailable' : '.create_poster') %>"
-                    <% if @trip.path.blank? %>disabled<% end %>>
+                    title="<%= t(@trip.route_present? ? '.create_poster' : '.poster_unavailable') %>"
+                    <% unless @trip.route_present? %>disabled<% end %>>
               <%= icon 'image', class: 'w-4 h-4' %>
             </button>
             <button type="button"
                     class="btn btn-sm btn-ghost"
+                    data-trip-maplibre-target="videoBtn"
                     data-action="click->trip-maplibre#openVideoStudio"
                     aria-label="<%= t('.create_video') %>"
-                    title="<%= t(@trip.path.blank? ? '.video_unavailable' : '.create_video') %>"
-                    <% if @trip.path.blank? %>disabled<% end %>>
+                    title="<%= t(@trip.route_present? ? '.create_video' : '.video_unavailable') %>"
+                    <% unless @trip.route_present? %>disabled<% end %>>
               <%= icon 'video', class: 'w-4 h-4' %>
             </button>
             <%= link_to edit_trip_path(@trip),

@@ -61,7 +61,7 @@ class Users::ImportData
     @import_directory = Rails.root.join('tmp', "import_#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_#{Time.current.to_i}")
     FileUtils.mkdir_p(@import_directory)
 
-    ActiveRecord::Base.transaction do
+    Revisions::ImportTransaction.call(user.id) do
       extract_archive
       process_archive_data
       create_success_notification

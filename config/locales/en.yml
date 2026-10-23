@@ -608,6 +608,8 @@ en:
       dawarich_mobile_app_export_json: Dawarich mobile app export (.json)
       polarsteps: 'Polarsteps:'
       locations_json_json: locations.json (.json)
+      swarm: 'Foursquare Swarm:'
+      swarm_checkins_json: 'Data export (checkins*.json, .zip)'
       zip: 'ZIP:'
       archives_containing_any_of_the_above_zip: Archives containing any of the above (.zip)
       file_format_is_automatically_detected_during_upload: File format is automatically detected during upload.
@@ -987,6 +989,8 @@ en:
         settings_s: Settings (S)
         links: Links
       settings_panel:
+        speed_colored_tracks: Color tracks by speed
+        edit_speed_colors: Edit speed colors
         close_panel: Close panel
         layers: Layers
         search_for_a_place: Search for a place
@@ -1082,7 +1086,7 @@ en:
         track_generation: Track generation
         track_split_distance: Distance gap between Tracks
         track_split_distance_unit: m
-        track_split_distance_hint: Start a new Track when consecutive points are farther apart.
+        track_split_distance_hint: "Tracks from different devices are joined when one ends within this distance of where the next starts. Distance between points does not start a new Track."
         track_split_time: Time gap between Tracks
         track_split_time_unit: min
         track_split_time_hint: "Longer gaps start a new Track and let Trips use another device’s recording. After changing this, press Recalculate on affected Trip pages to update saved routes and distances."
@@ -2750,6 +2754,7 @@ en:
         tcx: TCX
         fit: FIT
         polarsteps: Polarsteps
+        swarm: Foursquare Swarm
         google_photos: Google Photos
         mobile_photo_library: Mobile photo library
     place:

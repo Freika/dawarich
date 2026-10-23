@@ -117,6 +117,7 @@ module Users
         end_of_month = start_of_month.end_of_month
 
         user.points
+            .not_flyover
             .without_raw_data
             .where('timestamp >= ? AND timestamp <= ?', start_of_month.to_i, end_of_month.to_i)
             .where.not(country_name: [nil, ''])

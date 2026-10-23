@@ -5,7 +5,7 @@ class Api::V1::Tiles::PointsController < ApiController
 
   # ETag material — bump when the tile SQL or its emitted properties change,
   # so a deploy invalidates cached tiles.
-  TILE_SCHEMA_VERSION = 4
+  TILE_SCHEMA_VERSION = 5
 
   private
 
@@ -14,7 +14,7 @@ class Api::V1::Tiles::PointsController < ApiController
   end
 
   def tile_epoch_component
-    Points::TileEpoch.etag_component(current_api_user.id, cacheable_start_at, cacheable_end_at)
+    Points::Revision.for_user(current_api_user.id, start_at: cacheable_start_at, end_at: cacheable_end_at)
   end
 
   def tile_query

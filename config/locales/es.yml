@@ -658,6 +658,8 @@ es:
       dawarich_mobile_app_export_json: Exportación de la app Dawarich (.json)
       polarsteps: 'Polarsteps:'
       locations_json_json: locations.json (.json)
+      swarm: 'Foursquare Swarm:'
+      swarm_checkins_json: 'Exportación de datos (checkins*.json, .zip)'
       zip: 'ZIP:'
       archives_containing_any_of_the_above_zip: Archivos que contienen cualquiera de los formatos anteriores (.zip)
       file_format_is_automatically_detected_during_upload: El formato del archivo se detecta automáticamente durante la subida.
@@ -1037,6 +1039,8 @@ es:
         settings_s: Configuración (S)
         links: Enlaces
       settings_panel:
+        speed_colored_tracks: Colorear recorridos según la velocidad
+        edit_speed_colors: Editar colores de velocidad
         close_panel: Cerrar panel
         layers: Capas
         search_for_a_place: Buscar un lugar
@@ -1132,7 +1136,7 @@ es:
         track_generation: Generación de trayectos
         track_split_distance: Distancia entre trayectos
         track_split_distance_unit: m
-        track_split_distance_hint: Inicia un trayecto nuevo cuando los puntos consecutivos están más separados.
+        track_split_distance_hint: "Los trayectos de distintos dispositivos se unen cuando uno termina a menos de esta distancia del inicio del siguiente. La distancia entre puntos no inicia un trayecto nuevo."
         track_split_time: Tiempo entre trayectos
         track_split_time_unit: min
         track_split_time_hint: "Los intervalos más largos inician un trayecto nuevo y permiten usar la grabación de otro dispositivo en los viajes. Tras cambiar este valor, pulsa «Recalcular» en cada viaje afectado para actualizar la ruta y la distancia guardadas."
@@ -2749,6 +2753,7 @@ es:
         tcx: TCX
         fit: FIT
         polarsteps: Polarsteps
+        swarm: Foursquare Swarm
         google_photos: Fotos de Google
         mobile_photo_library: Fototeca del móvil
     place:

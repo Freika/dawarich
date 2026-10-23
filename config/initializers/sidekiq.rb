@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+Yabeda::Sidekiq.config.declare_process_metrics = true if ENV['SIDEKIQ_EMBEDDED'] == 'true'
+
+Sidekiq::Cron.configuration.cron_poll_interval =
+  Integer(ENV.fetch('SIDEKIQ_CRON_POLL_INTERVAL', ''), exception: false) || 30
+
 Sidekiq.configure_server do |config|
   config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
   config.logger = Sidekiq::Logger.new($stdout)
@@ -10,6 +15,12 @@ Sidekiq.configure_server do |config|
     InstanceSettings::Notifier.start
   rescue StandardError => e
     Rails.logger.warn("[InstanceSettings] subscriber failed to start: #{e.class}: #{e.message}")
+  end
+
+  config.on(:startup) do
+    Dawarich::ReverseGeocodingLimits.configure!(config)
+  rescue StandardError => e
+    Rails.logger.warn("[ReverseGeocodingLimits] failed to apply: #{e.class}: #{e.message}")
   end
 
   next unless DawarichSettings.prometheus_exporter_enabled?
@@ -50,24 +61,7 @@ Sidekiq.configure_client do |config|
   config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
 end
 
-# Reverse geocoding paces itself by sleeping the calling thread
-# (Geocoding::RateLimiter). A thread parked there adds no throughput - the rate
-# limit decides how fast lookups go out, not the pool size - so let the queue
-# hold at most a third of the workers and leave the rest for imports, points
-# and the priority queues. Raise REVERSE_GEOCODING_CONCURRENCY on an instance
-# whose provider has no rate limit worth respecting.
-#
-# Written on every boot rather than only when it changes: sidekiq-limit_fetch
-# stores the value in Redis with no expiry, so an instance that once ran the
-# old komoot-only cap would keep that cap forever once the line setting it was
-# removed. The floor of 1 matters for the same reason - limit_fetch treats 0 as
-# "never acquire", which would strand the queue permanently.
 if Sidekiq.server?
   require 'dawarich/idle_queue_check'
   Sidekiq::LimitFetch::Global::Selector.singleton_class.prepend(Dawarich::IdleQueueCheck)
-
-  pool_size = ENV['BACKGROUND_PROCESSING_CONCURRENCY'].presence&.to_i || 10
-  configured = ENV['REVERSE_GEOCODING_CONCURRENCY'].presence&.to_i
-
-  Sidekiq::Queue['reverse_geocoding'].limit = [configured || pool_size / 3, 1].max
 end

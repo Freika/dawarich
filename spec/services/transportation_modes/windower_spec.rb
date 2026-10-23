@@ -59,6 +59,30 @@ RSpec.describe TransportationModes::Windower do
     windows = described_class.call(rows)
     expect(windows.first[:hints][:driving])
       .to be_within(0.01).of(TransportationModes::HintScorer::OVERLAND_BOOST)
+    expect(windows.first[:authoritative_mode]).to be_nil
+  end
+
+  it 'uses an authoritative mode agreed on by a strict majority of window points' do
+    rows = rows_for([0.0] * 12)
+    rows.first(7).each { |row| row[:motion_data] = { 'motion' => ['driving'], 'motion_authoritative' => true } }
+
+    expect(described_class.call(rows).first[:authoritative_mode]).to eq(:driving)
+  end
+
+  it 'falls back when authoritative motion covers only half the window' do
+    rows = rows_for([0.0] * 12)
+    rows.first(6).each { |row| row[:motion_data] = { 'motion' => ['driving'], 'motion_authoritative' => true } }
+
+    expect(described_class.call(rows).first[:authoritative_mode]).to be_nil
+  end
+
+  it 'requires a majority for one mode even when all points are authoritative' do
+    rows = rows_for([0.0] * 12)
+    rows.each_with_index do |row, i|
+      row[:motion_data] = { 'motion' => [i < 6 ? 'driving' : 'walking'], 'motion_authoritative' => true }
+    end
+
+    expect(described_class.call(rows).first[:authoritative_mode]).to be_nil
   end
 
   it 'ignores the across-gap dt when sizing a post-gap chain\'s windows' do

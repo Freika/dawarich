@@ -1239,6 +1239,8 @@ fr:
       dawarich_mobile_app_export_json: Export de l'app Dawarich (.json)
       polarsteps: 'Polarsteps :'
       locations_json_json: fichier locations.json (.json)
+      swarm: 'Foursquare Swarm :'
+      swarm_checkins_json: 'export de données (checkins*.json, .zip)'
       zip: 'ZIP :'
       archives_containing_any_of_the_above_zip: Archives contenant l'une des options
         ci-dessus (.zip)
@@ -1667,6 +1669,8 @@ fr:
         settings_s: Paramètres (S)
         links: Liens
       settings_panel:
+        speed_colored_tracks: Colorer les traces selon la vitesse
+        edit_speed_colors: Modifier les couleurs de vitesse
         close_panel: Fermer le panneau
         layers: Couches
         search_for_a_place: Rechercher un endroit
@@ -1781,7 +1785,7 @@ fr:
         track_generation: Génération des trajets
         track_split_distance: Distance entre les trajets
         track_split_distance_unit: m
-        track_split_distance_hint: Commencer un nouveau trajet lorsque deux points successifs sont plus éloignés.
+        track_split_distance_hint: "Les trajets de différents appareils sont reliés lorsque l’un se termine à moins de cette distance du début du suivant. La distance entre deux points ne commence pas de nouveau trajet."
         track_split_time: Temps entre les trajets
         track_split_time_unit: min
         track_split_time_hint: "Les intervalles plus longs créent un nouveau trajet et permettent aux voyages d’utiliser l’enregistrement d’un autre appareil. Après modification, choisissez « Recalculer » sur chaque voyage concerné pour actualiser le parcours et la distance enregistrés."
@@ -3745,6 +3749,7 @@ fr:
         tcx: TCX
         fit: FIT
         polarsteps: Polarsteps
+        swarm: Foursquare Swarm
         google_photos: Google Photos
         mobile_photo_library: Photothèque mobile
     place:

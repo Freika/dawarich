@@ -3,6 +3,86 @@
 require 'rails_helper'
 
 RSpec.describe Track, type: :model do
+  describe '.segment_points_in_sql' do
+    let(:user) { create(:user) }
+    let(:base_time) { Time.utc(2025, 2, 10, 18).to_i }
+
+    [12, 24].each do |stop_intervals|
+      it "#{stop_intervals == 12 ? 'keeps' : 'splits'} a stop of #{stop_intervals * 5} minutes" do
+        points = (0..(stop_intervals + 4)).map do |index|
+          step = index <= 2 ? index : [2, index - stop_intervals].max
+          create(:point, user: user, tracker_id: 'synthetic-feed', timestamp: base_time + index * 300,
+                         lonlat: "POINT(#{-140.0 + step * 0.002} -40.0)")
+        end
+
+        segments = described_class.get_segments_with_points(user.id, base_time, points.last.timestamp, 60)
+
+        expected = stop_intervals == 12 ? [points] : [points.first(3), points.last(3)]
+        expect(segments.map { |segment| segment[:points] }).to eq(expected)
+      end
+    end
+
+    it 'keeps a densely sampled journey whose steps are each shorter than the stationary radius' do
+      points = (0..240).map do |index|
+        create(:point, user: user, tracker_id: 'synthetic-feed', timestamp: base_time + index * 10,
+                       lonlat: "POINT(#{-140.0 + index * 0.00075} -40.0)")
+      end
+
+      segments = described_class.get_segments_with_points(user.id, base_time, points.last.timestamp, 30)
+
+      expect(segments.map { |segment| segment[:points] }).to eq([points])
+    end
+
+    it 'splits at a long jittery stop reached by a densely sampled approach' do
+      create_point = lambda do |timestamp, lon, lat = -40.0|
+        create(:point, user: user, tracker_id: 'synthetic-feed', timestamp: timestamp, lonlat: "POINT(#{lon} #{lat})")
+      end
+      approach = (0..59).map { |index| create_point.call(base_time + index * 10, -140.0 + index * 0.00075) }
+      stop = (1..60).map do |minute|
+        create_point.call(approach.last.timestamp + minute * 60, approach.last.lon,
+                          -40.0 + (minute.even? ? 0.0002 : -0.0002))
+      end
+      departure = (1..30).map do |index|
+        create_point.call(stop.last.timestamp + index * 10, approach.last.lon + index * 0.0015)
+      end
+
+      segments = described_class.get_segments_with_points(user.id, base_time, departure.last.timestamp, 30)
+                                .map { |segment| segment[:points] }
+
+      expect(segments.size).to eq(2)
+      expect(segments.first).to eq(approach.first(segments.first.size))
+      expect(segments.first.size).to be >= approach.size - 1
+      expect(segments.last).to eq([stop.last] + departure)
+    end
+
+    it 'finds no journey when the window opens in the middle of a long stop' do
+      stop = (0..36).map do |index|
+        create(:point, user: user, tracker_id: 'synthetic-feed', timestamp: base_time + index * 300,
+                       lonlat: 'POINT(-140.0 -40.0)')
+      end
+      create(:point, user: user, tracker_id: 'synthetic-feed', timestamp: base_time + 3610,
+                     lonlat: 'POINT(-140.0 -40.0)')
+
+      segments = described_class.get_segments_with_points(user.id, base_time + 3600, stop.last.timestamp, 30)
+
+      expect(segments).to be_empty
+    end
+
+    it 'keeps untracked points on both sides of an existing track in separate segments' do
+      points = (0..39).map do |index|
+        create(:point, user: user, tracker_id: 'synthetic-feed', timestamp: base_time + index * 60,
+                       lonlat: "POINT(#{-140.0 + index * 0.001} -40.0)")
+      end
+      track = create(:track, user: user, tracker_id: 'synthetic-feed')
+      Point.where(id: points[10..29].map(&:id)).update_all(track_id: track.id)
+
+      segments = described_class.get_segments_with_points(user.id, base_time, points.last.timestamp, 30,
+                                                          untracked_only: true)
+
+      expect(segments.map { |segment| segment[:points] }).to eq([points.first(10), points.last(10)])
+    end
+  end
+
   describe 'associations' do
     it { is_expected.to belong_to(:user) }
     it { is_expected.to have_many(:points).dependent(:nullify) }
@@ -368,7 +448,7 @@ RSpec.describe Track, type: :model do
         create(:track_segment, track: track, transportation_mode: :unknown,
                                distance: 200, duration: 60)
         create(:track_segment, track: track, transportation_mode: :driving,
-                               distance: 60,  duration: 30)
+                               distance: 60, duration: 30)
       end
 
       it 'prefers the real moving mode over unknown' do

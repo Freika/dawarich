@@ -83,6 +83,7 @@ module TransportationModes
         motion_variance: standard_deviation(moving),
         stop_fraction: (speeds_kmh.size - moving.size).to_f / speeds_kmh.size,
         hints: window_hints(window_rows),
+        authoritative_mode: window_authoritative_mode(window_rows),
         sparse: dts.any? && (dts.sum.to_f / dts.size) > Emissions::TUNING[:sparse_dt_s],
         point_ids: window_rows.map { |r| r[:point_id] }
       }
@@ -114,6 +115,12 @@ module TransportationModes
       mean = values.sum / values.size
       variance = values.sum { |v| (v - mean)**2 } / (values.size - 1)
       Math.sqrt(variance)
+    end
+
+    def self.window_authoritative_mode(rows)
+      counts = rows.filter_map { |row| HintScorer.authoritative_mode(row[:motion_data]) }.tally
+      mode, count = counts.max_by { |_mode, total| total }
+      mode if count && count > rows.size / 2.0
     end
 
     def self.window_hints(rows)

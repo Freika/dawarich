@@ -6,6 +6,7 @@ module Visits
       @user = user
       @start_at = parse_time(params[:start_at])
       @end_at = parse_time(params[:end_at])
+      raise Visits::InvalidTimeRange if @start_at > @end_at
     end
 
     def call
@@ -22,9 +23,7 @@ module Visits
     attr_reader :user, :start_at, :end_at
 
     def parse_time(time_string)
-      Time.zone.parse(time_string) || raise(Visits::InvalidTimeRange)
-    rescue ArgumentError, TypeError
-      raise Visits::InvalidTimeRange
+      Visits::TimeValue.parse(time_string) || raise(Visits::InvalidTimeRange)
     end
   end
 end

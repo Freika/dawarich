@@ -64,6 +64,37 @@ RSpec.describe '/trips', type: :request do
       expect(response).to be_successful
     end
 
+    it 'lists trips shared by the family without loading their paths' do
+      owner = create(:user)
+      family = create(:family, creator: owner)
+      create(:family_membership, :owner, family:, user: owner)
+      create(:family_membership, family:, user:)
+      shared = create(:trip, user: owner, path: 'LINESTRING(13.4 52.5, 13.45 52.52)')
+      create(:shared_link, user: owner, resource_type: :trip, resource_id: shared.id,
+                           settings: { 'audience' => 'family', 'family_id' => family.id, 'show_route' => true })
+
+      queries = capture_sql { get trips_url }
+
+      expect(response.body).to include(shared.name)
+      expect(queries.grep(/FROM "trips"/).none? { |sql| sql.include?('"trips".*') || sql.include?('"trips"."path"') })
+        .to be(true)
+    end
+
+    it 'previews recorded routes from tiles without loading the path' do
+      trip = create(:trip, user:, path: 'LINESTRING(13.4 52.5, 13.45 52.52, 13.5 52.55)')
+
+      queries = capture_sql { get trips_url }
+
+      card = Nokogiri::HTML(response.body).at_css("#trip-#{trip.id} [data-controller='trip-maplibre-preview']")
+      expect(card['data-trip-maplibre-preview-path-value']).to be_nil
+      expect(card['data-trip-maplibre-preview-tiles-url-value']).to start_with("/api/v1/tiles/trips/#{trip.id}/")
+      expect(card['data-trip-maplibre-preview-api-key-value']).to eq(user.api_key)
+      expect(JSON.parse(card['data-trip-maplibre-preview-bounds-value'])).to eq([[13.4, 52.5], [13.5, 52.55]])
+      expect(response.body).not_to include('13.45')
+      expect(queries.grep(/FROM "trips"/).none? { |sql| sql.include?('"trips".*') || sql.include?('"trips"."path"') })
+        .to be(true)
+    end
+
     context 'when trip path is not yet calculated' do
       let!(:trip_without_path) { create(:trip, user:, path: nil, distance: nil) }
 
@@ -90,6 +121,37 @@ RSpec.describe '/trips', type: :request do
       expect(
         queries.none? { |sql| sql.include?('ST_Y(lonlat::geometry)') && sql.include?('"points"."battery"') }
       ).to be(true)
+    end
+
+    it 'draws the route from tiles instead of embedding the path' do
+      coordinates = Array.new(50_000) { |i| "#{13 + (i * 0.00001)} #{52 + (i * 0.00001)}" }
+      Trip.where(id: trip.id).update_all(['path = ST_GeomFromText(?, 4326)', "LINESTRING(#{coordinates.join(', ')})"])
+
+      get trip_url(trip)
+
+      wrapper = Nokogiri::HTML(response.body).at_css('[data-controller="trip-maplibre"]')
+      expect(wrapper.key?('data-trip-maplibre-path-data-value')).to be(false)
+      expect(wrapper['data-trip-maplibre-tiles-url-value'])
+        .to start_with("/api/v1/tiles/trips/#{trip.id}/{z}/{x}/{y}.mvt")
+      expect(JSON.parse(wrapper['data-trip-maplibre-day-keys-value'])).not_to be_empty
+      bounds = JSON.parse(wrapper['data-trip-maplibre-full-bounds-value'])
+      expect(bounds.map { |pair| pair.map { _1.round(5) } }).to eq([[13.0, 52.0], [13.49999, 52.49999]])
+      expect(response.body).not_to include('13.00001')
+      expect(response.body.bytesize).to be < 400_000
+    end
+
+    it "lists no days before a Lite user's data window" do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :lite)
+      old = 2.years.ago.change(hour: 10)
+      old_trip = create(:trip, user:, started_at: old.beginning_of_day, ended_at: old.end_of_day,
+                               path: 'LINESTRING(13.4 52.5, 13.5 52.55)', skip_calculation_enqueue: true)
+      create(:point, user:, timestamp: old.to_i, lonlat: 'POINT(13.4 52.5)')
+
+      get trip_url(old_trip)
+
+      wrapper = Nokogiri::HTML(response.body).at_css('[data-controller="trip-maplibre"]')
+      expect(JSON.parse(wrapper['data-trip-maplibre-day-keys-value'])).to eq([])
     end
 
     it 'renders the recalculate button' do
@@ -472,6 +534,18 @@ RSpec.describe '/trips', type: :request do
       expect(
         queries.none? { |sql| sql.include?('ST_Y(lonlat::geometry)') && sql.include?('"points"."battery"') }
       ).to be(true)
+    end
+
+    it 'previews the saved route from tiles' do
+      trip.update_columns(path: 'LINESTRING(13.4 52.5, 13.45 52.52, 13.5 52.55)')
+
+      get edit_trip_url(trip)
+
+      preview = Nokogiri::HTML(response.body).at_css("[data-controller='trip-maplibre-preview']")
+      expect(preview['data-trip-maplibre-preview-path-value']).to be_nil
+      expect(preview['data-trip-maplibre-preview-tiles-url-value']).to start_with("/api/v1/tiles/trips/#{trip.id}/")
+      expect(JSON.parse(preview['data-trip-maplibre-preview-bounds-value'])).to eq([[13.4, 52.5], [13.5, 52.55]])
+      expect(response.body).not_to include('13.45')
     end
 
     it 'ends the form with saving and cancelling back to the trip' do

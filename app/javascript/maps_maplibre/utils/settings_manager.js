@@ -41,6 +41,8 @@ const DEFAULT_SETTINGS = {
   fogOfWarThreshold: 50,
   fogOfWarMode: "points",
   globeProjection: false,
+  speedColoredRoutes: false,
+  speedColorScale: "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
   metersBetweenRoutes: 500,
   minutesBetweenRoutes: 30,
   minMinutesSpentInCity: 60,
@@ -89,6 +91,8 @@ const BACKEND_SETTINGS_MAP = {
   fogOfWarThreshold: "fog_of_war_threshold",
   fogOfWarMode: "fog_of_war_mode",
   globeProjection: "globe_projection",
+  speedColoredRoutes: "speed_colored_routes",
+  speedColorScale: "speed_color_scale",
   metersBetweenRoutes: "meters_between_routes",
   minutesBetweenRoutes: "minutes_between_routes",
   minMinutesSpentInCity: "min_minutes_spent_in_city",
@@ -233,7 +237,10 @@ export class SettingsManager {
               value = value === true || value === "true"
             } else if (frontendKey === "pointDraggingEnabled") {
               value = value === true || value === "true"
-            } else if (frontendKey === "globeProjection") {
+            } else if (
+              frontendKey === "globeProjection" ||
+              frontendKey === "speedColoredRoutes"
+            ) {
               value = value === true || value === "true"
             } else if (frontendKey === "liveMapEnabled") {
               value = value === true || value === "true"
@@ -312,7 +319,10 @@ export class SettingsManager {
               frontendKey === "minMinutesSpentInCity"
             ) {
               value = parseInt(value, 10).toString()
-            } else if (frontendKey === "globeProjection") {
+            } else if (
+              frontendKey === "globeProjection" ||
+              frontendKey === "speedColoredRoutes"
+            ) {
               value = Boolean(value)
             } else if (frontendKey === "liveMapEnabled") {
               value = Boolean(value)

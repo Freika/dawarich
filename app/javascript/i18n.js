@@ -19,12 +19,22 @@ function currentTranslations() {
   return translations
 }
 
+function interfaceLocale() {
+  return typeof document === "undefined"
+    ? undefined
+    : document.documentElement?.lang || undefined
+}
+
+function pluralCategory(count) {
+  return new Intl.PluralRules(interfaceLocale()).select(Number(count))
+}
+
 export function translate(key, values = {}) {
   let value = key
     .split(".")
     .reduce((current, part) => current?.[part], currentTranslations())
   if (value && typeof value === "object" && values.count !== undefined) {
-    value = value[Number(values.count) === 1 ? "one" : "other"]
+    value = value[pluralCategory(values.count)] ?? value.other
   }
   if (typeof value !== "string") return key
 
@@ -35,7 +45,5 @@ export function translate(key, values = {}) {
 }
 
 export function formatNumber(value) {
-  const locale =
-    typeof document === "undefined" ? undefined : document.documentElement?.lang
-  return new Intl.NumberFormat(locale || undefined).format(value)
+  return new Intl.NumberFormat(interfaceLocale()).format(value)
 }

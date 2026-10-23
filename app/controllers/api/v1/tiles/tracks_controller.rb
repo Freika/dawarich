@@ -14,10 +14,8 @@ class Api::V1::Tiles::TracksController < ApiController
   end
 
   def tile_epoch_component
-    tracks_epoch = Tracks::TileEpoch.etag_component(current_api_user.id, cacheable_start_at, cacheable_end_at)
-    points_epoch = Points::TileEpoch.etag_component(current_api_user.id,
-                                                    cacheable_start_at, cacheable_end_at)
-    [tracks_epoch, points_epoch]
+    range = { start_at: cacheable_start_at, end_at: cacheable_end_at }
+    [Tracks::Revision.for_user(current_api_user.id, **range), Points::Revision.for_user(current_api_user.id, **range)]
   end
 
   def tile_query

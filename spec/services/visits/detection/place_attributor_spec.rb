@@ -67,8 +67,14 @@ RSpec.describe Visits::Detection::PlaceAttributor do
                            'features' => [{ 'properties' => { 'type' => 'cafe', 'name' => 'Café Central' } }]
                          })
 
+    foreign = create_list(:point, 4, geodata: {
+                            'features' => [{ 'properties' => { 'type' => 'cafe', 'name' => 'Foreign Café' } }]
+                          })
     result = nil
-    expect { result = attribute(stay(point_ids: points.map(&:id))) }.to change { Place.count }.by(1)
+    expect do
+      result = described_class.new(user,
+                                   policy).call_batch([stay(point_ids: points.map(&:id) + foreign.map(&:id))]).sole
+    end.to change { Place.count }.by(1)
 
     expect(result[:evidence]).to eq(:poi)
     expect(result[:name]).to eq('Café Central')
@@ -179,5 +185,20 @@ RSpec.describe Visits::Detection::PlaceAttributor do
       expect(result[:name]).to eq('Hauptstraße 51')
       expect(result[:place]).to be_nil
     end
+  end
+  it 'keeps the standalone POI tie order when stay point IDs are reversed' do
+    points = %w[First Second].map do |name|
+      create(:point, user: user, geodata: {
+               'features' => [{ 'properties' => { 'type' => 'cafe', 'name' => name } }]
+             })
+    end
+    input = stay(point_ids: points.map(&:id).reverse)
+    baseline = attribute(input)
+    baseline[:place].destroy!
+
+    batched = described_class.new(user, policy).call_batch([input]).sole
+
+    expect(batched[:evidence]).to eq(baseline[:evidence])
+    expect(batched[:name]).to eq(baseline[:name])
   end
 end

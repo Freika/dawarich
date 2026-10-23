@@ -30,6 +30,8 @@ export class TracksMvtLayer extends BaseLayer {
     this.apiKey = options.apiKey || null
     this.importId = options.importId || null
     this.trackColor = options.trackColor || "#6366F1"
+    this.speedColoring = options.speedColoring === true
+    this.speedColorScale = options.speedColorScale
     this.onTileError = options.onTileError || null
     this.onEmptyTracks = options.onEmptyTracks || null
     this._tileUrl = null
@@ -128,7 +130,7 @@ export class TracksMvtLayer extends BaseLayer {
           "line-cap": "round",
         },
         paint: {
-          "line-color": this.trackColor,
+          "line-color": this._lineColor(),
           "line-width": 3,
           "line-opacity": 1,
         },
@@ -167,7 +169,58 @@ export class TracksMvtLayer extends BaseLayer {
 
   _repaint() {
     if (!this.map.getLayer(this.id)) return
-    this.map.setPaintProperty(this.id, "line-color", this.trackColor)
+    this.map.setPaintProperty(this.id, "line-color", this._lineColor())
+  }
+
+  _lineColor() {
+    if (!this.speedColoring) return this.trackColor
+
+    const defaults = "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
+    const parse = (scale) => {
+      const stops = new Map()
+      for (const segment of String(scale).split("|")) {
+        const [speed, color, extra] = segment.split(":")
+        const value = Number(speed)
+        if (
+          !speed?.trim() ||
+          !Number.isFinite(value) ||
+          value < 0 ||
+          !/^#[0-9a-f]{6}$/i.test(color) ||
+          extra !== undefined
+        )
+          return []
+        stops.set(value, color)
+      }
+      return [...stops].sort(([a], [b]) => a - b)
+    }
+    let stops = parse(this.speedColorScale)
+    if (stops.length < 2) stops = parse(defaults)
+    return [
+      "interpolate",
+      ["linear"],
+      [
+        "to-number",
+        ["coalesce", ["get", "segment_speed"], ["get", "avg_speed"]],
+        0,
+      ],
+      ...stops.flatMap(([speed, color]) => [speed, ["to-color", color]]),
+    ]
+  }
+
+  setSpeedColoring({ enabled, scale } = {}) {
+    const changed = this.speedColoring !== (enabled === true)
+    this.speedColoring = enabled === true
+    this.speedColorScale = scale
+    if (!changed) {
+      this._repaint()
+      return
+    }
+
+    const wasVisible = this.visible
+    const beforeId = this._layerAbove()
+    this.remove()
+    this.add({ startAt: this.startAt, endAt: this.endAt }, beforeId)
+    this.setVisibility(wasVisible)
   }
 
   _layerAbove() {
@@ -220,6 +273,7 @@ export class TracksMvtLayer extends BaseLayer {
     if (startAt) params.set("start_at", startAt)
     if (endAt) params.set("end_at", endAt)
     if (this.importId) params.set("import_id", this.importId)
+    if (this.speedColoring) params.set("speed_coloring", "true")
     // Never the raw api key: the Bearer header authenticates (transformRequest)
     if (this.apiKey) params.set("u", trackCachePartitioner(this.apiKey))
 

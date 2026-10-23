@@ -114,12 +114,13 @@ module Residency
     # Single query returning date/country/count — used by both country_days and daily_countries
     def daily_country_counts
       @daily_country_counts ||= begin
-        start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
+        timezone = user.timezone_iana
+        start_of_year = ActiveSupport::TimeZone[timezone].local(year, 1, 1, 0, 0, 0)
         end_of_year = start_of_year.end_of_year
 
         sql = <<~SQL.squish
           SELECT
-            DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
+            DATE(to_timestamp(timestamp) AT TIME ZONE #{ActiveRecord::Base.connection.quote(timezone)}) as point_date,
             country_name,
             COUNT(*) as point_count
           FROM points
@@ -128,6 +129,7 @@ module Residency
             AND timestamp <= $3
             AND country_name IS NOT NULL
             AND country_name != ''
+            AND #{CountriesAndCities.not_flyover_sql}
             AND (anomaly IS NOT TRUE)
           GROUP BY point_date, country_name
           ORDER BY point_date, country_name COLLATE "C"

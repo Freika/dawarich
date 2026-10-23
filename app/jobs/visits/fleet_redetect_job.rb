@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Staged fleet rollout of detection v3: one per-user job per active user with
+# Staged fleet rollout of detection v3: one per-user job per active or trial user with
 # points, all on low_priority so ordinary work is never starved, staggered so
 # the whole fleet doesn't land on the queue at once. Cloud: Eugene starts this
 # from the console. Self-hosted: enqueued by the release migration.
@@ -14,7 +14,7 @@ class Visits::FleetRedetectJob < ApplicationJob
   def perform
     offset = 0
     now = Time.current
-    User.active.where(points_count: 1..).in_batches(of: BATCH_SIZE) do |batch|
+    User.active_or_trial.where(points_count: 1..).in_batches(of: BATCH_SIZE) do |batch|
       jobs = batch.ids.map do |id|
         job = Visits::UserRedetectJob.new(id)
         job.scheduled_at = now + offset

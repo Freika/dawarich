@@ -613,6 +613,8 @@ zh:
       location_data_csv: 位置数据 (.csv)
       polarsteps: Polarsteps：
       locations_json_json: locations.json (.json)
+      swarm: Foursquare Swarm：
+      swarm_checkins_json: '数据导出（checkins*.json、.zip）'
       zip: ZIP：
       archives_containing_any_of_the_above_zip: 包含上述任何内容的压缩包 (.zip)
       file_format_is_automatically_detected_during_upload: 上传过程中会自动检测文件格式。
@@ -994,6 +996,8 @@ zh:
         links: 链接
         video_studio: 视频工作室
       settings_panel:
+        speed_colored_tracks: 按速度为轨迹着色
+        edit_speed_colors: 编辑速度颜色
         close_panel: 关闭面板
         layers: 图层
         search_for_a_place: 搜索地点
@@ -1088,7 +1092,7 @@ zh:
         track_generation: 轨迹生成
         track_split_distance: 轨迹之间的距离间隔
         track_split_distance_unit: 米
-        track_split_distance_hint: 连续点之间的距离超过此值时开始新轨迹。
+        track_split_distance_hint: "不同设备记录的轨迹，如果一条的终点与下一条的起点在此距离内，则合并为一条。点与点之间的距离不会开始新轨迹。"
         track_split_time: 轨迹之间的时间间隔
         track_split_time_unit: 分钟
         track_split_time_hint: "超过此间隔会开始新轨迹，并允许行程使用另一台设备的记录。修改后，请在受影响的行程页面点击“重新计算”，以更新已保存的路线和距离。"
@@ -2801,6 +2805,7 @@ zh:
         tcx: TCX
         fit: FIT
         polarsteps: Polarsteps
+        swarm: Foursquare Swarm
         google_photos: Google 相册
         mobile_photo_library: 手机照片库
     place:
