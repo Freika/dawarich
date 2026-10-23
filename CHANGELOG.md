@@ -65,6 +65,7 @@ Don't start the old worker again next to the new setup. Larger instances, or one
 
 ### Fixed
 
+- Polish counts use the right plural form, for example "3 kraje" and "5 krajów" instead of "3 krajów" and "5 kraju". This also fixes relative times such as "około 3 godziny" and labels on the map.
 - Trips with long recordings open quickly: the trips list, trip page, trip form and shared trip page draw routes from map tiles instead of sending every recorded coordinate, and the trip page loads points only when you open Replay, the poster or the video studio (#3867, #3783)
 - Overnight stays where the phone goes quiet, for example arriving home in the evening and leaving in the morning, are now suggested as one visit across the silence instead of a few minutes after arrival. Choose Re-run detection on full history on the Visits page to fix past stays.
 - Points synced from TeslaMate now get suggested visits; choose Re-run detection on full history to cover earlier drives. On Dawarich Cloud, trial accounts are now included in the nightly visit run.
