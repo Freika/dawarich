@@ -5,6 +5,12 @@ import { Toast } from "maps_maplibre/components/toast"
  * API client for Maps V2
  * Wraps all API endpoints with consistent error handling
  */
+const PRIVACY_FLAG = "mask_privacy_zones"
+
+function maskPrivacyZones(params) {
+  params.set(PRIVACY_FLAG, "true")
+}
+
 export class ApiClient {
   constructor(apiKey, importId = null) {
     this.apiKey = apiKey
@@ -28,6 +34,7 @@ export class ApiClient {
     })
 
     if (this.importId) params.append("import_id", this.importId)
+    maskPrivacyZones(params)
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
       headers: this.getHeaders(),
@@ -65,6 +72,7 @@ export class ApiClient {
       start_date: start_at,
       end_date: end_at,
     })
+    maskPrivacyZones(params)
 
     const response = await fetch(
       `${this.baseURL}/maps/hexagons/fog?${params}`,
@@ -88,6 +96,7 @@ export class ApiClient {
       robust: "true",
     })
     if (this.importId) params.set("import_id", this.importId)
+    maskPrivacyZones(params)
 
     const response = await fetch(
       `${this.baseURL}/maps/hexagons/bounds?${params}`,
@@ -253,6 +262,7 @@ export class ApiClient {
       params.set("ne_lng", ne_lng.toString())
     }
 
+    maskPrivacyZones(params)
     const response = await fetch(`${this.baseURL}/visits?${params}`, {
       headers: this.getHeaders(),
     })
@@ -342,6 +352,7 @@ export class ApiClient {
       }
     }
 
+    maskPrivacyZones(params)
     const url = `${this.baseURL}/places?${params.toString()}`
 
     const response = await fetch(url, {
@@ -407,6 +418,7 @@ export class ApiClient {
       end_date: end_at,
     })
 
+    maskPrivacyZones(params)
     const url = `${this.baseURL}/photos?${params}`
 
     const response = await fetch(url, {
@@ -475,6 +487,7 @@ export class ApiClient {
     if (start_at) params.append("start_at", start_at)
     if (end_at) params.append("end_at", end_at)
 
+    maskPrivacyZones(params)
     const url = `${this.baseURL}/tracks?${params.toString()}`
 
     const response = await fetch(url, {
@@ -595,8 +608,12 @@ export class ApiClient {
    * @param {number|string} trackId - The track ID
    * @returns {Promise<Object>} GeoJSON Feature with segments
    */
-  async fetchTrackWithSegments(trackId, { signal, startAt, endAt } = {}) {
+  async fetchTrackWithSegments(
+    trackId,
+    { signal, startAt, endAt, unmasked = false } = {},
+  ) {
     const params = new URLSearchParams()
+    if (!unmasked) maskPrivacyZones(params)
     if (this.importId) params.set("import_id", this.importId)
     if (startAt && endAt) {
       params.set("start_at", startAt)
@@ -877,12 +894,16 @@ export class ApiClient {
    * @param {Object} options - { page, per_page }
    * @returns {Promise<Object>} { points, currentPage, totalPages }
    */
-  async fetchTrackPointsPage(trackId, { page = 1, per_page = 1000 } = {}) {
+  async fetchTrackPointsPage(
+    trackId,
+    { page = 1, per_page = 1000, unmasked = false } = {},
+  ) {
     const params = new URLSearchParams({
       page: page.toString(),
       per_page: per_page.toString(),
     })
     if (this.importId) params.set("import_id", this.importId)
+    if (!unmasked) maskPrivacyZones(params)
 
     const response = await fetch(
       `${this.baseURL}/tracks/${trackId}/points?${params}`,
@@ -908,10 +929,14 @@ export class ApiClient {
    * @param {Object} options - { per_page, maxConcurrent }
    * @returns {Promise<Array>} All points belonging to the track
    */
-  async fetchTrackPoints(trackId, { per_page = 1000, maxConcurrent = 3 } = {}) {
+  async fetchTrackPoints(
+    trackId,
+    { per_page = 1000, maxConcurrent = 3, unmasked = false } = {},
+  ) {
     const firstPage = await this.fetchTrackPointsPage(trackId, {
       page: 1,
       per_page,
+      unmasked,
     })
     const totalPages = firstPage.totalPages
 
@@ -930,7 +955,7 @@ export class ApiClient {
       const batch = remainingPages.slice(i, i + maxConcurrent)
       const batchResults = await Promise.all(
         batch.map((page) =>
-          this.fetchTrackPointsPage(trackId, { page, per_page }).then(
+          this.fetchTrackPointsPage(trackId, { page, per_page, unmasked }).then(
             (result) => ({ page, points: result.points }),
           ),
         ),
@@ -1003,6 +1028,7 @@ export class ApiClient {
    */
   async fetchTimeline({ start_at, end_at }) {
     const params = new URLSearchParams({ start_at, end_at })
+    maskPrivacyZones(params)
 
     const response = await fetch(`${this.baseURL}/timeline?${params}`, {
       headers: this.getHeaders(),
@@ -1037,6 +1063,27 @@ export class ApiClient {
     }
 
     return response.json()
+  }
+
+  async fetchPrivacyZones() {
+    try {
+      const response = await fetch(`${this.baseURL}/tags/privacy_zones`, {
+        headers: this.getHeaders(),
+      })
+      if (!response.ok) return { zones: [], fingerprint: null }
+
+      const fingerprint = response.headers.get("X-Privacy-Zones-Fingerprint")
+      const zones = (await response.json()).flatMap((zone) =>
+        (zone.places || []).map((place) => ({
+          lon: Number(place.longitude),
+          lat: Number(place.latitude),
+          radiusMeters: Number(zone.radius_meters),
+        })),
+      )
+      return { zones, fingerprint: fingerprint || null }
+    } catch {
+      return { zones: [], fingerprint: null }
+    }
   }
 
   getHeaders() {

@@ -50,13 +50,14 @@ const stubs = `
   class ApiClient {
     fetchAllPoints(params) { return env.fetchAllPoints(params) }
     fetchFlights() { return env.fetchFlights() }
+    fetchPrivacyZones() { return Promise.resolve({ zones: env.zones || [], fingerprint: null }) }
   }
   const pointsFromDevice = (points) => points
   const featureToPhoto = (feature) => feature
   const flightWindows = (geojson) => geojson.features.map((f) => f.window)
   const maskLines = (geojson) => geojson
-  const buildDayRouteCollections = (pointsByDay) =>
-    Object.keys(pointsByDay).map((day) => ({ type: "FeatureCollection", day, features: [] }))
+  const buildDayRouteCollections = (pointsByDay, options) =>
+    (globalThis.__tripEnv.routeOptions = options) && Object.keys(pointsByDay).map((day) => ({ type: "FeatureCollection", day, features: [] }))
   const buildTripGeojson = ({ dayRouteCollections }) => ({
     type: "FeatureCollection",
     features: dayRouteCollections.flatMap((c) => c.features),
@@ -85,6 +86,7 @@ const deferred = () => {
 function setup(t) {
   const env = Object.assign(globalThis.__tripEnv, {
     tileLayers: [],
+    zones: [],
     flashes: [],
     initializeCalls: [],
     fetches: [],
@@ -196,6 +198,15 @@ test("concurrent studio opens share one points download", async (t) => {
   assert.deepEqual(controller.posterProvider().options.geojson.days, [
     "2026-01-01",
   ])
+})
+
+test("the trip routes break at the owner's privacy zones", async (t) => {
+  const { controller, env } = await connected(t)
+  env.zones = [{ lon: 13.5, lat: 52.44, radiusMeters: 500 }]
+
+  await controller.openPosterStudio()
+
+  assert.deepEqual(env.routeOptions.privacyZones, env.zones)
 })
 
 test("a failed download is reported and retried on the next open", async (t) => {

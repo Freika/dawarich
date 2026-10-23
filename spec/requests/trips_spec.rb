@@ -698,5 +698,13 @@ RSpec.describe '/trips', type: :request do
       expect(JSON.parse(data['data-trip-maplibre-day-bounds-value'])['2026-04-02']).to eq([[11.0, 61.0], [11.5, 61.5]])
       expect(JSON.parse(data['data-trip-maplibre-full-bounds-value'])).to eq([[11.0, 61.0], [12.0, 62.0]])
     end
+
+    it 'keys the route tile URL by the zone fingerprint' do
+      get trip_path(trip)
+
+      data = Nokogiri::HTML(response.body).at_css('[data-controller~="trip-maplibre"]')
+      expect(data['data-trip-maplibre-tiles-url-value'])
+        .to end_with("&pz=#{Maps::PrivacyZoneMasker.new(owner).fingerprint}")
+    end
   end
 end

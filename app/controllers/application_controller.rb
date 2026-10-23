@@ -16,7 +16,8 @@ class ApplicationController < ActionController::Base
 
   helper_method :current_user_safe_settings, :family_feature_available?,
                 :current_user_features, :family_home_path, :locale_native_name, :locale_flag,
-                :suggested_locale, :locale_path, :morph_page_refreshes?, :reverse_geocoding_enabled_for?
+                :suggested_locale, :locale_path, :morph_page_refreshes?, :reverse_geocoding_enabled_for?,
+                :privacy_zones_fingerprint
 
   def morph_page_refreshes?
     self.class.page_refresh_morphing
@@ -33,6 +34,12 @@ class ApplicationController < ActionController::Base
   # for the family flag twice; one plan lookup serves all of them.
   def current_user_features
     @current_user_features ||= DawarichSettings.features_for(current_user)
+  end
+
+  def privacy_zones_fingerprint
+    return @privacy_zones_fingerprint if defined?(@privacy_zones_fingerprint)
+
+    @privacy_zones_fingerprint = current_user && Maps::PrivacyZoneMasker.new(current_user).fingerprint
   end
 
   def family_feature_available?

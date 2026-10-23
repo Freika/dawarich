@@ -26,7 +26,8 @@ module TripsHelper
   end
 
   def trip_routes_tile_template(trip)
-    "/api/v1/tiles/trips/#{trip.id}/{z}/{x}/{y}.mvt?v=#{trip.updated_at.to_i}"
+    template = "/api/v1/tiles/trips/#{trip.id}/{z}/{x}/{y}.mvt?v=#{trip.updated_at.to_i}"
+    privacy_zones_fingerprint ? "#{template}&pz=#{privacy_zones_fingerprint}" : template
   end
 
   def trek_trip_url(trip)

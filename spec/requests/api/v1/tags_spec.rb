@@ -40,6 +40,11 @@ RSpec.describe 'Api::V1::Tags', type: :request do
           'longitude' => 20.0
         )
       end
+
+      it 'sends the zone fingerprint used in tile URLs' do
+        expect(response.headers['X-Privacy-Zones-Fingerprint'])
+          .to eq(Maps::PrivacyZoneMasker.new(user).fingerprint).and be_present
+      end
     end
 
     context 'when not authenticated' do

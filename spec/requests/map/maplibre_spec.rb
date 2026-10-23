@@ -7,6 +7,28 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
   before { sign_in user }
 
+  describe 'privacy zones' do
+    def fingerprint_value
+      map = Nokogiri::HTML(response.body).at_css('[data-controller~="maps--maplibre"]')
+      map.attribute('data-maps--maplibre-privacy-zones-fingerprint-value')&.value
+    end
+
+    it 'renders the zone fingerprint for tile requests' do
+      place = create(:place, user:, latitude: 52.44, longitude: 13.5, lonlat: 'POINT(13.5 52.44)')
+      create(:tagging, tag: create(:tag, :privacy_zone, user:), taggable: place)
+
+      get map_v2_path
+
+      expect(fingerprint_value).to eq(Maps::PrivacyZoneMasker.new(user).fingerprint).and be_present
+    end
+
+    it 'renders no fingerprint without zones' do
+      get map_v2_path
+
+      expect(fingerprint_value).to be_blank
+    end
+  end
+
   describe 'poster studio' do
     it 'renders the poster tab button' do
       get map_v2_path

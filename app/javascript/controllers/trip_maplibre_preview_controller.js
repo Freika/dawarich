@@ -27,6 +27,7 @@ export default class extends Controller {
     numbered: { type: Boolean, default: false },
     mapStyle: { type: String, default: "light" },
     interactive: { type: Boolean, default: false },
+    privacyZonesFingerprint: { type: String, default: "" },
   }
 
   async connect() {
@@ -117,6 +118,8 @@ export default class extends Controller {
     if (!this.map || !extent || request !== this.rangeRequest) return
 
     const params = new URLSearchParams({ start_at: startAt, end_at: endAt })
+    if (this.privacyZonesFingerprintValue)
+      params.set("pz", this.privacyZonesFingerprintValue)
     const tiles = [
       `/api/v1/tiles/tracks/{z}/{x}/{y}.mvt?${params}`,
       "tracks",

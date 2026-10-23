@@ -181,6 +181,20 @@ test("a new date range shows the tracks of that range", async (t) => {
   ])
 })
 
+test("range tiles are keyed by the privacy zone fingerprint", async (t) => {
+  const { controller, map } = await preview(t, {
+    privacyZonesFingerprintValue: "abc",
+  })
+  env.bounds = { min_lng: 2, min_lat: 48, max_lng: 3, max_lat: 49 }
+
+  await controller.element.listeners["trip-range-updated"]({
+    detail: { startAt: "2026-01-01T10:00", endAt: "2026-01-02T10:00" },
+  })
+
+  const params = new URLSearchParams(lineSource(map).tiles[0].split("?")[1])
+  assert.equal(params.get("pz"), "abc")
+})
+
 test("a range chosen before the map loads is drawn once it loads", async (t) => {
   const originalWindow = globalThis.window
   t.after(() => {
