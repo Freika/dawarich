@@ -14,13 +14,15 @@ RSpec.describe Visits::Detection::GapBridger do
 
   def east(meters) = meters / (111_320.0 * Math.cos(lat0 * Math::PI / 180))
 
-  def fragment(ids, start_s, end_s, deast: 0.0)
+  def fragment(ids, start_s, end_s, deast: 0.0, first_east: deast, last_east: deast)
     {
       point_ids: ids,
       start_ts: base_ts + start_s,
       end_ts: base_ts + end_s,
       center_lat: lat0,
       center_lon: lon0 + east(deast),
+      first_fix: [lat0, lon0 + east(first_east)],
+      last_fix: [lat0, lon0 + east(last_east)],
       count: ids.size
     }
   end
@@ -65,6 +67,21 @@ RSpec.describe Visits::Detection::GapBridger do
 
     expect(result.size).to eq(2)
     expect(seams(result)).to eq([[base_ts + 1200, base_ts + 1200 + (79 * 60)]])
+  end
+
+  it 'bridges a silence that ends where it began even when approach fixes pull the centers apart' do
+    result = bridge([fragment([1, 2, 3, 4], 0, 180, deast: -60.0, last_east: 0.0),
+                     fragment([5, 6, 7, 8], 180 + 5400, 180 + 5580, deast: 60.0, first_east: 0.0)])
+
+    expect(result.size).to eq(1)
+    expect(result.first[:last_fix]).to eq([lat0, lon0 + east(60.0)])
+  end
+
+  it 'does not bridge a movement split whose edge fixes are close but not separated by silence' do
+    result = bridge([fragment([1, 2, 3], 0, 300, deast: -60.0, last_east: 0.0),
+                     fragment([4, 5, 6], 360, 660, deast: 60.0, first_east: 0.0)])
+
+    expect(result.size).to eq(2)
   end
 
   it 'keeps short displaced gaps apart too' do
