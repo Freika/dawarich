@@ -42,7 +42,8 @@ class Api::V1::Maps::HexagonsController < ApiController
       end_date: context[:end_date],
       import_id: context[:stat] ? nil : params[:import_id],
       robust: params[:robust] == 'true',
-      respect_plan_scope: !context[:stat]
+      respect_plan_scope: !context[:stat],
+      privacy_zone_masker: (privacy_zone_masker if mask_privacy_zones? && !context[:stat])
     ).call
 
     if result[:success]

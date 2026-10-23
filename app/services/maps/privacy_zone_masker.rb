@@ -30,6 +30,72 @@ module Maps
       @user.places.where(within_sql('places.lonlat')).pluck(:id)
     end
 
+    def in_zone_area_ids
+      return [] unless any?
+
+      @user.areas.where(within_sql('ST_SetSRID(ST_MakePoint(areas.longitude, areas.latitude), 4326)::geography'))
+           .pluck(:id)
+    end
+
+    def mask_visits(visits)
+      return visits unless any?
+
+      place_ids = in_zone_place_ids
+      area_ids = in_zone_area_ids
+      unless visits.is_a?(ActiveRecord::Relation)
+        return visits.reject do |visit|
+          visit.place_id ? place_ids.include?(visit.place_id) : area_ids.include?(visit.area_id)
+        end
+      end
+
+      visits = visits.where('visits.place_id IS NULL OR visits.place_id NOT IN (?)', place_ids) if place_ids.any?
+      return visits if area_ids.none?
+
+      visits.where('visits.place_id IS NOT NULL OR visits.area_id IS NULL OR visits.area_id NOT IN (?)', area_ids)
+    end
+
+    def mask_photos(photos)
+      return photos unless any?
+
+      photos.reject do |photo|
+        in_zone?(photo['longitude'] || photo[:longitude], photo['latitude'] || photo[:latitude])
+      end
+    end
+
+    def mask_track_features(geojson)
+      return geojson unless any?
+
+      features = Array(geojson[:features]).filter_map do |feature|
+        geometry = clip_geojson(feature[:geometry])
+        next if geometry.nil?
+
+        mask_segments(feature[:properties])
+        feature.merge(geometry: geometry)
+      end
+      geojson.merge(features: features)
+    end
+
+    def clip_geojson(geometry)
+      return geometry unless any? && geometry
+
+      lons, lats = geojson_coordinates(geometry).transpose
+      return geometry if lons.nil?
+
+      nearby = near(min_lon: lons.min, min_lat: lats.min, max_lon: lons.max, max_lat: lats.max)
+      return geometry unless nearby.any?
+
+      clipped = nearby.clipped_geojson_text(geometry.to_json)
+      clipped && JSON.parse(clipped, symbolize_names: true)
+    end
+
+    def clipped_geojson_text(geojson_text)
+      source = "ST_SetSRID(ST_GeomFromGeoJSON(#{ActiveRecord::Base.connection.quote(geojson_text)}), 4326)"
+      ActiveRecord::Base.connection.select_value(<<~SQL.squish)
+        SELECT CASE WHEN ST_IsEmpty(clipped) THEN NULL ELSE ST_AsGeoJSON(clipped) END
+        FROM (SELECT #{clip_sql(source)} AS clipped) AS result
+      SQL
+    end
+
     def in_zone?(lon, lat)
       return false if lon.nil? || lat.nil?
 
@@ -89,6 +155,26 @@ module Maps
     def circles
       @circles ||= Users::PrivacyZones.new(@user).call.map do |zone|
         Circle.new(lon: zone[:lon].to_f, lat: zone[:lat].to_f, radius: zone[:radius].to_f)
+      end
+    end
+
+    def mask_segments(properties)
+      return unless properties.is_a?(Hash) && properties[:segments].is_a?(Array)
+
+      properties[:segments] = properties[:segments].filter_map do |segment|
+        next segment if segment[:coordinates].blank?
+
+        geometry = clip_geojson(type: 'LineString', coordinates: segment[:coordinates])
+        geometry && segment.merge(coordinates: geometry[:coordinates])
+      end
+    end
+
+    def geojson_coordinates(geometry)
+      case geometry[:type].to_s
+      when 'LineString', 'MultiPoint' then geometry[:coordinates]
+      when 'MultiLineString', 'Polygon' then geometry[:coordinates].flatten(1)
+      when 'Point' then [geometry[:coordinates]]
+      else []
       end
     end
 
