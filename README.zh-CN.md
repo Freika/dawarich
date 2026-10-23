@@ -88,10 +88,6 @@
    ```
 3. 访问 `http://localhost:3000` 即可打开应用。
 
-默认配置在同一个 Ruby 进程中运行 Puma 和后台任务。升级旧部署前，请先停止独立的
-Sidekiq 服务；Redis 中的待处理任务将由 Web 进程继续处理。
-参见[单进程部署和升级说明](docs/deployment/single-process.md)。
-
 **停止应用**：按下 `Ctrl+C`。
 
 你可以直接使用默认配置，也可以基于 `.env.example` 创建 `.env` 文件来自定义你的配置。
