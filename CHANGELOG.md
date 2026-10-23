@@ -6,14 +6,46 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.17.0] - 2026-10-23, Berlin
 
-Dawarich gets lighter and faster in this release. On a test instance with 100,000 points, compared with 1.16.0:
+Dawarich gets lighter and faster in this release. On a test account with a million points over three years, compared with 1.16.0:
 
-- It needs about half the memory: around 240 MiB at idle instead of 510 MiB, and 400 MiB instead of 770 MiB under load.
-- The map, trips, Insights and points pages open two to three times faster.
-- Dense areas of the map draw almost three times faster, and while new points keep arriving, the rest of the map no longer reloads.
+- It needs about half the memory at idle: 230 MiB instead of 480 MiB.
+- Long trips open in a fraction of the time. A 300-day trip no longer downloads every recorded point: the page and its map need about 1 MB instead of 11 MB of page and 190 MB of point data, and the trips list opens in 0.1 s instead of 2 s.
+- Paging through the points page and the points API is up to four times faster, and repeat visits are answered almost instantly.
+- While new points keep arriving, map tiles for other months are no longer downloaded again.
 - A 200,000-point Google Records import finishes in 132 s instead of 175 s, and big imports no longer need memory in proportion to the file size.
 
-**Upgrading a self-hosted instance:** the default `docker-compose.yml` now runs background jobs inside the `dawarich_app` container, and the separate `dawarich_sidekiq` container is gone. Stop the old worker before you replace the Compose file; jobs waiting in Redis are picked up after the upgrade. See [Background jobs](https://dawarich.app/docs/self-hosting/configuration/background-jobs) for the steps, and for keeping a separate worker on larger instances.
+### Upgrading a self-hosted instance
+
+Background jobs now run inside the `dawarich_app` container, in the same process as the web server, so the separate `dawarich_sidekiq` container is no longer needed. Jobs waiting in Redis are kept and picked up after the upgrade.
+
+1. With your old `docker-compose.yml` still in place, stop and remove the worker so it can finish or return its running jobs:
+
+   ```bash
+   docker compose stop -t 60 dawarich_sidekiq
+   docker compose rm -f dawarich_sidekiq
+   ```
+
+2. Update the Compose file in one of two ways:
+   - Replace it with the [new `docker-compose.yml`](https://github.com/Freika/dawarich/blob/master/docker/docker-compose.yml), keeping your own environment values, volumes, Redis and database settings.
+   - Or edit your own file: delete the `dawarich_sidekiq` service, add `stop_grace_period: 60s` to `dawarich_app`, and under its existing `environment:` replace `WEB_CONCURRENCY` and add two variables:
+
+     ```yaml
+     SIDEKIQ_EMBEDDED: 'true'
+     WEB_CONCURRENCY: '0'
+     BACKGROUND_PROCESSING_CONCURRENCY: 2
+     ```
+
+     `WEB_CONCURRENCY` must be `0`: every extra web process would start its own set of job threads.
+3. Move any setting you had only on `dawarich_sidekiq`, such as SMTP, OIDC or reverse geocoding, to `dawarich_app`. If your `.env` sets `BACKGROUND_PROCESSING_CONCURRENCY=10` from the old `.env.example`, remove it or set it to `2`, and remove `RAILS_MAX_THREADS` if it is set.
+4. Start the stack and check that three containers are running: `dawarich_db`, `dawarich_redis` and `dawarich_app`.
+
+   ```bash
+   docker compose pull
+   docker compose up -d
+   docker compose ps
+   ```
+
+Don't start the old worker again next to the new setup. Larger instances, or ones with frequent big imports, can keep jobs in a separate container instead; see [Background jobs](https://dawarich.app/docs/self-hosting/configuration/background-jobs).
 
 ### Added
 
