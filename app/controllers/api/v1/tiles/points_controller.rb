@@ -5,12 +5,16 @@ class Api::V1::Tiles::PointsController < ApiController
 
   # ETag material — bump when the tile SQL or its emitted properties change,
   # so a deploy invalidates cached tiles.
-  TILE_SCHEMA_VERSION = 5
+  TILE_SCHEMA_VERSION = 6
 
   private
 
   def tile_schema_version
-    TILE_SCHEMA_VERSION
+    [TILE_SCHEMA_VERSION, privacy_zone_masker.fingerprint]
+  end
+
+  def tile_privacy_masker
+    @tile_privacy_masker ||= privacy_zone_masker.near_tile(params[:z], params[:x], params[:y])
   end
 
   def tile_epoch_component
@@ -28,7 +32,7 @@ class Api::V1::Tiles::PointsController < ApiController
 
   def filtered_points
     # Parity with the classic points layer — anomalies render in their own layer.
-    scope = scoped_points.without_raw_data.not_anomaly
+    scope = tile_privacy_masker.mask_points(scoped_points.without_raw_data.not_anomaly)
     scope = scope.where(import_id: params[:import_id]) if params[:import_id].present?
 
     start_at = safe_timestamp(params[:start_at]) if params[:start_at].present?

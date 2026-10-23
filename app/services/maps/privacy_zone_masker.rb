@@ -8,6 +8,7 @@ module Maps
     METERS_PER_DEGREE = Math::PI * EARTH_RADIUS_M / 180
     BUFFER_QUAD_SEGMENTS = 8
     COVERING_FACTOR = 1 / Math.cos(Math::PI / (4 * BUFFER_QUAD_SEGMENTS))
+    TILE_MARGIN = 0.125
 
     def initialize(user, circles: nil)
       @user = user
@@ -141,6 +142,37 @@ module Maps
           c.lat + dlat >= min_lat && c.lat - dlat <= max_lat
       end
       self.class.new(@user, circles: nearby)
+    end
+
+    def near_tile(zoom, column, row)
+      bbox = self.class.tile_bbox(zoom, column, row, margin: TILE_MARGIN)
+      bbox ? near(**bbox) : self
+    end
+
+    def covers_tile?(zoom, column, row)
+      bbox = self.class.tile_bbox(zoom, column, row)
+      bbox.present? && covers_bbox?(**bbox)
+    end
+
+    def self.tile_bbox(zoom, column, row, margin: 0)
+      zoom = Integer(zoom, exception: false)
+      column = Integer(column, exception: false)
+      row = Integer(row, exception: false)
+      return if [zoom, column, row].any?(&:nil?) || zoom.negative? || zoom > 30
+
+      count = 2**zoom
+      return unless column.between?(0, count - 1) && row.between?(0, count - 1)
+
+      { min_lon: tile_lon(column - margin, count), max_lon: tile_lon(column + 1 + margin, count),
+        min_lat: tile_lat(row + 1 + margin, count), max_lat: tile_lat(row - margin, count) }
+    end
+
+    def self.tile_lon(column, count)
+      (column.to_f / count * 360.0) - 180.0
+    end
+
+    def self.tile_lat(row, count)
+      Math.atan(Math.sinh(Math::PI * (1 - (2.0 * row / count)))) * 180.0 / Math::PI
     end
 
     def covers_bbox?(min_lon:, min_lat:, max_lon:, max_lat:)
