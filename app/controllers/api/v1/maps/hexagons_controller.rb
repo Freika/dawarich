@@ -71,7 +71,8 @@ class Api::V1::Maps::HexagonsController < ApiController
     start_date = parse_fog_date!(:start_date)
     end_date = parse_fog_date!(:end_date)
 
-    result = Maps::FogHexagons.new(user: current_api_user, start_date:, end_date:).call
+    result = Maps::FogHexagons.new(user: current_api_user, start_date:, end_date:,
+                                   privacy_zone_masker:).call
 
     render json: result
   rescue ActionController::ParameterMissing => e

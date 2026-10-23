@@ -129,6 +129,19 @@ module Maps
       "ST_Difference(#{geometry_sql}, ST_Union(ARRAY[#{buffers.join(', ')}]))"
     end
 
+    def touches_h3_cell?(index)
+      return false unless any?
+
+      cell = index.is_a?(Integer) ? index : H3.from_string(index.to_s)
+      lat, lon = H3.to_geo_coordinates(cell)
+      reach = H3.edge_length_m(H3.resolution(cell)) * 2
+      nearby = circles.select { |c| haversine_m(lat, lon, c.lat, c.lon) <= c.radius + reach }
+      return false if nearby.empty?
+
+      circumradius = H3.to_boundary(cell).map { |vlat, vlon| haversine_m(lat, lon, vlat, vlon) }.max
+      nearby.any? { |c| haversine_m(lat, lon, c.lat, c.lon) <= c.radius + circumradius }
+    end
+
     def fingerprint
       return nil unless any?
 
