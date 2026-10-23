@@ -1582,6 +1582,8 @@ fr:
       dawarich_logo: Logo Dawarich
   map:
     onboarding_modal:
+      not_sure_where_your_app_keeps_its_export: "Vous ne savez pas où trouver l'export dans votre application ?"
+      step_by_step_export_guides: "Guides d'export pas à pas"
       invite_your_family: "Invitez votre famille"
       add_your_family_and_see_each_other_on_the_map: "Ajoutez votre famille et voyez-vous sur la carte."
       welcome_to_dawarich: Bienvenue chez Dawarich !

@@ -916,6 +916,8 @@ en:
       dawarich_logo: Dawarich logo
   map:
     onboarding_modal:
+      not_sure_where_your_app_keeps_its_export: "Not sure where your app keeps its export?"
+      step_by_step_export_guides: "Step-by-step export guides"
       invite_your_family: "Invite your family"
       add_your_family_and_see_each_other_on_the_map: "Add your family and see each other on the map."
       welcome_to_dawarich: Welcome to Dawarich!

@@ -923,6 +923,8 @@ zh:
       dawarich_logo: Dawarich 徽标
   map:
     onboarding_modal:
+      not_sure_where_your_app_keeps_its_export: "不知道您的应用把导出功能放在哪里？"
+      step_by_step_export_guides: "分步导出指南"
       add_your_family_and_see_each_other_on_the_map: 添加家人，在地图上互相查看位置。
       invite_your_family: 邀请您的家人
       welcome_to_dawarich: 欢迎使用 Dawarich！

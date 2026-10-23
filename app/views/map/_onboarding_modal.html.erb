@@ -105,6 +105,11 @@
             <div class="text-xs text-base-content/60 mt-2">
               <%= t('.file_format_is_automatically_detected_during_upload') %>
             </div>
+            <div class="text-xs text-base-content/60 mt-2">
+              <%= t('.not_sure_where_your_app_keeps_its_export') %>
+              <%= link_to t('.step_by_step_export_guides'), 'https://dawarich.app/docs/getting-started/import-sources?utm_source=app&utm_medium=referral&utm_campaign=onboarding',
+                  class: 'link link-primary font-medium', target: '_blank', rel: 'noopener' %>
+            </div>
             <% if current_user.legacy_trial? %>
               <div class="text-xs text-warning mt-2 font-medium">
                 <%= t('.trial_limitations_max_5_imports_10mb_per_file_current_imports') %> <%= current_user.imports.count %>/5

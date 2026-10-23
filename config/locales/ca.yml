@@ -916,6 +916,8 @@ ca:
       dawarich_logo: Logotip de Dawarich
   map:
     onboarding_modal:
+      not_sure_where_your_app_keeps_its_export: "No saps on guarda la teva app l'exportació?"
+      step_by_step_export_guides: "Guies d'exportació pas a pas"
       invite_your_family: "Convida la teva família"
       add_your_family_and_see_each_other_on_the_map: "Afegeix la teva família i veieu-vos al mapa."
       welcome_to_dawarich: Benvingut/da a Dawarich!
