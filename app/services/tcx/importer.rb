@@ -20,7 +20,7 @@ class Tcx::Importer
   def call
     json = Hash.from_xml(xml_content)
 
-    activities = Array.wrap(json.dig('TrainingCenterDatabase', 'Activities', 'Activity'))
+    activities = extract_activities(json)
 
     points_data = activities.flat_map { |activity| parse_activity(activity) }.compact
 
@@ -36,40 +36,54 @@ class Tcx::Importer
     escape_raw_ampersands(load_file_content)
   end
 
-  def parse_activity(activity)
-    return [] if activity.blank?
+  def extract_activities(json)
+    database = first_value(json['TrainingCenterDatabase'])
+    return [] unless database.is_a?(Hash)
 
-    sport = activity['Sport']
+    Array.wrap(database['Activities']).flat_map do |container|
+      container.is_a?(Hash) ? Array.wrap(container['Activity']) : []
+    end
+  end
+
+  def parse_activity(activity)
+    return [] unless activity.is_a?(Hash)
+
+    sport = first_value(activity['Sport'])
     laps = Array.wrap(activity['Lap'])
 
     laps.flat_map { |lap| parse_lap(lap, sport) }.compact
   end
 
   def parse_lap(lap, sport)
+    return [] unless lap.is_a?(Hash)
+
     tracks = Array.wrap(lap['Track'])
 
     tracks.flat_map { |track| parse_track(track, sport) }.compact
   end
 
   def parse_track(track, sport)
+    return [] unless track.is_a?(Hash)
+
     trackpoints = Array.wrap(track['Trackpoint'])
 
     trackpoints.filter_map { |tp| prepare_point(tp, sport) }
   end
 
   def prepare_point(trackpoint, sport)
+    trackpoint = first_value(trackpoint)
     return unless trackpoint.is_a?(Hash)
 
-    position = trackpoint['Position']
+    position = first_value(trackpoint['Position'])
     return unless position.is_a?(Hash)
 
-    lat = position['LatitudeDegrees']
-    lon = position['LongitudeDegrees']
-    time = trackpoint['Time']
+    lat = first_value(position['LatitudeDegrees'])
+    lon = first_value(position['LongitudeDegrees'])
+    time = first_value(trackpoint['Time'])
 
     return if lat.blank? || lon.blank? || time.blank?
 
-    altitude_value = trackpoint['AltitudeMeters']&.to_f
+    altitude_value = first_value(trackpoint['AltitudeMeters'])&.to_f
 
     attrs = {
       lonlat: "POINT(#{lon.to_d} #{lat.to_d})",
@@ -87,13 +101,17 @@ class Tcx::Importer
   end
 
   def extract_speed(trackpoint)
-    extensions = trackpoint['Extensions']
-    return if extensions.blank?
+    extensions = first_value(trackpoint['Extensions'])
+    return unless extensions.is_a?(Hash)
 
-    tpx = extensions['TPX']
-    speed = tpx['Speed'] if tpx.is_a?(Hash)
+    tpx = first_value(extensions['TPX'])
+    speed = first_value(tpx['Speed']) if tpx.is_a?(Hash)
 
     speed&.to_f&.round(1)
+  end
+
+  def first_value(value)
+    value.is_a?(Array) ? value.first : value
   end
 
   def importer_name

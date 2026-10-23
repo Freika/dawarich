@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- TCX imports (Google Fit, Garmin and any other exporter) no longer fail with `no implicit conversion of String into Integer` when the file repeats an element such as `<Position>`, `<Time>` or `<Extensions>`. The first value is used and the point is imported instead of being dropped, and empty `<Lap/>` or `<Track/>` entries are skipped instead of aborting the import. (#2466)
+
 ## [1.17.0] - 2026-10-23, Berlin
 
 Dawarich gets lighter and faster in this release. On a test account with a million points over three years, compared with 1.16.0:
