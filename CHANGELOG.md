@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The Docker image now ships Node.js 22 LTS from the official Node.js build instead of Debian's Node.js 20 package, which no longer receives upstream security fixes. Node.js runs the server-side poster renderer. #3888
+
 ## [1.17.0] - 2026-10-23, Berlin
 
 This release makes Dawarich lighter and faster. Measured on a test instance with 100,000 points, compared with 1.16.0:
