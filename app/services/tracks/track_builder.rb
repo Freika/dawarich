@@ -56,6 +56,9 @@ module Tracks::TrackBuilder
   # but bad data is rarely useful.
   MAX_DISTANCE_METERS = 100_000_000
 
+  # Ignore small altitude fluctuations caused by vertical GPS noise.
+  ELEVATION_NOISE_THRESHOLD_METERS = 15
+
   def create_track_from_points(points, pre_calculated_distance, tracker_id: nil,
                                skip_segment_detection: false, orphan_only: false)
     if orphan_only
@@ -207,16 +210,26 @@ module Tracks::TrackBuilder
 
     elevation_gain = 0
     elevation_loss = 0
-    previous_altitude = altitudes.first
+    reference_altitude = altitudes.first
 
     altitudes[1..].each do |altitude|
-      diff = altitude - previous_altitude
+      diff = altitude - reference_altitude
+      next if diff.abs < ELEVATION_NOISE_THRESHOLD_METERS
+
       if diff.positive?
         elevation_gain += diff
       else
         elevation_loss += diff.abs
       end
-      previous_altitude = altitude
+      reference_altitude = altitude
+    end
+
+    # Preserve the final net change, including climbs or descents below the threshold.
+    residual = altitudes.last - reference_altitude
+    if residual.positive?
+      elevation_gain += residual
+    else
+      elevation_loss += residual.abs
     end
 
     {
