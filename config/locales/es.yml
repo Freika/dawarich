@@ -1039,6 +1039,8 @@ es:
         settings_s: Configuración (S)
         links: Enlaces
       settings_panel:
+        speed_colored_tracks: Colorear recorridos según la velocidad
+        edit_speed_colors: Editar colores de velocidad
         close_panel: Cerrar panel
         layers: Capas
         search_for_a_place: Buscar un lugar

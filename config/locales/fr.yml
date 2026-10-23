@@ -1669,6 +1669,8 @@ fr:
         settings_s: Paramètres (S)
         links: Liens
       settings_panel:
+        speed_colored_tracks: Colorer les traces selon la vitesse
+        edit_speed_colors: Modifier les couleurs de vitesse
         close_panel: Fermer le panneau
         layers: Couches
         search_for_a_place: Rechercher un endroit

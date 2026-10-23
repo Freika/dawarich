@@ -344,6 +344,33 @@
               <%= icon 'rotate-ccw', class: 'h-3 w-3' %>
               <%= t('.reset_to_defaults') %>
             </button>
+            <div data-controller="speed-color-editor"
+                 data-action="speed-color-editor:save->maps--maplibre#updateSpeedColorScale">
+              <label class="label cursor-pointer gap-2">
+                <span class="label-text text-sm"><%= t('.speed_colored_tracks') %></span>
+                <input type="checkbox" name="speed_colored_routes" class="toggle toggle-sm toggle-primary"
+                       data-action="change->maps--maplibre#toggleSpeedColoredRoutes">
+              </label>
+              <button type="button" class="btn btn-xs btn-ghost"
+                      data-action="click->speed-color-editor#open"><%= t('.edit_speed_colors') %></button>
+              <dialog class="modal" data-speed-color-editor-target="modal" aria-labelledby="track-speed-color-title">
+                <div class="modal-box">
+                  <h3 id="track-speed-color-title" class="font-bold text-lg"><%= t('javascript.speed_gradient.title') %></h3>
+                  <p class="label"><%= t('javascript.speed_gradient.color_stops') %></p>
+                  <div class="space-y-2" data-speed-color-editor-target="stopsList"></div>
+                  <button type="button" class="btn btn-sm btn-ghost mt-2"
+                          data-action="click->speed-color-editor#addStop"><%= t('javascript.speed_gradient.add_stop') %></button>
+                  <p class="label"><%= t('javascript.speed_gradient.preview') %></p>
+                  <div class="h-7 rounded" data-speed-color-editor-target="preview"></div>
+                  <div class="modal-action flex-wrap">
+                    <button type="button" class="btn btn-sm btn-ghost" data-action="click->speed-color-editor#resetToDefault"><%= t('javascript.common.reset_to_default') %></button>
+                    <button type="button" class="btn btn-sm" data-action="click->speed-color-editor#close"><%= t('javascript.common.cancel') %></button>
+                    <button type="button" class="btn btn-sm btn-primary" data-action="click->speed-color-editor#save"><%= t('javascript.common.save') %></button>
+                  </div>
+                </div>
+                <button type="button" class="modal-backdrop" data-action="click->speed-color-editor#close"><%= t('javascript.common.close') %></button>
+              </dialog>
+            </div>
           </div>
 
           <div class="divider"></div>

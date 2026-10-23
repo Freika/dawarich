@@ -993,6 +993,8 @@ pl:
         settings_s: Ustawienia (S)
         links: Linki
       settings_panel:
+        speed_colored_tracks: Koloruj ślady według prędkości
+        edit_speed_colors: Edytuj kolory prędkości
         close_panel: Zamknij panel
         layers: Warstwy
         search_for_a_place: Wyszukaj miejsce
