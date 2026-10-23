@@ -243,6 +243,12 @@ RSpec.describe Visits::Create do
         expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
       end
 
+      it 'enqueues address lookup when the sent address has no street or city' do
+        service = described_class.new(user, valid_params.merge(address: { street: '', city: ' ', country: 'DE' }))
+
+        expect { service.call }.to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
+      end
+
       it 'does not enqueue when an existing place is reused' do
         existing = create(:place, user: user, latitude: 52.52, longitude: 13.405, lonlat: 'POINT(13.405 52.52)')
         create(:visit, user: user, place: existing)
@@ -268,6 +274,15 @@ RSpec.describe Visits::Create do
         service = described_class.new(user, valid_params.merge(status: 'suggested'))
 
         expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
+      end
+    end
+
+    context 'when the address is not an object' do
+      it 'creates the visit without an address' do
+        service = described_class.new(user, valid_params.merge(address: [{ city: 'Berlin' }]))
+
+        expect(service.call).to be_a(Visit)
+        expect(service.visit.place.geodata).to eq({})
       end
     end
 

@@ -6204,7 +6204,8 @@ paths:
                       format: datetime
                     address:
                       type: object
-                      description: Optional address stored on a newly created place
+                      description: Optional address stored on a newly created place;
+                        ignored when the visit reuses a place within 100 m
                       properties:
                         street:
                           type: string
