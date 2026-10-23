@@ -5,28 +5,30 @@ require 'rails_helper'
 RSpec.describe 'map/timeline_feeds/_day' do
   let(:user) { create(:user) }
 
-  def visit_entry(id:, name:, start_hm:, end_hm:, duration:, points: 12)
+  def visit_entry(id:, name:, start_hm:, end_hm:, duration:, points: 12, timezone: nil)
     {
       type: 'visit', visit_id: id, name: name, status: 'confirmed', point_count: points, tags: [],
       started_at: "2026-02-23T#{start_hm}:00+00:00", ended_at: "2026-02-23T#{end_hm}:00+00:00",
-      duration: duration, place: nil, area: nil
+      duration: duration, place: nil, area: nil, timezone: timezone
     }
   end
 
-  def journey_entry(id:, mode:, start_hm:, end_hm:, duration:, distance:)
+  def journey_entry(id:, mode:, start_hm:, end_hm:, duration:, distance:, started_at_timezone: nil, ended_at_timezone: nil)
     {
       type: 'journey', track_id: id, started_at: "2026-02-23T#{start_hm}:00+00:00",
       ended_at: "2026-02-23T#{end_hm}:00+00:00", duration: duration, distance: distance,
       distance_unit: 'km', dominant_mode: mode, avg_speed: 40.0, speed_unit: 'km/h',
       elevation_gain: 0, elevation_loss: 0, continuation_of_date: nil,
-      day_distance: nil, day_duration: nil, moving_duration: duration
+      day_distance: nil, day_duration: nil, moving_duration: duration,
+      started_at_timezone: started_at_timezone, ended_at_timezone: ended_at_timezone
     }
   end
 
   let(:entries) do
     [
       visit_entry(id: 1, name: 'Saturn, Przemysłowa, Krakow, Lesser Poland Voivodeship',
-                  start_hm: '09:59', end_hm: '10:24', duration: 24, points: 33),
+                  start_hm: '09:59', end_hm: '10:24', duration: 24, points: 33,
+                  timezone: 'Europe/Warsaw'),
       journey_entry(id: 11, mode: 'driving', start_hm: '11:04', end_hm: '14:43',
                     duration: 12_000, distance: 170.1),
       visit_entry(id: 2, name: 'Arge, Chyżne, Lesser Poland Voivodeship',
@@ -92,5 +94,32 @@ RSpec.describe 'map/timeline_feeds/_day' do
 
   it 'prints each visit duration once, opposite its arrival time' do
     expect(rendered).to have_css('.visit-row__duration', text: '24m')
+  end
+
+  it 'renders a visit arrival in the visit location timezone' do
+    expect(rendered).to have_css('.visit-row__time', text: '10:59')
+  end
+
+  it 'renders journey times in their respective timezones' do
+    entries_with_journey_tz = [
+      journey_entry(id: 21, mode: 'driving', start_hm: '15:00', end_hm: '16:00',
+                     duration: 60, distance: 100,
+                     started_at_timezone: 'America/Chicago', ended_at_timezone: 'America/New_York')
+    ]
+    day_with_journey = day.merge(entries: entries_with_journey_tz)
+    render partial: 'map/timeline_feeds/day', locals: { day: day_with_journey }
+
+    expect(rendered).to have_css('.journey-row__time', text: '09:00')
+  end
+
+  it 'renders gap times in the timeline timezone' do
+    entries_with_gap = [
+      visit_entry(id: 10, name: 'Start', start_hm: '10:00', end_hm: '10:30', duration: 30, timezone: 'America/Chicago'),
+      visit_entry(id: 11, name: 'End', start_hm: '16:00', end_hm: '16:30', duration: 30, timezone: 'America/Chicago')
+    ]
+    day_with_gap = day.merge(entries: entries_with_gap)
+    render partial: 'map/timeline_feeds/day', locals: { day: day_with_gap }
+
+    expect(rendered).to have_css('.gap-leg__time', text: '04:00')
   end
 end
