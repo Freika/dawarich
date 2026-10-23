@@ -671,4 +671,32 @@ RSpec.describe '/trips', type: :request do
       expect(response).to redirect_to(trips_url)
     end
   end
+
+  describe 'privacy zones on the trip page' do
+    let(:owner) { create(:user, settings: { 'timezone' => 'UTC' }) }
+    let(:trip) do
+      create(:trip, user: owner, started_at: Time.utc(2026, 4, 1), ended_at: Time.utc(2026, 4, 14),
+                    skip_calculation_enqueue: true)
+    end
+
+    before do
+      sign_in owner
+      home = create(:place, user: owner, latitude: 60.0, longitude: 10.0, lonlat: 'POINT(10.0 60.0)')
+      create(:tagging, tag: create(:tag, user: owner, privacy_radius_meters: 1_000), taggable: home)
+      create(:point, user: owner, lonlat: 'POINT(10.0 60.0)', timestamp: Time.utc(2026, 4, 2, 9).to_i)
+      create(:point, user: owner, lonlat: 'POINT(11.0 61.0)', timestamp: Time.utc(2026, 4, 2, 10).to_i)
+      create(:point, user: owner, lonlat: 'POINT(11.5 61.5)', timestamp: Time.utc(2026, 4, 2, 11).to_i)
+      create(:point, user: owner, lonlat: 'POINT(12.0 62.0)', timestamp: Time.utc(2026, 4, 3, 10).to_i)
+    end
+
+    it 'never starts a day, or fits the map, inside a privacy zone' do
+      get trip_path(trip)
+
+      data = Nokogiri::HTML(response.body).at_css('[data-controller~="trip-maplibre"]')
+      expect(JSON.parse(data['data-trip-maplibre-day-endpoints-value'])['2026-04-02'])
+        .to eq('first' => [11.0, 61.0], 'last' => [11.5, 61.5])
+      expect(JSON.parse(data['data-trip-maplibre-day-bounds-value'])['2026-04-02']).to eq([[11.0, 61.0], [11.5, 61.5]])
+      expect(JSON.parse(data['data-trip-maplibre-full-bounds-value'])).to eq([[11.0, 61.0], [12.0, 62.0]])
+    end
+  end
 end

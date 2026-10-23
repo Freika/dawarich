@@ -148,7 +148,10 @@ module Trips
     def zone_clip(geometry)
       return geometry if @privacy_zones.empty?
 
-      buffers = @privacy_zones.map { |zone| "ST_Buffer(#{zone_point(zone)}, #{zone[:radius].to_f})::geometry" }
+      buffers = @privacy_zones.map do |zone|
+        radius = zone[:radius].to_f * Maps::PrivacyZoneMasker::COVERING_FACTOR
+        "ST_Buffer(#{zone_point(zone)}, #{radius}, 'quad_segs=#{Maps::PrivacyZoneMasker::BUFFER_QUAD_SEGMENTS}')::geometry"
+      end
       "ST_Difference(#{geometry}, ST_Union(ARRAY[#{buffers.join(', ')}]))"
     end
 
