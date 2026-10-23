@@ -29,7 +29,7 @@ You can connect with a web browser to http://127.0.0.1:3000/ and login with the 
 
 ### Prerequisites
 
-- **Ruby** — version specified in `.ruby-version` (currently 3.4.9). Use `rbenv`, `asdf`, or `mise`.
+- **Ruby** — version specified in `.ruby-version` (currently 4.0.9). Use `rbenv`, `asdf`, or `mise`.
 - **PostgreSQL ≥ 14** with the **PostGIS** extension, listening on `localhost:5432`.
 - **Redis**, listening on `localhost:6379`.
 

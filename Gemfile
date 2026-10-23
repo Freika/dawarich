@@ -95,6 +95,7 @@ group :development, :test, :staging do
 end
 
 group :test do
+  gem 'benchmark'
   gem 'capybara'
   gem 'fakeredis'
   gem 'selenium-webdriver'
