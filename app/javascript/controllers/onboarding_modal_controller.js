@@ -73,12 +73,12 @@ export default class extends Controller {
 
   showImport() {
     this.switchScreen("importScreen")
-    this.trackEvent("onboarding_import_selected")
+    this.trackEvent("onboarding_choice_selected", "import")
   }
 
   showTrack() {
     this.switchScreen("trackScreen")
-    this.trackEvent("onboarding_track_selected")
+    this.trackEvent("onboarding_choice_selected", "track")
   }
 
   showChoice() {
@@ -88,7 +88,7 @@ export default class extends Controller {
   loadDemoData() {
     if (this.hasDemoDataValue) return
 
-    this.trackEvent("onboarding_demo_selected")
+    this.trackEvent("onboarding_choice_selected", "demo")
     this.showDemoLoading()
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
@@ -201,9 +201,19 @@ export default class extends Controller {
     }
   }
 
-  trackEvent(eventName) {
-    if (typeof window.sa_event === "function") {
-      window.sa_event(eventName)
-    }
+  trackEvent(event, choice) {
+    if (document.documentElement.dataset.analyticsConsent !== "true") return
+
+    fetch("/product_analytics_events", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')
+          ?.content,
+      },
+      body: JSON.stringify({ event, choice }),
+      credentials: "same-origin",
+      keepalive: true,
+    }).catch(() => {})
   }
 }
