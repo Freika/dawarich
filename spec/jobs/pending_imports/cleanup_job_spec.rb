@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'aws-sdk-s3'
 
 RSpec.describe PendingImports::CleanupJob do
   it 'runs on the low_priority queue' do
@@ -23,6 +24,41 @@ RSpec.describe PendingImports::CleanupJob do
       blob = expired.file.blob
       described_class.perform_now
       expect(ActiveStorage::Blob.exists?(blob.id)).to be false
+    end
+
+    it 'preserves expired uploads when storage deletion fails' do
+      expired = create(:pending_import, :with_file, expires_at: 1.day.ago)
+      attachment_id = expired.file.attachment.id
+      blob_id = expired.file.blob.id
+      storage_error = Aws::S3::Errors::InternalError.new(nil, 'Please try again')
+
+      allow_any_instance_of(ActiveStorage::Blob).to receive(:delete).and_raise(storage_error)
+
+      expect { described_class.perform_now }.to raise_error(Aws::S3::Errors::InternalError)
+      expect(PendingImport.exists?(expired.id)).to be true
+      expect(ActiveStorage::Attachment.exists?(attachment_id)).to be true
+      expect(ActiveStorage::Blob.exists?(blob_id)).to be true
+    end
+
+    it 'preserves uploads claimed after the cleanup query' do
+      expired = create(:pending_import, :with_file, expires_at: 1.day.ago)
+      blob = expired.file.blob
+      selected = PendingImport.expired.where(claimed_at: nil)
+
+      allow(PendingImport).to receive(:expired).and_return(selected)
+      allow(selected).to receive(:where).with(claimed_at: nil).and_return(selected)
+      allow(selected).to receive(:find_each) do |&block|
+        expired.update!(claimed_at: Time.current, claimed_by_user_id: create(:user).id)
+        block.call(expired)
+      end
+
+      expect_any_instance_of(ActiveStorage::Blob).not_to receive(:delete)
+
+      described_class.perform_now
+
+      expect(PendingImport.exists?(expired.id)).to be true
+      expect(expired.reload.file).to be_attached
+      expect(ActiveStorage::Blob.exists?(blob.id)).to be true
     end
   end
 
