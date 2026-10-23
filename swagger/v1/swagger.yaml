@@ -5632,6 +5632,363 @@ paths:
           description: track not found
         '401':
           description: unauthorized
+  "/api/v1/trips":
+    get:
+      summary: List trips
+      tags:
+      - Trips
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      - name: start_at
+        in: query
+        format: datetime
+        required: false
+        description: Only trips ending at or after this time
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        format: datetime
+        required: false
+        description: Only trips starting at or before this time
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        description: Page number; omit to return all trips
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: Trips per page (default 25, max 100)
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: trips found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    description:
+                      type: string
+                      nullable: true
+                      description: Plain-text description
+                    description_html:
+                      type: string
+                      nullable: true
+                      description: Rich-text description as HTML
+                    started_at:
+                      type: string
+                      format: datetime
+                    ended_at:
+                      type: string
+                      format: datetime
+                    distance_meters:
+                      type: integer
+                      nullable: true
+                      description: Calculated in the background after save
+                    visited_countries:
+                      type: array
+                      items:
+                        type: string
+                    created_at:
+                      type: string
+                      format: datetime
+                    updated_at:
+                      type: string
+                      format: datetime
+                  required:
+                  - id
+                  - name
+                  - started_at
+                  - ended_at
+        '401':
+          description: unauthorized
+    post:
+      summary: Create trip
+      tags:
+      - Trips
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '201':
+          description: trip created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+                    description: Plain-text description
+                  description_html:
+                    type: string
+                    nullable: true
+                    description: Rich-text description as HTML
+                  started_at:
+                    type: string
+                    format: datetime
+                  ended_at:
+                    type: string
+                    format: datetime
+                  distance_meters:
+                    type: integer
+                    nullable: true
+                    description: Calculated in the background after save
+                  visited_countries:
+                    type: array
+                    items:
+                      type: string
+                  created_at:
+                    type: string
+                    format: datetime
+                  updated_at:
+                    type: string
+                    format: datetime
+                required:
+                - id
+                - name
+                - started_at
+                - ended_at
+        '422':
+          description: invalid request
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trip:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    started_at:
+                      type: string
+                      format: datetime
+                    ended_at:
+                      type: string
+                      format: datetime
+                    description:
+                      type: string
+                      description: Plain text or HTML
+                  required:
+                  - name
+                  - started_at
+                  - ended_at
+  "/api/v1/trips/{id}":
+    get:
+      summary: Show trip
+      tags:
+      - Trips
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Trip ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: trip found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+                    description: Plain-text description
+                  description_html:
+                    type: string
+                    nullable: true
+                    description: Rich-text description as HTML
+                  started_at:
+                    type: string
+                    format: datetime
+                  ended_at:
+                    type: string
+                    format: datetime
+                  distance_meters:
+                    type: integer
+                    nullable: true
+                    description: Calculated in the background after save
+                  visited_countries:
+                    type: array
+                    items:
+                      type: string
+                  created_at:
+                    type: string
+                    format: datetime
+                  updated_at:
+                    type: string
+                    format: datetime
+                  path:
+                    type: array
+                    description: Route as [longitude, latitude] pairs
+                    items:
+                      type: array
+                      items:
+                        type: number
+                required:
+                - id
+                - name
+                - started_at
+                - ended_at
+        '404':
+          description: trip not found
+        '401':
+          description: unauthorized
+    patch:
+      summary: Update trip
+      tags:
+      - Trips
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Trip ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: trip updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+                    description: Plain-text description
+                  description_html:
+                    type: string
+                    nullable: true
+                    description: Rich-text description as HTML
+                  started_at:
+                    type: string
+                    format: datetime
+                  ended_at:
+                    type: string
+                    format: datetime
+                  distance_meters:
+                    type: integer
+                    nullable: true
+                    description: Calculated in the background after save
+                  visited_countries:
+                    type: array
+                    items:
+                      type: string
+                  created_at:
+                    type: string
+                    format: datetime
+                  updated_at:
+                    type: string
+                    format: datetime
+                required:
+                - id
+                - name
+                - started_at
+                - ended_at
+        '422':
+          description: invalid request
+        '404':
+          description: trip not found
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trip:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    started_at:
+                      type: string
+                      format: datetime
+                    ended_at:
+                      type: string
+                      format: datetime
+                    description:
+                      type: string
+                      description: Plain text or HTML
+    delete:
+      summary: Delete trip
+      tags:
+      - Trips
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Trip ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      responses:
+        '200':
+          description: trip deleted
+        '404':
+          description: trip not found
+        '401':
+          description: unauthorized
   "/api/v1/users/exist":
     post:
       summary: Checks which user IDs exist in Dawarich
