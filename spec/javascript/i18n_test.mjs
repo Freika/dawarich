@@ -63,3 +63,36 @@ test("formats numbers with the selected interface locale", async () => {
     delete globalThis.document
   }
 })
+
+test("picks CLDR plural categories for the interface locale", async () => {
+  const payload = {
+    countries: {
+      one: "%{count} kraj",
+      few: "%{count} kraje",
+      many: "%{count} krajów",
+      other: "%{count} kraju",
+    },
+    visits: { one: "%{count} wizyta", other: "%{count} wizyt" },
+  }
+  globalThis.document = {
+    documentElement: { lang: "pl" },
+    getElementById: () => ({ textContent: JSON.stringify(payload) }),
+  }
+
+  try {
+    const { translate } = await import(
+      `data:text/javascript;base64,${Buffer.from(`${source}\n// pl copy`).toString("base64")}`
+    )
+
+    assert.equal(translate("countries", { count: 1 }), "1 kraj")
+    assert.equal(translate("countries", { count: 3 }), "3 kraje")
+    assert.equal(translate("countries", { count: 22 }), "22 kraje")
+    assert.equal(translate("countries", { count: 5 }), "5 krajów")
+    assert.equal(translate("countries", { count: 12 }), "12 krajów")
+    assert.equal(translate("countries", { count: 1.5 }), "1.5 kraju")
+    assert.equal(translate("visits", { count: 3 }), "3 wizyt")
+    assert.equal(translate("visits", { count: 1 }), "1 wizyta")
+  } finally {
+    delete globalThis.document
+  }
+})
