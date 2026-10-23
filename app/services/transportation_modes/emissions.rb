@@ -67,6 +67,11 @@ module TransportationModes
     # @return [Hash{Symbol => Float}] log-likelihood per candidate mode
     def log_likelihoods(window, enabled:)
       enabled_set = enabled.map(&:to_sym)
+      authoritative_mode = window[:authoritative_mode]
+      if enabled_set.include?(authoritative_mode)
+        return { authoritative_mode => score_mode(authoritative_mode, window) }
+      end
+
       candidates = (INFERRED_MODES & enabled_set) +
                    (window[:hints].keys.map(&:to_sym) & (HINT_ONLY_MODES & enabled_set))
 
