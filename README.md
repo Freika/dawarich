@@ -2,6 +2,8 @@
 
 English | [简体中文](README.zh-CN.md)
 
+<a href="https://apps.apple.com/app/apple-store/id6739544999?pt=128010810&ct=github-readme&mt=8"><img align="middle" alt="Download on the App Store" src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" height="40"></a> <a href="https://play.google.com/store/apps/details?id=app.dawarich.Dawarich"><img align="middle" alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="60"></a>
+
 [![Discord](https://dcbadge.limes.pink/api/server/pHsBjpt5J8)](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD) | [![Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dfreika%26type%3Dpatrons&style=for-the-badge)](https://www.patreon.com/freika) | [![Deploy on InstaPods](https://instapods.com/deploy-button.svg)](https://app.instapods.com/dashboard/pods/create?app=dawarich&ref=dawarich)
 
 ---
