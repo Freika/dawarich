@@ -2,14 +2,35 @@
 
 module Settings
   class OnboardingsController < ApplicationController
+    EVENTS = %w[
+      onboarding_shown onboarding_track_selected onboarding_import_selected
+      onboarding_demo_selected onboarding_family_selected onboarding_skipped
+    ].freeze
+
     before_action :authenticate_user!
 
     def update
       return head :unprocessable_content unless current_user.settings.is_a?(Hash)
 
-      current_user.settings['onboarding_completed'] = true
-      current_user.save!
+      current_user.with_lock do
+        current_user.settings['onboarding_completed'] = true
+        current_user.save!
+      end
       head :ok
+    end
+
+    def event
+      return head :no_content if DawarichSettings.self_hosted?
+      return head :unprocessable_content unless EVENTS.include?(params[:name])
+      return head :unprocessable_content unless current_user.settings.is_a?(Hash)
+
+      current_user.with_lock do
+        events = current_user.settings['onboarding_events'] || {}
+        events[params[:name]] ||= Time.current.utc.iso8601
+        current_user.settings['onboarding_events'] = events
+        current_user.save!
+      end
+      head :no_content
     end
 
     def demo_data

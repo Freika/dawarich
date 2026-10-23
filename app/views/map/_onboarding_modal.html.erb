@@ -3,6 +3,7 @@
      data-onboarding-modal-auto-value="<%= local_assigns.fetch(:auto_open, false) %>"
      data-onboarding-modal-showable-value="<%= onboarding_modal_showable?(current_user) %>"
      data-onboarding-modal-onboarding-url-value="<%= settings_onboarding_path %>"
+     data-onboarding-modal-event-url-value="<%= event_settings_onboarding_path unless DawarichSettings.self_hosted? %>"
      data-onboarding-modal-user-trial-value="<%= current_user.trial? %>"
      data-onboarding-modal-imports-count-value="<%= current_user.imports.count %>"
      data-onboarding-modal-demo-data-url-value="<%= demo_data_settings_onboarding_path %>"
@@ -68,7 +69,7 @@
           <% if family_feature_available? || current_user.in_family? %>
             <%= link_to family_home_path,
                   class: "card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-info sm:col-span-2",
-                  data: { action: "onboarding-modal#dismiss" } do %>
+                  data: { action: "onboarding-modal#chooseFamily" } do %>
               <div class="card-body p-5">
                 <div class="flex items-center gap-2 mb-2">
                   <%= icon 'users', class: 'w-6 h-6 text-info' %>
@@ -83,7 +84,7 @@
         </div>
 
         <div class="text-center mt-6">
-          <button class="btn btn-ghost btn-sm" data-action="onboarding-modal#dismiss">
+          <button class="btn btn-ghost btn-sm" data-action="onboarding-modal#skip">
             <%= t('.skip_for_now') %>
           </button>
         </div>
