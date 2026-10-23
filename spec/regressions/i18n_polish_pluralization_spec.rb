@@ -32,6 +32,16 @@ RSpec.describe 'Polish I18n pluralization' do
     expect([1.5, '5'].map(&rule)).to all(eq(:other))
   end
 
+  it 'renders few and many forms for Polish count keys' do
+    I18n.with_locale(:pl) do
+      expect(I18n.t('trips.trip.country_count', count: 3)).to eq('3 kraje')
+      expect(I18n.t('trips.trip.country_count', count: 5)).to eq('5 krajów')
+      expect(I18n.t('places.drawer.visit_count', count: 3)).to eq('3 wizyty')
+      expect(I18n.t('places.drawer.visit_count', count: 5)).to eq('5 wizyt')
+      expect(I18n.t('javascript.selection.points', count: 24)).to eq('24 punkty')
+    end
+  end
+
   it 'falls back to other for Polish keys without few or many' do
     expect(I18n.t('trips.trip.day_count', count: 3, locale: :pl)).to eq('3 dni')
   end
