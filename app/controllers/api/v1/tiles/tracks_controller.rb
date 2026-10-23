@@ -5,12 +5,16 @@ class Api::V1::Tiles::TracksController < ApiController
 
   # ETag material — bump when Tracks::VectorTileQuery's SQL or its emitted
   # properties change.
-  TILE_SCHEMA_VERSION = 6
+  TILE_SCHEMA_VERSION = 7
 
   private
 
   def tile_schema_version
-    [TILE_SCHEMA_VERSION, speed_coloring?]
+    [TILE_SCHEMA_VERSION, speed_coloring?, privacy_zone_masker.fingerprint]
+  end
+
+  def tile_privacy_masker
+    @tile_privacy_masker ||= privacy_zone_masker.near_tile(params[:z], params[:x], params[:y])
   end
 
   def tile_epoch_component
@@ -23,7 +27,8 @@ class Api::V1::Tiles::TracksController < ApiController
       scope: filtered_tracks,
       z: params[:z],
       x: params[:x],
-      y: params[:y]
+      y: params[:y],
+      privacy_zone_masker: tile_privacy_masker
     }
     if cacheable_range? || params[:import_id].present?
       options[:clip_points_scope] = current_api_user.scoped_points.without_raw_data.not_anomaly

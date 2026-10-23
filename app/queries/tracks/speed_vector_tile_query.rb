@@ -39,14 +39,14 @@ class Tracks::SpeedVectorTileQuery < Tracks::VectorTileQuery
       WITH #{candidates_cte}#{clipped_paths_cte}, geometries AS MATERIALIZED (
         SELECT tracks.id,
           ROUND(segments.segment_speed::numeric)::double precision AS segment_speed,
-          CASE WHEN tracks.clipped THEN segments.path
-            ELSE COALESCE(segments.path, tracks.original_path) END AS geom
+          #{privacy_clip('(CASE WHEN tracks.clipped THEN segments.path
+            ELSE COALESCE(segments.path, tracks.original_path) END)')} AS geom
         FROM candidates AS tracks
         LEFT JOIN LATERAL (#{segments_sql}) AS segments ON true
       ), grouped_segments AS (
         SELECT id, segment_speed, ST_Collect(geom) AS geom
         FROM geometries
-        WHERE ST_Intersects(geom, ST_Transform(#{margined_envelope}, 4326))
+        WHERE NOT ST_IsEmpty(geom) AND ST_Intersects(geom, ST_Transform(#{margined_envelope}, 4326))
         GROUP BY id, segment_speed
       ), projected AS MATERIALIZED (
         SELECT id, segment_speed,
