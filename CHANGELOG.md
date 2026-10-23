@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Polish counts use the right plural form, for example "3 kraje" and "5 krajów" instead of "3 krajów" and "5 kraju". This also fixes relative times such as "około 3 godziny" and labels on the map.
+
 ## [1.17.0] - 2026-10-23, Berlin
 
 This release makes Dawarich lighter and faster. Measured on a test instance with 100,000 points, compared with 1.16.0:
