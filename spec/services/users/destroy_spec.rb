@@ -94,6 +94,20 @@ RSpec.describe Users::Destroy do
       end
     end
 
+    context 'with point and track revisions' do
+      before do
+        create(:point, user:, timestamp: Time.utc(2026, 9, 10).to_i)
+        create(:track, user:, start_at: Time.utc(2026, 9, 10), end_at: Time.utc(2026, 9, 10, 1))
+      end
+
+      it 'leaves no revision rows for the deleted user' do
+        service.call
+
+        expect(Points::Revision.where(user_id: user.id)).to be_empty
+        expect(Tracks::Revision.where(user_id: user.id)).to be_empty
+      end
+    end
+
     context 'with achievement records' do
       let!(:progress) { create(:achievement_progress, user: user) }
       let!(:achievement) { create(:user_achievement, user: user) }

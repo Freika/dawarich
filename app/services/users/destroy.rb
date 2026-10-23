@@ -71,6 +71,8 @@ class Users::Destroy
         TrackSegment.where(track_id: user.tracks.select(:id)).delete_all
         delete_video_exports_for(user)
         user.tracks.delete_all
+        Points::Revision.where(user_id: user.id).delete_all
+        Tracks::Revision.where(user_id: user.id).delete_all
 
         user.raw_data_archives.delete_all
         user.digests.delete_all
