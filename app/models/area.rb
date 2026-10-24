@@ -7,6 +7,7 @@ class Area < ApplicationRecord
 
   belongs_to :user
   has_many :visits, dependent: :destroy
+  has_many :geofence_events, dependent: :delete_all
 
   validates :name, :latitude, :longitude, :radius, presence: true
   validates :radius, numericality: { greater_than: 0 }
@@ -21,6 +22,7 @@ class Area < ApplicationRecord
   # registration: same-method after_create_commit/after_update_commit pairs
   # silently override each other.
   after_commit :schedule_visit_relabel, on: %i[create update], if: :relabel_needed?
+  after_destroy_commit :remove_from_webhook_filters
 
   def center = [latitude.to_f, longitude.to_f]
 
@@ -33,5 +35,9 @@ class Area < ApplicationRecord
 
   def schedule_visit_relabel
     Areas::RelabelVisitsJob.perform_later(id)
+  end
+
+  def remove_from_webhook_filters
+    Webhook.where(user_id:).where('? = ANY(area_ids)', id).update_all(['area_ids = array_remove(area_ids, ?)', id])
   end
 end

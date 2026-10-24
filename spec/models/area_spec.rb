@@ -26,6 +26,31 @@ RSpec.describe Area, type: :model do
     end
   end
 
+  describe 'geofencing cleanup' do
+    let(:user) { create(:user) }
+    let(:area) { create(:area, user:) }
+
+    it 'drops its events and its id from webhook filters when destroyed' do
+      kept = create(:area, user:)
+      webhook = create(:webhook, user:, area_ids: [area.id, kept.id])
+      create(:webhook_delivery, webhook:, geofence_event: create(:geofence_event, user:, area:))
+
+      area.destroy!
+
+      expect(GeofenceEvent.where(area_id: area.id)).to be_empty
+      expect(WebhookDelivery.count).to eq(0)
+      expect(webhook.reload.area_ids).to eq([kept.id])
+    end
+
+    it 'loses its events through the database when deleted in bulk' do
+      create(:geofence_event, user:, area:)
+
+      user.areas.delete_all
+
+      expect(GeofenceEvent.where(user_id: user.id)).to be_empty
+    end
+  end
+
   describe 'factory' do
     it { expect(build(:area)).to be_valid }
   end

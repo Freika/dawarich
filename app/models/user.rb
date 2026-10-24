@@ -33,6 +33,8 @@ class User < ApplicationRecord
   has_many :route_videos,   dependent: :destroy
   has_many :notifications,  dependent: :destroy
   has_many :areas,          dependent: :destroy
+  has_many :geofence_events, dependent: :delete_all
+  has_many :webhooks,       dependent: :delete_all
   has_many :visits,         dependent: :destroy
   has_many :visited_places, through: :visits, source: :place
   has_many :places,         dependent: :destroy
