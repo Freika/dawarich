@@ -74,13 +74,14 @@ RSpec.describe Areas::RelabelVisitsJob do
                      lonlat: "POINT(#{lon0} #{lat0})")
     end
 
+    area_id = area.id
     point_queries = []
     listener = lambda do |_name, _start, _finish, _id, payload|
       point_queries << payload[:sql] if payload[:sql].to_s.match?(/SELECT.*FROM "points"/m)
     end
 
     ActiveSupport::Notifications.subscribed(listener, 'sql.active_record') do
-      described_class.perform_now(area.id)
+      described_class.perform_now(area_id)
     end
 
     expect(user.visits.where(area_id: area.id).count).to eq(2)
