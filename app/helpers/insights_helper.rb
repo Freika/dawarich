@@ -2,6 +2,7 @@
 
 module InsightsHelper
   include CountryFlagHelper
+  include WeekStartHelper
 
   def monthly_digest_title(digest)
     return I18n.t('helpers.insights.monthly_digest') unless digest
@@ -206,15 +207,9 @@ module InsightsHelper
     end
   end
 
-  def heatmap_week_columns(year)
-    start_date = Date.new(year, 1, 1)
-    end_date = Date.new(year, 12, 31)
-
-    # Adjust to start from the Monday of the week containing Jan 1
-    start_of_grid = start_date - (start_date.wday.zero? ? 6 : start_date.wday - 1)
-
-    # Adjust to end at the Sunday of the week containing Dec 31
-    end_of_grid = end_date + (end_date.wday.zero? ? 0 : 7 - end_date.wday)
+  def heatmap_week_columns(year, week_start: self.week_start)
+    start_of_grid = Date.new(year, 1, 1).beginning_of_week(week_start)
+    end_of_grid = Date.new(year, 12, 31).end_of_week(week_start)
 
     weeks = []
     current_week_start = start_of_grid

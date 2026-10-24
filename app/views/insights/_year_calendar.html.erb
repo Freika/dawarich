@@ -45,7 +45,7 @@
             </div>
 
             <div class="year-calendar__body">
-              <% [t('insights.activity_heatmap.mon'), nil, t('insights.activity_heatmap.wed'), nil, t('insights.activity_heatmap.fri'), nil, nil].each do |day_label| %>
+              <% week_ordered([t('insights.activity_heatmap.mon'), nil, t('insights.activity_heatmap.wed'), nil, t('insights.activity_heatmap.fri'), nil, nil]).each do |day_label| %>
                 <span class="year-calendar__day" aria-hidden="true"><%= day_label %></span>
               <% end %>
               <% weeks.each do |week_start| %>

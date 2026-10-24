@@ -219,6 +219,14 @@ RSpec.describe TimelineHelper, type: :helper do
     it 'returns Mon-Sun single-letter labels' do
       expect(helper.calendar_weekday_labels).to eq(%w[M T W T F S S])
     end
+
+    it 'starts with Sunday for a Sunday week start' do
+      labels = Users::DateTimePreferences.with(Users::DateTimePreferences.new(first_day_of_week: 'sunday')) do
+        helper.calendar_weekday_labels
+      end
+
+      expect(labels).to eq(%w[S M T W T F S])
+    end
   end
 
   describe '#calendar_day_number' do

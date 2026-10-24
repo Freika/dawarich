@@ -101,6 +101,15 @@ RSpec.describe InsightsHelper, type: :helper do
       end
     end
 
+    context 'with a Sunday week start' do
+      it 'starts from the Sunday containing or before Jan 1 and ends on a Saturday' do
+        weeks = helper.heatmap_week_columns(2026, week_start: :sunday)
+
+        expect(weeks.first).to eq(Date.new(2025, 12, 28))
+        expect(weeks.last + 6).to eq(Date.new(2027, 1, 2))
+      end
+    end
+
     context 'with 2023 (Jan 1 is Sunday)' do
       let(:weeks) { helper.heatmap_week_columns(2023) }
 
