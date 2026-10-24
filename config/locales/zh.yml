@@ -4744,3 +4744,8 @@ zh:
       cancel: 取消
       save_to_gallery: 保存到图库
       render_video: 渲染视频
+  date_time_preferences:
+    clock_12h: "%{meridiem}%{time}"
+    meridiem:
+      am: 上午
+      pm: 下午

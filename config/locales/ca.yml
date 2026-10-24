@@ -4621,3 +4621,8 @@ ca:
       no_invitations: No hi ha invitacions pendents
       title: Invitacions de família
       view_invitation: Veure
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: a. m.
+      pm: p. m.

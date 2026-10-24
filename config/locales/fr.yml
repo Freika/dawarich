@@ -5876,3 +5876,8 @@ fr:
       no_invitations: Aucune invitation en attente
       title: Invitations de la famille
       view_invitation: Afficher
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: AM
+      pm: PM

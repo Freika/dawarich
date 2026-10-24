@@ -4683,3 +4683,8 @@ de:
       no_invitations: Keine offenen Einladungen
       title: Familien-Einladungen
       view_invitation: Ansehen
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: AM
+      pm: PM

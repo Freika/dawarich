@@ -4627,3 +4627,8 @@ es:
       no_invitations: No hay invitaciones pendientes
       title: Invitaciones a la Familia
       view_invitation: Ver
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: a. m.
+      pm: p. m.

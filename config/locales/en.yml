@@ -2718,10 +2718,10 @@ en:
   time:
     formats:
       hour_minute: "%H:%M"
-      long_with_time: "%B %d, %Y at %I:%M %p"
+      long_with_time: "%B %d, %Y at %H:%M"
       human: "%e %b %Y, %H:%M"
       human_with_seconds: "%e %b %Y, %H:%M:%S"
-      short_with_time: "%b %d at %I:%M %p"
+      short_with_time: "%b %d at %H:%M"
   common:
     app_name: Dawarich
     not_available: N/A
@@ -4612,3 +4612,8 @@ en:
       no_invitations: No pending invitations
       title: Family Invitations
       view_invitation: View
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: AM
+      pm: PM
