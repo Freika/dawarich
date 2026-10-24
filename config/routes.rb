@@ -338,6 +338,13 @@ Rails.application.routes.draw do
       namespace :imports do
         post :pending, to: 'pending#create'
       end
+      resources :webhooks, only: %i[index show create update destroy] do
+        member do
+          post :test
+          post :regenerate_secret
+        end
+      end
+      resources :geofence_events, only: %i[index]
       resources :places, only: %i[index show create update destroy] do
         collection do
           get 'nearby'
