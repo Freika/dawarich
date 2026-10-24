@@ -4000,6 +4000,68 @@ paths:
                   - Dec
         '401':
           description: unauthorized
+  "/api/v1/points/transitions":
+    post:
+      summary: Reports a geofence enter or leave detected on the device
+      tags:
+      - Geofencing
+      description: Records an area enter/leave reported by the mobile app and delivers
+        it to the user's webhooks. Transitions older than 24 hours or more than 5
+        minutes in the future are rejected.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '201':
+          description: transition recorded
+        '204':
+          description: area does not belong to the user
+        '422':
+          description: invalid transition
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - area_id
+              - event_type
+              - occurred_at
+              - lonlat
+              properties:
+                area_id:
+                  type: integer
+                event_type:
+                  type: string
+                  enum:
+                  - enter
+                  - leave
+                occurred_at:
+                  type: string
+                  format: date-time
+                lonlat:
+                  type: array
+                  items:
+                    type: number
+                  minItems: 2
+                  maxItems: 2
+                  description: "[longitude, latitude]"
+                accuracy_m:
+                  type: integer
+                  nullable: true
+                device_id:
+                  type: string
+                  nullable: true
+                  maxLength: 255
+                metadata:
+                  type: object
+                  description: Flat object of up to 20 scalar values
   "/api/v1/points":
     get:
       summary: Retrieves all points

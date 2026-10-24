@@ -354,6 +354,7 @@ Rails.application.routes.draw do
         collection do
           delete :bulk_destroy
           post :reapply_anomaly_filter
+          post :transitions, to: 'points/transitions#create'
         end
       end
       resources :visits, only: %i[index show create update destroy] do
