@@ -39,15 +39,32 @@ module Visits
       end
 
       def bridgeable?(previous, current)
-        gap(previous, current) <= policy.bridge_cap_s && same_place?(previous, current)
+        silence = gap(previous, current)
+        return false if silence > policy.bridge_cap_s
+
+        same_place?(previous, current) || (silence > policy.sweep_gap_s && resumed_where_paused?(previous, current))
       end
 
       def same_place?(previous, current)
-        Geocoder::Calculations.distance_between(
-          [previous[:center_lat], previous[:center_lon]],
-          [current[:center_lat], current[:center_lon]],
-          units: :km
-        ) * 1000 <= policy.stay_radius_m
+        within_stay_radius?(center(previous), center(current))
+      end
+
+      # Approach and exit fixes drag each side's center away from the spot
+      # where tracking paused, so a true silence is also judged by its edges.
+      # Each edge must still sit within the other side's stay, or two
+      # neighbouring places (or a sparse slow walk) would chain together.
+      def resumed_where_paused?(previous, current)
+        within_stay_radius?(previous[:last_fix], current[:first_fix]) &&
+          within_stay_radius?(previous[:last_fix], center(current)) &&
+          within_stay_radius?(current[:first_fix], center(previous))
+      end
+
+      def center(fragment)
+        [fragment[:center_lat], fragment[:center_lon]]
+      end
+
+      def within_stay_radius?(from, to)
+        Geocoder::Calculations.distance_between(from, to, units: :km) * 1000 <= policy.stay_radius_m
       end
 
       def merge_into(previous, current)
@@ -60,6 +77,7 @@ module Visits
         previous[:center_lon] = ((previous[:center_lon] * a) + (current[:center_lon] * b)) / total
         previous[:point_ids] += current[:point_ids]
         previous[:end_ts] = current[:end_ts]
+        previous[:last_fix] = current[:last_fix]
         previous[:count] = total
         # Only true silence counts as bridged time — sub-sweep-gap blips are
         # ordinary tracking, not inference.

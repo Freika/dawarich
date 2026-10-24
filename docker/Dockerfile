@@ -23,12 +23,11 @@ RUN if [ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "arm64" ]; then \
        /usr/lib/*/libXext.so.6* /out/; \
     else mkdir /out; fi
 
-FROM ruby:3.4.9-slim
+FROM ruby:4.0.9-slim
 
 ARG RAILS_ENV=production
 
 ENV APP_PATH=/var/app
-ENV BUNDLE_VERSION=2.5.21
 ENV BUNDLE_PATH=/usr/local/bundle/gems
 ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
@@ -86,11 +85,6 @@ ENV MALLOC_CONF="narenas:2,dirty_decay_ms:1000,muzzy_decay_ms:1000"
 
 # Enable YJIT
 ENV RUBY_YJIT_ENABLE=1
-
-# Update RubyGems and install Bundler
-RUN gem update --system 3.6.9 \
-    && gem install bundler --version "$BUNDLE_VERSION" \
-    && rm -rf $GEM_HOME/cache/*
 
 WORKDIR $APP_PATH
 
