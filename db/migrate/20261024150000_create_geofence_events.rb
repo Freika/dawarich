@@ -20,5 +20,6 @@ class CreateGeofenceEvents < ActiveRecord::Migration[8.1]
 
     add_index :geofence_events, %i[user_id occurred_at], order: { occurred_at: :desc }
     add_index :geofence_events, %i[area_id occurred_at], order: { occurred_at: :desc }
+    add_index :geofence_events, :created_at, where: 'synthetic', name: 'index_geofence_events_synthetic_on_created_at'
   end
 end

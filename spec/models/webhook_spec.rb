@@ -69,6 +69,11 @@ RSpec.describe Webhook do
       expect(build(:webhook, user:, event_types: [1])).to be_valid
     end
 
+    it 'understands event type names and rejects unknown ones' do
+      expect(build(:webhook, user:, event_types: %w[leave]).event_types).to eq([1])
+      expect(build(:webhook, user:, event_types: %w[linger])).not_to be_valid
+    end
+
     it 'accepts only the user\'s own areas' do
       expect(build(:webhook, user:, area_ids: [create(:area).id])).not_to be_valid
       expect(build(:webhook, user:, area_ids: [area.id])).to be_valid

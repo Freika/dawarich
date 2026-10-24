@@ -105,6 +105,31 @@ RSpec.describe Webhooks::DeliverJob do
     expect(body.length).to be <= 1024
   end
 
+  it 'records a large keep-alive answer as delivered and keeps only its first kilobyte' do
+    server = TCPServer.new('127.0.0.1', 0)
+    port = server.addr[1]
+    thread = Thread.new do
+      client = server.accept
+      client.readpartial(65_536)
+      body = 'x' * 200_000
+      client.write("HTTP/1.1 200 OK\r\nContent-Length: #{body.bytesize}\r\nConnection: keep-alive\r\n\r\n")
+      body.chars.each_slice(4096) { |slice| client.write(slice.join) }
+      sleep 1
+      client.close
+    end
+    webhook.update_columns(url: "http://127.0.0.1:#{port}/hook")
+    WebMock.disable_net_connect!(allow_localhost: true)
+
+    deliver
+
+    expect(delivery.reload).to have_attributes(status: 'success', attempt_count: 1)
+    expect(delivery.response_body.length).to eq(1024)
+  ensure
+    WebMock.disable_net_connect!
+    thread&.kill
+    server&.close
+  end
+
   it 'asks the receiver not to compress its answer' do
     stub = stub_request(:post, url).with(headers: { 'Accept-Encoding' => 'identity' }).to_return(status: 200)
 

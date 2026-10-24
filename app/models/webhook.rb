@@ -23,6 +23,10 @@ class Webhook < ApplicationRecord
     SecureRandom.hex(32)
   end
 
+  def event_types=(values)
+    super(Array(values).compact_blank.map { |value| event_type_value(value) })
+  end
+
   def regenerate_secret!
     update!(secret: self.class.generate_secret)
   end
@@ -63,6 +67,10 @@ class Webhook < ApplicationRecord
     errors.add(:url, I18n.t('services.concerns.url_validatable.invalid_format'))
   rescue UrlValidatable::BlockedUrlError => e
     errors.add(:url, e.message)
+  end
+
+  def event_type_value(value)
+    EVENT_TYPES.fetch(value.to_s) { value.to_s.match?(/\A\d+\z/) ? value.to_i : -1 }
   end
 
   def event_types_known

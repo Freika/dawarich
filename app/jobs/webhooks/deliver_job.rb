@@ -75,10 +75,7 @@ module Webhooks
     def exchange(connection, uri)
       body = +''
       response = connection.request(build_request(uri)) do |res|
-        res.read_body do |chunk|
-          body << chunk
-          break if body.bytesize > BODY_LIMIT
-        end
+        res.read_body { |chunk| body << chunk if body.bytesize <= BODY_LIMIT }
       end
       [response, body]
     end
@@ -100,7 +97,7 @@ module Webhooks
       now = Time.current
       @delivery.update!(status: :success, response_status: response.code.to_i, response_body: truncate(body),
                         error_message: nil, delivered_at: now)
-      webhook.update!(last_delivery_at: now, last_success_at: now, consecutive_failures: 0)
+      webhook.update_columns(last_delivery_at: now, last_success_at: now, consecutive_failures: 0, updated_at: now)
     end
 
     def record_attempt(status:, body:, error:)
@@ -119,7 +116,7 @@ module Webhooks
     end
 
     def trip_breaker(hook)
-      hook.update!(active: false)
+      hook.update_columns(active: false, updated_at: Time.current)
       Notifications::Create.new(
         user: hook.user, kind: :warning, deduplicate: true,
         title: I18n.t('webhooks.notifications.deactivated.title', locale: hook.user.locale),
