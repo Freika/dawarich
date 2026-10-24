@@ -54,6 +54,7 @@ class Tracks::BoundaryResolverJob < ApplicationJob
 
   def resolve_boundary_tracks
     Tracks::PerUserLock.with_user_lock(user.id) do
+      Tracks::HandoffSplitter.new(user).call
       resolved = Tracks::BoundaryDetector.new(user).resolve_cross_chunk_tracks
       result = Tracks::MetadataRefresher.new(user).call
       data = session_manager.get_session_data
