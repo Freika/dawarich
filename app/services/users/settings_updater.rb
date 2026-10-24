@@ -14,6 +14,11 @@ module Users
     SUPPORTER_INSTALL_KEY = 'app_store_supporter_install'
     SUPPORTER_INSTALLS_KEY = 'app_store_supporter_installs'
     MAX_INSTALL_ID_LENGTH = 128
+    DATE_TIME_PREFERENCES = {
+      'date_format' => Users::DateTimePreferences::DATE_FORMATS,
+      'time_format' => Users::DateTimePreferences::TIME_FORMATS,
+      'first_day_of_week' => Users::DateTimePreferences::WEEK_STARTS
+    }.freeze
 
     def initialize(user, settings_params)
       @user = user
@@ -69,6 +74,7 @@ module Users
     def apply_settings
       @settings_params.each do |key, value|
         next if key.to_s == 'timezone' && !ActiveSupport::TimeZone[value]
+        next if DATE_TIME_PREFERENCES.key?(key.to_s) && DATE_TIME_PREFERENCES[key.to_s].exclude?(value)
         next if key.to_s == SUPPORTER_INSTALL_KEY
 
         if key.to_s == 'maps'

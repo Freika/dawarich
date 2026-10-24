@@ -69,7 +69,7 @@ class Api::V1::SettingsController < ApiController
   TILE_FILE_EXTENSIONS = %w[.png .jpg .jpeg .webp .mvt .pbf].freeze
   def settings_params
     permitted = params.require(:settings).permit(
-      :timezone,
+      :timezone, :date_format, :time_format, :first_day_of_week,
       :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
       :route_color, :track_color,

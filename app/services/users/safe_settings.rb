@@ -137,7 +137,10 @@ class Users::SafeSettings
       route_opacity: route_opacity,
       route_color: route_color,
       speed_color_scale: speed_color_scale,
-      points_tiled_rendering: points_tiled_rendering?
+      points_tiled_rendering: points_tiled_rendering?,
+      date_format: date_format,
+      time_format: time_format,
+      first_day_of_week: first_day_of_week
     )
   end
 

@@ -23,6 +23,9 @@ describe 'Settings API', type: :request do
           'photoprism_api_key': 'your-photoprism-api-key',
           'speed_color_scale': 'viridis',
           'fog_of_war_threshold': 100,
+          'date_format': 'dd.mm.yyyy',
+          'time_format': '24h',
+          'first_day_of_week': 'monday',
           'maps': { 'distance_unit': 'km' }
         }
       }
@@ -110,6 +113,24 @@ describe 'Settings API', type: :request do
             type: :number,
             example: 100,
             description: 'Fog of war threshold value'
+          },
+          date_format: {
+            type: :string,
+            enum: %w[auto dd.mm.yyyy dd/mm/yyyy mm/dd/yyyy yyyy-mm-dd],
+            example: 'dd.mm.yyyy',
+            description: 'How full dates are displayed; auto follows the interface language'
+          },
+          time_format: {
+            type: :string,
+            enum: %w[auto 12h 24h],
+            example: '24h',
+            description: 'How times are displayed; auto follows the interface language'
+          },
+          first_day_of_week: {
+            type: :string,
+            enum: %w[monday sunday],
+            example: 'monday',
+            description: 'First day of the week in calendars and weekday charts'
           },
           maps: {
             type: :object,
@@ -229,6 +250,24 @@ describe 'Settings API', type: :request do
                        ],
                        example: 100,
                        description: 'Fog of war threshold value'
+                     },
+                     date_format: {
+                       type: :string,
+                       enum: %w[auto dd.mm.yyyy dd/mm/yyyy mm/dd/yyyy yyyy-mm-dd],
+                       example: 'auto',
+                       description: 'How full dates are displayed; auto follows the interface language'
+                     },
+                     time_format: {
+                       type: :string,
+                       enum: %w[auto 12h 24h],
+                       example: 'auto',
+                       description: 'How times are displayed; auto follows the interface language'
+                     },
+                     first_day_of_week: {
+                       type: :string,
+                       enum: %w[monday sunday],
+                       example: 'monday',
+                       description: 'First day of the week in calendars and weekday charts'
                      }
                    }
                  }
