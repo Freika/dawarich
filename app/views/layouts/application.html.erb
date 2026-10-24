@@ -16,6 +16,7 @@
       <%= javascript_include_tag "posthog", "data-turbo-track": "reload" %>
     <% end %>
     <%= javascript_translations %>
+    <%= date_time_preferences_meta_tag %>
     <%= javascript_importmap_tags %>
     <%= turbo_refreshes_with(method: :morph, scroll: :preserve) if morph_page_refreshes? %>
     <%= yield :head %>

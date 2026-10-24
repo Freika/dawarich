@@ -5,13 +5,27 @@ module ApplicationHelper
     translations = I18n.t('javascript', default: {}).merge(
       transportation_modes: I18n.t('transportation_modes', default: {}),
       visit_statuses: I18n.t('visit_statuses', default: {}),
-      battery_statuses: I18n.t('battery_statuses', default: {})
+      battery_statuses: I18n.t('battery_statuses', default: {}),
+      date_time_preferences: I18n.t('date_time_preferences', default: {})
     )
     tag.script(
       json_escape(translations.to_json).html_safe,
       id: 'i18n-translations',
       type: 'application/json',
       data: { turbo_track: 'reload' }
+    )
+  end
+
+  def date_time_preferences_meta_tag
+    preferences = Current.date_time_preferences
+
+    tag.meta(
+      name: 'date-time-preferences',
+      content: {
+        date_format: preferences.date_format,
+        time_format: preferences.time_format,
+        first_day_of_week: preferences.first_day_of_week
+      }.to_json
     )
   end
 
