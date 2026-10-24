@@ -74,7 +74,6 @@ class Settings::WebhooksController < ApplicationController
 
   def webhook_params
     params.require(:webhook).permit(:name, :url, :active, event_types: [], area_ids: []).tap do |permitted|
-      permitted[:event_types] = permitted[:event_types].compact_blank.map(&:to_i) if permitted.key?(:event_types)
       permitted[:area_ids] = permitted[:area_ids].compact_blank.map(&:to_i) if permitted.key?(:area_ids)
     end
   end
