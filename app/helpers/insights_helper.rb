@@ -44,18 +44,20 @@ module InsightsHelper
   end
 
   def weekly_pattern_chart_data(digest, user)
-    day_names = I18n.t('calendar.abbreviated_weekdays')
+    day_names = week_ordered(I18n.t('calendar.abbreviated_weekdays'))
     return day_names.map { |day| [day, 0] } unless digest
 
     pattern = digest.weekly_pattern
     return day_names.map { |day| [day, 0] } unless pattern.is_a?(Array) && pattern.size == 7
 
     distance_unit = user.safe_settings.distance_unit
-    day_names.each_with_index.map do |day, idx|
-      distance_meters = pattern[idx] || 0
-      converted = Stat.convert_distance(distance_meters, distance_unit).round
-      [day, converted]
+    day_names.zip(week_ordered(pattern)).map do |day, distance_meters|
+      [day, Stat.convert_distance(distance_meters || 0, distance_unit).round]
     end
+  end
+
+  def weekday_strip(monday_first_distances)
+    week_ordered(I18n.t('date.abbr_day_names').rotate.zip(monday_first_distances))
   end
 
   def top_locations_from_digest(digest, limit = 3)

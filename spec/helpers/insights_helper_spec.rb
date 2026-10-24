@@ -120,6 +120,31 @@ RSpec.describe InsightsHelper, type: :helper do
     end
   end
 
+  describe 'weekday ordering' do
+    let(:user) { create(:user) }
+    let(:monday_first) { [1000, 2000, 0, 0, 0, 0, 7000] }
+    let(:digest) { Struct.new(:weekly_pattern).new(monday_first) }
+
+    def as_sunday_user(&)
+      Users::DateTimePreferences.with(Users::DateTimePreferences.new(first_day_of_week: 'sunday'), &)
+    end
+
+    it 'lists the weekly pattern from Monday by default' do
+      expect(helper.weekly_pattern_chart_data(digest, user).first(2)).to eq([['Mon', 1], ['Tue', 2]])
+    end
+
+    it 'lists the weekly pattern from Sunday for a Sunday week start' do
+      data = as_sunday_user { helper.weekly_pattern_chart_data(digest, user) }
+
+      expect(data.first(3)).to eq([['Sun', 7], ['Mon', 1], ['Tue', 2]])
+    end
+
+    it 'lists the day-of-week strip from the first day of week' do
+      expect(helper.weekday_strip(monday_first).first).to eq(['Mon', 1000])
+      expect(as_sunday_user { helper.weekday_strip(monday_first) }.first(2)).to eq([['Sun', 7000], ['Mon', 1000]])
+    end
+  end
+
   describe '#heatmap_month_labels' do
     let(:weeks) { helper.heatmap_week_columns(2024) }
     let(:labels) { helper.heatmap_month_labels(weeks, 2024) }
