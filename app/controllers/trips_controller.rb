@@ -167,7 +167,7 @@ class TripsController < ApplicationController
 
   def compute_day_stats
     window = (current_user.data_window_start.to_date if current_user.plan_restricted?)
-    masker = trip_privacy_masker
+    masker = current_privacy_zone_masker
     cache_key = ['trip_day_stats/v6', @trip.updated_at.to_i, @timezone, window, *@trip.recording_devices_cache_key,
                  masker.fingerprint]
 
@@ -176,15 +176,11 @@ class TripsController < ApplicationController
     end
   end
 
-  def trip_privacy_masker
-    current_privacy_zone_masker
-  end
-
   def trip_full_bounds
-    return @trip.route_bounds unless trip_privacy_masker.any?
+    return @trip.route_bounds unless current_privacy_zone_masker.any?
 
     corners = @day_stats.values.filter_map { |stats| stats[:bounds] }.flatten(1)
-    return if corners.empty?
+    return [] if corners.empty?
 
     lons, lats = corners.transpose
     [[lons.min, lats.min], [lons.max, lats.max]]

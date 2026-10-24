@@ -91,7 +91,8 @@ module Maps
                  CASE WHEN test.touched THEN #{masker.clip_sql('source.geom')} ELSE source.geom END AS clipped
           FROM unnest(ARRAY[#{list}]::text[]) WITH ORDINALITY AS input(json, ordinal)
           CROSS JOIN LATERAL (SELECT ST_SetSRID(ST_GeomFromGeoJSON(input.json), 4326) AS geom) AS source
-          CROSS JOIN LATERAL (SELECT #{masker.touches_sql('source.geom')} AS touched) AS test
+          CROSS JOIN LATERAL (SELECT #{masker.touches_sql('source.geom')} AS touched OFFSET 0) AS test
+          OFFSET 0
         ) AS result
       SQL
     end

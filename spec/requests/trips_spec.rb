@@ -715,6 +715,15 @@ RSpec.describe '/trips', type: :request do
       end
     end
 
+    it 'gives the trip page empty full bounds when every point lies inside the zone' do
+      Point.where(user: owner).where.not(lonlat: 'POINT(10.0 60.0)').delete_all
+
+      get trip_path(trip)
+
+      data = Nokogiri::HTML(response.body).at_css('[data-controller~="trip-maplibre"]')
+      expect(data['data-trip-maplibre-full-bounds-value']).to eq('[]')
+    end
+
     it 'gives a trip preview empty bounds when the whole route lies inside the zone' do
       trip.update_columns(path: 'SRID=4326;LINESTRING(10.0 60.0, 10.001 60.001)')
 

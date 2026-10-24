@@ -220,6 +220,19 @@ RSpec.describe Maps::PrivacyZoneMasker do
       expect(result[:features].map { |f| f[:properties][:segments].first[:coordinates].size }).to all(eq(2))
     end
 
+    it 'clips tracks at two far-apart zones in the same query' do
+      make_zone(lat: 52.444, lon: 13.500, radius: 500)
+      make_zone(lat: 48.137, lon: 11.575, radius: 500)
+      berlin = feature(1, [[13.40, 52.444], [13.60, 52.444]])
+      munich = feature(2, [[11.475, 48.137], [11.675, 48.137]])
+      result = nil
+
+      queries = clip_queries { result = described_class.new(user).mask_track_features(features: [berlin, munich]) }
+
+      expect(queries).to eq(1)
+      expect(result[:features].map { |f| f[:geometry][:type] }).to eq(%w[MultiLineString MultiLineString])
+    end
+
     it 'leaves far tracks untouched without a query and drops tracks inside the zone' do
       make_zone(lat: 52.444, lon: 13.500, radius: 500)
       far = feature(1, [[13.40, 52.60], [13.60, 52.60]])
@@ -235,7 +248,7 @@ RSpec.describe Maps::PrivacyZoneMasker do
       make_zone(lat: 52.444, lon: 13.500, radius: 500)
       legacy = [{ id: 9, start_index: 0, end_index: 3 }]
       cut = feature(1, [[13.40, 52.444], [13.45, 52.444], [13.55, 52.444], [13.60, 52.444]], segments: legacy)
-      near = feature(2, [[13.40, 52.452], [13.60, 52.452]], segments: legacy)
+      near = feature(2, [[13.40, 52.44852], [13.60, 52.44852]], segments: legacy)
 
       masked = described_class.new(user).mask_track_features(features: [cut, near])
 
