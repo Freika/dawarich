@@ -1,0 +1,8 @@
+de:
+  activerecord:
+    errors:
+      models:
+        webhook:
+          attributes:
+            url:
+              https_required: "muss https verwenden"

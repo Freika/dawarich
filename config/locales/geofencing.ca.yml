@@ -1,0 +1,8 @@
+ca:
+  activerecord:
+    errors:
+      models:
+        webhook:
+          attributes:
+            url:
+              https_required: "ha d'utilitzar https"
