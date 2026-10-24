@@ -131,6 +131,7 @@ test("a failed zone request leaves the map without zones instead of failing", as
     assert.deepEqual(await new ApiClient("test-key").fetchPrivacyZones(), {
       zones: [],
       fingerprint: null,
+      failed: true,
     })
   } finally {
     globalThis.fetch = originalFetch

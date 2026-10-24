@@ -194,6 +194,68 @@ RSpec.describe Maps::PrivacyZoneMasker do
     end
   end
 
+  describe '#mask_track_features' do
+    def feature(id, coordinates, segments: nil)
+      properties = { id: }
+      properties[:segments] = segments if segments
+      { type: 'Feature', geometry: { type: 'LineString', coordinates: }, properties: }
+    end
+
+    def clip_queries(&block)
+      statements = []
+      callback = ->(*, payload) { statements << payload[:sql] if payload[:sql].include?('ST_Difference') }
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record', &block)
+      statements.size
+    end
+
+    it 'clips a whole page of tracks and their segments in one query' do
+      make_zone(lat: 52.444, lon: 13.500, radius: 500)
+      masker = described_class.new(user)
+      crossing = [[13.40, 52.444], [13.60, 52.444]]
+      features = (1..5).map { |id| feature(id, crossing, segments: [{ id:, coordinates: crossing }]) }
+      result = nil
+
+      expect(clip_queries { result = masker.mask_track_features(type: 'FeatureCollection', features:) }).to eq(1)
+      expect(result[:features].map { |f| f[:geometry][:type] }).to all(eq('MultiLineString'))
+      expect(result[:features].map { |f| f[:properties][:segments].first[:coordinates].size }).to all(eq(2))
+    end
+
+    it 'leaves far tracks untouched without a query and drops tracks inside the zone' do
+      make_zone(lat: 52.444, lon: 13.500, radius: 500)
+      far = feature(1, [[13.40, 52.60], [13.60, 52.60]])
+      inside = feature(2, [[13.4995, 52.444], [13.5005, 52.444]])
+      result = nil
+
+      expect(clip_queries { result = described_class.new(user).mask_track_features(features: [far]) }).to eq(0)
+      expect(result[:features]).to eq([far])
+      expect(described_class.new(user).mask_track_features(features: [inside])[:features]).to be_empty
+    end
+
+    it 'clears segment vertex indices on a track the zone cut' do
+      make_zone(lat: 52.444, lon: 13.500, radius: 500)
+      track = feature(1, [[13.40, 52.444], [13.45, 52.444], [13.55, 52.444], [13.60, 52.444]],
+                      segments: [{ id: 9, start_index: 0, end_index: 3 }])
+
+      masked = described_class.new(user).mask_track_features(features: [track])
+      segment = masked[:features].first[:properties][:segments].first
+
+      expect(segment).to eq(id: 9)
+    end
+  end
+
+  describe '#fingerprint secrecy' do
+    it 'cannot be recomputed from the zone coordinates alone' do
+      make_zone(lat: 52.444, lon: 13.500, radius: 500)
+      other = create(:user)
+      make_zone(lat: 52.444, lon: 13.500, radius: 500, owner: other)
+
+      fingerprint = described_class.new(user).fingerprint
+
+      expect(fingerprint).not_to eq(Digest::SHA256.hexdigest([[13.5, 52.444, 500.0]].to_json))
+      expect(fingerprint).not_to eq(described_class.new(other).fingerprint)
+    end
+  end
+
   describe '#near' do
     it 'keeps only zones whose circle can reach the bounding box' do
       make_zone(lat: 52.444, lon: 13.500, radius: 500)

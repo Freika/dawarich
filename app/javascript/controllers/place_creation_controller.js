@@ -18,20 +18,21 @@ export default class extends Controller {
 
   connect() {
     this.editingPlaceId = null
-    this.setupEventListeners()
+    this.documentListeners = {
+      "place:create": (e) => this.open(e.detail.latitude, e.detail.longitude),
+      "place:edit": (e) => this.openForEdit(e.detail.place),
+      "turbo:before-stream-render": (e) => this.relaySavedPlace(e),
+    }
+    for (const [type, listener] of Object.entries(this.documentListeners)) {
+      document.addEventListener(type, listener)
+    }
     this.setupTagListeners()
-    this.relaySavedPlace = this.relaySavedPlace.bind(this)
-    document.addEventListener(
-      "turbo:before-stream-render",
-      this.relaySavedPlace,
-    )
   }
 
   disconnect() {
-    document.removeEventListener(
-      "turbo:before-stream-render",
-      this.relaySavedPlace,
-    )
+    for (const [type, listener] of Object.entries(this.documentListeners)) {
+      document.removeEventListener(type, listener)
+    }
   }
 
   // The saved place reaches the page in a turbo stream that Turbo renders
@@ -59,15 +60,6 @@ export default class extends Controller {
     delete dataEl.dataset.place
     delete dataEl.dataset.created
     delete dataEl.dataset.updated
-  }
-
-  setupEventListeners() {
-    document.addEventListener("place:create", (e) => {
-      this.open(e.detail.latitude, e.detail.longitude)
-    })
-    document.addEventListener("place:edit", (e) => {
-      this.openForEdit(e.detail.place)
-    })
   }
 
   setupTagListeners() {

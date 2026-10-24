@@ -43,7 +43,7 @@ class Api::V1::Tiles::TripsController < ApiController
     Trips::RoutesTileQuery.new(
       trip: @trip, z: params[:z], x: params[:x], y: params[:y], timezone: current_api_user.timezone_iana,
       points_scope: @trip.plan_scoped_route_points, exclude_windows:,
-      privacy_zones: Users::PrivacyZones.new(current_api_user).call
+      privacy_zones: privacy_zone_masker.zones, clip_zones: tile_privacy_masker.zones
     )
   end
 
@@ -52,7 +52,7 @@ class Api::V1::Tiles::TripsController < ApiController
   end
 
   def tile_privacy_masker
-    privacy_zone_masker
+    @tile_privacy_masker ||= privacy_zone_masker.near_tile(params[:z], params[:x], params[:y])
   end
 
   def tile_epoch_component

@@ -15,12 +15,14 @@ module Trips
     WEB_MERCATOR_WORLD = Tracks::VectorTileQuery::WEB_MERCATOR_WORLD
 
     # rubocop:disable Naming/MethodParameterName
-    def initialize(trip:, z:, x:, y:, timezone:, points_scope:, exclude_windows: [], privacy_zones: [])
+    def initialize(trip:, z:, x:, y:, timezone:, points_scope:, exclude_windows: [], privacy_zones: [],
+                   clip_zones: privacy_zones)
       @trip = trip
       @timezone = timezone
       @points_scope = points_scope
       @exclude_windows = exclude_windows.map { |from, to| [from.to_i, to.to_i] }
       @privacy_zones = privacy_zones.map { |zone| zone.to_h.symbolize_keys.slice(:lon, :lat, :radius) }
+      @clip_zones = clip_zones.map { |zone| zone.to_h.symbolize_keys.slice(:lon, :lat, :radius) }
       @z = parse_integer(z)
       @x = parse_integer(x)
       @y = parse_integer(y)
@@ -146,9 +148,9 @@ module Trips
     end
 
     def zone_clip(geometry)
-      return geometry if @privacy_zones.empty?
+      return geometry if @clip_zones.empty?
 
-      buffers = @privacy_zones.map do |zone|
+      buffers = @clip_zones.map do |zone|
         radius = zone[:radius].to_f * Maps::PrivacyZoneMasker::COVERING_FACTOR
         "ST_Buffer(#{zone_point(zone)}, #{radius}, 'quad_segs=#{Maps::PrivacyZoneMasker::BUFFER_QUAD_SEGMENTS}')::geometry"
       end

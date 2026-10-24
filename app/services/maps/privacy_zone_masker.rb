@@ -43,12 +43,6 @@ module Maps
 
       place_ids = in_zone_place_ids
       area_ids = in_zone_area_ids
-      unless visits.is_a?(ActiveRecord::Relation)
-        return visits.reject do |visit|
-          visit.place_id ? place_ids.include?(visit.place_id) : area_ids.include?(visit.area_id)
-        end
-      end
-
       visits = visits.where('visits.place_id IS NULL OR visits.place_id NOT IN (?)', place_ids) if place_ids.any?
       return visits if area_ids.none?
 
@@ -66,27 +60,7 @@ module Maps
     def mask_track_features(geojson)
       return geojson unless any?
 
-      features = Array(geojson[:features]).filter_map do |feature|
-        geometry = clip_geojson(feature[:geometry])
-        next if geometry.nil?
-
-        mask_segments(feature[:properties])
-        feature.merge(geometry: geometry)
-      end
-      geojson.merge(features: features)
-    end
-
-    def clip_geojson(geometry)
-      return geometry unless any? && geometry
-
-      lons, lats = geojson_coordinates(geometry).transpose
-      return geometry if lons.nil?
-
-      nearby = near(min_lon: lons.min, min_lat: lats.min, max_lon: lons.max, max_lat: lats.max)
-      return geometry unless nearby.any?
-
-      clipped = nearby.clipped_geojson_text(geometry.to_json)
-      clipped && JSON.parse(clipped, symbolize_names: true)
+      PrivacyZoneTrackMasker.new(self).call(geojson)
     end
 
     def clip_wkt(wkt)
@@ -99,12 +73,13 @@ module Maps
       SQL
     end
 
-    def clipped_geojson_text(geojson_text)
-      source = "ST_SetSRID(ST_GeomFromGeoJSON(#{ActiveRecord::Base.connection.quote(geojson_text)}), 4326)"
-      ActiveRecord::Base.connection.select_value(<<~SQL.squish)
-        SELECT CASE WHEN ST_IsEmpty(clipped) THEN NULL ELSE ST_AsGeoJSON(clipped) END
-        FROM (SELECT #{clip_sql(source)} AS clipped) AS result
-      SQL
+    def clipped_bounds(relation, column)
+      extent = "ST_Extent(CASE WHEN #{touches_sql(column)} THEN #{clip_sql(column)} ELSE #{column} END)"
+      box = relation.pick(Arel.sql("#{extent}::text"))
+      return if box.nil?
+
+      min_lon, min_lat, max_lon, max_lat = box.scan(/-?[\d.]+(?:e-?\d+)?/i).map(&:to_f)
+      [[min_lon, min_lat], [max_lon, max_lat]]
     end
 
     def in_zone?(lon, lat)
@@ -152,10 +127,15 @@ module Maps
       nearby.any? { |c| haversine_m(lat, lon, c.lat, c.lon) <= c.radius + circumradius }
     end
 
+    def zones
+      circles.map(&:to_h)
+    end
+
     def fingerprint
       return nil unless any?
 
-      Digest::SHA256.hexdigest(circles.map { |c| [c.lon, c.lat, c.radius] }.sort.to_json)
+      payload = [@user.id, circles.map { |c| [c.lon, c.lat, c.radius] }.sort].to_json
+      OpenSSL::HMAC.hexdigest('SHA256', Rails.application.secret_key_base, payload)
     end
 
     def near(min_lon:, min_lat:, max_lon:, max_lat:)
@@ -210,26 +190,6 @@ module Maps
     def circles
       @circles ||= Users::PrivacyZones.new(@user).call.map do |zone|
         Circle.new(lon: zone[:lon].to_f, lat: zone[:lat].to_f, radius: zone[:radius].to_f)
-      end
-    end
-
-    def mask_segments(properties)
-      return unless properties.is_a?(Hash) && properties[:segments].is_a?(Array)
-
-      properties[:segments] = properties[:segments].filter_map do |segment|
-        next segment if segment[:coordinates].blank?
-
-        geometry = clip_geojson(type: 'LineString', coordinates: segment[:coordinates])
-        geometry && segment.merge(coordinates: geometry[:coordinates])
-      end
-    end
-
-    def geojson_coordinates(geometry)
-      case geometry[:type].to_s
-      when 'LineString', 'MultiPoint' then geometry[:coordinates]
-      when 'MultiLineString', 'Polygon' then geometry[:coordinates].flatten(1)
-      when 'Point' then [geometry[:coordinates]]
-      else []
       end
     end
 

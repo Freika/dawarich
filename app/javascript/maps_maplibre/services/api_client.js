@@ -1070,7 +1070,7 @@ export class ApiClient {
       const response = await fetch(`${this.baseURL}/tags/privacy_zones`, {
         headers: this.getHeaders(),
       })
-      if (!response.ok) return { zones: [], fingerprint: null }
+      if (!response.ok) return { zones: [], fingerprint: null, failed: true }
 
       const fingerprint = response.headers.get("X-Privacy-Zones-Fingerprint")
       const zones = (await response.json()).flatMap((zone) =>
@@ -1082,7 +1082,7 @@ export class ApiClient {
       )
       return { zones, fingerprint: fingerprint || null }
     } catch {
-      return { zones: [], fingerprint: null }
+      return { zones: [], fingerprint: null, failed: true }
     }
   }
 

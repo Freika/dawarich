@@ -18,7 +18,7 @@ const { PlacesManager, setPrivacyZonesFingerprint } = await import(
   ).toString("base64")}`
 )
 
-function setup(fingerprint) {
+function setup(fingerprint, failed = false) {
   const refreshed = []
   const reloads = []
   const layer = (id) => ({ refresh: () => refreshed.push(id) })
@@ -32,7 +32,12 @@ function setup(fingerprint) {
       getLayer: (id) =>
         id === "places" ? placesLayer : id.endsWith("-mvt") ? layer(id) : null,
     },
-    api: { fetchPrivacyZones: async () => ({ zones: [], fingerprint }) },
+    api: {
+      fetchPrivacyZones: async () =>
+        failed
+          ? { zones: [], fingerprint: null, failed }
+          : { zones: [], fingerprint },
+    },
     dataLoader: {
       placesToGeoJSON: (places) => ({
         features: places.map((p) => ({ properties: { id: p.id } })),
@@ -59,6 +64,16 @@ test("a place edit that changes a zone reloads tiles and map data", async () => 
 test("a place edit that leaves the zones alone reloads nothing", async () => {
   setPrivacyZonesFingerprint("same")
   const { manager, refreshed, reloads } = setup("same")
+
+  await manager.handlePlaceUpdated(placeSaved)
+
+  assert.deepEqual(refreshed, [])
+  assert.deepEqual(reloads, [])
+})
+
+test("a failed zone request keeps the current zones and reloads nothing", async () => {
+  setPrivacyZonesFingerprint("current")
+  const { manager, refreshed, reloads } = setup(null, true)
 
   await manager.handlePlaceUpdated(placeSaved)
 

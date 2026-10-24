@@ -699,6 +699,22 @@ RSpec.describe '/trips', type: :request do
       expect(JSON.parse(data['data-trip-maplibre-full-bounds-value'])).to eq([[11.0, 61.0], [12.0, 62.0]])
     end
 
+    it 'fits trip previews to the route outside the zone' do
+      trip.update_columns(path: 'SRID=4326;LINESTRING(10.0 60.0, 11.0 61.0)')
+
+      get trips_path
+      card_bounds = Nokogiri::HTML(response.body).at_css("#map-#{trip.id}")['data-trip-maplibre-preview-bounds-value']
+      get edit_trip_path(trip)
+      form_bounds = Nokogiri::HTML(response.body).at_css('[data-controller~="trip-maplibre-preview"]')
+                            .attribute('data-trip-maplibre-preview-bounds-value').value
+
+      [card_bounds, form_bounds].each do |bounds|
+        (min_lon, min_lat), (max_lon, max_lat) = JSON.parse(bounds)
+        expect(Geocoder::Calculations.distance_between([60.0, 10.0], [min_lat, min_lon], units: :km)).to be >= 0.99
+        expect([max_lon, max_lat]).to eq([11.0, 61.0])
+      end
+    end
+
     it 'keys the route tile URL by the zone fingerprint' do
       get trip_path(trip)
 

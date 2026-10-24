@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Privacy zones now hide your data on the map you look at yourself, not only on shared links. Tag a place with a privacy radius, and points, tracks, routes, visits, places, photos and live updates inside the zone disappear from Map v2, and fog of war stays over it. The same applies to your trip pages, route replay and posters. A track that crosses a zone is cut at its edge rather than drawn through it. Timeline entries for visits inside a zone keep their name and time, but no longer place a pin. Exports, statistics and the API keep your full data. API clients can ask for masked results by adding `mask_privacy_zones=true` to a request. #2848
+- Privacy zones now hide your data on the map you look at yourself, not only on shared links. Tag a place with a privacy radius, and points, tracks, routes, visits, places, photos and live updates inside the zone disappear from Map v2, and fog of war stays over it. The same applies to your trip pages, route replay and posters. A track that crosses a zone is cut at its edge rather than drawn through it. Timeline entries for visits inside a zone keep their name and time, but no longer place a pin. Exports, statistics and the API keep your full data. API clients can ask for masked results by adding `mask_privacy_zones=true` to a request; map tiles and fog of war cells are always masked. #2848
 
 ## [1.17.0] - 2026-10-23, Berlin
 

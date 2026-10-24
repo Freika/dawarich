@@ -53,7 +53,7 @@ function setup() {
     listeners["turbo:before-stream-render"](event)
     return event.detail.render({})
   }
-  return { controller, dispatched, streamRender }
+  return { controller, dispatched, streamRender, listeners }
 }
 
 test("the saved place is announced once its data has been rendered", async () => {
@@ -90,4 +90,12 @@ test("other streams announce nothing", async () => {
   await streamRender("flash-messages")
 
   assert.equal(dispatched.length, 0)
+})
+
+test("disconnecting removes every document listener the modal added", () => {
+  const { controller, listeners } = setup()
+
+  controller.disconnect()
+
+  assert.deepEqual(Object.keys(listeners), [])
 })

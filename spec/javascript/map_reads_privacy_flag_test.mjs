@@ -6,13 +6,15 @@ import test from "node:test"
 const root = new URL("../../", import.meta.url).pathname
 const dirs = ["app/javascript/maps_maplibre", "app/javascript/controllers"]
 const MAP_READ =
-  /\/(points|tracks|visits|places|photos|timeline|maps\/hexagons)(\/[^/?`"']*)*\?/
+  /\/(points|tracks|visits|places|photos|timeline|locations|maps\/hexagons)(\/[^/?`"']*)*\?/
 const FLAG = /mask_privacy_zones|maskPrivacyZones/
 const UNMASKED = new Set([
   "app/javascript/maps_maplibre/services/api_client.js#fetchPointsInArea",
   "app/javascript/maps_maplibre/services/api_client.js#fetchVisitsInArea",
   "app/javascript/maps_maplibre/components/visit_place_search.js#fetchResults",
   "app/javascript/controllers/public_stat_map_controller.js#loadStaticHexagons",
+  "app/javascript/maps_maplibre/services/location_search_service.js#fetchSuggestions",
+  "app/javascript/controllers/maps/maplibre_controller.js#loadFamilyHistory",
 ])
 
 async function jsFiles(dir) {

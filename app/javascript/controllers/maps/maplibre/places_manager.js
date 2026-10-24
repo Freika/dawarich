@@ -306,8 +306,8 @@ export class PlacesManager {
    * fingerprint changes, every masked layer is reloaded under the new zones.
    */
   async _refreshPrivacyZones() {
-    const { fingerprint } = await this.api.fetchPrivacyZones()
-    if (!setPrivacyZonesFingerprint(fingerprint)) return
+    const { fingerprint, failed } = await this.api.fetchPrivacyZones()
+    if (failed || !setPrivacyZonesFingerprint(fingerprint)) return
 
     this.layerManager.getLayer("points-mvt")?.refresh()
     this.layerManager.getLayer("tracks-mvt")?.refresh()

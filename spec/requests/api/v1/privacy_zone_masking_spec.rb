@@ -175,6 +175,23 @@ RSpec.describe 'Privacy zone masking on map read endpoints', type: :request do
       expect(vertices(masked_geometry).map { |lon, lat| distance_to_zone(lon, lat) }.min).to be >= zone_radius
     end
 
+    it 'cuts segment paths at the zone and drops segments entirely inside it' do
+      crossing = create(:track_segment, track:, start_index: 0, end_index: 1,
+                                        start_at: 2.hours.ago, end_at: 90.minutes.ago,
+                                        path: 'SRID=4326;LINESTRING(13.40 52.444, 13.60 52.444)')
+      inside = create(:track_segment, track:, start_index: 1, end_index: 2,
+                                      start_at: 90.minutes.ago, end_at: 1.hour.ago,
+                                      path: "SRID=4326;LINESTRING(#{zone_lon} #{zone_lat}, 13.5005 52.4441)")
+
+      get "/api/v1/tracks/#{track.id}", params: masked, headers: headers
+      segments = json['features'].first['properties']['segments']
+
+      expect(segments.map { |s| s['id'] }).to contain_exactly(crossing.id)
+      expect(segments.map { |s| s['id'] }).not_to include(inside.id)
+      cut = vertices('type' => 'MultiLineString', 'coordinates' => segments.first['coordinates'])
+      expect(cut.map { |lon, lat| distance_to_zone(lon, lat) }.min).to be >= zone_radius
+    end
+
     it 'drops a track that lies entirely inside the zone' do
       inside = create(:track, user: user, start_at: 3.hours.ago, end_at: 2.5.hours.ago,
                               original_path: "LINESTRING(#{zone_lon} #{zone_lat}, 13.5005 52.4441)")
@@ -182,6 +199,30 @@ RSpec.describe 'Privacy zone masking on map read endpoints', type: :request do
       get '/api/v1/tracks', params: masked(time_range), headers: headers
 
       expect(json['features'].map { |f| f['properties']['id'] }).not_to include(inside.id)
+    end
+  end
+
+  describe 'location search' do
+    before do
+      create(:point, user: user, lonlat: "POINT(#{zone_lon} #{zone_lat})", timestamp: 2.hours.ago.to_i)
+      create(:point, user: user, lonlat: 'POINT(13.512 52.444)', timestamp: 1.hour.ago.to_i)
+    end
+
+    def visit_coordinates
+      json['locations'].flat_map { |l| l['visits'] }.map { |v| v['coordinates'] }
+    end
+
+    it 'leaves in-zone points out of the search results only with the flag' do
+      params = { lat: zone_lat, lon: zone_lon, radius_override: 1000 }
+
+      get '/api/v1/locations', params: masked(params), headers: headers
+      masked_coordinates = visit_coordinates
+
+      get '/api/v1/locations', params: params, headers: headers
+
+      expect(masked_coordinates).not_to include([zone_lat, zone_lon])
+      expect(masked_coordinates).to be_present
+      expect(visit_coordinates).to include([zone_lat, zone_lon])
     end
   end
 
