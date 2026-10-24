@@ -221,7 +221,7 @@ module Achievements
     end
 
     def localized_date(date)
-      I18n.l(date, format: translate('date_format'))
+      I18n.l(date, format: :day_month_year_abbreviated)
     end
 
     def translate(key, **options)

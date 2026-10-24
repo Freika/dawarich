@@ -15,7 +15,7 @@
         <% set.regions.each do |region| %>
           <li class="<%= 'ach-region--pending' unless region[:earned_at] %>">
             <span><%= region[:name] %></span>
-            <span><%= region[:earned_at] ? l(Date.parse(region[:earned_at]), format: t('achievements.cards.date_format')) : '—' %></span>
+            <span><%= region[:earned_at] ? l(Date.parse(region[:earned_at]), format: :day_month_year_abbreviated) : '—' %></span>
           </li>
         <% end %>
       </ul>

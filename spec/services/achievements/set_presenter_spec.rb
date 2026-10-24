@@ -47,6 +47,15 @@ RSpec.describe Achievements::SetPresenter do
       expect(set.earned_label).to eq('Unlocked · 20 Jul 2026')
     end
 
+    it 'renders the completion date with the date preset' do
+      earned = Achievements::Registry.find('country_de').region_codes.index_with { '2026-07-20' }
+      set = Users::DateTimePreferences.with(Users::DateTimePreferences.new(date_format: 'dd.mm.yyyy')) do
+        presenter('country_de', earned: earned).earned_label
+      end
+
+      expect(set).to eq('Unlocked · 20.07.2026')
+    end
+
     it 'renders timestamp dates in the user timezone' do
       earned = Achievements::Registry.find('country_de').region_codes.index_with { '2026-07-20T00:30:00Z' }
       set = presenter_in('country_de', timezone: 'Pacific Time (US & Canada)', earned: earned)
