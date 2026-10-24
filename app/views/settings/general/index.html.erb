@@ -146,7 +146,7 @@
                 <%= icon 'calendar', class: "text-primary mr-2" %> <%= t('.date_and_time') %>
               </h2>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
-                <% preferences = current_user.safe_settings %>
+                <% preferences = current_user.safe_settings.date_time_preferences %>
                 <div class="grid grid-cols-1 gap-4">
                   <div class="form-control min-w-0">
                     <label class="label" for="date_format">

@@ -17,16 +17,7 @@ module ApplicationHelper
   end
 
   def date_time_preferences_meta_tag
-    preferences = Current.date_time_preferences
-
-    tag.meta(
-      name: 'date-time-preferences',
-      content: {
-        date_format: preferences.date_format,
-        time_format: preferences.time_format,
-        first_day_of_week: preferences.first_day_of_week
-      }.to_json
-    )
+    tag.meta(name: 'date-time-preferences', content: Current.date_time_preferences.to_h.to_json)
   end
 
   def show_plan_data_window_alert?

@@ -33,8 +33,12 @@ module Users
       self == DEFAULT
     end
 
+    def to_h
+      { date_format:, time_format:, first_day_of_week: }
+    end
+
     def cache_key
-      [date_format, time_format, first_day_of_week].join('-')
+      to_h.values.join('-')
     end
 
     def ==(other)

@@ -279,9 +279,7 @@ RSpec.describe Users::SafeSettings do
         { 'date_format' => 'bogus', 'time_format' => '25h', 'first_day_of_week' => 'x' }
       )
 
-      expect(safe_settings.date_format).to eq('auto')
-      expect(safe_settings.time_format).to eq('auto')
-      expect(safe_settings.first_day_of_week).to eq('monday')
+      expect(safe_settings.date_time_preferences).to eq(Users::DateTimePreferences::DEFAULT)
     end
   end
 

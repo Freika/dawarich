@@ -138,9 +138,7 @@ class Users::SafeSettings
       route_color: route_color,
       speed_color_scale: speed_color_scale,
       points_tiled_rendering: points_tiled_rendering?,
-      date_format: date_format,
-      time_format: time_format,
-      first_day_of_week: first_day_of_week
+      **date_time_preferences.to_h
     )
   end
 
@@ -372,20 +370,12 @@ class Users::SafeSettings
     settings['timezone'] || DEFAULT_VALUES['timezone']
   end
 
-  def date_format
-    allowed_value('date_format', Users::DateTimePreferences::DATE_FORMATS)
-  end
-
-  def time_format
-    allowed_value('time_format', Users::DateTimePreferences::TIME_FORMATS)
-  end
-
-  def first_day_of_week
-    allowed_value('first_day_of_week', Users::DateTimePreferences::WEEK_STARTS)
-  end
-
   def date_time_preferences
-    Users::DateTimePreferences.new(date_format:, time_format:, first_day_of_week:)
+    Users::DateTimePreferences.new(
+      date_format: settings['date_format'],
+      time_format: settings['time_format'],
+      first_day_of_week: settings['first_day_of_week']
+    )
   end
 
   def persisted_timezone
@@ -431,10 +421,5 @@ class Users::SafeSettings
     return ActiveModel::Type::Boolean.new.cast(settings[legacy_key]) if settings.key?(legacy_key)
 
     default
-  end
-
-  def allowed_value(key, allowed)
-    value = settings[key]
-    allowed.include?(value) ? value : DEFAULT_VALUES[key]
   end
 end
