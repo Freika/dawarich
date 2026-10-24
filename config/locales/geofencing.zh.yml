@@ -43,7 +43,7 @@ zh:
           native_app: 手机
           server_inferred: 位置点
           owntracks_native: OwnTracks
-        delivery_summary: 已投递 %{delivered}，失败 %{failed}
+        delivery_summary: 已投递 %{delivered}，失败 %{failed}，进行中 %{pending}
     webhooks:
       form:
         name: 名称

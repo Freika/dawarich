@@ -43,7 +43,7 @@ ca:
           native_app: Telèfon
           server_inferred: Punts d’ubicació
           owntracks_native: OwnTracks
-        delivery_summary: '%{delivered} enviats, %{failed} fallits'
+        delivery_summary: '%{delivered} enviats, %{failed} fallits, %{pending} en curs'
     webhooks:
       form:
         name: Nom

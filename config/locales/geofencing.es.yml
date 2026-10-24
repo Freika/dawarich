@@ -43,7 +43,7 @@ es:
           native_app: Teléfono
           server_inferred: Puntos de ubicación
           owntracks_native: OwnTracks
-        delivery_summary: '%{delivered} enviados, %{failed} fallidos'
+        delivery_summary: '%{delivered} enviados, %{failed} fallidos, %{pending} en curso'
     webhooks:
       form:
         name: Nombre

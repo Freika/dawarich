@@ -43,7 +43,7 @@ pl:
           native_app: Telefon
           server_inferred: Punkty lokalizacji
           owntracks_native: OwnTracks
-        delivery_summary: dostarczono %{delivered}, nieudane %{failed}
+        delivery_summary: dostarczono %{delivered}, nieudane %{failed}, w toku %{pending}
     webhooks:
       form:
         name: Nazwa

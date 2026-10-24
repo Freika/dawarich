@@ -40,6 +40,16 @@ RSpec.describe 'Settings → Geofencing', type: :request do
       expect(page.css('[data-testid="event-delivery-status"]')).to be_present
     end
 
+    it 'counts deliveries that are still being retried' do
+      webhook = create(:webhook, user:)
+      create(:webhook_delivery, webhook:, status: :retrying, geofence_event: create(:geofence_event, user:, area: home))
+
+      get settings_geofencing_path
+
+      status = page.at_css('[data-testid="event-delivery-status"]').text.squish
+      expect(status).to eq('0 delivered, 0 failed, 1 in progress')
+    end
+
     context 'for a Lite user on cloud' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)

@@ -84,7 +84,8 @@
                       <% else %>
                         <%= t("#{s}.delivery_summary",
                               delivered: deliveries.count(&:status_success?),
-                              failed: deliveries.count(&:status_failure?)) %>
+                              failed: deliveries.count(&:status_failure?),
+                              pending: deliveries.count { |d| d.status_pending? || d.status_retrying? }) %>
                       <% end %>
                     </td>
                   <% end %>

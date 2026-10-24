@@ -43,7 +43,7 @@ fr:
           native_app: Téléphone
           server_inferred: Points de localisation
           owntracks_native: OwnTracks
-        delivery_summary: '%{delivered} envoyés, %{failed} en échec'
+        delivery_summary: '%{delivered} envoyés, %{failed} en échec, %{pending} en cours'
     webhooks:
       form:
         name: Nom

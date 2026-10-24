@@ -44,7 +44,7 @@ de:
           native_app: Handy
           server_inferred: Standortpunkte
           owntracks_native: OwnTracks
-        delivery_summary: '%{delivered} zugestellt, %{failed} fehlgeschlagen'
+        delivery_summary: '%{delivered} zugestellt, %{failed} fehlgeschlagen, %{pending} laufend'
     webhooks:
       form:
         name: Name
