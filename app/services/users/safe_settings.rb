@@ -71,6 +71,9 @@ class Users::SafeSettings
     # GPS noise filtering (Points::AnomalyFilter)
     'gps_filtering_enabled' => true,
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
+    'date_format' => 'auto',
+    'time_format' => 'auto',
+    'first_day_of_week' => 'monday',
     'visit_radius_meters' => 100,
     'visit_min_points' => 3,
     'visit_min_duration_minutes' => 5,
@@ -366,6 +369,22 @@ class Users::SafeSettings
     settings['timezone'] || DEFAULT_VALUES['timezone']
   end
 
+  def date_format
+    allowed_value('date_format', Users::DateTimePreferences::DATE_FORMATS)
+  end
+
+  def time_format
+    allowed_value('time_format', Users::DateTimePreferences::TIME_FORMATS)
+  end
+
+  def first_day_of_week
+    allowed_value('first_day_of_week', Users::DateTimePreferences::WEEK_STARTS)
+  end
+
+  def date_time_preferences
+    Users::DateTimePreferences.new(date_format:, time_format:, first_day_of_week:)
+  end
+
   def persisted_timezone
     settings['timezone'].presence
   end
@@ -409,5 +428,10 @@ class Users::SafeSettings
     return ActiveModel::Type::Boolean.new.cast(settings[legacy_key]) if settings.key?(legacy_key)
 
     default
+  end
+
+  def allowed_value(key, allowed)
+    value = settings[key]
+    allowed.include?(value) ? value : DEFAULT_VALUES[key]
   end
 end

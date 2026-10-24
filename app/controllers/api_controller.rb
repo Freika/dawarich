@@ -29,6 +29,10 @@ class ApiController < ApplicationController
     yield
   end
 
+  def apply_date_time_preferences(&)
+    Users::DateTimePreferences.with(Users::DateTimePreferences::DEFAULT, &)
+  end
+
   def record_not_found
     render json: { error: I18n.t('controllers.api.record_not_found') }, status: :not_found
   end
