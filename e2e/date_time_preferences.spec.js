@@ -22,6 +22,41 @@ async function weekdayHeader(page) {
     .map((match) => match[1])
 }
 
+const EXPORT_NAME = "export_from_2026-10-01_to_2026-10-02.json"
+
+async function csrfToken(page) {
+  return page.locator('meta[name="csrf-token"]').getAttribute("content")
+}
+
+async function createExport(page) {
+  const response = await page.request.post("/exports", {
+    form: {
+      authenticity_token: await csrfToken(page),
+      start_at: "2026-10-01",
+      end_at: "2026-10-02",
+      file_format: "json",
+    },
+  })
+  expect(response.ok()).toBe(true)
+}
+
+async function deleteExports(page) {
+  await page.goto("/exports")
+  const ids = await page
+    .locator(`tr[id^="export_"]:has-text("${EXPORT_NAME}")`)
+    .evaluateAll((rows) => rows.map((row) => row.id.replace("export_", "")))
+  const token = await csrfToken(page)
+  for (const id of ids) {
+    await page.request.delete(`/exports/${id}`, {
+      form: { authenticity_token: token },
+    })
+  }
+}
+
+function exportRow(page) {
+  return page.locator(`tr[id^="export_"]:has-text("${EXPORT_NAME}")`).first()
+}
+
 test.afterAll(async ({ browser }) => {
   const page = await browser.newPage({
     storageState: "e2e/temp/.auth/user.json",
@@ -62,56 +97,58 @@ test("saved preferences change server dates, JavaScript dates and the calendar",
   expect(await weekdayHeader(page)).toEqual(["S", "M", "T", "W", "T", "F", "S"])
 })
 
-test("a Turbo visit shows server and JavaScript dates with the new preferences", async ({
+test("a Turbo visit picks up preferences changed while the page was open", async ({
   page,
 }) => {
   await savePreferences(page, {
-    date: "yyyy-mm-dd",
-    time: "12h",
-    week: "sunday",
+    date: "dd.mm.yyyy",
+    time: "24h",
+    week: "monday",
   })
-  const token = await page
-    .locator('meta[name="csrf-token"]')
-    .getAttribute("content")
-  await page.request.post("/exports", {
-    form: {
-      authenticity_token: token,
-      start_at: "2026-10-01",
-      end_at: "2026-10-02",
-      file_format: "json",
-    },
-  })
+  try {
+    await createExport(page)
+    const before = await page.evaluate(async () =>
+      (await import("i18n")).formatDateTime(new Date(2026, 9, 24, 14, 5)),
+    )
+    expect(before).toBe("24.10.2026, 14:05")
 
-  await page.evaluate(() => window.Turbo.visit("/exports"))
-  await expect(page).toHaveURL(/\/exports/)
-  await expect(page.locator("table").first()).toContainText(
-    /\d{4}-\d{2}-\d{2}, \d{1,2}:\d{2} (AM|PM)/,
-  )
-  const afterTurboVisit = await page.evaluate(async () => {
-    const i18n = await import("i18n")
-    return i18n.formatDateTime(new Date(2026, 9, 24, 14, 5))
-  })
-  expect(afterTurboVisit).toBe("2026-10-24, 2:05 PM")
+    const response = await page.request.patch("/settings/general", {
+      maxRedirects: 0,
+      form: {
+        authenticity_token: await csrfToken(page),
+        date_format: "yyyy-mm-dd",
+        time_format: "12h",
+      },
+    })
+    expect(response.status()).toBe(302)
 
-  await page.goto("/map/v2")
-  const label = page.locator('[data-map-controls-target="mobileLabel"]')
-  await expect(label).toHaveText(/^\d{4}-\d{2}-\d{2}$/)
-  await page.evaluate(() =>
-    document.dispatchEvent(
-      new CustomEvent("timeline-feed:date-navigated", {
-        detail: {
-          startAt: "2026-03-05T00:00",
-          endAt: "2026-03-05T23:59",
-        },
-      }),
-    ),
-  )
-  await expect(label).toHaveText("2026-03-05")
+    await page.evaluate(() => window.Turbo.visit("/exports"))
+    await expect(page).toHaveURL(/\/exports/)
+    await expect(exportRow(page)).toContainText(
+      /\d{4}-\d{2}-\d{2}, \d{1,2}:\d{2} (AM|PM)/,
+    )
+    const after = await page.evaluate(async () =>
+      (await import("i18n")).formatDateTime(new Date(2026, 9, 24, 14, 5)),
+    )
+    expect(after).toBe("2026-10-24, 2:05 PM")
+
+    await page.goto("/map/v2")
+    const label = page.locator('[data-map-controls-target="mobileLabel"]')
+    await expect(label).toHaveText(/^\d{4}-\d{2}-\d{2}$/)
+    await page.evaluate(() =>
+      document.dispatchEvent(
+        new CustomEvent("timeline-feed:date-navigated", {
+          detail: { startAt: "2026-03-05T00:00", endAt: "2026-03-05T23:59" },
+        }),
+      ),
+    )
+    await expect(label).toHaveText("2026-03-05")
+  } finally {
+    await deleteExports(page)
+  }
 })
 
-test("the settings section and the map do not scroll sideways on a phone in German", async ({
-  page,
-}) => {
+test("German 12h pages do not scroll sideways on a phone", async ({ page }) => {
   await savePreferences(page, {
     date: "dd.mm.yyyy",
     time: "12h",
@@ -125,17 +162,30 @@ test("the settings section and the map do not scroll sideways on a phone in Germ
         document.documentElement.clientWidth,
     )
 
-  await page.goto("/settings/general?locale=de")
-  await page.getByTestId("date-format-select").scrollIntoViewIfNeeded()
-  expect(await sidewaysOverflow()).toBeLessThanOrEqual(0)
-  await page.screenshot({ path: "test-results/date-time-settings-de-390.png" })
+  try {
+    await createExport(page)
 
-  await page.goto("/map/v2?locale=de")
-  await expect(
-    page.locator('[data-map-controls-target="mobileLabel"]'),
-  ).toHaveText(/^\d{2}\.\d{2}\.\d{4}$/)
-  expect(await sidewaysOverflow()).toBeLessThanOrEqual(0)
-  await page.screenshot({ path: "test-results/date-time-map-de-390.png" })
+    await page.goto("/settings/general?locale=de")
+    await page.getByTestId("date-format-select").scrollIntoViewIfNeeded()
+    expect(await sidewaysOverflow()).toBeLessThanOrEqual(0)
+    await page.screenshot({
+      path: "test-results/date-time-settings-de-390.png",
+    })
 
-  await page.goto("/settings/general?locale=en")
+    await page.goto("/exports?locale=de")
+    await expect(exportRow(page)).toContainText(
+      /\d{2}\.\d{2}\.\d{4}, \d{1,2}:\d{2} (AM|PM)/,
+    )
+    expect(await sidewaysOverflow()).toBeLessThanOrEqual(0)
+    await page.screenshot({ path: "test-results/date-time-exports-de-390.png" })
+
+    await page.goto("/map/v2?locale=de")
+    await expect(
+      page.locator('[data-map-controls-target="mobileLabel"]'),
+    ).toHaveText(/^\d{2}\.\d{2}\.\d{4}$/)
+    expect(await sidewaysOverflow()).toBeLessThanOrEqual(0)
+  } finally {
+    await page.goto("/settings/general?locale=en")
+    await deleteExports(page)
+  }
 })
