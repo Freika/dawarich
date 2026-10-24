@@ -84,6 +84,23 @@ RSpec.describe Visits::Detection::GapBridger do
     expect(result.size).to eq(2)
   end
 
+  it 'keeps two nearby places apart across a silence even when their facing edges are close' do
+    result = bridge([fragment([1, 2, 3], 0, 1200, deast: -100.0, last_east: -40.0),
+                     fragment([4, 5, 6], 1200 + 5400, 1200 + 6600, deast: 150.0, first_east: 40.0)])
+    mirrored = bridge([fragment([1, 2, 3], 0, 1200, last_east: 60.0),
+                       fragment([4, 5, 6], 1200 + 5400, 1200 + 6600, deast: 200.0, first_east: 0.0)])
+
+    expect([result.size, mirrored.size]).to eq([2, 2])
+  end
+
+  it 'does not let a chain of sparse single fixes drift into one stay through their edges' do
+    result = bridge([0, 90, 180, 270].each_with_index.map do |meters, i|
+      fragment([i + 1], i * 2 * 3600, i * 2 * 3600, deast: meters)
+    end)
+
+    expect(result.size).to eq(2)
+  end
+
   it 'keeps short displaced gaps apart too' do
     result = bridge([fragment([1], 0, 300), fragment([2], 600, 900, deast: 500.0)])
 

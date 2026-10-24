@@ -46,14 +46,21 @@ module Visits
       end
 
       def same_place?(previous, current)
-        within_stay_radius?([previous[:center_lat], previous[:center_lon]],
-                            [current[:center_lat], current[:center_lon]])
+        within_stay_radius?(center(previous), center(current))
       end
 
       # Approach and exit fixes drag each side's center away from the spot
       # where tracking paused, so a true silence is also judged by its edges.
+      # Each edge must still sit within the other side's stay, or two
+      # neighbouring places (or a sparse slow walk) would chain together.
       def resumed_where_paused?(previous, current)
-        within_stay_radius?(previous[:last_fix], current[:first_fix])
+        within_stay_radius?(previous[:last_fix], current[:first_fix]) &&
+          within_stay_radius?(previous[:last_fix], center(current)) &&
+          within_stay_radius?(current[:first_fix], center(previous))
+      end
+
+      def center(fragment)
+        [fragment[:center_lat], fragment[:center_lon]]
       end
 
       def within_stay_radius?(from, to)
