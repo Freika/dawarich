@@ -28,7 +28,7 @@ module TripsHelper
   def trip_preview_bounds(trip)
     return trip.route_bounds unless trip.route_present? && current_privacy_zone_masker&.any?
 
-    current_privacy_zone_masker.clipped_bounds(Trip.where(id: trip.id), 'trips.path')
+    current_privacy_zone_masker.clipped_bounds(Trip.where(id: trip.id), 'trips.path') || []
   end
 
   def trip_routes_tile_template(trip)

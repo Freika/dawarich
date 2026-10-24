@@ -715,6 +715,15 @@ RSpec.describe '/trips', type: :request do
       end
     end
 
+    it 'gives a trip preview empty bounds when the whole route lies inside the zone' do
+      trip.update_columns(path: 'SRID=4326;LINESTRING(10.0 60.0, 10.001 60.001)')
+
+      get trips_path
+
+      expect(Nokogiri::HTML(response.body).at_css("#map-#{trip.id}")['data-trip-maplibre-preview-bounds-value'])
+        .to eq('[]')
+    end
+
     it 'keys the route tile URL by the zone fingerprint' do
       get trip_path(trip)
 

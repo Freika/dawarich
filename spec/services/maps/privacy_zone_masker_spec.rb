@@ -231,15 +231,15 @@ RSpec.describe Maps::PrivacyZoneMasker do
       expect(described_class.new(user).mask_track_features(features: [inside])[:features]).to be_empty
     end
 
-    it 'clears segment vertex indices on a track the zone cut' do
+    it 'drops index-only segments of a track the zone cut, and keeps them on an untouched track' do
       make_zone(lat: 52.444, lon: 13.500, radius: 500)
-      track = feature(1, [[13.40, 52.444], [13.45, 52.444], [13.55, 52.444], [13.60, 52.444]],
-                      segments: [{ id: 9, start_index: 0, end_index: 3 }])
+      legacy = [{ id: 9, start_index: 0, end_index: 3 }]
+      cut = feature(1, [[13.40, 52.444], [13.45, 52.444], [13.55, 52.444], [13.60, 52.444]], segments: legacy)
+      near = feature(2, [[13.40, 52.452], [13.60, 52.452]], segments: legacy)
 
-      masked = described_class.new(user).mask_track_features(features: [track])
-      segment = masked[:features].first[:properties][:segments].first
+      masked = described_class.new(user).mask_track_features(features: [cut, near])
 
-      expect(segment).to eq(id: 9)
+      expect(masked[:features].map { |f| f[:properties][:segments] }).to eq([[], legacy])
     end
   end
 

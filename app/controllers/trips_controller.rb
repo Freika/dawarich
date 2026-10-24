@@ -177,7 +177,7 @@ class TripsController < ApplicationController
   end
 
   def trip_privacy_masker
-    @trip_privacy_masker ||= Maps::PrivacyZoneMasker.new(current_user)
+    current_privacy_zone_masker
   end
 
   def trip_full_bounds

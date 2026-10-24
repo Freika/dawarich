@@ -42,8 +42,8 @@ module Maps
         if segment[:coordinates].present?
           geometry = clipped_segments[segment]
           geometry && segment.merge(coordinates: geometry[:coordinates])
-        else
-          touched ? segment.except(:start_index, :end_index) : segment
+        elsif !touched
+          segment
         end
       end
       properties.merge(segments:)
@@ -54,7 +54,8 @@ module Maps
       candidates = geometries.each_index.select { |index| near_zone?(geometries[index]) }
       return results if candidates.empty?
 
-      clip_rows(candidates.map { |index| geometries[index].to_json }).each do |ordinal, touched, json|
+      chosen = candidates.map { |index| geometries[index] }
+      clip_rows(chosen.map(&:to_json), candidate_masker(chosen)).each do |ordinal, touched, json|
         next unless ActiveModel::Type::Boolean.new.cast(touched)
 
         results[candidates[ordinal.to_i - 1]] = [json && JSON.parse(json, symbolize_names: true), true]
@@ -80,20 +81,28 @@ module Maps
       end
     end
 
-    def clip_rows(texts)
+    def clip_rows(texts, masker)
       connection = ActiveRecord::Base.connection
       list = texts.map { |text| connection.quote(text) }.join(', ')
-      geometry = 'source.geom'
       connection.select_rows(<<~SQL.squish)
         SELECT ordinal, touched, CASE WHEN ST_IsEmpty(clipped) THEN NULL ELSE ST_AsGeoJSON(clipped) END
         FROM (
-          SELECT input.ordinal, #{@masker.touches_sql(geometry)} AS touched,
-                 CASE WHEN #{@masker.touches_sql(geometry)} THEN #{@masker.clip_sql(geometry)} ELSE #{geometry} END
-                   AS clipped
+          SELECT input.ordinal, test.touched,
+                 CASE WHEN test.touched THEN #{masker.clip_sql('source.geom')} ELSE source.geom END AS clipped
           FROM unnest(ARRAY[#{list}]::text[]) WITH ORDINALITY AS input(json, ordinal)
           CROSS JOIN LATERAL (SELECT ST_SetSRID(ST_GeomFromGeoJSON(input.json), 4326) AS geom) AS source
+          CROSS JOIN LATERAL (SELECT #{masker.touches_sql('source.geom')} AS touched) AS test
         ) AS result
       SQL
+    end
+
+    def candidate_masker(geometries)
+      points = geometries.map { |geometry| coordinates(geometry.deep_symbolize_keys) }
+      return @masker if points.any?(&:blank?)
+
+      lons, lats = points.flatten(1).transpose
+
+      @masker.near(min_lon: lons.min, min_lat: lats.min, max_lon: lons.max, max_lat: lats.max)
     end
   end
 end
