@@ -163,3 +163,37 @@ test("returns the first day of week as a JS weekday number", async () => {
     delete globalThis.document
   }
 })
+
+test("keeps the old fallback for missing or invalid timestamps", async () => {
+  try {
+    const { formatDate, formatTime, formatDateTime } = await loadWith({
+      preferences: { date_format: "dd.mm.yyyy", time_format: "12h" },
+    })
+    for (const value of [undefined, "not a date", Number.NaN]) {
+      assert.equal(formatDate(value), "Invalid Date")
+      assert.equal(formatTime(value), "Invalid Date")
+      assert.equal(formatDateTime(value), "Invalid Date")
+    }
+  } finally {
+    delete globalThis.document
+  }
+})
+
+test("renders midnight and noon on the 12h clock", async () => {
+  try {
+    const { formatTime } = await loadWith({
+      preferences: { time_format: "12h" },
+      translations: clock("%{time} %{meridiem}", "AM", "PM"),
+    })
+    assert.equal(
+      formatTime(new Date(Date.UTC(2026, 0, 1, 0, 5)), { timeZone: "UTC" }),
+      "12:05 AM",
+    )
+    assert.equal(
+      formatTime(new Date(Date.UTC(2026, 0, 1, 12, 5)), { timeZone: "UTC" }),
+      "12:05 PM",
+    )
+  } finally {
+    delete globalThis.document
+  }
+})

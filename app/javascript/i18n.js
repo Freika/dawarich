@@ -61,33 +61,46 @@ const DATE_PRESETS = {
   "yyyy-mm-dd": ({ day, month, year }) => `${year}-${month}-${day}`,
 }
 
+const INVALID_DATE = "Invalid Date"
+let parsedPreferences = { content: null, value: DEFAULT_PREFERENCES }
+
 function preferences() {
   const meta =
     typeof document === "undefined"
       ? null
       : document.querySelector?.('meta[name="date-time-preferences"]')
   if (!meta?.content) return DEFAULT_PREFERENCES
+  if (meta.content === parsedPreferences.content) return parsedPreferences.value
 
+  let value = DEFAULT_PREFERENCES
   try {
-    return { ...DEFAULT_PREFERENCES, ...JSON.parse(meta.content) }
-  } catch (_error) {
-    return DEFAULT_PREFERENCES
-  }
+    value = { ...DEFAULT_PREFERENCES, ...JSON.parse(meta.content) }
+  } catch (_error) {}
+  parsedPreferences = { content: meta.content, value }
+  return value
+}
+
+function validDate(value) {
+  const date = new Date(value)
+  return Number.isNaN(date.valueOf()) ? null : date
 }
 
 function numericParts(date, options) {
   return Object.fromEntries(
     new Intl.DateTimeFormat("en-US", { ...options, numberingSystem: "latn" })
-      .formatToParts(new Date(date))
+      .formatToParts(date)
       .filter((part) => part.type !== "literal")
       .map((part) => [part.type, part.value]),
   )
 }
 
 export function formatDate(
-  date,
+  value,
   { timeZone, month = "short", locale = interfaceLocale() } = {},
 ) {
+  const date = validDate(value)
+  if (!date) return INVALID_DATE
+
   const preset = DATE_PRESETS[preferences().date_format]
   if (preset) {
     return preset(
@@ -105,10 +118,13 @@ export function formatDate(
     month,
     year: "numeric",
     timeZone,
-  }).format(new Date(date))
+  }).format(date)
 }
 
-export function formatTime(date, { seconds = false, timeZone } = {}) {
+export function formatTime(value, { seconds = false, timeZone } = {}) {
+  const date = validDate(value)
+  if (!date) return INVALID_DATE
+
   const { hour, minute, second } = numericParts(date, {
     hour: "2-digit",
     minute: "2-digit",
@@ -129,8 +145,10 @@ export function formatTime(date, { seconds = false, timeZone } = {}) {
   })
 }
 
-export function formatDateTime(date, options = {}) {
-  return `${formatDate(date, options)}, ${formatTime(date, options)}`
+export function formatDateTime(value, options = {}) {
+  if (!validDate(value)) return INVALID_DATE
+
+  return `${formatDate(value, options)}, ${formatTime(value, options)}`
 }
 
 export function usesDatePreset() {

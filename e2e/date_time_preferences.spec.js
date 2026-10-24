@@ -62,41 +62,80 @@ test("saved preferences change server dates, JavaScript dates and the calendar",
   expect(await weekdayHeader(page)).toEqual(["S", "M", "T", "W", "T", "F", "S"])
 })
 
-test("JavaScript follows a preference change after a Turbo visit", async ({
+test("a Turbo visit shows server and JavaScript dates with the new preferences", async ({
+  page,
+}) => {
+  await savePreferences(page, {
+    date: "yyyy-mm-dd",
+    time: "12h",
+    week: "sunday",
+  })
+  const token = await page
+    .locator('meta[name="csrf-token"]')
+    .getAttribute("content")
+  await page.request.post("/exports", {
+    form: {
+      authenticity_token: token,
+      start_at: "2026-10-01",
+      end_at: "2026-10-02",
+      file_format: "json",
+    },
+  })
+
+  await page.evaluate(() => window.Turbo.visit("/exports"))
+  await expect(page).toHaveURL(/\/exports/)
+  await expect(page.locator("table").first()).toContainText(
+    /\d{4}-\d{2}-\d{2}, \d{1,2}:\d{2} (AM|PM)/,
+  )
+  const afterTurboVisit = await page.evaluate(async () => {
+    const i18n = await import("i18n")
+    return i18n.formatDateTime(new Date(2026, 9, 24, 14, 5))
+  })
+  expect(afterTurboVisit).toBe("2026-10-24, 2:05 PM")
+
+  await page.goto("/map/v2")
+  const label = page.locator('[data-map-controls-target="mobileLabel"]')
+  await expect(label).toHaveText(/^\d{4}-\d{2}-\d{2}$/)
+  await page.evaluate(() =>
+    document.dispatchEvent(
+      new CustomEvent("timeline-feed:date-navigated", {
+        detail: {
+          startAt: "2026-03-05T00:00",
+          endAt: "2026-03-05T23:59",
+        },
+      }),
+    ),
+  )
+  await expect(label).toHaveText("2026-03-05")
+})
+
+test("the settings section and the map do not scroll sideways on a phone in German", async ({
   page,
 }) => {
   await savePreferences(page, {
     date: "dd.mm.yyyy",
-    time: "24h",
+    time: "12h",
     week: "monday",
   })
-  await page.goto("/settings/general")
-  await page.getByTestId("date-format-select").selectOption("mm/dd/yyyy")
-  await page.getByRole("button", { name: "Save changes" }).click()
-  await expect(page.getByText("Settings updated")).toBeVisible()
-
-  await page.locator('a[href$="/insights"]:visible').first().click()
-  await expect(page).toHaveURL(/\/insights/)
-
-  const date = await page.evaluate(async () =>
-    (await import("i18n")).formatDate(new Date(2026, 9, 24)),
-  )
-  expect(date).toBe("10/24/2026")
-})
-
-test("the settings section does not scroll sideways on a phone in German", async ({
-  page,
-}) => {
   await page.setViewportSize({ width: 390, height: 844 })
+  const sidewaysOverflow = () =>
+    page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    )
+
   await page.goto("/settings/general?locale=de")
   await page.getByTestId("date-format-select").scrollIntoViewIfNeeded()
-
-  const overflow = await page.evaluate(
-    () =>
-      document.documentElement.scrollWidth -
-      document.documentElement.clientWidth,
-  )
-  expect(overflow).toBeLessThanOrEqual(0)
+  expect(await sidewaysOverflow()).toBeLessThanOrEqual(0)
   await page.screenshot({ path: "test-results/date-time-settings-de-390.png" })
+
+  await page.goto("/map/v2?locale=de")
+  await expect(
+    page.locator('[data-map-controls-target="mobileLabel"]'),
+  ).toHaveText(/^\d{2}\.\d{2}\.\d{4}$/)
+  expect(await sidewaysOverflow()).toBeLessThanOrEqual(0)
+  await page.screenshot({ path: "test-results/date-time-map-de-390.png" })
+
   await page.goto("/settings/general?locale=en")
 })

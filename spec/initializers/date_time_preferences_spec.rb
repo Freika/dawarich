@@ -108,6 +108,15 @@ RSpec.describe 'Date and time preferences in I18n.l' do
     end
   end
 
+  it 'shows a meridiem containing a percent sign literally' do
+    original = I18n.t('date_time_preferences.meridiem.pm', locale: :en)
+    I18n.backend.store_translations(:en, date_time_preferences: { meridiem: { pm: '%p PM' } })
+
+    expect(localize(afternoon, :hour_minute, time_format: '12h')).to eq('2:05 %p PM')
+  ensure
+    I18n.backend.store_translations(:en, date_time_preferences: { meridiem: { pm: original } })
+  end
+
   it 'passes string formats through untouched' do
     expect(localize(date, '%A %d.%m', date_format: 'yyyy-mm-dd', time_format: '12h')).to eq('Saturday 24.10')
   end

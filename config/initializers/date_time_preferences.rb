@@ -21,6 +21,7 @@ module DateTimePreferencesLocalization
   }.freeze
 
   TIME_TOKEN = /%-?[HIl](?::|h)%M(?::%S)?(?: ?%[pP])?(?: Uhr)?/
+  MERIDIEM = "\u{E000}"
 
   def localize(locale, object, format = :default, options = I18n::EMPTY_HASH)
     preferences = Current.date_time_preferences
@@ -31,10 +32,18 @@ module DateTimePreferencesLocalization
     return super unless kind
 
     pattern = I18n.t(:"#{type}.formats.#{format}", **options.merge(raise: true, object:, locale:))
-    super(locale, object, DateTimePreferencesLocalization.pattern(pattern, kind, preferences, locale, object), options)
+    pattern = DateTimePreferencesLocalization.pattern(pattern, kind, preferences, locale)
+    localized = super(locale, object, pattern, options)
+    return localized unless localized.include?(MERIDIEM)
+
+    localized.gsub(MERIDIEM) { DateTimePreferencesLocalization.meridiem(locale, object) }
   end
 
-  def self.pattern(locale_pattern, kind, preferences, locale, object)
+  def self.meridiem(locale, object)
+    I18n.t("date_time_preferences.meridiem.#{object.hour < 12 ? 'am' : 'pm'}", locale:, raise: true)
+  end
+
+  def self.pattern(locale_pattern, kind, preferences, locale)
     preset = DATE_PRESETS[preferences.date_format]
 
     case kind
@@ -42,31 +51,30 @@ module DateTimePreferencesLocalization
       preset || locale_pattern
     when :full_datetime, :full_datetime_with_seconds
       seconds = kind == :full_datetime_with_seconds
-      return rewrite_time(locale_pattern, preferences, locale, object) unless preset
+      return rewrite_time(locale_pattern, preferences, locale) unless preset
 
-      "#{preset}, #{clock(preferences, locale, object, seconds:)}"
+      "#{preset}, #{clock(preferences, locale, seconds:)}"
     else
-      rewrite_time(locale_pattern, preferences, locale, object)
+      rewrite_time(locale_pattern, preferences, locale)
     end
   end
 
-  def self.rewrite_time(locale_pattern, preferences, locale, object)
+  def self.rewrite_time(locale_pattern, preferences, locale)
     return locale_pattern unless preferences.time_format == '12h'
 
-    locale_pattern.gsub(TIME_TOKEN) { |token| twelve_hour_clock(locale, object, seconds: token.include?('%S')) }
+    locale_pattern.gsub(TIME_TOKEN) { |token| twelve_hour_clock(locale, seconds: token.include?('%S')) }
   end
 
-  def self.clock(preferences, locale, object, seconds:)
-    return twelve_hour_clock(locale, object, seconds:) if preferences.time_format == '12h'
+  def self.clock(preferences, locale, seconds:)
+    return twelve_hour_clock(locale, seconds:) if preferences.time_format == '12h'
 
     seconds ? '%H:%M:%S' : '%H:%M'
   end
 
-  def self.twelve_hour_clock(locale, object, seconds:)
-    meridiem = I18n.t("date_time_preferences.meridiem.#{object.hour < 12 ? 'am' : 'pm'}", locale:, raise: true)
+  def self.twelve_hour_clock(locale, seconds:)
     time = seconds ? '%-I:%M:%S' : '%-I:%M'
 
-    I18n.t('date_time_preferences.clock_12h', locale:, time:, meridiem:, raise: true)
+    I18n.t('date_time_preferences.clock_12h', locale:, time:, meridiem: MERIDIEM, raise: true)
   end
 end
 

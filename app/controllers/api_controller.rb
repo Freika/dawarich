@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ApiController < ApplicationController
+  include DefaultDateTimePreferences
+
   skip_before_action :verify_authenticity_token
   before_action :set_version_header
   before_action :authenticate_api_key
@@ -27,10 +29,6 @@ class ApiController < ApplicationController
     end
   rescue ArgumentError
     yield
-  end
-
-  def apply_date_time_preferences(&)
-    Users::DateTimePreferences.with(Users::DateTimePreferences::DEFAULT, &)
   end
 
   def record_not_found

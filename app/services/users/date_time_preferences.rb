@@ -5,8 +5,11 @@ module Users
     DATE_FORMATS = %w[auto dd.mm.yyyy dd/mm/yyyy mm/dd/yyyy yyyy-mm-dd].freeze
     TIME_FORMATS = %w[auto 12h 24h].freeze
     WEEK_STARTS = %w[monday sunday].freeze
+    ALLOWED = {
+      'date_format' => DATE_FORMATS, 'time_format' => TIME_FORMATS, 'first_day_of_week' => WEEK_STARTS
+    }.freeze
 
-    attr_reader :date_format, :time_format, :first_day_of_week
+    attr_reader :date_format, :time_format, :first_day_of_week, :cache_key
 
     def self.for(user)
       user&.safe_settings&.date_time_preferences || DEFAULT
@@ -22,6 +25,7 @@ module Users
       @date_format = pick(DATE_FORMATS, date_format)
       @time_format = pick(TIME_FORMATS, time_format)
       @first_day_of_week = pick(WEEK_STARTS, first_day_of_week)
+      @cache_key = to_h.values.join('-').freeze
       freeze
     end
 
@@ -37,12 +41,8 @@ module Users
       { date_format:, time_format:, first_day_of_week: }
     end
 
-    def cache_key
-      to_h.values.join('-')
-    end
-
     def ==(other)
-      other.is_a?(self.class) && other.cache_key == cache_key
+      equal?(other) || (other.is_a?(self.class) && other.cache_key == cache_key)
     end
     alias eql? ==
 

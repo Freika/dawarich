@@ -114,11 +114,7 @@ class Settings::GeneralController < ApplicationController
   end
 
   def update_date_time_preferences
-    {
-      'date_format' => Users::DateTimePreferences::DATE_FORMATS,
-      'time_format' => Users::DateTimePreferences::TIME_FORMATS,
-      'first_day_of_week' => Users::DateTimePreferences::WEEK_STARTS
-    }.each do |key, allowed|
+    Users::DateTimePreferences::ALLOWED.each do |key, allowed|
       current_user.settings[key] = params[key] if allowed.include?(params[key])
     end
   end

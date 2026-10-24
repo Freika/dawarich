@@ -10,7 +10,7 @@ RSpec.describe 'Date and time preferences per request', type: :controller do
   describe ApplicationController do
     controller do
       def index
-        render plain: Current.date_time_preferences.cache_key
+        render json: Current.date_time_preferences.to_h
       end
     end
 
@@ -21,13 +21,14 @@ RSpec.describe 'Date and time preferences per request', type: :controller do
 
       get :index
 
-      expect(response.body).to eq('yyyy-mm-dd-12h-sunday')
+      expect(response.parsed_body).to eq('date_format' => 'yyyy-mm-dd', 'time_format' => '12h',
+                                         'first_day_of_week' => 'sunday')
     end
 
     it 'uses the defaults for anonymous visitors' do
       get :index
 
-      expect(response.body).to eq('auto-auto-monday')
+      expect(response.parsed_body).to eq(Users::DateTimePreferences::DEFAULT.to_h.stringify_keys)
     end
 
     it 'does not keep the preferences after the request' do
@@ -42,7 +43,7 @@ RSpec.describe 'Date and time preferences per request', type: :controller do
   describe ApiController do
     controller do
       def index
-        render plain: Current.date_time_preferences.cache_key
+        render json: Current.date_time_preferences.to_h
       end
     end
 
@@ -59,14 +60,14 @@ RSpec.describe 'Date and time preferences per request', type: :controller do
 
       get :index, params: { api_key: user.api_key }
 
-      expect(response.body).to eq('auto-auto-monday')
+      expect(response.parsed_body).to eq(Users::DateTimePreferences::DEFAULT.to_h.stringify_keys)
     end
   end
 
   describe Shared::StatsController do
     controller(Shared::StatsController) do
       def index
-        render plain: Current.date_time_preferences.cache_key
+        render json: Current.date_time_preferences.to_h
       end
     end
 
@@ -77,7 +78,7 @@ RSpec.describe 'Date and time preferences per request', type: :controller do
 
       get :index
 
-      expect(response.body).to eq('auto-auto-monday')
+      expect(response.parsed_body).to eq(Users::DateTimePreferences::DEFAULT.to_h.stringify_keys)
     end
   end
 end
