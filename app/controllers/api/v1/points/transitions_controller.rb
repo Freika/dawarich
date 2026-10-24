@@ -51,12 +51,12 @@ class Api::V1::Points::TransitionsController < ApiController
   end
 
   def accuracy
-    params[:accuracy_m].presence && Integer(params[:accuracy_m].to_s, exception: false)
+    value = Float(params[:accuracy_m].to_s, exception: false)
+    value.round if value&.between?(0, MAX_ACCURACY_M)
   end
 
   def valid_extras?
-    valid_accuracy = params[:accuracy_m].blank? || accuracy&.between?(0, MAX_ACCURACY_M)
-    valid_accuracy && params[:device_id].to_s.length <= MAX_DEVICE_ID && !metadata.nil?
+    params[:device_id].to_s.length <= MAX_DEVICE_ID && !metadata.nil?
   end
 
   def metadata

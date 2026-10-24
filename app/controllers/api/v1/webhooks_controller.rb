@@ -2,7 +2,7 @@
 
 class Api::V1::WebhooksController < ApiController
   before_action :authenticate_active_api_user!
-  before_action :require_pro_api!
+  before_action :require_pro_api!, except: :destroy
   before_action :set_webhook, only: %i[show update destroy test regenerate_secret]
 
   def index

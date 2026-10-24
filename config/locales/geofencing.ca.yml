@@ -6,6 +6,8 @@ ca:
           attributes:
             url:
               https_required: ha d'utilitzar https
+            base:
+              too_many: Pots tenir fins a %{count} webhooks.
   webhooks:
     notifications:
       deactivated:

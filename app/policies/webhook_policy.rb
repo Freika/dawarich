@@ -26,7 +26,7 @@ class WebhookPolicy < ApplicationPolicy
   end
 
   def destroy?
-    update?
+    owner?
   end
 
   def test?

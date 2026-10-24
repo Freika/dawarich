@@ -4,6 +4,7 @@ module GeofenceEvents
   class Evaluator
     MAX_ACCURACY_M = 500
     MIN_BAND_M = 50
+    HORIZON = 24.hours
 
     Sample = Struct.new(:ordinal, :timestamp, :longitude, :latitude, :accuracy, keyword_init: true)
 
@@ -48,7 +49,7 @@ module GeofenceEvents
       @rows.select { |row| row['xmax'].to_i.zero? }
            .map { |row| sample_for(row, accuracy_by_timestamp) }
            .reject { |sample| sample.accuracy.to_i > MAX_ACCURACY_M }
-           .select { |sample| evaluated_at.nil? || sample.timestamp > evaluated_at }
+           .select { |sample| sample.timestamp > [evaluated_at.to_i, HORIZON.ago.to_i].max }
            .sort_by(&:timestamp)
            .each_with_index.map { |sample, index| sample.tap { |s| s.ordinal = index } }
     end

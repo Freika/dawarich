@@ -6,6 +6,8 @@ pl:
           attributes:
             url:
               https_required: musi używać https
+            base:
+              too_many: Możesz mieć najwyżej %{count} webhooków.
   webhooks:
     notifications:
       deactivated:

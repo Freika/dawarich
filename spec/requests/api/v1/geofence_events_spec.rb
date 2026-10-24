@@ -33,6 +33,17 @@ RSpec.describe 'Api::V1::GeofenceEvents', type: :request do
     expect(json.map { |e| e['id'] }).to eq([inside.id])
   end
 
+  it 'keeps a Lite user on cloud within the 12-month window' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    user.update!(plan: :lite)
+    recent = create(:geofence_event, user:, area: home, occurred_at: 1.month.ago)
+    create(:geofence_event, user:, area: home, occurred_at: 13.months.ago)
+
+    get '/api/v1/geofence_events', headers: headers
+
+    expect(json.map { |e| e['id'] }).to eq([recent.id])
+  end
+
   it 'never lists another user\'s events' do
     create(:geofence_event)
 

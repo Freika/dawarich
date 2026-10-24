@@ -64,6 +64,12 @@ RSpec.describe GeofenceEvents::Record do
     expect { record(:enter) }.to have_enqueued_job(Webhooks::DeliverJob)
   end
 
+  it 'treats a busy connection pool like an unavailable Redis' do
+    allow(Sidekiq).to receive(:redis_pool).and_raise(ConnectionPool::TimeoutError, 'busy')
+
+    expect { record(:enter, source: :native_app) }.to have_enqueued_job(Webhooks::DeliverJob)
+  end
+
   context 'when Redis is unavailable' do
     before do
       allow(Sidekiq).to receive(:redis_pool).and_raise(RedisClient::CannotConnectError, 'down')
@@ -77,6 +83,19 @@ RSpec.describe GeofenceEvents::Record do
       expect(record(:enter)).to be_nil
       expect(GeofenceEvent.count).to eq(0)
     end
+  end
+
+  it 'drops a replayed older phone transition that is already recorded' do
+    occurred_at = 10.minutes.ago
+    first = described_class.call(user:, area:, event_type: :enter, source: :native_app, occurred_at:,
+                                 lonlat: 'POINT(13.539 52.437)', apply_state: false)
+    replay = described_class.call(user:, area:, event_type: :enter, source: :native_app,
+                                  occurred_at: occurred_at + 30.seconds, lonlat: 'POINT(13.539 52.437)',
+                                  apply_state: false)
+
+    expect(first).to be_present
+    expect(replay).to be_nil
+    expect(WebhookDelivery.count).to eq(1)
   end
 
   it 'stores and delivers an older phone transition without moving state' do

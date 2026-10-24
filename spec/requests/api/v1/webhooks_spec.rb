@@ -73,16 +73,33 @@ RSpec.describe 'Api::V1::Webhooks', type: :request do
   context 'on cloud' do
     before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
 
-    it 'refuses every webhook action to a Lite user' do
+    it 'refuses every webhook action but deletion to a Lite user' do
       user.update!(plan: :lite)
       webhook = create(:webhook, user:)
+      base = "/api/v1/webhooks/#{webhook.id}"
 
-      get '/api/v1/webhooks', headers: headers
-      expect(response).to have_http_status(:forbidden)
-      post '/api/v1/webhooks', params: { webhook: attributes }, headers:, as: :json
-      expect(response).to have_http_status(:forbidden)
-      post "/api/v1/webhooks/#{webhook.id}/test", headers: headers
-      expect(response).to have_http_status(:forbidden)
+      [
+        -> { get '/api/v1/webhooks', headers: headers },
+        -> { get base, headers: headers },
+        -> { post '/api/v1/webhooks', params: { webhook: attributes }, headers: headers, as: :json },
+        -> { patch base, params: { webhook: { name: 'x' } }, headers: headers, as: :json },
+        -> { post "#{base}/test", headers: headers },
+        -> { post "#{base}/regenerate_secret", headers: headers }
+      ].each do |request|
+        request.call
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      delete base, headers: headers
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it 'lets a Pro user manage webhooks' do
+      user.update!(plan: :pro, active_until: 1.year.from_now)
+
+      post '/api/v1/webhooks', params: { webhook: attributes }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:created)
     end
 
     it 'lets a Family user manage webhooks' do

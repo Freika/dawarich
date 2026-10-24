@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Geofence evaluation on point ingest', type: :request do
   let(:user) { create(:user) }
   let!(:area) { create(:area, user:, latitude: 52.52, longitude: 13.405, radius: 100) }
-  let(:time) { Time.utc(2026, 10, 24, 12) }
+  let(:time) { 5.minutes.ago.utc.change(usec: 0) }
   let(:feature) do
     { type: 'Feature', geometry: { type: 'Point', coordinates: [13.405, 52.52] },
       properties: { timestamp: time.iso8601, horizontal_accuracy: 10 } }

@@ -6,7 +6,7 @@ class Settings::GeofencingController < ApplicationController
   def show
     @areas = current_user.areas.order(:name)
     @webhooks_allowed = WebhookPolicy.new(current_user, Webhook).create?
-    @webhooks = current_user.webhooks.order(created_at: :desc) if @webhooks_allowed
+    @webhooks = current_user.webhooks.order(created_at: :desc)
     @events = filtered_events.page(params[:page]).per(25)
   end
 
@@ -16,6 +16,7 @@ class Settings::GeofencingController < ApplicationController
     events = current_user.geofence_events.real.includes(:area, :webhook_deliveries)
                          .order(occurred_at: :desc, id: :desc)
     events = events.where(area_id: params[:area_id]) if params[:area_id].present?
+    events = events.where(occurred_at: current_user.data_window_start..) if current_user.plan_restricted?
     from = parse_day(params[:start_at])
     to = parse_day(params[:end_at])
     events = events.where(occurred_at: from.beginning_of_day..) if from

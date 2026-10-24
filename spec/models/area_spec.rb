@@ -42,6 +42,14 @@ RSpec.describe Area, type: :model do
       expect(webhook.reload.area_ids).to eq([kept.id])
     end
 
+    it 'switches off a webhook whose only area is deleted instead of widening it to every area' do
+      webhook = create(:webhook, user:, area_ids: [area.id])
+
+      area.destroy!
+
+      expect(webhook.reload).to have_attributes(area_ids: [], active: false)
+    end
+
     it 'loses its events through the database when deleted in bulk' do
       create(:geofence_event, user:, area:)
 
@@ -49,12 +57,20 @@ RSpec.describe Area, type: :model do
 
       expect(GeofenceEvent.where(user_id: user.id)).to be_empty
     end
+
+    it 'loses the deliveries of those events too' do
+      create(:webhook_delivery, webhook: create(:webhook, user:), geofence_event: create(:geofence_event, user:, area:))
+
+      user.areas.delete_all
+
+      expect(WebhookDelivery.count).to eq(0)
+    end
   end
 
   describe 'geofence state' do
     let(:user) { create(:user) }
     let(:store) { GeofenceEvents::StateStore.new(user) }
-    let(:start) { 1_760_000_000 }
+    let(:start) { 2.hours.ago.to_i }
 
     before { store.reset! }
 

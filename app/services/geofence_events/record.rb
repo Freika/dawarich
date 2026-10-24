@@ -30,14 +30,22 @@ module GeofenceEvents
 
     private
 
+    DUPLICATE_WINDOW = 120.seconds
+
     def record?
-      return true unless @apply_state
+      return !already_recorded? unless @apply_state
 
       store = StateStore.new(@user)
       @event_type == 'enter' ? store.enter!(@area.id) : store.leave!(@area.id)
     rescue StateStore::Unavailable => e
       ExceptionReporter.call(e, 'Geofence state unavailable')
       @source == 'native_app'
+    end
+
+    def already_recorded?
+      GeofenceEvent.real.where(user: @user, area: @area, event_type: @event_type)
+                   .where(occurred_at: (@occurred_at - DUPLICATE_WINDOW)..(@occurred_at + DUPLICATE_WINDOW))
+                   .exists?
     end
 
     def create_event

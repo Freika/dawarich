@@ -66,6 +66,24 @@ RSpec.describe 'Settings → Geofencing', type: :request do
         expect(page.css('[data-testid="event-delivery-status"]')).to be_empty
       end
 
+      it 'still lets them delete a webhook they made before' do
+        webhook = create(:webhook, user:)
+
+        get settings_geofencing_path
+        expect(page.css('[data-testid="webhook"]').text).to include(webhook.name)
+
+        delete settings_webhook_path(webhook), headers: turbo
+        expect(Webhook.exists?(webhook.id)).to be(false)
+      end
+
+      it 'hides events older than 12 months' do
+        create(:geofence_event, user:, area: home, occurred_at: 13.months.ago)
+
+        get settings_geofencing_path
+
+        expect(page.css('[data-testid="geofence-event"]')).to be_empty
+      end
+
       it 'refuses to create a webhook' do
         post settings_webhooks_path, params: { webhook: { name: 'x', url: 'https://203.0.113.10/x' } }
 
@@ -129,6 +147,15 @@ RSpec.describe 'Settings → Geofencing', type: :request do
 
       expect { post retry_delivery_settings_webhook_path(webhook, delivery_id: failed.id), headers: turbo }
         .to have_enqueued_job(Webhooks::DeliverJob).with(failed.id)
+    end
+
+    it 'retries only failed deliveries' do
+      webhook = create(:webhook, user:)
+      delivered = create(:webhook_delivery, webhook:, status: :success)
+
+      expect { post retry_delivery_settings_webhook_path(webhook, delivery_id: delivered.id), headers: turbo }
+        .not_to have_enqueued_job(Webhooks::DeliverJob)
+      expect(response).to have_http_status(:not_found)
     end
 
     it 'never touches another user\'s webhook' do

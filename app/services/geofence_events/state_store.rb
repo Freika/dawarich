@@ -69,7 +69,7 @@ module GeofenceEvents
 
     def with_redis(&)
       Sidekiq.redis_pool.with(&)
-    rescue RedisClient::Error => e
+    rescue RedisClient::Error, ConnectionPool::TimeoutError => e
       raise Unavailable, e.message
     end
 

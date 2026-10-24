@@ -59,7 +59,7 @@ class Settings::WebhooksController < ApplicationController
   end
 
   def retry_delivery
-    delivery = @webhook.webhook_deliveries.find(params[:delivery_id])
+    delivery = @webhook.webhook_deliveries.status_failure.find(params[:delivery_id])
     delivery.update!(status: :pending, error_message: nil)
     Webhooks::DeliverJob.perform_later(delivery.id)
     respond_with_flash(t('.queued'))

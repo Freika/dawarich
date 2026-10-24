@@ -47,6 +47,11 @@ class Area < ApplicationRecord
   end
 
   def remove_from_webhook_filters
-    Webhook.where(user_id:).where('? = ANY(area_ids)', id).update_all(['area_ids = array_remove(area_ids, ?)', id])
+    Webhook.where(user_id:).where('? = ANY(area_ids)', id).update_all(
+      [<<~SQL.squish, id, id]
+        active = active AND cardinality(array_remove(area_ids, ?)) > 0,
+        area_ids = array_remove(area_ids, ?)
+      SQL
+    )
   end
 end

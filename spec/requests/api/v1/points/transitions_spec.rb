@@ -52,16 +52,23 @@ RSpec.describe 'POST /api/v1/points/transitions', type: :request do
       { occurred_at: 10.minutes.from_now.iso8601 },
       { occurred_at: 25.hours.ago.iso8601 },
       { occurred_at: 'yesterday' },
-      { accuracy_m: -1 },
       { device_id: 'x' * 256 },
       { metadata: { nested: { deep: 1 } } },
-      { metadata: (1..21).index_by { |i| "k#{i}" } }
+      { metadata: (1..21).index_by { |i| "k#{i}" } },
+      { metadata: { note: 'x' * 3_000 } }
     ].each do |override|
       post_transition(override)
 
       expect(response).to have_http_status(:unprocessable_content), "accepted #{override.inspect}"
     end
     expect(GeofenceEvent.count).to eq(0)
+  end
+
+  it 'rounds a fractional accuracy and treats a negative one as unknown' do
+    post_transition({ accuracy_m: 8.6 })
+    post_transition({ event_type: 'leave', accuracy_m: -1 })
+
+    expect(GeofenceEvent.order(:id).pluck(:accuracy_m)).to eq([9, nil])
   end
 
   it 'requires an api key' do

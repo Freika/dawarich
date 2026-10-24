@@ -76,8 +76,65 @@ RSpec.describe Webhooks::DeliverJob do
     expect(pinned).to eq(['203.0.113.20'])
   end
 
+  it 'retries a host that does not resolve instead of switching the webhook off' do
+    webhook.update_columns(url: 'https://hooks.example.org/in')
+    stub_unresolvable_host('hooks.example.org')
+
+    deliver
+
+    expect(delivery.reload).to have_attributes(status: 'failure', attempt_count: 5)
+    expect(webhook.reload.active).to be(true)
+  end
+
+  it 'records a malformed response as a failed attempt' do
+    stub_request(:post, url).to_raise(Net::HTTPBadResponse.new('wrong status line'))
+
+    deliver
+
+    expect(delivery.reload).to have_attributes(status: 'failure', attempt_count: 5)
+  end
+
+  it 'stores a binary or broken response body as valid text, cut to 1 KB' do
+    stub_request(:post, url).to_return(status: 500, body: "\xFF\x00ok #{'é' * 2000}".b)
+
+    deliver
+
+    body = delivery.reload.response_body
+    expect(body).to be_valid_encoding
+    expect(body).not_to include("\u0000")
+    expect(body.length).to be <= 1024
+  end
+
+  it 'asks the receiver not to compress its answer' do
+    stub = stub_request(:post, url).with(headers: { 'Accept-Encoding' => 'identity' }).to_return(status: 200)
+
+    deliver
+
+    expect(stub).to have_been_requested
+  end
+
+  it 'drops queued deliveries of a webhook that was switched off' do
+    stub = stub_request(:post, url)
+    webhook.update!(active: false)
+
+    deliver
+
+    expect(stub).not_to have_been_requested
+    expect(delivery.reload.status).to eq('failure')
+    expect(webhook.reload.consecutive_failures).to eq(0)
+  end
+
   context 'on cloud' do
     before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+    it 'drops queued deliveries once the plan no longer includes webhooks' do
+      stub = stub_request(:post, url)
+      user.update!(plan: :lite)
+
+      deliver
+
+      expect(stub).not_to have_been_requested
+    end
 
     it 'never requests a URL that now resolves to a private address' do
       webhook.update_columns(url: 'https://hooks.example.org/in')

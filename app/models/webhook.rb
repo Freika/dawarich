@@ -8,7 +8,12 @@ class Webhook < ApplicationRecord
   belongs_to :user
   has_many :webhook_deliveries, dependent: :delete_all
 
+  MAX_PER_USER = 10
+
   validates :name, :url, presence: true
+  validate :event_types_known
+  validate :areas_owned
+  validate :within_limit, on: :create
   validate :url_is_allowed, if: -> { url.present? && will_save_change_to_url? }
 
   before_validation :ensure_secret
@@ -58,6 +63,25 @@ class Webhook < ApplicationRecord
     errors.add(:url, I18n.t('services.concerns.url_validatable.invalid_format'))
   rescue UrlValidatable::BlockedUrlError => e
     errors.add(:url, e.message)
+  end
+
+  def event_types_known
+    return if event_types.present? && (event_types - EVENT_TYPES.values).empty?
+
+    errors.add(:event_types, :invalid)
+  end
+
+  def areas_owned
+    return if area_ids.blank?
+    return if user && user.areas.where(id: area_ids).count == area_ids.uniq.size
+
+    errors.add(:area_ids, :invalid)
+  end
+
+  def within_limit
+    return unless user && user.webhooks.count >= MAX_PER_USER
+
+    errors.add(:base, :too_many, count: MAX_PER_USER)
   end
 
   def reset_failures

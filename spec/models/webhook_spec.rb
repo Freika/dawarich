@@ -62,6 +62,25 @@ RSpec.describe Webhook do
     end
   end
 
+  describe 'filters' do
+    it 'needs at least one known event type' do
+      expect(build(:webhook, user:, event_types: [])).not_to be_valid
+      expect(build(:webhook, user:, event_types: [7])).not_to be_valid
+      expect(build(:webhook, user:, event_types: [1])).to be_valid
+    end
+
+    it 'accepts only the user\'s own areas' do
+      expect(build(:webhook, user:, area_ids: [create(:area).id])).not_to be_valid
+      expect(build(:webhook, user:, area_ids: [area.id])).to be_valid
+    end
+  end
+
+  it 'allows at most ten webhooks per user' do
+    create_list(:webhook, 10, user:)
+
+    expect(build(:webhook, user:)).not_to be_valid
+  end
+
   it 'resets the failure count when re-activated' do
     webhook = create(:webhook, user:, active: false, consecutive_failures: 5)
 

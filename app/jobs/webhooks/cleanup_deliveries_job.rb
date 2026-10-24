@@ -6,6 +6,7 @@ module Webhooks
 
     def perform
       WebhookDelivery.old.delete_all
+      GeofenceEvent.where(synthetic: true, created_at: ...30.days.ago).delete_all
     end
   end
 end

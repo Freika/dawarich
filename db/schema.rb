@@ -274,7 +274,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_150200) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["area_id", "occurred_at"], name: "index_geofence_events_on_area_id_and_occurred_at", order: { occurred_at: :desc }
-    t.index ["lonlat"], name: "index_geofence_events_on_lonlat", using: :gist
     t.index ["user_id", "occurred_at"], name: "index_geofence_events_on_user_id_and_occurred_at", order: { occurred_at: :desc }
   end
 
@@ -907,6 +906,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_150200) do
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
     t.bigint "webhook_id", null: false
+    t.index ["created_at"], name: "index_webhook_deliveries_on_created_at"
     t.index ["geofence_event_id"], name: "index_webhook_deliveries_on_geofence_event_id"
     t.index ["webhook_id", "created_at"], name: "index_webhook_deliveries_on_webhook_id_and_created_at", order: { created_at: :desc }
   end

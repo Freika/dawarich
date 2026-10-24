@@ -6,6 +6,8 @@ zh:
           attributes:
             url:
               https_required: 必须使用 https
+            base:
+              too_many: 最多可以创建 %{count} 个 Webhook。
   webhooks:
     notifications:
       deactivated:

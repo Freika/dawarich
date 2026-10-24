@@ -29,6 +29,17 @@
             <%= t("#{s}.upgrade") %>
           </a>
         </div>
+        <% @webhooks.each do |webhook| %>
+          <div id="<%= dom_id(webhook) %>" data-testid="webhook" class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-box bg-base-100 p-3">
+            <div class="min-w-0">
+              <div class="font-semibold"><%= webhook.name %></div>
+              <div class="text-sm opacity-70" style="overflow-wrap:anywhere"><%= webhook.url %></div>
+            </div>
+            <%= button_to t('settings.webhooks.webhook.delete'), settings_webhook_path(webhook), method: :delete,
+                          class: 'btn btn-xs btn-error btn-outline',
+                          form: { data: { turbo_confirm: t('settings.webhooks.webhook.confirm_delete') } } %>
+          </div>
+        <% end %>
       <% end %>
     </div>
   </div>

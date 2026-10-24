@@ -6,6 +6,8 @@ en:
           attributes:
             url:
               https_required: must use https
+            base:
+              too_many: You can have up to %{count} webhooks.
   webhooks:
     notifications:
       deactivated:
