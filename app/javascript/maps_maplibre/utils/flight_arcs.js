@@ -4,6 +4,7 @@
  * arc so long-haul flights follow the spherical shortest path.
  */
 
+const MERCATOR_MAX_LATITUDE = 85.0511287798
 const toRad = (deg) => (deg * Math.PI) / 180
 const toDeg = (rad) => (rad * 180) / Math.PI
 
@@ -99,6 +100,25 @@ export function densifyGreatCircle(coordinates, maxStepDegrees = 1) {
   }
 
   return result
+}
+
+/**
+ * Densify along great circles and break the line where it leaves the Web
+ * Mercator world, so polar stretches exit and re-enter like vector tiles do
+ * instead of tracing the map's top edge.
+ * @param {Array<[number, number]>} coordinates
+ * @returns {Array<Array<[number, number]>>}
+ */
+export function greatCircleLines(coordinates) {
+  const lines = [[]]
+  for (const coord of densifyGreatCircle(coordinates)) {
+    if (Math.abs(coord[1]) > MERCATOR_MAX_LATITUDE) {
+      if (lines.at(-1).length) lines.push([])
+    } else {
+      lines.at(-1).push(coord)
+    }
+  }
+  return lines.filter((line) => line.length)
 }
 
 /**

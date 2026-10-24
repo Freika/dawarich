@@ -1,6 +1,4 @@
-import { densifyGreatCircle } from "./flight_arcs"
-
-const MERCATOR_MAX_LATITUDE = 85.0511287798
+import { greatCircleLines } from "./flight_arcs"
 
 /**
  * RouteSegmenter - Utility for converting points into route segments
@@ -106,32 +104,14 @@ export class RouteSegmenter {
    * @returns {Array<Array<[number, number]>>} Always returns an array of coordinate arrays (MultiLineString-compatible)
    */
   static unwrapCoordinates(segment) {
-    const coords = densifyGreatCircle(
+    const lines = greatCircleLines(
       segment.map((p) => [parseFloat(p.longitude), parseFloat(p.latitude)]),
     )
-    return RouteSegmenter.splitAtMercatorEdge(coords).flatMap((run) =>
+    return lines.flatMap((line) =>
       RouteSegmenter.stitchAntimeridian(
-        run.map(([longitude, latitude]) => ({ longitude, latitude })),
+        line.map(([longitude, latitude]) => ({ longitude, latitude })),
       ),
     )
-  }
-
-  /**
-   * Break a line where it leaves the Web Mercator world, so polar stretches
-   * exit and re-enter like vector tiles do instead of tracing the edge.
-   * @param {Array<[number, number]>} coords
-   * @returns {Array<Array<[number, number]>>}
-   */
-  static splitAtMercatorEdge(coords) {
-    const runs = [[]]
-    for (const coord of coords) {
-      if (Math.abs(coord[1]) > MERCATOR_MAX_LATITUDE) {
-        if (runs.at(-1).length) runs.push([])
-      } else {
-        runs.at(-1).push(coord)
-      }
-    }
-    return runs.filter((run) => run.length)
   }
 
   static stitchAntimeridian(points) {

@@ -1,3 +1,4 @@
+import { greatCircleLines } from "../utils/flight_arcs"
 import { BaseLayer } from "./base_layer"
 
 const BASE_TRACKS_LAYER_ID = "tracks-mvt"
@@ -121,7 +122,7 @@ export class TracksLayer extends BaseLayer {
       )
       selectionSource.setData({
         type: "FeatureCollection",
-        features: [feature],
+        features: [this._withGreatCircles(feature, lines)],
       })
       this._raiseSelectionAboveBaseTracks()
       this._startFlowAnimation()
@@ -130,6 +131,27 @@ export class TracksLayer extends BaseLayer {
       if (!preserveSegments) this.hideSegments()
       this.selectedTrackLength = 0
       selectionSource.setData({ type: "FeatureCollection", features: [] })
+    }
+  }
+
+  /** Timeline-fetched GeoJSON is raw; draw its long gaps like the tiles do. */
+  _withGreatCircles(feature, lines) {
+    if (!feature.geometry?.type?.endsWith("LineString")) return feature
+
+    const greatCircles = lines.flatMap((line) => greatCircleLines(line))
+    if (
+      greatCircles.length === lines.length &&
+      greatCircles.every((line, i) => line.length === lines[i].length)
+    ) {
+      return feature
+    }
+
+    return {
+      ...feature,
+      geometry:
+        greatCircles.length === 1
+          ? { type: "LineString", coordinates: greatCircles[0] }
+          : { type: "MultiLineString", coordinates: greatCircles },
     }
   }
 
