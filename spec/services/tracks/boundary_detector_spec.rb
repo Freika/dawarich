@@ -39,7 +39,9 @@ RSpec.describe Tracks::BoundaryDetector do
 
     context 'when no boundary candidates are found' do
       let!(:track1) { create(:track, user: user, created_at: 30.minutes.ago) }
-      let!(:track2) { create(:track, user: user, created_at: 25.minutes.ago) }
+      let!(:track2) do
+        create(:track, user: user, created_at: 25.minutes.ago, original_path: 'LINESTRING(-73.0 41.0, -73.001 41.001)')
+      end
 
       before do
         # Create points that are far apart (no spatial connection)
@@ -202,6 +204,60 @@ RSpec.describe Tracks::BoundaryDetector do
         detector.resolve_cross_chunk_tracks
         expect(Track.exists?(track1.id)).to be true
         expect(Track.exists?(track2.id)).to be true
+      end
+    end
+
+    context 'with an untracked point inside an old track' do
+      let(:start) { 1.year.ago.beginning_of_day + 10.hours }
+      let!(:old_track) do
+        create(:track, user: user, tracker_id: 'phone', start_at: start, end_at: start + 20.minutes,
+                       created_at: 2.days.ago)
+      end
+      let!(:late_point) do
+        create(:point, user: user, tracker_id: 'phone', timestamp: (start + 10.minutes).to_i, created_at: 5.minutes.ago)
+      end
+      let(:range) { (start - 1.hour).to_i..(start + 1.hour).to_i }
+
+      before do
+        [start, start + 20.minutes].each do |at|
+          create(:point, user: user, tracker_id: 'phone', track: old_track, timestamp: at.to_i)
+        end
+      end
+
+      it 'attaches the point to the track when the range covers it' do
+        described_class.new(user, orphan_range: range).resolve_cross_chunk_tracks
+
+        expect(late_point.reload.track_id).to eq(old_track.id)
+        expect(user.tracks.pluck(:id)).to eq([old_track.id])
+      end
+
+      it 'leaves the point alone without a range' do
+        detector.resolve_cross_chunk_tracks
+
+        expect(late_point.reload.track_id).to be_nil
+      end
+
+      it 'leaves a point outside the range alone' do
+        described_class.new(user,
+                            orphan_range: (start + 1.hour).to_i..(start + 2.hours).to_i).resolve_cross_chunk_tracks
+
+        expect(late_point.reload.track_id).to be_nil
+      end
+
+      it 'leaves an anomaly alone' do
+        late_point.update_columns(anomaly: true)
+
+        described_class.new(user, orphan_range: range).resolve_cross_chunk_tracks
+
+        expect(late_point.reload.track_id).to be_nil
+      end
+
+      it 'leaves a point from another device alone' do
+        late_point.update_columns(tracker_id: 'watch')
+
+        described_class.new(user, orphan_range: range).resolve_cross_chunk_tracks
+
+        expect(late_point.reload.track_id).to be_nil
       end
     end
   end
@@ -392,6 +448,43 @@ RSpec.describe Tracks::BoundaryDetector do
         distant_track = create(:track, user: user, start_at: 10.hours.ago, end_at: 9.hours.ago)
         result = detector.send(:valid_boundary_group?, [distant_track, track1])
         expect(result).to be false
+      end
+
+      it 'returns true for short tracks inside a long one, however far apart they are' do
+        outer = create(:track, user: user, start_at: 6.hours.ago, end_at: 1.hour.ago)
+        early = create(:track, user: user, start_at: 5.hours.ago, end_at: 296.minutes.ago)
+        late = create(:track, user: user, start_at: 2.hours.ago, end_at: 116.minutes.ago)
+
+        expect(detector.send(:valid_boundary_group?, [outer, early, late])).to be true
+      end
+
+      it 'returns false for a track starting over an hour after the latest end' do
+        outer = create(:track, user: user, start_at: 6.hours.ago, end_at: 4.hours.ago)
+        inner = create(:track, user: user, start_at: 5.hours.ago, end_at: 296.minutes.ago)
+        later = create(:track, user: user, start_at: 150.minutes.ago, end_at: 140.minutes.ago)
+
+        expect(detector.send(:valid_boundary_group?, [outer, inner, later])).to be false
+      end
+    end
+
+    describe '#merge_boundary_tracks with a track inside another' do
+      let(:start) { 3.hours.ago.change(usec: 0) }
+      let!(:outer) { create(:track, user: user, tracker_id: 'phone', start_at: start, end_at: start + 20.minutes) }
+      let!(:inner) do
+        create(:track, user: user, tracker_id: 'phone', start_at: start + 9.minutes, end_at: start + 11.minutes)
+      end
+
+      before do
+        [[outer, 0], [outer, 20], [inner, 9], [inner, 11]].each do |track, minutes|
+          create(:point, user: user, tracker_id: 'phone', track: track, timestamp: (start + minutes.minutes).to_i)
+        end
+      end
+
+      it 'keeps the outer track and moves the inner points onto it' do
+        detector.send(:merge_boundary_tracks, [outer, inner])
+
+        expect(user.tracks.pluck(:id)).to eq([outer.id])
+        expect(user.points.pluck(:track_id).uniq).to eq([outer.id])
       end
     end
 

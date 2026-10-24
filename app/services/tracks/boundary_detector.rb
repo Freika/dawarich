@@ -17,10 +17,11 @@ class Tracks::BoundaryDetector
 
   ADJACENCY_QUERY_BATCH_SIZE = 25
 
-  attr_reader :user
+  attr_reader :user, :orphan_range
 
-  def initialize(user)
+  def initialize(user, orphan_range: nil)
     @user = user
+    @orphan_range = orphan_range
   end
 
   def resolve_cross_chunk_tracks
@@ -35,12 +36,9 @@ class Tracks::BoundaryDetector
   end
 
   def reabsorb_orphan_points
-    return 0 unless untracked_points_in_lookback?
+    recent = untracked_points_in_lookback? ? user.tracks.where('end_at >= ?', ORPHAN_REABSORPTION_LOOKBACK.ago) : []
 
-    user.tracks
-        .where('end_at >= ?', ORPHAN_REABSORPTION_LOOKBACK.ago)
-        .find_each
-        .sum { |track| absorb_orphans_into(track) }
+    (recent.to_a + tracks_spanning_orphans_in_range).uniq(&:id).sum { |track| absorb_orphans_into(track) }
   end
 
   private
@@ -54,12 +52,39 @@ class Tracks::BoundaryDetector
         .exists?
   end
 
+  def tracks_spanning_orphans_in_range
+    return [] unless orphan_range
+
+    orphans = user.points.where(track_id: nil).where('anomaly IS NOT TRUE').where(timestamp: orphan_range)
+                  .where(created_at: ...ORPHAN_REABSORPTION_FRESHNESS_BUFFER.ago)
+                  .pluck(:timestamp, :tracker_id)
+    return [] if orphans.empty?
+
+    stamps_by_tracker = orphans.group_by { |_, tracker_id| tracker_id.to_s }
+                               .transform_values { |rows| rows.map(&:first).sort }
+    stamps = orphans.map(&:first)
+    spans = user.tracks.where('start_at <= ? AND end_at >= ?', Time.zone.at(stamps.max), Time.zone.at(stamps.min))
+                .pluck(:id, :tracker_id, :start_at, :end_at)
+    ids = spans.filter_map do |id, tracker_id, start_at, end_at|
+      id if spans_orphan?(stamps_by_tracker[tracker_id.to_s], start_at, end_at)
+    end
+    user.tracks.where(id: ids).to_a
+  end
+
+  def spans_orphan?(stamps, start_at, end_at)
+    return false unless stamps
+
+    first = stamps.bsearch { |stamp| stamp >= start_at.to_i }
+    first.present? && first <= end_at.to_i
+  end
+
   def absorb_orphans_into(track)
     orphan_ids = orphan_point_ids_for(track)
     return 0 if orphan_ids.empty?
 
     succeeded = false
     ActiveRecord::Base.transaction(requires_new: true) do
+      TrackSegments::TimeAnchorBackfillJob.anchor_now(track.track_segments.where(start_at: nil).pluck(:id))
       Point.where(id: orphan_ids).update_all(track_id: track.id)
 
       bounds = Point.where(track_id: track.id).pick(Arel.sql('MIN(timestamp), MAX(timestamp)'))
@@ -196,10 +221,20 @@ class Tracks::BoundaryDetector
       next if !ranges_overlap && separated_by_stationary_stop?(track, candidate)
       next if !ranges_overlap && separated_by_handoff?(track, candidate)
 
-      connected << candidate if tracks_spatially_connected?(track, candidate)
+      contained = (candidate_start <= track_start_time && candidate_end >= track_end_time) ||
+                  (track_start_time <= candidate_start && track_end_time >= candidate_end)
+      joined = contained && track.tracker_id.present? && paths_near?(track, candidate)
+      connected << candidate if joined || tracks_spatially_connected?(track, candidate)
     end
 
     connected
+  end
+
+  def paths_near?(track, candidate)
+    user.tracks.where(id: track.id)
+        .where('ST_DWithin(original_path::geography, (SELECT original_path FROM tracks WHERE id = ?)::geography, ?)',
+               candidate.id, SAME_TRACKER_MAX_GAP_METERS)
+        .exists?
   end
 
   def separated_by_stationary_stop?(track, candidate)
@@ -253,10 +288,12 @@ class Tracks::BoundaryDetector
 
     sorted_tracks = group.sort_by(&:start_at)
     max_gap = 1.hour.to_i
+    latest_end = sorted_tracks.first.end_at.to_i
 
-    sorted_tracks.each_cons(2) do |track1, track2|
-      time_gap = track2.start_at.to_i - track1.end_at.to_i
-      return false if time_gap > max_gap
+    sorted_tracks.drop(1).each do |track|
+      return false if track.start_at.to_i - latest_end > max_gap
+
+      latest_end = [latest_end, track.end_at.to_i].max
     end
 
     true
@@ -300,7 +337,10 @@ class Tracks::BoundaryDetector
         raise ActiveRecord::Rollback
       end
 
-      sorted_tracks.reject { |t| t.id == merged_track.id }.each(&:destroy)
+      merged_away = sorted_tracks.reject { |t| t.id == merged_track.id }
+      Point.where(track_id: merged_away.map(&:id)).update_all(track_id: merged_track.id)
+      merged_away.each(&:destroy)
+      merged_track.recalculate_path_and_distance! unless merged_track.previously_new_record?
       success = true
     end
 

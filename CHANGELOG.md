@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - With Edit points on, clicking another point of the track you are editing now selects that point, and a click that nudges the mouse by a few pixels no longer moves the point. Before, the panel and its Delete button stayed on the first point you clicked until you clicked an empty spot on the map, so Delete could remove the wrong point (#3772)
 - Aosta Valley is now part of Italy's achievement, which has all 20 regions. Anyone who already completed Italy keeps it. The upgrade recalculates achievements once in the background without notifications, so earlier visits to Aosta Valley count. (#3789)
 - Actions in the Background Jobs dashboard (Delete, Retry, Kill, Clear) no longer fail with "Forbidden" when Dawarich is opened directly over plain HTTP by a local network address. (#3907)
+- Points added later from the same device inside an existing route, for example through the API or an import, now join that route instead of staying apart from it on the map, and the route keeps its shared links and corrected transport modes. Points added before this release stay apart until you choose Recalculate tracks & stats, which rebuilds that year's routes and resets their shared links and corrected transport modes (#3036)
 
 ## [1.17.0] - 2026-10-23, Berlin
 
