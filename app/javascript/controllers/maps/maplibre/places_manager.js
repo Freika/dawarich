@@ -1,6 +1,7 @@
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import { setPrivacyZonesFingerprint } from "maps_maplibre/utils/tile_freshness"
 
 /**
  * Manages places-related operations for Maps V2
@@ -294,9 +295,23 @@ export class PlacesManager {
       }
 
       this._ensurePlacesVisible(placesLayer)
+      await this._refreshPrivacyZones()
     } catch (error) {
       console.error("[Maps V2] Failed to update places:", error)
     }
+  }
+
+  /**
+   * A saved place can add, move or drop a privacy zone. When the zone
+   * fingerprint changes, every masked layer is reloaded under the new zones.
+   */
+  async _refreshPrivacyZones() {
+    const { fingerprint, failed } = await this.api.fetchPrivacyZones()
+    if (failed || !setPrivacyZonesFingerprint(fingerprint)) return
+
+    this.layerManager.getLayer("points-mvt")?.refresh()
+    this.layerManager.getLayer("tracks-mvt")?.refresh()
+    await this.controller.loadMapData({ showLoading: false, fitBounds: false })
   }
 
   /**

@@ -58,6 +58,7 @@ class Api::V1::LocationsController < ApiController
       date_to: parse_date(params[:date_to]),
       radius_override: params[:radius_override]&.to_i,
       place_name: params[:name],
+      privacy_zone_masker: (privacy_zone_masker if mask_privacy_zones?),
       address: params[:address]
     }
   end

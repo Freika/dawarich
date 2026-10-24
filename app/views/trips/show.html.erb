@@ -16,7 +16,7 @@
      data-trip-maplibre-day-keys-value="<%= @day_stats.keys.map(&:iso8601).to_json %>"
      data-trip-maplibre-day-bounds-value="<%= @day_stats.to_h { |day, stats| [day.iso8601, stats[:bounds]] }.to_json %>"
      data-trip-maplibre-day-endpoints-value="<%= @day_stats.to_h { |day, stats| [day.iso8601, { first: stats[:first_coordinates], last: stats[:last_coordinates] }] }.to_json %>"
-     data-trip-maplibre-full-bounds-value="<%= @trip.route_bounds.to_json %>"
+     data-trip-maplibre-full-bounds-value="<%= trip_full_bounds.to_json %>"
      data-trip-maplibre-device-windows-value="<%= @trip.cached_primary_device_windows.to_json %>"
      <% if plan_toggle %>data-trip-maplibre-plan-value="<%= @trip_plan.to_json %>"<% end %>
      data-trip-maplibre-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">

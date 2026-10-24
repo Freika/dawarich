@@ -358,4 +358,47 @@ RSpec.describe 'Api::V1::Tiles::Tracks', type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  describe 'privacy zones' do
+    let(:user) { create(:user) }
+    let!(:zone_tag) do
+      tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 1000)
+      place = create(:place, user:, latitude: 52.444, longitude: 13.5, lonlat: 'POINT(13.5 52.444)')
+      create(:tagging, tag:, taggable: place)
+      tag
+    end
+
+    def tile_for(lon, lat, zoom)
+      n = 2**zoom
+      lat_rad = lat * Math::PI / 180
+      x = ((lon + 180.0) / 360.0 * n).floor
+      y = ((1.0 - (Math.log(Math.tan(lat_rad) + (1 / Math.cos(lat_rad))) / Math::PI)) / 2.0 * n).floor
+      [zoom, x, y]
+    end
+
+    it 'answers a tile that lies entirely inside a zone without querying' do
+      z, x, y = tile_for(13.5, 52.444, 18)
+      allow(Tracks::VectorTileQuery).to receive(:new).and_call_original
+
+      get "/api/v1/tiles/tracks/#{z}/#{x}/#{y}.mvt", params: { api_key: user.api_key }
+
+      expect(response).to have_http_status(:no_content)
+      expect(Tracks::VectorTileQuery).not_to have_received(:new)
+    end
+
+    it 'does not revalidate a cached tile after the zone changes' do
+      create(:track, user:, start_at: 2.hours.ago, end_at: 1.hour.ago,
+                     original_path: 'LINESTRING(13.40 52.444, 13.60 52.444)')
+      z, x, y = tile_for(13.5, 52.444, 10)
+      params = { api_key: user.api_key, start_at: 1.day.ago.to_i, end_at: Time.current.to_i }
+      tile_path = "/api/v1/tiles/tracks/#{z}/#{x}/#{y}.mvt"
+
+      get tile_path, params: params
+      etag = response.headers['ETag']
+      zone_tag.update!(privacy_radius_meters: 800)
+      get tile_path, params: params, headers: { 'If-None-Match' => etag }
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
 end

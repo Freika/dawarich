@@ -13,6 +13,7 @@ import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { parseTimestamp } from "maps_maplibre/utils/realtime_date_filter"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import { setPrivacyZonesFingerprint } from "maps_maplibre/utils/tile_freshness"
 import { timeOverlapOpacityExpr } from "maps_maplibre/utils/time_overlap"
 import { AreaSelectionManager } from "./maplibre/area_selection_manager"
 import { DataLoader } from "./maplibre/data_loader"
@@ -40,6 +41,7 @@ export default class extends Controller {
     userPlan: { type: String, default: "pro" },
     upgradeUrl: { type: String, default: "" },
     importId: { type: String, default: "" },
+    privacyZonesFingerprint: { type: String, default: "" },
   }
 
   static targets = [
@@ -141,6 +143,7 @@ export default class extends Controller {
     }
 
     this.cleanup = new CleanupHelper()
+    setPrivacyZonesFingerprint(this.privacyZonesFingerprintValue)
 
     // Initialize API and settings
     SettingsManager.initialize(this.apiKeyValue)

@@ -105,4 +105,33 @@ RSpec.describe 'Api::V1::Tiles::Trips', type: :request do
     expect(response).to have_http_status(:ok)
     expect(statements.grep(/session_number/)).to be_empty
   end
+
+  describe 'privacy zones' do
+    let!(:zone_tag) do
+      tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 3_000)
+      place = create(:place, user:, latitude: -40.0, longitude: -140.01, lonlat: 'POINT(-140.01 -40)')
+      create(:tagging, tag:, taggable: place)
+      tag
+    end
+
+    it 'leaves a route that lies inside a zone out of the owner trip tile' do
+      record_route
+
+      get tile_path, headers: auth
+
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it 'does not revalidate a cached tile after the zone changes' do
+      record_route
+      zone_tag.places.first.update!(latitude: 10.0, longitude: 10.0, lonlat: 'POINT(10 10)')
+
+      get tile_path, headers: auth
+      etag = response.headers['ETag']
+      zone_tag.update!(privacy_radius_meters: 200)
+      get tile_path, headers: auth.merge('If-None-Match' => etag)
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
 end

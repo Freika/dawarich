@@ -10,6 +10,7 @@
      data-maps--maplibre-timezone-value="<%= current_user.timezone_iana %>"
      data-maps--maplibre-user-plan-value="<%= current_user.effective_plan %>"
      data-maps--maplibre-import-id-value="<%= @import_id %>"
+     data-maps--maplibre-privacy-zones-fingerprint-value="<%= privacy_zones_fingerprint %>"
      data-maps--maplibre-upgrade-url-value="<%= upgrade_url(utm_medium: 'map', utm_content: 'maplibre') %>"
      data-maps--maplibre-realtime-enabled-value="true"
      data-maps--maplibre-realtime-live-mode-value="<%= current_user.safe_settings.live_map_enabled %>"

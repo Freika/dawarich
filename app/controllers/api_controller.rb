@@ -111,6 +111,14 @@ class ApiController < ApplicationController
     relation.where('timestamp >= ?', window_start.to_i)
   end
 
+  def mask_privacy_zones?
+    ActiveModel::Type::Boolean.new.cast(params[:mask_privacy_zones]) == true
+  end
+
+  def privacy_zone_masker
+    @privacy_zone_masker ||= Maps::PrivacyZoneMasker.new(current_api_user)
+  end
+
   def upgrade_url_for(user)
     return nil if DawarichSettings.self_hosted?
 

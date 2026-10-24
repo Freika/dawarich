@@ -67,7 +67,8 @@ test("focused Track forwards a requested date range", async () => {
       requests[0].searchParams.get("end_at"),
       "2024-06-01T23:59+02:00",
     )
-    assert.equal(requests[1].search, "")
+    assert.equal(requests[1].searchParams.has("start_at"), false)
+    assert.equal(requests[1].searchParams.has("end_at"), false)
   } finally {
     globalThis.fetch = originalFetch
   }
