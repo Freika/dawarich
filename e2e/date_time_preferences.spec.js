@@ -47,9 +47,11 @@ async function deleteExports(page) {
     .evaluateAll((rows) => rows.map((row) => row.id.replace("export_", "")))
   const token = await csrfToken(page)
   for (const id of ids) {
-    await page.request.delete(`/exports/${id}`, {
+    const response = await page.request.delete(`/exports/${id}`, {
       form: { authenticity_token: token },
+      maxRedirects: 0,
     })
+    expect(response.status()).toBe(303)
   }
 }
 
