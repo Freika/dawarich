@@ -5,9 +5,106 @@ pl:
         webhook:
           attributes:
             url:
-              https_required: "musi używać https"
+              https_required: musi używać https
   webhooks:
     notifications:
       deactivated:
-        title: "Webhook wyłączony"
-        content: "Webhook „%{name}” pięć razy z rzędu nie dostarczył zdarzenia i został wyłączony. Sprawdź adres odbiorcy, a potem włącz go ponownie w Ustawienia → Geofencing."
+        title: Webhook wyłączony
+        content: Webhook „%{name}” pięć razy z rzędu nie dostarczył zdarzenia i został wyłączony. Sprawdź adres odbiorcy, a potem włącz go ponownie w Ustawienia → Geofencing.
+  settings:
+    navigation:
+      geofencing: Geofencing
+    geofencing:
+      show:
+        title: Geofencing
+        intro: Dawarich zapisuje, kiedy wchodzisz do jednego ze swoich obszarów lub go opuszczasz — według telefonu albo na podstawie odebranych punktów — i może wysłać każde zdarzenie do Twoich usług.
+        webhooks: Webhooki
+        webhooks_intro: Każde zdarzenie jest wysyłane jako podpisany POST z JSON. Porównaj nagłówek X-Dawarich-Signature z HMAC-SHA256 treści obliczonym Twoim sekretem.
+        no_webhooks: Nie ma jeszcze webhooków.
+        new_webhook: Nowy webhook
+        upgrade_title: Webhooki są częścią Pro
+        upgrade_text: Wysyłaj wejścia i wyjścia do Home Assistant, Node-RED, n8n albo własnej usługi.
+        upgrade: Przejdź na Pro
+        events: Zdarzenia
+        no_events: Nie ma jeszcze zdarzeń. Pojawią się, gdy telefon albo aplikacja śledząca zgłosi punkt w jednym z Twoich obszarów.
+        area: Obszar
+        all_areas: Wszystkie obszary
+        from: Od
+        to: Do
+        filter: Filtruj
+        time: Czas
+        event: Zdarzenie
+        source: Źródło
+        deliveries: Dostarczenia
+        event_types:
+          enter: Wejście
+          leave: Wyjście
+        sources:
+          native_app: Telefon
+          server_inferred: Punkty lokalizacji
+          owntracks_native: OwnTracks
+        delivery_summary: dostarczono %{delivered}, nieudane %{failed}
+    webhooks:
+      form:
+        name: Nazwa
+        url: URL
+        events: Zdarzenia
+        areas: Obszary
+        areas_hint: Nie zaznaczaj żadnego, aby dostawać zdarzenia ze wszystkich obszarów.
+        active: Aktywny
+        save: Zapisz
+        create: Dodaj webhook
+      webhook:
+        active: Aktywny
+        inactive: Wyłączony
+        every_area: Każdy obszar
+        areas_count:
+          one: '%{count} obszar'
+          few: '%{count} obszary'
+          many: '%{count} obszarów'
+          other: '%{count} obszaru'
+        last_success: Ostatnio dostarczono %{time} temu
+        never_delivered: Nic jeszcze nie dostarczono
+        failures:
+          one: '%{count} nieudane dostarczenie z rzędu'
+          few: '%{count} nieudane dostarczenia z rzędu'
+          many: '%{count} nieudanych dostarczeń z rzędu'
+          other: '%{count} nieudanego dostarczenia z rzędu'
+        test: Wyślij test
+        deliveries: Dostarczenia
+        regenerate: Nowy sekret
+        delete: Usuń
+        edit: Edytuj
+        confirm_regenerate: Wygenerować nowy sekret? Stary przestanie działać od razu.
+        confirm_delete: Usunąć ten webhook?
+      secret:
+        title: Sekret podpisu dla %{name}
+        text: Skopiuj go teraz — nie zostanie pokazany ponownie.
+        copy: Kopiuj
+      show:
+        title: 'Dostarczenia: %{name}'
+        back: Wróć do geofencingu
+        empty: Nie ma jeszcze dostarczeń.
+        time: Czas
+        event: Zdarzenie
+        status: Status
+        attempts: Próby
+        response: Odpowiedź
+        retry: Ponów
+        test: Test
+        statuses:
+          pending: Oczekuje
+          success: Dostarczono
+          failure: Nieudane
+          retrying: Ponawianie
+      create:
+        created: Dodano webhook.
+      update:
+        updated: Zapisano webhook.
+      destroy:
+        deleted: Usunięto webhook.
+      test:
+        sent: Wysłano zdarzenie testowe.
+        no_area: Najpierw utwórz obszar, aby wysłać zdarzenie testowe.
+      retry_delivery:
+        queued: Ponownie zaplanowano dostarczenie.

@@ -5,9 +5,102 @@ fr:
         webhook:
           attributes:
             url:
-              https_required: "doit utiliser https"
+              https_required: doit utiliser https
   webhooks:
     notifications:
       deactivated:
-        title: "Webhook désactivé"
-        content: "Le webhook « %{name} » a échoué cinq fois de suite et a été désactivé. Vérifiez l’URL de destination, puis réactivez-le dans Paramètres → Géorepérage."
+        title: Webhook désactivé
+        content: Le webhook « %{name} » a échoué cinq fois de suite et a été désactivé. Vérifiez l’URL de destination, puis réactivez-le dans Paramètres → Géorepérage.
+  settings:
+    navigation:
+      geofencing: Géorepérage
+    geofencing:
+      show:
+        title: Géorepérage
+        intro: Dawarich enregistre quand vous entrez dans l’une de vos zones ou en sortez — signalé par votre téléphone ou déduit des points reçus — et peut envoyer chaque événement à vos propres services.
+        webhooks: Webhooks
+        webhooks_intro: Chaque événement est envoyé en POST JSON signé. Comparez l’en-tête X-Dawarich-Signature à un HMAC-SHA256 du corps calculé avec votre secret.
+        no_webhooks: Aucun webhook pour l’instant.
+        new_webhook: Nouveau webhook
+        upgrade_title: Les webhooks font partie de Pro
+        upgrade_text: Envoyez les entrées et sorties vers Home Assistant, Node-RED, n8n ou votre propre service.
+        upgrade: Passer à Pro
+        events: Événements
+        no_events: Aucun événement pour l’instant. Ils apparaissent quand votre téléphone ou votre application de suivi signale un point dans l’une de vos zones.
+        area: Zone
+        all_areas: Toutes les zones
+        from: Du
+        to: Au
+        filter: Filtrer
+        time: Heure
+        event: Événement
+        source: Source
+        deliveries: Envois
+        event_types:
+          enter: Entrée
+          leave: Sortie
+        sources:
+          native_app: Téléphone
+          server_inferred: Points de localisation
+          owntracks_native: OwnTracks
+        delivery_summary: '%{delivered} envoyés, %{failed} en échec'
+    webhooks:
+      form:
+        name: Nom
+        url: URL
+        events: Événements
+        areas: Zones
+        areas_hint: Ne cochez rien pour recevoir les événements de toutes les zones.
+        active: Actif
+        save: Enregistrer
+        create: Ajouter le webhook
+      webhook:
+        active: Actif
+        inactive: Désactivé
+        every_area: Toutes les zones
+        areas_count:
+          one: '%{count} zone'
+          other: '%{count} zones'
+        last_success: Dernier envoi il y a %{time}
+        never_delivered: Rien d’envoyé pour l’instant
+        failures:
+          one: '%{count} envoi en échec d’affilée'
+          other: '%{count} envois en échec d’affilée'
+        test: Envoyer un test
+        deliveries: Envois
+        regenerate: Nouveau secret
+        delete: Supprimer
+        edit: Modifier
+        confirm_regenerate: Générer un nouveau secret ? L’ancien cesse de fonctionner immédiatement.
+        confirm_delete: Supprimer ce webhook ?
+      secret:
+        title: Secret de signature pour %{name}
+        text: Copiez-le maintenant — il ne sera plus affiché.
+        copy: Copier
+      show:
+        title: 'Envois : %{name}'
+        back: Retour au géorepérage
+        empty: Aucun envoi pour l’instant.
+        time: Heure
+        event: Événement
+        status: Statut
+        attempts: Tentatives
+        response: Réponse
+        retry: Réessayer
+        test: Test
+        statuses:
+          pending: En attente
+          success: Envoyé
+          failure: Échec
+          retrying: Nouvelle tentative
+      create:
+        created: Webhook ajouté.
+      update:
+        updated: Webhook enregistré.
+      destroy:
+        deleted: Webhook supprimé.
+      test:
+        sent: Événement de test envoyé.
+        no_area: Créez d’abord une zone pour envoyer un événement de test.
+      retry_delivery:
+        queued: Envoi reprogrammé.

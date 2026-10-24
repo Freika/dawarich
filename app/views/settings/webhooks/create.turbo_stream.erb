@@ -1,0 +1,5 @@
+<%= turbo_stream.prepend 'webhooks', partial: 'settings/webhooks/webhook', locals: { webhook: @webhook, areas: current_user.areas.order(:name) } %>
+<%= turbo_stream.replace 'webhook-secret', partial: 'settings/webhooks/secret', locals: { webhook: @webhook } %>
+<%= turbo_stream.replace 'webhook-form', partial: 'settings/webhooks/form', locals: { webhook: current_user.webhooks.new, areas: current_user.areas.order(:name) } %>
+<%= turbo_stream.remove 'webhooks-empty' %>
+<%= turbo_stream.append('flash-messages', partial: 'shared/flash_message', locals: { type: :notice, message: t('settings.webhooks.create.created') }) %>

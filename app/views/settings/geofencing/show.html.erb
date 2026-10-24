@@ -1,0 +1,100 @@
+<% s = 'settings.geofencing.show' %>
+<% content_for :title, t("#{s}.title") %>
+
+<div class="min-h-content w-full my-5">
+  <%= render 'shared/page_header', title: t("#{s}.title") %>
+  <%= render 'settings/navigation' %>
+
+  <p class="mb-6 max-w-3xl opacity-80"><%= t("#{s}.intro") %></p>
+
+  <div class="card bg-base-200 shadow-xl mb-6">
+    <div class="card-body">
+      <h2 class="text-2xl font-bold"><%= t("#{s}.webhooks") %></h2>
+
+      <% if @webhooks_allowed %>
+        <p class="text-sm opacity-80 mb-4"><%= t("#{s}.webhooks_intro") %></p>
+        <div id="webhook-secret"></div>
+        <div id="webhooks" class="space-y-3 mb-6">
+          <%= render partial: 'settings/webhooks/webhook', collection: @webhooks, locals: { areas: @areas } %>
+          <p id="webhooks-empty" class="text-sm opacity-70 <%= 'hidden' if @webhooks.any? %>"><%= t("#{s}.no_webhooks") %></p>
+        </div>
+
+        <h3 class="text-lg font-semibold mb-2"><%= t("#{s}.new_webhook") %></h3>
+        <%= render 'settings/webhooks/form', webhook: current_user.webhooks.new, areas: @areas %>
+      <% else %>
+        <div data-testid="webhooks-upgrade" class="flex flex-col items-start gap-3">
+          <h3 class="text-lg font-semibold"><%= t("#{s}.upgrade_title") %></h3>
+          <p class="text-sm opacity-80 max-w-md"><%= t("#{s}.upgrade_text") %></p>
+          <a href="<%= upgrade_url(utm_medium: 'settings', utm_content: 'geofencing') %>" class="btn btn-primary">
+            <%= t("#{s}.upgrade") %>
+          </a>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card bg-base-200 shadow-xl">
+    <div class="card-body">
+      <h2 class="text-2xl font-bold mb-2"><%= t("#{s}.events") %></h2>
+
+      <%= form_with url: settings_geofencing_path, method: :get, class: 'flex flex-wrap items-end gap-3 mb-4' do %>
+        <label class="form-control">
+          <span class="label-text"><%= t("#{s}.area") %></span>
+          <%= select_tag :area_id,
+                         options_from_collection_for_select(@areas, :id, :name, params[:area_id]),
+                         include_blank: t("#{s}.all_areas"), class: 'select select-bordered select-sm' %>
+        </label>
+        <label class="form-control">
+          <span class="label-text"><%= t("#{s}.from") %></span>
+          <%= date_field_tag :start_at, params[:start_at], class: 'input input-bordered input-sm' %>
+        </label>
+        <label class="form-control">
+          <span class="label-text"><%= t("#{s}.to") %></span>
+          <%= date_field_tag :end_at, params[:end_at], class: 'input input-bordered input-sm' %>
+        </label>
+        <%= submit_tag t("#{s}.filter"), class: 'btn btn-sm', name: nil %>
+      <% end %>
+
+      <% if @events.empty? %>
+        <p class="text-sm opacity-70"><%= t("#{s}.no_events") %></p>
+      <% else %>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th><%= t("#{s}.time") %></th>
+                <th><%= t("#{s}.area") %></th>
+                <th><%= t("#{s}.event") %></th>
+                <th><%= t("#{s}.source") %></th>
+                <% if @webhooks_allowed %><th><%= t("#{s}.deliveries") %></th><% end %>
+              </tr>
+            </thead>
+            <tbody>
+              <% @events.each do |event| %>
+                <tr data-testid="geofence-event">
+                  <td class="whitespace-nowrap"><%= l(event.occurred_at.in_time_zone, format: :short) %></td>
+                  <td><%= event.area.name %></td>
+                  <td><%= t("#{s}.event_types.#{event.event_type}") %></td>
+                  <td><%= t("#{s}.sources.#{event.source}") %></td>
+                  <% if @webhooks_allowed %>
+                    <td data-testid="event-delivery-status">
+                      <% deliveries = event.webhook_deliveries %>
+                      <% if deliveries.empty? %>
+                        —
+                      <% else %>
+                        <%= t("#{s}.delivery_summary",
+                              delivered: deliveries.count(&:status_success?),
+                              failed: deliveries.count(&:status_failure?)) %>
+                      <% end %>
+                    </td>
+                  <% end %>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+        <%= paginate @events %>
+      <% end %>
+    </div>
+  </div>
+</div>

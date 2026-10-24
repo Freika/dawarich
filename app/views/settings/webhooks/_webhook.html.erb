@@ -1,0 +1,38 @@
+<% w_scope = 'settings.webhooks.webhook' %>
+<div id="<%= dom_id(webhook) %>" data-testid="webhook" class="rounded-box bg-base-100 p-4">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <div class="font-semibold flex flex-wrap items-center gap-2">
+        <%= webhook.name %>
+        <span class="badge badge-sm <%= webhook.active? ? 'badge-success' : 'badge-ghost' %>">
+          <%= t("#{w_scope}.#{webhook.active? ? 'active' : 'inactive'}") %>
+        </span>
+      </div>
+      <div class="text-sm opacity-80" style="overflow-wrap:anywhere"><%= webhook.url %></div>
+      <div class="text-xs opacity-70 mt-1">
+        <%= webhook.area_ids.empty? ? t("#{w_scope}.every_area") : t("#{w_scope}.areas_count", count: webhook.area_ids.size) %>
+        ·
+        <% if webhook.last_success_at %>
+          <%= t("#{w_scope}.last_success", time: time_ago_in_words(webhook.last_success_at)) %>
+        <% else %>
+          <%= t("#{w_scope}.never_delivered") %>
+        <% end %>
+        <% if webhook.consecutive_failures.positive? %>
+          · <span class="text-error"><%= t("#{w_scope}.failures", count: webhook.consecutive_failures) %></span>
+        <% end %>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <%= button_to t("#{w_scope}.test"), test_settings_webhook_path(webhook), class: 'btn btn-xs' %>
+      <%= link_to t("#{w_scope}.deliveries"), settings_webhook_path(webhook), class: 'btn btn-xs', data: { turbo_frame: '_top' } %>
+      <%= button_to t("#{w_scope}.regenerate"), regenerate_secret_settings_webhook_path(webhook),
+                    class: 'btn btn-xs', form: { data: { turbo_confirm: t("#{w_scope}.confirm_regenerate") } } %>
+      <%= button_to t("#{w_scope}.delete"), settings_webhook_path(webhook), method: :delete,
+                    class: 'btn btn-xs btn-error btn-outline', form: { data: { turbo_confirm: t("#{w_scope}.confirm_delete") } } %>
+    </div>
+  </div>
+  <details class="mt-3">
+    <summary class="cursor-pointer text-sm"><%= t("#{w_scope}.edit") %></summary>
+    <div class="mt-3"><%= render 'settings/webhooks/form', webhook:, areas: %></div>
+  </details>
+</div>

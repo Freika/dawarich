@@ -63,6 +63,14 @@ Rails.application.routes.draw do
       end
     end
 
+    resource :geofencing, only: :show, controller: 'geofencing'
+    resources :webhooks, only: %i[show create update destroy] do
+      member do
+        post :test
+        post :regenerate_secret
+        post :retry_delivery
+      end
+    end
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
     resource :visits, only: %i[show update]

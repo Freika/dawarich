@@ -5,9 +5,102 @@ ca:
         webhook:
           attributes:
             url:
-              https_required: "ha d'utilitzar https"
+              https_required: ha d'utilitzar https
   webhooks:
     notifications:
       deactivated:
-        title: "Webhook desactivat"
-        content: "El webhook «%{name}» ha fallat cinc lliuraments seguits i s’ha desactivat. Comprova l’URL de destinació i torna’l a activar a Configuració → Geotanques."
+        title: Webhook desactivat
+        content: El webhook «%{name}» ha fallat cinc lliuraments seguits i s’ha desactivat. Comprova l’URL de destinació i torna’l a activar a Configuració → Geotanques.
+  settings:
+    navigation:
+      geofencing: Geotanques
+    geofencing:
+      show:
+        title: Geotanques
+        intro: Dawarich registra quan entres o surts d’una de les teves zones —segons el telèfon o a partir dels punts que rep— i pot enviar cada esdeveniment als teus propis serveis.
+        webhooks: Webhooks
+        webhooks_intro: Cada esdeveniment s’envia com un POST JSON signat. Compara la capçalera X-Dawarich-Signature amb un HMAC-SHA256 del cos calculat amb el teu secret.
+        no_webhooks: Encara no hi ha webhooks.
+        new_webhook: Nou webhook
+        upgrade_title: Els webhooks formen part de Pro
+        upgrade_text: Envia entrades i sortides a Home Assistant, Node-RED, n8n o el teu propi servei.
+        upgrade: Passa a Pro
+        events: Esdeveniments
+        no_events: Encara no hi ha esdeveniments. Apareixen quan el telèfon o l’app de seguiment informa d’un punt dins d’una de les teves zones.
+        area: Zona
+        all_areas: Totes les zones
+        from: Des de
+        to: Fins a
+        filter: Filtra
+        time: Hora
+        event: Esdeveniment
+        source: Origen
+        deliveries: Enviaments
+        event_types:
+          enter: Entrada
+          leave: Sortida
+        sources:
+          native_app: Telèfon
+          server_inferred: Punts d’ubicació
+          owntracks_native: OwnTracks
+        delivery_summary: '%{delivered} enviats, %{failed} fallits'
+    webhooks:
+      form:
+        name: Nom
+        url: URL
+        events: Esdeveniments
+        areas: Zones
+        areas_hint: Deixa-les sense marcar per rebre esdeveniments de totes les zones.
+        active: Actiu
+        save: Desa
+        create: Afegeix el webhook
+      webhook:
+        active: Actiu
+        inactive: Desactivat
+        every_area: Totes les zones
+        areas_count:
+          one: '%{count} zona'
+          other: '%{count} zones'
+        last_success: Últim enviament fa %{time}
+        never_delivered: Encara no s’ha enviat res
+        failures:
+          one: '%{count} enviament fallit seguit'
+          other: '%{count} enviaments fallits seguits'
+        test: Envia una prova
+        deliveries: Enviaments
+        regenerate: Nou secret
+        delete: Elimina
+        edit: Edita
+        confirm_regenerate: Vols generar un secret nou? L’anterior deixa de funcionar de seguida.
+        confirm_delete: Vols eliminar aquest webhook?
+      secret:
+        title: Secret de signatura de %{name}
+        text: 'Copia’l ara: no es tornarà a mostrar.'
+        copy: Copia
+      show:
+        title: 'Enviaments: %{name}'
+        back: Torna a geotanques
+        empty: Encara no hi ha enviaments.
+        time: Hora
+        event: Esdeveniment
+        status: Estat
+        attempts: Intents
+        response: Resposta
+        retry: Torna-ho a provar
+        test: Prova
+        statuses:
+          pending: Pendent
+          success: Enviat
+          failure: Fallit
+          retrying: Tornant a provar
+      create:
+        created: Webhook afegit.
+      update:
+        updated: Webhook desat.
+      destroy:
+        deleted: Webhook eliminat.
+      test:
+        sent: Esdeveniment de prova enviat.
+        no_area: Crea primer una zona per enviar un esdeveniment de prova.
+      retry_delivery:
+        queued: Enviament programat de nou.

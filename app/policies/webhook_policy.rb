@@ -37,6 +37,10 @@ class WebhookPolicy < ApplicationPolicy
     update?
   end
 
+  def retry_delivery?
+    update?
+  end
+
   private
 
   def owner?

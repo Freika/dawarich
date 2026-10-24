@@ -5,9 +5,102 @@ en:
         webhook:
           attributes:
             url:
-              https_required: "must use https"
+              https_required: must use https
   webhooks:
     notifications:
       deactivated:
-        title: "Webhook switched off"
-        content: "Webhook “%{name}” failed five deliveries in a row and was switched off. Check the receiving URL, then switch it back on in Settings → Geofencing."
+        title: Webhook switched off
+        content: Webhook “%{name}” failed five deliveries in a row and was switched off. Check the receiving URL, then switch it back on in Settings → Geofencing.
+  settings:
+    navigation:
+      geofencing: Geofencing
+    geofencing:
+      show:
+        title: Geofencing
+        intro: Dawarich records when you enter or leave one of your areas — reported by your phone or worked out from the points it receives — and can send each event to your own services.
+        webhooks: Webhooks
+        webhooks_intro: Each event is sent as a signed JSON POST. Compare the X-Dawarich-Signature header with an HMAC-SHA256 of the body made with your secret.
+        no_webhooks: No webhooks yet.
+        new_webhook: New webhook
+        upgrade_title: Webhooks are part of Pro
+        upgrade_text: Send enter and leave events to Home Assistant, Node-RED, n8n or your own service.
+        upgrade: Upgrade to Pro
+        events: Events
+        no_events: No enter or leave events yet. They appear when your phone or tracking app reports a point inside one of your areas.
+        area: Area
+        all_areas: All areas
+        from: From
+        to: To
+        filter: Filter
+        time: Time
+        event: Event
+        source: Source
+        deliveries: Deliveries
+        event_types:
+          enter: Entered
+          leave: Left
+        sources:
+          native_app: Phone
+          server_inferred: Location points
+          owntracks_native: OwnTracks
+        delivery_summary: '%{delivered} delivered, %{failed} failed'
+    webhooks:
+      form:
+        name: Name
+        url: URL
+        events: Events
+        areas: Areas
+        areas_hint: Leave all unchecked to get events for every area.
+        active: Active
+        save: Save
+        create: Add webhook
+      webhook:
+        active: Active
+        inactive: Switched off
+        every_area: Every area
+        areas_count:
+          one: '%{count} area'
+          other: '%{count} areas'
+        last_success: Last delivered %{time} ago
+        never_delivered: Nothing delivered yet
+        failures:
+          one: '%{count} failed delivery in a row'
+          other: '%{count} failed deliveries in a row'
+        test: Send test
+        deliveries: Deliveries
+        regenerate: New secret
+        delete: Delete
+        edit: Edit
+        confirm_regenerate: Generate a new secret? The old one stops working right away.
+        confirm_delete: Delete this webhook?
+      secret:
+        title: Signing secret for %{name}
+        text: Copy it now — it will not be shown again.
+        copy: Copy
+      show:
+        title: 'Deliveries: %{name}'
+        back: Back to geofencing
+        empty: No deliveries yet.
+        time: Time
+        event: Event
+        status: Status
+        attempts: Attempts
+        response: Response
+        retry: Retry
+        test: Test
+        statuses:
+          pending: Pending
+          success: Delivered
+          failure: Failed
+          retrying: Retrying
+      create:
+        created: Webhook added.
+      update:
+        updated: Webhook saved.
+      destroy:
+        deleted: Webhook deleted.
+      test:
+        sent: Test event sent.
+        no_area: Create an area first to send a test event.
+      retry_delivery:
+        queued: Delivery queued again.

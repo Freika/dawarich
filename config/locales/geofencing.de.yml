@@ -5,9 +5,103 @@ de:
         webhook:
           attributes:
             url:
-              https_required: "muss https verwenden"
+              https_required: muss https verwenden
   webhooks:
     notifications:
       deactivated:
-        title: "Webhook deaktiviert"
-        content: "Der Webhook „%{name}“ ist fünfmal hintereinander fehlgeschlagen und wurde deaktiviert. Prüfe die Ziel-URL und aktiviere ihn dann wieder unter Einstellungen → Geofencing."
+        title: Webhook deaktiviert
+        content: Der Webhook „%{name}“ ist fünfmal hintereinander fehlgeschlagen und wurde deaktiviert. Prüfe die Ziel-URL und aktiviere ihn dann wieder unter Einstellungen → Geofencing.
+  settings:
+    navigation:
+      geofencing: Geofencing
+    geofencing:
+      show:
+        title: Geofencing
+        intro: Dawarich erfasst, wann du einen deiner Bereiche betrittst oder verlässt – gemeldet vom Handy oder ermittelt aus den empfangenen Punkten – und kann jedes Ereignis an deine eigenen Dienste
+          senden.
+        webhooks: Webhooks
+        webhooks_intro: Jedes Ereignis wird als signierter JSON-POST gesendet. Vergleiche den Header X-Dawarich-Signature mit einem HMAC-SHA256 des Inhalts, gebildet mit deinem Secret.
+        no_webhooks: Noch keine Webhooks.
+        new_webhook: Neuer Webhook
+        upgrade_title: Webhooks gehören zu Pro
+        upgrade_text: Sende Betreten- und Verlassen-Ereignisse an Home Assistant, Node-RED, n8n oder deinen eigenen Dienst.
+        upgrade: Auf Pro upgraden
+        events: Ereignisse
+        no_events: Noch keine Ereignisse. Sie erscheinen, sobald dein Handy oder deine Tracking-App einen Punkt in einem deiner Bereiche meldet.
+        area: Bereich
+        all_areas: Alle Bereiche
+        from: Von
+        to: Bis
+        filter: Filtern
+        time: Zeit
+        event: Ereignis
+        source: Quelle
+        deliveries: Zustellungen
+        event_types:
+          enter: Betreten
+          leave: Verlassen
+        sources:
+          native_app: Handy
+          server_inferred: Standortpunkte
+          owntracks_native: OwnTracks
+        delivery_summary: '%{delivered} zugestellt, %{failed} fehlgeschlagen'
+    webhooks:
+      form:
+        name: Name
+        url: URL
+        events: Ereignisse
+        areas: Bereiche
+        areas_hint: Lass alle leer, um Ereignisse für jeden Bereich zu erhalten.
+        active: Aktiv
+        save: Speichern
+        create: Webhook hinzufügen
+      webhook:
+        active: Aktiv
+        inactive: Deaktiviert
+        every_area: Jeder Bereich
+        areas_count:
+          one: '%{count} Bereich'
+          other: '%{count} Bereiche'
+        last_success: Zuletzt zugestellt vor %{time}
+        never_delivered: Noch nichts zugestellt
+        failures:
+          one: '%{count} Zustellung in Folge fehlgeschlagen'
+          other: '%{count} Zustellungen in Folge fehlgeschlagen'
+        test: Test senden
+        deliveries: Zustellungen
+        regenerate: Neues Secret
+        delete: Löschen
+        edit: Bearbeiten
+        confirm_regenerate: Neues Secret erzeugen? Das alte funktioniert sofort nicht mehr.
+        confirm_delete: Diesen Webhook löschen?
+      secret:
+        title: Signatur-Secret für %{name}
+        text: Kopiere es jetzt – es wird nicht noch einmal angezeigt.
+        copy: Kopieren
+      show:
+        title: 'Zustellungen: %{name}'
+        back: Zurück zum Geofencing
+        empty: Noch keine Zustellungen.
+        time: Zeit
+        event: Ereignis
+        status: Status
+        attempts: Versuche
+        response: Antwort
+        retry: Erneut senden
+        test: Test
+        statuses:
+          pending: Ausstehend
+          success: Zugestellt
+          failure: Fehlgeschlagen
+          retrying: Wird wiederholt
+      create:
+        created: Webhook hinzugefügt.
+      update:
+        updated: Webhook gespeichert.
+      destroy:
+        deleted: Webhook gelöscht.
+      test:
+        sent: Testereignis gesendet.
+        no_area: Lege zuerst einen Bereich an, um ein Testereignis zu senden.
+      retry_delivery:
+        queued: Zustellung erneut eingeplant.
