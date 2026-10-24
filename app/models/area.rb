@@ -22,7 +22,8 @@ class Area < ApplicationRecord
   # registration: same-method after_create_commit/after_update_commit pairs
   # silently override each other.
   after_commit :schedule_visit_relabel, on: %i[create update], if: :relabel_needed?
-  after_destroy_commit :remove_from_webhook_filters
+  after_commit :reconcile_geofence_state, on: %i[create update], if: :relabel_needed?
+  after_destroy_commit :remove_from_webhook_filters, :forget_geofence_state
 
   def center = [latitude.to_f, longitude.to_f]
 
@@ -35,6 +36,14 @@ class Area < ApplicationRecord
 
   def schedule_visit_relabel
     Areas::RelabelVisitsJob.perform_later(id)
+  end
+
+  def reconcile_geofence_state
+    GeofenceEvents::AreaState.reconcile(self)
+  end
+
+  def forget_geofence_state
+    GeofenceEvents::AreaState.forget(self)
   end
 
   def remove_from_webhook_filters
