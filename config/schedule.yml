@@ -124,3 +124,8 @@ stats_toponyms_refresh_job:
   cron: "*/5 * * * *"
   class: "Stats::ToponymsRefreshJob"
   queue: stats
+
+webhook_deliveries_cleanup_job:
+  cron: "30 3 * * *" # every day at 03:30
+  class: "Webhooks::CleanupDeliveriesJob"
+  queue: webhooks

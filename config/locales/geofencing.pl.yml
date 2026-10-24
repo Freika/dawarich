@@ -6,3 +6,8 @@ pl:
           attributes:
             url:
               https_required: "musi używać https"
+  webhooks:
+    notifications:
+      deactivated:
+        title: "Webhook wyłączony"
+        content: "Webhook „%{name}” pięć razy z rzędu nie dostarczył zdarzenia i został wyłączony. Sprawdź adres odbiorcy, a potem włącz go ponownie w Ustawienia → Geofencing."

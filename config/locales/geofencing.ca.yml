@@ -6,3 +6,8 @@ ca:
           attributes:
             url:
               https_required: "ha d'utilitzar https"
+  webhooks:
+    notifications:
+      deactivated:
+        title: "Webhook desactivat"
+        content: "El webhook «%{name}» ha fallat cinc lliuraments seguits i s’ha desactivat. Comprova l’URL de destinació i torna’l a activar a Configuració → Geotanques."

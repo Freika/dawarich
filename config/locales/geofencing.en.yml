@@ -6,3 +6,8 @@ en:
           attributes:
             url:
               https_required: "must use https"
+  webhooks:
+    notifications:
+      deactivated:
+        title: "Webhook switched off"
+        content: "Webhook “%{name}” failed five deliveries in a row and was switched off. Check the receiving URL, then switch it back on in Settings → Geofencing."

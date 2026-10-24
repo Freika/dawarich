@@ -6,3 +6,8 @@ de:
           attributes:
             url:
               https_required: "muss https verwenden"
+  webhooks:
+    notifications:
+      deactivated:
+        title: "Webhook deaktiviert"
+        content: "Der Webhook „%{name}“ ist fünfmal hintereinander fehlgeschlagen und wurde deaktiviert. Prüfe die Ziel-URL und aktiviere ihn dann wieder unter Einstellungen → Geofencing."

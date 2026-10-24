@@ -4,6 +4,7 @@
   - highest_priority
   - data_migrations
   - points
+  - webhooks
   - default
   - mailers
   - families

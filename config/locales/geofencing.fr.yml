@@ -6,3 +6,8 @@ fr:
           attributes:
             url:
               https_required: "doit utiliser https"
+  webhooks:
+    notifications:
+      deactivated:
+        title: "Webhook désactivé"
+        content: "Le webhook « %{name} » a échoué cinq fois de suite et a été désactivé. Vérifiez l’URL de destination, puis réactivez-le dans Paramètres → Géorepérage."

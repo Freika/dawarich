@@ -6,3 +6,8 @@ zh:
           attributes:
             url:
               https_required: "必须使用 https"
+  webhooks:
+    notifications:
+      deactivated:
+        title: "Webhook 已停用"
+        content: "Webhook“%{name}”连续五次投递失败，已被停用。请检查接收 URL，然后在 设置 → 地理围栏 中重新启用。"

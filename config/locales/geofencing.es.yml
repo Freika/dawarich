@@ -6,3 +6,8 @@ es:
           attributes:
             url:
               https_required: "debe usar https"
+  webhooks:
+    notifications:
+      deactivated:
+        title: "Webhook desactivado"
+        content: "El webhook «%{name}» falló cinco entregas seguidas y se desactivó. Revisa la URL de destino y vuelve a activarlo en Ajustes → Geovallas."
