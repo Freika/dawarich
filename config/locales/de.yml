@@ -1607,6 +1607,14 @@ de:
         timezone: Zeitzone
         your_timezone: Deine Zeitzone
         all_dates_and_times_will_be_displayed_in_this_timezone: Alle Daten und Uhrzeiten werden in dieser Zeitzone angezeigt
+        date_and_time: "Datum und Uhrzeit"
+        date_format: "Datumsformat"
+        time_format: "Zeitformat"
+        first_day_of_week: "Erster Tag der Woche"
+        format_auto: "Automatisch (%{example})"
+        time_format_12h: "12 Stunden (%{example})"
+        time_format_24h: "24 Stunden (%{example})"
+        date_and_time_hint: "Gilt für Datums- und Zeitangaben in der App, in E-Mails und auf der Karte."
         supporter_badge: Supporter-Badge
         show_supporter_badge_in_navbar: Unterstützer-Abzeichen in der Navigationsleiste anzeigen
         display_a_gem_icon_next_to_your_profile_to_show: Zeigt ein Edelstein-Symbol neben deinem Profil an, das deinen Unterstützerstatus kennzeichnet

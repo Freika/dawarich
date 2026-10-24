@@ -1618,6 +1618,14 @@ pl:
         timezone: Strefa czasowa
         your_timezone: Twoja strefa czasowa
         all_dates_and_times_will_be_displayed_in_this_timezone: Wszystkie daty i godziny będą wyświetlane w tej strefie czasowej
+        date_and_time: "Data i godzina"
+        date_format: "Format daty"
+        time_format: "Format godziny"
+        first_day_of_week: "Pierwszy dzień tygodnia"
+        format_auto: "Automatycznie (%{example})"
+        time_format_12h: "12-godzinny (%{example})"
+        time_format_24h: "24-godzinny (%{example})"
+        date_and_time_hint: "Dotyczy dat i godzin w aplikacji, e-mailach i na mapie."
         supporter_badge: Odznaka wspierającego
         show_supporter_badge_in_navbar: Pokaż odznakę wspierającego w pasku nawigacji
         display_a_gem_icon_next_to_your_profile_to_show: Wyświetl ikonę klejnotu obok profilu, aby pokazać status wspierającego
