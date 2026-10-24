@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Geofencing. Dawarich now notices when you enter or leave one of your areas, from the points your phone or tracking app sends (OwnTracks, Overland, Traccar, the points API). Movement right at the edge of an area does not produce a stream of enter/leave pairs: you leave only once you are clearly outside. Events appear in Settings → Geofencing, filterable by area and date. #2515
+- Geofencing webhooks. Send every enter and leave to Home Assistant, Node-RED, n8n or your own service as a signed JSON POST (`X-Dawarich-Signature: sha256=<HMAC of the body>`). Each webhook can listen to some areas or all of them, shows its recent deliveries and can send a test event. Failed deliveries are retried; a webhook that fails five deliveries in a row is switched off and you get a notification. On Dawarich Cloud webhooks need a Pro or Family plan and an https address; self-hosted instances can post to addresses on the home network. #2515
+- `POST /api/v1/points/transitions` accepts enter and leave events detected on the phone, for the upcoming geofencing support in the mobile app. `/api/v1/webhooks` and `/api/v1/geofence_events` expose the same management and event log as the web app.
+
 ## [1.17.0] - 2026-10-23, Berlin
 
 Dawarich gets lighter and faster in this release. On a test account with a million points over three years, compared with 1.16.0:
