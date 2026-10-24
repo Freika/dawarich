@@ -10,7 +10,10 @@ const source = await readFile(
   "utf8",
 )
 const stubbedSource = source
-  .replace('import { translate } from "i18n"', "const translate = (key) => key")
+  .replace(
+    /^import \{[^}]*\} from "i18n"$/m,
+    "const translate = (key) => key\nconst formatDate = (value) => String(value)\nconst formatTime = (value) => String(value)\nconst formatDateTime = (value) => String(value)\nconst firstDayOfWeek = () => 1",
+  )
   .replace(
     'import { LocationSearchService } from "../services/location_search_service.js"',
     "class LocationSearchService {}",

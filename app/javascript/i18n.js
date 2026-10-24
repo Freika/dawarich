@@ -84,7 +84,10 @@ function numericParts(date, options) {
   )
 }
 
-export function formatDate(date, { timeZone } = {}) {
+export function formatDate(
+  date,
+  { timeZone, month = "short", locale = interfaceLocale() } = {},
+) {
   const preset = DATE_PRESETS[preferences().date_format]
   if (preset) {
     return preset(
@@ -97,9 +100,9 @@ export function formatDate(date, { timeZone } = {}) {
     )
   }
 
-  return new Intl.DateTimeFormat(interfaceLocale(), {
+  return new Intl.DateTimeFormat(locale, {
     day: "numeric",
-    month: "short",
+    month,
     year: "numeric",
     timeZone,
   }).format(new Date(date))
@@ -128,6 +131,10 @@ export function formatTime(date, { seconds = false, timeZone } = {}) {
 
 export function formatDateTime(date, options = {}) {
   return `${formatDate(date, options)}, ${formatTime(date, options)}`
+}
+
+export function usesDatePreset() {
+  return Boolean(DATE_PRESETS[preferences().date_format])
 }
 
 export function firstDayOfWeek() {

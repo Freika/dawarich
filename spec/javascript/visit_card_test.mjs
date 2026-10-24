@@ -15,7 +15,7 @@ const source = (
 ).replace(/^import .*\n/gm, "")
 const { VisitCard } = await import(
   `data:text/javascript;base64,${Buffer.from(
-    `const translate = (key) => key\nconst escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")\n${source}`,
+    `const translate = (key) => key\nconst formatDate = (value) => new Date(value).toISOString().slice(0, 10)\nconst formatTime = (value) => new Date(value).toISOString().slice(11, 16)\nconst escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")\n${source}`,
   ).toString("base64")}`
 )
 
