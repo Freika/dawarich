@@ -85,8 +85,7 @@ RSpec.describe Entitlements do
 
       it 'applies the 12-month data window' do
         expect(entitlements.data_window).to eq(DawarichSettings::LITE_DATA_WINDOW)
-        expect(entitlements.data_window_start)
-          .to be_within(5.seconds).of(DawarichSettings::LITE_DATA_WINDOW.ago)
+        expect(entitlements.data_window_start).to eq(user.data_window_start)
       end
 
       it 'caps points at the paid plan limit' do

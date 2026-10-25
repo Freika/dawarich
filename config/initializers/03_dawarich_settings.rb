@@ -5,6 +5,12 @@ class DawarichSettings
   LITE_DATA_WINDOW = 12.months
 
   class << self
+    # Rounded up to a UTC midnight so the cutoff, and every query and cache key
+    # built from it, stays put for a whole day whatever Time.zone is in effect.
+    def lite_data_window_start(window = LITE_DATA_WINDOW)
+      window.ago.utc.tomorrow.beginning_of_day
+    end
+
     # The geocoding predicates are deliberately NOT memoised. Two reasons: a
     # stored value can change while the process runs, and `@x ||= false` re-runs
     # its right-hand side on every call anyway, so the idiom never worked for

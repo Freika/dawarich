@@ -38,6 +38,7 @@ export default class extends Controller {
     endDate: String,
     timezone: String,
     userPlan: { type: String, default: "pro" },
+    dataWindowStart: { type: String, default: "" },
     upgradeUrl: { type: String, default: "" },
     importId: { type: String, default: "" },
   }

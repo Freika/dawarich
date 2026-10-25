@@ -7,6 +7,25 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
   before { sign_in user }
 
+  describe 'Lite data window' do
+    it 'tells the map where the Lite data window starts' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update_column(:plan, User.plans[:lite])
+
+      get map_v2_path
+
+      expect(response.body).to include(
+        %(data-maps--maplibre-data-window-start-value="#{user.data_window_start.iso8601}")
+      )
+    end
+
+    it 'leaves the data window empty for users without one' do
+      get map_v2_path
+
+      expect(response.body).to include('data-maps--maplibre-data-window-start-value=""')
+    end
+  end
+
   describe 'poster studio' do
     it 'renders the poster tab button' do
       get map_v2_path

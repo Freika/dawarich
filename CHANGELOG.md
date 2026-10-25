@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - English dates with a time now use the 24-hour clock unless you choose the 12-hour clock in Settings → General.
 - Ruby version updated to 4.0.9
+- On the Lite plan, the 12-month window now starts at midnight UTC and moves once a day, so the oldest day leaves the window all at once. The map's upgrade banner and the data archival notices follow the same date.
 
 ### Fixed
 

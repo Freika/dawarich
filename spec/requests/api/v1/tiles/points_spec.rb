@@ -458,6 +458,30 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
       expect(probes).to eq(1)
     end
 
+    it 'counts a Lite map view without a range once even as seconds pass' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update_column(:plan, User.plans[:lite])
+
+      probes = probes_during do
+        get '/api/v1/tiles/points/2/2/1.mvt', params: { api_key: user.api_key }
+        travel 2.seconds
+        get '/api/v1/tiles/points/2/1/1.mvt', params: { api_key: user.api_key }
+      end
+
+      expect(probes).to eq(1)
+    end
+
+    it 'leaves point revisions alone for a request without a range' do
+      statements = []
+      collector = ->(_name, _start, _finish, _id, payload) { statements << payload[:sql] }
+      ActiveSupport::Notifications.subscribed(collector, 'sql.active_record') do
+        get '/api/v1/tiles/points/2/2/1.mvt', params: { api_key: user.api_key }
+      end
+
+      expect(response).to have_http_status(:ok)
+      expect(statements.grep(/point_revisions/)).to be_empty
+    end
+
     it 'counts again once the points in the range change' do
       probes = probes_during do
         get '/api/v1/tiles/points/2/2/1.mvt', params: { api_key: user.api_key, **range }
