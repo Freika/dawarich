@@ -23,6 +23,20 @@
           <%= f.password_field :api_key, class: 'input input-bordered w-full', placeholder: 'trek_…', required: true %>
           <span class="label-text-alt mt-1 text-base-content/60"><%= t('.api_key_help') %></span>
         </div>
+        <div class="form-control">
+          <label class="label cursor-pointer justify-start gap-3">
+            <%= f.check_box :skip_ssl_verification,
+                class: 'toggle toggle-warning',
+                onchange: "document.getElementById('trek-ssl-warning').classList.toggle('hidden', !this.checked)" %>
+            <span class="label-text"><%= t('settings.integrations.index.skip_ssl_certificate_verification_self_signed_certificates') %></span>
+          </label>
+          <div id="trek-ssl-warning" class="alert alert-warning mt-2 hidden">
+            <%= icon 'triangle-alert' %>
+            <span>
+              <strong><%= t('settings.integrations.index.security_warning') %></strong> <%= t('settings.integrations.index.disabling_ssl_verification_makes_your_connection_vulnerable_to_man_in') %>
+            </span>
+          </div>
+        </div>
         <div class="card-actions">
           <%= f.submit t('.connect'), class: 'btn btn-primary' %>
         </div>
@@ -49,7 +63,12 @@
               <p class="text-sm text-warning mt-1"><%= source.last_error %></p>
             <% end %>
           </div>
-          <span class="badge <%= source.active? ? 'badge-success' : 'badge-warning' %>"><%= source.status %></span>
+          <div class="flex flex-wrap gap-2">
+            <% if source.skips_ssl_verification? %>
+              <span class="badge badge-warning badge-outline" data-testid="trek-ssl-verification-off"><%= t('.ssl_verification_off') %></span>
+            <% end %>
+            <span class="badge <%= source.active? ? 'badge-success' : 'badge-warning' %>"><%= source.status %></span>
+          </div>
         </div>
         <div class="flex flex-wrap gap-2">
           <% if source.active? && !source.importing? %>

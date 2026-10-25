@@ -1641,6 +1641,7 @@ es:
         sync_now: "Sincronizar ahora"
         disconnect: "Desconectar"
         disconnect_confirmation: "¿Desconectar TREK? Los viajes gestionados y sus datos registrados se quedan en Dawarich, pero dejan de sincronizarse."
+        ssl_verification_off: "Verificación SSL desactivada"
       index:
         services_nav: Servicios de integración
         geocoding: "Geocodificación"

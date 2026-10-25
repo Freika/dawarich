@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The Places page can list only Unconfirmed Places, and each Place opens a details page where a duplicate Place can be merged into it together with its Visits, tags and notes.
 - Turn off Family or Achievements in Settings → General. A disabled feature disappears from the interface and its background processing stops; the mobile app can read and change the choice through `/api/v1/settings`. With Family off, the family API endpoints answer 403 `feature_disabled`; `/api/v1/users/me` reports both features under `features`.
 - Choose how dates and times are shown in Settings → General: an automatic date format or `DD.MM.YYYY`, `DD/MM/YYYY`, `MM/DD/YYYY` or `YYYY-MM-DD`, a 12-hour or 24-hour clock, and whether weeks start on Monday or Sunday. The choice applies across the app, in emails and on the map, and the mobile app can read and change it through `/api/v1/settings`.
+- TREK sources can skip SSL certificate verification, like the Immich, Photoprism, AirTrail and TeslaMate integrations, so a TREK instance behind a certificate from a private CA can connect. The option is set per TREK source when you connect it, the source shows a badge while it is on, and a certificate error now points to it (#3902)
 
 ### Changed
 
@@ -45,6 +46,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The achievement cards for Valparaíso, Colima and Chile now show the mainland at full size. Before, a distant island (Easter Island or the Revillagigedo Islands) stretched the drawing, so the region shrank to a dot at the edge of the card. Earned achievements are unchanged (#3731)
 - With Edit points on, clicking another point of the track you are editing now selects that point, and a click that nudges the mouse by a few pixels no longer moves the point. Before, the panel and its Delete button stayed on the first point you clicked until you clicked an empty spot on the map, so Delete could remove the wrong point (#3772)
 - Aosta Valley is now part of Italy's achievement, which has all 20 regions. Anyone who already completed Italy keeps it. The upgrade recalculates achievements once in the background without notifications, so earlier visits to Aosta Valley count. (#3789)
+- Actions in the Background Jobs dashboard (Delete, Retry, Kill, Clear) no longer fail with "Forbidden" when Dawarich is opened directly over plain HTTP by a local network address. (#3907)
 
 ## [1.17.0] - 2026-10-23, Berlin
 

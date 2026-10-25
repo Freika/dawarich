@@ -1678,6 +1678,7 @@ en:
         sync_now: Sync now
         disconnect: Disconnect
         disconnect_confirmation: Disconnect TREK? Managed trips and their recorded data stay in Dawarich, but stop syncing.
+        ssl_verification_off: SSL verification off
     trek_sources:
       select_trips:
         title: Choose TREK trips
