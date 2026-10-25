@@ -232,6 +232,34 @@ RSpec.describe Points::VectorTileQuery do
 
       expect(feature_rows(z: 2, x: 2, y: 1).sum { |row| row['count'].to_i }).to eq(2)
     end
+
+    context 'when the scope holds few points' do
+      before { stub_const("#{described_class}::FENCE_MAX_ROWS", 5) }
+
+      it 'fences the scope so the planner reads it through the user/timestamp index' do
+        create_point_at(10, 10)
+
+        expect(executed_sql(z: 2, x: 2, y: 1)).to include('OFFSET 0')
+      end
+    end
+
+    context 'when the scope holds more points than the fence allows' do
+      before { stub_const("#{described_class}::FENCE_MAX_ROWS", 1) }
+
+      it 'leaves the scope unfenced so the geography index stays usable' do
+        create_point_at(10, 10)
+        create_point_at(2_000_000, 1_000_000)
+
+        expect(executed_sql(z: 2, x: 2, y: 1)).not_to include('OFFSET 0')
+      end
+
+      it 'still returns every point in the tile' do
+        create_point_at(10, 10)
+        create_point_at(2_000_000, 1_000_000)
+
+        expect(feature_rows(z: 2, x: 2, y: 1).sum { |row| row['count'].to_i }).to eq(2)
+      end
+    end
   end
 
   describe 'antimeridian seam' do

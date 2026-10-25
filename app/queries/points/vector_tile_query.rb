@@ -22,6 +22,11 @@ class Points::VectorTileQuery
   # Below this zoom tiles carry no per-point attributes: features are
   # centroid+count aggregates, so nothing can be popped up or identified.
   MIN_POINT_ATTRIBUTE_ZOOM = 5
+  # PostGIS can underestimate `lonlat &&` in a dense tile by five orders of
+  # magnitude and walk the GiST index for a one-day range (#3830). A scope this
+  # small is fenced so it is read through (user_id, timestamp) instead; larger
+  # scopes keep the geography index.
+  FENCE_MAX_ROWS = 50_000
   LAYER_NAME = 'points'
   TILE_PIXELS = 512
   WEB_MERCATOR_WORLD = 40_075_016.685578488
@@ -189,7 +194,7 @@ class Points::VectorTileQuery
     <<~SQL.squish
       SELECT points.timestamp AS timestamp, #{columns}
         #{translated_geom_expression(shift)} AS geom_3857
-      FROM (#{tile_scope.to_sql}) AS points
+      FROM (#{fenced_tile_scope.to_sql}) AS points
       WHERE points.lonlat IS NOT NULL
         #{spatial_prefilter(shift)}
         AND ST_Intersects(
@@ -250,9 +255,23 @@ class Points::VectorTileQuery
   end
 
   def tile_scope
+    bare_scope.select(:id, :timestamp, :battery, :altitude, :velocity, :lonlat,
+                      :track_id, :lock_version)
+  end
+
+  # OFFSET 0 stops PostgreSQL pushing the spatial filter into the subquery.
+  def fenced_tile_scope
+    fenced? ? tile_scope.offset(0) : tile_scope
+  end
+
+  def fenced?
+    return @fenced if defined?(@fenced)
+
+    @fenced = bare_scope.limit(FENCE_MAX_ROWS + 1).count(:all) <= FENCE_MAX_ROWS
+  end
+
+  def bare_scope
     scope.except(:select, :order, :includes, :preload, :eager_load)
-         .select(:id, :timestamp, :battery, :altitude, :velocity, :lonlat,
-                 :track_id, :lock_version)
   end
 
   def with_statement_timeout
