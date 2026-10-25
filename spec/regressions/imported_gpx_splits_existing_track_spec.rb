@@ -4,6 +4,8 @@ require 'rails_helper'
 require 'tempfile'
 
 RSpec.describe 'Imported GPX splits the surrounding low accuracy track' do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user, settings: { 'minutes_between_routes' => 60, 'timezone' => 'UTC' }) }
   let(:started_at) { Time.utc(2026, 6, 1, 8) }
 
@@ -75,11 +77,39 @@ RSpec.describe 'Imported GPX splits the surrounding low accuracy track' do
   it 'splits the already generated phone track when the GPX is imported later', :aggregate_failures do
     generate_tracks
     expect(track_sections).to eq([surrounding.map(&:id)])
+    user.tracks.update_all(created_at: 2.days.ago)
 
     imported = import_watch_gpx(watch_samples)
     generate_tracks(untracked_only: true)
 
     expect_split_around(imported)
+  end
+
+  it 'keeps the phone track and its shared link as the first section', :aggregate_failures do
+    generate_tracks
+    phone_track = user.tracks.sole
+    link = create(:shared_link, user: user, resource_type: :track, resource_id: phone_track.id)
+
+    import_watch_gpx(watch_samples)
+    generate_tracks(untracked_only: true)
+
+    expect(user.tracks.order(:start_at).first.id).to eq(phone_track.id)
+    expect(SharedLink.exists?(link.id)).to be(true)
+  end
+
+  it 'splits tracks created more than an hour ago when the generation started earlier', :aggregate_failures do
+    imported = import_watch_gpx(watch_samples)
+    perform_enqueued_jobs(only: Tracks::TimeChunkProcessorJob) do
+      Tracks::ParallelGenerator.new(user, start_at: started_at.beginning_of_day, end_at: started_at.end_of_day).call
+    end
+    user.tracks.update_all(created_at: 2.hours.ago)
+    session = travel_to(3.hours.ago) { Tracks::SessionManager.new(user.id).create_session }
+
+    Tracks::BoundaryResolverJob.perform_now(user.id, session.session_id)
+
+    expect_split_around(imported)
+  ensure
+    session&.cleanup_session
   end
 
   it 'leaves the phone track whole when the watch recorded alongside it', :aggregate_failures do
@@ -113,9 +143,28 @@ RSpec.describe 'Realtime tracks do not merge across another tracker handoff' do
     expect(user.tracks.where(tracker_id: 'owntracks-phone').count).to eq(2)
   end
 
+  it 'leaves single phone points without a track when nothing remains to connect' do
+    record('owntracks-phone', 60, -140.002)
+    [[55, -140.0], [50, -139.975], [45, -139.95]].each { |minutes, lon| record('watch', minutes, lon) }
+    record('owntracks-phone', 40, -139.948)
+    Tracks::IncrementalGenerator.new(user).call
+
+    expect(user.tracks.where(tracker_id: 'owntracks-phone')).to be_empty
+    expect(user.points.where(tracker_id: 'owntracks-phone').pluck(:track_id)).to all(be_nil)
+  end
+
+  it 'treats a blank tracker id and a missing one as the same tracker' do
+    [[60, -140.002], [59, -140.0], [44, -139.95], [43, -139.948]].each { |minutes, lon| record('', minutes, lon) }
+    [[55, -140.0], [50, -139.975]].each { |minutes, lon| record(nil, minutes, lon) }
+    Tracks::IncrementalGenerator.new(user).call
+
+    expect(user.tracks.where(tracker_id: '').count).to eq(1)
+  end
+
   it 'splits a phone batch uploaded after the watch track' do
     [[55, -140.0], [50, -139.975], [45, -139.95]].each { |minutes, lon| record('watch', minutes, lon) }
     Tracks::IncrementalGenerator.new(user).call
+    user.tracks.update_all(created_at: 2.hours.ago)
 
     [[60, -140.002], [59, -140.0], [40, -139.95], [39, -139.948]].each do |minutes, lon|
       record('owntracks-phone', minutes, lon)
