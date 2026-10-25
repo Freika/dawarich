@@ -1,0 +1,61 @@
+<% s = 'settings.webhooks.show' %>
+<% content_for :title, t("#{s}.title", name: @webhook.name) %>
+
+<div class="min-h-content w-full my-5">
+  <%= render layout: 'shared/page_header', locals: { title: t("#{s}.title", name: @webhook.name) } do %>
+    <%= link_to t("#{s}.back"), settings_geofencing_path, class: 'btn btn-sm' %>
+  <% end %>
+  <%= render 'settings/navigation' %>
+
+  <div class="card bg-base-200">
+    <div class="card-body p-5 sm:p-8">
+      <p class="text-sm text-base-content/70 [overflow-wrap:anywhere]"><%= @webhook.url %></p>
+      <% if @deliveries.empty? %>
+        <p class="text-sm text-base-content/60"><%= t("#{s}.empty") %></p>
+      <% else %>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th><%= t("#{s}.time") %></th>
+                <th><%= t("#{s}.event") %></th>
+                <th><%= t("#{s}.status") %></th>
+                <th><%= t("#{s}.attempts") %></th>
+                <th><%= t("#{s}.response") %></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @deliveries.each do |delivery| %>
+                <tr data-testid="webhook-delivery">
+                  <td class="whitespace-nowrap tabular-nums"><%= l(delivery.created_at.in_time_zone, format: :short) %></td>
+                  <td>
+                    <%= t("settings.geofencing.show.event_types.#{delivery.geofence_event.event_type}") %>
+                    · <%= delivery.geofence_event.place.name %>
+                    <% if delivery.geofence_event.synthetic? %><span class="badge badge-ghost badge-sm"><%= t("#{s}.test") %></span><% end %>
+                  </td>
+                  <td class="whitespace-nowrap">
+                    <span class="inline-flex items-center gap-1.5">
+                      <span class="size-1.5 rounded-full <%= { 'success' => 'bg-success', 'failure' => 'bg-error', 'retrying' => 'bg-warning' }.fetch(delivery.status, 'bg-base-content/30') %>" aria-hidden="true"></span>
+                      <%= t("#{s}.statuses.#{delivery.status}") %>
+                    </span>
+                  </td>
+                  <td class="tabular-nums"><%= delivery.attempt_count %></td>
+                  <td class="text-xs tabular-nums [overflow-wrap:anywhere]">
+                    <%= [delivery.response_status, delivery.error_message].compact.join(' · ').presence || '—' %>
+                  </td>
+                  <td>
+                    <% if delivery.status_failure? %>
+                      <%= button_to t("#{s}.retry"), retry_delivery_settings_webhook_path(@webhook, delivery_id: delivery.id),
+                                    class: 'btn btn-xs' %>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

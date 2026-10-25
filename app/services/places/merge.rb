@@ -27,11 +27,13 @@ module Places
         merge_tags
         merge_timeline_notes
         merge_legacy_mappings
+        geofence = merge_geofence
 
         merged_attributes = {
           note: merge_text(survivor.note, duplicate.note),
           geodata: duplicate.geodata.deep_merge(survivor.geodata)
         }
+        merged_attributes[:geofence] = true if geofence
         if survivor.photon? && (!duplicate.photon? || duplicate.name_locked?)
           merged_attributes.merge!(source: :manual, name_locked_at: survivor.name_locked_at || Time.current)
         end
@@ -106,6 +108,18 @@ module Places
 
     def merge_legacy_mappings
       LegacyAreaPlaceMapping.where(place_id: duplicate.id).update_all(place_id: survivor.id)
+    end
+
+    def merge_geofence
+      return false unless duplicate.geofence?
+
+      GeofenceEvent.where(place_id: duplicate.id).update_all(place_id: survivor.id)
+      Webhook.where(user_id: user.id).where('? = ANY(place_ids)', duplicate.id).update_all(
+        ['place_ids = ARRAY(SELECT DISTINCT unnest(array_replace(place_ids, ?, ?)))', duplicate.id, survivor.id]
+      )
+      GeofenceEvents::PlaceState.forget(duplicate)
+      duplicate.update_columns(geofence: false)
+      true
     end
 
     def merge_text(primary, secondary)

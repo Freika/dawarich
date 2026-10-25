@@ -1749,6 +1749,84 @@ paths:
                   description: How far back shared history goes
               required:
               - enabled
+  "/api/v1/geofence_events":
+    get:
+      summary: Lists geofence enter/leave events
+      tags:
+      - Geofencing
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: place_id
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: start_at
+        in: query
+        format: date
+        required: false
+        description: First day, in the user timezone
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        format: date
+        required: false
+        description: Last day, in the user timezone
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: events, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    place_id:
+                      type: integer
+                    place_name:
+                      type: string
+                    event_type:
+                      type: string
+                      enum:
+                      - enter
+                      - leave
+                    source:
+                      type: string
+                      enum:
+                      - native_app
+                      - server_inferred
+                      - owntracks_native
+                    occurred_at:
+                      type: string
+                      format: date-time
+                    latitude:
+                      type: number
+                    longitude:
+                      type: number
+                    accuracy_m:
+                      type: integer
+                      nullable: true
   "/api/v1/health":
     get:
       summary: Retrieves application status
@@ -3491,6 +3569,9 @@ paths:
                       type: integer
                       minimum: 1
                       default: 50
+                    geofence:
+                      type: boolean
+                      description: Report enter and leave events for this place
                     icon:
                       type: string
                       nullable: true
@@ -3557,6 +3638,9 @@ paths:
                     type: integer
                     minimum: 1
                     default: 50
+                  geofence:
+                    type: boolean
+                    description: Report enter and leave events for this place
                   icon:
                     type: string
                     nullable: true
@@ -3594,6 +3678,9 @@ paths:
                   type: integer
                   minimum: 1
                   default: 50
+                geofence:
+                  type: boolean
+                  description: Report enter and leave events for this place
                 tag_ids:
                   type: array
                   items:
@@ -3712,6 +3799,9 @@ paths:
                     type: integer
                     minimum: 1
                     default: 50
+                  geofence:
+                    type: boolean
+                    description: Report enter and leave events for this place
                   icon:
                     type: string
                     nullable: true
@@ -4031,6 +4121,68 @@ paths:
                   - Dec
         '401':
           description: unauthorized
+  "/api/v1/points/transitions":
+    post:
+      summary: Reports a geofence enter or leave detected on the device
+      tags:
+      - Geofencing
+      description: Records an enter or leave of a notifying place reported by the
+        mobile app and delivers it to the user's webhooks. Transitions older than
+        24 hours or more than 5 minutes in the future are rejected.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '201':
+          description: transition recorded
+        '204':
+          description: place does not belong to the user or does not notify
+        '422':
+          description: invalid transition
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - place_id
+              - event_type
+              - occurred_at
+              - lonlat
+              properties:
+                place_id:
+                  type: integer
+                event_type:
+                  type: string
+                  enum:
+                  - enter
+                  - leave
+                occurred_at:
+                  type: string
+                  format: date-time
+                lonlat:
+                  type: array
+                  items:
+                    type: number
+                  minItems: 2
+                  maxItems: 2
+                  description: "[longitude, latitude]"
+                accuracy_m:
+                  type: integer
+                  nullable: true
+                device_id:
+                  type: string
+                  nullable: true
+                  maxLength: 255
+                metadata:
+                  type: object
+                  description: Flat object of up to 20 scalar values
   "/api/v1/points":
     get:
       summary: Retrieves all points
@@ -6713,6 +6865,91 @@ paths:
                     - ended_at
               required:
               - visits
+  "/api/v1/webhooks":
+    get:
+      summary: Lists geofence webhooks
+      tags:
+      - Geofencing
+      description: Webhooks receive signed geofence enter/leave events. Pro or Family
+        plan on Dawarich Cloud.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: webhooks
+    post:
+      summary: Creates a geofence webhook
+      tags:
+      - Geofencing
+      description: 'Returns the signing secret once. Requests carry X-Dawarich-Signature:
+        sha256=<HMAC of the body>.'
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '201':
+          description: webhook created, secret included
+        '422':
+          description: invalid webhook
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                webhook:
+                  type: object
+                  required:
+                  - name
+                  - url
+                  properties:
+                    name:
+                      type: string
+                    url:
+                      type: string
+                    event_types:
+                      type: array
+                      items:
+                        type: integer
+                    place_ids:
+                      type: array
+                      items:
+                        type: integer
+                    active:
+                      type: boolean
+  "/api/v1/webhooks/{id}/test":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Sends a test event to a webhook
+      tags:
+      - Geofencing
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '202':
+          description: test delivery queued
+        '429':
+          description: more than five test sends a minute for this webhook (Dawarich
+            Cloud only)
 servers:
 - url: http://{defaultHost}
   variables:

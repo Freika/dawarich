@@ -112,7 +112,8 @@ module Places
         latitude: area.latitude,
         longitude: area.longitude,
         visit_radius: area.visit_radius,
-        source: :manual
+        source: :manual,
+        geofence: true
       )
       place.user_named = true
       place.skip_suggested_visit_reattribution = true
@@ -127,7 +128,8 @@ module Places
         name: area.name,
         source: :manual,
         name_locked_at: place.name_locked_at || Time.current,
-        visit_radius: [place.visit_radius, area.visit_radius].max
+        visit_radius: [place.visit_radius, area.visit_radius].max,
+        geofence: true
       )
     end
 

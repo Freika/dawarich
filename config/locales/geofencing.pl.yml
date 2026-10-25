@@ -1,0 +1,127 @@
+pl:
+  activerecord:
+    errors:
+      models:
+        webhook:
+          attributes:
+            url:
+              https_required: musi używać https
+            base:
+              too_many: Możesz mieć najwyżej %{count} webhooków.
+  webhooks:
+    notifications:
+      deactivated:
+        title: Webhook wyłączony
+        content: Webhook „%{name}” pięć razy z rzędu nie dostarczył zdarzenia i został wyłączony. Sprawdź adres odbiorcy, a potem włącz go ponownie w Ustawienia → Geofencing.
+  settings:
+    navigation:
+      geofencing: Geofencing
+    geofencing:
+      show:
+        title: Geofencing
+        intro: "Dawarich zapisuje, kiedy wchodzisz do miejsca z włączonym „Powiadamiaj o wejściu i wyjściu” lub je opuszczasz — według telefonu albo na podstawie odebranych punktów — i może wysłać każde zdarzenie do Twoich usług."
+        webhooks: Webhooki
+        webhooks_intro: Każde zdarzenie jest wysyłane jako podpisany POST z JSON. Porównaj nagłówek X-Dawarich-Signature z HMAC-SHA256 treści obliczonym Twoim sekretem.
+        no_webhooks: Nie ma jeszcze webhooków.
+        new_webhook: Nowy webhook
+        upgrade_title: Webhooki są częścią Pro
+        upgrade_text: Wysyłaj wejścia i wyjścia do Home Assistant, Node-RED, n8n albo własnej usługi.
+        upgrade: Przejdź na Pro
+        events: Zdarzenia
+        no_events: "Nie ma jeszcze zdarzeń. Pojawią się, gdy telefon albo aplikacja śledząca zgłosi punkt w jednym z tych miejsc."
+        no_places: "Żadne miejsce nie zgłasza jeszcze wejść i wyjść. Otwórz miejsce i włącz „Powiadamiaj o wejściu i wyjściu”."
+        open_places: "Otwórz miejsca"
+        place: "Miejsce"
+        all_places: "Wszystkie miejsca"
+        from: Od
+        to: Do
+        filter: Filtruj
+        time: Czas
+        event: Zdarzenie
+        source: Źródło
+        deliveries: Dostarczenia
+        event_types:
+          enter: Wejście
+          leave: Wyjście
+        sources:
+          native_app: Telefon
+          server_inferred: Punkty lokalizacji
+          owntracks_native: OwnTracks
+        delivered: 'Dostarczono: %{count}'
+        failed: 'Nieudane: %{count}'
+        in_progress: 'W toku: %{count}'
+        not_sent_late: "Nie wysłano: dotarło ponad %{minutes} min za późno"
+        not_sent_throttled: "Nie wysłano: ponad %{count} wejść i wyjść w ciągu godziny"
+    webhooks:
+      form:
+        name: Nazwa
+        url: URL
+        events: Zdarzenia
+        places: "Miejsca"
+        places_hint: "Nie zaznaczaj żadnego, aby dostawać zdarzenia ze wszystkich powiadamiających miejsc."
+        home_assistant_hint: "Home Assistant odpowiada 200 na każde żądanie, nawet gdy ID webhooka jest błędne, więc „Dostarczono” nie oznacza tu, że automatyzacja się uruchomiła: sprawdź jej ślad w Home Assistant. Home Assistant nie potrafi sprawdzić podpisu; webhook pozostaje prywatny tylko dzięki ID w adresie URL."
+        home_assistant_cloud_hint: "Domyślnie Home Assistant przyjmuje webhooki tylko z własnej sieci. Użyj adresu webhooka Nabu Casa albo wyłącz local_only w ustawieniach webhooka wyzwalacza."
+        active: Aktywny
+        save: Zapisz
+        create: Dodaj webhook
+      webhook:
+        active: Aktywny
+        inactive: Wyłączony
+        failing: Błędy
+        every_place: "Każde miejsce"
+        places_count:
+          one: "%{count} miejsce"
+          few: "%{count} miejsca"
+          many: "%{count} miejsc"
+          other: "%{count} miejsca"
+        last_success: Ostatnio dostarczono %{time} temu
+        never_delivered: Nic jeszcze nie dostarczono
+        failures:
+          one: '%{count} nieudane dostarczenie z rzędu'
+          few: '%{count} nieudane dostarczenia z rzędu'
+          many: '%{count} nieudanych dostarczeń z rzędu'
+          other: '%{count} nieudanego dostarczenia z rzędu'
+        test: Wyślij test
+        deliveries: Dostarczenia
+        regenerate: Nowy sekret
+        delete: Usuń
+        edit: Edytuj
+        confirm_regenerate: Wygenerować nowy sekret? Stary przestanie działać od razu.
+        confirm_delete: Usunąć ten webhook?
+      secret:
+        title: Sekret podpisu dla %{name}
+        text: Skopiuj go teraz — nie zostanie pokazany ponownie.
+        copy: Kopiuj
+      show:
+        title: 'Dostarczenia: %{name}'
+        back: Wróć do geofencingu
+        empty: Nie ma jeszcze dostarczeń.
+        time: Czas
+        event: Zdarzenie
+        status: Status
+        attempts: Próby
+        response: Odpowiedź
+        retry: Ponów
+        test: Test
+        statuses:
+          pending: Oczekuje
+          success: Dostarczono
+          failure: Nieudane
+          retrying: Ponawianie
+      create:
+        created: Dodano webhook.
+      update:
+        updated: Zapisano webhook.
+      destroy:
+        deleted: Usunięto webhook.
+      test:
+        sent: Wysłano zdarzenie testowe.
+        no_place: "Najpierw włącz „Powiadamiaj o wejściu i wyjściu” dla jakiegoś miejsca, aby wysłać zdarzenie testowe."
+        rate_limited: "Za dużo wysyłek testowych. Odczekaj minutę i spróbuj ponownie."
+      retry_delivery:
+        queued: Ponownie zaplanowano dostarczenie.
+  places:
+    drawer:
+      geofence: "Powiadamiaj o wejściu i wyjściu"
+      geofence_hint: "Używa promienia wizyty (%{radius} m)."
+      geofence_link: "Zdarzenia i webhooki"

@@ -200,7 +200,9 @@ module Api
       end
 
       def place_params
-        params.require(:place).permit(:name, :latitude, :longitude, :source, :note, :visit_radius, tag_ids: [])
+        params.require(:place).permit(
+          :name, :latitude, :longitude, :source, :note, :visit_radius, :geofence, tag_ids: []
+        )
       end
 
       def tag_ids

@@ -104,6 +104,7 @@ class Users::Destroy
     Rails.logger.info "User #{user_id} (#{user_email}) and all associated data deleted"
 
     cleanup_user_cache(user_id)
+    forget_geofence_state
 
     true
   end
@@ -155,6 +156,12 @@ class Users::Destroy
         ['DELETE FROM video_exports WHERE user_id = ?', user.id]
       )
     )
+  end
+
+  def forget_geofence_state
+    GeofenceEvents::StateStore.new(user).reset!
+  rescue GeofenceEvents::StateStore::Unavailable => e
+    Rails.logger.warn "Failed to clear geofence state for user #{user.id}: #{e.message}"
   end
 
   def cleanup_user_cache(user_id)

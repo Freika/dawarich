@@ -6,6 +6,7 @@ class Place < ApplicationRecord
   include Distanceable
   include Taggable
   include Notable
+  include Geofenceable
 
   DEFAULT_NAME = 'Suggested place'
   MAX_VISIT_RADIUS = 50_000
@@ -56,7 +57,7 @@ class Place < ApplicationRecord
       .or(where(id: Note.where(attachable_type: 'Place').select(:attachable_id)))
   }
   scope :confirmed_for, lambda { |user|
-    manual.or(imported).or(linked_to_confirmed_visits(user)).or(tagged).or(noted)
+    manual.or(imported).or(linked_to_confirmed_visits(user)).or(tagged).or(noted).or(geofences)
   }
   scope :unconfirmed_for, ->(user) { where.not(id: confirmed_for(user).select(:id)) }
   scope :map_visible, ->(user) { confirmed_for(user) }

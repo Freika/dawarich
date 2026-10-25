@@ -1,0 +1,123 @@
+es:
+  activerecord:
+    errors:
+      models:
+        webhook:
+          attributes:
+            url:
+              https_required: debe usar https
+            base:
+              too_many: Puedes tener hasta %{count} webhooks.
+  webhooks:
+    notifications:
+      deactivated:
+        title: Webhook desactivado
+        content: El webhook «%{name}» falló cinco entregas seguidas y se desactivó. Revisa la URL de destino y vuelve a activarlo en Ajustes → Geovallas.
+  settings:
+    navigation:
+      geofencing: Geovallas
+    geofencing:
+      show:
+        title: Geovallas
+        intro: "Dawarich registra cuándo entras o sales de un lugar con «Avisar al entrar y salir» activado —según tu teléfono o a partir de los puntos que recibe— y puede enviar cada evento a tus propios servicios."
+        webhooks: Webhooks
+        webhooks_intro: Cada evento se envía como un POST JSON firmado. Compara la cabecera X-Dawarich-Signature con un HMAC-SHA256 del cuerpo calculado con tu secreto.
+        no_webhooks: Todavía no hay webhooks.
+        new_webhook: Nuevo webhook
+        upgrade_title: Los webhooks son parte de Pro
+        upgrade_text: Envía entradas y salidas a Home Assistant, Node-RED, n8n o tu propio servicio.
+        upgrade: Pasar a Pro
+        events: Eventos
+        no_events: "Todavía no hay eventos. Aparecen cuando tu teléfono o tu app de seguimiento informa de un punto dentro de uno de estos lugares."
+        no_places: "Ningún lugar avisa todavía al entrar o salir. Abre un lugar y activa «Avisar al entrar y salir»."
+        open_places: "Abrir lugares"
+        place: "Lugar"
+        all_places: "Todos los lugares"
+        from: Desde
+        to: Hasta
+        filter: Filtrar
+        time: Hora
+        event: Evento
+        source: Origen
+        deliveries: Envíos
+        event_types:
+          enter: Entrada
+          leave: Salida
+        sources:
+          native_app: Teléfono
+          server_inferred: Puntos de ubicación
+          owntracks_native: OwnTracks
+        delivered: 'Enviados: %{count}'
+        failed: 'Fallidos: %{count}'
+        in_progress: 'En curso: %{count}'
+        not_sent_late: "No enviado: llegó con más de %{minutes} min de retraso"
+        not_sent_throttled: "No enviado: más de %{count} entradas y salidas en una hora"
+    webhooks:
+      form:
+        name: Nombre
+        url: URL
+        events: Eventos
+        places: "Lugares"
+        places_hint: "Déjalos sin marcar para recibir eventos de todos los lugares que avisan."
+        home_assistant_hint: "Home Assistant responde 200 a todas las solicitudes, incluso si el ID del webhook es incorrecto, así que «Enviado» aquí no demuestra que tu automatización se ejecutó: revisa su traza en Home Assistant. Home Assistant no puede comprobar la firma; lo que mantiene privado el webhook es su ID en la URL."
+        home_assistant_cloud_hint: "Por defecto, Home Assistant solo acepta webhooks de su propia red. Usa una URL de webhook de Nabu Casa o desactiva local_only en los ajustes de webhook del disparador."
+        active: Activo
+        save: Guardar
+        create: Añadir webhook
+      webhook:
+        active: Activo
+        inactive: Desactivado
+        failing: Con fallos
+        every_place: "Todos los lugares"
+        places_count:
+          one: "%{count} lugar"
+          other: "%{count} lugares"
+        last_success: Último envío hace %{time}
+        never_delivered: Aún no se ha enviado nada
+        failures:
+          one: '%{count} envío fallido seguido'
+          other: '%{count} envíos fallidos seguidos'
+        test: Enviar prueba
+        deliveries: Envíos
+        regenerate: Nuevo secreto
+        delete: Eliminar
+        edit: Editar
+        confirm_regenerate: ¿Generar un nuevo secreto? El anterior deja de funcionar de inmediato.
+        confirm_delete: ¿Eliminar este webhook?
+      secret:
+        title: Secreto de firma de %{name}
+        text: 'Cópialo ahora: no se volverá a mostrar.'
+        copy: Copiar
+      show:
+        title: 'Envíos: %{name}'
+        back: Volver a geovallas
+        empty: Todavía no hay envíos.
+        time: Hora
+        event: Evento
+        status: Estado
+        attempts: Intentos
+        response: Respuesta
+        retry: Reintentar
+        test: Prueba
+        statuses:
+          pending: Pendiente
+          success: Enviado
+          failure: Fallido
+          retrying: Reintentando
+      create:
+        created: Webhook añadido.
+      update:
+        updated: Webhook guardado.
+      destroy:
+        deleted: Webhook eliminado.
+      test:
+        sent: Evento de prueba enviado.
+        no_place: "Activa primero «Avisar al entrar y salir» en un lugar para enviar un evento de prueba."
+        rate_limited: "Demasiados envíos de prueba. Espera un minuto y vuelve a intentarlo."
+      retry_delivery:
+        queued: Envío programado de nuevo.
+  places:
+    drawer:
+      geofence: "Avisar al entrar y salir"
+      geofence_hint: "Usa el radio de visita (%{radius} m)."
+      geofence_link: "Eventos y webhooks"

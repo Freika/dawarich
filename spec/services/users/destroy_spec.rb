@@ -35,6 +35,26 @@ RSpec.describe Users::Destroy do
       end
     end
 
+    context 'with geofencing records' do
+      it 'deletes events, webhooks and deliveries with the user' do
+        delivery = create(:webhook_delivery, webhook: create(:webhook, user:))
+
+        service.call
+
+        expect(GeofenceEvent.where(user_id: user.id)).to be_empty
+        expect(Webhook.where(user_id: user.id)).to be_empty
+        expect(WebhookDelivery.where(id: delivery.id)).to be_empty
+      end
+
+      it 'forgets the user\'s geofence state' do
+        GeofenceEvents::StateStore.new(user).advance_evaluated_at!(Time.current.to_i)
+
+        service.call
+
+        expect(Sidekiq.redis_pool.with { |redis| redis.call('EXISTS', "geofence:evaluated_at:#{user.id}") }).to eq(0)
+      end
+    end
+
     context 'with associated records without foreign key constraints' do
       let!(:points) { create_list(:point, 5, user:) }
       let!(:import) { create(:import, user:) }

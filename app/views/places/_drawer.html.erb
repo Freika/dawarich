@@ -54,6 +54,19 @@
     <% end %>
   </section>
 
+  <section class="place-drawer__geofence">
+    <%= form_with model: place, method: :patch, data: { turbo_frame: 'place-drawer', controller: 'auto-submit' } do |f| %>
+      <label class="place-drawer__geofence-toggle">
+        <%= f.check_box :geofence, class: 'toggle toggle-sm', data: { action: 'change->auto-submit#submit', testid: 'place-geofence-toggle' } %>
+        <span><%= t('.geofence') %></span>
+      </label>
+      <p class="place-drawer__geofence-hint">
+        <%= t('.geofence_hint', radius: place.visit_radius) %>
+        <%= link_to t('.geofence_link'), settings_geofencing_path, data: { turbo_frame: '_top' } %>
+      </p>
+    <% end %>
+  </section>
+
   <section class="place-drawer__notes">
     <%= form_with model: place, method: :patch, data: { turbo_frame: 'place-drawer' } do |f| %>
       <%= f.label :note, t('.notes'), class: 'place-drawer__notes-label' %>

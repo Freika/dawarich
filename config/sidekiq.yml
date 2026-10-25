@@ -5,6 +5,7 @@
   - data_migrations
   - points
   - default
+  - webhooks
   - mailers
   - families
   - imports

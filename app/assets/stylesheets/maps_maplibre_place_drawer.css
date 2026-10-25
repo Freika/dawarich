@@ -107,6 +107,25 @@
   font-size: 0.875rem;
 }
 
+.place-drawer__geofence-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.place-drawer__geofence-hint {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: oklch(var(--bc) / 0.6);
+}
+
+.place-drawer__geofence-hint a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .place-drawer__notes form {
   display: flex;
   flex-direction: column;
