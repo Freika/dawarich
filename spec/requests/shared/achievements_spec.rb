@@ -28,6 +28,18 @@ RSpec.describe 'Shared achievements' do
       expect(response).to redirect_to(root_path)
     end
 
+    it 'keeps a set unlocked for an award earned before it gained a region' do
+      regions = Achievements::Registry.find('country_it').region_codes.excluding('IT-23')
+      exploration.update!(state: { 'earned' => regions.index_with { '2026-05-01T10:00:00Z' } })
+      create(:user_achievement, user: user, achievement_key: 'country_it', earned_at: Time.utc(2026, 6, 1, 12))
+      shared = create(:achievement_progress, user: user, achievement_key: 'country_it',
+                                             sharing_enabled: true, sharing_uuid: SecureRandom.uuid)
+
+      get shared_achievement_path(shared.sharing_uuid)
+
+      expect(response.body).to include('Unlocked · 1 Jun 2026')
+    end
+
     it 'renders the badge page without authentication' do
       get shared_achievement_path(progress.sharing_uuid)
 

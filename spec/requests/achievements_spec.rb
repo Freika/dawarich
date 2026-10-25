@@ -182,6 +182,18 @@ RSpec.describe 'Achievements' do
           expect(Nokogiri::HTML(response.body).at_css('select[name="status"] option[selected]')['value']).to eq('all')
         end
 
+        it 'keeps Italy unlocked for an award earned before Aosta Valley was added' do
+          regions = Achievements::Registry.find('country_it').region_codes.excluding('IT-23')
+          exploration(regions.index_with { '2026-05-01T10:00:00Z' }.merge('IT' => '2026-05-01T10:00:00Z'))
+          create(:user_achievement, user:, achievement_key: 'country_it', earned_at: Time.utc(2026, 6, 1, 12))
+
+          get achievement_path('continent_europe'), params: { status: 'unlocked', q: 'ital' }
+          expect(Nokogiri::HTML(response.body).css('.ach-child-grid .card-title').map(&:text)).to eq(['Italy'])
+
+          get achievement_path('country_it')
+          expect(response.body).to include('Unlocked · 1 Jun 2026')
+        end
+
         it 'renders a country page with its region cards' do
           exploration('DE-BY' => '2026-07-01T10:00:00Z')
 

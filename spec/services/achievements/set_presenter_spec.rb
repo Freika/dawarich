@@ -70,6 +70,43 @@ RSpec.describe Achievements::SetPresenter do
     end
   end
 
+  describe 'a set awarded before it gained a region' do
+    let(:awarded_at) { Time.utc(2026, 6, 1, 12) }
+    let(:earned) { Achievements::Registry.find('country_it').region_codes.excluding('IT-23').index_with { '2026-05-01' } }
+
+    def awarded(key)
+      described_class.new(
+        definition: Achievements::Registry.find(key),
+        state: { 'earned' => earned.merge('IT' => '2026-05-01') },
+        awards: { 'country_it' => awarded_at }
+      )
+    end
+
+    it 'stays completed, dated at the award' do
+      set = awarded('country_it')
+
+      expect(set).to be_completed
+      expect(set.percent).to eq(100)
+      expect(set.completed_on).to eq(Date.new(2026, 6, 1))
+      expect(set.earned_label).to eq('Unlocked · 1 Jun 2026')
+      expect(set.card_attributes[:metric_label]).to eq('19/20 regions')
+    end
+
+    it 'stays completed on its continent card' do
+      italy = awarded('continent_europe').region_cards.find { |card| card[:name] == 'Italy' }
+
+      expect(italy[:completed]).to be(true)
+      expect(italy[:earned_label]).to eq('Unlocked · 1 Jun 2026')
+    end
+
+    it 'is not completed without the award' do
+      set = presenter('country_it', earned: earned)
+
+      expect(set).not_to be_completed
+      expect(set.earned_label).to eq('19/20 regions')
+    end
+  end
+
   describe 'a flat country' do
     it 'completes on a single country code' do
       set = presenter('country_fr', earned: { 'FR' => '2026-05-01' })
