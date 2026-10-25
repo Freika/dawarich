@@ -86,3 +86,27 @@ test("a dense track is highlighted with its own coordinates", () => {
 
   assert.deepEqual(select(coordinates), { type: "LineString", coordinates })
 })
+
+test("a sparse polar segment overlay follows the great circle too", () => {
+  const map = fakeMap()
+  const layer = new TracksLayer(map)
+  layer.add({ type: "FeatureCollection", features: [] })
+  const coordinates = [
+    [160, 70],
+    [-60, 70],
+  ]
+  layer.showSegments(
+    {
+      type: "Feature",
+      properties: { id: 1 },
+      geometry: { type: "LineString", coordinates },
+    },
+    [{ mode: "flying", coordinates }],
+  )
+  const drawn = map.sources[layer.segmentSourceId].data.features[0].geometry
+  const peak = Math.max(
+    ...drawn.coordinates.flat(Infinity).filter((_, i) => i % 2 === 1),
+  )
+
+  assert.ok(peak > 82.4, `peaks at ${peak}`)
+})

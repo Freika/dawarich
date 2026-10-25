@@ -404,17 +404,19 @@ export class TracksLayer extends BaseLayer {
           segmentCoords = coords.slice(startIdx, endIdx + 1)
         }
 
-        // Need at least 2 points for a line
-        if (segmentCoords.length < 2) {
+        const lines = greatCircleLines(segmentCoords).filter(
+          (line) => line.length >= 2,
+        )
+        if (lines.length === 0) {
           return null
         }
 
         return {
           type: "Feature",
-          geometry: {
-            type: "LineString",
-            coordinates: segmentCoords,
-          },
+          geometry:
+            lines.length === 1
+              ? { type: "LineString", coordinates: lines[0] }
+              : { type: "MultiLineString", coordinates: lines },
           properties: {
             mode: segment.mode,
             color: segment.color || "#9E9E9E",

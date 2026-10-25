@@ -6,7 +6,7 @@ module Api
       class TilesController < BaseController
         include TileResponse
 
-        TILE_SCHEMA_VERSION = 1
+        TILE_SCHEMA_VERSION = 2
         PUBLIC_MAX_AGE = 30.seconds
 
         def show
