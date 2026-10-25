@@ -28,8 +28,9 @@ RSpec.describe 'Photo clusters above journey layers' do
         performanceMonitor: {mark() {}, measure() {}},
         SettingsManager: {getSetting: () => '#6366F1'},
         bumpTileVersion() {}, getMarkerStrokeColor: () => '#fff',
-        escapeAttribute: String, escapeHtml: String, formatTimestamp: String,
+        escapeAttribute: String, escapeHtml: String, formatTimestamp: String, formatDateTime: String,
         getCurrentTheme: () => 'light', getThemeColors: () => ({}),
+        Popup: class { setLngLat() { return this; } setHTML() { return this; } addTo() { return this; } remove() {} },
       };
       for (const name of ['Anomalies', 'Family', 'Flights', 'Fog', 'Hexagon', 'Places', 'Tracks', 'Visits']) {
         stubs[`${name}Layer`] = UnrelatedLayer;

@@ -233,10 +233,10 @@ test("a range chosen before the map loads is drawn once it loads", async (t) => 
 test("changing the form dates downloads no points", async (t) => {
   const requests = []
   const dispatched = []
-  const originals = ["fetch", "document"].map((name) => [
-    name,
-    globalThis[name],
-  ])
+  const timers = []
+  const originals = ["fetch", "document", "CustomEvent", "setTimeout"].map(
+    (name) => [name, globalThis[name]],
+  )
   t.after(() => {
     for (const [name, value] of originals) globalThis[name] = value
   })
@@ -247,7 +247,13 @@ test("changing the form dates downloads no points", async (t) => {
   globalThis.document = {
     querySelector: () => ({ dispatchEvent: (event) => dispatched.push(event) }),
   }
-  t.mock.timers.enable({ apis: ["setTimeout"] })
+  globalThis.CustomEvent = class {
+    constructor(type, options) {
+      this.type = type
+      this.detail = options.detail
+    }
+  }
+  globalThis.setTimeout = (callback, delay) => timers.push({ callback, delay })
 
   const controller = new DatetimeController()
   Object.assign(controller, {
@@ -255,7 +261,8 @@ test("changing the form dates downloads no points", async (t) => {
     endedAtTarget: { value: "2026-01-02T10:00", setCustomValidity() {} },
   })
   controller.updateCoordinates()
-  t.mock.timers.tick(500)
+  assert.equal(timers[0].delay, 500)
+  timers[0].callback()
   await new Promise((resolve) => setImmediate(resolve))
 
   assert.deepEqual(requests, [])
