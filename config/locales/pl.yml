@@ -859,6 +859,7 @@ pl:
       favorites_marked: Oznaczone ulubione
       places: miejsca
     year_cards:
+      flown: "w tym %{distance} samolotem"
       title: "Lata"
     year_calendar:
       mode: "Widok kalendarza"
@@ -2156,7 +2157,7 @@ pl:
       upgrade_to_pro: Przejdź na Pro
     month:
       flight_distance: Dystans lotów
-      from_airtrail_not_counted_in_distance: Z AirTrail, nieliczony do dystansu
+      from_airtrail_included_in_distance: Z AirTrail, wliczony do dystansu
       monthly_digest: Podsumowanie miesięczne
       share: Udostępnij
       distance_traveled: Przebyty dystans
@@ -2210,7 +2211,7 @@ pl:
       countries_count_countries_cities_count_cities: "%{countries_count} krajów, %{cities_count} miast"
     public_month:
       flight_distance: Dystans lotów
-      from_airtrail_not_counted_in_distance: Z AirTrail, nieliczony do dystansu
+      from_airtrail_included_in_distance: Z AirTrail, wliczony do dystansu
       monthly_digest: Podsumowanie miesięczne
       distance_traveled: Przebyty dystans
       total_distance_for_this_month: Całkowity dystans w tym miesiącu
@@ -2561,7 +2562,7 @@ pl:
           other: "%{count} miast"
     digests_mailer:
       monthly_digest:
-        flights: Loty
+        flights: W tym loty
         your: Twoje
         in_review: podsumowanie
         here_s_what_your_location_history_looked_like_last_month: Tak wyglądała historia Twojej lokalizacji w poprzednim miesiącu.

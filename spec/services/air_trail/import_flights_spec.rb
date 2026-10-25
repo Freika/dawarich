@@ -11,9 +11,9 @@ RSpec.describe AirTrail::ImportFlights do
   end
 
   def airtrail_flight(id:, dep: '2026-04-20T10:00:00.000+00:00', arr: '2026-04-20T12:00:00.000+00:00',
-                      dep_scheduled: nil, arr_scheduled: nil)
+                      dep_scheduled: nil, arr_scheduled: nil, date: '2026-04-20')
     {
-      'id' => id, 'date' => '2026-04-20', 'datePrecision' => 'day',
+      'id' => id, 'date' => date, 'datePrecision' => 'day',
       'departure' => dep, 'arrival' => arr,
       'departureScheduled' => dep_scheduled, 'arrivalScheduled' => arr_scheduled,
       'flightNumber' => 'AF1235',
@@ -130,6 +130,16 @@ RSpec.describe AirTrail::ImportFlights do
 
       expect { described_class.new(user).call }
         .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2025, 11)
+    end
+
+    it 'also recalculates the arrival month of an overnight flight' do
+      overnight = airtrail_flight(id: 1, date: '2026-03-31', dep: '2026-03-31T22:00:00.000+00:00',
+                                  arr: '2026-04-01T02:00:00.000+00:00')
+      allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([overnight])
+
+      expect { described_class.new(user).call }
+        .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2026, 3)
+        .and have_enqueued_job(Stats::CalculatingJob).with(user.id, 2026, 4)
     end
 
     it 'enqueues each affected month once' do

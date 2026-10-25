@@ -25,7 +25,7 @@
   <pre class="ascii" style="<%= pre_style %>">
 <%= t('.distance') %>       <%= distance_with_unit(@digest.distance, @distance_unit) %>
 <% if @digest.flight_distance.positive? %>
-<%= t('.flights') %>        <%= distance_with_unit(@digest.flight_distance, @distance_unit) %>
+<%= "#{t('.flights')} ".ljust(15) %><%= distance_with_unit(@digest.flight_distance, @distance_unit) %>
 <% end %>
 <%= t('.active_days') %>    <%= @active_days %>
 <%= t('.countries') %>      <%= @digest.time_spent_by_location.to_h['countries'].to_a.size %>
