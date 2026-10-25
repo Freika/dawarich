@@ -24,7 +24,7 @@ Rails.application.routes.draw do
     (u.admin? && DawarichSettings.self_hosted?) ||
       (u.admin? && ENV['SIDEKIQ_USERNAME'].present? && ENV['SIDEKIQ_PASSWORD'].present?)
   } do
-    mount Sidekiq::Web => '/sidekiq'
+    mount Dawarich::SidekiqWeb => '/sidekiq'
   end
 
   authenticate :user, ->(u) { u.admin? } do
