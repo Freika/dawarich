@@ -2138,7 +2138,7 @@ ca:
       upgrade_to_pro: Millora a Pro
     month:
       flight_distance: Distància de vol
-      from_airtrail_not_counted_in_distance: D'AirTrail, no comptat a la distància
+      from_airtrail_included_in_distance: D'AirTrail, comptat a la distància
       monthly_digest: Resum mensual
       share: Comparteix
       distance_traveled: Distància recorreguda
@@ -2190,7 +2190,7 @@ ca:
       countries_count_countries_cities_count_cities: "%{countries_count} països, %{cities_count} ciutats"
     public_month:
       flight_distance: Distància de vol
-      from_airtrail_not_counted_in_distance: D'AirTrail, no comptat a la distància
+      from_airtrail_included_in_distance: D'AirTrail, comptat a la distància
       monthly_digest: Resum mensual
       distance_traveled: Distància recorreguda
       total_distance_for_this_month: Distància total d'aquest mes

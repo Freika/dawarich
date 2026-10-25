@@ -2981,7 +2981,7 @@ fr:
       upgrade_to_pro: Passez à Pro
     month:
       flight_distance: Distance en vol
-      from_airtrail_not_counted_in_distance: Depuis AirTrail, non compté dans la distance
+      from_airtrail_included_in_distance: Depuis AirTrail, compté dans la distance
       monthly_digest: Récapitulatif mensuel
       share: Partager
       distance_traveled: Distance parcourue
@@ -3037,7 +3037,7 @@ fr:
         villes"
     public_month:
       flight_distance: Distance en vol
-      from_airtrail_not_counted_in_distance: Depuis AirTrail, non compté dans la distance
+      from_airtrail_included_in_distance: Depuis AirTrail, compté dans la distance
       monthly_digest: Récapitulatif mensuel
       distance_traveled: Distance parcourue
       total_distance_for_this_month: Distance totale pour ce mois

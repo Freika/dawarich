@@ -2138,7 +2138,7 @@ en:
       upgrade_to_pro: Upgrade to Pro
     month:
       flight_distance: Flight distance
-      from_airtrail_not_counted_in_distance: From AirTrail, not counted in distance
+      from_airtrail_included_in_distance: From AirTrail, included in distance traveled
       monthly_digest: Monthly Digest
       share: Share
       distance_traveled: Distance traveled
@@ -2190,7 +2190,7 @@ en:
       countries_count_countries_cities_count_cities: "%{countries_count} countries, %{cities_count} cities"
     public_month:
       flight_distance: Flight distance
-      from_airtrail_not_counted_in_distance: From AirTrail, not counted in distance
+      from_airtrail_included_in_distance: From AirTrail, included in distance traveled
       monthly_digest: Monthly Digest
       distance_traveled: Distance traveled
       total_distance_for_this_month: Total distance for this month
