@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Italy achievement regions' do
+  include ActiveJob::TestHelper
+
   before { Achievements::Registry.reset! }
   after { Achievements::Registry.reset! }
 
@@ -22,5 +24,20 @@ RSpec.describe 'Italy achievement regions' do
     covering = Region.where('ST_Covers(geom, ST_SetSRID(ST_MakePoint(7.32, 45.74), 4326))').pluck(:code)
 
     expect(covering).to eq(['IT-23'])
+  end
+
+  it 'credits earlier Aosta visits even when progress was computed before the region existed' do
+    require Rails.root.join('db/migrate/20261025120000_load_aosta_valley_region.rb')
+    user = create(:user)
+    create(:country)
+    Achievements::LoadRegions.new.call
+    Region.where(code: 'IT-23').delete_all
+    8.times { |i| create(:point, user:, longitude: 7.32, latitude: 45.74, timestamp: 1_767_225_600 + (i * 600)) }
+    Achievements::RegionSetChecker.new(user, notify: false).call
+
+    perform_enqueued_jobs { LoadAostaValleyRegion.new.up }
+
+    earned = Achievements::Progress.find_by(user:, achievement_key: 'exploration').state['earned']
+    expect(earned).to have_key('IT-23')
   end
 end
