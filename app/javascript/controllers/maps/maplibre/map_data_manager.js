@@ -366,6 +366,8 @@ export class MapDataManager {
         handlePointClick: this.eventHandlers.handlePointClick.bind(
           this.eventHandlers,
         ),
+        handleEditablePointClick:
+          this.eventHandlers.handleEditablePointClick.bind(this.eventHandlers),
         handleVisitClick: this.eventHandlers.handleVisitClick.bind(
           this.eventHandlers,
         ),

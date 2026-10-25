@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Renaming a place now renames its visits that still show the old or default name; visits you named yourself keep their names, and visits already showing an outdated name stay as they are (#3353)
 - A track from another tracker, such as an imported watch GPX, now cuts a track whose gap it fills instead of that track bridging the gap with a straight line and counting the distance twice. Trackers that record alongside each other keep separate, whole tracks. Choose Recalculate tracks & stats to apply this to imports made before this release (#3424)
 - Flights are drawn along the great circle: straight on the globe and an arc on the flat map. A route over the North Pole no longer kinks or runs along the map's top edge; the part beyond the edge of the flat map is left out (#3261)
+- With Edit points on, clicking another point of the track you are editing now selects that point, and a click that nudges the mouse by a few pixels no longer moves the point. Before, the panel and its Delete button stayed on the first point you clicked until you clicked an empty spot on the map, so Delete could remove the wrong point (#3772)
 
 ## [1.17.0] - 2026-10-23, Berlin
 
