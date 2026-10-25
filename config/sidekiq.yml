@@ -4,8 +4,8 @@
   - highest_priority
   - data_migrations
   - points
-  - webhooks
   - default
+  - webhooks
   - mailers
   - families
   - imports

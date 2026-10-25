@@ -51,6 +51,7 @@ de:
         failed: '%{count} fehlgeschlagen'
         in_progress: '%{count} laufend'
         not_sent_late: "Nicht gesendet: mehr als %{minutes} Min. zu spät eingetroffen"
+        not_sent_throttled: "Nicht gesendet: mehr als %{count} Ereignisse zum Betreten und Verlassen in einer Stunde"
     webhooks:
       form:
         name: Name
@@ -112,6 +113,7 @@ de:
       test:
         sent: Testereignis gesendet.
         no_place: "Schalte zuerst für einen Ort „Bei Betreten und Verlassen melden“ ein, um ein Testereignis zu senden."
+        rate_limited: "Zu viele Testsendungen. Warte eine Minute und versuche es erneut."
       retry_delivery:
         queued: Zustellung erneut eingeplant.
   places:

@@ -12,7 +12,7 @@ module Webhooks
     OPEN_TIMEOUT = 5
     READ_TIMEOUT = 10
     BODY_LIMIT = 1024
-    DEADLINE = 30
+    DEADLINE = 15
     TRANSPORT_ERRORS = [
       Net::OpenTimeout, Net::ReadTimeout, SocketError, SystemCallError, IOError,
       OpenSSL::SSL::SSLError, Timeout::Error, Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError,

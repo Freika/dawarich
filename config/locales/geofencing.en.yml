@@ -51,6 +51,7 @@ en:
         failed: '%{count} failed'
         in_progress: '%{count} in progress'
         not_sent_late: "Not sent: arrived more than %{minutes} min late"
+        not_sent_throttled: "Not sent: more than %{count} enter and leave events in an hour"
     webhooks:
       form:
         name: Name
@@ -112,6 +113,7 @@ en:
       test:
         sent: Test event sent.
         no_place: "Turn on “Notify on enter and leave” for a place first to send a test event."
+        rate_limited: "Too many test sends. Wait a minute and try again."
       retry_delivery:
         queued: Delivery queued again.
   places:

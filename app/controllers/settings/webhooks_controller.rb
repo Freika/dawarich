@@ -5,6 +5,9 @@ class Settings::WebhooksController < ApplicationController
 
   before_action :authenticate_user!
   before_action :set_webhook, except: :create
+  rate_limit to: 5, within: 1.minute, only: :test, by: -> { @webhook.id },
+             with: -> { respond_with_flash(t('settings.webhooks.test.rate_limited'), status: :too_many_requests) },
+             unless: -> { DawarichSettings.self_hosted? }
 
   def show
     @deliveries = @webhook.webhook_deliveries.includes(geofence_event: :place).order(created_at: :desc).limit(50)
@@ -78,9 +81,9 @@ class Settings::WebhooksController < ApplicationController
     end
   end
 
-  def respond_with_flash(message)
+  def respond_with_flash(message, status: :ok)
     respond_to do |format|
-      format.turbo_stream { render turbo_stream: stream_flash(:notice, message) }
+      format.turbo_stream { render turbo_stream: stream_flash(:notice, message), status: }
       format.html { redirect_back fallback_location: settings_geofencing_path, notice: message }
     end
   end

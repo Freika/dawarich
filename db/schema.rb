@@ -273,6 +273,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_210000) do
     t.boolean "synthetic", default: false, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.integer "webhook_skip_reason"
     t.index ["created_at"], name: "index_geofence_events_synthetic_on_created_at", where: "synthetic"
     t.index ["place_id", "occurred_at"], name: "index_geofence_events_on_place_id_and_occurred_at", order: { occurred_at: :desc }
     t.index ["user_id", "occurred_at"], name: "index_geofence_events_on_user_id_and_occurred_at", order: { occurred_at: :desc }

@@ -49,15 +49,30 @@ module GeofenceEvents
     end
 
     def create_event
+      received_at = Time.current
       GeofenceEvent.create!(
         user: @user, place: @place, event_type: @event_type, source: @source,
-        occurred_at: @occurred_at, received_at: Time.current, lonlat: @lonlat,
-        accuracy_m: @accuracy_m, device_id: @device_id, metadata: @metadata
+        occurred_at: @occurred_at, received_at:, lonlat: @lonlat,
+        accuracy_m: @accuracy_m, device_id: @device_id, metadata: @metadata,
+        webhook_skip_reason: webhook_skip_reason(received_at)
       )
     end
 
+    def webhook_skip_reason(received_at)
+      return :late if received_at - @occurred_at > GeofenceEvent::WEBHOOK_FRESHNESS
+
+      :throttled if hourly_limit_reached?
+    end
+
+    def hourly_limit_reached?
+      return false if DawarichSettings.self_hosted?
+
+      GeofenceEvent.real.where(user: @user, webhook_skip_reason: nil, occurred_at: 1.hour.ago..)
+                   .count >= GeofenceEvent::WEBHOOK_HOURLY_LIMIT
+    end
+
     def fan_out(event)
-      return if event.stale_for_webhooks? || !@user.entitlements.pro_api?
+      return if event.webhook_skip_reason || !@user.entitlements.pro_api?
 
       @user.webhooks.where(active: true).find_each do |webhook|
         next unless webhook.subscribed_to?(place: @place, event_type: @event_type)

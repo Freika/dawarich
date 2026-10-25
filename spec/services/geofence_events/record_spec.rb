@@ -25,7 +25,34 @@ RSpec.describe GeofenceEvents::Record do
 
   it 'stores an event that arrives too late for automations but does not deliver it' do
     expect { record(:enter, occurred_at: 20.minutes.ago) }.not_to have_enqueued_job(Webhooks::DeliverJob)
-    expect(GeofenceEvent.sole).to be_stale_for_webhooks
+    expect(GeofenceEvent.sole).to be_skipped_late
+  end
+
+  context 'on Dawarich Cloud' do
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :pro, active_until: 1.year.from_now)
+    end
+
+    it 'keeps recording but stops sending once an hour has too many events' do
+      create_list(:geofence_event, GeofenceEvent::WEBHOOK_HOURLY_LIMIT, user:, place:, occurred_at: 30.minutes.ago)
+
+      expect { record(:enter) }.not_to have_enqueued_job(Webhooks::DeliverJob)
+      expect(GeofenceEvent.order(:id).last).to be_skipped_throttled
+    end
+
+    it 'does not count events that were not sent or are older than an hour' do
+      create_list(:geofence_event, GeofenceEvent::WEBHOOK_HOURLY_LIMIT, user:, place:, occurred_at: 2.hours.ago)
+      create_list(:geofence_event, GeofenceEvent::WEBHOOK_HOURLY_LIMIT, user:, place:, webhook_skip_reason: :late)
+
+      expect { record(:enter) }.to have_enqueued_job(Webhooks::DeliverJob)
+    end
+  end
+
+  it 'does not cap events on a self-hosted instance' do
+    create_list(:geofence_event, GeofenceEvent::WEBHOOK_HOURLY_LIMIT, user:, place:, occurred_at: 30.minutes.ago)
+
+    expect { record(:enter) }.to have_enqueued_job(Webhooks::DeliverJob)
   end
 
   it 'delivers an event that arrives a few minutes late' do

@@ -6947,6 +6947,9 @@ paths:
       responses:
         '202':
           description: test delivery queued
+        '429':
+          description: more than five test sends a minute for this webhook (Dawarich
+            Cloud only)
 servers:
 - url: http://{defaultHost}
   variables:

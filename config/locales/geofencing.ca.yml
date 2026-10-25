@@ -51,6 +51,7 @@ ca:
         failed: 'Fallits: %{count}'
         in_progress: 'En curs: %{count}'
         not_sent_late: "No enviat: ha arribat amb més de %{minutes} min de retard"
+        not_sent_throttled: "No enviat: més de %{count} entrades i sortides en una hora"
     webhooks:
       form:
         name: Nom
@@ -112,6 +113,7 @@ ca:
       test:
         sent: Esdeveniment de prova enviat.
         no_place: "Activa primer «Avisa en entrar i sortir» en un lloc per enviar un esdeveniment de prova."
+        rate_limited: "Massa enviaments de prova. Espera un minut i torna-ho a provar."
       retry_delivery:
         queued: Enviament programat de nou.
   places:

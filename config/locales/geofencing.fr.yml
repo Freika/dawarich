@@ -51,6 +51,7 @@ fr:
         failed: 'En échec : %{count}'
         in_progress: 'En cours : %{count}'
         not_sent_late: "Non envoyé : arrivé avec plus de %{minutes} min de retard"
+        not_sent_throttled: "Non envoyé : plus de %{count} entrées et sorties en une heure"
     webhooks:
       form:
         name: Nom
@@ -112,6 +113,7 @@ fr:
       test:
         sent: Événement de test envoyé.
         no_place: "Activez d’abord « Signaler l’entrée et la sortie » pour un lieu afin d’envoyer un événement de test."
+        rate_limited: "Trop d’envois de test. Patientez une minute puis réessayez."
       retry_delivery:
         queued: Envoi reprogrammé.
   places:

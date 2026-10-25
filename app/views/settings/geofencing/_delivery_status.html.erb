@@ -2,8 +2,10 @@
 <% delivered = deliveries.count(&:status_success?) %>
 <% failed = deliveries.count(&:status_failure?) %>
 <% in_progress = deliveries.count { |d| d.status_pending? || d.status_retrying? } %>
-<% if deliveries.empty? && webhooks.any? && event.stale_for_webhooks? %>
+<% if deliveries.empty? && webhooks.any? && event.skipped_late? %>
   <%= t("#{scope}.not_sent_late", minutes: GeofenceEvent::WEBHOOK_FRESHNESS.in_minutes.to_i) %>
+<% elsif deliveries.empty? && webhooks.any? && event.skipped_throttled? %>
+  <%= t("#{scope}.not_sent_throttled", count: GeofenceEvent::WEBHOOK_HOURLY_LIMIT) %>
 <% elsif deliveries.empty? %>
   —
 <% else %>

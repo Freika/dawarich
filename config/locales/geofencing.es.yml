@@ -51,6 +51,7 @@ es:
         failed: 'Fallidos: %{count}'
         in_progress: 'En curso: %{count}'
         not_sent_late: "No enviado: llegó con más de %{minutes} min de retraso"
+        not_sent_throttled: "No enviado: más de %{count} entradas y salidas en una hora"
     webhooks:
       form:
         name: Nombre
@@ -112,6 +113,7 @@ es:
       test:
         sent: Evento de prueba enviado.
         no_place: "Activa primero «Avisar al entrar y salir» en un lugar para enviar un evento de prueba."
+        rate_limited: "Demasiados envíos de prueba. Espera un minuto y vuelve a intentarlo."
       retry_delivery:
         queued: Envío programado de nuevo.
   places:

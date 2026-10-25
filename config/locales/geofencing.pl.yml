@@ -51,6 +51,7 @@ pl:
         failed: 'Nieudane: %{count}'
         in_progress: 'W toku: %{count}'
         not_sent_late: "Nie wysłano: dotarło ponad %{minutes} min za późno"
+        not_sent_throttled: "Nie wysłano: ponad %{count} wejść i wyjść w ciągu godziny"
     webhooks:
       form:
         name: Nazwa
@@ -116,6 +117,7 @@ pl:
       test:
         sent: Wysłano zdarzenie testowe.
         no_place: "Najpierw włącz „Powiadamiaj o wejściu i wyjściu” dla jakiegoś miejsca, aby wysłać zdarzenie testowe."
+        rate_limited: "Za dużo wysyłek testowych. Odczekaj minutę i spróbuj ponownie."
       retry_delivery:
         queued: Ponownie zaplanowano dostarczenie.
   places:

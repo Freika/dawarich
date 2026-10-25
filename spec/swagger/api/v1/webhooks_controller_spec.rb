@@ -80,6 +80,21 @@ RSpec.describe 'Webhooks API', type: :request do
 
         run_test!
       end
+
+      response '429', 'more than five test sends a minute for this webhook (Dawarich Cloud only)' do
+        let(:id) { create(:webhook, user:).id }
+
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+          user.update!(plan: :pro, active_until: 1.year.from_now)
+          create(:place, :geofence, user:)
+          5.times { post "/api/v1/webhooks/#{id}/test", params: { api_key: user.api_key } }
+        end
+
+        run_test! do |response|
+          expect(JSON.parse(response.body)).to eq('error' => 'rate_limited')
+        end
+      end
     end
   end
 end

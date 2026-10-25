@@ -53,12 +53,14 @@ RSpec.describe 'Settings → Geofencing', type: :request do
 
     it 'says when an event arrived too late to be sent' do
       create(:webhook, user:)
-      create(:geofence_event, user:, place: home, occurred_at: 2.hours.ago, received_at: 1.minute.ago)
+      create(:geofence_event, user:, place: home, occurred_at: 2.hours.ago, webhook_skip_reason: :late)
+      create(:geofence_event, user:, place: work, occurred_at: 3.hours.ago, webhook_skip_reason: :throttled)
 
       get settings_geofencing_path
 
-      status = page.at_css('[data-testid="event-delivery-status"]').text.squish
-      expect(status).to eq('Not sent: arrived more than 15 min late')
+      statuses = page.css('[data-testid="event-delivery-status"]').map { |node| node.text.squish }
+      expect(statuses).to eq(['Not sent: arrived more than 15 min late',
+                              'Not sent: more than 60 enter and leave events in an hour'])
     end
 
     it 'explains how Home Assistant answers only where it applies' do
@@ -174,6 +176,28 @@ RSpec.describe 'Settings → Geofencing', type: :request do
 
       delete settings_webhook_path(webhook), headers: turbo
       expect(Webhook.exists?(webhook.id)).to be(false)
+    end
+
+    it 'allows five test sends a minute on Dawarich Cloud, then asks to wait' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :pro, active_until: 1.year.from_now)
+      home
+      webhook = create(:webhook, user:)
+
+      6.times { post test_settings_webhook_path(webhook), headers: turbo }
+
+      expect(WebhookDelivery.count).to eq(5)
+      expect(response).to have_http_status(:too_many_requests)
+      expect(response.body).to include('Too many test sends')
+    end
+
+    it 'does not limit test sends on a self-hosted instance' do
+      home
+      webhook = create(:webhook, user:)
+
+      6.times { post test_settings_webhook_path(webhook), headers: turbo }
+
+      expect(WebhookDelivery.count).to eq(6)
     end
 
     it 'sends a test and rotates the secret' do

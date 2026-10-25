@@ -51,6 +51,7 @@ zh:
         failed: '失败 %{count}'
         in_progress: '进行中 %{count}'
         not_sent_late: "未发送：延迟超过 %{minutes} 分钟才到达"
+        not_sent_throttled: "未发送：一小时内的进入和离开事件超过 %{count} 次"
     webhooks:
       form:
         name: 名称
@@ -112,6 +113,7 @@ zh:
       test:
         sent: 已发送测试事件。
         no_place: "请先为一个地点开启“进入和离开时通知”，再发送测试事件。"
+        rate_limited: "测试发送过于频繁。请等待一分钟后再试。"
       retry_delivery:
         queued: 已重新安排投递。
   places:

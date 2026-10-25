@@ -58,6 +58,19 @@ RSpec.describe 'Api::V1::Webhooks', type: :request do
     expect(WebhookDelivery.sole.webhook).to eq(webhook)
   end
 
+  it 'answers 429 after five test sends a minute on Dawarich Cloud' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    user.update!(plan: :pro, active_until: 1.year.from_now)
+    create(:place, :geofence, user:)
+    webhook = create(:webhook, user:)
+
+    6.times { post "/api/v1/webhooks/#{webhook.id}/test", headers: headers }
+
+    expect(response).to have_http_status(:too_many_requests)
+    expect(json).to eq('error' => 'rate_limited')
+    expect(WebhookDelivery.count).to eq(5)
+  end
+
   it 'answers 422 to a test without any place' do
     post "/api/v1/webhooks/#{create(:webhook, user:).id}/test", headers: headers
 

@@ -14,6 +14,7 @@ class CreateGeofenceEvents < ActiveRecord::Migration[8.1]
       t.string :device_id
       t.jsonb :metadata, null: false, default: {}
       t.boolean :synthetic, null: false, default: false
+      t.integer :webhook_skip_reason
 
       t.timestamps
     end
