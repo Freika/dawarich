@@ -107,10 +107,7 @@ class Tracks::VectorTileQuery
         SELECT #{property_columns},
           #{mvt_geom_expression} AS geom
         FROM (#{tile_scope.to_sql}) AS tracks
-        WHERE ST_Intersects(
-          tracks.original_path,
-          ST_Transform(#{margined_envelope}, 4326)
-        )
+        WHERE #{tile_intersects('tracks.original_path')}
         LIMIT #{TRACKS_PER_TILE_LIMIT}
       )
     SQL
@@ -129,7 +126,7 @@ class Tracks::VectorTileQuery
         JOIN LATERAL (#{point_geometry_query.path_sql(track_id_sql: 'tracks.id')}) AS clipped_path
           ON clipped_path.path IS NOT NULL
         WHERE tracks.clipped
-          AND ST_Intersects(clipped_path.path, ST_Transform(#{margined_envelope}, 4326))
+          AND #{tile_intersects('clipped_path.path')}
         LIMIT #{TRACKS_PER_TILE_LIMIT}
       )
     SQL
@@ -140,7 +137,7 @@ class Tracks::VectorTileQuery
       candidates AS MATERIALIZED (
         SELECT tracks.*, #{clipped_track_predicate} AS clipped
         FROM (#{tile_scope.to_sql}) AS tracks
-        WHERE ST_Intersects(tracks.original_path, ST_Transform(#{margined_envelope}, 4326))
+        WHERE #{tile_intersects('tracks.original_path')}
       )
     SQL
   end
@@ -224,7 +221,7 @@ class Tracks::VectorTileQuery
   end
 
   def simplified_geom(geometry)
-    geom = "ST_Transform(#{geometry}, 3857)"
+    geom = "ST_Transform(#{GreatCircleSql.densified(geometry)}, 3857)"
     return geom if z >= SIMPLIFY_SKIP_ZOOM
 
     "ST_Simplify(#{geom}, #{simplify_tolerance})"
@@ -234,6 +231,10 @@ class Tracks::VectorTileQuery
   # variant and value; ST_AsMVTGeom's quantization handles the rest).
   def simplify_tolerance
     WEB_MERCATOR_WORLD / (1 << z) / TILE_PIXELS
+  end
+
+  def tile_intersects(path)
+    GreatCircleSql.intersects(path, "ST_Transform(#{margined_envelope}, 4326)", arc: GreatCircleSql.flight('tracks'))
   end
 
   def margined_envelope

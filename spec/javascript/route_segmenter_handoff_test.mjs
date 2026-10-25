@@ -2,12 +2,24 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-const source = await readFile(
+const flightArcs = await readFile(
   new URL(
-    "../../app/javascript/maps_maplibre/utils/route_segmenter.js",
+    "../../app/javascript/maps_maplibre/utils/flight_arcs.js",
     import.meta.url,
   ),
   "utf8",
+)
+const source = (
+  await readFile(
+    new URL(
+      "../../app/javascript/maps_maplibre/utils/route_segmenter.js",
+      import.meta.url,
+    ),
+    "utf8",
+  )
+).replace(
+  '"./flight_arcs"',
+  `"data:text/javascript;base64,${Buffer.from(flightArcs).toString("base64")}"`,
 )
 const { RouteSegmenter } = await import(
   `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`

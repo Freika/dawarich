@@ -1,3 +1,5 @@
+import { greatCircleLines } from "./flight_arcs"
+
 /**
  * RouteSegmenter - Utility for converting points into route segments
  * Handles route splitting based on time/distance thresholds and IDL crossings
@@ -102,11 +104,22 @@ export class RouteSegmenter {
    * @returns {Array<Array<[number, number]>>} Always returns an array of coordinate arrays (MultiLineString-compatible)
    */
   static unwrapCoordinates(segment) {
-    const crossingIndices = RouteSegmenter.findIDLCrossings(segment)
+    const lines = greatCircleLines(
+      segment.map((p) => [parseFloat(p.longitude), parseFloat(p.latitude)]),
+    )
+    return lines.flatMap((line) =>
+      RouteSegmenter.stitchAntimeridian(
+        line.map(([longitude, latitude]) => ({ longitude, latitude })),
+      ),
+    )
+  }
+
+  static stitchAntimeridian(points) {
+    const crossingIndices = RouteSegmenter.findIDLCrossings(points)
     const coordsList = []
 
     for (let i = 0; i < crossingIndices.length - 1; i++) {
-      const subsegment = segment.slice(
+      const subsegment = points.slice(
         crossingIndices[i],
         crossingIndices[i + 1],
       )
@@ -216,6 +229,7 @@ export class RouteSegmenter {
    */
   static segmentToFeature(segment) {
     const coordinates = RouteSegmenter.unwrapCoordinates(segment)
+    if (coordinates.length === 0) return null
     const totalDistance = RouteSegmenter.calculateSegmentDistance(segment)
 
     const startTime = segment[0].timestamp
@@ -320,6 +334,7 @@ export class RouteSegmenter {
           RouteSegmenter.splitAtHandoffs(segment, otherSegments),
         )
         .map((segment) => RouteSegmenter.segmentToFeature(segment))
+        .filter(Boolean)
     })
 
     return {
