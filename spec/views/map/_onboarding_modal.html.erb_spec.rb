@@ -45,6 +45,14 @@ RSpec.describe 'map/_onboarding_modal', type: :view do
     expect(html).to include('demo data')
   end
 
+  it 'lists every format the import form supports' do
+    html = rendered_modal
+
+    %w[google_maps google_photos mobile_photo_library gpx geojson owntracks kml fit tcx csv polarsteps swarm zip].each do |key|
+      expect(html).to include(ERB::Util.html_escape(I18n.t("imports.form.#{key}")))
+    end
+  end
+
   it 'hides the family path without the family plan' do
     expect(rendered_modal).not_to include('Invite your family')
   end

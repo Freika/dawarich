@@ -919,6 +919,8 @@ en:
       dawarich_logo: Dawarich logo
   map:
     onboarding_modal:
+      not_sure_where_your_app_keeps_its_export: "Not sure where your app keeps its export?"
+      step_by_step_export_guides: "Step-by-step export guides"
       invite_your_family: "Invite your family"
       add_your_family_and_see_each_other_on_the_map: "Add your family and see each other on the map."
       welcome_to_dawarich: Welcome to Dawarich!
@@ -933,16 +935,6 @@ en:
       skip_for_now: Skip for now
       import_your_data: Import your data
       supported_formats: Supported formats
-      google_maps: 'Google Maps:'
-      records_json_semantic_history_phone_takeout_json: Records.json, Semantic History, Phone Takeout (.json)
-      gpx: 'GPX:'
-      track_files_gpx: Track files (.gpx)
-      geojson: 'GeoJSON:'
-      feature_collections_json: Feature collections (.json)
-      owntracks: 'OwnTracks:'
-      recorder_files_rec: Recorder files (.rec)
-      kml: 'KML:'
-      kml_files_kml_kmz: KML files (.kml, .kmz)
       file_format_is_automatically_detected_during_upload: File format is automatically detected during upload.
       trial_limitations_max_5_imports_10mb_per_file_current_imports: 'Trial limitations: Max 5 imports, 10MB per file. Current imports:'
       select_one_or_multiple_files: Select one or multiple files

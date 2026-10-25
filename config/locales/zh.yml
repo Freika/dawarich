@@ -926,6 +926,8 @@ zh:
       dawarich_logo: Dawarich 徽标
   map:
     onboarding_modal:
+      not_sure_where_your_app_keeps_its_export: "不知道您的应用把导出功能放在哪里？"
+      step_by_step_export_guides: "分步导出指南"
       add_your_family_and_see_each_other_on_the_map: 添加家人，在地图上互相查看位置。
       invite_your_family: 邀请您的家人
       welcome_to_dawarich: 欢迎使用 Dawarich！
@@ -940,16 +942,6 @@ zh:
       skip_for_now: 暂时跳过
       import_your_data: 导入您的数据
       supported_formats: 支持的格式
-      google_maps: Google 地图：
-      records_json_semantic_history_phone_takeout_json: Records.json、语义历史记录、手机 Takeout (.json)
-      gpx: GPX：
-      track_files_gpx: 轨迹文件 (.gpx)
-      geojson: GeoJSON：
-      feature_collections_json: 要素集合 (.json)
-      owntracks: OwnTracks：
-      recorder_files_rec: Recorder 文件 (.rec)
-      kml: KML：
-      kml_files_kml_kmz: KML 文件（.kml、.kmz）
       file_format_is_automatically_detected_during_upload: 上传期间自动检测文件格式。
       trial_limitations_max_5_imports_10mb_per_file_current_imports: 试用限制：最多 5 次导入，每个文件 10MB。当前导入：
       select_one_or_multiple_files: 选择一个或多个文件
