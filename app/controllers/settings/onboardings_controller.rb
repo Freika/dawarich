@@ -5,6 +5,8 @@ module Settings
     before_action :authenticate_user!
 
     def update
+      return head :unprocessable_content unless current_user.settings.is_a?(Hash)
+
       current_user.settings['onboarding_completed'] = true
       current_user.save!
       head :ok

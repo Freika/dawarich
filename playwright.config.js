@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test"
 
+const port = Number(process.env.E2E_PORT || 3000)
+const baseURL = process.env.BASE_URL || `http://localhost:${port}`
+
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
@@ -17,8 +20,11 @@ export default defineConfig({
   reporter: [["html"], ["junit", { outputFile: "test-results/results.xml" }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
+    ...(process.env.PLAYWRIGHT_CHANNEL && {
+      channel: process.env.PLAYWRIGHT_CHANNEL,
+    }),
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || "http://localhost:3000",
+    baseURL,
 
     /* Use European locale and timezone */
     locale: "en-GB",
@@ -71,9 +77,8 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command:
-      "OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES RAILS_ENV=development rails server -p 3000",
-    url: "http://localhost:3000",
+    command: `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES WEB_CONCURRENCY=0 RAILS_ENV=development bin/rails server -p ${port}`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

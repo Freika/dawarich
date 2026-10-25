@@ -159,6 +159,28 @@ RSpec.describe Place, type: :model do
   describe 'methods' do
     let(:place) { create(:place, :with_geodata) }
 
+    describe '#address_line' do
+      it 'formats a Photon-shaped address' do
+        place = build(:place, geodata: { 'properties' => { 'street' => 'Poststraße', 'housenumber' => '23',
+                                                           'postcode' => '04275', 'city' => 'Leipzig' } })
+
+        expect(place.address_line).to eq('Poststraße 23, 04275 Leipzig')
+      end
+
+      it 'formats a Nominatim-shaped address' do
+        place = build(:place, geodata: { 'lat' => '51.3', 'lon' => '12.3',
+                                         'address' => { 'road' => 'Poststraße', 'house_number' => '23',
+                                                        'postcode' => '04275', 'city' => 'Leipzig' } })
+
+        expect(place.address_line).to eq('Poststraße 23, 04275 Leipzig')
+      end
+
+      it 'is nil without geodata' do
+        expect(build(:place, geodata: {}).address_line).to be_nil
+        expect(build(:place, geodata: nil).address_line).to be_nil
+      end
+    end
+
     describe '#osm_id' do
       it 'returns the osm_id' do
         expect(place.osm_id).to eq(5_762_449_774)

@@ -4,38 +4,21 @@ require 'rails_helper'
 
 RSpec.describe FeatureFlags do
   describe '.apply_defaults!' do
-    it 'ships poster ordering enabled on an install that has never seen the flag' do
-      Flipper.remove(:poster_ordering)
-
-      described_class.apply_defaults!
-
-      expect(Flipper.enabled?(:poster_ordering)).to be true
-    end
-
-    it 'leaves an instance that turned poster ordering off alone' do
+    it 'removes the retired poster ordering flag even when it was disabled' do
       Flipper.add(:poster_ordering)
       Flipper.disable(:poster_ordering)
 
       described_class.apply_defaults!
 
-      expect(Flipper.enabled?(:poster_ordering)).to be false
+      expect(Flipper.exist?(:poster_ordering)).to be false
     end
 
-    it 'registers achievements disabled on an install that has never seen the flag' do
-      Flipper.remove(:achievements)
-
-      described_class.apply_defaults!
-
-      expect(Flipper.exist?(:achievements)).to be true
-      expect(Flipper.enabled?(:achievements)).to be false
-    end
-
-    it 'preserves an instance that has enabled achievements' do
+    it 'removes the retired achievements flag' do
       Flipper.enable(:achievements)
 
       described_class.apply_defaults!
 
-      expect(Flipper.enabled?(:achievements)).to be true
+      expect(Flipper.exist?(:achievements)).to be false
     end
 
     it 'drops the instance settings flag now that the resolver always runs' do

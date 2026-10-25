@@ -11,17 +11,14 @@ RSpec.describe DataMigrations::BackfillAchievementsJob do
       .and_return(instance_double(Achievements::LoadRegions, call: true))
   end
 
-  after { Flipper.disable(:achievements) }
-
   context 'on Cloud' do
     before do
       create(:country)
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
     end
 
-    it 'schedules a silent stale-only check before the feature is switched on' do
+    it 'schedules a silent stale-only check' do
       stub_region_loading
-      Flipper.disable(:achievements)
 
       expect { described_class.perform_now }.to have_enqueued_job(backfill[0]).with(**backfill[1])
     end
@@ -41,16 +38,12 @@ RSpec.describe DataMigrations::BackfillAchievementsJob do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
     end
 
-    it 'does nothing while the feature is off' do
+    it 'schedules the backfill even if a legacy flag was disabled' do
       Flipper.disable(:achievements)
 
-      expect { described_class.perform_now }.not_to have_enqueued_job(Achievements::BulkCheckJob)
-    end
-
-    it 'schedules the backfill once the feature is on' do
-      Flipper.enable(:achievements)
-
       expect { described_class.perform_now }.to have_enqueued_job(backfill[0]).with(**backfill[1])
+    ensure
+      Flipper.remove(:achievements)
     end
   end
 

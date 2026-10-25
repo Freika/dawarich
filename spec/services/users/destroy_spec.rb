@@ -12,6 +12,12 @@ RSpec.describe Users::Destroy do
     end
 
     context 'with minimal user data' do
+      it 'holds an exclusive user-data lock while deleting associated records' do
+        expect(Users::DataLock).to receive(:with_exclusive).with(user.id).and_call_original
+
+        service.call
+      end
+
       it 'hard deletes the user record' do
         expect { service.call }.to change { User.unscoped.count }.by(-1)
       end
@@ -85,6 +91,20 @@ RSpec.describe Users::Destroy do
         allow(user).to receive(:delete).and_raise(StandardError, 'Database error')
 
         expect { service.call }.to raise_error(StandardError)
+      end
+    end
+
+    context 'with point and track revisions' do
+      before do
+        create(:point, user:, timestamp: Time.utc(2026, 9, 10).to_i)
+        create(:track, user:, start_at: Time.utc(2026, 9, 10), end_at: Time.utc(2026, 9, 10, 1))
+      end
+
+      it 'leaves no revision rows for the deleted user' do
+        service.call
+
+        expect(Points::Revision.where(user_id: user.id)).to be_empty
+        expect(Tracks::Revision.where(user_id: user.id)).to be_empty
       end
     end
 

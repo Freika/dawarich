@@ -225,10 +225,28 @@ RSpec.describe Visits::Create do
         expect { service.call }.to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
       end
 
-      it 'does not enqueue for a confirmed visit, whose name the user asserted' do
+      it 'enqueues address lookup for a confirmed visit sent without an address' do
         service = described_class.new(user, valid_params)
 
+        expect { service.call }.to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
+      end
+
+      it 'enqueues address lookup for a confirmed visit whose address fields are all blank' do
+        service = described_class.new(user, valid_params.merge(address: { street: '', city: ' ' }))
+
+        expect { service.call }.to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
+      end
+
+      it 'does not enqueue for a confirmed visit that brought its own address' do
+        service = described_class.new(user, valid_params.merge(address: { street: 'Poststraße', city: 'Berlin' }))
+
         expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
+      end
+
+      it 'enqueues address lookup when the sent address has no street or city' do
+        service = described_class.new(user, valid_params.merge(address: { street: '', city: ' ', country: 'DE' }))
+
+        expect { service.call }.to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
       end
 
       it 'does not enqueue when an existing place is reused' do
@@ -256,6 +274,15 @@ RSpec.describe Visits::Create do
         service = described_class.new(user, valid_params.merge(status: 'suggested'))
 
         expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
+      end
+    end
+
+    context 'when the address is not an object' do
+      it 'creates the visit without an address' do
+        service = described_class.new(user, valid_params.merge(address: [{ city: 'Berlin' }]))
+
+        expect(service.call).to be_a(Visit)
+        expect(service.visit.place.geodata).to eq({})
       end
     end
 
@@ -476,6 +503,22 @@ RSpec.describe Visits::Create do
         expect(ExceptionReporter).to receive(:call)
 
         service.call
+      end
+    end
+
+    context 'when an unexpected visit creation error occurs' do
+      subject(:service) { described_class.new(user, valid_params) }
+
+      before do
+        visits_association = user.visits
+        allow(user).to receive(:visits).and_return(visits_association)
+        allow(visits_association).to receive(:create!).and_raise(StandardError, 'unexpected failure')
+      end
+
+      it 'reports the error' do
+        expect(ExceptionReporter).to receive(:call).with(instance_of(StandardError), include('unexpected failure'))
+
+        expect(service.call).to be(false)
       end
     end
 

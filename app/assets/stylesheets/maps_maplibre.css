@@ -52,15 +52,15 @@
   top: 16px;
   left: 50%;
   padding: 8px 16px;
-  background: white;
+  background: oklch(var(--b1));
+  border: 1px solid oklch(var(--bc) / 0.15);
   border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: #4b5563;
+  color: oklch(var(--bc) / 0.75);
   z-index: 20;
   white-space: nowrap;
   opacity: 0;
@@ -152,14 +152,6 @@
 }
 
 /* Dark theme support for progress badge */
-html[data-theme="dark"] .map-progress-badge,
-html[data-theme="dawarich-dark"] .map-progress-badge,
-html.dark .map-progress-badge {
-  background: rgba(31, 41, 55, 0.95);
-  color: #d1d5db;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
 html[data-theme="dark"] .map-progress-badge-dot,
 html[data-theme="dawarich-dark"] .map-progress-badge-dot,
 html.dark .map-progress-badge-dot {
@@ -293,7 +285,6 @@ html.dark .maplibregl-popup-tip {
   background: #eff6ff;
   border: 1px solid #bfdbfe;
   border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   font-size: 13px;
   font-weight: 500;
   color: #1e40af;
@@ -347,4 +338,58 @@ html[data-theme="dark"] .map-upgrade-banner-dismiss,
 html[data-theme="dawarich-dark"] .map-upgrade-banner-dismiss,
 html.dark .map-upgrade-banner-dismiss {
   color: #e2e8f0;
+}
+
+.map-html-label {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  color: #111827;
+  text-shadow:
+    -1px -1px 0 #ffffff,
+    1px -1px 0 #ffffff,
+    -1px 1px 0 #ffffff,
+    1px 1px 0 #ffffff,
+    0 -2px 0 #ffffff,
+    0 2px 0 #ffffff,
+    -2px 0 0 #ffffff,
+    2px 0 0 #ffffff;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.map-html-label--places {
+  font-size: 11px;
+}
+
+.map-html-label--areas {
+  font-size: 14px;
+}
+
+.map-html-label--visits {
+  font-size: 11px;
+}
+
+.map-html-label--family {
+  font-size: 12px;
+}
+
+html[data-theme="dark"] .map-html-label,
+html[data-theme="dawarich-dark"] .map-html-label,
+html.dark .map-html-label {
+  color: #f3f4f6;
+  text-shadow:
+    -1px -1px 0 #111827,
+    1px -1px 0 #111827,
+    -1px 1px 0 #111827,
+    1px 1px 0 #111827,
+    0 -2px 0 #111827,
+    0 2px 0 #111827,
+    -2px 0 0 #111827,
+    2px 0 0 #111827;
 }

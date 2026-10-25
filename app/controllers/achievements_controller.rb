@@ -4,7 +4,6 @@ class AchievementsController < ApplicationController
   ROWS_PER_PAGE = 12
 
   before_action :authenticate_user!
-  before_action :require_feature_enabled
   before_action :load_exploration, only: %i[index show]
 
   def index
@@ -43,7 +42,7 @@ class AchievementsController < ApplicationController
     end
 
     respond_to do |format|
-      format.html { redirect_back fallback_location: achievement_path(params[:key]) }
+      format.html { redirect_to sharing_return_location, allow_other_host: false }
       format.json do
         render json: {
           enabled: progress.sharing_enabled,
@@ -55,6 +54,20 @@ class AchievementsController < ApplicationController
   end
 
   private
+
+  def sharing_return_location
+    referer = request.referer.to_s.strip
+    uri = URI.parse(referer)
+    if uri.scheme.nil?
+      return referer if uri.host.nil? && referer.start_with?('/') && !referer.start_with?('//')
+    elsif %w[http https].include?(uri.scheme.downcase) && uri.host == request.host
+      return referer
+    end
+
+    achievement_path(params[:key])
+  rescue URI::InvalidURIError
+    achievement_path(params[:key])
+  end
 
   def sharing_carrier(key)
     current_user.achievement_progresses.find_or_create_by!(achievement_key: key)
@@ -143,10 +156,6 @@ class AchievementsController < ApplicationController
       keys.each { |key| celebrated[key] = Time.current.iso8601 }
       @exploration.update!(state: @exploration.state.merge('celebrated' => celebrated))
     end
-  end
-
-  def require_feature_enabled
-    redirect_to root_path unless Flipper.enabled?(:achievements)
   end
 
   # An explicit `enabled` param sets sharing to that state (idempotent, so a

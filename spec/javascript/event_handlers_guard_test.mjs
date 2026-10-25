@@ -56,7 +56,7 @@ test("an aggregate MVT Point zooms instead of opening an editor", () => {
   handlers.handlePointClick({
     features: [
       {
-        properties: { id: 42, count: 8 },
+        properties: { count: 8 },
         layer: { id: "points-mvt" },
       },
     ],
@@ -70,6 +70,79 @@ test("an aggregate MVT Point zooms instead of opening an editor", () => {
       zoom: 10,
       duration: 350,
     },
+  ])
+})
+
+test("a merged tile marker zooms without selecting its representative", () => {
+  const selected = []
+  const movements = []
+  const handlers = new EventHandlers(
+    {
+      easeTo: (options) => movements.push(options),
+      getZoom: () => 16,
+      getMaxZoom: () => 22,
+    },
+    {
+      layerManager: { getLayer: () => null },
+    },
+  )
+  handlers._showPointFeature = (feature) => selected.push(feature)
+
+  handlers.handlePointClick({
+    features: [
+      {
+        properties: {
+          id: 42,
+          count: 8,
+          timestamp: 0,
+          longitude: "0",
+          latitude: "0",
+        },
+        layer: { id: "points-mvt" },
+      },
+    ],
+    lngLat: { lng: 13.4, lat: 52.5 },
+  })
+
+  assert.deepEqual(movements, [
+    {
+      center: { lng: 13.4, lat: 52.5 },
+      zoom: 18,
+      duration: 350,
+    },
+  ])
+  assert.deepEqual(selected, [])
+})
+
+test("overlapping points at maximum zoom show no point actions", () => {
+  const infos = []
+  globalThis.translate = (key, values) =>
+    values?.count ? `${key}: ${values.count}` : key
+  const handlers = new EventHandlers(
+    {
+      getZoom: () => 22,
+      getMaxZoom: () => 22,
+      easeTo: () => {
+        throw new Error("already at maximum zoom")
+      },
+    },
+    {
+      layerManager: { getLayer: () => null },
+      showInfo: (...args) => infos.push(args),
+    },
+  )
+
+  handlers.handlePointClick({
+    features: [
+      {
+        properties: { id: 42, count: 2 },
+        layer: { id: "points-mvt" },
+      },
+    ],
+  })
+
+  assert.deepEqual(infos, [
+    ["map_info.location_point", "<p>map_info.overlapping_points: 2</p>"],
   ])
 })
 

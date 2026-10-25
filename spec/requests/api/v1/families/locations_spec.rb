@@ -36,7 +36,7 @@ RSpec.describe 'Api::V1::Families::Locations', type: :request do
         expect(json_response['sharing_enabled']).to be true
       end
 
-      it 'includes the requesting user own location when they have sharing enabled' do
+      it 'excludes the requesting user location even when sharing is enabled' do
         user.update_family_location_sharing!(true, duration: 'permanent')
         create(:point, user: user, timestamp: 1.hour.ago.to_i)
         create(:point, user: other_user, timestamp: 2.hours.ago.to_i)
@@ -45,7 +45,7 @@ RSpec.describe 'Api::V1::Families::Locations', type: :request do
 
         json_response = JSON.parse(response.body)
         user_ids = json_response['locations'].map { |l| l['user_id'] }
-        expect(user_ids).to include(user.id)
+        expect(user_ids).not_to include(user.id)
         expect(user_ids).to include(other_user.id)
       end
     end

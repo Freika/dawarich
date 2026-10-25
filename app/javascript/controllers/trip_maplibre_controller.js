@@ -1,14 +1,14 @@
 import { Controller } from "@hotwired/stimulus"
 import { MapInitializer } from "controllers/maps/maplibre/map_initializer"
 import { translate } from "i18n"
-import * as maplibregl from "maplibre-gl"
-import { DayRoutesLayer } from "maps_maplibre/layers/day_routes_layer"
 import { FlightsLayer } from "maps_maplibre/layers/flights_layer"
 import { PhotosLayer } from "maps_maplibre/layers/photos_layer"
 import { TripPlanLayer } from "maps_maplibre/layers/trip_plan_layer"
+import { TripRoutesTileLayer } from "maps_maplibre/layers/trip_routes_tile_layer"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { ApiClient } from "maps_maplibre/services/api_client"
+import { buildDayRouteCollections } from "maps_maplibre/utils/day_route_collections"
 import { pointsFromDevice } from "maps_maplibre/utils/device_points"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { flightWindows, maskLines } from "maps_maplibre/utils/flight_mask"
@@ -23,10 +23,12 @@ import Flash from "./flash_controller"
 export default class extends Controller {
   static targets = [
     "map",
+    "pathPending",
     "daysAccordion",
     "expandAllBtn",
     "loadingIndicator",
     "posterBtn",
+    "videoBtn",
     // Photos button
     "photosToggleBtn",
     // Flights button
@@ -65,16 +67,21 @@ export default class extends Controller {
     tripName: String,
     metersBetweenRoutes: { type: Number, default: 500 },
     minutesBetweenRoutes: { type: Number, default: 60 },
-    pathData: String,
+    tilesUrl: String,
+    dayKeys: Array,
+    dayBounds: Object,
+    dayEndpoints: Object,
+    fullBounds: Array,
     deviceWindows: Array,
     plan: String,
     mapStyle: { type: String, default: "light" },
   }
 
   async connect() {
-    this.pointsByDay = {}
     this.selectedDay = null
     this.dayRoutesLayer = null
+    this.dayRouteCollections = []
+    this.pointsPromise = null
     this.photosLayer = null
     this.photosGeoJSON = null
     this.photosActive = false
@@ -82,16 +89,30 @@ export default class extends Controller {
     this.flightsGeoJSON = null
     this.flightsActive = false
     this.planLayer = null
-    this.mapInitializing = false
-    this.overviewSourceId = "trip-overview-source"
-    this.overviewLayerId = "trip-overview-layer"
-
-    // Replay (managed by ReplayPanel)
     this.allPoints = []
     this.replayPanel = null
 
     this.onPlanFocus = (event) => this.focusPlanStop(event.detail || {})
     window.addEventListener("trip-plan:focus", this.onPlanFocus)
+
+    if (this.hasPathPendingTarget) {
+      // Recover path updates broadcast before the stream subscribes or reconnects.
+      const sources = document.querySelectorAll("turbo-cable-stream-source")
+      this.pathObserver = new MutationObserver((mutations) => {
+        if (mutations.some(({ target }) => target.hasAttribute("connected"))) {
+          this.syncPendingPath()
+        }
+      })
+      sources.forEach((source) => {
+        this.pathObserver.observe(source, {
+          attributes: true,
+          attributeFilter: ["connected"],
+        })
+      })
+      if ([...sources].some((source) => source.hasAttribute("connected"))) {
+        this.syncPendingPath()
+      }
+    }
 
     if (this.hasMapTarget) {
       await this.initializeMap()
@@ -99,6 +120,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.pathObserver?.disconnect()
     window.removeEventListener("trip-plan:focus", this.onPlanFocus)
     this.planLayer?.remove()
     this.planLayer = null
@@ -121,6 +143,45 @@ export default class extends Controller {
     this.mapInitializing = false
   }
 
+  async syncPendingPath() {
+    if (!this.hasPathPendingTarget) return
+    // A request made mid-fetch may follow a newer path save, so rerun once.
+    if (this.syncingPath) {
+      this.pathSyncQueued = true
+      return
+    }
+
+    this.syncingPath = true
+    try {
+      const response = await fetch(window.location.href, {
+        headers: { Accept: "text/html" },
+        credentials: "same-origin",
+      })
+      if (!response.ok)
+        throw new Error(`Trip path sync failed: ${response.status}`)
+
+      const latest = new DOMParser().parseFromString(
+        await response.text(),
+        "text/html",
+      )
+      if (
+        this.element.isConnected &&
+        this.hasPathPendingTarget &&
+        latest.querySelector('[data-trip-maplibre-target="map"]')
+      ) {
+        Turbo.visit(window.location.href, { action: "replace" })
+      }
+    } catch (error) {
+      console.warn("Could not synchronize trip path", error)
+    } finally {
+      this.syncingPath = false
+      if (this.pathSyncQueued) {
+        this.pathSyncQueued = false
+        this.syncPendingPath()
+      }
+    }
+  }
+
   async mapTargetConnected() {
     if (!this.map && !this.mapInitializing) {
       await this.initializeMap()
@@ -131,152 +192,91 @@ export default class extends Controller {
     if (!this.hasMapTarget || this.mapInitializing) return
     this.mapInitializing = true
 
-    this.map = await MapInitializer.initialize(this.mapTarget, {
-      mapStyle: this.mapStyleValue,
-      center: [0, 0],
-      zoom: 2,
-      showControls: true,
-    })
+    this.map = await MapInitializer.initialize(
+      this.mapTarget,
+      {
+        mapStyle: this.mapStyleValue,
+        center: [0, 0],
+        zoom: 2,
+        showControls: true,
+      },
+      this.apiKeyValue,
+    )
 
-    this.map.on("load", async () => {
-      this.showPathOverview()
-      await this.fetchAndProcessPoints()
-    })
+    this.map.on("load", () => this.addTripRoutes())
   }
 
-  getPathData() {
-    const raw =
-      this.pathDataValue ||
-      (this.hasMapTarget && this.mapTarget.dataset.pathCoordinates)
-    return raw || null
+  addTripRoutes() {
+    this.dayRoutesLayer = new TripRoutesTileLayer(this.map, {
+      tilesUrl: this.tilesUrlValue,
+      dayKeys: this.dayKeysValue,
+      dayBounds: this.dayBoundsValue,
+      fullBounds: this.fullBoundsValue,
+      dayEndpoints: this.dayEndpointsValue,
+    })
+    this.applyDayColors(this.dayRoutesLayer.getDayKeys())
+    this.dayRoutesLayer.setupInteractions({
+      onDayClick: (dayKey) => this.selectDayFromMap(dayKey),
+    })
+    this.fitFullBounds()
+    if (this.flightsActive) this.applyFlightMask()
   }
 
-  showPathOverview() {
-    const pathData = this.getPathData()
-    if (!pathData) return
-
-    try {
-      const coordinates = JSON.parse(pathData)
-      if (!coordinates.length) return
-
-      if (this.map.getSource(this.overviewSourceId)) return
-
-      const geojson = {
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: coordinates,
-        },
-      }
-
-      this.map.addSource(this.overviewSourceId, {
-        type: "geojson",
-        data: geojson,
-      })
-
-      this.map.addLayer({
-        id: this.overviewLayerId,
-        type: "line",
-        source: this.overviewSourceId,
-        layout: {
-          "line-join": "round",
-          "line-cap": "round",
-        },
-        paint: {
-          "line-color": "#6366F1",
-          "line-width": 3,
-          "line-opacity": 0.8,
-        },
-      })
-
-      const bounds = new maplibregl.LngLatBounds()
-      for (const coord of coordinates) {
-        bounds.extend(coord)
-      }
-      if (!bounds.isEmpty()) {
-        this.map.fitBounds(bounds, { padding: 50, maxZoom: 15 })
-      }
-    } catch (e) {
-      console.error("[TripMapLibre] Error showing path overview:", e)
+  fitFullBounds() {
+    const fullBounds = this.dayRoutesLayer?.getFullBounds()
+    if (fullBounds) {
+      this.map.fitBounds(fullBounds, { padding: 50, maxZoom: 15 })
     }
   }
 
-  async fetchAndProcessPoints() {
-    const apiClient = new ApiClient(this.apiKeyValue)
+  ensurePoints() {
+    this.pointsPromise ||= this.loadPoints().catch((error) => {
+      this.pointsPromise = null
+      throw error
+    })
+    return this.pointsPromise
+  }
 
+  async loadPoints() {
+    this.setPointsLoading(true)
     try {
-      this.showLoading(true)
-
-      const { points: fetchedPoints } = await apiClient.fetchAllPoints({
+      const { points } = await new ApiClient(this.apiKeyValue).fetchAllPoints({
         start_at: this.startedAtValue,
         end_at: this.endedAtValue,
       })
-      const allPoints = pointsFromDevice(
-        fetchedPoints || [],
-        this.deviceWindowsValue,
-      )
-
-      if (!allPoints?.length) {
-        this.showLoading(false)
-        return
-      }
-
-      // Use ReplayManager for canonical day grouping
+      const allPoints = pointsFromDevice(points || [], this.deviceWindowsValue)
       const grouper = new ReplayManager({ timezone: this.timezoneValue })
       grouper.setPoints(allPoints)
-      this.pointsByDay = {}
+      const pointsByDay = {}
       for (const dayKey of grouper.availableDays) {
-        this.pointsByDay[dayKey] = grouper.getPointsForDay(dayKey)
-      }
-      const dayKeys = Object.keys(this.pointsByDay).sort()
-
-      if (!dayKeys.length) {
-        this.showLoading(false)
-        return
+        pointsByDay[dayKey] = grouper.getPointsForDay(dayKey)
       }
 
-      this.removeOverviewLine()
-
-      this.dayRoutesLayer = new DayRoutesLayer(this.map)
-      this.dayRoutesLayer.addDayRoutes(this.pointsByDay, {
+      this.allPoints = allPoints
+      this.dayRouteCollections = buildDayRouteCollections(pointsByDay, {
         distanceThresholdMeters: this.metersBetweenRoutesValue,
         timeThresholdMinutes: this.minutesBetweenRoutesValue,
       })
+      return allPoints
+    } finally {
+      this.setPointsLoading(false)
+    }
+  }
 
-      this.applyDayColors(dayKeys)
-
-      this.dayRoutesLayer.setupInteractions({
-        onDayClick: (dayKey) => this.selectDayFromMap(dayKey),
-      })
-
-      const fullBounds = this.dayRoutesLayer.getFullBounds()
-      if (fullBounds) {
-        this.map.fitBounds(fullBounds, { padding: 50, maxZoom: 15 })
-      }
-
-      // Re-apply flight masking in case flights were toggled on before the
-      // day routes finished loading. Skip when flights are off so we don't
-      // re-set every route source to its unmasked data on every load.
-      if (this.flightsActive) this.applyFlightMask()
-
-      // Store all points for replay use
-      this.allPoints = allPoints
-
-      // The replay panel may have been opened before points finished loading
-      if (
-        this.hasReplayPanelTarget &&
-        !this.replayPanelTarget.classList.contains("hidden")
-      ) {
-        if (this.replayPanel) {
-          this.replayPanel.allPoints = this.allPoints
-          this.replayPanel.init()
-        }
-      }
-
-      this.showLoading(false)
-    } catch (e) {
-      console.error("[TripMapLibre] Error fetching points:", e)
-      this.showLoading(false)
+  setPointsLoading(loading) {
+    this.showLoading(loading)
+    if (loading) {
+      this.busyButtons = ["posterBtn", "videoBtn", "replayToggleBtn"]
+        .filter(
+          (name) => this[`has${name[0].toUpperCase()}${name.slice(1)}Target`],
+        )
+        .map((name) => this[`${name}Target`])
+        .filter((button) => !button.disabled)
+    }
+    for (const button of this.busyButtons || []) {
+      button.disabled = loading
+      if (loading) button.setAttribute("aria-busy", "true")
+      else button.removeAttribute("aria-busy")
     }
   }
 
@@ -343,10 +343,7 @@ export default class extends Controller {
       if (this.dayRoutesLayer) {
         this.dayRoutesLayer.selectAllDays()
 
-        const fullBounds = this.dayRoutesLayer.getFullBounds()
-        if (fullBounds) {
-          this.map.fitBounds(fullBounds, { padding: 50, maxZoom: 15 })
-        }
+        this.fitFullBounds()
       }
     } else {
       const allDetails = this.daysAccordionTarget.querySelectorAll(
@@ -405,19 +402,7 @@ export default class extends Controller {
     if (this.dayRoutesLayer) {
       this.dayRoutesLayer.selectAllDays()
 
-      const fullBounds = this.dayRoutesLayer.getFullBounds()
-      if (fullBounds) {
-        this.map.fitBounds(fullBounds, { padding: 50, maxZoom: 15 })
-      }
-    }
-  }
-
-  removeOverviewLine() {
-    if (this.map.getLayer(this.overviewLayerId)) {
-      this.map.removeLayer(this.overviewLayerId)
-    }
-    if (this.map.getSource(this.overviewSourceId)) {
-      this.map.removeSource(this.overviewSourceId)
+      this.fitFullBounds()
     }
   }
 
@@ -430,8 +415,24 @@ export default class extends Controller {
   // ===== Poster studio =====
 
   openPosterStudio() {
+    return this.openStudio("poster-studio:open")
+  }
+
+  async openStudio(eventName) {
+    try {
+      await this.ensurePoints()
+    } catch (error) {
+      console.error("[TripMapLibre] Error fetching points:", error)
+      Flash.show(
+        "error",
+        translate("messages.failed_to_load_location_data_please_try_again"),
+      )
+      return
+    }
+    if (!this.element.isConnected) return
+
     document.dispatchEvent(
-      new CustomEvent("poster-studio:open", {
+      new CustomEvent(eventName, {
         detail: { provider: this.posterProvider() },
       }),
     )
@@ -465,20 +466,11 @@ export default class extends Controller {
   // ===== Video studio =====
 
   openVideoStudio() {
-    document.dispatchEvent(
-      new CustomEvent("video-studio:open", {
-        detail: { provider: this.posterProvider() },
-      }),
-    )
+    return this.openStudio("video-studio:open")
   }
 
   posterGeojson() {
-    return buildTripGeojson({
-      dayRouteCollections: this.dayRoutesLayer
-        ? [...this.dayRoutesLayer.dayRouteData.values()]
-        : [],
-      pathData: this.getPathData(),
-    })
+    return buildTripGeojson({ dayRouteCollections: this.dayRouteCollections })
   }
 
   // ===== Photos layer toggle (button-based) =====
@@ -607,11 +599,15 @@ export default class extends Controller {
   }
 
   applyFlightMask() {
+    const tripStart = Date.parse(this.startedAtValue) / 1000
+    const tripEnd = Date.parse(this.endedAtValue) / 1000
     const windows =
       this.flightsActive && this.flightsLayer?.visible
-        ? flightWindows(this.flightsGeoJSON)
+        ? flightWindows(this.flightsGeoJSON).filter(
+            ([from, to]) => to >= tripStart && from <= tripEnd,
+          )
         : []
-    this.dayRoutesLayer?.maskRoutes(windows)
+    this.dayRoutesLayer?.setExcludedWindows(windows)
   }
 
   // ===== Planned itinerary overlay =====
@@ -668,8 +664,8 @@ export default class extends Controller {
 
   // ===== Replay (delegates to the reusable ReplayPanel) =====
 
-  toggleReplay() {
-    if (!this.hasReplayPanelTarget) return
+  async toggleReplay() {
+    if (!this.hasReplayPanelTarget || this.replayToggling) return
     if (!this.replayPanel) {
       this.replayPanel = new ReplayPanel({
         controller: this,
@@ -677,7 +673,10 @@ export default class extends Controller {
         dayRoutesLayer: this.dayRoutesLayer,
         element: this.element,
         timezone: this.timezoneValue,
-        allPoints: this.allPoints,
+        loadPoints: async () => {
+          const points = await this.ensurePoints()
+          return this.element.isConnected ? points : []
+        },
         getPhotos: () =>
           this.photosActive && this.photosGeoJSON
             ? this.photosGeoJSON.features.map(featureToPhoto)
@@ -693,7 +692,18 @@ export default class extends Controller {
         },
       })
     }
-    this.replayPanel.toggle()
+    this.replayToggling = true
+    try {
+      await this.replayPanel.toggle()
+    } catch (error) {
+      console.error("[TripMapLibre] Error fetching points:", error)
+      Flash.show(
+        "error",
+        translate("messages.failed_to_load_location_data_please_try_again"),
+      )
+    } finally {
+      this.replayToggling = false
+    }
   }
 
   replayScrubberHover(event) {

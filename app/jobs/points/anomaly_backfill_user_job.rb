@@ -56,8 +56,6 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
   end
 
   def rebuild_achievements(user, notify:)
-    return unless Flipper.enabled?(:achievements)
-
     oldest_timestamp = user.points.minimum(:timestamp)
     return if oldest_timestamp.nil?
 

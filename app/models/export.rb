@@ -28,14 +28,11 @@ class Export < ApplicationRecord
     return if file.attached?
     return if url.blank?
 
-    file_path = "public/#{url}"
-    return unless File.file?(file_path)
+    file_path = Exports::LegacyFilePath.new(url).call
+    return unless file_path
 
-    file.attach(io: File.open(file_path), filename: name)
-    old_url = url
+    File.open(file_path, 'rb') { |io| file.attach(io: io, filename: name) }
     update!(url: nil)
-
-    File.delete("public/#{old_url}") if File.exist?("public/#{old_url}")
   rescue StandardError => e
     Rails.logger.debug("Error migrating export #{id}: #{e.message}")
   end
@@ -52,8 +49,6 @@ class Export < ApplicationRecord
 
   def remove_attached_file
     file.purge_later if file.attached?
-
-    File.delete("public/#{url}") if url.present? && File.exist?("public/#{url}")
   rescue StandardError => e
     Rails.logger.debug("Error removing export #{id}: #{e.message}")
   end

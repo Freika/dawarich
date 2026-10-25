@@ -20,8 +20,9 @@
       <div
         class="h-[40vh] w-full overflow-hidden rounded-lg lg:h-full lg:min-h-[24rem]"
         data-controller="trip-maplibre-preview"
-        data-trip-maplibre-preview-path-value="<%= trip.path&.coordinates&.to_json %>"
-        <% if trip.persisted? && trip.path.blank? && (plan = trip.plan_geojson) %>data-trip-maplibre-preview-plan-value="<%= plan.to_json %>"<% end %>
+        <% if trip.persisted? && trip.route_present? %>data-trip-maplibre-preview-tiles-url-value="<%= trip_routes_tile_template(trip) %>" data-trip-maplibre-preview-bounds-value="<%= trip.route_bounds.to_json %>"<% end %>
+        data-trip-maplibre-preview-api-key-value="<%= current_user.api_key %>"
+        <% if trip.persisted? && !trip.route_present? && (plan = trip.plan_geojson) %>data-trip-maplibre-preview-plan-value="<%= plan.to_json %>"<% end %>
         data-trip-maplibre-preview-interactive-value="true"
         data-trip-maplibre-preview-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">
       </div>
@@ -50,7 +51,6 @@
 
       <div class="flex flex-col gap-4 sm:flex-row lg:flex-col xl:flex-row">
         <div class="form-control w-full">
-          <input type="hidden" data-datetime-target="apiKey" value="<%= current_user.api_key %>">
           <%= form.label :started_at, class: 'mb-1.5 text-sm font-medium' %>
           <%= form.datetime_field :started_at,
               include_seconds: false,

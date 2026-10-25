@@ -5,6 +5,8 @@ class Settings::UsersController < ApplicationController
   before_action :authenticate_user!
   before_action :authenticate_admin!, except: %i[export import]
 
+  around_action :serialize_admin_access_changes, only: %i[update destroy]
+
   def index
     @users = filtered_users.order(created_at: :desc).page(params[:page]).per(25)
   end
@@ -53,6 +55,13 @@ class Settings::UsersController < ApplicationController
 
   def destroy
     @user = User.find(params[:id])
+
+    if @user.id == current_user.id || (@user.admin? && @user.active? && sole_admin?)
+      redirect_to settings_users_url,
+                  alert: I18n.t('controllers.settings.users.cannot_delete_yourself_or_last_admin'),
+                  status: :see_other
+      return
+    end
 
     unless @user.can_delete_account?
       redirect_to settings_users_url,
@@ -123,6 +132,17 @@ class Settings::UsersController < ApplicationController
 
   private
 
+  def serialize_admin_access_changes
+    User.with_advisory_lock('admin_access_changes') do
+      actor = User.find_by(id: current_user.id)
+      if actor&.admin?
+        yield
+      else
+        user_not_authorized
+      end
+    end
+  end
+
   def filtered_users
     return User.all if params[:search].blank?
 
@@ -140,13 +160,13 @@ class Settings::UsersController < ApplicationController
   end
 
   def last_admin_protection_needed?
-    return false unless @user.admin? && sole_admin?
+    return false unless @user.admin? && @user.active? && sole_admin?
 
     removing_admin_role? || disabling_user?
   end
 
   def removing_admin_role?
-    user_params.key?(:admin) && user_params[:admin].to_s == '0'
+    user_params.key?(:admin) && !ActiveModel::Type::Boolean.new.cast(user_params[:admin])
   end
 
   def disabling_user?
@@ -154,7 +174,7 @@ class Settings::UsersController < ApplicationController
   end
 
   def sole_admin?
-    User.where(admin: true).count == 1
+    User.where(admin: true, status: :active).count == 1
   end
 
   def last_admin_alert_message

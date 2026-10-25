@@ -25,6 +25,11 @@ class Points::VectorTileQuery
   LAYER_NAME = 'points'
   TILE_PIXELS = 512
   WEB_MERCATOR_WORLD = 40_075_016.685578488
+  # Heat reflects time spent, not recording frequency; cap gaps between recordings.
+  MAX_DWELL_SECONDS = 300
+  # Only nearby samples can represent a stationary long gap. Use a fixed
+  # web-mercator distance so changing zoom cannot turn a gap into a stop.
+  MAX_STATIONARY_DISTANCE_METERS = 50
   # Bounds the per-query cost (VectorTileTimeout, ENV-overridable);
   # PgBouncer-safe because SET LOCAL runs inside an explicit transaction
   # (see Visits::Detection::CandidateLoader for the pattern)
@@ -96,19 +101,32 @@ class Points::VectorTileQuery
     Point.sanitize_sql_array(["ST_AsMVT(features.*, ?, #{EXTENT}, 'geom')", LAYER_NAME])
   end
 
-  # One-pass hash aggregation — a DISTINCT ON + window-count variant paid for a
-  # full sort (1.3s on a dense z11 tile). MIN() keeps the representative
-  # deterministic; count=1 cells are exact, and merged cells never show popups,
-  # so mixed MINs are invisible.
+  # LEAD sorts candidates by time; the 1M-point benchmark in
+  # lib/perf/vector_tile_benchmark.rb measured up to 1457ms with this window.
+  # Hash aggregation avoids a second sort for DISTINCT ON. MIN() keeps
+  # the representative deterministic; count=1 cells are exact, and merged
+  # cells never show popups, so mixed MINs are invisible.
   def with_clauses
     <<~SQL
       WITH candidates AS (#{candidates_sql}),
+      dwelled AS (
+        SELECT candidates.*,
+          CASE WHEN LEAD(timestamp) OVER timeline - timestamp > #{MAX_DWELL_SECONDS}
+            AND NOT ST_DWithin(geom_3857, LEAD(geom_3857) OVER timeline,
+                               #{MAX_STATIONARY_DISTANCE_METERS})
+            THEN 0
+            ELSE LEAST(COALESCE(LEAD(timestamp) OVER timeline - timestamp, 0),
+                       #{MAX_DWELL_SECONDS})
+          END AS dwell
+        FROM candidates
+        WINDOW timeline AS (ORDER BY timestamp)
+      ),
       features AS (
-        SELECT COUNT(*) AS count,
+        SELECT COUNT(*) AS count, SUM(dwell)::bigint AS dwell,
           MIN(timestamp) AS timestamp, MAX(timestamp) AS max_timestamp,
           #{point_attribute_aggregates}
           #{mvt_geom_expression('ST_Centroid(ST_Collect(geom_3857))')} AS geom
-        FROM candidates
+        FROM dwelled
         GROUP BY #{snap_expression}
         LIMIT #{tile_feature_limit}
       )
@@ -240,6 +258,7 @@ class Points::VectorTileQuery
   def with_statement_timeout
     conn = Point.connection
     conn.transaction do
+      conn.exec_query('SET LOCAL jit = off', 'VectorTileQuery JIT')
       conn.exec_query("SET LOCAL statement_timeout = #{VectorTileTimeout.query_timeout_ms}",
                       'VectorTileQuery Timeout')
       yield conn

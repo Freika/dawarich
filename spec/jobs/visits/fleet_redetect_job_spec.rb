@@ -17,6 +17,21 @@ RSpec.describe Visits::FleetRedetectJob do
     expect(enqueued_ids).not_to include(without_points.id)
   end
 
+  it 'includes trial users and skips inactive and pending-payment users' do
+    trial, inactive, pending = create_list(:user, 3)
+    User.where(id: [trial.id, inactive.id, pending.id]).update_all(points_count: 5)
+    trial.update_columns(status: :trial)
+    inactive.update_columns(status: :inactive)
+    pending.update_columns(status: :pending_payment)
+
+    described_class.perform_now
+
+    enqueued_ids = enqueued_jobs.select { |j| j['job_class'] == 'Visits::UserRedetectJob' }
+                                .map { |j| j['arguments'].first }
+    expect(enqueued_ids).to include(trial.id)
+    expect(enqueued_ids).not_to include(inactive.id, pending.id)
+  end
+
   it 'staggers the per-user jobs so the fleet does not land at once' do
     users = create_list(:user, 3)
     User.where(id: users.map(&:id)).update_all(points_count: 10)

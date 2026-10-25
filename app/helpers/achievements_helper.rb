@@ -4,7 +4,7 @@ module AchievementsHelper
   ACHIEVEMENT_STYLESHEETS = %w[achievements achievements_spectral achievements_unlocks].freeze
 
   def achievements_visible?
-    user_signed_in? && Flipper.enabled?(:achievements)
+    user_signed_in?
   end
 
   def achievement_stylesheet_tags

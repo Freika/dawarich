@@ -6025,13 +6025,15 @@ paths:
       - name: start_at
         in: query
         required: false
-        description: Start date (ISO 8601)
+        description: ISO 8601; pair with end_at; must not be later than end_at; optional
+          only for complete bounding-box selections
         schema:
           type: string
       - name: end_at
         in: query
         required: false
-        description: End date (ISO 8601)
+        description: ISO 8601; pair with start_at; must not be earlier than start_at;
+          optional only for complete bounding-box selections
         schema:
           type: string
       - name: selection
@@ -6115,6 +6117,17 @@ paths:
                   - started_at
                   - ended_at
                   - duration
+        '400':
+          description: invalid or missing time range
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                - error
         '401':
           description: unauthorized
     post:
@@ -6161,6 +6174,9 @@ paths:
                         type: number
                       longitude:
                         type: number
+                      address:
+                        type: string
+                        nullable: true
         '422':
           description: invalid request
         '401':
@@ -6186,6 +6202,21 @@ paths:
                     ended_at:
                       type: string
                       format: datetime
+                    address:
+                      type: object
+                      description: Optional address stored on a newly created place;
+                        ignored when the visit reuses a place within 100 m
+                      properties:
+                        street:
+                          type: string
+                        house_number:
+                          type: string
+                        postcode:
+                          type: string
+                        city:
+                          type: string
+                        country:
+                          type: string
                   required:
                   - name
                   - latitude

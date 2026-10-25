@@ -3,6 +3,7 @@
 class Api::V1::VisitsController < ApiController
   BATCH_MAX = 100
   BATCH_VISIT_ATTRIBUTES = %i[name status latitude longitude started_at ended_at].freeze
+  ADDRESS_ATTRIBUTES = %i[street house_number postcode city country].freeze
 
   def index
     visits = Visits::Finder.new(current_api_user, params).call
@@ -23,7 +24,7 @@ class Api::V1::VisitsController < ApiController
 
     render json: serialized_visits
   rescue Visits::InvalidTimeRange
-    render json: { error: 'Invalid date format' }, status: :bad_request
+    render json: { error: 'Invalid time range' }, status: :bad_request
   end
 
   def show
@@ -32,7 +33,7 @@ class Api::V1::VisitsController < ApiController
   end
 
   def create
-    service = Visits::Create.new(current_api_user, visit_params)
+    service = Visits::Create.new(current_api_user, create_visit_params)
 
     result = service.call
 
@@ -168,6 +169,13 @@ class Api::V1::VisitsController < ApiController
     params.require(:visit).permit(:name, :place_id, :area_id, :status, :latitude, :longitude, :started_at, :ended_at)
   end
 
+  def create_visit_params
+    params.require(:visit).permit(
+      :name, :place_id, :area_id, :status, :latitude, :longitude, :started_at, :ended_at,
+      address: ADDRESS_ATTRIBUTES
+    )
+  end
+
   def report_batch_failures(failed_count, submitted_count)
     return unless failed_count.positive?
 
@@ -181,8 +189,8 @@ class Api::V1::VisitsController < ApiController
                error: I18n.t('controllers.api.v1.visits.invalid_visit_payload') }
     end
 
-    service = Visits::Create.new(current_api_user, attributes.permit(*BATCH_VISIT_ATTRIBUTES),
-                                 report_exceptions: false)
+    permitted = attributes.permit(*BATCH_VISIT_ATTRIBUTES, address: ADDRESS_ATTRIBUTES)
+    service = Visits::Create.new(current_api_user, permitted, report_exceptions: false)
 
     if service.call
       result = { index: index, status: service.duplicate? ? 'duplicate' : 'created' }

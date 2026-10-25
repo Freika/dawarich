@@ -223,7 +223,7 @@
       <%= icon 'globe' %> <%= t('.countries_cities') %>
     </h2>
     <div class="space-y-4">
-      <% visited_toponyms = stat.toponyms.select { |t| t['country'].present? && t['cities']&.any? } %>
+      <% visited_toponyms = stat.toponyms.select { |t| t['country'].present? } %>
       <% if visited_toponyms.present? %>
         <% max_cities = visited_toponyms.map { |country| country['cities'].length }.max %>
         <% progress_colors = ['progress-primary', 'progress-secondary', 'progress-accent', 'progress-info', 'progress-success', 'progress-warning'] %>
@@ -323,7 +323,7 @@
 
 <!-- Action Buttons -->
 <div class="flex flex-wrap gap-4 mt-8 justify-center">
-  <a href="/stats/<%= year %>" class="btn btn-outline"><%= t('.back_to') %> <%= year %></a>
+  <%= link_to "#{t('.back_to')} #{year}", insights_path(year:), class: 'btn btn-outline' %>
   <button class="btn btn-outline" onclick="sharing_modal.showModal()">
     <%= icon 'share' %> <%= t('.share') %>
   </button>

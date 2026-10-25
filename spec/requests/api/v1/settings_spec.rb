@@ -525,6 +525,57 @@ RSpec.describe 'Api::V1::Settings', type: :request do
     end
   end
 
+  describe 'PATCH /update with app_store_supporter' do
+    it 'stores the flag sent by the mobile app' do
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { app_store_supporter: true } }, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings['app_store_supporter']).to be true
+    end
+
+    it 'clears the flag when the subscription lapses' do
+      user.settings['app_store_supporter'] = true
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { app_store_supporter: false } }, as: :json
+
+      expect(user.reload.settings['app_store_supporter']).to be false
+    end
+
+    def report_supporter(active, install)
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { app_store_supporter: active, app_store_supporter_install: install } }, as: :json
+      expect(response).to have_http_status(:success)
+    end
+
+    it 'keeps the flag while another install is still subscribed' do
+      report_supporter(true, 'install-a')
+      report_supporter(true, 'install-b')
+      report_supporter(false, 'install-a')
+
+      expect(user.reload.settings['app_store_supporter']).to be true
+    end
+
+    it 'clears the flag once every reporting install has lapsed' do
+      report_supporter(true, 'install-a')
+      report_supporter(true, 'install-b')
+      report_supporter(false, 'install-a')
+      report_supporter(false, 'install-b')
+
+      expect(user.reload.settings['app_store_supporter']).to be false
+    end
+
+    it 'counts an install once however often it reports' do
+      report_supporter(true, 'install-a')
+      report_supporter(true, 'install-a')
+      report_supporter(false, 'install-a')
+
+      expect(user.reload.settings['app_store_supporter']).to be false
+    end
+  end
+
   describe 'PATCH /update with maps.distance_unit' do
     it 'updates the distance unit' do
       patch "/api/v1/settings?api_key=#{api_key}",

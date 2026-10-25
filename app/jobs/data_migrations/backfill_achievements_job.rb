@@ -4,7 +4,6 @@ class DataMigrations::BackfillAchievementsJob < ApplicationJob
   queue_as :data_migrations
 
   def perform
-    return if DawarichSettings.self_hosted? && !Flipper.enabled?(:achievements)
     return if Country.none?
 
     Achievements::LoadRegions.new.call if regions_missing?

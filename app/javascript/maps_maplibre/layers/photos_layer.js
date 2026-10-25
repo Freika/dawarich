@@ -89,6 +89,20 @@ export class PhotosLayer extends BaseLayer {
     return ["photos-clusters", "photos-cluster-count"]
   }
 
+  // Stack cluster counts over circles, directly above the given layer, so
+  // layers that already sit higher (live and replay markers) stay on top.
+  raiseAbove(layerId) {
+    const ownIds = this.getLayerIds()
+    const otherIds = (this.map.getStyle?.()?.layers ?? [])
+      .map((layer) => layer.id)
+      .filter((id) => !ownIds.includes(id))
+    const index = otherIds.indexOf(layerId)
+    const beforeId = index === -1 ? undefined : otherIds[index + 1]
+    for (const id of ownIds) {
+      if (this.map.getLayer(id)) this.map.moveLayer(id, beforeId)
+    }
+  }
+
   async add(data) {
     this.data = data
 

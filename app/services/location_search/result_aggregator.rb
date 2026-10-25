@@ -11,7 +11,7 @@ module LocationSearch
       return [] if points.empty?
 
       # Sort points by timestamp to handle unordered input
-      sorted_points = points.sort_by { |p| p[:timestamp] }
+      sorted_points = points.sort_by { |p| [p[:timestamp], p[:id].to_i] }
 
       visits = []
       current_visit_points = []
@@ -43,7 +43,7 @@ module LocationSearch
       return nil if points.empty?
 
       # Sort points by timestamp to get chronological order
-      sorted_points = points.sort_by { |p| p[:timestamp] }
+      sorted_points = points.sort_by { |p| [p[:timestamp], p[:id].to_i] }
       first_point = sorted_points.first
       last_point = sorted_points.last
 
@@ -57,7 +57,7 @@ module LocationSearch
         end
 
       # Find the most accurate point (lowest accuracy value means higher precision)
-      most_accurate_point = points.min_by { |p| p[:accuracy] || 999_999 }
+      most_accurate_point = points.min_by { |p| [p[:accuracy] || 999_999, p[:timestamp], p[:id].to_i] }
 
       # Calculate average distance from search center
       average_distance = (points.sum { |p| p[:distance_meters] } / points.length).round(2)

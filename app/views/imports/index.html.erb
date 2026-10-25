@@ -41,6 +41,7 @@
   <% end %>
 
   <%= turbo_stream_from current_user, :imports %>
+  <%= turbo_frame_tag 'imports-frame', target: '_top', data: { controller: 'imports' } do %>
   <div id="imports" class="min-w-full">
     <% if @imports.empty? %>
       <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-300">
@@ -68,11 +69,7 @@
               <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right w-[15%]"><%= t('.actions') %></th>
             </tr>
           </thead>
-          <tbody
-            data-controller="imports"
-            data-imports-target="index"
-            data-user-id="<%= current_user.id %>"
-          >
+          <tbody>
             <% @imports.each do |import| %>
               <%= render 'imports/table_row', import: import, timezone: current_user.safe_settings.timezone %>
             <% end %>
@@ -84,4 +81,5 @@
       </div>
     <% end %>
   </div>
+  <% end %>
 </div>

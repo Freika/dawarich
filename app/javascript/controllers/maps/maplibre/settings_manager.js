@@ -103,6 +103,18 @@ export class SettingsController {
 
     this.syncPointsEditAvailability()
 
+    const speedToggle = controller.element.querySelector(
+      'input[name="speed_colored_routes"]',
+    )
+    if (speedToggle)
+      speedToggle.checked = this.settings.speedColoredRoutes === true
+    const speedEditor = controller.element.querySelector(
+      '[data-controller~="speed-color-editor"]',
+    )
+    if (speedEditor)
+      speedEditor.dataset.speedColorEditorColorStopsValue =
+        this.settings.speedColorScale
+
     // Show/hide visits search based on initial toggle state
     if (controller.hasVisitsToggleTarget && controller.hasVisitsSearchTarget) {
       controller.visitsSearchTarget.style.display = controller
@@ -650,9 +662,15 @@ export class SettingsController {
   // Reload layers after a style change. setStyle replaces the whole style
   // document — including the projection — so globe mode must be restored
   // or every style/theme change silently drops back to mercator.
-  restoreStyleLayers() {
+  async restoreStyleLayers() {
     this.restoreGlobeProjection()
-    this.controller.loadMapData()
+    await this.controller.loadMapData()
+    if (
+      this.controller.settings?.familyEnabled &&
+      !this.controller._disconnected
+    ) {
+      await this.controller.loadFamilyMembers()
+    }
   }
 
   applyUserStyleUrl(styleUrl, styleName) {
@@ -817,6 +835,24 @@ export class SettingsController {
 
   applyTrackColor(color) {
     this.layerManager.getLayer("tracks-mvt")?.setColors({ trackColor: color })
+  }
+
+  toggleSpeedColoredRoutes(event) {
+    SettingsManager.updateSetting("speedColoredRoutes", event.target.checked)
+    this.applySpeedColoring()
+  }
+
+  updateSpeedColorScale(event) {
+    SettingsManager.updateSetting("speedColorScale", event.detail.colorStops)
+    this.applySpeedColoring()
+  }
+
+  applySpeedColoring() {
+    this.layerManager.getLayer("tracks-mvt")?.setSpeedColoring({
+      enabled: SettingsManager.getSetting("speedColoredRoutes") === true,
+      scale: SettingsManager.getSetting("speedColorScale"),
+    })
+    this.layerManager.getLayer("map-editor")?.reapplyTileFilters()
   }
 
   syncLayerColorLabel(key, color) {

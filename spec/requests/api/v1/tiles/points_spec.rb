@@ -177,17 +177,45 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
         expect(response.headers['Cache-Control']).to eq('max-age=300, private')
       end
 
-      it 'invalidates on a bump inside the requested range but not outside it' do
-        get path, params: cached_params
-        etag = response.headers['ETag']
+      context 'with a one-month range' do
+        let(:range) do
+          { start_at: Time.utc(2024, 6, 1).to_i.to_s, end_at: Time.utc(2024, 6, 30, 23, 59, 59).to_i.to_s }
+        end
 
-        Points::TileEpoch.bump(user.id, timestamps: [Time.utc(2019, 6, 1).to_i])
-        get path, params: cached_params, headers: { 'If-None-Match' => etag }
-        expect(response).to have_http_status(:not_modified)
+        def revalidate(etag)
+          get path, params: cached_params, headers: { 'If-None-Match' => etag }
+          response
+        end
 
-        Points::TileEpoch.bump(user.id, timestamps: [Time.utc(2024, 6, 1).to_i])
-        get path, params: cached_params, headers: { 'If-None-Match' => etag }
-        expect(response).to have_http_status(:ok)
+        it 'refreshes when a live point arrives in the requested month' do
+          get path, params: cached_params
+          etag = response.headers['ETag']
+
+          Points::Intake.call(user_id: user.id, payloads: [{ lonlat: 'POINT(13.4 52.5)',
+                                                              timestamp: Time.utc(2024, 6, 15).to_i,
+                                                              user_id: user.id }])
+
+          expect(revalidate(etag)).to have_http_status(:ok)
+        end
+
+        it 'refreshes when points change without an application-level bump' do
+          get path, params: cached_params
+          etag = response.headers['ETag']
+
+          user.points.update_all(anomaly: true)
+
+          expect(revalidate(etag)).to have_http_status(:no_content)
+        end
+
+        it 'keeps the tile cached when only other months change' do
+          get path, params: cached_params
+          etag = response.headers['ETag']
+
+          create(:point, user:, timestamp: Time.utc(2024, 11, 1).to_i, lonlat: 'POINT(0 0)')
+          Points::TileEpoch.bump(user.id, timestamps: [Time.utc(2024, 11, 1).to_i])
+
+          expect(revalidate(etag)).to have_http_status(:not_modified)
+        end
       end
 
       it 'gives two users different ETags for the same tile and range' do
@@ -228,6 +256,21 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
         get path, params: cached_params, headers: { 'If-None-Match' => etag }
 
         expect(response).to have_http_status(:ok)
+        expect(response.headers['ETag']).to be_present
+        expect(response.headers['ETag']).not_to eq(etag)
+      end
+
+      it 'replaces cached tiles from before dwell was added' do
+        schema_version = Api::V1::Tiles::PointsController::TILE_SCHEMA_VERSION
+        stub_const('Api::V1::Tiles::PointsController::TILE_SCHEMA_VERSION', 4)
+        get path, params: cached_params
+        etag = response.headers['ETag']
+
+        stub_const('Api::V1::Tiles::PointsController::TILE_SCHEMA_VERSION', schema_version)
+        get path, params: cached_params, headers: { 'If-None-Match' => etag }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['ETag']).not_to eq(etag)
       end
 
       it 'revalidates empty tiles to 304 as well' do

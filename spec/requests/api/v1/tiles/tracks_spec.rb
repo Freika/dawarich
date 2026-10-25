@@ -266,6 +266,32 @@ RSpec.describe 'Api::V1::Tiles::Tracks', type: :request do
         expect(response).to have_http_status(:ok)
       end
 
+      it 'keeps the tile cached when a track in another month of the same year is written' do
+        create_track_near_origin
+        params = { api_key: user.api_key, start_at: Time.utc(2024, 6, 1).to_i.to_s,
+                   end_at: Time.utc(2024, 6, 30, 23, 59, 59).to_i.to_s }
+        get(path, params:)
+        etag = response.headers['ETag']
+
+        create_track_near_origin(user, start_at: Time.utc(2024, 11, 2, 10), end_at: Time.utc(2024, 11, 2, 12))
+        get path, params:, headers: { 'If-None-Match' => etag }
+
+        expect(response).to have_http_status(:not_modified)
+      end
+
+      it 'refreshes the tile when a track in the range changes without callbacks' do
+        track = create_track_near_origin
+        params = { api_key: user.api_key, start_at: Time.utc(2024, 6, 1).to_i.to_s,
+                   end_at: Time.utc(2024, 6, 30, 23, 59, 59).to_i.to_s }
+        get(path, params:)
+        etag = response.headers['ETag']
+
+        Track.where(id: track.id).update_all(original_path: 'LINESTRING(0.001 0.001, 10 10)')
+        get path, params:, headers: { 'If-None-Match' => etag }
+
+        expect(response).to have_http_status(:ok)
+      end
+
       it 'rejects a reversed range with 400 and no-store' do
         get path, params: { api_key: user.api_key,
                             start_at: '2024-12-31T00:00:00Z', end_at: '2024-01-01T00:00:00Z' }

@@ -11,13 +11,13 @@ class BulkVisitsSuggestingJob < ApplicationJob
     return unless Geocoding::Config.resolved_config.enabled?
 
     user_ids = (Array(user_ids) | Array(user_id)).compact
-    users = user_ids.any? ? User.active.where(id: user_ids) : User.active
+    users = user_ids.any? ? User.active_or_trial.where(id: user_ids) : User.active_or_trial
     start_at = start_at.to_datetime
     end_at = end_at.to_datetime
 
     time_chunks = Visits::TimeChunks.new(start_at:, end_at:).call
 
-    users.active.find_each do |user|
+    users.find_each do |user|
       next unless user.safe_settings.visits_suggestions_enabled?
       next unless user.points_count&.positive?
 

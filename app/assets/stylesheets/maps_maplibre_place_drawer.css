@@ -12,7 +12,6 @@
   max-width: 90vw;
   background: oklch(var(--b1));
   border-left: 1px solid oklch(var(--bc) / 0.1);
-  box-shadow: 0 0 24px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   overflow-y: auto;
   transform: translateX(100%);

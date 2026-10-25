@@ -58,6 +58,14 @@ class Place < ApplicationRecord
     geodata.dig('properties', 'osm_id')
   end
 
+  # "Street 12, 04275 City" from the geocoder properties, or nil without them.
+  def address_line
+    properties = Geocoding::ResultNormalizer.from_data(geodata)[:properties]
+    street = [properties['street'], properties['housenumber']].compact_blank.join(' ')
+    locality = [properties['postcode'], properties['city']].compact_blank.join(' ')
+    [street, locality].compact_blank.join(', ').presence
+  end
+
   def osm_key
     geodata.dig('properties', 'osm_key')
   end

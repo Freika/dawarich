@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class InsightsController < ApplicationController
+  ROUTES_FAILURE_TTL = 1.hour
+
   before_action :authenticate_user!
 
   def index
@@ -16,6 +18,7 @@ class InsightsController < ApplicationController
 
     load_year_totals
     load_activity_heatmap
+    @all_time ? load_years_overview : load_months
   end
 
   def details
@@ -40,6 +43,19 @@ class InsightsController < ApplicationController
     end
   end
 
+  def routes
+    authorize :insights, :routes?
+
+    query = Stats::YearRoutesQuery.new(current_user, params[:year].to_i)
+    cache_key = query.cache_key
+    render json: { lines: Rails.cache.fetch(cache_key, expires_in: 24.hours) { query.call || [] } }
+  rescue ActiveRecord::StatementInvalid => e
+    ExceptionReporter.call(e)
+    # Cached briefly so a year whose query times out is not rerun on every view.
+    Rails.cache.write(cache_key, [], expires_in: ROUTES_FAILURE_TTL) if cache_key
+    render json: { lines: [] }
+  end
+
   private
 
   def set_available_years
@@ -60,13 +76,11 @@ class InsightsController < ApplicationController
     if @all_time
       @year_stats = scoped_stats.order(year: :desc, month: :desc)
       @previous_year_stats = Stat.none
-      @display_label = I18n.t('controllers.insights.all_time')
     else
       @selected_year = @selected_year.to_i
       @previous_year = @selected_year - 1
       @year_stats = scoped_stats.where(year: @selected_year).order(:month)
       @previous_year_stats = scoped_stats.where(year: @previous_year).order(:month)
-      @display_label = I18n.t('controllers.insights.year_overview', year: @selected_year)
     end
   end
 
@@ -79,6 +93,22 @@ class InsightsController < ApplicationController
     @countries_list = @year_totals.countries_list
     @days_traveling = @year_totals.days_traveling
     @biggest_month = @year_totals.biggest_month
+  end
+
+  def load_years_overview
+    year_cards = Stats::YearCardsQuery.new(current_user)
+    @stats_by_year = year_cards.stats_by_year
+    @year_distances = year_cards.year_distances
+
+    points_stats = ::StatsQuery.new(current_user).points_stats
+    @points_total = points_stats[:total]
+    @points_reverse_geocoded = points_stats[:geocoded]
+    @points_reverse_geocoded_percentage = points_stats[:geocoded_percentage]
+    @points_reverse_geocoded_without_data = points_stats[:without_data]
+  end
+
+  def load_months
+    @month_distances = Stat.year_distance(@selected_year, current_user)
   end
 
   def load_comparison_data
@@ -100,7 +130,7 @@ class InsightsController < ApplicationController
   end
 
   def load_activity_heatmap
-    return if @all_time
+    return if @all_time || current_user.full_access?
 
     @activity_heatmap = Insights::ActivityHeatmapCalculator.new(@year_stats, @selected_year).call
   end
@@ -175,7 +205,7 @@ class InsightsController < ApplicationController
 
     current_user.scoped_visits.confirmed.where(started_at: start_time..end_time).group(:name)
                 .select('name, COUNT(*) as visit_count, SUM(duration) as total_duration')
-                .order('visit_count DESC, total_duration DESC').limit(5)
+                .order(Arel.sql('visit_count DESC, total_duration DESC, name COLLATE "C" ASC')).limit(5)
                 .map { |v| { name: v.name, visit_count: v.visit_count, total_duration: v.total_duration } }
   end
 

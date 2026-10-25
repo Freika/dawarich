@@ -8,6 +8,7 @@ module EnhancedImport
       google_phone_takeout
       google_semantic_history
       polarsteps
+      swarm
       gpx
     ].freeze
 
@@ -16,6 +17,7 @@ module EnhancedImport
       'google_phone_takeout' => 'EnhancedImport::Adapters::GooglePhoneTakeoutAdapter',
       'google_semantic_history' => 'EnhancedImport::Adapters::GoogleSemanticHistoryAdapter',
       'polarsteps' => 'EnhancedImport::Adapters::PolarstepsAdapter',
+      'swarm' => 'EnhancedImport::Adapters::SwarmAdapter',
       'gpx' => 'EnhancedImport::Adapters::GpxAdapter'
     }.freeze
 

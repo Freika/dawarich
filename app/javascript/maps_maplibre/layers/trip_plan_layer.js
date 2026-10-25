@@ -1,11 +1,11 @@
 import * as maplibregl from "maplibre-gl"
+import { generateDayPalette } from "../utils/day_route_collections"
 import {
   planBounds,
   planDayColorExpression,
   planDayCount,
   planMarkers,
 } from "../utils/trip_plan"
-import { DayRoutesLayer } from "./day_routes_layer"
 
 const SOURCE_ID = "trip-plan"
 const ROUTE_LAYER_ID = "trip-plan-routes"
@@ -27,9 +27,7 @@ export class TripPlanLayer {
 
   add(plan) {
     this.remove()
-    const palette = DayRoutesLayer.generateDayPalette(
-      Math.max(planDayCount(plan), 1),
-    )
+    const palette = generateDayPalette(Math.max(planDayCount(plan), 1))
     const dayColor = planDayColorExpression(palette)
 
     this.map.addSource(SOURCE_ID, { type: "geojson", data: plan })

@@ -63,8 +63,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7.0.1
 
-      - name: Install GEOS
-        run: sudo apt-get update && sudo apt-get install -y libgeos-dev
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgeos-dev librsvg2-bin fonts-dejavu-core fonts-noto-cjk
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1

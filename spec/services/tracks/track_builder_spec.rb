@@ -57,8 +57,9 @@ RSpec.describe Tracks::TrackBuilder do
       it 'calculates elevation statistics correctly' do
         track = builder.create_track_from_points(points, pre_calculated_distance)
 
-        expect(track.elevation_gain).to eq(10) # 110 - 100
-        expect(track.elevation_loss).to eq(5)  # 110 - 105
+        # Fluctuations below the noise threshold leave only the net change: 105 - 100.
+        expect(track.elevation_gain).to eq(5)
+        expect(track.elevation_loss).to eq(0)
         expect(track.elevation_max).to eq(110)
         expect(track.elevation_min).to eq(100)
       end
@@ -221,6 +222,12 @@ RSpec.describe Tracks::TrackBuilder do
   end
 
   describe '#calculate_elevation_stats' do
+    it 'counts changes at the noise threshold and preserves the final descent' do
+      points = [100, 115, 100, 95].map { |altitude| double(altitude: altitude) }
+
+      expect(builder.calculate_elevation_stats(points)).to eq(gain: 15, loss: 20, max: 115, min: 95)
+    end
+
     context 'with elevation data' do
       let(:points) do
         [

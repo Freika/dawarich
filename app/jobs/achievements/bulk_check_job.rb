@@ -11,8 +11,6 @@ module Achievements
     # every user's CheckJob at once (thundering herd on the achievements queue).
     # notify: false is used for backfills so historical earns don't blast alerts.
     def perform(notify: true, force: false, stale_only: false)
-      return unless force || Flipper.enabled?(:achievements)
-
       user_ids = eligible_user_ids
       user_ids -= current_user_ids if stale_only
 

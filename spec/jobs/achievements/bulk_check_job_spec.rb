@@ -5,10 +5,6 @@ require 'rails_helper'
 RSpec.describe Achievements::BulkCheckJob do
   include ActiveJob::TestHelper
 
-  before { Flipper.enable(:achievements) }
-
-  after { Flipper.disable(:achievements) }
-
   def eligible_user(status: :active)
     user = create(:user, status: status)
     create(:point, user: user)
@@ -37,19 +33,14 @@ RSpec.describe Achievements::BulkCheckJob do
     expect(waits.uniq.size).to be > 1
   end
 
-  it 'enqueues nothing while the feature flag is disabled' do
-    Flipper.disable(:achievements)
-    eligible_user
-
-    expect { described_class.perform_now }.not_to have_enqueued_job(Achievements::CheckJob)
-  end
-
-  it 'still runs a forced backfill while the feature flag is disabled' do
+  it 'enqueues checks even if a legacy installation left its flag disabled' do
     Flipper.disable(:achievements)
     user = eligible_user
 
-    expect { described_class.perform_now(notify: false, force: true) }
-      .to have_enqueued_job(Achievements::CheckJob).with(user.id, notify: false, force: true).once
+    expect { described_class.perform_now }
+      .to have_enqueued_job(Achievements::CheckJob).with(user.id, notify: true, force: false).once
+  ensure
+    Flipper.remove(:achievements)
   end
 
   it 'queues only users without progress from the current calculation version during rollout' do

@@ -121,6 +121,7 @@ class Imports::Create
     when 'tcx'                          then Tcx::Importer
     when 'fit'                          then Fit::Importer
     when 'polarsteps'                   then Polarsteps::Importer
+    when 'swarm'                        then Swarm::Importer
     when 'zip'
       raise ArgumentError, I18n.t('services.imports.create.zip_unclassified')
     else
@@ -195,8 +196,6 @@ class Imports::Create
     import.years_and_months_tracked.each do |year, month|
       Stats::CalculatingJob.perform_later(user_id, year, month)
     end
-
-    return unless Flipper.enabled?(:achievements)
 
     Achievements::CheckJob.schedule(user_id, oldest_timestamp: import.points.minimum(:timestamp))
   end

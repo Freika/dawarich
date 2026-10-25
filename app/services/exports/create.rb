@@ -39,7 +39,8 @@ class Exports::Create
 
     case file_format.to_sym
     when :gpx
-      points.select(:id, :lonlat, :altitude, :altitude_decimal, :velocity, :timestamp, :course)
+      columns = %w[id lonlat altitude altitude_decimal velocity timestamp course] & Point.column_names
+      points.select(*columns)
     when :json
       # The point serializer reads the device combo through each point's
       # source; GPX never touches it, and its narrow select carries no

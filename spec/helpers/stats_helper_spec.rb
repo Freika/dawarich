@@ -79,27 +79,27 @@ RSpec.describe StatsHelper, type: :helper do
   describe '#countries_visited' do
     let(:user) { create(:user) }
 
-    it 'excludes flyover countries with empty cities' do
+    it 'includes countries with empty cities' do
       stat = create(:stat, user:, year: 2025, month: 1, toponyms: [
                       { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'points' => 5 }] },
                       { 'country' => 'Germany', 'cities' => [] },
                       { 'country' => nil, 'cities' => [] }
                     ])
 
-      expect(helper.countries_visited(stat)).to eq(1)
+      expect(helper.countries_visited(stat)).to eq(2)
     end
   end
 
   describe '#countries_and_cities_stat_for_month' do
     let(:user) { create(:user) }
 
-    it 'excludes flyover countries from count' do
+    it 'includes countries without qualifying cities in the count' do
       stat = create(:stat, user:, year: 2025, month: 1, toponyms: [
                       { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'points' => 5 }] },
                       { 'country' => 'Germany', 'cities' => [] }
                     ])
 
-      expect(helper.countries_and_cities_stat_for_month(stat)).to eq('1 countries, 1 cities')
+      expect(helper.countries_and_cities_stat_for_month(stat)).to eq('2 countries, 1 cities')
     end
   end
 end

@@ -3,7 +3,6 @@
 module Achievements
   class UnlocksController < ApplicationController
     before_action :authenticate_user!
-    before_action :require_feature_enabled
 
     def next
       return head :no_content unless UnlockEvent.pending.exists?(user_id: current_user.id)
@@ -56,10 +55,6 @@ module Achievements
 
       number = value.to_i
       number if number <= (2**63) - 1
-    end
-
-    def require_feature_enabled
-      head :not_found unless Flipper.enabled?(:achievements)
     end
   end
 end
