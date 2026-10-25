@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::BoundaryDetector do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:detector) { described_class.new(user) }
   let(:safe_settings) { user.safe_settings }
@@ -56,6 +58,8 @@ RSpec.describe Tracks::BoundaryDetector do
     end
 
     context 'when boundary candidates exist' do
+      around { |example| freeze_time { example.run } }
+
       let!(:track1) do
         create(:track, user: user, created_at: 30.minutes.ago, start_at: 2.hours.ago, end_at: 1.5.hours.ago)
       end
