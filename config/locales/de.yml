@@ -898,6 +898,7 @@ de:
       favorites_marked: Favoriten markiert
       places: Orte
     year_cards:
+      flown: "davon %{distance} geflogen"
       title: "Jahre"
     year_calendar:
       mode: "Kalenderansicht"
@@ -2131,7 +2132,7 @@ de:
       upgrade_to_pro: Auf Pro upgraden
     month:
       flight_distance: Flugdistanz
-      from_airtrail_not_counted_in_distance: Aus AirTrail, nicht in der Distanz enthalten
+      from_airtrail_included_in_distance: Aus AirTrail, in der Distanz enthalten
       monthly_digest: Monatsrückblick
       share: Teilen
       distance_traveled: Gefahrene Strecke
@@ -2183,7 +2184,7 @@ de:
       countries_count_countries_cities_count_cities: "%{countries_count} Länder, %{cities_count} Städte"
     public_month:
       flight_distance: Flugdistanz
-      from_airtrail_not_counted_in_distance: Aus AirTrail, nicht in der Distanz enthalten
+      from_airtrail_included_in_distance: Aus AirTrail, in der Distanz enthalten
       monthly_digest: Monatlicher Überblick
       distance_traveled: Gesamtstrecke
       total_distance_for_this_month: Gesamtstrecke für diesen Monat

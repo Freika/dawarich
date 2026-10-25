@@ -53,10 +53,10 @@ zh:
   stats:
     month:
       flight_distance: 飞行距离
-      from_airtrail_not_counted_in_distance: 来自 AirTrail，不计入行程距离
+      from_airtrail_included_in_distance: 来自 AirTrail，已计入行程距离
     public_month:
       flight_distance: 飞行距离
-      from_airtrail_not_counted_in_distance: 来自 AirTrail，不计入行程距离
+      from_airtrail_included_in_distance: 来自 AirTrail，已计入行程距离
   users:
     digests_mailer:
       monthly_digest:

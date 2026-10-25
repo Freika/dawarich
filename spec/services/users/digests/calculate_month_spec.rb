@@ -149,7 +149,7 @@ RSpec.describe Users::Digests::CalculateMonth do
     context 'when the stat carries flight distance' do
       let!(:stat) { create(:stat, user: user, year: year, month: month, distance: 12_345, flight_distance: 633_400) }
 
-      it 'copies it onto the digest without folding it into the tracked distance' do
+      it 'copies both figures from the stat as-is' do
         digest = calculate_digest
 
         expect(digest.flight_distance).to eq(633_400)
