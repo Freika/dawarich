@@ -4,6 +4,7 @@ class AchievementsController < ApplicationController
   ROWS_PER_PAGE = 12
 
   before_action :authenticate_user!
+  before_action :ensure_achievements_enabled!
   before_action :load_exploration, only: %i[index show]
 
   def index

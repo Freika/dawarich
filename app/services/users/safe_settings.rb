@@ -10,6 +10,14 @@ class Users::SafeSettings
 
   FOG_OF_WAR_MODES = %w[points hexagons].freeze
 
+  # Features a user can switch off in general settings, stored as
+  # "<feature>_enabled". A missing key means the feature is on.
+  TOGGLEABLE_FEATURES = %w[family achievements].freeze
+
+  def self.feature_enabled?(settings, feature)
+    ActiveModel::Type::Boolean.new.cast(settings["#{feature}_enabled"]) != false
+  end
+
   DEFAULT_VALUES = {
     'fog_of_war_meters' => 50,
     'fog_of_war_threshold' => 50,
@@ -78,7 +86,9 @@ class Users::SafeSettings
     'visit_min_points' => 3,
     'visit_min_duration_minutes' => 5,
     'point_dragging_enabled' => false,
-    'points_tiled_rendering' => true
+    'points_tiled_rendering' => true,
+    'family_enabled' => true,
+    'achievements_enabled' => true
   }.freeze
 
   def initialize(settings = {}, plan: nil)
@@ -122,8 +132,14 @@ class Users::SafeSettings
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
       visit_min_duration_minutes: visit_min_duration_minutes,
-      point_dragging_enabled: point_dragging_enabled?
+      point_dragging_enabled: point_dragging_enabled?,
+      family_enabled: feature_enabled?('family'),
+      achievements_enabled: feature_enabled?('achievements')
     }
+  end
+
+  def feature_enabled?(feature)
+    self.class.feature_enabled?(settings, feature)
   end
 
   # Preserve the public API contract for clients that still synchronize
