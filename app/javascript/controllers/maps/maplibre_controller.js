@@ -154,17 +154,6 @@ export default class extends Controller {
     this.settings = this.settingsController.settings
     this.settings.timezone = this.timezoneValue
 
-    // When the page loads with the Timeline panel open (deep link or
-    // SPA-style nav from elsewhere), the visits layer is always relevant —
-    // it's the on-map counterpart of the rail. Force it on for this session
-    // even if the user's saved layer toggle is off, without persisting back
-    // to the server.
-    const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.get("panel") === "timeline") {
-      this.settings.visitsEnabled = true
-      this.settingsController.settings.visitsEnabled = true
-    }
-
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
 
@@ -667,58 +656,9 @@ export default class extends Controller {
     const { tab } = event.detail
     if (tab === "timeline-feed") {
       this.loadTimelineFeed()
-      // The timeline rail is the on-panel counterpart of the visits map
-      // layer — keep them in sync. If the visits layer is currently off,
-      // turn it on (session-only, no persistence) so the dots appear next
-      // to the day's entries.
-      this._ensureVisitsLayerEnabled()
     } else if (this._highlightedDay) {
       // Leaving timeline-feed tab — restore full opacity
       this._clearDayHighlight()
-    }
-  }
-
-  // Force-enables the visits layer for this session without persisting the
-  // change to the server — the user's saved Layers preference shouldn't be
-  // flipped just because they opened Timeline once.
-  //
-  // We DO update the in-memory `settings.visitsEnabled` so subsequent
-  // `loadMapData()` calls (e.g. when the user navigates to a different
-  // day) include visits in the fetch + the loading-counter expectations.
-  // Otherwise the loader badge reads "N tracks" only and the map ends
-  // up with stale visits when a new day is selected.
-  async _ensureVisitsLayerEnabled() {
-    if (!this.hasVisitsToggleTarget) return
-
-    // In-memory only — don't go through SettingsManager.updateSetting,
-    // which would persist back to the server.
-    if (this.settings) this.settings.visitsEnabled = true
-    if (this.dataLoader?.settings) this.dataLoader.settings.visitsEnabled = true
-    if (this.settingsController?.settings) {
-      this.settingsController.settings.visitsEnabled = true
-    }
-
-    if (this.visitsToggleTarget.checked) return
-    this.visitsToggleTarget.checked = true
-    if (this.hasVisitsSearchTarget) {
-      this.visitsSearchTarget.style.display = "block"
-    }
-
-    const visitsLayer = this.layerManager?.getLayer("visits")
-    if (!visitsLayer) return
-
-    try {
-      if (!visitsLayer.data?.features?.length) {
-        const visits = await this.api.fetchVisits({
-          start_at: this.startDateValue,
-          end_at: this.endDateValue,
-        })
-        this.filterManager?.setAllVisits(visits)
-        visitsLayer.update(this.dataLoader.visitsToGeoJSON(visits))
-      }
-      visitsLayer.show()
-    } catch (err) {
-      console.error("Failed to auto-enable visits layer for timeline:", err)
     }
   }
 

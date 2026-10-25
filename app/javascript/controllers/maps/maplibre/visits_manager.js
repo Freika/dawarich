@@ -70,7 +70,7 @@ export class VisitsManager {
           // so an empty response is erroneous rather than a genuinely empty day.
           if (layer && map.isStyleLoaded() && visits.length > 0) {
             layer.update(this.dataLoader.visitsToGeoJSON(visits))
-            layer.show?.()
+            if (this.controller.settings?.visitsEnabled) layer.show?.()
           }
         } catch (err) {
           console.error("Failed to refetch visits for timeline day:", err)
