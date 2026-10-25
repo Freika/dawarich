@@ -291,4 +291,40 @@ RSpec.describe Place, type: :model do
       expect(place.reload.name_locked_at).to be_within(1.second).of(locked_at)
     end
   end
+
+  describe 'renaming' do
+    let(:place) { create(:place, name: 'Imaginary Lane 42') }
+
+    it 'carries the new name to visits still showing the old place name' do
+      visit = create(:visit, user: place.user, place: place, name: 'Imaginary Lane 42')
+
+      place.update!(name: 'Synthetic Home')
+
+      expect(visit.reload.name).to eq('Synthetic Home')
+    end
+
+    it 'carries the new name to visits still showing the default name' do
+      visit = create(:visit, user: place.user, place: place, name: Place::DEFAULT_NAME)
+
+      place.update!(name: 'Synthetic Home')
+
+      expect(visit.reload.name).to eq('Synthetic Home')
+    end
+
+    it 'leaves a visit the user named independently alone' do
+      visit = create(:visit, user: place.user, place: place, name: 'Dentist')
+
+      place.update!(name: 'Synthetic Home')
+
+      expect(visit.reload.name).to eq('Dentist')
+    end
+
+    it 'leaves visits of other places alone' do
+      other = create(:visit, user: place.user, place: create(:place, user: place.user), name: 'Imaginary Lane 42')
+
+      place.update!(name: 'Synthetic Home')
+
+      expect(other.reload.name).to eq('Imaginary Lane 42')
+    end
+  end
 end

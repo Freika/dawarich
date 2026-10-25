@@ -22,6 +22,7 @@ class Place < ApplicationRecord
 
   before_validation :build_lonlat, if: -> { latitude.present? && longitude.present? }
   before_save :lock_name_on_user_edit
+  after_update :carry_name_to_visits, if: :saved_change_to_name?
 
   validates :name, presence: true, length: { maximum: 255 }
   validates :lonlat, presence: true
@@ -92,5 +93,10 @@ class Place < ApplicationRecord
     return if new_record? && !user_named
 
     self.name_locked_at = Time.current
+  end
+
+  def carry_name_to_visits
+    stale_names = [name_before_last_save, DEFAULT_NAME].compact.uniq - [name]
+    visits.where(name: stale_names).update_all(name: name) if stale_names.any?
   end
 end
