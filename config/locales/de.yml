@@ -2058,6 +2058,9 @@ de:
         upgrade_to_pro: Auf Pro upgraden
         dismiss: Verwerfen
   shared_links:
+    privacy_zones_note:
+      text: "Deine Privatsphäre-Zonen bleiben bei diesem Link verborgen. Jeder verborgene Bereich ist vom Ort versetzt, sodass niemand erkennen kann, wo der Ort liegt."
+      manage: "Privatsphäre-Zonen"
     expires_field:
       expires_optional: Verfällt (optional)
       stays_active_through_the_end_of_the_day_before_the: Aktiv bis zum Ende des Tages vor dem ausgewählten Datum.
@@ -2228,7 +2231,7 @@ de:
       choose_from_swatches_or_pick_a_custom_color: Wähle aus den Farbkarten oder wähle eine benutzerdefinierte Farbe
       privacy_zone: Privatsphäre-Zone
       hide_map_data_around_places_with_this_tag: Karte-Daten um Orte mit diesem Tag verbergen
-      data_within_this_radius_will_be_hidden_from_the_map: Daten innerhalb dieses Radius werden von der Karte versteckt
+      hidden_area_hint: "Alles innerhalb dieses Radius wird immer verborgen. Der verborgene Kreis ist bis zu 1,6-mal größer und um einen festen Betrag vom Ort versetzt, damit niemand den Ort an der Stelle erkennt, an der deine Daten enden."
       home_work_restaurant: Zuhause, Arbeit, Restaurant...
       privacy_radius: Privatsphäre-Radius
       cancel: Abbrechen
@@ -2247,6 +2250,7 @@ de:
       actions: Aktionen
       no_tags_yet: Noch keine Tags
       create_tags_to_organize_your_places_and_add_privacy_zones: Tags erstellen, um deine Orte zu organisieren und Privatsphäre-Zonen hinzuzufügen.
+      privacy_zone_badge_hint: "Verborgener Bereich: vom Ort versetzt, bis zu 1,6-mal dieser Radius"
       create_your_first_tag: Erstes Tag erstellen
       tags: Tags
       edit_tag: Tag bearbeiten

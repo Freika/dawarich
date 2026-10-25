@@ -7,6 +7,7 @@ class Api::V1::VisitsController < ApiController
 
   def index
     visits = Visits::Finder.new(current_api_user, params).call
+    visits = privacy_zone_masker.mask_visits(visits) if mask_privacy_zones?
 
     # Support optional pagination (backward compatible - returns all if no page param)
     if params[:page].present?

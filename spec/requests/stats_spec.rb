@@ -66,6 +66,26 @@ RSpec.describe '/stats', type: :request do
       end
     end
 
+    describe 'GET /month' do
+      before { create(:stat, user:, year: 2024, month: 6) }
+
+      it 'tells a user with privacy zones that the shared month keeps them hidden' do
+        tag = create(:tag, user:, privacy_radius_meters: 300)
+        tag.places << create(:place, user:, latitude: 52.5, longitude: 13.4)
+
+        get month_stats_path(year: 2024, month: 6)
+
+        expect(response.body).to include('data-testid="share-privacy-zones-note"')
+      end
+
+      it 'leaves the privacy zone note out for a user without privacy zones' do
+        get month_stats_path(year: 2024, month: 6)
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).not_to include('data-testid="share-privacy-zones-note"')
+      end
+    end
+
     describe 'POST /update' do
       let(:stat) { create(:stat, user:, year: 2024) }
 

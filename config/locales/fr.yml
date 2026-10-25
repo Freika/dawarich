@@ -2887,6 +2887,9 @@ fr:
       switch: "Passer au français"
       dismiss: "Fermer"
   shared_links:
+    privacy_zones_note:
+      text: "Vos zones de confidentialité restent masquées sur ce lien. Chaque zone masquée est décalée du lieu, pour que personne ne puisse savoir où il se trouve."
+      manage: "Zones de confidentialité"
     expires_field:
       expires_optional: Expire (facultatif)
       stays_active_through_the_end_of_the_day_before_the: Reste actif jusqu'à la fin
@@ -3073,8 +3076,7 @@ fr:
       privacy_zone: Zone de confidentialité
       hide_map_data_around_places_with_this_tag: Masquer les données sur la carte
         autour des lieux associés à cette balise
-      data_within_this_radius_will_be_hidden_from_the_map: Les données dans ce rayon
-        seront masquées sur la carte
+      hidden_area_hint: "Tout ce qui se trouve dans ce rayon est toujours masqué. Le cercle masqué est jusqu'à 1,6 fois plus grand et décalé du lieu d'une distance fixe, pour que personne ne puisse retrouver le lieu à partir de l'endroit où vos données s'arrêtent."
       home_work_restaurant: Domicile, Travail, Restaurant...
       privacy_radius: Rayon de confidentialité
       cancel: Annuler
@@ -3094,6 +3096,7 @@ fr:
       no_tags_yet: Aucune balise encore créée
       create_tags_to_organize_your_places_and_add_privacy_zones: Créez des étiquettes
         pour organiser vos lieux et ajouter des zones de confidentialité
+      privacy_zone_badge_hint: "Zone masquée décalée du lieu, jusqu'à 1,6 fois ce rayon"
       create_your_first_tag: Créez votre première balise
       tags: Étiquettes
       edit_tag: Modifier la balise

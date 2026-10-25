@@ -235,7 +235,8 @@ class VisitsController < ApplicationController
   # place / suggested_places data. Reuses Timeline::DayAssembler to keep the
   # payload shape consistent with the day-level fetch.
   def timeline_entry_for(visit)
-    Timeline::DayAssembler.new(current_user, start_at: '', end_at: '')
+    Timeline::DayAssembler.new(current_user, start_at: '', end_at: '',
+                                             privacy_zone_masker: Maps::PrivacyZoneMasker.new(current_user))
                           .build_visit_entry(visit)
   end
 
@@ -252,7 +253,8 @@ class VisitsController < ApplicationController
       current_user,
       start_at: day_range.begin.iso8601,
       end_at: day_range.end.iso8601,
-      distance_unit: current_user.safe_settings.distance_unit
+      distance_unit: current_user.safe_settings.distance_unit,
+      privacy_zone_masker: Maps::PrivacyZoneMasker.new(current_user)
     ).call
     day = days.first
 
@@ -346,7 +348,8 @@ class VisitsController < ApplicationController
       current_user,
       start_at: day_range.begin.iso8601,
       end_at: day_range.end.iso8601,
-      distance_unit: current_user.safe_settings.distance_unit
+      distance_unit: current_user.safe_settings.distance_unit,
+      privacy_zone_masker: Maps::PrivacyZoneMasker.new(current_user)
     ).call
     day = days.first
 
@@ -398,7 +401,8 @@ class VisitsController < ApplicationController
       current_user,
       start_at: day_range.begin.iso8601,
       end_at: day_range.end.iso8601,
-      distance_unit: current_user.safe_settings.distance_unit
+      distance_unit: current_user.safe_settings.distance_unit,
+      privacy_zone_masker: Maps::PrivacyZoneMasker.new(current_user)
     ).call.first
 
     if day

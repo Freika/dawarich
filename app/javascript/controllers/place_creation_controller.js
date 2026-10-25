@@ -20,17 +20,57 @@ export default class extends Controller {
 
   connect() {
     this.editingPlaceId = null
-    this.setupEventListeners()
+    this.documentListeners = {
+      "place:create": (e) =>
+        this.open(e.detail.latitude, e.detail.longitude, e.detail),
+      "place:edit": (e) => this.openForEdit(e.detail.place),
+      "turbo:before-stream-render": (e) => this.relaySavedPlace(e),
+    }
+    for (const [type, listener] of Object.entries(this.documentListeners)) {
+      document.addEventListener(type, listener)
+    }
     this.setupTagListeners()
   }
 
-  setupEventListeners() {
-    document.addEventListener("place:create", (e) => {
-      this.open(e.detail.latitude, e.detail.longitude, e.detail)
-    })
-    document.addEventListener("place:edit", (e) => {
-      this.openForEdit(e.detail.place)
-    })
+  disconnect() {
+    for (const [type, listener] of Object.entries(this.documentListeners)) {
+      document.removeEventListener(type, listener)
+    }
+  }
+
+  // The saved place reaches the page in a turbo stream that Turbo renders
+  // after turbo:submit-end, so the map hears about it once that stream lands.
+  relaySavedPlace(event) {
+    if (event.target?.target !== "place-creation-data") return
+
+    const render = event.detail.render
+    event.detail.render = async (stream) => {
+      await render(stream)
+      this.dispatchSavedPlace()
+    }
+  }
+
+  dispatchSavedPlace() {
+    const dataEl = document.getElementById("place-creation-data")
+    if (!dataEl?.dataset.place) return
+
+    const place = JSON.parse(dataEl.dataset.place)
+    const eventName =
+      dataEl.dataset.updated === "true" ? "place:updated" : "place:created"
+
+    document.dispatchEvent(new CustomEvent(eventName, { detail: { place } }))
+    if (dataEl.dataset.visitId) {
+      document.dispatchEvent(
+        new CustomEvent("visit-place:changed", {
+          detail: { visitId: Number.parseInt(dataEl.dataset.visitId, 10) },
+        }),
+      )
+    }
+
+    delete dataEl.dataset.place
+    delete dataEl.dataset.created
+    delete dataEl.dataset.updated
+    delete dataEl.dataset.visitId
   }
 
   setupTagListeners() {
@@ -149,32 +189,7 @@ export default class extends Controller {
   onSubmitEnd(event) {
     if (!event.detail.success) return
 
-    // Close the modal immediately on success. If the turbo_stream payload
-    // populated #place-creation-data, also dispatch place:created/updated
-    // so the map can refresh; if it didn't, the modal still closes (the
-    // place was saved on the server either way).
     this.close()
-
-    const dataEl = document.getElementById("place-creation-data")
-    if (!dataEl?.dataset.place) return
-
-    const place = JSON.parse(dataEl.dataset.place)
-    const eventName =
-      dataEl.dataset.updated === "true" ? "place:updated" : "place:created"
-
-    document.dispatchEvent(new CustomEvent(eventName, { detail: { place } }))
-    if (dataEl.dataset.visitId) {
-      document.dispatchEvent(
-        new CustomEvent("visit-place:changed", {
-          detail: { visitId: Number.parseInt(dataEl.dataset.visitId, 10) },
-        }),
-      )
-    }
-
-    delete dataEl.dataset.place
-    delete dataEl.dataset.created
-    delete dataEl.dataset.updated
-    delete dataEl.dataset.visitId
   }
 
   // --- Private helpers ---

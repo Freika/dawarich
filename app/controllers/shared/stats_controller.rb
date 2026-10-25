@@ -20,7 +20,7 @@ class Shared::StatsController < ApplicationController
     @month = @stat.month
     @user = @stat.user
     @is_public_view = true
-    @data_bounds = @stat.calculate_data_bounds
+    @data_bounds = @stat.calculate_data_bounds(privacy_zone_masker: Maps::PrivacyZoneMasker.new(@user))
     @hexagons_available = @stat.hexagons_available?
 
     render 'stats/public_month'

@@ -14,7 +14,8 @@ class Api::V1::Maps::HexagonsController < ApiController
       user: context[:user] || current_api_user,
       stat: context[:stat],
       start_date: context[:start_date],
-      end_date: context[:end_date]
+      end_date: context[:end_date],
+      privacy_zone_masker: hexagon_privacy_zone_masker(context)
     ).call
 
     render json: result
@@ -42,7 +43,8 @@ class Api::V1::Maps::HexagonsController < ApiController
       end_date: context[:end_date],
       import_id: context[:stat] ? nil : params[:import_id],
       robust: params[:robust] == 'true',
-      respect_plan_scope: !context[:stat]
+      respect_plan_scope: !context[:stat],
+      privacy_zone_masker: hexagon_privacy_zone_masker(context)
     ).call
 
     if result[:success]
@@ -70,7 +72,8 @@ class Api::V1::Maps::HexagonsController < ApiController
     start_date = parse_fog_date!(:start_date)
     end_date = parse_fog_date!(:end_date)
 
-    result = Maps::FogHexagons.new(user: current_api_user, start_date:, end_date:).call
+    result = Maps::FogHexagons.new(user: current_api_user, start_date:, end_date:,
+                                   privacy_zone_masker:).call
 
     render json: result
   rescue ActionController::ParameterMissing => e
@@ -105,6 +108,12 @@ class Api::V1::Maps::HexagonsController < ApiController
       end_date: Date.new(stat.year, stat.month, 1).end_of_month.end_of_day.iso8601,
       stat: stat
     }
+  end
+
+  def hexagon_privacy_zone_masker(context)
+    return Maps::PrivacyZoneMasker.new(context[:user]) if context[:stat]
+
+    privacy_zone_masker if mask_privacy_zones?
   end
 
   def resolve_authenticated_context

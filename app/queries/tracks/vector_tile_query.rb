@@ -34,8 +34,9 @@ class Tracks::VectorTileQuery
 
   # rubocop:disable Naming/MethodParameterName
   def initialize(scope:, z:, x:, y:, clip_points_scope: nil, clip_import_id: nil,
-                 clip_start_at: nil, clip_end_at: nil)
+                 clip_start_at: nil, clip_end_at: nil, privacy_zone_masker: nil)
     @scope = scope
+    @privacy_zone_masker = privacy_zone_masker
     @clip_points_scope = clip_points_scope
     @clip_import_id = clip_import_id
     @clip_start_at = clip_start_at&.to_i
@@ -217,7 +218,15 @@ class Tracks::VectorTileQuery
   end
 
   def mvt_geom_expression(geometry = 'tracks.original_path')
-    "ST_AsMVTGeom(#{simplified_geom(geometry)}, ST_TileEnvelope(#{z}, #{x}, #{y}), #{EXTENT}, #{BUFFER}, true)"
+    "ST_AsMVTGeom(#{simplified_geom(privacy_clip(geometry))}, " \
+      "ST_TileEnvelope(#{z}, #{x}, #{y}), #{EXTENT}, #{BUFFER}, true)"
+  end
+
+  def privacy_clip(geometry)
+    return geometry unless @privacy_zone_masker&.any?
+
+    "(CASE WHEN #{@privacy_zone_masker.touches_sql(geometry)} " \
+      "THEN #{@privacy_zone_masker.clip_sql(geometry)} ELSE #{geometry} END)"
   end
 
   def simplified_geom(geometry)

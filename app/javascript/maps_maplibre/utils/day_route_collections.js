@@ -36,6 +36,7 @@ export function buildDayRouteCollections(pointsByDay, options = {}) {
     const routes = RouteSegmenter.pointsToRoutes(points, {
       distanceThresholdMeters: options.distanceThresholdMeters || 500,
       timeThresholdMinutes: options.timeThresholdMinutes || 60,
+      privacyZones: options.privacyZones,
     })
     for (const feature of routes.features) {
       feature.properties.color = colors[index]

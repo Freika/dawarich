@@ -50,6 +50,9 @@ function fakeMapPage() {
         controller.trackLoads += 1
         return { type: "FeatureCollection", features: [] }
       },
+      async fetchPrivacyZones() {
+        return { zones: [], fingerprint: null }
+      },
     },
     _getLoadedPoints: () => [{ latitude: "51.3402", longitude: "12.3712" }],
   }
@@ -94,6 +97,25 @@ test("import-scoped studio geometry uses only imported points", async () => {
     [13.4, 52.5],
     [13.5, 52.6],
   ])
+})
+
+test("import-scoped studio geometry breaks at a privacy zone", async () => {
+  const { controller, provider } = fakeMapPage()
+  controller.api.importId = 42
+  controller.api.fetchPrivacyZones = async () => ({
+    zones: [{ lon: 13.5, lat: 52.444, radiusMeters: 500 }],
+    fingerprint: "abc",
+  })
+  controller._getLoadedPoints = () => [
+    { latitude: 52.444, longitude: 13.4, timestamp: 1 },
+    { latitude: 52.444, longitude: 13.49, timestamp: 2 },
+    { latitude: 52.444, longitude: 13.51, timestamp: 3 },
+    { latitude: 52.444, longitude: 13.6, timestamp: 4 },
+  ]
+
+  await provider.ensureTrackLoaded()
+
+  assert.equal(provider.trackGeojson().features.length, 2)
 })
 
 test("date changes wait for the map reload promise", async (t) => {

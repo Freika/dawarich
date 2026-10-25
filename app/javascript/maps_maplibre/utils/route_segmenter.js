@@ -176,6 +176,39 @@ export class RouteSegmenter {
   }
 
   /**
+   * True if the segment prev→curr passes within a zone's radius of its center.
+   * Uses an equirectangular projection around each zone (zones are small).
+   * @param {Object} prev - point with latitude/longitude
+   * @param {Object} curr - point with latitude/longitude
+   * @param {Array} zones - [{ lon, lat, radiusMeters }]
+   */
+  static segmentCrossesZone(prev, curr, zones) {
+    if (!zones?.length) return false
+
+    const R = 6371000
+    const toRad = (d) => (d * Math.PI) / 180
+
+    return zones.some((zone) => {
+      const cosLat = Math.cos(toRad(zone.lat))
+      const project = (lat, lon) => ({
+        x: R * toRad(Number(lon) - zone.lon) * cosLat,
+        y: R * toRad(Number(lat) - zone.lat),
+      })
+      const a = project(prev.latitude, prev.longitude)
+      const b = project(curr.latitude, curr.longitude)
+      const dx = b.x - a.x
+      const dy = b.y - a.y
+      const lenSq = dx * dx + dy * dy
+      const t =
+        lenSq === 0
+          ? 0
+          : Math.max(0, Math.min(1, -(a.x * dx + a.y * dy) / lenSq))
+
+      return Math.hypot(a.x + t * dx, a.y + t * dy) <= zone.radiusMeters
+    })
+  }
+
+  /**
    * Split points into segments based on distance and time gaps
    * @param {Array} points - Sorted array of points
    * @param {Object} options - Splitting options
@@ -184,7 +217,7 @@ export class RouteSegmenter {
    * @returns {Array} Array of segments
    */
   static splitIntoSegments(points, options) {
-    const { distanceThresholdKm, timeThresholdMinutes } = options
+    const { distanceThresholdKm, timeThresholdMinutes, privacyZones } = options
 
     const segments = []
     let currentSegment = [points[0]]
@@ -205,7 +238,11 @@ export class RouteSegmenter {
       const timeDiff = (curr.timestamp - prev.timestamp) / 60
 
       // Split if any threshold is exceeded
-      if (distance > distanceThresholdKm || timeDiff > timeThresholdMinutes) {
+      if (
+        distance > distanceThresholdKm ||
+        timeDiff > timeThresholdMinutes ||
+        RouteSegmenter.segmentCrossesZone(prev, curr, privacyZones)
+      ) {
         if (currentSegment.length > 1) {
           segments.push(currentSegment)
         }
@@ -322,6 +359,7 @@ export class RouteSegmenter {
       return RouteSegmenter.splitIntoSegments(sorted, {
         distanceThresholdKm,
         timeThresholdMinutes,
+        privacyZones: options.privacyZones,
       })
     })
 

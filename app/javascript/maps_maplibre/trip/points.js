@@ -18,12 +18,14 @@ export function ensureTripPoints(controller) {
 async function loadTripPoints(controller) {
   setPointsLoading(controller, true)
   try {
-    const { points } = await new ApiClient(
-      controller.apiKeyValue,
-    ).fetchAllPoints({
-      start_at: controller.startedAtValue,
-      end_at: controller.endedAtValue,
-    })
+    const api = new ApiClient(controller.apiKeyValue)
+    const [{ points }, { zones }] = await Promise.all([
+      api.fetchAllPoints({
+        start_at: controller.startedAtValue,
+        end_at: controller.endedAtValue,
+      }),
+      api.fetchPrivacyZones(),
+    ])
     const allPoints = pointsFromDevice(
       points || [],
       controller.deviceWindowsValue,
@@ -39,6 +41,7 @@ async function loadTripPoints(controller) {
     controller.dayRouteCollections = buildDayRouteCollections(pointsByDay, {
       distanceThresholdMeters: controller.metersBetweenRoutesValue,
       timeThresholdMinutes: controller.minutesBetweenRoutesValue,
+      privacyZones: zones,
     })
     return allPoints
   } finally {

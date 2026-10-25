@@ -114,7 +114,7 @@ class Stat < ApplicationRecord
     )
   end
 
-  def calculate_data_bounds
+  def calculate_data_bounds(privacy_zone_masker: nil)
     widened_start = (Date.new(year, month, 1).beginning_of_day - 2.days).to_i
     widened_end = (Date.new(year, month, 1).end_of_month.end_of_day + 2.days).to_i
     tz = user.timezone_iana
@@ -127,6 +127,7 @@ class Stat < ApplicationRecord
        WHERE user_id = $1
        AND timestamp BETWEEN $2 AND $3
        AND lonlat IS NOT NULL
+       #{"AND NOT #{privacy_zone_masker.within_sql('lonlat')}" if privacy_zone_masker&.any?}
        AND EXTRACT(year FROM (to_timestamp(timestamp) AT TIME ZONE $4)) = $5
        AND EXTRACT(month FROM (to_timestamp(timestamp) AT TIME ZONE $4)) = $6",
       'data_bounds_query',

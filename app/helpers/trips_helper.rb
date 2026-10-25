@@ -25,8 +25,15 @@ module TripsHelper
     end
   end
 
+  def trip_preview_bounds(trip)
+    return trip.route_bounds unless trip.route_present? && current_privacy_zone_masker&.any?
+
+    current_privacy_zone_masker.clipped_bounds(Trip.where(id: trip.id), 'trips.path') || []
+  end
+
   def trip_routes_tile_template(trip)
-    "/api/v1/tiles/trips/#{trip.id}/{z}/{x}/{y}.mvt?v=#{trip.updated_at.to_i}"
+    template = "/api/v1/tiles/trips/#{trip.id}/{z}/{x}/{y}.mvt?v=#{trip.updated_at.to_i}"
+    privacy_zones_fingerprint ? "#{template}&pz=#{privacy_zones_fingerprint}" : template
   end
 
   def trek_trip_url(trip)

@@ -31,6 +31,7 @@ class Api::V1::PointsController < ApiController
              .where(timestamp: start_at..query_end)
 
     points = points.where(import_id: params[:import_id]) if params[:import_id].present?
+    points = privacy_zone_masker.mask_points(points) if mask_privacy_zones?
 
     if params[:min_longitude].present? && params[:max_longitude].present? &&
        params[:min_latitude].present? && params[:max_latitude].present?
@@ -218,7 +219,8 @@ class Api::V1::PointsController < ApiController
       params[:anomalies_only], params[:include_anomalies],
       params[:min_longitude], params[:max_longitude],
       params[:min_latitude], params[:max_latitude],
-      max_timestamp, count, max_updated
+      max_timestamp, count, max_updated,
+      (privacy_zone_masker.fingerprint if mask_privacy_zones?)
     ]
   end
 

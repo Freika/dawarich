@@ -13,8 +13,10 @@ RSpec.describe TagSerializer do
   subject { described_class.new(tag).call }
 
   it 'returns the correct JSON structure' do
-    expect(subject).to eq({
-                            tag_id: tag.id,
+    circle = Users::PrivacyZones.circle(place, 500)
+
+    expect(subject).to eq(
+      tag_id: tag.id,
       tag_name: 'Home',
       tag_icon: '🏠',
       tag_color: '#4CAF50',
@@ -24,9 +26,17 @@ RSpec.describe TagSerializer do
           id: place.id,
           name: 'My Place',
           latitude: 10.0,
-          longitude: 20.0
+          longitude: 20.0,
+          masked_area: { latitude: circle[:lat], longitude: circle[:lon], radius_meters: circle[:radius] }
         }
       ]
-                          })
+    )
+  end
+
+  it 'gives the masked area off the place itself' do
+    area = subject[:places].sole[:masked_area]
+
+    expect([area[:latitude], area[:longitude]]).not_to eq([10.0, 20.0])
+    expect(area[:radius_meters]).to be > 500
   end
 end

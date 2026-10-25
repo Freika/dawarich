@@ -145,6 +145,36 @@ test("hover animates the exact segment and restores the full track, colors and o
   assert.equal(h.map.opacity, 0.6)
   h.manager.destroy()
 })
+test("a segment cut at a privacy zone is drawn as separate pieces", async () => {
+  const cut = {
+    ...full,
+    properties: {
+      ...full.properties,
+      segments: [
+        {
+          id: 10,
+          coordinates: [
+            [
+              [1, 1],
+              [1.5, 1.5],
+            ],
+            [
+              [4, 4],
+              [4.5, 4.5],
+            ],
+          ],
+        },
+      ],
+    },
+  }
+  const h = setup(async () => cut)
+  await h.manager.hover(h.event())
+  assert.deepEqual(h.map.source.data.features[0].geometry, {
+    type: "MultiLineString",
+    coordinates: cut.properties.segments[0].coordinates,
+  })
+  h.manager.destroy()
+})
 test("rapid segment changes share one in-flight request and only the latest wins", async () => {
   const d = deferred(),
     h = setup(() => d.promise)

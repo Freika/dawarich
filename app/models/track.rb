@@ -300,7 +300,9 @@ class Track < ApplicationRecord
 
   def broadcast_geojson_updated
     Rails.logger.info "[Track#broadcast_geojson_updated] Broadcasting track #{id} to user #{user_id}"
-    geojson_feature = Tracks::GeojsonSerializer.new(self).call[:features].first
+    geojson = Tracks::GeojsonSerializer.new(self).call
+    geojson_feature = Maps::PrivacyZoneMasker.new(user).mask_track_features(geojson)[:features].first
+    return if geojson_feature.nil?
 
     Rails.logger.info "[Track#broadcast_geojson_updated] GeoJSON feature id: #{geojson_feature[:properties][:id]}"
 
@@ -360,10 +362,14 @@ class Track < ApplicationRecord
   end
 
   def broadcast_track_update(action)
+    payload = TrackSerializer.new(self).call
+    original_path = Maps::PrivacyZoneMasker.new(user).clip_wkt(payload[:original_path])
+    return if original_path.nil?
+
     TracksChannel.broadcast_to(
       user, {
         action: action,
-        track: TrackSerializer.new(self).call
+        track: payload.merge(original_path:)
       }
     )
   rescue StandardError => e

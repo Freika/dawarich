@@ -77,8 +77,8 @@ export class MapEditor {
 
   _fetchTrack(trackId) {
     return Promise.all([
-      this.apiClient.fetchTrackWithSegments(trackId),
-      this.apiClient.fetchTrackPoints(trackId),
+      this.apiClient.fetchTrackWithSegments(trackId, { unmasked: true }),
+      this.apiClient.fetchTrackPoints(trackId, { unmasked: true }),
     ])
   }
 
@@ -436,7 +436,12 @@ export class MapEditor {
 
   async _refreshSelectedImportTrack(sessionVersion) {
     try {
-      const feature = await this.apiClient.fetchTrackWithSegments(this.trackId)
+      const feature = await this.apiClient.fetchTrackWithSegments(
+        this.trackId,
+        {
+          unmasked: true,
+        },
+      )
       if (sessionVersion !== this.sessionVersion) return
       this.layerManager.getLayer("tracks")?.setSelectedTrack(feature)
     } catch (error) {
