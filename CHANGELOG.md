@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- On phones, the card asking whether to show "What's New" notices now fits on screen. Before, its left side, including the heading, was cut off.
 - The trip page no longer scrolls sideways on phones, and its download menu no longer opens partly off-screen. Long trip names and the Public badge of a shared trip used to push the page wider than the screen.
 - A visit is suggested again when tracking stops at a place and resumes at the same spot later, for example a shortcut that pauses tracking at the gym. Before, fixes taken while arriving and leaving could make the two sides look like different places, and no visit was suggested. Choose Re-run detection on full history on the Visits page to fix past stays (#3203)
 - Imports uploaded before 1.14.4 no longer show a `.zip` suffix in their names: `ride.gpx.zip` becomes `ride.gpx`. Imports you renamed yourself, and imports whose new name is already taken by another of your imports, keep their current names. (#3062)
