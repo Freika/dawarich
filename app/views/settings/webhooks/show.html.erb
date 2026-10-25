@@ -7,11 +7,11 @@
   <% end %>
   <%= render 'settings/navigation' %>
 
-  <div class="card bg-base-200 shadow-xl">
-    <div class="card-body">
-      <p class="text-sm opacity-80" style="overflow-wrap:anywhere"><%= @webhook.url %></p>
+  <div class="card bg-base-200">
+    <div class="card-body p-5 sm:p-8">
+      <p class="text-sm text-base-content/70 [overflow-wrap:anywhere]"><%= @webhook.url %></p>
       <% if @deliveries.empty? %>
-        <p class="text-sm opacity-70"><%= t("#{s}.empty") %></p>
+        <p class="text-sm text-base-content/60"><%= t("#{s}.empty") %></p>
       <% else %>
         <div class="overflow-x-auto">
           <table class="table table-sm">
@@ -28,15 +28,20 @@
             <tbody>
               <% @deliveries.each do |delivery| %>
                 <tr data-testid="webhook-delivery">
-                  <td class="whitespace-nowrap"><%= l(delivery.created_at.in_time_zone, format: :short) %></td>
+                  <td class="whitespace-nowrap tabular-nums"><%= l(delivery.created_at.in_time_zone, format: :short) %></td>
                   <td>
                     <%= t("settings.geofencing.show.event_types.#{delivery.geofence_event.event_type}") %>
                     · <%= delivery.geofence_event.area.name %>
                     <% if delivery.geofence_event.synthetic? %><span class="badge badge-ghost badge-sm"><%= t("#{s}.test") %></span><% end %>
                   </td>
-                  <td><%= t("#{s}.statuses.#{delivery.status}") %></td>
-                  <td><%= delivery.attempt_count %></td>
-                  <td class="text-xs" style="overflow-wrap:anywhere">
+                  <td class="whitespace-nowrap">
+                    <span class="inline-flex items-center gap-1.5">
+                      <span class="size-1.5 rounded-full <%= { 'success' => 'bg-success', 'failure' => 'bg-error', 'retrying' => 'bg-warning' }.fetch(delivery.status, 'bg-base-content/30') %>" aria-hidden="true"></span>
+                      <%= t("#{s}.statuses.#{delivery.status}") %>
+                    </span>
+                  </td>
+                  <td class="tabular-nums"><%= delivery.attempt_count %></td>
+                  <td class="text-xs tabular-nums [overflow-wrap:anywhere]">
                     <%= [delivery.response_status, delivery.error_message].compact.join(' · ').presence || '—' %>
                   </td>
                   <td>

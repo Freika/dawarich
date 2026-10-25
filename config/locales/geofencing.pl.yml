@@ -45,7 +45,10 @@ pl:
           native_app: Telefon
           server_inferred: Punkty lokalizacji
           owntracks_native: OwnTracks
-        delivery_summary: dostarczono %{delivered}, nieudane %{failed}, w toku %{pending}
+        delivered: 'Dostarczono: %{count}'
+        failed: 'Nieudane: %{count}'
+        in_progress: 'W toku: %{count}'
+        not_sent_late: "Nie wysłano: dotarło ponad %{minutes} min za późno"
     webhooks:
       form:
         name: Nazwa
@@ -53,12 +56,15 @@ pl:
         events: Zdarzenia
         areas: Obszary
         areas_hint: Nie zaznaczaj żadnego, aby dostawać zdarzenia ze wszystkich obszarów.
+        home_assistant_hint: "Home Assistant odpowiada 200 na każde żądanie, nawet gdy ID webhooka jest błędne, więc „Dostarczono” nie oznacza tu, że automatyzacja się uruchomiła: sprawdź jej ślad w Home Assistant. Home Assistant nie potrafi sprawdzić podpisu; webhook pozostaje prywatny tylko dzięki ID w adresie URL."
+        home_assistant_cloud_hint: "Domyślnie Home Assistant przyjmuje webhooki tylko z własnej sieci. Użyj adresu webhooka Nabu Casa albo wyłącz local_only w ustawieniach webhooka wyzwalacza."
         active: Aktywny
         save: Zapisz
         create: Dodaj webhook
       webhook:
         active: Aktywny
         inactive: Wyłączony
+        failing: Błędy
         every_area: Każdy obszar
         areas_count:
           one: '%{count} obszar'

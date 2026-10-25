@@ -45,7 +45,10 @@ en:
           native_app: Phone
           server_inferred: Location points
           owntracks_native: OwnTracks
-        delivery_summary: '%{delivered} delivered, %{failed} failed, %{pending} in progress'
+        delivered: '%{count} delivered'
+        failed: '%{count} failed'
+        in_progress: '%{count} in progress'
+        not_sent_late: "Not sent: arrived more than %{minutes} min late"
     webhooks:
       form:
         name: Name
@@ -53,12 +56,15 @@ en:
         events: Events
         areas: Areas
         areas_hint: Leave all unchecked to get events for every area.
+        home_assistant_hint: "Home Assistant answers every request with 200, even when the webhook ID is wrong, so “Delivered” here does not prove your automation ran: check its trace in Home Assistant. Home Assistant cannot check the signature; the webhook ID in the URL is what keeps it private."
+        home_assistant_cloud_hint: "By default, Home Assistant only accepts webhooks from its own network. Use a Nabu Casa webhook URL, or switch off local_only in the trigger’s webhook settings."
         active: Active
         save: Save
         create: Add webhook
       webhook:
         active: Active
         inactive: Switched off
+        failing: Failing
         every_area: Every area
         areas_count:
           one: '%{count} area'

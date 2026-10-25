@@ -47,7 +47,58 @@ RSpec.describe 'Settings → Geofencing', type: :request do
       get settings_geofencing_path
 
       status = page.at_css('[data-testid="event-delivery-status"]').text.squish
-      expect(status).to eq('0 delivered, 0 failed, 1 in progress')
+      expect(status).to eq('1 in progress')
+    end
+
+    it 'says when an event arrived too late to be sent' do
+      create(:webhook, user:)
+      create(:geofence_event, user:, area: home, occurred_at: 2.hours.ago, received_at: 1.minute.ago)
+
+      get settings_geofencing_path
+
+      status = page.at_css('[data-testid="event-delivery-status"]').text.squish
+      expect(status).to eq('Not sent: arrived more than 15 min late')
+    end
+
+    it 'explains how Home Assistant answers only where it applies' do
+      create(:webhook, user:, name: 'HA', url: 'https://203.0.113.10/api/webhook/presence')
+      create(:webhook, user:, name: 'n8n', url: 'https://203.0.113.11/webhook/presence')
+
+      get settings_geofencing_path
+
+      hint = '[data-testid="home-assistant-hint"]'
+      rows = page.css('[data-testid="webhook"]').index_by { |row| row.at_css('[data-testid="webhook-name"]').text }
+      expect(rows['HA'].at_css(hint)).to be_present
+      expect(rows['n8n'].at_css(hint)).to be_nil
+      expect(page.at_css("#webhook-form #{hint}")).to be_present
+    end
+
+    it 'tells cloud users how Home Assistant can accept webhooks from outside its network' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :pro, active_until: 1.year.from_now)
+
+      get settings_geofencing_path
+      cloud_hint = page.at_css('#webhook-form [data-testid="home-assistant-hint"]').text
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      get settings_geofencing_path
+      self_hosted_hint = page.at_css('#webhook-form [data-testid="home-assistant-hint"]').text
+
+      expect(cloud_hint).to include('Nabu Casa')
+      expect(self_hosted_hint).not_to include('Nabu Casa')
+    end
+
+    it 'marks a webhook that keeps failing' do
+      create(:webhook, user:, name: 'Healthy')
+      create(:webhook, user:, name: 'Broken', consecutive_failures: 3)
+      create(:webhook, user:, name: 'Off', active: false, consecutive_failures: 5)
+
+      get settings_geofencing_path
+
+      statuses = page.css('[data-testid="webhook"]').to_h do |row|
+        name = row.at_css('[data-testid="webhook-name"]').text.squish
+        [name, row.at_css('[data-testid="webhook-status"]').text.squish]
+      end
+      expect(statuses).to eq('Healthy' => 'Active', 'Broken' => 'Failing', 'Off' => 'Switched off')
     end
 
     context 'for a Lite user on cloud' do

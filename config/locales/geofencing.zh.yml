@@ -45,7 +45,10 @@ zh:
           native_app: 手机
           server_inferred: 位置点
           owntracks_native: OwnTracks
-        delivery_summary: 已投递 %{delivered}，失败 %{failed}，进行中 %{pending}
+        delivered: '已投递 %{count}'
+        failed: '失败 %{count}'
+        in_progress: '进行中 %{count}'
+        not_sent_late: "未发送：延迟超过 %{minutes} 分钟才到达"
     webhooks:
       form:
         name: 名称
@@ -53,12 +56,15 @@ zh:
         events: 事件
         areas: 区域
         areas_hint: 全部不选即可接收所有区域的事件。
+        home_assistant_hint: "Home Assistant 对每个请求都返回 200，即使 webhook ID 有误，因此这里的“已投递”并不能证明你的自动化已运行：请在 Home Assistant 中查看其跟踪记录。Home Assistant 无法校验签名；让 webhook 保持私密的是 URL 中的 webhook ID。"
+        home_assistant_cloud_hint: "默认情况下，Home Assistant 只接受来自其本地网络的 webhook。请使用 Nabu Casa 的 webhook URL，或在触发器的 webhook 设置中关闭 local_only。"
         active: 启用
         save: 保存
         create: 添加 Webhook
       webhook:
         active: 已启用
         inactive: 已停用
+        failing: 投递失败
         every_area: 所有区域
         areas_count:
           one: '%{count} 个区域'

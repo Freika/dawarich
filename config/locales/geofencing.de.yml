@@ -46,7 +46,10 @@ de:
           native_app: Handy
           server_inferred: Standortpunkte
           owntracks_native: OwnTracks
-        delivery_summary: '%{delivered} zugestellt, %{failed} fehlgeschlagen, %{pending} laufend'
+        delivered: '%{count} zugestellt'
+        failed: '%{count} fehlgeschlagen'
+        in_progress: '%{count} laufend'
+        not_sent_late: "Nicht gesendet: mehr als %{minutes} Min. zu spät eingetroffen"
     webhooks:
       form:
         name: Name
@@ -54,12 +57,15 @@ de:
         events: Ereignisse
         areas: Bereiche
         areas_hint: Lass alle leer, um Ereignisse für jeden Bereich zu erhalten.
+        home_assistant_hint: "Home Assistant beantwortet jede Anfrage mit 200, auch bei falscher Webhook-ID. „Zugestellt“ heißt hier also nicht, dass deine Automatisierung gelaufen ist: Prüfe ihren Trace in Home Assistant. Home Assistant kann die Signatur nicht prüfen; privat bleibt der Webhook nur durch die ID in der URL."
+        home_assistant_cloud_hint: "Standardmäßig nimmt Home Assistant Webhooks nur aus dem eigenen Netzwerk an. Nutze eine Nabu-Casa-Webhook-URL oder schalte local_only in den Webhook-Einstellungen des Auslösers aus."
         active: Aktiv
         save: Speichern
         create: Webhook hinzufügen
       webhook:
         active: Aktiv
         inactive: Deaktiviert
+        failing: Fehlerhaft
         every_area: Jeder Bereich
         areas_count:
           one: '%{count} Bereich'

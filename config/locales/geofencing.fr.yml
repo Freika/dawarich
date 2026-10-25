@@ -45,7 +45,10 @@ fr:
           native_app: Téléphone
           server_inferred: Points de localisation
           owntracks_native: OwnTracks
-        delivery_summary: '%{delivered} envoyés, %{failed} en échec, %{pending} en cours'
+        delivered: 'Envoyés : %{count}'
+        failed: 'En échec : %{count}'
+        in_progress: 'En cours : %{count}'
+        not_sent_late: "Non envoyé : arrivé avec plus de %{minutes} min de retard"
     webhooks:
       form:
         name: Nom
@@ -53,12 +56,15 @@ fr:
         events: Événements
         areas: Zones
         areas_hint: Ne cochez rien pour recevoir les événements de toutes les zones.
+        home_assistant_hint: "Home Assistant répond 200 à chaque requête, même si l’identifiant du webhook est faux : « Envoyé » ici ne prouve donc pas que votre automatisation a tourné. Vérifiez sa trace dans Home Assistant. Home Assistant ne peut pas vérifier la signature ; c’est l’identifiant du webhook dans l’URL qui le garde privé."
+        home_assistant_cloud_hint: "Par défaut, Home Assistant n’accepte que les webhooks de son propre réseau. Utilisez une URL de webhook Nabu Casa, ou désactivez local_only dans les réglages webhook du déclencheur."
         active: Actif
         save: Enregistrer
         create: Ajouter le webhook
       webhook:
         active: Actif
         inactive: Désactivé
+        failing: En échec
         every_area: Toutes les zones
         areas_count:
           one: '%{count} zone'

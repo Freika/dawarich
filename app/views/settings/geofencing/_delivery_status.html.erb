@@ -1,0 +1,15 @@
+<% deliveries = event.webhook_deliveries %>
+<% delivered = deliveries.count(&:status_success?) %>
+<% failed = deliveries.count(&:status_failure?) %>
+<% in_progress = deliveries.count { |d| d.status_pending? || d.status_retrying? } %>
+<% if deliveries.empty? && webhooks.any? && event.stale_for_webhooks? %>
+  <%= t("#{scope}.not_sent_late", minutes: GeofenceEvent::WEBHOOK_FRESHNESS.in_minutes.to_i) %>
+<% elsif deliveries.empty? %>
+  —
+<% else %>
+  <% parts = [] %>
+  <% parts << tag.span(t("#{scope}.delivered", count: delivered)) if delivered.positive? %>
+  <% parts << tag.span(class: 'inline-flex items-center gap-1') { tag.span(class: 'size-1.5 rounded-full bg-error', 'aria-hidden': true) + t("#{scope}.failed", count: failed) } if failed.positive? %>
+  <% parts << tag.span(class: 'inline-flex items-center gap-1') { tag.span(class: 'size-1.5 rounded-full bg-warning', 'aria-hidden': true) + t("#{scope}.in_progress", count: in_progress) } if in_progress.positive? %>
+  <%= safe_join(parts, ', ') %>
+<% end %>

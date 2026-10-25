@@ -10,5 +10,11 @@ class GeofenceEvent < ApplicationRecord
 
   validates :event_type, :source, :occurred_at, :received_at, presence: true
 
+  WEBHOOK_FRESHNESS = 15.minutes
+
   scope :real, -> { where(synthetic: false) }
+
+  def stale_for_webhooks?
+    received_at - occurred_at > WEBHOOK_FRESHNESS
+  end
 end

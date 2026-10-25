@@ -44,6 +44,12 @@ class Webhook < ApplicationRecord
     area_ids.empty? || area_ids.include?(area.id)
   end
 
+  def home_assistant?
+    URI.parse(url.to_s).path.to_s.start_with?('/api/webhook/')
+  rescue URI::InvalidURIError
+    false
+  end
+
   def serializable_hash(options = nil)
     options = (options || {}).dup
     options[:except] = Array(options[:except]) + [:secret]

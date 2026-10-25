@@ -11,8 +11,8 @@ RSpec.describe GeofenceEvents::Record do
 
   before { GeofenceEvents::StateStore.new(user).reset! }
 
-  def record(event_type, source: :server_inferred, **options)
-    described_class.call(user:, area:, event_type:, source:, occurred_at: Time.current,
+  def record(event_type, source: :server_inferred, occurred_at: Time.current, **options)
+    described_class.call(user:, area:, event_type:, source:, occurred_at:,
                          lonlat: 'POINT(13.539 52.437)', **options)
   end
 
@@ -21,6 +21,15 @@ RSpec.describe GeofenceEvents::Record do
 
     expect { record(:enter) }.to have_enqueued_job(Webhooks::DeliverJob).exactly(:once)
     expect(GeofenceEvent.real.where(user:, event_type: :enter).count).to eq(1)
+  end
+
+  it 'stores an event that arrives too late for automations but does not deliver it' do
+    expect { record(:enter, occurred_at: 20.minutes.ago) }.not_to have_enqueued_job(Webhooks::DeliverJob)
+    expect(GeofenceEvent.sole).to be_stale_for_webhooks
+  end
+
+  it 'delivers an event that arrives a few minutes late' do
+    expect { record(:enter, occurred_at: 10.minutes.ago) }.to have_enqueued_job(Webhooks::DeliverJob)
   end
 
   it 'records a repeated enter once, also from concurrent requests' do

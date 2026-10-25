@@ -45,7 +45,10 @@ ca:
           native_app: Telèfon
           server_inferred: Punts d’ubicació
           owntracks_native: OwnTracks
-        delivery_summary: '%{delivered} enviats, %{failed} fallits, %{pending} en curs'
+        delivered: 'Enviats: %{count}'
+        failed: 'Fallits: %{count}'
+        in_progress: 'En curs: %{count}'
+        not_sent_late: "No enviat: ha arribat amb més de %{minutes} min de retard"
     webhooks:
       form:
         name: Nom
@@ -53,12 +56,15 @@ ca:
         events: Esdeveniments
         areas: Zones
         areas_hint: Deixa-les sense marcar per rebre esdeveniments de totes les zones.
+        home_assistant_hint: "Home Assistant respon 200 a totes les sol·licituds, fins i tot si l’ID del webhook és incorrecte, així que «Enviat» aquí no demostra que la teva automatització s’hagi executat: revisa’n la traça a Home Assistant. Home Assistant no pot comprovar la signatura; el que manté privat el webhook és el seu ID a l’URL."
+        home_assistant_cloud_hint: "Per defecte, Home Assistant només accepta webhooks de la seva pròpia xarxa. Fes servir un URL de webhook de Nabu Casa o desactiva local_only a la configuració de webhook del disparador."
         active: Actiu
         save: Desa
         create: Afegeix el webhook
       webhook:
         active: Actiu
         inactive: Desactivat
+        failing: Amb errors
         every_area: Totes les zones
         areas_count:
           one: '%{count} zona'
