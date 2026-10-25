@@ -38,7 +38,7 @@ function setup() {
   const controller = new PlaceCreationController()
   controller.close = () => {}
   controller.connect()
-  const streamRender = (target, place) => {
+  const streamRender = (target, place, visitId) => {
     const event = {
       target: { target },
       detail: {
@@ -47,6 +47,7 @@ function setup() {
             dataEl.dataset.place = JSON.stringify(place)
             dataEl.dataset.updated = "true"
           }
+          if (visitId) dataEl.dataset.visitId = String(visitId)
         },
       },
     }
@@ -81,6 +82,22 @@ test("each save announces its own place, never the previous one", async () => {
   assert.deepEqual(
     dispatched.map((e) => e.detail.place.id),
     [3, 4],
+  )
+})
+
+test("a place saved from a visit also announces the visit, once", async () => {
+  const { dispatched, streamRender } = setup()
+
+  await streamRender("place-creation-data", { id: 3 }, 42)
+  await streamRender("place-creation-data", { id: 4 })
+
+  assert.deepEqual(
+    dispatched.map((e) => [e.type, e.detail.place?.id ?? e.detail.visitId]),
+    [
+      ["place:updated", 3],
+      ["visit-place:changed", 42],
+      ["place:updated", 4],
+    ],
   )
 })
 

@@ -1,3 +1,7 @@
-<%= turbo_frame_tag 'place-drawer' do %>
-  <%= render 'drawer', place: @place, recent_visits: @recent_visits %>
-<% end %>
+<% content_for :title, @place.name %>
+
+<div class="place-page">
+  <%= turbo_frame_tag 'place-drawer' do %>
+    <%= render 'drawer', place: @place, recent_visits: @recent_visits %>
+  <% end %>
+</div>

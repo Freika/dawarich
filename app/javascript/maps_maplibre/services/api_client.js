@@ -443,37 +443,6 @@ export class ApiClient {
   }
 
   /**
-   * Fetch areas
-   */
-  async fetchAreas() {
-    const response = await fetch(`${this.baseURL}/areas`, {
-      headers: this.getHeaders(),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch areas: ${response.statusText}`)
-    }
-
-    return response.json()
-  }
-
-  /**
-   * Fetch single area by ID
-   * @param {number} areaId - Area ID
-   */
-  async fetchArea(areaId) {
-    const response = await fetch(`${this.baseURL}/areas/${areaId}`, {
-      headers: this.getHeaders(),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch area: ${response.statusText}`)
-    }
-
-    return response.json()
-  }
-
-  /**
    * Fetch tracks for a single page
    * @param {Object} options - { start_at, end_at, page, per_page }
    * @returns {Promise<Object>} { features, currentPage, totalPages, totalCount }
@@ -635,41 +604,6 @@ export class ApiClient {
 
     // Return the first (and only) feature from the FeatureCollection
     return geojson.features?.[0] || null
-  }
-
-  /**
-   * Create area
-   * @param {Object} area - Area data
-   */
-  async createArea(area) {
-    const response = await fetch(`${this.baseURL}/areas`, {
-      method: "POST",
-      headers: this.getHeaders(),
-      body: JSON.stringify({ area }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to create area: ${response.statusText}`)
-    }
-
-    return response.json()
-  }
-
-  /**
-   * Delete area by ID
-   * @param {number} areaId - Area ID
-   */
-  async deleteArea(areaId) {
-    const response = await fetch(`${this.baseURL}/areas/${areaId}`, {
-      method: "DELETE",
-      headers: this.getHeaders(),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to delete area: ${response.statusText}`)
-    }
-
-    return response.json()
   }
 
   /**

@@ -67,6 +67,22 @@ RSpec.describe EnhancedImport::Destroy do
       end
     end
 
+    context 'when an extracted place backs a legacy Area' do
+      let!(:extracted_place) { create(:place, user: user, import_id: import.id) }
+      let!(:area) { create(:area, user: user) }
+
+      before do
+        LegacyAreaPlaceMapping.create!(area:, place: extracted_place)
+      end
+
+      it 'keeps the canonical Place and its compatibility mapping' do
+        service.call
+
+        expect(Place.exists?(extracted_place.id)).to be true
+        expect(LegacyAreaPlaceMapping.find_by!(area: area).place_id).to eq(extracted_place.id)
+      end
+    end
+
     context 'with artifacts belonging to a different import' do
       let(:other_import) { create(:import, user: user, source: :google_phone_takeout) }
       let!(:other_visit) { create(:visit, user: user, import_id: other_import.id) }

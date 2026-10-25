@@ -25,7 +25,8 @@ module EnhancedImport
           started_at: extracted.started_at,
           ended_at: extracted.ended_at,
           duration: (extracted.duration_seconds / 60.0).round,
-          name: extracted.name.presence || place.name,
+          name: (extracted.name.presence unless extracted.name == place.name),
+          location_label: place.name,
           status: 0
         )
         [visit, true]

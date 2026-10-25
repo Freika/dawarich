@@ -51,7 +51,7 @@ module Timeline
       entry = {
         type: 'visit',
         visit_id: visit.id,
-        name: visit.name,
+        name: visit.display_name,
         editable_name: visit.name,
         status: visit.status,
         confidence_band: visit.confidence_band,
@@ -265,7 +265,8 @@ module Timeline
         name: place.name,
         **visible_coordinates(place.lat, place.lon),
         city: place.city,
-        country: place.country
+        country: place.country,
+        visit_radius: place.visit_radius
       }
     end
 

@@ -7,8 +7,8 @@ module McpTools
 
     tool_name 'search_visits'
     title 'Search visits'
-    description "Find the authenticated user's visits whose name, place, city, country or area matches " \
-                "a text query, newest first, with the total number of matches. #{VISIT_STATUS_NOTE}"
+    description "Find the authenticated user's visits whose name, location label, place, city, country or area " \
+                "matches a text query, newest first, with the total number of matches. #{VISIT_STATUS_NOTE}"
     annotations(
       read_only_hint: true,
       destructive_hint: false,
@@ -20,7 +20,8 @@ module McpTools
         query: {
           type: 'string',
           minLength: 2,
-          description: 'Case-insensitive text matched against visit, place, city, country and area names.'
+          description: 'Case-insensitive text matched against visit names, location labels, place, city, country ' \
+                       'and area names.'
         },
         limit: {
           type: 'integer',
@@ -63,7 +64,8 @@ module McpTools
 
       def matching_visits(user, query)
         user.scoped_visits.left_joins(:place, :area).where(
-          'visits.name ILIKE :pattern OR places.name ILIKE :pattern OR places.city ILIKE :pattern ' \
+          'visits.name ILIKE :pattern OR visits.location_label ILIKE :pattern OR places.name ILIKE :pattern ' \
+          'OR places.city ILIKE :pattern ' \
           'OR places.country ILIKE :pattern OR areas.name ILIKE :pattern',
           pattern: "%#{Visit.sanitize_sql_like(query)}%"
         )
@@ -72,7 +74,7 @@ module McpTools
       def timeline_entry(visit)
         {
           type: 'visit',
-          name: visit.name,
+          name: visit.display_name,
           status: visit.status,
           started_at: visit.started_at.iso8601,
           ended_at: visit.ended_at.iso8601,
@@ -82,7 +84,8 @@ module McpTools
             lat: visit.place.lat,
             lng: visit.place.lon,
             city: visit.place.city,
-            country: visit.place.country
+            country: visit.place.country,
+            visit_radius: visit.place.visit_radius
           },
           area: visit.area && {
             name: visit.area.name,

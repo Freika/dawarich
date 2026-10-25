@@ -1009,16 +1009,6 @@ de:
       settings: Einstellungen
       setup_guide: Einrichtungsanleitung
     maplibre:
-      area_creation_modal:
-        create_new_area: Neues Gebiet erstellen
-        area_name: Gebietsname *
-        radius: Radius
-        meters: Meter
-        cancel: Abbrechen
-        e_g_home_office_gym: z. B. Zuhause, Büro, Fitnessstudio …
-        radius_in_meters: Radius in Metern
-        create_area: Gebiet erstellen
-        creating: Wird erstellt...
       button_cluster:
         video_studio: "Video-Studio"
         map_controls: Kartensteuerung
@@ -1075,6 +1065,7 @@ de:
         places: Orte
         show_your_saved_places: Deine gespeicherten Orte anzeigen
         enable_all_tags: Alle Tags aktivieren
+        show_place_boundaries: Ortsgrenzen anzeigen
         untagged: "\U0001F3F7️ Ohne Tag"
         click_tags_to_filter_places: Klick auf Tags, um Orte zu filtern
         photos: Fotos
@@ -1201,8 +1192,7 @@ de:
         pick_a_day_in_the_calendar_to_see_visits: Wähle einen Tag im Kalender aus, um Aufenthalte zu sehen.
         create_visit: Aufenthalt erstellen
         create_place: Ort erstellen
-        select_area: Bereich auswählen
-        create_area: Bereich erstellen
+        select_data_on_map: Daten auf der Karte auswählen
         replay: Wiedergabe
         enrich_photos: Fotos bereichern
         close: Schließen
@@ -1403,12 +1393,16 @@ de:
       rarr: "→"
       'on': auf
       no_visits_yet: Noch keine Aufenthalte
-      rename: Umbenennen
       merge: Verbinden
+      select_place_to_merge: Doppelten Ort auswählen
+      no_matching_places: Keine passenden Orte gefunden
+      search_places: Orte suchen
+      search: Suchen
+      merge_confirmation: Den ausgewählten Ort mit „%{survivor}“ zusammenführen? Aufenthalte, Tags und Notizen werden hierher verschoben.
       notes: Notizen
       save: Speichern
       delete: Löschen
-      delete_this_place_this_cannot_be_undone: Diesen Ort löschen? Dies kann nicht rückgängig gemacht werden.
+      delete_this_place_this_cannot_be_undone: Diesen Ort löschen? Seine Aufenthalte bleiben ohne zugeordneten Ort erhalten.
       manual_name_title: Du hast diesen Ort benannt, daher wird der automatische Name nicht geändert. Benenne ihn um zu „%{default_name}“, um ihn wieder der automatischen Namensgebung zu übergeben.
       visit_count:
         one: "%{count} Aufenthalt"
@@ -1417,6 +1411,9 @@ de:
       no_nearby_places_found: Keine nahen Orte gefunden
       load_more_search_up_to_distance_m: Weitere laden (Suche bis zu %{distance}m)
     index:
+      filters: Ortsfilter
+      all_places: Alle Orte
+      unconfirmed_places: Unbestätigt
       hello_there: Hallo!
       here_you_ll_find_your_places_created_by_visits_suggestion: Hier findest du deine Orte, die durch den Visits-Vorschlagsprozess erstellt wurden. Aber jetzt gibt es keine.
       name: Name
@@ -1426,7 +1423,7 @@ de:
       timeline: Zeitleiste
       places: Orte
       delete: Löschen
-      are_you_sure_deleting_a_place_will_result_in_deleting: Bist du sicher? Das Löschen eines Ortes wird dazu führen, dass alle Aufenthalte für diesen Ort gelöscht werden.
+      are_you_sure_deleting_a_place_will_result_in_deleting: Diesen Ort löschen? Seine Aufenthalte bleiben ohne zugeordneten Ort erhalten.
   points:
     address:
       address: 'Adresse:'
@@ -1793,7 +1790,7 @@ de:
         tracks: Tracks
         imports: Importe
         exports: Exporte
-        areas: Gebiete
+        places: Orte
         sign_in_history: Anmeldehistorie
         total_sign_ins: Gesamtanzahl Anmeldungen
         last_sign_in: Letzte Anmeldung
@@ -1951,6 +1948,8 @@ de:
     place_creation_modal:
       create_new_place: Neuer Ort erstellen
       place_name: Ortsname *
+      visit_radius: Besuchsradius (Meter) *
+      visit_radius_hint: Besuche, deren Mittelpunkt in diesem Radius liegt, können dem Ort zugeordnet werden. Dies hat keinen Einfluss auf den Datenschutz.
       note: Notiz
       optional_add_any_notes_or_details_about_this_place: Optional - Füge hier beliebige Notizen oder Details über diesen Ort hinzu
       tags: Tags
@@ -3183,6 +3182,7 @@ de:
             visit_not_found: Aufenthalt nicht gefunden
           invalid_place: Ungültiger Ort
           invalid_area: Ungültiger Bereich
+          conflicting_place_and_area: place_id und area_id können nicht gemeinsam angegeben werden
           at_least_2_visits_must_be_selected_for_merging: Mindestens 2 Aufenthalte müssen ausgewählt werden, um sie zu verbinden
           one_or_more_visits_not_found: Ein oder mehrere Aufenthalte wurden nicht gefunden
           count_visits_updated_successfully: "%{count} Aufenthalte wurden erfolgreich aktualisiert"
@@ -3310,6 +3310,8 @@ de:
       place_was_successfully_destroyed: Ort wurde erfolgreich gelöscht.
       created: Ort erfolgreich erstellt!
       updated: Ort erfolgreich aktualisiert!
+      merged: '„%{duplicate}“ wurde mit „%{survivor}“ zusammengeführt.'
+      merge_visit_conflict: "Diese Orte können nicht zusammengeführt werden, weil Besuch #%{first_id} und Besuch #%{second_id} beide um %{started_at} beginnen. Löse zuerst diese Besuche auf."
     points:
       no_points_selected: Keine Punkte ausgewählt.
       points_were_successfully_destroyed: Punkte wurden erfolgreich gelöscht.
@@ -3501,6 +3503,7 @@ de:
       failed_to_delete_visits: Löschen der Aufenthalte fehlgeschlagen.
       invalid_place: Ungültiger Ort
       invalid_area: Ungültiger Bereich
+      conflicting_place_and_area: Ort und Bereich können nicht gemeinsam angegeben werden
       failed_to_update_visit: Aktualisierung des Aufenthalts fehlgeschlagen.
       select_visits_to_merge: Wähle mindestens zwei Aufenthalte zum Verbinden.
       visits_must_share_day: Aufenthalte müssen am selben Tag sein.
@@ -4050,9 +4053,6 @@ de:
       click_on_the_map_to_place_a_visit_esc_to: Klicke auf die Karte, um einen Aufenthalt zu platzieren (Esc zum Abbrechen)
       visit_creation_modal_not_available: Dialog zum Erstellen eines Aufenthalts ist nicht verfügbar
       visit_creation_controller_not_available: Controller für Aufenthalt-Erstellung nicht verfügbar
-      area_drawer_controller_not_available: Controller für Flächenzeichnung nicht verfügbar
-      area_created_successfully: Fläche erfolgreich erstellt!
-      failed_to_reload_areas: Gebiete konnten nicht neu geladen werden
       family_feature_not_available: Familienfunktion nicht verfügbar
       failed_to_load_family_members: Familienmitglieder konnten nicht geladen werden
       centered_on_family_member: Auf Familienmitglied zentriert
@@ -4477,6 +4477,7 @@ de:
       place: Ort
       points: Punkte
       radius: Radius
+      visit_radius: Aufenthaltsradius
       reason: Grund
       route_information: Route-Informationen
       selected_point: Ausgewählter Punkt

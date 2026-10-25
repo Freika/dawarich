@@ -37,8 +37,9 @@ module Api
           when 'all'       then @places
           when 'manual'    then @places.manual
           when 'confirmed' then @places.linked_to_confirmed_visits(current_api_user)
-          when 'tagged'    then @places.tagged
-          else                  @places.map_visible(current_api_user)
+          when 'unconfirmed' then @places.unconfirmed_for(current_api_user)
+          when 'tagged' then @places.tagged
+          else @places.map_visible(current_api_user)
           end
 
         @places = privacy_zone_masker.mask_places(@places) if mask_privacy_zones?
@@ -74,6 +75,7 @@ module Api
       def create
         @place = current_api_user.places.build(place_params.except(:tag_ids))
         @place.user_named = true
+        @place.reattribute_suggested_visits_on_create = true
 
         if @place.save
           add_tags if tag_ids.present?
@@ -97,7 +99,7 @@ module Api
       end
 
       def destroy
-        @place.destroy!
+        Places::Destroy.new(user: current_api_user, place: @place).call
 
         head :no_content
       end
@@ -198,7 +200,7 @@ module Api
       end
 
       def place_params
-        params.require(:place).permit(:name, :latitude, :longitude, :source, :note, tag_ids: [])
+        params.require(:place).permit(:name, :latitude, :longitude, :source, :note, :visit_radius, tag_ids: [])
       end
 
       def tag_ids
@@ -227,6 +229,7 @@ module Api
           longitude: place.lon,
           source: place.source,
           note: place.note,
+          visit_radius: place.visit_radius,
           icon: place.tags.first&.icon,
           color: place.tags.first&.color,
           visits_count: place.active_visits.size,
