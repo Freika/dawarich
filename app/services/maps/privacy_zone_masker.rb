@@ -4,8 +4,7 @@ module Maps
   class PrivacyZoneMasker
     Circle = Struct.new(:lon, :lat, :radius, keyword_init: true)
 
-    EARTH_RADIUS_M = 6_371_000.0
-    METERS_PER_DEGREE = Math::PI * EARTH_RADIUS_M / 180
+    METERS_PER_DEGREE = Geocoder::Calculations.latitude_degree_distance(:km) * 1000
     BUFFER_QUAD_SEGMENTS = 8
     COVERING_FACTOR = 1 / Math.cos(Math::PI / (4 * BUFFER_QUAD_SEGMENTS))
     TILE_MARGIN = 0.125
@@ -85,7 +84,7 @@ module Maps
     def in_zone?(lon, lat)
       return false if lon.nil? || lat.nil?
 
-      circles.any? { |c| haversine_m(lat.to_f, lon.to_f, c.lat, c.lon) <= c.radius }
+      circles.any? { |c| distance_m(lat.to_f, lon.to_f, c.lat, c.lon) <= c.radius }
     end
 
     def within_sql(geography_sql)
@@ -111,7 +110,9 @@ module Maps
       buffers = circles.map do |c|
         "ST_Buffer(#{point_sql(c)}, #{c.radius * COVERING_FACTOR}, 'quad_segs=#{BUFFER_QUAD_SEGMENTS}')::geometry"
       end
-      "ST_Difference(#{geometry_sql}, ST_Union(ARRAY[#{buffers.join(', ')}]))"
+      zone = "ST_Union(ARRAY[#{buffers.join(', ')}])"
+      "(CASE WHEN ST_CoveredBy(#{geometry_sql}, #{zone}) THEN ST_GeomFromText('LINESTRING EMPTY', 4326) " \
+        "ELSE ST_Difference(#{geometry_sql}, #{zone}) END)"
     end
 
     def touches_h3_cell?(index)
@@ -120,11 +121,11 @@ module Maps
       cell = index.is_a?(Integer) ? index : H3.from_string(index.to_s)
       lat, lon = H3.to_geo_coordinates(cell)
       reach = H3.edge_length_m(H3.resolution(cell)) * 2
-      nearby = circles.select { |c| haversine_m(lat, lon, c.lat, c.lon) <= c.radius + reach }
+      nearby = circles.select { |c| distance_m(lat, lon, c.lat, c.lon) <= c.radius + reach }
       return false if nearby.empty?
 
-      circumradius = H3.to_boundary(cell).map { |vlat, vlon| haversine_m(lat, lon, vlat, vlon) }.max
-      nearby.any? { |c| haversine_m(lat, lon, c.lat, c.lon) <= c.radius + circumradius }
+      circumradius = H3.to_boundary(cell).map { |vlat, vlon| distance_m(lat, lon, vlat, vlon) }.max
+      nearby.any? { |c| distance_m(lat, lon, c.lat, c.lon) <= c.radius + circumradius }
     end
 
     def zones
@@ -181,7 +182,7 @@ module Maps
     def covers_bbox?(min_lon:, min_lat:, max_lon:, max_lat:)
       corners = [[min_lon, min_lat], [min_lon, max_lat], [max_lon, min_lat], [max_lon, max_lat]]
       circles.any? do |c|
-        corners.all? { |lon, lat| haversine_m(lat, lon, c.lat, c.lon) <= c.radius }
+        corners.all? { |lon, lat| distance_m(lat, lon, c.lat, c.lon) <= c.radius }
       end
     end
 
@@ -214,13 +215,8 @@ module Maps
       [dlat, dlat / cos_lat]
     end
 
-    def haversine_m(lat1, lon1, lat2, lon2)
-      rad = Math::PI / 180
-      d_lat = (lat2 - lat1) * rad
-      d_lon = (lon2 - lon1) * rad
-      a = (Math.sin(d_lat / 2)**2) +
-          (Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * (Math.sin(d_lon / 2)**2))
-      2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(a))
+    def distance_m(lat1, lon1, lat2, lon2)
+      Geocoder::Calculations.distance_between([lat1, lon1], [lat2, lon2], units: :km) * 1000
     end
   end
 end

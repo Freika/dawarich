@@ -26,7 +26,7 @@ RSpec.describe 'Privacy zone masking on map read endpoints', type: :request do
   end
 
   def distance_to_zone(lon, lat)
-    Maps::PrivacyZoneMasker.new(create(:user)).send(:haversine_m, lat.to_f, lon.to_f, zone_lat, zone_lon)
+    Geocoder::Calculations.distance_between([lat.to_f, lon.to_f], [zone_lat, zone_lon], units: :km) * 1000
   end
 
   def vertices(geometry)
