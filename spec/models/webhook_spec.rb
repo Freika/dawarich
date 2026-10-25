@@ -14,6 +14,14 @@ RSpec.describe Webhook do
     expect(create(:webhook, user:).as_json).not_to have_key('secret')
   end
 
+  describe '#health' do
+    it 'is inactive when switched off, failing after a failed delivery and active otherwise' do
+      expect(build(:webhook, user:, active: false, consecutive_failures: 5).health).to eq(:inactive)
+      expect(build(:webhook, user:, consecutive_failures: 1).health).to eq(:failing)
+      expect(build(:webhook, user:).health).to eq(:active)
+    end
+  end
+
   describe '#subscribed_to?' do
     it 'follows the active flag, event types and the place filter' do
       other = create(:place, :geofence, user:)

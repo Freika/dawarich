@@ -12,7 +12,7 @@ class DataMigrations::ReattachUntrackedPointsJob < ApplicationJob
                     .where('anomaly IS NOT TRUE').distinct.pluck(:user_id)
 
     User.active_or_trial.where(id: user_ids).find_each do |user|
-      Tracks::ThrottledBackfillJob.schedule(user, floor_timestamp: floor,
+      Tracks::ThrottledBackfillJob.schedule(user, floor_timestamp: floor, force: true,
                                                   wait: rand(1..STAGGER_WINDOW_SECONDS).seconds)
     end
   end

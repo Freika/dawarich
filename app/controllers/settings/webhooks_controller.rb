@@ -7,7 +7,7 @@ class Settings::WebhooksController < ApplicationController
   before_action :set_webhook, except: :create
   rate_limit to: 5, within: 1.minute, only: :test, by: -> { @webhook.id },
              with: -> { respond_with_flash(t('settings.webhooks.test.rate_limited'), status: :too_many_requests) },
-             unless: -> { DawarichSettings.self_hosted? }
+             if: -> { current_user.entitlements.webhook_limits? }
 
   def show
     @deliveries = @webhook.webhook_deliveries.includes(geofence_event: :place).order(created_at: :desc).limit(50)

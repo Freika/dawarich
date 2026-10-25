@@ -65,7 +65,7 @@ module GeofenceEvents
     end
 
     def hourly_limit_reached?
-      return false if DawarichSettings.self_hosted?
+      return false unless @user.entitlements.webhook_limits?
 
       GeofenceEvent.real.where(user: @user, webhook_skip_reason: nil, occurred_at: 1.hour.ago..)
                    .count >= GeofenceEvent::WEBHOOK_HOURLY_LIMIT

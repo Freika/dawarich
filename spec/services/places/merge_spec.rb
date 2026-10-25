@@ -66,6 +66,19 @@ RSpec.describe Places::Merge do
     expect(survivor.note).to eq("Keep this\n\nAlso keep this")
   end
 
+  it 'keeps a same-day note as a standalone note when the merged text would be too long' do
+    noted_at = Time.zone.parse('2026-09-01 12:00')
+    survivor_body = 'a' * 6_000
+    duplicate_body = 'b' * 6_000
+    survivor_note = survivor.notes.create!(user:, noted_at:, body: survivor_body)
+    duplicate_note = duplicate.notes.create!(user:, noted_at:, body: duplicate_body)
+
+    expect { described_class.new(user:, survivor:, duplicate:).call }.to change(Place, :count).by(-1)
+
+    expect(survivor_note.reload.body).to eq(survivor_body)
+    expect(duplicate_note.reload).to have_attributes(attachable: nil, body: duplicate_body)
+  end
+
   it 'keeps the survivor geometry, name, and Visit Radius while filling missing geodata' do
     described_class.new(user:, survivor:, duplicate:).call
 

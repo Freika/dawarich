@@ -35,6 +35,12 @@ class Webhook < ApplicationRecord
     resolve_integration_url!(url)
   end
 
+  def health
+    return :inactive unless active?
+
+    consecutive_failures.positive? ? :failing : :active
+  end
+
   def subscribed_to?(place:, event_type:)
     return false unless active?
 
@@ -63,7 +69,7 @@ class Webhook < ApplicationRecord
   end
 
   def url_is_allowed
-    if !DawarichSettings.self_hosted? && URI.parse(url).scheme != 'https'
+    if user&.entitlements&.webhook_limits? && URI.parse(url).scheme != 'https'
       errors.add(:url, :https_required)
       return
     end

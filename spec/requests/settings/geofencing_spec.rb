@@ -30,6 +30,15 @@ RSpec.describe 'Settings → Geofencing', type: :request do
       expect(page.at_css('.tab-active')['href']).to eq(settings_geofencing_path)
     end
 
+    it 'shows event times on the clock the user chose' do
+      user.update!(settings: user.settings.merge('time_format' => '12h'))
+      create(:geofence_event, user:, place: home, occurred_at: Time.zone.parse('2026-10-20 15:05 UTC'))
+
+      get settings_geofencing_path
+
+      expect(page.at_css('[data-testid="geofence-event"] time').text.squish).to match(/3:05\s?PM/i)
+    end
+
     it 'lists webhooks with their delivery status' do
       webhook = create(:webhook, user:, name: 'Home Assistant')
       create(:webhook_delivery, webhook:, geofence_event: create(:geofence_event, user:, place: home))
@@ -38,6 +47,29 @@ RSpec.describe 'Settings → Geofencing', type: :request do
 
       expect(page.css('[data-testid="webhook"]').text).to include('Home Assistant')
       expect(page.css('[data-testid="event-delivery-status"]')).to be_present
+    end
+
+    it 'shows each webhook as active, failing or switched off with its last delivery' do
+      create(:webhook, user:, name: 'Fresh')
+      create(:webhook, user:, name: 'Working', last_success_at: 2.hours.ago)
+      create(:webhook, user:, name: 'Failing', consecutive_failures: 2)
+      create(:webhook, user:, name: 'Off', active: false, consecutive_failures: 5)
+
+      get settings_geofencing_path
+
+      rows = page.css('[data-testid="webhook"]').to_h do |row|
+        badge = row.at_css('[data-testid="webhook-status"]')
+        name = row.at_css('[data-testid="webhook-name"]').text
+        [name, [badge.text.squish, badge['class'][/badge-(success|warning|ghost)/]]]
+      end
+      expect(rows).to eq(
+        'Fresh' => %w[Active badge-success], 'Working' => %w[Active badge-success],
+        'Failing' => %w[Failing badge-warning], 'Off' => ['Switched off', 'badge-ghost']
+      )
+      summaries = page.css('[data-testid="webhook"] summary').map { |summary| summary.text.squish }
+      expect(summaries).to include(a_string_including('Nothing delivered yet'),
+                                   a_string_including('Last delivered about 2 hours ago'),
+                                   a_string_including('2 failed deliveries in a row'))
     end
 
     it 'counts deliveries that are still being retried' do
@@ -49,6 +81,26 @@ RSpec.describe 'Settings → Geofencing', type: :request do
 
       status = page.at_css('[data-testid="event-delivery-status"]').text.squish
       expect(status).to eq('1 in progress')
+    end
+
+    it 'sums delivered, failed and pending deliveries of one event' do
+      event = create(:geofence_event, user:, place: home)
+      create(:webhook_delivery, webhook: create(:webhook, user:), status: :success, geofence_event: event)
+      create(:webhook_delivery, webhook: create(:webhook, user:), status: :failure, geofence_event: event)
+      create(:webhook_delivery, webhook: create(:webhook, user:), status: :pending, geofence_event: event)
+
+      get settings_geofencing_path
+
+      status = page.at_css('[data-testid="event-delivery-status"]').text.squish
+      expect(status).to eq('1 delivered, 1 failed, 1 in progress')
+    end
+
+    it 'shows a dash for an event no webhook was asked to send' do
+      create(:geofence_event, user:, place: home)
+
+      get settings_geofencing_path
+
+      expect(page.at_css('[data-testid="event-delivery-status"]').text.squish).to eq('—')
     end
 
     it 'says when an event arrived too late to be sent' do
