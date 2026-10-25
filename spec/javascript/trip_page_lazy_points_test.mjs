@@ -67,10 +67,21 @@ const stubs = `
   const Flash = { show: (...args) => env.flashes.push(args) }
 `
 globalThis.__tripEnv = {}
+const tripModules = await Promise.all(
+  [
+    "maps_maplibre/trip/button_state.js",
+    "maps_maplibre/trip/day_accordion.js",
+    "maps_maplibre/trip/flights.js",
+    "maps_maplibre/trip/path_sync.js",
+    "maps_maplibre/trip/photos.js",
+    "maps_maplibre/trip/plan_overlay.js",
+    "maps_maplibre/trip/points.js",
+    "maps_maplibre/trip/replay.js",
+    "controllers/trip_maplibre_controller.js",
+  ].map(async (path) => stripImports(await read(path))),
+)
 const { default: TripController } = await import(
-  moduleUrl(
-    `${stubs}\n${stripImports(await read("controllers/trip_maplibre_controller.js"))}`,
-  )
+  moduleUrl(`${stubs}\n${tripModules.join("\n")}`)
 )
 
 const deferred = () => {

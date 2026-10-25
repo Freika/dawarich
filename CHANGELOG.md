@@ -11,6 +11,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Privacy zones now hide your data on the map you look at yourself, not only on shared links. Tag a place with a privacy radius, and points, tracks, routes, visits, places, photos and live updates inside the zone disappear from Map v2, and fog of war stays over it. The same applies to your trip pages, route replay and posters. A track that crosses a zone is cut at its edge rather than drawn through it. Timeline entries for visits inside a zone keep their name and time, but no longer place a pin. Exports, statistics and the API keep your full data. API clients can ask for masked results by adding `mask_privacy_zones=true` to a request; map tiles and fog of war cells are always masked. #2848
 - The hidden area around a privacy zone is no longer centred on the place. It is up to 1.6 times the radius and shifted off the place by a fixed amount that differs for every place, so the place can't be pinpointed from where your data stops on the map, a shared link or a poster. Everything within the radius you set stays hidden. #2848
 - Shared monthly stats pages now respect privacy zones. Hexagons that touch a zone are left off the shared map, and the map no longer fits its view to points inside a zone. #2848
+- Turn off Family or Achievements in Settings → General. A disabled feature disappears from the interface and its background processing stops; the mobile app can read and change the choice through `/api/v1/settings`. With Family off, the family API endpoints answer 403 `feature_disabled`; `/api/v1/users/me` reports both features under `features`.
+- Choose how dates and times are shown in Settings → General: an automatic date format or `DD.MM.YYYY`, `DD/MM/YYYY`, `MM/DD/YYYY` or `YYYY-MM-DD`, a 12-hour or 24-hour clock, and whether weeks start on Monday or Sunday. The choice applies across the app, in emails and on the map, and the mobile app can read and change it through `/api/v1/settings`.
+
+### Changed
+
+- English dates with a time now use the 24-hour clock unless you choose the 12-hour clock in Settings → General.
+- Ruby version updated to 4.0.9
+- On the Lite plan, the 12-month window now starts at midnight UTC and moves once a day, so the oldest day leaves the window all at once. The map's upgrade banner and the data archival notices follow the same date.
+
+### Fixed
+
+- Map points load again for a single day in a place where you have years of history, such as home. Before, that map tile could take longer than 5 seconds and the map showed "Could not load map tiles" (#3830)
+- Tracks no longer have gaps or straight lines where points recorded later, imported or synced from another app, sit next to an existing track from the same device: those points now join the track. After the update, Dawarich repairs the last 12 months in the background; for older gaps, choose Recalculate tracks & stats (#3794)
+- On phones, the card asking whether to show "What's New" notices now fits on screen. Before, its left side, including the heading, was cut off.
+- The trip page no longer scrolls sideways on phones, and its download menu no longer opens partly off-screen. Long trip names and the Public badge of a shared trip used to push the page wider than the screen.
+- A visit is suggested again when tracking stops at a place and resumes at the same spot later, for example a shortcut that pauses tracking at the gym. Before, fixes taken while arriving and leaving could make the two sides look like different places, and no visit was suggested. Choose Re-run detection on full history on the Visits page to fix past stays (#3203)
+- Imports uploaded before 1.14.4 no longer show a `.zip` suffix in their names: `ride.gpx.zip` becomes `ride.gpx`. Imports you renamed yourself, and imports whose new name is already taken by another of your imports, keep their current names. (#3062)
+- Downloading an import now returns the original file instead of a ZIP archive when its filename has accented letters such as `ü` (also for imports that already downloaded as a ZIP) or characters such as `:`. New uploads with characters such as `:` also no longer get `.zip` added to their import name. (#3062)
+- Renaming a place now renames its visits that still show the old or default name; visits you named yourself keep their names, and visits already showing an outdated name stay as they are (#3353)
+- A track from another tracker, such as an imported watch GPX, now cuts a track whose gap it fills instead of that track bridging the gap with a straight line and counting the distance twice. Trackers that record alongside each other keep separate, whole tracks. Choose Recalculate tracks & stats to apply this to imports made before this release (#3424)
+- Flights are drawn along the great circle: straight on the globe and an arc on the flat map. A route over the North Pole no longer kinks or runs along the map's top edge; the part beyond the edge of the flat map is left out (#3261)
+- The achievement cards for Valparaíso, Colima and Chile now show the mainland at full size. Before, a distant island (Easter Island or the Revillagigedo Islands) stretched the drawing, so the region shrank to a dot at the edge of the card. Earned achievements are unchanged (#3731)
+- With Edit points on, clicking another point of the track you are editing now selects that point, and a click that nudges the mouse by a few pixels no longer moves the point. Before, the panel and its Delete button stayed on the first point you clicked until you clicked an empty spot on the map, so Delete could remove the wrong point (#3772)
+- Aosta Valley is now part of Italy's achievement, which has all 20 regions. Anyone who already completed Italy keeps it. The upgrade recalculates achievements once in the background without notifications, so earlier visits to Aosta Valley count. (#3789)
 
 ## [1.17.0] - 2026-10-23, Berlin
 

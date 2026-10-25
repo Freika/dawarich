@@ -47,6 +47,15 @@ RSpec.describe Achievements::SetPresenter do
       expect(set.earned_label).to eq('Unlocked · 20 Jul 2026')
     end
 
+    it 'renders the completion date with the date preset' do
+      earned = Achievements::Registry.find('country_de').region_codes.index_with { '2026-07-20' }
+      set = Users::DateTimePreferences.with(Users::DateTimePreferences.new(date_format: 'dd.mm.yyyy')) do
+        presenter('country_de', earned: earned).earned_label
+      end
+
+      expect(set).to eq('Unlocked · 20.07.2026')
+    end
+
     it 'renders timestamp dates in the user timezone' do
       earned = Achievements::Registry.find('country_de').region_codes.index_with { '2026-07-20T00:30:00Z' }
       set = presenter_in('country_de', timezone: 'Pacific Time (US & Canada)', earned: earned)
@@ -58,6 +67,43 @@ RSpec.describe Achievements::SetPresenter do
     it 'is locked with nothing earned' do
       expect(presenter('country_de')).to be_locked
       expect(presenter('country_de').earned_label).to eq('Locked')
+    end
+  end
+
+  describe 'a set awarded before it gained a region' do
+    let(:awarded_at) { Time.utc(2026, 6, 1, 12) }
+    let(:earned) { Achievements::Registry.find('country_it').region_codes.excluding('IT-23').index_with { '2026-05-01' } }
+
+    def awarded(key)
+      described_class.new(
+        definition: Achievements::Registry.find(key),
+        state: { 'earned' => earned.merge('IT' => '2026-05-01') },
+        awards: { 'country_it' => awarded_at }
+      )
+    end
+
+    it 'stays completed, dated at the award' do
+      set = awarded('country_it')
+
+      expect(set).to be_completed
+      expect(set.percent).to eq(100)
+      expect(set.completed_on).to eq(Date.new(2026, 6, 1))
+      expect(set.earned_label).to eq('Unlocked · 1 Jun 2026')
+      expect(set.card_attributes[:metric_label]).to eq('19/20 regions')
+    end
+
+    it 'stays completed on its continent card' do
+      italy = awarded('continent_europe').region_cards.find { |card| card[:name] == 'Italy' }
+
+      expect(italy[:completed]).to be(true)
+      expect(italy[:earned_label]).to eq('Unlocked · 1 Jun 2026')
+    end
+
+    it 'is not completed without the award' do
+      set = presenter('country_it', earned: earned)
+
+      expect(set).not_to be_completed
+      expect(set.earned_label).to eq('19/20 regions')
     end
   end
 

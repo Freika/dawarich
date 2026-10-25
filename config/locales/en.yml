@@ -1583,12 +1583,26 @@ en:
         timezone: Timezone
         your_timezone: Your timezone
         all_dates_and_times_will_be_displayed_in_this_timezone: All dates and times will be displayed in this timezone
+        date_and_time: "Date and time"
+        date_format: "Date format"
+        time_format: "Time format"
+        first_day_of_week: "First day of the week"
+        format_auto: "Automatic (%{example})"
+        time_format_12h: "12-hour (%{example})"
+        time_format_24h: "24-hour (%{example})"
+        date_and_time_hint: "Applies to dates and times across the app, in emails and on the map."
         supporter_badge: Supporter Badge
         show_supporter_badge_in_navbar: Show supporter badge in navbar
         display_a_gem_icon_next_to_your_profile_to_show: Display a gem icon next to your profile to show your supporter status
         general_settings: General settings
         save_changes: Save changes
         test_email_worker_hint: Queues a test message through the same background worker as system emails
+        features: "Features"
+        features_hint: "Turn off the parts of Dawarich you don't use. They disappear from the interface and their background processing stops."
+        family_feature: "Family"
+        family_feature_hint: "Location sharing with family members. Turning it off stops sharing your location and family-only trip links; you stay a member. When you turn it back on, location sharing starts off."
+        achievements_feature: "Achievements"
+        achievements_feature_hint: "Explored regions and badges. Turning it off stops progress calculation and disables your public achievement links."
     integrations:
       index:
         services_nav: Integration services
@@ -2722,10 +2736,10 @@ en:
   time:
     formats:
       hour_minute: "%H:%M"
-      long_with_time: "%B %d, %Y at %I:%M %p"
+      long_with_time: "%B %d, %Y at %H:%M"
       human: "%e %b %Y, %H:%M"
       human_with_seconds: "%e %b %Y, %H:%M:%S"
-      short_with_time: "%b %d at %I:%M %p"
+      short_with_time: "%b %d at %H:%M"
   common:
     app_name: Dawarich
     not_available: N/A
@@ -3117,6 +3131,7 @@ en:
       your_account_has_been_deleted: Your account has been deleted.
       you_are_not_authorized_to_perform_this_action: You are not authorized to perform this action.
       family_plan_required: This feature requires a Family plan.
+      feature_disabled_in_settings: "This feature is turned off in your settings."
     areas:
       created: Area created successfully!
       updated: Area updated successfully!
@@ -3556,6 +3571,7 @@ en:
         safe_email_is_requesting_your_location_link: "%{email} is requesting your location. %{link}"
         users_must_be_in_the_same_family: Users must be in the same family
         target_user_is_already_sharing_their_location: Target user is already sharing their location
+        target_user_turned_family_off: "This member has turned family features off"
         request_cooldown_active_please_wait_before_requesting_again: Request cooldown active. Please wait before requesting again.
         view_request: View Request
       invite:
@@ -4616,3 +4632,8 @@ en:
       no_invitations: No pending invitations
       title: Family Invitations
       view_invitation: View
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: AM
+      pm: PM

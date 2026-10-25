@@ -1604,12 +1604,26 @@ ca:
         timezone: Fus horari
         your_timezone: El teu fus horari
         all_dates_and_times_will_be_displayed_in_this_timezone: Totes les dates i hores es mostraran en aquest fus horari
+        date_and_time: "Data i hora"
+        date_format: "Format de data"
+        time_format: "Format d'hora"
+        first_day_of_week: "Primer dia de la setmana"
+        format_auto: "Automàtic (%{example})"
+        time_format_12h: "12 hores (%{example})"
+        time_format_24h: "24 hores (%{example})"
+        date_and_time_hint: "S'aplica a les dates i hores de l'aplicació, els correus i el mapa."
         supporter_badge: Insígnia de col·laborador
         show_supporter_badge_in_navbar: Mostra la insígnia de col·laborador a la barra de navegació
         display_a_gem_icon_next_to_your_profile_to_show: Mostra una icona de gemma al costat del teu perfil per indicar el teu estat de col·laborador
         general_settings: Configuració general
         save_changes: Desa els canvis
         test_email_worker_hint: Afegeix un missatge de prova a la cua del mateix procés en segon pla que els correus del sistema
+        features: "Funcions"
+        features_hint: "Desactiva les parts de Dawarich que no facis servir. Desapareixen de la interfície i s'atura el seu processament en segon pla."
+        family_feature: "Família"
+        family_feature_hint: "Compartir la ubicació amb els membres de la família. Si la desactives, deixes de compartir la teva ubicació i els enllaços de viatges només per a la família; continues sent-ne membre. Quan la tornis a activar, la compartició de la ubicació començarà desactivada."
+        achievements_feature: "Assoliments"
+        achievements_feature_hint: "Regions explorades i insígnies. Si els desactives, es deixa de calcular el progrés i es desactiven els teus enllaços públics d'assoliments."
     integrations:
       trek:
         title: "Integració amb TREK"
@@ -3129,6 +3143,7 @@ ca:
       your_account_has_been_deleted: El teu compte s'ha suprimit.
       you_are_not_authorized_to_perform_this_action: No tens autorització per fer aquesta acció.
       family_plan_required: Aquesta funció requereix el pla Family.
+      feature_disabled_in_settings: "Aquesta funció està desactivada a la teva configuració."
     areas:
       created: L'àrea s'ha creat correctament!
       updated: L'àrea s'ha actualitzat correctament!
@@ -3568,6 +3583,7 @@ ca:
         safe_email_is_requesting_your_location_link: "%{email} t'està sol·licitant la teva ubicació. %{link}"
         users_must_be_in_the_same_family: Els usuaris han de formar part de la mateixa família
         target_user_is_already_sharing_their_location: L'usuari destinatari ja està compartint la seva ubicació
+        target_user_turned_family_off: "Aquest membre ha desactivat les funcions familiars"
         request_cooldown_active_please_wait_before_requesting_again: Període d'espera actiu. Espera abans de tornar a sol·licitar-ho.
         view_request: Veure la sol·licitud
       invite:
@@ -4625,3 +4641,8 @@ ca:
       no_invitations: No hi ha invitacions pendents
       title: Invitacions de família
       view_invitation: Veure
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: a. m.
+      pm: p. m.

@@ -16,6 +16,12 @@ RSpec.describe DawarichSettings do
       it 'is available without a user' do
         expect(described_class.family_feature_available_for?(nil)).to be true
       end
+
+      it 'is withdrawn from a user who turned the feature off' do
+        user = create(:user, settings: { 'family_enabled' => false })
+
+        expect(described_class.family_feature_available_for?(user)).to be false
+      end
     end
 
     context 'when running on cloud' do
@@ -41,6 +47,12 @@ RSpec.describe DawarichSettings do
 
       it 'is not available without a user' do
         expect(described_class.family_feature_available_for?(nil)).to be false
+      end
+
+      it 'is withdrawn from a family subscriber who turned the feature off' do
+        user = create(:user, plan: :family, skip_auto_trial: true, settings: { 'family_enabled' => false })
+
+        expect(described_class.family_feature_available_for?(user)).to be false
       end
 
       it 'is available to members of a family they did not pay for' do
@@ -86,6 +98,12 @@ RSpec.describe DawarichSettings do
 
       expect(described_class.features_for(subscriber)[:family]).to be true
       expect(described_class.features_for(non_subscriber)[:family]).to be false
+    end
+
+    it 'reports achievements as on unless the user turned them off' do
+      expect(described_class.features_for(create(:user))[:achievements]).to be true
+      expect(described_class.features_for(create(:user, settings: { 'achievements_enabled' => false }))[:achievements])
+        .to be false
     end
 
     it 'reports reverse geocoding as off when the instance has no provider' do

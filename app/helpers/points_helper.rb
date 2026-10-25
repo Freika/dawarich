@@ -18,7 +18,7 @@ module PointsHelper
 
     link_to map_path(start_at: datetime.beginning_of_day, end_at: datetime.end_of_day), \
             class: 'underline hover:no-underline' do
-      datetime.strftime('%d.%m.%Y')
+      I18n.l(datetime.to_date, format: :medium)
     end
   end
 end

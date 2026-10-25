@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { createConsumer } from "@rails/actioncable"
-import { translate } from "i18n"
+import { formatDateTime, formatTime, translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
 import { RecentPointLayer } from "maps_maplibre/layers/recent_point_layer"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
@@ -208,7 +208,7 @@ export default class extends Controller {
 
   updateTimeLabel(lon, lat, ts) {
     if (ts == null) return
-    const label = new Date(Number(ts) * 1000).toLocaleTimeString()
+    const label = formatTime(Number(ts) * 1000, { seconds: true })
     if (!this.timeLabel) {
       const el = document.createElement("div")
       el.style.cssText =
@@ -253,7 +253,7 @@ export default class extends Controller {
     if (!this.hasLastSeenTarget || this.lastSeenTs == null) return
     const seenAt = new Date(this.lastSeenTs * 1000)
     this.lastSeenTarget.textContent = translate("live_share.last_seen", {
-      date: seenAt.toLocaleString(document.documentElement.lang || undefined),
+      date: formatDateTime(seenAt, { seconds: true }),
       relative: this.relativeTime(this.lastSeenTs),
     })
   }

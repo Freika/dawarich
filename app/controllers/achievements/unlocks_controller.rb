@@ -3,6 +3,7 @@
 module Achievements
   class UnlocksController < ApplicationController
     before_action :authenticate_user!
+    before_action { head :not_found unless current_user.feature_enabled?(:achievements) }
 
     def next
       return head :no_content unless UnlockEvent.pending.exists?(user_id: current_user.id)

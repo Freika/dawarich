@@ -53,7 +53,7 @@
             <ul class="mt-2 space-y-1 text-sm text-base-content/70">
               <% day.planned_day_notes.each do |note| %>
                 <li>
-                  <% if note.noted_at %><span class="tabular-nums text-base-content/50"><%= note.noted_at %></span> <% end %><%= note.body %>
+                  <% if note.noted_at %><span class="tabular-nums text-base-content/50"><%= planned_note_time(note.noted_at) %></span> <% end %><%= note.body %>
                 </li>
               <% end %>
             </ul>

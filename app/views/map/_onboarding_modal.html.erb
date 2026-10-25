@@ -65,7 +65,7 @@
             </div>
           </button>
           <%# Path D: Family %>
-          <% if family_feature_available? || current_user.in_family? %>
+          <% if family_nav_visible? %>
             <%= link_to family_home_path,
                   class: "card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-info sm:col-span-2",
                   data: { action: "onboarding-modal#dismiss" } do %>

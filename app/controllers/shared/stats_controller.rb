@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Shared::StatsController < ApplicationController
+  include DefaultDateTimePreferences
   include FlashStreamable
 
   before_action :authenticate_user!, except: [:show]

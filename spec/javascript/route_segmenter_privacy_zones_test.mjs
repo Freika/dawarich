@@ -9,8 +9,12 @@ const moduleUrl = (source) =>
 const stripImports = (source) =>
   source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
 
+const arcsUrl = moduleUrl(await read("maps_maplibre/utils/flight_arcs.js"))
 const segmenterUrl = moduleUrl(
-  await read("maps_maplibre/utils/route_segmenter.js"),
+  (await read("maps_maplibre/utils/route_segmenter.js")).replace(
+    '"./flight_arcs"',
+    `"${arcsUrl}"`,
+  ),
 )
 const { RouteSegmenter } = await import(segmenterUrl)
 const { buildDayRouteCollections } = await import(

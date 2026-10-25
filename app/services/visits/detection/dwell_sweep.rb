@@ -78,6 +78,8 @@ module Visits
           end_ts: open[:last].timestamp,
           center_lat: open[:center_lat],
           center_lon: open[:center_lon],
+          first_fix: [open[:first].lat, open[:first].lon],
+          last_fix: [open[:last].lat, open[:last].lon],
           count: open[:count]
         }
       end

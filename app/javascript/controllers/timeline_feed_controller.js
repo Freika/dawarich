@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
-import { translate } from "i18n"
+import { firstDayOfWeek, translate } from "i18n"
+import { monthGridStart } from "maps_maplibre/utils/month_grid"
 
 /**
  * Timeline Feed Controller (Unified Timeline)
@@ -703,11 +704,8 @@ export default class extends Controller {
       year: "numeric",
     })
 
-    // 6×7 grid, Monday-aligned — mirrors what MonthSummary builds server-side.
-    const monthStart = new Date(year, monthIdx, 1)
-    // Day-of-week with Monday as 0
-    const offset = (monthStart.getDay() + 6) % 7
-    const gridStart = new Date(year, monthIdx, 1 - offset)
+    // 6×7 grid aligned to the first day of week — mirrors MonthSummary.
+    const gridStart = monthGridStart(year, monthIdx, firstDayOfWeek())
 
     const cells = []
     for (let i = 0; i < 42; i += 1) {

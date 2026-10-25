@@ -4,11 +4,12 @@ module Achievements
   class SetPresenter
     DEFAULT_CHILD_ZOOM = 6
 
-    attr_reader :definition, :state, :sharing, :timezone
+    attr_reader :definition, :state, :sharing, :timezone, :awards
 
-    def initialize(definition:, state: {}, sharing: nil, timezone: 'UTC')
+    def initialize(definition:, state: {}, sharing: nil, timezone: 'UTC', awards: {})
       @definition = definition
       @state = state || {}
+      @awards = awards || {}
       @sharing = sharing
       @timezone = timezone
     end
@@ -24,7 +25,7 @@ module Achievements
     end
 
     def completed?
-      earned_count >= target
+      earned_count >= target || awarded_at.present?
     end
 
     def display_count
@@ -47,6 +48,7 @@ module Achievements
 
     def percent
       return 0 if target.zero?
+      return 100 if completed?
 
       [(earned_count * 100.0 / target).round, 100].min
     end
@@ -57,6 +59,7 @@ module Achievements
 
     def completed_on
       return nil unless completed?
+      return awarded_at.in_time_zone(timezone).to_date if earned_count < target
 
       earned.values.map { |date| local_date(date) }.sort[target - 1]
     end
@@ -138,6 +141,10 @@ module Achievements
 
     private
 
+    def awarded_at
+      awards[definition.key]
+    end
+
     def silhouette
       @silhouette ||= if definition.kind == 'country'
                         RegionSilhouettes.new(level: :country, codes: [definition.country]).call[definition.country]
@@ -170,7 +177,7 @@ module Achievements
 
     def country_card(child, visited_at:)
       art = child.card['art']
-      progress = self.class.new(definition: child, state: state, timezone: timezone)
+      progress = self.class.new(definition: child, state: state, timezone: timezone, awards: awards)
       link_key = child.level == :subdivision ? child.key : nil
 
       {
@@ -221,7 +228,7 @@ module Achievements
     end
 
     def localized_date(date)
-      I18n.l(date, format: translate('date_format'))
+      I18n.l(date, format: :day_month_year_abbreviated)
     end
 
     def translate(key, **options)

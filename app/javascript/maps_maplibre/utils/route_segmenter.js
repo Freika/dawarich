@@ -1,3 +1,5 @@
+import { greatCircleLines } from "./flight_arcs"
+
 /**
  * RouteSegmenter - Utility for converting points into route segments
  * Handles route splitting based on time/distance thresholds and IDL crossings
@@ -102,11 +104,22 @@ export class RouteSegmenter {
    * @returns {Array<Array<[number, number]>>} Always returns an array of coordinate arrays (MultiLineString-compatible)
    */
   static unwrapCoordinates(segment) {
-    const crossingIndices = RouteSegmenter.findIDLCrossings(segment)
+    const lines = greatCircleLines(
+      segment.map((p) => [parseFloat(p.longitude), parseFloat(p.latitude)]),
+    )
+    return lines.flatMap((line) =>
+      RouteSegmenter.stitchAntimeridian(
+        line.map(([longitude, latitude]) => ({ longitude, latitude })),
+      ),
+    )
+  }
+
+  static stitchAntimeridian(points) {
+    const crossingIndices = RouteSegmenter.findIDLCrossings(points)
     const coordsList = []
 
     for (let i = 0; i < crossingIndices.length - 1; i++) {
-      const subsegment = segment.slice(
+      const subsegment = points.slice(
         crossingIndices[i],
         crossingIndices[i + 1],
       )
@@ -253,6 +266,7 @@ export class RouteSegmenter {
    */
   static segmentToFeature(segment) {
     const coordinates = RouteSegmenter.unwrapCoordinates(segment)
+    if (coordinates.length === 0) return null
     const totalDistance = RouteSegmenter.calculateSegmentDistance(segment)
 
     const startTime = segment[0].timestamp
@@ -278,6 +292,37 @@ export class RouteSegmenter {
         distance: totalDistance,
       },
     }
+  }
+
+  /**
+   * Cut a segment wherever another tracker's segment fits entirely inside one
+   * of its gaps, mirroring Tracks::HandoffSplitter on the server
+   * @param {Array} segment - Sorted points of one tracker
+   * @param {Array} otherSegments - Segments of the other trackers
+   * @returns {Array} Array of segments
+   */
+  static splitAtHandoffs(segment, otherSegments) {
+    const cuts = new Set()
+    for (const other of otherSegments) {
+      const start = other[0].timestamp
+      const end = other[other.length - 1].timestamp
+      let index = 0
+      let high = segment.length
+      while (index < high) {
+        const mid = (index + high) >> 1
+        if (segment[mid].timestamp < start) index = mid + 1
+        else high = mid
+      }
+      if (index > 0 && index < segment.length && segment[index].timestamp > end)
+        cuts.add(index)
+    }
+    if (cuts.size === 0) return [segment]
+
+    const bounds = [0, ...[...cuts].sort((a, b) => a - b), segment.length]
+    return bounds
+      .slice(1)
+      .map((to, i) => segment.slice(bounds[i], to))
+      .filter((piece) => piece.length > 1)
   }
 
   /**
@@ -308,15 +353,26 @@ export class RouteSegmenter {
       return acc
     }, {})
 
-    const features = Object.values(buckets).flatMap((bucket) => {
+    const segmentsByTracker = Object.values(buckets).map((bucket) => {
       if (bucket.length < 2) return []
       const sorted = bucket.slice().sort((a, b) => a.timestamp - b.timestamp)
-      const segments = RouteSegmenter.splitIntoSegments(sorted, {
+      return RouteSegmenter.splitIntoSegments(sorted, {
         distanceThresholdKm,
         timeThresholdMinutes,
         privacyZones: options.privacyZones,
       })
-      return segments.map((segment) => RouteSegmenter.segmentToFeature(segment))
+    })
+
+    const features = segmentsByTracker.flatMap((segments, index) => {
+      const otherSegments = segmentsByTracker
+        .filter((_, otherIndex) => otherIndex !== index)
+        .flat()
+      return segments
+        .flatMap((segment) =>
+          RouteSegmenter.splitAtHandoffs(segment, otherSegments),
+        )
+        .map((segment) => RouteSegmenter.segmentToFeature(segment))
+        .filter(Boolean)
     })
 
     return {

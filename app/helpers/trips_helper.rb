@@ -93,4 +93,13 @@ module TripsHelper
     parts = [I18n.t('helpers.trips.duration.hours', count: 0)] if parts.empty?
     parts.join(', ')
   end
+
+  def planned_note_time(value)
+    match = value.to_s.match(/\A(\d{1,2}):(\d{2})(?::\d{2})?\z/)
+    return value unless match
+
+    I18n.l(Time.utc(2000, 1, 1, match[1].to_i, match[2].to_i), format: :hour_minute)
+  rescue ArgumentError
+    value
+  end
 end
