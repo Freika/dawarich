@@ -11,7 +11,9 @@ paths:
       summary: Creates an area
       tags:
       - Areas
-      description: Creates a new geographic area for the authenticated user
+      deprecated: true
+      description: Deprecated compatibility adapter. Creates a canonical Place; use
+        POST /api/v1/places.
       parameters:
       - name: api_key
         in: query
@@ -102,7 +104,9 @@ paths:
       summary: Retrieves all areas
       tags:
       - Areas
-      description: Returns all areas belonging to the authenticated user
+      deprecated: true
+      description: Deprecated compatibility adapter backed by canonical Places; use
+        GET /api/v1/places.
       parameters:
       - name: api_key
         in: query
@@ -164,6 +168,7 @@ paths:
       summary: Retrieves a specific area
       tags:
       - Areas
+      deprecated: true
       parameters:
       - name: api_key
         in: query
@@ -206,6 +211,7 @@ paths:
       summary: Updates an area
       tags:
       - Areas
+      deprecated: true
       parameters:
       - name: api_key
         in: query
@@ -269,6 +275,7 @@ paths:
       summary: Deletes an area
       tags:
       - Areas
+      deprecated: true
       parameters:
       - name: api_key
         in: query
@@ -1742,6 +1749,84 @@ paths:
                   description: How far back shared history goes
               required:
               - enabled
+  "/api/v1/geofence_events":
+    get:
+      summary: Lists geofence enter/leave events
+      tags:
+      - Geofencing
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: place_id
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: start_at
+        in: query
+        format: date
+        required: false
+        description: First day, in the user timezone
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        format: date
+        required: false
+        description: Last day, in the user timezone
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: events, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    place_id:
+                      type: integer
+                    place_name:
+                      type: string
+                    event_type:
+                      type: string
+                      enum:
+                      - enter
+                      - leave
+                    source:
+                      type: string
+                      enum:
+                      - native_app
+                      - server_inferred
+                      - owntracks_native
+                    occurred_at:
+                      type: string
+                      format: date-time
+                    latitude:
+                      type: number
+                    longitude:
+                      type: number
+                    accuracy_m:
+                      type: integer
+                      nullable: true
   "/api/v1/health":
     get:
       summary: Retrieves application status
@@ -2272,11 +2357,13 @@ paths:
   "/api/v1/locations":
     get:
       summary: Searches for location history near coordinates
-      tags:
-      - Locations
-      description: Searches for tracked location points near the specified coordinates,
-        optionally filtered by date range
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -2321,6 +2408,10 @@ paths:
         description: Custom search radius in meters
         schema:
           type: integer
+      tags:
+      - Locations
+      description: Searches for tracked location points near the specified coordinates,
+        optionally filtered by date range
       responses:
         '200':
           description: locations found
@@ -2433,11 +2524,13 @@ paths:
   "/api/v1/maps/hexagons":
     get:
       summary: Retrieves hexagon grid data for the map
-      tags:
-      - Maps
-      description: Returns hexagonal grid data for map visualization. Supports both
-        authenticated access and public sharing via UUID.
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: false
@@ -2474,6 +2567,10 @@ paths:
         description: Month filter (1-12)
         schema:
           type: integer
+      tags:
+      - Maps
+      description: Returns hexagonal grid data for map visualization. Supports both
+        authenticated access and public sharing via UUID.
       responses:
         '200':
           description: hexagons found
@@ -2519,11 +2616,13 @@ paths:
   "/api/v1/maps/hexagons/bounds":
     get:
       summary: Retrieves geographic bounds for hexagon data
-      tags:
-      - Maps
-      description: Returns the geographic bounding box for the user's location data
-        within the specified date range
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: false
@@ -2548,6 +2647,10 @@ paths:
         description: End date (ISO 8601 format)
         schema:
           type: string
+      tags:
+      - Maps
+      description: Returns the geographic bounding box for the user's location data
+        within the specified date range
       responses:
         '200':
           description: bounds found
@@ -3288,11 +3391,13 @@ paths:
   "/api/v1/photos":
     get:
       summary: Lists photos
-      tags:
-      - Photos
-      description: Returns photos from connected photo services (Immich, PhotoPrism)
-        within a date range
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -3311,6 +3416,10 @@ paths:
         description: End date in ISO8601 format, e.g. 2024-01-02
         schema:
           type: string
+      tags:
+      - Photos
+      description: Returns photos from connected photo services (Immich, PhotoPrism)
+        within a date range
       responses:
         '200':
           description: photos found
@@ -3426,9 +3535,13 @@ paths:
   "/api/v1/places":
     get:
       summary: Retrieves all places for the authenticated user
-      tags:
-      - Places
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -3450,12 +3563,16 @@ paths:
         - all
         - manual
         - confirmed
+        - unconfirmed
         - tagged
-        description: "Visibility filter. Defaults to manual + confirmed-visit + tagged
-          places. Use \"all\" for every place (including suggested-only), or \"manual\"/\"confirmed\"/\"tagged\".:\n
-          * `all` \n * `manual` \n * `confirmed` \n * `tagged` \n "
+        description: "Visibility filter. Defaults to user-owned/confirmed Places.
+          Use \"all\" for every Place or \"unconfirmed\" for machine-owned suggestions.:\n
+          * `all` \n * `manual` \n * `confirmed` \n * `unconfirmed` \n * `tagged`
+          \n "
         schema:
           type: string
+      tags:
+      - Places
       responses:
         '200':
           description: places found
@@ -3478,6 +3595,13 @@ paths:
                       format: float
                     source:
                       type: string
+                    visit_radius:
+                      type: integer
+                      minimum: 1
+                      default: 50
+                    geofence:
+                      type: boolean
+                      description: Report enter and leave events for this place
                     icon:
                       type: string
                       nullable: true
@@ -3540,6 +3664,13 @@ paths:
                     format: float
                   source:
                     type: string
+                  visit_radius:
+                    type: integer
+                    minimum: 1
+                    default: 50
+                  geofence:
+                    type: boolean
+                    description: Report enter and leave events for this place
                   icon:
                     type: string
                     nullable: true
@@ -3573,6 +3704,13 @@ paths:
                   format: float
                 source:
                   type: string
+                visit_radius:
+                  type: integer
+                  minimum: 1
+                  default: 50
+                geofence:
+                  type: boolean
+                  description: Report enter and leave events for this place
                 tag_ids:
                   type: array
                   items:
@@ -3687,6 +3825,13 @@ paths:
                     format: float
                   source:
                     type: string
+                  visit_radius:
+                    type: integer
+                    minimum: 1
+                    default: 50
+                  geofence:
+                    type: boolean
+                    description: Report enter and leave events for this place
                   icon:
                     type: string
                     nullable: true
@@ -3733,6 +3878,9 @@ paths:
                   longitude:
                     type: number
                     format: float
+                  visit_radius:
+                    type: integer
+                    minimum: 1
                   tags:
                     type: array
         '404':
@@ -3755,6 +3903,9 @@ paths:
                 longitude:
                   type: number
                   format: float
+                visit_radius:
+                  type: integer
+                  minimum: 1
                 tag_ids:
                   type: array
                   items:
@@ -4000,14 +4151,78 @@ paths:
                   - Dec
         '401':
           description: unauthorized
+  "/api/v1/points/transitions":
+    post:
+      summary: Reports a geofence enter or leave detected on the device
+      tags:
+      - Geofencing
+      description: Records an enter or leave of a notifying place reported by the
+        mobile app and delivers it to the user's webhooks. Transitions older than
+        24 hours or more than 5 minutes in the future are rejected.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '201':
+          description: transition recorded
+        '204':
+          description: place does not belong to the user or does not notify
+        '422':
+          description: invalid transition
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - place_id
+              - event_type
+              - occurred_at
+              - lonlat
+              properties:
+                place_id:
+                  type: integer
+                event_type:
+                  type: string
+                  enum:
+                  - enter
+                  - leave
+                occurred_at:
+                  type: string
+                  format: date-time
+                lonlat:
+                  type: array
+                  items:
+                    type: number
+                  minItems: 2
+                  maxItems: 2
+                  description: "[longitude, latitude]"
+                accuracy_m:
+                  type: integer
+                  nullable: true
+                device_id:
+                  type: string
+                  nullable: true
+                  maxLength: 255
+                metadata:
+                  type: object
+                  description: Flat object of up to 20 scalar values
   "/api/v1/points":
     get:
       summary: Retrieves all points
-      tags:
-      - Points
-      description: Returns paginated location points for the authenticated user, optionally
-        filtered by date range
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -4042,6 +4257,10 @@ paths:
         description: Order of points, valid values are `asc` or `desc`
         schema:
           type: string
+      tags:
+      - Points
+      description: Returns paginated location points for the authenticated user, optionally
+        filtered by date range
       responses:
         '200':
           description: points found
@@ -4894,6 +5113,33 @@ paths:
                   type: number
                   example: 100
                   description: Fog of war threshold value
+                date_format:
+                  type: string
+                  enum:
+                  - auto
+                  - dd.mm.yyyy
+                  - dd/mm/yyyy
+                  - mm/dd/yyyy
+                  - yyyy-mm-dd
+                  example: dd.mm.yyyy
+                  description: How full dates are displayed; auto follows the interface
+                    language
+                time_format:
+                  type: string
+                  enum:
+                  - auto
+                  - 12h
+                  - 24h
+                  example: 24h
+                  description: How times are displayed; auto follows the interface
+                    language
+                first_day_of_week:
+                  type: string
+                  enum:
+                  - monday
+                  - sunday
+                  example: monday
+                  description: First day of the week in calendars and weekday charts
                 maps:
                   type: object
                   properties:
@@ -4925,6 +5171,9 @@ paths:
                     photoprism_api_key: your-photoprism-api-key
                     speed_color_scale: viridis
                     fog_of_war_threshold: 100
+                    date_format: dd.mm.yyyy
+                    time_format: 24h
+                    first_day_of_week: monday
                     maps:
                       distance_unit: km
     get:
@@ -5010,6 +5259,34 @@ paths:
                         - type: 'null'
                         example: 100
                         description: Fog of war threshold value
+                      date_format:
+                        type: string
+                        enum:
+                        - auto
+                        - dd.mm.yyyy
+                        - dd/mm/yyyy
+                        - mm/dd/yyyy
+                        - yyyy-mm-dd
+                        example: auto
+                        description: How full dates are displayed; auto follows the
+                          interface language
+                      time_format:
+                        type: string
+                        enum:
+                        - auto
+                        - 12h
+                        - 24h
+                        example: auto
+                        description: How times are displayed; auto follows the interface
+                          language
+                      first_day_of_week:
+                        type: string
+                        enum:
+                        - monday
+                        - sunday
+                        example: monday
+                        description: First day of the week in calendars and weekday
+                          charts
         '401':
           description: unauthorized
   "/api/v1/settings/transportation_recalculation_status":
@@ -5258,16 +5535,41 @@ paths:
                           longitude:
                             type: number
                             description: Longitude coordinate
+                          masked_area:
+                            type: object
+                            nullable: true
+                            description: Circle the map hides around this place. It
+                              is larger than the radius and shifted off the place,
+                              so the place cannot be found from where the map stops,
+                              and it always covers the full radius around the place.
+                            properties:
+                              latitude:
+                                type: number
+                              longitude:
+                                type: number
+                              radius_meters:
+                                type: integer
+                            required:
+                            - latitude
+                            - longitude
+                            - radius_meters
+                        required:
+                        - id
+                        - latitude
+                        - longitude
+                        - masked_area
         '401':
           description: unauthorized
   "/api/v1/timeline":
     get:
       summary: Retrieves timeline data for a date range
-      tags:
-      - Timeline
-      description: Returns day-by-day timeline data including visits, tracks, and
-        photos for the authenticated user. Maximum date range is 31 days.
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -5292,6 +5594,10 @@ paths:
         description: 'Distance unit: km or mi (defaults to user setting)'
         schema:
           type: string
+      tags:
+      - Timeline
+      description: Returns day-by-day timeline data including visits, tracks, and
+        photos for the authenticated user. Maximum date range is 31 days.
       responses:
         '200':
           description: timeline data found
@@ -5426,11 +5732,13 @@ paths:
         type: integer
     get:
       summary: Retrieves points for a track
-      tags:
-      - Tracks
-      description: Returns location points belonging to a specific track, ordered
-        by timestamp ascending
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -5449,6 +5757,10 @@ paths:
         description: Items per page (max 1000)
         schema:
           type: integer
+      tags:
+      - Tracks
+      description: Returns location points belonging to a specific track, ordered
+        by timestamp ascending
       responses:
         '200':
           description: points found
@@ -5488,11 +5800,13 @@ paths:
   "/api/v1/tracks":
     get:
       summary: Retrieves tracks as GeoJSON
-      tags:
-      - Tracks
-      description: Returns paginated tracks as a GeoJSON FeatureCollection with LineString
-        geometries
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -5523,6 +5837,10 @@ paths:
         description: Items per page
         schema:
           type: integer
+      tags:
+      - Tracks
+      description: Returns paginated tracks as a GeoJSON FeatureCollection with LineString
+        geometries
       responses:
         '200':
           description: tracks found
@@ -5602,17 +5920,23 @@ paths:
         type: integer
     get:
       summary: Retrieves a single track as GeoJSON
-      tags:
-      - Tracks
-      description: Returns a single track as a GeoJSON FeatureCollection, including
-        track segment details
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
         description: API Key
         schema:
           type: string
+      tags:
+      - Tracks
+      description: Returns a single track as a GeoJSON FeatureCollection, including
+        track segment details
       responses:
         '200':
           description: track found
@@ -6013,9 +6337,13 @@ paths:
   "/api/v1/visits":
     get:
       summary: List visits
-      tags:
-      - Visits
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: Authorization
         in: header
         required: true
@@ -6066,6 +6394,8 @@ paths:
         description: Northeast longitude for area search
         schema:
           type: number
+      tags:
+      - Visits
       responses:
         '200':
           description: visits found
@@ -6080,6 +6410,25 @@ paths:
                       type: integer
                     name:
                       type: string
+                      description: 'Displayed name: the custom Visit Name, Place name,
+                        or Location Label'
+                    custom_name:
+                      type: string
+                      nullable: true
+                      description: User-defined Visit Name
+                    display_name:
+                      type: string
+                      description: Visit Name, Place name, or Location Label
+                    location_label:
+                      type: string
+                      nullable: true
+                    place_id:
+                      type: integer
+                      nullable: true
+                    area_id:
+                      type: integer
+                      nullable: true
+                      deprecated: true
                     status:
                       type: string
                       enum:
@@ -6097,22 +6446,23 @@ paths:
                       description: Duration in minutes
                     place:
                       type: object
+                      nullable: true
                       properties:
                         id:
                           type: integer
+                          nullable: true
                         name:
                           type: string
                         latitude:
                           type: number
                         longitude:
                           type: number
-                        city:
-                          type: string
-                        country:
-                          type: string
+                        visit_radius:
+                          type: integer
                   required:
                   - id
                   - name
+                  - display_name
                   - status
                   - started_at
                   - ended_at
@@ -6264,7 +6614,9 @@ paths:
                   duration:
                     type: integer
                   place:
-                    type: object
+                    type:
+                    - object
+                    - 'null'
         '404':
           description: visit not found
         '401':
@@ -6285,6 +6637,9 @@ paths:
                     area_id:
                       type: integer
                       nullable: true
+                      deprecated: true
+                      description: Legacy Area ID. It is translated to place_id; do
+                        not send both fields.
                     status:
                       type: string
                       enum:
@@ -6421,7 +6776,9 @@ paths:
                   duration:
                     type: integer
                   place:
-                    type: object
+                    type:
+                    - object
+                    - 'null'
         '422':
           description: invalid request
         '401':
@@ -6574,6 +6931,269 @@ paths:
                     - ended_at
               required:
               - visits
+  "/api/v1/webhooks":
+    get:
+      summary: Lists geofence webhooks
+      tags:
+      - Geofencing
+      description: Webhooks receive signed geofence enter/leave events. Pro or Family
+        plan on Dawarich Cloud.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: webhooks
+        '403':
+          description: 'pro_plan_required: the user is on the Lite plan of Dawarich
+            Cloud'
+    post:
+      summary: Creates a geofence webhook
+      tags:
+      - Geofencing
+      description: 'Returns the signing secret once. Requests carry X-Dawarich-Signature:
+        sha256=<HMAC of the body>.'
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '201':
+          description: webhook created, secret included
+        '422':
+          description: invalid webhook
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                webhook:
+                  type: object
+                  required:
+                  - name
+                  - url
+                  properties:
+                    name:
+                      type: string
+                    url:
+                      type: string
+                    event_types:
+                      type: array
+                      items:
+                        type: integer
+                    place_ids:
+                      type: array
+                      items:
+                        type: integer
+                    active:
+                      type: boolean
+  "/api/v1/webhooks/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retrieves a geofence webhook
+      tags:
+      - Geofencing
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: webhook, without its secret
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  url:
+                    type: string
+                  event_types:
+                    type: array
+                    items:
+                      type: integer
+                    description: 0 = enter, 1 = leave
+                  place_ids:
+                    type: array
+                    items:
+                      type: integer
+                    description: Empty = every place
+                  active:
+                    type: boolean
+                  consecutive_failures:
+                    type: integer
+                  last_delivery_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  last_success_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '404':
+          description: webhook not found
+    patch:
+      summary: Updates a geofence webhook
+      tags:
+      - Geofencing
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: webhook updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  url:
+                    type: string
+                  event_types:
+                    type: array
+                    items:
+                      type: integer
+                    description: 0 = enter, 1 = leave
+                  place_ids:
+                    type: array
+                    items:
+                      type: integer
+                    description: Empty = every place
+                  active:
+                    type: boolean
+                  consecutive_failures:
+                    type: integer
+                  last_delivery_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  last_success_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '422':
+          description: invalid webhook
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                webhook:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    url:
+                      type: string
+                    event_types:
+                      type: array
+                      items:
+                        type: integer
+                    place_ids:
+                      type: array
+                      items:
+                        type: integer
+                    active:
+                      type: boolean
+    delete:
+      summary: Deletes a geofence webhook
+      tags:
+      - Geofencing
+      description: Also allowed on the Lite plan, so webhooks can be removed after
+        a downgrade.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '204':
+          description: webhook deleted
+  "/api/v1/webhooks/{id}/regenerate_secret":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Replaces the signing secret of a geofence webhook
+      tags:
+      - Geofencing
+      description: The previous secret stops working immediately.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: the new secret
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret:
+                    type: string
+                required:
+                - secret
+  "/api/v1/webhooks/{id}/test":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Sends a test event to a webhook
+      tags:
+      - Geofencing
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '202':
+          description: test delivery queued
+        '429':
+          description: more than five test sends a minute for this webhook (Dawarich
+            Cloud only)
 servers:
 - url: http://{defaultHost}
   variables:

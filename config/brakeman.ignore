@@ -1,0 +1,166 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "03570d61d3ddd04bdd30150b1a663aa69b4330ca063305f7ba70d880333a4f11",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/maps/privacy_zone_track_masker.rb",
+      "line": 91,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "ActiveRecord::Base.connection.select_rows(\"SELECT ordinal, touched, CASE WHEN ST_IsEmpty(clipped) THEN NULL ELSE ST_AsGeoJSON(clipped) END\\nFROM (\\n  SELECT input.ordinal, test.touched,\\n         CASE WHEN test.touched THEN #{masker.clip_sql(\"source.geom\")} ELSE source.geom END AS clipped\\n  FROM unnest(ARRAY[#{texts.map do\n ActiveRecord::Base.connection.quote(text)\n end.join(\", \")}]::text[]) WITH ORDINALITY AS input(json, ordinal)\\n  CROSS JOIN LATERAL (SELECT ST_SetSRID(ST_GeomFromGeoJSON(input.json), 4326) AS geom) AS source\\n  CROSS JOIN LATERAL (SELECT #{masker.touches_sql(\"source.geom\")} AS touched OFFSET 0) AS test\\n  OFFSET 0\\n) AS result\\n\".squish)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Maps::PrivacyZoneTrackMasker",
+        "method": "clip_rows"
+      },
+      "user_input": "masker.clip_sql(\"source.geom\")",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "GeoJSON inputs are quoted with connection.quote; zone geometry comes from floats."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "0cfdf3d73c0ce24c3d960a12b3245eed9929a4f02ef76eba8d242182d12d1ba1",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/maps/privacy_zone_masker.rb",
+      "line": 71,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "ActiveRecord::Base.connection.select_value(\"SELECT CASE WHEN ST_IsEmpty(clipped) THEN NULL ELSE ST_AsText(clipped) END\\nFROM (SELECT CASE WHEN #{touches_sql(\"ST_GeomFromText(#{ActiveRecord::Base.connection.quote(wkt)}, 4326)\")} THEN #{clip_sql(\"ST_GeomFromText(#{ActiveRecord::Base.connection.quote(wkt)}, 4326)\")} ELSE #{\"ST_GeomFromText(#{ActiveRecord::Base.connection.quote(wkt)}, 4326)\"} END AS clipped) AS result\\n\".squish)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Maps::PrivacyZoneMasker",
+        "method": "clip_wkt"
+      },
+      "user_input": "touches_sql(\"ST_GeomFromText(#{ActiveRecord::Base.connection.quote(wkt)}, 4326)\")",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "The WKT is quoted with connection.quote; zone geometry comes from floats."
+    },
+    {
+      "warning_type": "SSL Verification Bypass",
+      "warning_code": 71,
+      "fingerprint": "10f5e319bc7207b020ca63bdb360edcc09d47fde8362420c4c209b832cb75327",
+      "check_name": "SSLVerify",
+      "message": "SSL certificate verification was bypassed",
+      "file": "app/services/trek/client.rb",
+      "line": 66,
+      "link": "https://brakemanscanner.org/docs/warning_types/ssl_verification_bypass/",
+      "code": "Net::HTTP.new(URI.parse(\"#{source.base_url}#{path}\").hostname, URI.parse(\"#{source.base_url}#{path}\").port, nil).verify_mode = OpenSSL::SSL::VERIFY_NONE",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Trek::Client",
+        "method": "get"
+      },
+      "user_input": null,
+      "confidence": "High",
+      "cwe_id": [
+        295
+      ],
+      "note": "Opt-in per TREK source (skip_ssl_verification), like the Immich, Photoprism, AirTrail and TeslaMate integrations; verification stays on by default."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "5f2294a0db5d6a462fcf3790e24f72eb403a7105683f66f1bc82954496f701b1",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/maps/privacy_zone_masker.rb",
+      "line": 77,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "Arel.sql(\"#{\"ST_Extent(CASE WHEN #{touches_sql(column)} THEN #{clip_sql(column)} ELSE #{column} END)\"}::text\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Maps::PrivacyZoneMasker",
+        "method": "clipped_bounds"
+      },
+      "user_input": "touches_sql(column)",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Column names are internal constants; zone geometry comes from floats."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "7d9bbc45ef414764ea254016006dc3651708f257820b7e413bcfd2cf56d38859",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/stat.rb",
+      "line": 130,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "ActiveRecord::Base.connection.exec_query(\"SELECT MIN(ST_Y(lonlat::geometry)) as min_lat, MAX(ST_Y(lonlat::geometry)) as max_lat,\\n              MIN(ST_X(lonlat::geometry)) as min_lng, MAX(ST_X(lonlat::geometry)) as max_lng,\\n              COUNT(*) as point_count\\n       FROM points\\n       WHERE user_id = $1\\n       AND timestamp BETWEEN $2 AND $3\\n       AND lonlat IS NOT NULL\\n       #{if privacy_zone_masker.any? then\n  \"AND NOT #{privacy_zone_masker.within_sql(\"lonlat\")}\"\nend}\\n       AND EXTRACT(year FROM (to_timestamp(timestamp) AT TIME ZONE $4)) = $5\\n       AND EXTRACT(month FROM (to_timestamp(timestamp) AT TIME ZONE $4)) = $6\", \"data_bounds_query\", [user.id, (Date.new(year, month, 1).beginning_of_day - 2.days).to_i, (Date.new(year, month, 1).end_of_month.end_of_day + 2.days).to_i, user.timezone_iana, year, month])",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Stat",
+        "method": "calculate_data_bounds"
+      },
+      "user_input": "if privacy_zone_masker.any? then\n  \"AND NOT #{privacy_zone_masker.within_sql(\"lonlat\")}\"\nend",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Interpolates PrivacyZoneMasker#within_sql, built from zone coordinates and radii coerced to floats; user values are bind parameters."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "ea8bb9ab7999097d8c6b5379cd5b929d1a94b64fa411fb413db7f9e7fbc39715",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/areas/nearby.rb",
+      "line": 33,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "Arel.sql(\"ST_DWithin(#{\"ST_SetSRID(\\n  ST_MakePoint(\\n    COALESCE(places.longitude, areas.longitude),\\n    COALESCE(places.latitude, areas.latitude)\\n  ), 4326\\n)::geography\\n\".squish}, #{\"ST_SetSRID(ST_MakePoint(#{longitude.to_f}, #{latitude.to_f}), 4326)::geography\"}, #{(radius.to_f * 1000)})\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Areas::Nearby",
+        "method": "call"
+      },
+      "user_input": "(radius.to_f * 1000)",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Longitude, latitude and radius are coerced with to_f in the constructor."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "ffbd60ac88128fa633a1867ae81bba870a69204c5bee0a337d98caa6a3c88bcb",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/maps/privacy_zone_masker.rb",
+      "line": 200,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "relation.where(\"NOT #{within_sql(column)}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Maps::PrivacyZoneMasker",
+        "method": "mask_relation"
+      },
+      "user_input": "within_sql(column)",
+      "confidence": "Weak",
+      "cwe_id": [
+        89
+      ],
+      "note": "Column names are internal constants; zone geometry comes from floats."
+    }
+  ],
+  "brakeman_version": "8.0.6"
+}

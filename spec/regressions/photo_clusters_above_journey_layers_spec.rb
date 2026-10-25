@@ -28,10 +28,11 @@ RSpec.describe 'Photo clusters above journey layers' do
         performanceMonitor: {mark() {}, measure() {}},
         SettingsManager: {getSetting: () => '#6366F1'},
         bumpTileVersion() {}, getMarkerStrokeColor: () => '#fff',
-        escapeAttribute: String, escapeHtml: String, formatTimestamp: String,
+        escapeAttribute: String, escapeHtml: String, formatTimestamp: String, formatDateTime: String,
         getCurrentTheme: () => 'light', getThemeColors: () => ({}),
+        Popup: class { setLngLat() { return this; } setHTML() { return this; } addTo() { return this; } remove() {} },
       };
-      for (const name of ['Anomalies', 'Areas', 'Family', 'Flights', 'Fog', 'Hexagon', 'Places', 'Tracks', 'Visits']) {
+      for (const name of ['Anomalies', 'Family', 'Flights', 'Fog', 'Hexagon', 'Places', 'Tracks', 'Visits']) {
         stubs[`${name}Layer`] = UnrelatedLayer;
       }
       const modules = new Map();
@@ -79,11 +80,11 @@ RSpec.describe 'Photo clusters above journey layers' do
       const photos = {type: 'FeatureCollection', features: Array.from({length: 12}, (_, id) => ({
         type: 'Feature', geometry: {type: 'Point', coordinates: [-130, -55]}, properties: {id},
       }))};
-      await manager.addAllLayers(empty, photos, empty, empty, empty);
+      await manager.addAllLayers(empty, photos, empty, empty);
       const initial = layers.map(l => l.id);
       manager.updatePointTileRange('2026-10-01T00:00:00Z', '2026-10-01T23:59:59Z');
       const afterDateChange = layers.map(l => l.id);
-      await manager.addAllLayers(empty, photos, empty, empty, empty);
+      await manager.addAllLayers(empty, photos, empty, empty);
       console.log(JSON.stringify({initial, afterDateChange, afterReload: layers.map(l => l.id)}));
     JS
   end

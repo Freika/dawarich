@@ -60,6 +60,10 @@ RSpec.describe Users::ImportData::Places, type: :service do
         result = service.call
         expect(result).to eq(2)
       end
+
+      it 'does not enqueue one full-history reattribution per imported Place' do
+        expect { service.call }.not_to have_enqueued_job(Places::ReattributeSuggestedVisitsJob)
+      end
     end
 
     context 'with duplicate places (same name)' do

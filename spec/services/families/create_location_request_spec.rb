@@ -17,6 +17,16 @@ RSpec.describe Families::CreateLocationRequest do
   describe '#call' do
     subject(:result) { described_class.new(requester: requester, target_user: target_user).call }
 
+    context 'when the target turned family off' do
+      before { target_user.update!(settings: target_user.settings.merge('family_enabled' => false)) }
+
+      it 'does not create a request' do
+        expect { result }.not_to change(Family::LocationRequest, :count)
+        expect(result.success?).to be false
+        expect(result.payload[:message]).to eq('This member has turned family features off')
+      end
+    end
+
     context 'when valid' do
       it 'creates a location request' do
         expect { result }.to change(Family::LocationRequest, :count).by(1)

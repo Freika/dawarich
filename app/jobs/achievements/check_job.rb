@@ -46,6 +46,11 @@ module Achievements
       user = User.find_by(id: user_id)
       return unless user
 
+      unless user.feature_enabled?(:achievements)
+        Sidekiq.redis { |redis| redis.del(self.class.pending_key(user_id)) }
+        return
+      end
+
       pending = self.class.pending_members(user_id)
       notify &&= Progress.current_exploration.exists?(user_id: user_id)
       oldest_timestamp = [oldest_timestamp, *pending.map(&:to_i)].compact.min

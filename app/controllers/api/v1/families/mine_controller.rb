@@ -17,7 +17,7 @@ class Api::V1::Families::MineController < Api::V1::Families::BaseController
   private
 
   def ensure_family_state_visible!
-    return if current_api_user&.in_family?
+    return if current_api_user&.in_family? && current_api_user.feature_enabled?(:family)
     return ensure_family_feature_available! unless entitled?
 
     ensure_user_in_family!

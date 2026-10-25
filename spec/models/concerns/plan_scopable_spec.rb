@@ -76,8 +76,21 @@ RSpec.describe PlanScopable do
   end
 
   describe '#data_window_start' do
-    it 'returns approximately 12 months ago' do
-      expect(user.data_window_start).to be_within(1.second).of(12.months.ago)
+    include ActiveSupport::Testing::TimeHelpers
+
+    it 'starts at the first UTC midnight after 12 months ago' do
+      travel_to Time.utc(2026, 10, 25, 10, 30) do
+        expect(user.data_window_start).to eq(Time.utc(2025, 10, 26))
+      end
+    end
+
+    it 'stays the same throughout a UTC day, whatever the current time zone' do
+      morning = travel_to(Time.utc(2026, 10, 25, 0, 1)) { user.data_window_start }
+      evening = travel_to(Time.utc(2026, 10, 25, 23, 59)) do
+        Time.use_zone('Pacific/Auckland') { user.data_window_start }
+      end
+
+      expect(evening).to eq(morning)
     end
   end
 
@@ -118,7 +131,7 @@ RSpec.describe PlanScopable do
       end
 
       let!(:boundary_point) do
-        create(:point, user: user, timestamp: 12.months.ago.to_i)
+        create(:point, user: user, timestamp: user.data_window_start.to_i)
       end
 
       it 'includes points at the exact boundary' do

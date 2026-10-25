@@ -181,6 +181,20 @@ test("a new date range shows the tracks of that range", async (t) => {
   ])
 })
 
+test("range tiles are keyed by the privacy zone fingerprint", async (t) => {
+  const { controller, map } = await preview(t, {
+    privacyZonesFingerprintValue: "abc",
+  })
+  env.bounds = { min_lng: 2, min_lat: 48, max_lng: 3, max_lat: 49 }
+
+  await controller.element.listeners["trip-range-updated"]({
+    detail: { startAt: "2026-01-01T10:00", endAt: "2026-01-02T10:00" },
+  })
+
+  const params = new URLSearchParams(lineSource(map).tiles[0].split("?")[1])
+  assert.equal(params.get("pz"), "abc")
+})
+
 test("a range chosen before the map loads is drawn once it loads", async (t) => {
   const originalWindow = globalThis.window
   t.after(() => {
@@ -219,10 +233,10 @@ test("a range chosen before the map loads is drawn once it loads", async (t) => 
 test("changing the form dates downloads no points", async (t) => {
   const requests = []
   const dispatched = []
-  const originals = ["fetch", "document"].map((name) => [
-    name,
-    globalThis[name],
-  ])
+  const timers = []
+  const originals = ["fetch", "document", "CustomEvent", "setTimeout"].map(
+    (name) => [name, globalThis[name]],
+  )
   t.after(() => {
     for (const [name, value] of originals) globalThis[name] = value
   })
@@ -233,7 +247,13 @@ test("changing the form dates downloads no points", async (t) => {
   globalThis.document = {
     querySelector: () => ({ dispatchEvent: (event) => dispatched.push(event) }),
   }
-  t.mock.timers.enable({ apis: ["setTimeout"] })
+  globalThis.CustomEvent = class {
+    constructor(type, options) {
+      this.type = type
+      this.detail = options.detail
+    }
+  }
+  globalThis.setTimeout = (callback, delay) => timers.push({ callback, delay })
 
   const controller = new DatetimeController()
   Object.assign(controller, {
@@ -241,7 +261,8 @@ test("changing the form dates downloads no points", async (t) => {
     endedAtTarget: { value: "2026-01-02T10:00", setCustomValidity() {} },
   })
   controller.updateCoordinates()
-  t.mock.timers.tick(500)
+  assert.equal(timers[0].delay, 500)
+  timers[0].callback()
   await new Promise((resolve) => setImmediate(resolve))
 
   assert.deepEqual(requests, [])

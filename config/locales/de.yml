@@ -41,6 +41,7 @@ de:
           photon_api_host: "Host"
           photon_api_key: "API-Schlüssel"
           photon_api_use_https: "HTTPS verwenden"
+          photon_api_language: "Sprache"
           nominatim_api_host: "Host"
           nominatim_api_key: "API-Schlüssel"
           nominatim_api_use_https: "HTTPS verwenden"
@@ -50,12 +51,14 @@ de:
           store_geodata: "Neue Punkte sofort geokodieren"
           host_hint: "Hostname mit optionalem Port, z. B. photon.example.com:2322"
           rps_hint: "Leer lassen für kein Limit. Trage ein, was dein Server oder Tarif erlaubt."
+          photon_api_language_hint: "Sprachcode aus zwei Buchstaben für Ortsnamen oder default für Namen in der Landessprache. Dein Photon-Index muss diese Sprache enthalten. Eine Änderung gilt nur für neue Abfragen, danach kann eine Stadt in der Statistik doppelt erscheinen."
           api_key_keep_hint: "Leer lassen, um den gespeicherten Schlüssel zu behalten."
           store_geodata_hint: "Ermittelt Stadt und Land beim Hinzufügen neuer Punkte. Nächtliche Abfragen laufen bei konfiguriertem Anbieter auch dann weiter, wenn diese Option ausgeschaltet ist."
       update:
         saved: "Einstellungen gespeichert."
         pinned: "Abgelehnt: festgelegt durch %{variables}."
         host_invalid: "Der Host muss ein reiner Hostname mit optionalem Port oder Pfad sein, ohne Leerzeichen."
+        language_invalid: "Die Sprache muss ein Code aus zwei Buchstaben wie en oder nl sein oder default."
         chibigeo_key_required: "ChibiGeo benötigt einen API-Schlüssel. Der kostenlose Hobby-Tarif umfasst 2.500 Abfragen pro Tag – deinen Schlüssel bekommst du auf chibigeo.com."
       test_geocoding:
         not_configured: "Es ist kein Geokodierungsanbieter konfiguriert. Speichere zuerst einen Anbieter."
@@ -967,6 +970,8 @@ de:
       dawarich_logo: Dawarich-Logo
   map:
     onboarding_modal:
+      not_sure_where_your_app_keeps_its_export: "Du weißt nicht, wo deine App den Export versteckt?"
+      step_by_step_export_guides: "Schritt-für-Schritt-Anleitungen zum Export"
       invite_your_family: "Lade deine Familie ein"
       add_your_family_and_see_each_other_on_the_map: "Füge deine Familie hinzu und seht euch auf der Karte."
       welcome_to_dawarich: Willkommen bei Dawarich!
@@ -981,16 +986,6 @@ de:
       skip_for_now: Jetzt überspringen
       import_your_data: Importiere deine Daten
       supported_formats: Unterstützte Formate
-      google_maps: 'Google Maps:'
-      records_json_semantic_history_phone_takeout_json: Records.json, Semantic History, Phone Takeout (.json)
-      gpx: 'GPX:'
-      track_files_gpx: Track-Dateien (.gpx)
-      geojson: 'GeoJSON:'
-      feature_collections_json: Feature-Sammlungen (.json)
-      owntracks: 'OwnTracks:'
-      recorder_files_rec: Recorder-Dateien (.rec)
-      kml: 'KML:'
-      kml_files_kml_kmz: KML-Dateien (.kml, .kmz)
       file_format_is_automatically_detected_during_upload: Das Dateiformat wird beim Hochladen automatisch erkannt.
       trial_limitations_max_5_imports_10mb_per_file_current_imports: 'Testzeitraum-Begrenzungen: Maximal 5 Importe, 10 MB pro Datei. Aktuelle Importe:'
       select_one_or_multiple_files: Wähle eine oder mehrere Dateien
@@ -1010,16 +1005,6 @@ de:
       settings: Einstellungen
       setup_guide: Einrichtungsanleitung
     maplibre:
-      area_creation_modal:
-        create_new_area: Neues Gebiet erstellen
-        area_name: Gebietsname *
-        radius: Radius
-        meters: Meter
-        cancel: Abbrechen
-        e_g_home_office_gym: z. B. Zuhause, Büro, Fitnessstudio …
-        radius_in_meters: Radius in Metern
-        create_area: Gebiet erstellen
-        creating: Wird erstellt...
       button_cluster:
         video_studio: "Video-Studio"
         map_controls: Kartensteuerung
@@ -1076,6 +1061,7 @@ de:
         places: Orte
         show_your_saved_places: Deine gespeicherten Orte anzeigen
         enable_all_tags: Alle Tags aktivieren
+        show_place_boundaries: Ortsgrenzen anzeigen
         untagged: "\U0001F3F7️ Ohne Tag"
         click_tags_to_filter_places: Klick auf Tags, um Orte zu filtern
         photos: Fotos
@@ -1202,8 +1188,7 @@ de:
         pick_a_day_in_the_calendar_to_see_visits: Wähle einen Tag im Kalender aus, um Aufenthalte zu sehen.
         create_visit: Aufenthalt erstellen
         create_place: Ort erstellen
-        select_area: Bereich auswählen
-        create_area: Bereich erstellen
+        select_data_on_map: Daten auf der Karte auswählen
         replay: Wiedergabe
         enrich_photos: Fotos bereichern
         close: Schließen
@@ -1404,12 +1389,16 @@ de:
       rarr: "→"
       'on': auf
       no_visits_yet: Noch keine Aufenthalte
-      rename: Umbenennen
       merge: Verbinden
+      select_place_to_merge: Doppelten Ort auswählen
+      no_matching_places: Keine passenden Orte gefunden
+      search_places: Orte suchen
+      search: Suchen
+      merge_confirmation: Den ausgewählten Ort mit „%{survivor}“ zusammenführen? Aufenthalte, Tags und Notizen werden hierher verschoben.
       notes: Notizen
       save: Speichern
       delete: Löschen
-      delete_this_place_this_cannot_be_undone: Diesen Ort löschen? Dies kann nicht rückgängig gemacht werden.
+      delete_this_place_this_cannot_be_undone: Diesen Ort löschen? Seine Aufenthalte bleiben ohne zugeordneten Ort erhalten.
       manual_name_title: Du hast diesen Ort benannt, daher wird der automatische Name nicht geändert. Benenne ihn um zu „%{default_name}“, um ihn wieder der automatischen Namensgebung zu übergeben.
       visit_count:
         one: "%{count} Aufenthalt"
@@ -1418,6 +1407,9 @@ de:
       no_nearby_places_found: Keine nahen Orte gefunden
       load_more_search_up_to_distance_m: Weitere laden (Suche bis zu %{distance}m)
     index:
+      filters: Ortsfilter
+      all_places: Alle Orte
+      unconfirmed_places: Unbestätigt
       hello_there: Hallo!
       here_you_ll_find_your_places_created_by_visits_suggestion: Hier findest du deine Orte, die durch den Visits-Vorschlagsprozess erstellt wurden. Aber jetzt gibt es keine.
       name: Name
@@ -1427,7 +1419,7 @@ de:
       timeline: Zeitleiste
       places: Orte
       delete: Löschen
-      are_you_sure_deleting_a_place_will_result_in_deleting: Bist du sicher? Das Löschen eines Ortes wird dazu führen, dass alle Aufenthalte für diesen Ort gelöscht werden.
+      are_you_sure_deleting_a_place_will_result_in_deleting: Diesen Ort löschen? Seine Aufenthalte bleiben ohne zugeordneten Ort erhalten.
   points:
     address:
       address: 'Adresse:'
@@ -1608,12 +1600,26 @@ de:
         timezone: Zeitzone
         your_timezone: Deine Zeitzone
         all_dates_and_times_will_be_displayed_in_this_timezone: Alle Daten und Uhrzeiten werden in dieser Zeitzone angezeigt
+        date_and_time: "Datum und Uhrzeit"
+        date_format: "Datumsformat"
+        time_format: "Zeitformat"
+        first_day_of_week: "Erster Tag der Woche"
+        format_auto: "Automatisch (%{example})"
+        time_format_12h: "12 Stunden (%{example})"
+        time_format_24h: "24 Stunden (%{example})"
+        date_and_time_hint: "Gilt für Datums- und Zeitangaben in der App, in E-Mails und auf der Karte."
         supporter_badge: Supporter-Badge
         show_supporter_badge_in_navbar: Unterstützer-Abzeichen in der Navigationsleiste anzeigen
         display_a_gem_icon_next_to_your_profile_to_show: Zeigt ein Edelstein-Symbol neben deinem Profil an, das deinen Unterstützerstatus kennzeichnet
         general_settings: Allgemeine Einstellungen
         save_changes: Änderungen speichern
         test_email_worker_hint: Stellt eine Testnachricht über denselben Hintergrundprozess wie System-E-Mails in die Warteschlange
+        features: "Funktionen"
+        features_hint: "Schalte Teile von Dawarich aus, die du nicht nutzt. Sie verschwinden aus der Oberfläche, und ihre Hintergrundverarbeitung wird beendet."
+        family_feature: "Familie"
+        family_feature_hint: "Standortfreigabe mit Familienmitgliedern. Wenn du sie ausschaltest, werden dein Standort und nur für die Familie geteilte Reiselinks nicht mehr geteilt; du bleibst Mitglied. Wenn du sie wieder einschaltest, ist die Standortfreigabe zunächst aus."
+        achievements_feature: "Erfolge"
+        achievements_feature_hint: "Erkundete Regionen und Abzeichen. Wenn du sie ausschaltest, wird der Fortschritt nicht mehr berechnet und deine öffentlichen Erfolgslinks werden deaktiviert."
     integrations:
       trek:
         title: "TREK-Integration"
@@ -1631,6 +1637,7 @@ de:
         sync_now: "Jetzt synchronisieren"
         disconnect: "Trennen"
         disconnect_confirmation: "TREK trennen? Verwaltete Reisen und ihre aufgezeichneten Daten bleiben in Dawarich, werden aber nicht mehr synchronisiert."
+        ssl_verification_off: "SSL-Prüfung aus"
       index:
         services_nav: Integrationsdienste
         geocoding: "Geokodierung"
@@ -1780,7 +1787,7 @@ de:
         tracks: Tracks
         imports: Importe
         exports: Exporte
-        areas: Gebiete
+        places: Orte
         sign_in_history: Anmeldehistorie
         total_sign_ins: Gesamtanzahl Anmeldungen
         last_sign_in: Letzte Anmeldung
@@ -1938,6 +1945,8 @@ de:
     place_creation_modal:
       create_new_place: Neuer Ort erstellen
       place_name: Ortsname *
+      visit_radius: Besuchsradius (Meter) *
+      visit_radius_hint: Besuche, deren Mittelpunkt in diesem Radius liegt, können dem Ort zugeordnet werden. Dies hat keinen Einfluss auf den Datenschutz.
       note: Notiz
       optional_add_any_notes_or_details_about_this_place: Optional - Füge hier beliebige Notizen oder Details über diesen Ort hinzu
       tags: Tags
@@ -2046,6 +2055,9 @@ de:
         upgrade_to_pro: Auf Pro upgraden
         dismiss: Verwerfen
   shared_links:
+    privacy_zones_note:
+      text: "Deine Privatsphäre-Zonen bleiben bei diesem Link verborgen. Jeder verborgene Bereich ist vom Ort versetzt, sodass niemand erkennen kann, wo der Ort liegt."
+      manage: "Privatsphäre-Zonen"
     expires_field:
       expires_optional: Verfällt (optional)
       stays_active_through_the_end_of_the_day_before_the: Aktiv bis zum Ende des Tages vor dem ausgewählten Datum.
@@ -2216,7 +2228,7 @@ de:
       choose_from_swatches_or_pick_a_custom_color: Wähle aus den Farbkarten oder wähle eine benutzerdefinierte Farbe
       privacy_zone: Privatsphäre-Zone
       hide_map_data_around_places_with_this_tag: Karte-Daten um Orte mit diesem Tag verbergen
-      data_within_this_radius_will_be_hidden_from_the_map: Daten innerhalb dieses Radius werden von der Karte versteckt
+      hidden_area_hint: "Alles innerhalb dieses Radius wird immer verborgen. Der verborgene Kreis ist bis zu 1,6-mal größer und um einen festen Betrag vom Ort versetzt, damit niemand den Ort an der Stelle erkennt, an der deine Daten enden."
       home_work_restaurant: Zuhause, Arbeit, Restaurant...
       privacy_radius: Privatsphäre-Radius
       cancel: Abbrechen
@@ -2235,6 +2247,7 @@ de:
       actions: Aktionen
       no_tags_yet: Noch keine Tags
       create_tags_to_organize_your_places_and_add_privacy_zones: Tags erstellen, um deine Orte zu organisieren und Privatsphäre-Zonen hinzuzufügen.
+      privacy_zone_badge_hint: "Verborgener Bereich: vom Ort versetzt, bis zu 1,6-mal dieser Radius"
       create_your_first_tag: Erstes Tag erstellen
       tags: Tags
       edit_tag: Tag bearbeiten
@@ -2518,7 +2531,7 @@ de:
           other: "%{count} Städte"
     digests_mailer:
       monthly_digest:
-        flights: Flüge
+        flights: Davon Flüge
         your: Dein
         in_review: im Rückblick
         here_s_what_your_location_history_looked_like_last_month: Hier ist ein Überblick, wie dein Standortverlauf im letzten Monat aussah.
@@ -3166,6 +3179,7 @@ de:
             visit_not_found: Aufenthalt nicht gefunden
           invalid_place: Ungültiger Ort
           invalid_area: Ungültiger Bereich
+          conflicting_place_and_area: place_id und area_id können nicht gemeinsam angegeben werden
           at_least_2_visits_must_be_selected_for_merging: Mindestens 2 Aufenthalte müssen ausgewählt werden, um sie zu verbinden
           one_or_more_visits_not_found: Ein oder mehrere Aufenthalte wurden nicht gefunden
           count_visits_updated_successfully: "%{count} Aufenthalte wurden erfolgreich aktualisiert"
@@ -3192,6 +3206,7 @@ de:
       your_account_has_been_deleted: Dein Konto wurde gelöscht.
       you_are_not_authorized_to_perform_this_action: Du bist nicht berechtigt, diese Aktion auszuführen.
       family_plan_required: Für diese Funktion ist der Family-Tarif erforderlich.
+      feature_disabled_in_settings: "Diese Funktion ist in deinen Einstellungen ausgeschaltet."
     areas:
       created: Bereich erfolgreich erstellt!
       updated: Bereich erfolgreich aktualisiert!
@@ -3292,6 +3307,8 @@ de:
       place_was_successfully_destroyed: Ort wurde erfolgreich gelöscht.
       created: Ort erfolgreich erstellt!
       updated: Ort erfolgreich aktualisiert!
+      merged: '„%{duplicate}“ wurde mit „%{survivor}“ zusammengeführt.'
+      merge_visit_conflict: "Diese Orte können nicht zusammengeführt werden, weil Besuch #%{first_id} und Besuch #%{second_id} beide um %{started_at} beginnen. Löse zuerst diese Besuche auf."
     points:
       no_points_selected: Keine Punkte ausgewählt.
       points_were_successfully_destroyed: Punkte wurden erfolgreich gelöscht.
@@ -3483,6 +3500,7 @@ de:
       failed_to_delete_visits: Löschen der Aufenthalte fehlgeschlagen.
       invalid_place: Ungültiger Ort
       invalid_area: Ungültiger Bereich
+      conflicting_place_and_area: Ort und Bereich können nicht gemeinsam angegeben werden
       failed_to_update_visit: Aktualisierung des Aufenthalts fehlgeschlagen.
       select_visits_to_merge: Wähle mindestens zwei Aufenthalte zum Verbinden.
       visits_must_share_day: Aufenthalte müssen am selben Tag sein.
@@ -3627,6 +3645,7 @@ de:
         safe_email_is_requesting_your_location_link: "%{email} fragt nach deinem Standort. %{link}"
         users_must_be_in_the_same_family: Benutzer müssen in derselben Familie sein
         target_user_is_already_sharing_their_location: Zielbenutzer teilt bereits seinen Standort
+        target_user_turned_family_off: "Dieses Mitglied hat die Familienfunktionen ausgeschaltet"
         request_cooldown_active_please_wait_before_requesting_again: Anfragekühlauf der Aktivität. Bitte warte, bevor du erneut anfragst.
         view_request: Anfrage ansehen
       invite:
@@ -4031,9 +4050,6 @@ de:
       click_on_the_map_to_place_a_visit_esc_to: Klicke auf die Karte, um einen Aufenthalt zu platzieren (Esc zum Abbrechen)
       visit_creation_modal_not_available: Dialog zum Erstellen eines Aufenthalts ist nicht verfügbar
       visit_creation_controller_not_available: Controller für Aufenthalt-Erstellung nicht verfügbar
-      area_drawer_controller_not_available: Controller für Flächenzeichnung nicht verfügbar
-      area_created_successfully: Fläche erfolgreich erstellt!
-      failed_to_reload_areas: Gebiete konnten nicht neu geladen werden
       family_feature_not_available: Familienfunktion nicht verfügbar
       failed_to_load_family_members: Familienmitglieder konnten nicht geladen werden
       centered_on_family_member: Auf Familienmitglied zentriert
@@ -4458,6 +4474,7 @@ de:
       place: Ort
       points: Punkte
       radius: Radius
+      visit_radius: Aufenthaltsradius
       reason: Grund
       route_information: Route-Informationen
       selected_point: Ausgewählter Punkt
@@ -4613,6 +4630,7 @@ de:
     live_map:
       disabled: Live-Modus deaktiviert
       enabled: Live-Modus aktiviert
+      your_position: Dein letzter Standort
     map_panel:
       layers: Kartenlayers
       family: "Familie"
@@ -4684,3 +4702,8 @@ de:
       no_invitations: Keine offenen Einladungen
       title: Familien-Einladungen
       view_invitation: Ansehen
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: AM
+      pm: PM

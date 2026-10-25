@@ -8,7 +8,8 @@ RSpec.describe Trek::Client do
       TripSource,
       base_url: 'https://trek.example.test',
       api_key: 'trek_test_key',
-      resolved_base_url_ip!: '93.184.216.34'
+      resolved_base_url_ip!: '93.184.216.34',
+      skip_ssl_verification: false
     )
   end
 
@@ -23,6 +24,67 @@ RSpec.describe Trek::Client do
 
     expect(client.trips).to eq([{ 'id' => 12, 'title' => 'Tuscany' }])
     expect(source).to have_received(:resolved_base_url_ip!)
+  end
+
+  describe 'certificate verification' do
+    def capture_connection
+      connection = nil
+      allow(Net::HTTP).to(receive(:new).and_wrap_original { |original, *args| connection = original.call(*args) })
+      stub_request(:get, 'https://trek.example.test/api/v1/trips').to_return(status: 200, body: { trips: [] }.to_json)
+      yield
+      connection
+    end
+
+    it 'verifies the certificate by default' do
+      connection = capture_connection { client.trips }
+
+      expect(connection.verify_mode).not_to eq(OpenSSL::SSL::VERIFY_NONE)
+    end
+
+    it 'skips certificate verification when the source opts out' do
+      allow(source).to receive(:skip_ssl_verification).and_return(true)
+
+      connection = capture_connection { client.trips }
+
+      expect(connection.verify_mode).to eq(OpenSSL::SSL::VERIFY_NONE)
+    end
+
+    it 'points to the skip option when the certificate cannot be verified' do
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_raise(OpenSSL::SSL::SSLError.new('certificate verify failed (unable to get local issuer certificate)'))
+
+      expect { client.trips }.to raise_error(
+        Trek::Client::Error, /local issuer certificate.*Skip SSL certificate verification/
+      )
+    end
+
+    it 'does not suggest skipping verification for an expired certificate' do
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_raise(OpenSSL::SSL::SSLError.new('certificate verify failed (certificate has expired)'))
+
+      expect { client.trips }.to raise_error(Trek::Client::Error, /certificate has expired/) do |error|
+        expect(error.message).not_to include('Skip SSL certificate verification')
+      end
+    end
+
+    it 'does not suggest skipping verification for a TLS failure unrelated to the certificate' do
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_raise(OpenSSL::SSL::SSLError.new('wrong version number'))
+
+      expect { client.trips }.to raise_error(Trek::Client::Error, /wrong version number/) do |error|
+        expect(error.message).not_to include('Skip SSL certificate verification')
+      end
+    end
+
+    it 'does not suggest skipping verification when it is already skipped' do
+      allow(source).to receive(:skip_ssl_verification).and_return(true)
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_raise(OpenSSL::SSL::SSLError.new('certificate verify failed'))
+
+      expect { client.trips }.to raise_error(Trek::Client::Error) do |error|
+        expect(error.message).not_to include('Skip SSL certificate verification')
+      end
+    end
   end
 
   it 'connects to a bracketed IPv6 base URL by its bare address' do

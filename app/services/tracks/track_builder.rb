@@ -135,7 +135,7 @@ module Tracks::TrackBuilder
 
     return track unless singleton
 
-    Tracks::OrphanPointAttacher.new(user, singleton, points).call
+    Tracks::OrphanPointAttacher.new(user, [singleton], points).call
   end
 
   def reuse_existing_track(track, points, original_error)

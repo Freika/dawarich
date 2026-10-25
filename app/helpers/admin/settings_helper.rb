@@ -58,6 +58,7 @@ module Admin
     def instance_setting_hint(setting, settings)
       case setting.key
       when :photon_api_host, :nominatim_api_host then t('admin.settings.show.fields.host_hint')
+      when :photon_api_language then t('admin.settings.show.fields.photon_api_language_hint')
       when :photon_api_use_https
         t('admin.settings.show.geocoding.https_locked') if https_locked?(setting, settings)
       when :reverse_geocoding_rps then t('admin.settings.show.fields.rps_hint')

@@ -62,7 +62,9 @@ RSpec.describe Users::SafeSettings do
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
-            point_dragging_enabled: false
+            point_dragging_enabled: false,
+            family_enabled: true,
+            achievements_enabled: true
           }
         )
       end
@@ -152,11 +154,16 @@ RSpec.describe Users::SafeSettings do
             'min_minutes_spent_in_city' => 60,
             'gps_filtering_enabled' => true,
             'timezone' => 'UTC',
+            'date_format' => 'auto',
+            'time_format' => 'auto',
+            'first_day_of_week' => 'monday',
             'visit_radius_meters' => 100,
             'visit_min_points' => 3,
             'visit_min_duration_minutes' => 5,
             'point_dragging_enabled' => false,
-            'points_tiled_rendering' => true
+            'points_tiled_rendering' => true,
+            'family_enabled' => true,
+            'achievements_enabled' => true
           }
         )
       end
@@ -181,7 +188,7 @@ RSpec.describe Users::SafeSettings do
             visits_suggestions_enabled: false,
             fog_of_war_threshold: 50,
             fog_of_war_mode: 'points',
-            enabled_map_layers: %w[Points Areas Photos Tracks],
+            enabled_map_layers: ['Points', 'Photos', 'Tracks', 'Places', 'Place boundaries'],
             places_tag_filters: nil,
             maps_maplibre_style: 'light',
             maps_maplibre_tiles_url: nil,
@@ -204,7 +211,9 @@ RSpec.describe Users::SafeSettings do
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
-            point_dragging_enabled: false
+            point_dragging_enabled: false,
+            family_enabled: true,
+            achievements_enabled: true
           }
         )
       end
@@ -252,6 +261,31 @@ RSpec.describe Users::SafeSettings do
       it 'returns the integer value' do
         expect(safe_settings.minutes_between_routes).to eq(45)
       end
+    end
+  end
+
+  describe '#date_time_preferences' do
+    it 'defaults to auto date, auto time and a Monday week start' do
+      preferences = described_class.new({}).date_time_preferences
+
+      expect(preferences).to eq(Users::DateTimePreferences::DEFAULT)
+    end
+
+    it 'reads the stored preferences' do
+      preferences = described_class.new(
+        { 'date_format' => 'mm/dd/yyyy', 'time_format' => '12h', 'first_day_of_week' => 'sunday' }
+      ).date_time_preferences
+
+      expect([preferences.date_format, preferences.time_format, preferences.first_day_of_week])
+        .to eq(%w[mm/dd/yyyy 12h sunday])
+    end
+
+    it 'falls back to the defaults for unknown stored values' do
+      safe_settings = described_class.new(
+        { 'date_format' => 'bogus', 'time_format' => '25h', 'first_day_of_week' => 'x' }
+      )
+
+      expect(safe_settings.date_time_preferences).to eq(Users::DateTimePreferences::DEFAULT)
     end
   end
 
@@ -429,6 +463,14 @@ RSpec.describe Users::SafeSettings do
 
   describe 'plan-aware filtering' do
     describe '#enabled_map_layers' do
+      context 'when the retired Areas layer is enabled' do
+        let(:safe_settings) { described_class.new({ 'enabled_map_layers' => %w[Tracks Areas] }) }
+
+        it 'carries it over to Places with their boundaries' do
+          expect(safe_settings.enabled_map_layers).to eq(['Tracks', 'Places', 'Place boundaries'])
+        end
+      end
+
       context 'when plan is lite' do
         let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map', 'Points'] } }
         let(:safe_settings) { described_class.new(settings, plan: :lite) }
@@ -910,6 +952,16 @@ RSpec.describe Users::SafeSettings do
 
       expect(config).not_to have_key(:route_color)
       expect(config[:track_color]).to eq('#6366F1')
+    end
+  end
+
+  describe '.feature_enabled?' do
+    it 'treats a missing key as on and boolean-like false values as off' do
+      expect(described_class.feature_enabled?({}, 'family')).to be true
+      expect(described_class.feature_enabled?({ 'family_enabled' => true }, 'family')).to be true
+      %w[false 0 off].push(false, 0).each do |value|
+        expect(described_class.feature_enabled?({ 'family_enabled' => value }, 'family')).to be false
+      end
     end
   end
 end

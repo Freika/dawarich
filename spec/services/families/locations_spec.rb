@@ -55,6 +55,15 @@ RSpec.describe Families::Locations do
       expect(result.first[:name]).to eq(other_user.email)
     end
 
+    it 'hides members who turned the family feature off' do
+      other_user.update_family_location_sharing!(true, duration: 'permanent', share_history: true)
+      other_user.update!(settings: other_user.settings.merge('family_enabled' => false))
+      create(:point, user: other_user, timestamp: now.to_i)
+
+      expect(described_class.new(user).call).to be_empty
+      expect(described_class.new(user).history(start_at: now - 1.hour, end_at: now + 1.hour)).to be_empty
+    end
+
     it 'uses profile names for the location and history payloads' do
       other_user.update!(first_name: 'Ada', last_name: 'Lovelace')
       other_user.update_family_location_sharing!(true, duration: 'permanent', share_history: true)

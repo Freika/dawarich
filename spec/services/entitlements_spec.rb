@@ -33,6 +33,10 @@ RSpec.describe Entitlements do
       expect(entitlements.points_limit).to be_nil
     end
 
+    it 'puts no Cloud limits on webhooks' do
+      expect(entitlements.webhook_limits?).to be false
+    end
+
     it 'reports the user own plan as effective plan' do
       user.update!(plan: :lite)
 
@@ -68,6 +72,10 @@ RSpec.describe Entitlements do
         expect(entitlements.unlimited_points?).to be false
         expect(entitlements.points_limit).to eq(DawarichSettings::BASIC_PAID_PLAN_LIMIT)
       end
+
+      it 'applies the Cloud webhook limits' do
+        expect(entitlements.webhook_limits?).to be true
+      end
     end
 
     context 'with a lite user' do
@@ -85,8 +93,7 @@ RSpec.describe Entitlements do
 
       it 'applies the 12-month data window' do
         expect(entitlements.data_window).to eq(DawarichSettings::LITE_DATA_WINDOW)
-        expect(entitlements.data_window_start)
-          .to be_within(5.seconds).of(DawarichSettings::LITE_DATA_WINDOW.ago)
+        expect(entitlements.data_window_start).to eq(user.data_window_start)
       end
 
       it 'caps points at the paid plan limit' do

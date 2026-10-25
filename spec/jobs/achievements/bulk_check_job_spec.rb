@@ -59,6 +59,18 @@ RSpec.describe Achievements::BulkCheckJob do
     expect(Achievements::CheckJob).to have_been_enqueued.with(new_user.id, notify: false, force: true).once
   end
 
+  it 'rebuilds every eligible user from the start of their history, current progress included' do
+    current = eligible_user
+    version = Achievements::RegionSetChecker::CALCULATION_VERSION
+    create(:achievement_progress, user: current, achievement_key: Achievements::Progress::EXPLORATION_KEY,
+                                  state: { 'calculation_version' => version })
+
+    described_class.perform_now(notify: false, rebuild: true)
+
+    expect(Achievements::CheckJob)
+      .to have_been_enqueued.with(current.id, notify: false, force: false, oldest_timestamp: 0).once
+  end
+
   it 'ignores users without usable points' do
     user = create(:user, status: :active)
 

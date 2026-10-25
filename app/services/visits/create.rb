@@ -131,6 +131,8 @@ module Visits
     end
 
     def find_or_create_place
+      return supplied_place if supplied_place
+
       existing_place = find_existing_place
 
       return existing_place if existing_place
@@ -139,10 +141,16 @@ module Visits
     end
 
     def existing_visit
-      place = find_existing_place
+      place = supplied_place || find_existing_place
       return nil unless place
 
       user.visits.find_by(place_id: place.id, started_at: started_at)
+    end
+
+    def supplied_place
+      return @supplied_place if defined?(@supplied_place)
+
+      @supplied_place = user.places.find_by(id: params[:place_id]) if params[:place_id].present?
     end
 
     def find_existing_place
@@ -215,8 +223,9 @@ module Visits
       duration_minutes = ((ended_at - started_at) / 60).to_i
 
       @visit = user.visits.create!(
-        name: params[:name].presence || place.name,
+        name: params[:name].presence,
         place: place,
+        location_label: place&.name,
         started_at: started_at,
         ended_at: ended_at,
         duration: duration_minutes,

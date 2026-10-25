@@ -24,7 +24,7 @@ Rails.application.routes.draw do
     (u.admin? && DawarichSettings.self_hosted?) ||
       (u.admin? && ENV['SIDEKIQ_USERNAME'].present? && ENV['SIDEKIQ_PASSWORD'].present?)
   } do
-    mount Sidekiq::Web => '/sidekiq'
+    mount Dawarich::SidekiqWeb => '/sidekiq'
   end
 
   authenticate :user, ->(u) { u.admin? } do
@@ -63,6 +63,14 @@ Rails.application.routes.draw do
       end
     end
 
+    resource :geofencing, only: :show, controller: 'geofencing'
+    resources :webhooks, only: %i[show create update destroy] do
+      member do
+        post :test
+        post :regenerate_secret
+        post :retry_delivery
+      end
+    end
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
     resource :visits, only: %i[show update]
@@ -140,6 +148,10 @@ Rails.application.routes.draw do
   end
   resources :areas, only: %i[create update]
   resources :places, only: %i[index show destroy create update] do
+    member do
+      patch :confirm
+      post :merge
+    end
     collection do
       get 'nearby'
     end
@@ -338,6 +350,13 @@ Rails.application.routes.draw do
       namespace :imports do
         post :pending, to: 'pending#create'
       end
+      resources :webhooks, only: %i[index show create update destroy] do
+        member do
+          post :test
+          post :regenerate_secret
+        end
+      end
+      resources :geofence_events, only: %i[index]
       resources :places, only: %i[index show create update destroy] do
         collection do
           get 'nearby'
@@ -354,6 +373,7 @@ Rails.application.routes.draw do
         collection do
           delete :bulk_destroy
           post :reapply_anomaly_filter
+          post :transitions, to: 'points/transitions#create'
         end
       end
       resources :visits, only: %i[index show create update destroy] do

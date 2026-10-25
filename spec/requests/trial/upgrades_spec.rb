@@ -28,7 +28,7 @@ RSpec.describe 'Trial::Upgrades', type: :request do
 
         expect(response).to redirect_to(%r{\Ahttps://manager\.example\.test/auth/dawarich\?token=})
 
-        token = CGI.parse(URI(response.location).query)['token'].first
+        token = Rack::Utils.parse_query(URI(response.location).query)['token']
         payload = JWT.decode(token, ENV.fetch('JWT_SECRET_KEY', 'test_secret'), true, { algorithm: 'HS256' }).first
 
         expect(payload['plan']).to eq('pro')
@@ -39,7 +39,7 @@ RSpec.describe 'Trial::Upgrades', type: :request do
       it 'sanitizes unknown plan values to nil' do
         get '/trial/upgrade', params: { plan: 'enterprise', interval: 'annual' }
 
-        token = CGI.parse(URI(response.location).query)['token'].first
+        token = Rack::Utils.parse_query(URI(response.location).query)['token']
         payload = JWT.decode(token, ENV.fetch('JWT_SECRET_KEY', 'test_secret'), true, { algorithm: 'HS256' }).first
 
         expect(payload).not_to have_key('plan')
@@ -49,7 +49,7 @@ RSpec.describe 'Trial::Upgrades', type: :request do
       it 'sanitizes unknown interval values to nil' do
         get '/trial/upgrade', params: { plan: 'pro', interval: 'weekly' }
 
-        token = CGI.parse(URI(response.location).query)['token'].first
+        token = Rack::Utils.parse_query(URI(response.location).query)['token']
         payload = JWT.decode(token, ENV.fetch('JWT_SECRET_KEY', 'test_secret'), true, { algorithm: 'HS256' }).first
 
         expect(payload['plan']).to eq('pro')
@@ -59,7 +59,7 @@ RSpec.describe 'Trial::Upgrades', type: :request do
       it 'accepts lite and monthly as valid' do
         get '/trial/upgrade', params: { plan: 'lite', interval: 'monthly' }
 
-        token = CGI.parse(URI(response.location).query)['token'].first
+        token = Rack::Utils.parse_query(URI(response.location).query)['token']
         payload = JWT.decode(token, ENV.fetch('JWT_SECRET_KEY', 'test_secret'), true, { algorithm: 'HS256' }).first
 
         expect(payload['plan']).to eq('lite')

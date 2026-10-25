@@ -22,6 +22,7 @@
       </div>
     <% else %>
       <div data-controller="sharing-modal">
+        <%= render 'shared_links/privacy_zones_note' %>
         <%= form_with(url: sharing_stats_path(year: @year, month: @month), method: :patch,
                       data: { sharing_modal_target: "form" }) do %>
 

@@ -125,6 +125,7 @@ GEM
       aws-eventstream (~> 1, >= 1.0.2)
     base64 (0.3.0)
     bcrypt (3.1.22)
+    benchmark (0.5.0)
     bigdecimal (4.1.3)
     bindata (2.4.15)
     bootsnap (1.26.0)
@@ -154,7 +155,7 @@ GEM
     crack (1.0.1)
       bigdecimal
       rexml
-    crass (1.0.7)
+    crass (1.0.8)
     cronex (0.15.0)
       tzinfo
       unicode (>= 0.4.4.5)
@@ -201,17 +202,17 @@ GEM
       faraday-net_http (>= 2.0, < 3.5)
       json
       logger
-    faraday-follow_redirects (0.4.0)
+    faraday-follow_redirects (0.5.0)
       faraday (>= 1, < 3)
     faraday-net_http (3.4.4)
       net-http (~> 0.5)
     ffaker (2.25.0)
-    ffi (1.17.2-aarch64-linux-gnu)
-    ffi (1.17.2-arm-linux-gnu)
-    ffi (1.17.2-arm64-darwin)
-    ffi (1.17.2-x86-linux-gnu)
-    ffi (1.17.2-x86_64-darwin)
-    ffi (1.17.2-x86_64-linux-gnu)
+    ffi (1.17.4-aarch64-linux-gnu)
+    ffi (1.17.4-arm-linux-gnu)
+    ffi (1.17.4-arm64-darwin)
+    ffi (1.17.4-x86-linux-gnu)
+    ffi (1.17.4-x86_64-darwin)
+    ffi (1.17.4-x86_64-linux-gnu)
     fit4ruby (3.13.0)
       bindata (~> 2.4.14)
     flipper (1.4.2)
@@ -263,7 +264,7 @@ GEM
       reline (>= 0.4.2)
     jmespath (1.6.2)
     json (3.0.2)
-    json-jwt (1.17.0)
+    json-jwt (1.17.2)
       activesupport (>= 4.2)
       aes_key_wrap
       base64
@@ -728,6 +729,7 @@ DEPENDENCIES
   aws-sdk-kms (~> 1.132)
   aws-sdk-s3 (~> 1.232)
   bcrypt (>= 3.1.22)
+  benchmark
   bootsnap
   brakeman
   bundler-audit
@@ -815,7 +817,7 @@ DEPENDENCIES
   zlib (>= 3.2.3)
 
 RUBY VERSION
-   ruby 3.4.9p82
+  ruby 4.0.9p0
 
 BUNDLED WITH
-   2.5.21
+  4.0.20

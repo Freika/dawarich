@@ -72,8 +72,10 @@ RSpec.describe 'Calendar cache after bulk visit status updates' do
 
   it 'evicts the cached summary only after the surrounding transaction commits' do
     visit = create_visit(user:, started_at: Time.utc(2026, 4, 22), status: :suggested)
-    cached = summary(user, '2026-04')
+    summary(user, '2026-04')
     key = Timeline::MonthSummary.cache_key_for(user, '2026-04')
+    cached = Rails.cache.read(key)
+    expect(cached[:status_counts]).to eq('suggested' => 1)
 
     Visit.transaction do
       Visits::BulkUpdate.new(user, [visit.id], 'confirmed').call
@@ -86,8 +88,10 @@ RSpec.describe 'Calendar cache after bulk visit status updates' do
 
   it 'preserves the cached summary when the status change is rolled back' do
     visit = create_visit(user:, started_at: Time.utc(2026, 4, 22), status: :suggested)
-    cached = summary(user, '2026-04')
+    summary(user, '2026-04')
     key = Timeline::MonthSummary.cache_key_for(user, '2026-04')
+    cached = Rails.cache.read(key)
+    expect(cached[:status_counts]).to eq('suggested' => 1)
 
     Visit.transaction do
       Visits::BulkUpdate.new(user, [visit.id], 'confirmed').call

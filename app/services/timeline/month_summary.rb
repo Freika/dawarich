@@ -4,7 +4,7 @@ module Timeline
   # Aggregates month-level activity for the calendar rail in the unified timeline.
   #
   # Produces a 6x7 grid of day cells with tracked activity (visits + tracks) grouped
-  # in the user's timezone. Weeks start on Monday (European convention).
+  # in the user's timezone. Weeks start on the user's first day of week.
   #
   # Visit duration is stored in MINUTES; track duration is stored in SECONDS.
   # `tracked_seconds` normalizes both into seconds for intensity bucketing.
@@ -54,9 +54,11 @@ module Timeline
     end
 
     def call
-      Rails.cache.fetch(self.class.cache_key_for(@user, @month_start), expires_in: CACHE_TTL) do
+      summary = Rails.cache.fetch(self.class.cache_key_for(@user, @month_start), expires_in: CACHE_TTL) do
         build_summary
       end
+
+      summary.merge(weeks: weeks(summary[:days]))
     end
 
     private
@@ -66,7 +68,6 @@ module Timeline
         month: @month_start.strftime('%Y-%m'),
         tz: tz,
         days: day_data,
-        weeks: weeks,
         status_counts: status_counts
       }
     end
@@ -208,12 +209,12 @@ module Timeline
       Arel.sql("DATE(TO_TIMESTAMP(#{column}) AT TIME ZONE #{quoted_tz})")
     end
 
-    def weeks
-      grid_start = @month_start.beginning_of_week(:monday)
+    def weeks(days)
+      grid_start = @month_start.beginning_of_week(@user.safe_settings.date_time_preferences.week_start_symbol)
       grid_end = grid_start + (6 * 7) - 1
       dates = (grid_start..grid_end).to_a
 
-      cells = dates.map { |d| build_cell(d) }
+      cells = dates.map { |d| build_cell(d, days) }
 
       # Heat is graded relative to the busiest day IN THIS MONTH so every
       # month renders with full color range. Days outside the month aren't
@@ -227,9 +228,9 @@ module Timeline
       cells.each_slice(7).to_a
     end
 
-    def build_cell(date)
+    def build_cell(date, days)
       key = date.strftime('%Y-%m-%d')
-      data = day_data[key] || default_day
+      data = days[key] || default_day
 
       {
         date: key,

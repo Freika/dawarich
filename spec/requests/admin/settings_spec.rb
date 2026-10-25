@@ -254,6 +254,31 @@ RSpec.describe 'Admin::Settings' do
       expect(config.use_https).to be(true)
     end
 
+    it 'shows the language field in the Photon section' do
+      get '/admin/settings', params: { section: 'photon' }
+
+      expect(response.body).to include('id="instance_settings_photon_api_language"')
+    end
+
+    it 'stores the Photon language as a lowercase code' do
+      patch '/admin/settings', params: { instance_settings: { photon_api_language: ' NL ' } }
+
+      expect(InstanceSetting.find_by(key: 'photon_api_language')&.value).to eq('nl')
+    end
+
+    it 'accepts the default keyword Photon uses for local names' do
+      patch '/admin/settings', params: { instance_settings: { photon_api_language: 'default' } }
+
+      expect(InstanceSetting.find_by(key: 'photon_api_language')&.value).to eq('default')
+    end
+
+    it 'refuses a Photon language that is not a two-letter code' do
+      patch '/admin/settings', params: { instance_settings: { photon_api_language: 'english' } }
+
+      expect(InstanceSetting.find_by(key: 'photon_api_language')).to be_nil
+      expect(flash[:alert]).to eq(I18n.t('admin.settings.update.language_invalid'))
+    end
+
     it 'refuses a host that is not a bare hostname' do
       patch '/admin/settings', params: { instance_settings: { nominatim_api_host: 'nominatim example.com' } }
 

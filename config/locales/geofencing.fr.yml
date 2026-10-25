@@ -1,0 +1,123 @@
+fr:
+  activerecord:
+    errors:
+      models:
+        webhook:
+          attributes:
+            url:
+              https_required: doit utiliser https
+            base:
+              too_many: Vous pouvez avoir jusqu’à %{count} webhooks.
+  webhooks:
+    notifications:
+      deactivated:
+        title: Webhook désactivé
+        content: Le webhook « %{name} » a échoué cinq fois de suite et a été désactivé. Vérifiez l’URL de destination, puis réactivez-le dans Paramètres → Géorepérage.
+  settings:
+    navigation:
+      geofencing: Géorepérage
+    geofencing:
+      show:
+        title: Géorepérage
+        intro: "Dawarich enregistre quand vous entrez dans un lieu ou en sortez si « Signaler l’entrée et la sortie » y est activé — signalé par votre téléphone ou déduit des points reçus — et peut envoyer chaque événement à vos propres services."
+        webhooks: Webhooks
+        webhooks_intro: Chaque événement est envoyé en POST JSON signé. Comparez l’en-tête X-Dawarich-Signature à un HMAC-SHA256 du corps calculé avec votre secret.
+        no_webhooks: Aucun webhook pour l’instant.
+        new_webhook: Nouveau webhook
+        upgrade_title: Les webhooks font partie de Pro
+        upgrade_text: Envoyez les entrées et sorties vers Home Assistant, Node-RED, n8n ou votre propre service.
+        upgrade: Passer à Pro
+        events: Événements
+        no_events: "Aucun événement pour l’instant. Ils apparaissent quand votre téléphone ou votre application de suivi signale un point dans l’un de ces lieux."
+        no_places: "Aucun lieu ne signale encore d’entrée ni de sortie. Ouvrez un lieu et activez « Signaler l’entrée et la sortie »."
+        open_places: "Ouvrir les lieux"
+        place: "Lieu"
+        all_places: "Tous les lieux"
+        from: Du
+        to: Au
+        filter: Filtrer
+        time: Heure
+        event: Événement
+        source: Source
+        deliveries: Envois
+        event_types:
+          enter: Entrée
+          leave: Sortie
+        sources:
+          native_app: Téléphone
+          server_inferred: Points de localisation
+          owntracks_native: OwnTracks
+        delivered: 'Envoyés : %{count}'
+        failed: 'En échec : %{count}'
+        in_progress: 'En cours : %{count}'
+        not_sent_late: "Non envoyé : arrivé avec plus de %{minutes} min de retard"
+        not_sent_throttled: "Non envoyé : plus de %{count} entrées et sorties en une heure"
+    webhooks:
+      form:
+        name: Nom
+        url: URL
+        events: Événements
+        places: "Lieux"
+        places_hint: "Ne cochez rien pour recevoir les événements de tous les lieux qui signalent."
+        home_assistant_hint: "Home Assistant répond 200 à chaque requête, même si l’identifiant du webhook est faux : « Envoyé » ici ne prouve donc pas que votre automatisation a tourné. Vérifiez sa trace dans Home Assistant. Home Assistant ne peut pas vérifier la signature ; c’est l’identifiant du webhook dans l’URL qui le garde privé."
+        home_assistant_cloud_hint: "Par défaut, Home Assistant n’accepte que les webhooks de son propre réseau. Utilisez une URL de webhook Nabu Casa, ou désactivez local_only dans les réglages webhook du déclencheur."
+        active: Actif
+        save: Enregistrer
+        create: Ajouter le webhook
+      webhook:
+        active: Actif
+        inactive: Désactivé
+        failing: En échec
+        every_place: "Tous les lieux"
+        places_count:
+          one: "%{count} lieu"
+          other: "%{count} lieux"
+        last_success: Dernier envoi il y a %{time}
+        never_delivered: Rien d’envoyé pour l’instant
+        failures:
+          one: '%{count} envoi en échec d’affilée'
+          other: '%{count} envois en échec d’affilée'
+        test: Envoyer un test
+        deliveries: Envois
+        regenerate: Nouveau secret
+        delete: Supprimer
+        edit: Modifier
+        confirm_regenerate: Générer un nouveau secret ? L’ancien cesse de fonctionner immédiatement.
+        confirm_delete: Supprimer ce webhook ?
+      secret:
+        title: Secret de signature pour %{name}
+        text: Copiez-le maintenant — il ne sera plus affiché.
+        copy: Copier
+      show:
+        title: 'Envois : %{name}'
+        back: Retour au géorepérage
+        empty: Aucun envoi pour l’instant.
+        time: Heure
+        event: Événement
+        status: Statut
+        attempts: Tentatives
+        response: Réponse
+        retry: Réessayer
+        test: Test
+        statuses:
+          pending: En attente
+          success: Envoyé
+          failure: Échec
+          retrying: Nouvelle tentative
+      create:
+        created: Webhook ajouté.
+      update:
+        updated: Webhook enregistré.
+      destroy:
+        deleted: Webhook supprimé.
+      test:
+        sent: Événement de test envoyé.
+        no_place: "Activez d’abord « Signaler l’entrée et la sortie » pour un lieu afin d’envoyer un événement de test."
+        rate_limited: "Trop d’envois de test. Patientez une minute puis réessayez."
+      retry_delivery:
+        queued: Envoi reprogrammé.
+  places:
+    drawer:
+      geofence: "Signaler l’entrée et la sortie"
+      geofence_hint: "Utilise le rayon de visite (%{radius} m)."
+      geofence_link: "Événements et webhooks"

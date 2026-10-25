@@ -2,8 +2,8 @@
 
 # Staged fleet rollout of detection v3: one per-user job per active or trial user with
 # points, all on low_priority so ordinary work is never starved, staggered so
-# the whole fleet doesn't land on the queue at once. Cloud: Eugene starts this
-# from the console. Self-hosted: enqueued by the release migration.
+# the whole fleet doesn't land on the queue at once. Enqueued by release
+# migrations; SKIP_VISITS_FLEET_REDETECT skips it on constrained installs.
 class Visits::FleetRedetectJob < ApplicationJob
   queue_as :low_priority
   sidekiq_options retry: 3

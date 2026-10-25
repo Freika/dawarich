@@ -43,6 +43,7 @@ zh:
           photon_api_host: "主机"
           photon_api_key: "API 密钥"
           photon_api_use_https: "使用 HTTPS"
+          photon_api_language: "语言"
           nominatim_api_host: "主机"
           nominatim_api_key: "API 密钥"
           nominatim_api_use_https: "使用 HTTPS"
@@ -52,12 +53,14 @@ zh:
           store_geodata: "立即对新轨迹点进行地理编码"
           host_hint: "仅主机名，可附带端口，例如 photon.example.com:2322"
           rps_hint: "留空表示不限制。请设置为您的服务器或套餐允许的值。"
+          photon_api_language_hint: "地名使用的两字母语言代码，或填 default 以使用当地语言的名称。您的 Photon 索引必须包含该语言。更改只影响新的查询，之后同一城市可能在统计中出现两次。"
           api_key_keep_hint: "留空则保留已保存的密钥。"
           store_geodata_hint: "添加新轨迹点时查询所在城市和国家。只要配置了地理编码服务，关闭此选项后仍会在夜间进行查询。"
       update:
         saved: "设置已保存。"
         pinned: "已拒绝：由 %{variables} 固定。"
         host_invalid: "主机必须是单纯的主机名，可附带端口或路径，不能包含空格。"
+        language_invalid: "语言必须是两字母代码（如 en 或 nl）或 default。"
         chibigeo_key_required: "ChibiGeo 需要 API 密钥。免费的 Hobby 套餐每天包含 2,500 次查询——请在 chibigeo.com 获取密钥。"
       test_geocoding:
         not_configured: "尚未配置地理编码提供商。请先保存一个提供商。"
@@ -924,6 +927,8 @@ zh:
       dawarich_logo: Dawarich 徽标
   map:
     onboarding_modal:
+      not_sure_where_your_app_keeps_its_export: "不知道您的应用把导出功能放在哪里？"
+      step_by_step_export_guides: "分步导出指南"
       add_your_family_and_see_each_other_on_the_map: 添加家人，在地图上互相查看位置。
       invite_your_family: 邀请您的家人
       welcome_to_dawarich: 欢迎使用 Dawarich！
@@ -938,16 +943,6 @@ zh:
       skip_for_now: 暂时跳过
       import_your_data: 导入您的数据
       supported_formats: 支持的格式
-      google_maps: Google 地图：
-      records_json_semantic_history_phone_takeout_json: Records.json、语义历史记录、手机 Takeout (.json)
-      gpx: GPX：
-      track_files_gpx: 轨迹文件 (.gpx)
-      geojson: GeoJSON：
-      feature_collections_json: 要素集合 (.json)
-      owntracks: OwnTracks：
-      recorder_files_rec: Recorder 文件 (.rec)
-      kml: KML：
-      kml_files_kml_kmz: KML 文件（.kml、.kmz）
       file_format_is_automatically_detected_during_upload: 上传期间自动检测文件格式。
       trial_limitations_max_5_imports_10mb_per_file_current_imports: 试用限制：最多 5 次导入，每个文件 10MB。当前导入：
       select_one_or_multiple_files: 选择一个或多个文件
@@ -967,16 +962,6 @@ zh:
       settings: 设置
       setup_guide: 设置指南
     maplibre:
-      area_creation_modal:
-        create_new_area: 创建新区域
-        area_name: 区域名称 *
-        radius: 半径
-        meters: 米
-        cancel: 取消
-        e_g_home_office_gym: 例如家庭、办公室、健身房...
-        radius_in_meters: 半径（米）
-        create_area: 创建区域
-        creating: 创建...
       button_cluster:
         map_controls: 地图控件
         timeline: 时间线
@@ -1032,6 +1017,7 @@ zh:
         places: 地点
         show_your_saved_places: 显示您保存的地点
         enable_all_tags: 启用所有标签
+        show_place_boundaries: 显示地点边界
         untagged: 🏷️ 未标记
         click_tags_to_filter_places: 点击标签以筛选地点
         photos: 照片
@@ -1164,8 +1150,7 @@ zh:
         pick_a_day_in_the_calendar_to_see_visits: 在日历中选择一天以查看到访记录。
         create_visit: 创建到访记录
         create_place: 创建地点
-        select_area: 选择区域
-        create_area: 创建区域
+        select_data_on_map: 在地图上选择数据
         replay: 重播
         enrich_photos: 为照片补充 GPS 坐标
         close: 关闭
@@ -1369,12 +1354,16 @@ zh:
       rarr: →
       'on': 于
       no_visits_yet: 尚无到访记录
-      rename: 重命名
       merge: 合并
+      select_place_to_merge: 选择重复地点
+      no_matching_places: 未找到匹配的地点
+      search_places: 搜索地点
+      search: 搜索
+      merge_confirmation: 将所选地点合并到“%{survivor}”？访问、标签和备注都会移到这里。
       notes: 备注
       save: 保存
       delete: 删除
-      delete_this_place_this_cannot_be_undone: 删除此地点？此操作无法撤销。
+      delete_this_place_this_cannot_be_undone: 删除此地点？其访问记录将保留，但不再关联地点。
       manual_name_title: 您为此地点命名，因此自动命名不会更改它。将其重命名为“%{default_name}”即可交还自动命名。
       visit_count:
         one: "%{count} 次到访"
@@ -1383,6 +1372,9 @@ zh:
       no_nearby_places_found: 未找到附近地点
       load_more_search_up_to_distance_m: 加载更多（最多搜索到 %{distance}m）
     index:
+      filters: 地点筛选
+      all_places: 所有地点
+      unconfirmed_places: 未确认
       hello_there: 您好！
       here_you_ll_find_your_places_created_by_visits_suggestion: 您可以在这里找到通过到访建议流程创建的地点，但目前还没有。
       name: 名称
@@ -1392,7 +1384,7 @@ zh:
       timeline: 时间线
       places: 地点
       delete: 删除
-      are_you_sure_deleting_a_place_will_result_in_deleting: 确定吗？删除地点将同时删除该地点的所有到访记录。
+      are_you_sure_deleting_a_place_will_result_in_deleting: 删除此地点？其访问记录将保留，但不再关联地点。
   points:
     address:
       address: 地址：
@@ -1578,12 +1570,26 @@ zh:
         timezone: 时区
         your_timezone: 您的时区
         all_dates_and_times_will_be_displayed_in_this_timezone: 所有日期和时间都将显示在该时区中
+        date_and_time: "日期和时间"
+        date_format: "日期格式"
+        time_format: "时间格式"
+        first_day_of_week: "每周第一天"
+        format_auto: "自动（%{example}）"
+        time_format_12h: "12 小时制（%{example}）"
+        time_format_24h: "24 小时制（%{example}）"
+        date_and_time_hint: "适用于应用、邮件和地图中的日期和时间。"
         supporter_badge: 支持者徽章
         show_supporter_badge_in_navbar: 在导航栏中显示支持者徽章
         display_a_gem_icon_next_to_your_profile_to_show: 在个人资料旁显示宝石图标，用于标识您的支持者身份
         general_settings: 常规设置
         save_changes: 保存更改
         test_email_worker_hint: 通过发送系统邮件的同一后台进程将测试邮件加入队列
+        features: "功能"
+        features_hint: "关闭你不使用的 Dawarich 功能。它们会从界面中消失，相关的后台处理也会停止。"
+        family_feature: "家庭"
+        family_feature_hint: "与家庭成员共享位置。关闭后将停止共享你的位置和仅限家庭的行程链接，但你仍是家庭成员。重新开启后，位置共享默认处于关闭状态。"
+        achievements_feature: "成就"
+        achievements_feature_hint: "已探索的地区和徽章。关闭后将停止计算进度，并停用你的公开成就链接。"
     integrations:
       trek:
         title: "TREK 集成"
@@ -1601,6 +1607,7 @@ zh:
         sync_now: "立即同步"
         disconnect: "断开连接"
         disconnect_confirmation: "断开 TREK？受管理的旅程及其记录数据会保留在 Dawarich 中，但不再同步。"
+        ssl_verification_off: "SSL 验证已关闭"
       index:
         immich_photoprism_integrations: Immich 和 Photoprism 集成
         connect_your_photo_management_tools_to_see_your_photos_on: 连接您的照片管理工具，即可在地图上查看您的照片。Immich 和 PhotoPrism 集成在 Pro 计划中可用。
@@ -1751,7 +1758,7 @@ zh:
         tracks: 轨迹
         imports: 导入
         exports: 导出
-        areas: 区域
+        places: 地点
         sign_in_history: 登录历史记录
         total_sign_ins: 登录总数
         last_sign_in: 上次登录
@@ -1957,6 +1964,8 @@ zh:
     place_creation_modal:
       create_new_place: 创建新地点
       place_name: 地点名称 *
+      visit_radius: 访问半径（米）*
+      visit_radius_hint: 中心位于此半径内的访问可与该地点匹配。这不会影响隐私设置。
       note: 备注
       optional_add_any_notes_or_details_about_this_place: 可选 — 添加有关此地点的一些备注或详细信息
       tags: 标签
@@ -2069,6 +2078,9 @@ zh:
       poster: 海报
       video: 视频
   shared_links:
+    privacy_zones_note:
+      text: "此链接中您的隐私区域保持隐藏。每个隐藏区域都偏离地点中心，查看者无法推断地点的位置。"
+      manage: "隐私区域"
     expires_field:
       expires_optional: 过期（可选）
       stays_active_through_the_end_of_the_day_before_the: 有效期持续到所选日期前一天结束。
@@ -2237,7 +2249,7 @@ zh:
       choose_from_swatches_or_pick_a_custom_color: 从色板中选择或自定义颜色
       privacy_zone: 隐私区域
       hide_map_data_around_places_with_this_tag: 隐藏带有此标签的地点周围的地图数据
-      data_within_this_radius_will_be_hidden_from_the_map: 此半径内的数据将在地图上隐藏
+      hidden_area_hint: "此半径内的数据始终隐藏。隐藏的圆形区域最大可达该半径的 1.6 倍，并以固定距离偏离地点中心，因此无法根据数据中断的位置推断出地点。"
       home_work_restaurant: 家庭、工作、餐厅...
       privacy_radius: 隐私半径
       cancel: 取消
@@ -2256,6 +2268,7 @@ zh:
       actions: 操作
       no_tags_yet: 尚无标签
       create_tags_to_organize_your_places_and_add_privacy_zones: 创建标签来整理您的地点并添加隐私区域。
+      privacy_zone_badge_hint: "隐藏区域偏离地点中心，最大为此半径的 1.6 倍"
       create_your_first_tag: 创建您的第一个标签
       tags: 标签
       edit_tag: 编辑标签
@@ -2539,7 +2552,7 @@ zh:
           other: "%{count} 城市"
     digests_mailer:
       monthly_digest:
-        flights: 航班
+        flights: 其中飞行
         your: 您的
         in_review: 回顾
         here_s_what_your_location_history_looked_like_last_month: 以下是您上个月的位置记录。
@@ -3153,6 +3166,7 @@ zh:
             visit_not_found: 未找到到访记录
           invalid_place: 无效地点
           invalid_area: 无效区域
+          conflicting_place_and_area: place_id 和 area_id 不能同时指定
           at_least_2_visits_must_be_selected_for_merging: 至少需要选择 2 条到访记录才能合并
           one_or_more_visits_not_found: 未找到一条或多条到访记录
           count_visits_updated_successfully: "%{count} 条到访记录更新成功"
@@ -3179,6 +3193,7 @@ zh:
       your_account_has_been_deleted: 您的帐户已被删除。
       you_are_not_authorized_to_perform_this_action: 您无权执行此操作。
       family_plan_required: 此功能需要家庭计划。
+      feature_disabled_in_settings: "此功能已在你的设置中关闭。"
     areas:
       created: 区域创建成功！
       updated: 区域更新成功！
@@ -3279,6 +3294,8 @@ zh:
       place_was_successfully_destroyed: 地点已成功删除。
       created: 地点创建成功！
       updated: 地点更新成功！
+      merged: '已将“%{duplicate}”合并到“%{survivor}”。'
+      merge_visit_conflict: "这些地点无法合并，因为到访 #%{first_id} 和到访 #%{second_id} 都开始于 %{started_at}。请先处理这些到访记录。"
     points:
       no_points_selected: 未选择轨迹点。
       points_were_successfully_destroyed: 轨迹点已成功删除。
@@ -3469,6 +3486,7 @@ zh:
       failed_to_delete_visits: 删除到访记录失败。
       invalid_place: 无效地点
       invalid_area: 无效区域
+      conflicting_place_and_area: 地点和区域不能同时指定
       failed_to_update_visit: 更新到访记录失败。
       select_visits_to_merge: 请至少选择 2 条到访记录进行合并。
       visits_must_share_day: 到访记录必须属于同一天。
@@ -3619,6 +3637,7 @@ zh:
         safe_email_is_requesting_your_location_link: "%{email} 正在请求您的位置。 %{link}"
         users_must_be_in_the_same_family: 用户必须属于同一家庭
         target_user_is_already_sharing_their_location: 目标用户已共享其位置
+        target_user_turned_family_off: "该成员已关闭家庭功能"
         request_cooldown_active_please_wait_before_requesting_again: 请求冷却期已激活。请稍候再试。
         view_request: 查看请求
       invite:
@@ -4045,9 +4064,6 @@ zh:
       click_on_the_map_to_place_a_visit_esc_to: 点击地图以添加到访记录（Esc 取消）
       visit_creation_modal_not_available: 到访记录创建模式不可用
       visit_creation_controller_not_available: 到访记录创建控制器不可用
-      area_drawer_controller_not_available: 区域抽屉控制器不可用
-      area_created_successfully: 区域创建成功！
-      failed_to_reload_areas: 无法重新加载区域
       family_feature_not_available: 家庭功能不可用
       failed_to_load_family_members: 无法加载家庭成员
       centered_on_family_member: 已定位到家庭成员
@@ -4473,6 +4489,7 @@ zh:
       place: 地点
       points: 轨迹点
       radius: 半径
+      visit_radius: 访问半径
       reason: 原因
       route_information: 路线信息
       selected_point: 选定的轨迹点
@@ -4628,6 +4645,7 @@ zh:
     live_map:
       disabled: 实时模式已禁用
       enabled: 实时模式已启用
+      your_position: 你的最新位置
     map_panel:
       layers: 地图图层
       family: "家庭"
@@ -4745,3 +4763,8 @@ zh:
       cancel: 取消
       save_to_gallery: 保存到图库
       render_video: 渲染视频
+  date_time_preferences:
+    clock_12h: "%{meridiem}%{time}"
+    meridiem:
+      am: 上午
+      pm: 下午

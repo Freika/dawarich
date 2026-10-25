@@ -5,7 +5,8 @@ module ApplicationHelper
     translations = I18n.t('javascript', default: {}).merge(
       transportation_modes: I18n.t('transportation_modes', default: {}),
       visit_statuses: I18n.t('visit_statuses', default: {}),
-      battery_statuses: I18n.t('battery_statuses', default: {})
+      battery_statuses: I18n.t('battery_statuses', default: {}),
+      date_time_preferences: I18n.t('date_time_preferences', default: {})
     )
     tag.script(
       json_escape(translations.to_json).html_safe,
@@ -13,6 +14,10 @@ module ApplicationHelper
       type: 'application/json',
       data: { turbo_track: 'reload' }
     )
+  end
+
+  def date_time_preferences_meta_tag
+    tag.meta(name: 'date-time-preferences', content: Current.date_time_preferences.to_h.to_json)
   end
 
   def show_plan_data_window_alert?

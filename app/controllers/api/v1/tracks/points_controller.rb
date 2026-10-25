@@ -19,6 +19,7 @@ class Api::V1::Tracks::PointsController < ApiController
                .order(timestamp: :asc, id: :asc)
     end
     points = points.where(import_id: params[:import_id]) if params[:import_id].present?
+    points = privacy_zone_masker.mask_points(points) if mask_privacy_zones?
 
     # Support optional pagination (backward compatible - returns all if no page param)
     if params[:page].present?

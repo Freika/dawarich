@@ -167,10 +167,23 @@ class TripsController < ApplicationController
 
   def compute_day_stats
     window = (current_user.data_window_start.to_date if current_user.plan_restricted?)
-    cache_key = ['trip_day_stats/v5', @trip.updated_at.to_i, @timezone, window, *@trip.recording_devices_cache_key]
+    masker = current_privacy_zone_masker
+    cache_key = ['trip_day_stats/v6', @trip.updated_at.to_i, @timezone, window, *@trip.recording_devices_cache_key,
+                 masker.fingerprint]
 
     Rails.cache.fetch(cache_key, expires_in: 1.hour) do
-      @trip.day_stats(@timezone, points_scope: @trip.plan_scoped_route_points)
+      @trip.day_stats(@timezone, points_scope: masker.mask_points(@trip.plan_scoped_route_points))
     end
   end
+
+  def trip_full_bounds
+    return @trip.route_bounds unless current_privacy_zone_masker.any?
+
+    corners = @day_stats.values.filter_map { |stats| stats[:bounds] }.flatten(1)
+    return [] if corners.empty?
+
+    lons, lats = corners.transpose
+    [[lons.min, lats.min], [lons.max, lats.max]]
+  end
+  helper_method :trip_full_bounds
 end

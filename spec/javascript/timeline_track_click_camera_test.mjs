@@ -14,7 +14,14 @@ const stubbedSource = source
     'import { Controller } from "@hotwired/stimulus"',
     "class Controller {}",
   )
-  .replace('import { translate } from "i18n"', "const translate = (key) => key")
+  .replace(
+    /^import \{[^}]*\} from "i18n"$/m,
+    "const translate = (key) => key\nconst formatDate = (value) => String(value)\nconst formatTime = (value) => String(value)\nconst formatDateTime = (value) => String(value)\nconst firstDayOfWeek = () => 1",
+  )
+  .replace(
+    'import { monthGridStart } from "maps_maplibre/utils/month_grid"',
+    "const monthGridStart = (year, month) => new Date(year, month, 1)",
+  )
 const { default: TimelineFeedController } = await import(
   `data:text/javascript;base64,${Buffer.from(stubbedSource).toString("base64")}`
 )

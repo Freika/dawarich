@@ -57,7 +57,8 @@ RSpec.describe Users::ExportData::Visits, type: :service do
                                                         'name' => 'Office Building',
             'latitude' => '40.7589',
             'longitude' => '-73.9851',
-            'source' => 'manual'
+            'source' => 'manual',
+            'visit_radius' => 50
                                                       })
         end
 
@@ -106,6 +107,18 @@ RSpec.describe Users::ExportData::Visits, type: :service do
             'status' => 'confirmed'
           )
           expect(visit_data['place_reference']).to be_nil
+        end
+      end
+
+      context 'with an Area-only visit awaiting migration' do
+        let(:area) { create(:area, user: user, name: 'Home', latitude: 52.5, longitude: 13.4, radius: 120) }
+        let!(:area_only) { create(:visit, user: user, area: area, place: nil) }
+
+        it 'references the Area so the import can attach its Place' do
+          expect(subject.first['place_reference']).to eq(
+            'name' => 'Home', 'latitude' => '52.5', 'longitude' => '13.4',
+            'source' => 'manual', 'visit_radius' => 120
+          )
         end
       end
 

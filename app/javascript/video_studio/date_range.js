@@ -1,3 +1,5 @@
+import { formatDateTime } from "i18n"
+
 function pad(value) {
   return String(value).padStart(2, "0")
 }
@@ -131,16 +133,11 @@ export function selectableDateTimeRange(start, end, timeZone) {
   return { start: startWithOffset, end: endWithOffset }
 }
 
-export function formatDateTimeRange(start, end, locale, timeZone) {
-  const format = new Intl.DateTimeFormat(locale || undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-    ...(timeZone ? { timeZone } : {}),
-  })
+export function formatDateTimeRange(start, end, timeZone) {
   const labels = [start, end]
     .map((value) => (value ? new Date(value) : null))
     .filter((date) => date && !Number.isNaN(date.valueOf()))
-    .map((date) => format.format(date))
+    .map((date) => formatDateTime(date, timeZone ? { timeZone } : {}))
 
   return [...new Set(labels)].join(" – ")
 }

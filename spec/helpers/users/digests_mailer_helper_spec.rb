@@ -60,6 +60,13 @@ RSpec.describe Users::DigestsMailerHelper, type: :helper do
       expect(output).to include('█')
     end
 
+    it 'puts Sundays on the first row for a Sunday week start' do
+      sundays = { Date.new(2025, 1, 5) => 1000.0, Date.new(2025, 1, 6) => 0.0 }
+      output = helper.ascii_year_heatmap(sundays, start_date: start_date, week_start: :sunday)
+
+      expect(output.split("\n").first.strip).to end_with('█')
+    end
+
     it 'handles a leap year (366 days)' do
       leap_start = Date.new(2024, 1, 1)
       daily = (0...366).each_with_object({}) { |i, h| h[leap_start + i] = 5.0 }

@@ -1,0 +1,137 @@
+<% s = 'settings.geofencing.show' %>
+<% content_for :title, t("#{s}.title") %>
+
+<div class="min-h-content w-full my-5">
+  <%= render 'shared/page_header', title: t("#{s}.title") %>
+  <%= render 'settings/navigation' %>
+
+  <p class="mb-6 max-w-3xl text-base-content/80"><%= t("#{s}.intro") %></p>
+
+  <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] xl:grid-cols-[minmax(0,1fr)_28rem]">
+    <section class="card bg-base-200 min-w-0">
+      <div class="card-body p-5 sm:p-6">
+        <h2 class="text-2xl font-bold"><%= t("#{s}.events") %></h2>
+
+        <%= form_with url: settings_geofencing_path, method: :get,
+                      class: 'grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap' do %>
+          <label class="form-control col-span-2 sm:col-span-1">
+            <span class="label-text mb-1"><%= t("#{s}.place") %></span>
+            <%= select_tag :place_id,
+                           options_from_collection_for_select(@places, :id, :name, params[:place_id]),
+                           include_blank: t("#{s}.all_places"), class: 'select select-bordered select-sm w-full sm:w-52' %>
+          </label>
+          <label class="form-control">
+            <span class="label-text mb-1"><%= t("#{s}.from") %></span>
+            <%= date_field_tag :start_at, params[:start_at], class: 'input input-bordered input-sm w-full' %>
+          </label>
+          <label class="form-control">
+            <span class="label-text mb-1"><%= t("#{s}.to") %></span>
+            <%= date_field_tag :end_at, params[:end_at], class: 'input input-bordered input-sm w-full' %>
+          </label>
+          <%= submit_tag t("#{s}.filter"), class: 'btn btn-sm col-span-2 sm:col-span-1', name: nil %>
+        <% end %>
+
+        <% if @places.none? %>
+          <div data-testid="geofencing-no-places" class="mt-4 flex max-w-xl flex-col items-start gap-3">
+            <p class="text-sm text-base-content/70"><%= t("#{s}.no_places") %></p>
+            <%= link_to t("#{s}.open_places"), places_path, class: 'btn btn-sm' %>
+          </div>
+        <% end %>
+        <% if @events.empty? %>
+          <% if @places.any? %>
+            <p class="mt-4 max-w-xl text-sm text-base-content/60"><%= t("#{s}.no_events") %></p>
+          <% end %>
+        <% else %>
+          <div class="mt-2">
+            <% @events.group_by { |event| event.occurred_at.in_time_zone.to_date }.each do |day, events| %>
+              <h3 class="mt-5 mb-1 text-[10px] font-bold uppercase tracking-[0.05em] text-base-content/60">
+                <%= l(day, format: :medium) %>
+              </h3>
+              <ul>
+                <% events.each do |event| %>
+                  <% entered = event.event_type_enter? %>
+                  <li data-testid="geofence-event"
+                      class="grid grid-cols-[4.75rem_1fr] gap-x-3 border-b border-base-content/[0.08] py-2.5 last:border-b-0 sm:grid-cols-[5rem_1fr]">
+                    <time datetime="<%= event.occurred_at.iso8601 %>" class="text-sm leading-6 tabular-nums text-base-content/60">
+                      <%= l(event.occurred_at.in_time_zone, format: :hour_minute) %>
+                    </time>
+                    <div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                      <div class="flex min-w-0 items-start gap-2">
+                        <%= icon(entered ? 'log-in' : 'log-out',
+                                 class: "mt-0.5 w-4 h-4 shrink-0 #{entered ? 'text-secondary' : 'text-base-content/50'}") %>
+                        <span class="min-w-0 [overflow-wrap:anywhere]">
+                          <span class="font-semibold"><%= t("#{s}.event_types.#{event.event_type}") %></span>
+                          <%= event.place.name %>
+                        </span>
+                      </div>
+                      <div class="flex flex-wrap gap-x-2 pl-6 text-xs text-base-content/60 sm:justify-end sm:pl-0 sm:text-right">
+                        <span><%= t("#{s}.sources.#{event.source}") %></span>
+                        <% if @webhooks_allowed %>
+                          <span data-testid="event-delivery-status" class="tabular-nums">
+                            <%= geofence_delivery_status(event, webhooks: @webhooks, scope: s) %>
+                          </span>
+                        <% end %>
+                      </div>
+                    </div>
+                  </li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+          <div class="mt-4"><%= paginate @events %></div>
+        <% end %>
+      </div>
+    </section>
+
+    <aside class="card bg-base-200">
+      <div class="card-body p-5 sm:p-6">
+        <h2 class="text-2xl font-bold"><%= t("#{s}.webhooks") %></h2>
+
+        <% if @webhooks_allowed %>
+          <div id="webhook-secret"></div>
+          <div id="webhooks" class="mt-1 divide-y divide-base-content/10">
+            <%= render partial: 'settings/webhooks/webhook', collection: @webhooks, locals: { places: @places } %>
+          </div>
+          <% if @webhooks.none? %>
+            <p id="webhooks-empty" class="text-sm text-base-content/60"><%= t("#{s}.no_webhooks") %></p>
+          <% end %>
+
+          <details class="group mt-3" <%= 'open' if @webhooks.none? %>>
+            <summary class="btn btn-sm w-fit list-none [&::-webkit-details-marker]:hidden">
+              <%= icon 'circle-plus', class: 'w-4 h-4' %>
+              <%= t("#{s}.new_webhook") %>
+            </summary>
+            <div class="mt-4">
+              <p class="mb-3 text-xs text-base-content/60"><%= t("#{s}.webhooks_intro") %></p>
+              <%= render 'settings/webhooks/form', webhook: current_user.webhooks.new, places: @places %>
+            </div>
+          </details>
+        <% else %>
+          <div data-testid="webhooks-upgrade" class="flex flex-col items-start gap-3">
+            <h3 class="text-lg font-semibold"><%= t("#{s}.upgrade_title") %></h3>
+            <p class="text-sm text-base-content/70 max-w-md"><%= t("#{s}.upgrade_text") %></p>
+            <a href="<%= upgrade_url(utm_medium: 'settings', utm_content: 'geofencing') %>" class="btn btn-primary btn-sm">
+              <%= t("#{s}.upgrade") %>
+            </a>
+          </div>
+          <% if @webhooks.any? %>
+            <div class="mt-4 divide-y divide-base-content/10">
+              <% @webhooks.each do |webhook| %>
+                <div id="<%= dom_id(webhook) %>" data-testid="webhook" class="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div class="min-w-0">
+                    <div class="font-semibold"><%= webhook.name %></div>
+                    <div class="text-sm text-base-content/60 [overflow-wrap:anywhere]"><%= webhook.url %></div>
+                  </div>
+                  <%= button_to t('settings.webhooks.webhook.delete'), settings_webhook_path(webhook), method: :delete,
+                                class: 'btn btn-ghost btn-xs hover:text-error focus-visible:text-error',
+                                form: { data: { turbo_confirm: t('settings.webhooks.webhook.confirm_delete') } } %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </aside>
+
+  </div>
+</div>

@@ -1,0 +1,123 @@
+de:
+  activerecord:
+    errors:
+      models:
+        webhook:
+          attributes:
+            url:
+              https_required: muss https verwenden
+            base:
+              too_many: Du kannst bis zu %{count} Webhooks anlegen.
+  webhooks:
+    notifications:
+      deactivated:
+        title: Webhook deaktiviert
+        content: Der Webhook „%{name}“ ist fünfmal hintereinander fehlgeschlagen und wurde deaktiviert. Prüfe die Ziel-URL und aktiviere ihn dann wieder unter Einstellungen → Geofencing.
+  settings:
+    navigation:
+      geofencing: Geofencing
+    geofencing:
+      show:
+        title: Geofencing
+        intro: "Dawarich erfasst, wann du einen Ort betrittst oder verlässt, für den „Bei Betreten und Verlassen melden“ eingeschaltet ist – gemeldet vom Handy oder ermittelt aus den empfangenen Punkten – und kann jedes Ereignis an deine eigenen Dienste senden."
+        webhooks: Webhooks
+        webhooks_intro: Jedes Ereignis wird als signierter JSON-POST gesendet. Vergleiche den Header X-Dawarich-Signature mit einem HMAC-SHA256 des Inhalts, gebildet mit deinem Secret.
+        no_webhooks: Noch keine Webhooks.
+        new_webhook: Neuer Webhook
+        upgrade_title: Webhooks gehören zu Pro
+        upgrade_text: Sende Betreten- und Verlassen-Ereignisse an Home Assistant, Node-RED, n8n oder deinen eigenen Dienst.
+        upgrade: Auf Pro upgraden
+        events: Ereignisse
+        no_events: "Noch keine Ereignisse. Sie erscheinen, sobald dein Handy oder deine Tracking-App einen Punkt an einem dieser Orte meldet."
+        no_places: "Noch meldet kein Ort Betreten und Verlassen. Öffne einen Ort und schalte „Bei Betreten und Verlassen melden“ ein."
+        open_places: "Orte öffnen"
+        place: "Ort"
+        all_places: "Alle Orte"
+        from: Von
+        to: Bis
+        filter: Filtern
+        time: Zeit
+        event: Ereignis
+        source: Quelle
+        deliveries: Zustellungen
+        event_types:
+          enter: Betreten
+          leave: Verlassen
+        sources:
+          native_app: Handy
+          server_inferred: Standortpunkte
+          owntracks_native: OwnTracks
+        delivered: '%{count} zugestellt'
+        failed: '%{count} fehlgeschlagen'
+        in_progress: '%{count} laufend'
+        not_sent_late: "Nicht gesendet: mehr als %{minutes} Min. zu spät eingetroffen"
+        not_sent_throttled: "Nicht gesendet: mehr als %{count} Ereignisse zum Betreten und Verlassen in einer Stunde"
+    webhooks:
+      form:
+        name: Name
+        url: URL
+        events: Ereignisse
+        places: "Orte"
+        places_hint: "Lass alle leer, um Ereignisse für jeden meldenden Ort zu erhalten."
+        home_assistant_hint: "Home Assistant beantwortet jede Anfrage mit 200, auch bei falscher Webhook-ID. „Zugestellt“ heißt hier also nicht, dass deine Automatisierung gelaufen ist: Prüfe ihren Trace in Home Assistant. Home Assistant kann die Signatur nicht prüfen; privat bleibt der Webhook nur durch die ID in der URL."
+        home_assistant_cloud_hint: "Standardmäßig nimmt Home Assistant Webhooks nur aus dem eigenen Netzwerk an. Nutze eine Nabu-Casa-Webhook-URL oder schalte local_only in den Webhook-Einstellungen des Auslösers aus."
+        active: Aktiv
+        save: Speichern
+        create: Webhook hinzufügen
+      webhook:
+        active: Aktiv
+        inactive: Deaktiviert
+        failing: Fehlerhaft
+        every_place: "Jeder Ort"
+        places_count:
+          one: "%{count} Ort"
+          other: "%{count} Orte"
+        last_success: Zuletzt zugestellt vor %{time}
+        never_delivered: Noch nichts zugestellt
+        failures:
+          one: '%{count} Zustellung in Folge fehlgeschlagen'
+          other: '%{count} Zustellungen in Folge fehlgeschlagen'
+        test: Test senden
+        deliveries: Zustellungen
+        regenerate: Neues Secret
+        delete: Löschen
+        edit: Bearbeiten
+        confirm_regenerate: Neues Secret erzeugen? Das alte funktioniert sofort nicht mehr.
+        confirm_delete: Diesen Webhook löschen?
+      secret:
+        title: Signatur-Secret für %{name}
+        text: Kopiere es jetzt – es wird nicht noch einmal angezeigt.
+        copy: Kopieren
+      show:
+        title: 'Zustellungen: %{name}'
+        back: Zurück zum Geofencing
+        empty: Noch keine Zustellungen.
+        time: Zeit
+        event: Ereignis
+        status: Status
+        attempts: Versuche
+        response: Antwort
+        retry: Erneut senden
+        test: Test
+        statuses:
+          pending: Ausstehend
+          success: Zugestellt
+          failure: Fehlgeschlagen
+          retrying: Wird wiederholt
+      create:
+        created: Webhook hinzugefügt.
+      update:
+        updated: Webhook gespeichert.
+      destroy:
+        deleted: Webhook gelöscht.
+      test:
+        sent: Testereignis gesendet.
+        no_place: "Schalte zuerst für einen Ort „Bei Betreten und Verlassen melden“ ein, um ein Testereignis zu senden."
+        rate_limited: "Zu viele Testsendungen. Warte eine Minute und versuche es erneut."
+      retry_delivery:
+        queued: Zustellung erneut eingeplant.
+  places:
+    drawer:
+      geofence: "Bei Betreten und Verlassen melden"
+      geofence_hint: "Nutzt den Besuchsradius (%{radius} m)."
+      geofence_link: "Ereignisse und Webhooks"

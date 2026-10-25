@@ -1,6 +1,7 @@
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import { setPrivacyZonesFingerprint } from "maps_maplibre/utils/tile_freshness"
 
 /**
  * Manages places-related operations for Maps V2
@@ -40,7 +41,10 @@ export class PlacesManager {
 
           await this.initializePlaceTagFilters()
 
-          const loadedPlaces = placesLayer.data?.features?.length || 0
+          const loadedPlaces =
+            placesLayer.data?.features?.filter(
+              (feature) => feature.properties?.featureKind === "center",
+            ).length || 0
           this.controller.updateLoadingCounts({
             counts: { places: loadedPlaces },
             isComplete: true,
@@ -55,6 +59,12 @@ export class PlacesManager {
         }
       }
     }
+  }
+
+  togglePlaceBoundaries(event) {
+    const enabled = event.target.checked
+    SettingsManager.updateSetting("placeBoundariesEnabled", enabled)
+    this.layerManager.getLayer("places")?.setBoundariesVisible(enabled)
   }
 
   /**
@@ -294,9 +304,29 @@ export class PlacesManager {
       }
 
       this._ensurePlacesVisible(placesLayer)
+      await this._refreshPrivacyZones()
     } catch (error) {
       console.error("[Maps V2] Failed to update places:", error)
     }
+  }
+
+  /**
+   * A saved place can add, move or drop a privacy zone. When the zone
+   * fingerprint changes, every masked layer is reloaded under the new zones,
+   * and the current position is hidden until the next live point because
+   * it may now sit inside a zone.
+   */
+  async _refreshPrivacyZones() {
+    const { fingerprint, failed } = await this.api.fetchPrivacyZones()
+    if (failed || !setPrivacyZonesFingerprint(fingerprint)) return
+
+    this.layerManager.getLayer("recentPoint")?.clear()
+    this.controller.element?.removeAttribute(
+      "data-maps--maplibre-current-position-value",
+    )
+    this.layerManager.getLayer("points-mvt")?.refresh()
+    this.layerManager.getLayer("tracks-mvt")?.refresh()
+    await this.controller.loadMapData({ showLoading: false, fitBounds: false })
   }
 
   /**
@@ -311,15 +341,14 @@ export class PlacesManager {
    * the backend. Replaces by id when the place is already present (edit).
    */
   _upsertPlaceFeature(placesLayer, place) {
-    const feature = this.dataLoader.placesToGeoJSON([place]).features[0]
-    if (!feature) return
+    const replacement = this.dataLoader.placesToGeoJSON([place]).features
+    if (!replacement.length) return
 
     const existing = placesLayer.data?.features || []
-    const index = existing.findIndex((f) => f.properties?.id === place.id)
-    const features =
-      index >= 0
-        ? existing.map((f, i) => (i === index ? feature : f))
-        : [...existing, feature]
+    const features = [
+      ...existing.filter((feature) => feature.properties?.id !== place.id),
+      ...replacement,
+    ]
 
     placesLayer.update({ type: "FeatureCollection", features })
   }

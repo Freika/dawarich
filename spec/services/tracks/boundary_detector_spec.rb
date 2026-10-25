@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::BoundaryDetector do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:detector) { described_class.new(user) }
   let(:safe_settings) { user.safe_settings }
@@ -56,6 +58,8 @@ RSpec.describe Tracks::BoundaryDetector do
     end
 
     context 'when boundary candidates exist' do
+      around { |example| freeze_time { example.run } }
+
       let!(:track1) do
         create(:track, user: user, created_at: 30.minutes.ago, start_at: 2.hours.ago, end_at: 1.5.hours.ago)
       end
@@ -100,6 +104,39 @@ RSpec.describe Tracks::BoundaryDetector do
         detector.resolve_cross_chunk_tracks
 
         expect(Track.where(id: original_track_ids)).to be_empty
+      end
+    end
+
+    context 'when the route gap setting is shorter than 30 minutes' do
+      let(:earlier_end) { 1.hour.ago }
+
+      let!(:earlier) do
+        create(:track, user: user, created_at: 10.minutes.ago, start_at: earlier_end - 20.minutes, end_at: earlier_end)
+      end
+
+      before do
+        allow(safe_settings).to receive(:minutes_between_routes).and_return(10)
+        create(:point, user: user, track: earlier, timestamp: (earlier_end - 20.minutes).to_i)
+        create(:point, user: user, track: earlier, timestamp: earlier_end.to_i)
+      end
+
+      def create_later_track(gap)
+        start_at = earlier_end + gap
+        later = create(:track, user: user, created_at: 5.minutes.ago, start_at: start_at, end_at: start_at + 15.minutes)
+        create(:point, user: user, track: later, timestamp: start_at.to_i)
+        create(:point, user: user, track: later, timestamp: (start_at + 15.minutes).to_i)
+      end
+
+      it 'keeps tracks apart when the gap between them is longer than the setting' do
+        create_later_track(20.minutes)
+
+        expect { detector.resolve_cross_chunk_tracks }.not_to(change { user.tracks.count })
+      end
+
+      it 'merges tracks when the gap between them fits within the setting' do
+        create_later_track(5.minutes)
+
+        expect { detector.resolve_cross_chunk_tracks }.to change { user.tracks.count }.by(-1)
       end
     end
 

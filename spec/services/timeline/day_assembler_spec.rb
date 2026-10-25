@@ -1053,13 +1053,58 @@ RSpec.describe Timeline::DayAssembler do
     let(:day) { Time.zone.parse('2025-03-10 00:00:00') }
 
     it 'exposes the visit confidence band on the entry for UI gating' do
-      create(:visit, user: user, place: nil, area: nil, status: :suggested, confidence: 30,
+      create(:visit, user: user, place: nil, status: :suggested, confidence: 30,
                      started_at: day + 9.hours, ended_at: day + 10.hours, duration: 60)
 
       days = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
       entry = days.first[:entries].first
 
       expect(entry[:confidence_band]).to eq(:low)
+    end
+  end
+
+  describe 'with a privacy zone masker' do
+    let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
+    let(:home) do
+      create(:place, user:, name: 'Home', latitude: 52.444, longitude: 13.5, lonlat: 'POINT(13.5 52.444)')
+    end
+    let(:cafe) do
+      create(:place, user:, name: 'Cafe', latitude: 52.6, longitude: 13.7, lonlat: 'POINT(13.7 52.6)')
+    end
+
+    before do
+      tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 500)
+      create(:tagging, tag:, taggable: home)
+      create(:visit, user:, place: home, area: nil, name: 'Home', started_at: day + 7.hours, ended_at: day + 8.hours)
+      create(:visit, user:, place: cafe, area: nil, name: 'Cafe', started_at: day + 10.hours,
+                     ended_at: day + 11.hours)
+      create(:track, user:, start_at: day + 8.hours, end_at: day + 9.hours,
+                     original_path: 'LINESTRING(13.5 52.444, 13.6 52.5, 13.7 52.6)')
+    end
+
+    def assembled(masker)
+      described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601,
+                                privacy_zone_masker: masker).call.first
+    end
+
+    it 'keeps the in-zone visit but without coordinates' do
+      entry = assembled(Maps::PrivacyZoneMasker.new(user))[:entries].find { |e| e[:name] == 'Home' }
+
+      expect(entry[:place]).to include(name: 'Home', lat: nil, lng: nil)
+    end
+
+    it 'fits the day without the zone' do
+      bounds = assembled(Maps::PrivacyZoneMasker.new(user))[:bounds]
+
+      expect(bounds[:sw_lng]).to be > 13.505
+      expect(bounds[:sw_lat]).to be > 52.446
+    end
+
+    it 'is unchanged without a masker' do
+      day_payload = assembled(nil)
+
+      expect(day_payload[:entries].find { |e| e[:name] == 'Home' }[:place]).to include(lat: 52.444, lng: 13.5)
+      expect(day_payload[:bounds][:sw_lng]).to eq(13.5)
     end
   end
 end

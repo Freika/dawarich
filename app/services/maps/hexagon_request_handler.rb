@@ -2,8 +2,9 @@
 
 module Maps
   class HexagonRequestHandler
-    def initialize(params:, user: nil, stat: nil, start_date: nil, end_date: nil)
+    def initialize(params:, user: nil, stat: nil, start_date: nil, end_date: nil, privacy_zone_masker: nil)
       @params = params
+      @privacy_zone_masker = privacy_zone_masker
       @user = user
       @stat = stat
       @start_date = start_date
@@ -15,7 +16,7 @@ module Maps
       stat ||= find_matching_stat
 
       if stat
-        cached_result = Maps::HexagonCenterManager.new(stat:, user:).call
+        cached_result = Maps::HexagonCenterManager.new(stat:, user:, privacy_zone_masker:).call
 
         return cached_result[:data] if cached_result&.dig(:success)
       end
@@ -27,7 +28,7 @@ module Maps
 
     private
 
-    attr_reader :params, :user, :stat, :start_date, :end_date
+    attr_reader :params, :user, :stat, :start_date, :end_date, :privacy_zone_masker
 
     def find_matching_stat
       return unless user && start_date

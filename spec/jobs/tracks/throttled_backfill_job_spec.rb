@@ -22,6 +22,12 @@ RSpec.describe Tracks::ThrottledBackfillJob, type: :job do
       expect { described_class.schedule(user) }.not_to \
         have_enqueued_job(described_class).twice
     end
+
+    it 'enqueues a forced walker even while another one holds the dedup key' do
+      described_class.schedule(user)
+
+      expect { described_class.schedule(user, force: true) }.to have_enqueued_job(described_class).once
+    end
   end
 
   describe '#perform' do
@@ -83,6 +89,37 @@ RSpec.describe Tracks::ThrottledBackfillJob, type: :job do
           anything,
           hash_including(end_timestamp: ancient_point.timestamp)
         )
+      end
+    end
+
+    context 'when the walk has a floor' do
+      let!(:old_point) { create(:point, user: user, timestamp: 100.days.ago.to_i) }
+      let!(:newest_point) { create(:point, user: user, timestamp: 1.day.ago.to_i) }
+      let!(:below_floor_point) { create(:point, user: user, timestamp: 20.days.ago.to_i) }
+      let(:floor) { 10.days.ago.to_i }
+
+      it 'generates no further back than the floor' do
+        described_class.perform_now(user.id, nil, floor)
+
+        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(
+          user.id, anything, hash_including(end_timestamp: newest_point.timestamp)
+        )
+        expect(Tracks::TimeChunkProcessorJob).not_to have_been_enqueued.with(
+          user.id, anything, hash_including(start_timestamp: be < floor)
+        )
+      end
+
+      it 'carries the floor to the next slice' do
+        described_class.perform_now(user.id, nil, floor)
+
+        expect(described_class).to have_been_enqueued.with(user.id, floor, floor)
+      end
+
+      it 'stops once the cursor reaches the floor' do
+        described_class.perform_now(user.id, floor, floor)
+
+        expect(Tracks::TimeChunkProcessorJob).not_to have_been_enqueued
+        expect(described_class).not_to have_been_enqueued
       end
     end
 
