@@ -898,6 +898,7 @@ es:
       favorites_marked: Marcados favoritos
       places: lugares
     year_cards:
+      flown: "de ellos %{distance} en avión"
       title: "Años"
     year_calendar:
       mode: "Vista del calendario"

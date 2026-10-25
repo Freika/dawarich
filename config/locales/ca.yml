@@ -848,6 +848,7 @@ ca:
       favorites_marked: Preferits marcats
       places: llocs
     year_cards:
+      flown: "dels quals %{distance} en avió"
       title: "Anys"
     year_calendar:
       mode: "Vista del calendari"

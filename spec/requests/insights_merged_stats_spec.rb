@@ -70,6 +70,15 @@ RSpec.describe 'Insights as the single stats page', type: :request do
       expect(doc.css('dialog#cities_visited')).to be_present
     end
 
+    it 'shows how much of a year was flown, only on years with flights' do
+      Stat.find_by!(user:, year: 2024, month: 6).update!(distance: 1_544_000, flight_distance: 1_532_000)
+
+      get insights_path(year: 'all')
+
+      flown = doc.css('[data-testid="insights-year-flown"]')
+      expect(flown.map { _1.text.squish }).to eq([I18n.t('insights.year_cards.flown', distance: '1,532 km')])
+    end
+
     it 'does not show the month grid of a single year' do
       get insights_path(year: 'all')
 

@@ -855,6 +855,7 @@ zh:
       favorites_marked: 已标记的收藏夹
       places: 个地点
     year_cards:
+      flown: "其中飞行 %{distance}"
       title: "年份"
     year_calendar:
       mode: "日历视图"

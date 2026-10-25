@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Flights synced from AirTrail now count toward your distance everywhere: totals and charts in Insights and on the stats pages, the daily breakdown of each month, Year-End and monthly digests, and the API. Before, a flight showed up only on its own month's card, so a year with long flights reported far fewer kilometres than you travelled. A month's page still shows how much of its total was flown. When AirTrail knows a flight's departure and arrival times, points tracked during the flight no longer count on top of it. Existing stats are recalculated in the background after the update. Thanks @darioackermann! (#3659)
+- Flights synced from AirTrail now count toward your distance everywhere: totals and charts in Insights and on the stats pages, the daily breakdown of each month, Year-End and monthly digests, and the API. Before, a flight showed up only on its own month's card, so a year with long flights reported far fewer kilometres than you travelled. A month's page and each year card in Insights show how much of the total was flown. When AirTrail knows a flight's departure and arrival times, points tracked during the flight no longer count on top of it. Existing stats are recalculated in the background after the update. Thanks @darioackermann! (#3659)
 
 ## [1.17.0] - 2026-10-23, Berlin
 

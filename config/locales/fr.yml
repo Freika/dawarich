@@ -1510,6 +1510,7 @@ fr:
       favorites_marked: Favoris marqués
       places: lieux
     year_cards:
+      flown: "dont %{distance} en avion"
       title: "Années"
     year_calendar:
       mode: "Vue du calendrier"
