@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Privacy zones now hide your data on the map you look at yourself, not only on shared links. Tag a place with a privacy radius, and points, tracks, routes, visits, places, photos and live updates inside the zone disappear from Map v2, and fog of war stays over it. The same applies to your trip pages, route replay and posters. A track that crosses a zone is cut at its edge rather than drawn through it. Timeline entries for visits inside a zone keep their name and time, but no longer place a pin. Exports, statistics and the API keep your full data. API clients can ask for masked results by adding `mask_privacy_zones=true` to a request; map tiles and fog of war cells are always masked. #2848
+- The hidden area around a privacy zone is no longer centred on the place. It is up to 1.6 times the radius and shifted off the place by a fixed amount that differs for every place, so the place can't be pinpointed from where your data stops on the map, a shared link or a poster. Everything within the radius you set stays hidden. #2848
+
 ## [1.17.0] - 2026-10-23, Berlin
 
 Dawarich gets lighter and faster in this release. On a test account with a million points over three years, compared with 1.16.0:

@@ -240,10 +240,14 @@ export default class extends Controller {
   async loadPoints() {
     this.setPointsLoading(true)
     try {
-      const { points } = await new ApiClient(this.apiKeyValue).fetchAllPoints({
-        start_at: this.startedAtValue,
-        end_at: this.endedAtValue,
-      })
+      const api = new ApiClient(this.apiKeyValue)
+      const [{ points }, { zones }] = await Promise.all([
+        api.fetchAllPoints({
+          start_at: this.startedAtValue,
+          end_at: this.endedAtValue,
+        }),
+        api.fetchPrivacyZones(),
+      ])
       const allPoints = pointsFromDevice(points || [], this.deviceWindowsValue)
       const grouper = new ReplayManager({ timezone: this.timezoneValue })
       grouper.setPoints(allPoints)
@@ -256,6 +260,7 @@ export default class extends Controller {
       this.dayRouteCollections = buildDayRouteCollections(pointsByDay, {
         distanceThresholdMeters: this.metersBetweenRoutesValue,
         timeThresholdMinutes: this.minutesBetweenRoutesValue,
+        privacyZones: zones,
       })
       return allPoints
     } finally {

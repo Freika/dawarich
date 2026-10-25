@@ -14,6 +14,11 @@ RSpec.describe 'Tags API', type: :request do
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
 
       response '200', 'privacy zones found' do
+        before do
+          tag = create(:tag, user:, privacy_radius_meters: 500)
+          tag.places << create(:place, user:, latitude: 52.5, longitude: 13.4)
+        end
+
         schema type: :array,
                items: {
                  type: :object,
@@ -32,8 +37,22 @@ RSpec.describe 'Tags API', type: :request do
                          id: { type: :integer, description: 'Place ID' },
                          name: { type: :string, description: 'Place name' },
                          latitude: { type: :number, description: 'Latitude coordinate' },
-                         longitude: { type: :number, description: 'Longitude coordinate' }
-                       }
+                         longitude: { type: :number, description: 'Longitude coordinate' },
+                         masked_area: {
+                           type: :object,
+                           nullable: true,
+                           description: 'Circle the map hides around this place. It is larger than the radius and ' \
+                                        'shifted off the place, so the place cannot be found from where the map ' \
+                                        'stops, and it always covers the full radius around the place.',
+                           properties: {
+                             latitude: { type: :number },
+                             longitude: { type: :number },
+                             radius_meters: { type: :integer }
+                           },
+                           required: %w[latitude longitude radius_meters]
+                         }
+                       },
+                       required: %w[id latitude longitude masked_area]
                      }
                    }
                  }

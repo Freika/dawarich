@@ -39,6 +39,8 @@ module TileCacheable
       force_uncacheable_response
     end
 
+    return head :no_content if tile_privacy_masker&.covers_tile?(params[:z], params[:x], params[:y])
+
     result = tile_query.call
 
     if result.truncated?
@@ -72,6 +74,10 @@ module TileCacheable
   end
 
   private
+
+  def tile_privacy_masker
+    nil
+  end
 
   def tile_etag
     [

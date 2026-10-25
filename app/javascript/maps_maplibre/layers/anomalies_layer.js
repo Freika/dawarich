@@ -64,6 +64,7 @@ export class AnomaliesLayer extends BaseLayer {
         per_page: "1000",
         slim: "true",
         order: "asc",
+        mask_privacy_zones: "true",
       })
 
       const response = await fetch(

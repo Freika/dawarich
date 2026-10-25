@@ -2042,6 +2042,9 @@ ca:
         upgrade_to_pro: Millora a Pro
         dismiss: Descarta
   shared_links:
+    privacy_zones_note:
+      text: "Les teves zones de privadesa continuen amagades en aquest enllaç. Cada àrea amagada està desplaçada del lloc, perquè ningú pugui saber on és."
+      manage: "Zones de privadesa"
     expires_field:
       expires_optional: Caduca (opcional)
       stays_active_through_the_end_of_the_day_before_the: Es manté actiu fins al final del dia anterior a la data seleccionada.
@@ -2210,7 +2213,7 @@ ca:
       choose_from_swatches_or_pick_a_custom_color: Tria entre les mostres o selecciona un color personalitzat
       privacy_zone: Zona de privadesa
       hide_map_data_around_places_with_this_tag: Amaga les dades del mapa al voltant dels llocs amb aquesta etiqueta
-      data_within_this_radius_will_be_hidden_from_the_map: Les dades dins d'aquest radi s'amagaran del mapa
+      hidden_area_hint: "Tot el que hi ha dins d'aquest radi sempre s'amaga. El cercle amagat és fins a 1,6 vegades més gran i està desplaçat del lloc una distància fixa, perquè ningú pugui trobar el lloc a partir d'on s'aturen les teves dades."
       home_work_restaurant: Casa, Feina, Restaurant...
       privacy_radius: Radi de privadesa
       cancel: Cancel·la
@@ -2229,6 +2232,7 @@ ca:
       actions: Accions
       no_tags_yet: Encara no hi ha etiquetes
       create_tags_to_organize_your_places_and_add_privacy_zones: Crea etiquetes per organitzar els teus llocs i afegir zones de privadesa.
+      privacy_zone_badge_hint: "Àrea amagada desplaçada del lloc, fins a 1,6 vegades aquest radi"
       create_your_first_tag: Crea la teva primera etiqueta
       tags: Etiquetes
       edit_tag: Edita l'etiqueta

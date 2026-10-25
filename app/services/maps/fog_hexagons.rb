@@ -2,14 +2,16 @@
 
 module Maps
   class FogHexagons
-    def initialize(user:, start_date:, end_date:)
+    def initialize(user:, start_date:, end_date:, privacy_zone_masker: nil)
       @user = user
+      @privacy_zone_masker = privacy_zone_masker
       @start_date = start_date
       @end_date = end_date
     end
 
     def call
       indexes = collect_cell_ids
+      indexes = indexes.reject { |index| @privacy_zone_masker.touches_h3_cell?(index) } if @privacy_zone_masker&.any?
       {
         'h3_indexes' => indexes,
         'metadata' => { 'count' => indexes.size }

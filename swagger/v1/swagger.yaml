@@ -5258,6 +5258,29 @@ paths:
                           longitude:
                             type: number
                             description: Longitude coordinate
+                          masked_area:
+                            type: object
+                            nullable: true
+                            description: Circle the map hides around this place. It
+                              is larger than the radius and shifted off the place,
+                              so the place cannot be found from where the map stops,
+                              and it always covers the full radius around the place.
+                            properties:
+                              latitude:
+                                type: number
+                              longitude:
+                                type: number
+                              radius_meters:
+                                type: integer
+                            required:
+                            - latitude
+                            - longitude
+                            - radius_meters
+                        required:
+                        - id
+                        - latitude
+                        - longitude
+                        - masked_area
         '401':
           description: unauthorized
   "/api/v1/timeline":

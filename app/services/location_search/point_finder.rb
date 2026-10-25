@@ -4,6 +4,7 @@ module LocationSearch
   class PointFinder
     def initialize(user, params = {})
       @user = user
+      @privacy_zone_masker = params[:privacy_zone_masker]
       @latitude = params[:latitude]
       @longitude = params[:longitude]
       @limit = params[:limit] || 50
@@ -36,12 +37,14 @@ module LocationSearch
       geocoded_locations.each do |location|
         search_radius = @radius_override || determine_search_radius(location[:type])
 
-        matching_points = spatial_matcher.find_points_near(
-          @user,
-          location[:lat],
-          location[:lon],
-          search_radius,
-          date_filter_options
+        matching_points = visible_points(
+          spatial_matcher.find_points_near(
+            @user,
+            location[:lat],
+            location[:lon],
+            search_radius,
+            date_filter_options
+          )
         )
 
         if matching_points.empty?
@@ -74,6 +77,12 @@ module LocationSearch
         total_locations: results.length,
         search_metadata: {}
       }
+    end
+
+    def visible_points(points)
+      return points unless @privacy_zone_masker&.any?
+
+      points.reject { |point| @privacy_zone_masker.in_zone?(point[:coordinates][1], point[:coordinates][0]) }
     end
 
     def spatial_matcher

@@ -2058,6 +2058,9 @@ pl:
         upgrade_to_pro: Przejdź na Pro
         dismiss: Zamknij
   shared_links:
+    privacy_zones_note:
+      text: "Twoje strefy prywatności pozostają ukryte w tym linku. Każdy ukryty obszar jest przesunięty względem miejsca, więc nikt nie ustali, gdzie ono jest."
+      manage: "Strefy prywatności"
     expires_field:
       expires_optional: Wygasa (opcjonalnie)
       stays_active_through_the_end_of_the_day_before_the: Pozostaje aktywny do końca dnia poprzedzającego wybraną datę.
@@ -2230,7 +2233,7 @@ pl:
       choose_from_swatches_or_pick_a_custom_color: Wybierz z próbek lub ustaw własny kolor
       privacy_zone: Strefa prywatności
       hide_map_data_around_places_with_this_tag: Ukryj dane mapy w pobliżu miejsc oznaczonych tym tagiem
-      data_within_this_radius_will_be_hidden_from_the_map: Dane w tym promieniu będą ukryte na mapie
+      hidden_area_hint: "Wszystko w tym promieniu jest zawsze ukryte. Ukryty okrąg jest do 1,6 razy większy i przesunięty względem miejsca o stałą odległość, aby nikt nie mógł ustalić miejsca na podstawie tego, gdzie kończą się Twoje dane."
       home_work_restaurant: Home, Work, Restaurant...
       privacy_radius: Promień prywatności
       cancel: Anuluj
@@ -2251,6 +2254,7 @@ pl:
       actions: Akcje
       no_tags_yet: Brak tagów
       create_tags_to_organize_your_places_and_add_privacy_zones: Twórz tagi, aby porządkować miejsca i dodawać strefy prywatności.
+      privacy_zone_badge_hint: "Ukryty obszar przesunięty względem miejsca, do 1,6 razy ten promień"
       create_your_first_tag: Utwórz pierwszy tag
       tags: Tagi
       edit_tag: Edytuj tag

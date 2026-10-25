@@ -10,7 +10,7 @@ class Api::V1::PhotosController < ApiController
   def index
     cache_key = "photos_#{current_api_user.id}_v2_#{params[:start_date]}_#{params[:end_date]}"
     cached_photos = Rails.cache.read(cache_key)
-    return render json: cached_photos, status: :ok if cached_photos.present?
+    return render json: map_photos(cached_photos), status: :ok if cached_photos.present?
 
     search = Photos::Search.new(current_api_user, start_date: params[:start_date], end_date: params[:end_date])
     @photos = search.call
@@ -19,7 +19,7 @@ class Api::V1::PhotosController < ApiController
     Rails.cache.write(cache_key, @photos, expires_in: 30.minutes) if search.errors.blank? && @photos.present?
     response.set_header(PHOTO_SOURCE_ERRORS_HEADER, search.errors.join(',')) if search.errors.any?
 
-    render json: @photos, status: :ok
+    render json: map_photos(@photos), status: :ok
   rescue StandardError => e
     Rails.logger.error("Photo search failed: #{e.message}")
     render_source_failure
@@ -34,6 +34,10 @@ class Api::V1::PhotosController < ApiController
   end
 
   private
+
+  def map_photos(photos)
+    mask_privacy_zones? ? privacy_zone_masker.mask_photos(photos) : photos
+  end
 
   def render_source_failure
     render json: { error: I18n.t('controllers.api.v1.photos.failed_to_fetch_photos') }, status: :bad_gateway

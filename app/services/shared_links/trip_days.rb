@@ -56,11 +56,7 @@ module SharedLinks
     end
 
     def privacy_zones
-      @privacy_zones ||= @trip.user.tags.privacy_zones.includes(:places).flat_map do |tag|
-        tag.places.map do |place|
-          { lon: place.longitude.to_f, lat: place.latitude.to_f, radius: tag.privacy_radius_meters }
-        end
-      end
+      @privacy_zones ||= Users::PrivacyZones.new(@trip.user).call
     end
 
     def distance_label(distance_m)

@@ -2045,6 +2045,9 @@ es:
         upgrade_to_pro: Actualizar a Pro
         dismiss: Descartar
   shared_links:
+    privacy_zones_note:
+      text: "Tus zonas de privacidad siguen ocultas en este enlace. Cada área oculta está desplazada del lugar, para que nadie pueda saber dónde está."
+      manage: "Zonas de privacidad"
     expires_field:
       expires_optional: Vence (opcional)
       stays_active_through_the_end_of_the_day_before_the: Permanece activo hasta el final del día anterior a la fecha seleccionada.
@@ -2215,7 +2218,7 @@ es:
       choose_from_swatches_or_pick_a_custom_color: Elige entre las opciones o selecciona un color personalizado
       privacy_zone: Zona de privacidad
       hide_map_data_around_places_with_this_tag: Oculta los datos del mapa alrededor de lugares con esta etiqueta
-      data_within_this_radius_will_be_hidden_from_the_map: Los datos dentro de este radio se ocultarán del mapa
+      hidden_area_hint: "Todo lo que está dentro de este radio siempre se oculta. El círculo oculto es hasta 1,6 veces más grande y está desplazado del lugar una distancia fija, para que nadie pueda encontrar el lugar a partir de donde terminan tus datos."
       home_work_restaurant: Casa, Trabajo, Restaurante...
       privacy_radius: Radio de privacidad
       cancel: Cancelar
@@ -2234,6 +2237,7 @@ es:
       actions: Acciones
       no_tags_yet: Aún no tienes etiquetas
       create_tags_to_organize_your_places_and_add_privacy_zones: Crea etiquetas para organizar tus lugares y agregar zonas de privacidad.
+      privacy_zone_badge_hint: "Área oculta desplazada del lugar, hasta 1,6 veces este radio"
       create_your_first_tag: Crea tu primera etiqueta
       tags: Etiquetas
       edit_tag: Editar etiqueta
