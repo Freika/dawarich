@@ -99,7 +99,7 @@ test("selection and editing reads see the real data", async () => {
   }
 })
 
-test("privacy zones come back flattened with the fingerprint header", async () => {
+test("privacy zones come back as the shifted masked areas with the fingerprint header", async () => {
   const originalFetch = globalThis.fetch
   globalThis.fetch = async () => ({
     ok: true,
@@ -107,14 +107,27 @@ test("privacy zones come back flattened with the fingerprint header", async () =
       get: (name) => (name === "X-Privacy-Zones-Fingerprint" ? "abc" : null),
     },
     json: async () => [
-      { radius_meters: 300, places: [{ latitude: 52.4, longitude: 13.5 }] },
+      {
+        radius_meters: 300,
+        places: [
+          {
+            latitude: 52.4,
+            longitude: 13.5,
+            masked_area: {
+              latitude: 52.401,
+              longitude: 13.502,
+              radius_meters: 430,
+            },
+          },
+        ],
+      },
     ],
   })
   try {
     const result = await new ApiClient("test-key").fetchPrivacyZones()
 
     assert.deepEqual(result, {
-      zones: [{ lon: 13.5, lat: 52.4, radiusMeters: 300 }],
+      zones: [{ lon: 13.502, lat: 52.401, radiusMeters: 430 }],
       fingerprint: "abc",
     })
   } finally {

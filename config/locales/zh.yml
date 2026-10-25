@@ -2068,6 +2068,9 @@ zh:
       poster: 海报
       video: 视频
   shared_links:
+    privacy_zones_note:
+      text: "此链接中您的隐私区域保持隐藏。每个隐藏区域都偏离地点中心，查看者无法推断地点的位置。"
+      manage: "隐私区域"
     expires_field:
       expires_optional: 过期（可选）
       stays_active_through_the_end_of_the_day_before_the: 有效期持续到所选日期前一天结束。
@@ -2236,7 +2239,7 @@ zh:
       choose_from_swatches_or_pick_a_custom_color: 从色板中选择或自定义颜色
       privacy_zone: 隐私区域
       hide_map_data_around_places_with_this_tag: 隐藏带有此标签的地点周围的地图数据
-      data_within_this_radius_will_be_hidden_from_the_map: 此半径内的数据将在地图上隐藏
+      hidden_area_hint: "此半径内的数据始终隐藏。隐藏的圆形区域最大可达该半径的 1.6 倍，并以固定距离偏离地点中心，因此无法根据数据中断的位置推断出地点。"
       home_work_restaurant: 家庭、工作、餐厅...
       privacy_radius: 隐私半径
       cancel: 取消
@@ -2255,6 +2258,7 @@ zh:
       actions: 操作
       no_tags_yet: 尚无标签
       create_tags_to_organize_your_places_and_add_privacy_zones: 创建标签来整理您的地点并添加隐私区域。
+      privacy_zone_badge_hint: "隐藏区域偏离地点中心，最大为此半径的 1.6 倍"
       create_your_first_tag: 创建您的第一个标签
       tags: 标签
       edit_tag: 编辑标签

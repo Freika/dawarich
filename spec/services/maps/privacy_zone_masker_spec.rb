@@ -248,7 +248,7 @@ RSpec.describe Maps::PrivacyZoneMasker do
       make_zone(lat: 52.444, lon: 13.500, radius: 500)
       legacy = [{ id: 9, start_index: 0, end_index: 3 }]
       cut = feature(1, [[13.40, 52.444], [13.45, 52.444], [13.55, 52.444], [13.60, 52.444]], segments: legacy)
-      near = feature(2, [[13.40, 52.44852], [13.60, 52.44852]], segments: legacy)
+      near = feature(2, [[13.40, 52.456], [13.60, 52.456]], segments: legacy)
 
       masked = described_class.new(user).mask_track_features(features: [cut, near])
 

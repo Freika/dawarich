@@ -433,7 +433,7 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
     let(:zone_lon) { 13.5 }
     let(:zone_lat) { 52.444 }
     let!(:zone_tag) do
-      tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 150)
+      tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 100)
       place = create(:place, user:, latitude: zone_lat, longitude: zone_lon, lonlat: "POINT(#{zone_lon} #{zone_lat})")
       create(:tagging, tag:, taggable: place)
       tag
@@ -459,9 +459,9 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
 
     it 'leaves the in-zone point out of the tile and keeps the one next to it' do
       create(:point, user:, lonlat: "POINT(#{zone_lon} #{zone_lat})", timestamp: 2.hours.ago.to_i)
-      create(:point, user:, lonlat: 'POINT(13.4975 52.444)', timestamp: 1.hour.ago.to_i)
-      z, x, y = tile_for(zone_lon, zone_lat, 16)
-      expect(tile_for(13.4975, 52.444, 16)).to eq([z, x, y])
+      create(:point, user:, lonlat: 'POINT(13.495 52.444)', timestamp: 1.hour.ago.to_i)
+      z, x, y = tile_for(zone_lon, zone_lat, 15)
+      expect(tile_for(13.495, 52.444, 15)).to eq([z, x, y])
       counts = feature_counts
 
       get "/api/v1/tiles/points/#{z}/#{x}/#{y}.mvt", params: { api_key: user.api_key }
@@ -482,14 +482,14 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
     end
 
     it 'does not revalidate a cached tile after the zone changes' do
-      create(:point, user:, lonlat: 'POINT(13.4975 52.444)', timestamp: 1.hour.ago.to_i)
-      z, x, y = tile_for(zone_lon, zone_lat, 16)
+      create(:point, user:, lonlat: 'POINT(13.495 52.444)', timestamp: 1.hour.ago.to_i)
+      z, x, y = tile_for(zone_lon, zone_lat, 15)
       params = { api_key: user.api_key, start_at: 1.day.ago.to_i, end_at: Time.current.to_i }
       tile_path = "/api/v1/tiles/points/#{z}/#{x}/#{y}.mvt"
 
       get tile_path, params: params
       etag = response.headers['ETag']
-      zone_tag.update!(privacy_radius_meters: 160)
+      zone_tag.update!(privacy_radius_meters: 110)
       get tile_path, params: params, headers: { 'If-None-Match' => etag }
 
       expect(response).to have_http_status(:ok)

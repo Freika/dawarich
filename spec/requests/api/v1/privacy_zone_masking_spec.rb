@@ -205,7 +205,7 @@ RSpec.describe 'Privacy zone masking on map read endpoints', type: :request do
   describe 'location search' do
     before do
       create(:point, user: user, lonlat: "POINT(#{zone_lon} #{zone_lat})", timestamp: 2.hours.ago.to_i)
-      create(:point, user: user, lonlat: 'POINT(13.512 52.444)', timestamp: 1.hour.ago.to_i)
+      create(:point, user: user, lonlat: 'POINT(13.520 52.444)', timestamp: 1.hour.ago.to_i)
     end
 
     def visit_coordinates
@@ -213,7 +213,7 @@ RSpec.describe 'Privacy zone masking on map read endpoints', type: :request do
     end
 
     it 'leaves in-zone points out of the search results only with the flag' do
-      params = { lat: zone_lat, lon: zone_lon, radius_override: 1000 }
+      params = { lat: zone_lat, lon: zone_lon, radius_override: 2000 }
 
       get '/api/v1/locations', params: masked(params), headers: headers
       masked_coordinates = visit_coordinates

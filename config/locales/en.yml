@@ -2042,6 +2042,9 @@ en:
         upgrade_to_pro: Upgrade to Pro
         dismiss: Dismiss
   shared_links:
+    privacy_zones_note:
+      text: "Your privacy zones stay hidden on this link. Each hidden area is shifted off-centre, so viewers can't tell where the place is."
+      manage: "Privacy zones"
     expires_field:
       expires_optional: Expires (optional)
       stays_active_through_the_end_of_the_day_before_the: Stays active through the end of the day before the selected date.
@@ -2210,7 +2213,7 @@ en:
       choose_from_swatches_or_pick_a_custom_color: Choose from swatches or pick a custom color
       privacy_zone: Privacy Zone
       hide_map_data_around_places_with_this_tag: Hide map data around places with this tag
-      data_within_this_radius_will_be_hidden_from_the_map: Data within this radius will be hidden from the map
+      hidden_area_hint: "Everything within this radius is always hidden. The hidden circle is up to 1.6× larger and shifted off-centre by a fixed amount, so nobody can find the place from where your data stops."
       home_work_restaurant: Home, Work, Restaurant...
       privacy_radius: Privacy Radius
       cancel: Cancel
@@ -2229,6 +2232,7 @@ en:
       actions: Actions
       no_tags_yet: No tags yet
       create_tags_to_organize_your_places_and_add_privacy_zones: Create tags to organize your places and add privacy zones.
+      privacy_zone_badge_hint: "Hidden area is shifted off-centre and up to 1.6× this radius"
       create_your_first_tag: Create your first tag
       tags: Tags
       edit_tag: Edit tag

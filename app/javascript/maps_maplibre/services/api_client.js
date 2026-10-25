@@ -1074,10 +1074,10 @@ export class ApiClient {
 
       const fingerprint = response.headers.get("X-Privacy-Zones-Fingerprint")
       const zones = (await response.json()).flatMap((zone) =>
-        (zone.places || []).map((place) => ({
-          lon: Number(place.longitude),
-          lat: Number(place.latitude),
-          radiusMeters: Number(zone.radius_meters),
+        (zone.places || []).map(({ masked_area: area }) => ({
+          lon: Number(area.longitude),
+          lat: Number(area.latitude),
+          radiusMeters: Number(area.radius_meters),
         })),
       )
       return { zones, fingerprint: fingerprint || null }
