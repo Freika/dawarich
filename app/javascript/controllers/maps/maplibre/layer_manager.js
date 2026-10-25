@@ -479,13 +479,19 @@ export class LayerManager {
 
   _addRecentPointLayer() {
     if (!this.layers.recentPointLayer) {
-      this.layers.recentPointLayer = new RecentPointLayer(this.map, {
-        visible: false, // Initially hidden, shown only when live mode is enabled
-      })
+      this.layers.recentPointLayer = new RecentPointLayer(this.map)
       this.layers.recentPointLayer.add({
         type: "FeatureCollection",
         features: [],
       })
+      if (this.controller?.hasCurrentPositionValue) {
+        const position = this.controller.currentPositionValue
+        this.layers.recentPointLayer.updateRecentPoint(
+          position.longitude,
+          position.latitude,
+          { timestamp: position.timestamp },
+        )
+      }
     }
   }
 

@@ -9,6 +9,8 @@ const source = await readFile(
   ),
   "utf8",
 )
+globalThis.SettingsManagerStub = {}
+const SettingsManagerStub = globalThis.SettingsManagerStub
 const stubbedSource = source
   .replace(
     'import { Controller } from "@hotwired/stimulus"',
@@ -29,7 +31,7 @@ const stubbedSource = source
   )
   .replace(
     'import { SettingsManager } from "maps_maplibre/utils/settings_manager"',
-    "const SettingsManager = {}",
+    "const SettingsManager = globalThis.SettingsManagerStub",
   )
 const { default: RealtimeController } = await import(
   `data:text/javascript;base64,${Buffer.from(stubbedSource).toString("base64")}`
@@ -136,4 +138,26 @@ test("disconnect cancels a pending live refresh", (t) => {
 
   assert.equal(calls.pointsRefresh, 0)
   assert.equal(calls.scratchUpdate, 0)
+})
+
+test("turning live mode off keeps the current position marker", () => {
+  const { controller } = buildController()
+  const recentPoint =
+    controller.mapsV2Controller.layerManager.getLayer("recentPoint")
+  let hidden = false
+  let cleared = false
+  recentPoint.hide = () => {
+    hidden = true
+  }
+  recentPoint.clear = () => {
+    cleared = true
+  }
+  controller.channels = { unsubscribeAll() {} }
+  controller.setupChannels = () => {}
+  SettingsManagerStub.updateSetting = () => {}
+
+  controller.toggleLiveMode({ target: { checked: false } })
+
+  assert.equal(hidden, false)
+  assert.equal(cleared, false)
 })

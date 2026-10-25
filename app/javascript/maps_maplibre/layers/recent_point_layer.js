@@ -1,8 +1,8 @@
 import { BaseLayer } from "./base_layer"
 
 /**
- * Recent point layer for displaying the most recent location in live mode
- * This layer is always visible when live mode is enabled, regardless of points layer visibility
+ * Recent point layer for displaying the user's most recent location
+ * Seeded on page load and moved by live mode, regardless of points layer visibility
  */
 export class RecentPointLayer extends BaseLayer {
   constructor(map, options = {}) {
