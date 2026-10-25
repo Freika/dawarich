@@ -58,6 +58,7 @@ module Trek
       http = Net::HTTP.new(uri.hostname, uri.port, nil)
       http.ipaddr = ip_address
       http.use_ssl = uri.scheme == 'https'
+      http.verify_mode = OpenSSL::SSL::VERIFY_NONE if http.use_ssl? && @source.skip_ssl_verification
       http.open_timeout = TIMEOUT
       http.read_timeout = TIMEOUT
       request = Net::HTTP::Get.new(

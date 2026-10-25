@@ -23,6 +23,14 @@ RSpec.describe 'Settings::TrekSources', type: :request do
     expect(form.at_css('button').text).to include('Disconnect')
   end
 
+  it 'offers to skip certificate verification when connecting a source' do
+    get settings_integrations_path(service: 'trek')
+
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css("#trek-source-form input[type='checkbox'][name='trip_source[skip_ssl_verification]']"))
+      .to be_present
+  end
+
   describe 'POST /settings/trek_sources' do
     it 'verifies a source before saving it and then asks the user to choose trips' do
       stub_request(:get, 'https://trek.example.test/api/v1/trips')
@@ -37,6 +45,30 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       source = user.trip_sources.last
       expect(response).to redirect_to(select_trips_settings_trek_source_path(source))
       expect(source.base_url).to eq('https://trek.example.test')
+    end
+
+    it 'connects with certificate verification skipped when the user opts out' do
+      stub_request(:get, 'https://trek.example.test/api/v1/trips').to_return(status: 200, body: { trips: [] }.to_json)
+      connection = nil
+      allow(Net::HTTP).to(receive(:new).and_wrap_original { |original, *args| connection = original.call(*args) })
+
+      post settings_trek_sources_path, params: {
+        trip_source: { base_url: 'https://trek.example.test', api_key: 'trek_test_key', skip_ssl_verification: '1' }
+      }
+
+      expect(connection.verify_mode).to eq(OpenSSL::SSL::VERIFY_NONE)
+      expect(user.trip_sources.last.skip_ssl_verification).to be(true)
+    end
+
+    it 'turns certificate verification back on when a source reconnects without opting out' do
+      source = create(:trip_source, user: user, skip_ssl_verification: true)
+      stub_request(:get, 'https://trek.example.test/api/v1/trips').to_return(status: 200, body: { trips: [] }.to_json)
+
+      post settings_trek_sources_path, params: {
+        trip_source: { base_url: 'https://trek.example.test', api_key: 'trek_test_key', skip_ssl_verification: '0' }
+      }
+
+      expect(source.reload.skip_ssl_verification).to be(false)
     end
 
     it 'reconnects an existing disabled source with a replacement API key' do
