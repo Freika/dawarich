@@ -37,7 +37,7 @@ class Kml::Importer
     points_data = []
     points_data.concat(extract_points_from_placemarks(doc))
     points_data.concat(extract_points_from_gx_tracks(doc))
-    points_data.compact
+    Kml::VelocityFiller.call(points_data.compact)
   end
 
   def save_points_in_batches(points_data)
