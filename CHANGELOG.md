@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - English dates with a time now use the 24-hour clock unless you choose the 12-hour clock in Settings → General.
 - Ruby version updated to 4.0.9
 - On the Lite plan, the 12-month window now starts at midnight UTC and moves once a day, so the oldest day leaves the window all at once. The map's upgrade banner and the data archival notices follow the same date.
+- The default `docker/docker-compose.yml` now uses `redis:8-alpine` instead of `redis:7.4-alpine`. Redis 8 is released under the AGPLv3 and reads data saved by Redis 7.4, so no migration is needed. Valkey also works: point `REDIS_URL` at it. #3882
 
 ### Fixed
 
