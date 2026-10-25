@@ -4,9 +4,9 @@ require 'rails_helper'
 
 RSpec.describe 'POST /api/v1/points/transitions', type: :request do
   let(:user) { create(:user) }
-  let(:area) { create(:area, user:) }
+  let(:place) { create(:place, :geofence, user:) }
   let(:params) do
-    { area_id: area.id, event_type: 'enter', occurred_at: 1.minute.ago.iso8601, lonlat: [13.539, 52.437],
+    { place_id: place.id, event_type: 'enter', occurred_at: 1.minute.ago.iso8601, lonlat: [13.539, 52.437],
       accuracy_m: 12, device_id: 'phone-1', metadata: { battery: 0.7, os: 'ios-18' } }
   end
 
@@ -36,10 +36,13 @@ RSpec.describe 'POST /api/v1/points/transitions', type: :request do
     expect(response).to have_http_status(:created)
   end
 
-  it 'answers 204 for an area of someone else' do
-    post_transition({ area_id: create(:area).id })
-
+  it 'answers 204 for a place of someone else or one that does not notify' do
+    post_transition({ place_id: create(:place, :geofence).id })
     expect(response).to have_http_status(:no_content)
+
+    post_transition({ place_id: create(:place, user:).id })
+    expect(response).to have_http_status(:no_content)
+
     expect(GeofenceEvent.count).to eq(0)
   end
 

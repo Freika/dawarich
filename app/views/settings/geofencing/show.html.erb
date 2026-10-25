@@ -15,10 +15,10 @@
         <%= form_with url: settings_geofencing_path, method: :get,
                       class: 'grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap' do %>
           <label class="form-control col-span-2 sm:col-span-1">
-            <span class="label-text mb-1"><%= t("#{s}.area") %></span>
-            <%= select_tag :area_id,
-                           options_from_collection_for_select(@areas, :id, :name, params[:area_id]),
-                           include_blank: t("#{s}.all_areas"), class: 'select select-bordered select-sm w-full sm:w-52' %>
+            <span class="label-text mb-1"><%= t("#{s}.place") %></span>
+            <%= select_tag :place_id,
+                           options_from_collection_for_select(@places, :id, :name, params[:place_id]),
+                           include_blank: t("#{s}.all_places"), class: 'select select-bordered select-sm w-full sm:w-52' %>
           </label>
           <label class="form-control">
             <span class="label-text mb-1"><%= t("#{s}.from") %></span>
@@ -31,8 +31,16 @@
           <%= submit_tag t("#{s}.filter"), class: 'btn btn-sm col-span-2 sm:col-span-1', name: nil %>
         <% end %>
 
+        <% if @places.none? %>
+          <div data-testid="geofencing-no-places" class="mt-4 flex max-w-xl flex-col items-start gap-3">
+            <p class="text-sm text-base-content/70"><%= t("#{s}.no_places") %></p>
+            <%= link_to t("#{s}.open_places"), places_path, class: 'btn btn-sm' %>
+          </div>
+        <% end %>
         <% if @events.empty? %>
-          <p class="mt-4 max-w-xl text-sm text-base-content/60"><%= t("#{s}.no_events") %></p>
+          <% if @places.any? %>
+            <p class="mt-4 max-w-xl text-sm text-base-content/60"><%= t("#{s}.no_events") %></p>
+          <% end %>
         <% else %>
           <div class="mt-2">
             <% @events.group_by { |event| event.occurred_at.in_time_zone.to_date }.each do |day, events| %>
@@ -53,7 +61,7 @@
                                  class: "mt-0.5 w-4 h-4 shrink-0 #{entered ? 'text-secondary' : 'text-base-content/50'}") %>
                         <span class="min-w-0 [overflow-wrap:anywhere]">
                           <span class="font-semibold"><%= t("#{s}.event_types.#{event.event_type}") %></span>
-                          <%= event.area.name %>
+                          <%= event.place.name %>
                         </span>
                       </div>
                       <div class="flex flex-wrap gap-x-2 pl-6 text-xs text-base-content/60 sm:justify-end sm:pl-0 sm:text-right">
@@ -82,7 +90,7 @@
         <% if @webhooks_allowed %>
           <div id="webhook-secret"></div>
           <div id="webhooks" class="mt-1 divide-y divide-base-content/10">
-            <%= render partial: 'settings/webhooks/webhook', collection: @webhooks, locals: { areas: @areas } %>
+            <%= render partial: 'settings/webhooks/webhook', collection: @webhooks, locals: { places: @places } %>
           </div>
           <% if @webhooks.none? %>
             <p id="webhooks-empty" class="text-sm text-base-content/60"><%= t("#{s}.no_webhooks") %></p>
@@ -95,7 +103,7 @@
             </summary>
             <div class="mt-4">
               <p class="mb-3 text-xs text-base-content/60"><%= t("#{s}.webhooks_intro") %></p>
-              <%= render 'settings/webhooks/form', webhook: current_user.webhooks.new, areas: @areas %>
+              <%= render 'settings/webhooks/form', webhook: current_user.webhooks.new, places: @places %>
             </div>
           </details>
         <% else %>

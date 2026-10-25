@@ -2,7 +2,7 @@
 
 class GeofenceEvent < ApplicationRecord
   belongs_to :user
-  belongs_to :area
+  belongs_to :place
   has_many :webhook_deliveries, dependent: :delete_all
 
   enum :event_type, { enter: 0, leave: 1 }, prefix: :event_type

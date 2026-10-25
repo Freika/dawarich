@@ -19,7 +19,7 @@ pl:
     geofencing:
       show:
         title: Geofencing
-        intro: Dawarich zapisuje, kiedy wchodzisz do jednego ze swoich obszarów lub go opuszczasz — według telefonu albo na podstawie odebranych punktów — i może wysłać każde zdarzenie do Twoich usług.
+        intro: "Dawarich zapisuje, kiedy wchodzisz do miejsca z włączonym „Powiadamiaj o wejściu i wyjściu” lub je opuszczasz — według telefonu albo na podstawie odebranych punktów — i może wysłać każde zdarzenie do Twoich usług."
         webhooks: Webhooki
         webhooks_intro: Każde zdarzenie jest wysyłane jako podpisany POST z JSON. Porównaj nagłówek X-Dawarich-Signature z HMAC-SHA256 treści obliczonym Twoim sekretem.
         no_webhooks: Nie ma jeszcze webhooków.
@@ -28,9 +28,11 @@ pl:
         upgrade_text: Wysyłaj wejścia i wyjścia do Home Assistant, Node-RED, n8n albo własnej usługi.
         upgrade: Przejdź na Pro
         events: Zdarzenia
-        no_events: Nie ma jeszcze zdarzeń. Pojawią się, gdy telefon albo aplikacja śledząca zgłosi punkt w jednym z Twoich obszarów.
-        area: Obszar
-        all_areas: Wszystkie obszary
+        no_events: "Nie ma jeszcze zdarzeń. Pojawią się, gdy telefon albo aplikacja śledząca zgłosi punkt w jednym z tych miejsc."
+        no_places: "Żadne miejsce nie zgłasza jeszcze wejść i wyjść. Otwórz miejsce i włącz „Powiadamiaj o wejściu i wyjściu”."
+        open_places: "Otwórz miejsca"
+        place: "Miejsce"
+        all_places: "Wszystkie miejsca"
         from: Od
         to: Do
         filter: Filtruj
@@ -54,8 +56,8 @@ pl:
         name: Nazwa
         url: URL
         events: Zdarzenia
-        areas: Obszary
-        areas_hint: Nie zaznaczaj żadnego, aby dostawać zdarzenia ze wszystkich obszarów.
+        places: "Miejsca"
+        places_hint: "Nie zaznaczaj żadnego, aby dostawać zdarzenia ze wszystkich powiadamiających miejsc."
         home_assistant_hint: "Home Assistant odpowiada 200 na każde żądanie, nawet gdy ID webhooka jest błędne, więc „Dostarczono” nie oznacza tu, że automatyzacja się uruchomiła: sprawdź jej ślad w Home Assistant. Home Assistant nie potrafi sprawdzić podpisu; webhook pozostaje prywatny tylko dzięki ID w adresie URL."
         home_assistant_cloud_hint: "Domyślnie Home Assistant przyjmuje webhooki tylko z własnej sieci. Użyj adresu webhooka Nabu Casa albo wyłącz local_only w ustawieniach webhooka wyzwalacza."
         active: Aktywny
@@ -65,12 +67,12 @@ pl:
         active: Aktywny
         inactive: Wyłączony
         failing: Błędy
-        every_area: Każdy obszar
-        areas_count:
-          one: '%{count} obszar'
-          few: '%{count} obszary'
-          many: '%{count} obszarów'
-          other: '%{count} obszaru'
+        every_place: "Każde miejsce"
+        places_count:
+          one: "%{count} miejsce"
+          few: "%{count} miejsca"
+          many: "%{count} miejsc"
+          other: "%{count} miejsca"
         last_success: Ostatnio dostarczono %{time} temu
         never_delivered: Nic jeszcze nie dostarczono
         failures:
@@ -113,6 +115,11 @@ pl:
         deleted: Usunięto webhook.
       test:
         sent: Wysłano zdarzenie testowe.
-        no_area: Najpierw utwórz obszar, aby wysłać zdarzenie testowe.
+        no_place: "Najpierw włącz „Powiadamiaj o wejściu i wyjściu” dla jakiegoś miejsca, aby wysłać zdarzenie testowe."
       retry_delivery:
         queued: Ponownie zaplanowano dostarczenie.
+  places:
+    drawer:
+      geofence: "Powiadamiaj o wejściu i wyjściu"
+      geofence_hint: "Używa promienia wizyty (%{radius} m)."
+      geofence_link: "Zdarzenia i webhooki"

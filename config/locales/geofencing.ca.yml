@@ -19,7 +19,7 @@ ca:
     geofencing:
       show:
         title: Geotanques
-        intro: Dawarich registra quan entres o surts d’una de les teves zones —segons el telèfon o a partir dels punts que rep— i pot enviar cada esdeveniment als teus propis serveis.
+        intro: "Dawarich registra quan entres o surts d’un lloc amb «Avisa en entrar i sortir» activat —segons el telèfon o a partir dels punts que rep— i pot enviar cada esdeveniment als teus propis serveis."
         webhooks: Webhooks
         webhooks_intro: Cada esdeveniment s’envia com un POST JSON signat. Compara la capçalera X-Dawarich-Signature amb un HMAC-SHA256 del cos calculat amb el teu secret.
         no_webhooks: Encara no hi ha webhooks.
@@ -28,9 +28,11 @@ ca:
         upgrade_text: Envia entrades i sortides a Home Assistant, Node-RED, n8n o el teu propi servei.
         upgrade: Passa a Pro
         events: Esdeveniments
-        no_events: Encara no hi ha esdeveniments. Apareixen quan el telèfon o l’app de seguiment informa d’un punt dins d’una de les teves zones.
-        area: Zona
-        all_areas: Totes les zones
+        no_events: "Encara no hi ha esdeveniments. Apareixen quan el telèfon o l’app de seguiment informa d’un punt dins d’un d’aquests llocs."
+        no_places: "Cap lloc no avisa encara en entrar o sortir. Obre un lloc i activa «Avisa en entrar i sortir»."
+        open_places: "Obre els llocs"
+        place: "Lloc"
+        all_places: "Tots els llocs"
         from: Des de
         to: Fins a
         filter: Filtra
@@ -54,8 +56,8 @@ ca:
         name: Nom
         url: URL
         events: Esdeveniments
-        areas: Zones
-        areas_hint: Deixa-les sense marcar per rebre esdeveniments de totes les zones.
+        places: "Llocs"
+        places_hint: "Deixa’ls sense marcar per rebre esdeveniments de tots els llocs que avisen."
         home_assistant_hint: "Home Assistant respon 200 a totes les sol·licituds, fins i tot si l’ID del webhook és incorrecte, així que «Enviat» aquí no demostra que la teva automatització s’hagi executat: revisa’n la traça a Home Assistant. Home Assistant no pot comprovar la signatura; el que manté privat el webhook és el seu ID a l’URL."
         home_assistant_cloud_hint: "Per defecte, Home Assistant només accepta webhooks de la seva pròpia xarxa. Fes servir un URL de webhook de Nabu Casa o desactiva local_only a la configuració de webhook del disparador."
         active: Actiu
@@ -65,10 +67,10 @@ ca:
         active: Actiu
         inactive: Desactivat
         failing: Amb errors
-        every_area: Totes les zones
-        areas_count:
-          one: '%{count} zona'
-          other: '%{count} zones'
+        every_place: "Tots els llocs"
+        places_count:
+          one: "%{count} lloc"
+          other: "%{count} llocs"
         last_success: Últim enviament fa %{time}
         never_delivered: Encara no s’ha enviat res
         failures:
@@ -109,6 +111,11 @@ ca:
         deleted: Webhook eliminat.
       test:
         sent: Esdeveniment de prova enviat.
-        no_area: Crea primer una zona per enviar un esdeveniment de prova.
+        no_place: "Activa primer «Avisa en entrar i sortir» en un lloc per enviar un esdeveniment de prova."
       retry_delivery:
         queued: Enviament programat de nou.
+  places:
+    drawer:
+      geofence: "Avisa en entrar i sortir"
+      geofence_hint: "Fa servir el radi de visita (%{radius} m)."
+      geofence_link: "Esdeveniments i webhooks"

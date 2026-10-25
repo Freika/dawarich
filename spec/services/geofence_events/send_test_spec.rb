@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe GeofenceEvents::SendTest do
   let(:user) { create(:user) }
-  let!(:area) { create(:area, user:) }
+  let!(:place) { create(:place, :geofence, user:) }
   let(:webhook) { create(:webhook, user:) }
 
   it 'delivers a synthetic enter to that webhook only, leaving state and the log alone' do
@@ -17,17 +17,17 @@ RSpec.describe GeofenceEvents::SendTest do
     expect(GeofenceEvents::StateStore.new(user).inside_ids).to be_empty
   end
 
-  it 'uses the first area the webhook listens to' do
-    other = create(:area, user:)
-    webhook.update!(area_ids: [other.id])
+  it 'uses the first place the webhook listens to' do
+    other = create(:place, :geofence, user:)
+    webhook.update!(place_ids: [other.id])
 
     described_class.call(webhook)
 
-    expect(GeofenceEvent.sole.area).to eq(other)
+    expect(GeofenceEvent.sole.place).to eq(other)
   end
 
-  it 'returns nil when the user has no areas' do
-    area.destroy!
+  it 'returns nil when the user has no places' do
+    place.destroy!
 
     expect(described_class.call(webhook)).to be_nil
   end

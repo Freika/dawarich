@@ -11,7 +11,7 @@ RSpec.describe 'Geofence Events API', type: :request do
       tags 'Geofencing'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
-      parameter name: :area_id, in: :query, type: :integer, required: false
+      parameter name: :place_id, in: :query, type: :integer, required: false
       parameter name: :start_at, in: :query, type: :string, format: :date, required: false,
                 description: 'First day, in the user timezone'
       parameter name: :end_at, in: :query, type: :string, format: :date, required: false,
@@ -23,7 +23,7 @@ RSpec.describe 'Geofence Events API', type: :request do
         schema type: :array, items: {
           type: :object,
           properties: {
-            id: { type: :integer }, area_id: { type: :integer }, area_name: { type: :string },
+            id: { type: :integer }, place_id: { type: :integer }, place_name: { type: :string },
             event_type: { type: :string, enum: %w[enter leave] },
             source: { type: :string, enum: %w[native_app server_inferred owntracks_native] },
             occurred_at: { type: :string, format: :'date-time' },

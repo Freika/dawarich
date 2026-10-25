@@ -15,10 +15,10 @@ class Api::V1::Points::TransitionsController < ApiController
     attributes = transition_attributes
     return head :unprocessable_content unless attributes
 
-    area = current_api_user.areas.find_by(id: params[:area_id])
-    return head :no_content unless area
+    place = current_api_user.places.geofences.find_by(id: params[:place_id])
+    return head :no_content unless place
 
-    GeofenceEvents::Record.call(user: current_api_user, area:, source: :native_app, **attributes,
+    GeofenceEvents::Record.call(user: current_api_user, place:, source: :native_app, **attributes,
                                 apply_state: newer_than_evaluated?(attributes[:occurred_at]))
     head :created
   end

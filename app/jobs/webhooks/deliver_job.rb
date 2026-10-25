@@ -27,7 +27,7 @@ module Webhooks
     discard_on ActiveJob::DeserializationError
 
     def perform(delivery_id)
-      @delivery = WebhookDelivery.includes(:webhook, geofence_event: :area).find_by(id: delivery_id)
+      @delivery = WebhookDelivery.includes(:webhook, geofence_event: :place).find_by(id: delivery_id)
       return unless @delivery
 
       return drop_delivery unless sendable?

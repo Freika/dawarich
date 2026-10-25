@@ -6,8 +6,8 @@ RSpec.describe 'Settings → Geofencing', type: :request do
   include ActiveJob::TestHelper
 
   let(:user) { create(:user) }
-  let(:home) { create(:area, user:, name: 'Home') }
-  let(:work) { create(:area, user:, name: 'Office') }
+  let(:home) { create(:place, :geofence, user:, name: 'Home') }
+  let(:work) { create(:place, :geofence, user:, name: 'Office') }
   let(:turbo) { { 'Accept' => 'text/vnd.turbo-stream.html' } }
 
   before { sign_in user }
@@ -17,12 +17,12 @@ RSpec.describe 'Settings → Geofencing', type: :request do
   end
 
   describe 'the geofencing page' do
-    it 'lists real events, filtered by area, and highlights its tab' do
-      create(:geofence_event, user:, area: home, event_type: :leave)
-      create(:geofence_event, user:, area: work)
-      create(:geofence_event, user:, area: home, synthetic: true)
+    it 'lists real events, filtered by place, and highlights its tab' do
+      create(:geofence_event, user:, place: home, event_type: :leave)
+      create(:geofence_event, user:, place: work)
+      create(:geofence_event, user:, place: home, synthetic: true)
 
-      get settings_geofencing_path, params: { area_id: home.id }
+      get settings_geofencing_path, params: { place_id: home.id }
 
       rows = page.css('[data-testid="geofence-event"]')
       expect(rows.size).to eq(1)
@@ -32,7 +32,7 @@ RSpec.describe 'Settings → Geofencing', type: :request do
 
     it 'lists webhooks with their delivery status' do
       webhook = create(:webhook, user:, name: 'Home Assistant')
-      create(:webhook_delivery, webhook:, geofence_event: create(:geofence_event, user:, area: home))
+      create(:webhook_delivery, webhook:, geofence_event: create(:geofence_event, user:, place: home))
 
       get settings_geofencing_path
 
@@ -42,7 +42,8 @@ RSpec.describe 'Settings → Geofencing', type: :request do
 
     it 'counts deliveries that are still being retried' do
       webhook = create(:webhook, user:)
-      create(:webhook_delivery, webhook:, status: :retrying, geofence_event: create(:geofence_event, user:, area: home))
+      event = create(:geofence_event, user:, place: home)
+      create(:webhook_delivery, webhook:, status: :retrying, geofence_event: event)
 
       get settings_geofencing_path
 
@@ -52,7 +53,7 @@ RSpec.describe 'Settings → Geofencing', type: :request do
 
     it 'says when an event arrived too late to be sent' do
       create(:webhook, user:)
-      create(:geofence_event, user:, area: home, occurred_at: 2.hours.ago, received_at: 1.minute.ago)
+      create(:geofence_event, user:, place: home, occurred_at: 2.hours.ago, received_at: 1.minute.ago)
 
       get settings_geofencing_path
 
@@ -108,7 +109,7 @@ RSpec.describe 'Settings → Geofencing', type: :request do
       end
 
       it 'offers an upgrade instead of webhooks and hides delivery status' do
-        create(:geofence_event, user:, area: home)
+        create(:geofence_event, user:, place: home)
 
         get settings_geofencing_path
 
@@ -128,7 +129,7 @@ RSpec.describe 'Settings → Geofencing', type: :request do
       end
 
       it 'hides events older than 12 months' do
-        create(:geofence_event, user:, area: home, occurred_at: 13.months.ago)
+        create(:geofence_event, user:, place: home, occurred_at: 13.months.ago)
 
         get settings_geofencing_path
 

@@ -47,7 +47,7 @@ RSpec.describe 'Api::V1::Webhooks', type: :request do
   end
 
   it 'sends a test delivery to that webhook only' do
-    create(:area, user:)
+    create(:place, :geofence, user:)
     webhook = create(:webhook, user:)
     create(:webhook, user:)
 
@@ -58,7 +58,7 @@ RSpec.describe 'Api::V1::Webhooks', type: :request do
     expect(WebhookDelivery.sole.webhook).to eq(webhook)
   end
 
-  it 'answers 422 to a test without any area' do
+  it 'answers 422 to a test without any place' do
     post "/api/v1/webhooks/#{create(:webhook, user:).id}/test", headers: headers
 
     expect(response).to have_http_status(:unprocessable_content)

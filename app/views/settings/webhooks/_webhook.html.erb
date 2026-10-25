@@ -12,7 +12,7 @@
       </div>
       <div class="mt-0.5 text-sm text-base-content/60 [overflow-wrap:anywhere]"><%= webhook.url %></div>
       <div class="mt-1 text-xs text-base-content/60">
-        <%= webhook.area_ids.empty? ? t("#{w_scope}.every_area") : t("#{w_scope}.areas_count", count: webhook.area_ids.size) %>
+        <%= webhook.place_ids.empty? ? t("#{w_scope}.every_place") : t("#{w_scope}.places_count", count: webhook.place_ids.size) %>
         ·
         <% if webhook.consecutive_failures.positive? %>
           <%= t("#{w_scope}.failures", count: webhook.consecutive_failures) %>
@@ -37,6 +37,6 @@
                     class: 'btn btn-ghost btn-xs hover:text-error focus-visible:text-error',
                     form: { class: 'ml-auto', data: { turbo_confirm: t("#{w_scope}.confirm_delete") } } %>
     </div>
-    <%= render 'settings/webhooks/form', webhook:, areas: %>
+    <%= render 'settings/webhooks/form', webhook:, places: %>
   </div>
 </details>

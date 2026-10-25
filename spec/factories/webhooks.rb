@@ -6,7 +6,7 @@ FactoryBot.define do
     sequence(:name) { |n| "Webhook #{n}" }
     url { 'https://203.0.113.10/hooks/dawarich' }
     event_types { [0, 1] }
-    area_ids { [] }
+    place_ids { [] }
     active { true }
   end
 end

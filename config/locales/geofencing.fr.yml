@@ -19,7 +19,7 @@ fr:
     geofencing:
       show:
         title: Géorepérage
-        intro: Dawarich enregistre quand vous entrez dans l’une de vos zones ou en sortez — signalé par votre téléphone ou déduit des points reçus — et peut envoyer chaque événement à vos propres services.
+        intro: "Dawarich enregistre quand vous entrez dans un lieu ou en sortez si « Signaler l’entrée et la sortie » y est activé — signalé par votre téléphone ou déduit des points reçus — et peut envoyer chaque événement à vos propres services."
         webhooks: Webhooks
         webhooks_intro: Chaque événement est envoyé en POST JSON signé. Comparez l’en-tête X-Dawarich-Signature à un HMAC-SHA256 du corps calculé avec votre secret.
         no_webhooks: Aucun webhook pour l’instant.
@@ -28,9 +28,11 @@ fr:
         upgrade_text: Envoyez les entrées et sorties vers Home Assistant, Node-RED, n8n ou votre propre service.
         upgrade: Passer à Pro
         events: Événements
-        no_events: Aucun événement pour l’instant. Ils apparaissent quand votre téléphone ou votre application de suivi signale un point dans l’une de vos zones.
-        area: Zone
-        all_areas: Toutes les zones
+        no_events: "Aucun événement pour l’instant. Ils apparaissent quand votre téléphone ou votre application de suivi signale un point dans l’un de ces lieux."
+        no_places: "Aucun lieu ne signale encore d’entrée ni de sortie. Ouvrez un lieu et activez « Signaler l’entrée et la sortie »."
+        open_places: "Ouvrir les lieux"
+        place: "Lieu"
+        all_places: "Tous les lieux"
         from: Du
         to: Au
         filter: Filtrer
@@ -54,8 +56,8 @@ fr:
         name: Nom
         url: URL
         events: Événements
-        areas: Zones
-        areas_hint: Ne cochez rien pour recevoir les événements de toutes les zones.
+        places: "Lieux"
+        places_hint: "Ne cochez rien pour recevoir les événements de tous les lieux qui signalent."
         home_assistant_hint: "Home Assistant répond 200 à chaque requête, même si l’identifiant du webhook est faux : « Envoyé » ici ne prouve donc pas que votre automatisation a tourné. Vérifiez sa trace dans Home Assistant. Home Assistant ne peut pas vérifier la signature ; c’est l’identifiant du webhook dans l’URL qui le garde privé."
         home_assistant_cloud_hint: "Par défaut, Home Assistant n’accepte que les webhooks de son propre réseau. Utilisez une URL de webhook Nabu Casa, ou désactivez local_only dans les réglages webhook du déclencheur."
         active: Actif
@@ -65,10 +67,10 @@ fr:
         active: Actif
         inactive: Désactivé
         failing: En échec
-        every_area: Toutes les zones
-        areas_count:
-          one: '%{count} zone'
-          other: '%{count} zones'
+        every_place: "Tous les lieux"
+        places_count:
+          one: "%{count} lieu"
+          other: "%{count} lieux"
         last_success: Dernier envoi il y a %{time}
         never_delivered: Rien d’envoyé pour l’instant
         failures:
@@ -109,6 +111,11 @@ fr:
         deleted: Webhook supprimé.
       test:
         sent: Événement de test envoyé.
-        no_area: Créez d’abord une zone pour envoyer un événement de test.
+        no_place: "Activez d’abord « Signaler l’entrée et la sortie » pour un lieu afin d’envoyer un événement de test."
       retry_delivery:
         queued: Envoi reprogrammé.
+  places:
+    drawer:
+      geofence: "Signaler l’entrée et la sortie"
+      geofence_hint: "Utilise le rayon de visite (%{radius} m)."
+      geofence_link: "Événements et webhooks"

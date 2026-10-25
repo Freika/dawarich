@@ -6,10 +6,10 @@ module GeofenceEvents
       new(**).call
     end
 
-    def initialize(user:, area:, event_type:, source:, occurred_at:, lonlat:, accuracy_m: nil, device_id: nil,
+    def initialize(user:, place:, event_type:, source:, occurred_at:, lonlat:, accuracy_m: nil, device_id: nil,
                    metadata: {}, apply_state: true)
       @user = user
-      @area = area
+      @place = place
       @event_type = event_type.to_s
       @source = source.to_s
       @occurred_at = occurred_at
@@ -36,21 +36,21 @@ module GeofenceEvents
       return !already_recorded? unless @apply_state
 
       store = StateStore.new(@user)
-      @event_type == 'enter' ? store.enter!(@area.id) : store.leave!(@area.id)
+      @event_type == 'enter' ? store.enter!(@place.id) : store.leave!(@place.id)
     rescue StateStore::Unavailable => e
       ExceptionReporter.call(e, 'Geofence state unavailable')
       @source == 'native_app'
     end
 
     def already_recorded?
-      GeofenceEvent.real.where(user: @user, area: @area, event_type: @event_type)
+      GeofenceEvent.real.where(user: @user, place: @place, event_type: @event_type)
                    .where(occurred_at: (@occurred_at - DUPLICATE_WINDOW)..(@occurred_at + DUPLICATE_WINDOW))
                    .exists?
     end
 
     def create_event
       GeofenceEvent.create!(
-        user: @user, area: @area, event_type: @event_type, source: @source,
+        user: @user, place: @place, event_type: @event_type, source: @source,
         occurred_at: @occurred_at, received_at: Time.current, lonlat: @lonlat,
         accuracy_m: @accuracy_m, device_id: @device_id, metadata: @metadata
       )
@@ -60,7 +60,7 @@ module GeofenceEvents
       return if event.stale_for_webhooks? || !@user.entitlements.pro_api?
 
       @user.webhooks.where(active: true).find_each do |webhook|
-        next unless webhook.subscribed_to?(area: @area, event_type: @event_type)
+        next unless webhook.subscribed_to?(place: @place, event_type: @event_type)
 
         delivery = WebhookDelivery.create!(webhook:, geofence_event: event)
         Webhooks::DeliverJob.perform_later(delivery.id)

@@ -100,6 +100,18 @@ RSpec.describe Places::Merge do
     expect(discovered.reload).to have_attributes(source: 'manual', name_locked?: true)
   end
 
+  it 'carries enter and leave notifications, their events and webhook filters to the survivor' do
+    duplicate.update!(geofence: true)
+    event = create(:geofence_event, user:, place: duplicate)
+    webhook = create(:webhook, user:, place_ids: [duplicate.id])
+
+    described_class.new(user:, survivor:, duplicate:).call
+
+    expect(survivor.reload).to be_geofence
+    expect(event.reload.place_id).to eq(survivor.id)
+    expect(webhook.reload).to have_attributes(place_ids: [survivor.id], active: true)
+  end
+
   it 'blocks a merge when Visit timestamps would collide' do
     started_at = Time.zone.parse('2026-09-01 12:00:00')
     survivor_visit = create(:visit, user:, place: survivor, started_at:)

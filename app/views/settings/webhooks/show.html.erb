@@ -31,7 +31,7 @@
                   <td class="whitespace-nowrap tabular-nums"><%= l(delivery.created_at.in_time_zone, format: :short) %></td>
                   <td>
                     <%= t("settings.geofencing.show.event_types.#{delivery.geofence_event.event_type}") %>
-                    · <%= delivery.geofence_event.area.name %>
+                    · <%= delivery.geofence_event.place.name %>
                     <% if delivery.geofence_event.synthetic? %><span class="badge badge-ghost badge-sm"><%= t("#{s}.test") %></span><% end %>
                   </td>
                   <td class="whitespace-nowrap">

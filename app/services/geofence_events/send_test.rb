@@ -11,28 +11,28 @@ module GeofenceEvents
     end
 
     def call
-      area = target_area
-      return if area.nil?
+      place = target_place
+      return if place.nil?
 
-      delivery = WebhookDelivery.create!(webhook: @webhook, geofence_event: synthetic_event(area))
+      delivery = WebhookDelivery.create!(webhook: @webhook, geofence_event: synthetic_event(place))
       Webhooks::DeliverJob.perform_later(delivery.id)
       delivery
     end
 
     private
 
-    def target_area
-      areas = @webhook.user.areas.order(:id)
-      (@webhook.area_ids.any? ? areas.where(id: @webhook.area_ids) : areas).first
+    def target_place
+      places = @webhook.user.places.geofences.order(:id)
+      (@webhook.place_ids.any? ? places.where(id: @webhook.place_ids) : places).first
     end
 
-    def synthetic_event(area)
+    def synthetic_event(place)
       now = Time.current
       GeofenceEvent.create!(
-        user: @webhook.user, area:, synthetic: true, source: :native_app,
+        user: @webhook.user, place:, synthetic: true, source: :native_app,
         event_type: @webhook.event_types.include?(Webhook::EVENT_TYPES['enter']) ? :enter : :leave,
         occurred_at: now, received_at: now, metadata: { 'test' => true },
-        lonlat: "POINT(#{area.longitude} #{area.latitude})"
+        lonlat: "POINT(#{place.lon} #{place.lat})"
       )
     end
   end

@@ -7,6 +7,10 @@ FactoryBot.define do
     longitude { 13.0948638 }
     user
 
+    trait :geofence do
+      geofence { true }
+    end
+
     trait :with_geodata do
       geodata do
         {

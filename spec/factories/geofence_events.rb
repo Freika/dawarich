@@ -3,7 +3,7 @@
 FactoryBot.define do
   factory :geofence_event do
     user
-    area { association :area, user: }
+    place { association :place, :geofence, user: }
     event_type { :enter }
     source { :native_app }
     occurred_at { Time.current }

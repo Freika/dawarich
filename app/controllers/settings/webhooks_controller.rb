@@ -7,7 +7,7 @@ class Settings::WebhooksController < ApplicationController
   before_action :set_webhook, except: :create
 
   def show
-    @deliveries = @webhook.webhook_deliveries.includes(geofence_event: :area).order(created_at: :desc).limit(50)
+    @deliveries = @webhook.webhook_deliveries.includes(geofence_event: :place).order(created_at: :desc).limit(50)
   end
 
   def create
@@ -45,7 +45,7 @@ class Settings::WebhooksController < ApplicationController
   end
 
   def test
-    message = GeofenceEvents::SendTest.call(@webhook) ? t('.sent') : t('.no_area')
+    message = GeofenceEvents::SendTest.call(@webhook) ? t('.sent') : t('.no_place')
     respond_with_flash(message)
   end
 
@@ -73,8 +73,8 @@ class Settings::WebhooksController < ApplicationController
   end
 
   def webhook_params
-    params.require(:webhook).permit(:name, :url, :active, event_types: [], area_ids: []).tap do |permitted|
-      permitted[:area_ids] = permitted[:area_ids].compact_blank.map(&:to_i) if permitted.key?(:area_ids)
+    params.require(:webhook).permit(:name, :url, :active, event_types: [], place_ids: []).tap do |permitted|
+      permitted[:place_ids] = permitted[:place_ids].compact_blank.map(&:to_i) if permitted.key?(:place_ids)
     end
   end
 

@@ -14,7 +14,7 @@ RSpec.describe Webhooks::CleanupDeliveriesJob do
 
   it 'deletes old test events but keeps real ones' do
     old_test = create(:geofence_event, synthetic: true, created_at: 31.days.ago)
-    old_real = create(:geofence_event, user: old_test.user, area: old_test.area, created_at: 31.days.ago)
+    old_real = create(:geofence_event, user: old_test.user, place: old_test.place, created_at: 31.days.ago)
 
     described_class.perform_now
 

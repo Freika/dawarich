@@ -6,18 +6,18 @@ RSpec.describe GeofenceEvents::Record do
   include ActiveJob::TestHelper
 
   let(:user) { create(:user) }
-  let(:area) { create(:area, user:) }
+  let(:place) { create(:place, :geofence, user:) }
   let!(:webhook) { create(:webhook, user:) }
 
   before { GeofenceEvents::StateStore.new(user).reset! }
 
   def record(event_type, source: :server_inferred, occurred_at: Time.current, **options)
-    described_class.call(user:, area:, event_type:, source:, occurred_at:,
+    described_class.call(user:, place:, event_type:, source:, occurred_at:,
                          lonlat: 'POINT(13.539 52.437)', **options)
   end
 
   it 'stores an enter and queues one delivery per subscribed webhook' do
-    create(:webhook, user:, area_ids: [create(:area, user:).id])
+    create(:webhook, user:, place_ids: [create(:place, :geofence, user:).id])
 
     expect { record(:enter) }.to have_enqueued_job(Webhooks::DeliverJob).exactly(:once)
     expect(GeofenceEvent.real.where(user:, event_type: :enter).count).to eq(1)
@@ -96,9 +96,9 @@ RSpec.describe GeofenceEvents::Record do
 
   it 'drops a replayed older phone transition that is already recorded' do
     occurred_at = 10.minutes.ago
-    first = described_class.call(user:, area:, event_type: :enter, source: :native_app, occurred_at:,
+    first = described_class.call(user:, place:, event_type: :enter, source: :native_app, occurred_at:,
                                  lonlat: 'POINT(13.539 52.437)', apply_state: false)
-    replay = described_class.call(user:, area:, event_type: :enter, source: :native_app,
+    replay = described_class.call(user:, place:, event_type: :enter, source: :native_app,
                                   occurred_at: occurred_at + 30.seconds, lonlat: 'POINT(13.539 52.437)',
                                   apply_state: false)
 
@@ -111,6 +111,6 @@ RSpec.describe GeofenceEvents::Record do
     record(:enter)
 
     expect(record(:leave, source: :native_app, apply_state: false)).to be_present
-    expect(GeofenceEvents::StateStore.new(user).inside_ids).to include(area.id)
+    expect(GeofenceEvents::StateStore.new(user).inside_ids).to include(place.id)
   end
 end

@@ -29,6 +29,7 @@ RSpec.describe 'Places API', type: :request do
                    longitude: { type: :number, format: :float },
                    source: { type: :string },
                    visit_radius: { type: :integer, minimum: 1, default: 50 },
+                   geofence: { type: :boolean, description: 'Report enter and leave events for this place' },
                    icon: { type: :string, nullable: true },
                    color: { type: :string, nullable: true },
                    visits_count: { type: :integer },
@@ -78,6 +79,7 @@ RSpec.describe 'Places API', type: :request do
           longitude: { type: :number, format: :float },
           source: { type: :string },
           visit_radius: { type: :integer, minimum: 1, default: 50 },
+          geofence: { type: :boolean, description: 'Report enter and leave events for this place' },
           tag_ids: { type: :array, items: { type: :integer } }
         },
         required: %w[name latitude longitude]
@@ -92,6 +94,7 @@ RSpec.describe 'Places API', type: :request do
                  longitude: { type: :number, format: :float },
                  source: { type: :string },
                  visit_radius: { type: :integer, minimum: 1, default: 50 },
+                 geofence: { type: :boolean, description: 'Report enter and leave events for this place' },
                  icon: { type: :string, nullable: true },
                  color: { type: :string, nullable: true },
                  visits_count: { type: :integer },
@@ -205,6 +208,7 @@ RSpec.describe 'Places API', type: :request do
                  longitude: { type: :number, format: :float },
                  source: { type: :string },
                  visit_radius: { type: :integer, minimum: 1, default: 50 },
+                 geofence: { type: :boolean, description: 'Report enter and leave events for this place' },
                  icon: { type: :string, nullable: true },
                  color: { type: :string, nullable: true },
                  visits_count: { type: :integer },

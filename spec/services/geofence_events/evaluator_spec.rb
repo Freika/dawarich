@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe GeofenceEvents::Evaluator do
   let(:user) { create(:user) }
-  let!(:area) { create(:area, user:, latitude: 52.52, longitude: 13.405, radius: 100) }
+  let!(:place) { create(:place, :geofence, user:, latitude: 52.52, longitude: 13.405, visit_radius: 100) }
   let(:start) { 2.hours.ago.to_i }
 
   before { GeofenceEvents::StateStore.new(user).reset! }
@@ -76,13 +76,13 @@ RSpec.describe GeofenceEvents::Evaluator do
     expect(events).to be_empty
   end
 
-  it 'never leaves an area that was deleted' do
-    other = create(:area, user:, latitude: 52.52, longitude: 13.405, radius: 100)
+  it 'never leaves a place that was deleted' do
+    other = create(:place, :geofence, user:, latitude: 52.52, longitude: 13.405, visit_radius: 100)
     ingest(at(13.4050, 0))
-    area.destroy!
+    place.destroy!
 
     expect { ingest(at(13.4100, 1)) }.not_to raise_error
-    expect(GeofenceEvent.pluck(:area_id, :event_type)).to eq([[other.id, 'enter'], [other.id, 'leave']])
+    expect(GeofenceEvent.pluck(:place_id, :event_type)).to eq([[other.id, 'enter'], [other.id, 'leave']])
   end
 
   it 'keeps ingesting when evaluation fails' do
@@ -91,7 +91,7 @@ RSpec.describe GeofenceEvents::Evaluator do
     expect { ingest(at(13.4050, 0)) }.to change(Point, :count).by(1)
   end
 
-  it 'only checks for areas for a user without any' do
+  it 'only checks for places for a user without any' do
     other = create(:user)
     statements = []
     callback = ->(*, payload) { statements << payload[:sql] }
@@ -102,6 +102,6 @@ RSpec.describe GeofenceEvents::Evaluator do
     end
 
     expect(statements.size).to eq(1)
-    expect(statements.first).to include('"areas"')
+    expect(statements.first).to include('"places"')
   end
 end

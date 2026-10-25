@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Webhook do
   let(:user) { create(:user) }
-  let(:area) { create(:area, user:) }
+  let(:place) { create(:place, :geofence, user:) }
 
   it 'generates a secret on create' do
     expect(create(:webhook, user:).secret).to match(/\A\h{64}\z/)
@@ -15,14 +15,14 @@ RSpec.describe Webhook do
   end
 
   describe '#subscribed_to?' do
-    it 'follows the active flag, event types and the area filter' do
-      other = create(:area, user:)
+    it 'follows the active flag, event types and the place filter' do
+      other = create(:place, :geofence, user:)
 
-      expect(build(:webhook, user:).subscribed_to?(area:, event_type: 'enter')).to be(true)
-      expect(build(:webhook, user:, active: false).subscribed_to?(area:, event_type: 'enter')).to be(false)
-      expect(build(:webhook, user:, event_types: [1]).subscribed_to?(area:, event_type: 'enter')).to be(false)
-      expect(build(:webhook, user:, area_ids: [other.id]).subscribed_to?(area:, event_type: 'leave')).to be(false)
-      expect(build(:webhook, user:, area_ids: [area.id]).subscribed_to?(area:, event_type: 'leave')).to be(true)
+      expect(build(:webhook, user:).subscribed_to?(place:, event_type: 'enter')).to be(true)
+      expect(build(:webhook, user:, active: false).subscribed_to?(place:, event_type: 'enter')).to be(false)
+      expect(build(:webhook, user:, event_types: [1]).subscribed_to?(place:, event_type: 'enter')).to be(false)
+      expect(build(:webhook, user:, place_ids: [other.id]).subscribed_to?(place:, event_type: 'leave')).to be(false)
+      expect(build(:webhook, user:, place_ids: [place.id]).subscribed_to?(place:, event_type: 'leave')).to be(true)
     end
   end
 
@@ -74,9 +74,9 @@ RSpec.describe Webhook do
       expect(build(:webhook, user:, event_types: %w[linger])).not_to be_valid
     end
 
-    it 'accepts only the user\'s own areas' do
-      expect(build(:webhook, user:, area_ids: [create(:area).id])).not_to be_valid
-      expect(build(:webhook, user:, area_ids: [area.id])).to be_valid
+    it 'accepts only the user\'s own places' do
+      expect(build(:webhook, user:, place_ids: [create(:place, :geofence).id])).not_to be_valid
+      expect(build(:webhook, user:, place_ids: [place.id])).to be_valid
     end
   end
 

@@ -1761,7 +1761,7 @@ paths:
         description: API Key
         schema:
           type: string
-      - name: area_id
+      - name: place_id
         in: query
         required: false
         schema:
@@ -1802,9 +1802,9 @@ paths:
                   properties:
                     id:
                       type: integer
-                    area_id:
+                    place_id:
                       type: integer
-                    area_name:
+                    place_name:
                       type: string
                     event_type:
                       type: string
@@ -3569,6 +3569,9 @@ paths:
                       type: integer
                       minimum: 1
                       default: 50
+                    geofence:
+                      type: boolean
+                      description: Report enter and leave events for this place
                     icon:
                       type: string
                       nullable: true
@@ -3635,6 +3638,9 @@ paths:
                     type: integer
                     minimum: 1
                     default: 50
+                  geofence:
+                    type: boolean
+                    description: Report enter and leave events for this place
                   icon:
                     type: string
                     nullable: true
@@ -3672,6 +3678,9 @@ paths:
                   type: integer
                   minimum: 1
                   default: 50
+                geofence:
+                  type: boolean
+                  description: Report enter and leave events for this place
                 tag_ids:
                   type: array
                   items:
@@ -3790,6 +3799,9 @@ paths:
                     type: integer
                     minimum: 1
                     default: 50
+                  geofence:
+                    type: boolean
+                    description: Report enter and leave events for this place
                   icon:
                     type: string
                     nullable: true
@@ -4114,9 +4126,9 @@ paths:
       summary: Reports a geofence enter or leave detected on the device
       tags:
       - Geofencing
-      description: Records an area enter/leave reported by the mobile app and delivers
-        it to the user's webhooks. Transitions older than 24 hours or more than 5
-        minutes in the future are rejected.
+      description: Records an enter or leave of a notifying place reported by the
+        mobile app and delivers it to the user's webhooks. Transitions older than
+        24 hours or more than 5 minutes in the future are rejected.
       parameters:
       - name: api_key
         in: query
@@ -4128,7 +4140,7 @@ paths:
         '201':
           description: transition recorded
         '204':
-          description: area does not belong to the user
+          description: place does not belong to the user or does not notify
         '422':
           description: invalid transition
         '401':
@@ -4139,12 +4151,12 @@ paths:
             schema:
               type: object
               required:
-              - area_id
+              - place_id
               - event_type
               - occurred_at
               - lonlat
               properties:
-                area_id:
+                place_id:
                   type: integer
                 event_type:
                   type: string
@@ -6908,7 +6920,7 @@ paths:
                       type: array
                       items:
                         type: integer
-                    area_ids:
+                    place_ids:
                       type: array
                       items:
                         type: integer

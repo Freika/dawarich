@@ -38,7 +38,7 @@ class Api::V1::WebhooksController < ApiController
 
   def test
     delivery = GeofenceEvents::SendTest.call(@webhook)
-    return render json: { error: 'no_area' }, status: :unprocessable_content unless delivery
+    return render json: { error: 'no_place' }, status: :unprocessable_content unless delivery
 
     render json: { delivery_id: delivery.id }, status: :accepted
   end
@@ -55,6 +55,6 @@ class Api::V1::WebhooksController < ApiController
   end
 
   def webhook_params
-    params.require(:webhook).permit(:name, :url, :active, event_types: [], area_ids: [])
+    params.require(:webhook).permit(:name, :url, :active, event_types: [], place_ids: [])
   end
 end

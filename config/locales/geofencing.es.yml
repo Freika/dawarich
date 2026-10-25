@@ -19,7 +19,7 @@ es:
     geofencing:
       show:
         title: Geovallas
-        intro: Dawarich registra cuándo entras o sales de una de tus zonas —según tu teléfono o a partir de los puntos que recibe— y puede enviar cada evento a tus propios servicios.
+        intro: "Dawarich registra cuándo entras o sales de un lugar con «Avisar al entrar y salir» activado —según tu teléfono o a partir de los puntos que recibe— y puede enviar cada evento a tus propios servicios."
         webhooks: Webhooks
         webhooks_intro: Cada evento se envía como un POST JSON firmado. Compara la cabecera X-Dawarich-Signature con un HMAC-SHA256 del cuerpo calculado con tu secreto.
         no_webhooks: Todavía no hay webhooks.
@@ -28,9 +28,11 @@ es:
         upgrade_text: Envía entradas y salidas a Home Assistant, Node-RED, n8n o tu propio servicio.
         upgrade: Pasar a Pro
         events: Eventos
-        no_events: Todavía no hay eventos. Aparecen cuando tu teléfono o tu app de seguimiento informa de un punto dentro de una de tus zonas.
-        area: Zona
-        all_areas: Todas las zonas
+        no_events: "Todavía no hay eventos. Aparecen cuando tu teléfono o tu app de seguimiento informa de un punto dentro de uno de estos lugares."
+        no_places: "Ningún lugar avisa todavía al entrar o salir. Abre un lugar y activa «Avisar al entrar y salir»."
+        open_places: "Abrir lugares"
+        place: "Lugar"
+        all_places: "Todos los lugares"
         from: Desde
         to: Hasta
         filter: Filtrar
@@ -54,8 +56,8 @@ es:
         name: Nombre
         url: URL
         events: Eventos
-        areas: Zonas
-        areas_hint: Déjalas sin marcar para recibir eventos de todas las zonas.
+        places: "Lugares"
+        places_hint: "Déjalos sin marcar para recibir eventos de todos los lugares que avisan."
         home_assistant_hint: "Home Assistant responde 200 a todas las solicitudes, incluso si el ID del webhook es incorrecto, así que «Enviado» aquí no demuestra que tu automatización se ejecutó: revisa su traza en Home Assistant. Home Assistant no puede comprobar la firma; lo que mantiene privado el webhook es su ID en la URL."
         home_assistant_cloud_hint: "Por defecto, Home Assistant solo acepta webhooks de su propia red. Usa una URL de webhook de Nabu Casa o desactiva local_only en los ajustes de webhook del disparador."
         active: Activo
@@ -65,10 +67,10 @@ es:
         active: Activo
         inactive: Desactivado
         failing: Con fallos
-        every_area: Todas las zonas
-        areas_count:
-          one: '%{count} zona'
-          other: '%{count} zonas'
+        every_place: "Todos los lugares"
+        places_count:
+          one: "%{count} lugar"
+          other: "%{count} lugares"
         last_success: Último envío hace %{time}
         never_delivered: Aún no se ha enviado nada
         failures:
@@ -109,6 +111,11 @@ es:
         deleted: Webhook eliminado.
       test:
         sent: Evento de prueba enviado.
-        no_area: Crea primero una zona para enviar un evento de prueba.
+        no_place: "Activa primero «Avisar al entrar y salir» en un lugar para enviar un evento de prueba."
       retry_delivery:
         queued: Envío programado de nuevo.
+  places:
+    drawer:
+      geofence: "Avisar al entrar y salir"
+      geofence_hint: "Usa el radio de visita (%{radius} m)."
+      geofence_link: "Eventos y webhooks"

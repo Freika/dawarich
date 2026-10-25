@@ -23,12 +23,12 @@ module GeofenceEvents
       end
     end
 
-    def enter!(area_id)
-      change('SADD', area_id)
+    def enter!(place_id)
+      change('SADD', place_id)
     end
 
-    def leave!(area_id)
-      change('SREM', area_id)
+    def leave!(place_id)
+      change('SREM', place_id)
     end
 
     def evaluated_at
@@ -45,26 +45,26 @@ module GeofenceEvents
 
     private
 
-    def change(command, area_id)
+    def change(command, place_id)
       with_redis do |redis|
         ensure_built(redis)
-        redis.call(command, inside_key, area_id).to_i == 1
+        redis.call(command, inside_key, place_id).to_i == 1
       end
     end
 
     def ensure_built(redis)
       return if redis.call('EXISTS', ready_key).to_i == 1
 
-      ids = areas_entered_last
+      ids = places_entered_last
       redis.call('SADD', inside_key, *ids) if ids.any?
       redis.call('SET', ready_key, '1')
     end
 
-    def areas_entered_last
+    def places_entered_last
       GeofenceEvent.real.where(user_id: @user.id)
-                   .select('DISTINCT ON (area_id) area_id, event_type')
-                   .order(:area_id, occurred_at: :desc, id: :desc)
-                   .select(&:event_type_enter?).map(&:area_id)
+                   .select('DISTINCT ON (place_id) place_id, event_type')
+                   .order(:place_id, occurred_at: :desc, id: :desc)
+                   .select(&:event_type_enter?).map(&:place_id)
     end
 
     def with_redis(&)

@@ -64,6 +64,7 @@ class Places::OrphanCleanupJob < ApplicationJob
         AND p.source = #{Place.sources[:photon]}
         AND (p.note IS NULL OR p.note = '')
         AND p.name_locked_at IS NULL
+        AND NOT p.geofence
         AND v.id IS NULL
         AND t.id IS NULL
         AND m.id IS NULL

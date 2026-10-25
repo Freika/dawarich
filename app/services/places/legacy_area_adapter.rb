@@ -77,7 +77,7 @@ module Places
     end
 
     def create_place(area)
-      place = user.places.build(place_attributes(area).merge(source: :manual))
+      place = user.places.build(place_attributes(area).merge(source: :manual, geofence: true))
       place.user_named = true
       place.reattribute_suggested_visits_on_create = true
       place.save!

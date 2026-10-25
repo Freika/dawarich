@@ -8,8 +8,8 @@ class GeofenceEventSerializer
   def call
     {
       id: @event.id,
-      area_id: @event.area_id,
-      area_name: @event.area.name,
+      place_id: @event.place_id,
+      place_name: @event.place.name,
       event_type: @event.event_type,
       source: @event.source,
       occurred_at: @event.occurred_at.utc.iso8601,

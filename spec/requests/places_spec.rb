@@ -598,6 +598,17 @@ RSpec.describe '/places', type: :request do
       expect_turbo_stream_response
       expect_turbo_stream_action('update', 'place-drawer')
     end
+
+    it 'turns enter and leave notifications on and shows the switch on' do
+      patch place_url(place),
+            params: { place: { geofence: '1' } },
+            headers: { 'Turbo-Frame' => 'place-drawer' },
+            as: :turbo_stream
+
+      expect(place.reload).to be_geofence
+      toggle = Nokogiri::HTML(response.body).at_css('[data-testid="place-geofence-toggle"]')
+      expect(toggle['checked']).to eq('checked')
+    end
   end
 
   describe 'name locking' do

@@ -77,7 +77,7 @@ RSpec.describe Places::LegacyAreaAdapter do
   it 'creates and updates the compatibility shell together with its Place' do
     area, place = adapter.create(name: 'Work', latitude: 52.5, longitude: 13.4, radius: 90)
 
-    expect(place).to have_attributes(name: 'Work', visit_radius: 90)
+    expect(place).to have_attributes(name: 'Work', visit_radius: 90, geofence: true)
 
     adapter.update(area, name: 'Office', latitude: 52.51, longitude: 13.41, radius: 120)
 

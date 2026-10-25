@@ -82,6 +82,14 @@ RSpec.describe Places::OrphanCleanupJob, type: :job do
       expect(Area.exists?(area.id)).to be(true)
     end
 
+    it 'keeps discovered Places that notify on enter and leave' do
+      place = create(:place, :geofence, user: user, source: :photon)
+
+      described_class.new.perform(user.id)
+
+      expect(Place.exists?(place.id)).to be(true)
+    end
+
     it 'keeps Places with an attached timeline note' do
       place = create(:place, user: user, source: :photon, note: nil)
       create(:note, user: user, attachable: place)

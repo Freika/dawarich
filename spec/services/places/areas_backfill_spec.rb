@@ -14,7 +14,7 @@ RSpec.describe Places::AreasBackfill do
       mapping = LegacyAreaPlaceMapping.find_by!(area: area)
       expect(mapping.place).to have_attributes(
         name: 'Home', latitude: area.latitude, longitude: area.longitude,
-        visit_radius: 125, source: 'manual'
+        visit_radius: 125, source: 'manual', geofence: true
       )
       expect(mapping.place).to be_name_locked
       expect(report).to include(areas_scanned: 1, places_created: 1)
@@ -40,7 +40,7 @@ RSpec.describe Places::AreasBackfill do
       backfill.call
 
       expect(LegacyAreaPlaceMapping.find_by!(area: area).place).to eq(place)
-      expect(place.reload).to have_attributes(source: 'manual', name_locked_at: be_present)
+      expect(place.reload).to have_attributes(source: 'manual', name_locked_at: be_present, geofence: true)
     end
 
     it 'does not merge Places based on proximity alone' do
@@ -175,6 +175,8 @@ RSpec.describe Places::AreasBackfill do
         ActiveSupport::Notifications.subscribed(collect, 'sql.active_record') { backfill.migrate(area) }
         statements.size
       end
+
+      queries_to_migrate.call(1)
 
       expect(queries_to_migrate.call(6)).to eq(queries_to_migrate.call(1))
     end

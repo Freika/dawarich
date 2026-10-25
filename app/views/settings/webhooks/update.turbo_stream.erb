@@ -1,2 +1,2 @@
-<%= turbo_stream.replace dom_id(@webhook), partial: 'settings/webhooks/webhook', locals: { webhook: @webhook, areas: current_user.areas.order(:name) } %>
+<%= turbo_stream.replace dom_id(@webhook), partial: 'settings/webhooks/webhook', locals: { webhook: @webhook, places: current_user.places.geofences.order(:name) } %>
 <%= turbo_stream.append('flash-messages', partial: 'shared/flash_message', locals: { type: :notice, message: t('settings.webhooks.update.updated') }) %>

@@ -19,7 +19,7 @@ zh:
     geofencing:
       show:
         title: 地理围栏
-        intro: Dawarich 会记录你进入或离开某个区域的时间（来自手机上报或根据收到的位置点推断），并可以把每个事件发送到你自己的服务。
+        intro: "对于开启了“进入和离开时通知”的地点，Dawarich 会记录你进入或离开的时间（来自手机上报或根据收到的位置点推断），并可以把每个事件发送到你自己的服务。"
         webhooks: Webhook
         webhooks_intro: 每个事件都以签名的 JSON POST 发送。用你的密钥对请求体计算 HMAC-SHA256，并与 X-Dawarich-Signature 请求头比对。
         no_webhooks: 还没有 Webhook。
@@ -28,9 +28,11 @@ zh:
         upgrade_text: 把进入和离开事件发送到 Home Assistant、Node-RED、n8n 或你自己的服务。
         upgrade: 升级到 Pro
         events: 事件
-        no_events: 还没有进入或离开事件。当手机或追踪应用报告某个区域内的位置点时，事件会出现在这里。
-        area: 区域
-        all_areas: 所有区域
+        no_events: "还没有进入或离开事件。当手机或追踪应用报告这些地点内的位置点时，事件会出现在这里。"
+        no_places: "还没有地点会报告进入和离开。打开一个地点并开启“进入和离开时通知”。"
+        open_places: "打开地点"
+        place: "地点"
+        all_places: "所有地点"
         from: 从
         to: 到
         filter: 筛选
@@ -54,8 +56,8 @@ zh:
         name: 名称
         url: URL
         events: 事件
-        areas: 区域
-        areas_hint: 全部不选即可接收所有区域的事件。
+        places: "地点"
+        places_hint: "全部不选即可接收所有开启通知的地点的事件。"
         home_assistant_hint: "Home Assistant 对每个请求都返回 200，即使 webhook ID 有误，因此这里的“已投递”并不能证明你的自动化已运行：请在 Home Assistant 中查看其跟踪记录。Home Assistant 无法校验签名；让 webhook 保持私密的是 URL 中的 webhook ID。"
         home_assistant_cloud_hint: "默认情况下，Home Assistant 只接受来自其本地网络的 webhook。请使用 Nabu Casa 的 webhook URL，或在触发器的 webhook 设置中关闭 local_only。"
         active: 启用
@@ -65,10 +67,10 @@ zh:
         active: 已启用
         inactive: 已停用
         failing: 投递失败
-        every_area: 所有区域
-        areas_count:
-          one: '%{count} 个区域'
-          other: '%{count} 个区域'
+        every_place: "所有地点"
+        places_count:
+          one: "%{count} 个地点"
+          other: "%{count} 个地点"
         last_success: 最近一次投递于 %{time}前
         never_delivered: 尚未投递
         failures:
@@ -109,6 +111,11 @@ zh:
         deleted: 已删除 Webhook。
       test:
         sent: 已发送测试事件。
-        no_area: 请先创建一个区域，再发送测试事件。
+        no_place: "请先为一个地点开启“进入和离开时通知”，再发送测试事件。"
       retry_delivery:
         queued: 已重新安排投递。
+  places:
+    drawer:
+      geofence: "进入和离开时通知"
+      geofence_hint: "使用访问半径（%{radius} 米）。"
+      geofence_link: "事件和 webhook"

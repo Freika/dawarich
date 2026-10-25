@@ -4,8 +4,8 @@ class Api::V1::GeofenceEventsController < ApiController
   before_action :authenticate_active_api_user!
 
   def index
-    events = current_api_user.geofence_events.real.includes(:area).order(occurred_at: :desc, id: :desc)
-    events = events.where(area_id: params[:area_id]) if params[:area_id].present?
+    events = current_api_user.geofence_events.real.includes(:place).order(occurred_at: :desc, id: :desc)
+    events = events.where(place_id: params[:place_id]) if params[:place_id].present?
     events = events.where(occurred_at: current_api_user.data_window_start..) if current_api_user.plan_restricted?
     events = within_dates(events).page(params[:page]).per(per_page)
 

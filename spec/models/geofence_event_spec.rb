@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe GeofenceEvent do
   it 'keeps synthetic test events out of the real scope' do
     real = create(:geofence_event)
-    create(:geofence_event, user: real.user, area: real.area, synthetic: true)
+    create(:geofence_event, user: real.user, place: real.place, synthetic: true)
 
     expect(described_class.real).to contain_exactly(real)
   end

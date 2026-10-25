@@ -19,8 +19,7 @@ de:
     geofencing:
       show:
         title: Geofencing
-        intro: Dawarich erfasst, wann du einen deiner Bereiche betrittst oder verlässt – gemeldet vom Handy oder ermittelt aus den empfangenen Punkten – und kann jedes Ereignis an deine eigenen Dienste
-          senden.
+        intro: "Dawarich erfasst, wann du einen Ort betrittst oder verlässt, für den „Bei Betreten und Verlassen melden“ eingeschaltet ist – gemeldet vom Handy oder ermittelt aus den empfangenen Punkten – und kann jedes Ereignis an deine eigenen Dienste senden."
         webhooks: Webhooks
         webhooks_intro: Jedes Ereignis wird als signierter JSON-POST gesendet. Vergleiche den Header X-Dawarich-Signature mit einem HMAC-SHA256 des Inhalts, gebildet mit deinem Secret.
         no_webhooks: Noch keine Webhooks.
@@ -29,9 +28,11 @@ de:
         upgrade_text: Sende Betreten- und Verlassen-Ereignisse an Home Assistant, Node-RED, n8n oder deinen eigenen Dienst.
         upgrade: Auf Pro upgraden
         events: Ereignisse
-        no_events: Noch keine Ereignisse. Sie erscheinen, sobald dein Handy oder deine Tracking-App einen Punkt in einem deiner Bereiche meldet.
-        area: Bereich
-        all_areas: Alle Bereiche
+        no_events: "Noch keine Ereignisse. Sie erscheinen, sobald dein Handy oder deine Tracking-App einen Punkt an einem dieser Orte meldet."
+        no_places: "Noch meldet kein Ort Betreten und Verlassen. Öffne einen Ort und schalte „Bei Betreten und Verlassen melden“ ein."
+        open_places: "Orte öffnen"
+        place: "Ort"
+        all_places: "Alle Orte"
         from: Von
         to: Bis
         filter: Filtern
@@ -55,8 +56,8 @@ de:
         name: Name
         url: URL
         events: Ereignisse
-        areas: Bereiche
-        areas_hint: Lass alle leer, um Ereignisse für jeden Bereich zu erhalten.
+        places: "Orte"
+        places_hint: "Lass alle leer, um Ereignisse für jeden meldenden Ort zu erhalten."
         home_assistant_hint: "Home Assistant beantwortet jede Anfrage mit 200, auch bei falscher Webhook-ID. „Zugestellt“ heißt hier also nicht, dass deine Automatisierung gelaufen ist: Prüfe ihren Trace in Home Assistant. Home Assistant kann die Signatur nicht prüfen; privat bleibt der Webhook nur durch die ID in der URL."
         home_assistant_cloud_hint: "Standardmäßig nimmt Home Assistant Webhooks nur aus dem eigenen Netzwerk an. Nutze eine Nabu-Casa-Webhook-URL oder schalte local_only in den Webhook-Einstellungen des Auslösers aus."
         active: Aktiv
@@ -66,10 +67,10 @@ de:
         active: Aktiv
         inactive: Deaktiviert
         failing: Fehlerhaft
-        every_area: Jeder Bereich
-        areas_count:
-          one: '%{count} Bereich'
-          other: '%{count} Bereiche'
+        every_place: "Jeder Ort"
+        places_count:
+          one: "%{count} Ort"
+          other: "%{count} Orte"
         last_success: Zuletzt zugestellt vor %{time}
         never_delivered: Noch nichts zugestellt
         failures:
@@ -110,6 +111,11 @@ de:
         deleted: Webhook gelöscht.
       test:
         sent: Testereignis gesendet.
-        no_area: Lege zuerst einen Bereich an, um ein Testereignis zu senden.
+        no_place: "Schalte zuerst für einen Ort „Bei Betreten und Verlassen melden“ ein, um ein Testereignis zu senden."
       retry_delivery:
         queued: Zustellung erneut eingeplant.
+  places:
+    drawer:
+      geofence: "Bei Betreten und Verlassen melden"
+      geofence_hint: "Nutzt den Besuchsradius (%{radius} m)."
+      geofence_link: "Ereignisse und Webhooks"

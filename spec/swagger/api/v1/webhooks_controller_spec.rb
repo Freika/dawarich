@@ -10,7 +10,7 @@ RSpec.describe 'Webhooks API', type: :request do
       properties: {
         id: { type: :integer }, name: { type: :string }, url: { type: :string },
         event_types: { type: :array, items: { type: :integer }, description: '0 = enter, 1 = leave' },
-        area_ids: { type: :array, items: { type: :integer }, description: 'Empty = every area' },
+        place_ids: { type: :array, items: { type: :integer }, description: 'Empty = every place' },
         active: { type: :boolean }, consecutive_failures: { type: :integer },
         last_delivery_at: { type: :string, format: :'date-time', nullable: true },
         last_success_at: { type: :string, format: :'date-time', nullable: true }
@@ -45,7 +45,7 @@ RSpec.describe 'Webhooks API', type: :request do
             properties: {
               name: { type: :string }, url: { type: :string },
               event_types: { type: :array, items: { type: :integer } },
-              area_ids: { type: :array, items: { type: :integer } }, active: { type: :boolean }
+              place_ids: { type: :array, items: { type: :integer } }, active: { type: :boolean }
             }
           }
         }
@@ -76,7 +76,7 @@ RSpec.describe 'Webhooks API', type: :request do
       response '202', 'test delivery queued' do
         let(:id) { create(:webhook, user:).id }
 
-        before { create(:area, user:) }
+        before { create(:place, :geofence, user:) }
 
         run_test!
       end

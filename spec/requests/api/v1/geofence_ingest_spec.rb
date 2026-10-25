@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe 'Geofence evaluation on point ingest', type: :request do
   let(:user) { create(:user) }
-  let!(:area) { create(:area, user:, latitude: 52.52, longitude: 13.405, radius: 100) }
+  let!(:place) { create(:place, :geofence, user:, latitude: 52.52, longitude: 13.405, visit_radius: 100) }
   let(:time) { 5.minutes.ago.utc.change(usec: 0) }
   let(:feature) do
     { type: 'Feature', geometry: { type: 'Point', coordinates: [13.405, 52.52] },
@@ -14,7 +14,7 @@ RSpec.describe 'Geofence evaluation on point ingest', type: :request do
   before { GeofenceEvents::StateStore.new(user).reset! }
 
   def enters
-    GeofenceEvent.where(user:, area:, source: :server_inferred).event_type_enter
+    GeofenceEvent.where(user:, place:, source: :server_inferred).event_type_enter
   end
 
   it 'evaluates points from the points API' do

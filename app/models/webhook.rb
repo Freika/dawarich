@@ -12,7 +12,7 @@ class Webhook < ApplicationRecord
 
   validates :name, :url, presence: true
   validate :event_types_known
-  validate :areas_owned
+  validate :places_owned
   validate :within_limit, on: :create
   validate :url_is_allowed, if: -> { url.present? && will_save_change_to_url? }
 
@@ -35,13 +35,13 @@ class Webhook < ApplicationRecord
     resolve_integration_url!(url)
   end
 
-  def subscribed_to?(area:, event_type:)
+  def subscribed_to?(place:, event_type:)
     return false unless active?
 
     event_type_value = EVENT_TYPES[event_type.to_s]
     return false unless event_type_value && event_types.include?(event_type_value)
 
-    area_ids.empty? || area_ids.include?(area.id)
+    place_ids.empty? || place_ids.include?(place.id)
   end
 
   def home_assistant?
@@ -85,11 +85,11 @@ class Webhook < ApplicationRecord
     errors.add(:event_types, :invalid)
   end
 
-  def areas_owned
-    return if area_ids.blank?
-    return if user && user.areas.where(id: area_ids).count == area_ids.uniq.size
+  def places_owned
+    return if place_ids.blank?
+    return if user && user.places.where(geofence: true, id: place_ids).count == place_ids.uniq.size
 
-    errors.add(:area_ids, :invalid)
+    errors.add(:place_ids, :invalid)
   end
 
   def within_limit

@@ -35,17 +35,17 @@
     <% end %>
   </fieldset>
 
-  <% if areas.any? %>
+  <% if places.any? %>
     <fieldset>
-      <legend class="label-text mb-1"><%= t("#{f_scope}.areas") %></legend>
-      <p class="text-xs opacity-70 mb-1"><%= t("#{f_scope}.areas_hint") %></p>
-      <%= hidden_field_tag 'webhook[area_ids][]', '' %>
+      <legend class="label-text mb-1"><%= t("#{f_scope}.places") %></legend>
+      <p class="text-xs opacity-70 mb-1"><%= t("#{f_scope}.places_hint") %></p>
+      <%= hidden_field_tag 'webhook[place_ids][]', '' %>
       <div class="flex flex-wrap gap-x-4">
-        <% areas.each do |area| %>
+        <% places.each do |place| %>
           <label class="label cursor-pointer gap-2 py-1 text-sm">
-            <%= check_box_tag 'webhook[area_ids][]', area.id, webhook.area_ids.include?(area.id),
-                              id: "#{dom_id(webhook, :form)}_area_#{area.id}", class: 'checkbox checkbox-sm' %>
-            <span><%= area.name %></span>
+            <%= check_box_tag 'webhook[place_ids][]', place.id, webhook.place_ids.include?(place.id),
+                              id: "#{dom_id(webhook, :form)}_place_#{place.id}", class: 'checkbox checkbox-sm' %>
+            <span><%= place.name %></span>
           </label>
         <% end %>
       </div>

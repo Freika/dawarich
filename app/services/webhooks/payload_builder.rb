@@ -3,13 +3,13 @@
 module Webhooks
   class PayloadBuilder
     def self.call(event)
-      area = event.area
+      place = event.place
       {
         id: event.id,
         type: event.event_type,
-        area: {
-          id: area.id, name: area.name,
-          latitude: area.latitude.to_f, longitude: area.longitude.to_f, radius: area.radius
+        place: {
+          id: place.id, name: place.name,
+          latitude: place.lat, longitude: place.lon, radius: place.visit_radius
         },
         user_id: event.user_id,
         source: event.source,
