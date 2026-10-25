@@ -243,7 +243,7 @@ RSpec.describe Tracks::VectorTileQuery do
       rows = feature_rows(z: 2, x: 2, y: 1)
       coords = ActiveRecord::Base.connection.select_one(
         Track.sanitize_sql_array(
-          ['SELECT ST_X(ST_PointN(?::geometry, 2)) AS x, ST_Y(ST_PointN(?::geometry, 2)) AS y',
+          ['SELECT ST_X(ST_EndPoint(?::geometry)) AS x, ST_Y(ST_EndPoint(?::geometry)) AS y',
            rows.first['geom'], rows.first['geom']]
         )
       )
@@ -253,19 +253,19 @@ RSpec.describe Tracks::VectorTileQuery do
       expect(coords['y'].to_f).to be_within(2).of(2048)
     end
 
-    it 'pins classic parity for a seam-crossing track: the raw planar line spans the world band' do
+    it 'pins the seam artifact for a dateline-crossing track: the ±180 jump spans the world band' do
       create(:track, user:, original_path: 'LINESTRING(139.7 35.7, -118.2 34.05)')
 
       rows = feature_rows(z: 2, x: 2, y: 1)
 
-      # The planar line from Tokyo to LA crosses the central-Europe tile —
-      # exactly what classic GeoJSON rendering draws today. Documented artifact.
+      # The great circle from Tokyo to LA crosses the dateline over the Pacific;
+      # its 179.x → -179.x jump spans the central-Europe tile. Documented artifact.
       expect(rows.size).to eq(1)
 
       # Vertex VALUES, not mere presence: a future wrapped-branch attempt that
       # translated the geometry would change these coordinates without changing
       # the count. The clipped segment must run west-to-east across the whole
-      # tile at a roughly constant MVT y (the planar chord is near-horizontal).
+      # tile at a roughly constant MVT y (the jump chord is near-horizontal).
       coords = ActiveRecord::Base.connection.select_one(
         Track.sanitize_sql_array(
           ['SELECT ST_XMin(?::geometry) AS xmin, ST_XMax(?::geometry) AS xmax,

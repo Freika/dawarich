@@ -15,7 +15,7 @@ const { TimelineSegmentHover, segmentCoordinates } = await import(
 )
 const { TracksLayer } = await import(
   url(
-    `${await read("maps_maplibre/layers/base_layer.js")}\n${strip(await read("maps_maplibre/layers/tracks_layer.js"))}`,
+    `${await read("maps_maplibre/layers/base_layer.js")}\n${(await read("maps_maplibre/utils/flight_arcs.js")).replace(/^export /gm, "")}\n${strip(await read("maps_maplibre/layers/tracks_layer.js"))}`,
   )
 )
 globalThis.requestAnimationFrame = () => 1
@@ -124,14 +124,23 @@ function setup(fetcher = async () => full) {
 test("hover animates the exact segment and restores the full track, colors and opacity", async () => {
   const h = setup()
   await h.manager.hover(h.event())
-  assert.deepEqual(h.map.source.data.features[0].geometry.coordinates, [
-    [1, 1],
-    [2, 2],
-  ])
+  const drawn = h.map.source.data.features[0].geometry.coordinates
+  assert.deepEqual(
+    [drawn[0], drawn.at(-1)],
+    [
+      [1, 1],
+      [2, 2],
+    ],
+  )
   assert.equal(h.layer.flowTrackColor, "green")
   assert.equal(h.layer.animationActive, true)
   h.manager.leave()
-  assert.equal(h.map.source.data.features[0], full)
+  const restored = h.map.source.data.features[0].geometry.coordinates
+  assert.equal(h.layer.selectedFeature, full)
+  assert.deepEqual(
+    [restored[0], restored.at(-1)],
+    [full.geometry.coordinates[0], full.geometry.coordinates.at(-1)],
+  )
   assert.equal(h.layer.segmentsActive, true)
   assert.equal(h.map.opacity, 0.6)
   h.manager.destroy()

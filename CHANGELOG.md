@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Ruby version updated to 4.0.9
+
+### Fixed
+
+- On phones, the card asking whether to show "What's New" notices now fits on screen. Before, its left side, including the heading, was cut off.
+- The trip page no longer scrolls sideways on phones, and its download menu no longer opens partly off-screen. Long trip names and the Public badge of a shared trip used to push the page wider than the screen.
+- A visit is suggested again when tracking stops at a place and resumes at the same spot later, for example a shortcut that pauses tracking at the gym. Before, fixes taken while arriving and leaving could make the two sides look like different places, and no visit was suggested. Choose Re-run detection on full history on the Visits page to fix past stays (#3203)
+- Imports uploaded before 1.14.4 no longer show a `.zip` suffix in their names: `ride.gpx.zip` becomes `ride.gpx`. Imports you renamed yourself, and imports whose new name is already taken by another of your imports, keep their current names. (#3062)
+- Downloading an import now returns the original file instead of a ZIP archive when its filename has accented letters such as `ü` (also for imports that already downloaded as a ZIP) or characters such as `:`. New uploads with characters such as `:` also no longer get `.zip` added to their import name. (#3062)
+- Renaming a place now renames its visits that still show the old or default name; visits you named yourself keep their names, and visits already showing an outdated name stay as they are (#3353)
+- A track from another tracker, such as an imported watch GPX, now cuts a track whose gap it fills instead of that track bridging the gap with a straight line and counting the distance twice. Trackers that record alongside each other keep separate, whole tracks. Choose Recalculate tracks & stats to apply this to imports made before this release (#3424)
+- Flights are drawn along the great circle: straight on the globe and an arc on the flat map. A route over the North Pole no longer kinks or runs along the map's top edge; the part beyond the edge of the flat map is left out (#3261)
+
 ## [1.17.0] - 2026-10-23, Berlin
 
 Dawarich gets lighter and faster in this release. On a test account with a million points over three years, compared with 1.16.0:
