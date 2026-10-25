@@ -42,21 +42,25 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   end
 
   def process_chunk
+    return 0 if chunk_data[:untracked_only] && !untracked_points_in_buffer?
+
     # Load points for the buffer range
     points = load_chunk_points
     return 0 if points.empty?
 
-    # Segment points using Geocoder-based logic
-    segments = segment_chunk_points(points)
-    return 0 if segments.empty?
+    segment_chunk_points(points).sum { |segment| process_segment(segment) }
+  end
 
-    # Create tracks from segments
-    tracks_created = 0
-    segments.each do |segment_points|
-      tracks_created += 1 if create_track_from_points_array(segment_points)
+  def process_segment(segment)
+    singles, runs = untracked_runs(segment).partition(&:one?)
+    if singles.any?
+      context = singles.flatten.flat_map { |index| segment[[index - 1, 0].max..(index + 1)] }.uniq
+      Tracks::OrphanPointAttacher.new(user, singles.flatten.map { |index| segment[index] }, context).call
     end
 
-    tracks_created
+    runs.count do |indexes|
+      create_track_from_points_array(segment[[indexes.first - 1, 0].max..(indexes.last + 1)])
+    end
   end
 
   def load_chunk_points
@@ -70,20 +74,26 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
         .preload(:source)
   end
 
+  def untracked_points_in_buffer?
+    user.points
+        .not_anomaly
+        .where(track_id: nil)
+        .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
+        .exists?
+  end
+
   def segment_chunk_points(points)
     points.to_a
           .group_by { |p| p.tracker_id.to_s }
           .values
           .flat_map { |bucket| split_points_into_segments_geocoder(bucket) }
-          .select { |segment| segment_overlaps_chunk_range?(segment) }
-          .flat_map { |segment| untracked_runs(segment) }
   end
 
   def untracked_runs(segment)
     segment.each_index
            .chunk_while { |a, b| segment[a].track_id == segment[b].track_id }
            .select { |indexes| segment[indexes.first].track_id.nil? }
-           .map { |indexes| segment[[indexes.first - 1, 0].max..(indexes.last + 1)] }
+           .select { |indexes| segment_overlaps_chunk_range?(segment.values_at(indexes.first, indexes.last)) }
   end
 
   def segment_overlaps_chunk_range?(segment)

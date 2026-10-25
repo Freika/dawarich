@@ -3,10 +3,17 @@
 class DataMigrations::ReattachUntrackedPointsJob < ApplicationJob
   queue_as :data_migrations
 
+  REPAIR_WINDOW = 12.months
+  STAGGER_WINDOW_SECONDS = 3600
+
   def perform
-    User.active_or_trial
-        .where('EXISTS (SELECT 1 FROM points WHERE points.user_id = users.id ' \
-               'AND points.track_id IS NULL AND points.anomaly IS NOT TRUE)')
-        .find_each { |user| Tracks::ThrottledBackfillJob.schedule(user) }
+    floor = REPAIR_WINDOW.ago.to_i
+    user_ids = Point.where(user_id: Track.select(:user_id), track_id: nil, timestamp: floor..)
+                    .where('anomaly IS NOT TRUE').distinct.pluck(:user_id)
+
+    User.active_or_trial.where(id: user_ids).find_each do |user|
+      Tracks::ThrottledBackfillJob.schedule(user, floor_timestamp: floor,
+                                                  wait: rand(1..STAGGER_WINDOW_SECONDS).seconds)
+    end
   end
 end
