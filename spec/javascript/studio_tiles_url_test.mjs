@@ -38,6 +38,19 @@ const { buildVideoStyle, defaultSettings } = await import(
     stubs + stripImports(await readApp("video_studio/studio_state.js")),
   )
 )
+globalThis.__buildVideoStyle = buildVideoStyle
+
+const { default: VideoStudioController } = await import(
+  toModuleUrl(
+    `
+class Controller {}
+const translate = (key) => key
+const loadThemeTokens = async () => ({})
+const buildVideoStyle = globalThis.__buildVideoStyle
+const studioTilesUrl = globalThis.__studioTilesUrl
+` + stripImports(await readApp("controllers/video_studio_controller.js")),
+  )
+)
 
 const VECTOR_URL = "https://tiles.example.test/planet/{z}/{x}/{y}.mvt"
 
@@ -93,4 +106,27 @@ test("video studio style carries the tiles URL it is given", () => {
   })
 
   assert.equal(style.tileUrl, VECTOR_URL)
+})
+
+async function videoControllerStyle(tilesUrl, tilesFallback) {
+  const controller = Object.assign(new VideoStudioController(), {
+    settings: defaultSettings(),
+    trackGeojson: null,
+    tilesUrlValue: tilesUrl,
+    tilesFallbackValue: tilesFallback,
+    drawPreview: () => {},
+  })
+  await controller.refreshStyle()
+  return controller.style
+}
+
+test("video studio preview style reads the user's tiles URL", async () => {
+  assert.equal(
+    (await videoControllerStyle(VECTOR_URL, false)).tileUrl,
+    VECTOR_URL,
+  )
+  assert.equal(
+    (await videoControllerStyle(VECTOR_URL, true)).tileUrl,
+    undefined,
+  )
 })
