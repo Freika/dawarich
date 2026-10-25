@@ -104,6 +104,7 @@ export class LayerManager {
 
     // Click handlers
     subscribe("click", "points-mvt", handlers.handlePointClick)
+    subscribe("click", "track-points", handlers.handleEditablePointClick)
     subscribe("click", "visits", handlers.handleVisitClick)
     subscribe("click", "photos", handlers.handlePhotoClick)
     subscribe("click", "places", handlers.handlePlaceClick)
