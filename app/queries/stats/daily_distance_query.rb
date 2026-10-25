@@ -8,8 +8,9 @@ class Stats::DailyDistanceQuery
   MAX_PLAUSIBLE_SPEED_MPS = 1_200 / 3.6
   TELEPORT_METERS = Points::AnomalyFilter::TELEPORT_METERS
 
-  def initialize(monthly_points, timespan, timezone = nil, minutes_between_routes: nil)
+  def initialize(monthly_points, timespan, timezone = nil, minutes_between_routes: nil, user_id: nil)
     @monthly_points = monthly_points
+    @user_id = user_id
     @timespan = timespan
     @timezone = validate_timezone(timezone)
     @time_gap_seconds = validate_minutes_between_routes(minutes_between_routes) * 60
@@ -24,7 +25,7 @@ class Stats::DailyDistanceQuery
 
   private
 
-  attr_reader :monthly_points, :timespan, :timezone, :time_gap_seconds
+  attr_reader :monthly_points, :timespan, :timezone, :time_gap_seconds, :user_id
 
   def daily_distances(monthly_points)
     sql = <<~SQL.squish
@@ -56,6 +57,8 @@ class Stats::DailyDistanceQuery
           prev_import_id,
           snapshot_import,
           prev_snapshot_import,
+          timestamp,
+          prev_timestamp,
           (timestamp - prev_timestamp) AS elapsed_seconds,
           ST_Distance(lonlat::geography, prev_lonlat::geography) AS segment_meters
         FROM ordered_points
@@ -65,6 +68,14 @@ class Stats::DailyDistanceQuery
           local_date,
           CASE
             WHEN segment_meters IS NULL THEN 0
+            WHEN EXISTS (
+              SELECT 1 FROM flights
+              WHERE flights.user_id = $7::bigint
+                AND flights.distance_km IS NOT NULL
+                AND flights.arrival_time > flights.departure_time
+                AND prev_timestamp < EXTRACT(EPOCH FROM flights.arrival_time)
+                AND timestamp > EXTRACT(EPOCH FROM flights.departure_time)
+            ) THEN 0
             WHEN (
               import_id IS NULL
               OR prev_import_id IS NULL
@@ -98,7 +109,8 @@ class Stats::DailyDistanceQuery
       ActiveRecord::Relation::QueryAttribute.new('max_speed_mps', MAX_PLAUSIBLE_SPEED_MPS,
                                                  ActiveRecord::Type::Float.new),
       ActiveRecord::Relation::QueryAttribute.new('teleport_meters', TELEPORT_METERS,
-                                                 ActiveRecord::Type::Float.new)
+                                                 ActiveRecord::Type::Float.new),
+      ActiveRecord::Relation::QueryAttribute.new('user_id', user_id, ActiveRecord::Type::Integer.new)
     ]
 
     Stat.connection.exec_query(sql, 'DailyDistanceQuery', binds).to_a
