@@ -53,6 +53,13 @@ RSpec.describe Users::PrivacyZones do
     expect(zone[:radius]).to be >= geo_distance(zone[:lat], zone[:lon], 89.9, 10.0) + 300
   end
 
+  it 'keeps the longitude in range next to the antimeridian' do
+    zone_place(0.0, 179.9999)
+    zone_place(0.0, -179.9999)
+
+    expect(described_class.new(user).call.pluck(:lon)).to all(be_between(-180.0, 180.0))
+  end
+
   it 'returns the same circle on every call' do
     zone_place(52.5, 13.4)
 

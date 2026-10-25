@@ -26,7 +26,7 @@ class Users::PrivacyZones
     {
       place_id: place.id,
       lat: (lat + (shift * Math.cos(bearing) / METERS_PER_DEGREE)).clamp(-90.0, 90.0),
-      lon: lon + (shift * Math.sin(bearing) / (METERS_PER_DEGREE * lon_scale)),
+      lon: ((lon + (shift * Math.sin(bearing) / (METERS_PER_DEGREE * lon_scale)) + 180) % 360) - 180,
       radius: ((radius + shift) * RADIUS_MARGIN).ceil
     }
   end
