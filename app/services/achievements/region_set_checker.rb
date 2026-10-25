@@ -2,7 +2,7 @@
 
 module Achievements
   class RegionSetChecker
-    CALCULATION_VERSION = 6
+    CALCULATION_VERSION = 7
 
     # Above this many newly earned regions in one run (a big import backfill),
     # collapse the per-region announcements into a single digest notification.
