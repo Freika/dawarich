@@ -60,7 +60,7 @@ zh:
   users:
     digests_mailer:
       monthly_digest:
-        flights: 航班
+        flights: 其中飞行
   enums:
     place:
       source:

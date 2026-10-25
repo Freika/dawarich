@@ -2526,7 +2526,7 @@ en:
           other: "%{count} cities"
     digests_mailer:
       monthly_digest:
-        flights: Flights
+        flights: Incl. flights
         your: Your
         in_review: in review
         here_s_what_your_location_history_looked_like_last_month: Here's what your location history looked like last month.

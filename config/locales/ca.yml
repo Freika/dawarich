@@ -2526,7 +2526,7 @@ ca:
           other: "%{count} ciutats"
     digests_mailer:
       monthly_digest:
-        flights: Vols
+        flights: Incl. vols
         your: El teu
         in_review: en retrospectiva
         here_s_what_your_location_history_looked_like_last_month: Així és com va ser el teu historial d'ubicacions el mes passat.

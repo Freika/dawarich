@@ -2552,7 +2552,7 @@ zh:
           other: "%{count} 城市"
     digests_mailer:
       monthly_digest:
-        flights: 航班
+        flights: 其中飞行
         your: 您的
         in_review: 回顾
         here_s_what_your_location_history_looked_like_last_month: 以下是您上个月的位置记录。

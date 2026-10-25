@@ -901,7 +901,7 @@ es:
       favorites_marked: Marcados favoritos
       places: lugares
     year_cards:
-      flown: "de ellos %{distance} en avión"
+      flown: "de los cuales %{distance} en avión"
       title: "Años"
     year_calendar:
       mode: "Vista del calendario"
@@ -2531,7 +2531,7 @@ es:
           other: "%{count} ciudades"
     digests_mailer:
       monthly_digest:
-        flights: Vuelos
+        flights: Incl. vuelos
         your: Tu
         in_review: en revisión
         here_s_what_your_location_history_looked_like_last_month: Aquí está cómo se veía tu historia de ubicación el mes pasado.

@@ -2531,7 +2531,7 @@ de:
           other: "%{count} Städte"
     digests_mailer:
       monthly_digest:
-        flights: Flüge
+        flights: Davon Flüge
         your: Dein
         in_review: im Rückblick
         here_s_what_your_location_history_looked_like_last_month: Hier ist ein Überblick, wie dein Standortverlauf im letzten Monat aussah.

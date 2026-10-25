@@ -859,7 +859,7 @@ pl:
       favorites_marked: Oznaczone ulubione
       places: miejsca
     year_cards:
-      flown: "w tym %{distance} lotem"
+      flown: "w tym %{distance} samolotem"
       title: "Lata"
     year_calendar:
       mode: "Widok kalendarza"
@@ -2562,7 +2562,7 @@ pl:
           other: "%{count} miast"
     digests_mailer:
       monthly_digest:
-        flights: Loty
+        flights: W tym loty
         your: Twoje
         in_review: podsumowanie
         here_s_what_your_location_history_looked_like_last_month: Tak wyglądała historia Twojej lokalizacji w poprzednim miesiącu.

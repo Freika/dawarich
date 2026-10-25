@@ -3397,7 +3397,7 @@ fr:
           other: "%{count} villes"
     digests_mailer:
       monthly_digest:
-        flights: Vols
+        flights: Dont vols
         your: Votre
         in_review: en revue
         here_s_what_your_location_history_looked_like_last_month: Voici à quoi ressemblait

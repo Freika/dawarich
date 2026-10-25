@@ -38,8 +38,9 @@ RSpec.describe 'Flight distance is broken out of the distance total' do
     let(:mail) { Users::DigestsMailer.with(user: user, digest: digest).monthly_digest }
 
     it 'lists flights as their own line in both parts' do
-      expect(mail.html_part.body.to_s).to include('Flights')
-      expect(mail.text_part.body.to_s).to include('Flights')
+      label = I18n.t('users.digests_mailer.monthly_digest.flights')
+      expect(mail.html_part.body.to_s).to include(label)
+      expect(mail.text_part.body.to_s).to include(label)
       expect(mail.text_part.body.to_s).to include('633')
     end
 
@@ -50,7 +51,7 @@ RSpec.describe 'Flight distance is broken out of the distance total' do
       end
 
       it 'omits the line' do
-        expect(mail.text_part.body.to_s).not_to include('Flights')
+        expect(mail.text_part.body.to_s).not_to include(I18n.t('users.digests_mailer.monthly_digest.flights'))
       end
     end
   end
