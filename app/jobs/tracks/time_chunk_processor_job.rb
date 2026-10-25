@@ -62,27 +62,28 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   def load_chunk_points
     # tracker_id reads through each point's source; preloading keeps the
     # per-chunk grouping at one dimension query instead of one per point.
-    relation = user.points
-                   .not_anomaly
-                   .select(:id, :timestamp, :lonlat, :source_id, :tracker_id)
-                   .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
-                   .order(:timestamp)
-                   .preload(:source)
-    relation = relation.where(track_id: nil) if chunk_data[:untracked_only]
-    relation
+    user.points
+        .not_anomaly
+        .select(:id, :timestamp, :lonlat, :source_id, :tracker_id, :track_id)
+        .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
+        .order(:timestamp)
+        .preload(:source)
   end
 
   def segment_chunk_points(points)
-    points_array = points.to_a
+    points.to_a
+          .group_by { |p| p.tracker_id.to_s }
+          .values
+          .flat_map { |bucket| split_points_into_segments_geocoder(bucket) }
+          .select { |segment| segment_overlaps_chunk_range?(segment) }
+          .flat_map { |segment| untracked_runs(segment) }
+  end
 
-    segments = points_array
-               .group_by { |p| p.tracker_id.to_s }
-               .values
-               .flat_map { |bucket| split_points_into_segments_geocoder(bucket) }
-
-    segments.select do |segment|
-      segment_overlaps_chunk_range?(segment)
-    end
+  def untracked_runs(segment)
+    segment.each_index
+           .chunk_while { |a, b| segment[a].track_id == segment[b].track_id }
+           .select { |indexes| segment[indexes.first].track_id.nil? }
+           .map { |indexes| segment[[indexes.first - 1, 0].max..(indexes.last + 1)] }
   end
 
   def segment_overlaps_chunk_range?(segment)
