@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - A visit is suggested again when tracking stops at a place and resumes at the same spot later, for example a shortcut that pauses tracking at the gym. Before, fixes taken while arriving and leaving could make the two sides look like different places, and no visit was suggested. Choose Re-run detection on full history on the Visits page to fix past stays (#3203)
 - Imports uploaded before 1.14.4 no longer show a `.zip` suffix in their names: `ride.gpx.zip` becomes `ride.gpx`. Imports you renamed yourself, and imports whose new name is already taken by another of your imports, keep their current names. (#3062)
 - Downloading an import now returns the original file instead of a ZIP archive when its filename has accented letters such as `ü` (also for imports that already downloaded as a ZIP) or characters such as `:`. New uploads with characters such as `:` also no longer get `.zip` added to their import name. (#3062)
-- Renaming a place now renames its visits that still show the old place name or the default name, so the timeline shows the new name next to the place's tags; visits you named yourself keep their names. Visits that already show an outdated name keep it (#3353)
+- Renaming a place now renames its visits that still show the old or default name; visits you named yourself keep their names, and visits already showing an outdated name stay as they are (#3353)
 
 ## [1.17.0] - 2026-10-23, Berlin
 

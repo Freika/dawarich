@@ -319,6 +319,14 @@ RSpec.describe Place, type: :model do
       expect(visit.reload.name).to eq('Dentist')
     end
 
+    it 'leaves default-named visits alone when only other attributes change' do
+      visit = create(:visit, user: place.user, place: place, name: Place::DEFAULT_NAME)
+
+      place.update!(city: 'Leipzig')
+
+      expect(visit.reload.name).to eq(Place::DEFAULT_NAME)
+    end
+
     it 'leaves visits of other places alone' do
       other = create(:visit, user: place.user, place: create(:place, user: place.user), name: 'Imaginary Lane 42')
 
