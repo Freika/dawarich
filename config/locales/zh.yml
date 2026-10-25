@@ -858,6 +858,7 @@ zh:
       favorites_marked: 已标记的收藏夹
       places: 个地点
     year_cards:
+      flown: "其中飞行 %{distance}"
       title: "年份"
     year_calendar:
       mode: "日历视图"
@@ -2163,7 +2164,7 @@ zh:
       available_on_pro: 在 Pro 上可用
       upgrade_to_pro: 升级到 Pro
     month:
-      from_airtrail_not_counted_in_distance: 来自 AirTrail，不计入距离
+      from_airtrail_included_in_distance: 来自 AirTrail，已计入距离
       flight_distance: 飞行距离
       monthly_digest: 每月摘要
       share: 共享
@@ -2215,7 +2216,7 @@ zh:
       distance: 距离
       countries_count_countries_cities_count_cities: "%{countries_count} 个国家/地区、%{cities_count} 个城市"
     public_month:
-      from_airtrail_not_counted_in_distance: 来自 AirTrail，不计入距离
+      from_airtrail_included_in_distance: 来自 AirTrail，已计入距离
       flight_distance: 飞行距离
       monthly_digest: 每月摘要
       distance_traveled: 行驶距离
@@ -2551,7 +2552,7 @@ zh:
           other: "%{count} 城市"
     digests_mailer:
       monthly_digest:
-        flights: 航班
+        flights: 其中飞行
         your: 您的
         in_review: 回顾
         here_s_what_your_location_history_looked_like_last_month: 以下是您上个月的位置记录。

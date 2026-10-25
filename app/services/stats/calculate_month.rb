@@ -41,12 +41,13 @@ class Stats::CalculateMonth
       stat = Stat.find_or_create_by!(year:, month:, user:) { |record| record.distance = 0 }
       stat.lock!
       pending = Stats::GeocodedDays.snapshot_month(user, year, month)
-      distance_by_day = stat.distance_by_day
+      flights_by_day = flight_distance_by_day
+      distance_by_day = with_flights(stat.distance_by_day, flights_by_day)
 
       stat.assign_attributes(
         daily_distance: distance_by_day,
         distance: distance(distance_by_day),
-        flight_distance: flight_distance,
+        flight_distance: flights_by_day.values.sum,
         toponyms: toponyms,
         h3_hex_ids: calculate_h3_hex_ids,
         calculation_version: CALCULATION_VERSION
@@ -85,8 +86,16 @@ class Stats::CalculateMonth
     distance_by_day.sum { |day| day[1] }
   end
 
-  def flight_distance
-    Stats::FlightDistanceQuery.new(user, year, month).call
+  def flight_distance_by_day
+    Stats::FlightDistanceQuery.new(user, year, month).by_day
+  end
+
+  def with_flights(distance_by_day, flights_by_day)
+    distance_by_day.map { |day, meters| [day, meters + flights_by_day.fetch(day, 0)] }
+  end
+
+  def empty_month_days
+    (1..Date.new(year, month, -1).day).map { |day| [day, 0] }
   end
 
   def toponyms
@@ -121,7 +130,6 @@ class Stats::CalculateMonth
   def reset_month_stats(year, month)
     Stat.transaction do
       stat = Stat.lock.find_by(year:, month:, user:)
-      return unless stat
 
       # Points may arrive after the initial empty check while another calculation
       # finishes. Recheck under the same lock without the earlier query cache.
@@ -130,10 +138,16 @@ class Stats::CalculateMonth
         return
       end
 
+      flights_by_day = flight_distance_by_day
+      return if stat.nil? && flights_by_day.empty?
+
+      stat ||= Stat.find_or_create_by!(year:, month:, user:) { |record| record.distance = 0 }
+      distance_by_day = flights_by_day.empty? ? {} : with_flights(empty_month_days, flights_by_day)
+
       stat.update!(
-        daily_distance: {},
-        distance: 0,
-        flight_distance: flight_distance,
+        daily_distance: distance_by_day,
+        distance: distance(distance_by_day),
+        flight_distance: flights_by_day.values.sum,
         toponyms: [],
         h3_hex_ids: {},
         calculation_version: CALCULATION_VERSION
