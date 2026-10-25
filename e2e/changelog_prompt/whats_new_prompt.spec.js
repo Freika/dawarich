@@ -2,8 +2,11 @@ import { expect, test } from "@playwright/test"
 
 const VIEWPORTS = [
   { width: 390, height: 844 },
+  { width: 639, height: 900 },
   { width: 640, height: 900 },
   { width: 1440, height: 900 },
+  { width: 568, height: 320 },
+  { width: 320, height: 420 },
 ]
 const HEADINGS = { en: "Stay up to date?", de: "Aktuell bleiben?" }
 
@@ -23,17 +26,17 @@ for (const viewport of VIEWPORTS) {
 
       expect(box.x).toBeGreaterThanOrEqual(0)
       expect(box.x + box.width).toBeLessThanOrEqual(viewport.width)
-      await expect(
-        card.getByRole("button", { name: /./ }).first(),
-      ).toBeInViewport({ ratio: 1 })
+      expect(box.y + box.height).toBeLessThanOrEqual(viewport.height)
+      if (viewport.width >= 640) expect(box.width).toBeCloseTo(288, 0)
+      await expect(card.getByRole("heading", { name: heading })).toBeInViewport(
+        {
+          ratio: 1,
+        },
+      )
+      for (const button of await card.getByRole("button").all()) {
+        await button.scrollIntoViewIfNeeded()
+        await expect(button).toBeInViewport({ ratio: 1 })
+      }
     })
   }
 }
-
-test.afterAll(async ({ browser }) => {
-  const page = await browser.newPage({
-    storageState: "e2e/temp/.auth/user.json",
-  })
-  await page.goto("/settings/general?locale=en")
-  await page.close()
-})
