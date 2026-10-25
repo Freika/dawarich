@@ -233,8 +233,8 @@ RSpec.describe Points::VectorTileQuery do
       expect(feature_rows(z: 2, x: 2, y: 1).sum { |row| row['count'].to_i }).to eq(2)
     end
 
-    context 'when the scope holds few points' do
-      before { stub_const("#{described_class}::FENCE_MAX_ROWS", 5) }
+    context 'when the scope holds exactly as many points as the fence allows' do
+      before { stub_const("#{described_class}::FENCE_MAX_ROWS", 1) }
 
       it 'fences the scope so the planner reads it through the user/timestamp index' do
         create_point_at(10, 10)
@@ -258,6 +258,31 @@ RSpec.describe Points::VectorTileQuery do
         create_point_at(2_000_000, 1_000_000)
 
         expect(feature_rows(z: 2, x: 2, y: 1).sum { |row| row['count'].to_i }).to eq(2)
+      end
+    end
+
+    describe 'scope size probe' do
+      def probe_count(tiles)
+        statements = []
+        collector = ->(_name, _start, _finish, _id, payload) { statements << payload[:sql] }
+
+        ActiveSupport::Notifications.subscribed(collector, 'sql.active_record') do
+          tiles.each { |z, x, y| described_class.new(scope: user.points, z: z, x: x, y: y).feature_rows }
+        end
+
+        statements.count { |sql| sql.include?('subquery_for_count') }
+      end
+
+      it 'counts a scope once for every tile of the same map view' do
+        create_point_at(10, 10)
+
+        expect(probe_count([[2, 2, 1], [2, 1, 1], [3, 4, 3]])).to eq(1)
+      end
+
+      it 'does not count the scope where the tile has no spatial prefilter' do
+        create_point_at(10, 10)
+
+        expect(probe_count([[1, 1, 0]])).to eq(0)
       end
     end
   end

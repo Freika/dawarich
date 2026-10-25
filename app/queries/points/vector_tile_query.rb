@@ -39,8 +39,11 @@ class Points::VectorTileQuery
   # PgBouncer-safe because SET LOCAL runs inside an explicit transaction
   # (see Visits::Detection::CandidateLoader for the pattern)
 
-  def initialize(scope:, z:, x:, y:) # rubocop:disable Naming/MethodParameterName
+  # fence_key: stable identity of the scope shared by every tile of a map view;
+  # without it the scope's SQL stands in.
+  def initialize(scope:, z:, x:, y:, fence_key: nil) # rubocop:disable Naming/MethodParameterName
     @scope = scope
+    @fence_key = fence_key
     @z = parse_integer(z)
     @x = parse_integer(x)
     @y = parse_integer(y)
@@ -82,7 +85,7 @@ class Points::VectorTileQuery
 
   private
 
-  attr_reader :scope, :z, :x, :y
+  attr_reader :scope, :z, :x, :y, :fence_key
 
   # z/x/y are validated Integers and every other interpolated value is program-
   # computed — the only user-influenced SQL is the tile_scope relation.
@@ -264,10 +267,18 @@ class Points::VectorTileQuery
     fenced? ? tile_scope.offset(0) : tile_scope
   end
 
+  # Every tile of a map view shares the scope, so the count runs once per view.
+  # A stale answer only changes the plan, never the points returned.
   def fenced?
     return @fenced if defined?(@fenced)
 
-    @fenced = bare_scope.limit(FENCE_MAX_ROWS + 1).count(:all) <= FENCE_MAX_ROWS
+    @fenced = prefilterable? && Rails.cache.fetch(fence_cache_key, expires_in: 10.minutes) do
+      bare_scope.limit(FENCE_MAX_ROWS + 1).count(:all) <= FENCE_MAX_ROWS
+    end
+  end
+
+  def fence_cache_key
+    ['points_tile_fence', FENCE_MAX_ROWS, fence_key || Digest::SHA256.hexdigest(bare_scope.to_sql)]
   end
 
   def bare_scope
