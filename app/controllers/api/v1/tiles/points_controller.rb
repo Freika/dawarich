@@ -14,7 +14,8 @@ class Api::V1::Tiles::PointsController < ApiController
   end
 
   def tile_epoch_component
-    Points::Revision.for_user(current_api_user.id, start_at: cacheable_start_at, end_at: cacheable_end_at)
+    @tile_epoch_component ||=
+      Points::Revision.for_user(current_api_user.id, start_at: cacheable_start_at, end_at: cacheable_end_at)
   end
 
   def tile_query
@@ -22,8 +23,19 @@ class Api::V1::Tiles::PointsController < ApiController
       scope: filtered_points,
       z: params[:z],
       x: params[:x],
-      y: params[:y]
+      y: params[:y],
+      fence_key: fence_key
     )
+  end
+
+  # Same ingredients as the ETag minus the tile address: the revision moves
+  # when points change, and the Lite window is date-truncated like the ETag's.
+  def fence_key
+    [
+      current_api_user.id, tile_epoch_component,
+      (current_api_user.data_window_start.to_date if current_api_user.plan_restricted?),
+      cacheable_start_at, cacheable_end_at, params[:import_id].presence
+    ]
   end
 
   def filtered_points
