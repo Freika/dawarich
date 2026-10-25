@@ -1635,7 +1635,7 @@ pl:
         features: "Funkcje"
         features_hint: "Wyłącz części Dawarich, z których nie korzystasz. Znikną z interfejsu, a ich przetwarzanie w tle zostanie zatrzymane."
         family_feature: "Rodzina"
-        family_feature_hint: "Udostępnianie lokalizacji członkom rodziny. Po wyłączeniu przestajesz udostępniać rodzinie swoją lokalizację; pozostajesz jej członkiem."
+        family_feature_hint: "Udostępnianie lokalizacji członkom rodziny. Po wyłączeniu przestajesz udostępniać swoją lokalizację i linki do podróży tylko dla rodziny; pozostajesz jej członkiem. Po ponownym włączeniu udostępnianie lokalizacji jest wyłączone."
         achievements_feature: "Osiągnięcia"
         achievements_feature_hint: "Odkryte regiony i odznaki. Po wyłączeniu postęp nie jest już obliczany, a Twoje publiczne linki do osiągnięć zostają wyłączone."
     integrations:
@@ -3692,6 +3692,7 @@ pl:
         safe_email_is_requesting_your_location_link: "%{email} prosi o Twoją lokalizację. %{link}"
         users_must_be_in_the_same_family: Użytkownicy muszą należeć do tej samej rodziny
         target_user_is_already_sharing_their_location: Wybrany użytkownik już udostępnia lokalizację
+        target_user_turned_family_off: "Ten członek wyłączył funkcje rodzinne"
         request_cooldown_active_please_wait_before_requesting_again: Aktywny czas oczekiwania prośby. Poczekaj przed ponowną próbą.
         view_request: Zobacz prośbę
       invite:

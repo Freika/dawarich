@@ -1624,7 +1624,7 @@ es:
         features: "Funciones"
         features_hint: "Desactiva las partes de Dawarich que no uses. Desaparecen de la interfaz y se detiene su procesamiento en segundo plano."
         family_feature: "Familia"
-        family_feature_hint: "Compartir la ubicación con los miembros de la familia. Al desactivarla dejas de compartir tu ubicación con la familia; sigues siendo miembro."
+        family_feature_hint: "Compartir la ubicación con los miembros de la familia. Al desactivarla dejas de compartir tu ubicación y los enlaces de viajes solo para la familia; sigues siendo miembro. Al volver a activarla, el uso compartido de la ubicación empieza desactivado."
         achievements_feature: "Logros"
         achievements_feature_hint: "Regiones exploradas e insignias. Al desactivarlos se deja de calcular el progreso y se desactivan tus enlaces públicos de logros."
     integrations:
@@ -3586,6 +3586,7 @@ es:
         safe_email_is_requesting_your_location_link: "%{email} solicita tu ubicación. %{link}"
         users_must_be_in_the_same_family: Los usuarios deben estar en la misma familia
         target_user_is_already_sharing_their_location: El usuario objetivo ya comparte su ubicación
+        target_user_turned_family_off: "Este miembro ha desactivado las funciones familiares"
         request_cooldown_active_please_wait_before_requesting_again: La solicitud de cooldown está activa. Espera antes de solicitar nuevamente.
         view_request: Ver Solicitud
       invite:

@@ -1621,7 +1621,7 @@ ca:
         features: "Funcions"
         features_hint: "Desactiva les parts de Dawarich que no facis servir. Desapareixen de la interfície i s'atura el seu processament en segon pla."
         family_feature: "Família"
-        family_feature_hint: "Compartir la ubicació amb els membres de la família. Si la desactives, deixes de compartir la teva ubicació amb la família; continues sent-ne membre."
+        family_feature_hint: "Compartir la ubicació amb els membres de la família. Si la desactives, deixes de compartir la teva ubicació i els enllaços de viatges només per a la família; continues sent-ne membre. Quan la tornis a activar, la compartició de la ubicació començarà desactivada."
         achievements_feature: "Assoliments"
         achievements_feature_hint: "Regions explorades i insígnies. Si els desactives, es deixa de calcular el progrés i es desactiven els teus enllaços públics d'assoliments."
     integrations:
@@ -3579,6 +3579,7 @@ ca:
         safe_email_is_requesting_your_location_link: "%{email} t'està sol·licitant la teva ubicació. %{link}"
         users_must_be_in_the_same_family: Els usuaris han de formar part de la mateixa família
         target_user_is_already_sharing_their_location: L'usuari destinatari ja està compartint la seva ubicació
+        target_user_turned_family_off: "Aquest membre ha desactivat les funcions familiars"
         request_cooldown_active_please_wait_before_requesting_again: Període d'espera actiu. Espera abans de tornar a sol·licitar-ho.
         view_request: Veure la sol·licitud
       invite:

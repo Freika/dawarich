@@ -946,4 +946,14 @@ RSpec.describe Users::SafeSettings do
       expect(config[:track_color]).to eq('#6366F1')
     end
   end
+
+  describe '.feature_enabled?' do
+    it 'treats a missing key as on and boolean-like false values as off' do
+      expect(described_class.feature_enabled?({}, 'family')).to be true
+      expect(described_class.feature_enabled?({ 'family_enabled' => true }, 'family')).to be true
+      %w[false 0 off].push(false, 0).each do |value|
+        expect(described_class.feature_enabled?({ 'family_enabled' => value }, 'family')).to be false
+      end
+    end
+  end
 end

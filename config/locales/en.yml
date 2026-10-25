@@ -1600,7 +1600,7 @@ en:
         features: "Features"
         features_hint: "Turn off the parts of Dawarich you don't use. They disappear from the interface and their background processing stops."
         family_feature: "Family"
-        family_feature_hint: "Location sharing with family members. Turning it off stops sharing your location with the family; you stay a member."
+        family_feature_hint: "Location sharing with family members. Turning it off stops sharing your location and family-only trip links; you stay a member. When you turn it back on, location sharing starts off."
         achievements_feature: "Achievements"
         achievements_feature_hint: "Explored regions and badges. Turning it off stops progress calculation and disables your public achievement links."
     integrations:
@@ -3567,6 +3567,7 @@ en:
         safe_email_is_requesting_your_location_link: "%{email} is requesting your location. %{link}"
         users_must_be_in_the_same_family: Users must be in the same family
         target_user_is_already_sharing_their_location: Target user is already sharing their location
+        target_user_turned_family_off: "This member has turned family features off"
         request_cooldown_active_please_wait_before_requesting_again: Request cooldown active. Please wait before requesting again.
         view_request: View Request
       invite:

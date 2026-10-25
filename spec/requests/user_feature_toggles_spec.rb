@@ -21,13 +21,24 @@ RSpec.describe 'User feature toggles', type: :request do
       user.update!(settings: { 'achievements_enabled' => false })
 
       expect { patch settings_general_path, params: { achievements_enabled: '1' } }
-        .to have_enqueued_job(Achievements::CheckJob).with(user.id, notify: false)
+        .to have_enqueued_job(Achievements::CheckJob).with(user.id, notify: false, oldest_timestamp: 0)
       expect(user.reload.settings['achievements_enabled']).to be true
     end
 
     it 'does not recompute achievements when they stay on' do
       expect { patch settings_general_path, params: { achievements_enabled: '1' } }
         .not_to have_enqueued_job(Achievements::CheckJob)
+    end
+  end
+
+  describe 'PATCH /api/v1/settings' do
+    it 'turns a feature off from the API, accepting string booleans' do
+      patch api_v1_settings_path, params: { settings: { achievements_enabled: 'false' } },
+                                  headers: { 'Authorization' => "Bearer #{user.api_key}" }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.feature_enabled?(:achievements)).to be false
+      expect(response.parsed_body['settings']['achievements_enabled']).to be false
     end
   end
 
@@ -98,6 +109,16 @@ RSpec.describe 'User feature toggles', type: :request do
       get family_path
 
       expect(response).to redirect_to(settings_general_index_path(anchor: 'features'))
+    end
+
+    it 'does not resume a stored location share when family is turned back on' do
+      user.update_family_location_sharing!(true, duration: 'permanent')
+      user.update!(settings: user.settings.merge('family_enabled' => false))
+
+      patch settings_general_path, params: { family_enabled: '1' }
+
+      expect(user.reload.feature_enabled?(:family)).to be true
+      expect(user.family_sharing_enabled?).to be false
     end
 
     it 'answers the API with a feature_disabled error' do

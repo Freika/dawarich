@@ -66,6 +66,7 @@ class User < ApplicationRecord
   after_update_commit :enqueue_achievements_recheck, if: :achievements_reenabled?
 
   before_save :sanitize_input
+  before_save :pause_family_location_sharing, if: :family_reenabled?
 
   validates :email, presence: true
   validates :reset_password_token, uniqueness: true, allow_nil: true
@@ -434,20 +435,31 @@ class User < ApplicationRecord
   end
 
   def achievements_reenabled?
-    return false unless saved_change_to_settings?
+    saved_change_to_settings? && feature_switched_on?(saved_change_to_settings, 'achievements')
+  end
 
-    before, after = saved_change_to_settings
-    before = {} unless before.is_a?(Hash)
-    after = {} unless after.is_a?(Hash)
+  def family_reenabled?
+    will_save_change_to_settings? && feature_switched_on?(settings_change_to_be_saved, 'family')
+  end
 
-    !Users::SafeSettings.feature_enabled?(before, 'achievements') &&
-      Users::SafeSettings.feature_enabled?(after, 'achievements')
+  def feature_switched_on?(change, feature)
+    before, after = change.map { |value| value.is_a?(Hash) ? value : {} }
+
+    !Users::SafeSettings.feature_enabled?(before, feature) && Users::SafeSettings.feature_enabled?(after, feature)
+  end
+
+  # A share stored before the feature went off, or written while it was off,
+  # must not resume on its own: turning family back on starts with sharing off.
+  def pause_family_location_sharing
+    return unless settings.is_a?(Hash) && settings.dig('family', 'location_sharing').is_a?(Hash)
+
+    settings['family']['location_sharing'] = { 'enabled' => false }
   end
 
   # Progress went stale while the feature was off. Recompute it without
   # notifications so the user isn't flooded with everything earned meanwhile.
   def enqueue_achievements_recheck
-    Achievements::CheckJob.perform_later(id, notify: false)
+    Achievements::CheckJob.perform_later(id, notify: false, oldest_timestamp: 0)
   end
 
   def saved_change_to_timezone_setting?
