@@ -62,6 +62,20 @@ RSpec.describe Geocoding::UserLookup do
     end
   end
 
+  it 'asks Photon for the configured language' do
+    dutch = Geocoding::Config.new(source: :stored, provider: :photon, host: host, use_https: false, language: 'nl')
+
+    reverse(51.34, 12.37, dutch)
+
+    expect(requests.pop(timeout: 2)).to include('lang=nl')
+  end
+
+  it 'asks Photon for English when no language is configured' do
+    reverse(51.34, 12.37)
+
+    expect(requests.pop(timeout: 2)).to include('lang=en')
+  end
+
   it 'sends consecutive lookups over one connection' do
     3.times { |i| expect(reverse(51.34 + i, 12.37)).not_to be_empty }
 

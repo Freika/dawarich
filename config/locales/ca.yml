@@ -41,6 +41,7 @@ ca:
           photon_api_host: "Amfitrió"
           photon_api_key: "Clau d'API"
           photon_api_use_https: "Utilitza HTTPS"
+          photon_api_language: "Idioma"
           nominatim_api_host: "Amfitrió"
           nominatim_api_key: "Clau d'API"
           nominatim_api_use_https: "Utilitza HTTPS"
@@ -50,12 +51,14 @@ ca:
           store_geodata: "Geocodifica els punts nous immediatament"
           host_hint: "Nom d'amfitrió simple amb port opcional, p. ex. photon.example.com:2322"
           rps_hint: "Deixa-ho en blanc per no posar-hi límit. Ajusta-ho al que permeti el teu servidor o el teu pla."
+          photon_api_language_hint: "Codi d'idioma de dues lletres per als noms de llocs, o default per als noms en l'idioma local. El teu índex de Photon ha d'incloure aquest idioma. El canvi només afecta les cerques noves, i una mateixa ciutat pot aparèixer dues vegades a les estadístiques."
           api_key_keep_hint: "Deixa-ho en blanc per mantenir la clau desada."
           store_geodata_hint: "Cerca la ciutat i el país quan s’afegeixen punts nous. Les cerques nocturnes continuen si hi ha un proveïdor configurat, encara que aquesta opció estigui desactivada."
       update:
         saved: "Configuració desada."
         pinned: "Rebutjat: fixat per %{variables}."
         host_invalid: "L'amfitrió ha de ser un nom simple, amb un port o un camí opcionals i sense espais."
+        language_invalid: "L'idioma ha de ser un codi de dues lletres, com ara en o nl, o bé default."
         chibigeo_key_required: "ChibiGeo necessita una clau d'API. El pla gratuït Hobby inclou 2.500 cerques al dia; obtén la teva clau a chibigeo.com."
       test_geocoding:
         not_configured: "No hi ha cap proveïdor de geocodificació configurat. Desa primer un proveïdor."

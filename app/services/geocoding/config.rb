@@ -7,7 +7,7 @@ module Geocoding
     PROVIDER_KEYS = { photon: :photon_api_host, geoapify: :geoapify_api_key,
                       nominatim: :nominatim_api_host, locationiq: :locationiq_api_key }.freeze
 
-    attr_reader :source, :provider, :host, :api_key, :use_https, :rps
+    attr_reader :source, :provider, :host, :api_key, :use_https, :rps, :language
 
     # Geocoding is an Instance setting: one provider serves everyone on a
     # deployment, so the user no longer changes the answer.
@@ -43,7 +43,8 @@ module Geocoding
       case provider
       when :photon
         { host: primary_value, api_key: InstanceSettings::Resolver.value(:photon_api_key),
-          use_https: resolved_photon_use_https(primary_value) }
+          use_https: resolved_photon_use_https(primary_value),
+          language: InstanceSettings::Resolver.value(:photon_api_language).downcase }
       when :nominatim
         { host: primary_value, api_key: InstanceSettings::Resolver.value(:nominatim_api_key),
           use_https: InstanceSettings::Resolver.value(:nominatim_api_use_https) }
@@ -76,12 +77,13 @@ module Geocoding
     private_class_method :disabled_config, :resolved_provider_attributes, :resolved_photon_use_https,
                          :provider_candidates, :resolved_attributes_for
 
-    def initialize(source:, provider: nil, host: nil, api_key: nil, use_https: true, rps: nil)
+    def initialize(source:, provider: nil, host: nil, api_key: nil, use_https: true, rps: nil, language: nil)
       @source = source
       @provider = provider
       @host = host
       @api_key = api_key
       @use_https = use_https
+      @language = language
       # Normalized here rather than trusted from the caller so a pinned value
       # obeys the same komoot pin and ChibiGeo clamp as a stored one.
       @rps = provider ? RateLimits.for(provider, host).normalize(rps) : nil
@@ -109,7 +111,7 @@ module Geocoding
     end
 
     def cache_digest
-      Digest::SHA256.hexdigest([source, provider, host, use_https, api_key].join('|'))
+      Digest::SHA256.hexdigest([source, provider, host, use_https, api_key, language].join('|'))
     end
 
     def provider_display_name

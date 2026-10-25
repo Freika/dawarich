@@ -47,6 +47,29 @@ RSpec.describe Geocoding::Config, 'resolved from instance settings' do
       expect(config).not_to be_pinned
     end
 
+    it 'asks Photon for English when no language is configured' do
+      InstanceSetting.create!(key: 'photon_api_host', value: 'stored.example.com')
+      InstanceSettings::Resolver.reset!
+
+      expect(described_class.for(user).language).to eq('en')
+    end
+
+    it 'carries the stored Photon language' do
+      InstanceSetting.create!(key: 'photon_api_host', value: 'stored.example.com')
+      InstanceSetting.create!(key: 'photon_api_language', value: 'nl')
+      InstanceSettings::Resolver.reset!
+
+      expect(described_class.for(user).language).to eq('nl')
+    end
+
+    it 'leaves the language unset for providers other than Photon' do
+      InstanceSetting.create!(key: 'geoapify_api_key', value: 'geoapify-key')
+      InstanceSetting.create!(key: 'photon_api_language', value: 'nl')
+      InstanceSettings::Resolver.reset!
+
+      expect(described_class.for(user).language).to be_nil
+    end
+
     it 'is disabled when neither source supplies a provider' do
       config = described_class.for(user)
 

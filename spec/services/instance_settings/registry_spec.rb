@@ -4,9 +4,9 @@ require 'rails_helper'
 
 RSpec.describe InstanceSettings::Registry do
   describe '.keys' do
-    it 'declares exactly the ten geocoding pilot keys' do
+    it 'declares exactly the eleven geocoding pilot keys' do
       expect(described_class.keys).to contain_exactly(
-        :photon_api_host, :photon_api_key, :photon_api_use_https,
+        :photon_api_host, :photon_api_key, :photon_api_use_https, :photon_api_language,
         :nominatim_api_host, :nominatim_api_key, :nominatim_api_use_https,
         :geoapify_api_key, :locationiq_api_key,
         :reverse_geocoding_rps, :store_geodata
@@ -31,6 +31,10 @@ RSpec.describe InstanceSettings::Registry do
       expect(described_class.fetch(:store_geodata).default).to be(true)
       expect(described_class.fetch(:photon_api_use_https).default).to be(false)
       expect(described_class.fetch(:nominatim_api_use_https).default).to be(true)
+    end
+
+    it 'defaults the Photon language to English, the language the geocoder gem always sent' do
+      expect(described_class.fetch(:photon_api_language).default).to eq('en')
     end
 
     it 'defaults the rate ceiling to nil, meaning unlimited' do

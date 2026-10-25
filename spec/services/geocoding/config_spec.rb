@@ -77,6 +77,13 @@ RSpec.describe Geocoding::Config do
       expect(base.cache_digest).not_to eq(rotated.cache_digest)
     end
 
+    it 'changes when the Photon language changes' do
+      english = described_class.new(source: :stored, provider: :photon, host: 'photon.example.com', language: 'en')
+      dutch = described_class.new(source: :stored, provider: :photon, host: 'photon.example.com', language: 'nl')
+
+      expect(english.cache_digest).not_to eq(dutch.cache_digest)
+    end
+
     it 'does not contain the raw api key' do
       store('geoapify_api_key', 'test-api-key')
 
