@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The achievement cards for Valparaíso, Colima and Chile now show the mainland at full size. Before, a distant island (Easter Island or the Revillagigedo Islands) stretched the drawing, so the region shrank to a dot at the edge of the card. Earned achievements are unchanged (#3731)
 - With Edit points on, clicking another point of the track you are editing now selects that point, and a click that nudges the mouse by a few pixels no longer moves the point. Before, the panel and its Delete button stayed on the first point you clicked until you clicked an empty spot on the map, so Delete could remove the wrong point (#3772)
 - Aosta Valley is now part of Italy's achievement, which has all 20 regions. Anyone who already completed Italy keeps it. The upgrade recalculates achievements once in the background without notifications, so earlier visits to Aosta Valley count. (#3789)
+- Actions in the Background Jobs dashboard (Delete, Retry, Kill, Clear) no longer fail with "Forbidden" when Dawarich is opened over plain HTTP by a local network address. #3907
 
 ## [1.17.0] - 2026-10-23, Berlin
 
