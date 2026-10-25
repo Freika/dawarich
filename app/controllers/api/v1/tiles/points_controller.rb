@@ -24,12 +24,14 @@ class Api::V1::Tiles::PointsController < ApiController
       z: params[:z],
       x: params[:x],
       y: params[:y],
-      fence_key: fence_key
+      fence_key: (fence_key if cacheable_range?)
     )
   end
 
   # Same ingredients as the ETag minus the tile address: the revision moves
   # when points change, and the Lite window is date-truncated like the ETag's.
+  # Without a range there is no ETag to share the revision lookup with, so the
+  # query falls back to keying on its own SQL.
   def fence_key
     [
       current_api_user.id, tile_epoch_component,
