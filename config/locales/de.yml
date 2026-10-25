@@ -901,6 +901,7 @@ de:
       favorites_marked: Favoriten markiert
       places: Orte
     year_cards:
+      flown: "davon %{distance} geflogen"
       title: "Jahre"
     year_calendar:
       mode: "Kalenderansicht"

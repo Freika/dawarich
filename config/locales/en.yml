@@ -851,6 +851,7 @@ en:
       favorites_marked: Favorites marked
       places: places
     year_cards:
+      flown: "including %{distance} flown"
       title: "Years"
     year_calendar:
       mode: "Calendar view"

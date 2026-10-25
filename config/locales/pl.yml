@@ -859,6 +859,7 @@ pl:
       favorites_marked: Oznaczone ulubione
       places: miejsca
     year_cards:
+      flown: "w tym %{distance} lotem"
       title: "Lata"
     year_calendar:
       mode: "Widok kalendarza"

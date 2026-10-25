@@ -28,6 +28,13 @@
                 <%= number_with_delimiter year_distance_stat(@year_distances[year], current_user).round %> <%= distance_unit %>
               </span>
             </div>
+            <% flown = stats.sum(&:flight_distance) %>
+            <% if flown.positive? %>
+              <p class="flex items-center gap-1 text-sm text-info" data-testid="insights-year-flown">
+                <%= icon 'plane', class: 'w-4 h-4 shrink-0' %>
+                <span class="min-w-0"><%= t('.flown', distance: "#{number_with_delimiter Stat.convert_distance(flown, distance_unit).round} #{distance_unit}") %></span>
+              </p>
+            <% end %>
 
             <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-base-content/60">
               <span><%= t('stats.index.last_update') %> <%= human_date(stats.first.updated_at) %></span>
