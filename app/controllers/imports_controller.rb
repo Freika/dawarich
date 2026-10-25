@@ -182,7 +182,7 @@ status: :unprocessable_content and return
 
     original_filename = File.basename(descriptor['original_filename'].to_s)
     return if original_filename.blank?
-    return unless blob.filename.to_s == "#{original_filename}.zip"
+    return unless blob.filename.to_s == ActiveStorage::Filename.new("#{original_filename}.zip").to_s
 
     original_filename
   end

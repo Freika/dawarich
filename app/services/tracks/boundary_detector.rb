@@ -167,12 +167,11 @@ class Tracks::BoundaryDetector
         .to_a
   end
 
-  # Time gap that still counts as "adjacent" for boundary merging.
-  # Floors at 30 minutes so we never tighten behavior for users who set a
-  # smaller minutes_between_routes; widens past 30 minutes when the user has
-  # explicitly opted into longer gaps as part of the same journey.
+  # Time gap that still counts as "adjacent" for boundary merging. It matches
+  # the gap Tracks::Segmentation splits on, so a track cut at a chunk boundary
+  # is rejoined exactly when continuous data would have kept it whole.
   def adjacency_window
-    [time_threshold_minutes.minutes, 30.minutes].max
+    time_threshold_minutes.minutes
   end
 
   # Find tracks that might be connected to the given track
@@ -195,6 +194,7 @@ class Tracks::BoundaryDetector
                   (candidate_start - track_end_time).abs <= time_window ||
                   (track_start_time - candidate_end).abs <= time_window
       next if !ranges_overlap && separated_by_stationary_stop?(track, candidate)
+      next if !ranges_overlap && separated_by_handoff?(track, candidate)
 
       connected << candidate if tracks_spatially_connected?(track, candidate)
     end
@@ -206,6 +206,12 @@ class Tracks::BoundaryDetector
     later = candidate.start_at > track.start_at ? candidate : track
 
     Tracks::StationaryStops.departure?(later, time_threshold_minutes.to_i * 60)
+  end
+
+  def separated_by_handoff?(track, candidate)
+    earlier, later = [track, candidate].sort_by(&:start_at)
+
+    Tracks::HandoffSplitter.handoff_between?(user, track.tracker_id, earlier.end_at, later.start_at)
   end
 
   # Check if two tracks are spatially connected (endpoints are close)

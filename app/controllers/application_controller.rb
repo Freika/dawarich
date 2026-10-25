@@ -12,6 +12,7 @@ class ApplicationController < ActionController::Base
   before_action :sign_out_deleted_users
   before_action :configure_permitted_parameters, if: :devise_controller?
   around_action :set_user_time_zone
+  around_action :apply_date_time_preferences
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
   helper_method :current_user_safe_settings, :family_feature_available?,
@@ -306,6 +307,10 @@ status: :see_other
     end
   rescue ArgumentError
     yield
+  end
+
+  def apply_date_time_preferences(&)
+    Users::DateTimePreferences.with(current_user_safe_settings&.date_time_preferences, &)
   end
 
   def set_self_hosted_status

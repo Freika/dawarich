@@ -1,3 +1,5 @@
+import { formatDate, formatTime, usesDatePreset } from "i18n"
+
 // Text formatting for the replay HUD, matching the Replay Frames design:
 // "14 JUN 2026 · 08:41", "08 — 26 JUN 2026", "5d 14h", "DAY 06 / 18".
 // Timestamps are formatted in the viewer's local timezone.
@@ -31,7 +33,10 @@ export function splitDistance(meters, units = "km") {
 
 export function formatClockDate(ts) {
   const d = new Date(ts)
-  return `${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const date = usesDatePreset()
+    ? formatDate(d)
+    : `${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+  return `${date} · ${formatTime(d)}`
 }
 
 export function formatShortDate(ts) {
@@ -46,6 +51,8 @@ export function formatDateRange(startTs, endTs) {
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
+  if (usesDatePreset())
+    return sameDay ? formatDate(a) : `${formatDate(a)} — ${formatDate(b)}`
   if (sameDay)
     return `${pad(a.getDate())} ${MONTHS[a.getMonth()]} ${a.getFullYear()}`
   if (a.getFullYear() === b.getFullYear()) {

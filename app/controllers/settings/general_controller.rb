@@ -15,6 +15,7 @@ class Settings::GeneralController < ApplicationController
   def update
     update_locale
     update_timezone
+    update_date_time_preferences
     update_email_settings
     update_supporter_settings
 
@@ -110,6 +111,12 @@ class Settings::GeneralController < ApplicationController
     return unless params.key?(:timezone) && ActiveSupport::TimeZone[params[:timezone]]
 
     current_user.settings['timezone'] = params[:timezone]
+  end
+
+  def update_date_time_preferences
+    Users::DateTimePreferences::ALLOWED.each do |key, allowed|
+      current_user.settings[key] = params[key] if allowed.include?(params[key])
+    end
   end
 
   def update_email_settings

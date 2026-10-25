@@ -19,7 +19,7 @@ class Geojson::Importer
     path = resolve_file_path
     validate_json(path)
     initialize_stream
-    ActiveRecord::Base.transaction do
+    Revisions::ImportTransaction.call(user_id, import_id: import.id) do
       stream_features(path)
       flush_batch
     end

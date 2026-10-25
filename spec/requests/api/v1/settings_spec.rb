@@ -618,4 +618,41 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       expect(user.reload.settings['maps']).to eq('distance_unit' => 'km')
     end
   end
+
+  describe 'date, time and week-start preferences' do
+    it 'returns the defaults' do
+      get "/api/v1/settings?api_key=#{api_key}"
+
+      expect(response.parsed_body['settings']).to include(
+        'date_format' => 'auto', 'time_format' => 'auto', 'first_day_of_week' => 'monday'
+      )
+    end
+
+    it 'updates the preferences' do
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { date_format: 'yyyy-mm-dd', first_day_of_week: 'sunday' } }
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['settings'])
+        .to include('date_format' => 'yyyy-mm-dd', 'first_day_of_week' => 'sunday')
+
+      get "/api/v1/settings?api_key=#{api_key}"
+
+      expect(response.parsed_body['settings'])
+        .to include('date_format' => 'yyyy-mm-dd', 'first_day_of_week' => 'sunday')
+    end
+
+    it 'ignores unknown values' do
+      user.settings['time_format'] = '12h'
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { time_format: '25h', date_format: 'dd-mm', first_day_of_week: 'friday' } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings['time_format']).to eq('12h')
+      expect(user.settings).not_to have_key('date_format')
+      expect(user.settings).not_to have_key('first_day_of_week')
+    end
+  end
 end

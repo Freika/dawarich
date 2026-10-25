@@ -2,6 +2,8 @@
 
 [English](README.md) | 简体中文
 
+<a href="https://apps.apple.com/app/apple-store/id6739544999?pt=128010810&ct=github-readme&mt=8"><img align="middle" alt="Download on the App Store" src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" height="40"></a> <a href="https://play.google.com/store/apps/details?id=app.dawarich.Dawarich"><img align="middle" alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="60"></a>
+
 [![Discord](https://dcbadge.limes.pink/api/server/pHsBjpt5J8)](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD) | [![Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dfreika%26type%3Dpatrons&style=for-the-badge)](https://www.patreon.com/freika) | [![Deploy on InstaPods](https://instapods.com/deploy-button.svg)](https://app.instapods.com/dashboard/pods/create?app=dawarich&ref=dawarich)
 
 ---
@@ -87,10 +89,6 @@
    docker compose -f docker/docker-compose.yml up
    ```
 3. 访问 `http://localhost:3000` 即可打开应用。
-
-默认配置在同一个 Ruby 进程中运行 Puma 和后台任务。升级旧部署前，请先停止独立的
-Sidekiq 服务；Redis 中的待处理任务将由 Web 进程继续处理。
-参见[单进程部署和升级说明](docs/deployment/single-process.md)。
 
 **停止应用**：按下 `Ctrl+C`。
 

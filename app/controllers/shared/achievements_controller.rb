@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Shared::AchievementsController < ApplicationController
+  include DefaultDateTimePreferences
+
   layout 'shared'
 
   after_action :allow_embedding, only: :show
@@ -48,7 +50,8 @@ class Shared::AchievementsController < ApplicationController
       definition: Achievements::Registry.find(progress.achievement_key),
       state: exploration.state,
       sharing: progress,
-      timezone: progress.user.safe_settings.timezone
+      timezone: progress.user.safe_settings.timezone,
+      awards: progress.user.user_achievements.pluck(:achievement_key, :earned_at).to_h
     )
   end
 

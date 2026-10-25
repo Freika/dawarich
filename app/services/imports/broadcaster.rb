@@ -53,12 +53,14 @@ module Imports::Broadcaster
   end
 
   def broadcast_replace_to(stream, target:, partial:, locals:)
-    Turbo::StreamsChannel.broadcast_replace_to(
-      stream,
-      target: target,
-      partial: partial,
-      locals: locals
-    )
+    Users::DateTimePreferences.with(locals[:import].user) do
+      Turbo::StreamsChannel.broadcast_replace_to(
+        stream,
+        target: target,
+        partial: partial,
+        locals: locals
+      )
+    end
   rescue StandardError => e
     # Broadcasts are progress UI only. In contexts without a request
     # environment (rake tasks, background jobs), rendering the partial may

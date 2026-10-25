@@ -2,11 +2,19 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
+const i18nSource = await readFile(
+  new URL("../../app/javascript/i18n.js", import.meta.url),
+  "utf8",
+)
 const dateRangeSource = await readFile(
   new URL("../../app/javascript/video_studio/date_range.js", import.meta.url),
   "utf8",
 )
-const dateRangeUrl = `data:text/javascript;base64,${Buffer.from(dateRangeSource).toString("base64")}`
+const dateRangeBundle = `${i18nSource}\n${dateRangeSource}`.replace(
+  /^import[\s\S]*?from "[^"]+"\n/gm,
+  "",
+)
+const dateRangeUrl = `data:text/javascript;base64,${Buffer.from(dateRangeBundle).toString("base64")}`
 const { formatDateTimeRange, selectableDateTimeRange, toLocalDateTimeInput } =
   await import(dateRangeUrl)
 globalThis.__videoStudioSelectableDateTimeRange = selectableDateTimeRange
@@ -103,11 +111,7 @@ test("selected range rejects missing, equal, backwards, or invalid times", () =>
 })
 
 test("range label shows the start and end times", () => {
-  const label = formatDateTimeRange(
-    "2026-07-11T14:30",
-    "2026-07-11T18:45",
-    "en-GB",
-  )
+  const label = formatDateTimeRange("2026-07-11T14:30", "2026-07-11T18:45")
   assert.match(label, /14:30/)
   assert.match(label, /18:45/)
 })
@@ -116,7 +120,6 @@ test("range label uses the configured timezone", () => {
   const label = formatDateTimeRange(
     "2026-07-11T12:30:00Z",
     "2026-07-11T16:45:00Z",
-    "en-GB",
     "Europe/Berlin",
   )
   assert.match(label, /14:30/)

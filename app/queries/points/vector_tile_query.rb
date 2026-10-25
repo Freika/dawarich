@@ -22,15 +22,28 @@ class Points::VectorTileQuery
   # Below this zoom tiles carry no per-point attributes: features are
   # centroid+count aggregates, so nothing can be popped up or identified.
   MIN_POINT_ATTRIBUTE_ZOOM = 5
+  # PostGIS can underestimate `lonlat &&` in a dense tile by five orders of
+  # magnitude and walk the GiST index for a one-day range (#3830). A scope this
+  # small is fenced so it is read through (user_id, timestamp) instead; larger
+  # scopes keep the geography index.
+  FENCE_MAX_ROWS = 50_000
   LAYER_NAME = 'points'
   TILE_PIXELS = 512
   WEB_MERCATOR_WORLD = 40_075_016.685578488
+  # Heat reflects time spent, not recording frequency; cap gaps between recordings.
+  MAX_DWELL_SECONDS = 300
+  # Only nearby samples can represent a stationary long gap. Use a fixed
+  # web-mercator distance so changing zoom cannot turn a gap into a stop.
+  MAX_STATIONARY_DISTANCE_METERS = 50
   # Bounds the per-query cost (VectorTileTimeout, ENV-overridable);
   # PgBouncer-safe because SET LOCAL runs inside an explicit transaction
   # (see Visits::Detection::CandidateLoader for the pattern)
 
-  def initialize(scope:, z:, x:, y:) # rubocop:disable Naming/MethodParameterName
+  # fence_key: stable identity of the scope shared by every tile of a map view;
+  # without it the scope's SQL stands in.
+  def initialize(scope:, z:, x:, y:, fence_key: nil) # rubocop:disable Naming/MethodParameterName
     @scope = scope
+    @fence_key = fence_key
     @z = parse_integer(z)
     @x = parse_integer(x)
     @y = parse_integer(y)
@@ -72,7 +85,7 @@ class Points::VectorTileQuery
 
   private
 
-  attr_reader :scope, :z, :x, :y
+  attr_reader :scope, :z, :x, :y, :fence_key
 
   # z/x/y are validated Integers and every other interpolated value is program-
   # computed — the only user-influenced SQL is the tile_scope relation.
@@ -96,19 +109,32 @@ class Points::VectorTileQuery
     Point.sanitize_sql_array(["ST_AsMVT(features.*, ?, #{EXTENT}, 'geom')", LAYER_NAME])
   end
 
-  # One-pass hash aggregation — a DISTINCT ON + window-count variant paid for a
-  # full sort (1.3s on a dense z11 tile). MIN() keeps the representative
-  # deterministic; count=1 cells are exact, and merged cells never show popups,
-  # so mixed MINs are invisible.
+  # LEAD sorts candidates by time; the 1M-point benchmark in
+  # lib/perf/vector_tile_benchmark.rb measured up to 1457ms with this window.
+  # Hash aggregation avoids a second sort for DISTINCT ON. MIN() keeps
+  # the representative deterministic; count=1 cells are exact, and merged
+  # cells never show popups, so mixed MINs are invisible.
   def with_clauses
     <<~SQL
       WITH candidates AS (#{candidates_sql}),
+      dwelled AS (
+        SELECT candidates.*,
+          CASE WHEN LEAD(timestamp) OVER timeline - timestamp > #{MAX_DWELL_SECONDS}
+            AND NOT ST_DWithin(geom_3857, LEAD(geom_3857) OVER timeline,
+                               #{MAX_STATIONARY_DISTANCE_METERS})
+            THEN 0
+            ELSE LEAST(COALESCE(LEAD(timestamp) OVER timeline - timestamp, 0),
+                       #{MAX_DWELL_SECONDS})
+          END AS dwell
+        FROM candidates
+        WINDOW timeline AS (ORDER BY timestamp)
+      ),
       features AS (
-        SELECT COUNT(*) AS count,
+        SELECT COUNT(*) AS count, SUM(dwell)::bigint AS dwell,
           MIN(timestamp) AS timestamp, MAX(timestamp) AS max_timestamp,
           #{point_attribute_aggregates}
           #{mvt_geom_expression('ST_Centroid(ST_Collect(geom_3857))')} AS geom
-        FROM candidates
+        FROM dwelled
         GROUP BY #{snap_expression}
         LIMIT #{tile_feature_limit}
       )
@@ -171,7 +197,7 @@ class Points::VectorTileQuery
     <<~SQL.squish
       SELECT points.timestamp AS timestamp, #{columns}
         #{translated_geom_expression(shift)} AS geom_3857
-      FROM (#{tile_scope.to_sql}) AS points
+      FROM (#{fenced_tile_scope.to_sql}) AS points
       WHERE points.lonlat IS NOT NULL
         #{spatial_prefilter(shift)}
         AND ST_Intersects(
@@ -232,9 +258,31 @@ class Points::VectorTileQuery
   end
 
   def tile_scope
+    bare_scope.select(:id, :timestamp, :battery, :altitude, :velocity, :lonlat,
+                      :track_id, :lock_version)
+  end
+
+  # OFFSET 0 stops PostgreSQL pushing the spatial filter into the subquery.
+  def fenced_tile_scope
+    fenced? ? tile_scope.offset(0) : tile_scope
+  end
+
+  # Every tile of a map view shares the scope, so the count runs once per view.
+  # A stale answer only changes the plan, never the points returned.
+  def fenced?
+    return @fenced if defined?(@fenced)
+
+    @fenced = prefilterable? && Rails.cache.fetch(fence_cache_key, expires_in: 10.minutes) do
+      bare_scope.limit(FENCE_MAX_ROWS + 1).count(:all) <= FENCE_MAX_ROWS
+    end
+  end
+
+  def fence_cache_key
+    ['points_tile_fence', FENCE_MAX_ROWS, fence_key || Digest::SHA256.hexdigest(bare_scope.to_sql)]
+  end
+
+  def bare_scope
     scope.except(:select, :order, :includes, :preload, :eager_load)
-         .select(:id, :timestamp, :battery, :altitude, :velocity, :lonlat,
-                 :track_id, :lock_version)
   end
 
   def with_statement_timeout

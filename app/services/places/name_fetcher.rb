@@ -31,6 +31,7 @@ module Places
           stale_labels = [Place::DEFAULT_NAME, previous_name, nil].uniq - [propagated_name]
           place.visits.where(location_label: stale_labels).update_all(location_label: propagated_name)
         end
+        place.carry_name_to_visits(previous_name) unless place.saved_change_to_name?
 
         place
       end

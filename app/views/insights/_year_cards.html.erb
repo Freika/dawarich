@@ -8,7 +8,7 @@
   <h2 id="insights-years-title" class="text-xl font-bold mb-3"><%= t('.title') %></h2>
   <div class="grid grid-cols-1 gap-4 <%= 'lg:grid-cols-2' if @stats_by_year.size + @locked_years.size > 1 %>">
     <% @stats_by_year.each do |year, stats| %>
-      <% cache [current_user.id, 'insights_year_card', I18n.locale, year, stats.map(&:updated_at).max, distance_unit, geocoding, map_years.include?(year), map_style], expires_in: 24.hours do %>
+      <% cache [current_user.id, 'insights_year_card', I18n.locale, year, stats.map(&:updated_at).max, distance_unit, geocoding, map_years.include?(year), map_style, Current.date_time_preferences.cache_key], expires_in: 24.hours do %>
         <% with_map = map_years.include?(year) && Stats::YearRoutesQuery.new(current_user, year).any? %>
         <div class="card bg-base-200 overflow-hidden" data-testid="insights-year-card">
           <% if with_map %>

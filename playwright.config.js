@@ -50,13 +50,27 @@ export default defineConfig({
 
     {
       name: "chromium",
-      testIgnore: /.*\/lite\/.*/,
+      testIgnore: [/.*\/lite\/.*/, /.*\/changelog_prompt\/.*/],
       use: {
         ...devices["Desktop Chrome"],
         // Use saved authentication state
         storageState: "e2e/temp/.auth/user.json",
       },
       dependencies: ["setup"],
+    },
+
+    {
+      name: "changelog-prompt-setup",
+      testMatch: /.*\/setup\/auth-changelog-prompt\.setup\.js/,
+    },
+    {
+      name: "changelog-prompt",
+      testMatch: /.*\/changelog_prompt\/.*/,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/temp/.auth/changelog-prompt-user.json",
+      },
+      dependencies: ["changelog-prompt-setup"],
     },
 
     // Lite user setup and tests

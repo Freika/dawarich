@@ -10,7 +10,7 @@ module Achievements
     FRAGMENT_SHARE = 0.01
     FRAGMENT_REACH = 0.03
 
-    CACHE_VERSION = 5
+    CACHE_VERSION = 6
     CACHE_TTL = 1.week
 
     SOURCES = {
@@ -21,12 +21,16 @@ module Achievements
     # Artwork framing only: never change the boundaries used to award visits.
     # Select whole polygons, preserving nearby islands (e.g. Corsica/Balearics).
     # Do not use a generic "largest polygon" rule: it destroys archipelagos.
-    COUNTRY_FRAMES = {
+    # Country and subdivision codes never collide, so both levels share it.
+    FRAMES = {
       'FR' => [-6, 41, 10, 52],
       'PT' => [-10, 36, -6, 43],
       'NO' => [3, 57, 34, 72],
       'NL' => [3, 50, 8, 54],
-      'ES' => [-10, 35, 5, 44.5]
+      'ES' => [-10, 35, 5, 44.5],
+      'CL' => [-76, -56.5, -66, -17],
+      'CL-VS' => [-72.5, -34.5, -69.5, -31.5],
+      'MX-COL' => [-105, 18, -103, 20]
     }.freeze
 
     # A continent's membership includes entire countries, but its illustration
@@ -116,8 +120,7 @@ module Achievements
     end
 
     def sql(codes)
-      geometry = @level == :country ? country_geometry_sql : 'g0'
-      shapes_sql(source_sql(codes), "SELECT code, #{geometry} AS g0 FROM src")
+      shapes_sql(source_sql(codes), "SELECT code, #{framed_geometry_sql} AS g0 FROM src")
     end
 
     def collection_sql(key)
@@ -132,8 +135,8 @@ module Achievements
       SQL
     end
 
-    def country_geometry_sql
-      cases = COUNTRY_FRAMES.map do |code, frame|
+    def framed_geometry_sql
+      cases = FRAMES.map do |code, frame|
         <<~SQL.squish
           WHEN '#{code}' THEN COALESCE(
             (SELECT ST_Collect(part.geom) FROM ST_Dump(g0) AS part

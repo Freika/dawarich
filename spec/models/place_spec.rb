@@ -197,6 +197,28 @@ RSpec.describe Place, type: :model do
   describe 'methods' do
     let(:place) { create(:place, :with_geodata) }
 
+    describe '#address_line' do
+      it 'formats a Photon-shaped address' do
+        place = build(:place, geodata: { 'properties' => { 'street' => 'Poststraße', 'housenumber' => '23',
+                                                           'postcode' => '04275', 'city' => 'Leipzig' } })
+
+        expect(place.address_line).to eq('Poststraße 23, 04275 Leipzig')
+      end
+
+      it 'formats a Nominatim-shaped address' do
+        place = build(:place, geodata: { 'lat' => '51.3', 'lon' => '12.3',
+                                         'address' => { 'road' => 'Poststraße', 'house_number' => '23',
+                                                        'postcode' => '04275', 'city' => 'Leipzig' } })
+
+        expect(place.address_line).to eq('Poststraße 23, 04275 Leipzig')
+      end
+
+      it 'is nil without geodata' do
+        expect(build(:place, geodata: {}).address_line).to be_nil
+        expect(build(:place, geodata: nil).address_line).to be_nil
+      end
+    end
+
     describe '#osm_id' do
       it 'returns the osm_id' do
         expect(place.osm_id).to eq(5_762_449_774)
@@ -305,6 +327,50 @@ RSpec.describe Place, type: :model do
       place.update!(city: 'Leipzig')
 
       expect(place.reload.name_locked_at).to be_within(1.second).of(locked_at)
+    end
+  end
+
+  describe 'renaming' do
+    let(:place) { create(:place, name: 'Imaginary Lane 42') }
+
+    it 'carries the new name to visits still showing the old place name' do
+      visit = create(:visit, user: place.user, place: place, name: 'Imaginary Lane 42')
+
+      place.update!(name: 'Synthetic Home')
+
+      expect(visit.reload).to have_attributes(name: nil, display_name: 'Synthetic Home')
+    end
+
+    it 'carries the new name to visits still showing the default name' do
+      visit = create(:visit, user: place.user, place: place, name: Place::DEFAULT_NAME)
+
+      place.update!(name: 'Synthetic Home')
+
+      expect(visit.reload).to have_attributes(name: nil, display_name: 'Synthetic Home')
+    end
+
+    it 'leaves a visit the user named independently alone' do
+      visit = create(:visit, user: place.user, place: place, name: 'Dentist')
+
+      place.update!(name: 'Synthetic Home')
+
+      expect(visit.reload.name).to eq('Dentist')
+    end
+
+    it 'leaves default-named visits alone when only other attributes change' do
+      visit = create(:visit, user: place.user, place: place, name: Place::DEFAULT_NAME)
+
+      place.update!(city: 'Leipzig')
+
+      expect(visit.reload.name).to eq(Place::DEFAULT_NAME)
+    end
+
+    it 'leaves visits of other places alone' do
+      other = create(:visit, user: place.user, place: create(:place, user: place.user), name: 'Imaginary Lane 42')
+
+      place.update!(name: 'Synthetic Home')
+
+      expect(other.reload.name).to eq('Imaginary Lane 42')
     end
   end
 end

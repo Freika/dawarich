@@ -7,67 +7,121 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
+
 - The Places page can list only Unconfirmed Places, and each Place opens a details page where a duplicate Place can be merged into it together with its Visits, tags and notes.
+- Choose how dates and times are shown in Settings → General: an automatic date format or `DD.MM.YYYY`, `DD/MM/YYYY`, `MM/DD/YYYY` or `YYYY-MM-DD`, a 12-hour or 24-hour clock, and whether weeks start on Monday or Sunday. The choice applies across the app, in emails and on the map, and the mobile app can read and change it through `/api/v1/settings`.
 
 ### Changed
+
 - Back up your database before upgrading. A background job moves Areas into Places and moves the names of automatically detected Visits into their location label. It also clears Visit names that only repeat their Place or Area name, so they follow later renames. Rolling back does not restore these names. Keep Sidekiq (or embedded jobs) running until it finishes.
 - Areas are now Places with a Visit Radius (up to 50 km), keeping their notes and Visits. The map shows Places with optional boundaries, and the Create Area tool is gone: create a Place with a Visit Radius on the map or from a Visit instead.
 - API: `/api/v1/areas` and the Visit `area_id` field are deprecated in favour of `/api/v1/places` and `place_id`. Visit responses add `display_name`, `custom_name` (the stored Visit name, if any) and `location_label`; `name` still returns the name to show. Breaking: `place` is now `null` for Visits without a Place or Area.
 - The MCP `get_timeline` and `search_visits` tools include each Place's `visit_radius`, and `search_visits` names visits like the timeline and matches location labels.
 - Exports still include `areas.jsonl` so older Dawarich versions can import them, and importing an older backup turns its Areas into Places.
+- English dates with a time now use the 24-hour clock unless you choose the 12-hour clock in Settings → General.
+- Ruby version updated to 4.0.9
+- On the Lite plan, the 12-month window now starts at midnight UTC and moves once a day, so the oldest day leaves the window all at once. The map's upgrade banner and the data archival notices follow the same date.
 
-## [1.16.1] - 2026-10-22, Berlin
+### Fixed
 
-This release makes Dawarich lighter and faster. Measured on a test instance with 100,000 points, compared with 1.16.0:
+- Map points load again for a single day in a place where you have years of history, such as home. Before, that map tile could take longer than 5 seconds and the map showed "Could not load map tiles" (#3830)
+- Tracks no longer have gaps or straight lines where points recorded later, imported or synced from another app, sit next to an existing track from the same device: those points now join the track. After the update, Dawarich repairs the last 12 months in the background; for older gaps, choose Recalculate tracks & stats (#3794)
+- On phones, the card asking whether to show "What's New" notices now fits on screen. Before, its left side, including the heading, was cut off.
+- The trip page no longer scrolls sideways on phones, and its download menu no longer opens partly off-screen. Long trip names and the Public badge of a shared trip used to push the page wider than the screen.
+- A visit is suggested again when tracking stops at a place and resumes at the same spot later, for example a shortcut that pauses tracking at the gym. Before, fixes taken while arriving and leaving could make the two sides look like different places, and no visit was suggested. Choose Re-run detection on full history on the Visits page to fix past stays (#3203)
+- Imports uploaded before 1.14.4 no longer show a `.zip` suffix in their names: `ride.gpx.zip` becomes `ride.gpx`. Imports you renamed yourself, and imports whose new name is already taken by another of your imports, keep their current names. (#3062)
+- Downloading an import now returns the original file instead of a ZIP archive when its filename has accented letters such as `ü` (also for imports that already downloaded as a ZIP) or characters such as `:`. New uploads with characters such as `:` also no longer get `.zip` added to their import name. (#3062)
+- Renaming a place now renames its visits that still show the old or default name; visits you named yourself keep their names, and visits already showing an outdated name stay as they are (#3353)
+- A track from another tracker, such as an imported watch GPX, now cuts a track whose gap it fills instead of that track bridging the gap with a straight line and counting the distance twice. Trackers that record alongside each other keep separate, whole tracks. Choose Recalculate tracks & stats to apply this to imports made before this release (#3424)
+- Flights are drawn along the great circle: straight on the globe and an arc on the flat map. A route over the North Pole no longer kinks or runs along the map's top edge; the part beyond the edge of the flat map is left out (#3261)
+- The achievement cards for Valparaíso, Colima and Chile now show the mainland at full size. Before, a distant island (Easter Island or the Revillagigedo Islands) stretched the drawing, so the region shrank to a dot at the edge of the card. Earned achievements are unchanged (#3731)
+- With Edit points on, clicking another point of the track you are editing now selects that point, and a click that nudges the mouse by a few pixels no longer moves the point. Before, the panel and its Delete button stayed on the first point you clicked until you clicked an empty spot on the map, so Delete could remove the wrong point (#3772)
+- Aosta Valley is now part of Italy's achievement, which has all 20 regions. Anyone who already completed Italy keeps it. The upgrade recalculates achievements once in the background without notifications, so earlier visits to Aosta Valley count. (#3789)
 
-- Memory: about 240 MiB at idle instead of 510 MiB, and 400 MiB instead of 770 MiB after load, now that Puma and Sidekiq run in one process.
-- Pages: map, trips, insights and points render two to three times faster (map 47 ms → 14 ms).
-- Map tiles: dense point tiles render in 200 ms instead of 560 ms. While new points keep arriving, tiles for other months are revalidated in about 5 ms instead of being rebuilt.
-- Imports: a 200,000-point Google Records import finishes in 132 s instead of 175 s. Peak memory no longer grows with file size: about 60 MiB for 2.4 million points.
+## [1.17.0] - 2026-10-23, Berlin
+
+Dawarich gets lighter and faster in this release. On a test account with a million points over three years, compared with 1.16.0:
+
+- It needs about half the memory at idle: 230 MiB instead of 480 MiB.
+- Long trips open in a fraction of the time. A 300-day trip no longer downloads every recorded point: the page and its map need about 1 MB instead of 11 MB of page and 190 MB of point data, and the trips list opens in 0.1 s instead of 2 s.
+- Paging through the points page and the points API is up to four times faster, and repeat visits are answered almost instantly.
+- While new points keep arriving, map tiles for other months are no longer downloaded again.
+- A 200,000-point Google Records import finishes in 132 s instead of 175 s, and big imports no longer need memory in proportion to the file size.
+
+### Upgrading a self-hosted instance
+
+Background jobs now run inside the `dawarich_app` container, in the same process as the web server, so the separate `dawarich_sidekiq` container is no longer needed. Jobs waiting in Redis are kept and picked up after the upgrade.
+
+1. With your old `docker-compose.yml` still in place, stop and remove the worker so it can finish or return its running jobs:
+
+   ```bash
+   docker compose stop -t 60 dawarich_sidekiq
+   docker compose rm -f dawarich_sidekiq
+   ```
+
+2. Update the Compose file in one of two ways:
+   - Replace it with the [new `docker-compose.yml`](https://github.com/Freika/dawarich/blob/master/docker/docker-compose.yml), keeping your own environment values, volumes, Redis and database settings.
+   - Or edit your own file: delete the `dawarich_sidekiq` service, add `stop_grace_period: 60s` to `dawarich_app`, and under its existing `environment:` replace `WEB_CONCURRENCY` and add two variables:
+
+     ```yaml
+     SIDEKIQ_EMBEDDED: 'true'
+     WEB_CONCURRENCY: '0'
+     BACKGROUND_PROCESSING_CONCURRENCY: 2
+     ```
+
+     `WEB_CONCURRENCY` must be `0`: every extra web process would start its own set of job threads.
+3. Move any setting you had only on `dawarich_sidekiq`, such as SMTP, OIDC or reverse geocoding, to `dawarich_app`. If your `.env` sets `BACKGROUND_PROCESSING_CONCURRENCY=10` from the old `.env.example`, remove it or set it to `2`, and remove `RAILS_MAX_THREADS` if it is set. If it sets `APP_CPU_LIMIT=0.50` from the old `.env.example`, raise it to `1.00`.
+4. Start the stack and check that three containers are running: `dawarich_db`, `dawarich_redis` and `dawarich_app`.
+
+   ```bash
+   docker compose pull
+   docker compose up -d
+   docker compose ps
+   ```
+
+Don't start the old worker again next to the new setup. Larger instances, or ones with frequent big imports, can keep jobs in a separate container instead; see [Background jobs](https://dawarich.app/docs/self-hosting/configuration/background-jobs).
 
 ### Added
 
 - Import your check-in history from a Foursquare Swarm data export. Upload the whole export archive or its `checkins*.json` files: every check-in becomes a point, and every check-in at a venue becomes a visit at a place named after that venue. A visit lasts until your next check-in, at most two hours. The other files in the archive (tips, photos, ratings) are skipped.
-- Single-process mode runs background jobs and schedules inside Puma with `SIDEKIQ_EMBEDDED=true` and `WEB_CONCURRENCY=0`.
 
 ### Changed
 
-- Reverse geocoding can use more background threads. Without a requests-per-second limit on the geocoding provider, each Sidekiq process now keeps one thread for other work instead of limiting geocoding to a third of one process's threads; with a limit, geocoding gets one thread per request per second, rounded up. `REVERSE_GEOCODING_CONCURRENCY` still overrides this. If you use Geoapify, LocationIQ or the public Nominatim, set a requests-per-second limit in the geocoding settings or `REVERSE_GEOCODING_RPS`, since Dawarich does not limit those providers on its own.
-- Geocoding lookups keep their connection to the provider open between requests instead of opening a new HTTPS connection for every lookup.
-- Stitching detected visits reads batched coordinates instead of loading every point field for each visit.
-- Visit detection fetches point geodata for groups of stays instead of checking each stay separately.
-- Large Google Records, Phone Takeout, GeoJSON, Polarsteps and photo-library JSON imports, and the Records device-tag backfill, read the file incrementally in batches instead of loading the entire file into memory first. Files with invalid UTF-8 still import through the previous parser.
-- Cached SVG icons use bounded argument keys instead of serializing and hashing arguments on each render.
-- Locale lookups are memoized between reloads, preserving fallbacks, interpolation and plural forms.
-- HTML pages skip automatic ETag body hashing, while explicit validators and JSON/API conditional requests keep working.
-- The default `docker/docker-compose.yml` now runs Puma and Sidekiq in one process, with two background threads and 60 seconds to shut down. Before upgrading an existing stack, stop `dawarich_sidekiq` using its old Compose file; queued jobs remain in Redis and are picked up by the web process. See `docs/deployment/single-process.md` for upgrade steps.
-- Map track tiles are revalidated the same way, against per-month revisions of tracks and their points, and their queries also run without PostgreSQL JIT compilation.
-- Map point tiles are revalidated against per-month point revisions kept by the database. Points arriving in one month no longer force browsers to re-download tiles for other months of the same year, and changes made outside the usual write paths, such as bulk updates, now refresh the affected tiles.
-- Dense map point tiles render about 2.5 times faster: PostgreSQL JIT compilation is turned off for the tile query only.
-- The points page and the points API no longer count all matching points on every request; the total is cached and refreshed whenever points change, so large accounts page through points much faster. Response headers are unchanged.
-- Pages render two to three times faster: the API key QR code in the getting-started dialog and the SVG icons are generated once per process instead of on every page view.
-- Track generation loads only the point columns it needs, and the five-minute place-name refresh skips months whose points did not change.
+- The app container in the default `docker/docker-compose.yml` is limited to one CPU core instead of half a core, since it also runs background jobs. Set `APP_CPU_LIMIT` to change it.
+- The Docker image now ships Node.js 22 LTS from the official Node.js build instead of Debian's Node.js 20 package, which no longer receives upstream security fixes. Node.js runs the server-side poster renderer. #3888
+- The points page and the points API page through large accounts much faster.
+- Reverse geocoding gets through a backlog faster: it uses as many background threads as your provider's rate limit allows and keeps its connection to the provider open. If you use Geoapify, LocationIQ or the public Nominatim, set a requests-per-second limit in the geocoding settings or `REVERSE_GEOCODING_RPS`, since Dawarich does not limit those providers on its own.
+- Visit detection and track generation need less memory and fewer database queries, and the place-name refresh skips months where nothing changed.
 
 ### Fixed
 
-- The visits API answers with a bad-request error (`Invalid time range`, previously `Invalid date format`) for malformed or reversed date ranges, and for area queries that send only one of `start_at` and `end_at`; creating a visit rejects impossible dates such as 30 February instead of moving them into March.
-- Import archives with many photos or other unsupported files no longer fail with "Archive too large" or "Too many files"; only the files Dawarich can import count towards those limits.
-- Stop writing every raw geocoding response, including addresses and coordinates, to the log.
+- Polish counts use the right plural form, for example "3 kraje" and "5 krajów" instead of "3 krajów" and "5 kraju". This also fixes relative times such as "około 3 godziny" and labels on the map.
+- Trips with long recordings open quickly: the trips list, trip page, trip form and shared trip page draw routes from map tiles instead of sending every recorded coordinate, and the trip page loads points only when you open Replay, the poster or the video studio (#3867, #3783)
 - Overnight stays where the phone goes quiet, for example arriving home in the evening and leaving in the morning, are now suggested as one visit across the silence instead of a few minutes after arrival. Choose Re-run detection on full history on the Visits page to fix past stays.
 - Points synced from TeslaMate now get suggested visits; choose Re-run detection on full history to cover earlier drives. On Dawarich Cloud, trial accounts are now included in the nightly visit run.
-- Re-running detection on full history no longer skips months with more than 100,000 points; it detects them in smaller windows.
-- Trips with long recordings open quickly: the trips list, trip page, trip form and shared trip page draw routes from map tiles instead of sending every recorded coordinate, and the trip page downloads points only when Replay, the poster or the video studio is opened (#3867, #3783)
-- Import jobs for accounts pending deletion are now skipped instead of failing, and where PostgreSQL advisory locks are enabled (the default) account deletion waits for running imports to finish.
+- Re-running detection on full history no longer skips months with more than 100,000 points.
 - Opening a calculated trip whose countries could not be determined, for example without a reverse geocoder, no longer recalculates its path, distance and countries on every view; TREK sync no longer does either. If your points get countries later, press Recalculate on the trip page (#3868)
 - "Where you spent" on Insights counts days and year boundaries in your timezone, so a stay across New Year no longer shows the first days of the year at the end of the ribbon (#3869)
+- Countries you only flew over no longer count toward trips, monthly and yearly digests, or days per country on Insights. (#2711)
+- Track elevation gain and loss ignore small GPS altitude fluctuations. (#3458)
+- Photo markers on a public shared trip are spread across the whole trip, so later days still appear within the 100-marker limit. (#3653)
+- When a tracker's motion data is marked authoritative, the transportation mode it reports is kept during stops. (#3668)
+- Tracks are colored by speed again, and the speed color scale can be edited in the map settings. (#3681)
+- The heatmap is weighted by time spent at a place instead of how often points were recorded there. (#3597)
+- `POST /api/v1/visits/batch` accepts the same optional `address` as `POST /api/v1/visits`, and a visit sent with an address that has no street or city still gets its place address looked up.
+- A visit whose `address` is not an object is created without an address instead of failing.
 - The year digest counts time by country and travel patterns in your timezone, so a day around New Year is no longer added to the wrong year or split across two days. Choose Recalculate tracks & stats to refresh digests of past years.
-- Drives reported with a speed of 0 (OwnTracks, background Android) are no longer classified as stationary: a zero speed that the distance between points clearly contradicts is replaced by the speed from distance and time. Choose Recalculate tracks & stats to reclassify existing tracks (#3887)
-- GeoJSON and account-archive imports keep values below 1 that carry 17 or more significant digits; such a longitude, for example `-0.12345678901234567`, was stored as `-128`. Oj is updated to 3.17.7.
+- Drives reported with a speed of 0 (OwnTracks, background Android) are no longer classified as stationary. Choose Recalculate tracks & stats to reclassify existing tracks (#3887)
 - Real-time tracks now split only on the time gap, like imported history and the map, so sparsely sampled driving points are no longer left without a track. Choose Recalculate tracks & stats to fill gaps recorded before this release (#3638)
-- Credit country dwell time and first-visit dates for points without a country tag, so continent achievements count the same countries as their explored regions; stored progress is recalculated and may unlock countries (#3784)
-- Keep photo clusters and their counts visible above tracks, heatmaps and points on the map (#3770)
-- Refresh the trip map after the live stream subscribes or reconnects when path calculation finished before subscription (#3736)
-- End tracks when a device stays within 100 m for longer than the minutes-between-routes setting, even if it keeps reporting locations, so overnight stops can be suggested as visits again; regenerate existing tracks to apply the fix. (#3356)
+- End tracks when a device stays within 100 m for longer than the minutes-between-routes setting, even if it keeps reporting locations, so overnight stops can be suggested as visits again; regenerate existing tracks to apply the fix (#3356)
+- Continent achievements count the same countries as their explored regions, including time spent at points without a country tag; stored progress is recalculated and may unlock countries (#3784)
+- Photo clusters and their counts stay visible above tracks, heatmaps and points on the map (#3770)
+- The trip map refreshes after the live connection reconnects, even when the path was calculated before it connected (#3736)
+- GeoJSON and account-archive imports keep very precise coordinates near zero; such a longitude, for example `-0.12345678901234567`, was stored as `-128`.
+- Import archives with many photos or other unsupported files no longer fail with "Archive too large" or "Too many files".
+- Imports for accounts being deleted are skipped instead of failing, and account deletion waits for running imports to finish.
+- Raw geocoding responses, which contain addresses and coordinates, are no longer written to the log.
+- The visits API answers with a bad-request error (`Invalid time range`, previously `Invalid date format`) for malformed or reversed date ranges, and for area queries that send only one of `start_at` and `end_at`. Creating a visit rejects impossible dates such as 30 February instead of moving them into March.
 
 ## [1.16.0] - 2026-10-17, Berlin
 

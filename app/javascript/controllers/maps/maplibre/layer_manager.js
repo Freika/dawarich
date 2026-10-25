@@ -101,6 +101,7 @@ export class LayerManager {
 
     // Click handlers
     subscribe("click", "points-mvt", handlers.handlePointClick)
+    subscribe("click", "track-points", handlers.handleEditablePointClick)
     subscribe("click", "visits", handlers.handleVisitClick)
     subscribe("click", "photos", handlers.handlePhotoClick)
     subscribe("click", "places", handlers.handlePlaceClick)
@@ -428,6 +429,9 @@ export class LayerManager {
       this.layers.tracksMvtLayer = new TracksMvtLayer(this.map, {
         tracksEnabled: this.settings.tracksEnabled === true,
         trackColor: SettingsManager.getSetting("trackColor"),
+        speedColoring:
+          SettingsManager.getSetting("speedColoredRoutes") === true,
+        speedColorScale: SettingsManager.getSetting("speedColorScale"),
         apiKey: this.apiKey,
         importId: this.controller?.importIdValue || null,
         onTileError: () =>

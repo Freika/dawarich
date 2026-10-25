@@ -30,8 +30,8 @@ class Lite::ArchivalWarningJob < ApplicationJob
 
     # Find all crossed thresholds that haven't been sent yet
     unsent_crossed = THRESHOLDS.select do |threshold|
-      cutoff = threshold[:duration].ago.to_i
-      oldest_timestamp <= cutoff && warnings_sent[threshold[:key]].blank?
+      cutoff = DawarichSettings.lite_data_window_start(threshold[:duration]).to_i
+      oldest_timestamp < cutoff && warnings_sent[threshold[:key]].blank?
     end
 
     return if unsent_crossed.empty?

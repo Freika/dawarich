@@ -63,7 +63,6 @@ pl:
         locked: Zablokowane
     cards:
       explorer_name: "Odkrywca: %{place}"
-      date_format: "%-d %b %Y"
       description:
         continent: "Spędź czas we wszystkich %{count} krajach i terytoriach: %{place}."
         regions: "Spędź czas we wszystkich %{count} regionach: %{place}."

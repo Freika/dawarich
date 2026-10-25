@@ -5,7 +5,7 @@ class Api::V1::Tiles::TracksController < ApiController
 
   # ETag material — bump when Tracks::VectorTileQuery's SQL or its emitted
   # properties change.
-  TILE_SCHEMA_VERSION = 6
+  TILE_SCHEMA_VERSION = 7
 
   private
 

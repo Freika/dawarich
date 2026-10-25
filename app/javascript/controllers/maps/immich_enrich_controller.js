@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { translate } from "i18n"
+import { formatDateTime, translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
 import Flash from "../flash_controller"
 
@@ -610,14 +610,7 @@ export default class extends Controller {
   }
 
   formatDatetime(isoString) {
-    const d = new Date(isoString)
-    return d.toLocaleString(document.documentElement.lang || undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
+    return formatDateTime(isoString)
   }
 
   formatTimeDelta(seconds) {

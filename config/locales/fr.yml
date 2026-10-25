@@ -1659,6 +1659,8 @@ fr:
         settings_s: Paramètres (S)
         links: Liens
       settings_panel:
+        speed_colored_tracks: Colorer les traces selon la vitesse
+        edit_speed_colors: Modifier les couleurs de vitesse
         close_panel: Fermer le panneau
         layers: Couches
         search_for_a_place: Rechercher un endroit
@@ -2344,6 +2346,14 @@ fr:
         your_timezone: Votre fuseau horaire
         all_dates_and_times_will_be_displayed_in_this_timezone: Toutes les dates et
           heures seront affichées dans ce fuseau horaire
+        date_and_time: "Date et heure"
+        date_format: "Format de date"
+        time_format: "Format de l'heure"
+        first_day_of_week: "Premier jour de la semaine"
+        format_auto: "Automatique (%{example})"
+        time_format_12h: "12 heures (%{example})"
+        time_format_24h: "24 heures (%{example})"
+        date_and_time_hint: "S'applique aux dates et heures dans l'application, les e-mails et sur la carte."
         supporter_badge: Badge de supporteur
         show_supporter_badge_in_navbar: Afficher le badge de supporteur dans le menu
         display_a_gem_icon_next_to_your_profile_to_show: Afficher une icône en forme
@@ -5873,3 +5883,8 @@ fr:
       no_invitations: Aucune invitation en attente
       title: Invitations de la famille
       view_invitation: Afficher
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: AM
+      pm: PM

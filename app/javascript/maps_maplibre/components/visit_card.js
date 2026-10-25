@@ -1,4 +1,4 @@
-import { translate } from "i18n"
+import { formatDate, formatTime, translate } from "i18n"
 import { escapeHtml } from "../utils/geojson_transformers"
 
 /**
@@ -20,19 +20,8 @@ export class VisitCard {
     // Format date and time
     const startDate = new Date(visit.started_at)
     const endDate = new Date(visit.ended_at)
-    const locale = document.documentElement.lang || undefined
-    const dateStr = startDate.toLocaleDateString(locale, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })
-    const timeRange = `${startDate.toLocaleTimeString(locale, {
-      hour: "2-digit",
-      minute: "2-digit",
-    })} - ${endDate.toLocaleTimeString(locale, {
-      hour: "2-digit",
-      minute: "2-digit",
-    })}`
+    const dateStr = formatDate(startDate)
+    const timeRange = `${formatTime(startDate)} - ${formatTime(endDate)}`
 
     // Format duration (duration is in minutes from the backend)
     const hours = Math.floor(visit.duration / 60)

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ApiController < ApplicationController
+  include DefaultDateTimePreferences
+
   skip_before_action :verify_authenticity_token
   before_action :set_version_header
   before_action :authenticate_api_key

@@ -43,12 +43,14 @@ class Imports::DestroyJob < ApplicationJob
       }
     )
 
-    Turbo::StreamsChannel.broadcast_replace_to(
-      [import.user, :imports],
-      target: ActionView::RecordIdentifier.dom_id(import),
-      partial: 'imports/table_row',
-      locals: { import: import, timezone: import.user.safe_settings.timezone }
-    )
+    Users::DateTimePreferences.with(import.user) do
+      Turbo::StreamsChannel.broadcast_replace_to(
+        [import.user, :imports],
+        target: ActionView::RecordIdentifier.dom_id(import),
+        partial: 'imports/table_row',
+        locals: { import: import, timezone: import.user.safe_settings.timezone }
+      )
+    end
   end
 
   def broadcast_deletion_complete(import)

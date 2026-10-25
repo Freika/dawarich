@@ -59,7 +59,6 @@ es:
         locked: Bloqueadas
     cards:
       explorer_name: "Explorador de %{place}"
-      date_format: "%-d %b %Y"
       description:
         continent: "Pasa tiempo en los %{count} países y territorios de %{place}."
         regions: "Pasa tiempo en las %{count} regiones de %{place}."

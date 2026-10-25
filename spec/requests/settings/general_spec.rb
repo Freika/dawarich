@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'settings/general', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   context 'when user is authenticated' do
     let!(:user) { create(:user, settings: {}) }
 
@@ -42,6 +44,22 @@ RSpec.describe 'settings/general', type: :request do
         expect(response.body).to include('id="email-digests"')
         expect(response.body).to include('name="monthly_digest_emails_enabled"')
         expect(response.body).to include('name="yearly_digest_emails_enabled"')
+      end
+
+      it 'renders the date and time selects with the saved values and example labels' do
+        user.update!(
+          settings: { 'date_format' => 'dd.mm.yyyy', 'time_format' => '12h', 'first_day_of_week' => 'sunday' }
+        )
+
+        travel_to(Time.zone.local(2026, 10, 24, 14, 5)) { get settings_general_index_url }
+
+        page = Nokogiri::HTML(response.body)
+        date_select = page.at_css('select[name="date_format"]')
+        expect(date_select.at_css('option[selected]')['value']).to eq('dd.mm.yyyy')
+        expect(date_select.css('option').to_h { |option| [option['value'], option.text.strip] })
+          .to include('auto' => 'Automatic (Oct 24, 2026)', 'dd.mm.yyyy' => '24.10.2026', 'yyyy-mm-dd' => '2026-10-24')
+        expect(page.at_css('select[name="time_format"] option[selected]')['value']).to eq('12h')
+        expect(page.at_css('select[name="first_day_of_week"] option[selected]')['value']).to eq('sunday')
       end
 
       it 'shows a not-configured notice instead of preferences when SMTP is unset' do
@@ -144,6 +162,26 @@ RSpec.describe 'settings/general', type: :request do
 
         expect(response).to redirect_to(settings_general_index_path)
         expect(user.reload.settings['timezone']).to eq('UTC')
+      end
+
+      it 'saves the date, time and week-start preferences' do
+        patch settings_general_path,
+              params: { date_format: 'dd.mm.yyyy', time_format: '12h', first_day_of_week: 'sunday' }
+
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(user.reload.settings.slice('date_format', 'time_format', 'first_day_of_week'))
+          .to eq('date_format' => 'dd.mm.yyyy', 'time_format' => '12h', 'first_day_of_week' => 'sunday')
+      end
+
+      it 'ignores unknown date, time and week-start values' do
+        user.update!(settings: user.settings.merge('date_format' => 'yyyy-mm-dd'))
+
+        patch settings_general_path,
+              params: { date_format: 'nonsense', time_format: '25h', first_day_of_week: 'friday' }
+
+        expect(user.reload.settings['date_format']).to eq('yyyy-mm-dd')
+        expect(user.settings).not_to have_key('time_format')
+        expect(user.settings).not_to have_key('first_day_of_week')
       end
     end
 

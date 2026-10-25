@@ -986,6 +986,8 @@ zh:
         links: 链接
         video_studio: 视频工作室
       settings_panel:
+        speed_colored_tracks: 按速度为轨迹着色
+        edit_speed_colors: 编辑速度颜色
         close_panel: 关闭面板
         layers: 图层
         search_for_a_place: 搜索地点
@@ -1572,6 +1574,14 @@ zh:
         timezone: 时区
         your_timezone: 您的时区
         all_dates_and_times_will_be_displayed_in_this_timezone: 所有日期和时间都将显示在该时区中
+        date_and_time: "日期和时间"
+        date_format: "日期格式"
+        time_format: "时间格式"
+        first_day_of_week: "每周第一天"
+        format_auto: "自动（%{example}）"
+        time_format_12h: "12 小时制（%{example}）"
+        time_format_24h: "24 小时制（%{example}）"
+        date_and_time_hint: "适用于应用、邮件和地图中的日期和时间。"
         supporter_badge: 支持者徽章
         show_supporter_badge_in_navbar: 在导航栏中显示支持者徽章
         display_a_gem_icon_next_to_your_profile_to_show: 在个人资料旁显示宝石图标，用于标识您的支持者身份
@@ -4743,3 +4753,8 @@ zh:
       cancel: 取消
       save_to_gallery: 保存到图库
       render_video: 渲染视频
+  date_time_preferences:
+    clock_12h: "%{meridiem}%{time}"
+    meridiem:
+      am: 上午
+      pm: 下午

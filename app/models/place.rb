@@ -28,6 +28,7 @@ class Place < ApplicationRecord
   after_commit :schedule_suggested_visit_reattribution,
                on: %i[create update],
                if: :suggested_visit_reattribution_needed?
+  after_update -> { carry_name_to_visits(name_before_last_save) }, if: :saved_change_to_name?
 
   validates :name, presence: true, length: { maximum: 255 }
   validates :lonlat, presence: true
@@ -93,6 +94,13 @@ class Place < ApplicationRecord
 
   def name_locked?
     name_locked_at.present?
+  end
+
+  def carry_name_to_visits(previous_name)
+    stale_names = [previous_name, DEFAULT_NAME].compact.uniq - [name]
+    return if stale_names.empty?
+
+    visits.where(name: stale_names).update_all(name: nil, updated_at: Time.current)
   end
 
   def osm_id

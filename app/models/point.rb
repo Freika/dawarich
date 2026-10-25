@@ -45,6 +45,7 @@ class Point < ApplicationRecord
   scope :not_visited, -> { where(visit_id: nil) }
   scope :complete, -> { where.not(timestamp: nil).where.not(lonlat: nil) }
   scope :not_anomaly, -> { where(anomaly: [false, nil]) }
+  scope :not_flyover, -> { where(CountriesAndCities.not_flyover_sql) }
   scope :anomaly, -> { where(anomaly: true) }
   # Ingest, cleanup and the anomaly filter must all agree on what counts as a
   # broken coordinate; Points::NullIsland owns that definition.

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_22_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_25_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -946,6 +946,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_160000) do
      LANGUAGE plpgsql
     AS $function$
     BEGIN
+      IF current_setting('dawarich.defer_revisions', true) = 'on' THEN RETURN NULL; END IF;
       INSERT INTO point_revisions (user_id, month, revision)
       SELECT user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date, gen_random_uuid()
       FROM (SELECT user_id, timestamp FROM old_points) AS changed
@@ -964,6 +965,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_160000) do
      LANGUAGE plpgsql
     AS $function$
     BEGIN
+      IF current_setting('dawarich.defer_revisions', true) = 'on' THEN RETURN NULL; END IF;
       INSERT INTO point_revisions (user_id, month, revision)
       SELECT user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date, gen_random_uuid()
       FROM (SELECT user_id, timestamp FROM new_points) AS changed
@@ -982,6 +984,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_160000) do
      LANGUAGE plpgsql
     AS $function$
     BEGIN
+      IF current_setting('dawarich.defer_revisions', true) = 'on' THEN RETURN NULL; END IF;
       INSERT INTO point_revisions (user_id, month, revision)
       SELECT user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date, gen_random_uuid()
       FROM (SELECT user_id, timestamp FROM points) AS changed
@@ -1000,6 +1003,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_160000) do
      LANGUAGE plpgsql
     AS $function$
     BEGIN
+      IF current_setting('dawarich.defer_revisions', true) = 'on' THEN RETURN NULL; END IF;
       INSERT INTO point_revisions (user_id, month, revision)
       SELECT user_id, date_trunc('month', to_timestamp(timestamp) AT TIME ZONE 'UTC')::date, gen_random_uuid()
       FROM (SELECT user_id, timestamp FROM old_points UNION ALL SELECT user_id, timestamp FROM new_points) AS changed
@@ -1030,6 +1034,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_160000) do
      LANGUAGE plpgsql
     AS $function$
     BEGIN
+      IF current_setting('dawarich.defer_revisions', true) = 'on' THEN RETURN NULL; END IF;
       INSERT INTO track_revisions (user_id, month, revision)
       SELECT changed.user_id, months.month::date, gen_random_uuid()
       FROM (SELECT user_id, start_at, end_at FROM old_tracks) AS changed
@@ -1051,6 +1056,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_160000) do
      LANGUAGE plpgsql
     AS $function$
     BEGIN
+      IF current_setting('dawarich.defer_revisions', true) = 'on' THEN RETURN NULL; END IF;
       INSERT INTO track_revisions (user_id, month, revision)
       SELECT changed.user_id, months.month::date, gen_random_uuid()
       FROM (SELECT user_id, start_at, end_at FROM new_tracks) AS changed
@@ -1072,6 +1078,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_160000) do
      LANGUAGE plpgsql
     AS $function$
     BEGIN
+      IF current_setting('dawarich.defer_revisions', true) = 'on' THEN RETURN NULL; END IF;
       INSERT INTO track_revisions (user_id, month, revision)
       SELECT changed.user_id, months.month::date, gen_random_uuid()
       FROM (SELECT user_id, start_at, end_at FROM tracks) AS changed
@@ -1093,6 +1100,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_160000) do
      LANGUAGE plpgsql
     AS $function$
     BEGIN
+      IF current_setting('dawarich.defer_revisions', true) = 'on' THEN RETURN NULL; END IF;
       INSERT INTO track_revisions (user_id, month, revision)
       SELECT changed.user_id, months.month::date, gen_random_uuid()
       FROM (SELECT user_id, start_at, end_at FROM old_tracks UNION ALL SELECT user_id, start_at, end_at FROM new_tracks) AS changed

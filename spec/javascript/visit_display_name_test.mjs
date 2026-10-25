@@ -34,6 +34,8 @@ const VisitCard = await loadClass(
   {
     document: { documentElement: { lang: "en" } },
     translate: (key) => key,
+    formatDate: (date) => date.toISOString().slice(0, 10),
+    formatTime: (date) => date.toISOString().slice(11, 16),
     escapeHtml: (value) => (value == null ? "" : String(value)),
   },
 )

@@ -186,7 +186,7 @@ module Visits
     # Suggested places need a name; manual places sent without an address need
     # one filled in. A user-given name is locked and survives the lookup.
     def enqueue_name_fetching
-      return unless suggested? || address_geodata.empty?
+      return unless suggested? || !address_known?
       return if @created_place.nil?
       return unless Geocoding::Config.for(user).enabled?
 
@@ -196,7 +196,11 @@ module Visits
     end
 
     def address
-      @address ||= params[:address].presence || {}
+      @address ||= params[:address].respond_to?(:key?) ? params[:address] : {}
+    end
+
+    def address_known?
+      address_geodata.fetch('properties', {}).slice('street', 'city').any?
     end
 
     # Stored in the Photon shape the rest of the app reads from places.geodata.

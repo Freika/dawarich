@@ -215,8 +215,8 @@ class Api::V1::VisitsController < ApiController
                error: I18n.t('controllers.api.v1.visits.invalid_visit_payload') }
     end
 
-    service = Visits::Create.new(current_api_user, attributes.permit(*BATCH_VISIT_ATTRIBUTES),
-                                 report_exceptions: false)
+    permitted = attributes.permit(*BATCH_VISIT_ATTRIBUTES, address: ADDRESS_ATTRIBUTES)
+    service = Visits::Create.new(current_api_user, permitted, report_exceptions: false)
 
     if service.call
       result = { index: index, status: service.duplicate? ? 'duplicate' : 'created' }

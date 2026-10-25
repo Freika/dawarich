@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require Rails.root.join('db/migrate/20261021180000_add_point_revisions.rb')
+require Rails.root.join('db/migrate/20261023200000_defer_revisions_during_imports.rb')
 
 RSpec.describe AddPointRevisions, :non_transactional do
   let(:connection) { ActiveRecord::Base.connection }
@@ -13,7 +14,10 @@ RSpec.describe AddPointRevisions, :non_transactional do
   end
 
   before { migration.down }
-  after { migration.up }
+  after do
+    migration.up
+    DeferRevisionsDuringImports.new.up
+  end
 
   it 'creates the revisions table and one trigger per write event' do
     migration.up

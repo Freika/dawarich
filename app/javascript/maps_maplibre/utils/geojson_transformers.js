@@ -1,3 +1,4 @@
+import { formatDateTime, formatTime } from "i18n"
 import { calculateDistance } from "./geometry"
 
 export const SIMPLIFIED_POINTS_DISTANCE_METERS = 50
@@ -86,16 +87,7 @@ export function formatTimestamp(timestamp, timezone = "UTC") {
     date = new Date(timestamp)
   }
 
-  return date.toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-    timeZone: timezone,
-  })
+  return formatDateTime(date, { seconds: true, timeZone: timezone })
 }
 
 /**
@@ -118,12 +110,7 @@ export function formatTimeOnly(timestamp, timezone = "UTC") {
     date = new Date(timestamp)
   }
 
-  return date.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: timezone,
-  })
+  return formatTime(date, { timeZone: timezone })
 }
 
 /**

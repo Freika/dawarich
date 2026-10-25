@@ -362,6 +362,8 @@ export class MapDataManager {
         handlePointClick: this.eventHandlers.handlePointClick.bind(
           this.eventHandlers,
         ),
+        handleEditablePointClick:
+          this.eventHandlers.handleEditablePointClick.bind(this.eventHandlers),
         handleVisitClick: this.eventHandlers.handleVisitClick.bind(
           this.eventHandlers,
         ),
@@ -524,11 +526,10 @@ export class MapDataManager {
    * @private
    */
   _showDataWindowBanner() {
-    const startDate = new Date(this.controller.startDateValue)
-    const twelveMonthsAgo = new Date()
-    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
+    const windowStart = this.controller.dataWindowStartValue
+    if (!windowStart) return
 
-    if (startDate < twelveMonthsAgo) {
+    if (new Date(this.controller.startDateValue) < new Date(windowStart)) {
       UpgradeBanner.show({
         message: translate(
           "messages.your_lite_plan_includes_the_last_12_months_of_data",
