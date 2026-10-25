@@ -42,6 +42,7 @@ fr:
           photon_api_host: "Hôte"
           photon_api_key: "Clé d'API"
           photon_api_use_https: "Utiliser HTTPS"
+          photon_api_language: "Langue"
           nominatim_api_host: "Hôte"
           nominatim_api_key: "Clé d'API"
           nominatim_api_use_https: "Utiliser HTTPS"
@@ -51,12 +52,14 @@ fr:
           store_geodata: "Géocoder immédiatement les nouveaux points"
           host_hint: "Nom d'hôte avec port facultatif, par ex. photon.example.com:2322"
           rps_hint: "Laissez vide pour ne pas limiter. Indiquez ce que votre serveur ou votre offre autorise."
+          photon_api_language_hint: "Code de langue à deux lettres pour les noms de lieux, ou default pour les noms dans la langue locale. Votre index Photon doit inclure cette langue. Un changement ne s'applique qu'aux nouvelles recherches, et une même ville peut alors apparaître deux fois dans les statistiques."
           api_key_keep_hint: "Laissez vide pour conserver la clé enregistrée."
           store_geodata_hint: "Recherche la ville et le pays à l’ajout de nouveaux points. Les recherches nocturnes continuent si un fournisseur est configuré, même lorsque cette option est désactivée."
       update:
         saved: "Paramètres enregistrés."
         pinned: "Refusé : fixé par %{variables}."
         host_invalid: "L'hôte doit être un simple nom d'hôte, avec un port ou un chemin facultatif, sans espaces."
+        language_invalid: "La langue doit être un code à deux lettres, comme en ou nl, ou default."
         chibigeo_key_required: "ChibiGeo nécessite une clé d'API. Le forfait gratuit Hobby inclut 2 500 requêtes par jour : obtenez votre clé sur chibigeo.com."
       test_geocoding:
         not_configured: "Aucun fournisseur de géocodage n'est configuré. Enregistrez d'abord un fournisseur."

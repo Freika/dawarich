@@ -40,6 +40,7 @@ module InstanceSettings
       Definition.new(key: :photon_api_key, env_var: 'PHOTON_API_KEY', kind: :secret),
       Definition.new(key: :photon_api_use_https, env_var: 'PHOTON_API_USE_HTTPS', kind: :boolean,
                      default: false),
+      Definition.new(key: :photon_api_language, env_var: 'PHOTON_API_LANGUAGE', kind: :string, default: 'en'),
       Definition.new(key: :nominatim_api_host, env_var: 'NOMINATIM_API_HOST', kind: :string),
       Definition.new(key: :nominatim_api_key, env_var: 'NOMINATIM_API_KEY', kind: :secret),
       Definition.new(key: :nominatim_api_use_https, env_var: 'NOMINATIM_API_USE_HTTPS', kind: :boolean,

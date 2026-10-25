@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Turn off Family or Achievements in Settings → General. A disabled feature disappears from the interface and its background processing stops; the mobile app can read and change the choice through `/api/v1/settings`. With Family off, the family API endpoints answer 403 `feature_disabled`; `/api/v1/users/me` reports both features under `features`.
 - Choose how dates and times are shown in Settings → General: an automatic date format or `DD.MM.YYYY`, `DD/MM/YYYY`, `MM/DD/YYYY` or `YYYY-MM-DD`, a 12-hour or 24-hour clock, and whether weeks start on Monday or Sunday. The choice applies across the app, in emails and on the map, and the mobile app can read and change it through `/api/v1/settings`.
 - TREK sources can skip SSL certificate verification, like the Immich, Photoprism, AirTrail and TeslaMate integrations, so a TREK instance behind a certificate from a private CA can connect. The option is set per TREK source when you connect it, the source shows a badge while it is on, and a certificate error now points to it (#3902)
+- A self-hosted Photon index built without English can now be used: set the language under Admin → Instance settings → Photon, or with `PHOTON_API_LANGUAGE`, to one the index contains (e.g. `nl`, or `default` for local names). The default stays `en`, and a change applies only to new lookups. #3898
 
 ### Changed
 

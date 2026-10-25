@@ -8,7 +8,7 @@ module Admin
     include FlashStreamable
 
     SECTIONS = {
-      'photon' => %i[photon_api_host photon_api_key photon_api_use_https],
+      'photon' => %i[photon_api_host photon_api_key photon_api_use_https photon_api_language],
       'geoapify' => %i[geoapify_api_key],
       'nominatim' => %i[nominatim_api_host nominatim_api_key nominatim_api_use_https],
       'locationiq' => %i[locationiq_api_key],
