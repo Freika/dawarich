@@ -135,6 +135,8 @@ RSpec.describe Immich::RequestPhotos do
           :any,
           'http://immich.app/api/search/metadata'
         ).to_return(status: 200, body: mock_immich_data, headers: { 'content-type' => 'application/json' })
+          .then.to_return(status: 200, body: { assets: { total: 0, count: 0, items: [] } }.to_json,
+                          headers: { 'content-type' => 'application/json' })
       end
 
       it 'returns images and videos' do
