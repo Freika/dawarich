@@ -6,7 +6,8 @@ RSpec.describe Geocoding::Config, 'resolved from instance settings' do
   let(:user) { create(:user) }
 
   def clear_geocoding_env
-    %w[PHOTON_API_HOST PHOTON_API_KEY GEOAPIFY_API_KEY NOMINATIM_API_HOST LOCATIONIQ_API_KEY].each do |name|
+    %w[PHOTON_API_HOST PHOTON_API_KEY PHOTON_API_LANGUAGE
+       GEOAPIFY_API_KEY NOMINATIM_API_HOST LOCATIONIQ_API_KEY].each do |name|
       @saved ||= {}
       @saved[name] = ENV.fetch(name, nil)
       ENV[name] = nil
@@ -60,6 +61,22 @@ RSpec.describe Geocoding::Config, 'resolved from instance settings' do
       InstanceSettings::Resolver.reset!
 
       expect(described_class.for(user).language).to eq('nl')
+    end
+
+    it 'normalizes a Photon language pinned by the environment' do
+      ENV['PHOTON_API_HOST'] = 'env.example.com'
+      ENV['PHOTON_API_LANGUAGE'] = ' NL '
+      InstanceSettings::Resolver.reset!
+
+      expect(described_class.for(user).language).to eq('nl')
+    end
+
+    it 'falls back to English when the pinned Photon language is not a valid code' do
+      ENV['PHOTON_API_HOST'] = 'env.example.com'
+      ENV['PHOTON_API_LANGUAGE'] = 'en-US'
+      InstanceSettings::Resolver.reset!
+
+      expect(described_class.for(user).language).to eq('en')
     end
 
     it 'leaves the language unset for providers other than Photon' do

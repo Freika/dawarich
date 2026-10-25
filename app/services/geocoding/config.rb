@@ -44,7 +44,7 @@ module Geocoding
       when :photon
         { host: primary_value, api_key: InstanceSettings::Resolver.value(:photon_api_key),
           use_https: resolved_photon_use_https(primary_value),
-          language: InstanceSettings::Resolver.value(:photon_api_language).downcase }
+          language: resolved_photon_language }
       when :nominatim
         { host: primary_value, api_key: InstanceSettings::Resolver.value(:nominatim_api_key),
           use_https: InstanceSettings::Resolver.value(:nominatim_api_use_https) }
@@ -61,6 +61,24 @@ module Geocoding
       InstanceSettings::Resolver.value(:photon_api_use_https)
     end
 
+    # A pinned value never passes the admin form, so a typo such as en-US would
+    # make Photon reject every lookup; fall back to English instead.
+    def self.resolved_photon_language
+      language = InstanceSettings::Resolver.value(:photon_api_language).downcase
+      return language if language.match?(InstanceSettings::GeocodingInput::LANGUAGE_FORMAT)
+
+      warn_invalid_photon_language(language)
+      'en'
+    end
+
+    # Logged once per value, not on every lookup that resolves the config.
+    def self.warn_invalid_photon_language(language)
+      return if @warned_photon_language == language
+
+      @warned_photon_language = language
+      Rails.logger.warn("[Geocoding] Ignoring invalid Photon language #{language.inspect}; using en")
+    end
+
     # Stands in for the geocoder gem's own default lookup, which serves the
     # no-provider-configured fallback. That default is public Nominatim, whose
     # usage policy is one request a second.
@@ -75,7 +93,8 @@ module Geocoding
     end
 
     private_class_method :disabled_config, :resolved_provider_attributes, :resolved_photon_use_https,
-                         :provider_candidates, :resolved_attributes_for
+                         :provider_candidates, :resolved_attributes_for, :resolved_photon_language,
+                         :warn_invalid_photon_language
 
     def initialize(source:, provider: nil, host: nil, api_key: nil, use_https: true, rps: nil, language: nil)
       @source = source
