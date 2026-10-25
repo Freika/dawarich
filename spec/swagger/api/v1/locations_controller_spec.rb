@@ -8,6 +8,8 @@ RSpec.describe 'Locations API', type: :request do
 
   path '/api/v1/locations' do
     get 'Searches for location history near coordinates' do
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out data inside the user\'s privacy zones'
       tags 'Locations'
       description 'Searches for tracked location points near the specified coordinates, ' \
                   'optionally filtered by date range'

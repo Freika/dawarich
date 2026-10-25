@@ -11,6 +11,8 @@ describe 'Visits API', type: :request do
 
   path '/api/v1/visits' do
     get 'List visits' do
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out data inside the user\'s privacy zones'
       tags 'Visits'
       produces 'application/json'
       parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer token'
