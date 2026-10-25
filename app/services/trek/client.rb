@@ -15,6 +15,9 @@ module Trek
     end
 
     TIMEOUT = 10.seconds
+    UNTRUSTED_CERTIFICATE = Regexp.union(
+      /self[- ]signed certificate/, 'unable to get local issuer certificate', 'unable to verify the first certificate'
+    )
     SKIP_SSL_HINT = '. If TREK uses a self-signed or private CA certificate, reconnect it with ' \
                     '"Skip SSL certificate verification" turned on'
 
@@ -76,7 +79,8 @@ module Trek
     rescue UrlValidatable::BlockedUrlError => e
       raise Error, "TREK URL was rejected: #{e.message}"
     rescue OpenSSL::SSL::SSLError => e
-      raise Error, "TREK connection failed: #{e.message}#{SKIP_SSL_HINT unless @source.skip_ssl_verification}"
+      hint = SKIP_SSL_HINT if e.message.match?(UNTRUSTED_CERTIFICATE) && !@source.skip_ssl_verification
+      raise Error, "TREK connection failed: #{e.message}#{hint}"
     rescue *Photos::ConnectionErrors::HANDLED => e
       raise Error, "TREK connection failed: #{e.message}"
     end

@@ -51,17 +51,35 @@ RSpec.describe Trek::Client do
 
     it 'points to the skip option when the certificate cannot be verified' do
       stub_request(:get, 'https://trek.example.test/api/v1/trips')
-        .to_raise(OpenSSL::SSL::SSLError.new('certificate verify failed'))
+        .to_raise(OpenSSL::SSL::SSLError.new('certificate verify failed (unable to get local issuer certificate)'))
 
       expect { client.trips }.to raise_error(
-        Trek::Client::Error, /certificate verify failed.*Skip SSL certificate verification/
+        Trek::Client::Error, /local issuer certificate.*Skip SSL certificate verification/
       )
+    end
+
+    it 'does not suggest skipping verification for an expired certificate' do
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_raise(OpenSSL::SSL::SSLError.new('certificate verify failed (certificate has expired)'))
+
+      expect { client.trips }.to raise_error(Trek::Client::Error, /certificate has expired/) do |error|
+        expect(error.message).not_to include('Skip SSL certificate verification')
+      end
+    end
+
+    it 'does not suggest skipping verification for a TLS failure unrelated to the certificate' do
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_raise(OpenSSL::SSL::SSLError.new('wrong version number'))
+
+      expect { client.trips }.to raise_error(Trek::Client::Error, /wrong version number/) do |error|
+        expect(error.message).not_to include('Skip SSL certificate verification')
+      end
     end
 
     it 'does not suggest skipping verification when it is already skipped' do
       allow(source).to receive(:skip_ssl_verification).and_return(true)
       stub_request(:get, 'https://trek.example.test/api/v1/trips')
-        .to_raise(OpenSSL::SSL::SSLError.new('wrong version number'))
+        .to_raise(OpenSSL::SSL::SSLError.new('certificate verify failed'))
 
       expect { client.trips }.to raise_error(Trek::Client::Error) do |error|
         expect(error.message).not_to include('Skip SSL certificate verification')

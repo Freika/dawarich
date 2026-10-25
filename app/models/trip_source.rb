@@ -30,6 +30,10 @@ class TripSource < ApplicationRecord
     resolve_integration_url!(base_url)
   end
 
+  def skips_ssl_verification?
+    skip_ssl_verification && base_url.to_s.match?(%r{\Ahttps://}i)
+  end
+
   def sync_allowed?
     DawarichSettings.self_hosted? || user.full_access?
   end

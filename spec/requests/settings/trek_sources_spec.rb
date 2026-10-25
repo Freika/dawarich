@@ -33,8 +33,10 @@ RSpec.describe 'Settings::TrekSources', type: :request do
 
   it 'marks sources that skip certificate verification' do
     stub_host_addresses('verified.example.test', '93.184.216.35')
+    stub_host_addresses('plain.example.test', '93.184.216.36')
     create(:trip_source, user:, skip_ssl_verification: true)
     create(:trip_source, user:, base_url: 'https://verified.example.test')
+    create(:trip_source, user:, base_url: 'http://plain.example.test', skip_ssl_verification: true)
 
     get settings_integrations_path(service: 'trek')
 
