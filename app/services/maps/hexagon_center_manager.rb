@@ -2,9 +2,10 @@
 
 module Maps
   class HexagonCenterManager
-    def initialize(stat:, user:)
+    def initialize(stat:, user:, privacy_zone_masker: nil)
       @stat = stat
       @user = user
+      @privacy_zone_masker = privacy_zone_masker
     end
 
     def call
@@ -15,7 +16,7 @@ module Maps
 
     private
 
-    attr_reader :stat, :user
+    attr_reader :stat, :user, :privacy_zone_masker
 
     def pre_calculated_centers_available?
       return false if stat&.h3_hex_ids.blank?
@@ -25,6 +26,7 @@ module Maps
 
     def build_response_from_centers
       hex_ids = stat.h3_hex_ids
+      hex_ids = hex_ids.reject { |row| privacy_zone_masker.touches_h3_cell?(row.first) } if privacy_zone_masker&.any?
       Rails.logger.debug "Using pre-calculated H3 hex IDs: #{hex_ids.size} hexagons"
 
       result = build_hexagons_from_h3_ids(hex_ids)

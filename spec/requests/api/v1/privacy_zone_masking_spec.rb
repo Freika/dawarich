@@ -245,4 +245,46 @@ RSpec.describe 'Privacy zone masking on map read endpoints', type: :request do
       expect(json['min_lng']).to be < 13.6
     end
   end
+
+  describe 'shared monthly stats' do
+    let(:zone_cell) { H3.to_string(H3.from_geo_coordinates([zone_lat, zone_lon], 8)) }
+    let(:far_cell) { H3.to_string(H3.from_geo_coordinates([52.600, 13.700], 8)) }
+    let(:june) { Time.utc(2024, 6, 15, 12).to_i }
+    let(:stat) do
+      create(:stat, :with_sharing_enabled, user: user, year: 2024, month: 6,
+                                           h3_hex_ids: [[zone_cell, 3, june, june], [far_cell, 2, june, june]])
+    end
+
+    before do
+      create(:point, user: user, lonlat: "POINT(#{zone_lon} #{zone_lat})", timestamp: june)
+      create(:point, user: user, lonlat: 'POINT(13.700 52.600)', timestamp: june + 60)
+      create(:point, user: user, lonlat: 'POINT(13.710 52.610)', timestamp: june + 120)
+    end
+
+    it 'drops hexagons touching the zone without needing the flag' do
+      get '/api/v1/maps/hexagons', params: { uuid: stat.sharing_uuid }
+
+      centers = json['features'].map do |feature|
+        ring = feature['geometry']['coordinates'].first
+        [ring.sum { |c| c[1] } / ring.size, ring.sum { |c| c[0] } / ring.size]
+      end
+
+      expect(json['features'].size).to eq(1)
+      expect(H3.to_string(H3.from_geo_coordinates(centers.first, 8))).to eq(far_cell)
+    end
+
+    it 'ignores in-zone points when fitting the shared map without needing the flag' do
+      get '/api/v1/maps/hexagons/bounds', params: { uuid: stat.sharing_uuid }
+
+      expect(json['min_lng']).to be > 13.6
+    end
+
+    it 'ignores in-zone points in the bounds embedded in the shared page' do
+      get shared_stat_url(stat.sharing_uuid)
+
+      bounds = JSON.parse(CGI.unescapeHTML(response.body[/data-public-stat-map-data-bounds-value="([^"]*)"/, 1]))
+
+      expect(bounds['min_lng']).to be > 13.6
+    end
+  end
 end
