@@ -312,12 +312,18 @@ export class PlacesManager {
 
   /**
    * A saved place can add, move or drop a privacy zone. When the zone
-   * fingerprint changes, every masked layer is reloaded under the new zones.
+   * fingerprint changes, every masked layer is reloaded under the new zones,
+   * and the current position is hidden until the next live point because
+   * it may now sit inside a zone.
    */
   async _refreshPrivacyZones() {
     const { fingerprint, failed } = await this.api.fetchPrivacyZones()
     if (failed || !setPrivacyZonesFingerprint(fingerprint)) return
 
+    this.layerManager.getLayer("recentPoint")?.clear()
+    this.controller.element?.removeAttribute(
+      "data-maps--maplibre-current-position-value",
+    )
     this.layerManager.getLayer("points-mvt")?.refresh()
     this.layerManager.getLayer("tracks-mvt")?.refresh()
     await this.controller.loadMapData({ showLoading: false, fitBounds: false })

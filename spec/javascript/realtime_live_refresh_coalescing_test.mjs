@@ -197,3 +197,18 @@ test("a live point becomes the position restored after a map style change", (t) 
     timestamp: 1758196803,
   })
 })
+
+test("a live point older than the current position leaves the dot in place", (t) => {
+  installFakeTimers(t)
+  const { controller, calls, mapsController } = buildController()
+  mapsController.currentPositionValue = {
+    longitude: 1,
+    latitude: 2,
+    timestamp: 1758196900,
+  }
+
+  controller.handleNewPoint(livePoint(0))
+
+  assert.deepEqual(calls.recentPoints, [])
+  assert.equal(mapsController.currentPositionValue.timestamp, 1758196900)
+})

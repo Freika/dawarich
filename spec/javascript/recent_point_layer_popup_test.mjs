@@ -34,12 +34,18 @@ function fakeMap() {
   const handlers = {}
   return {
     handlers,
+    hits: [],
     on(event, layerId, handler) {
-      handlers[`${event}:${layerId}`] = handler
+      if (handler) handlers[`${event}:${layerId}`] = handler
+      else handlers[event] = layerId
     },
-    off(event, layerId) {
-      delete handlers[`${event}:${layerId}`]
+    off(event, layerId, handler) {
+      delete handlers[handler ? `${event}:${layerId}` : event]
     },
+    queryRenderedFeatures() {
+      return this.hits
+    },
+    getLayer: () => true,
     getCanvas: () => ({ style: {} }),
   }
 }
@@ -77,4 +83,19 @@ test("removing the layer detaches its hover handlers", () => {
   layer.remove()
 
   assert.deepEqual(Object.keys(map.handlers), [])
+})
+
+test("tapping the dot opens the popup and tapping elsewhere closes it", () => {
+  const map = fakeMap()
+  const layer = new RecentPointLayer(map, { hoverTitle: "Your latest point" })
+  layer.add({ type: "FeatureCollection", features: [] })
+
+  map.hits = [{ properties: { timestamp: 1758196800 } }]
+  map.handlers.click({ point: [1, 1], lngLat: [13.4, 52.5] })
+  assert.equal(layer._popup.open, true)
+  assert.match(layer._popup.html, /Your latest point/)
+
+  map.hits = []
+  map.handlers.click({ point: [90, 90], lngLat: [14, 53] })
+  assert.equal(layer._popup.open, false)
 })

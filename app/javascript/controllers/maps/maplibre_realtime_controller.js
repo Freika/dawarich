@@ -272,6 +272,13 @@ export default class extends Controller {
       return
     }
 
+    if (
+      Number(properties.timestamp) <
+      Number(mapsController.currentPositionValue?.timestamp)
+    ) {
+      return
+    }
+
     mapsController.currentPositionValue = {
       longitude,
       latitude,

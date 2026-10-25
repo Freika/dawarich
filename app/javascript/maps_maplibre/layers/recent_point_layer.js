@@ -18,6 +18,13 @@ export class RecentPointLayer extends BaseLayer {
     })
     this._onEnter = (e) => this._showPopup(e)
     this._onLeave = () => this._hidePopup()
+    this._onClick = (e) => {
+      const features = this.map.getLayer(this.id)
+        ? this.map.queryRenderedFeatures(e.point, { layers: [this.id] })
+        : []
+      if (features.length) this._showPopup({ lngLat: e.lngLat, features })
+      else this._hidePopup()
+    }
   }
 
   add(data, beforeId) {
@@ -25,12 +32,14 @@ export class RecentPointLayer extends BaseLayer {
     if (!this.hoverTitle) return
     this.map.on("mouseenter", this.id, this._onEnter)
     this.map.on("mouseleave", this.id, this._onLeave)
+    this.map.on("click", this._onClick)
   }
 
   remove() {
     if (this.hoverTitle) {
       this.map.off("mouseenter", this.id, this._onEnter)
       this.map.off("mouseleave", this.id, this._onLeave)
+      this.map.off("click", this._onClick)
     }
     this._hidePopup()
     super.remove()
