@@ -1638,6 +1638,7 @@ ca:
         sync_now: "Sincronitza ara"
         disconnect: "Desconnecta"
         disconnect_confirmation: "Vols desconnectar TREK? Els viatges gestionats i les seves dades registrades es queden a Dawarich, però deixen de sincronitzar-se."
+        ssl_verification_off: "Verificació SSL desactivada"
       index:
         immich_photoprism_integrations: Integracions d'Immich i Photoprism
         connect_your_photo_management_tools_to_see_your_photos_on: Connecta les teves eines de gestió fotogràfica per veure les teves fotos al mapa. Les integracions d'Immich i Photoprism estan disponibles al pla Pro.

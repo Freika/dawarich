@@ -1641,6 +1641,7 @@ de:
         sync_now: "Jetzt synchronisieren"
         disconnect: "Trennen"
         disconnect_confirmation: "TREK trennen? Verwaltete Reisen und ihre aufgezeichneten Daten bleiben in Dawarich, werden aber nicht mehr synchronisiert."
+        ssl_verification_off: "SSL-Prüfung aus"
       index:
         services_nav: Integrationsdienste
         geocoding: "Geokodierung"

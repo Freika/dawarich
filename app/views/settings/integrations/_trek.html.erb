@@ -63,7 +63,12 @@
               <p class="text-sm text-warning mt-1"><%= source.last_error %></p>
             <% end %>
           </div>
-          <span class="badge <%= source.active? ? 'badge-success' : 'badge-warning' %>"><%= source.status %></span>
+          <div class="flex flex-wrap gap-2">
+            <% if source.skip_ssl_verification %>
+              <span class="badge badge-warning badge-outline" data-testid="trek-ssl-verification-off"><%= t('.ssl_verification_off') %></span>
+            <% end %>
+            <span class="badge <%= source.active? ? 'badge-success' : 'badge-warning' %>"><%= source.status %></span>
+          </div>
         </div>
         <div class="flex flex-wrap gap-2">
           <% if source.active? && !source.importing? %>

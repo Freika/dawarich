@@ -31,6 +31,18 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       .to be_present
   end
 
+  it 'marks sources that skip certificate verification' do
+    stub_host_addresses('verified.example.test', '93.184.216.35')
+    create(:trip_source, user:, skip_ssl_verification: true)
+    create(:trip_source, user:, base_url: 'https://verified.example.test')
+
+    get settings_integrations_path(service: 'trek')
+
+    badges = Nokogiri::HTML(response.body).css('[data-testid="trek-ssl-verification-off"]')
+    expect(badges.size).to eq(1)
+    expect(badges.first.text).to include('SSL verification off')
+  end
+
   describe 'POST /settings/trek_sources' do
     it 'verifies a source before saving it and then asks the user to choose trips' do
       stub_request(:get, 'https://trek.example.test/api/v1/trips')

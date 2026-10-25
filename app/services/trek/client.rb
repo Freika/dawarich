@@ -15,6 +15,8 @@ module Trek
     end
 
     TIMEOUT = 10.seconds
+    SKIP_SSL_HINT = '. If TREK uses a self-signed or private CA certificate, reconnect it with ' \
+                    '"Skip SSL certificate verification" turned on'
 
     def initialize(source)
       @source = source
@@ -73,6 +75,8 @@ module Trek
       raise Error.new("TREK request failed with HTTP #{response.code}", status: response.code.to_i)
     rescue UrlValidatable::BlockedUrlError => e
       raise Error, "TREK URL was rejected: #{e.message}"
+    rescue OpenSSL::SSL::SSLError => e
+      raise Error, "TREK connection failed: #{e.message}#{SKIP_SSL_HINT unless @source.skip_ssl_verification}"
     rescue *Photos::ConnectionErrors::HANDLED => e
       raise Error, "TREK connection failed: #{e.message}"
     end

@@ -48,6 +48,25 @@ RSpec.describe Trek::Client do
 
       expect(connection.verify_mode).to eq(OpenSSL::SSL::VERIFY_NONE)
     end
+
+    it 'points to the skip option when the certificate cannot be verified' do
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_raise(OpenSSL::SSL::SSLError.new('certificate verify failed'))
+
+      expect { client.trips }.to raise_error(
+        Trek::Client::Error, /certificate verify failed.*Skip SSL certificate verification/
+      )
+    end
+
+    it 'does not suggest skipping verification when it is already skipped' do
+      allow(source).to receive(:skip_ssl_verification).and_return(true)
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_raise(OpenSSL::SSL::SSLError.new('wrong version number'))
+
+      expect { client.trips }.to raise_error(Trek::Client::Error) do |error|
+        expect(error.message).not_to include('Skip SSL certificate verification')
+      end
+    end
   end
 
   it 'connects to a bracketed IPv6 base URL by its bare address' do
