@@ -1618,6 +1618,12 @@ ca:
         general_settings: Configuració general
         save_changes: Desa els canvis
         test_email_worker_hint: Afegeix un missatge de prova a la cua del mateix procés en segon pla que els correus del sistema
+        features: "Funcions"
+        features_hint: "Desactiva les parts de Dawarich que no facis servir. Desapareixen de la interfície i s'atura el seu processament en segon pla."
+        family_feature: "Família"
+        family_feature_hint: "Compartir la ubicació amb els membres de la família. Si la desactives, deixes de compartir la teva ubicació amb la família; continues sent-ne membre."
+        achievements_feature: "Assoliments"
+        achievements_feature_hint: "Regions explorades i insígnies. Si els desactives, es deixa de calcular el progrés i es desactiven els teus enllaços públics d'assoliments."
     integrations:
       trek:
         title: "Integració amb TREK"
@@ -3133,6 +3139,7 @@ ca:
       your_account_has_been_deleted: El teu compte s'ha suprimit.
       you_are_not_authorized_to_perform_this_action: No tens autorització per fer aquesta acció.
       family_plan_required: Aquesta funció requereix el pla Family.
+      feature_disabled_in_settings: "Aquesta funció està desactivada a la teva configuració."
     areas:
       created: L'àrea s'ha creat correctament!
       updated: L'àrea s'ha actualitzat correctament!

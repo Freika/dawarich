@@ -1591,6 +1591,12 @@ zh:
         general_settings: 常规设置
         save_changes: 保存更改
         test_email_worker_hint: 通过发送系统邮件的同一后台进程将测试邮件加入队列
+        features: "功能"
+        features_hint: "关闭你不使用的 Dawarich 功能。它们会从界面中消失，相关的后台处理也会停止。"
+        family_feature: "家庭"
+        family_feature_hint: "与家庭成员共享位置。关闭后将不再与家庭共享你的位置，但你仍是家庭成员。"
+        achievements_feature: "成就"
+        achievements_feature_hint: "已探索的地区和徽章。关闭后将停止计算进度，并停用你的公开成就链接。"
     integrations:
       trek:
         title: "TREK 集成"
@@ -3186,6 +3192,7 @@ zh:
       your_account_has_been_deleted: 您的帐户已被删除。
       you_are_not_authorized_to_perform_this_action: 您无权执行此操作。
       family_plan_required: 此功能需要家庭计划。
+      feature_disabled_in_settings: "此功能已在你的设置中关闭。"
     areas:
       created: 区域创建成功！
       updated: 区域更新成功！

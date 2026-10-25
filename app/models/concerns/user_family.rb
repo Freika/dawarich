@@ -44,6 +44,7 @@ module UserFamily
 
   def family_sharing_enabled?
     return false unless in_family?
+    return false unless feature_enabled?(:family)
 
     sharing_settings = settings_hash.dig('family', 'location_sharing')
     return false unless sharing_settings.is_a?(Hash)

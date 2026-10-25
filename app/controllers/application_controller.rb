@@ -15,7 +15,7 @@ class ApplicationController < ActionController::Base
   around_action :apply_date_time_preferences
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
-  helper_method :current_user_safe_settings, :family_feature_available?,
+  helper_method :current_user_safe_settings, :family_feature_available?, :family_nav_visible?,
                 :current_user_features, :family_home_path, :locale_native_name, :locale_flag,
                 :suggested_locale, :locale_path, :morph_page_refreshes?, :reverse_geocoding_enabled_for?
 
@@ -38,6 +38,14 @@ class ApplicationController < ActionController::Base
 
   def family_feature_available?
     current_user_features[:family]
+  end
+
+  # Members of a lapsed family keep the link, which leads to the lapsed panel;
+  # a user who switched the feature off in settings loses it.
+  def family_nav_visible?
+    return false unless current_user&.feature_enabled?(:family)
+
+    family_feature_available? || current_user.in_family?
   end
 
   # Memoized per request: the points list gates a toponym cell per rendered row;
@@ -163,6 +171,7 @@ status: :see_other
   # upgrade link. Api::V1 controllers override this with a JSON-only response.
   def ensure_family_feature_available!
     return if family_feature_available?
+    return feature_disabled_in_settings! if current_user && !current_user.feature_enabled?(:family)
 
     message = I18n.t('controllers.application.family_plan_required')
     respond_to do |format|
@@ -173,6 +182,22 @@ status: :see_other
       format.json do
         render json: { error: 'family_plan_required', message: message },
                status: :forbidden
+      end
+    end
+  end
+
+  def ensure_achievements_enabled!
+    feature_disabled_in_settings! unless current_user.feature_enabled?(:achievements)
+  end
+
+  # The user switched the feature off themselves, so point them at the toggle
+  # rather than at an upgrade page.
+  def feature_disabled_in_settings!
+    message = I18n.t('controllers.application.feature_disabled_in_settings')
+    respond_to do |format|
+      format.json { render json: { error: 'feature_disabled', message: message }, status: :forbidden }
+      format.any do
+        redirect_to settings_general_index_path(anchor: 'features'), alert: message, status: :see_other
       end
     end
   end

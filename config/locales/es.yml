@@ -1621,6 +1621,12 @@ es:
         general_settings: Ajustes generales
         save_changes: Guardar cambios
         test_email_worker_hint: Añade un mensaje de prueba a la cola del mismo proceso en segundo plano que los correos del sistema
+        features: "Funciones"
+        features_hint: "Desactiva las partes de Dawarich que no uses. Desaparecen de la interfaz y se detiene su procesamiento en segundo plano."
+        family_feature: "Familia"
+        family_feature_hint: "Compartir la ubicación con los miembros de la familia. Al desactivarla dejas de compartir tu ubicación con la familia; sigues siendo miembro."
+        achievements_feature: "Logros"
+        achievements_feature_hint: "Regiones exploradas e insignias. Al desactivarlos se deja de calcular el progreso y se desactivan tus enlaces públicos de logros."
     integrations:
       trek:
         title: "Integración con TREK"
@@ -3144,6 +3150,7 @@ es:
       your_account_has_been_deleted: Tu cuenta ha sido eliminada.
       you_are_not_authorized_to_perform_this_action: No estás autorizado a realizar esta acción.
       family_plan_required: Esta función requiere un plan familiar.
+      feature_disabled_in_settings: "Esta función está desactivada en tu configuración."
     areas:
       created: Área creada con éxito!
       updated: Área actualizada con éxito!

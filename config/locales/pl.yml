@@ -1632,6 +1632,12 @@ pl:
         general_settings: Ustawienia ogólne
         save_changes: Zapisz zmiany
         test_email_worker_hint: Dodaje wiadomość testową do kolejki tego samego procesu w tle, który wysyła e-maile systemowe
+        features: "Funkcje"
+        features_hint: "Wyłącz części Dawarich, z których nie korzystasz. Znikną z interfejsu, a ich przetwarzanie w tle zostanie zatrzymane."
+        family_feature: "Rodzina"
+        family_feature_hint: "Udostępnianie lokalizacji członkom rodziny. Po wyłączeniu przestajesz udostępniać rodzinie swoją lokalizację; pozostajesz jej członkiem."
+        achievements_feature: "Osiągnięcia"
+        achievements_feature_hint: "Odkryte regiony i odznaki. Po wyłączeniu postęp nie jest już obliczany, a Twoje publiczne linki do osiągnięć zostają wyłączone."
     integrations:
       trek:
         title: "Integracja z TREK"
@@ -3238,6 +3244,7 @@ pl:
       your_account_has_been_deleted: Twoje konto zostało usunięte.
       you_are_not_authorized_to_perform_this_action: Nie masz uprawnień do wykonania tej akcji.
       family_plan_required: Ta funkcja wymaga planu Rodzinnego.
+      feature_disabled_in_settings: "Ta funkcja jest wyłączona w Twoich ustawieniach."
     areas:
       created: Obszar utworzono pomyślnie!
       updated: Obszar zaktualizowano pomyślnie!

@@ -63,6 +63,7 @@ class User < ApplicationRecord
   after_update :reset_archival_warnings, if: :saved_change_to_plan?
   after_update :mark_stats_for_rebucketing, if: :saved_change_to_timezone_setting?
   after_update_commit :enqueue_stats_rebuild, if: :saved_change_to_timezone_setting?
+  after_update_commit :enqueue_achievements_recheck, if: :achievements_reenabled?
 
   before_save :sanitize_input
 
@@ -143,6 +144,12 @@ class User < ApplicationRecord
 
   def safe_settings
     Users::SafeSettings.new(settings, plan: entitlements.full_access? ? :pro : :lite)
+  end
+
+  # Reads the raw hash: the family gate runs on every ingested point, and
+  # safe_settings deep-dups the whole settings hash on each call.
+  def feature_enabled?(feature)
+    Users::SafeSettings.feature_enabled?(settings_hash, feature)
   end
 
   # Old rows can carry a settings container that is not an object at all, so the
@@ -424,6 +431,23 @@ class User < ApplicationRecord
     return unless has_attribute?(:settings)
 
     self.settings = {} if settings.nil?
+  end
+
+  def achievements_reenabled?
+    return false unless saved_change_to_settings?
+
+    before, after = saved_change_to_settings
+    before = {} unless before.is_a?(Hash)
+    after = {} unless after.is_a?(Hash)
+
+    !Users::SafeSettings.feature_enabled?(before, 'achievements') &&
+      Users::SafeSettings.feature_enabled?(after, 'achievements')
+  end
+
+  # Progress went stale while the feature was off. Recompute it without
+  # notifications so the user isn't flooded with everything earned meanwhile.
+  def enqueue_achievements_recheck
+    Achievements::CheckJob.perform_later(id, notify: false)
   end
 
   def saved_change_to_timezone_setting?

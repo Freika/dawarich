@@ -88,6 +88,7 @@ class DawarichSettings
     # Deliberately not memoized: the answer depends on the user, and
     # DawarichSettings is a process-wide singleton.
     def family_feature_available_for?(user)
+      return false if user && !user.feature_enabled?(:family)
       return true if self_hosted?
       return false if user.nil?
 
@@ -107,7 +108,8 @@ class DawarichSettings
     def features_for(user)
       {
         reverse_geocoding: Geocoding::Config.for(user).enabled?,
-        family: family_feature_available_for?(user)
+        family: family_feature_available_for?(user),
+        achievements: user.nil? || user.feature_enabled?(:achievements)
       }
     end
 
