@@ -2,15 +2,17 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-const source = (
-  await readFile(
-    new URL(
-      "../../app/javascript/controllers/trip_maplibre_controller.js",
-      import.meta.url,
-    ),
-    "utf8",
-  )
-).replace(/^import .*\n/gm, "")
+const read = async (path) =>
+  (
+    await readFile(
+      new URL(`../../app/javascript/${path}`, import.meta.url),
+      "utf8",
+    )
+  ).replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const source = [
+  await read("maps_maplibre/trip/path_sync.js"),
+  await read("controllers/trip_maplibre_controller.js"),
+].join("\n")
 const { default: TripController } = await import(
   `data:text/javascript;base64,${Buffer.from(`class Controller {}\n${source}`).toString("base64")}`
 )

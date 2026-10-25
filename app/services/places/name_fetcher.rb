@@ -25,12 +25,7 @@ module Places
         place.country = properties['country'] if properties['country'].present?
         place.geodata = result.data if DawarichSettings.store_geodata?
         place.save!
-
-        propagated_name = place.name
-        if propagated_name.present?
-          stale_names = [Place::DEFAULT_NAME, previous_name].uniq - [propagated_name]
-          place.visits.where(name: stale_names).update_all(name: propagated_name) if stale_names.any?
-        end
+        place.carry_name_to_visits(previous_name) unless place.saved_change_to_name?
 
         place
       end

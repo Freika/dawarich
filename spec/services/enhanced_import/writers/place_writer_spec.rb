@@ -87,6 +87,15 @@ RSpec.describe EnhancedImport::Writers::PlaceWriter do
 
       expect(Place.where(user_id: user.id).pluck(:name)).to eq(['Riquet Kaffeehaus'])
     end
+
+    it 'carries the new waypoint name to visits still showing the old one' do
+      place, = writer.upsert(extracted(name: 'Cafe Riquet'))
+      visit = create(:visit, user: user, place: place, name: 'Cafe Riquet')
+
+      next_run.upsert(extracted(name: 'Riquet Kaffeehaus', identity: 'gpx:renamed'))
+
+      expect(visit.reload.name).to eq('Riquet Kaffeehaus')
+    end
   end
 
   describe 'when a concurrent writer already inserted the place' do

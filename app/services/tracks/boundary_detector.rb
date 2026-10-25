@@ -194,6 +194,7 @@ class Tracks::BoundaryDetector
                   (candidate_start - track_end_time).abs <= time_window ||
                   (track_start_time - candidate_end).abs <= time_window
       next if !ranges_overlap && separated_by_stationary_stop?(track, candidate)
+      next if !ranges_overlap && separated_by_handoff?(track, candidate)
 
       connected << candidate if tracks_spatially_connected?(track, candidate)
     end
@@ -205,6 +206,12 @@ class Tracks::BoundaryDetector
     later = candidate.start_at > track.start_at ? candidate : track
 
     Tracks::StationaryStops.departure?(later, time_threshold_minutes.to_i * 60)
+  end
+
+  def separated_by_handoff?(track, candidate)
+    earlier, later = [track, candidate].sort_by(&:start_at)
+
+    Tracks::HandoffSplitter.handoff_between?(user, track.tracker_id, earlier.end_at, later.start_at)
   end
 
   # Check if two tracks are spatially connected (endpoints are close)

@@ -14,11 +14,16 @@ const mask = await read("maps_maplibre/utils/flight_mask.js")
 const arcs = await import(
   moduleUrl(await read("maps_maplibre/utils/flight_arcs.js"))
 )
-const controllerSource = (
-  await read("controllers/trip_maplibre_controller.js")
-).replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const stripImports = (source) =>
+  source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const pointsSource = stripImports(await read("maps_maplibre/trip/points.js"))
+const controllerSource = stripImports(
+  await read("controllers/trip_maplibre_controller.js"),
+)
 const { default: TripController } = await import(
-  moduleUrl(`class Controller {}\n${providers}\n${mask}\n${controllerSource}`)
+  moduleUrl(
+    `class Controller {}\n${providers}\n${mask}\n${pointsSource}\n${controllerSource}`,
+  )
 )
 const editorSource = (
   await read("controllers/poster_studio_editor_controller.js")
