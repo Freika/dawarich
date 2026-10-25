@@ -3,7 +3,7 @@
 class Api::V1::Tiles::TripsController < ApiController
   include TileCacheable
 
-  TILE_SCHEMA_VERSION = 1
+  TILE_SCHEMA_VERSION = 2
   MAX_EXCLUDE_WINDOWS = 50
   EXCLUDE_FORMAT = /\A\d+-\d+(,\d+-\d+)*\z/
 
