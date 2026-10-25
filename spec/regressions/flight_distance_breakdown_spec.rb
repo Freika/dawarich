@@ -2,22 +2,22 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Flight distance is shown separately from tracked distance' do
+RSpec.describe 'Flight distance is broken out of the distance total' do
   let(:user) { create(:user, settings: { 'distance_unit' => 'km' }) }
 
   describe 'the monthly stats page', type: :request do
     before { sign_in user }
 
-    it 'shows the flight figure alongside the tracked one' do
-      create(:stat, user: user, year: 2026, month: 4, distance: 120_000,
-                    flight_distance: 633_400, daily_distance: [[1, 120_000]])
+    it 'shows the flight figure as part of the total' do
+      create(:stat, user: user, year: 2026, month: 4, distance: 753_400,
+                    flight_distance: 633_400, daily_distance: [[1, 120_000], [2, 633_400]])
 
       get '/stats/2026/4'
 
       expect(response.body).to include('Flight distance')
       expect(response.body).to include('633')
-      expect(response.body).to include('120')
-      expect(response.body).to include('not counted in distance')
+      expect(response.body).to include('753')
+      expect(response.body).to include('included in distance traveled')
     end
 
     it 'hides the flight figure when the month has no flights' do
@@ -33,7 +33,7 @@ RSpec.describe 'Flight distance is shown separately from tracked distance' do
   describe 'the monthly digest email', type: :mailer do
     let(:digest) do
       create(:users_digest, :monthly, user: user, year: 2026, month: 4,
-                                      distance: 120_000, flight_distance: 633_400)
+                                      distance: 753_400, flight_distance: 633_400)
     end
     let(:mail) { Users::DigestsMailer.with(user: user, digest: digest).monthly_digest }
 

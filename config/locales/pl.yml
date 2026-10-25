@@ -2144,7 +2144,7 @@ pl:
       upgrade_to_pro: Przejdź na Pro
     month:
       flight_distance: Dystans lotów
-      from_airtrail_not_counted_in_distance: Z AirTrail, nieliczony do dystansu
+      from_airtrail_included_in_distance: Z AirTrail, wliczony do dystansu
       monthly_digest: Podsumowanie miesięczne
       share: Udostępnij
       distance_traveled: Przebyty dystans
@@ -2198,7 +2198,7 @@ pl:
       countries_count_countries_cities_count_cities: "%{countries_count} krajów, %{cities_count} miast"
     public_month:
       flight_distance: Dystans lotów
-      from_airtrail_not_counted_in_distance: Z AirTrail, nieliczony do dystansu
+      from_airtrail_included_in_distance: Z AirTrail, wliczony do dystansu
       monthly_digest: Podsumowanie miesięczne
       distance_traveled: Przebyty dystans
       total_distance_for_this_month: Całkowity dystans w tym miesiącu

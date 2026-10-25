@@ -4,7 +4,7 @@ class Stats::CalculateMonth
   # Version 2 was used by #3509 for geocoding refresh scheduling and may
   # exist in deployed databases. Reserve it permanently; the next change
   # to calculation semantics must use version 3 or higher.
-  CALCULATION_VERSION = 3
+  CALCULATION_VERSION = 4
 
   def initialize(user_id, year, month, notify_on_failure: true)
     @user = User.find(user_id)
@@ -41,13 +41,13 @@ class Stats::CalculateMonth
       stat = Stat.find_or_create_by!(year:, month:, user:) { |record| record.distance = 0 }
       stat.lock!
       pending = Stats::GeocodedDays.snapshot_month(user, year, month)
-      distance_by_day = stat.distance_by_day
-      flight_dist = flight_distance
+      flights_by_day = flight_distance_by_day
+      distance_by_day = with_flights(stat.distance_by_day, flights_by_day)
 
       stat.assign_attributes(
         daily_distance: distance_by_day,
-        distance: distance(distance_by_day) + flight_dist,
-        flight_distance: flight_dist,
+        distance: distance(distance_by_day),
+        flight_distance: flights_by_day.values.sum,
         toponyms: toponyms,
         h3_hex_ids: calculate_h3_hex_ids,
         calculation_version: CALCULATION_VERSION
@@ -86,8 +86,16 @@ class Stats::CalculateMonth
     distance_by_day.sum { |day| day[1] }
   end
 
-  def flight_distance
-    Stats::FlightDistanceQuery.new(user, year, month).call
+  def flight_distance_by_day
+    Stats::FlightDistanceQuery.new(user, year, month).by_day
+  end
+
+  def with_flights(distance_by_day, flights_by_day)
+    distance_by_day.map { |day, meters| [day, meters + flights_by_day.fetch(day, 0)] }
+  end
+
+  def empty_month_days
+    (1..Date.new(year, month, -1).day).map { |day| [day, 0] }
   end
 
   def toponyms
@@ -130,15 +138,16 @@ class Stats::CalculateMonth
         return
       end
 
-      flight_dist = flight_distance
-      return if stat.nil? && flight_dist.zero?
+      flights_by_day = flight_distance_by_day
+      return if stat.nil? && flights_by_day.empty?
 
       stat ||= Stat.find_or_create_by!(year:, month:, user:) { |record| record.distance = 0 }
+      distance_by_day = flights_by_day.empty? ? {} : with_flights(empty_month_days, flights_by_day)
 
       stat.update!(
-        daily_distance: {},
-        distance: flight_dist,
-        flight_distance: flight_dist,
+        daily_distance: distance_by_day,
+        distance: distance(distance_by_day),
+        flight_distance: flights_by_day.values.sum,
         toponyms: [],
         h3_hex_ids: {},
         calculation_version: CALCULATION_VERSION

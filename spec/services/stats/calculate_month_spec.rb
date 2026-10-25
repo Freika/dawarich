@@ -26,6 +26,7 @@ RSpec.describe Stats::CalculateMonth do
           stat = Stat.last
           expect(stat.flight_distance).to eq(633_400)
           expect(stat.distance).to eq(633_400)
+          expect(stat.daily_distance.to_h).to include(5 => 633_400, 6 => 0)
         end
       end
 
@@ -279,7 +280,7 @@ RSpec.describe Stats::CalculateMonth do
         expect(Stat.last.flight_distance).to eq(633_400)
       end
 
-      it 'includes the flight distance in the tracked distance total' do
+      it 'includes the flight distance in the distance total' do
         calculate_stats
         distance_with_flight = Stat.last.distance
 
@@ -304,11 +305,20 @@ RSpec.describe Stats::CalculateMonth do
         create(:flight, user: user, flight_date: Date.new(year, month, 5), distance_km: 633.4)
       end
 
-      it 'keeps the flight distance current and reflects it in the tracked distance' do
+      it 'keeps the flight distance current and reflects it in the distance total' do
         calculate_stats
 
         expect(stat.reload.flight_distance).to eq(633_400)
         expect(stat.distance).to eq(633_400)
+        expect(stat.daily_distance.to_h[5]).to eq(633_400)
+      end
+
+      it 'empties the month once its flights are gone' do
+        calculate_stats
+        Flight.delete_all
+        described_class.new(user.id, year, month).call
+
+        expect(stat.reload).to have_attributes(distance: 0, flight_distance: 0, daily_distance: {})
       end
     end
   end
