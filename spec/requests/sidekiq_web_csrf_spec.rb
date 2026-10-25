@@ -13,4 +13,10 @@ RSpec.describe 'Sidekiq Web POST over plain HTTP', type: :request do
 
     expect(response).not_to have_http_status(:forbidden)
   end
+
+  it 'forbids a POST without Sec-Fetch-Site when Origin is another site' do
+    post '/sidekiq/retries', headers: { 'Origin' => 'http://evil.example' }
+
+    expect(response).to have_http_status(:forbidden)
+  end
 end

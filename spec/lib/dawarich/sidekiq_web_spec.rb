@@ -34,6 +34,10 @@ RSpec.describe Dawarich::SidekiqWeb do
       expect(safe?(origin: 'https://192.168.1.10:3000')).to be(false)
     end
 
+    it 'rejects a request without Sec-Fetch-Site when Origin is null' do
+      expect(safe?(origin: 'null')).to be(false)
+    end
+
     it 'rejects a request with neither Sec-Fetch-Site nor Origin' do
       expect(safe?).to be(false)
     end
