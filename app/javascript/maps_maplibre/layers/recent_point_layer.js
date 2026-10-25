@@ -1,3 +1,6 @@
+import { formatDateTime } from "i18n"
+import * as maplibregl from "maplibre-gl"
+import { escapeHtml } from "../utils/geojson_transformers"
 import { BaseLayer } from "./base_layer"
 
 /**
@@ -7,6 +10,49 @@ import { BaseLayer } from "./base_layer"
 export class RecentPointLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "recent-point", visible: true, ...options })
+    this.hoverTitle = options.hoverTitle
+    this._popup = new maplibregl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      offset: 12,
+    })
+    this._onEnter = (e) => this._showPopup(e)
+    this._onLeave = () => this._hidePopup()
+  }
+
+  add(data, beforeId) {
+    super.add(data, beforeId)
+    if (!this.hoverTitle) return
+    this.map.on("mouseenter", this.id, this._onEnter)
+    this.map.on("mouseleave", this.id, this._onLeave)
+  }
+
+  remove() {
+    if (this.hoverTitle) {
+      this.map.off("mouseenter", this.id, this._onEnter)
+      this.map.off("mouseleave", this.id, this._onLeave)
+    }
+    this._hidePopup()
+    super.remove()
+  }
+
+  _showPopup(e) {
+    const timestamp = Number(e.features?.[0]?.properties?.timestamp)
+    const time = timestamp
+      ? `<div style="font-size:12px;opacity:0.8">${escapeHtml(formatDateTime(timestamp * 1000))}</div>`
+      : ""
+    this.map.getCanvas().style.cursor = "pointer"
+    this._popup
+      .setLngLat(e.lngLat)
+      .setHTML(
+        `<div style="font-weight:600">${escapeHtml(this.hoverTitle)}</div>${time}`,
+      )
+      .addTo(this.map)
+  }
+
+  _hidePopup() {
+    this.map.getCanvas().style.cursor = ""
+    this._popup.remove()
   }
 
   getSourceConfig() {

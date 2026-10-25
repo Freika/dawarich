@@ -4602,6 +4602,7 @@ ca:
     live_map:
       disabled: Mode en directe desactivat
       enabled: Mode en directe activat
+      your_position: La teva última ubicació
     map_panel:
       layers: Capes del mapa
       family: "Família"

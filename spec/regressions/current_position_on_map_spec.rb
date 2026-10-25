@@ -27,6 +27,15 @@ RSpec.describe 'Current position on the web map', type: :request do
     )
   end
 
+  it 'skips an anomalous latest point' do
+    previous = create(:point, user: viewer, lonlat: 'POINT(-140.04 -45.02)', timestamp: 20.minutes.ago.to_i)
+    create(:point, user: viewer, lonlat: 'POINT(-120.0 -30.0)', timestamp: 5.minutes.ago.to_i, anomaly: true)
+
+    get map_v2_path
+
+    expect(JSON.parse(current_position_value)).to include('longitude' => previous.lon, 'latitude' => previous.lat)
+  end
+
   it 'exposes no position when the viewer has no points' do
     get map_v2_path
 

@@ -189,6 +189,15 @@ export default class extends Controller {
     const [lat, lon, battery, altitude, timestamp, velocity, id, countryName] =
       pointData
 
+    this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
+      id: parseInt(id, 10),
+      battery: parseFloat(battery) || null,
+      altitude: parseFloat(altitude) || null,
+      timestamp: timestamp,
+      velocity: parseFloat(velocity) || null,
+      country_name: countryName || null,
+    })
+
     if (
       !pointMatchesActiveDateRange(
         timestamp,
@@ -200,15 +209,6 @@ export default class extends Controller {
 
     mapsController.mapDataManager?.invalidatePoints({ appendOnly: true })
     this.scheduleLiveRefresh()
-
-    this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
-      id: parseInt(id, 10),
-      battery: parseFloat(battery) || null,
-      altitude: parseFloat(altitude) || null,
-      timestamp: timestamp,
-      velocity: parseFloat(velocity) || null,
-      country_name: countryName || null,
-    })
 
     this.zoomToPoint(parseFloat(lon), parseFloat(lat))
 
@@ -270,6 +270,12 @@ export default class extends Controller {
     if (!mapsController) {
       console.warn("[Realtime Controller] Maps controller not found")
       return
+    }
+
+    mapsController.currentPositionValue = {
+      longitude,
+      latitude,
+      timestamp: properties.timestamp,
     }
 
     const recentPointLayer =

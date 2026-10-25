@@ -479,7 +479,9 @@ export class LayerManager {
 
   _addRecentPointLayer() {
     if (!this.layers.recentPointLayer) {
-      this.layers.recentPointLayer = new RecentPointLayer(this.map)
+      this.layers.recentPointLayer = new RecentPointLayer(this.map, {
+        hoverTitle: translate("live_map.your_position"),
+      })
       this.layers.recentPointLayer.add({
         type: "FeatureCollection",
         features: [],

@@ -5854,6 +5854,7 @@ fr:
     live_map:
       disabled: Mode en direct désactivé
       enabled: Mode en direct activé
+      your_position: Votre dernière position
     map_panel:
       layers: Couche de carte
       family: "Famille"

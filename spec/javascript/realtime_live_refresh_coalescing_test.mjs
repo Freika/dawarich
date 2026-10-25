@@ -10,6 +10,7 @@ const source = await readFile(
   "utf8",
 )
 globalThis.SettingsManagerStub = {}
+globalThis.RangeStub = () => true
 const SettingsManagerStub = globalThis.SettingsManagerStub
 const stubbedSource = source
   .replace(
@@ -27,7 +28,7 @@ const stubbedSource = source
   )
   .replace(
     'import { pointMatchesActiveDateRange } from "maps_maplibre/utils/realtime_date_filter"',
-    "const pointMatchesActiveDateRange = () => true",
+    "const pointMatchesActiveDateRange = (...args) => globalThis.RangeStub(...args)",
   )
   .replace(
     'import { SettingsManager } from "maps_maplibre/utils/settings_manager"',
@@ -38,7 +39,12 @@ const { default: RealtimeController } = await import(
 )
 
 function buildController() {
-  const calls = { pointsRefresh: 0, filters: 0, scratchUpdate: 0 }
+  const calls = {
+    pointsRefresh: 0,
+    filters: 0,
+    scratchUpdate: 0,
+    recentPoints: [],
+  }
   const layers = {
     "points-mvt": { refresh: () => calls.pointsRefresh++ },
     "map-editor": { reapplyTileFilters: () => calls.filters++ },
@@ -48,7 +54,10 @@ function buildController() {
         return Promise.resolve()
       },
     },
-    recentPoint: { show() {}, updateRecentPoint() {} },
+    recentPoint: {
+      show() {},
+      updateRecentPoint: (lon, lat) => calls.recentPoints.push([lon, lat]),
+    },
   }
   const mapsController = {
     layerManager: { getLayer: (id) => layers[id] },
@@ -60,7 +69,7 @@ function buildController() {
   controller.application = {
     getControllerForElementAndIdentifier: () => mapsController,
   }
-  return { controller, calls }
+  return { controller, calls, mapsController }
 }
 
 function livePoint(index) {
@@ -160,4 +169,31 @@ test("turning live mode off keeps the current position marker", () => {
 
   assert.equal(hidden, false)
   assert.equal(cleared, false)
+})
+
+test("a live point outside the viewed date range still moves the current position", (t) => {
+  const timers = installFakeTimers(t)
+  globalThis.RangeStub = () => false
+  t.after(() => {
+    globalThis.RangeStub = () => true
+  })
+  const { controller, calls } = buildController()
+
+  controller.handleNewPoint(livePoint(0))
+
+  assert.deepEqual(calls.recentPoints, [[13.4, 52.5]])
+  assert.deepEqual(timers.delays, [])
+})
+
+test("a live point becomes the position restored after a map style change", (t) => {
+  installFakeTimers(t)
+  const { controller, mapsController } = buildController()
+
+  controller.handleNewPoint(livePoint(3))
+
+  assert.deepEqual(mapsController.currentPositionValue, {
+    longitude: 13.4,
+    latitude: 52.5,
+    timestamp: 1758196803,
+  })
 })
