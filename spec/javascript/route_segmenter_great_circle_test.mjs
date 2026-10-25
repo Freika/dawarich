@@ -58,3 +58,12 @@ test("dense GPS points pass through unchanged", () => {
     coords,
   ])
 })
+
+test("a segment entirely beyond the Mercator edge yields no route", () => {
+  const routes = RouteSegmenter.pointsToRoutes([
+    { longitude: 10, latitude: 87, timestamp: 0 },
+    { longitude: 40, latitude: 88, timestamp: 600 },
+  ])
+
+  assert.deepEqual(routes.features, [])
+})

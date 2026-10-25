@@ -229,6 +229,7 @@ export class RouteSegmenter {
    */
   static segmentToFeature(segment) {
     const coordinates = RouteSegmenter.unwrapCoordinates(segment)
+    if (coordinates.length === 0) return null
     const totalDistance = RouteSegmenter.calculateSegmentDistance(segment)
 
     const startTime = segment[0].timestamp
@@ -333,6 +334,7 @@ export class RouteSegmenter {
           RouteSegmenter.splitAtHandoffs(segment, otherSegments),
         )
         .map((segment) => RouteSegmenter.segmentToFeature(segment))
+        .filter(Boolean)
     })
 
     return {
