@@ -71,6 +71,9 @@ class Users::SafeSettings
     # GPS noise filtering (Points::AnomalyFilter)
     'gps_filtering_enabled' => true,
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
+    'date_format' => 'auto',
+    'time_format' => 'auto',
+    'first_day_of_week' => 'monday',
     'visit_radius_meters' => 100,
     'visit_min_points' => 3,
     'visit_min_duration_minutes' => 5,
@@ -134,7 +137,8 @@ class Users::SafeSettings
       route_opacity: route_opacity,
       route_color: route_color,
       speed_color_scale: speed_color_scale,
-      points_tiled_rendering: points_tiled_rendering?
+      points_tiled_rendering: points_tiled_rendering?,
+      **date_time_preferences.to_h
     )
   end
 
@@ -364,6 +368,14 @@ class Users::SafeSettings
 
   def timezone
     settings['timezone'] || DEFAULT_VALUES['timezone']
+  end
+
+  def date_time_preferences
+    Users::DateTimePreferences.new(
+      date_format: settings['date_format'],
+      time_format: settings['time_format'],
+      first_day_of_week: settings['first_day_of_week']
+    )
   end
 
   def persisted_timezone

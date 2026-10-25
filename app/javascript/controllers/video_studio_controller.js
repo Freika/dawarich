@@ -741,12 +741,7 @@ export default class extends Controller {
 
   dateRangeLabel() {
     const { startAt, endAt } = this.provider.dateRange()
-    return formatDateTimeRange(
-      startAt,
-      endAt,
-      document.documentElement.lang || undefined,
-      this.provider.timeZone?.(),
-    )
+    return formatDateTimeRange(startAt, endAt, this.provider.timeZone?.())
   }
 
   showProgress(ratio, phase) {

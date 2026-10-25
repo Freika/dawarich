@@ -59,7 +59,6 @@ fr:
         locked: Verrouillées
     cards:
       explorer_name: "Explorateur de %{place}"
-      date_format: "%-d %b %Y"
       description:
         continent: "Passez du temps dans les %{count} pays et territoires de %{place}."
         regions: "Passez du temps dans les %{count} régions de %{place}."

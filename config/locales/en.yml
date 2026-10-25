@@ -1583,6 +1583,14 @@ en:
         timezone: Timezone
         your_timezone: Your timezone
         all_dates_and_times_will_be_displayed_in_this_timezone: All dates and times will be displayed in this timezone
+        date_and_time: "Date and time"
+        date_format: "Date format"
+        time_format: "Time format"
+        first_day_of_week: "First day of the week"
+        format_auto: "Automatic (%{example})"
+        time_format_12h: "12-hour (%{example})"
+        time_format_24h: "24-hour (%{example})"
+        date_and_time_hint: "Applies to dates and times across the app, in emails and on the map."
         supporter_badge: Supporter Badge
         show_supporter_badge_in_navbar: Show supporter badge in navbar
         display_a_gem_icon_next_to_your_profile_to_show: Display a gem icon next to your profile to show your supporter status
@@ -2718,10 +2726,10 @@ en:
   time:
     formats:
       hour_minute: "%H:%M"
-      long_with_time: "%B %d, %Y at %I:%M %p"
+      long_with_time: "%B %d, %Y at %H:%M"
       human: "%e %b %Y, %H:%M"
       human_with_seconds: "%e %b %Y, %H:%M:%S"
-      short_with_time: "%b %d at %I:%M %p"
+      short_with_time: "%b %d at %H:%M"
   common:
     app_name: Dawarich
     not_available: N/A
@@ -4612,3 +4620,8 @@ en:
       no_invitations: No pending invitations
       title: Family Invitations
       view_invitation: View
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: AM
+      pm: PM

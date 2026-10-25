@@ -45,15 +45,15 @@ module Users::DigestsMailerHelper
   end
 
   # 7-row × ~52-column grid of HEATMAP_LEVELS characters.
-  # Rows are Monday..Sunday. Columns are consecutive calendar weeks starting
-  # from the Monday of the week containing start_date.
+  # Rows run from the first day of week. Columns are consecutive calendar weeks
+  # starting from the week containing start_date.
   # Level is chosen by quartile of non-zero daily distances:
   #   0      → ·
   #   < Q1   → ░
   #   < Q2   → ▒
   #   < Q3   → ▓
   #   ≥ Q3   → █   (ties go to the higher bucket so peak days render full)
-  def ascii_year_heatmap(daily_values, start_date:)
+  def ascii_year_heatmap(daily_values, start_date:, week_start: Current.date_time_preferences.week_start_symbol)
     non_zero = daily_values.values.select { |v| v.to_f.positive? }.sort
     thresholds =
       if non_zero.empty?
@@ -62,7 +62,7 @@ module Users::DigestsMailerHelper
         [non_zero[non_zero.size / 4], non_zero[non_zero.size / 2], non_zero[non_zero.size * 3 / 4]]
       end
 
-    grid_start = start_date - ((start_date.wday.zero? ? 7 : start_date.wday) - 1)
+    grid_start = start_date.beginning_of_week(week_start)
     end_date   = daily_values.keys.max || start_date
     weeks      = ((end_date - grid_start).to_i / 7) + 1
 

@@ -1604,6 +1604,14 @@ ca:
         timezone: Fus horari
         your_timezone: El teu fus horari
         all_dates_and_times_will_be_displayed_in_this_timezone: Totes les dates i hores es mostraran en aquest fus horari
+        date_and_time: "Data i hora"
+        date_format: "Format de data"
+        time_format: "Format d'hora"
+        first_day_of_week: "Primer dia de la setmana"
+        format_auto: "Automàtic (%{example})"
+        time_format_12h: "12 hores (%{example})"
+        time_format_24h: "24 hores (%{example})"
+        date_and_time_hint: "S'aplica a les dates i hores de l'aplicació, els correus i el mapa."
         supporter_badge: Insígnia de col·laborador
         show_supporter_badge_in_navbar: Mostra la insígnia de col·laborador a la barra de navegació
         display_a_gem_icon_next_to_your_profile_to_show: Mostra una icona de gemma al costat del teu perfil per indicar el teu estat de col·laborador
@@ -4621,3 +4629,8 @@ ca:
       no_invitations: No hi ha invitacions pendents
       title: Invitacions de família
       view_invitation: Veure
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: a. m.
+      pm: p. m.

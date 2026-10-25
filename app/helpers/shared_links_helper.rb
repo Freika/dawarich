@@ -7,6 +7,12 @@ module SharedLinksHelper
 
     if start_date == end_date
       I18n.l(start_date, format: :month_day_year)
+    elsif Current.date_time_preferences.date_format != 'auto'
+      I18n.t(
+        'helpers.shared_links.date_ranges.different_years',
+        start_date: I18n.l(start_date, format: :medium),
+        end_date: I18n.l(end_date, format: :medium)
+      )
     elsif start_date.year == end_date.year && start_date.month == end_date.month
       I18n.t(
         'helpers.shared_links.date_ranges.same_month',

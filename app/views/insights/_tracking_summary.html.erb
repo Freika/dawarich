@@ -1,4 +1,4 @@
-<% cache [current_user.id, 'insights_tracking_summary', I18n.locale, current_user.stats.maximum(:updated_at), @points_total, reverse_geocoding_enabled_for?(current_user)], expires_in: 24.hours do %>
+<% cache [current_user.id, 'insights_tracking_summary', I18n.locale, current_user.stats.maximum(:updated_at), @points_total, reverse_geocoding_enabled_for?(current_user), Current.date_time_preferences.cache_key], expires_in: 24.hours do %>
   <div class="flex flex-wrap items-center gap-x-5 gap-y-2 mb-6 text-sm text-base-content/70">
     <span>
       <strong class="text-base-content tabular-nums"><%= number_with_delimiter @points_total %></strong>

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Shared::AchievementsController < ApplicationController
+  include DefaultDateTimePreferences
+
   layout 'shared'
 
   after_action :allow_embedding, only: :show

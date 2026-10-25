@@ -1607,6 +1607,14 @@ es:
         timezone: Zona horaria
         your_timezone: Tu zona horaria
         all_dates_and_times_will_be_displayed_in_this_timezone: Todos los fechas y horas se mostrarán en esta zona horaria.
+        date_and_time: "Fecha y hora"
+        date_format: "Formato de fecha"
+        time_format: "Formato de hora"
+        first_day_of_week: "Primer día de la semana"
+        format_auto: "Automático (%{example})"
+        time_format_12h: "12 horas (%{example})"
+        time_format_24h: "24 horas (%{example})"
+        date_and_time_hint: "Se aplica a las fechas y horas de la aplicación, los correos y el mapa."
         supporter_badge: Insignia de apoyo
         show_supporter_badge_in_navbar: Mostrar insignia de apoyo en el menú de navegación
         display_a_gem_icon_next_to_your_profile_to_show: Mostrar un icono de gema junto a tu perfil para mostrar tu estado de apoyo.
@@ -4627,3 +4635,8 @@ es:
       no_invitations: No hay invitaciones pendientes
       title: Invitaciones a la Familia
       view_invitation: Ver
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: a. m.
+      pm: p. m.

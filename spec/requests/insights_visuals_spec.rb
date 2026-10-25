@@ -27,6 +27,19 @@ RSpec.describe 'Insights visuals', type: :request do
       expect(doc.at_css('[data-testid="year-calendar"]')).to be_nil
     end
 
+    it 'labels the weekday rows from the first day of week' do
+      get map_residency_path(year: 2025)
+      monday_rows = doc.css('.year-calendar__day').map { _1.text.strip }
+
+      user.update!(settings: user.settings.merge('first_day_of_week' => 'sunday'))
+      get map_residency_path(year: 2025)
+      sunday_rows = doc.css('.year-calendar__day').map { _1.text.strip }
+
+      expect(monday_rows).to eq(['Mon', '', 'Wed', '', 'Fri', '', ''])
+      expect(sunday_rows).to eq(['', 'Mon', '', 'Wed', '', 'Fri', ''])
+      expect(doc.at_css('.year-calendar__cell[data-date="2025-03-06"]')).to be_present
+    end
+
     it 'colours each day by its country and keeps the distance' do
       get map_residency_path(year: 2025)
 

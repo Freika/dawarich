@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { formatNumber, translate } from "i18n"
+import { formatNumber, formatTime, translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
@@ -1599,16 +1599,12 @@ export default class extends Controller {
         const emailInitial =
           (location.name || location.email)?.charAt(0)?.toUpperCase() || "?"
         const color = this.getFamilyMemberColor(location.user_id)
-        const lastSeen = new Date(location.updated_at).toLocaleString(
+        const timeZone = this.timezoneValue || "UTC"
+        const lastSeenDay = new Date(location.updated_at).toLocaleDateString(
           document.documentElement.lang || undefined,
-          {
-            timeZone: this.timezoneValue || "UTC",
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-          },
+          { timeZone, month: "short", day: "numeric" },
         )
+        const lastSeen = `${lastSeenDay} ${formatTime(location.updated_at, { timeZone })}`
 
         const row = document.createElement("div")
         row.className =

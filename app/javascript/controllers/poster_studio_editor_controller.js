@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { translate } from "i18n"
+import { formatDate, translate } from "i18n"
 import {
   DEFAULT_FONT_KEY,
   ensurePosterFont,
@@ -472,10 +472,7 @@ export default class extends Controller {
   dateRangeLabel() {
     const { startAt, endAt } = this.provider?.dateRange() ?? {}
     if (!startAt || !endAt) return ""
-    const options = { day: "numeric", month: "short", year: "numeric" }
-    const start = new Date(startAt)
-    const end = new Date(endAt)
-    return `${start.toLocaleDateString("en-GB", options)} – ${end.toLocaleDateString("en-GB", options)}`
+    return `${formatDate(startAt)} – ${formatDate(endAt)}`
   }
 
   // ===== Layers =====

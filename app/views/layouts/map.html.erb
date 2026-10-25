@@ -13,6 +13,7 @@
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= achievement_stylesheet_tags if achievements_visible? %>
     <%= javascript_translations %>
+    <%= date_time_preferences_meta_tag %>
     <%= javascript_importmap_tags %>
     <%= yield :head_scripts %>
 
