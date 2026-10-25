@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Map points load again for a single day in a place where you have years of history, such as home. Before, that map tile could take longer than 5 seconds and the map showed "Could not load map tiles" (#3830)
+- Tracks no longer have gaps or straight lines where points recorded later, imported or synced from another app, sit next to an existing track from the same device: those points now join the track. After the update, Dawarich repairs the last 12 months in the background; for older gaps, choose Recalculate tracks & stats (#3794)
 - On phones, the card asking whether to show "What's New" notices now fits on screen. Before, its left side, including the heading, was cut off.
 - The trip page no longer scrolls sideways on phones, and its download menu no longer opens partly off-screen. Long trip names and the Public badge of a shared trip used to push the page wider than the screen.
 - A visit is suggested again when tracking stops at a place and resumes at the same spot later, for example a shortcut that pauses tracking at the gym. Before, fixes taken while arriving and leaving could make the two sides look like different places, and no visit was suggested. Choose Re-run detection on full history on the Visits page to fix past stays (#3203)
