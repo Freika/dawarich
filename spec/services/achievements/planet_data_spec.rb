@@ -34,7 +34,7 @@ RSpec.describe 'planet achievement data' do
 
   it 'dissolves finer Natural Earth subdivisions up to the ISO first level' do
     expect(countries.fetch('GB')['subdivisions'].keys).to match_array(%w[GB-ENG GB-NIR GB-SCT GB-WLS])
-    expect(countries.fetch('IT')['subdivisions'].size).to eq(19)
+    expect(countries.fetch('IT')['subdivisions'].size).to eq(20)
     expect(countries.fetch('ES')['subdivisions'].size).to eq(19)
   end
 

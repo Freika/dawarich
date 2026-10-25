@@ -14,9 +14,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - English dates with a time now use the 24-hour clock unless you choose the 12-hour clock in Settings → General.
 - Ruby version updated to 4.0.9
+- On the Lite plan, the 12-month window now starts at midnight UTC and moves once a day, so the oldest day leaves the window all at once. The map's upgrade banner and the data archival notices follow the same date.
 
 ### Fixed
 
+- Map points load again for a single day in a place where you have years of history, such as home. Before, that map tile could take longer than 5 seconds and the map showed "Could not load map tiles" (#3830)
 - Tracks no longer have gaps or straight lines where points recorded later, imported or synced from another app, sit next to an existing track from the same device: those points now join the track. After the update, Dawarich repairs the last 12 months in the background; for older gaps, choose Recalculate tracks & stats (#3794)
 - On phones, the card asking whether to show "What's New" notices now fits on screen. Before, its left side, including the heading, was cut off.
 - The trip page no longer scrolls sideways on phones, and its download menu no longer opens partly off-screen. Long trip names and the Public badge of a shared trip used to push the page wider than the screen.
@@ -26,6 +28,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Renaming a place now renames its visits that still show the old or default name; visits you named yourself keep their names, and visits already showing an outdated name stay as they are (#3353)
 - A track from another tracker, such as an imported watch GPX, now cuts a track whose gap it fills instead of that track bridging the gap with a straight line and counting the distance twice. Trackers that record alongside each other keep separate, whole tracks. Choose Recalculate tracks & stats to apply this to imports made before this release (#3424)
 - Flights are drawn along the great circle: straight on the globe and an arc on the flat map. A route over the North Pole no longer kinks or runs along the map's top edge; the part beyond the edge of the flat map is left out (#3261)
+- The achievement cards for Valparaíso, Colima and Chile now show the mainland at full size. Before, a distant island (Easter Island or the Revillagigedo Islands) stretched the drawing, so the region shrank to a dot at the edge of the card. Earned achievements are unchanged (#3731)
+- With Edit points on, clicking another point of the track you are editing now selects that point, and a click that nudges the mouse by a few pixels no longer moves the point. Before, the panel and its Delete button stayed on the first point you clicked until you clicked an empty spot on the map, so Delete could remove the wrong point (#3772)
+- Aosta Valley is now part of Italy's achievement, which has all 20 regions. Anyone who already completed Italy keeps it. The upgrade recalculates achievements once in the background without notifications, so earlier visits to Aosta Valley count. (#3789)
 
 ## [1.17.0] - 2026-10-23, Berlin
 

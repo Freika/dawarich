@@ -25,6 +25,7 @@ const editingModule = async (name) =>
 const editingModules = (
   await Promise.all(
     [
+      "point_drag_gesture.js",
       "tile_exclusions.js",
       "editable_track_data.js",
       "point_edit_history.js",
@@ -302,9 +303,10 @@ test("import editor exposes only selected Points and keeps scoped Track geometry
 
   editor.onMouseDown({
     features: [{ properties: { id: 1 } }],
+    point: { x: 0, y: 0 },
     preventDefault() {},
   })
-  editor.onMouseMove({ lngLat: { lng: 0.5, lat: 0 } })
+  editor.onMouseMove({ point: { x: 40, y: 40 }, lngLat: { lng: 0.5, lat: 0 } })
   await editor.onMouseUp({ lngLat: { lng: 1, lat: 0 } })
   await new Promise(setImmediate)
 
@@ -346,9 +348,13 @@ test("drag previews point and track locally, then sends exactly one composite mu
 
   editor.onMouseDown({
     features: [{ properties: { id: 1 } }],
+    point: { x: 0, y: 0 },
     preventDefault() {},
   })
-  editor.onMouseMove({ lngLat: { lng: 0.5, lat: 0.5 } })
+  editor.onMouseMove({
+    point: { x: 40, y: 40 },
+    lngLat: { lng: 0.5, lat: 0.5 },
+  })
   assert.deepEqual(editor._track().geometry.coordinates, [
     [0.5, 0.5],
     [2, 0],
@@ -440,6 +446,7 @@ test("a second drag is ignored while the same track has a mutation in flight", a
 
   editor.onMouseDown({
     features: [{ properties: { id: 1 } }],
+    point: { x: 0, y: 0 },
     preventDefault() {},
   })
 
@@ -565,9 +572,10 @@ test("a conflict applies server state and explains that the other edit won", asy
   await editor.selectTrack(10)
   editor.onMouseDown({
     features: [{ properties: { id: 1 } }],
+    point: { x: 0, y: 0 },
     preventDefault() {},
   })
-  editor.onMouseMove({ lngLat: { lng: 4, lat: 5 } })
+  editor.onMouseMove({ point: { x: 40, y: 40 }, lngLat: { lng: 4, lat: 5 } })
   await editor.onMouseUp({ lngLat: { lng: 4, lat: 5 } })
 
   assert.deepEqual(editor._point(1).geometry.coordinates, [8, 9])
@@ -578,6 +586,64 @@ test("a conflict applies server state and explains that the other edit won", asy
   assert.deepEqual(globalThis.__mapEditorToastErrors, [
     "messages.point_edit_conflict",
   ])
+})
+
+test("a press that moves less than the drag threshold stays a click", async () => {
+  const moves = []
+  const editor = new MapEditor(fakeMap(), {
+    apiClient: {
+      fetchTrackWithSegments: async () => trackFeature(),
+      fetchTrackPoints: async () => [point(1, 0, 0), point(2, 2, 0)],
+      movePointPosition: async (...args) => {
+        moves.push(args)
+      },
+    },
+    layerManager: { getLayer: () => null },
+    historyScope: () => ({ startAt: "100", endAt: "200" }),
+  })
+  await editor.selectTrack(10)
+  editor.onMouseDown({
+    features: [{ properties: { id: 1 } }],
+    point: { x: 100, y: 100 },
+    preventDefault() {},
+  })
+  editor.onMouseMove({
+    point: { x: 102, y: 101 },
+    lngLat: { lng: 0.01, lat: 0 },
+  })
+  await editor.onMouseUp({
+    point: { x: 102, y: 101 },
+    lngLat: { lng: 0.01, lat: 0 },
+  })
+
+  assert.deepEqual(moves, [])
+  assert.equal(editor.justDragged, false)
+  assert.deepEqual(editor._point(1).geometry.coordinates, [0, 0])
+})
+
+test("a drag keeps following the cursor back near where it started", async () => {
+  const editor = new MapEditor(fakeMap(), {
+    apiClient: {
+      fetchTrackWithSegments: async () => trackFeature(),
+      fetchTrackPoints: async () => [point(1, 0, 0), point(2, 2, 0)],
+      movePointPosition: async () => {},
+    },
+    layerManager: { getLayer: () => null },
+    historyScope: () => ({ startAt: "100", endAt: "200" }),
+  })
+  await editor.selectTrack(10)
+  editor.onMouseDown({
+    features: [{ properties: { id: 1 } }],
+    point: { x: 100, y: 100 },
+    preventDefault() {},
+  })
+  editor.onMouseMove({ point: { x: 140, y: 100 }, lngLat: { lng: 1, lat: 0 } })
+  editor.onMouseMove({
+    point: { x: 101, y: 100 },
+    lngLat: { lng: 0.02, lat: 0 },
+  })
+
+  assert.deepEqual(editor._point(1).geometry.coordinates, [0.02, 0])
 })
 
 test("a failed mutation restores the complete pre-drag snapshot", async () => {
@@ -596,9 +662,10 @@ test("a failed mutation restores the complete pre-drag snapshot", async () => {
   const before = JSON.parse(JSON.stringify(editor.data))
   editor.onMouseDown({
     features: [{ properties: { id: 1 } }],
+    point: { x: 0, y: 0 },
     preventDefault() {},
   })
-  editor.onMouseMove({ lngLat: { lng: 4, lat: 5 } })
+  editor.onMouseMove({ point: { x: 40, y: 40 }, lngLat: { lng: 4, lat: 5 } })
   await editor.onMouseUp({ lngLat: { lng: 4, lat: 5 } })
 
   assert.deepEqual(editor.data, before)
@@ -621,9 +688,10 @@ test("a mutation response cannot overwrite a newer edit session", async () => {
   await editor.selectTrack(10)
   editor.onMouseDown({
     features: [{ properties: { id: 1 } }],
+    point: { x: 0, y: 0 },
     preventDefault() {},
   })
-  editor.onMouseMove({ lngLat: { lng: 4, lat: 5 } })
+  editor.onMouseMove({ point: { x: 40, y: 40 }, lngLat: { lng: 4, lat: 5 } })
   const pending = editor.onMouseUp({ lngLat: { lng: 4, lat: 5 } })
   editor.selectPoint({ properties: point(7, 7, 7, 1) })
 
@@ -657,6 +725,7 @@ test("a click without pointer movement closes the drag without a request", async
   await editor.selectTrack(10)
   editor.onMouseDown({
     features: [{ properties: { id: 1 } }],
+    point: { x: 0, y: 0 },
     preventDefault() {},
   })
 
@@ -697,9 +766,10 @@ test("sequential edits retain the session and use returned revisions", async () 
   ]) {
     editor.onMouseDown({
       features: [{ properties: { id: 1 } }],
+      point: { x: 0, y: 0 },
       preventDefault() {},
     })
-    editor.onMouseMove({ lngLat: { lng, lat } })
+    editor.onMouseMove({ point: { x: 40, y: 40 }, lngLat: { lng, lat } })
     await editor.onMouseUp({ lngLat: { lng, lat } })
   }
 
@@ -874,9 +944,10 @@ test("successful point move refreshes tiles even after the editor closes", async
     await editor.selectTrack(10)
     editor.onMouseDown({
       features: [{ properties: { id: 1 } }],
+      point: { x: 0, y: 0 },
       preventDefault() {},
     })
-    editor.onMouseMove({ lngLat: { lng: 1, lat: 1 } })
+    editor.onMouseMove({ point: { x: 40, y: 40 }, lngLat: { lng: 1, lat: 1 } })
     const pendingMove = editor.onMouseUp({ lngLat: { lng: 1, lat: 1 } })
     editor.close()
     completeMove({ point: point(1, 1, 1, 3), revision: { point: 3 } })
@@ -910,9 +981,10 @@ test("undo after the editor closed moves the point without throwing", async () =
   await editor.selectTrack(10)
   editor.onMouseDown({
     features: [{ properties: { id: 1 } }],
+    point: { x: 0, y: 0 },
     preventDefault() {},
   })
-  editor.onMouseMove({ lngLat: { lng: 1, lat: 1 } })
+  editor.onMouseMove({ point: { x: 40, y: 40 }, lngLat: { lng: 1, lat: 1 } })
   await editor.onMouseUp({ lngLat: { lng: 1, lat: 1 } })
   editor.close()
   globalThis.__mapEditorToastErrors.length = 0
@@ -1062,9 +1134,10 @@ test("a saved move can be undone from the edit history with the new revisions", 
   await editor.selectTrack(10)
   editor.onMouseDown({
     features: [{ properties: { id: 1 } }],
+    point: { x: 0, y: 0 },
     preventDefault() {},
   })
-  editor.onMouseMove({ lngLat: { lng: 1, lat: 1 } })
+  editor.onMouseMove({ point: { x: 40, y: 40 }, lngLat: { lng: 1, lat: 1 } })
   await editor.onMouseUp({ lngLat: { lng: 1, lat: 1 } })
 
   assert.equal(editor.edits.history.canUndo, true)

@@ -169,6 +169,20 @@ export class EventHandlers {
     this.controller.showInfo(translate("messages.anomaly_point"), content)
   }
 
+  handleEditablePointClick(e) {
+    const mapEditor = this.controller.layerManager.getLayer("map-editor")
+    if (!mapEditor?.forEditing || mapEditor.justDragged) return
+    if (
+      this.map.getLayer("points-mvt") &&
+      this.map.queryRenderedFeatures(e.point, { layers: ["points-mvt"] })
+        .length > 0
+    )
+      return
+
+    const feature = e.features?.[0]
+    if (feature) this._showPointFeature(feature)
+  }
+
   /**
    * Handle track point click — injects point info into the existing track info panel.
    * Suppresses the event if the user just finished dragging (justDragged flag).
