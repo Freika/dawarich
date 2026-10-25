@@ -129,6 +129,14 @@ RSpec.describe Places::NameFetcher do
 
           expect(visit.reload).to have_attributes(name: nil, location_label: "Mum's house")
         end
+
+        it 'clears a default Visit name so the visit shows the locked name' do
+          visit = create(:visit, place: place, user: place.user, name: Place::DEFAULT_NAME)
+
+          service.call
+
+          expect(visit.reload).to have_attributes(name: nil, display_name: "Mum's house")
+        end
       end
 
       context 'when DawarichSettings.store_geodata? is enabled' do
