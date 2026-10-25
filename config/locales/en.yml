@@ -1341,7 +1341,6 @@ en:
       rarr: "→"
       'on': 'on'
       no_visits_yet: No visits yet
-      rename: Rename
       merge: Merge
       select_place_to_merge: Select duplicate place
       no_matching_places: No matching places found

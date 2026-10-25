@@ -143,6 +143,23 @@ RSpec.describe Users::ImportData::Visits, type: :service do
       end
     end
 
+    context 'with raw foreign keys in the archive row' do
+      let(:other_place) { create(:place, user: create(:user), name: 'Elsewhere') }
+      let(:other_import) { create(:import) }
+      let(:visits_data) do
+        [{
+          'name' => 'Tampered', 'started_at' => '2024-01-01T09:00:00Z', 'ended_at' => '2024-01-01T10:00:00Z',
+          'duration' => 3600, 'status' => 'confirmed', 'place_id' => other_place.id, 'import_id' => other_import.id
+        }]
+      end
+
+      it 'does not link the visit to records the user does not own' do
+        described_class.new(user, visits_data).call
+
+        expect(user.visits.last).to have_attributes(place_id: nil, import_id: nil)
+      end
+    end
+
     context 'with a legacy area_id' do
       let(:visits_data) do
         [

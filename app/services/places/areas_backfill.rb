@@ -18,8 +18,8 @@ module Places
     end
 
     def call
-      migration_error = migrate_areas
       migrate_visit_labels
+      migration_error = migrate_areas
       migrate_visit_associations
 
       logger.info("[#{self.class}] #{report.to_json}")
@@ -44,7 +44,9 @@ module Places
     def migrate_areas
       first_error = nil
 
-      Area.where.not(id: LegacyAreaPlaceMapping.select(:area_id)).find_each(batch_size: batch_size) do |area|
+      Area.where(user_id: User.select(:id))
+          .where.not(id: LegacyAreaPlaceMapping.select(:area_id))
+          .find_each(batch_size: batch_size) do |area|
         report[:areas_scanned] += 1
         migrate_area(area)
       rescue StandardError => e
@@ -142,6 +144,17 @@ module Places
       Visit.machine_detected.where.not(name: nil).in_batches(of: batch_size) do |batch|
         report[:suggested_visit_names_cleared] += batch.update_all(name: nil)
       end
+
+      Visit.where(id: echoed_name_visits.select(:id)).in_batches(of: batch_size) do |batch|
+        report[:echoed_visit_names_cleared] += batch.update_all(name: nil)
+      end
+    end
+
+    def echoed_name_visits
+      Visit.left_joins(:place, :area)
+           .where.not(name: nil)
+           .where('visits.name IN (places.name, ?) OR (visits.place_id IS NULL AND visits.name = areas.name)',
+                  Visit::DEFAULT_NAME)
     end
 
     def migrate_visit_associations

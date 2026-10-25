@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The Places page can list only Unconfirmed Places, and each Place opens a details page where a duplicate Place can be merged into it together with its Visits, tags and notes.
 
 ### Changed
-- Back up your database before upgrading. A background job moves Areas into Places and moves the names of automatically detected Visits into their location label; rolling back does not restore them. Keep Sidekiq (or embedded jobs) running until it finishes.
+- Back up your database before upgrading. A background job moves Areas into Places and moves the names of automatically detected Visits into their location label. It also clears Visit names that only repeat their Place or Area name, so they follow later renames. Rolling back does not restore these names. Keep Sidekiq (or embedded jobs) running until it finishes.
 - Areas are now Places with a Visit Radius (up to 50 km), keeping their notes and Visits. The map shows Places with optional boundaries, and the Create Area tool is gone: create a Place with a Visit Radius on the map or from a Visit instead.
 - API: `/api/v1/areas` and the Visit `area_id` field are deprecated in favour of `/api/v1/places` and `place_id`. Visit responses add `display_name`, `custom_name` (the stored Visit name, if any) and `location_label`; `name` still returns the name to show. Breaking: `place` is now `null` for Visits without a Place or Area.
 - The MCP `get_timeline` and `search_visits` tools include each Place's `visit_radius`, and `search_visits` names visits like the timeline and matches location labels.

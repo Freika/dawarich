@@ -221,6 +221,7 @@ module Visits
       @visit = user.visits.create!(
         name: params[:name].presence,
         place: place,
+        location_label: place&.name,
         started_at: started_at,
         ended_at: ended_at,
         duration: duration_minutes,

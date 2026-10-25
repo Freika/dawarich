@@ -87,6 +87,13 @@ RSpec.describe Visits::Create do
 
         expect(service.visit.reload).to have_attributes(name: nil, display_name: 'Corner Cafe')
       end
+
+      it 'records the Place name as the location label' do
+        service = described_class.new(user, valid_params.except(:name).merge(place_id: place.id))
+        service.call
+
+        expect(service.visit.reload.location_label).to eq('Cafe')
+      end
     end
 
     context 'when reusing existing place' do

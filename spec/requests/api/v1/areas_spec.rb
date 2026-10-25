@@ -10,6 +10,7 @@ RSpec.describe '/api/v1/areas', type: :request do
       get api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" }
       expect(response).to be_successful
       expect(response.headers['Deprecation']).to eq('true')
+      expect(response.headers['Link']).to eq(%(<#{api_v1_places_url}>; rel="successor-version"))
     end
 
     it 'serves a legacy Area whose stored radius is not positive' do

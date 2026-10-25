@@ -1356,7 +1356,6 @@ zh:
       rarr: →
       'on': 于
       no_visits_yet: 尚无到访记录
-      rename: 重命名
       merge: 合并
       select_place_to_merge: 选择重复地点
       no_matching_places: 未找到匹配的地点

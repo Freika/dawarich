@@ -117,7 +117,7 @@ status: :see_other
   end
 
   def merge
-    duplicate = current_user.places.find(params[:duplicate_place_id])
+    duplicate = current_user.places.where.not(id: @place.id).find(params[:duplicate_place_id])
     duplicate_name = duplicate.name
     Places::Merge.new(user: current_user, survivor: @place, duplicate: duplicate).call
 

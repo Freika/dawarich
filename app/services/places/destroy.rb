@@ -13,6 +13,7 @@ module Places
       Place.transaction do
         area_ids = LegacyAreaPlaceMapping.where(place_id: place.id).pluck(:area_id)
         user.areas.where(id: area_ids).find_each(&:destroy!)
+        place.visits.update_all(location_label: place.name, updated_at: Time.current)
         place.destroy!
       end
     end

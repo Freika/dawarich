@@ -28,8 +28,7 @@
 
   <section class="place-drawer__stats">
     <div class="place-drawer__stat">
-      <span class="place-drawer__stat-value"><%= stats[:visit_count] %></span>
-      <span class="place-drawer__stat-label"><%= t('.visit_count', count: stats[:visit_count]) %></span>
+      <span class="place-drawer__stat-value"><%= t('.visit_count', count: stats[:visit_count]) %></span>
     </div>
     <div class="place-drawer__stat">
       <span class="place-drawer__stat-value"><%= stats[:total_hours] %></span>
@@ -82,7 +81,6 @@
   </section>
 
   <footer class="place-drawer__actions">
-    <button type="button" class="place-drawer__action place-drawer__action--rename" disabled><%= t('.rename') %></button>
     <% candidates = local_assigns.fetch(:merge_candidates, @merge_candidates || []) %>
     <%= form_with url: place_path(place), method: :get, data: { turbo_frame: 'place-drawer' }, class: 'flex gap-2 items-center' do %>
       <%= label_tag :merge_query, t('.search_places'), class: 'sr-only' %>

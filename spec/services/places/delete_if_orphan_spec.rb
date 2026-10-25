@@ -32,6 +32,14 @@ RSpec.describe Places::DeleteIfOrphan do
       expect(Place.exists?(place.id)).to be(true)
     end
 
+    it 'keeps places with an attached timeline note' do
+      place = create(:place, user: user, source: :photon, note: nil)
+      create(:note, user: user, attachable: place)
+
+      expect(described_class.call(place.id)).to be(false)
+      expect(Place.exists?(place.id)).to be(true)
+    end
+
     it 'keeps places with a note' do
       place = create(:place, user: user, source: :photon, note: 'mine')
 

@@ -82,6 +82,15 @@ RSpec.describe Places::OrphanCleanupJob, type: :job do
       expect(Area.exists?(area.id)).to be(true)
     end
 
+    it 'keeps Places with an attached timeline note' do
+      place = create(:place, user: user, source: :photon, note: nil)
+      create(:note, user: user, attachable: place)
+
+      described_class.new.perform(user.id)
+
+      expect(Place.exists?(place.id)).to be(true)
+    end
+
     it 'no-ops for unknown user' do
       expect { described_class.new.perform(0) }.not_to raise_error
     end

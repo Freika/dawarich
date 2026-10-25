@@ -1341,7 +1341,6 @@ ca:
       rarr: "→"
       'on': el
       no_visits_yet: Encara no hi ha visites
-      rename: Canvia el nom
       merge: Fusiona
       select_place_to_merge: Selecciona el lloc duplicat
       no_matching_places: No s'han trobat llocs coincidents

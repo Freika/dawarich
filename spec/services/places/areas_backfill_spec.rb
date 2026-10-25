@@ -88,6 +88,14 @@ RSpec.describe Places::AreasBackfill do
       expect(backfill.report[:failed_area_ids]).to contain_exactly(area.id)
     end
 
+    it 'skips Areas of soft-deleted users instead of failing on every retry' do
+      area = create(:area)
+      area.user.destroy
+
+      expect { backfill.call }.not_to raise_error
+      expect(LegacyAreaPlaceMapping.find_by(area:)).to be_nil
+    end
+
     it 'migrates later valid Areas before retrying a permanently invalid one' do
       invalid = create(:area)
       invalid.update_column(:name, 'x' * 256)
@@ -275,6 +283,45 @@ RSpec.describe Places::AreasBackfill do
       expect(confirmed.reload).to have_attributes(name: 'Dinner with Anna', location_label: 'Dinner with Anna')
       expect(imported.reload).to have_attributes(name: 'Imported stop', location_label: 'Imported stop')
       expect(annotated.reload).to have_attributes(name: 'Named suggestion', location_label: 'Named suggestion')
+    end
+
+    it 'clears names that only echo the Place, Area or default name on user-owned Visits' do
+      user = create(:user)
+      place = create(:place, user: user, name: 'Bakery')
+      area = create(:area, user: user, name: 'Gym')
+      place_echo = create(:visit, user: user, place: place, status: :confirmed, name: 'Bakery')
+      area_echo = create(:visit, user: user, area: area, status: :confirmed, name: 'Gym')
+      default_echo = create(:visit, user: user, status: :confirmed, name: Visit::DEFAULT_NAME)
+      typed = create(:visit, user: user, place: place, status: :confirmed, name: 'Breakfast with Anna')
+
+      backfill.call
+
+      expect(place_echo.reload).to have_attributes(name: nil, location_label: 'Bakery')
+      expect(area_echo.reload).to have_attributes(name: nil, location_label: 'Gym')
+      expect(default_echo.reload.name).to be_nil
+      expect(typed.reload.name).to eq('Breakfast with Anna')
+    end
+
+    it 'keeps an Area-name Visit Name when the Visit shows a different Place' do
+      user = create(:user)
+      place = create(:place, user: user, name: 'Fitness First')
+      area = create(:area, user: user, name: 'Gym', latitude: 10, longitude: 10)
+      visit = create(:visit, user: user, place: place, area: area, status: :confirmed, name: 'Gym')
+
+      backfill.call
+
+      expect(visit.reload.display_name).to eq('Gym')
+    end
+
+    it 'clears an echo of the Place name the matching Area is about to replace' do
+      user = create(:user)
+      place = create(:place, user: user, name: 'home', latitude: 52.5, longitude: 13.4)
+      create(:area, user: user, name: 'Home', latitude: 52.5, longitude: 13.4)
+      visit = create(:visit, user: user, place: place, status: :confirmed, name: 'home')
+
+      backfill.call
+
+      expect(visit.reload).to have_attributes(name: nil, display_name: 'Home')
     end
 
     it 'is idempotent' do

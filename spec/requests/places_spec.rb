@@ -337,6 +337,14 @@ RSpec.describe '/places', type: :request do
       expect(response).to have_http_status(:not_found)
     end
 
+    it 'does not merge a Place into itself' do
+      expect do
+        post merge_place_url(survivor), params: { duplicate_place_id: survivor.id }, as: :turbo_stream
+      end.not_to change(Place, :count)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
     it "does not merge into another user's survivor Place" do
       other_survivor = create(:place, user: create(:user))
 

@@ -47,7 +47,7 @@ class Api::V1::AreasController < ApiController
   def add_deprecation_headers
     response.set_header('Deprecation', 'true')
     response.set_header('Warning', '299 Dawarich "Areas API is deprecated; use /api/v1/places"')
-    response.set_header('Link', '<https://dawarich.app/api/v1/places>; rel="successor-version"')
+    response.set_header('Link', %(<#{api_v1_places_url}>; rel="successor-version"))
   end
 
   def area_params

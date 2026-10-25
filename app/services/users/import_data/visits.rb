@@ -54,7 +54,7 @@ class Users::ImportData::Visits
         .where(
           started_at: attributes['started_at'],
           ended_at: attributes['ended_at'],
-          place_id: attributes[:place]&.id || attributes['place_id']
+          place_id: attributes[:place]&.id
         )
         .find_by("COALESCE(NULLIF(visits.name, ''), visits.location_label) IS NOT DISTINCT FROM ?",
                  attributes['name'].presence || attributes['location_label'])
@@ -65,7 +65,7 @@ class Users::ImportData::Visits
   end
 
   def prepare_visit_attributes(visit_data)
-    attributes = visit_data.except('place_reference', 'area_id')
+    attributes = visit_data.except('place_reference', 'area_id', 'place_id', 'import_id', 'id', 'user_id')
     normalize_pre_places_labels(attributes) unless visit_data.key?('location_label')
 
     reference = visit_data['place_reference'] || legacy_place_reference(visit_data)

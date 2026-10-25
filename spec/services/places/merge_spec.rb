@@ -79,6 +79,27 @@ RSpec.describe Places::Merge do
     expect(survivor.geodata['properties']).to eq('city' => 'Berlin', 'osm_id' => 1)
   end
 
+  it 'keeps a discovered survivor from orphan cleanup when the duplicate was user-curated' do
+    discovered = create(:place, user:, source: :photon, note: nil)
+    curated = create(:place, user:, source: :manual, note: nil)
+
+    described_class.new(user:, survivor: discovered, duplicate: curated).call
+
+    expect(discovered.reload).to be_name_locked
+    expect(Places::DeleteIfOrphan.call(discovered.id)).to be(false)
+    expect(Place.exists?(discovered.id)).to be(true)
+  end
+
+  it 'keeps a discovered survivor when the merged discovered duplicate was renamed' do
+    discovered = create(:place, user:, source: :photon, note: nil)
+    renamed = create(:place, user:, source: :photon, note: nil)
+    renamed.update!(name: 'Grandma')
+
+    described_class.new(user:, survivor: discovered, duplicate: renamed).call
+
+    expect(discovered.reload).to have_attributes(source: 'manual', name_locked?: true)
+  end
+
   it 'blocks a merge when Visit timestamps would collide' do
     started_at = Time.zone.parse('2026-09-01 12:00:00')
     survivor_visit = create(:visit, user:, place: survivor, started_at:)

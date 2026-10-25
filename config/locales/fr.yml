@@ -2084,7 +2084,6 @@ fr:
       rarr: "→"
       'on': sur
       no_visits_yet: Aucune visite pour le moment
-      rename: Renommer
       merge: Fusionner
       select_place_to_merge: Sélectionner le lieu en double
       no_matching_places: Aucun lieu correspondant trouvé

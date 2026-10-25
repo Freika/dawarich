@@ -1391,7 +1391,6 @@ es:
       rarr: "→"
       'on': encendido
       no_visits_yet: No hay visitas aún
-      rename: Renombrar
       merge: Unir
       select_place_to_merge: Seleccionar lugar duplicado
       no_matching_places: No se encontraron lugares coincidentes

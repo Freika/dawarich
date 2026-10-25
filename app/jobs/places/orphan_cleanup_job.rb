@@ -67,6 +67,7 @@ class Places::OrphanCleanupJob < ApplicationJob
         AND v.id IS NULL
         AND t.id IS NULL
         AND m.id IS NULL
+        AND NOT EXISTS (SELECT 1 FROM notes n WHERE n.attachable_type = 'Place' AND n.attachable_id = p.id)
       LIMIT #{BATCH}
     SQL
   end

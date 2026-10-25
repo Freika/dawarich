@@ -32,6 +32,9 @@ module Places
           note: merge_text(survivor.note, duplicate.note),
           geodata: duplicate.geodata.deep_merge(survivor.geodata)
         }
+        if survivor.photon? && (!duplicate.photon? || duplicate.name_locked?)
+          merged_attributes.merge!(source: :manual, name_locked_at: survivor.name_locked_at || Time.current)
+        end
 
         duplicate.destroy!
         survivor.update!(merged_attributes)
