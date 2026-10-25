@@ -1611,6 +1611,7 @@ zh:
         sync_now: "立即同步"
         disconnect: "断开连接"
         disconnect_confirmation: "断开 TREK？受管理的旅程及其记录数据会保留在 Dawarich 中，但不再同步。"
+        ssl_verification_off: "SSL 验证已关闭"
       index:
         immich_photoprism_integrations: Immich 和 Photoprism 集成
         connect_your_photo_management_tools_to_see_your_photos_on: 连接您的照片管理工具，即可在地图上查看您的照片。Immich 和 PhotoPrism 集成在 Pro 计划中可用。

@@ -1652,6 +1652,7 @@ pl:
         sync_now: "Synchronizuj teraz"
         disconnect: "Rozłącz"
         disconnect_confirmation: "Rozłączyć TREK? Zarządzane podróże i ich zarejestrowane dane pozostaną w Dawarich, ale przestaną się synchronizować."
+        ssl_verification_off: "Weryfikacja SSL wyłączona"
       index:
         services_nav: Usługi integracji
         geocoding: "Geokodowanie"
