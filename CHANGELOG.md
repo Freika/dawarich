@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### ⚠️ Upgrade notes
 
-- Back up your database before upgrading. After the upgrade, a background job turns Areas into Places and tidies up visit names. Rolling back does not undo this. Keep Sidekiq (or embedded jobs) running until it finishes.
+- Back up your database before upgrading. After the upgrade, background jobs turn Areas into Places and tidy up visit names, repair tracks from the last 12 months, recalculate months with flights and update your existing digests, recheck the Italy achievement, and detect visits again across your whole history. Rolling back does not undo this. Keep Sidekiq (or embedded jobs) running until they finish; on a small self-hosted server you can skip the visit detection by setting `SKIP_VISITS_FLEET_REDETECT=1` and start it later from Visits → Re-run detection on full history.
 
 ### Added
 
@@ -34,17 +34,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Flights synced from AirTrail now count toward your distance everywhere: Insights, the stats pages, each month's daily breakdown, digests and the API. Before, a flight only showed up on its own month's card. A month's page and each year card show how much of the total was flown, and points tracked during a flight no longer count on top of it. Months with flights are recalculated in the background after the update. Thanks @darioackermann! (#3659)
+- Flights synced from AirTrail now count toward your distance everywhere: Insights, the stats pages, each month's daily breakdown, digests and the API. Before, a flight only showed up on its own month's card. A month's page and each year card show how much of the total was flown, and points tracked during a flight no longer count on top of it. Months with flights, and the digests you already have, are recalculated in the background after the update. Thanks @darioackermann! (#3659)
 - Map points for a single day load again in places where you have years of history, such as home. The map used to show "Could not load map tiles". (#3830)
 - Tracks no longer have gaps or straight lines where points arrived late, for example from an import or a sync with another app. The last 12 months are repaired in the background after the update; for older gaps, use Recalculate tracks & stats. (#3794)
 - The "What's New" card fits on phone screens again.
 - The trip page no longer scrolls sideways on phones, and its download menu stays on screen.
 - The map shows your current position again as a red dot, with or without live mode. The dot stays hidden while you are inside a privacy zone. (#3904)
-- A visit is suggested again when tracking pauses and resumes at the same place, for example a shortcut that pauses tracking at the gym. To fix past stays, use Re-run detection on full history on the Visits page. (#3203)
+- A visit is suggested again when tracking pauses and resumes at the same place, for example a shortcut that pauses tracking at the gym. Past stays are fixed in the background after the update. (#3203)
 - Imports uploaded before 1.14.4 no longer show `.zip` at the end of their names, unless you renamed them yourself. (#3062)
 - Downloading an import returns the original file instead of a ZIP, also when its name has accented letters such as `ü` or characters such as `:`. (#3062)
 - Renaming a place updates the name shown on its visits. Visits you named yourself keep their names. (#3353)
-- A track from a second device, such as an imported watch GPX, is no longer bridged by a straight line from another track, and its distance is no longer counted twice. Use Recalculate tracks & stats for imports made before this release. (#3424)
+- A track from a second device, such as an imported watch GPX, is no longer bridged by a straight line from another track, and its distance is no longer counted twice. Tracks from the last 12 months are fixed in the background after the update. (#3424)
 - Flights are drawn along the shortest path over the globe, including routes over the North Pole. (#3261)
 - The achievement cards for Valparaíso, Colima and Chile show the mainland at full size instead of a dot. (#3731)
 - With Edit points on, clicking another point selects it, and a slight mouse movement during a click no longer moves the point. Before, Delete could remove the wrong point. (#3772)
