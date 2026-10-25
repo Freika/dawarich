@@ -13,6 +13,7 @@ module Map
       @start_at = parsed_start_at
       @end_at = parsed_end_at
       @import_id = import_record&.id
+      @current_position = current_position
 
       # Tag chips displayed in the rail; capped so the list doesn't explode.
       @timeline_tags = current_user.tags.order(:name).limit(8)
@@ -23,6 +24,13 @@ module Map
     end
 
     private
+
+    def current_position
+      point = current_user.scoped_points.without_raw_data.complete.not_anomaly.order(timestamp: :desc).first
+      return if point.nil? || Maps::PrivacyZoneMasker.new(current_user).in_zone?(point.lon, point.lat)
+
+      { longitude: point.lon, latitude: point.lat, timestamp: point.timestamp }
+    end
 
     def start_at
       return safe_timestamp(params[:start_at]) if params[:start_at].present?

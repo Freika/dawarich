@@ -4581,6 +4581,7 @@ es:
     live_map:
       disabled: Modo en vivo deshabilitado
       enabled: Modo en vivo habilitado
+      your_position: Tu última ubicación
     map_panel:
       layers: Capas del mapa
       family: "Familia"

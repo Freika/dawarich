@@ -4652,6 +4652,7 @@ zh:
     live_map:
       disabled: 实时模式已禁用
       enabled: 实时模式已启用
+      your_position: 你的最新位置
     map_panel:
       layers: 地图图层
       family: "家庭"

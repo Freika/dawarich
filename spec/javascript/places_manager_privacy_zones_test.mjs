@@ -21,6 +21,13 @@ const { PlacesManager, setPrivacyZonesFingerprint } = await import(
 function setup(fingerprint, failed = false) {
   const refreshed = []
   const reloads = []
+  const recentPoint = {
+    cleared: false,
+    clear() {
+      this.cleared = true
+    },
+  }
+  const removedAttributes = []
   const layer = (id) => ({ refresh: () => refreshed.push(id) })
   const placesLayer = {
     visible: true,
@@ -30,7 +37,13 @@ function setup(fingerprint, failed = false) {
   const controller = {
     layerManager: {
       getLayer: (id) =>
-        id === "places" ? placesLayer : id.endsWith("-mvt") ? layer(id) : null,
+        id === "places"
+          ? placesLayer
+          : id === "recentPoint"
+            ? recentPoint
+            : id.endsWith("-mvt")
+              ? layer(id)
+              : null,
     },
     api: {
       fetchPrivacyZones: async () =>
@@ -45,8 +58,15 @@ function setup(fingerprint, failed = false) {
     },
     settings: {},
     loadMapData: async (options) => reloads.push(options),
+    element: { removeAttribute: (name) => removedAttributes.push(name) },
   }
-  return { manager: new PlacesManager(controller), refreshed, reloads }
+  return {
+    manager: new PlacesManager(controller),
+    refreshed,
+    reloads,
+    recentPoint,
+    removedAttributes,
+  }
 }
 
 const placeSaved = { detail: { place: { id: 2 } } }
@@ -79,4 +99,25 @@ test("a failed zone request keeps the current zones and reloads nothing", async 
 
   assert.deepEqual(refreshed, [])
   assert.deepEqual(reloads, [])
+})
+
+test("a zone change hides the current position until the next live point", async () => {
+  setPrivacyZonesFingerprint("before")
+  const { manager, recentPoint, removedAttributes } = setup("after")
+
+  await manager.handlePlaceCreated(placeSaved)
+
+  assert.equal(recentPoint.cleared, true)
+  assert.deepEqual(removedAttributes, [
+    "data-maps--maplibre-current-position-value",
+  ])
+})
+
+test("unchanged zones keep the current position", async () => {
+  setPrivacyZonesFingerprint("steady")
+  const { manager, recentPoint } = setup("steady")
+
+  await manager.handlePlaceUpdated(placeSaved)
+
+  assert.equal(recentPoint.cleared, false)
 })

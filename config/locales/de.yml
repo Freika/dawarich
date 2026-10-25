@@ -4637,6 +4637,7 @@ de:
     live_map:
       disabled: Live-Modus deaktiviert
       enabled: Live-Modus aktiviert
+      your_position: Dein letzter Standort
     map_panel:
       layers: Kartenlayers
       family: "Familie"

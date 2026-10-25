@@ -4799,6 +4799,7 @@ pl:
     live_map:
       disabled: Tryb na żywo wyłączony
       enabled: Tryb na żywo włączony
+      your_position: Twoja ostatnia lokalizacja
     map_panel:
       layers: Warstwy mapy
       family: "Rodzina"
