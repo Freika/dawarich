@@ -55,54 +55,39 @@ class Tracks::BoundaryDetector
   def tracks_spanning_orphans_in_range
     return [] unless orphan_range
 
-    orphans = user.points.where(track_id: nil).where('anomaly IS NOT TRUE').where(timestamp: orphan_range)
-                  .where(created_at: ...ORPHAN_REABSORPTION_FRESHNESS_BUFFER.ago)
-                  .pluck(:timestamp, :tracker_id)
-    return [] if orphans.empty?
-
-    stamps_by_tracker = orphans.group_by { |_, tracker_id| tracker_id.to_s }
-                               .transform_values { |rows| rows.map(&:first).sort }
-    stamps = orphans.map(&:first)
-    spans = user.tracks.where('start_at <= ? AND end_at >= ?', Time.zone.at(stamps.max), Time.zone.at(stamps.min))
-                .pluck(:id, :tracker_id, :start_at, :end_at)
-    ids = spans.filter_map do |id, tracker_id, start_at, end_at|
-      id if spans_orphan?(stamps_by_tracker[tracker_id.to_s], start_at, end_at)
-    end
-    user.tracks.where(id: ids).to_a
-  end
-
-  def spans_orphan?(stamps, start_at, end_at)
-    return false unless stamps
-
-    first = stamps.bsearch { |stamp| stamp >= start_at.to_i }
-    first.present? && first <= end_at.to_i
+    user.tracks
+        .where('start_at <= ? AND end_at >= ?', Time.zone.at(orphan_range.last), Time.zone.at(orphan_range.first))
+        .where(<<~SQL.squish, orphan_range.first, orphan_range.last, ORPHAN_REABSORPTION_FRESHNESS_BUFFER.ago).to_a
+          EXISTS (
+            SELECT 1 FROM points
+            WHERE points.user_id = tracks.user_id
+              AND points.track_id IS NULL
+              AND points.anomaly IS NOT TRUE
+              AND points.timestamp BETWEEN ? AND ?
+              AND points.created_at < ?
+              AND points.timestamp BETWEEN EXTRACT(EPOCH FROM tracks.start_at) AND EXTRACT(EPOCH FROM tracks.end_at)
+              AND COALESCE(points.tracker_id, '') = COALESCE(tracks.tracker_id, '')
+          )
+        SQL
   end
 
   def absorb_orphans_into(track)
     orphan_ids = orphan_point_ids_for(track)
     return 0 if orphan_ids.empty?
 
-    succeeded = false
-    ActiveRecord::Base.transaction(requires_new: true) do
-      TrackSegments::TimeAnchorBackfillJob.anchor_now(track.track_segments.where(start_at: nil).pluck(:id))
-      Point.where(id: orphan_ids).update_all(track_id: track.id)
+    track.with_lock(requires_new: true) do
+      points = user.points.where(id: orphan_ids, track_id: nil).order(:id).lock.to_a
+      next 0 if points.empty?
 
-      bounds = Point.where(track_id: track.id).pick(Arel.sql('MIN(timestamp), MAX(timestamp)'))
-      raise ActiveRecord::Rollback if bounds.nil?
-
-      new_start = Time.zone.at(bounds[0])
-      new_end = Time.zone.at(bounds[1])
-
-      if track.start_at != new_start || track.end_at != new_end
-        track.update!(start_at: new_start, end_at: new_end)
-      else
-        track.recalculate_path_and_distance!
-      end
-
-      succeeded = true
+      Tracks::TrackExtender.new(user, track).extend_with(points)
+      points.size
     end
-
-    succeeded ? orphan_ids.size : 0
+  rescue ActiveRecord::StaleObjectError
+    Rails.logger.warn(
+      'event=tracks.reabsorb_orphan_points_failed reason=stale_track ' \
+      "user_id=#{user.id} track_id=#{track.id}"
+    )
+    0
   rescue ActiveRecord::RecordNotUnique
     Rails.logger.warn(
       'event=tracks.reabsorb_orphan_points_failed reason=unique_violation ' \
@@ -125,6 +110,8 @@ class Tracks::BoundaryDetector
          .where('anomaly IS NOT TRUE')
          .where(timestamp: track.start_at.to_i..track.end_at.to_i)
          .where(created_at: ...ORPHAN_REABSORPTION_FRESHNESS_BUFFER.ago)
+         .where('ST_DWithin(points.lonlat::geography, (SELECT original_path FROM tracks WHERE id = ?)::geography, ?)',
+                track.id, SAME_TRACKER_MAX_GAP_METERS)
          .pluck(:id)
   end
 
@@ -223,7 +210,7 @@ class Tracks::BoundaryDetector
 
       contained = (candidate_start <= track_start_time && candidate_end >= track_end_time) ||
                   (track_start_time <= candidate_start && track_end_time >= candidate_end)
-      joined = contained && track.tracker_id.present? && paths_near?(track, candidate)
+      joined = contained && paths_near?(track, candidate)
       connected << candidate if joined || tracks_spatially_connected?(track, candidate)
     end
 
@@ -302,6 +289,9 @@ class Tracks::BoundaryDetector
   def merge_boundary_tracks(track_group)
     return false if track_group.size < 2
 
+    keeper = track_to_keep(track_group)
+    return extend_kept_track(keeper, track_group - [keeper]) if keeper
+
     sorted_tracks = track_group.sort_by(&:start_at)
     boundary_ids = sorted_tracks.map(&:id)
 
@@ -349,6 +339,28 @@ class Tracks::BoundaryDetector
     Rails.logger.warn(
       'event=tracks.boundary_merge_failed reason=race_winner_not_visible ' \
       "user_id=#{user.id} boundary_ids=#{sorted_tracks.map(&:id).join(',')}"
+    )
+    false
+  end
+
+  def track_to_keep(track_group)
+    track_group.select { |track| track.shared_links.exists? || track.track_segments.manually_corrected.exists? }
+               .max_by { |track| track.end_at - track.start_at }
+  end
+
+  def extend_kept_track(keeper, others)
+    keeper.with_lock(requires_new: true) do
+      points = Point.where(track_id: others.map(&:id)).order(:id).lock.to_a
+      SharedLink.where(resource_type: SharedLink.resource_types[:track], resource_id: others.map(&:id))
+                .update_all(resource_id: keeper.id)
+      Tracks::TrackExtender.new(user, keeper).extend_with(points)
+      others.each { |track| track.reload.destroy }
+    end
+    true
+  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid, ActiveRecord::StaleObjectError => e
+    Rails.logger.warn(
+      'event=tracks.boundary_merge_failed reason=keep_track ' \
+      "user_id=#{user.id} track_id=#{keeper.id} error=#{e.class}"
     )
     false
   end

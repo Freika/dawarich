@@ -214,7 +214,8 @@ RSpec.describe Tracks::BoundaryDetector do
                        created_at: 2.days.ago)
       end
       let!(:late_point) do
-        create(:point, user: user, tracker_id: 'phone', timestamp: (start + 10.minutes).to_i, created_at: 5.minutes.ago)
+        create(:point, user: user, tracker_id: 'phone', timestamp: (start + 10.minutes).to_i, created_at: 5.minutes.ago,
+                       lonlat: 'POINT(-74.0065 40.7129)')
       end
       let(:range) { (start - 1.hour).to_i..(start + 1.hour).to_i }
 
@@ -246,6 +247,14 @@ RSpec.describe Tracks::BoundaryDetector do
 
       it 'leaves an anomaly alone' do
         late_point.update_columns(anomaly: true)
+
+        described_class.new(user, orphan_range: range).resolve_cross_chunk_tracks
+
+        expect(late_point.reload.track_id).to be_nil
+      end
+
+      it 'leaves a point more than 5 km from the track alone' do
+        late_point.update_columns(lonlat: 'POINT(-74.0065 40.8000)')
 
         described_class.new(user, orphan_range: range).resolve_cross_chunk_tracks
 

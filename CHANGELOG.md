@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Map points load again for a single day in a place where you have years of history, such as home. Before, that map tile could take longer than 5 seconds and the map showed "Could not load map tiles" (#3830)
-- Tracks no longer have gaps or straight lines where points recorded later, imported or synced from another app, sit next to an existing track from the same device: those points now join the track. After the update, Dawarich repairs the last 12 months in the background; for older gaps, choose Recalculate tracks & stats (#3794)
+- Tracks no longer have gaps or straight lines where points recorded later, imported or synced from another app, sit next to an existing track from the same device: those points now join the track, including late points inside an existing route that arrive through the API or an import, and a route that gains points keeps its shared links and corrected transport modes. After the update, Dawarich repairs the last 12 months in the background; for older gaps, choose Recalculate tracks & stats (#3794, #3036)
 - On phones, the card asking whether to show "What's New" notices now fits on screen. Before, its left side, including the heading, was cut off.
 - The trip page no longer scrolls sideways on phones, and its download menu no longer opens partly off-screen. Long trip names and the Public badge of a shared trip used to push the page wider than the screen.
 - The map shows your current position again, whether live mode is on or off: a red dot marks your latest point, even when you are viewing another date range, and hovering or tapping it shows when that point was recorded. Live mode moves the dot as new points arrive, and the dot stays hidden while your latest point is inside a privacy zone. The Family Members layer still lists only other members. (#3904)
@@ -49,7 +49,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - With Edit points on, clicking another point of the track you are editing now selects that point, and a click that nudges the mouse by a few pixels no longer moves the point. Before, the panel and its Delete button stayed on the first point you clicked until you clicked an empty spot on the map, so Delete could remove the wrong point (#3772)
 - Aosta Valley is now part of Italy's achievement, which has all 20 regions. Anyone who already completed Italy keeps it. The upgrade recalculates achievements once in the background without notifications, so earlier visits to Aosta Valley count. (#3789)
 - Actions in the Background Jobs dashboard (Delete, Retry, Kill, Clear) no longer fail with "Forbidden" when Dawarich is opened directly over plain HTTP by a local network address. (#3907)
-- Points added later from the same device inside an existing route, for example through the API or an import, now join that route instead of staying apart from it on the map, and the route keeps its shared links and corrected transport modes. Points added before this release stay apart until you choose Recalculate tracks & stats, which rebuilds that year's routes and resets their shared links and corrected transport modes (#3036)
 
 ## [1.17.0] - 2026-10-23, Berlin
 

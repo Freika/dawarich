@@ -37,7 +37,8 @@ RSpec.describe Tracks::BoundaryDetector do
     let!(:track) do
       create(:track, user: user, tracker_id: tracker,
                      start_at: base_time,
-                     end_at: base_time + 60.seconds)
+                     end_at: base_time + 60.seconds,
+                     original_path: 'LINESTRING(13.40 52.52, 13.41 52.53)')
     end
 
     before do

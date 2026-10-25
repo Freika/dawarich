@@ -137,7 +137,7 @@ RSpec.describe 'A retroactive API point joins the existing historical route', ty
     travel_back
   end
 
-  it 'keeps a late batch without a device in the middle of a long route as its own track' do
+  it 'joins a late batch without a device in the middle of a route without a device' do
     Points::Intake.call(user_id: user.id, mode: :bulk, payloads: [
                           { timestamp: anchor.to_i, lonlat: 'POINT(-140.300 -40.000)' },
                           { timestamp: (anchor + 20.minutes).to_i, lonlat: 'POINT(-140.000 -40.000)' }
@@ -145,13 +145,45 @@ RSpec.describe 'A retroactive API point joins the existing historical route', ty
     perform_enqueued_jobs(only: generation_jobs) do
       Tracks::ParallelGeneratorJob.perform_later(user.id, start_at: anchor.beginning_of_day, end_at: anchor.end_of_day)
     end
+    route = user.tracks.sole
 
     post_point(-140.160, -39.990, anchor + 9.minutes, device: nil)
     post_point(-140.140, -39.990, anchor + 11.minutes, device: nil)
     travel 2.minutes
     run_generation_jobs
 
-    expect(user.tracks.reload.count).to eq(2)
+    aggregate_failures do
+      expect(user.tracks.reload.pluck(:id)).to eq([route.id])
+      expect(user.points.where(track_id: nil)).to be_empty
+    end
+  ensure
+    travel_back
+  end
+
+  it 'extends the route in place when a late batch starts before it' do
+    Points::Intake.call(user_id: user.id, mode: :bulk, payloads: [
+                          { timestamp: anchor.to_i, lonlat: 'POINT(-140.300 -40.000)', tracker_id: tracker_id },
+                          { timestamp: (anchor + 20.minutes).to_i, lonlat: 'POINT(-140.000 -40.000)',
+                            tracker_id: tracker_id }
+                        ])
+    perform_enqueued_jobs(only: generation_jobs) do
+      Tracks::ParallelGeneratorJob.perform_later(user.id, start_at: anchor.beginning_of_day, end_at: anchor.end_of_day)
+    end
+    route = user.tracks.sole
+    shared_link = create(:shared_link, user: user, resource_type: :track, resource_id: route.id)
+    route.track_segments.first.update!(transportation_mode: :cycling, corrected_at: Time.current)
+
+    post_point(-140.320, -40.000, anchor - 6.minutes)
+    post_point(-140.310, -40.000, anchor - 3.minutes)
+    travel 2.minutes
+    run_generation_jobs
+
+    aggregate_failures do
+      expect(user.tracks.reload.pluck(:id)).to eq([route.id])
+      expect(route.reload.start_at).to eq(anchor - 6.minutes)
+      expect(SharedLink.exists?(shared_link.id)).to be(true)
+      expect(route.track_segments.manually_corrected.pluck(:transportation_mode)).to include('cycling')
+    end
   ensure
     travel_back
   end
