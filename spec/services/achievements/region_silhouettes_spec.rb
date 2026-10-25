@@ -99,21 +99,34 @@ RSpec.describe Achievements::RegionSilhouettes do
 
   describe 'card framing' do
     {
-      'FR' => [[-5, 43, 8, 51], [-54, 2, -51, 6]],
-      'PT' => [[-9, 37, -6.5, 42], [-31, 37, -25, 40]],
-      'NO' => [[5, 58, 31, 71], [3, -55, 4, -54], [15, 76, 25, 80]],
-      'NL' => [[3.5, 51, 7, 53.5], [-69, 12, -68, 13]],
-      'ES' => [[-9, 36, 3, 44], [-18, 27, -13, 29]]
-    }.each do |code, boxes|
-      it "frames #{code}'s mainland without changing its stored overseas boundaries" do
-        country = create(:country, iso_a2: code, geom: multipolygon(*boxes))
-        original = country.geom.as_text
+      country: {
+        'FR' => [[-5, 43, 8, 51], [-54, 2, -51, 6]],
+        'PT' => [[-9, 37, -6.5, 42], [-31, 37, -25, 40]],
+        'NO' => [[5, 58, 31, 71], [3, -55, 4, -54], [15, 76, 25, 80]],
+        'NL' => [[3.5, 51, 7, 53.5], [-69, 12, -68, 13]],
+        'ES' => [[-9, 36, 3, 44], [-18, 27, -13, 29]],
+        'CL' => [[-75.5, -55.5, -66.5, -17.5], [-109.5, -27.25, -109.25, -27]]
+      },
+      subdivision: {
+        'CL-VS' => [[-72, -34, -70, -32], [-109.5, -27.25, -109.25, -27]],
+        'MX-COL' => [[-104.5, 18.5, -103.5, 19.5], [-111, 18.75, -110.75, 19]]
+      }
+    }.each do |level, framed|
+      framed.each do |code, boxes|
+        it "frames #{code}'s mainland without changing its stored overseas boundaries" do
+          record = if level == :country
+                     create(:country, iso_a2: code, geom: multipolygon(*boxes))
+                   else
+                     create(:region, code: code, geom: multipolygon(*boxes))
+                   end
+          original = record.geom.as_text
 
-        shape = described_class.new(level: :country, codes: [code]).call.fetch(code)
+          shape = described_class.new(level: level, codes: [code]).call.fetch(code)
 
-        xmin, ymin, xmax, ymax = boxes.first
-        expect(shape[:viewbox].split.map(&:to_f)).to eq([xmin, -ymax, xmax - xmin, ymax - ymin])
-        expect(country.reload.geom.as_text).to eq(original)
+          xmin, ymin, xmax, ymax = boxes.first
+          expect(shape[:viewbox].split.map(&:to_f)).to eq([xmin, -ymax, xmax - xmin, ymax - ymin])
+          expect(record.reload.geom.as_text).to eq(original)
+        end
       end
     end
 
