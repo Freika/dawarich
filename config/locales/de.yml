@@ -41,6 +41,7 @@ de:
           photon_api_host: "Host"
           photon_api_key: "API-Schlüssel"
           photon_api_use_https: "HTTPS verwenden"
+          photon_api_language: "Sprache"
           nominatim_api_host: "Host"
           nominatim_api_key: "API-Schlüssel"
           nominatim_api_use_https: "HTTPS verwenden"
@@ -50,12 +51,14 @@ de:
           store_geodata: "Neue Punkte sofort geokodieren"
           host_hint: "Hostname mit optionalem Port, z. B. photon.example.com:2322"
           rps_hint: "Leer lassen für kein Limit. Trage ein, was dein Server oder Tarif erlaubt."
+          photon_api_language_hint: "Sprachcode aus zwei Buchstaben für Ortsnamen oder default für Namen in der Landessprache. Dein Photon-Index muss diese Sprache enthalten. Eine Änderung gilt nur für neue Abfragen, danach kann eine Stadt in der Statistik doppelt erscheinen."
           api_key_keep_hint: "Leer lassen, um den gespeicherten Schlüssel zu behalten."
           store_geodata_hint: "Ermittelt Stadt und Land beim Hinzufügen neuer Punkte. Nächtliche Abfragen laufen bei konfiguriertem Anbieter auch dann weiter, wenn diese Option ausgeschaltet ist."
       update:
         saved: "Einstellungen gespeichert."
         pinned: "Abgelehnt: festgelegt durch %{variables}."
         host_invalid: "Der Host muss ein reiner Hostname mit optionalem Port oder Pfad sein, ohne Leerzeichen."
+        language_invalid: "Die Sprache muss ein Code aus zwei Buchstaben wie en oder nl sein oder default."
         chibigeo_key_required: "ChibiGeo benötigt einen API-Schlüssel. Der kostenlose Hobby-Tarif umfasst 2.500 Abfragen pro Tag – deinen Schlüssel bekommst du auf chibigeo.com."
       test_geocoding:
         not_configured: "Es ist kein Geokodierungsanbieter konfiguriert. Speichere zuerst einen Anbieter."
@@ -4634,6 +4637,7 @@ de:
     live_map:
       disabled: Live-Modus deaktiviert
       enabled: Live-Modus aktiviert
+      your_position: Dein letzter Standort
     map_panel:
       layers: Kartenlayers
       family: "Familie"

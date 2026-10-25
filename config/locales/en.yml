@@ -41,6 +41,7 @@ en:
           photon_api_host: "Host"
           photon_api_key: "API key"
           photon_api_use_https: "Use HTTPS"
+          photon_api_language: "Language"
           nominatim_api_host: "Host"
           nominatim_api_key: "API key"
           nominatim_api_use_https: "Use HTTPS"
@@ -50,12 +51,14 @@ en:
           store_geodata: "Geocode new points immediately"
           host_hint: "Bare hostname with optional port, e.g. photon.example.com:2322"
           rps_hint: "Leave blank for no limit. Set this to whatever your server or plan allows."
+          photon_api_language_hint: "Two-letter language code for place names, or default for names in the local language. Your Photon index must include this language. A change applies only to new lookups, and a city may then appear twice in statistics."
           api_key_keep_hint: "Leave blank to keep the saved key."
           store_geodata_hint: "Looks up city and country names when new points are added. Nightly lookups still run when a provider is configured, even with this option off."
       update:
         saved: "Settings saved."
         pinned: "Refused: pinned by %{variables}."
         host_invalid: "The host must be a bare hostname with an optional port or path, with no spaces."
+        language_invalid: "The language must be a two-letter code such as en or nl, or default."
         chibigeo_key_required: "ChibiGeo needs an API key. The free Hobby plan includes 2,500 lookups per day — get your key at chibigeo.com."
       test_geocoding:
         not_configured: "No geocoding provider is configured. Save a provider first."
@@ -4594,6 +4597,7 @@ en:
     live_map:
       disabled: Live mode disabled
       enabled: Live mode enabled
+      your_position: Your latest point
     map_panel:
       layers: Map Layers
       family: "Family"

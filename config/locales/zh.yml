@@ -43,6 +43,7 @@ zh:
           photon_api_host: "主机"
           photon_api_key: "API 密钥"
           photon_api_use_https: "使用 HTTPS"
+          photon_api_language: "语言"
           nominatim_api_host: "主机"
           nominatim_api_key: "API 密钥"
           nominatim_api_use_https: "使用 HTTPS"
@@ -52,12 +53,14 @@ zh:
           store_geodata: "立即对新轨迹点进行地理编码"
           host_hint: "仅主机名，可附带端口，例如 photon.example.com:2322"
           rps_hint: "留空表示不限制。请设置为您的服务器或套餐允许的值。"
+          photon_api_language_hint: "地名使用的两字母语言代码，或填 default 以使用当地语言的名称。您的 Photon 索引必须包含该语言。更改只影响新的查询，之后同一城市可能在统计中出现两次。"
           api_key_keep_hint: "留空则保留已保存的密钥。"
           store_geodata_hint: "添加新轨迹点时查询所在城市和国家。只要配置了地理编码服务，关闭此选项后仍会在夜间进行查询。"
       update:
         saved: "设置已保存。"
         pinned: "已拒绝：由 %{variables} 固定。"
         host_invalid: "主机必须是单纯的主机名，可附带端口或路径，不能包含空格。"
+        language_invalid: "语言必须是两字母代码（如 en 或 nl）或 default。"
         chibigeo_key_required: "ChibiGeo 需要 API 密钥。免费的 Hobby 套餐每天包含 2,500 次查询——请在 chibigeo.com 获取密钥。"
       test_geocoding:
         not_configured: "尚未配置地理编码提供商。请先保存一个提供商。"
@@ -4649,6 +4652,7 @@ zh:
     live_map:
       disabled: 实时模式已禁用
       enabled: 实时模式已启用
+      your_position: 你的最新位置
     map_panel:
       layers: 地图图层
       family: "家庭"

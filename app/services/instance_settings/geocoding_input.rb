@@ -3,6 +3,8 @@
 module InstanceSettings
   class GeocodingInput
     HOST_KEYS = %i[photon_api_host nominatim_api_host].freeze
+    # Photon takes an ISO-639-1 code, or "default" for names in the local language.
+    LANGUAGE_FORMAT = /\A(?:[a-z]{2}|default)\z/
 
     attr_reader :values, :errors
 
@@ -12,6 +14,8 @@ module InstanceSettings
 
       normalize_hosts
       validate_hosts
+      normalize_language
+      validate_language
       drop_komoot_key
       validate_chibigeo_key
     end
@@ -35,6 +39,19 @@ module InstanceSettings
         values[key].present? && !values[key].match?(ServiceSettings::GeocodingSchema::HOST_FORMAT)
       end
       errors << I18n.t('admin.settings.update.host_invalid') if invalid
+    end
+
+    def normalize_language
+      return unless values[:photon_api_language].is_a?(String)
+
+      values[:photon_api_language] = values[:photon_api_language].strip.downcase
+    end
+
+    def validate_language
+      return unless values.key?(:photon_api_language)
+      return if values[:photon_api_language].to_s.match?(LANGUAGE_FORMAT)
+
+      errors << I18n.t('admin.settings.update.language_invalid')
     end
 
     def drop_komoot_key

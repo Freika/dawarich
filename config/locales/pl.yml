@@ -41,6 +41,7 @@ pl:
           photon_api_host: "Host"
           photon_api_key: "Klucz API"
           photon_api_use_https: "Używaj HTTPS"
+          photon_api_language: "Język"
           nominatim_api_host: "Host"
           nominatim_api_key: "Klucz API"
           nominatim_api_use_https: "Używaj HTTPS"
@@ -50,12 +51,14 @@ pl:
           store_geodata: "Geokoduj nowe punkty od razu"
           host_hint: "Sama nazwa hosta z opcjonalnym portem, np. photon.example.com:2322"
           rps_hint: "Pozostaw puste, aby nie stosować limitu. Ustaw wartość, na jaką pozwala Twój serwer lub plan."
+          photon_api_language_hint: "Dwuliterowy kod języka dla nazw miejsc albo default dla nazw w języku lokalnym. Twój indeks Photon musi zawierać ten język. Zmiana dotyczy tylko nowych zapytań, a to samo miasto może wtedy pojawić się w statystykach dwa razy."
           api_key_keep_hint: "Pozostaw puste, aby zachować zapisany klucz."
           store_geodata_hint: "Ustala miasto i kraj przy dodawaniu nowych punktów. Nocne wyszukiwania nadal działają, gdy dostawca jest skonfigurowany, nawet po wyłączeniu tej opcji."
       update:
         saved: "Ustawienia zapisane."
         pinned: "Odrzucono: ustalone przez %{variables}."
         host_invalid: "Host musi być samą nazwą hosta z opcjonalnym portem lub ścieżką, bez spacji."
+        language_invalid: "Język musi być dwuliterowym kodem, np. en lub nl, albo default."
         chibigeo_key_required: "ChibiGeo wymaga klucza API. Darmowy plan Hobby obejmuje 2500 zapytań dziennie — odbierz swój klucz na chibigeo.com."
       test_geocoding:
         not_configured: "Nie skonfigurowano dostawcy geokodowania. Najpierw zapisz dostawcę."
@@ -4796,6 +4799,7 @@ pl:
     live_map:
       disabled: Tryb na żywo wyłączony
       enabled: Tryb na żywo włączony
+      your_position: Twoja ostatnia lokalizacja
     map_panel:
       layers: Warstwy mapy
       family: "Rodzina"

@@ -43,6 +43,7 @@ export default class extends Controller {
     upgradeUrl: { type: String, default: "" },
     importId: { type: String, default: "" },
     privacyZonesFingerprint: { type: String, default: "" },
+    currentPosition: Object,
   }
 
   static targets = [
