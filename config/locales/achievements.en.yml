@@ -59,7 +59,6 @@ en:
         locked: Locked
     cards:
       explorer_name: "%{place} Explorer"
-      date_format: "%-d %b %Y"
       description:
         continent: "Spend time in all %{count} countries and territories of %{place}."
         regions: "Spend time in all %{count} regions of %{place}."

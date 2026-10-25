@@ -2,11 +2,17 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
+const i18nSource = await readFile(
+  new URL("../../app/javascript/i18n.js", import.meta.url),
+  "utf8",
+)
 const dateRangeSource = await readFile(
   new URL("../../app/javascript/video_studio/date_range.js", import.meta.url),
   "utf8",
 )
-const dateRangeUrl = `data:text/javascript;base64,${Buffer.from(dateRangeSource).toString("base64")}`
+const dateRangeUrl = `data:text/javascript;base64,${Buffer.from(
+  `${i18nSource}\n${dateRangeSource}`.replace(/^import .*\n/gm, ""),
+).toString("base64")}`
 const { toLocalDateTimeInput } = await import(dateRangeUrl)
 globalThis.__mapControlsToLocalDateTimeInput = toLocalDateTimeInput
 
@@ -22,6 +28,7 @@ const controllerSource = (
 const prelude = `
 class Controller {}
 const toLocalDateTimeInput = globalThis.__mapControlsToLocalDateTimeInput
+${i18nSource.replace(/^export /gm, "")}
 `
 const controllerUrl = `data:text/javascript;base64,${Buffer.from(`${prelude}\n${controllerSource}`).toString("base64")}`
 const { default: MapControlsController } = await import(controllerUrl)

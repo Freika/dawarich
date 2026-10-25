@@ -1,4 +1,4 @@
-import { translate } from "i18n"
+import { formatDateTime, translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
 import { escapeHtml } from "../utils/geojson_transformers"
 import { HtmlLabelManager } from "../utils/html_label_manager"
@@ -66,16 +66,7 @@ export class FamilyLayer extends BaseLayer {
 
     const rawTs = props.updatedAt || props.lastUpdate
     const lastSeen = rawTs
-      ? new Date(
-          typeof rawTs === "number" ? rawTs : Date.parse(rawTs),
-        ).toLocaleString(undefined, {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        })
+      ? formatDateTime(typeof rawTs === "number" ? rawTs : Date.parse(rawTs))
       : translate("common.unknown")
 
     const name = props.name || translate("family.member")

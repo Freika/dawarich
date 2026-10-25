@@ -10,18 +10,24 @@ module Achievements
     # Spreads the fleet-wide check across time so a full run doesn't enqueue
     # every user's CheckJob at once (thundering herd on the achievements queue).
     # notify: false is used for backfills so historical earns don't blast alerts.
-    def perform(notify: true, force: false, stale_only: false)
+    # rebuild: recompute from the start of history, for when the regions themselves changed.
+    def perform(notify: true, force: false, stale_only: false, rebuild: false)
       user_ids = eligible_user_ids
       user_ids -= current_user_ids if stale_only
 
       user_ids.each_slice(BATCH_SIZE).with_index do |batch, index|
         batch.each do |user_id|
-          Achievements::CheckJob.set(wait: index * STAGGER).perform_later(user_id, notify: notify, force: force)
+          Achievements::CheckJob.set(wait: index * STAGGER)
+                                .perform_later(user_id, notify: notify, force: force, **rebuild_from(rebuild))
         end
       end
     end
 
     private
+
+    def rebuild_from(rebuild)
+      rebuild ? { oldest_timestamp: 0 } : {}
+    end
 
     def eligible_user_ids
       statuses = User.statuses.values_at('active', 'trial')

@@ -14,7 +14,7 @@ module PlanScopable
   end
 
   def data_window_start
-    DawarichSettings::LITE_DATA_WINDOW.ago
+    DawarichSettings.lite_data_window_start
   end
 
   def scoped_points

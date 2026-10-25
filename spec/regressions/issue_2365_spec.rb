@@ -6,7 +6,6 @@ RSpec.describe 'Issue #2365: emoji map labels' do
   javascript_root = File.expand_path('../../app/javascript', __dir__)
   label_sources = %w[
     maps_maplibre/layers/places_layer.js
-    maps_maplibre/layers/areas_layer.js
     maps_maplibre/layers/visits_layer.js
     maps_maplibre/layers/family_layer.js
     controllers/family_map_controller.js

@@ -48,8 +48,9 @@ RSpec.describe Visits::PlaceFinder do
       expect(described_class.new(user).find_or_create_place(data).name).to eq('Home')
     end
 
-    it 'reuses an existing user place near the center' do
-      existing = create(:place, user: user, latitude: 52.5126, longitude: 13.4012)
+    it 'reuses a same-name user place near the center' do
+      existing = create(:place, user: user, name: Place::DEFAULT_NAME,
+                                latitude: 52.5126, longitude: 13.4012)
 
       expect { described_class.new(user).find_or_create_place(visit_data) }
         .not_to have_enqueued_job(Places::NameFetchingJob)
@@ -65,6 +66,11 @@ RSpec.describe Visits::PlaceFinder do
     it 'enqueues Places::NameFetchingJob for the new place when reverse geocoding is enabled' do
       expect { described_class.new(user).find_or_create_place(visit_data) }
         .to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
+    end
+
+    it 'does not enqueue suggested Visit reattribution for a detected Place' do
+      expect { described_class.new(user).find_or_create_place(visit_data) }
+        .not_to have_enqueued_job(Places::ReattributeSuggestedVisitsJob)
     end
 
     context 'when reverse geocoding is disabled' do
@@ -83,23 +89,33 @@ RSpec.describe Visits::PlaceFinder do
                      latitude: lat, longitude: lon, lonlat: "POINT(#{lon} #{lat})", geodata: {})
     end
 
-    it 'prefers a manual place over a photon place at the same location' do
-      photon = place_at(52.5126, 13.4012, name: 'Photon', source: :photon)
-      manual = place_at(52.5126, 13.4012, name: 'Manual', source: :manual)
+    it 'does not merge a nearby place with a different name' do
+      existing = place_at(52.5126, 13.4012, name: 'Different venue', source: :manual)
 
-      result = described_class.new(user).find_or_create_place(visit_data)
+      result = described_class.new(user).find_or_create_place(visit_data.merge(suggested_name: 'Cafe'))
 
-      expect(result).to eq(manual)
-      expect(result).not_to eq(photon)
+      expect(result).not_to eq(existing)
+      expect(result.name).to eq('Cafe')
     end
 
-    it 'prefers an exact name match within the radius' do
+    it 'prefers a normalized name match within the radius' do
       place_at(52.51262, 13.40122, name: 'Other', source: :photon)
-      named = place_at(52.5126, 13.4012, name: 'Cafe', source: :photon)
+      named = place_at(52.5126, 13.4012, name: ' cafe ', source: :photon)
 
       result = described_class.new(user).find_or_create_place(visit_data.merge(suggested_name: 'Cafe'))
 
       expect(result).to eq(named)
+    end
+
+    it 'reuses a stable external provider identifier before comparing names' do
+      external = create(:place, user: user, name: 'Old provider name',
+                                geodata: { 'external_place_id' => 'poi-42' })
+
+      result = described_class.new(user).find_or_create_place(
+        visit_data.merge(suggested_name: 'New provider name', external_place_id: 'poi-42')
+      )
+
+      expect(result).to eq(external)
     end
 
     it 'reuses a nearby place instead of minting a duplicate' do

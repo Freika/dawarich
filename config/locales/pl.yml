@@ -967,16 +967,6 @@ pl:
       settings: Ustawienia
       setup_guide: instrukcji konfiguracji
     maplibre:
-      area_creation_modal:
-        create_new_area: Utwórz nowy obszar
-        area_name: Nazwa obszaru *
-        radius: Promień
-        meters: metry
-        cancel: Anuluj
-        e_g_home_office_gym: np. Dom, Biuro, Siłownia...
-        radius_in_meters: Promień w metrach
-        create_area: Utwórz obszar
-        creating: Tworzenie...
       button_cluster:
         map_controls: Sterowanie mapą
         timeline: Oś czasu
@@ -1033,6 +1023,7 @@ pl:
         places: Miejsca
         show_your_saved_places: Pokaż zapisane miejsca
         enable_all_tags: Włącz wszystkie tagi
+        show_place_boundaries: Pokaż granice miejsc
         untagged: "\U0001F3F7️ Bez tagu"
         click_tags_to_filter_places: Kliknij tagi, aby filtrować miejsca
         photos: Zdjęcia
@@ -1159,8 +1150,7 @@ pl:
         pick_a_day_in_the_calendar_to_see_visits: Wybierz dzień w kalendarzu, aby zobaczyć wizyty.
         create_visit: Utwórz wizytę
         create_place: Utwórz miejsce
-        select_area: Wybierz obszar
-        create_area: Utwórz obszar
+        select_data_on_map: Wybierz dane na mapie
         replay: Odtwórz
         enrich_photos: Uzupełnij zdjęcia
         close: Zamknij
@@ -1365,12 +1355,16 @@ pl:
       rarr: "→"
       'on': dnia
       no_visits_yet: Brak wizyt
-      rename: Zmień nazwę
       merge: Scal
+      select_place_to_merge: Wybierz zduplikowane miejsce
+      no_matching_places: Nie znaleziono pasujących miejsc
+      search_places: Szukaj miejsc
+      search: Szukaj
+      merge_confirmation: Połączyć wybrane miejsce z „%{survivor}”? Wizyty, tagi i notatki zostaną tutaj przeniesione.
       notes: Notatki
       save: Zapisz
       delete: Usuń
-      delete_this_place_this_cannot_be_undone: Usunąć to miejsce? Tego nie da się cofnąć.
+      delete_this_place_this_cannot_be_undone: Usunąć to miejsce? Wizyty pozostaną bez przypisanego miejsca.
       manual_name_title: To miejsce ma nazwę nadaną ręcznie, więc automatyczne nazewnictwo go nie zmieni. Zmień nazwę na "%{default_name}", aby przywrócić automatyczne nazewnictwo.
       visit_count:
         one: "%{count} wizyta"
@@ -1381,6 +1375,9 @@ pl:
       no_nearby_places_found: Nie znaleziono pobliskich miejsc
       load_more_search_up_to_distance_m: Załaduj więcej (szukaj do %{distance} m)
     index:
+      filters: Filtry miejsc
+      all_places: Wszystkie miejsca
+      unconfirmed_places: Niepotwierdzone
       hello_there: Cześć!
       here_you_ll_find_your_places_created_by_visits_suggestion: Tutaj znajdziesz miejsca utworzone przez mechanizm sugestii wizyt. Na razie jeszcze ich nie ma.
       name: Nazwa
@@ -1390,7 +1387,7 @@ pl:
       timeline: Oś czasu
       places: Miejsca
       delete: Usuń
-      are_you_sure_deleting_a_place_will_result_in_deleting: Czy na pewno chcesz kontynuować? Usunięcie miejsca spowoduje usunięcie wszystkich powiązanych z nim wizyt.
+      are_you_sure_deleting_a_place_will_result_in_deleting: Usunąć to miejsce? Wizyty pozostaną bez przypisanego miejsca.
   points:
     address:
       address: 'Adres:'
@@ -1618,12 +1615,26 @@ pl:
         timezone: Strefa czasowa
         your_timezone: Twoja strefa czasowa
         all_dates_and_times_will_be_displayed_in_this_timezone: Wszystkie daty i godziny będą wyświetlane w tej strefie czasowej
+        date_and_time: "Data i godzina"
+        date_format: "Format daty"
+        time_format: "Format godziny"
+        first_day_of_week: "Pierwszy dzień tygodnia"
+        format_auto: "Automatycznie (%{example})"
+        time_format_12h: "12-godzinny (%{example})"
+        time_format_24h: "24-godzinny (%{example})"
+        date_and_time_hint: "Dotyczy dat i godzin w aplikacji, e-mailach i na mapie."
         supporter_badge: Odznaka wspierającego
         show_supporter_badge_in_navbar: Pokaż odznakę wspierającego w pasku nawigacji
         display_a_gem_icon_next_to_your_profile_to_show: Wyświetl ikonę klejnotu obok profilu, aby pokazać status wspierającego
         general_settings: Ustawienia ogólne
         save_changes: Zapisz zmiany
         test_email_worker_hint: Dodaje wiadomość testową do kolejki tego samego procesu w tle, który wysyła e-maile systemowe
+        features: "Funkcje"
+        features_hint: "Wyłącz części Dawarich, z których nie korzystasz. Znikną z interfejsu, a ich przetwarzanie w tle zostanie zatrzymane."
+        family_feature: "Rodzina"
+        family_feature_hint: "Udostępnianie lokalizacji członkom rodziny. Po wyłączeniu przestajesz udostępniać swoją lokalizację i linki do podróży tylko dla rodziny; pozostajesz jej członkiem. Po ponownym włączeniu udostępnianie lokalizacji jest wyłączone."
+        achievements_feature: "Osiągnięcia"
+        achievements_feature_hint: "Odkryte regiony i odznaki. Po wyłączeniu postęp nie jest już obliczany, a Twoje publiczne linki do osiągnięć zostają wyłączone."
     integrations:
       trek:
         title: "Integracja z TREK"
@@ -1790,7 +1801,7 @@ pl:
         tracks: Trasy
         imports: Importy
         exports: Eksporty
-        areas: Obszary
+        places: Miejsca
         sign_in_history: Historia logowań
         total_sign_ins: Liczba logowań
         last_sign_in: Ostatnie logowanie
@@ -1950,6 +1961,8 @@ pl:
     place_creation_modal:
       create_new_place: Utwórz nowe miejsce
       place_name: Nazwa miejsca *
+      visit_radius: Promień wizyty (metry) *
+      visit_radius_hint: Wizyty, których środek znajduje się w tym promieniu, mogą zostać przypisane do miejsca. Nie wpływa to na prywatność.
       note: Notatka
       optional_add_any_notes_or_details_about_this_place: Opcjonalnie - dodaj notatki lub szczegóły dotyczące tego miejsca
       tags: Tagi
@@ -2058,6 +2071,9 @@ pl:
         upgrade_to_pro: Przejdź na Pro
         dismiss: Zamknij
   shared_links:
+    privacy_zones_note:
+      text: "Twoje strefy prywatności pozostają ukryte w tym linku. Każdy ukryty obszar jest przesunięty względem miejsca, więc nikt nie ustali, gdzie ono jest."
+      manage: "Strefy prywatności"
     expires_field:
       expires_optional: Wygasa (opcjonalnie)
       stays_active_through_the_end_of_the_day_before_the: Pozostaje aktywny do końca dnia poprzedzającego wybraną datę.
@@ -2230,7 +2246,7 @@ pl:
       choose_from_swatches_or_pick_a_custom_color: Wybierz z próbek lub ustaw własny kolor
       privacy_zone: Strefa prywatności
       hide_map_data_around_places_with_this_tag: Ukryj dane mapy w pobliżu miejsc oznaczonych tym tagiem
-      data_within_this_radius_will_be_hidden_from_the_map: Dane w tym promieniu będą ukryte na mapie
+      hidden_area_hint: "Wszystko w tym promieniu jest zawsze ukryte. Ukryty okrąg jest do 1,6 razy większy i przesunięty względem miejsca o stałą odległość, aby nikt nie mógł ustalić miejsca na podstawie tego, gdzie kończą się Twoje dane."
       home_work_restaurant: Home, Work, Restaurant...
       privacy_radius: Promień prywatności
       cancel: Anuluj
@@ -2251,6 +2267,7 @@ pl:
       actions: Akcje
       no_tags_yet: Brak tagów
       create_tags_to_organize_your_places_and_add_privacy_zones: Twórz tagi, aby porządkować miejsca i dodawać strefy prywatności.
+      privacy_zone_badge_hint: "Ukryty obszar przesunięty względem miejsca, do 1,6 razy ten promień"
       create_your_first_tag: Utwórz pierwszy tag
       tags: Tagi
       edit_tag: Edytuj tag
@@ -3204,6 +3221,7 @@ pl:
             visit_not_found: Nie znaleziono wizyty
           invalid_place: Nieprawidłowe miejsce
           invalid_area: Nieprawidłowy obszar
+          conflicting_place_and_area: place_id i area_id nie mogą być podane jednocześnie
           at_least_2_visits_must_be_selected_for_merging: Do scalenia trzeba zaznaczyć co najmniej 2 wizyty
           one_or_more_visits_not_found: Nie znaleziono co najmniej jednej wizyty
           count_visits_updated_successfully: Pomyślnie zaktualizowano %{count} wizyt
@@ -3230,6 +3248,7 @@ pl:
       your_account_has_been_deleted: Twoje konto zostało usunięte.
       you_are_not_authorized_to_perform_this_action: Nie masz uprawnień do wykonania tej akcji.
       family_plan_required: Ta funkcja wymaga planu Rodzinnego.
+      feature_disabled_in_settings: "Ta funkcja jest wyłączona w Twoich ustawieniach."
     areas:
       created: Obszar utworzono pomyślnie!
       updated: Obszar zaktualizowano pomyślnie!
@@ -3330,6 +3349,8 @@ pl:
       place_was_successfully_destroyed: Miejsce zostało pomyślnie usunięte.
       created: Miejsce utworzono pomyślnie!
       updated: Miejsce zaktualizowano pomyślnie!
+      merged: Połączono „%{duplicate}” z „%{survivor}”.
+      merge_visit_conflict: "Tych miejsc nie można scalić, ponieważ wizyta #%{first_id} i wizyta #%{second_id} zaczynają się o %{started_at}. Najpierw rozwiąż te wizyty."
     points:
       no_points_selected: Nie wybrano punktów.
       points_were_successfully_destroyed: Punkty zostały pomyślnie usunięte.
@@ -3531,6 +3552,7 @@ pl:
       failed_to_delete_visits: Nie udało się usunąć wizyt.
       invalid_place: Nieprawidłowe miejsce
       invalid_area: Nieprawidłowy obszar
+      conflicting_place_and_area: Miejsce i obszar nie mogą być podane jednocześnie
       failed_to_update_visit: Nie udało się zaktualizować wizyty.
       select_visits_to_merge: Wybierz co najmniej 2 wizyty do scalenia.
       visits_must_share_day: Wizyty muszą przypadać na ten sam dzień.
@@ -3677,6 +3699,7 @@ pl:
         safe_email_is_requesting_your_location_link: "%{email} prosi o Twoją lokalizację. %{link}"
         users_must_be_in_the_same_family: Użytkownicy muszą należeć do tej samej rodziny
         target_user_is_already_sharing_their_location: Wybrany użytkownik już udostępnia lokalizację
+        target_user_turned_family_off: "Ten członek wyłączył funkcje rodzinne"
         request_cooldown_active_please_wait_before_requesting_again: Aktywny czas oczekiwania prośby. Poczekaj przed ponowną próbą.
         view_request: Zobacz prośbę
       invite:
@@ -4121,9 +4144,6 @@ pl:
       click_on_the_map_to_place_a_visit_esc_to: Kliknij na mapie, aby dodać wizytę (Esc aby anulować)
       visit_creation_modal_not_available: Okno tworzenia wizyty jest niedostępne
       visit_creation_controller_not_available: Kontroler tworzenia wizyty jest niedostępny
-      area_drawer_controller_not_available: Kontroler panelu obszaru jest niedostępny
-      area_created_successfully: Obszar utworzony pomyślnie!
-      failed_to_reload_areas: Nie udało się odświeżyć obszarów
       family_feature_not_available: Funkcja rodziny jest niedostępna
       failed_to_load_family_members: Nie udało się załadować członków rodziny
       centered_on_family_member: Wycentrowano na członku rodziny
@@ -4598,6 +4618,7 @@ pl:
       place: Miejsce
       points: Punkty
       radius: Promień
+      visit_radius: Promień wizyty
       reason: Powód
       route_information: Informacje o trasie
       selected_point: Wybrany punkt
@@ -4814,3 +4835,8 @@ pl:
       no_invitations: Brak oczekujących zaproszeń
       title: Zaproszenia rodzinne
       view_invitation: Zobacz
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: AM
+      pm: PM

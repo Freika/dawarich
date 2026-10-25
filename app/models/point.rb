@@ -180,7 +180,7 @@ class Point < ApplicationRecord
 
   # Metrics/AbcSize
   def broadcast_coordinates
-    if user.safe_settings.live_map_enabled
+    if user.safe_settings.live_map_enabled && !Maps::PrivacyZoneMasker.new(user).in_zone?(lon, lat)
       PointsChannel.broadcast_to(
         user,
         [

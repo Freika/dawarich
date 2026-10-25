@@ -19,7 +19,7 @@ RSpec.describe 'Map layers tab', type: :request do
   it 'shows every layer as one tile wired to the map controller' do
     tab = layers_tab
 
-    %w[pointsToggle tracksToggle visitsToggle placesToggle areasToggle photosToggle
+    %w[pointsToggle tracksToggle visitsToggle placesToggle photosToggle
        heatmapToggle hexagonsToggle fogToggle scratchToggle].each do |target|
       tiles = tile_for(tab, target)
 

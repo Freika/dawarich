@@ -21,10 +21,11 @@ class Points::LiveBroadcaster
     return if !live_map && !family && active_live.empty?
 
     payloads_by_timestamp = payloads.index_by { |p| p[:timestamp].to_i }
+    masker = Maps::PrivacyZoneMasker.new(user) if live_map
 
     upserted_results.each do |result|
       payload = payloads_by_timestamp[result['timestamp'].to_i] || {}
-      broadcast_points(user, result, payload) if live_map
+      broadcast_points(user, result, payload) if live_map && !in_privacy_zone?(masker, result)
       broadcast_family(user, result) if family
     end
 
@@ -32,6 +33,10 @@ class Points::LiveBroadcaster
   end
 
   private
+
+  def in_privacy_zone?(masker, result)
+    masker.in_zone?(result['longitude'].to_f, result['latitude'].to_f)
+  end
 
   def broadcast_live_shares(user, shares)
     latest = upserted_results.max_by { |r| r['timestamp'].to_i }

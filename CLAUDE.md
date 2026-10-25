@@ -389,6 +389,12 @@ Even in these cases, wrap the integration in a Stimulus controller and connect i
    - Respect expiration settings and disable sharing when expired
    - Only expose minimal necessary data in public sharing contexts
 
+9. **Privacy Zones on the map**: Every map read is masked through `Maps::PrivacyZoneMasker` (`app/services/maps/privacy_zone_masker.rb`):
+   - Vector tile endpoints, the fog endpoint (`/api/v1/maps/hexagons/fog`, map-only) and the shared monthly stats reads (`/api/v1/maps/hexagons` and `/bounds` with a `uuid`) always mask; other JSON read endpoints mask when the request carries `mask_privacy_zones=true`, which `ApiClient` adds for every map read.
+   - A new map read endpoint must mask the same way and get a case in `spec/requests/api/v1/privacy_zone_masking_spec.rb`; a new map read in JS must send the flag (`spec/javascript/map_reads_privacy_flag_test.mjs` fails otherwise).
+   - Tiles and other HTTP-cached responses must include `PrivacyZoneMasker#fingerprint` in their cache key, so an edited zone never serves a stale response.
+   - Exports, stats and editing tools (area selection, the track editor) read unmasked data on purpose.
+
 ### Route Drawing Implementation (Critical)
 
 ⚠️ **IMPORTANT: Unit Mismatch in Route Splitting Logic**

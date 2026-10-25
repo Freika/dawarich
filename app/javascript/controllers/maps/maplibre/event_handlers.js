@@ -169,6 +169,20 @@ export class EventHandlers {
     this.controller.showInfo(translate("messages.anomaly_point"), content)
   }
 
+  handleEditablePointClick(e) {
+    const mapEditor = this.controller.layerManager.getLayer("map-editor")
+    if (!mapEditor?.forEditing || mapEditor.justDragged) return
+    if (
+      this.map.getLayer("points-mvt") &&
+      this.map.queryRenderedFeatures(e.point, { layers: ["points-mvt"] })
+        .length > 0
+    )
+      return
+
+    const feature = e.features?.[0]
+    if (feature) this._showPointFeature(feature)
+  }
+
   /**
    * Handle track point click — injects point info into the existing track info panel.
    * Suppresses the event if the user just finished dragging (justDragged flag).
@@ -273,6 +287,7 @@ export class EventHandlers {
       <div class="space-y-2">
         ${properties.tag ? `<div class="badge badge-sm badge-primary">${escapeHtml(properties.tag)}</div>` : ""}
         ${properties.description ? `<div>${escapeHtml(properties.description)}</div>` : ""}
+        ${properties.visitRadius ? `<div><span class="font-semibold">${translate("map_info.visit_radius")}:</span> ${Math.round(properties.visitRadius)}m</div>` : ""}
         ${
           properties.nameLocked
             ? `<div class="text-xs opacity-70" data-testid="place-name-lock">${translate("map_info.place_name_locked")}</div>`
@@ -298,77 +313,6 @@ export class EventHandlers {
       content,
       actions,
     )
-  }
-
-  /**
-   * Handle area click
-   */
-  handleAreaClick(e) {
-    const feature = e.features[0]
-    this._renderAreaInfo(feature.properties)
-  }
-
-  /**
-   * Render the area info card into the side panel and remember which area it
-   * shows, so an `area:updated` refresh can re-render it with the new name.
-   */
-  _renderAreaInfo(properties) {
-    const content = `
-      <div class="space-y-2">
-        ${properties.radius ? `<div><span class="font-semibold">${translate("map_info.radius")}:</span> ${Math.round(properties.radius)}m</div>` : ""}
-        ${properties.latitude && properties.longitude ? `<div><span class="font-semibold">${translate("map_info.center")}:</span> ${properties.latitude.toFixed(6)}, ${properties.longitude.toFixed(6)}</div>` : ""}
-      </div>
-    `
-
-    const actions = properties.id
-      ? [
-          {
-            type: "button",
-            handler: "openAreaEditModal",
-            id: properties.id,
-            entityType: "area",
-            label: translate("messages.edit"),
-          },
-          {
-            type: "button",
-            handler: "handleDelete",
-            id: properties.id,
-            entityType: "area",
-            label: translate("messages.delete"),
-          },
-        ]
-      : []
-
-    this.controller.showInfo(
-      escapeHtml(properties.name) || translate("map_info.area"),
-      content,
-      actions,
-    )
-    // showInfo clears _infoEntity; tag the panel as showing this area so it
-    // can be refreshed in place after an edit.
-    this.controller._infoEntity = { type: "area", id: properties.id }
-  }
-
-  /**
-   * Re-render the open area info card from a fresh list of areas. No-op unless
-   * the panel is currently open and showing one of those areas. Called after
-   * `area:updated` so the side panel name matches the map.
-   */
-  refreshActiveAreaInfo(areas) {
-    const entity = this.controller._infoEntity
-    if (entity?.type !== "area") return
-    if (!this.controller.hasInfoDisplayTarget) return
-    if (this.controller.infoDisplayTarget.classList.contains("hidden")) return
-
-    const area = (areas || []).find((a) => a.id === entity.id)
-    if (!area) return
-
-    this._renderAreaInfo({
-      id: area.id,
-      name: area.name,
-      color: area.color || "#ef4444",
-      radius: area.radius,
-    })
   }
 
   /**

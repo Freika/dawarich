@@ -24,6 +24,8 @@ class FamiliesController < ApplicationController
   end
 
   def new
+    return feature_disabled_in_settings! unless current_user.feature_enabled?(:family)
+
     # Members of a lapsed family fall through to the lapsed panel: sending them
     # to #show would bounce them straight back here in a redirect loop.
     redirect_to family_path and return if current_user.in_family? && family_feature_available?

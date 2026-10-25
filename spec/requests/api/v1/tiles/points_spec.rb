@@ -428,4 +428,135 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
       expect(JSON.parse(response.body)).to eq('error' => 'Invalid tile coordinates')
     end
   end
+
+  describe 'privacy zones' do
+    let(:zone_lon) { 13.5 }
+    let(:zone_lat) { 52.444 }
+    let!(:zone_tag) do
+      tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 100)
+      place = create(:place, user:, latitude: zone_lat, longitude: zone_lon, lonlat: "POINT(#{zone_lon} #{zone_lat})")
+      create(:tagging, tag:, taggable: place)
+      tag
+    end
+
+    def tile_for(lon, lat, zoom)
+      n = 2**zoom
+      lat_rad = lat * Math::PI / 180
+      x = ((lon + 180.0) / 360.0 * n).floor
+      y = ((1.0 - (Math.log(Math.tan(lat_rad) + (1 / Math.cos(lat_rad))) / Math::PI)) / 2.0 * n).floor
+      [zoom, x, y]
+    end
+
+    def feature_counts
+      counts = []
+      allow(Points::VectorTileQuery).to receive(:new).and_wrap_original do |original, **attributes|
+        query = original.call(**attributes)
+        allow(query).to(receive(:call).and_wrap_original { |call| call.call.tap { |r| counts << r.feature_count } })
+        query
+      end
+      counts
+    end
+
+    it 'leaves the in-zone point out of the tile and keeps the one next to it' do
+      create(:point, user:, lonlat: "POINT(#{zone_lon} #{zone_lat})", timestamp: 2.hours.ago.to_i)
+      create(:point, user:, lonlat: 'POINT(13.495 52.444)', timestamp: 1.hour.ago.to_i)
+      z, x, y = tile_for(zone_lon, zone_lat, 15)
+      expect(tile_for(13.495, 52.444, 15)).to eq([z, x, y])
+      counts = feature_counts
+
+      get "/api/v1/tiles/points/#{z}/#{x}/#{y}.mvt", params: { api_key: user.api_key }
+
+      expect(response).to have_http_status(:ok)
+      expect(counts).to eq([1])
+    end
+
+    it 'answers a tile that lies entirely inside a zone without querying' do
+      zone_tag.update!(privacy_radius_meters: 1000)
+      z, x, y = tile_for(zone_lon, zone_lat, 18)
+      allow(Points::VectorTileQuery).to receive(:new).and_call_original
+
+      get "/api/v1/tiles/points/#{z}/#{x}/#{y}.mvt", params: { api_key: user.api_key }
+
+      expect(response).to have_http_status(:no_content)
+      expect(Points::VectorTileQuery).not_to have_received(:new)
+    end
+
+    it 'does not revalidate a cached tile after the zone changes' do
+      create(:point, user:, lonlat: 'POINT(13.495 52.444)', timestamp: 1.hour.ago.to_i)
+      z, x, y = tile_for(zone_lon, zone_lat, 15)
+      params = { api_key: user.api_key, start_at: 1.day.ago.to_i, end_at: Time.current.to_i }
+      tile_path = "/api/v1/tiles/points/#{z}/#{x}/#{y}.mvt"
+
+      get tile_path, params: params
+      etag = response.headers['ETag']
+      zone_tag.update!(privacy_radius_meters: 110)
+      get tile_path, params: params, headers: { 'If-None-Match' => etag }
+
+      expect(response).to have_http_status(:ok)
+      end
+    end
+
+  describe 'scope size probe' do
+    include ActiveSupport::Testing::TimeHelpers
+
+    let(:range) { { start_at: 10.days.ago.to_i.to_s, end_at: 1.day.ago.to_i.to_s } }
+
+    def probes_during(&block)
+      statements = []
+      collector = ->(_name, _start, _finish, _id, payload) { statements << payload[:sql] }
+      ActiveSupport::Notifications.subscribed(collector, 'sql.active_record', &block)
+      statements.count { |sql| sql.include?('subquery_for_count') }
+    end
+
+    before do
+      create(:point, user:, timestamp: 5.days.ago.to_i, longitude: 0.0, latitude: 0.0, lonlat: 'POINT(0 0)')
+    end
+
+    it 'counts a Lite map view once even as its data window moves' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update_column(:plan, User.plans[:lite])
+
+      probes = probes_during do
+        get '/api/v1/tiles/points/2/2/1.mvt', params: { api_key: user.api_key, **range }
+        travel 2.seconds
+        get '/api/v1/tiles/points/2/1/1.mvt', params: { api_key: user.api_key, **range }
+      end
+
+      expect(probes).to eq(1)
+    end
+
+    it 'counts a Lite map view without a range once even as seconds pass' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update_column(:plan, User.plans[:lite])
+
+      probes = probes_during do
+        get '/api/v1/tiles/points/2/2/1.mvt', params: { api_key: user.api_key }
+        travel 2.seconds
+        get '/api/v1/tiles/points/2/1/1.mvt', params: { api_key: user.api_key }
+      end
+
+      expect(probes).to eq(1)
+    end
+
+    it 'leaves point revisions alone for a request without a range' do
+      statements = []
+      collector = ->(_name, _start, _finish, _id, payload) { statements << payload[:sql] }
+      ActiveSupport::Notifications.subscribed(collector, 'sql.active_record') do
+        get '/api/v1/tiles/points/2/2/1.mvt', params: { api_key: user.api_key }
+      end
+
+      expect(response).to have_http_status(:ok)
+      expect(statements.grep(/point_revisions/)).to be_empty
+    end
+
+    it 'counts again once the points in the range change' do
+      probes = probes_during do
+        get '/api/v1/tiles/points/2/2/1.mvt', params: { api_key: user.api_key, **range }
+        create(:point, user:, timestamp: 4.days.ago.to_i, longitude: 1.0, latitude: 1.0, lonlat: 'POINT(1 1)')
+        get '/api/v1/tiles/points/2/1/1.mvt', params: { api_key: user.api_key, **range }
+      end
+
+      expect(probes).to eq(2)
+    end
+  end
 end

@@ -45,9 +45,13 @@ export class MapPageProvider {
     if (!controller) return
     const { startAt, endAt } = this.dateRange()
     if (controller.api.importId) {
-      await controller.mapDataManager?.ensurePointsLoaded()
+      const [, { zones }] = await Promise.all([
+        controller.mapDataManager?.ensurePointsLoaded(),
+        controller.api.fetchPrivacyZones(),
+      ])
       this._tracks = RouteSegmenter.pointsToRoutes(
         controller._getLoadedPoints?.() ?? [],
+        { privacyZones: zones },
       )
       return
     }

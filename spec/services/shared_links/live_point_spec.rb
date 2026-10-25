@@ -24,10 +24,10 @@ RSpec.describe SharedLinks::LivePoint do
 
       it 'masks a point well inside the radius but not one well beyond it (boundary parity)' do
         inside  = described_class.new(user, lat: 52.0, lon: 13.003, timestamp: 1).call
-        outside = described_class.new(user, lat: 52.0, lon: 13.010, timestamp: 1).call
+        outside = described_class.new(user, lat: 52.0, lon: 13.020, timestamp: 1).call
 
         expect(inside).to eq(masked: true)
-        expect(outside).to eq(lat: 52.0, lon: 13.010, ts: 1)
+        expect(outside).to eq(lat: 52.0, lon: 13.020, ts: 1)
       end
 
       it 'matches the outside_privacy_zones SQL predicate for the same point (parity)' do

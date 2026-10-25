@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Area, type: :model do
   describe 'associations' do
     it { is_expected.to belong_to(:user) }
-    it { is_expected.to have_many(:visits).dependent(:destroy) }
+    it { is_expected.to have_many(:visits).dependent(:nullify) }
   end
 
   describe 'validations' do
@@ -26,101 +26,13 @@ RSpec.describe Area, type: :model do
     end
   end
 
-  describe 'geofencing cleanup' do
-    let(:user) { create(:user) }
-    let(:area) { create(:area, user:) }
-
-    it 'drops its events and its id from webhook filters when destroyed' do
-      kept = create(:area, user:)
-      webhook = create(:webhook, user:, area_ids: [area.id, kept.id])
-      create(:webhook_delivery, webhook:, geofence_event: create(:geofence_event, user:, area:))
-
-      area.destroy!
-
-      expect(GeofenceEvent.where(area_id: area.id)).to be_empty
-      expect(WebhookDelivery.count).to eq(0)
-      expect(webhook.reload.area_ids).to eq([kept.id])
+  describe '#visit_radius' do
+    it 'caps a legacy radius at the maximum Visit Radius' do
+      expect(build(:area, radius: Place::MAX_VISIT_RADIUS * 2).visit_radius).to eq(Place::MAX_VISIT_RADIUS)
     end
 
-    it 'switches off a webhook whose only area is deleted instead of widening it to every area' do
-      webhook = create(:webhook, user:, area_ids: [area.id])
-
-      area.destroy!
-
-      expect(webhook.reload).to have_attributes(area_ids: [], active: false)
-    end
-
-    it 'loses its events through the database when deleted in bulk' do
-      create(:geofence_event, user:, area:)
-
-      user.areas.delete_all
-
-      expect(GeofenceEvent.where(user_id: user.id)).to be_empty
-    end
-
-    it 'loses the deliveries of those events too' do
-      create(:webhook_delivery, webhook: create(:webhook, user:), geofence_event: create(:geofence_event, user:, area:))
-
-      user.areas.delete_all
-
-      expect(WebhookDelivery.count).to eq(0)
-    end
-  end
-
-  describe 'geofence state' do
-    let(:user) { create(:user) }
-    let(:store) { GeofenceEvents::StateStore.new(user) }
-    let(:start) { 2.hours.ago.to_i }
-
-    before { store.reset! }
-
-    def ingest(lon, minute)
-      Points::Intake.call(user_id: user.id,
-                          payloads: [{ lonlat: "POINT(#{lon} 52.52)", timestamp: start + (minute * 60), accuracy: 10 }])
-    end
-
-    it 'treats the user as already inside an area created around them' do
-      ingest(13.4050, 0)
-      create(:area, user:, latitude: 52.52, longitude: 13.405, radius: 100)
-
-      ingest(13.4051, 1)
-
-      expect(GeofenceEvent.where(user:)).to be_empty
-    end
-
-    it 'judges only the latest point, not older visits' do
-      ingest(13.4050, 0)
-      ingest(13.4300, 1)
-      create(:area, user:, latitude: 52.52, longitude: 13.405, radius: 100)
-
-      ingest(13.4051, 2)
-
-      expect(GeofenceEvent.where(user:).pluck(:event_type)).to eq(%w[enter])
-    end
-
-    it 'treats the user as already outside an area moved away from them' do
-      area = create(:area, user:, latitude: 52.52, longitude: 13.405, radius: 100)
-      ingest(13.4050, 0)
-      area.update!(longitude: 13.50)
-
-      ingest(13.4051, 1)
-
-      expect(GeofenceEvent.where(user:).pluck(:event_type)).to eq(%w[enter])
-    end
-
-    it 'forgets an area the user was inside when it is deleted' do
-      area = create(:area, user:, latitude: 52.52, longitude: 13.405, radius: 100)
-      ingest(13.4050, 0)
-
-      area.destroy!
-
-      expect(store.inside_ids).not_to include(area.id)
-    end
-
-    it 'saves the area even when the state store is unavailable' do
-      allow(Sidekiq).to receive(:redis_pool).and_raise(RedisClient::CannotConnectError, 'down')
-
-      expect { create(:area, user:) }.to change(Area, :count).by(1)
+    it 'falls back to the default Visit Radius for a non-positive radius' do
+      expect(build(:area, radius: 0).visit_radius).to eq(Place.column_defaults['visit_radius'])
     end
   end
 

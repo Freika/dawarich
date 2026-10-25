@@ -59,7 +59,6 @@ zh:
         locked: 未解锁
     cards:
       explorer_name: "%{place}探索者"
-      date_format: "%Y年%-m月%-d日"
       description:
         continent: "记录你在%{place}全部 %{count} 个国家和地区的足迹。"
         regions: "记录你在%{place}全部 %{count} 个地区的足迹。"

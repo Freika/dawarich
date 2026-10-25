@@ -71,7 +71,7 @@ module Achievements
 
     def unlocked_date
       local_date = @event.created_at.in_time_zone(@timezone).to_date
-      I18n.l(local_date, format: I18n.t('achievements.cards.date_format'))
+      I18n.l(local_date, format: :day_month_year_abbreviated)
     end
 
     def achievement_path(*args)

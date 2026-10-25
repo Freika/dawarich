@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module TimelineHelper
+  include WeekStartHelper
+
   # Interior holes shorter than this are the ordinary seams between a visit
   # ending and the next track starting — real days are full of them, and
   # marking each one costs the marker its meaning. Detection v3 snaps visit
@@ -224,7 +226,7 @@ module TimelineHelper
   end
 
   def calendar_weekday_labels
-    I18n.t('calendar.weekday_initials')
+    week_ordered(I18n.t('calendar.weekday_initials'))
   end
 
   def calendar_day_number(cell)

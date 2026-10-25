@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { formatDate } from "i18n"
 import { toLocalDateTimeInput } from "video_studio/date_range"
 
 function rangeInputValue(value, timeZone) {
@@ -56,15 +57,11 @@ export default class extends Controller {
       wallClock ? `${startAt.slice(0, 10)}T12:00:00Z` : startAt,
     )
     if (this.hasMobileLabelTarget && !Number.isNaN(start.valueOf())) {
-      this.mobileLabelTarget.textContent = new Intl.DateTimeFormat(
-        this.localeValue || undefined,
-        {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-          timeZone: wallClock ? "UTC" : this.timezoneValue,
-        },
-      ).format(start)
+      this.mobileLabelTarget.textContent = formatDate(start, {
+        locale: this.localeValue || undefined,
+        month: "long",
+        timeZone: wallClock ? "UTC" : this.timezoneValue,
+      })
     }
   }
 

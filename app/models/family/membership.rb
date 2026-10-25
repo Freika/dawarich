@@ -26,7 +26,7 @@ class Family::Membership < ApplicationRecord
     revoke_inherited_subscription
 
     # Disable location sharing for departing user
-    user.update_family_location_sharing!(false) if user.family_sharing_enabled?
+    user.update_family_location_sharing!(false) if user.family_sharing_stored?
 
     # Expire all pending location requests involving the departing user
     Family::LocationRequest

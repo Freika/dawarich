@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_24_150200) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_25_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -259,25 +259,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_150200) do
     t.index ["feature_key", "key", "value"], name: "index_flipper_gates_on_feature_key_and_key_and_value", unique: true
   end
 
-  create_table "geofence_events", force: :cascade do |t|
-    t.integer "accuracy_m"
-    t.bigint "area_id", null: false
-    t.datetime "created_at", null: false
-    t.string "device_id"
-    t.integer "event_type", null: false
-    t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}, null: false
-    t.jsonb "metadata", default: {}, null: false
-    t.datetime "occurred_at", null: false
-    t.datetime "received_at", null: false
-    t.integer "source", null: false
-    t.boolean "synthetic", default: false, null: false
-    t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
-    t.index ["area_id", "occurred_at"], name: "index_geofence_events_on_area_id_and_occurred_at", order: { occurred_at: :desc }
-    t.index ["created_at"], name: "index_geofence_events_synthetic_on_created_at", where: "synthetic"
-    t.index ["user_id", "occurred_at"], name: "index_geofence_events_on_user_id_and_occurred_at", order: { occurred_at: :desc }
-  end
-
   create_table "imports", force: :cascade do |t|
     t.jsonb "additional_data_extraction", default: {}, null: false
     t.integer "additional_data_extraction_status", default: 0, null: false
@@ -308,6 +289,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_150200) do
     t.datetime "updated_at", null: false
     t.jsonb "value"
     t.index ["key"], name: "index_instance_settings_on_key", unique: true
+  end
+
+  create_table "legacy_area_place_mappings", force: :cascade do |t|
+    t.bigint "area_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "place_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["area_id"], name: "index_legacy_area_place_mappings_on_area_id", unique: true
+    t.index ["place_id"], name: "index_legacy_area_place_mappings_on_place_id"
   end
 
   create_table "notes", force: :cascade do |t|
@@ -381,12 +371,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_150200) do
     t.integer "source", default: 0
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.integer "visit_radius", default: 50, null: false
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
     t.index "user_id, ((geodata ->> 'external_place_id'::text))", name: "idx_places_user_external_place_id", unique: true, where: "((geodata ->> 'external_place_id'::text) IS NOT NULL)"
     t.index ["demo"], name: "index_places_on_demo_true", where: "(demo = true)"
     t.index ["import_id"], name: "idx_places_import_id_extracted", where: "(import_id IS NOT NULL)"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
     t.index ["user_id"], name: "index_places_on_user_id"
+    t.check_constraint "visit_radius > 0", name: "places_visit_radius_positive"
   end
 
   create_table "planned_accommodations", force: :cascade do |t|
@@ -881,7 +873,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_150200) do
     t.integer "duration", null: false
     t.datetime "ended_at", null: false
     t.bigint "import_id"
-    t.string "name", null: false
+    t.string "location_label"
+    t.string "name"
     t.bigint "place_id"
     t.datetime "started_at", null: false
     t.integer "status", default: 0, null: false
@@ -894,38 +887,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_150200) do
     t.index ["started_at"], name: "index_visits_on_started_at"
     t.index ["user_id", "started_at", "place_id"], name: "idx_visits_user_started_at_place_unique", unique: true
     t.index ["user_id"], name: "index_visits_on_user_id"
-  end
-
-  create_table "webhook_deliveries", force: :cascade do |t|
-    t.integer "attempt_count", default: 0, null: false
-    t.datetime "created_at", null: false
-    t.datetime "delivered_at"
-    t.string "error_message"
-    t.bigint "geofence_event_id", null: false
-    t.text "response_body"
-    t.integer "response_status"
-    t.integer "status", default: 0, null: false
-    t.datetime "updated_at", null: false
-    t.bigint "webhook_id", null: false
-    t.index ["created_at"], name: "index_webhook_deliveries_on_created_at"
-    t.index ["geofence_event_id"], name: "index_webhook_deliveries_on_geofence_event_id"
-    t.index ["webhook_id", "created_at"], name: "index_webhook_deliveries_on_webhook_id_and_created_at", order: { created_at: :desc }
-  end
-
-  create_table "webhooks", force: :cascade do |t|
-    t.boolean "active", default: true, null: false
-    t.bigint "area_ids", default: [], null: false, array: true
-    t.integer "consecutive_failures", default: 0, null: false
-    t.datetime "created_at", null: false
-    t.integer "event_types", default: [0, 1], null: false, array: true
-    t.datetime "last_delivery_at"
-    t.datetime "last_success_at"
-    t.string "name", null: false
-    t.string "secret", null: false
-    t.datetime "updated_at", null: false
-    t.string "url", null: false
-    t.bigint "user_id", null: false
-    t.index ["user_id"], name: "index_webhooks_on_user_id"
   end
 
   add_foreign_key "achievement_progresses", "users"
@@ -943,8 +904,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_150200) do
   add_foreign_key "family_memberships", "families"
   add_foreign_key "family_memberships", "users"
   add_foreign_key "flights", "users"
-  add_foreign_key "geofence_events", "areas", on_delete: :cascade
-  add_foreign_key "geofence_events", "users", on_delete: :cascade
+  add_foreign_key "legacy_area_place_mappings", "areas", on_delete: :cascade
+  add_foreign_key "legacy_area_place_mappings", "places", on_delete: :cascade
   add_foreign_key "notes", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "pending_imports", "users", column: "claimed_by_user_id", on_delete: :nullify
@@ -979,9 +940,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_150200) do
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"
-  add_foreign_key "webhook_deliveries", "geofence_events", on_delete: :cascade
-  add_foreign_key "webhook_deliveries", "webhooks", on_delete: :cascade
-  add_foreign_key "webhooks", "users", on_delete: :cascade
   execute <<~SQL
     CREATE OR REPLACE FUNCTION public.points_revision_delete()
      RETURNS trigger

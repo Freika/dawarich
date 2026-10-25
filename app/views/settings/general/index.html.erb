@@ -140,6 +140,66 @@
               </div>
             </div>
 
+            <!-- Date and Time Section -->
+            <div>
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <%= icon 'calendar', class: "text-primary mr-2" %> <%= t('.date_and_time') %>
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <% preferences = current_user.safe_settings.date_time_preferences %>
+                <div class="grid grid-cols-1 gap-4">
+                  <div class="form-control min-w-0">
+                    <label class="label" for="date_format">
+                      <span class="label-text font-medium"><%= t('.date_format') %></span>
+                    </label>
+                    <%= f.select :date_format, date_format_options, { selected: preferences.date_format },
+                                 id: 'date_format', class: 'select select-bordered w-full',
+                                 data: { testid: 'date-format-select' } %>
+                  </div>
+                  <div class="form-control min-w-0">
+                    <label class="label" for="time_format">
+                      <span class="label-text font-medium"><%= t('.time_format') %></span>
+                    </label>
+                    <%= f.select :time_format, time_format_options, { selected: preferences.time_format },
+                                 id: 'time_format', class: 'select select-bordered w-full',
+                                 data: { testid: 'time-format-select' } %>
+                  </div>
+                  <div class="form-control min-w-0">
+                    <label class="label" for="first_day_of_week">
+                      <span class="label-text font-medium"><%= t('.first_day_of_week') %></span>
+                    </label>
+                    <%= f.select :first_day_of_week, first_day_of_week_options,
+                                 { selected: preferences.first_day_of_week },
+                                 id: 'first_day_of_week', class: 'select select-bordered w-full',
+                                 data: { testid: 'first-day-of-week-select' } %>
+                  </div>
+                </div>
+                <p class="text-sm text-base-content/70"><%= t('.date_and_time_hint') %></p>
+              </div>
+            </div>
+
+            <div id="features">
+              <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <%= icon 'sparkles', class: "text-primary mr-2" %> <%= t('.features') %>
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <p class="text-sm text-base-content/70"><%= t('.features_hint') %></p>
+                <% Users::SafeSettings::TOGGLEABLE_FEATURES.each do |feature| %>
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <%= f.check_box "#{feature}_enabled",
+                                      checked: current_user.feature_enabled?(feature),
+                                      class: "toggle toggle-primary" %>
+                      <div class="min-w-0">
+                        <span class="label-text font-medium"><%= t(".#{feature}_feature") %></span>
+                        <p class="text-sm text-base-content/70 mt-1"><%= t(".#{feature}_feature_hint") %></p>
+                      </div>
+                    </label>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
             <% if DawarichSettings.self_hosted? && current_user.supporter? %>
               <!-- Badge Toggle (only for verified supporters) -->
               <div>

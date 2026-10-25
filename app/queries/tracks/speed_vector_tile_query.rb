@@ -39,18 +39,20 @@ class Tracks::SpeedVectorTileQuery < Tracks::VectorTileQuery
       WITH #{candidates_cte}#{clipped_paths_cte}, geometries AS MATERIALIZED (
         SELECT tracks.id,
           ROUND(segments.segment_speed::numeric)::double precision AS segment_speed,
-          CASE WHEN tracks.clipped THEN segments.path
-            ELSE COALESCE(segments.path, tracks.original_path) END AS geom
+          #{privacy_clip('(CASE WHEN tracks.clipped THEN segments.path
+            ELSE COALESCE(segments.path, tracks.original_path) END)')} AS geom,
+          segments.path IS NOT NULL OR #{GreatCircleSql.flight('tracks')} AS arc
         FROM candidates AS tracks
         LEFT JOIN LATERAL (#{segments_sql}) AS segments ON true
       ), grouped_segments AS (
         SELECT id, segment_speed, ST_Collect(geom) AS geom
         FROM geometries
-        WHERE ST_Intersects(geom, ST_Transform(#{margined_envelope}, 4326))
+        WHERE NOT ST_IsEmpty(geom)
+          AND #{GreatCircleSql.intersects('geom', "ST_Transform(#{margined_envelope}, 4326)", arc: 'arc')}
         GROUP BY id, segment_speed
       ), projected AS MATERIALIZED (
         SELECT id, segment_speed,
-          ST_AsMVTGeom(ST_Transform(geom, 3857), ST_TileEnvelope(#{z}, #{x}, #{y}),
+          ST_AsMVTGeom(ST_Transform(#{GreatCircleSql.densified('geom')}, 3857), ST_TileEnvelope(#{z}, #{x}, #{y}),
                        #{EXTENT}, #{BUFFER}, true) AS geom
         FROM grouped_segments
       ), features AS (

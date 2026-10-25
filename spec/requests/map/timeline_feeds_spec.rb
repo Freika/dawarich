@@ -246,4 +246,32 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
       end
     end
   end
+
+  describe 'privacy zones' do
+    let(:day) { Time.zone.parse('2025-01-15 00:00:00') }
+
+    before do
+      sign_in user
+      home = create(:place, user:, name: 'Home', latitude: 52.444, longitude: 13.5, lonlat: 'POINT(13.5 52.444)')
+      cafe = create(:place, user:, name: 'Cafe', latitude: 52.6, longitude: 13.7, lonlat: 'POINT(13.7 52.6)')
+      tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 500)
+      create(:tagging, tag:, taggable: home)
+      create(:visit, user:, place: home, area: nil, name: 'Home', started_at: day + 7.hours, ended_at: day + 8.hours)
+      create(:visit, user:, place: cafe, area: nil, name: 'Cafe', started_at: day + 10.hours,
+                     ended_at: day + 11.hours)
+    end
+
+    it 'lists the in-zone visit without putting its coordinates on the page' do
+      get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+
+      page = Nokogiri::HTML(response.body)
+      rows = page.css('[data-testid="visit-row"]').index_by { |row| row['aria-label'].split(' · ').first }
+      bounds = JSON.parse(page.at_css('.timeline-day')['data-bounds'])
+
+      expect(rows.keys).to contain_exactly('Home', 'Cafe')
+      expect(rows['Home']['data-visit-lat']).to be_nil
+      expect(rows['Cafe']['data-visit-lat']).to eq('52.6')
+      expect(bounds['sw_lat']).to eq(52.6)
+    end
+  end
 end

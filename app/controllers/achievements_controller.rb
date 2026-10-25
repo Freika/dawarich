@@ -4,6 +4,7 @@ class AchievementsController < ApplicationController
   ROWS_PER_PAGE = 12
 
   before_action :authenticate_user!
+  before_action :ensure_achievements_enabled!
   before_action :load_exploration, only: %i[index show]
 
   def index
@@ -78,6 +79,7 @@ class AchievementsController < ApplicationController
   def load_exploration
     @exploration = Achievements::Progress.exploration_for(current_user)
     @state = @exploration.state
+    @awards = current_user.user_achievements.pluck(:achievement_key, :earned_at).to_h
     @carriers = current_user.achievement_progresses
                             .where.not(achievement_key: Achievements::Progress::EXPLORATION_KEY)
                             .index_by(&:achievement_key)
@@ -92,7 +94,7 @@ class AchievementsController < ApplicationController
     definitions.map do |definition|
       Achievements::SetPresenter.new(
         definition: definition, state: @state, sharing: @carriers[definition.key],
-        timezone: current_user.safe_settings.timezone
+        timezone: current_user.safe_settings.timezone, awards: @awards
       )
     end
   end

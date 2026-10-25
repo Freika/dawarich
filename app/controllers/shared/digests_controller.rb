@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Shared::DigestsController < ApplicationController
+  include DefaultDateTimePreferences
   include FlashStreamable
 
   helper Users::DigestsHelper

@@ -28,9 +28,10 @@ module Places
 
         propagated_name = place.name
         if propagated_name.present?
-          stale_names = [Place::DEFAULT_NAME, previous_name].uniq - [propagated_name]
-          place.visits.where(name: stale_names).update_all(name: propagated_name) if stale_names.any?
+          stale_labels = [Place::DEFAULT_NAME, previous_name, nil].uniq - [propagated_name]
+          place.visits.where(location_label: stale_labels).update_all(location_label: propagated_name)
         end
+        place.carry_name_to_visits(previous_name) unless place.saved_change_to_name?
 
         place
       end

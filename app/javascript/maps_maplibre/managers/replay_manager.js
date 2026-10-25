@@ -1,4 +1,4 @@
-import { translate } from "i18n"
+import { formatDate, formatTime, translate } from "i18n"
 
 /**
  * ReplayManager - Core business logic for replay feature
@@ -204,11 +204,7 @@ export class ReplayManager {
     const [year, month, dayNum] = day.split("-").map(Number)
     const date = new Date(year, month - 1, dayNum)
 
-    return date.toLocaleDateString(document.documentElement.lang || undefined, {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
+    return formatDate(date, { month: "long" })
   }
 
   /**
@@ -435,9 +431,12 @@ export class ReplayManager {
    * @returns {string} Time string like '08:30'
    */
   static formatMinuteToTime(minute) {
-    const hours = Math.floor(minute / 60)
-    const mins = minute % 60
-    return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`
+    return formatTime(
+      new Date(Date.UTC(2000, 0, 1, Math.floor(minute / 60), minute % 60)),
+      {
+        timeZone: "UTC",
+      },
+    )
   }
 
   /**

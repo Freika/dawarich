@@ -19,7 +19,7 @@
     <% end %>
 
     <% if cooldown_active %>
-      <span class="text-xs opacity-70"><%= t('.available_again_at') %> <%= (current_user.visits_redetected_at + 1.hour).to_fs(:short) %>.</span>
+      <span class="text-xs opacity-70"><%= t('.available_again_at') %> <%= l(current_user.visits_redetected_at + 1.hour, format: :short_with_time) %>.</span>
     <% end %>
   </div>
 </div>

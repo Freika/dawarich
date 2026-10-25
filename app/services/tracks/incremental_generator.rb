@@ -45,6 +45,7 @@ class Tracks::IncrementalGenerator
         merge_with_recent_track(track) if track
       end
 
+      Tracks::HandoffSplitter.new(user).call
       Tracks::BoundaryDetector.new(user).resolve_cross_chunk_tracks
     end
   end
@@ -89,6 +90,8 @@ class Tracks::IncrementalGenerator
                     .first
 
     return unless preceding
+    return if Tracks::HandoffSplitter.handoff_between?(user, new_track.tracker_id, preceding.end_at,
+                                                       new_track.start_at)
 
     Tracks::Merger.new(preceding, new_track).call
   end
