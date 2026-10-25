@@ -89,7 +89,7 @@
     <label class="visit-editor__label" for="visit-editor-name-<%= entry[:visit_id] %>"><%= t('.name') %></label>
     <%= form_with url: visit_path(entry[:visit_id]), scope: :visit, method: :patch,
                   class: 'visit-editor__name-form' do |f| %>
-      <%= f.text_field :name, value: visit_entry_display_name(entry),
+      <%= f.text_field :name, value: entry[:editable_name], placeholder: visit_entry_display_name(entry),
                        id: "visit-editor-name-#{entry[:visit_id]}",
                        class: 'input input-xs input-bordered flex-1 min-w-0',
                        data: { testid: 'visit-editor-name' } %>

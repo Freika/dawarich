@@ -143,8 +143,32 @@ RSpec.describe Users::ExportData::Points, type: :service do
 
         expect(point_data['visit_reference']).to eq({
                                                       'name' => 'Work Visit',
+          'location_label' => visit.location_label,
           'started_at' => visit.started_at,
-          'ended_at' => visit.ended_at
+          'ended_at' => visit.ended_at,
+          'place_reference' => {
+            'name' => place.name,
+            'latitude' => place.lat,
+            'longitude' => place.lon
+          }
+                                                    })
+      end
+
+      it 'includes a visit reference when the visit has no custom name' do
+        visit.update!(name: nil, location_label: 'Detected address')
+
+        point_data = subject.find { |point| point['external_track_id'] == 'ext-123' }
+
+        expect(point_data['visit_reference']).to eq({
+                                                      'name' => nil,
+          'location_label' => 'Detected address',
+          'started_at' => visit.started_at,
+          'ended_at' => visit.ended_at,
+          'place_reference' => {
+            'name' => place.name,
+            'latitude' => place.lat,
+            'longitude' => place.lon
+          }
                                                     })
       end
 

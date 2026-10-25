@@ -959,16 +959,6 @@ ca:
       settings: Configuració
       setup_guide: guia de configuració
     maplibre:
-      area_creation_modal:
-        create_new_area: Crea una àrea nova
-        area_name: Nom de l'àrea *
-        radius: Radi
-        meters: metres
-        cancel: Cancel·la
-        e_g_home_office_gym: p. ex. Casa, Feina, Gimnàs...
-        radius_in_meters: Radi en metres
-        create_area: Crea l'àrea
-        creating: Creant...
       button_cluster:
         map_controls: Controls del mapa
         timeline: Línia de temps
@@ -1024,6 +1014,7 @@ ca:
         places: Llocs
         show_your_saved_places: Mostra els teus llocs desats
         enable_all_tags: Activa totes les etiquetes
+        show_place_boundaries: Mostra els límits dels llocs
         untagged: "🏷️ Sense etiqueta"
         click_tags_to_filter_places: Fes clic a les etiquetes per filtrar llocs
         photos: Fotos
@@ -1148,8 +1139,7 @@ ca:
         pick_a_day_in_the_calendar_to_see_visits: Tria un dia al calendari per veure les visites.
         create_visit: Crea una visita
         create_place: Crea un lloc
-        select_area: Selecciona una àrea
-        create_area: Crea una àrea
+        select_data_on_map: Selecciona dades al mapa
         replay: Reproducció
         enrich_photos: Enriqueix fotos
         close: Tanca
@@ -1353,12 +1343,16 @@ ca:
       rarr: "→"
       'on': el
       no_visits_yet: Encara no hi ha visites
-      rename: Canvia el nom
       merge: Fusiona
+      select_place_to_merge: Selecciona el lloc duplicat
+      no_matching_places: No s'han trobat llocs coincidents
+      search_places: Cerca llocs
+      search: Cerca
+      merge_confirmation: "Vols fusionar el lloc seleccionat amb \"%{survivor}\"? Les visites, etiquetes i notes s'hi traslladaran."
       notes: Notes
       save: Desa
       delete: Suprimeix
-      delete_this_place_this_cannot_be_undone: Suprimir aquest lloc? Aquesta acció no es pot desfer.
+      delete_this_place_this_cannot_be_undone: Vols suprimir aquest lloc? Les visites es conservaran sense cap lloc associat.
       manual_name_title: "Vas posar nom a aquest lloc, així que l'assignació automàtica de noms no el canviarà. Canvia'l a \"%{default_name}\" per tornar-lo a l'assignació automàtica."
       visit_count:
         one: "%{count} visita"
@@ -1367,6 +1361,9 @@ ca:
       no_nearby_places_found: No s'han trobat llocs propers
       load_more_search_up_to_distance_m: Carrega'n més (cerca fins a %{distance} m)
     index:
+      filters: Filtres de llocs
+      all_places: Tots els llocs
+      unconfirmed_places: Sense confirmar
       hello_there: Hola!
       here_you_ll_find_your_places_created_by_visits_suggestion: Aquí trobaràs els teus llocs, creats pel procés de suggeriment de visites. Però ara mateix no n'hi ha cap.
       name: Nom
@@ -1376,7 +1373,7 @@ ca:
       timeline: Línia de temps
       places: Llocs
       delete: Suprimeix
-      are_you_sure_deleting_a_place_will_result_in_deleting: Estàs segur? Suprimir un lloc eliminarà totes les visites d'aquest lloc.
+      are_you_sure_deleting_a_place_will_result_in_deleting: Vols suprimir aquest lloc? Les visites es conservaran sense cap lloc associat.
   points:
     address:
       address: 'Adreça:'
@@ -1790,7 +1787,7 @@ ca:
         tracks: Trajectes
         imports: Importacions
         exports: Exportacions
-        areas: Àrees
+        places: Llocs
         sign_in_history: Historial d'inicis de sessió
         total_sign_ins: Total d'inicis de sessió
         last_sign_in: Últim inici de sessió
@@ -1948,6 +1945,8 @@ ca:
     place_creation_modal:
       create_new_place: Crea un lloc nou
       place_name: Nom del lloc *
+      visit_radius: Radi de visita (metres) *
+      visit_radius_hint: Les visites amb el centre dins d’aquest radi es poden associar al lloc. Això no afecta la privadesa.
       note: Nota
       optional_add_any_notes_or_details_about_this_place: Opcional - Afegeix qualsevol nota o detall sobre aquest lloc
       tags: Etiquetes
@@ -3113,6 +3112,7 @@ ca:
             visit_not_found: Visita no trobada
           invalid_place: Lloc no vàlid
           invalid_area: Àrea no vàlida
+          conflicting_place_and_area: place_id i area_id no es poden especificar alhora
           at_least_2_visits_must_be_selected_for_merging: Cal seleccionar almenys 2 visites per fusionar-les
           one_or_more_visits_not_found: No s'ha trobat una o més visites
           count_visits_updated_successfully: "%{count} visites actualitzades correctament"
@@ -3240,6 +3240,8 @@ ca:
       place_was_successfully_destroyed: El lloc s'ha suprimit correctament.
       created: El lloc s'ha creat correctament!
       updated: El lloc s'ha actualitzat correctament!
+      merged: "S'ha fusionat \"%{duplicate}\" amb \"%{survivor}\"."
+      merge_visit_conflict: "Aquests llocs no es poden fusionar perquè la visita #%{first_id} i la visita #%{second_id} comencen a les %{started_at}. Resol primer aquestes visites."
     points:
       no_points_selected: No s'ha seleccionat cap punt.
       points_were_successfully_destroyed: Els punts s'han suprimit correctament.
@@ -3435,6 +3437,7 @@ ca:
       failed_to_delete_visits: No s'han pogut suprimir les visites.
       invalid_place: Lloc no vàlid
       invalid_area: Àrea no vàlida
+      conflicting_place_and_area: El lloc i l'àrea no es poden especificar alhora
       failed_to_update_visit: No s'ha pogut actualitzar la visita.
       select_visits_to_merge: Selecciona almenys 2 visites per fusionar-les.
       visits_must_share_day: Les visites han de ser del mateix dia.
@@ -3993,9 +3996,6 @@ ca:
       click_on_the_map_to_place_a_visit_esc_to: Fes clic al mapa per col·locar una visita (Esc per cancel·lar)
       visit_creation_modal_not_available: Diàleg de creació de visites no disponible
       visit_creation_controller_not_available: Controlador de creació de visites no disponible
-      area_drawer_controller_not_available: Controlador de dibuix d'àrees no disponible
-      area_created_successfully: Àrea creada correctament!
-      failed_to_reload_areas: No s'han pogut tornar a carregar les àrees
       family_feature_not_available: Funció de família no disponible
       failed_to_load_family_members: No s'han pogut carregar els membres de la família
       centered_on_family_member: Centrat en el membre de la família
@@ -4421,6 +4421,7 @@ ca:
       place: Lloc
       points: Punts
       radius: Radi
+      visit_radius: Radi de visita
       reason: Motiu
       route_information: Informació de la ruta
       selected_point: Punt seleccionat

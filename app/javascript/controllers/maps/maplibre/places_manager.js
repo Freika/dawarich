@@ -40,7 +40,10 @@ export class PlacesManager {
 
           await this.initializePlaceTagFilters()
 
-          const loadedPlaces = placesLayer.data?.features?.length || 0
+          const loadedPlaces =
+            placesLayer.data?.features?.filter(
+              (feature) => feature.properties?.featureKind === "center",
+            ).length || 0
           this.controller.updateLoadingCounts({
             counts: { places: loadedPlaces },
             isComplete: true,
@@ -55,6 +58,12 @@ export class PlacesManager {
         }
       }
     }
+  }
+
+  togglePlaceBoundaries(event) {
+    const enabled = event.target.checked
+    SettingsManager.updateSetting("placeBoundariesEnabled", enabled)
+    this.layerManager.getLayer("places")?.setBoundariesVisible(enabled)
   }
 
   /**
@@ -311,15 +320,14 @@ export class PlacesManager {
    * the backend. Replaces by id when the place is already present (edit).
    */
   _upsertPlaceFeature(placesLayer, place) {
-    const feature = this.dataLoader.placesToGeoJSON([place]).features[0]
-    if (!feature) return
+    const replacement = this.dataLoader.placesToGeoJSON([place]).features
+    if (!replacement.length) return
 
     const existing = placesLayer.data?.features || []
-    const index = existing.findIndex((f) => f.properties?.id === place.id)
-    const features =
-      index >= 0
-        ? existing.map((f, i) => (i === index ? feature : f))
-        : [...existing, feature]
+    const features = [
+      ...existing.filter((feature) => feature.properties?.id !== place.id),
+      ...replacement,
+    ]
 
     placesLayer.update({ type: "FeatureCollection", features })
   }

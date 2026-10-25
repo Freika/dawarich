@@ -20,11 +20,16 @@ RSpec.describe Visit, type: :model do
   end
 
   describe 'validations' do
-    it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:started_at) }
     it { is_expected.to validate_presence_of(:ended_at) }
     it { is_expected.to validate_presence_of(:duration) }
     it { is_expected.to validate_presence_of(:status) }
+
+    it 'allows an unplaced visit to use a location label without a custom name' do
+      visit = build(:visit, place: nil, name: nil, location_label: 'Alexanderplatz 1')
+
+      expect(visit).to be_valid
+    end
 
     it 'validates ended_at is greater than started_at' do
       visit = build(:visit, started_at: Time.zone.now, ended_at: Time.zone.now - 1.hour)
@@ -184,14 +189,14 @@ RSpec.describe Visit, type: :model do
     it 'reflects a newly created visit instead of serving stale cached counts' do
       expect(summary_status_counts).to eq({}) # warms the 5-minute cache with zero visits
 
-      create(:visit, user: user, area: nil, place: nil, status: :suggested,
+      create(:visit, user: user, place: nil, status: :suggested,
                      started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
 
       expect(summary_status_counts).to include('suggested' => 1)
     end
 
     it 'reflects a status change after the cache is warm' do
-      visit = create(:visit, user: user, area: nil, place: nil, status: :suggested,
+      visit = create(:visit, user: user, place: nil, status: :suggested,
                              started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
       expect(summary_status_counts).to include('suggested' => 1) # warm cache
 
@@ -203,16 +208,45 @@ RSpec.describe Visit, type: :model do
     end
 
     it 'does not bust the cache for demo visits (the demo importer busts once at the end)' do
-      create(:visit, user: user, area: nil, place: nil, status: :confirmed,
+      create(:visit, user: user, place: nil, status: :confirmed,
                      started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
       expect(summary_status_counts).to include('confirmed' => 1) # warm cache
 
-      create(:visit, user: user, area: nil, place: nil, status: :suggested, demo: true,
+      create(:visit, user: user, place: nil, status: :suggested, demo: true,
                      started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
 
       counts = summary_status_counts
       expect(counts).to include('confirmed' => 1)
       expect(counts).not_to include('suggested')
+    end
+  end
+
+  describe '#clear_echoed_name' do
+    let(:user) { create(:user) }
+    let(:place) { create(:place, user:, name: 'Old Cafe') }
+
+    it 'drops a name that only repeated the current Place' do
+      visit = build(:visit, user:, place:, name: 'Old Cafe', location_label: 'Old Cafe')
+
+      visit.clear_echoed_name
+
+      expect(visit.name).to be_nil
+    end
+
+    it 'keeps a custom name even when the upgrade copied it into the label' do
+      visit = build(:visit, user:, place:, name: 'Dinner with Anna', location_label: 'Dinner with Anna')
+
+      visit.clear_echoed_name
+
+      expect(visit.name).to eq('Dinner with Anna')
+    end
+
+    it 'drops the unknown-location placeholder name' do
+      visit = build(:visit, user:, place:, name: Visit::DEFAULT_NAME)
+
+      visit.clear_echoed_name
+
+      expect(visit.name).to be_nil
     end
   end
 end

@@ -121,13 +121,18 @@ class Users::ExportData::Points
         c.iso_a2 as country_iso_a2,
         c.iso_a3 as country_iso_a3,
         v.name as visit_name,
+        v.location_label as visit_location_label,
         v.started_at as visit_started_at,
-        v.ended_at as visit_ended_at
+        v.ended_at as visit_ended_at,
+        vp.name as visit_place_name,
+        vp.latitude as visit_place_latitude,
+        vp.longitude as visit_place_longitude
       FROM points p
       LEFT JOIN point_sources ps ON p.source_id = ps.id
       LEFT JOIN imports i ON p.import_id = i.id
       LEFT JOIN countries c ON p.country_id = c.id
       LEFT JOIN visits v ON p.visit_id = v.id
+      LEFT JOIN places vp ON v.place_id = vp.id
       WHERE p.user_id = $1
       ORDER BY p.id
     SQL
@@ -152,13 +157,18 @@ class Users::ExportData::Points
         c.iso_a2 as country_iso_a2,
         c.iso_a3 as country_iso_a3,
         v.name as visit_name,
+        v.location_label as visit_location_label,
         v.started_at as visit_started_at,
-        v.ended_at as visit_ended_at
+        v.ended_at as visit_ended_at,
+        vp.name as visit_place_name,
+        vp.latitude as visit_place_latitude,
+        vp.longitude as visit_place_longitude
       FROM points p
       LEFT JOIN point_sources ps ON p.source_id = ps.id
       LEFT JOIN imports i ON p.import_id = i.id
       LEFT JOIN countries c ON p.country_id = c.id
       LEFT JOIN visits v ON p.visit_id = v.id
+      LEFT JOIN places vp ON v.place_id = vp.id
       WHERE p.id IN (?)
       ORDER BY p.id
     SQL
@@ -223,12 +233,24 @@ class Users::ExportData::Points
       }
     end
 
-    return unless row['visit_name']
+    return unless row['visit_started_at']
 
     point_hash['visit_reference'] = {
       'name' => row['visit_name'],
+      'location_label' => row['visit_location_label'],
       'started_at' => row['visit_started_at'],
-      'ended_at' => row['visit_ended_at']
+      'ended_at' => row['visit_ended_at'],
+      'place_reference' => visit_place_reference(row)
+    }
+  end
+
+  def visit_place_reference(row)
+    return unless row['visit_place_name']
+
+    {
+      'name' => row['visit_place_name'],
+      'latitude' => row['visit_place_latitude'].to_f,
+      'longitude' => row['visit_place_longitude'].to_f
     }
   end
 

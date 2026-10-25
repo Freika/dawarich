@@ -140,6 +140,10 @@ Rails.application.routes.draw do
   end
   resources :areas, only: %i[create update]
   resources :places, only: %i[index show destroy create update] do
+    member do
+      patch :confirm
+      post :merge
+    end
     collection do
       get 'nearby'
     end

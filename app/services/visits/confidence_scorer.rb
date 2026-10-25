@@ -15,7 +15,7 @@ module Visits
       corroboration: 0.10
     }.freeze
 
-    PLACE_MATCH_SCORES = { area: 1.0, place: 0.85, poi: 0.6, address: 0.35 }.freeze
+    PLACE_MATCH_SCORES = { area: 1.0, place: 1.0, poi: 0.6, address: 0.35 }.freeze
 
     # An uncorroborated stay isn't suspicious — segments may simply not cover
     # it — so absence scores neutral, not zero.

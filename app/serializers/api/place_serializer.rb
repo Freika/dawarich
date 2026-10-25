@@ -7,14 +7,15 @@ class Api::PlaceSerializer
 
   def call
     {
-      id:         place.id,
-      name:       place.name,
-      longitude:  place.lon,
-      latitude:   place.lat,
-      city:       place.city,
-      country:    place.country,
-      source:     place.source,
-      geodata:    place.geodata,
+      id: place.id,
+      name: place.name,
+      longitude: place.lon,
+      latitude: place.lat,
+      city: place.city,
+      country: place.country,
+      source: place.source,
+      geodata: place.geodata,
+      visit_radius: place.visit_radius,
       created_at: place.created_at,
       updated_at: place.updated_at,
       reverse_geocoded_at: place.reverse_geocoded_at,

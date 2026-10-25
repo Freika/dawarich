@@ -10,7 +10,7 @@ require 'zip'
 # ├── manifest.json                 # Format version, counts, file listing
 # ├── files/                        # Attached files (imports, exports, raw data archives)
 # ├── settings.jsonl                # Single line (user settings)
-# ├── areas.jsonl                   # One area per line
+# ├── areas.jsonl                   # Legacy Area compatibility records
 # ├── tags.jsonl                    # One tag per line
 # ├── taggings.jsonl                # One tagging per line (with references)
 # ├── imports.jsonl                 # One import record per line
@@ -148,10 +148,22 @@ class Users::ExportData
 
   def export_areas
     areas_path = export_directory.join('areas.jsonl')
+    mappings = LegacyAreaPlaceMapping.includes(:place)
+                                     .where(area_id: user.areas.select(:id))
+                                     .index_by(&:area_id)
     count = 0
     File.open(areas_path, 'w') do |file|
       user.areas.find_each do |area|
-        file.puts(area.as_json(except: %w[user_id id]).to_json)
+        payload = area.as_json(except: %w[user_id id])
+        if (place = mappings[area.id]&.place)
+          payload.merge!(
+            'name' => place.name,
+            'latitude' => place.lat,
+            'longitude' => place.lon,
+            'radius' => place.visit_radius
+          )
+        end
+        file.puts(payload.to_json)
         count += 1
       end
     end
@@ -389,7 +401,7 @@ class Users::ExportData
       notifications: user.notifications.count,
       points: user.points_count.to_i,
       visits: user.visits.count,
-      places: user.visited_places.count,
+      places: user.places.count,
       tags: user.tags.count,
       tracks: user.tracks.count,
       digests: user.digests.count,
@@ -434,7 +446,6 @@ class Users::ExportData
       "#{counts[:visits]} visits, " \
       "#{counts[:places]} places, " \
       "#{counts[:trips]} trips, " \
-      "#{counts[:areas]} areas, " \
       "#{counts[:imports]} imports, " \
       "#{counts[:exports]} exports, " \
       "#{counts[:stats]} stats, " \

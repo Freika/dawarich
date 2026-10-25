@@ -11,9 +11,10 @@ module McpTools
           latitude: { type: 'number' },
           longitude: { type: 'number' },
           city: { type: %w[string null] },
-          country: { type: %w[string null] }
+          country: { type: %w[string null] },
+          visit_radius: { type: 'integer', description: 'Visit Radius in meters' }
         },
-        required: %w[name latitude longitude city country]
+        required: %w[name latitude longitude city country visit_radius]
       },
       area: {
         type: %w[object null],
@@ -152,7 +153,8 @@ module McpTools
           latitude: location.fetch(:lat).to_f,
           longitude: location.fetch(:lng).to_f,
           city: location[:city],
-          country: location[:country]
+          country: location[:country],
+          visit_radius: location.fetch(:visit_radius).to_i
         }
       end
 

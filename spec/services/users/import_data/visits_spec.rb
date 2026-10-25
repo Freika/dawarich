@@ -116,7 +116,7 @@ RSpec.describe Users::ImportData::Visits, type: :service do
 
       context 'when place exists with nearby coordinates' do
         let!(:nearby_place) do
-          create(:place, user: user, name: 'Different Name', latitude: 40.75895, longitude: -73.98515)
+          create(:place, user: user, name: 'Office Building', latitude: 40.75895, longitude: -73.98515)
         end
 
         it 'uses the nearby place' do
@@ -127,6 +127,107 @@ RSpec.describe Users::ImportData::Visits, type: :service do
           visit = user.visits.find_by(name: 'Office Visit')
           expect(visit.place).to eq(nearby_place)
         end
+      end
+
+      context 'when only a differently named place is nearby' do
+        before do
+          create(:place, user:, name: 'Different Name', latitude: 40.75895, longitude: -73.98515)
+        end
+
+        it 'creates the referenced Place instead of merging by proximity alone' do
+          service = described_class.new(user, visits_data)
+
+          expect { service.call }.to change { Place.count }.by(1)
+          expect(user.visits.find_by(name: 'Office Visit').place.name).to eq('Office Building')
+        end
+      end
+    end
+
+    context 'with raw foreign keys in the archive row' do
+      let(:other_place) { create(:place, user: create(:user), name: 'Elsewhere') }
+      let(:other_import) { create(:import) }
+      let(:visits_data) do
+        [{
+          'name' => 'Tampered', 'started_at' => '2024-01-01T09:00:00Z', 'ended_at' => '2024-01-01T10:00:00Z',
+          'duration' => 3600, 'status' => 'confirmed', 'place_id' => other_place.id, 'import_id' => other_import.id
+        }]
+      end
+
+      it 'does not link the visit to records the user does not own' do
+        described_class.new(user, visits_data).call
+
+        expect(user.visits.last).to have_attributes(place_id: nil, import_id: nil)
+      end
+    end
+
+    context 'with a legacy area_id' do
+      let(:visits_data) do
+        [
+          {
+            'name' => 'Home',
+            'area_id' => 91,
+            'started_at' => '2024-01-01T18:00:00Z',
+            'ended_at' => '2024-01-01T22:00:00Z',
+            'duration' => 14_400,
+            'status' => 'confirmed'
+          }
+        ]
+      end
+      let(:reference) do
+        {
+          'name' => 'Home',
+          'latitude' => '40.7128',
+          'longitude' => '-74.0060',
+          'source' => 'manual',
+          'visit_radius' => 150
+        }
+      end
+
+      it 'remaps it to a canonical Place and never persists the foreign Area ID' do
+        service = described_class.new(
+          user,
+          visits_data,
+          legacy_area_place_references: { '91' => reference }
+        )
+
+        service.call
+
+        visit = user.visits.find_by(name: 'Home')
+        expect(visit.area_id).to be_nil
+        expect(visit.place).to have_attributes(name: 'Home', visit_radius: 150)
+        expect(visit.location_label).to eq('Home')
+      end
+    end
+
+    context 'with a visit from an archive made before Places' do
+      let(:legacy_row) do
+        {
+          'name' => 'Corner Cafe',
+          'started_at' => '2024-01-01T09:00:00Z',
+          'ended_at' => '2024-01-01T10:00:00Z',
+          'duration' => 3600,
+          'status' => 'suggested'
+        }
+      end
+
+      it 'keeps a suggested name only as its label, like the upgrade backfill' do
+        described_class.new(user, [legacy_row]).call
+
+        expect(user.visits.sole).to have_attributes(name: nil, location_label: 'Corner Cafe')
+      end
+
+      it 'keeps a confirmed name and copies it into the label' do
+        described_class.new(user, [legacy_row.merge('status' => 'confirmed')]).call
+
+        expect(user.visits.sole).to have_attributes(name: 'Corner Cafe', location_label: 'Corner Cafe')
+      end
+
+      it 'does not duplicate the visit the upgrade backfill already relabelled' do
+        create(:visit, user:, name: nil, location_label: 'Corner Cafe',
+                       started_at: Time.zone.parse('2024-01-01T09:00:00Z'),
+                       ended_at: Time.zone.parse('2024-01-01T10:00:00Z'))
+
+        expect { described_class.new(user, [legacy_row]).call }.not_to(change { user.visits.count })
       end
     end
 
@@ -148,7 +249,7 @@ RSpec.describe Users::ImportData::Visits, type: :service do
         service = described_class.new(user, visits_data)
         service.call
 
-        visit = user.visits.find_by(name: 'Unknown Visit')
+        visit = user.visits.find_by(location_label: 'Unknown Visit')
         expect(visit).to be_present
         expect(visit.place).to be_nil
       end
@@ -185,6 +286,34 @@ RSpec.describe Users::ImportData::Visits, type: :service do
         service = described_class.new(user, visits_data)
 
         expect(service.call).to eq(0)
+      end
+    end
+
+    context 'with unnamed visits in the same time window at different Places' do
+      let(:visits_data) do
+        %w[Home Office].each_with_index.map do |place_name, index|
+          {
+            'name' => nil,
+            'location_label' => 'Detected stop',
+            'started_at' => '2024-01-01T09:00:00Z',
+            'ended_at' => '2024-01-01T10:00:00Z',
+            'duration' => 3600,
+            'status' => 'confirmed',
+            'place_reference' => {
+              'name' => place_name,
+              'latitude' => (40 + index).to_s,
+              'longitude' => (-74 - index).to_s,
+              'source' => 'manual'
+            }
+          }
+        end
+      end
+
+      it 'preserves both distinct visits' do
+        service = described_class.new(user, visits_data)
+
+        expect(service.call).to eq(2)
+        expect(user.visits.includes(:place).map { |visit| visit.place.name }).to contain_exactly('Home', 'Office')
       end
     end
 

@@ -58,6 +58,17 @@ RSpec.describe '/insights', type: :request do
           expect(rows.map { |row| row['data-comparison-year'] }).to eq(%w[current previous])
           expect(rows.last.at_css('[data-comparison-bar]')['class']).to include('bg-warning')
         end
+
+        it 'renders unnamed confirmed visits under their displayed Place name' do
+          place = create(:place, user: user, name: 'Coffee Shop')
+          create(:visit, user: user, place: place, name: nil, status: :confirmed,
+                         started_at: Time.zone.local(Time.current.year, 5, 1, 10),
+                         ended_at: Time.zone.local(Time.current.year, 5, 1, 11))
+
+          get details_insights_url(year: Time.current.year.to_s)
+
+          expect(response.body).to include('Coffee Shop')
+        end
       end
     end
 

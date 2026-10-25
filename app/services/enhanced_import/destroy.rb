@@ -39,6 +39,7 @@ module EnhancedImport
       return if place_ids.empty?
 
       still_referenced = Visit.where(place_id: place_ids).distinct.pluck(:place_id)
+      still_referenced.concat(LegacyAreaPlaceMapping.where(place_id: place_ids).distinct.pluck(:place_id))
       destroy_in_batches(Place.where(user_id: import.user_id, id: place_ids - still_referenced))
     end
 

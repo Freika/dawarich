@@ -94,7 +94,7 @@ RSpec.describe EnhancedImport::Writers::PlaceWriter do
 
       next_run.upsert(extracted(name: 'Riquet Kaffeehaus', identity: 'gpx:renamed'))
 
-      expect(visit.reload.name).to eq('Riquet Kaffeehaus')
+      expect(visit.reload).to have_attributes(name: nil, display_name: 'Riquet Kaffeehaus')
     end
   end
 

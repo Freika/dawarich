@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Visit < ApplicationRecord
+  DEFAULT_NAME = 'Unknown Location'
+
   include Demoable
   include Notable
 
@@ -21,7 +23,7 @@ class Visit < ApplicationRecord
   after_commit :cleanup_place_if_orphan, on: %i[update destroy], if: :left_active_state?
   after_commit :bust_timeline_month_summary_cache, unless: -> { demo? && previously_new_record? }
 
-  validates :started_at, :ended_at, :duration, :name, :status, presence: true
+  validates :started_at, :ended_at, :duration, :status, presence: true
 
   validates :ended_at, comparison: { greater_than: :started_at }
   validates :confidence, numericality: { only_integer: true, in: 0..100 }, allow_nil: true
@@ -40,6 +42,18 @@ class Visit < ApplicationRecord
     active.where(status: :suggested, import_id: nil, demo: false)
           .where.not(id: Note.where(attachable_type: 'Visit').select(:attachable_id))
   }
+
+  POINT_WEIGHT_SQL = '1.0 / GREATEST(COALESCE(points.accuracy, ' \
+                     "#{Visits::Detection::StayAssembler::DEFAULT_ACCURACY_M}), 1)".freeze
+  CENTER_LATITUDE_SQL = "SUM(ST_Y(points.lonlat::geometry) * #{POINT_WEIGHT_SQL}) / SUM(#{POINT_WEIGHT_SQL})".freeze
+  CENTER_LONGITUDE_SQL = "SUM(ST_X(points.lonlat::geometry) * #{POINT_WEIGHT_SQL}) / SUM(#{POINT_WEIGHT_SQL})".freeze
+
+  def self.weighted_centers(visit_ids)
+    Point.where(visit_id: visit_ids)
+         .group(:visit_id)
+         .pluck(:visit_id, Arel.sql(CENTER_LATITUDE_SQL), Arel.sql(CENTER_LONGITUDE_SQL))
+         .to_h { |visit_id, latitude, longitude| [visit_id, [latitude.to_f, longitude.to_f]] }
+  end
 
   def soft_delete!
     update!(deleted_at: Time.current)
@@ -63,7 +77,27 @@ class Visit < ApplicationRecord
   end
 
   def default_name
-    name || area&.name || place&.name
+    display_name
+  end
+
+  def display_name
+    name.presence || place&.name || location_label.presence || area&.name || DEFAULT_NAME
+  end
+
+  def clear_echoed_name
+    self.name = nil if name.present? && name.in?([place&.name, area&.name, DEFAULT_NAME])
+  end
+
+  def self.display_name_sql
+    <<~SQL.squish
+      COALESCE(
+        NULLIF(visits.name, ''),
+        NULLIF(places.name, ''),
+        NULLIF(visits.location_label, ''),
+        NULLIF(areas.name, ''),
+        #{connection.quote(DEFAULT_NAME)}
+      )
+    SQL
   end
 
   # in meters
