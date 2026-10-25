@@ -46,6 +46,18 @@ RSpec.describe Achievements::CheckJob do
     expect(checker).to have_received(:call)
   end
 
+  it 'skips users who turned achievements off and releases the debounce lock' do
+    user.update!(settings: { 'achievements_enabled' => false })
+    allow(Achievements::RegionSetChecker).to receive(:new)
+    described_class.schedule(user.id, oldest_timestamp: 123)
+
+    described_class.perform_now(user.id)
+
+    expect(Achievements::RegionSetChecker).not_to have_received(:new)
+    expect(Sidekiq.redis { |redis| redis.exists(described_class.lock_key(user.id)) }).to eq(0)
+    expect(described_class.pending_members(user.id)).to be_empty
+  end
+
   it 'does nothing for a missing user' do
     expect { described_class.perform_now(-1) }.not_to raise_error
   end

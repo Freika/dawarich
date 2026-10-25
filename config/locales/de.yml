@@ -1618,6 +1618,12 @@ de:
         general_settings: Allgemeine Einstellungen
         save_changes: Änderungen speichern
         test_email_worker_hint: Stellt eine Testnachricht über denselben Hintergrundprozess wie System-E-Mails in die Warteschlange
+        features: "Funktionen"
+        features_hint: "Schalte Teile von Dawarich aus, die du nicht nutzt. Sie verschwinden aus der Oberfläche, und ihre Hintergrundverarbeitung wird beendet."
+        family_feature: "Familie"
+        family_feature_hint: "Standortfreigabe mit Familienmitgliedern. Wenn du sie ausschaltest, werden dein Standort und nur für die Familie geteilte Reiselinks nicht mehr geteilt; du bleibst Mitglied. Wenn du sie wieder einschaltest, ist die Standortfreigabe zunächst aus."
+        achievements_feature: "Erfolge"
+        achievements_feature_hint: "Erkundete Regionen und Abzeichen. Wenn du sie ausschaltest, wird der Fortschritt nicht mehr berechnet und deine öffentlichen Erfolgslinks werden deaktiviert."
     integrations:
       trek:
         title: "TREK-Integration"
@@ -3199,6 +3205,7 @@ de:
       your_account_has_been_deleted: Dein Konto wurde gelöscht.
       you_are_not_authorized_to_perform_this_action: Du bist nicht berechtigt, diese Aktion auszuführen.
       family_plan_required: Für diese Funktion ist der Family-Tarif erforderlich.
+      feature_disabled_in_settings: "Diese Funktion ist in deinen Einstellungen ausgeschaltet."
     areas:
       created: Bereich erfolgreich erstellt!
       updated: Bereich erfolgreich aktualisiert!
@@ -3637,6 +3644,7 @@ de:
         safe_email_is_requesting_your_location_link: "%{email} fragt nach deinem Standort. %{link}"
         users_must_be_in_the_same_family: Benutzer müssen in derselben Familie sein
         target_user_is_already_sharing_their_location: Zielbenutzer teilt bereits seinen Standort
+        target_user_turned_family_off: "Dieses Mitglied hat die Familienfunktionen ausgeschaltet"
         request_cooldown_active_please_wait_before_requesting_again: Anfragekühlauf der Aktivität. Bitte warte, bevor du erneut anfragst.
         view_request: Anfrage ansehen
       invite:

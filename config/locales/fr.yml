@@ -2364,6 +2364,12 @@ fr:
         your_language: "Votre langue"
         the_interface_emails_and_notifications_will_use_this_language: "L'interface, les e-mails et les notifications utiliseront cette langue."
         test_email_worker_hint: Ajoute un message de test à la file du même processus en arrière-plan que les e-mails système
+        features: "Fonctionnalités"
+        features_hint: "Désactivez les parties de Dawarich que vous n'utilisez pas. Elles disparaissent de l'interface et leur traitement en arrière-plan s'arrête."
+        family_feature: "Famille"
+        family_feature_hint: "Partage de position avec les membres de la famille. La désactiver arrête le partage de votre position et des liens de voyage réservés à la famille ; vous restez membre. Lorsque vous la réactivez, le partage de position est désactivé."
+        achievements_feature: "Succès"
+        achievements_feature_hint: "Régions explorées et badges. Les désactiver arrête le calcul de la progression et désactive vos liens publics de succès."
     integrations:
       trek:
         title: "Intégration TREK"
@@ -4067,6 +4073,7 @@ fr:
       you_are_not_authorized_to_perform_this_action: Vous n'êtes pas autorisé à effectuer
         cette action.
       family_plan_required: Cette fonctionnalité nécessite un plan Familial.
+      feature_disabled_in_settings: "Cette fonctionnalité est désactivée dans vos paramètres."
     areas:
       created: Zone créée avec succès !
       updated: Zone mise à jour avec succès !
@@ -4643,6 +4650,7 @@ fr:
           même famille
         target_user_is_already_sharing_their_location: L'utilisateur ciblé partage
           déjà sa localisation
+        target_user_turned_family_off: "Ce membre a désactivé les fonctionnalités familiales"
         request_cooldown_active_please_wait_before_requesting_again: Une demande a
           déjà été envoyée récemment. Veuillez patienter avant de réessayer.
         view_request: Voir la demande

@@ -73,6 +73,15 @@ RSpec.describe Family::Membership, type: :model do
 
     before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
 
+    it 'stops location sharing even when the member had turned family off' do
+      member.update_family_location_sharing!(true, duration: 'permanent')
+      member.update!(settings: member.settings.merge('family_enabled' => false))
+
+      membership.destroy!
+
+      expect(member.reload.settings.dig('family', 'location_sharing', 'enabled')).not_to be true
+    end
+
     it 'drops a member holding only the inherited grant to the free tier' do
       member.update!(plan: :pro, status: :active, active_until: 1.month.from_now, subscription_source: :none)
 

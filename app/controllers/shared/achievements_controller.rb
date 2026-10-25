@@ -40,6 +40,7 @@ class Shared::AchievementsController < ApplicationController
   def shared_progress
     @shared_progress ||= Achievements::Progress.find_by(sharing_uuid: params[:uuid], sharing_enabled: true)
     return if @shared_progress&.user.nil?
+    return unless @shared_progress.user.feature_enabled?(:achievements)
 
     @shared_progress if Achievements::Registry.find(@shared_progress.achievement_key)
   end

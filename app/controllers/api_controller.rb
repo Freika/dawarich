@@ -91,6 +91,13 @@ class ApiController < ApplicationController
     return unless current_api_user # auth already handled by authenticate_api_key
     return if DawarichSettings.family_feature_available_for?(current_api_user)
 
+    unless current_api_user.feature_enabled?(:family)
+      return render json: {
+        error: 'feature_disabled',
+        message: I18n.t('controllers.application.feature_disabled_in_settings')
+      }, status: :forbidden
+    end
+
     render json: {
       error: 'family_plan_required',
       message: I18n.t('controllers.application.family_plan_required'),

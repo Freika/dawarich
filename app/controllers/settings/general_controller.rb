@@ -18,6 +18,7 @@ class Settings::GeneralController < ApplicationController
     update_date_time_preferences
     update_email_settings
     update_supporter_settings
+    update_feature_settings
 
     if current_user.save
       redirect_to settings_general_index_path, notice: I18n.t('controllers.settings.general.settings_updated')
@@ -140,6 +141,15 @@ class Settings::GeneralController < ApplicationController
 
     current_user.settings['news_emails_enabled'] =
       ActiveModel::Type::Boolean.new.cast(params[:news_emails_enabled])
+  end
+
+  def update_feature_settings
+    Users::SafeSettings::TOGGLEABLE_FEATURES.each do |feature|
+      key = "#{feature}_enabled"
+      next unless params.key?(key)
+
+      current_user.settings[key] = ActiveModel::Type::Boolean.new.cast(params[key])
+    end
   end
 
   def update_supporter_settings

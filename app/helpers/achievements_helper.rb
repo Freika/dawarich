@@ -4,7 +4,7 @@ module AchievementsHelper
   ACHIEVEMENT_STYLESHEETS = %w[achievements achievements_spectral achievements_unlocks].freeze
 
   def achievements_visible?
-    user_signed_in?
+    user_signed_in? && current_user.feature_enabled?(:achievements)
   end
 
   def achievement_stylesheet_tags

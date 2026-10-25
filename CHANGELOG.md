@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - The Places page can list only Unconfirmed Places, and each Place opens a details page where a duplicate Place can be merged into it together with its Visits, tags and notes.
+- Turn off Family or Achievements in Settings → General. A disabled feature disappears from the interface and its background processing stops; the mobile app can read and change the choice through `/api/v1/settings`. With Family off, the family API endpoints answer 403 `feature_disabled`; `/api/v1/users/me` reports both features under `features`.
 - Choose how dates and times are shown in Settings → General: an automatic date format or `DD.MM.YYYY`, `DD/MM/YYYY`, `MM/DD/YYYY` or `YYYY-MM-DD`, a 12-hour or 24-hour clock, and whether weeks start on Monday or Sunday. The choice applies across the app, in emails and on the map, and the mobile app can read and change it through `/api/v1/settings`.
 
 ### Changed
