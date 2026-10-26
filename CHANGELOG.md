@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The Prometheus `/metrics` endpoint works again on 1.18.0. Every scrape used to fail with a server error since the upgrade to Ruby 4.0. (#3910)
 - Points recorded at the same location can again be selected, moved and deleted one by one on the map at maximum zoom. (#3846)
 - Photos from a PhotoPrism server running in a time zone east of UTC (for example `TZ=Europe/Berlin`) show up on the map again when you pick a single day. Before, they only appeared once the range ended a day later. #3651
+- Scheduled jobs no longer pile up in Sidekiq's dead jobs with `undefined method 'jid='` when an older Sidekiq process that doesn't know a newly added job shares the same Redis. Every scheduled job is now always queued as an ActiveJob. (#3715)
 
 ## [1.18.0] - 2026-10-25, Berlin
 

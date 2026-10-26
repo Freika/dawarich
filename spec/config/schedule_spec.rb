@@ -35,6 +35,10 @@ RSpec.describe 'config/schedule.yml' do
       it 'schedules onto a queue Sidekiq actually processes' do
         expect(sidekiq_queues).to include(scheduled_queue)
       end
+
+      it 'marks the entry as an ActiveJob' do
+        expect(config['active_job']).to be(true)
+      end
     end
   end
 end
