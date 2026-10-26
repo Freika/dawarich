@@ -576,6 +576,11 @@ export class AreaSelectionManager {
     Toast.info(translate("messages.selection_cancelled"))
   }
 
+  refreshPointTiles() {
+    this.controller.layerManager.getLayer("points-mvt")?.refresh()
+    this.controller.layerManager.getLayer("tracks-mvt")?.refresh()
+  }
+
   async refreshAnomaliesIfEnabled() {
     if (!anomaliesVisible(SettingsManager.getSettings())) return
 
@@ -620,6 +625,7 @@ export class AreaSelectionManager {
       )
 
       this.cancelAreaSelection()
+      this.refreshPointTiles()
 
       try {
         await this.controller.loadMapData({
@@ -695,6 +701,7 @@ export class AreaSelectionManager {
       )
 
       this.cancelAreaSelection()
+      this.refreshPointTiles()
 
       try {
         await this.controller.loadMapData({
