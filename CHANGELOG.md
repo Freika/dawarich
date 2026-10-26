@@ -6,9 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- The Select data on map tool can now look across all your data. Turn on "Select data from all time" in the Tools panel before drawing the rectangle to get every point and visit in that area, whatever dates the map shows. When an area holds more than 10,000 points, only the most recent 10,000 are shown and a notice says so. On the Lite plan, "all time" covers the last 12 months. (#3873)
+
 ### Fixed
 
 - Searching for a place in the visit edit panel finds nearby places again when you type the name, for example the Burger King next to the visit. Before, typing word by word with a geocoding provider limited to one request per second, such as the public Photon server, often skipped the final search, so only saved places with that name somewhere else in the world showed up. The search now tries once more a second later. (#3590)
+- Reverse geocoding through ChibiGeo uses HTTPS even when `PHOTON_API_USE_HTTPS` is not set. Before, a host written with a path, such as `app.chibigeo.com/v1/photon`, was not recognised as HTTPS-only, so Dawarich sent its requests over plain HTTP and they failed. (#3108)
 - The country list next to the Activity Overview calendar on the Insights page is the same height as the calendar again and scrolls when it has more countries than fit. The calendar view switch moved to the card header, and the notes about counted days moved to the bottom of the card. (#3866)
 - Points that arrive late inside an existing route, for example through the API or an import, now join that route instead of staying a separate line, also when they come from a device without a name. A route that gains points keeps its shared links and corrected transport modes. (#3036)
 - Countries you only flew over no longer count when the flight comes from a KML file without speed data, such as a Flightradar24 export. Speed is now worked out from the time and distance between points. KML files imported earlier are updated in the background after the upgrade, and their monthly statistics, digests and trip countries are recalculated. (#3900)

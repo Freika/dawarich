@@ -1151,6 +1151,7 @@ zh:
         create_visit: 创建到访记录
         create_place: 创建地点
         select_data_on_map: 在地图上选择数据
+        select_data_all_time: 选择全部时间的数据
         replay: 重播
         enrich_photos: 为照片补充 GPS 坐标
         close: 关闭
@@ -4453,6 +4454,7 @@ zh:
       selected: 已选择 %{items}
       too_many_points: 轨迹点过多（%{requested}）。请画一个较小的区域；每次最多删除 %{limit} 个。
       too_many_selected_points: 选择的轨迹点过多（%{requested}）。请画一个较小的区域；每次最多删除 %{limit} 个。
+      truncated: 仅显示此区域中最近的 %{limit} 个点。
       visits:
         one: "%{count} 条到访记录"
         other: "%{count} 条到访记录"

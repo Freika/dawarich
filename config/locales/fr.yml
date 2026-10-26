@@ -1857,6 +1857,7 @@ fr:
         create_visit: Créer Visite
         create_place: Créer Lieu
         select_data_on_map: Sélectionner des données sur la carte
+        select_data_all_time: Sélectionner les données de toute la période
         replay: Rejouer
         enrich_photos: Enrichir les photos
         close: Fermer
@@ -5649,6 +5650,7 @@ fr:
         petite ; max %{limit} par suppression.
       too_many_selected_points: Trop de points sélectionnés (%{requested}). Veuillez
         dessiner une zone plus petite ; max %{limit} par suppression.
+      truncated: Seuls les %{limit} points les plus récents de cette zone sont affichés.
       visits:
         one: "%{count} visite"
         other: "%{count} visites"
