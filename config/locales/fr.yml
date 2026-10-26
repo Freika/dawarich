@@ -1780,7 +1780,7 @@ fr:
           impossibles, coordonnées invalides. Désactivez cette option pour voir tous
           les points bruts.
         hide_inaccurate_points: "Masquer les points imprécis"
-        hide_inaccurate_points_hint: "Masque aussi les points dont la précision indiquée est moins bonne que le seuil ci-dessous. Utile pour le suivi par téléphone qui ajoute du bruit latéral ; laissez-le désactivé pour les imports Google Timeline, dont les points approximatifs restent sur la route. Choisissez « Réévaluer les données passées » pour l’appliquer à votre historique."
+        hide_inaccurate_points_hint: "Masque aussi les points dont la précision indiquée est moins bonne que le seuil ci-dessous. Utile pour le suivi par téléphone qui ajoute du bruit latéral ; laissez-le désactivé pour les imports Google Timeline, dont les points approximatifs restent sur la route. Pour l’appliquer à votre historique, choisissez d’abord « Appliquer les paramètres », puis « Réévaluer les données passées »."
         accuracy_threshold: "Seuil de précision"
         re_evaluate_past_data: Réévaluer les données passées
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Efface les indicateurs

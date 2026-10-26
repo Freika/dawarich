@@ -1076,7 +1076,7 @@ ca:
         track_split_time_hint: "Els intervals més llargs inicien un trajecte nou i permeten als viatges utilitzar l’enregistrament d’un altre dispositiu. Després de canviar aquest valor, prem «Recalcula» a cada viatge afectat per actualitzar-ne la ruta i la distància desades."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Amaga les lectures que no poden ser una posició real — salts impossibles, coordenades incorrectes. Desactiva-ho per veure tots els punts en brut.
         hide_inaccurate_points: "Amaga els punts imprecisos"
-        hide_inaccurate_points_hint: "Amaga també els punts amb una precisió informada pitjor que el llindar de sota. Ajuda amb el seguiment del mòbil que afegeix soroll lateral; deixa-ho desactivat per a les importacions de Google Timeline, els punts aproximats de les quals continuen sobre la carretera. Prem «Torna a avaluar les dades passades» per aplicar-ho a l’historial."
+        hide_inaccurate_points_hint: "Amaga també els punts amb una precisió informada pitjor que el llindar de sota. Ajuda amb el seguiment del mòbil que afegeix soroll lateral; deixa-ho desactivat per a les importacions de Google Timeline, els punts aproximats de les quals continuen sobre la carretera. Per aplicar-ho a l’historial, prem primer «Aplica la configuració» i després «Torna a avaluar les dades passades»."
         accuracy_threshold: "Llindar de precisió"
         re_evaluate_past_data: Torna a avaluar les dades passades
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Elimina les marques d'anomalia existents i torna a executar el filtre sobre tots els teus punts amb la configuració actual. Els trajectes, estadístiques i resums es reconstruiran després. S'executa en segon pla.

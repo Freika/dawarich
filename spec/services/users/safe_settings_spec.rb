@@ -780,6 +780,10 @@ RSpec.describe Users::SafeSettings do
     it 'coerces string values' do
       expect(described_class.new({ 'gps_accuracy_threshold' => '300' }).gps_accuracy_threshold).to eq(300)
     end
+
+    it 'falls back to the default for a blank value' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => '' }).gps_accuracy_threshold).to eq(100)
+    end
   end
 
   describe '#visit_radius_meters' do

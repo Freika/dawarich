@@ -420,7 +420,7 @@ class Users::SafeSettings
   end
 
   def gps_accuracy_threshold
-    raw = settings['gps_accuracy_threshold'] || DEFAULT_VALUES['gps_accuracy_threshold']
+    raw = settings['gps_accuracy_threshold'].presence || DEFAULT_VALUES['gps_accuracy_threshold']
     raw.to_i.clamp(GPS_ACCURACY_THRESHOLD_MIN, GPS_ACCURACY_THRESHOLD_MAX)
   end
 
