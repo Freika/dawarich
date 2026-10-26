@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Repeated cell-tower positions from the Android app no longer draw spikes on the map or inflate daily and monthly distance. Data recorded earlier is rechecked in the background after the upgrade. (#3417)
 - Searching for a place in the visit edit panel finds nearby places again when you type the name, for example the Burger King next to the visit. Before, typing word by word with a geocoding provider limited to one request per second, such as the public Photon server, often skipped the final search, so only saved places with that name somewhere else in the world showed up. The search now tries once more a second later. (#3590)
 - Reverse geocoding through ChibiGeo uses HTTPS even when `PHOTON_API_USE_HTTPS` is not set. Before, a host written with a path, such as `app.chibigeo.com/v1/photon`, was not recognised as HTTPS-only, so Dawarich sent its requests over plain HTTP and they failed. (#3108)
 - Location history that keeps reporting while you stay in one place, such as a Google Timeline export, no longer joins several days into one route when the reported position drifts around that place. The drift also no longer turns a stay at home into dozens of short zigzag routes. A stay is recognized within your visit radius (Settings → Visits), but never less than 100 m, so raise the visit radius if your readings at home scatter further. Choose Recalculate tracks & stats in the map settings to apply this to history imported earlier. (#3117)
