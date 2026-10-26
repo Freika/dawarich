@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The Prometheus `/metrics` endpoint works again on 1.18.0. Every scrape used to fail with a server error since the upgrade to Ruby 4.0. (#3910)
 - Points recorded at the same location can again be selected, moved and deleted one by one on the map at maximum zoom. (#3846)
 - Photos from a PhotoPrism server running in a time zone east of UTC (for example `TZ=Europe/Berlin`) show up on the map again when you pick a single day. Before, they only appeared once the range ended a day later. #3651
+- The map loads again on Docker and Podman setups that start the app container without `web-entrypoint.sh`. Before, the persistent `public` volume kept the files of the previous version, the MapLibre files added in 1.15.1 were missing, and the browser blocked them with a "disallowed MIME type" error. Static files missing from the volume are now served from the copy inside the image. Files that already exist in the volume are still served from it, so keep `entrypoint: web-entrypoint.sh` to get updated versions of those. (#3872)
 - Scheduled jobs added in a new release no longer fail in Sidekiq with `undefined method 'jid='` when a Sidekiq process from an older Dawarich version still uses the same Redis. If you see these errors, stop the outdated Sidekiq process and delete the dead jobs that are already there. (#3715)
 
 ## [1.18.0] - 2026-10-25, Berlin
