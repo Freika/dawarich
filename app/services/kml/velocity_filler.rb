@@ -2,6 +2,8 @@
 
 module Kml
   module VelocityFiller
+    MAX_LEG_SPEED_MS = 1200 / 3.6
+
     module_function
 
     def call(points_data)
@@ -9,10 +11,10 @@ module Kml
       leg_speeds = ordered.each_cons(2).map { |previous, current| leg_speed(previous, current) }
 
       ordered.each_with_index do |point, index|
-        next unless point[:velocity].zero? && index.positive?
+        next unless point[:velocity].nil?
 
-        legs = [leg_speeds[index - 1], leg_speeds[index]]
-        point[:velocity] = legs.min.round(1) if legs.all?
+        legs = [index.positive? ? leg_speeds[index - 1] : nil, leg_speeds[index]]
+        point[:velocity] = legs.all? ? legs.min.round(1) : 0.0
       end
       points_data
     end
@@ -21,7 +23,8 @@ module Kml
       elapsed = current[:timestamp] - previous[:timestamp]
       return unless elapsed.positive?
 
-      Geocoder::Calculations.distance_between(lat_lng(previous), lat_lng(current), units: :km) * 1000 / elapsed
+      speed = Geocoder::Calculations.distance_between(lat_lng(previous), lat_lng(current), units: :km) * 1000 / elapsed
+      speed if speed <= MAX_LEG_SPEED_MS
     end
 
     def lat_lng(point)

@@ -146,7 +146,8 @@ class Kml::Importer
 
     coords = parse_coordinates(linestring_node.text)
     timestamps = interpolate_timestamps(timestamp_range, coords.size)
-    coords.zip(timestamps).map { |coord, timestamp| build_point(coord, timestamp, placemark) }
+    coords.zip(timestamps).filter_map { |coord, timestamp| build_point(coord, timestamp, placemark) }
+          .each { |point| point[:velocity] ||= 0.0 }
   end
 
   def extract_multigeometry(placemark, timestamp)
@@ -207,7 +208,7 @@ class Kml::Importer
       altitude: alt,
       timestamp: time,
       import_id: import.id,
-      velocity: 0.0,
+      velocity: nil,
       user_id: user_id,
       created_at: Time.current,
       updated_at: Time.current
@@ -313,9 +314,11 @@ class Kml::Importer
 
   def extract_velocity(placemark)
     speed_node = find_speed_node(placemark)
-    speed_node ? speed_node.text.to_f.round(1) : 0.0
+    return unless speed_node
+
+    speed_node.text.to_f.round(1)
   rescue StandardError
-    0.0
+    nil
   end
 
   def find_speed_node(placemark)

@@ -127,4 +127,55 @@ RSpec.describe 'Countries flown over in KML imports' do
       expect(trip.visited_countries).to contain_exactly('Departureland', 'Arrivalland', 'Returnland')
     end
   end
+
+  context 'with a recorded speed of zero' do
+    before do
+      placemarks = samples.map do |minute, longitude, altitude, *|
+        <<~XML
+          <Placemark>
+            <ExtendedData><Data name="speed"><value>0</value></Data></ExtendedData>
+            <TimeStamp><when>#{time_at(minute)}</when></TimeStamp>
+            <Point><coordinates>#{longitude},-45,#{altitude}</coordinates></Point>
+          </Placemark>
+        XML
+      end
+      import_kml(placemarks.join)
+    end
+
+    it 'keeps the recorded speed' do
+      expect(user.points.pluck(:velocity).map(&:to_f)).to all(eq(0.0))
+    end
+  end
+
+  context 'with two parked devices recorded at the same time in one file' do
+    let(:samples) { (0..9).map { |minute| [minute, minute.even? ? -142 : -100, 0, 'Homeland'] } }
+
+    before do
+      tracks = samples.partition { |minute, *| minute.even? }.map do |track|
+        timestamps = track.map { |minute, *| "<when>#{time_at(minute)}</when>" }.join
+        coordinates = track.map { |_, longitude, altitude, *| "<gx:coord>#{longitude} -45 #{altitude}</gx:coord>" }.join
+        "<Placemark><gx:Track>#{timestamps}#{coordinates}</gx:Track></Placemark>"
+      end
+      import_kml(tracks.join)
+    end
+
+    it 'does not read the jumps between the devices as a flight' do
+      expect(user.points.map { |point| point.velocity.to_f * 3.6 }).to all(be <= 500)
+    end
+  end
+
+  context 'with a Traccar route whose vertices only share a time range' do
+    let(:samples) { [[0, -142, 0, 'Homeland'], [1, -141.85, 0, 'Homeland'], [2, -141.7, 0, 'Homeland']] }
+
+    before do
+      coordinates = samples.map { |_, longitude, altitude, *| "#{longitude},-45,#{altitude}" }.join(' ')
+      name = "#{start_time.strftime('%Y-%m-%d %H:%M')} - #{(start_time + 2.minutes).strftime('%Y-%m-%d %H:%M')}"
+      line = "<LineString><coordinates>#{coordinates}</coordinates></LineString>"
+      import_kml("<Placemark><name>#{name}</name>#{line}</Placemark>")
+    end
+
+    it 'does not derive speeds from the interpolated times' do
+      expect(user.points.pluck(:velocity).map(&:to_f)).to all(eq(0.0))
+    end
+  end
 end

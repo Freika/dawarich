@@ -11,14 +11,18 @@ RSpec.describe DataMigrations::BackfillKmlVelocitiesJob, type: :job do
      [80, -138, 'Overflownland'], [90, -136, 'Arrivalland'], [150, -136, 'Arrivalland']]
   end
 
-  def kml_import(velocity: '0.0', source: 'kml', day: 0)
+  def kml_import(velocity: '0.0', source: 'kml', day: 0, fixes: samples)
     import = create(:import, user:, source:, skip_background_processing: true)
-    samples.each do |minute, longitude, country|
+    fixes.each do |minute, longitude, country|
       create(:point, user:, import:, velocity:, timestamp: (start_time + day.days + minute.minutes).to_i,
                      lonlat: "POINT(#{longitude} -45)", country_name: country, city: "#{country} City",
                      reverse_geocoded_at: Time.current)
     end
     import
+  end
+
+  def countries(year, month)
+    user.stats.find_by!(year:, month:).toponyms.map { |entry| entry['country'] }
   end
 
   def speeds_kmh(import)
@@ -46,13 +50,13 @@ RSpec.describe DataMigrations::BackfillKmlVelocitiesJob, type: :job do
     yearly = Users::Digests::CalculateYear.new(user.id, 2024).call
     trip = create(:trip, user:, started_at: start_time, ended_at: start_time + 4.hours,
                          skip_calculation_enqueue: true)
-    create(:trip, user:, started_at: start_time + 2.days, ended_at: start_time + 3.days,
-                  skip_calculation_enqueue: true)
+    trip.calculate_countries
+    trip.save!
 
-    expect { described_class.perform_now(import.id) }
-      .to have_enqueued_job(Trips::CalculateCountriesJob).with(trip.id, 'km').exactly(:once)
+    described_class.perform_now(import.id)
 
     aggregate_failures do
+      expect(trip.reload.visited_countries).to contain_exactly('Departureland', 'Arrivalland')
       expect(user.stats.find_by!(year: 2024, month: 1).toponyms.map { |entry| entry['country'] })
         .to contain_exactly('Departureland', 'Arrivalland')
       expect(yearly.reload.top_countries_by_time.map { |country| country['name'] })
@@ -75,6 +79,75 @@ RSpec.describe DataMigrations::BackfillKmlVelocitiesJob, type: :job do
     import = kml_import
     described_class.perform_now(import.id)
 
-    expect { described_class.perform_now(import.id) }.not_to have_enqueued_job
+    expect { described_class.perform_now(import.id) }.not_to(change { user.stats.pick(:updated_at) })
+  end
+
+  it 'still backfills when an overlapping trip is invalid' do
+    import = kml_import
+    trip = create(:trip, user:, started_at: start_time, ended_at: start_time + 4.hours,
+                         skip_calculation_enqueue: true)
+    trip.update_columns(name: '')
+
+    described_class.perform_now(import.id)
+
+    expect(trip.reload.visited_countries).to contain_exactly('Departureland', 'Arrivalland')
+  end
+
+  it 'recalculates on a retry when the first recalculation failed' do
+    import = kml_import
+    attempts = 0
+    allow(Stats::CalculateMonth).to receive(:new).and_wrap_original do |original, *args, **kwargs|
+      attempts += 1
+      raise ActiveRecord::QueryCanceled, 'statement timeout' if attempts == 1
+
+      original.call(*args, **kwargs)
+    end
+
+    expect { described_class.perform_now(import.id) }.to raise_error(ActiveRecord::QueryCanceled)
+    described_class.perform_now(import.id)
+
+    expect(countries(2024, 1)).to contain_exactly('Departureland', 'Arrivalland')
+  end
+
+  context 'when the user lives ahead of UTC' do
+    let(:user) { create(:user, settings: { 'timezone' => 'Asia/Tokyo' }) }
+    let(:start_time) { Time.utc(2024, 1, 31, 16) }
+
+    it 'recalculates the month in the user time zone' do
+      import = kml_import
+
+      described_class.perform_now(import.id)
+
+      expect(countries(2024, 2)).to contain_exactly('Departureland', 'Arrivalland')
+    end
+  end
+
+  it 'recalculates nothing for movement below flight speed' do
+    walk = [[0, -142.0, 'Homeland'], [10, -142.01, 'Homeland'], [20, -142.02, 'Homeland']]
+    import = kml_import(fixes: walk)
+
+    described_class.perform_now(import.id)
+
+    expect(speeds_kmh(import)[1]).to be_positive
+    expect(user.stats).to be_empty
+  end
+
+  it 'leaves imports that recorded some speeds untouched' do
+    import = kml_import
+    import.points.order(:timestamp).first.update_columns(velocity: '5.0')
+
+    described_class.perform_now(import.id)
+
+    expect(speeds_kmh(import)).to eq([18, 0, 0, 0, 0, 0])
+  end
+
+  it 'refreshes cached map tiles' do
+    import = kml_import
+    range = [0, Time.utc(2100, 1, 1).to_i]
+    before_component = Points::TileEpoch.etag_component(user.id, *range)
+
+    described_class.perform_now(import.id)
+
+    expect(Points::TileEpoch.etag_component(user.id, *range)).not_to eq(before_component)
   end
 end

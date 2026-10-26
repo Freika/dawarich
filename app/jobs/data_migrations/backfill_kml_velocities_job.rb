@@ -9,29 +9,40 @@ class DataMigrations::BackfillKmlVelocitiesJob < ApplicationJob
     return enqueue_imports if import_id.nil?
 
     import = Import.find_by(id: import_id)
-    return unless import
+    user = import && find_user_or_skip(import.user_id)
+    return unless user
 
-    changed = backfill(import)
-    return if changed.empty?
-
-    recalculate(import.user, changed.map { |point| point[:timestamp] })
+    changed = Point.transaction(requires_new: true) do
+      backfill(import).tap do |points|
+        flyovers = flyover_timestamps(points)
+        recalculate_months(user, flyovers)
+        recalculate_trips(user, flyovers)
+      end
+    end
+    Points::TileEpoch.bump(user.id, timestamps: changed.map { |point| point[:timestamp] }) if changed.any?
     Rails.logger.info("[DataMigrations::BackfillKmlVelocities] import_id=#{import.id} updated=#{changed.size}")
   end
 
   private
 
   def enqueue_imports
-    ActiveJob.perform_all_later(Import.kml.ids.map { |id| self.class.new(id) })
+    ids = Import.kml.ids
+    ActiveJob.perform_all_later(ids.map { |id| self.class.new(id) })
+    Rails.logger.info("[DataMigrations::BackfillKmlVelocities] enqueued=#{ids.size}")
   end
 
   def backfill(import)
     points = Point.where(import_id: import.id)
                   .pluck(:id, :timestamp, :velocity, Arel.sql('ST_AsText(lonlat)'))
                   .map { |id, timestamp, velocity, lonlat| { id:, timestamp:, velocity: velocity.to_f, lonlat: } }
-    missing = points.select { |point| point[:velocity].zero? }
+    unless points.all? { |point| point[:velocity].zero? }
+      Rails.logger.info("[DataMigrations::BackfillKmlVelocities] import_id=#{import.id} skipped=recorded_speeds")
+      return []
+    end
 
+    points.each { |point| point[:velocity] = nil }
     Kml::VelocityFiller.call(points)
-    changed = missing.reject { |point| point[:velocity].zero? }
+    changed = points.reject { |point| point[:velocity].zero? }
     changed.each_slice(UPDATE_BATCH_SIZE) { |batch| update_velocities(batch) }
     changed
   end
@@ -45,23 +56,26 @@ class DataMigrations::BackfillKmlVelocitiesJob < ApplicationJob
     SQL
   end
 
-  def recalculate(user, timestamps)
-    months = timestamps.map { |timestamp| Time.zone.at(timestamp) }.map { |time| [time.year, time.month] }.uniq
-    months.each { |year, month| Stats::CalculateMonth.new(user.id, year, month, notify_on_failure: false).call }
-    refresh_existing_digests(user, months)
-
-    first, last = timestamps.minmax.map { |timestamp| Time.zone.at(timestamp) }
-    user.trips.where(started_at: ..last, ended_at: first..).find_each do |trip|
-      Trips::CalculateCountriesJob.perform_later(trip.id, user.safe_settings.distance_unit)
+  def flyover_timestamps(points)
+    points.filter_map do |point|
+      flyover = point[:velocity] * CountriesAndCities::MS_TO_KMH > CountriesAndCities::FLYOVER_VELOCITY_THRESHOLD_KMH
+      point[:timestamp] if flyover
     end
   end
 
-  def refresh_existing_digests(user, months)
-    months.each do |year, month|
-      Users::Digests::CalculateMonth.new(user.id, year, month).call if user.digests.monthly.exists?(year:, month:)
-    end
-    months.map(&:first).uniq.each do |year|
-      Users::Digests::CalculateYear.new(user.id, year).call if user.digests.yearly.exists?(year:)
+  def recalculate_months(user, timestamps)
+    months = timestamps.map { |timestamp| Time.at(timestamp).in_time_zone(user.timezone_iana) }
+                       .map { |time| [time.year, time.month] }.uniq.sort
+    Stats::RecalculateMonths.new(user, months).call
+  end
+
+  def recalculate_trips(user, timestamps)
+    return if timestamps.empty?
+
+    first, last = timestamps.minmax.map { |timestamp| Time.zone.at(timestamp) }
+    user.trips.where(started_at: ..last, ended_at: first..).find_each do |trip|
+      trip.calculate_countries
+      trip.update_column(:visited_countries, trip.visited_countries)
     end
   end
 end
