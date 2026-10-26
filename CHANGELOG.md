@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Points that arrive late inside an existing route, for example through the API or an import, now join that route instead of staying a separate line, also when they come from a device without a name. A route that gains points keeps its shared links and corrected transport modes. (#3036)
 - Countries you only flew over no longer count when the flight comes from a KML file without speed data, such as a Flightradar24 export. Speed is now worked out from the time and distance between points. KML files imported earlier are updated in the background after the upgrade, and their monthly statistics, digests and trip countries are recalculated. (#3900)
 - Signing in with two-factor authentication works again when the sign-in page is shown in a language other than English. Before, the code prompt appeared in English and was immediately replaced by an empty sign-in form. On installations with OIDC-only sign-in, the message that password sign-in is disabled now uses that language too. #3908
 - Poster Studio and Video Studio load the basemap from your custom vector tiles URL when the tiles fallback is off, like the main map, instead of always using the default tile server (#3876)
