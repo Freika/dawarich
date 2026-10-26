@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require Rails.root.join('db/migrate/20261026120000_enqueue_android_tower_fix_recalculation.rb')
+require Rails.root.join('db/migrate/20261026130000_enqueue_android_tower_fix_recalculation.rb')
 
 RSpec.describe EnqueueAndroidTowerFixRecalculation do
   subject(:migration) { described_class.new }
