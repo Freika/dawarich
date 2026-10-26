@@ -33,6 +33,7 @@
 
 
 /public/assets
+/public_dist
 
 # Ignore all files under /public/exports except the .keep file
 /public/exports/*
