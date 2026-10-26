@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - The Select data on map tool can now look across all your data. Turn on "Select data from all time" in the Tools panel before drawing the rectangle to get every point and visit in that area, whatever dates the map shows. When an area holds more than 10,000 points, only the most recent 10,000 are shown and a notice says so. On the Lite plan, "all time" covers the last 12 months. (#3873)
 
+### Changed
+
+- The map runs on MapLibre GL JS 6.16.0. MapLibre now draws Arabic and Hebrew labels itself, so the separate right-to-left text plugin is no longer loaded.
+
 ### Fixed
 
 - Searching for a place in the visit edit panel finds nearby places again when you type the name, for example the Burger King next to the visit. Before, typing word by word with a geocoding provider limited to one request per second, such as the public Photon server, often skipped the final search, so only saved places with that name somewhere else in the world showed up. The search now tries once more a second later. (#3590)
@@ -32,6 +36,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The map loads again on Docker and Podman setups that start the app container without `web-entrypoint.sh`. Before, the persistent `public` volume kept the files of the previous version, the MapLibre files added in 1.15.1 were missing, and the browser blocked them with a "disallowed MIME type" error. Static files missing from the volume are now served from the copy inside the image. Files that already exist in the volume are still served from it, so keep `entrypoint: web-entrypoint.sh` to get updated versions of those. (#3872)
 - Scheduled jobs added in a new release no longer fail in Sidekiq with `undefined method 'jid='` when a Sidekiq process from an older Dawarich version still uses the same Redis. If you see these errors, stop the outdated Sidekiq process and delete the dead jobs that are already there. (#3715)
 - Points deleted with Select data on map, including anomaly points, now disappear from the map right away. Before, they stayed visible until you zoomed far in or out or reloaded the page, and came back at the original zoom. (#3771)
+
+### For developers
+
+- The MCP `get_timeline` tool marks the later days of a visit that runs past midnight with `continuation_of_date`, as it already did for journeys, and `duration_minutes` on those days counts only that day's part of the stay.
 
 ## [1.18.0] - 2026-10-25, Berlin
 
