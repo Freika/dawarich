@@ -4,76 +4,91 @@ bulk_stats_calculating_job:
   cron: "0 */1 * * *" # every 1 hour
   class: "BulkStatsCalculatingJob"
   queue: stats
+  active_job: true
 
 visit_suggesting_job:
   cron: "5 0 * * *" # every day at 00:05
   class: "BulkVisitsSuggestingJob"
   queue: visit_suggesting
+  active_job: true
 
 watcher_job:
   cron: "0 */1 * * *" # every 1 hour
   class: "Import::WatcherJob"
   queue: imports
+  active_job: true
 
 airtrail_flight_import_job:
   cron: "0 2 * * *" # every day at 02:00
   class: "AirTrail::SyncSchedulingJob"
   queue: imports
+  active_job: true
 
 teslamate_sync_job:
   cron: "30 2 * * *" # every day at 02:30
   class: "TeslaMate::SyncSchedulingJob"
   queue: imports
+  active_job: true
 
 trek_sync_job:
   cron: "0 */6 * * *" # every 6 hours
   class: "Trek::SyncSchedulingJob"
   queue: imports
+  active_job: true
 
 app_version_checking_job:
   cron: "0 */6 * * *" # every 6 hours
   class: "AppVersionCheckingJob"
   queue: app_version_checking
+  active_job: true
 
 cache_preheating_job:
   cron: "0 0 * * *" # every day at 0:00
   class: "Cache::PreheatingJob"
   queue: cache
+  active_job: true
 
 daily_track_generation_job:
   cron: "0 */12 * * *" # every 12 hours (real-time generation handles most cases)
   class: "Tracks::DailyGenerationJob"
   queue: tracks
+  active_job: true
 
 nightly_reverse_geocoding_job:
   cron: "15 1 * * *" # every day at 01:15
   class: "Points::NightlyReverseGeocodingJob"
   queue: reverse_geocoding
+  active_job: true
 
 nightly_family_invitations_cleanup_job:
   cron: "30 2 * * *" # every day at 02:30
   class: "Family::Invitations::CleanupJob"
   queue: families
+  active_job: true
 
 stale_jobs_recovery_job:
   cron: "*/30 * * * *" # every 30 minutes
   class: "StaleJobsRecoveryJob"
   queue: exports
+  active_job: true
 
 family_location_requests_expiry_job:
   cron: "30 * * * *" # every hour at :30
   class: "Families::ExpireLocationRequestsJob"
   queue: families
+  active_job: true
 
 points_counter_correction_job:
   cron: "0 */6 * * *" # every 6 hours
   class: "Users::PointsCounterCorrectionJob"
   queue: low_priority
+  active_job: true
 
 lite_archival_warning_job:
   cron: "0 3 * * *" # every day at 03:00
   class: "Lite::ArchivalWarningJob"
   queue: archival
+  active_job: true
 
 # Raw data archival pipeline — enable when ready for production use.
 # Pipeline: archive (1st) → verify (daily) → clear (8th, 7 days after archive).
@@ -82,50 +97,60 @@ raw_data_archive_job:
   cron: "0 3 1 * *" # 1st of month at 03:00
   class: "Points::RawData::ArchiveJob"
   queue: archival
+  active_job: true
 
 raw_data_verify_job:
   cron: "0 5 * * *" # every day at 05:00
   class: "Points::RawData::VerifyRandomJob"
   queue: archival
+  active_job: true
 
 raw_data_clear_job:
   cron: "0 3 8 * *" # 8th of month at 03:00 (7 days after archival for verification)
   class: "Points::RawData::ClearJob"
   queue: archival
+  active_job: true
 
 monthly_digest_scheduling_job:
   cron: "0 4 2 * *" # 2nd of every month at 04:00 UTC
   class: "Users::Digests::Monthly::SchedulingJob"
   queue: digests
+  active_job: true
 
 yearly_digest_scheduling_job:
   cron: "0 6 2 1 *" # January 2nd at 06:00 UTC
   class: "Users::Digests::Yearly::SchedulingJob"
   queue: digests
+  active_job: true
 
 pending_imports_cleanup:
   cron: "15 3 * * *" # every day at 03:15 UTC
   class: "PendingImports::CleanupJob"
   queue: low_priority
+  active_job: true
   description: "Sweep expired or old-claimed pending imports"
 
 achievements_bulk_check_job:
   cron: "30 1 * * *" # every day at 01:30
   class: "Achievements::BulkCheckJob"
   queue: achievements
+  active_job: true
 
 route_videos_purge_job:
   cron: "45 3 * * *" # every day at 03:45 UTC
   class: "RouteVideos::PurgeJob"
   queue: route_videos
+  active_job: true
   description: "Expire stored route videos past the retention window or per-user cap"
 
 stats_toponyms_refresh_job:
   cron: "*/5 * * * *"
   class: "Stats::ToponymsRefreshJob"
   queue: stats
+  active_job: true
 
 webhook_deliveries_cleanup_job:
   cron: "30 3 * * *" # every day at 03:30
   class: "Webhooks::CleanupDeliveriesJob"
   queue: webhooks
+  active_job: true
