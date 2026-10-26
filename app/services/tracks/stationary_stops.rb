@@ -39,21 +39,22 @@ class Tracks::StationaryStops
   end
 
   # A track that starts at a departure must never be joined to the track before it.
-  def self.departure?(track, threshold_seconds)
+  def self.departure?(track, threshold_seconds, radius_meters = nil)
     first_point = track.points.order(:timestamp).first
     return false unless first_point
 
-    Track.stationary_break_point_ids(track.user_id, first_point.timestamp, first_point.timestamp, threshold_seconds)
+    Track.stationary_break_point_ids(track.user_id, first_point.timestamp, first_point.timestamp, threshold_seconds,
+                                     radius_meters)
          .include?(first_point.id)
   end
 
   # Realtime adds a stop's first threshold of dwell to the arrival track before the stop
   # can be recognized. Returns those trailing points, keeping the arrival and its journey.
-  def self.dwell_tail_point_ids(track, threshold_seconds)
+  def self.dwell_tail_point_ids(track, threshold_seconds, radius_meters = nil)
     end_timestamp = track.end_at.to_i
     window_start = [track.start_at.to_i, end_timestamp - (2 * threshold_seconds)].max
     breaks = Track.stationary_break_point_ids(track.user_id, window_start, end_timestamp + threshold_seconds,
-                                              threshold_seconds).to_set
+                                              threshold_seconds, radius_meters).to_set
     ids = track.points.order(timestamp: :desc).pluck(:id)
     tail = ids.take_while { |id| breaks.include?(id) }
 
@@ -86,27 +87,39 @@ class Tracks::StationaryStops
   attr_reader :samples, :threshold_seconds, :radius_meters
 
   # Noise around a stay leaves only some samples settled, which cut the dwell into
-  # short tracks. Samples between two breaks belong to the stay while none of them
-  # strays beyond twice the radius from the earlier break.
+  # short tracks. The break before such a gap is always a settled sample, so its
+  # threshold window locates the stay. The gap belongs to the stay when every sample
+  # in it, and the break after it, lies within the radius of that window's centre.
+  # A walk that leaves the radius around the stay keeps its track.
   def join_stop_fragments(breaks)
     breaks.sort.each_cons(2) do |first, last|
-      next if last - first == 1 || !located?(first)
-      next unless (first + 1...last).all? { |index| near_stay?(first, index) }
+      next if last - first == 1
+
+      center = stay_center(first)
+      next unless center && (first + 1..last).all? { |index| near?(center, index) }
 
       breaks.merge(first + 1...last)
     end
     breaks
   end
 
-  def near_stay?(anchor_index, index)
+  def stay_center(settled_index)
+    from = samples.bsearch_index { |row| row[0] >= timestamp(settled_index) - threshold_seconds }
+    located = (from..settled_index).select { |index| located?(index) }
+    return if located.empty?
+
+    [located.sum { |index| samples[index][1] } / located.size, located.sum { |index| samples[index][2] } / located.size]
+  end
+
+  def near?(center, index)
     return false unless located?(index)
 
-    _, anchor_lon, anchor_lat = samples[anchor_index]
+    center_lon, center_lat = center
     _, lon, lat = samples[index]
-    east_meters = (lon - anchor_lon) * METERS_PER_DEGREE * Math.cos(anchor_lat * Math::PI / 180)
-    north_meters = (lat - anchor_lat) * METERS_PER_DEGREE
+    east_meters = (lon - center_lon) * METERS_PER_DEGREE * Math.cos(center_lat * Math::PI / 180)
+    north_meters = (lat - center_lat) * METERS_PER_DEGREE
 
-    east_meters**2 + north_meters**2 <= (2 * radius_meters)**2
+    east_meters**2 + north_meters**2 <= radius_meters**2
   end
 
   def settled_flags

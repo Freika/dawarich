@@ -132,10 +132,11 @@ class Track < ApplicationRecord
 
   # Splits on time gaps only, ignoring distance for map parity, as in Tracks::Segmentation.
   def self.segment_points_in_sql(user_id, start_timestamp, end_timestamp, time_threshold_minutes,
-                                 untracked_only: false)
+                                 untracked_only: false, stop_radius_meters: nil)
     time_threshold_seconds = time_threshold_minutes * 60
 
-    stop_break_ids = stationary_break_point_ids(user_id, start_timestamp, end_timestamp, time_threshold_seconds)
+    stop_break_ids = stationary_break_point_ids(user_id, start_timestamp, end_timestamp, time_threshold_seconds,
+                                                stop_radius_meters)
 
     # Tracked points keep realtime boundaries in place: without them, untracked points
     # on both sides of an already tracked stretch would join into one segment.
@@ -217,9 +218,10 @@ class Track < ApplicationRecord
 
   # Stop detection reads tracked points and the history before the window too, so a
   # stop is recognized however the realtime lookback window cuts it.
-  def self.stationary_break_point_ids(user_id, start_timestamp, end_timestamp, threshold_seconds)
+  def self.stationary_break_point_ids(user_id, start_timestamp, end_timestamp, threshold_seconds,
+                                      radius_meters = nil)
     history_start = start_timestamp - Tracks::StationaryStops.history_seconds(threshold_seconds)
-    radius_meters = Tracks::StationaryStops.radius_for(User.find(user_id))
+    radius_meters ||= Tracks::StationaryStops.radius_for(User.find(user_id))
 
     Point.not_anomaly
          .where(user_id: user_id, timestamp: history_start..end_timestamp)
@@ -234,13 +236,14 @@ class Track < ApplicationRecord
 
   # Get actual Point objects for each segment with pre-calculated distances
   def self.get_segments_with_points(user_id, start_timestamp, end_timestamp, time_threshold_minutes,
-                                    untracked_only: false)
+                                    untracked_only: false, stop_radius_meters: nil)
     segments_data = segment_points_in_sql(
       user_id,
       start_timestamp,
       end_timestamp,
       time_threshold_minutes,
-      untracked_only: untracked_only
+      untracked_only: untracked_only,
+      stop_radius_meters: stop_radius_meters
     )
 
     point_ids = segments_data.flat_map { |seg| seg[:point_ids] }

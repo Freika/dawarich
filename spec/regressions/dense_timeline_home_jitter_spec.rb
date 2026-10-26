@@ -40,19 +40,19 @@ RSpec.describe 'Dense Timeline history with position noise at home' do
       durations = user.tracks.order(:start_at).pluck(:duration).map { |seconds| (seconds / 3600.0).round(1) }
       expect(user.tracks.count).to eq(3), "got #{user.tracks.count} track(s), hours: #{durations.inspect}"
 
-      realtime_segments = Track.get_segments_with_points(user.id, points.first.timestamp, points.last.timestamp,
-                                                         route_minutes)
-      expect(realtime_segments.size).to eq(3), "realtime segmentation found #{realtime_segments.size} segment(s)"
+      sql_segments = Track.get_segments_with_points(user.id, points.first.timestamp, points.last.timestamp,
+                                                    route_minutes)
+      expect(sql_segments.size).to eq(3), "SQL segmentation found #{sql_segments.size} segment(s)"
     end
   end
 
   def create_reports(rows)
-    rows.map do |minute, longitude|
-      create(:point, user: user, tracker_id: 'google-maps-phone-timeline-export',
-                     timestamp: (start_at + minute.minutes).to_i,
-                     lonlat: "POINT(#{longitude} #{latitude})", accuracy: 50,
-                     reverse_geocoded_at: Time.current)
+    payloads = rows.map do |minute, longitude|
+      { timestamp: (start_at + minute.minutes).to_i, lonlat: "POINT(#{longitude} #{latitude})",
+        tracker_id: 'google-maps-phone-timeline-export' }
     end
+    Points::Intake.call(user_id: user.id, mode: :bulk, payloads: payloads)
+    user.points.order(:timestamp).to_a
   end
 
   def generate_and_resolve(points)
