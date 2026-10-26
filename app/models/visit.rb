@@ -35,6 +35,11 @@ class Visit < ApplicationRecord
   # Visits::Detection::Persister so the detector never resurrects a visit
   # the user removed.
   scope :active, -> { where(deleted_at: nil).where.not(status: :declined) }
+  # Visits with time inside from..to. One that ends exactly at `from` belongs
+  # to the time before it, as in Timeline::TrackDayShares.
+  scope :overlapping, lambda { |from, to|
+    where('visits.started_at <= :to AND (visits.ended_at > :from OR visits.started_at >= :from)', from:, to:)
+  }
   # Rows the detector may regenerate wholesale. Everything else — confirmed,
   # declined, tombstoned, imported, demo-seeded, or annotated with a note —
   # is user-owned and anchors re-detection.
@@ -184,14 +189,10 @@ class Visit < ApplicationRecord
     return unless user
 
     tz = user.safe_settings.timezone.presence || 'UTC'
-    times = [started_at]
-    times << saved_change_to_started_at&.first if saved_change_to_started_at?
+    spans = [[started_at, ended_at], [started_at_before_last_save, ended_at_before_last_save]]
 
-    Time.use_zone(tz) do
-      times.compact.map { |t| t.in_time_zone.to_date.beginning_of_month }.uniq.each do |month_start|
-        Rails.cache.delete(Timeline::MonthSummary.cache_key_for(user, month_start))
-      end
-    end
+    spans.select(&:first).flat_map { |from, to| Timeline::MonthSummary.months_spanning(from, to, tz) }
+         .uniq.each { |month_start| Rails.cache.delete(Timeline::MonthSummary.cache_key_for(user, month_start)) }
   rescue StandardError => e
     Rails.logger.warn("[Visit##{id}] timeline month cache bust failed: #{e.class}: #{e.message}")
   end

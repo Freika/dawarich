@@ -167,14 +167,20 @@ module TimelineHelper
   # Duration-based heuristic for hash entries. Avoids N+1 Visit lookups.
   def visit_entry_all_day?(entry)
     times = visit_entry_times(entry)
-    duration_minutes = entry[:duration].to_i
+    duration_minutes = visit_entry_duration(entry).to_i
     return true if duration_minutes >= 23 * 60
+    return false if entry[:continuation_of_date]
 
     times[:start_at].hour.zero? && (times[:ended_at] - times[:start_at]) >= 23.hours
   end
 
+  # On the days after a visit started, its row covers only that day's part.
+  def visit_entry_duration(entry)
+    entry[:day_duration] || entry[:duration]
+  end
+
   def visit_entry_times(entry)
-    started = Time.zone.parse(entry[:started_at].to_s)
+    started = Time.zone.parse((entry[:day_started_at] || entry[:started_at]).to_s)
     ended = Time.zone.parse(entry[:ended_at].to_s)
     {
       start_at: started,

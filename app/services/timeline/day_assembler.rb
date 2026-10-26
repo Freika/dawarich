@@ -47,7 +47,8 @@ module Timeline
     # VisitsController#update so the turbo_stream response can re-render the
     # row with fresh status / name / place / suggested_places data.
     # (Helpers it calls remain private; same-class access is allowed.)
-    def build_visit_entry(visit)
+    # With a date, the entry describes that day's part of the visit.
+    def build_visit_entry(visit, date: nil)
       entry = {
         type: 'visit',
         visit_id: visit.id,
@@ -66,6 +67,7 @@ module Timeline
       }
 
       entry[:suggested_places] = build_suggested_places(visit) if visit.suggested?
+      entry.merge!(visit_day_part(visit, date)) if date
 
       entry
     end
@@ -81,7 +83,7 @@ module Timeline
     def fetch_visits
       user.scoped_visits
           .includes(:area, suggested_places: :tags, place: :tags)
-          .where(started_at: start_at..end_at)
+          .overlapping(start_at, end_at)
           .order(started_at: :asc)
     end
 
@@ -124,11 +126,13 @@ module Timeline
         window = start_at.in_time_zone.to_date..end_at.in_time_zone.to_date
 
         visits.each do |visit|
-          day_key = visit.started_at.in_time_zone.to_date
-          next unless window.cover?(day_key)
+          TrackDayShares.shares_between(visit.started_at, visit.ended_at, timezone).each do |day_key, fraction|
+            next unless window.cover?(day_key)
 
-          grouped[day_key] ||= empty_day_bucket
-          grouped[day_key][:visits] << visit
+            grouped[day_key] ||= empty_day_bucket
+            grouped[day_key][:visits] << visit
+            grouped[day_key][:visit_shares][visit.id] = fraction
+          end
         end
 
         tracks.each do |track|
@@ -148,7 +152,7 @@ module Timeline
     end
 
     def empty_day_bucket
-      { visits: [], tracks: [], originating_tracks: [], track_shares: {} }
+      { visits: [], tracks: [], originating_tracks: [], track_shares: {}, visit_shares: {} }
     end
 
     def build_days(days)
@@ -156,25 +160,27 @@ module Timeline
     end
 
     def build_day(date, data)
-      entries = interleave(date, data[:visits], data[:tracks], data[:track_shares])
+      entries = interleave(date, data, data[:track_shares])
       {
         date: date.to_s,
-        summary: build_summary(data[:visits], data[:tracks], data[:track_shares]),
+        summary: build_summary(data[:visits], data[:tracks], data[:track_shares], data[:visit_shares]),
         bounds: build_bounds(data[:visits], data[:originating_tracks]),
         entries: entries
       }
     end
 
-    def interleave(date, visits, tracks, track_shares)
+    def interleave(date, data, track_shares)
       day_local = date.in_time_zone(timezone)
       day_start = day_local.beginning_of_day
       day_end = day_local.end_of_day
-      visit_entries = visits.map { |v| build_visit_entry(v) }
-      track_entries = tracks.map { |t| build_journey_entry(t, date: date, day_share: track_shares.fetch(t.id, 1.0)) }
+      visit_entries = data[:visits].map { |v| build_visit_entry(v, date: date) }
+      track_entries = data[:tracks].map do |t|
+        build_journey_entry(t, date: date, day_share: track_shares.fetch(t.id, 1.0))
+      end
 
       (visit_entries + track_entries).sort_by do |entry|
         started_at_time = Time.iso8601(entry[:started_at])
-        anchor_time = if entry[:continuation_of_date]
+        anchor_time = if entry[:type] == 'journey' && entry[:continuation_of_date]
                         ended_at_time = Time.iso8601(entry[:ended_at])
                         [[ended_at_time, day_end].min, day_start].max
                       else
@@ -186,6 +192,20 @@ module Timeline
 
     # NOTE: visit.duration is stored in MINUTES. See the public #build_visit_entry
     # above for the entry payload shape.
+
+    # Rows on the days after a visit started describe only that day's part of
+    # the stay, like journey continuation rows.
+    def visit_day_part(visit, date)
+      start_day = visit.started_at.in_time_zone(timezone).to_date
+      return { continuation_of_date: nil, day_duration: nil } if date == start_day
+
+      share = TrackDayShares.shares_between(visit.started_at, visit.ended_at, timezone).fetch(date, 0.0)
+      {
+        continuation_of_date: start_day.to_s,
+        day_duration: (visit.duration * share).round,
+        day_started_at: date.in_time_zone(timezone).beginning_of_day.iso8601
+      }
+    end
 
     def build_area(area)
       {
@@ -270,7 +290,7 @@ module Timeline
       }
     end
 
-    def build_summary(visits, tracks, track_shares)
+    def build_summary(visits, tracks, track_shares, visit_shares)
       total_distance_m = tracks.sum { |t| t.distance.to_f * track_shares.fetch(t.id, 1.0) }
       # Asymmetry with fetch_tracks is intentional: stationary tracks with >=100m
       # still surface in the timeline as "🛑 stayed" rows, but their duration must
@@ -278,7 +298,7 @@ module Timeline
       moving_tracks = tracks.reject { |t| t.dominant_mode == 'stationary' }
       moving_seconds = moving_tracks.sum { |t| t.duration.to_f * track_shares.fetch(t.id, 1.0) }
       # NOTE: visit.duration is stored in MINUTES (see Visits::Creator / Visits::Create).
-      stationary_minutes = visits.sum(&:duration)
+      stationary_minutes = visits.sum { |v| (v.duration * visit_shares.fetch(v.id, 1.0)).round }
       status_counts = visits.group_by(&:status).transform_values(&:size)
 
       {

@@ -21,6 +21,7 @@ RSpec.describe 'Calendar cache after bulk visit status updates' do
   end
 
   def create_visit(user:, **attributes)
+    attributes[:ended_at] ||= attributes[:started_at] + 1.hour if attributes[:started_at]
     create(:visit, user:, area: create(:area, user:), **attributes)
   end
 
