@@ -1147,6 +1147,7 @@ pl:
         create_visit: Utwórz wizytę
         create_place: Utwórz miejsce
         select_data_on_map: Wybierz dane na mapie
+        select_data_all_time: Wybierz dane z całego okresu
         replay: Odtwórz
         enrich_photos: Uzupełnij zdjęcia
         close: Zamknij
@@ -4575,6 +4576,7 @@ pl:
       selected: Wybrano %{items}
       too_many_points: Zbyt wiele punktów (%{requested}). Narysuj mniejszy obszar; maks. %{limit} na jedno usunięcie.
       too_many_selected_points: Wybrano zbyt wiele punktów (%{requested}). Narysuj mniejszy obszar; maks. %{limit} na jedno usunięcie.
+      truncated: Wyświetlono tylko %{limit} najnowszych punktów w tym obszarze.
       visits:
         one: "%{count} wizyta"
         few: "%{count} wizyty"

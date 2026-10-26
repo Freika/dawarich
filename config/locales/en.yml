@@ -1139,6 +1139,7 @@ en:
         create_visit: Create Visit
         create_place: Create Place
         select_data_on_map: Select data on map
+        select_data_all_time: Select data from all time
         replay: Replay
         enrich_photos: Enrich Photos
         close: Close
@@ -4377,6 +4378,7 @@ en:
       selected: Selected %{items}
       too_many_points: Too many points (%{requested}). Please draw a smaller area; max %{limit} per delete.
       too_many_selected_points: Too many points selected (%{requested}). Please draw a smaller area; max %{limit} per delete.
+      truncated: Only the most recent %{limit} points in this area are shown.
       visits:
         one: "%{count} visit"
         other: "%{count} visits"
