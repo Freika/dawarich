@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Flights synced from AirTrail 3.13 and later keep their seat and seat class again. AirTrail now lists them under passengers.
+- Traccar Client 10 no longer gets stuck when its heartbeat is on and the phone has no GPS fix. Dawarich used to reject the heartbeat, and the app kept resending it instead of the points that came after.
 
 ## [1.18.0] - 2026-10-25, Berlin
 
