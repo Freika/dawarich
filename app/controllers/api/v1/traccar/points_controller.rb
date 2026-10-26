@@ -5,7 +5,10 @@ class Api::V1::Traccar::PointsController < ApiController
   before_action :validate_points_limit, only: %i[create]
 
   def create
-    return render json: [], status: :ok if heartbeat?
+    if heartbeat?
+      Rails.logger.info("Traccar heartbeat accepted without a position: #{request.request_parameters.keys.join(', ')}")
+      return render json: [], status: :ok
+    end
 
     result = Traccar::PointCreator.new(point_params, current_api_user.id).call
 
