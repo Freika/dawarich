@@ -37,6 +37,15 @@ RSpec.describe 'Password sign-in on OIDC-only installations', type: :request do
     expect(user.reload.sign_in_count).to eq(0)
   end
 
+  it 'explains the rejection in the language chosen on the sign-in page' do
+    get new_user_session_path(locale: 'fr')
+    post user_session_path, params: { user: { email: user.email, password: } }
+
+    expect(flash[:alert]).to eq(
+      I18n.t('controllers.users.sessions.email_password_login_is_disabled_please_use_oidc_to_sign', locale: :fr)
+    )
+  end
+
   it 'still allows password login when the operator enables it alongside OIDC' do
     stub_const('ALLOW_EMAIL_PASSWORD_LOGIN', true)
     post user_session_path, params: { user: { email: user.email, password: } }
