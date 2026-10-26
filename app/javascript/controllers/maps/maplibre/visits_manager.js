@@ -51,8 +51,18 @@ export class VisitsManager {
       // controller's loaded date range — `loadMapData()` (triggered by
       // `timeline-feed:date-navigated`) has already fetched visits for
       // the broader range. Re-fetching causes a race where the smaller
-      // request can resolve last and overwrite the larger result.
-      if (date && mapReady && !this.isDayWithinLoadedRange(date)) {
+      // request can resolve last and overwrite the larger result. A hidden
+      // Visits layer is left alone, so toggling it on later loads the
+      // viewport instead of a single day.
+      const visitsShown = Boolean(
+        this.layerManager?.getLayer("visits")?.visible,
+      )
+      if (
+        date &&
+        mapReady &&
+        visitsShown &&
+        !this.isDayWithinLoadedRange(date)
+      ) {
         try {
           // Local day bounds (no trailing Z) to match navigateToDay and the
           // top date-range form. Using UTC here shifted the window by the tz
@@ -70,7 +80,6 @@ export class VisitsManager {
           // so an empty response is erroneous rather than a genuinely empty day.
           if (layer && map.isStyleLoaded() && visits.length > 0) {
             layer.update(this.dataLoader.visitsToGeoJSON(visits))
-            layer.show?.()
           }
         } catch (err) {
           console.error("Failed to refetch visits for timeline day:", err)
