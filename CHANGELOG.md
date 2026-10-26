@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Flights synced from AirTrail 3.13 and later keep their seat and seat class again. AirTrail now lists them under passengers.
+
 ## [1.18.0] - 2026-10-25, Berlin
 
 ### ⚠️ Upgrade notes

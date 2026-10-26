@@ -13,7 +13,7 @@ module AirTrail
       to = @f['to'] || {}
       airline = @f['airline'] || {}
       aircraft = @f['aircraft'] || {}
-      seat = (@f['seats'] || []).first || {}
+      seat = (@f['passengers'] || @f['seats'] || []).first || {}
 
       {
         external_id: @f['id'],
