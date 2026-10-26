@@ -44,7 +44,8 @@ module TileCacheable
     result = tile_query.call
 
     if result.truncated?
-      # Unreachable by construction — firing means a query bug.
+      # Unreachable by construction, except points at their max zoom (one
+      # feature per point) — anywhere else firing means a query bug.
       Rails.logger.warn(
         "#{self.class.name} truncated tile #{params[:z]}/#{params[:x]}/#{params[:y]}"
       )

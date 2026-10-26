@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Traccar Client 10 no longer gets stuck when its heartbeat is on and the phone has no GPS fix. Dawarich used to reject the heartbeat, and the app kept resending it instead of the points that came after.
 - Opening the Timeline, including by selecting a route on the map or with a `?panel=timeline` link, no longer turns on the Visits layer when you have switched it off. Turn it on under Layers to see visits on the map. (#3847)
 - The Prometheus `/metrics` endpoint works again on 1.18.0. Every scrape used to fail with a server error since the upgrade to Ruby 4.0. (#3910)
+- Points recorded at the same location can again be selected, moved and deleted one by one on the map at maximum zoom. (#3846)
 
 ## [1.18.0] - 2026-10-25, Berlin
 
