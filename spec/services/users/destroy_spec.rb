@@ -340,7 +340,6 @@ RSpec.describe Users::Destroy do
         # Populate cache with user data
         Rails.cache.write("dawarich/user_#{user.id}_countries_visited", %w[US CA])
         Rails.cache.write("dawarich/user_#{user.id}_cities_visited", %w[NYC SF])
-        Rails.cache.write("dawarich/user_#{user.id}_total_distance", 1000)
         Rails.cache.write("dawarich/user_#{user.id}_years_tracked", [2023, 2024])
       end
 
@@ -349,7 +348,6 @@ RSpec.describe Users::Destroy do
 
         expect(Rails.cache.read("dawarich/user_#{user.id}_countries_visited")).to be_nil
         expect(Rails.cache.read("dawarich/user_#{user.id}_cities_visited")).to be_nil
-        expect(Rails.cache.read("dawarich/user_#{user.id}_total_distance")).to be_nil
         expect(Rails.cache.read("dawarich/user_#{user.id}_years_tracked")).to be_nil
       end
 

@@ -16,7 +16,7 @@ RSpec.describe Photoprism::RequestPhotos do
   let(:start_date) { '2024-01-01' }
   let(:end_date) { '2024-12-31' }
   let(:expected_after_date) { '2024-01-01' }
-  let(:expected_before_date) { '2025-01-01' }
+  let(:expected_before_date) { '2025-01-02' }
   let(:service) { described_class.new(user, start_date: start_date, end_date: end_date) }
 
   around { |example| Time.use_zone('UTC') { example.run } }
@@ -153,7 +153,7 @@ RSpec.describe Photoprism::RequestPhotos do
 
   describe '#call' do
     context 'when end_date is provided' do
-      it 'sends before param as end_date + 1 day to include photos from end_date' do
+      it 'sends before param as end_date + 2 days to include photos from end_date' do
         stub_request(:any, /photoprism\.local/).to_return(
           status: 200, body: [].to_json, headers: { 'Content-Type' => 'application/json' }
         )

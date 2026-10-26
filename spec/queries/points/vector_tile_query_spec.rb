@@ -179,8 +179,8 @@ RSpec.describe Points::VectorTileQuery do
   end
 
   describe 'feature limit' do
-    it 'is unreachable by construction for every zoom tier' do
-      (0..22).each do |z|
+    it 'is unreachable by construction for every zoom that merges points into cells' do
+      (0...described_class::MAX_ZOOM).each do |z|
         query = described_class.new(scope: user.points, z: z, x: 0, y: 0)
         max_cells = ((512 * (1 + 2 * described_class::MARGIN)) / query.grid_px)**2
 
