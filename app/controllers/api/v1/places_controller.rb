@@ -137,14 +137,15 @@ module Api
         limit = [[params[:limit]&.to_i || 10, 1].max, 50].min
         query = params[:q].to_s.strip
 
-        external_places =
+        external_search =
           if query.length >= 2
             Places::Search.new(user: current_api_user, query: query, latitude: lat, longitude: lon,
-                               radius: radius, limit: limit).call
+                               radius: radius, limit: limit)
           else
             Places::NearbySearch.new(user: current_api_user, latitude: lat, longitude: lon,
-                                     radius: radius, limit: limit, cache: true).call
+                                     radius: radius, limit: limit, cache: true)
           end
+        external_places = external_search.call
 
         user_places = Places::UserSearch.new(
           user: current_api_user, latitude: lat, longitude: lon, radius: radius, limit: limit, query: query
@@ -161,7 +162,7 @@ module Api
           user: current_api_user, latitude: lat, longitude: lon, radius: radius, query: query
         ).call
 
-        render json: { places: places, areas: areas }
+        render json: { places: places, areas: areas, throttled: external_search.throttled? }
       end
 
       private

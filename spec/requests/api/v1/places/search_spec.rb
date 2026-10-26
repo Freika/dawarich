@@ -73,6 +73,31 @@ RSpec.describe 'Api::V1::Places::Search', type: :request do
       expect(response).to have_http_status(:success)
       expect(JSON.parse(response.body)['places']).not_to be_empty
     end
+
+    it 'does not flag a lookup that reached the provider as throttled' do
+      allow(Geocoder).to receive(:search).and_return([])
+
+      get '/api/v1/places/search', params: { q: 'burger king', lat: lat, lon: lon }, headers: headers
+
+      expect(JSON.parse(response.body)['throttled']).to be(false)
+    end
+
+    it 'flags a typed lookup the rate limiter skipped so the client can retry' do
+      allow(Geocoding::Search).to receive(:call).and_return(nil)
+
+      get '/api/v1/places/search', params: { q: 'burger king', lat: lat, lon: lon }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(JSON.parse(response.body)['throttled']).to be(true)
+    end
+
+    it 'flags a nearby lookup the rate limiter skipped so the client can retry' do
+      allow(Geocoding::Search).to receive(:call).and_return(nil)
+
+      get '/api/v1/places/search', params: { lat: lat, lon: lon }, headers: headers
+
+      expect(JSON.parse(response.body)['throttled']).to be(true)
+    end
   end
 
   context 'without an instance geocoding provider' do
