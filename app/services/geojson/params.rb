@@ -123,7 +123,7 @@ class Geojson::Params
 
   def speed(properties)
     value, matched_key = find_field_with_key(properties, :speed)
-    return 0.0 if value.nil?
+    return if value.nil?
 
     numeric = value.to_f
     numeric /= 3.6 if speed_kmh_alias?(matched_key)
