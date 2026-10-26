@@ -78,6 +78,14 @@ RSpec.describe 'Photo search covers the whole end date' do
       expect(result.map { |photo| photo['id'] }).to include('abc')
     end
 
+    it 'excludes a photo taken the evening before the start date west of UTC' do
+      stub_immich_page([asset.merge('fileCreatedAt' => '2026-06-10T03:30:00.000Z')])
+
+      result = Time.use_zone('America/New_York') { described_immich_call }
+
+      expect(result).to be_empty
+    end
+
     it 'still honours an explicit time on the end bound' do
       stub_immich_page([asset])
 
