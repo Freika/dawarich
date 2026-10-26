@@ -28,9 +28,13 @@ class Tracks::ThrottledBackfillJob < ApplicationJob
     "track_throttled_backfill:user:#{user_id}"
   end
 
-  def self.schedule(user, floor_timestamp: nil, wait: 0)
+  def self.schedule(user, floor_timestamp: nil, wait: 0, force: false)
     newly_scheduled = Sidekiq.redis do |redis|
-      redis.set(redis_key(user.id), 1, nx: true, ex: DEDUP_KEY_TTL.to_i)
+      if force
+        redis.set(redis_key(user.id), 1, ex: DEDUP_KEY_TTL.to_i)
+      else
+        redis.set(redis_key(user.id), 1, nx: true, ex: DEDUP_KEY_TTL.to_i)
+      end
     end
 
     set(wait:).perform_later(user.id, nil, *floor_timestamp) if newly_scheduled

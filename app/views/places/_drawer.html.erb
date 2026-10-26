@@ -104,7 +104,7 @@
       <%= form_with url: merge_place_path(place), method: :post, class: 'flex gap-2 items-center' do |f| %>
         <%= label_tag :duplicate_place_id, t('.select_place_to_merge'), class: 'sr-only' %>
         <%= select_tag :duplicate_place_id,
-                       options_for_select(candidates.map { |candidate| ["#{candidate.name} · #{number_with_precision(candidate.distance_in_km, precision: 2)} km · #{candidate.lat}, #{candidate.lon}", candidate.id] }),
+                       options_for_select(candidates.map { |candidate| ["#{candidate.name} · #{merge_candidate_distance(candidate)} · #{candidate.lat}, #{candidate.lon}", candidate.id] }),
                        prompt: t('.select_place_to_merge'),
                        required: true,
                        class: 'select select-bordered select-sm max-w-48' %>

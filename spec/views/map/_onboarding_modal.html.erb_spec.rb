@@ -48,7 +48,9 @@ RSpec.describe 'map/_onboarding_modal', type: :view do
   it 'lists every format the import form supports' do
     html = rendered_modal
 
-    %w[google_maps google_photos mobile_photo_library gpx geojson owntracks kml fit tcx csv polarsteps swarm zip].each do |key|
+    %w[
+      google_maps google_photos mobile_photo_library gpx geojson owntracks kml fit tcx csv polarsteps swarm zip
+    ].each do |key|
       expect(html).to include(ERB::Util.html_escape(I18n.t("imports.form.#{key}")))
     end
   end

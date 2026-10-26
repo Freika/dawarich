@@ -51,12 +51,29 @@ RSpec.describe DataMigrations::ReattachUntrackedPointsJob, type: :job do
     end
   end
 
-  it 'does not schedule a second walk for a user whose backfill is already running' do
+  it 'schedules the repair even while an earlier backfill holds the dedup key' do
     Tracks::ThrottledBackfillJob.schedule(user_with_orphans)
     ActiveJob::Base.queue_adapter.enqueued_jobs.clear
 
-    described_class.perform_now
+    freeze_time do
+      described_class.perform_now
 
-    expect(Tracks::ThrottledBackfillJob).not_to have_been_enqueued
+      expect(Tracks::ThrottledBackfillJob).to have_been_enqueued
+        .with(user_with_orphans.id, nil, 12.months.ago.to_i).exactly(:once)
+    end
+  end
+
+  it 'schedules the repair during the completion backoff of a finished backfill' do
+    Sidekiq.redis do |redis|
+      redis.set(Tracks::ThrottledBackfillJob.redis_key(user_with_orphans.id), 1,
+                ex: Tracks::ThrottledBackfillJob::COMPLETION_BACKOFF.to_i)
+    end
+
+    freeze_time do
+      described_class.perform_now
+
+      expect(Tracks::ThrottledBackfillJob).to have_been_enqueued
+        .with(user_with_orphans.id, nil, 12.months.ago.to_i).exactly(:once)
+    end
   end
 end

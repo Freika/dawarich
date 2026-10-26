@@ -124,7 +124,7 @@ function setup(t) {
     },
     loads: [],
   })
-  const originals = ["window", "document"].map((name) => [
+  const originals = ["window", "document", "CustomEvent"].map((name) => [
     name,
     Object.getOwnPropertyDescriptor(globalThis, name),
   ])
@@ -137,6 +137,12 @@ function setup(t) {
   globalThis.window = { addEventListener() {}, removeEventListener() {} }
   globalThis.document = {
     dispatchEvent: (event) => env.events.push(event.type),
+  }
+  globalThis.CustomEvent = class {
+    constructor(type, options) {
+      this.type = type
+      this.detail = options?.detail
+    }
   }
 
   const controller = new TripController()

@@ -8,6 +8,8 @@ describe 'Points API', type: :request do
 
   path '/api/v1/points' do
     get 'Retrieves all points' do
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out data inside the user\'s privacy zones'
       tags 'Points'
       description 'Returns paginated location points for the authenticated user, optionally filtered by date range'
       produces 'application/json'

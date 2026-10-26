@@ -429,6 +429,16 @@ RSpec.describe '/places', type: :request do
         expect(response.body).not_to include('Nearby candidate', 'Unrelated place')
       end
 
+      it 'shows merge candidate distances in the distance unit the user chose' do
+        user.update!(settings: user.settings.merge('maps' => { 'distance_unit' => 'mi' }))
+        create(:place, user:, name: 'Distant duplicate', latitude: 48.8566, longitude: 2.3522)
+
+        get place_url(place), params: { merge_query: 'Distant' }
+
+        option = Nokogiri::HTML(response.body).css('select#duplicate_place_id option').last.text
+        expect(option).to match(/Distant duplicate · [\d,.]+ mi ·/)
+      end
+
       it 'shows an empty state when no merge candidates match the search' do
         get place_url(place), params: { merge_query: 'Missing place' }
 

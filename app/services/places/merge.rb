@@ -94,14 +94,12 @@ module Places
     def merge_timeline_notes
       duplicate.notes.order(:id).find_each do |note|
         existing = survivor.notes.find_by('CAST(noted_at AS date) = ?', note.noted_at.utc.to_date)
-        if existing
-          existing.update!(
-            title: merge_text(existing.title, note.title),
-            body: merge_text(existing.body, note.body)
-          )
+        body = merge_text(existing&.body, note.body)
+        if existing && body.length <= Note::MAX_BODY_LENGTH
+          existing.update!(title: merge_text(existing.title, note.title), body:)
           note.destroy!
         else
-          note.update!(attachable: survivor)
+          note.update!(attachable: existing ? nil : survivor)
         end
       end
     end

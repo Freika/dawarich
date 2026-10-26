@@ -33,6 +33,10 @@ RSpec.describe Entitlements do
       expect(entitlements.points_limit).to be_nil
     end
 
+    it 'puts no Cloud limits on webhooks' do
+      expect(entitlements.webhook_limits?).to be false
+    end
+
     it 'reports the user own plan as effective plan' do
       user.update!(plan: :lite)
 
@@ -67,6 +71,10 @@ RSpec.describe Entitlements do
       it 'caps points at the paid plan limit' do
         expect(entitlements.unlimited_points?).to be false
         expect(entitlements.points_limit).to eq(DawarichSettings::BASIC_PAID_PLAN_LIMIT)
+      end
+
+      it 'applies the Cloud webhook limits' do
+        expect(entitlements.webhook_limits?).to be true
       end
     end
 

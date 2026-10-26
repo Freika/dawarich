@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 class CreateGeofenceEvents < ActiveRecord::Migration[8.1]
-  def change
+  def up
+    return if table_exists?(:geofence_events)
+
     create_table :geofence_events do |t|
       t.references :user, null: false, foreign_key: { on_delete: :cascade }, index: false
       t.references :place, null: false, foreign_key: { on_delete: :cascade }, index: false
@@ -22,5 +24,9 @@ class CreateGeofenceEvents < ActiveRecord::Migration[8.1]
     add_index :geofence_events, %i[user_id occurred_at], order: { occurred_at: :desc }
     add_index :geofence_events, %i[place_id occurred_at], order: { occurred_at: :desc }
     add_index :geofence_events, :created_at, where: 'synthetic', name: 'index_geofence_events_synthetic_on_created_at'
+  end
+
+  def down
+    drop_table :geofence_events, if_exists: true
   end
 end

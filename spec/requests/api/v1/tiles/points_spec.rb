@@ -493,8 +493,8 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
       get tile_path, params: params, headers: { 'If-None-Match' => etag }
 
       expect(response).to have_http_status(:ok)
-      end
     end
+  end
 
   describe 'scope size probe' do
     include ActiveSupport::Testing::TimeHelpers

@@ -66,7 +66,8 @@ class Users::ImportData::Areas
       latitude: latitude,
       longitude: longitude,
       visit_radius: radius,
-      source: :manual
+      source: :manual,
+      geofence: true
     )
     place.user_named = true
     place.skip_suggested_visit_reattribution = true
@@ -81,7 +82,8 @@ class Users::ImportData::Areas
       name: name,
       source: :manual,
       name_locked_at: place.name_locked_at || Time.current,
-      visit_radius: [place.visit_radius, radius].max
+      visit_radius: [place.visit_radius, radius].max,
+      geofence: place.manual? ? place.geofence : true
     )
   end
 

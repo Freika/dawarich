@@ -22,6 +22,12 @@ RSpec.describe Tracks::ThrottledBackfillJob, type: :job do
       expect { described_class.schedule(user) }.not_to \
         have_enqueued_job(described_class).twice
     end
+
+    it 'enqueues a forced walker even while another one holds the dedup key' do
+      described_class.schedule(user)
+
+      expect { described_class.schedule(user, force: true) }.to have_enqueued_job(described_class).once
+    end
   end
 
   describe '#perform' do

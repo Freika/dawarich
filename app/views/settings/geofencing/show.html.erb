@@ -51,9 +51,9 @@
                 <% events.each do |event| %>
                   <% entered = event.event_type_enter? %>
                   <li data-testid="geofence-event"
-                      class="grid grid-cols-[3.25rem_1fr] gap-x-3 border-b border-base-content/[0.08] py-2.5 last:border-b-0 sm:grid-cols-[4rem_1fr]">
+                      class="grid grid-cols-[4.75rem_1fr] gap-x-3 border-b border-base-content/[0.08] py-2.5 last:border-b-0 sm:grid-cols-[5rem_1fr]">
                     <time datetime="<%= event.occurred_at.iso8601 %>" class="text-sm leading-6 tabular-nums text-base-content/60">
-                      <%= l(event.occurred_at.in_time_zone, format: '%H:%M') %>
+                      <%= l(event.occurred_at.in_time_zone, format: :hour_minute) %>
                     </time>
                     <div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
                       <div class="flex min-w-0 items-start gap-2">
@@ -68,7 +68,7 @@
                         <span><%= t("#{s}.sources.#{event.source}") %></span>
                         <% if @webhooks_allowed %>
                           <span data-testid="event-delivery-status" class="tabular-nums">
-                            <%= render 'settings/geofencing/delivery_status', event:, webhooks: @webhooks, scope: s %>
+                            <%= geofence_delivery_status(event, webhooks: @webhooks, scope: s) %>
                           </span>
                         <% end %>
                       </div>

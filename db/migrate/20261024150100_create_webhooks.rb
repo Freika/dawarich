@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 class CreateWebhooks < ActiveRecord::Migration[8.1]
-  def change
+  def up
+    return if table_exists?(:webhooks)
+
     create_table :webhooks do |t|
       t.references :user, null: false, foreign_key: { on_delete: :cascade }, index: true
       t.string :name, null: false
@@ -16,5 +18,9 @@ class CreateWebhooks < ActiveRecord::Migration[8.1]
 
       t.timestamps
     end
+  end
+
+  def down
+    drop_table :webhooks, if_exists: true
   end
 end

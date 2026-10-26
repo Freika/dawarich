@@ -35,4 +35,10 @@ module PlacesHelper
       duration_label: I18n.t('units.hours_minutes_compact', hours: duration / 60, minutes: duration % 60)
     }
   end
+
+  def merge_candidate_distance(candidate)
+    unit = current_user.safe_settings.distance_unit
+    value = Stat.convert_distance(candidate.distance_in_km.to_f * 1000, unit)
+    I18n.t(unit == 'mi' ? 'units.miles' : 'units.kilometers', value: number_with_precision(value, precision: 2))
+  end
 end

@@ -79,6 +79,10 @@ class Entitlements
     DawarichSettings::BASIC_PAID_PLAN_LIMIT
   end
 
+  def webhook_limits?
+    !self_hosted?
+  end
+
   private
 
   def self_hosted?

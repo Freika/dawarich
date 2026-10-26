@@ -6,7 +6,7 @@ class Api::V1::WebhooksController < ApiController
   before_action :set_webhook, only: %i[show update destroy test regenerate_secret]
   rate_limit to: 5, within: 1.minute, only: :test, by: -> { @webhook.id },
              with: -> { render json: { error: 'rate_limited' }, status: :too_many_requests },
-             unless: -> { DawarichSettings.self_hosted? }
+             if: -> { current_api_user.entitlements.webhook_limits? }
 
   def index
     render json: current_api_user.webhooks.order(created_at: :desc)

@@ -32,7 +32,8 @@ RSpec.describe Users::ImportData::Areas, type: :service do
       latitude: 40.7128,
       longitude: -74.0060,
       visit_radius: 100,
-      source: 'manual'
+      source: 'manual',
+      geofence: true
     )
   end
 
@@ -60,6 +61,15 @@ RSpec.describe Users::ImportData::Areas, type: :service do
     expect(user.places.where(name: 'Home').count).to eq(1)
   end
 
+  it 'keeps geofencing switched off on a Place the user already owns when a backup is imported again' do
+    existing = create(:place, user:, name: 'Home', source: :manual, latitude: 40.7128, longitude: -74.0060,
+                              visit_radius: 100, geofence: false)
+
+    service.call
+
+    expect(existing.reload.geofence).to be(false)
+  end
+
   it 'promotes a reused Photon Place to a user-owned locked Place' do
     existing = create(
       :place,
@@ -73,7 +83,7 @@ RSpec.describe Users::ImportData::Areas, type: :service do
 
     service.call
 
-    expect(existing.reload).to have_attributes(name: 'Home', source: 'manual', visit_radius: 100)
+    expect(existing.reload).to have_attributes(name: 'Home', source: 'manual', visit_radius: 100, geofence: true)
     expect(existing).to be_name_locked
   end
 

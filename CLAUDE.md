@@ -113,7 +113,7 @@ This file contains essential information for Claude to work effectively with the
 ### Test Suite
 - **Framework**: RSpec
 - **System Tests**: Capybara + Selenium WebDriver
-- **E2E Tests**: Playwright
+- **E2E Tests**: Playwright, in a separate private repository (seeded with `bin/rails e2e:reset_and_seed`)
 - **Coverage**: SimpleCov
 - **Factories**: FactoryBot
 - **Mocking**: WebMock
@@ -122,7 +122,7 @@ This file contains essential information for Claude to work effectively with the
 ```bash
 bundle exec rspec                    # Run all specs
 bundle exec rspec spec/models/       # Model specs only
-npx playwright test                  # E2E tests
+npm test                             # JavaScript unit tests
 ```
 
 ### Testing Best Practices — Test Behavior, Not Implementation

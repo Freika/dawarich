@@ -8,6 +8,8 @@ RSpec.describe 'Places API', type: :request do
 
   path '/api/v1/places' do
     get 'Retrieves all places for the authenticated user' do
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out data inside the user\'s privacy zones'
       tags 'Places'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API key for authentication'

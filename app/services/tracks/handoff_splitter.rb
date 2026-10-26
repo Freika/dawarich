@@ -32,7 +32,17 @@ class Tracks::HandoffSplitter
   end
 
   def call(since: RECENT_WINDOW.ago)
-    outer_track_ids(since).sum do |track_id|
+    split_tracks(outer_track_ids(since))
+  end
+
+  def repair(from:)
+    split_tracks(user.tracks.joins(CONTAINS_OTHER_TRACKER).where('tracks.start_at >= ?', from).distinct.pluck(:id))
+  end
+
+  private
+
+  def split_tracks(track_ids)
+    track_ids.sum do |track_id|
       track = user.tracks.find_by(id: track_id)
       track ? split(track) : 0
     rescue StandardError => e
@@ -40,8 +50,6 @@ class Tracks::HandoffSplitter
       0
     end
   end
-
-  private
 
   attr_reader :user
 

@@ -18,7 +18,7 @@
     <% if webhook.new_record? || webhook.home_assistant? %>
       <div data-testid="home-assistant-hint" class="space-y-1 text-xs text-base-content/60">
         <p><%= t("#{f_scope}.home_assistant_hint") %></p>
-        <% unless DawarichSettings.self_hosted? %><p><%= t("#{f_scope}.home_assistant_cloud_hint") %></p><% end %>
+        <% if current_user.entitlements.webhook_limits? %><p><%= t("#{f_scope}.home_assistant_cloud_hint") %></p><% end %>
       </div>
     <% end %>
   </div>

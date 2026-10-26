@@ -6,49 +6,66 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Points that arrive late inside an existing route, for example through the API or an import, now join that route instead of staying a separate line, also when they come from a device without a name. A route that gains points keeps its shared links and corrected transport modes. (#3036)
+- Countries you only flew over no longer count when the flight comes from a KML file without speed data, such as a Flightradar24 export. Speed is now worked out from the time and distance between points. KML files imported earlier are updated in the background after the upgrade, and their monthly statistics, digests and trip countries are recalculated. (#3900)
+
+## [1.18.0] - 2026-10-25, Berlin
+
+### ⚠️ Upgrade notes
+
+- Back up your database before upgrading. After the upgrade, background jobs turn Areas into Places and tidy up visit names, repair tracks from the last 12 months, recalculate months with flights and update your existing digests, recheck the Italy achievement, and detect visits again across your whole history. Rolling back does not undo this. Keep Sidekiq (or embedded jobs) running until they finish; on a small self-hosted server you can skip the visit detection by setting `SKIP_VISITS_FLEET_REDETECT=1` and start it later from Visits → Re-run detection on full history.
+
 ### Added
 
-- Geofencing. Turn on "Notify on enter and leave" for a Place, and Dawarich notices when you enter or leave it, using the Place's Visit Radius, from the points your phone or tracking app sends (OwnTracks, Overland, Traccar, the points API). Places that were Areas keep notifying. Movement right at the edge of a Place does not produce a stream of enter/leave pairs: you leave only once you are clearly outside. Events appear in Settings → Geofencing, filterable by place and date. #2515
-- Geofencing webhooks. Send every enter and leave to Home Assistant, Node-RED, n8n or your own service as a signed JSON POST (`X-Dawarich-Signature: sha256=<HMAC of the body>`). Each webhook can listen to some places or all of them, shows its recent deliveries and can send a test event. Events that reach Dawarich more than 15 minutes after they happened stay in the event log but are not sent, so an automation never acts on a stale enter or leave. Failed deliveries are retried; a webhook that fails five deliveries in a row is switched off and you get a notification. On Dawarich Cloud webhooks need a Pro or Family plan and an https address, send at most 60 enter and leave events an hour (later ones stay in the log), and a webhook can send five test events a minute; self-hosted instances have no such limits and can post to addresses on the home network. #2515
-- `POST /api/v1/points/transitions` accepts enter and leave events detected on the phone, for the upcoming geofencing support in the mobile app. `/api/v1/webhooks` and `/api/v1/geofence_events` expose the same management and event log as the web app.
-- Privacy zones now hide your data on the map you look at yourself, not only on shared links. Tag a place with a privacy radius, and points, tracks, routes, visits, places, photos and live updates inside the zone disappear from Map v2, and fog of war stays over it. The same applies to your trip pages, route replay and posters. A track that crosses a zone is cut at its edge rather than drawn through it. Timeline entries for visits inside a zone keep their name and time, but no longer place a pin. Exports, statistics and the API keep your full data. API clients can ask for masked results by adding `mask_privacy_zones=true` to a request; map tiles and fog of war cells are always masked. #2848
-- The hidden area around a privacy zone is no longer centred on the place. It is up to 1.6 times the radius and shifted off the place by a fixed amount that differs for every place, so the place can't be pinpointed from where your data stops on the map, a shared link or a poster. Everything within the radius you set stays hidden. #2848
-- Shared monthly stats pages now respect privacy zones. Hexagons that touch a zone are left off the shared map, and the map no longer fits its view to points inside a zone. #2848
-- The Places page can list only Unconfirmed Places, and each Place opens a details page where a duplicate Place can be merged into it together with its Visits, tags and notes.
-- Turn off Family or Achievements in Settings → General. A disabled feature disappears from the interface and its background processing stops; the mobile app can read and change the choice through `/api/v1/settings`. With Family off, the family API endpoints answer 403 `feature_disabled`; `/api/v1/users/me` reports both features under `features`.
-- Choose how dates and times are shown in Settings → General: an automatic date format or `DD.MM.YYYY`, `DD/MM/YYYY`, `MM/DD/YYYY` or `YYYY-MM-DD`, a 12-hour or 24-hour clock, and whether weeks start on Monday or Sunday. The choice applies across the app, in emails and on the map, and the mobile app can read and change it through `/api/v1/settings`.
-- TREK sources can skip SSL certificate verification, like the Immich, Photoprism, AirTrail and TeslaMate integrations, so a TREK instance behind a certificate from a private CA can connect. The option is set per TREK source when you connect it, the source shows a badge while it is on, and a certificate error now points to it (#3902)
-- A self-hosted Photon index built without English can now be used: set the language under Admin → Instance settings → Photon, or with `PHOTON_API_LANGUAGE`, to one the index contains (e.g. `nl`, or `default` for local names). The default stays `en`, and a change applies only to new lookups. #3898
+- Geofencing. Turn on "Notify on enter and leave" for a Place, and Dawarich records when you arrive and when you leave, using the points your phone or tracking app sends. Places that used to be Areas keep notifying. You'll find the events in Settings → Geofencing. #2515
+- Geofencing webhooks. Send every arrival and departure to Home Assistant, Node-RED, n8n or your own service. Each webhook can follow some places or all of them, shows its recent deliveries and can send a test event. Events that reach Dawarich more than 15 minutes late are logged but not sent. A webhook that fails five times in a row is switched off, and you get a notification. On Dawarich Cloud, webhooks need a Pro or Family plan and an https address, and send up to 60 events an hour. Self-hosted instances have no such limits. #2515
+- Privacy zones now also hide your data on your own map, trip pages, route replay and posters, not only on shared links. A track that crosses a zone is cut at its edge. The hidden area is a little larger than the radius you set and shifted off-centre, so the place itself can't be pinpointed. Exports and statistics keep your full data. #2848
+- Shared monthly stats pages respect privacy zones too. #2848
+- The Places page can show only unconfirmed places, and each place has its own page where you can merge a duplicate into it, together with its visits, tags and notes.
+- Turn off Family or Achievements in Settings → General if you don't use them.
+- Choose how dates and times look in Settings → General: the date format, a 12- or 24-hour clock, and whether weeks start on Monday or Sunday. Your choice applies in the app, in emails and on the map.
+- TREK sources can skip SSL certificate checks, so a TREK server with a self-signed or private certificate can connect. (#3902)
+- Self-hosted Photon servers without English data can be used now: choose the language under Admin → Instance settings → Photon, or set `PHOTON_API_LANGUAGE`. (#3898)
+- The onboarding import step lists every supported format and links to step-by-step export guides.
 
 ### Changed
 
-- Back up your database before upgrading. A background job moves Areas into Places and moves the names of automatically detected Visits into their location label. It also clears Visit names that only repeat their Place or Area name, so they follow later renames. Rolling back does not restore these names. Keep Sidekiq (or embedded jobs) running until it finishes.
-- Areas are now Places with a Visit Radius (up to 50 km), keeping their notes and Visits. The map shows Places with optional boundaries, and the Create Area tool is gone: create a Place with a Visit Radius on the map or from a Visit instead.
-- API: `/api/v1/areas` and the Visit `area_id` field are deprecated in favour of `/api/v1/places` and `place_id`. Visit responses add `display_name`, `custom_name` (the stored Visit name, if any) and `location_label`; `name` still returns the name to show. Breaking: `place` is now `null` for Visits without a Place or Area.
-- The MCP `get_timeline` and `search_visits` tools include each Place's `visit_radius`, and `search_visits` names visits like the timeline and matches location labels.
-- Exports still include `areas.jsonl` so older Dawarich versions can import them, and importing an older backup turns its Areas into Places.
-- English dates with a time now use the 24-hour clock unless you choose the 12-hour clock in Settings → General.
-- Ruby version updated to 4.0.9
-- On the Lite plan, the 12-month window now starts at midnight UTC and moves once a day, so the oldest day leaves the window all at once. The map's upgrade banner and the data archival notices follow the same date.
-- The default `docker/docker-compose.yml` now uses `redis:8-alpine` instead of `redis:7.4-alpine`. Redis 8 is released under the AGPLv3 and reads data saved by Redis 7.4, so no migration is needed. Valkey also works: point `REDIS_URL` at it. #3882
+- Areas are now Places with a Visit Radius (up to 50 km) and keep their notes and visits. The Create Area tool is gone: create a Place with a Visit Radius on the map or from a visit instead.
+- Exports still include Areas, so older Dawarich versions can read them, and importing an older backup turns its Areas into Places.
+- English dates now use the 24-hour clock unless you pick the 12-hour clock in Settings → General.
+- On the Lite plan, the 12-month window now moves once a day, at midnight UTC.
+- The default `docker/docker-compose.yml` uses Redis 8. It reads data saved by Redis 7.4, so there is nothing to migrate, and Valkey works too. #3882
+- Ruby updated to 4.0.9.
 
 ### Fixed
 
-- Map points load again for a single day in a place where you have years of history, such as home. Before, that map tile could take longer than 5 seconds and the map showed "Could not load map tiles" (#3830)
-- Tracks no longer have gaps or straight lines where points recorded later, imported or synced from another app, sit next to an existing track from the same device: those points now join the track, including late points inside an existing route that arrive through the API or an import, and a route that gains points keeps its shared links and corrected transport modes. After the update, Dawarich repairs the last 12 months in the background; for older gaps, choose Recalculate tracks & stats (#3794, #3036)
-- On phones, the card asking whether to show "What's New" notices now fits on screen. Before, its left side, including the heading, was cut off.
-- The trip page no longer scrolls sideways on phones, and its download menu no longer opens partly off-screen. Long trip names and the Public badge of a shared trip used to push the page wider than the screen.
-- The map shows your current position again, whether live mode is on or off: a red dot marks your latest point, even when you are viewing another date range, and hovering or tapping it shows when that point was recorded. Live mode moves the dot as new points arrive, and the dot stays hidden while your latest point is inside a privacy zone. The Family Members layer still lists only other members. (#3904)
-- A visit is suggested again when tracking stops at a place and resumes at the same spot later, for example a shortcut that pauses tracking at the gym. Before, fixes taken while arriving and leaving could make the two sides look like different places, and no visit was suggested. Choose Re-run detection on full history on the Visits page to fix past stays (#3203)
-- Imports uploaded before 1.14.4 no longer show a `.zip` suffix in their names: `ride.gpx.zip` becomes `ride.gpx`. Imports you renamed yourself, and imports whose new name is already taken by another of your imports, keep their current names. (#3062)
-- Downloading an import now returns the original file instead of a ZIP archive when its filename has accented letters such as `ü` (also for imports that already downloaded as a ZIP) or characters such as `:`. New uploads with characters such as `:` also no longer get `.zip` added to their import name. (#3062)
-- Renaming a place now updates the name shown on its visits; visits you named yourself keep their names (#3353)
-- A track from another tracker, such as an imported watch GPX, now cuts a track whose gap it fills instead of that track bridging the gap with a straight line and counting the distance twice. Trackers that record alongside each other keep separate, whole tracks. Choose Recalculate tracks & stats to apply this to imports made before this release (#3424)
-- Flights are drawn along the great circle: straight on the globe and an arc on the flat map. A route over the North Pole no longer kinks or runs along the map's top edge; the part beyond the edge of the flat map is left out (#3261)
-- The achievement cards for Valparaíso, Colima and Chile now show the mainland at full size. Before, a distant island (Easter Island or the Revillagigedo Islands) stretched the drawing, so the region shrank to a dot at the edge of the card. Earned achievements are unchanged (#3731)
-- With Edit points on, clicking another point of the track you are editing now selects that point, and a click that nudges the mouse by a few pixels no longer moves the point. Before, the panel and its Delete button stayed on the first point you clicked until you clicked an empty spot on the map, so Delete could remove the wrong point (#3772)
-- Aosta Valley is now part of Italy's achievement, which has all 20 regions. Anyone who already completed Italy keeps it. The upgrade recalculates achievements once in the background without notifications, so earlier visits to Aosta Valley count. (#3789)
-- Actions in the Background Jobs dashboard (Delete, Retry, Kill, Clear) no longer fail with "Forbidden" when Dawarich is opened directly over plain HTTP by a local network address. (#3907)
+- Flights synced from AirTrail now count toward your distance everywhere: Insights, the stats pages, each month's daily breakdown, digests and the API. Before, a flight only showed up on its own month's card. A month's page and each year card show how much of the total was flown, and points tracked during a flight no longer count on top of it. Months with flights, and the digests you already have, are recalculated in the background after the update. Thanks @darioackermann! (#3659)
+- Map points for a single day load again in places where you have years of history, such as home. The map used to show "Could not load map tiles". (#3830)
+- Tracks no longer have gaps or straight lines where points arrived late, for example from an import or a sync with another app. The last 12 months are repaired in the background after the update; for older gaps, use Recalculate tracks & stats. (#3794)
+- The "What's New" card fits on phone screens again.
+- The trip page no longer scrolls sideways on phones, and its download menu stays on screen.
+- The map shows your current position again as a red dot, with or without live mode. The dot stays hidden while you are inside a privacy zone. (#3904)
+- A visit is suggested again when tracking pauses and resumes at the same place, for example a shortcut that pauses tracking at the gym. Past stays are fixed in the background after the update. (#3203)
+- Imports uploaded before 1.14.4 no longer show `.zip` at the end of their names, unless you renamed them yourself. (#3062)
+- Downloading an import returns the original file instead of a ZIP, also when its name has accented letters such as `ü` or characters such as `:`. (#3062)
+- Renaming a place updates the name shown on its visits. Visits you named yourself keep their names. (#3353)
+- A track from a second device, such as an imported watch GPX, is no longer bridged by a straight line from another track, and its distance is no longer counted twice. Tracks from the last 12 months are fixed in the background after the update. (#3424)
+- Flights are drawn along the shortest path over the globe, including routes over the North Pole. (#3261)
+- The achievement cards for Valparaíso, Colima and Chile show the mainland at full size instead of a dot. (#3731)
+- With Edit points on, clicking another point selects it, and a slight mouse movement during a click no longer moves the point. Before, Delete could remove the wrong point. (#3772)
+- Aosta Valley now counts toward Italy's achievement, which has all 20 regions. If you already completed Italy, you keep it. (#3789)
+- Background Jobs dashboard actions (Delete, Retry, Kill, Clear) no longer fail with "Forbidden" when Dawarich is opened over plain HTTP on a local network. (#3907)
+
+### For developers
+
+- New endpoints: `POST /api/v1/points/transitions` accepts enter and leave events detected on the phone, for the upcoming geofencing in the mobile app; `/api/v1/webhooks` and `/api/v1/geofence_events` manage webhooks and read the event log. Webhook requests are signed with `X-Dawarich-Signature: sha256=<HMAC of the body>`.
+- Breaking: a Visit's `place` is `null` when the visit has no Place or Area. Visits add `display_name`, `custom_name` (the stored name, if any) and `location_label`; `name` still holds the name to show. Sending both `place_id` and `area_id` returns 422.
+- Deprecated: `/api/v1/areas` and the Visit `area_id` field. Use `/api/v1/places` and `place_id`; `/api/v1/places` accepts `visit_radius`, `geofence` and `filter=unconfirmed`.
+- Add `mask_privacy_zones=true` to a read request to get results with privacy zones applied. Map tiles and fog of war are always masked.
+- `/api/v1/settings` reads and changes the date and time preferences and the Family and Achievements switches, and `/api/v1/users/me` lists both features under `features`. With Family off, the family endpoints answer 403 `feature_disabled`.
+- The MCP `get_timeline` and `search_visits` tools include each Place's `visit_radius`, and `search_visits` names visits the way the timeline does.
 
 ## [1.17.0] - 2026-10-23, Berlin
 

@@ -165,14 +165,7 @@ RSpec.describe Users::ImportData::V2Handler, type: :service do
       end
 
       it 'imports a rich canonical Place before its matching legacy Area shell' do
-        # These synthetic coordinates exist only in a temporary test fixture removed after the example.
-        # codeql[rb/clear-text-storage-sensitive-data]
-        File.write(import_directory.join('places.jsonl'), {
-          'name' => 'Home', 'latitude' => 40.7128, 'longitude' => -74.006,
-          'source' => 'manual', 'visit_radius' => 125, 'note' => 'Keep me',
-          'name_locked_at' => '2024-01-01T00:00:00Z',
-          'geodata' => { 'properties' => { 'city' => 'New York' } }
-        }.to_json)
+        FileUtils.cp(file_fixture('import_data/rich_place.jsonl'), import_directory.join('places.jsonl'))
 
         handler.process
 
