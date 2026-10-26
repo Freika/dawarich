@@ -80,18 +80,17 @@ export class AreaSelectionManager {
     try {
       Toast.info(translate("messages.fetching_data_in_selected_area"))
 
-      const [points, visits] = await Promise.all([
+      const range = this.selectionRange()
+      const [{ points, truncated }, visits] = await Promise.all([
         this.api.fetchPointsInArea({
-          start_at: this.controller.startDateValue,
-          end_at: this.controller.endDateValue,
+          ...range,
           min_longitude: bounds.minLng,
           max_longitude: bounds.maxLng,
           min_latitude: bounds.minLat,
           max_latitude: bounds.maxLat,
         }),
         this.api.fetchVisitsInArea({
-          start_at: this.controller.startDateValue,
-          end_at: this.controller.endDateValue,
+          ...range,
           sw_lat: bounds.minLat,
           sw_lng: bounds.minLng,
           ne_lat: bounds.maxLat,
@@ -173,10 +172,31 @@ export class AreaSelectionManager {
           items: messages.join(` ${translate("common.and")} `),
         }),
       )
+      if (truncated) {
+        Toast.warning(
+          translate("selection.truncated", {
+            limit: points.length.toLocaleString(),
+          }),
+        )
+      }
     } catch (error) {
       console.error("[Maps V2] Failed to fetch data in area:", error)
       Toast.error(translate("messages.failed_to_fetch_data_in_selected_area"))
       this.cancelAreaSelection()
+    }
+  }
+
+  selectionRange() {
+    if (
+      this.controller.hasSelectAllTimeCheckboxTarget &&
+      this.controller.selectAllTimeCheckboxTarget.checked
+    ) {
+      return {}
+    }
+
+    return {
+      start_at: this.controller.startDateValue,
+      end_at: this.controller.endDateValue,
     }
   }
 

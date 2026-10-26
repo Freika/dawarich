@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- The Select data on map tool can now look across all your data. Turn on "Select data from all time" in the Tools panel before drawing the rectangle to get every point and visit in that area, whatever dates the map shows. When an area holds more than 10,000 points, only the most recent 10,000 are shown and a notice says so. On the Lite plan, "all time" covers the last 12 months. (#3873)
+
 ### Fixed
 
 - The country list next to the Activity Overview calendar on the Insights page is the same height as the calendar again and scrolls when it has more countries than fit. The calendar view switch moved to the card header, and the notes about counted days moved to the bottom of the card. (#3866)

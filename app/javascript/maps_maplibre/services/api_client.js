@@ -11,6 +11,10 @@ function maskPrivacyZones(params) {
   params.set(PRIVACY_FLAG, "true")
 }
 
+function dateRange(start_at, end_at) {
+  return start_at && end_at ? { start_at, end_at } : {}
+}
+
 export class ApiClient {
   constructor(apiKey, importId = null) {
     this.apiKey = apiKey
@@ -609,7 +613,7 @@ export class ApiClient {
   /**
    * Fetch points within a geographic area
    * @param {Object} options - { start_at, end_at, min_longitude, max_longitude, min_latitude, max_latitude }
-   * @returns {Promise<Array>} Points within the area
+   * @returns {Promise<{points: Array, truncated: boolean}>} Points within the area; truncated when more exist than one page holds
    */
   async fetchPointsInArea({
     start_at,
@@ -620,8 +624,7 @@ export class ApiClient {
     max_latitude,
   }) {
     const params = new URLSearchParams({
-      start_at,
-      end_at,
+      ...dateRange(start_at, end_at),
       min_longitude: min_longitude.toString(),
       max_longitude: max_longitude.toString(),
       min_latitude: min_latitude.toString(),
@@ -640,7 +643,10 @@ export class ApiClient {
       throw new Error(`Failed to fetch points in area: ${response.statusText}`)
     }
 
-    return response.json()
+    return {
+      points: await response.json(),
+      truncated: Number(response.headers.get("X-Total-Pages")) > 1,
+    }
   }
 
   /**
@@ -657,8 +663,7 @@ export class ApiClient {
     ne_lng,
   }) {
     const params = new URLSearchParams({
-      start_at,
-      end_at,
+      ...dateRange(start_at, end_at),
       selection: "true",
       sw_lat: sw_lat.toString(),
       sw_lng: sw_lng.toString(),

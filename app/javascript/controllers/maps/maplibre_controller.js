@@ -86,6 +86,7 @@ export default class extends Controller {
     "familyMembersContainer",
     // Area selection
     "selectAreaButton",
+    "selectAllTimeCheckbox",
     "selectionActions",
     "deletePointsButton",
     "deleteButtonText",

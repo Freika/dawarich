@@ -1189,6 +1189,7 @@ de:
         create_visit: Aufenthalt erstellen
         create_place: Ort erstellen
         select_data_on_map: Daten auf der Karte auswählen
+        select_data_all_time: Daten aus dem gesamten Zeitraum auswählen
         replay: Wiedergabe
         enrich_photos: Fotos bereichern
         close: Schließen
@@ -4438,6 +4439,7 @@ de:
       selected: 'Ausgewählt: %{items}'
       too_many_points: Zu viele Punkte (%{requested}). Bitte zeichne einen kleineren Bereich; max. %{limit} pro Löschen.
       too_many_selected_points: Zu viele Punkte ausgewählt (%{requested}). Bitte zeichne einen kleineren Bereich; max. %{limit} pro Löschen.
+      truncated: Nur die neuesten %{limit} Punkte in diesem Bereich werden angezeigt.
       visits:
         one: "%{count} Aufenthalt"
         other: "%{count} Aufenthalte"
