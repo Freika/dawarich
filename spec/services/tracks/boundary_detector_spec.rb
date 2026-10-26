@@ -239,6 +239,17 @@ RSpec.describe Tracks::BoundaryDetector do
         expect(user.tracks.pluck(:id)).to eq([route.id])
         expect([route.reload.start_at, route.end_at]).to eq([start, start + 20.minutes])
         expect(SharedLink.find(shared_link.id).resource_id).to eq(route.id)
+        expect(Point.where(user: user).pluck(:track_id).uniq).to eq([route.id])
+      end
+
+      it 'keeps both tracks and reports the error when extending fails' do
+        allow_any_instance_of(Tracks::TrackExtender).to receive(:extend_with).and_raise(StandardError, 'boom')
+        allow(ExceptionReporter).to receive(:call)
+
+        expect(detector.resolve_cross_chunk_tracks).to eq(0)
+        expect(user.tracks.pluck(:id)).to contain_exactly(route.id, batch.id)
+        expect(SharedLink.find(shared_link.id).resource_id).to eq(route.id)
+        expect(ExceptionReporter).to have_received(:call)
       end
     end
 
@@ -286,6 +297,15 @@ RSpec.describe Tracks::BoundaryDetector do
         described_class.new(user, orphan_range: range).resolve_cross_chunk_tracks
 
         expect(late_point.reload.track_id).to be_nil
+      end
+
+      it 'leaves the point untracked and reports the error when attaching fails' do
+        allow_any_instance_of(Tracks::TrackExtender).to receive(:extend_with).and_raise(StandardError, 'boom')
+        allow(ExceptionReporter).to receive(:call)
+
+        expect(described_class.new(user, orphan_range: range).resolve_cross_chunk_tracks).to eq(0)
+        expect(late_point.reload.track_id).to be_nil
+        expect(ExceptionReporter).to have_received(:call)
       end
 
       it 'leaves a point more than 5 km from the track alone' do

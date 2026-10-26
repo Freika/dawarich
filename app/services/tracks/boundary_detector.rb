@@ -368,6 +368,9 @@ class Tracks::BoundaryDetector
       "user_id=#{user.id} track_id=#{keeper.id} error=#{e.class}"
     )
     false
+  rescue StandardError => e
+    ExceptionReporter.call(e, "Failed to extend track #{keeper.id} for user #{user.id}")
+    false
   end
 
   # Required by Tracks::Segmentation module

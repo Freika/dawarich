@@ -210,6 +210,7 @@ RSpec.describe 'A retroactive API point joins the existing historical route', ty
       expect(user.tracks.reload.pluck(:id)).to eq([route.id])
       expect(route.reload.start_at).to eq(anchor)
       expect(route.end_at).to eq(anchor + 20.minutes)
+      expect(user.points.pluck(:track_id).uniq).to eq([route.id])
       expect(SharedLink.exists?(shared_link.id)).to be(true)
     end
   ensure
