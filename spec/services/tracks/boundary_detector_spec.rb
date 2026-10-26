@@ -211,6 +211,37 @@ RSpec.describe Tracks::BoundaryDetector do
       end
     end
 
+    context 'with a late batch track that covers a shared route' do
+      let(:start) { 1.year.ago.beginning_of_day + 10.hours }
+      let(:path) { 'LINESTRING(-74.0060 40.7128, -74.0070 40.7130)' }
+      let!(:route) do
+        create(:track, user: user, tracker_id: 'phone', start_at: start + 5.minutes, end_at: start + 15.minutes,
+                       created_at: 2.days.ago, original_path: path)
+      end
+      let!(:batch) do
+        create(:track, user: user, tracker_id: 'phone', start_at: start, end_at: start + 20.minutes,
+                       created_at: 1.minute.ago, original_path: path)
+      end
+      let!(:shared_link) { create(:shared_link, user: user, resource_type: :track, resource_id: route.id) }
+
+      before do
+        { route => [5, 15], batch => [0, 20] }.each do |track, minutes|
+          minutes.each do |minute|
+            create(:point, user: user, tracker_id: 'phone', track: track, timestamp: (start + minute.minutes).to_i,
+                           lonlat: "POINT(#{-74.0060 - (minute * 0.00005)} 40.7128)")
+          end
+        end
+      end
+
+      it 'extends the shared route over the batch' do
+        detector.resolve_cross_chunk_tracks
+
+        expect(user.tracks.pluck(:id)).to eq([route.id])
+        expect([route.reload.start_at, route.end_at]).to eq([start, start + 20.minutes])
+        expect(SharedLink.find(shared_link.id).resource_id).to eq(route.id)
+      end
+    end
+
     context 'with an untracked point inside an old track' do
       let(:start) { 1.year.ago.beginning_of_day + 10.hours }
       let!(:old_track) do

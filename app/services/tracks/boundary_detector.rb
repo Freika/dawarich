@@ -65,7 +65,8 @@ class Tracks::BoundaryDetector
               AND points.anomaly IS NOT TRUE
               AND points.timestamp BETWEEN ? AND ?
               AND points.created_at < ?
-              AND points.timestamp BETWEEN EXTRACT(EPOCH FROM tracks.start_at) AND EXTRACT(EPOCH FROM tracks.end_at)
+              AND points.timestamp BETWEEN EXTRACT(EPOCH FROM tracks.start_at)::bigint
+                                       AND EXTRACT(EPOCH FROM tracks.end_at)::bigint
               AND COALESCE(points.tracker_id, '') = COALESCE(tracks.tracker_id, '')
           )
         SQL
@@ -100,6 +101,9 @@ class Tracks::BoundaryDetector
       "user_id=#{user.id} track_id=#{track.id} orphan_ids=#{orphan_ids.join(',')} " \
       "error=#{e.message}"
     )
+    0
+  rescue StandardError => e
+    ExceptionReporter.call(e, "Failed to reabsorb orphan points into track #{track.id} for user #{user.id}")
     0
   end
 
@@ -353,11 +357,12 @@ class Tracks::BoundaryDetector
       points = Point.where(track_id: others.map(&:id)).order(:id).lock.to_a
       SharedLink.where(resource_type: SharedLink.resource_types[:track], resource_id: others.map(&:id))
                 .update_all(resource_id: keeper.id)
-      Tracks::TrackExtender.new(user, keeper).extend_with(points)
       others.each { |track| track.reload.destroy }
+      Tracks::TrackExtender.new(user, keeper).extend_with(points)
     end
     true
-  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid, ActiveRecord::StaleObjectError => e
+  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid, ActiveRecord::StaleObjectError,
+         ActiveRecord::RecordNotFound => e
     Rails.logger.warn(
       'event=tracks.boundary_merge_failed reason=keep_track ' \
       "user_id=#{user.id} track_id=#{keeper.id} error=#{e.class}"

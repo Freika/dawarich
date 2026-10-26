@@ -187,4 +187,32 @@ RSpec.describe 'A retroactive API point joins the existing historical route', ty
   ensure
     travel_back
   end
+
+  it 'extends the route in place when a late batch starts before it and ends after it' do
+    Points::Intake.call(user_id: user.id, mode: :bulk, payloads: [
+                          { timestamp: (anchor + 5.minutes).to_i, lonlat: 'POINT(-140.300 -40.000)',
+                            tracker_id: tracker_id },
+                          { timestamp: (anchor + 15.minutes).to_i, lonlat: 'POINT(-140.280 -40.000)',
+                            tracker_id: tracker_id }
+                        ])
+    perform_enqueued_jobs(only: generation_jobs) do
+      Tracks::ParallelGeneratorJob.perform_later(user.id, start_at: anchor.beginning_of_day, end_at: anchor.end_of_day)
+    end
+    route = user.tracks.sole
+    shared_link = create(:shared_link, user: user, resource_type: :track, resource_id: route.id)
+
+    post_point(-140.310, -40.000, anchor)
+    post_point(-140.270, -40.000, anchor + 20.minutes)
+    travel 2.minutes
+    run_generation_jobs
+
+    aggregate_failures do
+      expect(user.tracks.reload.pluck(:id)).to eq([route.id])
+      expect(route.reload.start_at).to eq(anchor)
+      expect(route.end_at).to eq(anchor + 20.minutes)
+      expect(SharedLink.exists?(shared_link.id)).to be(true)
+    end
+  ensure
+    travel_back
+  end
 end
