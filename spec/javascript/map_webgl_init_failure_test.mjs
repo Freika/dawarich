@@ -62,3 +62,69 @@ test("rethrows map initialization errors that are not about the GPU", async () =
   await assert.rejects(controller.initializeMap(), /style failed/)
   assert.equal(controller.webglErrorShown, false)
 })
+
+const lifecycleStart = source.indexOf("  disconnect() {")
+const lifecycleEnd = source.indexOf(
+  "  /**\n   * Initialize MapLibre map",
+  lifecycleStart,
+)
+const lifecycleSource = source.slice(lifecycleStart, lifecycleEnd)
+
+async function buildLifecycleController() {
+  const moduleSource = `
+    const cancelAllPreviews = () => {}
+    const performanceMonitor = { logReport: () => {} }
+    export default class {
+      ${lifecycleSource}
+    }
+  `
+  const { default: Controller } = await import(
+    `data:text/javascript;base64,${Buffer.from(moduleSource).toString("base64")}#${Math.random()}`
+  )
+  return new Controller()
+}
+
+test("the WebGL probe releases its context instead of holding it until GC", async (t) => {
+  const originalDocument = globalThis.document
+  t.after(() => {
+    globalThis.document = originalDocument
+  })
+  let released = false
+  globalThis.document = {
+    createElement: () => ({
+      getContext: () => ({
+        getExtension: (name) =>
+          name === "WEBGL_lose_context"
+            ? {
+                loseContext: () => {
+                  released = true
+                },
+              }
+            : null,
+      }),
+    }),
+  }
+  const controller = await buildLifecycleController()
+
+  assert.equal(controller.isWebGLSupported(), true)
+  assert.equal(released, true)
+})
+
+test("disconnect does not throw when the WebGL probe failed before setup", async () => {
+  const controller = await buildLifecycleController()
+
+  assert.doesNotThrow(() => controller.disconnect())
+})
+
+test("the WebGL probe reports no support when the browser gives no context", async (t) => {
+  const originalDocument = globalThis.document
+  t.after(() => {
+    globalThis.document = originalDocument
+  })
+  globalThis.document = {
+    createElement: () => ({ getContext: () => null }),
+  }
+  const controller = await buildLifecycleController()
+
+  assert.equal(controller.isWebGLSupported(), false)
+})

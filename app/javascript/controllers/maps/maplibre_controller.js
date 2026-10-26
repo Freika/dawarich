@@ -139,6 +139,11 @@ export default class extends Controller {
     // disconnect (so the mid-init teardown guard doesn't fire on a fresh map).
     this._disconnected = false
 
+    // A Turbo snapshot taken while the WebGL error was showing comes back
+    // with it; start from the map view and let the checks below decide.
+    this.containerTarget.classList.remove("hidden")
+    this.webglErrorTarget.classList.add("hidden")
+
     if (!this.isWebGLSupported()) {
       this.showWebGLError()
       return
@@ -343,7 +348,7 @@ export default class extends Controller {
     this.eventHandlers?.destroy()
     cancelAllPreviews()
     if (this._persistView) this.map?.off("moveend", this._persistView)
-    this.cleanup.cleanup()
+    this.cleanup?.cleanup()
     this.layerManager?.clearLayerReferences()
     this.map?.remove()
     performanceMonitor.logReport()
@@ -352,7 +357,11 @@ export default class extends Controller {
   isWebGLSupported() {
     try {
       const canvas = document.createElement("canvas")
-      return !!canvas.getContext("webgl2")
+      const gl = canvas.getContext("webgl2")
+      // Hand the probe's context back at once: iOS caps live WebGL contexts,
+      // and this one would otherwise linger until GC on every day switch.
+      gl?.getExtension("WEBGL_lose_context")?.loseContext()
+      return !!gl
     } catch {
       return false
     }
@@ -392,6 +401,7 @@ export default class extends Controller {
       // The isWebGLSupported() probe passes, yet the browser can still refuse
       // the map its own context, e.g. iOS Safari past its WebGL context limit.
       if (error?.name !== "GPUInitializationError") throw error
+      console.warn("[Maps V2] WebGL context refused:", error)
       this.showWebGLError()
       return
     }
