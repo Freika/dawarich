@@ -168,7 +168,6 @@ class Users::Destroy
     cache_keys = [
       "dawarich/user_#{user_id}_countries_visited",
       "dawarich/user_#{user_id}_cities_visited",
-      "dawarich/user_#{user_id}_total_distance",
       "dawarich/user_#{user_id}_years_tracked"
     ]
 
