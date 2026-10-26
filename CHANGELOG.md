@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Poster Studio and Video Studio load the basemap from your custom vector tiles URL when the tiles fallback is off, like the main map, instead of always using the default tile server (#3876)
 - Flights synced from AirTrail 3.12 and later keep their seat and seat class again. AirTrail now lists them under passengers.
 - Traccar Client 10 no longer gets stuck when its heartbeat is on and the phone has no GPS fix. Dawarich used to reject the heartbeat, and the app kept resending it instead of the points that came after.
+- Immich photo searches that start on a date without a time, such as Enrich Photos, now start at midnight in your instance's time zone (`TIME_ZONE`). Before, photos taken in the first hours of that day could be missed when the server's own clock ran in UTC. (#3335)
 - Opening the Timeline, including by selecting a route on the map or with a `?panel=timeline` link, no longer turns on the Visits layer when you have switched it off. Turn it on under Layers to see visits on the map. (#3847)
 
 ## [1.18.0] - 2026-10-25, Berlin
