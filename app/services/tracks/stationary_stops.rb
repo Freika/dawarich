@@ -3,7 +3,7 @@
 # Finds long stationary stops in the time-ordered samples of one tracker.
 #
 # A sample is settled when it, every sample in the preceding threshold window and the
-# last sample before that window all lie within RADIUS_METERS of it. That last sample
+# last sample before that window all lie within the radius of it. That last sample
 # must be at most one more threshold older, so a recording gap never counts as a stop.
 # Settled samples and every sample within the threshold before one are track breaks:
 # the arrival closes a journey, the last settled sample opens the next one, and the
@@ -12,17 +12,25 @@
 # Distances use a bounding box of the window in equirectangular meters, which keeps the
 # check linear in the number of samples however densely a device reports.
 #
+# The radius is the user's visit radius, so a stop for tracks and a stay for visits
+# tolerate the same position noise. A visit radius below the default never makes
+# stops stricter: precise visits must not bring back day-long tracks.
+#
 # Used by:
 # - Tracks::Segmentation for bulk track generation
 # - Track.segment_points_in_sql for realtime track generation
 #
 class Tracks::StationaryStops
-  RADIUS_METERS = 100
+  DEFAULT_RADIUS_METERS = 100
   METERS_PER_DEGREE = 111_320
 
   # samples: [[timestamp, lon, lat], ...] ordered by timestamp; lon and lat may be nil.
-  def self.break_indexes(samples, threshold_seconds)
-    new(samples, threshold_seconds).break_indexes
+  def self.break_indexes(samples, threshold_seconds, radius_meters = DEFAULT_RADIUS_METERS)
+    new(samples, threshold_seconds, radius_meters).break_indexes
+  end
+
+  def self.radius_for(user)
+    [user.safe_settings.visit_radius_meters, DEFAULT_RADIUS_METERS].max
   end
 
   # Context a caller must load before the first sample it segments.
@@ -52,9 +60,10 @@ class Tracks::StationaryStops
     ids.size - tail.size >= 2 ? tail : []
   end
 
-  def initialize(samples, threshold_seconds)
+  def initialize(samples, threshold_seconds, radius_meters = DEFAULT_RADIUS_METERS)
     @samples = samples
     @threshold_seconds = threshold_seconds
+    @radius_meters = radius_meters
   end
 
   def break_indexes
@@ -69,12 +78,36 @@ class Tracks::StationaryStops
       breaks << index if next_settled_timestamp - timestamp(index) <= threshold_seconds
     end
 
-    breaks
+    join_stop_fragments(breaks)
   end
 
   private
 
-  attr_reader :samples, :threshold_seconds
+  attr_reader :samples, :threshold_seconds, :radius_meters
+
+  # Noise around a stay leaves only some samples settled, which cut the dwell into
+  # short tracks. Samples between two breaks belong to the stay while none of them
+  # strays beyond twice the radius from the earlier break.
+  def join_stop_fragments(breaks)
+    breaks.sort.each_cons(2) do |first, last|
+      next if last - first == 1 || !located?(first)
+      next unless (first + 1...last).all? { |index| near_stay?(first, index) }
+
+      breaks.merge(first + 1...last)
+    end
+    breaks
+  end
+
+  def near_stay?(anchor_index, index)
+    return false unless located?(index)
+
+    _, anchor_lon, anchor_lat = samples[anchor_index]
+    _, lon, lat = samples[index]
+    east_meters = (lon - anchor_lon) * METERS_PER_DEGREE * Math.cos(anchor_lat * Math::PI / 180)
+    north_meters = (lat - anchor_lat) * METERS_PER_DEGREE
+
+    east_meters**2 + north_meters**2 <= (2 * radius_meters)**2
+  end
 
   def settled_flags
     windows = { lon_min: [], lon_max: [], lat_min: [], lat_max: [] }
@@ -113,7 +146,7 @@ class Tracks::StationaryStops
     east_meters = lon_spread * METERS_PER_DEGREE * Math.cos(lat * Math::PI / 180)
     north_meters = lat_spread * METERS_PER_DEGREE
 
-    east_meters**2 + north_meters**2 <= RADIUS_METERS**2
+    east_meters**2 + north_meters**2 <= radius_meters**2
   end
 
   def located?(index)

@@ -219,6 +219,7 @@ class Track < ApplicationRecord
   # stop is recognized however the realtime lookback window cuts it.
   def self.stationary_break_point_ids(user_id, start_timestamp, end_timestamp, threshold_seconds)
     history_start = start_timestamp - Tracks::StationaryStops.history_seconds(threshold_seconds)
+    radius_meters = Tracks::StationaryStops.radius_for(User.find(user_id))
 
     Point.not_anomaly
          .where(user_id: user_id, timestamp: history_start..end_timestamp)
@@ -226,7 +227,7 @@ class Track < ApplicationRecord
          .pluck(:tracker_id, :id, :timestamp, Arel.sql('ST_X(lonlat::geometry)'), Arel.sql('ST_Y(lonlat::geometry)'))
          .chunk_while { |previous, row| previous[0] == row[0] }
          .flat_map do |rows|
-           Tracks::StationaryStops.break_indexes(rows.map { |row| row[2..] }, threshold_seconds)
+           Tracks::StationaryStops.break_indexes(rows.map { |row| row[2..] }, threshold_seconds, radius_meters)
                                   .map { |index| rows[index][1] }
          end
   end
