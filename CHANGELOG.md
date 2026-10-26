@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Flights synced from AirTrail 3.12 and later keep their seat and seat class again. AirTrail now lists them under passengers.
 - Traccar Client 10 no longer gets stuck when its heartbeat is on and the phone has no GPS fix. Dawarich used to reject the heartbeat, and the app kept resending it instead of the points that came after.
 - Opening the Timeline, including by selecting a route on the map or with a `?panel=timeline` link, no longer turns on the Visits layer when you have switched it off. Turn it on under Layers to see visits on the map. (#3847)
+- The map no longer turns grey for good on iPad and iPhone after you switch days a few times or return to the tab. MapLibre GL JS is updated to 6.16.0, which restarts its background workers after iOS shuts them down. (#3777)
+- When the browser refuses the map a WebGL context, the map page shows the "WebGL is not available" message instead of an empty map.
 
 ## [1.18.0] - 2026-10-25, Berlin
 

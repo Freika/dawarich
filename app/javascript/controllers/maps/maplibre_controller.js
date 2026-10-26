@@ -160,8 +160,9 @@ export default class extends Controller {
     await this.initializeMap()
     // initializeMap bails without setting this.map if the controller
     // disconnected mid-init (fast Turbo nav); don't build managers on a
-    // dead controller with an undefined map.
-    if (this._disconnected) return
+    // dead controller with an undefined map. It also returns without a map
+    // when the browser refused a WebGL context.
+    if (this._disconnected || !this.map) return
 
     this.initializeAPI()
 
@@ -371,20 +372,29 @@ export default class extends Controller {
     // none, the map stays on the last-known view rather than the world.
     const lastView = loadLastView(this.apiKeyValue)
 
-    const map = await MapInitializer.initialize(
-      this.containerTarget,
-      {
-        mapStyle: this.settings.mapStyle,
-        globeProjection: this.settings.globeProjection,
-        hiddenTileCategories: this.settings.hiddenTileCategories || [],
-        disabledPoiGroups: this.settings.disabledPoiGroups || [],
-        customTheme: this.settings.customTheme,
-        vectorTilesUrl: this.settings.vectorTilesUrl,
-        tilesFallback: this.settings.tilesFallback === true,
-        ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
-      },
-      this.apiKeyValue,
-    )
+    let map
+    try {
+      map = await MapInitializer.initialize(
+        this.containerTarget,
+        {
+          mapStyle: this.settings.mapStyle,
+          globeProjection: this.settings.globeProjection,
+          hiddenTileCategories: this.settings.hiddenTileCategories || [],
+          disabledPoiGroups: this.settings.disabledPoiGroups || [],
+          customTheme: this.settings.customTheme,
+          vectorTilesUrl: this.settings.vectorTilesUrl,
+          tilesFallback: this.settings.tilesFallback === true,
+          ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
+        },
+        this.apiKeyValue,
+      )
+    } catch (error) {
+      // The isWebGLSupported() probe passes, yet the browser can still refuse
+      // the map its own context, e.g. iOS Safari past its WebGL context limit.
+      if (error?.name !== "GPUInitializationError") throw error
+      this.showWebGLError()
+      return
+    }
 
     // The controller may have disconnected while the style was loading (e.g.
     // fast Turbo navigation). Tear the map down instead of attaching a listener
