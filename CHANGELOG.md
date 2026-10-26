@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Traccar Client 10 no longer gets stuck when its heartbeat is on and the phone has no GPS fix. Dawarich used to reject the heartbeat, and the app kept resending it instead of the points that came after.
 - Immich photo searches that start on a date without a time, such as Enrich Photos, now start at midnight in your time zone (Settings, or `TIME_ZONE` if unset). Before, when the server's own clock ran in UTC, photos from the first hours of that day could be missed east of UTC, and photos from the previous evening could show up west of it. (#3335)
 - Opening the Timeline, including by selecting a route on the map or with a `?panel=timeline` link, no longer turns on the Visits layer when you have switched it off. Turn it on under Layers to see visits on the map. (#3847)
+- A visit that runs past midnight now shows up in the Timeline on every day it covers, not only on the day it started, and counts towards each of those days. Its time is split between the days, so a stay from Monday evening to Wednesday adds only Tuesday's 24 hours to Tuesday. (#3624)
 - The map no longer turns grey for good on iPad and iPhone after you switch days a few times or come back to the tab after iOS freed memory. (#3777)
 - When your browser can't start the map, the map page shows the "WebGL is not available" message instead of an empty map.
 - The Prometheus `/metrics` endpoint works again on 1.18.0. Every scrape used to fail with a server error since the upgrade to Ruby 4.0. (#3910)

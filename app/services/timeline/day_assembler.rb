@@ -81,7 +81,7 @@ module Timeline
     def fetch_visits
       user.scoped_visits
           .includes(:area, suggested_places: :tags, place: :tags)
-          .where(started_at: start_at..end_at)
+          .where('started_at <= ? AND ended_at >= ?', end_at, start_at)
           .order(started_at: :asc)
     end
 
@@ -124,11 +124,13 @@ module Timeline
         window = start_at.in_time_zone.to_date..end_at.in_time_zone.to_date
 
         visits.each do |visit|
-          day_key = visit.started_at.in_time_zone.to_date
-          next unless window.cover?(day_key)
+          TrackDayShares.shares_between(visit.started_at, visit.ended_at, timezone).each do |day_key, fraction|
+            next unless window.cover?(day_key)
 
-          grouped[day_key] ||= empty_day_bucket
-          grouped[day_key][:visits] << visit
+            grouped[day_key] ||= empty_day_bucket
+            grouped[day_key][:visits] << visit
+            grouped[day_key][:visit_shares][visit.id] = fraction
+          end
         end
 
         tracks.each do |track|
@@ -148,7 +150,7 @@ module Timeline
     end
 
     def empty_day_bucket
-      { visits: [], tracks: [], originating_tracks: [], track_shares: {} }
+      { visits: [], tracks: [], originating_tracks: [], track_shares: {}, visit_shares: {} }
     end
 
     def build_days(days)
@@ -159,7 +161,7 @@ module Timeline
       entries = interleave(date, data[:visits], data[:tracks], data[:track_shares])
       {
         date: date.to_s,
-        summary: build_summary(data[:visits], data[:tracks], data[:track_shares]),
+        summary: build_summary(data[:visits], data[:tracks], data[:track_shares], data[:visit_shares]),
         bounds: build_bounds(data[:visits], data[:originating_tracks]),
         entries: entries
       }
@@ -270,7 +272,7 @@ module Timeline
       }
     end
 
-    def build_summary(visits, tracks, track_shares)
+    def build_summary(visits, tracks, track_shares, visit_shares)
       total_distance_m = tracks.sum { |t| t.distance.to_f * track_shares.fetch(t.id, 1.0) }
       # Asymmetry with fetch_tracks is intentional: stationary tracks with >=100m
       # still surface in the timeline as "🛑 stayed" rows, but their duration must
@@ -278,7 +280,7 @@ module Timeline
       moving_tracks = tracks.reject { |t| t.dominant_mode == 'stationary' }
       moving_seconds = moving_tracks.sum { |t| t.duration.to_f * track_shares.fetch(t.id, 1.0) }
       # NOTE: visit.duration is stored in MINUTES (see Visits::Creator / Visits::Create).
-      stationary_minutes = visits.sum(&:duration)
+      stationary_minutes = visits.sum { |v| (v.duration * visit_shares.fetch(v.id, 1.0)).round }
       status_counts = visits.group_by(&:status).transform_values(&:size)
 
       {
