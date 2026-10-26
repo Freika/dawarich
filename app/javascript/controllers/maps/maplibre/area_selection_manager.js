@@ -21,6 +21,7 @@ export class AreaSelectionManager {
     this.selectedVisits = []
     this.selectedVisitIds = new Set()
     this.selectedAnomalyIds = []
+    this.selectedRange = null
   }
 
   /**
@@ -81,6 +82,7 @@ export class AreaSelectionManager {
       Toast.info(translate("messages.fetching_data_in_selected_area"))
 
       const range = this.selectionRange()
+      this.selectedRange = range
       const [{ points, truncated }, visits] = await Promise.all([
         this.api.fetchPointsInArea({
           ...range,
@@ -177,6 +179,7 @@ export class AreaSelectionManager {
           translate("selection.truncated", {
             limit: points.length.toLocaleString(),
           }),
+          8000,
         )
       }
     } catch (error) {
@@ -525,8 +528,7 @@ export class AreaSelectionManager {
 
     try {
       const visits = await this.api.fetchVisitsInArea({
-        start_at: this.controller.startDateValue,
-        end_at: this.controller.endDateValue,
+        ...this.selectedRange,
         sw_lat:
           bounds.start.lat < bounds.end.lat ? bounds.start.lat : bounds.end.lat,
         sw_lng:
