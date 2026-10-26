@@ -3,6 +3,7 @@ import { translate } from "i18n"
 const DEBOUNCE_MS = 250
 const DEFAULT_RADIUS_KM = 1.0
 const MOVE_THRESHOLD_M = 100
+const THROTTLED_RETRY_MS = 1200
 
 export class VisitPlaceSearch {
   constructor(visitId, lat, lon, mountEl, apiKey = null) {
@@ -12,6 +13,7 @@ export class VisitPlaceSearch {
     this.mount = mountEl
     this.apiKey = apiKey
     this.debounceTimer = null
+    this.retryTimer = null
     this.abortController = null
     this.open = false
   }
@@ -37,19 +39,22 @@ export class VisitPlaceSearch {
   close() {
     this.open = false
     clearTimeout(this.debounceTimer)
+    clearTimeout(this.retryTimer)
     if (this.abortController) this.abortController.abort()
     this.mount.innerHTML = ""
   }
 
   onInput() {
     clearTimeout(this.debounceTimer)
+    clearTimeout(this.retryTimer)
     this.debounceTimer = setTimeout(
       () => this.fetchResults(this.input.value.trim()),
       DEBOUNCE_MS,
     )
   }
 
-  async fetchResults(query) {
+  async fetchResults(query, retried = false) {
+    clearTimeout(this.retryTimer)
     if (this.abortController) this.abortController.abort()
     this.abortController = new AbortController()
     this.renderLoading()
@@ -67,6 +72,14 @@ export class VisitPlaceSearch {
         signal: this.abortController.signal,
       })
       const data = await res.json()
+      if (data.throttled && !retried) {
+        if (this.input.value.trim() !== query) return
+        this.retryTimer = setTimeout(
+          () => this.fetchResults(query, true),
+          THROTTLED_RETRY_MS,
+        )
+        return
+      }
       this.render(data.places || [], query)
     } catch (err) {
       if (err.name === "AbortError") return
