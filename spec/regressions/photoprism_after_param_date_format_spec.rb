@@ -34,10 +34,10 @@ RSpec.describe 'Photoprism date filters are sent as plain dates' do
     expect(captured('after')).to eq('2026-06-21')
   end
 
-  it 'sends before as a plain date one day past end_date' do
+  it 'sends before as a plain date two days past end_date' do
     stub_empty
     Photoprism::RequestPhotos.new(user, start_date: '2026-06-21', end_date: '2026-06-23T09:00+02:00').call
-    expect(captured('before')).to eq('2026-06-24')
+    expect(captured('before')).to eq('2026-06-25')
   end
 
   it 'derives after from the UTC instant when the offset crosses midnight' do
@@ -49,7 +49,7 @@ RSpec.describe 'Photoprism date filters are sent as plain dates' do
   it 'derives before from the UTC instant when the offset crosses midnight' do
     stub_empty
     Photoprism::RequestPhotos.new(user, start_date: '2026-06-21', end_date: '2026-06-23T00:00+02:00').call
-    expect(captured('before')).to eq('2026-06-23')
+    expect(captured('before')).to eq('2026-06-24')
   end
 
   it 'defaults the after date and does not raise when start_date is nil' do

@@ -64,7 +64,7 @@ RSpec.describe 'Photoprism sub-day trip photo bounds' do
 
     expect(
       a_request(:get, %r{http://photoprism\.local/api/v1/photos})
-        .with(query: hash_including('after' => '2026-06-22', 'before' => '2026-06-23'))
+        .with(query: hash_including('after' => '2026-06-22', 'before' => '2026-06-24'))
     ).to have_been_made.at_least_once
   end
 
@@ -94,7 +94,7 @@ RSpec.describe 'Photoprism sub-day trip photo bounds' do
 
       expect(
         a_request(:get, %r{http://photoprism\.local/api/v1/photos})
-          .with(query: hash_including('after' => '2026-06-25', 'before' => '2026-06-26'))
+          .with(query: hash_including('after' => '2026-06-25', 'before' => '2026-06-27'))
       ).to have_been_made.at_least_once
     end
 
