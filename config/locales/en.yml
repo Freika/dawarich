@@ -1813,7 +1813,7 @@ en:
       show:
         tune_how_dawarich_decides_where_you_actually_were: Tune how Dawarich decides where you actually were
         these_settings_control_how_the_app_groups_your_gps_points: These settings control how the app groups your GPS points into visits to places.
-        points_within_this_radius_are_treated_as_the_same_visit: Points within this radius are treated as the same visit. Default 100.
+        points_within_this_radius_are_treated_as_the_same_visit: Points within this radius are treated as the same visit. A stay within it also ends a Track (at least 100 m). Default 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Lower = more visits suggested, including brief stops. Default 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Skip stops shorter than this. Raise to ignore short drive-bys; lower to catch brief errands. Default 5.
         visit_detection: Visit detection

@@ -231,7 +231,7 @@ class Tracks::BoundaryDetector
   def separated_by_stationary_stop?(track, candidate)
     later = candidate.start_at > track.start_at ? candidate : track
 
-    Tracks::StationaryStops.departure?(later, time_threshold_minutes.to_i * 60)
+    Tracks::StationaryStops.departure?(later, time_threshold_minutes.to_i * 60, stationary_radius_meters)
   end
 
   def separated_by_handoff?(track, candidate)
@@ -380,5 +380,9 @@ class Tracks::BoundaryDetector
 
   def time_threshold_minutes
     @time_threshold_minutes ||= user.safe_settings.minutes_between_routes.to_i
+  end
+
+  def stationary_radius_meters
+    @stationary_radius_meters ||= Tracks::StationaryStops.radius_for(user)
   end
 end

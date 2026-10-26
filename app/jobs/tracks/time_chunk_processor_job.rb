@@ -152,4 +152,8 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   def time_threshold_minutes
     @time_threshold_minutes ||= user.safe_settings.minutes_between_routes.to_i
   end
+
+  def stationary_radius_meters
+    @stationary_radius_meters ||= Tracks::StationaryStops.radius_for(user)
+  end
 end

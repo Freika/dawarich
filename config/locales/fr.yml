@@ -2613,8 +2613,7 @@ fr:
           décide où vous étiez réellement
         these_settings_control_how_the_app_groups_your_gps_points: Ces paramètres
           contrôlent comment l'application groupe vos points GPS en visites de lieux.
-        points_within_this_radius_are_treated_as_the_same_visit: 'Les points à l''intérieur
-          de ce rayon sont traités comme la même visite. Défaut : 100.'
+        points_within_this_radius_are_treated_as_the_same_visit: 'Les points à l''intérieur de ce rayon sont traités comme la même visite. Un séjour dans ce rayon termine aussi un trajet (au moins 100 m). Défaut : 100.'
         lower_more_visits_suggested_including_brief_stops_default_3: 'Inférieur =
           plus de visites suggérées, y compris les arrêts courts. Défaut : 3.'
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: 'Ignorez les arrêts

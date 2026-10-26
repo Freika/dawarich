@@ -1827,7 +1827,7 @@ pl:
       show:
         tune_how_dawarich_decides_where_you_actually_were: Dostosuj, jak Dawarich określa, gdzie faktycznie byłeś
         these_settings_control_how_the_app_groups_your_gps_points: Te ustawienia kontrolują, jak aplikacja grupuje punkty GPS w wizyty w miejscach.
-        points_within_this_radius_are_treated_as_the_same_visit: Punkty w tym promieniu są traktowane jako jedna wizyta. Domyślnie 100.
+        points_within_this_radius_are_treated_as_the_same_visit: Punkty w tym promieniu są traktowane jako jedna wizyta. Pobyt w tym promieniu kończy też trasę (co najmniej 100 m). Domyślnie 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Niżej = więcej sugerowanych wizyt, także krótkie postoje. Domyślnie 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Pomiń postoje krótsze niż ten próg. Zwiększ, by ignorować krótkie zatrzymania; zmniejsz, by wykrywać krótkie postoje. Domyślnie 5.
         visit_detection: Wykrywanie wizyt

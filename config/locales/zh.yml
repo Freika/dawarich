@@ -1789,7 +1789,7 @@ zh:
       show:
         tune_how_dawarich_decides_where_you_actually_were: 调整 Dawarich 判断您实际位置的方式
         these_settings_control_how_the_app_groups_your_gps_points: 这些设置控制应用如何将 GPS 轨迹点分组为到访记录。
-        points_within_this_radius_are_treated_as_the_same_visit: 此半径内的轨迹点会被视为同一次到访。默认值为 100。
+        points_within_this_radius_are_treated_as_the_same_visit: 此半径内的轨迹点会被视为同一次到访。在此半径内停留也会结束一条轨迹（至少 100 米）。默认值为 100。
         lower_more_visits_suggested_including_brief_stops_default_3: 数值越低，建议的到访记录越多（包括短暂停留）。默认值为 3。
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: 跳过短于此时间的停留。调高可忽略短暂路过；调低可捕捉短暂的办事停留。默认值为 5。
         visit_detection: 到访检测
