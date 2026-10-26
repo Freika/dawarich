@@ -12,7 +12,9 @@
      data-controller="video-studio"
      data-video-studio-fonts-value="<%= hud_font_urls.to_json %>"
      data-video-studio-upload-url-value="<%= rails_direct_uploads_url %>"
-     data-video-studio-create-url-value="<%= route_videos_path %>">
+     data-video-studio-create-url-value="<%= route_videos_path %>"
+     data-video-studio-tiles-url-value="<%= current_user.safe_settings.maps_maplibre_tiles_url %>"
+     data-video-studio-tiles-fallback-value="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>">
   <div class="flex h-full flex-col">
     <header class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 border-b border-base-content/10 bg-base-200 px-3 py-2 sm:px-4 lg:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
       <div class="flex items-center gap-3 shrink-0">
