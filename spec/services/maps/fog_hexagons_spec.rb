@@ -132,7 +132,7 @@ RSpec.describe Maps::FogHexagons do
 
     before do
       lat, lon = center
-      tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 450)
+      tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 390)
       place = create(:place, user:, latitude: lat, longitude: lon, lonlat: "POINT(#{lon} #{lat})")
       create(:tagging, tag:, taggable: place)
       cells = [H3.to_string(center_cell), *first_ring, *second_ring]
