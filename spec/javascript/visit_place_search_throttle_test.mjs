@@ -64,6 +64,7 @@ function buildSearch(value) {
   timers.length = 0
   requests.length = 0
   const search = new context.VisitPlaceSearch(42, 52.5139, 13.337, {})
+  search.open = true
   search.input = { value }
   search.list = {
     innerHTML: "",
@@ -147,6 +148,19 @@ test("closing the panel cancels a pending retry", async () => {
 
   await search.fetchResults("burger king")
   search.close()
+  await fireTimers()
+
+  assert.deepEqual(requests, ["burger king"])
+})
+
+test("a skipped lookup answered after the panel closed is not retried", async () => {
+  const search = buildSearch("burger king")
+  search.mount = { innerHTML: "" }
+  responses = [{ places: [], throttled: true }]
+
+  const pending = search.fetchResults("burger king")
+  search.close()
+  await pending
   await fireTimers()
 
   assert.deepEqual(requests, ["burger king"])

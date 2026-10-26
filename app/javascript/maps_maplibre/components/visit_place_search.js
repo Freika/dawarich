@@ -73,7 +73,7 @@ export class VisitPlaceSearch {
       })
       const data = await res.json()
       if (data.throttled && !retried) {
-        if (this.input.value.trim() !== query) return
+        if (!this.open || this.input.value.trim() !== query) return
         this.retryTimer = setTimeout(
           () => this.fetchResults(query, true),
           THROTTLED_RETRY_MS,
