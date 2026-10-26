@@ -226,13 +226,6 @@ class User < ApplicationRecord
     end
   end
 
-  def total_distance
-    Rails.cache.fetch("dawarich/user_#{id}_total_distance", expires_in: 1.day) do
-      total_distance_meters = stats.sum(:distance)
-      Stat.convert_distance(total_distance_meters, safe_settings.distance_unit)
-    end
-  end
-
   def total_countries
     countries_visited.size
   end
