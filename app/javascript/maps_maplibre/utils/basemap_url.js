@@ -63,3 +63,18 @@ export function styleDocumentFailed(event, styleUrl) {
 
   return failedUrl === styleUrl
 }
+
+/**
+ * The user's tiles URL when the poster and video studios can draw it.
+ * Their themed basemap reads Protomaps vector tiles only, and with the
+ * fallback on the main map draws the default tiles as its base, so the
+ * studios do the same.
+ * @param {string|null} url - The user's custom basemap URL
+ * @param {boolean} fallback - Whether the tiles fallback is on
+ * @returns {string|undefined} The URL to use, or undefined for the default
+ */
+export function studioTilesUrl(url, fallback) {
+  if (fallback || classifyBasemapUrl(url) !== "vector") return undefined
+
+  return url.trim()
+}

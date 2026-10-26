@@ -10,7 +10,9 @@
      style="z-index: 60"
      data-controller="poster-studio-editor"
      data-poster-studio-editor-fonts-value="<%= poster_font_urls.to_json %>"
-     data-poster-studio-editor-print-order-url-value="<%= ENV.fetch('PRINT_ORDER_URL', 'https://prints.dawarich.app/api/orders') %>">
+     data-poster-studio-editor-print-order-url-value="<%= ENV.fetch('PRINT_ORDER_URL', 'https://prints.dawarich.app/api/orders') %>"
+     data-poster-studio-editor-tiles-url-value="<%= current_user.safe_settings.maps_maplibre_tiles_url %>"
+     data-poster-studio-editor-tiles-fallback-value="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>">
   <div class="flex h-full flex-col">
     <header class="flex items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2">
       <div class="flex items-center gap-3 shrink-0">

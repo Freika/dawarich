@@ -119,6 +119,21 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
       slider = Nokogiri::HTML(response.body).at_css('[data-poster-studio-editor-target="trackOpacity"]')
       expect(slider['value']).to eq('100')
     end
+
+    it 'hands the custom tiles settings to both studios' do
+      tiles_url = 'https://tiles.example.test/planet/{z}/{x}/{y}.mvt'
+      user.update!(settings: user.settings.merge('maps_maplibre_tiles_url' => tiles_url,
+                                                 'maps_maplibre_tiles_fallback' => true))
+
+      get map_v2_path
+
+      page = Nokogiri::HTML(response.body)
+      %w[poster-studio-editor video-studio].each do |studio|
+        root = page.at_css("[data-controller=\"#{studio}\"]")
+        expect(root["data-#{studio}-tiles-url-value"]).to eq(tiles_url)
+        expect(root["data-#{studio}-tiles-fallback-value"]).to eq('true')
+      end
+    end
   end
 
   describe 'print ordering' do
