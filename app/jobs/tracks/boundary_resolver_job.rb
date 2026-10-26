@@ -55,7 +55,7 @@ class Tracks::BoundaryResolverJob < ApplicationJob
   def resolve_boundary_tracks
     Tracks::PerUserLock.with_user_lock(user.id) do
       Tracks::HandoffSplitter.new(user).call(since: generation_started_at)
-      resolved = Tracks::BoundaryDetector.new(user).resolve_cross_chunk_tracks
+      resolved = Tracks::BoundaryDetector.new(user, orphan_range: untracked_range).resolve_cross_chunk_tracks
       result = Tracks::MetadataRefresher.new(user).call
       data = session_manager.get_session_data
       if data
@@ -63,6 +63,13 @@ class Tracks::BoundaryResolverJob < ApplicationJob
       end
       resolved
     end
+  end
+
+  def untracked_range
+    metadata = session_manager.get_session_data&.dig('metadata') || {}
+    return unless metadata['untracked_only'] && metadata['start_at'] && metadata['end_at']
+
+    Time.zone.parse(metadata['start_at']).to_i..Time.zone.parse(metadata['end_at']).to_i
   end
 
   def generation_started_at

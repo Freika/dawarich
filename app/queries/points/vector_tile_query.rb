@@ -28,6 +28,9 @@ class Points::VectorTileQuery
   # scopes keep the geography index.
   FENCE_MAX_ROWS = 50_000
   LAYER_NAME = 'points'
+  # Points are not merged at this zoom: zooming cannot separate points that
+  # share a location, so each must stay selectable on its own (#3846).
+  MAX_ZOOM = 22
   TILE_PIXELS = 512
   WEB_MERCATOR_WORLD = 40_075_016.685578488
   # Heat reflects time spent, not recording frequency; cap gaps between recordings.
@@ -77,7 +80,10 @@ class Points::VectorTileQuery
   end
 
   # Strictly above the maximum distinct grid cells in a margin-expanded tile —
-  # a pure bug-guard; a reachable LIMIT would drop an arbitrary subset of cells.
+  # a pure bug-guard below MAX_ZOOM; a reachable LIMIT would drop an arbitrary
+  # subset of cells.
+  # ponytail: at MAX_ZOOM one feature per point, so ~333k points inside one
+  # ~10 m tile get truncated; group exact duplicates there if that ever happens.
   def tile_feature_limit
     cells_per_axis = ((TILE_PIXELS * (1 + (2 * MARGIN))) / grid_px).ceil + 1
     (cells_per_axis**2) + 1
@@ -246,6 +252,8 @@ class Points::VectorTileQuery
   end
 
   def snap_expression
+    return 'id' if z == MAX_ZOOM
+
     "ST_SnapToGrid(geom_3857, #{cell_size})"
   end
 
@@ -304,7 +312,7 @@ class Points::VectorTileQuery
   end
 
   def validate_tile_coordinates!
-    raise InvalidTileCoordinatesError if z.negative? || z > 22
+    raise InvalidTileCoordinatesError if z.negative? || z > MAX_ZOOM
 
     max_index = (1 << z) - 1
     raise InvalidTileCoordinatesError if x.negative? || y.negative?

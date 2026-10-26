@@ -80,7 +80,8 @@ class VisitsController < ApplicationController
     end
 
     visits = current_user.scoped_visits.where(id: visit_ids)
-    @affected_started_at = visits.pluck(:started_at)
+    @affected_spans = visits.pluck(:started_at, :ended_at)
+    @affected_started_at = @affected_spans.map(&:first)
 
     service = Visits::BulkDestroy.new(current_user, visit_ids)
     result = service.call
@@ -169,7 +170,7 @@ class VisitsController < ApplicationController
 
   def destroy
     tz = current_user.safe_settings.timezone.presence || 'UTC'
-    day_date = Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
+    day_date = viewed_date&.to_s || Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
     @affected_started_at = [@visit.started_at]
     # Soft delete: the row stays as a tombstone so visit detection never
     # re-suggests it; the user's points are untouched either way.
@@ -224,10 +225,18 @@ class VisitsController < ApplicationController
     Array(raw).map(&:to_i).reject(&:zero?).uniq
   end
 
+  # Visits shown on the day: those that started on it and those still going
+  # on from an earlier day, matching Timeline::DayAssembler.
   def apply_date_scope(scope)
     tz = current_user.safe_settings.timezone.presence || 'UTC'
     range = Date.parse(params[:date]).in_time_zone(tz).all_day
-    scope.where(started_at: range)
+    scope.overlapping(range.begin, range.end)
+  end
+
+  def viewed_date
+    Date.iso8601(params[:date].to_s) if params[:date].present?
+  rescue Date::Error
+    nil
   end
 
   # Builds the timeline-entry hash for a single visit — lets the update
@@ -237,7 +246,7 @@ class VisitsController < ApplicationController
   def timeline_entry_for(visit)
     Timeline::DayAssembler.new(current_user, start_at: '', end_at: '',
                                              privacy_zone_masker: Maps::PrivacyZoneMasker.new(current_user))
-                          .build_visit_entry(visit)
+                          .build_visit_entry(visit, date: viewed_date)
   end
 
   # Turbo streams for #bulk_update: swaps the day's visit-list contents with
@@ -283,7 +292,7 @@ class VisitsController < ApplicationController
   # stay accurate. Keeps the panel consistent after any edit.
   def build_update_streams
     tz = current_user.safe_settings.timezone.presence || 'UTC'
-    day_date = Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
+    day_date = viewed_date&.to_s || Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
 
     [
       turbo_stream.replace("visit_entry_#{@visit.id}",
@@ -327,9 +336,8 @@ class VisitsController < ApplicationController
 
   def same_day?(visits)
     tz = current_user.safe_settings.timezone.presence || 'UTC'
-    Time.use_zone(tz) do
-      visits.map { |v| v.started_at.in_time_zone.to_date }.uniq.length == 1
-    end
+    visits.map { |v| Timeline::TrackDayShares.shares_between(v.started_at, v.ended_at, tz).keys }
+          .reduce(:&).any?
   end
 
   def render_not_found(message)
@@ -341,7 +349,7 @@ class VisitsController < ApplicationController
 
   def build_merge_streams(merged)
     tz = current_user.safe_settings.timezone.presence || 'UTC'
-    day_date = Time.use_zone(tz) { merged.started_at.in_time_zone.to_date.to_s }
+    day_date = viewed_date&.to_s || Time.use_zone(tz) { merged.started_at.in_time_zone.to_date.to_s }
     day_range = Time.use_zone(tz) { Date.parse(day_date).in_time_zone.all_day }
 
     days = Timeline::DayAssembler.new(
@@ -378,7 +386,7 @@ class VisitsController < ApplicationController
     affected_dates = Time.use_zone(tz) do
       Array(@affected_started_at).compact.map { |t| t.in_time_zone.to_date }.uniq
     end
-    visible_date = affected_dates.first if affected_dates.length == 1
+    visible_date = viewed_date || (affected_dates.first if affected_dates.length == 1)
     counts_date_str = (visible_date || Time.use_zone(tz) { Date.current }).to_s
 
     streams = []
@@ -459,14 +467,12 @@ class VisitsController < ApplicationController
   end
 
   def bust_timeline_month_cache
-    started_ats = Array(@affected_started_at).compact
-    return if started_ats.empty?
+    spans = @affected_spans || Array(@affected_started_at).compact.map { |time| [time, time] }
+    return if spans.empty?
 
     tz = current_user.safe_settings.timezone.presence || 'UTC'
-    Time.use_zone(tz) do
-      started_ats.map { |t| t.in_time_zone.to_date.beginning_of_month }.uniq.each do |month_start|
-        Rails.cache.delete(Timeline::MonthSummary.cache_key_for(current_user, month_start))
-      end
+    spans.flat_map { |from, to| Timeline::MonthSummary.months_spanning(from, to, tz) }.uniq.each do |month_start|
+      Rails.cache.delete(Timeline::MonthSummary.cache_key_for(current_user, month_start))
     end
   end
 end

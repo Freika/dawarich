@@ -25,11 +25,13 @@ class DawarichSettings
     end
 
     def photon_https_only_host?
-      PHOTON_HTTPS_ONLY_HOSTS.include?(normalized_photon_host)
+      PHOTON_HTTPS_ONLY_HOSTS.include?(bare_host(photon_host))
     end
 
-    def normalized_photon_host
-      photon_host.to_s.strip.downcase.split(':').first
+    # Strips the port and any reverse-proxy path suffix so hosts written as
+    # "app.chibigeo.com/v1/photon" or "photon.komoot.io:443" still match.
+    def bare_host(host)
+      host.to_s.strip.downcase.split('/').first.to_s.split(':').first
     end
 
     def photon_use_https?

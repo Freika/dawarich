@@ -922,5 +922,19 @@ RSpec.describe 'Api::V1::Points', type: :request do
       expect(returned_ids).to include(boundary_point.id)
       expect(returned_ids).not_to include(outside_point.id)
     end
+
+    it 'returns points from any date when no time range is given' do
+      old_point = create(:point, user:, timestamp: 5.years.ago.to_i,
+                                 latitude: 52.5, longitude: 13.5,
+                                 lonlat: 'POINT(13.5 52.5)')
+
+      get "/api/v1/points?api_key=#{user.api_key}&" \
+          'min_longitude=13.0&max_longitude=14.0&min_latitude=52.0&max_latitude=53.0&include_anomalies=true'
+
+      returned_ids = JSON.parse(response.body).map { |p| p['id'] }
+
+      expect(returned_ids).to include(old_point.id, inside_point.id)
+      expect(returned_ids).not_to include(outside_point.id)
+    end
   end
 end

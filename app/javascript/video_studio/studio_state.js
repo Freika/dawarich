@@ -183,10 +183,11 @@ export function formatFor(settings) {
   return VIDEO_FORMATS[settings.format] ?? VIDEO_FORMATS.portrait
 }
 
-export function buildVideoStyle({ tokens, trackGeojson, settings }) {
+export function buildVideoStyle({ tokens, trackGeojson, settings, tileUrl }) {
   if (!tokens) return null
 
   return buildPosterStyle({
+    tileUrl,
     theme: resolveTheme(tokens),
     trackGeojson,
     trackColor: settings.track_color,

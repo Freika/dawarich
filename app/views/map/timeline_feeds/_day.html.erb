@@ -38,7 +38,7 @@
     </div>
   <% end %>
 
-  <%= render partial: 'map/timeline_feeds/selection_bar' %>
+  <%= render partial: 'map/timeline_feeds/selection_bar', locals: { date: day[:date] } %>
 
   <% if entries.present? %>
     <ol class="timeline-entries">

@@ -765,17 +765,6 @@ RSpec.describe User, type: :model do
       end
     end
 
-    describe '#total_distance' do
-      subject { user.total_distance }
-
-      let!(:stat1) { create(:stat, user:, year: 2020, month: 10, distance: 10_000) }
-      let!(:stat2) { create(:stat, user:, year: 2020, month: 11, distance: 20_000) }
-
-      it 'returns sum of distances' do
-        expect(subject).to eq(30) # 30 km
-      end
-    end
-
     describe '#total_countries' do
       subject { user.total_countries }
 

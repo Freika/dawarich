@@ -326,6 +326,20 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
                                                 'duration_minutes' => 120.0, 'distance' => 2.0)
     end
 
+    it 'reports the per-day share of a visit that continues past midnight' do
+      user.update!(settings: user.settings.merge('timezone' => 'UTC'))
+      create(:visit, user: user, started_at: Time.utc(2025, 4, 27, 22), ended_at: Time.utc(2025, 4, 28, 6),
+                     duration: 480)
+
+      days = timeline(start_at: '2025-04-27', end_at: '2025-04-28').dig('result', 'structuredContent', 'days')
+      visits = days.to_h do |timeline_day|
+        [timeline_day['date'], timeline_day['entries'].find { |entry| entry['type'] == 'visit' }]
+      end
+
+      expect(visits['2025-04-27']).to include('continuation_of_date' => nil, 'duration_minutes' => 480.0)
+      expect(visits['2025-04-28']).to include('continuation_of_date' => '2025-04-27', 'duration_minutes' => 360.0)
+    end
+
     it 'allows exactly 250 entries' do
       insert_visits(249, started_at: day + 8.hours)
 

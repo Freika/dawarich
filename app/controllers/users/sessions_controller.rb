@@ -34,15 +34,17 @@ class Users::SessionsController < Devise::SessionsController
     session[:otp_challenge_at] = Time.current.to_i
     session[:otp_remember_me] = params.dig(:user, :remember_me) == '1'
     self.resource = user
-    render :otp_challenge, status: :unprocessable_entity
+    switch_locale { render :otp_challenge, status: :unprocessable_entity }
   end
 
   def check_email_password_login_allowed
     return unless DawarichSettings.oidc_enabled?
     return if ALLOW_EMAIL_PASSWORD_LOGIN
 
-    redirect_to root_path,
-                alert: I18n.t('controllers.users.sessions.email_password_login_is_disabled_please_use_oidc_to_sign')
+    switch_locale do
+      redirect_to root_path,
+                  alert: I18n.t('controllers.users.sessions.email_password_login_is_disabled_please_use_oidc_to_sign')
+    end
   end
 
   def load_invitation_context

@@ -8,10 +8,10 @@ module McpTools
     tool_name 'get_timeline'
     title 'Get timeline'
     description "Return the authenticated user's visits and journeys for a bounded time range. " \
-                'A journey that crosses midnight is listed in full on its start date and again, for the part ' \
-                'after midnight, on later dates with continuation_of_date set. When adding up journeys across ' \
-                'days, skip a continuation row whose continuation_of_date is also in the result, or use each ' \
-                "day's summary. #{VISIT_STATUS_NOTE}"
+                'A journey or visit that crosses midnight is listed in full on its start date and again, for the ' \
+                'part after midnight, on later dates with continuation_of_date set. When adding up journeys or ' \
+                'visits across days, skip a continuation row whose continuation_of_date is also in the result, ' \
+                "or use each day's summary. #{VISIT_STATUS_NOTE}"
     annotations(
       read_only_hint: true,
       destructive_hint: false,

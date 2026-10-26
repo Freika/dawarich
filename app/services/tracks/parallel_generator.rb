@@ -64,6 +64,7 @@ class Tracks::ParallelGenerator
       chunk_size: humanize_duration(chunk_size),
       start_at: start_at&.iso8601,
       end_at: end_at&.iso8601,
+      untracked_only: untracked_only,
       user_settings: {
         time_threshold_minutes: time_threshold_minutes,
         distance_threshold_meters: distance_threshold_meters,

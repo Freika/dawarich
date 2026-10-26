@@ -99,6 +99,52 @@ test("selection and editing reads see the real data", async () => {
   }
 })
 
+test("an all-time area selection sends no date range", async () => {
+  const requests = await requestedUrls([
+    (c) =>
+      c.fetchPointsInArea({
+        min_longitude: 1,
+        max_longitude: 2,
+        min_latitude: 1,
+        max_latitude: 2,
+      }),
+    (c) => c.fetchVisitsInArea({ sw_lat: 1, sw_lng: 1, ne_lat: 2, ne_lng: 2 }),
+  ])
+
+  assert.equal(requests.length, 2)
+  for (const url of requests) {
+    assert.equal(url.searchParams.has("start_at"), false, url.pathname)
+    assert.equal(url.searchParams.has("end_at"), false, url.pathname)
+  }
+})
+
+test("an area selection over the point cap reports it was truncated", async () => {
+  const originalFetch = globalThis.fetch
+  const respond = (totalPages) => async () => ({
+    ok: true,
+    headers: { get: (name) => (name === "X-Total-Pages" ? totalPages : null) },
+    json: async () => [{ id: 1 }],
+  })
+  const bbox = {
+    min_longitude: 1,
+    max_longitude: 2,
+    min_latitude: 1,
+    max_latitude: 2,
+  }
+  try {
+    const client = new ApiClient("test-key")
+    globalThis.fetch = respond("3")
+    assert.deepEqual(await client.fetchPointsInArea(bbox), {
+      points: [{ id: 1 }],
+      truncated: true,
+    })
+    globalThis.fetch = respond("1")
+    assert.equal((await client.fetchPointsInArea(bbox)).truncated, false)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 test("privacy zones come back as the shifted masked areas with the fingerprint header", async () => {
   const originalFetch = globalThis.fetch
   globalThis.fetch = async () => ({

@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.18.1] - 2026-10-26, Berlin
+
+### Added
+
+- The Select data on map tool can now look across all your data. Turn on "Select data from all time" in the Tools panel before drawing the rectangle to get every point and visit in that area, whatever dates the map shows. When an area holds more than 10,000 points, only the most recent 10,000 are shown and a notice says so. On the Lite plan, "all time" covers the last 12 months. (#3873)
+
+### Changed
+
+- The map runs on MapLibre GL JS 6.16.0. MapLibre now draws Arabic and Hebrew labels itself, so the separate right-to-left text plugin is no longer loaded.
+
+### Fixed
+
+- Searching for a place in the visit edit panel finds nearby places again when you type the name, for example the Burger King next to the visit. Before, typing word by word with a geocoding provider limited to one request per second, such as the public Photon server, often skipped the final search, so only saved places with that name somewhere else in the world showed up. The search now tries once more a second later. (#3590)
+- Reverse geocoding through ChibiGeo uses HTTPS even when `PHOTON_API_USE_HTTPS` is not set. Before, a host written with a path, such as `app.chibigeo.com/v1/photon`, was not recognised as HTTPS-only, so Dawarich sent its requests over plain HTTP and they failed. (#3108)
+- The country list next to the Activity Overview calendar on the Insights page is the same height as the calendar again and scrolls when it has more countries than fit. The calendar view switch moved to the card header, and the notes about counted days moved to the bottom of the card. (#3866)
+- Points that arrive late inside an existing route, for example through the API or an import, now join that route instead of staying a separate line, also when they come from a device without a name. A route that gains points keeps its shared links and corrected transport modes. (#3036)
+- Countries you only flew over no longer count when the flight comes from a KML file without speed data, such as a Flightradar24 export. Speed is now worked out from the time and distance between points. KML files imported earlier are updated in the background after the upgrade, and their monthly statistics, digests and trip countries are recalculated. (#3900)
+- Signing in with two-factor authentication works again when the sign-in page is shown in a language other than English. Before, the code prompt appeared in English and was immediately replaced by an empty sign-in form. On installations with OIDC-only sign-in, the message that password sign-in is disabled now uses that language too. (#3908)
+- Poster Studio and Video Studio load the basemap from your custom vector tiles URL when the tiles fallback is off, like the main map, instead of always using the default tile server (#3876)
+- Flights synced from AirTrail 3.12 and later keep their seat and seat class again. AirTrail now lists them under passengers.
+- Traccar Client 10 no longer gets stuck when its heartbeat is on and the phone has no GPS fix. Dawarich used to reject the heartbeat, and the app kept resending it instead of the points that came after.
+- Immich photo searches that start on a date without a time, such as Enrich Photos, now start at midnight in your time zone (Settings, or `TIME_ZONE` if unset). Before, when the server's own clock ran in UTC, photos from the first hours of that day could be missed east of UTC, and photos from the previous evening could show up west of it. (#3335)
+- Opening the Timeline, including by selecting a route on the map or with a `?panel=timeline` link, no longer turns on the Visits layer when you have switched it off. Turn it on under Layers to see visits on the map. (#3847)
+- A visit that runs past midnight now shows up in the Timeline and its calendar on every day it covers, not only on the day it started. On the later days its row shows the time from midnight and only that day's part of the stay. (#3624)
+- The map no longer turns grey for good on iPad and iPhone after you switch days a few times or come back to the tab after iOS freed memory. (#3777)
+- When your browser can't start the map, the map page shows the "WebGL is not available" message instead of an empty map.
+- The Prometheus `/metrics` endpoint works again on 1.18.0. Every scrape used to fail with a server error since the upgrade to Ruby 4.0. (#3910)
+- Points recorded at the same location can again be selected, moved and deleted one by one on the map at maximum zoom. (#3846)
+- Photos from a PhotoPrism server running in a time zone east of UTC (for example `TZ=Europe/Berlin`) show up on the map again when you pick a single day. Before, they only appeared once the range ended a day later. (#3651)
+- The map loads again on Docker and Podman setups that start the app container without `web-entrypoint.sh`. Before, the persistent `public` volume kept the files of the previous version, the MapLibre files added in 1.15.1 were missing, and the browser blocked them with a "disallowed MIME type" error. Static files missing from the volume are now served from the copy inside the image. Files that already exist in the volume are still served from it, so keep `entrypoint: web-entrypoint.sh` to get updated versions of those. (#3872)
+- Scheduled jobs added in a new release no longer fail in Sidekiq with `undefined method 'jid='` when a Sidekiq process from an older Dawarich version still uses the same Redis. If you see these errors, stop the outdated Sidekiq process and delete the dead jobs that are already there. (#3715)
+- Points deleted with Select data on map, including anomaly points, now disappear from the map right away. Before, they stayed visible until you zoomed far in or out or reloaded the page, and came back at the original zoom. (#3771)
+
+### For developers
+
+- The MCP `get_timeline` tool marks the later days of a visit that runs past midnight with `continuation_of_date`, as it already did for journeys, and `duration_minutes` on those days counts only that day's part of the stay.
+
 ## [1.18.0] - 2026-10-25, Berlin
 
 ### ⚠️ Upgrade notes

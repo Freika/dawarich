@@ -16,7 +16,6 @@ class Cache::UserPreheatingJob < ApplicationJob
     write("dawarich/user_#{user.id}_points_geocoded_stats", StatsQuery.new(user).cached_points_geocoded_stats)
     write("dawarich/user_#{user.id}_countries_visited", user.countries_visited_uncached)
     write("dawarich/user_#{user.id}_cities_visited", user.cities_visited_uncached)
-    write("dawarich/user_#{user.id}_total_distance", total_distance(user))
 
     Cache::PreheatInsightsDigests.new(user).call
   end
@@ -25,9 +24,5 @@ class Cache::UserPreheatingJob < ApplicationJob
 
   def write(key, value)
     Rails.cache.write(key, value, expires_in: EXPIRES_IN)
-  end
-
-  def total_distance(user)
-    Stat.convert_distance(user.stats.sum(:distance), user.safe_settings.distance_unit)
   end
 end

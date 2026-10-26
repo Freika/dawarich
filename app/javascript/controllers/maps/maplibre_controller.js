@@ -86,6 +86,7 @@ export default class extends Controller {
     "familyMembersContainer",
     // Area selection
     "selectAreaButton",
+    "selectAllTimeCheckbox",
     "selectionActions",
     "deletePointsButton",
     "deleteButtonText",
@@ -139,6 +140,11 @@ export default class extends Controller {
     // disconnect (so the mid-init teardown guard doesn't fire on a fresh map).
     this._disconnected = false
 
+    // A Turbo snapshot taken while the WebGL error was showing comes back
+    // with it; start from the map view and let the checks below decide.
+    this.containerTarget.classList.remove("hidden")
+    this.webglErrorTarget.classList.add("hidden")
+
     if (!this.isWebGLSupported()) {
       this.showWebGLError()
       return
@@ -154,25 +160,15 @@ export default class extends Controller {
     this.settings = this.settingsController.settings
     this.settings.timezone = this.timezoneValue
 
-    // When the page loads with the Timeline panel open (deep link or
-    // SPA-style nav from elsewhere), the visits layer is always relevant —
-    // it's the on-map counterpart of the rail. Force it on for this session
-    // even if the user's saved layer toggle is off, without persisting back
-    // to the server.
-    const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.get("panel") === "timeline") {
-      this.settings.visitsEnabled = true
-      this.settingsController.settings.visitsEnabled = true
-    }
-
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
 
     await this.initializeMap()
     // initializeMap bails without setting this.map if the controller
     // disconnected mid-init (fast Turbo nav); don't build managers on a
-    // dead controller with an undefined map.
-    if (this._disconnected) return
+    // dead controller with an undefined map. It also returns without a map
+    // when the browser refused a WebGL context.
+    if (this._disconnected || !this.map) return
 
     this.initializeAPI()
 
@@ -192,9 +188,8 @@ export default class extends Controller {
     this.areaSelectionManager = new AreaSelectionManager(this)
     this.visitsManager = new VisitsManager(this)
     // The moveend viewport-refetch normally attaches when the user flips the
-    // Visits toggle on. When the layer starts enabled (saved setting or the
-    // panel=timeline force-enable above), attach it here so panning keeps
-    // the dots in sync with the viewport.
+    // Visits toggle on. When the layer starts enabled by the saved setting,
+    // attach it here so panning keeps the dots in sync with the viewport.
     if (this.settings.visitsEnabled) {
       this.visitsManager.attachViewportRefetch()
     }
@@ -354,7 +349,7 @@ export default class extends Controller {
     this.eventHandlers?.destroy()
     cancelAllPreviews()
     if (this._persistView) this.map?.off("moveend", this._persistView)
-    this.cleanup.cleanup()
+    this.cleanup?.cleanup()
     this.layerManager?.clearLayerReferences()
     this.map?.remove()
     performanceMonitor.logReport()
@@ -363,7 +358,11 @@ export default class extends Controller {
   isWebGLSupported() {
     try {
       const canvas = document.createElement("canvas")
-      return !!canvas.getContext("webgl2")
+      const gl = canvas.getContext("webgl2")
+      // Hand the probe's context back at once: iOS caps live WebGL contexts,
+      // and this one would otherwise linger until GC on every day switch.
+      gl?.getExtension("WEBGL_lose_context")?.loseContext()
+      return !!gl
     } catch {
       return false
     }
@@ -383,20 +382,30 @@ export default class extends Controller {
     // none, the map stays on the last-known view rather than the world.
     const lastView = loadLastView(this.apiKeyValue)
 
-    const map = await MapInitializer.initialize(
-      this.containerTarget,
-      {
-        mapStyle: this.settings.mapStyle,
-        globeProjection: this.settings.globeProjection,
-        hiddenTileCategories: this.settings.hiddenTileCategories || [],
-        disabledPoiGroups: this.settings.disabledPoiGroups || [],
-        customTheme: this.settings.customTheme,
-        vectorTilesUrl: this.settings.vectorTilesUrl,
-        tilesFallback: this.settings.tilesFallback === true,
-        ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
-      },
-      this.apiKeyValue,
-    )
+    let map
+    try {
+      map = await MapInitializer.initialize(
+        this.containerTarget,
+        {
+          mapStyle: this.settings.mapStyle,
+          globeProjection: this.settings.globeProjection,
+          hiddenTileCategories: this.settings.hiddenTileCategories || [],
+          disabledPoiGroups: this.settings.disabledPoiGroups || [],
+          customTheme: this.settings.customTheme,
+          vectorTilesUrl: this.settings.vectorTilesUrl,
+          tilesFallback: this.settings.tilesFallback === true,
+          ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
+        },
+        this.apiKeyValue,
+      )
+    } catch (error) {
+      // The isWebGLSupported() probe passes, yet the browser can still refuse
+      // the map its own context, e.g. iOS Safari past its WebGL context limit.
+      if (error?.name !== "GPUInitializationError") throw error
+      console.warn("[Maps V2] WebGL context refused:", error)
+      this.showWebGLError()
+      return
+    }
 
     // The controller may have disconnected while the style was loading (e.g.
     // fast Turbo navigation). Tear the map down instead of attaching a listener
@@ -667,58 +676,9 @@ export default class extends Controller {
     const { tab } = event.detail
     if (tab === "timeline-feed") {
       this.loadTimelineFeed()
-      // The timeline rail is the on-panel counterpart of the visits map
-      // layer — keep them in sync. If the visits layer is currently off,
-      // turn it on (session-only, no persistence) so the dots appear next
-      // to the day's entries.
-      this._ensureVisitsLayerEnabled()
     } else if (this._highlightedDay) {
       // Leaving timeline-feed tab — restore full opacity
       this._clearDayHighlight()
-    }
-  }
-
-  // Force-enables the visits layer for this session without persisting the
-  // change to the server — the user's saved Layers preference shouldn't be
-  // flipped just because they opened Timeline once.
-  //
-  // We DO update the in-memory `settings.visitsEnabled` so subsequent
-  // `loadMapData()` calls (e.g. when the user navigates to a different
-  // day) include visits in the fetch + the loading-counter expectations.
-  // Otherwise the loader badge reads "N tracks" only and the map ends
-  // up with stale visits when a new day is selected.
-  async _ensureVisitsLayerEnabled() {
-    if (!this.hasVisitsToggleTarget) return
-
-    // In-memory only — don't go through SettingsManager.updateSetting,
-    // which would persist back to the server.
-    if (this.settings) this.settings.visitsEnabled = true
-    if (this.dataLoader?.settings) this.dataLoader.settings.visitsEnabled = true
-    if (this.settingsController?.settings) {
-      this.settingsController.settings.visitsEnabled = true
-    }
-
-    if (this.visitsToggleTarget.checked) return
-    this.visitsToggleTarget.checked = true
-    if (this.hasVisitsSearchTarget) {
-      this.visitsSearchTarget.style.display = "block"
-    }
-
-    const visitsLayer = this.layerManager?.getLayer("visits")
-    if (!visitsLayer) return
-
-    try {
-      if (!visitsLayer.data?.features?.length) {
-        const visits = await this.api.fetchVisits({
-          start_at: this.startDateValue,
-          end_at: this.endDateValue,
-        })
-        this.filterManager?.setAllVisits(visits)
-        visitsLayer.update(this.dataLoader.visitsToGeoJSON(visits))
-      }
-      visitsLayer.show()
-    } catch (err) {
-      console.error("Failed to auto-enable visits layer for timeline:", err)
     }
   }
 

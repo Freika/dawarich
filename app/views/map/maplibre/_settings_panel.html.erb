@@ -957,6 +957,13 @@
             <% end %>
           </div>
 
+          <label class="label cursor-pointer justify-start gap-2">
+            <input type="checkbox"
+                   class="checkbox checkbox-sm"
+                   data-maps--maplibre-target="selectAllTimeCheckbox">
+            <span class="label-text"><%= t('.select_data_all_time') %></span>
+          </label>
+
           <!-- Immich Enrich Panel -->
           <% if current_user.immich_integration_configured? && current_user.full_access? %>
             <div class="hidden mt-4"

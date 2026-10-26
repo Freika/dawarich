@@ -2,8 +2,6 @@
 
 module Tracks
   class OrphanPointAttacher
-    include Tracks::TrackBuilder
-
     def initialize(user, points, segment_points)
       @user = user
       @points = Array(points)
@@ -44,9 +42,7 @@ module Tracks
         end
         next if attachable.empty?
 
-        TrackSegments::TimeAnchorBackfillJob.anchor_now(track.track_segments.where(start_at: nil).pluck(:id))
-        attachable.each { |point| point.update!(track_id: track.id) }
-        refresh_track(track)
+        Tracks::TrackExtender.new(user, track).extend_with(attachable)
         track
       end
     rescue StandardError => e
@@ -61,16 +57,6 @@ module Tracks
       return false unless neighbor.tracker_id.to_s == point.tracker_id.to_s
 
       (point.timestamp - neighbor.timestamp).abs <= user.safe_settings.minutes_between_routes.to_i.minutes
-    end
-
-    def refresh_track(track)
-      points = track.points.order(:timestamp, :id).to_a
-      elevation = calculate_elevation_stats(points)
-      track.update!(start_at: Time.zone.at(points.first.timestamp), end_at: Time.zone.at(points.last.timestamp),
-                    elevation_gain: elevation[:gain], elevation_loss: elevation[:loss],
-                    elevation_min: elevation[:min], elevation_max: elevation[:max])
-      track.recalculate_path_and_distance!
-      Tracks::Reprocessor.reprocess(track)
     end
   end
 end

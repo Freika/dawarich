@@ -1136,6 +1136,7 @@ ca:
         create_visit: Crea una visita
         create_place: Crea un lloc
         select_data_on_map: Selecciona dades al mapa
+        select_data_all_time: Selecciona dades de tot el període
         replay: Reproducció
         enrich_photos: Enriqueix fotos
         close: Tanca
@@ -4386,6 +4387,7 @@ ca:
       selected: "Seleccionats: %{items}"
       too_many_points: "Massa punts (%{requested}). Dibuixa una àrea més petita; màxim %{limit} per supressió."
       too_many_selected_points: "S'han seleccionat massa punts (%{requested}). Dibuixa una àrea més petita; màxim %{limit} per supressió."
+      truncated: "Només es mostren els %{limit} punts més recents d'aquesta àrea."
       visits:
         one: "%{count} visita"
         other: "%{count} visites"
