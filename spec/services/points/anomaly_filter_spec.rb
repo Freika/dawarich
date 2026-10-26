@@ -87,6 +87,64 @@ RSpec.describe Points::AnomalyFilter do
       end
     end
 
+    context 'Pass 1: optional accuracy threshold' do
+      let(:base_lat) { 52.52 }
+      let(:base_lon) { 13.405 }
+
+      let!(:precise) do
+        create(:point, user: user, accuracy: 15, timestamp: 30.minutes.ago.to_i,
+               latitude: base_lat, longitude: base_lon,
+               lonlat: "POINT(#{base_lon} #{base_lat})")
+      end
+      let!(:wifi_grade) do
+        create(:point, user: user, accuracy: 300, timestamp: 29.minutes.ago.to_i,
+               latitude: base_lat + 0.0001, longitude: base_lon + 0.0001,
+               lonlat: "POINT(#{base_lon + 0.0001} #{base_lat + 0.0001})")
+      end
+      let!(:timeline_grade) do
+        create(:point, user: user, accuracy: 3_000, timestamp: 28.minutes.ago.to_i,
+               latitude: base_lat + 0.0002, longitude: base_lon + 0.0002,
+               lonlat: "POINT(#{base_lon + 0.0002} #{base_lat + 0.0002})")
+      end
+      let!(:no_accuracy) do
+        create(:point, user: user, accuracy: nil, timestamp: 27.minutes.ago.to_i,
+               latitude: base_lat + 0.0003, longitude: base_lon + 0.0003,
+               lonlat: "POINT(#{base_lon + 0.0003} #{base_lat + 0.0003})")
+      end
+
+      def run_filter
+        described_class.new(user.id, start_time, end_time).call
+      end
+
+      context 'when a threshold value is stored but the threshold is not turned on' do
+        before { user.update!(settings: { 'gps_accuracy_threshold' => 100 }) }
+
+        it 'keeps coarse points' do
+          run_filter
+
+          expect([wifi_grade, timeline_grade].map { |point| point.reload.anomaly }).to all(be_falsey)
+        end
+      end
+
+      context 'when the threshold is turned on' do
+        before do
+          user.update!(settings: { 'gps_accuracy_filter_enabled' => true, 'gps_accuracy_threshold' => 200 })
+        end
+
+        it 'flags points less accurate than the threshold' do
+          run_filter
+
+          expect([wifi_grade, timeline_grade].map { |point| point.reload.anomaly }).to eq([true, true])
+        end
+
+        it 'keeps precise points and points without accuracy' do
+          run_filter
+
+          expect([precise, no_accuracy].map { |point| point.reload.anomaly }).to all(be_falsey)
+        end
+      end
+    end
+
     # Regression for the real failure: a drive whose shape comes entirely from
     # coarse Google Timeline points. Dropping them left an 78km straight line
     # between the two precise endpoints.
@@ -752,32 +810,6 @@ RSpec.describe Points::AnomalyFilter do
       it 'returns 0 and leaves points untouched' do
         expect(described_class.new(user.id, start_time, end_time).call).to eq(0)
         expect(terrible.reload.anomaly).not_to be true
-      end
-    end
-
-    # gps_accuracy_threshold no longer gates flagging: a coarse radius is not
-    # evidence of a wrong position, and honouring a 100-1000m threshold deleted
-    # the coarse points that carry route shape. The setting is still accepted by
-    # the settings API but no longer affects which points are flagged.
-    context 'when the user has set an accuracy threshold' do
-      let(:user) { create(:user, settings: { 'gps_accuracy_threshold' => 500 }) }
-      let!(:above_user_threshold) do
-        create(:point, user: user, accuracy: 600, timestamp: 30.minutes.ago.to_i,
-               latitude: 52.52, longitude: 13.405, lonlat: 'POINT(13.405 52.52)')
-      end
-      let!(:absurd) do
-        create(:point, user: user, accuracy: 40_000, timestamp: 29.minutes.ago.to_i,
-               latitude: 52.5201, longitude: 13.4051, lonlat: 'POINT(13.4051 52.5201)')
-      end
-
-      before { described_class.new(user.id, start_time, end_time).call }
-
-      it 'keeps coarse points regardless of the threshold' do
-        expect(above_user_threshold.reload.anomaly).not_to be true
-      end
-
-      it 'still flags absurd radii' do
-        expect(absurd.reload.anomaly).to be true
       end
     end
 

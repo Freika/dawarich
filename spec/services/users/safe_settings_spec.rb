@@ -58,6 +58,8 @@ RSpec.describe Users::SafeSettings do
             enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
             min_minutes_spent_in_city: 60,
             gps_filtering_enabled: true,
+            gps_accuracy_filter_enabled: false,
+            gps_accuracy_threshold: 100,
             timezone: 'UTC',
             visit_radius_meters: 100,
             visit_min_points: 3,
@@ -153,6 +155,8 @@ RSpec.describe Users::SafeSettings do
             'show_supporter_badge' => true,
             'min_minutes_spent_in_city' => 60,
             'gps_filtering_enabled' => true,
+            'gps_accuracy_filter_enabled' => false,
+            'gps_accuracy_threshold' => 100,
             'timezone' => 'UTC',
             'date_format' => 'auto',
             'time_format' => 'auto',
@@ -207,6 +211,8 @@ RSpec.describe Users::SafeSettings do
             enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
             min_minutes_spent_in_city: 60,
             gps_filtering_enabled: true,
+            gps_accuracy_filter_enabled: false,
+            gps_accuracy_threshold: 100,
             timezone: 'UTC',
             visit_radius_meters: 100,
             visit_min_points: 3,
@@ -737,6 +743,46 @@ RSpec.describe Users::SafeSettings do
 
     it 'casts string "false"' do
       expect(described_class.new({ 'gps_filtering_enabled' => 'false' }).gps_filtering_enabled?).to be false
+    end
+  end
+
+  describe '#gps_accuracy_filter_enabled?' do
+    it 'defaults to false' do
+      expect(described_class.new({}).gps_accuracy_filter_enabled?).to be false
+    end
+
+    it 'stays off when only a threshold value is stored' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 100 }).gps_accuracy_filter_enabled?).to be false
+    end
+
+    it 'casts string "true"' do
+      expect(described_class.new({ 'gps_accuracy_filter_enabled' => 'true' }).gps_accuracy_filter_enabled?).to be true
+    end
+  end
+
+  describe '#gps_accuracy_threshold' do
+    it 'defaults to 100' do
+      expect(described_class.new({}).gps_accuracy_threshold).to eq(100)
+    end
+
+    it 'returns the user-provided integer' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 250 }).gps_accuracy_threshold).to eq(250)
+    end
+
+    it 'clamps below the minimum' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 10 }).gps_accuracy_threshold).to eq(50)
+    end
+
+    it 'clamps above the maximum' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 99_999 }).gps_accuracy_threshold).to eq(1000)
+    end
+
+    it 'coerces string values' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => '300' }).gps_accuracy_threshold).to eq(300)
+    end
+
+    it 'falls back to the default for a blank value' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => '' }).gps_accuracy_threshold).to eq(100)
     end
   end
 

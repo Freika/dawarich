@@ -79,7 +79,7 @@ class Api::V1::SettingsController < ApiController
       :maps_v2_style, :maps_maplibre_style, :maps_maplibre_tiles_url,
       :maps_maplibre_tiles_fallback, :globe_projection,
       :min_minutes_spent_in_city,
-      :gps_filtering_enabled,
+      :gps_filtering_enabled, :gps_accuracy_filter_enabled, :gps_accuracy_threshold,
       :point_dragging_enabled, :points_tiled_rendering,
       :family_enabled, :achievements_enabled,
       :app_store_supporter, :app_store_supporter_install,
