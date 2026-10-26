@@ -650,6 +650,36 @@
             <p class="text-sm text-base-content/60 mt-1"><%= t('.hide_readings_that_cannot_be_a_real_position_impossible_jumps') %></p>
           </div>
 
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     name="gpsAccuracyFilterEnabled"
+                     class="toggle toggle-primary" />
+              <span class="label-text font-medium"><%= t('.hide_inaccurate_points') %></span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1"><%= t('.hide_inaccurate_points_hint') %></p>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium"><%= t('.accuracy_threshold') %></span>
+              <span class="label-text-alt" data-maps--maplibre-target="gpsAccuracyThresholdValue">100m</span>
+            </label>
+            <input type="range"
+                   name="gpsAccuracyThreshold"
+                   min="50"
+                   max="1000"
+                   step="10"
+                   value="100"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateGpsAccuracyThresholdDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>50m</span>
+              <span>500m</span>
+              <span>1000m</span>
+            </div>
+          </div>
+
           <button type="button"
                   class="btn btn-sm btn-outline btn-block"
                   data-action="click->maps--maplibre#reapplyAnomalyFilter">

@@ -92,6 +92,16 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(user.reload.safe_settings.point_dragging_enabled?).to be false
       end
 
+      it 'updates the optional accuracy threshold' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { gps_accuracy_filter_enabled: true, gps_accuracy_threshold: 250 } }
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body['settings']).to include('gps_accuracy_filter_enabled' => true,
+                                                            'gps_accuracy_threshold' => 250)
+        expect(user.reload.safe_settings.gps_accuracy_filter_enabled?).to be true
+      end
+
       it 'updates points_tiled_rendering' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { points_tiled_rendering: true } }
 

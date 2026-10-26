@@ -131,15 +131,23 @@ class Points::AnomalyFilter
   end
 
   # Pass 1: Mark points whose reported accuracy radius is so large the reading
-  # cannot be a position at all. See ABSURD_ACCURACY_METERS for why this is not
-  # the user's gps_accuracy_threshold.
+  # cannot be a position at all. See ABSURD_ACCURACY_METERS for why the user's
+  # gps_accuracy_threshold is opt-in: phone tracking needs it to hide slow
+  # sideways noise no speed pass can see, Google Timeline imports lose real
+  # route geometry to it.
   def filter_by_accuracy
     flag_anomalies(
       Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
            .not_anomaly
            .where.not(accuracy: nil)
-           .where('accuracy > ?', ABSURD_ACCURACY_METERS)
+           .where('accuracy > ?', accuracy_limit)
     )
+  end
+
+  def accuracy_limit
+    return ABSURD_ACCURACY_METERS unless user_settings.gps_accuracy_filter_enabled?
+
+    [user_settings.gps_accuracy_threshold, ABSURD_ACCURACY_METERS].min
   end
 
   # Visit-report pass: iOS visit monitoring (Overland `action: visit`) delivers

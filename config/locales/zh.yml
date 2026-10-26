@@ -1084,6 +1084,9 @@ zh:
         track_split_time_unit: 分钟
         track_split_time_hint: "超过此间隔会开始新轨迹，并允许行程使用另一台设备的记录。修改后，请在受影响的行程页面点击“重新计算”，以更新已保存的路线和距离。"
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: 隐藏不可能为真实位置的读数 — 如不可能的跳跃、损坏的坐标。禁用后显示每个原始轨迹点。
+        hide_inaccurate_points: "隐藏不精确的点"
+        hide_inaccurate_points_hint: "同时隐藏报告精度低于下方阈值的点。适用于会产生横向噪声的手机追踪；对 Google 时间轴导入请保持关闭，其粗略的点仍然落在道路上。点击“重新评估过去的数据”以应用到历史记录。"
+        accuracy_threshold: "精度阈值"
         re_evaluate_past_data: 重新评估过去的数据
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: 清除现有异常标记，并使用当前设置对所有轨迹点重新运行过滤器。之后将重建轨迹、统计数据和摘要，整个过程在后台运行。
         recalculate_tracks_stats: 重新计算轨迹和统计数据

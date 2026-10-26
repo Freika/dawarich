@@ -249,6 +249,24 @@ export class SettingsController {
       gpsFilteringToggle.checked = this.settings.gpsFilteringEnabled !== false
     }
 
+    const gpsAccuracyFilterToggle = controller.element.querySelector(
+      'input[name="gpsAccuracyFilterEnabled"]',
+    )
+    if (gpsAccuracyFilterToggle) {
+      gpsAccuracyFilterToggle.checked =
+        this.settings.gpsAccuracyFilterEnabled === true
+    }
+
+    const gpsAccuracyInput = controller.element.querySelector(
+      'input[name="gpsAccuracyThreshold"]',
+    )
+    if (gpsAccuracyInput) {
+      gpsAccuracyInput.value = this.settings.gpsAccuracyThreshold || 100
+      if (controller.hasGpsAccuracyThresholdValueTarget) {
+        controller.gpsAccuracyThresholdValueTarget.textContent = `${gpsAccuracyInput.value}m`
+      }
+    }
+
     // Sync transportation mode settings
     this.syncTransportationSettings()
 
@@ -1004,6 +1022,9 @@ export class SettingsController {
         10,
       ),
       gpsFilteringEnabled: formData.get("gpsFilteringEnabled") === "on",
+      gpsAccuracyFilterEnabled:
+        formData.get("gpsAccuracyFilterEnabled") === "on",
+      gpsAccuracyThreshold: parseInt(formData.get("gpsAccuracyThreshold"), 10),
     }
 
     // Update controller settings and dataLoader BEFORE applying,
@@ -1061,6 +1082,12 @@ export class SettingsController {
   updateFogThresholdDisplay(event) {
     if (this.controller.hasFogThresholdValueTarget) {
       this.controller.fogThresholdValueTarget.textContent = event.target.value
+    }
+  }
+
+  updateGpsAccuracyThresholdDisplay(event) {
+    if (this.controller.hasGpsAccuracyThresholdValueTarget) {
+      this.controller.gpsAccuracyThresholdValueTarget.textContent = `${event.target.value}m`
     }
   }
 

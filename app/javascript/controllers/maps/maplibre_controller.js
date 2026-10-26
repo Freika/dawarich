@@ -60,6 +60,7 @@ export default class extends Controller {
     "fogThresholdValue",
     "minMinutesInCityValue",
     "gpsFilteringToggle",
+    "gpsAccuracyThresholdValue",
     // Search
     "searchInput",
     "searchResults",
@@ -1217,6 +1218,9 @@ export default class extends Controller {
   }
   updateAdvancedSettings(event) {
     return this.settingsController.updateAdvancedSettings(event)
+  }
+  updateGpsAccuracyThresholdDisplay(event) {
+    return this.settingsController.updateGpsAccuracyThresholdDisplay(event)
   }
   updateFogRadiusDisplay(event) {
     return this.settingsController.updateFogRadiusDisplay(event)

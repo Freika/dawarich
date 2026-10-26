@@ -78,6 +78,8 @@ class Users::SafeSettings
     'min_minutes_spent_in_city' => 60,
     # GPS noise filtering (Points::AnomalyFilter)
     'gps_filtering_enabled' => true,
+    'gps_accuracy_filter_enabled' => false,
+    'gps_accuracy_threshold' => 100,
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
     'date_format' => 'auto',
     'time_format' => 'auto',
@@ -90,6 +92,9 @@ class Users::SafeSettings
     'family_enabled' => true,
     'achievements_enabled' => true
   }.freeze
+
+  GPS_ACCURACY_THRESHOLD_MIN = 50
+  GPS_ACCURACY_THRESHOLD_MAX = 1000
 
   def initialize(settings = {}, plan: nil)
     settings = {} unless settings.is_a?(Hash)
@@ -128,6 +133,8 @@ class Users::SafeSettings
       enabled_transportation_modes: enabled_transportation_modes,
       min_minutes_spent_in_city: min_minutes_spent_in_city,
       gps_filtering_enabled: gps_filtering_enabled?,
+      gps_accuracy_filter_enabled: gps_accuracy_filter_enabled?,
+      gps_accuracy_threshold: gps_accuracy_threshold,
       timezone: timezone,
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
@@ -404,6 +411,17 @@ class Users::SafeSettings
     return true if value.nil?
 
     ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  # Off unless the user turns it on: the old slider saved a threshold on every
+  # settings save, so a stored value alone is not a choice to filter by it.
+  def gps_accuracy_filter_enabled?
+    ActiveModel::Type::Boolean.new.cast(settings['gps_accuracy_filter_enabled']) || false
+  end
+
+  def gps_accuracy_threshold
+    raw = settings['gps_accuracy_threshold'] || DEFAULT_VALUES['gps_accuracy_threshold']
+    raw.to_i.clamp(GPS_ACCURACY_THRESHOLD_MIN, GPS_ACCURACY_THRESHOLD_MAX)
   end
 
   def point_dragging_enabled?
