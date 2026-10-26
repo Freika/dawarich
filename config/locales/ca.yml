@@ -1813,7 +1813,7 @@ ca:
       show:
         tune_how_dawarich_decides_where_you_actually_were: Ajusta com decideix Dawarich on vas estar realment
         these_settings_control_how_the_app_groups_your_gps_points: Aquesta configuració controla com l'app agrupa els teus punts GPS en visites a llocs.
-        points_within_this_radius_are_treated_as_the_same_visit: Els punts dins d'aquest radi es tracten com la mateixa visita. Per defecte 100.
+        points_within_this_radius_are_treated_as_the_same_visit: Els punts dins d'aquest radi es tracten com la mateixa visita. Una estada dins d'aquest radi també tanca un trajecte (com a mínim 100 m). Per defecte 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Com més baix, més visites se suggereixen, incloent-hi parades breus. Per defecte 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Omet les parades més curtes que això. Augmenta'l per ignorar parades breus en cotxe; redueix-lo per detectar recados curts. Per defecte 5.
         visit_detection: Detecció de visites

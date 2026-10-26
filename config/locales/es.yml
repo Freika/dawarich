@@ -1816,7 +1816,7 @@ es:
       show:
         tune_how_dawarich_decides_where_you_actually_were: Ajusta cómo Dawarich decide dónde estabas realmente
         these_settings_control_how_the_app_groups_your_gps_points: Estos ajustes controlan cómo el app agrupa tus puntos GPS en visitas a lugares.
-        points_within_this_radius_are_treated_as_the_same_visit: Puntos dentro de este radio se tratan como la misma visita. Por defecto 100.
+        points_within_this_radius_are_treated_as_the_same_visit: Puntos dentro de este radio se tratan como la misma visita. Una estancia dentro de este radio también cierra un trayecto (como mínimo 100 m). Por defecto 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Menos = más visitas sugeridas, incluyendo paradas breves. Por defecto 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Ignora paradas más cortas que esto. Aumenta para ignorar paseos cortos; baja para capturar erratas breves. Por defecto 5.
         visit_detection: Deteción de visitas

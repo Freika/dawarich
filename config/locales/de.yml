@@ -1816,7 +1816,7 @@ de:
       show:
         tune_how_dawarich_decides_where_you_actually_were: Anpassen, wie Dawarich entscheidet, wo du tatsächlich warst
         these_settings_control_how_the_app_groups_your_gps_points: Diese Einstellungen steuern, wie die App deine GPS-Punkte in Aufenthalte zu Orten gruppieren wird.
-        points_within_this_radius_are_treated_as_the_same_visit: Punkte innerhalb dieses Radius werden als der gleiche Aufenthalt betrachtet. Standard 100.
+        points_within_this_radius_are_treated_as_the_same_visit: Punkte innerhalb dieses Radius werden als der gleiche Aufenthalt betrachtet. Ein Aufenthalt in diesem Radius beendet auch einen Track (mindestens 100 m). Standard 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Niedriger = mehr Aufenthalte werden vorgeschlagen, einschließlich kurzer Halte. Standard 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Übergehe Halte, die kürzer als dies sind. Erhöhe, um kurze Durchfahrten zu ignorieren; senke, um kurze Einkäufe zu erfassen. Standard 5.
         visit_detection: Aufenthaltserkennung
