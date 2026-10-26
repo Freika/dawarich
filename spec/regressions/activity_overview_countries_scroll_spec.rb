@@ -41,6 +41,12 @@ RSpec.describe 'Activity Overview countries scrolling', type: :request do
           expect(countries['class'].split).to include('overflow-y-auto')
           expect(countries['class'].split).to include(a_string_matching(/\Amax-h-(?!none\z)\S+\z/))
         end
+
+        # On wide screens the list fills its column out of flow, so the calendar alone sets the height.
+        aggregate_failures 'country list bounded by the calendar on wide screens' do
+          expect(countries['class'].split).to include('lg:absolute', 'lg:inset-0')
+          expect(countries.parent['class'].split).to include('lg:relative')
+        end
       end
     end
   end
