@@ -40,6 +40,16 @@ RSpec.describe DawarichSettings do
       end
     end
 
+    context 'when the public host carries a reverse-proxy path' do
+      before do
+        configure_instance_geocoding(photon_api_host: 'app.chibigeo.com/v1/photon', photon_api_use_https: false)
+      end
+
+      it 'still forces HTTPS' do
+        expect(described_class.photon_use_https?).to be true
+      end
+    end
+
     context 'when the host is a self-hosted photon and the flag is off' do
       before do
         configure_instance_geocoding(photon_api_host: 'localhost:2322', photon_api_use_https: false)
