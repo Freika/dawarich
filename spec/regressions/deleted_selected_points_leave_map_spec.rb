@@ -56,7 +56,10 @@ RSpec.describe 'Deleted selected points leave the map immediately', type: :reque
         removeLayer: id => layers.delete(id),
         getStyle: () => ({ layers: [...layers.values()] }),
         setLayoutProperty() {}, setPaintProperty() {}, on() {}, off() {},
-        refreshTiles: id => loadTile(sources.get(id)),
+        refreshTiles(id) {
+          if (input.refreshFails) throw new Error('tile refresh failed');
+          loadTile(sources.get(id));
+        },
       };
       const controller = {
         map,
@@ -139,6 +142,18 @@ RSpec.describe 'Deleted selected points leave the map immediately', type: :reque
       expect(result.fetch('initialTile')).to eq(before_tile)
       expect(result.fetch('displayedTile')).to eq(after_tile),
                                                'The backend deleted the point, but its old MVT tile remains on the map'
+    end
+
+    it "reports a map refresh failure, not a failed delete, when #{delete_method} cannot refresh tiles" do
+      result = delete_on_map(
+        beforeTile: 'before', afterTile: 'after', deleteResponse: { count: 1 }, tileCoordinates: '12/0/0',
+        range: { startAt: '2026-10-01T00:00:00Z', endAt: '2026-10-01T23:59:59Z' },
+        deleteMethod: delete_method, refreshFails: true,
+        selectedFeatures: [{ type: 'Feature', properties: { id: 1 },
+                             geometry: { type: 'Point', coordinates: [-140.123, -50.123] } }]
+      )
+      expect(result.fetch('submittedIds')).to eq([1])
+      expect(result.fetch('errors')).to eq(['selection.map_refresh_failed'])
     end
   end
 end

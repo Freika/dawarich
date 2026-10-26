@@ -625,9 +625,9 @@ export class AreaSelectionManager {
       )
 
       this.cancelAreaSelection()
-      this.refreshPointTiles()
 
       try {
+        this.refreshPointTiles()
         await this.controller.loadMapData({
           showLoading: false,
           fitBounds: false,
@@ -701,9 +701,9 @@ export class AreaSelectionManager {
       )
 
       this.cancelAreaSelection()
-      this.refreshPointTiles()
 
       try {
+        this.refreshPointTiles()
         await this.controller.loadMapData({
           showLoading: false,
           fitBounds: false,
