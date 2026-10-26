@@ -41,6 +41,33 @@ RSpec.describe AirTrail::FlightMapper do
     expect(attributes[:arrival_time]).to eq(Time.utc(2026, 4, 20, 12, 20))
   end
 
+  it 'reads the seat from passengers, which AirTrail 3.12 sends instead of seats' do
+    attributes = described_class.new(
+      payload('passengers' => [{ 'userId' => 'u1', 'seat' => 'window', 'seatNumber' => '12A',
+                                 'seatClass' => 'business' }])
+    ).attributes
+
+    expect(attributes[:seat]).to eq('window')
+    expect(attributes[:seat_class]).to eq('business')
+  end
+
+  it 'still reads the seat from seats on older AirTrail versions' do
+    attributes = described_class.new(
+      payload('seats' => [{ 'seatNumber' => '14A', 'seatClass' => 'economy' }])
+    ).attributes
+
+    expect(attributes[:seat]).to eq('14A')
+    expect(attributes[:seat_class]).to eq('economy')
+  end
+
+  it 'falls back to seats when passengers is empty' do
+    attributes = described_class.new(
+      payload('passengers' => [], 'seats' => [{ 'seatNumber' => '14A', 'seatClass' => 'economy' }])
+    ).attributes
+
+    expect(attributes[:seat]).to eq('14A')
+  end
+
   it 'leaves the times empty when AirTrail has none for the flight' do
     attributes = described_class.new(payload('departureScheduled' => nil, 'arrivalScheduled' => nil)).attributes
 
