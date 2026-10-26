@@ -37,7 +37,20 @@ module Timeline
       d = normalize_month(date)
       tz = user.safe_settings.timezone.presence || 'UTC'
       plan_segment = user.plan_restricted? ? 'lite' : 'pro'
-      ['timeline_month_summary', user.id, d.strftime('%Y-%m'), tz, plan_segment, 'v3']
+      ['timeline_month_summary', user.id, d.strftime('%Y-%m'), tz, plan_segment, 'v4']
+    end
+
+    # First days of the months a visit spans in the given timezone; a visit
+    # past midnight shows up in every one of them.
+    def self.months_spanning(from, to, timezone)
+      month = from.in_time_zone(timezone).to_date.beginning_of_month
+      last = (to || from).in_time_zone(timezone).to_date.beginning_of_month
+      months = []
+      while month <= last
+        months << month
+        month = month.next_month
+      end
+      months
     end
 
     def self.normalize_month(date)
@@ -76,11 +89,10 @@ module Timeline
     # FILTER pills under the calendar so they reflect "this month" rather
     # than the user's lifetime totals.
     def status_counts
-      @status_counts ||= @user.scoped_visits
-                              .where(started_at: month_range)
-                              .group(:status)
-                              .count
-                              .transform_keys { |k| visit_status_label(k) }
+      @status_counts ||= overlapping_visits
+                         .group(:status)
+                         .count
+                         .transform_keys { |k| visit_status_label(k) }
     end
 
     def tz
@@ -103,7 +115,7 @@ module Timeline
 
         visit_minutes.each do |date_str, minutes|
           result[date_str] ||= default_day
-          result[date_str][:tracked_seconds] += (minutes.to_i * 60)
+          result[date_str][:tracked_seconds] += (minutes * 60).round
         end
 
         track_seconds.each do |date_str, seconds|
@@ -142,20 +154,31 @@ module Timeline
     end
 
     def visit_rows
-      @visit_rows ||= @user.scoped_visits
-                           .where(started_at: month_range)
-                           .group(date_sql_expr('visits.started_at'))
-                           .group(:status)
-                           .count
-                           .transform_keys { |(date, status_int)| [date.to_s, visit_status_label(status_int)] }
+      visit_day_attributions[:rows]
     end
 
     def visit_minutes
-      @visit_minutes ||= @user.scoped_visits
-                              .where(started_at: month_range)
-                              .group(date_sql_expr('visits.started_at'))
-                              .sum(:duration)
-                              .transform_keys(&:to_s)
+      visit_day_attributions[:minutes]
+    end
+
+    # A visit that runs past midnight counts on every day it covers, with
+    # that day's share of its minutes, as in the day view.
+    def visit_day_attributions
+      @visit_day_attributions ||= begin
+        rows = Hash.new(0)
+        minutes = Hash.new(0.0)
+        overlapping_visits.select(:id, :started_at, :ended_at, :duration, :status).find_each do |visit|
+          TrackDayShares.shares_between(visit.started_at, visit.ended_at, tz).each do |day, fraction|
+            rows[[day.to_s, visit.status]] += 1
+            minutes[day.to_s] += visit.duration * fraction
+          end
+        end
+        { rows: rows, minutes: minutes }
+      end
+    end
+
+    def overlapping_visits
+      @user.scoped_visits.overlapping(month_range.first, month_range.last)
     end
 
     def track_seconds
@@ -197,11 +220,6 @@ module Timeline
       return status.to_s if status.is_a?(String)
 
       Visit.statuses.key(status) || status.to_s
-    end
-
-    def date_sql_expr(column)
-      quoted_tz = ActiveRecord::Base.connection.quote(tz)
-      Arel.sql("DATE(#{column} AT TIME ZONE 'UTC' AT TIME ZONE #{quoted_tz})")
     end
 
     def date_sql_expr_epoch(column)

@@ -7,6 +7,7 @@
                   data: { timeline_feed_target: 'selectionForm',
                           action: 'submit->timeline-feed#submitMerge' },
                   class: 'selection-bar__form' do |_f| %>
+      <%= hidden_field_tag :date, date, id: nil %>
       <button type="submit"
               class="selection-bar__action selection-bar__merge"
               data-timeline-feed-target="mergeButton"
@@ -20,6 +21,7 @@
                   data: { timeline_feed_target: 'deleteForm',
                           action: 'submit->timeline-feed#submitBulkDelete' },
                   class: 'selection-bar__form' do |_f| %>
+      <%= hidden_field_tag :date, date, id: nil %>
       <button type="submit"
               class="selection-bar__action selection-bar__delete"
               data-timeline-feed-target="deleteButton"

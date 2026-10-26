@@ -42,7 +42,8 @@ module McpTools
         continuation_of_date: {
           type: %w[string null],
           format: 'date',
-          description: 'Start date of a journey listed in full on that date; this row is its part after midnight.'
+          description: 'Start date of a journey or visit listed in full on that date; ' \
+                       'this row is its part after midnight.'
         },
         place: { '$ref': '#/$defs/location' },
         area: { '$ref': '#/$defs/area' },
@@ -127,7 +128,8 @@ module McpTools
         {
           name: entry[:name],
           status: entry.fetch(:status),
-          duration_minutes: entry.fetch(:duration).to_f,
+          continuation_of_date: entry[:continuation_of_date],
+          duration_minutes: (entry[:day_duration] || entry.fetch(:duration)).to_f,
           place: serialize_location(entry[:place]),
           area: serialize_area(entry[:area])
         }
