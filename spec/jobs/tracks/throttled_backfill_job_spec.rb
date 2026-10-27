@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::ThrottledBackfillJob, type: :job do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
 
   before do
@@ -55,17 +57,37 @@ RSpec.describe Tracks::ThrottledBackfillJob, type: :job do
         expect(Tracks::TimeChunkProcessorJob).not_to have_been_enqueued.on_queue('tracks')
       end
 
-      it 'slices the walk into day-sized chunks' do
-        described_class.perform_now(user.id, nil)
+      {
+        'before the spring DST switch' => '2026-03-28 12:00:00',
+        'after the spring DST switch' => '2026-03-31 12:00:00',
+        'before the autumn DST switch' => '2026-10-24 12:00:00',
+        'after the autumn DST switch' => '2026-10-27 12:00:00',
+        'on a normal day' => '2026-01-15 12:00:00'
+      }.each do |period, now|
+        context period do
+          around do |example|
+            Time.use_zone('Europe/Berlin') do
+              travel_to(Time.zone.parse(now)) { example.run }
+            end
+          end
 
-        expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(
-          user.id,
-          anything,
-          hash_including(
-            start_timestamp: newest_point.timestamp - 1.day.to_i,
-            end_timestamp: newest_point.timestamp
-          )
-        )
+          it 'slices the walk into calendar-day chunks' do
+            slice_start = Time.zone.at(newest_point.timestamp - described_class::SLICE.to_i)
+            chunk_starts = (0..30).map { |day| slice_start + day.days }
+            last_chunk_start = chunk_starts.select { |time| time.to_i < newest_point.timestamp }.last
+
+            described_class.perform_now(user.id, nil)
+
+            expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(
+              user.id,
+              anything,
+              hash_including(
+                start_timestamp: last_chunk_start.to_i,
+                end_timestamp: newest_point.timestamp
+              )
+            )
+          end
+        end
       end
 
       it 're-enqueues itself with the cursor moved below the slice' do
