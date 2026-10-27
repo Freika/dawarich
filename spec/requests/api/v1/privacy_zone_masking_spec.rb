@@ -287,4 +287,15 @@ RSpec.describe 'Privacy zone masking on map read endpoints', type: :request do
       expect(bounds['min_lng']).to be > 13.6
     end
   end
+
+  it 'keeps masking points inside a privacy zone on an archived Place', :archive do
+    zone_place.update!(archived: true)
+    create(:point, user:, lonlat: "POINT(#{zone_lon} #{zone_lat})", timestamp: 2.hours.ago.to_i)
+    create(:point, user:, lonlat: 'POINT(13.700 52.600)', timestamp: 1.hour.ago.to_i)
+
+    get '/api/v1/points', params: masked(per_page: 100), headers: headers
+
+    expect(json.map { |point| [point['longitude'].to_f, point['latitude'].to_f] })
+      .to contain_exactly([13.700, 52.600])
+  end
 end

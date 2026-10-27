@@ -33,6 +33,9 @@
 
     <!-- Panel Body -->
     <div class="panel-body">
+      <div class="tab-content" data-tab-content="place" data-map-panel-target="tabContent">
+        <%= render 'map/maplibre/place_panel' %>
+      </div>
       <!-- Search Tab -->
       <div class="tab-content" data-tab-content="search" data-map-panel-target="tabContent">
         <div class="form-control w-full">
@@ -154,6 +157,11 @@
 
           <div class="layer-options__group space-y-2" data-maps--maplibre-target="placesFilters" style="display: none;">
             <span class="layer-options__label"><%= t('.places') %></span>
+            <label class="label cursor-pointer justify-start gap-2 py-0">
+              <input type="checkbox" class="toggle toggle-sm shrink-0" data-testid="show-archived-places"
+                     data-action="change->maps--maplibre#toggleArchivedPlaces">
+              <span class="label-text text-sm min-w-0"><%= t('places.archive.show_on_map') %></span>
+            </label>
             <label class="label cursor-pointer justify-start gap-2 py-0">
               <input type="checkbox"
                      class="toggle toggle-sm"
@@ -650,6 +658,36 @@
             <p class="text-sm text-base-content/60 mt-1"><%= t('.hide_readings_that_cannot_be_a_real_position_impossible_jumps') %></p>
           </div>
 
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     name="gpsAccuracyFilterEnabled"
+                     class="toggle toggle-primary" />
+              <span class="label-text font-medium"><%= t('.hide_inaccurate_points') %></span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1"><%= t('.hide_inaccurate_points_hint') %></p>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium"><%= t('.accuracy_threshold') %></span>
+              <span class="label-text-alt" data-maps--maplibre-target="gpsAccuracyThresholdValue">100m</span>
+            </label>
+            <input type="range"
+                   name="gpsAccuracyThreshold"
+                   min="50"
+                   max="1000"
+                   step="10"
+                   value="100"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateGpsAccuracyThresholdDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>50m</span>
+              <span>500m</span>
+              <span>1000m</span>
+            </div>
+          </div>
+
           <button type="button"
                   class="btn btn-sm btn-outline btn-block"
                   data-action="click->maps--maplibre#reapplyAnomalyFilter">
@@ -995,6 +1033,7 @@
                             <span class="label-text text-xs"><%= t('.from') %></span>
                           </label>
                           <input type="date" class="input input-bordered input-sm"
+                                 value="<%= @start_at.to_date %>"
                                  data-maps--immich-enrich-target="startDate">
                         </div>
                         <div class="form-control">
@@ -1002,6 +1041,7 @@
                             <span class="label-text text-xs"><%= t('.to') %></span>
                           </label>
                           <input type="date" class="input input-bordered input-sm"
+                                 value="<%= @end_at.to_date %>"
                                  data-maps--immich-enrich-target="endDate">
                         </div>
                       </div>

@@ -10,6 +10,9 @@ export class PlacesLayer extends BaseLayer {
       offset: [0, 14],
       visible: this.visible,
     })
+    this.labels.setOpacity((feature) =>
+      feature.properties?.archived ? 0.5 : 1,
+    )
     this.boundariesVisible = options.boundariesVisible === true
   }
 
@@ -46,16 +49,24 @@ export class PlacesLayer extends BaseLayer {
 
   getLayerConfigs() {
     return [
-      // Visit Radius boundaries. These remain deliberately subtle so the
-      // Places layer can stay useful without obscuring routes and points.
       {
         id: `${this.id}-radius-fill`,
         type: "fill",
         source: this.sourceId,
         filter: ["==", ["get", "featureKind"], "boundary"],
         paint: {
-          "fill-color": ["coalesce", ["get", "color"], "#6366f1"],
-          "fill-opacity": 0.1,
+          "fill-color": [
+            "case",
+            ["==", ["get", "archived"], true],
+            "#94a3b8",
+            ["coalesce", ["get", "color"], "#6366f1"],
+          ],
+          "fill-opacity": [
+            "case",
+            ["==", ["get", "archived"], true],
+            0.04,
+            0.1,
+          ],
         },
       },
       {
@@ -64,9 +75,29 @@ export class PlacesLayer extends BaseLayer {
         source: this.sourceId,
         filter: ["==", ["get", "featureKind"], "boundary"],
         paint: {
-          "line-color": ["coalesce", ["get", "color"], "#6366f1"],
-          "line-width": 2,
-          "line-opacity": 0.65,
+          "line-color": [
+            "case",
+            ["==", ["get", "archived"], true],
+            "#94a3b8",
+            [
+              "case",
+              ["==", ["get", "geofence"], true],
+              "#f59e0b",
+              ["coalesce", ["get", "color"], "#6366f1"],
+            ],
+          ],
+          "line-width": [
+            "case",
+            ["==", ["get", "archived"], true],
+            2,
+            ["case", ["==", ["get", "geofence"], true], 4, 2],
+          ],
+          "line-opacity": [
+            "case",
+            ["==", ["get", "archived"], true],
+            0.3,
+            ["case", ["==", ["get", "geofence"], true], 1, 0.65],
+          ],
         },
       },
 
@@ -78,10 +109,26 @@ export class PlacesLayer extends BaseLayer {
         filter: ["==", ["get", "featureKind"], "center"],
         paint: {
           "circle-radius": 10,
-          "circle-color": ["coalesce", ["get", "color"], "#6366f1"],
+          "circle-color": [
+            "case",
+            ["==", ["get", "archived"], true],
+            "#94a3b8",
+            ["coalesce", ["get", "color"], "#6366f1"],
+          ],
           "circle-stroke-width": 2,
           "circle-stroke-color": "#ffffff",
-          "circle-opacity": 0.85,
+          "circle-stroke-opacity": [
+            "case",
+            ["==", ["get", "archived"], true],
+            0.4,
+            1,
+          ],
+          "circle-opacity": [
+            "case",
+            ["==", ["get", "archived"], true],
+            0.4,
+            0.85,
+          ],
         },
       },
     ]

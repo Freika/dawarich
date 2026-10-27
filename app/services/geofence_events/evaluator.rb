@@ -22,7 +22,7 @@ module GeofenceEvents
     end
 
     def call
-      return unless Place.geofences.exists?(user_id: @user_id)
+      return unless Place.monitored_geofences.exists?(user_id: @user_id)
 
       store = StateStore.new(user)
       samples = fresh_samples(store.evaluated_at)
@@ -41,7 +41,7 @@ module GeofenceEvents
     end
 
     def places
-      @places ||= user.places.geofences.index_by(&:id)
+      @places ||= user.places.monitored_geofences.index_by(&:id)
     end
 
     def fresh_samples(evaluated_at)
@@ -101,7 +101,7 @@ module GeofenceEvents
       <<~SQL.squish
         SELECT samples.ordinal, places.id, ST_DWithin(#{place_point}, #{sample_point}, places.visit_radius, false)
         FROM (VALUES #{values.join(', ')}) AS samples(ordinal, lon, lat, accuracy)
-        JOIN places ON places.user_id = #{@user_id.to_i} AND places.geofence
+        JOIN places ON places.id IN (#{user.places.monitored_geofences.select(:id).to_sql})
           AND ST_DWithin(#{place_point}, #{sample_point},
                          places.visit_radius + GREATEST(COALESCE(samples.accuracy, 0), #{MIN_BAND_M}), false)
       SQL

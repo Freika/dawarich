@@ -246,16 +246,17 @@ RSpec.describe 'Authentication', type: :request do
     let(:invitee) { create(:user, email: 'invitee@example.com', password: 'password123456') }
     let(:invitation) { create(:family_invitation, family: family, invited_by: user, email: invitee.email) }
 
-    it 'redirects to invitation page when signing in with invitation token in params' do
+    it 'joins the family when signing in with invitation token in params' do
       post user_session_path, params: {
         user: { email: invitee.email, password: 'password123456' },
         invitation_token: invitation.token
       }
 
-      expect(response).to redirect_to(family_invitation_path(invitation.token))
+      expect(response).to redirect_to(family_path)
+      expect(invitee.reload.family).to eq(family)
     end
 
-    it 'redirects to invitation page when signing in with invitation token in session' do
+    it 'joins the family when signing in with invitation token in session' do
       # The invitation token is stored in session by Users::SessionsController#load_invitation_context
       # when accessing the sign-in page with invitation_token param
       get new_user_session_path, params: { invitation_token: invitation.token }
@@ -265,10 +266,11 @@ RSpec.describe 'Authentication', type: :request do
         user: { email: invitee.email, password: 'password123456' }
       }
 
-      expect(response).to redirect_to(family_invitation_path(invitation.token))
+      expect(response).to redirect_to(family_path)
+      expect(invitee.reload.family).to eq(family)
     end
 
-    it 'prioritizes invitation over iOS flow when both are present' do
+    it 'accepts the invitation and keeps the iOS handoff when both are present' do
       # Sign in with both iOS header AND invitation token
       post user_session_path, params: {
         user: { email: invitee.email, password: 'password123456' },
@@ -277,9 +279,9 @@ RSpec.describe 'Authentication', type: :request do
         'X-Dawarich-Client' => 'ios'
       }
 
-      # Should redirect to invitation page, NOT iOS success
-      expect(response).to redirect_to(family_invitation_path(invitation.token))
-      expect(response.location).not_to include('auth/ios/success')
+      # Joins the family and still hands the session back to the app
+      expect(response).to redirect_to(%r{auth/ios/success\?token=})
+      expect(invitee.reload.family).to eq(family)
     end
 
     it 'redirects to iOS success when invitation is expired' do
@@ -300,6 +302,31 @@ RSpec.describe 'Authentication', type: :request do
 
       # Should redirect to iOS success since invitation can't be accepted
       expect(response).to redirect_to(%r{auth/ios/success\?token=})
+    end
+
+    it 'shows why the invitation failed and forgets it when it is for another email' do
+      other = create(:user, password: 'password123456')
+      get new_user_session_path, params: { invitation_token: invitation.token }
+
+      post user_session_path, params: { user: { email: other.email, password: 'password123456' } }
+
+      expect(response).to redirect_to(family_invitation_path(invitation.token))
+      expect(flash[:alert]).to be_present
+      expect(session[:invitation_token]).to be_nil
+      expect(other.reload.family).to be_nil
+    end
+
+    it 'keeps the iOS handoff when the invitation is for another email' do
+      other = create(:user, password: 'password123456')
+
+      post user_session_path, params: {
+        user: { email: other.email, password: 'password123456' },
+        invitation_token: invitation.token
+      }, headers: { 'X-Dawarich-Client' => 'ios' }
+
+      expect(response).to redirect_to(%r{auth/ios/success\?token=})
+      expect(flash[:alert]).to be_nil
+      expect(other.reload.family).to be_nil
     end
 
     it 'uses default path when invitation token is invalid' do

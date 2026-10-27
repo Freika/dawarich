@@ -294,4 +294,46 @@ RSpec.describe 'Settings → Geofencing', type: :request do
       expect(Webhook.exists?(other.id)).to be(true)
     end
   end
+
+  describe 'archived geofence labels', :archive do
+    %i[en de es fr pl ca zh].each do |locale|
+      it "marks archived geofences as paused in the filter and webhook forms in #{locale}" do
+        home.update!(archived: true)
+        webhook = create(:webhook, user:, place_ids: [home.id])
+        labels = {
+          en: 'paused while archived', de: 'pausiert, solange der Ort archiviert ist',
+          es: 'en pausa mientras esté archivado', fr: 'en pause tant que le lieu est archivé',
+          pl: 'wstrzymane, gdy miejsce jest zarchiwizowane', ca: 'en pausa mentre estigui arxivat', zh: '归档期间暂停'
+        }
+
+        get settings_geofencing_path, params: { locale: }
+
+        expect(page.at_css("select[name='place_id'] option[value='#{home.id}']").text)
+          .to include('Home', labels.fetch(locale))
+        checkbox = page.at_css("#webhook_#{webhook.id} input[name='webhook[place_ids][]'][value='#{home.id}']")
+        expect(checkbox.ancestors('label').text).to include('Home', labels.fetch(locale))
+        expect(page.at_css("#webhook-form input[value='#{home.id}']")).to be_present
+      end
+    end
+  end
+
+  it 'shows a deleted place snapshot in the geofencing log', :place_retention do
+    create(:geofence_event, user:, place: nil, place_name: 'Former home')
+
+    get settings_geofencing_path
+
+    expect(response).to have_http_status(:ok)
+    expect(page.css('[data-testid="geofence-event"]').text).to include('Former home')
+  end
+
+  it 'shows a deleted place snapshot in webhook delivery history', :place_retention do
+    webhook = create(:webhook, user:)
+    event = create(:geofence_event, user:, place: nil, place_name: 'Former office')
+    create(:webhook_delivery, webhook:, geofence_event: event)
+
+    get settings_webhook_path(webhook)
+
+    expect(response).to have_http_status(:ok)
+    expect(page.css('[data-testid="webhook-delivery"]').text).to include('Former office')
+  end
 end

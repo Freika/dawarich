@@ -373,4 +373,58 @@ RSpec.describe Place, type: :model do
       expect(other.reload.name).to eq('Imaginary Lane 42')
     end
   end
+
+  describe 'archiving', :archive do
+    include ActiveSupport::Testing::TimeHelpers
+
+    let(:user) { create(:user) }
+    let(:place) { create(:place, user:, source: :photon) }
+
+    it 'casts the archived boolean and keeps the original archive time on repeated writes' do
+      travel_to Time.zone.parse('2026-10-27 12:00:00') do
+        place.update!(archived: '1')
+        expect(place.reload).to be_archived
+        expect(place.archived_at).to eq(Time.current)
+        travel 1.hour
+        expect { place.update!(archived: true) }.not_to(change { place.reload.archived_at })
+        place.update!(archived: '0')
+        expect(place.reload).not_to be_archived
+        expect(place.archived_at).to be_nil
+      end
+    end
+
+    it 'separates archived and non-archived scopes within the user' do
+      active = create(:place, user:)
+      place.update!(archived: true)
+      create(:place, archived: true)
+
+      expect(user.places.archived).to contain_exactly(place)
+      expect(user.places.not_archived).to contain_exactly(active)
+    end
+
+    it 'keeps an archived discovered Place confirmed but hidden from the map' do
+      place.update!(archived: true)
+
+      expect(user.places.confirmed_for(user)).to include(place)
+      expect(user.places.unconfirmed_for(user)).not_to include(place)
+      expect(user.places.map_visible(user)).not_to include(place)
+    end
+
+    it 'enqueues reattribution on archive and unarchive but not an unchanged archive state' do
+      expect { place.update!(archived: true) }
+        .to have_enqueued_job(Places::ReattributeSuggestedVisitsJob).with(user.id, place.id).once
+      expect { place.update!(archived: true) }.not_to have_enqueued_job(Places::ReattributeSuggestedVisitsJob)
+      expect { place.update!(archived: false) }
+        .to have_enqueued_job(Places::ReattributeSuggestedVisitsJob).with(user.id, place.id).once
+    end
+
+    it 'ignores archived Places at the shared attribution entry point' do
+      place.update!(archived: true, visit_radius: 25)
+      active = create(:place, user:, latitude: place.lat, longitude: place.lon, visit_radius: 100)
+
+      expect(user.places.attribution_for(place.lat, place.lon)).to eq(active)
+      active.update!(archived: true)
+      expect(user.places.attribution_for(place.lat, place.lon)).to be_nil
+    end
+  end
 end

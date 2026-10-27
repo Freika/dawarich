@@ -2,7 +2,7 @@
 
 class GeofenceEvent < ApplicationRecord
   belongs_to :user
-  belongs_to :place
+  belongs_to :place, optional: true
   has_many :webhook_deliveries, dependent: :delete_all
 
   enum :event_type, { enter: 0, leave: 1 }, prefix: :event_type
@@ -15,4 +15,8 @@ class GeofenceEvent < ApplicationRecord
   WEBHOOK_HOURLY_LIMIT = 60
 
   scope :real, -> { where(synthetic: false) }
+
+  def display_place_name
+    place&.name || place_name
+  end
 end

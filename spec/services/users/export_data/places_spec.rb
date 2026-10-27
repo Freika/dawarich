@@ -44,4 +44,18 @@ RSpec.describe Users::ExportData::Places, type: :service do
       end
     end
   end
+
+  it 'round trips archive timestamps and active Places through user data export and import', :archive do
+    timestamp = Time.zone.parse('2026-10-27 12:00:00')
+    create(:place, user:, name: 'Old Home', archived_at: timestamp)
+    create(:place, user:, name: 'New Home')
+    destination = create(:user)
+    data = JSON.parse(described_class.new(user).call.to_json)
+
+    Users::ImportData::Places.new(destination, data).call
+
+    expect(destination.places.find_by!(name: 'Old Home').archived_at).to eq(timestamp)
+    expect(destination.places.find_by!(name: 'New Home').archived_at).to be_nil
+    expect(data.find { |place| place['name'] == 'Old Home' }['archived_at']).to be_present
+  end
 end

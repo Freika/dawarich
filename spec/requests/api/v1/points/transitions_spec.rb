@@ -88,4 +88,12 @@ RSpec.describe 'POST /api/v1/points/transitions', type: :request do
     expect(response).to have_http_status(:created)
     expect(GeofenceEvents::StateStore.new(user).inside_ids).to be_empty
   end
+
+  it 'ignores native transitions for an archived geofence without changing state', :archive do
+    place.update!(archived: true)
+
+    expect { post_transition }.not_to change(GeofenceEvent, :count)
+    expect(response).to have_http_status(:no_content)
+    expect(GeofenceEvents::StateStore.new(user).inside_ids).to be_empty
+  end
 end

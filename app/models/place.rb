@@ -38,6 +38,8 @@ class Place < ApplicationRecord
 
   enum :source, { manual: 0, photon: 1, gpx_waypoint: 2 }
 
+  scope :archived, -> { where.not(archived_at: nil) }
+  scope :not_archived, -> { where(archived_at: nil) }
   scope :for_user, ->(user) { where(user: user) }
   scope :ordered, -> { order(:name) }
   scope :containing, lambda { |latitude, longitude|
@@ -57,10 +59,10 @@ class Place < ApplicationRecord
       .or(where(id: Note.where(attachable_type: 'Place').select(:attachable_id)))
   }
   scope :confirmed_for, lambda { |user|
-    manual.or(imported).or(linked_to_confirmed_visits(user)).or(tagged).or(noted).or(geofences)
+    manual.or(imported).or(linked_to_confirmed_visits(user)).or(tagged).or(noted).or(geofences).or(archived)
   }
   scope :unconfirmed_for, ->(user) { where.not(id: confirmed_for(user).select(:id)) }
-  scope :map_visible, ->(user) { confirmed_for(user) }
+  scope :map_visible, ->(user) { confirmed_for(user).not_archived }
 
   def self.normalize_visit_radius(value)
     radius = value.to_i
@@ -70,12 +72,12 @@ class Place < ApplicationRecord
   def self.attribution_for(latitude, longitude, search_radius: maximum(:visit_radius).to_i)
     return if search_radius <= 0
 
-    near([latitude, longitude], search_radius, :m)
-      .containing(latitude, longitude)
-      .min_by do |place|
-        distance = Geocoder::Calculations.distance_between([latitude, longitude], [place.lat, place.lon])
-        [place.visit_radius, distance, place.id]
-      end
+    not_archived.near([latitude, longitude], search_radius, :m)
+                .containing(latitude, longitude)
+                .min_by do |place|
+                  distance = Geocoder::Calculations.distance_between([latitude, longitude], [place.lat, place.lon])
+                  [place.visit_radius, distance, place.id]
+                end
   end
 
   # Legacy places predate the lonlat column and carry coordinates only in the
@@ -91,6 +93,14 @@ class Place < ApplicationRecord
 
   def legacy_area_id
     legacy_area_place_mappings.map(&:area_id).min
+  end
+
+  def archived?
+    archived_at.present?
+  end
+
+  def archived=(value)
+    self.archived_at = ActiveModel::Type::Boolean.new.cast(value) ? (archived_at || Time.current) : nil
   end
 
   def name_locked?
@@ -148,7 +158,8 @@ class Place < ApplicationRecord
     return false if skip_suggested_visit_reattribution
     return !!reattribute_suggested_visits_on_create if previously_new_record?
 
-    saved_change_to_latitude? || saved_change_to_longitude? || saved_change_to_visit_radius?
+    saved_change_to_latitude? || saved_change_to_longitude? ||
+      saved_change_to_visit_radius? || saved_change_to_archived_at?
   end
 
   def schedule_suggested_visit_reattribution

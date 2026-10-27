@@ -1,34 +1,10 @@
-/* Place Drawer — right-edge slide-in panel on the map.
-   Introduced in Task 6 of the Unified Timeline plan. Split out from
-   maps_maplibre_timeline_feed.css to keep each stylesheet under 500 lines.
-   Toggle open/closed by adding/removing `.place-drawer--open`. */
-
 .place-drawer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: 100%;
-  width: 380px;
-  max-width: 90vw;
+  min-width: 0;
+  padding: 1.25rem;
   background: oklch(var(--b1));
-  border-left: 1px solid oklch(var(--bc) / 0.1);
-  z-index: 1000;
-  overflow-y: auto;
-  transform: translateX(100%);
-  transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-}
-
-.place-drawer--open {
-  transform: translateX(0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .place-drawer {
-    transition-duration: 50ms;
-  }
+  gap: 1.5rem;
 }
 
 .place-page turbo-frame {
@@ -37,13 +13,10 @@
 
 .place-page .place-drawer {
   position: static;
-  width: auto;
-  max-width: 40rem;
+  width: 100%;
   height: auto;
-  margin: 1.25rem auto;
-  padding: 1.25rem;
   border: 1px solid oklch(var(--bc) / 0.1);
-  border-radius: var(--rounded-box, 1rem);
+  border-radius: var(--rounded-box);
   transform: none;
 }
 
@@ -54,24 +27,23 @@
 }
 
 .place-drawer__titles {
+  flex: 1;
   min-width: 0;
 }
 
 .place-drawer__name {
   font-size: 1.25rem;
-  font-weight: 700;
-  overflow-wrap: anywhere;
+  font-weight: 600;
 }
 
 .place-drawer__location,
 .place-drawer__source,
-.place-drawer__tags-empty,
 .place-drawer__visits-empty,
-.place-drawer__stat-label,
 .place-drawer__visit-time,
-.place-drawer__visit-duration {
+.place-drawer__event-time,
+.place-drawer__event-source {
   font-size: 0.875rem;
-  color: oklch(var(--bc) / 0.6);
+  color: oklch(var(--bc) / 0.7);
 }
 
 .place-drawer__stats {
@@ -82,101 +54,190 @@
 
 .place-drawer__stat {
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--rounded-btn, 0.5rem);
-  background: oklch(var(--b2));
+  gap: 0.5rem;
 }
 
 .place-drawer__stat-value {
+  font-size: clamp(0.875rem, 3.5vw, 1.125rem);
   font-weight: 600;
+  white-space: nowrap;
 }
 
-.place-drawer__tag-list,
-.place-drawer__actions {
+.place-drawer__heading,
+.place-drawer__stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: oklch(var(--bc) / 0.55);
+  hyphens: none;
+  overflow-wrap: normal;
+}
+
+.place-drawer__section {
+  border-top: 1px solid oklch(var(--bc) / 0.1);
+  padding-top: 1.5rem;
+  min-width: 0;
+}
+
+.place-drawer__heading {
+  margin-bottom: 0.75rem;
+}
+
+.place-drawer__actions,
+.place-drawer__editor {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.5rem;
-  align-items: center;
+  min-width: 0;
 }
 
-.place-drawer__tag-chip {
-  padding: 0.125rem 0.625rem;
-  border-radius: 9999px;
-  background: oklch(var(--b3));
-  font-size: 0.875rem;
+.place-drawer__editor > fieldset,
+.place-drawer__editor > label:not(:first-child) {
+  margin-top: 0.5rem;
+}
+
+.place-drawer__editor > .btn {
+  margin-top: 0.25rem;
 }
 
 .place-drawer__geofence-toggle {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .place-drawer__geofence-hint {
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
-  color: oklch(var(--bc) / 0.6);
-}
-
-.place-drawer__geofence-hint a {
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.place-drawer__notes form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.place-drawer__notes-label,
-.place-drawer__visits-heading {
-  font-weight: 600;
-}
-
-.place-drawer__notes-input {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid oklch(var(--bc) / 0.2);
-  border-radius: var(--rounded-btn, 0.5rem);
-  background: oklch(var(--b1));
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: oklch(var(--bc) / 0.7);
+  font-variant-numeric: tabular-nums;
 }
 
 .place-drawer__visits-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
   margin-top: 0.5rem;
+}
+
+.place-drawer__visit,
+.place-drawer__event {
+  padding-block: 0.5rem;
+  border-bottom: 1px solid oklch(var(--bc) / 0.1);
+}
+
+.place-drawer__visit:last-child,
+.place-drawer__event:last-child {
+  border-bottom: 0;
 }
 
 .place-drawer__visit {
   display: flex;
-  flex-wrap: wrap;
-  column-gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-.place-drawer__visit-name {
-  flex-basis: 100%;
-  overflow-wrap: anywhere;
-}
-
-.place-drawer__notes-submit,
-.place-drawer__action {
-  padding: 0.25rem 0.75rem;
-  border: 1px solid oklch(var(--bc) / 0.2);
-  border-radius: var(--rounded-btn, 0.5rem);
+.place-drawer__visit-date {
   font-size: 0.875rem;
-  cursor: pointer;
+  font-weight: 500;
 }
 
-.place-drawer__notes-submit {
-  align-self: flex-start;
+.place-drawer__event {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.875rem;
 }
 
-.place-drawer__action--delete {
-  color: oklch(var(--er));
-  border-color: oklch(var(--er) / 0.4);
+.place-drawer__event-time {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.place-drawer__event-source {
+  grid-column: 1 / -1;
+  padding-left: 1.5rem;
+  font-size: 0.75rem;
+}
+
+.place-drawer form,
+.place-drawer input,
+.place-drawer select,
+.place-drawer fieldset {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.place-panel[hidden] {
+  display: none;
+}
+
+.place-panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0 1rem;
+}
+
+.place-edit-marker {
+  width: 44px;
+  height: 44px;
+  border: 3px solid oklch(var(--pc));
+  border-radius: 50%;
+  background: oklch(var(--p));
+  color: oklch(var(--pc));
+  font-size: 24px;
+  cursor: grab;
+  touch-action: none;
+}
+
+@media (max-width: 768px) {
+  .map-control-panel.place-geometry-editing {
+    width: 160px;
+  }
+
+  .maps-maplibre-container.panel-open:has(~ .place-geometry-editing) {
+    --map-panel-offset: 160px;
+    margin-left: 160px;
+  }
+
+  .place-geometry-editing .panel-body,
+  .place-geometry-editing .panel-header {
+    padding: 8px;
+  }
+
+  .place-geometry-editing .panel-title,
+  .place-panel--editing .place-drawer__header {
+    display: none;
+  }
+
+  .place-panel--editing .place-drawer {
+    padding: 0;
+  }
+}
+
+.place-panel--editing
+  .place-drawer__section:not(.place-drawer__location-section),
+.place-panel--editing .place-drawer__stats {
+  display: none;
+}
+
+.place-panel--editing .place-drawer__location-section {
+  border: 0;
+  padding: 0;
+}
+
+.place-panel--editing .place-drawer__location-section > :is(h3, p) {
+  display: none;
+}
+
+.place-panel .place-drawer {
+  padding: 0;
 }

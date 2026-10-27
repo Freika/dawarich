@@ -1,0 +1,28 @@
+ca:
+  places:
+    polish:
+      selected: "seleccionats"
+      details: "Detalls"
+      location: "Ubicació"
+      notifications: "Notificacions"
+      visits: "Visites"
+      manage: "Gestiona"
+      total_time: "Temps total"
+      avg_dwell: "Durada mitjana"
+      statistics: "Estadístiques"
+      merge_duplicate: "Fusiona el duplicat"
+      back_to_places: "Torna als llocs"
+      clear: "Neteja"
+    inline_tags:
+      new_tag: "Etiqueta nova"
+      name: "Nom de l’etiqueta"
+      emoji: "Emoji (opcional)"
+      create: "Crea l’etiqueta"
+    drawer:
+      hidden_by_tag: "Amagat per l’etiqueta %{name}, %{radius} m"
+      geofence_events: "Esdeveniments recents de geotanca"
+      no_geofence_events: "Encara no hi ha esdeveniments d’entrada o sortida."
+      geofence_disabled: "Activa les notificacions d’entrada i sortida per registrar esdeveniments d’aquest lloc."
+  javascript:
+    map_info:
+      geofence_boundary: "Límit de la geotanca"

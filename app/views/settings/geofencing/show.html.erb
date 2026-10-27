@@ -17,7 +17,7 @@
           <label class="form-control col-span-2 sm:col-span-1">
             <span class="label-text mb-1"><%= t("#{s}.place") %></span>
             <%= select_tag :place_id,
-                           options_from_collection_for_select(@places, :id, :name, params[:place_id]),
+                           options_for_select(@places.map { |place| [geofence_place_label(place), place.id] }, params[:place_id]),
                            include_blank: t("#{s}.all_places"), class: 'select select-bordered select-sm w-full sm:w-52' %>
           </label>
           <label class="form-control">
@@ -61,7 +61,7 @@
                                  class: "mt-0.5 w-4 h-4 shrink-0 #{entered ? 'text-secondary' : 'text-base-content/50'}") %>
                         <span class="min-w-0 [overflow-wrap:anywhere]">
                           <span class="font-semibold"><%= t("#{s}.event_types.#{event.event_type}") %></span>
-                          <%= event.place.name %>
+                          <%= event.display_place_name %>
                         </span>
                       </div>
                       <div class="flex flex-wrap gap-x-2 pl-6 text-xs text-base-content/60 sm:justify-end sm:pl-0 sm:text-right">

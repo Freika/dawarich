@@ -9,6 +9,36 @@ RSpec.describe Users::Digests::CalculateYear do
     let(:user) { create(:user) }
     let(:year) { 2024 }
 
+    it 'orders countries alphabetically when their city counts tie' do
+      create(:stat, user: user, year: year, month: 1, toponyms: [
+               { 'country' => 'Germany', 'cities' => [] },
+               { 'country' => 'Spain', 'cities' => [{ 'city' => 'Madrid' }] },
+               { 'country' => 'Belgium', 'cities' => [] },
+               { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
+             ])
+
+      expect(calculate_digest.toponyms.pluck('country')).to eq(%w[France Spain Belgium Germany])
+    end
+
+    it 'retains countries whose monthly toponyms have no qualifying cities' do
+      create(:stat, user: user, year: year, month: 1, toponyms: [
+               { 'country' => 'Germany', 'cities' => [] },
+               { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
+             ])
+      create(:stat, user: user, year: year, month: 2, toponyms: [
+               { 'country' => 'Germany', 'cities' => [] }
+             ])
+
+      digest = calculate_digest
+
+      expect(digest.toponyms).to contain_exactly(
+        { 'country' => 'Germany', 'cities' => [] },
+        { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
+      )
+      expect(digest.countries_count).to eq(2)
+      expect(digest.cities_count).to eq(1)
+    end
+
     context 'when user has no stats for the year' do
       it 'returns nil' do
         expect(calculate_digest).to be_nil

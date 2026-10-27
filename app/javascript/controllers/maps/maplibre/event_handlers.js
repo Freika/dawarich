@@ -280,39 +280,7 @@ export class EventHandlers {
    * Handle place click
    */
   handlePlaceClick(e) {
-    const feature = e.features[0]
-    const properties = feature.properties
-
-    const content = `
-      <div class="space-y-2">
-        ${properties.tag ? `<div class="badge badge-sm badge-primary">${escapeHtml(properties.tag)}</div>` : ""}
-        ${properties.description ? `<div>${escapeHtml(properties.description)}</div>` : ""}
-        ${properties.visitRadius ? `<div><span class="font-semibold">${translate("map_info.visit_radius")}:</span> ${Math.round(properties.visitRadius)}m</div>` : ""}
-        ${
-          properties.nameLocked
-            ? `<div class="text-xs opacity-70" data-testid="place-name-lock">${translate("map_info.place_name_locked")}</div>`
-            : ""
-        }
-      </div>
-    `
-
-    const actions = properties.id
-      ? [
-          {
-            type: "button",
-            handler: "handleEdit",
-            id: properties.id,
-            entityType: "place",
-            label: translate("messages.edit"),
-          },
-        ]
-      : []
-
-    this.controller.showInfo(
-      escapeHtml(properties.name) || translate("map_info.place"),
-      content,
-      actions,
-    )
+    this.controller.placePanel.open(e.features[0].properties.id)
   }
 
   /**

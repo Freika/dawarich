@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_26_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -267,7 +267,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_000000) do
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}, null: false
     t.jsonb "metadata", default: {}, null: false
     t.datetime "occurred_at", null: false
-    t.bigint "place_id", null: false
+    t.bigint "place_id"
+    t.string "place_name"
     t.datetime "received_at", null: false
     t.integer "source", null: false
     t.boolean "synthetic", default: false, null: false
@@ -375,6 +376,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_000000) do
   end
 
   create_table "places", force: :cascade do |t|
+    t.datetime "archived_at"
     t.string "city"
     t.string "country"
     t.datetime "created_at", null: false
@@ -959,7 +961,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_000000) do
   add_foreign_key "family_memberships", "families"
   add_foreign_key "family_memberships", "users"
   add_foreign_key "flights", "users"
-  add_foreign_key "geofence_events", "places", on_delete: :cascade
+  add_foreign_key "geofence_events", "places", on_delete: :nullify
   add_foreign_key "geofence_events", "users", on_delete: :cascade
   add_foreign_key "legacy_area_place_mappings", "areas", on_delete: :cascade
   add_foreign_key "legacy_area_place_mappings", "places", on_delete: :cascade

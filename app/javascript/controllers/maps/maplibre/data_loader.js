@@ -1,60 +1,8 @@
 import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
 import { createCircle } from "maps_maplibre/utils/geometry"
+import { LoadingCounter } from "maps_maplibre/utils/loading_counter"
+import { visitsToGeoJSON } from "maps_maplibre/utils/visit_features"
 
-/**
- * Tracks loading counts across multiple data sources
- * Reports live item counts instead of percentage progress
- */
-class LoadingCounter {
-  constructor(onUpdate) {
-    this.onUpdate = onUpdate
-    this.counts = {}
-    this.completed = new Set()
-    this.expectedSources = new Set()
-  }
-
-  /**
-   * Register a source that will be tracked.
-   * Must be called before fetching begins so the badge shows "0 source" immediately.
-   */
-  expect(source) {
-    this.expectedSources.add(source)
-    this._report()
-  }
-
-  update(source, count) {
-    this.counts[source] = count
-    this._report()
-  }
-
-  complete(source) {
-    this.completed.add(source)
-    this._report()
-  }
-
-  isComplete() {
-    return (
-      this.expectedSources.size > 0 &&
-      [...this.expectedSources].every((s) => this.completed.has(s))
-    )
-  }
-
-  _report() {
-    if (!this.onUpdate) return
-    const fullCounts = {}
-    for (const source of this.expectedSources) {
-      fullCounts[source] = this.counts[source] || 0
-    }
-    this.onUpdate({
-      counts: fullCounts,
-      isComplete: this.isComplete(),
-    })
-  }
-}
-
-/**
- * Handles loading and transforming data from API
- */
 export class DataLoader {
   constructor(api, apiKey, settings = {}) {
     this.api = api
@@ -62,9 +10,6 @@ export class DataLoader {
     this.settings = settings
   }
 
-  /**
-   * Update settings (called when user changes settings)
-   */
   updateSettings(settings) {
     this.settings = settings
   }
@@ -148,11 +93,14 @@ export class DataLoader {
       ? Array.isArray(savedPlacesTagFilters) &&
         savedPlacesTagFilters.length === 0
         ? Promise.resolve([])
-        : this.api.fetchPlaces(
-            Array.isArray(savedPlacesTagFilters)
+        : this.api.fetchPlaces({
+            ...(Array.isArray(savedPlacesTagFilters)
               ? { tag_ids: savedPlacesTagFilters }
-              : {},
-          )
+              : {}),
+            ...(this.settings.showArchivedPlaces
+              ? { includeArchived: true }
+              : {}),
+          })
       : Promise.resolve([])
     const placesPromise = placesRequest
       .then((result) => {
@@ -267,30 +215,7 @@ export class DataLoader {
    * Convert visits to GeoJSON
    */
   visitsToGeoJSON(visits) {
-    return {
-      type: "FeatureCollection",
-      features: visits
-        .filter(
-          (visit) =>
-            visit.place?.longitude != null && visit.place?.latitude != null,
-        )
-        .map((visit) => ({
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: [visit.place.longitude, visit.place.latitude],
-          },
-          properties: {
-            id: visit.id,
-            name: visit.display_name || visit.name,
-            place_name: visit.place.name,
-            status: visit.status,
-            started_at: visit.started_at,
-            ended_at: visit.ended_at,
-            duration: visit.duration,
-          },
-        })),
-    }
+    return visitsToGeoJSON(visits)
   }
 
   /**
@@ -333,9 +258,6 @@ export class DataLoader {
     }
   }
 
-  /**
-   * Convert places to GeoJSON
-   */
   placesToGeoJSON(places) {
     return {
       type: "FeatureCollection",
@@ -350,9 +272,9 @@ export class DataLoader {
           note: place.note,
           visitRadius,
           nameLocked: Boolean(place.name_locked),
-          // Stringify tags for MapLibre GL JS compatibility
+          geofence: place.geofence === true,
+          archived: place.archived === true,
           tags: JSON.stringify(place.tags || []),
-          // Use first tag's color if available
           color: place.tags?.[0]?.color || "#6366f1",
         }
 

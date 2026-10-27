@@ -201,6 +201,28 @@ RSpec.describe '/places', type: :request do
         expect_flash_stream('Place updated successfully!')
       end
 
+      it 'clears the last tag when the map modal submits with every tag unchecked' do
+        place.tags << create(:tag, user:)
+        get map_v2_url
+        document = Nokogiri::HTML(response.body)
+        hidden = document.at_css('input[type="hidden"][name="place[tag_ids][]"]')
+        submitted_tags = hidden ? [hidden['value']] : nil
+        attributes = { name: place.name }
+        attributes[:tag_ids] = submitted_tags if submitted_tags
+
+        patch place_url(place), params: { place: attributes }, as: :turbo_stream
+
+        expect(response).to have_http_status(:ok)
+        expect(place.reload.tags).to be_empty
+
+        post places_url,
+             params: { place: { name: 'Untagged Cafe', latitude: 52.52, longitude: 13.405, tag_ids: submitted_tags } },
+             as: :turbo_stream
+
+        expect(response).to have_http_status(:ok)
+        expect(user.places.find_by!(name: 'Untagged Cafe').tags).to be_empty
+      end
+
       it 'includes updated flag in response' do
         patch place_url(place), params: { place: { name: 'Updated' } }, as: :turbo_stream
 
@@ -323,6 +345,19 @@ RSpec.describe '/places', type: :request do
       expect(visit.reload.place).to eq(survivor)
       expect(Place.exists?(duplicate.id)).to be(false)
       expect_turbo_stream_action('update', 'place-drawer')
+    end
+
+    it 'relays a merged survivor and the removed duplicate to the map panel' do
+      tag = create(:tag, user:)
+      duplicate.tags << tag
+
+      post merge_place_url(survivor), params: { duplicate_place_id: duplicate.id, map_panel: '1' },
+                                      headers: { 'Turbo-Frame' => 'place-drawer' }, as: :turbo_stream
+
+      expect(response).to have_http_status(:ok)
+      expect(survivor.reload.tags).to include(tag)
+      expect_turbo_stream_action('replace', 'place-creation-data')
+      expect(response.body).to include("data-removed-id=\"#{duplicate.id}\"", 'data-updated="true"')
     end
 
     it 'does not merge another users Place' do
@@ -478,8 +513,7 @@ RSpec.describe '/places', type: :request do
 
         get place_url(place)
 
-        # 3 visits * 60 minutes = 180 minutes = 3.0 hours
-        expect(response.body).to include('3.0')
+        expect(response.body).to include('3h 0m')
       end
 
       it 'shows average dwell formatted as Xh Ym' do
@@ -510,8 +544,9 @@ RSpec.describe '/places', type: :request do
 
         get place_url(place)
 
-        expect(response.body).to include('Living Visit')
-        expect(response.body).not_to include('Ghost Visit')
+        visits = Nokogiri::HTML(response.body).css('.place-drawer__visit time')
+        expect(visits.size).to eq(1)
+        expect(Time.iso8601(visits.first['datetime'])).to eq(base_time)
       end
 
       it 'lists up to 5 most recent visits ordered by started_at DESC' do
@@ -530,11 +565,11 @@ RSpec.describe '/places', type: :request do
 
         get place_url(place)
 
-        # Most recent is Visit 6; oldest two (0, 1) should not appear in the body
-        # of the drawer's recent-visits list
-        expect(response.body.scan(/Visit \d/).size).to be <= 5
-        expect(response.body).to include('Visit 6')
-        expect(response.body).not_to include('Visit 0')
+        visits = Nokogiri::HTML(response.body).css('.place-drawer__visit time')
+        expect(visits.size).to eq(5)
+        expect(visits.map { |node| Time.iso8601(node['datetime']) }).to eq((2..6).to_a.reverse.map do |i|
+          base_time + i.hours
+        end)
       end
 
       it 'does not eagerly load every point belonging to the place visits' do
@@ -648,7 +683,7 @@ RSpec.describe '/places', type: :request do
       patch place_path(place), params: { place: { name: "Mum's house" } },
                                headers: { 'Turbo-Frame' => 'place-drawer' }, as: :turbo_stream
 
-      expect(response.body).to include('place-name-lock')
+      expect(response.body).to include('place-name-lock', 'name_locked&quot;:true')
     end
 
     it 'drops the lock from the drawer when the name is reset to the default' do
@@ -668,6 +703,120 @@ RSpec.describe '/places', type: :request do
       get place_path(place)
 
       expect(response.body).not_to include('place-name-lock')
+    end
+  end
+
+  it 'accepts archive and unarchive through web Place parameters', :archive do
+    place = create(:place, user:)
+
+    patch place_url(place), params: { place: { archived: '1' } }, as: :turbo_stream
+    expect(response).to have_http_status(:ok)
+    expect_turbo_stream_action('replace', 'place-creation-data')
+    expect(place.reload).to be_archived
+    archived_data = Nokogiri::HTML(response.body).at_css('#place-creation-data')['data-place']
+    expect(JSON.parse(archived_data)['archived']).to be(true)
+
+    patch place_url(place), params: { place: { archived: '0' } }, as: :turbo_stream
+    expect(response).to have_http_status(:ok)
+    expect_turbo_stream_action('replace', 'place-creation-data')
+    expect(place.reload).not_to be_archived
+    restored_data = Nokogiri::HTML(response.body).at_css('#place-creation-data')['data-place']
+    expect(JSON.parse(restored_data)['archived']).to be(false)
+  end
+
+  describe 'the shared Place editor' do
+    let!(:place) { create(:place, user:, name: Place::DEFAULT_NAME) }
+
+    it 'renders editable name tags and notes with map editing and counted delete consequences' do
+      privacy_tag = create(:tag, :privacy_zone, user:, name: 'Private home')
+      place.tags << privacy_tag
+      create(:visit, user:, place:)
+      create(:visit, user:, place:, deleted_at: 1.day.ago)
+      place.update!(geofence: true)
+      create(:webhook, user:, place_ids: [place.id])
+      create(:webhook, user: create(:user)).update_columns(place_ids: [place.id])
+
+      get place_url(place)
+
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css('input[name="place[name]"]')).to be_present
+      expect(document.at_css('input[type="hidden"][name="place[tag_ids][]"]')['value']).to eq('')
+      expect(document.at_css('input[type="checkbox"][name="place[tag_ids][]"]')['checked']).to eq('checked')
+      expect(document.at_css('textarea[name="place[note]"]')).to be_present
+      expect(document.at_css('[data-place-editor-target="mapLink"]')['href']).to eq(map_v2_path(place_id: place.id,
+                                                                                                edit: 1))
+      confirmation = document.at_css('.place-drawer__action--delete')['data-turbo-confirm']
+      expect(confirmation).to include('Active visits: 1', 'Private home', 'Webhooks that will drop this place: 1',
+                                      'Geofence events are kept with the place name', 'location label')
+    end
+
+    it 'saves the editor without JavaScript and locks a rename while clearing tags' do
+      place.tags << create(:tag, user:)
+
+      patch place_url(place), params: { place: { name: 'New home', note: 'My note', tag_ids: [''] } }
+
+      expect(response).to redirect_to(place_url(place))
+      expect(place.reload).to be_name_locked
+      expect(place).to have_attributes(name: 'New home', note: 'My note')
+      expect(place.tags).to be_empty
+    end
+
+    it 'writes a map move and radius to decimal coordinates enqueues reattribution and relays the saved feature' do
+      expect do
+        patch place_url(place), params: { place: { latitude: 51.1, longitude: 12.2, visit_radius: 123 } },
+                                headers: { 'Turbo-Frame' => 'place-drawer' }, as: :turbo_stream
+      end.to have_enqueued_job(Places::ReattributeSuggestedVisitsJob).with(user.id, place.id)
+
+      expect(place.reload).to have_attributes(latitude: 51.1, longitude: 12.2, visit_radius: 123)
+      expect([place.lonlat.x, place.lonlat.y]).to eq([12.2, 51.1])
+      expect_turbo_stream_action('update', 'place-drawer')
+      expect_turbo_stream_action('replace', 'place-creation-data')
+      expect(response.body).to include('data-updated="true"', '123')
+    end
+
+    it 'renders invalid radius errors in the editor without saving or relaying a feature' do
+      original_radius = place.visit_radius
+      patch place_url(place), params: { place: { visit_radius: Place::MAX_VISIT_RADIUS + 1 } },
+                              headers: { 'Turbo-Frame' => 'place-drawer' }, as: :turbo_stream
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(place.reload.visit_radius).to eq(original_radius)
+      expect_turbo_stream_action('update', 'place-drawer')
+      expect(response.body).to include('role="alert"', '50000')
+      expect(response.body).not_to include('target="place-creation-data"')
+    end
+
+    it 'renders invalid HTML editor input inline with the attempted name' do
+      patch place_url(place), params: { place: { name: '', visit_radius: 0 } }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css('input[name="place[name]"]')['value']).to be_blank
+      expect(document.at_css('[role="alert"]')).to be_present
+    end
+
+    it 'relays cleared tags from a drawer save and retains the geofence toggle' do
+      place.tags << create(:tag, user:)
+      patch place_url(place), params: { place: { tag_ids: [''], geofence: '1' } },
+                              headers: { 'Turbo-Frame' => 'place-drawer' }, as: :turbo_stream
+
+      expect(place.reload.tags).to be_empty
+      expect(place).to be_geofence
+      expect(response.body).to include('tags&quot;:[]', 'data-updated="true"')
+      expect_turbo_stream_action('update', 'place-drawer')
+    end
+
+    it 'deletes from the map panel with a removal relay and success flash while keeping visits' do
+      visit = create(:visit, user:, place:)
+      delete place_url(place), params: { map_panel: '1' }, as: :turbo_stream
+
+      expect(response).to have_http_status(:ok)
+      expect(Place.exists?(place.id)).to be(false)
+      expect(visit.reload.place_id).to be_nil
+      expect(visit.location_label).to eq(place.name)
+      expect_turbo_stream_action('replace', 'place-creation-data')
+      expect(response.body).to include("data-deleted-id=\"#{place.id}\"")
+      expect_flash_stream
     end
   end
 end

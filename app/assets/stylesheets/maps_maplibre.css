@@ -91,12 +91,18 @@
 }
 
 @media (max-width: 1280px) {
+  .maps-maplibre-container.panel-open ~ .map-progress-badge {
+    left: calc(50% + 210px);
+  }
   .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
     left: calc(50% + 310px);
   }
 }
 
 @media (max-width: 1024px) {
+  .maps-maplibre-container.panel-open ~ .map-progress-badge {
+    left: calc(50% + 190px);
+  }
   .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
     left: calc(50% + 260px);
   }

@@ -1078,6 +1078,9 @@ en:
         track_split_time_unit: min
         track_split_time_hint: "Longer gaps start a new Track and let Trips use another device’s recording. After changing this, press Recalculate on affected Trip pages to update saved routes and distances."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Hide readings that cannot be a real position — impossible jumps, broken coordinates. Disable to see every raw point.
+        hide_inaccurate_points: "Hide inaccurate points"
+        hide_inaccurate_points_hint: "Also hide points whose reported accuracy is worse than the threshold below. Helps with phone tracking that adds sideways noise; keep it off for Google Timeline imports, whose coarse points still sit on the road. To apply it to your history, press “Apply Settings” first, then “Re-evaluate past data”."
+        accuracy_threshold: "Accuracy threshold"
         re_evaluate_past_data: Re-evaluate past data
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Clears existing anomaly flags and re-runs the filter on all your points with the current settings. Tracks, stats, and digests will be rebuilt afterwards. Runs in the background.
         recalculate_tracks_stats: Recalculate tracks & stats
@@ -1331,7 +1334,51 @@ en:
       destroy_this_notification: Destroy this notification
       are_you_sure: Are you sure?
   places:
+    management:
+      create: "Create place"
+      duplicates: "Possible duplicates"
+      search: "Search names"
+      sort: "Sort by"
+      last_visit: "Last visit"
+      active_visits: "Active visits"
+      status: "Status"
+      apply: "Apply"
+      tags: "Tags"
+      tag: "Tag"
+      source: "Source"
+      badges: "Protection"
+      geofence: "Geofence"
+      privacy: "Privacy zone"
+      selected: "Selected places"
+      add_tag: "Add tag"
+      remove_tag: "Remove tag"
+      survivor: "Keep this place"
+      merge: "Merge places"
+      delete: "Delete places"
+      select_all: "Select all places on this page"
+      select_place: "Select %{name}"
+      no_results: "No places match these filters."
+      duplicates_description: "Places whose visit-radius circles overlap are grouped below. Review each group and choose the place to keep. Nothing is merged automatically."
+      no_duplicates: "No possible duplicates found."
+      cluster: "Group %{number}"
+      distance_reference: "Distances from the recommended place: %{name}"
+      distance: "Distance"
+      meters: "%{distance} m"
+      bulk_success: "Places updated: %{count}"
+      invalid_selection: "Select places and a valid tag or survivor from your selection."
+      merge_confirmation: "Merge these places into the chosen survivor? Their visits, tags and notes will move to it. This cannot be undone."
+      delete_confirmation: "Delete these places? Places: %{places}. Active visits that will lose their place: %{visits}; their location labels are kept. Places with geofences: %{geofences}; Geofence events are kept with the place name; webhook subscriptions are removed. Places with privacy-zone tags: %{privacy}; nearby data may become visible, including in shared links. This cannot be undone."
+      sources:
+        manual: "Manual"
+        photon: "Discovered"
+        gpx_waypoint: "GPX waypoint"
+    edit_on_map: "Edit on map"
+    drag_to_edit: "Drag the pin to move the place and the handle to resize its Visit Radius."
+    cancel_edit: "Cancel"
+    place_details: "Place details"
+    close_panel: "Close place details"
     drawer:
+      delete_consequences: "Delete this place?\nActive visits: %{visits}. They keep a location label.\nPrivacy-zone tags: %{privacy_tags}.\nWebhooks that will drop this place: %{webhooks}.\nGeofence events are kept with the place name. This cannot be undone."
       source: 'Source:'
       total_hours: total hours
       avg_dwell: avg dwell
@@ -1506,6 +1553,7 @@ en:
       residential_roads: Residential roads
       track: Track
   settings:
+    geofencing_paused_while_archived: paused while archived
     navigation:
       general: General
       integrations: Integrations
@@ -1526,7 +1574,9 @@ en:
         background_jobs_dashboard: Background Jobs Dashboard
         this_will_open_the_background_jobs_dashboard_in_a_new: This will open the background jobs dashboard in a new tab.
         visits_suggestions: Visits suggestions
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Enable or disable visits suggestions. It's a background task that runs every day at midnight. Disabling it might be useful if you don't want to receive visits suggestions or if you're using the Dawarich iOS app, which has its own visits suggestions.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Visits are suggested automatically shortly after new points arrive and re-checked every night. Disabling them stops all automatic visit detection, including after imports. The Dawarich iOS app has its own visit suggestions.
+        enabled: Enabled
+        disabled: Disabled
         background_jobs: Background jobs
         start_job: Start Job
         are_you_sure: Are you sure?
@@ -1813,7 +1863,7 @@ en:
       show:
         tune_how_dawarich_decides_where_you_actually_were: Tune how Dawarich decides where you actually were
         these_settings_control_how_the_app_groups_your_gps_points: These settings control how the app groups your GPS points into visits to places.
-        points_within_this_radius_are_treated_as_the_same_visit: Points within this radius are treated as the same visit. Default 100.
+        points_within_this_radius_are_treated_as_the_same_visit: Points within this radius are treated as the same visit. A stay within it also ends a Track (at least 100 m). Default 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Lower = more visits suggested, including brief stops. Default 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Skip stops shorter than this. Raise to ignore short drive-bys; lower to catch brief errands. Default 5.
         visit_detection: Visit detection
@@ -2217,6 +2267,19 @@ en:
     show:
       statistics_for_year_year: Statistics for %{year} year
   tags:
+    confirm_delete:
+      title: "Delete privacy-zone tag"
+      covered_places: "This privacy zone covers %{count} of your places."
+      visibility: "Data around these places becomes visible again on the map, in trips and in stats."
+      shared_links:
+        one: "This also applies to your %{count} active shared link."
+        other: "This also applies to every active shared link you own (%{count})."
+    places:
+      title: "Places with this tag"
+      empty: "No places have this tag yet."
+      visits:
+        one: "%{count} visit"
+        other: "%{count} visits"
     form:
       prohibited_this_tag_from_being_saved: 'prohibited this tag from being saved:'
       click_to_select_an_emoji: Click to select an emoji
@@ -3881,9 +3944,6 @@ en:
           one: "%{count} year"
           other: "%{count} years"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Stats, tracks, and digests have been recalculated for %{year_label}.
-        year_count:
-          one: "%{count} year"
-          other: "%{count} years"
         data_recalculation_failed: Data recalculation failed
         message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     visits:
@@ -4121,8 +4181,11 @@ en:
       speed: "%{speed} km/h"
       no_data: No data
     places:
+      move_pin: "Move place pin"
+      resize_radius: "Resize Visit Radius"
       create_new: Create New Place
       edit: Edit Place
+      open: Open
       confirm_delete: Are you sure you want to delete this place?
       search_placeholder: Search for a place…
       confirm_move_visit: This place is ~%{distance} m from the visit. Move the visit here?

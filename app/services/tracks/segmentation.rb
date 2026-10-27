@@ -13,7 +13,7 @@
 #
 # Segmentation criteria:
 # - Time threshold: Gap longer than X minutes indicates a new track
-# - Stationary stop: Staying within 100 meters of one place for longer than X minutes
+# - Stationary stop: Staying within the visit radius of one place for longer than X minutes
 #   ends a track (see Tracks::StationaryStops)
 # - Minimum segment size: Segments must have at least 2 points to form a track
 #
@@ -77,7 +77,7 @@ module Tracks::Segmentation
   def long_stationary_breaks(points)
     samples = points.map { |point| [point.timestamp, point.lonlat&.x, point.lonlat&.y] }
 
-    Tracks::StationaryStops.break_indexes(samples, time_threshold_minutes.to_i * 60)
+    Tracks::StationaryStops.break_indexes(samples, time_threshold_minutes.to_i * 60, stationary_radius_meters)
   end
 
   def should_start_new_segment?(current_point, previous_point)
@@ -91,6 +91,10 @@ module Tracks::Segmentation
     time_threshold_seconds = time_threshold_minutes.to_i * 60
 
     time_diff_seconds > time_threshold_seconds
+  end
+
+  def stationary_radius_meters
+    Tracks::StationaryStops::DEFAULT_RADIUS_METERS
   end
 
   def time_threshold_minutes

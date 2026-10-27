@@ -1,6 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 import { formatNumber, formatTime, translate } from "i18n"
+import { deletePlace } from "maps_maplibre/components/place_actions"
 import { Toast } from "maps_maplibre/components/toast"
+import { PlacePanelBridge } from "maps_maplibre/editing/place_panel_bridge"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
 import { ApiClient } from "maps_maplibre/services/api_client"
@@ -13,9 +15,11 @@ import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { parseTimestamp } from "maps_maplibre/utils/realtime_date_filter"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import { syncSidebarLayout } from "maps_maplibre/utils/sidebar_layout"
 import { setPrivacyZonesFingerprint } from "maps_maplibre/utils/tile_freshness"
 import { timeOverlapOpacityExpr } from "maps_maplibre/utils/time_overlap"
 import { AreaSelectionManager } from "./maplibre/area_selection_manager"
+import { consumeCreatePlaceLink } from "./maplibre/create_place_link"
 import { DataLoader } from "./maplibre/data_loader"
 import { DateManager } from "./maplibre/date_manager"
 import { EventHandlers } from "./maplibre/event_handlers"
@@ -60,6 +64,7 @@ export default class extends Controller {
     "fogThresholdValue",
     "minMinutesInCityValue",
     "gpsFilteringToggle",
+    "gpsAccuracyThresholdValue",
     // Search
     "searchInput",
     "searchResults",
@@ -194,6 +199,8 @@ export default class extends Controller {
       this.visitsManager.attachViewportRefetch()
     }
     this.placesManager = new PlacesManager(this)
+    this.placePanel = new PlacePanelBridge(this)
+    consumeCreatePlaceLink(this.placesManager)
     this.layerVisibilityManager = new LayerVisibilityManager(this)
 
     // Listen for tab changes to trigger timeline feed loading via Turbo Frame
@@ -299,6 +306,11 @@ export default class extends Controller {
       this.boundHandlePlaceUpdated,
     )
 
+    const [serverStartDate, serverEndDate] = [
+      this.startDateValue,
+      this.endDateValue,
+    ].map((value) => value.split("T")[0])
+
     // Format initial dates
     this.startDateValue = DateManager.formatDateForAPI(
       new Date(this.startDateValue),
@@ -314,6 +326,8 @@ export default class extends Controller {
     this.defaultDateRange = {
       startValue: this.startDateValue,
       endValue: this.endDateValue,
+      startDate: serverStartDate,
+      endDate: serverEndDate,
       reachesNow: loadEnd !== null && loadEnd >= Date.now(),
     }
 
@@ -341,6 +355,7 @@ export default class extends Controller {
   disconnect() {
     this._disconnected = true
     if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
+    this.placePanel?.destroy()
     this.replayPanel?.destroy()
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
@@ -377,6 +392,7 @@ export default class extends Controller {
    * Initialize MapLibre map
    */
   async initializeMap() {
+    syncSidebarLayout(this.settingsPanelTarget, this.containerTarget, true)
     // Reopen at the user's last viewport instead of the zoomed-out globe.
     // When the date range has data, fitBounds overrides this; when it has
     // none, the map stays on the last-known view rather than the world.
@@ -452,7 +468,10 @@ export default class extends Controller {
     return this.mapDataManager.loadMapData(
       this.startDateValue,
       this.endDateValue,
-      options,
+      {
+        ...options,
+        fitBounds: options.fitBounds !== false && !this.placePanel?.isOpen,
+      },
     )
   }
 
@@ -649,20 +668,14 @@ export default class extends Controller {
 
       // Shrink/expand map container
       if (this.hasContainerTarget) {
-        this.containerTarget.classList.toggle("panel-open", isOpening)
-        // The Timeline tab puts the map container in `panel-timeline-expanded`
-        // (720px-wide panel + matching margin-left). When the user closes the
-        // panel we have to clear that too — otherwise the panel slides
-        // off-screen but the map keeps its 720px left margin and the user
-        // sees an empty dark column where the panel used to be.
         if (!isOpening) {
-          this.containerTarget.classList.remove("panel-timeline-expanded")
           this.settingsPanelTarget.classList.remove("timeline-expanded")
           // Cluster doubles as the panel's tab strip — clear its active
           // state when the panel is dismissed (e.g. via the header X) so
           // users don't see a button still highlighted with no panel open.
           document.dispatchEvent(new CustomEvent("map-panel:closed"))
         }
+        syncSidebarLayout(this.settingsPanelTarget, this.containerTarget)
         // Tell MapLibre to recalculate after the CSS transition
         setTimeout(() => this.map?.resize(), 350)
       }
@@ -1218,6 +1231,9 @@ export default class extends Controller {
   updateAdvancedSettings(event) {
     return this.settingsController.updateAdvancedSettings(event)
   }
+  updateGpsAccuracyThresholdDisplay(event) {
+    return this.settingsController.updateGpsAccuracyThresholdDisplay(event)
+  }
   updateFogRadiusDisplay(event) {
     return this.settingsController.updateFogRadiusDisplay(event)
   }
@@ -1274,6 +1290,9 @@ export default class extends Controller {
   // Places Manager methods
   togglePlaces(event) {
     return this.placesManager.togglePlaces(event)
+  }
+  toggleArchivedPlaces(event) {
+    return this.placesManager.toggleArchivedPlaces(event)
   }
   togglePlaceBoundaries(event) {
     return this.placesManager.togglePlaceBoundaries(event)
@@ -1634,9 +1653,6 @@ export default class extends Controller {
       case "visit":
         this.openVisitModal(id)
         break
-      case "place":
-        this.openPlaceEditModal(id)
-        break
       default:
         console.warn("[Maps V2] Unknown entity type:", entityType)
     }
@@ -1654,6 +1670,8 @@ export default class extends Controller {
       case "point":
         this.deletePoint(id)
         break
+      case "place":
+        return deletePlace(this, id)
       default:
         console.warn("[Maps V2] Unknown entity type for delete:", entityType)
     }
@@ -1711,34 +1729,8 @@ export default class extends Controller {
     }
   }
 
-  /**
-   * Open place edit modal
-   */
-  async openPlaceEditModal(placeId) {
-    try {
-      // Fetch place details
-      const response = await fetch(`/api/v1/places/${placeId}`, {
-        headers: {
-          Authorization: `Bearer ${this.apiKeyValue}`,
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch place: ${response.status}`)
-      }
-
-      const place = await response.json()
-
-      // Trigger place edit event
-      const event = new CustomEvent("place:edit", {
-        detail: { place },
-        bubbles: true,
-      })
-      document.dispatchEvent(event)
-    } catch (_error) {
-      Toast.error(translate("messages.failed_to_load_place_details"))
-    }
+  openPlace(event) {
+    this.placePanel.open(event.currentTarget.dataset.id)
   }
 
   switchToToolsTab() {

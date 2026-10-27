@@ -11,25 +11,20 @@ export default class extends Controller {
     "visitRadiusInput",
     "noteInput",
     "nearbyFrame",
-    "tagCheckboxes",
     "modalTitle",
     "submitButton",
-    "placeIdInput",
     "visitIdInput",
   ]
 
   connect() {
-    this.editingPlaceId = null
     this.documentListeners = {
       "place:create": (e) =>
         this.open(e.detail.latitude, e.detail.longitude, e.detail),
-      "place:edit": (e) => this.openForEdit(e.detail.place),
       "turbo:before-stream-render": (e) => this.relaySavedPlace(e),
     }
     for (const [type, listener] of Object.entries(this.documentListeners)) {
       document.addEventListener(type, listener)
     }
-    this.setupTagListeners()
   }
 
   disconnect() {
@@ -52,13 +47,33 @@ export default class extends Controller {
 
   dispatchSavedPlace() {
     const dataEl = document.getElementById("place-creation-data")
-    if (!dataEl?.dataset.place) return
+    if (dataEl?.dataset.deletedId) {
+      document.dispatchEvent(
+        new CustomEvent("place:deleted", {
+          detail: { id: Number(dataEl.dataset.deletedId) },
+        }),
+      )
+      delete dataEl.dataset.deletedId
+      return
+    }
+    const removedId = dataEl?.dataset.removedId
+    const duplicateId = dataEl?.dataset.duplicateId
+    if (duplicateId || (removedId && dataEl?.dataset.place)) {
+      document.dispatchEvent(
+        new CustomEvent("place:removed", {
+          detail: { id: Number(duplicateId || removedId) },
+        }),
+      )
+    }
+    if (!dataEl?.dataset.place && !removedId) return
 
-    const place = JSON.parse(dataEl.dataset.place)
+    const detail = dataEl.dataset.place
+      ? { place: JSON.parse(dataEl.dataset.place) }
+      : { removedId: Number(removedId) }
     const eventName =
       dataEl.dataset.updated === "true" ? "place:updated" : "place:created"
 
-    document.dispatchEvent(new CustomEvent(eventName, { detail: { place } }))
+    document.dispatchEvent(new CustomEvent(eventName, { detail }))
     if (dataEl.dataset.visitId) {
       document.dispatchEvent(
         new CustomEvent("visit-place:changed", {
@@ -71,33 +86,11 @@ export default class extends Controller {
     delete dataEl.dataset.created
     delete dataEl.dataset.updated
     delete dataEl.dataset.visitId
-  }
-
-  setupTagListeners() {
-    if (!this.hasTagCheckboxesTarget) return
-
-    this.tagCheckboxesTarget.addEventListener("change", (e) => {
-      if (e.target.type !== "checkbox" || e.target.name !== "place[tag_ids][]")
-        return
-      const badge = e.target.nextElementSibling
-      const color = badge.dataset.color
-
-      if (e.target.checked) {
-        badge.classList.remove("badge-outline")
-        badge.style.backgroundColor = color
-        badge.style.borderColor = color
-        badge.style.color = "white"
-      } else {
-        badge.classList.add("badge-outline")
-        badge.style.backgroundColor = "transparent"
-        badge.style.borderColor = color
-        badge.style.color = color
-      }
-    })
+    delete dataEl.dataset.removedId
+    delete dataEl.dataset.duplicateId
   }
 
   open(latitude, longitude, options = {}) {
-    this.editingPlaceId = null
     this.latitudeInputTarget.value = latitude
     this.longitudeInputTarget.value = longitude
     this.visitIdInputTarget.value = options.visitId || ""
@@ -107,7 +100,6 @@ export default class extends Controller {
     // Set form for creation mode
     this.formTarget.action = "/places"
     this.formTarget.method = "post"
-    this.removeMethodOverride()
 
     if (this.hasModalTitleTarget)
       this.modalTitleTarget.textContent = translate("places.create_new")
@@ -121,49 +113,9 @@ export default class extends Controller {
     this.loadNearbyFrame(latitude, longitude)
   }
 
-  openForEdit(place) {
-    this.editingPlaceId = place.id
-    this.visitIdInputTarget.value = ""
-    this.nameInputTarget.value = place.name
-    this.latitudeInputTarget.value = place.latitude
-    this.longitudeInputTarget.value = place.longitude
-    this.visitRadiusInputTarget.value = place.visit_radius || 50
-
-    if (this.hasNoteInputTarget && place.note) {
-      this.noteInputTarget.value = place.note
-    }
-
-    // Set form for edit mode
-    this.formTarget.action = `/places/${place.id}`
-    this.addMethodOverride("patch")
-
-    if (this.hasModalTitleTarget)
-      this.modalTitleTarget.textContent = translate("places.edit")
-    if (this.hasSubmitButtonTarget)
-      this.submitButtonTarget.value = translate("places.update")
-
-    // Check appropriate tag checkboxes
-    const tagCheckboxes = this.formTarget.querySelectorAll(
-      'input[name="place[tag_ids][]"]',
-    )
-    tagCheckboxes.forEach((checkbox) => {
-      const isSelected = place.tags.some(
-        (tag) => tag.id === Number.parseInt(checkbox.value, 10),
-      )
-      checkbox.checked = isSelected
-      checkbox.dispatchEvent(new Event("change", { bubbles: true }))
-    })
-
-    this.modalTarget.classList.add("modal-open")
-    this.nameInputTarget.focus()
-
-    this.loadNearbyFrame(place.latitude, place.longitude)
-  }
-
   close() {
     this.modalTarget.classList.remove("modal-open")
     this.formTarget.reset()
-    this.editingPlaceId = null
 
     // Reset nearby frame
     if (this.hasNearbyFrameTarget) {
@@ -190,23 +142,5 @@ export default class extends Controller {
     if (!event.detail.success) return
 
     this.close()
-  }
-
-  // --- Private helpers ---
-
-  addMethodOverride(method) {
-    let input = this.formTarget.querySelector('input[name="_method"]')
-    if (!input) {
-      input = document.createElement("input")
-      input.type = "hidden"
-      input.name = "_method"
-      this.formTarget.prepend(input)
-    }
-    input.value = method
-  }
-
-  removeMethodOverride() {
-    const input = this.formTarget.querySelector('input[name="_method"]')
-    if (input) input.remove()
   }
 }

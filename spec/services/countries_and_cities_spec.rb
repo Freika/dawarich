@@ -9,6 +9,62 @@ RSpec.describe CountriesAndCities do
     let(:kwargs) { {} }
     let(:timestamp) { DateTime.new(2021, 1, 1, 0, 0, 0) }
 
+    context 'when points have a country without a named city' do
+      let(:country) { create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU') }
+      let(:points) do
+        [
+          { timestamp: 0, country_name: 'Deutschland', country_id: country.id, city: nil },
+          { timestamp: 3600, country_name: 'Germany', city: '' },
+          { timestamp: 7200, country_name: 'Germany', city: '  ' },
+          { timestamp: 10_800, country_name: nil, city: 'Berlin' },
+          { timestamp: 14_400, country_name: 'France', city: nil, velocity: 250 },
+          { timestamp: 18_000, country_name: 'France', city: nil, velocity: 250 },
+          { timestamp: 21_600, country_name: 'Belgium', city: nil, velocity: 500 / 3.6 }
+        ]
+      end
+
+      it 'retains countries without emitting unnamed cities at any stay threshold' do
+        [0, 60, 240].each do |minimum|
+          result = described_class.new(points, min_minutes_spent_in_city: minimum).call.as_json
+
+          expect(result).to eq([{ 'country' => 'Germany', 'cities' => [] },
+                                { 'country' => 'Belgium', 'cities' => [] }])
+        end
+      end
+    end
+
+    context 'when a country-only point interrupts a named city' do
+      let(:points) do
+        [
+          { timestamp: 0, country_name: 'Germany', city: 'Berlin' },
+          { timestamp: 1800, country_name: 'Germany', city: 'Berlin' },
+          { timestamp: 3600, country_name: 'Germany', city: nil },
+          { timestamp: 5400, country_name: 'Germany', city: 'Berlin' },
+          { timestamp: 7200, country_name: 'Germany', city: 'Berlin' }
+        ]
+      end
+
+      it 'preserves named city output when city-less points are interleaved' do
+        result = described_class.new(points, min_minutes_spent_in_city: 60).call.as_json
+        cities = [{ 'city' => 'Berlin', 'points' => 4, 'timestamp' => 7200, 'stayed_for' => 120 }]
+
+        expect(result).to eq([{ 'country' => 'Germany', 'cities' => cities }])
+        named_points = points.reject { |point| point[:city].blank? }
+        expect(result).to eq(described_class.new(named_points, min_minutes_spent_in_city: 60).call.as_json)
+        expect(described_class.new(points, min_minutes_spent_in_city: 121).call.as_json)
+          .to eq([{ 'country' => 'Germany', 'cities' => [] }])
+      end
+    end
+
+    it 'excludes blank country names even when a canonical country exists' do
+      country = create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')
+      points = [nil, '', '  '].each_with_index.map do |name, index|
+        { timestamp: index * 3600, country_name: name, country_id: country.id, city: 'Berlin' }
+      end
+
+      expect(described_class.new(points, min_minutes_spent_in_city: 0).call).to be_empty
+    end
+
     let(:points) do
       [
         create(:point, city: 'Berlin', country: 'Germany', timestamp:),

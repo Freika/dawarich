@@ -8,15 +8,18 @@ RSpec.describe Geofenceable do
   describe 'cleanup' do
     let(:place) { create(:place, :geofence, user:) }
 
-    it 'drops its events and its id from webhook filters when destroyed' do
+    it 'keeps events and deliveries while removing its webhook filter when destroyed', :place_retention do
       kept = create(:place, :geofence, user:)
       webhook = create(:webhook, user:, place_ids: [place.id, kept.id])
-      create(:webhook_delivery, webhook:, geofence_event: create(:geofence_event, user:, place:))
+      event = create(:geofence_event, user:, place:, place_name: place.name)
+      delivery = create(:webhook_delivery, webhook:, geofence_event: event)
+      place.update!(name: 'Renamed home')
 
       place.destroy!
 
       expect(GeofenceEvent.where(place_id: place.id)).to be_empty
-      expect(WebhookDelivery.count).to eq(0)
+      expect(event.reload).to have_attributes(place_id: nil, place_name: 'Renamed home')
+      expect(delivery.reload.geofence_event_id).to eq(event.id)
       expect(webhook.reload.place_ids).to eq([kept.id])
     end
 
@@ -28,14 +31,14 @@ RSpec.describe Geofenceable do
       expect(webhook.reload).to have_attributes(place_ids: [], active: false)
     end
 
-    it 'loses its events and their deliveries through the database when deleted in bulk' do
-      event = create(:geofence_event, user:, place:)
+    it 'nullifies events and keeps deliveries through the database when deleted in bulk', :place_retention do
+      event = create(:geofence_event, user:, place:, place_name: place.name)
       create(:webhook_delivery, webhook: create(:webhook, user:), geofence_event: event)
 
       user.places.delete_all
 
-      expect(GeofenceEvent.where(user_id: user.id)).to be_empty
-      expect(WebhookDelivery.count).to eq(0)
+      expect(event.reload).to have_attributes(place_id: nil, place_name: place.name)
+      expect(WebhookDelivery.where(geofence_event_id: event.id).count).to eq(1)
     end
 
     it 'keeps its events but leaves webhook filters when notifications are switched off' do
@@ -136,5 +139,43 @@ RSpec.describe Geofenceable do
     place = create(:place, :geofence, user:, source: :photon)
 
     expect(Place.confirmed_for(user)).to include(place)
+  end
+
+  describe 'archiving', :archive do
+    let(:store) { GeofenceEvents::StateStore.new(user) }
+    let(:place) { create(:place, :geofence, user:, latitude: 52.52, longitude: 13.405) }
+
+    before { store.reset! }
+
+    it 'forgets archived state without releasing the geofence or webhook subscriptions' do
+      webhook = create(:webhook, user:, place_ids: [place.id])
+      store.enter!(place.id)
+      event = create(:geofence_event, user:, place:)
+
+      place.update!(archived: true)
+
+      expect(store.inside_ids).not_to include(place.id)
+      expect(place.reload).to be_geofence
+      expect(webhook.reload).to have_attributes(place_ids: [place.id], active: true)
+      expect(GeofenceEvent.exists?(event.id)).to be(true)
+    end
+
+    it 'reconciles the latest position on unarchive without generating an enter event' do
+      place.update!(archived: true)
+      Points::Intake.call(user_id: user.id, payloads: [{ lonlat: 'POINT(13.405 52.52)',
+                                                       timestamp: 2.minutes.ago.to_i, accuracy: 10 }])
+
+      place.update!(archived: false)
+
+      expect(store.inside_ids).to include(place.id)
+      expect(GeofenceEvent.where(user:)).to be_empty
+    end
+
+    it 'does not reconcile boundary edits or enabling a geofence while archived' do
+      place.update!(archived: true, geofence: false)
+      expect(GeofenceEvents::PlaceState).not_to receive(:reconcile)
+
+      place.update!(geofence: true, visit_radius: 200)
+    end
   end
 end

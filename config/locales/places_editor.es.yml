@@ -1,0 +1,28 @@
+es:
+  places:
+    polish:
+      selected: "seleccionados"
+      details: "Detalles"
+      location: "Ubicación"
+      notifications: "Notificaciones"
+      visits: "Visitas"
+      manage: "Gestionar"
+      total_time: "Tiempo total"
+      avg_dwell: "Duración media"
+      statistics: "Estadísticas"
+      merge_duplicate: "Fusionar duplicado"
+      back_to_places: "Volver a lugares"
+      clear: "Limpiar"
+    inline_tags:
+      new_tag: "Nueva etiqueta"
+      name: "Nombre de la etiqueta"
+      emoji: "Emoji (opcional)"
+      create: "Crear etiqueta"
+    drawer:
+      hidden_by_tag: "Oculto por la etiqueta %{name}, %{radius} m"
+      geofence_events: "Eventos recientes de geovalla"
+      no_geofence_events: "Aún no hay eventos de entrada o salida."
+      geofence_disabled: "Activa las notificaciones de entrada y salida para registrar eventos de este lugar."
+  javascript:
+    map_info:
+      geofence_boundary: "Límite de la geovalla"

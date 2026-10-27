@@ -24,7 +24,9 @@ class Users::OtpChallengeController < ApplicationController
       user.reset_failed_otp_attempts!
       user.remember_me = remember_me
       sign_in(user)
-      redirect_to after_sign_in_path_for(user), notice: I18n.t('controllers.users.otp_challenge.signed_in_successfully')
+      # Set before after_sign_in_path_for, which may replace it (e.g. joining a family).
+      flash[:notice] = I18n.t('controllers.users.otp_challenge.signed_in_successfully')
+      redirect_to after_sign_in_path_for(user)
     elsif user.otp_locked?
       clear_otp_session
       alert = I18n.t('controllers.users.otp_challenge.account_temporarily_locked_due_to_too_many_failed_2fa_attempts')

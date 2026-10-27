@@ -1084,6 +1084,9 @@ zh:
         track_split_time_unit: 分钟
         track_split_time_hint: "超过此间隔会开始新轨迹，并允许行程使用另一台设备的记录。修改后，请在受影响的行程页面点击“重新计算”，以更新已保存的路线和距离。"
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: 隐藏不可能为真实位置的读数 — 如不可能的跳跃、损坏的坐标。禁用后显示每个原始轨迹点。
+        hide_inaccurate_points: "隐藏不精确的点"
+        hide_inaccurate_points_hint: "同时隐藏报告精度低于下方阈值的点。适用于会产生横向噪声的手机追踪；对 Google 时间轴导入请保持关闭，其粗略的点仍然落在道路上。如需应用到历史记录，请先点击“应用设置”，再点击“重新评估过去的数据”。"
+        accuracy_threshold: "精度阈值"
         re_evaluate_past_data: 重新评估过去的数据
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: 清除现有异常标记，并使用当前设置对所有轨迹点重新运行过滤器。之后将重建轨迹、统计数据和摘要，整个过程在后台运行。
         recalculate_tracks_stats: 重新计算轨迹和统计数据
@@ -1346,7 +1349,51 @@ zh:
       destroy_this_notification: 删除此通知
       are_you_sure: 您确定吗？
   places:
+    management:
+      create: "创建地点"
+      duplicates: "可能重复的地点"
+      search: "搜索名称"
+      sort: "排序方式"
+      last_visit: "最近访问"
+      active_visits: "有效访问"
+      status: "状态"
+      apply: "应用"
+      tags: "标签"
+      tag: "标签"
+      source: "来源"
+      badges: "保护"
+      geofence: "地理围栏"
+      privacy: "隐私区域"
+      selected: "已选地点"
+      add_tag: "添加标签"
+      remove_tag: "移除标签"
+      survivor: "保留此地点"
+      merge: "合并地点"
+      delete: "删除地点"
+      select_all: "选择本页所有地点"
+      select_place: "选择%{name}"
+      no_results: "没有符合这些筛选条件的地点。"
+      duplicates_description: "访问半径范围重叠的地点将在此分组显示。请检查每组并选择要保留的地点。系统不会自动合并。"
+      no_duplicates: "未发现可能重复的地点。"
+      cluster: "第%{number}组"
+      distance_reference: "距推荐保留地点的距离：%{name}"
+      distance: "距离"
+      meters: "%{distance}米"
+      bulk_success: "已更新地点：%{count}"
+      invalid_selection: "请选择地点，以及有效标签或所选地点中要保留的地点。"
+      merge_confirmation: "将这些地点合并到所选地点吗？访问、标签和笔记将转移到该地点。此操作无法撤销。"
+      delete_confirmation: "删除这些地点吗？地点数量：%{places}。将失去关联地点的有效访问次数：%{visits}；位置描述将被保留。设有地理围栏的地点数量：%{geofences}；地理围栏事件将保留，并附有地点名称；Webhook订阅将被移除。带有隐私区域标签的地点数量：%{privacy}；附近数据可能变为可见，共享链接中也一样。此操作无法撤销。"
+      sources:
+        manual: "手动创建"
+        photon: "自动发现"
+        gpx_waypoint: "GPX航点"
+    edit_on_map: "在地图上编辑"
+    drag_to_edit: "拖动标记移动地点，拖动控制柄调整访问半径。"
+    cancel_edit: "取消"
+    place_details: "地点详情"
+    close_panel: "关闭地点详情"
     drawer:
+      delete_consequences: "删除此地点？\n活跃访问：%{visits}。它们将保留位置标签。\n隐私区域标签：%{privacy_tags}。\n将移除此地点的 webhook：%{webhooks}。\n地理围栏事件将保留，并附有地点名称。此操作无法撤销。"
       source: 来源：
       total_hours: 总小时数
       avg_dwell: 平均停留时间
@@ -1474,6 +1521,7 @@ zh:
       residential_roads: 住宅道路
       track: 轨迹
   settings:
+    geofencing_paused_while_archived: 归档期间暂停
     trek_sources:
       select_trips:
         title: "选择 TREK 旅程"
@@ -1518,9 +1566,9 @@ zh:
         background_jobs_dashboard: 后台任务仪表板
         this_will_open_the_background_jobs_dashboard_in_a_new: 这将在新选项卡中打开后台任务仪表板。
         visits_suggestions: 到访建议
-        enable_or_disable_visits_suggestions_it_s_a_background_task:
-          启用或禁用到访建议。这是每天午夜运行的后台任务。如果您不想收到到访建议，或者使用的是自带到访建议功能的 Dawarich iOS
-          应用，可以将其禁用。
+        enable_or_disable_visits_suggestions_it_s_a_background_task: 收到新轨迹点后，系统会很快自动生成到访建议，并在每晚重新检查。禁用后将停止所有自动到访检测，包括导入后的检测。Dawarich iOS 应用有自己的到访建议功能。
+        enabled: 已启用
+        disabled: 已禁用
         background_jobs: 后台任务
         start_job: 启动任务
         are_you_sure: 您确定吗？
@@ -1789,7 +1837,7 @@ zh:
       show:
         tune_how_dawarich_decides_where_you_actually_were: 调整 Dawarich 判断您实际位置的方式
         these_settings_control_how_the_app_groups_your_gps_points: 这些设置控制应用如何将 GPS 轨迹点分组为到访记录。
-        points_within_this_radius_are_treated_as_the_same_visit: 此半径内的轨迹点会被视为同一次到访。默认值为 100。
+        points_within_this_radius_are_treated_as_the_same_visit: 此半径内的轨迹点会被视为同一次到访。在此半径内停留也会结束一条轨迹（至少 100 米）。默认值为 100。
         lower_more_visits_suggested_including_brief_stops_default_3: 数值越低，建议的到访记录越多（包括短暂停留）。默认值为 3。
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: 跳过短于此时间的停留。调高可忽略短暂路过；调低可捕捉短暂的办事停留。默认值为 5。
         visit_detection: 到访检测
@@ -2243,6 +2291,19 @@ zh:
     show:
       statistics_for_year_year: "%{year} 年的统计数据"
   tags:
+    confirm_delete:
+      title: "删除隐私区域标签"
+      covered_places: "此隐私区域覆盖你的 %{count} 个地点。"
+      visibility: "这些地点周围的数据将重新显示在地图、行程和统计中。"
+      shared_links:
+        one: "这也适用于你的 %{count} 个有效分享链接。"
+        other: "这也适用于你的所有有效分享链接（%{count} 个）。"
+    places:
+      title: "带有此标签的地点"
+      empty: "还没有地点使用此标签。"
+      visits:
+        one: "%{count} 次访问"
+        other: "%{count} 次访问"
     form:
       prohibited_this_tag_from_being_saved: 导致此标签无法保存：
       click_to_select_an_emoji: 点击以选择表情符号
@@ -4197,8 +4258,11 @@ zh:
       speed: "%{speed} 公里/小时"
       no_data: 无数据
     places:
+      move_pin: "移动地点标记"
+      resize_radius: "调整访问半径"
       create_new: 创建新地点
       edit: 编辑地点
+      open: 打开
       confirm_delete: 您确定要删除此地点吗？
       search_placeholder: 搜索地点…
       confirm_move_visit: 该地点距离到访记录位置约 %{distance} 米。要将到访记录移到这里吗？

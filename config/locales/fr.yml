@@ -1779,6 +1779,9 @@ fr:
           lectures qui ne peuvent pas correspondre à une position réelle — sauts
           impossibles, coordonnées invalides. Désactivez cette option pour voir tous
           les points bruts.
+        hide_inaccurate_points: "Masquer les points imprécis"
+        hide_inaccurate_points_hint: "Masque aussi les points dont la précision indiquée est moins bonne que le seuil ci-dessous. Utile pour le suivi par téléphone qui ajoute du bruit latéral ; laissez-le désactivé pour les imports Google Timeline, dont les points approximatifs restent sur la route. Pour l’appliquer à votre historique, choisissez d’abord « Appliquer les paramètres », puis « Réévaluer les données passées »."
+        accuracy_threshold: "Seuil de précision"
         re_evaluate_past_data: Réévaluer les données passées
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Efface les indicateurs
           d’anomalie existants et relance le filtre sur tous vos points avec les paramètres
@@ -2073,7 +2076,51 @@ fr:
       destroy_this_notification: Supprimer cette notification
       are_you_sure: Êtes-vous sûr ?
   places:
+    management:
+      create: "Créer un lieu"
+      duplicates: "Doublons possibles"
+      search: "Rechercher des noms"
+      sort: "Trier par"
+      last_visit: "Dernière visite"
+      active_visits: "Visites actives"
+      status: "Statut"
+      apply: "Appliquer"
+      tags: "Étiquettes"
+      tag: "Étiquette"
+      source: "Source"
+      badges: "Protection"
+      geofence: "Géorepérage"
+      privacy: "Zone de confidentialité"
+      selected: "Lieux sélectionnés"
+      add_tag: "Ajouter une étiquette"
+      remove_tag: "Retirer une étiquette"
+      survivor: "Conserver ce lieu"
+      merge: "Fusionner les lieux"
+      delete: "Supprimer les lieux"
+      select_all: "Sélectionner tous les lieux de cette page"
+      select_place: "Sélectionner %{name}"
+      no_results: "Aucun lieu ne correspond à ces filtres."
+      duplicates_description: "Les lieux dont les rayons de visite se chevauchent sont regroupés ici. Vérifiez chaque groupe et choisissez le lieu à conserver. Rien ne sera fusionné automatiquement."
+      no_duplicates: "Aucun doublon possible trouvé."
+      cluster: "Groupe %{number}"
+      distance_reference: "Distances depuis le lieu recommandé : %{name}"
+      distance: "Distance"
+      meters: "%{distance} m"
+      bulk_success: "Lieux mis à jour : %{count}"
+      invalid_selection: "Sélectionnez des lieux et une étiquette valide ou un lieu sélectionné à conserver."
+      merge_confirmation: "Fusionner ces lieux avec le lieu choisi ? Leurs visites, étiquettes et notes y seront transférées. Cette action est irréversible."
+      delete_confirmation: "Supprimer ces lieux ? Lieux : %{places}. Visites actives qui perdront leur lieu : %{visits} ; leurs libellés de localisation seront conservés. Lieux avec géorepérage : %{geofences} ; Les événements de géorepérage sont conservés avec le nom du lieu ; les abonnements aux webhooks sont supprimés. Lieux portant des étiquettes de confidentialité : %{privacy} ; les données à proximité pourraient devenir visibles, y compris dans les liens partagés. Cette action est irréversible."
+      sources:
+        manual: "Manuel"
+        photon: "Détecté"
+        gpx_waypoint: "Point de passage GPX"
+    edit_on_map: "Modifier sur la carte"
+    drag_to_edit: "Faites glisser le repère pour déplacer le lieu et la poignée pour ajuster son rayon de visite."
+    cancel_edit: "Annuler"
+    place_details: "Détails du lieu"
+    close_panel: "Fermer les détails du lieu"
     drawer:
+      delete_consequences: "Supprimer ce lieu ?\nVisites actives : %{visits}. Elles conservent leur libellé de localisation.\nÉtiquettes de zones de confidentialité : %{privacy_tags}.\nWebhooks dont ce lieu sera retiré : %{webhooks}.\nLes événements de géorepérage sont conservés avec le nom du lieu. Cette action est irréversible."
       source: 'Source :'
       total_hours: heures totales
       avg_dwell: durée moyenne de présence
@@ -2212,6 +2259,7 @@ fr:
       residential_roads: Routes résidentielles
       track: Tracé
   settings:
+    geofencing_paused_while_archived: en pause tant que le lieu est archivé
     trek_sources:
       select_trips:
         title: "Choisir des voyages TREK"
@@ -2268,11 +2316,9 @@ fr:
         this_will_open_the_background_jobs_dashboard_in_a_new: Cela ouvrira le tableau
           de bord des tâches en arrière-plan dans une nouvelle fenêtre.
         visits_suggestions: Suggestions de visites
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Activer ou désactiver
-          les suggestions de visites. C'est une tâche en arrière-plan qui s'exécute
-          chaque jour à minuit. Désactiver cela peut être utile si vous ne souhaitez
-          pas recevoir des suggestions de visites ou si vous utilisez l'application
-          Dawarich iOS, qui a ses propres suggestions de visites.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Les visites sont suggérées automatiquement peu après l'arrivée de nouveaux points et vérifiées à nouveau chaque nuit. Les désactiver arrête toute détection automatique des visites, y compris après les imports. L'application Dawarich pour iOS propose ses propres suggestions de visites.
+        enabled: Activées
+        disabled: Désactivées
         background_jobs: Tâches en arrière-plan
         start_job: Démarrer la tâche
         are_you_sure: Êtes-vous sûr ?
@@ -2613,8 +2659,7 @@ fr:
           décide où vous étiez réellement
         these_settings_control_how_the_app_groups_your_gps_points: Ces paramètres
           contrôlent comment l'application groupe vos points GPS en visites de lieux.
-        points_within_this_radius_are_treated_as_the_same_visit: 'Les points à l''intérieur
-          de ce rayon sont traités comme la même visite. Défaut : 100.'
+        points_within_this_radius_are_treated_as_the_same_visit: 'Les points à l''intérieur de ce rayon sont traités comme la même visite. Un séjour dans ce rayon termine aussi un trajet (au moins 100 m). Défaut : 100.'
         lower_more_visits_suggested_including_brief_stops_default_3: 'Inférieur =
           plus de visites suggérées, y compris les arrêts courts. Défaut : 3.'
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: 'Ignorez les arrêts
@@ -3064,6 +3109,19 @@ fr:
     show:
       statistics_for_year_year: Statistiques pour l’année %{year}
   tags:
+    confirm_delete:
+      title: "Supprimer l’étiquette de zone de confidentialité"
+      covered_places: "Cette zone de confidentialité protège %{count} de vos lieux."
+      visibility: "Les données autour de ces lieux redeviennent visibles sur la carte, dans les voyages et dans les statistiques."
+      shared_links:
+        one: "Cela concerne aussi votre %{count} lien de partage actif."
+        other: "Cela concerne aussi tous vos liens de partage actifs (%{count})."
+    places:
+      title: "Lieux avec cette étiquette"
+      empty: "Aucun lieu ne porte encore cette étiquette."
+      visits:
+        one: "%{count} visite"
+        other: "%{count} visites"
     form:
       prohibited_this_tag_from_being_saved: 'Cette balise a été interdite :'
       click_to_select_an_emoji: Cliquez pour sélectionner un émoji
@@ -5363,8 +5421,11 @@ fr:
       speed: "%{speed} km/h"
       no_data: Aucune donnée disponible
     places:
+      move_pin: "Déplacer le repère du lieu"
+      resize_radius: "Ajuster le rayon de visite"
       create_new: Créer un nouveau lieu
       edit: Modifier le lieu
+      open: Ouvrir
       confirm_delete: Êtes-vous sûr de vouloir supprimer ce lieu ?
       search_placeholder: Recherchez un lieu…
       confirm_move_visit: Ce lieu est à ~%{distance} m du point de visite. Voulez-vous

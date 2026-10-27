@@ -1075,6 +1075,9 @@ ca:
         track_split_time_unit: min
         track_split_time_hint: "Els intervals més llargs inicien un trajecte nou i permeten als viatges utilitzar l’enregistrament d’un altre dispositiu. Després de canviar aquest valor, prem «Recalcula» a cada viatge afectat per actualitzar-ne la ruta i la distància desades."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Amaga les lectures que no poden ser una posició real — salts impossibles, coordenades incorrectes. Desactiva-ho per veure tots els punts en brut.
+        hide_inaccurate_points: "Amaga els punts imprecisos"
+        hide_inaccurate_points_hint: "Amaga també els punts amb una precisió informada pitjor que el llindar de sota. Ajuda amb el seguiment del mòbil que afegeix soroll lateral; deixa-ho desactivat per a les importacions de Google Timeline, els punts aproximats de les quals continuen sobre la carretera. Per aplicar-ho a l’historial, prem primer «Aplica la configuració» i després «Torna a avaluar les dades passades»."
+        accuracy_threshold: "Llindar de precisió"
         re_evaluate_past_data: Torna a avaluar les dades passades
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Elimina les marques d'anomalia existents i torna a executar el filtre sobre tots els teus punts amb la configuració actual. Els trajectes, estadístiques i resums es reconstruiran després. S'executa en segon pla.
         recalculate_tracks_stats: Recalcula trajectes i estadístiques
@@ -1331,7 +1334,51 @@ ca:
       destroy_this_notification: Suprimeix aquesta notificació
       are_you_sure: "Estàs segur?"
   places:
+    management:
+      create: "Crear lloc"
+      duplicates: "Possibles duplicats"
+      search: "Cercar noms"
+      sort: "Ordenar per"
+      last_visit: "Última visita"
+      active_visits: "Visites actives"
+      status: "Estat"
+      apply: "Aplicar"
+      tags: "Etiquetes"
+      tag: "Etiqueta"
+      source: "Origen"
+      badges: "Protecció"
+      geofence: "Geotanca"
+      privacy: "Zona de privadesa"
+      selected: "Llocs seleccionats"
+      add_tag: "Afegir etiqueta"
+      remove_tag: "Treure etiqueta"
+      survivor: "Conservar aquest lloc"
+      merge: "Fusionar llocs"
+      delete: "Eliminar llocs"
+      select_all: "Seleccionar tots els llocs d’aquesta pàgina"
+      select_place: "Seleccionar %{name}"
+      no_results: "Cap lloc coincideix amb aquests filtres."
+      duplicates_description: "Els llocs amb radis de visita que se superposen s’agrupen aquí. Revisa cada grup i tria el lloc que vols conservar. No es fusiona res automàticament."
+      no_duplicates: "No s’han trobat possibles duplicats."
+      cluster: "Grup %{number}"
+      distance_reference: "Distàncies des del lloc recomanat: %{name}"
+      distance: "Distància"
+      meters: "%{distance} m"
+      bulk_success: "Llocs actualitzats: %{count}"
+      invalid_selection: "Selecciona llocs i una etiqueta vàlida o un dels llocs seleccionats per conservar."
+      merge_confirmation: "Vols fusionar aquests llocs amb el lloc triat? S’hi traslladaran les visites, etiquetes i notes. Aquesta acció no es pot desfer."
+      delete_confirmation: "Vols eliminar aquests llocs? Llocs: %{places}. Visites actives que perdran el seu lloc: %{visits}; conservaran les descripcions de la ubicació. Llocs amb geotanques: %{geofences}; Els esdeveniments de geotanca es conserven amb el nom del lloc; se n’eliminen les subscripcions a webhooks. Llocs amb etiquetes de privadesa: %{privacy}; les dades properes poden esdevenir visibles, també als enllaços compartits. Aquesta acció no es pot desfer."
+      sources:
+        manual: "Manual"
+        photon: "Detectat"
+        gpx_waypoint: "Punt de ruta GPX"
+    edit_on_map: "Edita al mapa"
+    drag_to_edit: "Arrossega el marcador per moure el lloc i el control per canviar-ne el radi de visita."
+    cancel_edit: "Cancel·la"
+    place_details: "Detalls del lloc"
+    close_panel: "Tanca els detalls del lloc"
     drawer:
+      delete_consequences: "Vols suprimir aquest lloc?\nVisites actives: %{visits}. Conservaran l’etiqueta d’ubicació.\nEtiquetes de zones de privadesa: %{privacy_tags}.\nWebhooks dels quals es retirarà aquest lloc: %{webhooks}.\nEls esdeveniments de geotanca es conserven amb el nom del lloc. Aquesta acció no es pot desfer."
       source: 'Font:'
       total_hours: hores totals
       avg_dwell: estada mitjana
@@ -1506,6 +1553,7 @@ ca:
       residential_roads: Carrers residencials
       track: Trajecte
   settings:
+    geofencing_paused_while_archived: en pausa mentre estigui arxivat
     trek_sources:
       select_trips:
         title: "Tria viatges de TREK"
@@ -1547,7 +1595,9 @@ ca:
         background_jobs_dashboard: Tauler de tasques en segon pla
         this_will_open_the_background_jobs_dashboard_in_a_new: Això obrirà el tauler de tasques en segon pla en una pestanya nova.
         visits_suggestions: Suggeriments de visites
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Activa o desactiva els suggeriments de visites. És una tasca en segon pla que s'executa cada dia a mitjanit. Desactivar-la pot ser útil si no vols rebre suggeriments de visites o si utilitzes l'app de Dawarich per a iOS, que té els seus propis suggeriments de visites.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Els suggeriments de visites es generen automàticament poc després de rebre punts nous i es tornen a comprovar cada nit. Desactivar-los atura tota la detecció automàtica de visites, també després de les importacions. L'app de Dawarich per a iOS té els seus propis suggeriments de visites.
+        enabled: Activats
+        disabled: Desactivats
         background_jobs: Tasques en segon pla
         start_job: Inicia la tasca
         are_you_sure: "Estàs segur?"
@@ -1813,7 +1863,7 @@ ca:
       show:
         tune_how_dawarich_decides_where_you_actually_were: Ajusta com decideix Dawarich on vas estar realment
         these_settings_control_how_the_app_groups_your_gps_points: Aquesta configuració controla com l'app agrupa els teus punts GPS en visites a llocs.
-        points_within_this_radius_are_treated_as_the_same_visit: Els punts dins d'aquest radi es tracten com la mateixa visita. Per defecte 100.
+        points_within_this_radius_are_treated_as_the_same_visit: Els punts dins d'aquest radi es tracten com la mateixa visita. Una estada dins d'aquest radi també tanca un trajecte (com a mínim 100 m). Per defecte 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Com més baix, més visites se suggereixen, incloent-hi parades breus. Per defecte 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Omet les parades més curtes que això. Augmenta'l per ignorar parades breus en cotxe; redueix-lo per detectar recados curts. Per defecte 5.
         visit_detection: Detecció de visites
@@ -2217,6 +2267,19 @@ ca:
     show:
       statistics_for_year_year: Estadístiques de l'any %{year}
   tags:
+    confirm_delete:
+      title: "Suprimeix l’etiqueta de zona de privadesa"
+      covered_places: "Aquesta zona de privadesa protegeix %{count} dels teus llocs."
+      visibility: "Les dades al voltant d’aquests llocs tornen a ser visibles al mapa, als viatges i a les estadístiques."
+      shared_links:
+        one: "Això també s’aplica al teu %{count} enllaç compartit actiu."
+        other: "Això també s’aplica a tots els teus enllaços compartits actius (%{count})."
+    places:
+      title: "Llocs amb aquesta etiqueta"
+      empty: "Encara no hi ha llocs amb aquesta etiqueta."
+      visits:
+        one: "%{count} visita"
+        other: "%{count} visites"
     form:
       prohibited_this_tag_from_being_saved: 'ha impedit que es desés aquesta etiqueta:'
       click_to_select_an_emoji: Fes clic per seleccionar un emoji
@@ -4130,8 +4193,11 @@ ca:
       speed: "%{speed} km/h"
       no_data: No hi ha dades
     places:
+      move_pin: "Mou el marcador del lloc"
+      resize_radius: "Canvia el radi de visita"
       create_new: Crea un lloc nou
       edit: Edita el lloc
+      open: Obre
       confirm_delete: Estàs segur que vols suprimir aquest lloc?
       search_placeholder: Cerca un lloc…
       confirm_move_visit: "Aquest lloc és a ~%{distance} m de la visita. Vols moure la visita aquí?"

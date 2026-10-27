@@ -15,7 +15,7 @@ class Api::V1::Points::TransitionsController < ApiController
     attributes = transition_attributes
     return head :unprocessable_content unless attributes
 
-    place = current_api_user.places.geofences.find_by(id: params[:place_id])
+    place = current_api_user.places.monitored_geofences.find_by(id: params[:place_id])
     return head :no_content unless place
 
     GeofenceEvents::Record.call(user: current_api_user, place:, source: :native_app, **attributes,

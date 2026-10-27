@@ -1,0 +1,28 @@
+de:
+  places:
+    polish:
+      selected: "ausgewählt"
+      details: "Details"
+      location: "Standort"
+      notifications: "Benachrichtigungen"
+      visits: "Besuche"
+      manage: "Verwalten"
+      total_time: "Gesamtzeit"
+      avg_dwell: "Ø Dauer"
+      statistics: "Statistik"
+      merge_duplicate: "Duplikat zusammenführen"
+      back_to_places: "Zurück zu Orten"
+      clear: "Leeren"
+    inline_tags:
+      new_tag: "Neues Tag"
+      name: "Tag-Name"
+      emoji: "Emoji (optional)"
+      create: "Tag erstellen"
+    drawer:
+      hidden_by_tag: "Durch Tag %{name} verborgen, %{radius} m"
+      geofence_events: "Letzte Geofencing-Ereignisse"
+      no_geofence_events: "Noch keine Betretens- oder Verlassensereignisse."
+      geofence_disabled: "Aktiviere Benachrichtigungen beim Betreten und Verlassen, um Ereignisse für diesen Ort aufzuzeichnen."
+  javascript:
+    map_info:
+      geofence_boundary: "Geofence-Grenze"

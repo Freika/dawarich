@@ -27,7 +27,7 @@ module Visits
       return external if external
 
       normalized_name = (name.presence || Place::DEFAULT_NAME).strip.downcase
-      candidates = user.places
+      candidates = user.places.not_archived
                        .where('LOWER(BTRIM(name)) = ?', normalized_name)
                        .near([lat, lon], SIMILARITY_RADIUS, :m)
                        .to_a
@@ -39,7 +39,7 @@ module Visits
     def place_by_external_id(external_place_id)
       return if external_place_id.blank?
 
-      user.places.find_by("geodata ->> 'external_place_id' = ?", external_place_id.to_s)
+      user.places.not_archived.find_by("geodata ->> 'external_place_id' = ?", external_place_id.to_s)
     end
 
     def distance_meters(lat, lon, other_lat, other_lon)

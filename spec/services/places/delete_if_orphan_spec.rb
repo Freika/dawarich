@@ -109,4 +109,11 @@ RSpec.describe Places::DeleteIfOrphan do
       expect(described_class.call(place.id)).to be(false)
     end
   end
+
+  it 'keeps an archived discovered Place with no visits, notes or tags', :archive do
+    place = create(:place, user:, source: :photon, note: nil, archived: true)
+
+    expect(described_class.call(place.id)).to be(false)
+    expect(Place.exists?(place.id)).to be(true)
+  end
 end

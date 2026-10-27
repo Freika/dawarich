@@ -60,7 +60,8 @@ class Tracks::IncrementalGenerator
       lookback_start,
       Time.current.to_i,
       time_threshold_minutes,
-      untracked_only: true
+      untracked_only: true,
+      stop_radius_meters: stop_radius_meters
     )
   end
 
@@ -76,8 +77,14 @@ class Tracks::IncrementalGenerator
     time_threshold_minutes * 60
   end
 
+  def stop_radius_meters
+    @stop_radius_meters ||= Tracks::StationaryStops.radius_for(user)
+  end
+
   def merge_with_recent_track(new_track)
-    end_preceding_track_at_arrival(new_track) if Tracks::StationaryStops.departure?(new_track, threshold_seconds)
+    if Tracks::StationaryStops.departure?(new_track, threshold_seconds, stop_radius_meters)
+      end_preceding_track_at_arrival(new_track)
+    end
 
     # Find a track that ended shortly before this one started
     # (within the time threshold, suggesting they're part of the same journey)
@@ -104,7 +111,7 @@ class Tracks::IncrementalGenerator
                         .first
     return unless arrival_track
 
-    dwell_ids = Tracks::StationaryStops.dwell_tail_point_ids(arrival_track, threshold_seconds)
+    dwell_ids = Tracks::StationaryStops.dwell_tail_point_ids(arrival_track, threshold_seconds, stop_radius_meters)
     return if dwell_ids.empty?
 
     ActiveRecord::Base.transaction do

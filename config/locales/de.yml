@@ -1128,6 +1128,9 @@ de:
         track_split_time_unit: 'Min.'
         track_split_time_hint: "Längere Pausen starten einen neuen Track und erlauben Reisen, die Aufzeichnung eines anderen Geräts zu verwenden. Nach einer Änderung auf den betroffenen Reiseseiten „Wiederberechnen“ wählen, um gespeicherte Routen und Entfernungen zu aktualisieren."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Blendet Messwerte aus, die keine echte Position darstellen können — etwa unmögliche Sprünge oder beschädigte Koordinaten. Deaktivieren, um alle Rohpunkte anzuzeigen.
+        hide_inaccurate_points: "Ungenaue Punkte ausblenden"
+        hide_inaccurate_points_hint: "Blendet zusätzlich Punkte aus, deren gemeldete Genauigkeit schlechter als der Schwellenwert unten ist. Hilft bei Handy-Tracking mit seitlichem Rauschen; für Google-Timeline-Importe ausgeschaltet lassen, deren grobe Punkte trotzdem auf der Straße liegen. Um es auf den Verlauf anzuwenden, zuerst „Einstellungen anwenden“ und dann „Vergangene Daten erneut prüfen“ drücken."
+        accuracy_threshold: "Genauigkeitsschwelle"
         re_evaluate_past_data: Vergangene Daten erneut prüfen
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Entfernt vorhandene Anomaliemarkierungen und prüft alle Punkte mit den aktuellen Einstellungen erneut. Tracks, Statistiken und Zusammenfassungen werden anschließend im Hintergrund neu erstellt.
         recalculate_tracks_stats: Tracks & Statistiken neu berechnen
@@ -1381,7 +1384,51 @@ de:
       destroy_this_notification: Diese Benachrichtigung entfernen
       are_you_sure: Bist du sicher?
   places:
+    management:
+      create: "Ort erstellen"
+      duplicates: "Mögliche Duplikate"
+      search: "Namen durchsuchen"
+      sort: "Sortieren nach"
+      last_visit: "Letzter Besuch"
+      active_visits: "Aktive Besuche"
+      status: "Status"
+      apply: "Anwenden"
+      tags: "Tags"
+      tag: "Tag"
+      source: "Quelle"
+      badges: "Schutz"
+      geofence: "Geofence"
+      privacy: "Privatsphärezone"
+      selected: "Ausgewählte Orte"
+      add_tag: "Tag hinzufügen"
+      remove_tag: "Tag entfernen"
+      survivor: "Diesen Ort behalten"
+      merge: "Orte zusammenführen"
+      delete: "Orte löschen"
+      select_all: "Alle Orte auf dieser Seite auswählen"
+      select_place: "%{name} auswählen"
+      no_results: "Keine Orte entsprechen diesen Filtern."
+      duplicates_description: "Orte mit überlappenden Besuchsradien werden hier gruppiert. Prüfe jede Gruppe und wähle den Ort, der erhalten bleiben soll. Es wird nichts automatisch zusammengeführt."
+      no_duplicates: "Keine möglichen Duplikate gefunden."
+      cluster: "Gruppe %{number}"
+      distance_reference: "Entfernungen vom empfohlenen Ort: %{name}"
+      distance: "Entfernung"
+      meters: "%{distance} m"
+      bulk_success: "Aktualisierte Orte: %{count}"
+      invalid_selection: "Wähle Orte und einen gültigen Tag oder einen der ausgewählten Orte zum Behalten."
+      merge_confirmation: "Diese Orte mit dem gewählten Ort zusammenführen? Besuche, Tags und Notizen werden dorthin verschoben. Dies kann nicht rückgängig gemacht werden."
+      delete_confirmation: "Diese Orte löschen? Orte: %{places}. Aktive Besuche, die ihren Ort verlieren: %{visits}; ihre Standortbezeichnungen bleiben erhalten. Orte mit Geofences: %{geofences}; Geofencing-Ereignisse bleiben mit dem Ortsnamen erhalten; Webhook-Abonnements werden entfernt. Orte mit Privatsphäre-Tags: %{privacy}; Daten in der Nähe können sichtbar werden, auch in geteilten Links. Dies kann nicht rückgängig gemacht werden."
+      sources:
+        manual: "Manuell"
+        photon: "Automatisch erkannt"
+        gpx_waypoint: "GPX-Wegpunkt"
+    edit_on_map: "Auf der Karte bearbeiten"
+    drag_to_edit: "Ziehe die Markierung, um den Ort zu verschieben, und den Griff, um den Besuchsradius zu ändern."
+    cancel_edit: "Abbrechen"
+    place_details: "Ortsdetails"
+    close_panel: "Ortsdetails schließen"
     drawer:
+      delete_consequences: "Diesen Ort löschen?\nAktive Besuche: %{visits}. Ihre Ortsbezeichnung bleibt erhalten.\nTags mit Privatsphärezone: %{privacy_tags}.\nWebhooks, aus denen dieser Ort entfernt wird: %{webhooks}.\nGeofencing-Ereignisse bleiben mit dem Ortsnamen erhalten. Dies kann nicht rückgängig gemacht werden."
       source: 'Quelle:'
       total_hours: Gesamtstunden
       avg_dwell: Durchschnittlicher Aufenthaltszeitraum
@@ -1509,6 +1556,7 @@ de:
       residential_roads: Wohnstraßen
       track: Track
   settings:
+    geofencing_paused_while_archived: pausiert, solange der Ort archiviert ist
     trek_sources:
       select_trips:
         title: "TREK-Reisen auswählen"
@@ -1550,7 +1598,9 @@ de:
         background_jobs_dashboard: Hintergrundaufgaben-Übersicht
         this_will_open_the_background_jobs_dashboard_in_a_new: Dies öffnet die Hintergrundaufgaben-Übersicht in einem neuen Tab.
         visits_suggestions: Aufenthaltsvorschläge
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Aktiviere oder deaktiviere Aufenthaltsvorschläge. Es handelt sich um eine Hintergrundaufgabe, die täglich um Mitternacht läuft. Deaktivieren kann sinnvoll sein, wenn du keine Aufenthaltsvorschläge erhalten möchtest oder wenn du die Dawarich iOS-App verwendest, die ihre eigenen Aufenthaltsvorschläge hat.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Aufenthaltsvorschläge werden automatisch kurz nach dem Eingang neuer Punkte erstellt und jede Nacht erneut geprüft. Durch Deaktivieren wird die gesamte automatische Erkennung von Aufenthalten gestoppt, auch nach Importen. Die Dawarich iOS-App hat eigene Aufenthaltsvorschläge.
+        enabled: Aktiviert
+        disabled: Deaktiviert
         background_jobs: Hintergrundaufgaben
         start_job: Aufgabe starten
         are_you_sure: Bist du sicher?
@@ -1816,7 +1866,7 @@ de:
       show:
         tune_how_dawarich_decides_where_you_actually_were: Anpassen, wie Dawarich entscheidet, wo du tatsächlich warst
         these_settings_control_how_the_app_groups_your_gps_points: Diese Einstellungen steuern, wie die App deine GPS-Punkte in Aufenthalte zu Orten gruppieren wird.
-        points_within_this_radius_are_treated_as_the_same_visit: Punkte innerhalb dieses Radius werden als der gleiche Aufenthalt betrachtet. Standard 100.
+        points_within_this_radius_are_treated_as_the_same_visit: Punkte innerhalb dieses Radius werden als der gleiche Aufenthalt betrachtet. Ein Aufenthalt in diesem Radius beendet auch einen Track (mindestens 100 m). Standard 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Niedriger = mehr Aufenthalte werden vorgeschlagen, einschließlich kurzer Halte. Standard 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Übergehe Halte, die kürzer als dies sind. Erhöhe, um kurze Durchfahrten zu ignorieren; senke, um kurze Einkäufe zu erfassen. Standard 5.
         visit_detection: Aufenthaltserkennung
@@ -2222,6 +2272,19 @@ de:
     show:
       statistics_for_year_year: Statistiken für %{year} Jahr
   tags:
+    confirm_delete:
+      title: "Tag für Privatsphäre-Zone löschen"
+      covered_places: "Diese Privatsphäre-Zone schützt %{count} deiner Orte."
+      visibility: "Daten rund um diese Orte werden auf der Karte, in Reisen und in Statistiken wieder sichtbar."
+      shared_links:
+        one: "Das gilt auch für deinen %{count} aktiven Freigabelink."
+        other: "Das gilt auch für alle deine aktiven Freigabelinks (%{count})."
+    places:
+      title: "Orte mit diesem Tag"
+      empty: "Noch keine Orte mit diesem Tag."
+      visits:
+        one: "%{count} Besuch"
+        other: "%{count} Besuche"
     form:
       prohibited_this_tag_from_being_saved: 'Dieses Tag wurde verweigert, gespeichert zu werden:'
       click_to_select_an_emoji: Klicke, um ein Emoji auszuwählen
@@ -4182,8 +4245,11 @@ de:
       speed: "%{speed} km/h"
       no_data: Keine Daten
     places:
+      move_pin: "Ortsmarkierung verschieben"
+      resize_radius: "Besuchsradius ändern"
       create_new: Neuer Ort erstellen
       edit: Ort bearbeiten
+      open: Öffnen
       confirm_delete: Möchtest du diesen Ort wirklich löschen?
       search_placeholder: Suche nach einem Ort…
       confirm_move_visit: Dieser Ort ist ~%{distance} m vom Aufenthalt entfernt. Den Aufenthalt hier verschieben?

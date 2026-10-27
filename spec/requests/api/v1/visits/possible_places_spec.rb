@@ -74,4 +74,14 @@ RSpec.describe 'GET /api/v1/visits/:id/possible_places' do
     expect { get "/api/v1/visits/#{visit_id}/possible_places", headers: headers }
       .not_to(change { Place.count })
   end
+
+  it 'does not suggest an archived current Place and keeps its history link', :archive do
+    place.update!(archived: true)
+    allow_any_instance_of(Places::NearbySearch).to receive(:call).and_return(photon_hashes)
+
+    get "/api/v1/visits/#{visit.id}/possible_places", headers: headers
+
+    expect(JSON.parse(response.body).pluck('id')).not_to include(place.id)
+    expect(visit.reload.place).to eq(place)
+  end
 end

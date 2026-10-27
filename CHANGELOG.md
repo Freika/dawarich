@@ -4,6 +4,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.19.0] - 2026-10-27, Berlin
+
+### ⚠️ Upgrade notes
+
+- Back up your database before upgrading. The migration that keeps geofence events after their place is deleted cannot be rolled back. After the upgrade, background jobs recheck cell-tower points from the Android app and recount countries for past months.
+
+### Added
+
+- Archive and unarchive places from their editor or in bulk. Filter the Places list by Archived, and use Show archived places on the map to display them muted. Archiving keeps visit history and privacy masking while pausing new visits and geofencing.
+- Places can be archived and restored through the API. Archived places keep their visit history and privacy zones, stop receiving new suggested visits, and pause geofence notifications. They are hidden from the map by default and available with the archived places API filter.
+- Tag edit pages list the places with that tag, with links and visit counts.
+- Search and filter Places by name, tags and confirmation status, and sort them by name, last visit or active visit count. The list shows tags, visit history, sources, geofences and privacy zones, with a shortcut to create a place on the map.
+- Select places to add or remove tags, delete them with a summary of the consequences, or merge them into a chosen place. Possible duplicates groups places with overlapping visit radii for review; untick any place you want to keep before merging the rest.
+- Create tags with a name and emoji directly in the place editor or creation modal. Place details explain which tags hide the place and their Privacy Radius.
+- Set geofencing while creating a place, see its last ten enter and leave events in the editor, and open its filtered event log. Geofence boundaries are highlighted on the map.
+- Move places and resize their Visit Radius on the map by dragging the pin and radius handle.
+
+### Changed
+
+- Place deletion confirmations now explain that geofence events are kept with the place name.
+- Deleting a privacy-zone tag now shows how many places it protects and warns that data becomes visible again on the map, in trips, in stats and on active shared links. Place counts on the Tags page now link to the filtered Places list.
+- Geofence events stay in the log and API after their place is deleted, showing its last name.
+- Places now have one editor on the map and on their own page for names, tags, notes, and geofencing. Delete confirmation lists affected visits, privacy tags, webhooks, and geofence events.
+- Creating or joining a family turns on the Family Members layer on the map, so the family shows up without looking for the toggle. Leaving the family turns the layer off again.
+- Place editing, selection and tag controls have clearer sections, visit and event dates in your language with the year, tag chips that stay readable with long names, and quieter delete buttons in light and dark themes.
+- Place details and editing now use the left map panel, with Back returning to the previous tab. On phones, map editing keeps the pin and radius handle beside a compact left panel.
+
+### Fixed
+
+- Saving a place updates its map marker without reloading the entire places list, while keeping places inside privacy zones hidden.
+- Saving a place inside a privacy zone no longer reveals its marker on the map when the zone itself has not changed.
+- Creating a place no longer leaves the creation form disabled when you open it again.
+- Unchecking every tag when editing a place on the map now removes all its tags.
+- Places on the map now offer Open and Delete alongside Edit. Deleting a place removes it from the map immediately and refreshes privacy zones.
+- Place details on the map now show every tag, with its icon and colour.
+- Signing in after opening a family invitation now joins the family right away, with any sign-in option: password, two-factor, Google, OpenID Connect or Apple. Before, the invitation was lost when you signed in through the regular login link or with Apple, and even the sign-in link on the invitation page only brought you back to the invitation, where you had to press Accept again.
+- Pressing Search in the date bar while Search, Layers, Tools, Settings or Timeline was open used to centre the map across the whole screen. The map now stays beside the open sidebar, centred in the visible area. (#3919)
+- Visits without a place now show on the map and in the timeline editor using the location of their points. #3384
+- GPS noise filtering can hide inaccurate points again. Since 1.11.0 points with an accuracy of a few hundred metres stayed on the map, and phone tracking showed them as zig-zag lines across the route. Turn on "Hide inaccurate points" in the map settings under GPS Noise Filtering, choose a threshold between 50 and 1000 m, then press "Apply Settings" and after that "Re-evaluate past data" to hide such points in your history too. It is off by default, including for accounts that saved a threshold before 1.11.0, because Google Timeline imports report 1–4 km for points that still sit on the road. (#3300)
+- The day arrows in the Timeline panel work as soon as you open it, without picking a day in its calendar first, and so do the left and right arrow keys while the Timeline is open and the map itself is not focused. When the map shows several days, they start from the last one. After you change the day in the Timeline, the day arrows next to the date fields move one day from the day you are on, not from the day the page was opened with, and their hints show the right date. The hints on the start and end date fields are no longer hidden behind the open Timeline. (#3858)
+- Countries now count on Insights, Stats and yearly digests when reverse geocoding finds a country but no city for your points, for example in the countryside or at sea. Past months are updated gradually in the background after the upgrade. (#3598)
+- Enrich photos in the map's Tools panel opens with the dates the map shows, also right after a hard reload of the page (Ctrl+F5) or after you pick another day on the timeline. Dates you typed but have not scanned yet stay until you press Search, Today or the day arrows on the map. Before, both date fields could stay empty until you pressed Search. (#3920)
+- Tracks that cross the 180° meridian, such as trans-Pacific flights, are drawn across the date line again instead of as a line around the whole world. This applies to the Tracks layer, its speed colouring and trip routes. (#3921)
+- On iPhone and iPad, GPX, KML, KMZ, TCX, FIT and OwnTracks .rec files can be picked on the Imports page again, in Safari and in the installed web app. The file picker greyed them out. It now lists every file, and a file of an unsupported type is still rejected with a message after you pick it. (#3617)
+- Visit suggestions now run on instances without a configured geocoder. Visits without location details or a matching place display as "Unknown Location". (#3637)
+- Visit suggestions now also cover points that a phone uploads hours or days after recording them, for example after being offline. Points recorded up to 30 days ago are checked shortly after they arrive. (#3637)
+- Visit suggestions are no longer switched off when the setting was saved as a JSON boolean through the API or a settings import. Settings > Background Jobs now shows whether visit suggestions are on, and explains that they run shortly after new points arrive and again every night. (#3637)
+- Repeated cell-tower positions from the Android app no longer draw spikes on the map or inflate daily and monthly distance. Data recorded earlier is rechecked in the background after the upgrade. (#3417)
+- Location history that keeps reporting while you stay in one place, such as a Google Timeline export, no longer joins several days into one route when the reported position drifts around that place. The drift also no longer turns a stay at home into dozens of short zigzag routes. A stay is recognized within your visit radius (Settings → Visits), but never less than 100 m, so raise the visit radius if your readings at home scatter further. Choose Recalculate tracks & stats in the map settings to apply this to history imported earlier. (#3117)
+- Place statistics now stay in one row on phones, total time at a place shows as hours and minutes, and bulk actions appear only after you select places.
+- The Place details panel now has a single close button, and Back is no longer selected when it opens. While you move a place or resize its Visit Radius, its old outline is hidden until you press Save or Cancel.
+- Opening a place from a link now centres the map on its Visit Radius. The selected place stays highlighted with its boundary even when the Places layer is off, without changing saved layer settings.
+- Opening a place on the map closes the point or track details shown before, and a place hidden by a privacy zone is neither highlighted nor centred, also after you add a privacy tag to it.
+
+### For developers
+
+- `GET /api/v1/places` leaves out archived places unless `filter` is `all` or `archived`, including the `manual`, `confirmed` and `tagged` filters. Places carry an `archived` flag, which `PATCH /api/v1/places/:id` accepts.
+- Geofence events of a deleted place keep their `place_name` and return `place_id: null`.
+- `GET /api/v1/visits` returns a `center` with the average position of the visit's points for visits without a place.
+
 ## [1.18.1] - 2026-10-26, Berlin
 
 ### Added

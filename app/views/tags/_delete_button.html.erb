@@ -1,0 +1,12 @@
+<% if tag.privacy_zone? %>
+  <%= button_to edit_tag_path(tag), method: :get, params: { confirm_delete: '1' },
+      class: "btn btn-ghost btn-xs text-error hover:bg-error/10", aria: { label: t('tags.index.delete_tag') } do %>
+    <%= icon 'trash-2', class: 'w-4 h-4' %>
+  <% end %>
+<% else %>
+  <%= button_to tag_path(tag), method: :delete,
+      data: { turbo_confirm: t('tags.index.are_you_sure'), turbo_method: :delete },
+      class: "btn btn-ghost btn-xs text-error hover:bg-error/10", aria: { label: t('tags.index.delete_tag') } do %>
+    <%= icon 'trash-2', class: 'w-4 h-4' %>
+  <% end %>
+<% end %>

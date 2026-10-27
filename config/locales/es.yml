@@ -1128,6 +1128,9 @@ es:
         track_split_time_unit: min
         track_split_time_hint: "Los intervalos más largos inician un trayecto nuevo y permiten usar la grabación de otro dispositivo en los viajes. Tras cambiar este valor, pulsa «Recalcular» en cada viaje afectado para actualizar la ruta y la distancia guardadas."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Ocultar lecturas que no pueden ser una posición real — saltos imposibles, coordenadas rotas. Desactiva para ver cada punto bruto.
+        hide_inaccurate_points: "Ocultar puntos imprecisos"
+        hide_inaccurate_points_hint: "Oculta también los puntos cuya precisión informada es peor que el umbral de abajo. Ayuda con el seguimiento del móvil que añade ruido lateral; déjalo desactivado para importaciones de Google Timeline, cuyos puntos aproximados siguen sobre la carretera. Para aplicarlo a tu historial, pulsa primero «Aplicar configuración» y después «Re-evaluar datos pasados»."
+        accuracy_threshold: "Umbral de precisión"
         re_evaluate_past_data: Re-evaluar datos pasados
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Borra las marcas de anomalías existentes y vuelve a ejecutar el filtro sobre todos tus puntos con los ajustes actuales. Después se reconstruirán los trayectos, las estadísticas y los resúmenes. Se ejecuta en segundo plano.
         recalculate_tracks_stats: Recalcular trayectos y estadísticas
@@ -1381,7 +1384,51 @@ es:
       destroy_this_notification: Destruir esta notificación
       are_you_sure: "¿Estás seguro?"
   places:
+    management:
+      create: "Crear lugar"
+      duplicates: "Posibles duplicados"
+      search: "Buscar nombres"
+      sort: "Ordenar por"
+      last_visit: "Última visita"
+      active_visits: "Visitas activas"
+      status: "Estado"
+      apply: "Aplicar"
+      tags: "Etiquetas"
+      tag: "Etiqueta"
+      source: "Origen"
+      badges: "Protección"
+      geofence: "Geocerca"
+      privacy: "Zona de privacidad"
+      selected: "Lugares seleccionados"
+      add_tag: "Añadir etiqueta"
+      remove_tag: "Quitar etiqueta"
+      survivor: "Conservar este lugar"
+      merge: "Fusionar lugares"
+      delete: "Eliminar lugares"
+      select_all: "Seleccionar todos los lugares de esta página"
+      select_place: "Seleccionar %{name}"
+      no_results: "Ningún lugar coincide con estos filtros."
+      duplicates_description: "Los lugares cuyos radios de visita se solapan se agrupan aquí. Revisa cada grupo y elige el lugar que deseas conservar. No se fusiona nada automáticamente."
+      no_duplicates: "No se encontraron posibles duplicados."
+      cluster: "Grupo %{number}"
+      distance_reference: "Distancias desde el lugar recomendado: %{name}"
+      distance: "Distancia"
+      meters: "%{distance} m"
+      bulk_success: "Lugares actualizados: %{count}"
+      invalid_selection: "Selecciona lugares y una etiqueta válida o un lugar seleccionado que conservar."
+      merge_confirmation: "¿Fusionar estos lugares con el lugar elegido? Sus visitas, etiquetas y notas se trasladarán a él. Esta acción no se puede deshacer."
+      delete_confirmation: "¿Eliminar estos lugares? Lugares: %{places}. Visitas activas que perderán su lugar: %{visits}; conservarán sus descripciones de ubicación. Lugares con geocercas: %{geofences}; Los eventos de geocerca se conservan con el nombre del lugar; se eliminan las suscripciones a webhooks. Lugares con etiquetas de privacidad: %{privacy}; los datos cercanos pueden hacerse visibles, incluso en enlaces compartidos. Esta acción no se puede deshacer."
+      sources:
+        manual: "Manual"
+        photon: "Detectado"
+        gpx_waypoint: "Punto de ruta GPX"
+    edit_on_map: "Editar en el mapa"
+    drag_to_edit: "Arrastra el marcador para mover el lugar y el control para cambiar su radio de visita."
+    cancel_edit: "Cancelar"
+    place_details: "Detalles del lugar"
+    close_panel: "Cerrar detalles del lugar"
     drawer:
+      delete_consequences: "¿Eliminar este lugar?\nVisitas activas: %{visits}. Conservan su etiqueta de ubicación.\nEtiquetas de zonas de privacidad: %{privacy_tags}.\nWebhooks que perderán este lugar: %{webhooks}.\nLos eventos de geocerca se conservan con el nombre del lugar. Esta acción no se puede deshacer."
       source: 'Fuente:'
       total_hours: horas totales
       avg_dwell: dwell promedio
@@ -1509,6 +1556,7 @@ es:
       residential_roads: Vías residenciales
       track: Trayecto
   settings:
+    geofencing_paused_while_archived: en pausa mientras esté archivado
     trek_sources:
       select_trips:
         title: "Elegir viajes de TREK"
@@ -1550,7 +1598,9 @@ es:
         background_jobs_dashboard: Panel de control de tareas de fondo
         this_will_open_the_background_jobs_dashboard_in_a_new: Esto abrirá el panel de control de tareas de fondo en una nueva pestaña.
         visits_suggestions: Sugerencias de visitas
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Habilita o deshabilita las sugerencias de visitas. Es una tarea de fondo que se ejecuta todos los días a la medianoche. Deshabilitarla puede ser útil si no quieres recibir sugerencias de visitas o si estás utilizando la aplicación Dawarich para iOS, que tiene sus propias sugerencias de visitas.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Las visitas se sugieren automáticamente poco después de recibir nuevos puntos y se vuelven a comprobar cada noche. Deshabilitarlas detiene toda la detección automática de visitas, también después de las importaciones. La aplicación Dawarich para iOS tiene sus propias sugerencias de visitas.
+        enabled: Habilitadas
+        disabled: Deshabilitadas
         background_jobs: Trabajos de fondo
         start_job: Iniciar trabajo
         are_you_sure: "¿Estás seguro?"
@@ -1816,7 +1866,7 @@ es:
       show:
         tune_how_dawarich_decides_where_you_actually_were: Ajusta cómo Dawarich decide dónde estabas realmente
         these_settings_control_how_the_app_groups_your_gps_points: Estos ajustes controlan cómo el app agrupa tus puntos GPS en visitas a lugares.
-        points_within_this_radius_are_treated_as_the_same_visit: Puntos dentro de este radio se tratan como la misma visita. Por defecto 100.
+        points_within_this_radius_are_treated_as_the_same_visit: Puntos dentro de este radio se tratan como la misma visita. Una estancia dentro de este radio también cierra un trayecto (como mínimo 100 m). Por defecto 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Menos = más visitas sugeridas, incluyendo paradas breves. Por defecto 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Ignora paradas más cortas que esto. Aumenta para ignorar paseos cortos; baja para capturar erratas breves. Por defecto 5.
         visit_detection: Deteción de visitas
@@ -2222,6 +2272,19 @@ es:
     show:
       statistics_for_year_year: Estadísticas para %{year} año
   tags:
+    confirm_delete:
+      title: "Eliminar etiqueta de zona de privacidad"
+      covered_places: "Esta zona de privacidad protege %{count} de tus lugares."
+      visibility: "Los datos alrededor de estos lugares vuelven a ser visibles en el mapa, en los viajes y en las estadísticas."
+      shared_links:
+        one: "Esto también se aplica a tu %{count} enlace compartido activo."
+        other: "Esto también se aplica a todos tus enlaces compartidos activos (%{count})."
+    places:
+      title: "Lugares con esta etiqueta"
+      empty: "Todavía no hay lugares con esta etiqueta."
+      visits:
+        one: "%{count} visita"
+        other: "%{count} visitas"
     form:
       prohibited_this_tag_from_being_saved: 'prohibió este etiqueta de ser guardada:'
       click_to_select_an_emoji: Haz clic para seleccionar un emoji
@@ -4127,8 +4190,11 @@ es:
       speed: "%{speed} km/h"
       no_data: Sin datos
     places:
+      move_pin: "Mover marcador del lugar"
+      resize_radius: "Cambiar radio de visita"
       create_new: Crear nuevo lugar
       edit: Editar lugar
+      open: Abrir
       confirm_delete: "¿Seguro que quieres eliminar este lugar?"
       search_placeholder: Buscar un lugar…
       confirm_move_visit: "Este lugar está a unos %{distance} m del lugar visitado. ¿Mover la visita aquí?"

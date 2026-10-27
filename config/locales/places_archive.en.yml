@@ -1,0 +1,8 @@
+en:
+  places:
+    archive:
+      badge: "Archived"
+      archive: "Archive"
+      unarchive: "Unarchive"
+      hint: "Keeps confirmed visits and privacy masking; no new visits are attributed and geofencing is paused while archived."
+      show_on_map: "Show archived places"

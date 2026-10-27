@@ -82,7 +82,9 @@ RSpec.describe GeofenceEvents::Evaluator do
     place.destroy!
 
     expect { ingest(at(13.4100, 1)) }.not_to raise_error
-    expect(GeofenceEvent.pluck(:place_id, :event_type)).to eq([[other.id, 'enter'], [other.id, 'leave']])
+    expect(GeofenceEvent.pluck(:place_id, :event_type)).to contain_exactly(
+      [other.id, 'enter'], [nil, 'enter'], [other.id, 'leave']
+    )
   end
 
   it 'keeps ingesting when evaluation fails' do
@@ -103,5 +105,25 @@ RSpec.describe GeofenceEvents::Evaluator do
 
     expect(statements.size).to eq(1)
     expect(statements.first).to include('"places"')
+  end
+
+  describe 'archived geofences', :archive do
+    it 'skips the state store when all geofences are archived' do
+      place.update!(archived: true)
+      expect(GeofenceEvents::StateStore).not_to receive(:new)
+
+      described_class.call(user_id: user.id, rows: [], payloads: [])
+    end
+
+    it 'evaluates active geofences alongside archived geofences without archived events' do
+      place.update!(archived: true)
+      active = create(:place, :geofence, user:, latitude: 52.52, longitude: 13.405)
+      GeofenceEvents::StateStore.new(user).enter!(place.id)
+
+      ingest(at(13.4100, 0), at(13.4050, 1), at(13.4100, 2))
+
+      expect(GeofenceEvent.where(user:).order(:occurred_at).pluck(:place_id, :event_type))
+        .to eq([[active.id, 'enter'], [active.id, 'leave']])
+    end
   end
 end

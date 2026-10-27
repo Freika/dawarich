@@ -1,6 +1,9 @@
 <% content_for :title, @place.name %>
 
-<div class="place-page">
+<div class="place-page max-w-2xl mx-auto my-6 min-w-0">
+  <%= link_to places_path, class: 'btn btn-ghost btn-sm mb-6' do %>
+    <%= icon 'arrow-left', class: 'w-4 h-4' %> <%= t('places.polish.back_to_places') %>
+  <% end %>
   <%= turbo_frame_tag 'place-drawer' do %>
     <%= render 'drawer', place: @place, recent_visits: @recent_visits %>
   <% end %>

@@ -224,4 +224,32 @@ RSpec.describe Visits::Detection::PlaceAttributor do
     expect(batched[:evidence]).to eq(baseline[:evidence])
     expect(batched[:name]).to eq(baseline[:name])
   end
+
+  describe 'archived Places', :archive do
+    it 'attributes a detected stay to an active Place instead of a smaller archived Place' do
+      create(:place, user:, latitude: lat0, longitude: lon0, visit_radius: 25, archived: true)
+      active = create(:place, user:, latitude: lat0, longitude: lon0, visit_radius: 100)
+
+      expect(attribute[:place]).to eq(active)
+    end
+
+    it 'does not reuse an archived Place when POI evidence names it again' do
+      archived = create(:place, user:, latitude: lat0, longitude: lon0, name: 'Old Cafe', archived: true)
+      points = create_list(:point, 2, user:, geodata: {
+                             'features' => [{ 'properties' => { 'type' => 'cafe', 'name' => 'Old Cafe' } }]
+                           })
+
+      result = attribute(stay(point_ids: points.map(&:id)))
+
+      expect(result[:place]).not_to eq(archived)
+      expect(result[:place]).not_to be_archived
+    end
+
+    it 'does not revive an archived Place through lazy Area migration' do
+      archived = create(:place, user:, name: 'Old Home', latitude: lat0, longitude: lon0, archived: true)
+      create(:area, user:, name: 'Old Home', latitude: lat0, longitude: lon0)
+
+      expect(attribute[:place]).not_to eq(archived)
+    end
+  end
 end
