@@ -25,6 +25,16 @@ RSpec.describe 'Family invitees are never sent to checkout', type: :request do
       expect(invitee.reload.family).to eq(family)
     end
 
+    it 'joins the family and goes back to the app when signing in from the app' do
+      post user_session_path, params: {
+        user: { email: invitee.email, password: invitee.password },
+        invitation_token: invitation.token
+      }, headers: { 'X-Dawarich-Client' => 'ios' }
+
+      expect(response).to redirect_to(%r{auth/ios/success\?token=})
+      expect(invitee.reload.family).to eq(family)
+    end
+
     it 'still goes to resume checkout when no invitation is waiting' do
       post user_session_path, params: {
         user: { email: invitee.email, password: invitee.password }

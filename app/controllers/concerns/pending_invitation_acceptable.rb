@@ -10,7 +10,9 @@ module PendingInvitationAcceptable
   # Where to send a user who just signed in with an invitation waiting, or nil
   # to carry on with the usual after-sign-in path.
   def pending_invitation_path_for(user)
-    token = params[:invitation_token] || session[:invitation_token]
+    # The sign-in form posts an empty invitation_token when the invitation
+    # came from the session, so a blank param must not hide the session one.
+    token = params[:invitation_token].presence || session[:invitation_token]
     return if token.blank?
 
     invitation = Family::Invitation.find_by(token: token)
@@ -19,12 +21,17 @@ module PendingInvitationAcceptable
 
     service = Families::AcceptInvitation.new(invitation: invitation, user: user)
     unless service.call
+      Rails.logger.info("Family invitation #{invitation.id} not accepted on sign-in: #{service.error_message}")
       flash[:alert] = service.error_message
       return family_invitation_path(invitation.token)
     end
 
     session.delete(:invitation_token)
-    flash[:notice] = I18n.t('controllers.family.memberships.welcome_to_the_family')
+    # Joining can lift the user's own plan state (e.g. out of pending_payment),
+    # which the rest of after_sign_in_path_for reads.
+    user.reload
+    flash[:notice] = I18n.t('controllers.users.registrations.welcome_to_name_you_re_now_part_of_the_family',
+                            name: invitation.family.name)
     family_path unless mobile_client?
   end
 

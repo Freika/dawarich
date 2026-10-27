@@ -283,6 +283,22 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
     end
   end
 
+  describe 'family invitation on password confirm' do
+    let(:owner) { create(:user) }
+    let(:family) { create(:family, creator: owner) }
+    let!(:owner_membership) { create(:family_membership, :owner, user: owner, family: family) }
+    let!(:invitation) { create(:family_invitation, family: family, invited_by: owner, email: email) }
+
+    it 'joins the family the user was invited to' do
+      get family_invitation_path(invitation.token)
+      trigger_collision
+      post confirm_auth_account_link_path, params: { password: password }
+
+      expect(response).to redirect_to(family_path)
+      expect(user.reload.family).to eq(family)
+    end
+  end
+
   describe 'rack-attack throttle on /auth/account_link/challenge' do
     it 'declares both per-session and per-IP throttles' do
       throttle_names = Rack::Attack.throttles.keys

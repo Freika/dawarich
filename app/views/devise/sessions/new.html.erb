@@ -53,9 +53,7 @@
           </div>
         <% end %>
 
-        <% unless @invitation %>
-          <%= render "devise/shared/links" %>
-        <% end %>
+        <%= render "devise/shared/links" %>
       <% else %>
         <%# OIDC-only mode: show OIDC login buttons prominently %>
         <div class="text-center mb-4">

@@ -34,6 +34,50 @@ RSpec.describe 'Signing in from a family invitation', type: :request do
     expect(invitee.reload.family).to eq(family)
   end
 
+  it 'joins the family when the sign-in form posts its empty invitation field' do
+    get family_invitation_path(invitation.token)
+    get new_user_session_path
+    post user_session_path, params: {
+      invitation_token: '',
+      user: { email: invitee.email, password: 'password123456' }
+    }
+
+    expect(response).to redirect_to(family_path)
+    expect(invitee.reload.family).to eq(family)
+  end
+
+  it 'names the family it joined' do
+    get family_invitation_path(invitation.token)
+    sign_in_with_password
+
+    expect(flash[:notice]).to include(family.name)
+  end
+
+  it 'keeps the other sign-in options on the sign-in page' do
+    stub_const('APPLE_WEB_SIGN_IN_ENABLED', true)
+
+    get family_invitation_path(invitation.token)
+    get new_user_session_path
+
+    expect(response.body).to include(apple_oauth_request_path)
+  end
+
+  it 'joins the family when signing up through the generic sign-up link' do
+    stub_const('ALLOW_EMAIL_PASSWORD_REGISTRATION', true)
+    newcomer_invitation = create(:family_invitation, family: family, invited_by: owner, email: 'newcomer@example.com')
+
+    get family_invitation_path(newcomer_invitation.token)
+    get new_user_registration_path
+    post user_registration_path, params: {
+      user: {
+        email: 'newcomer@example.com', password: 'password123456',
+        password_confirmation: 'password123456', invitation_token: ''
+      }
+    }
+
+    expect(User.find_by(email: 'newcomer@example.com').family).to eq(family)
+  end
+
   it 'does not reuse the accepted invitation on a later sign-in' do
     get family_invitation_path(invitation.token)
     sign_in_with_password
@@ -79,6 +123,7 @@ RSpec.describe 'Signing in from a family invitation', type: :request do
 
     expect(response).to redirect_to(family_path)
     expect(invitee.reload.family).to eq(family)
+    expect(flash[:notice]).to include(family.name)
   end
 
   describe 'Sign in with Apple' do
@@ -109,7 +154,8 @@ RSpec.describe 'Signing in from a family invitation', type: :request do
       # cookie does not come along.
       session_cookie_name = Rails.application.config.session_options[:key] ||
                             cookies.to_hash.keys.find { |k| k.include?('session') }
-      cookies.delete(session_cookie_name) if session_cookie_name
+      expect(session_cookie_name).to be_present
+      cookies.delete(session_cookie_name)
 
       post '/users/auth/apple/callback', params: { id_token: 'fake-jwt', state: state }
 

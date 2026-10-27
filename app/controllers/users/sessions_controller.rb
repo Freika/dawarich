@@ -55,6 +55,6 @@ class Users::SessionsController < Devise::SessionsController
   end
 
   def invitation_token
-    @invitation_token ||= params[:invitation_token] || session[:invitation_token]
+    @invitation_token ||= params[:invitation_token].presence || session[:invitation_token]
   end
 end
