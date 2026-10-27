@@ -29,13 +29,24 @@ export default class extends Controller {
     this.markers = []
     this.markerElements = []
     this.scanning = false
+    this.rememberShownDates()
+    this.followMapDates()
     this.bindToggleButton()
+    this.boundFollowMapDates = () => queueMicrotask(() => this.followMapDates())
+    document.addEventListener(
+      "timeline-feed:date-navigated",
+      this.boundFollowMapDates,
+    )
   }
 
   disconnect() {
     this.removeMarkers()
     this.unbindToggleButton()
     this.hideThumbTooltip()
+    document.removeEventListener(
+      "timeline-feed:date-navigated",
+      this.boundFollowMapDates,
+    )
   }
 
   bindToggleButton() {
@@ -57,7 +68,43 @@ export default class extends Controller {
     this.element.classList.toggle("hidden")
     if (this.element.classList.contains("hidden")) {
       this.removeMarkers()
+    } else {
+      this.followMapDates()
     }
+  }
+
+  followMapDates() {
+    const mapController = this.findMapController()
+    if (!mapController || this.datesEditedByUser()) return
+
+    const range = mapController.defaultDateRange
+    const [start, end] = this.mapShowsPageLoadRange(mapController)
+      ? [range.startDate, range.endDate]
+      : [mapController.startDateValue, mapController.endDateValue].map(
+          (value) => value.split("T")[0],
+        )
+    this.startDateTarget.value = start
+    this.endDateTarget.value = end
+    this.rememberShownDates()
+  }
+
+  mapShowsPageLoadRange(mapController) {
+    const range = mapController.defaultDateRange
+    return (
+      range?.startValue === mapController.startDateValue &&
+      range?.endValue === mapController.endDateValue
+    )
+  }
+
+  datesEditedByUser() {
+    const [start, end] = this.shownDates
+    return (
+      this.startDateTarget.value !== start || this.endDateTarget.value !== end
+    )
+  }
+
+  rememberShownDates() {
+    this.shownDates = [this.startDateTarget.value, this.endDateTarget.value]
   }
 
   // --- API helpers ---
@@ -134,6 +181,7 @@ export default class extends Controller {
       mapController.startDateValue = startIso
       mapController.endDateValue = endIso
       mapController.loadMapData()
+      this.rememberShownDates()
     }
 
     // Update the date navigation inputs
