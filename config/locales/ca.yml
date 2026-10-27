@@ -1367,7 +1367,7 @@ ca:
       bulk_success: "Llocs actualitzats: %{count}"
       invalid_selection: "Selecciona llocs i una etiqueta vàlida o un dels llocs seleccionats per conservar."
       merge_confirmation: "Vols fusionar aquests llocs amb el lloc triat? S’hi traslladaran les visites, etiquetes i notes. Aquesta acció no es pot desfer."
-      delete_confirmation: "Vols eliminar aquests llocs? Llocs: %{places}. Visites actives que perdran el seu lloc: %{visits}; conservaran les descripcions de la ubicació. Llocs amb geotanques: %{geofences}; se n’eliminaran els esdeveniments i les subscripcions a webhooks. Llocs amb etiquetes de privadesa: %{privacy}; les dades properes poden esdevenir visibles, també als enllaços compartits. Aquesta acció no es pot desfer."
+      delete_confirmation: "Vols eliminar aquests llocs? Llocs: %{places}. Visites actives que perdran el seu lloc: %{visits}; conservaran les descripcions de la ubicació. Llocs amb geotanques: %{geofences}; Els esdeveniments de geotanca es conserven amb el nom del lloc; se n’eliminen les subscripcions a webhooks. Llocs amb etiquetes de privadesa: %{privacy}; les dades properes poden esdevenir visibles, també als enllaços compartits. Aquesta acció no es pot desfer."
       sources:
         manual: "Manual"
         photon: "Detectat"
@@ -1378,7 +1378,7 @@ ca:
     place_details: "Detalls del lloc"
     close_panel: "Tanca els detalls del lloc"
     drawer:
-      delete_consequences: "Vols suprimir aquest lloc?\nVisites actives: %{visits}. Conservaran l’etiqueta d’ubicació.\nEtiquetes de zones de privadesa: %{privacy_tags}.\nWebhooks dels quals es retirarà aquest lloc: %{webhooks}.\nSe’n suprimiran els esdeveniments de geotanca. Aquesta acció no es pot desfer."
+      delete_consequences: "Vols suprimir aquest lloc?\nVisites actives: %{visits}. Conservaran l’etiqueta d’ubicació.\nEtiquetes de zones de privadesa: %{privacy_tags}.\nWebhooks dels quals es retirarà aquest lloc: %{webhooks}.\nEls esdeveniments de geotanca es conserven amb el nom del lloc. Aquesta acció no es pot desfer."
       source: 'Font:'
       total_hours: hores totals
       avg_dwell: estada mitjana

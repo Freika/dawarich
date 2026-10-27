@@ -1,0 +1,8 @@
+ca:
+  places:
+    archive:
+      badge: "Arxivat"
+      archive: "Arxiva"
+      unarchive: "Desarxiva"
+      hint: "Es conserven les visites confirmades i la protecció de privadesa; mentre està arxivat, no s’hi atribueixen visites noves i la geotanca queda en pausa."
+      show_on_map: "Mostra els llocs arxivats"

@@ -1288,6 +1288,9 @@ export default class extends Controller {
   togglePlaces(event) {
     return this.placesManager.togglePlaces(event)
   }
+  toggleArchivedPlaces(event) {
+    return this.placesManager.toggleArchivedPlaces(event)
+  }
   togglePlaceBoundaries(event) {
     return this.placesManager.togglePlaceBoundaries(event)
   }

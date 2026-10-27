@@ -21,7 +21,7 @@ class PlacesController < ApplicationController
   end
 
   def bulk_update
-    perform_place_bulk_action(params[:operation].presence_in(%w[add_tag remove_tag]))
+    perform_place_bulk_action(params[:operation].presence_in(%w[add_tag remove_tag archive unarchive]))
   end
 
   def bulk_destroy

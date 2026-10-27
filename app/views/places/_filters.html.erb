@@ -10,7 +10,7 @@
   </div>
   <div class="min-w-0">
     <%= form.label :filter, t('places.management.status'), class: 'label' %>
-    <%= form.select :filter, [[t('places.index.all_places'), ''], [t('places.index.unconfirmed_places'), 'unconfirmed']], { selected: params[:filter] }, class: 'select select-bordered max-w-full' %>
+    <%= form.select :filter, [[t('places.index.all_places'), ''], [t('places.index.unconfirmed_places'), 'unconfirmed'], [t('places.archive.badge'), 'archived']], { selected: params[:filter] }, class: 'select select-bordered max-w-full' %>
   </div>
   <%= form.submit t('places.management.apply'), class: 'btn btn-primary h-auto py-2' %>
   <fieldset class="w-full min-w-0">

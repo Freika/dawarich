@@ -747,7 +747,7 @@ RSpec.describe '/places', type: :request do
                                                                                                 edit: 1))
       confirmation = document.at_css('.place-drawer__action--delete')['data-turbo-confirm']
       expect(confirmation).to include('Active visits: 1', 'Private home', 'Webhooks that will drop this place: 1',
-                                      'geofence events', 'location label')
+                                      'Geofence events are kept with the place name', 'location label')
     end
 
     it 'saves the editor without JavaScript and locks a rename while clearing tags' do

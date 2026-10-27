@@ -1367,7 +1367,7 @@ en:
       bulk_success: "Places updated: %{count}"
       invalid_selection: "Select places and a valid tag or survivor from your selection."
       merge_confirmation: "Merge these places into the chosen survivor? Their visits, tags and notes will move to it. This cannot be undone."
-      delete_confirmation: "Delete these places? Places: %{places}. Active visits that will lose their place: %{visits}; their location labels are kept. Places with geofences: %{geofences}; their events are deleted and webhook subscriptions removed. Places with privacy-zone tags: %{privacy}; nearby data may become visible, including in shared links. This cannot be undone."
+      delete_confirmation: "Delete these places? Places: %{places}. Active visits that will lose their place: %{visits}; their location labels are kept. Places with geofences: %{geofences}; Geofence events are kept with the place name; webhook subscriptions are removed. Places with privacy-zone tags: %{privacy}; nearby data may become visible, including in shared links. This cannot be undone."
       sources:
         manual: "Manual"
         photon: "Discovered"
@@ -1378,7 +1378,7 @@ en:
     place_details: "Place details"
     close_panel: "Close place details"
     drawer:
-      delete_consequences: "Delete this place?\nActive visits: %{visits}. They keep a location label.\nPrivacy-zone tags: %{privacy_tags}.\nWebhooks that will drop this place: %{webhooks}.\nIts geofence events will be deleted. This cannot be undone."
+      delete_consequences: "Delete this place?\nActive visits: %{visits}. They keep a location label.\nPrivacy-zone tags: %{privacy_tags}.\nWebhooks that will drop this place: %{webhooks}.\nGeofence events are kept with the place name. This cannot be undone."
       source: 'Source:'
       total_hours: total hours
       avg_dwell: avg dwell

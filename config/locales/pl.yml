@@ -1379,7 +1379,7 @@ pl:
       bulk_success: "Zaktualizowane miejsca: %{count}"
       invalid_selection: "Wybierz miejsca oraz prawidłowy tag lub jedno z wybranych miejsc do zachowania."
       merge_confirmation: "Scalić te miejsca z wybranym miejscem? Wizyty, tagi i notatki zostaną do niego przeniesione. Tej czynności nie można cofnąć."
-      delete_confirmation: "Usunąć te miejsca? Liczba miejsc: %{places}. Aktywne wizyty, które stracą powiązanie z miejscem: %{visits}; ich opisy lokalizacji zostaną zachowane. Miejsca z geostrefami: %{geofences}; ich zdarzenia i subskrypcje webhooków zostaną usunięte. Miejsca z tagami prywatności: %{privacy}; pobliskie dane mogą stać się widoczne, także w udostępnionych linkach. Tej czynności nie można cofnąć."
+      delete_confirmation: "Usunąć te miejsca? Liczba miejsc: %{places}. Aktywne wizyty, które stracą powiązanie z miejscem: %{visits}; ich opisy lokalizacji zostaną zachowane. Miejsca z geostrefami: %{geofences}; Zdarzenia geostrefy zostają zachowane z nazwą miejsca; subskrypcje webhooków zostają usunięte. Miejsca z tagami prywatności: %{privacy}; pobliskie dane mogą stać się widoczne, także w udostępnionych linkach. Tej czynności nie można cofnąć."
       sources:
         manual: "Ręczne"
         photon: "Wykryte"
@@ -1390,7 +1390,7 @@ pl:
     place_details: "Szczegóły miejsca"
     close_panel: "Zamknij szczegóły miejsca"
     drawer:
-      delete_consequences: "Usunąć to miejsce?\nAktywne wizyty: %{visits}. Zachowają etykietę lokalizacji.\nTagi stref prywatności: %{privacy_tags}.\nWebhooki, z których zostanie usunięte to miejsce: %{webhooks}.\nZdarzenia geofencingu tego miejsca zostaną usunięte. Tej operacji nie można cofnąć."
+      delete_consequences: "Usunąć to miejsce?\nAktywne wizyty: %{visits}. Zachowają etykietę lokalizacji.\nTagi stref prywatności: %{privacy_tags}.\nWebhooki, z których zostanie usunięte to miejsce: %{webhooks}.\nZdarzenia geostrefy zostają zachowane z nazwą miejsca. Tej operacji nie można cofnąć."
       source: 'Źródło:'
       total_hours: łączna liczba godzin
       avg_dwell: średni czas pobytu

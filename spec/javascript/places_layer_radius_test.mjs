@@ -55,6 +55,10 @@ class HtmlLabelManager {
     this.visible = visible
   }
 
+  setOpacity(resolver) {
+    this.opacity = resolver
+  }
+
   clear() {
     this.features = []
   }
@@ -158,4 +162,25 @@ test("geofences have a highlighted boundary distinct from ordinary Visit Radius 
       evaluate(outline.paint["line-width"], ordinary),
   )
   assert.equal(evaluate(outline.paint["line-color"], ordinary), "#123456")
+})
+
+test("archived places have muted centers, boundaries and labels even with geofencing enabled", () => {
+  const layer = new context.PlacesLayer(recordingMap())
+  const archived = { archived: true, geofence: true, color: "#123456" }
+  const active = { ...archived, archived: false }
+  const configs = layer.getLayerConfigs()
+  for (const [id, property] of [
+    ["places", "circle-opacity"],
+    ["places-radius-fill", "fill-opacity"],
+    ["places-radius-outline", "line-opacity"],
+  ]) {
+    const config = configs.find((item) => item.id === id)
+    assert.ok(
+      evaluate(config.paint[property], archived) <
+        evaluate(config.paint[property], active),
+    )
+  }
+  assert.equal(evaluate(configs[1].paint["line-color"], archived), "#94a3b8")
+  assert.equal(layer.labels.opacity({ properties: archived }), 0.5)
+  assert.equal(layer.labels.opacity({ properties: active }), 1)
 })

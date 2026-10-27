@@ -14,7 +14,7 @@ module Places
     end
 
     def call
-      scope = user.places
+      scope = params[:filter] == 'archived' ? user.places.archived : user.places.not_archived
       scope = scope.unconfirmed_for(user) if params[:filter] == 'unconfirmed'
       query = params[:q].to_s.strip
       scope = scope.where('places.name ILIKE ?', "%#{Place.sanitize_sql_like(query)}%") if query.present?

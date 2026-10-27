@@ -19,6 +19,9 @@
                 data-testid="place-name-lock"><%= icon 'lock', class: 'w-4 h-4 inline' %></span>
         <% end %>
       </h2>
+      <% if place.archived? %>
+        <span class="badge badge-ghost h-auto py-1" data-testid="place-archived-badge"><%= t('places.archive.badge') %></span>
+      <% end %>
       <% if stats[:location_line].present? %>
         <p class="place-drawer__location"><%= stats[:location_line] %></p>
       <% end %>
@@ -96,6 +99,8 @@
       </p>
     <% end %>
   </section>
+
+  <%= render 'places/archive', place: place %>
 
   <%= render 'places/geofence_events', place: place %>
 

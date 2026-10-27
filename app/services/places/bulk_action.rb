@@ -28,6 +28,8 @@ module Places
               place.tags.destroy(tag)
             end
           end
+        when 'archive', 'unarchive'
+          places.each { |place| place.update!(archived: operation == 'archive') }
         when 'delete'
           places.each { |place| Destroy.new(user:, place:).call }
         when 'merge'

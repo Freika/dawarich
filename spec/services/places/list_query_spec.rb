@@ -47,4 +47,25 @@ RSpec.describe 'Places::ListQuery' do
     expect(Places::ListQuery.new(user:, params: { filter: 'unconfirmed', sort: 'name; DROP TABLE places' }).call)
       .to eq([alpha, zulu])
   end
+
+  it 'excludes archived places by default and for unknown status filters' do
+    active = create(:place, user:)
+    create(:place, user:, archived: true)
+
+    [nil, '', 'unknown'].each do |filter|
+      expect(Places::ListQuery.new(user:, params: { filter: }).call).to contain_exactly(active)
+    end
+  end
+
+  it 'shows only owned archived places while applying name and tag filters' do
+    tag = create(:tag, user:)
+    archived = create(:place, user:, archived: true, name: 'Former Home', tags: [tag])
+    create(:place, user:, name: 'Current Home', tags: [tag])
+    create(:place, user:, archived: true, name: 'Former Office', tags: [tag])
+    create(:place, user:, archived: true, name: 'Another Home')
+    create(:place, archived: true, name: 'Foreign Home')
+
+    expect(Places::ListQuery.new(user:, params: { filter: 'archived', q: 'Home', tag_ids: [tag.id] }).call)
+      .to contain_exactly(archived)
+  end
 end
