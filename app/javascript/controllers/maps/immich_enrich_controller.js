@@ -29,7 +29,6 @@ export default class extends Controller {
     this.markers = []
     this.markerElements = []
     this.scanning = false
-    this.initDateDefaults()
     this.bindToggleButton()
   }
 
@@ -58,21 +57,6 @@ export default class extends Controller {
     this.element.classList.toggle("hidden")
     if (this.element.classList.contains("hidden")) {
       this.removeMarkers()
-    }
-  }
-
-  initDateDefaults() {
-    const mapController = this.findMapController()
-    if (!mapController) return
-
-    const startDate = mapController.startDateValue
-    const endDate = mapController.endDateValue
-
-    if (startDate && this.hasStartDateTarget) {
-      this.startDateTarget.value = startDate.split("T")[0]
-    }
-    if (endDate && this.hasEndDateTarget) {
-      this.endDateTarget.value = endDate.split("T")[0]
     }
   }
 
