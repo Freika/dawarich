@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 class Api::VisitSerializer
-  def initialize(visit)
+  def initialize(visit, point_center: nil)
     @visit = visit
+    @point_center = point_center
   end
 
   def call
@@ -21,6 +22,7 @@ class Api::VisitSerializer
       status: visit.status,
       confidence: visit.confidence,
       confidence_band: visit.confidence_band,
+      center: @point_center && { latitude: @point_center[:lat], longitude: @point_center[:lng] },
       place: serialize_place
     }
   end

@@ -13,6 +13,9 @@ module Visits
 
     def initialize(user, params)
       @user = user
+      if ActiveModel::Type::Boolean.new.cast(params[:mask_privacy_zones])
+        @privacy_zone_masker = Maps::PrivacyZoneMasker.new(user)
+      end
       @sw_lat = params[:sw_lat].to_f
       @sw_lng = params[:sw_lng].to_f
       @ne_lat = params[:ne_lat].to_f
@@ -25,21 +28,21 @@ module Visits
     end
 
     def call
-      relation = user.scoped_visits
-                     .left_outer_joins(:place, :area)
-                     .includes(:area, place: :legacy_area_place_mappings)
-                     .references(:place, :area)
-                     .where(
-                       "(#{PLACE_INSIDE}) OR (#{AREA_INSIDE})",
-                       sw_lng, sw_lat, ne_lng, ne_lat,
-                       sw_lng, sw_lat, ne_lng, ne_lat
-                     )
+      visits = user.scoped_visits
+      visits = visits.where(started_at: start_at..end_at) if start_at && end_at
+      unlocated = visits.where(place_id: nil, area_id: nil)
+      centers = PointCenters.new(user, visit_ids: unlocated.select(:id), privacy_zone_masker: @privacy_zone_masker)
+                            .within_bounds(sw_lng: sw_lng, sw_lat: sw_lat, ne_lng: ne_lng, ne_lat: ne_lat)
+      relation = visits.left_outer_joins(:place, :area)
+                       .includes(:area, place: :legacy_area_place_mappings)
+                       .references(:place, :area)
+      located = relation.where(
+        "(#{PLACE_INSIDE}) OR (#{AREA_INSIDE})",
+        sw_lng, sw_lat, ne_lng, ne_lat,
+        sw_lng, sw_lat, ne_lng, ne_lat
+      )
 
-      # Filter by started_at only — mirrors Visits::FindInTime; adding an
-      # ended_at predicate silently drops boundary-crossing visits.
-      relation = relation.where(started_at: start_at..end_at) if start_at && end_at
-
-      relation.order(started_at: :desc)
+      located.or(relation.where(id: centers)).order(started_at: :desc)
     end
 
     private

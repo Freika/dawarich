@@ -3,6 +3,13 @@
 require 'swagger_helper'
 
 describe 'Visits API', type: :request do
+  center_schema = {
+    type: :object, nullable: true,
+    description: 'Point-derived fallback when Place/Area are absent; null without visible coordinates',
+    properties: { latitude: { type: :number }, longitude: { type: :number } },
+    required: %w[latitude longitude]
+  }
+
   let(:user) { create(:user) }
   let(:api_key) { user.api_key }
   let(:Authorization) { "Bearer #{api_key}" }
@@ -59,6 +66,7 @@ describe 'Visits API', type: :request do
                    started_at: { type: :string, format: :datetime },
                    ended_at: { type: :string, format: :datetime },
                    duration: { type: :integer, description: 'Duration in minutes' },
+                   center: center_schema,
                    place: {
                      type: :object,
                      nullable: true,
@@ -71,7 +79,7 @@ describe 'Visits API', type: :request do
                      }
                    }
                  },
-                 required: %w[id name display_name status started_at ended_at duration]
+                 required: %w[id name display_name status started_at ended_at duration center]
                }
 
         run_test!
@@ -142,6 +150,7 @@ describe 'Visits API', type: :request do
         end
 
         schema type: :object,
+               required: %w[center],
                properties: {
                  id: { type: :integer },
                  name: { type: :string },
@@ -149,6 +158,7 @@ describe 'Visits API', type: :request do
                  started_at: { type: :string, format: :datetime },
                  ended_at: { type: :string, format: :datetime },
                  duration: { type: :integer },
+                 center: center_schema,
                  place: {
                    type: :object,
                    properties: {
@@ -231,6 +241,7 @@ describe 'Visits API', type: :request do
         let(:visit) { { visit: { name: 'Updated Visit' } } }
 
         schema type: :object,
+               required: %w[center],
                properties: {
                  id: { type: :integer },
                  name: { type: :string },
@@ -238,6 +249,7 @@ describe 'Visits API', type: :request do
                  started_at: { type: :string, format: :datetime },
                  ended_at: { type: :string, format: :datetime },
                  duration: { type: :integer },
+                 center: center_schema,
                  place: { type: [:object, 'null'] }
                }
 
@@ -358,6 +370,7 @@ describe 'Visits API', type: :request do
         let(:merge_params) { { visit_ids: [visit1.id, visit2.id] } }
 
         schema type: :object,
+               required: %w[center],
                properties: {
                  id: { type: :integer },
                  name: { type: :string },
@@ -365,6 +378,7 @@ describe 'Visits API', type: :request do
                  started_at: { type: :string, format: :datetime },
                  ended_at: { type: :string, format: :datetime },
                  duration: { type: :integer },
+                 center: center_schema,
                  place: { type: [:object, 'null'] }
                }
 
@@ -491,7 +505,7 @@ describe 'Visits API', type: :request do
                      properties: {
                        index: { type: :integer },
                        status: { type: :string, enum: %w[created duplicate failed] },
-                       visit: { type: :object },
+                       visit: { type: :object, properties: { center: center_schema }, required: %w[center] },
                        error: { type: :string }
                      }
                    }

@@ -2,6 +2,9 @@
 
 module Timeline
   class DayAssembler
+    include VisitEntries
+    include DayBounds
+
     # Hard cap on the requested window. The UI consumes day-by-day; ranges
     # this large would otherwise materialize thousands of LINESTRINGs in
     # memory just to compute bounds.
@@ -37,39 +40,13 @@ module Timeline
 
       @segment_stats = load_segment_stats(tracks)
 
+      ids = visits.select { |visit| needs_point_center?(visit) }.map(&:id)
+      @visit_point_centers = Visits::PointCenters.new(user, visit_ids: ids,
+                                                          privacy_zone_masker: @privacy_zone_masker).call
       @visit_point_counts = Point.where(visit_id: visits.map(&:id)).group(:visit_id).count
 
       days = group_by_day(visits, tracks)
       build_days(days)
-    end
-
-    # Public entry-point for building a single visit's hash payload — used by
-    # VisitsController#update so the turbo_stream response can re-render the
-    # row with fresh status / name / place / suggested_places data.
-    # (Helpers it calls remain private; same-class access is allowed.)
-    # With a date, the entry describes that day's part of the visit.
-    def build_visit_entry(visit, date: nil)
-      entry = {
-        type: 'visit',
-        visit_id: visit.id,
-        name: visit.display_name,
-        editable_name: visit.name,
-        status: visit.status,
-        confidence_band: visit.confidence_band,
-        place_id: visit.place_id,
-        point_count: point_count_for(visit),
-        tags: build_tags(visit.place),
-        started_at: visit.started_at.iso8601,
-        ended_at: visit.ended_at.iso8601,
-        duration: visit.duration,
-        place: visit.place ? build_place(visit.place) : nil,
-        area: visit.area ? build_area(visit.area) : nil
-      }
-
-      entry[:suggested_places] = build_suggested_places(visit) if visit.suggested?
-      entry.merge!(visit_day_part(visit, date)) if date
-
-      entry
     end
 
     private
@@ -85,14 +62,6 @@ module Timeline
           .includes(:area, suggested_places: :tags, place: :tags)
           .overlapping(start_at, end_at)
           .order(started_at: :asc)
-    end
-
-    def point_count_for(visit)
-      assoc = visit.association(:points)
-      return assoc.target.length if assoc.loaded?
-      return @visit_point_counts.fetch(visit.id, 0) if @visit_point_counts
-
-      visit.points.count
     end
 
     def fetch_tracks
@@ -190,63 +159,6 @@ module Timeline
       end
     end
 
-    # NOTE: visit.duration is stored in MINUTES. See the public #build_visit_entry
-    # above for the entry payload shape.
-
-    # Rows on the days after a visit started describe only that day's part of
-    # the stay, like journey continuation rows.
-    def visit_day_part(visit, date)
-      start_day = visit.started_at.in_time_zone(timezone).to_date
-      return { continuation_of_date: nil, day_duration: nil } if date == start_day
-
-      share = TrackDayShares.shares_between(visit.started_at, visit.ended_at, timezone).fetch(date, 0.0)
-      {
-        continuation_of_date: start_day.to_s,
-        day_duration: (visit.duration * share).round,
-        day_started_at: date.in_time_zone(timezone).beginning_of_day.iso8601
-      }
-    end
-
-    def build_area(area)
-      {
-        id: area.id,
-        name: area.name,
-        **visible_coordinates(area.latitude.to_f, area.longitude.to_f),
-        radius: area.radius
-      }
-    end
-
-    def build_tags(place)
-      return [] unless place
-
-      place.tags.map { |t| { id: t.id, name: t.name, icon: t.icon, color: t.color } }
-    end
-
-    # Geocoder suggestions often include near-identical rows (same name,
-    # slightly different ids). We dedupe by normalized name so the picker
-    # UI can stay compact — if a user actually needs the tail, the view
-    # reveals it behind a disclosure.
-    def build_suggested_places(visit)
-      seen = {}
-
-      if visit.place.present?
-        key = visit.place.name.to_s.strip.downcase
-        unless key.empty?
-          seen[key] = { id: visit.place.id, name: visit.place.name,
-                        **visible_coordinates(visit.place.lat, visit.place.lon) }
-        end
-      end
-
-      visit.suggested_places.each do |p|
-        key = p.name.to_s.strip.downcase
-        next if key.empty?
-
-        seen[key] ||= { id: p.id, name: p.name, **visible_coordinates(p.lat, p.lon) }
-      end
-
-      seen.values
-    end
-
     def build_journey_entry(track, date: nil, day_share: 1.0)
       start_day = track.start_at.in_time_zone(timezone).to_date
       continuation = date.present? && date != start_day
@@ -278,16 +190,6 @@ module Timeline
       return moving unless continuation && moving
 
       (moving.to_f * day_share).round
-    end
-
-    def build_place(place)
-      {
-        name: place.name,
-        **visible_coordinates(place.lat, place.lon),
-        city: place.city,
-        country: place.country,
-        visit_radius: place.visit_radius
-      }
     end
 
     def build_summary(visits, tracks, track_shares, visit_shares)
@@ -328,79 +230,6 @@ module Timeline
             .reject { |_, value| value < CHIP_MIN_DISTANCE }
             .sort_by { |_, value| -value }
             .to_h
-    end
-
-    def visible_coordinates(lat, lng)
-      return { lat: nil, lng: nil } if @privacy_zone_masker&.in_zone?(lng, lat)
-
-      { lat:, lng: }
-    end
-
-    def masked_path_sql
-      path = 'original_path::geometry'
-      return path unless @privacy_zone_masker&.any?
-
-      "CASE WHEN #{@privacy_zone_masker.touches_sql(path)} THEN #{@privacy_zone_masker.clip_sql(path)} ELSE #{path} END"
-    end
-
-    def build_bounds(visits, tracks)
-      lats = []
-      lngs = []
-
-      visits.each do |visit|
-        next unless visit.place
-        next if @privacy_zone_masker&.in_zone?(visit.place.lon, visit.place.lat)
-
-        lats << visit.place.lat
-        lngs << visit.place.lon
-      end
-
-      track_extent = tracks_extent(tracks)
-      if track_extent
-        lats << track_extent[:min_lat] << track_extent[:max_lat]
-        lngs << track_extent[:min_lng] << track_extent[:max_lng]
-      end
-
-      return nil if lats.empty? || lngs.empty?
-
-      {
-        sw_lat: lats.min,
-        sw_lng: lngs.min,
-        ne_lat: lats.max,
-        ne_lng: lngs.max
-      }
-    end
-
-    # Single PostGIS aggregate over all tracks in the day instead of
-    # materializing each LINESTRING into Ruby. Returns nil if no tracks
-    # have a path.
-    def tracks_extent(tracks)
-      track_ids = tracks.map(&:id)
-      return nil if track_ids.empty?
-
-      query = <<~SQL.squish
-        SELECT
-          ST_XMin(extent) AS min_lng,
-          ST_YMin(extent) AS min_lat,
-          ST_XMax(extent) AS max_lng,
-          ST_YMax(extent) AS max_lat
-        FROM (
-          SELECT ST_Extent(#{masked_path_sql}) AS extent
-          FROM tracks
-          WHERE id IN (?) AND original_path IS NOT NULL
-        ) sub
-      SQL
-      sql = ActiveRecord::Base.sanitize_sql_array([query, track_ids])
-
-      row = ActiveRecord::Base.connection.exec_query(sql).first
-      return nil unless row && row['min_lng']
-
-      {
-        min_lng: row['min_lng'].to_f,
-        min_lat: row['min_lat'].to_f,
-        max_lng: row['max_lng'].to_f,
-        max_lat: row['max_lat'].to_f
-      }
     end
 
     def convert_distance(meters)
