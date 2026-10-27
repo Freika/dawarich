@@ -17,8 +17,7 @@ class PlacesController < ApplicationController
 
   def show
     @place = current_user.places.includes(:tags).find(params[:id])
-    @recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
-    @merge_candidates = merge_candidates_for(@place)
+    prepare_drawer
   end
 
   def create
@@ -55,30 +54,21 @@ class PlacesController < ApplicationController
 
       respond_to do |format|
         format.turbo_stream do
-          if drawer_request?
-            recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
-            merge_candidates = merge_candidates_for(@place)
-            render turbo_stream: [
-              turbo_stream.update(
-                'place-drawer',
-                partial: 'places/drawer',
-                locals: { place: @place, recent_visits: recent_visits, merge_candidates: merge_candidates }
-              ),
-              stream_flash(:success, I18n.t('controllers.places.updated'))
-            ]
-          else
-            render turbo_stream: [
-              turbo_stream.replace('place-creation-data', html: place_data_element(updated: true)),
-              stream_flash(:success, I18n.t('controllers.places.updated'))
-            ]
-          end
+          streams = [turbo_stream.replace('place-creation-data', html: place_data_element(updated: true))]
+          streams.unshift(drawer_stream) if drawer_request?
+          streams << stream_flash(:success, I18n.t('controllers.places.updated'))
+          render turbo_stream: streams
         end
+        format.html { redirect_to place_url(@place), notice: I18n.t('controllers.places.updated'), status: :see_other }
       end
     else
+      prepare_drawer
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: stream_flash(:error, @place.errors.full_messages.join(', '))
+          render turbo_stream: [drawer_stream, stream_flash(:error, @place.errors.full_messages.join(', '))],
+                 status: :unprocessable_content
         end
+        format.html { render :show, status: :unprocessable_content }
       end
     end
   end
@@ -104,8 +94,17 @@ class PlacesController < ApplicationController
   def destroy
     Places::Destroy.new(user: current_user, place: @place).call
 
-    redirect_to places_url(page: params[:page]), notice: I18n.t('controllers.places.place_was_successfully_destroyed'),
-status: :see_other
+    message = I18n.t('controllers.places.place_was_successfully_destroyed')
+    if params[:map_panel] == '1' && request.format.turbo_stream?
+      render turbo_stream: [
+        turbo_stream.replace('place-creation-data', html: helpers.tag.div(
+          id: 'place-creation-data', data: { deleted_id: @place.id }, class: 'hidden'
+        )),
+        stream_flash(:success, message)
+      ]
+    else
+      redirect_to places_url(page: params[:page]), notice: message, status: :see_other
+    end
   end
 
   def confirm
@@ -133,6 +132,8 @@ status: :see_other
             partial: 'places/drawer',
             locals: { place: @place, recent_visits: @recent_visits, merge_candidates: @merge_candidates }
           ),
+          turbo_stream.replace('place-creation-data',
+                               html: place_data_element(updated: true, removed_id: duplicate.id)),
           stream_flash(
             :success,
             I18n.t('controllers.places.merged', duplicate: duplicate_name, survivor: @place.name)
@@ -164,6 +165,18 @@ status: :see_other
 
   def set_place
     @place = current_user.places.find(params[:id])
+  end
+
+  def prepare_drawer
+    @recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
+    @merge_candidates = merge_candidates_for(@place)
+  end
+
+  def drawer_stream
+    prepare_drawer
+    turbo_stream.update('place-drawer', partial: 'places/drawer', locals: {
+                          place: @place, recent_visits: @recent_visits, merge_candidates: @merge_candidates
+                        })
   end
 
   def drawer_request?
@@ -203,11 +216,11 @@ status: :see_other
     @place.tags = tags
   end
 
-  def place_data_element(updated: false, visit_id: nil)
+  def place_data_element(updated: false, visit_id: nil, removed_id: nil)
     data = serialize_place(@place)
     helpers.tag.div(
       id: 'place-creation-data',
-      data: { place: data.to_json, created: !updated, updated: updated, visit_id: visit_id },
+      data: { place: data.to_json, created: !updated, updated: updated, visit_id: visit_id, removed_id: removed_id },
       class: 'hidden'
     )
   end
@@ -232,7 +245,7 @@ status: :see_other
 
   def serialize_place(place)
     {
-      id: place.id, name: place.name, latitude: place.lat, longitude: place.lon,
+      id: place.id, name: place.name, name_locked: place.name_locked?, latitude: place.lat, longitude: place.lon,
       source: place.source, note: place.note, visit_radius: place.visit_radius, icon: place.tags.first&.icon,
       color: place.tags.first&.color, visits_count: place.active_visits.size,
       tags: place.tags.map { |t| { id: t.id, name: t.name, icon: t.icon, color: t.color } }

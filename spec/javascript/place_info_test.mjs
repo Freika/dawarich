@@ -53,17 +53,23 @@ test("place info offers Open Edit and Delete with place routing and safe labels"
   const info = buildPlaceInfo({ id: 42, name: "Cafe & Tea", tags: "[]" })
   assert.equal(info.title, "Cafe & Tea")
   assert.deepEqual(info.actions, [
-    { type: "link", url: "/places/42", label: "places.open" },
     {
       type: "button",
-      handler: "handleEdit",
+      handler: "openPlace",
+      id: 42,
+      entityType: "place",
+      label: "places.open",
+    },
+    {
+      type: "button",
+      handler: "openPlace",
       id: 42,
       entityType: "place",
       label: "messages.edit",
     },
     {
       type: "button",
-      handler: "handleDelete",
+      handler: "openPlace",
       id: 42,
       entityType: "place",
       label: "messages.delete",

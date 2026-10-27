@@ -1384,7 +1384,13 @@ es:
       destroy_this_notification: Destruir esta notificación
       are_you_sure: "¿Estás seguro?"
   places:
+    edit_on_map: "Editar en el mapa"
+    drag_to_edit: "Arrastra el marcador para mover el lugar y el control para cambiar su radio de visita."
+    cancel_edit: "Cancelar"
+    place_details: "Detalles del lugar"
+    close_panel: "Cerrar detalles del lugar"
     drawer:
+      delete_consequences: "¿Eliminar este lugar?\nVisitas activas: %{visits}. Conservan su etiqueta de ubicación.\nEtiquetas de zonas de privacidad: %{privacy_tags}.\nWebhooks que perderán este lugar: %{webhooks}.\nSus eventos de geovalla se eliminarán. Esta acción no se puede deshacer."
       source: 'Fuente:'
       total_hours: horas totales
       avg_dwell: dwell promedio
@@ -4132,6 +4138,8 @@ es:
       speed: "%{speed} km/h"
       no_data: Sin datos
     places:
+      move_pin: "Mover marcador del lugar"
+      resize_radius: "Cambiar radio de visita"
       create_new: Crear nuevo lugar
       edit: Editar lugar
       open: Abrir

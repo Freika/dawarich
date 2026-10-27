@@ -7,12 +7,10 @@
         place_creation_target: "form",
         action: "turbo:submit-end->place-creation#onSubmitEnd"
       } do |f| %>
-        <%# Hidden fields for coordinates and editing state %>
         <%= f.hidden_field :latitude, data: { place_creation_target: "latitudeInput" } %>
         <%= f.hidden_field :longitude, data: { place_creation_target: "longitudeInput" } %>
         <%= f.hidden_field :source, value: "manual" %>
         <%= hidden_field_tag :visit_id, nil, data: { place_creation_target: "visitIdInput" } %>
-        <input type="hidden" name="_method_url" data-place-creation-target="placeIdInput">
 
         <div class="space-y-4">
           <div class="form-control">
@@ -95,13 +93,12 @@
         <div class="modal-action">
           <button type="button" class="btn btn-ghost" data-action="click->place-creation#close"><%= t('.cancel') %></button>
           <%= f.submit t('.create_place'), class: "btn btn-primary",
-              data: { place_creation_target: "submitButton", disable_with: t('.saving') } %>
+              data: { place_creation_target: "submitButton", disable_with: false, turbo_submits_with: t('.saving') } %>
         </div>
       <% end %>
     </div>
     <div class="modal-backdrop" data-action="click->place-creation#close"></div>
   </div>
 
-  <%# Hidden data element for turbo_stream to populate with created/updated place data %>
   <div id="place-creation-data" class="hidden"></div>
 </div>

@@ -44,20 +44,22 @@ export function buildPlaceInfo(properties) {
   const actions = id
     ? [
         {
-          type: "link",
-          url: `/places/${encodeURIComponent(id)}`,
+          type: "button",
+          handler: "openPlace",
+          id,
+          entityType: "place",
           label: translate("places.open"),
         },
         {
           type: "button",
-          handler: "handleEdit",
+          handler: "openPlace",
           id,
           entityType: "place",
           label: translate("messages.edit"),
         },
         {
           type: "button",
-          handler: "handleDelete",
+          handler: "openPlace",
           id,
           entityType: "place",
           label: translate("messages.delete"),

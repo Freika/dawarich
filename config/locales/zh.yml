@@ -1349,7 +1349,13 @@ zh:
       destroy_this_notification: 删除此通知
       are_you_sure: 您确定吗？
   places:
+    edit_on_map: "在地图上编辑"
+    drag_to_edit: "拖动标记移动地点，拖动控制柄调整访问半径。"
+    cancel_edit: "取消"
+    place_details: "地点详情"
+    close_panel: "关闭地点详情"
     drawer:
+      delete_consequences: "删除此地点？\n活跃访问：%{visits}。它们将保留位置标签。\n隐私区域标签：%{privacy_tags}。\n将移除此地点的 webhook：%{webhooks}。\n此地点的地理围栏事件将被删除。此操作无法撤销。"
       source: 来源：
       total_hours: 总小时数
       avg_dwell: 平均停留时间
@@ -4200,6 +4206,8 @@ zh:
       speed: "%{speed} 公里/小时"
       no_data: 无数据
     places:
+      move_pin: "移动地点标记"
+      resize_radius: "调整访问半径"
       create_new: 创建新地点
       edit: 编辑地点
       open: 打开

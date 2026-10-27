@@ -1384,7 +1384,13 @@ de:
       destroy_this_notification: Diese Benachrichtigung entfernen
       are_you_sure: Bist du sicher?
   places:
+    edit_on_map: "Auf der Karte bearbeiten"
+    drag_to_edit: "Ziehe die Markierung, um den Ort zu verschieben, und den Griff, um den Besuchsradius zu ändern."
+    cancel_edit: "Abbrechen"
+    place_details: "Ortsdetails"
+    close_panel: "Ortsdetails schließen"
     drawer:
+      delete_consequences: "Diesen Ort löschen?\nAktive Besuche: %{visits}. Ihre Ortsbezeichnung bleibt erhalten.\nTags mit Privatsphärezone: %{privacy_tags}.\nWebhooks, aus denen dieser Ort entfernt wird: %{webhooks}.\nSeine Geofencing-Ereignisse werden gelöscht. Dies kann nicht rückgängig gemacht werden."
       source: 'Quelle:'
       total_hours: Gesamtstunden
       avg_dwell: Durchschnittlicher Aufenthaltszeitraum
@@ -4187,6 +4193,8 @@ de:
       speed: "%{speed} km/h"
       no_data: Keine Daten
     places:
+      move_pin: "Ortsmarkierung verschieben"
+      resize_radius: "Besuchsradius ändern"
       create_new: Neuer Ort erstellen
       edit: Ort bearbeiten
       open: Öffnen

@@ -1334,7 +1334,13 @@ ca:
       destroy_this_notification: Suprimeix aquesta notificació
       are_you_sure: "Estàs segur?"
   places:
+    edit_on_map: "Edita al mapa"
+    drag_to_edit: "Arrossega el marcador per moure el lloc i el control per canviar-ne el radi de visita."
+    cancel_edit: "Cancel·la"
+    place_details: "Detalls del lloc"
+    close_panel: "Tanca els detalls del lloc"
     drawer:
+      delete_consequences: "Vols suprimir aquest lloc?\nVisites actives: %{visits}. Conservaran l’etiqueta d’ubicació.\nEtiquetes de zones de privadesa: %{privacy_tags}.\nWebhooks dels quals es retirarà aquest lloc: %{webhooks}.\nSe’n suprimiran els esdeveniments de geotanca. Aquesta acció no es pot desfer."
       source: 'Font:'
       total_hours: hores totals
       avg_dwell: estada mitjana
@@ -4135,6 +4141,8 @@ ca:
       speed: "%{speed} km/h"
       no_data: No hi ha dades
     places:
+      move_pin: "Mou el marcador del lloc"
+      resize_radius: "Canvia el radi de visita"
       create_new: Crea un lloc nou
       edit: Edita el lloc
       open: Obre
