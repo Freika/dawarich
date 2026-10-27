@@ -1384,7 +1384,13 @@ de:
       destroy_this_notification: Diese Benachrichtigung entfernen
       are_you_sure: Bist du sicher?
   places:
+    edit_on_map: "Auf der Karte bearbeiten"
+    drag_to_edit: "Ziehe die Markierung, um den Ort zu verschieben, und den Griff, um den Besuchsradius zu ändern."
+    cancel_edit: "Abbrechen"
+    place_details: "Ortsdetails"
+    close_panel: "Ortsdetails schließen"
     drawer:
+      delete_consequences: "Diesen Ort löschen?\nAktive Besuche: %{visits}. Ihre Ortsbezeichnung bleibt erhalten.\nTags mit Privatsphärezone: %{privacy_tags}.\nWebhooks, aus denen dieser Ort entfernt wird: %{webhooks}.\nSeine Geofencing-Ereignisse werden gelöscht. Dies kann nicht rückgängig gemacht werden."
       source: 'Quelle:'
       total_hours: Gesamtstunden
       avg_dwell: Durchschnittlicher Aufenthaltszeitraum
@@ -1554,7 +1560,9 @@ de:
         background_jobs_dashboard: Hintergrundaufgaben-Übersicht
         this_will_open_the_background_jobs_dashboard_in_a_new: Dies öffnet die Hintergrundaufgaben-Übersicht in einem neuen Tab.
         visits_suggestions: Aufenthaltsvorschläge
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Aktiviere oder deaktiviere Aufenthaltsvorschläge. Es handelt sich um eine Hintergrundaufgabe, die täglich um Mitternacht läuft. Deaktivieren kann sinnvoll sein, wenn du keine Aufenthaltsvorschläge erhalten möchtest oder wenn du die Dawarich iOS-App verwendest, die ihre eigenen Aufenthaltsvorschläge hat.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Aufenthaltsvorschläge werden automatisch kurz nach dem Eingang neuer Punkte erstellt und jede Nacht erneut geprüft. Durch Deaktivieren wird die gesamte automatische Erkennung von Aufenthalten gestoppt, auch nach Importen. Die Dawarich iOS-App hat eigene Aufenthaltsvorschläge.
+        enabled: Aktiviert
+        disabled: Deaktiviert
         background_jobs: Hintergrundaufgaben
         start_job: Aufgabe starten
         are_you_sure: Bist du sicher?
@@ -4186,8 +4194,11 @@ de:
       speed: "%{speed} km/h"
       no_data: Keine Daten
     places:
+      move_pin: "Ortsmarkierung verschieben"
+      resize_radius: "Besuchsradius ändern"
       create_new: Neuer Ort erstellen
       edit: Ort bearbeiten
+      open: Öffnen
       confirm_delete: Möchtest du diesen Ort wirklich löschen?
       search_placeholder: Suche nach einem Ort…
       confirm_move_visit: Dieser Ort ist ~%{distance} m vom Aufenthalt entfernt. Den Aufenthalt hier verschieben?

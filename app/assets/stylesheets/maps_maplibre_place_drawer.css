@@ -1,34 +1,10 @@
-/* Place Drawer — right-edge slide-in panel on the map.
-   Introduced in Task 6 of the Unified Timeline plan. Split out from
-   maps_maplibre_timeline_feed.css to keep each stylesheet under 500 lines.
-   Toggle open/closed by adding/removing `.place-drawer--open`. */
-
 .place-drawer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: 100%;
-  width: 380px;
-  max-width: 90vw;
+  min-width: 0;
+  padding: 1.25rem;
   background: oklch(var(--b1));
-  border-left: 1px solid oklch(var(--bc) / 0.1);
-  z-index: 1000;
-  overflow-y: auto;
-  transform: translateX(100%);
-  transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-}
-
-.place-drawer--open {
-  transform: translateX(0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .place-drawer {
-    transition-duration: 50ms;
-  }
 }
 
 .place-page turbo-frame {
@@ -51,9 +27,11 @@
   display: flex;
   gap: 0.75rem;
   align-items: flex-start;
+  flex-wrap: wrap;
 }
 
 .place-drawer__titles {
+  flex: 1;
   min-width: 0;
 }
 
@@ -76,7 +54,7 @@
 
 .place-drawer__stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
   gap: 0.5rem;
 }
 
@@ -92,7 +70,6 @@
   font-weight: 600;
 }
 
-.place-drawer__tag-list,
 .place-drawer__actions {
   display: flex;
   flex-wrap: wrap;
@@ -102,8 +79,12 @@
 
 .place-drawer__tag-chip {
   padding: 0.125rem 0.625rem;
+  height: auto;
+  white-space: normal;
+  max-width: 100%;
   border-radius: 9999px;
-  background: oklch(var(--b3));
+  color: var(--tag-color);
+  overflow-wrap: anywhere;
   font-size: 0.875rem;
 }
 
@@ -126,18 +107,12 @@
   text-underline-offset: 2px;
 }
 
-.place-drawer__notes form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.place-drawer__notes-label,
 .place-drawer__visits-heading {
   font-weight: 600;
 }
 
 .place-drawer__notes-input {
+  overflow-wrap: anywhere;
   width: 100%;
   padding: 0.5rem 0.75rem;
   border: 1px solid oklch(var(--bc) / 0.2);
@@ -179,4 +154,97 @@
 .place-drawer__action--delete {
   color: oklch(var(--er));
   border-color: oklch(var(--er) / 0.4);
+}
+
+.place-drawer__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.place-drawer form,
+.place-drawer input,
+.place-drawer select,
+.place-drawer fieldset {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.place-drawer .btn {
+  height: auto;
+  padding-block: 0.4rem;
+}
+
+.place-panel {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 400px;
+  max-width: 100%;
+  z-index: 1200;
+  background: oklch(var(--b1));
+  box-shadow: -4px 0 20px #0003;
+  overflow-y: auto;
+}
+
+.place-panel[hidden] {
+  display: none;
+}
+
+.place-panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+}
+
+.place-edit-marker {
+  width: 44px;
+  height: 44px;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: #2563eb;
+  color: white;
+  font-size: 24px;
+  cursor: grab;
+  touch-action: none;
+  box-shadow: 0 2px 6px #0006;
+}
+
+@media (max-width: 767px) {
+  .place-panel {
+    inset: auto 0 0;
+    width: 100%;
+    max-height: 65%;
+    border-radius: 1rem 1rem 0 0;
+  }
+
+  .place-panel--editing {
+    max-height: 210px;
+  }
+  .place-panel--editing .place-drawer {
+    padding: 0.5rem 1rem;
+    gap: 0.5rem;
+  }
+  .place-panel--editing .place-drawer__header {
+    display: none;
+  }
+}
+
+.place-tag-options input:checked + .place-drawer__tag-chip {
+  background: var(--tag-color);
+  color: white;
+}
+.place-drawer__stat-label {
+  hyphens: auto;
+  hyphenate-limit-chars: 9 4 4;
+}
+.place-panel--editing .place-drawer__editor,
+.place-panel--editing .place-drawer__stats,
+.place-panel--editing .place-drawer__geofence,
+.place-panel--editing .place-drawer__visits,
+.place-panel--editing .place-drawer__actions {
+  display: none;
 }

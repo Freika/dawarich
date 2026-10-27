@@ -144,6 +144,14 @@ RSpec.describe VisitSuggestingJob, type: :job do
       expect { Visits::RealtimeDebouncer.new(user.id).trigger }
         .to have_enqueued_job(VisitSuggestingJob).with(hash_including(user_id: user.id))
     end
+
+    it 'keeps a pending realtime run debounced when asked not to release the key' do
+      Visits::RealtimeDebouncer.new(user.id).trigger
+
+      described_class.perform_now(user_id: user.id, start_at: start_at, end_at: end_at, release_debounce: false)
+
+      expect { Visits::RealtimeDebouncer.new(user.id).trigger }.not_to have_enqueued_job(VisitSuggestingJob)
+    end
   end
 
   describe 'queue name' do

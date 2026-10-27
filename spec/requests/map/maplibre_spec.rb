@@ -7,6 +7,24 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
   before { sign_in user }
 
+  it 'renders a closable Place panel and its lazy drawer frame' do
+    get map_v2_path
+
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('[data-controller="place-panel"]')).to be_present
+    expect(document.at_css('turbo-frame#place-drawer')).to be_present
+    expect(document.at_css('[data-action="place-panel#close"]')).to be_present
+  end
+
+  it 'lets Turbo own the persistent creation form submit state' do
+    get map_v2_path
+
+    document = Nokogiri::HTML(response.body)
+    submit = document.at_css('[data-place-creation-target="submitButton"]')
+    expect(submit['data-turbo-submits-with']).to be_present
+    expect(submit['data-disable-with']).to be_nil
+  end
+
   describe 'privacy zones' do
     def fingerprint_value
       map = Nokogiri::HTML(response.body).at_css('[data-controller~="maps--maplibre"]')

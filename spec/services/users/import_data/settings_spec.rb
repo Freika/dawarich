@@ -8,6 +8,14 @@ RSpec.describe Users::ImportData::Settings, type: :service do
   let(:service) { described_class.new(user, settings_data) }
 
   describe '#call' do
+    it 'preserves imported JSON boolean opt-ins when read back' do
+      [false, true].each do |enabled|
+        expect(described_class.new(user, { 'visits_suggestions_enabled' => enabled }).call).to be(true)
+        expect(user.reload.settings['visits_suggestions_enabled']).to be(enabled)
+        expect(user.safe_settings.visits_suggestions_enabled?).to be(enabled)
+      end
+    end
+
     context 'with valid settings data' do
       it 'merges imported settings with existing settings' do
         expect { service.call }.to change { user.reload.settings }.to(

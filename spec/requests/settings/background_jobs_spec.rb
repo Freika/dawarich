@@ -21,6 +21,55 @@ RSpec.describe '/settings/background_jobs', type: :request do
 
       before { sign_in user }
 
+      it 'stores JSON booleans as strings and leaves the opt-in unchanged on a blank PATCH' do
+        [[true, true], [false, false], [nil, false], ['', false]].each do |value, expected|
+          patch settings_background_jobs_url, params: { settings: { visits_suggestions_enabled: value } }, as: :json
+
+          expect(response).to redirect_to(settings_background_jobs_url)
+          expect(user.reload.settings['visits_suggestions_enabled']).to eq(expected.to_s)
+          expect(user.safe_settings.visits_suggestions_enabled?).to be(expected)
+        end
+      end
+
+      it 'shows the current visit suggestion state and PATCHes the opposite action in every locale' do
+        labels = {
+          'en' => %w[Enabled Disabled Disable Enable],
+          'de' => %w[Aktiviert Deaktiviert Deaktivieren Aktivieren],
+          'es' => %w[Habilitadas Deshabilitadas Deshabilitar Habilitar],
+          'fr' => %w[Activées Désactivées Désactiver Activer],
+          'ca' => %w[Activats Desactivats Desactiva Activa],
+          'pl' => %w[Włączone Wyłączone Wyłącz Włącz],
+          'zh' => %w[已启用 已禁用 禁用 启用]
+        }
+
+        labels.each do |locale, (on, off, disable, enable)|
+          [true, false].each do |enabled|
+            user.update!(settings: { 'locale' => locale, 'visits_suggestions_enabled' => enabled })
+            get settings_background_jobs_url
+
+            expect(response).to be_successful
+            expect(response.body).not_to include('translation missing:')
+            card = Nokogiri::HTML(response.body).at_css('[data-testid="visits-suggestions-card"]')
+            expect(card).to be_present
+            if locale == 'en'
+              expect(card.text).to include('shortly after new points arrive', 're-checked every night',
+                                           'Disabling them stops all automatic visit detection')
+            end
+            expect(card.at_css('[role="status"]').text.strip).to eq(enabled ? on : off)
+            link = card.at_css('a[data-turbo-method="patch"]')
+            expect(link.text.strip).to eq(enabled ? disable : enable)
+            query = Rack::Utils.parse_nested_query(URI.parse(link['href']).query)
+            expect(query.dig('settings', 'visits_suggestions_enabled')).to eq((!enabled).to_s)
+
+            patch link['href']
+
+            expect(response).to redirect_to(settings_background_jobs_url)
+            expect(user.reload.settings['visits_suggestions_enabled']).to eq((!enabled).to_s)
+            expect(user.safe_settings.visits_suggestions_enabled?).to be(!enabled)
+          end
+        end
+      end
+
       context 'when user is not an admin' do
         it 'renders a successful response' do
           get settings_background_jobs_url

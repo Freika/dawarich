@@ -7,8 +7,8 @@ class VisitSuggestingJob < ApplicationJob
   sidekiq_options retry: false
 
   # Passing timespan of more than 3 years somehow results in duplicated Places
-  def perform(user_id:, start_at:, end_at:)
-    release_debounce_key(user_id)
+  def perform(user_id:, start_at:, end_at:, release_debounce: true)
+    release_debounce_key(user_id) if release_debounce
 
     user = find_user_or_skip(user_id) || return
 
