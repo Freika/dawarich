@@ -20,6 +20,7 @@ async function buildController(initialize) {
     const MapInitializer = globalThis.__webglTestMapInitializer
     const loadLastView = () => null
     const saveView = () => {}
+    const syncSidebarLayout = () => {}
     export default class {
       ${initializeMapSource}
     }

@@ -28,6 +28,13 @@
     margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+:is(
+  html[aria-busy="true"] #maps-maplibre-container,
+  #maps-maplibre-container:not([data-sidebar-layout-ready])
+) > :is(.maps-maplibre-container, .map-button-cluster, .replay-panel) {
+  transition: none;
+}
+
 .maps-maplibre-container.panel-open {
   margin-left: 480px;
   width: calc(100% - 480px) !important;
@@ -443,6 +450,9 @@
 }
 
 @media (max-width: 1280px) {
+  .maps-maplibre-container.panel-open ~ .map-button-cluster {
+    left: 432px;
+  }
   .maps-maplibre-container.panel-timeline-expanded ~ .map-button-cluster {
     left: 632px;
   }
