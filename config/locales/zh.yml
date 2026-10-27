@@ -4202,6 +4202,7 @@ zh:
     places:
       create_new: 创建新地点
       edit: 编辑地点
+      open: 打开
       confirm_delete: 您确定要删除此地点吗？
       search_placeholder: 搜索地点…
       confirm_move_visit: 该地点距离到访记录位置约 %{distance} 米。要将到访记录移到这里吗？

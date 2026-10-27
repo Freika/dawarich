@@ -4134,6 +4134,7 @@ es:
     places:
       create_new: Crear nuevo lugar
       edit: Editar lugar
+      open: Abrir
       confirm_delete: "¿Seguro que quieres eliminar este lugar?"
       search_placeholder: Buscar un lugar…
       confirm_move_visit: "Este lugar está a unos %{distance} m del lugar visitado. ¿Mover la visita aquí?"

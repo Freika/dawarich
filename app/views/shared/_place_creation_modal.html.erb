@@ -62,6 +62,7 @@
               <span class="label-text font-semibold"><%= t('.tags') %></span>
             </label>
             <div class="flex flex-wrap gap-2" data-place-creation-target="tagCheckboxes">
+              <%= hidden_field_tag "place[tag_ids][]", "" %>
               <% current_user.tags.ordered.each do |tag| %>
                 <label class="cursor-pointer">
                   <input type="checkbox" name="place[tag_ids][]" value="<%= tag.id %>" class="checkbox checkbox-sm hidden peer">

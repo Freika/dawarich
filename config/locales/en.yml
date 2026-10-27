@@ -4128,6 +4128,7 @@ en:
     places:
       create_new: Create New Place
       edit: Edit Place
+      open: Open
       confirm_delete: Are you sure you want to delete this place?
       search_placeholder: Search for a place…
       confirm_move_visit: This place is ~%{distance} m from the visit. Move the visit here?

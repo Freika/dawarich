@@ -201,6 +201,28 @@ RSpec.describe '/places', type: :request do
         expect_flash_stream('Place updated successfully!')
       end
 
+      it 'clears the last tag when the map modal submits with every tag unchecked' do
+        place.tags << create(:tag, user:)
+        get map_v2_url
+        document = Nokogiri::HTML(response.body)
+        hidden = document.at_css('input[type="hidden"][name="place[tag_ids][]"]')
+        submitted_tags = hidden ? [hidden['value']] : nil
+        attributes = { name: place.name }
+        attributes[:tag_ids] = submitted_tags if submitted_tags
+
+        patch place_url(place), params: { place: attributes }, as: :turbo_stream
+
+        expect(response).to have_http_status(:ok)
+        expect(place.reload.tags).to be_empty
+
+        post places_url,
+             params: { place: { name: 'Untagged Cafe', latitude: 52.52, longitude: 13.405, tag_ids: submitted_tags } },
+             as: :turbo_stream
+
+        expect(response).to have_http_status(:ok)
+        expect(user.places.find_by!(name: 'Untagged Cafe').tags).to be_empty
+      end
+
       it 'includes updated flag in response' do
         patch place_url(place), params: { place: { name: 'Updated' } }, as: :turbo_stream
 

@@ -4282,6 +4282,7 @@ pl:
     places:
       create_new: Utwórz nowe miejsce
       edit: Edytuj miejsce
+      open: Otwórz
       confirm_delete: Czy na pewno chcesz usunąć to miejsce?
       search_placeholder: Szukaj miejsca…
       confirm_move_visit: To miejsce jest ~%{distance} m od wizyty. Przenieść wizytę tutaj?

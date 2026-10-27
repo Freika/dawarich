@@ -1,5 +1,6 @@
 import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
+import { buildPlaceInfo } from "maps_maplibre/components/place_info"
 import { Toast } from "maps_maplibre/components/toast"
 import { PointDragGesture } from "maps_maplibre/editing/point_drag_gesture"
 import {
@@ -280,39 +281,8 @@ export class EventHandlers {
    * Handle place click
    */
   handlePlaceClick(e) {
-    const feature = e.features[0]
-    const properties = feature.properties
-
-    const content = `
-      <div class="space-y-2">
-        ${properties.tag ? `<div class="badge badge-sm badge-primary">${escapeHtml(properties.tag)}</div>` : ""}
-        ${properties.description ? `<div>${escapeHtml(properties.description)}</div>` : ""}
-        ${properties.visitRadius ? `<div><span class="font-semibold">${translate("map_info.visit_radius")}:</span> ${Math.round(properties.visitRadius)}m</div>` : ""}
-        ${
-          properties.nameLocked
-            ? `<div class="text-xs opacity-70" data-testid="place-name-lock">${translate("map_info.place_name_locked")}</div>`
-            : ""
-        }
-      </div>
-    `
-
-    const actions = properties.id
-      ? [
-          {
-            type: "button",
-            handler: "handleEdit",
-            id: properties.id,
-            entityType: "place",
-            label: translate("messages.edit"),
-          },
-        ]
-      : []
-
-    this.controller.showInfo(
-      escapeHtml(properties.name) || translate("map_info.place"),
-      content,
-      actions,
-    )
+    const { title, content, actions } = buildPlaceInfo(e.features[0].properties)
+    this.controller.showInfo(title, content, actions)
   }
 
   /**

@@ -176,7 +176,7 @@ status: :see_other
 
   def tag_ids
     ids = params.dig(:place, :tag_ids)
-    Array(ids).compact
+    Array(ids).compact_blank
   end
 
   def merge_candidates_for(place)
@@ -199,8 +199,7 @@ status: :see_other
   end
 
   def set_tags
-    tag_ids_param = Array(params.dig(:place, :tag_ids)).compact
-    tags = current_user.tags.where(id: tag_ids_param)
+    tags = current_user.tags.where(id: tag_ids)
     @place.tags = tags
   end
 

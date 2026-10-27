@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { formatNumber, formatTime, translate } from "i18n"
+import { deletePlace } from "maps_maplibre/components/place_actions"
 import { Toast } from "maps_maplibre/components/toast"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
@@ -1661,6 +1662,8 @@ export default class extends Controller {
       case "point":
         this.deletePoint(id)
         break
+      case "place":
+        return deletePlace(this, id)
       default:
         console.warn("[Maps V2] Unknown entity type for delete:", entityType)
     }

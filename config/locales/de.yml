@@ -4189,6 +4189,7 @@ de:
     places:
       create_new: Neuer Ort erstellen
       edit: Ort bearbeiten
+      open: Öffnen
       confirm_delete: Möchtest du diesen Ort wirklich löschen?
       search_placeholder: Suche nach einem Ort…
       confirm_move_visit: Dieser Ort ist ~%{distance} m vom Aufenthalt entfernt. Den Aufenthalt hier verschieben?

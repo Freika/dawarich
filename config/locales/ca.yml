@@ -4137,6 +4137,7 @@ ca:
     places:
       create_new: Crea un lloc nou
       edit: Edita el lloc
+      open: Obre
       confirm_delete: Estàs segur que vols suprimir aquest lloc?
       search_placeholder: Cerca un lloc…
       confirm_move_visit: "Aquest lloc és a ~%{distance} m de la visita. Vols moure la visita aquí?"
