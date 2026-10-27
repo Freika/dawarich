@@ -52,7 +52,8 @@ class Tracks::SpeedVectorTileQuery < Tracks::VectorTileQuery
         GROUP BY id, segment_speed
       ), projected AS MATERIALIZED (
         SELECT id, segment_speed,
-          ST_AsMVTGeom(ST_Transform(#{GreatCircleSql.densified('geom')}, 3857), ST_TileEnvelope(#{z}, #{x}, #{y}),
+          ST_AsMVTGeom(ST_Transform(#{GreatCircleSql.split_antimeridian(GreatCircleSql.densified('geom'))}, 3857),
+                       ST_TileEnvelope(#{z}, #{x}, #{y}),
                        #{EXTENT}, #{BUFFER}, true) AS geom
         FROM grouped_segments
       ), features AS (
