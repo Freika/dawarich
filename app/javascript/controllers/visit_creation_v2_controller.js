@@ -70,9 +70,6 @@ export default class extends Controller {
     this.addMarker(lat, lng)
   }
 
-  /**
-   * Open the modal for editing an existing visit
-   */
   openForEdit(visit) {
     this.editingVisitId = visit.id
 
@@ -84,10 +81,13 @@ export default class extends Controller {
       this.submitButtonTarget.textContent = translate("visits.update")
     }
 
-    // Fill form with visit data
+    const location = [visit.place, visit.area, visit.center, visit].find(
+      (candidate) =>
+        candidate?.latitude != null && candidate?.longitude != null,
+    )
     this.nameInputTarget.value = visit.name || ""
-    this.latitudeInputTarget.value = visit.latitude
-    this.longitudeInputTarget.value = visit.longitude
+    this.latitudeInputTarget.value = location?.latitude ?? ""
+    this.longitudeInputTarget.value = location?.longitude ?? ""
 
     // Convert timestamps to datetime-local format
     this.startTimeInputTarget.value = this.formatDateTime(
@@ -116,7 +116,7 @@ export default class extends Controller {
     }
 
     // Add marker to map
-    this.addMarker(visit.latitude, visit.longitude)
+    if (location) this.addMarker(location.latitude, location.longitude)
   }
 
   /**
