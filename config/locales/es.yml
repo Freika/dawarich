@@ -1417,7 +1417,7 @@ es:
       bulk_success: "Lugares actualizados: %{count}"
       invalid_selection: "Selecciona lugares y una etiqueta válida o un lugar seleccionado que conservar."
       merge_confirmation: "¿Fusionar estos lugares con el lugar elegido? Sus visitas, etiquetas y notas se trasladarán a él. Esta acción no se puede deshacer."
-      delete_confirmation: "¿Eliminar estos lugares? Lugares: %{places}. Visitas activas que perderán su lugar: %{visits}; conservarán sus descripciones de ubicación. Lugares con geocercas: %{geofences}; se eliminarán sus eventos y suscripciones a webhooks. Lugares con etiquetas de privacidad: %{privacy}; los datos cercanos pueden hacerse visibles, incluso en enlaces compartidos. Esta acción no se puede deshacer."
+      delete_confirmation: "¿Eliminar estos lugares? Lugares: %{places}. Visitas activas que perderán su lugar: %{visits}; conservarán sus descripciones de ubicación. Lugares con geocercas: %{geofences}; Los eventos de geocerca se conservan con el nombre del lugar; se eliminan las suscripciones a webhooks. Lugares con etiquetas de privacidad: %{privacy}; los datos cercanos pueden hacerse visibles, incluso en enlaces compartidos. Esta acción no se puede deshacer."
       sources:
         manual: "Manual"
         photon: "Detectado"
@@ -1428,7 +1428,7 @@ es:
     place_details: "Detalles del lugar"
     close_panel: "Cerrar detalles del lugar"
     drawer:
-      delete_consequences: "¿Eliminar este lugar?\nVisitas activas: %{visits}. Conservan su etiqueta de ubicación.\nEtiquetas de zonas de privacidad: %{privacy_tags}.\nWebhooks que perderán este lugar: %{webhooks}.\nSus eventos de geovalla se eliminarán. Esta acción no se puede deshacer."
+      delete_consequences: "¿Eliminar este lugar?\nVisitas activas: %{visits}. Conservan su etiqueta de ubicación.\nEtiquetas de zonas de privacidad: %{privacy_tags}.\nWebhooks que perderán este lugar: %{webhooks}.\nLos eventos de geocerca se conservan con el nombre del lugar. Esta acción no se puede deshacer."
       source: 'Fuente:'
       total_hours: horas totales
       avg_dwell: dwell promedio

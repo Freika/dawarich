@@ -20,6 +20,7 @@
           <td><%= t("places.management.sources.#{place.source}") %></td>
           <td>
             <div class="flex flex-wrap gap-1 min-w-32">
+              <% if place.archived? %><span class="badge badge-ghost h-auto py-1" data-testid="place-archived-badge"><%= t('places.archive.badge') %></span><% end %>
               <% if place.geofence? %><span class="badge badge-info h-auto py-1"><%= t('places.management.geofence') %></span><% end %>
               <% if privacy %><span class="badge badge-warning h-auto py-1"><%= t('places.management.privacy') %></span><% end %>
             </div>

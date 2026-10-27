@@ -1382,7 +1382,7 @@ zh:
       bulk_success: "已更新地点：%{count}"
       invalid_selection: "请选择地点，以及有效标签或所选地点中要保留的地点。"
       merge_confirmation: "将这些地点合并到所选地点吗？访问、标签和笔记将转移到该地点。此操作无法撤销。"
-      delete_confirmation: "删除这些地点吗？地点数量：%{places}。将失去关联地点的有效访问次数：%{visits}；位置描述将被保留。设有地理围栏的地点数量：%{geofences}；相关事件和Webhook订阅将被删除。带有隐私区域标签的地点数量：%{privacy}；附近数据可能变为可见，共享链接中也一样。此操作无法撤销。"
+      delete_confirmation: "删除这些地点吗？地点数量：%{places}。将失去关联地点的有效访问次数：%{visits}；位置描述将被保留。设有地理围栏的地点数量：%{geofences}；地理围栏事件将保留，并附有地点名称；Webhook订阅将被移除。带有隐私区域标签的地点数量：%{privacy}；附近数据可能变为可见，共享链接中也一样。此操作无法撤销。"
       sources:
         manual: "手动创建"
         photon: "自动发现"
@@ -1393,7 +1393,7 @@ zh:
     place_details: "地点详情"
     close_panel: "关闭地点详情"
     drawer:
-      delete_consequences: "删除此地点？\n活跃访问：%{visits}。它们将保留位置标签。\n隐私区域标签：%{privacy_tags}。\n将移除此地点的 webhook：%{webhooks}。\n此地点的地理围栏事件将被删除。此操作无法撤销。"
+      delete_consequences: "删除此地点？\n活跃访问：%{visits}。它们将保留位置标签。\n隐私区域标签：%{privacy_tags}。\n将移除此地点的 webhook：%{webhooks}。\n地理围栏事件将保留，并附有地点名称。此操作无法撤销。"
       source: 来源：
       total_hours: 总小时数
       avg_dwell: 平均停留时间

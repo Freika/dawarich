@@ -2109,7 +2109,7 @@ fr:
       bulk_success: "Lieux mis à jour : %{count}"
       invalid_selection: "Sélectionnez des lieux et une étiquette valide ou un lieu sélectionné à conserver."
       merge_confirmation: "Fusionner ces lieux avec le lieu choisi ? Leurs visites, étiquettes et notes y seront transférées. Cette action est irréversible."
-      delete_confirmation: "Supprimer ces lieux ? Lieux : %{places}. Visites actives qui perdront leur lieu : %{visits} ; leurs libellés de localisation seront conservés. Lieux avec géorepérage : %{geofences} ; leurs événements et abonnements aux webhooks seront supprimés. Lieux portant des étiquettes de confidentialité : %{privacy} ; les données à proximité pourraient devenir visibles, y compris dans les liens partagés. Cette action est irréversible."
+      delete_confirmation: "Supprimer ces lieux ? Lieux : %{places}. Visites actives qui perdront leur lieu : %{visits} ; leurs libellés de localisation seront conservés. Lieux avec géorepérage : %{geofences} ; Les événements de géorepérage sont conservés avec le nom du lieu ; les abonnements aux webhooks sont supprimés. Lieux portant des étiquettes de confidentialité : %{privacy} ; les données à proximité pourraient devenir visibles, y compris dans les liens partagés. Cette action est irréversible."
       sources:
         manual: "Manuel"
         photon: "Détecté"
@@ -2120,7 +2120,7 @@ fr:
     place_details: "Détails du lieu"
     close_panel: "Fermer les détails du lieu"
     drawer:
-      delete_consequences: "Supprimer ce lieu ?\nVisites actives : %{visits}. Elles conservent leur libellé de localisation.\nÉtiquettes de zones de confidentialité : %{privacy_tags}.\nWebhooks dont ce lieu sera retiré : %{webhooks}.\nSes événements de géorepérage seront supprimés. Cette action est irréversible."
+      delete_consequences: "Supprimer ce lieu ?\nVisites actives : %{visits}. Elles conservent leur libellé de localisation.\nÉtiquettes de zones de confidentialité : %{privacy_tags}.\nWebhooks dont ce lieu sera retiré : %{webhooks}.\nLes événements de géorepérage sont conservés avec le nom du lieu. Cette action est irréversible."
       source: 'Source :'
       total_hours: heures totales
       avg_dwell: durée moyenne de présence

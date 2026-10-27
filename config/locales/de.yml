@@ -1417,7 +1417,7 @@ de:
       bulk_success: "Aktualisierte Orte: %{count}"
       invalid_selection: "Wähle Orte und einen gültigen Tag oder einen der ausgewählten Orte zum Behalten."
       merge_confirmation: "Diese Orte mit dem gewählten Ort zusammenführen? Besuche, Tags und Notizen werden dorthin verschoben. Dies kann nicht rückgängig gemacht werden."
-      delete_confirmation: "Diese Orte löschen? Orte: %{places}. Aktive Besuche, die ihren Ort verlieren: %{visits}; ihre Standortbezeichnungen bleiben erhalten. Orte mit Geofences: %{geofences}; ihre Ereignisse und Webhook-Abonnements werden gelöscht. Orte mit Privatsphäre-Tags: %{privacy}; Daten in der Nähe können sichtbar werden, auch in geteilten Links. Dies kann nicht rückgängig gemacht werden."
+      delete_confirmation: "Diese Orte löschen? Orte: %{places}. Aktive Besuche, die ihren Ort verlieren: %{visits}; ihre Standortbezeichnungen bleiben erhalten. Orte mit Geofences: %{geofences}; Geofencing-Ereignisse bleiben mit dem Ortsnamen erhalten; Webhook-Abonnements werden entfernt. Orte mit Privatsphäre-Tags: %{privacy}; Daten in der Nähe können sichtbar werden, auch in geteilten Links. Dies kann nicht rückgängig gemacht werden."
       sources:
         manual: "Manuell"
         photon: "Automatisch erkannt"
@@ -1428,7 +1428,7 @@ de:
     place_details: "Ortsdetails"
     close_panel: "Ortsdetails schließen"
     drawer:
-      delete_consequences: "Diesen Ort löschen?\nAktive Besuche: %{visits}. Ihre Ortsbezeichnung bleibt erhalten.\nTags mit Privatsphärezone: %{privacy_tags}.\nWebhooks, aus denen dieser Ort entfernt wird: %{webhooks}.\nSeine Geofencing-Ereignisse werden gelöscht. Dies kann nicht rückgängig gemacht werden."
+      delete_consequences: "Diesen Ort löschen?\nAktive Besuche: %{visits}. Ihre Ortsbezeichnung bleibt erhalten.\nTags mit Privatsphärezone: %{privacy_tags}.\nWebhooks, aus denen dieser Ort entfernt wird: %{webhooks}.\nGeofencing-Ereignisse bleiben mit dem Ortsnamen erhalten. Dies kann nicht rückgängig gemacht werden."
       source: 'Quelle:'
       total_hours: Gesamtstunden
       avg_dwell: Durchschnittlicher Aufenthaltszeitraum

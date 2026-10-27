@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Archive and unarchive places from their editor or in bulk. Filter the Places list by Archived, and use Show archived places on the map to display them muted. Archiving keeps visit history and privacy masking while pausing new visits and geofencing.
+
 - Places can be archived and restored through the API. Archived places keep their visit history and privacy zones, stop receiving new suggested visits, and pause geofence notifications. They are hidden from the map by default and available with the archived places API filter.
 - Tag edit pages list the places with that tag, with links and visit counts.
 - Search and filter Places by name, tags and confirmation status, and sort them by name, last visit or active visit count. The list shows tags, visit history, sources, geofences and privacy zones, with a shortcut to create a place on the map.
@@ -17,6 +19,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Move places and resize their Visit Radius on the map by dragging the pin and radius handle.
 
 ### Changed
+
+- Place deletion confirmations now explain that geofence events are kept with the place name.
 
 - Deleting a privacy-zone tag now shows how many places it protects and warns that data becomes visible again on the map, in trips, in stats and on active shared links. Place counts on the Tags page now link to the filtered Places list.
 - Geofence events stay in the log and API after their place is deleted, showing its last name.

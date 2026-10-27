@@ -8,6 +8,11 @@
     <%= form.button t('places.management.add_tag'), name: 'operation', value: 'add_tag', class: 'btn btn-sm h-auto py-2', disabled: true, data: { places_selection_target: 'button' } %>
     <%= form.button t('places.management.remove_tag'), name: 'operation', value: 'remove_tag', class: 'btn btn-sm h-auto py-2', disabled: true, data: { places_selection_target: 'button' } %>
   <% end %>
+  <%= form_with url: bulk_update_places_path(request.query_parameters), method: :patch, class: 'flex flex-wrap gap-2 min-w-0', data: { places_selection_target: 'form' } do |form| %>
+    <% %w[archive unarchive].each do |operation| %>
+      <%= form.button t("places.archive.#{operation}"), name: 'operation', value: operation, class: 'btn btn-sm h-auto py-2', disabled: true, data: { places_selection_target: 'button' } %>
+    <% end %>
+  <% end %>
   <%= form_with url: bulk_merge_places_path(request.query_parameters), method: :post, class: 'flex flex-wrap gap-2 items-end min-w-0 max-w-full', data: { places_selection_target: 'form' } do |form| %>
     <div class="min-w-0 max-w-full">
       <%= form.label :survivor_id, t('places.management.survivor'), class: 'label' %>

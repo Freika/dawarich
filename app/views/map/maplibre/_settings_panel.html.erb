@@ -155,6 +155,11 @@
           <div class="layer-options__group space-y-2" data-maps--maplibre-target="placesFilters" style="display: none;">
             <span class="layer-options__label"><%= t('.places') %></span>
             <label class="label cursor-pointer justify-start gap-2 py-0">
+              <input type="checkbox" class="toggle toggle-sm shrink-0" data-testid="show-archived-places"
+                     data-action="change->maps--maplibre#toggleArchivedPlaces">
+              <span class="label-text text-sm min-w-0"><%= t('places.archive.show_on_map') %></span>
+            </label>
+            <label class="label cursor-pointer justify-start gap-2 py-0">
               <input type="checkbox"
                      class="toggle toggle-sm"
                      data-maps--maplibre-target="placeBoundariesToggle"

@@ -54,6 +54,11 @@ export class PlacesManager extends PlacesTagFilters {
     }
   }
 
+  toggleArchivedPlaces(event) {
+    this.settings.showArchivedPlaces = event.target.checked
+    return this.loadPlacesWithTags(this.getSelectedPlaceTags())
+  }
+
   togglePlaceBoundaries(event) {
     const enabled = event.target.checked
     SettingsManager.updateSetting("placeBoundariesEnabled", enabled)
@@ -141,9 +146,10 @@ export class PlacesManager extends PlacesTagFilters {
    * the backend. Replaces by id when the place is already present (edit).
    */
   _refreshSavedPlace(placesLayer, place, removedId) {
-    const replacement = place
-      ? this.dataLoader.placesToGeoJSON([place]).features
-      : []
+    const replacement =
+      place && (!place.archived || this.settings.showArchivedPlaces)
+        ? this.dataLoader.placesToGeoJSON([place]).features
+        : []
     const existing = placesLayer.data?.features || []
     const features = [
       ...existing.filter(
@@ -160,7 +166,10 @@ export class PlacesManager extends PlacesTagFilters {
    */
   async _reloadPlaces(placesLayer) {
     const selectedTags = this.getSelectedPlaceTags()
-    const places = await this.api.fetchPlaces({ tag_ids: selectedTags })
+    const places = await this.api.fetchPlaces({
+      tag_ids: selectedTags,
+      ...(this.settings.showArchivedPlaces ? { includeArchived: true } : {}),
+    })
     placesLayer.update(this.dataLoader.placesToGeoJSON(places))
   }
 

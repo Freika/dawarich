@@ -344,7 +344,12 @@ export class ApiClient {
    * @param {Object} options - { tag_ids, page, per_page }
    * @returns {Promise<Object>} { places, currentPage, totalPages }
    */
-  async fetchPlacesPage({ tag_ids = [], page = 1, per_page = 500 } = {}) {
+  async fetchPlacesPage({
+    tag_ids = [],
+    page = 1,
+    per_page = 500,
+    filter,
+  } = {}) {
     const params = new URLSearchParams({
       page: page.toString(),
       per_page: per_page.toString(),
@@ -357,6 +362,7 @@ export class ApiClient {
     }
 
     maskPrivacyZones(params)
+    if (filter) params.set("filter", filter)
     const url = `${this.baseURL}/places?${params.toString()}`
 
     const response = await fetch(url, {
@@ -381,7 +387,20 @@ export class ApiClient {
    * @param {Object} options - { tag_ids, onProgress }
    * @returns {Promise<Array>} All places
    */
-  async fetchPlaces({ tag_ids = [], onProgress = null } = {}) {
+  async fetchPlaces({
+    tag_ids = [],
+    onProgress = null,
+    filter,
+    includeArchived = false,
+  } = {}) {
+    if (includeArchived) {
+      const [active, archived] = await Promise.all([
+        this.fetchPlaces({ tag_ids, onProgress }),
+        this.fetchPlaces({ tag_ids, filter: "archived" }),
+      ])
+      return [...active, ...archived]
+    }
+
     const allPlaces = []
     let page = 1
     let totalPages = 1
@@ -391,7 +410,7 @@ export class ApiClient {
         places,
         currentPage,
         totalPages: total,
-      } = await this.fetchPlacesPage({ tag_ids, page, per_page: 500 })
+      } = await this.fetchPlacesPage({ tag_ids, page, per_page: 500, filter })
 
       allPlaces.push(...places)
       totalPages = total

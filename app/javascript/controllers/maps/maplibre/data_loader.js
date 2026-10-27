@@ -93,11 +93,14 @@ export class DataLoader {
       ? Array.isArray(savedPlacesTagFilters) &&
         savedPlacesTagFilters.length === 0
         ? Promise.resolve([])
-        : this.api.fetchPlaces(
-            Array.isArray(savedPlacesTagFilters)
+        : this.api.fetchPlaces({
+            ...(Array.isArray(savedPlacesTagFilters)
               ? { tag_ids: savedPlacesTagFilters }
-              : {},
-          )
+              : {}),
+            ...(this.settings.showArchivedPlaces
+              ? { includeArchived: true }
+              : {}),
+          })
       : Promise.resolve([])
     const placesPromise = placesRequest
       .then((result) => {
@@ -255,9 +258,6 @@ export class DataLoader {
     }
   }
 
-  /**
-   * Convert places to GeoJSON
-   */
   placesToGeoJSON(places) {
     return {
       type: "FeatureCollection",
@@ -273,6 +273,7 @@ export class DataLoader {
           visitRadius,
           nameLocked: Boolean(place.name_locked),
           geofence: place.geofence === true,
+          archived: place.archived === true,
           tags: JSON.stringify(place.tags || []),
           color: place.tags?.[0]?.color || "#6366f1",
         }

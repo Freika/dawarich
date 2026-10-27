@@ -131,13 +131,21 @@ export class PlacesTagFilters {
    * Load places filtered by tags
    */
   async loadPlacesWithTags(tagIds = []) {
+    this.placesRequest = (this.placesRequest || 0) + 1
+    const request = this.placesRequest
     try {
       let places = []
 
       if (tagIds.length > 0) {
-        places = await this.api.fetchPlaces({ tag_ids: tagIds })
+        places = await this.api.fetchPlaces({
+          tag_ids: tagIds,
+          ...(this.settings.showArchivedPlaces
+            ? { includeArchived: true }
+            : {}),
+        })
       }
 
+      if (request !== this.placesRequest) return
       const placesGeoJSON = this.dataLoader.placesToGeoJSON(places)
 
       const placesLayer = this.layerManager.getLayer("places")
