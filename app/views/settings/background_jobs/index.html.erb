@@ -69,12 +69,16 @@
       </div>
     <% end %>
 
-    <div class="card bg-base-300 w-96 shadow-xl m-5">
+    <% visits_suggestions_enabled = current_user.safe_settings.visits_suggestions_enabled? %>
+    <div class="card bg-base-300 w-96 shadow-xl m-5" data-testid="visits-suggestions-card">
       <div class="card-body">
         <h2 class="card-title"><%= t('.visits_suggestions') %></h2>
+        <span role="status" class="badge <%= visits_suggestions_enabled ? 'badge-success' : 'badge-neutral' %>">
+          <%= t(visits_suggestions_enabled ? '.enabled' : '.disabled') %>
+        </span>
         <p><%= t('.enable_or_disable_visits_suggestions_it_s_a_background_task') %></p>
         <div class="card-actions justify-end">
-          <% if current_user.safe_settings.visits_suggestions_enabled? %>
+          <% if visits_suggestions_enabled %>
             <%= link_to t('.disable'), settings_background_jobs_path(settings: { 'visits_suggestions_enabled' => 'false' }), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :patch }, class: 'btn btn-error' %>
           <% else %>
             <%= link_to t('.enable'), settings_background_jobs_path(settings: { 'visits_suggestions_enabled' => 'true' }), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :patch }, class: 'btn btn-success' %>

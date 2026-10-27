@@ -10,12 +10,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Search and filter Places by name, tags and confirmation status, and sort them by name, last visit or active visit count. The list shows tags, visit history, sources, geofences and privacy zones, with a shortcut to create a place on the map.
 - Select places to add or remove tags, delete them with a summary of the consequences, or merge them into a chosen place. Possible duplicates groups places with overlapping visit radii for review and merging.
+- Create tags with a name and emoji directly in the place editor or creation modal. Place details explain which tags hide the place and their Privacy Radius.
+- Set geofencing while creating a place, see its last ten enter and leave events in the editor, and open its filtered event log. Geofence boundaries are highlighted on the map.
+- Move places and resize their Visit Radius on the map by dragging the pin and radius handle.
 
 ### Changed
+
+- Places now have one editor on the map and on their own page for names, tags, notes, and geofencing. Delete confirmation lists affected visits, privacy tags, webhooks, and geofence events.
 
 - Creating or joining a family turns on the Family Members layer on the map, so the family shows up without looking for the toggle. Leaving the family turns the layer off again.
 
 ### Fixed
+
+- Saving a place updates its map marker without reloading the entire places list, while keeping places inside privacy zones hidden.
+
+- Saving a place inside a privacy zone no longer reveals its marker on the map when the zone itself has not changed.
+
+- Creating a place no longer leaves the creation form disabled when you open it again.
+
+- Unchecking every tag when editing a place on the map now removes all its tags.
+- Places on the map now offer Open and Delete alongside Edit. Deleting a place removes it from the map immediately and refreshes privacy zones.
+- Place details on the map now show every tag, with its icon and colour.
 
 - Signing in after opening a family invitation now joins the family right away, with any sign-in option: password, two-factor, Google, OpenID Connect or Apple. Before, the invitation was lost when you signed in through the regular login link or with Apple, and even the sign-in link on the invitation page only brought you back to the invitation, where you had to press Accept again.
 - Pressing Search in the date bar while Search, Layers, Tools, Settings or Timeline was open used to centre the map across the whole screen. The map now stays beside the open sidebar, centred in the visible area. (#3919)
@@ -27,6 +42,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Enrich photos in the map's Tools panel opens with the dates the map shows, also right after a hard reload of the page (Ctrl+F5) or after you pick another day on the timeline. Dates you typed but have not scanned yet stay until you press Search, Today or the day arrows on the map. Before, both date fields could stay empty until you pressed Search. (#3920)
 - Tracks that cross the 180° meridian, such as trans-Pacific flights, are drawn across the date line again instead of as a line around the whole world. This applies to the Tracks layer, its speed colouring and trip routes. (#3921)
 - On iPhone and iPad, GPX, KML, KMZ, TCX, FIT and OwnTracks .rec files can be picked on the Imports page again, in Safari and in the installed web app. The file picker greyed them out. It now lists every file, and a file of an unsupported type is still rejected with a message after you pick it. (#3617)
+- Visit suggestions now run on instances without a configured geocoder. Visits without location details or a matching place display as "Unknown Location". (#3637)
+- Visit suggestions now also cover points that a phone uploads hours or days after recording them, for example after being offline. Points recorded up to 30 days ago are checked shortly after they arrive. (#3637)
+- Visit suggestions are no longer switched off when the setting was saved as a JSON boolean through the API or a settings import. Settings > Background Jobs now shows whether visit suggestions are on, and explains that they run shortly after new points arrive and again every night. (#3637)
 
 ## [1.18.1] - 2026-10-26, Berlin
 

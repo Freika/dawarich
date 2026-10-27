@@ -130,3 +130,32 @@ test("Place labels are drawn once per Place, at its center", () => {
     JSON.parse(JSON.stringify([center])),
   )
 })
+
+function evaluate(expression, properties) {
+  if (!Array.isArray(expression)) return expression
+  const [operator, ...args] = expression
+  const value = (arg) => evaluate(arg, properties)
+  if (operator === "get") return properties[args[0]]
+  if (operator === "==") return value(args[0]) === value(args[1])
+  if (operator === "case")
+    return value(args[0]) ? value(args[1]) : value(args[2])
+  if (operator === "coalesce")
+    return args.map(value).find((item) => item != null)
+  throw new Error(`Unexpected expression: ${operator}`)
+}
+
+test("geofences have a highlighted boundary distinct from ordinary Visit Radius outlines", () => {
+  const configs = new context.PlacesLayer(recordingMap()).getLayerConfigs()
+  const outline = configs.find(({ id }) => id === "places-radius-outline")
+  const ordinary = { geofence: false, color: "#123456" }
+  const geofence = { ...ordinary, geofence: true }
+  assert.notEqual(
+    evaluate(outline.paint["line-color"], ordinary),
+    evaluate(outline.paint["line-color"], geofence),
+  )
+  assert.ok(
+    evaluate(outline.paint["line-width"], geofence) >
+      evaluate(outline.paint["line-width"], ordinary),
+  )
+  assert.equal(evaluate(outline.paint["line-color"], ordinary), "#123456")
+})

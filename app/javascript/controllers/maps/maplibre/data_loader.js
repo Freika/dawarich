@@ -272,9 +272,8 @@ export class DataLoader {
           note: place.note,
           visitRadius,
           nameLocked: Boolean(place.name_locked),
-          // Stringify tags for MapLibre GL JS compatibility
+          geofence: place.geofence === true,
           tags: JSON.stringify(place.tags || []),
-          // Use first tag's color if available
           color: place.tags?.[0]?.color || "#6366f1",
         }
 

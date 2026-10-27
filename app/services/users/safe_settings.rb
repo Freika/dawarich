@@ -289,7 +289,7 @@ class Users::SafeSettings
   end
 
   def visits_suggestions_enabled?
-    settings['visits_suggestions_enabled'] == 'true'
+    ActiveModel::Type::Boolean.new.cast(settings['visits_suggestions_enabled']) == true
   end
 
   def speed_color_scale

@@ -7,14 +7,27 @@ import vm from "node:vm"
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(currentDir, "../..")
+const filterSource = (
+  await readFile(
+    path.join(
+      repoRoot,
+      "app/javascript/controllers/maps/maplibre/places_tag_filters.js",
+    ),
+    "utf8",
+  )
+)
+  .replace(/^import .*$/gm, "")
+  .replace("export class PlacesTagFilters", "class PlacesTagFilters")
 const sourcePath = path.join(
   repoRoot,
   "app/javascript/controllers/maps/maplibre/places_manager.js",
 )
-const source = (await readFile(sourcePath, "utf8"))
-  .replace(/^import .*$/gm, "")
-  .replace("export class PlacesManager", "class PlacesManager")
-  .concat("\nglobalThis.PlacesManager = PlacesManager\n")
+const source =
+  filterSource +
+  (await readFile(sourcePath, "utf8"))
+    .replace(/^import .*$/gm, "")
+    .replace("export class PlacesManager", "class PlacesManager")
+    .concat("\nglobalThis.PlacesManager = PlacesManager\n")
 
 const context = { console, SettingsManager: { updateSetting() {} } }
 vm.createContext(context)
