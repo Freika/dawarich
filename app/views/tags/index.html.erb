@@ -1,4 +1,4 @@
-<div class="w-full my-5">
+<div class="w-full min-w-0 my-5">
   <%= render layout: 'shared/page_header', locals: { title: t('.tags') } do %>
     <%= link_to new_tag_path, class: "btn btn-primary btn-sm" do %>
       <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('tags.index.new_tag') %>
@@ -22,7 +22,7 @@
             <tr class="hover:bg-base-200/50 transition-colors">
               <td class="px-4 py-3 text-2xl"><%= tag.icon %></td>
               <td class="px-4 py-3">
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                   <span class="font-medium">#<%= tag.name %></span>
                   <% if tag.privacy_zone? %>
                     <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-error/10 text-error"
@@ -42,20 +42,19 @@
                   <span class="text-base-content/30 text-sm">--</span>
                 <% end %>
               </td>
-              <td class="px-4 py-3 text-right tabular-nums"><%= tag.places.size %></td>
+              <td class="px-4 py-3 text-right tabular-nums">
+                <%= link_to @place_counts.fetch(tag.id, 0), places_path(tag_ids: [tag.id]), class: "link link-primary",
+                    aria: { label: "#{t('.places')}: #{@place_counts.fetch(tag.id, 0)}" } %>
+              </td>
               <td class="px-4 py-3 text-right">
                 <div class="flex gap-1 justify-end">
                   <div class="tooltip" data-tip="<%= t('.edit_tag') %>">
-                    <%= link_to edit_tag_path(tag), class: "btn btn-ghost btn-xs" do %>
+                    <%= link_to edit_tag_path(tag), class: "btn btn-ghost btn-xs", aria: { label: t('.edit_tag') } do %>
                       <%= icon 'square-pen', class: 'w-4 h-4' %>
                     <% end %>
                   </div>
                   <div class="tooltip tooltip-left" data-tip="<%= t('.delete_tag') %>">
-                    <%= button_to tag_path(tag), method: :delete,
-                        data: { turbo_confirm: t('.are_you_sure'), turbo_method: :delete },
-                        class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
-                      <%= icon 'trash-2', class: 'w-4 h-4' %>
-                    <% end %>
+                    <%= render 'delete_button', tag: tag %>
                   </div>
                 </div>
               </td>

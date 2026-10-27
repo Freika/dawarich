@@ -2266,6 +2266,19 @@ en:
     show:
       statistics_for_year_year: Statistics for %{year} year
   tags:
+    confirm_delete:
+      title: "Delete privacy-zone tag"
+      covered_places: "This privacy zone covers %{count} of your places."
+      visibility: "Data around these places becomes visible again on the map, in trips and in stats."
+      shared_links:
+        one: "This also applies to your %{count} active shared link."
+        other: "This also applies to every active shared link you own (%{count})."
+    places:
+      title: "Places with this tag"
+      empty: "No places have this tag yet."
+      visits:
+        one: "%{count} visit"
+        other: "%{count} visits"
     form:
       prohibited_this_tag_from_being_saved: 'prohibited this tag from being saved:'
       click_to_select_an_emoji: Click to select an emoji
