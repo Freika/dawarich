@@ -411,6 +411,26 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
+  describe '#visits_suggestions_enabled?' do
+    it 'reads legacy strings, JSON booleans, missing and blank opt-ins consistently' do
+      cases = [
+        [{}, true],
+        [{ 'visits_suggestions_enabled' => 'true' }, true],
+        [{ 'visits_suggestions_enabled' => 'false' }, false],
+        [{ 'visits_suggestions_enabled' => true }, true],
+        [{ 'visits_suggestions_enabled' => false }, false],
+        [{ 'visits_suggestions_enabled' => nil }, true],
+        [{ 'visits_suggestions_enabled' => '' }, true]
+      ]
+
+      aggregate_failures do
+        cases.each do |settings, expected|
+          expect(described_class.new(settings).visits_suggestions_enabled?).to be(expected)
+        end
+      end
+    end
+  end
+
   describe '#distance_unit' do
     let(:safe_settings) { described_class.new(settings) }
 

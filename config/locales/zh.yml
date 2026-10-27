@@ -1521,9 +1521,9 @@ zh:
         background_jobs_dashboard: 后台任务仪表板
         this_will_open_the_background_jobs_dashboard_in_a_new: 这将在新选项卡中打开后台任务仪表板。
         visits_suggestions: 到访建议
-        enable_or_disable_visits_suggestions_it_s_a_background_task:
-          启用或禁用到访建议。这是每天午夜运行的后台任务。如果您不想收到到访建议，或者使用的是自带到访建议功能的 Dawarich iOS
-          应用，可以将其禁用。
+        enable_or_disable_visits_suggestions_it_s_a_background_task: 收到新轨迹点后，系统会很快自动生成到访建议，并在每晚重新检查。禁用到访建议将停止这两项后台任务。Dawarich iOS 应用有自己的到访建议功能。
+        enabled: 已启用
+        disabled: 已禁用
         background_jobs: 后台任务
         start_job: 启动任务
         are_you_sure: 您确定吗？

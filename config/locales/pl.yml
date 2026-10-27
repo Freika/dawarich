@@ -1564,7 +1564,9 @@ pl:
         background_jobs_dashboard: Panel zadań w tle
         this_will_open_the_background_jobs_dashboard_in_a_new: Otworzy panel zadań w tle w nowej karcie.
         visits_suggestions: Sugestie wizyt
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Włącz lub wyłącz sugestie wizyt. To zadanie w tle uruchamiane codziennie o północy. Wyłączenie może być przydatne, jeśli nie chcesz otrzymywać sugestii wizyt albo korzystasz z aplikacji Dawarich na iOS, która ma własny mechanizm sugestii.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Sugestie wizyt są generowane automatycznie wkrótce po otrzymaniu nowych punktów i ponownie sprawdzane każdej nocy. Wyłączenie sugestii zatrzymuje oba zadania w tle. Aplikacja Dawarich na iOS ma własne sugestie wizyt.
+        enabled: Włączone
+        disabled: Wyłączone
         background_jobs: Zadania w tle
         start_job: Uruchom zadanie
         are_you_sure: Czy na pewno chcesz kontynuować?

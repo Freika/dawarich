@@ -47,6 +47,8 @@ class Settings::BackgroundJobsController < ApplicationController
   private
 
   def settings_params
-    params.require(:settings).permit(:visits_suggestions_enabled)
+    params.require(:settings).permit(:visits_suggestions_enabled).transform_values do |value|
+      (ActiveModel::Type::Boolean.new.cast(value) != false).to_s
+    end
   end
 end

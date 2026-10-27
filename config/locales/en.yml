@@ -1529,7 +1529,9 @@ en:
         background_jobs_dashboard: Background Jobs Dashboard
         this_will_open_the_background_jobs_dashboard_in_a_new: This will open the background jobs dashboard in a new tab.
         visits_suggestions: Visits suggestions
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Enable or disable visits suggestions. It's a background task that runs every day at midnight. Disabling it might be useful if you don't want to receive visits suggestions or if you're using the Dawarich iOS app, which has its own visits suggestions.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Visits are suggested automatically shortly after new points arrive and re-checked every night. Disabling suggestions stops both background tasks. The Dawarich iOS app has its own visit suggestions.
+        enabled: Enabled
+        disabled: Disabled
         background_jobs: Background jobs
         start_job: Start Job
         are_you_sure: Are you sure?

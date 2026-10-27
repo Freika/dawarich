@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Enrich photos in the map's Tools panel opens with the dates the map shows, also right after a hard reload of the page (Ctrl+F5) or after you pick another day on the timeline. Dates you typed but have not scanned yet stay until you press Search, Today or the day arrows on the map. Before, both date fields could stay empty until you pressed Search. (#3920)
 - Tracks that cross the 180° meridian, such as trans-Pacific flights, are drawn across the date line again instead of as a line around the whole world. This applies to the Tracks layer, its speed colouring and trip routes. (#3921)
 - On iPhone and iPad, GPX, KML, KMZ, TCX, FIT and OwnTracks .rec files can be picked on the Imports page again, in Safari and in the installed web app. The file picker greyed them out. It now lists every file, and a file of an unsupported type is still rejected with a message after you pick it. (#3617)
+- Visit suggestions now run on instances without a configured geocoder. Visits without location details or a matching place display as "Unknown Location". (#3637)
+- Visit suggestions now also cover points that a phone uploads hours or days after recording them, for example after being offline. Points recorded up to 30 days ago are checked shortly after they arrive. (#3637)
+- Visit suggestions are no longer switched off when the setting was saved as a JSON boolean through the API or a settings import. Settings > Background Jobs now shows whether visit suggestions are on, and explains that they run shortly after new points arrive and again every night. (#3637)
 
 ## [1.18.1] - 2026-10-26, Berlin
 

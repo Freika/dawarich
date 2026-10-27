@@ -38,6 +38,14 @@ RSpec.describe Api::UserSerializer do
       )
     end
 
+    it 'serializes native boolean opt-ins as their actual boolean state' do
+      [false, true].each do |enabled|
+        user.update!(settings: { 'visits_suggestions_enabled' => enabled })
+
+        expect(described_class.new(user.reload).call[:user][:settings][:visits_suggestions_enabled]).to be(enabled)
+      end
+    end
+
     context 'with custom settings' do
       let(:custom_settings) do
         {
