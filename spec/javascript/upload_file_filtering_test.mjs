@@ -1,6 +1,9 @@
 import assert from "node:assert/strict"
+import { File } from "node:buffer"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+
+globalThis.File ??= File
 
 function moduleUrl(source) {
   return `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
