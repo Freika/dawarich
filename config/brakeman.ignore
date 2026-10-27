@@ -118,6 +118,29 @@
     {
       "warning_type": "SQL Injection",
       "warning_code": 0,
+      "fingerprint": "ddecb0eb85e08e390eb4a6a867a5598b3d2f8f03182ea1a6df1cd2a2afaaf4d0",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/visits/point_centers.rb",
+      "line": 31,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "scope.select(:visit_id).having(\"ST_Contains(ST_MakeEnvelope(?, ?, ?, ?, 4326), (#{GEOGRAPHY})::geometry)\", sw_lng, sw_lat, ne_lng, ne_lat).having(\"NOT #{privacy_zone_masker.within_sql(GEOGRAPHY)}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Visits::PointCenters",
+        "method": "within_bounds"
+      },
+      "user_input": "privacy_zone_masker.within_sql(GEOGRAPHY)",
+      "confidence": "Weak",
+      "cwe_id": [
+        89
+      ],
+      "note": "GEOGRAPHY is an internal constant; PrivacyZoneMasker#within_sql builds zone geometry from floats."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
       "fingerprint": "ea8bb9ab7999097d8c6b5379cd5b929d1a94b64fa411fb413db7f9e7fbc39715",
       "check_name": "SQL",
       "message": "Possible SQL injection",

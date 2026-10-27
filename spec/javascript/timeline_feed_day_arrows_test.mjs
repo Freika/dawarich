@@ -2,6 +2,13 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
+globalThis.CustomEvent ??= class CustomEvent extends Event {
+  constructor(type, options = {}) {
+    super(type, options)
+    this.detail = options.detail ?? null
+  }
+}
+
 const source = (
   await readFile(
     new URL(

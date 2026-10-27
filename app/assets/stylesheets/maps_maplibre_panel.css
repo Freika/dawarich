@@ -29,9 +29,10 @@
 }
 
 :is(
-  html[aria-busy="true"] #maps-maplibre-container,
-  #maps-maplibre-container:not([data-sidebar-layout-ready])
-) > :is(.maps-maplibre-container, .map-button-cluster, .replay-panel) {
+    html[aria-busy="true"] #maps-maplibre-container,
+    #maps-maplibre-container:not([data-sidebar-layout-ready])
+  )
+  > :is(.maps-maplibre-container, .map-button-cluster, .replay-panel) {
   transition: none;
 }
 
