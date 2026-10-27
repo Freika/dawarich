@@ -34,7 +34,7 @@ module Visits
     private
 
     def scope
-      @user.scoped_points.where(visit_id: @visit_ids).group(:visit_id)
+      @user.scoped_points.not_anomaly.where(visit_id: @visit_ids).group(:visit_id)
     end
   end
 end

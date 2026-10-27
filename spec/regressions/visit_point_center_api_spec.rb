@@ -165,6 +165,24 @@ RSpec.describe 'Visit map coordinates without an attached place', type: :request
     response.parsed_body.fetch('results').each { |result| expect_point_center(result.fetch('visit')) }
   end
 
+  it 'leaves anomaly points out of the center' do
+    create(:point, user: user, visit: visit, latitude: 40.0, longitude: 3.0, anomaly: true,
+                   timestamp: (day + 12.hours + 30.minutes).to_i)
+    get "/api/v1/visits/#{visit.id}", headers: headers
+    expect_point_center(response.parsed_body)
+  end
+
+  it 'aggregates point centers once per paginated bbox request' do
+    aggregates = 0
+    counter = ->(*, payload) { aggregates += 1 if payload[:sql].include?('AVG(ST_Y') }
+    params = time_params.merge(selection: 'true', sw_lat: 52, sw_lng: 13, ne_lat: 53, ne_lng: 14, page: 1)
+    ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
+      get '/api/v1/visits', params: params, headers: headers
+    end
+    expect(response.parsed_body.pluck('id')).to eq([visit.id])
+    expect(aggregates).to eq(2)
+  end
+
   context 'with a privacy zone covering only the computed center' do
     before do
       home = create(:place, user: user, latitude: 52.51, longitude: 13.41)

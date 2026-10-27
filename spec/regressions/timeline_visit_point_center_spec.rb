@@ -105,6 +105,13 @@ RSpec.describe 'Timeline coordinates for visits without a place', type: :request
     expect(row['data-visit-lng'].to_f).to eq(12)
   end
 
+  it 'keeps a point center for a suggested visit that also has suggestions' do
+    visit.update!(status: :suggested)
+    visit.suggested_places << create(:place, user: user, latitude: 51, longitude: 12)
+    entry = assembler.call.first[:entries].first
+    expect(entry[:center]).to match({ lat: be_within(1e-8).of(52.51), lng: be_within(1e-8).of(13.41) })
+  end
+
   it 'keeps overnight day slices when adding the point center' do
     visit.update!(started_at: day - 2.hours, ended_at: day + 13.hours, duration: 900)
     entry = assembler.call.first[:entries].first

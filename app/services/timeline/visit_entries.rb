@@ -102,7 +102,7 @@ module Timeline
     end
 
     def needs_point_center?(visit)
-      visit.place.nil? && visit.area.nil? && (!visit.suggested? || visit.suggested_places.empty?)
+      visit.place.nil? && visit.area.nil?
     end
 
     def point_center_for(visit)

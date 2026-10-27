@@ -33,6 +33,7 @@ module Visits
       unlocated = visits.where(place_id: nil, area_id: nil)
       centers = PointCenters.new(user, visit_ids: unlocated.select(:id), privacy_zone_masker: @privacy_zone_masker)
                             .within_bounds(sw_lng: sw_lng, sw_lat: sw_lat, ne_lng: ne_lng, ne_lat: ne_lat)
+                            .pluck(:visit_id)
       relation = visits.left_outer_joins(:place, :area)
                        .includes(:area, place: :legacy_area_place_mappings)
                        .references(:place, :area)
