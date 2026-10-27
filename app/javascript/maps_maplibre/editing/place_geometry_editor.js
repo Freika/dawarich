@@ -1,6 +1,7 @@
 import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
 import { PlaceCamera } from "maps_maplibre/editing/place_camera"
+import { PlaceEditVisibility } from "maps_maplibre/editing/place_edit_visibility"
 import {
   radiusCircle,
   radiusFromHandle,
@@ -11,11 +12,13 @@ export class PlaceGeometryEditor {
   constructor(map) {
     this.map = map
     this.camera = new PlaceCamera(map)
+    this.visibility = new PlaceEditVisibility(map)
   }
 
   start(place, maximum) {
     this.stop()
     this.place = { ...place }
+    this.visibility.hide(place.id)
     this.maximum = maximum
     const center = [place.longitude, place.latitude]
     this.map.addSource("place-edit-radius", {
@@ -119,6 +122,7 @@ export class PlaceGeometryEditor {
   }
 
   stop() {
+    this.visibility.restore()
     this.camera.cancel()
     this.pin?.remove()
     this.handle?.remove()

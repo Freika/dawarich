@@ -19,6 +19,18 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
     expect(document.at_css('#maps-maplibre-container > .place-panel')).to be_nil
   end
 
+  it 'keeps one panel header close control and only Back inside the place editor' do
+    get map_v2_path
+
+    document = Nokogiri::HTML(response.body)
+    panel = document.at_css('#map-settings-panel')
+    expect(panel.css('.panel-header button').size).to eq(1)
+    toolbar = panel.at_css('.place-panel__toolbar')
+    expect(toolbar.css('button').size).to eq(1)
+    expect(toolbar.at_css('button').text.strip).to eq(I18n.t('map.maplibre.settings_panel.back'))
+    expect(toolbar.at_css('button')['data-action']).to eq('place-panel#close')
+  end
+
   it 'lets Turbo own the persistent creation form submit state' do
     get map_v2_path
 

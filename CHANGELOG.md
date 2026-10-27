@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- The Place details panel now has one close control in its header and no longer autofocuses Back. Moving a place or resizing its Visit Radius hides the old map geometry until Save or Cancel.
 - Opening a place from a link now centres the map on its Visit Radius. The selected place stays highlighted with its boundary even when the Places layer is off, without changing saved layer settings.
 
 ## [1.18.2] - 2026-10-27, Berlin

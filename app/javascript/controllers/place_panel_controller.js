@@ -58,7 +58,6 @@ export default class extends Controller {
     this.navigation.titleTarget.textContent =
       this.element.getAttribute("aria-label")
     this.frameTarget.src = `/places/${this.state.id}?map_panel=1`
-    this.closeTarget.focus()
   }
 
   loaded() {
