@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - GPS noise filtering can hide inaccurate points again. Since 1.11.0 points with an accuracy of a few hundred metres stayed on the map, and phone tracking showed them as zig-zag lines across the route. Turn on "Hide inaccurate points" in the map settings under GPS Noise Filtering, choose a threshold between 50 and 1000 m, then press "Apply Settings" and after that "Re-evaluate past data" to hide such points in your history too. It is off by default, including for accounts that saved a threshold before 1.11.0, because Google Timeline imports report 1–4 km for points that still sit on the road. (#3300)
+- Tracks that cross the 180° meridian, such as trans-Pacific flights, are drawn across the date line again instead of as a line around the whole world. This applies to the Tracks layer, its speed colouring and trip routes. (#3921)
 
 ## [1.18.1] - 2026-10-26, Berlin
 

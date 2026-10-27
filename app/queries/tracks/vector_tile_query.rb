@@ -96,10 +96,6 @@ class Tracks::VectorTileQuery
     Track.sanitize_sql_array(["ST_AsMVT(features.*, ?, #{EXTENT}, 'geom')", LAYER_NAME])
   end
 
-  # No decimation and no wrapped antimeridian branch: tracks are thousands per
-  # account, and a seam-crossing linestring renders exactly as classic GeoJSON
-  # does today (a world-spanning planar line) — translating the whole line
-  # would move half its vertices wrongly.
   def with_clauses
     return clipped_with_clauses if @clip_points_scope
 
@@ -230,7 +226,7 @@ class Tracks::VectorTileQuery
   end
 
   def simplified_geom(geometry)
-    geom = "ST_Transform(#{GreatCircleSql.densified(geometry)}, 3857)"
+    geom = "ST_Transform(#{GreatCircleSql.split_antimeridian(GreatCircleSql.densified(geometry))}, 3857)"
     return geom if z >= SIMPLIFY_SKIP_ZOOM
 
     "ST_Simplify(#{geom}, #{simplify_tolerance})"

@@ -15,6 +15,27 @@ module GreatCircleSql
       "THEN ST_Segmentize((#{path})::geography, #{STEP_METERS})::geometry ELSE #{path} END"
   end
 
+  def split_antimeridian(path)
+    <<~SQL.squish
+      (SELECT CASE
+        WHEN ST_XMax(seam_path) - ST_XMin(seam_path) <= 180 THEN seam_path
+        WHEN EXISTS (
+          SELECT 1 FROM ST_DumpSegments(seam_path) AS segment
+          WHERE ST_XMax(segment.geom) - ST_XMin(segment.geom) > 180
+        ) THEN (
+          SELECT ST_Multi(ST_LineMerge(ST_CollectionExtract(ST_Collect(
+            CASE WHEN ST_XMax(segment.geom) - ST_XMin(segment.geom) > 180
+              THEN ST_WrapX(ST_ShiftLongitude(segment.geom), 180, -360)
+              ELSE segment.geom
+            END
+          ), 2)))
+          FROM ST_DumpSegments(seam_path) AS segment
+        )
+        ELSE seam_path
+      END FROM (SELECT #{path} AS seam_path OFFSET 0) AS antimeridian)
+    SQL
+  end
+
   # An arc bows away from its chord, so a tile can hold the arc without the
   # chord. Rows where `arc` holds are also tested against the densified path
   # within the tile's longitude band. Reading any dense path's extent costs a
