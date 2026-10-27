@@ -152,3 +152,39 @@ test("a merge announces the removed duplicate then the updated survivor once", (
     ],
   )
 })
+
+test("a hidden save relays removal and the attached visit once without coordinates", () => {
+  const { controller, dispatched } = setup()
+  Object.assign(document.getElementById("place-creation-data").dataset, {
+    removedId: "42",
+    created: "true",
+    visitId: "18",
+  })
+  controller.dispatchSavedPlace()
+  controller.dispatchSavedPlace()
+  assert.deepEqual(
+    dispatched.map((event) => [event.type, event.detail]),
+    [
+      ["place:created", { removedId: 42 }],
+      ["visit-place:changed", { visitId: 18 }],
+    ],
+  )
+})
+
+test("a hidden merge removes the duplicate then relays the survivor removal once", () => {
+  const { controller, dispatched } = setup()
+  Object.assign(document.getElementById("place-creation-data").dataset, {
+    removedId: "42",
+    duplicateId: "7",
+    updated: "true",
+  })
+  controller.dispatchSavedPlace()
+  controller.dispatchSavedPlace()
+  assert.deepEqual(
+    dispatched.map((event) => [event.type, event.detail]),
+    [
+      ["place:removed", { id: 7 }],
+      ["place:updated", { removedId: 42 }],
+    ],
+  )
+})

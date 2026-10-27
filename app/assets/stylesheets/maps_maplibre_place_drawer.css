@@ -233,7 +233,7 @@
   }
 }
 
-.place-drawer input:checked + .place-drawer__tag-chip {
+.place-tag-options input:checked + .place-drawer__tag-chip {
   background: var(--tag-color);
   color: white;
 }

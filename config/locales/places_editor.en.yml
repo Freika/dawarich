@@ -1,0 +1,15 @@
+en:
+  places:
+    inline_tags:
+      new_tag: "New tag"
+      name: "Tag name"
+      emoji: "Emoji (optional)"
+      create: "Create tag"
+    drawer:
+      hidden_by_tag: "Hidden by tag %{name}, %{radius} m"
+      geofence_events: "Recent geofence events"
+      no_geofence_events: "No enter or leave events yet."
+      geofence_disabled: "Turn on enter and leave notifications to record events for this place."
+  javascript:
+    map_info:
+      geofence_boundary: "Geofence boundary"

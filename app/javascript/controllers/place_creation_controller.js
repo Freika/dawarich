@@ -11,7 +11,6 @@ export default class extends Controller {
     "visitRadiusInput",
     "noteInput",
     "nearbyFrame",
-    "tagCheckboxes",
     "modalTitle",
     "submitButton",
     "visitIdInput",
@@ -26,7 +25,6 @@ export default class extends Controller {
     for (const [type, listener] of Object.entries(this.documentListeners)) {
       document.addEventListener(type, listener)
     }
-    this.setupTagListeners()
   }
 
   disconnect() {
@@ -35,6 +33,8 @@ export default class extends Controller {
     }
   }
 
+  // The saved place reaches the page in a turbo stream that Turbo renders
+  // after turbo:submit-end, so the map hears about it once that stream lands.
   relaySavedPlace(event) {
     if (event.target?.target !== "place-creation-data") return
 
@@ -56,21 +56,24 @@ export default class extends Controller {
       delete dataEl.dataset.deletedId
       return
     }
-    if (dataEl?.dataset.removedId) {
+    const removedId = dataEl?.dataset.removedId
+    const duplicateId = dataEl?.dataset.duplicateId
+    if (duplicateId || (removedId && dataEl?.dataset.place)) {
       document.dispatchEvent(
         new CustomEvent("place:removed", {
-          detail: { id: Number(dataEl.dataset.removedId) },
+          detail: { id: Number(duplicateId || removedId) },
         }),
       )
-      delete dataEl.dataset.removedId
     }
-    if (!dataEl?.dataset.place) return
+    if (!dataEl?.dataset.place && !removedId) return
 
-    const place = JSON.parse(dataEl.dataset.place)
+    const detail = dataEl.dataset.place
+      ? { place: JSON.parse(dataEl.dataset.place) }
+      : { removedId: Number(removedId) }
     const eventName =
       dataEl.dataset.updated === "true" ? "place:updated" : "place:created"
 
-    document.dispatchEvent(new CustomEvent(eventName, { detail: { place } }))
+    document.dispatchEvent(new CustomEvent(eventName, { detail }))
     if (dataEl.dataset.visitId) {
       document.dispatchEvent(
         new CustomEvent("visit-place:changed", {
@@ -83,29 +86,8 @@ export default class extends Controller {
     delete dataEl.dataset.created
     delete dataEl.dataset.updated
     delete dataEl.dataset.visitId
-  }
-
-  setupTagListeners() {
-    if (!this.hasTagCheckboxesTarget) return
-
-    this.tagCheckboxesTarget.addEventListener("change", (e) => {
-      if (e.target.type !== "checkbox" || e.target.name !== "place[tag_ids][]")
-        return
-      const badge = e.target.nextElementSibling
-      const color = badge.dataset.color
-
-      if (e.target.checked) {
-        badge.classList.remove("badge-outline")
-        badge.style.backgroundColor = color
-        badge.style.borderColor = color
-        badge.style.color = "white"
-      } else {
-        badge.classList.add("badge-outline")
-        badge.style.backgroundColor = "transparent"
-        badge.style.borderColor = color
-        badge.style.color = color
-      }
-    })
+    delete dataEl.dataset.removedId
+    delete dataEl.dataset.duplicateId
   }
 
   open(latitude, longitude, options = {}) {
@@ -115,6 +97,7 @@ export default class extends Controller {
     this.nameInputTarget.value = options.name || ""
     this.visitRadiusInputTarget.value = 50
 
+    // Set form for creation mode
     this.formTarget.action = "/places"
     this.formTarget.method = "post"
 
@@ -126,6 +109,7 @@ export default class extends Controller {
     this.modalTarget.classList.add("modal-open")
     this.nameInputTarget.focus()
 
+    // Load nearby places via Turbo Frame
     this.loadNearbyFrame(latitude, longitude)
   }
 
@@ -133,6 +117,7 @@ export default class extends Controller {
     this.modalTarget.classList.remove("modal-open")
     this.formTarget.reset()
 
+    // Reset nearby frame
     if (this.hasNearbyFrameTarget) {
       this.nearbyFrameTarget.innerHTML = `<p class="text-sm text-gray-500">${translate("places.open_for_suggestions")}</p>`
     }
