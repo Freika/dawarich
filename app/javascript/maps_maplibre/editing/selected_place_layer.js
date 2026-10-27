@@ -57,7 +57,7 @@ export class SelectedPlaceLayer {
 
   clear() {
     this.place = null
-    for (const id of this.ids.toReversed()) {
+    for (const id of [...this.ids].reverse()) {
       if (this.map.getLayer(id)) this.map.removeLayer(id)
     }
     if (this.map.getSource("selected-place"))
