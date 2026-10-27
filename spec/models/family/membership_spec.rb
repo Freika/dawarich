@@ -108,4 +108,39 @@ RSpec.describe Family::Membership, type: :model do
       expect(member.reload.plan).to eq('pro')
     end
   end
+
+  describe 'Family Members map layer' do
+    it 'turns the layer on next to the default layers for a user who never chose any' do
+      user = create(:user)
+
+      create(:family_membership, user: user)
+
+      expect(user.reload.settings['enabled_map_layers']).to eq(['Tracks', 'Heatmap', 'Family Members'])
+    end
+
+    it 'keeps the layers the user already chose' do
+      user = create(:user, settings: { 'enabled_map_layers' => ['Points'] })
+
+      create(:family_membership, user: user)
+
+      expect(user.reload.settings['enabled_map_layers']).to eq(['Points', 'Family Members'])
+    end
+
+    it 'is turned off again when the user leaves the family' do
+      user = create(:user, settings: { 'enabled_map_layers' => ['Points'] })
+      membership = create(:family_membership, user: user)
+
+      membership.destroy!
+
+      expect(user.reload.settings['enabled_map_layers']).to eq(['Points'])
+    end
+
+    it 'is turned on for the creator of a new family' do
+      creator = create(:user, plan: :family)
+
+      Families::Create.new(user: creator, name: 'Home').call
+
+      expect(creator.reload.settings['enabled_map_layers']).to include('Family Members')
+    end
+  end
 end
