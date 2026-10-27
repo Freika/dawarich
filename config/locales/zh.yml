@@ -2246,6 +2246,19 @@ zh:
     show:
       statistics_for_year_year: "%{year} 年的统计数据"
   tags:
+    confirm_delete:
+      title: "删除隐私区域标签"
+      covered_places: "此隐私区域覆盖你的 %{count} 个地点。"
+      visibility: "这些地点周围的数据将重新显示在地图、行程和统计中。"
+      shared_links:
+        one: "这也适用于你的 %{count} 个有效分享链接。"
+        other: "这也适用于你的所有有效分享链接（%{count} 个）。"
+    places:
+      title: "带有此标签的地点"
+      empty: "还没有地点使用此标签。"
+      visits:
+        one: "%{count} 次访问"
+        other: "%{count} 次访问"
     form:
       prohibited_this_tag_from_being_saved: 导致此标签无法保存：
       click_to_select_an_emoji: 点击以选择表情符号

@@ -2225,6 +2225,19 @@ de:
     show:
       statistics_for_year_year: Statistiken für %{year} Jahr
   tags:
+    confirm_delete:
+      title: "Tag für Privatsphäre-Zone löschen"
+      covered_places: "Diese Privatsphäre-Zone schützt %{count} deiner Orte."
+      visibility: "Daten rund um diese Orte werden auf der Karte, in Reisen und in Statistiken wieder sichtbar."
+      shared_links:
+        one: "Das gilt auch für deinen %{count} aktiven Freigabelink."
+        other: "Das gilt auch für alle deine aktiven Freigabelinks (%{count})."
+    places:
+      title: "Orte mit diesem Tag"
+      empty: "Noch keine Orte mit diesem Tag."
+      visits:
+        one: "%{count} Besuch"
+        other: "%{count} Besuche"
     form:
       prohibited_this_tag_from_being_saved: 'Dieses Tag wurde verweigert, gespeichert zu werden:'
       click_to_select_an_emoji: Klicke, um ein Emoji auszuwählen

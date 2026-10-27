@@ -5,7 +5,9 @@ class TagsController < ApplicationController
   before_action :set_tag, only: %i[edit update destroy]
 
   def index
-    @tags = policy_scope(Tag).ordered.includes(:places)
+    @tags = policy_scope(Tag).ordered
+    @place_counts = current_user.places.joins(:taggings).where(taggings: { tag_id: @tags.select(:id) })
+                                .group('taggings.tag_id').count
 
     authorize Tag
   end
@@ -30,6 +32,14 @@ class TagsController < ApplicationController
 
   def edit
     authorize @tag
+
+    if params[:confirm_delete] == '1' && @tag.privacy_zone?
+      @place_count = tag_places.count
+      @shared_link_count = current_user.shared_links.active.count
+      render :confirm_delete
+    else
+      load_tag_places
+    end
   end
 
   def update
@@ -39,6 +49,7 @@ class TagsController < ApplicationController
       @tag.adopt!
       redirect_to tags_path, notice: I18n.t('controllers.tags.tag_was_successfully_updated')
     else
+      load_tag_places
       render :edit, status: :unprocessable_entity
     end
   end
@@ -52,6 +63,15 @@ class TagsController < ApplicationController
   end
 
   private
+
+  def tag_places
+    @tag.places.where(user: current_user).order(:name)
+  end
+
+  def load_tag_places
+    @places = tag_places
+    @visit_counts = current_user.visits.active.where(place: @places).group(:place_id).count
+  end
 
   def set_tag
     @tag = current_user.tags.find(params[:id])

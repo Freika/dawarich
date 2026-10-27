@@ -2220,6 +2220,19 @@ ca:
     show:
       statistics_for_year_year: Estadístiques de l'any %{year}
   tags:
+    confirm_delete:
+      title: "Suprimeix l’etiqueta de zona de privadesa"
+      covered_places: "Aquesta zona de privadesa protegeix %{count} dels teus llocs."
+      visibility: "Les dades al voltant d’aquests llocs tornen a ser visibles al mapa, als viatges i a les estadístiques."
+      shared_links:
+        one: "Això també s’aplica al teu %{count} enllaç compartit actiu."
+        other: "Això també s’aplica a tots els teus enllaços compartits actius (%{count})."
+    places:
+      title: "Llocs amb aquesta etiqueta"
+      empty: "Encara no hi ha llocs amb aquesta etiqueta."
+      visits:
+        one: "%{count} visita"
+        other: "%{count} visites"
     form:
       prohibited_this_tag_from_being_saved: 'ha impedit que es desés aquesta etiqueta:'
       click_to_select_an_emoji: Fes clic per seleccionar un emoji
