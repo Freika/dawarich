@@ -1550,7 +1550,7 @@ ca:
         background_jobs_dashboard: Tauler de tasques en segon pla
         this_will_open_the_background_jobs_dashboard_in_a_new: Això obrirà el tauler de tasques en segon pla en una pestanya nova.
         visits_suggestions: Suggeriments de visites
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Els suggeriments de visites es generen automàticament poc després de rebre punts nous i es tornen a comprovar cada nit. Desactivar els suggeriments atura totes dues tasques en segon pla. L'app de Dawarich per a iOS té els seus propis suggeriments de visites.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Els suggeriments de visites es generen automàticament poc després de rebre punts nous i es tornen a comprovar cada nit. Desactivar-los atura tota la detecció automàtica de visites, també després de les importacions. L'app de Dawarich per a iOS té els seus propis suggeriments de visites.
         enabled: Activats
         disabled: Desactivats
         background_jobs: Tasques en segon pla

@@ -419,8 +419,8 @@ RSpec.describe Users::SafeSettings do
         [{ 'visits_suggestions_enabled' => 'false' }, false],
         [{ 'visits_suggestions_enabled' => true }, true],
         [{ 'visits_suggestions_enabled' => false }, false],
-        [{ 'visits_suggestions_enabled' => nil }, true],
-        [{ 'visits_suggestions_enabled' => '' }, true]
+        [{ 'visits_suggestions_enabled' => nil }, false],
+        [{ 'visits_suggestions_enabled' => '' }, false]
       ]
 
       aggregate_failures do

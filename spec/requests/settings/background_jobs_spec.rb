@@ -21,8 +21,8 @@ RSpec.describe '/settings/background_jobs', type: :request do
 
       before { sign_in user }
 
-      it 'normalizes JSON boolean and blank opt-ins on PATCH' do
-        [[false, false], [true, true], [nil, true], ['', true]].each do |value, expected|
+      it 'stores JSON booleans as strings and leaves the opt-in unchanged on a blank PATCH' do
+        [[true, true], [false, false], [nil, false], ['', false]].each do |value, expected|
           patch settings_background_jobs_url, params: { settings: { visits_suggestions_enabled: value } }, as: :json
 
           expect(response).to redirect_to(settings_background_jobs_url)
@@ -53,7 +53,7 @@ RSpec.describe '/settings/background_jobs', type: :request do
             expect(card).to be_present
             if locale == 'en'
               expect(card.text).to include('shortly after new points arrive', 're-checked every night',
-                                           'Disabling suggestions stops both background tasks')
+                                           'Disabling them stops all automatic visit detection')
             end
             expect(card.at_css('[role="status"]').text.strip).to eq(enabled ? on : off)
             link = card.at_css('a[data-turbo-method="patch"]')
