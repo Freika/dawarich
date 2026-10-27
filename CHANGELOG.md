@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- Place map editing now shares the panel width rules without an `!important` override, preserving the compact phone layout.
 - Place details and editing now use the left map panel, with Back returning to the previous tab. On phones, map editing keeps the pin and radius handle beside a compact left panel.
 
 ### Fixed

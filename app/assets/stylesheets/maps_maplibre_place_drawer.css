@@ -208,8 +208,8 @@
   }
 
   .maps-maplibre-container.panel-open:has(~ .place-geometry-editing) {
+    --map-panel-offset: 160px;
     margin-left: 160px;
-    width: calc(100% - 160px) !important;
   }
 
   .place-geometry-editing .panel-body,
