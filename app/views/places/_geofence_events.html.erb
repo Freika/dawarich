@@ -1,13 +1,16 @@
-<section class="place-drawer__visits">
-  <h3 class="place-drawer__visits-heading"><%= t('places.drawer.geofence_events') %></h3>
+<div class="mt-4">
+  <h4 class="text-sm font-semibold"><%= t('places.drawer.geofence_events') %></h4>
   <% events = place_geofence_events(place) %>
   <% if events.any? %>
     <ul class="place-drawer__visits-list">
       <% events.each do |event| %>
-        <li class="place-drawer__visit" data-testid="place-geofence-event">
-          <span class="place-drawer__visit-name"><%= t("settings.geofencing.show.event_types.#{event.event_type}") %></span>
-          <time class="place-drawer__visit-time" datetime="<%= event.occurred_at.iso8601 %>"><%= l(event.occurred_at.in_time_zone, format: :long) %></time>
-          <span class="place-drawer__visit-duration"><%= t("settings.geofencing.show.sources.#{event.source}") %></span>
+        <li class="place-drawer__event" data-testid="place-geofence-event">
+          <span class="flex items-center gap-2 font-medium">
+            <%= icon(event.event_type_enter? ? 'log-in' : 'log-out', class: 'w-4 h-4 shrink-0 text-base-content/75') %>
+            <%= t("settings.geofencing.show.event_types.#{event.event_type}") %>
+          </span>
+          <time class="place-drawer__event-time tabular-nums" datetime="<%= event.occurred_at.iso8601 %>"><%= l(event.occurred_at.in_time_zone.to_date, format: :short) %> · <%= l(event.occurred_at.in_time_zone, format: :hour_minute) %></time>
+          <span class="place-drawer__event-source"><%= t("settings.geofencing.show.sources.#{event.source}") %></span>
         </li>
       <% end %>
     </ul>
@@ -15,5 +18,5 @@
     <p class="place-drawer__visits-empty"><%= t(place.geofence? ? 'places.drawer.no_geofence_events' : 'places.drawer.geofence_disabled') %></p>
   <% end %>
   <%= link_to t('places.drawer.geofence_link'), settings_geofencing_path(place_id: place.id),
-              class: 'link text-sm', data: { turbo_frame: '_top', testid: 'place-geofence-events-link' } %>
-</section>
+              class: 'link link-hover text-sm inline-block mt-3', data: { turbo_frame: '_top', testid: 'place-geofence-events-link' } %>
+</div>

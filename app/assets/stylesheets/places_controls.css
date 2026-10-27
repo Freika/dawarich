@@ -1,0 +1,145 @@
+.place-drawer__tag-chip {
+  padding: 0.25rem 0.625rem;
+  height: auto;
+  min-height: 1.75rem;
+  white-space: normal;
+  max-width: 100%;
+  border-radius: 9999px;
+  border: 1px dashed oklch(var(--bc) / 0.3);
+  background: transparent;
+  color: oklch(var(--bc));
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.place-tag-options input:checked + .place-drawer__tag-chip {
+  background: var(--tag-color);
+  border: 1px solid var(--tag-color);
+  color: var(--tag-text);
+}
+
+.place-tag-options label:hover .place-drawer__tag-chip {
+  border-style: solid;
+  outline: 1px solid oklch(var(--bc) / 0.3);
+  outline-offset: 1px;
+}
+
+.place-tag-options label:hover input:not(:checked) + .place-drawer__tag-chip {
+  background: oklch(var(--bc) / 0.05);
+}
+
+.place-tag-options input:focus-visible + .place-drawer__tag-chip {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: 1px;
+}
+
+.place-tag-options input:disabled + .place-drawer__tag-chip {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.places-bulk-actions[hidden] {
+  display: none;
+}
+
+:is(
+    .place-drawer,
+    .place-creation-modal,
+    [data-testid="places-management"],
+    .tags-page,
+    [data-testid="privacy-tag-warning"]
+  )
+  :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: 1px;
+}
+
+:is(
+    .place-drawer,
+    .place-creation-modal,
+    [data-testid="places-management"],
+    .tags-page
+  )
+  :is(summary, label:has(input[type="checkbox"])) {
+  cursor: pointer;
+}
+
+:is(
+    .place-drawer,
+    .place-creation-modal,
+    [data-testid="places-management"],
+    .tags-page
+  )
+  summary:hover {
+  color: oklch(var(--p));
+}
+
+:is(
+    .place-drawer,
+    .place-creation-modal,
+    [data-testid="places-management"],
+    .tags-page
+  )
+  :is(button, input, select, textarea):disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+[data-testid="places-management"] [type="checkbox"].checkbox {
+  appearance: none;
+  background-color: transparent;
+  border: 1px solid oklch(var(--bc) / 0.4);
+  color: oklch(var(--pc));
+  cursor: pointer;
+}
+
+[data-testid="places-management"] [type="checkbox"].checkbox:enabled:hover {
+  border-color: oklch(var(--p));
+}
+
+[data-testid="places-management"] [type="checkbox"].checkbox:checked,
+[data-testid="places-management"] [type="checkbox"].checkbox:indeterminate {
+  background-color: oklch(var(--p));
+  border-color: oklch(var(--p));
+  --chkbg: oklch(var(--p));
+  --chkfg: oklch(var(--pc));
+}
+
+:is(.place-drawer, .place-creation-modal, .tags-page) .label-text-alt {
+  color: oklch(var(--bc) / 0.7);
+}
+
+:is(
+    .place-drawer,
+    .place-creation-modal,
+    .tags-page,
+    [data-testid="privacy-tag-warning"]
+  )
+  :is(p, li, .label-text-alt) {
+  hyphens: none;
+}
+
+:is(.place-drawer, .place-creation-modal, .tags-page)
+  [type="checkbox"].toggle:focus-visible,
+:is(.place-drawer, .place-creation-modal, .tags-page)
+  [type="checkbox"].toggle:checked:focus-visible {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: 1px;
+}
+
+[data-testid="places-management"] [type="checkbox"].checkbox:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+[data-theme="dawarich"] :is(.place-drawer__heading, .place-drawer__stat-label) {
+  color: oklch(var(--bc) / 0.6);
+}
+
+.place-creation-modal {
+  border: 1px solid oklch(var(--bc) / 0.1);
+  box-shadow: none;
+}

@@ -33,6 +33,23 @@ RSpec.describe 'Place editor tags and geofencing', type: :request do
     end
   end
 
+  it 'groups the editor in order with localized visits and one event log link' do
+    started = Time.zone.local(2026, 10, 26, 9)
+    create(:visit, user:, place:, name: 'Repeated place name', started_at: started,
+                   ended_at: started + 8.hours, duration: 480)
+
+    get place_path(place)
+
+    headings = document.css('.place-drawer__section > .place-drawer__heading').map { |node| node.text.strip }
+    expect(headings).to eq(%w[Details Location Notifications Visits Manage])
+    expect(document.css('[data-testid="place-geofence-events-link"]').size).to eq(1)
+    expect(document.css("a[href='#{settings_geofencing_path(place_id: place.id)}']").size).to eq(1)
+    visit = document.at_css('.place-drawer__visit')
+    expect(visit.text).to include(I18n.l(started.to_date, format: :short), '09:00', '17:00', '8h 0m')
+    expect(visit.text).not_to include('Repeated place name')
+    expect(document.at_css('.place-drawer__stats').css('.place-drawer__stat-label').size).to eq(3)
+  end
+
   it 'returns inline validation errors without replacing selected tags or editor fields' do
     post tags_path, params: { inline: 'editor', tag: { name: '', icon: 'abc' } }, as: :turbo_stream
 

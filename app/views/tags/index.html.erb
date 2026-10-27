@@ -1,4 +1,4 @@
-<div class="w-full min-w-0 my-5">
+<div class="tags-page w-full min-w-0 my-5">
   <%= render layout: 'shared/page_header', locals: { title: t('.tags') } do %>
     <%= link_to new_tag_path, class: "btn btn-primary btn-sm" do %>
       <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('tags.index.new_tag') %>
@@ -6,15 +6,15 @@
   <% end %>
 
   <% if @tags.any? %>
-    <div class="border border-base-300 rounded-xl overflow-x-auto">
+    <div class="border border-base-content/10 rounded-xl overflow-x-auto">
       <table class="table table-sm w-full">
         <thead class="bg-base-200">
           <tr>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-16"><%= t('.icon') %></th>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= t('.name') %></th>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50"><%= t('.color') %></th>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right"><%= t('.places') %></th>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right"><%= t('.actions') %></th>
+            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/70 w-16"><%= t('.icon') %></th>
+            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/70"><%= t('.name') %></th>
+            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/70"><%= t('.color') %></th>
+            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/70 text-right"><%= t('.places') %></th>
+            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/70 text-right"><%= t('.actions') %></th>
           </tr>
         </thead>
         <tbody>
@@ -25,9 +25,9 @@
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="font-medium">#<%= tag.name %></span>
                   <% if tag.privacy_zone? %>
-                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-error/10 text-error"
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium badge badge-outline tabular-nums"
                           title="<%= t('.privacy_zone_badge_hint') %>">
-                      <%= icon 'lock-open', class: "w-3 h-3" %> <%= tag.privacy_radius_meters %>m
+                      <%= icon 'lock', class: "w-3 h-3" %> <%= tag.privacy_radius_meters %>m
                     </span>
                   <% end %>
                 </div>
@@ -35,11 +35,11 @@
               <td class="px-4 py-3">
                 <% if tag.color.present? %>
                   <div class="flex items-center gap-2">
-                    <div class="w-5 h-5 rounded-md border border-base-300" style="background-color: <%= tag.color %>;"></div>
-                    <span class="text-xs text-base-content/50 font-mono"><%= tag.color %></span>
+                    <div class="w-5 h-5 rounded-md border border-base-content/10" style="background-color: <%= tag.color %>;"></div>
+                    <span class="text-xs text-base-content/70 font-mono"><%= tag.color %></span>
                   </div>
                 <% else %>
-                  <span class="text-base-content/30 text-sm">--</span>
+                  <span class="text-base-content/70 text-sm">--</span>
                 <% end %>
               </td>
               <td class="px-4 py-3 text-right tabular-nums">
@@ -64,9 +64,9 @@
       </table>
     </div>
   <% else %>
-    <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-300">
+    <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-content/10">
       <h3 class="text-xl font-bold mb-3"><%= t('.no_tags_yet') %></h3>
-      <p class="text-base-content/50 mb-6 max-w-sm mx-auto">
+      <p class="text-base-content/70 mb-6 max-w-sm mx-auto">
         <%= t('.create_tags_to_organize_your_places_and_add_privacy_zones') %>
       </p>
       <%= link_to new_tag_path, class: 'btn btn-primary' do %>
