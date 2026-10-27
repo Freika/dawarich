@@ -8,15 +8,18 @@ RSpec.describe Geofenceable do
   describe 'cleanup' do
     let(:place) { create(:place, :geofence, user:) }
 
-    it 'drops its events and its id from webhook filters when destroyed' do
+    it 'keeps events and deliveries while removing its webhook filter when destroyed', :place_retention do
       kept = create(:place, :geofence, user:)
       webhook = create(:webhook, user:, place_ids: [place.id, kept.id])
-      create(:webhook_delivery, webhook:, geofence_event: create(:geofence_event, user:, place:))
+      event = create(:geofence_event, user:, place:, place_name: place.name)
+      delivery = create(:webhook_delivery, webhook:, geofence_event: event)
+      place.update!(name: 'Renamed home')
 
       place.destroy!
 
       expect(GeofenceEvent.where(place_id: place.id)).to be_empty
-      expect(WebhookDelivery.count).to eq(0)
+      expect(event.reload).to have_attributes(place_id: nil, place_name: 'Renamed home')
+      expect(delivery.reload.geofence_event_id).to eq(event.id)
       expect(webhook.reload.place_ids).to eq([kept.id])
     end
 
@@ -28,14 +31,14 @@ RSpec.describe Geofenceable do
       expect(webhook.reload).to have_attributes(place_ids: [], active: false)
     end
 
-    it 'loses its events and their deliveries through the database when deleted in bulk' do
-      event = create(:geofence_event, user:, place:)
+    it 'nullifies events and keeps deliveries through the database when deleted in bulk', :place_retention do
+      event = create(:geofence_event, user:, place:, place_name: place.name)
       create(:webhook_delivery, webhook: create(:webhook, user:), geofence_event: event)
 
       user.places.delete_all
 
-      expect(GeofenceEvent.where(user_id: user.id)).to be_empty
-      expect(WebhookDelivery.count).to eq(0)
+      expect(event.reload).to have_attributes(place_id: nil, place_name: place.name)
+      expect(WebhookDelivery.where(geofence_event_id: event.id).count).to eq(1)
     end
 
     it 'keeps its events but leaves webhook filters when notifications are switched off' do

@@ -51,7 +51,7 @@ module GeofenceEvents
     def create_event
       received_at = Time.current
       GeofenceEvent.create!(
-        user: @user, place: @place, event_type: @event_type, source: @source,
+        user: @user, place: @place, place_name: @place.name, event_type: @event_type, source: @source,
         occurred_at: @occurred_at, received_at:, lonlat: @lonlat,
         accuracy_m: @accuracy_m, device_id: @device_id, metadata: @metadata,
         webhook_skip_reason: webhook_skip_reason(received_at)

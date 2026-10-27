@@ -61,7 +61,7 @@
                                  class: "mt-0.5 w-4 h-4 shrink-0 #{entered ? 'text-secondary' : 'text-base-content/50'}") %>
                         <span class="min-w-0 [overflow-wrap:anywhere]">
                           <span class="font-semibold"><%= t("#{s}.event_types.#{event.event_type}") %></span>
-                          <%= event.place.name %>
+                          <%= event.display_place_name %>
                         </span>
                       </div>
                       <div class="flex flex-wrap gap-x-2 pl-6 text-xs text-base-content/60 sm:justify-end sm:pl-0 sm:text-right">

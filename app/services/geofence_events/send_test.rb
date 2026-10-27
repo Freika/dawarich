@@ -29,7 +29,7 @@ module GeofenceEvents
     def synthetic_event(place)
       now = Time.current
       GeofenceEvent.create!(
-        user: @webhook.user, place:, synthetic: true, source: :native_app,
+        user: @webhook.user, place:, place_name: place.name, synthetic: true, source: :native_app,
         event_type: @webhook.event_types.include?(Webhook::EVENT_TYPES['enter']) ? :enter : :leave,
         occurred_at: now, received_at: now, metadata: { 'test' => true },
         lonlat: "POINT(#{place.lon} #{place.lat})"

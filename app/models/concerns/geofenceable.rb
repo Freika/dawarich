@@ -4,7 +4,9 @@ module Geofenceable
   extend ActiveSupport::Concern
 
   included do
-    has_many :geofence_events, dependent: :delete_all
+    has_many :geofence_events, dependent: :nullify
+
+    before_destroy :snapshot_geofence_event_names, prepend: true
 
     scope :geofences, -> { where(geofence: true) }
     scope :monitored_geofences, -> { geofences.not_archived }
@@ -16,6 +18,10 @@ module Geofenceable
   end
 
   private
+
+  def snapshot_geofence_event_names
+    geofence_events.update_all(place_name: name)
+  end
 
   def geofence_boundary_changed?
     return false unless geofence? && !archived?

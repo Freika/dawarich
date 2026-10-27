@@ -49,4 +49,10 @@ RSpec.describe GeofenceEvents::SendTest do
       expect(GeofenceEvent.sole.place).to eq(active)
     end
   end
+
+  it 'snapshots the place name for a synthetic event', :place_retention do
+    described_class.call(webhook)
+
+    expect(GeofenceEvent.sole.place_name).to eq(place.name)
+  end
 end

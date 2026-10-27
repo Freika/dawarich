@@ -316,4 +316,24 @@ RSpec.describe 'Settings → Geofencing', type: :request do
       end
     end
   end
+
+  it 'shows a deleted place snapshot in the geofencing log', :place_retention do
+    create(:geofence_event, user:, place: nil, place_name: 'Former home')
+
+    get settings_geofencing_path
+
+    expect(response).to have_http_status(:ok)
+    expect(page.css('[data-testid="geofence-event"]').text).to include('Former home')
+  end
+
+  it 'shows a deleted place snapshot in webhook delivery history', :place_retention do
+    webhook = create(:webhook, user:)
+    event = create(:geofence_event, user:, place: nil, place_name: 'Former office')
+    create(:webhook_delivery, webhook:, geofence_event: event)
+
+    get settings_webhook_path(webhook)
+
+    expect(response).to have_http_status(:ok)
+    expect(page.css('[data-testid="webhook-delivery"]').text).to include('Former office')
+  end
 end

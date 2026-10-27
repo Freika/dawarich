@@ -113,7 +113,7 @@ RSpec.describe Places::Merge do
     expect(discovered.reload).to have_attributes(source: 'manual', name_locked?: true)
   end
 
-  it 'carries enter and leave notifications, their events and webhook filters to the survivor' do
+  it 'carries enter and leave notifications, their events and webhook filters to the survivor', :place_retention do
     duplicate.update!(geofence: true)
     event = create(:geofence_event, user:, place: duplicate)
     webhook = create(:webhook, user:, place_ids: [duplicate.id])
@@ -121,7 +121,7 @@ RSpec.describe Places::Merge do
     described_class.new(user:, survivor:, duplicate:).call
 
     expect(survivor.reload).to be_geofence
-    expect(event.reload.place_id).to eq(survivor.id)
+    expect(event.reload).to have_attributes(place_id: survivor.id, place_name: survivor.name)
     expect(webhook.reload).to have_attributes(place_ids: [survivor.id], active: true)
   end
 
@@ -147,5 +147,14 @@ RSpec.describe Places::Merge do
     expect do
       described_class.new(user:, survivor:, duplicate: other_place).call
     end.to raise_error(ActiveRecord::RecordNotFound)
+  end
+
+  it 'moves historical events even when the duplicate no longer notifies', :place_retention do
+    event = create(:geofence_event, user:, place: duplicate)
+
+    described_class.new(user:, survivor:, duplicate:).call
+
+    expect(event.reload).to have_attributes(place_id: survivor.id, place_name: survivor.name)
+    expect(survivor.reload).not_to be_geofence
   end
 end
