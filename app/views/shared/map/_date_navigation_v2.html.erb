@@ -1,6 +1,9 @@
 <!-- Date Navigation Controls - Native Page Element -->
-<div class="w-full px-4 bg-base-100 border-b border-base-300"
+<div class="relative [@media(hover:hover)]:hover:z-[10000] focus-within:z-[10000] w-full px-4 bg-base-100 border-b border-base-300"
      data-controller="map-controls"
+     data-map-controls-date-format-value="<%= DateTimePreferencesLocalization::DATE_PRESETS[Current.date_time_preferences.date_format] || I18n.t('date.formats.day_month_year') %>"
+     data-map-controls-month-names-value="<%= I18n.t('date.month_names').to_json %>"
+     data-map-controls-abbr-month-names-value="<%= I18n.t('date.abbr_month_names').to_json %>"
      data-map-controls-locale-value="<%= I18n.locale %>"
      data-map-controls-timezone-value="<%= current_user.timezone_iana %>">
   <!-- Mobile: Compact Toggle Button -->
@@ -28,7 +31,7 @@
       <% if params[:panel].present? %><%= f.hidden_field :panel, value: params[:panel] %><% end %>
       <div class="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4 lg:items-center">
         <div class="w-full lg:w-1/12 tooltip tooltip-bottom" data-tip="<%= human_date(start_at - 1.day) %>">
-          <%= link_to map_v2_path(start_at: (start_at - 1.day).iso8601, end_at: (end_at - 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
+          <%= link_to map_v2_path(start_at: (start_at - 1.day).iso8601, end_at: (end_at - 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full", data: { map_controls_target: "dayLink", day_offset: -1 } do %>
             <%= icon 'chevron-left', class: 'w-4 h-4' %>
           <% end %>
         </div>
@@ -39,7 +42,7 @@
           <%= f.datetime_local_field :end_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: end_at, data: { map_controls_target: "end" } %>
         </div>
         <div class="w-full lg:w-1/12 tooltip tooltip-bottom" data-tip="<%= human_date(start_at + 1.day) %>">
-          <%= link_to map_v2_path(start_at: (start_at + 1.day).iso8601, end_at: (end_at + 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>
+          <%= link_to map_v2_path(start_at: (start_at + 1.day).iso8601, end_at: (end_at + 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full", data: { map_controls_target: "dayLink", day_offset: 1 } do %>
             <%= icon 'chevron-right', class: 'w-4 h-4' %>
           <% end %>
         </div>

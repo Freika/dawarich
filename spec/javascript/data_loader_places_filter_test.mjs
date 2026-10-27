@@ -4,6 +4,9 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import vm from "node:vm"
 
+import { LoadingCounter } from "../../app/javascript/maps_maplibre/utils/loading_counter.js"
+import { visitsToGeoJSON } from "../../app/javascript/maps_maplibre/utils/visit_features.js"
+
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(currentDir, "../..")
 const dataLoaderPath = path.join(
@@ -29,6 +32,8 @@ settingsManagerSource = settingsManagerSource
 
 const requests = []
 const context = {
+  LoadingCounter,
+  visitsToGeoJSON,
   console,
   fetch: async (_url, options = {}) => {
     requests.push(options)
