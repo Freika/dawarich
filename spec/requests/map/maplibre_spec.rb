@@ -7,13 +7,28 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
   before { sign_in user }
 
-  it 'renders a closable Place panel and its lazy drawer frame' do
+  it 'renders the place editor only inside the left map panel' do
     get map_v2_path
 
     document = Nokogiri::HTML(response.body)
-    expect(document.at_css('[data-controller="place-panel"]')).to be_present
-    expect(document.at_css('turbo-frame#place-drawer')).to be_present
-    expect(document.at_css('[data-action="place-panel#close"]')).to be_present
+    panel = document.at_css('#map-settings-panel [data-tab-content="place"]')
+    expect(panel).to be_present
+    expect(panel.at_css('[data-controller="place-panel"] turbo-frame#place-drawer')).to be_present
+    expect(panel.at_css('[data-action="place-panel#close"]')).to be_present
+    expect(document.css('turbo-frame#place-drawer').size).to eq(1)
+    expect(document.at_css('#maps-maplibre-container > .place-panel')).to be_nil
+  end
+
+  it 'keeps one panel header close control and only Back inside the place editor' do
+    get map_v2_path
+
+    document = Nokogiri::HTML(response.body)
+    panel = document.at_css('#map-settings-panel')
+    expect(panel.css('.panel-header button').size).to eq(1)
+    toolbar = panel.at_css('.place-panel__toolbar')
+    expect(toolbar.css('button').size).to eq(1)
+    expect(toolbar.at_css('button').text.strip).to eq(I18n.t('map.maplibre.settings_panel.back'))
+    expect(toolbar.at_css('button')['data-action']).to eq('place-panel#close')
   end
 
   it 'lets Turbo own the persistent creation form submit state' do

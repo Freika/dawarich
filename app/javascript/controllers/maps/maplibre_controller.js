@@ -468,7 +468,10 @@ export default class extends Controller {
     return this.mapDataManager.loadMapData(
       this.startDateValue,
       this.endDateValue,
-      options,
+      {
+        ...options,
+        fitBounds: options.fitBounds !== false && !this.placePanel?.isOpen,
+      },
     )
   }
 

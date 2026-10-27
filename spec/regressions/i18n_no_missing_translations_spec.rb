@@ -33,6 +33,9 @@ RSpec.describe 'Rendered pages name every string they show', type: :request do
         places.inline_tags.new_tag places.inline_tags.name places.inline_tags.emoji places.inline_tags.create
         places.drawer.hidden_by_tag places.drawer.geofence_events places.drawer.no_geofence_events
         places.drawer.geofence_disabled
+        places.polish.details places.polish.location places.polish.notifications places.polish.visits
+        places.polish.manage places.polish.total_time places.polish.avg_dwell places.polish.statistics
+        places.polish.merge_duplicate places.polish.back_to_places places.polish.clear places.polish.selected
       ].each do |key|
         expect(I18n.t(key, locale:, fallback: false, raise: true, name: 'Home', radius: 500)).to be_present
       end

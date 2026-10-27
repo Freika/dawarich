@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Geofence events stay in the log and API after their place is deleted, showing its last name.
 - Places now have one editor on the map and on their own page for names, tags, notes, and geofencing. Delete confirmation lists affected visits, privacy tags, webhooks, and geofence events.
 - Creating or joining a family turns on the Family Members layer on the map, so the family shows up without looking for the toggle. Leaving the family turns the layer off again.
+- Refine place editing, selection and tag controls with consistent sections, localized visit and event dates, readable tag chips and quiet destructive actions in both themes.
+- Place map editing now shares the panel width rules without an `!important` override, preserving the compact phone layout.
+- Place details and editing now use the left map panel, with Back returning to the previous tab. On phones, map editing keeps the pin and radius handle beside a compact left panel.
 
 ### Fixed
 
@@ -51,6 +54,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Visit suggestions are no longer switched off when the setting was saved as a JSON boolean through the API or a settings import. Settings > Background Jobs now shows whether visit suggestions are on, and explains that they run shortly after new points arrive and again every night. (#3637)
 - Repeated cell-tower positions from the Android app no longer draw spikes on the map or inflate daily and monthly distance. Data recorded earlier is rechecked in the background after the upgrade. (#3417)
 - Location history that keeps reporting while you stay in one place, such as a Google Timeline export, no longer joins several days into one route when the reported position drifts around that place. The drift also no longer turns a stay at home into dozens of short zigzag routes. A stay is recognized within your visit radius (Settings → Visits), but never less than 100 m, so raise the visit radius if your readings at home scatter further. Choose Recalculate tracks & stats in the map settings to apply this to history imported earlier. (#3117)
+- Keep place statistics in one row on phones and format total dwell as hours and minutes. Hide bulk actions until places are selected.
+- The Place details panel now has one close control in its header and no longer autofocuses Back. Moving a place or resizing its Visit Radius hides the old map geometry until Save or Cancel.
+- Opening a place from a link now centres the map on its Visit Radius. The selected place stays highlighted with its boundary even when the Places layer is off, without changing saved layer settings.
 
 ### For developers
 

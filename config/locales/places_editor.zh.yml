@@ -1,5 +1,18 @@
 zh:
   places:
+    polish:
+      selected: "已选"
+      details: "详情"
+      location: "位置"
+      notifications: "通知"
+      visits: "访问"
+      manage: "管理"
+      total_time: "总时长"
+      avg_dwell: "平均停留"
+      statistics: "统计"
+      merge_duplicate: "合并重复地点"
+      back_to_places: "返回地点"
+      clear: "清除"
     inline_tags:
       new_tag: "新建标签"
       name: "标签名称"
