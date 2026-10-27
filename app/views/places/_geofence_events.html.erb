@@ -18,5 +18,5 @@
     <p class="place-drawer__visits-empty"><%= t(place.geofence? ? 'places.drawer.no_geofence_events' : 'places.drawer.geofence_disabled') %></p>
   <% end %>
   <%= link_to t('places.drawer.geofence_link'), settings_geofencing_path(place_id: place.id),
-              class: 'link link-hover text-sm inline-block mt-3', data: { turbo_frame: '_top', testid: 'place-geofence-events-link' } %>
+              class: 'link text-sm inline-block mt-3', data: { turbo_frame: '_top', testid: 'place-geofence-events-link' } %>
 </div>
