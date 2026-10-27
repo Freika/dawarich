@@ -300,6 +300,11 @@ export default class extends Controller {
       this.boundHandlePlaceUpdated,
     )
 
+    const [serverStartDate, serverEndDate] = [
+      this.startDateValue,
+      this.endDateValue,
+    ].map((value) => value.split("T")[0])
+
     // Format initial dates
     this.startDateValue = DateManager.formatDateForAPI(
       new Date(this.startDateValue),
@@ -315,6 +320,8 @@ export default class extends Controller {
     this.defaultDateRange = {
       startValue: this.startDateValue,
       endValue: this.endDateValue,
+      startDate: serverStartDate,
+      endDate: serverEndDate,
       reachesNow: loadEnd !== null && loadEnd >= Date.now(),
     }
 
