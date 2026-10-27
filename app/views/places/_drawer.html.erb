@@ -1,9 +1,9 @@
 <% stats = place_dwell_stats(place) %>
-<div class="place-drawer" data-place-id="<%= place.id %>">
+<div class="place-drawer" data-place-id="<%= place.id %>" data-controller="place-editor inline-tag"
+     data-place-editor-place-value="<%= { id: place.id, latitude: place.lat, longitude: place.lon, visit_radius: place.visit_radius }.to_json %>"
+     data-place-editor-max-radius-value="<%= Place::MAX_VISIT_RADIUS %>">
   <header class="place-drawer__header">
     <div class="place-drawer__icon">
-      <%# Tag.icon is validated to be emoji/symbol (see Tag#icon_is_not_ascii_letter),
-          so render as a text glyph rather than through the rails_icons helper. %>
       <% if stats[:primary_tag]&.icon.present? %>
         <span class="text-2xl leading-none"><%= stats[:primary_tag].icon %></span>
       <% else %>
@@ -40,40 +40,64 @@
     </div>
   </section>
 
-  <section class="place-drawer__tags">
-    <% if place.tags.any? %>
-      <ul class="place-drawer__tag-list">
-        <% place.tags.each do |tag| %>
-          <li class="place-drawer__tag-chip" style="<%= "background-color: #{tag.color};" if tag.color.present? %>">
-            <%= tag.name %>
-          </li>
-        <% end %>
-      </ul>
-    <% else %>
-      <p class="place-drawer__tags-empty"><%= t('.no_tags') %></p>
+  <% if place.errors.any? %>
+    <div role="alert" class="alert alert-error"><%= place.errors.full_messages.join(', ') %></div>
+  <% end %>
+
+  <%= form_with model: place, method: :patch, class: 'place-drawer__editor', data: { turbo_frame: 'place-drawer' } do |f| %>
+    <%= hidden_field_tag :map_panel, params[:map_panel] if params[:map_panel].present? %>
+    <%= f.label :name, t('shared.place_creation_modal.place_name') %>
+    <%= f.text_field :name, required: true, maxlength: 255, class: 'input input-bordered w-full' %>
+    <%= render 'shared/place_tags', surface: 'editor', selected_tags: place.tags %>
+    <% place.tags.select(&:privacy_zone?).each do |tag| %>
+      <p class="text-sm" data-testid="place-privacy-line"><%= t('.hidden_by_tag', name: tag.name, radius: tag.privacy_radius_meters) %></p>
+    <% end %>
+    <%= f.label :note, t('.notes') %>
+    <%= f.text_area :note, rows: 3, class: 'place-drawer__notes-input' %>
+    <%= f.submit t('.save'), class: 'place-drawer__notes-submit' %>
+  <% end %>
+
+  <%= render 'shared/inline_tag_form', surface: 'editor' %>
+
+  <section>
+    <%= link_to t('places.edit_on_map'), map_v2_path(place_id: place.id, edit: 1),
+                class: 'btn btn-sm', data: { turbo_frame: '_top', place_editor_target: 'mapLink', action: 'place-editor#edit' } %>
+    <%= form_with model: place, method: :patch, class: 'hidden place-drawer__map-editor',
+                  data: { turbo_frame: 'place-drawer', place_editor_target: 'mapForm' } do |f| %>
+      <%= hidden_field_tag :map_panel, '1' %>
+      <%= f.hidden_field :latitude, data: { place_editor_target: 'latitude' } %>
+      <%= f.hidden_field :longitude, data: { place_editor_target: 'longitude' } %>
+      <%= f.hidden_field :visit_radius, data: { place_editor_target: 'radius' } %>
+      <p><%= t('places.drag_to_edit') %></p>
+      <p data-place-editor-target="radiusLabel"></p>
+      <div class="flex flex-wrap gap-2">
+        <%= f.submit t('.save'), class: 'btn btn-primary btn-sm' %>
+        <button type="button" class="btn btn-sm" data-action="place-editor#cancel"><%= t('places.cancel_edit') %></button>
+      </div>
     <% end %>
   </section>
 
   <section class="place-drawer__geofence">
     <%= form_with model: place, method: :patch, data: { turbo_frame: 'place-drawer', controller: 'auto-submit' } do |f| %>
+      <%= hidden_field_tag :map_panel, params[:map_panel] if params[:map_panel].present? %>
       <label class="place-drawer__geofence-toggle">
         <%= f.check_box :geofence, class: 'toggle toggle-sm', data: { action: 'change->auto-submit#submit', testid: 'place-geofence-toggle' } %>
         <span><%= t('.geofence') %></span>
       </label>
       <p class="place-drawer__geofence-hint">
         <%= t('.geofence_hint', radius: place.visit_radius) %>
-        <%= link_to t('.geofence_link'), settings_geofencing_path, data: { turbo_frame: '_top' } %>
+        <%= link_to t('.geofence_link'), settings_geofencing_path(place_id: place.id), data: { turbo_frame: '_top' } %>
+      </p>
+    <% end %>
+    <% if place.geofence? %>
+      <p class="text-sm mt-2" data-testid="place-geofence-legend">
+        <span aria-hidden="true" class="inline-block w-3 h-3 rounded-full" style="border: 3px solid #f59e0b"></span>
+        <%= t('javascript.map_info.geofence_boundary') %>
       </p>
     <% end %>
   </section>
 
-  <section class="place-drawer__notes">
-    <%= form_with model: place, method: :patch, data: { turbo_frame: 'place-drawer' } do |f| %>
-      <%= f.label :note, t('.notes'), class: 'place-drawer__notes-label' %>
-      <%= f.text_area :note, rows: 3, class: 'place-drawer__notes-input' %>
-      <%= f.submit t('.save'), class: 'place-drawer__notes-submit' %>
-    <% end %>
-  </section>
+  <%= render 'places/geofence_events', place: place %>
 
   <section class="place-drawer__visits">
     <h3 class="place-drawer__visits-heading"><%= t('.recent_visits') %></h3>
@@ -95,19 +119,20 @@
 
   <footer class="place-drawer__actions">
     <% candidates = local_assigns.fetch(:merge_candidates, @merge_candidates || []) %>
-    <%= form_with url: place_path(place), method: :get, data: { turbo_frame: 'place-drawer' }, class: 'flex gap-2 items-center' do %>
+    <%= form_with url: place_path(place), method: :get, data: { turbo_frame: 'place-drawer' }, class: 'flex flex-wrap gap-2 items-center min-w-0' do %>
+      <%= hidden_field_tag :map_panel, params[:map_panel] if params[:map_panel].present? %>
       <%= label_tag :merge_query, t('.search_places'), class: 'sr-only' %>
-      <%= search_field_tag :merge_query, params[:merge_query], placeholder: t('.search_places'), class: 'input input-bordered input-sm max-w-48' %>
+      <%= search_field_tag :merge_query, params[:merge_query], placeholder: t('.search_places'), class: 'input input-bordered input-sm min-w-0 w-full max-w-48' %>
       <%= submit_tag t('.search'), class: 'btn btn-sm' %>
     <% end %>
     <% if candidates.any? %>
-      <%= form_with url: merge_place_path(place), method: :post, class: 'flex gap-2 items-center' do |f| %>
+      <%= form_with url: merge_place_path(place, map_panel: params[:map_panel]), method: :post, data: { turbo_frame: 'place-drawer' }, class: 'flex flex-wrap gap-2 items-center min-w-0' do |f| %>
         <%= label_tag :duplicate_place_id, t('.select_place_to_merge'), class: 'sr-only' %>
         <%= select_tag :duplicate_place_id,
                        options_for_select(candidates.map { |candidate| ["#{candidate.name} · #{merge_candidate_distance(candidate)} · #{candidate.lat}, #{candidate.lon}", candidate.id] }),
                        prompt: t('.select_place_to_merge'),
                        required: true,
-                       class: 'select select-bordered select-sm max-w-48' %>
+                       class: 'select select-bordered select-sm min-w-0 w-full max-w-48' %>
         <%= f.submit t('.merge'),
                      class: 'place-drawer__action place-drawer__action--merge',
                      data: { turbo_confirm: t('.merge_confirmation', survivor: place.name) } %>
@@ -116,10 +141,10 @@
       <p class="text-sm text-base-content/60"><%= t('.no_matching_places') %></p>
     <% end %>
     <%= button_to t('.delete'),
-                  place_path(place),
+                  place_path(place, map_panel: params[:map_panel]),
                   method: :delete,
-                  form: { data: { turbo_frame: '_top' } },
+                  form: { data: { turbo_frame: params[:map_panel] == '1' ? 'place-drawer' : '_top' } },
                   class: 'place-drawer__action place-drawer__action--delete',
-                  data: { turbo_confirm: t('.delete_this_place_this_cannot_be_undone') } %>
+                  data: { turbo_confirm: place_delete_confirmation(place) } %>
   </footer>
 </div>

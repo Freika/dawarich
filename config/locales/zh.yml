@@ -1349,7 +1349,13 @@ zh:
       destroy_this_notification: 删除此通知
       are_you_sure: 您确定吗？
   places:
+    edit_on_map: "在地图上编辑"
+    drag_to_edit: "拖动标记移动地点，拖动控制柄调整访问半径。"
+    cancel_edit: "取消"
+    place_details: "地点详情"
+    close_panel: "关闭地点详情"
     drawer:
+      delete_consequences: "删除此地点？\n活跃访问：%{visits}。它们将保留位置标签。\n隐私区域标签：%{privacy_tags}。\n将移除此地点的 webhook：%{webhooks}。\n此地点的地理围栏事件将被删除。此操作无法撤销。"
       source: 来源：
       total_hours: 总小时数
       avg_dwell: 平均停留时间
@@ -1521,9 +1527,9 @@ zh:
         background_jobs_dashboard: 后台任务仪表板
         this_will_open_the_background_jobs_dashboard_in_a_new: 这将在新选项卡中打开后台任务仪表板。
         visits_suggestions: 到访建议
-        enable_or_disable_visits_suggestions_it_s_a_background_task:
-          启用或禁用到访建议。这是每天午夜运行的后台任务。如果您不想收到到访建议，或者使用的是自带到访建议功能的 Dawarich iOS
-          应用，可以将其禁用。
+        enable_or_disable_visits_suggestions_it_s_a_background_task: 收到新轨迹点后，系统会很快自动生成到访建议，并在每晚重新检查。禁用后将停止所有自动到访检测，包括导入后的检测。Dawarich iOS 应用有自己的到访建议功能。
+        enabled: 已启用
+        disabled: 已禁用
         background_jobs: 后台任务
         start_job: 启动任务
         are_you_sure: 您确定吗？
@@ -4213,8 +4219,11 @@ zh:
       speed: "%{speed} 公里/小时"
       no_data: 无数据
     places:
+      move_pin: "移动地点标记"
+      resize_radius: "调整访问半径"
       create_new: 创建新地点
       edit: 编辑地点
+      open: 打开
       confirm_delete: 您确定要删除此地点吗？
       search_placeholder: 搜索地点…
       confirm_move_visit: 该地点距离到访记录位置约 %{distance} 米。要将到访记录移到这里吗？

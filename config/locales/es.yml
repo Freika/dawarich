@@ -1384,7 +1384,13 @@ es:
       destroy_this_notification: Destruir esta notificación
       are_you_sure: "¿Estás seguro?"
   places:
+    edit_on_map: "Editar en el mapa"
+    drag_to_edit: "Arrastra el marcador para mover el lugar y el control para cambiar su radio de visita."
+    cancel_edit: "Cancelar"
+    place_details: "Detalles del lugar"
+    close_panel: "Cerrar detalles del lugar"
     drawer:
+      delete_consequences: "¿Eliminar este lugar?\nVisitas activas: %{visits}. Conservan su etiqueta de ubicación.\nEtiquetas de zonas de privacidad: %{privacy_tags}.\nWebhooks que perderán este lugar: %{webhooks}.\nSus eventos de geovalla se eliminarán. Esta acción no se puede deshacer."
       source: 'Fuente:'
       total_hours: horas totales
       avg_dwell: dwell promedio
@@ -1553,7 +1559,9 @@ es:
         background_jobs_dashboard: Panel de control de tareas de fondo
         this_will_open_the_background_jobs_dashboard_in_a_new: Esto abrirá el panel de control de tareas de fondo en una nueva pestaña.
         visits_suggestions: Sugerencias de visitas
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Habilita o deshabilita las sugerencias de visitas. Es una tarea de fondo que se ejecuta todos los días a la medianoche. Deshabilitarla puede ser útil si no quieres recibir sugerencias de visitas o si estás utilizando la aplicación Dawarich para iOS, que tiene sus propias sugerencias de visitas.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Las visitas se sugieren automáticamente poco después de recibir nuevos puntos y se vuelven a comprobar cada noche. Deshabilitarlas detiene toda la detección automática de visitas, también después de las importaciones. La aplicación Dawarich para iOS tiene sus propias sugerencias de visitas.
+        enabled: Habilitadas
+        disabled: Deshabilitadas
         background_jobs: Trabajos de fondo
         start_job: Iniciar trabajo
         are_you_sure: "¿Estás seguro?"
@@ -4143,8 +4151,11 @@ es:
       speed: "%{speed} km/h"
       no_data: Sin datos
     places:
+      move_pin: "Mover marcador del lugar"
+      resize_radius: "Cambiar radio de visita"
       create_new: Crear nuevo lugar
       edit: Editar lugar
+      open: Abrir
       confirm_delete: "¿Seguro que quieres eliminar este lugar?"
       search_placeholder: Buscar un lugar…
       confirm_move_visit: "Este lugar está a unos %{distance} m del lugar visitado. ¿Mover la visita aquí?"

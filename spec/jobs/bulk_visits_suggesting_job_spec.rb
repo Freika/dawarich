@@ -21,14 +21,18 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
     context 'when reverse geocoding is disabled' do
       let(:geocoding_configured) { false }
 
-      it 'does nothing' do
-        expect { described_class.perform_now }.not_to have_enqueued_job(VisitSuggestingJob)
+      it 'schedules detection for an active user with tracked points' do
+        expect { described_class.perform_now }.to have_enqueued_job(VisitSuggestingJob).with(
+          user_id: user_with_points.id, start_at: start_at, end_at: end_at
+        )
       end
 
-      it 'does nothing even when a user has an active geocoding setting' do
+      it 'schedules detection when a user has a legacy active geocoding setting' do
         create(:service_setting, :active, user: user_with_points)
 
-        expect { described_class.perform_now }.not_to have_enqueued_job(VisitSuggestingJob)
+        expect { described_class.perform_now }.to have_enqueued_job(VisitSuggestingJob).with(
+          user_id: user_with_points.id, start_at: start_at, end_at: end_at
+        )
       end
     end
 

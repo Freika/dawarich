@@ -1,4 +1,4 @@
-<div data-controller="place-creation">
+<div data-controller="place-creation inline-tag">
   <div class="modal z-[10000]" data-place-creation-target="modal">
     <div class="modal-box max-w-2xl">
       <h3 class="font-bold text-lg mb-4" data-place-creation-target="modalTitle"><%= t('.create_new_place') %></h3>
@@ -7,12 +7,10 @@
         place_creation_target: "form",
         action: "turbo:submit-end->place-creation#onSubmitEnd"
       } do |f| %>
-        <%# Hidden fields for coordinates and editing state %>
         <%= f.hidden_field :latitude, data: { place_creation_target: "latitudeInput" } %>
         <%= f.hidden_field :longitude, data: { place_creation_target: "longitudeInput" } %>
         <%= f.hidden_field :source, value: "manual" %>
         <%= hidden_field_tag :visit_id, nil, data: { place_creation_target: "visitIdInput" } %>
-        <input type="hidden" name="_method_url" data-place-creation-target="placeIdInput">
 
         <div class="space-y-4">
           <div class="form-control">
@@ -57,24 +55,12 @@
             </label>
           </div>
 
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text font-semibold"><%= t('.tags') %></span>
-            </label>
-            <div class="flex flex-wrap gap-2" data-place-creation-target="tagCheckboxes">
-              <% current_user.tags.ordered.each do |tag| %>
-                <label class="cursor-pointer">
-                  <input type="checkbox" name="place[tag_ids][]" value="<%= tag.id %>" class="checkbox checkbox-sm hidden peer">
-                  <span class="badge badge-lg badge-outline transition-all peer-checked:scale-105" style="border-color: <%= tag.color %>; color: <%= tag.color %>;" data-color="<%= tag.color %>">
-                    <%= tag.icon %> #<%= tag.name %>
-                  </span>
-                </label>
-              <% end %>
-            </div>
-            <label class="label">
-              <span class="label-text-alt"><%= t('.click_tags_to_select_them_for_this_place') %></span>
-            </label>
-          </div>
+          <label class="label cursor-pointer gap-2">
+            <%= f.check_box :geofence, { class: 'toggle toggle-sm', data: { testid: 'create-place-geofence' } }, '1', '0' %>
+            <span class="label-text flex-1"><%= t('places.drawer.geofence') %></span>
+          </label>
+
+          <%= render 'shared/place_tags', surface: 'creation', selected_tags: [] %>
 
           <div class="divider"><%= t('.suggested_places') %></div>
 
@@ -94,13 +80,13 @@
         <div class="modal-action">
           <button type="button" class="btn btn-ghost" data-action="click->place-creation#close"><%= t('.cancel') %></button>
           <%= f.submit t('.create_place'), class: "btn btn-primary",
-              data: { place_creation_target: "submitButton", disable_with: t('.saving') } %>
+              data: { place_creation_target: "submitButton", disable_with: false, turbo_submits_with: t('.saving') } %>
         </div>
       <% end %>
+      <%= render 'shared/inline_tag_form', surface: 'creation' %>
     </div>
     <div class="modal-backdrop" data-action="click->place-creation#close"></div>
   </div>
 
-  <%# Hidden data element for turbo_stream to populate with created/updated place data %>
   <div id="place-creation-data" class="hidden"></div>
 </div>

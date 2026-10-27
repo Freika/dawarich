@@ -1,0 +1,15 @@
+ca:
+  places:
+    inline_tags:
+      new_tag: "Etiqueta nova"
+      name: "Nom de l’etiqueta"
+      emoji: "Emoji (opcional)"
+      create: "Crea l’etiqueta"
+    drawer:
+      hidden_by_tag: "Amagat per l’etiqueta %{name}, %{radius} m"
+      geofence_events: "Esdeveniments recents de geotanca"
+      no_geofence_events: "Encara no hi ha esdeveniments d’entrada o sortida."
+      geofence_disabled: "Activa les notificacions d’entrada i sortida per registrar esdeveniments d’aquest lloc."
+  javascript:
+    map_info:
+      geofence_boundary: "Límit de la geotanca"

@@ -1346,7 +1346,13 @@ pl:
       destroy_this_notification: Usuń to powiadomienie
       are_you_sure: Czy na pewno chcesz kontynuować?
   places:
+    edit_on_map: "Edytuj na mapie"
+    drag_to_edit: "Przeciągnij znacznik, aby przesunąć miejsce, i uchwyt, aby zmienić promień wizyty."
+    cancel_edit: "Anuluj"
+    place_details: "Szczegóły miejsca"
+    close_panel: "Zamknij szczegóły miejsca"
     drawer:
+      delete_consequences: "Usunąć to miejsce?\nAktywne wizyty: %{visits}. Zachowają etykietę lokalizacji.\nTagi stref prywatności: %{privacy_tags}.\nWebhooki, z których zostanie usunięte to miejsce: %{webhooks}.\nZdarzenia geofencingu tego miejsca zostaną usunięte. Tej operacji nie można cofnąć."
       source: 'Źródło:'
       total_hours: łączna liczba godzin
       avg_dwell: średni czas pobytu
@@ -1564,7 +1570,9 @@ pl:
         background_jobs_dashboard: Panel zadań w tle
         this_will_open_the_background_jobs_dashboard_in_a_new: Otworzy panel zadań w tle w nowej karcie.
         visits_suggestions: Sugestie wizyt
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Włącz lub wyłącz sugestie wizyt. To zadanie w tle uruchamiane codziennie o północy. Wyłączenie może być przydatne, jeśli nie chcesz otrzymywać sugestii wizyt albo korzystasz z aplikacji Dawarich na iOS, która ma własny mechanizm sugestii.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Sugestie wizyt są generowane automatycznie wkrótce po otrzymaniu nowych punktów i ponownie sprawdzane każdej nocy. Wyłączenie ich zatrzymuje całe automatyczne wykrywanie wizyt, także po importach. Aplikacja Dawarich na iOS ma własne sugestie wizyt.
+        enabled: Włączone
+        disabled: Wyłączone
         background_jobs: Zadania w tle
         start_job: Uruchom zadanie
         are_you_sure: Czy na pewno chcesz kontynuować?
@@ -4293,8 +4301,11 @@ pl:
       speed: "%{speed} km/h"
       no_data: Brak danych
     places:
+      move_pin: "Przesuń znacznik miejsca"
+      resize_radius: "Zmień promień wizyty"
       create_new: Utwórz nowe miejsce
       edit: Edytuj miejsce
+      open: Otwórz
       confirm_delete: Czy na pewno chcesz usunąć to miejsce?
       search_placeholder: Szukaj miejsca…
       confirm_move_visit: To miejsce jest ~%{distance} m od wizyty. Przenieść wizytę tutaj?

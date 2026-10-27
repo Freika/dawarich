@@ -116,3 +116,75 @@ test("disconnecting removes every document listener the modal added", () => {
 
   assert.deepEqual(Object.keys(listeners), [])
 })
+
+test("the creation modal never listens for editing an existing place", () => {
+  const { listeners } = setup()
+  assert.equal(listeners["place:edit"], undefined)
+})
+
+test("a deletion stream announces its id once without reporting a creation", async () => {
+  const { controller, dispatched } = setup()
+  const dataEl = document.getElementById("place-creation-data")
+  dataEl.dataset.deletedId = "42"
+  controller.dispatchSavedPlace()
+  controller.dispatchSavedPlace()
+  assert.deepEqual(
+    dispatched.map((event) => [event.type, event.detail]),
+    [["place:deleted", { id: 42 }]],
+  )
+})
+
+test("a merge announces the removed duplicate then the updated survivor once", () => {
+  const { controller, dispatched } = setup()
+  const dataEl = document.getElementById("place-creation-data")
+  Object.assign(dataEl.dataset, {
+    removedId: "7",
+    place: JSON.stringify({ id: 42 }),
+    updated: "true",
+  })
+  controller.dispatchSavedPlace()
+  controller.dispatchSavedPlace()
+  assert.deepEqual(
+    dispatched.map((event) => [event.type, event.detail]),
+    [
+      ["place:removed", { id: 7 }],
+      ["place:updated", { place: { id: 42 } }],
+    ],
+  )
+})
+
+test("a hidden save relays removal and the attached visit once without coordinates", () => {
+  const { controller, dispatched } = setup()
+  Object.assign(document.getElementById("place-creation-data").dataset, {
+    removedId: "42",
+    created: "true",
+    visitId: "18",
+  })
+  controller.dispatchSavedPlace()
+  controller.dispatchSavedPlace()
+  assert.deepEqual(
+    dispatched.map((event) => [event.type, event.detail]),
+    [
+      ["place:created", { removedId: 42 }],
+      ["visit-place:changed", { visitId: 18 }],
+    ],
+  )
+})
+
+test("a hidden merge removes the duplicate then relays the survivor removal once", () => {
+  const { controller, dispatched } = setup()
+  Object.assign(document.getElementById("place-creation-data").dataset, {
+    removedId: "42",
+    duplicateId: "7",
+    updated: "true",
+  })
+  controller.dispatchSavedPlace()
+  controller.dispatchSavedPlace()
+  assert.deepEqual(
+    dispatched.map((event) => [event.type, event.detail]),
+    [
+      ["place:removed", { id: 7 }],
+      ["place:updated", { removedId: 42 }],
+    ],
+  )
+})
