@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.18.2] - 2026-10-27, Berlin
+## [1.19.0] - 2026-10-27, Berlin
 
 ### ⚠️ Upgrade notes
 
