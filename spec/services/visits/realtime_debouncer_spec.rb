@@ -18,15 +18,16 @@ RSpec.describe Visits::RealtimeDebouncer do
     context 'when reverse geocoding is disabled' do
       let(:geocoding_configured) { false }
 
-      it 'does not enqueue VisitSuggestingJob' do
-        expect { debouncer.trigger }.not_to have_enqueued_job(VisitSuggestingJob)
+      it 'enqueues VisitSuggestingJob for this user' do
+        expect { debouncer.trigger }.to have_enqueued_job(VisitSuggestingJob)
+          .with(hash_including(user_id: user.id))
       end
 
-      it 'does not set a Redis key' do
+      it 'sets a Redis key to debounce detection' do
         debouncer.trigger
 
         Sidekiq.redis do |redis|
-          expect(redis.exists(redis_key)).to eq(0)
+          expect(redis.exists(redis_key)).to eq(1)
         end
       end
     end

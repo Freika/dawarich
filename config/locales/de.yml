@@ -1553,7 +1553,9 @@ de:
         background_jobs_dashboard: Hintergrundaufgaben-Übersicht
         this_will_open_the_background_jobs_dashboard_in_a_new: Dies öffnet die Hintergrundaufgaben-Übersicht in einem neuen Tab.
         visits_suggestions: Aufenthaltsvorschläge
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Aktiviere oder deaktiviere Aufenthaltsvorschläge. Es handelt sich um eine Hintergrundaufgabe, die täglich um Mitternacht läuft. Deaktivieren kann sinnvoll sein, wenn du keine Aufenthaltsvorschläge erhalten möchtest oder wenn du die Dawarich iOS-App verwendest, die ihre eigenen Aufenthaltsvorschläge hat.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Aufenthaltsvorschläge werden automatisch kurz nach dem Eingang neuer Punkte erstellt und jede Nacht erneut geprüft. Durch Deaktivieren wird die gesamte automatische Erkennung von Aufenthalten gestoppt, auch nach Importen. Die Dawarich iOS-App hat eigene Aufenthaltsvorschläge.
+        enabled: Aktiviert
+        disabled: Deaktiviert
         background_jobs: Hintergrundaufgaben
         start_job: Aufgabe starten
         are_you_sure: Bist du sicher?
