@@ -2,7 +2,7 @@
 
 class PreserveGeofenceEventsWithoutPlaces < ActiveRecord::Migration[8.1]
   def up
-    add_column :geofence_events, :place_name, :string
+    add_column :geofence_events, :place_name, :string, if_not_exists: true
     execute <<~SQL
       UPDATE geofence_events
       SET place_name = places.name
