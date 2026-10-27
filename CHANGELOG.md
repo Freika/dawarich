@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Unchecking every tag when editing a place on the map now removes all its tags.
+- Places on the map now offer Open and Delete alongside Edit. Deleting a place removes it from the map immediately and refreshes privacy zones.
+- Place details on the map now show every tag, with its icon and colour.
+
 - Signing in after opening a family invitation now joins the family right away, with any sign-in option: password, two-factor, Google, OpenID Connect or Apple. Before, the invitation was lost when you signed in through the regular login link or with Apple, and even the sign-in link on the invitation page only brought you back to the invitation, where you had to press Accept again.
 - Pressing Search in the date bar while Search, Layers, Tools, Settings or Timeline was open used to centre the map across the whole screen. The map now stays beside the open sidebar, centred in the visible area. (#3919)
 - Visits without a place now show on the map and in the timeline editor using the location of their points. #3384
