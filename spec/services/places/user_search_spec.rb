@@ -25,4 +25,16 @@ RSpec.describe Places::UserSearch do
     expect(results.map { |result| result[:id] }).to eq([place.id])
     expect(results.first[:has_visits]).to be(true)
   end
+
+  it 'excludes archived Places with confirmed visits from nearby and name searches', :aggregate_failures do
+    place.update!(archived_at: Time.current)
+    create(:visit, user: user, place: place, status: :confirmed)
+
+    expect(results.map { |result| result[:id] }).not_to include(place.id)
+
+    matches = described_class.new(user: user, latitude: 52, longitude: 13, radius: 0.1, limit: 50,
+                                  query: place.name).call
+
+    expect(matches.map { |result| result[:id] }).not_to include(place.id)
+  end
 end

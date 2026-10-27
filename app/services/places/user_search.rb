@@ -31,7 +31,7 @@ module Places
     end
 
     def base_scope
-      @base_scope ||= @user.places.where.not(lonlat: nil)
+      @base_scope ||= @user.places.not_archived.where.not(lonlat: nil)
                            .merge(Place.map_visible(@user).or(Place.where(id: @user.visits.select(:place_id))))
     end
 
