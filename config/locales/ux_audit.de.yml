@@ -1,0 +1,77 @@
+---
+de:
+  shared_links:
+    timeline_scope:
+      only_import: Nur Punkte aus %{name} im gewählten Zeitraum werden geteilt. Fotos sind ausgeschlossen.
+      unavailable: Der gewählte Import ist nicht mehr verfügbar.
+  ux_p2:
+    exports:
+      source: 'Quelle: %{name}'
+      restored_incomplete: Dieser Export war in der Sicherung unvollständig. Erstelle unter Punkte einen neuen Export.
+      unavailable_source: Nicht verfügbare Quelle (Auswahl bleibt erhalten)
+      removed_import: Gelöschter Import (Auswahl bleibt erhalten)
+      unavailable_import: Der gewählte Import ist nicht mehr verfügbar.
+    sharing:
+      exact_expiry: Genauer Ablauf (optional)
+      exact_expiry_hint: 'Zeitzone: %{timezone}. Leer lassen für keinen Ablauf.'
+      invalid_expiry: Wähle ein gültiges Ablaufdatum.
+      no_expiry: Kein Ablauf
+      expires: Zugriff endet
+      period: Geteilter Zeitraum
+      included: Enthalten
+      excluded: Ausgeschlossen
+      edit_access: Zugriff bearbeiten
+      preview: Ansicht der Empfänger öffnen
+      url_unchanged: Änderungen gelten für diesen Link. URL, Empfänger und ausgewählte Daten bleiben gleich.
+      cancel: Abbrechen
+      save: Zugriff speichern
+      sections:
+        show_route: Routenkarte
+        show_stats: Statistiken
+        show_days: Aufschlüsselung nach Tagen
+        show_day_notes: Tagesnotizen
+        show_description: Beschreibung
+        show_photos: Fotos
+    import:
+      technical_details: Technische Details
+      failed: Import fehlgeschlagen
+      format_error: Das Dateiformat konnte nicht gelesen werden. Prüfe, ob die Datei gültig ist und ein unterstütztes Format hat.
+      failed_reason: Der Import konnte nicht abgeschlossen werden. Du kannst die Datei erneut hochladen; schlägt es wieder fehl, gib beim Melden des Problems die Referenz unten an.
+      reference: 'Import-Referenz: #%{id}. Technische Details stehen in den Server-Logs.'
+      open: Import und Wiederherstellungsoptionen öffnen
+      upload_another: Weitere Datei hochladen
+      supported_formats: Unterstützte Formate
+      notification_html: Import &quot;%{name}&quot; fehlgeschlagen. %{reason} %{link}
+    digest:
+      queued: In der Warteschlange. Dein Jahresrückblick erscheint hier automatisch.
+      calculating: Dein Jahresrückblick wird berechnet. Diese Seite aktualisiert sich automatisch.
+      failed: Erstellung fehlgeschlagen. Dein Standortverlauf ist sicher; versuche es erneut.
+      retry: Erstellung wiederholen
+      working: Rückblick wird vorbereitet
+    places:
+      add: Ort hinzufügen
+      save: Ort speichern
+      search: Orte suchen
+      tag: Tags
+      all_tags: Alle Tags
+      sort: Sortieren nach
+      sort_name: Name
+      sort_recent_visit: Letzter Besuch
+      sort_newest: Zuletzt erstellt
+      no_matches: Keine passenden Orte. Versuche eine andere Suche oder füge einen Ort hinzu.
+      pick_coordinates: Klicke auf die Karte oder gib Koordinaten ein, um den Ort festzulegen. Du kannst die Markierung verschieben, um ihn anzupassen.
+      latitude: Breitengrad
+      longitude: Längengrad
+      name: Name
+      note: Notiz
+    points:
+      select: Punkt auswählen, aufgezeichnet am %{time}
+    insights:
+      empty_title: Deine Reisen erscheinen hier
+      empty_help: Importiere deinen Standortverlauf oder verbinde einen Tracker, um erste Distanzen, Karten und Reiseeinblicke zu erhalten.
+      import: Verlauf importieren
+      connect: Tracker verbinden
+      unresolved: Noch nicht ermittelt
+      names_pending: Länder- und Städtenamen wurden noch nicht ermittelt. Koordinaten, Karten und Distanz können trotzdem verfügbar sein.
+      configure: Geokodierung einrichten
+      ask_admin: Deine Administration kann die Geokodierung einrichten, um Länder- und Städtenamen zu ermitteln.

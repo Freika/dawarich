@@ -62,6 +62,21 @@ RSpec.describe 'settings/general', type: :request do
         expect(page.at_css('select[name="first_day_of_week"] option[selected]')['value']).to eq('sunday')
       end
 
+      it 'preserves the effective timezone when a new user submits the rendered form' do
+        effective_timezone = user.timezone_iana
+        get settings_general_index_url
+
+        select = Nokogiri::HTML(response.body).at_css('select[name="timezone"]')
+        selected = select.at_css('option[selected]') || select.at_css('option')
+        expect(selected['value']).to eq(effective_timezone)
+
+        patch settings_general_path, params: { timezone: selected['value'], date_format: 'yyyy-mm-dd' }
+
+        get settings_general_index_url
+        select = Nokogiri::HTML(response.body).at_css('select[name="timezone"] option[selected]')
+        expect(select['value']).to eq(effective_timezone)
+      end
+
       it 'shows a not-configured notice instead of preferences when SMTP is unset' do
         allow(ENV).to receive(:[]).with('SMTP_SERVER').and_return(nil)
 

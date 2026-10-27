@@ -24,6 +24,7 @@ const context = {
   },
   document: { querySelector: () => null },
   setTimeout: () => {},
+  requestAnimationFrame: (callback) => callback(),
   translate: (key) => key,
 }
 vm.createContext(context)
@@ -31,12 +32,21 @@ vm.runInContext(source, context)
 
 function edit(visit) {
   const editor = new context.VisitEditor()
-  editor.nameInputTarget = {}
+  editor.nameInputTarget = {
+    focus() {
+      editor.focused = true
+    },
+  }
   editor.latitudeInputTarget = {}
   editor.longitudeInputTarget = {}
   editor.startTimeInputTarget = {}
   editor.endTimeInputTarget = {}
-  editor.modalTarget = { classList: { add() {} } }
+  editor.hasModalTarget = true
+  editor.modalTarget = {
+    showModal() {
+      this.open = true
+    },
+  }
   editor.formatDateTime = () => "2026-09-04T12:00"
   editor.addMarker = (lat, lng) => {
     editor.position = [lng, lat]
@@ -55,6 +65,8 @@ test("visit editor uses the point center for an unplaced visit", () => {
     place: null,
     center: { latitude: 52.51, longitude: 13.41 },
   })
+  assert.equal(editor.modalTarget.open, true)
+  assert.equal(editor.focused, true)
   assert.equal(editor.latitudeInputTarget.value, 52.51)
   assert.equal(editor.longitudeInputTarget.value, 13.41)
   assert.deepEqual(editor.position, [13.41, 52.51])

@@ -52,10 +52,10 @@
       <%= icon 'map-pin-plus' %> <%= t('.countries_visited') %>
     </div>
     <div class="stat-value text-accent">
-      <%= countries_visited(stat) %>
+      <%= !reverse_geocoding_enabled_for?(current_user) && countries_visited(stat).zero? ? t('ux_p2.insights.unresolved') : countries_visited(stat) %>
     </div>
     <div class="stat-desc">
-      <%= x_than_previous_countries_visited(stat, previous_stat) %>
+      <%= x_than_previous_countries_visited(stat, previous_stat) if reverse_geocoding_enabled_for?(current_user) || countries_visited(stat).positive? %>
     </div>
   </div>
 </div>
@@ -176,7 +176,7 @@
         <% end %>
       <% else %>
         <div class="text-center text-gray-500">
-          <p><%= t('.no_location_data_available_for_this_month') %></p>
+          <%= render 'shared/unresolved_locations' %>
         </div>
       <% end %>
     </div>

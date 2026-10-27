@@ -52,7 +52,8 @@ RSpec.describe 'Tracks split at visits shorter than the route gap' do
 
       day = Time.zone.at(start_timestamp)
       entries = Timeline::DayAssembler.new(user, start_at: day.beginning_of_day.iso8601,
-                                                 end_at: day.end_of_day.iso8601).call.first[:entries]
+                                                 end_at: day.end_of_day.iso8601,
+                                                 privacy_zone_masker: Maps::PrivacyZoneMasker.none).call.first[:entries]
 
       expect(entries.map { |entry| entry[:type] }).to eq(%w[journey visit journey])
     end

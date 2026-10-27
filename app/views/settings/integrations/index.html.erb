@@ -63,6 +63,7 @@
       </nav>
 
       <div class="flex-1 min-w-0 w-full">
+        <%= render 'settings/integrations/connection_result' %>
         <%= render "settings/integrations/#{@service}" %>
       </div>
     </div>

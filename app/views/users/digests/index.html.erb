@@ -1,5 +1,6 @@
 <% content_for :title, t('.year_end_digests') %>
 
+<turbo-frame id="digest-list" data-controller="digest-status" data-digest-status-url-value="<%= users_digests_path %>">
 <div class="max-w-screen-2xl mx-auto my-5 px-4">
   <div class="page-header-row mb-6">
     <h1 class="text-3xl font-medium flex items-center gap-2 tracking-tight">
@@ -41,10 +42,24 @@
   <% else %>
     <div class="grid grid-cols-1 gap-6">
       <% @digests.each do |digest| %>
+        <% unless digest.generation_ready? %>
+          <section class="card bg-base-200" <%= "data-digest-pending=#{digest.year}" if digest.generation_pending? %>>
+            <div class="card-body" role="status">
+              <h2 class="card-title"><%= digest.year %></h2>
+              <p><%= t("ux_p2.digest.#{digest.generation_status}") %></p>
+              <% if digest.generation_failed? %>
+                <%= button_to t('ux_p2.digest.retry'), users_digests_path(year: digest.year), class: 'btn btn-primary btn-sm', data: { turbo_frame: 'digest-list' } %>
+              <% else %>
+                <progress class="progress progress-primary w-56" aria-label="<%= t('ux_p2.digest.working') %>"></progress>
+              <% end %>
+            </div>
+          </section>
+          <% next %>
+        <% end %>
         <div class="card bg-base-200">
           <div class="card-body">
             <h2 class="card-title text-2xl justify-between">
-              <%= link_to digest.year, users_digest_path(year: digest.year), class: 'hover:text-primary' %>
+              <%= link_to digest.year, users_digest_path(year: digest.year), class: 'hover:text-primary', data: { turbo_frame: '_top' } %>
               <% if digest.sharing_enabled? %>
                 <span class="text-xs text-base-content/60"><%= t('.shared') %></span>
               <% end %>
@@ -80,7 +95,7 @@
             </div>
 
             <div class="card-actions justify-end mt-4">
-              <%= link_to users_digest_path(year: digest.year), class: 'btn btn-primary btn-sm' do %>
+              <%= link_to users_digest_path(year: digest.year), class: 'btn btn-primary btn-sm', data: { turbo_frame: '_top' } do %>
                 <%= t('.view_details') %>
               <% end %>
             </div>
@@ -90,3 +105,4 @@
     </div>
   <% end %>
 </div>
+</turbo-frame>

@@ -1,0 +1,54 @@
+en:
+  ux_p2:
+    exports:
+      source: "Source: %{name}"
+      restored_incomplete: "This export was unfinished in the backup. Create a new export from Points."
+      unavailable_source: "Unavailable source (scope preserved)"
+      removed_import: "Removed import (scope preserved)"
+      unavailable_import: "The selected import is no longer available."
+    sharing:
+      exact_expiry: "Exact expiration (optional)"
+      exact_expiry_hint: "Time zone: %{timezone}. Leave blank for no expiration."
+      invalid_expiry: "Choose a valid expiration date."
+      no_expiry: "No expiration"
+      expires: "Access ends"
+      period: "Shared period"
+      included: "Included"
+      excluded: "Excluded"
+      edit_access: "Edit access"
+      preview: "Open recipient view"
+      url_unchanged: "Changes apply to this link. Its URL, audience and selected data stay the same."
+      cancel: "Cancel"
+      save: "Save access"
+      sections:
+        show_route: "Route map"
+        show_stats: "Statistics"
+        show_days: "Day-by-day breakdown"
+        show_day_notes: "Day notes"
+        show_description: "Description"
+        show_photos: "Photos"
+    import:
+      technical_details: "Technical details"
+      failed: "Import failed"
+      format_error: "The file format could not be read. Check that the file is valid and uses a supported format."
+      failed_reason: "The import could not finish. You can upload the file again; if it fails again, use the reference below when reporting the problem."
+      reference: "Import reference: #%{id}. Technical details are available in the server logs."
+      open: "Open import and recovery options"
+      upload_another: "Upload another file"
+      supported_formats: "Supported formats"
+      notification_html: "Import &quot;%{name}&quot; failed. %{reason} %{link}"
+    demo:
+      description: "Explore a month of Berlin tracking and a Prague weekend trip. Demo points, visits and places are marked and can be removed anytime."
+    digest:
+      queued: "Queued. Your year-end digest will appear here automatically."
+      calculating: "Calculating your year-end digest. This page updates automatically."
+      failed: "Generation failed. Your location history is safe; try again."
+      retry: "Retry generation"
+      working: "Preparing digest"
+fr:
+  ux_p2:
+    import:
+      format_error: "Le format du fichier n’a pas pu être lu. Vérifiez le fichier et les formats acceptés."
+      failed_reason: "L’importation n’a pas pu aboutir. Vous pouvez envoyer le fichier à nouveau."
+      open: "Ouvrir l’importation et les options de récupération"
+      notification_html: "L’importation « %{name} » a échoué. %{reason} %{link}"

@@ -20,7 +20,7 @@
          data-changelog-widget-src-value="<%= chibichange_widget_src %>"
          data-changelog-widget-slug-value="<%= chibichange_slug %>"
          data-changelog-widget-version-value="<%= APP_VERSION %>"></div>
-  <% elsif state == :prompt %>
+  <% elsif state == :prompt && !onboarding_modal_showable?(current_user) %>
     <%= render "shared/navbar/changelog_prompt" %>
   <% end %>
 </div>

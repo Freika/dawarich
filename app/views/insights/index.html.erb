@@ -35,6 +35,8 @@
       </div>
       <%= render 'pro_locked_card', title: t('.movement_wellness'), utm_content: 'movement_wellness' %>
     <% end %>
+  <% elsif !@has_insight_data %>
+    <%= render 'empty_state' %>
   <% else %>
     <%= render 'stats_row' %>
 

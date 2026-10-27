@@ -16,7 +16,7 @@
      data-poster-studio-editor-tiles-fallback-value="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>"
      <% if stats_label %>data-poster-studio-editor-stats-label-value="<%= stats_label %>"<% end %>>
   <div class="flex h-full flex-col">
-    <header class="flex items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2">
+    <header class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 border-b border-base-content/10 bg-base-200 px-3 py-2 sm:px-4 lg:grid-cols-[auto_minmax(0,1fr)_auto]">
       <div class="flex items-center gap-3 shrink-0">
         <h2 class="text-sm font-semibold tracking-wide flex items-center gap-2">
           <%= icon 'map', class: 'h-4 w-4 opacity-70' %>
@@ -25,11 +25,13 @@
         <%= render 'shared/studio_switcher', current: :poster, controller_name: 'poster-studio-editor' %>
       </div>
       <% if show_date_controls %>
-        <div class="flex items-center gap-2 min-w-0">
-          <input type="datetime-local" class="input input-bordered input-sm"
+        <div class="col-span-2 row-start-2 flex min-w-0 items-center gap-2 lg:col-span-1 lg:row-start-auto lg:justify-self-center">
+          <input type="datetime-local" class="input input-bordered input-sm min-w-0 w-full flex-1 lg:w-56 lg:flex-none"
+                 aria-label="<%= t('shared.map.date_navigation_v2.start_date_and_time') %>"
                  data-poster-studio-editor-target="dateStart">
           <span class="text-xs opacity-60">–</span>
-          <input type="datetime-local" class="input input-bordered input-sm"
+          <input type="datetime-local" class="input input-bordered input-sm min-w-0 w-full flex-1 lg:w-56 lg:flex-none"
+                 aria-label="<%= t('shared.map.date_navigation_v2.end_date_and_time') %>"
                  data-poster-studio-editor-target="dateEnd">
           <button type="button" class="btn btn-sm btn-primary"
                   data-poster-studio-editor-target="loadButton"
@@ -48,20 +50,20 @@
           </div>
         </div>
       <% else %>
-        <div class="flex items-center gap-2 min-w-0 text-sm opacity-70">
+        <div class="col-span-2 row-start-2 flex min-w-0 items-center gap-2 text-sm opacity-70 lg:col-span-1 lg:row-start-auto lg:justify-self-center">
           <%= icon 'calendar-clock', class: 'h-4 w-4' %>
           <span><%= local_assigns[:date_range_label] %></span>
         </div>
       <% end %>
-      <button type="button" class="btn btn-ghost btn-sm btn-circle shrink-0" title="<%= t('.close_studio') %>"
+      <button type="button" class="btn btn-ghost btn-sm btn-circle col-start-2 row-start-1 shrink-0 justify-self-end lg:col-start-auto lg:row-start-auto" title="<%= t('.close_studio') %>"
               data-action="poster-studio-editor#close">
         <%= icon 'x' %>
       </button>
     </header>
 
-    <div class="flex min-h-0 flex-1">
+    <div class="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
       <!-- Poster preview -->
-      <div class="relative flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden p-6"
+      <div class="relative flex h-[40vh] min-h-[240px] min-w-0 shrink-0 flex-col items-center justify-center overflow-hidden p-4 sm:p-6 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink"
            data-poster-studio-editor-target="stage">
         <%# Ambient backdrop: a blurred, dimmed snapshot of the poster map
             fills the stage behind the frame (updated on map idle). %>
@@ -91,7 +93,7 @@
       </div>
 
       <!-- Controls -->
-      <aside class="flex w-96 shrink-0 flex-col border-l border-base-content/10 bg-base-200">
+      <aside class="flex min-h-[320px] w-full flex-1 shrink-0 flex-col border-t border-base-content/10 bg-base-200 lg:min-h-0 lg:w-96 lg:flex-none lg:border-l lg:border-t-0">
         <div class="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
           <details open class="collapse collapse-arrow bg-base-100 rounded-lg">
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">

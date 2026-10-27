@@ -10,6 +10,7 @@
     panel element. %>
 <% timeline_panel_open = params[:panel] == 'timeline' %>
 <div id="map-settings-panel"
+     <%= "inert" unless timeline_panel_open %>
      data-turbo-permanent
      class="map-control-panel<%= ' open timeline-expanded' if timeline_panel_open %>"
      data-maps--maplibre-target="settingsPanel"

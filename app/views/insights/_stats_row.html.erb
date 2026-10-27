@@ -1,4 +1,7 @@
 <% if @year_stats.any? %>
+  <% if unresolved_location_count?(@countries_count) || unresolved_location_count?(@cities_count) %>
+    <%= render 'shared/unresolved_locations' %>
+  <% end %>
   <!-- Top Stats Row -->
   <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
     <!-- Total Distance -->
@@ -42,7 +45,7 @@
             </span>
           <% end %>
         </div>
-        <div class="text-3xl font-medium tabular-nums mt-2"><%= @countries_count %></div>
+        <div class="text-3xl font-medium tabular-nums mt-2"><%= unresolved_location_count?(@countries_count) ? t('ux_p2.insights.unresolved') : @countries_count %></div>
         <div class="text-base-content/50 text-sm">
           <% if @all_time %>
             <%= t('.all_tracked_history') %>
@@ -71,7 +74,7 @@
             </span>
           <% end %>
         </div>
-        <div class="text-3xl font-medium tabular-nums mt-2"><%= @cities_count %></div>
+        <div class="text-3xl font-medium tabular-nums mt-2"><%= unresolved_location_count?(@cities_count) ? t('ux_p2.insights.unresolved') : @cities_count %></div>
         <div class="text-base-content/50 text-sm">
           <% if @all_time %>
             <%= t('.all_tracked_history') %>

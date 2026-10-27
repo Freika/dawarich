@@ -16,10 +16,13 @@ class Settings::IntegrationsController < ApplicationController
     @services = Integrations::Status::SERVICES
     @service = params[:service].presence_in(@services) || @services.first
     @statuses = Integrations::Status.for(current_user)
+    @integration_result ||= session.delete(:integration_feedback)
     @trek_sources = current_user.trip_sources.where(provider: 'trek').order(:created_at) if @service == 'trek'
   end
 
   def update
+    return update_connection if params[:connection_action].present?
+
     result = Settings::Update.new(
       current_user,
       settings_params,
@@ -33,6 +36,44 @@ class Settings::IntegrationsController < ApplicationController
   end
 
   private
+
+  CONNECTION_ACTIONS = %w[save test save_and_test].freeze
+  CONNECTION_FIELDS = {
+    'immich' => %w[immich_url immich_api_key immich_skip_ssl_verification],
+    'photoprism' => %w[photoprism_url photoprism_api_key photoprism_skip_ssl_verification],
+    'airtrail' => %w[airtrail_url airtrail_api_key airtrail_skip_ssl_verification],
+    'teslamate' => %w[teslamate_url teslamate_username teslamate_password teslamate_api_token
+                      teslamate_skip_ssl_verification]
+  }.freeze
+
+  def update_connection
+    service = params[:service].to_s
+    action = params[:connection_action].to_s
+    return head :bad_request unless CONNECTION_ACTIONS.include?(action) && CONNECTION_FIELDS.key?(service)
+
+    draft = settings_params.slice(*CONNECTION_FIELDS.fetch(service)).to_h
+    result = Settings::Update.new(current_user, draft, connection_action: action, service: service).call
+    connection = result.fetch(:connection_results, {}).fetch(service, {})
+    outcome = if !result[:success]
+                'validation_failed'
+              elsif action == 'save'
+                'saved_untested'
+              elsif action == 'test'
+                connection[:success] ? 'tested_ok' : 'tested_failed'
+              else
+                connection[:success] ? 'saved_ok' : 'saved_failed'
+              end
+    @integration_result = { 'service' => service, 'outcome' => outcome,
+                            'reason' => connection.fetch(:reason, 'check_settings') }
+    if action == 'test' || !result[:success]
+      current_user.settings = current_user.settings_hash.merge(draft)
+      index
+      render :index, status: result[:success] ? :ok : :unprocessable_entity
+    else
+      session[:integration_feedback] = @integration_result
+      redirect_to settings_integrations_path(service: service)
+    end
+  end
 
   def flash_message(messages)
     messages.join('. ').truncate_bytes(FLASH_MESSAGE_BYTES)

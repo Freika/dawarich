@@ -131,7 +131,7 @@
                                  .uniq(&:first)
                                  .sort_by { |_, _, seconds| seconds }
                                  .map { |iana, offset, _| ["(GMT#{offset}) #{iana}", iana] },
-                               { selected: current_user.timezone },
+                               { selected: current_user.timezone_iana },
                                class: "select select-bordered w-full" %>
                   <p class="text-sm text-base-content/70 mt-1">
                     <%= t('.all_dates_and_times_will_be_displayed_in_this_timezone') %>

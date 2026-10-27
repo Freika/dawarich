@@ -5,6 +5,7 @@
      data-onboarding-modal-onboarding-url-value="<%= settings_onboarding_path %>"
      data-onboarding-modal-user-trial-value="<%= current_user.trial? %>"
      data-onboarding-modal-imports-count-value="<%= current_user.imports.count %>"
+     data-onboarding-modal-demo-description-value="<%= t('ux_p2.demo.description') %>"
      data-onboarding-modal-demo-data-url-value="<%= demo_data_settings_onboarding_path %>"
      data-onboarding-modal-has-demo-data-value="<%= current_user.imports.exists?(demo: true) %>"
      data-onboarding-modal-user-id-value="<%= current_user.id %>">
@@ -60,7 +61,7 @@
                 <h4 class="text-lg font-semibold"><%= t('.explore_with_demo_data') %></h4>
               </div>
               <p class="text-sm text-base-content/70">
-                <%= t('.load_sample_location_data_3_days_in_berlin_to_see') %>
+                <%= t('ux_p2.demo.description') %>
               </p>
             </div>
           </button>

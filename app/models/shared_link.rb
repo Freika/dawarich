@@ -29,6 +29,7 @@ class SharedLink < ApplicationRecord
   validates :name, presence: true, length: { maximum: 255 }
   validates :magic_phrase, length: { maximum: 255 }, allow_nil: true
   validate :resource_id_matches_type
+  validate :timeline_import_owned, if: -> { new_record? || will_save_change_to_settings? }
   validate :timeline_dates_present_and_ordered
   validate :expires_at_in_future
   validate :valid_family_audience, if: -> { new_record? || will_save_change_to_settings? }
@@ -87,7 +88,26 @@ class SharedLink < ApplicationRecord
     Digest::SHA256.hexdigest("#{id}:#{magic_phrase}")
   end
 
+  def timeline_import_scoped?
+    timeline? && settings.key?('import_id')
+  end
+
+  def timeline_import
+    return unless timeline_import_scoped?
+
+    import_id = settings['import_id'].to_s
+    return unless import_id.match?(/\A[1-9]\d*\z/)
+
+    user&.imports&.find_by(id: import_id)
+  end
+
   private
+
+  def timeline_import_owned
+    return unless timeline_import_scoped? && timeline_import.nil?
+
+    errors.add(:settings, I18n.t('shared_links.timeline_scope.unavailable'))
+  end
 
   def valid_family_audience
     return unless family_only?
