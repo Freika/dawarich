@@ -2076,7 +2076,13 @@ fr:
       destroy_this_notification: Supprimer cette notification
       are_you_sure: Êtes-vous sûr ?
   places:
+    edit_on_map: "Modifier sur la carte"
+    drag_to_edit: "Faites glisser le repère pour déplacer le lieu et la poignée pour ajuster son rayon de visite."
+    cancel_edit: "Annuler"
+    place_details: "Détails du lieu"
+    close_panel: "Fermer les détails du lieu"
     drawer:
+      delete_consequences: "Supprimer ce lieu ?\nVisites actives : %{visits}. Elles conservent leur libellé de localisation.\nÉtiquettes de zones de confidentialité : %{privacy_tags}.\nWebhooks dont ce lieu sera retiré : %{webhooks}.\nSes événements de géorepérage seront supprimés. Cette action est irréversible."
       source: 'Source :'
       total_hours: heures totales
       avg_dwell: durée moyenne de présence
@@ -2271,11 +2277,9 @@ fr:
         this_will_open_the_background_jobs_dashboard_in_a_new: Cela ouvrira le tableau
           de bord des tâches en arrière-plan dans une nouvelle fenêtre.
         visits_suggestions: Suggestions de visites
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Activer ou désactiver
-          les suggestions de visites. C'est une tâche en arrière-plan qui s'exécute
-          chaque jour à minuit. Désactiver cela peut être utile si vous ne souhaitez
-          pas recevoir des suggestions de visites ou si vous utilisez l'application
-          Dawarich iOS, qui a ses propres suggestions de visites.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Les visites sont suggérées automatiquement peu après l'arrivée de nouveaux points et vérifiées à nouveau chaque nuit. Les désactiver arrête toute détection automatique des visites, y compris après les imports. L'application Dawarich pour iOS propose ses propres suggestions de visites.
+        enabled: Activées
+        disabled: Désactivées
         background_jobs: Tâches en arrière-plan
         start_job: Démarrer la tâche
         are_you_sure: Êtes-vous sûr ?
@@ -5365,8 +5369,11 @@ fr:
       speed: "%{speed} km/h"
       no_data: Aucune donnée disponible
     places:
+      move_pin: "Déplacer le repère du lieu"
+      resize_radius: "Ajuster le rayon de visite"
       create_new: Créer un nouveau lieu
       edit: Modifier le lieu
+      open: Ouvrir
       confirm_delete: Êtes-vous sûr de vouloir supprimer ce lieu ?
       search_placeholder: Recherchez un lieu…
       confirm_move_visit: Ce lieu est à ~%{distance} m du point de visite. Voulez-vous

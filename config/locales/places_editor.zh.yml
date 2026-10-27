@@ -1,0 +1,15 @@
+zh:
+  places:
+    inline_tags:
+      new_tag: "新建标签"
+      name: "标签名称"
+      emoji: "表情符号（可选）"
+      create: "创建标签"
+    drawer:
+      hidden_by_tag: "由标签 %{name} 隐藏，半径 %{radius} 米"
+      geofence_events: "最近的地理围栏事件"
+      no_geofence_events: "暂无进入或离开事件。"
+      geofence_disabled: "启用进入和离开通知以记录此地点的事件。"
+  javascript:
+    map_info:
+      geofence_boundary: "地理围栏边界"

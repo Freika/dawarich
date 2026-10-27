@@ -1334,7 +1334,13 @@ ca:
       destroy_this_notification: Suprimeix aquesta notificació
       are_you_sure: "Estàs segur?"
   places:
+    edit_on_map: "Edita al mapa"
+    drag_to_edit: "Arrossega el marcador per moure el lloc i el control per canviar-ne el radi de visita."
+    cancel_edit: "Cancel·la"
+    place_details: "Detalls del lloc"
+    close_panel: "Tanca els detalls del lloc"
     drawer:
+      delete_consequences: "Vols suprimir aquest lloc?\nVisites actives: %{visits}. Conservaran l’etiqueta d’ubicació.\nEtiquetes de zones de privadesa: %{privacy_tags}.\nWebhooks dels quals es retirarà aquest lloc: %{webhooks}.\nSe’n suprimiran els esdeveniments de geotanca. Aquesta acció no es pot desfer."
       source: 'Font:'
       total_hours: hores totals
       avg_dwell: estada mitjana
@@ -1550,7 +1556,9 @@ ca:
         background_jobs_dashboard: Tauler de tasques en segon pla
         this_will_open_the_background_jobs_dashboard_in_a_new: Això obrirà el tauler de tasques en segon pla en una pestanya nova.
         visits_suggestions: Suggeriments de visites
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Activa o desactiva els suggeriments de visites. És una tasca en segon pla que s'executa cada dia a mitjanit. Desactivar-la pot ser útil si no vols rebre suggeriments de visites o si utilitzes l'app de Dawarich per a iOS, que té els seus propis suggeriments de visites.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Els suggeriments de visites es generen automàticament poc després de rebre punts nous i es tornen a comprovar cada nit. Desactivar-los atura tota la detecció automàtica de visites, també després de les importacions. L'app de Dawarich per a iOS té els seus propis suggeriments de visites.
+        enabled: Activats
+        disabled: Desactivats
         background_jobs: Tasques en segon pla
         start_job: Inicia la tasca
         are_you_sure: "Estàs segur?"
@@ -4133,8 +4141,11 @@ ca:
       speed: "%{speed} km/h"
       no_data: No hi ha dades
     places:
+      move_pin: "Mou el marcador del lloc"
+      resize_radius: "Canvia el radi de visita"
       create_new: Crea un lloc nou
       edit: Edita el lloc
+      open: Obre
       confirm_delete: Estàs segur que vols suprimir aquest lloc?
       search_placeholder: Cerca un lloc…
       confirm_move_visit: "Aquest lloc és a ~%{distance} m de la visita. Vols moure la visita aquí?"

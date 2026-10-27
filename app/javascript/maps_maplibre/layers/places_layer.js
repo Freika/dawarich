@@ -46,8 +46,6 @@ export class PlacesLayer extends BaseLayer {
 
   getLayerConfigs() {
     return [
-      // Visit Radius boundaries. These remain deliberately subtle so the
-      // Places layer can stay useful without obscuring routes and points.
       {
         id: `${this.id}-radius-fill`,
         type: "fill",
@@ -64,9 +62,14 @@ export class PlacesLayer extends BaseLayer {
         source: this.sourceId,
         filter: ["==", ["get", "featureKind"], "boundary"],
         paint: {
-          "line-color": ["coalesce", ["get", "color"], "#6366f1"],
-          "line-width": 2,
-          "line-opacity": 0.65,
+          "line-color": [
+            "case",
+            ["==", ["get", "geofence"], true],
+            "#f59e0b",
+            ["coalesce", ["get", "color"], "#6366f1"],
+          ],
+          "line-width": ["case", ["==", ["get", "geofence"], true], 4, 2],
+          "line-opacity": ["case", ["==", ["get", "geofence"], true], 1, 0.65],
         },
       },
 

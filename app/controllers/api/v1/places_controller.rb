@@ -233,6 +233,7 @@ module Api
           source: place.source,
           note: place.note,
           visit_radius: place.visit_radius,
+          geofence: place.geofence,
           icon: place.tags.first&.icon,
           color: place.tags.first&.color,
           visits_count: place.active_visits.size,
