@@ -61,7 +61,7 @@ module GeofenceEvents
     end
 
     def places_entered_last
-      GeofenceEvent.real.where(user_id: @user.id)
+      GeofenceEvent.real.where(user_id: @user.id).where.not(place_id: nil)
                    .select('DISTINCT ON (place_id) place_id, event_type')
                    .order(:place_id, occurred_at: :desc, id: :desc)
                    .select(&:event_type_enter?).map(&:place_id)

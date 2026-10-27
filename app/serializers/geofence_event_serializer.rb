@@ -9,7 +9,7 @@ class GeofenceEventSerializer
     {
       id: @event.id,
       place_id: @event.place_id,
-      place_name: @event.place.name,
+      place_name: @event.display_place_name,
       event_type: @event.event_type,
       source: @event.source,
       occurred_at: @event.occurred_at.utc.iso8601,

@@ -654,4 +654,16 @@ RSpec.describe Users::Destroy do
       end
     end
   end
+
+  it 'deletes retained placeless events and deliveries with their user', :place_retention do
+    user = create(:user)
+    event = create(:geofence_event, user:, place: nil, place_name: 'Former home')
+    delivery = create(:webhook_delivery, webhook: create(:webhook, user:), geofence_event: event)
+    user.mark_as_deleted!
+
+    described_class.new(user).call
+
+    expect(GeofenceEvent.exists?(event.id)).to be(false)
+    expect(WebhookDelivery.exists?(delivery.id)).to be(false)
+  end
 end

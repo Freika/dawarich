@@ -82,7 +82,9 @@ RSpec.describe GeofenceEvents::Evaluator do
     place.destroy!
 
     expect { ingest(at(13.4100, 1)) }.not_to raise_error
-    expect(GeofenceEvent.pluck(:place_id, :event_type)).to eq([[other.id, 'enter'], [other.id, 'leave']])
+    expect(GeofenceEvent.pluck(:place_id, :event_type)).to contain_exactly(
+      [other.id, 'enter'], [nil, 'enter'], [other.id, 'leave']
+    )
   end
 
   it 'keeps ingesting when evaluation fails' do
