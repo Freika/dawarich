@@ -71,14 +71,12 @@ module Users
             country = toponym['country']
             next if country.blank?
 
-            if toponym['cities'].is_a?(Array)
-              toponym['cities'].each do |city|
-                city_name = city['city'] if city.is_a?(Hash)
-                country_cities[country].add(city_name) if city_name.present?
-              end
-            else
-              # Ensure country appears even if no cities
-              country_cities[country]
+            country_cities[country]
+            next unless toponym['cities'].is_a?(Array)
+
+            toponym['cities'].each do |city|
+              city_name = city['city'] if city.is_a?(Hash)
+              country_cities[country].add(city_name) if city_name.present?
             end
           end
         end

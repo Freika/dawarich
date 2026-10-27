@@ -15,6 +15,8 @@ module Stats
       finish_run
       @countries.map do |country, cities|
         values = cities.filter_map do |city, totals|
+          next if city.blank?
+
           duration = totals[:seconds] / 60
           next if duration < @minimum
 
@@ -35,7 +37,7 @@ module Stats
       end
 
       @flight_points = 0
-      return if point[:country_name].nil? || point[:city].nil?
+      return if point[:country_name].nil?
 
       country = @country_names[point[:country_id]] || point[:country_name]
       timestamp = point[:timestamp]

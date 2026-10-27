@@ -57,7 +57,7 @@ class CountriesAndCities
 
   def runs_within(segment)
     segment
-      .reject { |point| point[:country_name].nil? || point[:city].nil? }
+      .reject { |point| point[:country_name].nil? }
       .slice_when { |previous, current| separate_runs?(previous, current) }
       .map { |run_points| build_run(run_points) }
   end
@@ -87,6 +87,8 @@ class CountriesAndCities
   end
 
   def build_city_data(city, city_runs)
+    return nil if city.blank?
+
     duration = city_runs.sum { |run| run[:duration_seconds] } / 60
     return nil if duration < min_minutes_spent_in_city
 
