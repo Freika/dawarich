@@ -4,6 +4,8 @@
   min-height: 1.75rem;
   white-space: normal;
   max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
   border-radius: 9999px;
   border: 1px dashed oklch(var(--bc) / 0.3);
   background: transparent;

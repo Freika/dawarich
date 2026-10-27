@@ -93,6 +93,7 @@ function setup(visible) {
   }
   const bridge = new PlacePanelBridge({
     map,
+    closeInfo() {},
     cleanup: {
       addEventListener: (_target, type, listener) => events.set(type, listener),
     },

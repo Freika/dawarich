@@ -1,6 +1,6 @@
 <% stats = place_dwell_stats(place) %>
 <div class="place-drawer" data-place-id="<%= place.id %>" data-controller="place-editor inline-tag"
-     data-place-editor-place-value="<%= { id: place.id, latitude: place.lat, longitude: place.lon, visit_radius: place.visit_radius, geofence: place.geofence?, color: stats[:primary_tag]&.color }.to_json %>"
+     data-place-editor-place-value="<%= { id: place.id, latitude: place.lat, longitude: place.lon, visit_radius: place.visit_radius, geofence: place.geofence?, color: stats[:primary_tag]&.color, privacy_hidden: current_privacy_zone_masker.in_zone?(place.lon, place.lat) }.to_json %>"
      data-place-editor-max-radius-value="<%= Place::MAX_VISIT_RADIUS %>">
   <header class="place-drawer__header">
     <div class="place-drawer__icon">

@@ -105,7 +105,7 @@ RSpec.describe PlacesHelper, type: :helper do
 
       expect(result[:start_label]).to eq('09:30')
       expect(result[:end_label]).to eq('12:00')
-      expect(result[:date_label]).to eq(I18n.l(started.to_date, format: :short))
+      expect(result[:date_label]).to eq('Mar 15, 2026')
       expect(result[:duration_label]).to eq('2h 30m')
     end
   end

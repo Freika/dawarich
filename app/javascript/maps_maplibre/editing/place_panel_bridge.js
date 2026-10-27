@@ -23,7 +23,7 @@ export class PlacePanelBridge {
     })
     listen("place:map-cancel", () => {
       this.editor.stop()
-      if (this.place) {
+      if (this.place && !this.place.privacy_hidden) {
         this.selection.show(this.place)
         this.camera.fit(this.place)
       }
@@ -43,6 +43,8 @@ export class PlacePanelBridge {
   }
 
   open(id, edit = false, origin = "map") {
+    if (!edit && Number(id) === this.id) return
+    this.controller.closeInfo()
     this.clear()
     this.id = Number(id)
     this.centerPending = shouldCenterPlace({ origin, edit })
@@ -59,8 +61,13 @@ export class PlacePanelBridge {
     if (place.id !== this.id) return
     this.place = place
     this.editor.stop()
-    this.selection.show(place)
-    if (this.centerPending) this.camera.fit(place)
+    if (place.privacy_hidden) {
+      this.selection.clear()
+      this.camera.cancel()
+    } else {
+      this.selection.show(place)
+      if (this.centerPending) this.camera.fit(place)
+    }
     this.centerPending = false
   }
 

@@ -21,7 +21,7 @@ module PlacesHelper
     {
       start_label: I18n.l(visit.started_at, format: :hour_minute),
       end_label: I18n.l(visit.ended_at, format: :hour_minute),
-      date_label: I18n.l(visit.started_at.to_date, format: :short),
+      date_label: I18n.l(visit.started_at.to_date, format: :medium),
       duration_label: I18n.t('units.hours_minutes_compact', hours: duration / 60, minutes: duration % 60)
     }
   end
