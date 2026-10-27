@@ -77,6 +77,31 @@ RSpec.describe Visits::Create do
       end
     end
 
+    context 'when manually creating another visit near an existing Place' do
+      let!(:nearby) { create(:place, user: user, name: 'Existing cafe', latitude: 52.5203, longitude: 13.405) }
+      let!(:previous) do
+        create(:visit, user: user, place: nearby, started_at: '2023-11-30T10:00:00Z',
+                       ended_at: '2023-11-30T12:00:00Z', status: :confirmed)
+      end
+
+      it 'creates a second visit at the nearby Place and preserves the Visit Name' do
+        service = described_class.new(user, valid_params)
+
+        expect { service.call }.to change { user.visits.count }.by(1).and change { Place.count }.by(0)
+        expect(service.visit).to have_attributes(place: nearby, name: 'Test Visit',
+                                                 started_at: Time.zone.parse(valid_params[:started_at]))
+        expect(nearby.reload.name).to eq('Existing cafe')
+      end
+
+      it 'uses an explicitly chosen different Place instead of the nearby Place' do
+        chosen = create(:place, user: user, name: 'Chosen Place', latitude: 53, longitude: 14)
+        service = described_class.new(user, valid_params.merge(place_id: chosen.id))
+
+        expect { service.call }.to change { user.visits.count }.by(1).and change { Place.count }.by(0)
+        expect(service.visit).to have_attributes(place: chosen, name: 'Test Visit')
+      end
+    end
+
     context 'when a Place is supplied without a Visit Name' do
       let(:place) { create(:place, user: user, name: 'Cafe', latitude: 52.52, longitude: 13.405) }
 

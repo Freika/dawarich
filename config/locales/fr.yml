@@ -5455,6 +5455,9 @@ fr:
       creating_help: Sélection d'un mois de suivi de Berlin et d'un week-end à Prague.
         Cela prend environ une seconde.
     visits:
+      place: "Lieu"
+      choose_place: "Choisir un lieu"
+      multiple_stays: "Plusieurs séjours ont été trouvés. Le plus récent a été utilisé."
       add_new: Ajouter une nouvelle visite
       create_new: Créer un nouveau lieu de visite
       create: Créer une visite

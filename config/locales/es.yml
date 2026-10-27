@@ -4222,6 +4222,9 @@ es:
       creating: Creando tus datos de demostración…
       creating_help: Sembrando un mes de seguimiento en Berlín más un fin de semana en Praga. Toma unos segundos.
     visits:
+      place: "Lugar"
+      choose_place: "Elegir un lugar"
+      multiple_stays: "Se encontraron varias estancias. Se ha usado la más reciente."
       add_new: Añadir una visita
       create_new: Crear nueva visita
       create: Crear visita

@@ -4277,6 +4277,9 @@ de:
       creating: Deine Demo-Daten werden erstellt…
       creating_help: Ein Monat Berlin-Tracking plus eine Prager Wochenende-Reise wird gesät. Das dauert etwa eine Sekunde.
     visits:
+      place: "Ort"
+      choose_place: "Ort auswählen"
+      multiple_stays: "Mehrere Aufenthalte gefunden. Der letzte Aufenthalt wurde übernommen."
       add_new: Neuen Aufenthalt hinzufügen
       create_new: Neuen Aufenthalt erstellen
       create: Aufenthalt erstellen

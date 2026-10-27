@@ -4225,6 +4225,9 @@ ca:
       creating: Creant les teves dades de demostració…
       creating_help: Generant un mes de seguiment a Berlín més un cap de setmana de viatge a Praga. Triga uns segons.
     visits:
+      place: "Lloc"
+      choose_place: "Tria un lloc"
+      multiple_stays: "S’han trobat diverses estades. S’ha utilitzat la més recent."
       add_new: Afegeix una visita nova
       create_new: Crea una visita nova
       create: Crea la visita

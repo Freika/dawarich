@@ -1,14 +1,20 @@
-<div data-controller="visit-creation-v2" data-visit-creation-v2-api-key-value="<%= current_user.api_key %>" data-visit-creation-v2-timezone-value="<%= current_user.timezone %>">
+<div data-visit-merge-threshold-minutes="<%= current_user.safe_settings.merge_threshold_minutes %>" data-controller="visit-creation-v2" data-visit-creation-v2-api-key-value="<%= current_user.api_key %>" data-visit-creation-v2-timezone-value="<%= current_user.timezone %>">
   <div class="modal z-[10000]" data-visit-creation-v2-target="modal">
-    <div class="modal-box max-w-2xl">
+    <div class="modal-box max-w-2xl min-w-0">
       <h3 class="font-bold text-lg mb-4" data-visit-creation-v2-target="modalTitle"><%= t('.create_new_visit') %></h3>
 
       <form data-visit-creation-v2-target="form" data-action="submit->visit-creation-v2#submit">
         <input type="hidden" name="latitude" data-visit-creation-v2-target="latitudeInput">
         <input type="hidden" name="longitude" data-visit-creation-v2-target="longitudeInput">
 
+        <input type="hidden" name="place_id" data-visit-creation-v2-target="placeIdInput">
         <div class="space-y-4">
-          <div class="form-control">
+          <div class="form-control min-w-0">
+            <label class="label" for="visit-place-picker"><span class="label-text font-semibold"><%= t('javascript.visits.place') %></span></label>
+            <button id="visit-place-picker" type="button" class="btn btn-outline w-full h-auto py-2 whitespace-normal break-words" data-action="visit-creation-v2#togglePlaceSearch" data-visit-creation-v2-target="placeName"><%= t('javascript.visits.choose_place') %></button>
+            <div data-visit-creation-v2-target="placeSearch"></div>
+          </div>
+          <div class="form-control min-w-0">
             <label class="label">
               <span class="label-text font-semibold"><%= t('.visit_name') %></span>
             </label>
@@ -16,13 +22,13 @@
               type="text"
               name="name"
               placeholder="<%= t('.enter_visit_name') %>"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full min-w-0"
               data-visit-creation-v2-target="nameInput"
               required>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
-            <div class="form-control">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="form-control min-w-0">
               <label class="label">
                 <span class="label-text font-semibold"><%= t('.start_time') %></span>
               </label>
@@ -30,12 +36,12 @@
                 type="datetime-local"
                 name="started_at"
                 max="9999-12-31T23:59"
-                class="input input-bordered w-full"
+                class="input input-bordered w-full min-w-0"
                 data-visit-creation-v2-target="startTimeInput"
                 required>
             </div>
 
-            <div class="form-control">
+            <div class="form-control min-w-0">
               <label class="label">
                 <span class="label-text font-semibold"><%= t('.end_time') %></span>
               </label>
@@ -43,7 +49,7 @@
                 type="datetime-local"
                 name="ended_at"
                 max="9999-12-31T23:59"
-                class="input input-bordered w-full"
+                class="input input-bordered w-full min-w-0"
                 data-visit-creation-v2-target="endTimeInput"
                 required>
             </div>

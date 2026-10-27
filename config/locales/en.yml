@@ -4213,6 +4213,9 @@ en:
       creating: Creating your demo data…
       creating_help: Seeding a month of Berlin tracking plus a Prague weekend trip. Takes about a second.
     visits:
+      place: "Place"
+      choose_place: "Choose a Place"
+      multiple_stays: "Several stays were found. The latest stay has been used."
       add_new: Add New Visit
       create_new: Create New Visit
       create: Create Visit

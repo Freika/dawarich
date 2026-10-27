@@ -20,6 +20,7 @@ export class AreaSelectionManager {
     this.selectedPointsLayer = null
     this.selectedVisits = []
     this.selectedVisitIds = new Set()
+    this.selectedPoints = []
     this.selectedAnomalyIds = []
     this.selectedRange = null
   }
@@ -113,6 +114,8 @@ export class AreaSelectionManager {
         this.cancelAreaSelection()
         return
       }
+
+      this.selectedPoints = points
 
       // Convert points to GeoJSON and display
       if (points.length > 0) {
@@ -569,6 +572,7 @@ export class AreaSelectionManager {
 
     this.selectedVisits = []
     this.selectedVisitIds = new Set()
+    this.selectedPoints = []
     this.selectedAnomalyIds = []
     if (this.controller.hasDeleteAnomaliesButtonTarget) {
       this.controller.deleteAnomaliesButtonTarget.classList.add("hidden")
