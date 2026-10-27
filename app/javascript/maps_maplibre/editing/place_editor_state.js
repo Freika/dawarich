@@ -1,6 +1,13 @@
-export function panelState(_previous, action) {
+export function panelState(previous, action) {
   if (action.close) return { id: null, open: false, editing: false }
-  return { id: Number(action.id), open: true, editing: action.edit === true }
+  const state = {
+    id: Number(action.id),
+    open: true,
+    editing: action.edit === true,
+  }
+  const returnTo = previous?.open ? previous.returnTo : action.returnTo
+  if (returnTo) state.returnTo = returnTo
+  return state
 }
 
 export function consumePlaceParams(href) {
@@ -53,4 +60,66 @@ export function radiusCircle(center, radius) {
     return point
   })
   return [...ring, ring[0]]
+}
+
+export function shouldCenterPlace({ origin, edit }) {
+  return origin === "link" || edit === true
+}
+
+export function placeBounds(place) {
+  const ring = radiusCircle(
+    [place.longitude, place.latitude],
+    place.visit_radius,
+  )
+  return [
+    [Math.min(...ring.map((p) => p[0])), Math.min(...ring.map((p) => p[1]))],
+    [Math.max(...ring.map((p) => p[0])), Math.max(...ring.map((p) => p[1]))],
+  ]
+}
+
+export function placeCameraOptions(mapRect, panelRect, toolbarRect) {
+  const gap = mapRect.width < 400 ? 28 : 60
+  const padding = { top: gap, right: gap, bottom: gap, left: gap }
+  for (const rect of [panelRect, toolbarRect]) {
+    if (!rect || rect.left >= mapRect.right || rect.right <= mapRect.left)
+      continue
+    const overlap = rect.right - mapRect.left + 24
+    if (overlap + gap + 100 < mapRect.width)
+      padding.left = Math.max(padding.left, overlap)
+  }
+  return { padding, maxZoom: 17, duration: 300 }
+}
+
+export function selectedPlaceFeatures(place) {
+  if (
+    !place ||
+    ![place.longitude, place.latitude, place.visit_radius].every(
+      Number.isFinite,
+    )
+  )
+    return { type: "FeatureCollection", features: [] }
+  const center = [place.longitude, place.latitude]
+  const color = place.color || "#6366f1"
+  return {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: { id: place.id, featureKind: "center", color },
+        geometry: { type: "Point", coordinates: center },
+      },
+      {
+        type: "Feature",
+        properties: {
+          id: place.id,
+          featureKind: "boundary",
+          color: place.geofence ? "#f59e0b" : color,
+        },
+        geometry: {
+          type: "Polygon",
+          coordinates: [radiusCircle(center, place.visit_radius)],
+        },
+      },
+    ],
+  }
 }

@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Refine place editing, selection and tag controls with consistent sections, localized visit and event dates, readable tag chips and quiet destructive actions in both themes.
+
+- Place map editing now shares the panel width rules without an `!important` override, preserving the compact phone layout.
+- Place details and editing now use the left map panel, with Back returning to the previous tab. On phones, map editing keeps the pin and radius handle beside a compact left panel.
+
+### Fixed
+
+- Keep place statistics in one row on phones and format total dwell as hours and minutes. Hide bulk actions until places are selected.
+
+- The Place details panel now has one close control in its header and no longer autofocuses Back. Moving a place or resizing its Visit Radius hides the old map geometry until Save or Cancel.
+- Opening a place from a link now centres the map on its Visit Radius. The selected place stays highlighted with its boundary even when the Places layer is off, without changing saved layer settings.
+
 ## [1.18.2] - 2026-10-27, Berlin
 
 ### ⚠️ Upgrade notes

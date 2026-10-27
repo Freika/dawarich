@@ -17,7 +17,7 @@
     <legend class="label"><%= t('places.management.tags') %></legend>
     <div class="flex flex-wrap gap-2">
       <% @tags.each do |tag| %>
-        <label class="flex items-center gap-2 rounded-lg border border-base-300 px-3 py-2 min-w-0 max-w-full">
+        <label class="cursor-pointer flex items-center gap-2 rounded-lg border border-base-content/10 px-3 py-2 min-w-0 max-w-full">
           <%= check_box_tag 'tag_ids[]', tag.id, Array(params[:tag_ids]).include?(tag.id.to_s), class: 'checkbox checkbox-sm shrink-0' %>
           <span class="min-w-0 [overflow-wrap:anywhere]"><%= tag.icon %> <%= tag.name %></span>
         </label>

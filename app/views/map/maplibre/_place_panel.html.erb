@@ -1,10 +1,9 @@
 <aside class="place-panel" data-controller="place-panel" hidden
        aria-label="<%= t('places.place_details') %>"
-       data-action="turbo:frame-load->place-panel#loaded">
+       data-action="place:editor-ready->place-panel#loaded">
   <div class="place-panel__toolbar">
-    <strong><%= t('places.place_details') %></strong>
-    <button type="button" class="btn btn-sm btn-circle" aria-label="<%= t('places.close_panel') %>"
-            data-place-panel-target="close" data-action="place-panel#close">×</button>
+    <button type="button" class="btn btn-ghost btn-sm" data-action="place-panel#close"
+            data-place-panel-target="close"><%= icon 'arrow-left', class: 'w-4 h-4' %><%= t('map.maplibre.settings_panel.back') %></button>
   </div>
   <%= turbo_frame_tag 'place-drawer', data: { place_panel_target: 'frame' } %>
 </aside>

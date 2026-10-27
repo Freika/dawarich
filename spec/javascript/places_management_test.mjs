@@ -73,6 +73,7 @@ test("bulk selection synchronizes page checkboxes, forms and aggregated delete c
   ]
   controller.allTarget = { checked: false }
   controller.countTarget = {}
+  controller.barTarget = {}
   controller.buttonTargets = [{ disabled: true }]
   const fields = []
   controller.formTargets = [
@@ -112,4 +113,40 @@ test("bulk selection synchronizes page checkboxes, forms and aggregated delete c
     true,
   )
   assert.equal(controller.countTarget.textContent, 2)
+})
+
+test("bulk actions disappear on empty selection and Clear resets all rows", async () => {
+  const source = (
+    await readFile(
+      new URL(
+        "app/javascript/controllers/places_selection_controller.js",
+        root,
+      ),
+      "utf8",
+    )
+  )
+    .replace(/^import .*$/gm, "")
+    .replace("export default class", "globalThis.Selection = class")
+  const context = { Controller: class {} }
+  vm.createContext(context)
+  vm.runInContext(source, context)
+  const controller = new context.Selection()
+  controller.rowTargets = [{ checked: false }, { checked: false }]
+  controller.allTarget = {}
+  controller.countTarget = {}
+  controller.barTarget = { hidden: false }
+  controller.buttonTargets = [{ disabled: false }]
+  controller.formTargets = []
+  controller.update()
+  assert.equal(controller.barTarget.hidden, true)
+  controller.toggleAll({ target: { checked: true } })
+  assert.equal(controller.barTarget.hidden, false)
+  assert.equal(controller.countTarget.textContent, 2)
+  controller.clear()
+  assert.equal(controller.barTarget.hidden, true)
+  assert.equal(controller.countTarget.textContent, 0)
+  assert.equal(controller.allTarget.checked, false)
+  assert.equal(controller.allTarget.indeterminate, false)
+  assert.equal(controller.buttonTargets[0].disabled, true)
+  assert.ok(controller.rowTargets.every((row) => !row.checked))
 })

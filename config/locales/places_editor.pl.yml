@@ -1,5 +1,18 @@
 pl:
   places:
+    polish:
+      selected: "wybrano"
+      details: "Szczegóły"
+      location: "Lokalizacja"
+      notifications: "Powiadomienia"
+      visits: "Wizyty"
+      manage: "Zarządzanie"
+      total_time: "Łączny czas"
+      avg_dwell: "Śr. pobyt"
+      statistics: "Statystyki"
+      merge_duplicate: "Scal duplikat"
+      back_to_places: "Powrót do miejsc"
+      clear: "Wyczyść"
     inline_tags:
       new_tag: "Nowy tag"
       name: "Nazwa tagu"

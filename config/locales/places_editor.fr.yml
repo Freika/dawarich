@@ -1,5 +1,18 @@
 fr:
   places:
+    polish:
+      selected: "sélectionnés"
+      details: "Détails"
+      location: "Localisation"
+      notifications: "Notifications"
+      visits: "Visites"
+      manage: "Gestion"
+      total_time: "Temps total"
+      avg_dwell: "Durée moy."
+      statistics: "Statistiques"
+      merge_duplicate: "Fusionner un doublon"
+      back_to_places: "Retour aux lieux"
+      clear: "Effacer"
     inline_tags:
       new_tag: "Nouvelle étiquette"
       name: "Nom de l’étiquette"

@@ -5,7 +5,7 @@
   <% if clusters.empty? %><p class="p-6 bg-base-200 rounded-box"><%= t('places.management.no_duplicates') %></p><% end %>
   <% clusters.each_with_index do |cluster, index| %>
     <section class="p-4 mb-4 bg-base-200 rounded-box min-w-0" data-testid="duplicate-cluster">
-      <h2 class="text-lg font-bold mb-2 min-w-0"><%= t('places.management.cluster', number: index + 1) %></h2>
+      <h2 class="text-lg font-bold mb-2 tabular-nums min-w-0"><%= t('places.management.cluster', number: index + 1) %></h2>
       <p class="text-sm mb-3"><%= t('places.management.distance_reference', name: cluster.survivor.name) %></p>
       <div class="overflow-x-auto max-w-full">
         <table class="table">
@@ -16,8 +16,8 @@
                 <td><%= check_box_tag 'place_ids[]', place.id, true, id: "duplicate_#{index}_#{place.id}", form: "duplicate_merge_#{index}", class: 'checkbox', aria: { label: place.name } %></td>
                 <td class="min-w-72 max-w-96 break-words"><%= link_to place.name, place_path(place), class: 'link' %></td>
                 <td class="min-w-64 max-w-80"><%= render 'tags', place: %></td>
-                <td><%= place.active_visit_count %></td>
-                <td><%= t('places.management.meters', distance: cluster.distances.fetch(place.id).round) %></td>
+                <td class="tabular-nums"><%= place.active_visit_count %></td>
+                <td class="tabular-nums"><%= t('places.management.meters', distance: cluster.distances.fetch(place.id).round) %></td>
               </tr>
             <% end %>
           </tbody>

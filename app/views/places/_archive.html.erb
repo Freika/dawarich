@@ -2,7 +2,7 @@
   <%= form_with model: place, method: :patch, data: { turbo_frame: 'place-drawer', testid: 'place-archive-form' } do |form| %>
     <%= hidden_field_tag :map_panel, params[:map_panel] if params[:map_panel].present? %>
     <%= form.hidden_field :archived, value: place.archived? ? '0' : '1' %>
-    <%= form.button t(place.archived? ? 'places.archive.unarchive' : 'places.archive.archive'), class: 'btn btn-sm h-auto py-2 max-w-full', aria: { describedby: "place-archive-hint-#{place.id}" } %>
+    <%= form.button t(place.archived? ? 'places.archive.unarchive' : 'places.archive.archive'), class: 'btn btn-ghost btn-sm max-w-full', aria: { describedby: "place-archive-hint-#{place.id}" } %>
   <% end %>
   <p id="place-archive-hint-<%= place.id %>" class="text-sm text-base-content/70" data-testid="place-archive-hint"><%= t('places.archive.hint') %></p>
 </section>

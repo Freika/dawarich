@@ -1,5 +1,18 @@
 ca:
   places:
+    polish:
+      selected: "seleccionats"
+      details: "Detalls"
+      location: "Ubicació"
+      notifications: "Notificacions"
+      visits: "Visites"
+      manage: "Gestiona"
+      total_time: "Temps total"
+      avg_dwell: "Durada mitjana"
+      statistics: "Estadístiques"
+      merge_duplicate: "Fusiona el duplicat"
+      back_to_places: "Torna als llocs"
+      clear: "Neteja"
     inline_tags:
       new_tag: "Etiqueta nova"
       name: "Nom de l’etiqueta"

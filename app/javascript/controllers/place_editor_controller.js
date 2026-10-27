@@ -21,6 +21,17 @@ export default class extends Controller {
       this.radiusLabelTarget.textContent = `${translate("map_info.visit_radius")}: ${event.detail.visit_radius} m`
     }
     document.addEventListener("place:geometry-changed", this.changeListener)
+    if (this.element.closest(".place-panel")) {
+      this.element
+        .closest(".place-panel")
+        .classList.remove("place-panel--editing")
+      this.element
+        .closest(".map-control-panel")
+        .classList.remove("place-geometry-editing")
+      this.element.dispatchEvent(
+        new CustomEvent("place:editor-ready", { bubbles: true }),
+      )
+    }
   }
 
   disconnect() {
@@ -32,6 +43,7 @@ export default class extends Controller {
     if (!panel) return
     event.preventDefault()
     panel.classList.add("place-panel--editing")
+    panel.closest(".map-control-panel").classList.add("place-geometry-editing")
     this.mapFormTarget.classList.remove("hidden")
     this.mapLinkTarget.classList.add("hidden")
     document.dispatchEvent(
@@ -42,6 +54,9 @@ export default class extends Controller {
   }
 
   cancel() {
+    this.element
+      .closest(".map-control-panel")
+      ?.classList.remove("place-geometry-editing")
     this.element
       .closest(".place-panel")
       ?.classList.remove("place-panel--editing")

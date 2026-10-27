@@ -5,7 +5,7 @@
       <% @places.each do |place| %>
         <li class="flex flex-wrap items-center justify-between gap-2 py-3">
           <%= link_to place.name, place_path(place), class: "link link-primary min-w-0 [overflow-wrap:anywhere]" %>
-          <span class="text-sm text-base-content/60"><%= t('.visits', count: @visit_counts.fetch(place.id, 0)) %></span>
+          <span class="text-sm text-base-content/70 tabular-nums"><%= t('.visits', count: @visit_counts.fetch(place.id, 0)) %></span>
         </li>
       <% end %>
     </ul>
