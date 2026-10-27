@@ -9,6 +9,17 @@ RSpec.describe Users::Digests::CalculateYear do
     let(:user) { create(:user) }
     let(:year) { 2024 }
 
+    it 'orders countries alphabetically when their city counts tie' do
+      create(:stat, user: user, year: year, month: 1, toponyms: [
+               { 'country' => 'Germany', 'cities' => [] },
+               { 'country' => 'Spain', 'cities' => [{ 'city' => 'Madrid' }] },
+               { 'country' => 'Belgium', 'cities' => [] },
+               { 'country' => 'France', 'cities' => [{ 'city' => 'Paris' }] }
+             ])
+
+      expect(calculate_digest.toponyms.pluck('country')).to eq(%w[France Spain Belgium Germany])
+    end
+
     it 'retains countries whose monthly toponyms have no qualifying cities' do
       create(:stat, user: user, year: year, month: 1, toponyms: [
                { 'country' => 'Germany', 'cities' => [] },

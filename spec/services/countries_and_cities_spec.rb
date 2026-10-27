@@ -44,14 +44,25 @@ RSpec.describe CountriesAndCities do
         ]
       end
 
-      it 'splits named city runs and sums only their observed durations' do
+      it 'preserves named city output when city-less points are interleaved' do
         result = described_class.new(points, min_minutes_spent_in_city: 60).call.as_json
-        cities = [{ 'city' => 'Berlin', 'points' => 4, 'timestamp' => 7200, 'stayed_for' => 60 }]
+        cities = [{ 'city' => 'Berlin', 'points' => 4, 'timestamp' => 7200, 'stayed_for' => 120 }]
 
         expect(result).to eq([{ 'country' => 'Germany', 'cities' => cities }])
-        expect(described_class.new(points, min_minutes_spent_in_city: 61).call.as_json)
+        named_points = points.reject { |point| point[:city].blank? }
+        expect(result).to eq(described_class.new(named_points, min_minutes_spent_in_city: 60).call.as_json)
+        expect(described_class.new(points, min_minutes_spent_in_city: 121).call.as_json)
           .to eq([{ 'country' => 'Germany', 'cities' => [] }])
       end
+    end
+
+    it 'excludes blank country names even when a canonical country exists' do
+      country = create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')
+      points = [nil, '', '  '].each_with_index.map do |name, index|
+        { timestamp: index * 3600, country_name: name, country_id: country.id, city: 'Berlin' }
+      end
+
+      expect(described_class.new(points, min_minutes_spent_in_city: 0).call).to be_empty
     end
 
     let(:points) do

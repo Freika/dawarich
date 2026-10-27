@@ -23,7 +23,7 @@ RSpec.describe Stats::Toponyms do
     end
   end
 
-  it 'matches split named city runs around a country-only point' do
+  it 'preserves named city output when city-less points are interleaved' do
     points = [
       { timestamp: 0, country_name: 'Germany', city: 'Berlin' },
       { timestamp: 1800, country_name: 'Germany', city: 'Berlin' },
@@ -32,13 +32,24 @@ RSpec.describe Stats::Toponyms do
       { timestamp: 7200, country_name: 'Germany', city: 'Berlin' }
     ]
 
-    [60, 61].each do |minimum|
-      cities = minimum == 60 ? [{ 'city' => 'Berlin', 'points' => 4, 'timestamp' => 7200, 'stayed_for' => 60 }] : []
+    [60, 120, 121].each do |minimum|
+      cities = minimum <= 120 ? [{ 'city' => 'Berlin', 'points' => 4, 'timestamp' => 7200, 'stayed_for' => 120 }] : []
       expected = [{ 'country' => 'Germany', 'cities' => cities }]
 
       expect(described_class.new(points.each, min_minutes_spent_in_city: minimum).call.as_json).to eq(expected)
+      named_points = points.reject { |point| point[:city].blank? }
+      expect(described_class.new(named_points.each, min_minutes_spent_in_city: minimum).call.as_json).to eq(expected)
       expect(CountriesAndCities.new(points, min_minutes_spent_in_city: minimum).call.as_json).to eq(expected)
     end
+  end
+
+  it 'excludes blank country names even when a canonical country exists' do
+    country = create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')
+    points = [nil, '', '  '].each_with_index.map do |name, index|
+      { timestamp: index * 3600, country_name: name, country_id: country.id, city: 'Berlin' }
+    end
+
+    expect(described_class.new(points.each, min_minutes_spent_in_city: 0).call).to be_empty
   end
 
   it 'matches existing dwell, flyover, gap, alias and city-count semantics on ordered traces' do
