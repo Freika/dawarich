@@ -33,6 +33,8 @@ export default class extends Controller {
     }
   }
 
+  // The saved place reaches the page in a turbo stream that Turbo renders
+  // after turbo:submit-end, so the map hears about it once that stream lands.
   relaySavedPlace(event) {
     if (event.target?.target !== "place-creation-data") return
 
@@ -95,6 +97,7 @@ export default class extends Controller {
     this.nameInputTarget.value = options.name || ""
     this.visitRadiusInputTarget.value = 50
 
+    // Set form for creation mode
     this.formTarget.action = "/places"
     this.formTarget.method = "post"
 
@@ -106,6 +109,7 @@ export default class extends Controller {
     this.modalTarget.classList.add("modal-open")
     this.nameInputTarget.focus()
 
+    // Load nearby places via Turbo Frame
     this.loadNearbyFrame(latitude, longitude)
   }
 
@@ -113,6 +117,7 @@ export default class extends Controller {
     this.modalTarget.classList.remove("modal-open")
     this.formTarget.reset()
 
+    // Reset nearby frame
     if (this.hasNearbyFrameTarget) {
       this.nearbyFrameTarget.innerHTML = `<p class="text-sm text-gray-500">${translate("places.open_for_suggestions")}</p>`
     }

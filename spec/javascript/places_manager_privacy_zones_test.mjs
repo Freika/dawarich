@@ -13,6 +13,7 @@ const { PlacesManager, setPrivacyZonesFingerprint } = await import(
      const Toast = {}
      const SettingsManager = { updateSetting() {} }
      ${(await read("maps_maplibre/utils/tile_freshness.js")).replace(/^export /gm, "")}
+     ${stripImports(await read("controllers/maps/maplibre/places_tag_filters.js")).replace(/^export /gm, "")}
      ${stripImports(await read("controllers/maps/maplibre/places_manager.js"))}
      export { setPrivacyZonesFingerprint }`,
   ).toString("base64")}`
