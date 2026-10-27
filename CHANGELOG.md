@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- Creating a visit, including through `POST /api/v1/visits`, with the same name as the existing Place it is attached to no longer saves a separate visit name, so the visit shows the Place's current name and follows later renames.
 - The Place search API (`GET /api/v1/places/search`) also returns your Places that have visits but are hidden from the map, and marks each result with `has_visits`.
 
 ## [1.18.2] - 2026-10-27, Berlin
