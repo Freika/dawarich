@@ -197,8 +197,8 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def invitation_token
-    @invitation_token ||= params[:invitation_token] ||
-                          user_param(:invitation_token) ||
+    @invitation_token ||= params[:invitation_token].presence ||
+                          user_param(:invitation_token).presence ||
                           session[:invitation_token]
   end
 

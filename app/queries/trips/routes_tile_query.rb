@@ -172,7 +172,7 @@ module Trips
     end
 
     def simplified_geom(geometry)
-      geom = "ST_Transform(#{GreatCircleSql.densified(geometry)}, 3857)"
+      geom = "ST_Transform(#{GreatCircleSql.split_antimeridian(GreatCircleSql.densified(geometry))}, 3857)"
       return geom if z >= SIMPLIFY_SKIP_ZOOM
 
       "ST_Simplify(#{geom}, #{WEB_MERCATOR_WORLD / (1 << z) / TILE_PIXELS})"

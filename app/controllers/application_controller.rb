@@ -3,6 +3,7 @@
 class ApplicationController < ActionController::Base
   include Pundit::Authorization
   include PartneroTrackable
+  include PendingInvitationAcceptable
 
   class_attribute :page_refresh_morphing, instance_accessor: false, default: false
 
@@ -113,19 +114,12 @@ class ApplicationController < ActionController::Base
   end
 
   def after_sign_in_path_for(resource)
-    invitation_token = params[:invitation_token] || session[:invitation_token]
-    if invitation_token.present?
-      invitation = Family::Invitation.find_by(token: invitation_token)
-      return family_invitation_path(invitation.token) if invitation&.can_be_accepted?
-    end
+    invitation_path = pending_invitation_path_for(resource)
+    return invitation_path if invitation_path
 
     return trial_resume_path if resource.respond_to?(:pending_payment?) && resource.pending_payment?
 
-    # Handle mobile client flow (iOS and Android)
-    client_type = request.headers['X-Dawarich-Client'] || session[:dawarich_client]
-
-    case client_type
-    when 'ios', 'android'
+    if mobile_client?
       payload = { api_key: resource.api_key, exp: 5.minutes.from_now.to_i }
 
       token = Subscription::EncodeJwtToken.new(
@@ -136,6 +130,11 @@ class ApplicationController < ActionController::Base
     else
       super
     end
+  end
+
+  # Signing in from the iOS or Android app, which takes the session back via ios_success_path.
+  def mobile_client?
+    %w[ios android].include?(request.headers['X-Dawarich-Client'] || session[:dawarich_client])
   end
 
   def require_pro!

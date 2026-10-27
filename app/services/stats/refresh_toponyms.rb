@@ -46,7 +46,7 @@ module Stats
     attr_reader :user, :year, :month
 
     def checkpoint_key
-      "stats/toponyms_source/v1/#{user.id}/#{year}/#{month}"
+      "stats/toponyms_source/v2/#{user.id}/#{year}/#{month}"
     end
 
     def source_signature

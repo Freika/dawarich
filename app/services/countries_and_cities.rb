@@ -25,10 +25,10 @@ class CountriesAndCities
   end
 
   def call
-    presence_runs
-      .group_by { |run| run[:country] }
-      .transform_values { |country_runs| build_cities(country_runs) }
-      .map { |country, cities| CountryData.new(country: country, cities: cities) }
+    country_runs = presence_runs.group_by { |run| run[:country] }
+    countries_present.map do |country|
+      CountryData.new(country: country, cities: build_cities(country_runs.fetch(country, [])))
+    end
   end
 
   private
@@ -37,6 +37,12 @@ class CountriesAndCities
 
   def ordered_points
     @ordered_points ||= points.sort_by { |point| [point[:timestamp], point[:id].to_i] }
+  end
+
+  def countries_present
+    ordered_points.filter_map do |point|
+      canonical_country_name(point) unless flyover?(point) || point[:country_name].blank?
+    end.uniq
   end
 
   def presence_runs
@@ -57,7 +63,7 @@ class CountriesAndCities
 
   def runs_within(segment)
     segment
-      .reject { |point| point[:country_name].nil? || point[:city].nil? }
+      .reject { |point| point[:country_name].blank? || point[:city].blank? }
       .slice_when { |previous, current| separate_runs?(previous, current) }
       .map { |run_points| build_run(run_points) }
   end
@@ -87,6 +93,8 @@ class CountriesAndCities
   end
 
   def build_city_data(city, city_runs)
+    return nil if city.blank?
+
     duration = city_runs.sum { |run| run[:duration_seconds] } / 60
     return nil if duration < min_minutes_spent_in_city
 
