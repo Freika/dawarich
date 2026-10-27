@@ -83,7 +83,7 @@ export default class extends Controller {
         const local = rangeInputValue(value, this.timezoneValue)
         const seconds = isWallClockValue(value)
           ? value.slice(16, 19) || ":00"
-          : ":00"
+          : `:${String(new Date(value).getUTCSeconds()).padStart(2, "0")}`
         const date = new Date(`${local}${seconds}Z`)
         date.setUTCDate(date.getUTCDate() + Number(link.dataset.dayOffset))
         return date.toISOString().slice(0, 19)

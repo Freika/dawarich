@@ -151,3 +151,44 @@ for (const [name, format, months, expected] of [
     }
   })
 }
+
+test("map day arrows keep the seconds of an absolute range applied by Studio", (t) => {
+  const originals = {
+    window: globalThis.window,
+    document: globalThis.document,
+    sessionStorage: globalThis.sessionStorage,
+  }
+  globalThis.document = new EventTarget()
+  globalThis.sessionStorage = { getItem: () => null }
+  globalThis.window = { location: new URL("https://example.test/map/v2") }
+  const controller = new MapControlsController()
+  t.after(() => {
+    controller.disconnect()
+    Object.assign(globalThis, originals)
+  })
+  controller.startTarget = { value: "" }
+  controller.endTarget = { value: "" }
+  controller.timezoneValue = "Europe/Berlin"
+  controller.dateFormatValue = "%Y-%m-%d"
+  controller.monthNamesValue = []
+  controller.abbrMonthNamesValue = []
+  controller.dayLinkTargets = [
+    {
+      href: "https://example.test/map/v2",
+      dataset: { dayOffset: "1" },
+      closest: () => ({ dataset: {} }),
+    },
+  ]
+  controller.connect()
+  document.dispatchEvent(
+    new CustomEvent("timeline-feed:date-navigated", {
+      detail: {
+        startAt: "2026-10-15T22:00:00.000Z",
+        endAt: "2026-10-16T21:59:59.000Z",
+      },
+    }),
+  )
+  const params = new URL(controller.dayLinkTargets[0].href).searchParams
+  assert.equal(params.get("start_at"), "2026-10-17T00:00:00")
+  assert.equal(params.get("end_at"), "2026-10-17T23:59:59")
+})
