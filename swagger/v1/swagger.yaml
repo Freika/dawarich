@@ -1804,6 +1804,7 @@ paths:
                       type: integer
                     place_id:
                       type: integer
+                      nullable: true
                     place_name:
                       type: string
                     event_type:

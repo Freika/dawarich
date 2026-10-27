@@ -140,4 +140,17 @@ RSpec.describe GeofenceEvents::Record do
     expect(record(:leave, source: :native_app, apply_state: false)).to be_present
     expect(GeofenceEvents::StateStore.new(user).inside_ids).to include(place.id)
   end
+
+  it 'snapshots the place name when recording an event', :place_retention do
+    place.update!(name: 'Home')
+
+    expect(record(:enter).reload.place_name).to eq('Home')
+  end
+
+  it 'deduplicates a repeated transition after its place is renamed', :place_retention do
+    record(:enter, source: :native_app, apply_state: false)
+    place.update!(name: 'Renamed home')
+
+    expect { record(:enter, source: :native_app, apply_state: false) }.not_to change(GeofenceEvent, :count)
+  end
 end

@@ -23,16 +23,18 @@ RSpec.describe 'Geofence Events API', type: :request do
         schema type: :array, items: {
           type: :object,
           properties: {
-            id: { type: :integer }, place_id: { type: :integer }, place_name: { type: :string },
+            id: { type: :integer }, place_id: { type: :integer, nullable: true }, place_name: { type: :string },
             event_type: { type: :string, enum: %w[enter leave] },
             source: { type: :string, enum: %w[native_app server_inferred owntracks_native] },
             occurred_at: { type: :string, format: :'date-time' },
             latitude: { type: :number }, longitude: { type: :number }, accuracy_m: { type: :integer, nullable: true }
           }
         }
-        before { create(:geofence_event, user:) }
+        before { create(:geofence_event, user:, place: nil, place_name: 'Former home') }
 
-        run_test!
+        run_test! 'lists retained events with a nullable place id', :place_retention do |response|
+          expect(JSON.parse(response.body).sole).to include('place_id' => nil, 'place_name' => 'Former home')
+        end
       end
     end
   end

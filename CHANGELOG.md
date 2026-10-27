@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- Geofence events stay in the log and API after their place is deleted, showing its last name.
 - Places now have one editor on the map and on their own page for names, tags, notes, and geofencing. Delete confirmation lists affected visits, privacy tags, webhooks, and geofence events.
 
 - Creating or joining a family turns on the Family Members layer on the map, so the family shows up without looking for the toggle. Leaving the family turns the layer off again.

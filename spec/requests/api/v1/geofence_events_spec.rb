@@ -51,4 +51,13 @@ RSpec.describe 'Api::V1::GeofenceEvents', type: :request do
 
     expect(json).to be_empty
   end
+
+  it 'lists a deleted place snapshot with a null place id', :place_retention do
+    event = create(:geofence_event, user:, place: nil, place_name: 'Former home')
+
+    get '/api/v1/geofence_events', headers: headers
+
+    expect(response).to have_http_status(:ok)
+    expect(json.sole).to include('id' => event.id, 'place_id' => nil, 'place_name' => 'Former home')
+  end
 end

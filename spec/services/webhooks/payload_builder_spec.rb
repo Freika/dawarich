@@ -23,4 +23,12 @@ RSpec.describe Webhooks::PayloadBuilder do
       metadata: { 'battery' => 80 }
     )
   end
+
+  it 'builds a delivery payload from a deleted place snapshot', :place_retention do
+    event = create(:geofence_event, place: nil, place_name: 'Former home')
+
+    expect(described_class.call(event)[:place]).to eq(
+      id: nil, name: 'Former home', latitude: nil, longitude: nil, radius: nil
+    )
+  end
 end
