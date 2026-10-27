@@ -210,3 +210,15 @@ test("saving a visible place upserts without fetching before a new tag enters ma
     [{ id: 2, geofence: true, tags: [{ id: 99 }] }],
   )
 })
+
+test("saving an edited place preserves a disabled Places layer", async () => {
+  setPrivacyZonesFingerprint("same")
+  const { manager } = setup("same")
+  const layer = manager.layerManager.getLayer("places")
+  layer.visible = false
+  layer.show = () => {
+    layer.visible = true
+  }
+  await manager.handlePlaceUpdated(placeSaved)
+  assert.equal(layer.visible, false)
+})

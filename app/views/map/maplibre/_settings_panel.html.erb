@@ -33,6 +33,9 @@
 
     <!-- Panel Body -->
     <div class="panel-body">
+      <div class="tab-content" data-tab-content="place" data-map-panel-target="tabContent">
+        <%= render 'map/maplibre/place_panel' %>
+      </div>
       <!-- Search Tab -->
       <div class="tab-content" data-tab-content="search" data-map-panel-target="tabContent">
         <div class="form-control w-full">

@@ -1,5 +1,6 @@
 import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
+import { PlaceCamera } from "maps_maplibre/editing/place_camera"
 import {
   radiusCircle,
   radiusFromHandle,
@@ -9,6 +10,7 @@ import {
 export class PlaceGeometryEditor {
   constructor(map) {
     this.map = map
+    this.camera = new PlaceCamera(map)
   }
 
   start(place, maximum) {
@@ -24,13 +26,19 @@ export class PlaceGeometryEditor {
       id: "place-edit-fill",
       type: "fill",
       source: "place-edit-radius",
-      paint: { "fill-color": "#2563eb", "fill-opacity": 0.15 },
+      paint: {
+        "fill-color": place.geofence ? "#f59e0b" : "#2563eb",
+        "fill-opacity": 0.15,
+      },
     })
     this.map.addLayer({
       id: "place-edit-line",
       type: "line",
       source: "place-edit-radius",
-      paint: { "line-color": "#2563eb", "line-width": 2 },
+      paint: {
+        "line-color": place.geofence ? "#f59e0b" : "#2563eb",
+        "line-width": 2,
+      },
     })
     this.pin = this.marker(
       "place-edit-pin",
@@ -70,19 +78,7 @@ export class PlaceGeometryEditor {
         ),
       )
     })
-    const ring = this.circle().geometry.coordinates[0]
-    const bounds = ring.reduce(
-      (bounds, point) => bounds.extend(point),
-      new maplibregl.LngLatBounds(center, center),
-    )
-    const mobile = this.map.getContainer().clientWidth < 768
-    this.map.fitBounds(bounds, {
-      padding: mobile
-        ? { top: 60, right: 60, bottom: 240, left: 60 }
-        : { top: 80, right: 480, bottom: 80, left: 80 },
-      maxZoom: 17,
-      duration: 300,
-    })
+    this.camera.fit(place)
     this.changed()
   }
 
@@ -123,6 +119,7 @@ export class PlaceGeometryEditor {
   }
 
   stop() {
+    this.camera.cancel()
     this.pin?.remove()
     this.handle?.remove()
     this.pin = null

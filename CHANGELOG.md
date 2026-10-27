@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Place details and editing now use the left map panel, with Back returning to the previous tab. On phones, map editing keeps the pin and radius handle beside a compact left panel.
+
+### Fixed
+
+- Opening a place from a link now centres the map on its Visit Radius. The selected place stays highlighted with its boundary even when the Places layer is off, without changing saved layer settings.
+
 ## [1.18.2] - 2026-10-27, Berlin
 
 ### Added
