@@ -141,7 +141,8 @@ test("edit context retains the attributed Place and Visit Name until the picker 
   c.editingVisitId = 12
   const form = new VisitFormDraft(c)
   await form.open(place)
-  assert.equal(c.placeIdInputTarget.value, 2)
+  assert.equal(c.placeIdInputTarget.value, "")
+  assert.equal(c.placeNameTarget.textContent, "Cafe")
   assert.equal(c.nameInputTarget.value, "Visit name")
   form.search.options.onSelect({ ...place, id: 4, name: "Chosen" })
   assert.equal(c.placeIdInputTarget.value, 4)
@@ -149,7 +150,21 @@ test("edit context retains the attributed Place and Visit Name until the picker 
   c.nameInputTarget.value = ""
   form.close()
   await new VisitFormDraft(c).open(place)
-  assert.equal(c.nameInputTarget.value, "Cafe")
+  assert.equal(c.nameInputTarget.value, "")
+})
+
+test("editing never fills an empty Visit Name even after a Place is picked", async () => {
+  const { VisitFormDraft } = await formModule(() => {
+    throw new Error("edit must not load context")
+  })
+  const c = controller()
+  c.editingVisitId = 12
+  const form = new VisitFormDraft(c)
+  await form.open(place)
+  assert.equal(c.nameInputTarget.value, "")
+  form.search.options.onSelect({ ...place, id: 4, name: "Chosen" })
+  assert.equal(c.placeIdInputTarget.value, 4)
+  assert.equal(c.nameInputTarget.value, "")
 })
 
 test("an obsolete context response cannot replace a user's Place choice", async () => {

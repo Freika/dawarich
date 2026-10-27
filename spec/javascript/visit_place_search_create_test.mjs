@@ -112,3 +112,28 @@ test("form picker lists saved Places without immediate Place creation", () => {
   assert.doesNotMatch(search.list.innerHTML, /External|data-create-place/)
   assert.match(search.list.innerHTML, /Saved/)
 })
+
+test("Enter in the form picker search prevents implicit form submission", () => {
+  const input = new EventTarget()
+  input.focus = () => {}
+  const search = new context.VisitPlaceSearch(
+    null,
+    52,
+    13,
+    {
+      querySelector: () => input,
+    },
+    null,
+    { onSelect() {} },
+  )
+  search.fetchResults = () => {}
+  search.openPanel()
+  const enter = new Event("keydown", { cancelable: true })
+  Object.defineProperty(enter, "key", { value: "Enter" })
+  input.dispatchEvent(enter)
+  assert.equal(enter.defaultPrevented, true)
+  const letter = new Event("keydown", { cancelable: true })
+  Object.defineProperty(letter, "key", { value: "a" })
+  input.dispatchEvent(letter)
+  assert.equal(letter.defaultPrevented, false)
+})

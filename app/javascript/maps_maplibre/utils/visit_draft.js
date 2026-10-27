@@ -13,7 +13,13 @@ export function pointsToVisitDraft(points, mergeThresholdMinutes = 15) {
     }
     stays[stays.length - 1].push(point)
   }
-  const latest = stays[stays.length - 1]
+  const qualifyingStays = stays.filter(
+    (stay) =>
+      stay.length >= 2 &&
+      stay[stay.length - 1].timestamp - stay[0].timestamp >= 60,
+  )
+  if (!qualifyingStays.length) return null
+  const latest = qualifyingStays[qualifyingStays.length - 1]
   const median = (values) => {
     const sorted = values.map(Number).sort((a, b) => a - b)
     const middle = Math.floor(sorted.length / 2)
@@ -26,6 +32,6 @@ export function pointsToVisitDraft(points, mergeThresholdMinutes = 15) {
     lng: median(latest.map((point) => point.longitude)),
     startedAt: new Date(latest[0].timestamp * 1000).toISOString(),
     endedAt: new Date(latest[latest.length - 1].timestamp * 1000).toISOString(),
-    multipleStays: stays.length > 1,
+    multipleStays: qualifyingStays.length > 1,
   }
 }

@@ -33,6 +33,9 @@ export class VisitPlaceSearch {
     this.input = this.mount.querySelector("[data-search-input]")
     this.list = this.mount.querySelector("[data-search-results]")
     this.input.addEventListener("input", () => this.onInput())
+    this.input.addEventListener("keydown", (event) => {
+      if (this.onSelect && event.key === "Enter") event.preventDefault()
+    })
     this.input.focus()
     this.fetchResults("")
   }

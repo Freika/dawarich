@@ -31,7 +31,9 @@ vm.runInContext(
 const { selectionVisitDraft, prefillVisitFromClick } = context.exports
 const points = [
   { latitude: 52, longitude: 13, timestamp: 1700000000 },
+  { latitude: 52, longitude: 13, timestamp: 1700000300 },
   { latitude: 52, longitude: 13, timestamp: 1700003600 },
+  { latitude: 52, longitude: 13, timestamp: 1700003900 },
 ]
 
 test("selection draft uses retained points and the server-provided user threshold", () => {

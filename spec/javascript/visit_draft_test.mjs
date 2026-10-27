@@ -48,13 +48,54 @@ test("empty points have no draft", () => {
   assert.equal(pointsToVisitDraft([], 15), null)
 })
 
+test("a single passing point has no stay draft", () => {
+  assert.equal(pointsToVisitDraft([point(0)]), null)
+})
+
+test("two points thirty seconds apart have no stay draft", () => {
+  assert.equal(pointsToVisitDraft([point(0), point(0.5)]), null)
+})
+
+test("the latest qualifying stay wins over a later drive-by point", () => {
+  const draft = pointsToVisitDraft([
+    point(0),
+    point(1),
+    point(60, 53),
+    point(61, 53),
+    point(120, 54),
+  ])
+  assert.equal(
+    draft.startedAt,
+    new Date(point(60).timestamp * 1000).toISOString(),
+  )
+  assert.equal(
+    draft.endedAt,
+    new Date(point(61).timestamp * 1000).toISOString(),
+  )
+  assert.equal(draft.lat, 53)
+  assert.equal(draft.multipleStays, true)
+})
+
+test("the multiple-stays warning counts qualifying stays only", () => {
+  const draft = pointsToVisitDraft([
+    point(0),
+    point(60),
+    point(60.5),
+    point(120),
+    point(121),
+  ])
+  assert.equal(draft.multipleStays, false)
+})
+
 test("the user's merge threshold controls splitting including an exact boundary", () => {
   assert.equal(
-    pointsToVisitDraft([point(0), point(20)], 20).multipleStays,
+    pointsToVisitDraft([point(0), point(1), point(21), point(22)], 20)
+      .multipleStays,
     false,
   )
   assert.equal(
-    pointsToVisitDraft([point(0), point(20)], 10).multipleStays,
+    pointsToVisitDraft([point(0), point(1), point(21), point(22)], 10)
+      .multipleStays,
     true,
   )
 })

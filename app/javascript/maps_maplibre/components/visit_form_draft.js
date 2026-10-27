@@ -7,10 +7,7 @@ export class VisitFormDraft {
     this.active = true
     this.revision = 0
     this.editedTimes = new Set()
-    this.nameEdited = Boolean(
-      controller.editingVisitId != null &&
-        controller.nameInputTarget.value.trim(),
-    )
+    this.nameEdited = controller.editingVisitId != null
     this.events = new AbortController()
     controller.nameInputTarget.addEventListener(
       "input",
@@ -42,10 +39,14 @@ export class VisitFormDraft {
       { onSelect: (selected) => this.select(selected) },
     )
     if (place?.id) {
-      this.select(place)
+      if (c.editingVisitId != null) {
+        c.placeNameTarget.textContent = place.name
+      } else {
+        this.select(place)
+      }
       return
     }
-    await this.loadContext()
+    if (c.editingVisitId == null) await this.loadContext()
   }
 
   select(place, fillName = true) {

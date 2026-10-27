@@ -8,7 +8,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Create Visit on the map fills the location and times from selected points or nearby history, using the latest stay when several are found. Create and edit forms now let you choose a Place, with a nearby previously visited Place selected for you.
+- Create Visit on the map fills the location and times from selected points or nearby history, using the latest stay when several are found. Create and edit forms now let you choose a Place, with a nearby previously visited Place selected when creating a visit.
+
+### Changed
+
+- The Place search API (`GET /api/v1/places/search`) also returns your Places that have visits but are hidden from the map, and marks each result with `has_visits`.
 
 ## [1.18.2] - 2026-10-27, Berlin
 

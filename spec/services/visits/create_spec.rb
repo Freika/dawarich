@@ -121,6 +121,32 @@ RSpec.describe Visits::Create do
       end
     end
 
+    context 'when a Visit Name echoes an existing Place name' do
+      let(:place) { create(:place, user: user, name: 'Cafe', latitude: 52.52, longitude: 13.405) }
+
+      it 'clears an echoed supplied Place name but keeps a different Visit Name' do
+        service = described_class.new(user, valid_params.merge(place_id: place.id, name: place.name))
+        service.call
+
+        expect(service.visit.reload).to have_attributes(name: nil, display_name: 'Cafe')
+        place.update!(name: 'Corner Cafe')
+        expect(service.visit.reload.display_name).to eq('Corner Cafe')
+
+        custom = described_class.new(user, valid_params.merge(place_id: place.id, name: 'Lunch',
+                                                              started_at: '2023-12-01T11:00:00Z'))
+        custom.call
+        expect(custom.visit.reload.name).to eq('Lunch')
+      end
+
+      it 'clears an echoed nearby Place name when no explicit Place is supplied' do
+        create(:visit, user: user, place: place)
+        service = described_class.new(user, valid_params.merge(name: place.name))
+        service.call
+
+        expect(service.visit.reload).to have_attributes(place: place, name: nil, display_name: 'Cafe')
+      end
+    end
+
     context 'when reusing existing place' do
       let!(:existing_place) do
         create(:place,
