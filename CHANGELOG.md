@@ -8,9 +8,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Visits without a place now show on the map and in the timeline editor using the location of their points. #3384
+
 - GPS noise filtering can hide inaccurate points again. Since 1.11.0 points with an accuracy of a few hundred metres stayed on the map, and phone tracking showed them as zig-zag lines across the route. Turn on "Hide inaccurate points" in the map settings under GPS Noise Filtering, choose a threshold between 50 and 1000 m, then press "Apply Settings" and after that "Re-evaluate past data" to hide such points in your history too. It is off by default, including for accounts that saved a threshold before 1.11.0, because Google Timeline imports report 1–4 km for points that still sit on the road. (#3300)
 - The day arrows in the Timeline panel work as soon as you open it, without picking a day in its calendar first, and so do the left and right arrow keys while the Timeline is open and the map itself is not focused. When the map shows several days, they start from the last one. After you change the day in the Timeline, the day arrows next to the date fields move one day from the day you are on, not from the day the page was opened with, and their hints show the right date. The hints on the start and end date fields are no longer hidden behind the open Timeline. (#3858)
 - Countries now count on Insights, Stats and yearly digests when reverse geocoding finds a country but no city for your points, for example in the countryside or at sea. Past months are updated gradually in the background after the upgrade. (#3598)
+- Enrich photos in the map's Tools panel opens with the dates the map shows, also right after a hard reload of the page (Ctrl+F5) or after you pick another day on the timeline. Dates you typed but have not scanned yet stay until you press Search, Today or the day arrows on the map. Before, both date fields could stay empty until you pressed Search. (#3920)
+- Tracks that cross the 180° meridian, such as trans-Pacific flights, are drawn across the date line again instead of as a line around the whole world. This applies to the Tracks layer, its speed colouring and trip routes. (#3921)
+- On iPhone and iPad, GPX, KML, KMZ, TCX, FIT and OwnTracks .rec files can be picked on the Imports page again, in Safari and in the installed web app. The file picker greyed them out. It now lists every file, and a file of an unsupported type is still rejected with a message after you pick it. (#3617)
 
 ## [1.18.1] - 2026-10-26, Berlin
 

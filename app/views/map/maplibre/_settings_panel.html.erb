@@ -1025,6 +1025,7 @@
                             <span class="label-text text-xs"><%= t('.from') %></span>
                           </label>
                           <input type="date" class="input input-bordered input-sm"
+                                 value="<%= @start_at.to_date %>"
                                  data-maps--immich-enrich-target="startDate">
                         </div>
                         <div class="form-control">
@@ -1032,6 +1033,7 @@
                             <span class="label-text text-xs"><%= t('.to') %></span>
                           </label>
                           <input type="date" class="input input-bordered input-sm"
+                                 value="<%= @end_at.to_date %>"
                                  data-maps--immich-enrich-target="endDate">
                         </div>
                       </div>

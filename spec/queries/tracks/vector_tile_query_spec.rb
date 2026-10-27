@@ -253,29 +253,10 @@ RSpec.describe Tracks::VectorTileQuery do
       expect(coords['y'].to_f).to be_within(2).of(2048)
     end
 
-    it 'pins the seam artifact for a dateline-crossing track: the ±180 jump spans the world band' do
+    it 'omits the central-Europe tile for a flight across the date line' do
       create(:track, user:, original_path: 'LINESTRING(139.7 35.7, -118.2 34.05)')
 
-      rows = feature_rows(z: 2, x: 2, y: 1)
-
-      # The great circle from Tokyo to LA crosses the dateline over the Pacific;
-      # its 179.x → -179.x jump spans the central-Europe tile. Documented artifact.
-      expect(rows.size).to eq(1)
-
-      # Vertex VALUES, not mere presence: a future wrapped-branch attempt that
-      # translated the geometry would change these coordinates without changing
-      # the count. The clipped segment must run west-to-east across the whole
-      # tile at a roughly constant MVT y (the jump chord is near-horizontal).
-      coords = ActiveRecord::Base.connection.select_one(
-        Track.sanitize_sql_array(
-          ['SELECT ST_XMin(?::geometry) AS xmin, ST_XMax(?::geometry) AS xmax,
-                   ST_YMin(?::geometry) AS ymin, ST_YMax(?::geometry) AS ymax',
-           rows.first['geom'], rows.first['geom'], rows.first['geom'], rows.first['geom']]
-        )
-      )
-      expect(coords['xmin'].to_f).to be <= 0
-      expect(coords['xmax'].to_f).to be >= 4096
-      expect(coords['ymin'].to_f).to be_between(0, 4096)
+      expect(feature_rows(z: 2, x: 2, y: 1)).to be_empty
     end
   end
 
