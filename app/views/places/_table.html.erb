@@ -13,8 +13,8 @@
         <% privacy = place.tags.any?(&:privacy_zone?) %>
         <tr data-testid="place-row" data-place-id="<%= place.id %>">
           <td><input type="checkbox" value="<%= place.id %>" class="checkbox checkbox-sm" aria-label="<%= t('places.management.select_place', name: place.name) %>" data-places-selection-target="row" data-action="change->places-selection#update" data-visits="<%= place.active_visit_count %>" data-geofence="<%= place.geofence? ? 1 : 0 %>" data-privacy="<%= privacy ? 1 : 0 %>"></td>
-          <td class="min-w-48 max-w-72 [overflow-wrap:anywhere]"><%= link_to place.name, place_path(place), class: 'link link-hover' %></td>
-          <td class="min-w-32 max-w-64"><%= render 'tags', place: %></td>
+          <td class="min-w-72 max-w-96 break-words"><%= link_to place.name, place_path(place), class: 'link link-hover' %></td>
+          <td class="min-w-64 max-w-80"><%= render 'tags', place: %></td>
           <td><%= place.active_visit_count %></td>
           <td class="whitespace-nowrap"><%= place.last_visited_at ? human_datetime(place.last_visited_at, current_user_safe_settings.timezone) : '—' %></td>
           <td><%= t("places.management.sources.#{place.source}") %></td>

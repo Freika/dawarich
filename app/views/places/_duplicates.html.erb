@@ -13,8 +13,8 @@
           <tbody>
             <% cluster.places.each do |place| %>
               <tr data-place-id="<%= place.id %>">
-                <td class="min-w-48 max-w-72 [overflow-wrap:anywhere]"><%= link_to place.name, place_path(place), class: 'link' %></td>
-                <td class="min-w-32 max-w-64"><%= render 'tags', place: %></td>
+                <td class="min-w-72 max-w-96 break-words"><%= link_to place.name, place_path(place), class: 'link' %></td>
+                <td class="min-w-64 max-w-80"><%= render 'tags', place: %></td>
                 <td><%= place.active_visit_count %></td>
                 <td><%= t('places.management.meters', distance: cluster.distances.fetch(place.id).round) %></td>
               </tr>

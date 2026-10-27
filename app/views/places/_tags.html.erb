@@ -1,6 +1,6 @@
 <div class="flex flex-wrap gap-1 min-w-0">
   <% place.tags.each do |tag| %>
-    <%= link_to places_path(request.query_parameters.except('page', 'view').merge(tag_ids: [tag.id])), class: 'badge badge-outline h-auto py-1 max-w-full [overflow-wrap:anywhere]' do %>
+    <%= link_to places_path(request.query_parameters.except('page', 'view').merge(tag_ids: [tag.id])), class: 'badge badge-outline inline-block h-auto py-1 max-w-full break-words' do %>
       <%= tag.icon %> <%= tag.name %>
     <% end %>
   <% end %>
