@@ -233,8 +233,9 @@ export class PlacesManager {
       }
 
       const place = event?.detail?.place
-      if (place) {
-        await this._refreshSavedPlace(placesLayer, place)
+      const removedId = event?.detail?.removedId
+      if (place || removedId) {
+        this._refreshSavedPlace(placesLayer, place, removedId)
       } else {
         await this._reloadPlaces(placesLayer)
       }
@@ -263,18 +264,17 @@ export class PlacesManager {
     await this.handlePlaceCreated(event)
   }
 
-  async _refreshSavedPlace(placesLayer, place) {
-    const places = await this.api.fetchPlaces()
-    const visiblePlace = places.find((candidate) => candidate.id === place.id)
-    const replacement = visiblePlace
-      ? this.dataLoader.placesToGeoJSON([visiblePlace]).features
+  _refreshSavedPlace(placesLayer, place, removedId) {
+    const replacement = place
+      ? this.dataLoader.placesToGeoJSON([place]).features
       : []
     const existing = placesLayer.data?.features || []
     const features = [
-      ...existing.filter((feature) => feature.properties?.id !== place.id),
+      ...existing.filter(
+        (feature) => feature.properties?.id !== (place?.id ?? removedId),
+      ),
       ...replacement,
     ]
-
     placesLayer.update({ type: "FeatureCollection", features })
   }
 

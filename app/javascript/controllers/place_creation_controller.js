@@ -54,21 +54,24 @@ export default class extends Controller {
       delete dataEl.dataset.deletedId
       return
     }
-    if (dataEl?.dataset.removedId) {
+    const removedId = dataEl?.dataset.removedId
+    const duplicateId = dataEl?.dataset.duplicateId
+    if (duplicateId || (removedId && dataEl?.dataset.place)) {
       document.dispatchEvent(
         new CustomEvent("place:removed", {
-          detail: { id: Number(dataEl.dataset.removedId) },
+          detail: { id: Number(duplicateId || removedId) },
         }),
       )
-      delete dataEl.dataset.removedId
     }
-    if (!dataEl?.dataset.place) return
+    if (!dataEl?.dataset.place && !removedId) return
 
-    const place = JSON.parse(dataEl.dataset.place)
+    const detail = dataEl.dataset.place
+      ? { place: JSON.parse(dataEl.dataset.place) }
+      : { removedId: Number(removedId) }
     const eventName =
       dataEl.dataset.updated === "true" ? "place:updated" : "place:created"
 
-    document.dispatchEvent(new CustomEvent(eventName, { detail: { place } }))
+    document.dispatchEvent(new CustomEvent(eventName, { detail }))
     if (dataEl.dataset.visitId) {
       document.dispatchEvent(
         new CustomEvent("visit-place:changed", {
@@ -81,6 +84,8 @@ export default class extends Controller {
     delete dataEl.dataset.created
     delete dataEl.dataset.updated
     delete dataEl.dataset.visitId
+    delete dataEl.dataset.removedId
+    delete dataEl.dataset.duplicateId
   }
 
   open(latitude, longitude, options = {}) {

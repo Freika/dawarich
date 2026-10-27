@@ -124,7 +124,7 @@ test("unchanged zones keep the current position", async () => {
   assert.equal(recentPoint.cleared, false)
 })
 
-test("saving a private place with unchanged zones only displays the masked places collection", async () => {
+test("saving a hidden place removes its feature without fetching the places list", async () => {
   setPrivacyZonesFingerprint("unchanged")
   globalThis.document = { querySelectorAll: () => [] }
   let data = {
@@ -139,10 +139,14 @@ test("saving a private place with unchanged zones only displays the masked place
       data = value
     },
   }
+  let fetches = 0
   const manager = new PlacesManager({
     layerManager: { getLayer: () => placesLayer },
     api: {
-      fetchPlaces: async () => [{ id: 1 }, { id: 3 }],
+      fetchPlaces: async () => {
+        fetches += 1
+        return [{ id: 1 }, { id: 3 }]
+      },
       fetchPrivacyZones: async () => ({ fingerprint: "unchanged" }),
     },
     dataLoader: {
@@ -154,16 +158,17 @@ test("saving a private place with unchanged zones only displays the masked place
   })
 
   await manager.handlePlaceUpdated({
-    detail: { place: { id: 2, latitude: 52.5, longitude: 13.4 } },
+    detail: { removedId: 2 },
   })
 
+  assert.equal(fetches, 0)
   assert.deepEqual(
     data.features.map((feature) => feature.properties.id),
     [1],
   )
 })
 
-test("saving a visible place uses the masked response even before a new tag enters map filters", async () => {
+test("saving a visible place upserts without fetching before a new tag enters map filters", async () => {
   setPrivacyZonesFingerprint("unchanged")
   globalThis.document = { querySelectorAll: () => [] }
   let data = { features: [] }
@@ -176,11 +181,14 @@ test("saving a visible place uses the masked response even before a new tag ente
       data = value
     },
   }
+  let fetches = 0
   const manager = new PlacesManager({
     layerManager: { getLayer: () => placesLayer },
     api: {
-      fetchPlaces: async ({ tag_ids } = {}) =>
-        tag_ids ? [] : [{ id: 2, geofence: true }],
+      fetchPlaces: async () => {
+        fetches += 1
+        return []
+      },
       fetchPrivacyZones: async () => ({ fingerprint: "unchanged" }),
     },
     dataLoader: {
@@ -192,11 +200,12 @@ test("saving a visible place uses the masked response even before a new tag ente
   })
 
   await manager.handlePlaceCreated({
-    detail: { place: { id: 2, geofence: false } },
+    detail: { place: { id: 2, geofence: true, tags: [{ id: 99 }] } },
   })
 
+  assert.equal(fetches, 0)
   assert.deepEqual(
     data.features.map((feature) => feature.properties),
-    [{ id: 2, geofence: true }],
+    [{ id: 2, geofence: true, tags: [{ id: 99 }] }],
   )
 })

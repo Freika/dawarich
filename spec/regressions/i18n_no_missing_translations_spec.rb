@@ -26,6 +26,16 @@ RSpec.describe 'Rendered pages name every string they show', type: :request do
       expect(JSON.parse(translations.text).dig('places', 'move_pin')).to eq(
         I18n.t('javascript.places.move_pin', locale:, fallback: false)
       )
+      expect(JSON.parse(translations.text).dig('map_info', 'geofence_boundary')).to eq(
+        I18n.t('javascript.map_info.geofence_boundary', locale:, fallback: false, raise: true)
+      )
+      %w[
+        places.inline_tags.new_tag places.inline_tags.name places.inline_tags.emoji places.inline_tags.create
+        places.drawer.hidden_by_tag places.drawer.geofence_events places.drawer.no_geofence_events
+        places.drawer.geofence_disabled
+      ].each do |key|
+        expect(I18n.t(key, locale:, fallback: false, raise: true, name: 'Home', radius: 500)).to be_present
+      end
       expect(response.body).not_to include('translation_missing')
       expect(missing).to be_empty
     end

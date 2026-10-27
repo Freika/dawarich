@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Saving a place updates its map marker without reloading the entire places list, while keeping places inside privacy zones hidden.
+
 - Saving a place inside a privacy zone no longer reveals its marker on the map when the zone itself has not changed.
 
 - Creating a place no longer leaves the creation form disabled when you open it again.

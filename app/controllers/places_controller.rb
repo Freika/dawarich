@@ -217,12 +217,15 @@ class PlacesController < ApplicationController
   end
 
   def place_data_element(updated: false, visit_id: nil, removed_id: nil)
-    data = serialize_place(@place)
-    helpers.tag.div(
-      id: 'place-creation-data',
-      data: { place: data.to_json, created: !updated, updated: updated, visit_id: visit_id, removed_id: removed_id },
-      class: 'hidden'
-    )
+    data = { created: !updated, updated: updated, visit_id: visit_id, removed_id: removed_id }
+    if Maps::PrivacyZoneMasker.new(current_user).mask_places(current_user.places.where(id: @place.id)).exists?
+      data[:place] = serialize_place(@place).to_json
+    else
+      data[:duplicate_id] = removed_id
+      data[:removed_id] = @place.id
+    end
+
+    helpers.tag.div(id: 'place-creation-data', data: data, class: 'hidden')
   end
 
   def visit_for_attachment
