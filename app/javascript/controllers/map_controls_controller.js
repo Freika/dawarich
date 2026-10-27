@@ -17,11 +17,21 @@ function isWallClockValue(value) {
 }
 
 export default class extends Controller {
-  static targets = ["panel", "toggleIcon", "start", "end", "mobileLabel"]
+  static targets = [
+    "panel",
+    "toggleIcon",
+    "start",
+    "end",
+    "mobileLabel",
+    "dayLink",
+  ]
 
   static values = {
     locale: String,
     timezone: String,
+    dateFormat: String,
+    monthNames: Array,
+    abbrMonthNames: Array,
   }
 
   connect() {
@@ -52,6 +62,8 @@ export default class extends Controller {
     this.startTarget.value = rangeInputValue(startAt, this.timezoneValue)
     this.endTarget.value = rangeInputValue(endAt, this.timezoneValue)
 
+    this.updateDayLinks(startAt, endAt)
+
     const wallClock = isWallClockValue(startAt)
     const start = new Date(
       wallClock ? `${startAt.slice(0, 10)}T12:00:00Z` : startAt,
@@ -63,6 +75,50 @@ export default class extends Controller {
         timeZone: wallClock ? "UTC" : this.timezoneValue,
       })
     }
+  }
+
+  updateDayLinks(startAt, endAt) {
+    for (const link of this.dayLinkTargets) {
+      const shift = (value) => {
+        const local = rangeInputValue(value, this.timezoneValue)
+        const seconds = isWallClockValue(value)
+          ? value.slice(16, 19) || ":00"
+          : `:${String(new Date(value).getUTCSeconds()).padStart(2, "0")}`
+        const date = new Date(`${local}${seconds}Z`)
+        date.setUTCDate(date.getUTCDate() + Number(link.dataset.dayOffset))
+        return date.toISOString().slice(0, 19)
+      }
+      const start = shift(startAt)
+      const url = new URL(link.href, window.location.href)
+      const current = new URLSearchParams(window.location.search)
+      for (const key of ["import_id", "panel"]) {
+        if (current.has(key)) url.searchParams.set(key, current.get(key))
+      }
+      url.searchParams.delete("date")
+      url.searchParams.set("start_at", start)
+      url.searchParams.set("end_at", shift(endAt))
+      link.href = url.toString()
+      link.closest("[data-tip]").dataset.tip = this.humanDate(start)
+    }
+  }
+
+  humanDate(value) {
+    const date = new Date(`${value}Z`)
+    const day = date.getUTCDate()
+    const month = date.getUTCMonth() + 1
+    const tokens = {
+      "%Y": String(date.getUTCFullYear()),
+      "%m": String(month).padStart(2, "0"),
+      "%d": String(day).padStart(2, "0"),
+      "%-d": String(day),
+      "%e": String(day).padStart(2, " "),
+      "%B": this.monthNamesValue[month],
+      "%b": this.abbrMonthNamesValue[month],
+    }
+    return this.dateFormatValue.replace(
+      /%(?:-d|[YmdBeb])/g,
+      (token) => tokens[token],
+    )
   }
 
   toggle() {
