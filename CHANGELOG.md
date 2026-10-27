@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Places can be archived and restored through the API. Archived places keep their visit history and privacy zones, stop receiving new suggested visits, and pause geofence notifications. They are hidden from the map by default and available with the archived places API filter.
 - Tag edit pages list the places with that tag, with links and visit counts.
 - Search and filter Places by name, tags and confirmation status, and sort them by name, last visit or active visit count. The list shows tags, visit history, sources, geofences and privacy zones, with a shortcut to create a place on the map.
 - Select places to add or remove tags, delete them with a summary of the consequences, or merge them into a chosen place. Possible duplicates groups places with overlapping visit radii for review and merging.

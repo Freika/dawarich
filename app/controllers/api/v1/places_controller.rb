@@ -5,6 +5,8 @@ module Api
     class PlacesController < ApiController
       CO_LOCATED_THRESHOLD_METERS = 50
 
+      wrap_parameters :place, include: %i[name latitude longitude source note visit_radius geofence archived tag_ids]
+
       before_action :set_place, only: %i[show update destroy]
 
       def index
@@ -35,6 +37,7 @@ module Api
         @places =
           case params[:filter]
           when 'all'       then @places
+          when 'archived'  then @places.archived
           when 'manual'    then @places.manual
           when 'confirmed' then @places.linked_to_confirmed_visits(current_api_user)
           when 'unconfirmed' then @places.unconfirmed_for(current_api_user)
@@ -202,7 +205,7 @@ module Api
 
       def place_params
         params.require(:place).permit(
-          :name, :latitude, :longitude, :source, :note, :visit_radius, :geofence, tag_ids: []
+          :name, :latitude, :longitude, :source, :note, :visit_radius, :geofence, :archived, tag_ids: []
         )
       end
 
@@ -238,6 +241,7 @@ module Api
           color: place.tags.first&.color,
           visits_count: place.active_visits.size,
           name_locked: place.name_locked?,
+          archived: place.archived?,
           created_at: place.created_at,
           tags: place.tags.map do |tag|
             {

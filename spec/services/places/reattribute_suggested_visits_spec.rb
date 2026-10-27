@@ -167,4 +167,32 @@ RSpec.describe Places::ReattributeSuggestedVisits do
       described_class.new(user: user, changed_place: changed).call
     end.not_to(change { visit.reload.attributes.slice('place_id', 'location_label') })
   end
+
+  describe 'archiving', :archive do
+    it 'moves Suggested Visits to an active Place while keeping Confirmed Visits and the archived Place' do
+      original = create(:place, user:, source: :photon, latitude: lat, longitude: lon, visit_radius: 25)
+      active = create(:place, user:, latitude: lat, longitude: lon, visit_radius: 100)
+      suggested = visit_at(10, place: original, location_label: original.name)
+      confirmed = visit_at(10, place: original, status: :confirmed, started_at: 1.day.ago, ended_at: 1.day.ago + 1.hour,
+                               location_label: original.name)
+
+      perform_enqueued_jobs(only: [Places::ReattributeSuggestedVisitsJob, Places::DeleteIfOrphanJob]) do
+        original.update!(archived: true)
+      end
+
+      expect(suggested.reload.place).to eq(active)
+      expect(confirmed.reload.place).to eq(original)
+      expect(Place.exists?(original.id)).to be(true)
+    end
+
+    it 'unplaces Suggested Visits on archive and reclaims them on unarchive' do
+      original = create(:place, user:, latitude: lat, longitude: lon, visit_radius: 25)
+      suggested = visit_at(10, place: original, location_label: original.name)
+
+      perform_enqueued_jobs(only: Places::ReattributeSuggestedVisitsJob) { original.update!(archived: true) }
+      expect(suggested.reload.place).to be_nil
+      perform_enqueued_jobs(only: Places::ReattributeSuggestedVisitsJob) { original.update!(archived: false) }
+      expect(suggested.reload.place).to eq(original)
+    end
+  end
 end

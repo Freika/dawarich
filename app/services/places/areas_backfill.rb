@@ -85,7 +85,7 @@ module Places
     end
 
     def matching_places(area)
-      area.user.places
+      area.user.places.not_archived
           .where('LOWER(BTRIM(name)) = ?', normalize(area.name))
           .near([area.latitude, area.longitude], MATCH_RADIUS_METERS, :m)
           .order(:id)
@@ -179,10 +179,12 @@ module Places
 
     def reassign_area_only_visits(mapping)
       occupied = Visit.where(user_id: mapping.place.user_id, place_id: mapping.place_id).select(:started_at)
-      first_per_start = area_visits(mapping).where(place_id: nil)
-                                            .where.not(started_at: occupied)
-                                            .select('DISTINCT ON (started_at) id')
-                                            .order(:started_at, :id)
+      candidates = area_visits(mapping).where(place_id: nil)
+      candidates = candidates.where.not(id: Visit.machine_detected.select(:id)) if mapping.place.archived?
+      first_per_start = candidates
+                        .where.not(started_at: occupied)
+                        .select('DISTINCT ON (started_at) id')
+                        .order(:started_at, :id)
 
       report[:area_only_visits_reassigned] += Visit.where(id: first_per_start).update_all(
         ['place_id = ?, area_id = NULL, location_label = COALESCE(location_label, ?)',
@@ -191,18 +193,18 @@ module Places
     end
 
     def migrate_visit_association(visit, mapping)
-      if visit.place_id.nil?
-        record_visit_conflict(visit)
-      elsif Visit.machine_detected.exists?(id: visit.id)
+      if Visit.machine_detected.exists?(id: visit.id)
         selected = select_place_for(visit, fallback: mapping.place)
-        if place_conflict?(visit, selected.id)
+        if place_conflict?(visit, selected&.id)
           record_visit_conflict(visit)
         else
           left_place_id = visit.place_id
-          visit.update_columns(place_id: selected.id, area_id: nil)
-          Places::DeleteIfOrphanJob.perform_later(left_place_id) if left_place_id != selected.id
+          visit.update_columns(place_id: selected&.id, area_id: nil)
+          Places::DeleteIfOrphanJob.perform_later(left_place_id) if left_place_id != selected&.id
           report[:dual_suggested_visits_reattributed] += 1
         end
+      elsif visit.place_id.nil?
+        record_visit_conflict(visit)
       else
         report[:dual_user_owned_visits_retained] += 1
         report[:dual_user_owned_visit_ids] << visit.id
@@ -210,6 +212,8 @@ module Places
     end
 
     def place_conflict?(visit, place_id)
+      return false unless place_id
+
       Visit.where(user_id: visit.user_id, place_id: place_id, started_at: visit.started_at)
            .where.not(id: visit.id).exists?
     end
@@ -220,6 +224,7 @@ module Places
     end
 
     def select_place_for(visit, fallback:)
+      fallback = nil if fallback.archived?
       center = visit_center(visit)
       return fallback unless center
 

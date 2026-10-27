@@ -1556,6 +1556,7 @@ es:
       residential_roads: Vías residenciales
       track: Trayecto
   settings:
+    geofencing_paused_while_archived: en pausa mientras esté archivado
     trek_sources:
       select_trips:
         title: "Elegir viajes de TREK"

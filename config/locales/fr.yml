@@ -2259,6 +2259,7 @@ fr:
       residential_roads: Routes résidentielles
       track: Tracé
   settings:
+    geofencing_paused_while_archived: en pause tant que le lieu est archivé
     trek_sources:
       select_trips:
         title: "Choisir des voyages TREK"

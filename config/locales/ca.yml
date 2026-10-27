@@ -1553,6 +1553,7 @@ ca:
       residential_roads: Carrers residencials
       track: Trajecte
   settings:
+    geofencing_paused_while_archived: en pausa mentre estigui arxivat
     trek_sources:
       select_trips:
         title: "Tria viatges de TREK"

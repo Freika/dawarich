@@ -17,6 +17,12 @@ module GeofencingHelper
     safe_join(parts, ', ')
   end
 
+  def geofence_place_label(place)
+    return place.name unless place.archived?
+
+    "#{place.name} · #{t('settings.geofencing_paused_while_archived')}"
+  end
+
   private
 
   def geofence_unsent_status(event, webhooks:, scope:)

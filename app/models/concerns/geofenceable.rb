@@ -9,6 +9,9 @@ module Geofenceable
     before_destroy :snapshot_geofence_event_names, prepend: true
 
     scope :geofences, -> { where(geofence: true) }
+    scope :monitored_geofences, -> { geofences.not_archived }
+
+    after_commit :forget_archived_geofence_state, on: :update, if: :saved_change_to_archived_at?
 
     after_commit :reconcile_geofence_state, on: %i[create update], if: :geofence_boundary_changed?
     after_commit :release_geofence, on: %i[update destroy], if: :geofence_released?
@@ -21,10 +24,14 @@ module Geofenceable
   end
 
   def geofence_boundary_changed?
-    return false unless geofence?
+    return false unless geofence? && !archived?
 
     previously_new_record? || saved_change_to_geofence? ||
-      saved_change_to_lonlat? || saved_change_to_visit_radius?
+      saved_change_to_lonlat? || saved_change_to_visit_radius? || saved_change_to_archived_at?
+  end
+
+  def forget_archived_geofence_state
+    GeofenceEvents::PlaceState.forget(self) if archived?
   end
 
   def geofence_released?

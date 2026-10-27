@@ -22,7 +22,7 @@ module GeofenceEvents
     private
 
     def target_place
-      places = @webhook.user.places.geofences.order(:id)
+      places = @webhook.user.places.monitored_geofences.order(:id)
       (@webhook.place_ids.any? ? places.where(id: @webhook.place_ids) : places).first
     end
 

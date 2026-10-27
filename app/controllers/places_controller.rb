@@ -201,7 +201,8 @@ class PlacesController < ApplicationController
   end
 
   def place_params
-    params.require(:place).permit(:name, :latitude, :longitude, :source, :note, :visit_radius, :geofence, tag_ids: [])
+    params.require(:place).permit(:name, :latitude, :longitude, :source, :note, :visit_radius, :geofence, :archived,
+                                  tag_ids: [])
   end
 
   def tag_ids
@@ -267,7 +268,7 @@ class PlacesController < ApplicationController
     {
       id: place.id, name: place.name, name_locked: place.name_locked?, latitude: place.lat, longitude: place.lon,
       source: place.source, note: place.note, visit_radius: place.visit_radius, geofence: place.geofence,
-      icon: place.tags.first&.icon,
+      archived: place.archived?, icon: place.tags.first&.icon,
       color: place.tags.first&.color, visits_count: place.active_visits.size,
       tags: place.tags.map { |t| { id: t.id, name: t.name, icon: t.icon, color: t.color } }
     }

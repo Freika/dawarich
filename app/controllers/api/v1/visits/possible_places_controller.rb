@@ -14,7 +14,7 @@ class Api::V1::Visits::PossiblePlacesController < ApiController
   private
 
   def prepend_current_place(visit, suggestions)
-    return suggestions unless visit.place
+    return suggestions unless visit.place && !visit.place.archived?
 
     current = serialize_existing_place(visit.place)
     filtered = if current[:osm_id].present?

@@ -373,4 +373,54 @@ RSpec.describe 'Api::V1::Places', type: :request do
       expect(response.parsed_body['name_locked']).to be(false)
     end
   end
+
+  describe 'archived Places', :archive do
+    it 'serializes the archive boolean on active and archived Places' do
+      get "/api/v1/places/#{place.id}", headers: headers
+      expect(JSON.parse(response.body)['archived']).to be(false)
+      place.update!(archived: true)
+      get "/api/v1/places/#{place.id}", headers: headers
+      expect(JSON.parse(response.body)['archived']).to be(true)
+    end
+
+    it 'accepts archive and unarchive through PATCH and returns the new state' do
+      patch "/api/v1/places/#{place.id}", params: { place: { archived: true } }, headers:, as: :json
+      expect(response).to have_http_status(:ok)
+      expect(place.reload).to be_archived
+      expect(JSON.parse(response.body)['archived']).to be(true)
+      patch "/api/v1/places/#{place.id}", params: { place: { archived: false } }, headers:, as: :json
+      expect(place.reload).not_to be_archived
+      expect(JSON.parse(response.body)['archived']).to be(false)
+    end
+
+    it 'excludes archived Places by default and includes them in all and archived filters' do
+      archived = create(:place, user:, archived: true)
+      create(:place, archived: true)
+      get '/api/v1/places', headers: headers
+      expect(JSON.parse(response.body).pluck('id')).to contain_exactly(place.id)
+      get '/api/v1/places', params: { filter: 'all' }, headers: headers
+      expect(JSON.parse(response.body).pluck('id')).to contain_exactly(place.id, archived.id)
+      get '/api/v1/places', params: { filter: 'archived' }, headers: headers
+      expect(JSON.parse(response.body).pluck('id')).to contain_exactly(archived.id)
+    end
+
+    it 'excludes archived Places from nearby and name searches of saved Places' do
+      archived = create(:place, user:, name: 'Old Home', latitude: place.lat, longitude: place.lon, archived: true)
+      [nil, 'Home'].each do |query|
+        results = Places::UserSearch.new(user:, latitude: place.lat, longitude: place.lon,
+                                         radius: 1, limit: 10, query:).call
+        expect(results.pluck(:id)).to include(place.id)
+        expect(results.pluck(:id)).not_to include(archived.id)
+      end
+    end
+  end
+
+  it 'accepts an unwrapped archive boolean in a JSON PATCH body', :archive do
+    patch "/api/v1/places/#{place.id}", params: { archived: true }, headers:, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(place.reload).to be_archived
+    patch "/api/v1/places/#{place.id}", params: { archived: false }, headers:, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(place.reload).not_to be_archived
+  end
 end

@@ -3566,10 +3566,11 @@ paths:
         - confirmed
         - unconfirmed
         - tagged
-        description: "Visibility filter. Defaults to user-owned/confirmed Places.
-          Use \"all\" for every Place or \"unconfirmed\" for machine-owned suggestions.:\n
-          * `all` \n * `manual` \n * `confirmed` \n * `unconfirmed` \n * `tagged`
-          \n "
+        - archived
+        description: "Visibility filter. Defaults to non-archived user-owned/confirmed
+          Places. Use \"all\" for every Place, \"archived\" for retired Places, or
+          \"unconfirmed\" for machine-owned suggestions.:\n * `all` \n * `manual`
+          \n * `confirmed` \n * `unconfirmed` \n * `tagged` \n * `archived` \n "
         schema:
           type: string
       tags:
@@ -3600,6 +3601,9 @@ paths:
                       type: integer
                       minimum: 1
                       default: 50
+                    archived:
+                      type: boolean
+                      description: Retired from attribution and geofence monitoring
                     geofence:
                       type: boolean
                       description: Report enter and leave events for this place
@@ -3632,6 +3636,7 @@ paths:
                   - name
                   - latitude
                   - longitude
+                  - archived
         '401':
           description: unauthorized
     post:
@@ -3669,6 +3674,9 @@ paths:
                     type: integer
                     minimum: 1
                     default: 50
+                  archived:
+                    type: boolean
+                    description: Retired from attribution and geofence monitoring
                   geofence:
                     type: boolean
                     description: Report enter and leave events for this place
@@ -3709,6 +3717,9 @@ paths:
                   type: integer
                   minimum: 1
                   default: 50
+                archived:
+                  type: boolean
+                  description: Retired from attribution and geofence monitoring
                 geofence:
                   type: boolean
                   description: Report enter and leave events for this place
@@ -3830,6 +3841,9 @@ paths:
                     type: integer
                     minimum: 1
                     default: 50
+                  archived:
+                    type: boolean
+                    description: Retired from attribution and geofence monitoring
                   geofence:
                     type: boolean
                     description: Report enter and leave events for this place
@@ -3879,6 +3893,8 @@ paths:
                   longitude:
                     type: number
                     format: float
+                  archived:
+                    type: boolean
                   visit_radius:
                     type: integer
                     minimum: 1
@@ -3904,6 +3920,8 @@ paths:
                 longitude:
                   type: number
                   format: float
+                archived:
+                  type: boolean
                 visit_radius:
                   type: integer
                   minimum: 1

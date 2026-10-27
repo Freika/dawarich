@@ -1567,6 +1567,7 @@ pl:
       residential_roads: Drogi osiedlowe
       track: Trasa
   settings:
+    geofencing_paused_while_archived: wstrzymane, gdy miejsce jest zarchiwizowane
     trek_sources:
       select_trips:
         title: "Wybierz podróże z TREK"
