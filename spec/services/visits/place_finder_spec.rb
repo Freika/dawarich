@@ -125,4 +125,13 @@ RSpec.describe Visits::PlaceFinder do
         .not_to(change { Place.count })
     end
   end
+
+  it 'does not reuse an archived Place through an external identifier', :archive do
+    archived = create(:place, user:, archived: true, geodata: { 'external_place_id' => 'cafe-42' })
+
+    result = described_class.new(user).find_or_create_place(visit_data.merge(external_place_id: 'cafe-42'))
+
+    expect(result).not_to eq(archived)
+    expect(result).not_to be_archived
+  end
 end

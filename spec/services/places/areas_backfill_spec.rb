@@ -338,4 +338,57 @@ RSpec.describe Places::AreasBackfill do
       expect(LegacyAreaPlaceMapping.where(area: area).count).to eq(1)
     end
   end
+
+  describe 'archived Places', :archive do
+    it 'reattributes dual-linked Suggested Visits to an active Place instead of an archived Place' do
+      user = create(:user)
+      area = create(:area, user:, latitude: 52.437, longitude: 13.539, radius: 500)
+      archived = create(:place, user:, latitude: 52.437, longitude: 13.539, visit_radius: 25, archived: true)
+      active = create(:place, user:, latitude: 52.437, longitude: 13.539, visit_radius: 100)
+      visit = create(:visit, user:, area:, place: archived, status: :suggested)
+
+      backfill.call
+
+      expect(visit.reload.place).to eq(active)
+    end
+
+    it 'does not fall back to an archived mapped Place for a Suggested Visit' do
+      area = create(:area, latitude: 52.437, longitude: 13.539)
+      archived = create(:place, user: area.user, latitude: 52.437, longitude: 13.539, archived: true)
+      LegacyAreaPlaceMapping.create!(area:, place: archived)
+      visit = create(:visit, user: area.user, area:, place: archived, status: :suggested)
+
+      backfill.call
+
+      expect(visit.reload).to have_attributes(place_id: nil, area_id: nil)
+    end
+  end
+
+  describe 'archived Area mappings', :archive do
+    it 'leaves an Area-only Suggested Visit unplaced when its mapped Place is archived' do
+      area = create(:area, latitude: 52.437, longitude: 13.539)
+      place = create(:place, user: area.user, latitude: 52.437, longitude: 13.539, archived: true)
+      LegacyAreaPlaceMapping.create!(area:, place:)
+      visit = create(:visit, user: area.user, area:, place: nil, status: :suggested)
+      confirmed = create(:visit, user: area.user, area:, place: nil, status: :confirmed,
+                                 started_at: 1.day.ago, ended_at: 1.day.ago + 1.hour)
+
+      backfill.call
+
+      expect(visit.reload).to have_attributes(place_id: nil, area_id: nil)
+      expect(confirmed.reload.place).to eq(place)
+    end
+
+    it 'can unplace a Suggested Visit even if another unplaced Visit has the same start' do
+      area = create(:area, latitude: 52.437, longitude: 13.539)
+      place = create(:place, user: area.user, latitude: 52.437, longitude: 13.539, archived: true)
+      LegacyAreaPlaceMapping.create!(area:, place:)
+      visit = create(:visit, user: area.user, area:, place:, status: :suggested)
+      create(:visit, user: area.user, place: nil, started_at: visit.started_at, ended_at: visit.ended_at)
+
+      backfill.call
+
+      expect(visit.reload).to have_attributes(place_id: nil, area_id: nil)
+    end
+  end
 end

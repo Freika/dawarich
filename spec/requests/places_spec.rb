@@ -670,4 +670,13 @@ RSpec.describe '/places', type: :request do
       expect(response.body).not_to include('place-name-lock')
     end
   end
+
+  it 'accepts archive and unarchive through web Place parameters', :archive do
+    place = create(:place, user:)
+
+    patch place_url(place), params: { place: { archived: '1' } }, as: :turbo_stream
+    expect(place.reload).to be_archived
+    patch place_url(place), params: { place: { archived: '0' } }, as: :turbo_stream
+    expect(place.reload).not_to be_archived
+  end
 end

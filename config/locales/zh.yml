@@ -1477,6 +1477,7 @@ zh:
       residential_roads: 住宅道路
       track: 轨迹
   settings:
+    geofencing_paused_while_archived: 归档期间暂停
     trek_sources:
       select_trips:
         title: "选择 TREK 旅程"

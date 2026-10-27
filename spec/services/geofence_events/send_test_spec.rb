@@ -31,4 +31,22 @@ RSpec.describe GeofenceEvents::SendTest do
 
     expect(described_class.call(webhook)).to be_nil
   end
+
+  describe 'archived geofences', :archive do
+    it 'does not send a test to an archived subscribed Place' do
+      place.update!(archived: true)
+      webhook.update!(place_ids: [place.id])
+
+      expect { expect(described_class.call(webhook)).to be_nil }.not_to change(GeofenceEvent, :count)
+    end
+
+    it 'sends to an active Place when the first geofence is archived' do
+      place.update!(archived: true)
+      active = create(:place, :geofence, user:)
+
+      described_class.call(webhook)
+
+      expect(GeofenceEvent.sole.place).to eq(active)
+    end
+  end
 end

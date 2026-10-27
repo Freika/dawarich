@@ -14,6 +14,7 @@ module Places
       place = Place.find_by(id: @place_id)
       return false unless place
       return false unless place.photon?
+      return false if place.archived?
       return false if place.note.present?
       return false if Note.where(attachable_type: 'Place', attachable_id: @place_id).exists?
       return false if place.name_locked?

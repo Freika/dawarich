@@ -104,4 +104,24 @@ RSpec.describe GeofenceEvents::Evaluator do
     expect(statements.size).to eq(1)
     expect(statements.first).to include('"places"')
   end
+
+  describe 'archived geofences', :archive do
+    it 'skips the state store when all geofences are archived' do
+      place.update!(archived: true)
+      expect(GeofenceEvents::StateStore).not_to receive(:new)
+
+      described_class.call(user_id: user.id, rows: [], payloads: [])
+    end
+
+    it 'evaluates active geofences alongside archived geofences without archived events' do
+      place.update!(archived: true)
+      active = create(:place, :geofence, user:, latitude: 52.52, longitude: 13.405)
+      GeofenceEvents::StateStore.new(user).enter!(place.id)
+
+      ingest(at(13.4100, 0), at(13.4050, 1), at(13.4100, 2))
+
+      expect(GeofenceEvent.where(user:).order(:occurred_at).pluck(:place_id, :event_type))
+        .to eq([[active.id, 'enter'], [active.id, 'leave']])
+    end
+  end
 end

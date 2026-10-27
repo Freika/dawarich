@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Places can be archived and restored through the API. Archived places keep their visit history and privacy zones, stop receiving new suggested visits, and pause geofence notifications. They are hidden from the map by default and available with the archived places API filter.
+
 ### Changed
 
 - Creating or joining a family turns on the Family Members layer on the map, so the family shows up without looking for the toggle. Leaving the family turns the layer off again.

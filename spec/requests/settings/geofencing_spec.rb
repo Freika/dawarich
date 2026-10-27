@@ -294,4 +294,26 @@ RSpec.describe 'Settings → Geofencing', type: :request do
       expect(Webhook.exists?(other.id)).to be(true)
     end
   end
+
+  describe 'archived geofence labels', :archive do
+    %i[en de es fr pl ca zh].each do |locale|
+      it "marks archived geofences as paused in the filter and webhook forms in #{locale}" do
+        home.update!(archived: true)
+        webhook = create(:webhook, user:, place_ids: [home.id])
+        labels = {
+          en: 'paused while archived', de: 'pausiert, solange der Ort archiviert ist',
+          es: 'en pausa mientras esté archivado', fr: 'en pause tant que le lieu est archivé',
+          pl: 'wstrzymane, gdy miejsce jest zarchiwizowane', ca: 'en pausa mentre estigui arxivat', zh: '归档期间暂停'
+        }
+
+        get settings_geofencing_path, params: { locale: }
+
+        expect(page.at_css("select[name='place_id'] option[value='#{home.id}']").text)
+          .to include('Home', labels.fetch(locale))
+        checkbox = page.at_css("#webhook_#{webhook.id} input[name='webhook[place_ids][]'][value='#{home.id}']")
+        expect(checkbox.ancestors('label').text).to include('Home', labels.fetch(locale))
+        expect(page.at_css("#webhook-form input[value='#{home.id}']")).to be_present
+      end
+    end
+  end
 end

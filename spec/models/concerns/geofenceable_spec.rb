@@ -137,4 +137,42 @@ RSpec.describe Geofenceable do
 
     expect(Place.confirmed_for(user)).to include(place)
   end
+
+  describe 'archiving', :archive do
+    let(:store) { GeofenceEvents::StateStore.new(user) }
+    let(:place) { create(:place, :geofence, user:, latitude: 52.52, longitude: 13.405) }
+
+    before { store.reset! }
+
+    it 'forgets archived state without releasing the geofence or webhook subscriptions' do
+      webhook = create(:webhook, user:, place_ids: [place.id])
+      store.enter!(place.id)
+      event = create(:geofence_event, user:, place:)
+
+      place.update!(archived: true)
+
+      expect(store.inside_ids).not_to include(place.id)
+      expect(place.reload).to be_geofence
+      expect(webhook.reload).to have_attributes(place_ids: [place.id], active: true)
+      expect(GeofenceEvent.exists?(event.id)).to be(true)
+    end
+
+    it 'reconciles the latest position on unarchive without generating an enter event' do
+      place.update!(archived: true)
+      Points::Intake.call(user_id: user.id, payloads: [{ lonlat: 'POINT(13.405 52.52)',
+                                                       timestamp: 2.minutes.ago.to_i, accuracy: 10 }])
+
+      place.update!(archived: false)
+
+      expect(store.inside_ids).to include(place.id)
+      expect(GeofenceEvent.where(user:)).to be_empty
+    end
+
+    it 'does not reconcile boundary edits or enabling a geofence while archived' do
+      place.update!(archived: true, geofence: false)
+      expect(GeofenceEvents::PlaceState).not_to receive(:reconcile)
+
+      place.update!(geofence: true, visit_radius: 200)
+    end
+  end
 end

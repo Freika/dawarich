@@ -17,6 +17,7 @@ class Api::PlaceSerializer
       geodata: place.geodata,
       visit_radius: place.visit_radius,
       geofence: place.geofence,
+      archived: place.archived?,
       created_at: place.created_at,
       updated_at: place.updated_at,
       reverse_geocoded_at: place.reverse_geocoded_at,

@@ -67,4 +67,11 @@ RSpec.describe Api::PlaceSerializer do
       end
     end
   end
+
+  it 'serializes the archived boolean', :archive do
+    place = create(:place)
+    expect(described_class.new(place).call[:archived]).to be(false)
+    place.update!(archived: true)
+    expect(described_class.new(place).call[:archived]).to be(true)
+  end
 end

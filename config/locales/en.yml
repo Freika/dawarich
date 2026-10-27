@@ -1509,6 +1509,7 @@ en:
       residential_roads: Residential roads
       track: Track
   settings:
+    geofencing_paused_while_archived: paused while archived
     navigation:
       general: General
       integrations: Integrations
