@@ -6,11 +6,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Move places and resize their Visit Radius on the map by dragging the pin and radius handle.
+
 ### Changed
+
+- Places now have one editor on the map and on their own page for names, tags, notes, and geofencing. Delete confirmation lists affected visits, privacy tags, webhooks, and geofence events.
 
 - Creating or joining a family turns on the Family Members layer on the map, so the family shows up without looking for the toggle. Leaving the family turns the layer off again.
 
 ### Fixed
+
+- Creating a place no longer leaves the creation form disabled when you open it again.
 
 - Unchecking every tag when editing a place on the map now removes all its tags.
 - Places on the map now offer Open and Delete alongside Edit. Deleting a place removes it from the map immediately and refreshes privacy zones.

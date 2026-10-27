@@ -1,6 +1,5 @@
 import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
-import { buildPlaceInfo } from "maps_maplibre/components/place_info"
 import { Toast } from "maps_maplibre/components/toast"
 import { PointDragGesture } from "maps_maplibre/editing/point_drag_gesture"
 import {
@@ -281,8 +280,7 @@ export class EventHandlers {
    * Handle place click
    */
   handlePlaceClick(e) {
-    const { title, content, actions } = buildPlaceInfo(e.features[0].properties)
-    this.controller.showInfo(title, content, actions)
+    this.controller.placePanel.open(e.features[0].properties.id)
   }
 
   /**

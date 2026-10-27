@@ -14,16 +14,13 @@ export default class extends Controller {
     "tagCheckboxes",
     "modalTitle",
     "submitButton",
-    "placeIdInput",
     "visitIdInput",
   ]
 
   connect() {
-    this.editingPlaceId = null
     this.documentListeners = {
       "place:create": (e) =>
         this.open(e.detail.latitude, e.detail.longitude, e.detail),
-      "place:edit": (e) => this.openForEdit(e.detail.place),
       "turbo:before-stream-render": (e) => this.relaySavedPlace(e),
     }
     for (const [type, listener] of Object.entries(this.documentListeners)) {
@@ -38,8 +35,6 @@ export default class extends Controller {
     }
   }
 
-  // The saved place reaches the page in a turbo stream that Turbo renders
-  // after turbo:submit-end, so the map hears about it once that stream lands.
   relaySavedPlace(event) {
     if (event.target?.target !== "place-creation-data") return
 
@@ -52,6 +47,23 @@ export default class extends Controller {
 
   dispatchSavedPlace() {
     const dataEl = document.getElementById("place-creation-data")
+    if (dataEl?.dataset.deletedId) {
+      document.dispatchEvent(
+        new CustomEvent("place:deleted", {
+          detail: { id: Number(dataEl.dataset.deletedId) },
+        }),
+      )
+      delete dataEl.dataset.deletedId
+      return
+    }
+    if (dataEl?.dataset.removedId) {
+      document.dispatchEvent(
+        new CustomEvent("place:removed", {
+          detail: { id: Number(dataEl.dataset.removedId) },
+        }),
+      )
+      delete dataEl.dataset.removedId
+    }
     if (!dataEl?.dataset.place) return
 
     const place = JSON.parse(dataEl.dataset.place)
@@ -97,17 +109,14 @@ export default class extends Controller {
   }
 
   open(latitude, longitude, options = {}) {
-    this.editingPlaceId = null
     this.latitudeInputTarget.value = latitude
     this.longitudeInputTarget.value = longitude
     this.visitIdInputTarget.value = options.visitId || ""
     this.nameInputTarget.value = options.name || ""
     this.visitRadiusInputTarget.value = 50
 
-    // Set form for creation mode
     this.formTarget.action = "/places"
     this.formTarget.method = "post"
-    this.removeMethodOverride()
 
     if (this.hasModalTitleTarget)
       this.modalTitleTarget.textContent = translate("places.create_new")
@@ -117,55 +126,13 @@ export default class extends Controller {
     this.modalTarget.classList.add("modal-open")
     this.nameInputTarget.focus()
 
-    // Load nearby places via Turbo Frame
     this.loadNearbyFrame(latitude, longitude)
-  }
-
-  openForEdit(place) {
-    this.editingPlaceId = place.id
-    this.visitIdInputTarget.value = ""
-    this.nameInputTarget.value = place.name
-    this.latitudeInputTarget.value = place.latitude
-    this.longitudeInputTarget.value = place.longitude
-    this.visitRadiusInputTarget.value = place.visit_radius || 50
-
-    if (this.hasNoteInputTarget && place.note) {
-      this.noteInputTarget.value = place.note
-    }
-
-    // Set form for edit mode
-    this.formTarget.action = `/places/${place.id}`
-    this.addMethodOverride("patch")
-
-    if (this.hasModalTitleTarget)
-      this.modalTitleTarget.textContent = translate("places.edit")
-    if (this.hasSubmitButtonTarget)
-      this.submitButtonTarget.value = translate("places.update")
-
-    // Check appropriate tag checkboxes
-    const tagCheckboxes = this.formTarget.querySelectorAll(
-      'input[name="place[tag_ids][]"]',
-    )
-    tagCheckboxes.forEach((checkbox) => {
-      const isSelected = place.tags.some(
-        (tag) => tag.id === Number.parseInt(checkbox.value, 10),
-      )
-      checkbox.checked = isSelected
-      checkbox.dispatchEvent(new Event("change", { bubbles: true }))
-    })
-
-    this.modalTarget.classList.add("modal-open")
-    this.nameInputTarget.focus()
-
-    this.loadNearbyFrame(place.latitude, place.longitude)
   }
 
   close() {
     this.modalTarget.classList.remove("modal-open")
     this.formTarget.reset()
-    this.editingPlaceId = null
 
-    // Reset nearby frame
     if (this.hasNearbyFrameTarget) {
       this.nearbyFrameTarget.innerHTML = `<p class="text-sm text-gray-500">${translate("places.open_for_suggestions")}</p>`
     }
@@ -190,23 +157,5 @@ export default class extends Controller {
     if (!event.detail.success) return
 
     this.close()
-  }
-
-  // --- Private helpers ---
-
-  addMethodOverride(method) {
-    let input = this.formTarget.querySelector('input[name="_method"]')
-    if (!input) {
-      input = document.createElement("input")
-      input.type = "hidden"
-      input.name = "_method"
-      this.formTarget.prepend(input)
-    }
-    input.value = method
-  }
-
-  removeMethodOverride() {
-    const input = this.formTarget.querySelector('input[name="_method"]')
-    if (input) input.remove()
   }
 }

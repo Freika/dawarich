@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { formatNumber, formatTime, translate } from "i18n"
 import { deletePlace } from "maps_maplibre/components/place_actions"
 import { Toast } from "maps_maplibre/components/toast"
+import { PlacePanelBridge } from "maps_maplibre/editing/place_panel_bridge"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
 import { ApiClient } from "maps_maplibre/services/api_client"
@@ -197,6 +198,7 @@ export default class extends Controller {
       this.visitsManager.attachViewportRefetch()
     }
     this.placesManager = new PlacesManager(this)
+    this.placePanel = new PlacePanelBridge(this)
     this.layerVisibilityManager = new LayerVisibilityManager(this)
 
     // Listen for tab changes to trigger timeline feed loading via Turbo Frame
@@ -351,6 +353,7 @@ export default class extends Controller {
   disconnect() {
     this._disconnected = true
     if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
+    this.placePanel?.destroy()
     this.replayPanel?.destroy()
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
@@ -1642,9 +1645,6 @@ export default class extends Controller {
       case "visit":
         this.openVisitModal(id)
         break
-      case "place":
-        this.openPlaceEditModal(id)
-        break
       default:
         console.warn("[Maps V2] Unknown entity type:", entityType)
     }
@@ -1721,34 +1721,8 @@ export default class extends Controller {
     }
   }
 
-  /**
-   * Open place edit modal
-   */
-  async openPlaceEditModal(placeId) {
-    try {
-      // Fetch place details
-      const response = await fetch(`/api/v1/places/${placeId}`, {
-        headers: {
-          Authorization: `Bearer ${this.apiKeyValue}`,
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch place: ${response.status}`)
-      }
-
-      const place = await response.json()
-
-      // Trigger place edit event
-      const event = new CustomEvent("place:edit", {
-        detail: { place },
-        bubbles: true,
-      })
-      document.dispatchEvent(event)
-    } catch (_error) {
-      Toast.error(translate("messages.failed_to_load_place_details"))
-    }
+  openPlace(event) {
+    this.placePanel.open(event.currentTarget.dataset.id)
   }
 
   switchToToolsTab() {

@@ -41,4 +41,11 @@ module PlacesHelper
     value = Stat.convert_distance(candidate.distance_in_km.to_f * 1000, unit)
     I18n.t(unit == 'mi' ? 'units.miles' : 'units.kilometers', value: number_with_precision(value, precision: 2))
   end
+
+  def place_delete_confirmation(place)
+    privacy_tags = place.tags.select(&:privacy_zone?).map(&:name).join(', ')
+    webhooks = current_user.webhooks.where('? = ANY(place_ids)', place.id).count
+    I18n.t('places.drawer.delete_consequences', visits: place.active_visits.count,
+           privacy_tags: privacy_tags.presence || I18n.t('places.drawer.no_tags'), webhooks:)
+  end
 end

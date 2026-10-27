@@ -21,6 +21,13 @@ export async function deletePlace(controller, placeId) {
     return
   }
 
+  removePlaceFeature(controller, placeId)
+  controller.closeInfo()
+  Toast.success(translate("messages.place_deleted_successfully"))
+  await controller.placesManager._refreshPrivacyZones()
+}
+
+export function removePlaceFeature(controller, placeId) {
   const layer = controller.layerManager.getLayer("places")
   if (layer?.data) {
     layer.update({
@@ -30,7 +37,4 @@ export async function deletePlace(controller, placeId) {
       ),
     })
   }
-  controller.closeInfo()
-  Toast.success(translate("messages.place_deleted_successfully"))
-  await controller.placesManager._refreshPrivacyZones()
 }

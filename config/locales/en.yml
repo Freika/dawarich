@@ -1334,7 +1334,13 @@ en:
       destroy_this_notification: Destroy this notification
       are_you_sure: Are you sure?
   places:
+    edit_on_map: "Edit on map"
+    drag_to_edit: "Drag the pin to move the place and the handle to resize its Visit Radius."
+    cancel_edit: "Cancel"
+    place_details: "Place details"
+    close_panel: "Close place details"
     drawer:
+      delete_consequences: "Delete this place?\nActive visits: %{visits}. They keep a location label.\nPrivacy-zone tags: %{privacy_tags}.\nWebhooks that will drop this place: %{webhooks}.\nIts geofence events will be deleted. This cannot be undone."
       source: 'Source:'
       total_hours: total hours
       avg_dwell: avg dwell
@@ -4124,6 +4130,8 @@ en:
       speed: "%{speed} km/h"
       no_data: No data
     places:
+      move_pin: "Move place pin"
+      resize_radius: "Resize Visit Radius"
       create_new: Create New Place
       edit: Edit Place
       open: Open

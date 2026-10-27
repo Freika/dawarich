@@ -1,0 +1,10 @@
+<aside class="place-panel" data-controller="place-panel" hidden
+       aria-label="<%= t('places.place_details') %>"
+       data-action="turbo:frame-load->place-panel#loaded">
+  <div class="place-panel__toolbar">
+    <strong><%= t('places.place_details') %></strong>
+    <button type="button" class="btn btn-sm btn-circle" aria-label="<%= t('places.close_panel') %>"
+            data-place-panel-target="close" data-action="place-panel#close">×</button>
+  </div>
+  <%= turbo_frame_tag 'place-drawer', data: { place_panel_target: 'frame' } %>
+</aside>

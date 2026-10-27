@@ -1346,7 +1346,13 @@ pl:
       destroy_this_notification: Usuń to powiadomienie
       are_you_sure: Czy na pewno chcesz kontynuować?
   places:
+    edit_on_map: "Edytuj na mapie"
+    drag_to_edit: "Przeciągnij znacznik, aby przesunąć miejsce, i uchwyt, aby zmienić promień wizyty."
+    cancel_edit: "Anuluj"
+    place_details: "Szczegóły miejsca"
+    close_panel: "Zamknij szczegóły miejsca"
     drawer:
+      delete_consequences: "Usunąć to miejsce?\nAktywne wizyty: %{visits}. Zachowają etykietę lokalizacji.\nTagi stref prywatności: %{privacy_tags}.\nWebhooki, z których zostanie usunięte to miejsce: %{webhooks}.\nZdarzenia geofencingu tego miejsca zostaną usunięte. Tej operacji nie można cofnąć."
       source: 'Źródło:'
       total_hours: łączna liczba godzin
       avg_dwell: średni czas pobytu
@@ -4278,6 +4284,8 @@ pl:
       speed: "%{speed} km/h"
       no_data: Brak danych
     places:
+      move_pin: "Przesuń znacznik miejsca"
+      resize_radius: "Zmień promień wizyty"
       create_new: Utwórz nowe miejsce
       edit: Edytuj miejsce
       open: Otwórz

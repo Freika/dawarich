@@ -2076,7 +2076,13 @@ fr:
       destroy_this_notification: Supprimer cette notification
       are_you_sure: Êtes-vous sûr ?
   places:
+    edit_on_map: "Modifier sur la carte"
+    drag_to_edit: "Faites glisser le repère pour déplacer le lieu et la poignée pour ajuster son rayon de visite."
+    cancel_edit: "Annuler"
+    place_details: "Détails du lieu"
+    close_panel: "Fermer les détails du lieu"
     drawer:
+      delete_consequences: "Supprimer ce lieu ?\nVisites actives : %{visits}. Elles conservent leur libellé de localisation.\nÉtiquettes de zones de confidentialité : %{privacy_tags}.\nWebhooks dont ce lieu sera retiré : %{webhooks}.\nSes événements de géorepérage seront supprimés. Cette action est irréversible."
       source: 'Source :'
       total_hours: heures totales
       avg_dwell: durée moyenne de présence
@@ -5365,6 +5371,8 @@ fr:
       speed: "%{speed} km/h"
       no_data: Aucune donnée disponible
     places:
+      move_pin: "Déplacer le repère du lieu"
+      resize_radius: "Ajuster le rayon de visite"
       create_new: Créer un nouveau lieu
       edit: Modifier le lieu
       open: Ouvrir
