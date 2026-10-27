@@ -27,7 +27,8 @@ export default class extends Controller {
   ]
 
   connect() {
-    this.selectedDate = null
+    this.selectedDate =
+      document.querySelector('input[name="end_at"]')?.value.slice(0, 10) || null
     this.selectedVisitId = null
     this.selectionMode = false
     this.selectedVisitIds = new Set()
@@ -197,11 +198,7 @@ export default class extends Controller {
     // (arriving via the top date-range form / Search / Last 7 days) so the
     // panel lands on the most recent day of the range instead of going blank —
     // keeping the range and the panel in sync (C1).
-    let date = params.get("date")
-    if (!date) {
-      const endAt = params.get("end_at")
-      if (endAt) date = endAt.slice(0, 10)
-    }
+    const date = params.get("date") || this.selectedDate
     if (date) {
       const isoDate =
         date === "today" ? new Date().toLocaleDateString("en-CA") : date
