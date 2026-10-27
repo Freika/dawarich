@@ -2076,6 +2076,44 @@ fr:
       destroy_this_notification: Supprimer cette notification
       are_you_sure: Êtes-vous sûr ?
   places:
+    management:
+      create: "Créer un lieu"
+      duplicates: "Doublons possibles"
+      search: "Rechercher des noms"
+      sort: "Trier par"
+      last_visit: "Dernière visite"
+      active_visits: "Visites actives"
+      status: "Statut"
+      apply: "Appliquer"
+      tags: "Étiquettes"
+      tag: "Étiquette"
+      source: "Source"
+      badges: "Protection"
+      geofence: "Géorepérage"
+      privacy: "Zone de confidentialité"
+      selected: "Lieux sélectionnés"
+      add_tag: "Ajouter une étiquette"
+      remove_tag: "Retirer une étiquette"
+      survivor: "Conserver ce lieu"
+      merge: "Fusionner les lieux"
+      delete: "Supprimer les lieux"
+      select_all: "Sélectionner tous les lieux de cette page"
+      select_place: "Sélectionner %{name}"
+      no_results: "Aucun lieu ne correspond à ces filtres."
+      duplicates_description: "Les lieux dont les rayons de visite se chevauchent sont regroupés ici. Vérifiez chaque groupe et choisissez le lieu à conserver. Rien ne sera fusionné automatiquement."
+      no_duplicates: "Aucun doublon possible trouvé."
+      cluster: "Groupe %{number}"
+      distance_reference: "Distances depuis le lieu recommandé : %{name}"
+      distance: "Distance"
+      meters: "%{distance} m"
+      bulk_success: "Lieux mis à jour : %{count}"
+      invalid_selection: "Sélectionnez des lieux et une étiquette valide ou un lieu sélectionné à conserver."
+      merge_confirmation: "Fusionner ces lieux avec le lieu choisi ? Leurs visites, étiquettes et notes y seront transférées. Cette action est irréversible."
+      delete_confirmation: "Supprimer ces lieux ? Lieux : %{places}. Visites actives qui perdront leur lieu : %{visits} ; leurs libellés de localisation seront conservés. Lieux avec géorepérage : %{geofences} ; leurs événements et abonnements aux webhooks seront supprimés. Lieux portant des étiquettes de confidentialité : %{privacy} ; les données à proximité pourraient devenir visibles, y compris dans les liens partagés. Cette action est irréversible."
+      sources:
+        manual: "Manuel"
+        photon: "Détecté"
+        gpx_waypoint: "Point de passage GPX"
     drawer:
       source: 'Source :'
       total_hours: heures totales

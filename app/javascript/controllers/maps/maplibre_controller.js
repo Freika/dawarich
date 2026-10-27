@@ -17,6 +17,7 @@ import { syncSidebarLayout } from "maps_maplibre/utils/sidebar_layout"
 import { setPrivacyZonesFingerprint } from "maps_maplibre/utils/tile_freshness"
 import { timeOverlapOpacityExpr } from "maps_maplibre/utils/time_overlap"
 import { AreaSelectionManager } from "./maplibre/area_selection_manager"
+import { consumeCreatePlaceLink } from "./maplibre/create_place_link"
 import { DataLoader } from "./maplibre/data_loader"
 import { DateManager } from "./maplibre/date_manager"
 import { EventHandlers } from "./maplibre/event_handlers"
@@ -196,6 +197,7 @@ export default class extends Controller {
       this.visitsManager.attachViewportRefetch()
     }
     this.placesManager = new PlacesManager(this)
+    consumeCreatePlaceLink(this.placesManager)
     this.layerVisibilityManager = new LayerVisibilityManager(this)
 
     // Listen for tab changes to trigger timeline feed loading via Turbo Frame

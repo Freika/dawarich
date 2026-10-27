@@ -1384,6 +1384,44 @@ de:
       destroy_this_notification: Diese Benachrichtigung entfernen
       are_you_sure: Bist du sicher?
   places:
+    management:
+      create: "Ort erstellen"
+      duplicates: "Mögliche Duplikate"
+      search: "Namen durchsuchen"
+      sort: "Sortieren nach"
+      last_visit: "Letzter Besuch"
+      active_visits: "Aktive Besuche"
+      status: "Status"
+      apply: "Anwenden"
+      tags: "Tags"
+      tag: "Tag"
+      source: "Quelle"
+      badges: "Schutz"
+      geofence: "Geofence"
+      privacy: "Privatsphärezone"
+      selected: "Ausgewählte Orte"
+      add_tag: "Tag hinzufügen"
+      remove_tag: "Tag entfernen"
+      survivor: "Diesen Ort behalten"
+      merge: "Orte zusammenführen"
+      delete: "Orte löschen"
+      select_all: "Alle Orte auf dieser Seite auswählen"
+      select_place: "%{name} auswählen"
+      no_results: "Keine Orte entsprechen diesen Filtern."
+      duplicates_description: "Orte mit überlappenden Besuchsradien werden hier gruppiert. Prüfe jede Gruppe und wähle den Ort, der erhalten bleiben soll. Es wird nichts automatisch zusammengeführt."
+      no_duplicates: "Keine möglichen Duplikate gefunden."
+      cluster: "Gruppe %{number}"
+      distance_reference: "Entfernungen vom empfohlenen Ort: %{name}"
+      distance: "Entfernung"
+      meters: "%{distance} m"
+      bulk_success: "Aktualisierte Orte: %{count}"
+      invalid_selection: "Wähle Orte und einen gültigen Tag oder einen der ausgewählten Orte zum Behalten."
+      merge_confirmation: "Diese Orte mit dem gewählten Ort zusammenführen? Besuche, Tags und Notizen werden dorthin verschoben. Dies kann nicht rückgängig gemacht werden."
+      delete_confirmation: "Diese Orte löschen? Orte: %{places}. Aktive Besuche, die ihren Ort verlieren: %{visits}; ihre Standortbezeichnungen bleiben erhalten. Orte mit Geofences: %{geofences}; ihre Ereignisse und Webhook-Abonnements werden gelöscht. Orte mit Privatsphäre-Tags: %{privacy}; Daten in der Nähe können sichtbar werden, auch in geteilten Links. Dies kann nicht rückgängig gemacht werden."
+      sources:
+        manual: "Manuell"
+        photon: "Automatisch erkannt"
+        gpx_waypoint: "GPX-Wegpunkt"
     drawer:
       source: 'Quelle:'
       total_hours: Gesamtstunden

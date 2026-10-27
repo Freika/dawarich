@@ -1349,6 +1349,44 @@ zh:
       destroy_this_notification: 删除此通知
       are_you_sure: 您确定吗？
   places:
+    management:
+      create: "创建地点"
+      duplicates: "可能重复的地点"
+      search: "搜索名称"
+      sort: "排序方式"
+      last_visit: "最近访问"
+      active_visits: "有效访问"
+      status: "状态"
+      apply: "应用"
+      tags: "标签"
+      tag: "标签"
+      source: "来源"
+      badges: "保护"
+      geofence: "地理围栏"
+      privacy: "隐私区域"
+      selected: "已选地点"
+      add_tag: "添加标签"
+      remove_tag: "移除标签"
+      survivor: "保留此地点"
+      merge: "合并地点"
+      delete: "删除地点"
+      select_all: "选择本页所有地点"
+      select_place: "选择%{name}"
+      no_results: "没有符合这些筛选条件的地点。"
+      duplicates_description: "访问半径范围重叠的地点将在此分组显示。请检查每组并选择要保留的地点。系统不会自动合并。"
+      no_duplicates: "未发现可能重复的地点。"
+      cluster: "第%{number}组"
+      distance_reference: "距推荐保留地点的距离：%{name}"
+      distance: "距离"
+      meters: "%{distance}米"
+      bulk_success: "已更新地点：%{count}"
+      invalid_selection: "请选择地点，以及有效标签或所选地点中要保留的地点。"
+      merge_confirmation: "将这些地点合并到所选地点吗？访问、标签和笔记将转移到该地点。此操作无法撤销。"
+      delete_confirmation: "删除这些地点吗？地点数量：%{places}。将失去关联地点的有效访问次数：%{visits}；位置描述将被保留。设有地理围栏的地点数量：%{geofences}；相关事件和Webhook订阅将被删除。带有隐私区域标签的地点数量：%{privacy}；附近数据可能变为可见，共享链接中也一样。此操作无法撤销。"
+      sources:
+        manual: "手动创建"
+        photon: "自动发现"
+        gpx_waypoint: "GPX航点"
     drawer:
       source: 来源：
       total_hours: 总小时数

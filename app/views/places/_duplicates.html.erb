@@ -1,0 +1,35 @@
+<div class="min-w-0">
+  <h1 class="text-2xl font-bold min-w-0 mb-3"><%= t('places.management.duplicates') %></h1>
+  <p class="mb-4"><%= t('places.management.duplicates_description') %></p>
+  <%= link_to t('places.index.all_places'), places_path, class: 'btn btn-sm h-auto py-2 mb-4' %>
+  <% if clusters.empty? %><p class="p-6 bg-base-200 rounded-box"><%= t('places.management.no_duplicates') %></p><% end %>
+  <% clusters.each_with_index do |cluster, index| %>
+    <section class="p-4 mb-4 bg-base-200 rounded-box min-w-0" data-testid="duplicate-cluster">
+      <h2 class="text-lg font-bold mb-2 min-w-0"><%= t('places.management.cluster', number: index + 1) %></h2>
+      <p class="text-sm mb-3"><%= t('places.management.distance_reference', name: cluster.survivor.name) %></p>
+      <div class="overflow-x-auto max-w-full">
+        <table class="table">
+          <thead><tr><th><%= t('places.index.name') %></th><th><%= t('places.management.tags') %></th><th><%= t('places.management.active_visits') %></th><th><%= t('places.management.distance') %></th></tr></thead>
+          <tbody>
+            <% cluster.places.each do |place| %>
+              <tr data-place-id="<%= place.id %>">
+                <td class="min-w-48 max-w-72 [overflow-wrap:anywhere]"><%= link_to place.name, place_path(place), class: 'link' %></td>
+                <td class="min-w-32 max-w-64"><%= render 'tags', place: %></td>
+                <td><%= place.active_visit_count %></td>
+                <td><%= t('places.management.meters', distance: cluster.distances.fetch(place.id).round) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <%= form_with url: bulk_merge_places_path(view: 'duplicates', locale: params[:locale]), method: :post, class: 'flex flex-wrap items-end gap-3 mt-4 min-w-0', data: { turbo_confirm: t('places.management.merge_confirmation') } do |form| %>
+        <% cluster.places.each do |place| %><%= hidden_field_tag 'place_ids[]', place.id %><% end %>
+        <div class="min-w-0 max-w-full">
+          <%= form.label "survivor_#{index}", t('places.management.survivor'), class: 'label' %>
+          <%= form.select :survivor_id, cluster.places.map { |place| [place.name, place.id] }, { selected: cluster.survivor.id }, id: "survivor_#{index}", class: 'select select-bordered w-full max-w-full' %>
+        </div>
+        <%= form.submit t('places.management.merge'), class: 'btn btn-primary h-auto py-2', data: { testid: 'merge-cluster' } %>
+      <% end %>
+    </section>
+  <% end %>
+</div>

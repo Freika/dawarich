@@ -1,63 +1,32 @@
 <% content_for :title, t('.places') %>
 
-<div class="w-full my-5">
-  <div class="overflow-x-auto pb-1">
-    <div role="tablist" class="tabs tabs-lifted tabs-lg inline-flex min-w-max flex-nowrap">
-      <%= link_to t('.timeline'), '/map/v2?panel=timeline&date=today&status=confirmed', role: 'tab', class: 'tab font-bold text-xl' %>
-      <%= link_to t('.places'), places_path, role: 'tab', class: 'tab font-bold text-xl tab-active' %>
+<div class="w-full min-w-0 my-5" data-testid="places-management">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <div role="tablist" class="tabs tabs-lifted min-w-0">
+      <%= link_to t('.timeline'), '/map/v2?panel=timeline&date=today&status=confirmed', role: 'tab', class: 'tab font-bold' %>
+      <%= link_to t('.places'), places_path, role: 'tab', class: 'tab font-bold tab-active' %>
+    </div>
+    <div class="flex flex-wrap gap-2 min-w-0">
+      <%= link_to t('places.management.duplicates'), places_path(view: 'duplicates'), class: 'btn btn-sm h-auto py-2', data: { testid: 'possible-duplicates' } %>
+      <%= link_to t('places.management.create'), '/map/v2?create_place=1', class: 'btn btn-primary btn-sm h-auto py-2', data: { testid: 'create-place' } %>
     </div>
   </div>
 
-  <nav class="flex gap-2 my-4" aria-label="<%= t('.filters') %>">
-    <%= link_to t('.all_places'), places_path,
-                class: "btn btn-sm #{'btn-primary' if params[:filter].blank?}" %>
-    <%= link_to t('.unconfirmed_places'), places_path(filter: 'unconfirmed'),
-                class: "btn btn-sm #{'btn-primary' if params[:filter] == 'unconfirmed'}" %>
-  </nav>
-
-  <div id="places" class="min-w-full">
-    <% if @places.empty? %>
-      <div class="hero min-h-80 bg-base-200">
-        <div class="hero-content text-center">
-          <div class="max-w-md">
-            <h1 class="text-5xl font-bold"><%= t('.hello_there') %></h1>
-            <p class="py-6">
-              <%= t('.here_you_ll_find_your_places_created_by_visits_suggestion') %>
-            </p>
-          </div>
-        </div>
+  <% if @clusters %>
+    <%= render 'duplicates', clusters: @clusters %>
+  <% else %>
+    <%= render 'filters' %>
+    <div data-controller="<%= 'places-selection' if @places.any? %>" data-places-selection-delete-message-value="<%= t('places.management.delete_confirmation', places: '%{places}', visits: '%{visits}', geofences: '%{geofences}', privacy: '%{privacy}') %>">
+      <%= render 'bulk_actions' if @places.any? %>
+      <div id="places" class="min-w-0">
+        <% if @places.empty? %>
+          <p class="p-8 text-center bg-base-200 rounded-box"><%= t('places.management.no_results') %></p>
+        <% else %>
+          <div class="flex justify-center my-5"><%= paginate @places %></div>
+          <%= render 'table' %>
+          <div class="flex justify-center my-5"><%= paginate @places %></div>
+        <% end %>
       </div>
-    <% else %>
-      <div class="flex justify-center my-5">
-        <%= paginate @places %>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="table">
-          <thead>
-            <tr>
-              <th><%= t('.name') %></th>
-              <th><%= t('.created_at') %></th>
-              <th><%= t('.coordinates') %></th>
-              <th><%= t('.actions') %></th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @places.each do |place| %>
-              <tr>
-                <td><%= link_to place.name, place_path(place), class: 'link link-hover' %></td>
-                <td><%= human_datetime(place.created_at, current_user.safe_settings.timezone) %></td>
-                <td><%= "#{place.lat}, #{place.lon}" %></td>
-                <td>
-                  <% if params[:filter] == 'unconfirmed' %>
-                    <%= button_to t('visits.buttons.confirm'), confirm_place_path(place, filter: 'unconfirmed', page: params[:page]), method: :patch, class: "btn btn-ghost btn-xs text-success hover:bg-success/10" %>
-                  <% end %>
-                  <%= link_to t('.delete'), place_path(place, page: params[:page]), data: { turbo_confirm: t('.are_you_sure_deleting_a_place_will_result_in_deleting'), turbo_method: :delete }, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" %>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    <% end %>
-  </div>
+    </div>
+  <% end %>
 </div>

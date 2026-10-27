@@ -2,6 +2,7 @@
 
 class PlacesController < ApplicationController
   include FlashStreamable
+  include PlaceBulkActions
 
   MERGE_CANDIDATE_LIMIT = 20
   MERGE_NEARBY_RADIUS_KM = 5
@@ -10,9 +11,25 @@ class PlacesController < ApplicationController
   before_action :set_place, only: %i[confirm destroy update merge]
 
   def index
-    places = current_user.places
-    places = places.unconfirmed_for(current_user) if params[:filter] == 'unconfirmed'
-    @places = places.ordered.page(params[:page]).per(20)
+    @tags = current_user.tags.ordered
+    if params[:view] == 'duplicates'
+      @clusters = Places::PossibleDuplicates.new(user: current_user).call
+    else
+      @places = Places::ListQuery.new(user: current_user, params:).call
+                                 .includes(:tags).page(params[:page]).per(20).load
+    end
+  end
+
+  def bulk_update
+    perform_place_bulk_action(params[:operation].presence_in(%w[add_tag remove_tag]))
+  end
+
+  def bulk_destroy
+    perform_place_bulk_action('delete')
+  end
+
+  def bulk_merge
+    perform_place_bulk_action('merge')
   end
 
   def show

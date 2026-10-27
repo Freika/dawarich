@@ -1334,6 +1334,44 @@ en:
       destroy_this_notification: Destroy this notification
       are_you_sure: Are you sure?
   places:
+    management:
+      create: "Create place"
+      duplicates: "Possible duplicates"
+      search: "Search names"
+      sort: "Sort by"
+      last_visit: "Last visit"
+      active_visits: "Active visits"
+      status: "Status"
+      apply: "Apply"
+      tags: "Tags"
+      tag: "Tag"
+      source: "Source"
+      badges: "Protection"
+      geofence: "Geofence"
+      privacy: "Privacy zone"
+      selected: "Selected places"
+      add_tag: "Add tag"
+      remove_tag: "Remove tag"
+      survivor: "Keep this place"
+      merge: "Merge places"
+      delete: "Delete places"
+      select_all: "Select all places on this page"
+      select_place: "Select %{name}"
+      no_results: "No places match these filters."
+      duplicates_description: "Places whose visit-radius circles overlap are grouped below. Review each group and choose the place to keep. Nothing is merged automatically."
+      no_duplicates: "No possible duplicates found."
+      cluster: "Group %{number}"
+      distance_reference: "Distances from the recommended place: %{name}"
+      distance: "Distance"
+      meters: "%{distance} m"
+      bulk_success: "Places updated: %{count}"
+      invalid_selection: "Select places and a valid tag or survivor from your selection."
+      merge_confirmation: "Merge these places into the chosen survivor? Their visits, tags and notes will move to it. This cannot be undone."
+      delete_confirmation: "Delete these places? Places: %{places}. Active visits that will lose their place: %{visits}; their location labels are kept. Places with geofences: %{geofences}; their events are deleted and webhook subscriptions removed. Places with privacy-zone tags: %{privacy}; nearby data may become visible, including in shared links. This cannot be undone."
+      sources:
+        manual: "Manual"
+        photon: "Discovered"
+        gpx_waypoint: "GPX waypoint"
     drawer:
       source: 'Source:'
       total_hours: total hours

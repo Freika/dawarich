@@ -1,0 +1,37 @@
+<div class="overflow-x-auto max-w-full" data-testid="places-table-scroll">
+  <table class="table min-w-[60rem]">
+    <thead>
+      <tr>
+        <th><input type="checkbox" class="checkbox checkbox-sm" aria-label="<%= t('places.management.select_all') %>" data-places-selection-target="all" data-action="change->places-selection#toggleAll"></th>
+        <% %w[name tags active_visits last_visit source badges actions].each do |column| %>
+          <th><%= t(column.in?(%w[name actions]) ? "places.index.#{column}" : "places.management.#{column}") %></th>
+        <% end %>
+      </tr>
+    </thead>
+    <tbody>
+      <% @places.each do |place| %>
+        <% privacy = place.tags.any?(&:privacy_zone?) %>
+        <tr data-testid="place-row" data-place-id="<%= place.id %>">
+          <td><input type="checkbox" value="<%= place.id %>" class="checkbox checkbox-sm" aria-label="<%= t('places.management.select_place', name: place.name) %>" data-places-selection-target="row" data-action="change->places-selection#update" data-visits="<%= place.active_visit_count %>" data-geofence="<%= place.geofence? ? 1 : 0 %>" data-privacy="<%= privacy ? 1 : 0 %>"></td>
+          <td class="min-w-48 max-w-72 [overflow-wrap:anywhere]"><%= link_to place.name, place_path(place), class: 'link link-hover' %></td>
+          <td class="min-w-32 max-w-64"><%= render 'tags', place: %></td>
+          <td><%= place.active_visit_count %></td>
+          <td class="whitespace-nowrap"><%= place.last_visited_at ? human_datetime(place.last_visited_at, current_user_safe_settings.timezone) : '—' %></td>
+          <td><%= t("places.management.sources.#{place.source}") %></td>
+          <td>
+            <div class="flex flex-wrap gap-1 min-w-32">
+              <% if place.geofence? %><span class="badge badge-info h-auto py-1"><%= t('places.management.geofence') %></span><% end %>
+              <% if privacy %><span class="badge badge-warning h-auto py-1"><%= t('places.management.privacy') %></span><% end %>
+            </div>
+          </td>
+          <td>
+            <% if params[:filter] == 'unconfirmed' %>
+              <%= button_to t('visits.buttons.confirm'), confirm_place_path(place, filter: 'unconfirmed', page: params[:page]), method: :patch, class: 'btn btn-ghost btn-xs h-auto py-2 text-success' %>
+            <% end %>
+            <%= button_to t('places.index.delete'), bulk_destroy_places_path(request.query_parameters), method: :delete, params: { place_ids: [place.id] }, class: 'btn btn-ghost btn-xs h-auto py-2 text-error', form: { data: { turbo_confirm: t('places.management.delete_confirmation', places: 1, visits: place.active_visit_count, geofences: place.geofence? ? 1 : 0, privacy: privacy ? 1 : 0) } } %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
