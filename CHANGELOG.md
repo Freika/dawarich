@@ -4,12 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.18.2] - 2026-10-27, Berlin
 
 ### Added
 
 - Archive and unarchive places from their editor or in bulk. Filter the Places list by Archived, and use Show archived places on the map to display them muted. Archiving keeps visit history and privacy masking while pausing new visits and geofencing.
-
 - Places can be archived and restored through the API. Archived places keep their visit history and privacy zones, stop receiving new suggested visits, and pause geofence notifications. They are hidden from the map by default and available with the archived places API filter.
 - Tag edit pages list the places with that tag, with links and visit counts.
 - Search and filter Places by name, tags and confirmation status, and sort them by name, last visit or active visit count. The list shows tags, visit history, sources, geofences and privacy zones, with a shortcut to create a place on the map.
@@ -21,29 +20,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Place deletion confirmations now explain that geofence events are kept with the place name.
-
 - Deleting a privacy-zone tag now shows how many places it protects and warns that data becomes visible again on the map, in trips, in stats and on active shared links. Place counts on the Tags page now link to the filtered Places list.
 - Geofence events stay in the log and API after their place is deleted, showing its last name.
 - Places now have one editor on the map and on their own page for names, tags, notes, and geofencing. Delete confirmation lists affected visits, privacy tags, webhooks, and geofence events.
-
 - Creating or joining a family turns on the Family Members layer on the map, so the family shows up without looking for the toggle. Leaving the family turns the layer off again.
 
 ### Fixed
 
 - Saving a place updates its map marker without reloading the entire places list, while keeping places inside privacy zones hidden.
-
 - Saving a place inside a privacy zone no longer reveals its marker on the map when the zone itself has not changed.
-
 - Creating a place no longer leaves the creation form disabled when you open it again.
-
 - Unchecking every tag when editing a place on the map now removes all its tags.
 - Places on the map now offer Open and Delete alongside Edit. Deleting a place removes it from the map immediately and refreshes privacy zones.
 - Place details on the map now show every tag, with its icon and colour.
-
 - Signing in after opening a family invitation now joins the family right away, with any sign-in option: password, two-factor, Google, OpenID Connect or Apple. Before, the invitation was lost when you signed in through the regular login link or with Apple, and even the sign-in link on the invitation page only brought you back to the invitation, where you had to press Accept again.
 - Pressing Search in the date bar while Search, Layers, Tools, Settings or Timeline was open used to centre the map across the whole screen. The map now stays beside the open sidebar, centred in the visible area. (#3919)
 - Visits without a place now show on the map and in the timeline editor using the location of their points. #3384
-
 - GPS noise filtering can hide inaccurate points again. Since 1.11.0 points with an accuracy of a few hundred metres stayed on the map, and phone tracking showed them as zig-zag lines across the route. Turn on "Hide inaccurate points" in the map settings under GPS Noise Filtering, choose a threshold between 50 and 1000 m, then press "Apply Settings" and after that "Re-evaluate past data" to hide such points in your history too. It is off by default, including for accounts that saved a threshold before 1.11.0, because Google Timeline imports report 1–4 km for points that still sit on the road. (#3300)
 - The day arrows in the Timeline panel work as soon as you open it, without picking a day in its calendar first, and so do the left and right arrow keys while the Timeline is open and the map itself is not focused. When the map shows several days, they start from the last one. After you change the day in the Timeline, the day arrows next to the date fields move one day from the day you are on, not from the day the page was opened with, and their hints show the right date. The hints on the start and end date fields are no longer hidden behind the open Timeline. (#3858)
 - Countries now count on Insights, Stats and yearly digests when reverse geocoding finds a country but no city for your points, for example in the countryside or at sea. Past months are updated gradually in the background after the upgrade. (#3598)
