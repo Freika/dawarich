@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Tracks::VectorTileQuery do
+RSpec.shared_context 'antimeridian track' do
   let(:user) { create(:user) }
   let!(:track) do
     # Made-up ocean coordinates: a short path across the date line.
@@ -11,6 +11,38 @@ RSpec.describe Tracks::VectorTileQuery do
                    end_at: Time.utc(2026, 1, 1, 0, 30),
                    distance: 172_000, avg_speed: 344, duration: 1800)
   end
+
+  def measurements(geometry)
+    sql = <<~SQL
+      SELECT ST_Length(geom) AS length, ST_XMin(geom) AS xmin, ST_XMax(geom) AS xmax,
+             ST_NumGeometries(geom) AS parts FROM (SELECT ?::geometry AS geom) AS measured
+    SQL
+    Track.connection.select_one(Track.sanitize_sql_array([sql, geometry]))
+  end
+
+  def sparse_flight
+    track.update!(original_path: 'LINESTRING(139.7 35.5, 139.8 35.6, -118.3 33.9, -118.2 34.0)')
+  end
+
+  def pacific_tile(min_longitude, max_longitude)
+    sql = <<~SQL
+      SELECT ST_X(point.geom) AS longitude, ST_Y(point.geom) AS latitude
+      FROM tracks CROSS JOIN LATERAL ST_DumpPoints(#{GreatCircleSql.densified('original_path')}) AS point
+      WHERE tracks.id = ? AND ST_X(point.geom) BETWEEN ? AND ?
+      ORDER BY ABS(ST_X(point.geom) - (? + ?) / 2.0) LIMIT 1
+    SQL
+    point = Track.connection.select_one(
+      Track.sanitize_sql_array([sql, track.id, min_longitude, max_longitude, min_longitude, max_longitude])
+    )
+    latitude = point.fetch('latitude').to_f * Math::PI / 180
+    x = ((point.fetch('longitude').to_f + 180) / 360 * 32).floor
+    y = ((1 - Math.log(Math.tan(latitude) + (1 / Math.cos(latitude))) / Math::PI) / 2 * 32).floor
+    { z: 5, x:, y: }
+  end
+end
+
+RSpec.describe Tracks::VectorTileQuery do
+  include_context 'antimeridian track'
 
   it 'keeps a date-line crossing short while retaining both sides in the world tile' do
     rows = described_class.new(scope: user.tracks, z: 0, x: 0, y: 0).feature_rows
@@ -46,14 +78,6 @@ RSpec.describe Tracks::VectorTileQuery do
     unchanged = Track.connection.select_value(Track.sanitize_sql_array([sql, row['geom'], track.id]))
 
     expect(unchanged).to be(true)
-  end
-
-  def measurements(geometry)
-    sql = <<~SQL
-      SELECT ST_Length(geom) AS length, ST_XMin(geom) AS xmin, ST_XMax(geom) AS xmax,
-             ST_NumGeometries(geom) AS parts FROM (SELECT ?::geometry AS geom) AS measured
-    SQL
-    Track.connection.select_one(Track.sanitize_sql_array([sql, geometry]))
   end
 
   [-180.0, 180.0].each do |seam|
@@ -100,11 +124,52 @@ RSpec.describe Tracks::VectorTileQuery do
     expect(measurements(query.feature_rows.fetch(0)['geom'])['length'].to_f).to be < 64
   end
 
+  it 'preserves a prime-meridian crossing in a track that also crosses the date line' do
+    coordinates = (-680..718).map { |step| "#{step * 0.25} -24.6" }
+    coordinates << '-179.5 -24.6'
+    track.update!(original_path: "LINESTRING(#{coordinates.join(', ')})")
+    row = described_class.new(scope: user.tracks, z: 0, x: 0, y: 0).feature_rows.fetch(0)
+    bounds = measurements(row['geom'])
+
+    expect(bounds['length'].to_f).to be_between(3900, 4100)
+    expect(bounds['parts'].to_i).to eq(2)
+  end
+
+  it 'retains a sparse wide non-crossing flight in a tile reached only by its arc' do
+    track.update!(original_path: 'LINESTRING(-170 20, 0 20, 170 20)')
+    tile = pacific_tile(-100, -90)
+    envelope = "ST_Transform(ST_TileEnvelope(#{tile[:z]}, #{tile[:x]}, #{tile[:y]}, " \
+               "margin => #{described_class::MARGIN}), 4326)"
+    sql = "SELECT ST_Intersects(original_path, #{envelope}) FROM tracks WHERE id = ?"
+
+    expect(Track.connection.select_value(Track.sanitize_sql_array([sql, track.id]))).to be(false)
+
+    query = described_class.new(scope: user.tracks, **tile)
+
+    expect(query.call.feature_count).to eq(1)
+    expect(query.feature_rows.map { |row| row['id'].to_i }).to eq([track.id])
+  end
+
+  [[160, 169], [-170, -160]].each do |min_longitude, max_longitude|
+    it "retains a sparse flying track in an interior Pacific tile at #{min_longitude}..#{max_longitude}" do
+      sparse_flight
+      tile = pacific_tile(min_longitude, max_longitude)
+      query = described_class.new(scope: user.tracks, **tile)
+
+      expect(query.call.feature_count).to eq(1)
+      expect(query.feature_rows.map { |row| row['id'].to_i }).to eq([track.id])
+    end
+  end
+end
+
+RSpec.describe Tracks::SpeedVectorTileQuery do
+  include_context 'antimeridian track'
+
   it 'keeps speed tiles short on both sides without drawing through a central tile' do
     [179.2, -179.1].each_with_index do |longitude, index|
       create(:point, user:, track:, longitude:, latitude: -24.6, timestamp: track.start_at.to_i + index * 600)
     end
-    query = ->(z, x, y) { Tracks::SpeedVectorTileQuery.new(scope: user.tracks, points_scope: user.points, z:, x:, y:) }
+    query = ->(z, x, y) { described_class.new(scope: user.tracks, points_scope: user.points, z:, x:, y:) }
     bounds = measurements(query.call(0, 0, 0).feature_rows.fetch(0)['geom'])
 
     expect(bounds['length'].to_f).to be < 64
@@ -120,33 +185,37 @@ RSpec.describe Tracks::VectorTileQuery do
       expect(bounds[edge.zero? ? 'xmin' : 'xmax'].to_f).to eq(edge.zero? ? 0 : 4096)
     end
   end
+end
 
-  it 'keeps trip route tiles short on both sides without drawing through a central tile' do
-    trip = create(:trip, user:, started_at: track.start_at, ended_at: track.end_at, path: nil,
-                         skip_calculation_enqueue: true)
-    query = ->(z, x, y) { Trips::RoutesTileQuery.new(trip:, points_scope: user.points, timezone: 'UTC', z:, x:, y:) }
-    world = query.call(0, 0, 0)
-    geometry = Track.connection.select_value(
-      "#{world.send(:with_clause)} SELECT #{world.send(:mvt_geom, 'source_geom')} FROM visible_features"
-    )
-    bounds = measurements(geometry)
+RSpec.describe Trips::RoutesTileQuery do
+  include_context 'antimeridian track'
 
-    expect(world.call.feature_count).to eq(1)
-    expect(bounds['length'].to_f).to be < 64
-    expect(bounds['parts'].to_i).to eq(2)
-    expect(bounds['xmin'].to_f).to eq(0)
-    expect(bounds['xmax'].to_f).to eq(4096)
-    expect(query.call(3, 4, 4).call.feature_count).to eq(0)
+  let(:trip) do
+    create(:trip, user:, started_at: track.start_at, ended_at: track.end_at, path: nil,
+                  skip_calculation_enqueue: true)
   end
 
-  it 'preserves a prime-meridian crossing in a track that also crosses the date line' do
-    coordinates = (-680..718).map { |step| "#{step * 0.25} -24.6" }
-    coordinates << '-179.5 -24.6'
-    track.update!(original_path: "LINESTRING(#{coordinates.join(', ')})")
-    row = described_class.new(scope: user.tracks, z: 0, x: 0, y: 0).feature_rows.fetch(0)
-    bounds = measurements(row['geom'])
+  def query(**tile)
+    described_class.new(trip:, points_scope: user.points, timezone: 'UTC', **tile)
+  end
 
-    expect(bounds['length'].to_f).to be_between(3900, 4100)
-    expect(bounds['parts'].to_i).to eq(2)
+  it 'keeps trip route tiles short on both sides without drawing through a central tile' do
+    expect(query(z: 0, x: 0, y: 0).call.feature_count).to eq(1)
+    [0, 7].each do |edge|
+      expect(query(z: 3, x: edge, y: 4).call.feature_count).to eq(1)
+    end
+    (1..6).each do |central|
+      result = query(z: 3, x: central, y: 4).call
+      expect(result.feature_count).to eq(0)
+      expect(PG::TextDecoder::Bytea.new.decode(result.tile)).to be_blank
+    end
+  end
+
+  it 'retains a sparse flight in both interior Pacific trip route tiles' do
+    sparse_flight
+
+    [[160, 169], [-170, -160]].each do |min_longitude, max_longitude|
+      expect(query(**pacific_tile(min_longitude, max_longitude)).call.feature_count).to eq(1)
+    end
   end
 end
