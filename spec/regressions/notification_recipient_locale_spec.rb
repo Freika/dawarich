@@ -37,11 +37,15 @@ RSpec.describe 'Notification recipient locale' do
   end
 
   it 'localizes the suggested-visits failure notification' do
+    error_dedup_key = "visit_suggest_error:user:#{german_user.id}"
+    Sidekiq.redis { |redis| redis.del(error_dedup_key) }
     allow_any_instance_of(Visits::SmartDetect).to receive(:call).and_raise(StandardError, 'boom')
 
     Visits::Suggest.new(german_user, start_at: 1.day.ago.to_i, end_at: Time.current.to_i).call
 
     expect(german_user.notifications.last.title).to eq('Fehler beim Vorschlagen von Aufenthalten')
+  ensure
+    Sidekiq.redis { |redis| redis.del(error_dedup_key) } if error_dedup_key
   end
 
   it 'leaves the ambient locale untouched after notifying' do
