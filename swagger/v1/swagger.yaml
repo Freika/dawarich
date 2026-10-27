@@ -6463,6 +6463,19 @@ paths:
                     duration:
                       type: integer
                       description: Duration in minutes
+                    center:
+                      type: object
+                      nullable: true
+                      description: Point-derived fallback when Place/Area are absent;
+                        null without visible coordinates
+                      properties:
+                        latitude:
+                          type: number
+                        longitude:
+                          type: number
+                      required:
+                      - latitude
+                      - longitude
                     place:
                       type: object
                       nullable: true
@@ -6486,6 +6499,7 @@ paths:
                   - started_at
                   - ended_at
                   - duration
+                  - center
         '400':
           description: invalid or missing time range
           content:
@@ -6517,6 +6531,8 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                - center
                 properties:
                   id:
                     type: integer
@@ -6532,6 +6548,19 @@ paths:
                     format: datetime
                   duration:
                     type: integer
+                  center:
+                    type: object
+                    nullable: true
+                    description: Point-derived fallback when Place/Area are absent;
+                      null without visible coordinates
+                    properties:
+                      latitude:
+                        type: number
+                      longitude:
+                        type: number
+                    required:
+                    - latitude
+                    - longitude
                   place:
                     type: object
                     properties:
@@ -6617,6 +6646,8 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                - center
                 properties:
                   id:
                     type: integer
@@ -6632,6 +6663,19 @@ paths:
                     format: datetime
                   duration:
                     type: integer
+                  center:
+                    type: object
+                    nullable: true
+                    description: Point-derived fallback when Place/Area are absent;
+                      null without visible coordinates
+                    properties:
+                      latitude:
+                        type: number
+                      longitude:
+                        type: number
+                    required:
+                    - latitude
+                    - longitude
                   place:
                     type:
                     - object
@@ -6779,6 +6823,8 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                - center
                 properties:
                   id:
                     type: integer
@@ -6794,6 +6840,19 @@ paths:
                     format: datetime
                   duration:
                     type: integer
+                  center:
+                    type: object
+                    nullable: true
+                    description: Point-derived fallback when Place/Area are absent;
+                      null without visible coordinates
+                    properties:
+                      latitude:
+                        type: number
+                      longitude:
+                        type: number
+                    required:
+                    - latitude
+                    - longitude
                   place:
                     type:
                     - object
@@ -6900,6 +6959,22 @@ paths:
                           - failed
                         visit:
                           type: object
+                          properties:
+                            center:
+                              type: object
+                              nullable: true
+                              description: Point-derived fallback when Place/Area
+                                are absent; null without visible coordinates
+                              properties:
+                                latitude:
+                                  type: number
+                                longitude:
+                                  type: number
+                              required:
+                              - latitude
+                              - longitude
+                          required:
+                          - center
                         error:
                           type: string
                   created_count:

@@ -9,10 +9,11 @@
       <p class="text-sm mb-3"><%= t('places.management.distance_reference', name: cluster.survivor.name) %></p>
       <div class="overflow-x-auto max-w-full">
         <table class="table">
-          <thead><tr><th><%= t('places.index.name') %></th><th><%= t('places.management.tags') %></th><th><%= t('places.management.active_visits') %></th><th><%= t('places.management.distance') %></th></tr></thead>
+          <thead><tr><th></th><th><%= t('places.index.name') %></th><th><%= t('places.management.tags') %></th><th><%= t('places.management.active_visits') %></th><th><%= t('places.management.distance') %></th></tr></thead>
           <tbody>
             <% cluster.places.each do |place| %>
               <tr data-place-id="<%= place.id %>">
+                <td><%= check_box_tag 'place_ids[]', place.id, true, id: "duplicate_#{index}_#{place.id}", form: "duplicate_merge_#{index}", class: 'checkbox', aria: { label: place.name } %></td>
                 <td class="min-w-72 max-w-96 break-words"><%= link_to place.name, place_path(place), class: 'link' %></td>
                 <td class="min-w-64 max-w-80"><%= render 'tags', place: %></td>
                 <td><%= place.active_visit_count %></td>
@@ -22,8 +23,7 @@
           </tbody>
         </table>
       </div>
-      <%= form_with url: bulk_merge_places_path(view: 'duplicates', locale: params[:locale]), method: :post, class: 'flex flex-wrap items-end gap-3 mt-4 min-w-0', data: { turbo_confirm: t('places.management.merge_confirmation') } do |form| %>
-        <% cluster.places.each do |place| %><%= hidden_field_tag 'place_ids[]', place.id %><% end %>
+      <%= form_with url: bulk_merge_places_path(view: 'duplicates', locale: params[:locale]), method: :post, id: "duplicate_merge_#{index}", class: 'flex flex-wrap items-end gap-3 mt-4 min-w-0', data: { turbo_confirm: t('places.management.merge_confirmation') } do |form| %>
         <div class="min-w-0 max-w-full">
           <%= form.label "survivor_#{index}", t('places.management.survivor'), class: 'label' %>
           <%= form.select :survivor_id, cluster.places.map { |place| [place.name, place.id] }, { selected: cluster.survivor.id }, id: "survivor_#{index}", class: 'select select-bordered w-full max-w-full' %>

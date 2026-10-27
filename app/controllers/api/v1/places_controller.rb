@@ -38,10 +38,10 @@ module Api
           case params[:filter]
           when 'all'       then @places
           when 'archived'  then @places.archived
-          when 'manual'    then @places.manual
-          when 'confirmed' then @places.linked_to_confirmed_visits(current_api_user)
+          when 'manual'    then @places.manual.not_archived
+          when 'confirmed' then @places.linked_to_confirmed_visits(current_api_user).not_archived
           when 'unconfirmed' then @places.unconfirmed_for(current_api_user)
-          when 'tagged' then @places.tagged
+          when 'tagged' then @places.tagged.not_archived
           else @places.map_visible(current_api_user)
           end
 

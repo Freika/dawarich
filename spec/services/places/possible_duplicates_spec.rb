@@ -56,6 +56,17 @@ RSpec.describe 'Places::PossibleDuplicates' do
     expect(old.reload).to be_photon
   end
 
+  it 'pairs a small place with a much larger one whose radius covers it' do
+    large = place_at(0, visit_radius: 2000)
+    small = place_at(0.015, visit_radius: 20)
+
+    expect(Places::PossibleDuplicates.new(user:).call.sole.places).to contain_exactly(large, small)
+  end
+
+  it 'returns no clusters for a user without places' do
+    expect(Places::PossibleDuplicates.new(user:).call).to eq([])
+  end
+
   it 'prefers the oldest place when no member is curated' do
     older = place_at(0, created_at: 2.years.ago)
     place_at(0.0015)

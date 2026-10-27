@@ -10,12 +10,18 @@ module Places
 
     def call
       scope = user.places.not_archived
-      pairs = scope.joins(<<~SQL.squish).pluck('places.id', 'other_places.id')
+      max_radius = scope.maximum(:visit_radius)
+      return [] unless max_radius
+
+      # The constant reach lets the join use the lonlat index; the per-pair radius sum decides.
+      join = ActiveRecord::Base.sanitize_sql_array([<<~SQL.squish, max_radius * 2])
         INNER JOIN places other_places ON places.id < other_places.id
           AND places.user_id = other_places.user_id
           AND other_places.archived_at IS NULL
+          AND ST_DWithin(places.lonlat, other_places.lonlat, ?)
           AND ST_DWithin(places.lonlat, other_places.lonlat, places.visit_radius + other_places.visit_radius)
       SQL
+      pairs = scope.joins(join).pluck('places.id', 'other_places.id')
       records = ListQuery.new(user:).call.where(id: pairs.flatten.uniq).includes(:tags).index_by(&:id)
       components(pairs).map do |ids|
         places = ids.map { |id| records.fetch(id) }

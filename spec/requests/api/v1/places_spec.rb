@@ -404,6 +404,22 @@ RSpec.describe 'Api::V1::Places', type: :request do
       expect(JSON.parse(response.body).pluck('id')).to contain_exactly(archived.id)
     end
 
+    it 'excludes archived Places from the manual, confirmed and tagged filters' do
+      tag = create(:tag, user:)
+      archived = create(:place, user:, source: :manual, archived: true)
+      archived.tags << tag
+      place.update!(source: :manual)
+      place.tags << tag
+      visit = create(:visit, user:, place: archived, status: :confirmed)
+      create(:visit, user:, place:, status: :confirmed, started_at: visit.ended_at + 1.hour,
+                     ended_at: visit.ended_at + 2.hours)
+
+      %w[manual confirmed tagged].each do |filter|
+        get '/api/v1/places', params: { filter: }, headers: headers
+        expect(JSON.parse(response.body).pluck('id')).to contain_exactly(place.id), filter
+      end
+    end
+
     it 'excludes archived Places from nearby and name searches of saved Places' do
       archived = create(:place, user:, name: 'Old Home', latitude: place.lat, longitude: place.lon, archived: true)
       [nil, 'Home'].each do |query|
