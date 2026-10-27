@@ -109,9 +109,9 @@ module Places
     end
 
     def merge_geofence
+      GeofenceEvent.where(place_id: duplicate.id).update_all(place_id: survivor.id, place_name: survivor.name)
       return false unless duplicate.geofence?
 
-      GeofenceEvent.where(place_id: duplicate.id).update_all(place_id: survivor.id)
       Webhook.where(user_id: user.id).where('? = ANY(place_ids)', duplicate.id).update_all(
         ['place_ids = ARRAY(SELECT DISTINCT unnest(array_replace(place_ids, ?, ?)))', duplicate.id, survivor.id]
       )

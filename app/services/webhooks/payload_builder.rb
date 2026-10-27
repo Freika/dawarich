@@ -8,8 +8,8 @@ module Webhooks
         id: event.id,
         type: event.event_type,
         place: {
-          id: place.id, name: place.name,
-          latitude: place.lat, longitude: place.lon, radius: place.visit_radius
+          id: event.place_id, name: event.display_place_name,
+          latitude: place&.lat, longitude: place&.lon, radius: place&.visit_radius
         },
         user_id: event.user_id,
         source: event.source,

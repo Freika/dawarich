@@ -9,14 +9,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Tag edit pages list the places with that tag, with links and visit counts.
+- Search and filter Places by name, tags and confirmation status, and sort them by name, last visit or active visit count. The list shows tags, visit history, sources, geofences and privacy zones, with a shortcut to create a place on the map.
+- Select places to add or remove tags, delete them with a summary of the consequences, or merge them into a chosen place. Possible duplicates groups places with overlapping visit radii for review and merging.
 - Create tags with a name and emoji directly in the place editor or creation modal. Place details explain which tags hide the place and their Privacy Radius.
 - Set geofencing while creating a place, see its last ten enter and leave events in the editor, and open its filtered event log. Geofence boundaries are highlighted on the map.
-
 - Move places and resize their Visit Radius on the map by dragging the pin and radius handle.
 
 ### Changed
 
 - Deleting a privacy-zone tag now shows how many places it protects and warns that data becomes visible again on the map, in trips, in stats and on active shared links. Place counts on the Tags page now link to the filtered Places list.
+- Geofence events stay in the log and API after their place is deleted, showing its last name.
 - Places now have one editor on the map and on their own page for names, tags, notes, and geofencing. Delete confirmation lists affected visits, privacy tags, webhooks, and geofence events.
 
 - Creating or joining a family turns on the Family Members layer on the map, so the family shows up without looking for the toggle. Leaving the family turns the layer off again.

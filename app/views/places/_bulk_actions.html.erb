@@ -1,0 +1,21 @@
+<div class="flex flex-wrap items-end gap-3 p-4 bg-base-200 rounded-box min-w-0">
+  <p class="w-full"><%= t('places.management.selected') %>: <strong data-places-selection-target="count">0</strong></p>
+  <%= form_with url: bulk_update_places_path(request.query_parameters), method: :patch, class: 'flex flex-wrap gap-2 items-end min-w-0', data: { places_selection_target: 'form' } do |form| %>
+    <div class="min-w-0 max-w-full">
+      <%= form.label :tag_id, t('places.management.tag'), class: 'label' %>
+      <%= form.select :tag_id, @tags.map { |tag| ["#{tag.icon} #{tag.name}", tag.id] }, {}, class: 'select select-bordered w-full min-w-0', required: true %>
+    </div>
+    <%= form.button t('places.management.add_tag'), name: 'operation', value: 'add_tag', class: 'btn btn-sm h-auto py-2', disabled: true, data: { places_selection_target: 'button' } %>
+    <%= form.button t('places.management.remove_tag'), name: 'operation', value: 'remove_tag', class: 'btn btn-sm h-auto py-2', disabled: true, data: { places_selection_target: 'button' } %>
+  <% end %>
+  <%= form_with url: bulk_merge_places_path(request.query_parameters), method: :post, class: 'flex flex-wrap gap-2 items-end min-w-0 max-w-full', data: { places_selection_target: 'form' } do |form| %>
+    <div class="min-w-0 max-w-full">
+      <%= form.label :survivor_id, t('places.management.survivor'), class: 'label' %>
+      <%= form.select :survivor_id, @places.map { |place| [place.name, place.id] }, {}, class: 'select select-bordered w-full min-w-0 max-w-64', data: { places_selection_target: 'survivor' } %>
+    </div>
+    <%= form.button t('places.management.merge'), class: 'btn btn-sm h-auto py-2', disabled: true, data: { places_selection_target: 'button', turbo_confirm: t('places.management.merge_confirmation') } %>
+  <% end %>
+  <%= form_with url: bulk_destroy_places_path(request.query_parameters), method: :delete, data: { places_selection_target: 'form', action: 'submit->places-selection#confirmDelete' } do |form| %>
+    <%= form.button t('places.management.delete'), class: 'btn btn-error btn-sm h-auto py-2', disabled: true, data: { places_selection_target: 'button', testid: 'bulk-delete' } %>
+  <% end %>
+</div>
