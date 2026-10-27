@@ -37,6 +37,7 @@ export function buildPlaceInfo(properties) {
       ${tags ? `<div class="flex flex-wrap gap-2">${tags}</div>` : ""}
       ${note ? `<div>${escapeText(note)}</div>` : ""}
       ${properties.visitRadius ? `<div><span class="font-semibold">${escapeText(translate("map_info.visit_radius"))}:</span> ${Math.round(properties.visitRadius)}m</div>` : ""}
+      ${properties.geofence === true || properties.geofence === "true" ? `<div data-testid="place-geofence-legend"><span aria-hidden="true" style="display:inline-block;width:0.75rem;height:0.75rem;border:3px solid #f59e0b;border-radius:50%"></span> ${escapeText(translate("map_info.geofence_boundary"))}</div>` : ""}
       ${properties.nameLocked ? `<div class="text-xs opacity-70" data-testid="place-name-lock">${escapeText(translate("map_info.place_name_locked"))}</div>` : ""}
     </div>
   `

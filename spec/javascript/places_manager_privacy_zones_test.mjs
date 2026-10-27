@@ -19,6 +19,7 @@ const { PlacesManager, setPrivacyZonesFingerprint } = await import(
 )
 
 function setup(fingerprint, failed = false) {
+  globalThis.document = { querySelectorAll: () => [] }
   const refreshed = []
   const reloads = []
   const recentPoint = {
@@ -46,6 +47,7 @@ function setup(fingerprint, failed = false) {
               : null,
     },
     api: {
+      fetchPlaces: async () => [{ id: 2 }],
       fetchPrivacyZones: async () =>
         failed
           ? { zones: [], fingerprint: null, failed }
@@ -120,4 +122,81 @@ test("unchanged zones keep the current position", async () => {
   await manager.handlePlaceUpdated(placeSaved)
 
   assert.equal(recentPoint.cleared, false)
+})
+
+test("saving a private place with unchanged zones only displays the masked places collection", async () => {
+  setPrivacyZonesFingerprint("unchanged")
+  globalThis.document = { querySelectorAll: () => [] }
+  let data = {
+    features: [{ properties: { id: 1 } }, { properties: { id: 2 } }],
+  }
+  const placesLayer = {
+    visible: true,
+    get data() {
+      return data
+    },
+    update(value) {
+      data = value
+    },
+  }
+  const manager = new PlacesManager({
+    layerManager: { getLayer: () => placesLayer },
+    api: {
+      fetchPlaces: async () => [{ id: 1 }, { id: 3 }],
+      fetchPrivacyZones: async () => ({ fingerprint: "unchanged" }),
+    },
+    dataLoader: {
+      placesToGeoJSON: (places) => ({
+        features: places.map((place) => ({ properties: { id: place.id } })),
+      }),
+    },
+    settings: {},
+  })
+
+  await manager.handlePlaceUpdated({
+    detail: { place: { id: 2, latitude: 52.5, longitude: 13.4 } },
+  })
+
+  assert.deepEqual(
+    data.features.map((feature) => feature.properties.id),
+    [1],
+  )
+})
+
+test("saving a visible place uses the masked response even before a new tag enters map filters", async () => {
+  setPrivacyZonesFingerprint("unchanged")
+  globalThis.document = { querySelectorAll: () => [] }
+  let data = { features: [] }
+  const placesLayer = {
+    visible: true,
+    get data() {
+      return data
+    },
+    update(value) {
+      data = value
+    },
+  }
+  const manager = new PlacesManager({
+    layerManager: { getLayer: () => placesLayer },
+    api: {
+      fetchPlaces: async ({ tag_ids } = {}) =>
+        tag_ids ? [] : [{ id: 2, geofence: true }],
+      fetchPrivacyZones: async () => ({ fingerprint: "unchanged" }),
+    },
+    dataLoader: {
+      placesToGeoJSON: (places) => ({
+        features: places.map((place) => ({ properties: place })),
+      }),
+    },
+    settings: {},
+  })
+
+  await manager.handlePlaceCreated({
+    detail: { place: { id: 2, geofence: false } },
+  })
+
+  assert.deepEqual(
+    data.features.map((feature) => feature.properties),
+    [{ id: 2, geofence: true }],
+  )
 })

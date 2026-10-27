@@ -42,6 +42,14 @@ module PlacesHelper
     I18n.t(unit == 'mi' ? 'units.miles' : 'units.kilometers', value: number_with_precision(value, precision: 2))
   end
 
+  def place_geofence_events(place)
+    return GeofenceEvent.none unless place.geofence?
+
+    events = current_user.geofence_events.real.where(place_id: place.id)
+    events = events.where(occurred_at: current_user.data_window_start..) if current_user.plan_restricted?
+    events.order(occurred_at: :desc, id: :desc).limit(10)
+  end
+
   def place_delete_confirmation(place)
     privacy_tags = place.tags.select(&:privacy_zone?).map(&:name).join(', ')
     webhooks = current_user.webhooks.where('? = ANY(place_ids)', place.id).count

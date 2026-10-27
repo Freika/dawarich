@@ -11,7 +11,6 @@ export default class extends Controller {
     "visitRadiusInput",
     "noteInput",
     "nearbyFrame",
-    "tagCheckboxes",
     "modalTitle",
     "submitButton",
     "visitIdInput",
@@ -26,7 +25,6 @@ export default class extends Controller {
     for (const [type, listener] of Object.entries(this.documentListeners)) {
       document.addEventListener(type, listener)
     }
-    this.setupTagListeners()
   }
 
   disconnect() {
@@ -83,29 +81,6 @@ export default class extends Controller {
     delete dataEl.dataset.created
     delete dataEl.dataset.updated
     delete dataEl.dataset.visitId
-  }
-
-  setupTagListeners() {
-    if (!this.hasTagCheckboxesTarget) return
-
-    this.tagCheckboxesTarget.addEventListener("change", (e) => {
-      if (e.target.type !== "checkbox" || e.target.name !== "place[tag_ids][]")
-        return
-      const badge = e.target.nextElementSibling
-      const color = badge.dataset.color
-
-      if (e.target.checked) {
-        badge.classList.remove("badge-outline")
-        badge.style.backgroundColor = color
-        badge.style.borderColor = color
-        badge.style.color = "white"
-      } else {
-        badge.classList.add("badge-outline")
-        badge.style.backgroundColor = "transparent"
-        badge.style.borderColor = color
-        badge.style.color = color
-      }
-    })
   }
 
   open(latitude, longitude, options = {}) {

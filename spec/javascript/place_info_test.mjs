@@ -82,3 +82,30 @@ test("place info offers Open Edit and Delete with place routing and safe labels"
     ),
   )
 })
+
+test("place info explains the highlighted geofence boundary only for geofences", async () => {
+  const { buildPlaceInfo } = await load()
+  const source = strip(await read("controllers/maps/maplibre/data_loader.js"))
+  const { DataLoader } = await import(
+    `data:text/javascript;base64,${Buffer.from(`const createCircle = () => []; ${source}`).toString("base64")}`
+  )
+  for (const geofence of [true, false]) {
+    const { features } = new DataLoader().placesToGeoJSON([
+      { id: 42, latitude: 52.5, longitude: 13.4, visit_radius: 75, geofence },
+    ])
+    for (const feature of features) {
+      assert.equal(feature.properties.geofence, geofence)
+      const { content } = buildPlaceInfo(feature.properties)
+      assert.equal(
+        content.includes('data-testid="place-geofence-legend"'),
+        geofence,
+      )
+      if (geofence) assert.ok(content.includes("map_info.geofence_boundary"))
+    }
+  }
+  assert.ok(
+    !buildPlaceInfo({ geofence: "false" }).content.includes(
+      'data-testid="place-geofence-legend"',
+    ),
+  )
+})

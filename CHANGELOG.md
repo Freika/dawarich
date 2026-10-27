@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Create tags with a name and emoji directly in the place editor or creation modal. Place details explain which tags hide the place and their Privacy Radius.
+- Set geofencing while creating a place, see its last ten enter and leave events in the editor, and open its filtered event log. Geofence boundaries are highlighted on the map.
+
 - Move places and resize their Visit Radius on the map by dragging the pin and radius handle.
 
 ### Changed
@@ -17,6 +20,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Creating or joining a family turns on the Family Members layer on the map, so the family shows up without looking for the toggle. Leaving the family turns the layer off again.
 
 ### Fixed
+
+- Saving a place inside a privacy zone no longer reveals its marker on the map when the zone itself has not changed.
 
 - Creating a place no longer leaves the creation form disabled when you open it again.
 

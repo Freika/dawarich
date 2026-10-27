@@ -1,0 +1,4 @@
+<%= form_with url: tags_path, id: "#{surface}-inline-tag-form",
+              data: { inline_tag_target: 'form', action: 'turbo:submit-end->inline-tag#complete' } do %>
+  <%= hidden_field_tag :inline, surface %>
+<% end %>

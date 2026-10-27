@@ -1,0 +1,15 @@
+pl:
+  places:
+    inline_tags:
+      new_tag: "Nowy tag"
+      name: "Nazwa tagu"
+      emoji: "Emoji (opcjonalnie)"
+      create: "Utwórz tag"
+    drawer:
+      hidden_by_tag: "Ukryte przez tag %{name}, %{radius} m"
+      geofence_events: "Ostatnie zdarzenia geofencingu"
+      no_geofence_events: "Brak zdarzeń wejścia lub wyjścia."
+      geofence_disabled: "Włącz powiadomienia o wejściu i wyjściu, aby rejestrować zdarzenia dla tego miejsca."
+  javascript:
+    map_info:
+      geofence_boundary: "Granica geofencingu"
