@@ -2272,6 +2272,19 @@ es:
     show:
       statistics_for_year_year: Estadísticas para %{year} año
   tags:
+    confirm_delete:
+      title: "Eliminar etiqueta de zona de privacidad"
+      covered_places: "Esta zona de privacidad protege %{count} de tus lugares."
+      visibility: "Los datos alrededor de estos lugares vuelven a ser visibles en el mapa, en los viajes y en las estadísticas."
+      shared_links:
+        one: "Esto también se aplica a tu %{count} enlace compartido activo."
+        other: "Esto también se aplica a todos tus enlaces compartidos activos (%{count})."
+    places:
+      title: "Lugares con esta etiqueta"
+      empty: "Todavía no hay lugares con esta etiqueta."
+      visits:
+        one: "%{count} visita"
+        other: "%{count} visitas"
     form:
       prohibited_this_tag_from_being_saved: 'prohibió este etiqueta de ser guardada:'
       click_to_select_an_emoji: Haz clic para seleccionar un emoji

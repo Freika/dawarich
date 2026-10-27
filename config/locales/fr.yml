@@ -3109,6 +3109,19 @@ fr:
     show:
       statistics_for_year_year: Statistiques pour l’année %{year}
   tags:
+    confirm_delete:
+      title: "Supprimer l’étiquette de zone de confidentialité"
+      covered_places: "Cette zone de confidentialité protège %{count} de vos lieux."
+      visibility: "Les données autour de ces lieux redeviennent visibles sur la carte, dans les voyages et dans les statistiques."
+      shared_links:
+        one: "Cela concerne aussi votre %{count} lien de partage actif."
+        other: "Cela concerne aussi tous vos liens de partage actifs (%{count})."
+    places:
+      title: "Lieux avec cette étiquette"
+      empty: "Aucun lieu ne porte encore cette étiquette."
+      visits:
+        one: "%{count} visite"
+        other: "%{count} visites"
     form:
       prohibited_this_tag_from_being_saved: 'Cette balise a été interdite :'
       click_to_select_an_emoji: Cliquez pour sélectionner un émoji

@@ -2287,6 +2287,21 @@ pl:
     show:
       statistics_for_year_year: Statystyki za rok %{year}
   tags:
+    confirm_delete:
+      title: "Usuń tag strefy prywatności"
+      covered_places: "Ta strefa prywatności chroni tyle Twoich miejsc: %{count}."
+      visibility: "Dane wokół tych miejsc znów będą widoczne na mapie, w podróżach i w statystykach."
+      shared_links:
+        one: "Dotyczy to również Twojego %{count} aktywnego linku udostępniania."
+        other: "Dotyczy to również wszystkich Twoich aktywnych linków udostępniania (%{count})."
+    places:
+      title: "Miejsca z tym tagiem"
+      empty: "Żadne miejsce nie ma jeszcze tego tagu."
+      visits:
+        one: "%{count} wizyta"
+        other: "%{count} wizyty"
+        few: "%{count} wizyty"
+        many: "%{count} wizyt"
     form:
       prohibited_this_tag_from_being_saved: 'uniemożliwił zapisanie tego tagu:'
       click_to_select_an_emoji: Kliknij, aby wybrać emoji
