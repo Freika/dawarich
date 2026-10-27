@@ -40,6 +40,7 @@ const place = {
 function controller() {
   return {
     apiKeyValue: "test",
+    editingVisitId: null,
     latitudeInputTarget: field(52),
     longitudeInputTarget: field(13),
     nameInputTarget: field(),
@@ -82,6 +83,7 @@ test("async context preselects the nearest visited Place and never overwrites a 
   assert.equal(c.placeIdInputTarget.value, 2)
   assert.equal(c.nameInputTarget.value, "Cafe")
   c.nameInputTarget.value = "My name"
+  c.nameInputTarget.input?.()
   await draft.open()
   assert.equal(c.nameInputTarget.value, "My name")
 })
@@ -136,6 +138,7 @@ test("edit context retains the attributed Place and Visit Name until the picker 
   })
   const c = controller()
   c.nameInputTarget.value = "Visit name"
+  c.editingVisitId = 12
   const form = new VisitFormDraft(c)
   await form.open(place)
   assert.equal(c.placeIdInputTarget.value, 2)
@@ -144,7 +147,8 @@ test("edit context retains the attributed Place and Visit Name until the picker 
   assert.equal(c.placeIdInputTarget.value, 4)
   assert.equal(c.nameInputTarget.value, "Visit name")
   c.nameInputTarget.value = ""
-  await form.open(place)
+  form.close()
+  await new VisitFormDraft(c).open(place)
   assert.equal(c.nameInputTarget.value, "Cafe")
 })
 
@@ -185,4 +189,92 @@ test("history clears an automatic Place preselection that no longer matches the 
   await form.loadContext()
   assert.equal(c.placeIdInputTarget.value, "")
   assert.equal(c.placeNameTarget.textContent, "visits.choose_place")
+})
+
+test("an automatic draft name follows manual Place changes", async () => {
+  const { VisitFormDraft } = await formModule(() => {
+    throw new Error("a supplied Place needs no search")
+  })
+  const c = controller()
+  c.nameInputTarget.value = place.name
+  const form = new VisitFormDraft(c)
+  await form.open(place)
+  form.search.options.onSelect({ ...place, id: 4, name: "Garden Cafe" })
+  assert.equal(c.nameInputTarget.value, "Garden Cafe")
+  form.search.options.onSelect({ ...place, id: 5, name: "Station Cafe" })
+  assert.equal(c.nameInputTarget.value, "Station Cafe")
+})
+
+test("an automatic Place name follows later automatic Place changes", async () => {
+  let places = [place]
+  const { VisitFormDraft } = await formModule(async () => ({
+    ok: true,
+    json: async () => ({ places }),
+  }))
+  const c = controller()
+  const form = new VisitFormDraft(c)
+  await form.open()
+  places = [{ ...place, id: 4, name: "Garden Cafe" }]
+  await form.loadContext()
+  assert.equal(c.nameInputTarget.value, "Garden Cafe")
+})
+
+test("a reverse geocoded automatic name follows Place changes", async () => {
+  let places = [{ name: "Geocoded cafe" }]
+  const { VisitFormDraft } = await formModule(async () => ({
+    ok: true,
+    json: async () => ({ places }),
+  }))
+  const c = controller()
+  const form = new VisitFormDraft(c)
+  await form.open()
+  assert.equal(c.nameInputTarget.value, "Geocoded cafe")
+  places = [place]
+  await form.loadContext()
+  assert.equal(c.nameInputTarget.value, "Cafe")
+  form.search.options.onSelect({ ...place, id: 4, name: "Garden Cafe" })
+  assert.equal(c.nameInputTarget.value, "Garden Cafe")
+})
+
+test("clearing an automatic Place clears its automatic name", async () => {
+  let places = [place]
+  const { VisitFormDraft } = await formModule(async () => ({
+    ok: true,
+    json: async () => ({ places }),
+  }))
+  const c = controller()
+  const form = new VisitFormDraft(c)
+  await form.open()
+  places = []
+  await form.loadContext()
+  assert.equal(c.placeIdInputTarget.value, "")
+  assert.equal(c.nameInputTarget.value, "")
+})
+
+test("a user name edit permanently stops automatic names even after clearing the field", async () => {
+  let places = [place]
+  const { VisitFormDraft } = await formModule(async () => ({
+    ok: true,
+    json: async () => ({ places }),
+  }))
+  const c = controller()
+  const form = new VisitFormDraft(c)
+  await form.open()
+  c.nameInputTarget.value = "My Visit"
+  c.nameInputTarget.input?.()
+  places = [{ ...place, id: 4, name: "Garden Cafe" }]
+  await form.loadContext()
+  assert.equal(c.nameInputTarget.value, "My Visit")
+  c.nameInputTarget.value = ""
+  c.nameInputTarget.input?.()
+  await form.loadContext()
+  assert.equal(c.nameInputTarget.value, "")
+  form.search.options.onSelect(place)
+  assert.equal(c.nameInputTarget.value, "")
+  c.nameInputTarget.value = "My Visit"
+  c.nameInputTarget.input?.()
+  form.placeChosen = false
+  places = []
+  await form.loadContext()
+  assert.equal(c.nameInputTarget.value, "My Visit")
 })

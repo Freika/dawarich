@@ -7,7 +7,18 @@ export class VisitFormDraft {
     this.active = true
     this.revision = 0
     this.editedTimes = new Set()
+    this.nameEdited = Boolean(
+      controller.editingVisitId != null &&
+        controller.nameInputTarget.value.trim(),
+    )
     this.events = new AbortController()
+    controller.nameInputTarget.addEventListener(
+      "input",
+      () => {
+        this.nameEdited = true
+      },
+      { signal: this.events.signal },
+    )
     for (const target of ["startTimeInputTarget", "endTimeInputTarget"]) {
       controller[target].addEventListener(
         "input",
@@ -46,7 +57,7 @@ export class VisitFormDraft {
   }
 
   fillName(name) {
-    if (!this.controller.nameInputTarget.value.trim()) {
+    if (!this.nameEdited) {
       this.controller.nameInputTarget.value = name || ""
     }
   }
