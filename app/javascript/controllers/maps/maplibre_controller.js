@@ -13,6 +13,7 @@ import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { parseTimestamp } from "maps_maplibre/utils/realtime_date_filter"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import { syncSidebarLayout } from "maps_maplibre/utils/sidebar_layout"
 import { setPrivacyZonesFingerprint } from "maps_maplibre/utils/tile_freshness"
 import { timeOverlapOpacityExpr } from "maps_maplibre/utils/time_overlap"
 import { AreaSelectionManager } from "./maplibre/area_selection_manager"
@@ -385,6 +386,7 @@ export default class extends Controller {
    * Initialize MapLibre map
    */
   async initializeMap() {
+    syncSidebarLayout(this.settingsPanelTarget, this.containerTarget, true)
     // Reopen at the user's last viewport instead of the zoomed-out globe.
     // When the date range has data, fitBounds overrides this; when it has
     // none, the map stays on the last-known view rather than the world.
@@ -657,20 +659,14 @@ export default class extends Controller {
 
       // Shrink/expand map container
       if (this.hasContainerTarget) {
-        this.containerTarget.classList.toggle("panel-open", isOpening)
-        // The Timeline tab puts the map container in `panel-timeline-expanded`
-        // (720px-wide panel + matching margin-left). When the user closes the
-        // panel we have to clear that too — otherwise the panel slides
-        // off-screen but the map keeps its 720px left margin and the user
-        // sees an empty dark column where the panel used to be.
         if (!isOpening) {
-          this.containerTarget.classList.remove("panel-timeline-expanded")
           this.settingsPanelTarget.classList.remove("timeline-expanded")
           // Cluster doubles as the panel's tab strip — clear its active
           // state when the panel is dismissed (e.g. via the header X) so
           // users don't see a button still highlighted with no panel open.
           document.dispatchEvent(new CustomEvent("map-panel:closed"))
         }
+        syncSidebarLayout(this.settingsPanelTarget, this.containerTarget)
         // Tell MapLibre to recalculate after the CSS transition
         setTimeout(() => this.map?.resize(), 350)
       }
