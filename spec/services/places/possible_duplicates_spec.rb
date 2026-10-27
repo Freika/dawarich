@@ -32,6 +32,18 @@ RSpec.describe 'Places::PossibleDuplicates' do
     expect(Places::PossibleDuplicates.new(user:).call).to be_empty
   end
 
+  it 'excludes archived places on either side of a duplicate pair' do
+    archived_first = place_at(0, archived: true)
+    first = place_at(0.001)
+    second = place_at(0.002)
+    archived_last = place_at(0.003, archived: true)
+
+    clusters = Places::PossibleDuplicates.new(user:).call
+
+    expect(clusters.sole.places).to contain_exactly(first, second)
+    expect(clusters.sole.distances.keys).not_to include(archived_first.id, archived_last.id)
+  end
+
   it 'prefers a manual, name-locked or confirmed place over an older discovered place' do
     old = place_at(0, created_at: 2.years.ago)
     chosen = place_at(0.0015, source: :manual)
