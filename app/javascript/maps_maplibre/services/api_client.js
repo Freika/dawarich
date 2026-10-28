@@ -94,6 +94,7 @@ export class ApiClient {
 
   async fetchRangeStatistics({ start_at, end_at, signal }) {
     const params = new URLSearchParams({ start_at, end_at })
+    maskPrivacyZones(params)
     if (this.importId) params.set("import_id", this.importId)
     const response = await fetch(`${this.baseURL}/maps/statistics?${params}`, {
       headers: this.getHeaders(),

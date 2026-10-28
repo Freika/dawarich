@@ -17,7 +17,7 @@ class Api::V1::Maps::StatisticsController < ApiController
   private
 
   def parse_timestamp(value)
-    return if value.blank?
+    return unless value.is_a?(String) && value.present?
 
     timestamp = value.match?(/\A\d+\z/) ? value.to_i : Time.zone.parse(value)&.to_i
     timestamp if timestamp&.between?(0, Time.utc(2100).to_i)

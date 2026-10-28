@@ -1,6 +1,6 @@
 # Map period statistics
 
-Issue [#3257](https://github.com/Freika/dawarich/issues/3257). Implemented locally against `dev` at `13ec7af9e`, 2026-10-28; not published or deployed.
+Issue [#3257](https://github.com/Freika/dawarich/issues/3257). Implementation based on `dev` at `13ec7af9e`, 2026-10-28, on branch `codex/issue-3257-map-statistics`. Publication and independent review status are recorded in the linked AFFiNE counterpart.
 
 The MapLibre map keeps a compact count and GPS distance at the bottom right, above attribution. It survives dismissal of the loading badge and works with no Trip or generated Track. Dates, import scope, point invalidation and saved route settings refresh it. Changing km/mi reformats the original meters without a second aggregate query. Errors replace previous totals with an unavailable state; an empty period displays zero.
 
@@ -20,22 +20,26 @@ Client conversion follows `DISTANCE_UNITS` (`1000` meters/km, `1609.34` meters/m
 
 The aggregate runs as one narrow SQL query with a five-second statement timeout, returning 503 on timeout. It reads no raw payloads and materializes no Point collection in Ruby or JavaScript. Successful aggregates cache for five minutes, keyed by account, exact range, import, point/track monthly revisions, plan window, time-gap setting and privacy fingerprint. HTTP responses use `no-store`; authorization always runs before aggregation. A late source mutation changes the revision rather than leaving a stale aggregate. Very large uncached periods can hit the timeout; choose a shorter period to retry.
 
-`RangeStatistics` aborts a superseded fetch and checks a generation counter before updating the DOM. Disconnect cancels pending work. Point invalidations coalesce for 300 ms and use the current selected range. Presentation is independent from tile completion, the loading counter and map-data failure. The status uses polite/atomic live announcements and an `aria-busy` state. The mobile Settings panel covers the map; closing it reveals the persistent totals again.
+`RangeStatistics` aborts a superseded fetch and checks a generation counter before updating the DOM. Disconnect cancels pending work. Point invalidations and track lifecycle events coalesce for 300 ms and use the current selected range. Presentation is independent from tile completion, the loading counter and map-data failure. The status uses polite/atomic live announcements and an `aria-busy` state. The mobile Settings panel covers the map; closing it reveals the persistent totals again.
 
 ## Verification
 
-Separate local PostgreSQL/Redis containers, separate test/browser databases and localhost port 13257 were used with synthetic data only. No SSH, production data, push, PR, merge or deployment.
+Separate local PostgreSQL/Redis containers, separate test/browser databases and localhost port 13257 were used with synthetic data only. Implementation validation used no SSH or production data. Merge and deployment are outside scope.
 
-- 59 focused RSpec examples passed: range/API contract, adjacent boundaries, multiple routes, stored Track boundaries, trackers/anomalies, account timezone, empty/single-point ranges, import ownership, a real privacy zone, actual Cloud Lite window, source-mutation cache invalidation, invalid ranges, authentication and timeout. Existing point-tile tests are included. Swagger generation also passed 273 dry-run examples (not 273 executed endpoint checks).
-- Full `npm test`: 740 passed. New tests cover original-meter conversion, empty/error states, ignored delayed responses, disconnect and invalidation coalescing.
+- 79 focused RSpec examples passed: range/API contract, adjacent boundaries, multiple routes, stored Track boundaries, trackers/anomalies, account timezone, empty/single-point ranges, import ownership, a real privacy zone, actual Cloud Lite window, source-mutation cache invalidation, invalid ranges (including structured query parameters), authentication, DST repeated-hour offsets, privacy-zone mutation and timeout. Existing point-tile tests are included. Swagger generation also passed 273 dry-run examples (not 273 executed endpoint checks).
+- Full `npm test`: 741 passed. New tests cover original-meter conversion, empty/error states, ignored delayed responses, disconnect, invalidation coalescing and a track event updating displayed distance with live points disabled.
 - All seven locale dictionaries were checked with counts 0, 1 and 2 (21 variants), including the Rails Chinese fallback for singular counts.
-- RuboCop: all four new Ruby/spec files pass. Biome formatting and `git diff --check` pass.
+- RuboCop: all five affected Ruby/spec files pass. Biome formatting and `git diff --check` pass.
 - Visible Chrome: desktop 1440×900 and mobile 390×844; loader dismissal, two synthetic routes, km→mi→km, account-local partial-period form while the browser uses America/New_York, empty period, rapid SPA switches with one delayed real response and German copy all pass. No page errors. Browser screenshots below; additional screenshots/results are in `tmp/screenshots/3257/` in the review worktree.
 
 ![Desktop selected-period statistics](screenshots/map-range-statistics/desktop.png)
 
 ![Mobile selected-period statistics](screenshots/map-range-statistics/mobile.png)
 
-Full unfiltered RSpec, physical devices, production-volume query benchmarks and production/native-runtime acceptance were not run. API schema is versioned in `swagger/v1/swagger.yaml` and its executable rswag specification.
+Physical devices, production-volume query benchmarks and production/native-runtime acceptance were not run. An additional cross-process ActionCable browser probe did not establish a connection; the new track-event refresh is covered by the real-component JS regression, and that extra probe is not counted among the seven successful browser scenarios. Full-suite follow-up results are recorded in the linked review record. API schema is versioned in `swagger/v1/swagger.yaml` and its executable rswag specification.
 
 AFFiNE counterpart: [Dawarich — Map period statistics (#3257)](https://affine.dwri.xyz/workspace/c309ded7-e11e-4e72-ba6f-aec8a31a740b/QlMHWNjnS67Tq9_v1L-o9). Project overview: `EMGlXGqAqhVs7__YSQVHN`.
+
+## Independent review follow-up
+
+The first local E/Q/P review kept two findings: totals did not refresh when background track generation changed their boundaries, and structured timestamp parameters raised a server error. Both were reproduced with failing regression tests and fixed: track lifecycle events now use the coalesced refresh, and non-string bounds return 400. The client also sends the standard privacy flag, with an explicit case in the shared map-read privacy contract tests. Product review approved the selected scope and documented boundary rules.

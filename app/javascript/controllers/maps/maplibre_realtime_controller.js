@@ -162,6 +162,8 @@ export default class extends Controller {
     const mapsController = this.mapsV2Controller
     if (!mapsController) return
 
+    mapsController.rangeStatistics?.refresh()
+
     mapsController.layerManager?.getLayer("tracks-mvt")?.refresh()
     mapsController.layerManager?.getLayer("map-editor")?.reapplyTileFilters()
   }

@@ -117,9 +117,39 @@ RSpec.describe 'Map range statistics', type: :request do
     expect(data).to eq('points' => 1, 'distance_meters' => 0.0)
   end
 
+  it 'distinguishes repeated DST wall times when explicit offsets differ' do
+    user.update!(settings: user.settings.merge('timezone' => 'Europe/Berlin'))
+    create(:point, user:, timestamp: Time.iso8601('2026-10-25T02:30:00+02:00').to_i)
+    create(:point, user:, timestamp: Time.iso8601('2026-10-25T02:30:00+01:00').to_i)
+    data = request_statistics(start_at: '2026-10-25T02:30:00+02:00', end_at: '2026-10-25T02:30:00+02:00')
+    expect(data).to eq('points' => 1, 'distance_meters' => 0.0)
+    expect(request_statistics(start_at: '2026-10-25T02:30:00+02:00',
+                              end_at: '2026-10-25T02:30:00+01:00')['points']).to eq(2)
+  end
+
+  it 'invalidates cached totals when a privacy zone is added or moved' do
+    allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+    point(0)
+    point(60, longitude: 0.01)
+    expect(request_statistics['points']).to eq(2)
+    tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 100)
+    place = create(:place, user:, latitude: 0, longitude: 0.01, lonlat: 'POINT(0.01 0)')
+    create(:tagging, tag:, taggable: place)
+    expect(request_statistics).to eq('points' => 1, 'distance_meters' => 0.0)
+    place.update!(latitude: 0, longitude: 10)
+    expect(request_statistics['points']).to eq(2)
+  end
+
   it 'rejects missing, invalid and reversed ranges' do
     [nil, 'nonsense', end_at + 1].each do |invalid|
       request_statistics(start_at: invalid)
+      expect(response).to have_http_status(:bad_request)
+    end
+  end
+
+  it 'rejects array and object bounds as invalid ranges' do
+    [[:start_at, [start_at]], [:end_at, { value: end_at }]].each do |key, value|
+      request_statistics(key => value)
       expect(response).to have_http_status(:bad_request)
     end
   end
