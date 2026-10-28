@@ -1,6 +1,6 @@
 # Keep imported data when removing an import's source file
 
-- Status: Implemented locally for review; not released
+- Status: Implemented; OneDev PR open for review; not released
 - Date: 2026-10-28
 - Issue: [#3531](https://github.com/Freika/dawarich/issues/3531)
 - Base: `dev` at `13ec7af9e00b4e5a027584f19f58e7a4b73d779d`
@@ -45,3 +45,7 @@ Detaching both attachments precedes deduplicated purge scheduling. Scheduling us
 Regression tests use synthetic uploads in an isolated PostGIS database, private Redis and worktree-local storage. They cover stable point IDs and extracted entity IDs, same/separate/shared blobs, background purge, rollback, repeat/stale requests, owner authorization, unavailable states, a running reader before status changes, backfill, missing-source actions, queue preparation state and seven supported locales.
 
 Browser verification uses private localhost port 13531 with synthetic history at desktop and 390×844 mobile widths. Evidence and final command/results are recorded in `docs/import-source-file-verification.md`. No real user files, production data, SSH, push, PR publication or deployment are part of this change.
+
+## Publication verification
+
+[OneDev PR #257](https://onedev.dwri.xyz/dawarich/~pulls/257) targets `dev`. Review follow-ups preserve imports under size sorting and make failed/stalled source-less extraction cards render without an authenticated policy helper. Full standard RSpec passes **12,454 examples**, the expanded related packet passes **990 examples**, and **736 JavaScript tests** pass; RuboCop reports no offenses in **30 changed Ruby files**. Desktop/mobile proof and migration down/up are recorded in the verification guide. E/Q/P approved the published application code; a final documentation-only update records the completed run. Remote CI has no current builds, and no merge or deployment occurred.
