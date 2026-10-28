@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
 class TagsController < ApplicationController
+  PER_PAGE = 20
+
   before_action :authenticate_user!
   before_action :set_tag, only: %i[show edit update destroy add_place remove_place]
 
   def index
-    @tags = policy_scope(Tag).ordered
-    @place_counts = current_user.places.joins(:taggings).where(taggings: { tag_id: @tags.select(:id) })
+    @tags = policy_scope(Tag).ordered.page(params[:page]).per(PER_PAGE)
+    @place_counts = current_user.places.joins(:taggings).where(taggings: { tag_id: @tags.map(&:id) })
                                 .group('taggings.tag_id').count
 
     authorize Tag

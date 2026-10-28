@@ -2322,6 +2322,9 @@ ca:
       tags: Etiquetes
       lists: Llistes
       new_list: Llista nova
+      place_count:
+        one: "%{count} lloc"
+        other: "%{count} llocs"
       edit_tag: Edita l'etiqueta
       delete_tag: Suprimeix l'etiqueta
       are_you_sure: "Estàs segur?"

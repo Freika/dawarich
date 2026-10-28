@@ -24,7 +24,20 @@ RSpec.describe 'Tag management pages', type: :request do
 
     link = document.at_css("[data-testid='tag-place-count']")
     expect(link&.[]('href')).to eq(tag_path(tag))
-    expect(link&.text).to eq('1')
+    expect(link&.text).to eq('1 place')
+  end
+
+  it 'paginates the index with the shared pager' do
+    create_list(:tag, 21, user: user)
+
+    get tags_path
+
+    expect(document.css('[data-testid="place-lists"] li').size).to eq(20)
+    expect(document.at_css('[role="navigation"][aria-label="pager"]')).to be_present
+
+    get tags_path(page: 2)
+
+    expect(document.css('[data-testid="place-lists"] li').size).to eq(1)
   end
 
   it 'opens a GET confirmation for privacy tags while ordinary tags keep the simple delete confirmation' do

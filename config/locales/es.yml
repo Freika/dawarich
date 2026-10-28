@@ -2327,6 +2327,9 @@ es:
       tags: Etiquetas
       lists: Listas
       new_list: Nueva lista
+      place_count:
+        one: "%{count} lugar"
+        other: "%{count} lugares"
       edit_tag: Editar etiqueta
       delete_tag: Eliminar etiqueta
       are_you_sure: "¿Estás seguro?"

@@ -6,8 +6,10 @@
   <% end %>
 
   <% if @tags.any? %>
+    <div class="flex justify-center my-5"><%= paginate @tags %></div>
     <ul class="divide-y divide-base-content/10 border border-base-content/10 rounded-xl">
       <% @tags.each do |tag| %>
+        <% place_count = @place_counts.fetch(tag.id, 0) %>
         <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div class="flex flex-wrap items-center gap-3 min-w-0">
             <%= link_to tag_path(tag), class: "min-w-0 flex items-center gap-3 link link-hover" do %>
@@ -22,14 +24,14 @@
             <% end %>
           </div>
           <div class="flex items-center gap-3">
-            <%= link_to @place_counts.fetch(tag.id, 0), tag_path(tag), class: "link link-primary tabular-nums",
-                data: { testid: "tag-place-count" },
-                aria: { label: "#{t('.places')}: #{@place_counts.fetch(tag.id, 0)}" } %>
+            <%= link_to t('.place_count', count: place_count), tag_path(tag), class: "link link-primary tabular-nums",
+                data: { testid: "tag-place-count" } %>
             <%= render 'delete_button', tag: tag %>
           </div>
         </li>
       <% end %>
     </ul>
+    <div class="flex justify-center my-5"><%= paginate @tags %></div>
   <% else %>
     <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-content/10">
       <h3 class="text-xl font-bold mb-3"><%= t('.no_tags_yet') %></h3>

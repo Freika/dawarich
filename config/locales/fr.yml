@@ -3167,6 +3167,9 @@ fr:
       tags: Étiquettes
       lists: Listes
       new_list: Nouvelle liste
+      place_count:
+        one: "%{count} lieu"
+        other: "%{count} lieux"
       edit_tag: Modifier la balise
       delete_tag: Supprimer la balise
       are_you_sure: Êtes-vous sûr?

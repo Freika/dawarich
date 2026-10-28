@@ -2346,6 +2346,11 @@ pl:
       tags: Tagi
       lists: Listy
       new_list: Nowa lista
+      place_count:
+        one: "%{count} miejsce"
+        few: "%{count} miejsca"
+        many: "%{count} miejsc"
+        other: "%{count} miejsca"
       edit_tag: Edytuj tag
       delete_tag: Usuń tag
       are_you_sure: Czy na pewno chcesz kontynuować?

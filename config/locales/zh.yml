@@ -2346,6 +2346,8 @@ zh:
       tags: 标签
       lists: 列表
       new_list: 新建列表
+      place_count:
+        other: "%{count} 个地点"
       edit_tag: 编辑标签
       delete_tag: 删除标签
       are_you_sure: 您确定吗？

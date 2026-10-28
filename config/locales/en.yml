@@ -2322,6 +2322,9 @@ en:
       tags: Tags
       lists: Lists
       new_list: New list
+      place_count:
+        one: "%{count} place"
+        other: "%{count} places"
       edit_tag: Edit tag
       delete_tag: Delete tag
       are_you_sure: Are you sure?

@@ -2327,6 +2327,9 @@ de:
       tags: Tags
       lists: Listen
       new_list: Neue Liste
+      place_count:
+        one: "%{count} Ort"
+        other: "%{count} Orte"
       edit_tag: Tag bearbeiten
       delete_tag: Tag löschen
       are_you_sure: Bist du sicher?
