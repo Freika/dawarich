@@ -8,7 +8,10 @@ RSpec.describe 'A GPX holding no waypoints does not offer extraction', type: :re
   before { sign_in user }
 
   def gpx_import(raw_data)
-    create(:import, user: user, source: :gpx, name: "track-#{SecureRandom.hex(4)}.gpx", raw_data: raw_data)
+    name = "track-#{SecureRandom.hex(4)}.gpx"
+    create(:import, user: user, source: :gpx, name: name, raw_data: raw_data).tap do |import|
+      import.file.attach(io: StringIO.new('<gpx/>'), filename: import.name)
+    end
   end
 
   it 'explains why instead of showing a trigger that can only find nothing' do

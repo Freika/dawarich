@@ -39,7 +39,7 @@
           <%= render 'imports/extraction_remove_button', import: import %>
         </div>
       <% elsif !import.file.attached? %>
-        <% if policy(import, policy_class: Imports::ExtractionPolicy).destroy? %>
+        <% if import.additional_data_extraction_failed? || import.extraction_stalled? %>
           <%= render 'imports/extraction_remove_button', import: import %>
         <% end %>
       <% elsif import.additional_data_extraction_running? || import.additional_data_extraction_pending? %>

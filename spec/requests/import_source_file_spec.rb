@@ -111,6 +111,21 @@ RSpec.describe 'Import source files', type: :request do
     expect { delete import_extraction_path(import) }.to have_enqueued_job(EnhancedImport::DestroyJob)
   end
 
+  it 'renders failed extraction after source removal and keeps extracted-data removal available' do
+    import.update_columns(source: Import.sources[:google_phone_takeout],
+                          additional_data_extraction_status: Import.additional_data_extraction_statuses[:failed])
+    delete source_file_import_path(import)
+
+    get import_path(import)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('Remove extracted data')
+    expect(response.body).not_to include('extraction-dialog-')
+
+    rendered = ApplicationController.render(partial: 'imports/extraction_card', locals: { import: import.reload })
+    expect(rendered).to include('Remove extracted data')
+    expect(rendered).to include(I18n.t('imports.source_file.extraction_unavailable'))
+  end
+
   it 'does not allow removal between queuing and starting download preparation' do
     archive = Zip::OutputStream.write_buffer do |zip|
       zip.put_next_entry('synthetic.json')

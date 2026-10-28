@@ -58,6 +58,8 @@ RSpec.describe 'Extraction availability is resolved when an import is created' d
   describe 'a run that never reported back' do
     let(:import) { create(:import, user: user, source: :google_phone_takeout) }
 
+    before { import.file.attach(io: StringIO.new('{}'), filename: 'synthetic.json') }
+
     it 'is not stalled while it is still fresh' do
       import.update_columns(
         additional_data_extraction_status: Import.additional_data_extraction_statuses[:running],

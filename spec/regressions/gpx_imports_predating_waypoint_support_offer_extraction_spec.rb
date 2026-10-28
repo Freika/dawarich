@@ -9,6 +9,7 @@ RSpec.describe 'A GPX import stored as unsupported still offers extraction', typ
 
   def stale_import(source, name)
     import = create(:import, user: user, source: source, name: name)
+    import.file.attach(io: StringIO.new('<gpx/>'), filename: name)
     import.update_column(:additional_data_extraction_status,
                          Import.additional_data_extraction_statuses[:unsupported])
     import
