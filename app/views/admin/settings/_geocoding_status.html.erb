@@ -40,19 +40,19 @@
           <%= form.label :latitude, t('admin.settings.show.geocoding.test_latitude'), class: 'label text-sm', for: 'geocoding-test-latitude' %>
           <%= form.number_field :latitude, id: 'geocoding-test-latitude', min: -90, max: 90, step: :any,
                                 placeholder: Geocoding::ProviderTest::TEST_COORDINATES.first.to_s,
-                                class: 'input input-bordered input-sm w-full', inputmode: 'decimal',
+                                class: 'input input-bordered w-full placeholder:text-base-content/70 sm:input-sm', inputmode: 'decimal',
                                 aria: { describedby: 'geocoding-test-hint' } %>
         </div>
         <div>
           <%= form.label :longitude, t('admin.settings.show.geocoding.test_longitude'), class: 'label text-sm', for: 'geocoding-test-longitude' %>
           <%= form.number_field :longitude, id: 'geocoding-test-longitude', min: -180, max: 180, step: :any,
                                 placeholder: Geocoding::ProviderTest::TEST_COORDINATES.last.to_s,
-                                class: 'input input-bordered input-sm w-full', inputmode: 'decimal',
+                                class: 'input input-bordered w-full placeholder:text-base-content/70 sm:input-sm', inputmode: 'decimal',
                                 aria: { describedby: 'geocoding-test-hint' } %>
         </div>
       </div>
       <p id="geocoding-test-hint" class="mt-1.5 text-xs text-base-content/70"><%= t('admin.settings.show.geocoding.test_coordinates_hint') %></p>
-      <%= form.button t('admin.settings.show.geocoding.test'), class: 'btn btn-sm btn-outline mt-3',
+      <%= form.button t('admin.settings.show.geocoding.test'), class: 'btn btn-outline mt-3 sm:btn-sm',
                       data: { turbo_submits_with: t('admin.settings.show.geocoding.testing') } %>
     <% end %>
   <% end %>
