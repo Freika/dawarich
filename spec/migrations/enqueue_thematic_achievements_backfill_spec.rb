@@ -14,4 +14,18 @@ RSpec.describe EnqueueThematicAchievementsBackfill do
 
     expect { described_class.new.up }.not_to raise_error
   end
+
+  it 'does not enqueue a second fleet check when replayed' do
+    2.times { described_class.new.up }
+
+    expect(enqueued_jobs.count { |job| job[:job] == Achievements::BulkCheckJob }).to eq(1)
+  end
+
+  it 'can retry the enqueue after a queue failure' do
+    allow(Achievements::BulkCheckJob).to receive(:perform_later).and_raise(Redis::CannotConnectError)
+    described_class.new.up
+    allow(Achievements::BulkCheckJob).to receive(:perform_later).and_call_original
+
+    expect { described_class.new.up }.to have_enqueued_job(Achievements::BulkCheckJob)
+  end
 end

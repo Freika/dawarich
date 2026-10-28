@@ -7,6 +7,8 @@ class WatchAchievementPrivacyAndCities < ActiveRecord::Migration[8.1]
 
   def down
     %w[tags taggings achievement_city_selections].each do |table|
+      next unless table_exists?(table)
+
       %w[insert update delete].each do |event|
         execute "DROP TRIGGER IF EXISTS achievement_collections_#{event} ON #{table}"
       end
