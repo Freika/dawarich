@@ -47,7 +47,8 @@ owner's locale, masks private observations and is always `private, no-store`.
 Dirty state, missing selection, disabled link or hidden Place/park yields 404.
 City mosaic sharing requires an additional explicit opt-in.
 
-Map fog uses all retained history, independent of plan/date range. It uses exact
+Map fog uses all retained history through the calculation time, independent of
+plan/date range; future-dated observations do not open cells or award city levels. It uses exact
 resolution-9 boundaries at every zoom and marks cells first opened in the selected
 period. It shows a calculating/updating/error status while background work runs.
 Old point-radius/point-threshold and zoom-parent fog controls are removed.
@@ -104,7 +105,7 @@ relation IDs; a source replacement must preserve the existing card identity.
 ## Resource footprint
 
 Card artwork is generated from shared vector geometry; there is no saved PNG
-per card or user. `globes.json` is 508,198 bytes (about 496 KiB; 168 KiB gzip)
+per card or user. `globes.json` is 508,779 bytes (about 497 KiB; 168 KiB gzip)
 for all five geographic milestones. The three new compressed geodata bundles
 (countries, lakes and pilot cities/parks) total 6,073,773 bytes (about 5.79 MiB).
 Together those geometry assets add about 6.28 MiB before Git compression.
@@ -132,8 +133,14 @@ Nested blocks retain deferral; rollback leaves the prior state intact.
 
 `Achievements::CollectionCheckJob` runs concrete temporal/geographic rules and
 uses `Exploration::Rebuild` when cities are selected. `Exploration::RebuildJob`
-serves map fog. Their five-minute refresh jobs recover dirty/unbuilt state;
-claims expire after one hour. Existing Sidekiq `achievements`/`low_priority` queues
+serves map fog. Exploration recovery starts only after a fog request or selected
+city activates the owner's state. Durable `activated_at` survives an enqueue
+failure, interrupted worker or discarded first snapshot; source writes alone
+only mark state dirty and never activate full-history exploration rebuilds.
+The migration preserves activation for existing snapshots, requests, failures
+and selected cities. Automatic park/milestone calculations remain independent.
+Their five-minute refresh jobs recover dirty/unbuilt state; claims expire after
+one hour. Existing Sidekiq `achievements`/`low_priority` queues
 are reused. Inspect state `revision`, `published_revision`, `failed_at`,
 `requested_at`, and the published dataset/snapshot and timezone data version when diagnosing stale output.
 Do not manually mark a stale revision published.
@@ -156,8 +163,11 @@ The collection implementation initially passed a 419-example aggregate and
 examples, nine failures (locale key types, atomic-import state-lock contention,
 and obsolete fog-mode expectations). Those failures were fixed; the post-fix
 combined achievement/exploration/transportation/revision/request/regression run
-passes 430 examples, with 105 changed Ruby/Gemfile paths passing RuboCop. The
-complete app suite was not repeated after these fixes. Browser checks cover seven
+passes 430 examples, with 105 changed Ruby/Gemfile paths passing RuboCop. A subsequent finish run on the final fixed source passes 12,494 examples
+with zero failures; the six new exploration regressions are included.
+The focused finish run passes 21 examples, JavaScript passes 745 tests,
+and changed-path RuboCop/Biome pass. Migration up/down and mixed-state
+activation backfill were checked against synthetic data. Browser checks cover seven
 collection views at 1280/375/320 px, expanded cards, light/dark, anonymous embed/OG
 and city-map snapshot links. A separate schema-load database confirms bulk
 invalidation survives fresh installation. No real traces or accounts are used.

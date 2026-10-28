@@ -57,6 +57,12 @@ land, including forests/outskirts, excluding water in the shared Natural Earth
 No LOD parents, circles, monthly statistics or interpolated points earn area.
 Fog reads the same ledger; dates highlight first discoveries without reclosing
 older cells. A city deep link pins its owned snapshot for a consistent map.
+The ledger excludes future-dated observations at calculation time. Full-history
+exploration recovery requires durable activation from a fog request or selected
+city; point-trigger invalidation alone does not activate it. Activation persists
+through initial queue failures and discarded snapshots, independently of source
+revision and the expiring queue claim. Automatic park/milestone rules remain
+separate from this exploration activation.
 
 A local tzf2 coordinate lookup resolves Place IANA timezones independently of the
 profile timezone. Ambiguous lookup blocks temporal qualification until the owner

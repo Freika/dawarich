@@ -10,8 +10,9 @@ module Exploration
 
     def call
       State.with_advisory_lock("exploration-user-#{@user.id}", timeout_seconds: 0) do
-        @dataset = Geography.current || Geography.install!
         @state = State.find_or_create_by!(user_id: @user.id)
+        @state.update_column(:activated_at, Time.current) unless @state.activated_at
+        @dataset = Geography.current || Geography.install!
         current = Snapshot.find_by(id: @state.snapshot_id)
         if @state.published_revision == @state.revision && current&.dataset_id == @dataset.id &&
            !current.world_opened_area.nil?
@@ -44,7 +45,8 @@ module Exploration
     def connection = ApplicationRecord.connection
 
     def collect_openings
-      relation = FlightEvidence.qualifying(@user.points.complete.not_anomaly).reorder(:id)
+      relation = FlightEvidence.qualifying(@user.points.complete.not_anomaly)
+                               .where('timestamp <= ?', Time.current.to_i).reorder(:id)
       last_id = 0
       loop do
         rows = relation.where('points.id > ?', last_id).limit(BATCH_SIZE).pluck(

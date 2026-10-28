@@ -4,6 +4,7 @@ module Exploration
   class Schedule
     def self.call(user)
       state = State.find_or_create_by!(user_id: user.id)
+      state.update_column(:activated_at, Time.current) unless state.activated_at
       snapshot = Snapshot.find_by(id: state.snapshot_id)
       return state if state.revision == state.published_revision && snapshot&.dataset_id == Geography.current&.id &&
                       !snapshot.world_opened_area.nil?

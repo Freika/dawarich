@@ -51,6 +51,24 @@ RSpec.describe 'City collectible exploration' do
     expect(calculate.data['progress']).to eq(0)
   end
 
+  it 'does not award a city level from future-only observations' do
+    connection.execute(<<~SQL)
+      UPDATE exploration_territories SET
+        boundary = ST_Multi(ST_MakeEnvelope(13.3499,52.5139,13.3501,52.5141,4326)),
+        land = ST_Multi(ST_MakeEnvelope(13.3499,52.5139,13.3501,52.5141,4326))
+      WHERE dataset_id = #{dataset.id};
+      UPDATE exploration_territories SET land_area = ST_Area(land::geography) WHERE dataset_id = #{dataset.id};
+    SQL
+    user.achievement_city_selections.create!(territory_code: 'city_test')
+    add_point(timestamp: 1.day.from_now.to_i)
+
+    card = calculate
+    expect(card.level).to eq(0)
+    expect(card.data['progress']).to eq(0)
+    expect(card.data['levels']).to eq({})
+    expect(card.events.where(kind: 'earned')).to be_empty
+  end
+
   it 'clips water and border-cell fragments rather than counting equal cells' do
     city = Exploration::Territory.find_by!(code: 'city_test')
     connection.execute(<<~SQL)

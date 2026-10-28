@@ -1,10 +1,12 @@
 // Display-only SVG paths; no D3, projection or geometry dependency at runtime.
 // npm install --prefix tmp/achievement-globe-generator --no-save --ignore-scripts d3-geo@3.1.1
 // node script/build_achievement_globes.mjs tmp/achievement-globe-land.geojson
+
+import { createHash } from "node:crypto"
 import { readFileSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
-import { createHash } from "node:crypto"
+
 const packageRoot = resolve(
   "tmp/achievement-globe-generator/node_modules/d3-geo",
 )
@@ -21,7 +23,9 @@ const land = JSON.parse(source)
 // RFC7946 and D3 use opposite exterior winding conventions on the sphere.
 for (const polygon of land.geometry.coordinates) {
   if (geoArea({ type: "Polygon", coordinates: polygon }) > 2 * Math.PI)
-    polygon.forEach((ring) => ring.reverse())
+    polygon.forEach((ring) => {
+      ring.reverse()
+    })
 }
 const polarLatitude = 66.56
 function rectangle(west, south, east, north) {
@@ -110,7 +114,7 @@ const output = {
 }
 writeFileSync(
   "lib/assets/achievement_collections/globes.json",
-  JSON.stringify(output) + "\n",
+  JSON.stringify(output, null, 2) + "\n",
 )
 console.log(
   "Wrote three clipped globe views with continents, graticules and geographic regions",

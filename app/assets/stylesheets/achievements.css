@@ -303,7 +303,8 @@
   overflow: visible;
 }
 
-.ach-silhouette-svg path:not([data-detail]):not([data-color]):not([data-unvisited]) {
+.ach-silhouette-svg
+  path:not([data-detail]):not([data-color]):not([data-unvisited]) {
   fill: #28303a;
   stroke: #414b57;
   stroke-width: 1.5px;

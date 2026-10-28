@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Show geographic milestone cards as globes with continents, graticules and highlighted hemispheres, quarters or polar caps, including public previews.
 
+### Fixed
+
+- Start historical exploration rebuilds only after opening exploration or selecting a city, and keep retrying interrupted first calculations.
+- Ignore future-dated points when opening explored map cells and awarding city achievement levels.
+
 ## [1.19.0] - 2026-10-27, Berlin
 
 ### ⚠️ Upgrade notes

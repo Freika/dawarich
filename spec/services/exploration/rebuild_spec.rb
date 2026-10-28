@@ -43,6 +43,32 @@ RSpec.describe Exploration::Rebuild do
     )
   end
 
+  it 'does not open cells or count visits from future observations' do
+    add_point(timestamp: 1.day.from_now.to_i)
+    state = rebuild
+
+    expect(Exploration::Opening.where(snapshot_id: state.snapshot_id)).to be_empty
+    expect(Exploration::CountryTotal.where(snapshot_id: state.snapshot_id, visited: true)).to be_empty
+  end
+
+  it 'keeps recovery active when the first requested snapshot becomes stale' do
+    add_point(timestamp: 100)
+    changed = false
+    allow(Exploration::Coverage).to receive(:ensure!).and_wrap_original do |method, *args|
+      method.call(*args)
+      next if changed
+
+      changed = true
+      add_point(timestamp: 200)
+    end
+    state = rebuild
+    expect(state.snapshot_id).to be_nil
+    expect(state.requested_at).to be_nil
+    clear_enqueued_jobs
+
+    expect { Exploration::RefreshJob.perform_now }.to have_enqueued_job(Exploration::RebuildJob).with(user.id)
+  end
+
   it 'moves the first opening on old imports and deletes, then closes the last remaining cell' do
     add_point(timestamp: 200)
     state = rebuild
