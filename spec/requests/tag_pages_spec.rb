@@ -22,7 +22,8 @@ RSpec.describe 'Tag management pages', type: :request do
 
     get tags_path
 
-    link = document.at_css("a[href='#{places_path(tag_ids: [tag.id])}']")
+    link = document.at_css("[data-testid='tag-place-count']")
+    expect(link&.[]('href')).to eq(tag_path(tag))
     expect(link&.text).to eq('1')
   end
 
@@ -58,6 +59,24 @@ RSpec.describe 'Tag management pages', type: :request do
     expect(list.at_css("a[href='#{place_path(park)}']").text).to eq('Zero visits park')
     expect(list.text).to include('2 visits', '0 visits')
     expect(list.text).not_to include('Foreign secret place', 'Untagged place')
+  end
+
+  it 'adds and removes an owned place and refuses a foreign place' do
+    home = create(:place, user: user, name: 'Cafe')
+    foreign = create(:place, name: 'Secret')
+
+    expect do
+      post add_place_tag_path(tag), params: { place_id: home.id }
+    end.to change { tag.places.where(user: user).count }.by(1)
+    expect(response).to redirect_to(tag_path(tag))
+
+    post add_place_tag_path(tag), params: { place_id: foreign.id }
+    expect(response).to have_http_status(:not_found)
+    expect(tag.places.where(user: user)).to contain_exactly(home)
+
+    delete remove_place_tag_path(tag), params: { place_id: home.id }
+    expect(response).to redirect_to(tag_path(tag))
+    expect(tag.places.where(user: user)).to be_empty
   end
 
   it 'shows an empty state when no own places have the tag' do

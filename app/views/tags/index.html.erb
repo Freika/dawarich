@@ -1,68 +1,35 @@
-<div class="tags-page w-full min-w-0 my-5">
-  <%= render layout: 'shared/page_header', locals: { title: t('.tags') } do %>
+<div class="tags-page w-full min-w-0 my-5" data-testid="place-lists">
+  <%= render layout: 'shared/page_header', locals: { title: t('.lists') } do %>
     <%= link_to new_tag_path, class: "btn btn-primary btn-sm" do %>
-      <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('tags.index.new_tag') %>
+      <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('.new_list') %>
     <% end %>
   <% end %>
 
   <% if @tags.any? %>
-    <div class="border border-base-content/10 rounded-xl overflow-x-auto">
-      <table class="table table-sm w-full">
-        <thead class="bg-base-200">
-          <tr>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/70 w-16"><%= t('.icon') %></th>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/70"><%= t('.name') %></th>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/70"><%= t('.color') %></th>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/70 text-right"><%= t('.places') %></th>
-            <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/70 text-right"><%= t('.actions') %></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @tags.each do |tag| %>
-            <tr class="hover:bg-base-200/50 transition-colors">
-              <td class="px-4 py-3 text-2xl"><%= tag.icon %></td>
-              <td class="px-4 py-3">
-                <div class="flex flex-wrap items-center gap-2">
-                  <span class="font-medium">#<%= tag.name %></span>
-                  <% if tag.privacy_zone? %>
-                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium badge badge-outline tabular-nums"
-                          title="<%= t('.privacy_zone_badge_hint') %>">
-                      <%= icon 'lock', class: "w-3 h-3" %> <%= tag.privacy_radius_meters %>m
-                    </span>
-                  <% end %>
-                </div>
-              </td>
-              <td class="px-4 py-3">
-                <% if tag.color.present? %>
-                  <div class="flex items-center gap-2">
-                    <div class="w-5 h-5 rounded-md border border-base-content/10" style="background-color: <%= tag.color %>;"></div>
-                    <span class="text-xs text-base-content/70 font-mono"><%= tag.color %></span>
-                  </div>
-                <% else %>
-                  <span class="text-base-content/70 text-sm">--</span>
-                <% end %>
-              </td>
-              <td class="px-4 py-3 text-right tabular-nums">
-                <%= link_to @place_counts.fetch(tag.id, 0), places_path(tag_ids: [tag.id]), class: "link link-primary",
-                    aria: { label: "#{t('.places')}: #{@place_counts.fetch(tag.id, 0)}" } %>
-              </td>
-              <td class="px-4 py-3 text-right">
-                <div class="flex gap-1 justify-end">
-                  <div class="tooltip" data-tip="<%= t('.edit_tag') %>">
-                    <%= link_to edit_tag_path(tag), class: "btn btn-ghost btn-xs", aria: { label: t('.edit_tag') } do %>
-                      <%= icon 'square-pen', class: 'w-4 h-4' %>
-                    <% end %>
-                  </div>
-                  <div class="tooltip tooltip-left" data-tip="<%= t('.delete_tag') %>">
-                    <%= render 'delete_button', tag: tag %>
-                  </div>
-                </div>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
+    <ul class="divide-y divide-base-content/10 border border-base-content/10 rounded-xl">
+      <% @tags.each do |tag| %>
+        <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div class="flex flex-wrap items-center gap-3 min-w-0">
+            <%= link_to tag_path(tag), class: "min-w-0 flex items-center gap-3 link link-hover" do %>
+              <span class="text-2xl leading-none" aria-hidden="true"><%= tag.icon %></span>
+              <span class="font-medium [overflow-wrap:anywhere]"><%= tag.name %></span>
+            <% end %>
+            <% if tag.privacy_zone? %>
+              <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium badge badge-outline tabular-nums"
+                    title="<%= t('.privacy_zone_badge_hint') %>">
+                <%= icon 'lock', class: "w-3 h-3" %> <%= tag.privacy_radius_meters %>m
+              </span>
+            <% end %>
+          </div>
+          <div class="flex items-center gap-3">
+            <%= link_to @place_counts.fetch(tag.id, 0), tag_path(tag), class: "link link-primary tabular-nums",
+                data: { testid: "tag-place-count" },
+                aria: { label: "#{t('.places')}: #{@place_counts.fetch(tag.id, 0)}" } %>
+            <%= render 'delete_button', tag: tag %>
+          </div>
+        </li>
+      <% end %>
+    </ul>
   <% else %>
     <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-content/10">
       <h3 class="text-xl font-bold mb-3"><%= t('.no_tags_yet') %></h3>

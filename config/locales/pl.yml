@@ -2302,6 +2302,17 @@ pl:
         other: "%{count} wizyty"
         few: "%{count} wizyty"
         many: "%{count} wizyt"
+    list:
+      add_place: Dodaj miejsce
+      search: Szukaj w swoich miejscach
+      add: Dodaj
+      remove: Usuń
+      remove_confirm: Usunąć %{name} z tej listy?
+      no_matches: Żadne miejsce nie pasuje do tej nazwy.
+      appearance: Emoji, kolor i prywatność
+      appearance_hint: Te ustawienia dotyczą całej listy. Promień prywatności ukrywa dane mapy wokół każdego miejsca na niej.
+      added: "Dodano %{name} do tej listy."
+      removed: "Usunięto %{name} z tej listy."
     form:
       prohibited_this_tag_from_being_saved: 'uniemożliwił zapisanie tego tagu:'
       click_to_select_an_emoji: Kliknij, aby wybrać emoji
@@ -2333,6 +2344,8 @@ pl:
       privacy_zone_badge_hint: "Ukryty obszar przesunięty względem miejsca, do 1,6 razy ten promień"
       create_your_first_tag: Utwórz pierwszy tag
       tags: Tagi
+      lists: Listy
+      new_list: Nowa lista
       edit_tag: Edytuj tag
       delete_tag: Usuń tag
       are_you_sure: Czy na pewno chcesz kontynuować?

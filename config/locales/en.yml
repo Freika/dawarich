@@ -2280,6 +2280,17 @@ en:
       visits:
         one: "%{count} visit"
         other: "%{count} visits"
+    list:
+      add_place: Add a place
+      search: Search your places
+      add: Add
+      remove: Remove
+      remove_confirm: Remove %{name} from this list?
+      no_matches: No places match that name.
+      appearance: Emoji, color, and privacy
+      appearance_hint: These settings apply to the whole list. A privacy radius hides map data around every place in it.
+      added: "%{name} added to this list."
+      removed: "%{name} removed from this list."
     form:
       prohibited_this_tag_from_being_saved: 'prohibited this tag from being saved:'
       click_to_select_an_emoji: Click to select an emoji
@@ -2309,6 +2320,8 @@ en:
       privacy_zone_badge_hint: "Hidden area is shifted off-centre and up to 1.6× this radius"
       create_your_first_tag: Create your first tag
       tags: Tags
+      lists: Lists
+      new_list: New list
       edit_tag: Edit tag
       delete_tag: Delete tag
       are_you_sure: Are you sure?

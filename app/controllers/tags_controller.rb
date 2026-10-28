@@ -2,7 +2,7 @@
 
 class TagsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_tag, only: %i[edit update destroy]
+  before_action :set_tag, only: %i[show edit update destroy add_place remove_place]
 
   def index
     @tags = policy_scope(Tag).ordered
@@ -26,10 +26,15 @@ class TagsController < ApplicationController
     if inline_context
       render_inline_tag
     elsif @tag.save
-      redirect_to tags_path, notice: I18n.t('controllers.tags.tag_was_successfully_created')
+      redirect_to tag_path(@tag), notice: I18n.t('controllers.tags.tag_was_successfully_created')
     else
       render :new, status: :unprocessable_entity
     end
+  end
+
+  def show
+    authorize @tag
+    prepare_list
   end
 
   def edit
@@ -40,7 +45,8 @@ class TagsController < ApplicationController
       @shared_link_count = current_user.shared_links.active.count
       render :confirm_delete
     else
-      load_tag_places
+      prepare_list
+      render :show
     end
   end
 
@@ -49,11 +55,30 @@ class TagsController < ApplicationController
 
     if @tag.update(tag_params)
       @tag.adopt!
-      redirect_to tags_path, notice: I18n.t('controllers.tags.tag_was_successfully_updated')
+      redirect_to tag_path(@tag), notice: I18n.t('controllers.tags.tag_was_successfully_updated')
     else
-      load_tag_places
-      render :edit, status: :unprocessable_entity
+      prepare_list
+      render :show, status: :unprocessable_entity
     end
+  end
+
+  def add_place
+    authorize @tag, :update?
+    place = current_user.places.find(params[:place_id])
+    place.add_tag(@tag)
+    place.adopt!
+    @tag.adopt!
+
+    redirect_to tag_path(@tag, q: params[:q].presence),
+                notice: I18n.t('tags.list.added', name: place.name)
+  end
+
+  def remove_place
+    authorize @tag, :update?
+    place = current_user.places.find(params[:place_id])
+    place.remove_tag(@tag)
+
+    redirect_to tag_path(@tag), notice: I18n.t('tags.list.removed', name: place.name)
   end
 
   def destroy
@@ -73,6 +98,22 @@ class TagsController < ApplicationController
   def load_tag_places
     @places = tag_places
     @visit_counts = current_user.visits.active.where(place: @places).group(:place_id).count
+  end
+
+  def prepare_list
+    load_tag_places
+    @place_query = params[:q].to_s.strip
+    @place_candidates = place_candidates
+  end
+
+  def place_candidates
+    return Place.none if @place_query.blank?
+
+    current_user.places
+                .where.not(id: @places.select(:id))
+                .where('places.name ILIKE ?', "%#{Place.sanitize_sql_like(@place_query)}%")
+                .order(:name)
+                .limit(8)
   end
 
   def inline_context

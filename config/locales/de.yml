@@ -2285,6 +2285,17 @@ de:
       visits:
         one: "%{count} Besuch"
         other: "%{count} Besuche"
+    list:
+      add_place: Ort hinzufügen
+      search: Orte durchsuchen
+      add: Hinzufügen
+      remove: Entfernen
+      remove_confirm: "%{name} aus dieser Liste entfernen?"
+      no_matches: Kein Ort passt zu diesem Namen.
+      appearance: Emoji, Farbe und Privatsphäre
+      appearance_hint: Diese Einstellungen gelten für die ganze Liste. Ein Privatsphäre-Radius blendet Kartendaten um jeden Ort darin aus.
+      added: "%{name} zu dieser Liste hinzugefügt."
+      removed: "%{name} aus dieser Liste entfernt."
     form:
       prohibited_this_tag_from_being_saved: 'Dieses Tag wurde verweigert, gespeichert zu werden:'
       click_to_select_an_emoji: Klicke, um ein Emoji auszuwählen
@@ -2314,6 +2325,8 @@ de:
       privacy_zone_badge_hint: "Verborgener Bereich: vom Ort versetzt, bis zu 1,6-mal dieser Radius"
       create_your_first_tag: Erstes Tag erstellen
       tags: Tags
+      lists: Listen
+      new_list: Neue Liste
       edit_tag: Tag bearbeiten
       delete_tag: Tag löschen
       are_you_sure: Bist du sicher?

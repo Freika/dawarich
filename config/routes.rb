@@ -192,7 +192,12 @@ Rails.application.routes.draw do
       post  :regenerate_phrase
     end
   end
-  resources :tags, except: [:show]
+  resources :tags do
+    member do
+      post :add_place
+      delete :remove_place
+    end
+  end
 
   # Public shared-link viewer
   get  '/s/:id',         to: 'shared/links#show',     as: :public_shared_link

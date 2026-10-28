@@ -2304,6 +2304,17 @@ zh:
       visits:
         one: "%{count} 次访问"
         other: "%{count} 次访问"
+    list:
+      add_place: 添加地点
+      search: 搜索你的地点
+      add: 添加
+      remove: 移除
+      remove_confirm: 从该列表中移除%{name}？
+      no_matches: 没有地点与这个名称匹配。
+      appearance: 表情、颜色和隐私
+      appearance_hint: 这些设置作用于整个列表。隐私半径会隐藏列表中每个地点周围的地图数据。
+      added: 已将%{name}加入该列表。
+      removed: 已从该列表移除%{name}。
     form:
       prohibited_this_tag_from_being_saved: 导致此标签无法保存：
       click_to_select_an_emoji: 点击以选择表情符号
@@ -2333,6 +2344,8 @@ zh:
       privacy_zone_badge_hint: "隐藏区域偏离地点中心，最大为此半径的 1.6 倍"
       create_your_first_tag: 创建您的第一个标签
       tags: 标签
+      lists: 列表
+      new_list: 新建列表
       edit_tag: 编辑标签
       delete_tag: 删除标签
       are_you_sure: 您确定吗？

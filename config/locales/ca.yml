@@ -2280,6 +2280,17 @@ ca:
       visits:
         one: "%{count} visita"
         other: "%{count} visites"
+    list:
+      add_place: Afegeix un lloc
+      search: Cerca entre els teus llocs
+      add: Afegeix
+      remove: Treu
+      remove_confirm: Treure %{name} d'aquesta llista?
+      no_matches: Cap lloc no coincideix amb aquest nom.
+      appearance: Emoji, color i privadesa
+      appearance_hint: Aquests paràmetres valen per a tota la llista. Un radi de privadesa amaga les dades del mapa al voltant de cada lloc.
+      added: "%{name} afegit a aquesta llista."
+      removed: "%{name} tret d'aquesta llista."
     form:
       prohibited_this_tag_from_being_saved: 'ha impedit que es desés aquesta etiqueta:'
       click_to_select_an_emoji: Fes clic per seleccionar un emoji
@@ -2309,6 +2320,8 @@ ca:
       privacy_zone_badge_hint: "Àrea amagada desplaçada del lloc, fins a 1,6 vegades aquest radi"
       create_your_first_tag: Crea la teva primera etiqueta
       tags: Etiquetes
+      lists: Llistes
+      new_list: Llista nova
       edit_tag: Edita l'etiqueta
       delete_tag: Suprimeix l'etiqueta
       are_you_sure: "Estàs segur?"

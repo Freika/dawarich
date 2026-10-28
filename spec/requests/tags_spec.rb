@@ -63,9 +63,9 @@ RSpec.describe 'Tags', type: :request do
         end.to change(Tag, :count).by(1)
       end
 
-      it 'redirects to tags index' do
+      it 'redirects to the new list' do
         post tags_path, params: { tag: valid_attributes }
-        expect(response).to redirect_to(tags_path)
+        expect(response).to redirect_to(tag_path(Tag.last))
       end
 
       it 'associates tag with current user' do
@@ -99,9 +99,9 @@ RSpec.describe 'Tags', type: :request do
         expect(tag.color).to eq('#FF0000')
       end
 
-      it 'redirects to tags index' do
+      it 'redirects to the list' do
         patch tag_path(tag), params: { tag: new_attributes }
-        expect(response).to redirect_to(tags_path)
+        expect(response).to redirect_to(tag_path(tag))
       end
     end
 

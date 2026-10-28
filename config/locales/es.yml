@@ -2285,6 +2285,17 @@ es:
       visits:
         one: "%{count} visita"
         other: "%{count} visitas"
+    list:
+      add_place: Añadir un lugar
+      search: Buscar en tus lugares
+      add: Añadir
+      remove: Quitar
+      remove_confirm: "¿Quitar %{name} de esta lista?"
+      no_matches: Ningún lugar coincide con ese nombre.
+      appearance: Emoji, color y privacidad
+      appearance_hint: Estos ajustes valen para toda la lista. Un radio de privacidad oculta los datos del mapa alrededor de cada lugar.
+      added: "%{name} añadido a esta lista."
+      removed: "%{name} quitado de esta lista."
     form:
       prohibited_this_tag_from_being_saved: 'prohibió este etiqueta de ser guardada:'
       click_to_select_an_emoji: Haz clic para seleccionar un emoji
@@ -2314,6 +2325,8 @@ es:
       privacy_zone_badge_hint: "Área oculta desplazada del lugar, hasta 1,6 veces este radio"
       create_your_first_tag: Crea tu primera etiqueta
       tags: Etiquetas
+      lists: Listas
+      new_list: Nueva lista
       edit_tag: Editar etiqueta
       delete_tag: Eliminar etiqueta
       are_you_sure: "¿Estás seguro?"

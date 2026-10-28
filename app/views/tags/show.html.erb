@@ -1,0 +1,81 @@
+<% content_for :title, @tag.name %>
+
+<div class="tags-page container mx-auto px-4 py-8 max-w-2xl min-w-0" data-testid="place-list">
+  <%= link_to t('tags.index.lists'), tags_path, class: "link link-hover text-sm" %>
+
+  <header class="mt-3 mb-6">
+    <h1 class="text-3xl font-bold flex flex-wrap items-center gap-3 min-w-0">
+      <% if @tag.icon.present? %>
+        <span class="text-4xl leading-none" aria-hidden="true"><%= @tag.icon %></span>
+      <% end %>
+      <span class="min-w-0 [overflow-wrap:anywhere]"><%= @tag.name %></span>
+    </h1>
+    <p class="text-base-content/70 mt-2 tabular-nums">
+      <%= t('tags.index.places') %>: <%= @places.size %>
+    </p>
+    <% if @tag.privacy_zone? %>
+      <p class="text-sm mt-2" data-testid="place-list-privacy">
+        <%= icon 'lock', class: 'w-4 h-4 inline' %>
+        <%= t('tags.form.hide_map_data_around_places_with_this_tag') %>
+        <span class="tabular-nums"><%= @tag.privacy_radius_meters %>m</span>
+      </p>
+    <% end %>
+  </header>
+
+  <section data-testid="tag-places">
+    <h2 class="text-xl font-bold mb-4"><%= t('tags.places.title') %></h2>
+    <% if @places.any? %>
+      <ul class="divide-y divide-base-300">
+        <% @places.each do |place| %>
+          <li class="flex flex-wrap items-center justify-between gap-2 py-3">
+            <%= link_to place.name, place_path(place), class: "link link-primary min-w-0 [overflow-wrap:anywhere]" %>
+            <span class="flex flex-wrap items-center gap-3">
+              <span class="text-sm text-base-content/70 tabular-nums"><%= t('tags.places.visits', count: @visit_counts.fetch(place.id, 0)) %></span>
+              <%= button_to t('tags.list.remove'), remove_place_tag_path(@tag), method: :delete,
+                            params: { place_id: place.id },
+                            class: "btn btn-ghost btn-xs",
+                            form: { data: { turbo_confirm: t('tags.list.remove_confirm', name: place.name) } } %>
+            </span>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-base-content/60"><%= t('tags.places.empty') %></p>
+    <% end %>
+  </section>
+
+  <section class="mt-8" data-testid="place-list-add">
+    <h2 class="text-xl font-bold mb-4"><%= t('tags.list.add_place') %></h2>
+    <%= form_with url: tag_path(@tag), method: :get, class: "flex flex-wrap items-end gap-2" do |form| %>
+      <div class="min-w-0 flex-1">
+        <%= form.label :q, t('tags.list.search'), class: "label" %>
+        <%= form.search_field :q, value: @place_query, class: "input input-bordered w-full min-w-0" %>
+      </div>
+      <%= form.submit t('tags.list.search'), class: "btn btn-ghost" %>
+    <% end %>
+    <% if @place_query.present? %>
+      <% if @place_candidates.any? %>
+        <ul class="mt-4 divide-y divide-base-300">
+          <% @place_candidates.each do |place| %>
+            <li class="flex flex-wrap items-center justify-between gap-2 py-3">
+              <span class="min-w-0 [overflow-wrap:anywhere]"><%= place.name %></span>
+              <%= button_to t('tags.list.add'), add_place_tag_path(@tag), method: :post,
+                            params: { place_id: place.id, q: @place_query },
+                            class: "btn btn-primary btn-sm" %>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p class="text-base-content/60 mt-4"><%= t('tags.list.no_matches') %></p>
+      <% end %>
+    <% end %>
+  </section>
+
+  <section class="mt-10 card bg-base-100 border border-base-content/10" data-testid="place-list-settings">
+    <div class="card-body p-4 sm:p-8">
+      <h2 class="text-lg font-semibold"><%= t('tags.list.appearance') %></h2>
+      <p class="text-sm text-base-content/70 mb-4"><%= t('tags.list.appearance_hint') %></p>
+      <%= render "form", tag: @tag %>
+    </div>
+  </section>
+</div>

@@ -3122,6 +3122,17 @@ fr:
       visits:
         one: "%{count} visite"
         other: "%{count} visites"
+    list:
+      add_place: Ajouter un lieu
+      search: Chercher dans vos lieux
+      add: Ajouter
+      remove: Retirer
+      remove_confirm: Retirer %{name} de cette liste ?
+      no_matches: Aucun lieu ne correspond à ce nom.
+      appearance: Emoji, couleur et confidentialité
+      appearance_hint: Ces réglages valent pour toute la liste. Un rayon de confidentialité masque les données de la carte autour de chaque lieu.
+      added: "%{name} ajouté à cette liste."
+      removed: "%{name} retiré de cette liste."
     form:
       prohibited_this_tag_from_being_saved: 'Cette balise a été interdite :'
       click_to_select_an_emoji: Cliquez pour sélectionner un émoji
@@ -3154,6 +3165,8 @@ fr:
       privacy_zone_badge_hint: "Zone masquée décalée du lieu, jusqu'à 1,6 fois ce rayon"
       create_your_first_tag: Créez votre première balise
       tags: Étiquettes
+      lists: Listes
+      new_list: Nouvelle liste
       edit_tag: Modifier la balise
       delete_tag: Supprimer la balise
       are_you_sure: Êtes-vous sûr?
