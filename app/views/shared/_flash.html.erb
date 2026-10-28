@@ -1,4 +1,11 @@
-<div class="fixed top-5 right-5 flex flex-col gap-2 z-50" id="flash-messages">
+<div class="fixed top-5 right-5 flex max-h-[calc(100dvh-2.5rem)] max-w-[calc(100vw-2.5rem)] flex-col gap-2 overflow-y-auto z-50"
+     id="flash-messages"
+     data-controller="flash">
+  <div data-flash-target="dismissAll" class="sticky top-0 z-[6001] self-end" hidden>
+    <button type="button" data-action="flash#dismissAll" class="btn btn-sm shadow-lg">
+      <%= t('.dismiss_all') %>
+    </button>
+  </div>
   <% flash.each do |type, message| %>
     <%= render 'shared/flash_message', type: type, message: message %>
   <% end %>

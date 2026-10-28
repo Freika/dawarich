@@ -23,6 +23,30 @@ const ICON_PATHS = {
 const CLOSE_PATH = "M6 18L18 6M6 6l12 12"
 
 export default class extends Controller {
+  static targets = ["message", "dismissAll"]
+
+  connect() {
+    this.updateDismissAll()
+  }
+
+  messageTargetConnected() {
+    this.updateDismissAll()
+  }
+
+  messageTargetDisconnected() {
+    this.updateDismissAll()
+  }
+
+  dismissAll() {
+    for (const message of this.messageTargets) message.remove()
+  }
+
+  updateDismissAll() {
+    if (this.hasDismissAllTarget) {
+      this.dismissAllTarget.hidden = this.messageTargets.length < 2
+    }
+  }
+
   static show(type, message) {
     const container = document.getElementById("flash-messages")
     if (!container) return
@@ -32,6 +56,7 @@ export default class extends Controller {
     const autoRemove = type === "notice" || type === "success"
 
     const div = document.createElement("div")
+    div.setAttribute("data-flash-target", "message")
     div.setAttribute("data-controller", "removals")
     div.setAttribute("data-removals-timeout-value", autoRemove ? "5000" : "0")
     div.setAttribute("role", "alert")
