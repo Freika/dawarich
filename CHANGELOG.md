@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Ignore future-dated points when opening explored map cells and awarding city achievement levels.
 - Full-history visit redetection now completes when legacy visits contain points without coordinates, preserving confirmed visits that have no usable observations (#3931).
 - Monthly and yearly digest emails no longer enter repeated delivery retries when SMTP is not configured (#3932).
+- Legacy areas with names longer than 255 characters now migrate to places without repeatedly failing, keeping their notes and visits (#3930).
 
 ## [1.19.0] - 2026-10-27, Berlin
 
