@@ -1,0 +1,15 @@
+de:
+  javascript:
+    photo_cluster:
+      title: "Fotos in diesem Cluster"
+      close: "Schließen"
+      previous: "Zurück"
+      next: "Weiter"
+      loading: "Fotos werden geladen…"
+      range: "%{start}–%{end} von %{total} Fotos"
+      empty: "Keine Fotos in diesem Cluster."
+      error: "Fotos konnten nicht geladen werden. Bitte erneut versuchen."
+      retry: "Erneut versuchen"
+      back: "Zurück zu den Vorschaubildern"
+      image_error: "Vorschaubild nicht verfügbar"
+      keyboard_hint: "Drücke die Eingabetaste, um den Fotocluster in der Nähe der Kartenmitte zu öffnen."
