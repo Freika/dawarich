@@ -42,3 +42,5 @@ Related issue: [#3930](https://github.com/Freika/dawarich/issues/3930).
 
 Shared implementation and verification record:
 [Dawarich — Legacy Area to Place backfill](https://affine.dwri.xyz/workspace/c309ded7-e11e-4e72-ba6f-aec8a31a740b/ATqJzjEbcMRbYpmCtzllC).
+
+Implementation: [OneDev PR #260](https://onedev.dwri.xyz/dawarich/~pulls/260), targeting `dev`.
