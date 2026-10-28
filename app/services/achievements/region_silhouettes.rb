@@ -35,7 +35,12 @@ module Achievements
 
     # A continent's membership includes entire countries, but its illustration
     # is a regional atlas window, not every overseas possession of its members.
-    COLLECTION_FRAMES = { 'continent_europe' => [-25, 34, 60, 72] }.freeze
+    COLLECTION_FRAMES = {
+      'continent_europe' => [-25, 34, 60, 72],
+      'thematic_benelux_v1' => [2, 49, 8, 54],
+      'thematic_baltics_v1' => [20, 53, 29, 60],
+      'thematic_scandinavia_v1' => [3, 54, 34, 72]
+    }.freeze
 
     def self.collection(codes:, key: nil)
       new(level: :country, codes: codes).collection(key: key)

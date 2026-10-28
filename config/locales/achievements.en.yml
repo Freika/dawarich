@@ -11,6 +11,9 @@ en:
       dismiss: Dismiss this deck
       view: View %{name} in your collection
     ui:
+      themes: "Thematic collections"
+      themes_hint: "Small collections of countries with a shared theme."
+      theme_visit_note: "A visited country counts toward this collection even if its regions are incomplete."
       title: Achievements
       summary: Summary
       continents: Continents
@@ -58,12 +61,18 @@ en:
         in_progress: In progress
         locked: Locked
     cards:
+      themes:
+        thematic_benelux_v1: "Benelux"
+        thematic_baltics_v1: "Baltics"
+        thematic_scandinavia_v1: "Scandinavia"
       explorer_name: "%{place} Explorer"
       description:
+        thematic_set: "Spend time in all %{count} countries of %{place}."
         continent: "Spend time in all %{count} countries and territories of %{place}."
         regions: "Spend time in all %{count} regions of %{place}."
         country: "Spend time in %{place}."
       status:
+        visited_on: "Visited · %{date}"
         locked: Locked
         unlocked: Unlocked
         unlocked_on: "Unlocked · %{date}"

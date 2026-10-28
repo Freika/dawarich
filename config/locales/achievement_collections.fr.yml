@@ -1,0 +1,146 @@
+---
+fr:
+  achievements:
+    collections:
+      title: Collections personnelles
+      intro: Explorez les villes, retrouvez vos lieux favoris et collectionnez saisons,
+        parcs nationaux et jalons géographiques à partir de votre historique enregistré.
+      places: Lieux de votre collection
+      search_places: Rechercher vos lieux
+      add: Ajouter à la collection
+      remove: Retirer de la collection
+      no_places: Aucun lieu correspondant. Créez ou enregistrez un lieu pour commencer
+        une collection.
+      filter_series: Filtrer les collections
+      all_series: Toutes les collections
+      open_map: Ouvrir la carte d’exploration
+      fog_rules: Tout l’historique enregistré ouvre des cellules H3 fixes, communes
+        aux cartes de villes. Une observation au sol valide ouvre une cellule ; les
+        vols sont exclus. La période choisie met en évidence les premières découvertes
+        sans fermer les anciennes cellules.
+      cities: Exploration urbaine
+      city_catalog_note: Le premier catalogue couvre Berlin, Hambourg et Dresde. Les
+        limites terrestres administratives incluent forêts et périphéries. Les autres
+        villes nécessitent une mise à jour versionnée ; aucune limite manquante n’est
+        remplacée par un cercle.
+      catalog_preparing: Le catalogue des limites des villes et parcs est en préparation
+        en arrière-plan.
+      city_progress: "%{percent}% · %{area} km² découverts"
+      city_public_level: Exploration urbaine · palier %{percent}%
+      city_next: 'Prochain palier : %{target}% · encore %{remaining} points de pourcentage.'
+      source_boundary: Voir la limite source
+      share_mosaic: Inclure ma mosaïque d’exploration dans la carte publique
+      mosaic_privacy_note: Par défaut, les cartes publiques montrent une silhouette
+        générique et le palier atteint. Une mosaïque partagée masque toute cellule
+        touchant une zone privée et recalcule la progression publique, qui peut être
+        inférieure à votre total privé.
+      calculating: Calcul de votre historique enregistré. Les cartes apparaîtront
+        à la fin du calcul en arrière-plan.
+      updating: Mise à jour de votre collection. Le dernier résultat cohérent reste
+        affiché pendant le calcul.
+      calculation_failed: Le calcul n’a pas abouti. Votre collection précédente est
+        conservée et une nouvelle tentative sera effectuée.
+      timezone_required: Impossible de déterminer un fuseau horaire unique pour ce
+        lieu. Choisissez son fuseau IANA local ci-dessous.
+      timezone: 'Fuseau du lieu : %{zone}'
+      choose_timezone: Choisir le fuseau horaire de ce lieu
+      private_place: Ce lieu est couvert par une zone privée. Sa carte personnelle
+        ne peut pas être publiée.
+      notification_title: "%{name} débloqué !"
+      notification_content: Votre historique enregistré a débloqué une nouvelle carte
+        dans votre collection personnelle.
+      national_parks: Parcs nationaux
+      park_progress: "%{minutes}/30 minutes observées en une journée locale"
+      parks_progress: 'Parcs nationaux : %{count} · prochain palier %{target}'
+      regions_progress: "%{count}/%{target} régions"
+      observed_time: "%{minutes} minutes observées"
+      nature_catalog_note: Ce catalogue pilote inclut les parcs nationaux du Harz,
+        de la Suisse saxonne et de l’Eifel. Cette sélection régionale n’est pas exhaustive.
+        Tout ajout nécessite une mise à jour versionnée.
+      public_privacy_note: La progression publique exclut les observations dans les
+        zones privées et peut être inférieure à votre progression privée. Les pages
+        et images publiques sont désactivées pendant le recalcul.
+      milestones:
+        north_south: Des deux côtés de l’équateur
+        east_west: Est et Ouest
+        four_quarters: Les quatre quarts du monde
+        arctic: Au-delà du cercle arctique
+        antarctic: Au-delà du cercle antarctique
+      regions:
+        north: Hémisphère nord
+        south: Hémisphère sud
+        east: Hémisphère est
+        west: Hémisphère ouest
+        ne: Quart nord-est
+        nw: Quart nord-ouest
+        se: Quart sud-est
+        sw: Quart sud-ouest
+        arctic: Région arctique
+        antarctic: Région antarctique
+      recorded_visit: Visite enregistrée
+      last_visit: 'Dernière visite enregistrée : %{date}'
+      return_waiting: Une nouvelle visite complète le retour
+      return_years:
+        one: Retour après au moins 1 an
+        other: Retour après au moins %{count} ans
+      seasons_progress: "%{count}/4 saisons"
+      series:
+        return: Retour
+        seasons: Toutes les saisons
+        year_round: Toute l’année
+        city: Explorateur urbain
+        park: Parc national
+        parks: Nature
+        milestone: Jalon géographique
+      description:
+        return: Retrouvez un lieu après une longue interruption dans vos visites enregistrées.
+        seasons: Retrouvez le même lieu à différentes saisons.
+        city: Découvrez les terres de la ville, une cellule H3 enregistrée à la fois.
+        park: Passez du temps à l’intérieur d’un parc national.
+        parks: Collectionnez les visites de différents parcs nationaux.
+        milestone: Enregistrez du temps dans différentes parties du monde.
+      rules:
+        return: Une visite d’au moins 20 minutes après une interruption de 1, 3 ou
+          5 années calendaires depuis la visite admissible précédente débloque un
+          palier. Ces interruptions décrivent votre historique sauvegardé ; l’absence
+          d’enregistrement ne prouve pas votre absence.
+        seasons: Collectionnez quatre visites distinctes d’au moins 20 minutes, une
+          par saison calendaire. Elles peuvent provenir d’années différentes et doivent
+          commencer à au moins sept jours d’intervalle. Sous les tropiques, les quatre
+          périodes portent les noms des mois. Le fuseau horaire du lieu s’applique.
+        city: Les paliers se débloquent à 1%, 5%, 10% et 25% de la surface terrestre
+          administrative. Un point enregistré non anormal ouvre une cellule H3 de
+          résolution 9, sauf pendant un vol reconnu. L’eau est exclue. Ce pourcentage
+          mesure la surface des cellules ouvertes, pas les rues parcourues ; atteindre
+          100% n’est pas requis. La carte et la carte de collection utilisent le même
+          instantané publié.
+        park: Enregistrez 30 minutes observées dans les limites du parc en une journée
+          locale. Les points consécutifs doivent être espacés d’au plus dix minutes
+          et contribuent au maximum deux minutes par paire. Les appareils qui se chevauchent
+          comptent une seule fois. Le déplacement est autorisé ; vols et anomalies
+          sont exclus.
+        parks: Les paliers se débloquent après 1, 5 et 15 parcs nationaux différents
+          du catalogue remplissant les conditions. Chaque parc nécessite 30 minutes
+          observées en une journée locale. Le catalogue régional est incomplet et
+          versionné ; chaque parc conserve une identité stable.
+        milestone: Enregistrez au moins dix minutes observées par région requise en
+          une journée locale. Les paires de points sont espacées d’au plus dix minutes
+          et contribuent au maximum deux minutes ; les appareils qui se chevauchent
+          comptent une fois. Vols et anomalies sont exclus. Une marge de 10 km exclut
+          l’équateur, les méridiens 0° et 180° et le parallèle polaire fixé pour le
+          jeu à 66,56°. Cela atteste une présence de chaque côté, pas une traversée
+          prouvée.
+      seasons:
+        winter: Hiver
+        spring: Printemps
+        summer: Été
+        autumn: Automne
+      periods:
+        '0': Décembre–février
+        '1': Mars–mai
+        '2': Juin–août
+        '3': Septembre–novembre
+      level_history: Historique des paliers
+      history_earned: Débloqué
+      history_revoked: Révoqué
+      detected_on: détecté le %{date}

@@ -23,6 +23,52 @@ RSpec.describe Revisions::ImportTransaction do
     end
   end
 
+  it 'defers collection and exploration revisions until the import block completes' do
+    described_class.call(user.id) do
+      create(:point, user:, timestamp: october)
+      create(:point, user:, timestamp: december)
+
+      expect(Achievements::CollectionState.exists?(user_id: user.id)).to be(false)
+      expect(Exploration::State.exists?(user_id: user.id)).to be(false)
+    end
+
+    expect(Achievements::CollectionState.find_by!(user_id: user.id).revision).to eq(1)
+    expect(Exploration::State.find_by!(user_id: user.id).revision).to eq(1)
+  end
+
+  it 'bumps existing derived states once at the end of an enclosing import' do
+    collection = Achievements::CollectionState.create!(user:, revision: 7)
+    exploration = Exploration::State.create!(user_id: user.id, revision: 7)
+
+    described_class.call(user.id) do
+      create(:point, user:, timestamp: october)
+      described_class.call(user.id) { create(:point, user:, timestamp: december) }
+
+      expect(collection.reload.revision).to eq(7)
+      expect(exploration.reload.revision).to eq(7)
+      expect(point_revisions).to be_empty
+    end
+
+    expect(collection.reload.revision).to eq(8)
+    expect(exploration.reload.revision).to eq(8)
+    expect(point_revisions.keys).to eq([Date.new(2026, 10, 1), Date.new(2026, 12, 1)])
+  end
+
+  it 'rolls back derived state revisions when the import fails' do
+    collection = Achievements::CollectionState.create!(user:, revision: 7)
+    exploration = Exploration::State.create!(user_id: user.id, revision: 7)
+
+    expect do
+      described_class.call(user.id) do
+        create(:point, user:, timestamp: october)
+        raise ArgumentError, 'broken file'
+      end
+    end.to raise_error(ArgumentError)
+
+    expect(collection.reload.revision).to eq(7)
+    expect(exploration.reload.revision).to eq(7)
+  end
+
   it 'bumps every month that holds points of the user after the block' do
     create(:point, user:, timestamp: october)
     before = point_revisions

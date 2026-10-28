@@ -1,0 +1,142 @@
+---
+es:
+  achievements:
+    collections:
+      title: Colecciones personales
+      intro: Explora ciudades, regresa a tus lugares favoritos y reúne estaciones,
+        parques nacionales e hitos geográficos a partir de tu historial registrado.
+      places: Lugares de tu colección
+      search_places: Buscar tus lugares
+      add: Añadir a la colección
+      remove: Quitar de la colección
+      no_places: No hay lugares coincidentes. Crea o guarda un lugar para iniciar
+        una colección.
+      filter_series: Filtrar colecciones
+      all_series: Todas las colecciones
+      open_map: Abrir mapa de exploración
+      fog_rules: Todo el historial guardado abre celdas H3 fijas, compartidas con
+        las tarjetas de ciudades. Una observación terrestre válida abre una celda;
+        se excluyen los vuelos. El período resalta los primeros descubrimientos y
+        mantiene abiertas las celdas anteriores.
+      cities: Exploración urbana
+      city_catalog_note: El catálogo inicial incluye Berlín, Hamburgo y Dresde. Se
+        usan límites terrestres administrativos, incluidos bosques y periferias. Otras
+        ciudades requieren una actualización versionada; los límites ausentes nunca
+        se sustituyen por círculos.
+      catalog_preparing: El catálogo de límites de ciudades y parques se está preparando
+        en segundo plano.
+      city_progress: "%{percent}% · %{area} km² descubiertos"
+      city_public_level: Exploración urbana · nivel %{percent}%
+      city_next: 'Siguiente nivel: %{target}% · faltan %{remaining} puntos porcentuales.'
+      source_boundary: Ver el límite original
+      share_mosaic: Incluir mi mosaico de exploración en la tarjeta pública
+      mosaic_privacy_note: Las tarjetas públicas muestran normalmente una silueta
+        genérica y el nivel alcanzado. Un mosaico compartido oculta toda celda que
+        toque una zona privada y recalcula el progreso público, que puede ser inferior
+        al total privado.
+      calculating: Calculando tu historial registrado. Las tarjetas aparecerán cuando
+        termine el cálculo en segundo plano.
+      updating: Actualizando tu colección. Se muestra el último resultado coherente
+        hasta que termine el cálculo.
+      calculation_failed: No se pudo terminar el cálculo. Se conserva tu colección
+        anterior y se volverá a intentar.
+      timezone_required: No pudimos determinar una zona horaria única para este lugar.
+        Elige su zona IANA local a continuación.
+      timezone: 'Zona horaria del lugar: %{zone}'
+      choose_timezone: Elegir la zona horaria de este lugar
+      private_place: Este lugar está cubierto por una zona privada. Su tarjeta personal
+        no se puede publicar.
+      notification_title: "¡%{name} desbloqueado!"
+      notification_content: Tu historial registrado ha desbloqueado una nueva tarjeta
+        en tu colección personal.
+      national_parks: Parques nacionales
+      park_progress: "%{minutes}/30 minutos observados en un día local"
+      parks_progress: 'Parques nacionales: %{count} · siguiente nivel %{target}'
+      regions_progress: "%{count}/%{target} regiones"
+      observed_time: "%{minutes} minutos observados"
+      nature_catalog_note: Este catálogo piloto incluye los parques nacionales de
+        Harz, Suiza Sajona y Eifel. Es una selección regional, no una lista completa.
+        Otros parques requieren una actualización versionada.
+      public_privacy_note: El progreso público excluye observaciones dentro de zonas
+        privadas y puede ser inferior al privado. Las páginas e imágenes públicas
+        se desactivan mientras se recalculan los datos.
+      milestones:
+        north_south: A ambos lados del ecuador
+        east_west: Este y Oeste
+        four_quarters: Los cuatro cuartos del mundo
+        arctic: Más allá del círculo polar ártico
+        antarctic: Más allá del círculo polar antártico
+      regions:
+        north: Hemisferio norte
+        south: Hemisferio sur
+        east: Hemisferio oriental
+        west: Hemisferio occidental
+        ne: Cuadrante noreste
+        nw: Cuadrante noroeste
+        se: Cuadrante sureste
+        sw: Cuadrante suroeste
+        arctic: Región ártica
+        antarctic: Región antártica
+      recorded_visit: Visita registrada
+      last_visit: 'Última visita registrada: %{date}'
+      return_waiting: Una nueva visita completa el regreso
+      return_years:
+        one: Regreso tras al menos 1 año
+        other: Regreso tras al menos %{count} años
+      seasons_progress: "%{count}/4 estaciones"
+      series:
+        return: Regreso
+        seasons: Todas las estaciones
+        year_round: Todo el año
+        city: Explorador urbano
+        park: Parque nacional
+        parks: Naturaleza
+        milestone: Hito geográfico
+      description:
+        return: Regresa a un lugar tras un largo intervalo en tus visitas registradas.
+        seasons: Vuelve al mismo lugar en distintas épocas del año.
+        city: Descubre el terreno de la ciudad, una celda H3 registrada cada vez.
+        park: Pasa tiempo dentro de un parque nacional.
+        parks: Reúne visitas a diferentes parques nacionales.
+        milestone: Registra tiempo en distintas partes del mundo.
+      rules:
+        return: Una visita de al menos 20 minutos tras un intervalo de 1, 3 o 5 años
+          naturales desde la anterior visita válida otorga un nivel. Los intervalos
+          describen el historial guardado; la falta de registros no demuestra ausencia.
+        seasons: Reúne cuatro visitas distintas de al menos 20 minutos, una por estación
+          del calendario. Pueden ser de años diferentes y deben comenzar con al menos
+          siete días de separación. En los trópicos, los cuatro períodos se nombran
+          por meses. Se usa la zona horaria del lugar.
+        city: Los niveles se desbloquean al 1%, 5%, 10% y 25% del área terrestre administrativa
+          de la ciudad. Un punto registrado no anómalo abre una celda H3 de resolución
+          9, salvo durante un vuelo reconocido. Se excluye el agua. El porcentaje
+          mide área de celdas abiertas, no calles recorridas; no se exige llegar al
+          100%. El mapa y la tarjeta usan la misma instantánea publicada.
+        park: Registra 30 minutos observados dentro del límite del parque en un día
+          local. Los puntos consecutivos deben estar separados como máximo diez minutos
+          y aportan hasta dos minutos por pareja. Los dispositivos solapados cuentan
+          una sola vez. Se permite moverse; se excluyen vuelos y anomalías.
+        parks: Los niveles se desbloquean tras 1, 5 y 15 parques nacionales distintos
+          del catálogo que cumplan las condiciones. Cada parque requiere 30 minutos
+          observados en un día local. El catálogo regional es incompleto y versionado;
+          cada parque mantiene una identidad estable.
+        milestone: Registra al menos diez minutos observados por región necesaria
+          en un día local. Las parejas de puntos deben distar como máximo diez minutos
+          y aportan hasta dos; los dispositivos solapados cuentan una vez. Se excluyen
+          vuelos y anomalías. Un margen de 10 km excluye el ecuador, los meridianos
+          0° y 180° y el paralelo polar fijado para el juego en 66,56°. Se registra
+          presencia a cada lado, no un cruce demostrado.
+      seasons:
+        winter: Invierno
+        spring: Primavera
+        summer: Verano
+        autumn: Otoño
+      periods:
+        '0': Diciembre–febrero
+        '1': Marzo–mayo
+        '2': Junio–agosto
+        '3': Septiembre–noviembre
+      level_history: Historial de niveles
+      history_earned: Desbloqueado
+      history_revoked: Revocado
+      detected_on: detectado el %{date}

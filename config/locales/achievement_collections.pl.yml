@@ -1,0 +1,140 @@
+---
+pl:
+  achievements:
+    collections:
+      title: Osobiste kolekcje
+      intro: Odkrywaj miasta, wracaj do ulubionych miejsc i zbieraj pory roku, parki
+        narodowe oraz osiągnięcia geograficzne na podstawie zapisanej historii.
+      places: Miejsca do kolekcji
+      search_places: Szukaj swoich miejsc
+      add: Dodaj do kolekcji
+      remove: Usuń z kolekcji
+      no_places: Brak pasujących miejsc. Utwórz lub zapisz miejsce, aby rozpocząć
+        kolekcję.
+      filter_series: Filtruj kolekcje
+      all_series: Wszystkie kolekcje
+      open_map: Otwórz mapę odkrywania
+      fog_rules: Cała zapisana historia otwiera stałe komórki H3 wspólne z kartami
+        miast. Jedna prawidłowa obserwacja na ziemi otwiera komórkę; loty są wykluczone.
+        Wybrany okres wyróżnia pierwsze odkrycia, pozostawiając starsze komórki otwarte.
+      cities: Odkrywanie miasta
+      city_catalog_note: Pierwszy katalog obejmuje Berlin, Hamburg i Drezno. Stosowane
+        są administracyjne granice lądu, w tym lasy i obrzeża. Dodatkowe miasta wymagają
+        wersjonowanej aktualizacji; brakujących granic nigdy nie zastępuje się kołem.
+      catalog_preparing: Katalog granic miast i parków jest przygotowywany w tle.
+      city_progress: "%{percent}% · %{area} km² odkryte"
+      city_public_level: Odkrywanie miasta · poziom %{percent}%
+      city_next: 'Następny poziom: %{target}% · pozostało %{remaining} punktów procentowych.'
+      source_boundary: Zobacz granicę źródłową
+      share_mosaic: Pokaż moją mozaikę odkryć na publicznej karcie
+      mosaic_privacy_note: Publiczne karty domyślnie pokazują ogólny zarys miasta
+        i osiągnięty poziom. Udostępniona mozaika ukrywa każdą komórkę dotykającą
+        strefy prywatności i przelicza publiczny postęp, który może być niższy od
+        prywatnego.
+      calculating: Trwa obliczanie zapisanej historii. Karty pojawią się po zakończeniu
+        obliczeń w tle.
+      updating: Trwa aktualizacja kolekcji. Do zakończenia obliczeń widoczny jest
+        ostatni spójny wynik.
+      calculation_failed: Nie udało się zakończyć obliczeń. Poprzednia kolekcja pozostaje
+        zachowana; nastąpi ponowna próba.
+      timezone_required: Nie udało się jednoznacznie ustalić strefy czasowej miejsca.
+        Wybierz poniżej jego lokalną strefę IANA.
+      timezone: 'Strefa czasowa miejsca: %{zone}'
+      choose_timezone: Wybierz strefę czasową tego miejsca
+      private_place: To miejsce znajduje się w strefie prywatności. Jego osobistej
+        karty nie można opublikować.
+      notification_title: Odblokowano %{name}!
+      notification_content: Zapisana historia odblokowała nową kartę w osobistej kolekcji.
+      national_parks: Parki narodowe
+      park_progress: "%{minutes}/30 zaobserwowanych minut jednego lokalnego dnia"
+      parks_progress: 'Parki narodowe: %{count} · następny poziom %{target}'
+      regions_progress: "%{count}/%{target} regionów"
+      observed_time: "%{minutes} zaobserwowanych minut"
+      nature_catalog_note: Katalog pilotażowy obejmuje parki narodowe Harz, Szwajcarii
+        Saksońskiej i Eifel. To wybrana lista regionalna, nie pełny katalog. Kolejne
+        parki wymagają wersjonowanej aktualizacji.
+      public_privacy_note: Publiczny postęp nie obejmuje obserwacji w strefach prywatności
+        i może być niższy od prywatnego. Publiczne strony i obrazy są niedostępne
+        podczas przeliczania.
+      milestones:
+        north_south: Po obu stronach równika
+        east_west: Wschód i Zachód
+        four_quarters: Cztery ćwiartki świata
+        arctic: Za północnym kołem podbiegunowym
+        antarctic: Za południowym kołem podbiegunowym
+      regions:
+        north: Półkula północna
+        south: Półkula południowa
+        east: Półkula wschodnia
+        west: Półkula zachodnia
+        ne: Ćwiartka północno-wschodnia
+        nw: Ćwiartka północno-zachodnia
+        se: Ćwiartka południowo-wschodnia
+        sw: Ćwiartka południowo-zachodnia
+        arctic: Region arktyczny
+        antarctic: Region antarktyczny
+      recorded_visit: Zapisana wizyta
+      last_visit: 'Ostatnia zapisana wizyta: %{date}'
+      return_waiting: Nowa wizyta dopełnia powrót
+      return_years:
+        one: Powrót po co najmniej 1 roku
+        other: Powrót po co najmniej %{count} latach
+        few: Powrót po co najmniej %{count} latach
+        many: Powrót po co najmniej %{count} latach
+      seasons_progress: "%{count}/4 pory roku"
+      series:
+        return: Powrót
+        seasons: Wszystkie pory roku
+        year_round: Przez cały rok
+        city: Odkrywca miasta
+        park: Park narodowy
+        parks: Przyroda
+        milestone: Osiągnięcie geograficzne
+      description:
+        return: Wróć do miejsca po długiej przerwie w zapisanych wizytach.
+        seasons: Odwiedzaj to samo miejsce o różnych porach roku.
+        city: Odkrywaj ląd miasta, po jednej zapisanej komórce H3.
+        park: Spędź czas na terenie parku narodowego.
+        parks: Zbieraj wizyty w różnych parkach narodowych.
+        milestone: Zapisuj czas spędzony w różnych częściach świata.
+      rules:
+        return: Wizyta trwająca co najmniej 20 minut po przerwie 1, 3 lub 5 lat kalendarzowych
+          od poprzedniej kwalifikującej wizyty daje poziom. Przerwy opisują zapisane
+          dane; brak zapisów nie dowodzi nieobecności.
+        seasons: Zbierz cztery oddzielne wizyty trwające co najmniej 20 minut, po
+          jednej w każdej kalendarzowej porze roku. Mogą pochodzić z różnych lat,
+          a ich początki muszą dzielić co najmniej siedem dni. W tropikach cztery
+          okresy noszą nazwy miesięcy. Obowiązuje strefa czasowa miejsca.
+        city: Poziomy odblokowują się przy 1%, 5%, 10% i 25% administracyjnej powierzchni
+          lądu miasta. Zapisany punkt bez anomalii otwiera komórkę H3 rozdzielczości
+          9, z wyjątkiem rozpoznanego lotu. Woda jest wykluczona. Procent oznacza
+          powierzchnię otwartych komórek, nie przebytych ulic; 100% nie jest wymagane.
+          Mapa i karta używają tego samego opublikowanego stanu odkryć.
+        park: Zapisz 30 zaobserwowanych minut w granicach parku w jednym lokalnym
+          dniu. Kolejne punkty muszą dzielić najwyżej dziesięć minut; każda para daje
+          najwyżej dwie minuty. Nakładające się urządzenia liczą się raz. Ruch jest
+          dozwolony; loty i anomalie są wykluczone.
+        parks: Poziomy odblokowują się po 1, 5 i 15 różnych kwalifikujących parkach
+          narodowych z katalogu. Każdy wymaga 30 zaobserwowanych minut jednego lokalnego
+          dnia. Katalog regionalny jest niepełny i wersjonowany; każdy park zachowuje
+          stałą tożsamość.
+        milestone: Zapisz co najmniej dziesięć zaobserwowanych minut w każdym wymaganym
+          regionie jednego lokalnego dnia. Pary punktów dzieli najwyżej dziesięć minut
+          i każda daje najwyżej dwie; nakładające się urządzenia liczą się raz. Loty
+          i anomalie są wykluczone. Margines 10 km wyklucza równik, południki 0° i
+          180° oraz stały równoleżnik polarny gry 66,56°. To potwierdza obecność po
+          każdej stronie, nie udowodnione przekroczenie.
+      seasons:
+        winter: Zima
+        spring: Wiosna
+        summer: Lato
+        autumn: Jesień
+      periods:
+        '0': Grudzień–luty
+        '1': Marzec–maj
+        '2': Czerwiec–sierpień
+        '3': Wrzesień–listopad
+      level_history: Historia poziomów
+      history_earned: Odblokowano
+      history_revoked: Cofnięto
+      detected_on: wykryto %{date}

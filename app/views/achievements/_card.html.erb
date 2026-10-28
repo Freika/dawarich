@@ -17,8 +17,8 @@
      <% if share %>
        data-share-key="<%= share[:key] %>"
        data-share-shared="<%= share[:shared] %>"
-       data-share-toggle="<%= toggle_sharing_achievement_path(share[:key]) %>"
-       <% if share[:shared] && share[:uuid] %>data-share-url="<%= shared_achievement_path(share[:uuid]) %>"<% end %>
+       data-share-toggle="<%= share[:toggle_url] || toggle_sharing_achievement_path(share[:key]) %>"
+       <% if share[:shared] && share[:uuid] %>data-share-url="<%= share[:url] || shared_achievement_path(share[:uuid]) %>"<% end %>
      <% end %>>
   <article class="ach-card ach-spectral <%= 'ach-spectral--locked' if locked %>" aria-label="<%= [name, rarity_label, metric, status].join(', ') %>">
     <div class="card-light" aria-hidden="true"></div>

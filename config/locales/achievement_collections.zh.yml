@@ -1,0 +1,102 @@
+---
+zh:
+  achievements:
+    collections:
+      title: 个人收藏
+      intro: 根据已记录的历史探索城市、重返喜爱的地点，并收集四季、国家公园和地理里程碑卡片。
+      places: 收藏中的地点
+      search_places: 搜索你的地点
+      add: 加入收藏
+      remove: 移出收藏
+      no_places: 没有匹配的地点。创建或保存地点以开始个人收藏。
+      filter_series: 筛选收藏
+      all_series: 全部收藏
+      open_map: 打开探索地图
+      fog_rules: 全部已保存历史用于开启固定的 H3 网格，与城市卡片共用。一个有效地面观测点即可开启网格，飞行记录不计入。所选时间段仅高亮首次发现，已开启的旧网格保持开启。
+      cities: 城市探索
+      city_catalog_note: 首批边界目录包含柏林、汉堡和德累斯顿，采用包含森林和郊区的行政陆地边界。添加其他城市需要更新目录版本；缺失边界不会用圆形代替。
+      catalog_preparing: 正在后台准备城市和公园边界目录。
+      city_progress: "%{percent}% · 已开启 %{area} 平方公里"
+      city_public_level: 城市探索 · %{percent}% 等级
+      city_next: 下一级：%{target}% · 还差 %{remaining} 个百分点。
+      source_boundary: 查看来源边界
+      share_mosaic: 在公开卡片中包含我的探索网格
+      mosaic_privacy_note: 公开卡片默认仅显示通用城市轮廓和已达到的等级。分享探索网格时，会隐藏所有接触隐私区域的网格并重新计算公开进度，因此可能低于私人总进度。
+      calculating: 正在计算已记录的历史。后台计算完成后将显示卡片。
+      updating: 正在更新收藏，计算完成前显示上一个一致的结果。
+      calculation_failed: 计算未能完成。已保留之前的收藏，并将重试。
+      timezone_required: 无法确定此地点的唯一时区。请在下方选择当地 IANA 时区。
+      timezone: 地点时区：%{zone}
+      choose_timezone: 选择此地点的时区
+      private_place: 此地点位于隐私区域内，无法发布其个人卡片。
+      notification_title: 已解锁 %{name}！
+      notification_content: 已记录的历史为你的个人收藏解锁了一张新卡片。
+      national_parks: 国家公园
+      park_progress: 同一当地日期内已观测 %{minutes}/30 分钟
+      parks_progress: 国家公园：%{count} · 下一级 %{target}
+      regions_progress: "%{count}/%{target} 个区域"
+      observed_time: 已观测 %{minutes} 分钟
+      nature_catalog_note: 此试点目录包含哈尔茨、萨克森瑞士和艾费尔国家公园。这是精选的区域目录，并非完整列表。添加公园需要更新目录版本。
+      public_privacy_note: 公开进度排除隐私区域内的观测，因此可能低于私人进度。重新计算期间会暂停公开页面和图片。
+      milestones:
+        north_south: 赤道两侧
+        east_west: 东方与西方
+        four_quarters: 世界四个象限
+        arctic: 北极圈以北
+        antarctic: 南极圈以南
+      regions:
+        north: 北半球
+        south: 南半球
+        east: 东半球
+        west: 西半球
+        ne: 东北象限
+        nw: 西北象限
+        se: 东南象限
+        sw: 西南象限
+        arctic: 北极区域
+        antarctic: 南极区域
+      recorded_visit: 已记录的到访
+      last_visit: 最近记录的到访：%{date}
+      return_waiting: 一次新的到访即可完成重返
+      return_years:
+        one: 至少相隔 1 年后重返
+        other: 至少相隔 %{count} 年后重返
+      seasons_progress: "%{count}/4 个季节"
+      series:
+        return: 重返
+        seasons: 四季
+        year_round: 全年
+        city: 城市探索者
+        park: 国家公园
+        parks: 自然
+        milestone: 地理里程碑
+      description:
+        return: 在已记录的到访相隔很久后重返同一地点。
+        seasons: 在一年中的不同时节重返同一地点。
+        city: 通过记录逐一开启城市陆地上的 H3 网格。
+        park: 在国家公园内度过一段时间。
+        parks: 收集不同国家公园的到访记录。
+        milestone: 记录在世界不同区域停留的时间。
+      rules:
+        return: 自上一次有效到访结束后，相隔 1、3 或 5 个日历年，再次到访至少 20 分钟可获得相应等级。间隔仅描述已保存的历史；没有记录并不能证明你不在此地。
+        seasons: 收集四次独立到访，每次至少 20 分钟，每个日历季节各一次。到访可以来自不同年份，开始日期之间必须至少相隔七天。热带地区的四个时段以月份命名。计算采用地点的当地时区。
+        city: 开启城市行政陆地面积的 1%、5%、10% 和 25% 时解锁等级。一个非异常记录点可开启分辨率 9 的 H3 网格，但已识别的飞行除外。水域不计入。百分比表示已开启网格的陆地面积，而非走过的街道；无需达到
+          100%。地图和卡片使用同一已发布的探索快照。
+        park: 在同一个当地日期内，在公园边界内记录 30 分钟观测时间。相邻点间隔不能超过十分钟，每对最多计入两分钟。多个设备的重叠时间只计一次。移动中也可计入；飞行和异常点除外。
+        parks: 有效到访目录中 1、5 和 15 个不同国家公园时解锁等级。每个公园都需要在同一个当地日期内观测 30 分钟。区域目录并不完整，使用版本管理；每个公园保留稳定标识。
+        milestone: 在每个所需区域内，于同一个当地日期记录至少十分钟观测时间。点对间隔不能超过十分钟，每对最多计入两分钟；多个设备的重叠时间只计一次。飞行和异常点除外。赤道、0°
+          和 180° 经线及游戏固定的 66.56° 极圈纬线周围各排除 10 公里。此成就表示曾在两侧停留，不证明实际穿越。
+      seasons:
+        winter: 冬季
+        spring: 春季
+        summer: 夏季
+        autumn: 秋季
+      periods:
+        '0': 十二月至二月
+        '1': 三月至五月
+        '2': 六月至八月
+        '3': 九月至十一月
+      level_history: 等级历史
+      history_earned: 已解锁
+      history_revoked: 已撤销
+      detected_on: 发现日期 %{date}

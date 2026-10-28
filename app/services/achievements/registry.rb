@@ -23,6 +23,10 @@ module Achievements
     def flat?
       kind == 'country' && level == :country
     end
+
+    def thematic?
+      kind == 'thematic_set'
+    end
   end
 
   class Registry

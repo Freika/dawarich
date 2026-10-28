@@ -784,7 +784,7 @@ export class SettingsController {
    * Update route opacity in real-time
    */
   async updateFogMode(event) {
-    const mode = event.target.value
+    const mode = "hexagons"
 
     const fogLayer = this.layerManager.getLayer("fog")
     if (fogLayer) {
@@ -1013,8 +1013,6 @@ export class SettingsController {
     const formData = new FormData(event.target)
 
     const settings = {
-      fogOfWarRadius: parseInt(formData.get("fogOfWarRadius"), 10),
-      fogOfWarThreshold: parseInt(formData.get("fogOfWarThreshold"), 10),
       metersBetweenRoutes: parseInt(formData.get("metersBetweenRoutes"), 10),
       minutesBetweenRoutes: parseInt(formData.get("minutesBetweenRoutes"), 10),
       minMinutesSpentInCity: parseInt(

@@ -154,3 +154,14 @@ webhook_deliveries_cleanup_job:
   class: "Webhooks::CleanupDeliveriesJob"
   queue: webhooks
   active_job: true
+achievement_collections_refresh:
+  cron: '*/5 * * * *'
+  class: 'Achievements::RefreshCollectionsJob'
+  queue: achievements
+  active_job: true
+
+exploration_refresh:
+  cron: '*/5 * * * *'
+  class: 'Exploration::RefreshJob'
+  queue: low_priority
+  active_job: true

@@ -1,0 +1,145 @@
+---
+de:
+  achievements:
+    collections:
+      title: Persönliche Sammlungen
+      intro: Erkunde Städte, kehre an Lieblingsorte zurück und sammle Jahreszeiten,
+        Nationalparks und geografische Meilensteine aus deinem aufgezeichneten Verlauf.
+      places: Orte für deine Sammlung
+      search_places: Deine Orte durchsuchen
+      add: Zur Sammlung hinzufügen
+      remove: Aus Sammlung entfernen
+      no_places: Keine passenden Orte. Erstelle oder speichere einen Ort, um eine
+        Sammlung zu beginnen.
+      filter_series: Sammlungen filtern
+      all_series: Alle Sammlungen
+      open_map: Erkundungskarte öffnen
+      fog_rules: Der gesamte gespeicherte Verlauf öffnet feste H3-Zellen, die auch
+        Stadt-Karten verwenden. Eine gültige Bodenbeobachtung öffnet eine Zelle; Flüge
+        sind ausgeschlossen. Der Zeitraum hebt Erstentdeckungen hervor, ältere Zellen
+        bleiben offen.
+      cities: Stadterkundung
+      city_catalog_note: Der erste Grenzkatalog umfasst Berlin, Hamburg und Dresden.
+        Es gelten administrative Landgrenzen einschließlich Wäldern und Außenbezirken.
+        Weitere Städte benötigen eine versionierte Katalogaktualisierung; fehlende
+        Grenzen werden nie durch Kreise ersetzt.
+      catalog_preparing: Der Grenzkatalog für Städte und Parks wird im Hintergrund
+        vorbereitet.
+      city_progress: "%{percent}% · %{area} km² geöffnet"
+      city_public_level: Stadterkundung · Stufe %{percent}%
+      city_next: 'Nächste Stufe: %{target}% · noch %{remaining} Prozentpunkte.'
+      source_boundary: Quellgrenze ansehen
+      share_mosaic: Mein Erkundungsmosaik auf der öffentlichen Karte zeigen
+      mosaic_privacy_note: Öffentliche Karten zeigen normalerweise einen allgemeinen
+        Stadtumriss und die erreichte Stufe. Beim Teilen des Mosaiks werden alle Zellen
+        mit Kontakt zu einer Privatzone ausgeblendet und der öffentliche Fortschritt
+        neu berechnet. Er kann niedriger als dein privater Wert sein.
+      calculating: Dein gespeicherter Verlauf wird berechnet. Karten erscheinen nach
+        Abschluss der Hintergrundberechnung.
+      updating: Deine Sammlung wird aktualisiert. Bis zum Abschluss bleibt das letzte
+        konsistente Ergebnis sichtbar.
+      calculation_failed: Die Berechnung konnte nicht abgeschlossen werden. Deine
+        bisherige Sammlung bleibt erhalten; ein neuer Versuch folgt.
+      timezone_required: Für diesen Ort konnte keine eindeutige Zeitzone ermittelt
+        werden. Wähle unten seine lokale IANA-Zeitzone.
+      timezone: 'Zeitzone des Ortes: %{zone}'
+      choose_timezone: Zeitzone dieses Ortes wählen
+      private_place: Dieser Ort liegt in einer Privatzone. Seine persönliche Karte
+        kann nicht veröffentlicht werden.
+      notification_title: "%{name} freigeschaltet!"
+      notification_content: Dein gespeicherter Verlauf hat eine neue Karte in deiner
+        persönlichen Sammlung freigeschaltet.
+      national_parks: Nationalparks
+      park_progress: "%{minutes}/30 beobachtete Minuten an einem lokalen Tag"
+      parks_progress: 'Nationalparks: %{count} · nächste Stufe %{target}'
+      regions_progress: "%{count}/%{target} Gebiete"
+      observed_time: "%{minutes} beobachtete Minuten"
+      nature_catalog_note: Dieser Pilotkatalog enthält die Nationalparks Harz, Sächsische
+        Schweiz und Eifel. Er ist eine kuratierte regionale Auswahl, keine vollständige
+        Liste. Weitere Parks benötigen eine versionierte Katalogaktualisierung.
+      public_privacy_note: Öffentlicher Fortschritt schließt Beobachtungen in Privatzonen
+        aus und kann niedriger sein als dein privater Fortschritt. Während der Neuberechnung
+        sind öffentliche Seiten und Bilder deaktiviert.
+      milestones:
+        north_south: Beide Seiten des Äquators
+        east_west: Ost und West
+        four_quarters: Vier Viertel der Welt
+        arctic: Jenseits des nördlichen Polarkreises
+        antarctic: Jenseits des südlichen Polarkreises
+      regions:
+        north: Nordhalbkugel
+        south: Südhalbkugel
+        east: Östliche Hemisphäre
+        west: Westliche Hemisphäre
+        ne: Nordöstliches Viertel
+        nw: Nordwestliches Viertel
+        se: Südöstliches Viertel
+        sw: Südwestliches Viertel
+        arctic: Arktis
+        antarctic: Antarktis
+      recorded_visit: Aufgezeichneter Besuch
+      last_visit: 'Letzter aufgezeichneter Besuch: %{date}'
+      return_waiting: Ein neuer Besuch vollendet die Rückkehr
+      return_years:
+        one: Rückkehr nach mindestens 1 Jahr
+        other: Rückkehr nach mindestens %{count} Jahren
+      seasons_progress: "%{count}/4 Jahreszeiten"
+      series:
+        return: Rückkehr
+        seasons: Alle Jahreszeiten
+        year_round: Das ganze Jahr
+        city: Stadtentdecker
+        park: Nationalpark
+        parks: Natur
+        milestone: Geografischer Meilenstein
+      description:
+        return: Kehre nach einer langen Lücke in deinen aufgezeichneten Besuchen an
+          einen Ort zurück.
+        seasons: Besuche denselben Ort zu verschiedenen Jahreszeiten.
+        city: Öffne das Land der Stadt, eine aufgezeichnete H3-Zelle nach der anderen.
+        park: Verbringe Zeit innerhalb eines Nationalparks.
+        parks: Sammle Besuche in verschiedenen Nationalparks.
+        milestone: Zeichne Zeit in verschiedenen Teilen der Welt auf.
+      rules:
+        return: Ein Besuch von mindestens 20 Minuten nach einer Lücke von 1, 3 oder
+          5 Kalenderjahren seit dem vorherigen gültigen Besuch schaltet eine Stufe
+          frei. Lücken beschreiben den gespeicherten Verlauf; fehlende Aufzeichnungen
+          beweisen keine Abwesenheit.
+        seasons: Sammle vier getrennte Besuche von mindestens 20 Minuten, je einen
+          pro Kalenderjahreszeit. Die Besuche dürfen aus verschiedenen Jahren stammen
+          und müssen mindestens sieben Tage auseinander beginnen. In den Tropen werden
+          die vier Abschnitte nach Monaten benannt. Es gilt die Zeitzone des Ortes.
+        city: Stufen werden bei 1%, 5%, 10% und 25% der administrativen Landfläche
+          freigeschaltet. Ein aufgezeichneter, nicht anomaler Punkt öffnet eine H3-Zelle
+          der Auflösung 9, außer während eines erkannten Fluges. Wasser ist ausgeschlossen.
+          Der Prozentwert misst geöffnete Zellfläche, keine gelaufenen Straßen; 100%
+          sind kein erforderliches Ziel. Karte und Stadt-Karte verwenden denselben
+          veröffentlichten Erkundungsstand.
+        park: Zeichne innerhalb der Parkgrenze 30 beobachtete Minuten an einem lokalen
+          Tag auf. Aufeinanderfolgende Punkte dürfen höchstens zehn Minuten auseinanderliegen
+          und zählen je Paar höchstens zwei Minuten. Überlappende Geräte zählen einmal.
+          Bewegung ist erlaubt; Flüge und Anomalien sind ausgeschlossen.
+        parks: Stufen werden nach 1, 5 und 15 verschiedenen gültigen Nationalparks
+          aus dem Katalog freigeschaltet. Jeder Park benötigt 30 beobachtete Minuten
+          an einem lokalen Tag. Der regionale Katalog ist unvollständig und versioniert;
+          jeder Park behält eine stabile Identität.
+        milestone: Zeichne pro benötigtem Gebiet mindestens zehn beobachtete Minuten
+          an einem lokalen Tag auf. Punktpaare dürfen höchstens zehn Minuten auseinanderliegen
+          und zählen höchstens zwei Minuten; überlappende Geräte zählen einmal. Flüge
+          und Anomalien sind ausgeschlossen. Ein Abstand von 10 km gilt zum Äquator,
+          den Meridianen 0° und 180° sowie zum festen Spiel-Polarkreis bei 66,56°.
+          Erfasst wird Anwesenheit auf jeder Seite, keine nachgewiesene Überquerung.
+      seasons:
+        winter: Winter
+        spring: Frühling
+        summer: Sommer
+        autumn: Herbst
+      periods:
+        '0': Dezember–Februar
+        '1': März–Mai
+        '2': Juni–August
+        '3': September–November
+      level_history: Stufenverlauf
+      history_earned: Freigeschaltet
+      history_revoked: Widerrufen
+      detected_on: erkannt am %{date}

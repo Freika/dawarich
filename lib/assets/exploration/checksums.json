@@ -1,0 +1,10 @@
+{
+  "countries": {
+    "source_sha256": "4caf607838c3cfd211a52edda259e315513390a717a11067c5eb280f766cfb78",
+    "sha256": "2ca1825d371b30c61e18e544db1914e6eabad3bc1c4ba7662d9e1526ec863e59"
+  },
+  "lakes": {
+    "source_sha256": "2d036f53dedec578001c5c30c2959ee7d4eebc1306900fa4367c49929ec8f2d9",
+    "sha256": "f1f460c4e1998880cefbcca4c2f168ce07d6bacf8bd81f66f549f34686e1e26b"
+  }
+}

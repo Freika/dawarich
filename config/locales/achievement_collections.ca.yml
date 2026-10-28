@@ -1,0 +1,143 @@
+---
+ca:
+  achievements:
+    collections:
+      title: Col·leccions personals
+      intro: Explora ciutats, torna als teus llocs preferits i col·lecciona estacions,
+        parcs nacionals i fites geogràfiques a partir del teu historial enregistrat.
+      places: Llocs de la col·lecció
+      search_places: Cerca els teus llocs
+      add: Afegeix a la col·lecció
+      remove: Treu de la col·lecció
+      no_places: No hi ha llocs coincidents. Crea o desa un lloc per començar una
+        col·lecció.
+      filter_series: Filtra les col·leccions
+      all_series: Totes les col·leccions
+      open_map: Obre el mapa d’exploració
+      fog_rules: Tot l’historial desat obre cel·les H3 fixes, compartides amb les
+        targetes de ciutats. Una observació terrestre vàlida obre una cel·la; els
+        vols s’exclouen. El període ressalta les primeres descobertes i manté obertes
+        les cel·les anteriors.
+      cities: Exploració urbana
+      city_catalog_note: El catàleg inicial inclou Berlín, Hamburg i Dresden. S’utilitzen
+        límits terrestres administratius, inclosos boscos i perifèries. Altres ciutats
+        requereixen una actualització versionada; els límits absents no se substitueixen
+        mai per cercles.
+      catalog_preparing: El catàleg de límits de ciutats i parcs s’està preparant
+        en segon pla.
+      city_progress: "%{percent}% · %{area} km² descoberts"
+      city_public_level: Exploració urbana · nivell %{percent}%
+      city_next: 'Nivell següent: %{target}% · falten %{remaining} punts percentuals.'
+      source_boundary: Mostra el límit original
+      share_mosaic: Inclou el meu mosaic d’exploració a la targeta pública
+      mosaic_privacy_note: Normalment, les targetes públiques mostren una silueta
+        genèrica i el nivell assolit. Un mosaic compartit amaga totes les cel·les
+        que toquen una zona privada i recalcula el progrés públic, que pot ser inferior
+        al total privat.
+      calculating: S’està calculant l’historial enregistrat. Les targetes apareixeran
+        en acabar el càlcul en segon pla.
+      updating: S’està actualitzant la col·lecció. Es mostra l’últim resultat coherent
+        fins que acabi el càlcul.
+      calculation_failed: No s’ha pogut acabar el càlcul. Es conserva la col·lecció
+        anterior i es tornarà a intentar.
+      timezone_required: No hem pogut determinar un fus horari únic per a aquest lloc.
+        Tria el seu fus IANA local a continuació.
+      timezone: 'Fus horari del lloc: %{zone}'
+      choose_timezone: Tria el fus horari d’aquest lloc
+      private_place: Aquest lloc és dins d’una zona privada. La seva targeta personal
+        no es pot publicar.
+      notification_title: S’ha desbloquejat %{name}!
+      notification_content: El teu historial enregistrat ha desbloquejat una targeta
+        nova a la col·lecció personal.
+      national_parks: Parcs nacionals
+      park_progress: "%{minutes}/30 minuts observats en un dia local"
+      parks_progress: 'Parcs nacionals: %{count} · nivell següent %{target}'
+      regions_progress: "%{count}/%{target} regions"
+      observed_time: "%{minutes} minuts observats"
+      nature_catalog_note: Aquest catàleg pilot inclou els parcs nacionals de Harz,
+        la Suïssa Saxona i Eifel. És una selecció regional, no una llista completa.
+        Altres parcs requereixen una actualització versionada.
+      public_privacy_note: El progrés públic exclou les observacions dins de zones
+        privades i pot ser inferior al privat. Les pàgines i imatges públiques es
+        desactiven durant el recàlcul.
+      milestones:
+        north_south: A banda i banda de l’equador
+        east_west: Est i Oest
+        four_quarters: Els quatre quarts del món
+        arctic: Més enllà del cercle polar àrtic
+        antarctic: Més enllà del cercle polar antàrtic
+      regions:
+        north: Hemisferi nord
+        south: Hemisferi sud
+        east: Hemisferi oriental
+        west: Hemisferi occidental
+        ne: Quadrant nord-est
+        nw: Quadrant nord-oest
+        se: Quadrant sud-est
+        sw: Quadrant sud-oest
+        arctic: Regió àrtica
+        antarctic: Regió antàrtica
+      recorded_visit: Visita enregistrada
+      last_visit: 'Última visita enregistrada: %{date}'
+      return_waiting: Una visita nova completa el retorn
+      return_years:
+        one: Retorn després d’almenys 1 any
+        other: Retorn després d’almenys %{count} anys
+      seasons_progress: "%{count}/4 estacions"
+      series:
+        return: Retorn
+        seasons: Totes les estacions
+        year_round: Tot l’any
+        city: Explorador urbà
+        park: Parc nacional
+        parks: Natura
+        milestone: Fita geogràfica
+      description:
+        return: Torna a un lloc després d’un interval llarg entre les visites enregistrades.
+        seasons: Torna al mateix lloc en diferents èpoques de l’any.
+        city: Descobreix el terreny de la ciutat, una cel·la H3 enregistrada cada
+          vegada.
+        park: Passa temps dins d’un parc nacional.
+        parks: Col·lecciona visites a diferents parcs nacionals.
+        milestone: Enregistra temps a diferents parts del món.
+      rules:
+        return: Una visita d’almenys 20 minuts després d’un interval d’1, 3 o 5 anys
+          naturals des de la visita vàlida anterior atorga un nivell. Els intervals
+          descriuen l’historial desat; la manca de registres no demostra absència.
+        seasons: Reuneix quatre visites separades d’almenys 20 minuts, una per estació
+          del calendari. Poden ser d’anys diferents i han de començar amb almenys
+          set dies de separació. Als tròpics, els quatre períodes s’anomenen per mesos.
+          S’utilitza el fus horari del lloc.
+        city: Els nivells es desbloquegen a l’1%, 5%, 10% i 25% de l’àrea terrestre
+          administrativa. Un punt enregistrat no anòmal obre una cel·la H3 de resolució
+          9, excepte durant un vol reconegut. S’exclou l’aigua. El percentatge mesura
+          l’àrea de cel·les obertes, no els carrers recorreguts; no cal arribar al
+          100%. El mapa i la targeta utilitzen la mateixa instantània publicada.
+        park: Enregistra 30 minuts observats dins del parc en un dia local. Els punts
+          consecutius han d’estar separats com a màxim deu minuts i aporten fins a
+          dos minuts per parella. Els dispositius superposats compten una vegada.
+          Es permet el moviment; s’exclouen vols i anomalies.
+        parks: Els nivells es desbloquegen després d’1, 5 i 15 parcs nacionals diferents
+          del catàleg que compleixin els requisits. Cada parc necessita 30 minuts
+          observats en un dia local. El catàleg regional és incomplet i versionat;
+          cada parc conserva una identitat estable.
+        milestone: Enregistra almenys deu minuts observats per regió requerida en
+          un dia local. Les parelles de punts han de distar com a màxim deu minuts
+          i aporten fins a dos; els dispositius superposats compten una vegada. S’exclouen
+          vols i anomalies. Un marge de 10 km exclou l’equador, els meridians 0° i
+          180° i el paral·lel polar fixat per al joc a 66,56°. Es registra presència
+          a cada costat, no un encreuament demostrat.
+      seasons:
+        winter: Hivern
+        spring: Primavera
+        summer: Estiu
+        autumn: Tardor
+      periods:
+        '0': Desembre–febrer
+        '1': Març–maig
+        '2': Juny–agost
+        '3': Setembre–novembre
+      level_history: Historial de nivells
+      history_earned: Desbloquejat
+      history_revoked: Revocat
+      detected_on: detectat el %{date}

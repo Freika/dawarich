@@ -27,6 +27,7 @@ module Places
         merge_tags
         merge_timeline_notes
         merge_legacy_mappings
+        Achievements::MergeSelections.call(survivor, duplicate)
         geofence = merge_geofence
 
         merged_attributes = {

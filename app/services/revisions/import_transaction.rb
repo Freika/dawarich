@@ -58,8 +58,12 @@ module Revisions
         defer_revisions('on')
         value = yield
         defer_revisions(previous)
-        bump(BUMP_POINTS)
-        bump(BUMP_TRACKS) unless import_id
+        unless previous == 'on'
+          # Match the source-trigger lock order before taking monthly revision locks.
+          bump_derived_states
+          bump(BUMP_POINTS)
+          bump(BUMP_TRACKS) unless import_id
+        end
         value
       end
     end
@@ -75,6 +79,16 @@ module Revisions
     def bump(template)
       sql = format(template, scope: import_id ? 'import_id = :import_id' : 'user_id = :user_id')
       connection.exec_update(ActiveRecord::Base.sanitize_sql([sql, { user_id:, import_id: }]))
+    end
+
+    def bump_derived_states
+      %w[achievement_collection_states exploration_states].each do |table|
+        connection.exec_update(ActiveRecord::Base.sanitize_sql([<<~SQL, { user_id: }]))
+          INSERT INTO #{table} (user_id, revision, published_revision, created_at, updated_at)
+          SELECT id, 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM users WHERE id = :user_id
+          ON CONFLICT (user_id) DO UPDATE SET revision = #{table}.revision + 1, updated_at = CURRENT_TIMESTAMP
+        SQL
+      end
     end
 
     def connection

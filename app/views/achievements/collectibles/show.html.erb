@@ -1,0 +1,82 @@
+<% content_for :title, @set.name %>
+<div class="ach-page w-full my-5" <%= tag.attributes(data: achievement_modal_data) %>>
+  <%= render 'shared/page_header', title: @set.name %>
+  <%= link_to t('achievements.collections.title'), achievement_cards_path, class: 'btn btn-ghost btn-sm mb-4' %>
+  <%= render 'status' %>
+  <% sharing = @state&.current? && @card.publishable? ? { key: "collectible-#{@card.id}", shared: @card.sharing_enabled?, uuid: @card.sharing_uuid,
+       toggle_url: toggle_sharing_achievement_card_path(@card), url: @card.sharing_uuid ? shared_collectible_path(@card.sharing_uuid) : nil } : nil %>
+  <div class="flex flex-col lg:flex-row gap-8 items-start">
+    <div class="w-full max-w-xs shrink-0">
+      <%= render 'achievements/card', modal: true,
+                 share: sharing, **@set.card_attributes %>
+    </div>
+    <div class="max-w-xl min-w-0 space-y-5">
+      <p class="font-semibold"><%= @set.metric_label %></p>
+      <p><%= t("achievements.collections.rules.#{@card.series}") %></p>
+      <% if @card.series == 'city' %>
+        <p><%= link_to t('achievements.collections.open_map'), map_path(exploration_city: @card.subject_key, exploration_snapshot: @card.data['snapshot_id']), class: 'btn btn-sm' %></p>
+        <% next_threshold = Achievements::CityRule::THRESHOLDS.find { |threshold| threshold > @card.data['progress'] } %>
+        <% if next_threshold %><p><%= t('achievements.collections.city_next', target: next_threshold, remaining: format('%.1f', next_threshold - @card.data['progress'])) %></p><% end %>
+        <p class="text-sm"><%= @card.data.dig('source', 'attribution') %> · <%= @card.data.dig('source', 'catalog_version') %></p>
+        <p><%= link_to t('achievements.collections.source_boundary'), @card.data.dig('source', 'source_url'), class: 'link', rel: 'noopener', target: '_blank' %></p>
+        <%= form_with url: achievement_city_path(@card.city_selection), method: :patch, class: 'space-y-2' do |form| %>
+          <label class="flex gap-2 items-center"><%= form.check_box :share_mosaic, checked: @card.city_selection.share_mosaic?, name: 'share_mosaic', class: 'checkbox checkbox-sm' %><%= t('achievements.collections.share_mosaic') %></label>
+          <p class="text-sm"><%= t('achievements.collections.mosaic_privacy_note') %></p>
+          <%= form.submit t('achievements.ui.apply'), class: 'btn btn-sm' %>
+        <% end %>
+      <% end %>
+      <% if @card.geographic? %>
+        <p class="text-sm"><%= t('achievements.collections.public_privacy_note') %></p>
+        <% if %w[park parks].include?(@card.series) %><p class="text-sm"><%= t('achievements.collections.nature_catalog_note') %></p><% end %>
+        <% if @card.series == 'park' %>
+          <p class="text-sm"><%= @card.data.dig('source', 'attribution') %> · <%= @card.data.dig('source', 'catalog_version') %></p>
+          <% if @card.data.dig('source', 'source_url') %><p><%= link_to t('achievements.collections.source_boundary'), @card.data.dig('source', 'source_url'), class: 'link', rel: 'noopener', target: '_blank' %></p><% end %>
+        <% end %>
+      <% end %>
+      <% if @card.data['status'] == 'timezone_required' %>
+        <p role="status"><%= t('achievements.collections.timezone_required') %></p>
+      <% end %>
+      <% if @card.data['last_visit'] %>
+        <p><%= t('achievements.collections.last_visit', date: l(Time.iso8601(@card.data['last_visit']).in_time_zone(@card.data['timezone'] || 'UTC').to_date)) %></p>
+      <% end %>
+      <ul class="space-y-2" data-testid="collectible-evidence">
+        <% @set.evidence_rows.each do |row| %>
+          <li><strong><%= row[:label] %></strong><% if row[:at] %> · <%= l(row[:at].to_date, format: :long) %><% end %></li>
+        <% end %>
+      </ul>
+      <% history = @set.history_rows %>
+      <% if history.any? %>
+        <details>
+          <summary class="cursor-pointer"><%= t('achievements.collections.level_history') %></summary>
+          <ul class="space-y-2 mt-3">
+            <% history.each do |row| %>
+              <li><%= t("achievements.cards.rarity.#{row[:rarity].downcase}") %> · <%= t("achievements.collections.history_#{row[:kind]}") %> · <%= l(row[:at].to_date, format: :long) %>
+                <span class="text-sm ach-muted">(<%= t('achievements.collections.detected_on', date: l(row[:detected_at].to_date)) %>)</span>
+              </li>
+            <% end %>
+          </ul>
+        </details>
+      <% end %>
+      <% if @card.selection %>
+        <p><%= link_to @card.selection.place.name, place_path(@card.selection.place), class: 'link' %></p>
+        <%= button_to t('achievements.collections.remove'), achievement_selection_path(@card.selection), method: :delete, class: 'btn btn-sm btn-ghost' %>
+        <details>
+          <summary class="cursor-pointer"><%= t('achievements.collections.timezone', zone: @card.data['timezone'] || '—') %></summary>
+          <%= form_with url: achievement_selection_path(@card.selection), method: :patch, class: 'flex flex-wrap gap-2 my-3' do |form| %>
+            <%= form.label :timezone, t('achievements.collections.choose_timezone'), class: 'w-full' %>
+            <%= form.text_field :timezone, value: @card.selection.timezone, placeholder: 'Europe/Berlin', list: 'collection-timezones', class: 'input input-bordered min-w-0 max-w-full', required: true %>
+            <%= form.submit t('achievements.ui.apply'), class: 'btn' %>
+          <% end %>
+          <datalist id="collection-timezones"><% TZInfo::Timezone.all_identifiers.each do |zone| %><option value="<%= zone %>"><% end %></datalist>
+        </details>
+      <% end %>
+      <% if @card.privacy_hidden? %>
+        <p><%= t('achievements.collections.private_place') %></p>
+      <% elsif sharing %>
+        <%= button_to @card.sharing_enabled? ? t('achievements.ui.disable_sharing') : t('achievements.ui.enable_sharing'), toggle_sharing_achievement_card_path(@card), method: :patch, class: 'btn btn-primary' %>
+        <% if @card.sharing_enabled? %><%= link_to t('achievements.ui.public_link'), shared_collectible_path(@card.sharing_uuid), class: 'btn btn-ghost' %><% end %>
+      <% end %>
+    </div>
+  </div>
+  <%= render 'achievements/card_modal' %>
+</div>
