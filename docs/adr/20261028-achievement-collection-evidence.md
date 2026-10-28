@@ -38,6 +38,15 @@ work instead of calculating history in requests. Initial and dataset backfills
 are silent; more than five new cards produce one notification digest and the
 existing unlock deck.
 
+Single-owner atomic imports reuse `dawarich.defer_revisions`: triggers defer
+invalidation, and the outermost import transaction bumps collection and
+exploration state once just before monthly revisions and commit. This avoids
+holding shared owner-state row locks throughout ingestion while preserving an
+atomic source/revision fence. Nested import blocks keep deferral; a rollback
+publishes neither points nor revision changes. Final bumps follow source-trigger
+lock order (collection, exploration, monthly revisions).
+
+
 Extend the existing exploration implementation from the local
 `country-exploration-ui` worktree with `kind`, local timezone and provenance on
 territories. Countries, cities and parks live in immutable dataset versions;

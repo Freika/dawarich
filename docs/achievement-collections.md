@@ -123,6 +123,13 @@ current state, collectible snapshots and the event journal. Statement-level SQL
 triggers cover bulk writes as well as model callbacks. Both schema-dumper hooks
 restore triggers after `db:schema:load`; a clean-schema smoke test verifies this.
 
+During a single-owner atomic import, both trigger families respect the existing
+transaction-local `dawarich.defer_revisions` setting. The outermost
+`Revisions::ImportTransaction` bumps collection and exploration state once after
+the import block, before monthly point/track revisions and commit. This follows
+source-trigger lock order and keeps live point writes free during a long import.
+Nested blocks retain deferral; rollback leaves the prior state intact.
+
 `Achievements::CollectionCheckJob` runs concrete temporal/geographic rules and
 uses `Exploration::Rebuild` when cities are selected. `Exploration::RebuildJob`
 serves map fog. Their five-minute refresh jobs recover dirty/unbuilt state;
@@ -143,8 +150,14 @@ Existing country award permanence and disputed-area rules are unchanged.
 Use an isolated PostGIS/Redis environment with synthetic fixtures. Run the
 achievement/exploration/map-fog/request suites, Places merge/orphan suites and
 transportation classifier suites, plus `npm test` and RuboCop on changed Ruby.
-The complete app RSpec suite has not been required/run for this local scope;
-the collection implementation passed a 419-example aggregate and 742 JavaScript tests. The globe artwork follow-up passes 26 targeted Ruby examples and the full 745-test JavaScript suite. Browser checks cover seven
+The collection implementation initially passed a 419-example aggregate and
+742 JavaScript tests. The globe follow-up passed 26 targeted Ruby examples and
+745 JavaScript tests. PR preparation ran the complete app RSpec suite: 12,484
+examples, nine failures (locale key types, atomic-import state-lock contention,
+and obsolete fog-mode expectations). Those failures were fixed; the post-fix
+combined achievement/exploration/transportation/revision/request/regression run
+passes 430 examples, with 105 changed Ruby/Gemfile paths passing RuboCop. The
+complete app suite was not repeated after these fixes. Browser checks cover seven
 collection views at 1280/375/320 px, expanded cards, light/dark, anonymous embed/OG
 and city-map snapshot links. A separate schema-load database confirms bulk
 invalidation survives fresh installation. No real traces or accounts are used.

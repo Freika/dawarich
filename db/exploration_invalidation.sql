@@ -3,6 +3,7 @@
 CREATE OR REPLACE FUNCTION invalidate_exploration() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE owners_sql text;
 BEGIN
+  IF current_setting('dawarich.defer_revisions', true) = 'on' THEN RETURN NULL; END IF;
   IF TG_TABLE_NAME = 'track_segments' THEN
     owners_sql := CASE TG_OP
       WHEN 'INSERT' THEN 'SELECT DISTINCT tracks.user_id FROM new_rows r JOIN tracks ON tracks.id = r.track_id'

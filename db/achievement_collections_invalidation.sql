@@ -2,6 +2,7 @@ CREATE OR REPLACE FUNCTION invalidate_achievement_collections() RETURNS trigger
 LANGUAGE plpgsql AS $$
 DECLARE source_sql text;
 BEGIN
+  IF current_setting('dawarich.defer_revisions', true) = 'on' THEN RETURN NULL; END IF;
   IF TG_OP = 'INSERT' THEN
     source_sql := 'SELECT user_id FROM new_rows';
   ELSIF TG_OP = 'DELETE' THEN

@@ -129,10 +129,10 @@ en:
         summer: Summer
         autumn: Autumn
       periods:
-        0: December–February
-        1: March–May
-        2: June–August
-        3: September–November
+        '0': December–February
+        '1': March–May
+        '2': June–August
+        '3': September–November
       level_history: Level history
       history_earned: Unlocked
       history_revoked: Revoked
