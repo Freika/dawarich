@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Start historical exploration rebuilds only after opening exploration or selecting a city, and keep retrying interrupted first calculations.
 - Ignore future-dated points when opening explored map cells and awarding city achievement levels.
+- Full-history visit redetection now completes when legacy visits contain points without coordinates, preserving confirmed visits that have no usable observations (#3931).
 
 ## [1.19.0] - 2026-10-27, Berlin
 

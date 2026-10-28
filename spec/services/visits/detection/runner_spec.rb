@@ -161,6 +161,41 @@ RSpec.describe Visits::Detection::Runner do
     expect(created.first.confidence_breakdown['dwell'].to_f).to eq(1.0)
   end
 
+  it 'ignores coordinate-less owned points when rescoring across a batch boundary' do
+    month_edge = Time.zone.parse('2026-02-01 00:00:00')
+    first_fix = month_edge - 15.minutes
+    25.times do |i|
+      create(:point, user: user, lonlat: 'POINT(12.3712 51.3402)',
+                     timestamp: first_fix.to_i + (i * 180), accuracy: 10)
+    end
+    invalid_ids = []
+    allow_any_instance_of(Visits::Detection::Persister).to receive(:call)
+      .and_wrap_original do |original, *args, **kwargs|
+      visits = original.call(*args, **kwargs)
+      visits.each do |visit|
+        point = create(:point, user: user, visit: visit, lonlat: 'POINT(12.3712 51.3402)',
+                               timestamp: visit.started_at.to_i + 1, accuracy: 1000)
+        point.update_columns(lonlat: nil)
+        invalid_ids << point.id
+      end
+      visits
+    end
+
+    created = run(from: Time.zone.parse('2026-01-01 00:00:00').to_i,
+                  to: Time.zone.parse('2026-02-28 00:00:00').to_i)
+
+    expect(invalid_ids.size).to be >= 2
+    expect(created.size).to eq(1)
+    visit = created.first
+    expect(Point.where(id: invalid_ids).pluck(:visit_id).uniq).to eq([visit.id])
+    expect(visit.confidence_breakdown['dwell'].to_f).to eq(1.0)
+    expect(visit.confidence_breakdown['accuracy'].to_f).to eq(1.0)
+    expected = visit.attributes.slice('confidence', 'confidence_breakdown')
+    valid_points = Point.where(visit_id: visit.id).where.not(lonlat: nil).to_a
+    Visits::Detection::VisitRescore.call(visit, Visits::Detection::Policy.for(user), points: valid_points)
+    expect(visit.reload.attributes.slice('confidence', 'confidence_breakdown')).to eq(expected)
+  end
+
   it 'is idempotent across full re-runs' do
     seed_scenario(:home_gap)
 
