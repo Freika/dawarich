@@ -7,7 +7,7 @@ module Sortable
 
   def sorted(scope)
     if sort_column == 'byte_size'
-      scope.joins(file_attachment: :blob)
+      scope.left_joins(file_attachment: :blob)
            .order(Arel.sql('active_storage_blobs.byte_size').public_send(sort_direction))
     else
       scope.order(sort_column => sort_direction)

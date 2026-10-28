@@ -38,6 +38,21 @@ RSpec.describe 'Import source files', type: :request do
     expect(import.reload.file).to be_attached
   end
 
+  it 'keeps imports without source files visible when sorting by file size in either direction' do
+    retained = create(:import, user: user, source: :owntracks, status: :completed)
+    retained.file.attach(io: StringIO.new('another synthetic source'), filename: 'retained.json')
+    foreign = create(:import, name: 'Another owners synthetic import')
+    delete source_file_import_path(import)
+
+    %w[asc desc].each do |direction|
+      get imports_path, params: { sort_by: 'byte_size', order_by: direction }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(import.name, retained.name)
+      expect(response.body).not_to include(foreign.name)
+    end
+  end
+
   it 'refuses processing imports even with a direct request' do
     import.update_columns(status: Import.statuses[:processing])
     delete source_file_import_path(import)

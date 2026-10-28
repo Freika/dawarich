@@ -61,3 +61,9 @@ Screenshots:
 Full unfiltered RSpec, the separate private browser E2E repository, physical devices and remote storage providers were not tested. PostgreSQL/Active Storage shared-blob behavior was exercised on local Disk storage. The new migration must be applied and all web/worker processes restarted to use the common source lock. Pending/running extraction is deliberately never expired merely to enable file removal. Restore archives and API-generated Immich/PhotoPrism imports remain excluded, with an explanation in the UI.
 
 No push, PR, merge or deployment. Task-owned app/database/Redis services are stopped after verification; the worktree and committed evidence remain available for review.
+
+## Publication review follow-up
+
+Two independent local E/Q/P rounds approved the implementation. One adjacent minor issue was reproduced and fixed before publication: size sorting used an inner attachment join, hiding retained imports once the file was removed. The shared sorting helper now uses a LEFT JOIN; a request regression covers both directions and owner isolation. The new example fails with the former helper and passes with the change. All 24 Import/Export request examples and RuboCop on 25 changed Ruby files pass. Original source-removal behavior and screenshots are unchanged.
+
+The earlier no-push/no-PR statements above describe the original local implementation handoff. Subsequent publication to a OneDev PR targeting `dev` was explicitly authorized; merge and deployment remain outside this work. Published PR URL, head and final formal E/Q/P validation are recorded in the linked AFFiNE ADR and PR description.

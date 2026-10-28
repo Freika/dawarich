@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- Imports remain visible when sorted by file size after their source file is removed. (#3531)
 - Deleting a whole import now explicitly warns that its points and extracted data will be deleted, both in the list and on its detail page. (#3531)
 
 ## [1.19.0] - 2026-10-27, Berlin
