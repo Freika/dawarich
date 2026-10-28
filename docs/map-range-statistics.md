@@ -28,6 +28,7 @@ Separate local PostgreSQL/Redis containers, separate test/browser databases and 
 
 - 59 focused RSpec examples passed: range/API contract, adjacent boundaries, multiple routes, stored Track boundaries, trackers/anomalies, account timezone, empty/single-point ranges, import ownership, a real privacy zone, actual Cloud Lite window, source-mutation cache invalidation, invalid ranges, authentication and timeout. Existing point-tile tests are included. Swagger generation also passed 273 dry-run examples (not 273 executed endpoint checks).
 - Full `npm test`: 740 passed. New tests cover original-meter conversion, empty/error states, ignored delayed responses, disconnect and invalidation coalescing.
+- All seven locale dictionaries were checked with counts 0, 1 and 2 (21 variants), including the Rails Chinese fallback for singular counts.
 - RuboCop: all four new Ruby/spec files pass. Biome formatting and `git diff --check` pass.
 - Visible Chrome: desktop 1440×900 and mobile 390×844; loader dismissal, two synthetic routes, km→mi→km, account-local partial-period form while the browser uses America/New_York, empty period, rapid SPA switches with one delayed real response and German copy all pass. No page errors. Browser screenshots below; additional screenshots/results are in `tmp/screenshots/3257/` in the review worktree.
 
