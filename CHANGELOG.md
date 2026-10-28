@@ -4,7 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.20.0] - 2026-10-28, Berlin
+
+### ⚠️ Upgrade notes
+
+- Run the database migrations before starting the updated application and workers. They add exploration and achievement data, import download-preparation state and durable exploration activation; existing points are retained.
+- The initial geographic calculation runs in the background and can take longer while local boundary data is installed. The initial city and national-park catalog covers Berlin, Hamburg, Dresden, Harz, Saxon Switzerland and Eifel; it is not a worldwide catalog.
 
 ### Added
 
@@ -15,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Click a photo cluster on the map to browse its photos without zooming. The gallery shows 24 thumbnails per page, supports phones and keyboard navigation, and keeps photos with identical coordinates accessible at high zoom. (#3652)
 - The map keeps the point count and distance for the selected period visible, including custom times and empty ranges. Distance follows your km/mi setting. (#3257)
 - Delete an import's source file from its detail page to free storage while keeping its points, visits, places and tracks. The confirmation explains that downloading and operations that need the file will no longer be available. Available for completed or failed imports when the file is not in use; account restore archives and API-generated photo imports are excluded. (#3531)
+- Dismiss a batch of flash messages with Close all notifications. Compact responsive messages keep individual dismissal, visible errors and keyboard controls. (#3765)
 
 ### Changed
 
