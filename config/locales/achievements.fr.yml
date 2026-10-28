@@ -11,6 +11,9 @@ fr:
       dismiss: Fermer cette pile
       view: Voir %{name} dans votre collection
     ui:
+      themes: "Collections thématiques"
+      themes_hint: "De petites collections de pays autour d’un thème commun."
+      theme_visit_note: "Un pays visité compte pour cette collection même si ses régions sont incomplètes."
       title: Succès
       summary: Résumé
       continents: Continents
@@ -58,12 +61,18 @@ fr:
         in_progress: En cours
         locked: Verrouillées
     cards:
+      themes:
+        thematic_benelux_v1: "Benelux"
+        thematic_baltics_v1: "Pays baltes"
+        thematic_scandinavia_v1: "Scandinavie"
       explorer_name: "Explorateur de %{place}"
       description:
+        thematic_set: "Passez du temps dans les %{count} pays de %{place}."
         continent: "Passez du temps dans les %{count} pays et territoires de %{place}."
         regions: "Passez du temps dans les %{count} régions de %{place}."
         country: "Passez du temps en %{place}."
       status:
+        visited_on: "Visité · %{date}"
         locked: Verrouillée
         unlocked: Débloquée
         unlocked_on: "Débloquée · %{date}"

@@ -60,6 +60,9 @@
             <p class="ach-muted ach-threshold-note">
               <%= t('achievements.ui.threshold_note', count: @threshold_minutes) %>
             </p>
+            <% if @set.definition.thematic? %>
+              <p class="ach-muted"><%= t('achievements.ui.theme_visit_note') %></p>
+            <% end %>
           </div>
           <figure class="ach-set-preview" data-card-modal-target="featured">
             <%= render 'card', celebrate: @set.celebrate?, modal: true,

@@ -9,7 +9,7 @@ class AchievementsController < ApplicationController
 
   def index
     @sets = @continents
-    mark_celebrated(@continents + @orphans)
+    mark_celebrated(@continents + @orphans + @themes)
   end
 
   def show
@@ -86,6 +86,7 @@ class AchievementsController < ApplicationController
 
     by_kind = Achievements::Registry.all.group_by(&:kind)
     @continents = presenters_for(by_kind.fetch('continent', []))
+    @themes = presenters_for(by_kind.fetch('thematic_set', []))
     @orphans = presenters_for(by_kind.fetch('country', []).select { |set| set.parent_key.nil? })
     @summary = Achievements::SummaryPresenter.new(state: @state)
   end

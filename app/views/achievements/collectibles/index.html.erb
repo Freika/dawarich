@@ -1,0 +1,63 @@
+<% content_for :title, t('achievements.collections.title') %>
+<div class="ach-page w-full my-5" <%= tag.attributes(data: achievement_modal_data) %>>
+  <%= render 'shared/page_header', title: t('achievements.collections.title') %>
+  <%= link_to t('achievements.ui.title'), achievements_path, class: 'btn btn-ghost btn-sm mb-4' %>
+  <%= render 'status' %>
+  <p class="mb-6 max-w-2xl"><%= t('achievements.collections.intro') %></p>
+  <%= form_with url: achievement_cards_path, method: :get, class: 'flex flex-wrap gap-2 mb-6' do |form| %>
+    <%= form.label :series, t('achievements.collections.filter_series'), class: 'sr-only' %>
+    <%= form.select :series, Achievements::Collectible::SERIES.map { |series| [t("achievements.collections.series.#{series}"), series] }, { include_blank: t('achievements.collections.all_series'), selected: @series }, class: 'select select-bordered' %>
+    <%= form.submit t('achievements.ui.apply'), class: 'btn' %>
+  <% end %>
+  <details class="max-w-2xl mb-5">
+    <summary class="text-lg font-semibold cursor-pointer"><%= t('achievements.collections.cities') %></summary>
+    <p class="mb-3"><%= t('achievements.collections.city_catalog_note') %></p>
+    <% if @cities.empty? %><p role="status"><%= t('achievements.collections.catalog_preparing') %></p><% end %>
+    <ul class="divide-y divide-base-300">
+      <% @cities.each do |city| %>
+        <% selection = @city_selections.find { |item| item.territory_code == city.code } %>
+        <li class="py-3 flex items-center justify-between gap-3">
+          <span><%= city.name %></span>
+          <% if selection %>
+            <%= button_to t('achievements.collections.remove'), achievement_city_path(selection), method: :delete, class: 'btn btn-sm btn-ghost' %>
+          <% else %>
+            <%= button_to t('achievements.collections.add'), achievement_cities_path, params: { territory_code: city.code }, class: 'btn btn-sm btn-primary' %>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  </details>
+  <% if @cards.any? %>
+    <div class="ach-grid mb-8" data-testid="personal-achievement-cards">
+      <% @cards.each do |card| %>
+        <%= link_to achievement_card_path(card), class: 'ach-card-link' do %>
+          <%= render 'achievements/card', **Achievements::CollectiblePresenter.new(card).card_attributes %>
+        <% end %>
+      <% end %>
+    </div>
+    <div class="flex justify-center mb-8"><%= paginate @cards %></div>
+  <% end %>
+  <section aria-labelledby="collection-places" class="max-w-2xl">
+    <h2 id="collection-places" class="text-xl font-semibold mb-3"><%= t('achievements.collections.places') %></h2>
+    <%= form_with url: achievement_cards_path, method: :get, data: { turbo: false }, class: 'flex gap-2 mb-4', html: { role: 'search' } do |form| %>
+      <%= form.label :q, t('achievements.collections.search_places'), class: 'sr-only' %>
+      <%= form.search_field :q, value: @query, class: 'input input-bordered w-full', placeholder: t('achievements.collections.search_places') %>
+      <%= form.submit t('achievements.ui.apply'), class: 'btn' %>
+    <% end %>
+    <ul class="divide-y divide-base-300">
+      <% @places.each do |place| %>
+        <% selection = @selections.find { |item| item.place_id == place.id } %>
+        <li class="py-3 flex items-center justify-between gap-3">
+          <%= link_to place.name, place_path(place), class: 'link min-w-0 break-words' %>
+          <% if selection %>
+            <%= button_to t('achievements.collections.remove'), achievement_selection_path(selection), method: :delete, class: 'btn btn-sm btn-ghost' %>
+          <% else %>
+            <%= button_to t('achievements.collections.add'), achievement_selections_path, params: { place_id: place.id }, class: 'btn btn-sm btn-primary' %>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+    <% if @places.empty? %><p class="ach-muted"><%= t('achievements.collections.no_places') %> <%= link_to t('places.index.title', default: 'Places'), places_path, class: 'link' %></p><% end %>
+  </section>
+  <%= render 'achievements/card_modal' %>
+</div>

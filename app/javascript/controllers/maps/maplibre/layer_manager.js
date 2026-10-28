@@ -510,13 +510,13 @@ export class LayerManager {
   }
 
   _addFogLayer(pointsGeoJSON) {
-    const tiledFog = (this.settings.fogOfWarMode || "points") !== "hexagons"
+    const tiledFog = false
     // Always create fog layer for backward compatibility
     if (!this.layers.fogLayer) {
       this.layers.fogLayer = new FogLayer(this.map, {
         clearRadius: this.settings.fogOfWarRadius || 1000,
         visible: this.settings.fogEnabled || false,
-        mode: this.settings.fogOfWarMode || "points",
+        mode: "hexagons",
         api: this.api,
         controller: this.controller,
         tiledSource: tiledFog,

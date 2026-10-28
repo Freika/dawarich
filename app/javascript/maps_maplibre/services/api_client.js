@@ -67,15 +67,16 @@ export class ApiClient {
   }
 
   /**
-   * Fetch precalculated fog-of-war H3 cell ids for date range
+   * Fetch all-history H3 openings; the date range only highlights first discoveries
    * @param {Object} options - { start_at, end_at }
    * @returns {Promise<Object>} { h3_indexes, metadata }
    */
-  async fetchFogHexagons({ start_at, end_at }) {
+  async fetchFogHexagons({ start_at, end_at, snapshot_id }) {
     const params = new URLSearchParams({
       start_date: start_at,
       end_date: end_at,
     })
+    if (snapshot_id) params.set("snapshot_id", snapshot_id)
     maskPrivacyZones(params)
 
     const response = await fetch(

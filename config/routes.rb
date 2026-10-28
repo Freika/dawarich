@@ -236,6 +236,16 @@ Rails.application.routes.draw do
   post 'achievements/unlocks/next', to: 'achievements/unlocks#next', as: :next_achievement_unlock
   post 'achievements/unlocks/:id/seen', to: 'achievements/unlocks#seen', as: :seen_achievement_unlock
   post 'achievements/unlocks/dismiss', to: 'achievements/unlocks#dismiss', as: :dismiss_achievement_unlocks
+  resources :achievement_selections, path: 'achievements/places', controller: 'achievements/selections',
+                                    only: %i[create update destroy]
+  resources :achievement_cities, path: 'achievements/cities', controller: 'achievements/cities',
+                                only: %i[create update destroy]
+  resources :achievement_cards, path: 'achievements/cards', controller: 'achievements/collectibles',
+                               only: %i[index show] do
+    member { patch :toggle_sharing }
+  end
+  get 'shared/achievement_cards/:uuid/og.png', to: 'shared/collectibles#image', as: :shared_collectible_image
+  get 'shared/achievement_cards/:uuid', to: 'shared/collectibles#show', as: :shared_collectible
   resources :achievements, only: %i[index show], param: :key do
     member do
       patch :toggle_sharing

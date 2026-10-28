@@ -31,6 +31,19 @@ RSpec.describe Achievements::OgImage do
     expect(Nokogiri::XML(svg).errors).to be_empty
   end
 
+  it 'preserves unvisited country outlines in a thematic social preview' do
+    allow(set).to receive(:card_attributes).and_return(
+      metric_label: '2/3 countries', earned_label: '2/3 countries',
+      silhouette: { viewbox: '0 0 100 100', path: 'M10 10 L90 10 L90 90 Z',
+                    unvisited_path: 'M50 10 L90 10 L90 90 Z' }
+    )
+
+    document = Nokogiri::XML(described_class.new(set).svg)
+    overlay = document.at_xpath('//*[local-name()="path" and @fill="#141d26"]')
+    expect(overlay['d']).to eq('M50 10 L90 10 L90 90 Z')
+    expect(document.errors).to be_empty
+  end
+
   it 'terminates a renderer that exceeds its timeout' do
     Dir.mktmpdir do |dir|
       pid_file = File.join(dir, 'renderer.pid')

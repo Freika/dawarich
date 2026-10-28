@@ -13,7 +13,7 @@ module AchievementsHelper
 
   def achievement_status_options(set)
     statuses = %w[all unlocked]
-    statuses << 'in_progress' if set.level == :country
+    statuses << 'in_progress' if set.level == :country && !set.definition.thematic?
     statuses << 'locked'
     statuses.map { |status| [t("achievements.ui.status.#{status}"), status] }
   end
@@ -26,8 +26,16 @@ module AchievementsHelper
   end
 
   def region_silhouette(silhouette)
+    paths = [tag.path(d: silhouette[:path])]
+    silhouette.fetch(:colors, []).each do |part|
+      paths << tag.path(d: part[:path], fill: part[:color], opacity: '0.65',
+                        data: { color: part[:color] }, 'fill-rule': 'evenodd')
+    end
+    if silhouette[:unvisited_path].present?
+      paths << tag.path(d: silhouette[:unvisited_path], class: 'geo-unvisited', data: { unvisited: true })
+    end
     tag.svg(
-      tag.path(d: silhouette[:path]),
+      safe_join(paths),
       viewBox: silhouette[:viewbox],
       preserveAspectRatio: 'xMidYMid meet',
       class: 'ach-silhouette-svg',

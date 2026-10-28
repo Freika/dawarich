@@ -48,6 +48,9 @@ export default class extends Controller {
     importId: { type: String, default: "" },
     privacyZonesFingerprint: { type: String, default: "" },
     currentPosition: Object,
+    explorationBounds: Array,
+    explorationSnapshot: String,
+    explorationMessages: Object,
   }
 
   static targets = [
@@ -164,6 +167,7 @@ export default class extends Controller {
     await this.settingsController.loadSettings()
     this.settings = this.settingsController.settings
     this.settings.timezone = this.timezoneValue
+    if (this.hasExplorationBoundsValue) this.settings.fogEnabled = true
 
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
@@ -337,14 +341,23 @@ export default class extends Controller {
       })
     }
 
-    this.loadMapData().then(() => {
-      if (this.settings?.familyEnabled) {
-        this.loadFamilyMembers()
-      }
-      if (anomaliesVisible(SettingsManager.getSettings())) {
-        this.layerVisibilityManager.refreshAnomalies({ enabled: true })
-      }
-    })
+    this.loadMapData({ fitBounds: !this.hasExplorationBoundsValue }).then(
+      () => {
+        if (this.hasExplorationBoundsValue) {
+          this.map.fitBounds(this.explorationBoundsValue, {
+            padding: 70,
+            maxZoom: 13,
+            duration: 0,
+          })
+        }
+        if (this.settings?.familyEnabled) {
+          this.loadFamilyMembers()
+        }
+        if (anomaliesVisible(SettingsManager.getSettings())) {
+          this.layerVisibilityManager.refreshAnomalies({ enabled: true })
+        }
+      },
+    )
 
     // Show family members list immediately (doesn't depend on layer)
     if (this.settings?.familyEnabled && this.hasFamilyMembersListTarget) {

@@ -1,0 +1,11 @@
+{
+  "version": "germany-pilot-20261028-v1",
+  "features": [
+    {"code": "city_osm_relation_62422", "osm_id": 62422, "kind": "city", "timezone": "Europe/Berlin"},
+    {"code": "city_osm_relation_62782", "osm_id": 62782, "kind": "city", "timezone": "Europe/Berlin"},
+    {"code": "city_osm_relation_191645", "osm_id": 191645, "kind": "city", "timezone": "Europe/Berlin"},
+    {"code": "park_osm_relation_90584", "osm_id": 90584, "kind": "park", "timezone": "Europe/Berlin"},
+    {"code": "park_osm_relation_1595534", "osm_id": 1595534, "kind": "park", "timezone": "Europe/Berlin"},
+    {"code": "park_osm_relation_2345991", "osm_id": 2345991, "kind": "park", "timezone": "Europe/Berlin"}
+  ]
+}

@@ -85,3 +85,33 @@ test("rejects degenerate geometry and escapes labels and asset attributes", () =
   assert.ok(!html.includes("<script>"))
   assert.ok(!html.includes(' onload="'))
 })
+
+test("keeps unvisited members outlined in the same frame as the complete collection", () => {
+  const html = spectralMarkup({
+    ...options,
+    silhouette: {
+      path: "M0 0L0 -1L2 -1L2 0Z",
+      unvisited_path: "M1 0L1 -1L2 -1L2 0Z",
+      viewbox: "0 -1 2 1",
+    },
+  }).html
+  assert.match(html, /class="geo-unvisited" d="M 150\.0000 /)
+  assert.ok(
+    html.indexOf('class="geo-unvisited"') >
+      html.indexOf('class="geo-foil-composite"'),
+  )
+  assert.ok(!spectralMarkup(options).html.includes('class="geo-unvisited"'))
+})
+
+test("rejects unsupported markup in an unvisited member path", () => {
+  assert.equal(
+    spectralMarkup({
+      ...options,
+      silhouette: {
+        ...options.silhouette,
+        unvisited_path: '\"><script>alert(1)</script>',
+      },
+    }),
+    "",
+  )
+})

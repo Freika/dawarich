@@ -22,6 +22,7 @@ function fixture(
     dialogOpen = false,
     restoredMaterial = false,
     locked = false,
+    unvisited = false,
   } = {},
 ) {
   const intersections = []
@@ -104,7 +105,8 @@ function fixture(
   }
   const fallbackSvg = {
     getAttribute: (name) => (name === "viewBox" ? "0 0 10 10" : null),
-    querySelector: () => fallbackPath,
+    querySelector: (selector) =>
+      selector === "[data-unvisited]" && !unvisited ? null : fallbackPath,
   }
   const controller = new AchievementCardController()
   controller.element = {
@@ -196,6 +198,11 @@ test("mount derives the silhouette from fallback SVG without secure-context APIs
   assert.match(options.uid, /^sc-/)
   assert.equal(controller.mounted, true)
   assert.equal(sizes.length, 1)
+})
+
+test("mount preserves a thematic collection's unvisited overlay during hydration", (t) => {
+  const { controller } = fixture(t, { unvisited: true })
+  assert.equal(controller.silhouette.unvisited_path, "M0 0L10 0L10 10Z")
 })
 
 test("a mounted card refits synchronously when moved into the preview and back", (t) => {
