@@ -199,6 +199,62 @@ RSpec.describe Visits::Detection::Persister do
     expect(late.reload.visit_id).to be_present
   end
 
+  describe 'when a re-run changes only part of the window' do
+    def row_versions(points)
+      Point.where(id: points.map(&:id)).order(:id).pluck(Arel.sql('xmin::text'))
+    end
+
+    it 'extends a growing stay in place without rewriting its claimed points' do
+      points = create_list(:point, 3, user: user)
+      visit = persist([stay(0, 3600, point_ids: points.map(&:id))]).first
+      versions = row_versions(points)
+
+      late = create(:point, user: user)
+      persisted = persist([stay(0, 4200, point_ids: points.map(&:id) + [late.id])])
+
+      expect(persisted.map(&:id)).to eq([visit.id])
+      expect(visit.reload.ended_at.to_i).to eq(base_ts + 4200)
+      expect(visit.duration).to eq(70)
+      expect(late.reload.visit_id).to eq(visit.id)
+      expect(row_versions(points)).to eq(versions)
+    end
+
+    it 'releases points that fall out of a kept stay' do
+      points = create_list(:point, 3, user: user)
+      visit = persist([stay(0, 3600, point_ids: points.map(&:id))]).first
+
+      persist([stay(0, 3000, point_ids: points.first(2).map(&:id))])
+
+      expect(points.map { |point| point.reload.visit_id }).to eq([visit.id, visit.id, nil])
+    end
+
+    it 'leaves an unchanged earlier stay and its points untouched' do
+      home = create_list(:point, 3, user: user)
+      work = create_list(:point, 3, user: user)
+      earlier = persist([stay(0, 3600, point_ids: home.map(&:id)),
+                         stay(7200, 10_800, name: 'Elsewhere', point_ids: work.map(&:id))]).first
+      versions = row_versions(home)
+
+      persist([stay(0, 3600, point_ids: home.map(&:id)),
+               stay(7200, 12_000, name: 'Elsewhere', point_ids: work.map(&:id))])
+
+      expect(Visit.exists?(earlier.id)).to be(true)
+      expect(row_versions(home)).to eq(versions)
+    end
+
+    it 'replaces a stay whose place changed' do
+      place = create(:place, user: user)
+      points = create_list(:point, 3, user: user)
+      before = persist([stay(0, 3600, point_ids: points.map(&:id))]).first
+
+      after = persist([stay(0, 3600, place: place, name: place.name, point_ids: points.map(&:id))]).first
+
+      expect(Visit.exists?(before.id)).to be(false)
+      expect(after.place_id).to eq(place.id)
+      expect(points.map { |point| point.reload.visit_id }.uniq).to eq([after.id])
+    end
+  end
+
   it 'keeps identical machine rows in place on a no-change re-run' do
     stays = [stay(0, 3600), stay(7200, 10_800, name: 'Elsewhere')]
     persist(stays)

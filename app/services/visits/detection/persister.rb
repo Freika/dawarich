@@ -5,8 +5,9 @@ module Visits
     # Overlay-aware write layer. Confirmed visits and tombstones are fixed
     # anchors: machine stays are trimmed around them by exact interval
     # exclusion (no fuzzy dedup). Machine `suggested` rows in the window are
-    # replaced wholesale in one transaction, which makes detection idempotent
-    # by construction. The per-user advisory xact lock lives HERE — the single
+    # reconciled against the new stays in one transaction: a row that still
+    # matches a stay is updated in place, the rest are replaced, so detection
+    # stays idempotent. The per-user advisory xact lock lives HERE — the single
     # lock primitive for every machine writer — so compute and geocoder I/O
     # stay outside any lock or transaction.
     class Persister
@@ -24,7 +25,7 @@ module Visits
       # Anchors are read under the lock so a visit confirmed mid-run can't be
       # overlapped; trimming is pure arithmetic and cheap enough to hold it.
       def call(stays, points_by_id: {})
-        created = []
+        persisted = []
         replaced = MachineVisitWipe::Result.new([], [])
         ActiveRecord::Base.transaction do
           acquire_user_lock
@@ -32,15 +33,18 @@ module Visits
           prepared = stays.flat_map { |stay| trim_to_anchors(stay, anchors, points_by_id) }
           next if unchanged?(prepared)
 
-          replaced = delete_machine_rows
-          prepared.each do |stay|
-            visit = insert_stay(stay)
-            created << visit if visit
+          pairs = pair_with_existing(prepared)
+          kept = pairs.select(&:last)
+          replaced = delete_machine_rows(except: kept.map(&:last))
+          kept.each { |stay, visit| release_points(visit, stay[:point_ids]) }
+          pairs.each do |stay, visit|
+            visit = visit ? refresh_stay(visit, stay) : insert_stay(stay)
+            persisted << visit if visit
           end
         end
         flush_replacement_side_effects(replaced)
 
-        created
+        persisted
       end
 
       private
@@ -90,8 +94,17 @@ module Visits
           prepared.sum { |stay| stay[:point_ids].size }
       end
 
-      def delete_machine_rows
-        MachineVisitWipe.call(machine_scope)
+      # A stay keeps the machine row that arrived at the same place at the same
+      # moment, so a stay that is still growing keeps its id and its claimed
+      # points instead of being wiped and rebuilt on every realtime run. Every
+      # rewrite of points.visit_id is a non-HOT update across all points indexes.
+      def pair_with_existing(prepared)
+        pool = machine_scope.to_a.group_by { |visit| [visit.started_at.to_i, visit.place_id, visit.area_id] }
+        prepared.map { |stay| [stay, pool[[stay[:start_ts], stay[:place]&.id, stay[:area]&.id]]&.shift] }
+      end
+
+      def delete_machine_rows(except:)
+        MachineVisitWipe.call(machine_scope.where.not(id: except.map(&:id)))
       end
 
       def flush_replacement_side_effects(replaced)
@@ -189,6 +202,25 @@ module Visits
         end
       rescue ActiveRecord::RecordNotUnique
         nil
+      end
+
+      def refresh_stay(visit, stay)
+        visit.update!(
+          ended_at: Time.zone.at(stay[:end_ts]),
+          duration: (stay[:end_ts] - stay[:start_ts]) / 60,
+          location_label: location_label_for(stay),
+          detection_version: Detection::VERSION,
+          confidence: stay[:confidence],
+          confidence_breakdown: stay[:confidence_breakdown] || {}
+        )
+        claim_points(stay[:point_ids], visit)
+        visit
+      end
+
+      # Runs for every kept row before any claim, so a point moving between
+      # two kept stays is free by the time its new stay claims it.
+      def release_points(visit, point_ids)
+        Point.where(visit_id: visit.id).where.not(id: Array(point_ids)).update_all(visit_id: nil)
       end
 
       def location_label_for(stay)
