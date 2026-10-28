@@ -424,6 +424,8 @@ Rails.application.routes.draw do
         resources :visited_cities, only: :index
       end
 
+      get 'maps/statistics', to: 'maps/statistics#index'
+
       namespace :points do
         get 'tracked_months', to: 'tracked_months#index'
       end

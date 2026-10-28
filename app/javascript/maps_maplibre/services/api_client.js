@@ -92,6 +92,18 @@ export class ApiClient {
     return response.json()
   }
 
+  async fetchRangeStatistics({ start_at, end_at, signal }) {
+    const params = new URLSearchParams({ start_at, end_at })
+    if (this.importId) params.set("import_id", this.importId)
+    const response = await fetch(`${this.baseURL}/maps/statistics?${params}`, {
+      headers: this.getHeaders(),
+      signal,
+    })
+    if (!response.ok)
+      throw new Error(`Failed to fetch statistics: ${response.status}`)
+    return response.json()
+  }
+
   /** Fetch a bounded extent for tile-backed Point and Track history. */
   async fetchHistoryBounds({ start_at, end_at }) {
     const params = new URLSearchParams({

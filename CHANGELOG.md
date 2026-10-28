@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- The map keeps the point count and distance for the selected period visible, including custom times and empty ranges. Distance follows your km/mi setting. (#3257)
+
 ## [1.19.0] - 2026-10-27, Berlin
 
 ### ⚠️ Upgrade notes

@@ -37,6 +37,12 @@
     <span data-maps--maplibre-target="progressBadgeText"><%= t('.loading') %></span>
   </div>
 
+  <div class="map-range-statistics" data-testid="map-range-statistics"
+       role="status" aria-live="polite" aria-atomic="true"
+       title="<%= t('javascript.range_statistics.scope') %>">
+    <%= t('.loading') %>
+  </div>
+
   <!-- Map-edge button cluster (top-right corner) -->
   <%= render 'button_cluster' %>
 
