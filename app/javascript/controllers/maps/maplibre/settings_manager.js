@@ -955,6 +955,7 @@ export class SettingsController {
   updateDistanceUnit(event) {
     const unit = event.target.value
     this.settings.distance_unit = unit
+    this.controller.rangeStatistics?.setUnit(unit)
     SettingsManager.updateSetting("distance_unit", unit)
   }
 
@@ -1041,6 +1042,7 @@ export class SettingsController {
       await SettingsManager.updateSetting(key, value)
     }
 
+    this.controller.rangeStatistics?.refresh()
     document.dispatchEvent(
       new CustomEvent("map-settings:saved", { detail: { scope: "form" } }),
     )

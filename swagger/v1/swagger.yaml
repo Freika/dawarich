@@ -2737,6 +2737,62 @@ paths:
           description: missing or invalid dates
         '401':
           description: unauthorized
+  "/api/v1/maps/statistics":
+    get:
+      summary: Returns point count and GPS distance for an exact map period
+      tags:
+      - Maps
+      description: Own non-anomalous points within the plan window, with privacy zones
+        masked. Inclusive timestamps; offsetless times use the account timezone. Distance
+        is in meters, split by tracker, recorded track boundaries and the route time
+        threshold. Family history and manually added flights are excluded.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: start_at
+        in: query
+        required: true
+        description: ISO 8601 time or Unix seconds
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        required: true
+        description: ISO 8601 time or Unix seconds
+        schema:
+          type: string
+      - name: import_id
+        in: query
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - points
+                - distance_meters
+                properties:
+                  points:
+                    type: integer
+                    minimum: 0
+                  distance_meters:
+                    type: number
+                    minimum: 0
+        '400':
+          description: invalid or missing range
+        '401':
+          description: unauthorized
+        '503':
+          description: query timeout; retry with a shorter period
   "/api/v1/notes":
     get:
       summary: List notes

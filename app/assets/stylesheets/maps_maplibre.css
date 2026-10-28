@@ -536,3 +536,19 @@ html.dark .map-html-label {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
+
+/* Persistent period totals sit above MapLibre's attribution and scale. */
+.map-range-statistics {
+  position: absolute;
+  right: 12px;
+  bottom: 48px;
+  z-index: 10;
+  max-width: calc(100% - 24px);
+  padding: 7px 10px;
+  border: 1px solid oklch(var(--bc) / 0.15);
+  border-radius: 8px;
+  background: oklch(var(--b1));
+  color: oklch(var(--bc));
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}

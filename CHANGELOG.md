@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Collect Benelux, Baltics and Scandinavia achievement sets by visiting their three member countries. Each set shows visited countries, dates and the countries still to explore, with public sharing available when enabled. Existing location history counts automatically.
 - Test a geocoding provider with your own coordinates in Instance settings, including providers with regional coverage. Leave both fields blank to use the existing default coordinates. (#3714)
 - Click a photo cluster on the map to browse its photos without zooming. The gallery shows 24 thumbnails per page, supports phones and keyboard navigation, and keeps photos with identical coordinates accessible at high zoom. (#3652)
+- The map keeps the point count and distance for the selected period visible, including custom times and empty ranges. Distance follows your km/mi setting. (#3257)
 
 ### Changed
 

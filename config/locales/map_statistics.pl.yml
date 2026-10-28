@@ -1,0 +1,10 @@
+pl:
+  javascript:
+    range_statistics:
+      scope: "Twoje punkty z wybranego okresu, bez stref prywatnych i historii rodziny."
+      unavailable: "Statystyki niedostępne"
+      summary:
+        one: "%{points} punkt · %{distance} %{unit}"
+        few: "%{points} punkty · %{distance} %{unit}"
+        many: "%{points} punktów · %{distance} %{unit}"
+        other: "%{points} punktu · %{distance} %{unit}"
