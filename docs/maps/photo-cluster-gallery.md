@@ -3,7 +3,7 @@
 Issue: [#3652](https://github.com/Freika/dawarich/issues/3652). Last updated: 2026-10-28.
 
 Status: implemented for review on `codex/photo-cluster-gallery-3652`, based on
-`origin/dev` at `13ec7af9e`. Not published or released.
+`origin/dev` at `13ec7af9e`. Release pending.
 
 ## Behavior
 
@@ -81,12 +81,30 @@ date updates; error/retry/empty; hide/show; style teardown/rebuild; and single-p
 popups. Screenshots and browser output are written under `tmp/photo-cluster-evidence/`.
 The Node suite additionally covers overlapping page responses and idempotent cleanup.
 
-2026-10-28: 741 Node tests passed; Biome passed for changed JS/CSS and browser checks;
-`git diff --check` passed. The layer-order regression's embedded Node harness passed
-for initial, date-change and reload phases. Ruby/RSpec itself was not run: this
-worktree requires Ruby 4.0.9, but the available executables were system 2.6.10 and
-Homebrew 4.0.3. No Ruby runtime installation, DB changes or live integration tests
-were performed. The full Rails page and glyph rendering remain outside this harness.
+2026-10-28 verification: 741 Node tests passed; Biome passed for changed JS/CSS
+and browser checks; `git diff --check` passed. Ruby 4.0.9 and Bundler dependencies
+became available during finish review. The focused layer-order/photo API/shared
+API/serializer/service set passed 56 examples, followed by 269 passing nested
+Swagger examples. RuboCop passed for the changed regression spec.
+
+A second browser check exercised the actual Rails Map v2 page with a synthetic
+signed-in user on a dedicated PostGIS database and Redis instance. It loaded 102
+synthetic photos through a loopback Immich stub, then used the real authenticated
+Rails thumbnail proxy to display JPEGs. Importmap resolution, Rails translations,
+actual `dawarich-dark` theme, a 101-photo cluster, 24-item pagination, detail/back,
+Escape/focus, and desktop/mobile viewports passed. Evidence is in
+`tmp/photo-cluster-evidence/rails-{desktop,mobile}.png` and `rails-gallery-check.log`.
+A regression first failed for the real dark theme, then passed after both gallery
+and detail selectors were corrected. The standalone harness now uses actual
+Dawarich theme names and asserts the computed dialog background.
+
+The full Rails UI check observed pre-existing 404s for empty hexagon bounds and
+the default cluster font stack at the external glyph host; the new gallery had no
+failed thumbnail loads. Cluster count glyph rendering was therefore not verified.
+No live Immich or production data was used. Puma's default forked workers crashed
+in the local pg native extension; the UI check passed with `WEB_CONCURRENCY=0`.
+A full RSpec run uses another isolated test database; its outcome is recorded
+separately in the PR, rather than inferred from these focused checks or remote CI.
 
 Shared knowledge-base counterpart: **Dawarich — Map photo cluster gallery**,
 AFFiNE docId `oRqgN2k5XyAzgoGWhFUWO`.

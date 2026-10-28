@@ -140,6 +140,12 @@ async function verifyPhotoClusterGallery(page) {
       }),
     "Pagination out of viewport",
   )
+  check(
+    await dialog.evaluate(
+      (el) => getComputedStyle(el).backgroundColor === "rgb(31, 41, 55)",
+    ),
+    "Actual Dawarich dark theme must style the gallery",
+  )
   await page.screenshot({ path: "tmp/photo-cluster-evidence/mobile-dark.png" })
   await thumbnails.first().click()
   await page.screenshot({

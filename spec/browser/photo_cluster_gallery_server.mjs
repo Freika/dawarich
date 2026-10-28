@@ -16,7 +16,7 @@ const labels = Object.fromEntries(
     JSON.parse(value),
   ]),
 )
-const html = `<!doctype html><html lang="en" data-theme="light"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Photo clusters — synthetic verification</title>
+const html = `<!doctype html><html lang="en" data-theme="dawarich"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Photo clusters — synthetic verification</title>
 <link rel="stylesheet" href="/node_modules/maplibre-gl/dist/maplibre-gl.css"><link rel="stylesheet" href="/app/assets/stylesheets/maps_maplibre.css">
 <style>body{margin:0;font-family:system-ui}#map{position:absolute;inset:60px 0 0}nav{display:flex;gap:8px;padding:10px}nav button{padding:8px}</style>
 <script type="importmap">{"imports":{"maplibre-gl":"/node_modules/maplibre-gl/dist/maplibre-gl.mjs","i18n":"/app/javascript/i18n.js"}}</script>
@@ -41,7 +41,7 @@ window.ready = new Promise(resolve=>map.on('load',async()=>{
 document.querySelector('#hide').onclick=()=>layer.visible?layer.hide():layer.show()
 document.querySelector('#update').onclick=()=>layer.update(data)
 document.querySelector('#style').onclick=()=>{layer.remove();map.once('style.load',async()=>{window.layer=new PhotosLayer(map);layer.getLayerConfigs=()=>[{id:'photos-clusters',type:'circle',source:layer.sourceId,filter:['has','point_count'],paint:{'circle-radius':25,'circle-color':'#3b82f6'}}];await layer.add(data)});map.setStyle(style,{diff:false})}
-document.querySelector('#theme').onclick=()=>document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'
+document.querySelector('#theme').onclick=()=>document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dawarich-dark'?'dawarich':'dawarich-dark'
 </script></html>`
 const server = createServer(async (req, res) => {
   try {

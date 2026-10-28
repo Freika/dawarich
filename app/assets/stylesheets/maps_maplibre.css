@@ -501,13 +501,15 @@ html.dark .map-html-label {
   object-fit: contain;
 }
 
-[data-theme="dark"] .photo-cluster-gallery {
+[data-theme="dark"] .photo-cluster-gallery,
+[data-theme="dawarich-dark"] .photo-cluster-gallery {
   background: #1f2937;
   color: #f9fafb;
   border-color: #6b7280;
 }
 
-[data-theme="dark"] .photo-cluster-gallery .photo-info > div {
+[data-theme="dark"] .photo-cluster-gallery .photo-info > div,
+[data-theme="dawarich-dark"] .photo-cluster-gallery .photo-info > div {
   color: #e5e7eb;
 }
 
