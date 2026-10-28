@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Delete an import's source file from its detail page to free storage while keeping its points, visits, places and tracks. The confirmation explains that downloading and operations that need the file will no longer be available. Available for completed or failed imports when the file is not in use; account restore archives and API-generated photo imports are excluded. (#3531)
+
+### Changed
+
+- Deleting a whole import now explicitly warns that its points and extracted data will be deleted, both in the list and on its detail page. (#3531)
+
 ## [1.19.0] - 2026-10-27, Berlin
 
 ### ⚠️ Upgrade notes

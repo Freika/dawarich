@@ -29,6 +29,15 @@ class Points::DeviceTagBackfiller
   end
 
   def call
+    import.with_source_file_lock do
+      import.reload
+      backfill
+    end
+  end
+
+  private
+
+  def backfill
     return 0 unless import.google_records?
     return 0 unless import.file.attached?
     # Re-streaming a multi-hundred-megabyte upload to change nothing is the
@@ -46,8 +55,6 @@ class Points::DeviceTagBackfiller
     )
     0
   end
-
-  private
 
   def candidate_points
     Point.where(user_id: import.user_id, import_id: import.id)

@@ -8,6 +8,17 @@ RSpec.describe EnhancedImport::ExtractJob do
   let(:user) { create(:user) }
   let(:import) { create(:import, user: user, source: :google_phone_takeout) }
 
+  before { import.file.attach(io: StringIO.new('{}'), filename: 'synthetic.json') }
+
+  it 'ignores a queued job after the source file has been removed' do
+    import.file.detach
+    expect_any_instance_of(EnhancedImport::Translator).not_to receive(:translate)
+
+    described_class.perform_now(import.id)
+
+    expect(import.reload.additional_data_extraction_status).to eq('not_attempted')
+  end
+
   describe 'state transitions' do
     it 'marks the import as completed with zero counts when no items are emitted' do
       allow_any_instance_of(EnhancedImport::Translator).to receive(:translate) { |&_block| }

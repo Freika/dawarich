@@ -45,6 +45,13 @@ RSpec.describe Users::ImportData::Imports, type: :service do
   end
 
   describe '#call' do
+    it 'does not restore a download preparation claim from another queue' do
+      imports_data.first['download_preparation_pending'] = true
+      service.call
+
+      expect(user.imports.find_by!(name: imports_data.first['name']).download_preparation_pending?).to be false
+    end
+
     context 'with valid imports data' do
       it 'creates new imports for the user' do
         expect { service.call }.to change { user.imports.count }.by(2)

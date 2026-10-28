@@ -19,11 +19,14 @@ module TransportationModes
     end
 
     def call
-      return false unless supported?
-      return false unless @import.file.attached?
+      @import.with_source_file_lock do
+        @import.reload
+        return false unless supported?
+        return false unless @import.file.attached?
 
-      process_import
-      true
+        process_import
+        true
+      end
     end
 
     def supported?

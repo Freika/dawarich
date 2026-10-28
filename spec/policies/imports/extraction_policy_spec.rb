@@ -8,7 +8,14 @@ RSpec.describe Imports::ExtractionPolicy do
   let(:user) { create(:user) }
   let(:import) { create(:import, user: user, source: :google_phone_takeout) }
 
+  before { import.file.attach(io: StringIO.new('{}'), filename: 'synthetic.json') }
+
   describe '#create?' do
+    it 'blocks extraction without a source file' do
+      import.file.detach
+      expect(policy.create?).to be false
+    end
+
     it 'allows a fresh supported import' do
       expect(policy.create?).to be true
     end

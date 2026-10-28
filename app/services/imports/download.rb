@@ -10,6 +10,8 @@ class Imports::Download
   end
 
   def ready?
+    return false unless import.file.attached?
+
     return true unless wrapped_candidate?
     return false unless import.prepared_download.attached?
 
@@ -18,6 +20,8 @@ class Imports::Download
   end
 
   def url
+    return unless import.file.attached?
+
     return original_url unless wrapped_candidate? && import.prepared_download.attached?
     return original_url if import.prepared_download.blob_id == source.id
 
@@ -25,12 +29,33 @@ class Imports::Download
   end
 
   def original_url
+    return unless import.file.attached?
+
     filename = import.name
     filename = "#{filename}.zip" if wrapped_candidate? && !filename.end_with?('.zip')
     import.file.url(filename: filename, disposition: :attachment)
   end
 
   def prepare
+    import.with_source_file_lock do
+      import.reload
+      @source = nil
+      return unless import.file.attached?
+
+      prepare_file
+    end
+  end
+
+  def unwrapped_name
+    return unless wrapped_candidate? && original_filename
+
+    name = extracted_filename
+    name unless name == import.name
+  end
+
+  private
+
+  def prepare_file
     return if ready?
 
     archive_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
@@ -58,15 +83,6 @@ class Imports::Download
     File.unlink(archive_path) if archive_path && File.exist?(archive_path)
   end
 
-  def unwrapped_name
-    return unless wrapped_candidate? && original_filename
-
-    name = extracted_filename
-    name unless name == import.name
-  end
-
-  private
-
   attr_reader :import
 
   def source
@@ -74,6 +90,8 @@ class Imports::Download
   end
 
   def wrapped_candidate?
+    return false unless source
+
     return source.metadata[CLIENT_WRAPPED_KEY] if source.metadata.key?(CLIENT_WRAPPED_KEY)
 
     legacy_filename.present?

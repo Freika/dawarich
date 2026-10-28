@@ -1,0 +1,98 @@
+en:
+  imports:
+    source_file:
+      busy: "The source file is in use or unavailable. Try again when the current operation has finished."
+      title: "Source file"
+      delete: "Delete source file"
+      explanation: "Remove the uploaded file to free storage while keeping this import and its data."
+      confirmation: "Permanently delete the source file and its prepared download? The import record, points, visits, places and tracks will remain. Downloading, reprocessing, additional extraction and repairs that need the file will no longer be available."
+      unavailable: "File deletion is available for completed or failed imports when processing, extraction and download preparation are not queued or running. Account restore archives and API-generated photo imports are not supported."
+      missing: "Source file unavailable. The import record and imported data are kept."
+      extraction_unavailable: "Extraction requires the source file. Existing extracted data is kept."
+      deleted: "Source file removed. Storage cleanup is queued; the import and its data are kept."
+      already_deleted: "The source file has already been removed. The import and its data are kept."
+      delete_import_confirmation: "Delete this import, its files, all its imported points and the data created by additional extraction? This cannot be undone. To keep the data and free storage, open the import and choose Delete source file."
+de:
+  imports:
+    source_file:
+      busy: "Die Quelldatei wird verwendet oder ist nicht verfügbar. Versuche es erneut, wenn der aktuelle Vorgang beendet ist."
+      title: "Quelldatei"
+      delete: "Quelldatei löschen"
+      explanation: "Entferne die hochgeladene Datei, um Speicherplatz freizugeben. Der Import und seine Daten bleiben erhalten."
+      confirmation: "Quelldatei und vorbereiteten Download endgültig löschen? Import, Punkte, Besuche, Orte und Tracks bleiben erhalten. Download, erneute Verarbeitung, zusätzliche Extraktion und Reparaturen, die die Datei benötigen, sind danach nicht mehr verfügbar."
+      unavailable: "Dateien abgeschlossener oder fehlgeschlagener Importe können gelöscht werden, wenn Verarbeitung, Extraktion und Downloadvorbereitung weder warten noch laufen. Archive zur Kontowiederherstellung und per API erzeugte Fotoimporte werden nicht unterstützt."
+      missing: "Quelldatei nicht verfügbar. Der Import und seine Daten bleiben erhalten."
+      extraction_unavailable: "Für die Extraktion wird die Quelldatei benötigt. Bereits extrahierte Daten bleiben erhalten."
+      deleted: "Quelldatei entfernt. Die Speicherbereinigung ist vorgemerkt; Import und Daten bleiben erhalten."
+      already_deleted: "Die Quelldatei wurde bereits entfernt. Import und Daten bleiben erhalten."
+      delete_import_confirmation: "Diesen Import, seine Dateien, alle importierten Punkte und die durch zusätzliche Extraktion erstellten Daten löschen? Dies kann nicht rückgängig gemacht werden. Um die Daten zu behalten und Speicherplatz freizugeben, öffne den Import und wähle Quelldatei löschen."
+fr:
+  imports:
+    source_file:
+      busy: "Le fichier source est utilisé ou indisponible. Réessayez une fois l’opération en cours terminée."
+      title: "Fichier source"
+      delete: "Supprimer le fichier source"
+      explanation: "Supprimez le fichier téléversé pour libérer de l’espace tout en conservant l’import et ses données."
+      confirmation: "Supprimer définitivement le fichier source et le téléchargement préparé ? L’import, les points, les visites, les lieux et les traces seront conservés. Le téléchargement, le retraitement, l’extraction supplémentaire et les réparations nécessitant le fichier ne seront plus disponibles."
+      unavailable: "La suppression est possible pour les imports terminés ou échoués lorsque le traitement, l’extraction et la préparation du téléchargement ne sont ni en attente ni en cours. Les archives de restauration de compte et les imports de photos générés par API ne sont pas pris en charge."
+      missing: "Fichier source indisponible. L’import et les données importées sont conservés."
+      extraction_unavailable: "L’extraction nécessite le fichier source. Les données déjà extraites sont conservées."
+      deleted: "Fichier source supprimé. Le nettoyage du stockage est en attente ; l’import et ses données sont conservés."
+      already_deleted: "Le fichier source a déjà été supprimé. L’import et ses données sont conservés."
+      delete_import_confirmation: "Supprimer cet import, ses fichiers, tous ses points et les données créées par l’extraction supplémentaire ? Cette action est irréversible. Pour conserver les données et libérer de l’espace, ouvrez l’import et choisissez Supprimer le fichier source."
+es:
+  imports:
+    source_file:
+      busy: "El archivo de origen está en uso o no está disponible. Inténtalo de nuevo cuando termine la operación actual."
+      title: "Archivo de origen"
+      delete: "Eliminar archivo de origen"
+      explanation: "Elimina el archivo subido para liberar espacio y conservar la importación y sus datos."
+      confirmation: "¿Eliminar permanentemente el archivo de origen y la descarga preparada? Se conservarán la importación, los puntos, las visitas, los lugares y las rutas. Ya no estarán disponibles la descarga, el reprocesamiento, la extracción adicional ni las reparaciones que necesiten el archivo."
+      unavailable: "Se pueden eliminar archivos de importaciones completadas o fallidas cuando el procesamiento, la extracción y la preparación de descarga no estén en cola ni en curso. No se admiten archivos de restauración de cuenta ni importaciones de fotos generadas por API."
+      missing: "Archivo de origen no disponible. Se conservan la importación y los datos importados."
+      extraction_unavailable: "La extracción requiere el archivo de origen. Se conservan los datos ya extraídos."
+      deleted: "Archivo de origen eliminado. La limpieza del almacenamiento está en cola; se conservan la importación y sus datos."
+      already_deleted: "El archivo de origen ya se ha eliminado. Se conservan la importación y sus datos."
+      delete_import_confirmation: "¿Eliminar esta importación, sus archivos, todos sus puntos y los datos creados por la extracción adicional? Esta acción no se puede deshacer. Para conservar los datos y liberar espacio, abre la importación y elige Eliminar archivo de origen."
+ca:
+  imports:
+    source_file:
+      busy: "El fitxer d’origen està en ús o no està disponible. Torna-ho a provar quan acabi l’operació actual."
+      title: "Fitxer d’origen"
+      delete: "Suprimeix el fitxer d’origen"
+      explanation: "Suprimeix el fitxer pujat per alliberar espai i conservar la importació i les seves dades."
+      confirmation: "Vols suprimir permanentment el fitxer d’origen i la baixada preparada? Es conservaran la importació, els punts, les visites, els llocs i els trajectes. Ja no estaran disponibles la baixada, el reprocessament, l’extracció addicional ni les reparacions que necessitin el fitxer."
+      unavailable: "Es poden suprimir fitxers d’importacions completades o fallides quan el processament, l’extracció i la preparació de la baixada no estiguin en cua ni en curs. No s’admeten arxius de restauració del compte ni importacions de fotos generades per API."
+      missing: "Fitxer d’origen no disponible. Es conserven la importació i les dades importades."
+      extraction_unavailable: "L’extracció necessita el fitxer d’origen. Es conserven les dades ja extretes."
+      deleted: "Fitxer d’origen suprimit. La neteja de l’emmagatzematge és a la cua; es conserven la importació i les seves dades."
+      already_deleted: "El fitxer d’origen ja s’ha suprimit. Es conserven la importació i les seves dades."
+      delete_import_confirmation: "Vols suprimir aquesta importació, els seus fitxers, tots els seus punts i les dades creades per l’extracció addicional? Aquesta acció no es pot desfer. Per conservar les dades i alliberar espai, obre la importació i tria Suprimeix el fitxer d’origen."
+pl:
+  imports:
+    source_file:
+      busy: "Plik źródłowy jest używany lub niedostępny. Spróbuj ponownie po zakończeniu bieżącej operacji."
+      title: "Plik źródłowy"
+      delete: "Usuń plik źródłowy"
+      explanation: "Usuń przesłany plik, aby zwolnić miejsce, zachowując import i jego dane."
+      confirmation: "Trwale usunąć plik źródłowy i przygotowany plik do pobrania? Import, punkty, wizyty, miejsca i trasy zostaną zachowane. Pobieranie, ponowne przetwarzanie, dodatkowa ekstrakcja i naprawy wymagające pliku nie będą już dostępne."
+      unavailable: "Pliki ukończonych lub nieudanych importów można usuwać, gdy przetwarzanie, ekstrakcja i przygotowanie pobierania nie oczekują w kolejce ani nie są w toku. Archiwa przywracania konta i importy zdjęć generowane przez API nie są obsługiwane."
+      missing: "Plik źródłowy jest niedostępny. Import i zaimportowane dane są zachowane."
+      extraction_unavailable: "Ekstrakcja wymaga pliku źródłowego. Istniejące wyodrębnione dane są zachowane."
+      deleted: "Plik źródłowy został usunięty. Czyszczenie pamięci jest w kolejce; import i jego dane są zachowane."
+      already_deleted: "Plik źródłowy został już usunięty. Import i jego dane są zachowane."
+      delete_import_confirmation: "Usunąć ten import, jego pliki, wszystkie zaimportowane punkty i dane utworzone przez dodatkową ekstrakcję? Tej operacji nie można cofnąć. Aby zachować dane i zwolnić miejsce, otwórz import i wybierz Usuń plik źródłowy."
+zh:
+  imports:
+    source_file:
+      busy: "源文件正在使用中或不可用。请在当前操作完成后重试。"
+      title: "源文件"
+      delete: "删除源文件"
+      explanation: "删除上传的文件以释放存储空间，同时保留导入记录及其数据。"
+      confirmation: "永久删除源文件及准备好的下载文件？导入记录、轨迹点、访问、地点和轨迹将被保留。下载、重新处理、额外提取及需要源文件的修复将不再可用。"
+      unavailable: "仅当导入已完成或失败，且处理、提取和下载准备均未排队或运行时，才能删除文件。不支持账户恢复归档及通过 API 生成的照片导入。"
+      missing: "源文件不可用。导入记录和已导入的数据仍被保留。"
+      extraction_unavailable: "提取需要源文件。已提取的数据仍被保留。"
+      deleted: "源文件已移除。存储清理已排队；导入记录及其数据仍被保留。"
+      already_deleted: "源文件已被移除。导入记录及其数据仍被保留。"
+      delete_import_confirmation: "删除此导入、其文件、所有导入的轨迹点及额外提取创建的数据？此操作无法撤销。若要保留数据并释放空间，请打开导入并选择“删除源文件”。"

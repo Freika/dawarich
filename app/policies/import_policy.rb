@@ -15,6 +15,10 @@ class ImportPolicy < ApplicationPolicy
     show?
   end
 
+  def delete_source_file?
+    show?
+  end
+
   # Users can create new imports only while their subscription window is open.
   def new?
     create?
