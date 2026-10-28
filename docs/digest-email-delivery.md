@@ -15,4 +15,5 @@ digests. This change does not remove previously queued or dead mail delivery job
 
 Regression coverage: `spec/regressions/digest_emails_without_smtp_spec.rb`.
 Issue: <https://github.com/Freika/dawarich/issues/3932>.
+Review: <https://onedev.dwri.xyz/dawarich/~pulls/259>.
 Knowledge index: [Dawarich — Open issue priorities](https://affine.dwri.xyz/workspace/c309ded7-e11e-4e72-ba6f-aec8a31a740b/2tgruNB7k104KlD136MUh).
