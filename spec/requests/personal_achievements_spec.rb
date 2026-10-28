@@ -108,6 +108,9 @@ RSpec.describe 'Geographic collection sharing' do
     get shared_collectible_path(uuid)
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('1/2 regions')
+    drawing = Nokogiri::HTML(response.body)
+    expect(drawing.css('[data-color]').map { |node| node['data-color'] }).to eq([Achievements::GlobeArtwork::REGION_COLORS.fetch('south')])
+    expect(drawing.css('[data-detail]').size).to eq(4)
     expect(response.body).not_to include('Unlocked ·')
     expect(card.reload.level).to eq(1)
   end

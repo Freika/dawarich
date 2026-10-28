@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Share one all-history resolution-9 H3 ledger between city cards and map fog. Date ranges highlight first discoveries; pilot boundaries cover Berlin, Hamburg, Dresden and three German national parks.
 - Collect Benelux, Baltics and Scandinavia achievement sets by visiting their three member countries. Each set shows visited countries, dates and the countries still to explore, with public sharing available when enabled. Existing location history counts automatically.
 
+### Changed
+
+- Show geographic milestone cards as globes with continents, graticules and highlighted hemispheres, quarters or polar caps, including public previews.
+
 ## [1.19.0] - 2026-10-27, Berlin
 
 ### ⚠️ Upgrade notes

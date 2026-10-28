@@ -97,12 +97,22 @@ export default class extends Controller {
       path: path.getAttribute("d"),
       color: path.getAttribute("data-color"),
     }))
+    const details = Array.from(
+      svg?.querySelectorAll?.("[data-detail]") || [],
+    ).map((path) => ({
+      path: path.getAttribute("d"),
+      fill: path.getAttribute("data-fill"),
+      stroke: path.getAttribute("data-stroke"),
+      stroke_width: Number(path.getAttribute("data-stroke-width")),
+      opacity: Number(path.getAttribute("data-opacity")),
+    }))
     return viewbox && data
       ? {
           viewbox,
           path: data,
           ...(unvisited ? { unvisited_path: unvisited } : {}),
           ...(colors.length ? { colors } : {}),
+          ...(details.length ? { details } : {}),
         }
       : null
   }

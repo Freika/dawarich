@@ -57,6 +57,28 @@ snapshot_id and pinned. Optional `snapshot_id` only accepts owned completed
 snapshots. City deep links validate a pinned city/card before attaching that
 snapshot to `/map?exploration_city=...&exploration_snapshot=...`.
 
+## Geographic milestone artwork
+
+The five milestones use orthographic globes with continent coastlines and a
+coordinate grid. North/south keeps an equatorial separator and two tints;
+east/west keeps the prime meridian and different tints; the four quarters keep
+both separators and four tints even after completion. Unqualified regions remain
+dark. Arctic/Antarctic views tilt toward their pole and highlight the actual
+66.56° cap while retaining the surrounding globe.
+
+Display-only `GlobeArtwork` reads precomputed local SVG paths. The same detail
+layers survive fallback HTML, client hydration, the expanded card, public embeds
+and OG PNG. Public artwork reads only the already masked public evidence. The
+build/provenance recipe is in `lib/assets/achievement_collections/README.md`.
+No achievement thresholds, source history or privacy rules change with artwork.
+
+The optional silhouette `details` contract carries safe vector fill/stroke layers
+above the missing-region mask, with consistent coordinate/stroke normalization.
+Client validation rejects raw SVG markup, external paint servers and non-finite
+attributes. Verification for this artwork change: 26 targeted Ruby examples,
+745 JavaScript tests, all five private/public/OG variants and a JavaScript-free
+fallback check on synthetic fixtures.
+
 ## Geodata and local runtime
 
 Pilot cities: Berlin (OSM62422), Hamburg (62782), Dresden (191645). Pilot parks:
@@ -108,7 +130,7 @@ Use an isolated PostGIS/Redis environment with synthetic fixtures. Run the
 achievement/exploration/map-fog/request suites, Places merge/orphan suites and
 transportation classifier suites, plus `npm test` and RuboCop on changed Ruby.
 The complete app RSpec suite has not been required/run for this local scope;
-the final focused aggregate passes 419 examples, with 742 JavaScript tests passing. Browser checks cover seven
+the collection implementation passed a 419-example aggregate and 742 JavaScript tests. The globe artwork follow-up passes 26 targeted Ruby examples and the full 745-test JavaScript suite. Browser checks cover seven
 collection views at 1280/375/320 px, expanded cards, light/dark, anonymous embed/OG
 and city-map snapshot links. A separate schema-load database confirms bulk
 invalidation survives fresh installation. No real traces or accounts are used.

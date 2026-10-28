@@ -34,6 +34,13 @@ module AchievementsHelper
     if silhouette[:unvisited_path].present?
       paths << tag.path(d: silhouette[:unvisited_path], class: 'geo-unvisited', data: { unvisited: true })
     end
+    silhouette.fetch(:details, []).each do |part|
+      paths << tag.path(d: part[:path], fill: part[:fill], stroke: part[:stroke],
+                        stroke_width: part[:stroke_width], opacity: part[:opacity],
+                        'fill-rule': 'evenodd', 'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+                        data: { detail: true, fill: part[:fill], stroke: part[:stroke],
+                                stroke_width: part[:stroke_width], opacity: part[:opacity] })
+    end
     tag.svg(
       safe_join(paths),
       viewBox: silhouette[:viewbox],

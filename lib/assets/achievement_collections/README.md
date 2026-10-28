@@ -42,3 +42,40 @@ city land to the same Natural Earth 5.1.2 land/water mask used by exploration.
 Small water bodies absent at 1:10m remain a known approximation. Park **time**
 uses actual points within the OSM boundary, never cell intersection. Historical
 snapshots keep their dataset until a complete replacement is published.
+
+## Geographic milestone globe artwork
+
+`globes.json` contains display-only SVG paths for an equatorial view and two
+views tilted 55° toward the north/south pole. Continents use the existing local
+Natural Earth 5.1.2 land geometry, simplified by 0.18° and omitting islands below
+500 km² for legibility. It is an illustration, never an eligibility or area input.
+The asset records its export SHA-256, source/version and generator version.
+
+Rebuild using an isolated local database containing the bundled geography:
+
+```sh
+bundle exec rails runner script/export_achievement_globe_land.rb tmp/achievement-globe-land.geojson
+npm install --prefix tmp/achievement-globe-generator --no-save --ignore-scripts --no-audit --no-fund d3-geo@3.1.1
+node script/build_achievement_globes.mjs tmp/achievement-globe-land.geojson
+```
+
+The build uses [D3's orthographic projection](https://d3js.org/d3-geo/azimuthal#geoOrthographic)
+and spherical clipping, graticules and region polygons. D3 is only a pinned build
+tool in ignored `tmp/`; no runtime/npm dependency or network call is added to the
+app. RFC7946 polygon winding is adapted to D3's spherical convention. Natural
+Earth source data remains public domain. The polar highlight uses the fixed
+66.56° game latitude; `GlobeArtwork` checks that the bundled value matches the rule.
+
+The same global continent outlines, grid and explicit region separators appear
+in fallback SVG, the Spectral material and social PNGs. Completed hemispheres
+keep contrasting tints; quarters keep four tints. Unsupported regions stay dark.
+Polar cards retain the whole globe and highlight just the cap. Colors and
+separators are illustrative; credit remains based solely on recorded evidence.
+
+The shared silhouette contract adds optional `details` layers: `path`, `fill`,
+`stroke`, `stroke_width` in viewBox units, and `opacity`. They render above the
+unvisited mask so the global frame remains readable. Fallback SVG stores these
+as `data-detail` attributes; hydration normalizes coordinates and stroke width
+with the same transform as the main geometry. The client accepts M/L/Z paths,
+`none` or six-digit hex paints, finite widths from 0 to 2, and opacity from 0 to 1;
+raw markup, external paint servers and invalid attributes are rejected.

@@ -265,6 +265,12 @@ function mapSvg(config, uid) {
   const unvisited = geo.unvisited
     ? `<path class="geo-unvisited" d="${escapeHTML(geo.unvisited)}" fill-rule="evenodd"/>`
     : ""
+  const details = (geo.details || [])
+    .map(
+      (part) =>
+        `<path class="geo-detail" d="${escapeHTML(part.path)}" fill="${part.fill}" stroke="${part.stroke}" stroke-width="${part.strokeWidth}" opacity="${part.opacity}" stroke-linejoin="round" stroke-linecap="round" fill-rule="evenodd"/>`,
+    )
+    .join("")
 
   return `<svg viewBox="0 0 300 260" role="img" aria-label="${escapeHTML(geo.label)} cartogram">
     <defs>
@@ -283,7 +289,7 @@ function mapSvg(config, uid) {
       ${textureDef}
       <radialGradient id="${markerGradientId}" cx="34%" cy="28%" r="72%"><stop offset="0" stop-color="#fff7dc"/><stop offset="28%" stop-color="#ffd46a"/><stop offset="66%" stop-color="#ff9e16"/><stop offset="100%" stop-color="#754000"/></radialGradient>
     </defs>
-    <g><g class="geo-foil-composite">${fillPaths}${accentPaths}${metalShading}${texturePaths}</g>${edgePrismPaths}${boundaries}${journey}${colorLayers}${unvisited}</g>
+    <g><g class="geo-foil-composite">${fillPaths}${accentPaths}${metalShading}${texturePaths}</g>${edgePrismPaths}${boundaries}${journey}${colorLayers}${unvisited}${details}</g>
   </svg>`
 }
 
@@ -345,6 +351,27 @@ export function spectralMarkup({
       color: String(part.color),
     }))
     .filter((part) => part.path && /^#[0-9a-f]{6}$/i.test(part.color))
+  const validPaint = (value) => /^(none|#[0-9a-f]{6})$/i.test(value)
+  const details = (silhouette.details || [])
+    .map((part) => ({
+      path: normalize(String(part.path)),
+      fill: String(part.fill),
+      stroke: String(part.stroke),
+      strokeWidth: Number(part.stroke_width) * scale,
+      opacity: Number(part.opacity),
+    }))
+    .filter(
+      (part) =>
+        part.path &&
+        validPaint(part.fill) &&
+        validPaint(part.stroke) &&
+        Number.isFinite(part.strokeWidth) &&
+        part.strokeWidth >= 0 &&
+        part.strokeWidth <= 2 * scale &&
+        Number.isFinite(part.opacity) &&
+        part.opacity >= 0 &&
+        part.opacity <= 1,
+    )
   const tier = Object.hasOwn(PALETTES, rarity.toLowerCase())
     ? rarity.toLowerCase()
     : "common"
@@ -360,6 +387,7 @@ export function spectralMarkup({
       boundaries: [],
       unvisited,
       colors,
+      details,
     },
   }
   return {

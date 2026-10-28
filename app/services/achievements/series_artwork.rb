@@ -21,16 +21,7 @@ module Achievements
         { path: rings.join(' '), viewbox: '-50 -50 100 100',
           unvisited_path: rings.drop(card.level).join(' ') }
       when 'milestone'
-        members = GeographicRegions::GROUPS.fetch(card.subject_key)
-        angles = { 'north' => [-180, 0], 'south' => [0, 180], 'east' => [-90, 90], 'west' => [90, 270],
-                   'ne' => [-90, 0], 'nw' => [-180, -90], 'se' => [0, 90], 'sw' => [90, 180],
-                   'arctic' => [-145, -35], 'antarctic' => [35, 145] }
-        slices = members.map { |member| sector(*angles.fetch(member), 43, 5) }
-        recorded = card.data.fetch('evidence', []).pluck('region')
-        { path: slices.join(' '), viewbox: '-50 -50 100 100',
-          unvisited_path: slices.each_with_index.filter_map do |path, i|
-            path unless recorded.include?(members[i])
-          end.join(' ') }
+        GlobeArtwork.call(card)
       else
         # A symbolic forest avoids publishing an exact visited position.
         trees = [-25, 0, 25].map do |x|

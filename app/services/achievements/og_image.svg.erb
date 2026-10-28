@@ -37,6 +37,9 @@
         <% if shape[:unvisited_path].present? %>
           <path d="<%= escape(shape[:unvisited_path]) %>" fill="#141d26" stroke="#788b99" stroke-width="0.02" fill-rule="evenodd"/>
         <% end %>
+        <% shape.fetch(:details, []).each do |part| %>
+          <path d="<%= escape(part[:path]) %>" fill="<%= escape(part[:fill]) %>" stroke="<%= escape(part[:stroke]) %>" stroke-width="<%= escape(part[:stroke_width]) %>" opacity="<%= escape(part[:opacity]) %>" stroke-linejoin="round" stroke-linecap="round" fill-rule="evenodd"/>
+        <% end %>
       </svg>
     <% else %>
       <circle cx="252" cy="240" r="112" fill="none" stroke="<%= muted_accent %>" stroke-width="3" opacity="0.5"/>
