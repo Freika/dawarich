@@ -11,7 +11,13 @@ server-rendered, Turbo-appended and JavaScript-generated flashes. A single messa
 keeps its individual close button. Errors remain visible until dismissed;
 `notice` and `success` still expire after five seconds.
 
-The list scrolls within the viewport. The bulk button stays at the top, above the
+Notifications share a compact neutral panel, with semantic status icons and
+subtle row separators instead of full-color alert backgrounds. Text stays
+left-aligned, long filenames wrap, and each close button has a 44px touch target
+on the right. The panel follows the existing light and dark theme tokens.
+
+The list scrolls within a 32rem height limit, or the available viewport height on
+smaller screens. The bulk button stays in an opaque toolbar at the top, above the
 messages, so it remains reachable when a large import produces many errors. The
 empty container stays available for later messages on the same page.
 
@@ -26,8 +32,9 @@ empty container stays available for later messages on the same page.
   additional event listeners or custom mutation observers across Turbo visits.
 - `Flash.show` and `removals` retain their existing individual dismissal and
   timeout behavior. The bulk action removes only message targets.
-- The tracked `app/assets/builds/tailwind.css` includes the viewport bounds,
-  button alignment and stacking utilities used by this component.
+- `app/assets/stylesheets/flash_notifications.css` defines the panel, message
+  layout and theme-aware status colors for both renderers. These styles are
+  scoped to flash components; other DaisyUI alerts keep their existing look.
 
 ## Verification
 
@@ -57,3 +64,5 @@ Browser regression checklist:
    flashes through Turbo and confirm that visibility follows the message count.
 6. Disconnect/reconnect the container repeatedly; one click must invoke the bulk
    action once.
+7. Check light and dark themes, all four status icons, long filenames and 320px
+   screens. Text must stay readable and close buttons must remain on the right.
