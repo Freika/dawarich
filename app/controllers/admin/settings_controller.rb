@@ -43,7 +43,7 @@ module Admin
     end
 
     def test_geocoding
-      type, message = Geocoding::ProviderTest.call
+      type, message = Geocoding::ProviderTest.call(latitude: params[:latitude], longitude: params[:longitude])
 
       respond_to do |format|
         format.turbo_stream { render turbo_stream: stream_flash(type == :notice ? :notice : :error, message) }

@@ -489,6 +489,102 @@ RSpec.describe 'Admin::Settings' do
 
       expect(flash[:alert]).to include('SocketError')
     end
+
+    context 'with test coordinates' do
+      before do
+        configure_instance_geocoding(photon_api_host: 'stored.example.com')
+        sign_in admin
+      end
+
+      it 'renders labelled, optional inputs within the test form' do
+        get '/admin/settings'
+
+        form = Nokogiri::HTML(response.body).at_css('form[data-testid="geocoding-test-form"]')
+        expect(form['action']).to eq('/admin/settings/test_geocoding')
+        expect(form['method']).to eq('post')
+        expect(form.css('input[type="number"]').map { |input| input['placeholder'] }).to eq(%w[51.3402 12.3712])
+        expect(form.at_css('button[type="submit"]')['data-disable-with']).to be_nil
+        { latitude: [-90, 90], longitude: [-180, 180] }.each do |name, (min, max)|
+          input = form.at_css("input[name='#{name}']")
+          expect(form.at_css("label[for='#{input['id']}']").text).to be_present
+          expect(%w[type min max step].map { |key| input[key] }).to eq(['number', min.to_s, max.to_s, 'any'])
+          expect(input['required']).to be_nil
+          expect(form.at_css("##{input['aria-describedby']}").text).to include('51.3402, 12.3712')
+        end
+      end
+
+      it 'uses custom coordinates in the provider HTTP request and redirects for HTML' do
+        use_real_geocoding_lookups
+        allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
+        lookup = stub_request(:get, %r{stored\.example\.com/reverse})
+                 .with(query: hash_including('lat' => '40.7128', 'lon' => '-74.006'))
+                 .to_return(status: 200, headers: { 'Content-Type' => 'application/json' }, body: {
+                   type: 'FeatureCollection', features: [{ type: 'Feature',
+                     properties: { city: 'Test City', country: 'Test Country' },
+                     geometry: { type: 'Point', coordinates: [-74.006, 40.7128] } }]
+                 }.to_json)
+
+        expect do
+          post '/admin/settings/test_geocoding', params: { latitude: '40.7128', longitude: '-74.0060' }
+        end.not_to change(InstanceSetting, :count)
+
+        expect(lookup).to have_been_requested.once
+        expect(response).to redirect_to(admin_settings_path)
+        expect(response).to have_http_status(:see_other)
+        message = I18n.t('admin.settings.test_geocoding.success', place: 'Test City, Test Country')
+        expect(flash[:notice]).to eq(message)
+      end
+
+      it 'returns a success flash stream for Turbo with custom coordinates' do
+        result = double(city: 'Test City', country: 'Test Country')
+        allow(Geocoding::Search).to receive(:with_config).and_return([result])
+
+        post '/admin/settings/test_geocoding', params: { latitude: '-33.8688', longitude: '151.2093' },
+                                               headers: { 'ACCEPT' => 'text/vnd.turbo-stream.html' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+        expect(response.body).to include('<turbo-stream', 'Test City, Test Country')
+        expect(Geocoding::Search).to have_received(:with_config).with(
+          config: anything, query: [-33.8688, 151.2093], limit: 1, max_wait: 5.0
+        )
+      end
+
+      it 'keeps the default coordinates when both form fields are empty' do
+        result = double(city: 'Test City', country: 'Test Country')
+        allow(Geocoding::Search).to receive(:with_config).and_return([result])
+
+        post '/admin/settings/test_geocoding', params: { latitude: '', longitude: '' }
+
+        expect(response).to have_http_status(:see_other)
+        expect(Geocoding::Search).to have_received(:with_config).with(
+          config: anything, query: [51.3402, 12.3712], limit: 1, max_wait: 5.0
+        )
+      end
+
+      ['text/html', 'text/vnd.turbo-stream.html'].each do |accept|
+        [{ latitude: '91', longitude: '0' }, { latitude: '0' }, { longitude: '12' },
+         { latitude: 'bad', longitude: '12' }, { latitude: [], longitude: [] }].each do |input|
+          it "reports invalid coordinates #{input.inspect} for #{accept} without a lookup" do
+            allow(Geocoding::Search).to receive(:with_config)
+
+            post '/admin/settings/test_geocoding', params: input, headers: { 'ACCEPT' => accept }
+
+            error = I18n.t('admin.settings.test_geocoding.invalid_coordinates')
+            if accept == 'text/html'
+              expect(response).to have_http_status(:see_other)
+              expect(response).to redirect_to(admin_settings_path)
+              expect(flash[:alert]).to eq(error)
+            else
+              expect(response).to have_http_status(:ok)
+              expect(response.media_type).to eq(accept)
+              expect(response.body).to include('<turbo-stream', ERB::Util.html_escape(error))
+            end
+            expect(Geocoding::Search).not_to have_received(:with_config)
+          end
+        end
+      end
+    end
   end
 
   describe 'secrets and the provider in effect' do
@@ -620,6 +716,14 @@ RSpec.describe 'Admin::Settings' do
                 admin.settings.update.chibigeo_key_required]
       %i[de es fr pl ca].product(keys).each do |locale, key|
         expect(I18n.t(key, locale: locale, default: nil)).to be_present, "missing #{key} for #{locale}"
+      end
+    end
+
+    it 'defines the coordinate input and validation strings without locale fallbacks' do
+      keys = %w[admin.settings.show.geocoding.test_latitude admin.settings.show.geocoding.test_longitude
+                admin.settings.show.geocoding.test_coordinates_hint admin.settings.test_geocoding.invalid_coordinates]
+      %i[en de es fr pl ca zh].product(keys).each do |locale, key|
+        expect(I18n.exists?(key, locale, fallback: false)).to be(true), "missing #{key} for #{locale}"
       end
     end
   end

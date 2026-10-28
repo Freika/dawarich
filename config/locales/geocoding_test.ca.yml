@@ -1,0 +1,10 @@
+ca:
+  admin:
+    settings:
+      show:
+        geocoding:
+          test_latitude: "Latitud"
+          test_longitude: "Longitud"
+          test_coordinates_hint: "Una consulta amb la configuració desada. Introdueix les dues coordenades o deixa els dos camps buits per fer servir 51.3402, 12.3712. Les coordenades no es desen."
+      test_geocoding:
+        invalid_coordinates: "Introdueix la latitud (de −90 a 90) i la longitud (de −180 a 180) com a nombres vàlids, o deixa els dos camps buits per fer servir les coordenades predeterminades."
