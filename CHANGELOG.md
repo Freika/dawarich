@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Click a photo cluster on the map to browse its photos without zooming. The gallery shows 24 thumbnails per page, supports phones and keyboard navigation, and keeps photos with identical coordinates accessible at high zoom. (#3652)
+
 ## [1.19.0] - 2026-10-27, Berlin
 
 ### ⚠️ Upgrade notes

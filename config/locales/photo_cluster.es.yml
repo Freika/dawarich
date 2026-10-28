@@ -1,0 +1,15 @@
+es:
+  javascript:
+    photo_cluster:
+      title: "Fotos de este grupo"
+      close: "Cerrar"
+      previous: "Anterior"
+      next: "Siguiente"
+      loading: "Cargando fotos…"
+      range: "%{start}–%{end} de %{total} fotos"
+      empty: "No hay fotos en este grupo."
+      error: "No se pudieron cargar las fotos. Inténtalo de nuevo."
+      retry: "Reintentar"
+      back: "Volver a las miniaturas"
+      image_error: "Miniatura no disponible"
+      keyboard_hint: "Pulsa Intro para abrir el grupo de fotos más cercano al centro del mapa."

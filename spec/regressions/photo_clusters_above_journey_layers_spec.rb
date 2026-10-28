@@ -24,7 +24,7 @@ RSpec.describe 'Photo clusters above journey layers' do
       const stubs = {
         translate: key => key,
         shouldShowPointPopup: () => false,
-        Toast: {}, lazyLoader: {},
+        Toast: {}, lazyLoader: {}, PhotoClusterGallery: class {},
         performanceMonitor: {mark() {}, measure() {}},
         SettingsManager: {getSetting: () => '#6366F1'},
         bumpTileVersion() {}, getMarkerStrokeColor: () => '#fff',
@@ -71,6 +71,11 @@ RSpec.describe 'Photo clusters above journey layers' do
           this.addLayer(layer, beforeId);
         },
         setLayoutProperty() {}, setPaintProperty() {},
+        getCanvas: () => ({
+          getAttribute() {}, setAttribute() {}, removeAttribute() {},
+          addEventListener() {}, removeEventListener() {},
+        }),
+        getBounds: () => ({contains: () => true}),
         querySourceFeatures: () => [], on() {}, off() {},
       };
       const manager = new entry.namespace.LayerManager(map, {
