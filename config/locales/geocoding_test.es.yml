@@ -1,0 +1,10 @@
+es:
+  admin:
+    settings:
+      show:
+        geocoding:
+          test_latitude: "Latitud"
+          test_longitude: "Longitud"
+          test_coordinates_hint: "Una consulta con la configuración guardada. Introduce ambas coordenadas o deja ambos campos vacíos para usar 51.3402, 12.3712. Las coordenadas no se guardan."
+      test_geocoding:
+        invalid_coordinates: "Introduce la latitud (de −90 a 90) y la longitud (de −180 a 180) como números válidos, o deja ambos campos vacíos para usar las coordenadas predeterminadas."

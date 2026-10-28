@@ -1,0 +1,10 @@
+fr:
+  admin:
+    settings:
+      show:
+        geocoding:
+          test_latitude: "Latitude"
+          test_longitude: "Longitude"
+          test_coordinates_hint: "Une recherche avec les paramètres enregistrés. Saisissez les deux coordonnées ou laissez les deux champs vides pour utiliser 51.3402, 12.3712. Les coordonnées ne sont pas enregistrées."
+      test_geocoding:
+        invalid_coordinates: "Saisissez la latitude (de −90 à 90) et la longitude (de −180 à 180) sous forme de nombres valides, ou laissez les deux champs vides pour utiliser les coordonnées par défaut."
