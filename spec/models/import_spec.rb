@@ -222,6 +222,8 @@ RSpec.describe Import, type: :model do
     end
     let(:payload) { { 'options' => { 'trust_source' => true }, 'started_at' => Time.current.iso8601 } }
 
+    before { import.file.attach(io: StringIO.new('{}'), filename: 'synthetic.json') }
+
     it 'moves the import to pending and stores the payload' do
       expect(import.claim_additional_data_extraction!(payload)).to be true
       expect(import.reload.additional_data_extraction_status).to eq('pending')

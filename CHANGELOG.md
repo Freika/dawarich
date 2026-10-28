@@ -14,10 +14,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Test a geocoding provider with your own coordinates in Instance settings, including providers with regional coverage. Leave both fields blank to use the existing default coordinates. (#3714)
 - Click a photo cluster on the map to browse its photos without zooming. The gallery shows 24 thumbnails per page, supports phones and keyboard navigation, and keeps photos with identical coordinates accessible at high zoom. (#3652)
 - The map keeps the point count and distance for the selected period visible, including custom times and empty ranges. Distance follows your km/mi setting. (#3257)
+- Delete an import's source file from its detail page to free storage while keeping its points, visits, places and tracks. The confirmation explains that downloading and operations that need the file will no longer be available. Available for completed or failed imports when the file is not in use; account restore archives and API-generated photo imports are excluded. (#3531)
 
 ### Changed
 
 - Show geographic milestone cards as globes with continents, graticules and highlighted hemispheres, quarters or polar caps, including public previews.
+- Imports remain visible when sorted by file size after their source file is removed. (#3531)
+- Deleting a whole import now explicitly warns that its points and extracted data will be deleted, both in the list and on its detail page. (#3531)
 
 ### Fixed
 

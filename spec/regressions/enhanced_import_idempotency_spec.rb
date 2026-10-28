@@ -27,6 +27,7 @@ RSpec.describe 'Enhanced import is idempotent on re-runs' do
   end
 
   before do
+    import.file.attach(io: StringIO.new('{}'), filename: 'synthetic.json')
     allow_any_instance_of(EnhancedImport::Translator).to receive(:translate) do |&block|
       block.call(visit)
     end

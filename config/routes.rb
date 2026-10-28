@@ -121,6 +121,7 @@ Rails.application.routes.draw do
 
   resources :imports do
     get :download, on: :member
+    delete :source_file, on: :member, action: :delete_source_file
     resource :extraction, only: %i[create destroy], controller: 'imports/extractions'
   end
   resources :tracks, only: [] do

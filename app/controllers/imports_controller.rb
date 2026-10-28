@@ -12,8 +12,8 @@ class ImportsController < ApplicationController
 
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[new create]
-  before_action :set_import, only: %i[show edit update destroy download]
-  before_action :authorize_import, only: %i[show edit update destroy download]
+  before_action :set_import, only: %i[show edit update destroy download delete_source_file]
+  before_action :authorize_import, only: %i[show edit update destroy download delete_source_file]
   before_action :validate_points_limit, only: %i[new create]
 
   after_action :verify_authorized, except: %i[index]
@@ -31,15 +31,36 @@ class ImportsController < ApplicationController
   def show; end
 
   def download
-    @download = Imports::Download.new(@import)
-    return redirect_to @download.url, allow_other_host: true if @download.ready?
+    @import.with_source_file_lock(timeout_seconds: 0) do
+      @import.reload
+      unless @import.file.attached?
+        return redirect_to import_path(@import), alert: I18n.t('imports.source_file.missing'), status: :see_other
+      end
 
-    Rails.cache.fetch(['import-download', @import.id, @import.file.blob_id], expires_in: 1.minute) do
-      Imports::PrepareDownloadJob.perform_later(@import.id, @import.file.blob_id)
-      true
+      @download = Imports::Download.new(@import)
+      return redirect_to @download.url, allow_other_host: true if @download.ready?
+
+      Rails.cache.fetch(['import-download', @import.id, @import.file.blob_id], expires_in: 1.minute) do
+        @import.update!(download_preparation_pending: true)
+        begin
+          Imports::PrepareDownloadJob.perform_later(@import.id, @import.file.blob_id)
+        rescue StandardError
+          @import.update!(download_preparation_pending: false)
+          raise
+        end
+      end
+      response.set_header('Refresh', '3')
+      render :download, status: :accepted
     end
-    response.set_header('Refresh', '3')
-    render :download, status: :accepted
+  rescue WithAdvisoryLock::FailedToAcquireLock
+    redirect_to import_path(@import), alert: I18n.t('imports.source_file.busy'), status: :see_other
+  end
+
+  def delete_source_file
+    result = Imports::DeleteSourceFile.new(@import).call
+    message = I18n.t("imports.source_file.#{result}")
+    flash_type = result == :unavailable ? :alert : :notice
+    redirect_to import_path(@import), flash_type => message, status: :see_other
   end
 
   def edit; end

@@ -50,6 +50,8 @@ class Import < ApplicationRecord
                if: :should_enqueue_additional_data_extraction?
 
   def process!
+    return unless file.attached?
+
     if user_data_archive?
       process_user_data_archive!
     else
@@ -141,11 +143,30 @@ class Import < ApplicationRecord
   # writes; the compare-and-swap lets exactly one of them move the status
   # to pending and enqueue the job.
   def claim_additional_data_extraction!(payload)
-    self.class.where(id: id, additional_data_extraction_status: additional_data_extraction_status)
-        .update_all(
-          additional_data_extraction_status: self.class.additional_data_extraction_statuses[:pending],
-          additional_data_extraction: payload
-        ).positive?
+    expected_status = additional_data_extraction_status
+    with_source_file_lock(timeout_seconds: 0) do
+      reload
+      return false unless file.attached? && !processing? && !deleting?
+
+      self.class.where(id: id, additional_data_extraction_status: expected_status)
+          .update_all(
+            additional_data_extraction_status: self.class.additional_data_extraction_statuses[:pending],
+            additional_data_extraction: payload
+          ).positive?
+    end
+  rescue WithAdvisoryLock::FailedToAcquireLock
+    false
+  end
+
+  # All source readers and removal use the same session lock. Unlike a row
+  # transaction, it can cover streaming a large file without holding writes open.
+  def with_source_file_lock(timeout_seconds: nil, &)
+    self.class.with_advisory_lock!("import-source-file:#{id}", timeout_seconds: timeout_seconds, &)
+  end
+
+  def source_file_removable?
+    (completed? || failed?) && !user_data_archive? && !immich_api? && !photoprism_api? &&
+      !extraction_in_flight? && !download_preparation_pending?
   end
 
   private

@@ -32,7 +32,12 @@ module EnhancedImport
 
       return unless EnhancedImport::Translator.supported?(import.source)
 
-      run(import, attempt)
+      import.with_source_file_lock do
+        import.reload
+        return unless import.file.attached? && !import.deleting?
+
+        run(import, attempt)
+      end
     rescue ActiveRecord::RecordNotFound => e
       ExceptionReporter.call(e)
     end
