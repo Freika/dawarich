@@ -31,8 +31,8 @@ RSpec.describe Place, type: :model do
       user = create(:user)
       alive_place = create(:place, user: user)
       ghost_place = create(:place, user: user)
-      create(:visit, user: user, place: alive_place, status: 'confirmed', area: nil)
-      create(:visit, user: user, place: ghost_place, status: 'confirmed', deleted_at: 1.day.ago, area: nil)
+      create(:visit, user: user, place: alive_place, status: 'confirmed')
+      create(:visit, user: user, place: ghost_place, status: 'confirmed', deleted_at: 1.day.ago)
 
       expect(Place.linked_to_confirmed_visits(user)).to include(alive_place)
       expect(Place.linked_to_confirmed_visits(user)).not_to include(ghost_place)
@@ -43,7 +43,7 @@ RSpec.describe Place, type: :model do
     it 'nullifies place_id on associated visits, does not delete them' do
       user = create(:user)
       place = create(:place, user: user)
-      visit = create(:visit, user: user, place: place, area: nil)
+      visit = create(:visit, user: user, place: place)
 
       place.destroy!
 
@@ -56,6 +56,19 @@ RSpec.describe Place, type: :model do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:lonlat) }
     it { is_expected.to validate_length_of(:name).is_at_most(255) }
+    it { is_expected.to validate_numericality_of(:visit_radius).only_integer.is_greater_than(0) }
+    it { is_expected.to validate_numericality_of(:visit_radius).is_less_than_or_equal_to(Place::MAX_VISIT_RADIUS) }
+
+    it 'defaults the visit radius to 50 meters' do
+      expect(create(:place).reload.visit_radius).to eq(50)
+    end
+
+    it 'rejects a non-positive visit radius at the database level' do
+      place = create(:place)
+
+      expect { place.update_columns(visit_radius: 0) }
+        .to raise_error(ActiveRecord::StatementInvalid)
+    end
   end
 
   describe 'enums' do
@@ -96,6 +109,31 @@ RSpec.describe Place, type: :model do
         ordered = Place.for_user(user1).ordered
         # The ordered scope orders by name alphabetically (case-sensitive in most DBs)
         expect(ordered.map(&:name)).to include('airport', 'BEACH')
+      end
+    end
+
+    describe '.confirmed_for and .unconfirmed_for' do
+      let!(:suggested_only) { create(:place, user: user1, source: :photon, name: 'Suggested Only') }
+
+      it 'keeps a suggestion-only Place unconfirmed' do
+        create(:visit, user: user1, place: suggested_only, status: :suggested)
+
+        expect(Place.confirmed_for(user1)).not_to include(suggested_only)
+        expect(Place.unconfirmed_for(user1)).to include(suggested_only)
+      end
+
+      it 'treats legacy text notes as confirmation' do
+        suggested_only.update!(note: 'Known location')
+
+        expect(Place.confirmed_for(user1)).to include(suggested_only)
+        expect(Place.unconfirmed_for(user1)).not_to include(suggested_only)
+      end
+
+      it 'treats attached timeline notes as confirmation' do
+        create(:note, user: user1, attachable: suggested_only)
+
+        expect(Place.confirmed_for(user1)).to include(suggested_only)
+        expect(Place.map_visible(user1)).to include(suggested_only)
       end
     end
   end
@@ -158,6 +196,28 @@ RSpec.describe Place, type: :model do
 
   describe 'methods' do
     let(:place) { create(:place, :with_geodata) }
+
+    describe '#address_line' do
+      it 'formats a Photon-shaped address' do
+        place = build(:place, geodata: { 'properties' => { 'street' => 'Poststraße', 'housenumber' => '23',
+                                                           'postcode' => '04275', 'city' => 'Leipzig' } })
+
+        expect(place.address_line).to eq('Poststraße 23, 04275 Leipzig')
+      end
+
+      it 'formats a Nominatim-shaped address' do
+        place = build(:place, geodata: { 'lat' => '51.3', 'lon' => '12.3',
+                                         'address' => { 'road' => 'Poststraße', 'house_number' => '23',
+                                                        'postcode' => '04275', 'city' => 'Leipzig' } })
+
+        expect(place.address_line).to eq('Poststraße 23, 04275 Leipzig')
+      end
+
+      it 'is nil without geodata' do
+        expect(build(:place, geodata: {}).address_line).to be_nil
+        expect(build(:place, geodata: nil).address_line).to be_nil
+      end
+    end
 
     describe '#osm_id' do
       it 'returns the osm_id' do
@@ -267,6 +327,104 @@ RSpec.describe Place, type: :model do
       place.update!(city: 'Leipzig')
 
       expect(place.reload.name_locked_at).to be_within(1.second).of(locked_at)
+    end
+  end
+
+  describe 'renaming' do
+    let(:place) { create(:place, name: 'Imaginary Lane 42') }
+
+    it 'carries the new name to visits still showing the old place name' do
+      visit = create(:visit, user: place.user, place: place, name: 'Imaginary Lane 42')
+
+      place.update!(name: 'Synthetic Home')
+
+      expect(visit.reload).to have_attributes(name: nil, display_name: 'Synthetic Home')
+    end
+
+    it 'carries the new name to visits still showing the default name' do
+      visit = create(:visit, user: place.user, place: place, name: Place::DEFAULT_NAME)
+
+      place.update!(name: 'Synthetic Home')
+
+      expect(visit.reload).to have_attributes(name: nil, display_name: 'Synthetic Home')
+    end
+
+    it 'leaves a visit the user named independently alone' do
+      visit = create(:visit, user: place.user, place: place, name: 'Dentist')
+
+      place.update!(name: 'Synthetic Home')
+
+      expect(visit.reload.name).to eq('Dentist')
+    end
+
+    it 'leaves default-named visits alone when only other attributes change' do
+      visit = create(:visit, user: place.user, place: place, name: Place::DEFAULT_NAME)
+
+      place.update!(city: 'Leipzig')
+
+      expect(visit.reload.name).to eq(Place::DEFAULT_NAME)
+    end
+
+    it 'leaves visits of other places alone' do
+      other = create(:visit, user: place.user, place: create(:place, user: place.user), name: 'Imaginary Lane 42')
+
+      place.update!(name: 'Synthetic Home')
+
+      expect(other.reload.name).to eq('Imaginary Lane 42')
+    end
+  end
+
+  describe 'archiving', :archive do
+    include ActiveSupport::Testing::TimeHelpers
+
+    let(:user) { create(:user) }
+    let(:place) { create(:place, user:, source: :photon) }
+
+    it 'casts the archived boolean and keeps the original archive time on repeated writes' do
+      travel_to Time.zone.parse('2026-10-27 12:00:00') do
+        place.update!(archived: '1')
+        expect(place.reload).to be_archived
+        expect(place.archived_at).to eq(Time.current)
+        travel 1.hour
+        expect { place.update!(archived: true) }.not_to(change { place.reload.archived_at })
+        place.update!(archived: '0')
+        expect(place.reload).not_to be_archived
+        expect(place.archived_at).to be_nil
+      end
+    end
+
+    it 'separates archived and non-archived scopes within the user' do
+      active = create(:place, user:)
+      place.update!(archived: true)
+      create(:place, archived: true)
+
+      expect(user.places.archived).to contain_exactly(place)
+      expect(user.places.not_archived).to contain_exactly(active)
+    end
+
+    it 'keeps an archived discovered Place confirmed but hidden from the map' do
+      place.update!(archived: true)
+
+      expect(user.places.confirmed_for(user)).to include(place)
+      expect(user.places.unconfirmed_for(user)).not_to include(place)
+      expect(user.places.map_visible(user)).not_to include(place)
+    end
+
+    it 'enqueues reattribution on archive and unarchive but not an unchanged archive state' do
+      expect { place.update!(archived: true) }
+        .to have_enqueued_job(Places::ReattributeSuggestedVisitsJob).with(user.id, place.id).once
+      expect { place.update!(archived: true) }.not_to have_enqueued_job(Places::ReattributeSuggestedVisitsJob)
+      expect { place.update!(archived: false) }
+        .to have_enqueued_job(Places::ReattributeSuggestedVisitsJob).with(user.id, place.id).once
+    end
+
+    it 'ignores archived Places at the shared attribution entry point' do
+      place.update!(archived: true, visit_radius: 25)
+      active = create(:place, user:, latitude: place.lat, longitude: place.lon, visit_radius: 100)
+
+      expect(user.places.attribution_for(place.lat, place.lon)).to eq(active)
+      active.update!(archived: true)
+      expect(user.places.attribution_for(place.lat, place.lon)).to be_nil
     end
   end
 end

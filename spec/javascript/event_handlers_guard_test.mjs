@@ -342,3 +342,47 @@ test("tearing down track interactions removes segment markers", () => {
   assert.deepEqual(handlers.trackMarkers, [])
   assert.equal(handlers.selectedTrackFeature, null)
 })
+
+function editablePointHandlers({ editor, tileHits = [] }) {
+  const shown = []
+  const handlers = new EventHandlers(
+    {
+      getLayer: (id) => id === "points-mvt",
+      queryRenderedFeatures: (_point, { layers }) =>
+        layers.includes("points-mvt") ? tileHits : [],
+    },
+    { layerManager: { getLayer: () => editor } },
+  )
+  handlers._showPointFeature = (feature) => shown.push(feature.properties.id)
+  return { handlers, shown }
+}
+
+const editedPointClick = {
+  point: { x: 10, y: 10 },
+  features: [{ properties: { id: 102 }, layer: { id: "track-points" } }],
+}
+
+test("clicking a point of the edited track selects it", () => {
+  const { handlers, shown } = editablePointHandlers({
+    editor: { forEditing: true, justDragged: false },
+  })
+  handlers.handleEditablePointClick(editedPointClick)
+  assert.deepEqual(shown, [102])
+})
+
+test("the click that ends a drag keeps the current selection", () => {
+  const { handlers, shown } = editablePointHandlers({
+    editor: { forEditing: true, justDragged: true },
+  })
+  handlers.handleEditablePointClick(editedPointClick)
+  assert.deepEqual(shown, [])
+})
+
+test("a tile point under the click is selected instead of the edited point", () => {
+  const { handlers, shown } = editablePointHandlers({
+    editor: { forEditing: true, justDragged: false },
+    tileHits: [{ properties: { id: 7 }, layer: { id: "points-mvt" } }],
+  })
+  handlers.handleEditablePointClick(editedPointClick)
+  assert.deepEqual(shown, [])
+})

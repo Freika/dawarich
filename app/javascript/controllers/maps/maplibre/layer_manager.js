@@ -2,7 +2,6 @@ import { shouldShowPointPopup } from "controllers/maps/maplibre/event_handlers"
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { AnomaliesLayer } from "maps_maplibre/layers/anomalies_layer"
-import { AreasLayer } from "maps_maplibre/layers/areas_layer"
 import { FamilyLayer } from "maps_maplibre/layers/family_layer"
 import { FlightsLayer } from "maps_maplibre/layers/flights_layer"
 import { FogLayer } from "maps_maplibre/layers/fog_layer"
@@ -44,7 +43,6 @@ export class LayerManager {
   async addAllLayers(
     visitsGeoJSON,
     photosGeoJSON,
-    areasGeoJSON,
     placesGeoJSON,
     flightsGeoJSON,
     isCurrent = () => true,
@@ -55,7 +53,6 @@ export class LayerManager {
     // above contextual overlays, and transient/replay markers at the top.
 
     this._addHexagonLayer()
-    this._addAreasLayer(areasGeoJSON)
     this._addTracksLayer(EMPTY_GEOJSON)
     this._addFlightsLayer(flightsGeoJSON)
     this._addVisitsLayer(visitsGeoJSON)
@@ -73,6 +70,8 @@ export class LayerManager {
     this._addTracksMvtLayer()
     this._addAnomaliesLayer()
     this._addPointsMvtLayer()
+    // Photos load before tile layers, so raise their clusters above them.
+    this.layers.photosLayer?.raiseAbove("points-mvt")
     this._addRecentPointLayer()
     this._addReplayMarkerLayer()
     this._addFogLayer(EMPTY_GEOJSON)
@@ -102,12 +101,11 @@ export class LayerManager {
 
     // Click handlers
     subscribe("click", "points-mvt", handlers.handlePointClick)
+    subscribe("click", "track-points", handlers.handleEditablePointClick)
     subscribe("click", "visits", handlers.handleVisitClick)
     subscribe("click", "photos", handlers.handlePhotoClick)
     subscribe("click", "places", handlers.handlePlaceClick)
-    // Areas have multiple layers (fill, outline)
-    subscribe("click", "areas-fill", handlers.handleAreaClick)
-    subscribe("click", "areas-outline", handlers.handleAreaClick)
+    subscribe("click", "places-radius-outline", handlers.handlePlaceClick)
 
     // Anomalies click handler
     subscribe("click", "anomalies", handlers.handleAnomalyClick)
@@ -161,11 +159,14 @@ export class LayerManager {
     subscribe("mouseleave", "photos", () => {
       this.map.getCanvas().style.cursor = ""
     })
-    subscribe("mouseenter", "places", () => {
-      this.map.getCanvas().style.cursor = "pointer"
-    })
-    subscribe("mouseleave", "places", () => {
-      this.map.getCanvas().style.cursor = ""
+    const placeLayers = ["places", "places-radius-outline"]
+    placeLayers.forEach((layerId) => {
+      subscribe("mouseenter", layerId, () => {
+        this.map.getCanvas().style.cursor = "pointer"
+      })
+      subscribe("mouseleave", layerId, () => {
+        this.map.getCanvas().style.cursor = ""
+      })
     })
     // Anomalies cursor handlers
     subscribe("mouseenter", "anomalies", () => {
@@ -174,20 +175,6 @@ export class LayerManager {
     subscribe("mouseleave", "anomalies", () => {
       this.map.getCanvas().style.cursor = ""
     })
-    // Areas hover handlers for all sub-layers
-    const areaLayers = ["areas-fill", "areas-outline"]
-    areaLayers.forEach((layerId) => {
-      // Only add handlers if layer exists
-      if (this.map.getLayer(layerId)) {
-        subscribe("mouseenter", layerId, () => {
-          this.map.getCanvas().style.cursor = "pointer"
-        })
-        subscribe("mouseleave", layerId, () => {
-          this.map.getCanvas().style.cursor = ""
-        })
-      }
-    })
-
     // Map-level click clears the focused track selection.
     subscribe("click", (e) => {
       // Track points are part of a selected track — clicking them should not clear the selection
@@ -350,17 +337,6 @@ export class LayerManager {
     return this.layers.hexagonsLayer
   }
 
-  _addAreasLayer(areasGeoJSON) {
-    if (!this.layers.areasLayer) {
-      this.layers.areasLayer = new AreasLayer(this.map, {
-        visible: this.settings.areasEnabled || false,
-      })
-      this.layers.areasLayer.add(areasGeoJSON)
-    } else {
-      this.layers.areasLayer.update(areasGeoJSON)
-    }
-  }
-
   _addTracksLayer(tracksGeoJSON) {
     if (!this.layers.tracksLayer) {
       this.layers.tracksLayer = new TracksLayer(this.map, {
@@ -399,8 +375,13 @@ export class LayerManager {
     if (!this.layers.placesLayer) {
       this.layers.placesLayer = new PlacesLayer(this.map, {
         visible: this.settings.placesEnabled || false,
+        boundariesVisible: this.settings.placeBoundariesEnabled || false,
       })
       this.layers.placesLayer.add(placesGeoJSON)
+      if (this.map.getLayer("visits")) {
+        this.map.moveLayer("places-radius-fill", "visits")
+        this.map.moveLayer("places-radius-outline", "visits")
+      }
     } else {
       this.layers.placesLayer.update(placesGeoJSON)
     }
@@ -448,6 +429,9 @@ export class LayerManager {
       this.layers.tracksMvtLayer = new TracksMvtLayer(this.map, {
         tracksEnabled: this.settings.tracksEnabled === true,
         trackColor: SettingsManager.getSetting("trackColor"),
+        speedColoring:
+          SettingsManager.getSetting("speedColoredRoutes") === true,
+        speedColorScale: SettingsManager.getSetting("speedColorScale"),
         apiKey: this.apiKey,
         importId: this.controller?.importIdValue || null,
         onTileError: () =>
@@ -496,12 +480,20 @@ export class LayerManager {
   _addRecentPointLayer() {
     if (!this.layers.recentPointLayer) {
       this.layers.recentPointLayer = new RecentPointLayer(this.map, {
-        visible: false, // Initially hidden, shown only when live mode is enabled
+        hoverTitle: translate("live_map.your_position"),
       })
       this.layers.recentPointLayer.add({
         type: "FeatureCollection",
         features: [],
       })
+      if (this.controller?.hasCurrentPositionValue) {
+        const position = this.controller.currentPositionValue
+        this.layers.recentPointLayer.updateRecentPoint(
+          position.longitude,
+          position.latitude,
+          { timestamp: position.timestamp },
+        )
+      }
     }
   }
 

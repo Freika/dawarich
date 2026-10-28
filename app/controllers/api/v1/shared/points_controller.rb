@@ -8,7 +8,7 @@ module Api
         LIVE_FRESHNESS_SECONDS = 15 * 60
 
         def index
-          return render(json: []) if !ctx.show_route? && (link.family_only? || link.resource_type.to_sym == :track)
+          return render(json: []) if route_hidden?
 
           if link.resource_type.to_sym == :live
             render json: live_points
@@ -24,6 +24,10 @@ module Api
         end
 
         private
+
+        def route_hidden?
+          !ctx.show_route? && (link.family_only? || %i[track trip].include?(link.resource_type.to_sym))
+        end
 
         def route_points
           return [] unless link.resource_type.to_sym == :live
@@ -61,7 +65,7 @@ module Api
             trip = link.resource
             return [] if trip.nil?
 
-            outside_privacy_zones(trip.points.order(:timestamp))
+            outside_privacy_zones(trip.plan_scoped_route_points.order(:timestamp))
           when :track
             track = link.resource
             return [] if track.nil?
@@ -81,7 +85,7 @@ module Api
           zones = privacy_zones
           return points if zones.empty?
 
-          condition = zones.map { 'ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)' }
+          condition = zones.map { 'ST_DWithin(points.lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)' }
                            .join(' OR ')
           points.where.not(condition, *zones.flat_map { |z| [z[:lon], z[:lat], z[:radius]] })
         end

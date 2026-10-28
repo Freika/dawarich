@@ -29,6 +29,24 @@ RSpec.describe 'ShareLinks::Hubs', type: :request do
       expect(response.body).to include('data-testid="hub-tab-timeline"')
     end
 
+    it 'tells a user with privacy zones that the hidden areas are shifted off the place' do
+      tag = create(:tag, user: user, privacy_radius_meters: 300)
+      tag.places << create(:place, user: user, latitude: 52.5, longitude: 13.4)
+
+      get share_links_hub_path
+
+      expect(response.body).to include('data-testid="share-privacy-zones-note"')
+      expect(response.body).to include(ERB::Util.html_escape(I18n.t('shared_links.privacy_zones_note.text')))
+    end
+
+    it 'leaves the privacy zone note out for a user without privacy zones' do
+      create(:tag, user: user, privacy_radius_meters: nil)
+
+      get share_links_hub_path
+
+      expect(response.body).not_to include('data-testid="share-privacy-zones-note"')
+    end
+
     it 'shows the live create form (with route checkbox) when no live share exists' do
       get share_links_hub_path
       expect(response.body).to include('Share the route')

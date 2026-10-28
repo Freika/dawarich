@@ -69,7 +69,7 @@ class Api::V1::SettingsController < ApiController
   TILE_FILE_EXTENSIONS = %w[.png .jpg .jpeg .webp .mvt .pbf].freeze
   def settings_params
     permitted = params.require(:settings).permit(
-      :timezone,
+      :timezone, :date_format, :time_format, :first_day_of_week,
       :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
       :route_color, :track_color,
@@ -79,8 +79,9 @@ class Api::V1::SettingsController < ApiController
       :maps_v2_style, :maps_maplibre_style, :maps_maplibre_tiles_url,
       :maps_maplibre_tiles_fallback, :globe_projection,
       :min_minutes_spent_in_city,
-      :gps_filtering_enabled,
+      :gps_filtering_enabled, :gps_accuracy_filter_enabled, :gps_accuracy_threshold,
       :point_dragging_enabled, :points_tiled_rendering,
+      :family_enabled, :achievements_enabled,
       :app_store_supporter, :app_store_supporter_install,
       enabled_map_layers: [],
       places_tag_filters: [],

@@ -41,6 +41,7 @@ pl:
           photon_api_host: "Host"
           photon_api_key: "Klucz API"
           photon_api_use_https: "Używaj HTTPS"
+          photon_api_language: "Język"
           nominatim_api_host: "Host"
           nominatim_api_key: "Klucz API"
           nominatim_api_use_https: "Używaj HTTPS"
@@ -50,12 +51,14 @@ pl:
           store_geodata: "Geokoduj nowe punkty od razu"
           host_hint: "Sama nazwa hosta z opcjonalnym portem, np. photon.example.com:2322"
           rps_hint: "Pozostaw puste, aby nie stosować limitu. Ustaw wartość, na jaką pozwala Twój serwer lub plan."
+          photon_api_language_hint: "Dwuliterowy kod języka dla nazw miejsc albo default dla nazw w języku lokalnym. Twój indeks Photon musi zawierać ten język. Zmiana dotyczy tylko nowych zapytań, a to samo miasto może wtedy pojawić się w statystykach dwa razy."
           api_key_keep_hint: "Pozostaw puste, aby zachować zapisany klucz."
           store_geodata_hint: "Ustala miasto i kraj przy dodawaniu nowych punktów. Nocne wyszukiwania nadal działają, gdy dostawca jest skonfigurowany, nawet po wyłączeniu tej opcji."
       update:
         saved: "Ustawienia zapisane."
         pinned: "Odrzucono: ustalone przez %{variables}."
         host_invalid: "Host musi być samą nazwą hosta z opcjonalnym portem lub ścieżką, bez spacji."
+        language_invalid: "Język musi być dwuliterowym kodem, np. en lub nl, albo default."
         chibigeo_key_required: "ChibiGeo wymaga klucza API. Darmowy plan Hobby obejmuje 2500 zapytań dziennie — odbierz swój klucz na chibigeo.com."
       test_geocoding:
         not_configured: "Nie skonfigurowano dostawcy geokodowania. Najpierw zapisz dostawcę."
@@ -608,6 +611,8 @@ pl:
       dawarich_mobile_app_export_json: Eksport z aplikacji mobilnej Dawarich (.json)
       polarsteps: 'Polarsteps:'
       locations_json_json: locations.json (.json)
+      swarm: 'Foursquare Swarm:'
+      swarm_checkins_json: 'Eksport danych (checkins*.json, .zip)'
       zip: 'ZIP:'
       archives_containing_any_of_the_above_zip: Archiwa zawierające dowolny z powyższych formatów (.zip)
       file_format_is_automatically_detected_during_upload: Format pliku jest automatycznie wykrywany podczas przesyłania.
@@ -730,6 +735,8 @@ pl:
       total_time: łączny czas
       visit_count:
         one: wizyta
+        few: wizyty
+        many: wizyt
         other: wizyty
       no_visit_data_available_for_this_period: Brak danych o wizytach dla tego okresu.
       confirmed_visits_will_appear_here: Potwierdzone wizyty pojawią się tutaj.
@@ -790,6 +797,8 @@ pl:
       total_time: łączny czas
       visit_count:
         one: wizyta
+        few: wizyty
+        many: wizyt
         other: wizyt
       no_visit_data_available_for_this_period: Brak danych o wizytach dla tego okresu.
       confirmed_visits_will_appear_here: Potwierdzone wizyty pojawią się tutaj.
@@ -850,6 +859,7 @@ pl:
       favorites_marked: Oznaczone ulubione
       places: miejsca
     year_cards:
+      flown: "w tym %{distance} samolotem"
       title: "Lata"
     year_calendar:
       mode: "Widok kalendarza"
@@ -918,6 +928,8 @@ pl:
       dawarich_logo: Logo Dawarich
   map:
     onboarding_modal:
+      not_sure_where_your_app_keeps_its_export: "Nie wiesz, gdzie Twoja aplikacja ukrywa eksport?"
+      step_by_step_export_guides: "Instrukcje eksportu krok po kroku"
       invite_your_family: "Zaproś swoją rodzinę"
       add_your_family_and_see_each_other_on_the_map: "Dodaj swoją rodzinę i zobaczcie się na mapie."
       welcome_to_dawarich: Witamy w Dawarich!
@@ -932,16 +944,6 @@ pl:
       skip_for_now: Na razie pomiń
       import_your_data: Zaimportuj swoje dane
       supported_formats: Obsługiwane formaty
-      google_maps: 'Google Maps:'
-      records_json_semantic_history_phone_takeout_json: Records.json, Semantic History, Phone Takeout (.json)
-      gpx: 'GPX:'
-      track_files_gpx: Pliki tras (.gpx)
-      geojson: 'GeoJSON:'
-      feature_collections_json: Kolekcje obiektów (.json)
-      owntracks: 'OwnTracks:'
-      recorder_files_rec: Pliki Recorder (.rec)
-      kml: 'KML:'
-      kml_files_kml_kmz: Pliki KML (.kml, .kmz)
       file_format_is_automatically_detected_during_upload: Format pliku jest wykrywany automatycznie podczas przesyłania.
       trial_limitations_max_5_imports_10mb_per_file_current_imports: 'Ograniczenia okresu próbnego: maks. 5 importów, 10 MB na plik. Aktualna liczba importów:'
       select_one_or_multiple_files: Wybierz jeden lub kilka plików
@@ -961,16 +963,6 @@ pl:
       settings: Ustawienia
       setup_guide: instrukcji konfiguracji
     maplibre:
-      area_creation_modal:
-        create_new_area: Utwórz nowy obszar
-        area_name: Nazwa obszaru *
-        radius: Promień
-        meters: metry
-        cancel: Anuluj
-        e_g_home_office_gym: np. Dom, Biuro, Siłownia...
-        radius_in_meters: Promień w metrach
-        create_area: Utwórz obszar
-        creating: Tworzenie...
       button_cluster:
         map_controls: Sterowanie mapą
         timeline: Oś czasu
@@ -991,6 +983,8 @@ pl:
         settings_s: Ustawienia (S)
         links: Linki
       settings_panel:
+        speed_colored_tracks: Koloruj ślady według prędkości
+        edit_speed_colors: Edytuj kolory prędkości
         close_panel: Zamknij panel
         layers: Warstwy
         search_for_a_place: Wyszukaj miejsce
@@ -1025,6 +1019,7 @@ pl:
         places: Miejsca
         show_your_saved_places: Pokaż zapisane miejsca
         enable_all_tags: Włącz wszystkie tagi
+        show_place_boundaries: Pokaż granice miejsc
         untagged: "\U0001F3F7️ Bez tagu"
         click_tags_to_filter_places: Kliknij tagi, aby filtrować miejsca
         photos: Zdjęcia
@@ -1086,11 +1081,14 @@ pl:
         track_generation: Generowanie tras
         track_split_distance: Odstęp odległości między trasami
         track_split_distance_unit: m
-        track_split_distance_hint: Rozpocznij nową trasę, gdy kolejne punkty są dalej od siebie.
+        track_split_distance_hint: "Trasy z różnych urządzeń są łączone, gdy jedna kończy się w tej odległości od początku następnej. Odległość między punktami nie rozpoczyna nowej trasy."
         track_split_time: Odstęp czasu między trasami
         track_split_time_unit: min
         track_split_time_hint: "Dłuższe przerwy rozpoczynają nową trasę i pozwalają podróżom użyć nagrania z innego urządzenia. Po zmianie wybierz „Przelicz” na stronie każdej podróży, której dotyczy zmiana, aby zaktualizować zapisaną trasę i dystans."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Ukryj odczyty, które nie mogą być rzeczywistą pozycją - niemożliwe skoki, uszkodzone współrzędne. Wyłącz, aby zobaczyć wszystkie surowe punkty.
+        hide_inaccurate_points: "Ukryj niedokładne punkty"
+        hide_inaccurate_points_hint: "Ukrywa także punkty, których zgłoszona dokładność jest gorsza niż próg poniżej. Pomaga przy śledzeniu telefonem, które dodaje boczny szum; zostaw wyłączone dla importów z Google Timeline, których przybliżone punkty nadal leżą na drodze. Aby zastosować to do historii, najpierw użyj „Zastosuj ustawienia”, a potem „Ponownie oceń dane historyczne”."
+        accuracy_threshold: "Próg dokładności"
         re_evaluate_past_data: Ponownie oceń dane historyczne
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Czyści istniejące flagi anomalii i ponownie uruchamia filtr dla wszystkich punktów z bieżącymi ustawieniami. Potem trasy, statystyki i podsumowania zostaną przebudowane. Działa w tle.
         recalculate_tracks_stats: Przelicz trasy i statystyki
@@ -1151,8 +1149,8 @@ pl:
         pick_a_day_in_the_calendar_to_see_visits: Wybierz dzień w kalendarzu, aby zobaczyć wizyty.
         create_visit: Utwórz wizytę
         create_place: Utwórz miejsce
-        select_area: Wybierz obszar
-        create_area: Utwórz obszar
+        select_data_on_map: Wybierz dane na mapie
+        select_data_all_time: Wybierz dane z całego okresu
         replay: Odtwórz
         enrich_photos: Uzupełnij zdjęcia
         close: Zamknij
@@ -1275,6 +1273,8 @@ pl:
         moving_duration: "%{duration} ruchu"
         low_confidence_stops:
           one: "%{count} postój o niskiej pewności"
+          few: "%{count} postoje o niskiej pewności"
+          many: "%{count} postojów o niskiej pewności"
           other: "%{count} postoje o niskiej pewności"
         no_visits_match_the_current_search_or_filter: Brak wizyt pasujących do bieżącego wyszukiwania lub filtrów.
         clear_search_filters: Wyczyść wyszukiwanie i filtry
@@ -1283,6 +1283,8 @@ pl:
         next_day: Następny dzień
         visit_count:
           one: "%{count} wizyta"
+          few: "%{count} wizyty"
+          many: "%{count} wizyt"
           other: "%{count} wizyt"
       day_nav:
         previous_day: Poprzedni dzień
@@ -1344,7 +1346,51 @@ pl:
       destroy_this_notification: Usuń to powiadomienie
       are_you_sure: Czy na pewno chcesz kontynuować?
   places:
+    management:
+      create: "Utwórz miejsce"
+      duplicates: "Możliwe duplikaty"
+      search: "Szukaj nazw"
+      sort: "Sortuj według"
+      last_visit: "Ostatnia wizyta"
+      active_visits: "Aktywne wizyty"
+      status: "Status"
+      apply: "Zastosuj"
+      tags: "Tagi"
+      tag: "Tag"
+      source: "Źródło"
+      badges: "Ochrona"
+      geofence: "Geostrefa"
+      privacy: "Strefa prywatności"
+      selected: "Wybrane miejsca"
+      add_tag: "Dodaj tag"
+      remove_tag: "Usuń tag"
+      survivor: "Zachowaj to miejsce"
+      merge: "Scal miejsca"
+      delete: "Usuń miejsca"
+      select_all: "Wybierz wszystkie miejsca na tej stronie"
+      select_place: "Wybierz %{name}"
+      no_results: "Żadne miejsca nie pasują do tych filtrów."
+      duplicates_description: "Miejsca o nakładających się promieniach wizyt są tutaj grupowane. Sprawdź każdą grupę i wybierz miejsce do zachowania. Nic nie jest scalane automatycznie."
+      no_duplicates: "Nie znaleziono możliwych duplikatów."
+      cluster: "Grupa %{number}"
+      distance_reference: "Odległości od zalecanego miejsca: %{name}"
+      distance: "Odległość"
+      meters: "%{distance} m"
+      bulk_success: "Zaktualizowane miejsca: %{count}"
+      invalid_selection: "Wybierz miejsca oraz prawidłowy tag lub jedno z wybranych miejsc do zachowania."
+      merge_confirmation: "Scalić te miejsca z wybranym miejscem? Wizyty, tagi i notatki zostaną do niego przeniesione. Tej czynności nie można cofnąć."
+      delete_confirmation: "Usunąć te miejsca? Liczba miejsc: %{places}. Aktywne wizyty, które stracą powiązanie z miejscem: %{visits}; ich opisy lokalizacji zostaną zachowane. Miejsca z geostrefami: %{geofences}; Zdarzenia geostrefy zostają zachowane z nazwą miejsca; subskrypcje webhooków zostają usunięte. Miejsca z tagami prywatności: %{privacy}; pobliskie dane mogą stać się widoczne, także w udostępnionych linkach. Tej czynności nie można cofnąć."
+      sources:
+        manual: "Ręczne"
+        photon: "Wykryte"
+        gpx_waypoint: "Punkt trasy GPX"
+    edit_on_map: "Edytuj na mapie"
+    drag_to_edit: "Przeciągnij znacznik, aby przesunąć miejsce, i uchwyt, aby zmienić promień wizyty."
+    cancel_edit: "Anuluj"
+    place_details: "Szczegóły miejsca"
+    close_panel: "Zamknij szczegóły miejsca"
     drawer:
+      delete_consequences: "Usunąć to miejsce?\nAktywne wizyty: %{visits}. Zachowają etykietę lokalizacji.\nTagi stref prywatności: %{privacy_tags}.\nWebhooki, z których zostanie usunięte to miejsce: %{webhooks}.\nZdarzenia geostrefy zostają zachowane z nazwą miejsca. Tej operacji nie można cofnąć."
       source: 'Źródło:'
       total_hours: łączna liczba godzin
       avg_dwell: średni czas pobytu
@@ -1353,20 +1399,29 @@ pl:
       rarr: "→"
       'on': dnia
       no_visits_yet: Brak wizyt
-      rename: Zmień nazwę
       merge: Scal
+      select_place_to_merge: Wybierz zduplikowane miejsce
+      no_matching_places: Nie znaleziono pasujących miejsc
+      search_places: Szukaj miejsc
+      search: Szukaj
+      merge_confirmation: Połączyć wybrane miejsce z „%{survivor}”? Wizyty, tagi i notatki zostaną tutaj przeniesione.
       notes: Notatki
       save: Zapisz
       delete: Usuń
-      delete_this_place_this_cannot_be_undone: Usunąć to miejsce? Tego nie da się cofnąć.
+      delete_this_place_this_cannot_be_undone: Usunąć to miejsce? Wizyty pozostaną bez przypisanego miejsca.
       manual_name_title: To miejsce ma nazwę nadaną ręcznie, więc automatyczne nazewnictwo go nie zmieni. Zmień nazwę na "%{default_name}", aby przywrócić automatyczne nazewnictwo.
       visit_count:
         one: "%{count} wizyta"
+        few: "%{count} wizyty"
+        many: "%{count} wizyt"
         other: "%{count} wizyty"
     nearby_places:
       no_nearby_places_found: Nie znaleziono pobliskich miejsc
       load_more_search_up_to_distance_m: Załaduj więcej (szukaj do %{distance} m)
     index:
+      filters: Filtry miejsc
+      all_places: Wszystkie miejsca
+      unconfirmed_places: Niepotwierdzone
       hello_there: Cześć!
       here_you_ll_find_your_places_created_by_visits_suggestion: Tutaj znajdziesz miejsca utworzone przez mechanizm sugestii wizyt. Na razie jeszcze ich nie ma.
       name: Nazwa
@@ -1376,7 +1431,7 @@ pl:
       timeline: Oś czasu
       places: Miejsca
       delete: Usuń
-      are_you_sure_deleting_a_place_will_result_in_deleting: Czy na pewno chcesz kontynuować? Usunięcie miejsca spowoduje usunięcie wszystkich powiązanych z nim wizyt.
+      are_you_sure_deleting_a_place_will_result_in_deleting: Usunąć to miejsce? Wizyty pozostaną bez przypisanego miejsca.
   points:
     address:
       address: 'Adres:'
@@ -1512,6 +1567,7 @@ pl:
       residential_roads: Drogi osiedlowe
       track: Trasa
   settings:
+    geofencing_paused_while_archived: wstrzymane, gdy miejsce jest zarchiwizowane
     trek_sources:
       select_trips:
         title: "Wybierz podróże z TREK"
@@ -1553,7 +1609,9 @@ pl:
         background_jobs_dashboard: Panel zadań w tle
         this_will_open_the_background_jobs_dashboard_in_a_new: Otworzy panel zadań w tle w nowej karcie.
         visits_suggestions: Sugestie wizyt
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Włącz lub wyłącz sugestie wizyt. To zadanie w tle uruchamiane codziennie o północy. Wyłączenie może być przydatne, jeśli nie chcesz otrzymywać sugestii wizyt albo korzystasz z aplikacji Dawarich na iOS, która ma własny mechanizm sugestii.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Sugestie wizyt są generowane automatycznie wkrótce po otrzymaniu nowych punktów i ponownie sprawdzane każdej nocy. Wyłączenie ich zatrzymuje całe automatyczne wykrywanie wizyt, także po importach. Aplikacja Dawarich na iOS ma własne sugestie wizyt.
+        enabled: Włączone
+        disabled: Wyłączone
         background_jobs: Zadania w tle
         start_job: Uruchom zadanie
         are_you_sure: Czy na pewno chcesz kontynuować?
@@ -1604,12 +1662,26 @@ pl:
         timezone: Strefa czasowa
         your_timezone: Twoja strefa czasowa
         all_dates_and_times_will_be_displayed_in_this_timezone: Wszystkie daty i godziny będą wyświetlane w tej strefie czasowej
+        date_and_time: "Data i godzina"
+        date_format: "Format daty"
+        time_format: "Format godziny"
+        first_day_of_week: "Pierwszy dzień tygodnia"
+        format_auto: "Automatycznie (%{example})"
+        time_format_12h: "12-godzinny (%{example})"
+        time_format_24h: "24-godzinny (%{example})"
+        date_and_time_hint: "Dotyczy dat i godzin w aplikacji, e-mailach i na mapie."
         supporter_badge: Odznaka wspierającego
         show_supporter_badge_in_navbar: Pokaż odznakę wspierającego w pasku nawigacji
         display_a_gem_icon_next_to_your_profile_to_show: Wyświetl ikonę klejnotu obok profilu, aby pokazać status wspierającego
         general_settings: Ustawienia ogólne
         save_changes: Zapisz zmiany
         test_email_worker_hint: Dodaje wiadomość testową do kolejki tego samego procesu w tle, który wysyła e-maile systemowe
+        features: "Funkcje"
+        features_hint: "Wyłącz części Dawarich, z których nie korzystasz. Znikną z interfejsu, a ich przetwarzanie w tle zostanie zatrzymane."
+        family_feature: "Rodzina"
+        family_feature_hint: "Udostępnianie lokalizacji członkom rodziny. Po wyłączeniu przestajesz udostępniać swoją lokalizację i linki do podróży tylko dla rodziny; pozostajesz jej członkiem. Po ponownym włączeniu udostępnianie lokalizacji jest wyłączone."
+        achievements_feature: "Osiągnięcia"
+        achievements_feature_hint: "Odkryte regiony i odznaki. Po wyłączeniu postęp nie jest już obliczany, a Twoje publiczne linki do osiągnięć zostają wyłączone."
     integrations:
       trek:
         title: "Integracja z TREK"
@@ -1627,6 +1699,7 @@ pl:
         sync_now: "Synchronizuj teraz"
         disconnect: "Rozłącz"
         disconnect_confirmation: "Rozłączyć TREK? Zarządzane podróże i ich zarejestrowane dane pozostaną w Dawarich, ale przestaną się synchronizować."
+        ssl_verification_off: "Weryfikacja SSL wyłączona"
       index:
         services_nav: Usługi integracji
         geocoding: "Geokodowanie"
@@ -1776,7 +1849,7 @@ pl:
         tracks: Trasy
         imports: Importy
         exports: Eksporty
-        areas: Obszary
+        places: Miejsca
         sign_in_history: Historia logowań
         total_sign_ins: Liczba logowań
         last_sign_in: Ostatnie logowanie
@@ -1804,7 +1877,7 @@ pl:
       show:
         tune_how_dawarich_decides_where_you_actually_were: Dostosuj, jak Dawarich określa, gdzie faktycznie byłeś
         these_settings_control_how_the_app_groups_your_gps_points: Te ustawienia kontrolują, jak aplikacja grupuje punkty GPS w wizyty w miejscach.
-        points_within_this_radius_are_treated_as_the_same_visit: Punkty w tym promieniu są traktowane jako jedna wizyta. Domyślnie 100.
+        points_within_this_radius_are_treated_as_the_same_visit: Punkty w tym promieniu są traktowane jako jedna wizyta. Pobyt w tym promieniu kończy też trasę (co najmniej 100 m). Domyślnie 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Niżej = więcej sugerowanych wizyt, także krótkie postoje. Domyślnie 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Pomiń postoje krótsze niż ten próg. Zwiększ, by ignorować krótkie zatrzymania; zmniejsz, by wykrywać krótkie postoje. Domyślnie 5.
         visit_detection: Wykrywanie wizyt
@@ -1930,10 +2003,14 @@ pl:
         light_mode: Tryb jasny
       days_remaining:
         one: Pozostał %{count} dzień
+        few: Pozostały %{count} dni
+        many: Pozostało %{count} dni
         other: Pozostało %{count} dni
     place_creation_modal:
       create_new_place: Utwórz nowe miejsce
       place_name: Nazwa miejsca *
+      visit_radius: Promień wizyty (metry) *
+      visit_radius_hint: Wizyty, których środek znajduje się w tym promieniu, mogą zostać przypisane do miejsca. Nie wpływa to na prywatność.
       note: Notatka
       optional_add_any_notes_or_details_about_this_place: Opcjonalnie - dodaj notatki lub szczegóły dotyczące tego miejsca
       tags: Tagi
@@ -2042,6 +2119,9 @@ pl:
         upgrade_to_pro: Przejdź na Pro
         dismiss: Zamknij
   shared_links:
+    privacy_zones_note:
+      text: "Twoje strefy prywatności pozostają ukryte w tym linku. Każdy ukryty obszar jest przesunięty względem miejsca, więc nikt nie ustali, gdzie ono jest."
+      manage: "Strefy prywatności"
     expires_field:
       expires_optional: Wygasa (opcjonalnie)
       stays_active_through_the_end_of_the_day_before_the: Pozostaje aktywny do końca dnia poprzedzającego wybraną datę.
@@ -2069,6 +2149,8 @@ pl:
       revoke_this_link_it_will_stop_working_immediately: Unieważnić ten link? Przestanie działać natychmiast.
       view_count:
         one: "%{count} wyświetlenie"
+        few: "%{count} wyświetlenia"
+        many: "%{count} wyświetleń"
         other: "%{count} wyświetlenia"
     modal_live_create_form:
       current_location_in_real_time: bieżąca lokalizacja w czasie rzeczywistym
@@ -2126,7 +2208,7 @@ pl:
       upgrade_to_pro: Przejdź na Pro
     month:
       flight_distance: Dystans lotów
-      from_airtrail_not_counted_in_distance: Z AirTrail, nieliczony do dystansu
+      from_airtrail_included_in_distance: Z AirTrail, wliczony do dystansu
       monthly_digest: Podsumowanie miesięczne
       share: Udostępnij
       distance_traveled: Przebyty dystans
@@ -2147,6 +2229,8 @@ pl:
       month_year_monthly_digest: "%{month} %{year} - podsumowanie miesięczne"
       city_count:
         one: "%{count} miasto"
+        few: "%{count} miasta"
+        many: "%{count} miast"
         other: "%{count} miast"
     reverse_geocoding_stats:
       points_without_data: punkty bez danych
@@ -2178,7 +2262,7 @@ pl:
       countries_count_countries_cities_count_cities: "%{countries_count} krajów, %{cities_count} miast"
     public_month:
       flight_distance: Dystans lotów
-      from_airtrail_not_counted_in_distance: Z AirTrail, nieliczony do dystansu
+      from_airtrail_included_in_distance: Z AirTrail, wliczony do dystansu
       monthly_digest: Podsumowanie miesięczne
       distance_traveled: Przebyty dystans
       total_distance_for_this_month: Całkowity dystans w tym miesiącu
@@ -2203,6 +2287,21 @@ pl:
     show:
       statistics_for_year_year: Statystyki za rok %{year}
   tags:
+    confirm_delete:
+      title: "Usuń tag strefy prywatności"
+      covered_places: "Ta strefa prywatności chroni tyle Twoich miejsc: %{count}."
+      visibility: "Dane wokół tych miejsc znów będą widoczne na mapie, w podróżach i w statystykach."
+      shared_links:
+        one: "Dotyczy to również Twojego %{count} aktywnego linku udostępniania."
+        other: "Dotyczy to również wszystkich Twoich aktywnych linków udostępniania (%{count})."
+    places:
+      title: "Miejsca z tym tagiem"
+      empty: "Żadne miejsce nie ma jeszcze tego tagu."
+      visits:
+        one: "%{count} wizyta"
+        other: "%{count} wizyty"
+        few: "%{count} wizyty"
+        many: "%{count} wizyt"
     form:
       prohibited_this_tag_from_being_saved: 'uniemożliwił zapisanie tego tagu:'
       click_to_select_an_emoji: Kliknij, aby wybrać emoji
@@ -2210,12 +2309,14 @@ pl:
       choose_from_swatches_or_pick_a_custom_color: Wybierz z próbek lub ustaw własny kolor
       privacy_zone: Strefa prywatności
       hide_map_data_around_places_with_this_tag: Ukryj dane mapy w pobliżu miejsc oznaczonych tym tagiem
-      data_within_this_radius_will_be_hidden_from_the_map: Dane w tym promieniu będą ukryte na mapie
+      hidden_area_hint: "Wszystko w tym promieniu jest zawsze ukryte. Ukryty okrąg jest do 1,6 razy większy i przesunięty względem miejsca o stałą odległość, aby nikt nie mógł ustalić miejsca na podstawie tego, gdzie kończą się Twoje dane."
       home_work_restaurant: Home, Work, Restaurant...
       privacy_radius: Promień prywatności
       cancel: Anuluj
       errors_prohibited_save:
         one: "%{count} błąd uniemożliwił zapisanie tego tagu:"
+        few: "%{count} błędy uniemożliwiły zapisanie tego tagu:"
+        many: "%{count} błędów uniemożliwiło zapisanie tego tagu:"
         other: "%{count} błędów uniemożliwiło zapisanie tego tagu:"
     edit:
       edit_tag: Edytuj tag
@@ -2229,6 +2330,7 @@ pl:
       actions: Akcje
       no_tags_yet: Brak tagów
       create_tags_to_organize_your_places_and_add_privacy_zones: Twórz tagi, aby porządkować miejsca i dodawać strefy prywatności.
+      privacy_zone_badge_hint: "Ukryty obszar przesunięty względem miejsca, do 1,6 razy ten promień"
       create_your_first_tag: Utwórz pierwszy tag
       tags: Tagi
       edit_tag: Edytuj tag
@@ -2254,6 +2356,8 @@ pl:
         mode_unclear: Tryb niejednoznaczny — zbyt niska pewność wykrycia
         short_segments:
           one: 1 krótki segment
+          few: "%{count} krótkie segmenty"
+          many: "%{count} krótkich segmentów"
           other: "%{count} krótkie segmenty"
       list:
         all_segments: Wszystkie segmenty (%{count})
@@ -2277,6 +2381,8 @@ pl:
       mdash: "&mdash;"
       country_count:
         one: "%{count} kraj"
+        few: "%{count} kraje"
+        many: "%{count} krajów"
         other: "%{count} krajów"
     distance:
       calculating: Obliczanie...
@@ -2286,6 +2392,8 @@ pl:
       prohibited_this_trip_from_being_saved: 'uniemożliwił zapisanie tej podróży:'
       errors_prohibited_save:
         one: "%{count} błąd uniemożliwił zapisanie tej podróży:"
+        few: "%{count} błędy uniemożliwiły zapisanie tej podróży:"
+        many: "%{count} błędów uniemożliwiło zapisanie tej podróży:"
         other: "%{count} błędów uniemożliwiło zapisanie tej podróży:"
     recalculate_button:
       recalculating_hellip: Przeliczanie…
@@ -2299,6 +2407,8 @@ pl:
       ndash: "–"
       country_count:
         one: "%{count} kraj"
+        few: "%{count} kraje"
+        many: "%{count} krajów"
         other: "%{count} krajów"
       day_count:
         one: "%{count} dzień"
@@ -2460,6 +2570,8 @@ pl:
         distance: Dystans
         first_time_count:
           one: "%{count} pierwszy raz"
+          few: "%{count} pierwsze razy"
+          many: "%{count} pierwszych razy"
           other: "%{count} pierwsze razy"
       show:
         year_in_review: Rok w podsumowaniu
@@ -2503,16 +2615,20 @@ pl:
         are_you_sure_you_want_to_delete_the_year_digest: Na pewno chcesz usunąć podsumowanie za %{year}? Tej operacji nie można cofnąć.
         first_time_count:
           one: "%{count} pierwszy raz"
+          few: "%{count} pierwsze razy"
+          many: "%{count} pierwszych razy"
           other: "%{count} pierwsze razy"
         day_count:
           one: "%{count} dzień"
           other: "%{count} dni"
         city_count:
           one: "%{count} miasto"
+          few: "%{count} miasta"
+          many: "%{count} miast"
           other: "%{count} miast"
     digests_mailer:
       monthly_digest:
-        flights: Loty
+        flights: W tym loty
         your: Twoje
         in_review: podsumowanie
         here_s_what_your_location_history_looked_like_last_month: Tak wyglądała historia Twojej lokalizacji w poprzednim miesiącu.
@@ -2809,6 +2925,7 @@ pl:
         tcx: TCX
         fit: FIT
         polarsteps: Polarsteps
+        swarm: Foursquare Swarm
         google_photos: Google Photos
         mobile_photo_library: Mobilna biblioteka zdjęć
     place:
@@ -2872,6 +2989,8 @@ pl:
       expired: Wygasło
       days_left:
         one: pozostał %{count}d
+        few: pozostały %{count}d
+        many: pozostało %{count}d
         other: pozostało %{count}d
       finish_signup: Dokończ rejestrację
       resume: Wznów
@@ -2894,6 +3013,8 @@ pl:
         other: "%{count} dni"
       hour_count:
         one: "%{count} godzina"
+        few: "%{count} godziny"
+        many: "%{count} godzin"
         other: "%{count} godzin"
     users:
       digests:
@@ -2907,15 +3028,21 @@ pl:
       duration:
         years:
           one: "%{count} rok"
+          few: "%{count} lata"
+          many: "%{count} lat"
           other: "%{count} lat"
         months:
           one: "%{count} miesiąc"
+          few: "%{count} miesiące"
+          many: "%{count} miesięcy"
           other: "%{count} miesięcy"
         days:
           one: "%{count} dzień"
           other: "%{count} dni"
         hours:
           one: "%{count} godzina"
+          few: "%{count} godziny"
+          many: "%{count} godzin"
           other: "%{count} godzin"
     stats:
       countries_and_cities: "%{countries} krajów, %{cities} miast"
@@ -2937,9 +3064,13 @@ pl:
       countries:
         more:
           one: "%{count} kraj więcej niż w poprzednim miesiącu"
+          few: "%{count} kraje więcej niż w poprzednim miesiącu"
+          many: "%{count} krajów więcej niż w poprzednim miesiącu"
           other: "%{count} krajów więcej niż w poprzednim miesiącu"
         less:
           one: "%{count} kraj mniej niż w poprzednim miesiącu"
+          few: "%{count} kraje mniej niż w poprzednim miesiącu"
+          many: "%{count} krajów mniej niż w poprzednim miesiącu"
           other: "%{count} krajów mniej niż w poprzednim miesiącu"
     imports:
       extraction_status:
@@ -3153,6 +3284,7 @@ pl:
             visit_not_found: Nie znaleziono wizyty
           invalid_place: Nieprawidłowe miejsce
           invalid_area: Nieprawidłowy obszar
+          conflicting_place_and_area: place_id i area_id nie mogą być podane jednocześnie
           at_least_2_visits_must_be_selected_for_merging: Do scalenia trzeba zaznaczyć co najmniej 2 wizyty
           one_or_more_visits_not_found: Nie znaleziono co najmniej jednej wizyty
           count_visits_updated_successfully: Pomyślnie zaktualizowano %{count} wizyt
@@ -3179,6 +3311,7 @@ pl:
       your_account_has_been_deleted: Twoje konto zostało usunięte.
       you_are_not_authorized_to_perform_this_action: Nie masz uprawnień do wykonania tej akcji.
       family_plan_required: Ta funkcja wymaga planu Rodzinnego.
+      feature_disabled_in_settings: "Ta funkcja jest wyłączona w Twoich ustawieniach."
     areas:
       created: Obszar utworzono pomyślnie!
       updated: Obszar zaktualizowano pomyślnie!
@@ -3279,6 +3412,8 @@ pl:
       place_was_successfully_destroyed: Miejsce zostało pomyślnie usunięte.
       created: Miejsce utworzono pomyślnie!
       updated: Miejsce zaktualizowano pomyślnie!
+      merged: Połączono „%{duplicate}” z „%{survivor}”.
+      merge_visit_conflict: "Tych miejsc nie można scalić, ponieważ wizyta #%{first_id} i wizyta #%{second_id} zaczynają się o %{started_at}. Najpierw rozwiąż te wizyty."
     points:
       no_points_selected: Nie wybrano punktów.
       points_were_successfully_destroyed: Punkty zostały pomyślnie usunięte.
@@ -3462,18 +3597,25 @@ pl:
       bulk_updated:
         confirmed:
           one: Potwierdzono %{count} wizytę.
+          few: Potwierdzono %{count} wizyty.
+          many: Potwierdzono %{count} wizyt.
           other: Potwierdzono %{count} wizyt.
         declined:
           one: Odrzucono %{count} wizytę.
+          few: Odrzucono %{count} wizyty.
+          many: Odrzucono %{count} wizyt.
           other: Odrzucono %{count} wizyt.
         suggested:
           one: Zasugerowano %{count} wizytę.
+          few: Zasugerowano %{count} wizyty.
+          many: Zasugerowano %{count} wizyt.
           other: Zasugerowano %{count} wizyt.
       no_matching_visits: Nie znaleziono pasujących wizyt.
       select_visit_to_delete: Wybierz co najmniej jedną wizytę do usunięcia.
       failed_to_delete_visits: Nie udało się usunąć wizyt.
       invalid_place: Nieprawidłowe miejsce
       invalid_area: Nieprawidłowy obszar
+      conflicting_place_and_area: Miejsce i obszar nie mogą być podane jednocześnie
       failed_to_update_visit: Nie udało się zaktualizować wizyty.
       select_visits_to_merge: Wybierz co najmniej 2 wizyty do scalenia.
       visits_must_share_day: Wizyty muszą przypadać na ten sam dzień.
@@ -3490,6 +3632,8 @@ pl:
       plan_window_visits: Część tych wizyt jest poza 12-miesięcznym oknem planu Lite. Przejdź na Pro, aby zarządzać starszymi danymi.
       bulk_removed:
         one: Usunięto %{count} wizytę. Punkty lokalizacji nadal są dostępne.
+        few: Usunięto %{count} wizyty. Punkty lokalizacji nadal są dostępne.
+        many: Usunięto %{count} wizyt. Punkty lokalizacji nadal są dostępne.
         other: Usunięto %{count} wizyt. Punkty lokalizacji nadal są dostępne.
   visit_statuses:
     suggested: zasugerowana
@@ -3618,6 +3762,7 @@ pl:
         safe_email_is_requesting_your_location_link: "%{email} prosi o Twoją lokalizację. %{link}"
         users_must_be_in_the_same_family: Użytkownicy muszą należeć do tej samej rodziny
         target_user_is_already_sharing_their_location: Wybrany użytkownik już udostępnia lokalizację
+        target_user_turned_family_off: "Ten członek wyłączył funkcje rodzinne"
         request_cooldown_active_please_wait_before_requesting_again: Aktywny czas oczekiwania prośby. Poczekaj przed ponowną próbą.
         view_request: Zobacz prośbę
       invite:
@@ -3660,6 +3805,8 @@ pl:
         enabled: Udostępnianie lokalizacji włączone
         enabled_for_hours:
           one: Udostępnianie lokalizacji włączone na %{count} godzinę
+          few: Udostępnianie lokalizacji włączone na %{count} godziny
+          many: Udostępnianie lokalizacji włączone na %{count} godzin
           other: Udostępnianie lokalizacji włączone na %{count} godzin
     fit:
       importer:
@@ -3719,6 +3866,8 @@ pl:
         zero_points_with_timestamps: Plik %{name} zaimportował 0 punktów. Nie znaleziono punktów lokalizacji ze znacznikami czasu. Import GPX, KML i GeoJSON wymaga wartości czasu dla każdego punktu (&lt;time&gt;, &lt;when&gt; lub właściwości timestamp).
         zero_points_waypoints_only:
           one: 'Twój plik %{name} zaimportował 0 punktów. Zawiera %{count} punkt nawigacyjny (ulubione lub zapisane miejsce), ale nie zawiera zarejestrowanej trasy. Dawarich obecnie importuje tylko zarejestrowane trasy.'
+          few: Twój plik %{name} zaimportował 0 punktów. Zawiera %{count} punkty nawigacyjne (ulubione lub zapisane miejsca), ale nie zawiera zarejestrowanej trasy. Dawarich obecnie importuje tylko zarejestrowane trasy.
+          many: Twój plik %{name} zaimportował 0 punktów. Zawiera %{count} punktów nawigacyjnych (ulubione lub zapisane miejsca), ale nie zawiera zarejestrowanej trasy. Dawarich obecnie importuje tylko zarejestrowane trasy.
           other: 'Twój plik %{name} zaimportował 0 punktów. Zawiera %{count} punktów nawigacyjnych (ulubione lub zapisane miejsca), ale nie zawiera zarejestrowanej trasy. Dawarich obecnie importuje tylko zarejestrowane trasy.'
         zero_points_route_only:
           one: 'Twój plik %{name} zaimportował 0 punktów. Zawiera zaplanowaną trasę z %{count} punktem, ale nie zawiera zarejestrowanej trasy. Dawarich importuje zarejestrowane trasy, a nie zaplanowane.'
@@ -3926,6 +4075,8 @@ pl:
         data_recalculation_completed: Przeliczanie danych zakończone
         year_count:
           one: "%{count} rok"
+          few: "%{count} lata"
+          many: "%{count} lat"
           other: "%{count} lat"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Statystyki, trasy i podsumowania zostały przeliczone dla %{year_label}.
         data_recalculation_failed: Przeliczanie danych nie powiodło się
@@ -3939,9 +4090,13 @@ pl:
         visit_re_detection_complete: Ponowne wykrywanie wizyt zakończone
         visits_count:
           one: "%{count} wizyta"
+          few: "%{count} wizyty"
+          many: "%{count} wizyt"
           other: "%{count} wizyt"
         months_count:
           one: "%{count} miesiąc"
+          few: "%{count} miesiące"
+          many: "%{count} miesięcy"
           other: "%{count} miesięcy"
         visits_created_visits_across_size_months: "%{visits} w %{months}."
         visit_re_detection_partially_complete: Ponowne wykrywanie wizyt częściowo zakończone
@@ -3953,33 +4108,51 @@ pl:
     loading_sources:
       anomalies:
         one: "%{formatted_count} anomalia"
+        few: "%{formatted_count} anomalie"
+        many: "%{formatted_count} anomalii"
         other: "%{formatted_count} anomalie"
       areas:
         one: "%{formatted_count} obszar"
+        few: "%{formatted_count} obszary"
+        many: "%{formatted_count} obszarów"
         other: "%{formatted_count} obszary"
       family:
         one: "%{formatted_count} członek rodziny"
         other: "%{formatted_count} członków rodziny"
       flights:
         one: "%{formatted_count} lot"
+        few: "%{formatted_count} loty"
+        many: "%{formatted_count} lotów"
         other: "%{formatted_count} lotów"
       hexagons:
         one: "%{formatted_count} heksagon"
+        few: "%{formatted_count} heksagony"
+        many: "%{formatted_count} heksagonów"
         other: "%{formatted_count} heksagonów"
       photos:
         one: "%{formatted_count} zdjęcie"
+        few: "%{formatted_count} zdjęcia"
+        many: "%{formatted_count} zdjęć"
         other: "%{formatted_count} zdjęcia"
       places:
         one: "%{formatted_count} miejsce"
+        few: "%{formatted_count} miejsca"
+        many: "%{formatted_count} miejsc"
         other: "%{formatted_count} miejsc"
       points:
         one: "%{formatted_count} punkt"
+        few: "%{formatted_count} punkty"
+        many: "%{formatted_count} punktów"
         other: "%{formatted_count} punktów"
       tracks:
         one: "%{formatted_count} odcinek"
+        few: "%{formatted_count} odcinki"
+        many: "%{formatted_count} odcinków"
         other: "%{formatted_count} odcinków"
       visits:
         one: "%{formatted_count} wizyta"
+        few: "%{formatted_count} wizyty"
+        many: "%{formatted_count} wizyt"
         other: "%{formatted_count} wizyt"
     messages:
       click_on_the_map_to_place_a_visit: Kliknij na mapie, aby dodać wizytę
@@ -4034,9 +4207,6 @@ pl:
       click_on_the_map_to_place_a_visit_esc_to: Kliknij na mapie, aby dodać wizytę (Esc aby anulować)
       visit_creation_modal_not_available: Okno tworzenia wizyty jest niedostępne
       visit_creation_controller_not_available: Kontroler tworzenia wizyty jest niedostępny
-      area_drawer_controller_not_available: Kontroler panelu obszaru jest niedostępny
-      area_created_successfully: Obszar utworzony pomyślnie!
-      failed_to_reload_areas: Nie udało się odświeżyć obszarów
       family_feature_not_available: Funkcja rodziny jest niedostępna
       failed_to_load_family_members: Nie udało się załadować członków rodziny
       centered_on_family_member: Wycentrowano na członku rodziny
@@ -4157,6 +4327,8 @@ pl:
       preferred_layer_updated: 'Zaktualizowano preferowaną warstwę mapy na: %{layer}'
       stats_summary:
         one: "%{distance} %{unit} | %{count} punkt"
+        few: "%{distance} %{unit} | %{count} punkty"
+        many: "%{distance} %{unit} | %{count} punktów"
         other: "%{distance} %{unit} | %{count} punktów"
       updating: Aktualizacja mapy...
     replay:
@@ -4168,8 +4340,11 @@ pl:
       speed: "%{speed} km/h"
       no_data: Brak danych
     places:
+      move_pin: "Przesuń znacznik miejsca"
+      resize_radius: "Zmień promień wizyty"
       create_new: Utwórz nowe miejsce
       edit: Edytuj miejsce
+      open: Otwórz
       confirm_delete: Czy na pewno chcesz usunąć to miejsce?
       search_placeholder: Szukaj miejsca…
       confirm_move_visit: To miejsce jest ~%{distance} m od wizyty. Przenieść wizytę tutaj?
@@ -4212,6 +4387,8 @@ pl:
       end_time: Czas zakończenia
       found:
         one: Znaleziono %{count} wizytę
+        few: Znaleziono %{count} wizyty
+        many: Znaleziono %{count} wizyt
         other: Znaleziono %{count} wizyt
       loading: Ładowanie wizyt...
       update: Zaktualizuj wizytę
@@ -4223,6 +4400,8 @@ pl:
       none_in_timeframe: Nie znaleziono wizyt w wybranym zakresie czasu
       selected:
         one: Wybrano %{count} wizytę
+        few: Wybrano %{count} wizyty
+        many: Wybrano %{count} wizyt
         other: Wybrano %{count} wizyt
       start_time: Czas rozpoczęcia
       cancel_selection: Anuluj wybór
@@ -4239,25 +4418,39 @@ pl:
       bulk_status_updated:
         confirmed:
           one: Pomyślnie potwierdzono %{count} wizytę
+          few: Pomyślnie potwierdzono %{count} wizyty
+          many: Pomyślnie potwierdzono %{count} wizyt
           other: Pomyślnie potwierdzono %{count} wizyt
         declined:
           one: Pomyślnie odrzucono %{count} wizytę
+          few: Pomyślnie odrzucono %{count} wizyty
+          many: Pomyślnie odrzucono %{count} wizyt
           other: Pomyślnie odrzucono %{count} wizyt
         suggested:
           one: "%{count} wizyta oznaczona jako sugerowana"
+          few: "%{count} wizyty oznaczono jako sugerowane"
+          many: "%{count} wizyt oznaczono jako sugerowane"
           other: "%{count} wizyt oznaczono jako sugerowane"
       confirm_delete_count_keep_points:
         one: Usunąć %{count} wizytę? Punkty lokalizacji pozostaną.
+        few: Usunąć %{count} wizyty? Punkty lokalizacji pozostaną.
+        many: Usunąć %{count} wizyt? Punkty lokalizacji pozostaną.
         other: Usunąć %{count} wizyt? Punkty lokalizacji pozostaną.
       confirm_delete_permanently: Czy na pewno chcesz usunąć tę wizytę? Tej operacji nie można cofnąć.
       confirm_merge:
         one: Scalić %{count} wizytę w jedną?
+        few: Scalić %{count} wizyty w jedną?
+        many: Scalić %{count} wizyt w jedną?
         other: Scalić %{count} wizyt w jedną?
       confirmed_count:
         one: Potwierdzono %{count} wizytę
+        few: Potwierdzono %{count} wizyty
+        many: Potwierdzono %{count} wizyt
         other: Potwierdzono %{count} wizyt
       deleted_count:
         one: Usunięto %{count} wizytę
+        few: Usunięto %{count} wizyty
+        many: Usunięto %{count} wizyt
         other: Usunięto %{count} wizyt
       status_failed:
         confirmed: Nie udało się potwierdzić wizyty
@@ -4296,6 +4489,8 @@ pl:
       for_query: for "%{query}"
       locations_found:
         one: Znaleziono %{count} lokalizację
+        few: Znaleziono %{count} lokalizacje
+        many: Znaleziono %{count} lokalizacji
         other: Znaleziono %{count} lokalizacji
       no_locations: Nie znaleziono lokalizacji
       results: Wyniki
@@ -4351,11 +4546,15 @@ pl:
       transportation_recalculation_started: Ustawienia zapisane. Trwa przeliczanie trybów transportu dla wszystkich tras...
       unsaved_count:
         one: "%{count} niezapisana"
+        few: "%{count} niezapisane"
+        many: "%{count} niezapisanych"
         other: "%{count} niezapisanych"
       unsaved_transportation_changes: Masz niezapisane zmiany. Kliknij Zastosuj, aby zapisać i przeliczyć.
     upload:
       complete:
         one: "%{count} plik przesłano pomyślnie. Gotowe do wysłania."
+        few: "%{count} pliki przesłano pomyślnie. Gotowe do wysłania."
+        many: "%{count} plików przesłano pomyślnie. Gotowe do wysłania."
         other: "%{count} plików przesłano pomyślnie. Gotowe do wysłania."
       compression_failed: Nie udało się skompresować %{name}, wysyłanie bez kompresji.
       error: 'Błąd podczas wysyłania %{name}: %{error}'
@@ -4376,9 +4575,13 @@ pl:
         other: Zapisać współrzędne GPS do %{count} zdjęć w Immich? Zaktualizuje to metadane lokalizacji.
       enrich_photos:
         one: Uzupełnij %{count} zdjęcie
+        few: Uzupełnij %{count} zdjęcia
+        many: Uzupełnij %{count} zdjęć
         other: Uzupełnij %{count} zdjęć
       enriched:
         one: Pomyślnie uzupełniono %{count} zdjęcie!
+        few: Pomyślnie uzupełniono %{count} zdjęcia!
+        many: Pomyślnie uzupełniono %{count} zdjęć!
         other: Pomyślnie uzupełniono %{count} zdjęć!
       enriching:
         one: Uzupełnianie %{count} zdjęcia...
@@ -4392,24 +4595,36 @@ pl:
       pending_enrichment: "Wysłano %{count} aktualizacji lokalizacji do Immich; %{failed} nie udało się wysłać. Otrzymasz powiadomienie po sprawdzeniu zapisanych współrzędnych."
       photos_without_gps:
         one: "%{count} zdjęcie bez GPS"
+        few: "%{count} zdjęcia bez GPS"
+        many: "%{count} zdjęć bez GPS"
         other: "%{count} zdjęć bez GPS"
       scanning: Skanowanie zdjęć Immich...
       seconds_short: "%{count}s"
     selection:
       anomaly_points_deleted:
         one: Usunięto %{count} punkt anomalii
+        few: Usunięto %{count} punkty anomalii
+        many: Usunięto %{count} punktów anomalii
         other: Usunięto %{count} punktów anomalii
       confirm_delete_anomaly_points:
         one: Czy na pewno chcesz usunąć %{count} punkt anomalii? Tej operacji nie można cofnąć.
+        few: Czy na pewno chcesz usunąć %{count} punkty anomalii? Tej operacji nie można cofnąć.
+        many: Czy na pewno chcesz usunąć %{count} punktów anomalii? Tej operacji nie można cofnąć.
         other: Czy na pewno chcesz usunąć %{count} punktów anomalii? Tej operacji nie można cofnąć.
       confirm_delete_points:
         one: Czy na pewno chcesz trwale usunąć %{count} punkt z historii lokalizacji? Tej operacji nie można cofnąć.
+        few: Czy na pewno chcesz trwale usunąć %{count} punkty z historii lokalizacji? Tej operacji nie można cofnąć.
+        many: Czy na pewno chcesz trwale usunąć %{count} punktów z historii lokalizacji? Tej operacji nie można cofnąć.
         other: Czy na pewno chcesz trwale usunąć %{count} punktów z historii lokalizacji? Tej operacji nie można cofnąć.
       delete_anomaly_points:
         one: Usuń %{count} punkt anomalii
+        few: Usuń %{count} punkty anomalii
+        many: Usuń %{count} punktów anomalii
         other: Usuń %{count} punkty anomalii
       delete_points:
         one: Usuń %{count} punkt
+        few: Usuń %{count} punkty
+        many: Usuń %{count} punktów
         other: Usuń %{count} punktów
       delete_points_failed: Nie udało się usunąć punktów. Spróbuj ponownie.
       delete_points_label: Usuń punkty
@@ -4418,15 +4633,22 @@ pl:
       no_points_deleted: Nie usunięto żadnych punktów. Mogły zostać już usunięte.
       points:
         one: "%{count} punkt"
+        few: "%{count} punkty"
+        many: "%{count} punktów"
         other: "%{count} punktów"
       points_deleted:
         one: Pomyślnie usunięto %{count} punkt
+        few: Pomyślnie usunięto %{count} punkty
+        many: Pomyślnie usunięto %{count} punktów
         other: Pomyślnie usunięto %{count} punktów
       selected: Wybrano %{items}
       too_many_points: Zbyt wiele punktów (%{requested}). Narysuj mniejszy obszar; maks. %{limit} na jedno usunięcie.
       too_many_selected_points: Wybrano zbyt wiele punktów (%{requested}). Narysuj mniejszy obszar; maks. %{limit} na jedno usunięcie.
+      truncated: Wyświetlono tylko %{limit} najnowszych punktów w tym obszarze.
       visits:
         one: "%{count} wizyta"
+        few: "%{count} wizyty"
+        many: "%{count} wizyt"
         other: "%{count} wizyt"
       visits_in_area: Wizyty w obszarze (%{count})
       write_api_requires_pro: API zapisu wymaga planu Pro
@@ -4455,12 +4677,15 @@ pl:
       longitude: Długość geogr.
       meters:
         one: "%{count} metr"
+        few: "%{count} metry"
+        many: "%{count} metrów"
         other: "%{count} metrów"
       mode: Tryb
       photo: Zdjęcie
       place: Miejsce
       points: Punkty
       radius: Promień
+      visit_radius: Promień wizyty
       reason: Powód
       route_information: Informacje o trasie
       selected_point: Wybrany punkt
@@ -4637,6 +4862,7 @@ pl:
     live_map:
       disabled: Tryb na żywo wyłączony
       enabled: Tryb na żywo włączony
+      your_position: Twoja ostatnia lokalizacja
     map_panel:
       layers: Warstwy mapy
       family: "Rodzina"
@@ -4677,3 +4903,8 @@ pl:
       no_invitations: Brak oczekujących zaproszeń
       title: Zaproszenia rodzinne
       view_invitation: Zobacz
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: AM
+      pm: PM

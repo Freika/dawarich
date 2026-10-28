@@ -8,7 +8,7 @@ module Stats
 
     def stats_by_year
       @stats_by_year ||= begin
-        columns = %i[id year month distance updated_at user_id]
+        columns = %i[id year month distance flight_distance updated_at user_id]
         columns << :toponyms if Geocoding::Config.for(user).enabled?
 
         user.scoped_stats.select(columns).order(year: :desc, updated_at: :desc).group_by(&:year)

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ApiController < ApplicationController
+  include DefaultDateTimePreferences
+
   skip_before_action :verify_authenticity_token
   before_action :set_version_header
   before_action :authenticate_api_key
@@ -89,6 +91,13 @@ class ApiController < ApplicationController
     return unless current_api_user # auth already handled by authenticate_api_key
     return if DawarichSettings.family_feature_available_for?(current_api_user)
 
+    unless current_api_user.feature_enabled?(:family)
+      return render json: {
+        error: 'feature_disabled',
+        message: I18n.t('controllers.application.feature_disabled_in_settings')
+      }, status: :forbidden
+    end
+
     render json: {
       error: 'family_plan_required',
       message: I18n.t('controllers.application.family_plan_required'),
@@ -109,6 +118,14 @@ class ApiController < ApplicationController
     return relation unless window_start
 
     relation.where('timestamp >= ?', window_start.to_i)
+  end
+
+  def mask_privacy_zones?
+    ActiveModel::Type::Boolean.new.cast(params[:mask_privacy_zones]) == true
+  end
+
+  def privacy_zone_masker
+    @privacy_zone_masker ||= Maps::PrivacyZoneMasker.new(current_api_user)
   end
 
   def upgrade_url_for(user)

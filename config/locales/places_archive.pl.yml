@@ -1,0 +1,8 @@
+pl:
+  places:
+    archive:
+      badge: "Zarchiwizowane"
+      archive: "Archiwizuj"
+      unarchive: "Przywróć z archiwum"
+      hint: "Potwierdzone wizyty i ochrona prywatności zostają zachowane; po archiwizacji nowe wizyty nie są przypisywane, a geostrefa jest wstrzymana."
+      show_on_map: "Pokaż zarchiwizowane miejsca"

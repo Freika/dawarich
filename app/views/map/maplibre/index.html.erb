@@ -3,13 +3,16 @@
 <%= render 'shared/map/date_navigation_v2', start_at: @start_at, end_at: @end_at %>
 
 <div id="maps-maplibre-container"
-     data-controller="maps--maplibre area-drawer maps--maplibre-realtime"
+     data-controller="maps--maplibre maps--maplibre-realtime"
      data-maps--maplibre-api-key-value="<%= current_user.api_key %>"
      data-maps--maplibre-start-date-value="<%= @start_at.iso8601 %>"
      data-maps--maplibre-end-date-value="<%= @end_at.iso8601 %>"
      data-maps--maplibre-timezone-value="<%= current_user.timezone_iana %>"
      data-maps--maplibre-user-plan-value="<%= current_user.effective_plan %>"
+     data-maps--maplibre-data-window-start-value="<%= current_user.entitlements.data_window_start&.iso8601 %>"
      data-maps--maplibre-import-id-value="<%= @import_id %>"
+     data-maps--maplibre-privacy-zones-fingerprint-value="<%= privacy_zones_fingerprint %>"
+     <% if @current_position %>data-maps--maplibre-current-position-value="<%= @current_position.to_json %>"<% end %>
      data-maps--maplibre-upgrade-url-value="<%= upgrade_url(utm_medium: 'map', utm_content: 'maplibre') %>"
      data-maps--maplibre-realtime-enabled-value="true"
      data-maps--maplibre-realtime-live-mode-value="<%= current_user.safe_settings.live_map_enabled %>"
@@ -53,9 +56,6 @@
 
   <!-- Visit creation modal -->
   <%= render 'map/maplibre/visit_creation_modal' %>
-
-  <!-- Area creation modal -->
-  <%= render 'map/maplibre/area_creation_modal' %>
 
   <!-- Place creation modal (shared) -->
   <%= render 'shared/place_creation_modal' %>

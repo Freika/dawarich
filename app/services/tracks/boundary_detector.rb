@@ -17,10 +17,11 @@ class Tracks::BoundaryDetector
 
   ADJACENCY_QUERY_BATCH_SIZE = 25
 
-  attr_reader :user
+  attr_reader :user, :orphan_range
 
-  def initialize(user)
+  def initialize(user, orphan_range: nil)
     @user = user
+    @orphan_range = orphan_range
   end
 
   def resolve_cross_chunk_tracks
@@ -35,12 +36,9 @@ class Tracks::BoundaryDetector
   end
 
   def reabsorb_orphan_points
-    return 0 unless untracked_points_in_lookback?
+    recent = untracked_points_in_lookback? ? user.tracks.where('end_at >= ?', ORPHAN_REABSORPTION_LOOKBACK.ago) : []
 
-    user.tracks
-        .where('end_at >= ?', ORPHAN_REABSORPTION_LOOKBACK.ago)
-        .find_each
-        .sum { |track| absorb_orphans_into(track) }
+    (recent.to_a + tracks_spanning_orphans_in_range).uniq(&:id).sum { |track| absorb_orphans_into(track) }
   end
 
   private
@@ -54,30 +52,43 @@ class Tracks::BoundaryDetector
         .exists?
   end
 
+  def tracks_spanning_orphans_in_range
+    return [] unless orphan_range
+
+    user.tracks
+        .where('start_at <= ? AND end_at >= ?', Time.zone.at(orphan_range.last), Time.zone.at(orphan_range.first))
+        .where(<<~SQL.squish, orphan_range.first, orphan_range.last, ORPHAN_REABSORPTION_FRESHNESS_BUFFER.ago).to_a
+          EXISTS (
+            SELECT 1 FROM points
+            WHERE points.user_id = tracks.user_id
+              AND points.track_id IS NULL
+              AND points.anomaly IS NOT TRUE
+              AND points.timestamp BETWEEN ? AND ?
+              AND points.created_at < ?
+              AND points.timestamp BETWEEN EXTRACT(EPOCH FROM tracks.start_at)::bigint
+                                       AND EXTRACT(EPOCH FROM tracks.end_at)::bigint
+              AND COALESCE(points.tracker_id, '') = COALESCE(tracks.tracker_id, '')
+          )
+        SQL
+  end
+
   def absorb_orphans_into(track)
     orphan_ids = orphan_point_ids_for(track)
     return 0 if orphan_ids.empty?
 
-    succeeded = false
-    ActiveRecord::Base.transaction(requires_new: true) do
-      Point.where(id: orphan_ids).update_all(track_id: track.id)
+    track.with_lock(requires_new: true) do
+      points = user.points.where(id: orphan_ids, track_id: nil).order(:id).lock.to_a
+      next 0 if points.empty?
 
-      bounds = Point.where(track_id: track.id).pick(Arel.sql('MIN(timestamp), MAX(timestamp)'))
-      raise ActiveRecord::Rollback if bounds.nil?
-
-      new_start = Time.zone.at(bounds[0])
-      new_end = Time.zone.at(bounds[1])
-
-      if track.start_at != new_start || track.end_at != new_end
-        track.update!(start_at: new_start, end_at: new_end)
-      else
-        track.recalculate_path_and_distance!
-      end
-
-      succeeded = true
+      Tracks::TrackExtender.new(user, track).extend_with(points)
+      points.size
     end
-
-    succeeded ? orphan_ids.size : 0
+  rescue ActiveRecord::StaleObjectError
+    Rails.logger.warn(
+      'event=tracks.reabsorb_orphan_points_failed reason=stale_track ' \
+      "user_id=#{user.id} track_id=#{track.id}"
+    )
+    0
   rescue ActiveRecord::RecordNotUnique
     Rails.logger.warn(
       'event=tracks.reabsorb_orphan_points_failed reason=unique_violation ' \
@@ -91,6 +102,9 @@ class Tracks::BoundaryDetector
       "error=#{e.message}"
     )
     0
+  rescue StandardError => e
+    ExceptionReporter.call(e, "Failed to reabsorb orphan points into track #{track.id} for user #{user.id}")
+    0
   end
 
   def orphan_point_ids_for(track)
@@ -100,6 +114,8 @@ class Tracks::BoundaryDetector
          .where('anomaly IS NOT TRUE')
          .where(timestamp: track.start_at.to_i..track.end_at.to_i)
          .where(created_at: ...ORPHAN_REABSORPTION_FRESHNESS_BUFFER.ago)
+         .where('ST_DWithin(points.lonlat::geography, (SELECT original_path FROM tracks WHERE id = ?)::geography, ?)',
+                track.id, SAME_TRACKER_MAX_GAP_METERS)
          .pluck(:id)
   end
 
@@ -167,12 +183,11 @@ class Tracks::BoundaryDetector
         .to_a
   end
 
-  # Time gap that still counts as "adjacent" for boundary merging.
-  # Floors at 30 minutes so we never tighten behavior for users who set a
-  # smaller minutes_between_routes; widens past 30 minutes when the user has
-  # explicitly opted into longer gaps as part of the same journey.
+  # Time gap that still counts as "adjacent" for boundary merging. It matches
+  # the gap Tracks::Segmentation splits on, so a track cut at a chunk boundary
+  # is rejoined exactly when continuous data would have kept it whole.
   def adjacency_window
-    [time_threshold_minutes.minutes, 30.minutes].max
+    time_threshold_minutes.minutes
   end
 
   # Find tracks that might be connected to the given track
@@ -194,11 +209,35 @@ class Tracks::BoundaryDetector
       next unless ranges_overlap ||
                   (candidate_start - track_end_time).abs <= time_window ||
                   (track_start_time - candidate_end).abs <= time_window
+      next if !ranges_overlap && separated_by_stationary_stop?(track, candidate)
+      next if !ranges_overlap && separated_by_handoff?(track, candidate)
 
-      connected << candidate if tracks_spatially_connected?(track, candidate)
+      contained = (candidate_start <= track_start_time && candidate_end >= track_end_time) ||
+                  (track_start_time <= candidate_start && track_end_time >= candidate_end)
+      joined = contained && paths_near?(track, candidate)
+      connected << candidate if joined || tracks_spatially_connected?(track, candidate)
     end
 
     connected
+  end
+
+  def paths_near?(track, candidate)
+    user.tracks.where(id: track.id)
+        .where('ST_DWithin(original_path::geography, (SELECT original_path FROM tracks WHERE id = ?)::geography, ?)',
+               candidate.id, SAME_TRACKER_MAX_GAP_METERS)
+        .exists?
+  end
+
+  def separated_by_stationary_stop?(track, candidate)
+    later = candidate.start_at > track.start_at ? candidate : track
+
+    Tracks::StationaryStops.departure?(later, time_threshold_minutes.to_i * 60, stationary_radius_meters)
+  end
+
+  def separated_by_handoff?(track, candidate)
+    earlier, later = [track, candidate].sort_by(&:start_at)
+
+    Tracks::HandoffSplitter.handoff_between?(user, track.tracker_id, earlier.end_at, later.start_at)
   end
 
   # Check if two tracks are spatially connected (endpoints are close)
@@ -240,10 +279,12 @@ class Tracks::BoundaryDetector
 
     sorted_tracks = group.sort_by(&:start_at)
     max_gap = 1.hour.to_i
+    latest_end = sorted_tracks.first.end_at.to_i
 
-    sorted_tracks.each_cons(2) do |track1, track2|
-      time_gap = track2.start_at.to_i - track1.end_at.to_i
-      return false if time_gap > max_gap
+    sorted_tracks.drop(1).each do |track|
+      return false if track.start_at.to_i - latest_end > max_gap
+
+      latest_end = [latest_end, track.end_at.to_i].max
     end
 
     true
@@ -251,6 +292,9 @@ class Tracks::BoundaryDetector
 
   def merge_boundary_tracks(track_group)
     return false if track_group.size < 2
+
+    keeper = track_to_keep(track_group)
+    return extend_kept_track(keeper, track_group - [keeper]) if keeper
 
     sorted_tracks = track_group.sort_by(&:start_at)
     boundary_ids = sorted_tracks.map(&:id)
@@ -287,7 +331,10 @@ class Tracks::BoundaryDetector
         raise ActiveRecord::Rollback
       end
 
-      sorted_tracks.reject { |t| t.id == merged_track.id }.each(&:destroy)
+      merged_away = sorted_tracks.reject { |t| t.id == merged_track.id }
+      Point.where(track_id: merged_away.map(&:id)).update_all(track_id: merged_track.id)
+      merged_away.each(&:destroy)
+      merged_track.recalculate_path_and_distance! unless merged_track.previously_new_record?
       success = true
     end
 
@@ -300,6 +347,32 @@ class Tracks::BoundaryDetector
     false
   end
 
+  def track_to_keep(track_group)
+    track_group.select { |track| track.shared_links.exists? || track.track_segments.manually_corrected.exists? }
+               .max_by { |track| track.end_at - track.start_at }
+  end
+
+  def extend_kept_track(keeper, others)
+    keeper.with_lock(requires_new: true) do
+      points = Point.where(track_id: others.map(&:id)).order(:id).lock.to_a
+      SharedLink.where(resource_type: SharedLink.resource_types[:track], resource_id: others.map(&:id))
+                .update_all(resource_id: keeper.id)
+      others.each { |track| track.reload.destroy }
+      Tracks::TrackExtender.new(user, keeper).extend_with(points)
+    end
+    true
+  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid, ActiveRecord::StaleObjectError,
+         ActiveRecord::RecordNotFound => e
+    Rails.logger.warn(
+      'event=tracks.boundary_merge_failed reason=keep_track ' \
+      "user_id=#{user.id} track_id=#{keeper.id} error=#{e.class}"
+    )
+    false
+  rescue StandardError => e
+    ExceptionReporter.call(e, "Failed to extend track #{keeper.id} for user #{user.id}")
+    false
+  end
+
   # Required by Tracks::Segmentation module
   def distance_threshold_meters
     @distance_threshold_meters ||= user.safe_settings.meters_between_routes.to_i
@@ -307,5 +380,9 @@ class Tracks::BoundaryDetector
 
   def time_threshold_minutes
     @time_threshold_minutes ||= user.safe_settings.minutes_between_routes.to_i
+  end
+
+  def stationary_radius_meters
+    @stationary_radius_meters ||= Tracks::StationaryStops.radius_for(user)
   end
 end

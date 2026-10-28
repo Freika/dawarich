@@ -66,8 +66,8 @@ export class SettingsController {
       hexagonsToggle: "hexagonsEnabled",
       visitsToggle: "visitsEnabled",
       photosToggle: "photosEnabled",
-      areasToggle: "areasEnabled",
       placesToggle: "placesEnabled",
+      placeBoundariesToggle: "placeBoundariesEnabled",
       fogToggle: "fogEnabled",
       scratchToggle: "scratchEnabled",
       familyToggle: "familyEnabled",
@@ -102,6 +102,18 @@ export class SettingsController {
     })
 
     this.syncPointsEditAvailability()
+
+    const speedToggle = controller.element.querySelector(
+      'input[name="speed_colored_routes"]',
+    )
+    if (speedToggle)
+      speedToggle.checked = this.settings.speedColoredRoutes === true
+    const speedEditor = controller.element.querySelector(
+      '[data-controller~="speed-color-editor"]',
+    )
+    if (speedEditor)
+      speedEditor.dataset.speedColorEditorColorStopsValue =
+        this.settings.speedColorScale
 
     // Show/hide visits search based on initial toggle state
     if (controller.hasVisitsToggleTarget && controller.hasVisitsSearchTarget) {
@@ -235,6 +247,24 @@ export class SettingsController {
     )
     if (gpsFilteringToggle) {
       gpsFilteringToggle.checked = this.settings.gpsFilteringEnabled !== false
+    }
+
+    const gpsAccuracyFilterToggle = controller.element.querySelector(
+      'input[name="gpsAccuracyFilterEnabled"]',
+    )
+    if (gpsAccuracyFilterToggle) {
+      gpsAccuracyFilterToggle.checked =
+        this.settings.gpsAccuracyFilterEnabled === true
+    }
+
+    const gpsAccuracyInput = controller.element.querySelector(
+      'input[name="gpsAccuracyThreshold"]',
+    )
+    if (gpsAccuracyInput) {
+      gpsAccuracyInput.value = this.settings.gpsAccuracyThreshold || 100
+      if (controller.hasGpsAccuracyThresholdValueTarget) {
+        controller.gpsAccuracyThresholdValueTarget.textContent = `${gpsAccuracyInput.value}m`
+      }
     }
 
     // Sync transportation mode settings
@@ -825,6 +855,24 @@ export class SettingsController {
     this.layerManager.getLayer("tracks-mvt")?.setColors({ trackColor: color })
   }
 
+  toggleSpeedColoredRoutes(event) {
+    SettingsManager.updateSetting("speedColoredRoutes", event.target.checked)
+    this.applySpeedColoring()
+  }
+
+  updateSpeedColorScale(event) {
+    SettingsManager.updateSetting("speedColorScale", event.detail.colorStops)
+    this.applySpeedColoring()
+  }
+
+  applySpeedColoring() {
+    this.layerManager.getLayer("tracks-mvt")?.setSpeedColoring({
+      enabled: SettingsManager.getSetting("speedColoredRoutes") === true,
+      scale: SettingsManager.getSetting("speedColorScale"),
+    })
+    this.layerManager.getLayer("map-editor")?.reapplyTileFilters()
+  }
+
   syncLayerColorLabel(key, color) {
     const label = this.controller.element.querySelector(
       `[data-layer-color-value="${key}"]`,
@@ -974,6 +1022,9 @@ export class SettingsController {
         10,
       ),
       gpsFilteringEnabled: formData.get("gpsFilteringEnabled") === "on",
+      gpsAccuracyFilterEnabled:
+        formData.get("gpsAccuracyFilterEnabled") === "on",
+      gpsAccuracyThreshold: parseInt(formData.get("gpsAccuracyThreshold"), 10),
     }
 
     // Update controller settings and dataLoader BEFORE applying,
@@ -1031,6 +1082,12 @@ export class SettingsController {
   updateFogThresholdDisplay(event) {
     if (this.controller.hasFogThresholdValueTarget) {
       this.controller.fogThresholdValueTarget.textContent = event.target.value
+    }
+  }
+
+  updateGpsAccuracyThresholdDisplay(event) {
+    if (this.controller.hasGpsAccuracyThresholdValueTarget) {
+      this.controller.gpsAccuracyThresholdValueTarget.textContent = `${event.target.value}m`
     }
   }
 

@@ -8,11 +8,16 @@ RSpec.describe BackfillNotesColumns, :non_transactional do
     ActiveRecord::Base.connection.column_exists?(:notes, name)
   end
 
+  def restore_notes_schema
+    ActiveRecord::Base.connection.add_column(:notes, :body, :text) unless column?(:body)
+    Note.reset_column_information
+    ActiveRecord::Base.connection_pool.connections.each(&:clear_cache!)
+  end
+
   around do |example|
     example.run
   ensure
-    ActiveRecord::Base.connection.add_column(:notes, :body, :text) unless column?(:body)
-    Note.reset_column_information
+    restore_notes_schema
   end
 
   it 'restores the body column when a pre-existing notes table lacks it' do
@@ -27,6 +32,26 @@ RSpec.describe BackfillNotesColumns, :non_transactional do
 
     expect(column?(:body)).to be(true)
     expect { Note.new.body = 'x' }.not_to raise_error
+  end
+
+  it 'keeps prepared note queries usable on pooled connections after restoring the legacy fixture' do
+    pool = ActiveRecord::Base.connection_pool
+    reader = pool.checkout
+    sql = 'SELECT notes.* FROM notes WHERE attachable_type = $1'
+    binds = [ActiveRecord::Relation::QueryAttribute.new('attachable_type', 'Place', ActiveRecord::Type::String.new)]
+    ActiveRecord::Base.connection.remove_column(:notes, :body)
+    Note.reset_column_information
+    reader.exec_query(sql, 'Notes', binds, prepare: true)
+
+    described_class.new.up
+    restore_notes_schema
+
+    expect do
+      reader.transaction { reader.exec_query(sql, 'Notes', binds, prepare: true) }
+    end.not_to raise_error
+  ensure
+    reader&.clear_cache!
+    pool.checkin(reader) if reader
   end
 
   it 'is a safe no-op when every column already exists' do

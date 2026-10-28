@@ -105,4 +105,19 @@ RSpec.describe Dawarich::AggregatingMetrics do
       expect(WebMock).not_to have_requested(:get, 'http://sidekiq.internal:9394/metrics')
     end
   end
+
+  it 'serves embedded worker metrics locally without fetching a separate container' do
+    stub_const('ENV', ENV.to_h.merge('SIDEKIQ_EMBEDDED' => 'true').except('SIDEKIQ_METRICS_URL'))
+    embedded_body = local_body + remote_body
+    app = described_class.new(->(_env) { [200, { 'Content-Type' => 'text/plain' }, [embedded_body]] },
+                              remote_url: 'http://sidekiq.internal:9394/metrics',
+                              remote_user: 'prometheus', remote_password: 'secret')
+    stub_request(:get, 'http://sidekiq.internal:9394/metrics').to_return(body: remote_body)
+
+    status, _headers, body = app.call(Rack::MockRequest.env_for('/metrics'))
+
+    expect(status).to eq(200)
+    expect(body.join).to eq(embedded_body)
+    expect(WebMock).not_to have_requested(:get, 'http://sidekiq.internal:9394/metrics')
+  end
 end

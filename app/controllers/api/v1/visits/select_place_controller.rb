@@ -42,6 +42,7 @@ class Api::V1::Visits::SelectPlaceController < ApiController
       longitude: place.lon,
       source: place.source,
       note: place.note,
+      visit_radius: place.visit_radius,
       icon: first_tag&.icon,
       color: first_tag&.color,
       visits_count: place.active_visits.size,

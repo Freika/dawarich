@@ -16,6 +16,7 @@ module Places
       @longitude = longitude.to_f
       @radius = radius.to_f
       @limit = limit
+      @throttled = false
     end
 
     def call
@@ -36,6 +37,10 @@ module Places
       []
     end
 
+    def throttled?
+      @throttled
+    end
+
     private
 
     def log_provider_error(error)
@@ -54,7 +59,10 @@ module Places
       options[:params] = spatial_params if spatial_params.present?
 
       results = Geocoding::Search.call(user: @user, query: @query, **options)
-      return [] if results.nil?
+      if results.nil?
+        @throttled = true
+        return []
+      end
 
       results
         .map { |r| Places::PhotonResultFormatter.call(r, fallback_lat: @latitude, fallback_lon: @longitude) }

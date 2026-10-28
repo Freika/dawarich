@@ -28,6 +28,10 @@ class Family::InvitationsController < ApplicationController
                   alert: I18n.t('controllers.family.invitations.this_invitation_is_no_longer_valid') and return
     end
 
+    # Kept for whichever sign-in path the invitee takes next, so signing in
+    # accepts it (ApplicationController#after_sign_in_path_for).
+    session[:invitation_token] = @invitation.token unless user_signed_in?
+
     # Warns the invitee up front instead of letting them click Accept only to
     # be refused by the plan validation in Families::AcceptInvitation.
     @family_plan_active = @invitation.family.access_live?

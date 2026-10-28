@@ -61,6 +61,14 @@ RSpec.describe Points::DeviceTagBackfiller do
       expect(away_b.reload.tracker_id).to eq('google-records-device--1849312274')
     end
 
+    it 'reads Records.json without buffering the whole file' do
+      expect(Oj).not_to receive(:saj_parse)
+      point_at('2024-06-22T19:41:31Z')
+      point_at('2024-06-22T20:08:58Z')
+
+      expect(described_class.new(import).call).to eq(2)
+    end
+
     it 'reports how many points it re-stamped' do
       point_at('2024-06-22T19:41:31Z')
       point_at('2024-06-22T20:08:58Z')

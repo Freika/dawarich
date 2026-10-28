@@ -24,6 +24,29 @@ RSpec.describe Places::DeleteIfOrphan do
       expect(Place.exists?(place.id)).to be(true)
     end
 
+    it 'keeps a discovered place the user renamed' do
+      place = create(:place, user: user, source: :photon)
+      place.update!(name: 'Grandma')
+
+      expect(described_class.call(place.id)).to be(false)
+      expect(Place.exists?(place.id)).to be(true)
+    end
+
+    it 'keeps a discovered place that notifies on enter and leave' do
+      place = create(:place, :geofence, user: user, source: :photon)
+
+      expect(described_class.call(place.id)).to be(false)
+      expect(Place.exists?(place.id)).to be(true)
+    end
+
+    it 'keeps places with an attached timeline note' do
+      place = create(:place, user: user, source: :photon, note: nil)
+      create(:note, user: user, attachable: place)
+
+      expect(described_class.call(place.id)).to be(false)
+      expect(Place.exists?(place.id)).to be(true)
+    end
+
     it 'keeps places with a note' do
       place = create(:place, user: user, source: :photon, note: 'mine')
 
@@ -33,7 +56,7 @@ RSpec.describe Places::DeleteIfOrphan do
 
     it 'keeps places referenced by any visit' do
       place = create(:place, user: user, source: :photon)
-      create(:visit, user: user, place: place, area: nil)
+      create(:visit, user: user, place: place)
 
       expect(described_class.call(place.id)).to be(false)
       expect(Place.exists?(place.id)).to be(true)
@@ -41,8 +64,8 @@ RSpec.describe Places::DeleteIfOrphan do
 
     it 'deletes a photon place referenced only by hidden visits and detaches them' do
       place = create(:place, user: user, source: :photon)
-      tombstone = create(:visit, user: user, place: place, area: nil, deleted_at: 1.day.ago)
-      declined = create(:visit, user: user, place: place, area: nil, status: :declined)
+      tombstone = create(:visit, user: user, place: place, deleted_at: 1.day.ago)
+      declined = create(:visit, user: user, place: place, status: :declined)
 
       expect(described_class.call(place.id)).to be(true)
       expect(Place.exists?(place.id)).to be(false)
@@ -59,9 +82,18 @@ RSpec.describe Places::DeleteIfOrphan do
       expect(Place.exists?(place.id)).to be(true)
     end
 
+    it 'keeps a Place that backs a legacy Area' do
+      place = create(:place, user: user, source: :photon)
+      area = create(:area, user: user)
+      LegacyAreaPlaceMapping.create!(area:, place:)
+
+      expect(described_class.call(place.id)).to be(false)
+      expect(Place.exists?(place.id)).to be(true)
+    end
+
     it 'deletes the place and cascading place_visits rows even when residual ones exist' do
       place = create(:place, user: user, source: :photon)
-      visit = create(:visit, user: user, area: nil, place: create(:place, user: user, source: :manual))
+      visit = create(:visit, user: user, place: create(:place, user: user, source: :manual))
       PlaceVisit.create!(place: place, visit: visit)
 
       expect(described_class.call(place.id)).to be(true)
@@ -76,5 +108,12 @@ RSpec.describe Places::DeleteIfOrphan do
       expect(Rails.logger).to receive(:warn).with(/DeleteIfOrphan/)
       expect(described_class.call(place.id)).to be(false)
     end
+  end
+
+  it 'keeps an archived discovered Place with no visits, notes or tags', :archive do
+    place = create(:place, user:, source: :photon, note: nil, archived: true)
+
+    expect(described_class.call(place.id)).to be(false)
+    expect(Place.exists?(place.id)).to be(true)
   end
 end

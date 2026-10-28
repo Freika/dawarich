@@ -7,6 +7,109 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
   before { sign_in user }
 
+  it 'renders the place editor only inside the left map panel' do
+    get map_v2_path
+
+    document = Nokogiri::HTML(response.body)
+    panel = document.at_css('#map-settings-panel [data-tab-content="place"]')
+    expect(panel).to be_present
+    expect(panel.at_css('[data-controller="place-panel"] turbo-frame#place-drawer')).to be_present
+    expect(panel.at_css('[data-action="place-panel#close"]')).to be_present
+    expect(document.css('turbo-frame#place-drawer').size).to eq(1)
+    expect(document.at_css('#maps-maplibre-container > .place-panel')).to be_nil
+  end
+
+  it 'keeps one panel header close control and only Back inside the place editor' do
+    get map_v2_path
+
+    document = Nokogiri::HTML(response.body)
+    panel = document.at_css('#map-settings-panel')
+    expect(panel.css('.panel-header button').size).to eq(1)
+    toolbar = panel.at_css('.place-panel__toolbar')
+    expect(toolbar.css('button').size).to eq(1)
+    expect(toolbar.at_css('button').text.strip).to eq(I18n.t('map.maplibre.settings_panel.back'))
+    expect(toolbar.at_css('button')['data-action']).to eq('place-panel#close')
+  end
+
+  it 'lets Turbo own the persistent creation form submit state' do
+    get map_v2_path
+
+    document = Nokogiri::HTML(response.body)
+    submit = document.at_css('[data-place-creation-target="submitButton"]')
+    expect(submit['data-turbo-submits-with']).to be_present
+    expect(submit['data-disable-with']).to be_nil
+  end
+
+  describe 'privacy zones' do
+    def fingerprint_value
+      map = Nokogiri::HTML(response.body).at_css('[data-controller~="maps--maplibre"]')
+      map.attribute('data-maps--maplibre-privacy-zones-fingerprint-value')&.value
+    end
+
+    it 'renders the zone fingerprint for tile requests' do
+      place = create(:place, user:, latitude: 52.44, longitude: 13.5, lonlat: 'POINT(13.5 52.44)')
+      create(:tagging, tag: create(:tag, :privacy_zone, user:), taggable: place)
+
+      get map_v2_path
+
+      expect(fingerprint_value).to eq(Maps::PrivacyZoneMasker.new(user).fingerprint).and be_present
+    end
+
+    it 'renders no fingerprint without zones' do
+      get map_v2_path
+
+      expect(fingerprint_value).to be_blank
+    end
+  end
+
+  describe 'unified Places UI' do
+    it 'offers one Place workflow and no separate Area controls' do
+      get map_v2_path
+
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css('[data-action="click->maps--maplibre#startCreatePlace"]')).to be_present
+      expect(document.at_css('[data-action="click->maps--maplibre#startCreateArea"]')).to be_nil
+      expect(document.at_css('[data-maps--maplibre-target="areasToggle"]')).to be_nil
+      expect(response.body).to include('Select data on map')
+    end
+
+    it 'renders the shared Place form with Visit Radius and Visit attachment context' do
+      get map_v2_path
+
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css('input[name="place[visit_radius]"]')).to be_present
+      expect(document.at_css('input[name="visit_id"]')).to be_present
+    end
+
+    it 'offers a Place boundaries toggle within the Places layer controls' do
+      get map_v2_path
+
+      document = Nokogiri::HTML(response.body)
+      toggle = document.at_css('[data-maps--maplibre-target="placesFilters"] ' \
+                               '[data-maps--maplibre-target="placeBoundariesToggle"]')
+      expect(toggle['data-action']).to eq('change->maps--maplibre#togglePlaceBoundaries')
+    end
+  end
+
+  describe 'Lite data window' do
+    it 'tells the map where the Lite data window starts' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update_column(:plan, User.plans[:lite])
+
+      get map_v2_path
+
+      expect(response.body).to include(
+        %(data-maps--maplibre-data-window-start-value="#{user.data_window_start.iso8601}")
+      )
+    end
+
+    it 'leaves the data window empty for users without one' do
+      get map_v2_path
+
+      expect(response.body).to include('data-maps--maplibre-data-window-start-value=""')
+    end
+  end
+
   describe 'poster studio' do
     it 'renders the poster tab button' do
       get map_v2_path
@@ -48,6 +151,21 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
       slider = Nokogiri::HTML(response.body).at_css('[data-poster-studio-editor-target="trackOpacity"]')
       expect(slider['value']).to eq('100')
+    end
+
+    it 'hands the custom tiles settings to both studios' do
+      tiles_url = 'https://tiles.example.test/planet/{z}/{x}/{y}.mvt'
+      user.update!(settings: user.settings.merge('maps_maplibre_tiles_url' => tiles_url,
+                                                 'maps_maplibre_tiles_fallback' => true))
+
+      get map_v2_path
+
+      page = Nokogiri::HTML(response.body)
+      %w[poster-studio-editor video-studio].each do |studio|
+        root = page.at_css("[data-controller=\"#{studio}\"]")
+        expect(root["data-#{studio}-tiles-url-value"]).to eq(tiles_url)
+        expect(root["data-#{studio}-tiles-fallback-value"]).to eq('true')
+      end
     end
   end
 

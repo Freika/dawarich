@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
-import { translate } from "i18n"
+import { firstDayOfWeek, translate } from "i18n"
+import { monthGridStart } from "maps_maplibre/utils/month_grid"
 
 /**
  * Timeline Feed Controller (Unified Timeline)
@@ -61,6 +62,18 @@ export default class extends Controller {
     this.boundOpenTrack = this.handleOpenTrack.bind(this)
     document.addEventListener("timeline:open-track", this.boundOpenTrack)
 
+    this.boundDateNavigated = (event) => {
+      if (event.detail?.date) return
+      this.selectedDate = null
+      for (const el of this.element.querySelectorAll(".cal-cell--selected")) {
+        el.classList.remove("cal-cell--selected")
+      }
+    }
+    document.addEventListener(
+      "timeline-feed:date-navigated",
+      this.boundDateNavigated,
+    )
+
     if (this.hasVisitListFrameTarget) {
       this.boundFrameLoad = this.handleVisitFrameLoad.bind(this)
       this.visitListFrameTarget.addEventListener(
@@ -118,6 +131,10 @@ export default class extends Controller {
     document.removeEventListener("keydown", this.boundKeyHandler)
     document.removeEventListener("timeline:open-visit", this.boundOpenVisit)
     document.removeEventListener("timeline:open-track", this.boundOpenTrack)
+    document.removeEventListener(
+      "timeline-feed:date-navigated",
+      this.boundDateNavigated,
+    )
     if (this.boundCalendarLoad) {
       document.removeEventListener("turbo:frame-load", this.boundCalendarLoad)
     }
@@ -196,11 +213,7 @@ export default class extends Controller {
     // (arriving via the top date-range form / Search / Last 7 days) so the
     // panel lands on the most recent day of the range instead of going blank —
     // keeping the range and the panel in sync (C1).
-    let date = params.get("date")
-    if (!date) {
-      const endAt = params.get("end_at")
-      if (endAt) date = endAt.slice(0, 10)
-    }
+    const date = params.get("date") || this.renderedDay()
     if (date) {
       const isoDate =
         date === "today" ? new Date().toLocaleDateString("en-CA") : date
@@ -703,11 +716,8 @@ export default class extends Controller {
       year: "numeric",
     })
 
-    // 6×7 grid, Monday-aligned — mirrors what MonthSummary builds server-side.
-    const monthStart = new Date(year, monthIdx, 1)
-    // Day-of-week with Monday as 0
-    const offset = (monthStart.getDay() + 6) % 7
-    const gridStart = new Date(year, monthIdx, 1 - offset)
+    // 6×7 grid aligned to the first day of week — mirrors MonthSummary.
+    const gridStart = monthGridStart(year, monthIdx, firstDayOfWeek())
 
     const cells = []
     for (let i = 0; i < 42; i += 1) {
@@ -737,11 +747,12 @@ export default class extends Controller {
   // ---------- Day navigation ----------
   navigateDay(event) {
     const direction = event.currentTarget.dataset.direction
-    if (!this.selectedDate) return
+    const current = this.selectedDate || this.renderedDay()
+    if (!current) return
     // Work in UTC throughout to avoid local-timezone drift. `new Date("YYYY-MM-DDT00:00:00")`
     // is parsed as local, then toISOString() converts to UTC — which can shift
     // the date by ±1 in non-UTC timezones. Using Date.UTC + setUTCDate is stable.
-    const [y, m, day] = this.selectedDate.split("-").map(Number)
+    const [y, m, day] = current.split("-").map(Number)
     const d = new Date(Date.UTC(y, m - 1, day))
     const delta = direction === "prev" ? -1 : direction === "next" ? 1 : 0
     d.setUTCDate(d.getUTCDate() + delta)
@@ -749,10 +760,26 @@ export default class extends Controller {
     this.navigateToDay(newDate)
   }
 
+  renderedDay() {
+    return (
+      document.querySelector('input[name="end_at"]')?.value.slice(0, 10) || null
+    )
+  }
+
   // ---------- Keyboard ----------
   handleKey(e) {
     if (e.target.matches?.("input, textarea, select")) return
-    if (!this.element.isConnected) return
+    if (e.target.isContentEditable) return
+    if (e.target.closest?.(".maplibregl-canvas-container")) return
+    if (e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return
+    if (
+      document.querySelector(
+        ".modal.modal-open, dialog[open], #video-studio:not(.hidden), #poster-studio:not(.hidden)",
+      )
+    )
+      return
+    if (!this.element.closest(".map-control-panel.open .tab-content.active"))
+      return
 
     if (e.key === "ArrowLeft") {
       this.navigateInDirection("prev")
@@ -762,7 +789,6 @@ export default class extends Controller {
   }
 
   navigateInDirection(direction) {
-    if (!this.selectedDate) return
     const fakeEvent = { currentTarget: { dataset: { direction } } }
     this.navigateDay(fakeEvent)
   }

@@ -80,7 +80,8 @@ class VisitsController < ApplicationController
     end
 
     visits = current_user.scoped_visits.where(id: visit_ids)
-    @affected_started_at = visits.pluck(:started_at)
+    @affected_spans = visits.pluck(:started_at, :ended_at)
+    @affected_started_at = @affected_spans.map(&:first)
 
     service = Visits::BulkDestroy.new(current_user, visit_ids)
     result = service.call
@@ -103,11 +104,20 @@ class VisitsController < ApplicationController
     params_to_update = visit_params.to_h
     if params_to_update[:name].is_a?(String)
       stripped = params_to_update[:name].strip
-      if stripped.empty?
-        params_to_update.delete(:name)
-      else
-        params_to_update[:name] = stripped
-      end
+      params_to_update[:name] = stripped.empty? ? nil : stripped
+    end
+
+    if params_to_update[:place_id].present? && params_to_update[:area_id].present?
+      return render_unprocessable(I18n.t('controllers.visits.conflicting_place_and_area'))
+    end
+
+    if params_to_update[:area_id].present?
+      selected_area = current_user.areas.find_by(id: params_to_update[:area_id])
+      return render_unprocessable(I18n.t('controllers.visits.invalid_area')) unless selected_area
+
+      mapped_place = Places::LegacyAreaAdapter.new(user: current_user).resolve(selected_area)
+      params_to_update[:place_id] = mapped_place.id
+      params_to_update[:area_id] = nil
     end
 
     if params_to_update[:place_id].present?
@@ -115,12 +125,8 @@ class VisitsController < ApplicationController
       allowed = current_user.places.where(id: raw_place_id).exists? ||
                 @visit.suggested_places.where(id: raw_place_id).exists?
       return render_unprocessable(I18n.t('controllers.visits.invalid_place')) unless allowed
-    end
 
-    selected_area = nil
-    if params_to_update[:area_id].present?
-      selected_area = current_user.areas.find_by(id: params_to_update[:area_id])
-      return render_unprocessable(I18n.t('controllers.visits.invalid_area')) unless selected_area
+      params_to_update[:area_id] = nil
     end
 
     # Capture both old and new month so cache busts cover edits that move
@@ -132,9 +138,7 @@ class VisitsController < ApplicationController
     end
 
     if params_to_update[:place_id].present?
-      update_visit_name_from_place(params_to_update[:place_id])
-    elsif selected_area
-      @visit.name = selected_area.name if selected_area.name.present?
+      update_visit_label_from_place(params_to_update[:place_id])
     elsif confirming_suggested_visit?(params_to_update)
       # Only auto-pick from the visit's first suggested place when the
       # user did NOT explicitly select one — otherwise we'd overwrite the
@@ -166,7 +170,7 @@ class VisitsController < ApplicationController
 
   def destroy
     tz = current_user.safe_settings.timezone.presence || 'UTC'
-    day_date = Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
+    day_date = viewed_date&.to_s || Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
     @affected_started_at = [@visit.started_at]
     # Soft delete: the row stays as a tombstone so visit detection never
     # re-suggests it; the user's points are untouched either way.
@@ -221,10 +225,18 @@ class VisitsController < ApplicationController
     Array(raw).map(&:to_i).reject(&:zero?).uniq
   end
 
+  # Visits shown on the day: those that started on it and those still going
+  # on from an earlier day, matching Timeline::DayAssembler.
   def apply_date_scope(scope)
     tz = current_user.safe_settings.timezone.presence || 'UTC'
     range = Date.parse(params[:date]).in_time_zone(tz).all_day
-    scope.where(started_at: range)
+    scope.overlapping(range.begin, range.end)
+  end
+
+  def viewed_date
+    Date.iso8601(params[:date].to_s) if params[:date].present?
+  rescue Date::Error
+    nil
   end
 
   # Builds the timeline-entry hash for a single visit — lets the update
@@ -232,8 +244,9 @@ class VisitsController < ApplicationController
   # place / suggested_places data. Reuses Timeline::DayAssembler to keep the
   # payload shape consistent with the day-level fetch.
   def timeline_entry_for(visit)
-    Timeline::DayAssembler.new(current_user, start_at: '', end_at: '')
-                          .build_visit_entry(visit)
+    Timeline::DayAssembler.new(current_user, start_at: '', end_at: '',
+                                             privacy_zone_masker: Maps::PrivacyZoneMasker.new(current_user))
+                          .build_visit_entry(visit, date: viewed_date)
   end
 
   # Turbo streams for #bulk_update: swaps the day's visit-list contents with
@@ -249,7 +262,8 @@ class VisitsController < ApplicationController
       current_user,
       start_at: day_range.begin.iso8601,
       end_at: day_range.end.iso8601,
-      distance_unit: current_user.safe_settings.distance_unit
+      distance_unit: current_user.safe_settings.distance_unit,
+      privacy_zone_masker: Maps::PrivacyZoneMasker.new(current_user)
     ).call
     day = days.first
 
@@ -278,7 +292,7 @@ class VisitsController < ApplicationController
   # stay accurate. Keeps the panel consistent after any edit.
   def build_update_streams
     tz = current_user.safe_settings.timezone.presence || 'UTC'
-    day_date = Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
+    day_date = viewed_date&.to_s || Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
 
     [
       turbo_stream.replace("visit_entry_#{@visit.id}",
@@ -298,10 +312,13 @@ class VisitsController < ApplicationController
     "/map/v2?#{params.to_query}"
   end
 
-  def update_visit_name_from_place(place_id)
+  def update_visit_label_from_place(place_id)
     place = current_user.places.find_by(id: place_id) ||
             @visit.suggested_places.find_by(id: place_id)
-    @visit.name = place.name if place && place.name.present?
+    return unless place
+
+    @visit.clear_echoed_name
+    @visit.location_label = place.name if place.name.present?
   end
 
   def confirming_suggested_visit?(params_to_update = visit_params)
@@ -310,7 +327,7 @@ class VisitsController < ApplicationController
 
   def auto_name_on_confirm
     place = @visit.place || @visit.suggested_places.first
-    @visit.name = place.name if place&.name.present?
+    @visit.location_label = place.name if place&.name.present?
   end
 
   def visit_params
@@ -319,9 +336,8 @@ class VisitsController < ApplicationController
 
   def same_day?(visits)
     tz = current_user.safe_settings.timezone.presence || 'UTC'
-    Time.use_zone(tz) do
-      visits.map { |v| v.started_at.in_time_zone.to_date }.uniq.length == 1
-    end
+    visits.map { |v| Timeline::TrackDayShares.shares_between(v.started_at, v.ended_at, tz).keys }
+          .reduce(:&).any?
   end
 
   def render_not_found(message)
@@ -333,14 +349,15 @@ class VisitsController < ApplicationController
 
   def build_merge_streams(merged)
     tz = current_user.safe_settings.timezone.presence || 'UTC'
-    day_date = Time.use_zone(tz) { merged.started_at.in_time_zone.to_date.to_s }
+    day_date = viewed_date&.to_s || Time.use_zone(tz) { merged.started_at.in_time_zone.to_date.to_s }
     day_range = Time.use_zone(tz) { Date.parse(day_date).in_time_zone.all_day }
 
     days = Timeline::DayAssembler.new(
       current_user,
       start_at: day_range.begin.iso8601,
       end_at: day_range.end.iso8601,
-      distance_unit: current_user.safe_settings.distance_unit
+      distance_unit: current_user.safe_settings.distance_unit,
+      privacy_zone_masker: Maps::PrivacyZoneMasker.new(current_user)
     ).call
     day = days.first
 
@@ -369,7 +386,7 @@ class VisitsController < ApplicationController
     affected_dates = Time.use_zone(tz) do
       Array(@affected_started_at).compact.map { |t| t.in_time_zone.to_date }.uniq
     end
-    visible_date = affected_dates.first if affected_dates.length == 1
+    visible_date = viewed_date || (affected_dates.first if affected_dates.length == 1)
     counts_date_str = (visible_date || Time.use_zone(tz) { Date.current }).to_s
 
     streams = []
@@ -392,7 +409,8 @@ class VisitsController < ApplicationController
       current_user,
       start_at: day_range.begin.iso8601,
       end_at: day_range.end.iso8601,
-      distance_unit: current_user.safe_settings.distance_unit
+      distance_unit: current_user.safe_settings.distance_unit,
+      privacy_zone_masker: Maps::PrivacyZoneMasker.new(current_user)
     ).call.first
 
     if day
@@ -449,14 +467,12 @@ class VisitsController < ApplicationController
   end
 
   def bust_timeline_month_cache
-    started_ats = Array(@affected_started_at).compact
-    return if started_ats.empty?
+    spans = @affected_spans || Array(@affected_started_at).compact.map { |time| [time, time] }
+    return if spans.empty?
 
     tz = current_user.safe_settings.timezone.presence || 'UTC'
-    Time.use_zone(tz) do
-      started_ats.map { |t| t.in_time_zone.to_date.beginning_of_month }.uniq.each do |month_start|
-        Rails.cache.delete(Timeline::MonthSummary.cache_key_for(current_user, month_start))
-      end
+    spans.flat_map { |from, to| Timeline::MonthSummary.months_spanning(from, to, tz) }.uniq.each do |month_start|
+      Rails.cache.delete(Timeline::MonthSummary.cache_key_for(current_user, month_start))
     end
   end
 end

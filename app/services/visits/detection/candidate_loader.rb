@@ -13,6 +13,13 @@ module Visits
       Pt = Struct.new(:id, :lat, :lon, :timestamp, :accuracy)
       Seg = Struct.new(:mode, :confidence, :corrected, :start_ts, :end_ts)
 
+      def self.eligible_points(user)
+        Point.where(user_id: user.id)
+             .where.not(lonlat: nil)
+             .where('anomaly IS NULL OR anomaly = FALSE')
+             .where("NOT #{Points::NullIsland.sql_predicate}")
+      end
+
       def initialize(user, start_at:, end_at:, policy:)
         @user = user
         @start_at = start_at.to_i
@@ -38,11 +45,7 @@ module Visits
       attr_reader :user, :start_at, :end_at, :policy
 
       def candidate_scope
-        Point.where(user_id: user.id)
-             .where(timestamp: start_at..end_at)
-             .where.not(lonlat: nil)
-             .where('anomaly IS NULL OR anomaly = FALSE')
-             .where("NOT #{Points::NullIsland.sql_predicate}")
+        self.class.eligible_points(user).where(timestamp: start_at..end_at)
       end
 
       def count_candidate_points

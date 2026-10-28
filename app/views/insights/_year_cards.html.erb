@@ -8,7 +8,7 @@
   <h2 id="insights-years-title" class="text-xl font-bold mb-3"><%= t('.title') %></h2>
   <div class="grid grid-cols-1 gap-4 <%= 'lg:grid-cols-2' if @stats_by_year.size + @locked_years.size > 1 %>">
     <% @stats_by_year.each do |year, stats| %>
-      <% cache [current_user.id, 'insights_year_card', I18n.locale, year, stats.map(&:updated_at).max, distance_unit, geocoding, map_years.include?(year), map_style], expires_in: 24.hours do %>
+      <% cache [current_user.id, 'insights_year_card', I18n.locale, year, stats.map(&:updated_at).max, distance_unit, geocoding, map_years.include?(year), map_style, Current.date_time_preferences.cache_key], expires_in: 24.hours do %>
         <% with_map = map_years.include?(year) && Stats::YearRoutesQuery.new(current_user, year).any? %>
         <div class="card bg-base-200 overflow-hidden" data-testid="insights-year-card">
           <% if with_map %>
@@ -28,6 +28,13 @@
                 <%= number_with_delimiter year_distance_stat(@year_distances[year], current_user).round %> <%= distance_unit %>
               </span>
             </div>
+            <% flown = stats.sum(&:flight_distance) %>
+            <% if flown.positive? && flown <= @year_distances[year].sum { _1[1] } %>
+              <p class="flex items-center gap-1 text-sm text-info" data-testid="insights-year-flown">
+                <%= icon 'plane', class: 'w-4 h-4 shrink-0' %>
+                <span class="min-w-0"><%= t('.flown', distance: "#{number_with_delimiter Stat.convert_distance(flown, distance_unit).round} #{distance_unit}") %></span>
+              </p>
+            <% end %>
 
             <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-base-content/60">
               <span><%= t('stats.index.last_update') %> <%= human_date(stats.first.updated_at) %></span>

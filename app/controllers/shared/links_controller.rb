@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Shared::LinksController < ApplicationController
+  include DefaultDateTimePreferences
+
   layout :viewer_layout
 
   skip_before_action :verify_authenticity_token, only: %i[show unlock]

@@ -26,10 +26,7 @@ module AirTrail
     private
 
     def affected_months
-      @user.flights.pluck(:flight_date, :departure_time).filter_map do |flight_date, departure_time|
-        local_date = flight_date || departure_time&.in_time_zone(@user.timezone_iana)&.to_date
-        [local_date.year, local_date.month] if local_date
-      end.uniq
+      @user.flights.stat_months(@user.timezone_iana)
     end
 
     def recalculate_stats(months)

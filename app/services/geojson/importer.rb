@@ -19,7 +19,7 @@ class Geojson::Importer
     path = resolve_file_path
     validate_json(path)
     initialize_stream
-    ActiveRecord::Base.transaction do
+    Revisions::ImportTransaction.call(user_id, import_id: import.id) do
       stream_features(path)
       flush_batch
     end
@@ -34,7 +34,6 @@ class Geojson::Importer
     parser = Oj::Parser.new(:validate)
     File.open(path, 'rb') { |io| parser.load(io) }
   rescue EncodingError, JSON::ParserError
-    @legacy_parser_required = true
     File.open(path, 'rb') { |io| Oj.saj_parse(nil, io) }
   end
 
@@ -47,13 +46,7 @@ class Geojson::Importer
   def stream_features(path)
     handler = Geojson::StreamHandler.new { |feature| process_feature(feature) }
 
-    File.open(path, 'rb') do |io|
-      if @legacy_parser_required
-        Oj.saj_parse(handler, io)
-      else
-        Oj::Parser.new(:saj, handler:).load(io)
-      end
-    end
+    File.open(path, 'rb') { |io| Imports::SajParser.parse(io, handler) }
   end
 
   def process_feature(feature)

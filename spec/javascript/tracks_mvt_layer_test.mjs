@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { expression } from "@maplibre/maplibre-gl-style-spec"
 
 const base = await readFile(
   new URL(
@@ -100,6 +101,64 @@ function build(options = {}) {
   layer.add({})
   return { map, layer }
 }
+
+test("speed coloring requests segment speeds and interpolates the saved scale", () => {
+  const { layer } = build({
+    speedColoring: true,
+    speedColorScale: "80:#ff0000|0:#00ff00|40:#0000ff|40:#0000ff",
+  })
+  assert.match(layer._buildTileUrl(), /speed_coloring=true/)
+  const color = layer.getLayerConfigs()[0].paint["line-color"]
+  const compiled = expression.createExpression(
+    color,
+    "layers[0].paint.line-color",
+  )
+  assert.equal(compiled.result, "success")
+  const evaluate = (properties) =>
+    compiled.value.evaluate({ zoom: 15 }, { properties })
+  assert.notDeepEqual(
+    evaluate({ segment_speed: 0 }),
+    evaluate({ segment_speed: 80 }),
+  )
+  assert.deepEqual(
+    evaluate({ avg_speed: 40 }),
+    evaluate({ segment_speed: 40, avg_speed: 0 }),
+  )
+})
+
+test("invalid or single-stop speed scales fall back to usable default colors", () => {
+  const { layer: defaults } = build({ speedColoring: true })
+  for (const speedColorScale of [
+    "viridis",
+    "0:red|40:#fff000",
+    "0:#00ff00",
+    "0:#00ff00|0:#ff0000",
+    "NaN:#00ff00|40:#ff0000",
+  ]) {
+    const { layer } = build({ speedColoring: true, speedColorScale })
+    assert.deepEqual(layer._lineColor(), defaults._lineColor())
+  }
+})
+
+test("speed mode changes preserve visibility, order, scope and flight filters", () => {
+  const { map, layer } = build({ importId: "42", tracksEnabled: false })
+  map.addLayer({ id: "points-above" })
+  layer.setFlightWindows([[100, 200]])
+  layer.setSpeedColoring({ enabled: true, scale: "0:#00ff00|80:#ff0000" })
+  assert.equal(layer.visible, false)
+  assert.deepEqual(map.layers, ["tracks-mvt", "points-above"])
+  assert.match(layer._tileUrl, /import_id=42/)
+  assert.match(layer._tileUrl, /start_at=/)
+  assert.match(layer._tileUrl, /speed_coloring=true/)
+  assert.equal(map.filterCalls.length, 2)
+  const originalUrl = layer._tileUrl
+  layer.setSpeedColoring({ enabled: true, scale: "0:#ffffff|80:#000000" })
+  assert.equal(layer._tileUrl, originalUrl)
+  assert.deepEqual(map.paintCalls.at(-1).value, layer._lineColor())
+  layer.setSpeedColoring({ enabled: false })
+  assert.ok(!layer._tileUrl.includes("speed_coloring"))
+  assert.equal(layer._lineColor(), "#6366F1")
+})
 
 test("track tiles are authenticated without putting the raw key in their URL", () => {
   const { layer } = build()

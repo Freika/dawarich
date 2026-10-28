@@ -33,6 +33,8 @@ class User < ApplicationRecord
   has_many :route_videos,   dependent: :destroy
   has_many :notifications,  dependent: :destroy
   has_many :areas,          dependent: :destroy
+  has_many :geofence_events, dependent: :delete_all
+  has_many :webhooks,       dependent: :delete_all
   has_many :visits,         dependent: :destroy
   has_many :visited_places, through: :visits, source: :place
   has_many :places,         dependent: :destroy
@@ -63,8 +65,10 @@ class User < ApplicationRecord
   after_update :reset_archival_warnings, if: :saved_change_to_plan?
   after_update :mark_stats_for_rebucketing, if: :saved_change_to_timezone_setting?
   after_update_commit :enqueue_stats_rebuild, if: :saved_change_to_timezone_setting?
+  after_update_commit :enqueue_achievements_recheck, if: :achievements_reenabled?
 
   before_save :sanitize_input
+  before_save :pause_family_location_sharing, if: :family_reenabled?
 
   validates :email, presence: true
   validates :reset_password_token, uniqueness: true, allow_nil: true
@@ -145,6 +149,12 @@ class User < ApplicationRecord
     Users::SafeSettings.new(settings, plan: entitlements.full_access? ? :pro : :lite)
   end
 
+  # Reads the raw hash: the family gate runs on every ingested point, and
+  # safe_settings deep-dups the whole settings hash on each call.
+  def feature_enabled?(feature)
+    Users::SafeSettings.feature_enabled?(settings_hash, feature)
+  end
+
   # Old rows can carry a settings container that is not an object at all, so the
   # value is normalized rather than trusted: ' FR ' and 'fr' both mean French,
   # and anything that is not a shipped locale reads as unset.
@@ -213,13 +223,6 @@ class User < ApplicationRecord
   def cities_visited
     Rails.cache.fetch("dawarich/user_#{id}_cities_visited", expires_in: 1.day) do
       cities_visited_uncached
-    end
-  end
-
-  def total_distance
-    Rails.cache.fetch("dawarich/user_#{id}_total_distance", expires_in: 1.day) do
-      total_distance_meters = stats.sum(:distance)
-      Stat.convert_distance(total_distance_meters, safe_settings.distance_unit)
     end
   end
 
@@ -424,6 +427,34 @@ class User < ApplicationRecord
     return unless has_attribute?(:settings)
 
     self.settings = {} if settings.nil?
+  end
+
+  def achievements_reenabled?
+    saved_change_to_settings? && feature_switched_on?(saved_change_to_settings, 'achievements')
+  end
+
+  def family_reenabled?
+    will_save_change_to_settings? && feature_switched_on?(settings_change_to_be_saved, 'family')
+  end
+
+  def feature_switched_on?(change, feature)
+    before, after = change.map { |value| value.is_a?(Hash) ? value : {} }
+
+    !Users::SafeSettings.feature_enabled?(before, feature) && Users::SafeSettings.feature_enabled?(after, feature)
+  end
+
+  # A share stored before the feature went off, or written while it was off,
+  # must not resume on its own: turning family back on starts with sharing off.
+  def pause_family_location_sharing
+    return unless settings.is_a?(Hash) && settings.dig('family', 'location_sharing').is_a?(Hash)
+
+    settings['family']['location_sharing'] = { 'enabled' => false }
+  end
+
+  # Progress went stale while the feature was off. Recompute it without
+  # notifications so the user isn't flooded with everything earned meanwhile.
+  def enqueue_achievements_recheck
+    Achievements::CheckJob.perform_later(id, notify: false, oldest_timestamp: 0)
   end
 
   def saved_change_to_timezone_setting?

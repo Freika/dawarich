@@ -5,6 +5,12 @@ class DawarichSettings
   LITE_DATA_WINDOW = 12.months
 
   class << self
+    # Rounded up to a UTC midnight so the cutoff, and every query and cache key
+    # built from it, stays put for a whole day whatever Time.zone is in effect.
+    def lite_data_window_start(window = LITE_DATA_WINDOW)
+      window.ago.utc.tomorrow.beginning_of_day
+    end
+
     # The geocoding predicates are deliberately NOT memoised. Two reasons: a
     # stored value can change while the process runs, and `@x ||= false` re-runs
     # its right-hand side on every call anyway, so the idiom never worked for
@@ -19,11 +25,13 @@ class DawarichSettings
     end
 
     def photon_https_only_host?
-      PHOTON_HTTPS_ONLY_HOSTS.include?(normalized_photon_host)
+      PHOTON_HTTPS_ONLY_HOSTS.include?(bare_host(photon_host))
     end
 
-    def normalized_photon_host
-      photon_host.to_s.strip.downcase.split(':').first
+    # Strips the port and any reverse-proxy path suffix so hosts written as
+    # "app.chibigeo.com/v1/photon" or "photon.komoot.io:443" still match.
+    def bare_host(host)
+      host.to_s.strip.downcase.split('/').first.to_s.split(':').first
     end
 
     def photon_use_https?
@@ -88,6 +96,7 @@ class DawarichSettings
     # Deliberately not memoized: the answer depends on the user, and
     # DawarichSettings is a process-wide singleton.
     def family_feature_available_for?(user)
+      return false if user && !user.feature_enabled?(:family)
       return true if self_hosted?
       return false if user.nil?
 
@@ -107,7 +116,8 @@ class DawarichSettings
     def features_for(user)
       {
         reverse_geocoding: Geocoding::Config.for(user).enabled?,
-        family: family_feature_available_for?(user)
+        family: family_feature_available_for?(user),
+        achievements: user.nil? || user.feature_enabled?(:achievements)
       }
     end
 

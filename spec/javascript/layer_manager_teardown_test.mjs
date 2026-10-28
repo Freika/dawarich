@@ -13,7 +13,7 @@ const source = await readFile(
   ),
   "utf8",
 )
-const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(withoutImports).toString("base64")}`
 const { LayerManager } = await import(moduleUrl)
 

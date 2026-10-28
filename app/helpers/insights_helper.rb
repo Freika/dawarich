@@ -2,6 +2,7 @@
 
 module InsightsHelper
   include CountryFlagHelper
+  include WeekStartHelper
 
   def monthly_digest_title(digest)
     return I18n.t('helpers.insights.monthly_digest') unless digest
@@ -43,18 +44,20 @@ module InsightsHelper
   end
 
   def weekly_pattern_chart_data(digest, user)
-    day_names = I18n.t('calendar.abbreviated_weekdays')
+    day_names = week_ordered(I18n.t('calendar.abbreviated_weekdays'))
     return day_names.map { |day| [day, 0] } unless digest
 
     pattern = digest.weekly_pattern
     return day_names.map { |day| [day, 0] } unless pattern.is_a?(Array) && pattern.size == 7
 
     distance_unit = user.safe_settings.distance_unit
-    day_names.each_with_index.map do |day, idx|
-      distance_meters = pattern[idx] || 0
-      converted = Stat.convert_distance(distance_meters, distance_unit).round
-      [day, converted]
+    day_names.zip(week_ordered(pattern)).map do |day, distance_meters|
+      [day, Stat.convert_distance(distance_meters || 0, distance_unit).round]
     end
+  end
+
+  def weekday_strip(monday_first_distances)
+    week_ordered(I18n.t('date.abbr_day_names').rotate.zip(monday_first_distances))
   end
 
   def top_locations_from_digest(digest, limit = 3)
@@ -206,15 +209,9 @@ module InsightsHelper
     end
   end
 
-  def heatmap_week_columns(year)
-    start_date = Date.new(year, 1, 1)
-    end_date = Date.new(year, 12, 31)
-
-    # Adjust to start from the Monday of the week containing Jan 1
-    start_of_grid = start_date - (start_date.wday.zero? ? 6 : start_date.wday - 1)
-
-    # Adjust to end at the Sunday of the week containing Dec 31
-    end_of_grid = end_date + (end_date.wday.zero? ? 0 : 7 - end_date.wday)
+  def heatmap_week_columns(year, week_start: self.week_start)
+    start_of_grid = Date.new(year, 1, 1).beginning_of_week(week_start)
+    end_of_grid = Date.new(year, 12, 31).end_of_week(week_start)
 
     weeks = []
     current_week_start = start_of_grid

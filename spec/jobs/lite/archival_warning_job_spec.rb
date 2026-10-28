@@ -49,6 +49,21 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
       end
     end
 
+    context 'when the oldest point is hidden by the window but not yet 12 months old' do
+      include ActiveSupport::Testing::TimeHelpers
+
+      it 'tells the user that data has been archived' do
+        travel_to Time.utc(2026, 10, 25, 10) do
+          point = create(:point, user: lite_user, timestamp: Time.utc(2025, 10, 25, 20).to_i)
+          expect(lite_user.scoped_points).not_to include(point)
+
+          described_class.perform_now
+
+          expect(Notification.find_by!(user: lite_user).title).to eq('Data has been archived')
+        end
+      end
+    end
+
     context 'when a Lite user has data approaching 11 months old' do
       before do
         create(:point, user: lite_user, timestamp: 11.months.ago.to_i)

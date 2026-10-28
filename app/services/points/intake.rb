@@ -58,7 +58,9 @@ module Points
       Tracks::RealtimeDebouncer.new(user_id).trigger
       Tracks::BackfillScheduler.new(user_id, timestamps).call
       Visits::RealtimeDebouncer.new(user_id).trigger
+      Visits::BackfillScheduler.new(user_id, timestamps).call
       Points::LiveBroadcaster.new(user_id, upserted, usable_payloads).call
+      GeofenceEvents::Evaluator.call(user_id:, rows: upserted, payloads: usable_payloads)
     end
 
     def bump_points_count(upserted)

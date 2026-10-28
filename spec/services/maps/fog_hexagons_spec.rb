@@ -120,4 +120,36 @@ RSpec.describe Maps::FogHexagons do
       expect(result['h3_indexes']).to contain_exactly('8828308281fffff', '8828308283fffff')
     end
   end
+
+  context 'with a privacy zone' do
+    let(:center_cell) { H3.from_geo_coordinates([52.444, 13.5], 8) }
+    let(:center) { H3.to_geo_coordinates(center_cell) }
+    let(:first_ring) { H3.hex_ring(center_cell, 1).map { |cell| H3.to_string(cell) } }
+    let(:second_ring) { H3.hex_ring(center_cell, 2).map { |cell| H3.to_string(cell) } }
+    let(:masker) { Maps::PrivacyZoneMasker.new(user) }
+
+    subject(:result) { described_class.new(user:, start_date:, end_date:, privacy_zone_masker: masker).call }
+
+    before do
+      lat, lon = center
+      tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 390)
+      place = create(:place, user:, latitude: lat, longitude: lon, lonlat: "POINT(#{lon} #{lat})")
+      create(:tagging, tag:, taggable: place)
+      cells = [H3.to_string(center_cell), *first_ring, *second_ring]
+      create(:stat, user:, year: 2024, month: 5,
+                    h3_hex_ids: cells.map { |cell| [cell, 1, ts('2024-05-10T10:00:00Z'), ts('2024-05-10T11:00:00Z')] })
+    end
+
+    it 'keeps every cell that touches the zone fogged and clears the ones beyond it' do
+      expect(result['h3_indexes']).to match_array(second_ring)
+    end
+
+    it 'judges coarser cells by their own size' do
+      coarse = H3.to_string(H3.from_geo_coordinates([52.444, 13.5], 6))
+      create(:stat, user:, year: 2024, month: 6,
+                    h3_hex_ids: [[coarse, 1, ts('2024-06-01T09:00:00Z'), ts('2024-06-01T09:30:00Z')]])
+
+      expect(result['h3_indexes']).not_to include(coarse)
+    end
+  end
 end

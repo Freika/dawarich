@@ -59,7 +59,6 @@ de:
         locked: Gesperrt
     cards:
       explorer_name: "%{place}-Entdecker"
-      date_format: "%-d. %b %Y"
       description:
         continent: "Verbringe Zeit in allen %{count} Ländern und Gebieten von %{place}."
         regions: "Verbringe Zeit in allen %{count} Regionen von %{place}."

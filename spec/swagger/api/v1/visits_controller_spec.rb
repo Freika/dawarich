@@ -3,6 +3,13 @@
 require 'swagger_helper'
 
 describe 'Visits API', type: :request do
+  center_schema = {
+    type: :object, nullable: true,
+    description: 'Point-derived fallback when Place/Area are absent; null without visible coordinates',
+    properties: { latitude: { type: :number }, longitude: { type: :number } },
+    required: %w[latitude longitude]
+  }
+
   let(:user) { create(:user) }
   let(:api_key) { user.api_key }
   let(:Authorization) { "Bearer #{api_key}" }
@@ -11,11 +18,17 @@ describe 'Visits API', type: :request do
 
   path '/api/v1/visits' do
     get 'List visits' do
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out data inside the user\'s privacy zones'
       tags 'Visits'
       produces 'application/json'
       parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer token'
-      parameter name: :start_at, in: :query, type: :string, required: false, description: 'Start date (ISO 8601)'
-      parameter name: :end_at, in: :query, type: :string, required: false, description: 'End date (ISO 8601)'
+      parameter name: :start_at, in: :query, type: :string, required: false,
+                description: 'ISO 8601; pair with end_at; must not be later than end_at; ' \
+                             'optional only for complete bounding-box selections'
+      parameter name: :end_at, in: :query, type: :string, required: false,
+                description: 'ISO 8601; pair with start_at; must not be earlier than start_at; ' \
+                             'optional only for complete bounding-box selections'
       parameter name: :selection, in: :query, type: :string, required: false,
                 description: 'Set to "true" for area-based search'
       parameter name: :sw_lat, in: :query, type: :number, required: false,
@@ -31,30 +44,54 @@ describe 'Visits API', type: :request do
         let(:start_at) { 1.week.ago.iso8601 }
         let(:end_at) { Time.current.iso8601 }
 
+        before do
+          create(:visit, user: user, place: place, started_at: 3.days.ago, ended_at: 3.days.ago + 1.hour)
+          create(:visit, user: user, place: nil, name: nil, location_label: 'Main Street 5', status: :suggested,
+                         started_at: 2.days.ago, ended_at: 2.days.ago + 1.hour)
+        end
+
         schema type: :array,
                items: {
                  type: :object,
                  properties: {
                    id: { type: :integer },
-                   name: { type: :string },
+                   name: { type: :string,
+                           description: 'Displayed name: the custom Visit Name, Place name, or Location Label' },
+                   custom_name: { type: :string, nullable: true, description: 'User-defined Visit Name' },
+                   display_name: { type: :string, description: 'Visit Name, Place name, or Location Label' },
+                   location_label: { type: :string, nullable: true },
+                   place_id: { type: :integer, nullable: true },
+                   area_id: { type: :integer, nullable: true, deprecated: true },
                    status: { type: :string, enum: %w[suggested confirmed declined] },
                    started_at: { type: :string, format: :datetime },
                    ended_at: { type: :string, format: :datetime },
                    duration: { type: :integer, description: 'Duration in minutes' },
+                   center: center_schema,
                    place: {
                      type: :object,
+                     nullable: true,
                      properties: {
-                       id: { type: :integer },
+                       id: { type: :integer, nullable: true },
                        name: { type: :string },
                        latitude: { type: :number },
                        longitude: { type: :number },
-                       city: { type: :string },
-                       country: { type: :string }
+                       visit_radius: { type: :integer }
                      }
                    }
                  },
-                 required: %w[id name status started_at ended_at duration]
+                 required: %w[id name display_name status started_at ended_at duration center]
                }
+
+        run_test!
+      end
+
+      response '400', 'invalid or missing time range' do
+        let(:start_at) { 'not-a-date' }
+        let(:end_at) { Time.current.iso8601 }
+
+        schema type: :object,
+               properties: { error: { type: :string } },
+               required: %w[error]
 
         run_test!
       end
@@ -83,7 +120,8 @@ describe 'Visits API', type: :request do
               ended_at: { type: :string, format: :datetime },
               address: {
                 type: :object,
-                description: 'Optional address stored on a newly created place',
+                description: 'Optional address stored on a newly created place; ' \
+                             'ignored when the visit reuses a place within 100 m',
                 properties: {
                   street: { type: :string },
                   house_number: { type: :string },
@@ -112,6 +150,7 @@ describe 'Visits API', type: :request do
         end
 
         schema type: :object,
+               required: %w[center],
                properties: {
                  id: { type: :integer },
                  name: { type: :string },
@@ -119,6 +158,7 @@ describe 'Visits API', type: :request do
                  started_at: { type: :string, format: :datetime },
                  ended_at: { type: :string, format: :datetime },
                  duration: { type: :integer },
+                 center: center_schema,
                  place: {
                    type: :object,
                    properties: {
@@ -184,7 +224,12 @@ describe 'Visits API', type: :request do
             properties: {
               name: { type: :string },
               place_id: { type: :integer },
-              area_id: { type: :integer, nullable: true },
+              area_id: {
+                type: :integer,
+                nullable: true,
+                deprecated: true,
+                description: 'Legacy Area ID. It is translated to place_id; do not send both fields.'
+              },
               status: { type: :string, enum: %w[suggested confirmed declined] }
             }
           }
@@ -196,6 +241,7 @@ describe 'Visits API', type: :request do
         let(:visit) { { visit: { name: 'Updated Visit' } } }
 
         schema type: :object,
+               required: %w[center],
                properties: {
                  id: { type: :integer },
                  name: { type: :string },
@@ -203,7 +249,8 @@ describe 'Visits API', type: :request do
                  started_at: { type: :string, format: :datetime },
                  ended_at: { type: :string, format: :datetime },
                  duration: { type: :integer },
-                 place: { type: :object }
+                 center: center_schema,
+                 place: { type: [:object, 'null'] }
                }
 
         run_test!
@@ -323,6 +370,7 @@ describe 'Visits API', type: :request do
         let(:merge_params) { { visit_ids: [visit1.id, visit2.id] } }
 
         schema type: :object,
+               required: %w[center],
                properties: {
                  id: { type: :integer },
                  name: { type: :string },
@@ -330,7 +378,8 @@ describe 'Visits API', type: :request do
                  started_at: { type: :string, format: :datetime },
                  ended_at: { type: :string, format: :datetime },
                  duration: { type: :integer },
-                 place: { type: :object }
+                 center: center_schema,
+                 place: { type: [:object, 'null'] }
                }
 
         run_test!
@@ -456,7 +505,7 @@ describe 'Visits API', type: :request do
                      properties: {
                        index: { type: :integer },
                        status: { type: :string, enum: %w[created duplicate failed] },
-                       visit: { type: :object },
+                       visit: { type: :object, properties: { center: center_schema }, required: %w[center] },
                        error: { type: :string }
                      }
                    }

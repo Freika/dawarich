@@ -130,17 +130,18 @@ class Track < ApplicationRecord
       .first
   end
 
+  # Splits on time gaps only, ignoring distance for map parity, as in Tracks::Segmentation.
   def self.segment_points_in_sql(user_id, start_timestamp, end_timestamp, time_threshold_minutes,
-                                 distance_threshold_meters, untracked_only: false)
+                                 untracked_only: false, stop_radius_meters: nil)
     time_threshold_seconds = time_threshold_minutes * 60
 
-    where_clause = if untracked_only
-                     'WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3 AND track_id IS NULL'
-                   else
-                     'WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3'
-                   end
-    where_clause += ' AND (anomaly IS NOT TRUE)'
+    stop_break_ids = stationary_break_point_ids(user_id, start_timestamp, end_timestamp, time_threshold_seconds,
+                                                stop_radius_meters)
 
+    # Tracked points keep realtime boundaries in place: without them, untracked points
+    # on both sides of an already tracked stretch would join into one segment.
+    # Filter them out only after calculating the segment boundaries, and break wherever
+    # the track changes so the untracked points around a tracked stretch stay apart.
     sql = <<~SQL
       WITH points_with_gaps AS (
         SELECT
@@ -148,6 +149,8 @@ class Track < ApplicationRecord
           timestamp,
           lonlat,
           tracker_id,
+          track_id,
+          LAG(track_id) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_track_id,
           LAG(lonlat) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_lonlat,
           LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_timestamp,
           ST_Distance(
@@ -156,17 +159,19 @@ class Track < ApplicationRecord
           ) as distance_meters,
           (timestamp - LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp)) as time_diff_seconds
         FROM points
-        #{where_clause}
+        WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3 AND (anomaly IS NOT TRUE)
       ),
       segment_breaks AS (
-        SELECT *,
+        SELECT points_with_gaps.*,
           CASE
             WHEN prev_lonlat IS NULL THEN 1
             WHEN time_diff_seconds > $4 THEN 1
-            WHEN distance_meters > $5 THEN 1
+            WHEN stop_breaks.id IS NOT NULL THEN 1
+            #{'WHEN track_id IS DISTINCT FROM prev_track_id THEN 1' if untracked_only}
             ELSE 0
           END as is_break
         FROM points_with_gaps
+        LEFT JOIN unnest($5::bigint[]) AS stop_breaks(id) ON stop_breaks.id = points_with_gaps.id
       ),
       segments AS (
         SELECT *,
@@ -182,6 +187,7 @@ class Track < ApplicationRecord
         max(timestamp) as end_timestamp,
         sum(COALESCE(distance_meters, 0)) as total_distance_meters
       FROM segments
+      #{'WHERE track_id IS NULL' if untracked_only}
       GROUP BY tracker_id, segment_id
       HAVING count(*) >= 2
       ORDER BY tracker_id NULLS FIRST, segment_id
@@ -190,7 +196,7 @@ class Track < ApplicationRecord
     results = Point.connection.exec_query(
       sql,
       'segment_points_in_sql',
-      [user_id, start_timestamp, end_timestamp, time_threshold_seconds, distance_threshold_meters]
+      [user_id, start_timestamp, end_timestamp, time_threshold_seconds, "{#{stop_break_ids.join(',')}}"]
     )
 
     # Convert results to segment data
@@ -210,16 +216,34 @@ class Track < ApplicationRecord
     segments_data
   end
 
+  # Stop detection reads tracked points and the history before the window too, so a
+  # stop is recognized however the realtime lookback window cuts it.
+  def self.stationary_break_point_ids(user_id, start_timestamp, end_timestamp, threshold_seconds,
+                                      radius_meters = nil)
+    history_start = start_timestamp - Tracks::StationaryStops.history_seconds(threshold_seconds)
+    radius_meters ||= Tracks::StationaryStops.radius_for(User.find(user_id))
+
+    Point.not_anomaly
+         .where(user_id: user_id, timestamp: history_start..end_timestamp)
+         .order(:tracker_id, :timestamp)
+         .pluck(:tracker_id, :id, :timestamp, Arel.sql('ST_X(lonlat::geometry)'), Arel.sql('ST_Y(lonlat::geometry)'))
+         .chunk_while { |previous, row| previous[0] == row[0] }
+         .flat_map do |rows|
+           Tracks::StationaryStops.break_indexes(rows.map { |row| row[2..] }, threshold_seconds, radius_meters)
+                                  .map { |index| rows[index][1] }
+         end
+  end
+
   # Get actual Point objects for each segment with pre-calculated distances
   def self.get_segments_with_points(user_id, start_timestamp, end_timestamp, time_threshold_minutes,
-                                    distance_threshold_meters, untracked_only: false)
+                                    untracked_only: false, stop_radius_meters: nil)
     segments_data = segment_points_in_sql(
       user_id,
       start_timestamp,
       end_timestamp,
       time_threshold_minutes,
-      distance_threshold_meters,
-      untracked_only: untracked_only
+      untracked_only: untracked_only,
+      stop_radius_meters: stop_radius_meters
     )
 
     point_ids = segments_data.flat_map { |seg| seg[:point_ids] }
@@ -280,7 +304,9 @@ class Track < ApplicationRecord
 
   def broadcast_geojson_updated
     Rails.logger.info "[Track#broadcast_geojson_updated] Broadcasting track #{id} to user #{user_id}"
-    geojson_feature = Tracks::GeojsonSerializer.new(self).call[:features].first
+    geojson = Tracks::GeojsonSerializer.new(self).call
+    geojson_feature = Maps::PrivacyZoneMasker.new(user).mask_track_features(geojson)[:features].first
+    return if geojson_feature.nil?
 
     Rails.logger.info "[Track#broadcast_geojson_updated] GeoJSON feature id: #{geojson_feature[:properties][:id]}"
 
@@ -340,10 +366,14 @@ class Track < ApplicationRecord
   end
 
   def broadcast_track_update(action)
+    payload = TrackSerializer.new(self).call
+    original_path = Maps::PrivacyZoneMasker.new(user).clip_wkt(payload[:original_path])
+    return if original_path.nil?
+
     TracksChannel.broadcast_to(
       user, {
         action: action,
-        track: TrackSerializer.new(self).call
+        track: payload.merge(original_path:)
       }
     )
   rescue StandardError => e

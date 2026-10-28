@@ -2717,6 +2717,7 @@ continents:
           zoom: 3.9
         subdivisions:
           IT-21: Piemonte
+          IT-23: Valle d'Aosta
           IT-25: Lombardia
           IT-32: Trentino-Alto Adige
           IT-34: Veneto

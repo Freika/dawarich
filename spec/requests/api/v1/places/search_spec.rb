@@ -32,7 +32,7 @@ RSpec.describe 'Api::V1::Places::Search', type: :request do
   context 'with an instance geocoding provider' do
     before { configure_instance_geocoding }
 
-    it 'with a query, returns forward matches within radius and merges nearby areas' do
+    it 'with a query, returns canonical Places and the legacy Areas compatibility field' do
       create(:area, user: user, name: 'Home', latitude: lat, longitude: lon, radius: 100)
       near = photon(name: 'Café Bravo', plat: lat, plon: lon)
       far  = photon(name: 'Far Café', plat: 53.5, plon: 14.5)
@@ -43,7 +43,7 @@ RSpec.describe 'Api::V1::Places::Search', type: :request do
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json['places'].map { |p| p['name'] }).to eq(['Café Bravo'])
-      expect(json['areas'].map { |a| a['name'] }).to eq(['Home'])
+      expect(json['areas'].map { |area| area['name'] }).to eq(['Home'])
     end
 
     it 'with a blank query, returns nearby reverse suggestions' do
@@ -72,6 +72,31 @@ RSpec.describe 'Api::V1::Places::Search', type: :request do
 
       expect(response).to have_http_status(:success)
       expect(JSON.parse(response.body)['places']).not_to be_empty
+    end
+
+    it 'does not flag a lookup that reached the provider as throttled' do
+      allow(Geocoder).to receive(:search).and_return([])
+
+      get '/api/v1/places/search', params: { q: 'burger king', lat: lat, lon: lon }, headers: headers
+
+      expect(JSON.parse(response.body)['throttled']).to be(false)
+    end
+
+    it 'flags a typed lookup the rate limiter skipped so the client can retry' do
+      allow(Geocoding::Search).to receive(:call).and_return(nil)
+
+      get '/api/v1/places/search', params: { q: 'burger king', lat: lat, lon: lon }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(JSON.parse(response.body)['throttled']).to be(true)
+    end
+
+    it 'flags a nearby lookup the rate limiter skipped so the client can retry' do
+      allow(Geocoding::Search).to receive(:call).and_return(nil)
+
+      get '/api/v1/places/search', params: { lat: lat, lon: lon }, headers: headers
+
+      expect(JSON.parse(response.body)['throttled']).to be(true)
     end
   end
 

@@ -41,10 +41,14 @@ const DEFAULT_SETTINGS = {
   fogOfWarThreshold: 50,
   fogOfWarMode: "points",
   globeProjection: false,
+  speedColoredRoutes: false,
+  speedColorScale: "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
   metersBetweenRoutes: 500,
   minutesBetweenRoutes: 30,
   minMinutesSpentInCity: 60,
   gpsFilteringEnabled: true,
+  gpsAccuracyFilterEnabled: false,
+  gpsAccuracyThreshold: 100,
   pointDraggingEnabled: false,
   enabledTransportationModes: [
     "unknown",
@@ -67,13 +71,13 @@ const LAYER_NAME_MAP = {
   Hexagons: "hexagonsEnabled",
   Visits: "visitsEnabled",
   Photos: "photosEnabled",
-  Areas: "areasEnabled",
   Tracks: "tracksEnabled",
   Flights: "flightsEnabled",
   "Fog of War": "fogEnabled",
   "Scratch map": "scratchEnabled",
   "Family Members": "familyEnabled",
   Places: "placesEnabled",
+  "Place boundaries": "placeBoundariesEnabled",
   Anomalies: "anomaliesEnabled",
 }
 
@@ -89,16 +93,21 @@ const BACKEND_SETTINGS_MAP = {
   fogOfWarThreshold: "fog_of_war_threshold",
   fogOfWarMode: "fog_of_war_mode",
   globeProjection: "globe_projection",
+  speedColoredRoutes: "speed_colored_routes",
+  speedColorScale: "speed_color_scale",
   metersBetweenRoutes: "meters_between_routes",
   minutesBetweenRoutes: "minutes_between_routes",
   minMinutesSpentInCity: "min_minutes_spent_in_city",
   gpsFilteringEnabled: "gps_filtering_enabled",
+  gpsAccuracyFilterEnabled: "gps_accuracy_filter_enabled",
+  gpsAccuracyThreshold: "gps_accuracy_threshold",
   pointDraggingEnabled: "point_dragging_enabled",
   enabledTransportationModes: "enabled_transportation_modes",
   distance_unit: "distance_unit",
   liveMapEnabled: "live_map_enabled",
 }
 
+// biome-ignore lint/complexity/noStaticOnlyClass: retain the established public API
 export class SettingsManager {
   static apiKey = null
   static cachedSettings = null
@@ -140,9 +149,14 @@ export class SettingsManager {
     if (enabledLayers.includes("Routes") && !enabledLayers.includes("Tracks")) {
       enabledLayers.push("Tracks")
     }
-    settings.enabledMapLayers = enabledLayers.filter(
-      (name) => name !== "Routes",
-    )
+    if (enabledLayers.includes("Areas")) {
+      enabledLayers.push("Places", "Place boundaries")
+    }
+    settings.enabledMapLayers = [
+      ...new Set(
+        enabledLayers.filter((name) => name !== "Routes" && name !== "Areas"),
+      ),
+    ]
 
     Object.entries(LAYER_NAME_MAP).forEach(([layerName, settingKey]) => {
       settings[settingKey] = settings.enabledMapLayers.includes(layerName)
@@ -229,11 +243,22 @@ export class SettingsManager {
                 value,
                 DEFAULT_SETTINGS.minMinutesSpentInCity,
               )
-            } else if (frontendKey === "gpsFilteringEnabled") {
+            } else if (frontendKey === "gpsAccuracyThreshold") {
+              value = SettingsManager._parseIntOr(
+                value,
+                DEFAULT_SETTINGS.gpsAccuracyThreshold,
+              )
+            } else if (
+              frontendKey === "gpsFilteringEnabled" ||
+              frontendKey === "gpsAccuracyFilterEnabled"
+            ) {
               value = value === true || value === "true"
             } else if (frontendKey === "pointDraggingEnabled") {
               value = value === true || value === "true"
-            } else if (frontendKey === "globeProjection") {
+            } else if (
+              frontendKey === "globeProjection" ||
+              frontendKey === "speedColoredRoutes"
+            ) {
               value = value === true || value === "true"
             } else if (frontendKey === "liveMapEnabled") {
               value = value === true || value === "true"
@@ -312,7 +337,10 @@ export class SettingsManager {
               frontendKey === "minMinutesSpentInCity"
             ) {
               value = parseInt(value, 10).toString()
-            } else if (frontendKey === "globeProjection") {
+            } else if (
+              frontendKey === "globeProjection" ||
+              frontendKey === "speedColoredRoutes"
+            ) {
               value = Boolean(value)
             } else if (frontendKey === "liveMapEnabled") {
               value = Boolean(value)

@@ -24,6 +24,21 @@ RSpec.describe Stats::FlightDistanceQuery do
     end
   end
 
+  describe '#by_day' do
+    subject(:by_day) { described_class.new(user, 2026, 4).by_day }
+
+    before do
+      create(:flight, user: user, flight_date: Date.new(2026, 4, 3), distance_km: 633.4)
+      create(:flight, user: user, flight_date: Date.new(2026, 4, 3), distance_km: 100.0)
+      create(:flight, user: user, flight_date: Date.new(2026, 4, 28), distance_km: 120.6)
+      create(:flight, user: user, flight_date: Date.new(2026, 4, 10), distance_km: nil)
+    end
+
+    it 'groups the meters by day of the month' do
+      expect(by_day).to eq(3 => 733_400, 28 => 120_600)
+    end
+  end
+
   context 'with flights dated outside the month' do
     before do
       create(:flight, user: user, flight_date: Date.new(2026, 3, 31), distance_km: 500.0)

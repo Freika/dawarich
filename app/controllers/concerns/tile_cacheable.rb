@@ -11,6 +11,7 @@ module TileCacheable
 
   included do
     include SafeTimestampParser
+    include TileResponse
   end
 
   def show
@@ -38,10 +39,13 @@ module TileCacheable
       force_uncacheable_response
     end
 
+    return head :no_content if tile_privacy_masker&.covers_tile?(params[:z], params[:x], params[:y])
+
     result = tile_query.call
 
     if result.truncated?
-      # Unreachable by construction — firing means a query bug.
+      # Unreachable by construction, except points at their max zoom (one
+      # feature per point) — anywhere else firing means a query bug.
       Rails.logger.warn(
         "#{self.class.name} truncated tile #{params[:z]}/#{params[:x]}/#{params[:y]}"
       )
@@ -55,7 +59,8 @@ module TileCacheable
 
     send_data tile, type: 'application/vnd.mapbox-vector-tile', disposition: 'inline'
   rescue Points::VectorTileQuery::InvalidTileCoordinatesError,
-         Tracks::VectorTileQuery::InvalidTileCoordinatesError
+         Tracks::VectorTileQuery::InvalidTileCoordinatesError,
+         Trips::RoutesTileQuery::InvalidTileCoordinatesError
     force_uncacheable_response
     render json: { error: 'Invalid tile coordinates' }, status: :bad_request
   rescue ActiveRecord::QueryCanceled
@@ -71,41 +76,8 @@ module TileCacheable
 
   private
 
-  # Rails recomposes Cache-Control from response.cache_control at finalization —
-  # without the clear, expires_in wins and one transient error poisons the tile
-  # for the full max-age. no-cache also keeps Rack::ETag from stamping an ETag.
-  def force_uncacheable_response
-    response.cache_control.clear
-    response.headers['Cache-Control'] = 'no-store, no-cache'
-    response.headers.delete('ETag')
-  end
-
-  def record_tile_metrics(started_at)
-    outcome = case response.status
-              when 200, 204 then 'success'
-              when 304 then 'not_modified'
-              when 400 then 'invalid'
-              when 503 then 'failure'
-              else "http_#{response.status}"
-              end
-    tags = { layer: tile_metric_layer, outcome: outcome }
-    duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
-    log_tile_failure(tags, duration) unless %w[success not_modified].include?(outcome)
-    Yabeda.dawarich_map.tile_requests_total.increment(tags)
-    Yabeda.dawarich_map.tile_request_duration_seconds.measure(tags, duration)
-  rescue StandardError => e
-    Rails.logger.warn("event=map_tile.metrics_failed error_class=#{e.class}")
-  end
-
-  def log_tile_failure(tags, duration)
-    Rails.logger.warn(
-      "event=map.tile_request layer=#{tags.fetch(:layer)} outcome=#{tags.fetch(:outcome)} " \
-      "status=#{response.status} duration_ms=#{(duration * 1000).round(1)}"
-    )
-  end
-
-  def tile_metric_layer
-    self.class.name.demodulize.delete_suffix('Controller').underscore
+  def tile_privacy_masker
+    nil
   end
 
   def tile_etag
@@ -160,12 +132,5 @@ module TileCacheable
   # window identical to the query window and caps TileEpoch's year-key fan-out.
   def clamp_timestamp(value)
     value.clamp(Time.zone.parse('1970-01-01').to_i, Time.zone.parse('2100-01-01').to_i)
-  end
-
-  # Postgres bytea arrives hex-encoded, MapLibre needs raw protobuf bytes
-  def decode_bytea(value)
-    return value unless value.is_a?(String) && value.start_with?('\x')
-
-    [value.delete_prefix('\x')].pack('H*')
   end
 end

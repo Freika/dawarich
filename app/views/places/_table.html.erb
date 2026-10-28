@@ -1,0 +1,42 @@
+<div class="overflow-x-auto max-w-full" data-testid="places-table-scroll">
+  <table class="table min-w-[60rem]">
+    <thead>
+      <tr>
+        <th><input type="checkbox" class="checkbox checkbox-sm" aria-label="<%= t('places.management.select_all') %>" data-places-selection-target="all" data-action="change->places-selection#toggleAll"></th>
+        <% %w[name tags active_visits last_visit source badges actions].each do |column| %>
+          <th><%= t(column.in?(%w[name actions]) ? "places.index.#{column}" : "places.management.#{column}") %></th>
+        <% end %>
+      </tr>
+    </thead>
+    <tbody>
+      <% @places.each do |place| %>
+        <% privacy = place.tags.any?(&:privacy_zone?) %>
+        <tr data-testid="place-row" data-place-id="<%= place.id %>">
+          <td><input type="checkbox" value="<%= place.id %>" class="checkbox checkbox-sm" aria-label="<%= t('places.management.select_place', name: place.name) %>" data-places-selection-target="row" data-action="change->places-selection#update" data-visits="<%= place.active_visit_count %>" data-geofence="<%= place.geofence? ? 1 : 0 %>" data-privacy="<%= privacy ? 1 : 0 %>"></td>
+          <td class="min-w-72 max-w-96 break-words"><%= link_to place.name, place_path(place), class: 'link link-hover' %></td>
+          <td class="min-w-64 max-w-80"><%= render 'tags', place: %></td>
+          <td class="tabular-nums"><%= place.active_visit_count %></td>
+          <td class="whitespace-nowrap tabular-nums"><%= place.last_visited_at ? human_datetime(place.last_visited_at, current_user_safe_settings.timezone) : '—' %></td>
+          <td><%= t("places.management.sources.#{place.source}") %></td>
+          <td>
+            <div class="flex flex-wrap gap-1 min-w-32">
+              <% if place.archived? %><span class="badge badge-ghost h-auto py-1" data-testid="place-archived-badge"><%= t('places.archive.badge') %></span><% end %>
+              <% if place.geofence? %><span class="badge badge-outline h-auto py-1 gap-1"><%= icon 'map-pin', class: 'w-3 h-3' %><%= t('places.management.geofence') %></span><% end %>
+              <% if privacy %><span class="badge badge-outline h-auto py-1 gap-1"><%= icon 'lock', class: 'w-3 h-3' %><%= t('places.management.privacy') %></span><% end %>
+            </div>
+          </td>
+          <td>
+            <% if params[:filter] == 'unconfirmed' %>
+              <%= button_to t('visits.buttons.confirm'), confirm_place_path(place, filter: 'unconfirmed', page: params[:page]), method: :patch, class: 'btn btn-ghost btn-xs h-auto py-2 text-success' %>
+            <% end %>
+            <div class="tooltip tooltip-left" data-tip="<%= t('places.index.delete') %>">
+              <%= button_to bulk_destroy_places_path(request.query_parameters), method: :delete, params: { place_ids: [place.id] }, class: 'btn btn-ghost btn-xs text-error hover:bg-error/10', aria: { label: t('places.index.delete') }, form: { data: { turbo_confirm: t('places.management.delete_confirmation', places: 1, visits: place.active_visit_count, geofences: place.geofence? ? 1 : 0, privacy: privacy ? 1 : 0) } } do %>
+                <%= icon 'trash-2', class: 'w-4 h-4' %>
+              <% end %>
+            </div>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

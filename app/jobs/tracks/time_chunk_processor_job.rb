@@ -42,46 +42,58 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   end
 
   def process_chunk
+    return 0 if chunk_data[:untracked_only] && !untracked_points_in_buffer?
+
     # Load points for the buffer range
     points = load_chunk_points
     return 0 if points.empty?
 
-    # Segment points using Geocoder-based logic
-    segments = segment_chunk_points(points)
-    return 0 if segments.empty?
+    segment_chunk_points(points).sum { |segment| process_segment(segment) }
+  end
 
-    # Create tracks from segments
-    tracks_created = 0
-    segments.each do |segment_points|
-      tracks_created += 1 if create_track_from_points_array(segment_points)
+  def process_segment(segment)
+    singles, runs = untracked_runs(segment).partition(&:one?)
+    if singles.any?
+      context = singles.flatten.flat_map { |index| segment[[index - 1, 0].max..(index + 1)] }.uniq
+      Tracks::OrphanPointAttacher.new(user, singles.flatten.map { |index| segment[index] }, context).call
     end
 
-    tracks_created
+    runs.count do |indexes|
+      create_track_from_points_array(segment[[indexes.first - 1, 0].max..(indexes.last + 1)])
+    end
   end
 
   def load_chunk_points
     # tracker_id reads through each point's source; preloading keeps the
     # per-chunk grouping at one dimension query instead of one per point.
-    relation = user.points
-                   .not_anomaly
-                   .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
-                   .order(:timestamp)
-                   .preload(:source)
-    relation = relation.where(track_id: nil) if chunk_data[:untracked_only]
-    relation
+    user.points
+        .not_anomaly
+        .select(:id, :timestamp, :lonlat, :source_id, :tracker_id, :track_id)
+        .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
+        .order(:timestamp)
+        .preload(:source)
+  end
+
+  def untracked_points_in_buffer?
+    user.points
+        .not_anomaly
+        .where(track_id: nil)
+        .where(timestamp: chunk_data[:buffer_start_timestamp]..chunk_data[:buffer_end_timestamp])
+        .exists?
   end
 
   def segment_chunk_points(points)
-    points_array = points.to_a
+    points.to_a
+          .group_by { |p| p.tracker_id.to_s }
+          .values
+          .flat_map { |bucket| split_points_into_segments_geocoder(bucket) }
+  end
 
-    segments = points_array
-               .group_by { |p| p.tracker_id.to_s }
-               .values
-               .flat_map { |bucket| split_points_into_segments_geocoder(bucket) }
-
-    segments.select do |segment|
-      segment_overlaps_chunk_range?(segment)
-    end
+  def untracked_runs(segment)
+    segment.each_index
+           .chunk_while { |a, b| segment[a].track_id == segment[b].track_id }
+           .select { |indexes| segment[indexes.first].track_id.nil? }
+           .select { |indexes| segment_overlaps_chunk_range?(segment.values_at(indexes.first, indexes.last)) }
   end
 
   def segment_overlaps_chunk_range?(segment)
@@ -139,5 +151,9 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
 
   def time_threshold_minutes
     @time_threshold_minutes ||= user.safe_settings.minutes_between_routes.to_i
+  end
+
+  def stationary_radius_meters
+    @stationary_radius_meters ||= Tracks::StationaryStops.radius_for(user)
   end
 end

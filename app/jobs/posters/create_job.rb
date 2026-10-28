@@ -8,7 +8,7 @@ class Posters::CreateJob < ApplicationJob
     poster = Poster.find(poster_id)
 
     I18n.with_locale(poster.user.locale) do
-      Posters::Generate.new(poster).call
+      Users::DateTimePreferences.with(poster.user) { Posters::Generate.new(poster).call }
     end
   end
 end

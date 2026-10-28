@@ -8,15 +8,18 @@ RSpec.describe 'Places API', type: :request do
 
   path '/api/v1/places' do
     get 'Retrieves all places for the authenticated user' do
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out data inside the user\'s privacy zones'
       tags 'Places'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API key for authentication'
       parameter name: :tag_ids, in: :query, type: :array, items: { type: :integer }, required: false,
                 description: 'Filter places by tag IDs'
       parameter name: :filter, in: :query, type: :string, required: false,
-                enum: %w[all manual confirmed tagged],
-                description: 'Visibility filter. Defaults to manual + confirmed-visit + tagged places. ' \
-                             'Use "all" for every place (including suggested-only), or "manual"/"confirmed"/"tagged".'
+                enum: %w[all manual confirmed unconfirmed tagged archived],
+                description: 'Visibility filter. Defaults to non-archived user-owned/confirmed Places. ' \
+                             'Use "all" for every Place, "archived" for retired Places, ' \
+                             'or "unconfirmed" for machine-owned suggestions.'
 
       response '200', 'places found' do
         schema type: :array,
@@ -28,6 +31,9 @@ RSpec.describe 'Places API', type: :request do
                    latitude: { type: :number, format: :float },
                    longitude: { type: :number, format: :float },
                    source: { type: :string },
+                   visit_radius: { type: :integer, minimum: 1, default: 50 },
+                   archived: { type: :boolean, description: 'Retired from attribution and geofence monitoring' },
+                   geofence: { type: :boolean, description: 'Report enter and leave events for this place' },
                    icon: { type: :string, nullable: true },
                    color: { type: :string, nullable: true },
                    visits_count: { type: :integer },
@@ -45,7 +51,7 @@ RSpec.describe 'Places API', type: :request do
                      }
                    }
                  },
-                 required: %w[id name latitude longitude]
+                 required: %w[id name latitude longitude archived]
                }
 
         let!(:place) { create(:place, user: user) }
@@ -76,6 +82,9 @@ RSpec.describe 'Places API', type: :request do
           latitude: { type: :number, format: :float },
           longitude: { type: :number, format: :float },
           source: { type: :string },
+          visit_radius: { type: :integer, minimum: 1, default: 50 },
+          archived: { type: :boolean, description: 'Retired from attribution and geofence monitoring' },
+          geofence: { type: :boolean, description: 'Report enter and leave events for this place' },
           tag_ids: { type: :array, items: { type: :integer } }
         },
         required: %w[name latitude longitude]
@@ -89,6 +98,9 @@ RSpec.describe 'Places API', type: :request do
                  latitude: { type: :number, format: :float },
                  longitude: { type: :number, format: :float },
                  source: { type: :string },
+                 visit_radius: { type: :integer, minimum: 1, default: 50 },
+                 archived: { type: :boolean, description: 'Retired from attribution and geofence monitoring' },
+                 geofence: { type: :boolean, description: 'Report enter and leave events for this place' },
                  icon: { type: :string, nullable: true },
                  color: { type: :string, nullable: true },
                  visits_count: { type: :integer },
@@ -103,6 +115,7 @@ RSpec.describe 'Places API', type: :request do
             latitude: 40.7589,
             longitude: -73.9851,
             source: 'manual',
+            visit_radius: 125,
             tag_ids: [tag.id]
           }
         end
@@ -110,6 +123,7 @@ RSpec.describe 'Places API', type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['name']).to eq('Coffee Shop')
+          expect(data['visit_radius']).to eq(125)
           expect(data).to have_key('tags')
         end
       end
@@ -199,6 +213,9 @@ RSpec.describe 'Places API', type: :request do
                  latitude: { type: :number, format: :float },
                  longitude: { type: :number, format: :float },
                  source: { type: :string },
+                 visit_radius: { type: :integer, minimum: 1, default: 50 },
+                 archived: { type: :boolean, description: 'Retired from attribution and geofence monitoring' },
+                 geofence: { type: :boolean, description: 'Report enter and leave events for this place' },
                  icon: { type: :string, nullable: true },
                  color: { type: :string, nullable: true },
                  visits_count: { type: :integer },
@@ -241,6 +258,8 @@ RSpec.describe 'Places API', type: :request do
           name: { type: :string },
           latitude: { type: :number, format: :float },
           longitude: { type: :number, format: :float },
+          archived: { type: :boolean },
+          visit_radius: { type: :integer, minimum: 1 },
           tag_ids: { type: :array, items: { type: :integer } }
         }
       }
@@ -252,16 +271,20 @@ RSpec.describe 'Places API', type: :request do
                  name: { type: :string },
                  latitude: { type: :number, format: :float },
                  longitude: { type: :number, format: :float },
+                 archived: { type: :boolean },
+                 visit_radius: { type: :integer, minimum: 1 },
                  tags: { type: :array }
                }
 
         let(:existing_place) { create(:place, user: user) }
         let(:id) { existing_place.id }
-        let(:place) { { name: 'Updated Name' } }
+        let(:place) { { name: 'Updated Name', visit_radius: 80, archived: true } }
 
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['name']).to eq('Updated Name')
+          expect(data['visit_radius']).to eq(80)
+          expect(data['archived']).to be(true)
         end
       end
 

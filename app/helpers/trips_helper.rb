@@ -25,6 +25,17 @@ module TripsHelper
     end
   end
 
+  def trip_preview_bounds(trip)
+    return trip.route_bounds unless trip.route_present? && current_privacy_zone_masker&.any?
+
+    current_privacy_zone_masker.clipped_bounds(Trip.where(id: trip.id), 'trips.path') || []
+  end
+
+  def trip_routes_tile_template(trip)
+    template = "/api/v1/tiles/trips/#{trip.id}/{z}/{x}/{y}.mvt?v=#{trip.updated_at.to_i}"
+    privacy_zones_fingerprint ? "#{template}&pz=#{privacy_zones_fingerprint}" : template
+  end
+
   def trek_trip_url(trip)
     source = trip.trip_source
     return if source.blank? || trip.source_identifier.blank?
@@ -81,5 +92,14 @@ module TripsHelper
     parts << I18n.t('helpers.trips.duration.hours', count: hours) if hours.positive?
     parts = [I18n.t('helpers.trips.duration.hours', count: 0)] if parts.empty?
     parts.join(', ')
+  end
+
+  def planned_note_time(value)
+    match = value.to_s.match(/\A(\d{1,2}):(\d{2})(?::\d{2})?\z/)
+    return value unless match
+
+    I18n.l(Time.utc(2000, 1, 1, match[1].to_i, match[2].to_i), format: :hour_minute)
+  rescue ArgumentError
+    value
   end
 end

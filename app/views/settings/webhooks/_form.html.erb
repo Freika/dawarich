@@ -1,0 +1,63 @@
+<% f_scope = 'settings.webhooks.form' %>
+<%= form_with model: webhook, url: webhook.persisted? ? settings_webhook_path(webhook) : settings_webhooks_path,
+              id: webhook.persisted? ? dom_id(webhook, :form) : 'webhook-form',
+              html: { 'data-testid': 'webhook-form' }, class: 'space-y-3' do |f| %>
+  <% if webhook.errors.any? %>
+    <div class="alert alert-error text-sm"><%= webhook.errors.full_messages.to_sentence %></div>
+  <% end %>
+
+  <div class="grid gap-3">
+    <label class="form-control">
+      <span class="label-text mb-1"><%= t("#{f_scope}.name") %></span>
+      <%= f.text_field :name, required: true, class: 'input input-bordered input-sm w-full' %>
+    </label>
+    <label class="form-control">
+      <span class="label-text mb-1"><%= t("#{f_scope}.url") %></span>
+      <%= f.url_field :url, required: true, class: 'input input-bordered input-sm w-full', placeholder: 'https://' %>
+    </label>
+    <% if webhook.new_record? || webhook.home_assistant? %>
+      <div data-testid="home-assistant-hint" class="space-y-1 text-xs text-base-content/60">
+        <p><%= t("#{f_scope}.home_assistant_hint") %></p>
+        <% if current_user.entitlements.webhook_limits? %><p><%= t("#{f_scope}.home_assistant_cloud_hint") %></p><% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <fieldset class="flex flex-wrap gap-x-4">
+    <legend class="label-text mb-1"><%= t("#{f_scope}.events") %></legend>
+    <%= hidden_field_tag 'webhook[event_types][]', '' %>
+    <% Webhook::EVENT_TYPES.each do |name, value| %>
+      <label class="label cursor-pointer gap-2 py-1 text-sm">
+        <%= check_box_tag 'webhook[event_types][]', value, webhook.event_types.include?(value),
+                          id: "#{dom_id(webhook, :form)}_event_#{name}", class: 'checkbox checkbox-sm' %>
+        <span><%= t("settings.geofencing.show.event_types.#{name}") %></span>
+      </label>
+    <% end %>
+  </fieldset>
+
+  <% if places.any? %>
+    <fieldset>
+      <legend class="label-text mb-1"><%= t("#{f_scope}.places") %></legend>
+      <p class="text-xs opacity-70 mb-1"><%= t("#{f_scope}.places_hint") %></p>
+      <%= hidden_field_tag 'webhook[place_ids][]', '' %>
+      <div class="flex flex-wrap gap-x-4">
+        <% places.each do |place| %>
+          <label class="label min-w-0 max-w-full cursor-pointer gap-2 py-1 text-sm">
+            <%= check_box_tag 'webhook[place_ids][]', place.id, webhook.place_ids.include?(place.id),
+                              id: "#{dom_id(webhook, :form)}_place_#{place.id}", class: 'checkbox checkbox-sm' %>
+            <span class="min-w-0 whitespace-normal"><%= geofence_place_label(place) %></span>
+          </label>
+        <% end %>
+      </div>
+    </fieldset>
+  <% end %>
+
+  <% if webhook.persisted? %>
+    <label class="label cursor-pointer justify-start gap-2 py-1 text-sm">
+      <%= f.check_box :active, class: 'toggle toggle-sm' %>
+      <span><%= t("#{f_scope}.active") %></span>
+    </label>
+  <% end %>
+
+  <%= f.submit t("#{f_scope}.#{webhook.persisted? ? 'save' : 'create'}"), class: 'btn btn-primary btn-sm' %>
+<% end %>

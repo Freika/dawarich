@@ -10,6 +10,14 @@ class Users::SafeSettings
 
   FOG_OF_WAR_MODES = %w[points hexagons].freeze
 
+  # Features a user can switch off in general settings, stored as
+  # "<feature>_enabled". A missing key means the feature is on.
+  TOGGLEABLE_FEATURES = %w[family achievements].freeze
+
+  def self.feature_enabled?(settings, feature)
+    ActiveModel::Type::Boolean.new.cast(settings["#{feature}_enabled"]) != false
+  end
+
   DEFAULT_VALUES = {
     'fog_of_war_meters' => 50,
     'fog_of_war_threshold' => 50,
@@ -70,13 +78,23 @@ class Users::SafeSettings
     'min_minutes_spent_in_city' => 60,
     # GPS noise filtering (Points::AnomalyFilter)
     'gps_filtering_enabled' => true,
+    'gps_accuracy_filter_enabled' => false,
+    'gps_accuracy_threshold' => 100,
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
+    'date_format' => 'auto',
+    'time_format' => 'auto',
+    'first_day_of_week' => 'monday',
     'visit_radius_meters' => 100,
     'visit_min_points' => 3,
     'visit_min_duration_minutes' => 5,
     'point_dragging_enabled' => false,
-    'points_tiled_rendering' => true
+    'points_tiled_rendering' => true,
+    'family_enabled' => true,
+    'achievements_enabled' => true
   }.freeze
+
+  GPS_ACCURACY_THRESHOLD_MIN = 50
+  GPS_ACCURACY_THRESHOLD_MAX = 1000
 
   def initialize(settings = {}, plan: nil)
     settings = {} unless settings.is_a?(Hash)
@@ -115,12 +133,20 @@ class Users::SafeSettings
       enabled_transportation_modes: enabled_transportation_modes,
       min_minutes_spent_in_city: min_minutes_spent_in_city,
       gps_filtering_enabled: gps_filtering_enabled?,
+      gps_accuracy_filter_enabled: gps_accuracy_filter_enabled?,
+      gps_accuracy_threshold: gps_accuracy_threshold,
       timezone: timezone,
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
       visit_min_duration_minutes: visit_min_duration_minutes,
-      point_dragging_enabled: point_dragging_enabled?
+      point_dragging_enabled: point_dragging_enabled?,
+      family_enabled: feature_enabled?('family'),
+      achievements_enabled: feature_enabled?('achievements')
     }
+  end
+
+  def feature_enabled?(feature)
+    self.class.feature_enabled?(settings, feature)
   end
 
   # Preserve the public API contract for clients that still synchronize
@@ -134,7 +160,8 @@ class Users::SafeSettings
       route_opacity: route_opacity,
       route_color: route_color,
       speed_color_scale: speed_color_scale,
-      points_tiled_rendering: points_tiled_rendering?
+      points_tiled_rendering: points_tiled_rendering?,
+      **date_time_preferences.to_h
     )
   end
 
@@ -262,7 +289,7 @@ class Users::SafeSettings
   end
 
   def visits_suggestions_enabled?
-    settings['visits_suggestions_enabled'] == 'true'
+    ActiveModel::Type::Boolean.new.cast(settings['visits_suggestions_enabled']) == true
   end
 
   def speed_color_scale
@@ -282,6 +309,7 @@ class Users::SafeSettings
     layers = Array(settings['enabled_map_layers']).dup
     layers << 'Tracks' if layers.include?('Routes')
     layers.delete('Routes')
+    layers.push('Places', 'Place boundaries') if layers.delete('Areas')
     layers.uniq!
     lite? ? layers - GATED_MAP_LAYERS : layers
   end
@@ -366,6 +394,14 @@ class Users::SafeSettings
     settings['timezone'] || DEFAULT_VALUES['timezone']
   end
 
+  def date_time_preferences
+    Users::DateTimePreferences.new(
+      date_format: settings['date_format'],
+      time_format: settings['time_format'],
+      first_day_of_week: settings['first_day_of_week']
+    )
+  end
+
   def persisted_timezone
     settings['timezone'].presence
   end
@@ -375,6 +411,17 @@ class Users::SafeSettings
     return true if value.nil?
 
     ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  # Off unless the user turns it on: the old slider saved a threshold on every
+  # settings save, so a stored value alone is not a choice to filter by it.
+  def gps_accuracy_filter_enabled?
+    ActiveModel::Type::Boolean.new.cast(settings['gps_accuracy_filter_enabled']) || false
+  end
+
+  def gps_accuracy_threshold
+    raw = settings['gps_accuracy_threshold'].presence || DEFAULT_VALUES['gps_accuracy_threshold']
+    raw.to_i.clamp(GPS_ACCURACY_THRESHOLD_MIN, GPS_ACCURACY_THRESHOLD_MAX)
   end
 
   def point_dragging_enabled?

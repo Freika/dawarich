@@ -71,6 +71,15 @@ jobs:
         with:
           bundler-cache: true
 
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 18.17.1
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
       - name: Load schema
         run: bundle exec rails db:schema:load
 

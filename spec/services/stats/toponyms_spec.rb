@@ -3,6 +3,55 @@
 require 'rails_helper'
 
 RSpec.describe Stats::Toponyms do
+  it 'matches country-only presence without emitting unnamed cities at any stay threshold' do
+    country = create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')
+    points = [
+      { timestamp: 0, country_name: 'Deutschland', country_id: country.id, city: nil },
+      { timestamp: 3600, country_name: 'Germany', city: '' },
+      { timestamp: 7200, country_name: 'Germany', city: '  ' },
+      { timestamp: 10_800, country_name: nil, city: 'Berlin' },
+      { timestamp: 14_400, country_name: 'France', city: nil, velocity: 250 },
+      { timestamp: 18_000, country_name: 'France', city: nil, velocity: 250 },
+      { timestamp: 21_600, country_name: 'Belgium', city: nil, velocity: 500 / 3.6 }
+    ]
+
+    [0, 60, 240].each do |minimum|
+      expected = [{ 'country' => 'Germany', 'cities' => [] }, { 'country' => 'Belgium', 'cities' => [] }]
+
+      expect(described_class.new(points.each, min_minutes_spent_in_city: minimum).call.as_json).to eq(expected)
+      expect(CountriesAndCities.new(points, min_minutes_spent_in_city: minimum).call.as_json).to eq(expected)
+    end
+  end
+
+  it 'preserves named city output when city-less points are interleaved' do
+    points = [
+      { timestamp: 0, country_name: 'Germany', city: 'Berlin' },
+      { timestamp: 1800, country_name: 'Germany', city: 'Berlin' },
+      { timestamp: 3600, country_name: 'Germany', city: nil },
+      { timestamp: 5400, country_name: 'Germany', city: 'Berlin' },
+      { timestamp: 7200, country_name: 'Germany', city: 'Berlin' }
+    ]
+
+    [60, 120, 121].each do |minimum|
+      cities = minimum <= 120 ? [{ 'city' => 'Berlin', 'points' => 4, 'timestamp' => 7200, 'stayed_for' => 120 }] : []
+      expected = [{ 'country' => 'Germany', 'cities' => cities }]
+
+      expect(described_class.new(points.each, min_minutes_spent_in_city: minimum).call.as_json).to eq(expected)
+      named_points = points.reject { |point| point[:city].blank? }
+      expect(described_class.new(named_points.each, min_minutes_spent_in_city: minimum).call.as_json).to eq(expected)
+      expect(CountriesAndCities.new(points, min_minutes_spent_in_city: minimum).call.as_json).to eq(expected)
+    end
+  end
+
+  it 'excludes blank country names even when a canonical country exists' do
+    country = create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')
+    points = [nil, '', '  '].each_with_index.map do |name, index|
+      { timestamp: index * 3600, country_name: name, country_id: country.id, city: 'Berlin' }
+    end
+
+    expect(described_class.new(points.each, min_minutes_spent_in_city: 0).call).to be_empty
+  end
+
   it 'matches existing dwell, flyover, gap, alias and city-count semantics on ordered traces' do
     country = create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')
     random = Random.new(724)

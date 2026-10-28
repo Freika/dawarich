@@ -16,7 +16,8 @@ RSpec.describe Api::PlaceSerializer do
         country: 'United States',
         source: 'photon',
         geodata: { 'amenity' => 'park', 'leisure' => 'park' },
-        reverse_geocoded_at: Time.zone.parse('2023-01-15T12:00:00Z')
+        reverse_geocoded_at: Time.zone.parse('2023-01-15T12:00:00Z'),
+        visit_radius: 125
       )
     end
 
@@ -34,6 +35,7 @@ RSpec.describe Api::PlaceSerializer do
       expect(result[:country]).to eq('United States')
       expect(result[:source]).to eq('photon')
       expect(result[:geodata]).to eq({ 'amenity' => 'park', 'leisure' => 'park' })
+      expect(result[:visit_radius]).to eq(125)
       expect(result[:reverse_geocoded_at]).to eq(Time.zone.parse('2023-01-15T12:00:00Z'))
     end
 
@@ -64,5 +66,12 @@ RSpec.describe Api::PlaceSerializer do
         expect(result[:reverse_geocoded_at]).to be_nil
       end
     end
+  end
+
+  it 'serializes the archived boolean', :archive do
+    place = create(:place)
+    expect(described_class.new(place).call[:archived]).to be(false)
+    place.update!(archived: true)
+    expect(described_class.new(place).call[:archived]).to be(true)
   end
 end

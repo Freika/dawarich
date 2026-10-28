@@ -21,14 +21,18 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
     context 'when reverse geocoding is disabled' do
       let(:geocoding_configured) { false }
 
-      it 'does nothing' do
-        expect { described_class.perform_now }.not_to have_enqueued_job(VisitSuggestingJob)
+      it 'schedules detection for an active user with tracked points' do
+        expect { described_class.perform_now }.to have_enqueued_job(VisitSuggestingJob).with(
+          user_id: user_with_points.id, start_at: start_at, end_at: end_at
+        )
       end
 
-      it 'does nothing even when a user has an active geocoding setting' do
+      it 'schedules detection when a user has a legacy active geocoding setting' do
         create(:service_setting, :active, user: user_with_points)
 
-        expect { described_class.perform_now }.not_to have_enqueued_job(VisitSuggestingJob)
+        expect { described_class.perform_now }.to have_enqueued_job(VisitSuggestingJob).with(
+          user_id: user_with_points.id, start_at: start_at, end_at: end_at
+        )
       end
     end
 
@@ -76,6 +80,28 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
       )
     end
 
+    it 'schedules jobs for trial users with tracked points but not for pending-payment users' do
+      trial_user = create(:user)
+      pending_user = create(:user)
+      create(:point, user: trial_user)
+      create(:point, user: pending_user)
+      trial_user.update_columns(status: :trial)
+      pending_user.update_columns(status: :pending_payment)
+
+      described_class.perform_now
+
+      expect(VisitSuggestingJob).to have_been_enqueued.with(
+        user_id: trial_user.id,
+        start_at: time_chunks.first.first,
+        end_at: time_chunks.first.last
+      )
+      expect(VisitSuggestingJob).not_to have_been_enqueued.with(
+        user_id: pending_user.id,
+        start_at: anything,
+        end_at: anything
+      )
+    end
+
     it 'handles multiple time chunks' do
       chunks = [
         [start_at, start_at + 12.hours],
@@ -84,8 +110,7 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
       allow_any_instance_of(Visits::TimeChunks).to receive(:call).and_return(chunks)
 
       active_users_mock = double('ActiveRecord::Relation')
-      allow(User).to receive(:active).and_return(active_users_mock)
-      allow(active_users_mock).to receive(:active).and_return(active_users_mock)
+      allow(User).to receive(:active_or_trial).and_return(active_users_mock)
       allow(active_users_mock).to receive(:where).with(id: []).and_return(active_users_mock)
       allow(active_users_mock).to receive(:find_each).and_yield(user_with_points)
 
@@ -130,8 +155,7 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
       allow(time_chunks_instance).to receive(:call).and_return(custom_chunks)
 
       active_users_mock = double('ActiveRecord::Relation')
-      allow(User).to receive(:active).and_return(active_users_mock)
-      allow(active_users_mock).to receive(:active).and_return(active_users_mock)
+      allow(User).to receive(:active_or_trial).and_return(active_users_mock)
       allow(active_users_mock).to receive(:where).with(id: []).and_return(active_users_mock)
       allow(active_users_mock).to receive(:find_each).and_yield(user_with_points)
 

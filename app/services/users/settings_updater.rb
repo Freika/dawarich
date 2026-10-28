@@ -69,6 +69,7 @@ module Users
     def apply_settings
       @settings_params.each do |key, value|
         next if key.to_s == 'timezone' && !ActiveSupport::TimeZone[value]
+        next if Users::DateTimePreferences::ALLOWED[key.to_s]&.exclude?(value)
         next if key.to_s == SUPPORTER_INSTALL_KEY
 
         if key.to_s == 'maps'

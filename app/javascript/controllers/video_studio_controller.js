@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
+import { studioTilesUrl } from "maps_maplibre/utils/basemap_url"
 import { MapPageProvider } from "poster_studio/data/providers"
 import { loadThemeTokens } from "poster_studio/data/theme_loader"
 import { trackBounds } from "poster_studio/ui/preview"
@@ -80,6 +81,8 @@ export default class extends Controller {
     fonts: Object,
     uploadUrl: String,
     createUrl: String,
+    tilesUrl: String,
+    tilesFallback: Boolean,
   }
 
   connect() {
@@ -457,6 +460,7 @@ export default class extends Controller {
       tokens,
       trackGeojson: this.trackGeojson,
       settings: this.settings,
+      tileUrl: studioTilesUrl(this.tilesUrlValue, this.tilesFallbackValue),
     })
     this.drawPreview()
   }
@@ -741,12 +745,7 @@ export default class extends Controller {
 
   dateRangeLabel() {
     const { startAt, endAt } = this.provider.dateRange()
-    return formatDateTimeRange(
-      startAt,
-      endAt,
-      document.documentElement.lang || undefined,
-      this.provider.timeZone?.(),
-    )
+    return formatDateTimeRange(startAt, endAt, this.provider.timeZone?.())
   }
 
   showProgress(ratio, phase) {

@@ -119,6 +119,23 @@ RSpec.describe Residency::DayCounter do
       end
     end
 
+    context 'when the user timezone differs from the application timezone' do
+      let(:user) { create(:user, settings: { 'timezone' => 'Pacific/Auckland' }) }
+
+      before do
+        # Auckland is UTC+13 in summer: these are local January 1, 2025 and January 1, 2026.
+        create(:point, user:, country_name: 'New Zealand', timestamp: Time.utc(2024, 12, 31, 12).to_i)
+        create(:point, user:, country_name: 'New Zealand', timestamp: Time.utc(2025, 12, 31, 12).to_i)
+      end
+
+      it 'buckets days and year bounds in the user timezone' do
+        expect(result[:daily_countries]).to eq('2025-01-01' => 'New Zealand')
+        expect(result[:countries].first[:periods]).to eq(
+          [{ start_date: '2025-01-01', end_date: '2025-01-01', consecutive_days: 1 }]
+        )
+      end
+    end
+
     context 'when a day has points in multiple countries (multi-country day)' do
       before do
         # Same day, two countries

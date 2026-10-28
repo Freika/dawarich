@@ -12,6 +12,12 @@ RSpec.describe Users::Destroy do
     end
 
     context 'with minimal user data' do
+      it 'holds an exclusive user-data lock while deleting associated records' do
+        expect(Users::DataLock).to receive(:with_exclusive).with(user.id).and_call_original
+
+        service.call
+      end
+
       it 'hard deletes the user record' do
         expect { service.call }.to change { User.unscoped.count }.by(-1)
       end
@@ -26,6 +32,26 @@ RSpec.describe Users::Destroy do
         service.call
 
         expect(Rails.logger).to have_received(:info).with(/User \d+ \(.+\) and all associated data deleted/)
+      end
+    end
+
+    context 'with geofencing records' do
+      it 'deletes events, webhooks and deliveries with the user' do
+        delivery = create(:webhook_delivery, webhook: create(:webhook, user:))
+
+        service.call
+
+        expect(GeofenceEvent.where(user_id: user.id)).to be_empty
+        expect(Webhook.where(user_id: user.id)).to be_empty
+        expect(WebhookDelivery.where(id: delivery.id)).to be_empty
+      end
+
+      it 'forgets the user\'s geofence state' do
+        GeofenceEvents::StateStore.new(user).advance_evaluated_at!(Time.current.to_i)
+
+        service.call
+
+        expect(Sidekiq.redis_pool.with { |redis| redis.call('EXISTS', "geofence:evaluated_at:#{user.id}") }).to eq(0)
       end
     end
 
@@ -85,6 +111,20 @@ RSpec.describe Users::Destroy do
         allow(user).to receive(:delete).and_raise(StandardError, 'Database error')
 
         expect { service.call }.to raise_error(StandardError)
+      end
+    end
+
+    context 'with point and track revisions' do
+      before do
+        create(:point, user:, timestamp: Time.utc(2026, 9, 10).to_i)
+        create(:track, user:, start_at: Time.utc(2026, 9, 10), end_at: Time.utc(2026, 9, 10, 1))
+      end
+
+      it 'leaves no revision rows for the deleted user' do
+        service.call
+
+        expect(Points::Revision.where(user_id: user.id)).to be_empty
+        expect(Tracks::Revision.where(user_id: user.id)).to be_empty
       end
     end
 
@@ -300,7 +340,6 @@ RSpec.describe Users::Destroy do
         # Populate cache with user data
         Rails.cache.write("dawarich/user_#{user.id}_countries_visited", %w[US CA])
         Rails.cache.write("dawarich/user_#{user.id}_cities_visited", %w[NYC SF])
-        Rails.cache.write("dawarich/user_#{user.id}_total_distance", 1000)
         Rails.cache.write("dawarich/user_#{user.id}_years_tracked", [2023, 2024])
       end
 
@@ -309,7 +348,6 @@ RSpec.describe Users::Destroy do
 
         expect(Rails.cache.read("dawarich/user_#{user.id}_countries_visited")).to be_nil
         expect(Rails.cache.read("dawarich/user_#{user.id}_cities_visited")).to be_nil
-        expect(Rails.cache.read("dawarich/user_#{user.id}_total_distance")).to be_nil
         expect(Rails.cache.read("dawarich/user_#{user.id}_years_tracked")).to be_nil
       end
 
@@ -615,5 +653,17 @@ RSpec.describe Users::Destroy do
         expect(User.unscoped.find_by(id: user.id)).to be_nil
       end
     end
+  end
+
+  it 'deletes retained placeless events and deliveries with their user', :place_retention do
+    user = create(:user)
+    event = create(:geofence_event, user:, place: nil, place_name: 'Former home')
+    delivery = create(:webhook_delivery, webhook: create(:webhook, user:), geofence_event: event)
+    user.mark_as_deleted!
+
+    described_class.new(user).call
+
+    expect(GeofenceEvent.exists?(event.id)).to be(false)
+    expect(WebhookDelivery.exists?(delivery.id)).to be(false)
   end
 end

@@ -7,6 +7,7 @@ class Api::V1::VisitsController < ApiController
 
   def index
     visits = Visits::Finder.new(current_api_user, params).call
+    visits = privacy_zone_masker.mask_visits(visits) if mask_privacy_zones?
 
     # Support optional pagination (backward compatible - returns all if no page param)
     if params[:page].present?
@@ -18,27 +19,43 @@ class Api::V1::VisitsController < ApiController
       response.set_header('X-Total-Count', visits.total_count.to_s)
     end
 
-    serialized_visits = visits.map do |visit|
-      Api::VisitSerializer.new(visit).call
-    end
+    point_centers = visit_point_centers(visits)
+    serialized_visits = visits.map { |visit| serialize_visit(visit, point_centers: point_centers) }
 
     render json: serialized_visits
   rescue Visits::InvalidTimeRange
-    render json: { error: 'Invalid date format' }, status: :bad_request
+    render json: { error: 'Invalid time range' }, status: :bad_request
   end
 
   def show
     visit = current_api_user.scoped_visits.find(params[:id])
-    render json: Api::VisitSerializer.new(visit).call
+    render json: serialize_visit(visit)
   end
 
   def create
-    service = Visits::Create.new(current_api_user, create_visit_params)
+    attributes = create_visit_params.to_h
+    if attributes[:place_id].present? && attributes[:area_id].present?
+      return render json: { error: I18n.t('controllers.api.v1.visits.conflicting_place_and_area') },
+                    status: :unprocessable_content
+    end
+
+    if attributes[:area_id].present?
+      area = current_api_user.areas.find_by(id: attributes[:area_id])
+      unless area
+        return render json: { error: I18n.t('controllers.api.v1.visits.invalid_area') },
+                      status: :unprocessable_content
+      end
+
+      attributes['place_id'] = Places::LegacyAreaAdapter.new(user: current_api_user).resolve(area).id
+      attributes['area_id'] = nil
+    end
+
+    service = Visits::Create.new(current_api_user, attributes)
 
     result = service.call
 
     if result
-      render json: Api::VisitSerializer.new(service.visit).call
+      render json: serialize_visit(service.visit)
     else
       error_message = service.errors || I18n.t('controllers.api.v1.visits.failed_to_create_visit')
       render json: { error: error_message }, status: :unprocessable_content
@@ -47,28 +64,37 @@ class Api::V1::VisitsController < ApiController
 
   def update
     visit = current_api_user.scoped_visits.find(params[:id])
+    attributes = visit_params.to_h
 
-    if visit_params[:place_id].present?
-      place = current_api_user.places.find_by(id: visit_params[:place_id]) ||
-              visit.suggested_places.find_by(id: visit_params[:place_id])
+    if attributes[:place_id].present? && attributes[:area_id].present?
+      return render json: { error: I18n.t('controllers.api.v1.visits.conflicting_place_and_area') },
+                    status: :unprocessable_content
+    end
+
+    if attributes[:place_id].present?
+      place = current_api_user.places.find_by(id: attributes[:place_id]) ||
+              visit.suggested_places.find_by(id: attributes[:place_id])
       if place.nil?
         return render json: { error: I18n.t('controllers.api.v1.visits.invalid_place') },
                       status: :unprocessable_content
       end
     end
 
-    area = nil
-    if visit_params[:area_id].present?
-      area = current_api_user.areas.find_by(id: visit_params[:area_id])
+    if attributes[:area_id].present?
+      area = current_api_user.areas.find_by(id: attributes[:area_id])
       if area.nil?
         return render json: { error: I18n.t('controllers.api.v1.visits.invalid_area') },
                       status: :unprocessable_content
       end
+
+      mapped_place = Places::LegacyAreaAdapter.new(user: current_api_user).resolve(area)
+      attributes['place_id'] = mapped_place.id
+      attributes['area_id'] = nil
     end
 
-    visit = update_visit(visit, area: area)
+    visit = update_visit(visit, attributes: attributes)
 
-    render json: Api::VisitSerializer.new(visit).call
+    render json: serialize_visit(visit)
   end
 
   def merge
@@ -93,7 +119,7 @@ class Api::V1::VisitsController < ApiController
     merged_visit = service.call
 
     if merged_visit&.persisted?
-      render json: Api::VisitSerializer.new(merged_visit).call, status: :ok
+      render json: serialize_visit(merged_visit), status: :ok
     else
       render json: { error: service.errors.join(', ') }, status: :unprocessable_content
     end
@@ -116,6 +142,10 @@ class Api::V1::VisitsController < ApiController
     end
 
     results = submitted.each_with_index.map { |attributes, index| create_batched_visit(attributes, index) }
+    centers = visit_point_centers(results.filter_map { |result| result[:visit] })
+    results.each do |result|
+      result[:visit] = serialize_visit(result[:visit], point_centers: centers) if result[:visit]
+    end
     failed_count = results.count { |result| result[:status] == 'failed' }
     report_batch_failures(failed_count, submitted.size)
 
@@ -165,6 +195,19 @@ class Api::V1::VisitsController < ApiController
 
   private
 
+  def visit_point_centers(visits)
+    ids = visits.select { |visit| visit.place.nil? && visit.area.nil? }.map(&:id)
+    return {} if ids.empty?
+
+    masker = privacy_zone_masker if mask_privacy_zones?
+    Visits::PointCenters.new(current_api_user, visit_ids: ids, privacy_zone_masker: masker).call
+  end
+
+  def serialize_visit(visit, point_centers: nil)
+    centers = point_centers || visit_point_centers([visit])
+    Api::VisitSerializer.new(visit, point_center: centers[visit.id]).call
+  end
+
   def visit_params
     params.require(:visit).permit(:name, :place_id, :area_id, :status, :latitude, :longitude, :started_at, :ended_at)
   end
@@ -189,12 +232,12 @@ class Api::V1::VisitsController < ApiController
                error: I18n.t('controllers.api.v1.visits.invalid_visit_payload') }
     end
 
-    service = Visits::Create.new(current_api_user, attributes.permit(*BATCH_VISIT_ATTRIBUTES),
-                                 report_exceptions: false)
+    permitted = attributes.permit(*BATCH_VISIT_ATTRIBUTES, address: ADDRESS_ATTRIBUTES)
+    service = Visits::Create.new(current_api_user, permitted, report_exceptions: false)
 
     if service.call
       result = { index: index, status: service.duplicate? ? 'duplicate' : 'created' }
-      result[:visit] = Api::VisitSerializer.new(service.visit).call unless service.visit.soft_deleted?
+      result[:visit] = service.visit unless service.visit.soft_deleted?
       result
     else
       { index: index, status: 'failed',
@@ -210,20 +253,23 @@ class Api::V1::VisitsController < ApiController
     params.permit(:status, visit_ids: [])
   end
 
-  def update_visit(visit, area: nil)
-    attributes = visit_params.to_h.except('latitude', 'longitude')
+  def update_visit(visit, attributes: visit_params.to_h)
+    attributes = attributes.except('latitude', 'longitude')
+    attributes['area_id'] = nil if attributes['place_id'].present?
+    attributes['name'] = attributes['name'].presence if attributes.key?('name')
+    attributes.delete('name') if visit.name.blank? && attributes['name'] == visit.display_name
     user_provided_name = attributes['name'].present?
     # Editing a suggested visit is an assertion that it happened — mirror the
     # web controller and confirm it unless the request set a status itself,
     # so the edit survives re-detection.
     attributes['status'] = 'confirmed' if visit.suggested? && attributes['status'].blank?
 
+    visit.clear_echoed_name if attributes['place_id'].present? && !user_provided_name
     visit.assign_attributes(attributes)
+    visit.name = nil if attributes['place_id'].present? && visit.name.present? && visit.name == visit.place&.name
 
     if attributes['place_id'].present? && !user_provided_name && visit.place.present?
-      visit.name = visit.place.name
-    elsif area && !user_provided_name && area.name.present?
-      visit.name = area.name
+      visit.location_label = visit.place.name
     end
 
     visit.save!

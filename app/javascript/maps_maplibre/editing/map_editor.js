@@ -11,6 +11,7 @@ import {
   updateSegmentGeometry,
 } from "./editable_track_data"
 import { EditorHistory } from "./editor_history"
+import { MOUSE_DRAG_THRESHOLD_PX } from "./point_drag_gesture"
 import { TileExclusions } from "./tile_exclusions"
 
 export class MapEditor {
@@ -76,8 +77,8 @@ export class MapEditor {
 
   _fetchTrack(trackId) {
     return Promise.all([
-      this.apiClient.fetchTrackWithSegments(trackId),
-      this.apiClient.fetchTrackPoints(trackId),
+      this.apiClient.fetchTrackWithSegments(trackId, { unmasked: true }),
+      this.apiClient.fetchTrackPoints(trackId, { unmasked: true }),
     ])
   }
 
@@ -187,12 +188,21 @@ export class MapEditor {
     if (!event.features?.[0]) return
     if (!this.startDrag(Number(event.features[0].properties.id))) return
     event.preventDefault()
+    this.pressPoint = event.point
     this.map.on("mousemove", this._onMouseMove)
     this.map.once("mouseup", this._onMouseUp)
   }
 
   onMouseMove(event) {
+    if (!this.hasMoved && this._withinDragThreshold(event.point)) return
     this.dragTo(event.lngLat.lng, event.lngLat.lat)
+  }
+
+  _withinDragThreshold(point) {
+    const start = this.pressPoint
+    return (
+      Math.hypot(point.x - start.x, point.y - start.y) < MOUSE_DRAG_THRESHOLD_PX
+    )
   }
 
   onMouseUp(event) {
@@ -426,7 +436,12 @@ export class MapEditor {
 
   async _refreshSelectedImportTrack(sessionVersion) {
     try {
-      const feature = await this.apiClient.fetchTrackWithSegments(this.trackId)
+      const feature = await this.apiClient.fetchTrackWithSegments(
+        this.trackId,
+        {
+          unmasked: true,
+        },
+      )
       if (sessionVersion !== this.sessionVersion) return
       this.layerManager.getLayer("tracks")?.setSelectedTrack(feature)
     } catch (error) {

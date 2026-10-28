@@ -12,7 +12,7 @@ module Visits
     class Persister
       include Visits::AdvisoryLockable
 
-      DEFAULT_NAME = 'Unknown Location'
+      DEFAULT_NAME = Visit::DEFAULT_NAME
 
       def initialize(user, start_at:, end_at:, policy:)
         @user = user
@@ -78,10 +78,10 @@ module Visits
       # presence doesn't move the row tuple.
       def unchanged?(prepared)
         existing = machine_scope.order(:started_at)
-                                .pluck(:started_at, :ended_at, :name, :place_id, :area_id, :confidence)
+                                .pluck(:started_at, :ended_at, :location_label, :place_id, :area_id, :confidence)
                                 .map { |row| [row[0].to_i, row[1].to_i, *row[2..]] }
         wanted = prepared.sort_by { |stay| stay[:start_ts] }.map do |stay|
-          [stay[:start_ts], stay[:end_ts], stay[:name].presence || DEFAULT_NAME,
+          [stay[:start_ts], stay[:end_ts], location_label_for(stay),
            stay[:place]&.id, stay[:area]&.id, stay[:confidence]]
         end
         return false unless existing == wanted
@@ -176,7 +176,8 @@ module Visits
             started_at: Time.zone.at(stay[:start_ts]),
             ended_at: Time.zone.at(stay[:end_ts]),
             duration: (stay[:end_ts] - stay[:start_ts]) / 60,
-            name: stay[:name].presence || DEFAULT_NAME,
+            name: nil,
+            location_label: location_label_for(stay),
             status: :suggested,
             detection_version: Detection::VERSION,
             confidence: stay[:confidence],
@@ -188,6 +189,10 @@ module Visits
         end
       rescue ActiveRecord::RecordNotUnique
         nil
+      end
+
+      def location_label_for(stay)
+        stay[:location_label].presence || stay[:name].presence || DEFAULT_NAME
       end
 
       # Only unowned points are claimed — anchors keep theirs (the machine

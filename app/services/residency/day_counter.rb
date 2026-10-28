@@ -114,7 +114,8 @@ module Residency
     # Single query returning date/country/count — used by both country_days and daily_countries
     def daily_country_counts
       @daily_country_counts ||= begin
-        start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
+        timezone = user.timezone_iana
+        start_of_year = ActiveSupport::TimeZone[timezone].local(year, 1, 1, 0, 0, 0)
         end_of_year = start_of_year.end_of_year
 
         # Points geocoded from OSM store names like "United States" while points
@@ -124,7 +125,7 @@ module Residency
         # residency threshold. Resolve through the canonical alias map first.
         sql = <<~SQL.squish
           SELECT
-            DATE(to_timestamp(points.timestamp) AT TIME ZONE 'UTC') as point_date,
+            DATE(to_timestamp(timestamp) AT TIME ZONE #{ActiveRecord::Base.connection.quote(timezone)}) as point_date,
             COALESCE(country_aliases.canonical, points.country_name) as country_name,
             COUNT(*) as point_count
           FROM points

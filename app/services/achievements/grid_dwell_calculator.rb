@@ -67,7 +67,7 @@ module Achievements
     FIRST_SEEN_SQL = POINTS_SQL + <<~SQL
       SELECT code, MIN(ts)::bigint
       FROM pts
-      WHERE code IS NOT NULL %<country_filter>s
+      WHERE code IS NOT NULL
       GROUP BY code
     SQL
 
@@ -81,20 +81,18 @@ module Achievements
     end
 
     def call
-      ApplicationRecord.connection.select_rows(sql).to_h { |code, dwell| [code, dwell.to_i] }
+      Achievements::PlannedRows.select(sql).to_h { |code, dwell| [code, dwell.to_i] }
     end
 
-    def first_seen(without_country_ids: false)
-      query = sql(FIRST_SEEN_SQL, without_country_ids: without_country_ids)
-      ApplicationRecord.connection.select_rows(query).to_h { |code, timestamp| [code, timestamp.to_i] }
+    def first_seen
+      Achievements::PlannedRows.select(sql(FIRST_SEEN_SQL)).to_h { |code, timestamp| [code, timestamp.to_i] }
     end
 
     private
 
-    def sql(template = SQL, without_country_ids: false)
+    def sql(template = SQL)
       format(template, user_id: @user.id, since: @since, through: @through, cap: PAIR_CAP_SECONDS, grid: GRID_DEGREES,
-                  table: @table, code_column: SOURCES.fetch(@table),
-                  country_filter: without_country_ids ? 'AND country_id IS NULL' : '')
+                       table: @table, code_column: SOURCES.fetch(@table))
     end
   end
 end

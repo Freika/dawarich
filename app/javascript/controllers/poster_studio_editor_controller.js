@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
-import { translate } from "i18n"
+import { formatDate, translate } from "i18n"
+import { studioTilesUrl } from "maps_maplibre/utils/basemap_url"
 import {
   DEFAULT_FONT_KEY,
   ensurePosterFont,
@@ -122,7 +123,12 @@ export default class extends Controller {
     "orderPageLink",
     "orderDoneButton",
   ]
-  static values = { fonts: Object, printOrderUrl: String }
+  static values = {
+    fonts: Object,
+    printOrderUrl: String,
+    tilesUrl: String,
+    tilesFallback: Boolean,
+  }
 
   connect() {
     // The map page wraps content in a z-index:20 stacking context that would
@@ -254,6 +260,7 @@ export default class extends Controller {
 
   posterStyle() {
     return buildPosterStyle({
+      tileUrl: studioTilesUrl(this.tilesUrlValue, this.tilesFallbackValue),
       theme: this.resolvedTheme,
       trackGeojson: this.trackGeojson,
       extras: true,
@@ -472,10 +479,7 @@ export default class extends Controller {
   dateRangeLabel() {
     const { startAt, endAt } = this.provider?.dateRange() ?? {}
     if (!startAt || !endAt) return ""
-    const options = { day: "numeric", month: "short", year: "numeric" }
-    const start = new Date(startAt)
-    const end = new Date(endAt)
-    return `${start.toLocaleDateString("en-GB", options)} – ${end.toLocaleDateString("en-GB", options)}`
+    return `${formatDate(startAt)} – ${formatDate(endAt)}`
   }
 
   // ===== Layers =====

@@ -1,0 +1,15 @@
+<section class="mt-8" data-testid="tag-places">
+  <h2 class="text-xl font-bold mb-4"><%= t('.title') %></h2>
+  <% if @places.any? %>
+    <ul class="divide-y divide-base-300">
+      <% @places.each do |place| %>
+        <li class="flex flex-wrap items-center justify-between gap-2 py-3">
+          <%= link_to place.name, place_path(place), class: "link link-primary min-w-0 [overflow-wrap:anywhere]" %>
+          <span class="text-sm text-base-content/70 tabular-nums"><%= t('.visits', count: @visit_counts.fetch(place.id, 0)) %></span>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="text-base-content/60"><%= t('.empty') %></p>
+  <% end %>
+</section>

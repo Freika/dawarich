@@ -45,6 +45,7 @@ class Point < ApplicationRecord
   scope :not_visited, -> { where(visit_id: nil) }
   scope :complete, -> { where.not(timestamp: nil).where.not(lonlat: nil) }
   scope :not_anomaly, -> { where(anomaly: [false, nil]) }
+  scope :not_flyover, -> { where(CountriesAndCities.not_flyover_sql) }
   scope :anomaly, -> { where(anomaly: true) }
   # Ingest, cleanup and the anomaly filter must all agree on what counts as a
   # broken coordinate; Points::NullIsland owns that definition.
@@ -179,7 +180,7 @@ class Point < ApplicationRecord
 
   # Metrics/AbcSize
   def broadcast_coordinates
-    if user.safe_settings.live_map_enabled
+    if user.safe_settings.live_map_enabled && !Maps::PrivacyZoneMasker.new(user).in_zone?(lon, lat)
       PointsChannel.broadcast_to(
         user,
         [

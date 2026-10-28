@@ -14,6 +14,8 @@ module Imports
       %r{Location History.*/Timeline\.json}i => 'google_phone_takeout'
     }.freeze
 
+    SWARM_CHECKINS_PATTERN = /\Acheckins\d*\.json\z/i
+
     def initialize(import, user_id, file_path)
       @import = import
       @user_id = user_id
@@ -35,7 +37,7 @@ module Imports
         extracted_dir = File.join(temp_dir, 'extracted')
         extract_files(extracted_dir)
         entries = collect_supported_files(extracted_dir)
-        known_entries = detect_google_takeout(entries) + detect_google_photos(entries)
+        known_entries = detect_google_takeout(entries) + detect_google_photos(entries) + detect_swarm(entries)
 
         if known_entries.any?
           create_imports_from_entries(known_entries)
@@ -73,7 +75,8 @@ module Imports
     end
 
     def extractable_entry?(entry)
-      !entry.directory? && !entry.name.include?('..') && !entry.name.start_with?('/')
+      !entry.directory? && !entry.name.include?('..') && !entry.name.start_with?('/') &&
+        SUPPORTED_EXTENSIONS.include?(File.extname(entry.name).downcase)
     end
 
     def extract_entry(entry, dest)
@@ -117,6 +120,15 @@ module Imports
           json_entry?(entry) &&
           Imports::SourceDetector.new_from_file_header(entry[:path]).detect_source == :google_photos &&
           (entry[:source] = 'google_photos')
+      end
+    end
+
+    def detect_swarm(entries)
+      entries.select do |entry|
+        entry[:source].nil? &&
+          File.basename(entry[:path]).match?(SWARM_CHECKINS_PATTERN) &&
+          Imports::SourceDetector.new_from_file_header(entry[:path]).detect_source == :swarm &&
+          (entry[:source] = 'swarm')
       end
     end
 

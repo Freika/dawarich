@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { translate } from "i18n"
+import { formatDateTime, translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
 import Flash from "../flash_controller"
 
@@ -29,14 +29,24 @@ export default class extends Controller {
     this.markers = []
     this.markerElements = []
     this.scanning = false
-    this.initDateDefaults()
+    this.rememberShownDates()
+    this.followMapDates()
     this.bindToggleButton()
+    this.boundFollowMapDates = () => queueMicrotask(() => this.followMapDates())
+    document.addEventListener(
+      "timeline-feed:date-navigated",
+      this.boundFollowMapDates,
+    )
   }
 
   disconnect() {
     this.removeMarkers()
     this.unbindToggleButton()
     this.hideThumbTooltip()
+    document.removeEventListener(
+      "timeline-feed:date-navigated",
+      this.boundFollowMapDates,
+    )
   }
 
   bindToggleButton() {
@@ -58,22 +68,43 @@ export default class extends Controller {
     this.element.classList.toggle("hidden")
     if (this.element.classList.contains("hidden")) {
       this.removeMarkers()
+    } else {
+      this.followMapDates()
     }
   }
 
-  initDateDefaults() {
+  followMapDates() {
     const mapController = this.findMapController()
-    if (!mapController) return
+    if (!mapController || this.datesEditedByUser()) return
 
-    const startDate = mapController.startDateValue
-    const endDate = mapController.endDateValue
+    const range = mapController.defaultDateRange
+    const [start, end] = this.mapShowsPageLoadRange(mapController)
+      ? [range.startDate, range.endDate]
+      : [mapController.startDateValue, mapController.endDateValue].map(
+          (value) => value.split("T")[0],
+        )
+    this.startDateTarget.value = start
+    this.endDateTarget.value = end
+    this.rememberShownDates()
+  }
 
-    if (startDate && this.hasStartDateTarget) {
-      this.startDateTarget.value = startDate.split("T")[0]
-    }
-    if (endDate && this.hasEndDateTarget) {
-      this.endDateTarget.value = endDate.split("T")[0]
-    }
+  mapShowsPageLoadRange(mapController) {
+    const range = mapController.defaultDateRange
+    return (
+      range?.startValue === mapController.startDateValue &&
+      range?.endValue === mapController.endDateValue
+    )
+  }
+
+  datesEditedByUser() {
+    const [start, end] = this.shownDates
+    return (
+      this.startDateTarget.value !== start || this.endDateTarget.value !== end
+    )
+  }
+
+  rememberShownDates() {
+    this.shownDates = [this.startDateTarget.value, this.endDateTarget.value]
   }
 
   // --- API helpers ---
@@ -150,6 +181,7 @@ export default class extends Controller {
       mapController.startDateValue = startIso
       mapController.endDateValue = endIso
       mapController.loadMapData()
+      this.rememberShownDates()
     }
 
     // Update the date navigation inputs
@@ -610,14 +642,7 @@ export default class extends Controller {
   }
 
   formatDatetime(isoString) {
-    const d = new Date(isoString)
-    return d.toLocaleString(document.documentElement.lang || undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
+    return formatDateTime(isoString)
   }
 
   formatTimeDelta(seconds) {

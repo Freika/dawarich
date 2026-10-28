@@ -35,7 +35,7 @@ class Imports::Download
 
     archive_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
     archive = Archive::Unzipper.inspect_archive(archive_path)
-    return attach_original unless archive.kind == :single_entry && archive.entry_name == original_filename
+    return attach_original unless archive.kind == :single_entry && same_filename?(archive.entry_name)
 
     extracted_path = Archive::Unzipper.extract_single(archive_path)
     prepared = nil
@@ -56,6 +56,13 @@ class Imports::Download
   ensure
     File.unlink(extracted_path) if extracted_path && File.exist?(extracted_path)
     File.unlink(archive_path) if archive_path && File.exist?(archive_path)
+  end
+
+  def unwrapped_name
+    return unless wrapped_candidate? && original_filename
+
+    name = extracted_filename
+    name unless name == import.name
   end
 
   private
@@ -82,6 +89,10 @@ class Imports::Download
 
     inner = filename.delete_suffix('.zip')
     inner if Imports::ZipExtractor::SUPPORTED_EXTENSIONS.include?(File.extname(inner).downcase)
+  end
+
+  def same_filename?(entry_name)
+    ActiveStorage::Filename.new(entry_name.dup.force_encoding(Encoding::UTF_8)).to_s == original_filename
   end
 
   def attach_original

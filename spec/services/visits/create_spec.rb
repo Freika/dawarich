@@ -77,6 +77,25 @@ RSpec.describe Visits::Create do
       end
     end
 
+    context 'when a Place is supplied without a Visit Name' do
+      let(:place) { create(:place, user: user, name: 'Cafe', latitude: 52.52, longitude: 13.405) }
+
+      it 'leaves the Visit Name empty so the display follows the Place' do
+        service = described_class.new(user, valid_params.except(:name).merge(place_id: place.id))
+        service.call
+        place.update!(name: 'Corner Cafe')
+
+        expect(service.visit.reload).to have_attributes(name: nil, display_name: 'Corner Cafe')
+      end
+
+      it 'records the Place name as the location label' do
+        service = described_class.new(user, valid_params.except(:name).merge(place_id: place.id))
+        service.call
+
+        expect(service.visit.reload.location_label).to eq('Cafe')
+      end
+    end
+
     context 'when reusing existing place' do
       let!(:existing_place) do
         create(:place,
@@ -243,6 +262,12 @@ RSpec.describe Visits::Create do
         expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
       end
 
+      it 'enqueues address lookup when the sent address has no street or city' do
+        service = described_class.new(user, valid_params.merge(address: { street: '', city: ' ', country: 'DE' }))
+
+        expect { service.call }.to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
+      end
+
       it 'does not enqueue when an existing place is reused' do
         existing = create(:place, user: user, latitude: 52.52, longitude: 13.405, lonlat: 'POINT(13.405 52.52)')
         create(:visit, user: user, place: existing)
@@ -268,6 +293,15 @@ RSpec.describe Visits::Create do
         service = described_class.new(user, valid_params.merge(status: 'suggested'))
 
         expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
+      end
+    end
+
+    context 'when the address is not an object' do
+      it 'creates the visit without an address' do
+        service = described_class.new(user, valid_params.merge(address: [{ city: 'Berlin' }]))
+
+        expect(service.call).to be_a(Visit)
+        expect(service.visit.place.geodata).to eq({})
       end
     end
 
@@ -488,6 +522,22 @@ RSpec.describe Visits::Create do
         expect(ExceptionReporter).to receive(:call)
 
         service.call
+      end
+    end
+
+    context 'when an unexpected visit creation error occurs' do
+      subject(:service) { described_class.new(user, valid_params) }
+
+      before do
+        visits_association = user.visits
+        allow(user).to receive(:visits).and_return(visits_association)
+        allow(visits_association).to receive(:create!).and_raise(StandardError, 'unexpected failure')
+      end
+
+      it 'reports the error' do
+        expect(ExceptionReporter).to receive(:call).with(instance_of(StandardError), include('unexpected failure'))
+
+        expect(service.call).to be(false)
       end
     end
 

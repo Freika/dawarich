@@ -1,0 +1,8 @@
+zh:
+  places:
+    archive:
+      badge: "已归档"
+      archive: "归档"
+      unarchive: "取消归档"
+      hint: "保留已确认的访问记录和隐私遮蔽；归档期间不再关联新的访问，并暂停地理围栏。"
+      show_on_map: "显示已归档的地点"

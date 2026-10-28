@@ -1,0 +1,28 @@
+fr:
+  places:
+    polish:
+      selected: "sélectionnés"
+      details: "Détails"
+      location: "Localisation"
+      notifications: "Notifications"
+      visits: "Visites"
+      manage: "Gestion"
+      total_time: "Temps total"
+      avg_dwell: "Durée moy."
+      statistics: "Statistiques"
+      merge_duplicate: "Fusionner un doublon"
+      back_to_places: "Retour aux lieux"
+      clear: "Effacer"
+    inline_tags:
+      new_tag: "Nouvelle étiquette"
+      name: "Nom de l’étiquette"
+      emoji: "Émoji (facultatif)"
+      create: "Créer l’étiquette"
+    drawer:
+      hidden_by_tag: "Masqué par l’étiquette %{name}, %{radius} m"
+      geofence_events: "Derniers événements de géorepérage"
+      no_geofence_events: "Aucun événement d’entrée ou de sortie pour le moment."
+      geofence_disabled: "Activez les notifications d’entrée et de sortie pour enregistrer les événements de ce lieu."
+  javascript:
+    map_info:
+      geofence_boundary: "Limite de géorepérage"

@@ -58,7 +58,7 @@
             '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#64748b'
           ].each do |color| %>
             <button type="button"
-                    class="w-10 h-10 rounded-lg cursor-pointer transition-all hover:scale-110 border-2 border-base-300"
+                    class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg cursor-pointer transition-all hover:scale-110 border-2 border-base-300"
                     style="background-color: <%= color %>;"
                     data-color="<%= color %>"
                     data-color-picker-target="swatch"
@@ -127,7 +127,7 @@
                class="range range-error"
                data-privacy-radius-target="slider"
                data-action="input->privacy-radius#updateFromSlider">
-        <div class="flex justify-between text-xs px-2">
+        <div class="flex justify-between text-xs px-2 tabular-nums">
           <span><%= t('units.meters_compact', value: 50) %></span>
           <span class="font-semibold" data-privacy-radius-target="label">
             <%= tag.privacy_radius_meters || 1000 %>m
@@ -139,13 +139,13 @@
             data: { privacy_radius_target: "field" } %>
       </div>
       <label class="label">
-        <span class="label-text-alt"><%= t('.data_within_this_radius_will_be_hidden_from_the_map') %></span>
+        <span class="label-text-alt"><%= t('.hidden_area_hint') %></span>
       </label>
     </div>
   </div>
 
   <div class="form-control mt-6">
-    <div class="flex gap-2">
+    <div class="flex flex-wrap gap-2">
       <%= f.submit class: "btn btn-primary" %>
       <%= link_to t('.cancel'), tags_path, class: "btn btn-ghost" %>
     </div>

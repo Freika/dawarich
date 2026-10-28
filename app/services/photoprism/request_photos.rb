@@ -100,7 +100,7 @@ class Photoprism::RequestPhotos
 
   def request_params(offset = 0)
     params = offset.zero? ? default_params : default_params.merge(offset: offset)
-    params[:before] = (utc_date(end_date) + 1.day).iso8601 if end_date.present?
+    params[:before] = (utc_date(end_date) + 2.days).iso8601 if end_date.present?
     params
   end
 
@@ -115,7 +115,9 @@ class Photoprism::RequestPhotos
   end
 
   # Photoprism filters after/before on the UTC TakenAt date, while the bounds it
-  # is given arrive rendered in the application time zone.
+  # is given arrive rendered in the application time zone. A Photoprism server
+  # running east of UTC reads both dates one day early, so before carries an
+  # extra day of slack and time_framed_data trims the result to the exact range.
   def utc_date(value)
     value.to_datetime.utc.to_date
   end

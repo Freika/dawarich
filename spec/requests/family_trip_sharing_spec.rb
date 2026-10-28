@@ -63,6 +63,30 @@ RSpec.describe 'Family trip sharing', type: :request do
     expect(response.body).not_to include(owner.api_key)
   end
 
+  it 'hides the trip once the owner turns family off' do
+    link
+    owner.update!(settings: owner.settings.merge('family_enabled' => false))
+    sign_in member
+
+    get trips_path
+    expect(response.body).not_to include('Family camper trip')
+
+    get public_shared_link_path(link)
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it 'hides family trips from a member who turned family off' do
+    link
+    member.update!(settings: member.settings.merge('family_enabled' => false))
+    sign_in member
+
+    get trips_path
+    expect(response.body).not_to include('Family camper trip')
+
+    get public_shared_link_path(link)
+    expect(response).to have_http_status(:not_found)
+  end
+
   it 'denies anonymous viewers even if they know the link' do
     get public_shared_link_path(link)
     expect(response).to have_http_status(:not_found)

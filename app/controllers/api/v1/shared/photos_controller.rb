@@ -29,12 +29,29 @@ module Api
 
         private
 
-        # Geotagged photos in the shared window, capped so a long trip doesn't
-        # flood the map with markers (and the browser with thumbnail requests).
+        # Geotagged photos in the shared window, capped to limit thumbnail requests.
+        # Trip markers are spread across the full photo timeline.
         def mappable_photos
           photos = geotagged_photos(fetch_photos)
           Rails.cache.write(allowed_ids_cache_key, allowed_ids_for(authorized_photos(photos)), expires_in: 10.minutes)
-          photos.first(Photos::Mappable::MAX_PHOTOS)
+          map_markers(photos)
+        end
+
+        def map_markers(photos)
+          return photos.first(Photos::Mappable::MAX_PHOTOS) unless link.resource_type.to_sym == :trip
+
+          spread_sample(photos, Photos::Mappable::MAX_PHOTOS)
+        end
+
+        def spread_sample(photos, max)
+          sorted = photos.sort_by.with_index do |photo, index|
+            [(photo[:capturedAt] || photo[:localDateTime]).to_s, index]
+          end
+          return sorted if sorted.size <= max
+
+          Array.new(max) do |index|
+            sorted[(index * (sorted.size - 1) / (max - 1).to_f).round]
+          end
         end
 
         # Cache the id set so each thumbnail request validates against it instead

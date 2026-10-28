@@ -21,7 +21,7 @@ class GoogleMaps::PhoneTakeoutImporter
     path = resolve_file_path
     validate_json(path)
     initialize_stream
-    ActiveRecord::Base.transaction do
+    Revisions::ImportTransaction.call(user_id, import_id: import.id) do
       stream_entries(path)
       process_user_location_profile
       flush_batch
@@ -55,11 +55,7 @@ class GoogleMaps::PhoneTakeoutImporter
       on_profile: ->(profile) { @user_location_profile = profile }
     )
 
-    File.open(path, 'rb') do |io|
-      # Oj 3.17's newer SAJ parser can lose the decimal point in long 0.xxx
-      # literals. The original streaming API preserves those numeric values.
-      Oj.saj_parse(handler, io)
-    end
+    File.open(path, 'rb') { |io| Imports::SajParser.parse(io, handler) }
   end
 
   def process_stream_entry(section, value)

@@ -73,6 +73,15 @@ RSpec.describe Family::Membership, type: :model do
 
     before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
 
+    it 'stops location sharing even when the member had turned family off' do
+      member.update_family_location_sharing!(true, duration: 'permanent')
+      member.update!(settings: member.settings.merge('family_enabled' => false))
+
+      membership.destroy!
+
+      expect(member.reload.settings.dig('family', 'location_sharing', 'enabled')).not_to be true
+    end
+
     it 'drops a member holding only the inherited grant to the free tier' do
       member.update!(plan: :pro, status: :active, active_until: 1.month.from_now, subscription_source: :none)
 
@@ -97,6 +106,41 @@ RSpec.describe Family::Membership, type: :model do
       membership.destroy!
 
       expect(member.reload.plan).to eq('pro')
+    end
+  end
+
+  describe 'Family Members map layer' do
+    it 'turns the layer on next to the default layers for a user who never chose any' do
+      user = create(:user)
+
+      create(:family_membership, user: user)
+
+      expect(user.reload.settings['enabled_map_layers']).to eq(['Tracks', 'Heatmap', 'Family Members'])
+    end
+
+    it 'keeps the layers the user already chose' do
+      user = create(:user, settings: { 'enabled_map_layers' => ['Points'] })
+
+      create(:family_membership, user: user)
+
+      expect(user.reload.settings['enabled_map_layers']).to eq(['Points', 'Family Members'])
+    end
+
+    it 'is turned off again when the user leaves the family' do
+      user = create(:user, settings: { 'enabled_map_layers' => ['Points'] })
+      membership = create(:family_membership, user: user)
+
+      membership.destroy!
+
+      expect(user.reload.settings['enabled_map_layers']).to eq(['Points'])
+    end
+
+    it 'is turned on for the creator of a new family' do
+      creator = create(:user, plan: :family)
+
+      Families::Create.new(user: creator, name: 'Home').call
+
+      expect(creator.reload.settings['enabled_map_layers']).to include('Family Members')
     end
   end
 end

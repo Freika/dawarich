@@ -508,6 +508,23 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
       end
     end
 
+    context 'with a privacy zone over a visited cell' do
+      it 'keeps that cell fogged' do
+        lat, lon = H3.to_geo_coordinates(H3.from_string('8828308281fffff'))
+        tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 100)
+        create(:tagging, tag:, taggable: create(:place, user:, latitude: lat, longitude: lon,
+                                                         lonlat: "POINT(#{lon} #{lat})"))
+        create(:stat, user:, year: 2024, month: 6, h3_hex_ids: [
+                 ['8828308281fffff', 3, Time.zone.parse('2024-06-10T10:00:00Z').to_i,
+                  Time.zone.parse('2024-06-10T12:00:00Z').to_i]
+               ])
+
+        get '/api/v1/maps/hexagons/fog', params: params, headers: headers
+
+        expect(JSON.parse(response.body)['h3_indexes']).to be_empty
+      end
+    end
+
     context 'without stats' do
       it 'returns an empty collection' do
         get '/api/v1/maps/hexagons/fog', params: params, headers: headers

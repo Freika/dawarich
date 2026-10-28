@@ -18,14 +18,35 @@ module Areas
     def call
       radius_meters = @radius * 1000
       origin  = "ST_SetSRID(ST_MakePoint(#{@longitude}, #{@latitude}), 4326)::geography"
-      area_pt = 'ST_SetSRID(ST_MakePoint(areas.longitude, areas.latitude), 4326)::geography'
+      area_pt = <<~SQL.squish
+        ST_SetSRID(
+          ST_MakePoint(
+            COALESCE(places.longitude, areas.longitude),
+            COALESCE(places.latitude, areas.latitude)
+          ), 4326
+        )::geography
+      SQL
+      base_scope = @user.areas
+                        .joins('LEFT JOIN legacy_area_place_mappings mappings ON mappings.area_id = areas.id')
+                        .joins('LEFT JOIN places ON places.id = mappings.place_id')
 
-      scope = @user.areas.where(Arel.sql("ST_DWithin(#{area_pt}, #{origin}, #{radius_meters})"))
+      scope = base_scope.where(Arel.sql("ST_DWithin(#{area_pt}, #{origin}, #{radius_meters})"))
       if @query.length >= MIN_QUERY_LENGTH
-        scope = scope.or(@user.areas.where('name ILIKE ?', "%#{Area.sanitize_sql_like(@query)}%"))
+        scope = scope.or(
+          base_scope.where(
+            'COALESCE(places.name, areas.name) ILIKE ?', "%#{Area.sanitize_sql_like(@query)}%"
+          )
+        )
       end
 
       scope
+        .select(
+          'areas.*',
+          'COALESCE(places.name, areas.name) AS resolved_name',
+          'COALESCE(places.latitude, areas.latitude) AS resolved_latitude',
+          'COALESCE(places.longitude, areas.longitude) AS resolved_longitude',
+          'COALESCE(places.visit_radius, areas.radius) AS resolved_radius'
+        )
         .order(Arel.sql("ST_Distance(#{area_pt}, #{origin}) ASC"))
         .limit(@limit)
         .map { |area| format(area) }
@@ -36,10 +57,10 @@ module Areas
     def format(area)
       {
         id: area.id,
-        name: area.name,
-        latitude: area.latitude.to_f,
-        longitude: area.longitude.to_f,
-        radius: area.radius,
+        name: area.resolved_name,
+        latitude: area.resolved_latitude.to_f,
+        longitude: area.resolved_longitude.to_f,
+        radius: area.resolved_radius,
         source: 'area'
       }
     end

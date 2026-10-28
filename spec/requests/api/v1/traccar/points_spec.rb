@@ -78,6 +78,40 @@ RSpec.describe 'Api::V1::Traccar::Points', type: :request do
         end
       end
 
+      context 'with the form payload Traccar Client 10 sends' do
+        let(:form) do
+          { id: 'pixel-frey', lat: '52.52', lon: '13.405', timestamp: '1777000000', accuracy: '5.0',
+            altitude: '42.0', speed: '2.72', bearing: '90.0', batt: '85.0', charge: 'true' }
+        end
+
+        it 'creates a point with the speed converted from knots' do
+          expect do
+            post "/api/v1/traccar/points?api_key=#{user.api_key}", params: form
+          end.to change(Point, :count).by(1)
+
+          point = user.points.last
+          expect(point.timestamp).to eq(1_777_000_000)
+          expect(point.velocity.to_f).to be_within(0.01).of(1.4)
+          expect(point.battery).to eq(85)
+        end
+
+        it 'accepts a heartbeat without a position so the client can move on' do
+          expect do
+            post "/api/v1/traccar/points?api_key=#{user.api_key}",
+                 params: { id: 'pixel-frey', timestamp: '1777000000' }
+          end.not_to change(Point, :count)
+
+          expect(response).to have_http_status(:ok)
+        end
+
+        it 'still rejects coordinates it cannot read instead of dropping them with a 200' do
+          post "/api/v1/traccar/points?api_key=#{user.api_key}",
+               params: { id: 'pixel-frey', latitude: '52.52', longitude: '13.405', timestamp: '1777000000' }
+
+          expect(response).to have_http_status(:unprocessable_content)
+        end
+      end
+
       context 'when user is inactive' do
         before { user.update(status: :inactive, active_until: 1.day.ago) }
 

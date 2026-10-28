@@ -41,6 +41,7 @@ ca:
           photon_api_host: "Amfitrió"
           photon_api_key: "Clau d'API"
           photon_api_use_https: "Utilitza HTTPS"
+          photon_api_language: "Idioma"
           nominatim_api_host: "Amfitrió"
           nominatim_api_key: "Clau d'API"
           nominatim_api_use_https: "Utilitza HTTPS"
@@ -50,12 +51,14 @@ ca:
           store_geodata: "Geocodifica els punts nous immediatament"
           host_hint: "Nom d'amfitrió simple amb port opcional, p. ex. photon.example.com:2322"
           rps_hint: "Deixa-ho en blanc per no posar-hi límit. Ajusta-ho al que permeti el teu servidor o el teu pla."
+          photon_api_language_hint: "Codi d'idioma de dues lletres per als noms de llocs, o default per als noms en l'idioma local. El teu índex de Photon ha d'incloure aquest idioma. El canvi només afecta les cerques noves, i una mateixa ciutat pot aparèixer dues vegades a les estadístiques."
           api_key_keep_hint: "Deixa-ho en blanc per mantenir la clau desada."
           store_geodata_hint: "Cerca la ciutat i el país quan s’afegeixen punts nous. Les cerques nocturnes continuen si hi ha un proveïdor configurat, encara que aquesta opció estigui desactivada."
       update:
         saved: "Configuració desada."
         pinned: "Rebutjat: fixat per %{variables}."
         host_invalid: "L'amfitrió ha de ser un nom simple, amb un port o un camí opcionals i sense espais."
+        language_invalid: "L'idioma ha de ser un codi de dues lletres, com ara en o nl, o bé default."
         chibigeo_key_required: "ChibiGeo necessita una clau d'API. El pla gratuït Hobby inclou 2.500 cerques al dia; obtén la teva clau a chibigeo.com."
       test_geocoding:
         not_configured: "No hi ha cap proveïdor de geocodificació configurat. Desa primer un proveïdor."
@@ -608,6 +611,8 @@ ca:
       dawarich_mobile_app_export_json: Exportació de l'aplicació mòbil de Dawarich (.json)
       polarsteps: 'Polarsteps:'
       locations_json_json: locations.json (.json)
+      swarm: 'Foursquare Swarm:'
+      swarm_checkins_json: 'Exportació de dades (checkins*.json, .zip)'
       zip: 'ZIP:'
       archives_containing_any_of_the_above_zip: Arxius comprimits que continguin qualsevol dels anteriors (.zip)
       file_format_is_automatically_detected_during_upload: El format de l'arxiu es detecta automàticament durant la pujada.
@@ -846,6 +851,7 @@ ca:
       favorites_marked: Preferits marcats
       places: llocs
     year_cards:
+      flown: "dels quals %{distance} en avió"
       title: "Anys"
     year_calendar:
       mode: "Vista del calendari"
@@ -914,6 +920,8 @@ ca:
       dawarich_logo: Logotip de Dawarich
   map:
     onboarding_modal:
+      not_sure_where_your_app_keeps_its_export: "No saps on guarda la teva app l'exportació?"
+      step_by_step_export_guides: "Guies d'exportació pas a pas"
       invite_your_family: "Convida la teva família"
       add_your_family_and_see_each_other_on_the_map: "Afegeix la teva família i veieu-vos al mapa."
       welcome_to_dawarich: Benvingut/da a Dawarich!
@@ -928,16 +936,6 @@ ca:
       skip_for_now: Omet-ho per ara
       import_your_data: Importa les teves dades
       supported_formats: Formats admesos
-      google_maps: 'Google Maps:'
-      records_json_semantic_history_phone_takeout_json: Records.json, Semantic History, Phone Takeout (.json)
-      gpx: 'GPX:'
-      track_files_gpx: Arxius de trajecte (.gpx)
-      geojson: 'GeoJSON:'
-      feature_collections_json: Col·leccions de característiques (.json)
-      owntracks: 'OwnTracks:'
-      recorder_files_rec: Arxius de gravadora (.rec)
-      kml: 'KML:'
-      kml_files_kml_kmz: Arxius KML (.kml, .kmz)
       file_format_is_automatically_detected_during_upload: El format de l'arxiu es detecta automàticament durant la pujada.
       trial_limitations_max_5_imports_10mb_per_file_current_imports: 'Limitacions de la prova: Màxim 5 importacions, 10 MB per arxiu. Importacions actuals:'
       select_one_or_multiple_files: Selecciona un o diversos arxius
@@ -957,16 +955,6 @@ ca:
       settings: Configuració
       setup_guide: guia de configuració
     maplibre:
-      area_creation_modal:
-        create_new_area: Crea una àrea nova
-        area_name: Nom de l'àrea *
-        radius: Radi
-        meters: metres
-        cancel: Cancel·la
-        e_g_home_office_gym: p. ex. Casa, Feina, Gimnàs...
-        radius_in_meters: Radi en metres
-        create_area: Crea l'àrea
-        creating: Creant...
       button_cluster:
         map_controls: Controls del mapa
         timeline: Línia de temps
@@ -987,6 +975,8 @@ ca:
         settings_s: Configuració (S)
         links: Enllaços
       settings_panel:
+        speed_colored_tracks: Acoloreix els trajectes segons la velocitat
+        edit_speed_colors: Edita els colors de velocitat
         close_panel: Tanca el panell
         layers: Capes
         search_for_a_place: Cerca un lloc
@@ -1020,6 +1010,7 @@ ca:
         places: Llocs
         show_your_saved_places: Mostra els teus llocs desats
         enable_all_tags: Activa totes les etiquetes
+        show_place_boundaries: Mostra els límits dels llocs
         untagged: "🏷️ Sense etiqueta"
         click_tags_to_filter_places: Fes clic a les etiquetes per filtrar llocs
         photos: Fotos
@@ -1079,11 +1070,14 @@ ca:
         track_generation: Generació de trajectes
         track_split_distance: Distància entre trajectes
         track_split_distance_unit: m
-        track_split_distance_hint: Inicia un trajecte nou quan els punts consecutius són més lluny.
+        track_split_distance_hint: "Els trajectes de dispositius diferents s’uneixen quan un acaba a menys d’aquesta distància de l’inici del següent. La distància entre punts no inicia un trajecte nou."
         track_split_time: Temps entre trajectes
         track_split_time_unit: min
         track_split_time_hint: "Els intervals més llargs inicien un trajecte nou i permeten als viatges utilitzar l’enregistrament d’un altre dispositiu. Després de canviar aquest valor, prem «Recalcula» a cada viatge afectat per actualitzar-ne la ruta i la distància desades."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Amaga les lectures que no poden ser una posició real — salts impossibles, coordenades incorrectes. Desactiva-ho per veure tots els punts en brut.
+        hide_inaccurate_points: "Amaga els punts imprecisos"
+        hide_inaccurate_points_hint: "Amaga també els punts amb una precisió informada pitjor que el llindar de sota. Ajuda amb el seguiment del mòbil que afegeix soroll lateral; deixa-ho desactivat per a les importacions de Google Timeline, els punts aproximats de les quals continuen sobre la carretera. Per aplicar-ho a l’historial, prem primer «Aplica la configuració» i després «Torna a avaluar les dades passades»."
+        accuracy_threshold: "Llindar de precisió"
         re_evaluate_past_data: Torna a avaluar les dades passades
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Elimina les marques d'anomalia existents i torna a executar el filtre sobre tots els teus punts amb la configuració actual. Els trajectes, estadístiques i resums es reconstruiran després. S'executa en segon pla.
         recalculate_tracks_stats: Recalcula trajectes i estadístiques
@@ -1144,8 +1138,8 @@ ca:
         pick_a_day_in_the_calendar_to_see_visits: Tria un dia al calendari per veure les visites.
         create_visit: Crea una visita
         create_place: Crea un lloc
-        select_area: Selecciona una àrea
-        create_area: Crea una àrea
+        select_data_on_map: Selecciona dades al mapa
+        select_data_all_time: Selecciona dades de tot el període
         replay: Reproducció
         enrich_photos: Enriqueix fotos
         close: Tanca
@@ -1340,7 +1334,51 @@ ca:
       destroy_this_notification: Suprimeix aquesta notificació
       are_you_sure: "Estàs segur?"
   places:
+    management:
+      create: "Crear lloc"
+      duplicates: "Possibles duplicats"
+      search: "Cercar noms"
+      sort: "Ordenar per"
+      last_visit: "Última visita"
+      active_visits: "Visites actives"
+      status: "Estat"
+      apply: "Aplicar"
+      tags: "Etiquetes"
+      tag: "Etiqueta"
+      source: "Origen"
+      badges: "Protecció"
+      geofence: "Geotanca"
+      privacy: "Zona de privadesa"
+      selected: "Llocs seleccionats"
+      add_tag: "Afegir etiqueta"
+      remove_tag: "Treure etiqueta"
+      survivor: "Conservar aquest lloc"
+      merge: "Fusionar llocs"
+      delete: "Eliminar llocs"
+      select_all: "Seleccionar tots els llocs d’aquesta pàgina"
+      select_place: "Seleccionar %{name}"
+      no_results: "Cap lloc coincideix amb aquests filtres."
+      duplicates_description: "Els llocs amb radis de visita que se superposen s’agrupen aquí. Revisa cada grup i tria el lloc que vols conservar. No es fusiona res automàticament."
+      no_duplicates: "No s’han trobat possibles duplicats."
+      cluster: "Grup %{number}"
+      distance_reference: "Distàncies des del lloc recomanat: %{name}"
+      distance: "Distància"
+      meters: "%{distance} m"
+      bulk_success: "Llocs actualitzats: %{count}"
+      invalid_selection: "Selecciona llocs i una etiqueta vàlida o un dels llocs seleccionats per conservar."
+      merge_confirmation: "Vols fusionar aquests llocs amb el lloc triat? S’hi traslladaran les visites, etiquetes i notes. Aquesta acció no es pot desfer."
+      delete_confirmation: "Vols eliminar aquests llocs? Llocs: %{places}. Visites actives que perdran el seu lloc: %{visits}; conservaran les descripcions de la ubicació. Llocs amb geotanques: %{geofences}; Els esdeveniments de geotanca es conserven amb el nom del lloc; se n’eliminen les subscripcions a webhooks. Llocs amb etiquetes de privadesa: %{privacy}; les dades properes poden esdevenir visibles, també als enllaços compartits. Aquesta acció no es pot desfer."
+      sources:
+        manual: "Manual"
+        photon: "Detectat"
+        gpx_waypoint: "Punt de ruta GPX"
+    edit_on_map: "Edita al mapa"
+    drag_to_edit: "Arrossega el marcador per moure el lloc i el control per canviar-ne el radi de visita."
+    cancel_edit: "Cancel·la"
+    place_details: "Detalls del lloc"
+    close_panel: "Tanca els detalls del lloc"
     drawer:
+      delete_consequences: "Vols suprimir aquest lloc?\nVisites actives: %{visits}. Conservaran l’etiqueta d’ubicació.\nEtiquetes de zones de privadesa: %{privacy_tags}.\nWebhooks dels quals es retirarà aquest lloc: %{webhooks}.\nEls esdeveniments de geotanca es conserven amb el nom del lloc. Aquesta acció no es pot desfer."
       source: 'Font:'
       total_hours: hores totals
       avg_dwell: estada mitjana
@@ -1349,12 +1387,16 @@ ca:
       rarr: "→"
       'on': el
       no_visits_yet: Encara no hi ha visites
-      rename: Canvia el nom
       merge: Fusiona
+      select_place_to_merge: Selecciona el lloc duplicat
+      no_matching_places: No s'han trobat llocs coincidents
+      search_places: Cerca llocs
+      search: Cerca
+      merge_confirmation: "Vols fusionar el lloc seleccionat amb \"%{survivor}\"? Les visites, etiquetes i notes s'hi traslladaran."
       notes: Notes
       save: Desa
       delete: Suprimeix
-      delete_this_place_this_cannot_be_undone: Suprimir aquest lloc? Aquesta acció no es pot desfer.
+      delete_this_place_this_cannot_be_undone: Vols suprimir aquest lloc? Les visites es conservaran sense cap lloc associat.
       manual_name_title: "Vas posar nom a aquest lloc, així que l'assignació automàtica de noms no el canviarà. Canvia'l a \"%{default_name}\" per tornar-lo a l'assignació automàtica."
       visit_count:
         one: "%{count} visita"
@@ -1363,6 +1405,9 @@ ca:
       no_nearby_places_found: No s'han trobat llocs propers
       load_more_search_up_to_distance_m: Carrega'n més (cerca fins a %{distance} m)
     index:
+      filters: Filtres de llocs
+      all_places: Tots els llocs
+      unconfirmed_places: Sense confirmar
       hello_there: Hola!
       here_you_ll_find_your_places_created_by_visits_suggestion: Aquí trobaràs els teus llocs, creats pel procés de suggeriment de visites. Però ara mateix no n'hi ha cap.
       name: Nom
@@ -1372,7 +1417,7 @@ ca:
       timeline: Línia de temps
       places: Llocs
       delete: Suprimeix
-      are_you_sure_deleting_a_place_will_result_in_deleting: Estàs segur? Suprimir un lloc eliminarà totes les visites d'aquest lloc.
+      are_you_sure_deleting_a_place_will_result_in_deleting: Vols suprimir aquest lloc? Les visites es conservaran sense cap lloc associat.
   points:
     address:
       address: 'Adreça:'
@@ -1508,6 +1553,7 @@ ca:
       residential_roads: Carrers residencials
       track: Trajecte
   settings:
+    geofencing_paused_while_archived: en pausa mentre estigui arxivat
     trek_sources:
       select_trips:
         title: "Tria viatges de TREK"
@@ -1549,7 +1595,9 @@ ca:
         background_jobs_dashboard: Tauler de tasques en segon pla
         this_will_open_the_background_jobs_dashboard_in_a_new: Això obrirà el tauler de tasques en segon pla en una pestanya nova.
         visits_suggestions: Suggeriments de visites
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Activa o desactiva els suggeriments de visites. És una tasca en segon pla que s'executa cada dia a mitjanit. Desactivar-la pot ser útil si no vols rebre suggeriments de visites o si utilitzes l'app de Dawarich per a iOS, que té els seus propis suggeriments de visites.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Els suggeriments de visites es generen automàticament poc després de rebre punts nous i es tornen a comprovar cada nit. Desactivar-los atura tota la detecció automàtica de visites, també després de les importacions. L'app de Dawarich per a iOS té els seus propis suggeriments de visites.
+        enabled: Activats
+        disabled: Desactivats
         background_jobs: Tasques en segon pla
         start_job: Inicia la tasca
         are_you_sure: "Estàs segur?"
@@ -1600,12 +1648,26 @@ ca:
         timezone: Fus horari
         your_timezone: El teu fus horari
         all_dates_and_times_will_be_displayed_in_this_timezone: Totes les dates i hores es mostraran en aquest fus horari
+        date_and_time: "Data i hora"
+        date_format: "Format de data"
+        time_format: "Format d'hora"
+        first_day_of_week: "Primer dia de la setmana"
+        format_auto: "Automàtic (%{example})"
+        time_format_12h: "12 hores (%{example})"
+        time_format_24h: "24 hores (%{example})"
+        date_and_time_hint: "S'aplica a les dates i hores de l'aplicació, els correus i el mapa."
         supporter_badge: Insígnia de col·laborador
         show_supporter_badge_in_navbar: Mostra la insígnia de col·laborador a la barra de navegació
         display_a_gem_icon_next_to_your_profile_to_show: Mostra una icona de gemma al costat del teu perfil per indicar el teu estat de col·laborador
         general_settings: Configuració general
         save_changes: Desa els canvis
         test_email_worker_hint: Afegeix un missatge de prova a la cua del mateix procés en segon pla que els correus del sistema
+        features: "Funcions"
+        features_hint: "Desactiva les parts de Dawarich que no facis servir. Desapareixen de la interfície i s'atura el seu processament en segon pla."
+        family_feature: "Família"
+        family_feature_hint: "Compartir la ubicació amb els membres de la família. Si la desactives, deixes de compartir la teva ubicació i els enllaços de viatges només per a la família; continues sent-ne membre. Quan la tornis a activar, la compartició de la ubicació començarà desactivada."
+        achievements_feature: "Assoliments"
+        achievements_feature_hint: "Regions explorades i insígnies. Si els desactives, es deixa de calcular el progrés i es desactiven els teus enllaços públics d'assoliments."
     integrations:
       trek:
         title: "Integració amb TREK"
@@ -1623,6 +1685,7 @@ ca:
         sync_now: "Sincronitza ara"
         disconnect: "Desconnecta"
         disconnect_confirmation: "Vols desconnectar TREK? Els viatges gestionats i les seves dades registrades es queden a Dawarich, però deixen de sincronitzar-se."
+        ssl_verification_off: "Verificació SSL desactivada"
       index:
         immich_photoprism_integrations: Integracions d'Immich i Photoprism
         connect_your_photo_management_tools_to_see_your_photos_on: Connecta les teves eines de gestió fotogràfica per veure les teves fotos al mapa. Les integracions d'Immich i Photoprism estan disponibles al pla Pro.
@@ -1772,7 +1835,7 @@ ca:
         tracks: Trajectes
         imports: Importacions
         exports: Exportacions
-        areas: Àrees
+        places: Llocs
         sign_in_history: Historial d'inicis de sessió
         total_sign_ins: Total d'inicis de sessió
         last_sign_in: Últim inici de sessió
@@ -1800,7 +1863,7 @@ ca:
       show:
         tune_how_dawarich_decides_where_you_actually_were: Ajusta com decideix Dawarich on vas estar realment
         these_settings_control_how_the_app_groups_your_gps_points: Aquesta configuració controla com l'app agrupa els teus punts GPS en visites a llocs.
-        points_within_this_radius_are_treated_as_the_same_visit: Els punts dins d'aquest radi es tracten com la mateixa visita. Per defecte 100.
+        points_within_this_radius_are_treated_as_the_same_visit: Els punts dins d'aquest radi es tracten com la mateixa visita. Una estada dins d'aquest radi també tanca un trajecte (com a mínim 100 m). Per defecte 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Com més baix, més visites se suggereixen, incloent-hi parades breus. Per defecte 3.
         skip_stops_shorter_than_this_raise_to_ignore_short_drive: Omet les parades més curtes que això. Augmenta'l per ignorar parades breus en cotxe; redueix-lo per detectar recados curts. Per defecte 5.
         visit_detection: Detecció de visites
@@ -1930,6 +1993,8 @@ ca:
     place_creation_modal:
       create_new_place: Crea un lloc nou
       place_name: Nom del lloc *
+      visit_radius: Radi de visita (metres) *
+      visit_radius_hint: Les visites amb el centre dins d’aquest radi es poden associar al lloc. Això no afecta la privadesa.
       note: Nota
       optional_add_any_notes_or_details_about_this_place: Opcional - Afegeix qualsevol nota o detall sobre aquest lloc
       tags: Etiquetes
@@ -2038,6 +2103,9 @@ ca:
         upgrade_to_pro: Millora a Pro
         dismiss: Descarta
   shared_links:
+    privacy_zones_note:
+      text: "Les teves zones de privadesa continuen amagades en aquest enllaç. Cada àrea amagada està desplaçada del lloc, perquè ningú pugui saber on és."
+      manage: "Zones de privadesa"
     expires_field:
       expires_optional: Caduca (opcional)
       stays_active_through_the_end_of_the_day_before_the: Es manté actiu fins al final del dia anterior a la data seleccionada.
@@ -2122,7 +2190,7 @@ ca:
       upgrade_to_pro: Millora a Pro
     month:
       flight_distance: Distància de vol
-      from_airtrail_not_counted_in_distance: D'AirTrail, no comptat a la distància
+      from_airtrail_included_in_distance: D'AirTrail, comptat a la distància
       monthly_digest: Resum mensual
       share: Comparteix
       distance_traveled: Distància recorreguda
@@ -2174,7 +2242,7 @@ ca:
       countries_count_countries_cities_count_cities: "%{countries_count} països, %{cities_count} ciutats"
     public_month:
       flight_distance: Distància de vol
-      from_airtrail_not_counted_in_distance: D'AirTrail, no comptat a la distància
+      from_airtrail_included_in_distance: D'AirTrail, comptat a la distància
       monthly_digest: Resum mensual
       distance_traveled: Distància recorreguda
       total_distance_for_this_month: Distància total d'aquest mes
@@ -2199,6 +2267,19 @@ ca:
     show:
       statistics_for_year_year: Estadístiques de l'any %{year}
   tags:
+    confirm_delete:
+      title: "Suprimeix l’etiqueta de zona de privadesa"
+      covered_places: "Aquesta zona de privadesa protegeix %{count} dels teus llocs."
+      visibility: "Les dades al voltant d’aquests llocs tornen a ser visibles al mapa, als viatges i a les estadístiques."
+      shared_links:
+        one: "Això també s’aplica al teu %{count} enllaç compartit actiu."
+        other: "Això també s’aplica a tots els teus enllaços compartits actius (%{count})."
+    places:
+      title: "Llocs amb aquesta etiqueta"
+      empty: "Encara no hi ha llocs amb aquesta etiqueta."
+      visits:
+        one: "%{count} visita"
+        other: "%{count} visites"
     form:
       prohibited_this_tag_from_being_saved: 'ha impedit que es desés aquesta etiqueta:'
       click_to_select_an_emoji: Fes clic per seleccionar un emoji
@@ -2206,7 +2287,7 @@ ca:
       choose_from_swatches_or_pick_a_custom_color: Tria entre les mostres o selecciona un color personalitzat
       privacy_zone: Zona de privadesa
       hide_map_data_around_places_with_this_tag: Amaga les dades del mapa al voltant dels llocs amb aquesta etiqueta
-      data_within_this_radius_will_be_hidden_from_the_map: Les dades dins d'aquest radi s'amagaran del mapa
+      hidden_area_hint: "Tot el que hi ha dins d'aquest radi sempre s'amaga. El cercle amagat és fins a 1,6 vegades més gran i està desplaçat del lloc una distància fixa, perquè ningú pugui trobar el lloc a partir d'on s'aturen les teves dades."
       home_work_restaurant: Casa, Feina, Restaurant...
       privacy_radius: Radi de privadesa
       cancel: Cancel·la
@@ -2225,6 +2306,7 @@ ca:
       actions: Accions
       no_tags_yet: Encara no hi ha etiquetes
       create_tags_to_organize_your_places_and_add_privacy_zones: Crea etiquetes per organitzar els teus llocs i afegir zones de privadesa.
+      privacy_zone_badge_hint: "Àrea amagada desplaçada del lloc, fins a 1,6 vegades aquest radi"
       create_your_first_tag: Crea la teva primera etiqueta
       tags: Etiquetes
       edit_tag: Edita l'etiqueta
@@ -2508,7 +2590,7 @@ ca:
           other: "%{count} ciutats"
     digests_mailer:
       monthly_digest:
-        flights: Vols
+        flights: Incl. vols
         your: El teu
         in_review: en retrospectiva
         here_s_what_your_location_history_looked_like_last_month: Així és com va ser el teu historial d'ubicacions el mes passat.
@@ -2750,6 +2832,7 @@ ca:
         tcx: TCX
         fit: FIT
         polarsteps: Polarsteps
+        swarm: Foursquare Swarm
         google_photos: Google Photos
         mobile_photo_library: Biblioteca de fotos del mòbil
     place:
@@ -3094,6 +3177,7 @@ ca:
             visit_not_found: Visita no trobada
           invalid_place: Lloc no vàlid
           invalid_area: Àrea no vàlida
+          conflicting_place_and_area: place_id i area_id no es poden especificar alhora
           at_least_2_visits_must_be_selected_for_merging: Cal seleccionar almenys 2 visites per fusionar-les
           one_or_more_visits_not_found: No s'ha trobat una o més visites
           count_visits_updated_successfully: "%{count} visites actualitzades correctament"
@@ -3120,6 +3204,7 @@ ca:
       your_account_has_been_deleted: El teu compte s'ha suprimit.
       you_are_not_authorized_to_perform_this_action: No tens autorització per fer aquesta acció.
       family_plan_required: Aquesta funció requereix el pla Family.
+      feature_disabled_in_settings: "Aquesta funció està desactivada a la teva configuració."
     areas:
       created: L'àrea s'ha creat correctament!
       updated: L'àrea s'ha actualitzat correctament!
@@ -3220,6 +3305,8 @@ ca:
       place_was_successfully_destroyed: El lloc s'ha suprimit correctament.
       created: El lloc s'ha creat correctament!
       updated: El lloc s'ha actualitzat correctament!
+      merged: "S'ha fusionat \"%{duplicate}\" amb \"%{survivor}\"."
+      merge_visit_conflict: "Aquests llocs no es poden fusionar perquè la visita #%{first_id} i la visita #%{second_id} comencen a les %{started_at}. Resol primer aquestes visites."
     points:
       no_points_selected: No s'ha seleccionat cap punt.
       points_were_successfully_destroyed: Els punts s'han suprimit correctament.
@@ -3415,6 +3502,7 @@ ca:
       failed_to_delete_visits: No s'han pogut suprimir les visites.
       invalid_place: Lloc no vàlid
       invalid_area: Àrea no vàlida
+      conflicting_place_and_area: El lloc i l'àrea no es poden especificar alhora
       failed_to_update_visit: No s'ha pogut actualitzar la visita.
       select_visits_to_merge: Selecciona almenys 2 visites per fusionar-les.
       visits_must_share_day: Les visites han de ser del mateix dia.
@@ -3559,6 +3647,7 @@ ca:
         safe_email_is_requesting_your_location_link: "%{email} t'està sol·licitant la teva ubicació. %{link}"
         users_must_be_in_the_same_family: Els usuaris han de formar part de la mateixa família
         target_user_is_already_sharing_their_location: L'usuari destinatari ja està compartint la seva ubicació
+        target_user_turned_family_off: "Aquest membre ha desactivat les funcions familiars"
         request_cooldown_active_please_wait_before_requesting_again: Període d'espera actiu. Espera abans de tornar a sol·licitar-ho.
         view_request: Veure la sol·licitud
       invite:
@@ -3972,9 +4061,6 @@ ca:
       click_on_the_map_to_place_a_visit_esc_to: Fes clic al mapa per col·locar una visita (Esc per cancel·lar)
       visit_creation_modal_not_available: Diàleg de creació de visites no disponible
       visit_creation_controller_not_available: Controlador de creació de visites no disponible
-      area_drawer_controller_not_available: Controlador de dibuix d'àrees no disponible
-      area_created_successfully: Àrea creada correctament!
-      failed_to_reload_areas: No s'han pogut tornar a carregar les àrees
       family_feature_not_available: Funció de família no disponible
       failed_to_load_family_members: No s'han pogut carregar els membres de la família
       centered_on_family_member: Centrat en el membre de la família
@@ -4107,8 +4193,11 @@ ca:
       speed: "%{speed} km/h"
       no_data: No hi ha dades
     places:
+      move_pin: "Mou el marcador del lloc"
+      resize_radius: "Canvia el radi de visita"
       create_new: Crea un lloc nou
       edit: Edita el lloc
+      open: Obre
       confirm_delete: Estàs segur que vols suprimir aquest lloc?
       search_placeholder: Cerca un lloc…
       confirm_move_visit: "Aquest lloc és a ~%{distance} m de la visita. Vols moure la visita aquí?"
@@ -4364,6 +4453,7 @@ ca:
       selected: "Seleccionats: %{items}"
       too_many_points: "Massa punts (%{requested}). Dibuixa una àrea més petita; màxim %{limit} per supressió."
       too_many_selected_points: "S'han seleccionat massa punts (%{requested}). Dibuixa una àrea més petita; màxim %{limit} per supressió."
+      truncated: "Només es mostren els %{limit} punts més recents d'aquesta àrea."
       visits:
         one: "%{count} visita"
         other: "%{count} visites"
@@ -4400,6 +4490,7 @@ ca:
       place: Lloc
       points: Punts
       radius: Radi
+      visit_radius: Radi de visita
       reason: Motiu
       route_information: Informació de la ruta
       selected_point: Punt seleccionat
@@ -4576,6 +4667,7 @@ ca:
     live_map:
       disabled: Mode en directe desactivat
       enabled: Mode en directe activat
+      your_position: La teva última ubicació
     map_panel:
       layers: Capes del mapa
       family: "Família"
@@ -4616,3 +4708,8 @@ ca:
       no_invitations: No hi ha invitacions pendents
       title: Invitacions de família
       view_invitation: Veure
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: a. m.
+      pm: p. m.

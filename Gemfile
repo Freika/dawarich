@@ -14,6 +14,7 @@ gem 'aws-sdk-kms', '~> 1.132', require: false
 gem 'aws-sdk-s3', '~> 1.232', require: false
 gem 'bcrypt', '>= 3.1.22'
 gem 'bootsnap', require: false
+gem 'cgi'
 gem 'chartkick'
 gem 'connection_pool', '< 4' # Pin to 2.x - version 3.0+ has breaking API changes with Rails RedisCacheStore
 gem 'data_migrate'
@@ -95,6 +96,7 @@ group :development, :test, :staging do
 end
 
 group :test do
+  gem 'benchmark'
   gem 'capybara'
   gem 'fakeredis'
   gem 'selenium-webdriver'

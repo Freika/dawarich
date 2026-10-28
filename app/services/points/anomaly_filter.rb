@@ -131,15 +131,23 @@ class Points::AnomalyFilter
   end
 
   # Pass 1: Mark points whose reported accuracy radius is so large the reading
-  # cannot be a position at all. See ABSURD_ACCURACY_METERS for why this is not
-  # the user's gps_accuracy_threshold.
+  # cannot be a position at all. See ABSURD_ACCURACY_METERS for why the user's
+  # gps_accuracy_threshold is opt-in: phone tracking needs it to hide slow
+  # sideways noise no speed pass can see, Google Timeline imports lose real
+  # route geometry to it.
   def filter_by_accuracy
     flag_anomalies(
       Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
            .not_anomaly
            .where.not(accuracy: nil)
-           .where('accuracy > ?', ABSURD_ACCURACY_METERS)
+           .where('accuracy > ?', accuracy_limit)
     )
+  end
+
+  def accuracy_limit
+    return ABSURD_ACCURACY_METERS unless user_settings.gps_accuracy_filter_enabled?
+
+    [user_settings.gps_accuracy_threshold, ABSURD_ACCURACY_METERS].min
   end
 
   # Visit-report pass: iOS visit monitoring (Overland `action: visit`) delivers
@@ -182,18 +190,32 @@ class Points::AnomalyFilter
   # is the only record there is. The neighbour must come from the same device
   # — a second tracker on reduced-accuracy permission stays coarse even when
   # the account's other device is precise, the same per-stream rule the speed
-  # pass applies. Imported histories are untouched because their points do
-  # not carry the sentinel combination.
+  # pass applies. The Android app has no sentinels: it reports zero vertical
+  # accuracy and zero speed for every fix, so there a coarse fix only counts
+  # when the same position repeats nearby, which is how a cell tower shows up.
+  # A one-off coarse fix may be the only record of a real move and stays.
   def filter_sentinel_fixes
     # The candidate window reaches back past the caller's range: a wake-up
     # tower fix often arrives in a batch of one, before the precise fixes
     # that condemn it exist, and the batch that brings those fixes starts
     # after it. Each run therefore re-judges the recent past.
+    sentinel_conditions = <<~SQL.squish
+      (vertical_accuracy < 0 AND velocity LIKE '-%') OR (
+        vertical_accuracy = 0 AND velocity ~ '^0+(\\.0+)?$' AND
+        EXISTS (SELECT 1 FROM points repeated
+          WHERE repeated.user_id = points.user_id
+          AND repeated.tracker_id IS NOT DISTINCT FROM points.tracker_id
+          AND repeated.timestamp BETWEEN points.timestamp - :repeat_window
+          AND points.timestamp + :repeat_window
+          AND repeated.id <> points.id
+          AND repeated.lonlat = points.lonlat)
+      )
+    SQL
+
     relation = Point.where(user_id: @user_id,
                            timestamp: (@start_time - SENTINEL_PRECISE_NEIGHBOR_SECONDS)..@end_time)
                     .not_anomaly
-                    .where(vertical_accuracy: ...0)
-                    .where("velocity LIKE '-%'")
+                    .where(sentinel_conditions, repeat_window: SENTINEL_PRECISE_NEIGHBOR_SECONDS)
                     .where('accuracy > ?', SENTINEL_ACCURACY_METERS)
                     .where(
                       'EXISTS (SELECT 1 FROM points precise ' \

@@ -3,6 +3,7 @@
 class ApplicationController < ActionController::Base
   include Pundit::Authorization
   include PartneroTrackable
+  include PendingInvitationAcceptable
 
   class_attribute :page_refresh_morphing, instance_accessor: false, default: false
 
@@ -12,11 +13,13 @@ class ApplicationController < ActionController::Base
   before_action :sign_out_deleted_users
   before_action :configure_permitted_parameters, if: :devise_controller?
   around_action :set_user_time_zone
+  around_action :apply_date_time_preferences
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
-  helper_method :current_user_safe_settings, :family_feature_available?,
+  helper_method :current_user_safe_settings, :family_feature_available?, :family_nav_visible?,
                 :current_user_features, :family_home_path, :locale_native_name, :locale_flag,
-                :suggested_locale, :locale_path, :morph_page_refreshes?, :reverse_geocoding_enabled_for?
+                :suggested_locale, :locale_path, :morph_page_refreshes?, :reverse_geocoding_enabled_for?,
+                :privacy_zones_fingerprint, :current_privacy_zone_masker
 
   def morph_page_refreshes?
     self.class.page_refresh_morphing
@@ -35,8 +38,26 @@ class ApplicationController < ActionController::Base
     @current_user_features ||= DawarichSettings.features_for(current_user)
   end
 
+  def privacy_zones_fingerprint
+    current_privacy_zone_masker&.fingerprint
+  end
+
+  def current_privacy_zone_masker
+    return unless current_user
+
+    @current_privacy_zone_masker ||= Maps::PrivacyZoneMasker.new(current_user)
+  end
+
   def family_feature_available?
     current_user_features[:family]
+  end
+
+  # Members of a lapsed family keep the link, which leads to the lapsed panel;
+  # a user who switched the feature off in settings loses it.
+  def family_nav_visible?
+    return false unless current_user&.feature_enabled?(:family)
+
+    family_feature_available? || current_user.in_family?
   end
 
   # Memoized per request: the points list gates a toponym cell per rendered row;
@@ -93,19 +114,12 @@ class ApplicationController < ActionController::Base
   end
 
   def after_sign_in_path_for(resource)
-    invitation_token = params[:invitation_token] || session[:invitation_token]
-    if invitation_token.present?
-      invitation = Family::Invitation.find_by(token: invitation_token)
-      return family_invitation_path(invitation.token) if invitation&.can_be_accepted?
-    end
+    invitation_path = pending_invitation_path_for(resource)
+    return invitation_path if invitation_path
 
     return trial_resume_path if resource.respond_to?(:pending_payment?) && resource.pending_payment?
 
-    # Handle mobile client flow (iOS and Android)
-    client_type = request.headers['X-Dawarich-Client'] || session[:dawarich_client]
-
-    case client_type
-    when 'ios', 'android'
+    if mobile_client?
       payload = { api_key: resource.api_key, exp: 5.minutes.from_now.to_i }
 
       token = Subscription::EncodeJwtToken.new(
@@ -116,6 +130,11 @@ class ApplicationController < ActionController::Base
     else
       super
     end
+  end
+
+  # Signing in from the iOS or Android app, which takes the session back via ios_success_path.
+  def mobile_client?
+    %w[ios android].include?(request.headers['X-Dawarich-Client'] || session[:dawarich_client])
   end
 
   def require_pro!
@@ -162,6 +181,7 @@ status: :see_other
   # upgrade link. Api::V1 controllers override this with a JSON-only response.
   def ensure_family_feature_available!
     return if family_feature_available?
+    return feature_disabled_in_settings! if current_user && !current_user.feature_enabled?(:family)
 
     message = I18n.t('controllers.application.family_plan_required')
     respond_to do |format|
@@ -172,6 +192,22 @@ status: :see_other
       format.json do
         render json: { error: 'family_plan_required', message: message },
                status: :forbidden
+      end
+    end
+  end
+
+  def ensure_achievements_enabled!
+    feature_disabled_in_settings! unless current_user.feature_enabled?(:achievements)
+  end
+
+  # The user switched the feature off themselves, so point them at the toggle
+  # rather than at an upgrade page.
+  def feature_disabled_in_settings!
+    message = I18n.t('controllers.application.feature_disabled_in_settings')
+    respond_to do |format|
+      format.json { render json: { error: 'feature_disabled', message: message }, status: :forbidden }
+      format.any do
+        redirect_to settings_general_index_path(anchor: 'features'), alert: message, status: :see_other
       end
     end
   end
@@ -306,6 +342,10 @@ status: :see_other
     end
   rescue ArgumentError
     yield
+  end
+
+  def apply_date_time_preferences(&)
+    Users::DateTimePreferences.with(current_user_safe_settings&.date_time_preferences, &)
   end
 
   def set_self_hosted_status

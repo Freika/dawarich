@@ -18,6 +18,9 @@ function cachePartitioner(value) {
  * Read-only vector-tile points layer for parity/performance validation.
  */
 export class PointsMvtLayer extends BaseLayer {
+  // Ten minutes in a cell contributes a heatmap weight of one.
+  static HEATMAP_DWELL_REFERENCE_SECONDS = 600
+
   constructor(map, options = {}) {
     super(map, { id: "points-mvt", ...options })
     this.startAt = options.startAt || null
@@ -230,13 +233,17 @@ export class PointsMvtLayer extends BaseLayer {
         "source-layer": "points",
         paint: {
           ...heatmapPaint(),
-          // A linear weight over cell counts clamps at count 5 and flattens
-          // the map — scale logarithmically: 0.2 + 0.8·ln(count)/ln(5000)
-          // (a single point = the classic 0.2, ~5000 points saturate at 1).
+          // Linear dwell weights preserve time across sampling rates and cells.
+          // Keep the count-based fallback for cached tiles without dwell.
           "heatmap-weight": [
-            "min",
-            1,
-            ["+", 0.2, ["*", 0.094, ["ln", ["coalesce", ["get", "count"], 1]]]],
+            "case",
+            ["has", "dwell"],
+            ["/", ["get", "dwell"], PointsMvtLayer.HEATMAP_DWELL_REFERENCE_SECONDS],
+            [
+              "min",
+              1,
+              ["+", 0.2, ["*", 0.094, ["ln", ["coalesce", ["get", "count"], 1]]]],
+            ],
           ],
         },
       },

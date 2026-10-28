@@ -1,0 +1,9 @@
+<aside class="place-panel" data-controller="place-panel" hidden
+       aria-label="<%= t('places.place_details') %>"
+       data-action="place:editor-ready->place-panel#loaded">
+  <div class="place-panel__toolbar">
+    <button type="button" class="btn btn-ghost btn-sm" data-action="place-panel#close"
+            data-place-panel-target="close"><%= icon 'arrow-left', class: 'w-4 h-4' %><%= t('map.maplibre.settings_panel.back') %></button>
+  </div>
+  <%= turbo_frame_tag 'place-drawer', data: { place_panel_target: 'frame' } %>
+</aside>

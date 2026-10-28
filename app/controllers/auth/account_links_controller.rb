@@ -47,9 +47,9 @@ class Auth::AccountLinksController < ApplicationController
     else
       sign_in(user)
       claim_pending_import_for(user)
-      redirect_to root_path,
-                  notice: I18n.t('controllers.auth.account_links.provider_is_now_linked_to_your_account',
-                                 provider: provider_label(result.provider))
+      flash[:notice] = I18n.t('controllers.auth.account_links.provider_is_now_linked_to_your_account',
+                              provider: provider_label(result.provider))
+      redirect_to pending_invitation_path_for(user) || root_path
     end
   end
 
@@ -111,9 +111,9 @@ class Auth::AccountLinksController < ApplicationController
     else
       sign_in(user)
       claim_pending_import_for(user)
-      redirect_to root_path,
-                  notice: I18n.t('controllers.auth.account_links.pending_is_now_linked_to_your_account',
-                                 pending: label_for(pending))
+      flash[:notice] = I18n.t('controllers.auth.account_links.pending_is_now_linked_to_your_account',
+                              pending: label_for(pending))
+      redirect_to pending_invitation_path_for(user) || root_path
     end
   end
 

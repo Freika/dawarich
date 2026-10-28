@@ -7,7 +7,7 @@ module Geocoding
       merged = merged_configuration(config)
       lookup.define_singleton_method(:configuration) { merged }
       lookup.singleton_class.send(:private, :configuration)
-      lookup
+      lookup.extend(PersistentHttp::Lookup)
     end
 
     def self.merged_configuration(config)
@@ -19,6 +19,7 @@ module Geocoding
       case config.provider
       when :photon
         overrides = { host: config.host, use_https: config.use_https }
+        overrides[:language] = config.language if config.language.present?
         if config.api_key.present?
           overrides[:http_headers] = base[:http_headers].to_h.merge('X-Api-Key' => config.api_key)
         end

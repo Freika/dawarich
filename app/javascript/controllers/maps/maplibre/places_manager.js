@@ -1,20 +1,14 @@
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import { setPrivacyZonesFingerprint } from "maps_maplibre/utils/tile_freshness"
+import { PlacesTagFilters } from "./places_tag_filters"
 
 /**
  * Manages places-related operations for Maps V2
  * Including place creation, tag filtering, and layer management
  */
-export class PlacesManager {
-  constructor(controller) {
-    this.controller = controller
-    this.layerManager = controller.layerManager
-    this.api = controller.api
-    this.dataLoader = controller.dataLoader
-    this.settings = controller.settings
-  }
-
+export class PlacesManager extends PlacesTagFilters {
   /**
    * Toggle places layer
    */
@@ -40,7 +34,10 @@ export class PlacesManager {
 
           await this.initializePlaceTagFilters()
 
-          const loadedPlaces = placesLayer.data?.features?.length || 0
+          const loadedPlaces =
+            placesLayer.data?.features?.filter(
+              (feature) => feature.properties?.featureKind === "center",
+            ).length || 0
           this.controller.updateLoadingCounts({
             counts: { places: loadedPlaces },
             isComplete: true,
@@ -57,197 +54,15 @@ export class PlacesManager {
     }
   }
 
-  /**
-   * Initialize place tag filters (enable all by default or restore saved state)
-   */
-  async initializePlaceTagFilters({ reloadPlaces = true } = {}) {
-    const savedFilters = this.settings.placesTagFilters
-
-    if (Array.isArray(savedFilters)) {
-      return this.restoreSavedTagFilters(savedFilters, { reloadPlaces })
-    } else {
-      return this.enableAllTagsInitial({ reloadPlaces })
-    }
+  toggleArchivedPlaces(event) {
+    this.settings.showArchivedPlaces = event.target.checked
+    return this.loadPlacesWithTags(this.getSelectedPlaceTags())
   }
 
-  /**
-   * Restore saved tag filters
-   */
-  restoreSavedTagFilters(savedFilters, { reloadPlaces = true } = {}) {
-    const tagCheckboxes = document.querySelectorAll(
-      'input[name="place_tag_ids[]"]',
-    )
-
-    tagCheckboxes.forEach((checkbox) => {
-      const value =
-        checkbox.value === "untagged"
-          ? checkbox.value
-          : parseInt(checkbox.value, 10)
-      const shouldBeChecked = savedFilters.includes(value)
-
-      if (checkbox.checked !== shouldBeChecked) {
-        checkbox.checked = shouldBeChecked
-
-        const badge = checkbox.nextElementSibling
-        const color = badge.style.borderColor
-
-        if (shouldBeChecked) {
-          badge.classList.remove("badge-outline")
-          badge.style.backgroundColor = color
-          badge.style.color = "white"
-        } else {
-          badge.classList.add("badge-outline")
-          badge.style.backgroundColor = "transparent"
-          badge.style.color = color
-        }
-      }
-    })
-
-    this.syncEnableAllTagsToggle()
-    return reloadPlaces
-      ? this.loadPlacesWithTags(savedFilters)
-      : Promise.resolve()
-  }
-
-  /**
-   * Enable all tags initially
-   */
-  enableAllTagsInitial({ reloadPlaces = true } = {}) {
-    if (this.controller.hasEnableAllPlaceTagsToggleTarget) {
-      this.controller.enableAllPlaceTagsToggleTarget.checked = true
-    }
-
-    const tagCheckboxes = document.querySelectorAll(
-      'input[name="place_tag_ids[]"]',
-    )
-    const allTagIds = []
-
-    tagCheckboxes.forEach((checkbox) => {
-      checkbox.checked = true
-
-      const badge = checkbox.nextElementSibling
-      const color = badge.style.borderColor
-      badge.classList.remove("badge-outline")
-      badge.style.backgroundColor = color
-      badge.style.color = "white"
-
-      const value =
-        checkbox.value === "untagged"
-          ? checkbox.value
-          : parseInt(checkbox.value, 10)
-      allTagIds.push(value)
-    })
-
-    this.settings.placesTagFilters = allTagIds
-    SettingsManager.updateSetting("placesTagFilters", allTagIds)
-    return reloadPlaces ? this.loadPlacesWithTags(allTagIds) : Promise.resolve()
-  }
-
-  /**
-   * Get selected place tag IDs
-   */
-  getSelectedPlaceTags() {
-    return Array.from(
-      document.querySelectorAll('input[name="place_tag_ids[]"]:checked'),
-    ).map((cb) => {
-      const value = cb.value
-      return value === "untagged" ? value : parseInt(value, 10)
-    })
-  }
-
-  /**
-   * Filter places by selected tags
-   */
-  filterPlacesByTags(event) {
-    const badge = event.target.nextElementSibling
-    const color = badge.style.borderColor
-
-    if (event.target.checked) {
-      badge.classList.remove("badge-outline")
-      badge.style.backgroundColor = color
-      badge.style.color = "white"
-    } else {
-      badge.classList.add("badge-outline")
-      badge.style.backgroundColor = "transparent"
-      badge.style.color = color
-    }
-
-    this.syncEnableAllTagsToggle()
-
-    const checkedTags = this.getSelectedPlaceTags()
-    this.settings.placesTagFilters = checkedTags
-    SettingsManager.updateSetting("placesTagFilters", checkedTags)
-    this.loadPlacesWithTags(checkedTags)
-  }
-
-  /**
-   * Sync "Enable All Tags" toggle with individual tag states
-   */
-  syncEnableAllTagsToggle() {
-    if (!this.controller.hasEnableAllPlaceTagsToggleTarget) return
-
-    const tagCheckboxes = document.querySelectorAll(
-      'input[name="place_tag_ids[]"]',
-    )
-    const allChecked = Array.from(tagCheckboxes).every((cb) => cb.checked)
-
-    this.controller.enableAllPlaceTagsToggleTarget.checked = allChecked
-  }
-
-  /**
-   * Load places filtered by tags
-   */
-  async loadPlacesWithTags(tagIds = []) {
-    try {
-      let places = []
-
-      if (tagIds.length > 0) {
-        places = await this.api.fetchPlaces({ tag_ids: tagIds })
-      }
-
-      const placesGeoJSON = this.dataLoader.placesToGeoJSON(places)
-
-      const placesLayer = this.layerManager.getLayer("places")
-      if (placesLayer) {
-        placesLayer.update(placesGeoJSON)
-      }
-    } catch (error) {
-      console.error("[Maps V2] Failed to load places:", error)
-    }
-  }
-
-  /**
-   * Toggle all place tags on/off
-   */
-  toggleAllPlaceTags(event) {
-    const enableAll = event.target.checked
-    const tagCheckboxes = document.querySelectorAll(
-      'input[name="place_tag_ids[]"]',
-    )
-
-    tagCheckboxes.forEach((checkbox) => {
-      if (checkbox.checked !== enableAll) {
-        checkbox.checked = enableAll
-
-        const badge = checkbox.nextElementSibling
-        const color = badge.style.borderColor
-
-        if (enableAll) {
-          badge.classList.remove("badge-outline")
-          badge.style.backgroundColor = color
-          badge.style.color = "white"
-        } else {
-          badge.classList.add("badge-outline")
-          badge.style.backgroundColor = "transparent"
-          badge.style.color = color
-        }
-      }
-    })
-
-    const selectedTags = this.getSelectedPlaceTags()
-    this.settings.placesTagFilters = selectedTags
-    SettingsManager.updateSetting("placesTagFilters", selectedTags)
-    this.loadPlacesWithTags(selectedTags)
+  togglePlaceBoundaries(event) {
+    const enabled = event.target.checked
+    SettingsManager.updateSetting("placeBoundariesEnabled", enabled)
+    this.layerManager.getLayer("places")?.setBoundariesVisible(enabled)
   }
 
   /**
@@ -275,10 +90,9 @@ export class PlacesManager {
   /**
    * Handle place creation/update events. The event carries the saved place,
    * so when the layer already holds data we upsert that single feature in
-   * place instead of re-pulling the whole collection from the backend. A full
-   * fetch happens only on first load, when the layer has no data yet.
+   * place instead of re-pulling the whole collection from the backend.
    */
-  async handlePlaceCreated(event) {
+  async handlePlaceCreated(event, { ensureVisible = true } = {}) {
     try {
       const placesLayer = this.layerManager.getLayer("places")
       if (!placesLayer) {
@@ -287,40 +101,62 @@ export class PlacesManager {
       }
 
       const place = event?.detail?.place
-      if (place && placesLayer.data?.features?.length) {
-        this._upsertPlaceFeature(placesLayer, place)
+      const removedId = event?.detail?.removedId
+      if (place || removedId) {
+        this._refreshSavedPlace(placesLayer, place, removedId)
       } else {
         await this._reloadPlaces(placesLayer)
       }
 
-      this._ensurePlacesVisible(placesLayer)
+      if (ensureVisible) this._ensurePlacesVisible(placesLayer)
+      await this._refreshPrivacyZones()
     } catch (error) {
       console.error("[Maps V2] Failed to update places:", error)
     }
   }
 
   /**
+   * A saved place can add, move or drop a privacy zone. When the zone
+   * fingerprint changes, every masked layer is reloaded under the new zones,
+   * and the current position is hidden until the next live point because
+   * it may now sit inside a zone.
+   */
+  async _refreshPrivacyZones() {
+    const { fingerprint, failed } = await this.api.fetchPrivacyZones()
+    if (failed || !setPrivacyZonesFingerprint(fingerprint)) return
+
+    this.layerManager.getLayer("recentPoint")?.clear()
+    this.controller.element?.removeAttribute(
+      "data-maps--maplibre-current-position-value",
+    )
+    this.layerManager.getLayer("points-mvt")?.refresh()
+    this.layerManager.getLayer("tracks-mvt")?.refresh()
+    await this.controller.loadMapData({ showLoading: false, fitBounds: false })
+  }
+
+  /**
    * Handle place update event - same upsert path as creation.
    */
   async handlePlaceUpdated(event) {
-    await this.handlePlaceCreated(event)
+    await this.handlePlaceCreated(event, { ensureVisible: false })
   }
 
   /**
    * Append or replace a single place feature on the layer without touching
    * the backend. Replaces by id when the place is already present (edit).
    */
-  _upsertPlaceFeature(placesLayer, place) {
-    const feature = this.dataLoader.placesToGeoJSON([place]).features[0]
-    if (!feature) return
-
+  _refreshSavedPlace(placesLayer, place, removedId) {
+    const replacement =
+      place && (!place.archived || this.settings.showArchivedPlaces)
+        ? this.dataLoader.placesToGeoJSON([place]).features
+        : []
     const existing = placesLayer.data?.features || []
-    const index = existing.findIndex((f) => f.properties?.id === place.id)
-    const features =
-      index >= 0
-        ? existing.map((f, i) => (i === index ? feature : f))
-        : [...existing, feature]
-
+    const features = [
+      ...existing.filter(
+        (feature) => feature.properties?.id !== (place?.id ?? removedId),
+      ),
+      ...replacement,
+    ]
     placesLayer.update({ type: "FeatureCollection", features })
   }
 
@@ -330,7 +166,10 @@ export class PlacesManager {
    */
   async _reloadPlaces(placesLayer) {
     const selectedTags = this.getSelectedPlaceTags()
-    const places = await this.api.fetchPlaces({ tag_ids: selectedTags })
+    const places = await this.api.fetchPlaces({
+      tag_ids: selectedTags,
+      ...(this.settings.showArchivedPlaces ? { includeArchived: true } : {}),
+    })
     placesLayer.update(this.dataLoader.placesToGeoJSON(places))
   }
 

@@ -33,6 +33,9 @@
 
     <!-- Panel Body -->
     <div class="panel-body">
+      <div class="tab-content" data-tab-content="place" data-map-panel-target="tabContent">
+        <%= render 'map/maplibre/place_panel' %>
+      </div>
       <!-- Search Tab -->
       <div class="tab-content" data-tab-content="search" data-map-panel-target="tabContent">
         <div class="form-control w-full">
@@ -72,8 +75,6 @@
                      label: t('.visits'), description: t('.show_detected_area_visits') %>
           <%= render 'map/maplibre/layer_tile', target: 'placesToggle', action: 'togglePlaces', icon_name: 'map-pin',
                      label: t('.places'), description: t('.show_your_saved_places') %>
-          <%= render 'map/maplibre/layer_tile', target: 'areasToggle', action: 'toggleAreas', icon_name: 'square-dashed-mouse-pointer',
-                     label: t('.areas'), description: t('.show_defined_areas') %>
           <%= render 'map/maplibre/layer_tile', target: 'photosToggle', action: 'togglePhotos', icon_name: 'image',
                      label: t('.photos'), description: t('.show_geotagged_photos') %>
           <%= render 'map/maplibre/layer_tile', target: 'heatmapToggle', action: 'toggleHeatmap', icon_name: 'flame', pro: true,
@@ -156,6 +157,18 @@
 
           <div class="layer-options__group space-y-2" data-maps--maplibre-target="placesFilters" style="display: none;">
             <span class="layer-options__label"><%= t('.places') %></span>
+            <label class="label cursor-pointer justify-start gap-2 py-0">
+              <input type="checkbox" class="toggle toggle-sm shrink-0" data-testid="show-archived-places"
+                     data-action="change->maps--maplibre#toggleArchivedPlaces">
+              <span class="label-text text-sm min-w-0"><%= t('places.archive.show_on_map') %></span>
+            </label>
+            <label class="label cursor-pointer justify-start gap-2 py-0">
+              <input type="checkbox"
+                     class="toggle toggle-sm"
+                     data-maps--maplibre-target="placeBoundariesToggle"
+                     data-action="change->maps--maplibre#togglePlaceBoundaries">
+              <span class="label-text text-sm"><%= t('.show_place_boundaries') %></span>
+            </label>
             <label class="label cursor-pointer justify-start gap-2 py-0">
               <input type="checkbox"
                      class="toggle toggle-sm"
@@ -344,6 +357,33 @@
               <%= icon 'rotate-ccw', class: 'h-3 w-3' %>
               <%= t('.reset_to_defaults') %>
             </button>
+            <div data-controller="speed-color-editor"
+                 data-action="speed-color-editor:save->maps--maplibre#updateSpeedColorScale">
+              <label class="label cursor-pointer gap-2">
+                <span class="label-text text-sm"><%= t('.speed_colored_tracks') %></span>
+                <input type="checkbox" name="speed_colored_routes" class="toggle toggle-sm toggle-primary"
+                       data-action="change->maps--maplibre#toggleSpeedColoredRoutes">
+              </label>
+              <button type="button" class="btn btn-xs btn-ghost"
+                      data-action="click->speed-color-editor#open"><%= t('.edit_speed_colors') %></button>
+              <dialog class="modal" data-speed-color-editor-target="modal" aria-labelledby="track-speed-color-title">
+                <div class="modal-box">
+                  <h3 id="track-speed-color-title" class="font-bold text-lg"><%= t('javascript.speed_gradient.title') %></h3>
+                  <p class="label"><%= t('javascript.speed_gradient.color_stops') %></p>
+                  <div class="space-y-2" data-speed-color-editor-target="stopsList"></div>
+                  <button type="button" class="btn btn-sm btn-ghost mt-2"
+                          data-action="click->speed-color-editor#addStop"><%= t('javascript.speed_gradient.add_stop') %></button>
+                  <p class="label"><%= t('javascript.speed_gradient.preview') %></p>
+                  <div class="h-7 rounded" data-speed-color-editor-target="preview"></div>
+                  <div class="modal-action flex-wrap">
+                    <button type="button" class="btn btn-sm btn-ghost" data-action="click->speed-color-editor#resetToDefault"><%= t('javascript.common.reset_to_default') %></button>
+                    <button type="button" class="btn btn-sm" data-action="click->speed-color-editor#close"><%= t('javascript.common.cancel') %></button>
+                    <button type="button" class="btn btn-sm btn-primary" data-action="click->speed-color-editor#save"><%= t('javascript.common.save') %></button>
+                  </div>
+                </div>
+                <button type="button" class="modal-backdrop" data-action="click->speed-color-editor#close"><%= t('javascript.common.close') %></button>
+              </dialog>
+            </div>
           </div>
 
           <div class="divider"></div>
@@ -616,6 +656,36 @@
               <span class="label-text font-medium"><%= t('.gps_noise_filtering') %></span>
             </label>
             <p class="text-sm text-base-content/60 mt-1"><%= t('.hide_readings_that_cannot_be_a_real_position_impossible_jumps') %></p>
+          </div>
+
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox"
+                     name="gpsAccuracyFilterEnabled"
+                     class="toggle toggle-primary" />
+              <span class="label-text font-medium"><%= t('.hide_inaccurate_points') %></span>
+            </label>
+            <p class="text-sm text-base-content/60 mt-1"><%= t('.hide_inaccurate_points_hint') %></p>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-medium"><%= t('.accuracy_threshold') %></span>
+              <span class="label-text-alt" data-maps--maplibre-target="gpsAccuracyThresholdValue">100m</span>
+            </label>
+            <input type="range"
+                   name="gpsAccuracyThreshold"
+                   min="50"
+                   max="1000"
+                   step="10"
+                   value="100"
+                   class="range range-sm"
+                   data-action="input->maps--maplibre#updateGpsAccuracyThresholdDisplay" />
+            <div class="w-full flex justify-between text-xs px-2 mt-1">
+              <span>50m</span>
+              <span>500m</span>
+              <span>1000m</span>
+            </div>
           </div>
 
           <button type="button"
@@ -905,14 +975,7 @@
                     data-maps--maplibre-target="selectAreaButton"
                     data-action="click->maps--maplibre#startSelectArea">
               <%= icon 'square-dashed-mouse-pointer' %>
-              <span class="text-xs"><%= t('.select_area') %></span>
-            </button>
-
-            <button type="button"
-                    class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
-                    data-action="click->maps--maplibre#startCreateArea">
-              <%= icon 'circle-plus' %>
-              <span class="text-xs"><%= t('.create_area') %></span>
+              <span class="text-xs"><%= t('.select_data_on_map') %></span>
             </button>
 
             <button type="button"
@@ -931,6 +994,13 @@
               </button>
             <% end %>
           </div>
+
+          <label class="label cursor-pointer justify-start gap-2">
+            <input type="checkbox"
+                   class="checkbox checkbox-sm"
+                   data-maps--maplibre-target="selectAllTimeCheckbox">
+            <span class="label-text"><%= t('.select_data_all_time') %></span>
+          </label>
 
           <!-- Immich Enrich Panel -->
           <% if current_user.immich_integration_configured? && current_user.full_access? %>
@@ -963,6 +1033,7 @@
                             <span class="label-text text-xs"><%= t('.from') %></span>
                           </label>
                           <input type="date" class="input input-bordered input-sm"
+                                 value="<%= @start_at.to_date %>"
                                  data-maps--immich-enrich-target="startDate">
                         </div>
                         <div class="form-control">
@@ -970,6 +1041,7 @@
                             <span class="label-text text-xs"><%= t('.to') %></span>
                           </label>
                           <input type="date" class="input input-bordered input-sm"
+                                 value="<%= @end_at.to_date %>"
                                  data-maps--immich-enrich-target="endDate">
                         </div>
                       </div>

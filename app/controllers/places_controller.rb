@@ -2,33 +2,54 @@
 
 class PlacesController < ApplicationController
   include FlashStreamable
+  include PlaceBulkActions
+
+  MERGE_CANDIDATE_LIMIT = 20
+  MERGE_NEARBY_RADIUS_KM = 5
 
   before_action :authenticate_user!
-  before_action :set_place, only: %i[destroy update]
+  before_action :set_place, only: %i[confirm destroy update merge]
 
   def index
-    @places = current_user.places.page(params[:page]).per(20)
+    @tags = current_user.tags.ordered
+    if params[:view] == 'duplicates'
+      @clusters = Places::PossibleDuplicates.new(user: current_user).call
+    else
+      @places = Places::ListQuery.new(user: current_user, params:).call
+                                 .includes(:tags).page(params[:page]).per(20).load
+    end
+  end
+
+  def bulk_update
+    perform_place_bulk_action(params[:operation].presence_in(%w[add_tag remove_tag archive unarchive]))
+  end
+
+  def bulk_destroy
+    perform_place_bulk_action('delete')
+  end
+
+  def bulk_merge
+    perform_place_bulk_action('merge')
   end
 
   def show
     @place = current_user.places.includes(:tags).find(params[:id])
-    @recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
-
-    render layout: false
+    prepare_drawer
   end
 
   def create
     @place = current_user.places.build(place_params.except(:tag_ids))
     @place.user_named = true
+    @place.reattribute_suggested_visits_on_create = true
+    visit = visit_for_attachment
 
-    if @place.save
-      add_tags if tag_ids.present?
+    if save_place_and_attach_visit(visit)
       @place = current_user.places.includes(:tags, :active_visits).find(@place.id)
 
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: [
-            turbo_stream.replace('place-creation-data', html: place_data_element),
+            turbo_stream.replace('place-creation-data', html: place_data_element(visit_id: visit&.id)),
             stream_flash(:success, I18n.t('controllers.places.created'))
           ]
         end
@@ -50,29 +71,21 @@ class PlacesController < ApplicationController
 
       respond_to do |format|
         format.turbo_stream do
-          if drawer_request?
-            recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
-            render turbo_stream: [
-              turbo_stream.replace(
-                'place-drawer',
-                partial: 'places/drawer',
-                locals: { place: @place, recent_visits: recent_visits }
-              ),
-              stream_flash(:success, I18n.t('controllers.places.updated'))
-            ]
-          else
-            render turbo_stream: [
-              turbo_stream.replace('place-creation-data', html: place_data_element(updated: true)),
-              stream_flash(:success, I18n.t('controllers.places.updated'))
-            ]
-          end
+          streams = [turbo_stream.replace('place-creation-data', html: place_data_element(updated: true))]
+          streams.unshift(drawer_stream) if drawer_request?
+          streams << stream_flash(:success, I18n.t('controllers.places.updated'))
+          render turbo_stream: streams
         end
+        format.html { redirect_to place_url(@place), notice: I18n.t('controllers.places.updated'), status: :see_other }
       end
     else
+      prepare_drawer
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: stream_flash(:error, @place.errors.full_messages.join(', '))
+          render turbo_stream: [drawer_stream, stream_flash(:error, @place.errors.full_messages.join(', '))],
+                 status: :unprocessable_content
         end
+        format.html { render :show, status: :unprocessable_content }
       end
     end
   end
@@ -96,10 +109,73 @@ class PlacesController < ApplicationController
   end
 
   def destroy
-    @place.destroy!
+    Places::Destroy.new(user: current_user, place: @place).call
 
-    redirect_to places_url(page: params[:page]), notice: I18n.t('controllers.places.place_was_successfully_destroyed'),
-status: :see_other
+    message = I18n.t('controllers.places.place_was_successfully_destroyed')
+    if params[:map_panel] == '1' && request.format.turbo_stream?
+      render turbo_stream: [
+        turbo_stream.replace('place-creation-data', html: helpers.tag.div(
+          id: 'place-creation-data', data: { deleted_id: @place.id }, class: 'hidden'
+        )),
+        stream_flash(:success, message)
+      ]
+    else
+      redirect_to places_url(page: params[:page]), notice: message, status: :see_other
+    end
+  end
+
+  def confirm
+    @place.update!(source: :manual, name_locked_at: (Time.current unless @place.name == Place::DEFAULT_NAME))
+    @place.adopt!
+
+    redirect_to places_url(filter: params[:filter], page: params[:page]),
+                notice: I18n.t('controllers.places.updated'), status: :see_other
+  end
+
+  def merge
+    duplicate = current_user.places.where.not(id: @place.id).find(params[:duplicate_place_id])
+    duplicate_name = duplicate.name
+    Places::Merge.new(user: current_user, survivor: @place, duplicate: duplicate).call
+
+    @place = current_user.places.includes(:tags).find(@place.id)
+    @recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
+    @merge_candidates = merge_candidates_for(@place)
+
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: [
+          turbo_stream.update(
+            'place-drawer',
+            partial: 'places/drawer',
+            locals: { place: @place, recent_visits: @recent_visits, merge_candidates: @merge_candidates }
+          ),
+          turbo_stream.replace('place-creation-data',
+                               html: place_data_element(updated: true, removed_id: duplicate.id)),
+          stream_flash(
+            :success,
+            I18n.t('controllers.places.merged', duplicate: duplicate_name, survivor: @place.name)
+          )
+        ]
+      end
+      format.html do
+        redirect_to places_url,
+                    notice: I18n.t('controllers.places.merged', duplicate: duplicate_name, survivor: @place.name)
+      end
+    end
+  rescue Places::Merge::VisitConflict => e
+    conflict = e.conflicts.first
+    message = I18n.t(
+      'controllers.places.merge_visit_conflict',
+      first_id: conflict[:survivor_id],
+      second_id: conflict[:duplicate_id],
+      started_at: I18n.l(conflict[:started_at], format: :long)
+    )
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: stream_flash(:error, message), status: :unprocessable_content
+      end
+      format.html { redirect_to places_url, alert: message, status: :see_other }
+    end
   end
 
   private
@@ -108,17 +184,44 @@ status: :see_other
     @place = current_user.places.find(params[:id])
   end
 
+  def prepare_drawer
+    @recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
+    @merge_candidates = merge_candidates_for(@place)
+  end
+
+  def drawer_stream
+    prepare_drawer
+    turbo_stream.update('place-drawer', partial: 'places/drawer', locals: {
+                          place: @place, recent_visits: @recent_visits, merge_candidates: @merge_candidates
+                        })
+  end
+
   def drawer_request?
     request.headers['Turbo-Frame'] == 'place-drawer'
   end
 
   def place_params
-    params.require(:place).permit(:name, :latitude, :longitude, :source, :note, tag_ids: [])
+    params.require(:place).permit(:name, :latitude, :longitude, :source, :note, :visit_radius, :geofence, :archived,
+                                  tag_ids: [])
   end
 
   def tag_ids
     ids = params.dig(:place, :tag_ids)
-    Array(ids).compact
+    Array(ids).compact_blank
+  end
+
+  def merge_candidates_for(place)
+    query = params[:merge_query].to_s.strip
+    scope = current_user.places.where.not(id: place.id).where.not(lonlat: nil)
+    scope = if query.length >= 2
+              scope.where('name ILIKE ?', "%#{Place.sanitize_sql_like(query)}%")
+            else
+              scope.near([place.lat, place.lon], MERGE_NEARBY_RADIUS_KM, :km)
+            end
+
+    scope.with_distance([place.lat, place.lon], :km)
+         .order(Arel.sql('distance_in_km ASC'), :name)
+         .limit(MERGE_CANDIDATE_LIMIT)
   end
 
   def add_tags
@@ -127,24 +230,45 @@ status: :see_other
   end
 
   def set_tags
-    tag_ids_param = Array(params.dig(:place, :tag_ids)).compact
-    tags = current_user.tags.where(id: tag_ids_param)
+    tags = current_user.tags.where(id: tag_ids)
     @place.tags = tags
   end
 
-  def place_data_element(updated: false)
-    data = serialize_place(@place)
-    helpers.tag.div(
-      id: 'place-creation-data',
-      data: { place: data.to_json, created: !updated, updated: updated },
-      class: 'hidden'
-    )
+  def place_data_element(updated: false, visit_id: nil, removed_id: nil)
+    data = { created: !updated, updated: updated, visit_id: visit_id, removed_id: removed_id }
+    if Maps::PrivacyZoneMasker.new(current_user).mask_places(current_user.places.where(id: @place.id)).exists?
+      data[:place] = serialize_place(@place).to_json
+    else
+      data[:duplicate_id] = removed_id
+      data[:removed_id] = @place.id
+    end
+
+    helpers.tag.div(id: 'place-creation-data', data: data, class: 'hidden')
+  end
+
+  def visit_for_attachment
+    return if params[:visit_id].blank?
+
+    current_user.scoped_visits.find(params[:visit_id])
+  end
+
+  def save_place_and_attach_visit(visit)
+    Place.transaction do
+      return false unless @place.save
+
+      add_tags if tag_ids.present?
+      visit&.clear_echoed_name
+      visit&.update!(place: @place, area: nil, location_label: @place.name, status: :confirmed)
+    end
+
+    true
   end
 
   def serialize_place(place)
     {
-      id: place.id, name: place.name, latitude: place.lat, longitude: place.lon,
-      source: place.source, note: place.note, icon: place.tags.first&.icon,
+      id: place.id, name: place.name, name_locked: place.name_locked?, latitude: place.lat, longitude: place.lon,
+      source: place.source, note: place.note, visit_radius: place.visit_radius, geofence: place.geofence,
+      archived: place.archived?, icon: place.tags.first&.icon,
       color: place.tags.first&.color, visits_count: place.active_visits.size,
       tags: place.tags.map { |t| { id: t.id, name: t.name, icon: t.icon, color: t.color } }
     }

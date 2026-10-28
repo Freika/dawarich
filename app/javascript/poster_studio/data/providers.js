@@ -45,9 +45,13 @@ export class MapPageProvider {
     if (!controller) return
     const { startAt, endAt } = this.dateRange()
     if (controller.api.importId) {
-      await controller.mapDataManager?.ensurePointsLoaded()
+      const [, { zones }] = await Promise.all([
+        controller.mapDataManager?.ensurePointsLoaded(),
+        controller.api.fetchPrivacyZones(),
+      ])
       this._tracks = RouteSegmenter.pointsToRoutes(
         controller._getLoadedPoints?.() ?? [],
+        { privacyZones: zones },
       )
       return
     }
@@ -100,29 +104,13 @@ export class MapPageProvider {
   }
 }
 
-export function buildTripGeojson({
-  dayRouteCollections = [],
-  pathData = null,
-}) {
-  const features = []
-  for (const collection of dayRouteCollections) {
-    features.push(...(collection?.features ?? []))
+export function buildTripGeojson({ dayRouteCollections = [] }) {
+  return {
+    type: "FeatureCollection",
+    features: dayRouteCollections.flatMap(
+      (collection) => collection?.features ?? [],
+    ),
   }
-  if (!features.length && pathData) {
-    try {
-      const coordinates = JSON.parse(pathData)
-      if (Array.isArray(coordinates) && coordinates.length >= 2) {
-        features.push({
-          type: "Feature",
-          properties: {},
-          geometry: { type: "LineString", coordinates },
-        })
-      }
-    } catch {
-      // malformed path data falls through to an empty collection
-    }
-  }
-  return { type: "FeatureCollection", features }
 }
 
 export class TripProvider {
