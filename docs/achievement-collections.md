@@ -101,6 +101,20 @@ Country/world areas are a union of country land, never a sum of overlapping citi
 `manifest.json` pins internal subject codes independently of replaceable OSM
 relation IDs; a source replacement must preserve the existing card identity.
 
+## Resource footprint
+
+Card artwork is generated from shared vector geometry; there is no saved PNG
+per card or user. `globes.json` is 508,198 bytes (about 496 KiB; 168 KiB gzip)
+for all five geographic milestones. The three new compressed geodata bundles
+(countries, lakes and pilot cities/parks) total 6,073,773 bytes (about 5.79 MiB).
+Together those geometry assets add about 6.28 MiB before Git compression.
+
+Shared-card OG PNGs are rendered in memory on request and sent with `no-store`;
+this implementation does not persist them in Active Storage or on disk. Browser
+screenshots and their ZIPs are local review artifacts outside this Git checkout.
+Exploration cells, snapshots and qualification evidence do consume database
+storage as history grows; that is separate from artwork files.
+
 ## Database and workers
 
 Migrate normally. New exploration migrations preserve the dates/identities of
