@@ -82,7 +82,7 @@ RSpec.describe Places::AreasBackfill do
 
     it 'raises after recording an Area migration failure so the job retries' do
       area = create(:area)
-      area.update_column(:name, 'x' * 256)
+      area.update_column(:name, '')
 
       expect { backfill.call }.to raise_error(ActiveRecord::RecordInvalid)
       expect(backfill.report[:failed_area_ids]).to contain_exactly(area.id)
@@ -98,7 +98,7 @@ RSpec.describe Places::AreasBackfill do
 
     it 'migrates later valid Areas before retrying a permanently invalid one' do
       invalid = create(:area)
-      invalid.update_column(:name, 'x' * 256)
+      invalid.update_column(:name, '')
       valid = create(:area)
       visit = create(:visit, user: valid.user, area: valid, place: nil)
 

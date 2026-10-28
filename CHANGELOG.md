@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.19.1] - Unreleased
+
+### Fixed
+
+- Legacy areas with names longer than 255 characters now migrate to places without repeatedly failing, keeping their notes and visits (#3930).
+
 ## [1.19.0] - 2026-10-27, Berlin
 
 ### ⚠️ Upgrade notes
