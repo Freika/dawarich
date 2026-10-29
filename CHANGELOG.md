@@ -4,17 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.20.0] - 2026-10-28, Berlin
+## [1.20.0] - 2026-10-29, Berlin
 
 ### ⚠️ Upgrade notes
 
 - Run the database migrations before starting the updated application and workers. They add exploration and achievement data and durable exploration activation; existing points are retained.
+- Migrations that install database triggers on points wait at most 5 seconds for a table lock. If one stops with a lock timeout, stop the application and workers or wait for running imports to finish, then run the migrations again; they are safe to re-run.
 - The initial geographic calculation runs in the background and can take longer while local boundary data is installed. The initial city and national-park catalog covers Berlin, Hamburg, Dresden, Harz, Saxon Switzerland and Eifel; it is not a worldwide catalog.
 
 ### Added
 
 - Add personal achievement cards for city exploration, returning to places, collecting all seasons, national parks and geographic milestones. Cards include evidence, level history and opt-in public sharing with privacy-aware HTML, embeds and images.
-- Share one all-history resolution-9 H3 ledger between city cards and map fog. Date ranges highlight first discoveries; pilot boundaries cover Berlin, Hamburg, Dresden and three German national parks. Cards and fog reflect new or deleted points and edited places or visits within an hour; selection, boundary and privacy-zone changes apply immediately.
+- Share one all-history resolution-9 H3 ledger between city cards and map fog. Date ranges highlight first discoveries; pilot boundaries cover Berlin, Hamburg, Dresden and three German national parks. The first calculation starts when you open the fog or select a city, and future-dated points never open cells or count toward city levels. Cards and fog reflect new or deleted points and edited places or visits within an hour; selection, boundary and privacy-zone changes apply immediately.
 - Collect Benelux, Baltics and Scandinavia achievement sets by visiting their three member countries. Each set shows visited countries, dates and the countries still to explore, with public sharing available when enabled. Existing location history counts automatically.
 - Test a geocoding provider with your own coordinates in Instance settings, including providers with regional coverage. Leave both fields blank to use the existing default coordinates. (#3714)
 - Click a photo cluster on the map to browse its photos without zooming. The gallery shows 24 thumbnails per page, supports phones and keyboard navigation, and keeps photos with identical coordinates accessible at high zoom. (#3652)
@@ -29,10 +30,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Release upgrades and rollbacks can be safely retried without replacing existing exploration activation times.
-
-- Start historical exploration rebuilds only after opening exploration or selecting a city, and keep retrying interrupted first calculations.
-- Ignore future-dated points when opening explored map cells and awarding city achievement levels.
 - Full-history visit redetection now completes when legacy visits contain points without coordinates, preserving confirmed visits that have no usable observations (#3931).
 - Live visit detection keeps an ongoing visit and its points in place as new points arrive, instead of rewriting every point of the visit each time. Suggested visits keep their ID between detection runs. This greatly reduces database writes and index growth on busy instances.
 - Enrich photos places a video where its recording started. Video timestamps mark the end of the recording, so the scan now subtracts the video's duration before looking up your location history. (#3293)
