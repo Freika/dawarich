@@ -10,6 +10,8 @@ RSpec.describe AirTrail::ImportFlights do
     end
   end
 
+  before { stub_request(:get, %r{\Ahttps://a\.example/api/v1/flights}).to_return(status: 404) }
+
   def airtrail_flight(id:, dep: '2026-04-20T10:00:00.000+00:00', arr: '2026-04-20T12:00:00.000+00:00',
                       dep_scheduled: nil, arr_scheduled: nil, date: '2026-04-20')
     {
@@ -116,6 +118,48 @@ RSpec.describe AirTrail::ImportFlights do
     expect(user.reload.settings['other_key']).to eq('x')
     expect(user.settings['airtrail_last_synced_at']).to be_present
   end
+
+  describe 'flight tracks' do
+    let(:track) { [[13.493, 52.351], [9.0, 51.5], [2.547, 49.009]] }
+
+    it 'stores the AirTrail track of a synced flight' do
+      allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])
+      stub_request(:get, 'https://a.example/api/v1/flights?limit=100')
+        .to_return(status: 200, headers: { 'Content-Type' => 'application/json' },
+                   body: { data: [{ id: 1, track: { updatedAt: '2026-10-20T08:00:00.000Z' } }],
+                           page: { nextCursor: nil } }.to_json)
+      stub_request(:get, 'https://a.example/api/v1/flights/1/track')
+        .to_return(status: 200, headers: { 'Content-Type' => 'application/json' },
+                   body: { data: { flightId: 1, coordinates: track } }.to_json)
+
+      described_class.new(user).call
+
+      expect(user.flights.first.track_coordinates).to eq(track)
+    end
+
+    it 'keeps a stored track when the flight list is synced again' do
+      create(:flight, user: user, external_id: 1, track_coordinates: track,
+                      track_updated_at: Time.utc(2026, 10, 20, 8))
+      allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])
+
+      described_class.new(user).call
+
+      flight = user.flights.first
+      expect(flight.flight_number).to eq('AF1235')
+      expect(flight.track_coordinates).to eq(track)
+      expect(flight.track_updated_at).to eq(Time.utc(2026, 10, 20, 8))
+    end
+
+    it 'finishes the sync when AirTrail has no track API' do
+      allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])
+
+      result = described_class.new(user).call
+
+      expect(result).to include(created: 1)
+      expect(user.reload.settings['airtrail_last_synced_at']).to be_present
+    end
+  end
+
   describe 'stats recalculation' do
     it 'enqueues a stats recalculation for the month a synced flight falls in' do
       allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])

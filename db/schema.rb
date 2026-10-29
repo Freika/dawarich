@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_28_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_29_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -393,6 +393,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_200000) do
     t.float "to_lat"
     t.float "to_lon"
     t.string "to_name"
+    t.jsonb "track_coordinates"
+    t.datetime "track_updated_at"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id", "departure_time"], name: "index_flights_on_user_id_and_departure_time"
