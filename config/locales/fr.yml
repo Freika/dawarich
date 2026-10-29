@@ -1776,7 +1776,7 @@ fr:
         track_split_time_unit: min
         track_split_time_hint: "Les intervalles plus longs créent un nouveau trajet et permettent aux voyages d’utiliser l’enregistrement d’un autre appareil. Après modification, choisissez « Recalculer » sur chaque voyage concerné pour actualiser le parcours et la distance enregistrés."
         split_tracks_at_midnight: "Couper les trajets à minuit"
-        split_tracks_at_midnight_hint: "Termine chaque trajet à minuit dans votre fuseau horaire, pour qu’aucun trajet ne couvre deux jours. Pour l’appliquer aux trajets passés, choisissez « Recalculer les trajets & statistiques » ci-dessous."
+        split_tracks_at_midnight_hint: "Termine chaque trajet à minuit dans le fuseau horaire de vos paramètres généraux, pour qu’aucun trajet ne couvre deux jours. Pour l’appliquer aux trajets passés, choisissez d’abord « Appliquer les paramètres », puis « Recalculer les trajets & statistiques » ci-dessous."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Masquer les
           lectures qui ne peuvent pas correspondre à une position réelle — sauts
           impossibles, coordonnées invalides. Désactivez cette option pour voir tous
@@ -2666,9 +2666,7 @@ fr:
         points_within_this_radius_are_treated_as_the_same_visit: 'Les points à l''intérieur de ce rayon sont traités comme la même visite. Un séjour dans ce rayon termine aussi un trajet (au moins 100 m). Défaut : 100.'
         lower_more_visits_suggested_including_brief_stops_default_3: 'Inférieur =
           plus de visites suggérées, y compris les arrêts courts. Défaut : 3.'
-        skip_stops_shorter_than_this_raise_to_ignore_short_drive: 'Ignorez les arrêts
-          plus courts que cette durée. Augmentez-la pour ignorer les passages rapides ;
-          réduisez-la pour détecter les arrêts brefs. Valeur par défaut : 5.'
+        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "Ignorez les arrêts plus courts que cette durée. Augmentez-la pour ignorer les passages rapides ; réduisez-la pour détecter les arrêts brefs. Valeur par défaut : 5. Un arrêt de cette durée termine aussi un trajet s’il dure au moins 5 minutes."
         visit_detection: Détection de visites
         visit_radius_meters: Rayon de visite (mètres)
         minimum_points_to_count_as_a_visit: Points minimum pour compter comme une

@@ -1075,7 +1075,7 @@ ca:
         track_split_time_unit: min
         track_split_time_hint: "Els intervals més llargs inicien un trajecte nou i permeten als viatges utilitzar l’enregistrament d’un altre dispositiu. Després de canviar aquest valor, prem «Recalcula» a cada viatge afectat per actualitzar-ne la ruta i la distància desades."
         split_tracks_at_midnight: "Divideix els trajectes a mitjanit"
-        split_tracks_at_midnight_hint: "Acaba cada trajecte a mitjanit a la teva zona horària, perquè cap trajecte no abasti dos dies. Per aplicar-ho als trajectes anteriors, prem «Recalcula trajectes i estadístiques» a sota."
+        split_tracks_at_midnight_hint: "Acaba cada trajecte a mitjanit a la zona horària de la configuració general, perquè cap trajecte no abasti dos dies. Per aplicar-ho als trajectes anteriors, prem primer «Aplica la configuració» i després «Recalcula trajectes i estadístiques» a sota."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Amaga les lectures que no poden ser una posició real — salts impossibles, coordenades incorrectes. Desactiva-ho per veure tots els punts en brut.
         hide_inaccurate_points: "Amaga els punts imprecisos"
         hide_inaccurate_points_hint: "Amaga també els punts amb una precisió informada pitjor que el llindar de sota. Ajuda amb el seguiment del mòbil que afegeix soroll lateral; deixa-ho desactivat per a les importacions de Google Timeline, els punts aproximats de les quals continuen sobre la carretera. Per aplicar-ho a l’historial, prem primer «Aplica la configuració» i després «Torna a avaluar les dades passades»."
@@ -1870,7 +1870,7 @@ ca:
         these_settings_control_how_the_app_groups_your_gps_points: Aquesta configuració controla com l'app agrupa els teus punts GPS en visites a llocs.
         points_within_this_radius_are_treated_as_the_same_visit: Els punts dins d'aquest radi es tracten com la mateixa visita. Una estada dins d'aquest radi també tanca un trajecte (com a mínim 100 m). Per defecte 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Com més baix, més visites se suggereixen, incloent-hi parades breus. Per defecte 3.
-        skip_stops_shorter_than_this_raise_to_ignore_short_drive: Omet les parades més curtes que això. Augmenta'l per ignorar parades breus en cotxe; redueix-lo per detectar recados curts. Per defecte 5.
+        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "Omet les parades més curtes que això. Augmenta'l per ignorar parades breus en cotxe; redueix-lo per detectar recados curts. Per defecte 5. Una parada tan llarga també acaba un trajecte si dura almenys 5 minuts."
         visit_detection: Detecció de visites
         visit_radius_meters: Radi de visita (metres)
         minimum_points_to_count_as_a_visit: Punts mínims perquè compti com a visita

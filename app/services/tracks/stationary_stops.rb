@@ -22,6 +22,7 @@
 #
 class Tracks::StationaryStops
   DEFAULT_RADIUS_METERS = 100
+  MIN_VISIT_STOP_SECONDS = 5 * 60
   METERS_PER_DEGREE = 111_320
 
   def self.radius_for(user)
@@ -30,8 +31,10 @@ class Tracks::StationaryStops
 
   # A stop long enough to be a visit ends a track even when it is shorter than the route gap.
   # Each threshold finds its own stops, so a short one never loses the stops of a sparse logger.
+  # Below five minutes a slow walk stays within the radius long enough to look like a stop.
   def self.thresholds_for(user, route_gap_seconds = user.safe_settings.minutes_between_routes * 60)
-    [route_gap_seconds, [route_gap_seconds, user.safe_settings.visit_min_duration_minutes * 60].min].uniq
+    visit_seconds = [user.safe_settings.visit_min_duration_minutes * 60, MIN_VISIT_STOP_SECONDS].max
+    [route_gap_seconds, [route_gap_seconds, visit_seconds].min].uniq
   end
 
   # samples: [[timestamp, lon, lat], ...] ordered by timestamp; lon and lat may be nil.

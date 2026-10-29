@@ -93,6 +93,19 @@ RSpec.describe 'Tracks split at visits shorter than the route gap' do
     end
   end
 
+  it 'keeps a slow walk in one track when visits need only 1 minute' do
+    user = stop_user('visit_min_duration_minutes' => 1)
+    feed = (0..180).map do |step|
+      create(:point, user: user, tracker_id: 'synthetic-short-visit', timestamp: start_timestamp + step * 10,
+                     lonlat: "POINT(#{-140.0 + step * 0.00015} -40.0)")
+    end
+
+    process_bulk(user, feed)
+
+    expect(feed.first.reload.track_id).to be_present
+    expect(feed.map { |point| point.reload.track_id }.uniq).to eq([feed.first.track_id])
+  end
+
   it 'keeps a 10-minute stop inside one track when visits need 15 minutes' do
     user = stop_user('visit_min_duration_minutes' => 15)
     feed = stop_rows(10).map { |minute, lon| create_stop_point(user, minute, lon) }

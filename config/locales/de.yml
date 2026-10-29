@@ -1128,7 +1128,7 @@ de:
         track_split_time_unit: 'Min.'
         track_split_time_hint: "Längere Pausen starten einen neuen Track und erlauben Reisen, die Aufzeichnung eines anderen Geräts zu verwenden. Nach einer Änderung auf den betroffenen Reiseseiten „Wiederberechnen“ wählen, um gespeicherte Routen und Entfernungen zu aktualisieren."
         split_tracks_at_midnight: "Tracks um Mitternacht trennen"
-        split_tracks_at_midnight_hint: "Beendet jeden Track um Mitternacht in deiner Zeitzone, sodass kein Track zwei Tage umfasst. Um es auf frühere Tracks anzuwenden, unten „Tracks & Statistiken neu berechnen“ drücken."
+        split_tracks_at_midnight_hint: "Beendet jeden Track um Mitternacht in der Zeitzone aus deinen allgemeinen Einstellungen, sodass kein Track zwei Tage umfasst. Um es auf frühere Tracks anzuwenden, zuerst „Einstellungen anwenden“ und dann unten „Tracks & Statistiken neu berechnen“ drücken."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Blendet Messwerte aus, die keine echte Position darstellen können — etwa unmögliche Sprünge oder beschädigte Koordinaten. Deaktivieren, um alle Rohpunkte anzuzeigen.
         hide_inaccurate_points: "Ungenaue Punkte ausblenden"
         hide_inaccurate_points_hint: "Blendet zusätzlich Punkte aus, deren gemeldete Genauigkeit schlechter als der Schwellenwert unten ist. Hilft bei Handy-Tracking mit seitlichem Rauschen; für Google-Timeline-Importe ausgeschaltet lassen, deren grobe Punkte trotzdem auf der Straße liegen. Um es auf den Verlauf anzuwenden, zuerst „Einstellungen anwenden“ und dann „Vergangene Daten erneut prüfen“ drücken."
@@ -1873,7 +1873,7 @@ de:
         these_settings_control_how_the_app_groups_your_gps_points: Diese Einstellungen steuern, wie die App deine GPS-Punkte in Aufenthalte zu Orten gruppieren wird.
         points_within_this_radius_are_treated_as_the_same_visit: Punkte innerhalb dieses Radius werden als der gleiche Aufenthalt betrachtet. Ein Aufenthalt in diesem Radius beendet auch einen Track (mindestens 100 m). Standard 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Niedriger = mehr Aufenthalte werden vorgeschlagen, einschließlich kurzer Halte. Standard 3.
-        skip_stops_shorter_than_this_raise_to_ignore_short_drive: Übergehe Halte, die kürzer als dies sind. Erhöhe, um kurze Durchfahrten zu ignorieren; senke, um kurze Einkäufe zu erfassen. Standard 5.
+        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "Übergehe Halte, die kürzer als dies sind. Erhöhe, um kurze Durchfahrten zu ignorieren; senke, um kurze Einkäufe zu erfassen. Standard 5. Ein so langer Halt beendet auch einen Track, wenn er mindestens 5 Minuten dauert."
         visit_detection: Aufenthaltserkennung
         visit_radius_meters: Aufenthaltsradius (Meter)
         minimum_points_to_count_as_a_visit: Mindestanzahl an Punkten für einen Aufenthalt
