@@ -360,6 +360,8 @@ fr:
       pro_badge: " Pro"
     timeline:
       unnamed: Innommé
+      local_time: "%{time} heure locale"
+      local_time_on_date: "%{date}, %{time} heure locale"
     datetime_formatting:
       expires_on: Expire le %{date}
     insights:

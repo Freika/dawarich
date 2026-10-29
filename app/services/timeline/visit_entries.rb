@@ -18,7 +18,8 @@ module Timeline
         ended_at: visit.ended_at.iso8601,
         duration: visit.duration,
         place: visit.place ? build_place(visit.place) : nil,
-        area: visit.area ? build_area(visit.area) : nil
+        area: visit.area ? build_area(visit.area) : nil,
+        local_timezone: local_timezone_for(visit)
       }
 
       entry[:suggested_places] = build_suggested_places(visit) if visit.suggested?
@@ -28,6 +29,22 @@ module Timeline
     end
 
     private
+
+    def local_timezone_for(visit)
+      return @local_timezones[[:visit, visit.id]] if @local_timezones
+
+      Timezones::Lookup.call(visit: visit_location(visit))[:visit]
+    end
+
+    # The location the entry itself shows, so a visit a privacy zone hides
+    # does not give its zone away either.
+    def visit_location(visit)
+      location = if visit.place then [visit.place.lon, visit.place.lat]
+                 elsif visit.area then [visit.area.longitude.to_f, visit.area.latitude.to_f]
+                 else point_center_for(visit)&.values_at(:lng, :lat)
+                 end
+      location unless location.nil? || @privacy_zone_masker&.in_zone?(*location)
+    end
 
     def point_count_for(visit)
       assoc = visit.association(:points)

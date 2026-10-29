@@ -2898,6 +2898,8 @@ en:
       pro_badge: " Pro"
     timeline:
       unnamed: Unnamed
+      local_time: "%{time} local"
+      local_time_on_date: "%{date}, %{time} local"
     datetime_formatting:
       expires_on: Expires on %{date}
     insights:

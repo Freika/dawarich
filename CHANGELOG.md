@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - The Select data on map tool can now look across all your data. Turn on "Select data from all time" in the Tools panel before drawing the rectangle to get every point and visit in that area, whatever dates the map shows. When an area holds more than 10,000 points, only the most recent 10,000 are shown and a notice says so. On the Lite plan, "all time" covers the last 12 months. (#3873)
 - Split Tracks at midnight in your timezone with a new option in the map's Track generation settings, so a night at home with your phone still reporting no longer joins several days into one Track. It is off by default; press Recalculate tracks & stats to apply it to existing Tracks. (#3306)
+- The Timeline also shows the local time of a visit, or of a journey's start, when the place is in a different time zone than your account, for example "19:30 local" next to a Kansas visit for an account in Berlin. Days are still split by your account's time zone. The API and the MCP `get_timeline` tool return the place's time zone as `local_timezone`. Time zone boundaries come from timezone-boundary-builder (© OpenStreetMap contributors, ODbL) and load during the database migration; without them, times stay in the account's time zone as before. (#3886)
 
 ### Changed
 

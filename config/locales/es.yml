@@ -2915,6 +2915,8 @@ es:
       pro_badge: " Pro"
     timeline:
       unnamed: Sin nombre
+      local_time: "%{time} hora local"
+      local_time_on_date: "%{date}, %{time} hora local"
     datetime_formatting:
       expires_on: Vence el %{date}
     insights:

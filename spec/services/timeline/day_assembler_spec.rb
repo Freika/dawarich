@@ -1107,4 +1107,97 @@ RSpec.describe Timeline::DayAssembler do
       expect(day_payload[:bounds][:sw_lng]).to eq(13.5)
     end
   end
+
+  describe 'local time zone of the place' do
+    let(:user) { create(:user, settings: { 'timezone' => 'Europe/Berlin' }) }
+    let(:day) { Time.use_zone('Europe/Berlin') { Time.zone.parse('2025-01-15 00:00:00') } }
+    let(:wichita) do
+      create(:place, user:, name: 'Wichita', latitude: 37.69, longitude: -97.34, lonlat: 'POINT(-97.34 37.69)')
+    end
+    let!(:visit) do
+      create(:visit, user:, place: wichita, area: nil, name: 'Wichita',
+                     started_at: day + 2.hours, ended_at: day + 3.hours, duration: 60)
+    end
+
+    def kansas_zone!
+      Timezone.create!(tzid: 'America/Chicago',
+                       geom: 'SRID=4326;POLYGON((-100 37, -94.6 37, -94.6 40, -100 40, -100 37))')
+    end
+
+    def assembler(masker = nil)
+      described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: masker)
+    end
+
+    def entries(masker = nil)
+      assembler(masker).call.first[:entries]
+    end
+
+    it 'names the zone of the visit location' do
+      kansas_zone!
+
+      expect(entries.find { |e| e[:type] == 'visit' }[:local_timezone]).to eq('America/Chicago')
+    end
+
+    it 'names the zone of the area a visit belongs to' do
+      kansas_zone!
+      area = create(:area, user:, latitude: 37.69, longitude: -97.34)
+      visit.update!(place: nil, area:)
+
+      expect(entries.find { |e| e[:type] == 'visit' }[:local_timezone]).to eq('America/Chicago')
+    end
+
+    it 'keeps started_at in the account zone' do
+      kansas_zone!
+
+      expect(entries.find { |e| e[:type] == 'visit' }[:started_at]).to eq('2025-01-15T02:00:00+01:00')
+    end
+
+    it 'leaves the zone empty when the boundaries are not loaded' do
+      entry = entries.find { |e| e[:type] == 'visit' }
+
+      expect(entry).to have_key(:local_timezone)
+      expect(entry[:local_timezone]).to be_nil
+    end
+
+    it 'names the zone where a journey starts' do
+      kansas_zone!
+      create(:track, user:, start_at: day + 4.hours, end_at: day + 5.hours,
+                     original_path: 'LINESTRING(-97.34 37.69, -97.2 37.8)')
+
+      expect(entries.find { |e| e[:type] == 'journey' }[:local_timezone]).to eq('America/Chicago')
+    end
+
+    it 'names no zone for a journey that starts outside every zone' do
+      kansas_zone!
+      create(:track, user:, start_at: day + 4.hours, end_at: day + 5.hours,
+                     original_path: 'LINESTRING(13.4 52.5, 13.5 52.6)')
+
+      expect(entries.find { |e| e[:type] == 'journey' }[:local_timezone]).to be_nil
+    end
+
+    it 'hides the zone of a visit whose location a privacy zone hides' do
+      kansas_zone!
+      tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 500)
+      create(:tagging, tag:, taggable: wichita)
+
+      expect(entries(Maps::PrivacyZoneMasker.new(user)).find { |e| e[:type] == 'visit' }[:local_timezone]).to be_nil
+    end
+
+    it 'hides the zone of a journey that starts inside a privacy zone' do
+      kansas_zone!
+      tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 500)
+      create(:tagging, tag:, taggable: wichita)
+      create(:track, user:, start_at: day + 4.hours, end_at: day + 5.hours,
+                     original_path: 'LINESTRING(-97.34 37.69, -97.2 37.8)')
+
+      journey = entries(Maps::PrivacyZoneMasker.new(user)).find { |e| e[:type] == 'journey' }
+      expect(journey[:local_timezone]).to be_nil
+    end
+
+    it 'names the zone when a single visit entry is rebuilt' do
+      kansas_zone!
+
+      expect(assembler.build_visit_entry(visit)[:local_timezone]).to eq('America/Chicago')
+    end
+  end
 end

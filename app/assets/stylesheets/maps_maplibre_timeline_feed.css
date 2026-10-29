@@ -765,6 +765,13 @@
   overflow-wrap: anywhere;
 }
 
+/* The clock at the place when it differs from the account's. Short enough
+   to stay on one line; the meta row wraps it whole instead. */
+.timeline-local-time {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 /* How many fixes back this visit — a confidence signal, not a headline.
    Ranked below the address by size, not by fading it out of readability. */
 .visit-row__points {

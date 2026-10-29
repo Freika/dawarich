@@ -3005,6 +3005,8 @@ pl:
       pro_badge: " Pro"
     timeline:
       unnamed: Bez nazwy
+      local_time: "%{time} czasu lokalnego"
+      local_time_on_date: "%{date}, %{time} czasu lokalnego"
     datetime_formatting:
       expires_on: Wygasa %{date}
     insights:
