@@ -17,9 +17,11 @@ function hexToRgba(hex, alpha) {
   return `rgba(${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}, ${alpha})`
 }
 
-function drawFades(ctx, width, height, color, strength) {
+// `minBottom` lets a tall text stack (with the stats line) stay on the fade
+// instead of spilling onto raw map, where it would lose contrast.
+function drawFades(ctx, width, height, color, strength, minBottom = 0) {
   const top = height * strength * 0.5
-  const bottom = height * strength
+  const bottom = Math.max(height * strength, minBottom)
   const topGrad = ctx.createLinearGradient(0, 0, 0, top)
   topGrad.addColorStop(0, hexToRgba(color, 0.9))
   topGrad.addColorStop(1, hexToRgba(color, 0))
@@ -47,9 +49,18 @@ function fillSpaced(ctx, text, x, y, spacing) {
   }
 }
 
-function drawTitle(ctx, width, height, color, text, font) {
-  const { title = "", subtitle = "", coords = "" } = text
-  const layout = layoutPosterText({ width, height, title, subtitle, coords })
+const statsSpacing = (size) => Math.round(size * 0.2)
+
+function layoutFor(ctx, width, height, text, font) {
+  const measure = (line, size) => {
+    ctx.font = `400 ${size}px ${font}`
+    return ctx.measureText(line).width + statsSpacing(size) * line.length
+  }
+  return layoutPosterText({ width, height, ...text, measure })
+}
+
+function drawTitle(ctx, width, color, text, layout, font) {
+  const { title = "", subtitle = "", coords = "", stats = "" } = text
   ctx.textAlign = "center"
   ctx.fillStyle = color
 
@@ -80,6 +91,18 @@ function drawTitle(ctx, width, height, color, text, font) {
       layout.subY,
       Math.round(layout.subSize * 0.25),
     )
+  }
+  if (stats) {
+    ctx.globalAlpha = 0.85
+    ctx.font = `400 ${layout.statsSize}px ${font}`
+    fillSpaced(
+      ctx,
+      stats,
+      width / 2,
+      layout.statsY,
+      statsSpacing(layout.statsSize),
+    )
+    ctx.globalAlpha = 1
   }
   if (coords) {
     ctx.globalAlpha = 0.75
@@ -122,6 +145,7 @@ export function drawOverlay(
     title = "",
     subtitle = "",
     coords = "",
+    stats = "",
     font = "Helvetica, Arial, sans-serif",
     fadeStrength = 0.22,
     margin = 0,
@@ -140,9 +164,13 @@ export function drawOverlay(
     ctx.fillRect(width - m, 0, m, height)
   }
 
-  drawFades(ctx, width, height, theme.gradientColor, fadeStrength)
-  if (title || subtitle || coords)
-    drawTitle(ctx, width, height, theme.text, { title, subtitle, coords }, font)
+  const text = { title, subtitle, coords, stats }
+  const layout = layoutFor(ctx, width, height, text, font)
+  // Only the stats block grows the fade, so the default poster is unchanged.
+  const fadeFloor = stats ? (height - layout.top) * 1.15 : 0
+  drawFades(ctx, width, height, theme.gradientColor, fadeStrength, fadeFloor)
+  if (title || subtitle || coords || stats)
+    drawTitle(ctx, width, theme.text, text, layout, font)
   drawAttribution(ctx, width, height, theme.text, attribution, font)
   return canvas
 }

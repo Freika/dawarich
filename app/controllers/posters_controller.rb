@@ -3,13 +3,15 @@
 class PostersController < ApplicationController
   include FlashStreamable
 
+  STATS_MAX_LENGTH = 200
+
   before_action :authenticate_user!
 
   def create
     poster = current_user.posters.create!(
       name: poster_params[:name].presence || I18n.t('controllers.posters.untitled'),
       status: :created,
-      settings: poster_params.except(:name).to_h
+      settings: poster_settings
     )
 
     respond_to do |format|
@@ -54,7 +56,13 @@ status: :unprocessable_content
   private
 
   def poster_params
-    params.require(:poster).permit(:name, :title, :lat, :lon, :distance, :theme, :start_at, :end_at, :source,
-                                   :route_fill, :route_opacity, :route_width)
+    params.require(:poster).permit(:name, :title, :stats, :lat, :lon, :distance, :theme, :start_at, :end_at,
+                                   :source, :route_fill, :route_opacity, :route_width)
+  end
+
+  def poster_settings
+    settings = poster_params.except(:name).to_h
+    settings['stats'] = settings['stats'].first(STATS_MAX_LENGTH) if settings['stats']
+    settings
   end
 end

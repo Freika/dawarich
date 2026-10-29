@@ -42,6 +42,18 @@ RSpec.describe 'Posters', type: :request do
       expect(user.posters.last.name).to eq('Untitled poster')
     end
 
+    it 'stores the trip stats line in settings' do
+      post posters_path, params: { poster: poster_attributes.merge(stats: '27.4 km') }, as: :turbo_stream
+
+      expect(user.posters.last.settings['stats']).to eq('27.4 km')
+    end
+
+    it 'caps an oversized stats line' do
+      post posters_path, params: { poster: poster_attributes.merge(stats: 'x' * 1000) }, as: :turbo_stream
+
+      expect(user.posters.last.settings['stats'].length).to eq(PostersController::STATS_MAX_LENGTH)
+    end
+
     it 'stores the typed title in settings' do
       post posters_path, params: { poster: poster_attributes.merge(title: 'Summer 2025') }, as: :turbo_stream
 

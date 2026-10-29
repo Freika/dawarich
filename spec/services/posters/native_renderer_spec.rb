@@ -74,6 +74,20 @@ RSpec.describe Posters::NativeRenderer do
       expect(job['text']['title']).to eq('')
     end
 
+    it 'carries the saved trip stats line into the job text' do
+      poster.settings['stats'] = '27.4 km'
+
+      job = JSON.parse(build_renderer.call[:png])
+
+      expect(job['text']['stats']).to eq('27.4 km')
+    end
+
+    it 'renders no stats line when the poster was saved without one' do
+      job = JSON.parse(build_renderer.call[:png])
+
+      expect(job['text']['stats']).to eq('')
+    end
+
     it 'raises when the renderer process fails' do
       renderer = build_renderer(command: ['ruby', '-e', 'warn "boom"; exit 1'])
 

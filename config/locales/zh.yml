@@ -1477,6 +1477,7 @@ zh:
       subtitle: 副标题
       germany: 德国
       coordinates_line: 坐标线
+      trip_stats: 行程统计
       font: 字体
       layers: 图层
       track_opacity: 轨迹透明度

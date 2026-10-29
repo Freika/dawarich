@@ -25,6 +25,19 @@ module TripsHelper
     end
   end
 
+  # The poster stats block, from the trip's stored distance (nil until the
+  # calculation job has run): "27.4 km". Dates already sit in the subtitle.
+  def trip_poster_stats(trip, unit)
+    return unless trip.distance.to_f.positive?
+
+    value = trip.distance_in_unit(unit)
+    distance = number_with_precision(
+      value, precision: value < 100 ? 1 : 0, strip_insignificant_zeros: true,
+             delimiter: t('number.format.delimiter'), separator: t('number.format.separator')
+    )
+    t('helpers.stats.distance', value: distance, unit: unit)
+  end
+
   def trip_preview_bounds(trip)
     return trip.route_bounds unless trip.route_present? && current_privacy_zone_masker&.any?
 

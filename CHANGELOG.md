@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Add a trip stats line to posters made from a trip: switch on Trip stats in the poster studio's Text section to show the trip's total distance under the subtitle. It is off by default, follows your km/mi setting, and appears the same in the preview, PNG and PDF downloads, printed orders and posters saved to the gallery. (#3327)
+
 ## [1.20.0] - 2026-10-28, Berlin
 
 ### ⚠️ Upgrade notes
