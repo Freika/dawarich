@@ -18,6 +18,19 @@ module Timezones
       FROM jsonb_array_elements(?::jsonb -> 'features') AS feature
     SQL
 
+    # Without boundaries, timeline times simply stay in the account time zone,
+    # so a failed load must stop neither an upgrade nor a boot.
+    def self.call_safely(context, path = Rails.root.join(ASSET_PATH))
+      new(path).call
+      true
+    rescue StandardError => e
+      Rails.logger.warn(
+        "[#{context}] Time zone boundaries were not loaded (#{e.class}: #{e.message}); " \
+        'db:seed retries on the next start, or run Timezones::LoadBoundaries.new.call'
+      )
+      false
+    end
+
     def initialize(path = Rails.root.join(ASSET_PATH))
       @path = path
     end

@@ -30,4 +30,19 @@ RSpec.describe Timezones::LoadBoundaries do
     expect(zone_at(13.40, 52.52)).to eq('Europe/Berlin')
     expect(zone_at(-40.0, 40.0)).to be_present # mid-Atlantic, covered by the ocean zones
   end
+
+  describe '.call_safely' do
+    it 'loads the boundaries' do
+      expect(described_class.call_safely('Seeds', fixture)).to be(true)
+      expect(zone_at(-97.34, 37.69)).to eq('America/Chicago')
+    end
+
+    it 'logs instead of raising when the boundaries cannot be loaded' do
+      allow(Rails.logger).to receive(:warn)
+
+      expect(described_class.call_safely('Seeds', Rails.root.join('spec/fixtures/files/timezones/missing.gz')))
+        .to be(false)
+      expect(Rails.logger).to have_received(:warn).with(/\[Seeds\] Time zone boundaries were not loaded/)
+    end
+  end
 end
