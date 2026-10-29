@@ -82,6 +82,8 @@ RSpec.describe Immich::ImportGeodata do
         :any,
         'http://immich.app/api/search/metadata'
       ).to_return(status: 200, body: immich_data, headers: { 'content-type' => 'application/json' })
+        .then.to_return(status: 200, body: { assets: { total: 0, count: 0, items: [] } }.to_json,
+                        headers: { 'content-type' => 'application/json' })
     end
 
     it 'creates import' do
