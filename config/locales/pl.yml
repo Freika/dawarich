@@ -1523,6 +1523,7 @@ pl:
       subtitle: Podtytuł
       germany: Niemcy
       coordinates_line: Linia współrzędnych
+      trip_stats: Statystyki podróży
       font: Czcionka
       layers: Warstwy
       track_opacity: Przezroczystość trasy

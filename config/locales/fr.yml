@@ -2208,6 +2208,7 @@ fr:
       subtitle: Sous-titre
       germany: Allemagne
       coordinates_line: Ligne de coordonnées
+      trip_stats: Statistiques du voyage
       font: Police
       layers: Couches
       track_opacity: Opacité des trajets

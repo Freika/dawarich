@@ -1509,6 +1509,7 @@ en:
       subtitle: Subtitle
       germany: Germany
       coordinates_line: Coordinates line
+      trip_stats: Trip stats
       font: Font
       layers: Layers
       track_opacity: Track opacity
