@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Points recorded shortly after a route ended are attached to that route again instead of failing while tracks were generated in parallel. Merging a route that has a shared link or corrected segments no longer fails the same way.
+- GPS filtering now hides a single imprecise network point that jumps to a distant cell tower and back while the phone stays put, such as an Android phone idle at home that reports one fix across a bay. To check your existing history, press "Re-evaluate past data" in the map settings under GPS Noise Filtering. (#3892)
 
 ## [1.21.0] - 2026-11-03, Berlin
 
