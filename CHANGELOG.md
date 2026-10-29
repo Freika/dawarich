@@ -8,8 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### ⚠️ Upgrade notes
 
-- Run the database migrations before starting the updated application and workers. They add exploration and achievement data and durable exploration activation; existing points are retained.
-- Migrations that install database triggers on points wait at most 5 seconds for a table lock. If one stops with a lock timeout, stop the application and workers or wait for running imports to finish, then run the migrations again; they are safe to re-run.
+- Migrations that install database triggers on points wait at most 5 seconds for a table lock. If one stops with a lock timeout, stop the workers or wait for running imports to finish, then restart the application; the migrations are safe to re-run.
 - The initial geographic calculation runs in the background and can take longer while local boundary data is installed. The initial city and national-park catalog covers Berlin, Hamburg, Dresden, Harz, Saxon Switzerland and Eifel; it is not a worldwide catalog.
 
 ### Added
