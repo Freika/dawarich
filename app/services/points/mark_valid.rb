@@ -12,6 +12,8 @@ class Points::MarkValid
 
   def call
     point = user.points.find(point_id)
+    return point unless point.anomaly?
+
     point.update_columns(anomaly: false, anomaly_override: true, updated_at: Time.current)
     Tracks::OrphanPointAttacher.new(user, [point], neighbours(point)).call
 
@@ -27,9 +29,9 @@ class Points::MarkValid
 
   def neighbours(point)
     window = user.safe_settings.minutes_between_routes.to_i.minutes.to_i
-    user.points.not_anomaly
+    user.points.not_anomaly.where(tracker_id: point.tracker_id)
         .where(timestamp: (point.timestamp - window)..(point.timestamp + window))
-        .order(:timestamp, :id).to_a
+        .order(:timestamp, :id).select(:id).to_a
   end
 
   def enqueue_stats_recalculation(point)

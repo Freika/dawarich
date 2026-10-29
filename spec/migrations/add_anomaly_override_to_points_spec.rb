@@ -42,3 +42,36 @@ RSpec.describe AddAnomalyOverrideToPoints do
     expect(connection.column_exists?(:points, :anomaly_override)).to be(false)
   end
 end
+
+RSpec.describe AddAnomalyOverrideToPoints, :non_transactional do
+  let(:connection) { ActiveRecord::Base.connection }
+  let(:migration) { described_class.new }
+
+  before do
+    ActiveRecord::Migration.verbose = false
+    migration.migrate(:down)
+  end
+
+  # Restore directly: stub_const is still active in after hooks, so the
+  # migration itself would run with the 200ms timeout and a single attempt.
+  after do
+    connection.add_column :points, :anomaly_override, :boolean, default: false, null: false, if_not_exists: true
+    ActiveRecord::Migration.verbose = true
+    Point.reset_column_information
+  end
+
+  it 'gives up instead of queueing behind a transaction that holds a lock on points' do
+    stub_const("#{described_class}::LOCK_TIMEOUT", '200ms')
+    stub_const("#{described_class}::MAX_ATTEMPTS", 1)
+    blocker = ActiveRecord::Base.connection_pool.checkout
+    blocker.execute('BEGIN')
+    blocker.execute('LOCK TABLE points IN ACCESS SHARE MODE')
+    connection.execute("SET statement_timeout = '5s'")
+
+    expect { migration.migrate(:up) }.to raise_error(ActiveRecord::LockWaitTimeout)
+  ensure
+    connection.execute('RESET statement_timeout')
+    blocker&.execute('ROLLBACK')
+    ActiveRecord::Base.connection_pool.checkin(blocker) if blocker
+  end
+end

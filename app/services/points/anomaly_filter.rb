@@ -241,7 +241,7 @@ class Points::AnomalyFilter
 
     set_clause = 'anomaly = TRUE, track_id = NULL, updated_at = NOW()'
     set_clause = "#{set_clause}, #{extra_set}" if extra_set
-    Point.where(id: flagged.map(&:first)).update_all(set_clause)
+    Point.where(id: flagged.map(&:first), anomaly_override: false).update_all(set_clause)
 
     @flagged_for_rebuild.concat(flagged)
 

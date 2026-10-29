@@ -887,6 +887,21 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
       expect(response).to have_http_status(:unauthorized)
     end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 and keeps the point flagged' do
+        patch "/api/v1/points/#{flagged.id}/mark_valid?api_key=#{user.api_key}"
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
+        expect(flagged.reload).to have_attributes(anomaly: true, anomaly_override: false)
+      end
+    end
   end
 
   describe 'GET /index bbox validation' do
