@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Start historical exploration rebuilds only after opening exploration or selecting a city, and keep retrying interrupted first calculations.
 - Ignore future-dated points when opening explored map cells and awarding city achievement levels.
 - Full-history visit redetection now completes when legacy visits contain points without coordinates, preserving confirmed visits that have no usable observations (#3931).
+- Live visit detection keeps an ongoing visit and its points in place as new points arrive, instead of rewriting every point of the visit each time. This greatly reduces database writes and index growth on busy instances.
 - Monthly and yearly digest emails no longer enter repeated delivery retries when SMTP is not configured (#3932).
 - Legacy areas with names longer than 255 characters now migrate to places without repeatedly failing, keeping their notes and visits (#3930).
 
