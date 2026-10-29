@@ -215,6 +215,24 @@ RSpec.describe 'Privacy zone masking on map read endpoints', type: :request do
     end
   end
 
+  describe 'flights' do
+    let!(:flight) do
+      create(:flight, user: user, from_lon: 13.40, from_lat: 52.444, to_lon: 2.547, to_lat: 49.009,
+                      track_coordinates: [[13.40, 52.444], [13.50, 52.444], [13.60, 52.444], [2.547, 49.009]])
+    end
+
+    it 'cuts a recorded flight track at the zone only with the flag' do
+      get '/api/v1/flights', params: masked, headers: headers
+      masked_geometry = json['features'].first['geometry']
+
+      get '/api/v1/flights', headers: headers
+
+      expect(masked_geometry['type']).to eq('MultiLineString')
+      expect(vertices(masked_geometry).map { |lon, lat| distance_to_zone(lon, lat) }.min).to be >= zone_radius
+      expect(json['features'].first['geometry']['coordinates']).to eq(flight.track_coordinates)
+    end
+  end
+
   describe 'location search' do
     before do
       create(:point, user: user, lonlat: "POINT(#{zone_lon} #{zone_lat})", timestamp: 2.hours.ago.to_i)

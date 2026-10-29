@@ -124,7 +124,8 @@ export function greatCircleLines(coordinates) {
 
 /**
  * Replace each flight's 2-point LineString with a great-circle arc and unwrap
- * longer recorded tracks across the antimeridian.
+ * longer recorded tracks, including tracks cut by privacy zones, across the
+ * antimeridian.
  * Features with missing or degenerate geometry pass through untouched.
  * @param {Object} featureCollection
  * @returns {Object}
@@ -136,6 +137,22 @@ export function arcifyFlights(featureCollection) {
     ...featureCollection,
     features: featureCollection.features.map((feature) => {
       const coords = feature.geometry?.coordinates
+      if (
+        feature.geometry?.type === "MultiLineString" &&
+        Array.isArray(coords)
+      ) {
+        return {
+          ...feature,
+          geometry: {
+            ...feature.geometry,
+            coordinates: coords.map((line) =>
+              line.length === 2
+                ? greatCircleCoordinates(line[0], line[1])
+                : unwrapLongitudes(line.map((coord) => [...coord])),
+            ),
+          },
+        }
+      }
       if (
         feature.geometry?.type !== "LineString" ||
         !Array.isArray(coords) ||

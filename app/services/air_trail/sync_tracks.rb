@@ -16,16 +16,28 @@ module AirTrail
         updated_at = parse_time(field(summaries[flight.external_id], 'updatedAt'))
         next if updated_at.nil? || updated_at == flight.track_updated_at
 
-        coordinates = simplify(field(@client.track(flight.external_id), 'coordinates'))
-        next if coordinates.nil?
+        sync_track(flight, updated_at)
+      rescue AirTrail::Client::Error => e
+        raise if e.unauthorized? || e.status.nil?
 
-        flight.update!(track_coordinates: coordinates, track_updated_at: updated_at)
+        log_skip(e)
       end
     rescue AirTrail::Client::Error => e
-      Rails.logger.info("AirTrail track sync skipped for user #{@user.id}: #{e.message}")
+      log_skip(e)
     end
 
     private
+
+    def sync_track(flight, updated_at)
+      coordinates = simplify(field(@client.track(flight.external_id), 'coordinates'))
+      return if coordinates.nil?
+
+      flight.update!(track_coordinates: coordinates, track_updated_at: updated_at)
+    end
+
+    def log_skip(error)
+      Rails.logger.warn("AirTrail track sync skipped for user #{@user.id}: #{error.message}")
+    end
 
     def field(hash, key)
       hash[key] if hash.is_a?(Hash)

@@ -4,7 +4,18 @@ module AirTrail
   class Client
     include SslConfigurable
 
-    class Error < StandardError; end
+    class Error < StandardError
+      attr_reader :status
+
+      def initialize(message = nil, status: nil)
+        super(message)
+        @status = status
+      end
+
+      def unauthorized?
+        [401, 403].include?(status)
+      end
+    end
 
     MAX_SUMMARY_PAGES = 1_000
 
@@ -28,9 +39,9 @@ module AirTrail
       MAX_SUMMARY_PAGES.times do
         query = { limit: 100, cursor: cursor }.compact.to_query
         body = get_json("/api/v1/flights?#{query}")
-        Array(body['data']).each { |flight| summaries[flight['id']] = flight['track'] }
+        Array(body['data']).grep(Hash).each { |flight| summaries[flight['id']] = flight['track'] }
 
-        next_cursor = body.dig('page', 'nextCursor')
+        next_cursor = body['page']['nextCursor'] if body['page'].is_a?(Hash)
         break if next_cursor.blank? || next_cursor == cursor
 
         cursor = next_cursor
@@ -57,14 +68,20 @@ module AirTrail
                                    })
       )
 
-      raise Error, "AirTrail responded with #{response.code}" unless response.success?
+      raise Error.new("AirTrail responded with #{response.code}", status: response.code) unless response.success?
 
-      body = JSON.parse(response.body)
-      raise Error, 'AirTrail returned an unexpected response' unless body.is_a?(Hash)
-
-      body
+      parse_body(response)
     rescue *Photos::ConnectionErrors::HANDLED => e
       raise Error, e.message
+    end
+
+    def parse_body(response)
+      body = JSON.parse(response.body)
+      return body if body.is_a?(Hash)
+
+      raise Error.new('AirTrail returned an unexpected response', status: response.code)
+    rescue JSON::ParserError
+      raise Error.new('AirTrail returned an invalid response', status: response.code)
     end
   end
 end

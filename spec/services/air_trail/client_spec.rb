@@ -71,6 +71,14 @@ RSpec.describe AirTrail::Client do
       expect(second).to have_been_requested
     end
 
+    it 'skips malformed flight entries and page data' do
+      stub_request(:get, 'https://airtrail.example/api/v1/flights?limit=100')
+        .to_return(status: 200, headers: { 'Content-Type' => 'application/json' },
+                   body: { data: [{ id: 1, track: nil }, 'junk', [2]], page: ['oops'] }.to_json)
+
+      expect(client.track_summaries).to eq(1 => nil)
+    end
+
     it 'raises AirTrail::Client::Error when the response is not a JSON object' do
       stub_request(:get, 'https://airtrail.example/api/v1/flights?limit=100')
         .to_return(status: 200, body: '[]', headers: { 'Content-Type' => 'application/json' })

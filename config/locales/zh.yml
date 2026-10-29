@@ -1682,9 +1682,10 @@ zh:
         found_in_your_photoprism_settings_under_library: 可在 PhotoPrism 设置的“图库”下找到
         airtrail_integration: AirTrail 集成
         airtrail_url: AirTrail URL
-        the_base_url_of_your_airtrail_instance_your_flights_are: AirTrail 实例的基础 URL。您的航班在地图上显示为弧线。
+        the_base_url_of_your_airtrail_instance_your_flights_are: 'AirTrail 实例的基础 URL。您的航班显示在地图上。'
         airtrail_api_key: AirTrail API 密钥
         create_an_api_key_in_airtrail_under_settings_rarr_security: 在 AirTrail 的“设置 → 安全”中创建 API 密钥。
+        airtrail_recorded_flight_tracks_need_airtrail_3_13: '在 AirTrail 中有记录飞行轨迹的航班会沿该轨迹绘制，其他航班显示为弧线。飞行轨迹需要 AirTrail 3.13 或更高版本，以及具有 tracks.read 权限的 API 密钥。'
         teslamate_sync_help: 已完成的驾驶记录每天自动同步一次。进行中的驾驶记录和停放位置无法通过 TeslaMateApi 获取。
         sync_teslamate_drives: 同步 TeslaMateApi 驾驶记录
         teslamate_authentication_help: 若反向代理有保护，请使用 HTTP Basic 认证；若代理或分支版本支持，则使用 Bearer 令牌。TeslaMateApi 官方的读取接口不使用其 API_TOKEN。

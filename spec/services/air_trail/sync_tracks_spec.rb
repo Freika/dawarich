@@ -91,6 +91,41 @@ RSpec.describe AirTrail::SyncTracks do
     expect(first.track_updated_at).to eq(Time.utc(2026, 10, 20, 8))
   end
 
+  it 'still downloads later tracks when one track fails on the AirTrail side' do
+    create(:flight, user: user, external_id: 1)
+    second = create(:flight, user: user, external_id: 2)
+    stub_summaries(summary(1, '2026-10-20T08:00:00.000Z'), summary(2, '2026-10-20T08:00:00.000Z'))
+    stub_request(:get, 'https://a.example/api/v1/flights/1/track').to_return(status: 500)
+    stub_track(2, [[13.5, 52.4], [2.5, 49.0]])
+
+    described_class.new(user, client).call
+
+    expect(second.reload.track_coordinates).to eq([[13.5, 52.4], [2.5, 49.0]])
+  end
+
+  it 'still downloads later tracks when one track response is not valid JSON' do
+    create(:flight, user: user, external_id: 1)
+    second = create(:flight, user: user, external_id: 2)
+    stub_summaries(summary(1, '2026-10-20T08:00:00.000Z'), summary(2, '2026-10-20T08:00:00.000Z'))
+    stub_request(:get, 'https://a.example/api/v1/flights/1/track').to_return(status: 200, body: '<html>')
+    stub_track(2, [[13.5, 52.4], [2.5, 49.0]])
+
+    described_class.new(user, client).call
+
+    expect(second.reload.track_coordinates).to eq([[13.5, 52.4], [2.5, 49.0]])
+  end
+
+  it 'stops downloading tracks once AirTrail stops responding' do
+    create(:flight, user: user, external_id: 1)
+    create(:flight, user: user, external_id: 2)
+    stub_summaries(summary(1, '2026-10-20T08:00:00.000Z'), summary(2, '2026-10-20T08:00:00.000Z'))
+    timeouts = stub_request(:get, %r{https://a.example/api/v1/flights/\d+/track}).to_timeout
+
+    described_class.new(user, client).call
+
+    expect(timeouts).to have_been_requested.once
+  end
+
   it 'keeps the stored track when the track download times out' do
     flight = create(:flight, user: user, external_id: 1, track_coordinates: stored_track,
                              track_updated_at: Time.utc(2026, 10, 20, 8))

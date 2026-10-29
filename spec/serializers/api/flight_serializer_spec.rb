@@ -14,6 +14,12 @@ RSpec.describe Api::FlightSerializer do
     expect(feature[:properties][:airline_name]).to eq('Air France')
   end
 
+  it 'falls back to the airport pair when the stored track is empty' do
+    flight = build(:flight, track_coordinates: [])
+
+    expect(described_class.new(flight).call[:geometry][:coordinates]).to eq([[13.493, 52.351], [2.547, 49.009]])
+  end
+
   it 'returns the stored AirTrail track instead of the airport pair' do
     track = [[13.493, 52.351], [8.0, 51.0], [2.547, 49.009]]
     flight = build(:flight, track_coordinates: track)

@@ -50,6 +50,62 @@ test("a track crossing the antimeridian is unwrapped into one line", () => {
   assert.equal(input.features[0].geometry.coordinates[2][0], -179.5)
 })
 
+test("each part of a track cut by a privacy zone is unwrapped", () => {
+  const coords = arcifyFlights({
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        geometry: {
+          type: "MultiLineString",
+          coordinates: [
+            [
+              [139.8, 35.6],
+              [139.9, 35.7],
+              [140.0, 35.8],
+            ],
+            [
+              [179.5, 41.0],
+              [-179.5, 41.5],
+              [-150.0, 61.2],
+            ],
+          ],
+        },
+      },
+    ],
+  }).features[0].geometry.coordinates
+
+  assert.deepEqual(
+    coords.map((line) => line.map(([lon]) => lon)),
+    [
+      [139.8, 139.9, 140.0],
+      [179.5, 180.5, 210.0],
+    ],
+  )
+})
+
+test("a two-point part cut by a privacy zone still follows an arc", () => {
+  const [part] = arcifyFlights({
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        geometry: {
+          type: "MultiLineString",
+          coordinates: [
+            [
+              [13.49, 52.35],
+              [-73.78, 40.64],
+            ],
+          ],
+        },
+      },
+    ],
+  }).features[0].geometry.coordinates
+
+  assert.ok(part.length > 2)
+})
+
 test("a two-point flight still becomes a great-circle arc", () => {
   const coords = arcifyFlights(
     flight([

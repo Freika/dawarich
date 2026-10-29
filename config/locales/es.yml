@@ -1726,9 +1726,10 @@ es:
         found_in_your_photoprism_settings_under_library: Encontrado en tus ajustes de Photoprism bajo Biblioteca
         airtrail_integration: Integración de AirTrail
         airtrail_url: URL de AirTrail
-        the_base_url_of_your_airtrail_instance_your_flights_are: La URL base de tu instancia de AirTrail. Tus vuelos se muestran como arcos en el mapa.
+        the_base_url_of_your_airtrail_instance_your_flights_are: 'La URL base de tu instancia de AirTrail. Tus vuelos se muestran en el mapa.'
         airtrail_api_key: Clave API de AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Crea una clave API en AirTrail bajo Ajustes → Seguridad.
+        airtrail_recorded_flight_tracks_need_airtrail_3_13: 'Los vuelos con una ruta grabada en AirTrail se dibujan siguiendo esa ruta y el resto como arcos. Las rutas necesitan AirTrail 3.13 o posterior y una clave API con el permiso tracks.read.'
         teslamate_integration: Integración de TeslaMateApi
         teslamate_url: URL de TeslaMateApi
         the_base_url_of_your_teslamateapi_instance: La URL base de tu instancia de TeslaMateApi.
