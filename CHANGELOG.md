@@ -4,12 +4,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
-
-### Fixed
-
-- Enrich photos places a video where its recording started. Video timestamps mark the end of the recording, so the scan now subtracts the video's duration before looking up your location history. (#3293)
-
 ## [1.20.0] - 2026-10-28, Berlin
 
 ### ⚠️ Upgrade notes
@@ -41,6 +35,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Ignore future-dated points when opening explored map cells and awarding city achievement levels.
 - Full-history visit redetection now completes when legacy visits contain points without coordinates, preserving confirmed visits that have no usable observations (#3931).
 - Live visit detection keeps an ongoing visit and its points in place as new points arrive, instead of rewriting every point of the visit each time. Suggested visits keep their ID between detection runs. This greatly reduces database writes and index growth on busy instances.
+- Enrich photos places a video where its recording started. Video timestamps mark the end of the recording, so the scan now subtracts the video's duration before looking up your location history. (#3293)
 - Monthly and yearly digest emails no longer enter repeated delivery retries when SMTP is not configured (#3932).
 - Legacy areas with names longer than 255 characters now migrate to places without repeatedly failing, keeping their notes and visits (#3930).
 
