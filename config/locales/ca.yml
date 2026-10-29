@@ -4068,6 +4068,9 @@ ca:
       failed_to_load_area_details: No s'han pogut carregar els detalls de l'àrea
       point_deleted_successfully: Punt suprimit correctament
       failed_to_delete_point: No s'ha pogut suprimir el punt
+      mark_point_valid: Marca com a correcte
+      point_marked_valid: Punt marcat com a correcte
+      failed_to_mark_point_valid: "No s'ha pogut marcar el punt com a correcte"
       deleting_area: Suprimint àrea...
       area_deleted_successfully: Àrea suprimida correctament
       failed_to_delete_area: No s'ha pogut suprimir l'àrea

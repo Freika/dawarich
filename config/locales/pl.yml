@@ -4214,6 +4214,9 @@ pl:
       failed_to_load_area_details: Nie udało się załadować szczegółów obszaru
       point_deleted_successfully: Punkt usunięty pomyślnie
       failed_to_delete_point: Nie udało się usunąć punktu
+      mark_point_valid: Oznacz jako poprawny
+      point_marked_valid: Punkt oznaczony jako poprawny
+      failed_to_mark_point_valid: Nie udało się oznaczyć punktu jako poprawnego
       deleting_area: Usuwanie obszaru...
       area_deleted_successfully: Obszar usunięty pomyślnie
       failed_to_delete_area: Nie udało się usunąć obszaru

@@ -4133,6 +4133,9 @@ zh:
       failed_to_load_area_details: 无法加载区域详细信息
       point_deleted_successfully: 轨迹点已成功删除
       failed_to_delete_point: 无法删除轨迹点
+      mark_point_valid: 标记为正确
+      point_marked_valid: 已将轨迹点标记为正确
+      failed_to_mark_point_valid: 无法将轨迹点标记为正确
       deleting_area: 正在删除区域...
       area_deleted_successfully: 区域删除成功
       failed_to_delete_area: 无法删除区域
