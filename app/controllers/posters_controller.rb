@@ -62,7 +62,7 @@ status: :unprocessable_content
 
   def poster_settings
     settings = poster_params.except(:name).to_h
-    settings['stats'] = settings['stats'].first(STATS_MAX_LENGTH) if settings['stats']
+    settings['stats'] = settings['stats'].to_s.first(STATS_MAX_LENGTH) if settings['stats']
     settings
   end
 end

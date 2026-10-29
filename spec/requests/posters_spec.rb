@@ -54,6 +54,13 @@ RSpec.describe 'Posters', type: :request do
       expect(user.posters.last.settings['stats'].length).to eq(PostersController::STATS_MAX_LENGTH)
     end
 
+    it 'stores a numeric stats value sent as JSON' do
+      post posters_path, params: { poster: poster_attributes.merge(stats: 27) }.to_json,
+                         headers: { 'CONTENT_TYPE' => 'application/json', 'ACCEPT' => 'text/vnd.turbo-stream.html' }
+
+      expect(user.posters.last&.settings&.dig('stats')).to eq('27')
+    end
+
     it 'stores the typed title in settings' do
       post posters_path, params: { poster: poster_attributes.merge(title: 'Summer 2025') }, as: :turbo_stream
 
