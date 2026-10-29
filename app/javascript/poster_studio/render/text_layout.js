@@ -8,8 +8,8 @@ export function titleShrink(title, maxChars = 12) {
   return Math.max(0.45, maxChars / length)
 }
 
-// The optional trip stats line ("27.4 km · 8 Aug 2026") must fit across the
-// poster: long localized dates shrink it rather than run off the edges.
+// The optional trip stats line ("27.4 km") must fit across the poster: a
+// line too long for the width shrinks rather than run off the edges.
 const STATS_MAX_WIDTH = 0.85
 
 // Vertical stack anchored to the bottom margin, top-down:

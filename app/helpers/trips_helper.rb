@@ -31,8 +31,11 @@ module TripsHelper
     return unless trip.distance.to_f.positive?
 
     value = trip.distance_in_unit(unit)
+    precision = value < 100 ? 1 : 0
+    return if value.round(precision).zero?
+
     distance = number_with_precision(
-      value, precision: value < 100 ? 1 : 0, strip_insignificant_zeros: true,
+      value, precision: precision, strip_insignificant_zeros: true,
              delimiter: t('number.format.delimiter'), separator: t('number.format.separator')
     )
     t('helpers.stats.distance', value: distance, unit: unit)

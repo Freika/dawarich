@@ -54,7 +54,10 @@ const statsSpacing = (size) => Math.round(size * 0.2)
 function layoutFor(ctx, width, height, text, font) {
   const measure = (line, size) => {
     ctx.font = `400 ${size}px ${font}`
-    return ctx.measureText(line).width + statsSpacing(size) * line.length
+    // fillSpaced draws untracked where the canvas lacks letterSpacing
+    // (node-canvas), so only reserve room for tracking that is drawn.
+    const tracking = "letterSpacing" in ctx ? statsSpacing(size) : 0
+    return ctx.measureText(line).width + tracking * line.length
   }
   return layoutPosterText({ width, height, ...text, measure })
 }

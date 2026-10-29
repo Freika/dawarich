@@ -44,6 +44,18 @@ RSpec.describe TripsHelper, type: :helper do
       end
     end
 
+    it 'is nil when the distance rounds to zero' do
+      trip.distance = 20
+
+      expect(helper.trip_poster_stats(trip, 'km')).to be_nil
+    end
+
+    it 'keeps a sub-kilometre distance in a comma-decimal locale' do
+      trip.distance = 100
+
+      I18n.with_locale(:de) { expect(helper.trip_poster_stats(trip, 'km')).to eq('0,1 km') }
+    end
+
     it 'is nil until the trip distance has been calculated' do
       trip.distance = nil
 

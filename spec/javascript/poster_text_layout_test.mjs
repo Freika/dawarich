@@ -189,6 +189,22 @@ test("the overlay shrinks a long stats line to the poster width", () => {
   assert.ok(charMeasure(GERMAN_STATS, statsCall.size) <= 1080 * 0.85)
 })
 
+test("the stats line keeps its size where the canvas has no tracking", () => {
+  // node-canvas (the server-side gallery render) has no ctx.letterSpacing and
+  // draws without tracking, so the fit must not reserve room for it.
+  // 60 characters: fits untracked (4.8px each), not with 2px tracking.
+  const line = "12.345,6 km ".repeat(5)
+  const tracked = fakeCanvas(400, 600)
+  drawOverlay(tracked.canvas, { theme, stats: line, attribution: "" })
+  const plain = fakeCanvas(400, 600)
+  delete plain.canvas.getContext().letterSpacing
+  drawOverlay(plain.canvas, { theme, stats: line, attribution: "" })
+
+  const size = (calls) => calls.text.find((c) => c.text === line).size
+  assert.ok(size(tracked.calls) < size(plain.calls), "tracked line shrinks")
+  assert.equal(size(plain.calls), Math.round(400 * 0.02))
+})
+
 test("the bottom fade grows to keep a stats-tall stack legible", () => {
   for (const [width, height] of SHAPES) {
     const { canvas, calls } = fakeCanvas(width, height)
