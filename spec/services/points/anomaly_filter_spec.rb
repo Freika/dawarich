@@ -1400,9 +1400,6 @@ RSpec.describe Points::AnomalyFilter do
       end
     end
 
-    # At ingest each batch is filtered alone, and a wake-up tower fix often
-    # arrives in a batch of one — its precise context only exists a few
-    # minutes later, in the next batch, whose window starts after it.
     # An idle Android phone reports network fixes every few minutes, and now and
     # then one of them lands on a distant cell tower — across a bay, several km
     # away, with a ±200 m radius — before the next fix is home again. Each leg
@@ -1500,6 +1497,22 @@ RSpec.describe Points::AnomalyFilter do
           run_filter
 
           expect(drive.map { |point| point.reload.anomaly }).to all(be_falsey)
+        end
+      end
+
+      context 'when the jump is the last fix of a month and the fix back home is in the next' do
+        let(:base_time) { Time.zone.parse('2026-03-31 23:50').to_i }
+        let!(:jump) { fix(300, across_the_bay, accuracy: 200) }
+
+        before do
+          fix(0, home, accuracy: 20)
+          fix(600, home, accuracy: 20)
+        end
+
+        it 'flags the jump' do
+          run_filter(base_time - 3600, base_time + 3600)
+
+          expect(jump.reload.anomaly).to be true
         end
       end
 
@@ -1658,6 +1671,9 @@ RSpec.describe Points::AnomalyFilter do
       end
     end
 
+    # At ingest each batch is filtered alone, and a wake-up tower fix often
+    # arrives in a batch of one — its precise context only exists a few
+    # minutes later, in the next batch, whose window starts after it.
     context 'Pass 5: a cold start that arrived in an earlier batch' do
       let(:base_time) { 1.hour.ago.to_i }
 

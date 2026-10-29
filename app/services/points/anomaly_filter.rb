@@ -63,8 +63,10 @@ class Points::AnomalyFilter
   # hours spans any GPS dropout inside a tracked day without reaching into a
   # neighbouring coarse-only era.
   SENTINEL_PRECISE_NEIGHBOR_SECONDS = 6 * 60 * 60
-  # An idle Android phone sometimes reports a network fix from a distant cell
-  # tower and is home again on the next fix. Each leg looks like driving, so
+  # An idle phone on network positioning (most often Android) sometimes
+  # reports a fix from a distant cell tower and is home again on the next fix.
+  # Any tracker is judged, not only the Android no-motion signature: OwnTracks
+  # leaves those fields out of network fixes. Each leg looks like driving, so
   # only the shape condemns it — and the shape is kept narrow because a real
   # short errand looks similar. The fix must be coarse (PRECISE_FIX_METERS), it
   # must be the only fix away, its neighbours from the same tracker must each
