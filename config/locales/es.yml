@@ -1127,6 +1127,8 @@ es:
         track_split_time: Tiempo entre trayectos
         track_split_time_unit: min
         track_split_time_hint: "Los intervalos más largos inician un trayecto nuevo y permiten usar la grabación de otro dispositivo en los viajes. Tras cambiar este valor, pulsa «Recalcular» en cada viaje afectado para actualizar la ruta y la distancia guardadas."
+        split_tracks_at_midnight: "Dividir trayectos a medianoche"
+        split_tracks_at_midnight_hint: "Termina cada trayecto a medianoche en tu zona horaria, para que ningún trayecto abarque dos días. Para aplicarlo a los trayectos anteriores, pulsa «Recalcular trayectos y estadísticas» abajo."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Ocultar lecturas que no pueden ser una posición real — saltos imposibles, coordenadas rotas. Desactiva para ver cada punto bruto.
         hide_inaccurate_points: "Ocultar puntos imprecisos"
         hide_inaccurate_points_hint: "Oculta también los puntos cuya precisión informada es peor que el umbral de abajo. Ayuda con el seguimiento del móvil que añade ruido lateral; déjalo desactivado para importaciones de Google Timeline, cuyos puntos aproximados siguen sobre la carretera. Para aplicarlo a tu historial, pulsa primero «Aplicar configuración» y después «Re-evaluar datos pasados»."

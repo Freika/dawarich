@@ -24,18 +24,24 @@ class Tracks::StationaryStops
   DEFAULT_RADIUS_METERS = 100
   METERS_PER_DEGREE = 111_320
 
-  # samples: [[timestamp, lon, lat], ...] ordered by timestamp; lon and lat may be nil.
-  def self.break_indexes(samples, threshold_seconds, radius_meters = DEFAULT_RADIUS_METERS)
-    new(samples, threshold_seconds, radius_meters).break_indexes
-  end
-
   def self.radius_for(user)
     [user.safe_settings.visit_radius_meters, DEFAULT_RADIUS_METERS].max
   end
 
+  # A stop long enough to be a visit ends a track even when it is shorter than the route gap.
+  # Each threshold finds its own stops, so a short one never loses the stops of a sparse logger.
+  def self.thresholds_for(user, route_gap_seconds = user.safe_settings.minutes_between_routes * 60)
+    [route_gap_seconds, [route_gap_seconds, user.safe_settings.visit_min_duration_minutes * 60].min].uniq
+  end
+
+  # samples: [[timestamp, lon, lat], ...] ordered by timestamp; lon and lat may be nil.
+  def self.break_indexes(samples, threshold_seconds, radius_meters = DEFAULT_RADIUS_METERS)
+    Array(threshold_seconds).map { |threshold| new(samples, threshold, radius_meters).break_indexes }.reduce(:|)
+  end
+
   # Context a caller must load before the first sample it segments.
   def self.history_seconds(threshold_seconds)
-    (2 * threshold_seconds) + 1
+    (2 * Array(threshold_seconds).max) + 1
   end
 
   # A track that starts at a departure must never be joined to the track before it.
@@ -52,8 +58,9 @@ class Tracks::StationaryStops
   # can be recognized. Returns those trailing points, keeping the arrival and its journey.
   def self.dwell_tail_point_ids(track, threshold_seconds, radius_meters = nil)
     end_timestamp = track.end_at.to_i
-    window_start = [track.start_at.to_i, end_timestamp - (2 * threshold_seconds)].max
-    breaks = Track.stationary_break_point_ids(track.user_id, window_start, end_timestamp + threshold_seconds,
+    longest = Array(threshold_seconds).max
+    window_start = [track.start_at.to_i, end_timestamp - (2 * longest)].max
+    breaks = Track.stationary_break_point_ids(track.user_id, window_start, end_timestamp + longest,
                                               threshold_seconds, radius_meters).to_set
     ids = track.points.order(timestamp: :desc).pluck(:id)
     tail = ids.take_while { |id| breaks.include?(id) }
@@ -87,28 +94,36 @@ class Tracks::StationaryStops
   attr_reader :samples, :threshold_seconds, :radius_meters
 
   # Noise around a stay leaves only some samples settled, which cut the dwell into
-  # short tracks. The break before such a gap is always a settled sample, so its
-  # threshold window locates the stay. The gap belongs to the stay when every sample
-  # in it, and the break after it, lies within the radius of that window's centre.
-  # A walk that leaves the radius around the stay keeps its track.
+  # short tracks. The breaks before such a gap locate the stay. The gap belongs to the
+  # stay when every sample in it, and the break after it, lies within the radius of the
+  # centre of the stay so far, gap included. A walk that leaves the radius keeps its track.
   def join_stop_fragments(breaks)
-    breaks.sort.each_cons(2) do |first, last|
+    sorted = breaks.sort
+    stay_start = sorted.first
+
+    sorted.each_cons(2) do |first, last|
       next if last - first == 1
 
-      center = stay_center(first)
-      next unless center && (first + 1..last).all? { |index| near?(center, index) }
-
-      breaks.merge(first + 1...last)
+      center = stay_center(stay_start, last)
+      if center && (first + 1..last).all? { |index| near?(center, index) }
+        breaks.merge(first + 1...last)
+      else
+        stay_start = last
+      end
     end
     breaks
   end
 
-  def stay_center(settled_index)
-    from = samples.bsearch_index { |row| row[0] >= timestamp(settled_index) - threshold_seconds }
-    located = (from..settled_index).select { |index| located?(index) }
-    return if located.empty?
+  def stay_center(from, to)
+    count, lon, lat = located_sums[to + 1].zip(located_sums[from]).map { |upto, before| upto - before }
+    [lon / count, lat / count] if count.positive?
+  end
 
-    [located.sum { |index| samples[index][1] } / located.size, located.sum { |index| samples[index][2] } / located.size]
+  def located_sums
+    @located_sums ||= samples.each_index.each_with_object([[0, 0.0, 0.0]]) do |index, sums|
+      count, lon, lat = sums.last
+      sums << (located?(index) ? [count + 1, lon + samples[index][1], lat + samples[index][2]] : [count, lon, lat])
+    end
   end
 
   def near?(center, index)

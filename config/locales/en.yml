@@ -1077,6 +1077,8 @@ en:
         track_split_time: Time gap between Tracks
         track_split_time_unit: min
         track_split_time_hint: "Longer gaps start a new Track and let Trips use another device’s recording. After changing this, press Recalculate on affected Trip pages to update saved routes and distances."
+        split_tracks_at_midnight: "Split Tracks at midnight"
+        split_tracks_at_midnight_hint: "End each Track at midnight in your timezone, so no Track spans two days. To apply it to past Tracks, press “Recalculate tracks & stats” below."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Hide readings that cannot be a real position — impossible jumps, broken coordinates. Disable to see every raw point.
         hide_inaccurate_points: "Hide inaccurate points"
         hide_inaccurate_points_hint: "Also hide points whose reported accuracy is worse than the threshold below. Helps with phone tracking that adds sideways noise; keep it off for Google Timeline imports, whose coarse points still sit on the road. To apply it to your history, press “Apply Settings” first, then “Re-evaluate past data”."

@@ -555,6 +555,16 @@
                 <p class="text-xs text-base-content/60 mt-1"><%= t('.track_split_time_hint') %></p>
               </div>
 
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                  <input type="checkbox"
+                         name="splitTracksAtMidnight"
+                         class="toggle toggle-primary" />
+                  <span class="label-text font-medium"><%= t('.split_tracks_at_midnight') %></span>
+                </label>
+                <p class="text-xs text-base-content/60 mt-1"><%= t('.split_tracks_at_midnight_hint') %></p>
+              </div>
+
               <button type="button"
                       class="btn btn-sm btn-outline btn-block"
                       data-action="click->maps--maplibre#recalculateUserData">

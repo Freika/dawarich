@@ -108,6 +108,7 @@ RSpec.describe Users::SafeSettings do
             'speed_color_scale' => '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300',
             'points_rendering_mode' => 'simplified',
             'minutes_between_routes' => 60,
+            'split_tracks_at_midnight' => false,
             'time_threshold_minutes' => 45,
             'merge_threshold_minutes' => 20,
             'live_map_enabled' => false,

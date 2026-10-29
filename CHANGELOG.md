@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - The Select data on map tool can now look across all your data. Turn on "Select data from all time" in the Tools panel before drawing the rectangle to get every point and visit in that area, whatever dates the map shows. When an area holds more than 10,000 points, only the most recent 10,000 are shown and a notice says so. On the Lite plan, "all time" covers the last 12 months. (#3873)
+- Split Tracks at midnight in your timezone with a new option in the map's Track generation settings, so a night at home with your phone still reporting no longer joins several days into one Track. It is off by default; press Recalculate tracks & stats to apply it to existing Tracks. (#3306)
+
+### Changed
+
+- A stop long enough to count as a visit (5 minutes by default) now ends a Track, even when it is shorter than the time gap between Tracks. The Timeline shows separate journeys before and after such a visit instead of one journey across it. Press Recalculate tracks & stats to apply it to existing Tracks. (#3454)
 
 ### Fixed
 
