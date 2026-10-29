@@ -33,7 +33,7 @@ module Achievements
     def toggle_sharing
       card = current_user.achievement_collectibles.visible.find(params[:id])
       state = CollectionState.find_by(user: current_user)
-      return head :unprocessable_entity unless card.publishable? && state&.current?
+      return head :unprocessable_entity unless card.publishable? && state&.shareable?
 
       card.with_lock do
         enabled = params.key?(:enabled) ? ActiveModel::Type::Boolean.new.cast(params[:enabled]) : !card.sharing_enabled

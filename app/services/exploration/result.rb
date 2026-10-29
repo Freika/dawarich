@@ -11,8 +11,7 @@ module Exploration
     def call
       state = Schedule.call(@user)
       snapshot = Snapshot.find_by(id: state.snapshot_id, user_id: @user.id)
-      updating = snapshot.nil? || state.revision != state.published_revision ||
-                 snapshot.dataset_id != Geography.current&.id || snapshot.world_opened_area.nil?
+      updating = !state.settled?(snapshot)
       status = if state.failed_at && updating
                  'error'
                elsif updating

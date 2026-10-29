@@ -1,3 +1,4 @@
+SET LOCAL lock_timeout = '5s';
 -- Statement triggers cover bulk writes (upsert_all/update_all/delete_all) as well
 -- as individual records. Only the affected owners are dirtied, once per statement.
 CREATE OR REPLACE FUNCTION invalidate_exploration() RETURNS trigger LANGUAGE plpgsql AS $$

@@ -14,11 +14,7 @@ module Imports
         'started_at' => Time.current.iso8601
       )
 
-      unless @import.claim_additional_data_extraction!(payload)
-        return redirect_to import_path(@import), alert: I18n.t('imports.source_file.busy'), status: :see_other
-      end
-
-      EnhancedImport::ExtractJob.perform_later(@import.id)
+      EnhancedImport::ExtractJob.perform_later(@import.id) if @import.claim_additional_data_extraction!(payload)
       @import.reload
 
       respond_to do |format|

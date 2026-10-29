@@ -26,7 +26,7 @@ module Achievements
       id, level = @event.key.split(':').map(&:to_i)
       card = Collectible.visible.find_by(id: id, user_id: @event.user_id)
       return unless card&.unlocked? && card.level >= level
-      return unless CollectionState.find_by(user_id: @event.user_id)&.current?
+      return unless CollectionState.find_by(user_id: @event.user_id)&.shareable?
 
       presenter = CollectiblePresenter.new(card)
       Card.new(attributes: presenter.card_attributes,

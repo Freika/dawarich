@@ -10,7 +10,6 @@ migration_files = %w[
   20261028120000_create_achievement_collections
   20261028130000_add_achievement_city_catalog
   20261028140000_watch_achievement_privacy_and_cities
-  20261028143000_add_download_preparation_pending_to_imports
   20261028150000_track_collection_dataset
   20261028160000_refresh_collection_privacy_fingerprint
   20261028170000_track_collection_timezone_version
@@ -23,7 +22,7 @@ RSpec.describe 'Release schema replay' do
   let(:migrations) do
     [CreateExploration, AddExplorationWorldTotals, EnqueueThematicAchievementsBackfill,
      CreateAchievementCollections, AddAchievementCityCatalog, WatchAchievementPrivacyAndCities,
-     AddDownloadPreparationPendingToImports, TrackCollectionDataset, RefreshCollectionPrivacyFingerprint,
+     TrackCollectionDataset, RefreshCollectionPrivacyFingerprint,
      TrackCollectionTimezoneVersion, ActivateRequestedExploration].map(&:new)
   end
 
@@ -107,5 +106,24 @@ RSpec.describe 'Release schema replay' do
     expect(activation_time(active)).to eq(original)
     expect(activation_time(pending)).to be_present
     expect(activation_time(idle)).to be_nil
+  end
+
+  %w[db/exploration_invalidation.sql db/achievement_collections_invalidation.sql].each do |path|
+    it "stops waiting for a busy points table when installing #{File.basename(path)}" do
+      config = ApplicationRecord.connection_db_config.configuration_hash
+      blocker = PG.connect(host: config[:host], port: config[:port], dbname: config[:database],
+                           user: config[:username], password: config[:password])
+      blocker.exec('BEGIN; LOCK TABLE points IN ROW EXCLUSIVE MODE')
+
+      expect do
+        connection.transaction(requires_new: true) do
+          connection.execute("SET LOCAL statement_timeout = '20s'")
+          connection.execute(File.read(Rails.root.join(path)))
+        end
+      end.to raise_error(ActiveRecord::LockWaitTimeout)
+    ensure
+      blocker&.exec('ROLLBACK')
+      blocker&.close
+    end
   end
 end

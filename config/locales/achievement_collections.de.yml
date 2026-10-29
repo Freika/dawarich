@@ -58,8 +58,7 @@ de:
         Schweiz und Eifel. Er ist eine kuratierte regionale Auswahl, keine vollständige
         Liste. Weitere Parks benötigen eine versionierte Katalogaktualisierung.
       public_privacy_note: Öffentlicher Fortschritt schließt Beobachtungen in Privatzonen
-        aus und kann niedriger sein als dein privater Fortschritt. Während der Neuberechnung
-        sind öffentliche Seiten und Bilder deaktiviert.
+        aus und kann niedriger sein als dein privater Fortschritt. Öffentliche Seiten und Bilder sind pausiert, während Änderungen an Grenzen, Zeitzonen oder Privatzonen übernommen werden.
       milestones:
         north_south: Beide Seiten des Äquators
         east_west: Ost und West
@@ -116,16 +115,14 @@ de:
           sind kein erforderliches Ziel. Karte und Stadt-Karte verwenden denselben
           veröffentlichten Erkundungsstand.
         park: Zeichne innerhalb der Parkgrenze 30 beobachtete Minuten an einem lokalen
-          Tag auf. Aufeinanderfolgende Punkte dürfen höchstens zehn Minuten auseinanderliegen
-          und zählen je Paar höchstens zwei Minuten. Überlappende Geräte zählen einmal.
+          Tag auf. Aufeinanderfolgende Punkte dürfen höchstens zehn Minuten auseinanderliegen; die Zeit dazwischen zählt. Überlappende Geräte zählen einmal.
           Bewegung ist erlaubt; Flüge und Anomalien sind ausgeschlossen.
         parks: Stufen werden nach 1, 5 und 15 verschiedenen gültigen Nationalparks
           aus dem Katalog freigeschaltet. Jeder Park benötigt 30 beobachtete Minuten
           an einem lokalen Tag. Der regionale Katalog ist unvollständig und versioniert;
           jeder Park behält eine stabile Identität.
         milestone: Zeichne pro benötigtem Gebiet mindestens zehn beobachtete Minuten
-          an einem lokalen Tag auf. Punktpaare dürfen höchstens zehn Minuten auseinanderliegen
-          und zählen höchstens zwei Minuten; überlappende Geräte zählen einmal. Flüge
+          an einem lokalen Tag auf. Punktpaare dürfen höchstens zehn Minuten auseinanderliegen, die Zeit dazwischen zählt; überlappende Geräte zählen einmal. Flüge
           und Anomalien sind ausgeschlossen. Ein Abstand von 10 km gilt zum Äquator,
           den Meridianen 0° und 180° sowie zum festen Spiel-Polarkreis bei 66,56°.
           Erfasst wird Anwesenheit auf jeder Seite, keine nachgewiesene Überquerung.

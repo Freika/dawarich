@@ -58,8 +58,7 @@ ca:
         la Suïssa Saxona i Eifel. És una selecció regional, no una llista completa.
         Altres parcs requereixen una actualització versionada.
       public_privacy_note: El progrés públic exclou les observacions dins de zones
-        privades i pot ser inferior al privat. Les pàgines i imatges públiques es
-        desactiven durant el recàlcul.
+        privades i pot ser inferior al privat. Les pàgines i imatges públiques es pausen mentre s’apliquen canvis de límits, de zona horària o de zones privades.
       milestones:
         north_south: A banda i banda de l’equador
         east_west: Est i Oest
@@ -114,16 +113,14 @@ ca:
           l’àrea de cel·les obertes, no els carrers recorreguts; no cal arribar al
           100%. El mapa i la targeta utilitzen la mateixa instantània publicada.
         park: Enregistra 30 minuts observats dins del parc en un dia local. Els punts
-          consecutius han d’estar separats com a màxim deu minuts i aporten fins a
-          dos minuts per parella. Els dispositius superposats compten una vegada.
+          consecutius han d’estar separats com a màxim deu minuts; el temps entre ells compta. Els dispositius superposats compten una vegada.
           Es permet el moviment; s’exclouen vols i anomalies.
         parks: Els nivells es desbloquegen després d’1, 5 i 15 parcs nacionals diferents
           del catàleg que compleixin els requisits. Cada parc necessita 30 minuts
           observats en un dia local. El catàleg regional és incomplet i versionat;
           cada parc conserva una identitat estable.
         milestone: Enregistra almenys deu minuts observats per regió requerida en
-          un dia local. Les parelles de punts han de distar com a màxim deu minuts
-          i aporten fins a dos; els dispositius superposats compten una vegada. S’exclouen
+          un dia local. Les parelles de punts han de distar com a màxim deu minuts, i el temps entre ells compta; els dispositius superposats compten una vegada. S’exclouen
           vols i anomalies. Un marge de 10 km exclou l’equador, els meridians 0° i
           180° i el paral·lel polar fixat per al joc a 66,56°. Es registra presència
           a cada costat, no un encreuament demostrat.

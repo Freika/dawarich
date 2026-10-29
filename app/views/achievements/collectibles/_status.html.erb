@@ -1,4 +1,4 @@
-<% unless @state&.current? %>
+<% if @state.nil? || !@state.settled? || @state.failed_at || @state.requested_at %>
   <p class="alert mb-5" role="status" data-testid="collection-calculation-status">
     <%= t("achievements.collections.#{@state&.failed_at ? 'calculation_failed' : (@state&.completed_at ? 'updating' : 'calculating')}") %>
   </p>

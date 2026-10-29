@@ -114,4 +114,24 @@ RSpec.describe 'Geographic collection sharing' do
     expect(response.body).not_to include('Unlocked ·')
     expect(card.reload.level).to eq(1)
   end
+
+  it 'shows a failed recalculation even while the published cards are recent' do
+    Achievements::CollectionState.find_by!(user: user).update!(failed_at: Time.current)
+
+    get achievement_cards_path
+
+    expect(response.body).to include('data-testid="collection-calculation-status"')
+  end
+
+  it 'keeps a shared card reachable while new points arrive between calculations' do
+    card = user.achievement_collectibles.find_by!(series: 'milestone', subject_key: 'north_south')
+    patch toggle_sharing_achievement_card_path(card), params: { enabled: true }, as: :json
+    uuid = response.parsed_body.fetch('uuid')
+    Point.insert_all!([{ user_id: user.id, timestamp: Time.utc(2025, 1, 3).to_i, lonlat: 'POINT(13.405 52.52)',
+                         created_at: Time.current, updated_at: Time.current }])
+    sign_out user
+
+    get shared_collectible_path(uuid)
+    expect(response).to have_http_status(:ok)
+  end
 end

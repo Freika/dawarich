@@ -8,25 +8,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### ⚠️ Upgrade notes
 
-- Run the database migrations before starting the updated application and workers. They add exploration and achievement data, import download-preparation state and durable exploration activation; existing points are retained.
+- Run the database migrations before starting the updated application and workers. They add exploration and achievement data and durable exploration activation; existing points are retained.
 - The initial geographic calculation runs in the background and can take longer while local boundary data is installed. The initial city and national-park catalog covers Berlin, Hamburg, Dresden, Harz, Saxon Switzerland and Eifel; it is not a worldwide catalog.
 
 ### Added
 
 - Add personal achievement cards for city exploration, returning to places, collecting all seasons, national parks and geographic milestones. Cards include evidence, level history and opt-in public sharing with privacy-aware HTML, embeds and images.
-- Share one all-history resolution-9 H3 ledger between city cards and map fog. Date ranges highlight first discoveries; pilot boundaries cover Berlin, Hamburg, Dresden and three German national parks.
+- Share one all-history resolution-9 H3 ledger between city cards and map fog. Date ranges highlight first discoveries; pilot boundaries cover Berlin, Hamburg, Dresden and three German national parks. Cards and fog reflect new or deleted points and edited places or visits within an hour; selection, boundary and privacy-zone changes apply immediately.
 - Collect Benelux, Baltics and Scandinavia achievement sets by visiting their three member countries. Each set shows visited countries, dates and the countries still to explore, with public sharing available when enabled. Existing location history counts automatically.
 - Test a geocoding provider with your own coordinates in Instance settings, including providers with regional coverage. Leave both fields blank to use the existing default coordinates. (#3714)
 - Click a photo cluster on the map to browse its photos without zooming. The gallery shows 24 thumbnails per page, supports phones and keyboard navigation, and keeps photos with identical coordinates accessible at high zoom. (#3652)
 - The map keeps the point count and distance for the selected period visible, including custom times and empty ranges. Distance follows your km/mi setting. (#3257)
-- Delete an import's source file from its detail page to free storage while keeping its points, visits, places and tracks. The confirmation explains that downloading and operations that need the file will no longer be available. Available for completed or failed imports when the file is not in use; account restore archives and API-generated photo imports are excluded. (#3531)
 - Dismiss a batch of flash messages with Close all notifications. Compact responsive messages keep individual dismissal, visible errors and keyboard controls. (#3765)
 
 ### Changed
 
 - Show geographic milestone cards as globes with continents, graticules and highlighted hemispheres, quarters or polar caps, including public previews.
-- Imports remain visible when sorted by file size after their source file is removed. (#3531)
-- Deleting a whole import now explicitly warns that its points and extracted data will be deleted, both in the list and on its detail page. (#3531)
+- Fog of War now follows the shared exploration cells. The per-point mode and the fog radius and threshold settings were removed.
 
 ### Fixed
 

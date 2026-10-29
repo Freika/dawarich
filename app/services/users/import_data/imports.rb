@@ -67,7 +67,6 @@ class Users::ImportData::Imports
       'file_size',
       'content_type',
       'file_error',
-      'download_preparation_pending',
       'updated_at'
     ).merge(user: user)
   end

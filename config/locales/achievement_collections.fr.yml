@@ -58,8 +58,7 @@ fr:
         de la Suisse saxonne et de l’Eifel. Cette sélection régionale n’est pas exhaustive.
         Tout ajout nécessite une mise à jour versionnée.
       public_privacy_note: La progression publique exclut les observations dans les
-        zones privées et peut être inférieure à votre progression privée. Les pages
-        et images publiques sont désactivées pendant le recalcul.
+        zones privées et peut être inférieure à votre progression privée. Les pages et images publiques sont suspendues pendant l’application de changements de limites, de fuseau horaire ou de zones privées.
       milestones:
         north_south: Des deux côtés de l’équateur
         east_west: Est et Ouest
@@ -115,8 +114,7 @@ fr:
           100% n’est pas requis. La carte et la carte de collection utilisent le même
           instantané publié.
         park: Enregistrez 30 minutes observées dans les limites du parc en une journée
-          locale. Les points consécutifs doivent être espacés d’au plus dix minutes
-          et contribuent au maximum deux minutes par paire. Les appareils qui se chevauchent
+          locale. Les points consécutifs doivent être espacés d’au plus dix minutes ; le temps qui les sépare est compté. Les appareils qui se chevauchent
           comptent une seule fois. Le déplacement est autorisé ; vols et anomalies
           sont exclus.
         parks: Les paliers se débloquent après 1, 5 et 15 parcs nationaux différents
@@ -124,8 +122,7 @@ fr:
           observées en une journée locale. Le catalogue régional est incomplet et
           versionné ; chaque parc conserve une identité stable.
         milestone: Enregistrez au moins dix minutes observées par région requise en
-          une journée locale. Les paires de points sont espacées d’au plus dix minutes
-          et contribuent au maximum deux minutes ; les appareils qui se chevauchent
+          une journée locale. Les paires de points sont espacées d’au plus dix minutes, et le temps qui les sépare est compté ; les appareils qui se chevauchent
           comptent une fois. Vols et anomalies sont exclus. Une marge de 10 km exclut
           l’équateur, les méridiens 0° et 180° et le parallèle polaire fixé pour le
           jeu à 66,56°. Cela atteste une présence de chaque côté, pas une traversée

@@ -58,8 +58,7 @@ es:
         Harz, Suiza Sajona y Eifel. Es una selección regional, no una lista completa.
         Otros parques requieren una actualización versionada.
       public_privacy_note: El progreso público excluye observaciones dentro de zonas
-        privadas y puede ser inferior al privado. Las páginas e imágenes públicas
-        se desactivan mientras se recalculan los datos.
+        privadas y puede ser inferior al privado. Las páginas e imágenes públicas se pausan mientras se aplican cambios de límites, zona horaria o zonas privadas.
       milestones:
         north_south: A ambos lados del ecuador
         east_west: Este y Oeste
@@ -113,16 +112,14 @@ es:
           mide área de celdas abiertas, no calles recorridas; no se exige llegar al
           100%. El mapa y la tarjeta usan la misma instantánea publicada.
         park: Registra 30 minutos observados dentro del límite del parque en un día
-          local. Los puntos consecutivos deben estar separados como máximo diez minutos
-          y aportan hasta dos minutos por pareja. Los dispositivos solapados cuentan
+          local. Los puntos consecutivos deben estar separados como máximo diez minutos; el tiempo entre ellos cuenta. Los dispositivos solapados cuentan
           una sola vez. Se permite moverse; se excluyen vuelos y anomalías.
         parks: Los niveles se desbloquean tras 1, 5 y 15 parques nacionales distintos
           del catálogo que cumplan las condiciones. Cada parque requiere 30 minutos
           observados en un día local. El catálogo regional es incompleto y versionado;
           cada parque mantiene una identidad estable.
         milestone: Registra al menos diez minutos observados por región necesaria
-          en un día local. Las parejas de puntos deben distar como máximo diez minutos
-          y aportan hasta dos; los dispositivos solapados cuentan una vez. Se excluyen
+          en un día local. Las parejas de puntos deben distar como máximo diez minutos, y el tiempo entre ellos cuenta; los dispositivos solapados cuentan una vez. Se excluyen
           vuelos y anomalías. Un margen de 10 km excluye el ecuador, los meridianos
           0° y 180° y el paralelo polar fijado para el juego en 66,56°. Se registra
           presencia a cada lado, no un cruce demostrado.

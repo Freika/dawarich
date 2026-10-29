@@ -33,7 +33,6 @@ RSpec.describe Users::ExportData::Imports, type: :service do
         expect(first_import).not_to have_key('user_id')
         expect(first_import).not_to have_key('raw_data')
         expect(first_import).not_to have_key('id')
-        expect(first_import).not_to have_key('download_preparation_pending')
       end
 
       it 'logs processing information' do

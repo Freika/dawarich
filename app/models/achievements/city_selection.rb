@@ -11,7 +11,7 @@ module Achievements
     private
 
     def invalidate_collection
-      CollectionSchedule.call(user)
+      CollectionSchedule.call(user, throttle: false)
     end
   end
 end

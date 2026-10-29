@@ -10,59 +10,29 @@ module Achievements
     def call
       CollectionState.with_advisory_lock("achievement-collections-#{@user.id}", timeout_seconds: 0) do
         @state = CollectionState.create_or_find_by!(user_id: @user.id)
+        Selection.where(user: @user).includes(:place).order(:id).each { |selection| resolve_timezone(selection) }
+        @selection_signature = selection_signature
         if @user.achievement_city_selections.exists?
           Exploration::Rebuild.new(@user).call
           state = Exploration::State.find_by!(user_id: @user.id)
           @snapshot = Exploration::Snapshot.find_by(id: state.snapshot_id, user_id: @user.id)
-          return unless @snapshot && state.revision == state.published_revision
+          return unless state.settled?(@snapshot)
         end
-        dataset = Exploration::Geography.current
-        dataset ||= Exploration::Geography.install! if @user.points.exists?
-        @dataset = dataset
-        @notify &&= @state.published_dataset_id == dataset&.id
+        @dataset = Exploration::Geography.current
+        @dataset ||= Exploration::Geography.install! if @user.points.exists?
+        @notify &&= @state.published_dataset_id == @dataset&.id
         @notify &&= @state.timezone_version == LocationTimezone.version
-        3.times do
-          Selection.where(user: @user).includes(:place).order(:id).each { |selection| resolve_timezone(selection) }
-          @state.reload
-          return if @state.current?
+        return if @state.reload.current?
 
-          @revision = @state.revision
-          @selections = Selection.where(user: @user).includes(:place).order(:id).to_a
-          break if @selections.all? { |selection| timezone_coordinates_match?(selection) }
-        end
-        return unless @selections.all? { |selection| timezone_coordinates_match?(selection) }
-
-        results = @selections.flat_map { |selection| place_results(selection) }
-        city_selections = @user.achievement_city_selections.to_a
-        return if city_selections.any? && @snapshot.nil?
-
-        results.concat(city_selections.filter_map { |selection| CityRule.call(@user, selection, @snapshot) })
-        fingerprint = PrivacyFingerprint.call(@user)
-        @privacy_fingerprint = fingerprint
-        masker = Maps::PrivacyZoneMasker.new(@user)
-        ApplicationRecord.transaction do
-          observations = @user.points.exists? ? ObservedTime.new(@user, dataset: dataset).call : {}
-          public_observations = if masker.any? && @user.points.exists?
-                                  ObservedTime.new(@user, dataset: dataset, privacy_zone_masker: masker,
-                                                         prepare_flights: false).call
-                                else
-                                  observations
-                                end
-          geographic = GeographicResults.call(dataset, observations)
-          public_results = GeographicResults.call(dataset, public_observations)
-          geographic.each do |result|
-            public_result = public_results.find do |item|
-              item[:series] == result[:series] && item[:subject_key] == result[:subject_key]
-            end
-            result[:data]['public'] =
-              public_result&.fetch(:data) || result[:data].merge('levels' => {}, 'progress' => 0, 'evidence' => [])
-            result[:data]['privacy_fingerprint'] = fingerprint
-          end
-          results.concat(geographic)
-        end
-        publish(results, @revision)
+        results = nil
+        Exploration::FlightEvidence.anchor!(@user)
+        Exploration::SourceSnapshot.call { results = snapshot_results }
+        publish(results, @revision) if results
       ensure
         @state&.update_columns(requested_at: nil)
+      end
+      if @selection_signature && @selection_signature != selection_signature
+        CollectionSchedule.call(@user, throttle: false)
       end
     rescue StandardError
       @state&.update_columns(failed_at: Time.current, requested_at: nil)
@@ -70,6 +40,45 @@ module Achievements
     end
 
     private
+
+    def snapshot_results
+      @revision = CollectionState.where(id: @state.id).pick(:revision)
+      @selections = Selection.where(user: @user).includes(:place).order(:id).to_a
+      return unless @selections.all? { |selection| timezone_coordinates_match?(selection) }
+
+      city_selections = @user.achievement_city_selections.to_a
+      return if city_selections.any? && @snapshot.nil?
+
+      results = @selections.flat_map { |selection| place_results(selection) }
+      results.concat(city_selections.filter_map { |selection| CityRule.call(@user, selection, @snapshot) })
+      @privacy_fingerprint = PrivacyFingerprint.call(@user)
+      results.concat(geographic_results)
+    end
+
+    def selection_signature
+      [Selection.where(user: @user).order(:id).pluck(:id, :updated_at),
+       @user.achievement_city_selections.order(:id).pluck(:id, :updated_at)]
+    end
+
+    def geographic_results
+      masker = Maps::PrivacyZoneMasker.new(@user)
+      observations = @user.points.exists? ? ObservedTime.new(@user, dataset: @dataset).call : {}
+      public_observations = if masker.any? && @user.points.exists?
+                              ObservedTime.new(@user, dataset: @dataset, privacy_zone_masker: masker,
+                                                      prepare_flights: false).call
+                            else
+                              observations
+                            end
+      public_results = GeographicResults.call(@dataset, public_observations)
+      GeographicResults.call(@dataset, observations).each do |result|
+        public_result = public_results.find do |item|
+          item[:series] == result[:series] && item[:subject_key] == result[:subject_key]
+        end
+        result[:data]['public'] =
+          public_result&.fetch(:data) || result[:data].merge('levels' => {}, 'progress' => 0, 'evidence' => [])
+        result[:data]['privacy_fingerprint'] = @privacy_fingerprint
+      end
+    end
 
     def resolve_timezone(selection)
       place = selection.place
@@ -109,8 +118,7 @@ module Achievements
     def publish(results, revision)
       @fresh_cards = []
       @state.with_lock do
-        return unless @state.revision == revision
-        return if @snapshot && Exploration::State.find_by(user_id: @user.id)&.revision != @snapshot.revision
+        return if revision < @state.published_revision
         return unless Exploration::Geography.current&.id == @dataset&.id
 
         return unless PrivacyFingerprint.call(@user) == @privacy_fingerprint

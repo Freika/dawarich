@@ -13,6 +13,9 @@ class Exploration::RefreshJob < ApplicationJob
 
     Exploration::Snapshot.where('dataset_id <> ? OR world_opened_area IS NULL', dataset.id)
                          .where(id: Exploration::State.activated.select(:snapshot_id))
-                         .find_each { |s| Exploration::Schedule.call(User.find(s.user_id)) }
+                         .find_each do |snapshot|
+                           user = User.find_by(id: snapshot.user_id)
+                           Exploration::Schedule.call(user) if user
+                         end
   end
 end

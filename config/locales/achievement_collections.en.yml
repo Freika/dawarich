@@ -55,8 +55,7 @@ en:
         Eifel national parks. It is a curated regional selection, not a complete list.
         Further parks require a versioned catalog update.
       public_privacy_note: Public progress excludes observations inside privacy zones
-        and can be lower than your private progress. Public pages and images are disabled
-        while data is being recalculated.
+        and can be lower than your private progress. Public pages and images are paused while boundary, timezone or privacy-zone changes are applied.
       milestones:
         north_south: Both sides of the equator
         east_west: East and West
@@ -110,16 +109,14 @@ en:
           opened cell area, not streets walked; no 100% goal is required. The map
           and card use the same published exploration snapshot.
         park: Record 30 observed minutes inside the park boundary in one local day.
-          Consecutive points must be at most 10 minutes apart and contribute at most
-          two minutes per pair. Overlapping devices count once. Movement is allowed;
+          Consecutive points must be at most 10 minutes apart; the time between them counts. Overlapping devices count once. Movement is allowed;
           flights and anomalies are excluded.
         parks: Levels unlock after 1, 5 and 15 different qualifying national parks
           from the catalog. Each park requires 30 observed minutes in one local day.
           The regional catalog is incomplete and versioned; each park keeps a stable
           identity.
         milestone: Record at least 10 observed minutes per required region in one
-          local day. Point pairs must be at most 10 minutes apart and contribute at
-          most two minutes; overlapping devices count once. Flights and anomalies
+          local day. Point pairs must be at most 10 minutes apart, and the time between them counts; overlapping devices count once. Flights and anomalies
           are excluded. A 10 km margin excludes the equator, meridians 0° and 180°,
           and the polar parallel at the fixed game latitude 66.56°. This records presence
           on each side, not a proven crossing.

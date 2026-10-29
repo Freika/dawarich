@@ -36,7 +36,7 @@ module AchievementsHelper
     end
     silhouette.fetch(:details, []).each do |part|
       paths << tag.path(d: part[:path], fill: part[:fill], stroke: part[:stroke],
-                        stroke_width: part[:stroke_width], opacity: part[:opacity],
+                        'stroke-width': part[:stroke_width], opacity: part[:opacity],
                         'fill-rule': 'evenodd', 'stroke-linejoin': 'round', 'stroke-linecap': 'round',
                         data: { detail: true, fill: part[:fill], stroke: part[:stroke],
                                 stroke_width: part[:stroke_width], opacity: part[:opacity] })
