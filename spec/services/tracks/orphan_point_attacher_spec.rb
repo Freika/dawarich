@@ -60,4 +60,23 @@ RSpec.describe Tracks::OrphanPointAttacher do
     expect(second.reload.track_id).to eq(healthy.id)
     expect(first.reload.track_id).to be_nil
   end
+
+  it 'retries the attachment when a concurrent chunk deadlocks it' do
+    track = track_with(0, 10)
+    late = point_at(15)
+    segment = Point.where(user: user).order(:timestamp).to_a
+    attempts = 0
+    allow(Tracks::Reprocessor).to receive(:reprocess).and_wrap_original do |original, reprocessed|
+      attempts += 1
+      raise ActiveRecord::Deadlocked, 'deadlock detected' if attempts == 1
+
+      original.call(reprocessed)
+    end
+    allow(ExceptionReporter).to receive(:call)
+
+    described_class.new(user, [late], segment).call
+
+    expect(late.reload.track_id).to eq(track.id)
+    expect(ExceptionReporter).not_to have_received(:call)
+  end
 end

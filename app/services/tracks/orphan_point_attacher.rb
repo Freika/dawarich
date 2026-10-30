@@ -2,6 +2,8 @@
 
 module Tracks
   class OrphanPointAttacher
+    DEADLOCK_ATTEMPTS = 3
+
     def initialize(user, points, segment_points)
       @user = user
       @points = Array(points)
@@ -31,11 +33,15 @@ module Tracks
       candidates.min_by { |candidate| [(candidate.timestamp - point.timestamp).abs, candidate.id] }
     end
 
-    def attach(track_id, group)
+    # Chunks of one user run concurrently, and each refresh bumps the shared
+    # monthly revision rows, so Postgres can pick this transaction as a
+    # deadlock victim. The block re-locks and re-reads ownership, so a retry
+    # is safe.
+    def attach(track_id, group, attempt: 1)
       track = user.tracks.find_by(id: track_id)
       return unless track
 
-      track.with_lock do
+      track.with_lock(requires_new: true) do
         locked = user.points.where(id: group.flatten.map(&:id)).order(:id).lock.index_by(&:id)
         attachable = group.filter_map do |point, neighbor|
           locked[point.id] if attachable?(locked[point.id], locked[neighbor.id], track)
@@ -45,6 +51,11 @@ module Tracks
         Tracks::TrackExtender.new(user, track).extend_with(attachable)
         track
       end
+    rescue ActiveRecord::Deadlocked => e
+      return attach(track_id, group, attempt: attempt + 1) if attempt < DEADLOCK_ATTEMPTS
+
+      ExceptionReporter.call(e, "Failed to attach orphan points to track #{track_id} for user #{user.id}")
+      nil
     rescue StandardError => e
       ExceptionReporter.call(e, "Failed to attach orphan points to track #{track_id} for user #{user.id}")
       nil
