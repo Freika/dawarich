@@ -110,6 +110,15 @@ fr:
       not_found: Le succès partagé est introuvable ou n'est plus disponible
       social_description: "%{progress} exploré. Enregistré avec Dawarich."
       tracked_with_html: "Enregistré avec %{link}"
+      city_headline: "%{percent} % de %{city} exploré"
+      levels: "Niveaux"
+      next_level: "Niveau suivant à %{percent} %"
+      cta_title: "Votre historique l'a peut-être déjà gagnée."
+      cta_body: "Importez votre historique de positions et découvrez les cartes que vous débloquez, sans aucun check-in."
+      cta_button: "Voir mes cartes"
+      copy_link: "Copier le lien"
+      download_image: "Télécharger l'image"
+      tracked_footnote: "open source, auto-hébergeable ou dans le cloud"
     notifications:
       region_title: "%{region} explorée !"
       region_content: "%{achievement} : %{count}/%{total} régions visitées."

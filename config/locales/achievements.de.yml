@@ -110,6 +110,15 @@ de:
       not_found: Der geteilte Erfolg wurde nicht gefunden oder ist nicht mehr verfügbar
       social_description: "%{progress} erkundet. Aufgezeichnet mit Dawarich."
       tracked_with_html: "Aufgezeichnet mit %{link}"
+      city_headline: "%{percent}% von %{city} erkundet"
+      levels: "Stufen"
+      next_level: "Nächste Stufe bei %{percent}%"
+      cta_title: "Vielleicht hat dein Verlauf das schon verdient."
+      cta_body: "Importiere deinen Standortverlauf und sieh, welche Karten du freischaltest, ganz ohne Check-ins."
+      cta_button: "Meine Karten ansehen"
+      copy_link: "Link kopieren"
+      download_image: "Bild herunterladen"
+      tracked_footnote: "Open Source, selbst hostbar oder in der Cloud"
     notifications:
       region_title: "%{region} erkundet!"
       region_content: "%{achievement}: %{count}/%{total} Regionen besucht."

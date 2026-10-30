@@ -34,3 +34,39 @@ RSpec.describe Achievements::CollectiblePresenter do
     expect(described_class.new(card).evidence_rows.pluck(:label)).to eq(%w[Summer Autumn Winter Spring])
   end
 end
+
+RSpec.describe Achievements::CollectiblePresenter, 'public stage' do
+  let(:city) do
+    Achievements::Collectible.new(series: 'city', subject_key: 'city:1', level: 3, earned_at: Time.utc(2022, 12, 8),
+                                  data: { 'name' => 'Berlin', 'progress' => 12.4, 'levels' => { '3' => '2022-12-08' } })
+  end
+
+  it 'climbs the city level ladder up to the current level' do
+    ladder = described_class.new(city).ladder
+
+    expect(ladder.pluck(:percent)).to eq([1, 5, 10, 25])
+    expect(ladder.pluck(:state)).to eq(%i[done done current next])
+  end
+
+  it 'names the reached city level in the headline and the next level after it' do
+    presenter = described_class.new(city)
+
+    expect(presenter.headline).to eq('10% of Berlin explored')
+    expect(presenter.next_level_percent).to eq(25)
+  end
+
+  it 'has no ladder or next level once the top city level is reached' do
+    city.level = 4
+
+    expect(described_class.new(city).next_level_percent).to be_nil
+  end
+
+  it 'keeps the card name as headline and no ladder for cards without levels' do
+    seasons = Achievements::Collectible.new(series: 'seasons', subject_key: 'place:1', level: 1,
+                                            data: { 'name' => 'Schlachtensee', 'progress' => 4, 'target' => 4 })
+    presenter = described_class.new(seasons)
+
+    expect(presenter.ladder).to be_nil
+    expect(presenter.headline).to eq(presenter.name)
+  end
+end

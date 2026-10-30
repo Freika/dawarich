@@ -1,0 +1,42 @@
+<%# locals: (rarity:, eyebrow:, headline:, lead:, note:, page_url:, image_path:, ladder: nil) %>
+<section class="ach-stage" data-testid="public-card-stage" data-rarity="<%= rarity.downcase %>">
+  <div class="ach-stage-inner">
+    <div class="ach-stage-card"><%= yield %></div>
+
+    <div class="ach-stage-info">
+      <p class="ach-stage-eyebrow"><%= eyebrow %></p>
+      <h1 class="ach-stage-headline"><%= headline %></h1>
+      <% if lead.present? %><p class="ach-stage-lead"><%= lead %></p><% end %>
+
+      <% if ladder %>
+        <p class="ach-stage-label"><%= t('achievements.public.levels') %></p>
+        <ol class="ach-ladder" data-testid="public-card-ladder">
+          <% ladder.each do |step| %>
+            <li class="ach-ladder-step ach-ladder-step--<%= step[:state] %>"><span><%= step[:percent] %>%</span></li>
+          <% end %>
+        </ol>
+      <% end %>
+      <% if note.present? %><p class="ach-stage-note"><%= note %></p><% end %>
+
+      <div class="ach-stage-cta">
+        <p><strong><%= t('achievements.public.cta_title') %></strong><%= t('achievements.public.cta_body') %></p>
+        <%= link_to public_share_cta_url('card_cta'), class: 'ach-stage-button', data: { testid: 'public-card-cta' } do %>
+          <%= t('achievements.public.cta_button') %> <span aria-hidden="true">→</span>
+        <% end %>
+      </div>
+
+      <div class="ach-stage-share">
+        <button type="button" class="ach-stage-chip" data-controller="clipboard"
+                data-clipboard-text-value="<%= page_url %>" data-action="click->clipboard#copy">
+          <%= icon 'copy' %> <%= t('achievements.public.copy_link') %>
+        </button>
+        <%= link_to image_path, class: 'ach-stage-chip', download: true do %>
+          <%= icon 'download' %> <%= t('achievements.public.download_image') %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</section>
+<p class="ach-stage-footnote">
+  <%= t('achievements.public.tracked_with_html', link: link_to('Dawarich', 'https://dawarich.app')) %> · <%= t('achievements.public.tracked_footnote') %>
+</p>

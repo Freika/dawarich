@@ -110,6 +110,15 @@ ca:
       not_found: L'assoliment compartit no existeix o ja no està disponible
       social_description: "%{progress} explorat. Registrat amb Dawarich."
       tracked_with_html: "Registrat amb %{link}"
+      city_headline: "%{percent}% de %{city} explorat"
+      levels: "Nivells"
+      next_level: "Següent nivell al %{percent}%"
+      cta_title: "Potser el teu historial ja s'ho ha guanyat."
+      cta_body: "Importa el teu historial d'ubicacions i descobreix quines cartes desbloqueges, sense fer check-in enlloc."
+      cta_button: "Veure les meves cartes"
+      copy_link: "Copia l'enllaç"
+      download_image: "Baixa la imatge"
+      tracked_footnote: "codi obert, autoallotjable o al núvol"
     notifications:
       region_title: "%{region} explorada!"
       region_content: "%{achievement}: %{count}/%{total} regions visitades."

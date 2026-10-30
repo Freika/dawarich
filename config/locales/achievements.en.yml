@@ -110,6 +110,15 @@ en:
       not_found: Shared achievement not found or no longer available
       social_description: "%{progress} explored. Tracked with Dawarich."
       tracked_with_html: "Tracked with %{link}"
+      city_headline: "%{percent}% of %{city} explored"
+      levels: "Levels"
+      next_level: "Next level at %{percent}%"
+      cta_title: "Your history may have earned this already."
+      cta_body: "Import your location history and see which cards unlock, without checking in anywhere."
+      cta_button: "See my cards"
+      copy_link: "Copy link"
+      download_image: "Download image"
+      tracked_footnote: "open source, self-hostable or Cloud"
     notifications:
       region_title: "%{region} explored!"
       region_content: "%{achievement}: %{count}/%{total} regions visited."
