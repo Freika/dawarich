@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { formatNumber, formatTime, translate } from "i18n"
 import { deletePlace } from "maps_maplibre/components/place_actions"
+import { RangeStatistics } from "maps_maplibre/components/range_statistics"
 import { Toast } from "maps_maplibre/components/toast"
 import { PlacePanelBridge } from "maps_maplibre/editing/place_panel_bridge"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
@@ -48,6 +49,9 @@ export default class extends Controller {
     importId: { type: String, default: "" },
     privacyZonesFingerprint: { type: String, default: "" },
     currentPosition: Object,
+    explorationBounds: Array,
+    explorationSnapshot: String,
+    explorationMessages: Object,
   }
 
   static targets = [
@@ -164,9 +168,12 @@ export default class extends Controller {
     await this.settingsController.loadSettings()
     this.settings = this.settingsController.settings
     this.settings.timezone = this.timezoneValue
+    if (this.hasExplorationBoundsValue) this.settings.fogEnabled = true
 
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
+    if (this.hasExplorationBoundsValue && this.hasFogToggleTarget)
+      this.fogToggleTarget.checked = true
 
     await this.initializeMap()
     // initializeMap bails without setting this.map if the controller
@@ -337,14 +344,23 @@ export default class extends Controller {
       })
     }
 
-    this.loadMapData().then(() => {
-      if (this.settings?.familyEnabled) {
-        this.loadFamilyMembers()
-      }
-      if (anomaliesVisible(SettingsManager.getSettings())) {
-        this.layerVisibilityManager.refreshAnomalies({ enabled: true })
-      }
-    })
+    this.loadMapData({ fitBounds: !this.hasExplorationBoundsValue }).then(
+      () => {
+        if (this.hasExplorationBoundsValue) {
+          this.map.fitBounds(this.explorationBoundsValue, {
+            padding: 70,
+            maxZoom: 13,
+            duration: 0,
+          })
+        }
+        if (this.settings?.familyEnabled) {
+          this.loadFamilyMembers()
+        }
+        if (anomaliesVisible(SettingsManager.getSettings())) {
+          this.layerVisibilityManager.refreshAnomalies({ enabled: true })
+        }
+      },
+    )
 
     // Show family members list immediately (doesn't depend on layer)
     if (this.settings?.familyEnabled && this.hasFamilyMembersListTarget) {
@@ -354,6 +370,7 @@ export default class extends Controller {
 
   disconnect() {
     this._disconnected = true
+    this.rangeStatistics?.destroy()
     if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
     this.placePanel?.destroy()
     this.replayPanel?.destroy()
@@ -441,6 +458,11 @@ export default class extends Controller {
    */
   initializeAPI() {
     this.api = new ApiClient(this.apiKeyValue, this.importIdValue || null)
+    const statistics = this.element.querySelector(
+      '[data-testid="map-range-statistics"]',
+    )
+    if (statistics)
+      this.rangeStatistics = new RangeStatistics(statistics, this.api)
   }
 
   /**
@@ -465,6 +487,8 @@ export default class extends Controller {
    * Load map data from API
    */
   async loadMapData(options = {}) {
+    this.rangeStatistics?.setUnit(this.settings?.distance_unit || "km")
+    this.rangeStatistics?.load(this.startDateValue, this.endDateValue)
     return this.mapDataManager.loadMapData(
       this.startDateValue,
       this.endDateValue,

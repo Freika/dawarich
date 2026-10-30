@@ -85,7 +85,12 @@ module Places
     end
 
     def matching_places(area)
+      incompatible_mappings = LegacyAreaPlaceMapping.joins(:area)
+                                                    .where('CHAR_LENGTH(areas.name) > 255')
+                                                    .where('LOWER(BTRIM(areas.name)) <> ?', normalize(area.name))
+
       area.user.places.not_archived
+          .where.not(id: incompatible_mappings.select(:place_id))
           .where('LOWER(BTRIM(name)) = ?', normalize(area.name))
           .near([area.latitude, area.longitude], MATCH_RADIUS_METERS, :m)
           .order(:id)
@@ -94,6 +99,10 @@ module Places
 
     def normalize(name)
       name.to_s.strip.downcase
+    end
+
+    def place_name(area)
+      area.name.first(255).presence || area.name.sub(/\A[[:space:]]+/, '').first(255)
     end
 
     # Moving two different notes onto the same Place/date would create a state
@@ -108,7 +117,7 @@ module Places
 
     def create_place(area)
       place = area.user.places.build(
-        name: area.name,
+        name: place_name(area),
         latitude: area.latitude,
         longitude: area.longitude,
         visit_radius: area.visit_radius,
@@ -125,7 +134,7 @@ module Places
       place.user_named = true
       place.skip_suggested_visit_reattribution = true
       place.update!(
-        name: area.name,
+        name: place_name(area),
         source: :manual,
         name_locked_at: place.name_locked_at || Time.current,
         visit_radius: [place.visit_radius, area.visit_radius].max,

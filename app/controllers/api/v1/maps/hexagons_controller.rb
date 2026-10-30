@@ -73,9 +73,11 @@ class Api::V1::Maps::HexagonsController < ApiController
     end_date = parse_fog_date!(:end_date)
 
     result = Maps::FogHexagons.new(user: current_api_user, start_date:, end_date:,
-                                   privacy_zone_masker:).call
+                                   privacy_zone_masker:, snapshot_id: params[:snapshot_id]).call
 
     render json: result
+  rescue ActiveRecord::RecordNotFound
+    head :not_found
   rescue ActionController::ParameterMissing => e
     error = I18n.t('controllers.api.v1.maps.hexagons.missing_required_parameter_param', parameter: e.param)
     render json: { error: error },

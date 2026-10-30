@@ -203,6 +203,33 @@ RSpec.describe Achievements::SetPresenter do
     end
   end
 
+  describe 'a thematic collection' do
+    it 'dates completion from its last visited country without requiring subdivision awards' do
+      set = presenter('thematic_baltics_v1', earned: {
+                        'EE' => '2026-05-01', 'LV' => '2026-05-02', 'LT' => '2026-05-03',
+                        'DE' => '2026-06-01'
+                      })
+
+      expect(set).to be_completed
+      expect(set.completed_on).to eq(Date.new(2026, 5, 3))
+      expect(set.region_cards).to all(include(completed: true, percent: 100))
+    end
+
+    it 'outlines only the unvisited countries without changing the collection frame' do
+      create(:country, iso_a2: 'EE', geom: 'MULTIPOLYGON (((24 58, 24 59, 25 59, 25 58, 24 58)))')
+      create(:country, iso_a2: 'LV', geom: 'MULTIPOLYGON (((24 56, 24 57, 25 57, 25 56, 24 56)))')
+      create(:country, iso_a2: 'LT', geom: 'MULTIPOLYGON (((24 54, 24 55, 25 55, 25 54, 24 54)))')
+
+      shape = presenter('thematic_baltics_v1', earned: { 'EE' => '2026-05-01' }).card_attributes[:silhouette]
+
+      expect(shape[:viewbox].split.map(&:to_f)).to eq([24, -59, 1, 5])
+      expect(shape[:unvisited_path].scan(/M/).size).to eq(2)
+      expect(shape[:unvisited_path]).not_to include('-58', '-59')
+      expect(presenter('thematic_baltics_v1', earned: %w[EE LV LT].index_with { '2026-05-01' })
+               .card_attributes[:silhouette][:unvisited_path]).to be_nil
+    end
+  end
+
   describe 'subdivision child cards' do
     before do
       create(:region, code: 'DE-BY', geom: 'MULTIPOLYGON (((11 48, 11 49, 12 49, 12 48, 11 48)))')

@@ -784,7 +784,7 @@ export class SettingsController {
    * Update route opacity in real-time
    */
   async updateFogMode(event) {
-    const mode = event.target.value
+    const mode = "hexagons"
 
     const fogLayer = this.layerManager.getLayer("fog")
     if (fogLayer) {
@@ -955,6 +955,7 @@ export class SettingsController {
   updateDistanceUnit(event) {
     const unit = event.target.value
     this.settings.distance_unit = unit
+    this.controller.rangeStatistics?.setUnit(unit)
     SettingsManager.updateSetting("distance_unit", unit)
   }
 
@@ -1013,8 +1014,6 @@ export class SettingsController {
     const formData = new FormData(event.target)
 
     const settings = {
-      fogOfWarRadius: parseInt(formData.get("fogOfWarRadius"), 10),
-      fogOfWarThreshold: parseInt(formData.get("fogOfWarThreshold"), 10),
       metersBetweenRoutes: parseInt(formData.get("metersBetweenRoutes"), 10),
       minutesBetweenRoutes: parseInt(formData.get("minutesBetweenRoutes"), 10),
       minMinutesSpentInCity: parseInt(
@@ -1043,6 +1042,7 @@ export class SettingsController {
       await SettingsManager.updateSetting(key, value)
     }
 
+    this.controller.rangeStatistics?.refresh()
     document.dispatchEvent(
       new CustomEvent("map-settings:saved", { detail: { scope: "form" } }),
     )

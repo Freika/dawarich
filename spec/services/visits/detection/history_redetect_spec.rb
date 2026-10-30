@@ -64,6 +64,31 @@ RSpec.describe Visits::Detection::HistoryRedetect do
     expect(bare.reload.confidence).to be_nil
   end
 
+  it 'loads coordinate-bearing evidence once per legacy visit batch' do
+    area = create(:area, user: user)
+    rows = 201.times.map do |i|
+      { user_id: user.id, area_id: area.id, status: Visit.statuses[:confirmed], duration: 60,
+        started_at: Time.zone.at(base_ts + i * 7200), ended_at: Time.zone.at(base_ts + i * 7200 + 3600) }
+    end
+    ids = Visit.insert_all!(rows, returning: %w[id]).rows.flatten
+    Point.insert_all!(ids.map { |id| { user_id: user.id, visit_id: id, timestamp: base_ts, lonlat: nil } })
+    create(:point, user: user, visit_id: ids.last, lonlat: "POINT(#{area.lon} #{area.lat})", accuracy: 10)
+    queries = []
+    subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
+      sql = payload[:sql]
+      queries << sql if sql.start_with?('SELECT') && sql.include?('FROM "points"')
+    end
+
+    described_class.new(user).send(:backfill_legacy_confidence)
+
+    expect(queries.size).to eq(2)
+    expect(queries).to all(include('"points"."lonlat" IS NOT NULL'))
+    expect(Visit.where(id: ids).where.not(confidence: nil).pluck(:id)).to eq([ids.last])
+    expect(Visit.where(id: ids, status: :confirmed).count).to eq(201)
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
+  end
+
   it 'treats a capped month as failed instead of silently clean' do
     seed_cluster
     allow(Visits::Detection::CandidateLoader).to receive(:new)

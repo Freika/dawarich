@@ -11,6 +11,9 @@ ca:
       dismiss: Tanca aquesta pila
       view: Mostra %{name} a la col·lecció
     ui:
+      themes: "Col·leccions temàtiques"
+      themes_hint: "Petites col·leccions de països amb un tema comú."
+      theme_visit_note: "Un país visitat compta per a aquesta col·lecció encara que quedin regions per explorar."
       title: Assoliments
       summary: Resum
       continents: Continents
@@ -58,12 +61,18 @@ ca:
         in_progress: En curs
         locked: Bloquejades
     cards:
+      themes:
+        thematic_benelux_v1: "Benelux"
+        thematic_baltics_v1: "Països bàltics"
+        thematic_scandinavia_v1: "Escandinàvia"
       explorer_name: "Explorador de %{place}"
       description:
+        thematic_set: "Passa temps als %{count} països de %{place}."
         continent: "Passa temps als %{count} països i territoris de %{place}."
         regions: "Passa temps a les %{count} regions de %{place}."
         country: "Passa temps a %{place}."
       status:
+        visited_on: "Visitat · %{date}"
         locked: Bloquejada
         unlocked: Desbloquejada
         unlocked_on: "Desbloquejada · %{date}"
@@ -101,6 +110,19 @@ ca:
       not_found: L'assoliment compartit no existeix o ja no està disponible
       social_description: "%{progress} explorat. Registrat amb Dawarich."
       tracked_with_html: "Registrat amb %{link}"
+      city_headline: "%{percent}% de %{city} explorat"
+      levels: "Nivells"
+      next_level: "Següent nivell al %{percent}%"
+      cta_title: "Potser el teu historial ja s'ho ha guanyat."
+      cta_body: "Importa el teu historial d'ubicacions i descobreix quines cartes desbloqueges, sense fer check-in enlloc."
+      cta_button: "Veure les meves cartes"
+      copy_link: "Copia l'enllaç"
+      download_share_image: "Baixa la imatge per compartir"
+      ladder_state:
+        done: "assolit"
+        current: "nivell actual"
+        next: "encara no assolit"
+      tracked_footnote: "codi obert, autoallotjable o al núvol"
     notifications:
       region_title: "%{region} explorada!"
       region_content: "%{achievement}: %{count}/%{total} regions visitades."

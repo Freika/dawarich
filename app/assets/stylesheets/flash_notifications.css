@@ -1,0 +1,110 @@
+/* Shared by server-rendered flashes and Flash.show. Keep the task visible
+   around a bounded list, with status expressed by the icon rather than fill. */
+.flash-stack {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  width: min(26rem, calc(100vw - 2rem));
+  max-height: min(32rem, calc(100dvh - 2rem));
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--rounded-box);
+  background: oklch(var(--b1));
+  color: oklch(var(--bc));
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  text-align: start;
+}
+
+.flash-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex: none;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid oklch(var(--bc) / 0.1);
+  background: oklch(var(--b2));
+  text-align: end;
+}
+
+.flash-dismiss-all.btn {
+  min-height: 2.75rem;
+  font-size: 0.8125rem;
+}
+
+.flash-message.alert {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.5rem 0.5rem 0.5rem 0.875rem;
+  border: 0;
+  border-radius: 0;
+  background: oklch(var(--b1));
+  color: oklch(var(--bc));
+  box-shadow: none;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  text-align: start;
+}
+
+.flash-message + .flash-message {
+  border-top: 1px solid oklch(var(--bc) / 0.08);
+}
+
+.flash-message__body {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  gap: 0.625rem;
+  min-width: 0;
+  padding-block: 0.6875rem;
+}
+
+.flash-message__icon {
+  flex: none;
+  color: color-mix(in oklab, oklch(var(--in)) 70%, oklch(var(--bc)));
+}
+
+.flash-message__icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.flash-message.alert-error .flash-message__icon {
+  color: color-mix(in oklab, oklch(var(--er)) 70%, oklch(var(--bc)));
+}
+
+.flash-message.alert-success .flash-message__icon {
+  color: color-mix(in oklab, oklch(var(--su)) 70%, oklch(var(--bc)));
+}
+
+.flash-message.alert-warning .flash-message__icon {
+  color: color-mix(in oklab, oklch(var(--wa)) 70%, oklch(var(--bc)));
+}
+
+.flash-message__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.flash-message__close.btn {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  color: oklch(var(--bc) / 0.7);
+}
+
+.flash-stack .btn:hover {
+  background: oklch(var(--bc) / 0.08);
+  color: oklch(var(--bc));
+}
+
+.flash-stack .btn:focus-visible {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: -2px;
+}

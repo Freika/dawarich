@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Users::Digests::Yearly::EmailSendingJob, type: :job do
+  before { allow(DawarichSettings).to receive(:email_configured?).and_return(true) }
+
   let(:user) { create(:user, settings: { 'yearly_digest_emails_enabled' => true }) }
   let(:year) { 2024 }
   let!(:digest) { create(:users_digest, user: user, year: year, period_type: :yearly) }

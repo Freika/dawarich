@@ -115,6 +115,27 @@ RSpec.describe '/trips', type: :request do
       expect(response).to be_successful
     end
 
+    it 'hands the poster studio a trip stats line from the stored distance' do
+      trip.update_columns(distance: 27_430)
+
+      get trip_url(trip)
+
+      studio = Nokogiri::HTML(response.body).at_css('#poster-studio')
+      expect(studio['data-poster-studio-editor-stats-label-value']).to eq('27.4 km')
+      toggle = studio.at_css('[data-poster-studio-editor-target="statsToggle"]')
+      expect(toggle).to be_present
+      expect(toggle['checked']).to be_nil
+    end
+
+    it 'offers no stats block before the trip distance is calculated' do
+      trip.update_columns(distance: nil)
+
+      get trip_url(trip)
+
+      studio = Nokogiri::HTML(response.body).at_css('#poster-studio')
+      expect(studio.at_css('[data-poster-studio-editor-target="statsToggle"]')).to be_nil
+    end
+
     it 'does not load the unused raw point coordinate projection' do
       queries = capture_sql { get trip_url(trip) }
 

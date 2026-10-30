@@ -9,7 +9,7 @@ RSpec.describe Achievements::Registry do
     it 'builds a definition per continent, country and world tier' do
       kinds = described_class.all.group_by(&:kind).transform_values(&:size)
 
-      expect(kinds).to eq('continent' => 6, 'country' => 238, 'region_set' => 3)
+      expect(kinds).to eq('continent' => 6, 'country' => 238, 'region_set' => 3, 'thematic_set' => 3)
     end
 
     it 'derives keys from continent names and ISO codes' do
@@ -113,6 +113,19 @@ RSpec.describe Achievements::Registry do
       expect(border_hopper.level).to eq(:country)
       expect(described_class.find('globetrotter').target).to eq(15)
       expect(described_class.find('world_traveler').target).to eq(50)
+    end
+  end
+
+  describe 'thematic sets' do
+    it 'uses versioned memberships independently of country subdivisions' do
+      expect(described_class.find('thematic_benelux_v1').region_codes).to eq(%w[BE NL LU])
+      expect(described_class.find('thematic_baltics_v1').region_codes).to eq(%w[EE LV LT])
+      scandinavia = described_class.find('thematic_scandinavia_v1')
+
+      expect(scandinavia).to be_thematic
+      expect(scandinavia.region_codes).to eq(%w[DK NO SE])
+      expect(scandinavia.target).to eq(3)
+      expect(scandinavia.level).to eq(:country)
     end
   end
 

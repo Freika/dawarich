@@ -11,6 +11,13 @@ RSpec.describe 'Opening Timeline with Visits disabled' do
     script = <<~'JS'
       import { readFileSync } from 'node:fs';
 
+      globalThis.CustomEvent ??= class CustomEvent extends Event {
+        constructor(type, options = {}) {
+          super(type, options);
+          this.detail = options.detail ?? null;
+        }
+      };
+
       async function loadController(path, dependencies) {
         const source = readFileSync(path, 'utf8')
           .replace(/^import[\s\S]*?from "[^"]+"\n/gm, '');

@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.20.0] - 2026-10-30, Berlin
+
+### ⚠️ Upgrade notes
+
+- Migrations that install database triggers on points wait at most 5 seconds for a table lock. If one stops with a lock timeout, stop the workers or wait for running imports to finish, then restart the application; the migrations are safe to re-run.
+- The initial geographic calculation runs in the background and can take longer while local boundary data is installed. The initial city and national-park catalog covers Berlin, Hamburg, Dresden, Harz, Saxon Switzerland and Eifel; it is not a worldwide catalog.
+
+### Added
+
+- Add personal achievement cards for city exploration, returning to places, collecting all seasons, national parks and geographic milestones. Cards include evidence, level history and opt-in public sharing with privacy-aware HTML, embeds and images.
+- Shared achievement cards open on a dark page tinted by the card's rarity. Visitors see what the card is for, the City Explorer level ladder with the next level, a call to try Dawarich, and buttons to copy the link or download the share image. Level steps are announced to screen readers. Embedded badges are unchanged.
+- Share one all-history resolution-9 H3 ledger between city cards and map fog. Date ranges highlight first discoveries; pilot boundaries cover Berlin, Hamburg, Dresden and three German national parks. The first calculation starts when you open the fog or select a city, and future-dated points never open cells or count toward city levels. Cards and fog reflect new or deleted points and edited places or visits within an hour; selection, boundary and privacy-zone changes apply immediately.
+- Collect Benelux, Baltics and Scandinavia achievement sets by visiting their three member countries. Each set shows visited countries, dates and the countries still to explore, with public sharing available when enabled. Existing location history counts automatically.
+- Test a geocoding provider with your own coordinates in Instance settings, including providers with regional coverage. Leave both fields blank to use the existing default coordinates. (#3714)
+- Click a photo cluster on the map to browse its photos without zooming. The gallery shows 24 thumbnails per page, supports phones and keyboard navigation, and keeps photos with identical coordinates accessible at high zoom. (#3652)
+- The map keeps the point count and distance for the selected period visible, including custom times and empty ranges. Distance follows your km/mi setting. (#3257)
+- Dismiss a batch of flash messages with Close all notifications. Compact responsive messages keep individual dismissal, visible errors and keyboard controls. (#3765)
+- Add a trip stats line to posters made from a trip: switch on Trip stats in the poster studio's Text section to show the trip's total distance under the subtitle. It is off by default, follows your km/mi setting, and appears the same in the preview, PNG and PDF downloads, printed orders and posters saved to the gallery. (#3327)
+
+### Changed
+
+- Show geographic milestone cards as globes with continents, graticules and highlighted hemispheres, quarters or polar caps, including public previews.
+- Fog of War now follows the shared exploration cells. The per-point mode and the fog radius and threshold settings were removed.
+
+### Fixed
+
+- Full-history visit redetection now completes when legacy visits contain points without coordinates, preserving confirmed visits that have no usable observations (#3931).
+- Live visit detection keeps an ongoing visit and its points in place as new points arrive, instead of rewriting every point of the visit each time. Suggested visits keep their ID between detection runs. This greatly reduces database writes and index growth on busy instances.
+- Enrich photos places a video where its recording started. Video timestamps mark the end of the recording, so the scan now subtracts the video's duration before looking up your location history. (#3293)
+- Monthly and yearly digest emails no longer enter repeated delivery retries when SMTP is not configured (#3932).
+- Legacy areas with names longer than 255 characters now migrate to places without repeatedly failing, keeping their notes and visits (#3930).
+- Recalculating statistics no longer scans the whole cache to refresh the insights digest, which could exhaust cache connections on busy instances.
+- Tracks left with fewer than two points are now removed reliably when another job updated or deleted them at the same time.
+
 ## [1.19.0] - 2026-10-27, Berlin
 
 ### ⚠️ Upgrade notes

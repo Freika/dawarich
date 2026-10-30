@@ -1,0 +1,15 @@
+pl:
+  javascript:
+    photo_cluster:
+      title: "Zdjęcia w tej grupie"
+      close: "Zamknij"
+      previous: "Poprzednie"
+      next: "Następne"
+      loading: "Ładowanie zdjęć…"
+      range: "%{start}–%{end} z %{total} zdjęć"
+      empty: "Brak zdjęć w tej grupie."
+      error: "Nie udało się wczytać zdjęć. Spróbuj ponownie."
+      retry: "Spróbuj ponownie"
+      back: "Wróć do miniatur"
+      image_error: "Miniatura niedostępna"
+      keyboard_hint: "Naciśnij Enter, aby otworzyć grupę zdjęć najbliższą środkowi mapy."

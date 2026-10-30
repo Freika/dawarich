@@ -11,10 +11,10 @@ const source = await readFile(
 )
 const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
 const dependencies = `
-const SettingsManager = { updateSetting() {} }
+const SettingsManager = { updateSetting: (...args) => globalThis.__settingUpdates?.push(args) }
 const translate = (key) => key
 const Toast = { retry(_message, _label, callback) { globalThis.__scratchRetry = callback } }
-const gatedToggle = () => false
+const gatedToggle = (options) => globalThis.__gatedToggle?.(options) ?? false
 const lazyLoader = { loadLayer: async () => globalThis.__scratchTestLayer }
 `
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(dependencies + withoutImports).toString("base64")}`
@@ -105,4 +105,27 @@ test("a failed first Scratch membership fetch retries the registered layer inste
     delete globalThis.__scratchTestLayer
     delete globalThis.__scratchRetry
   }
+})
+
+test("a Lite fog toggle runs as a gated preview without persisting fogEnabled", async () => {
+  const gated = []
+  globalThis.__settingUpdates = []
+  globalThis.__gatedToggle = (options) => {
+    gated.push(options.layerName)
+    return true
+  }
+  const controller = {
+    map: {},
+    settings: {},
+    userPlanValue: "lite",
+    layerManager: { getLayer: () => null },
+  }
+  const manager = new LayerVisibilityManager(controller)
+
+  await manager.toggleFog({ target: { checked: true } })
+
+  assert.deepEqual(gated, ["Fog of War"])
+  assert.deepEqual(globalThis.__settingUpdates, [])
+  globalThis.__gatedToggle = null
+  globalThis.__settingUpdates = null
 })

@@ -43,6 +43,17 @@
   <% end %>
 
   <section class="place-drawer__section place-drawer__details">
+    <% if achievements_visible? %>
+      <% collection_place = current_user.achievement_selections.find_by(place_id: place.id) %>
+      <div class="mb-4">
+        <%= link_to t('achievements.collections.title'), achievement_cards_path, class: 'link' %>
+        <% if collection_place %>
+          <%= button_to t('achievements.collections.remove'), achievement_selection_path(collection_place), method: :delete, class: 'btn btn-sm btn-ghost', form: { data: { turbo_frame: '_top' } } %>
+        <% else %>
+          <%= button_to t('achievements.collections.add'), achievement_selections_path, params: { place_id: place.id }, class: 'btn btn-sm btn-ghost', form: { data: { turbo_frame: '_top' } } %>
+        <% end %>
+      </div>
+    <% end %>
     <h3 class="place-drawer__heading"><%= t('places.polish.details') %></h3>
     <%= form_with model: place, method: :patch, class: 'place-drawer__editor', data: { turbo_frame: 'place-drawer' } do |f| %>
       <%= hidden_field_tag :map_panel, params[:map_panel] if params[:map_panel].present? %>

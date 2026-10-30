@@ -122,6 +122,28 @@ RSpec.describe Achievements::RegionSetChecker do
   end
 
   describe 'completed collection reveals' do
+    it 'awards and announces a thematic set once using country visits alone' do
+      earned = %w[EE LV LT].index_with { '2026-05-01T10:00:00Z' }
+      create(:achievement_progress, user: user, achievement_key: 'exploration', state: { 'earned' => earned })
+
+      2.times { described_class.new(user, notify: true).call }
+
+      expect(user.user_achievements.where(achievement_key: 'thematic_baltics_v1').count).to eq(1)
+      expect(user.achievement_unlock_events.where(kind: 'set', key: 'thematic_baltics_v1').count).to eq(1)
+      expect(user.notifications.where(title: 'Baltics completed!').count).to eq(1)
+    end
+
+    it 'backfills thematic awards without announcements or reveal events' do
+      earned = %w[EE LV LT].index_with { '2026-05-01T10:00:00Z' }
+      create(:achievement_progress, user: user, achievement_key: 'exploration', state: { 'earned' => earned })
+
+      described_class.new(user, notify: false).call
+
+      expect(user.user_achievements.where(achievement_key: 'thematic_baltics_v1')).to exist
+      expect(user.achievement_unlock_events).to be_empty
+      expect(user.notifications).to be_empty
+    end
+
     it 'queues the completed country card only once' do
       earned = Achievements::Registry.find('country_de').region_codes.index_with { Time.current.iso8601 }
       create(:achievement_progress, user: user, achievement_key: 'exploration', state: { 'earned' => earned })

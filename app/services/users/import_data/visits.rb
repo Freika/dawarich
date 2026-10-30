@@ -49,7 +49,13 @@ class Users::ImportData::Visits
 
   attr_reader :user, :visits_data, :legacy_area_place_references, :legacy_area_places_by_name
 
+  # A visit at a Place is unique per start (idx_visits_user_started_at_place_unique),
+  # so a second archive row with the same start and Place is a duplicate even
+  # when its end or name differ.
   def find_existing_visit(attributes)
+    place = attributes[:place]
+    return user.visits.find_by(started_at: attributes['started_at'], place_id: place.id) if place
+
     user.visits
         .where(
           started_at: attributes['started_at'],

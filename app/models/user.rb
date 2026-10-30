@@ -51,6 +51,9 @@ class User < ApplicationRecord
   has_many :achievement_progresses, class_name: 'Achievements::Progress', dependent: :destroy
   has_many :achievement_unlock_events, class_name: 'Achievements::UnlockEvent', dependent: :delete_all
   has_many :user_achievements, dependent: :destroy
+  has_many :achievement_selections, class_name: 'Achievements::Selection', dependent: :destroy
+  has_many :achievement_collectibles, class_name: 'Achievements::Collectible', dependent: :destroy
+  has_many :achievement_city_selections, class_name: 'Achievements::CitySelection', dependent: :destroy
 
   after_create :create_api_key
   after_initialize :normalize_nil_settings

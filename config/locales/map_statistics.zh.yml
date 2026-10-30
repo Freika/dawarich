@@ -1,0 +1,8 @@
+zh:
+  javascript:
+    range_statistics:
+      scope: "所选时间段内你的轨迹点；不包含隐私区域和家庭历史。"
+      unavailable: "统计数据暂不可用"
+      summary:
+        one: "%{points} 个点 · %{distance} %{unit}"
+        other: "%{points} 个点 · %{distance} %{unit}"

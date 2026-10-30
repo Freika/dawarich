@@ -64,6 +64,19 @@ RSpec.describe 'Privacy zone masking on map read endpoints', type: :request do
     end
   end
 
+  describe 'map range statistics' do
+    it 'excludes private-zone samples regardless of whether the flag is supplied' do
+      create(:point, user:, lonlat: "POINT(#{zone_lon} #{zone_lat})", timestamp: 2.hours.ago.to_i)
+      create(:point, user:, lonlat: 'POINT(13.700 52.600)', timestamp: 1.hour.ago.to_i)
+
+      [time_range, masked(time_range)].each do |params|
+        get '/api/v1/maps/statistics', params: params, headers: headers
+        expect(response).to have_http_status(:ok)
+        expect(json).to eq('points' => 1, 'distance_meters' => 0.0)
+      end
+    end
+  end
+
   describe 'track_points' do
     let(:track) { create(:track, user: user, start_at: 3.hours.ago, end_at: 30.minutes.ago) }
 

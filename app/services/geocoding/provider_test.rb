@@ -14,18 +14,22 @@ module Geocoding
       Geocoder::Error
     ].freeze
 
-    def self.call(config = Config.resolved_config)
-      new(config).call
+    def self.call(config = Config.resolved_config, latitude: nil, longitude: nil)
+      new(config, latitude: latitude, longitude: longitude).call
     end
 
-    def initialize(config)
+    def initialize(config, latitude: nil, longitude: nil)
       @config = config
+      @latitude = latitude
+      @longitude = longitude
     end
 
     def call
+      coordinates = test_coordinates
+      return [:alert, message(:invalid_coordinates)] unless coordinates
       return [:alert, message(:not_configured)] unless config.enabled?
 
-      results = Search.with_config(config: config, query: TEST_COORDINATES, limit: 1, max_wait: MAX_WAIT)
+      results = Search.with_config(config: config, query: coordinates, limit: 1, max_wait: MAX_WAIT)
       return [:alert, message(:rate_limited)] if results.nil?
 
       result = results.first
@@ -41,6 +45,25 @@ module Geocoding
     private
 
     attr_reader :config
+
+    def test_coordinates
+      values = [@latitude, @longitude]
+      return TEST_COORDINATES if values.all? { |value| value.nil? || (value.is_a?(String) && value.strip.empty?) }
+
+      latitude = parse_coordinate(@latitude, -90..90)
+      longitude = parse_coordinate(@longitude, -180..180)
+      [latitude, longitude] if latitude && longitude
+    end
+
+    def parse_coordinate(value, range)
+      return unless value.is_a?(String) || value.is_a?(Numeric)
+
+      text = value.to_s.strip
+      return unless text.match?(/\A[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\z/)
+
+      number = Float(text, exception: false)
+      number if number&.finite? && range.cover?(number)
+    end
 
     def message(key, **interpolations)
       I18n.t("admin.settings.test_geocoding.#{key}", **interpolations)

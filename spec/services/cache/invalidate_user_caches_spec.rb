@@ -54,4 +54,31 @@ without_data: 10 })
       expect(Rails.cache.read("dawarich/user_#{user.id}_points_geocoded_stats")).to be_nil
     end
   end
+
+  describe '#invalidate_insights_digest' do
+    let!(:digest) { create(:users_digest, user: user, year: 2024) }
+    let!(:other_year) { create(:users_digest, user: user, year: 2023) }
+
+    before do
+      Rails.cache.write(digest.insights_cache_key, digest)
+      Rails.cache.write(other_year.insights_cache_key, other_year)
+    end
+
+    it "deletes the year's cached digest without scanning the cache" do
+      allow(Rails.cache).to receive(:delete_matched)
+
+      described_class.new(user.id, year: 2024).invalidate_insights_digest
+
+      expect(Rails.cache.read(digest.insights_cache_key)).to be_nil
+      expect(Rails.cache.read(other_year.insights_cache_key)).to be_present
+      expect(Rails.cache).not_to have_received(:delete_matched)
+    end
+
+    it 'deletes every cached yearly digest when no year is given' do
+      service.invalidate_insights_digest
+
+      expect(Rails.cache.read(digest.insights_cache_key)).to be_nil
+      expect(Rails.cache.read(other_year.insights_cache_key)).to be_nil
+    end
+  end
 end

@@ -22,6 +22,8 @@ function fixture(
     dialogOpen = false,
     restoredMaterial = false,
     locked = false,
+    unvisited = false,
+    details = false,
   } = {},
 ) {
   const intersections = []
@@ -103,8 +105,24 @@ function fixture(
     getAttribute: (name) => (name === "d" ? "M0 0L10 0L10 10Z" : null),
   }
   const fallbackSvg = {
+    querySelectorAll: (selector) =>
+      selector === "[data-detail]" && details
+        ? [
+            {
+              getAttribute: (name) =>
+                ({
+                  d: "M0 5L10 5",
+                  "data-fill": "none",
+                  "data-stroke": "#abc123",
+                  "data-stroke-width": "0.5",
+                  "data-opacity": "0.8",
+                })[name],
+            },
+          ]
+        : [],
     getAttribute: (name) => (name === "viewBox" ? "0 0 10 10" : null),
-    querySelector: () => fallbackPath,
+    querySelector: (selector) =>
+      selector === "[data-unvisited]" && !unvisited ? null : fallbackPath,
   }
   const controller = new AchievementCardController()
   controller.element = {
@@ -196,6 +214,11 @@ test("mount derives the silhouette from fallback SVG without secure-context APIs
   assert.match(options.uid, /^sc-/)
   assert.equal(controller.mounted, true)
   assert.equal(sizes.length, 1)
+})
+
+test("mount preserves a thematic collection's unvisited overlay during hydration", (t) => {
+  const { controller } = fixture(t, { unvisited: true })
+  assert.equal(controller.silhouette.unvisited_path, "M0 0L10 0L10 10Z")
 })
 
 test("a mounted card refits synchronously when moved into the preview and back", (t) => {
@@ -300,4 +323,23 @@ test("zero-sized hidden stages retain their last valid map scale", (t) => {
   stage.clientHeight = 0
   sizes[0].callback()
   assert.equal(properties["--map-scale"], originalScale)
+})
+
+test("hydrates globe detail paths and stroke attributes from the fallback SVG", (t) => {
+  const { controller } = fixture(t, { details: true })
+  let silhouette
+  globalThis.__spectralMarkup = (options) => {
+    silhouette = options.silhouette
+    return { html: "<svg/>", accent: "#fff" }
+  }
+  controller.mount()
+  assert.deepEqual(silhouette.details, [
+    {
+      path: "M0 5L10 5",
+      fill: "none",
+      stroke: "#abc123",
+      stroke_width: 0.5,
+      opacity: 0.8,
+    },
+  ])
 })

@@ -4,7 +4,7 @@ module Achievements
   class UnlockEvent < ApplicationRecord
     self.table_name = 'achievement_unlock_events'
 
-    KINDS = %w[geography set].freeze
+    KINDS = %w[geography set collectible].freeze
 
     belongs_to :user
 

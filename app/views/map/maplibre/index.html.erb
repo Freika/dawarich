@@ -12,6 +12,9 @@
      data-maps--maplibre-data-window-start-value="<%= current_user.entitlements.data_window_start&.iso8601 %>"
      data-maps--maplibre-import-id-value="<%= @import_id %>"
      data-maps--maplibre-privacy-zones-fingerprint-value="<%= privacy_zones_fingerprint %>"
+     data-maps--maplibre-exploration-messages-value="<%= { calculating: t('achievements.collections.calculating'), updating: t('achievements.collections.updating'), error: t('achievements.collections.calculation_failed') }.to_json %>"
+     <% if @exploration_bounds %>data-maps--maplibre-exploration-bounds-value="<%= @exploration_bounds.to_json %>"<% end %>
+     <% if @exploration_snapshot_id %>data-maps--maplibre-exploration-snapshot-value="<%= @exploration_snapshot_id %>"<% end %>
      <% if @current_position %>data-maps--maplibre-current-position-value="<%= @current_position.to_json %>"<% end %>
      data-maps--maplibre-upgrade-url-value="<%= upgrade_url(utm_medium: 'map', utm_content: 'maplibre') %>"
      data-maps--maplibre-realtime-enabled-value="true"
@@ -35,6 +38,12 @@
   <div data-maps--maplibre-target="progressBadge" class="map-progress-badge">
     <span class="map-progress-badge-dot"></span>
     <span data-maps--maplibre-target="progressBadgeText"><%= t('.loading') %></span>
+  </div>
+
+  <div class="map-range-statistics" data-testid="map-range-statistics"
+       role="status" aria-live="polite" aria-atomic="true"
+       title="<%= t('javascript.range_statistics.scope') %>">
+    <%= t('.loading') %>
   </div>
 
   <!-- Map-edge button cluster (top-right corner) -->

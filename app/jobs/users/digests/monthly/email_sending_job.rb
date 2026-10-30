@@ -4,6 +4,8 @@ class Users::Digests::Monthly::EmailSendingJob < ApplicationJob
   queue_as :mailers
 
   def perform(user_id, year, month)
+    return unless DawarichSettings.email_configured?
+
     user = find_user_or_skip(user_id) || return
     digest = user.digests.monthly.find_by(year: year, month: month)
 

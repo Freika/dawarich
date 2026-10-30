@@ -19,6 +19,7 @@ module Places
       return false if Note.where(attachable_type: 'Place', attachable_id: @place_id).exists?
       return false if place.name_locked?
       return false if place.geofence?
+      return false if Achievements::Selection.exists?(place_id: place.id)
       return false if LegacyAreaPlaceMapping.exists?(place_id: @place_id)
       return false if Visit.active.where(place_id: @place_id).exists?
       return false if Tagging.where(taggable_id: @place_id, taggable_type: 'Place').exists?
