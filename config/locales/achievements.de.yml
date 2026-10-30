@@ -117,7 +117,11 @@ de:
       cta_body: "Importiere deinen Standortverlauf und sieh, welche Karten du freischaltest, ganz ohne Check-ins."
       cta_button: "Meine Karten ansehen"
       copy_link: "Link kopieren"
-      download_image: "Bild herunterladen"
+      download_share_image: "Bild zum Teilen herunterladen"
+      ladder_state:
+        done: "erreicht"
+        current: "aktuelle Stufe"
+        next: "noch nicht erreicht"
       tracked_footnote: "Open Source, selbst hostbar oder in der Cloud"
     notifications:
       region_title: "%{region} erkundet!"

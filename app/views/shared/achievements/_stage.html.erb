@@ -12,7 +12,10 @@
         <p class="ach-stage-label"><%= t('achievements.public.levels') %></p>
         <ol class="ach-ladder" data-testid="public-card-ladder">
           <% ladder.each do |step| %>
-            <li class="ach-ladder-step ach-ladder-step--<%= step[:state] %>"><span><%= step[:percent] %>%</span></li>
+            <li class="ach-ladder-step ach-ladder-step--<%= step[:state] %>" <%= 'aria-current="step"'.html_safe if step[:state] == :current %>>
+              <span><%= step[:percent] %>%</span>
+              <span class="sr-only"><%= t("achievements.public.ladder_state.#{step[:state]}") %></span>
+            </li>
           <% end %>
         </ol>
       <% end %>
@@ -30,8 +33,8 @@
                 data-clipboard-text-value="<%= page_url %>" data-action="click->clipboard#copy">
           <%= icon 'copy' %> <%= t('achievements.public.copy_link') %>
         </button>
-        <%= link_to image_path, class: 'ach-stage-chip', download: true do %>
-          <%= icon 'download' %> <%= t('achievements.public.download_image') %>
+        <%= link_to image_path, class: 'ach-stage-chip', download: "#{headline.parameterize.presence || 'dawarich-card'}.png" do %>
+          <%= icon 'download' %> <%= t('achievements.public.download_share_image') %>
         <% end %>
       </div>
     </div>

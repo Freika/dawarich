@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Add personal achievement cards for city exploration, returning to places, collecting all seasons, national parks and geographic milestones. Cards include evidence, level history and opt-in public sharing with privacy-aware HTML, embeds and images.
-- Shared achievement cards open on a dark page tinted by the card's rarity. Visitors see what the card is for, the City Explorer level ladder with the next level, a call to try Dawarich, and buttons to copy the link or download the card image. Embedded badges are unchanged.
+- Shared achievement cards open on a dark page tinted by the card's rarity. Visitors see what the card is for, the City Explorer level ladder with the next level, a call to try Dawarich, and buttons to copy the link or download the share image. Level steps are announced to screen readers. Embedded badges are unchanged.
 - Share one all-history resolution-9 H3 ledger between city cards and map fog. Date ranges highlight first discoveries; pilot boundaries cover Berlin, Hamburg, Dresden and three German national parks. The first calculation starts when you open the fog or select a city, and future-dated points never open cells or count toward city levels. Cards and fog reflect new or deleted points and edited places or visits within an hour; selection, boundary and privacy-zone changes apply immediately.
 - Collect Benelux, Baltics and Scandinavia achievement sets by visiting their three member countries. Each set shows visited countries, dates and the countries still to explore, with public sharing available when enabled. Existing location history counts automatically.
 - Test a geocoding provider with your own coordinates in Instance settings, including providers with regional coverage. Leave both fields blank to use the existing default coordinates. (#3714)
@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Monthly and yearly digest emails no longer enter repeated delivery retries when SMTP is not configured (#3932).
 - Legacy areas with names longer than 255 characters now migrate to places without repeatedly failing, keeping their notes and visits (#3930).
 - Recalculating statistics no longer scans the whole cache to refresh the insights digest, which could exhaust cache connections on busy instances.
+- Tracks left with fewer than two points are now removed reliably when another job updated or deleted them at the same time.
 
 ## [1.19.0] - 2026-10-27, Berlin
 

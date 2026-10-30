@@ -117,7 +117,11 @@ en:
       cta_body: "Import your location history and see which cards unlock, without checking in anywhere."
       cta_button: "See my cards"
       copy_link: "Copy link"
-      download_image: "Download image"
+      download_share_image: "Download share image"
+      ladder_state:
+        done: "reached"
+        current: "current level"
+        next: "not reached yet"
       tracked_footnote: "open source, self-hostable or Cloud"
     notifications:
       region_title: "%{region} explored!"

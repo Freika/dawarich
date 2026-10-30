@@ -71,7 +71,9 @@ RSpec.describe 'Shared achievements' do
       expect(stage.at_css('[data-clipboard-text-value]')['data-clipboard-text-value'])
         .to eq(shared_achievement_url(progress.sharing_uuid))
       expect(stage.at_css('a[download]')['href']).to eq(shared_achievement_image_path(progress.sharing_uuid))
+      expect(stage.at_css('a[download]')['download']).to end_with('.png')
       expect(stage.at_css('[data-testid="public-card-ladder"]')).to be_nil
+      expect(Nokogiri::HTML(response.body).css('main').size).to eq(1)
     end
 
     it 'keeps the embed free of the stage' do

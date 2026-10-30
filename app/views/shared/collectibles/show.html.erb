@@ -14,7 +14,7 @@
     <%= render 'achievements/card', **@set.card_attributes %>
   </main>
 <% else %>
-  <main class="ach-page">
+  <div class="ach-page">
     <%= render layout: 'shared/achievements/stage',
                locals: { rarity: @set.rarity, eyebrow: "#{t("achievements.cards.rarity.#{@set.rarity.downcase}")} · #{@set.series_name}",
                          headline: @set.headline, lead: @set.card_attributes[:description], ladder: @set.ladder,
@@ -23,5 +23,5 @@
                          image_path: shared_collectible_image_path(@card.sharing_uuid) } do %>
       <%= render 'achievements/card', **@set.card_attributes %>
     <% end %>
-  </main>
+  </div>
 <% end %>

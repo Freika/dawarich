@@ -84,8 +84,8 @@ module Achievements
           return t('city_public_level', percent: card.level.positive? ? CityRule::THRESHOLDS[card.level - 1] : 0)
         end
 
-        t('city_progress', percent: format('%.1f', card.data.fetch('progress', 0)),
-                           area: format('%.2f', card.data.fetch('opened_area', 0) / 1_000_000.0))
+        percent = ActiveSupport::NumberHelper.number_to_rounded(card.data.fetch('progress', 0), precision: 1)
+        t('city_progress', percent: percent, area: format('%.2f', card.data.fetch('opened_area', 0) / 1_000_000.0))
       when 'return'
         completed? ? t('return_years', count: ReturnRule::YEARS.fetch(card.level - 1)) : t('return_waiting')
       when 'park'
@@ -102,14 +102,10 @@ module Achievements
     end
 
     def headline
-      return name unless card.series == 'city' && card.level.positive?
+      return city_headline if card.series == 'city' && card.level.positive?
+      return name if %w[milestone parks].include?(card.series)
 
-      percent = if @public && card.city_selection&.share_mosaic?
-                  format('%.1f', card.data.fetch('progress', 0))
-                else
-                  CityRule::THRESHOLDS[card.level - 1]
-                end
-      I18n.t('achievements.public.city_headline', percent: percent, city: card.data['name'])
+      card.data['name'].presence || name
     end
 
     def ladder
@@ -129,7 +125,7 @@ module Achievements
     end
 
     def card_attributes
-      {
+      @card_attributes ||= {
         name: name, rarity: rarity, map_lat: card.data['latitude'] || 0,
         map_lon: card.data['longitude'] || 0, map_zoom: 10,
         description: t("description.#{card.series}"), percent: percent, completed: completed?, locked: locked?,
@@ -188,6 +184,15 @@ module Achievements
     end
 
     private
+
+    def city_headline
+      percent = if @public && card.city_selection&.share_mosaic?
+                  ActiveSupport::NumberHelper.number_to_rounded(card.data.fetch('progress', 0), precision: 1)
+                else
+                  CityRule::THRESHOLDS[card.level - 1]
+                end
+      I18n.t('achievements.public.city_headline', percent: percent, city: card.data['name'])
+    end
 
     def t(key, **options)
       I18n.t("achievements.collections.#{key}", **options)

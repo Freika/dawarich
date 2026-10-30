@@ -47,6 +47,18 @@ RSpec.describe Tracks::RecalculateJob, type: :job do
           .to change { Track.exists?(thin_track.id) }.to(false)
       end
 
+      it 'stays quiet when another job deleted the track after it was loaded' do
+        thin_track = create(:track, user: user)
+        allow(Track).to receive(:find_by).and_wrap_original do |original, *args|
+          original.call(*args).tap { |loaded| Track.where(id: loaded.id).delete_all }
+        end
+        allow(ExceptionReporter).to receive(:call)
+
+        described_class.perform_now(thin_track.id)
+
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+
       it 'still destroys it when another job updated the track after it was loaded' do
         thin_track = create(:track, user: user)
         create(:point, user: user).update_column(:track_id, thin_track.id)

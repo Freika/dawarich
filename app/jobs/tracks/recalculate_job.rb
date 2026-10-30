@@ -17,7 +17,11 @@ class Tracks::RecalculateJob < ApplicationJob
     # The lock reloads the track, so a concurrent update since it was loaded
     # cannot make the destroy stale, and the count is checked again under it.
     if track.points.count < 2
-      track.with_lock { track.destroy if track.points.count < 2 }
+      begin
+        track.with_lock { track.destroy if track.points.count < 2 }
+      rescue ActiveRecord::RecordNotFound
+        nil
+      end
       return
     end
 

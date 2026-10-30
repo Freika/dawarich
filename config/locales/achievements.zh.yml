@@ -117,7 +117,11 @@ zh:
       cta_body: "导入你的位置历史，看看能解锁哪些卡片，无需任何签到。"
       cta_button: "查看我的卡片"
       copy_link: "复制链接"
-      download_image: "下载图片"
+      download_share_image: "下载分享图片"
+      ladder_state:
+        done: "已达成"
+        current: "当前等级"
+        next: "尚未达成"
       tracked_footnote: "开源，可自托管或使用云服务"
     notifications:
       region_title: "已探索%{region}！"

@@ -112,6 +112,7 @@
   text-wrap: balance;
   hyphens: auto;
   hyphenate-limit-chars: 12 5 5;
+  overflow-wrap: anywhere;
 }
 
 .ach-stage-lead {
@@ -139,14 +140,14 @@
   gap: 0.5rem;
   font-size: 0.9375rem;
   font-weight: 700;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .ach-ladder-step::before {
   content: "";
   width: 1.125rem;
   height: 1.125rem;
-  border: 2px solid #374151;
+  border: 2px solid #6b7280;
   border-radius: 50%;
   background: #0b0e15;
 }

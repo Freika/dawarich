@@ -20,7 +20,7 @@
     <%= render 'achievements/set_card', set: @set, interactive: false %>
   </main>
 <% else %>
-  <main class="ach-page">
+  <div class="ach-page">
     <%= render layout: 'shared/achievements/stage',
                locals: { rarity: @set.rarity, eyebrow: t("achievements.cards.rarity.#{@set.rarity.downcase}"),
                          headline: @set.name, lead: @set.description,
@@ -29,5 +29,5 @@
                          image_path: shared_achievement_image_path(params[:uuid]) } do %>
       <%= render 'achievements/set_card', set: @set, interactive: false %>
     <% end %>
-  </main>
+  </div>
 <% end %>

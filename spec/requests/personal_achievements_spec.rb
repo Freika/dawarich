@@ -68,8 +68,10 @@ RSpec.describe 'Personal achievement collections' do
     stage = Nokogiri::HTML(response.body).at_css('[data-testid="public-card-stage"]')
     expect(stage.at_css('h1').text).to include('My lake')
     expect(stage.at_css('a[download]')['href']).to eq(shared_collectible_image_path(uuid))
+    expect(stage.at_css('a[download]')['download']).to end_with('.png')
     expect(stage.at_css('[data-clipboard-text-value]')['data-clipboard-text-value']).to eq(shared_collectible_url(uuid))
     expect(stage.at_css('[data-testid="public-card-ladder"]')).to be_nil
+    expect(Nokogiri::HTML(response.body).css('main').size).to eq(1)
   end
 
   it 'accepts only valid IANA place timezone overrides' do

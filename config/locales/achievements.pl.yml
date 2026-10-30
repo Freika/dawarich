@@ -121,7 +121,11 @@ pl:
       cta_body: "Zaimportuj historię lokalizacji i zobacz, które karty odblokujesz, bez meldowania się gdziekolwiek."
       cta_button: "Zobacz moje karty"
       copy_link: "Kopiuj link"
-      download_image: "Pobierz obraz"
+      download_share_image: "Pobierz obraz do udostępnienia"
+      ladder_state:
+        done: "osiągnięty"
+        current: "obecny poziom"
+        next: "jeszcze nieosiągnięty"
       tracked_footnote: "open source, do samodzielnego hostowania lub w chmurze"
     notifications:
       region_title: "Odkryto %{region}!"

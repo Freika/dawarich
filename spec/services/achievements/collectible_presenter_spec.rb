@@ -55,18 +55,41 @@ RSpec.describe Achievements::CollectiblePresenter, 'public stage' do
     expect(presenter.next_level_percent).to eq(25)
   end
 
-  it 'has no ladder or next level once the top city level is reached' do
+  it 'marks every level done and has no next level once the top city level is reached' do
     city.level = 4
+    presenter = described_class.new(city)
 
-    expect(described_class.new(city).next_level_percent).to be_nil
+    expect(presenter.ladder.pluck(:state)).to eq(%i[done done done current])
+    expect(presenter.next_level_percent).to be_nil
   end
 
-  it 'keeps the card name as headline and no ladder for cards without levels' do
+  it 'shows only the reached level on a public city card that does not share its mosaic' do
+    headline = described_class.new(city, public: true).headline
+
+    expect(headline).to eq('10% of Berlin explored')
+    expect(headline).not_to include('12.4')
+  end
+
+  it 'falls back to the city name before the first city level' do
+    city.level = 0
+
+    expect(described_class.new(city).headline).to eq('Berlin')
+  end
+
+  it 'uses the place name as headline so the series is not repeated next to the eyebrow' do
     seasons = Achievements::Collectible.new(series: 'seasons', subject_key: 'place:1', level: 1,
                                             data: { 'name' => 'Schlachtensee', 'progress' => 4, 'target' => 4 })
     presenter = described_class.new(seasons)
 
     expect(presenter.ladder).to be_nil
+    expect(presenter.headline).to eq('Schlachtensee')
+  end
+
+  it 'keeps the translated card name for series without a place' do
+    parks = Achievements::Collectible.new(series: 'parks', subject_key: 'parks', level: 1,
+                                          data: { 'progress' => 1, 'target' => 3 })
+    presenter = described_class.new(parks)
+
     expect(presenter.headline).to eq(presenter.name)
   end
 end
