@@ -35,8 +35,7 @@ class Cache::PreheatInsightsDigests
     return unless digest
 
     # Cache the digest with timestamp-based key
-    cache_key = "insights/yearly_digest/#{user.id}/#{year}/#{digest.updated_at.to_i}"
-    Rails.cache.write(cache_key, digest, expires_in: 1.hour)
+    Rails.cache.write(digest.insights_cache_key, digest, expires_in: 1.hour)
   end
 
   def digest_stale?(digest, year)
