@@ -14,8 +14,10 @@ class Tracks::RecalculateJob < ApplicationJob
     # below that, the presence validation then rejects the save, and the husk
     # would keep rendering its stale geometry forever. Points are nullified on
     # destroy, so a survivor goes back to being an ordinary untracked point.
+    # The lock reloads the track, so a concurrent update since it was loaded
+    # cannot make the destroy stale, and the count is checked again under it.
     if track.points.count < 2
-      track.destroy
+      track.with_lock { track.destroy if track.points.count < 2 }
       return
     end
 
