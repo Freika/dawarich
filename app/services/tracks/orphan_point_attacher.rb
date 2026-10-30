@@ -51,12 +51,11 @@ module Tracks
         Tracks::TrackExtender.new(user, track).extend_with(attachable)
         track
       end
-    rescue ActiveRecord::Deadlocked => e
-      return attach(track_id, group, attempt: attempt + 1) if attempt < DEADLOCK_ATTEMPTS
-
-      ExceptionReporter.call(e, "Failed to attach orphan points to track #{track_id} for user #{user.id}")
-      nil
     rescue StandardError => e
+      if e.is_a?(ActiveRecord::Deadlocked) && attempt < DEADLOCK_ATTEMPTS
+        return attach(track_id, group, attempt: attempt + 1)
+      end
+
       ExceptionReporter.call(e, "Failed to attach orphan points to track #{track_id} for user #{user.id}")
       nil
     end

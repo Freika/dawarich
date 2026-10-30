@@ -30,6 +30,8 @@ module Tracks
     # callbacks, which need the points moved first; refresh then runs them,
     # and its tile epoch bump covers the grown range.
     def claim_revision_months(points)
+      return if points.empty?
+
       timestamps = points.map(&:timestamp)
       track.update_columns(start_at: [track.start_at, Time.zone.at(timestamps.min)].min,
                            end_at: [track.end_at, Time.zone.at(timestamps.max)].max,

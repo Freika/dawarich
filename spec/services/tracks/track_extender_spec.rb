@@ -61,4 +61,12 @@ RSpec.describe Tracks::TrackExtender, :non_transactional do
     expect(late.reload.track_id).to eq(track.id)
     expect(track.reload.end_at).to eq(Time.zone.at(late.timestamp))
   end
+
+  # A boundary merge can hand over a track whose points were all deleted.
+  it 'refreshes the track in place when there are no points to move' do
+    create(:point, user: user, track: track, timestamp: (anchor + 600).to_i, lonlat: 'POINT(13.405 52.52)')
+
+    expect { track.with_lock { described_class.new(user, track).extend_with([]) } }.not_to raise_error
+    expect(track.reload.start_at).to eq(anchor)
+  end
 end
