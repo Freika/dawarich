@@ -352,8 +352,16 @@ class Tracks::BoundaryDetector
                .max_by { |track| track.end_at - track.start_at }
   end
 
+  # Destroying the others nullifies their points, which bumps point revisions.
+  # Touching every track first bumps the track revisions of all their months
+  # before that, in the order chunks building a new track take them, so
+  # concurrent chunks of one user cannot deadlock. The ranges stay as they
+  # are, so the keeper cannot collide with an other's range on the unique index.
+  # update_all bumps lock_version, so the keeper is locked and reloaded after.
   def extend_kept_track(keeper, others)
-    keeper.with_lock(requires_new: true) do
+    keeper.transaction(requires_new: true) do
+      Track.where(id: [keeper, *others].map(&:id)).update_all(updated_at: Time.current)
+      keeper.lock!
       points = Point.where(track_id: others.map(&:id)).order(:id).lock.to_a
       SharedLink.where(resource_type: SharedLink.resource_types[:track], resource_id: others.map(&:id))
                 .update_all(resource_id: keeper.id)

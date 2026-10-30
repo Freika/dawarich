@@ -53,6 +53,9 @@ module Tracks
       end
     rescue StandardError => e
       if e.is_a?(ActiveRecord::Deadlocked) && attempt < DEADLOCK_ATTEMPTS
+        Rails.logger.warn(
+          "event=tracks.orphan_attach_retry reason=deadlock user_id=#{user.id} track_id=#{track_id} attempt=#{attempt}"
+        )
         return attach(track_id, group, attempt: attempt + 1)
       end
 
