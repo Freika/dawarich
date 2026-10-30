@@ -114,6 +114,15 @@ pl:
       not_found: Udostępnione osiągnięcie nie istnieje lub nie jest już dostępne
       social_description: "Odkryto %{progress}. Zarejestrowano z Dawarich."
       tracked_with_html: "Zarejestrowano z %{link}"
+      city_headline: "Odkryto %{percent}% miasta %{city}"
+      levels: "Poziomy"
+      next_level: "Następny poziom przy %{percent}%"
+      cta_title: "Twoja historia mogła już na to zapracować."
+      cta_body: "Zaimportuj historię lokalizacji i zobacz, które karty odblokujesz, bez meldowania się gdziekolwiek."
+      cta_button: "Zobacz moje karty"
+      copy_link: "Kopiuj link"
+      download_image: "Pobierz obraz"
+      tracked_footnote: "open source, do samodzielnego hostowania lub w chmurze"
     notifications:
       region_title: "Odkryto %{region}!"
       region_content: "%{achievement}: odwiedzono %{count}/%{total} regionów."

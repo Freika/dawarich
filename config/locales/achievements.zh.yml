@@ -110,6 +110,15 @@ zh:
       not_found: 未找到分享的成就，或该成就已不可用
       social_description: "已探索 %{progress}。由 Dawarich 记录。"
       tracked_with_html: "由 %{link} 记录"
+      city_headline: "已探索 %{city} 的 %{percent}%"
+      levels: "等级"
+      next_level: "下一等级：%{percent}%"
+      cta_title: "你的历史记录可能已经赢得了这张卡片。"
+      cta_body: "导入你的位置历史，看看能解锁哪些卡片，无需任何签到。"
+      cta_button: "查看我的卡片"
+      copy_link: "复制链接"
+      download_image: "下载图片"
+      tracked_footnote: "开源，可自托管或使用云服务"
     notifications:
       region_title: "已探索%{region}！"
       region_content: "%{achievement}：已访问 %{count}/%{total} 个地区。"

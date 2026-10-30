@@ -110,6 +110,15 @@ es:
       not_found: El logro compartido no existe o ya no está disponible
       social_description: "%{progress} explorado. Registrado con Dawarich."
       tracked_with_html: "Registrado con %{link}"
+      city_headline: "%{percent}% de %{city} explorado"
+      levels: "Niveles"
+      next_level: "Siguiente nivel al %{percent}%"
+      cta_title: "Puede que tu historial ya se lo haya ganado."
+      cta_body: "Importa tu historial de ubicaciones y descubre qué cartas desbloqueas, sin hacer check-in en ningún sitio."
+      cta_button: "Ver mis cartas"
+      copy_link: "Copiar enlace"
+      download_image: "Descargar imagen"
+      tracked_footnote: "código abierto, autoalojable o en la nube"
     notifications:
       region_title: "¡%{region} explorada!"
       region_content: "%{achievement}: %{count}/%{total} regiones visitadas."

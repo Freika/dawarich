@@ -101,6 +101,33 @@ module Achievements
       end
     end
 
+    def headline
+      return name unless card.series == 'city' && card.level.positive?
+
+      percent = if @public && card.city_selection&.share_mosaic?
+                  format('%.1f', card.data.fetch('progress', 0))
+                else
+                  CityRule::THRESHOLDS[card.level - 1]
+                end
+      I18n.t('achievements.public.city_headline', percent: percent, city: card.data['name'])
+    end
+
+    def ladder
+      return unless card.series == 'city'
+
+      CityRule::THRESHOLDS.each_with_index.map do |percent, index|
+        state = if index + 1 < card.level then :done
+                elsif index + 1 == card.level then :current
+                else :next
+                end
+        { percent: percent, state: state }
+      end
+    end
+
+    def next_level_percent
+      CityRule::THRESHOLDS[card.level] if card.series == 'city'
+    end
+
     def card_attributes
       {
         name: name, rarity: rarity, map_lat: card.data['latitude'] || 0,

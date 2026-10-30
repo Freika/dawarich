@@ -7,7 +7,7 @@ RSpec.describe 'Achievement stylesheets load only where achievements can appear'
   let(:stylesheet_link) { /href="[^"]*achievements_spectral[^"]*\.css"/ }
 
   it 'leaves them out of the global stylesheet bundle' do
-    expect(Rails.application.assets['application.css'].to_s).not_to include('.ach-card')
+    expect(Rails.application.assets['application.css'].to_s).not_to include('.ach-card', '.ach-stage')
   end
 
   it 'links them on any page for a signed-in user, where the unlock deck can appear' do

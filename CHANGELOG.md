@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [UNRELEASED]
+
+### Changed
+
+- Shared achievement cards open on a dark page tinted by the card's rarity. Visitors see what the card is for, the City Explorer level ladder with the next level, a call to try Dawarich, and buttons to copy the link or download the card image. Embedded badges are unchanged.
+
 ## [1.20.0] - 2026-10-28, Berlin
 
 ### ⚠️ Upgrade notes

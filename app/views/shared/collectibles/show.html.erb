@@ -1,6 +1,7 @@
 <% content_for :title, "#{@set.name} — Dawarich" %>
 <% content_for :head do %>
   <%= achievement_stylesheet_tags %>
+  <%= stylesheet_link_tag 'achievements_public', 'data-turbo-track': 'reload' unless @embed %>
   <meta property="og:title" content="<%= @set.name %> — Dawarich">
   <meta property="og:description" content="<%= @set.metric_label %>">
   <meta property="og:image" content="<%= shared_collectible_image_url(@card.sharing_uuid) %>">
@@ -8,7 +9,19 @@
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
 <% end %>
-<main class="ach-page <%= @embed ? 'ach-embed-page' : 'max-w-sm mx-auto py-10 px-4' %>">
-  <%= render 'achievements/card', **@set.card_attributes %>
-  <% unless @embed %><p class="mt-5"><%= t('achievements.public.tracked_with_html', link: link_to('Dawarich', 'https://dawarich.app')) %></p><% end %>
-</main>
+<% if @embed %>
+  <main class="ach-page ach-embed-page">
+    <%= render 'achievements/card', **@set.card_attributes %>
+  </main>
+<% else %>
+  <main class="ach-page">
+    <%= render layout: 'shared/achievements/stage',
+               locals: { rarity: @set.rarity, eyebrow: "#{t("achievements.cards.rarity.#{@set.rarity.downcase}")} · #{@set.series_name}",
+                         headline: @set.headline, lead: @set.card_attributes[:description], ladder: @set.ladder,
+                         note: @set.next_level_percent && t('achievements.public.next_level', percent: @set.next_level_percent),
+                         page_url: shared_collectible_url(@card.sharing_uuid),
+                         image_path: shared_collectible_image_path(@card.sharing_uuid) } do %>
+      <%= render 'achievements/card', **@set.card_attributes %>
+    <% end %>
+  </main>
+<% end %>

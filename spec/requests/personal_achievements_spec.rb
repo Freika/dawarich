@@ -55,6 +55,23 @@ RSpec.describe 'Personal achievement collections' do
     expect(selection).to be_persisted
   end
 
+  it 'stages a shared collectible with share actions but no level ladder' do
+    Achievements::Selection.create!(user: user, place: place)
+    Achievements::CollectionChecker.new(user, notify: false).call
+    card = user.achievement_collectibles.find_by!(series: 'seasons')
+    patch toggle_sharing_achievement_card_path(card), params: { enabled: true }, as: :json
+    uuid = response.parsed_body.fetch('uuid')
+    sign_out user
+
+    get shared_collectible_path(uuid)
+
+    stage = Nokogiri::HTML(response.body).at_css('[data-testid="public-card-stage"]')
+    expect(stage.at_css('h1').text).to include('My lake')
+    expect(stage.at_css('a[download]')['href']).to eq(shared_collectible_image_path(uuid))
+    expect(stage.at_css('[data-clipboard-text-value]')['data-clipboard-text-value']).to eq(shared_collectible_url(uuid))
+    expect(stage.at_css('[data-testid="public-card-ladder"]')).to be_nil
+  end
+
   it 'accepts only valid IANA place timezone overrides' do
     selection = Achievements::Selection.create!(user: user, place: place)
     patch achievement_selection_path(selection), params: { timezone: 'Pacific/Auckland' }
