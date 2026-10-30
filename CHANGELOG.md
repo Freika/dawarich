@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Enrich photos places a video where its recording started. Video timestamps mark the end of the recording, so the scan now subtracts the video's duration before looking up your location history. (#3293)
 - Monthly and yearly digest emails no longer enter repeated delivery retries when SMTP is not configured (#3932).
 - Legacy areas with names longer than 255 characters now migrate to places without repeatedly failing, keeping their notes and visits (#3930).
+- Recalculating statistics no longer scans the whole cache to refresh the insights digest, which could exhaust cache connections on busy instances.
 
 ## [1.19.0] - 2026-10-27, Berlin
 

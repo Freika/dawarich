@@ -289,6 +289,28 @@ RSpec.describe Users::ImportData::Visits, type: :service do
       end
     end
 
+    context 'with two archive visits that start together at one Place' do
+      let(:place_reference) do
+        { 'name' => 'Office Building', 'latitude' => '40.7589', 'longitude' => '-73.9851', 'source' => 'manual' }
+      end
+      let(:visits_data) do
+        [
+          { 'name' => 'Office Visit', 'started_at' => '2024-01-01T09:00:00Z', 'ended_at' => '2024-01-01T17:00:00Z',
+            'duration' => 28_800, 'status' => 'confirmed', 'place_reference' => place_reference },
+          { 'name' => 'Office', 'started_at' => '2024-01-01T09:00:00Z', 'ended_at' => '2024-01-01T12:00:00Z',
+            'duration' => 10_800, 'status' => 'suggested', 'place_reference' => place_reference }
+        ]
+      end
+
+      it 'keeps the first one and skips the other without reporting an error' do
+        allow(ExceptionReporter).to receive(:call)
+
+        expect(described_class.new(user, visits_data).call).to eq(1)
+        expect(user.visits.pluck(:name)).to eq(['Office Visit'])
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
     context 'with unnamed visits in the same time window at different Places' do
       let(:visits_data) do
         %w[Home Office].each_with_index.map do |place_name, index|
