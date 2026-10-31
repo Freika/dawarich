@@ -8,6 +8,7 @@ class Api::V1::Auth::RegistrationsController < Api::V1::Auth::BaseController
 
     if user.save
       require_payment_from(user) unless accept_family_invitation(user)
+      record_signup_analytics(user, method: 'email')
       render_auth_success(user.reload, status: :created)
     else
       render json: {
