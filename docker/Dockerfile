@@ -1,7 +1,7 @@
 # Node.js comes from the official image (Debian's nodejs package is the
 # upstream-EOL 20.x line). bookworm-slim is the variant that still ships
 # linux/arm/v7; the binary runs unchanged on the trixie-based Ruby image.
-FROM node:22.23.4-bookworm-slim AS node
+FROM node:26.12.1-bookworm-slim AS node
 
 # Runtime libraries for the prebuilt maplibre-native Node binding
 # (vendor/poster_renderer). The binary is built on Ubuntu 24.04 and links
