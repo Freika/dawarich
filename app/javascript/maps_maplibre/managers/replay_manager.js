@@ -375,6 +375,16 @@ export class ReplayManager {
   }
 
   /**
+   * Get minute of day (0-1439) for a Date in the configured timezone
+   * @param {Date} date
+   * @returns {number|null}
+   */
+  minuteOfDay(date) {
+    const parts = this._getDateParts(date)
+    return parts ? parts.hour * 60 + parts.minute : null
+  }
+
+  /**
    * Cycle to previous point in multi-point minute
    */
   cyclePrev() {
