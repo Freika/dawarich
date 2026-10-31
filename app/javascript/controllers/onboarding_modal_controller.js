@@ -14,6 +14,7 @@ export default class extends Controller {
     auto: Boolean,
     showable: Boolean,
     onboardingUrl: String,
+    eventUrl: String,
     userTrial: Boolean,
     importsCount: Number,
     demoDataUrl: String,
@@ -170,6 +171,16 @@ export default class extends Controller {
     this.modalTarget.close()
   }
 
+  skip() {
+    this.trackEvent("onboarding_skipped")
+    this.dismiss()
+  }
+
+  chooseFamily() {
+    this.trackEvent("onboarding_family_selected")
+    this.dismiss()
+  }
+
   switchScreen(targetName) {
     const screens = ["choiceScreen", "importScreen", "trackScreen"]
     for (const screen of screens) {
@@ -185,11 +196,12 @@ export default class extends Controller {
   }
 
   completeOnboarding() {
-    this.trackEvent("onboarding_completed")
+    this.trackAnonymousEvent("onboarding_completed")
 
     if (this.onboardingUrlValue) {
       fetch(this.onboardingUrlValue, {
         method: "PATCH",
+        keepalive: true,
         headers: {
           "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')
             ?.content,
@@ -202,8 +214,30 @@ export default class extends Controller {
   }
 
   trackEvent(eventName) {
+    this.trackAnonymousEvent(eventName)
+    this.recordEvent(eventName)
+  }
+
+  trackAnonymousEvent(eventName) {
     if (typeof window.sa_event === "function") {
       window.sa_event(eventName)
     }
+  }
+
+  recordEvent(eventName) {
+    if (!this.eventUrlValue) return
+
+    fetch(this.eventUrlValue, {
+      method: "POST",
+      keepalive: true,
+      headers: {
+        "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')
+          ?.content,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: eventName }),
+    }).catch((error) => {
+      console.warn("[Onboarding] Failed to record step:", error)
+    })
   }
 }
