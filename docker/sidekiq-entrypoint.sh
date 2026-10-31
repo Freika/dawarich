@@ -60,5 +60,14 @@ until PGPASSWORD=$DATABASE_PASSWORD psql -h "$DATABASE_HOST" -p "$DATABASE_PORT"
 done
 echo "✅ PostgreSQL is ready!"
 
+# Require the app container to finish migrations before starting workers.
+if bundle exec rails db:abort_if_pending_migrations; then
+  :
+else
+  status=$?
+  >&2 echo "Sidekiq migration check failed. Use matching app and worker image tags and complete migrations through the app container, then restart the worker."
+  exit "$status"
+fi
+
 # run sidekiq
 exec bundle exec sidekiq
