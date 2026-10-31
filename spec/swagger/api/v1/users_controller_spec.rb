@@ -55,7 +55,8 @@ describe 'Users API', type: :request do
                    type: :object,
                    properties: {
                      family: { type: :boolean },
-                     reverse_geocoding: { type: :boolean }
+                     reverse_geocoding: { type: :boolean },
+                     achievements: { type: :boolean }
                    }
                  }
                }
