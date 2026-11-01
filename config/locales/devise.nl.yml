@@ -29,7 +29,7 @@ nl:
       password_change:
         subject: "Wachtwoord gewijzigd"
     omniauth_callbacks:
-      failure: "Je kon niet worden geauthenticeerd via %{kind} vanwege \“%{reason}\”."
+      failure: 'Je kon niet worden geauthenticeerd via %{kind} vanwege “%{reason}”.'
       success: "De authenticatie via het %{kind}-account is gelukt."
     passwords:
       no_token: "Je kunt deze pagina niet openen als je niet via een e-mail voor het opnieuw instellen van je wachtwoord bent doorgestuurd. Als je wel via zo’n e-mail bent doorgestuurd, zorg er dan voor dat je de volledige URL hebt gebruikt die daarin stond vermeld."
