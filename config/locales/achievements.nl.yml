@@ -68,7 +68,7 @@ nl:
       explorer_name: "%{place} verkenner"
       description:
         thematic_set: "Breng tijd door in alle %{count} landen van %{place}."
-        continent: "Breng tijd door in alle %{count} landen en gebieden van %{place}. landen van %{place}."
+        continent: "Breng tijd door in alle %{count} landen en gebieden van %{place}."
         regions: "Breng tijd door in alle %{count} regio’s van %{place}."
         country: "Breng tijd door in %{place}."
       status:
