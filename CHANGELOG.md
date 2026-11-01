@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Two read-only MCP tools answer questions about longer stretches of history. `get_travel_stats` returns distance, flight distance and the countries visited, per year or per month of one year. `get_places_visited` lists the countries and cities of a year or month with the time spent in each. Both read the monthly stats Dawarich already calculates.
+
 ## [1.20.0] - 2026-10-30, Berlin
 
 ### ⚠️ Upgrade notes
