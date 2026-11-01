@@ -47,3 +47,10 @@ zh:
       automatic_download: "文件准备就绪后将自动开始下载。你也可以在下方下载原始压缩包。"
       original_archive: "下载原始压缩包"
       back: "返回导入列表"
+nl:
+  imports:
+    download:
+      preparing: "Download wordt voorbereid"
+      automatic_download: "De download begint automatisch zodra deze klaar is. Je kunt hieronder ook het originele archief downloaden."
+      original_archive: "Origineel archief downloaden"
+      back: "Terug naar imports"
