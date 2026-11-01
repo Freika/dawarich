@@ -18,9 +18,10 @@ pl:
         miast. Jedna prawidłowa obserwacja na ziemi otwiera komórkę; loty są wykluczone.
         Wybrany okres wyróżnia pierwsze odkrycia, pozostawiając starsze komórki otwarte.
       cities: Odkrywanie miasta
-      city_catalog_note: Pierwszy katalog obejmuje Berlin, Hamburg i Drezno. Stosowane
-        są administracyjne granice lądu, w tym lasy i obrzeża. Dodatkowe miasta wymagają
-        wersjonowanej aktualizacji; brakujących granic nigdy nie zastępuje się kołem.
+      city_catalog_note: Katalog obejmuje Berlin, Hamburg, Drezno i 27 miast w
+        Bułgarii. Stosowane są administracyjne granice lądu, w tym lasy i obrzeża.
+        Dodatkowe miasta wymagają wersjonowanej aktualizacji; brakujących granic nigdy
+        nie zastępuje się kołem.
       catalog_preparing: Katalog granic miast i parków jest przygotowywany w tle.
       city_progress: "%{percent}% · %{area} km² odkryte"
       city_public_level: Odkrywanie miasta · poziom %{percent}%
@@ -51,8 +52,9 @@ pl:
       regions_progress: "%{count}/%{target} regionów"
       observed_time: "%{minutes} zaobserwowanych minut"
       nature_catalog_note: Katalog pilotażowy obejmuje parki narodowe Harz, Szwajcarii
-        Saksońskiej i Eifel. To wybrana lista regionalna, nie pełny katalog. Kolejne
-        parki wymagają wersjonowanej aktualizacji.
+        Saksońskiej i Eifel w Niemczech oraz Riła, Piryn i Bałkan Centralny w
+        Bułgarii. To wybrana lista regionalna, nie pełny katalog. Kolejne parki
+        wymagają wersjonowanej aktualizacji.
       public_privacy_note: Publiczny postęp nie obejmuje obserwacji w strefach prywatności
         i może być niższy od prywatnego. Publiczne strony i obrazy są wstrzymane podczas wprowadzania zmian granic, strefy czasowej lub stref prywatności.
       milestones:

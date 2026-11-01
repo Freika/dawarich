@@ -17,10 +17,10 @@ en:
         One valid ground observation opens a cell; flights are excluded. Changing
         the date range highlights first discoveries and keeps older cells open.
       cities: City exploration
-      city_catalog_note: The initial boundary catalog covers Berlin, Hamburg and Dresden.
-        Cities use administrative land boundaries, including forests and outskirts.
-        More cities can be added through a versioned catalog update; unsupported cities
-        are never replaced with a circle.
+      city_catalog_note: The boundary catalog covers Berlin, Hamburg, Dresden and 27
+        cities in Bulgaria. Cities use administrative land boundaries, including forests
+        and outskirts. More cities can be added through a versioned catalog update;
+        unsupported cities are never replaced with a circle.
       catalog_preparing: The city and park boundary catalog is being prepared in the
         background.
       city_progress: "%{percent}% · %{area} km² opened"
@@ -52,7 +52,8 @@ en:
       regions_progress: "%{count}/%{target} regions"
       observed_time: "%{minutes} observed minutes"
       nature_catalog_note: This pilot catalog includes Harz, Saxon Switzerland and
-        Eifel national parks. It is a curated regional selection, not a complete list.
+        Eifel national parks in Germany and Rila, Pirin and Central Balkan national
+        parks in Bulgaria. It is a curated regional selection, not a complete list.
         Further parks require a versioned catalog update.
       public_privacy_note: Public progress excludes observations inside privacy zones
         and can be lower than your private progress. Public pages and images are paused while boundary, timezone or privacy-zone changes are applied.

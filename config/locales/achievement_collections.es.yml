@@ -19,10 +19,10 @@ es:
         se excluyen los vuelos. El período resalta los primeros descubrimientos y
         mantiene abiertas las celdas anteriores.
       cities: Exploración urbana
-      city_catalog_note: El catálogo inicial incluye Berlín, Hamburgo y Dresde. Se
-        usan límites terrestres administrativos, incluidos bosques y periferias. Otras
-        ciudades requieren una actualización versionada; los límites ausentes nunca
-        se sustituyen por círculos.
+      city_catalog_note: El catálogo incluye Berlín, Hamburgo, Dresde y 27
+        ciudades de Bulgaria. Se usan límites terrestres administrativos,
+        incluidos bosques y periferias. Otras ciudades requieren una actualización
+        versionada; los límites ausentes nunca se sustituyen por círculos.
       catalog_preparing: El catálogo de límites de ciudades y parques se está preparando
         en segundo plano.
       city_progress: "%{percent}% · %{area} km² descubiertos"
@@ -55,7 +55,8 @@ es:
       regions_progress: "%{count}/%{target} regiones"
       observed_time: "%{minutes} minutos observados"
       nature_catalog_note: Este catálogo piloto incluye los parques nacionales de
-        Harz, Suiza Sajona y Eifel. Es una selección regional, no una lista completa.
+        Harz, Suiza Sajona y Eifel, en Alemania, y los de Rila, Pirin y los Balcanes
+        Centrales, en Bulgaria. Es una selección regional, no una lista completa.
         Otros parques requieren una actualización versionada.
       public_privacy_note: El progreso público excluye observaciones dentro de zonas
         privadas y puede ser inferior al privado. Las páginas e imágenes públicas se pausan mientras se aplican cambios de límites, zona horaria o zonas privadas.

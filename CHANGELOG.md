@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Explore 27 Bulgarian cities with city cards, from Sofia, Plovdiv and Varna to every provincial capital, and collect Rila, Pirin and Central Balkan, Bulgaria's three national parks. Boundaries come from OpenStreetMap, like the German pilot catalog, in a separate regional file. Where OpenStreetMap has no boundary for the city itself, the card covers the city's municipality, including its villages. After the upgrade the updated boundary data installs in the background and exploration progress is recalculated once.
+
 ## [1.20.0] - 2026-10-30, Berlin
 
 ### ⚠️ Upgrade notes

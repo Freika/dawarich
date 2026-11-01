@@ -19,10 +19,10 @@ ca:
         vols s’exclouen. El període ressalta les primeres descobertes i manté obertes
         les cel·les anteriors.
       cities: Exploració urbana
-      city_catalog_note: El catàleg inicial inclou Berlín, Hamburg i Dresden. S’utilitzen
-        límits terrestres administratius, inclosos boscos i perifèries. Altres ciutats
-        requereixen una actualització versionada; els límits absents no se substitueixen
-        mai per cercles.
+      city_catalog_note: El catàleg inclou Berlín, Hamburg, Dresden i 27 ciutats de
+        Bulgària. S’utilitzen límits terrestres administratius, inclosos boscos i
+        perifèries. Altres ciutats requereixen una actualització versionada; els límits
+        absents no se substitueixen mai per cercles.
       catalog_preparing: El catàleg de límits de ciutats i parcs s’està preparant
         en segon pla.
       city_progress: "%{percent}% · %{area} km² descoberts"
@@ -55,7 +55,8 @@ ca:
       regions_progress: "%{count}/%{target} regions"
       observed_time: "%{minutes} minuts observats"
       nature_catalog_note: Aquest catàleg pilot inclou els parcs nacionals de Harz,
-        la Suïssa Saxona i Eifel. És una selecció regional, no una llista completa.
+        la Suïssa Saxona i Eifel, a Alemanya, i els de Rila, Pirin i el Balcà
+        Central, a Bulgària. És una selecció regional, no una llista completa.
         Altres parcs requereixen una actualització versionada.
       public_privacy_note: El progrés públic exclou les observacions dins de zones
         privades i pot ser inferior al privat. Les pàgines i imatges públiques es pausen mentre s’apliquen canvis de límits, de zona horària o de zones privades.

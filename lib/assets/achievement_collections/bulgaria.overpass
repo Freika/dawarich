@@ -1,0 +1,13 @@
+[out:json][timeout:180];
+// Curated identities; no bounding-box or name-based substitutions.
+// Cities: settlement boundaries (admin_level 8) where OSM has one, otherwise the
+// municipality (admin_level 5) seated in that city.
+(relation(4283101);relation(13477567);relation(1955801);relation(18971477);
+ relation(12629299);relation(1947830);relation(1922478);relation(12996399);
+ relation(13476884);relation(1978290);relation(1947828);relation(4767886);
+ relation(1947814);relation(1978204);relation(17402816);relation(1922257);
+ relation(17363266);relation(1974016);relation(20743144);relation(1952401);
+ relation(17788693);relation(1916938);relation(13265756);relation(13431110);
+ relation(1922476);relation(12999667);relation(1974021);
+ relation(1417776);relation(14392475);relation(1404501););
+out meta geom;
