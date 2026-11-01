@@ -1,0 +1,129 @@
+---
+en:
+  achievements:
+    collections:
+      title: Persoonlijke collecties
+      intro: Verken steden, bezoek favoriete plaatsen opnieuw, verzamel seizoenen, nationale parken en geografische
+      mijlpalen uit je geregistreerde geschiedenis.
+      places: Plaatsen voor je collectie
+      search_places: Zoek in je plaatsen
+      add: Toevoegen aan collectie
+      remove: Verwijderen uit collectie
+      no_places: Geen overeenkomende plaatsen. Maak of bewaar een plaats om een persoonlijke collectie te starten.
+      filter_series: Collecties filteren
+      all_series: Alle collecties
+      open_map: Verkenningskaart openen
+      fog_rules: Alle geregistreerde geschiedenis opent vaste H3-cellen die worden gedeeld met stadskaarten.
+        Eén geldige waarneming over de grond opent een cel; vluchten zijn uitgesloten. Door
+        het datumbereik te wijzigen worden eerste ontdekkingen gemarkeerd en blijven oudere cellen open.
+      cities: Stadsverkenning
+      city_catalog_note: De eerste catalogus met grenzen omvat Berlijn, Hamburg en Dresden.
+        Steden gebruiken administratieve landsgrenzen, inclusief bossen en buitengebieden.
+        Meer steden kunnen worden toegevoegd via een versiegebonden catalogusupdate; niet-ondersteunde steden
+        worden nooit door een cirkel vervangen.
+      catalog_preparing: De catalogus met stads- en parkgrenzen wordt op de achtergrond voorbereid.
+      city_progress: "%{percent}% · %{area} km² geopend"
+      city_public_level: Stadsverkenning · niveau %{percent}%
+      city_next: 'Volgend niveau: %{target}% · nog %{remaining} procentpunt te gaan.'
+      source_boundary: Brongrens bekijken
+      share_mosaic: Mijn verkenningsmozaïek opnemen in de openbare kaart
+      mosaic_privacy_note: Openbare kaarten tonen normaal gesproken een algemeen stadssilhouet en het behaalde niveau.
+        Een gedeeld mozaïek verbergt elke cel die aan een privacyzone grenst en berekent de openbare voortgang opnieuw;
+        die kan lager zijn dan je privétotaal.
+      calculating: Je geregistreerde geschiedenis wordt berekend. Kaarten verschijnen zodra de achtergrondberekening is voltooid.
+      updating: Je collectie wordt bijgewerkt. Het laatste consistente resultaat wordt getoond totdat de berekening is voltooid.
+      calculation_failed: De berekening kon niet worden voltooid. Je vorige collectie blijft behouden en er wordt opnieuw
+        geprobeerd.
+      timezone_required: We konden geen enkele tijdzone voor deze plaats bepalen.
+        Kies hieronder de lokale IANA-tijdzone.
+      timezone: 'Tijdzone van plaats: %{zone}'
+      choose_timezone: Kies de tijdzone van deze plaats
+      private_place: Deze plaats valt binnen een privacyzone. De persoonlijke kaart ervan kan niet worden gepubliceerd.
+      notification_title: "%{name} ontgrendeld!"
+      notification_content: Je geregistreerde geschiedenis heeft een nieuwe kaart in je persoonlijke collectie ontgrendeld.
+      national_parks: Nationale parken
+      park_progress: "%{minutes}/30 waargenomen minuten op één lokale dag"
+      parks_progress: 'Nationale parken: %{count} · volgend niveau %{target}'
+      regions_progress: "%{count}/%{target} regio's"
+      observed_time: "%{minutes} waargenomen minuten"
+      nature_catalog_note: Deze pilotcatalogus omvat de nationale parken Harz, Saksisch Zwitserland en Eifel.
+        Het is een samengestelde regionale selectie, geen volledige lijst.
+        Verdere parken vereisen een versiegebonden catalogusupdate.
+      public_privacy_note: Openbare voortgang sluit waarnemingen binnen privacyzones uit en kan lager zijn dan je privévoortgang.
+        Openbare pagina's en afbeeldingen worden gepauzeerd terwijl wijzigingen in grenzen, tijdzones of privacyzones worden
+        toegepast.
+      milestones:
+        north_south: Beide zijden van de evenaar
+        east_west: Oost en west
+        four_quarters: Vier kwartieren van de wereld
+        arctic: Voorbij de poolcirkel
+        antarctic: Voorbij de zuidpoolcirkel
+      regions:
+        north: Noordelijk halfrond
+        south: Zuidelijk halfrond
+        east: Oostelijk halfrond
+        west: Westelijk halfrond
+        ne: Noordoostelijk kwartier
+        nw: Noordwestelijk kwartier
+        se: Zuidoostelijk kwartier
+        sw: Zuidwestelijk kwartier
+        arctic: Arctisch gebied
+        antarctic: Antarctisch gebied
+      recorded_visit: Geregistreerd bezoek
+      last_visit: 'Laatste geregistreerde bezoek: %{date}'
+      return_waiting: Een nieuw bezoek voltooit een terugkeer
+      return_years:
+        one: Keer terug na minstens 1 jaar
+        other: Keer terug na minstens %{count} jaar
+      seasons_progress: "%{count}/4 seizoenen"
+      series:
+        return: Terugkeer
+        seasons: Alle seizoenen
+        year_round: Het hele jaar door
+        city: Stadsverkenner
+        park: Nationaal park
+        parks: Natuur
+        milestone: Geografische mijlpaal
+      description:
+        return: Keer terug naar een plaats na een lange onderbreking in je geregistreerde bezoeken.
+        seasons: Keer op verschillende momenten van het jaar terug naar dezelfde plaats.
+        city: Open het landgebied van de stad, één geregistreerde H3-cel tegelijk.
+        park: Breng tijd door binnen een nationaal park.
+        parks: Verzamel bezoeken aan verschillende nationale parken.
+        milestone: Leg tijd vast in verschillende delen van de wereld.
+      rules:
+        return: Een bezoek van minstens 20 minuten na een onderbreking van 1, 3 of 5 kalenderjaren sinds het vorige
+          kwalificerende bezoek levert een niveau op. Onderbrekingen beschrijven je opgeslagen geschiedenis;
+          ontbrekende registraties kunnen niet bewijzen dat je weg was.
+        seasons: Verzamel vier afzonderlijke bezoeken van minstens 20 minuten, één in elk kalenderseizoen.
+          Bezoeken mogen uit verschillende jaren komen en moeten minstens zeven dagen uit elkaar beginnen.
+          In de tropen worden de vier delen aangeduid met maanden. Seizoenen gebruiken de tijdzone van de plaats.
+        city: Niveaus worden ontgrendeld bij 1%, 5%, 10% en 25% van het administratieve landgebied van de stad.
+          Een geregistreerd, niet-afwijkend punt opent een H3-cel met resolutie 9, behalve tijdens een herkende vlucht.
+          Water is uitgesloten. Dit percentage meet het geopende celoppervlak, niet de gelopen straten; een doel
+          van 100% is niet vereist. De kaart en de kaartweergave gebruiken dezelfde gepubliceerde verkenningsmomentopname.
+        park: Registreer 30 waargenomen minuten binnen de parkgrens op één lokale dag.
+          Opeenvolgende punten mogen maximaal 10 minuten uit elkaar liggen; de tijd ertussen telt mee.
+          Overlappende apparaten tellen één keer. Beweging is toegestaan; vluchten en afwijkingen zijn uitgesloten.
+        parks: Niveaus worden ontgrendeld na 1, 5 en 15 verschillende kwalificerende nationale parken uit de catalogus.
+          Elk park vereist 30 waargenomen minuten op één lokale dag.
+          De regionale catalogus is onvolledig en versiegebonden; elk park behoudt een stabiele identiteit.
+        milestone: Registreer minstens 10 waargenomen minuten per vereiste regio op één lokale dag. Puntenparen mogen
+          maximaal 10 minuten uit elkaar liggen, en de tijd ertussen telt mee; overlappende apparaten tellen één keer.
+          Vluchten en afwijkingen zijn uitgesloten. Een marge van 10 km sluit de evenaar, de meridianen 0° en 180° en
+          de poolparallel op de vaste spellatitude van 66,56° uit. Dit registreert aanwezigheid aan elke zijde,
+          geen bewezen oversteek.
+      seasons:
+        winter: Winter
+        spring: Lente
+        summer: Zomer
+        autumn: Herfst
+      periods:
+        '0': December–februari
+        '1': Maart–mei
+        '2': Juni–augustus
+        '3': September–november
+      level_history: Niveaugeschiedenis
+      history_earned: Ontgrendeld
+      history_revoked: Ingetrokken
+      detected_on: gedetecteerd %{date}
