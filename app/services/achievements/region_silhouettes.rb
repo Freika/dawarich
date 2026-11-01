@@ -39,7 +39,8 @@ module Achievements
       'continent_europe' => [-25, 34, 60, 72],
       'thematic_benelux_v1' => [2, 49, 8, 54],
       'thematic_baltics_v1' => [20, 53, 29, 60],
-      'thematic_scandinavia_v1' => [3, 54, 34, 72]
+      'thematic_scandinavia_v1' => [3, 54, 34, 72],
+      'thematic_balkans_v1' => [13, 34.5, 30, 47]
     }.freeze
 
     def self.collection(codes:, key: nil)

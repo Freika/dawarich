@@ -11,16 +11,16 @@ RSpec.describe 'Thematic achievement collections' do
     create(:achievement_progress, user: user, achievement_key: 'exploration', state: { 'earned' => earned })
   end
 
-  it 'offers the three country collections alongside continents, keeping world tiers hidden' do
+  it 'offers the four country collections alongside continents, keeping world tiers hidden' do
     get achievements_path
 
     document = Nokogiri::HTML(response.body)
     section = document.at_css('#thematic-collections')
     expect(section).to be_present
-    expect(section.css('.card-title').map(&:text)).to eq(%w[Benelux Baltics Scandinavia])
+    expect(section.css('.card-title').map(&:text)).to eq(%w[Benelux Baltics Scandinavia Balkans])
     expect(section.css('a.ach-card-link').map { |link| link['href'] }).to include(
       achievement_path('thematic_benelux_v1'), achievement_path('thematic_baltics_v1'),
-      achievement_path('thematic_scandinavia_v1')
+      achievement_path('thematic_scandinavia_v1'), achievement_path('thematic_balkans_v1')
     )
     expect(response.body).not_to include('Border Hopper')
   end
@@ -41,6 +41,19 @@ RSpec.describe 'Thematic achievement collections' do
     expect(document.at_css('.ach-side--desktop [aria-current="page"]')['href'])
       .to eq(achievement_path('thematic_baltics_v1'))
     expect(document.at_css('.ach-mobile-nav summary').text).to include('Baltics')
+  end
+
+  it 'counts the eight Balkan countries, so a Bulgarian visit is one of eight' do
+    exploration('BG' => '2026-05-01', 'GR' => '2026-06-01', 'RO' => '2026-06-02')
+
+    get achievement_path('thematic_balkans_v1')
+
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('h1').text).to eq('Balkans')
+    expect(document.at_css('.ach-progress-summary').text).to include('2 of 8 countries visited')
+    expect(document.css('.ach-child-grid .card-title').map(&:text)).to match_array(
+      ['Albania', 'Bosnia and Herzegovina', 'Bulgaria', 'Croatia', 'Greece', 'Montenegro', 'North Macedonia', 'Serbia']
+    )
   end
 
   it 'filters visited countries as unlocked even when no subdivisions are earned' do

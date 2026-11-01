@@ -127,6 +127,15 @@ RSpec.describe Achievements::Registry do
       expect(scandinavia.target).to eq(3)
       expect(scandinavia.level).to eq(:country)
     end
+
+    it 'defines the Balkans as the eight countries with a country card' do
+      balkans = described_class.find('thematic_balkans_v1')
+
+      expect(balkans).to be_thematic
+      expect(balkans.region_codes).to eq(%w[AL BA BG HR GR ME MK RS])
+      expect(balkans.target).to eq(8)
+      expect(balkans.region_codes.map { |code| described_class.find("country_#{code.downcase}") }).to all(be_present)
+    end
   end
 
   describe '.subdivision_sets' do
