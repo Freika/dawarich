@@ -384,6 +384,7 @@ Rails.application.routes.draw do
       resources :points, only: %i[index create update destroy] do
         resource :position, only: :update, controller: 'points/positions'
         collection do
+          patch :motion, to: 'points/motions#update'
           delete :bulk_destroy
           post :reapply_anomaly_filter
           post :transitions, to: 'points/transitions#create'

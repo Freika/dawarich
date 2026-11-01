@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Accept delayed phone motion corrections through an update-only points API that preserves moved coordinates and never recreates deleted points.
+
 ## [1.20.0] - 2026-10-30, Berlin
 
 ### ⚠️ Upgrade notes
