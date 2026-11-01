@@ -1,25 +1,25 @@
 nl:
   achievements:
     unlocks:
-      kicker: New discovery
-      announcement: Card unlocked
+      kicker: Nieuwe ontdekking
+      announcement: Kaart vrijgespeeld
       remaining:
-        one: Last card in this deck
-        other: "%{count} cards in this deck"
-      next: Next card
-      done: Done
-      dismiss: Dismiss this deck
-      view: View %{name} in your collection
+        one: Laatste kaart in het kaartspel
+        other: "%{count} kaarten in het kaartspel"
+      next: Volgende kaart
+      done: Klaar
+      dismiss: Dit kaartspel negeren
+      view: Bekijk %{name} in je verzameling
     ui:
-      themes: "Thematic collections"
-      themes_hint: "Small collections of countries with a shared theme."
-      theme_visit_note: "A visited country counts toward this collection even if its regions are incomplete."
-      title: Achievements
-      summary: Summary
-      continents: Continents
-      countries: Countries
-      regions: Regions
-      world_explored: World explored
+      themes: "Thematische verzamelingen"
+      themes_hint: "Kleine verzamelingen van landen met een gelijke thema."
+      theme_visit_note: "Een bezocht land telt mee voor deze verzameling, zelfs als de regio’s ervan onvolledig zijn."
+      title: Prestaties
+      summary: Samenvatting
+      continents: Continenten
+      countries: Landen
+      regions: "Regio's"
+      world_explored: Wereld verkend
       collection_hint: Explore your collection by continent, country and region.
       collection_navigation: Achievement collections
       browse: Browse collection
