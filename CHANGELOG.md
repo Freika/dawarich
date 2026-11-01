@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.20.1] - 2026-11-01, Berlin
+
+### Fixed
+
+- Anomaly recalculation no longer fails for users who have a point without coordinates (#3936).
+- Transportation-mode detection and track recalculation work on instances without the `altitude_decimal` column (#3951).
+- Numbers in visit, place and family labels on the map render in the text font instead of as emoji (#3946).
+- FIT imports assign each file its own tracker, so points from different FIT files are no longer grouped into one track (#3950).
+- Polarsteps `locations.json` files larger than 8 KB are detected and imported (#3954).
+- Trip pages no longer return an error when the trip notes contain an image with a relative URL (#3939).
+- GeoJSON and GPX exports on the Points page use the dates currently set in the filter, even without pressing Search (#3952).
+- Future AirTrail flights no longer create statistics for months that have not happened yet, and flights are counted in the month of their local departure date (#3935).
+- Poster Studio no longer loads every point of the selected period, and Video Studio draws the route only from the selected time range (#3937, #3948).
+
 ## [1.20.0] - 2026-10-30, Berlin
 
 ### ⚠️ Upgrade notes

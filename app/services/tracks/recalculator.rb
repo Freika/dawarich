@@ -36,11 +36,12 @@ class Tracks::Recalculator
   attr_reader :track, :broadcast
 
   def snapshot
+    altitude_sql = Point.altitude_decimal_supported? ? 'COALESCE(altitude_decimal, altitude)' : 'altitude'
     sql = Point.sanitize_sql_array([<<~SQL.squish, track.id])
       SELECT id, timestamp,
              ST_X(lonlat::geometry) AS longitude,
              ST_Y(lonlat::geometry) AS latitude,
-             COALESCE(altitude_decimal, altitude) AS altitude
+             #{altitude_sql} AS altitude
       FROM points
       WHERE track_id = ? AND anomaly IS NOT TRUE
       ORDER BY timestamp ASC, id ASC

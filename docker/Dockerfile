@@ -72,12 +72,9 @@ RUN apt-get update -qq \
 
 COPY --from=mbgl_libs /out /opt/mbgl-libs
 
-# Use jemalloc with check for architecture
-RUN if [ "$(uname -m)" = "x86_64" ]; then \
-    echo "/usr/lib/x86_64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
-    else \
-    echo "/usr/lib/aarch64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
-    fi
+# Preload jemalloc from this architecture's multiarch lib dir
+# (x86_64-linux-gnu, aarch64-linux-gnu, arm-linux-gnueabihf).
+RUN echo "/usr/lib/$(gcc -dumpmachine)/libjemalloc.so.2" > /etc/ld.so.preload
 
 # Return freed pages to the OS quickly instead of holding them in the
 # allocator, and cap arena count — keeps idle RSS low on small hosts.
@@ -90,11 +87,21 @@ WORKDIR $APP_PATH
 
 COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
+# tzf2 ships no prebuilt gem for 32-bit ARM, so armv7 compiles it from
+# source; rb-sys' bindgen needs libclang for that.
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" = "arm" ]; then \
+    apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libclang-dev \
+    && rm -rf /var/lib/apt/lists/*; \
+    fi
+
 # Install production gems only
 RUN bundle config set --local path 'vendor/bundle' \
     && bundle config set --local without 'development test' \
     && bundle install --jobs 4 --retry 3 \
-    && rm -rf vendor/bundle/ruby/3.4.0/cache/*.gem
+    && rm -rf vendor/bundle/ruby/*/cache/*.gem \
+       vendor/bundle/ruby/*/gems/*/ext/*/.rb-sys vendor/bundle/ruby/*/gems/*/ext/*/target
 
 COPY ../. ./
 
