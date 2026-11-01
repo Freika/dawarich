@@ -9,7 +9,7 @@ RSpec.describe Achievements::Registry do
     it 'builds a definition per continent, country and world tier' do
       kinds = described_class.all.group_by(&:kind).transform_values(&:size)
 
-      expect(kinds).to eq('continent' => 6, 'country' => 238, 'region_set' => 3, 'thematic_set' => 3)
+      expect(kinds).to eq('continent' => 6, 'country' => 238, 'region_set' => 3, 'thematic_set' => 4)
     end
 
     it 'derives keys from continent names and ISO codes' do
