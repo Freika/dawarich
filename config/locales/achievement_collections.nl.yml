@@ -3,8 +3,7 @@ nl:
   achievements:
     collections:
       title: Persoonlijke collecties
-      intro: Verken steden, bezoek favoriete plaatsen opnieuw, verzamel seizoenen, nationale parken en geografische
-      mijlpalen uit je geregistreerde geschiedenis.
+      intro: "Verken steden, bezoek favoriete plaatsen opnieuw, verzamel seizoenen, nationale parken en geografische mijlpalen uit je geregistreerde geschiedenis."
       places: Plaatsen voor je collectie
       search_places: Zoek in je plaatsen
       add: Toevoegen aan collectie
