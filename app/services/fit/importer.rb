@@ -104,6 +104,7 @@ class Fit::Importer
       velocity: extract_speed(record),
       user_id: user_id,
       import_id: import.id,
+      tracker_id: "import-#{import.id}",
       motion_data: motion_data,
       created_at: Time.current,
       updated_at: Time.current
