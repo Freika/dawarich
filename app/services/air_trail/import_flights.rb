@@ -12,14 +12,14 @@ module AirTrail
       api_key = @settings.airtrail_api_key
       return { skipped: true } if url.blank? || api_key.blank?
 
-      payload = AirTrail::Client.new(
-        url, api_key, skip_ssl_verification: @settings.airtrail_skip_ssl_verification
-      ).flights
+      client = AirTrail::Client.new(url, api_key, skip_ssl_verification: @settings.airtrail_skip_ssl_verification)
+      payload = client.flights
 
       months_before_sync = affected_months
       counts = upsert(payload)
       record_synced_at
       recalculate_stats(months_before_sync | affected_months)
+      AirTrail::SyncTracks.new(@user, client).call
       counts
     end
 

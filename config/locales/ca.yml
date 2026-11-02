@@ -1712,9 +1712,10 @@ ca:
         found_in_your_photoprism_settings_under_library: La trobaràs a la configuració de Photoprism, a Biblioteca
         airtrail_integration: Integració amb AirTrail
         airtrail_url: URL d'AirTrail
-        the_base_url_of_your_airtrail_instance_your_flights_are: La URL base de la teva instància d'AirTrail. Els teus vols es mostren com a arcs al mapa.
+        the_base_url_of_your_airtrail_instance_your_flights_are: 'La URL base de la teva instància d''AirTrail. Els teus vols es mostren al mapa.'
         airtrail_api_key: Clau API d'AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Crea una clau API a AirTrail a Configuració → Seguretat.
+        airtrail_recorded_flight_tracks_need_airtrail_3_13: 'Els vols amb una ruta enregistrada a AirTrail es dibuixen seguint aquesta ruta i la resta com a arcs. Les rutes necessiten AirTrail 3.13 o posterior i una clau API amb el permís tracks.read.'
         teslamate_integration: Integració amb TeslaMateApi
         teslamate_url: URL de TeslaMateApi
         the_base_url_of_your_teslamateapi_instance: La URL base de la teva instància de TeslaMateApi.

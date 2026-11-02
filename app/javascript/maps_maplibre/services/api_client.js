@@ -1036,13 +1036,11 @@ export class ApiClient {
     const params = new URLSearchParams()
     if (start_at) params.set("start_at", start_at)
     if (end_at) params.set("end_at", end_at)
+    maskPrivacyZones(params)
 
-    const query = params.toString()
-    const url = query
-      ? `${this.baseURL}/flights?${query}`
-      : `${this.baseURL}/flights`
-
-    const response = await fetch(url, { headers: this.getHeaders() })
+    const response = await fetch(`${this.baseURL}/flights?${params}`, {
+      headers: this.getHeaders(),
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to fetch flights: ${response.statusText}`)

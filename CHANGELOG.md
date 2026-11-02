@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- AirTrail sync now imports a flight's recorded track, such as one uploaded to AirTrail from a CSV file, and the map draws the real flight path instead of the great-circle arc. A track is downloaded again only when it changes in AirTrail. This needs AirTrail 3.13.0 or later and an API key with the `tracks.read` scope; flights without a track, older AirTrail versions and keys without that access keep the arc. Tracks are cut at your privacy zones on the map like other routes, and flight distances in stats are unchanged. (#3785)
 - Create Visit on the map fills the location and times from selected points or nearby history, using the latest stay when several are found. Create and edit forms now let you choose a Place, with a nearby previously visited Place selected when creating a visit.
 - Mark a point the GPS noise filter hid as correct. Turn on the Anomalies layer, click the orange point and press "Mark as correct". The point returns to the map and your stats, rejoins a nearby track of the same device when there is one, and stays visible when you re-evaluate past data. (#3722)
 
