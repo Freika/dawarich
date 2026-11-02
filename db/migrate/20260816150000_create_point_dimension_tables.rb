@@ -57,8 +57,11 @@ class CreatePointDimensionTables < ActiveRecord::Migration[8.0]
         execute "SET LOCAL lock_timeout = '#{ADD_LOCK_TIMEOUT}'"
         execute 'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer'
       end
-    rescue ActiveRecord::LockWaitTimeout, ActiveRecord::QueryAborted
-      raise if attempts >= ADD_MAX_ATTEMPTS
+    rescue ActiveRecord::LockWaitTimeout, ActiveRecord::QueryAborted => e
+      if attempts >= ADD_MAX_ATTEMPTS
+        raise e.class, "points.source_id could not be added in #{ADD_MAX_ATTEMPTS} attempts (#{e.message}). " \
+                       'A long transaction holds points: stop Sidekiq and restart.'
+      end
 
       sleep(attempts * 5)
       retry

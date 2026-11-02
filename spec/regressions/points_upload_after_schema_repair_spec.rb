@@ -1,12 +1,18 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require Rails.root.join('db/migrate/20261102000100_ensure_points_source_id.rb')
+require Rails.root.join('db/migrate/20261102000200_ensure_points_altitude_decimal.rb')
 
-# The mobile apps upload through POST /api/v1/points with the payload below.
-RSpec.describe 'Points API without altitude_decimal', type: :request do
+# Instances set up from the 1.5.0–1.6.x schema.rb never got
+# points.altitude_decimal, and busy ones never got points.source_id. The 1.20
+# points triggers read both, so app uploads returned 500 there until the
+# upgrade adds the columns.
+RSpec.describe 'Points upload after the points schema repair', type: :request do
   let(:connection) { ApplicationRecord.connection }
   let(:user) { create(:user) }
 
+  # The payload the iOS and Android apps send to POST /api/v1/points.
   def app_batch(altitude)
     {
       locations: [0, 60].map do |offset|
@@ -24,23 +30,22 @@ RSpec.describe 'Points API without altitude_decimal', type: :request do
   end
 
   before do
-    skip 'column absence regression only applies when the decimal migration did not finish' unless
-      connection.column_exists?(:points, :altitude_decimal)
-
-    allow(Point).to receive(:altitude_decimal_supported?).and_return(false)
-    connection.remove_column(:points, :altitude_decimal)
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    connection.execute('ALTER TABLE points DROP COLUMN altitude_decimal, DROP COLUMN source_id')
     Point.reset_column_information
-    %w[db/exploration_invalidation.sql db/achievement_collections_invalidation.sql].each do |path|
-      connection.execute(File.read(Rails.root.join(path)))
-    end
+    Points::DimensionResolver.reset_column_availability!
+
+    EnsurePointsSourceId.new.up
+    EnsurePointsAltitudeDecimal.new.up
+    Points::DimensionResolver.reset_column_availability!
   end
 
   after do
     [Tracks::RealtimeDebouncer, Visits::RealtimeDebouncer].each { |debouncer| debouncer.new(user.id).clear }
-    unless connection.column_exists?(:points, :altitude_decimal)
-      connection.add_column(:points, :altitude_decimal, :decimal, precision: 10, scale: 2)
-      Point.reset_column_information
-    end
+    connection.execute('ALTER TABLE points ADD COLUMN IF NOT EXISTS altitude_decimal numeric(10,2), ' \
+                       'ADD COLUMN IF NOT EXISTS source_id integer')
+    Point.reset_column_information
+    Points::DimensionResolver.reset_column_availability!
   end
 
   it 'stores a fresh batch from the app' do

@@ -2,7 +2,7 @@ SET LOCAL lock_timeout = '5s';
 -- Statement triggers cover bulk writes (upsert_all/update_all/delete_all) as well
 -- as individual records. Only the affected owners are dirtied, once per statement.
 CREATE OR REPLACE FUNCTION invalidate_exploration() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE owners_sql text; has_decimal boolean;
+DECLARE owners_sql text;
 BEGIN
   IF current_setting('dawarich.defer_revisions', true) = 'on' THEN RETURN NULL; END IF;
   IF TG_TABLE_NAME = 'track_segments' THEN
@@ -11,9 +11,7 @@ BEGIN
       WHEN 'DELETE' THEN 'SELECT DISTINCT tracks.user_id FROM old_rows r JOIN tracks ON tracks.id = r.track_id'
       ELSE 'SELECT DISTINCT tracks.user_id FROM (SELECT track_id FROM new_rows UNION SELECT track_id FROM old_rows) r JOIN tracks ON tracks.id = r.track_id' END;
   ELSIF TG_OP = 'UPDATE' AND TG_TABLE_NAME = 'points' THEN
-    -- altitude_decimal is absent where the decimal migration never ran (#3969).
-    has_decimal := EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = TG_RELID AND attname = 'altitude_decimal' AND NOT attisdropped);
-    owners_sql := 'SELECT DISTINCT user_id FROM (SELECT n.user_id FROM new_rows n JOIN old_rows o USING (id) WHERE (n.user_id,n.timestamp,n.lonlat::text,n.anomaly,n.track_id,n.altitude,' || CASE WHEN has_decimal THEN 'n.altitude_decimal,' ELSE '' END || 'n.accuracy,n.velocity,n.motion_data) IS DISTINCT FROM (o.user_id,o.timestamp,o.lonlat::text,o.anomaly,o.track_id,o.altitude,' || CASE WHEN has_decimal THEN 'o.altitude_decimal,' ELSE '' END || 'o.accuracy,o.velocity,o.motion_data) UNION SELECT o.user_id FROM old_rows o JOIN new_rows n USING(id) WHERE o.user_id IS DISTINCT FROM n.user_id) changed';
+    owners_sql := 'SELECT DISTINCT user_id FROM (SELECT n.user_id FROM new_rows n JOIN old_rows o USING (id) WHERE (n.user_id,n.timestamp,n.lonlat::text,n.anomaly,n.track_id,n.altitude,n.altitude_decimal,n.accuracy,n.velocity,n.motion_data) IS DISTINCT FROM (o.user_id,o.timestamp,o.lonlat::text,o.anomaly,o.track_id,o.altitude,o.altitude_decimal,o.accuracy,o.velocity,o.motion_data) UNION SELECT o.user_id FROM old_rows o JOIN new_rows n USING(id) WHERE o.user_id IS DISTINCT FROM n.user_id) changed';
   ELSE
     owners_sql := CASE TG_OP WHEN 'INSERT' THEN 'SELECT DISTINCT user_id FROM new_rows'
       WHEN 'DELETE' THEN 'SELECT DISTINCT user_id FROM old_rows'

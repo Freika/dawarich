@@ -119,8 +119,7 @@ module Tracks::TrackBuilder
     singleton = nil
     track = Point.transaction do
       orphans = Point.where(user_id: user.id, id: points.map(&:id), track_id: nil)
-                     .select(*(%i[id timestamp lonlat source_id tracker_id altitude] +
-                                (Point.altitude_decimal_supported? ? [:altitude_decimal] : [])))
+                     .select(:id, :timestamp, :lonlat, :source_id, :tracker_id, :altitude, :altitude_decimal)
                      .preload(:source)
                      .order(:id).lock.to_a.sort_by { |point| [point.timestamp, point.id] }
       if orphans.one?

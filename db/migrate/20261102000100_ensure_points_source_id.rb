@@ -40,7 +40,8 @@ class EnsurePointsSourceId < ActiveRecord::Migration[8.1]
       if attempts >= MAX_ATTEMPTS
         raise e.class, "points.source_id is still missing after #{MAX_ATTEMPTS} attempts (#{e.message}). " \
                        'A long transaction holds points: stop Sidekiq and restart, or run ' \
-                       'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer once it ends.'
+                       'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer once it ends, then start the ' \
+                       'backfill with DataMigrations::BackfillPointDimensionsJob.perform_later.'
       end
 
       sleep(attempts * 5)
