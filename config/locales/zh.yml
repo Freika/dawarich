@@ -4294,6 +4294,9 @@ zh:
       creating: 创建您的演示数据…
       creating_help: 将生成一个月的柏林记录数据以及布拉格周末行程，大约需要一秒钟。
     visits:
+      place: "地点"
+      choose_place: "选择地点"
+      multiple_stays: "找到了多次停留，已使用最近一次停留。"
       add_new: 添加新到访记录
       create_new: 创建新到访记录
       create: 创建到访记录

@@ -6,7 +6,8 @@ const MOVE_THRESHOLD_M = 100
 const THROTTLED_RETRY_MS = 1200
 
 export class VisitPlaceSearch {
-  constructor(visitId, lat, lon, mountEl, apiKey = null) {
+  constructor(visitId, lat, lon, mountEl, apiKey = null, options = {}) {
+    this.onSelect = options.onSelect
     this.visitId = visitId
     this.lat = parseFloat(lat)
     this.lon = parseFloat(lon)
@@ -32,6 +33,9 @@ export class VisitPlaceSearch {
     this.input = this.mount.querySelector("[data-search-input]")
     this.list = this.mount.querySelector("[data-search-results]")
     this.input.addEventListener("input", () => this.onInput())
+    this.input.addEventListener("keydown", (event) => {
+      if (this.onSelect && event.key === "Enter") event.preventDefault()
+    })
     this.input.focus()
     this.fetchResults("")
   }
@@ -88,6 +92,7 @@ export class VisitPlaceSearch {
   }
 
   render(places, query) {
+    if (this.onSelect) places = places.filter((place) => place.id)
     const hasExact = places.some(
       (p) => (p.name || "").toLowerCase() === query.toLowerCase(),
     )
@@ -96,7 +101,8 @@ export class VisitPlaceSearch {
     places.forEach((p, i) => {
       rows.push(this.placeRow(p, i))
     })
-    if (query.length >= 2 && !hasExact) rows.push(this.createRow(query))
+    if (!this.onSelect && query.length >= 2 && !hasExact)
+      rows.push(this.createRow(query))
 
     this.list.innerHTML = rows.length
       ? rows.join("")
@@ -116,6 +122,11 @@ export class VisitPlaceSearch {
   }
 
   async selectPlace(place) {
+    if (this.onSelect) {
+      this.onSelect(place)
+      this.close()
+      return
+    }
     const distance = this.distanceMeters(place.latitude, place.longitude)
     try {
       if (distance > MOVE_THRESHOLD_M) {

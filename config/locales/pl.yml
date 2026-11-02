@@ -4376,6 +4376,9 @@ pl:
       creating: Tworzenie danych demo…
       creating_help: Dodawanie miesiąca śledzenia Berlina i weekendowej podróży do Pragi. Zajmuje około sekundy.
     visits:
+      place: "Miejsce"
+      choose_place: "Wybierz miejsce"
+      multiple_stays: "Znaleziono kilka pobytów. Użyto najnowszego pobytu."
       add_new: Dodaj nową wizytę
       create_new: Utwórz nową wizytę
       create: Utwórz wizytę

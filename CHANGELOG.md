@@ -8,7 +8,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Create Visit on the map fills the location and times from selected points or nearby history, using the latest stay when several are found. Create and edit forms now let you choose a Place, with a nearby previously visited Place selected when creating a visit.
 - Mark a point the GPS noise filter hid as correct. Turn on the Anomalies layer, click the orange point and press "Mark as correct". The point returns to the map and your stats, rejoins a nearby track of the same device when there is one, and stays visible when you re-evaluate past data. (#3722)
+
+### Changed
+
+- Creating or editing a visit, including through `POST` and `PATCH /api/v1/visits`, with the same name as the existing Place it is attached to (or, when changing Place, the previous Place) no longer saves a separate visit name, so the visit shows the Place's current name and follows later renames.
+- The Place search API (`GET /api/v1/places/search`) also returns your Places that have visits but are hidden from the map, and marks each result with `has_visits`; declined and deleted visits are not counted.
 
 ### Fixed
 
