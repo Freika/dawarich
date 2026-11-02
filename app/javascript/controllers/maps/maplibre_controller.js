@@ -165,10 +165,7 @@ export default class extends Controller {
     // Initialize API and settings
     SettingsManager.initialize(this.apiKeyValue)
     this.settingsController = new SettingsController(this)
-    await this.settingsController.loadSettings()
-    this.settings = this.settingsController.settings
-    this.settings.timezone = this.timezoneValue
-    if (this.hasExplorationBoundsValue) this.settings.fogEnabled = true
+    await this.loadViewSettings()
 
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
@@ -408,6 +405,16 @@ export default class extends Controller {
   /**
    * Initialize MapLibre map
    */
+  async loadViewSettings() {
+    await this.settingsController.loadSettings()
+    // A city card opens the map with fog on for this view only; the copy
+    // keeps the forced layer out of the stored settings.
+    this.settings = this.hasExplorationBoundsValue
+      ? { ...this.settingsController.settings, fogEnabled: true }
+      : this.settingsController.settings
+    this.settings.timezone = this.timezoneValue
+  }
+
   async initializeMap() {
     syncSidebarLayout(this.settingsPanelTarget, this.containerTarget, true)
     // Reopen at the user's last viewport instead of the zoomed-out globe.

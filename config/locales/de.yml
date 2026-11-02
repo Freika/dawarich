@@ -4400,7 +4400,9 @@ de:
       locations_failed: Suche nach Orten fehlgeschlagen. Bitte versuche es erneut.
     settings:
       transportation_recalculation_completed: Berechnung des Verkehrsmittels abgeschlossen!
-      confirm_reset: Alle Einstellungen auf Standardwerte zurücksetzen? Die Seite wird neu geladen.
+      confirm_reset: "Das Erscheinungsbild der Karte auf Standardwerte zurücksetzen? Verkehrsmittel- und Filtereinstellungen bleiben erhalten. Die Seite wird neu geladen."
+      load_failed: "Die Karteneinstellungen konnten nicht geladen werden. Änderungen werden erst nach einem Neuladen der Seite gespeichert."
+      reset_failed: "Das Erscheinungsbild der Karte konnte nicht zurückgesetzt werden. Bitte versuche es erneut."
       confirm_globe_reload: Die Globusansicht erfordert eine Neuladung der Seite, um zu wirken. Jetzt neu laden?
       changed_fields: 'Geändert: %{fields}'
       confirm_reapply_anomaly_filter: |-

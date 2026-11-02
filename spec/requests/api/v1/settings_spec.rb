@@ -127,17 +127,17 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       end
 
       it 'updates fog_of_war_mode' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'hexagons' } }
-
-        expect(response).to have_http_status(:success)
-        expect(user.reload.safe_settings.fog_of_war_mode).to eq('hexagons')
-      end
-
-      it 'normalizes unknown fog_of_war_mode values to points' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'octagons' } }
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'points' } }
 
         expect(response).to have_http_status(:success)
         expect(user.reload.safe_settings.fog_of_war_mode).to eq('points')
+      end
+
+      it 'normalizes unknown fog_of_war_mode values to the default' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'octagons' } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.fog_of_war_mode).to eq('hexagons')
       end
 
       it 'updates maps_maplibre_custom_theme' do
@@ -663,6 +663,71 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       expect(user.reload.settings['time_format']).to eq('12h')
       expect(user.settings).not_to have_key('date_format')
       expect(user.settings).not_to have_key('first_day_of_week')
+    end
+  end
+
+  describe 'DELETE /settings/appearance' do
+    before do
+      user.update!(settings: user.settings.merge(
+        'maps_maplibre_style' => 'dark',
+        'globe_projection' => false,
+        'fog_of_war_mode' => 'points',
+        'track_color' => '#123456',
+        'enabled_transportation_modes' => %w[walking cycling],
+        'meters_between_routes' => 900,
+        'maps' => { 'distance_unit' => 'mi', 'hidden_tile_categories' => ['roads'], 'disabled_poi_groups' => ['food'] }
+      ))
+    end
+
+    it 'restores appearance settings to a fresh account and returns them' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}"
+
+      expect(response).to have_http_status(:ok)
+      body = response.parsed_body['settings']
+      expect(body).to include('maps_maplibre_style' => 'light', 'globe_projection' => true,
+                              'fog_of_war_mode' => 'hexagons', 'track_color' => '#6366F1')
+      stored = user.reload.settings
+      expect(stored).not_to include('maps_maplibre_style', 'globe_projection', 'fog_of_war_mode', 'track_color')
+      expect(stored['maps']).to eq('distance_unit' => 'mi')
+    end
+
+    it 'keeps data rules untouched' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}"
+
+      stored = user.reload.settings
+      expect(stored['enabled_transportation_modes']).to eq(%w[walking cycling])
+      expect(stored['meters_between_routes']).to eq(900)
+    end
+
+    it 'resets only the requested appearance keys' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}", params: { keys: ['track_color'] }
+
+      expect(response).to have_http_status(:ok)
+      stored = user.reload.settings
+      expect(stored).not_to include('track_color')
+      expect(stored['maps_maplibre_style']).to eq('dark')
+    end
+
+    it 'accepts a single key without brackets' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}&keys=track_color"
+
+      expect(response).to have_http_status(:ok)
+      stored = user.reload.settings
+      expect(stored).not_to include('track_color')
+      expect(stored['maps_maplibre_style']).to eq('dark')
+    end
+
+    it 'rejects keys outside the appearance group' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}", params: { keys: ['meters_between_routes'] }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(user.reload.settings['meters_between_routes']).to eq(900)
+    end
+
+    it 'requires an API key' do
+      delete '/api/v1/settings/appearance'
+
+      expect(response).to have_http_status(:unauthorized)
     end
   end
 end

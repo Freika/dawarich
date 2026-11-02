@@ -5,65 +5,8 @@
 
 import { classifyBasemapUrl } from "maps_maplibre/utils/basemap_url"
 
-// Matches Tracks::GeojsonSerializer::DEFAULT_COLOR; keep them in sync.
-export const LAYER_COLOR_DEFAULTS = {
-  trackColor: "#6366F1",
-}
-
-// hiddenTileCategories / disabledPoiGroups deliberately have no defaults:
-// they enter the cache only via backend sync or an explicit set, so an
-// early save can't wipe the stored values with empty arrays.
-const DEFAULT_SETTINGS = {
-  mapStyle: "light",
-  vectorTilesUrl: null,
-  tilesFallback: false,
-  ...LAYER_COLOR_DEFAULTS,
-  customTheme: {
-    base: "noir",
-    tokens: {
-      bg: "#000000",
-      water: "#0A0A0A",
-      parks: "#111111",
-      buildings: "#141414",
-      railway: "#808080",
-      boundaries: "#4D4D4D",
-      road_motorway: "#FFFFFF",
-      road_primary: "#E0E0E0",
-      road_secondary: "#B0B0B0",
-      road_tertiary: "#808080",
-      road_residential: "#505050",
-      road_default: "#808080",
-    },
-  },
-  enabledMapLayers: ["Heatmap", "Tracks"],
-  placesTagFilters: null,
-  fogOfWarRadius: 50,
-  fogOfWarThreshold: 50,
-  fogOfWarMode: "hexagons",
-  globeProjection: false,
-  speedColoredRoutes: false,
-  speedColorScale: "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
-  metersBetweenRoutes: 500,
-  minutesBetweenRoutes: 30,
-  minMinutesSpentInCity: 60,
-  gpsFilteringEnabled: true,
-  gpsAccuracyFilterEnabled: false,
-  gpsAccuracyThreshold: 100,
-  pointDraggingEnabled: false,
-  enabledTransportationModes: [
-    "unknown",
-    "stationary",
-    "walking",
-    "running",
-    "cycling",
-    "driving",
-    "bus",
-    "train",
-    "flying",
-    "boat",
-    "motorcycle",
-  ],
-}
+// Every default lives on the server (Users::SafeSettings): the map reads
+// effective values from /api/v1/settings and keeps none of its own.
 
 const LAYER_NAME_MAP = {
   Points: "pointsVisible",
@@ -81,7 +24,17 @@ const LAYER_NAME_MAP = {
   Anomalies: "anomaliesEnabled",
 }
 
-const BACKEND_SETTINGS_MAP = {
+const BOOLEAN_SETTINGS = [
+  "gpsFilteringEnabled",
+  "gpsAccuracyFilterEnabled",
+  "pointDraggingEnabled",
+  "globeProjection",
+  "speedColoredRoutes",
+  "liveMapEnabled",
+  "tilesFallback",
+]
+
+export const BACKEND_SETTINGS_MAP = {
   mapStyle: "maps_maplibre_style",
   customTheme: "maps_maplibre_custom_theme",
   vectorTilesUrl: "maps_maplibre_tiles_url",
@@ -111,6 +64,9 @@ const BACKEND_SETTINGS_MAP = {
 export class SettingsManager {
   static apiKey = null
   static cachedSettings = null
+  // False until settings load from the server; saving is refused meanwhile so
+  // a partial snapshot can never overwrite the stored settings.
+  static loaded = false
   static saveQueue = Promise.resolve()
 
   /**
@@ -120,11 +76,11 @@ export class SettingsManager {
   static initialize(apiKey) {
     SettingsManager.apiKey = apiKey
     SettingsManager.cachedSettings = null
+    SettingsManager.loaded = false
   }
 
   /**
-   * Get all settings from cache or defaults
-   * Converts enabled_map_layers array to individual boolean flags
+   * Get the loaded settings; empty until they load from the server
    * @returns {Object} Settings object
    */
   static getSettings() {
@@ -132,11 +88,7 @@ export class SettingsManager {
       return { ...SettingsManager.cachedSettings }
     }
 
-    const expandedSettings =
-      SettingsManager._expandLayerSettings(DEFAULT_SETTINGS)
-    SettingsManager.cachedSettings = expandedSettings
-
-    return { ...expandedSettings }
+    return SettingsManager._expandLayerSettings({})
   }
 
   /**
@@ -182,14 +134,9 @@ export class SettingsManager {
     return enabledLayers
   }
 
-  static _parseIntOr(value, fallback) {
-    const parsed = parseInt(value, 10)
-    return Number.isNaN(parsed) ? fallback : parsed
-  }
-
   /**
    * Load settings from backend API
-   * @returns {Promise<Object>} Settings object from backend
+   * @returns {Promise<Object|null>} Settings, or null when loading failed
    */
   static async loadFromBackend() {
     if (!SettingsManager.apiKey) {
@@ -199,10 +146,7 @@ export class SettingsManager {
 
     try {
       const response = await fetch("/api/v1/settings", {
-        headers: {
-          Authorization: `Bearer ${SettingsManager.apiKey}`,
-          "Content-Type": "application/json",
-        },
+        headers: SettingsManager._headers(),
       })
 
       if (!response.ok) {
@@ -210,93 +154,56 @@ export class SettingsManager {
       }
 
       const data = await response.json()
-      const backendSettings = data.settings
-
-      const frontendSettings = {}
-      Object.entries(BACKEND_SETTINGS_MAP).forEach(
-        ([frontendKey, backendKey]) => {
-          if (backendKey in backendSettings) {
-            let value = backendSettings[backendKey]
-
-            if (frontendKey === "fogOfWarRadius") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.fogOfWarRadius,
-              )
-            } else if (frontendKey === "fogOfWarThreshold") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.fogOfWarThreshold,
-              )
-            } else if (frontendKey === "metersBetweenRoutes") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.metersBetweenRoutes,
-              )
-            } else if (frontendKey === "minutesBetweenRoutes") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.minutesBetweenRoutes,
-              )
-            } else if (frontendKey === "minMinutesSpentInCity") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.minMinutesSpentInCity,
-              )
-            } else if (frontendKey === "gpsAccuracyThreshold") {
-              value = SettingsManager._parseIntOr(
-                value,
-                DEFAULT_SETTINGS.gpsAccuracyThreshold,
-              )
-            } else if (
-              frontendKey === "gpsFilteringEnabled" ||
-              frontendKey === "gpsAccuracyFilterEnabled"
-            ) {
-              value = value === true || value === "true"
-            } else if (frontendKey === "pointDraggingEnabled") {
-              value = value === true || value === "true"
-            } else if (
-              frontendKey === "globeProjection" ||
-              frontendKey === "speedColoredRoutes"
-            ) {
-              value = value === true || value === "true"
-            } else if (frontendKey === "liveMapEnabled") {
-              value = value === true || value === "true"
-            } else if (frontendKey === "tilesFallback") {
-              value = value === true || value === "true"
-            }
-
-            frontendSettings[frontendKey] = value
-          }
-        },
-      )
-
-      const mergedSettings = { ...DEFAULT_SETTINGS, ...frontendSettings }
-
-      if (backendSettings.enabled_map_layers) {
-        mergedSettings.enabledMapLayers = backendSettings.enabled_map_layers
-      }
-
-      // Extract map customization from nested maps settings
-      if (backendSettings.maps?.hidden_tile_categories) {
-        mergedSettings.hiddenTileCategories =
-          backendSettings.maps.hidden_tile_categories
-      }
-      if (backendSettings.maps?.disabled_poi_groups) {
-        mergedSettings.disabledPoiGroups =
-          backendSettings.maps.disabled_poi_groups
-      }
-
-      const expandedSettings =
-        SettingsManager._expandLayerSettings(mergedSettings)
-
-      SettingsManager.cachedSettings = expandedSettings
-
-      return expandedSettings
+      return SettingsManager._applyBackendSettings(data.settings)
     } catch (error) {
       console.error("[Settings] Failed to load from backend:", error)
       return null
     }
+  }
+
+  static _headers() {
+    return {
+      Authorization: `Bearer ${SettingsManager.apiKey}`,
+      "Content-Type": "application/json",
+    }
+  }
+
+  /**
+   * Map the server's effective settings to frontend keys and cache them
+   * @param {Object} backendSettings - `settings` from the settings API
+   * @returns {Object} Expanded frontend settings
+   */
+  static _applyBackendSettings(backendSettings) {
+    const frontendSettings = {}
+    Object.entries(BACKEND_SETTINGS_MAP).forEach(
+      ([frontendKey, backendKey]) => {
+        if (!(backendKey in backendSettings)) return
+
+        let value = backendSettings[backendKey]
+        if (BOOLEAN_SETTINGS.includes(frontendKey)) {
+          value = value === true || value === "true"
+        }
+        frontendSettings[frontendKey] = value
+      },
+    )
+
+    // Extract map customization from nested maps settings
+    if (backendSettings.maps?.hidden_tile_categories) {
+      frontendSettings.hiddenTileCategories =
+        backendSettings.maps.hidden_tile_categories
+    }
+    if (backendSettings.maps?.disabled_poi_groups) {
+      frontendSettings.disabledPoiGroups =
+        backendSettings.maps.disabled_poi_groups
+    }
+
+    const expandedSettings =
+      SettingsManager._expandLayerSettings(frontendSettings)
+
+    SettingsManager.cachedSettings = expandedSettings
+    SettingsManager.loaded = true
+
+    return expandedSettings
   }
 
   /**
@@ -317,16 +224,16 @@ export class SettingsManager {
       console.warn("[Settings] API key not set, cannot save to backend")
       return null
     }
+    if (!SettingsManager.loaded) {
+      console.warn("[Settings] Settings not loaded, refusing to save")
+      return null
+    }
 
     try {
-      const enabledMapLayers = SettingsManager._collapseLayerSettings(settings)
-
       const backendSettings = {}
       Object.entries(BACKEND_SETTINGS_MAP).forEach(
         ([frontendKey, backendKey]) => {
-          if (frontendKey === "enabledMapLayers") {
-            backendSettings[backendKey] = enabledMapLayers
-          } else if (frontendKey in settings) {
+          if (frontendKey in settings) {
             let value = settings[frontendKey]
 
             if (
@@ -373,10 +280,7 @@ export class SettingsManager {
 
       const response = await fetch("/api/v1/settings", {
         method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${SettingsManager.apiKey}`,
-          "Content-Type": "application/json",
-        },
+        headers: SettingsManager._headers(),
         body: JSON.stringify({ settings: backendSettings }),
       })
 
@@ -430,40 +334,59 @@ export class SettingsManager {
 
     SettingsManager.updateCache(settings)
 
+    // Send only what changed: a full snapshot would re-store every default
+    // and carry data rules such as transportation modes into each toggle.
+    const changes = { ...updates }
+    if (isLayerSetting) changes.enabledMapLayers = settings.enabledMapLayers
+
     const previousSave = SettingsManager.saveQueue.catch(() => null)
-    const save = previousSave.then(() =>
-      SettingsManager.saveToBackend(settings),
-    )
+    const save = previousSave.then(() => SettingsManager.saveToBackend(changes))
     SettingsManager.saveQueue = save
 
     return await save
   }
 
   /**
-   * Reset to defaults
+   * Restore appearance settings to the server defaults
+   * @param {string[]|null} keys - Backend keys to reset; all appearance settings when omitted
+   * @returns {Promise<Object|null>} Settings after the reset, or null on failure
    */
-  static async resetToDefaults() {
-    try {
-      SettingsManager.cachedSettings = null
+  static async resetToDefaults(keys = null) {
+    if (!SettingsManager.apiKey) return null
 
-      if (SettingsManager.apiKey) {
-        await SettingsManager.saveToBackend(DEFAULT_SETTINGS)
+    const query = keys
+      ? `?${keys.map((key) => `keys[]=${encodeURIComponent(key)}`).join("&")}`
+      : ""
+    const previousSave = SettingsManager.saveQueue.catch(() => null)
+    const reset = previousSave.then(async () => {
+      const response = await fetch(`/api/v1/settings/appearance${query}`, {
+        method: "DELETE",
+        headers: SettingsManager._headers(),
+      })
+      if (!response.ok) {
+        throw new Error(`Failed to reset settings: ${response.status}`)
       }
+      const data = await response.json()
+      return SettingsManager._applyBackendSettings(data.settings)
+    })
+    SettingsManager.saveQueue = reset
+
+    try {
+      return await reset
     } catch (error) {
-      console.error("Failed to reset settings:", error)
+      console.error("[Settings] Failed to reset settings:", error)
+      return null
     }
   }
 
   /**
    * Sync settings: load from backend
    * Call this on app initialization
-   * @returns {Promise<Object>} Settings from backend
+   * @returns {Promise<Object>} Settings from backend, empty when loading failed
    */
   static async sync() {
-    const backendSettings = await SettingsManager.loadFromBackend()
-    if (backendSettings) {
-      return backendSettings
-    }
-    return SettingsManager.getSettings()
+    return (
+      (await SettingsManager.loadFromBackend()) || SettingsManager.getSettings()
+    )
   }
 }

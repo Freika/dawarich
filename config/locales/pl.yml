@@ -4515,7 +4515,9 @@ pl:
       locations_failed: Nie udało się wyszukać lokalizacji. Spróbuj ponownie.
     settings:
       transportation_recalculation_completed: Przeliczanie trybów transportu zakończone!
-      confirm_reset: Przywrócić wszystkie ustawienia domyślne? Strona zostanie odświeżona.
+      confirm_reset: "Przywrócić domyślny wygląd mapy? Ustawienia trybów transportu i filtrowania pozostaną bez zmian. Strona zostanie odświeżona."
+      load_failed: "Nie udało się wczytać ustawień mapy. Zmiany nie zostaną zapisane, dopóki nie odświeżysz strony."
+      reset_failed: "Nie udało się przywrócić wyglądu mapy. Spróbuj ponownie."
       confirm_globe_reload: Widok globu wymaga odświeżenia strony. Odświeżyć teraz?
       changed_fields: 'Zmieniono: %{fields}'
       confirm_reapply_anomaly_filter: |-

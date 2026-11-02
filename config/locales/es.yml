@@ -4345,7 +4345,9 @@ es:
       locations_failed: Falló buscar ubicaciones. Intenta de nuevo.
     settings:
       transportation_recalculation_completed: Recálculo del modo de transporte completado!
-      confirm_reset: "¿Restablecer todos los ajustes a sus valores predeterminados? La página se recargará."
+      confirm_reset: "¿Restablecer la apariencia del mapa a sus valores predeterminados? Los ajustes de modos de transporte y de filtrado se mantienen. La página se recargará."
+      load_failed: "No se pudieron cargar los ajustes del mapa. Los cambios no se guardarán hasta que recargues la página."
+      reset_failed: "No se pudo restablecer la apariencia del mapa. Inténtalo de nuevo."
       confirm_globe_reload: "La vista de globo requiere recargar la página. ¿Recargar ahora?"
       changed_fields: 'Cambios: %{fields}'
       confirm_reapply_anomaly_filter: |-

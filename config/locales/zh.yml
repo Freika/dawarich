@@ -4413,7 +4413,9 @@ zh:
       locations_failed: 搜索位置失败。请重试。
     settings:
       transportation_recalculation_completed: 交通方式重新计算完成！
-      confirm_reset: 将所有设置重置为默认值？这将重新加载页面。
+      confirm_reset: "将地图外观重置为默认值？交通方式和过滤设置保持不变。这将重新加载页面。"
+      load_failed: "无法加载地图设置。在重新加载页面之前，更改不会被保存。"
+      reset_failed: "无法重置地图外观。请重试。"
       confirm_globe_reload: 地球视图需要重新加载页面才能生效。现在重新加载？
       changed_fields: 更改：%{fields}
       confirm_reapply_anomaly_filter: |-

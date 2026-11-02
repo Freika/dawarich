@@ -4348,7 +4348,9 @@ ca:
       locations_failed: No s'han pogut cercar ubicacions. Torna-ho a provar.
     settings:
       transportation_recalculation_completed: Recàlcul de mitjans de transport completat!
-      confirm_reset: Restablir tota la configuració als valors per defecte? Això recarregarà la pàgina.
+      confirm_reset: "Restablir l'aparença del mapa als valors per defecte? La configuració dels mitjans de transport i del filtratge es manté. Això recarregarà la pàgina."
+      load_failed: "No s'ha pogut carregar la configuració del mapa. Els canvis no es desaran fins que recarreguis la pàgina."
+      reset_failed: "No s'ha pogut restablir l'aparença del mapa. Torna-ho a provar."
       confirm_globe_reload: La vista de globus requereix recarregar la pàgina perquè tingui efecte. Vols recarregar-la ara?
       changed_fields: 'Canviat: %{fields}'
       confirm_reapply_anomaly_filter: |-
