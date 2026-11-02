@@ -1545,6 +1545,7 @@ ca:
       buildings: Edificis
       railways: Ferrocarrils
       boundaries: Límits
+      detail_layers_zoom_hint: "Els edificis i les vies de tren només apareixen quan amplies el mapa fins al nivell de ciutat."
       theme_aria_label: "Tema %{theme}"
       background: Fons
       motorway_roads: Autopistes

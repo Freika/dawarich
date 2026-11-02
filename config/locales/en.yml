@@ -1545,6 +1545,7 @@ en:
       buildings: Buildings
       railways: Railways
       boundaries: Boundaries
+      detail_layers_zoom_hint: "Buildings and railways appear only when you zoom in to city level."
       theme_aria_label: "%{theme} theme"
       background: Background
       motorway_roads: Motorway roads

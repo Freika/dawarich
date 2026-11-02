@@ -1559,6 +1559,7 @@ pl:
       buildings: Budynki
       railways: Linie kolejowe
       boundaries: Granice
+      detail_layers_zoom_hint: "Budynki i linie kolejowe pojawiają się dopiero po przybliżeniu do poziomu miasta."
       theme_aria_label: Motyw %{theme}
       background: Tło
       motorway_roads: Drogi szybkiego ruchu
