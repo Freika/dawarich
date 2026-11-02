@@ -4058,6 +4058,9 @@ en:
       failed_to_load_area_details: Failed to load area details
       point_deleted_successfully: Point deleted successfully
       failed_to_delete_point: Failed to delete point
+      mark_point_valid: Mark as correct
+      point_marked_valid: Point marked as correct
+      failed_to_mark_point_valid: Failed to mark point as correct
       deleting_area: Deleting area...
       area_deleted_successfully: Area deleted successfully
       failed_to_delete_area: Failed to delete area

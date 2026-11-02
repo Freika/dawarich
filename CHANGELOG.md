@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Mark a point the GPS noise filter hid as correct. Turn on the Anomalies layer, click the orange point and press "Mark as correct". The point returns to the map and your stats, rejoins a nearby track of the same device when there is one, and stays visible when you re-evaluate past data. (#3722)
+
 ### Fixed
 
 - Uploading points from the mobile apps or Overland no longer returns HTTP 500 on instances whose `points` table never got the `altitude_decimal` or `source_id` column: the upgrade now adds the missing columns. `altitude_decimal` was missing on instances first set up from the 1.5.0–1.6.x schema, `source_id` on ones that were busy while upgrading past 1.13.1. Where `source_id` is added, self-hosted instances then fill it in a background job (#3969, #3972).

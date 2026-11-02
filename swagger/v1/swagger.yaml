@@ -4701,6 +4701,43 @@ paths:
                   description: Array of point IDs to delete
               required:
               - point_ids
+  "/api/v1/points/{id}/mark_valid":
+    patch:
+      summary: Marks a point flagged as an anomaly as correct
+      tags:
+      - Points
+      description: Clears the anomaly flag and keeps the anomaly filter from flagging
+        the point again, including after re-evaluating past data. The point rejoins
+        a neighbouring track when one is close.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Point ID
+        schema:
+          type: integer
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: point marked as correct
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  anomaly:
+                    type: boolean
+        '404':
+          description: point not found
+        '401':
+          description: unauthorized
   "/api/v1/points/reapply_anomaly_filter":
     post:
       summary: Re-evaluates anomaly flags for all of the user's points

@@ -4067,6 +4067,9 @@ es:
       failed_to_load_area_details: Falló al cargar detalles de área
       point_deleted_successfully: Punto eliminado correctamente
       failed_to_delete_point: Falló al eliminar punto
+      mark_point_valid: Marcar como correcto
+      point_marked_valid: Punto marcado como correcto
+      failed_to_mark_point_valid: No se pudo marcar el punto como correcto
       deleting_area: Eliminando área...
       area_deleted_successfully: Área eliminada con éxito!
       failed_to_delete_area: Falló al eliminar área

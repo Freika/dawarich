@@ -733,6 +733,20 @@ export class ApiClient {
     return response.json()
   }
 
+  /** Clear a point's anomaly flag and keep the filter from setting it again. */
+  async markPointValid(pointId) {
+    const response = await fetch(
+      `${this.baseURL}/points/${pointId}/mark_valid`,
+      { method: "PATCH", headers: this.getHeaders() },
+    )
+
+    if (!response.ok) {
+      throw new Error(`Failed to mark point as correct: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
   /**
    * Bulk delete points
    * @param {Array<number>} pointIds - Array of point IDs to delete

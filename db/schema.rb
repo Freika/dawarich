@@ -692,6 +692,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_000200) do
     t.integer "altitude"
     t.decimal "altitude_decimal", precision: 10, scale: 2
     t.boolean "anomaly"
+    t.boolean "anomaly_override", default: false, null: false
     t.integer "battery"
     t.integer "battery_status"
     t.string "bssid"
