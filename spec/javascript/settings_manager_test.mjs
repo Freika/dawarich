@@ -139,6 +139,44 @@ test("a failed reset reports no settings", async () => {
   }
 })
 
+async function patchBodyAfter(change) {
+  const fetchStub = stubFetch(() =>
+    jsonResponse({ settings: freshAccountSettings }),
+  )
+  try {
+    SettingsManager.initialize("test-key")
+    await SettingsManager.loadFromBackend()
+    await change()
+    const patch = fetchStub.calls.find((call) => call.method === "PATCH")
+    return JSON.parse(patch.options.body).settings
+  } finally {
+    fetchStub.restore()
+  }
+}
+
+test("a single change sends only that setting", async () => {
+  const body = await patchBodyAfter(() =>
+    SettingsManager.updateSetting("globeProjection", false),
+  )
+  assert.deepEqual(body, { globe_projection: false })
+})
+
+test("a layer toggle sends only the layer list", async () => {
+  const body = await patchBodyAfter(() =>
+    SettingsManager.updateSetting("heatmapEnabled", false),
+  )
+  assert.deepEqual(Object.keys(body), ["enabled_map_layers"])
+  assert.equal(body.enabled_map_layers.includes("Heatmap"), false)
+  assert.equal(body.enabled_map_layers.includes("Tracks"), true)
+})
+
+test("a nested map setting sends only that nested key", async () => {
+  const body = await patchBodyAfter(() =>
+    SettingsManager.updateSetting("hiddenTileCategories", ["roads"]),
+  )
+  assert.deepEqual(body, { maps: { hidden_tile_categories: ["roads"] } })
+})
+
 test("speed coloring preferences load and persist with the existing backend keys", async () => {
   const originalFetch = globalThis.fetch
   let saved
@@ -293,7 +331,7 @@ test("a saved Areas layer carries over to Places with their boundaries", async (
   }
 })
 
-test("multiple setting updates are persisted in one complete snapshot", async () => {
+test("multiple setting updates are persisted in one write", async () => {
   SettingsManager.cachedSettings = {
     mapStyle: "light",
     routeColor: "#111111",
@@ -305,17 +343,16 @@ test("multiple setting updates are persisted in one complete snapshot", async ()
     return settings
   }
 
-  await SettingsManager.updateSettings({ trackColor: "#6366F1" })
+  await SettingsManager.updateSettings({
+    trackColor: "#6366F1",
+    mapStyle: "dark",
+  })
 
   assert.equal(snapshots.length, 1)
-  assert.deepEqual(snapshots[0], {
-    mapStyle: "light",
-    routeColor: "#111111",
-    trackColor: "#6366F1",
-  })
+  assert.deepEqual(snapshots[0], { trackColor: "#6366F1", mapStyle: "dark" })
 })
 
-test("settings writes are serialized so a newer snapshot persists last", async () => {
+test("settings writes are serialized so a newer change persists last", async () => {
   SettingsManager.cachedSettings = {
     mapStyle: "light",
     routeColor: "#111111",
@@ -341,11 +378,10 @@ test("settings writes are serialized so a newer snapshot persists last", async (
   assert.equal(snapshots.length, 1)
   releaseFirstSave()
   await Promise.all([staleSave, resetSave])
-  assert.deepEqual(snapshots.at(-1), {
-    mapStyle: "light",
-    routeColor: "#111111",
-    trackColor: "#6366F1",
-  })
+  assert.deepEqual(snapshots, [
+    { trackColor: "#333333" },
+    { trackColor: "#6366F1" },
+  ])
 })
 
 test("resetting layer colors asks the server and cancels stale debounced saves", async () => {

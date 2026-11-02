@@ -1041,10 +1041,7 @@ export class SettingsController {
     // Apply settings to current map (may trigger loadMapData)
     await this.applySettingsToMap(settings)
 
-    // Save to backend
-    for (const [key, value] of Object.entries(settings)) {
-      await SettingsManager.updateSetting(key, value)
-    }
+    await SettingsManager.updateSettings(settings)
 
     this.controller.rangeStatistics?.refresh()
     document.dispatchEvent(

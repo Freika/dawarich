@@ -230,14 +230,10 @@ export class SettingsManager {
     }
 
     try {
-      const enabledMapLayers = SettingsManager._collapseLayerSettings(settings)
-
       const backendSettings = {}
       Object.entries(BACKEND_SETTINGS_MAP).forEach(
         ([frontendKey, backendKey]) => {
-          if (frontendKey === "enabledMapLayers") {
-            backendSettings[backendKey] = enabledMapLayers
-          } else if (frontendKey in settings) {
+          if (frontendKey in settings) {
             let value = settings[frontendKey]
 
             if (
@@ -338,10 +334,13 @@ export class SettingsManager {
 
     SettingsManager.updateCache(settings)
 
+    // Send only what changed: a full snapshot would re-store every default
+    // and carry data rules such as transportation modes into each toggle.
+    const changes = { ...updates }
+    if (isLayerSetting) changes.enabledMapLayers = settings.enabledMapLayers
+
     const previousSave = SettingsManager.saveQueue.catch(() => null)
-    const save = previousSave.then(() =>
-      SettingsManager.saveToBackend(settings),
-    )
+    const save = previousSave.then(() => SettingsManager.saveToBackend(changes))
     SettingsManager.saveQueue = save
 
     return await save
