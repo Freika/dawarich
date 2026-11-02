@@ -9,6 +9,10 @@ RSpec.describe Overland::PointsCreator do
   let(:file_path) { 'spec/fixtures/files/overland/geodata.json' }
   let(:payload_hash) { JSON.parse(File.read(file_path)) }
 
+  # Debounce keys are per user id and outlive the test database, so a key left by an
+  # earlier run for the same id would silently suppress the jobs asserted below.
+  before { Visits::RealtimeDebouncer.new(user.id).clear }
+
   context 'with a hash payload' do
     let(:payload) { payload_hash }
 

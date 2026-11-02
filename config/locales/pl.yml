@@ -1738,9 +1738,10 @@ pl:
         found_in_your_photoprism_settings_under_library: Znajdziesz w ustawieniach Photoprism w sekcji Library
         airtrail_integration: Integracja AirTrail
         airtrail_url: URL AirTrail
-        the_base_url_of_your_airtrail_instance_your_flights_are: Bazowy URL Twojej instancji AirTrail. Loty są pokazywane na mapie jako łuki.
+        the_base_url_of_your_airtrail_instance_your_flights_are: 'Bazowy URL Twojej instancji AirTrail. Loty są pokazywane na mapie.'
         airtrail_api_key: Klucz API AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Utwórz klucz API w AirTrail w Ustawienia → Security.
+        airtrail_recorded_flight_tracks_need_airtrail_3_13: 'Loty z zapisaną trasą w AirTrail są rysowane wzdłuż tej trasy, pozostałe jako łuki. Trasy wymagają AirTrail 3.13 lub nowszego oraz klucza API z uprawnieniem tracks.read.'
         teslamate_integration: Integracja TeslaMateApi
         teslamate_url: URL TeslaMateApi
         the_base_url_of_your_teslamateapi_instance: Bazowy URL Twojej instancji TeslaMateApi.
@@ -4215,6 +4216,9 @@ pl:
       failed_to_load_area_details: Nie udało się załadować szczegółów obszaru
       point_deleted_successfully: Punkt usunięty pomyślnie
       failed_to_delete_point: Nie udało się usunąć punktu
+      mark_point_valid: Oznacz jako poprawny
+      point_marked_valid: Punkt oznaczony jako poprawny
+      failed_to_mark_point_valid: Nie udało się oznaczyć punktu jako poprawnego
       deleting_area: Usuwanie obszaru...
       area_deleted_successfully: Obszar usunięty pomyślnie
       failed_to_delete_area: Nie udało się usunąć obszaru
@@ -4373,6 +4377,9 @@ pl:
       creating: Tworzenie danych demo…
       creating_help: Dodawanie miesiąca śledzenia Berlina i weekendowej podróży do Pragi. Zajmuje około sekundy.
     visits:
+      place: "Miejsce"
+      choose_place: "Wybierz miejsce"
+      multiple_stays: "Znaleziono kilka pobytów. Użyto najnowszego pobytu."
       add_new: Dodaj nową wizytę
       create_new: Utwórz nową wizytę
       create: Utwórz wizytę

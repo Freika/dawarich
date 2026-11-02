@@ -393,6 +393,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
     t.float "to_lat"
     t.float "to_lon"
     t.string "to_name"
+    t.jsonb "track_coordinates"
+    t.datetime "track_updated_at"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id", "departure_time"], name: "index_flights_on_user_id_and_departure_time"
@@ -692,6 +694,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
     t.integer "altitude"
     t.decimal "altitude_decimal", precision: 10, scale: 2
     t.boolean "anomaly"
+    t.boolean "anomaly_override", default: false, null: false
     t.integer "battery"
     t.integer "battery_status"
     t.string "bssid"

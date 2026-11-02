@@ -2480,11 +2480,11 @@ fr:
           Photoprism sous Bibliothèque
         airtrail_integration: Intégration AirTrail
         airtrail_url: URL AirTrail
-        the_base_url_of_your_airtrail_instance_your_flights_are: L'adresse de base
-          de votre instance AirTrail. Vos vols sont affichés en arcs sur la carte.
+        the_base_url_of_your_airtrail_instance_your_flights_are: 'L''adresse de base de votre instance AirTrail. Vos vols sont affichés sur la carte.'
         airtrail_api_key: Clé API AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Créez une clé
           API dans AirTrail sous Paramètres → Sécurité.
+        airtrail_recorded_flight_tracks_need_airtrail_3_13: 'Les vols dont la trace est enregistrée dans AirTrail sont dessinés le long de cette trace, les autres en arcs. Les traces nécessitent AirTrail 3.13 ou une version ultérieure et une clé API avec le droit tracks.read.'
         teslamate_integration: Intégration TeslaMateApi
         teslamate_url: URL TeslaMateApi
         the_base_url_of_your_teslamateapi_instance: L'adresse de base de votre instance TeslaMateApi.
@@ -5285,6 +5285,9 @@ fr:
       failed_to_load_area_details: Échec du chargement des détails de zone
       point_deleted_successfully: Point supprimé avec succès
       failed_to_delete_point: Échec de suppression du point
+      mark_point_valid: Marquer comme correct
+      point_marked_valid: Point marqué comme correct
+      failed_to_mark_point_valid: Impossible de marquer le point comme correct
       deleting_area: Suppression de la zone...
       area_deleted_successfully: Zone supprimée avec succès
       failed_to_delete_area: Échec de suppression d'aire
@@ -5456,6 +5459,9 @@ fr:
       creating_help: Sélection d'un mois de suivi de Berlin et d'un week-end à Prague.
         Cela prend environ une seconde.
     visits:
+      place: "Lieu"
+      choose_place: "Choisir un lieu"
+      multiple_stays: "Plusieurs séjours ont été trouvés. Le plus récent a été utilisé."
       add_new: Ajouter une nouvelle visite
       create_new: Créer un nouveau lieu de visite
       create: Créer une visite

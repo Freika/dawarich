@@ -1686,9 +1686,10 @@ en:
         found_in_your_photoprism_settings_under_library: Found in your Photoprism settings under Library
         airtrail_integration: AirTrail Integration
         airtrail_url: AirTrail URL
-        the_base_url_of_your_airtrail_instance_your_flights_are: The base URL of your AirTrail instance. Your flights are shown as arcs on the map.
+        the_base_url_of_your_airtrail_instance_your_flights_are: 'The base URL of your AirTrail instance. Your flights are shown on the map.'
         airtrail_api_key: AirTrail API Key
         create_an_api_key_in_airtrail_under_settings_rarr_security: Create an API key in AirTrail under Settings → Security.
+        airtrail_recorded_flight_tracks_need_airtrail_3_13: 'Flights with a recorded track in AirTrail are drawn along that track, others as arcs. Tracks need AirTrail 3.13 or later and an API key with the tracks.read scope.'
         teslamate_integration: TeslaMateApi Integration
         teslamate_url: TeslaMateApi URL
         the_base_url_of_your_teslamateapi_instance: The base URL of your TeslaMateApi instance.
@@ -4058,6 +4059,9 @@ en:
       failed_to_load_area_details: Failed to load area details
       point_deleted_successfully: Point deleted successfully
       failed_to_delete_point: Failed to delete point
+      mark_point_valid: Mark as correct
+      point_marked_valid: Point marked as correct
+      failed_to_mark_point_valid: Failed to mark point as correct
       deleting_area: Deleting area...
       area_deleted_successfully: Area deleted successfully
       failed_to_delete_area: Failed to delete area
@@ -4214,6 +4218,9 @@ en:
       creating: Creating your demo data…
       creating_help: Seeding a month of Berlin tracking plus a Prague weekend trip. Takes about a second.
     visits:
+      place: "Place"
+      choose_place: "Choose a Place"
+      multiple_stays: "Several stays were found. The latest stay has been used."
       add_new: Add New Visit
       create_new: Create New Visit
       create: Create Visit

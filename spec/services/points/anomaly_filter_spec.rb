@@ -87,6 +87,34 @@ RSpec.describe Points::AnomalyFilter do
       end
     end
 
+    context 'when the user marked a point as correct' do
+      let(:base_time) { 30.minutes.ago.to_i }
+
+      def walk_point(offset, minutes, **attrs)
+        lon = 13.405 + offset
+        lat = 52.52 + offset
+        create(:point, user: user, latitude: lat, longitude: lon, lonlat: "POINT(#{lon} #{lat})",
+                       timestamp: base_time + (minutes * 60), accuracy: 10, **attrs)
+      end
+
+      let!(:spike) { walk_point(10.0, 2, anomaly_override: true) }
+      let!(:absurd) { walk_point(0.0004, 4, accuracy: 20_000, anomaly_override: true) }
+
+      before do
+        walk_point(0, 0)
+        walk_point(0.0001, 1)
+        walk_point(0.0002, 3)
+        walk_point(0.0003, 5)
+        described_class.new(user.id, start_time, end_time).call
+      end
+
+      it 'never flags it, whichever pass would have' do
+        expect(spike.reload.anomaly).not_to be true
+        expect(absurd.reload.anomaly).not_to be true
+        expect(Point.where(user:, anomaly: true)).to be_empty
+      end
+    end
+
     context 'Pass 1: optional accuracy threshold' do
       let(:base_lat) { 52.52 }
       let(:base_lon) { 13.405 }
