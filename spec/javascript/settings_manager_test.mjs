@@ -723,3 +723,28 @@ test("Lite toggles are forced off only for layers the server gates", async () =>
     globalThis.document = originalDocument
   }
 })
+
+test("reset drops a pending colour save so it cannot land after the reset", async () => {
+  const saved = []
+  const { SettingsController } = await loadSettingsController({
+    updateSetting: (key, value) => saved.push([key, value]),
+    resetToDefaults: async () => true,
+  })
+  const controller = new SettingsController({
+    element: { querySelector: () => null },
+    layerManager: { getLayer: () => null },
+  })
+  const originalConfirm = globalThis.confirm
+  const originalWindow = globalThis.window
+  globalThis.confirm = () => true
+  globalThis.window = { location: { reload() {} } }
+  try {
+    controller.updateTrackColor({ target: { value: "#abcdef" } })
+    await controller.resetSettings()
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    assert.deepEqual(saved, [])
+  } finally {
+    globalThis.confirm = originalConfirm
+    globalThis.window = originalWindow
+  }
+})
