@@ -236,12 +236,12 @@ class Points::AnomalyFilter
   # the geometry it exists to fix. The rows are collected across passes and
   # their tracks and months rebuilt once, at the end of the run.
   def flag_anomalies(relation, extra_set = nil)
-    flagged = relation.pluck(:id, :track_id, :timestamp)
+    flagged = relation.where(anomaly_override: false).pluck(:id, :track_id, :timestamp)
     return 0 if flagged.empty?
 
     set_clause = 'anomaly = TRUE, track_id = NULL, updated_at = NOW()'
     set_clause = "#{set_clause}, #{extra_set}" if extra_set
-    Point.where(id: flagged.map(&:first)).update_all(set_clause)
+    Point.where(id: flagged.map(&:first), anomaly_override: false).update_all(set_clause)
 
     @flagged_for_rebuild.concat(flagged)
 

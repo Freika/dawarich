@@ -38,7 +38,7 @@ RSpec.describe Users::SafeSettings do
             distance_unit: 'km',
             visits_suggestions_enabled: true,
             fog_of_war_threshold: 50,
-            fog_of_war_mode: 'points',
+            fog_of_war_mode: 'hexagons',
             enabled_map_layers: %w[Tracks Heatmap],
             places_tag_filters: nil,
             maps_maplibre_style: 'light',
@@ -101,10 +101,11 @@ RSpec.describe Users::SafeSettings do
           {
             'fog_of_war_meters' => 100,
             'fog_of_war_threshold' => 50,
-          'fog_of_war_mode' => 'points',
+            'fog_of_war_mode' => 'hexagons',
             'meters_between_routes' => 1000,
             'preferred_map_layer' => 'Satellite',
             'speed_colored_routes' => true,
+            'speed_color_scale' => '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300',
             'points_rendering_mode' => 'simplified',
             'minutes_between_routes' => 60,
             'time_threshold_minutes' => 45,
@@ -191,7 +192,7 @@ RSpec.describe Users::SafeSettings do
             distance_unit: 'km',
             visits_suggestions_enabled: false,
             fog_of_war_threshold: 50,
-            fog_of_war_mode: 'points',
+            fog_of_war_mode: 'hexagons',
             enabled_map_layers: ['Points', 'Photos', 'Tracks', 'Places', 'Place boundaries'],
             places_tag_filters: nil,
             maps_maplibre_style: 'light',
@@ -900,20 +901,16 @@ RSpec.describe Users::SafeSettings do
   end
 
   describe '#fog_of_war_mode' do
-    it 'defaults to points' do
-      expect(described_class.new.fog_of_war_mode).to eq('points')
+    it 'defaults to hexagons' do
+      expect(described_class.new.fog_of_war_mode).to eq('hexagons')
     end
 
-    it 'returns hexagons when set' do
-      expect(described_class.new({ 'fog_of_war_mode' => 'hexagons' }).fog_of_war_mode).to eq('hexagons')
+    it 'keeps points when chosen' do
+      expect(described_class.new({ 'fog_of_war_mode' => 'points' }).fog_of_war_mode).to eq('points')
     end
 
-    it 'falls back to points for invalid values' do
-      expect(described_class.new({ 'fog_of_war_mode' => 'octagons' }).fog_of_war_mode).to eq('points')
-    end
-
-    it 'is included in config' do
-      expect(described_class.new.config[:fog_of_war_mode]).to eq('points')
+    it 'falls back to the default for invalid values' do
+      expect(described_class.new({ 'fog_of_war_mode' => 'octagons' }).fog_of_war_mode).to eq('hexagons')
     end
   end
 
@@ -1028,6 +1025,29 @@ RSpec.describe Users::SafeSettings do
       %w[false 0 off].push(false, 0).each do |value|
         expect(described_class.feature_enabled?({ 'family_enabled' => value }, 'family')).to be false
       end
+    end
+  end
+
+  describe 'settings defaults' do
+    it 'matches the shared defaults fixture for a fresh account' do
+      fixture = JSON.parse(Rails.root.join('spec/fixtures/user_settings_defaults.json').read)
+      effective = described_class.new({}).api_config.except(:timezone).as_json
+
+      expect(effective).to eq(fixture)
+    end
+
+    it 'returns fog radius and threshold as integers' do
+      safe_settings = described_class.new({ 'fog_of_war_meters' => '120', 'fog_of_war_threshold' => '7' })
+
+      expect(safe_settings.fog_of_war_meters).to eq(120)
+      expect(safe_settings.fog_of_war_threshold).to eq(7)
+    end
+
+    it 'falls back to defaults for unusable fog radius and threshold' do
+      safe_settings = described_class.new({ 'fog_of_war_meters' => 'abc', 'fog_of_war_threshold' => '0' })
+
+      expect(safe_settings.fog_of_war_meters).to eq(50)
+      expect(safe_settings.fog_of_war_threshold).to eq(50)
     end
   end
 end
