@@ -4059,6 +4059,9 @@ en:
       failed_to_load_area_details: Failed to load area details
       point_deleted_successfully: Point deleted successfully
       failed_to_delete_point: Failed to delete point
+      mark_point_valid: Mark as correct
+      point_marked_valid: Point marked as correct
+      failed_to_mark_point_valid: Failed to mark point as correct
       deleting_area: Deleting area...
       area_deleted_successfully: Area deleted successfully
       failed_to_delete_area: Failed to delete area
@@ -4215,6 +4218,9 @@ en:
       creating: Creating your demo data…
       creating_help: Seeding a month of Berlin tracking plus a Prague weekend trip. Takes about a second.
     visits:
+      place: "Place"
+      choose_place: "Choose a Place"
+      multiple_stays: "Several stays were found. The latest stay has been used."
       add_new: Add New Visit
       create_new: Create New Visit
       create: Create Visit

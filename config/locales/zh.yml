@@ -4135,6 +4135,9 @@ zh:
       failed_to_load_area_details: 无法加载区域详细信息
       point_deleted_successfully: 轨迹点已成功删除
       failed_to_delete_point: 无法删除轨迹点
+      mark_point_valid: 标记为正确
+      point_marked_valid: 已将轨迹点标记为正确
+      failed_to_mark_point_valid: 无法将轨迹点标记为正确
       deleting_area: 正在删除区域...
       area_deleted_successfully: 区域删除成功
       failed_to_delete_area: 无法删除区域
@@ -4292,6 +4295,9 @@ zh:
       creating: 创建您的演示数据…
       creating_help: 将生成一个月的柏林记录数据以及布拉格周末行程，大约需要一秒钟。
     visits:
+      place: "地点"
+      choose_place: "选择地点"
+      multiple_stays: "找到了多次停留，已使用最近一次停留。"
       add_new: 添加新到访记录
       create_new: 创建新到访记录
       create: 创建到访记录

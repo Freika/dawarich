@@ -4123,6 +4123,9 @@ de:
       failed_to_load_area_details: Gebietsdetails konnten nicht geladen werden
       point_deleted_successfully: Punkt erfolgreich gelöscht
       failed_to_delete_point: Punkt konnte nicht gelöscht werden
+      mark_point_valid: Als korrekt markieren
+      point_marked_valid: Punkt als korrekt markiert
+      failed_to_mark_point_valid: Punkt konnte nicht als korrekt markiert werden
       deleting_area: Gebiet wird gelöscht…
       area_deleted_successfully: Bereich erfolgreich gelöscht
       failed_to_delete_area: Bereich konnte nicht gelöscht werden
@@ -4279,6 +4282,9 @@ de:
       creating: Deine Demo-Daten werden erstellt…
       creating_help: Ein Monat Berlin-Tracking plus eine Prager Wochenende-Reise wird gesät. Das dauert etwa eine Sekunde.
     visits:
+      place: "Ort"
+      choose_place: "Ort auswählen"
+      multiple_stays: "Mehrere Aufenthalte gefunden. Der letzte Aufenthalt wurde übernommen."
       add_new: Neuen Aufenthalt hinzufügen
       create_new: Neuen Aufenthalt erstellen
       create: Aufenthalt erstellen

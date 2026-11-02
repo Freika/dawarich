@@ -862,6 +862,48 @@ RSpec.describe 'Api::V1::Points', type: :request do
     end
   end
 
+  describe 'PATCH /mark_valid' do
+    let(:flagged) { create(:point, user:, anomaly: true) }
+
+    it 'clears the anomaly flag and keeps the filter from setting it again' do
+      patch "/api/v1/points/#{flagged.id}/mark_valid?api_key=#{user.api_key}"
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)['id']).to eq(flagged.id)
+      expect(flagged.reload).to have_attributes(anomaly: false, anomaly_override: true)
+    end
+
+    it "returns 404 for another user's point" do
+      other = create(:point, anomaly: true)
+
+      patch "/api/v1/points/#{other.id}/mark_valid?api_key=#{user.api_key}"
+
+      expect(response).to have_http_status(:not_found)
+      expect(other.reload.anomaly).to be true
+    end
+
+    it 'requires authentication' do
+      patch "/api/v1/points/#{flagged.id}/mark_valid"
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 and keeps the point flagged' do
+        patch "/api/v1/points/#{flagged.id}/mark_valid?api_key=#{user.api_key}"
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
+        expect(flagged.reload).to have_attributes(anomaly: true, anomaly_override: false)
+      end
+    end
+  end
+
   describe 'GET /index bbox validation' do
     it 'rejects an inverted bbox with 400' do
       get "/api/v1/points?api_key=#{user.api_key}&" \

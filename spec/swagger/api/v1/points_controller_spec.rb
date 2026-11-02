@@ -359,6 +359,42 @@ describe 'Points API', type: :request do
     end
   end
 
+  path '/api/v1/points/{id}/mark_valid' do
+    patch 'Marks a point flagged as an anomaly as correct' do
+      tags 'Points'
+      description 'Clears the anomaly flag and keeps the anomaly filter from flagging the point again, ' \
+                  'including after re-evaluating past data. The point rejoins a neighbouring track when one is close.'
+      produces 'application/json'
+      parameter name: :id, in: :path, type: :integer, required: true, description: 'Point ID'
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+
+      response '200', 'point marked as correct' do
+        schema type: :object,
+               properties: {
+                 id: { type: :integer },
+                 anomaly: { type: :boolean }
+               }
+
+        let(:id) { create(:point, user:, anomaly: true).id }
+
+        run_test!
+      end
+
+      response '404', 'point not found' do
+        let(:id) { create(:point, anomaly: true).id }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+        let(:id) { create(:point, user:, anomaly: true).id }
+
+        run_test!
+      end
+    end
+  end
+
   path '/api/v1/points/reapply_anomaly_filter' do
     post 'Re-evaluates anomaly flags for all of the user\'s points' do
       tags 'Points'
