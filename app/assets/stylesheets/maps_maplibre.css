@@ -348,8 +348,8 @@ html.dark .map-upgrade-banner-dismiss {
 
 .map-html-label {
   font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
   font-weight: 700;
   font-size: 11px;
   color: #111827;

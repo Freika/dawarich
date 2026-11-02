@@ -15,8 +15,8 @@ class Flight < ApplicationRecord
 
   def self.stat_months(timezone)
     dates = pluck(:flight_date, :departure_time, :arrival_time).flat_map do |flight_date, departure_time, arrival_time|
-      [flight_date || departure_time&.in_time_zone(timezone)&.to_date, arrival_time&.in_time_zone(timezone)&.to_date]
+      [departure_time&.in_time_zone(timezone)&.to_date || flight_date, arrival_time&.in_time_zone(timezone)&.to_date]
     end
-    dates.compact.map { [_1.year, _1.month] }.uniq
+    dates.compact.select { _1 <= Time.current.in_time_zone(timezone).to_date }.map { [_1.year, _1.month] }.uniq
   end
 end
