@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Trip previews, day routes and poster routes that cross the date line draw as one continuous line instead of a seam with a jump near the poles (#3261).
+
 ## [1.20.1] - 2026-11-01, Berlin
 
 ### Fixed
