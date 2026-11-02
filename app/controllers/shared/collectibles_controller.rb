@@ -29,7 +29,7 @@ class Shared::CollectiblesController < ApplicationController
   def find_card
     @card = Achievements::Collectible.find_by!(sharing_uuid: params[:uuid], sharing_enabled: true, revoked_at: nil)
     valid = @card.user&.feature_enabled?(:achievements) && @card.publishable? &&
-            Achievements::CollectionState.find_by(user_id: @card.user_id)&.current?
+            Achievements::CollectionState.find_by(user_id: @card.user_id)&.shareable?
     raise ActiveRecord::RecordNotFound unless valid
   end
 end

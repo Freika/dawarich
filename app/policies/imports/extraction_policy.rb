@@ -5,8 +5,6 @@ module Imports
     def create?
       user.present? &&
         record.user == user &&
-        record.file.attached? &&
-        !record.processing? && !record.deleting? &&
         record.additional_data_extraction_supported? &&
         !record.gpx_without_waypoints? &&
         !in_flight?

@@ -10,37 +10,53 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - AirTrail sync now imports a flight's recorded track, such as one uploaded to AirTrail from a CSV file, and the map draws the real flight path instead of the great-circle arc. A track is downloaded again only when it changes in AirTrail. This needs AirTrail 3.13.0 or later and an API key with the `tracks.read` scope; flights without a track, older AirTrail versions and keys without that access keep the arc. Tracks are cut at your privacy zones on the map like other routes, and flight distances in stats are unchanged. (#3785)
 
-## [1.20.0] - 2026-10-28, Berlin
+## [1.20.1] - 2026-11-01, Berlin
+
+### Fixed
+
+- Anomaly recalculation no longer fails for users who have a point without coordinates (#3936).
+- Transportation-mode detection and track recalculation work on instances without the `altitude_decimal` column (#3951).
+- Numbers in visit, place and family labels on the map render in the text font instead of as emoji (#3946).
+- FIT imports assign each file its own tracker, so points from different FIT files are no longer grouped into one track (#3950).
+- Polarsteps `locations.json` files larger than 8 KB are detected and imported (#3954).
+- Trip pages no longer return an error when the trip notes contain an image with a relative URL (#3939).
+- GeoJSON and GPX exports on the Points page use the dates currently set in the filter, even without pressing Search (#3952).
+- Future AirTrail flights no longer create statistics for months that have not happened yet, and flights are counted in the month of their local departure date (#3935).
+- Poster Studio no longer loads every point of the selected period, and Video Studio draws the route only from the selected time range (#3937, #3948).
+
+## [1.20.0] - 2026-10-30, Berlin
 
 ### ⚠️ Upgrade notes
 
-- Run the database migrations before starting the updated application and workers. They add exploration and achievement data, import download-preparation state and durable exploration activation; existing points are retained.
+- Migrations that install database triggers on points wait at most 5 seconds for a table lock. If one stops with a lock timeout, stop the workers or wait for running imports to finish, then restart the application; the migrations are safe to re-run.
 - The initial geographic calculation runs in the background and can take longer while local boundary data is installed. The initial city and national-park catalog covers Berlin, Hamburg, Dresden, Harz, Saxon Switzerland and Eifel; it is not a worldwide catalog.
 
 ### Added
 
 - Add personal achievement cards for city exploration, returning to places, collecting all seasons, national parks and geographic milestones. Cards include evidence, level history and opt-in public sharing with privacy-aware HTML, embeds and images.
-- Share one all-history resolution-9 H3 ledger between city cards and map fog. Date ranges highlight first discoveries; pilot boundaries cover Berlin, Hamburg, Dresden and three German national parks.
+- Shared achievement cards open on a dark page tinted by the card's rarity. Visitors see what the card is for, the City Explorer level ladder with the next level, a call to try Dawarich, and buttons to copy the link or download the share image. Level steps are announced to screen readers. Embedded badges are unchanged.
+- Share one all-history resolution-9 H3 ledger between city cards and map fog. Date ranges highlight first discoveries; pilot boundaries cover Berlin, Hamburg, Dresden and three German national parks. The first calculation starts when you open the fog or select a city, and future-dated points never open cells or count toward city levels. Cards and fog reflect new or deleted points and edited places or visits within an hour; selection, boundary and privacy-zone changes apply immediately.
 - Collect Benelux, Baltics and Scandinavia achievement sets by visiting their three member countries. Each set shows visited countries, dates and the countries still to explore, with public sharing available when enabled. Existing location history counts automatically.
 - Test a geocoding provider with your own coordinates in Instance settings, including providers with regional coverage. Leave both fields blank to use the existing default coordinates. (#3714)
 - Click a photo cluster on the map to browse its photos without zooming. The gallery shows 24 thumbnails per page, supports phones and keyboard navigation, and keeps photos with identical coordinates accessible at high zoom. (#3652)
 - The map keeps the point count and distance for the selected period visible, including custom times and empty ranges. Distance follows your km/mi setting. (#3257)
-- Delete an import's source file from its detail page to free storage while keeping its points, visits, places and tracks. The confirmation explains that downloading and operations that need the file will no longer be available. Available for completed or failed imports when the file is not in use; account restore archives and API-generated photo imports are excluded. (#3531)
 - Dismiss a batch of flash messages with Close all notifications. Compact responsive messages keep individual dismissal, visible errors and keyboard controls. (#3765)
+- Add a trip stats line to posters made from a trip: switch on Trip stats in the poster studio's Text section to show the trip's total distance under the subtitle. It is off by default, follows your km/mi setting, and appears the same in the preview, PNG and PDF downloads, printed orders and posters saved to the gallery. (#3327)
 
 ### Changed
 
 - Show geographic milestone cards as globes with continents, graticules and highlighted hemispheres, quarters or polar caps, including public previews.
-- Imports remain visible when sorted by file size after their source file is removed. (#3531)
-- Deleting a whole import now explicitly warns that its points and extracted data will be deleted, both in the list and on its detail page. (#3531)
+- Fog of War now follows the shared exploration cells. The per-point mode and the fog radius and threshold settings were removed.
 
 ### Fixed
 
-- Start historical exploration rebuilds only after opening exploration or selecting a city, and keep retrying interrupted first calculations.
-- Ignore future-dated points when opening explored map cells and awarding city achievement levels.
 - Full-history visit redetection now completes when legacy visits contain points without coordinates, preserving confirmed visits that have no usable observations (#3931).
+- Live visit detection keeps an ongoing visit and its points in place as new points arrive, instead of rewriting every point of the visit each time. Suggested visits keep their ID between detection runs. This greatly reduces database writes and index growth on busy instances.
+- Enrich photos places a video where its recording started. Video timestamps mark the end of the recording, so the scan now subtracts the video's duration before looking up your location history. (#3293)
 - Monthly and yearly digest emails no longer enter repeated delivery retries when SMTP is not configured (#3932).
 - Legacy areas with names longer than 255 characters now migrate to places without repeatedly failing, keeping their notes and visits (#3930).
+- Recalculating statistics no longer scans the whole cache to refresh the insights digest, which could exhaust cache connections on busy instances.
+- Tracks left with fewer than two points are now removed reliably when another job updated or deleted them at the same time.
 
 ## [1.19.0] - 2026-10-27, Berlin
 

@@ -55,7 +55,7 @@ module Posters
           distance: @distance
         },
         size: SIZE,
-        text: { title: poster_title, subtitle: @subtitle, coords: true },
+        text: { title: poster_title, subtitle: @subtitle, stats: @poster.settings['stats'].to_s, coords: true },
         output: {
           png: png_path,
           pdf: pdf_path,

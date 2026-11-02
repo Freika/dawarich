@@ -38,37 +38,35 @@ export class MapPageProvider {
     return this.controller?.timezoneValue || undefined
   }
 
-  // Poster/video generation is an explicit bounded consumer, so it may fetch
-  // exact Points and canonical Tracks without making the browsing map bulk-load.
+  // Posters need only geometry; imports have no canonical track filter.
   async ensureTrackLoaded() {
     const controller = this.controller
     if (!controller) return
-    const { startAt, endAt } = this.dateRange()
     if (controller.api.importId) {
-      const [, { zones }] = await Promise.all([
-        controller.mapDataManager?.ensurePointsLoaded(),
-        controller.api.fetchPrivacyZones(),
-      ])
-      this._tracks = RouteSegmenter.pointsToRoutes(
-        controller._getLoadedPoints?.() ?? [],
-        { privacyZones: zones },
-      )
+      await this.points()
       return
     }
-    const [, tracks] = await Promise.all([
-      controller.mapDataManager?.ensurePointsLoaded(),
-      controller.api.fetchTracks({ start_at: startAt, end_at: endAt }),
-    ])
-    this._tracks = tracks || EMPTY_COLLECTION
+    const { startAt, endAt } = this.dateRange()
+    this._tracks =
+      (await controller.api.fetchTracks({
+        start_at: startAt,
+        end_at: endAt,
+      })) || EMPTY_COLLECTION
   }
 
-  // Timestamped points, for consumers that animate the track rather than
-  // draw it flat.
+  // Video geometry and its clock must use the same range-scoped points.
   async points() {
     const controller = this.controller
     if (!controller) return []
-    await this.ensureTrackLoaded()
-    return controller._getLoadedPoints?.() ?? []
+    const [, { zones }] = await Promise.all([
+      controller.mapDataManager?.ensurePointsLoaded(),
+      controller.api.fetchPrivacyZones(),
+    ])
+    const points = controller._getLoadedPoints?.() ?? []
+    this._tracks = RouteSegmenter.pointsToRoutes(points, {
+      privacyZones: zones,
+    })
+    return points
   }
 
   fallbackBounds() {

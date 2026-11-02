@@ -13,7 +13,6 @@ RSpec.describe 'Enhanced import extracts tracks with transportation modes' do
   let(:base_time) { 1.hour.ago.to_i }
 
   before do
-    import.file.attach(io: StringIO.new('{}'), filename: 'synthetic.json')
     10.times do |i|
       create(
         :point,

@@ -26,17 +26,9 @@ class Users::ExportData::Imports
   attr_reader :user, :files_directory
 
   def process_import(import)
-    import.with_source_file_lock do
-      # The list may have preloaded the attachment before source removal.
-      import.association(:file_attachment).reset
-      serialize_import(import)
-    end
-  end
-
-  def serialize_import(import)
     Rails.logger.info "Processing import #{import.name}"
 
-    import_hash = import.as_json(except: %w[user_id raw_data id download_preparation_pending])
+    import_hash = import.as_json(except: %w[user_id raw_data id])
 
     if import.file.attached?
       add_file_data_to_import(import, import_hash)

@@ -54,8 +54,7 @@ pl:
         Saksońskiej i Eifel. To wybrana lista regionalna, nie pełny katalog. Kolejne
         parki wymagają wersjonowanej aktualizacji.
       public_privacy_note: Publiczny postęp nie obejmuje obserwacji w strefach prywatności
-        i może być niższy od prywatnego. Publiczne strony i obrazy są niedostępne
-        podczas przeliczania.
+        i może być niższy od prywatnego. Publiczne strony i obrazy są wstrzymane podczas wprowadzania zmian granic, strefy czasowej lub stref prywatności.
       milestones:
         north_south: Po obu stronach równika
         east_west: Wschód i Zachód
@@ -111,16 +110,14 @@ pl:
           powierzchnię otwartych komórek, nie przebytych ulic; 100% nie jest wymagane.
           Mapa i karta używają tego samego opublikowanego stanu odkryć.
         park: Zapisz 30 zaobserwowanych minut w granicach parku w jednym lokalnym
-          dniu. Kolejne punkty muszą dzielić najwyżej dziesięć minut; każda para daje
-          najwyżej dwie minuty. Nakładające się urządzenia liczą się raz. Ruch jest
+          dniu. Kolejne punkty muszą dzielić najwyżej dziesięć minut; liczy się czas między nimi. Nakładające się urządzenia liczą się raz. Ruch jest
           dozwolony; loty i anomalie są wykluczone.
         parks: Poziomy odblokowują się po 1, 5 i 15 różnych kwalifikujących parkach
           narodowych z katalogu. Każdy wymaga 30 zaobserwowanych minut jednego lokalnego
           dnia. Katalog regionalny jest niepełny i wersjonowany; każdy park zachowuje
           stałą tożsamość.
         milestone: Zapisz co najmniej dziesięć zaobserwowanych minut w każdym wymaganym
-          regionie jednego lokalnego dnia. Pary punktów dzieli najwyżej dziesięć minut
-          i każda daje najwyżej dwie; nakładające się urządzenia liczą się raz. Loty
+          regionie jednego lokalnego dnia. Pary punktów dzieli najwyżej dziesięć minut, a czas między nimi się liczy; nakładające się urządzenia liczą się raz. Loty
           i anomalie są wykluczone. Margines 10 km wyklucza równik, południki 0° i
           180° oraz stały równoleżnik polarny gry 66,56°. To potwierdza obecność po
           każdej stronie, nie udowodnione przekroczenie.

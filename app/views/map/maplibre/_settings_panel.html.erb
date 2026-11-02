@@ -81,7 +81,7 @@
                      label: t('.heatmap'), description: t('.show_density_heatmap') %>
           <%= render 'map/maplibre/layer_tile', target: 'hexagonsToggle', action: 'toggleHexagons', icon_name: 'hexagon', pro: true,
                      testid: 'hexagons-toggle', label: t('.hexagons'), description: t('.show_point_density_as_hexagonal_cells') %>
-          <%= render 'map/maplibre/layer_tile', target: 'fogToggle', action: 'toggleFog', icon_name: 'cloud-fog',
+          <%= render 'map/maplibre/layer_tile', target: 'fogToggle', action: 'toggleFog', icon_name: 'cloud-fog', pro: true,
                      label: t('.fog_of_war'), description: t('.show_explored_areas') %>
           <%= render 'map/maplibre/layer_tile', target: 'scratchToggle', action: 'toggleScratch', icon_name: 'flag', pro: true,
                      label: t('.scratch_map'), description: t('.show_scratched_countries') %>

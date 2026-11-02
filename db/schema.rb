@@ -445,7 +445,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_170000) do
     t.datetime "created_at", null: false
     t.boolean "demo", default: false, null: false
     t.integer "doubles", default: 0
-    t.boolean "download_preparation_pending", default: false, null: false
     t.text "error_message"
     t.string "name", null: false
     t.integer "points_count", default: 0

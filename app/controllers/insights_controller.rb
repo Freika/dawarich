@@ -155,9 +155,7 @@ class InsightsController < ApplicationController
 
     # Use Rails cache with digest's updated_at as cache version
     # This avoids expensive queries to build cache key on every request
-    cache_key = "insights/yearly_digest/#{current_user.id}/#{@selected_year}/#{digest.updated_at.to_i}"
-
-    Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+    Rails.cache.fetch(digest.insights_cache_key, expires_in: 1.hour) do
       # Double-check staleness inside cache block (in case of race conditions)
       if digest_stale?(digest)
         calculate_and_cache_digest

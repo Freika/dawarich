@@ -49,14 +49,12 @@ RSpec.describe Imports::PrepareDownloadJob do
   end
 
   it 'can retry a failed storage read without keeping a partial attachment' do
-    import.update!(download_preparation_pending: true)
     source_id = import.file.blob_id
     downloader = instance_double(Imports::SecureFileDownloader)
     allow(Imports::SecureFileDownloader).to receive(:new).and_return(downloader)
     allow(downloader).to receive(:download_to_temp_file).and_raise(IOError)
     expect { described_class.perform_now(import.id, source_id) }.to raise_error(IOError)
     expect(import.reload.prepared_download).not_to be_attached
-    expect(import.download_preparation_pending?).to be false
 
     allow(Imports::SecureFileDownloader).to receive(:new).and_call_original
     described_class.perform_now(import.id, source_id)

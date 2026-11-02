@@ -1,3 +1,4 @@
+SET LOCAL lock_timeout = '5s';
 CREATE OR REPLACE FUNCTION invalidate_achievement_collections() RETURNS trigger
 LANGUAGE plpgsql AS $$
 DECLARE source_sql text;

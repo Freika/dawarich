@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Exploration::Rebuild do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:dataset) { Exploration::Dataset.create!(version: "test-#{SecureRandom.hex(6)}", completed_at: Time.current) }
   let(:connection) { ApplicationRecord.connection }
@@ -51,7 +53,7 @@ RSpec.describe Exploration::Rebuild do
     expect(Exploration::CountryTotal.where(snapshot_id: state.snapshot_id, visited: true)).to be_empty
   end
 
-  it 'keeps recovery active when the first requested snapshot becomes stale' do
+  it 'publishes a first snapshot despite a mid-calculation write and refreshes it after the interval' do
     add_point(timestamp: 100)
     changed = false
     allow(Exploration::Coverage).to receive(:ensure!).and_wrap_original do |method, *args|
@@ -62,11 +64,14 @@ RSpec.describe Exploration::Rebuild do
       add_point(timestamp: 200)
     end
     state = rebuild
-    expect(state.snapshot_id).to be_nil
-    expect(state.requested_at).to be_nil
+    expect(state.snapshot_id).to be_present
+    expect(state.revision).to be > state.published_revision
     clear_enqueued_jobs
 
-    expect { Exploration::RefreshJob.perform_now }.to have_enqueued_job(Exploration::RebuildJob).with(user.id)
+    expect { Exploration::RefreshJob.perform_now }.not_to have_enqueued_job(Exploration::RebuildJob)
+    travel(Exploration::State::REFRESH_INTERVAL + 1.minute) do
+      expect { Exploration::RefreshJob.perform_now }.to have_enqueued_job(Exploration::RebuildJob).with(user.id)
+    end
   end
 
   it 'moves the first opening on old imports and deletes, then closes the last remaining cell' do
@@ -95,17 +100,39 @@ RSpec.describe Exploration::Rebuild do
     expect(Exploration::Opening.find_by!(snapshot_id: rebuild.snapshot_id).cell_id).not_to eq(original)
   end
 
-  it 'discards a result when its source revision changes during calculation' do
+  it 'publishes the source it read and leaves a later source change dirty' do
     add_point(timestamp: 100)
-    old = rebuild.snapshot_id
-    add_point(timestamp: 200)
+    rebuild
+    add_point(timestamp: 200, lon: 13.39)
     allow(Exploration::Coverage).to receive(:ensure!).and_wrap_original do |method, *args|
       method.call(*args)
       user.points.where(timestamp: 200).update_all(anomaly: true)
     end
-    expect(rebuild.snapshot_id).to eq(old)
-    state = Exploration::State.find_by!(user_id: user.id)
+    state = rebuild
+    timestamps = Exploration::Opening.where(snapshot_id: state.snapshot_id).pluck(:first_timestamp)
+    expect(timestamps).to contain_exactly(100, 200)
     expect(state.revision).to be > state.published_revision
+  end
+
+  it 'anchors legacy manual corrections before reading the source snapshot' do
+    trip = TransportationTraceGenerator.trip(legs: [{ mode: :walking, duration_s: 120, dt_s: 10 }],
+                                             start_time: Time.zone.parse('2026-01-05 09:00 UTC'), seed: 7)
+    track = create(:track, user: user, start_at: Time.zone.at(trip[:points].first[:timestamp]),
+                           end_at: Time.zone.at(trip[:points].last[:timestamp]))
+    trip[:points].each do |p|
+      create(:point, user: user, track: track, timestamp: p[:timestamp], lonlat: "POINT(#{p[:lon]} #{p[:lat]})")
+    end
+    segment = create(:track_segment, track: track, transportation_mode: :cycling, corrected_at: 1.week.ago,
+                                     start_index: 2, end_index: 5, start_at: nil, end_at: nil)
+    anchored = nil
+    allow(Exploration::SourceSnapshot).to receive(:call).and_wrap_original do |method, &block|
+      anchored = segment.reload.start_at
+      method.call(&block)
+    end
+
+    rebuild
+
+    expect(anchored).to be_present
   end
 
   it 'keeps the published generation when the worker fails' do

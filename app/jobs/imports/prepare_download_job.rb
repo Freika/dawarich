@@ -4,18 +4,12 @@ class Imports::PrepareDownloadJob < ApplicationJob
   queue_as :imports
 
   def perform(import_id, source_blob_id)
-    import = Import.find_by(id: import_id)
-    return unless import
+    ActiveRecord::Base.with_advisory_lock("import-download:#{import_id}", timeout_seconds: 0) do
+      import = Import.find_by(id: import_id)
+      return unless import&.file&.attached?
+      return unless import.file.blob_id == source_blob_id
 
-    import.with_source_file_lock do
-      import.reload
-      return unless import.file.attached? && import.file.blob_id == source_blob_id
-
-      begin
-        Imports::Download.new(import).prepare
-      ensure
-        import.update_columns(download_preparation_pending: false)
-      end
+      Imports::Download.new(import).prepare
     end
   end
 end

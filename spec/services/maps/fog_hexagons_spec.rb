@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Maps::FogHexagons do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:dataset) { Exploration::Dataset.create!(version: 'fog-test', completed_at: Time.current) }
   let(:from) { Time.utc(2024, 6, 1) }
@@ -37,14 +39,17 @@ RSpec.describe Maps::FogHexagons do
     expect(result['metadata']['status']).to eq('ready')
   end
 
-  it 'keeps the previous consistent snapshot while dirty, then closes cells after deletion' do
+  it 'keeps the previous consistent snapshot until the refresh interval, then closes cells after deletion' do
     point(timestamp: from)
     Exploration::Rebuild.new(user).call
     user.points.delete_all
-    expect(result['metadata']['status']).to eq('updating')
+    expect(result['metadata']['status']).to eq('ready')
     expect(result['h3_indexes'].size).to eq(1)
-    Exploration::Rebuild.new(user).call
-    expect(result['h3_indexes']).to be_empty
+    travel(Exploration::State::REFRESH_INTERVAL + 1.minute) do
+      expect(result['metadata']['status']).to eq('updating')
+      Exploration::Rebuild.new(user).call
+      expect(result['h3_indexes']).to be_empty
+    end
   end
 
   it 'masks every touching cell, including cells whose recorded point is outside the zone' do

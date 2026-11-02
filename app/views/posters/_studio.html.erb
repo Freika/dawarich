@@ -1,4 +1,5 @@
 <% show_date_controls = local_assigns.fetch(:show_date_controls, true) %>
+<% stats_label = local_assigns[:stats_label] %>
 <% poster_font_urls = %w[inter oswald playfair-display jetbrains-mono].flat_map do |key|
      %w[400 700].map { |weight| ["#{key}-#{weight}", asset_path("poster/#{key}-#{weight}.woff2")] }
    end.to_h %>
@@ -12,7 +13,8 @@
      data-poster-studio-editor-fonts-value="<%= poster_font_urls.to_json %>"
      data-poster-studio-editor-print-order-url-value="<%= ENV.fetch('PRINT_ORDER_URL', 'https://prints.dawarich.app/api/orders') %>"
      data-poster-studio-editor-tiles-url-value="<%= current_user.safe_settings.maps_maplibre_tiles_url %>"
-     data-poster-studio-editor-tiles-fallback-value="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>">
+     data-poster-studio-editor-tiles-fallback-value="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>"
+     <% if stats_label %>data-poster-studio-editor-stats-label-value="<%= stats_label %>"<% end %>>
   <div class="flex h-full flex-col">
     <header class="flex items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2">
       <div class="flex items-center gap-3 shrink-0">
@@ -187,6 +189,17 @@
                        data-action="change->poster-studio-editor#textChanged">
                 <span class="label-text text-sm"><%= t('.coordinates_line') %></span>
               </label>
+              <% if stats_label %>
+                <label class="label cursor-pointer justify-start gap-3 py-1">
+                  <input type="checkbox" class="toggle toggle-sm toggle-primary"
+                         data-poster-studio-editor-target="statsToggle"
+                         data-action="change->poster-studio-editor#textChanged">
+                  <span class="label-text text-sm min-w-0">
+                    <%= t('.trip_stats') %>
+                    <span class="block text-xs opacity-60 [overflow-wrap:anywhere]"><%= stats_label %></span>
+                  </span>
+                </label>
+              <% end %>
               <label class="form-control">
                 <span class="label-text text-xs"><%= t('.font') %></span>
                 <select class="select select-bordered select-sm py-0 w-full"
@@ -394,6 +407,7 @@
                 data: { poster_studio_editor_target: 'saveForm' } do |f| %>
             <%= f.hidden_field :name, data: { poster_studio_editor_target: 'saveName' } %>
             <%= f.hidden_field :title, data: { poster_studio_editor_target: 'saveTitle' } %>
+            <%= f.hidden_field :stats, data: { poster_studio_editor_target: 'saveStats' } %>
             <%= f.hidden_field :theme, data: { poster_studio_editor_target: 'saveTheme' } %>
             <%= f.hidden_field :lat, data: { poster_studio_editor_target: 'saveLat' } %>
             <%= f.hidden_field :lon, data: { poster_studio_editor_target: 'saveLon' } %>

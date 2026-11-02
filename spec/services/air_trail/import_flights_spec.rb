@@ -169,7 +169,7 @@ RSpec.describe AirTrail::ImportFlights do
     end
 
     it 'enqueues a recalculation for the month of a flight that the sync removed' do
-      create(:flight, user: user, external_id: 99, flight_date: Date.new(2025, 11, 3))
+      create(:flight, user: user, external_id: 99, flight_date: Date.new(2025, 11, 3), departure_time: nil)
       allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])
 
       expect { described_class.new(user).call }

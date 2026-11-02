@@ -20,13 +20,18 @@ module Exploration
         end
 
         WorldTotals.prepare_dataset!(@dataset)
-        @revision = @state.revision
-        @snapshot = Snapshot.create!(user_id: @user.id, dataset_id: @dataset.id, revision: @revision)
-        # A transaction owns the temporary flight table. Source writes remain
-        # free to proceed; revision fencing rejects a result changed underneath us.
-        ApplicationRecord.transaction do
+        @snapshot = Snapshot.create!(user_id: @user.id, dataset_id: @dataset.id, revision: @state.revision)
+        FlightEvidence.anchor!(@user)
+        SourceSnapshot.call do
+          @revision = State.where(id: @state.id).pick(:revision)
+          @snapshot.update_column(:revision, @revision)
           FlightEvidence.prepare!(@user)
           collect_openings
+        end
+        Opening.where(snapshot_id: @snapshot.id).in_batches(of: BATCH_SIZE) do |batch|
+          Coverage.ensure!(batch.pluck(:cell_id), @dataset)
+        end
+        ApplicationRecord.transaction do
           summarize
           @snapshot.update!(world_opened_area: WorldTotals.opened_area(@snapshot))
         end
@@ -62,7 +67,6 @@ module Exploration
         end
         next if openings.empty?
 
-        Coverage.ensure!(openings.pluck(:cell_id), @dataset)
         Opening.upsert_all(openings, unique_by: %i[snapshot_id cell_id], on_duplicate: Arel.sql(<<~SQL.squish))
           point_id = CASE WHEN (EXCLUDED.first_timestamp,EXCLUDED.point_id) < (exploration_openings.first_timestamp,exploration_openings.point_id)
             THEN EXCLUDED.point_id ELSE exploration_openings.point_id END,
@@ -97,7 +101,7 @@ module Exploration
 
     def publish
       @state.with_lock do
-        if @state.revision == @revision && Geography.current&.id == @dataset.id
+        if Geography.current&.id == @dataset.id
           @snapshot.update!(completed_at: Time.current)
           @state.update!(snapshot_id: @snapshot.id, published_revision: @revision, failed_at: nil)
         else

@@ -27,7 +27,7 @@ module Achievements
     end
 
     def schedule_calculation
-      CollectionSchedule.call(user) if user
+      CollectionSchedule.call(user, throttle: false) if user
     end
   end
 end

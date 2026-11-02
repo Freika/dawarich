@@ -35,6 +35,13 @@ module Exploration
       connection.execute('CREATE INDEX ON exploration_modes(track_id,start_ts,end_ts)')
     end
 
+    # Anchoring writes track_segments, so it must run before a source snapshot opens.
+    def self.anchor!(user)
+      ids = TrackSegment.manually_corrected.joins(:track).where(tracks: { user_id: user.id })
+                        .where(start_at: nil).where.not(start_index: nil).pluck(:id)
+      TrackSegments::TimeAnchorBackfillJob.anchor_now(ids)
+    end
+
     def self.qualifying(relation)
       relation.where(qualifying_sql)
     end

@@ -17,7 +17,7 @@ RSpec.describe Stats::CalculateMonth do
 
       context 'when the month has flights but no existing stat' do
         let!(:flight) do
-          create(:flight, user: user, flight_date: Date.new(year, month, 5), distance_km: 633.4)
+          create(:flight, user: user, flight_date: Date.new(year, month, 5), departure_time: nil, distance_km: 633.4)
         end
 
         it 'creates a stat carrying the flight distance' do
@@ -291,7 +291,8 @@ RSpec.describe Stats::CalculateMonth do
       end
 
       it 'ignores flights belonging to another user' do
-        create(:flight, user: create(:user), flight_date: Date.new(year, month, 6), distance_km: 900.0)
+        create(:flight, user: create(:user), flight_date: Date.new(year, month, 6),
+                        departure_time: nil, distance_km: 900.0)
 
         calculate_stats
 
@@ -302,7 +303,7 @@ RSpec.describe Stats::CalculateMonth do
     context 'when there are no points but the month has flights and an existing stat' do
       let!(:stat) { create(:stat, user: user, year: year, month: month, distance: 5000, flight_distance: 1) }
       let!(:flight) do
-        create(:flight, user: user, flight_date: Date.new(year, month, 5), distance_km: 633.4)
+        create(:flight, user: user, flight_date: Date.new(year, month, 5), departure_time: nil, distance_km: 633.4)
       end
 
       it 'keeps the flight distance current and reflects it in the distance total' do

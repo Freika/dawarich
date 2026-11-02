@@ -172,6 +172,8 @@ export default class extends Controller {
 
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
+    if (this.hasExplorationBoundsValue && this.hasFogToggleTarget)
+      this.fogToggleTarget.checked = true
 
     await this.initializeMap()
     // initializeMap bails without setting this.map if the controller

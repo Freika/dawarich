@@ -117,6 +117,16 @@ export class LayerVisibilityManager {
       this.layerManager.getLayer("points-mvt")?.setSourceKeepAlive(false)
     }
 
+    const intercepted = gatedToggle({
+      layerName: "Fog of War",
+      userPlan: this.controller.userPlanValue,
+      toggle,
+      showFn: showFog,
+      hideFn: hideFog,
+      upgradeUrl: this.controller.upgradeUrlValue,
+    })
+    if (intercepted) return
+
     const enabled = toggle.checked
     SettingsManager.updateSetting("fogEnabled", enabled)
     await this.reapplyPointsRenderer()
