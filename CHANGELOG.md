@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Reset in the map settings now restores only appearance settings, matching a fresh account, and a stored Fog of War mode is reset to the default (hexagons) on upgrade.
+
 ## [1.20.1] - 2026-11-01, Berlin
 
 ### Fixed

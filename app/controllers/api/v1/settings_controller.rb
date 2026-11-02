@@ -40,15 +40,15 @@ class Api::V1::SettingsController < ApiController
   end
 
   def reset_appearance
-    keys = params[:keys].nil? ? Users::SafeSettings::APPEARANCE_KEYS : params[:keys]
-    unknown = keys.is_a?(Array) ? keys.map(&:to_s) - Users::SafeSettings::APPEARANCE_KEYS : [keys.to_s]
+    keys = params[:keys].nil? ? Users::SafeSettings::APPEARANCE_KEYS : Array(params[:keys]).map(&:to_s)
+    unknown = keys - Users::SafeSettings::APPEARANCE_KEYS
     if unknown.any?
       return render json: { message: I18n.t('controllers.api.v1.settings.something_went_wrong'),
                             errors: ["Unknown appearance settings: #{unknown.join(', ')}"] },
                     status: :unprocessable_content
     end
 
-    if Users::AppearanceReset.new(current_api_user, keys.map(&:to_s)).call
+    if Users::AppearanceReset.new(current_api_user, keys).call
       render json: { settings: current_api_user.safe_settings.api_config, status: 'success' }, status: :ok
     else
       render json: { message: I18n.t('controllers.api.v1.settings.something_went_wrong'),

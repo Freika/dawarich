@@ -708,6 +708,15 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       expect(stored['maps_maplibre_style']).to eq('dark')
     end
 
+    it 'accepts a single key without brackets' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}&keys=track_color"
+
+      expect(response).to have_http_status(:ok)
+      stored = user.reload.settings
+      expect(stored).not_to include('track_color')
+      expect(stored['maps_maplibre_style']).to eq('dark')
+    end
+
     it 'rejects keys outside the appearance group' do
       delete "/api/v1/settings/appearance?api_key=#{api_key}", params: { keys: ['meters_between_routes'] }
 

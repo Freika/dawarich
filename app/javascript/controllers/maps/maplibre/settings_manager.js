@@ -739,6 +739,7 @@ export class SettingsController {
   async resetSettings() {
     if (!confirm(translate("settings.confirm_reset"))) return
 
+    this.cancelLayerColorSaves()
     if (await SettingsManager.resetToDefaults()) {
       window.location.reload()
     } else {
@@ -780,7 +781,7 @@ export class SettingsController {
   /**
    * Update route opacity in real-time
    */
-  async updateFogMode(event) {
+  async updateFogMode(_event) {
     const mode = "hexagons"
 
     const fogLayer = this.layerManager.getLayer("fog")
@@ -834,8 +835,7 @@ export class SettingsController {
   }
 
   async resetLayerColors() {
-    Object.values(this.layerColorTimers || {}).forEach(clearTimeout)
-    this.layerColorTimers = {}
+    this.cancelLayerColorSaves()
 
     const settings = await SettingsManager.resetToDefaults(["track_color"])
     if (!settings) {
@@ -882,6 +882,12 @@ export class SettingsController {
       `[data-layer-color-value="${key}"]`,
     )
     if (label && color) label.textContent = color.toUpperCase()
+  }
+
+  // A pending save landing after a reset would restore the old colour.
+  cancelLayerColorSaves() {
+    Object.values(this.layerColorTimers || {}).forEach(clearTimeout)
+    this.layerColorTimers = {}
   }
 
   scheduleLayerColorSave(key, color) {
