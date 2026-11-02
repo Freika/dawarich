@@ -18,7 +18,7 @@ module AirTrail
 
         sync_track(flight, updated_at)
       rescue AirTrail::Client::Error => e
-        raise if e.unauthorized? || e.status.nil?
+        raise if e.unauthorized? || e.status.nil? || e.status == 429
 
         log_skip(e)
       end
@@ -30,7 +30,7 @@ module AirTrail
 
     def sync_track(flight, updated_at)
       coordinates = simplify(field(@client.track(flight.external_id), 'coordinates'))
-      return if coordinates.nil?
+      return flight.update!(track_updated_at: updated_at) if coordinates.nil?
 
       flight.update!(track_coordinates: coordinates, track_updated_at: updated_at)
     end

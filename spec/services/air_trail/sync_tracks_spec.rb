@@ -91,6 +91,28 @@ RSpec.describe AirTrail::SyncTracks do
     expect(first.track_updated_at).to eq(Time.utc(2026, 10, 20, 8))
   end
 
+  it 'stops downloading tracks when AirTrail rate-limits the requests' do
+    create(:flight, user: user, external_id: 1)
+    create(:flight, user: user, external_id: 2)
+    stub_summaries(summary(1, '2026-10-20T08:00:00.000Z'), summary(2, '2026-10-20T08:00:00.000Z'))
+    limited = stub_request(:get, %r{https://a.example/api/v1/flights/\d+/track}).to_return(status: 429)
+
+    expect { described_class.new(user, client).call }.not_to raise_error
+    expect(limited).to have_been_requested.once
+  end
+
+  it 'does not download a track again when its last download had too few valid points' do
+    flight = create(:flight, user: user, external_id: 1, track_coordinates: stored_track)
+    stub_summaries(summary(1, '2026-10-20T08:00:00.000Z'))
+    track = stub_track(1, [[13.5, 52.4]])
+
+    2.times { described_class.new(user, client).call }
+
+    expect(track).to have_been_requested.once
+    expect(flight.reload.track_coordinates).to eq(stored_track)
+    expect(flight.track_updated_at).to eq(Time.utc(2026, 10, 20, 8))
+  end
+
   it 'still downloads later tracks when one track fails on the AirTrail side' do
     create(:flight, user: user, external_id: 1)
     second = create(:flight, user: user, external_id: 2)
