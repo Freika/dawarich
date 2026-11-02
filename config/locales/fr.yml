@@ -5285,6 +5285,9 @@ fr:
       failed_to_load_area_details: Échec du chargement des détails de zone
       point_deleted_successfully: Point supprimé avec succès
       failed_to_delete_point: Échec de suppression du point
+      mark_point_valid: Marquer comme correct
+      point_marked_valid: Point marqué comme correct
+      failed_to_mark_point_valid: Impossible de marquer le point comme correct
       deleting_area: Suppression de la zone...
       area_deleted_successfully: Zone supprimée avec succès
       failed_to_delete_area: Échec de suppression d'aire

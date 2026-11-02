@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_28_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_000200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -692,6 +692,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_200000) do
     t.integer "altitude"
     t.decimal "altitude_decimal", precision: 10, scale: 2
     t.boolean "anomaly"
+    t.boolean "anomaly_override", default: false, null: false
     t.integer "battery"
     t.integer "battery_status"
     t.string "bssid"

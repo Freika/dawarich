@@ -9,11 +9,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Create Visit on the map fills the location and times from selected points or nearby history, using the latest stay when several are found. Create and edit forms now let you choose a Place, with a nearby previously visited Place selected when creating a visit.
+- Mark a point the GPS noise filter hid as correct. Turn on the Anomalies layer, click the orange point and press "Mark as correct". The point returns to the map and your stats, rejoins a nearby track of the same device when there is one, and stays visible when you re-evaluate past data. (#3722)
 
 ### Changed
 
 - Creating or editing a visit, including through `POST` and `PATCH /api/v1/visits`, with the same name as the existing Place it is attached to (or, when changing Place, the previous Place) no longer saves a separate visit name, so the visit shows the Place's current name and follows later renames.
 - The Place search API (`GET /api/v1/places/search`) also returns your Places that have visits but are hidden from the map, and marks each result with `has_visits`; declined and deleted visits are not counted.
+
+### Fixed
+
+- Uploading points from the mobile apps or Overland no longer returns HTTP 500 on instances whose `points` table never got the `altitude_decimal` or `source_id` column: the upgrade now adds the missing columns. `altitude_decimal` was missing on instances first set up from the 1.5.0–1.6.x schema, `source_id` on ones that were busy while upgrading past 1.13.1. Where `source_id` is added, self-hosted instances then fill it in a background job (#3969, #3972).
+- If a long transaction keeps `points` locked, startup now stops with an error and retries on the next start, instead of carrying on without it (#3972).
+- Trip previews, day routes and poster routes that cross the date line draw as one continuous line instead of a seam with a jump near the poles (#3261).
 
 ## [1.20.1] - 2026-11-01, Berlin
 
