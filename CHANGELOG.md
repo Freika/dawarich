@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Uploading points from the mobile apps or Overland no longer returns HTTP 500 on instances where the `altitude_decimal` or `source_id` column of `points` has not been added yet (#3969, #3972).
+
 ## [1.20.1] - 2026-11-01, Berlin
 
 ### Fixed

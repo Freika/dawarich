@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class RepairOptionalAltitudeInvalidation < ActiveRecord::Migration[8.1]
+class RepairOptionalPointColumnInvalidation < ActiveRecord::Migration[8.1]
   def up
     execute File.read(Rails.root.join('db/exploration_invalidation.sql'))
     execute File.read(Rails.root.join('db/achievement_collections_invalidation.sql'))

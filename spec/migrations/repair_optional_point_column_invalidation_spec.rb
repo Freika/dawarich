@@ -1,31 +1,29 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require Rails.root.join('db/migrate/20261102000000_repair_optional_altitude_invalidation.rb')
+require Rails.root.join('db/migrate/20261102000000_repair_optional_point_column_invalidation.rb')
 
-RSpec.describe 'Optional altitude invalidation' do
+RSpec.describe 'Optional point column invalidation' do
   let(:connection) { ActiveRecord::Base.connection }
 
-  before { RepairOptionalAltitudeInvalidation.new.up }
+  before { RepairOptionalPointColumnInvalidation.new.up }
 
   it 'completes partial execution and retains point data and revision side effects' do
     point = create(:point)
     connection.execute(File.read(Rails.root.join('db/exploration_invalidation.sql')))
     revisions = connection.select_all('SELECT * FROM achievement_collection_states').to_a
-    2.times { RepairOptionalAltitudeInvalidation.new.up }
-    RepairOptionalAltitudeInvalidation.new.down
+    2.times { RepairOptionalPointColumnInvalidation.new.up }
+    RepairOptionalPointColumnInvalidation.new.down
     expect(Point.exists?(point.id)).to be(true)
     expect(connection.select_all('SELECT * FROM achievement_collection_states').to_a).to eq(revisions)
   end
 
-  [false, true].each do |decimal|
-    context "with altitude_decimal present: #{decimal}" do
+  [nil, 'altitude_decimal', 'source_id'].each do |missing|
+    context "with #{missing || 'no'} column missing" do
       before do
-        unless decimal
-          # Loads Point while the column exists; the model caches column support once per process.
-          allow(Point).to receive(:altitude_decimal_supported?).and_return(false)
-          connection.execute('ALTER TABLE points DROP COLUMN IF EXISTS altitude_decimal')
-        end
+        # Loads Point while the column exists; the model caches column support once per process.
+        allow(Point).to receive(:altitude_decimal_supported?).and_return(false) if missing == 'altitude_decimal'
+        connection.execute("ALTER TABLE points DROP COLUMN IF EXISTS #{missing}") if missing
         Point.reset_column_information
       end
 
@@ -33,6 +31,7 @@ RSpec.describe 'Optional altitude invalidation' do
         unless connection.column_exists?(:points, :altitude_decimal)
           connection.add_column(:points, :altitude_decimal, :decimal, precision: 10, scale: 2)
         end
+        connection.add_column(:points, :source_id, :integer) unless connection.column_exists?(:points, :source_id)
         Point.reset_column_information
       end
 
