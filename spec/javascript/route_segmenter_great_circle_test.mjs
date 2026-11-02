@@ -67,3 +67,27 @@ test("a segment entirely beyond the Mercator edge yields no route", () => {
 
   assert.deepEqual(routes.features, [])
 })
+
+test("date-line crossings remain one short continuous line in either direction", () => {
+  for (const coords of [
+    [
+      [179, 70],
+      [-179, 70],
+    ],
+    [
+      [-179, 70],
+      [179, 70],
+    ],
+    [
+      [170, 20],
+      [-170, 20],
+      [170, 20],
+    ],
+  ]) {
+    const lines = RouteSegmenter.unwrapCoordinates(points(...coords))
+    assert.equal(lines.length, 1)
+    for (let i = 1; i < lines[0].length; i++) {
+      assert.ok(Math.abs(lines[0][i][0] - lines[0][i - 1][0]) <= 180)
+    }
+  }
+})
