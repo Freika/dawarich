@@ -739,5 +739,36 @@ RSpec.describe 'Api::V1::Settings', type: :request do
 
       expect(response).to have_http_status(:unauthorized)
     end
+
+    context 'when user is on the lite plan (cloud)' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_columns(plan: User.plans[:lite], settings: user.settings.merge(
+          'maps_maplibre_style' => 'custom',
+          'maps_maplibre_custom_theme' => { 'water' => '#000000' },
+          'maps_maplibre_tiles_url' => 'https://tiles.example.com/{z}/{x}/{y}.png',
+          'globe_projection' => false,
+          'enabled_map_layers' => %w[Points Heatmap Hexagons]
+        ))
+      end
+
+      it 'keeps stored Pro-only values and resets the rest' do
+        delete "/api/v1/settings/appearance?api_key=#{api_key}"
+
+        expect(response).to have_http_status(:ok)
+        stored = user.reload.settings
+        expect(stored).to include(
+          'maps_maplibre_style' => 'custom',
+          'maps_maplibre_custom_theme' => { 'water' => '#000000' },
+          'maps_maplibre_tiles_url' => 'https://tiles.example.com/{z}/{x}/{y}.png',
+          'track_color' => '#123456',
+          'globe_projection' => false
+        )
+        expect(stored['enabled_map_layers']).to contain_exactly('Tracks', 'Heatmap', 'Hexagons')
+        expect(stored['maps']).to eq('distance_unit' => 'mi', 'hidden_tile_categories' => ['roads'],
+                                     'disabled_poi_groups' => ['food'])
+        expect(stored).not_to include('fog_of_war_mode')
+      end
+    end
   end
 end

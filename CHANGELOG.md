@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- On Lite, Pro-only map settings (custom tiles, theme, colours, Hexagons and other gated layers) are kept but not applied until you upgrade.
+
 ## [1.20.1] - 2026-11-01, Berlin
 
 ### Fixed

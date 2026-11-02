@@ -33,6 +33,21 @@ module Users
       params
     end
 
+    # `reset` with the Pro-only values of `stored` carried over, so a Lite
+    # appearance reset leaves them for an upgrade.
+    def keep_pro_only(reset, stored)
+      (MASKED_KEYS + ['globe_projection']).each { |key| reset[key] = stored[key] if stored.key?(key) }
+      reset['maps_maplibre_style'] = CUSTOM_STYLE if stored['maps_maplibre_style'] == CUSTOM_STYLE
+      if stored['maps'].is_a?(Hash)
+        reset['maps'] = (reset['maps'].is_a?(Hash) ? reset['maps'] : {}).merge(stored['maps'].slice(*MASKED_MAPS_KEYS))
+      end
+      if stored.key?('enabled_map_layers') && !reset.key?('enabled_map_layers')
+        reset['enabled_map_layers'] = (SafeSettings::DEFAULT_VALUES['enabled_map_layers'] - GATED_MAP_LAYERS) |
+                                      (Array(stored['enabled_map_layers']) & GATED_MAP_LAYERS)
+      end
+      reset
+    end
+
     # Settings as a Lite account sees them; `settings` already has defaults merged in.
     def visible(settings)
       settings = settings.merge(MASKED_KEYS.index_with { |key| SafeSettings::DEFAULT_VALUES[key].deep_dup })
