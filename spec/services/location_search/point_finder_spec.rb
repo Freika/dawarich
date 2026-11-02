@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe LocationSearch::PointFinder do
   let(:user) { create(:user) }
-  let(:service) { described_class.new(user, search_params) }
+  let(:service) { described_class.new(user, search_params, privacy_zone_masker: Maps::PrivacyZoneMasker.none) }
   let(:search_params) { { latitude: 52.5200, longitude: 13.4050 } }
 
   describe '#call' do

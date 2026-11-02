@@ -120,12 +120,15 @@ class ApiController < ApplicationController
     relation.where('timestamp >= ?', window_start.to_i)
   end
 
-  def mask_privacy_zones?
+  # Map reads mask Privacy Zones when the client asks; endpoints that always
+  # mask override this.
+  def map_read_masked?
     ActiveModel::Type::Boolean.new.cast(params[:mask_privacy_zones]) == true
   end
 
-  def privacy_zone_masker
-    @privacy_zone_masker ||= Maps::PrivacyZoneMasker.new(current_api_user)
+  def map_read_masker
+    @map_read_masker ||=
+      map_read_masked? ? Maps::PrivacyZoneMasker.new(current_api_user) : Maps::PrivacyZoneMasker.none
   end
 
   def upgrade_url_for(user)

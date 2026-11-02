@@ -236,6 +236,7 @@ class PlacesController < ApplicationController
 
   def place_data_element(updated: false, visit_id: nil, removed_id: nil)
     data = { created: !updated, updated: updated, visit_id: visit_id, removed_id: removed_id }
+    # A fresh masker, not the memoized one: this request may have just changed the zones.
     if Maps::PrivacyZoneMasker.new(current_user).mask_places(current_user.places.where(id: @place.id)).exists?
       data[:place] = serialize_place(@place).to_json
     else

@@ -6,7 +6,7 @@ module Timeline
 
     def masked_path_sql
       path = 'original_path::geometry'
-      return path unless @privacy_zone_masker&.any?
+      return path unless @privacy_zone_masker.any?
 
       "CASE WHEN #{@privacy_zone_masker.touches_sql(path)} THEN #{@privacy_zone_masker.clip_sql(path)} ELSE #{path} END"
     end

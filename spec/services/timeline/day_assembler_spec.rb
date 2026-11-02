@@ -42,7 +42,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'returns one day entry' do
@@ -167,7 +167,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'aggregates confident per-mode distances into the day summary, largest first' do
@@ -197,7 +197,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 2.days).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 2.days).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'scales moving duration by the day share on the continuation day' do
@@ -225,7 +225,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'excludes soft-deleted and declined visits from the feed' do
@@ -253,7 +253,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'exposes each tag with id/name/icon/color' do
@@ -289,7 +289,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'includes suggested_places on suggested visits' do
@@ -334,7 +334,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'deduplicates candidates by normalized name, keeping the first occurrence' do
@@ -365,7 +365,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'does not include suggested_places key on non-suggested visits' do
@@ -392,7 +392,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'includes point_count matching visit.points.size' do
@@ -419,7 +419,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       it 'returns the correct counts' do
-        result = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        result = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
         entries = result.first[:entries]
         expect(entries.find { |e| e[:name] == 'A' }[:point_count]).to eq(50)
         expect(entries.find { |e| e[:name] == 'B' }[:point_count]).to eq(50)
@@ -435,7 +435,7 @@ RSpec.describe Timeline::DayAssembler do
         end
 
         ActiveSupport::Notifications.subscribed(sub, 'sql.active_record') do
-          described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+          described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
         end
 
         expect(eager_select_count).to eq(0),
@@ -466,7 +466,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none)
       end
 
       it 'preloads relations and keeps query count bounded' do
@@ -509,7 +509,8 @@ RSpec.describe Timeline::DayAssembler do
         counter = lambda do |_name, _start, _finish, _id, payload|
           count += 1 unless payload[:name].in?(%w[SCHEMA TRANSACTION])
         end
-        assembler = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+        assembler = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601,
+privacy_zone_masker: Maps::PrivacyZoneMasker.none)
         ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { assembler.call }
         count
       end
@@ -549,7 +550,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'counts visible visits only — declined rows are tombstones and never reach the feed' do
@@ -574,7 +575,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'returns visit-only entries' do
@@ -603,7 +604,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'returns journey-only entries' do
@@ -624,7 +625,7 @@ RSpec.describe Timeline::DayAssembler do
         described_class.new(
           user,
           start_at: 1.year.ago.iso8601,
-          end_at: 11.months.ago.iso8601
+          end_at: 11.months.ago.iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none
         ).call
       end
 
@@ -661,7 +662,7 @@ RSpec.describe Timeline::DayAssembler do
         described_class.new(
           user,
           start_at: day1.iso8601,
-          end_at: (day2 + 1.day).iso8601
+          end_at: (day2 + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none
         ).call
       end
 
@@ -686,7 +687,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'handles visits without places gracefully' do
@@ -725,7 +726,7 @@ RSpec.describe Timeline::DayAssembler do
         described_class.new(
           user,
           start_at: '2026-04-22T00:00:00+02:00',
-          end_at: '2026-04-24T00:00:00+02:00'
+          end_at: '2026-04-24T00:00:00+02:00', privacy_zone_masker: Maps::PrivacyZoneMasker.none
         ).call
       end
 
@@ -761,7 +762,7 @@ RSpec.describe Timeline::DayAssembler do
           described_class.new(
             user,
             start_at: '2025-01-15T00:00:00Z',
-            end_at: '2025-01-16T23:59:59Z'
+            end_at: '2025-01-16T23:59:59Z', privacy_zone_masker: Maps::PrivacyZoneMasker.none
           ).call
         end
 
@@ -778,7 +779,7 @@ RSpec.describe Timeline::DayAssembler do
           described_class.new(
             user,
             start_at: '2025-01-15T00:00:00+01:00',
-            end_at: '2025-01-17T00:00:00+01:00'
+            end_at: '2025-01-17T00:00:00+01:00', privacy_zone_masker: Maps::PrivacyZoneMasker.none
           ).call
         end
 
@@ -809,7 +810,7 @@ RSpec.describe Timeline::DayAssembler do
           described_class.new(
             user,
             start_at: '2025-01-15T00:00:00-05:00',
-            end_at: '2025-01-16T23:59:59-05:00'
+            end_at: '2025-01-16T23:59:59-05:00', privacy_zone_masker: Maps::PrivacyZoneMasker.none
           ).call
         end
 
@@ -827,7 +828,7 @@ RSpec.describe Timeline::DayAssembler do
           described_class.new(
             user,
             start_at: '2025-01-15T00:00:00+09:00',
-            end_at: '2025-01-17T00:00:00+09:00'
+            end_at: '2025-01-17T00:00:00+09:00', privacy_zone_masker: Maps::PrivacyZoneMasker.none
           ).call
         end
 
@@ -857,7 +858,7 @@ RSpec.describe Timeline::DayAssembler do
           user,
           start_at: day.iso8601,
           end_at: (day + 1.day).iso8601,
-          distance_unit: 'mi'
+          distance_unit: 'mi', privacy_zone_masker: Maps::PrivacyZoneMasker.none
         ).call
 
         journey = result.first[:entries].first
@@ -874,7 +875,7 @@ RSpec.describe Timeline::DayAssembler do
         result = described_class.new(
           user,
           start_at: day.iso8601,
-          end_at: (day + 1.day).iso8601
+          end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none
         ).call
 
         journey = result.first[:entries].first
@@ -909,7 +910,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'only returns data for the specified user' do
@@ -921,17 +922,17 @@ RSpec.describe Timeline::DayAssembler do
 
     context 'when start_at or end_at is nil' do
       it 'returns empty array when start_at is nil' do
-        result = described_class.new(user, start_at: nil, end_at: '2025-01-16T00:00:00Z').call
+        result = described_class.new(user, start_at: nil, end_at: '2025-01-16T00:00:00Z', privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
         expect(result).to eq([])
       end
 
       it 'returns empty array when end_at is nil' do
-        result = described_class.new(user, start_at: '2025-01-15T00:00:00Z', end_at: nil).call
+        result = described_class.new(user, start_at: '2025-01-15T00:00:00Z', end_at: nil, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
         expect(result).to eq([])
       end
 
       it 'returns empty array when both are nil' do
-        result = described_class.new(user, start_at: nil, end_at: nil).call
+        result = described_class.new(user, start_at: nil, end_at: nil, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
         expect(result).to eq([])
       end
     end
@@ -970,7 +971,7 @@ RSpec.describe Timeline::DayAssembler do
       end
 
       subject do
-        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+        described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'omits low-distance stationary tracks from the journey entries' do
@@ -1006,7 +1007,7 @@ RSpec.describe Timeline::DayAssembler do
     end
 
     let(:assembler) do
-      described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+      described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none)
     end
 
     it 'puts visit.place at index 0 when not in suggested_places' do
@@ -1056,7 +1057,7 @@ RSpec.describe Timeline::DayAssembler do
       create(:visit, user: user, place: nil, status: :suggested, confidence: 30,
                      started_at: day + 9.hours, ended_at: day + 10.hours, duration: 60)
 
-      days = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601).call
+      days = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       entry = days.first[:entries].first
 
       expect(entry[:confidence_band]).to eq(:low)
@@ -1100,8 +1101,8 @@ RSpec.describe Timeline::DayAssembler do
       expect(bounds[:sw_lat]).to be > 52.446
     end
 
-    it 'is unchanged without a masker' do
-      day_payload = assembled(nil)
+    it 'is unchanged with the none masker' do
+      day_payload = assembled(Maps::PrivacyZoneMasker.none)
 
       expect(day_payload[:entries].find { |e| e[:name] == 'Home' }[:place]).to include(lat: 52.444, lng: 13.5)
       expect(day_payload[:bounds][:sw_lng]).to eq(13.5)
@@ -1124,11 +1125,11 @@ RSpec.describe Timeline::DayAssembler do
                        geom: 'SRID=4326;POLYGON((-100 37, -94.6 37, -94.6 40, -100 40, -100 37))')
     end
 
-    def assembler(masker = nil)
+    def assembler(masker = Maps::PrivacyZoneMasker.none)
       described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: masker)
     end
 
-    def entries(masker = nil)
+    def entries(masker = Maps::PrivacyZoneMasker.none)
       assembler(masker).call.first[:entries]
     end
 
