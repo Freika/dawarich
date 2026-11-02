@@ -19,6 +19,11 @@ class Users::Digest < ApplicationRecord
 
   enum :period_type, { monthly: 0, yearly: 1 }
 
+  # Versioned by updated_at, so a recalculated digest never reads a stale entry.
+  def insights_cache_key
+    "insights/yearly_digest/#{user_id}/#{year}/#{updated_at.to_i}"
+  end
+
   def sharing_enabled?
     sharing_settings.try(:[], 'enabled') == true
   end

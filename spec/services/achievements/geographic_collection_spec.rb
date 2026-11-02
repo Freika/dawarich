@@ -49,7 +49,18 @@ RSpec.describe 'Observed nature and geographic achievements' do
     user.points.delete_all
     record(minutes: 1)
     record(minutes: 1, at: base + 9 * 60)
-    expect(observe.fetch('park_test')['seconds']).to eq(240)
+    expect(observe.fetch('park_test')['seconds']).to eq(600)
+  end
+
+  it 'counts sparse five-minute sampling toward the thirty-minute park target' do
+    Point.insert_all!((0..7).map do |step|
+      { user_id: user.id, timestamp: base + step * 300, lonlat: 'POINT(13.35 52.51)', tracker_id: 'phone',
+        created_at: Time.current, updated_at: Time.current }
+    end)
+
+    fact = observe.fetch('park_test')
+    expect(fact['seconds']).to eq(1800)
+    expect(fact['at']).to eq(Time.at(base + 30 * 60).utc.iso8601)
   end
 
   it 'splits local midnight, excludes private observations and never counts a border cell as a park visit' do

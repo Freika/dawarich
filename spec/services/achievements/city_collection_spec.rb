@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'City collectible exploration' do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:dataset) { Exploration::Dataset.create!(version: 'city-test', completed_at: Time.current) }
   let(:connection) { ApplicationRecord.connection }
@@ -38,6 +40,33 @@ RSpec.describe 'City collectible exploration' do
     add_point(timestamp: 200)
     expect(calculate.data['progress']).to eq(original)
     expect(card.data['levels']).to eq({})
+  end
+
+  it 'does not publish city cards from an outdated exploration snapshot when the rebuild is busy' do
+    user.achievement_city_selections.create!(territory_code: 'city_test')
+    add_point(timestamp: 100)
+    calculate
+    add_point(timestamp: 200, lon: 13.39)
+    allow_any_instance_of(Exploration::Rebuild).to receive(:call)
+
+    travel(Exploration::State::REFRESH_INTERVAL + 1.minute) { calculate }
+
+    expect(Achievements::CollectionState.find_by!(user: user)).not_to be_current
+  end
+
+  it 'queues another calculation when the first city is selected during a running one' do
+    add_point(timestamp: 100)
+    Achievements::CollectionChecker.new(user, notify: false).call
+    add_point(timestamp: 200)
+    Achievements::CollectionState.find_by!(user: user).update!(requested_at: Time.current)
+    allow(Exploration::FlightEvidence).to receive(:anchor!).and_wrap_original do |method, *args|
+      user.achievement_city_selections.find_or_create_by!(territory_code: 'city_test')
+      method.call(*args)
+    end
+    clear_enqueued_jobs
+
+    expect { Achievements::CollectionChecker.new(user, notify: false).call }
+      .to have_enqueued_job(Achievements::CollectionCheckJob).with(user.id, notify: true)
   end
 
   it 'closes cells on removal and changes earliest evidence on historical imports' do

@@ -149,11 +149,11 @@ RSpec.describe 'Personal achievement history' do
     expect(selection.timezone_source).to eq('manual')
   end
 
-  it 'keeps the previous consistent cards when source visits change during a calculation' do
+  it 'publishes the cards it read and leaves a source change made during the calculation dirty' do
     %w[2020-01-10T12:00:00Z 2020-04-10T12:00:00Z 2020-07-10T12:00:00Z
        2020-10-10T12:00:00Z].each { |date| visit(date) }
     calculate
-    original = card('seasons').data.deep_dup
+    level = card('seasons').level
     place.update!(name: 'Changed name')
     allow(Achievements::SeasonsRule).to receive(:call).and_wrap_original do |method, *args, **options|
       result = method.call(*args, **options)
@@ -161,12 +161,43 @@ RSpec.describe 'Personal achievement history' do
       result
     end
     calculate(notify: true)
-    expect(card('seasons').data).to eq(original)
+    expect(card('seasons').data['name']).to eq('Changed name')
+    expect(card('seasons').level).to eq(level)
     expect(Achievements::CollectionState.find_by!(user: user)).not_to be_current
     allow(Achievements::SeasonsRule).to receive(:call).and_call_original
     calculate
     expect(card('seasons').level).to eq(0)
     expect(card('seasons').data['progress']).to eq(3)
+  end
+
+  it 'queues another calculation when the owner selects a place during a running one' do
+    visit('2020-01-10T12:00:00Z')
+    calculate
+    other = create(:place, user: user, latitude: 48.14, longitude: 11.58, name: 'Park')
+    Achievements::CollectionState.find_by!(user: user).update!(requested_at: Time.current)
+    allow(Achievements::SeasonsRule).to receive(:call).and_wrap_original do |method, *args, **options|
+      Achievements::Selection.find_or_create_by!(user: user, place: other)
+      method.call(*args, **options)
+    end
+    clear_enqueued_jobs
+
+    expect { Achievements::CollectionChecker.new(user, notify: false).call }
+      .to have_enqueued_job(Achievements::CollectionCheckJob).with(user.id, notify: true)
+  end
+
+  it 'does not queue a second calculation for its own timezone lookup' do
+    selection
+    Achievements::CollectionState.find_or_create_by!(user: user).update!(requested_at: Time.current)
+    allow(Achievements::SeasonsRule).to receive(:call).and_wrap_original do |method, *args, **options|
+      Point.insert_all!([{ user_id: user.id, timestamp: 100, lonlat: 'POINT(13.405 52.52)',
+                           created_at: Time.current, updated_at: Time.current }])
+      method.call(*args, **options)
+    end
+    clear_enqueued_jobs
+
+    expect { Achievements::CollectionChecker.new(user, notify: false).call }
+      .not_to have_enqueued_job(Achievements::CollectionCheckJob)
+    expect(selection.reload.timezone).to eq('Europe/Berlin')
   end
 
   it 'does not guess a timezone when the coordinate lookup is ambiguous' do

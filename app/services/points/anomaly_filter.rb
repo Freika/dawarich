@@ -476,20 +476,25 @@ class Points::AnomalyFilter
     kilometers * 1_000
   end
 
+  # Every speed and distance calculation requires a usable position, including context.
+  def speed_points
+    Point.where.not(lonlat: nil)
+  end
+
   def fetch_points_with_context(start_time, end_time)
     # Tie order must match the per-device window in calculate_all_speeds
     # (ORDER BY timestamp, id), or points sharing a timestamp get speeds
     # attached to the wrong neighbour.
     before_ctx = before_context(start_time)
 
-    main = Point.where(user_id: @user_id, timestamp: start_time..end_time)
-                .not_anomaly.order(:timestamp, :id)
-                .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
+    main = speed_points.where(user_id: @user_id, timestamp: start_time..end_time)
+                       .not_anomaly.order(:timestamp, :id)
+                       .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
 
-    after_ctx = Point.where(user_id: @user_id).not_anomaly
-                     .where('timestamp > ?', end_time)
-                     .order(:timestamp, :id).limit(CONTEXT_POINTS)
-                     .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
+    after_ctx = speed_points.where(user_id: @user_id).not_anomaly
+                            .where('timestamp > ?', end_time)
+                            .order(:timestamp, :id).limit(CONTEXT_POINTS)
+                            .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
 
     recent_ctx = before_ctx.select { |point| point.timestamp >= start_time - MAX_FROZEN_FIX_SPAN_SECONDS }
 
@@ -497,10 +502,10 @@ class Points::AnomalyFilter
   end
 
   def before_context(start_time)
-    scope = Point.where(user_id: @user_id).not_anomaly
-                 .where('timestamp < ?', start_time)
-                 .order(timestamp: :desc, id: :desc)
-                 .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy)
+    scope = speed_points.where(user_id: @user_id).not_anomaly
+                        .where('timestamp < ?', start_time)
+                        .order(timestamp: :desc, id: :desc)
+                        .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy)
 
     widened = scope.where('timestamp >= ?', start_time - MAX_FROZEN_FIX_SPAN_SECONDS)
                    .limit(FROZEN_FIX_CONTEXT_POINTS).to_a

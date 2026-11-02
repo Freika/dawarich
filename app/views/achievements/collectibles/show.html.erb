@@ -3,7 +3,7 @@
   <%= render 'shared/page_header', title: @set.name %>
   <%= link_to t('achievements.collections.title'), achievement_cards_path, class: 'btn btn-ghost btn-sm mb-4' %>
   <%= render 'status' %>
-  <% sharing = @state&.current? && @card.publishable? ? { key: "collectible-#{@card.id}", shared: @card.sharing_enabled?, uuid: @card.sharing_uuid,
+  <% sharing = @state&.shareable? && @card.publishable? ? { key: "collectible-#{@card.id}", shared: @card.sharing_enabled?, uuid: @card.sharing_uuid,
        toggle_url: toggle_sharing_achievement_card_path(@card), url: @card.sharing_uuid ? shared_collectible_path(@card.sharing_uuid) : nil } : nil %>
   <div class="flex flex-col lg:flex-row gap-8 items-start">
     <div class="w-full max-w-xs shrink-0">

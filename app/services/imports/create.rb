@@ -11,17 +11,6 @@ class Imports::Create
   end
 
   def call
-    import.with_source_file_lock do
-      import.reload
-      return unless import.file.attached?
-
-      process_file
-    end
-  end
-
-  private
-
-  def process_file
     temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
     inner_file_path = nil
 
@@ -65,6 +54,8 @@ class Imports::Create
       broadcast_status_update
     end
   end
+
+  private
 
   def route_user_data_archive
     import.update!(source: :user_data_archive)

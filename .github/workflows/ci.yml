@@ -35,6 +35,11 @@ jobs:
   rspec:
     runs-on: ubuntu-latest
 
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+
     services:
       postgres:
         image: postgis/postgis:17-3.5
@@ -84,4 +89,4 @@ jobs:
         run: bundle exec rails db:schema:load
 
       - name: Run RSpec
-        run: bundle exec rspec
+        run: bundle exec rspec $(find spec -name '*_spec.rb' | sort | awk -v n=4 -v i=${{ matrix.shard }} 'NR % n == i')

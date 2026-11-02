@@ -299,8 +299,36 @@ class Imports::SourceDetector
   def attempt_partial_json_parse(content)
     return nil if content.blank?
 
-    ["#{content}]", "#{content}}]", "#{content}}}]"].each do |patched|
-      return Oj.load(patched, mode: :compat)
+    stack = []
+    in_string = false
+    escaped = false
+    candidates = []
+
+    content.each_char.with_index do |char, index|
+      if in_string
+        if escaped
+          escaped = false
+        elsif char == '\\'
+          escaped = true
+        elsif char == '"'
+          in_string = false
+        end
+        next
+      end
+
+      case char
+      when '"' then in_string = true
+      when '{' then stack << '}'
+      when '[' then stack << ']'
+      when '}', ']'
+        return nil unless stack.pop == char
+
+        candidates << [index, stack.reverse.join]
+      end
+    end
+
+    candidates.reverse_each do |index, suffix|
+      return Oj.load(content[0..index] + suffix, mode: :compat)
     rescue *PARSE_ERRORS
       next
     end

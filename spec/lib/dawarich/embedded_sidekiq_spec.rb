@@ -5,11 +5,13 @@ require 'rails_helper'
 RSpec.describe 'Embedded Sidekiq configuration' do
   around do |example|
     saved = ENV.to_h.slice('SIDEKIQ_EMBEDDED', 'BACKGROUND_PROCESSING_CONCURRENCY')
+    broadcasts = Rails.logger.broadcasts.dup
     ENV.delete('BACKGROUND_PROCESSING_CONCURRENCY')
     example.run
   ensure
     %w[SIDEKIQ_EMBEDDED BACKGROUND_PROCESSING_CONCURRENCY].each { |key| ENV.delete(key) }
     ENV.update(saved)
+    (Rails.logger.broadcasts - broadcasts).each { |logger| Rails.logger.stop_broadcasting_to(logger) }
   end
 
   it 'keeps embedding opt in' do

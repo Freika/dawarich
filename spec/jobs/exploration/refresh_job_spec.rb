@@ -34,4 +34,21 @@ RSpec.describe Exploration::RefreshJob do
 
     expect { described_class.perform_now }.to have_enqueued_job(Exploration::RebuildJob).with(user.id)
   end
+
+  it 'moves later users to a new dataset when an earlier snapshot owner is soft-deleted' do
+    old = Exploration::Dataset.create!(version: "old-#{SecureRandom.hex(4)}", completed_at: Time.current)
+    current = Exploration::Dataset.create!(version: "new-#{SecureRandom.hex(4)}", completed_at: Time.current)
+    allow(Exploration::Geography).to receive(:current).and_return(current)
+    deleted = create(:user)
+    [deleted, user].each do |owner|
+      state = Exploration::State.find_or_create_by!(user_id: owner.id)
+      snapshot = Exploration::Snapshot.create!(user_id: owner.id, dataset_id: old.id, revision: state.revision,
+                                               world_opened_area: 1.0)
+      state.update!(activated_at: Time.current, snapshot_id: snapshot.id, published_revision: state.revision)
+    end
+    deleted.update!(deleted_at: Time.current)
+    clear_enqueued_jobs
+
+    expect { described_class.perform_now }.to have_enqueued_job(Exploration::RebuildJob).with(user.id)
+  end
 end

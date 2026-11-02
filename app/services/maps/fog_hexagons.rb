@@ -19,8 +19,7 @@ module Maps
                  else
                    Exploration::Snapshot.find_by(id: state.snapshot_id, user_id: @user.id)
                  end
-      updating = !snapshot || (@snapshot_id.blank? &&
-        (state.revision != state.published_revision || snapshot.dataset_id != Exploration::Geography.current&.id))
+      updating = !snapshot || (@snapshot_id.blank? && !state.settled?(snapshot))
       status = if updating && state.failed_at
                  'error'
                elsif updating

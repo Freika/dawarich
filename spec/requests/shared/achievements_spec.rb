@@ -61,6 +61,27 @@ RSpec.describe 'Shared achievements' do
       expect(card.at_css('.ach-spectral--locked')).to be_present
     end
 
+    it 'stages the card with its rarity, a card call to action and share actions' do
+      get shared_achievement_path(progress.sharing_uuid)
+
+      stage = Nokogiri::HTML(response.body).at_css('[data-testid="public-card-stage"]')
+      expect(stage['data-rarity']).to be_present
+      expect(stage.at_css('h1').text).to include('Germany Explorer')
+      expect(stage.at_css('a[data-testid="public-card-cta"]')['href']).to include('utm_content=card_cta')
+      expect(stage.at_css('[data-clipboard-text-value]')['data-clipboard-text-value'])
+        .to eq(shared_achievement_url(progress.sharing_uuid))
+      expect(stage.at_css('a[download]')['href']).to eq(shared_achievement_image_path(progress.sharing_uuid))
+      expect(stage.at_css('a[download]')['download']).to end_with('.png')
+      expect(stage.at_css('[data-testid="public-card-ladder"]')).to be_nil
+      expect(Nokogiri::HTML(response.body).css('main').size).to eq(1)
+    end
+
+    it 'keeps the embed free of the stage' do
+      get shared_achievement_path(progress.sharing_uuid), params: { embed: 1 }
+
+      expect(Nokogiri::HTML(response.body).at_css('[data-testid="public-card-stage"]')).to be_nil
+    end
+
     it 'is embeddable in third-party iframes' do
       get shared_achievement_path(progress.sharing_uuid)
 

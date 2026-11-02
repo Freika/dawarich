@@ -2,9 +2,9 @@
 
 module Achievements
   class CollectionSchedule
-    def self.call(user, notify: true)
+    def self.call(user, notify: true, throttle: true)
       state = CollectionState.create_or_find_by!(user_id: user.id)
-      return state if state.current? || !user.feature_enabled?(:achievements)
+      return state if (throttle ? state.settled? : state.current?) || !user.feature_enabled?(:achievements)
 
       now = Time.current
       claimed = CollectionState.where(id: state.id).where('requested_at IS NULL OR requested_at < ?', 1.hour.ago)

@@ -6,7 +6,6 @@ module Achievements
   class ObservedTime
     BATCH_SIZE = 2_000
     MAX_GAP = 10.minutes.to_i
-    PAIR_CAP = 2.minutes.to_i
     GEOGRAPHIC_TARGET = 10.minutes.to_i
     PARK_TARGET = 30.minutes.to_i
 
@@ -97,7 +96,7 @@ to: Time.zone.at(@through))
       return if @qualified[key] && left.fetch('timestamp') > @qualified[key] + MAX_GAP
 
       from = left.fetch('timestamp')
-      to = from + [right.fetch('timestamp') - from, PAIR_CAP].min
+      to = right.fetch('timestamp')
       while from < to
         local = Time.at(from).in_time_zone(zone)
         midnight = (local.to_date + 1).in_time_zone(zone).to_i

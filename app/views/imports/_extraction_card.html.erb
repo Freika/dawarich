@@ -7,10 +7,6 @@
         <%= extraction_status_badge(import) %>
       </div>
 
-      <% unless import.file.attached? %>
-        <p class="text-sm text-base-content/70"><%= t('imports.source_file.extraction_unavailable') %></p>
-      <% end %>
-
       <% if import.gpx_without_waypoints? %>
         <p class="text-sm text-base-content/70">
           <%= t('.this_gpx_file_holds_no_waypoints') %>
@@ -29,19 +25,13 @@
           <strong><%= counts[:segments] || 0 %></strong> <%= t('.transportation_mode_segments') %>
         </p>
         <div class="flex flex-wrap gap-2">
-          <% if import.file.attached? %>
-            <button class="btn btn-sm btn-outline"
-                    data-action="click->import-extraction#open"
-                    data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
-              <%= t('.re_extract') %>
-            </button>
-          <% end %>
+          <button class="btn btn-sm btn-outline"
+                  data-action="click->import-extraction#open"
+                  data-import-extraction-dialog-id-param="extraction-dialog-<%= import.id %>">
+            <%= t('.re_extract') %>
+          </button>
           <%= render 'imports/extraction_remove_button', import: import %>
         </div>
-      <% elsif !import.file.attached? %>
-        <% if import.additional_data_extraction_failed? || import.extraction_stalled? %>
-          <%= render 'imports/extraction_remove_button', import: import %>
-        <% end %>
       <% elsif import.additional_data_extraction_running? || import.additional_data_extraction_pending? %>
         <% if import.extraction_stalled? %>
           <p class="text-sm text-warning mb-2">
@@ -86,5 +76,5 @@
     </div>
   </div>
 
-  <%= render 'imports/extraction_dialog', import: import if import.file.attached? && !import.additional_data_extraction_unavailable? && !import.gpx_without_waypoints? %>
+  <%= render 'imports/extraction_dialog', import: import unless import.additional_data_extraction_unavailable? || import.gpx_without_waypoints? %>
 <% end %>
