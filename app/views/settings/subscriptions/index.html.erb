@@ -6,7 +6,7 @@
   <div class="hero bg-base-200 min-h-80">
     <div class="hero-content text-center">
       <div class="max-w-md">
-        <h1 class="text-5xl font-bold"><%= t('.hello_there') %></h1>
+        <h1 class="text-5xl font-medium tracking-tight"><%= t('.hello_there') %></h1>
         <% if current_user.active_until&.future? %>
           <p class="py-6">
             <%= t('.you_are_currently_subscribed_to_dawarich_hurray') %>

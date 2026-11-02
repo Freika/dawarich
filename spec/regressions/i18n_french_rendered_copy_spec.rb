@@ -183,7 +183,7 @@ RSpec.describe 'Rendered French copy' do
       expect(I18n.t('insights.activity_streak.current')).to eq('Série actuelle')
       expect(I18n.t('insights.activity_streak.day', count: 1)).to eq('jour')
       expect(I18n.t('insights.activity_streak.day', count: 2)).to eq('jours')
-      expect(I18n.t('insights.movement_wellness.sedentary_vs_active')).to eq('ACTIF VS SÉDENTAIRE')
+      expect(I18n.t('insights.movement_wellness.sedentary_vs_active')).to eq('Actif vs sédentaire')
       expect(I18n.t('insights.movement_wellness.active_vs_sedentary')).to eq('actif vs sédentaire')
       expect(I18n.t('map.maplibre.settings_panel.render_map_as_a_3d_globe_requires_page_reload'))
         .to include('nécessite de recharger la page')

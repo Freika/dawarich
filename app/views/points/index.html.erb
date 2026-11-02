@@ -8,15 +8,15 @@
     <%= form_with url: points_path(import_id: params[:import_id]), data: { turbo_method: :get }, method: :get, id: "points_filter_form", authenticity_token: true do |f| %>
       <div class="flex flex-col gap-3 md:flex-row md:items-end">
         <div class="flex-1">
-          <%= f.label :start_at, class: "text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1 block" %>
+          <%= f.label :start_at, class: "text-xs font-medium text-base-content/60 mb-1 block" %>
           <%= f.datetime_local_field :start_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-bordered input-sm w-full", value: @start_at %>
         </div>
         <div class="flex-1">
-          <%= f.label :end_at, class: "text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1 block" %>
+          <%= f.label :end_at, class: "text-xs font-medium text-base-content/60 mb-1 block" %>
           <%= f.datetime_local_field :end_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-bordered input-sm w-full", value: @end_at %>
         </div>
         <div class="flex-1">
-          <%= f.label :import, class: "text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1 block" %>
+          <%= f.label :import, class: "text-xs font-medium text-base-content/60 mb-1 block" %>
           <%= f.select :import_id, options_for_select(@imports.map { |i| [i.name, i.id] }, params[:import_id]), { include_blank: t('.all_imports') }, class: "select select-bordered select-sm text-sm w-full" %>
         </div>
         <%= f.submit t('.search'), class: "btn btn-primary btn-sm" %>
@@ -76,14 +76,14 @@
                 %>
               </th>
               <% if reverse_geocoding_enabled_for?(current_user) %>
-                <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-left text-base-content/50 w-4/12"><%= t('.address') %></th>
+                <th class="px-3 py-2.5 text-xs font-medium text-left text-base-content/60 w-4/12"><%= t('.address') %></th>
               <% end %>
-              <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 text-right w-1/12"><%= t('.speed') %></th>
-              <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 w-3/12"><%= t('.coordinates') %></th>
-              <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 w-3/12">
+              <th class="px-3 py-2.5 text-xs font-medium text-base-content/60 text-right w-1/12"><%= t('.speed') %></th>
+              <th class="px-3 py-2.5 text-xs font-medium text-base-content/60 w-3/12"><%= t('.coordinates') %></th>
+              <th class="px-3 py-2.5 text-xs font-medium text-base-content/60 w-3/12">
                 <% next_order = params[:order_by] == 'asc' ? 'desc' : 'asc' %>
                 <%= link_to points_path(order_by: next_order, import_id: params[:import_id], start_at: params[:start_at], end_at: params[:end_at]),
-                    class: "inline-flex items-center gap-1 link link-hover font-bold" do %>
+                    class: "inline-flex items-center gap-1 link link-hover font-medium" do %>
                   <%= t('.recorded_at') %>
                   <%= icon(params[:order_by] == 'asc' ? 'chevron-up' : 'chevron-down', class: 'w-4 h-4 inline-block') %>
                 <% end %>

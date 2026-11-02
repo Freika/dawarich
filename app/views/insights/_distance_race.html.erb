@@ -14,7 +14,7 @@
          data-distance-race-right-value="<%= f[:width] - f[:right] %>">
   <div class="card-body p-5 gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h2 id="distance-race-title" class="text-xl font-bold min-w-0">
+      <h2 id="distance-race-title" class="text-lg font-medium min-w-0">
         <%= chart.previous ? t('.title', year: race.year, previous: previous_year) : t('.title_single', year: race.year) %>
       </h2>
       <div class="flex flex-wrap items-center gap-4 text-xs text-base-content/60">
@@ -70,21 +70,21 @@
 
       <div class="grid gap-3 sm:grid-cols-2">
         <div class="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
-          <div class="text-[11px] font-bold uppercase tracking-wider text-base-content/60"><%= t('.so_far', year: race.year) %></div>
-          <div class="text-2xl font-extrabold tabular-nums"><%= number_with_delimiter chart.current.last.round %> <%= unit %></div>
+          <div class="text-xs text-base-content/60"><%= t('.so_far', year: race.year) %></div>
+          <div class="text-2xl font-medium tabular-nums"><%= number_with_delimiter chart.current.last.round %> <%= unit %></div>
           <div class="text-xs text-base-content/60"><%= t('.by_date', date: l(last_day, format: :short_month_day)) %></div>
         </div>
         <% if chart.previous %>
           <% same_day = chart.previous[[chart.current.size - 1, chart.previous.size - 1].min] %>
           <div class="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
-            <div class="text-[11px] font-bold uppercase tracking-wider text-base-content/60"><%= t('.same_day', year: previous_year) %></div>
-            <div class="text-2xl font-extrabold tabular-nums"><%= number_with_delimiter same_day.round %> <%= unit %></div>
+            <div class="text-xs text-base-content/60"><%= t('.same_day', year: previous_year) %></div>
+            <div class="text-2xl font-medium tabular-nums"><%= number_with_delimiter same_day.round %> <%= unit %></div>
             <div class="text-xs text-base-content/60"><%= t('.ended_at', year: previous_year, distance: "#{number_with_delimiter chart.previous.last.round} #{unit}") %></div>
           </div>
           <% lead = Stat.convert_distance(race.lead.abs, unit).round %>
           <% percent = same_day.positive? ? ((chart.current.last - same_day) / same_day * 100).round : nil %>
           <span data-testid="distance-race-lead"
-                class="badge <%= race.lead >= 0 ? 'badge-success' : 'badge-warning' %> badge-outline justify-self-start whitespace-normal h-auto py-1 sm:col-span-2">
+                class="text-sm tabular-nums sm:col-span-2 <%= race.lead >= 0 ? 'text-success' : 'text-base-content/60' %>">
             <%= t(race.lead >= 0 ? '.ahead' : '.behind', distance: "#{number_with_delimiter lead} #{unit}") %><%= " (#{percent.positive? ? '+' : ''}#{percent}%)" if percent %>
           </span>
         <% else %>

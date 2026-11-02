@@ -745,14 +745,14 @@ pl:
       active_days: Aktywne dni
       countries: Kraje
       cities: Miasta
-      weekly_pattern: WZORZEC TYGODNIA
-      top_locations: NAJCZĘSTSZE MIEJSCA
+      weekly_pattern: Wzorzec tygodnia
+      top_locations: Najczęstsze miejsca
       no_location_data: Brak danych lokalizacyjnych
-      first_visits: PIERWSZE WIZYTY
+      first_visits: Pierwsze wizyty
       country: Kraj
       city: Miasto
       no_new_places_this_month: Brak nowych miejsc w tym miesiącu
-      vs_previous_month: WZGLĘDEM POPRZEDNIEGO MIESIĄCA
+      vs_previous_month: Względem poprzedniego miesiąca
       distance: dystans
       countries_2: kraje
       monthly_digest: Podsumowanie miesięczne
@@ -761,14 +761,14 @@ pl:
       title: "Dystans według miesięcy"
     movement_wellness:
       movement_wellness: Ruch i kondycja
-      active_time: CZAS AKTYWNOŚCI
+      active_time: Czas aktywności
       walking: Spacer
       total: łącznie
       running: Bieg
       cycling: Rower
       driving: Samochód
       no_activity_data_available_for_this_period: Brak danych o aktywności dla tego okresu
-      sedentary_vs_active: BRAK RUCHU VS AKTYWNOŚĆ
+      sedentary_vs_active: Brak ruchu vs aktywność
       in_transport: W transporcie
       stationary: Postój
       active_movement: Aktywny ruch
@@ -780,15 +780,15 @@ pl:
       available_on_pro: Dostępne w planie Pro
       upgrade_to_pro: Przejdź na Pro
     stats_row:
-      total_distance: CAŁKOWITY DYSTANS
+      total_distance: Całkowity dystans
       all_tracked_history: Cała zarejestrowana historia
       vs: vs
       in: w
       this_year: tym roku
-      countries: KRAJE
+      countries: Kraje
       new_vs: nowych vs
-      cities: MIASTA
-      days_traveling: DNI W PODRÓŻY
+      cities: Miasta
+      days_traveling: Dni w podróży
       active_days_this_year: Aktywne dni w tym roku
       no_stats_data_available: Brak dostępnych danych statystycznych
       stats_are_calculated_from_your_tracked_points: ". Statystyki są obliczane na podstawie zarejestrowanych punktów."
@@ -804,9 +804,9 @@ pl:
       confirmed_visits_will_appear_here: Potwierdzone wizyty pojawią się tutaj.
     travel_patterns:
       when_do_you_travel: Kiedy podróżujesz?
-      time_of_day_distribution: ROZKŁAD PORY DNIA
-      day_of_week: DZIEŃ TYGODNIA
-      seasonality: SEZONOWOŚĆ
+      time_of_day_distribution: Rozkład pory dnia
+      day_of_week: Dzień tygodnia
+      seasonality: Sezonowość
       insight: Wniosek
     travel_story:
       your_travel_story: Twoja historia podróży
@@ -871,12 +871,12 @@ pl:
     year_comparison:
       your_journey: 'Twoja podróż:'
       vs: vs
-      distance: DYSTANS
-      countries: KRAJE
-      days_traveling: DNI W PODRÓŻY
+      distance: Dystans
+      countries: Kraje
+      days_traveling: Dni w podróży
       days: dni (
       days_2: dni
-      biggest_month: NAJINTENSYWNIEJSZY MIESIĄC
+      biggest_month: Najintensywniejszy miesiąc
     details:
       year_comparison: Porównanie lat
       activity_breakdown: Podział aktywności
@@ -885,7 +885,6 @@ pl:
       travel_patterns: Wzorce podróży
       movement_wellness: Ruch i kondycja
     index:
-      geodata_insights_bull_powered_by_your_location_history: Statystyki geodanych • Na podstawie historii Twojej lokalizacji
       total_distance: Całkowity dystans
       countries: Kraje
       cities: Miasta

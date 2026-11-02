@@ -1,6 +1,6 @@
 <%# Active-state modal contents. Locals: share, paths %>
 <div class="flex items-center gap-2 mb-4">
-  <h3 class="font-bold text-lg"><%= t('.sharing') %></h3>
+  <h3 class="font-medium text-lg"><%= t('.sharing') %></h3>
   <span class="badge badge-success badge-sm gap-1">
     <span class="w-1.5 h-1.5 rounded-full bg-success-content/80"></span>
     <%= share.family_only? ? t('shared_links.family.label') : t('.public') %>
@@ -13,7 +13,7 @@
 
 <div class="space-y-4">
   <div>
-    <label class="text-xs font-medium text-base-content/60 uppercase tracking-wide" for="share-url"><%= share.family_only? ? t('shared_links.family.link') : t('.public_link') %></label>
+    <label class="text-xs font-medium text-base-content/60" for="share-url"><%= share.family_only? ? t('shared_links.family.link') : t('.public_link') %></label>
     <div class="join w-full mt-1">
       <input id="share-url" type="text" readonly value="<%= public_shared_link_url(share.id) %>"
              class="input input-bordered join-item flex-1 font-mono text-sm" onclick="this.select();">
@@ -35,7 +35,7 @@
 
   <% if share.magic_phrase.present? && !share.family_only? %>
     <div>
-      <label class="text-xs font-medium text-base-content/60 uppercase tracking-wide" for="share-phrase"><%= t('.magic_phrase') %></label>
+      <label class="text-xs font-medium text-base-content/60" for="share-phrase"><%= t('.magic_phrase') %></label>
       <div class="join w-full mt-1">
         <input id="share-phrase" type="text" readonly value="<%= share.magic_phrase %>"
                class="input input-bordered join-item flex-1 font-mono text-sm" onclick="this.select();">

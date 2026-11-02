@@ -1,8 +1,8 @@
 <div class="w-full min-w-0 max-w-2xl mx-auto py-8">
-  <h1 class="text-3xl font-bold mb-6"><%= t('.title') %></h1>
+  <h1 class="text-3xl font-medium tracking-tight mb-6"><%= t('.title') %></h1>
   <div class="card bg-base-100 border border-error/30">
     <div class="card-body p-4 sm:p-8 min-w-0" data-testid="privacy-tag-warning">
-      <p class="font-semibold [overflow-wrap:anywhere]"><%= @tag.icon %> #<%= @tag.name %></p>
+      <p class="font-medium [overflow-wrap:anywhere]"><%= @tag.icon %> #<%= @tag.name %></p>
       <p class="tabular-nums"><%= t('.covered_places', count: @place_count) %></p>
       <p><%= t('.visibility') %></p>
       <p class="tabular-nums"><%= t('.shared_links', count: @shared_link_count) %></p>

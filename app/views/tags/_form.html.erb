@@ -2,7 +2,7 @@
   <% if tag.errors.any? %>
     <div class="alert alert-error">
       <div>
-        <h3 class="font-bold"><%= t('.errors_prohibited_save', count: tag.errors.count) %></h3>
+        <h3 class="font-medium"><%= t('.errors_prohibited_save', count: tag.errors.count) %></h3>
         <ul class="list-disc list-inside">
           <% tag.errors.full_messages.each do |message| %>
             <li><%= message %></li>
@@ -58,7 +58,7 @@
             '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#64748b'
           ].each do |color| %>
             <button type="button"
-                    class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg cursor-pointer transition-all hover:scale-110 border-2 border-base-300"
+                    class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg cursor-pointer transition-colors border-2 border-base-300 hover:border-base-content/40"
                     style="background-color: <%= color %>;"
                     data-color="<%= color %>"
                     data-color-picker-target="swatch"
@@ -73,7 +73,7 @@
           <label class="flex items-center gap-2 cursor-pointer group min-w-0">
             <span class="text-sm font-medium"><%= t('.custom') %></span>
             <input type="color"
-                   class="w-12 h-12 rounded-lg cursor-pointer border-2 border-base-300 hover:scale-105 transition-transform color-input"
+                   class="w-12 h-12 rounded-lg cursor-pointer border-2 border-base-300 hover:border-base-content/40 transition-colors color-input"
                    value="<%= tag.color.presence || '#6ab0a4' %>"
                    data-color-picker-target="picker"
                    data-action="input->color-picker#updateFromPicker">
@@ -103,7 +103,7 @@
   <div data-controller="privacy-radius">
     <div class="form-control">
       <label class="label cursor-pointer">
-        <span class="label-text font-semibold"><%= icon 'lock-open', class: "inline-block w-4" %> <%= t('.privacy_zone') %></span>
+        <span class="label-text font-medium"><%= icon 'lock-open', class: "inline-block w-4" %> <%= t('.privacy_zone') %></span>
         <input type="checkbox"
                class="toggle toggle-error"
                data-privacy-radius-target="toggle"
@@ -129,7 +129,7 @@
                data-action="input->privacy-radius#updateFromSlider">
         <div class="flex justify-between text-xs px-2 tabular-nums">
           <span><%= t('units.meters_compact', value: 50) %></span>
-          <span class="font-semibold" data-privacy-radius-target="label">
+          <span class="font-medium" data-privacy-radius-target="label">
             <%= tag.privacy_radius_meters || 1000 %>m
           </span>
           <span><%= t('units.meters_compact', value: 5000) %></span>

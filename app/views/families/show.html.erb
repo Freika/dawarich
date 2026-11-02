@@ -54,7 +54,7 @@
       <%# Your sharing controls %>
       <div class="border border-base-300 rounded-xl overflow-hidden">
         <div class="bg-base-200 px-4 py-2.5">
-          <h3 class="text-xs font-medium uppercase tracking-wider text-base-content/50"><%= t('.your_sharing') %></h3>
+          <h3 class="text-xs font-medium text-base-content/60"><%= t('.your_sharing') %></h3>
         </div>
         <div class="p-4">
           <%= render 'families/location_sharing_toggle', member: current_user %>
@@ -64,7 +64,7 @@
       <%# Members list %>
       <div class="border border-base-300 rounded-xl overflow-hidden">
         <div class="bg-base-200 px-4 py-2.5">
-          <h3 class="text-xs font-medium uppercase tracking-wider text-base-content/50">
+          <h3 class="text-xs font-medium text-base-content/60">
             <%= t('.members') %>
             <span class="text-base-content/30">
               <% if DawarichSettings.self_hosted? %>
@@ -152,7 +152,7 @@
       <%# Invitations %>
       <div class="border border-base-300 rounded-xl overflow-hidden" id="invite-section">
         <div class="bg-base-200 px-4 py-2.5">
-          <h3 class="text-xs font-medium uppercase tracking-wider text-base-content/50">
+          <h3 class="text-xs font-medium text-base-content/60">
             <%= t('.invitations') %> <span class="text-base-content/30">(<%= @pending_invitations.count %>)</span>
           </h3>
         </div>

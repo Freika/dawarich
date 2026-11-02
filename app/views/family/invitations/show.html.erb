@@ -2,11 +2,11 @@
   <div class="max-w-4xl mx-auto">
     <!-- Hero Section -->
     <div class="text-center mb-12">
-      <div class="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-primary mb-6 shadow-xl">
+      <div class="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-primary mb-6">
         <%= icon 'users', class: "h-12 w-12 text-primary-content" %>
       </div>
 
-      <h1 class="text-5xl font-bold text-base-content mb-4">
+      <h1 class="text-5xl font-medium text-base-content mb-4 tracking-tight">
         <%= t('.join') %> <%= @invitation.family.name %>!
       </h1>
 
@@ -23,8 +23,8 @@
     </div>
 
     <!-- Benefits Section -->
-    <div class="bg-base-200 shadow-xl rounded-2xl p-8 mb-8">
-      <h2 class="text-2xl font-bold text-base-content mb-6 text-center">
+    <div class="bg-base-200 rounded-2xl p-8 mb-8">
+      <h2 class="text-2xl font-medium text-base-content mb-6 text-center">
         <%= t('.what_benefits_does_joining_a_family_bring') %>
       </h2>
 
@@ -130,7 +130,7 @@
           <!-- User is logged in, show accept button -->
           <%= link_to accept_family_invitation_path(token: @invitation.token),
                 method: :post,
-                class: "btn btn-success btn-lg w-full text-lg shadow-lg" do %>
+                class: "btn btn-primary btn-lg w-full text-lg" do %>
             <%= t('.accept_invitation_join_family') %>
           <% end %>
 

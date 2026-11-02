@@ -1391,14 +1391,14 @@ fr:
       active_days: Jours actifs
       countries: Pays
       cities: Villes
-      weekly_pattern: TENDANCE HEBDOMADAIRE
-      top_locations: LIEUX LES PLUS VISITÉS
+      weekly_pattern: Tendance hebdomadaire
+      top_locations: Lieux les plus visités
       no_location_data: Aucune donnée de localisation disponible
       first_visits: Premières visites
       country: Pays
       city: Ville
       no_new_places_this_month: Aucun nouveau lieu ce mois-ci
-      vs_previous_month: PAR RAPPORT AU MOIS PRÉCÉDENT
+      vs_previous_month: Par rapport au mois précédent
       distance: distance
       countries_2: pays
       monthly_digest: Récapitulatif mensuel
@@ -1416,7 +1416,7 @@ fr:
       driving: Conduite
       no_activity_data_available_for_this_period: Aucune donnée d'activité disponible
         pour cette période
-      sedentary_vs_active: ACTIF VS SÉDENTAIRE
+      sedentary_vs_active: Actif vs sédentaire
       in_transport: En transport
       stationary: Stationnaire
       active_movement: Mouvement actif
@@ -1430,34 +1430,34 @@ fr:
       available_on_pro: Disponible sur Pro
       upgrade_to_pro: Passer à Pro
     stats_row:
-      total_distance: DISTANCE TOTALE
-      all_tracked_history: TOUT L’HISTORIQUE SUIVI
+      total_distance: Distance totale
+      all_tracked_history: Tout l’historique suivi
       vs: vs
       in: en
-      this_year: CETTE ANNÉE
-      countries: PAYS
+      this_year: Cette année
+      countries: Pays
       new_vs: NOUVEAU par rapport à
-      cities: VILLES
-      days_traveling: JOURS DE DÉPLACEMENT
-      active_days_this_year: JOURS ACTIFS CETTE ANNÉE
-      no_stats_data_available: DONNÉES STATISTIQUES NON DISPONIBLES
+      cities: Villes
+      days_traveling: Jours de déplacement
+      active_days_this_year: Jours actifs cette année
+      no_stats_data_available: Données statistiques non disponibles
       stats_are_calculated_from_your_tracked_points: ". Les statistiques sont calculées
         à partir de vos points suivis."
     top_visited_locations:
-      top_visited_locations: LIEUX VISITÉS LES PLUS FRÉQUENTS
-      total_time: TEMPS TOTAL
+      top_visited_locations: Lieux visités les plus fréquents
+      total_time: Temps total
       visit_count:
         one: visite
         other: visites
-      no_visit_data_available_for_this_period: AUCUNE DONNÉE DE VISITE DISPONIBLE
+      no_visit_data_available_for_this_period: Aucune donnée de visite disponible
         POUR CETTE PÉRIODE
-      confirmed_visits_will_appear_here: LES VISITES CONFIRMÉES APPARAÎTRONT ICI
+      confirmed_visits_will_appear_here: Les visites confirmées apparaîtront ici
     travel_patterns:
-      when_do_you_travel: QUAND VOYAGEZ-VOUS ?
-      time_of_day_distribution: RÉPARTITION PAR MOMENT DE LA JOURNÉE
-      day_of_week: JOUR DE LA SEMAINE
-      seasonality: SAISONNALITÉ
-      insight: ANALYSE
+      when_do_you_travel: Quand voyagez-vous ?
+      time_of_day_distribution: Répartition par moment de la journée
+      day_of_week: Jour de la semaine
+      seasonality: Saisonnalité
+      insight: Analyse
     travel_story:
       your_travel_story: VOTRE HISTOIRE DE DÉPLACEMENT
       summer_2024: ÉTÉ 2024
@@ -1527,12 +1527,12 @@ fr:
     year_comparison:
       your_journey: 'Votre parcours :'
       vs: vs
-      distance: DISTANCE
-      countries: PAYS
-      days_traveling: JOURS DE VOYAGE
+      distance: Distance
+      countries: Pays
+      days_traveling: Jours de voyage
       days: jours (
       days_2: jours
-      biggest_month: MOIS LE PLUS ACTIF
+      biggest_month: Mois le plus actif
     details:
       year_comparison: Comparaison annuelle
       activity_breakdown: Répartition des activités
@@ -1541,8 +1541,6 @@ fr:
       travel_patterns: Modèles de déplacement
       movement_wellness: Déplacement et bien-être
     index:
-      geodata_insights_bull_powered_by_your_location_history: Analyses géographiques
-        • Alimentées par votre historique de localisation
       total_distance: Distance totale
       countries: Pays
       cities: Villes

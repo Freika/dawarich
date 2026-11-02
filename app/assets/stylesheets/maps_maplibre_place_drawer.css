@@ -67,11 +67,9 @@
 
 .place-drawer__heading,
 .place-drawer__stat-label {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: oklch(var(--bc) / 0.55);
+  font-size: 11px;
+  font-weight: 500;
+  color: oklch(var(--bc) / 0.6);
   hyphens: none;
   overflow-wrap: normal;
 }
