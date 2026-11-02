@@ -3,8 +3,6 @@
 class Users::SafeSettings
   attr_reader :settings
 
-  GATED_MAP_LAYERS = ['Heatmap', 'Fog of War', 'Scratch map'].freeze
-
   MIN_MINUTES_BETWEEN_ROUTES = 1
   MAX_MINUTES_BETWEEN_ROUTES = 1440
 
@@ -111,8 +109,9 @@ class Users::SafeSettings
     settings = {} unless settings.is_a?(Hash)
 
     @provided_settings = settings
-    @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
     @plan = plan
+    @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
+    @settings = Users::PlanSettingsGate.visible(@settings) if lite?
   end
 
   def config
@@ -288,11 +287,7 @@ class Users::SafeSettings
   end
 
   def maps
-    m = settings['maps']
-    return m unless lite?
-
-    # Lite users cannot customize map layers or POI groups
-    m&.except('hidden_tile_categories', 'disabled_poi_groups') || m
+    settings['maps']
   end
 
   def distance_unit
@@ -322,7 +317,7 @@ class Users::SafeSettings
     layers.delete('Routes')
     layers.push('Places', 'Place boundaries') if layers.delete('Areas')
     layers.uniq!
-    lite? ? layers - GATED_MAP_LAYERS : layers
+    layers
   end
 
   def places_tag_filters
@@ -349,8 +344,6 @@ class Users::SafeSettings
   end
 
   def globe_projection
-    return false if lite?
-
     ActiveModel::Type::Boolean.new.cast(settings['globe_projection'])
   end
 

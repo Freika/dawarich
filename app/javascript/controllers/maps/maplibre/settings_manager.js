@@ -6,7 +6,10 @@ import {
   styleDocumentFailed,
 } from "maps_maplibre/utils/basemap_url"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
-import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import {
+  LAYER_NAME_MAP,
+  SettingsManager,
+} from "maps_maplibre/utils/settings_manager"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
 // Polling interval for recalculation status (5 seconds)
@@ -76,13 +79,11 @@ export class SettingsController {
       anomaliesToggle: "anomaliesEnabled",
     }
 
-    // Gated layer toggles that Lite users cannot persist
-    const gatedToggles = new Set([
-      "heatmapToggle",
-      "hexagonsToggle",
-      "fogToggle",
-      "scratchToggle",
-      "pointsEditToggle",
+    // The server decides which layers Lite users cannot persist; point
+    // editing is off because Lite has no write API.
+    const gatedSettingKeys = new Set([
+      ...controller.gatedLayersValue.map((layer) => LAYER_NAME_MAP[layer]),
+      "pointDraggingEnabled",
     ])
 
     Object.entries(toggleMap).forEach(([targetName, settingKey]) => {
@@ -91,7 +92,7 @@ export class SettingsController {
       if (controller[hasTarget]) {
         // Force gated layers off for Lite users on page load
         if (
-          gatedToggles.has(targetName) &&
+          gatedSettingKeys.has(settingKey) &&
           isGatedPlan(controller.userPlanValue)
         ) {
           controller[target].checked = false

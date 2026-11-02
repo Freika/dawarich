@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- On Lite, Pro-only map settings (custom tiles, theme, colours, Hexagons and other gated layers) are kept but not applied until you upgrade.
 - Reset in the map settings now restores only appearance settings, matching a fresh account, and a stored Fog of War mode is reset to the default (hexagons) on upgrade.
 - Creating or editing a visit, including through `POST` and `PATCH /api/v1/visits`, with the same name as the existing Place it is attached to (or, when changing Place, the previous Place) no longer saves a separate visit name, so the visit shows the Place's current name and follows later renames.
 - The Place search API (`GET /api/v1/places/search`) also returns your Places that have visits but are hidden from the map, and marks each result with `has_visits`; declined and deleted visits are not counted.

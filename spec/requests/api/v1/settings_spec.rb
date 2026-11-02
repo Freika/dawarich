@@ -398,6 +398,25 @@ RSpec.describe 'Api::V1::Settings', type: :request do
           expect(lite_user.reload.safe_settings.maps_maplibre_style).to eq('dark')
         end
 
+        it 'keeps stored Pro layers when an unrelated setting changes' do
+          lite_user.update_columns(settings: lite_user.settings.merge('enabled_map_layers' => %w[Tracks Heatmap]))
+
+          patch "/api/v1/settings?api_key=#{lite_api_key}",
+                params: { settings: { maps: { distance_unit: 'mi' } } }
+
+          expect(response).to have_http_status(:success)
+          expect(lite_user.reload.settings['enabled_map_layers']).to eq(%w[Tracks Heatmap])
+        end
+
+        it 'keeps the stored globe choice when a Lite write sends it' do
+          lite_user.update_columns(settings: lite_user.settings.merge('globe_projection' => true))
+
+          patch "/api/v1/settings?api_key=#{lite_api_key}", params: { settings: { globe_projection: true } }
+
+          expect(lite_user.reload.settings['globe_projection']).to be true
+          expect(response.parsed_body['settings']['globe_projection']).to be false
+        end
+
         it 'still persists point_dragging_enabled so it applies after an upgrade' do
           patch "/api/v1/settings?api_key=#{lite_api_key}",
                 params: { settings: { point_dragging_enabled: true } }
@@ -728,6 +747,37 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       delete '/api/v1/settings/appearance'
 
       expect(response).to have_http_status(:unauthorized)
+    end
+
+    context 'when user is on the lite plan (cloud)' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_columns(plan: User.plans[:lite], settings: user.settings.merge(
+          'maps_maplibre_style' => 'custom',
+          'maps_maplibre_custom_theme' => { 'water' => '#000000' },
+          'maps_maplibre_tiles_url' => 'https://tiles.example.com/{z}/{x}/{y}.png',
+          'globe_projection' => false,
+          'enabled_map_layers' => %w[Points Heatmap Hexagons]
+        ))
+      end
+
+      it 'keeps stored Pro-only values and resets the rest' do
+        delete "/api/v1/settings/appearance?api_key=#{api_key}"
+
+        expect(response).to have_http_status(:ok)
+        stored = user.reload.settings
+        expect(stored).to include(
+          'maps_maplibre_style' => 'custom',
+          'maps_maplibre_custom_theme' => { 'water' => '#000000' },
+          'maps_maplibre_tiles_url' => 'https://tiles.example.com/{z}/{x}/{y}.png',
+          'track_color' => '#123456',
+          'globe_projection' => false
+        )
+        expect(stored['enabled_map_layers']).to contain_exactly('Tracks', 'Heatmap', 'Hexagons')
+        expect(stored['maps']).to eq('distance_unit' => 'mi', 'hidden_tile_categories' => ['roads'],
+                                     'disabled_poi_groups' => ['food'])
+        expect(stored).not_to include('fog_of_war_mode')
+      end
     end
   end
 end

@@ -19,7 +19,9 @@ const source = await readFile(
 const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
 const combinedSource = `${basemapUrlSource}\n${withoutImports}`
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combinedSource).toString("base64")}`
-const { BACKEND_SETTINGS_MAP, SettingsManager } = await import(moduleUrl)
+const { BACKEND_SETTINGS_MAP, LAYER_NAME_MAP, SettingsManager } = await import(
+  moduleUrl
+)
 const freshAccountSettings = JSON.parse(
   await readFile(
     new URL("../fixtures/user_settings_defaults.json", import.meta.url),
@@ -232,7 +234,8 @@ async function loadSettingsController(settingsManager, overrides = {}) {
   const dependencies = `
     const Toast = globalThis.__settingsManagerToast
     const UpgradeBanner = {}
-    const isGatedPlan = () => false
+    const isGatedPlan = globalThis.__settingsManagerIsGatedPlan ?? (() => false)
+    const LAYER_NAME_MAP = ${JSON.stringify(LAYER_NAME_MAP ?? {})}
     const SettingsManager = globalThis.__settingsManagerTestDouble
     const getMapStyle = globalThis.__settingsManagerGetMapStyle
     const translate = globalThis.__settingsManagerTranslate ?? ((key) => key)
@@ -686,6 +689,39 @@ test("live speed changes use current preferences and restore edit exclusions", a
     enabled: true,
     scale: "0:#ff0000|80:#00ff00",
   })
+})
+
+test("Lite toggles are forced off only for layers the server gates", async () => {
+  globalThis.__settingsManagerIsGatedPlan = () => true
+  const originalDocument = globalThis.document
+  globalThis.document = { dispatchEvent() {} }
+  try {
+    const { SettingsController } = await loadSettingsController({
+      getSetting: () => false,
+    })
+    const heatmapToggle = { checked: true }
+    const fogToggle = { checked: false }
+    const controller = new SettingsController({
+      element: { querySelector: () => null },
+      settings: {},
+      userPlanValue: "lite",
+      gatedLayersValue: ["Heatmap"],
+      hasHeatmapToggleTarget: true,
+      heatmapToggleTarget: heatmapToggle,
+      hasFogToggleTarget: true,
+      fogToggleTarget: fogToggle,
+    })
+    controller.settings = { heatmapEnabled: true, fogEnabled: true }
+
+    controller.syncToggleStates()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    assert.equal(heatmapToggle.checked, false)
+    assert.equal(fogToggle.checked, true)
+  } finally {
+    delete globalThis.__settingsManagerIsGatedPlan
+    globalThis.document = originalDocument
+  }
 })
 
 test("reset drops a pending colour save so it cannot land after the reset", async () => {
