@@ -62,12 +62,12 @@ function fakeMapPage() {
   return { controller, provider: new MapPageProvider({ application }) }
 }
 
-test("loads exact points and canonical tracks for the studio", async () => {
+test("poster loads canonical tracks without loading points", async () => {
   const { controller, provider } = fakeMapPage()
 
   await provider.ensureTrackLoaded()
 
-  assert.equal(controller.pointLoads, 1)
+  assert.equal(controller.pointLoads, 0)
   assert.equal(controller.trackLoads, 1)
 })
 
@@ -77,7 +77,7 @@ test("points still resolve through the same lazy load", async () => {
   const points = await provider.points()
 
   assert.equal(controller.pointLoads, 1)
-  assert.equal(controller.trackLoads, 1)
+  assert.equal(controller.trackLoads, 0)
   assert.equal(points.length, 1)
 })
 
@@ -209,4 +209,36 @@ test("a trip provider satisfies the same contract without a map", async () => {
   })
 
   await provider.ensureTrackLoaded()
+})
+
+test("video geometry uses the selected points rather than an overlapping track", async () => {
+  const { controller, provider } = fakeMapPage()
+  controller.startDateValue = "2026-01-01T10:00:00Z"
+  controller.endDateValue = "2026-01-01T11:00:00Z"
+  controller._getLoadedPoints = () => [
+    { latitude: 52, longitude: 13, timestamp: 1767261900 },
+    { latitude: 52.1, longitude: 13.1, timestamp: 1767262200 },
+  ]
+  controller.api.fetchTracks = async () => ({
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [0, 0],
+            [13, 52],
+            [13.1, 52.1],
+            [40, 40],
+          ],
+        },
+      },
+    ],
+  })
+  await provider.points()
+  assert.deepEqual(provider.trackGeojson().features[0].geometry.coordinates, [
+    [13, 52],
+    [13.1, 52.1],
+  ])
 })

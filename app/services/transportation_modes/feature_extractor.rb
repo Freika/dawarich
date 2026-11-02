@@ -6,8 +6,9 @@ module TransportationModes
   # models, never raw_data. Distances come from PostGIS geography (meters).
   class FeatureExtractor
     def self.call(track_id)
+      altitude_sql = Point.altitude_decimal_supported? ? 'COALESCE(p.altitude_decimal,p.altitude)' : 'p.altitude'
       sql = ActiveRecord::Base.sanitize_sql_array([<<~SQL.squish, { track_id: track_id }])
-        SELECT COALESCE(p.altitude_decimal,p.altitude) AS altitude_m, p.id AS point_id, p.timestamp AS ts, p.accuracy, p.velocity, p.motion_data,
+        SELECT #{altitude_sql} AS altitude_m, p.id AS point_id, p.timestamp AS ts, p.accuracy, p.velocity, p.motion_data,
                ST_X(p.lonlat::geometry) AS lon, ST_Y(p.lonlat::geometry) AS lat,
                p.timestamp - LAG(p.timestamp) OVER w AS dt,
                ST_Distance(p.lonlat, LAG(p.lonlat) OVER w) AS dist_m,
