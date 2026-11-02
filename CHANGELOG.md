@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Uploading points from the mobile apps or Overland no longer returns HTTP 500 on instances where the `altitude_decimal` or `source_id` column of `points` has not been added yet (#3969, #3972).
+- Instances that never got the `source_id` column of `points` (upgraded past 1.13.1 while busy) now get it on upgrade, and the point backfill starts on self-hosted ones. If a long transaction keeps `points` locked, startup now stops with an error that says how to add the column instead of carrying on without it (#3972).
 
 ## [1.20.1] - 2026-11-01, Berlin
 
