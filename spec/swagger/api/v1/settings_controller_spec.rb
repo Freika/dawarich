@@ -319,4 +319,44 @@ describe 'Settings API', type: :request do
       end
     end
   end
+
+  path '/api/v1/settings/appearance' do
+    delete 'Resets map appearance settings to their defaults' do
+      tags 'Settings'
+      description 'Deletes the stored map look settings (style, tiles, colours, layers, globe, fog drawing, ' \
+                  'POI filters) so they fall back to the defaults of a fresh account. Pass keys[] to reset ' \
+                  'only some of them. Data rules such as transportation modes are not touched.'
+      produces 'application/json'
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+      parameter name: 'keys[]', in: :query, type: :array, items: { type: :string }, required: false,
+                description: 'Appearance settings to reset; defaults to all of them'
+
+      response '200', 'appearance reset' do
+        schema type: :object,
+               properties: {
+                 settings: { type: :object, description: 'Effective settings after the reset' },
+                 status: { type: :string }
+               }
+
+        let(:user) { create(:user) }
+        let(:api_key) { user.api_key }
+
+        run_test!
+      end
+
+      response '422', 'unknown appearance setting' do
+        let(:user) { create(:user) }
+        let(:api_key) { user.api_key }
+        let(:'keys[]') { ['meters_between_routes'] }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+
+        run_test!
+      end
+    end
+  end
 end

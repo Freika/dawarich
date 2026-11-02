@@ -514,7 +514,7 @@ export class LayerManager {
     // Always create fog layer for backward compatibility
     if (!this.layers.fogLayer) {
       this.layers.fogLayer = new FogLayer(this.map, {
-        clearRadius: this.settings.fogOfWarRadius || 1000,
+        clearRadius: this.settings.fogOfWarRadius,
         visible: this.settings.fogEnabled || false,
         mode: "hexagons",
         api: this.api,

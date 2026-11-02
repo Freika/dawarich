@@ -5412,6 +5412,47 @@ paths:
                     description: Error message if recalculation failed
         '401':
           description: unauthorized
+  "/api/v1/settings/appearance":
+    delete:
+      summary: Resets map appearance settings to their defaults
+      tags:
+      - Settings
+      description: Deletes the stored map look settings (style, tiles, colours, layers,
+        globe, fog drawing, POI filters) so they fall back to the defaults of a fresh
+        account. Pass keys[] to reset only some of them. Data rules such as transportation
+        modes are not touched.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: keys[]
+        in: query
+        items:
+          type: string
+        required: false
+        description: Appearance settings to reset; defaults to all of them
+        schema:
+          type: array
+      responses:
+        '200':
+          description: appearance reset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings:
+                    type: object
+                    description: Effective settings after the reset
+                  status:
+                    type: string
+        '422':
+          description: unknown appearance setting
+        '401':
+          description: unauthorized
   "/api/v1/stats":
     get:
       summary: Retrieves all stats

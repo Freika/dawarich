@@ -4329,7 +4329,9 @@ en:
       locations_failed: Failed to search locations. Please try again.
     settings:
       transportation_recalculation_completed: Transportation mode recalculation completed!
-      confirm_reset: Reset all settings to defaults? This will reload the page.
+      confirm_reset: "Reset the map appearance to defaults? Transportation and filtering settings stay as they are. This will reload the page."
+      load_failed: "Map settings could not be loaded. Changes will not be saved until you reload the page."
+      reset_failed: "Could not reset the map appearance. Please try again."
       confirm_globe_reload: Globe view requires a page reload to take effect. Reload now?
       changed_fields: 'Changed: %{fields}'
       confirm_reapply_anomaly_filter: |-

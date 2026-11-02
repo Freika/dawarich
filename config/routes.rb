@@ -342,6 +342,7 @@ Rails.application.routes.draw do
       get   'ready', to: 'health#ready'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
+      delete 'settings/appearance', to: 'settings#reset_appearance'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
       get   'settings/mobile', to: 'settings/mobile#show'
       patch 'settings/mobile', to: 'settings/mobile#update'

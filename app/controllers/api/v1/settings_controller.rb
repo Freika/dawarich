@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::SettingsController < ApiController
-  before_action :authenticate_active_api_user!, only: %i[update transportation_recalculation_status]
+  before_action :authenticate_active_api_user!, only: %i[update reset_appearance transportation_recalculation_status]
 
   def index
     render json: {
@@ -36,6 +36,23 @@ class Api::V1::SettingsController < ApiController
     else
       render json: { message: I18n.t('controllers.api.v1.settings.something_went_wrong'), errors: [result.error] },
              status: :unprocessable_content
+    end
+  end
+
+  def reset_appearance
+    keys = params[:keys].nil? ? Users::SafeSettings::APPEARANCE_KEYS : params[:keys]
+    unknown = keys.is_a?(Array) ? keys.map(&:to_s) - Users::SafeSettings::APPEARANCE_KEYS : [keys.to_s]
+    if unknown.any?
+      return render json: { message: I18n.t('controllers.api.v1.settings.something_went_wrong'),
+                            errors: ["Unknown appearance settings: #{unknown.join(', ')}"] },
+                    status: :unprocessable_content
+    end
+
+    if Users::AppearanceReset.new(current_api_user, keys.map(&:to_s)).call
+      render json: { settings: current_api_user.safe_settings.api_config, status: 'success' }, status: :ok
+    else
+      render json: { message: I18n.t('controllers.api.v1.settings.something_went_wrong'),
+                     errors: current_api_user.errors.full_messages }, status: :unprocessable_content
     end
   end
 

@@ -21,10 +21,11 @@ class Users::SafeSettings
   DEFAULT_VALUES = {
     'fog_of_war_meters' => 50,
     'fog_of_war_threshold' => 50,
-    'fog_of_war_mode' => 'points',
+    'fog_of_war_mode' => 'hexagons',
     'meters_between_routes' => 500,
     'preferred_map_layer' => 'OpenStreetMap',
     'speed_colored_routes' => false,
+    'speed_color_scale' => '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300',
     'points_rendering_mode' => 'raw',
     'minutes_between_routes' => 30,
     'time_threshold_minutes' => 30,
@@ -92,6 +93,16 @@ class Users::SafeSettings
     'family_enabled' => true,
     'achievements_enabled' => true
   }.freeze
+
+  # Map look settings that the map's Reset restores by deleting the stored
+  # values. Dotted keys live inside the nested `maps` hash.
+  APPEARANCE_KEYS = %w[
+    maps_maplibre_style maps_maplibre_custom_theme maps_maplibre_tiles_url
+    maps_maplibre_tiles_fallback track_color enabled_map_layers places_tag_filters
+    globe_projection speed_colored_routes speed_color_scale
+    fog_of_war_mode fog_of_war_meters fog_of_war_threshold
+    maps.hidden_tile_categories maps.disabled_poi_groups
+  ].freeze
 
   GPS_ACCURACY_THRESHOLD_MIN = 50
   GPS_ACCURACY_THRESHOLD_MAX = 1000
@@ -166,7 +177,7 @@ class Users::SafeSettings
   end
 
   def fog_of_war_meters
-    settings['fog_of_war_meters']
+    positive_integer('fog_of_war_meters')
   end
 
   def meters_between_routes
@@ -297,12 +308,12 @@ class Users::SafeSettings
   end
 
   def fog_of_war_threshold
-    settings['fog_of_war_threshold']
+    positive_integer('fog_of_war_threshold')
   end
 
   def fog_of_war_mode
     value = settings['fog_of_war_mode'].to_s
-    FOG_OF_WAR_MODES.include?(value) ? value : 'points'
+    FOG_OF_WAR_MODES.include?(value) ? value : DEFAULT_VALUES['fog_of_war_mode']
   end
 
   def enabled_map_layers
@@ -449,6 +460,11 @@ class Users::SafeSettings
 
   def lite?
     @plan&.to_sym == :lite
+  end
+
+  def positive_integer(key)
+    value = settings[key].to_i
+    value.positive? ? value : DEFAULT_VALUES[key]
   end
 
   def fetch_with_legacy_fallback(new_key, legacy_key, default:)

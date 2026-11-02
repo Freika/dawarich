@@ -5574,7 +5574,9 @@ fr:
       locations_failed: Échec de la recherche des emplacements. Veuillez réessayer.
     settings:
       transportation_recalculation_completed: Calcul de mode de transport terminé !
-      confirm_reset: Rétablir tous les paramètres par défaut ? La page sera rechargée.
+      confirm_reset: "Rétablir l'apparence de la carte par défaut ? Les paramètres des modes de transport et du filtrage sont conservés. La page sera rechargée."
+      load_failed: "Les paramètres de la carte n'ont pas pu être chargés. Les modifications ne seront pas enregistrées avant le rechargement de la page."
+      reset_failed: "Impossible de réinitialiser l'apparence de la carte. Veuillez réessayer."
       confirm_globe_reload: La vue globe nécessite un rechargement de la page pour
         prendre effet. Recharger maintenant ?
       changed_fields: 'Modifiés : %{fields}'

@@ -6,10 +6,7 @@ import {
   styleDocumentFailed,
 } from "maps_maplibre/utils/basemap_url"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
-import {
-  LAYER_COLOR_DEFAULTS,
-  SettingsManager,
-} from "maps_maplibre/utils/settings_manager"
+import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
 // Polling interval for recalculation status (5 seconds)
@@ -43,6 +40,9 @@ export class SettingsController {
   async loadSettings() {
     this.settings = await SettingsManager.sync()
     this.controller.settings = this.settings
+    if (!SettingsManager.loaded) {
+      Toast.error(translate("settings.load_failed"))
+    }
 
     // Update dataLoader with new settings
     if (this.controller.dataLoader) {
@@ -143,13 +143,7 @@ export class SettingsController {
         : "none"
     }
 
-    // Sync layer color pickers
-    Object.entries(LAYER_COLOR_DEFAULTS).forEach(([key, fallback]) => {
-      const color = this.settings[key] || fallback
-      const input = controller.element.querySelector(`input[name="${key}"]`)
-      if (input) input.value = color
-      this.syncLayerColorLabel(key, color)
-    })
+    this.syncTrackColorPicker(this.settings.trackColor)
 
     // Sync distance unit radio
     const distanceUnitInput = controller.element.querySelector(
@@ -198,7 +192,7 @@ export class SettingsController {
 
     // Sync fog of war mode radio
     const fogModeInput = controller.element.querySelector(
-      `input[name="fogOfWarMode"][value="${this.settings.fogOfWarMode || "points"}"]`,
+      `input[name="fogOfWarMode"][value="${this.settings.fogOfWarMode}"]`,
     )
     if (fogModeInput) {
       fogModeInput.checked = true
@@ -209,7 +203,7 @@ export class SettingsController {
       'input[name="fogOfWarRadius"]',
     )
     if (fogRadiusInput) {
-      fogRadiusInput.value = this.settings.fogOfWarRadius || 1000
+      fogRadiusInput.value = this.settings.fogOfWarRadius
       if (controller.hasFogRadiusValueTarget) {
         controller.fogRadiusValueTarget.textContent = `${fogRadiusInput.value}m`
       }
@@ -219,7 +213,7 @@ export class SettingsController {
       'input[name="fogOfWarThreshold"]',
     )
     if (fogThresholdInput) {
-      fogThresholdInput.value = this.settings.fogOfWarThreshold || 1
+      fogThresholdInput.value = this.settings.fogOfWarThreshold
       if (controller.hasFogThresholdValueTarget) {
         controller.fogThresholdValueTarget.textContent = fogThresholdInput.value
       }
@@ -740,12 +734,15 @@ export class SettingsController {
   }
 
   /**
-   * Reset settings to defaults
+   * Restore the map appearance to the server defaults, then reload
    */
-  resetSettings() {
-    if (confirm(translate("settings.confirm_reset"))) {
-      SettingsManager.resetToDefaults()
+  async resetSettings() {
+    if (!confirm(translate("settings.confirm_reset"))) return
+
+    if (await SettingsManager.resetToDefaults()) {
       window.location.reload()
+    } else {
+      Toast.error(translate("settings.reset_failed"))
     }
   }
 
@@ -836,19 +833,26 @@ export class SettingsController {
     this.scheduleLayerColorSave("trackColor", color)
   }
 
-  resetLayerColors() {
+  async resetLayerColors() {
     Object.values(this.layerColorTimers || {}).forEach(clearTimeout)
     this.layerColorTimers = {}
 
-    Object.entries(LAYER_COLOR_DEFAULTS).forEach(([key, color]) => {
-      const input = this.controller.element.querySelector(
-        `input[name="${key}"]`,
-      )
-      if (input) input.value = color
-      this.syncLayerColorLabel(key, color)
-    })
-    SettingsManager.updateSettings(LAYER_COLOR_DEFAULTS)
-    this.applyTrackColor(LAYER_COLOR_DEFAULTS.trackColor)
+    const settings = await SettingsManager.resetToDefaults(["track_color"])
+    if (!settings) {
+      Toast.error(translate("settings.reset_failed"))
+      return
+    }
+    this.settings.trackColor = settings.trackColor
+    this.syncTrackColorPicker(settings.trackColor)
+    this.applyTrackColor(settings.trackColor)
+  }
+
+  syncTrackColorPicker(color) {
+    const input = this.controller.element.querySelector(
+      'input[name="trackColor"]',
+    )
+    if (input && color) input.value = color
+    this.syncLayerColorLabel("trackColor", color)
   }
 
   applyTrackColor(color) {
@@ -877,7 +881,7 @@ export class SettingsController {
     const label = this.controller.element.querySelector(
       `[data-layer-color-value="${key}"]`,
     )
-    if (label) label.textContent = color.toUpperCase()
+    if (label && color) label.textContent = color.toUpperCase()
   }
 
   scheduleLayerColorSave(key, color) {
