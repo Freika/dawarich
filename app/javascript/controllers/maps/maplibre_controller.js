@@ -1760,6 +1760,21 @@ export default class extends Controller {
     }
   }
 
+  /** Mark an anomaly as correct, then reload anomalies, points and tracks. */
+  async markPointValid(event) {
+    try {
+      await this.api.markPointValid(event.currentTarget.dataset.id)
+      this.mapDataManager?.invalidatePoints()
+      this.layerManager.getLayer("points-mvt")?.refresh()
+      this.layerManager.getLayer("tracks-mvt")?.refresh()
+      this.layerVisibilityManager.refreshAnomalies({ enabled: true })
+      this.closeInfo()
+      Toast.success(translate("messages.point_marked_valid"))
+    } catch (_error) {
+      Toast.error(translate("messages.failed_to_mark_point_valid"))
+    }
+  }
+
   openPlace(event) {
     this.placePanel.open(event.currentTarget.dataset.id)
   }
