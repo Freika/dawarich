@@ -3,8 +3,8 @@
 class Stats::FlightDistanceQuery
   LOCAL_FLIGHT_DATE = <<~SQL.squish
     COALESCE(
-      flights.flight_date,
-      (flights.departure_time AT TIME ZONE 'UTC' AT TIME ZONE :timezone)::date
+      (flights.departure_time AT TIME ZONE 'UTC' AT TIME ZONE :timezone)::date,
+      flights.flight_date
     )
   SQL
 
@@ -34,7 +34,7 @@ class Stats::FlightDistanceQuery
     user.flights.where(
       "#{local_flight_date} BETWEEN :first_day AND :last_day",
       first_day: Date.new(year, month, 1),
-      last_day: Date.new(year, month, -1)
+      last_day: [Date.new(year, month, -1), Time.current.in_time_zone(user.timezone_iana).to_date].min
     )
   end
 
