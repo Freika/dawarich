@@ -1548,6 +1548,7 @@ de:
       buildings: Gebäude
       railways: Schienenwege
       boundaries: Grenzen
+      detail_layers_zoom_hint: "Gebäude und Eisenbahnen erscheinen erst, wenn du bis auf Stadtebene heranzoomst."
       theme_aria_label: "%{theme} Thema"
       background: Hintergrund
       motorway_roads: Autobahnstraßen

@@ -2251,6 +2251,7 @@ fr:
       buildings: Bâtiments
       railways: Chemins de fer
       boundaries: Limites
+      detail_layers_zoom_hint: "Les bâtiments et les voies ferrées n’apparaissent qu’en zoomant au niveau de la ville."
       theme_aria_label: "Thème %{theme}"
       background: Arrière-plan
       motorway_roads: Autoroutes

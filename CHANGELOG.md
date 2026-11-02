@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Poster Studio explains that buildings and railways only appear once the map is zoomed in to city level, instead of silently showing nothing for them on wider posters (#3974).
+
 ## [1.20.1] - 2026-11-01, Berlin
 
 ### Fixed

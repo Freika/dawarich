@@ -1548,6 +1548,7 @@ es:
       buildings: Edificios
       railways: Vías férreas
       boundaries: Límites
+      detail_layers_zoom_hint: "Los edificios y las vías de tren solo aparecen al acercar el mapa a nivel de ciudad."
       theme_aria_label: Tema %{theme}
       background: Fondo
       motorway_roads: Autopistas y carreteras principales

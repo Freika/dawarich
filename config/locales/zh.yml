@@ -1513,6 +1513,7 @@ zh:
       buildings: 建筑物
       railways: 铁路
       boundaries: 边界
+      detail_layers_zoom_hint: "建筑和铁路只有在地图放大到城市级别时才会显示。"
       theme_aria_label: "%{theme} 主题"
       background: 背景
       motorway_roads: 高速公路
