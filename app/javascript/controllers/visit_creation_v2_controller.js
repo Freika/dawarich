@@ -48,6 +48,7 @@ export default class extends Controller {
     lat = draft?.lat ?? lat
     lng = draft?.lng ?? lng
     this.nameInputTarget.value = draft?.name || ""
+    this.nameInputTarget.required = true
     this.editingVisitId = null
     this.mapController = mapController
     this.latitudeInputTarget.value = lat
@@ -98,7 +99,9 @@ export default class extends Controller {
       (candidate) =>
         candidate?.latitude != null && candidate?.longitude != null,
     )
-    this.nameInputTarget.value = visit.name || ""
+    // `name` is the display name; only a custom name belongs in the field.
+    this.nameInputTarget.value = visit.custom_name || ""
+    this.nameInputTarget.required = false
     this.latitudeInputTarget.value = location?.latitude ?? ""
     this.longitudeInputTarget.value = location?.longitude ?? ""
     // Convert timestamps to datetime-local format

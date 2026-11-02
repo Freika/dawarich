@@ -37,4 +37,16 @@ RSpec.describe Places::UserSearch do
 
     expect(matches.map { |result| result[:id] }).not_to include(place.id)
   end
+  it 'ignores declined and deleted visits for visit preselection', :aggregate_failures do
+    place.update!(source: :photon)
+    create(:visit, user: user, place: place, status: :declined)
+    create(:visit, user: user, place: place, status: :confirmed, deleted_at: Time.current)
+
+    expect(results.map { |result| result[:id] }).not_to include(place.id)
+
+    place.update!(source: :manual)
+    manual = described_class.new(user: user, latitude: 52, longitude: 13, radius: 0.1, limit: 50).call
+
+    expect(manual.find { |result| result[:id] == place.id }[:has_visits]).to be(false)
+  end
 end

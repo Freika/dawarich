@@ -18,7 +18,7 @@ module Places
                .with_distance([@latitude, @longitude], :km)
                .order(:distance_in_km)
                .limit(@limit)
-      visited_ids = @user.visits.where(place_id: places.map(&:id)).distinct.pluck(:place_id)
+      visited_ids = @user.visits.active.where(place_id: places.map(&:id)).distinct.pluck(:place_id)
       places.map { |place| format(place).merge(has_visits: visited_ids.include?(place.id)) }
     end
 
@@ -32,7 +32,7 @@ module Places
 
     def base_scope
       @base_scope ||= @user.places.not_archived.where.not(lonlat: nil)
-                           .merge(Place.map_visible(@user).or(Place.where(id: @user.visits.select(:place_id))))
+                           .merge(Place.map_visible(@user).or(Place.where(id: @user.visits.active.select(:place_id))))
     end
 
     def format(place)
