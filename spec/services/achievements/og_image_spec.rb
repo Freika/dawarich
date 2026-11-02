@@ -31,6 +31,37 @@ RSpec.describe Achievements::OgImage do
     expect(Nokogiri::XML(svg).errors).to be_empty
   end
 
+  it 'preserves unvisited country outlines in a thematic social preview' do
+    allow(set).to receive(:card_attributes).and_return(
+      metric_label: '2/3 countries', earned_label: '2/3 countries',
+      silhouette: { viewbox: '0 0 100 100', path: 'M10 10 L90 10 L90 90 Z',
+                    unvisited_path: 'M50 10 L90 10 L90 90 Z' }
+    )
+
+    document = Nokogiri::XML(described_class.new(set).svg)
+    overlay = document.at_xpath('//*[local-name()="path" and @fill="#141d26"]')
+    expect(overlay['d']).to eq('M50 10 L90 10 L90 90 Z')
+    expect(document.errors).to be_empty
+  end
+
+  it 'preserves globe continents, graticules and region masks in every milestone preview' do
+    Achievements::GeographicRegions::GROUPS.each do |key, regions|
+      card = Achievements::Collectible.new(series: 'milestone', subject_key: key, level: 1,
+                                           earned_at: Time.utc(2025, 1, 1),
+                                           data: { 'timezone' => 'UTC', 'progress' => regions.size,
+                                                   'target' => regions.size,
+                                                   'evidence' => regions.map { |region| { 'region' => region } } })
+      presenter = Achievements::CollectiblePresenter.new(card)
+      document = Nokogiri::XML(described_class.new(presenter).svg)
+      expect(document.errors).to be_empty
+      expect(document.xpath('//*[local-name()="path" and @fill="#0d1d28"]').size).to eq(1)
+      expect(document.xpath('//*[local-name()="path" and @stroke="#c3d9e2"]').size).to eq(1)
+      expect(document.xpath('//*[local-name()="path" and @stroke="#fff3d5"]').size).to eq(1)
+      png = described_class.new(presenter).call
+      expect(png.byteslice(16, 8).unpack('NN')).to eq([1200, 630])
+    end
+  end
+
   it 'terminates a renderer that exceeds its timeout' do
     Dir.mktmpdir do |dir|
       pid_file = File.join(dir, 'renderer.pid')

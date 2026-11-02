@@ -490,38 +490,18 @@ RSpec.describe 'Api::V1::Maps::Hexagons', type: :request do
     let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
     let(:params) { { start_date: '2024-06-01T00:00:00Z', end_date: '2024-06-30T23:59:59Z' } }
 
-    context 'with precalculated stats' do
-      before do
-        create(:stat, user:, year: 2024, month: 6, h3_hex_ids: [
-                 ['8828308281fffff', 3, Time.zone.parse('2024-06-10T10:00:00Z').to_i,
-                  Time.zone.parse('2024-06-10T12:00:00Z').to_i]
-               ])
-      end
-
-      it 'returns the cell ids' do
+    context 'with a published all-history ledger' do
+      it 'reads the shared snapshot independently of monthly statistics and plan scope' do
+        dataset = Exploration::Dataset.create!(version: 'fog-api-test', completed_at: Time.current)
+        allow(Exploration::Geography).to receive_messages(current: dataset, install!: dataset)
+        Point.insert_all!([{ user_id: user.id, timestamp: Time.utc(2023, 1, 1).to_i,
+                            lonlat: 'POINT(13.35 52.51)', created_at: Time.current, updated_at: Time.current }])
+        Exploration::Rebuild.new(user).call
         get '/api/v1/maps/hexagons/fog', params: params, headers: headers
-
-        expect(response).to have_http_status(:success)
-        json = JSON.parse(response.body)
-        expect(json['h3_indexes']).to eq(['8828308281fffff'])
-        expect(json['metadata']['count']).to eq(1)
-      end
-    end
-
-    context 'with a privacy zone over a visited cell' do
-      it 'keeps that cell fogged' do
-        lat, lon = H3.to_geo_coordinates(H3.from_string('8828308281fffff'))
-        tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 100)
-        create(:tagging, tag:, taggable: create(:place, user:, latitude: lat, longitude: lon,
-                                                         lonlat: "POINT(#{lon} #{lat})"))
-        create(:stat, user:, year: 2024, month: 6, h3_hex_ids: [
-                 ['8828308281fffff', 3, Time.zone.parse('2024-06-10T10:00:00Z').to_i,
-                  Time.zone.parse('2024-06-10T12:00:00Z').to_i]
-               ])
-
-        get '/api/v1/maps/hexagons/fog', params: params, headers: headers
-
-        expect(JSON.parse(response.body)['h3_indexes']).to be_empty
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body['h3_indexes']).to eq([Exploration::CellGeometry.id(52.51, 13.35)])
+        expect(response.parsed_body['new_h3_indexes']).to be_empty
+        expect(response.parsed_body['metadata']).to include('resolution' => 9, 'status' => 'ready')
       end
     end
 

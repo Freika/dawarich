@@ -10,11 +10,69 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_28_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
   enable_extension "postgis"
+
+  create_table "achievement_city_selections", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "share_mosaic", default: false, null: false
+    t.string "territory_code", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "territory_code"], name: "idx_on_user_id_territory_code_46cc3a7670", unique: true
+    t.index ["user_id"], name: "index_achievement_city_selections_on_user_id"
+  end
+
+  create_table "achievement_collectible_events", force: :cascade do |t|
+    t.bigint "collectible_id", null: false
+    t.datetime "created_at", null: false
+    t.string "kind", null: false
+    t.integer "level", null: false
+    t.datetime "occurred_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["collectible_id", "level"], name: "index_achievement_collectible_first_earn", unique: true, where: "((kind)::text = 'earned'::text)"
+    t.index ["collectible_id"], name: "index_achievement_collectible_events_on_collectible_id"
+  end
+
+  create_table "achievement_collectibles", force: :cascade do |t|
+    t.bigint "city_selection_id"
+    t.datetime "created_at", null: false
+    t.jsonb "data", default: {}, null: false
+    t.datetime "earned_at"
+    t.integer "level", default: 0, null: false
+    t.datetime "revoked_at"
+    t.integer "rule_version", default: 1, null: false
+    t.bigint "selection_id"
+    t.string "series", null: false
+    t.boolean "sharing_enabled", default: false, null: false
+    t.uuid "sharing_uuid"
+    t.string "subject_key", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["city_selection_id"], name: "index_achievement_collectibles_on_city_selection_id"
+    t.index ["selection_id"], name: "index_achievement_collectibles_on_selection_id"
+    t.index ["sharing_uuid"], name: "index_achievement_collectibles_on_sharing_uuid", unique: true
+    t.index ["user_id", "series", "subject_key"], name: "index_achievement_collectibles_on_owner_series_subject", unique: true
+    t.index ["user_id"], name: "index_achievement_collectibles_on_user_id"
+  end
+
+  create_table "achievement_collection_states", force: :cascade do |t|
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "failed_at"
+    t.string "privacy_fingerprint"
+    t.bigint "published_dataset_id"
+    t.bigint "published_revision", default: 0, null: false
+    t.datetime "requested_at"
+    t.bigint "revision", default: 1, null: false
+    t.string "timezone_version"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id"], name: "index_achievement_collection_states_on_user_id", unique: true
+  end
 
   create_table "achievement_progresses", force: :cascade do |t|
     t.string "achievement_key", null: false
@@ -26,6 +84,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_130000) do
     t.bigint "user_id", null: false
     t.index ["sharing_uuid"], name: "index_achievement_progresses_on_sharing_uuid", unique: true
     t.index ["user_id", "achievement_key"], name: "index_achievement_progresses_on_user_id_and_achievement_key", unique: true
+  end
+
+  create_table "achievement_selections", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "place_id", null: false
+    t.string "timezone"
+    t.decimal "timezone_latitude", precision: 10, scale: 7
+    t.decimal "timezone_longitude", precision: 10, scale: 7
+    t.string "timezone_source"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["place_id"], name: "index_achievement_selections_on_place_id"
+    t.index ["user_id", "place_id"], name: "index_achievement_selections_on_user_id_and_place_id", unique: true
+    t.index ["user_id"], name: "index_achievement_selections_on_user_id"
   end
 
   create_table "achievement_unlock_events", force: :cascade do |t|
@@ -140,6 +212,91 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_130000) do
     t.string "name", null: false
     t.datetime "updated_at", null: false
     t.index ["geom"], name: "index_disputed_areas_on_geom", using: :gist
+  end
+
+  create_table "exploration_cell_coverages", force: :cascade do |t|
+    t.jsonb "areas", default: {}, null: false
+    t.string "cell_id", null: false
+    t.bigint "dataset_id", null: false
+    t.index ["dataset_id", "cell_id"], name: "index_exploration_cell_coverages_on_dataset_id_and_cell_id", unique: true
+    t.index ["dataset_id"], name: "index_exploration_cell_coverages_on_dataset_id"
+  end
+
+  create_table "exploration_cells", id: :string, force: :cascade do |t|
+    t.geometry "geom", limit: {srid: 4326, type: "multi_polygon"}, null: false
+  end
+
+  create_table "exploration_country_totals", force: :cascade do |t|
+    t.float "opened_area", default: 0.0, null: false
+    t.bigint "snapshot_id", null: false
+    t.bigint "territory_id", null: false
+    t.boolean "visited", default: false, null: false
+    t.index ["snapshot_id", "territory_id"], name: "idx_on_snapshot_id_territory_id_2f200e71d8", unique: true
+    t.index ["snapshot_id"], name: "index_exploration_country_totals_on_snapshot_id"
+    t.index ["territory_id"], name: "index_exploration_country_totals_on_territory_id"
+  end
+
+  create_table "exploration_datasets", force: :cascade do |t|
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.string "version", null: false
+    t.float "world_land_area"
+    t.index ["version"], name: "index_exploration_datasets_on_version", unique: true
+  end
+
+  create_table "exploration_openings", force: :cascade do |t|
+    t.string "cell_id", null: false
+    t.bigint "first_timestamp", null: false
+    t.bigint "point_id", null: false
+    t.bigint "snapshot_id", null: false
+    t.index ["snapshot_id", "cell_id"], name: "index_exploration_openings_on_snapshot_id_and_cell_id", unique: true
+    t.index ["snapshot_id", "first_timestamp"], name: "index_exploration_openings_on_snapshot_id_and_first_timestamp"
+    t.index ["snapshot_id"], name: "index_exploration_openings_on_snapshot_id"
+  end
+
+  create_table "exploration_snapshots", force: :cascade do |t|
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.bigint "dataset_id", null: false
+    t.bigint "revision", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.float "world_opened_area"
+    t.index ["dataset_id"], name: "index_exploration_snapshots_on_dataset_id"
+    t.index ["user_id"], name: "index_exploration_snapshots_on_user_id"
+  end
+
+  create_table "exploration_states", force: :cascade do |t|
+    t.datetime "activated_at"
+    t.datetime "created_at", null: false
+    t.datetime "failed_at"
+    t.bigint "published_revision", default: 0, null: false
+    t.datetime "requested_at"
+    t.bigint "revision", default: 1, null: false
+    t.bigint "snapshot_id"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["snapshot_id"], name: "index_exploration_states_on_snapshot_id"
+    t.index ["user_id"], name: "index_exploration_states_on_user_id", unique: true
+  end
+
+  create_table "exploration_territories", force: :cascade do |t|
+    t.geometry "boundary", limit: {srid: 4326, type: "multi_polygon"}, null: false
+    t.string "code", null: false
+    t.bigint "dataset_id", null: false
+    t.string "kind", default: "country", null: false
+    t.geometry "land", limit: {srid: 4326, type: "multi_polygon"}, null: false
+    t.float "land_area", null: false
+    t.string "name", null: false
+    t.jsonb "source_metadata", default: {}, null: false
+    t.string "timezone"
+    t.index ["boundary"], name: "index_exploration_territories_on_boundary", using: :gist
+    t.index ["dataset_id", "code"], name: "index_exploration_territories_on_dataset_id_and_code", unique: true
+    t.index ["dataset_id", "kind"], name: "index_exploration_territories_on_dataset_id_and_kind"
+    t.index ["dataset_id"], name: "index_exploration_territories_on_dataset_id"
+    t.index ["land"], name: "index_exploration_territories_on_land", using: :gist
   end
 
   create_table "exports", force: :cascade do |t|
@@ -946,12 +1103,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_130000) do
     t.index ["user_id"], name: "index_webhooks_on_user_id"
   end
 
+  add_foreign_key "achievement_city_selections", "users", on_delete: :cascade
+  add_foreign_key "achievement_collectible_events", "achievement_collectibles", column: "collectible_id", on_delete: :cascade
+  add_foreign_key "achievement_collectibles", "achievement_city_selections", column: "city_selection_id", on_delete: :nullify
+  add_foreign_key "achievement_collectibles", "achievement_selections", column: "selection_id", on_delete: :nullify
+  add_foreign_key "achievement_collectibles", "users", on_delete: :cascade
+  add_foreign_key "achievement_collection_states", "users", on_delete: :cascade
   add_foreign_key "achievement_progresses", "users"
+  add_foreign_key "achievement_selections", "places", on_delete: :cascade
+  add_foreign_key "achievement_selections", "users", on_delete: :cascade
   add_foreign_key "achievement_unlock_events", "users", on_delete: :cascade
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
   add_foreign_key "digests", "users"
+  add_foreign_key "exploration_cell_coverages", "exploration_cells", column: "cell_id"
+  add_foreign_key "exploration_cell_coverages", "exploration_datasets", column: "dataset_id", on_delete: :cascade
+  add_foreign_key "exploration_country_totals", "exploration_snapshots", column: "snapshot_id", on_delete: :cascade
+  add_foreign_key "exploration_country_totals", "exploration_territories", column: "territory_id"
+  add_foreign_key "exploration_openings", "exploration_snapshots", column: "snapshot_id", on_delete: :cascade
+  add_foreign_key "exploration_snapshots", "exploration_datasets", column: "dataset_id"
+  add_foreign_key "exploration_snapshots", "users", on_delete: :cascade
+  add_foreign_key "exploration_states", "exploration_snapshots", column: "snapshot_id", on_delete: :nullify
+  add_foreign_key "exploration_states", "users", on_delete: :cascade
+  add_foreign_key "exploration_territories", "exploration_datasets", column: "dataset_id", on_delete: :cascade
   add_foreign_key "families", "users", column: "creator_id"
   add_foreign_key "family_invitations", "families"
   add_foreign_key "family_invitations", "users", column: "invited_by_id"
@@ -1002,6 +1177,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_130000) do
   add_foreign_key "webhook_deliveries", "geofence_events", on_delete: :cascade
   add_foreign_key "webhook_deliveries", "webhooks", on_delete: :cascade
   add_foreign_key "webhooks", "users", on_delete: :cascade
+  execute File.read(Rails.root.join("db/achievement_collections_invalidation.sql"))
+  execute File.read(Rails.root.join("db/exploration_invalidation.sql"))
   execute <<~SQL
     CREATE OR REPLACE FUNCTION public.points_revision_delete()
      RETURNS trigger

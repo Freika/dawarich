@@ -48,6 +48,7 @@ test("every map read asks the server to mask privacy zones", async () => {
     (c) => c.fetchPoints(range),
     (c) => c.fetchFogHexagons(range),
     (c) => c.fetchHistoryBounds(range),
+    (c) => c.fetchRangeStatistics(range),
     (c) => c.fetchVisitsPage(range),
     (c) => c.fetchPlacesPage(),
     (c) => c.fetchPhotos(range),
@@ -57,7 +58,7 @@ test("every map read asks the server to mask privacy zones", async () => {
     (c) => c.fetchTimeline(range),
   ])
 
-  assert.equal(requests.length, 10)
+  assert.equal(requests.length, 11)
   for (const url of requests) {
     assert.equal(
       url.searchParams.get("mask_privacy_zones"),

@@ -34,6 +34,8 @@ export class FogLayer {
     this._hexFetchKey = null
     this._hexFetchPromise = null
     this._zoomDebounceTimer = null
+    this._retryTimer = null
+    this.statusNode = null
     this._zoomEndHandler = () => {
       if (this._zoomDebounceTimer) clearTimeout(this._zoomDebounceTimer)
       this._zoomDebounceTimer = setTimeout(() => {
@@ -44,6 +46,7 @@ export class FogLayer {
   }
 
   add(data) {
+    this._removed = false
     this.data = data // Store for later updates
     this.points = data.features || []
     this.createCanvas()
@@ -200,6 +203,8 @@ export class FogLayer {
 
     // Clear canvas
     this.ctx.clearRect(0, 0, width, height)
+    if (this.mode === "hexagons" && !this.hexSource.metadata?.snapshot_id)
+      return
 
     // Draw fog overlay
     this.ctx.fillStyle = "rgba(0, 0, 0, 0.6)"
@@ -215,6 +220,7 @@ export class FogLayer {
     }
 
     this.ctx.globalCompositeOperation = "source-over"
+    if (this.mode === "hexagons") this.renderHexagonHoles(true)
   }
 
   renderPointHoles() {
@@ -240,20 +246,25 @@ export class FogLayer {
     })
   }
 
-  renderHexagonHoles() {
+  renderHexagonHoles(highlight = false) {
     const bounds = this.map.getBounds()
     const west = bounds.getWest()
     const east = bounds.getEast()
     const south = bounds.getSouth()
     const north = bounds.getNorth()
 
-    this.ctx.strokeStyle = "rgba(0, 0, 0, 1)"
-    this.ctx.lineWidth = 1.5
+    this.ctx.fillStyle = highlight
+      ? "rgba(64, 210, 170, 0.28)"
+      : "rgba(0, 0, 0, 1)"
 
     for (const hex of this.hexBoundaries) {
+      if (highlight && !hex.newlyOpened) continue
+      const center = (west + east) / 2
+      const cellCenter = (hex.minLng + hex.maxLng) / 2
+      const shift = Math.round((center - cellCenter) / 360) * 360
       if (
-        hex.maxLng < west ||
-        hex.minLng > east ||
+        hex.maxLng + shift < west ||
+        hex.minLng + shift > east ||
         hex.maxLat < south ||
         hex.minLat > north
       ) {
@@ -262,7 +273,7 @@ export class FogLayer {
 
       this.ctx.beginPath()
       hex.coords.forEach(([lng, lat], i) => {
-        const point = this.map.project([lng, lat])
+        const point = this.map.project([lng + shift, lat])
         if (i === 0) {
           this.ctx.moveTo(point.x, point.y)
         } else {
@@ -271,7 +282,6 @@ export class FogLayer {
       })
       this.ctx.closePath()
       this.ctx.fill()
-      this.ctx.stroke()
     }
   }
 
@@ -294,7 +304,7 @@ export class FogLayer {
   }
 
   async _ensureHexagons() {
-    if (!this.api || !this.controller) return
+    if (!this.api || !this.controller || this._removed) return
 
     const start = this.controller.startDateValue
     const end = this.controller.endDateValue
@@ -315,14 +325,52 @@ export class FogLayer {
 
   async _fetchHexagons(start, end, key) {
     try {
-      await this.hexSource.load(this.api, { start_at: start, end_at: end })
+      this._showStatus(this.hexSource.metadata?.status || "calculating")
+      const loaded = await this.hexSource.load(this.api, {
+        start_at: start,
+        end_at: end,
+        snapshot_id: this.controller.explorationSnapshotValue,
+      })
+      if (loaded === false || this._removed) return
       if (this._hexFetchKey !== key) return
       this.hexBoundaries = this.hexSource.boundariesFor(this.map.getZoom())
+      const status = this.hexSource.metadata?.status || "ready"
+      this._showStatus(status)
+      if (status !== "ready") this._scheduleRetry()
       this.render()
     } catch (error) {
+      if (this._removed) return
       console.error("[FogLayer] Failed to load fog hexagons:", error)
       if (this._hexFetchKey === key) this._hexFetchKey = null
+      this._showStatus("error")
+      this._scheduleRetry()
     }
+  }
+
+  _showStatus(status) {
+    if (this._removed) return
+    if (!this.statusNode && typeof document !== "undefined") {
+      this.statusNode = document.createElement("div")
+      this.statusNode.className =
+        "absolute bottom-20 left-4 right-4 z-20 rounded-lg bg-base-100 p-3 text-sm shadow-lg pointer-events-none"
+      this.statusNode.setAttribute("role", "status")
+      this.map.getContainer().appendChild(this.statusNode)
+    }
+    if (!this.statusNode) return
+    this.statusNode.textContent =
+      this.controller?.explorationMessagesValue?.[status] || ""
+    this.statusNode.style.display =
+      status === "ready" || !this.visible ? "none" : "block"
+  }
+
+  _scheduleRetry() {
+    if (this._retryTimer) clearTimeout(this._retryTimer)
+    if (!this.visible) return
+    this._retryTimer = setTimeout(() => {
+      this._retryTimer = null
+      this._hexFetchKey = null
+      if (this.visible) this._ensureHexagons()
+    }, 30000)
   }
 
   _handleZoomEnd() {
@@ -355,12 +403,15 @@ export class FogLayer {
       this._refreshTiledPositions()
     }
     if (this.mode === "hexagons") {
+      this._hexFetchKey = null
       this._ensureHexagons()
     }
   }
 
   hide() {
     this.visible = false
+    if (this.statusNode) this.statusNode.style.display = "none"
+    if (this._retryTimer) clearTimeout(this._retryTimer)
     if (this.canvas) {
       this.canvas.style.display = "none"
     }
@@ -376,6 +427,12 @@ export class FogLayer {
   }
 
   remove() {
+    this._removed = true
+    this.visible = false
+    this._hexFetchKey = null
+    if (this._retryTimer) clearTimeout(this._retryTimer)
+    this.statusNode?.remove()
+    this.statusNode = null
     if (this.canvas) {
       this.canvas.remove()
       this.canvas = null

@@ -229,6 +229,7 @@ export class MapDataManager {
   }
 
   invalidatePoints({ appendOnly = false } = {}) {
+    this.controller.rangeStatistics?.refresh()
     this._pointsStale = true
     if (appendOnly) {
       this._pointsArrivalGeneration += 1

@@ -3,9 +3,9 @@
   <div class="card bg-base-100 border border-error/30">
     <div class="card-body p-4 sm:p-8 min-w-0" data-testid="privacy-tag-warning">
       <p class="font-semibold [overflow-wrap:anywhere]"><%= @tag.icon %> #<%= @tag.name %></p>
-      <p><%= t('.covered_places', count: @place_count) %></p>
+      <p class="tabular-nums"><%= t('.covered_places', count: @place_count) %></p>
       <p><%= t('.visibility') %></p>
-      <p><%= t('.shared_links', count: @shared_link_count) %></p>
+      <p class="tabular-nums"><%= t('.shared_links', count: @shared_link_count) %></p>
       <div class="flex flex-wrap gap-3 mt-4">
         <%= button_to t('tags.index.delete_tag'), tag_path(@tag), method: :delete, class: "btn btn-error" %>
         <%= link_to t('tags.form.cancel'), tags_path, class: "btn btn-ghost" %>

@@ -67,15 +67,16 @@ export class ApiClient {
   }
 
   /**
-   * Fetch precalculated fog-of-war H3 cell ids for date range
+   * Fetch all-history H3 openings; the date range only highlights first discoveries
    * @param {Object} options - { start_at, end_at }
    * @returns {Promise<Object>} { h3_indexes, metadata }
    */
-  async fetchFogHexagons({ start_at, end_at }) {
+  async fetchFogHexagons({ start_at, end_at, snapshot_id }) {
     const params = new URLSearchParams({
       start_date: start_at,
       end_date: end_at,
     })
+    if (snapshot_id) params.set("snapshot_id", snapshot_id)
     maskPrivacyZones(params)
 
     const response = await fetch(
@@ -89,6 +90,19 @@ export class ApiClient {
       throw new Error(`Failed to fetch fog hexagons: ${response.statusText}`)
     }
 
+    return response.json()
+  }
+
+  async fetchRangeStatistics({ start_at, end_at, signal }) {
+    const params = new URLSearchParams({ start_at, end_at })
+    maskPrivacyZones(params)
+    if (this.importId) params.set("import_id", this.importId)
+    const response = await fetch(`${this.baseURL}/maps/statistics?${params}`, {
+      headers: this.getHeaders(),
+      signal,
+    })
+    if (!response.ok)
+      throw new Error(`Failed to fetch statistics: ${response.status}`)
     return response.json()
   }
 

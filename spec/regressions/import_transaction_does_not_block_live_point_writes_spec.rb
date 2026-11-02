@@ -11,34 +11,55 @@ RSpec.describe 'Point writes during an atomic import', :non_transactional do
     Tracks::Revision.where(user_id: user.id).delete_all
   end
 
-  it 'do not wait for the import transaction to commit' do
-    inserted = Queue.new
-    release = Queue.new
+  shared_examples 'non-blocking live writes' do
+    it 'do not wait for the import transaction to commit' do
+      inserted = Queue.new
+      release = Queue.new
 
-    importer = Thread.new do
-      ActiveRecord::Base.connection_pool.with_connection do
-        Revisions::ImportTransaction.call(user.id) do
-          Point.upsert_all(
-            [{ user_id: user.id, timestamp: month_start + 3600, lonlat: 'POINT(13.4 52.5)' }],
-            unique_by: %i[user_id timestamp lonlat], on_duplicate: :skip
-          )
-          inserted << true
-          release.pop
+      importer = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          Revisions::ImportTransaction.call(user.id) do
+            Point.upsert_all(
+              [{ user_id: user.id, timestamp: month_start + 3600, lonlat: 'POINT(13.4 52.5)' }],
+              unique_by: %i[user_id timestamp lonlat], on_duplicate: :skip
+            )
+            inserted << true
+            release.pop
+          end
         end
       end
-    end
-    expect(inserted.pop(timeout: 10)).to be(true)
+      expect(inserted.pop(timeout: 10)).to be(true)
 
-    live_write = lambda do
-      ActiveRecord::Base.transaction do
-        ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '1s'")
-        create(:point, user:, timestamp: month_start + 7200)
+      live_write = lambda do
+        ActiveRecord::Base.transaction do
+          ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '1s'")
+          create(:point, user:, timestamp: month_start + 7200)
+        end
       end
+
+      expect(&live_write).not_to raise_error
+      collection_revision = Achievements::CollectionState.find_by!(user_id: user.id).revision
+      exploration_revision = Exploration::State.find_by!(user_id: user.id).revision
+
+      release << true
+      importer.join
+
+      expect(Achievements::CollectionState.find_by!(user_id: user.id).revision).to eq(collection_revision + 1)
+      expect(Exploration::State.find_by!(user_id: user.id).revision).to eq(exploration_revision + 1)
+    ensure
+      release << true
+      importer&.join
+    end
+  end
+
+  include_examples 'non-blocking live writes'
+
+  context 'when collection and exploration state already exist' do
+    before do
+      Achievements::CollectionState.create!(user:, revision: 7)
+      Exploration::State.create!(user_id: user.id, revision: 7)
     end
 
-    expect(&live_write).not_to raise_error
-  ensure
-    release << true
-    importer&.join
+    include_examples 'non-blocking live writes'
   end
 end

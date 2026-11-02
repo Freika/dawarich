@@ -1,0 +1,15 @@
+zh:
+  javascript:
+    photo_cluster:
+      title: "此群组中的照片"
+      close: "关闭"
+      previous: "上一页"
+      next: "下一页"
+      loading: "正在加载照片…"
+      range: "第 %{start}–%{end} 张，共 %{total} 张照片"
+      empty: "此群组中没有照片。"
+      error: "无法加载照片，请重试。"
+      retry: "重试"
+      back: "返回缩略图"
+      image_error: "缩略图不可用"
+      keyboard_hint: "按 Enter 键浏览最靠近地图中心的照片群组。"

@@ -159,6 +159,16 @@ RSpec.describe Achievements::RegionSilhouettes do
   end
 
   describe '.collection' do
+    it 'frames Benelux around Europe while preserving overseas membership and geometry' do
+      netherlands = create(:country, iso_a2: 'NL', geom: multipolygon([3.5, 51, 7, 53.5], [-69, 12, -68, 13]))
+      original = netherlands.geom.as_text
+      shape = described_class.collection(codes: %w[BE NL LU], key: 'thematic_benelux_v1')
+
+      expect(shape[:viewbox].split.map(&:to_f)).to eq([3.5, -53.5, 3.5, 2.5])
+      expect(netherlands.reload.geom.as_text).to eq(original)
+      expect(Achievements::Registry.find('thematic_benelux_v1').region_codes).to include('NL')
+    end
+
     it 'frames Europe without Russian Pacific territory or overseas possessions' do
       create(:country, iso_a2: 'FR', geom: multipolygon([-5, 43, 8, 51], [-54, 2, -51, 6]))
       create(:country, iso_a2: 'RU', geom: multipolygon([30, 50, 179, 70], [-180, 60, -170, 70]))

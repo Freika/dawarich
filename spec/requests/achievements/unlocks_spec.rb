@@ -9,6 +9,18 @@ RSpec.describe 'Achievement unlock reveals' do
     sign_in user
   end
 
+  it 'renders an earned thematic set in the collectible reveal deck' do
+    create(:achievement_progress, user: user, achievement_key: 'exploration',
+                                  state: { 'earned' => %w[EE LV LT].index_with { '2026-05-01' } })
+    Achievements::UnlockEvent.enqueue_set!(user_id: user.id,
+                                           definition: Achievements::Registry.find('thematic_baltics_v1'))
+
+    post next_achievement_unlock_path, as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body['html']).to include('Baltics', achievement_path('thematic_baltics_v1'))
+  end
+
   it 'renders a collectible deck, acknowledges each card once, and leaves no popup after the last card' do
     create(:country, name: 'France', iso_a2: 'FR', iso_a3: 'FRA',
                      geom: 'MULTIPOLYGON (((2 48, 2 49, 3 49, 3 48, 2 48)))')

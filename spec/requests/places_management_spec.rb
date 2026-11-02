@@ -122,6 +122,39 @@ RSpec.describe 'Places management', type: :request do
     expect(doc.at_css('form')['action']).to be_present
   end
 
+  it 'lets each place in a duplicate cluster be left out of the merge' do
+    first_pair = [create(:place, user:, name: 'Owned survivor'),
+                  create(:place, user:, name: 'Owned duplicate', source: :photon)]
+    second_pair = [create(:place, user:, name: 'Far survivor', latitude: 10, longitude: 10),
+                   create(:place, user:, name: 'Far duplicate', latitude: 10, longitude: 10, source: :photon)]
+
+    get places_url(view: 'duplicates')
+
+    doc = Nokogiri::HTML(response.body)
+    clusters = doc.css('section[data-testid="duplicate-cluster"]')
+    expect(clusters.size).to eq(2)
+    expect(doc.css('input[type="hidden"][name="place_ids[]"]')).to be_empty
+    bound = clusters.to_h do |cluster|
+      form_id = cluster.at_css('form')['id']
+      boxes = cluster.css('input[type="checkbox"][name="place_ids[]"]')
+      expect(boxes.map { |box| [box['form'], box['checked']] }.uniq).to eq([[form_id, 'checked']])
+      [form_id, boxes.map { |box| box['value'].to_i }.sort]
+    end
+    expect(bound.keys.uniq.size).to eq(2)
+    expect(bound.values).to contain_exactly(first_pair.map(&:id).sort, second_pair.map(&:id).sort)
+  end
+
+  it 'merges only the places left selected in a duplicate cluster' do
+    survivor = create(:place, user:, name: 'Kept survivor')
+    selected = create(:place, user:, name: 'Selected duplicate', source: :photon)
+    left_out = create(:place, user:, name: 'Left out neighbour', source: :photon)
+
+    post bulk_merge_places_url, params: { place_ids: [survivor.id, selected.id], survivor_id: survivor.id }
+
+    expect(Place.exists?(selected.id)).to be(false)
+    expect(Place.exists?(left_out.id)).to be(true)
+  end
+
   it 'requires authentication for every collection action' do
     sign_out user
     get places_url(view: 'duplicates')

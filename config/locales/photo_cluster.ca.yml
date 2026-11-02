@@ -1,0 +1,15 @@
+ca:
+  javascript:
+    photo_cluster:
+      title: "Fotos d’aquest grup"
+      close: "Tanca"
+      previous: "Anterior"
+      next: "Següent"
+      loading: "S’estan carregant les fotos…"
+      range: "%{start}–%{end} de %{total} fotos"
+      empty: "No hi ha fotos en aquest grup."
+      error: "No s’han pogut carregar les fotos. Torna-ho a provar."
+      retry: "Torna-ho a provar"
+      back: "Torna a les miniatures"
+      image_error: "Miniatura no disponible"
+      keyboard_hint: "Prem Retorn per obrir el grup de fotos més proper al centre del mapa."

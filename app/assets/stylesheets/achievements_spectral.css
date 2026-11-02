@@ -491,6 +491,12 @@
 .ach-spectral .spectral-fallback svg {
   fill: #788b99;
 }
+.ach-spectral .geo-unvisited {
+  fill: #141d26;
+  stroke: #788b99;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
 .ach-spectral .spectral-unavailable {
   flex: 1;
   display: grid;

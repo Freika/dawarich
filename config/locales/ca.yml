@@ -1509,6 +1509,7 @@ ca:
       subtitle: Subtítol
       germany: Alemanya
       coordinates_line: Línia de coordenades
+      trip_stats: Estadístiques del viatge
       font: Tipus de lletra
       layers: Capes
       track_opacity: Opacitat del trajecte

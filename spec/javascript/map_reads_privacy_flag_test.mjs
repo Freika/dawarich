@@ -6,7 +6,7 @@ import test from "node:test"
 const root = new URL("../../", import.meta.url).pathname
 const dirs = ["app/javascript/maps_maplibre", "app/javascript/controllers"]
 const MAP_READ =
-  /\/(points|tracks|visits|places|photos|timeline|locations|maps\/hexagons)(\/[^/?`"']*)*\?/
+  /\/(points|tracks|visits|places|photos|timeline|locations|maps\/(hexagons|statistics))(\/[^/?`"']*)*\?/
 const FLAG = /mask_privacy_zones|maskPrivacyZones/
 const UNMASKED = new Set([
   "app/javascript/maps_maplibre/services/api_client.js#fetchPointsInArea",

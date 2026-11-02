@@ -1,4 +1,11 @@
-<div class="fixed top-5 right-5 flex flex-col gap-2 z-50" id="flash-messages">
+<div class="flash-stack"
+     id="flash-messages"
+     data-controller="flash">
+  <div data-flash-target="dismissAll" class="flash-toolbar" hidden>
+    <button type="button" data-action="flash#dismissAll" class="btn btn-sm btn-ghost flash-dismiss-all">
+      <%= t('.dismiss_all') %>
+    </button>
+  </div>
   <% flash.each do |type, message| %>
     <%= render 'shared/flash_message', type: type, message: message %>
   <% end %>

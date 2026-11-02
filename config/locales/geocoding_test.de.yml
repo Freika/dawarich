@@ -1,0 +1,10 @@
+de:
+  admin:
+    settings:
+      show:
+        geocoding:
+          test_latitude: "Breitengrad"
+          test_longitude: "Längengrad"
+          test_coordinates_hint: "Eine Abfrage mit den gespeicherten Einstellungen. Beide Koordinaten eingeben oder beide Felder leer lassen, um 51.3402, 12.3712 zu verwenden. Koordinaten werden nicht gespeichert."
+      test_geocoding:
+        invalid_coordinates: "Gib Breitengrad (−90 bis 90) und Längengrad (−180 bis 180) als gültige Zahlen ein oder lasse beide Felder für die Standardkoordinaten leer."

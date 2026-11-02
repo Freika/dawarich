@@ -1,0 +1,10 @@
+en:
+  admin:
+    settings:
+      show:
+        geocoding:
+          test_latitude: "Latitude"
+          test_longitude: "Longitude"
+          test_coordinates_hint: "One lookup with the saved settings. Enter both coordinates, or leave both blank to use 51.3402, 12.3712. Coordinates are not saved."
+      test_geocoding:
+        invalid_coordinates: "Enter both latitude (−90 to 90) and longitude (−180 to 180) as valid numbers, or leave both blank to use the default coordinates."

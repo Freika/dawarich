@@ -1,5 +1,6 @@
 <% active_key = local_assigns.fetch(:active_key, nil) %>
-<% active_name = continents.find { |set| set.definition.key == active_key }&.definition&.continent || t('achievements.ui.summary') %>
+<% active_theme = @themes.find { |set| set.definition.key == active_key } %>
+<% active_name = active_theme&.name || continents.find { |set| set.definition.key == active_key }&.definition&.continent || t('achievements.ui.summary') %>
 
 <aside class="ach-navigation">
   <nav class="ach-side ach-side--desktop" aria-label="<%= t('achievements.ui.collection_navigation') %>">

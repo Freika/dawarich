@@ -170,7 +170,7 @@ module Visits
           centers[visit.id] = visit.center if visit.area || visit.place
         end
         point_visits.each_slice(100) do |batch|
-          rows = Point.where(user_id: user.id, visit_id: batch.map(&:id))
+          rows = Point.where(user_id: user.id, visit_id: batch.map(&:id)).where.not(lonlat: nil)
                       .pluck(:visit_id, Arel.sql('ST_Y(lonlat::geometry)'), Arel.sql('ST_X(lonlat::geometry)'))
                       .group_by(&:first)
           batch.each do |visit|

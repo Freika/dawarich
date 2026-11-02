@@ -1,0 +1,5 @@
+[out:json][timeout:90];
+// Curated identities; no bounding-box or name-based substitutions.
+(relation(62422);relation(62782);relation(191645);
+ relation(90584);relation(1595534);relation(2345991););
+out meta geom;

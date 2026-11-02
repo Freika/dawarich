@@ -42,6 +42,57 @@ _continents:
       lon: -60.0
       zoom: 1.7
 
+thematic_benelux_v1:
+  kind: thematic_set
+  name: Benelux
+  continent: Europe
+  regions:
+    BE: Belgium
+    NL: Netherlands
+    LU: Luxembourg
+  card:
+    rarity: Rare
+    description: Spend time in Belgium, the Netherlands and Luxembourg.
+    place: Benelux
+    art:
+      lat: 51.0
+      lon: 5.5
+      zoom: 5.0
+
+thematic_baltics_v1:
+  kind: thematic_set
+  name: Baltics
+  continent: Europe
+  regions:
+    EE: Estonia
+    LV: Latvia
+    LT: Lithuania
+  card:
+    rarity: Rare
+    description: Spend time in Estonia, Latvia and Lithuania.
+    place: Baltics
+    art:
+      lat: 56.9
+      lon: 25.0
+      zoom: 4.0
+
+thematic_scandinavia_v1:
+  kind: thematic_set
+  name: Scandinavia
+  continent: Europe
+  regions:
+    DK: Denmark
+    'NO': Norway
+    SE: Sweden
+  card:
+    rarity: Rare
+    description: Spend time in Denmark, Norway and Sweden.
+    place: Scandinavia
+    art:
+      lat: 63.0
+      lon: 16.0
+      zoom: 3.0
+
 border_hopper:
   kind: region_set
   name: Border Hopper

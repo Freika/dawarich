@@ -15,7 +15,59 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Creating a visit, including through `POST /api/v1/visits`, with the same name as the existing Place it is attached to no longer saves a separate visit name, so the visit shows the Place's current name and follows later renames.
 - The Place search API (`GET /api/v1/places/search`) also returns your Places that have visits but are hidden from the map, and marks each result with `has_visits`.
 
-## [1.18.2] - 2026-10-27, Berlin
+## [1.20.1] - 2026-11-01, Berlin
+
+### Fixed
+
+- Anomaly recalculation no longer fails for users who have a point without coordinates (#3936).
+- Transportation-mode detection and track recalculation work on instances without the `altitude_decimal` column (#3951).
+- Numbers in visit, place and family labels on the map render in the text font instead of as emoji (#3946).
+- FIT imports assign each file its own tracker, so points from different FIT files are no longer grouped into one track (#3950).
+- Polarsteps `locations.json` files larger than 8 KB are detected and imported (#3954).
+- Trip pages no longer return an error when the trip notes contain an image with a relative URL (#3939).
+- GeoJSON and GPX exports on the Points page use the dates currently set in the filter, even without pressing Search (#3952).
+- Future AirTrail flights no longer create statistics for months that have not happened yet, and flights are counted in the month of their local departure date (#3935).
+- Poster Studio no longer loads every point of the selected period, and Video Studio draws the route only from the selected time range (#3937, #3948).
+
+## [1.20.0] - 2026-10-30, Berlin
+
+### ⚠️ Upgrade notes
+
+- Migrations that install database triggers on points wait at most 5 seconds for a table lock. If one stops with a lock timeout, stop the workers or wait for running imports to finish, then restart the application; the migrations are safe to re-run.
+- The initial geographic calculation runs in the background and can take longer while local boundary data is installed. The initial city and national-park catalog covers Berlin, Hamburg, Dresden, Harz, Saxon Switzerland and Eifel; it is not a worldwide catalog.
+
+### Added
+
+- Add personal achievement cards for city exploration, returning to places, collecting all seasons, national parks and geographic milestones. Cards include evidence, level history and opt-in public sharing with privacy-aware HTML, embeds and images.
+- Shared achievement cards open on a dark page tinted by the card's rarity. Visitors see what the card is for, the City Explorer level ladder with the next level, a call to try Dawarich, and buttons to copy the link or download the share image. Level steps are announced to screen readers. Embedded badges are unchanged.
+- Share one all-history resolution-9 H3 ledger between city cards and map fog. Date ranges highlight first discoveries; pilot boundaries cover Berlin, Hamburg, Dresden and three German national parks. The first calculation starts when you open the fog or select a city, and future-dated points never open cells or count toward city levels. Cards and fog reflect new or deleted points and edited places or visits within an hour; selection, boundary and privacy-zone changes apply immediately.
+- Collect Benelux, Baltics and Scandinavia achievement sets by visiting their three member countries. Each set shows visited countries, dates and the countries still to explore, with public sharing available when enabled. Existing location history counts automatically.
+- Test a geocoding provider with your own coordinates in Instance settings, including providers with regional coverage. Leave both fields blank to use the existing default coordinates. (#3714)
+- Click a photo cluster on the map to browse its photos without zooming. The gallery shows 24 thumbnails per page, supports phones and keyboard navigation, and keeps photos with identical coordinates accessible at high zoom. (#3652)
+- The map keeps the point count and distance for the selected period visible, including custom times and empty ranges. Distance follows your km/mi setting. (#3257)
+- Dismiss a batch of flash messages with Close all notifications. Compact responsive messages keep individual dismissal, visible errors and keyboard controls. (#3765)
+- Add a trip stats line to posters made from a trip: switch on Trip stats in the poster studio's Text section to show the trip's total distance under the subtitle. It is off by default, follows your km/mi setting, and appears the same in the preview, PNG and PDF downloads, printed orders and posters saved to the gallery. (#3327)
+
+### Changed
+
+- Show geographic milestone cards as globes with continents, graticules and highlighted hemispheres, quarters or polar caps, including public previews.
+- Fog of War now follows the shared exploration cells. The per-point mode and the fog radius and threshold settings were removed.
+
+### Fixed
+
+- Full-history visit redetection now completes when legacy visits contain points without coordinates, preserving confirmed visits that have no usable observations (#3931).
+- Live visit detection keeps an ongoing visit and its points in place as new points arrive, instead of rewriting every point of the visit each time. Suggested visits keep their ID between detection runs. This greatly reduces database writes and index growth on busy instances.
+- Enrich photos places a video where its recording started. Video timestamps mark the end of the recording, so the scan now subtracts the video's duration before looking up your location history. (#3293)
+- Monthly and yearly digest emails no longer enter repeated delivery retries when SMTP is not configured (#3932).
+- Legacy areas with names longer than 255 characters now migrate to places without repeatedly failing, keeping their notes and visits (#3930).
+- Recalculating statistics no longer scans the whole cache to refresh the insights digest, which could exhaust cache connections on busy instances.
+- Tracks left with fewer than two points are now removed reliably when another job updated or deleted them at the same time.
+
+## [1.19.0] - 2026-10-27, Berlin
+
+### ⚠️ Upgrade notes
+
+- Back up your database before upgrading. The migration that keeps geofence events after their place is deleted cannot be rolled back. After the upgrade, background jobs recheck cell-tower points from the Android app and recount countries for past months.
 
 ### Added
 
@@ -23,7 +75,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Places can be archived and restored through the API. Archived places keep their visit history and privacy zones, stop receiving new suggested visits, and pause geofence notifications. They are hidden from the map by default and available with the archived places API filter.
 - Tag edit pages list the places with that tag, with links and visit counts.
 - Search and filter Places by name, tags and confirmation status, and sort them by name, last visit or active visit count. The list shows tags, visit history, sources, geofences and privacy zones, with a shortcut to create a place on the map.
-- Select places to add or remove tags, delete them with a summary of the consequences, or merge them into a chosen place. Possible duplicates groups places with overlapping visit radii for review and merging.
+- Select places to add or remove tags, delete them with a summary of the consequences, or merge them into a chosen place. Possible duplicates groups places with overlapping visit radii for review; untick any place you want to keep before merging the rest.
 - Create tags with a name and emoji directly in the place editor or creation modal. Place details explain which tags hide the place and their Privacy Radius.
 - Set geofencing while creating a place, see its last ten enter and leave events in the editor, and open its filtered event log. Geofence boundaries are highlighted on the map.
 - Move places and resize their Visit Radius on the map by dragging the pin and radius handle.
@@ -35,6 +87,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Geofence events stay in the log and API after their place is deleted, showing its last name.
 - Places now have one editor on the map and on their own page for names, tags, notes, and geofencing. Delete confirmation lists affected visits, privacy tags, webhooks, and geofence events.
 - Creating or joining a family turns on the Family Members layer on the map, so the family shows up without looking for the toggle. Leaving the family turns the layer off again.
+- Place editing, selection and tag controls have clearer sections, visit and event dates in your language with the year, tag chips that stay readable with long names, and quieter delete buttons in light and dark themes.
+- Place details and editing now use the left map panel, with Back returning to the previous tab. On phones, map editing keeps the pin and radius handle beside a compact left panel.
 
 ### Fixed
 
@@ -56,6 +110,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Visit suggestions now run on instances without a configured geocoder. Visits without location details or a matching place display as "Unknown Location". (#3637)
 - Visit suggestions now also cover points that a phone uploads hours or days after recording them, for example after being offline. Points recorded up to 30 days ago are checked shortly after they arrive. (#3637)
 - Visit suggestions are no longer switched off when the setting was saved as a JSON boolean through the API or a settings import. Settings > Background Jobs now shows whether visit suggestions are on, and explains that they run shortly after new points arrive and again every night. (#3637)
+- Repeated cell-tower positions from the Android app no longer draw spikes on the map or inflate daily and monthly distance. Data recorded earlier is rechecked in the background after the upgrade. (#3417)
+- Location history that keeps reporting while you stay in one place, such as a Google Timeline export, no longer joins several days into one route when the reported position drifts around that place. The drift also no longer turns a stay at home into dozens of short zigzag routes. A stay is recognized within your visit radius (Settings → Visits), but never less than 100 m, so raise the visit radius if your readings at home scatter further. Choose Recalculate tracks & stats in the map settings to apply this to history imported earlier. (#3117)
+- Place statistics now stay in one row on phones, total time at a place shows as hours and minutes, and bulk actions appear only after you select places.
+- The Place details panel now has a single close button, and Back is no longer selected when it opens. While you move a place or resize its Visit Radius, its old outline is hidden until you press Save or Cancel.
+- Opening a place from a link now centres the map on its Visit Radius. The selected place stays highlighted with its boundary even when the Places layer is off, without changing saved layer settings.
+- Opening a place on the map closes the point or track details shown before, and a place hidden by a privacy zone is neither highlighted nor centred, also after you add a privacy tag to it.
+
+### For developers
+
+- `GET /api/v1/places` leaves out archived places unless `filter` is `all` or `archived`, including the `manual`, `confirmed` and `tagged` filters. Places carry an `archived` flag, which `PATCH /api/v1/places/:id` accepts.
+- Geofence events of a deleted place keep their `place_name` and return `place_id: null`.
+- `GET /api/v1/visits` returns a `center` with the average position of the visit's points for visits without a place.
 
 ## [1.18.1] - 2026-10-26, Berlin
 
@@ -69,10 +135,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Repeated cell-tower positions from the Android app no longer draw spikes on the map or inflate daily and monthly distance. Data recorded earlier is rechecked in the background after the upgrade. (#3417)
 - Searching for a place in the visit edit panel finds nearby places again when you type the name, for example the Burger King next to the visit. Before, typing word by word with a geocoding provider limited to one request per second, such as the public Photon server, often skipped the final search, so only saved places with that name somewhere else in the world showed up. The search now tries once more a second later. (#3590)
 - Reverse geocoding through ChibiGeo uses HTTPS even when `PHOTON_API_USE_HTTPS` is not set. Before, a host written with a path, such as `app.chibigeo.com/v1/photon`, was not recognised as HTTPS-only, so Dawarich sent its requests over plain HTTP and they failed. (#3108)
-- Location history that keeps reporting while you stay in one place, such as a Google Timeline export, no longer joins several days into one route when the reported position drifts around that place. The drift also no longer turns a stay at home into dozens of short zigzag routes. A stay is recognized within your visit radius (Settings → Visits), but never less than 100 m, so raise the visit radius if your readings at home scatter further. Choose Recalculate tracks & stats in the map settings to apply this to history imported earlier. (#3117)
 - The country list next to the Activity Overview calendar on the Insights page is the same height as the calendar again and scrolls when it has more countries than fit. The calendar view switch moved to the card header, and the notes about counted days moved to the bottom of the card. (#3866)
 - Points that arrive late inside an existing route, for example through the API or an import, now join that route instead of staying a separate line, also when they come from a device without a name. A route that gains points keeps its shared links and corrected transport modes. (#3036)
 - Countries you only flew over no longer count when the flight comes from a KML file without speed data, such as a Flightradar24 export. Speed is now worked out from the time and distance between points. KML files imported earlier are updated in the background after the upgrade, and their monthly statistics, digests and trip countries are recalculated. (#3900)

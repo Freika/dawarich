@@ -14,6 +14,8 @@ module Map
       @end_at = parsed_end_at
       @import_id = import_record&.id
       @current_position = current_position
+      @exploration_bounds = exploration_bounds
+      @exploration_snapshot_id = exploration_snapshot_id if @exploration_bounds
 
       # Tag chips displayed in the rail; capped so the list doesn't explode.
       @timeline_tags = current_user.tags.order(:name).limit(8)
@@ -24,6 +26,29 @@ module Map
     end
 
     private
+
+    def exploration_snapshot_id
+      snapshot_id = Integer(params[:exploration_snapshot], exception: false)
+      return unless snapshot_id
+
+      cards = current_user.achievement_collectibles.where(series: 'city', subject_key: params[:exploration_city],
+                                                          revoked_at: nil)
+      snapshot_id if cards.where("data->>'snapshot_id' = ?", snapshot_id.to_s).exists?
+    end
+
+    def exploration_bounds
+      code = params[:exploration_city].to_s
+      return if code.blank? || !current_user.achievement_city_selections.exists?(territory_code: code)
+
+      city = Exploration::Territory.find_by(dataset_id: Exploration::Geography.current&.id, kind: 'city', code: code)
+      return unless city
+
+      west, south, east, north = Exploration::Territory.where(id: city.id).pick(
+        Arel.sql('ST_XMin(Box3D(boundary))'), Arel.sql('ST_YMin(Box3D(boundary))'),
+        Arel.sql('ST_XMax(Box3D(boundary))'), Arel.sql('ST_YMax(Box3D(boundary))')
+      )
+      [[west, south], [east, north]]
+    end
 
     def current_position
       point = current_user.scoped_points.without_raw_data.complete.not_anomaly.order(timestamp: :desc).first

@@ -39,7 +39,7 @@ const DEFAULT_SETTINGS = {
   placesTagFilters: null,
   fogOfWarRadius: 50,
   fogOfWarThreshold: 50,
-  fogOfWarMode: "points",
+  fogOfWarMode: "hexagons",
   globeProjection: false,
   speedColoredRoutes: false,
   speedColorScale: "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",

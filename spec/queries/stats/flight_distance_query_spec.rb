@@ -15,8 +15,8 @@ RSpec.describe Stats::FlightDistanceQuery do
 
   context 'with flights dated inside the month' do
     before do
-      create(:flight, user: user, flight_date: Date.new(2026, 4, 3), distance_km: 633.4)
-      create(:flight, user: user, flight_date: Date.new(2026, 4, 28), distance_km: 120.6)
+      create(:flight, user: user, flight_date: Date.new(2026, 4, 3), departure_time: nil, distance_km: 633.4)
+      create(:flight, user: user, flight_date: Date.new(2026, 4, 28), departure_time: nil, distance_km: 120.6)
     end
 
     it 'sums their distance in meters' do
@@ -28,10 +28,10 @@ RSpec.describe Stats::FlightDistanceQuery do
     subject(:by_day) { described_class.new(user, 2026, 4).by_day }
 
     before do
-      create(:flight, user: user, flight_date: Date.new(2026, 4, 3), distance_km: 633.4)
-      create(:flight, user: user, flight_date: Date.new(2026, 4, 3), distance_km: 100.0)
-      create(:flight, user: user, flight_date: Date.new(2026, 4, 28), distance_km: 120.6)
-      create(:flight, user: user, flight_date: Date.new(2026, 4, 10), distance_km: nil)
+      create(:flight, user: user, flight_date: Date.new(2026, 4, 3), departure_time: nil, distance_km: 633.4)
+      create(:flight, user: user, flight_date: Date.new(2026, 4, 3), departure_time: nil, distance_km: 100.0)
+      create(:flight, user: user, flight_date: Date.new(2026, 4, 28), departure_time: nil, distance_km: 120.6)
+      create(:flight, user: user, flight_date: Date.new(2026, 4, 10), departure_time: nil, distance_km: nil)
     end
 
     it 'groups the meters by day of the month' do
@@ -41,8 +41,8 @@ RSpec.describe Stats::FlightDistanceQuery do
 
   context 'with flights dated outside the month' do
     before do
-      create(:flight, user: user, flight_date: Date.new(2026, 3, 31), distance_km: 500.0)
-      create(:flight, user: user, flight_date: Date.new(2026, 5, 1), distance_km: 500.0)
+      create(:flight, user: user, flight_date: Date.new(2026, 3, 31), departure_time: nil, distance_km: 500.0)
+      create(:flight, user: user, flight_date: Date.new(2026, 5, 1), departure_time: nil, distance_km: 500.0)
     end
 
     it 'excludes them' do
@@ -52,7 +52,7 @@ RSpec.describe Stats::FlightDistanceQuery do
 
   context 'with a flight belonging to another user' do
     before do
-      create(:flight, user: create(:user), flight_date: Date.new(2026, 4, 10), distance_km: 900.0)
+      create(:flight, user: create(:user), flight_date: Date.new(2026, 4, 10), departure_time: nil, distance_km: 900.0)
     end
 
     it 'does not borrow it' do
@@ -61,7 +61,7 @@ RSpec.describe Stats::FlightDistanceQuery do
   end
 
   context 'with a flight whose distance is unknown' do
-    before { create(:flight, user: user, flight_date: Date.new(2026, 4, 10), distance_km: nil) }
+    before { create(:flight, user: user, flight_date: Date.new(2026, 4, 10), departure_time: nil, distance_km: nil) }
 
     it 'skips it instead of failing' do
       expect(flight_meters).to eq(0)

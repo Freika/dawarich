@@ -1,0 +1,15 @@
+en:
+  javascript:
+    photo_cluster:
+      title: "Photos in this cluster"
+      close: "Close"
+      previous: "Previous"
+      next: "Next"
+      loading: "Loading photos…"
+      range: "%{start}–%{end} of %{total} photos"
+      empty: "No photos in this cluster."
+      error: "Could not load photos. Please try again."
+      retry: "Retry"
+      back: "Back to thumbnails"
+      image_error: "Thumbnail unavailable"
+      keyboard_hint: "Press Enter to browse the photo cluster nearest the centre of the map."

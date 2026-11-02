@@ -82,6 +82,7 @@ module Achievements
     end
 
     def name
+      return translate("themes.#{definition.key}") if definition.thematic?
       return definition.name if definition.kind == 'region_set'
       return place if definition.flat?
 
@@ -89,7 +90,9 @@ module Achievements
     end
 
     def description
-      if definition.kind == 'continent'
+      if definition.thematic?
+        translate('description.thematic_set', count: total, place: place)
+      elsif definition.kind == 'continent'
         translate('description.continent', count: total, place: place)
       elsif definition.kind == 'country' && definition.level == :subdivision
         translate('description.regions', count: total, place: place)
@@ -105,6 +108,8 @@ module Achievements
     end
 
     def place
+      return name if definition.thematic?
+
       definition.card['place']
     end
 
@@ -148,6 +153,11 @@ module Achievements
     def silhouette
       @silhouette ||= if definition.kind == 'country'
                         RegionSilhouettes.new(level: :country, codes: [definition.country]).call[definition.country]
+                      elsif definition.thematic?
+                        shape = RegionSilhouettes.collection(codes: definition.region_codes, key: definition.key)
+                        missing = definition.region_codes - earned.keys
+                        unvisited = RegionSilhouettes.collection(codes: missing, key: definition.key)
+                        shape&.merge(unvisited_path: unvisited&.fetch(:path))
                       else
                         RegionSilhouettes.collection(codes: definition.region_codes, key: definition.key)
                       end
@@ -180,7 +190,7 @@ module Achievements
       progress = self.class.new(definition: child, state: state, timezone: timezone, awards: awards)
       link_key = child.level == :subdivision ? child.key : nil
 
-      {
+      card = {
         name: child.card['place'],
         code: child.country,
         key: link_key,
@@ -196,6 +206,16 @@ module Achievements
         locked: visited_at.blank? && progress.locked?,
         earned_label: country_label(progress, visited_at)
       }
+      return card unless definition.thematic?
+
+      card.merge(
+        geography_key: child.key,
+        percent: visited_at ? 100 : 0,
+        completed: visited_at.present?,
+        locked: visited_at.blank?,
+        metric_label: translate(visited_at ? 'status.visited' : 'metric.not_yet_explored'),
+        earned_label: visited_at ? translate('status.visited_on', date: localized_date(local_date(visited_at))) : nil
+      )
     end
 
     def country_label(progress, visited_at)

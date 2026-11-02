@@ -1,5 +1,18 @@
 en:
   places:
+    polish:
+      selected: "selected"
+      details: "Details"
+      location: "Location"
+      notifications: "Notifications"
+      visits: "Visits"
+      manage: "Manage"
+      total_time: "Total time"
+      avg_dwell: "Avg dwell"
+      statistics: "Statistics"
+      merge_duplicate: "Merge duplicate"
+      back_to_places: "Back to places"
+      clear: "Clear"
     inline_tags:
       new_tag: "New tag"
       name: "Tag name"

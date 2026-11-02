@@ -76,6 +76,7 @@ module TransportationModes
       {
         start_ts: start_ts, end_ts: end_ts,
         mean_dt: dts.empty? ? 0.0 : dts.sum.to_f / dts.size,
+        altitude_p50: altitude_median(valid),
         speed_p50: percentile(speeds_kmh, 0.50),
         speed_p85: percentile(speeds_kmh, 0.85),
         speed_p95: percentile(speeds_kmh, 0.95),
@@ -87,6 +88,13 @@ module TransportationModes
         sparse: dts.any? && (dts.sum.to_f / dts.size) > Emissions::TUNING[:sparse_dt_s],
         point_ids: window_rows.map { |r| r[:point_id] }
       }
+    end
+
+    def self.altitude_median(rows)
+      values = rows.filter_map { |r| r[:altitude_m] }.select { |v| v.finite? && v.between?(-500, 20_000) }.sort
+      return if values.size < 3 || values.size < rows.size / 2.0
+
+      percentile(values, 0.5)
     end
 
     def self.percentile(sorted_values, fraction)

@@ -1,5 +1,5 @@
 <label class="cursor-pointer min-w-0 max-w-full">
   <%= check_box_tag 'place[tag_ids][]', tag.id, checked, id: "#{surface}_place_tag_#{tag.id}", class: 'sr-only peer' %>
-  <span class="badge badge-lg badge-outline place-drawer__tag-chip peer-focus-visible:ring-2"
-        style="--tag-color: <%= tag.color.presence || '#6ab0a4' %>; border-color: <%= tag.color.presence || '#6ab0a4' %>"><%= tag.icon %> #<%= tag.name %></span>
+  <span class="badge badge-lg place-drawer__tag-chip"
+        style="--tag-color: <%= tag.color.presence || '#6ab0a4' %>; --tag-text: <%= place_tag_text_color(tag.color.presence || '#6ab0a4') %>"><%= tag.icon %> #<%= tag.name %></span>
 </label>

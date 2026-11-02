@@ -20,13 +20,15 @@ module PendingInvitationAcceptable
     return family_invitation_path(invitation.token) unless signing_in_now?
 
     service = Families::AcceptInvitation.new(invitation: invitation, user: user)
+    session.delete(:invitation_token)
     unless service.call
       Rails.logger.info("Family invitation #{invitation.id} not accepted on sign-in: #{service.error_message}")
+      return if mobile_client?
+
       flash[:alert] = service.error_message
       return family_invitation_path(invitation.token)
     end
 
-    session.delete(:invitation_token)
     # Joining can lift the user's own plan state (e.g. out of pending_payment),
     # which the rest of after_sign_in_path_for reads.
     user.reload

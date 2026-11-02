@@ -11,7 +11,7 @@ class Cache::Clean
         delete_years_tracked_cache(user)
         delete_points_geocoded_stats_cache(user)
         delete_countries_cities_cache(user)
-        delete_insights_digest_cache(user)
+        Cache::InvalidateUserCaches.new(user.id).invalidate_insights_digest
       end
 
       Rails.logger.info('Cache cleaned')
@@ -38,12 +38,6 @@ class Cache::Clean
     def delete_countries_cities_cache(user)
       Rails.cache.delete("dawarich/user_#{user.id}_countries_visited")
       Rails.cache.delete("dawarich/user_#{user.id}_cities_visited")
-    end
-
-    def delete_insights_digest_cache(user)
-      return unless Rails.cache.respond_to?(:delete_matched)
-
-      Rails.cache.delete_matched("insights/yearly_digest/#{user.id}/*")
     end
   end
 end

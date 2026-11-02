@@ -72,6 +72,7 @@ gem 'sprockets-rails'
 gem 'stimulus-rails'
 gem 'tailwindcss-rails', '= 3.3.2'
 gem 'turbo-rails', '>= 2.0.17'
+gem 'tzf2', '~> 0.0.1'
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
 gem 'webrick' # Required by Yabeda::Prometheus::Exporter.start_metrics_server! on Ruby 3.0+
 gem 'with_advisory_lock'

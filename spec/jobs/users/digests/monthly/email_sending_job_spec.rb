@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Users::Digests::Monthly::EmailSendingJob, type: :job do
+  before { allow(DawarichSettings).to receive(:email_configured?).and_return(true) }
+
   let(:user) { create(:user, settings: { 'monthly_digest_emails_enabled' => true }) }
   let!(:digest) do
     user.digests.create!(year: 2026, month: 3, period_type: :monthly, distance: 312)

@@ -11,6 +11,9 @@ de:
       dismiss: Diesen Stapel schließen
       view: "%{name} in der Sammlung ansehen"
     ui:
+      themes: "Thematische Sammlungen"
+      themes_hint: "Kleine Ländersammlungen mit einem gemeinsamen Thema."
+      theme_visit_note: "Ein besuchtes Land zählt für diese Sammlung, auch wenn noch Regionen fehlen."
       title: Erfolge
       summary: Übersicht
       continents: Kontinente
@@ -58,12 +61,18 @@ de:
         in_progress: In Bearbeitung
         locked: Gesperrt
     cards:
+      themes:
+        thematic_benelux_v1: "Benelux"
+        thematic_baltics_v1: "Baltikum"
+        thematic_scandinavia_v1: "Skandinavien"
       explorer_name: "%{place}-Entdecker"
       description:
+        thematic_set: "Verbringe Zeit in allen %{count} Ländern von %{place}."
         continent: "Verbringe Zeit in allen %{count} Ländern und Gebieten von %{place}."
         regions: "Verbringe Zeit in allen %{count} Regionen von %{place}."
         country: "Verbringe Zeit in %{place}."
       status:
+        visited_on: "Besucht · %{date}"
         locked: Gesperrt
         unlocked: Freigeschaltet
         unlocked_on: "Freigeschaltet · %{date}"
@@ -101,6 +110,19 @@ de:
       not_found: Der geteilte Erfolg wurde nicht gefunden oder ist nicht mehr verfügbar
       social_description: "%{progress} erkundet. Aufgezeichnet mit Dawarich."
       tracked_with_html: "Aufgezeichnet mit %{link}"
+      city_headline: "%{percent}% von %{city} erkundet"
+      levels: "Stufen"
+      next_level: "Nächste Stufe bei %{percent}%"
+      cta_title: "Vielleicht hat dein Verlauf das schon verdient."
+      cta_body: "Importiere deinen Standortverlauf und sieh, welche Karten du freischaltest, ganz ohne Check-ins."
+      cta_button: "Meine Karten ansehen"
+      copy_link: "Link kopieren"
+      download_share_image: "Bild zum Teilen herunterladen"
+      ladder_state:
+        done: "erreicht"
+        current: "aktuelle Stufe"
+        next: "noch nicht erreicht"
+      tracked_footnote: "Open Source, selbst hostbar oder in der Cloud"
     notifications:
       region_title: "%{region} erkundet!"
       region_content: "%{achievement}: %{count}/%{total} Regionen besucht."

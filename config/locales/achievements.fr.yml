@@ -11,6 +11,9 @@ fr:
       dismiss: Fermer cette pile
       view: Voir %{name} dans votre collection
     ui:
+      themes: "Collections thématiques"
+      themes_hint: "De petites collections de pays autour d’un thème commun."
+      theme_visit_note: "Un pays visité compte pour cette collection même si ses régions sont incomplètes."
       title: Succès
       summary: Résumé
       continents: Continents
@@ -58,12 +61,18 @@ fr:
         in_progress: En cours
         locked: Verrouillées
     cards:
+      themes:
+        thematic_benelux_v1: "Benelux"
+        thematic_baltics_v1: "Pays baltes"
+        thematic_scandinavia_v1: "Scandinavie"
       explorer_name: "Explorateur de %{place}"
       description:
+        thematic_set: "Passez du temps dans les %{count} pays de %{place}."
         continent: "Passez du temps dans les %{count} pays et territoires de %{place}."
         regions: "Passez du temps dans les %{count} régions de %{place}."
         country: "Passez du temps en %{place}."
       status:
+        visited_on: "Visité · %{date}"
         locked: Verrouillée
         unlocked: Débloquée
         unlocked_on: "Débloquée · %{date}"
@@ -72,7 +81,7 @@ fr:
       metric:
         explored: Exploré
         not_yet_explored: Pas encore exploré
-        percent_explored: "%{percent} % exploré"
+        percent_explored: "%{percent} % exploré"
         countries: "%{count}/%{total} pays"
         regions: "%{count}/%{total} régions"
       rarity:
@@ -101,6 +110,19 @@ fr:
       not_found: Le succès partagé est introuvable ou n'est plus disponible
       social_description: "%{progress} exploré. Enregistré avec Dawarich."
       tracked_with_html: "Enregistré avec %{link}"
+      city_headline: "%{percent} % de %{city} exploré"
+      levels: "Niveaux"
+      next_level: "Niveau suivant à %{percent} %"
+      cta_title: "Votre historique l'a peut-être déjà gagnée."
+      cta_body: "Importez votre historique de positions et découvrez les cartes que vous débloquez, sans aucun check-in."
+      cta_button: "Voir mes cartes"
+      copy_link: "Copier le lien"
+      download_share_image: "Télécharger l'image de partage"
+      ladder_state:
+        done: "atteint"
+        current: "niveau actuel"
+        next: "pas encore atteint"
+      tracked_footnote: "open source, auto-hébergeable ou dans le cloud"
     notifications:
       region_title: "%{region} explorée !"
       region_content: "%{achievement} : %{count}/%{total} régions visitées."

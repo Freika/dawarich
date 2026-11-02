@@ -20,6 +20,7 @@ class Place < ApplicationRecord
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
   has_many :legacy_area_place_mappings, dependent: :delete_all
+  has_many :achievement_selections, class_name: 'Achievements::Selection', dependent: :destroy
 
   attr_accessor :machine_named, :user_named, :skip_suggested_visit_reattribution,
                 :reattribute_suggested_visits_on_create

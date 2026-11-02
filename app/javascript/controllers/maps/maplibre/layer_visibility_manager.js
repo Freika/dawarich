@@ -359,7 +359,7 @@ export class LayerVisibilityManager {
     this.layerManager
       .getLayer("tracks-mvt")
       ?.setEnabled(settings.tracksEnabled === true)
-    const fogTiled = (settings.fogOfWarMode || "points") !== "hexagons"
+    const fogTiled = false
     this.layerManager.getLayer("fog")?.setTiledSource(fogTiled)
     this.layerManager
       .getLayer("points-mvt")

@@ -41,7 +41,7 @@ RSpec.describe 'Map layers tab', type: :request do
     %w[pointsEditToggle visitsSearch placesFilters].each do |target|
       expect(tab.at_css(%([data-maps--maplibre-target="#{target}"]))).to be_present, "#{target} missing"
     end
-    expect(tab.css('input[name="fogOfWarMode"]').size).to eq(2)
+    expect(tab.css('input[name="fogOfWarMode"]').size).to eq(1)
   end
 
   it 'offers anomalies as a points option rather than a layer of its own' do
@@ -53,10 +53,12 @@ RSpec.describe 'Map layers tab', type: :request do
     expect(points_options.at_css('[data-maps--maplibre-target="pointsEditToggle"]')).to be_present
   end
 
-  it 'groups the fog of war modes as a fog option' do
+  it 'explains fixed-resolution exploration instead of offering legacy fog modes' do
     fog_options = layers_tab.at_css('[data-layer-options="fog"]')
 
-    expect(fog_options.css('input[name="fogOfWarMode"]').size).to eq(2)
+    expect(fog_options.at_css('input[type="hidden"][name="fogOfWarMode"]')['value']).to eq('hexagons')
+    expect(fog_options.css('input[type="radio"]')).to be_empty
+    expect(fog_options.text).to include(I18n.t('achievements.collections.fog_rules'))
   end
 
   it 'shows the flights tile only when AirTrail is connected' do

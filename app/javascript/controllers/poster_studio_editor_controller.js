@@ -76,6 +76,7 @@ export default class extends Controller {
     "titleInput",
     "subtitleInput",
     "coordsToggle",
+    "statsToggle",
     "fontSelect",
     "trackOpacity",
     "trackOpacityLabel",
@@ -92,6 +93,7 @@ export default class extends Controller {
     "saveForm",
     "saveName",
     "saveTitle",
+    "saveStats",
     "saveTheme",
     "saveLat",
     "saveLon",
@@ -128,6 +130,7 @@ export default class extends Controller {
     printOrderUrl: String,
     tilesUrl: String,
     tilesFallback: Boolean,
+    statsLabel: String,
   }
 
   connect() {
@@ -452,6 +455,7 @@ export default class extends Controller {
       this.titleInputTarget,
       this.subtitleInputTarget,
       this.coordsToggleTarget,
+      ...this.statsToggleTargets,
       this.fontSelectTarget,
     ].forEach((el) => {
       el.disabled = !enabled
@@ -466,8 +470,12 @@ export default class extends Controller {
 
   posterText() {
     if (!this.textToggleTarget.checked)
-      return { title: "", subtitle: "", coords: "" }
+      return { title: "", subtitle: "", coords: "", stats: "" }
     return {
+      stats:
+        this.hasStatsToggleTarget && this.statsToggleTarget.checked
+          ? this.statsLabelValue
+          : "",
       title: this.titleInputTarget.value.trim(),
       subtitle: this.subtitleInputTarget.value.trim(),
       coords: this.coordsToggleTarget.checked
@@ -819,6 +827,7 @@ export default class extends Controller {
     // neutral placeholder so an untitled poster never reads "MY POSTER".
     const title = this.titleInputTarget.value.trim()
     this.saveTitleTarget.value = title
+    this.saveStatsTarget.value = this.posterText().stats
     this.saveNameTarget.value = title || translate("poster.untitled")
     this.saveThemeTarget.value = this.themeBase || "blueprint"
     this.saveLatTarget.value = center.lat

@@ -1,6 +1,6 @@
 <div data-controller="place-creation inline-tag">
   <div class="modal z-[10000]" data-place-creation-target="modal">
-    <div class="modal-box max-w-2xl">
+    <div class="modal-box max-w-2xl place-creation-modal">
       <h3 class="font-bold text-lg mb-4" data-place-creation-target="modalTitle"><%= t('.create_new_place') %></h3>
 
       <%= form_with scope: :place, url: places_path, method: :post, data: {
@@ -33,7 +33,7 @@
                 min: 1,
                 max: Place::MAX_VISIT_RADIUS,
                 step: 1,
-                class: "input input-bordered w-full",
+                class: "input input-bordered w-full tabular-nums",
                 data: { place_creation_target: "visitRadiusInput" },
                 required: true %>
             <label class="label">
@@ -56,7 +56,7 @@
           </div>
 
           <label class="label cursor-pointer gap-2">
-            <%= f.check_box :geofence, { class: 'toggle toggle-sm', data: { testid: 'create-place-geofence' } }, '1', '0' %>
+            <%= f.check_box :geofence, { class: 'toggle toggle-primary toggle-sm', data: { testid: 'create-place-geofence' } }, '1', '0' %>
             <span class="label-text flex-1"><%= t('places.drawer.geofence') %></span>
           </label>
 
@@ -69,9 +69,8 @@
               <span class="label-text font-semibold"><%= t('.nearby_places') %></span>
             </label>
             <div class="relative">
-              <%# Turbo Frame for server-rendered nearby places %>
               <%= turbo_frame_tag "nearby-places", data: { place_creation_target: "nearbyFrame" } do %>
-                <p class="text-sm text-gray-500"><%= t('.open_modal_to_load_nearby_suggestions') %></p>
+                <p class="text-sm text-base-content/70"><%= t('.open_modal_to_load_nearby_suggestions') %></p>
               <% end %>
             </div>
           </div>

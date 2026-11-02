@@ -13,6 +13,7 @@ module Achievements
     end
 
     def call
+      return collectible_card if @event.kind == 'collectible'
       return set_card if @event.kind == 'set'
       return country_card if @event.key.match?(/\A[A-Z]{2}\z/)
 
@@ -20,6 +21,17 @@ module Achievements
     end
 
     private
+
+    def collectible_card
+      id, level = @event.key.split(':').map(&:to_i)
+      card = Collectible.visible.find_by(id: id, user_id: @event.user_id)
+      return unless card&.unlocked? && card.level >= level
+      return unless CollectionState.find_by(user_id: @event.user_id)&.shareable?
+
+      presenter = CollectiblePresenter.new(card)
+      Card.new(attributes: presenter.card_attributes,
+               path: Rails.application.routes.url_helpers.achievement_card_path(card), name: presenter.name)
+    end
 
     def set_card
       definition = Registry.find(@event.key)

@@ -47,7 +47,26 @@
           <% end %>
         </div>
       </section>
+      <section id="thematic-collections" aria-labelledby="thematic-heading" class="mt-8">
+        <div class="ach-section-heading">
+          <div>
+            <h2 id="thematic-heading"><%= t('achievements.ui.themes') %></h2>
+            <p><%= t('achievements.ui.themes_hint') %></p>
+          </div>
+        </div>
+        <div class="ach-grid" data-testid="achievement-themes">
+          <% @themes.each do |set| %>
+            <%= link_to achievement_path(set.definition.key), class: 'ach-card-link' do %>
+              <%= render 'card', celebrate: set.celebrate?, **set.card_attributes %>
+            <% end %>
+          <% end %>
+        </div>
+      </section>
       <%= render 'attribution' %>
+      <section class="my-8">
+        <h2 class="text-xl font-semibold"><%= link_to t('achievements.collections.title'), achievement_cards_path, class: 'link' %></h2>
+        <p><%= t('achievements.collections.intro') %></p>
+      </section>
     </div>
   </div>
   <%= render 'card_modal' %>

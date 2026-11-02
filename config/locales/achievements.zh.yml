@@ -11,6 +11,9 @@ zh:
       dismiss: 关闭这叠卡片
       view: 在收藏中查看 %{name}
     ui:
+      themes: "主题收藏"
+      themes_hint: "收集具有共同主题的国家。"
+      theme_visit_note: "到访一个国家即可计入此收藏，无需探索其所有地区。"
       title: 成就
       summary: 概览
       continents: 大洲
@@ -58,12 +61,18 @@ zh:
         in_progress: 进行中
         locked: 未解锁
     cards:
+      themes:
+        thematic_benelux_v1: "比荷卢"
+        thematic_baltics_v1: "波罗的海三国"
+        thematic_scandinavia_v1: "斯堪的纳维亚"
       explorer_name: "%{place}探索者"
       description:
+        thematic_set: "在%{place}的全部 %{count} 个国家停留。"
         continent: "记录你在%{place}全部 %{count} 个国家和地区的足迹。"
         regions: "记录你在%{place}全部 %{count} 个地区的足迹。"
         country: "记录你在%{place}的足迹。"
       status:
+        visited_on: "已到访 · %{date}"
         locked: 未解锁
         unlocked: 已解锁
         unlocked_on: "已解锁 · %{date}"
@@ -101,6 +110,19 @@ zh:
       not_found: 未找到分享的成就，或该成就已不可用
       social_description: "已探索 %{progress}。由 Dawarich 记录。"
       tracked_with_html: "由 %{link} 记录"
+      city_headline: "已探索 %{city} 的 %{percent}%"
+      levels: "等级"
+      next_level: "下一等级：%{percent}%"
+      cta_title: "你的历史记录可能已经赢得了这张卡片。"
+      cta_body: "导入你的位置历史，看看能解锁哪些卡片，无需任何签到。"
+      cta_button: "查看我的卡片"
+      copy_link: "复制链接"
+      download_share_image: "下载分享图片"
+      ladder_state:
+        done: "已达成"
+        current: "当前等级"
+        next: "尚未达成"
+      tracked_footnote: "开源，可自托管或使用云服务"
     notifications:
       region_title: "已探索%{region}！"
       region_content: "%{achievement}：已访问 %{count}/%{total} 个地区。"

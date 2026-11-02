@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["row", "all", "count", "button", "form", "survivor"]
+  static targets = ["row", "all", "count", "button", "form", "survivor", "bar"]
   static values = { deleteMessage: String }
 
   connect() {
@@ -13,9 +13,15 @@ export default class extends Controller {
     this.update()
   }
 
+  clear() {
+    for (const row of this.rowTargets) row.checked = false
+    this.update()
+  }
+
   update() {
     const rows = this.rowTargets.filter((row) => row.checked)
     this.countTarget.textContent = rows.length
+    this.barTarget.hidden = rows.length === 0
     this.allTarget.checked =
       rows.length > 0 && rows.length === this.rowTargets.length
     this.allTarget.indeterminate = rows.length > 0 && !this.allTarget.checked

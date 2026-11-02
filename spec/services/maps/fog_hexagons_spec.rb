@@ -3,153 +3,88 @@
 require 'rails_helper'
 
 RSpec.describe Maps::FogHexagons do
-  subject(:result) { described_class.new(user:, start_date:, end_date:).call }
+  include ActiveSupport::Testing::TimeHelpers
 
   let(:user) { create(:user) }
-  let(:start_date) { Time.zone.parse('2024-05-01T00:00:00Z') }
-  let(:end_date) { Time.zone.parse('2024-06-30T23:59:59Z') }
+  let(:dataset) { Exploration::Dataset.create!(version: 'fog-test', completed_at: Time.current) }
+  let(:from) { Time.utc(2024, 6, 1) }
+  let(:to) { from.end_of_month }
 
-  def ts(string)
-    Time.zone.parse(string).to_i
+  before do
+    allow(Exploration::Geography).to receive_messages(current: dataset, install!: dataset)
   end
 
-  context 'with stats in range' do
-    before do
-      create(:stat, user:, year: 2024, month: 5, h3_hex_ids: [
-               ['8828308281fffff', 3, ts('2024-05-10T10:00:00Z'), ts('2024-05-10T12:00:00Z')],
-               ['8828308283fffff', 1, ts('2024-05-11T10:00:00Z'), ts('2024-05-11T10:05:00Z')]
-             ])
-      create(:stat, user:, year: 2024, month: 6, h3_hex_ids: [
-               ['8828308281fffff', 2, ts('2024-06-01T09:00:00Z'), ts('2024-06-01T09:30:00Z')]
-             ])
-    end
-
-    it 'returns the union of cell ids across months, deduplicated' do
-      expect(result['h3_indexes']).to contain_exactly('8828308281fffff', '8828308283fffff')
-    end
-
-    it 'reports the count in metadata' do
-      expect(result['metadata']['count']).to eq(2)
-    end
+  def point(timestamp:, lon: 13.35)
+    Point.insert_all!([{ user_id: user.id, timestamp: timestamp.to_i, lonlat: "POINT(#{lon} 52.51)",
+                        created_at: Time.current, updated_at: Time.current }])
   end
 
-  context 'with stats outside the requested months' do
-    before do
-      create(:stat, user:, year: 2024, month: 4, h3_hex_ids: [
-               ['8828308285fffff', 5, ts('2024-04-15T10:00:00Z'), ts('2024-04-15T11:00:00Z')]
-             ])
-    end
+  def result(masker = nil)
+    described_class.new(user: user, start_date: from, end_date: to, privacy_zone_masker: masker).call
+  end
 
-    it 'excludes them' do
+  it 'reports calculation instead of showing a false zero for an unbuilt ledger' do
+    expect(result['metadata']).to include('status' => 'calculating', 'snapshot_id' => nil)
+  end
+
+  it 'keeps old cells open and highlights only first discoveries inside the selected period' do
+    point(timestamp: from - 1.day)
+    point(timestamp: from + 1.day)
+    point(timestamp: from + 2.days, lon: 13.4)
+    Exploration::Rebuild.new(user).call
+    old = Exploration::CellGeometry.id(52.51, 13.35)
+    fresh = Exploration::CellGeometry.id(52.51, 13.4)
+    expect(result['h3_indexes']).to contain_exactly(old, fresh)
+    expect(result['new_h3_indexes']).to eq([fresh])
+    expect(result['metadata']['status']).to eq('ready')
+  end
+
+  it 'keeps the previous consistent snapshot until the refresh interval, then closes cells after deletion' do
+    point(timestamp: from)
+    Exploration::Rebuild.new(user).call
+    user.points.delete_all
+    expect(result['metadata']['status']).to eq('ready')
+    expect(result['h3_indexes'].size).to eq(1)
+    travel(Exploration::State::REFRESH_INTERVAL + 1.minute) do
+      expect(result['metadata']['status']).to eq('updating')
+      Exploration::Rebuild.new(user).call
       expect(result['h3_indexes']).to be_empty
     end
   end
 
-  context 'with a partial-month range' do
-    let(:start_date) { Time.zone.parse('2024-05-20T00:00:00Z') }
-    let(:end_date) { Time.zone.parse('2024-05-31T23:59:59Z') }
-
-    before do
-      create(:stat, user:, year: 2024, month: 5, h3_hex_ids: [
-               ['8828308281fffff', 3, ts('2024-05-10T10:00:00Z'), ts('2024-05-12T12:00:00Z')],
-               ['8828308283fffff', 2, ts('2024-05-25T10:00:00Z'), ts('2024-05-25T11:00:00Z')]
-             ])
-    end
-
-    it 'excludes cells whose visit window does not overlap the range' do
-      expect(result['h3_indexes']).to contain_exactly('8828308283fffff')
-    end
+  it 'masks every touching cell, including cells whose recorded point is outside the zone' do
+    point(timestamp: from)
+    point(timestamp: from, lon: 13.4)
+    Exploration::Rebuild.new(user).call
+    center = Exploration::CellGeometry.id(52.51, 13.35)
+    boundary_lat, boundary_lon = H3.to_boundary(center.to_i(16)).first
+    circle = Maps::PrivacyZoneMasker::Circle.new(lon: boundary_lon, lat: boundary_lat, radius: 20)
+    masker = Maps::PrivacyZoneMasker.new(user, circles: [circle])
+    expect(masker.in_zone?(13.35, 52.51)).to be(false)
+    expect(result(masker)['h3_indexes']).to eq([Exploration::CellGeometry.id(52.51, 13.4)])
   end
 
-  context 'with malformed rows' do
-    before do
-      create(:stat, user:, year: 2024, month: 5, h3_hex_ids: [
-               [nil, 1, ts('2024-05-10T10:00:00Z'), ts('2024-05-10T11:00:00Z')],
-               [],
-               ['8828308283fffff', 1, nil, nil]
-             ])
-    end
-
-    it 'skips blank ids and tolerates missing timestamps' do
-      expect(result['h3_indexes']).to contain_exactly('8828308283fffff')
-    end
+  it 'pins a city deep link to its owned snapshot while newer progress is published' do
+    point(timestamp: from)
+    Exploration::Rebuild.new(user).call
+    old_id = result['metadata']['snapshot_id']
+    point(timestamp: from + 1.day, lon: 13.4)
+    Exploration::Rebuild.new(user).call
+    pinned = described_class.new(user: user, start_date: from, end_date: to, snapshot_id: old_id).call
+    expect(pinned['metadata']).to include('snapshot_id' => old_id, 'status' => 'ready', 'pinned' => true)
+    expect(pinned['h3_indexes'].size).to eq(1)
+    expect(result['h3_indexes'].size).to eq(2)
+    other = create(:user)
+    expect do
+      described_class.new(user: other, start_date: from, end_date: to, snapshot_id: old_id).call
+    end.to raise_error(ActiveRecord::RecordNotFound)
   end
 
-  context 'with legacy hash-shaped h3_hex_ids' do
-    before do
-      create(:stat, user:, year: 2024, month: 5, h3_hex_ids: { 'area_too_large' => true })
-      create(:stat, user:, year: 2024, month: 6, h3_hex_ids: [
-               ['8828308281fffff', 1, ts('2024-06-01T09:00:00Z'), ts('2024-06-01T09:30:00Z')]
-             ])
-    end
-
-    it 'ignores hash entries and keeps valid rows' do
-      expect(result['h3_indexes']).to contain_exactly('8828308281fffff')
-    end
-  end
-
-  context 'with no stats' do
-    it 'returns an empty collection' do
-      expect(result['h3_indexes']).to eq([])
-      expect(result['metadata']['count']).to eq(0)
-    end
-  end
-
-  context 'with a stat that has nil h3_hex_ids' do
-    before { create(:stat, user:, year: 2024, month: 5, h3_hex_ids: nil) }
-
-    it 'returns an empty collection' do
-      expect(result['h3_indexes']).to eq([])
-    end
-  end
-
-  context 'with a range spanning a year boundary' do
-    let(:start_date) { Time.zone.parse('2023-12-01T00:00:00Z') }
-    let(:end_date) { Time.zone.parse('2024-01-31T23:59:59Z') }
-
-    before do
-      create(:stat, user:, year: 2023, month: 12, h3_hex_ids: [
-               ['8828308281fffff', 1, ts('2023-12-15T10:00:00Z'), ts('2023-12-15T11:00:00Z')]
-             ])
-      create(:stat, user:, year: 2024, month: 1, h3_hex_ids: [
-               ['8828308283fffff', 1, ts('2024-01-15T10:00:00Z'), ts('2024-01-15T11:00:00Z')]
-             ])
-    end
-
-    it 'includes both months' do
-      expect(result['h3_indexes']).to contain_exactly('8828308281fffff', '8828308283fffff')
-    end
-  end
-
-  context 'with a privacy zone' do
-    let(:center_cell) { H3.from_geo_coordinates([52.444, 13.5], 8) }
-    let(:center) { H3.to_geo_coordinates(center_cell) }
-    let(:first_ring) { H3.hex_ring(center_cell, 1).map { |cell| H3.to_string(cell) } }
-    let(:second_ring) { H3.hex_ring(center_cell, 2).map { |cell| H3.to_string(cell) } }
-    let(:masker) { Maps::PrivacyZoneMasker.new(user) }
-
-    subject(:result) { described_class.new(user:, start_date:, end_date:, privacy_zone_masker: masker).call }
-
-    before do
-      lat, lon = center
-      tag = create(:tag, :privacy_zone, user:, privacy_radius_meters: 390)
-      place = create(:place, user:, latitude: lat, longitude: lon, lonlat: "POINT(#{lon} #{lat})")
-      create(:tagging, tag:, taggable: place)
-      cells = [H3.to_string(center_cell), *first_ring, *second_ring]
-      create(:stat, user:, year: 2024, month: 5,
-                    h3_hex_ids: cells.map { |cell| [cell, 1, ts('2024-05-10T10:00:00Z'), ts('2024-05-10T11:00:00Z')] })
-    end
-
-    it 'keeps every cell that touches the zone fogged and clears the ones beyond it' do
-      expect(result['h3_indexes']).to match_array(second_ring)
-    end
-
-    it 'judges coarser cells by their own size' do
-      coarse = H3.to_string(H3.from_geo_coordinates([52.444, 13.5], 6))
-      create(:stat, user:, year: 2024, month: 6,
-                    h3_hex_ids: [[coarse, 1, ts('2024-06-01T09:00:00Z'), ts('2024-06-01T09:30:00Z')]])
-
-      expect(result['h3_indexes']).not_to include(coarse)
-    end
+  it 'cannot read another users snapshot' do
+    other = create(:user)
+    snapshot = Exploration::Snapshot.create!(user_id: other.id, dataset_id: dataset.id, revision: 1,
+                                             completed_at: Time.current)
+    Exploration::State.create!(user_id: user.id, snapshot_id: snapshot.id)
+    expect(result['metadata']['snapshot_id']).to be_nil
   end
 end

@@ -33,6 +33,23 @@ RSpec.describe 'Place editor tags and geofencing', type: :request do
     end
   end
 
+  it 'groups the editor in order with localized visits and one event log link' do
+    started = Time.zone.local(2026, 10, 26, 9)
+    create(:visit, user:, place:, name: 'Repeated place name', started_at: started,
+                   ended_at: started + 8.hours, duration: 480)
+
+    get place_path(place)
+
+    headings = document.css('.place-drawer__section > .place-drawer__heading').map { |node| node.text.strip }
+    expect(headings).to eq(%w[Details Location Notifications Visits Manage])
+    expect(document.css('[data-testid="place-geofence-events-link"]').size).to eq(1)
+    expect(document.css("a[href='#{settings_geofencing_path(place_id: place.id)}']").size).to eq(1)
+    visit = document.at_css('.place-drawer__visit')
+    expect(visit.text).to include('Oct 26, 2026', '09:00', '17:00', '8h 0m')
+    expect(visit.text).not_to include('Repeated place name')
+    expect(document.at_css('.place-drawer__stats').css('.place-drawer__stat-label').size).to eq(3)
+  end
+
   it 'returns inline validation errors without replacing selected tags or editor fields' do
     post tags_path, params: { inline: 'editor', tag: { name: '', icon: 'abc' } }, as: :turbo_stream
 
@@ -102,6 +119,17 @@ RSpec.describe 'Place editor tags and geofencing', type: :request do
     )
   end
 
+  it 'tells the map panel when a privacy zone hides the place' do
+    other = create(:place, user:, name: 'Cafe', latitude: place.lat + 1, longitude: place.lon + 1)
+    place.tags << create(:tag, user:, name: 'Home', privacy_radius_meters: 500)
+
+    [[place, true], [other, false]].each do |shown, hidden|
+      get place_path(shown, map_panel: 1)
+      data = JSON.parse(document.at_css('[data-place-editor-place-value]')['data-place-editor-place-value'])
+      expect(data['privacy_hidden']).to eq(hidden)
+    end
+  end
+
   it 'labels the geofence boundary in place info only while geofencing is enabled' do
     get place_path(place)
     expect(document.at_css('[data-testid="place-geofence-legend"]').text.strip).to eq('Geofence boundary')
@@ -146,7 +174,7 @@ RSpec.describe 'Place editor tags and geofencing', type: :request do
 
     events = document.css('[data-testid="place-geofence-event"]')
     expect(events.size).to eq(10)
-    expect(events.first.text).to include('Entered', 'Location points', '22:00')
+    expect(events.first.text).to include('Entered', 'Location points', 'Oct 1, 2026', '22:00')
     expect(Time.iso8601(events.last.at_css('time')['datetime'])).to eq(oldest + 1.hour)
     expect(document.at_css('[data-testid="place-geofence-events-link"]')['href'])
       .to eq(settings_geofencing_path(place_id: place.id))

@@ -55,6 +55,7 @@ module Achievements
       notify &&= Progress.current_exploration.exists?(user_id: user_id)
       oldest_timestamp = [oldest_timestamp, *pending.map(&:to_i)].compact.min
       Achievements::RegionSetChecker.new(user, notify: notify, oldest_timestamp: oldest_timestamp).call
+      Achievements::CollectionSchedule.call(user, notify: notify)
 
       Sidekiq.redis { |redis| redis.zrem(self.class.pending_key(user_id), pending) } if pending.any?
     end

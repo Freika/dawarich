@@ -29,7 +29,7 @@ RSpec.describe 'Deleting a place preserves the current pagination page', type: :
     expect(doc.css('[data-testid="place-row"]').map { |row| row['data-place-id'] }).to eq([target.id.to_s])
     form = doc.at_css("tr[data-place-id='#{target.id}'] form")
     expect(form).to be_present
-    expect(form.at_css('button').text).to eq('Delete')
+    expect(form.at_css('button')['aria-label']).to eq('Delete')
     action = URI.parse(form['action'])
     expect(action.path).to eq(bulk_destroy_places_path)
     expect(Rack::Utils.parse_nested_query(action.query)).to eq(list_params.stringify_keys)

@@ -212,3 +212,42 @@ test("a live point older than the current position leaves the dot in place", (t)
   assert.deepEqual(calls.recentPoints, [])
   assert.equal(mapsController.currentPositionValue.timestamp, 1758196900)
 })
+
+test("a background track event updates displayed distance with live points disabled", async (t) => {
+  const timers = installFakeTimers(t)
+  const statisticsSource = (
+    await readFile(
+      new URL(
+        "../../app/javascript/maps_maplibre/components/range_statistics.js",
+        import.meta.url,
+      ),
+      "utf8",
+    )
+  ).replace(/^import .*\n/gm, "")
+  const prelude = `const formatNumber = String; const translate = (key, values) => values ? JSON.stringify(values) : key;\n`
+  const { RangeStatistics } = await import(
+    `data:text/javascript;base64,${Buffer.from(prelude + statisticsSource).toString("base64")}`
+  )
+  const { controller, mapsController } = buildController()
+  controller.liveModeEnabled = false
+  const element = { textContent: "", setAttribute() {} }
+  let distance = 1000
+  const requests = []
+  mapsController.rangeStatistics = new RangeStatistics(element, {
+    fetchRangeStatistics: async ({ start_at, end_at }) => {
+      requests.push([start_at, end_at])
+      return { points: 2, distance_meters: distance }
+    },
+  })
+  await mapsController.rangeStatistics.load("selected-start", "selected-end")
+  assert.equal(JSON.parse(element.textContent).distance, "1")
+  distance = 0
+  controller.handleReceived({ type: "track_update" })
+  timers.runPending()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(JSON.parse(element.textContent).distance, "0")
+  assert.deepEqual(requests, [
+    ["selected-start", "selected-end"],
+    ["selected-start", "selected-end"],
+  ])
+})

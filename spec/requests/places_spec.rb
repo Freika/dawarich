@@ -513,8 +513,7 @@ RSpec.describe '/places', type: :request do
 
         get place_url(place)
 
-        # 3 visits * 60 minutes = 180 minutes = 3.0 hours
-        expect(response.body).to include('3.0')
+        expect(response.body).to include('3h 0m')
       end
 
       it 'shows average dwell formatted as Xh Ym' do
@@ -545,8 +544,9 @@ RSpec.describe '/places', type: :request do
 
         get place_url(place)
 
-        expect(response.body).to include('Living Visit')
-        expect(response.body).not_to include('Ghost Visit')
+        visits = Nokogiri::HTML(response.body).css('.place-drawer__visit time')
+        expect(visits.size).to eq(1)
+        expect(Time.iso8601(visits.first['datetime'])).to eq(base_time)
       end
 
       it 'lists up to 5 most recent visits ordered by started_at DESC' do
@@ -565,11 +565,11 @@ RSpec.describe '/places', type: :request do
 
         get place_url(place)
 
-        # Most recent is Visit 6; oldest two (0, 1) should not appear in the body
-        # of the drawer's recent-visits list
-        expect(response.body.scan(/Visit \d/).size).to be <= 5
-        expect(response.body).to include('Visit 6')
-        expect(response.body).not_to include('Visit 0')
+        visits = Nokogiri::HTML(response.body).css('.place-drawer__visit time')
+        expect(visits.size).to eq(5)
+        expect(visits.map { |node| Time.iso8601(node['datetime']) }).to eq((2..6).to_a.reverse.map do |i|
+          base_time + i.hours
+        end)
       end
 
       it 'does not eagerly load every point belonging to the place visits' do

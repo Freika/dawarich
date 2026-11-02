@@ -29,6 +29,8 @@ RSpec.describe 'Users::Digests transitional aliases', type: :job do
   end
 
   describe 'Users::Digests::EmailSendingJob' do
+    before { allow(DawarichSettings).to receive(:email_configured?).and_return(true) }
+
     it 'resolves to a real class via constantize' do
       expect { 'Users::Digests::EmailSendingJob'.constantize }.not_to raise_error
     end

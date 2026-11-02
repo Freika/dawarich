@@ -92,7 +92,7 @@ export class PlacesManager extends PlacesTagFilters {
    * so when the layer already holds data we upsert that single feature in
    * place instead of re-pulling the whole collection from the backend.
    */
-  async handlePlaceCreated(event) {
+  async handlePlaceCreated(event, { ensureVisible = true } = {}) {
     try {
       const placesLayer = this.layerManager.getLayer("places")
       if (!placesLayer) {
@@ -108,7 +108,7 @@ export class PlacesManager extends PlacesTagFilters {
         await this._reloadPlaces(placesLayer)
       }
 
-      this._ensurePlacesVisible(placesLayer)
+      if (ensureVisible) this._ensurePlacesVisible(placesLayer)
       await this._refreshPrivacyZones()
     } catch (error) {
       console.error("[Maps V2] Failed to update places:", error)
@@ -138,7 +138,7 @@ export class PlacesManager extends PlacesTagFilters {
    * Handle place update event - same upsert path as creation.
    */
   async handlePlaceUpdated(event) {
-    await this.handlePlaceCreated(event)
+    await this.handlePlaceCreated(event, { ensureVisible: false })
   }
 
   /**

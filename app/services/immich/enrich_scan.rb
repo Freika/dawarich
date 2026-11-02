@@ -173,9 +173,19 @@ class Immich::EnrichScan
                photo['localDateTime']
     return nil if time_str.blank?
 
-    Time.parse(time_str).utc.to_i
+    Time.parse(time_str).utc.to_i - recording_offset(photo)
   rescue ArgumentError
     nil
+  end
+
+  # Cameras stamp a video when recording stops but tag its GPS where it started.
+  def recording_offset(photo)
+    return 0 unless photo['type'] == 'VIDEO'
+
+    hours, minutes, seconds = photo['duration'].to_s.split(':')
+    return 0 unless seconds
+
+    (hours.to_i * 3600) + (minutes.to_i * 60) + seconds.to_f.round
   end
 
   def error_result(message)

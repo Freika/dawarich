@@ -256,6 +256,21 @@ function mapSvg(config, uid) {
     : ""
   const textureDef = texturePattern(textureId, config.finish, 0.32)
   const journey = "" // No decorative routes or fictional location pins.
+  const colorLayers = (geo.colors || [])
+    .map(
+      (part) =>
+        `<path d="${escapeHTML(part.path)}" fill="${part.color}" opacity="0.65" fill-rule="evenodd"/>`,
+    )
+    .join("")
+  const unvisited = geo.unvisited
+    ? `<path class="geo-unvisited" d="${escapeHTML(geo.unvisited)}" fill-rule="evenodd"/>`
+    : ""
+  const details = (geo.details || [])
+    .map(
+      (part) =>
+        `<path class="geo-detail" d="${escapeHTML(part.path)}" fill="${part.fill}" stroke="${part.stroke}" stroke-width="${part.strokeWidth}" opacity="${part.opacity}" stroke-linejoin="round" stroke-linecap="round" fill-rule="evenodd"/>`,
+    )
+    .join("")
 
   return `<svg viewBox="0 0 300 260" role="img" aria-label="${escapeHTML(geo.label)} cartogram">
     <defs>
@@ -274,7 +289,7 @@ function mapSvg(config, uid) {
       ${textureDef}
       <radialGradient id="${markerGradientId}" cx="34%" cy="28%" r="72%"><stop offset="0" stop-color="#fff7dc"/><stop offset="28%" stop-color="#ffd46a"/><stop offset="66%" stop-color="#ff9e16"/><stop offset="100%" stop-color="#754000"/></radialGradient>
     </defs>
-    <g><g class="geo-foil-composite">${fillPaths}${accentPaths}${metalShading}${texturePaths}</g>${edgePrismPaths}${boundaries}${journey}</g>
+    <g><g class="geo-foil-composite">${fillPaths}${accentPaths}${metalShading}${texturePaths}</g>${edgePrismPaths}${boundaries}${journey}${colorLayers}${unvisited}${details}</g>
   </svg>`
 }
 
@@ -304,23 +319,59 @@ export function spectralMarkup({
   // Normalize geometry, not its SVG transform: transforming the reference path
   // would also transform userSpaceOnUse gradients and flatten the spectrum.
   // PostGIS ST_AsSVG(..., 0) emits absolute polygon M/L/Z commands only.
-  const path = String(silhouette.path)
-  const tokenPattern = /[MLZ]|[-+]?(?:\d*\.?\d+)(?:[eE][-+]?\d+)?/g
-  if (path.replace(tokenPattern, "").replace(/[\s,]/g, "")) return ""
-  let coordinate = 0
-  const normalized = (path.match(tokenPattern) || [])
-    .map((token) => {
-      if (/^[MLZ]$/.test(token)) return token
-      const value = Number(token)
-      return (
-        coordinate++ % 2 === 0
-          ? 150 + (value - x - width / 2) * scale * longitudeScale
-          : 130 + (value - y - height / 2) * scale
-      ).toFixed(4)
-    })
-    .join(" ")
-  if (!coordinate || coordinate % 2 || normalized.includes("Infinity"))
-    return ""
+  function normalize(path) {
+    const tokenPattern = /[MLZ]|[-+]?(?:\d*\.?\d+)(?:[eE][-+]?\d+)?/g
+    if (path.replace(tokenPattern, "").replace(/[\s,]/g, "")) return ""
+    let coordinate = 0
+    const normalized = (path.match(tokenPattern) || [])
+      .map((token) => {
+        if (/^[MLZ]$/.test(token)) return token
+        const value = Number(token)
+        return (
+          coordinate++ % 2 === 0
+            ? 150 + (value - x - width / 2) * scale * longitudeScale
+            : 130 + (value - y - height / 2) * scale
+        ).toFixed(4)
+      })
+      .join(" ")
+    return coordinate &&
+      coordinate % 2 === 0 &&
+      !normalized.includes("Infinity")
+      ? normalized
+      : ""
+  }
+  const normalized = normalize(String(silhouette.path))
+  const unvisited = silhouette.unvisited_path
+    ? normalize(String(silhouette.unvisited_path))
+    : ""
+  if (!normalized || (silhouette.unvisited_path && !unvisited)) return ""
+  const colors = (silhouette.colors || [])
+    .map((part) => ({
+      path: normalize(String(part.path)),
+      color: String(part.color),
+    }))
+    .filter((part) => part.path && /^#[0-9a-f]{6}$/i.test(part.color))
+  const validPaint = (value) => /^(none|#[0-9a-f]{6})$/i.test(value)
+  const details = (silhouette.details || [])
+    .map((part) => ({
+      path: normalize(String(part.path)),
+      fill: String(part.fill),
+      stroke: String(part.stroke),
+      strokeWidth: Number(part.stroke_width) * scale,
+      opacity: Number(part.opacity),
+    }))
+    .filter(
+      (part) =>
+        part.path &&
+        validPaint(part.fill) &&
+        validPaint(part.stroke) &&
+        Number.isFinite(part.strokeWidth) &&
+        part.strokeWidth >= 0 &&
+        part.strokeWidth <= 2 * scale &&
+        Number.isFinite(part.opacity) &&
+        part.opacity >= 0 &&
+        part.opacity <= 1,
+    )
   const tier = Object.hasOwn(PALETTES, rarity.toLowerCase())
     ? rarity.toLowerCase()
     : "common"
@@ -330,7 +381,14 @@ export function spectralMarkup({
     rarity: tier,
     paperAsset,
     foilAsset,
-    geometry: { label: key, fills: [normalized], boundaries: [] },
+    geometry: {
+      label: key,
+      fills: [normalized],
+      boundaries: [],
+      unvisited,
+      colors,
+      details,
+    },
   }
   return {
     html:

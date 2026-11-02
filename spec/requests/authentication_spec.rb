@@ -304,6 +304,31 @@ RSpec.describe 'Authentication', type: :request do
       expect(response).to redirect_to(%r{auth/ios/success\?token=})
     end
 
+    it 'shows why the invitation failed and forgets it when it is for another email' do
+      other = create(:user, password: 'password123456')
+      get new_user_session_path, params: { invitation_token: invitation.token }
+
+      post user_session_path, params: { user: { email: other.email, password: 'password123456' } }
+
+      expect(response).to redirect_to(family_invitation_path(invitation.token))
+      expect(flash[:alert]).to be_present
+      expect(session[:invitation_token]).to be_nil
+      expect(other.reload.family).to be_nil
+    end
+
+    it 'keeps the iOS handoff when the invitation is for another email' do
+      other = create(:user, password: 'password123456')
+
+      post user_session_path, params: {
+        user: { email: other.email, password: 'password123456' },
+        invitation_token: invitation.token
+      }, headers: { 'X-Dawarich-Client' => 'ios' }
+
+      expect(response).to redirect_to(%r{auth/ios/success\?token=})
+      expect(flash[:alert]).to be_nil
+      expect(other.reload.family).to be_nil
+    end
+
     it 'uses default path when invitation token is invalid' do
       # Sign in with invalid invitation token
       post user_session_path, params: {

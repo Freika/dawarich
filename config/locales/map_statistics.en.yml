@@ -1,0 +1,8 @@
+en:
+  javascript:
+    range_statistics:
+      scope: "Your points in the selected period; excludes private zones and family history."
+      unavailable: "Statistics unavailable"
+      summary:
+        one: "%{points} point · %{distance} %{unit}"
+        other: "%{points} points · %{distance} %{unit}"

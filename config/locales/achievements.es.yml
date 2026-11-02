@@ -11,6 +11,9 @@ es:
       dismiss: Cerrar este mazo
       view: Ver %{name} en tu colección
     ui:
+      themes: "Colecciones temáticas"
+      themes_hint: "Pequeñas colecciones de países con un tema común."
+      theme_visit_note: "Un país visitado cuenta para esta colección aunque queden regiones por explorar."
       title: Logros
       summary: Resumen
       continents: Continentes
@@ -58,12 +61,18 @@ es:
         in_progress: En curso
         locked: Bloqueadas
     cards:
+      themes:
+        thematic_benelux_v1: "Benelux"
+        thematic_baltics_v1: "Países bálticos"
+        thematic_scandinavia_v1: "Escandinavia"
       explorer_name: "Explorador de %{place}"
       description:
+        thematic_set: "Pasa tiempo en los %{count} países de %{place}."
         continent: "Pasa tiempo en los %{count} países y territorios de %{place}."
         regions: "Pasa tiempo en las %{count} regiones de %{place}."
         country: "Pasa tiempo en %{place}."
       status:
+        visited_on: "Visitado · %{date}"
         locked: Bloqueada
         unlocked: Desbloqueada
         unlocked_on: "Desbloqueada · %{date}"
@@ -101,6 +110,19 @@ es:
       not_found: El logro compartido no existe o ya no está disponible
       social_description: "%{progress} explorado. Registrado con Dawarich."
       tracked_with_html: "Registrado con %{link}"
+      city_headline: "%{percent}% de %{city} explorado"
+      levels: "Niveles"
+      next_level: "Siguiente nivel al %{percent}%"
+      cta_title: "Puede que tu historial ya se lo haya ganado."
+      cta_body: "Importa tu historial de ubicaciones y descubre qué cartas desbloqueas, sin hacer check-in en ningún sitio."
+      cta_button: "Ver mis cartas"
+      copy_link: "Copiar enlace"
+      download_share_image: "Descargar imagen para compartir"
+      ladder_state:
+        done: "alcanzado"
+        current: "nivel actual"
+        next: "aún no alcanzado"
+      tracked_footnote: "código abierto, autoalojable o en la nube"
     notifications:
       region_title: "¡%{region} explorada!"
       region_content: "%{achievement}: %{count}/%{total} regiones visitadas."
