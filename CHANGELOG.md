@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - A stop long enough to count as a visit (5 minutes by default, never less) now ends a Track, even when it is shorter than the time gap between Tracks. The Timeline shows separate journeys before and after such a visit instead of one journey across it, and position noise during a stay no longer cuts it into short Tracks. Press Recalculate tracks & stats to apply it to existing Tracks. (#3454)
+- The interface is restyled with quieter colours and sentence-case labels across the app.
 
 ### Fixed
 

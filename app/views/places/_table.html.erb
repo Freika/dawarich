@@ -30,7 +30,7 @@
               <%= button_to t('visits.buttons.confirm'), confirm_place_path(place, filter: 'unconfirmed', page: params[:page]), method: :patch, class: 'btn btn-ghost btn-xs h-auto py-2 text-success' %>
             <% end %>
             <div class="tooltip tooltip-left" data-tip="<%= t('places.index.delete') %>">
-              <%= button_to bulk_destroy_places_path(request.query_parameters), method: :delete, params: { place_ids: [place.id] }, class: 'btn btn-ghost btn-xs text-base-content/50 hover:text-error hover:bg-error/10', aria: { label: t('places.index.delete') }, form: { data: { turbo_confirm: t('places.management.delete_confirmation', places: 1, visits: place.active_visit_count, geofences: place.geofence? ? 1 : 0, privacy: privacy ? 1 : 0) } } do %>
+              <%= button_to bulk_destroy_places_path(request.query_parameters), method: :delete, params: { place_ids: [place.id] }, class: 'btn btn-ghost btn-xs text-error/70 hover:text-error hover:bg-error/10', aria: { label: t('places.index.delete') }, form: { data: { turbo_confirm: t('places.management.delete_confirmation', places: 1, visits: place.active_visit_count, geofences: place.geofence? ? 1 : 0, privacy: privacy ? 1 : 0) } } do %>
                 <%= icon 'trash-2', class: 'w-4 h-4' %>
               <% end %>
             </div>
