@@ -10,9 +10,8 @@ class Api::V1::SettingsController < ApiController
     }, status: :ok
   end
 
-  # NOTE: For Lite plan users, Pro-only settings (gated map layers, globe_projection)
-  # are silently stripped before persistence by Users::SettingsUpdater.
-  # The response reflects the filtered state via safe_settings.api_config.
+  # NOTE: For Lite plan users, Users::PlanSettingsGate drops Pro-only changes
+  # before persistence; the response shows the Lite view via api_config.
   def update
     settings = settings_params
     unless valid_tiles_url?(settings)
@@ -74,14 +73,8 @@ class Api::V1::SettingsController < ApiController
     @recalculation_status_manager ||= Tracks::TransportationRecalculationStatus.new(current_api_user.id)
   end
 
-  PRO_ONLY_KEYS = %i[immich_url immich_api_key photoprism_url photoprism_api_key].freeze
   VALID_DISTANCE_UNITS = %w[km mi].freeze
 
-  # Map customization is preview-only on the Lite plan: the panel lets Lite
-  # users play with these live, but nothing persists (self-hosted and Pro
-  # users are unaffected — plan_restricted? is false for them).
-  MAP_CUSTOMIZATION_KEYS = %i[maps_maplibre_custom_theme maps_maplibre_tiles_url
-                              maps_maplibre_tiles_fallback route_color track_color].freeze
   TILE_URL_PLACEHOLDERS = %w[{z} {x} {y}].freeze
   TILE_FILE_EXTENSIONS = %w[.png .jpg .jpeg .webp .mvt .pbf].freeze
   def settings_params
@@ -120,13 +113,6 @@ class Api::V1::SettingsController < ApiController
 
     if permitted.key?(:maps_maplibre_tiles_url) && permitted[:maps_maplibre_tiles_url].is_a?(String)
       permitted[:maps_maplibre_tiles_url] = permitted[:maps_maplibre_tiles_url].strip.presence
-    end
-
-    # Strip Pro-only integration keys for Lite cloud users. Self-hosted
-    # users always have full access (`plan_restricted?` returns false).
-    if current_api_user.plan_restricted?
-      permitted = permitted.except(*PRO_ONLY_KEYS, *MAP_CUSTOMIZATION_KEYS)
-      permitted = permitted.except(:maps_maplibre_style) if permitted[:maps_maplibre_style] == 'custom'
     end
 
     permitted

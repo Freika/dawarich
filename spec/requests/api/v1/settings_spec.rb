@@ -398,6 +398,25 @@ RSpec.describe 'Api::V1::Settings', type: :request do
           expect(lite_user.reload.safe_settings.maps_maplibre_style).to eq('dark')
         end
 
+        it 'keeps stored Pro layers when an unrelated setting changes' do
+          lite_user.update_columns(settings: lite_user.settings.merge('enabled_map_layers' => %w[Tracks Heatmap]))
+
+          patch "/api/v1/settings?api_key=#{lite_api_key}",
+                params: { settings: { maps: { distance_unit: 'mi' } } }
+
+          expect(response).to have_http_status(:success)
+          expect(lite_user.reload.settings['enabled_map_layers']).to eq(%w[Tracks Heatmap])
+        end
+
+        it 'keeps the stored globe choice when a Lite write sends it' do
+          lite_user.update_columns(settings: lite_user.settings.merge('globe_projection' => true))
+
+          patch "/api/v1/settings?api_key=#{lite_api_key}", params: { settings: { globe_projection: true } }
+
+          expect(lite_user.reload.settings['globe_projection']).to be true
+          expect(response.parsed_body['settings']['globe_projection']).to be false
+        end
+
         it 'still persists point_dragging_enabled so it applies after an upgrade' do
           patch "/api/v1/settings?api_key=#{lite_api_key}",
                 params: { settings: { point_dragging_enabled: true } }

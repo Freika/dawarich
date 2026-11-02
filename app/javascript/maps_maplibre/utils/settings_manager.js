@@ -8,7 +8,7 @@ import { classifyBasemapUrl } from "maps_maplibre/utils/basemap_url"
 // Every default lives on the server (Users::SafeSettings): the map reads
 // effective values from /api/v1/settings and keeps none of its own.
 
-const LAYER_NAME_MAP = {
+export const LAYER_NAME_MAP = {
   Points: "pointsVisible",
   Heatmap: "heatmapEnabled",
   Hexagons: "hexagonsEnabled",
