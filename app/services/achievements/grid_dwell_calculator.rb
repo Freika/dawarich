@@ -21,7 +21,7 @@ module Achievements
           AND lonlat IS NOT NULL
           AND (anomaly IS DISTINCT FROM TRUE)
       ),
-      cell_codes AS (
+      cell_codes AS MATERIALIZED (
         SELECT c.gx, c.gy, m.code, #{DisputedArea.near_cell_sql('c.gx', 'c.gy', GRID_DEGREES)} AS near_disputed
         FROM cells c
         LEFT JOIN LATERAL (
