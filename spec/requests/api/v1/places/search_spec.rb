@@ -135,6 +135,15 @@ RSpec.describe 'Api::V1::Places::Search', type: :request do
 
       expect(JSON.parse(response.body)['forward_search_unavailable']).to be(false)
     end
+
+    # A wrong path prefix also returns 404, but from the proxy, not Photon.
+    it 'does not flag a 404 that does not come from Photon' do
+      stub_request(:get, %r{\Ahttp://photon\.test/api}).to_return(status: 404, body: '<h1>404 Not Found</h1>')
+
+      get '/api/v1/places/search', params: { q: 'bakery', lat: lat, lon: lon }, headers: headers
+
+      expect(JSON.parse(response.body)['forward_search_unavailable']).to be(false)
+    end
   end
 
   context 'without an instance geocoding provider' do
