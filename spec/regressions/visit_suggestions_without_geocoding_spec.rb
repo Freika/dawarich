@@ -30,7 +30,9 @@ RSpec.describe 'Visit suggestions without a configured geocoder', type: :request
     end
   end
 
-  around { |example| freeze_time { example.run } }
+  # Midday, so the arrival 30 minutes earlier and the nightly scan of the
+  # previous day stay on the same calendar day whenever the suite runs.
+  around { |example| travel_to(Time.zone.parse('2026-06-15 12:00')) { example.run } }
 
   before do
     clear_enqueued_jobs

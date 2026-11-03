@@ -141,7 +141,8 @@ class Users::ExportData
   def export_settings
     settings_path = export_directory.join('settings.jsonl')
     File.open(settings_path, 'w') do |file|
-      file.puts(user.safe_settings.settings.to_json)
+      # Unmasked: the export must carry the stored Pro-only settings of a Lite user.
+      file.puts(Users::SafeSettings.new(user.settings).settings.to_json)
     end
     Rails.logger.info 'Exported settings'
   end

@@ -17,7 +17,8 @@ module Users
 
     def initialize(user, settings_params)
       @user = user
-      @settings_params = settings_params
+      @settings_params =
+        user.plan_restricted? ? PlanSettingsGate.writable(settings_params, user.settings_hash) : settings_params
       @old_enabled_modes = user.settings_hash[MODES_KEY]&.dup
       @old_city_threshold = normalized_city_threshold(user.settings_hash[CITY_THRESHOLD_KEY])
     end
@@ -80,8 +81,6 @@ module Users
           @user.settings[key] = value
         end
       end
-
-      sanitize_gated_layers if @user.plan_restricted?
     end
 
     # The `maps` hash may still carry legacy Map v1 keys (name, url,
@@ -89,8 +88,6 @@ module Users
     # so an API update from the map panel can't clobber other keys.
     def merge_maps_settings(value)
       incoming = value.to_h
-      incoming = incoming.except('hidden_tile_categories', 'disabled_poi_groups') if @user.plan_restricted?
-
       @user.settings['maps'] = (@user.settings['maps'] || {}).merge(incoming)
     end
 
@@ -110,13 +107,6 @@ module Users
 
       id = raw.strip
       id if id.present? && id.length <= MAX_INSTALL_ID_LENGTH
-    end
-
-    def sanitize_gated_layers
-      if @user.settings.key?('enabled_map_layers')
-        @user.settings['enabled_map_layers'] -= Users::SafeSettings::GATED_MAP_LAYERS
-      end
-      @user.settings['globe_projection'] = false if @settings_params.key?('globe_projection')
     end
 
     def trigger_recalculation_if_needed

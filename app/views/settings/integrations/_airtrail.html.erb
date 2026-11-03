@@ -19,6 +19,7 @@
         <% end %>
         <%= f.password_field :airtrail_api_key, value: current_user.safe_settings.airtrail_api_key, class: 'input input-bordered w-full', placeholder: t('settings.integrations.index.xxxxxxxxxxxxxx') %>
         <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.integrations.index.create_an_api_key_in_airtrail_under_settings_rarr_security') %></span>
+        <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.integrations.index.airtrail_recorded_flight_tracks_need_airtrail_3_13') %></span>
       </div>
       <div class="form-control">
         <label class="label cursor-pointer justify-start gap-3">

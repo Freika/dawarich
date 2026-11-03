@@ -17,6 +17,7 @@ module Places
       @radius = radius.to_f
       @limit = limit
       @throttled = false
+      @forward_search_unavailable = false
     end
 
     def call
@@ -24,6 +25,10 @@ module Places
       return [] if @query.length < MIN_QUERY_LENGTH
 
       fetch_and_filter
+    rescue Geocoding::UserLookup::ForwardSearchUnavailable => e
+      log_provider_error(e)
+      @forward_search_unavailable = true
+      []
     rescue *ReverseGeocoding::ProviderErrors::SEARCH_HANDLED => e
       log_provider_error(e)
       []
@@ -39,6 +44,10 @@ module Places
 
     def throttled?
       @throttled
+    end
+
+    def forward_search_unavailable?
+      @forward_search_unavailable
     end
 
     private
