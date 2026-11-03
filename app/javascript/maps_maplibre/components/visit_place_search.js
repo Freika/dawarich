@@ -84,14 +84,14 @@ export class VisitPlaceSearch {
         )
         return
       }
-      this.render(data.places || [], query)
+      this.render(data.places || [], query, data.forward_search_unavailable)
     } catch (err) {
       if (err.name === "AbortError") return
       this.renderError()
     }
   }
 
-  render(places, query) {
+  render(places, query, forwardSearchUnavailable = false) {
     if (this.onSelect) places = places.filter((place) => place.id)
     const hasExact = places.some(
       (p) => (p.name || "").toLowerCase() === query.toLowerCase(),
@@ -103,6 +103,11 @@ export class VisitPlaceSearch {
     })
     if (!this.onSelect && query.length >= 2 && !hasExact)
       rows.push(this.createRow(query))
+
+    if (forwardSearchUnavailable)
+      rows.unshift(
+        `<li class="px-3 py-2 text-xs text-warning">${translate("places.forward_search_unavailable")}</li>`,
+      )
 
     this.list.innerHTML = rows.length
       ? rows.join("")

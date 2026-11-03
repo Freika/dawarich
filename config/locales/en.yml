@@ -4200,6 +4200,7 @@ en:
       filter_by_tag: FILTER BY TAG
       no_tags: No tags created yet
       none_found: No places found
+      forward_search_unavailable: "Your Photon server only supports reverse geocoding, so text search can't find new places. Saved places still match by name."
       open_for_suggestions: Open modal to load nearby suggestions
       show_all: Show All Places
       untagged: Untagged Places

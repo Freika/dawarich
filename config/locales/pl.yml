@@ -4359,6 +4359,7 @@ pl:
       filter_by_tag: FILTRUJ PO TAGU
       no_tags: Nie utworzono jeszcze tagów
       none_found: Nie znaleziono miejsc
+      forward_search_unavailable: "Twój serwer Photon obsługuje tylko geokodowanie odwrotne, więc wyszukiwanie tekstowe nie znajdzie nowych miejsc. Zapisane miejsca nadal można znaleźć po nazwie."
       open_for_suggestions: Otwórz okno, aby załadować pobliskie sugestie
       show_all: Pokaż wszystkie miejsca
       untagged: Miejsca bez tagu
