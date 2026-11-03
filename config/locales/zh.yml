@@ -4277,6 +4277,7 @@ zh:
       filter_by_tag: 按标签筛选
       no_tags: 尚未创建标签
       none_found: 未找到地点
+      forward_search_unavailable: "你的 Photon 服务器仅支持反向地理编码，因此文本搜索无法找到新地点。已保存的地点仍可按名称匹配。"
       open_for_suggestions: 打开弹窗以加载附近的建议
       show_all: 显示所有地点
       untagged: 未标记的地点

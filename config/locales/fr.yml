@@ -5440,6 +5440,7 @@ fr:
       filter_by_tag: FILTRER PAR ÉTIQUETTE
       no_tags: Aucune étiquette créée pour l'instant
       none_found: Aucun lieu trouvé
+      forward_search_unavailable: "Votre serveur Photon ne prend en charge que le géocodage inverse, la recherche textuelle ne peut donc pas trouver de nouveaux lieux. Les lieux enregistrés restent trouvables par leur nom."
       open_for_suggestions: Ouvrir la fenêtre pour charger les suggestions proches
       show_all: Afficher tous les lieux
       untagged: Lieux non étiquetés
