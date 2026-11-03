@@ -28,6 +28,7 @@ if [ "$(id -u)" = "0" ] && [ -n "${PUID}${PGID}" ]; then
   exec gosu "$TARGET_UID:$TARGET_GID" "$0" "$@"
 fi
 
+ensure_writable_home
 warn_if_development_env
 
 # Parse DATABASE_URL if present, otherwise use individual variables

@@ -757,8 +757,8 @@ de:
       by_date: "bis %{date}"
       same_day: "Am selben Tag %{year}"
       ended_at: "%{year} endete bei %{distance}"
-      ahead: "Vorne um %{distance}"
-      behind: "Zurück um %{distance}"
+      ahead: "%{distance} mehr"
+      behind: "%{distance} weniger"
       no_previous: "Keine Daten aus %{year} zum Vergleich."
     country_ribbon:
       title: "Wo du %{year} warst"
