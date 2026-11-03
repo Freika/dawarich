@@ -55,8 +55,8 @@ RSpec.describe 'Spanish interface copy' do
   it 'uses the persisted locale when mail is rendered outside a request' do
     user = create(:user, settings: { 'locale' => 'es' })
 
-    subject = I18n.with_locale(:en) { UsersMailer.with(user: user).welcome.subject }
+    subject = I18n.with_locale(:en) { UsersMailer.with(user: user).otp_account_locked.subject }
 
-    expect(subject).to eq(I18n.t('mailers.users.welcome.subject', locale: :es))
+    expect(subject).to eq(I18n.t('mailers.users.otp_account_locked.subject', locale: :es))
   end
 end

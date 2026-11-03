@@ -12,54 +12,16 @@ RSpec.describe Users::MailerSendingJob, type: :job do
   end
 
   describe '#perform' do
-    context 'when email_type is welcome' do
-      it 'sends welcome email to trial user' do
-        expect(UsersMailer).to receive(:with).with({ user: user })
-        expect(UsersMailer).to receive(:welcome).and_return(mailer_double)
-        expect(mailer_double).to receive(:deliver_later)
-
-        described_class.perform_now(user.id, 'welcome')
-      end
-
-      it 'sends welcome email to active user' do
-        active_user = create(:user)
-        expect(UsersMailer).to receive(:with).with({ user: active_user })
-        expect(UsersMailer).to receive(:welcome).and_return(mailer_double)
-        expect(mailer_double).to receive(:deliver_later)
-
-        described_class.perform_now(active_user.id, 'welcome')
-      end
-    end
-
-    context 'when email_type is explore_features' do
-      it 'sends explore_features email to trial user' do
-        expect(UsersMailer).to receive(:with).with({ user: user })
-        expect(UsersMailer).to receive(:explore_features).and_return(mailer_double)
-        expect(mailer_double).to receive(:deliver_later)
-
-        described_class.perform_now(user.id, 'explore_features')
-      end
-
-      it 'sends explore_features email to active user' do
-        active_user = create(:user)
-        expect(UsersMailer).to receive(:with).with({ user: active_user })
-        expect(UsersMailer).to receive(:explore_features).and_return(mailer_double)
-        expect(mailer_double).to receive(:deliver_later)
-
-        described_class.perform_now(active_user.id, 'explore_features')
-      end
-    end
-
     context 'with additional options' do
       it 'merges options with user params' do
         custom_options = { custom_data: 'test', priority: :high }
         expected_params = { user: user, custom_data: 'test', priority: :high }
 
         expect(UsersMailer).to receive(:with).with(expected_params)
-        expect(UsersMailer).to receive(:welcome).and_return(mailer_double)
+        expect(UsersMailer).to receive(:archival_approaching).and_return(mailer_double)
         expect(mailer_double).to receive(:deliver_later)
 
-        described_class.perform_now(user.id, 'welcome', **custom_options)
+        described_class.perform_now(user.id, 'archival_approaching', **custom_options)
       end
     end
 
@@ -115,6 +77,29 @@ RSpec.describe Users::MailerSendingJob, type: :job do
           expect do
             UsersMailer.with(user: user).public_send(email_type).deliver_now
           end.not_to(change { ActionMailer::Base.deliveries.size })
+        end
+      end
+    end
+
+    context 'when email_type is an onboarding email now owned by Manager' do
+      %w[welcome explore_features].each do |email_type|
+        it "skips #{email_type}" do
+          expect do
+            described_class.perform_now(user.id, email_type)
+          end.not_to have_enqueued_job(ActionMailer::MailDeliveryJob)
+        end
+
+        it "logs that #{email_type} was skipped" do
+          allow(Rails.logger).to receive(:info)
+
+          described_class.perform_now(user.id, email_type)
+
+          expect(Rails.logger).to have_received(:info).with(/skipping legacy Manager-owned email_type=#{email_type}/)
+        end
+
+        it "does not raise UnknownEmailType for #{email_type}" do
+          expect { described_class.perform_now(user.id, email_type) }
+            .not_to raise_error
         end
       end
     end
