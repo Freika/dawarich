@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Uploading points from the mobile apps or Overland no longer returns HTTP 500 on instances whose `points` table never got the `altitude_decimal` or `source_id` column: the upgrade now adds the missing columns. `altitude_decimal` was missing on instances first set up from the 1.5.0–1.6.x schema, `source_id` on ones that were busy while upgrading past 1.13.1. Where `source_id` is added, self-hosted instances then fill it in a background job (#3969, #3972).
 - If a long transaction keeps `points` locked, startup now stops with an error and retries on the next start, instead of carrying on without it (#3972).
 - Trip previews, day routes and poster routes that cross the date line draw as one continuous line instead of a seam with a jump near the poles (#3261).
+- Achievement checks no longer hang for hours on accounts with stale `points` statistics: each map grid cell's region is looked up once whatever query plan PostgreSQL picks, the query stops after 10 minutes, and a cancelled check is dropped instead of retried, keeping its pending work for the next run (#3933).
+- Instances missing those columns also built no new tracks since 1.17.0. Once the upgrade adds the columns, track generation catches up right away instead of on the next 12-hour run (#3915).
+- Containers started with `PUID`/`PGID` no longer log that `/` is not writable on every start: when that user has no home directory, the app and Sidekiq use their `tmp` directory as `HOME` (#3917).
+- The German year-vs-year distance comparison in Insights now reads "2.745 km mehr" and "715 km weniger" instead of "Vorne um" and "Zurück um" (#3978).
 
 ## [1.20.1] - 2026-11-01, Berlin
 

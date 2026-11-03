@@ -55,7 +55,25 @@ RSpec.describe EnsurePointsAltitudeDecimal do
   it 'leaves an instance that already has the column alone' do
     expect(migration).not_to receive(:execute).with(/ADD COLUMN/)
 
-    migration.up
+    expect { migration.up }.not_to have_enqueued_job
+  end
+
+  # Since 1.17.0 the track builder reads altitude_decimal, so these instances
+  # built no tracks; the catch-up rebuilds them from the last track onward.
+  it 'catches up tracks once it adds the column' do
+    drop_column
+
+    expect { migration.up }.to have_enqueued_job(Tracks::DailyGenerationJob)
+  end
+
+  # The 12-hour schedule catches up as well, so an unreachable queue must not
+  # fail a migration whose schema change already committed.
+  it 'still succeeds when the job queue is unreachable' do
+    drop_column
+    allow(Tracks::DailyGenerationJob).to receive(:perform_later).and_raise(RedisClient::CannotConnectError)
+
+    expect { migration.up }.not_to raise_error
+    expect(connection.column_exists?(:points, :altitude_decimal)).to be true
   end
 
   it 'retries a lost lock race instead of failing on the first loss' do
