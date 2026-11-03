@@ -21,11 +21,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Containers started with `PUID`/`PGID` no longer log that `/` is not writable on every start: when that user has no home directory, the app and Sidekiq use their `tmp` directory as `HOME` (#3917).
+- Achievement checks no longer hang for hours on accounts with stale `points` statistics: each map grid cell's region is looked up once whatever query plan PostgreSQL picks, the query stops after 10 minutes, and a cancelled check is dropped instead of retried, keeping its pending work for the next run (#3933).
 - Poster Studio explains that buildings and railways only appear once the map is zoomed in to city level, instead of silently showing nothing for them on wider posters (#3974).
 - Uploading points from the mobile apps or Overland no longer returns HTTP 500 on instances whose `points` table never got the `altitude_decimal` or `source_id` column: the upgrade now adds the missing columns. `altitude_decimal` was missing on instances first set up from the 1.5.0–1.6.x schema, `source_id` on ones that were busy while upgrading past 1.13.1. Where `source_id` is added, self-hosted instances then fill it in a background job (#3969, #3972).
 - If a long transaction keeps `points` locked, startup now stops with an error and retries on the next start, instead of carrying on without it (#3972).
 - Trip previews, day routes and poster routes that cross the date line draw as one continuous line instead of a seam with a jump near the poles (#3261).
+- Containers started with `PUID`/`PGID` no longer log that `/` is not writable on every start: when that user has no home directory, the app and Sidekiq use their `tmp` directory as `HOME` (#3917).
 - The German year-vs-year distance comparison in Insights now reads "2.745 km mehr" and "715 km weniger" instead of "Vorne um" and "Zurück um" (#3978).
 
 ## [1.20.1] - 2026-11-01, Berlin
