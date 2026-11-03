@@ -342,6 +342,7 @@ Rails.application.routes.draw do
       get   'ready', to: 'health#ready'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
+      delete 'settings/appearance', to: 'settings#reset_appearance'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
       get   'settings/mobile', to: 'settings/mobile#show'
       patch 'settings/mobile', to: 'settings/mobile#update'
@@ -383,6 +384,7 @@ Rails.application.routes.draw do
       end
       resources :points, only: %i[index create update destroy] do
         resource :position, only: :update, controller: 'points/positions'
+        patch :mark_valid, on: :member
         collection do
           delete :bulk_destroy
           post :reapply_anomaly_filter

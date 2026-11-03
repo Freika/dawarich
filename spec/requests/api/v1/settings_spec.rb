@@ -127,17 +127,17 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       end
 
       it 'updates fog_of_war_mode' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'hexagons' } }
-
-        expect(response).to have_http_status(:success)
-        expect(user.reload.safe_settings.fog_of_war_mode).to eq('hexagons')
-      end
-
-      it 'normalizes unknown fog_of_war_mode values to points' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'octagons' } }
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'points' } }
 
         expect(response).to have_http_status(:success)
         expect(user.reload.safe_settings.fog_of_war_mode).to eq('points')
+      end
+
+      it 'normalizes unknown fog_of_war_mode values to the default' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'octagons' } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.fog_of_war_mode).to eq('hexagons')
       end
 
       it 'updates maps_maplibre_custom_theme' do
@@ -396,6 +396,25 @@ RSpec.describe 'Api::V1::Settings', type: :request do
 
           expect(response).to have_http_status(:success)
           expect(lite_user.reload.safe_settings.maps_maplibre_style).to eq('dark')
+        end
+
+        it 'keeps stored Pro layers when an unrelated setting changes' do
+          lite_user.update_columns(settings: lite_user.settings.merge('enabled_map_layers' => %w[Tracks Heatmap]))
+
+          patch "/api/v1/settings?api_key=#{lite_api_key}",
+                params: { settings: { maps: { distance_unit: 'mi' } } }
+
+          expect(response).to have_http_status(:success)
+          expect(lite_user.reload.settings['enabled_map_layers']).to eq(%w[Tracks Heatmap])
+        end
+
+        it 'keeps the stored globe choice when a Lite write sends it' do
+          lite_user.update_columns(settings: lite_user.settings.merge('globe_projection' => true))
+
+          patch "/api/v1/settings?api_key=#{lite_api_key}", params: { settings: { globe_projection: true } }
+
+          expect(lite_user.reload.settings['globe_projection']).to be true
+          expect(response.parsed_body['settings']['globe_projection']).to be false
         end
 
         it 'still persists point_dragging_enabled so it applies after an upgrade' do
@@ -663,6 +682,102 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       expect(user.reload.settings['time_format']).to eq('12h')
       expect(user.settings).not_to have_key('date_format')
       expect(user.settings).not_to have_key('first_day_of_week')
+    end
+  end
+
+  describe 'DELETE /settings/appearance' do
+    before do
+      user.update!(settings: user.settings.merge(
+        'maps_maplibre_style' => 'dark',
+        'globe_projection' => false,
+        'fog_of_war_mode' => 'points',
+        'track_color' => '#123456',
+        'enabled_transportation_modes' => %w[walking cycling],
+        'meters_between_routes' => 900,
+        'maps' => { 'distance_unit' => 'mi', 'hidden_tile_categories' => ['roads'], 'disabled_poi_groups' => ['food'] }
+      ))
+    end
+
+    it 'restores appearance settings to a fresh account and returns them' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}"
+
+      expect(response).to have_http_status(:ok)
+      body = response.parsed_body['settings']
+      expect(body).to include('maps_maplibre_style' => 'light', 'globe_projection' => true,
+                              'fog_of_war_mode' => 'hexagons', 'track_color' => '#6366F1')
+      stored = user.reload.settings
+      expect(stored).not_to include('maps_maplibre_style', 'globe_projection', 'fog_of_war_mode', 'track_color')
+      expect(stored['maps']).to eq('distance_unit' => 'mi')
+    end
+
+    it 'keeps data rules untouched' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}"
+
+      stored = user.reload.settings
+      expect(stored['enabled_transportation_modes']).to eq(%w[walking cycling])
+      expect(stored['meters_between_routes']).to eq(900)
+    end
+
+    it 'resets only the requested appearance keys' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}", params: { keys: ['track_color'] }
+
+      expect(response).to have_http_status(:ok)
+      stored = user.reload.settings
+      expect(stored).not_to include('track_color')
+      expect(stored['maps_maplibre_style']).to eq('dark')
+    end
+
+    it 'accepts a single key without brackets' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}&keys=track_color"
+
+      expect(response).to have_http_status(:ok)
+      stored = user.reload.settings
+      expect(stored).not_to include('track_color')
+      expect(stored['maps_maplibre_style']).to eq('dark')
+    end
+
+    it 'rejects keys outside the appearance group' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}", params: { keys: ['meters_between_routes'] }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(user.reload.settings['meters_between_routes']).to eq(900)
+    end
+
+    it 'requires an API key' do
+      delete '/api/v1/settings/appearance'
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    context 'when user is on the lite plan (cloud)' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_columns(plan: User.plans[:lite], settings: user.settings.merge(
+          'maps_maplibre_style' => 'custom',
+          'maps_maplibre_custom_theme' => { 'water' => '#000000' },
+          'maps_maplibre_tiles_url' => 'https://tiles.example.com/{z}/{x}/{y}.png',
+          'globe_projection' => false,
+          'enabled_map_layers' => %w[Points Heatmap Hexagons]
+        ))
+      end
+
+      it 'keeps stored Pro-only values and resets the rest' do
+        delete "/api/v1/settings/appearance?api_key=#{api_key}"
+
+        expect(response).to have_http_status(:ok)
+        stored = user.reload.settings
+        expect(stored).to include(
+          'maps_maplibre_style' => 'custom',
+          'maps_maplibre_custom_theme' => { 'water' => '#000000' },
+          'maps_maplibre_tiles_url' => 'https://tiles.example.com/{z}/{x}/{y}.png',
+          'track_color' => '#123456',
+          'globe_projection' => false
+        )
+        expect(stored['enabled_map_layers']).to contain_exactly('Tracks', 'Heatmap', 'Hexagons')
+        expect(stored['maps']).to eq('distance_unit' => 'mi', 'hidden_tile_categories' => ['roads'],
+                                     'disabled_poi_groups' => ['food'])
+        expect(stored).not_to include('fog_of_war_mode')
+      end
     end
   end
 end

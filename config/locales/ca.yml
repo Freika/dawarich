@@ -1545,6 +1545,7 @@ ca:
       buildings: Edificis
       railways: Ferrocarrils
       boundaries: Límits
+      detail_layers_zoom_hint: "Els edificis i les vies de tren només apareixen quan amplies el mapa fins al nivell de ciutat."
       theme_aria_label: "Tema %{theme}"
       background: Fons
       motorway_roads: Autopistes
@@ -1712,9 +1713,10 @@ ca:
         found_in_your_photoprism_settings_under_library: La trobaràs a la configuració de Photoprism, a Biblioteca
         airtrail_integration: Integració amb AirTrail
         airtrail_url: URL d'AirTrail
-        the_base_url_of_your_airtrail_instance_your_flights_are: La URL base de la teva instància d'AirTrail. Els teus vols es mostren com a arcs al mapa.
+        the_base_url_of_your_airtrail_instance_your_flights_are: 'La URL base de la teva instància d''AirTrail. Els teus vols es mostren al mapa.'
         airtrail_api_key: Clau API d'AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Crea una clau API a AirTrail a Configuració → Seguretat.
+        airtrail_recorded_flight_tracks_need_airtrail_3_13: 'Els vols amb una ruta enregistrada a AirTrail es dibuixen seguint aquesta ruta i la resta com a arcs. Les rutes necessiten AirTrail 3.13 o posterior i una clau API amb el permís tracks.read.'
         teslamate_integration: Integració amb TeslaMateApi
         teslamate_url: URL de TeslaMateApi
         the_base_url_of_your_teslamateapi_instance: La URL base de la teva instància de TeslaMateApi.
@@ -4069,6 +4071,9 @@ ca:
       failed_to_load_area_details: No s'han pogut carregar els detalls de l'àrea
       point_deleted_successfully: Punt suprimit correctament
       failed_to_delete_point: No s'ha pogut suprimir el punt
+      mark_point_valid: Marca com a correcte
+      point_marked_valid: Punt marcat com a correcte
+      failed_to_mark_point_valid: "No s'ha pogut marcar el punt com a correcte"
       deleting_area: Suprimint àrea...
       area_deleted_successfully: Àrea suprimida correctament
       failed_to_delete_area: No s'ha pogut suprimir l'àrea
@@ -4207,6 +4212,7 @@ ca:
       filter_by_tag: FILTRA PER ETIQUETA
       no_tags: Encara no s'ha creat cap etiqueta
       none_found: No s'ha trobat cap lloc
+      forward_search_unavailable: "El teu servidor Photon només admet la geocodificació inversa, així que la cerca de text no pot trobar llocs nous. Els llocs desats encara coincideixen pel nom."
       open_for_suggestions: Obre el diàleg per carregar suggeriments propers
       show_all: Mostra tots els llocs
       untagged: Llocs sense etiqueta
@@ -4226,6 +4232,9 @@ ca:
       creating: Creant les teves dades de demostració…
       creating_help: Generant un mes de seguiment a Berlín més un cap de setmana de viatge a Praga. Triga uns segons.
     visits:
+      place: "Lloc"
+      choose_place: "Tria un lloc"
+      multiple_stays: "S’han trobat diverses estades. S’ha utilitzat la més recent."
       add_new: Afegeix una visita nova
       create_new: Crea una visita nova
       create: Crea la visita
@@ -4341,7 +4350,9 @@ ca:
       locations_failed: No s'han pogut cercar ubicacions. Torna-ho a provar.
     settings:
       transportation_recalculation_completed: Recàlcul de mitjans de transport completat!
-      confirm_reset: Restablir tota la configuració als valors per defecte? Això recarregarà la pàgina.
+      confirm_reset: "Restablir l'aparença del mapa als valors per defecte? La configuració dels mitjans de transport i del filtratge es manté. Això recarregarà la pàgina."
+      load_failed: "No s'ha pogut carregar la configuració del mapa. Els canvis no es desaran fins que recarreguis la pàgina."
+      reset_failed: "No s'ha pogut restablir l'aparença del mapa. Torna-ho a provar."
       confirm_globe_reload: La vista de globus requereix recarregar la pàgina perquè tingui efecte. Vols recarregar-la ara?
       changed_fields: 'Canviat: %{fields}'
       confirm_reapply_anomaly_filter: |-

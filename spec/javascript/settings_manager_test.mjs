@@ -2,6 +2,14 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
+// CI runs Node 18, which has no global CustomEvent.
+globalThis.CustomEvent ??= class CustomEvent extends Event {
+  constructor(type, options = {}) {
+    super(type, options)
+    this.detail = options.detail ?? null
+  }
+}
+
 const basemapUrlSource = await readFile(
   new URL(
     "../../app/javascript/maps_maplibre/utils/basemap_url.js",
@@ -19,7 +27,165 @@ const source = await readFile(
 const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
 const combinedSource = `${basemapUrlSource}\n${withoutImports}`
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combinedSource).toString("base64")}`
-const { LAYER_COLOR_DEFAULTS, SettingsManager } = await import(moduleUrl)
+const { BACKEND_SETTINGS_MAP, LAYER_NAME_MAP, SettingsManager } = await import(
+  moduleUrl
+)
+const freshAccountSettings = JSON.parse(
+  await readFile(
+    new URL("../fixtures/user_settings_defaults.json", import.meta.url),
+    "utf8",
+  ),
+)
+
+function stubFetch(handler) {
+  const originalFetch = globalThis.fetch
+  const calls = []
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url, method: options.method ?? "GET", options })
+    return handler(url, options)
+  }
+  return {
+    calls,
+    restore: () => {
+      globalThis.fetch = originalFetch
+    },
+  }
+}
+
+const jsonResponse = (body, ok = true) => ({
+  ok,
+  status: ok ? 200 : 500,
+  json: async () => body,
+})
+
+test("the server returns every setting the map reads, so the map keeps no defaults", () => {
+  const missing = Object.values(BACKEND_SETTINGS_MAP).filter(
+    (backendKey) => !(backendKey in freshAccountSettings),
+  )
+  assert.deepEqual(missing, [])
+})
+
+test("before settings load there are no client-side defaults", () => {
+  SettingsManager.initialize("test-key")
+  const settings = SettingsManager.getSettings()
+  assert.equal(settings.fogOfWarMode, undefined)
+  assert.equal(settings.mapStyle, undefined)
+})
+
+test("a fresh account loads the server defaults", async () => {
+  const fetchStub = stubFetch(() =>
+    jsonResponse({ settings: freshAccountSettings }),
+  )
+  try {
+    SettingsManager.initialize("test-key")
+    const loaded = await SettingsManager.loadFromBackend()
+    assert.equal(loaded.fogOfWarMode, "hexagons")
+    assert.equal(loaded.globeProjection, true)
+    assert.equal(loaded.fogOfWarRadius, 50)
+    assert.equal(loaded.speedColorScale, freshAccountSettings.speed_color_scale)
+  } finally {
+    fetchStub.restore()
+  }
+})
+
+test("nothing is saved after settings failed to load", async () => {
+  const fetchStub = stubFetch(() => jsonResponse({}, false))
+  try {
+    SettingsManager.initialize("test-key")
+    await SettingsManager.sync()
+    assert.equal(SettingsManager.loaded, false)
+    await SettingsManager.updateSetting("globeProjection", false)
+    assert.deepEqual(
+      fetchStub.calls.filter((call) => call.method === "PATCH"),
+      [],
+    )
+  } finally {
+    fetchStub.restore()
+  }
+})
+
+test("reset asks the server to delete appearance settings and uses its answer", async () => {
+  const fetchStub = stubFetch((_url, options) =>
+    options.method === "DELETE"
+      ? jsonResponse({ settings: freshAccountSettings })
+      : jsonResponse({
+          settings: { ...freshAccountSettings, maps_maplibre_style: "dark" },
+        }),
+  )
+  try {
+    SettingsManager.initialize("test-key")
+    await SettingsManager.loadFromBackend()
+    const settings = await SettingsManager.resetToDefaults()
+    const reset = fetchStub.calls.find((call) => call.method === "DELETE")
+    assert.equal(reset.url, "/api/v1/settings/appearance")
+    assert.equal(settings.mapStyle, "light")
+    assert.equal(SettingsManager.getSettings().mapStyle, "light")
+  } finally {
+    fetchStub.restore()
+  }
+})
+
+test("reset can be limited to some appearance settings", async () => {
+  const fetchStub = stubFetch(() =>
+    jsonResponse({ settings: freshAccountSettings }),
+  )
+  try {
+    SettingsManager.initialize("test-key")
+    await SettingsManager.resetToDefaults(["track_color"])
+    const reset = fetchStub.calls.find((call) => call.method === "DELETE")
+    assert.equal(reset.url, "/api/v1/settings/appearance?keys[]=track_color")
+  } finally {
+    fetchStub.restore()
+  }
+})
+
+test("a failed reset reports no settings", async () => {
+  const fetchStub = stubFetch(() => jsonResponse({}, false))
+  try {
+    SettingsManager.initialize("test-key")
+    assert.equal(await SettingsManager.resetToDefaults(), null)
+  } finally {
+    fetchStub.restore()
+  }
+})
+
+async function patchBodyAfter(change) {
+  const fetchStub = stubFetch(() =>
+    jsonResponse({ settings: freshAccountSettings }),
+  )
+  try {
+    SettingsManager.initialize("test-key")
+    await SettingsManager.loadFromBackend()
+    await change()
+    const patch = fetchStub.calls.find((call) => call.method === "PATCH")
+    return JSON.parse(patch.options.body).settings
+  } finally {
+    fetchStub.restore()
+  }
+}
+
+test("a single change sends only that setting", async () => {
+  const body = await patchBodyAfter(() =>
+    SettingsManager.updateSetting("globeProjection", false),
+  )
+  assert.deepEqual(body, { globe_projection: false })
+})
+
+test("a layer toggle sends only the layer list", async () => {
+  const body = await patchBodyAfter(() =>
+    SettingsManager.updateSetting("heatmapEnabled", false),
+  )
+  assert.deepEqual(Object.keys(body), ["enabled_map_layers"])
+  assert.equal(body.enabled_map_layers.includes("Heatmap"), false)
+  assert.equal(body.enabled_map_layers.includes("Tracks"), true)
+})
+
+test("a nested map setting sends only that nested key", async () => {
+  const body = await patchBodyAfter(() =>
+    SettingsManager.updateSetting("hiddenTileCategories", ["roads"]),
+  )
+  assert.deepEqual(body, { maps: { hidden_tile_categories: ["roads"] } })
+})
 
 test("speed coloring preferences load and persist with the existing backend keys", async () => {
   const originalFetch = globalThis.fetch
@@ -76,8 +242,8 @@ async function loadSettingsController(settingsManager, overrides = {}) {
   const dependencies = `
     const Toast = globalThis.__settingsManagerToast
     const UpgradeBanner = {}
-    const isGatedPlan = () => false
-    const LAYER_COLOR_DEFAULTS = ${JSON.stringify(LAYER_COLOR_DEFAULTS)}
+    const isGatedPlan = globalThis.__settingsManagerIsGatedPlan ?? (() => false)
+    const LAYER_NAME_MAP = ${JSON.stringify(LAYER_NAME_MAP ?? {})}
     const SettingsManager = globalThis.__settingsManagerTestDouble
     const getMapStyle = globalThis.__settingsManagerGetMapStyle
     const translate = globalThis.__settingsManagerTranslate ?? ((key) => key)
@@ -136,8 +302,8 @@ test("Track generation thresholds load and persist with their existing backend k
       ok: true,
       json: async () => ({
         settings: {
-          meters_between_routes: "1200",
-          minutes_between_routes: "45",
+          meters_between_routes: 1200,
+          minutes_between_routes: 45,
         },
       }),
     }
@@ -176,7 +342,7 @@ test("a saved Areas layer carries over to Places with their boundaries", async (
   }
 })
 
-test("multiple setting updates are persisted in one complete snapshot", async () => {
+test("multiple setting updates are persisted in one write", async () => {
   SettingsManager.cachedSettings = {
     mapStyle: "light",
     routeColor: "#111111",
@@ -188,17 +354,16 @@ test("multiple setting updates are persisted in one complete snapshot", async ()
     return settings
   }
 
-  await SettingsManager.updateSettings(LAYER_COLOR_DEFAULTS)
+  await SettingsManager.updateSettings({
+    trackColor: "#6366F1",
+    mapStyle: "dark",
+  })
 
   assert.equal(snapshots.length, 1)
-  assert.deepEqual(snapshots[0], {
-    mapStyle: "light",
-    routeColor: "#111111",
-    trackColor: "#6366F1",
-  })
+  assert.deepEqual(snapshots[0], { trackColor: "#6366F1", mapStyle: "dark" })
 })
 
-test("settings writes are serialized so a newer snapshot persists last", async () => {
+test("settings writes are serialized so a newer change persists last", async () => {
   SettingsManager.cachedSettings = {
     mapStyle: "light",
     routeColor: "#111111",
@@ -218,34 +383,36 @@ test("settings writes are serialized so a newer snapshot persists last", async (
 
   const staleSave = SettingsManager.updateSetting("trackColor", "#333333")
   await Promise.resolve()
-  const resetSave = SettingsManager.updateSettings(LAYER_COLOR_DEFAULTS)
+  const resetSave = SettingsManager.updateSettings({ trackColor: "#6366F1" })
   await Promise.resolve()
 
   assert.equal(snapshots.length, 1)
   releaseFirstSave()
   await Promise.all([staleSave, resetSave])
-  assert.deepEqual(snapshots.at(-1), {
-    mapStyle: "light",
-    routeColor: "#111111",
-    trackColor: "#6366F1",
-  })
+  assert.deepEqual(snapshots, [
+    { trackColor: "#333333" },
+    { trackColor: "#6366F1" },
+  ])
 })
 
-test("resetting layer colors cancels stale debounced saves", async () => {
+test("resetting layer colors asks the server and cancels stale debounced saves", async () => {
   const updates = []
+  const applied = []
   const settingsManager = {
     updateSetting(key, value) {
       updates.push({ [key]: value })
     },
-    updateSettings(values) {
-      updates.push(values)
+    async resetToDefaults(keys) {
+      updates.push({ reset: keys })
+      return { trackColor: "#6366F1" }
     },
   }
   const { SettingsController } = await loadSettingsController(settingsManager)
   const controller = new SettingsController({
     element: { querySelector: () => null },
+    settings: {},
   })
-  controller.applyTrackColor = () => {}
+  controller.applyTrackColor = (color) => applied.push(color)
   controller.layerColorTimers = {
     trackColor: setTimeout(
       () => settingsManager.updateSetting("trackColor", "#111111"),
@@ -253,10 +420,65 @@ test("resetting layer colors cancels stale debounced saves", async () => {
     ),
   }
 
-  controller.resetLayerColors()
+  await controller.resetLayerColors()
   await new Promise((resolve) => setTimeout(resolve, 25))
 
-  assert.deepEqual(updates, [LAYER_COLOR_DEFAULTS])
+  assert.deepEqual(updates, [{ reset: ["track_color"] }])
+  assert.deepEqual(applied, ["#6366F1"])
+})
+
+async function resetWith(resetResult) {
+  const toasts = []
+  const settingsManager = { resetToDefaults: async () => resetResult }
+  const { SettingsController } = await loadSettingsController(settingsManager, {
+    Toast: { error: (message) => toasts.push(message), success() {} },
+  })
+  const controller = new SettingsController({
+    element: { querySelector: () => null },
+  })
+  const originalConfirm = globalThis.confirm
+  const originalWindow = globalThis.window
+  let reloaded = false
+  globalThis.confirm = () => true
+  globalThis.window = {
+    location: {
+      reload: () => {
+        reloaded = true
+      },
+    },
+  }
+  try {
+    await controller.resetSettings()
+  } finally {
+    globalThis.confirm = originalConfirm
+    globalThis.window = originalWindow
+  }
+  return { reloaded, toasts }
+}
+
+test("Reset reloads the page once the server restored the defaults", async () => {
+  const { reloaded, toasts } = await resetWith({ mapStyle: "light" })
+  assert.equal(reloaded, true)
+  assert.deepEqual(toasts, [])
+})
+
+test("a failed Reset keeps the page and shows an error", async () => {
+  const { reloaded, toasts } = await resetWith(null)
+  assert.equal(reloaded, false)
+  assert.deepEqual(toasts, ["settings.reset_failed"])
+})
+
+test("a failed settings load shows an error", async () => {
+  const toasts = []
+  const settingsManager = { sync: async () => ({}), loaded: false }
+  const { SettingsController } = await loadSettingsController(settingsManager, {
+    Toast: { error: (message) => toasts.push(message), success() {} },
+  })
+  const controller = new SettingsController({ element: {} })
+
+  await controller.loadSettings()
+
+  assert.deepEqual(toasts, ["settings.load_failed"])
 })
 
 // Minimal stand-in for maplibregl.Map's Evented interface.
@@ -475,4 +697,62 @@ test("live speed changes use current preferences and restore edit exclusions", a
     enabled: true,
     scale: "0:#ff0000|80:#00ff00",
   })
+})
+
+test("Lite toggles are forced off only for layers the server gates", async () => {
+  globalThis.__settingsManagerIsGatedPlan = () => true
+  const originalDocument = globalThis.document
+  globalThis.document = { dispatchEvent() {} }
+  try {
+    const { SettingsController } = await loadSettingsController({
+      getSetting: () => false,
+    })
+    const heatmapToggle = { checked: true }
+    const fogToggle = { checked: false }
+    const controller = new SettingsController({
+      element: { querySelector: () => null },
+      settings: {},
+      userPlanValue: "lite",
+      gatedLayersValue: ["Heatmap"],
+      hasHeatmapToggleTarget: true,
+      heatmapToggleTarget: heatmapToggle,
+      hasFogToggleTarget: true,
+      fogToggleTarget: fogToggle,
+    })
+    controller.settings = { heatmapEnabled: true, fogEnabled: true }
+
+    controller.syncToggleStates()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    assert.equal(heatmapToggle.checked, false)
+    assert.equal(fogToggle.checked, true)
+  } finally {
+    delete globalThis.__settingsManagerIsGatedPlan
+    globalThis.document = originalDocument
+  }
+})
+
+test("reset drops a pending colour save so it cannot land after the reset", async () => {
+  const saved = []
+  const { SettingsController } = await loadSettingsController({
+    updateSetting: (key, value) => saved.push([key, value]),
+    resetToDefaults: async () => true,
+  })
+  const controller = new SettingsController({
+    element: { querySelector: () => null },
+    layerManager: { getLayer: () => null },
+  })
+  const originalConfirm = globalThis.confirm
+  const originalWindow = globalThis.window
+  globalThis.confirm = () => true
+  globalThis.window = { location: { reload() {} } }
+  try {
+    controller.updateTrackColor({ target: { value: "#abcdef" } })
+    await controller.resetSettings()
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    assert.deepEqual(saved, [])
+  } finally {
+    globalThis.confirm = originalConfirm
+    globalThis.window = originalWindow
+  }
 })

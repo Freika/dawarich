@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.20.2] - 2026-11-03, Berlin
+
+### Added
+
+- AirTrail sync now imports a flight's recorded track, such as one uploaded to AirTrail from a CSV file, and the map draws the real flight path instead of the great-circle arc. A track is downloaded again only when it changes in AirTrail. This needs AirTrail 3.13.0 or later and an API key with the `tracks.read` scope; flights without a track, older AirTrail versions and keys without that access keep the arc. Tracks are cut at your privacy zones on the map like other routes, and flight distances in stats are unchanged. (#3785)
+- Create Visit on the map fills the location and times from selected points or nearby history, using the latest stay when several are found. Create and edit forms now let you choose a Place, with a nearby previously visited Place selected when creating a visit.
+- Mark a point the GPS noise filter hid as correct. Turn on the Anomalies layer, click the orange point and press "Mark as correct". The point returns to the map and your stats, rejoins a nearby track of the same device when there is one, and stays visible when you re-evaluate past data. (#3722)
+
+### Changed
+
+- Bumped rack (3.2.8), nokogiri (1.19.7), loofah (2.25.3), rails-html-sanitizer (1.7.2) and addressable (2.9.2) to close known advisories. Self-hosters get the fixes by upgrading.
+- On Lite, Pro-only map settings (custom tiles, theme, colours, Hexagons and other gated layers) are kept but not applied until you upgrade.
+- Reset in the map settings now restores only appearance settings, matching a fresh account, and a stored Fog of War mode is reset to the default (hexagons) on upgrade.
+- Creating or editing a visit, including through `POST` and `PATCH /api/v1/visits`, with the same name as the existing Place it is attached to (or, when changing Place, the previous Place) no longer saves a separate visit name, so the visit shows the Place's current name and follows later renames.
+- The Place search API (`GET /api/v1/places/search`) also returns your Places that have visits but are hidden from the map, and marks each result with `has_visits`; declined and deleted visits are not counted.
+
+### Fixed
+
+- On the globe, photos taken close to the North or South Pole are placed at their real position instead of being pulled down to about 85° latitude. The flat map keeps showing them at its top or bottom edge (#3262).
+- Poster Studio explains that buildings and railways only appear once the map is zoomed in to city level, instead of silently showing nothing for them on wider posters (#3974).
+- Uploading points from the mobile apps or Overland no longer returns HTTP 500 on instances whose `points` table never got the `altitude_decimal` or `source_id` column: the upgrade now adds the missing columns. `altitude_decimal` was missing on instances first set up from the 1.5.0–1.6.x schema, `source_id` on ones that were busy while upgrading past 1.13.1. Where `source_id` is added, self-hosted instances then fill it in a background job (#3969, #3972).
+- Instances missing those columns also built no new tracks since 1.17.0. Once the upgrade adds the columns, track generation catches up right away instead of on the next 12-hour run (#3915).
+- If a long transaction keeps `points` locked, startup now stops with an error and retries on the next start, instead of carrying on without it (#3972).
+- Trip previews, day routes and poster routes that cross the date line draw as one continuous line instead of a seam with a jump near the poles (#3261).
+- Searching for a place in the visit editor against a self-hosted Photon server that only supports reverse geocoding now explains that text search can't find new places there, instead of showing an empty list. Saved places still match by name (#3590).
+- Achievement checks no longer hang for hours on accounts with stale `points` statistics: each map grid cell's region is looked up once whatever query plan PostgreSQL picks, the query stops after 10 minutes, and a cancelled check is dropped instead of retried, keeping its pending work for the next run (#3933).
+- Containers started with `PUID`/`PGID` no longer log that `/` is not writable on every start: when that user has no home directory, the app and Sidekiq use their `tmp` directory as `HOME` (#3917).
+- The German year-vs-year distance comparison in Insights now reads "2.745 km mehr" and "715 km weniger" instead of "Vorne um" and "Zurück um" (#3978).
+
 ## [1.20.1] - 2026-11-01, Berlin
 
 ### Fixed

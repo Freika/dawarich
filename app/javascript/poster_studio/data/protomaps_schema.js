@@ -2,6 +2,17 @@ export const SOURCE_ID = "protomaps"
 export const DEFAULT_TILE_URL = "https://tyles.dwri.xyz/planet/{z}/{x}/{y}.mvt"
 export const SOURCE_MAX_ZOOM = 15
 
+// The planet tiles carry no buildings or rail below this zoom (#3974).
+export const DETAIL_LAYERS_MIN_ZOOM = 11
+const DETAIL_CATEGORIES = ["buildings", "rail"]
+
+export function detailLayersOutOfRange(zoom, hiddenCategories) {
+  return (
+    zoom < DETAIL_LAYERS_MIN_ZOOM &&
+    DETAIL_CATEGORIES.some((category) => !hiddenCategories.has(category))
+  )
+}
+
 export const PARK_KINDS = [
   "national_park",
   "park",

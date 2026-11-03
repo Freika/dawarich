@@ -1548,6 +1548,7 @@ es:
       buildings: Edificios
       railways: Vías férreas
       boundaries: Límites
+      detail_layers_zoom_hint: "Los edificios y las vías de tren solo aparecen al acercar el mapa a nivel de ciudad."
       theme_aria_label: Tema %{theme}
       background: Fondo
       motorway_roads: Autopistas y carreteras principales
@@ -1727,9 +1728,10 @@ es:
         found_in_your_photoprism_settings_under_library: Encontrado en tus ajustes de Photoprism bajo Biblioteca
         airtrail_integration: Integración de AirTrail
         airtrail_url: URL de AirTrail
-        the_base_url_of_your_airtrail_instance_your_flights_are: La URL base de tu instancia de AirTrail. Tus vuelos se muestran como arcos en el mapa.
+        the_base_url_of_your_airtrail_instance_your_flights_are: 'La URL base de tu instancia de AirTrail. Tus vuelos se muestran en el mapa.'
         airtrail_api_key: Clave API de AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Crea una clave API en AirTrail bajo Ajustes → Seguridad.
+        airtrail_recorded_flight_tracks_need_airtrail_3_13: 'Los vuelos con una ruta grabada en AirTrail se dibujan siguiendo esa ruta y el resto como arcos. Las rutas necesitan AirTrail 3.13 o posterior y una clave API con el permiso tracks.read.'
         teslamate_integration: Integración de TeslaMateApi
         teslamate_url: URL de TeslaMateApi
         the_base_url_of_your_teslamateapi_instance: La URL base de tu instancia de TeslaMateApi.
@@ -4067,6 +4069,9 @@ es:
       failed_to_load_area_details: Falló al cargar detalles de área
       point_deleted_successfully: Punto eliminado correctamente
       failed_to_delete_point: Falló al eliminar punto
+      mark_point_valid: Marcar como correcto
+      point_marked_valid: Punto marcado como correcto
+      failed_to_mark_point_valid: No se pudo marcar el punto como correcto
       deleting_area: Eliminando área...
       area_deleted_successfully: Área eliminada con éxito!
       failed_to_delete_area: Falló al eliminar área
@@ -4204,6 +4209,7 @@ es:
       filter_by_tag: FILTRO POR ETIQUETA
       no_tags: No se han creado etiquetas todavía
       none_found: No se encontraron lugares
+      forward_search_unavailable: "Tu servidor Photon solo admite geocodificación inversa, por lo que la búsqueda de texto no puede encontrar lugares nuevos. Los lugares guardados siguen coincidiendo por nombre."
       open_for_suggestions: Abre el cuadro de diálogo para cargar sugerencias cercanas
       show_all: Mostrar todos los lugares
       untagged: Lugares sin etiqueta
@@ -4223,6 +4229,9 @@ es:
       creating: Creando tus datos de demostración…
       creating_help: Sembrando un mes de seguimiento en Berlín más un fin de semana en Praga. Toma unos segundos.
     visits:
+      place: "Lugar"
+      choose_place: "Elegir un lugar"
+      multiple_stays: "Se encontraron varias estancias. Se ha usado la más reciente."
       add_new: Añadir una visita
       create_new: Crear nueva visita
       create: Crear visita
@@ -4338,7 +4347,9 @@ es:
       locations_failed: Falló buscar ubicaciones. Intenta de nuevo.
     settings:
       transportation_recalculation_completed: Recálculo del modo de transporte completado!
-      confirm_reset: "¿Restablecer todos los ajustes a sus valores predeterminados? La página se recargará."
+      confirm_reset: "¿Restablecer la apariencia del mapa a sus valores predeterminados? Los ajustes de modos de transporte y de filtrado se mantienen. La página se recargará."
+      load_failed: "No se pudieron cargar los ajustes del mapa. Los cambios no se guardarán hasta que recargues la página."
+      reset_failed: "No se pudo restablecer la apariencia del mapa. Inténtalo de nuevo."
       confirm_globe_reload: "La vista de globo requiere recargar la página. ¿Recargar ahora?"
       changed_fields: 'Cambios: %{fields}'
       confirm_reapply_anomaly_filter: |-
