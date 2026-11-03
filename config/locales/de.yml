@@ -4264,6 +4264,7 @@ de:
       filter_by_tag: FILTERN NACH ETIKETTE
       no_tags: Noch keine Etiketten erstellt
       none_found: Keine Orte gefunden
+      forward_search_unavailable: "Dein Photon-Server unterstützt nur Rückwärts-Geocoding, daher findet die Textsuche keine neuen Orte. Gespeicherte Orte werden weiterhin nach Namen gefunden."
       open_for_suggestions: Öffne den Dialog, um Vorschläge in der Nähe zu laden
       show_all: Alle Orte anzeigen
       untagged: Unbeschriftete Orte

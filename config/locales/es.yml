@@ -4209,6 +4209,7 @@ es:
       filter_by_tag: FILTRO POR ETIQUETA
       no_tags: No se han creado etiquetas todavía
       none_found: No se encontraron lugares
+      forward_search_unavailable: "Tu servidor Photon solo admite geocodificación inversa, por lo que la búsqueda de texto no puede encontrar lugares nuevos. Los lugares guardados siguen coincidiendo por nombre."
       open_for_suggestions: Abre el cuadro de diálogo para cargar sugerencias cercanas
       show_all: Mostrar todos los lugares
       untagged: Lugares sin etiqueta

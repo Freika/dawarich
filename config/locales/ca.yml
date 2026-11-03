@@ -4212,6 +4212,7 @@ ca:
       filter_by_tag: FILTRA PER ETIQUETA
       no_tags: Encara no s'ha creat cap etiqueta
       none_found: No s'ha trobat cap lloc
+      forward_search_unavailable: "El teu servidor Photon només admet la geocodificació inversa, així que la cerca de text no pot trobar llocs nous. Els llocs desats encara coincideixen pel nom."
       open_for_suggestions: Obre el diàleg per carregar suggeriments propers
       show_all: Mostra tots els llocs
       untagged: Llocs sense etiqueta

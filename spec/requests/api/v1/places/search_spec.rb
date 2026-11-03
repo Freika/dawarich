@@ -100,6 +100,52 @@ RSpec.describe 'Api::V1::Places::Search', type: :request do
     end
   end
 
+  context 'with a reverse-only Photon server' do
+    let(:not_found_body) { { title: 'Endpoint GET /api not found', status: 404 }.to_json }
+
+    before do
+      configure_instance_geocoding(photon_api_host: 'photon.test')
+      use_real_geocoding_lookups
+      allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
+      create(:place, user: user, name: 'Corner Bakery', latitude: lat, longitude: lon)
+      stub_request(:get, %r{\Ahttp://photon\.test/api}).to_return(status: 404, body: not_found_body)
+      stub_request(:get, %r{\Ahttp://photon\.test/reverse})
+        .to_return(status: 200, body: { type: 'FeatureCollection', features: [] }.to_json)
+    end
+
+    it 'flags the missing forward search and still returns matching saved places' do
+      get '/api/v1/places/search', params: { q: 'bakery', lat: lat, lon: lon }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      json = JSON.parse(response.body)
+      expect(json['forward_search_unavailable']).to be(true)
+      expect(json['places'].map { |p| p['name'] }).to eq(['Corner Bakery'])
+    end
+
+    it 'does not flag a nearby lookup' do
+      get '/api/v1/places/search', params: { lat: lat, lon: lon }, headers: headers
+
+      expect(JSON.parse(response.body)['forward_search_unavailable']).to be(false)
+    end
+
+    it 'does not flag an unreachable provider' do
+      stub_request(:get, %r{\Ahttp://photon\.test/api}).to_raise(Errno::ECONNREFUSED)
+
+      get '/api/v1/places/search', params: { q: 'bakery', lat: lat, lon: lon }, headers: headers
+
+      expect(JSON.parse(response.body)['forward_search_unavailable']).to be(false)
+    end
+
+    # A wrong path prefix also returns 404, but from the proxy, not Photon.
+    it 'does not flag a 404 that does not come from Photon' do
+      stub_request(:get, %r{\Ahttp://photon\.test/api}).to_return(status: 404, body: '<h1>404 Not Found</h1>')
+
+      get '/api/v1/places/search', params: { q: 'bakery', lat: lat, lon: lon }, headers: headers
+
+      expect(JSON.parse(response.body)['forward_search_unavailable']).to be(false)
+    end
+  end
+
   context 'without an instance geocoding provider' do
     it 'returns empty places (not an error)' do
       get '/api/v1/places/search', params: { q: 'cafe', lat: lat, lon: lon }, headers: headers
