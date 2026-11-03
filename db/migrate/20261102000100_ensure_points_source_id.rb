@@ -21,11 +21,21 @@ class EnsurePointsSourceId < ActiveRecord::Migration[8.1]
     add_source_id
     Point.reset_column_information
     DataMigrations::BackfillPointDimensionsJob.perform_later if backfill
+    catch_up_tracks
   end
 
   def down; end
 
   private
+
+  # Since 1.17.0 the track builder reads this column, so no tracks were built
+  # without it. The 12-hour schedule would catch up as well; this only makes it
+  # immediate, so a queue outage must not fail an already committed ALTER.
+  def catch_up_tracks
+    Tracks::DailyGenerationJob.perform_later
+  rescue StandardError => e
+    Rails.logger.warn("#{self.class.name}: track catch-up not queued (#{e.class}), the schedule will run it")
+  end
 
   def add_source_id
     attempts = 0

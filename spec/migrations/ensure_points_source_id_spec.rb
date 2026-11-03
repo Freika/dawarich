@@ -44,6 +44,14 @@ RSpec.describe EnsurePointsSourceId do
     expect(connection.column_exists?(:points, :source_id)).to be true
   end
 
+  # Since 1.17.0 the track builder reads source_id, so these instances built
+  # no tracks; the catch-up rebuilds them from the last track onward.
+  it 'catches up tracks once it adds the column' do
+    drop_column
+
+    expect { migration.up }.to have_enqueued_job(Tracks::DailyGenerationJob)
+  end
+
   it 'keeps existing points when it adds the column' do
     point = create(:point)
     drop_column
@@ -61,7 +69,7 @@ RSpec.describe EnsurePointsSourceId do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
     drop_column
 
-    expect { migration.up }.not_to have_enqueued_job
+    expect { migration.up }.not_to have_enqueued_job(DataMigrations::BackfillPointDimensionsJob)
     expect(connection.column_exists?(:points, :source_id)).to be true
   end
 
