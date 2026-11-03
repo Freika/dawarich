@@ -15,11 +15,21 @@ class EnsurePointsAltitudeDecimal < ActiveRecord::Migration[8.1]
 
     add_altitude_decimal
     Point.reset_column_information
+    catch_up_tracks
   end
 
   def down; end
 
   private
+
+  # Since 1.17.0 the track builder reads this column, so no tracks were built
+  # without it. The 12-hour schedule would catch up as well; this only makes it
+  # immediate, so a queue outage must not fail an already committed ALTER.
+  def catch_up_tracks
+    Tracks::DailyGenerationJob.perform_later
+  rescue StandardError => e
+    Rails.logger.warn("#{self.class.name}: track catch-up not queued (#{e.class}), the schedule will run it")
+  end
 
   # Nullable and without a default, so the ALTER is metadata-only; readers
   # fall back to points.altitude while the new column is empty.
