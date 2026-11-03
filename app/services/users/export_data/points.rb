@@ -40,9 +40,10 @@ class Users::ExportData::Points
       point_ids = batch.pluck(:id)
       batch_sql = ActiveRecord::Base.sanitize_sql_array([build_batch_query, point_ids])
       result = ActiveRecord::Base.connection.exec_query(batch_sql, 'Points Export Batch')
+      archived_raw_data = Users::ExportData::ArchivedRawData.for(result)
 
       result.each do |row|
-        point_hash = build_point_hash(row)
+        point_hash = build_point_hash(row, archived_raw_data)
         next unless point_hash # Skip points without coordinates
 
         month_key = extract_month_key(row)
@@ -99,7 +100,8 @@ class Users::ExportData::Points
     result = ActiveRecord::Base.connection.exec_query(build_full_query, 'Points Export', [user.id])
     Rails.logger.info "Processing #{result.count} points for export..."
 
-    result.filter_map { |row| build_point_hash(row) }
+    archived_raw_data = Users::ExportData::ArchivedRawData.for(result)
+    result.filter_map { |row| build_point_hash(row, archived_raw_data) }
   end
 
   def build_full_query
@@ -108,7 +110,7 @@ class Users::ExportData::Points
         p.id, CASE WHEN p.source_id IS NULL THEN p.battery_status ELSE ps.battery_status END AS battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
         p.ping, CASE WHEN p.source_id IS NULL THEN p.tracker_id ELSE ps.tracker_id END AS tracker_id, CASE WHEN p.source_id IS NULL THEN p.topic ELSE ps.topic END AS topic, CASE WHEN p.source_id IS NULL THEN p.trigger ELSE ps.trigger END AS trigger, CASE WHEN p.source_id IS NULL THEN p.bssid ELSE ps.bssid END AS bssid, CASE WHEN p.source_id IS NULL THEN p.ssid ELSE ps.ssid END AS ssid,
         CASE WHEN p.source_id IS NULL THEN p.connection ELSE ps.connection END AS connection,
-        p.vertical_accuracy, p.mode, CASE WHEN p.source_id IS NULL THEN p.inrids ELSE ps.inrids END AS inrids, CASE WHEN p.source_id IS NULL THEN p.in_regions ELSE ps.in_regions END AS in_regions, p.raw_data,
+        p.vertical_accuracy, p.mode, CASE WHEN p.source_id IS NULL THEN p.inrids ELSE ps.inrids END AS inrids, CASE WHEN p.source_id IS NULL THEN p.in_regions ELSE ps.in_regions END AS in_regions, p.raw_data, p.raw_data_archive_id,
         p.city, p.country, p.geodata, p.reverse_geocoded_at, p.course,
         p.course_accuracy, p.external_track_id, p.created_at, p.updated_at,
         p.lonlat,
@@ -144,7 +146,7 @@ class Users::ExportData::Points
         p.id, CASE WHEN p.source_id IS NULL THEN p.battery_status ELSE ps.battery_status END AS battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
         p.ping, CASE WHEN p.source_id IS NULL THEN p.tracker_id ELSE ps.tracker_id END AS tracker_id, CASE WHEN p.source_id IS NULL THEN p.topic ELSE ps.topic END AS topic, CASE WHEN p.source_id IS NULL THEN p.trigger ELSE ps.trigger END AS trigger, CASE WHEN p.source_id IS NULL THEN p.bssid ELSE ps.bssid END AS bssid, CASE WHEN p.source_id IS NULL THEN p.ssid ELSE ps.ssid END AS ssid,
         CASE WHEN p.source_id IS NULL THEN p.connection ELSE ps.connection END AS connection,
-        p.vertical_accuracy, p.mode, CASE WHEN p.source_id IS NULL THEN p.inrids ELSE ps.inrids END AS inrids, CASE WHEN p.source_id IS NULL THEN p.in_regions ELSE ps.in_regions END AS in_regions, p.raw_data,
+        p.vertical_accuracy, p.mode, CASE WHEN p.source_id IS NULL THEN p.inrids ELSE ps.inrids END AS inrids, CASE WHEN p.source_id IS NULL THEN p.in_regions ELSE ps.in_regions END AS in_regions, p.raw_data, p.raw_data_archive_id,
         p.city, p.country, p.geodata, p.reverse_geocoded_at, p.course,
         p.course_accuracy, p.external_track_id, p.created_at, p.updated_at,
         p.lonlat,
@@ -174,7 +176,7 @@ class Users::ExportData::Points
     SQL
   end
 
-  def build_point_hash(row)
+  def build_point_hash(row, archived_raw_data)
     if row['lonlat'].blank?
       Rails.logger.debug "Skipping point without coordinates: id=#{row['id'] || 'unknown'}"
       return nil
@@ -198,7 +200,7 @@ class Users::ExportData::Points
       'mode' => row['mode'],
       'inrids' => row['inrids'] || [],
       'in_regions' => row['in_regions'] || [],
-      'raw_data' => row['raw_data'],
+      'raw_data' => archived_raw_data.fetch(row['id'], row['raw_data']),
       'city' => row['city'],
       'country' => row['country'],
       'geodata' => row['geodata'],
