@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Containers started with `PUID`/`PGID` no longer log that `/` is not writable on every start: when that user has no home directory, the app and Sidekiq use their `tmp` directory as `HOME` (#3917).
 - Poster Studio explains that buildings and railways only appear once the map is zoomed in to city level, instead of silently showing nothing for them on wider posters (#3974).
 - Uploading points from the mobile apps or Overland no longer returns HTTP 500 on instances whose `points` table never got the `altitude_decimal` or `source_id` column: the upgrade now adds the missing columns. `altitude_decimal` was missing on instances first set up from the 1.5.0–1.6.x schema, `source_id` on ones that were busy while upgrading past 1.13.1. Where `source_id` is added, self-hosted instances then fill it in a background job (#3969, #3972).
 - If a long transaction keeps `points` locked, startup now stops with an error and retries on the next start, instead of carrying on without it (#3972).
