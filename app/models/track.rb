@@ -160,6 +160,7 @@ class Track < ApplicationRecord
           (timestamp - LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp)) as time_diff_seconds
         FROM points
         WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3 AND (anomaly IS NOT TRUE)
+          AND #{Point::ROUTE_OBSERVATION_SQL}
       ),
       segment_breaks AS (
         SELECT points_with_gaps.*,

@@ -24,11 +24,32 @@ RSpec.describe 'Api::V1::Healths', type: :request do
       end
     end
 
+    it 'advertises stationary presence route handling without changing the health body' do
+      get '/api/v1/health'
+      expect(response.headers['X-Dawarich-Stationary-Presence']).to eq('1')
+      expect(response.parsed_body).to eq('status' => 'ok')
+    end
+
     it 'returns the correct version' do
       get '/api/v1/health'
 
       expect(response.headers['X-Dawarich-Version']).to eq(APP_VERSION)
     end
+  end
+
+  it 'preserves the native presence action at authenticated intake without treating it as an anomaly' do
+    user = create(:user)
+    location = {
+      type: 'Feature', geometry: { type: 'Point', coordinates: [13.0, 52.0] },
+      properties: { timestamp: Time.current.iso8601, action: 'stationary_presence', horizontal_accuracy: 10 }
+    }
+    post '/api/v1/points', params: { locations: [location] },
+                            headers: { 'Authorization' => "Bearer #{user.api_key}" }, as: :json
+    expect(response).to have_http_status(:ok)
+    point = user.points.last
+    expect(point.motion_data['action']).to eq('stationary_presence')
+    expect(user.points.not_anomaly).to include(point)
+    expect(user.points.route_observations).not_to include(point)
   end
 
   describe 'GET /ready' do

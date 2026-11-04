@@ -66,6 +66,10 @@ module Tracks::TrackBuilder
                                             skip_segment_detection: skip_segment_detection)
     end
 
+    if points.any?(&:stationary_presence?)
+      points = points.reject(&:stationary_presence?)
+      pre_calculated_distance = Point.calculate_distance_for_array_geocoder(points, :m)
+    end
     return nil if points.size < 2
 
     resolved_tracker_id = tracker_id || points.first.tracker_id
@@ -118,7 +122,7 @@ module Tracks::TrackBuilder
   def create_track_from_orphan_points(points, tracker_id:, skip_segment_detection:)
     singleton = nil
     track = Point.transaction do
-      orphans = Point.where(user_id: user.id, id: points.map(&:id), track_id: nil)
+      orphans = Point.route_observations.where(user_id: user.id, id: points.map(&:id), track_id: nil)
                      .select(:id, :timestamp, :lonlat, :source_id, :tracker_id, :altitude, :altitude_decimal)
                      .preload(:source)
                      .order(:id).lock.to_a.sort_by { |point| [point.timestamp, point.id] }

@@ -25,6 +25,7 @@ module Distanceable
         raise ArgumentError, "Invalid unit. Supported units are: #{::DISTANCE_UNITS.keys.join(', ')}"
       end
 
+      points = points.reject { |point| point.respond_to?(:stationary_presence?) && point.stationary_presence? }
       return 0 if points.length < 2
 
       total_meters = points.each_cons(2).sum do |p1, p2|
@@ -113,6 +114,7 @@ module Distanceable
 
       raise ArgumentError, 'Distance can only be calculated for a scoped relation' if relation.where_clause.empty?
 
+      relation = relation.route_observations if relation.respond_to?(:route_observations)
       distance_in_meters = connection.select_value(<<~SQL.squish)
         WITH points_with_previous AS (
           SELECT
@@ -141,6 +143,7 @@ module Distanceable
         raise ArgumentError, "Invalid unit. Supported units are: #{::DISTANCE_UNITS.keys.join(', ')}"
       end
 
+      points = points.reject { |point| point.respond_to?(:stationary_presence?) && point.stationary_presence? }
       return 0 if points.length < 2
 
       total_meters = calculate_batch_distances(points).sum
