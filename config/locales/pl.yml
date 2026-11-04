@@ -2206,6 +2206,9 @@ pl:
       unavailable: Dołącz do aktywnej rodziny, zanim udostępnisz podróż jej członkom.
       back_to_trips: Powrót do podróży
       your_map: Twoja mapa dla tych dat
+    timeline_scope:
+      only_import: Udostępnione zostaną tylko punkty z %{name} z wybranego okresu. Zdjęcia nie są udostępniane.
+      unavailable: Wybrany import nie jest już dostępny.
   stats:
     locked_year_card:
       available_on_pro: Dostępne w planie Pro
@@ -4900,6 +4903,19 @@ pl:
       hours_short: "%{count}h"
       invalid_date: Nieprawidłowa data
       minutes_short: "%{count}min"
+    ux_p3:
+      timeline:
+        filtered_count: Wyświetlono %{count} z %{total} wizyt
+        visit_count:
+          one: "%{count} wizyta"
+          few: "%{count} wizyty"
+          many: "%{count} wizyt"
+          other: "%{count} wizyty"
+      video:
+        ready: Twój film jest gotowy — MP4 · %{size} MB.
+      realtime:
+        connected: Aktualizacje na żywo połączone
+        disconnected: Aktualizacje na żywo wstrzymane. Nowe pozycje mogą pojawić się z opóźnieniem; połączenie zostanie przywrócone automatycznie.
   battery_statuses:
     unknown: nieznany
     unplugged: odłączony
@@ -4923,3 +4939,112 @@ pl:
     meridiem:
       am: AM
       pm: PM
+  ux_p2:
+    places:
+      back: Powrót do miejsc
+      edit: Edytuj miejsce
+      more_actions: 'Więcej działań: scal lub usuń'
+      radius: Promień wizyty (metry)
+      add: Dodaj miejsce
+      save: Zapisz miejsce
+      search: Szukaj miejsc
+      tag: Tagi
+      all_tags: Wszystkie tagi
+      sort: Sortuj według
+      sort_name: Nazwa
+      sort_recent_visit: Ostatnia wizyta
+      sort_newest: Ostatnio utworzone
+      no_matches: Brak pasujących miejsc. Spróbuj innego wyszukiwania lub dodaj miejsce.
+      pick_coordinates: Kliknij mapę lub wpisz współrzędne, aby wybrać to miejsce. Znacznik możesz przeciągnąć, aby je poprawić.
+      latitude: Szerokość geograficzna
+      longitude: Długość geograficzna
+      name: Nazwa
+      note: Notatka
+    settings:
+      sections: Sekcja ustawień
+    nav:
+      notifications: Powiadomienia
+      previous_day: Poprzedni dzień
+      next_day: Następny dzień
+    demo:
+      description: Poznaj miesiąc historii lokalizacji w Berlinie i weekendową podróż do Pragi. Demonstracyjne punkty, wizyty i miejsca są oznaczone i można je w każdej chwili usunąć.
+    exports:
+      source: 'Źródło: %{name}'
+      restored_incomplete: Ten eksport nie był ukończony w kopii zapasowej. Utwórz nowy eksport na stronie Punkty.
+      unavailable_source: Niedostępne źródło (zakres zachowany)
+      removed_import: Usunięty import (zakres zachowany)
+      unavailable_import: Wybrany import nie jest już dostępny.
+    sharing:
+      exact_expiry: Dokładny termin wygaśnięcia (opcjonalnie)
+      exact_expiry_hint: 'Strefa czasowa: %{timezone}. Pozostaw puste, aby link nie wygasał.'
+      invalid_expiry: Wybierz prawidłową datę wygaśnięcia.
+      no_expiry: Bez wygaśnięcia
+      expires: Dostęp kończy się
+      period: Udostępniony okres
+      included: Uwzględnione
+      excluded: Pominięte
+      edit_access: Edytuj dostęp
+      preview: Otwórz widok odbiorcy
+      url_unchanged: Zmiany dotyczą tego linku. Jego adres URL, odbiorcy i wybrane dane pozostają bez zmian.
+      cancel: Anuluj
+      save: Zapisz dostęp
+      sections:
+        show_route: Mapa trasy
+        show_stats: Statystyki
+        show_days: Podział na dni
+        show_day_notes: Notatki dnia
+        show_description: Opis
+        show_photos: Zdjęcia
+    import:
+      technical_details: Szczegóły techniczne
+      failed: Import nie powiódł się
+      format_error: Nie udało się odczytać formatu pliku. Sprawdź, czy plik jest poprawny i ma obsługiwany format.
+      failed_reason: Nie udało się dokończyć importu. Możesz przesłać plik ponownie; jeśli znów się nie uda, podaj poniższy identyfikator przy zgłaszaniu problemu.
+      reference: 'Identyfikator importu: #%{id}. Szczegóły techniczne są dostępne w logach serwera.'
+      open: Otwórz import i opcje odzyskiwania
+      upload_another: Prześlij inny plik
+      supported_formats: Obsługiwane formaty
+      notification_html: Import &quot;%{name}&quot; nie powiódł się. %{reason} %{link}
+    digest:
+      queued: W kolejce. Twoje podsumowanie roku pojawi się tutaj automatycznie.
+      calculating: Obliczamy Twoje podsumowanie roku. Ta strona odświeży się automatycznie.
+      failed: Generowanie nie powiodło się. Twoja historia lokalizacji jest bezpieczna; spróbuj ponownie.
+      retry: Ponów generowanie
+      working: Przygotowywanie podsumowania
+    points:
+      select: Wybierz punkt zarejestrowany o %{time}
+    insights:
+      empty_title: Tutaj pojawią się Twoje podróże
+      empty_help: Zaimportuj historię lokalizacji lub podłącz tracker, aby zobaczyć pierwsze dystanse, mapy i statystyki podróży.
+      import: Importuj historię
+      connect: Podłącz tracker
+      unresolved: Jeszcze nie rozpoznano
+      names_pending: Nazwy krajów i miast nie zostały jeszcze rozpoznane. Współrzędne, mapy i dystans mogą być już dostępne.
+      configure: Skonfiguruj geokodowanie
+      ask_admin: Administrator może skonfigurować geokodowanie, aby rozpoznawać nazwy krajów i miast.
+  ux_p3:
+    video:
+      download: Pobierz film
+    integrations:
+      save_and_test: Zapisz i przetestuj połączenie
+      test: Przetestuj bez zapisywania
+      save: Zapisz bez testowania
+      status:
+        untested: 'Zapisane połączenie: nieprzetestowane.'
+        connected: 'Zapisane połączenie: ostatni test zakończył się powodzeniem.'
+        failed: 'Zapisane połączenie: ostatni test nie powiódł się.'
+      saved_untested: Ustawienia zapisane. Nie wykonano testu połączenia.
+      tested_ok: Połączenie zweryfikowane. Zmiany nie zostały zapisane.
+      tested_failed: Połączenie nie powiodło się. Zmiany nie zostały zapisane.
+      saved_ok: Ustawienia zapisane, połączenie zweryfikowane.
+      saved_failed: Ustawienia zapisane, ale połączenie nie powiodło się.
+      validation_failed: Nie można użyć tych ustawień. Sprawdź adres URL i wymagane pola.
+      retry: Sprawdź poniższe pola, a następnie ponownie przetestuj połączenie.
+      reasons:
+        unreachable: Nie udało się połączyć z usługą. Sprawdź jej adres, port i dostęp sieciowy z Dawarich.
+        certificate: Nie udało się zweryfikować certyfikatu TLS. Sprawdź certyfikat serwera.
+        credentials: Odmowa dostępu. Sprawdź klucz API i jego uprawnienia.
+        missing_fields: Podaj adres URL usługi i wymagane dane logowania.
+        check_settings: Usługa nie przyjęła połączenia. Sprawdź adres URL, dane logowania i wymagane uprawnienia.
+    timeline:
+      filter_scope: Filtry wizyt są aktywne. Przejazdy i okresy bez śledzenia pozostają widoczne.

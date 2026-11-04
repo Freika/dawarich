@@ -2188,6 +2188,9 @@ ca:
       unavailable: Uneix-te a una família activa abans de compartir un viatge amb els seus membres.
       back_to_trips: Torna als viatges
       your_map: El teu mapa per a aquestes dates
+    timeline_scope:
+      only_import: Només es compartiran els punts de %{name} del període seleccionat. Les fotos no s'hi inclouen.
+      unavailable: La importació seleccionada ja no està disponible.
   stats:
     locked_year_card:
       available_on_pro: Disponible a Pro
@@ -4705,6 +4708,17 @@ ca:
       hours_short: "%{count}h"
       invalid_date: Data no vàlida
       minutes_short: "%{count}min"
+    ux_p3:
+      timeline:
+        filtered_count: Es mostren %{count} de %{total} visites
+        visit_count:
+          one: "%{count} visita"
+          other: "%{count} visites"
+      video:
+        ready: El teu vídeo està llest — MP4 · %{size} MB.
+      realtime:
+        connected: Actualitzacions en directe connectades
+        disconnected: Actualitzacions en directe en pausa. Les posicions noves poden arribar amb retard; es tornarà a connectar automàticament.
   battery_statuses:
     unknown: desconegut
     unplugged: desendollat
@@ -4728,3 +4742,112 @@ ca:
     meridiem:
       am: a. m.
       pm: p. m.
+  ux_p2:
+    places:
+      back: Torna als llocs
+      edit: Edita el lloc
+      more_actions: 'Més accions: fusiona o suprimeix'
+      radius: Radi de visita (metres)
+      add: Afegeix un lloc
+      save: Desa el lloc
+      search: Cerca llocs
+      tag: Etiquetes
+      all_tags: Totes les etiquetes
+      sort: Ordena per
+      sort_name: Nom
+      sort_recent_visit: Visita més recent
+      sort_newest: Creats recentment
+      no_matches: No hi ha cap lloc coincident. Prova una altra cerca o afegeix un lloc.
+      pick_coordinates: Fes clic al mapa o introdueix coordenades per triar aquest lloc. Pots arrossegar el marcador per ajustar-lo.
+      latitude: Latitud
+      longitude: Longitud
+      name: Nom
+      note: Nota
+    settings:
+      sections: Secció de configuració
+    nav:
+      notifications: Notificacions
+      previous_day: Dia anterior
+      next_day: Dia següent
+    demo:
+      description: Explora un mes d’ubicacions a Berlín i un viatge de cap de setmana a Praga. Els punts, les visites i els llocs de demostració estan identificats i es poden eliminar en qualsevol moment.
+    exports:
+      source: 'Origen: %{name}'
+      restored_incomplete: Aquesta exportació no estava acabada a la còpia de seguretat. Crea una exportació nova des de Punts.
+      unavailable_source: Origen no disponible (abast conservat)
+      removed_import: Importació eliminada (abast conservat)
+      unavailable_import: La importació seleccionada ja no està disponible.
+    sharing:
+      exact_expiry: Caducitat exacta (opcional)
+      exact_expiry_hint: 'Zona horària: %{timezone}. Deixa-ho en blanc perquè no caduqui.'
+      invalid_expiry: Tria una data de caducitat vàlida.
+      no_expiry: Sense caducitat
+      expires: L'accés acaba
+      period: Període compartit
+      included: Inclòs
+      excluded: Exclòs
+      edit_access: Edita l'accés
+      preview: Obre la vista del destinatari
+      url_unchanged: Els canvis s'apliquen a aquest enllaç. El seu URL, el públic i les dades seleccionades es mantenen.
+      cancel: Cancel·la
+      save: Desa l'accés
+      sections:
+        show_route: Mapa de la ruta
+        show_stats: Estadístiques
+        show_days: Desglossament per dies
+        show_day_notes: Notes del dia
+        show_description: Descripció
+        show_photos: Fotos
+    import:
+      technical_details: Detalls tècnics
+      failed: La importació ha fallat
+      format_error: No s'ha pogut llegir el format del fitxer. Comprova que el fitxer és vàlid i que fa servir un format compatible.
+      failed_reason: La importació no s'ha pogut completar. Pots tornar a pujar el fitxer; si torna a fallar, fes servir la referència següent quan informis del problema.
+      reference: 'Referència de la importació: #%{id}. Els detalls tècnics són als registres del servidor.'
+      open: Obre la importació i les opcions de recuperació
+      upload_another: Puja un altre fitxer
+      supported_formats: Formats compatibles
+      notification_html: La importació &quot;%{name}&quot; ha fallat. %{reason} %{link}
+    digest:
+      queued: A la cua. El resum de l'any apareixerà aquí automàticament.
+      calculating: S'està calculant el resum de l'any. Aquesta pàgina s'actualitza automàticament.
+      failed: La generació ha fallat. El teu historial d'ubicacions està segur; torna-ho a provar.
+      retry: Torna a generar
+      working: S'està preparant el resum
+    points:
+      select: Selecciona el punt enregistrat a les %{time}
+    insights:
+      empty_title: Els teus trajectes apareixeran aquí
+      empty_help: Importa l'historial d'ubicacions o connecta un rastrejador per obtenir les primeres distàncies, mapes i estadístiques de viatge.
+      import: Importa l'historial
+      connect: Connecta un rastrejador
+      unresolved: Encara no identificat
+      names_pending: Encara no s'han identificat els noms de països i ciutats. Les coordenades, els mapes i la distància ja poden estar disponibles.
+      configure: Configura la geocodificació
+      ask_admin: L'administrador pot configurar la geocodificació per identificar els noms de països i ciutats.
+  ux_p3:
+    video:
+      download: Baixa el vídeo
+    integrations:
+      save_and_test: Desa i prova la connexió
+      test: Prova sense desar
+      save: Desa sense provar
+      status:
+        untested: 'Connexió desada: no provada.'
+        connected: 'Connexió desada: l''última prova ha funcionat.'
+        failed: 'Connexió desada: l''última prova ha fallat.'
+      saved_untested: Configuració desada. No s'ha fet cap prova de connexió.
+      tested_ok: Connexió verificada. Els canvis no s'han desat.
+      tested_failed: La connexió ha fallat. Els canvis no s'han desat.
+      saved_ok: Configuració desada i connexió verificada.
+      saved_failed: Configuració desada, però la connexió ha fallat.
+      validation_failed: No s'ha pogut fer servir la configuració. Comprova l'URL i els camps obligatoris.
+      retry: Revisa els camps següents i torna a provar la connexió.
+      reasons:
+        unreachable: No s'ha pogut accedir al servei. Comprova'n l'adreça, el port i l'accés de xarxa des de Dawarich.
+        certificate: No s'ha pogut verificar el certificat TLS. Comprova el certificat del servidor.
+        credentials: S'ha denegat l'accés. Comprova la clau API i els seus permisos.
+        missing_fields: Introdueix l'URL del servei i les credencials obligatòries.
+        check_settings: El servei no ha acceptat la connexió. Comprova l'URL, les credencials i els permisos necessaris.
+    timeline:
+      filter_scope: Els filtres de visites estan actius. Els desplaçaments i els intervals sense seguiment continuen visibles.

@@ -2188,6 +2188,9 @@ en:
       unavailable: Join an active family before sharing a trip with family members.
       back_to_trips: Back to trips
       your_map: Your map for these dates
+    timeline_scope:
+      only_import: Only points from %{name} in the selected period will be shared. Photos are excluded.
+      unavailable: The selected import is no longer available.
   stats:
     locked_year_card:
       available_on_pro: Available on Pro
@@ -4693,6 +4696,17 @@ en:
       hours_short: "%{count}h"
       invalid_date: Invalid Date
       minutes_short: "%{count}min"
+    ux_p3:
+      timeline:
+        filtered_count: Showing %{count} of %{total} visits
+        visit_count:
+          one: "%{count} visit"
+          other: "%{count} visits"
+      video:
+        ready: Your video is ready — MP4 · %{size} MB.
+      realtime:
+        connected: Live updates connected
+        disconnected: Live updates paused. New positions may be delayed; reconnecting automatically.
   battery_statuses:
     unknown: unknown
     unplugged: unplugged
@@ -4716,3 +4730,112 @@ en:
     meridiem:
       am: AM
       pm: PM
+  ux_p2:
+    exports:
+      source: 'Source: %{name}'
+      restored_incomplete: This export was unfinished in the backup. Create a new export from Points.
+      unavailable_source: Unavailable source (scope preserved)
+      removed_import: Removed import (scope preserved)
+      unavailable_import: The selected import is no longer available.
+    sharing:
+      exact_expiry: Exact expiration (optional)
+      exact_expiry_hint: 'Time zone: %{timezone}. Leave blank for no expiration.'
+      invalid_expiry: Choose a valid expiration date.
+      no_expiry: No expiration
+      expires: Access ends
+      period: Shared period
+      included: Included
+      excluded: Excluded
+      edit_access: Edit access
+      preview: Open recipient view
+      url_unchanged: Changes apply to this link. Its URL, audience and selected data stay the same.
+      cancel: Cancel
+      save: Save access
+      sections:
+        show_route: Route map
+        show_stats: Statistics
+        show_days: Day-by-day breakdown
+        show_day_notes: Day notes
+        show_description: Description
+        show_photos: Photos
+    import:
+      technical_details: Technical details
+      failed: Import failed
+      format_error: The file format could not be read. Check that the file is valid and uses a supported format.
+      failed_reason: The import could not finish. You can upload the file again; if it fails again, use the reference below when reporting the problem.
+      reference: 'Import reference: #%{id}. Technical details are available in the server logs.'
+      open: Open import and recovery options
+      upload_another: Upload another file
+      supported_formats: Supported formats
+      notification_html: Import &quot;%{name}&quot; failed. %{reason} %{link}
+    demo:
+      description: Explore a month of Berlin tracking and a Prague weekend trip. Demo points, visits and places are marked and can be removed anytime.
+    digest:
+      queued: Queued. Your year-end digest will appear here automatically.
+      calculating: Calculating your year-end digest. This page updates automatically.
+      failed: Generation failed. Your location history is safe; try again.
+      retry: Retry generation
+      working: Preparing digest
+    places:
+      add: Add place
+      edit: Edit place
+      save: Save place
+      back: Back to places
+      more_actions: 'More actions: merge or delete'
+      search: Search places
+      tag: Tags
+      all_tags: All tags
+      sort: Sort by
+      sort_name: Name
+      sort_recent_visit: Most recent visit
+      sort_newest: Recently created
+      no_matches: No matching places. Try another search or add a place.
+      pick_coordinates: Click the map or enter coordinates to choose this place. You can drag the marker to adjust it.
+      latitude: Latitude
+      longitude: Longitude
+      name: Name
+      radius: Visit radius (meters)
+      note: Note
+    settings:
+      sections: Settings section
+    points:
+      select: Select point recorded at %{time}
+    nav:
+      notifications: Notifications
+      previous_day: Previous day
+      next_day: Next day
+    insights:
+      empty_title: Your journeys will appear here
+      empty_help: Import location history or connect a tracker to get your first distances, maps and travel insights.
+      import: Import history
+      connect: Connect a tracker
+      unresolved: Not yet identified
+      names_pending: Country and city names have not been identified yet. Coordinates, maps and distance can still be available.
+      configure: Configure geocoding
+      ask_admin: Your administrator can configure geocoding to identify country and city names.
+  ux_p3:
+    timeline:
+      filter_scope: Visit filters are active. Movement and untracked intervals stay visible.
+    video:
+      download: Download video
+    integrations:
+      save_and_test: Save & test connection
+      test: Test without saving
+      save: Save without testing
+      saved_untested: Settings saved. No connection test was run.
+      tested_ok: Connection verified. Changes have not been saved.
+      tested_failed: Connection failed. Changes have not been saved.
+      saved_ok: Settings saved and connection verified.
+      saved_failed: Settings saved, but the connection failed.
+      validation_failed: Settings could not be used. Check the URL and required fields.
+      retry: Check the fields below, then test the connection again.
+      reasons:
+        unreachable: The service could not be reached. Check its address, port and network access from Dawarich.
+        certificate: The TLS certificate could not be verified. Check the server certificate.
+        credentials: Access was denied. Check the API key and its permissions.
+        missing_fields: Enter the service URL and required credentials.
+        check_settings: The service did not accept the connection. Check the URL, credentials and required permissions.
+      status:
+        connected: 'Saved connection: last test succeeded.'
+        failed: 'Saved connection: last test failed.'
+        untested: 'Saved connection: not tested.'

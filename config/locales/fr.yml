@@ -3024,6 +3024,9 @@ fr:
       unavailable: Rejoignez une famille active avant de partager un voyage avec ses membres.
       back_to_trips: Retour aux voyages
       your_map: Votre carte pour ces dates
+    timeline_scope:
+      only_import: Seuls les points de %{name} sur la période sélectionnée seront partagés. Les photos sont exclues.
+      unavailable: L’importation sélectionnée n’est plus disponible.
   stats:
     locked_year_card:
       available_on_pro: Disponible sur Pro
@@ -5947,6 +5950,17 @@ fr:
       hours_short: "%{count}h"
       invalid_date: Date non valide
       minutes_short: "%{count}min"
+    ux_p3:
+      timeline:
+        filtered_count: "%{count} visites affichées sur %{total}"
+        visit_count:
+          one: "%{count} visite"
+          other: "%{count} visites"
+      video:
+        ready: Votre vidéo est prête — MP4 · %{size} Mo.
+      realtime:
+        connected: Mises à jour en direct connectées
+        disconnected: Mises à jour en direct en pause. Les nouvelles positions peuvent arriver avec du retard ; reconnexion automatique en cours.
   battery_statuses:
     unknown: inconnu
     unplugged: débranché
@@ -5970,3 +5984,112 @@ fr:
     meridiem:
       am: AM
       pm: PM
+  ux_p2:
+    import:
+      format_error: Le format du fichier n’a pas pu être lu. Vérifiez le fichier et les formats acceptés.
+      failed_reason: L’importation n’a pas pu aboutir. Vous pouvez envoyer le fichier à nouveau.
+      open: Ouvrir l’importation et les options de récupération
+      notification_html: L’importation « %{name} » a échoué. %{reason} %{link}
+      technical_details: Détails techniques
+      failed: Échec de l’importation
+      reference: 'Référence de l’importation : #%{id}. Les détails techniques sont disponibles dans les journaux du serveur.'
+      upload_another: Envoyer un autre fichier
+      supported_formats: Formats pris en charge
+    places:
+      back: Retour aux lieux
+      edit: Modifier le lieu
+      more_actions: 'Autres actions : fusionner ou supprimer'
+      radius: Rayon de visite (mètres)
+      add: Ajouter un lieu
+      save: Enregistrer le lieu
+      search: Rechercher des lieux
+      tag: Étiquettes
+      all_tags: Toutes les étiquettes
+      sort: Trier par
+      sort_name: Nom
+      sort_recent_visit: Visite la plus récente
+      sort_newest: Créés récemment
+      no_matches: Aucun lieu correspondant. Essayez une autre recherche ou ajoutez un lieu.
+      pick_coordinates: Cliquez sur la carte ou saisissez des coordonnées pour choisir ce lieu. Vous pouvez faire glisser le marqueur pour l’ajuster.
+      latitude: Latitude
+      longitude: Longitude
+      name: Nom
+      note: Note
+    demo:
+      description: Explorez un mois de déplacements à Berlin et un week-end à Prague. Les points, visites et lieux de démonstration sont identifiés et peuvent être supprimés à tout moment.
+    nav:
+      notifications: Notifications
+      previous_day: Jour précédent
+      next_day: Jour suivant
+    points:
+      select: Sélectionner le point enregistré à %{time}
+    settings:
+      sections: Section des paramètres
+    exports:
+      source: 'Source : %{name}'
+      restored_incomplete: Cette exportation n’était pas terminée dans la sauvegarde. Créez une nouvelle exportation depuis Points.
+      unavailable_source: Source indisponible (périmètre conservé)
+      removed_import: Importation supprimée (périmètre conservé)
+      unavailable_import: L’importation sélectionnée n’est plus disponible.
+    sharing:
+      exact_expiry: Expiration précise (facultatif)
+      exact_expiry_hint: 'Fuseau horaire : %{timezone}. Laissez vide pour ne pas fixer d’expiration.'
+      invalid_expiry: Choisissez une date d’expiration valide.
+      no_expiry: Sans expiration
+      expires: Fin de l’accès
+      period: Période partagée
+      included: Inclus
+      excluded: Exclu
+      edit_access: Modifier l’accès
+      preview: Ouvrir la vue du destinataire
+      url_unchanged: Les modifications s’appliquent à ce lien. Son URL, son audience et les données sélectionnées restent les mêmes.
+      cancel: Annuler
+      save: Enregistrer l’accès
+      sections:
+        show_route: Carte de l’itinéraire
+        show_stats: Statistiques
+        show_days: Détail jour par jour
+        show_day_notes: Notes du jour
+        show_description: Description
+        show_photos: Photos
+    digest:
+      queued: En file d’attente. Votre bilan de l’année apparaîtra ici automatiquement.
+      calculating: Calcul de votre bilan de l’année en cours. Cette page se met à jour automatiquement.
+      failed: La génération a échoué. Votre historique de localisation est intact ; réessayez.
+      retry: Relancer la génération
+      working: Préparation du bilan
+    insights:
+      empty_title: Vos trajets apparaîtront ici
+      empty_help: Importez un historique de localisation ou connectez un traceur pour obtenir vos premières distances, cartes et statistiques de voyage.
+      import: Importer l’historique
+      connect: Connecter un traceur
+      unresolved: Pas encore identifié
+      names_pending: Les noms de pays et de villes n’ont pas encore été identifiés. Les coordonnées, cartes et distances peuvent déjà être disponibles.
+      configure: Configurer le géocodage
+      ask_admin: Votre administrateur peut configurer le géocodage pour identifier les noms de pays et de villes.
+  ux_p3:
+    video:
+      download: Télécharger la vidéo
+    integrations:
+      save_and_test: Enregistrer et tester la connexion
+      test: Tester sans enregistrer
+      save: Enregistrer sans tester
+      status:
+        untested: 'Connexion enregistrée : non testée.'
+        connected: 'Connexion enregistrée : le dernier test a réussi.'
+        failed: 'Connexion enregistrée : le dernier test a échoué.'
+      saved_untested: Paramètres enregistrés. Aucun test de connexion n’a été effectué.
+      tested_ok: Connexion vérifiée. Les modifications n’ont pas été enregistrées.
+      tested_failed: Échec de la connexion. Les modifications n’ont pas été enregistrées.
+      saved_ok: Paramètres enregistrés et connexion vérifiée.
+      saved_failed: Paramètres enregistrés, mais la connexion a échoué.
+      validation_failed: Les paramètres n’ont pas pu être utilisés. Vérifiez l’URL et les champs obligatoires.
+      retry: Vérifiez les champs ci-dessous, puis testez à nouveau la connexion.
+      reasons:
+        unreachable: Le service est injoignable. Vérifiez son adresse, son port et l’accès réseau depuis Dawarich.
+        certificate: Le certificat TLS n’a pas pu être vérifié. Vérifiez le certificat du serveur.
+        credentials: Accès refusé. Vérifiez la clé API et ses autorisations.
+        missing_fields: Saisissez l’URL du service et les identifiants requis.
+        check_settings: Le service n’a pas accepté la connexion. Vérifiez l’URL, les identifiants et les autorisations nécessaires.
+    timeline:
+      filter_scope: Des filtres de visites sont actifs. Les déplacements et les intervalles non suivis restent visibles.
