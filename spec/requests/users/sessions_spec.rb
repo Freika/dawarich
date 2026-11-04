@@ -5,6 +5,23 @@ require 'rails_helper'
 RSpec.describe 'Users::Sessions', type: :request do
   let(:user) { create(:user, password: 'password123456') }
 
+  describe 'public sign-in links' do
+    before do
+      stub_const('SELF_HOSTED', false)
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    end
+
+    it 'uses full-page navigation so password managers can detect the login form' do
+      get new_user_registration_path
+
+      document = Nokogiri::HTML(response.body)
+      sign_in_links = document.css(".navbar a[href='#{new_user_session_path}']")
+
+      expect(sign_in_links).not_to be_empty
+      expect(sign_in_links.map { |link| link['data-turbo'] }).to all(eq('false'))
+    end
+  end
+
   describe 'POST /users/sign_in' do
     context 'when OIDC is not enabled' do
       before do
@@ -113,6 +130,14 @@ RSpec.describe 'Users::Sessions', type: :request do
         expect(response).to have_http_status(:ok)
         expect(response.body).to include('type="password"')
         expect(response.body).to include('value="Log in"')
+      end
+
+      it 'marks the credentials with password-manager autocomplete semantics' do
+        get new_user_session_path
+
+        document = Nokogiri::HTML(response.body)
+        expect(document.at_css('input[type="email"]')['autocomplete']).to eq('username')
+        expect(document.at_css('input[type="password"]')['autocomplete']).to eq('current-password')
       end
 
       it 'renders the French persistent-session label' do

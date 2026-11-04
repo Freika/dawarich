@@ -251,7 +251,7 @@
       <% if show_login || show_register %>
         <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
           <% if show_login %>
-            <li><%= link_to t('.login'), new_user_session_path %></li>
+            <li><%= link_to t('.login'), new_user_session_path, data: { turbo: false } %></li>
           <% end %>
           <% if show_register %>
             <li><%= link_to t('.register'), new_user_registration_path %></li>
