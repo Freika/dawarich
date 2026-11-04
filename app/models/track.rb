@@ -134,8 +134,11 @@ class Track < ApplicationRecord
   def self.segment_points_in_sql(user_id, start_timestamp, end_timestamp, time_threshold_minutes,
                                  untracked_only: false, stop_radius_meters: nil)
     time_threshold_seconds = time_threshold_minutes * 60
+    user = User.find(user_id)
+    stop_thresholds = Tracks::StationaryStops.thresholds_for(user, time_threshold_seconds)
+    day_boundary_timezone = Tracks::DayBoundary.new(user).timezone
 
-    stop_break_ids = stationary_break_point_ids(user_id, start_timestamp, end_timestamp, time_threshold_seconds,
+    stop_break_ids = stationary_break_point_ids(user_id, start_timestamp, end_timestamp, stop_thresholds,
                                                 stop_radius_meters)
 
     # Tracked points keep realtime boundaries in place: without them, untracked points
@@ -168,6 +171,8 @@ class Track < ApplicationRecord
             WHEN prev_lonlat IS NULL THEN 1
             WHEN time_diff_seconds > $4 THEN 1
             WHEN stop_breaks.id IS NOT NULL THEN 1
+            WHEN (to_timestamp(timestamp) AT TIME ZONE $6::text)::date
+              <> (to_timestamp(prev_timestamp) AT TIME ZONE $6::text)::date THEN 1
             #{'WHEN track_id IS DISTINCT FROM prev_track_id THEN 1' if untracked_only}
             ELSE 0
           END as is_break
@@ -197,7 +202,8 @@ class Track < ApplicationRecord
     results = Point.connection.exec_query(
       sql,
       'segment_points_in_sql',
-      [user_id, start_timestamp, end_timestamp, time_threshold_seconds, "{#{stop_break_ids.join(',')}}"]
+      [user_id, start_timestamp, end_timestamp, time_threshold_seconds, "{#{stop_break_ids.join(',')}}",
+       day_boundary_timezone]
     )
 
     # Convert results to segment data

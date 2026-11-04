@@ -156,4 +156,12 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
   def stationary_radius_meters
     @stationary_radius_meters ||= Tracks::StationaryStops.radius_for(user)
   end
+
+  def stop_thresholds
+    @stop_thresholds ||= Tracks::StationaryStops.thresholds_for(user, time_threshold_minutes * 60)
+  end
+
+  def day_boundary
+    @day_boundary ||= Tracks::DayBoundary.new(user)
+  end
 end

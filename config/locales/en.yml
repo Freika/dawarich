@@ -1077,6 +1077,8 @@ en:
         track_split_time: Time gap between Tracks
         track_split_time_unit: min
         track_split_time_hint: "Longer gaps start a new Track and let Trips use another device’s recording. After changing this, press Recalculate on affected Trip pages to update saved routes and distances."
+        split_tracks_at_midnight: "Split Tracks at midnight"
+        split_tracks_at_midnight_hint: "End each Track at midnight in the timezone from your general settings, so no Track spans two days. To apply it to past Tracks, press “Apply Settings”, then “Recalculate tracks & stats” below."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Hide readings that cannot be a real position — impossible jumps, broken coordinates. Disable to see every raw point.
         hide_inaccurate_points: "Hide inaccurate points"
         hide_inaccurate_points_hint: "Also hide points whose reported accuracy is worse than the threshold below. Helps with phone tracking that adds sideways noise; keep it off for Google Timeline imports, whose coarse points still sit on the road. To apply it to your history, press “Apply Settings” first, then “Re-evaluate past data”."
@@ -1868,7 +1870,7 @@ en:
         these_settings_control_how_the_app_groups_your_gps_points: These settings control how the app groups your GPS points into visits to places.
         points_within_this_radius_are_treated_as_the_same_visit: Points within this radius are treated as the same visit. A stay within it also ends a Track (at least 100 m). Default 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Lower = more visits suggested, including brief stops. Default 3.
-        skip_stops_shorter_than_this_raise_to_ignore_short_drive: Skip stops shorter than this. Raise to ignore short drive-bys; lower to catch brief errands. Default 5.
+        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "Skip stops shorter than this. Raise to ignore short drive-bys; lower to catch brief errands. Default 5. A stop this long also ends a Track if it lasts at least 5 minutes."
         visit_detection: Visit detection
         visit_radius_meters: Visit radius (meters)
         minimum_points_to_count_as_a_visit: Minimum points to count as a visit

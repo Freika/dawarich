@@ -26,6 +26,7 @@ class Users::SafeSettings
     'speed_color_scale' => '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300',
     'points_rendering_mode' => 'raw',
     'minutes_between_routes' => 30,
+    'split_tracks_at_midnight' => false,
     'time_threshold_minutes' => 30,
     'merge_threshold_minutes' => 15,
     'live_map_enabled' => true,
@@ -167,6 +168,7 @@ class Users::SafeSettings
       speed_colored_routes: speed_colored_routes,
       points_rendering_mode: points_rendering_mode,
       minutes_between_routes: minutes_between_routes,
+      split_tracks_at_midnight: split_tracks_at_midnight?,
       route_opacity: route_opacity,
       route_color: route_color,
       speed_color_scale: speed_color_scale,
@@ -426,6 +428,10 @@ class Users::SafeSettings
   def gps_accuracy_threshold
     raw = settings['gps_accuracy_threshold'].presence || DEFAULT_VALUES['gps_accuracy_threshold']
     raw.to_i.clamp(GPS_ACCURACY_THRESHOLD_MIN, GPS_ACCURACY_THRESHOLD_MAX)
+  end
+
+  def split_tracks_at_midnight?
+    ActiveModel::Type::Boolean.new.cast(settings['split_tracks_at_midnight']) || false
   end
 
   def point_dragging_enabled?
