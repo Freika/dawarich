@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Points recorded shortly after a route ended are attached to that route again instead of failing while tracks were generated in parallel. Merging a route that has a shared link or corrected segments no longer fails the same way.
+
 ## [1.21.0] - 2026-11-03, Berlin
 
 ### ⚠️ Upgrade notes
