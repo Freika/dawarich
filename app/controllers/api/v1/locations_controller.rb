@@ -6,7 +6,8 @@ class Api::V1::LocationsController < ApiController
 
   def index
     if coordinate_search?
-      search_results = LocationSearch::PointFinder.new(current_api_user, search_params).call
+      search_results = LocationSearch::PointFinder.new(current_api_user, search_params,
+                                                       privacy_zone_masker: map_read_masker).call
 
       render json: Api::LocationSearchResultSerializer.new(search_results).call
     else
@@ -58,7 +59,6 @@ class Api::V1::LocationsController < ApiController
       date_to: parse_date(params[:date_to]),
       radius_override: params[:radius_override]&.to_i,
       place_name: params[:name],
-      privacy_zone_masker: (privacy_zone_masker if mask_privacy_zones?),
       address: params[:address]
     }
   end

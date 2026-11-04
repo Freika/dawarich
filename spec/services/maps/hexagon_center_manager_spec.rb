@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Maps::HexagonCenterManager do
   describe '.call' do
-    subject(:manage_centers) { described_class.new(stat:, user:).call }
+    subject(:manage_centers) { described_class.new(stat:, user:, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call }
 
     let(:user) { create(:user) }
     let(:target_user) { user }

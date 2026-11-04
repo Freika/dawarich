@@ -50,7 +50,9 @@ module Achievements
       return if city_selections.any? && @snapshot.nil?
 
       results = @selections.flat_map { |selection| place_results(selection) }
-      results.concat(city_selections.filter_map { |selection| CityRule.call(@user, selection, @snapshot) })
+      results.concat(city_selections.filter_map do |selection|
+        CityRule.call(@user, selection, @snapshot, privacy_zone_masker: Maps::PrivacyZoneMasker.none)
+      end)
       @privacy_fingerprint = PrivacyFingerprint.call(@user)
       results.concat(geographic_results)
     end
@@ -62,7 +64,7 @@ module Achievements
 
     def geographic_results
       masker = Maps::PrivacyZoneMasker.new(@user)
-      observations = @user.points.exists? ? ObservedTime.new(@user, dataset: @dataset).call : {}
+      observations = @user.points.exists? ? ObservedTime.new(@user, dataset: @dataset, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call : {}
       public_observations = if masker.any? && @user.points.exists?
                               ObservedTime.new(@user, dataset: @dataset, privacy_zone_masker: masker,
                                                       prepare_flights: false).call

@@ -39,7 +39,7 @@ module TileCacheable
       force_uncacheable_response
     end
 
-    return head :no_content if tile_privacy_masker&.covers_tile?(params[:z], params[:x], params[:y])
+    return head :no_content if tile_privacy_masker.covers_tile?(params[:z], params[:x], params[:y])
 
     result = tile_query.call
 
@@ -76,8 +76,13 @@ module TileCacheable
 
   private
 
+  # Tiles always mask Privacy Zones.
+  def map_read_masked?
+    true
+  end
+
   def tile_privacy_masker
-    nil
+    @tile_privacy_masker ||= map_read_masker.near_tile(params[:z], params[:x], params[:y])
   end
 
   def tile_etag

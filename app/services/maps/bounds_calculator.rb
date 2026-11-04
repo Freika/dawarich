@@ -14,8 +14,8 @@ module Maps
     SAMPLE_QUERY_TIMEOUT_MS = 2000
     SAMPLE_MARKS = 1024
 
-    def initialize(user:, start_date:, end_date:, import_id: nil, robust: false, respect_plan_scope: true,
-                   privacy_zone_masker: nil)
+    def initialize(user:, start_date:, end_date:, privacy_zone_masker:, import_id: nil, robust: false,
+                   respect_plan_scope: true)
       @user = user
       @privacy_zone_masker = privacy_zone_masker
       @start_date = start_date
@@ -66,7 +66,7 @@ module Maps
       points = @respect_plan_scope ? @user.scoped_points : @user.points
       scope = points.without_raw_data.not_anomaly.where(timestamp: start_timestamp..end_timestamp)
       scope = scope.where(import_id: @import_id) if @import_id
-      @privacy_zone_masker ? @privacy_zone_masker.mask_points(scope) : scope
+      @privacy_zone_masker.mask_points(scope)
     end
 
     def execute_exact_bounds_query(start_timestamp, end_timestamp)

@@ -6,8 +6,8 @@ class Api::V1::VisitsController < ApiController
   ADDRESS_ATTRIBUTES = %i[street house_number postcode city country].freeze
 
   def index
-    visits = Visits::Finder.new(current_api_user, params).call
-    visits = privacy_zone_masker.mask_visits(visits) if mask_privacy_zones?
+    visits = Visits::Finder.new(current_api_user, params, privacy_zone_masker: map_read_masker).call
+    visits = map_read_masker.mask_visits(visits)
 
     # Support optional pagination (backward compatible - returns all if no page param)
     if params[:page].present?
@@ -199,8 +199,7 @@ class Api::V1::VisitsController < ApiController
     ids = visits.select { |visit| visit.place.nil? && visit.area.nil? }.map(&:id)
     return {} if ids.empty?
 
-    masker = privacy_zone_masker if mask_privacy_zones?
-    Visits::PointCenters.new(current_api_user, visit_ids: ids, privacy_zone_masker: masker).call
+    Visits::PointCenters.new(current_api_user, visit_ids: ids, privacy_zone_masker: map_read_masker).call
   end
 
   def serialize_visit(visit, point_centers: nil)

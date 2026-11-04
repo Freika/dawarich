@@ -45,7 +45,7 @@ RSpec.describe Tracks::VectorTileQuery do
   include_context 'antimeridian track'
 
   it 'keeps a date-line crossing short while retaining both sides in the world tile' do
-    rows = described_class.new(scope: user.tracks, z: 0, x: 0, y: 0).feature_rows
+    rows = described_class.new(scope: user.tracks, z: 0, x: 0, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).feature_rows
 
     expect(rows.map { |row| row['id'].to_i }).to eq([track.id])
 
@@ -60,7 +60,7 @@ RSpec.describe Tracks::VectorTileQuery do
 
   it 'does not draw the date-line crossing through a central longitude tile' do
     # z3/x4/y4 covers 0..45 degrees east and 0..41 degrees south.
-    result = described_class.new(scope: user.tracks, z: 3, x: 4, y: 4).call
+    result = described_class.new(scope: user.tracks, z: 3, x: 4, y: 4, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
 
     expect(result.feature_count).to eq(0)
     # select_one returns PostgreSQL bytea as hex text, including "\\x" for empty bytes.
@@ -70,7 +70,7 @@ RSpec.describe Tracks::VectorTileQuery do
   it 'preserves the geometry of a wide track that never crosses the seam' do
     path = "LINESTRING(#{(-680..680).map { |step| "#{step * 0.25} -24.6" }.join(', ')})"
     track.update!(original_path: path, dominant_mode: :walking, avg_speed: 5)
-    row = described_class.new(scope: user.tracks, z: 0, x: 0, y: 0).feature_rows.fetch(0)
+    row = described_class.new(scope: user.tracks, z: 0, x: 0, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).feature_rows.fetch(0)
     original = "ST_AsMVTGeom(ST_Simplify(ST_Transform(#{GreatCircleSql.densified('original_path')}, 3857), " \
                "#{described_class::WEB_MERCATOR_WORLD / described_class::TILE_PIXELS}), " \
                'ST_TileEnvelope(0, 0, 0), 4096, 256, true)'
@@ -83,7 +83,7 @@ RSpec.describe Tracks::VectorTileQuery do
   [-180.0, 180.0].each do |seam|
     it "splits a crossing containing a vertex exactly at #{seam}" do
       track.update!(original_path: "LINESTRING(179.2 -24.6, #{seam} -24.6, -179.1 -24.6)")
-      row = described_class.new(scope: user.tracks, z: 0, x: 0, y: 0).feature_rows.fetch(0)
+      row = described_class.new(scope: user.tracks, z: 0, x: 0, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).feature_rows.fetch(0)
       bounds = measurements(row['geom'])
 
       expect(bounds['length'].to_f).to be < 64
@@ -96,18 +96,19 @@ RSpec.describe Tracks::VectorTileQuery do
     path = 'LINESTRING(179.6 -24.6, 179.8 -24.6, -179.9 -24.6, -179.6 -24.6, ' \
            '-179.8 -24.5, 179.9 -24.5, 179.6 -24.5, 179.8 -24.4, -179.9 -24.4, -179.6 -24.4)'
     track.update!(original_path: path, dominant_mode: :walking, avg_speed: 5)
-    row = described_class.new(scope: user.tracks, z: 8, x: 255, y: 146).feature_rows.fetch(0)
+    row = described_class.new(scope: user.tracks, z: 8, x: 255, y: 146, privacy_zone_masker: Maps::PrivacyZoneMasker.none).feature_rows.fetch(0)
     bounds = measurements(row['geom'])
 
     expect(bounds['xmin'].to_f).to be > 2000
     expect(bounds['xmax'].to_f).to eq(4096)
     expect(bounds['parts'].to_i).to eq(2)
-    expect(described_class.new(scope: user.tracks, z: 8, x: 128, y: 146).call.feature_count).to eq(0)
+    expect(described_class.new(scope: user.tracks, z: 8, x: 128, y: 146,
+                               privacy_zone_masker: Maps::PrivacyZoneMasker.none).call.feature_count).to eq(0)
   end
 
   [0, 7].each do |edge|
     it "retains the crossing up to the seam in edge tile z3/x#{edge}" do
-      row = described_class.new(scope: user.tracks, z: 3, x: edge, y: 4).feature_rows.fetch(0)
+      row = described_class.new(scope: user.tracks, z: 3, x: edge, y: 4, privacy_zone_masker: Maps::PrivacyZoneMasker.none).feature_rows.fetch(0)
       bounds = measurements(row['geom'])
 
       expect(bounds['length'].to_f).to be < 128
@@ -119,7 +120,8 @@ RSpec.describe Tracks::VectorTileQuery do
     [179.2, -179.1].each_with_index do |longitude, index|
       create(:point, user:, track:, longitude:, latitude: -24.6, timestamp: track.start_at.to_i + index * 600)
     end
-    query = described_class.new(scope: user.tracks, clip_points_scope: user.points, z: 0, x: 0, y: 0)
+    query = described_class.new(scope: user.tracks, clip_points_scope: user.points, z: 0, x: 0, y: 0,
+                                privacy_zone_masker: Maps::PrivacyZoneMasker.none)
 
     expect(measurements(query.feature_rows.fetch(0)['geom'])['length'].to_f).to be < 64
   end
@@ -128,7 +130,7 @@ RSpec.describe Tracks::VectorTileQuery do
     coordinates = (-680..718).map { |step| "#{step * 0.25} -24.6" }
     coordinates << '-179.5 -24.6'
     track.update!(original_path: "LINESTRING(#{coordinates.join(', ')})")
-    row = described_class.new(scope: user.tracks, z: 0, x: 0, y: 0).feature_rows.fetch(0)
+    row = described_class.new(scope: user.tracks, z: 0, x: 0, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).feature_rows.fetch(0)
     bounds = measurements(row['geom'])
 
     expect(bounds['length'].to_f).to be_between(3900, 4100)
@@ -144,7 +146,7 @@ RSpec.describe Tracks::VectorTileQuery do
 
     expect(Track.connection.select_value(Track.sanitize_sql_array([sql, track.id]))).to be(false)
 
-    query = described_class.new(scope: user.tracks, **tile)
+    query = described_class.new(scope: user.tracks, **tile, privacy_zone_masker: Maps::PrivacyZoneMasker.none)
 
     expect(query.call.feature_count).to eq(1)
     expect(query.feature_rows.map { |row| row['id'].to_i }).to eq([track.id])
@@ -154,7 +156,7 @@ RSpec.describe Tracks::VectorTileQuery do
     it "retains a sparse flying track in an interior Pacific tile at #{min_longitude}..#{max_longitude}" do
       sparse_flight
       tile = pacific_tile(min_longitude, max_longitude)
-      query = described_class.new(scope: user.tracks, **tile)
+      query = described_class.new(scope: user.tracks, **tile, privacy_zone_masker: Maps::PrivacyZoneMasker.none)
 
       expect(query.call.feature_count).to eq(1)
       expect(query.feature_rows.map { |row| row['id'].to_i }).to eq([track.id])
@@ -169,7 +171,10 @@ RSpec.describe Tracks::SpeedVectorTileQuery do
     [179.2, -179.1].each_with_index do |longitude, index|
       create(:point, user:, track:, longitude:, latitude: -24.6, timestamp: track.start_at.to_i + index * 600)
     end
-    query = ->(z, x, y) { described_class.new(scope: user.tracks, points_scope: user.points, z:, x:, y:) }
+    query = lambda { |z, x, y|
+      described_class.new(scope: user.tracks, points_scope: user.points, z:, x:, y:,
+                          privacy_zone_masker: Maps::PrivacyZoneMasker.none)
+    }
     bounds = measurements(query.call(0, 0, 0).feature_rows.fetch(0)['geom'])
 
     expect(bounds['length'].to_f).to be < 64

@@ -9,7 +9,7 @@ module Achievements
     GEOGRAPHIC_TARGET = 10.minutes.to_i
     PARK_TARGET = 30.minutes.to_i
 
-    def initialize(user, dataset: nil, from: nil, to: nil, privacy_zone_masker: nil, prepare_flights: true)
+    def initialize(user, privacy_zone_masker:, dataset: nil, from: nil, to: nil, prepare_flights: true)
       @user = user
       @dataset = dataset
       @from = from&.to_i || user.points.minimum(:timestamp) || 0
@@ -83,7 +83,7 @@ to: Time.zone.at(@through))
       return {} unless point['eligible']
 
       lat, lon = point.values_at('latitude', 'longitude')
-      return {} if @masker&.in_zone?(lon, lat)
+      return {} if @masker.in_zone?(lon, lat)
 
       @timezones.clear if @timezones.size >= 4_096
       zone = @timezones[[lat, lon]] ||= LocationTimezone.call(lat, lon)

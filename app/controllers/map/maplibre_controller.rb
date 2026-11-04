@@ -52,7 +52,7 @@ module Map
 
     def current_position
       point = current_user.scoped_points.without_raw_data.complete.not_anomaly.order(timestamp: :desc).first
-      return if point.nil? || Maps::PrivacyZoneMasker.new(current_user).in_zone?(point.lon, point.lat)
+      return if point.nil? || current_privacy_zone_masker.in_zone?(point.lon, point.lat)
 
       { longitude: point.lon, latitude: point.lat, timestamp: point.timestamp }
     end

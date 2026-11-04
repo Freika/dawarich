@@ -113,7 +113,7 @@ module Timeline
     end
 
     def visible_coordinates(lat, lng)
-      return { lat: nil, lng: nil } if @privacy_zone_masker&.in_zone?(lng, lat)
+      return { lat: nil, lng: nil } if @privacy_zone_masker.in_zone?(lng, lat)
 
       { lat:, lng: }
     end

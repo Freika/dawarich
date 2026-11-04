@@ -52,7 +52,8 @@ module McpTools
           user,
           start_at: range.fetch(:start_at).iso8601(6),
           end_at: range.fetch(:end_at).iso8601(6),
-          distance_unit: distance_unit.presence || user.safe_settings.distance_unit
+          distance_unit: distance_unit.presence || user.safe_settings.distance_unit,
+          privacy_zone_masker: Maps::PrivacyZoneMasker.none
         ).call
       end
 
