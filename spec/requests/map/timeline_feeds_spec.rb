@@ -274,4 +274,68 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
       expect(bounds['sw_lat']).to eq(52.6)
     end
   end
+
+  describe 'local time of the place' do
+    let(:user) { create(:user, settings: { 'timezone' => 'Europe/Berlin' }) }
+    let(:day) { Time.use_zone('Europe/Berlin') { Time.zone.parse('2025-01-15 00:00:00') } }
+    let(:wichita) do
+      create(:place, user:, name: 'Wichita', latitude: 37.69, longitude: -97.34, lonlat: 'POINT(-97.34 37.69)')
+    end
+    let(:berlin) do
+      create(:place, user:, name: 'Berlin', latitude: 52.52, longitude: 13.40, lonlat: 'POINT(13.4 52.52)')
+    end
+
+    before do
+      Timezone.create!(tzid: 'America/Chicago',
+                       geom: 'SRID=4326;POLYGON((-100 37, -94.6 37, -94.6 40, -100 40, -100 37))')
+      Timezone.create!(tzid: 'Europe/Berlin', geom: 'SRID=4326;POLYGON((6 47, 15 47, 15 55, 6 55, 6 47))')
+      sign_in user
+    end
+
+    def page_for_day
+      get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+      Nokogiri::HTML(response.body)
+    end
+
+    it 'adds the time at the place to a visit in another time zone' do
+      visit = create(:visit, user:, place: wichita, area: nil, name: 'Wichita',
+                             started_at: day + 2.hours, ended_at: day + 3.hours, duration: 60)
+
+      row = page_for_day.at_css("#visit_entry_#{visit.id}")
+      expect(row.at_css('.visit-row__time').text.strip).to eq('02:00')
+      expect(row.at_css('.timeline-local-time').text.strip).to eq('Jan 14, 19:00 local')
+      expect(row['aria-label']).to include('Jan 14, 19:00 local')
+    end
+
+    it 'adds nothing to a visit in the account time zone' do
+      visit = create(:visit, user:, place: berlin, area: nil, name: 'Berlin',
+                             started_at: day + 9.hours, ended_at: day + 10.hours, duration: 60)
+
+      row = page_for_day.at_css("#visit_entry_#{visit.id}")
+      expect(row.at_css('.timeline-local-time')).to be_nil
+      expect(row['aria-label']).not_to include('local')
+    end
+
+    it 'adds no local time to the rows that continue a visit or journey after midnight' do
+      create(:visit, user:, place: wichita, area: nil, name: 'Wichita',
+                     started_at: day + 20.hours, ended_at: day + 26.hours, duration: 360)
+      create(:track, user:, start_at: day + 23.hours, end_at: day + 25.hours,
+                     original_path: 'LINESTRING(-97.34 37.69, -97.2 37.8)')
+
+      get map_timeline_feeds_path(start_at: (day + 1.day).iso8601, end_at: (day + 2.days).iso8601)
+      next_day = Nokogiri::HTML(response.body)
+
+      expect(next_day.css('.visit-row, .timeline-entry--journey').size).to eq(2)
+      expect(next_day.css('.timeline-local-time')).to be_empty
+    end
+
+    it 'adds the time at the start to a journey that starts in another time zone' do
+      create(:track, user:, start_at: day + 4.hours, end_at: day + 5.hours,
+                     original_path: 'LINESTRING(-97.34 37.69, -97.2 37.8)')
+
+      leg = page_for_day.at_css('.timeline-entry--journey')
+      expect(leg.at_css('.journey-leg__time').text.strip).to eq('04:00')
+      expect(leg.at_css('.timeline-local-time').text.strip).to eq('Jan 14, 21:00 local')
+    end
+  end
 end

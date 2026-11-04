@@ -451,4 +451,38 @@ RSpec.describe TimelineHelper, type: :helper do
       expect(helper.journey_leg_extra_height(48 * 3600)).to eq(helper.journey_leg_extra_height(200 * 3600))
     end
   end
+
+  describe '#timeline_local_time' do
+    def label(account_zone, local_zone, utc)
+      Time.use_zone(account_zone) do
+        helper.timeline_local_time({ local_timezone: local_zone }, Time.zone.parse(utc))
+      end
+    end
+
+    it 'shows the time at the place when its clock differs from the account zone' do
+      expect(label('Europe/Berlin', 'America/Chicago', '2025-01-15T12:30:00Z')).to eq('06:30 local')
+    end
+
+    it 'adds the date when the place is already on another day' do
+      expect(label('Europe/Berlin', 'America/Chicago', '2025-01-15T01:30:00Z')).to eq('Jan 14, 19:30 local')
+      expect(label('America/Chicago', 'Europe/Berlin', '2025-01-15T04:30:00Z')).to eq('Jan 15, 05:30 local')
+    end
+
+    it 'shows nothing when the place keeps the same clock under another zone name' do
+      expect(label('Europe/Berlin', 'Europe/Paris', '2025-01-15T01:30:00Z')).to be_nil
+    end
+
+    it 'compares the clocks at that moment, daylight saving time included' do
+      expect(label('America/Denver', 'America/Phoenix', '2025-01-15T18:00:00Z')).to be_nil
+      expect(label('America/Denver', 'America/Phoenix', '2025-07-15T18:00:00Z')).to eq('11:00 local')
+    end
+
+    it 'shows nothing without a zone for the place' do
+      expect(label('Europe/Berlin', nil, '2025-01-15T01:30:00Z')).to be_nil
+    end
+
+    it 'shows nothing for a zone name it does not know' do
+      expect(label('Europe/Berlin', 'Mars/Olympus_Mons', '2025-01-15T01:30:00Z')).to be_nil
+    end
+  end
 end

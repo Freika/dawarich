@@ -2970,6 +2970,8 @@ de:
       pro_badge: " Pro"
     timeline:
       unnamed: Unbenannt
+      local_time: "%{time} Ortszeit"
+      local_time_on_date: "%{date}, %{time} Ortszeit"
     datetime_formatting:
       expires_on: Verfällt am %{date}
     insights:

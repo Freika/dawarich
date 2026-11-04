@@ -874,6 +874,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
     t.index ["user_id"], name: "index_tags_on_user_id"
   end
 
+  create_table "timezones", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.geometry "geom", limit: {srid: 4326, type: "geometry"}, null: false
+    t.string "tzid", null: false
+    t.datetime "updated_at", null: false
+    t.index ["geom"], name: "index_timezones_on_geom", using: :gist
+  end
+
   create_table "track_revisions", force: :cascade do |t|
     t.date "month", null: false
     t.uuid "revision", default: -> { "gen_random_uuid()" }, null: false

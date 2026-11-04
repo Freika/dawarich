@@ -38,6 +38,11 @@ module McpTools
         status: { type: 'string' },
         started_at: { type: 'string', format: 'date-time' },
         ended_at: { type: 'string', format: 'date-time' },
+        local_timezone: {
+          type: %w[string null],
+          description: 'IANA time zone of the visit location or of the journey start, for reading ' \
+                       'started_at and ended_at as local time there; null when unknown.'
+        },
         duration_minutes: { type: 'number' },
         continuation_of_date: {
           type: %w[string null],
@@ -98,7 +103,8 @@ module McpTools
         common = {
           type: entry.fetch(:type),
           started_at: entry.fetch(:started_at),
-          ended_at: entry.fetch(:ended_at)
+          ended_at: entry.fetch(:ended_at),
+          local_timezone: entry[:local_timezone]
         }
 
         entry[:type] == 'visit' ? common.merge(serialize_visit(entry)) : common.merge(serialize_journey(entry))

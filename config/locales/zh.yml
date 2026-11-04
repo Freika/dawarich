@@ -2959,6 +2959,8 @@ zh:
       pro_badge: Pro
     timeline:
       unnamed: 未命名
+      local_time: "当地时间 %{time}"
+      local_time_on_date: "当地时间 %{date} %{time}"
     datetime_formatting:
       expires_on: 于 %{date} 到期
     insights:
