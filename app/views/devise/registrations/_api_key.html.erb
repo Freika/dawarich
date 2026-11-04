@@ -19,7 +19,7 @@
       <div class="collapse-title text-lg font-semibold"><%= t('.usage_examples') %></div>
       <div class="collapse-content space-y-4">
         <section class="rounded-2xl border border-base-300/70 bg-base-100/40 p-4">
-          <h4 class='text-lg font-bold'><%= t('.dawarich_ios_or_android_app') %></h4>
+          <h4 class='text-lg font-medium'><%= t('.dawarich_ios_or_android_app') %></h4>
           <p class="mt-2 text-sm text-base-content/70"><%= t('.provide_your_instance_url') %></p>
           <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"><%= root_url %></code>
 
@@ -28,12 +28,12 @@
         </section>
 
         <section class="rounded-2xl border border-base-300/70 bg-base-100/40 p-4">
-          <h4 class='text-lg font-bold'><%= t('.owntracks') %></h4>
+          <h4 class='text-lg font-medium'><%= t('.owntracks') %></h4>
           <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"><%= api_v1_owntracks_points_url(api_key: current_user.api_key) %></code>
         </section>
 
         <section class="rounded-2xl border border-base-300/70 bg-base-100/40 p-4">
-          <h4 class='text-lg font-bold'><%= t('.overland') %></h4>
+          <h4 class='text-lg font-medium'><%= t('.overland') %></h4>
           <code class="mt-2 block break-all rounded-xl bg-base-300/70 p-3 text-sm"><%= api_v1_overland_batches_url(api_key: current_user.api_key) %></code>
         </section>
       </div>

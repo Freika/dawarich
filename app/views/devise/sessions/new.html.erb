@@ -2,7 +2,7 @@
   <div class="hero-content grid w-full my-10 gap-y-8 lg:grid-cols-[minmax(0,28rem)_24rem] lg:justify-center lg:gap-x-20">
     <div class="text-center lg:text-left lg:self-end">
       <% if @invitation %>
-        <h1 class="text-5xl font-bold text-base-content"><%= t('.sign_in_to_join_family', family: @invitation.family.name) %></h1>
+        <h1 class="text-5xl font-medium text-base-content tracking-tight"><%= t('.sign_in_to_join_family', family: @invitation.family.name) %></h1>
         <p class="py-6 text-base-content opacity-70">
           <%= t('.you_ve_been_invited_by') %> <strong><%= @invitation.invited_by.email %></strong> <%= t('.to_join_their_family_sign_in_to_your_account_to') %>
         </p>
@@ -15,8 +15,8 @@
           </div>
         <% end %>
       <% else %>
-        <h1 class="text-5xl font-bold text-base-content"><%= t('.login_now') %></h1>
-        <p class="pt-6 text-base-content opacity-70"><%= t('.and_take_control_over_your_location_data') %></p>
+        <h1 class="text-4xl font-medium tracking-tight text-base-content lg:text-5xl"><%= t('.login_now') %></h1>
+        <p class="pt-4 text-base-content opacity-70"><%= t('.and_take_control_over_your_location_data') %></p>
       <% end %>
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm mx-auto border border-base-content/10 bg-base-100 px-5 py-5 lg:col-start-2 lg:row-span-2 lg:self-center">
@@ -29,21 +29,21 @@
           <% end %>
 
           <div class="form-control">
-            <%= f.label :email, class: 'label' do %>
+            <%= f.label :email, class: 'label px-0 pt-0 pb-2' do %>
               <span class="label-text"><%= t('.email') %></span>
             <% end %>
             <%= f.email_field :email, autofocus: true, autocomplete: "email", class: 'input input-bordered' %>
           </div>
-          <div class="form-control">
-            <%= f.label :password, class: 'label' do %>
+          <div class="form-control mt-4">
+            <%= f.label :password, class: 'label px-0 pt-0 pb-2' do %>
               <span class="label-text"><%= t('.password') %></span>
             <% end %>
             <%= f.password_field :password, autocomplete: "current-password", class: 'input input-bordered' %>
             <% if devise_mapping.rememberable? %>
               <div class="form-control">
-                <label class="label cursor-pointer">
-                  <span class="label-text"><%= t('.remember_me') %></span>
+                <label class="label cursor-pointer justify-start gap-2 px-0 pt-3 pb-0">
                   <%= f.check_box :remember_me, class: 'checkbox checkbox-sm' %>
+                  <span class="label-text"><%= t('.remember_me') %></span>
                 </label>
               </div>
             <% end %>

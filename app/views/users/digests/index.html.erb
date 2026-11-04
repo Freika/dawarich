@@ -2,7 +2,7 @@
 
 <div class="max-w-screen-2xl mx-auto my-5 px-4">
   <div class="page-header-row mb-6">
-    <h1 class="text-3xl font-bold flex items-center gap-2">
+    <h1 class="text-3xl font-medium flex items-center gap-2 tracking-tight">
       <%= icon 'earth' %> <%= t('.year_end_digests') %>
     </h1>
 
@@ -25,7 +25,7 @@
   </div>
 
   <% if @digests.empty? %>
-    <div class="card bg-base-200 shadow-xl">
+    <div class="card bg-base-200">
       <div class="card-body text-center py-12">
         <h2 class="text-xl font-semibold mb-2 flex items-center justify-center gap-2">
           <%= icon 'earth' %><%= t('.no_year_end_digests_yet') %>
@@ -41,12 +41,12 @@
   <% else %>
     <div class="grid grid-cols-1 gap-6">
       <% @digests.each do |digest| %>
-        <div class="card bg-base-200 shadow-xl hover:shadow-2xl transition-shadow">
+        <div class="card bg-base-200">
           <div class="card-body">
             <h2 class="card-title text-2xl justify-between">
               <%= link_to digest.year, users_digest_path(year: digest.year), class: 'hover:text-primary' %>
               <% if digest.sharing_enabled? %>
-                <span class="badge badge-success badge-sm"><%= t('.shared') %></span>
+                <span class="text-xs text-base-content/60"><%= t('.shared') %></span>
               <% end %>
             </h2>
 

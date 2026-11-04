@@ -481,3 +481,16 @@ html.dark em-emoji-picker {
 .page-header-row > :last-child:not(:first-child) {
   flex: 0 0 auto;
 }
+
+/* 7. A page whose root carries .min-h-content fills the space between the
+      navbar and the footer (.layout-content is a flex column in
+      layouts/application). */
+.layout-content > :has(> .min-h-content) {
+  flex-grow: 1;
+}
+
+/* 8. @tailwindcss/forms paints every checkbox white, which DaisyUI's
+      .checkbox never overrides while unchecked. Keep it on the surface. */
+.checkbox:not(:checked):not(:indeterminate) {
+  background-color: transparent;
+}

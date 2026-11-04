@@ -1,7 +1,7 @@
 <div data-visit-merge-threshold-minutes="<%= current_user.safe_settings.merge_threshold_minutes %>" data-controller="visit-creation-v2" data-visit-creation-v2-api-key-value="<%= current_user.api_key %>" data-visit-creation-v2-timezone-value="<%= current_user.timezone %>">
   <div class="modal z-[10000]" data-visit-creation-v2-target="modal">
     <div class="modal-box max-w-2xl min-w-0">
-      <h3 class="font-bold text-lg mb-4" data-visit-creation-v2-target="modalTitle"><%= t('.create_new_visit') %></h3>
+      <h3 class="font-medium text-lg mb-4" data-visit-creation-v2-target="modalTitle"><%= t('.create_new_visit') %></h3>
 
       <form data-visit-creation-v2-target="form" data-action="submit->visit-creation-v2#submit">
         <input type="hidden" name="latitude" data-visit-creation-v2-target="latitudeInput">

@@ -739,14 +739,14 @@ ca:
       active_days: Dies actius
       countries: Països
       cities: Ciutats
-      weekly_pattern: PATRÓ SETMANAL
-      top_locations: LLOCS MÉS VISITATS
+      weekly_pattern: Patró setmanal
+      top_locations: Llocs més visitats
       no_location_data: No hi ha dades d'ubicació
-      first_visits: PRIMERES VISITES
+      first_visits: Primeres visites
       country: País
       city: Ciutat
       no_new_places_this_month: Cap lloc nou aquest mes
-      vs_previous_month: VS. MES ANTERIOR
+      vs_previous_month: Vs. mes anterior
       distance: distància
       countries_2: països
       monthly_digest: Resum mensual
@@ -755,14 +755,14 @@ ca:
       title: "Distància per mes"
     movement_wellness:
       movement_wellness: Moviment i benestar
-      active_time: TEMPS ACTIU
+      active_time: Temps actiu
       walking: Caminant
       total: total
       running: Cursa
       cycling: Ciclisme
       driving: Conduint
       no_activity_data_available_for_this_period: No hi ha dades d'activitat disponibles per a aquest període
-      sedentary_vs_active: SEDENTARI VS ACTIU
+      sedentary_vs_active: Sedentari vs actiu
       in_transport: En transport
       stationary: Sense desplaçament
       active_movement: Moviment actiu
@@ -774,15 +774,15 @@ ca:
       available_on_pro: Disponible a Pro
       upgrade_to_pro: Millora a Pro
     stats_row:
-      total_distance: DISTÀNCIA TOTAL
+      total_distance: Distància total
       all_tracked_history: Tot l'historial registrat
       vs: vs
       in: en
       this_year: Enguany
-      countries: PAÏSOS
+      countries: Països
       new_vs: nous vs
-      cities: CIUTATS
-      days_traveling: DIES DE VIATGE
+      cities: Ciutats
+      days_traveling: Dies de viatge
       active_days_this_year: Dies actius enguany
       no_stats_data_available: No hi ha dades estadístiques disponibles
       stats_are_calculated_from_your_tracked_points: ". Les estadístiques es calculen a partir dels teus punts registrats."
@@ -796,9 +796,9 @@ ca:
       confirmed_visits_will_appear_here: Les visites confirmades apareixeran aquí.
     travel_patterns:
       when_do_you_travel: Quan viatges?
-      time_of_day_distribution: DISTRIBUCIÓ PER FRANJA HORÀRIA
-      day_of_week: DIA DE LA SETMANA
-      seasonality: ESTACIONALITAT
+      time_of_day_distribution: Distribució per franja horària
+      day_of_week: Dia de la setmana
+      seasonality: Estacionalitat
       insight: Idea
     travel_story:
       your_travel_story: La teva història de viatge
@@ -863,12 +863,12 @@ ca:
     year_comparison:
       your_journey: 'El teu viatge:'
       vs: vs
-      distance: DISTÀNCIA
-      countries: PAÏSOS
-      days_traveling: DIES DE VIATGE
+      distance: Distància
+      countries: Països
+      days_traveling: Dies de viatge
       days: dies (
       days_2: dies
-      biggest_month: MILLOR MES
+      biggest_month: Millor mes
     details:
       year_comparison: Comparació anual
       activity_breakdown: Desglossament d'activitat
@@ -877,7 +877,6 @@ ca:
       travel_patterns: Patrons de viatge
       movement_wellness: Moviment i benestar
     index:
-      geodata_insights_bull_powered_by_your_location_history: Anàlisi geogràfica • Impulsada pel teu historial d'ubicacions
       total_distance: Distància total
       countries: Països
       cities: Ciutats

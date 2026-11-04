@@ -254,11 +254,9 @@
 }
 
 .track-info-card__id {
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: oklch(var(--bc) / 0.45);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: oklch(var(--bc) / 0.6);
   margin-bottom: 0.35rem;
 }
 
@@ -521,11 +519,9 @@
 }
 
 .timeline-day-rollup dt {
-  color: oklch(var(--bc) / 0.5);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 0.6rem;
-  font-weight: 600;
+  color: oklch(var(--bc) / 0.6);
+  font-size: 0.6875rem;
+  font-weight: 500;
 }
 
 .timeline-day-rollup dd {
@@ -635,11 +631,9 @@
 
 .visit-editor__label {
   display: block;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: oklch(var(--bc) / 0.45);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: oklch(var(--bc) / 0.6);
   margin-bottom: 4px;
 }
 
@@ -700,9 +694,7 @@
 }
 
 .visit-row__all-day {
-  font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 0.6875rem;
 }
 
 /* Empty spacer; it only reserves the column. The dot positions itself

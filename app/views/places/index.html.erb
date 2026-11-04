@@ -3,8 +3,8 @@
 <div class="w-full min-w-0 my-5" data-testid="places-management">
   <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
     <div role="tablist" class="tabs tabs-lifted min-w-0">
-      <%= link_to t('.timeline'), '/map/v2?panel=timeline&date=today&status=confirmed', role: 'tab', class: 'tab font-bold' %>
-      <%= link_to t('.places'), places_path, role: 'tab', class: 'tab font-bold tab-active' %>
+      <%= link_to t('.timeline'), '/map/v2?panel=timeline&date=today&status=confirmed', role: 'tab', class: 'tab' %>
+      <%= link_to t('.places'), places_path, role: 'tab', class: 'tab tab-active' %>
     </div>
     <div class="flex flex-wrap gap-2 min-w-0">
       <%= link_to t('places.management.duplicates'), places_path(view: 'duplicates'), class: 'btn btn-sm h-auto py-2', data: { testid: 'possible-duplicates' } %>

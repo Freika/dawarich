@@ -789,14 +789,14 @@ de:
       active_days: Aktive Tage
       countries: Länder
       cities: Städte
-      weekly_pattern: WÖCHENTLICHER ABLAUF
-      top_locations: TOP ORTE
+      weekly_pattern: Wöchentlicher Ablauf
+      top_locations: Top-Orte
       no_location_data: Keine Standortdaten
-      first_visits: ERSTE AUFENTHALTE
+      first_visits: Erste Aufenthalte
       country: Land
       city: Stadt
       no_new_places_this_month: Keine neuen Orte in diesem Monat
-      vs_previous_month: IM VERGLEICH ZUM VORMONAT
+      vs_previous_month: Im Vergleich zum Vormonat
       distance: Distanz
       countries_2: Länder
       monthly_digest: Monatlicher Überblick
@@ -805,14 +805,14 @@ de:
       title: "Strecke nach Monat"
     movement_wellness:
       movement_wellness: Bewegung & Wohlbefinden
-      active_time: AKTIVE ZEIT
+      active_time: Aktive Zeit
       walking: Gehen
       total: gesamt
       running: Laufen
       cycling: Radfahren
       driving: Fahren
       no_activity_data_available_for_this_period: Keine Aktivitätsdaten für diese Periode verfügbar
-      sedentary_vs_active: SITZEND VS AKTIV
+      sedentary_vs_active: Sitzend vs. aktiv
       in_transport: Im Transport
       stationary: Stationär
       active_movement: Aktive Bewegung
@@ -846,9 +846,9 @@ de:
         other: "Aufenthalte"
     travel_patterns:
       when_do_you_travel: Wann reist du?
-      time_of_day_distribution: TAGESZEIT
-      day_of_week: WOCHENTAG
-      seasonality: SAISONALITÄT
+      time_of_day_distribution: Tageszeit
+      day_of_week: Wochentag
+      seasonality: Saisonalität
       insight: Erkenntnis
     travel_story:
       your_travel_story: Deine Reiseerzählung
@@ -918,7 +918,7 @@ de:
       days_traveling: Tagen unterwegs
       days: Tage (
       days_2: Tage
-      biggest_month: GRÖSSTER MONAT
+      biggest_month: Größter Monat
     details:
       year_comparison: Jahresvergleich
       activity_breakdown: Aktivitätsübersicht
@@ -927,7 +927,6 @@ de:
       travel_patterns: Reisemuster
       movement_wellness: Bewegung & Wohlbefinden
     index:
-      geodata_insights_bull_powered_by_your_location_history: Geodaten-Insights • Erlebt durch deinen Standortverlauf
       activity_heatmap: Aktivitätsheatmap
       activity_streak: Aktivitätsreihe
       year_comparison: Jahresvergleich

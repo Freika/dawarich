@@ -63,9 +63,13 @@
         </div>
       </section>
       <%= render 'attribution' %>
-      <section class="my-8">
-        <h2 class="text-xl font-semibold"><%= link_to t('achievements.collections.title'), achievement_cards_path, class: 'link' %></h2>
-        <p><%= t('achievements.collections.intro') %></p>
+      <section aria-labelledby="personal-collections-heading" class="mt-8">
+        <div class="ach-section-heading">
+          <div>
+            <h2 id="personal-collections-heading"><%= link_to t('achievements.collections.title'), achievement_cards_path, class: 'link link-hover' %></h2>
+            <p><%= t('achievements.collections.intro') %></p>
+          </div>
+        </div>
       </section>
     </div>
   </div>

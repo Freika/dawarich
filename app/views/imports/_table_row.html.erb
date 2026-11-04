@@ -12,7 +12,7 @@
         <div class="font-medium">
           <%= link_to import.name, import, class: 'link link-hover' %>
           <% if import.demo? %>
-            <span class="badge badge-accent badge-sm ml-1"><%= t('.demo') %></span>
+            <span class="ml-1 text-xs text-base-content/50"><%= t('.demo') %></span>
           <% end %>
         </div>
         <div class="text-xs text-base-content/50"><%= t("enums.import.source.#{import.source}") if import.source %></div>

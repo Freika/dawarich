@@ -3,8 +3,8 @@
   <span><%= t('achievements.ui.summary') %></span>
   <span class="ach-side-count"><%= summary.earned_countries %>/<%= summary.total_countries %></span>
 <% end %>
-<div class="ach-side-group"><%= t('achievements.ui.themes') %></div>
 <%= link_to t('achievements.collections.title'), achievement_cards_path, class: 'ach-side-link' %>
+<div class="ach-side-group"><%= t('achievements.ui.themes') %></div>
 <% @themes.each do |set| %>
   <%= link_to achievement_path(set.definition.key),
               class: "ach-side-link #{'ach-side-link--active' if active_key == set.definition.key}",

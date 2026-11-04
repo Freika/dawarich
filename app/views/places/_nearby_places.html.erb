@@ -11,7 +11,7 @@
              data-place-longitude="<%= place[:longitude] %>">
           <div class="card-body">
             <div class="flex gap-2">
-              <span class="badge badge-primary badge-sm">#<%= index + 1 %></span>
+              <span class="text-xs tabular-nums text-base-content/50">#<%= index + 1 %></span>
               <div class="flex-1">
                 <h4 class="font-semibold"><%= place[:name] %></h4>
                 <% if place[:street].present? %>

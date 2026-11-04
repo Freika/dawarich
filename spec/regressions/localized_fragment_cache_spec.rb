@@ -53,11 +53,11 @@ RSpec.describe 'Localized fragment caching', type: :request do
     user.update!(plan: :lite)
 
     get insights_path, params: { locale: 'en' }
-    expect(response.body).to include('Activity Overview')
+    expect(response.body).to include('Activity overview')
 
     get insights_path, params: { locale: 'de' }
 
     expect(response.body).to include('Aktivitätsübersicht')
-    expect(response.body).not_to include('Activity Overview')
+    expect(response.body).not_to include('Activity overview')
   end
 end

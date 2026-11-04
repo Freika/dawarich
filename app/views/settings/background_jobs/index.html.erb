@@ -4,84 +4,65 @@
   <%= render 'shared/page_header', title: t('.background_jobs') %>
   <%= render 'settings/navigation' %>
 
-  <div role="alert" class="alert m-5">
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      class="stroke-info h-6 w-6 shrink-0">
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-    </svg>
+  <div role="alert" class="alert mb-4">
+    <%= icon 'info', class: 'w-5 h-5 shrink-0 text-info', 'aria-hidden': true %>
     <span><%= t('.spamming_many_new_jobs_at_once_is_a_bad_idea') %></span>
   </div>
 
   <% if current_user.gps_noise_recheck_pending? %>
-    <div role="alert" class="alert alert-info m-5" data-testid="gps-noise-recheck-pending">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        class="stroke-current h-6 w-6 shrink-0">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-      </svg>
+    <div role="alert" class="alert alert-info mb-4" data-testid="gps-noise-recheck-pending">
+    <%= icon 'info', class: 'w-5 h-5 shrink-0', 'aria-hidden': true %>
       <span><%= t('.gps_noise_detection_changed_in_this_release_so_your_existing') %></span>
     </div>
   <% end %>
 
-  <div class='flex flex-wrap'>
-    <div class="card bg-base-300 w-96 shadow-xl m-5">
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div class="card bg-base-200">
       <div class="card-body">
-        <h2 class="card-title"><%= t('.start_reverse_geocoding') %></h2>
+        <h2 class="card-title text-lg font-medium"><%= t('.start_reverse_geocoding') %></h2>
         <p><%= t('.this_job_will_re_run_reverse_geocoding_process_for_all') %></p>
         <div class="card-actions justify-end">
-          <%= link_to t('.start_job'), settings_background_jobs_path(job_name: 'start_reverse_geocoding'), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :post }, class: 'btn btn-primary' %>
+          <%= link_to t('.start_job'), settings_background_jobs_path(job_name: 'start_reverse_geocoding'), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :post }, class: 'btn' %>
         </div>
       </div>
     </div>
 
-    <div class="card bg-base-300 w-96 shadow-xl m-5">
+    <div class="card bg-base-200">
       <div class="card-body">
-        <h2 class="card-title"><%= t('.continue_reverse_geocoding') %></h2>
+        <h2 class="card-title text-lg font-medium"><%= t('.continue_reverse_geocoding') %></h2>
         <p><%= t('.this_job_will_process_reverse_geocoding_for_all_points_that') %></p>
         <div class="card-actions justify-end">
-          <%= link_to t('.start_job'), settings_background_jobs_path(job_name: 'continue_reverse_geocoding'), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :post }, class: 'btn btn-primary' %>
+          <%= link_to t('.start_job'), settings_background_jobs_path(job_name: 'continue_reverse_geocoding'), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :post }, class: 'btn' %>
         </div>
       </div>
     </div>
 
     <% if current_user.admin? %>
-      <div class="card bg-base-300 w-96 shadow-xl m-5">
+      <div class="card bg-base-200">
         <div class="card-body">
-          <h2 class="card-title"><%= t('.background_jobs_dashboard') %></h2>
+          <h2 class="card-title text-lg font-medium"><%= t('.background_jobs_dashboard') %></h2>
           <p><%= t('.this_will_open_the_background_jobs_dashboard_in_a_new') %></p>
           <div class="card-actions justify-end">
-            <%= link_to t('.open_dashboard'), '/sidekiq', target: '_blank', class: 'btn btn-primary' %>
+            <%= link_to t('.open_dashboard'), '/sidekiq', target: '_blank', class: 'btn' %>
           </div>
         </div>
       </div>
     <% end %>
 
     <% visits_suggestions_enabled = current_user.safe_settings.visits_suggestions_enabled? %>
-    <div class="card bg-base-300 w-96 shadow-xl m-5" data-testid="visits-suggestions-card">
+    <div class="card bg-base-200" data-testid="visits-suggestions-card">
       <div class="card-body">
-        <h2 class="card-title"><%= t('.visits_suggestions') %></h2>
-        <span role="status" class="badge <%= visits_suggestions_enabled ? 'badge-success' : 'badge-neutral' %>">
+        <h2 class="card-title text-lg font-medium"><%= t('.visits_suggestions') %></h2>
+        <span role="status" class="flex items-center gap-2 text-sm text-base-content/60">
+          <span class="size-2 rounded-full <%= visits_suggestions_enabled ? 'bg-success' : 'bg-base-content/30' %>" aria-hidden="true"></span>
           <%= t(visits_suggestions_enabled ? '.enabled' : '.disabled') %>
         </span>
         <p><%= t('.enable_or_disable_visits_suggestions_it_s_a_background_task') %></p>
         <div class="card-actions justify-end">
           <% if visits_suggestions_enabled %>
-            <%= link_to t('.disable'), settings_background_jobs_path(settings: { 'visits_suggestions_enabled' => 'false' }), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :patch }, class: 'btn btn-error' %>
+            <%= link_to t('.disable'), settings_background_jobs_path(settings: { 'visits_suggestions_enabled' => 'false' }), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :patch }, class: 'btn' %>
           <% else %>
-            <%= link_to t('.enable'), settings_background_jobs_path(settings: { 'visits_suggestions_enabled' => 'true' }), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :patch }, class: 'btn btn-success' %>
+            <%= link_to t('.enable'), settings_background_jobs_path(settings: { 'visits_suggestions_enabled' => 'true' }), data: { turbo_confirm: t('.are_you_sure'), turbo_method: :patch }, class: 'btn' %>
           <% end %>
         </div>
       </div>

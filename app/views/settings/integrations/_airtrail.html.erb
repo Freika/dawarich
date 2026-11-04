@@ -4,7 +4,7 @@
     <div class="card-body space-y-5">
       <div class="flex items-center gap-3">
         <%= integration_icon('airtrail', css: 'size-6') %>
-        <h2 class="text-xl font-semibold"><%= t('settings.integrations.index.airtrail_integration') %></h2>
+        <h2 class="text-lg font-medium"><%= t('settings.integrations.index.airtrail_integration') %></h2>
       </div>
       <div class="form-control w-full max-w-md">
         <%= f.label :airtrail_url, class: 'label' do %>
@@ -54,13 +54,13 @@
     <div class="border-t border-base-content/10 px-8 py-5">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 class="font-semibold flex items-center gap-2">
+          <h3 class="font-medium flex items-center gap-2">
             <%= icon 'plane', class: 'size-5 text-primary' %> <%= t('settings.integrations.index.sync_airtrail_flights') %>
           </h3>
           <span class="label-text-alt text-base-content/60"><%= t('settings.integrations.index.flights_also_sync_automatically_once_a_day') %></span>
         </div>
         <%= button_to t('settings.integrations.index.sync_now'), settings_background_jobs_path(job_name: 'start_airtrail_import'),
-            method: :post, class: 'btn btn-primary btn-sm' %>
+            method: :post, class: 'btn btn-sm' %>
       </div>
     </div>
   <% end %>

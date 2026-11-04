@@ -18,7 +18,7 @@ RSpec.describe 'Shared::Stats', type: :request do
           get shared_stat_url(stat.sharing_uuid)
 
           expect(response).to have_http_status(:success)
-          expect(response.body).to include('Monthly Digest')
+          expect(response.body).to include(">#{I18n.t('stats.public_month.monthly_digest')}<")
           expect(response.body).to include('June 2024')
         end
 
@@ -26,7 +26,7 @@ RSpec.describe 'Shared::Stats', type: :request do
           get shared_stat_url(stat.sharing_uuid)
 
           expect(response.body).to include('June 2024')
-          expect(response.body).to include('Monthly Digest')
+          expect(response.body).to include(">#{I18n.t('stats.public_month.monthly_digest')}<")
           expect(response.body).to include('data-public-stat-map-uuid-value')
           expect(response.body).to include(stat.sharing_uuid)
         end
@@ -68,7 +68,7 @@ RSpec.describe 'Shared::Stats', type: :request do
           get shared_stat_url(stat.sharing_uuid)
 
           expect(response).to have_http_status(:success)
-          expect(response.body).to include('Monthly Digest')
+          expect(response.body).to include(">#{I18n.t('stats.public_month.monthly_digest')}<")
         end
       end
     end

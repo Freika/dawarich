@@ -7,7 +7,7 @@ RSpec.describe 'Locale selection', type: :request do
     get new_user_session_path, headers: { 'Accept-Language' => 'de-DE,de;q=0.9,en;q=0.8' }
 
     expect(response.body).to include('<html lang="en"')
-    expect(response.body).to include('Login now')
+    expect(response.body).to include('Log in to your location history')
     expect(response.body).not_to include('Jetzt anmelden')
   end
 
@@ -30,7 +30,7 @@ RSpec.describe 'Locale selection', type: :request do
     get new_user_session_path, params: { locale: 'xx' }
 
     expect(response.body).to include('<html lang="en"')
-    expect(response.body).to include('Login now')
+    expect(response.body).to include('Log in to your location history')
   end
 
   it 'persists the preference for a signed-in user and lets an explicit choice override it' do

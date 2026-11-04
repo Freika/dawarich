@@ -34,7 +34,7 @@ RSpec.describe Photos::CacheCleaner do
       let(:cache_without_delete_matched) { double('Cache') }
 
       before do
-        stub_const('Rails', double(cache: cache_without_delete_matched))
+        allow(Rails).to receive(:cache).and_return(cache_without_delete_matched)
         allow(cache_without_delete_matched).to receive(:respond_to?).with(:delete_matched).and_return(false)
       end
 

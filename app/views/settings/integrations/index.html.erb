@@ -1,14 +1,14 @@
 <% content_for :title, t('.settings') %>
 
 <div class="min-h-content w-full my-5">
-  <%= render 'shared/page_header', title: t('.user_settings') %>
+  <%= render 'shared/page_header', title: t('settings.navigation.integrations') %>
   <%= render 'settings/navigation' %>
 
   <% if @pro_required %>
     <div class="rounded-box border border-base-content/10 bg-base-200">
       <div class="card-body text-center items-center py-12">
-        <h2 class="text-2xl flex font-bold mb-2 items-center">
-          <%= icon 'shield-check', class: 'mr-2 text-primary' %> <%= t('.immich_photoprism_integrations') %>
+        <h2 class="text-xl flex font-medium mb-2 items-center gap-2">
+          <%= icon 'shield-check', class: 'w-5 h-5 text-base-content/60' %> <%= t('.immich_photoprism_integrations') %>
         </h2>
         <p class="text-base-content/60 mb-6 max-w-md">
           <%= t('.connect_your_photo_management_tools_to_see_your_photos_on') %>
@@ -70,8 +70,8 @@
     <% unless DawarichSettings.self_hosted? || current_user.provider.blank? %>
       <div class="rounded-box border border-base-content/10 bg-base-200 mt-6 max-w-3xl">
         <div class="card-body">
-          <h2 class="text-lg font-semibold flex items-center">
-            <%= icon 'link', class: 'text-primary mr-2 size-5' %> <%= t('.connected_accounts') %>
+          <h2 class="text-lg font-medium flex items-center gap-2">
+            <%= icon 'link', class: 'size-4 text-base-content/60' %> <%= t('.connected_accounts') %>
           </h2>
           <p class="text-sm text-base-content/60">
             <%= t('.you_ve_connected_your_account_using_the_following_oauth_provider') %>
