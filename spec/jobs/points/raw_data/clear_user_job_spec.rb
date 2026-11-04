@@ -32,6 +32,16 @@ RSpec.describe Points::RawData::ClearUserJob, type: :job do
 
         expect(point.reload.raw_data).to eq({})
       end
+
+      it 'does not clear points whose archive file is missing from storage' do
+        archive.file.blob.service.delete(archive.file.key)
+        allow(ExceptionReporter).to receive(:call)
+
+        described_class.perform_now(user.id)
+
+        expect(point.reload.raw_data).to eq({ 'foo' => 'bar' })
+        expect(ExceptionReporter).to have_received(:call).with(anything, /missing from storage/)
+      end
     end
 
     context 'when the archive was verified within the cooling period' do

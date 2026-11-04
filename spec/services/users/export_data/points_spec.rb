@@ -267,6 +267,37 @@ RSpec.describe Users::ExportData::Points, type: :service do
       end
     end
 
+    context 'when raw_data was cleared after archiving' do
+      before do
+        allow(PointsChannel).to receive(:broadcast_to)
+        create(:point, user: user, timestamp: 3.months.ago.to_i, raw_data: { 'lon' => 13.4, 'lat' => 52.5 })
+        Points::RawData::Archiver.new.archive_user(user.id)
+        Points::RawData::Clearer.new.call
+      end
+
+      it 'exports the raw_data stored in the archive' do
+        expect(subject.map { |point| JSON.parse(point['raw_data']) }).to eq([{ 'lon' => 13.4, 'lat' => 52.5 }])
+      end
+
+      it 'fails the export when an archive cannot be read right now' do
+        allow(ActiveStorage::Blob.service).to receive(:download).and_raise(Timeout::Error, 'storage timeout')
+
+        expect { subject }.to raise_error(Timeout::Error)
+      end
+
+      it 'exports the archived raw_data to monthly files' do
+        output_directory = Rails.root.join('tmp/test_points_export_archived')
+        described_class.new(user, output_directory).call
+        exported = Dir[output_directory.join('**/*.jsonl')].flat_map do |file|
+          File.readlines(file).map { |line| JSON.parse(line) }
+        end
+
+        expect(exported.map { |point| JSON.parse(point['raw_data']) }).to eq([{ 'lon' => 13.4, 'lat' => 52.5 }])
+      ensure
+        FileUtils.rm_rf(output_directory)
+      end
+    end
+
     context 'monthly file mode' do
       let(:output_directory) { Rails.root.join('tmp/test_points_export') }
       let(:monthly_service) { described_class.new(user, output_directory) }

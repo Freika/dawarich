@@ -134,6 +134,15 @@ RSpec.describe Points::RawData::Verifier do
       expect(archive.reload.verified_at).to be_present
     end
 
+    it 'unsets verified_at when the archive object is missing from storage' do
+      archive.update_column(:verified_at, 10.days.ago)
+      archive.file.blob.service.delete(archive.file.key)
+
+      verifier.verify_specific_archive(archive.id)
+
+      expect(archive.reload.verified_at).to be_nil
+    end
+
     it 'unsets verified_at when a re-check fails to decrypt the archive' do
       archive.update_column(:verified_at, 10.days.ago)
       allow(Points::RawData::Encryption)

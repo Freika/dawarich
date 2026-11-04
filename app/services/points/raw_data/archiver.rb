@@ -123,9 +123,14 @@ module Points
         end
 
         # Full verification OUTSIDE transaction to avoid holding DB connection during I/O.
-        # Downloads the archive, decrypts, decompresses, and verifies point count + checksum.
-        verify_archive_full!(archive, point_ids)
-        archive.update!(verified_at: Time.current)
+        # Any failure discards the archive, or it would stay behind linked to no points.
+        begin
+          verify_archive_full!(archive, point_ids)
+          archive.update!(verified_at: Time.current)
+        rescue StandardError
+          cleanup_failed_archive!(archive)
+          raise
+        end
 
         # Only flag points after verification succeeds, and only while their
         # raw_data still matches the snapshot stored in this archive.
@@ -185,7 +190,7 @@ module Points
 
       # Full round-trip verification: download → decrypt → decompress → parse → count + checksum.
       # Runs OUTSIDE the transaction so network I/O doesn't hold DB connections.
-      # On failure, destroys the archive record and raises to prevent flagging points.
+      # Raises on failure; the caller discards the archive so no points get flagged.
       def verify_archive_full!(archive, point_ids)
         raise StandardError, "Archive #{archive.id} has no attached file" unless archive.file.attached?
 
@@ -196,11 +201,7 @@ module Points
         stored_checksum = archive.metadata&.dig('content_checksum')
         if stored_checksum.present?
           actual_checksum = Digest::SHA256.hexdigest(raw_content)
-          if actual_checksum != stored_checksum
-            cleanup_failed_archive!(archive)
-            raise StandardError,
-                  "Archive #{archive.id} content checksum mismatch"
-          end
+          raise StandardError, "Archive #{archive.id} content checksum mismatch" if actual_checksum != stored_checksum
         end
 
         # Decrypt and decompress to verify data integrity
@@ -216,7 +217,6 @@ module Points
 
         # Verify point count matches
         if verified_ids.size != point_ids.size
-          cleanup_failed_archive!(archive)
           raise StandardError,
                 "Archive #{archive.id} point count mismatch: " \
                 "expected #{point_ids.size}, got #{verified_ids.size}"
@@ -227,11 +227,8 @@ module Points
         expected_checksum = archive.point_ids_checksum
         return if verified_checksum == expected_checksum
 
-        cleanup_failed_archive!(archive)
-        raise StandardError,
-              "Archive #{archive.id} point IDs checksum mismatch"
+        raise StandardError, "Archive #{archive.id} point IDs checksum mismatch"
       rescue Zlib::GzipFile::Error, JSON::ParserError, OpenSSL::Cipher::CipherError => e
-        cleanup_failed_archive!(archive)
         raise StandardError,
               "Archive #{archive.id} decrypt/decompress failed: #{e.message}"
       end
