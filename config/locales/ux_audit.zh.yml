@@ -1,0 +1,109 @@
+---
+zh:
+  shared_links:
+    timeline_scope:
+      only_import: 仅分享所选时间段内来自 %{name} 的点。不包含照片。
+      unavailable: 所选导入已不可用。
+  javascript:
+    ux_p3:
+      timeline:
+        filtered_count: 显示 %{total} 次访问中的 %{count} 次
+        visit_count:
+          one: "%{count} 次访问"
+          other: "%{count} 次访问"
+      video:
+        ready: 视频已就绪 — MP4 · %{size} MB。
+      realtime:
+        connected: 实时更新已连接
+        disconnected: 实时更新已暂停。新位置可能会延迟，正在自动重新连接。
+  ux_p2:
+    exports:
+      source: 来源：%{name}
+      restored_incomplete: 此导出在备份中尚未完成。请在“点”页面创建新的导出。
+      unavailable_source: 来源不可用（范围已保留）
+      removed_import: 导入已删除（范围已保留）
+      unavailable_import: 所选导入已不可用。
+    sharing:
+      exact_expiry: 精确到期时间（可选）
+      exact_expiry_hint: 时区：%{timezone}。留空则永不过期。
+      invalid_expiry: 请选择有效的到期日期。
+      no_expiry: 永不过期
+      expires: 访问结束时间
+      period: 分享的时间段
+      included: 已包含
+      excluded: 已排除
+      edit_access: 编辑访问权限
+      preview: 打开接收者视图
+      url_unchanged: 更改将应用于此链接。其 URL、受众和所选数据保持不变。
+      cancel: 取消
+      save: 保存访问设置
+      sections:
+        show_route: 路线地图
+        show_stats: 统计
+        show_days: 按天明细
+        show_day_notes: 每日笔记
+        show_description: 描述
+        show_photos: 照片
+    import:
+      technical_details: 技术详情
+      failed: 导入失败
+      format_error: 无法读取文件格式。请检查文件是否有效并使用受支持的格式。
+      failed_reason: 导入未能完成。你可以重新上传该文件；如果再次失败，请在报告问题时提供下方的参考编号。
+      reference: 导入参考编号：#%{id}。技术详情可在服务器日志中查看。
+      open: 打开导入和恢复选项
+      upload_another: 上传其他文件
+      supported_formats: 支持的格式
+      notification_html: 导入 &quot;%{name}&quot; 失败。%{reason} %{link}
+    digest:
+      queued: 已排队。你的年度总结将自动显示在这里。
+      calculating: 正在计算你的年度总结。此页面会自动更新。
+      failed: 生成失败。你的位置历史是安全的，请重试。
+      retry: 重新生成
+      working: 正在准备总结
+    places:
+      add: 添加地点
+      save: 保存地点
+      search: 搜索地点
+      tag: 标签
+      all_tags: 所有标签
+      sort: 排序方式
+      sort_name: 名称
+      sort_recent_visit: 最近访问
+      sort_newest: 最近创建
+      no_matches: 没有匹配的地点。请尝试其他搜索或添加地点。
+      pick_coordinates: 点击地图或输入坐标来选择此地点。你可以拖动标记进行调整。
+      latitude: 纬度
+      longitude: 经度
+      name: 名称
+      note: 备注
+    points:
+      select: 选择记录于 %{time} 的点
+    insights:
+      empty_title: 你的旅程将显示在这里
+      empty_help: 导入位置历史或连接追踪器，即可获得你的首批距离、地图和旅行洞察。
+      import: 导入历史
+      connect: 连接追踪器
+      unresolved: 尚未识别
+      names_pending: 国家和城市名称尚未识别。坐标、地图和距离仍可能可用。
+      configure: 配置地理编码
+      ask_admin: 你的管理员可以配置地理编码来识别国家和城市名称。
+  ux_p3:
+    timeline:
+      filter_scope: 访问筛选已启用。移动和未追踪的时间段仍然可见。
+    integrations:
+      saved_untested: 设置已保存。未进行连接测试。
+      tested_ok: 连接已验证。更改尚未保存。
+      tested_failed: 连接失败。更改尚未保存。
+      saved_ok: 设置已保存，连接已验证。
+      saved_failed: 设置已保存，但连接失败。
+      validation_failed: 无法使用这些设置。请检查 URL 和必填字段。
+      retry: 请检查下方字段，然后再次测试连接。
+      reasons:
+        unreachable: 无法访问该服务。请检查其地址、端口以及 Dawarich 的网络访问。
+        certificate: 无法验证 TLS 证书。请检查服务器证书。
+        credentials: 访问被拒绝。请检查 API 密钥及其权限。
+        missing_fields: 请输入服务 URL 和必需的凭据。
+        check_settings: 服务未接受连接。请检查 URL、凭据和所需权限。
+      status:
+        connected: 已保存的连接：上次测试成功。
+        failed: 已保存的连接：上次测试失败。

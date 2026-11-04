@@ -255,16 +255,10 @@ class Imports::Create
     detector.detect_source!
   end
 
-  def import_failed_message(import, error)
-    if DawarichSettings.self_hosted?
-      I18n.t(
-        'services.imports.create.import_failed_self_hosted',
-        name: import.name,
-        message: error.message,
-        backtrace: error.backtrace.join("\n")
-      )
-    else
-      I18n.t('services.imports.create.import_failed_cloud', name: import.name)
-    end
+  def import_failed_message(import, _error)
+    helpers = ActionController::Base.helpers
+    link = helpers.link_to(I18n.t('ux_p2.import.open'), Rails.application.routes.url_helpers.import_path(import))
+    I18n.t('ux_p2.import.notification_html', name: ERB::Util.html_escape(import.name),
+           reason: ERB::Util.html_escape(import.failure_summary), link: link)
   end
 end

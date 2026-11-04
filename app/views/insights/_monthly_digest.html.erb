@@ -62,14 +62,14 @@
           <div class="flex items-center justify-center gap-1 text-base-content/60 text-xs mb-1">
             <%= icon 'globe', class: 'w-3 h-3' %>
           </div>
-          <div class="text-lg font-medium tabular-nums"><%= @monthly_digest.countries_count %></div>
+          <div class="text-lg font-medium tabular-nums"><%= unresolved_location_count?(@monthly_digest.countries_count) ? t('ux_p2.insights.unresolved') : @monthly_digest.countries_count %></div>
           <div class="text-xs text-base-content/60"><%= t('.countries') %></div>
         </div>
         <div class="text-center">
           <div class="flex items-center justify-center gap-1 text-base-content/60 text-xs mb-1">
             <%= icon 'building', class: 'w-3 h-3' %>
           </div>
-          <div class="text-lg font-medium tabular-nums"><%= @monthly_digest.cities_count %></div>
+          <div class="text-lg font-medium tabular-nums"><%= unresolved_location_count?(@monthly_digest.cities_count) ? t('ux_p2.insights.unresolved') : @monthly_digest.cities_count %></div>
           <div class="text-xs text-base-content/60"><%= t('.cities') %></div>
         </div>
       </div>
@@ -117,7 +117,7 @@
                 </div>
               <% end %>
             <% else %>
-              <div class="text-base-content/50"><%= t('.no_location_data') %></div>
+              <div class="text-base-content/50"><%= t('ux_p2.insights.names_pending') %></div>
             <% end %>
           </div>
         </div>

@@ -696,6 +696,15 @@ export default class extends Controller {
   toggleSettings() {
     if (this.hasSettingsPanelTarget) {
       const isOpening = !this.settingsPanelTarget.classList.contains("open")
+      if (isOpening) {
+        this.settingsPanelTrigger = document.activeElement
+      } else if (this.settingsPanelTarget.contains(document.activeElement)) {
+        const trigger = this.settingsPanelTrigger?.isConnected
+          ? this.settingsPanelTrigger
+          : document.querySelector('[data-testid="map-button-timeline"]')
+        trigger?.focus()
+      }
+      this.settingsPanelTarget.inert = !isOpening
       this.settingsPanelTarget.classList.toggle("open")
 
       // Shrink/expand map container

@@ -1273,7 +1273,8 @@
   opacity: 0.55;
 }
 
-.timeline-day:not(.timeline-day--show-lowconf) .visit-row--lowconf {
+.timeline-day:not(.timeline-day--show-lowconf):not(.timeline-day--filtering)
+  .visit-row--lowconf {
   display: none;
 }
 

@@ -1,0 +1,235 @@
+{
+  "en": {
+    "ux_p3": {
+      "timeline": {
+        "filter_scope": "Visit filters are active. Movement and untracked intervals stay visible."
+      },
+      "video": {
+        "download": "Download video"
+      },
+      "integrations": {
+        "save_and_test": "Save & test connection",
+        "test": "Test without saving",
+        "save": "Save without testing",
+        "saved_untested": "Settings saved. No connection test was run.",
+        "tested_ok": "Connection verified. Changes have not been saved.",
+        "tested_failed": "Connection failed. Changes have not been saved.",
+        "saved_ok": "Settings saved and connection verified.",
+        "saved_failed": "Settings saved, but the connection failed.",
+        "validation_failed": "Settings could not be used. Check the URL and required fields.",
+        "retry": "Check the fields below, then test the connection again.",
+        "reasons": {
+          "unreachable": "The service could not be reached. Check its address, port and network access from Dawarich.",
+          "certificate": "The TLS certificate could not be verified. Check the server certificate.",
+          "credentials": "Access was denied. Check the API key and its permissions.",
+          "missing_fields": "Enter the service URL and required credentials.",
+          "check_settings": "The service did not accept the connection. Check the URL, credentials and required permissions."
+        },
+        "status": {
+          "connected": "Saved connection: last test succeeded.",
+          "failed": "Saved connection: last test failed.",
+          "untested": "Saved connection: not tested."
+        }
+      }
+    },
+    "javascript": {
+      "ux_p3": {
+        "timeline": {
+          "filtered_count": "Showing %{count} of %{total} visits",
+          "visit_count": {
+            "one": "%{count} visit",
+            "other": "%{count} visits"
+          }
+        },
+        "video": {
+          "ready": "Your video is ready — MP4 · %{size} MB."
+        },
+        "realtime": {
+          "connected": "Live updates connected",
+          "disconnected": "Live updates paused. New positions may be delayed; reconnecting automatically."
+        }
+      }
+    }
+  },
+  "de": {
+    "ux_p3": {
+      "timeline": {
+        "filter_scope": "Besuchsfilter sind aktiv. Bewegung und nicht erfasste Zeiträume bleiben sichtbar."
+      },
+      "video": {
+        "download": "Video herunterladen"
+      },
+      "integrations": {
+        "save_and_test": "Speichern und testen",
+        "test": "Ohne Speichern testen",
+        "save": "Ohne Test speichern",
+        "saved_untested": "Einstellungen gespeichert. Es wurde kein Verbindungstest ausgeführt.",
+        "tested_ok": "Verbindung bestätigt. Änderungen wurden nicht gespeichert.",
+        "tested_failed": "Verbindung fehlgeschlagen. Änderungen wurden nicht gespeichert.",
+        "saved_ok": "Einstellungen gespeichert und Verbindung bestätigt.",
+        "saved_failed": "Einstellungen gespeichert, aber die Verbindung ist fehlgeschlagen.",
+        "validation_failed": "Bitte URL und Pflichtfelder prüfen. Einstellungen wurden nicht gespeichert.",
+        "retry": "Felder prüfen und Verbindung erneut testen.",
+        "reasons": {
+          "unreachable": "Dienst nicht erreichbar. Adresse, Port und Netzwerkzugriff von Dawarich prüfen.",
+          "certificate": "TLS-Zertifikat konnte nicht bestätigt werden. Serverzertifikat prüfen.",
+          "credentials": "Zugriff verweigert. API-Schlüssel und Berechtigungen prüfen.",
+          "missing_fields": "Dienst-URL und Zugangsdaten eingeben.",
+          "check_settings": "Dienst hat die Verbindung nicht akzeptiert. URL, Zugangsdaten und Berechtigungen prüfen."
+        },
+        "status": {
+          "connected": "Gespeicherte Verbindung: letzter Test erfolgreich.",
+          "failed": "Gespeicherte Verbindung: letzter Test fehlgeschlagen.",
+          "untested": "Gespeicherte Verbindung: nicht getestet."
+        }
+      }
+    },
+    "javascript": {
+      "ux_p3": {
+        "timeline": {
+          "filtered_count": "%{count} von %{total} Besuchen sichtbar",
+          "visit_count": {
+            "one": "%{count} Besuch",
+            "other": "%{count} Besuche"
+          }
+        },
+        "video": {
+          "ready": "Video ist bereit — MP4 · %{size} MB."
+        },
+        "realtime": {
+          "connected": "Live-Verbindung aktiv",
+          "disconnected": "Live-Updates pausiert. Neue Positionen können verspätet sein; Verbindung wird wiederhergestellt."
+        }
+      }
+    }
+  },
+  "ru": {
+    "ux_p3": {
+      "timeline": {
+        "filter_scope": "Фильтры применены к визитам. Движение и интервалы без данных остаются видимыми."
+      },
+      "video": {
+        "download": "Скачать видео"
+      },
+      "integrations": {
+        "save_and_test": "Сохранить и проверить",
+        "test": "Проверить без сохранения",
+        "save": "Сохранить без проверки",
+        "saved_untested": "Настройки сохранены без новой проверки подключения.",
+        "tested_ok": "Подключение проверено. Изменения не сохранены.",
+        "tested_failed": "Подключиться не удалось. Изменения не сохранены.",
+        "saved_ok": "Настройки сохранены, подключение проверено.",
+        "saved_failed": "Настройки сохранены, но подключиться не удалось.",
+        "validation_failed": "Проверьте адрес и обязательные поля. Настройки не сохранены.",
+        "retry": "Проверьте поля ниже и повторите проверку подключения.",
+        "reasons": {
+          "unreachable": "Сервис недоступен. Проверьте адрес, порт и доступ к сервису с сервера Dawarich.",
+          "certificate": "Не удалось проверить TLS-сертификат сервера. Проверьте его настройку.",
+          "credentials": "Доступ запрещён. Проверьте API-ключ и его разрешения.",
+          "missing_fields": "Укажите адрес сервиса и необходимые данные доступа.",
+          "check_settings": "Сервис не принял подключение. Проверьте адрес, данные доступа и разрешения."
+        },
+        "status": {
+          "connected": "Сохранённое подключение: последняя проверка успешна.",
+          "failed": "Сохранённое подключение: последняя проверка неудачна.",
+          "untested": "Сохранённое подключение: не проверено."
+        }
+      }
+    },
+    "javascript": {
+      "ux_p3": {
+        "timeline": {
+          "filtered_count": "Показано %{count} из %{total} визитов",
+          "visit_count": {
+            "one": "%{count} визит",
+            "few": "%{count} визита",
+            "many": "%{count} визитов",
+            "other": "%{count} визита"
+          }
+        },
+        "video": {
+          "ready": "Видео готово — MP4 · %{size} МБ."
+        },
+        "realtime": {
+          "connected": "Обновления подключены",
+          "disconnected": "Обновления приостановлены. Новые позиции могут задерживаться; подключаемся автоматически."
+        }
+      }
+    }
+  },
+  "es": {
+    "ux_p3": {
+      "video": {
+        "download": "Descargar vídeo"
+      },
+      "integrations": {
+        "save_and_test": "Guardar y probar la conexión",
+        "test": "Probar sin guardar",
+        "save": "Guardar sin probar",
+        "status": {
+          "untested": "Conexión guardada: sin probar."
+        }
+      }
+    }
+  },
+  "fr": {
+    "ux_p3": {
+      "video": {
+        "download": "Télécharger la vidéo"
+      },
+      "integrations": {
+        "save_and_test": "Enregistrer et tester la connexion",
+        "test": "Tester sans enregistrer",
+        "save": "Enregistrer sans tester",
+        "status": {
+          "untested": "Connexion enregistrée : non testée."
+        }
+      }
+    }
+  },
+  "ca": {
+    "ux_p3": {
+      "video": {
+        "download": "Baixa el vídeo"
+      },
+      "integrations": {
+        "save_and_test": "Desa i prova la connexió",
+        "test": "Prova sense desar",
+        "save": "Desa sense provar",
+        "status": {
+          "untested": "Connexió desada: no provada."
+        }
+      }
+    }
+  },
+  "pl": {
+    "ux_p3": {
+      "video": {
+        "download": "Pobierz film"
+      },
+      "integrations": {
+        "save_and_test": "Zapisz i przetestuj połączenie",
+        "test": "Przetestuj bez zapisywania",
+        "save": "Zapisz bez testowania",
+        "status": {
+          "untested": "Zapisane połączenie: nieprzetestowane."
+        }
+      }
+    }
+  },
+  "zh": {
+    "ux_p3": {
+      "video": {
+        "download": "下载视频"
+      },
+      "integrations": {
+        "save_and_test": "保存并测试连接",
+        "test": "测试但不保存",
+        "save": "保存但不测试",
+        "status": {
+          "untested": "已保存的连接：尚未测试。"
+        }
+      }
+    }
+  }
+}

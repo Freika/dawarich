@@ -185,6 +185,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
     t.bigint "distance", default: 0, null: false
     t.jsonb "first_time_visits", default: {}
     t.bigint "flight_distance", default: 0, null: false
+    t.integer "generation_status", default: 0, null: false
     t.integer "month"
     t.jsonb "monthly_distances", default: {}
     t.integer "period_type", default: 0, null: false
@@ -305,6 +306,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
     t.text "error_message"
     t.integer "file_format", default: 0
     t.integer "file_type", default: 0, null: false
+    t.bigint "import_id"
+    t.boolean "import_scope_unavailable", default: false, null: false
     t.string "name", null: false
     t.datetime "processing_started_at"
     t.datetime "start_at"

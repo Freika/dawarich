@@ -4221,7 +4221,7 @@ en:
 
         Your real data — anything you've imported, edited, confirmed, or created yourself — will NOT be touched.
       creating: Creating your demo data…
-      creating_help: Seeding a month of Berlin tracking plus a Prague weekend trip. Takes about a second.
+      creating_help: Adding a month of Berlin tracking and a Prague weekend trip. Please wait while points, visits and places are prepared.
     visits:
       place: "Place"
       choose_place: "Choose a Place"

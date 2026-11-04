@@ -1,0 +1,25 @@
+<%= form_with model: @place, url: (@place.persisted? ? place_path(@place, place_list_context) : places_path(place_list_context)), data: { turbo: false }, class: 'space-y-4' do |f| %>
+  <% if @place.errors.any? %><p role="alert" class="alert alert-error"><%= @place.errors.full_messages.join(', ') %></p><% end %>
+  <div data-controller="place-location" data-place-location-editable-value="true"
+       data-place-location-latitude-value="<%= @place.lonlat ? @place.lat : 0 %>"
+       data-place-location-longitude-value="<%= @place.lonlat ? @place.lon : 0 %>"
+       data-place-location-tiles-url-value="<%= current_user.safe_settings.maps_maplibre_tiles_url %>"
+       data-place-location-tiles-fallback-value="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>">
+    <p class="text-sm text-base-content/70 mb-2"><%= t('ux_p2.places.pick_coordinates') %></p>
+    <div class="h-64 rounded-xl overflow-hidden mb-3" data-place-location-target="map"></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <label class="form-control"><span><%= t('ux_p2.places.latitude') %></span><%= f.number_field :latitude, value: (@place.errors.any? ? @place.latitude : (@place.lat if @place.lonlat)), step: :any, min: -90, max: 90, required: true, class: 'input input-bordered w-full', data: { place_location_target: 'latitude', action: 'change->place-location#coordinatesChanged' } %></label>
+      <label class="form-control"><span><%= t('ux_p2.places.longitude') %></span><%= f.number_field :longitude, value: (@place.errors.any? ? @place.longitude : (@place.lon if @place.lonlat)), step: :any, min: -180, max: 180, required: true, class: 'input input-bordered w-full', data: { place_location_target: 'longitude', action: 'change->place-location#coordinatesChanged' } %></label>
+    </div>
+  </div>
+  <label class="form-control"><span><%= t('ux_p2.places.name') %></span><%= f.text_field :name, required: true, class: 'input input-bordered w-full' %></label>
+  <label class="form-control"><span><%= t('ux_p2.places.radius') %></span><%= f.number_field :visit_radius, min: 1, max: Place::MAX_VISIT_RADIUS, required: true, class: 'input input-bordered w-full' %></label>
+  <label class="form-control"><span><%= t('ux_p2.places.note') %></span><%= f.text_area :note, class: 'textarea textarea-bordered w-full' %></label>
+  <fieldset><legend class="font-medium mb-2"><%= t('ux_p2.places.tag') %></legend>
+    <%= hidden_field_tag 'place[tag_ids][]', '' %>
+    <% current_user.tags.order(:name).each do |tag| %>
+      <label class="inline-flex items-center gap-2 mr-4 mb-2"><%= check_box_tag 'place[tag_ids][]', tag.id, @place.tags.include?(tag), class: 'checkbox checkbox-sm' %><%= tag.name %></label>
+    <% end %>
+  </fieldset>
+  <div class="flex flex-wrap gap-2"><%= f.submit t('ux_p2.places.save'), class: 'btn btn-primary' %><%= link_to t('ux_p2.places.back'), places_path(place_list_context), class: 'btn btn-ghost' %></div>
+<% end %>

@@ -1,7 +1,8 @@
 <div data-controller="place-creation inline-tag">
-  <div class="modal z-[10000]" data-place-creation-target="modal">
+  <dialog class="modal z-[10000]" data-place-creation-target="modal"
+          aria-labelledby="place-creation-title" data-action="cancel->place-creation#close">
     <div class="modal-box max-w-2xl place-creation-modal">
-      <h3 class="font-medium text-lg mb-4" data-place-creation-target="modalTitle"><%= t('.create_new_place') %></h3>
+      <h3 class="font-medium text-lg mb-4" id="place-creation-title" data-place-creation-target="modalTitle"><%= t('.create_new_place') %></h3>
 
       <%= form_with scope: :place, url: places_path, method: :post, data: {
         place_creation_target: "form",
@@ -85,7 +86,7 @@
       <%= render 'shared/inline_tag_form', surface: 'creation' %>
     </div>
     <div class="modal-backdrop" data-action="click->place-creation#close"></div>
-  </div>
+  </dialog>
 
   <div id="place-creation-data" class="hidden"></div>
 </div>

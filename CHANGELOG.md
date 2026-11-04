@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The map loads again on Docker and Podman setups that start the app container without `web-entrypoint.sh`. Before, the persistent `public` volume kept the files of the previous version, the MapLibre files added in 1.15.1 were missing, and the browser blocked them with a "disallowed MIME type" error. Static files missing from the volume are now served from the copy inside the image. Files that already exist in the volume are still served from it, so keep `entrypoint: web-entrypoint.sh` to get updated versions of those. (#3872)
 - Scheduled jobs added in a new release no longer fail in Sidekiq with `undefined method 'jid='` when a Sidekiq process from an older Dawarich version still uses the same Redis. If you see these errors, stop the outdated Sidekiq process and delete the dead jobs that are already there. (#3715)
 - Points deleted with Select data on map, including anomaly points, now disappear from the map right away. Before, they stayed visible until you zoomed far in or out or reloaded the page, and came back at the original zoom. (#3771)
+- Keep public timeline links and filtered exports limited to their selected import, including queued exports and restored backups. Shared links show their source, time range and expiry and let owners edit access settings.
+- Preserve the selected timezone when saving settings and loading Poster Studio dates. Poster controls and downloads now fit narrow screens, and closed map dialogs no longer receive keyboard focus.
+- Show digest generation progress and retries without marking completed reports as failed when email delivery cannot be queued. Make MP4 downloads, integration save/test outcomes and timeline filter counts easier to follow.
+- Improve import recovery, family sharing feedback, first-use guidance, mobile navigation, point lists, Places forms and empty analytics.
 
 ## [1.21.0] - 2026-11-03, Berlin
 

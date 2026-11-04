@@ -1,3 +1,8 @@
+<% if share.timeline_import_scoped? %>
+  <p class="alert text-sm mb-4" data-testid="timeline-import-scope">
+    <%= t('shared_links.timeline_scope.only_import', name: share.timeline_import&.name || t('shared_links.timeline_scope.unavailable')) %>
+  </p>
+<% end %>
 <%# Active-state modal contents. Locals: share, paths %>
 <div class="flex items-center gap-2 mb-4">
   <h3 class="font-medium text-lg"><%= t('.sharing') %></h3>
@@ -11,6 +16,11 @@
   <p class="text-sm text-base-content/70 mb-5"><%= share.family_only? ? t('shared_links.family.shared_trip', trip: share.resource&.name || share.name) : subtitle %></p>
 <% end %>
 
+<%= render 'shared_links/access_summary', share: share %>
+<div class="flex flex-wrap gap-2 mb-4">
+  <%= link_to t('ux_p2.sharing.edit_access'), edit_share_links_share_path(share), class: 'btn btn-primary btn-sm', data: { turbo_frame: 'share-link-modal' } %>
+  <%= link_to t('ux_p2.sharing.preview'), public_shared_link_path(share.id), target: '_blank', rel: 'noopener', class: 'btn btn-outline btn-sm', data: { turbo: false } %>
+</div>
 <div class="space-y-4">
   <div>
     <label class="text-xs font-medium text-base-content/60" for="share-url"><%= share.family_only? ? t('shared_links.family.link') : t('.public_link') %></label>

@@ -10,19 +10,26 @@ class ExportsController < ApplicationController
   before_action :set_export, only: %i[destroy]
 
   def index
-    scope = current_user.exports.with_attached_file
+    scope = current_user.exports.includes(:import).with_attached_file
     @exports = sorted(scope).page(params[:page])
   end
 
   def create
+    import_id = params[:import_id].presence
+    if import_id
+      raise ArgumentError, 'Invalid import' unless import_id.to_s.match?(/\A[1-9]\d*\z/)
+
+      import_id = current_user.imports.find(import_id).id
+    end
     export_name =
       "export_from_#{params[:start_at].to_date}_to_#{params[:end_at].to_date}.#{params[:file_format]}"
-    export = current_user.exports.create(
+    export = current_user.exports.create!(
       name: export_name,
       status: :created,
       file_format: params[:file_format],
       start_at: params[:start_at],
-      end_at: params[:end_at]
+      end_at: params[:end_at],
+      import_id: import_id
     )
 
     redirect_to exports_url,

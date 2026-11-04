@@ -1,0 +1,5 @@
+en:
+  shared_links:
+    timeline_scope:
+      only_import: "Only points from %{name} in the selected period will be shared. Photos are excluded."
+      unavailable: "The selected import is no longer available."

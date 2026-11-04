@@ -8,7 +8,7 @@
   <div class="timeline-day-header">
     <%= render 'map/timeline_feeds/day_nav', date: day[:date] %>
     <div class="timeline-day-header__meta">
-      <%= t('.visit_count', count: day_total_visits_count(day)) %>
+      <span data-timeline-visit-count aria-live="polite"><%= t('.visit_count', count: day_total_visits_count(day)) %></span>
       <% if day_total_visits_count(day) >= 2 %>
         <button type="button"
                 class="day-select-toggle"
@@ -37,6 +37,10 @@
       <% end %>
     </div>
   <% end %>
+
+  <p class="hidden px-3 py-2 text-xs text-base-content/70" data-timeline-filter-scope>
+    <%= t('ux_p3.timeline.filter_scope') %>
+  </p>
 
   <%= render partial: 'map/timeline_feeds/selection_bar', locals: { date: day[:date] } %>
 

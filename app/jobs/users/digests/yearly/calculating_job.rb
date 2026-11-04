@@ -7,16 +7,31 @@ class Users::Digests::Yearly::CalculatingJob < ApplicationJob
     user = find_user_or_skip(user_id) || return
 
     I18n.with_locale(user.locale) do
-      recalculate_monthly_stats(user_id, year)
-      Users::Digests::CalculateYear.new(user_id, year).call
+      return unless calculate_digest(user, year)
 
-      Users::Digests::Yearly::EmailSendingJob.perform_later(user_id, year)
+      enqueue_digest_email(user_id, year)
     end
-  rescue StandardError => e
-    create_digest_failed_notification(user_id, e)
   end
 
   private
+
+  def calculate_digest(user, year)
+    digest = Users::Digest.for_year_generation(user, year)
+    recalculate_monthly_stats(user.id, year)
+    Users::Digests::CalculateYear.new(user.id, year).call
+    digest.reload.update!(generation_status: :ready)
+    true
+  rescue StandardError => e
+    digest&.update(generation_status: :failed)
+    create_digest_failed_notification(user.id, e)
+    false
+  end
+
+  def enqueue_digest_email(user_id, year)
+    Users::Digests::Yearly::EmailSendingJob.perform_later(user_id, year)
+  rescue StandardError => e
+    ExceptionReporter.call(e, 'Failed to enqueue yearly digest email')
+  end
 
   def recalculate_monthly_stats(user_id, year)
     (1..12).each do |month|

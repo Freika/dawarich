@@ -8,7 +8,9 @@ class PlacesController < ApplicationController
   MERGE_NEARBY_RADIUS_KM = 5
 
   before_action :authenticate_user!
-  before_action :set_place, only: %i[confirm destroy update merge]
+  before_action :set_place, only: %i[edit confirm destroy update merge]
+
+  helper_method :place_list_context
 
   def index
     @tags = current_user.tags.ordered
@@ -32,6 +34,12 @@ class PlacesController < ApplicationController
     perform_place_bulk_action('merge')
   end
 
+  def new
+    @place = current_user.places.new
+  end
+
+  def edit; end
+
   def show
     @place = current_user.places.includes(:tags).find(params[:id])
     prepare_drawer
@@ -47,6 +55,10 @@ class PlacesController < ApplicationController
       @place = current_user.places.includes(:tags, :active_visits).find(@place.id)
 
       respond_to do |format|
+        format.html do
+          redirect_to place_path(@place, place_list_context), notice: I18n.t('controllers.places.created'),
+                                                            status: :see_other
+        end
         format.turbo_stream do
           render turbo_stream: [
             turbo_stream.replace('place-creation-data', html: place_data_element(visit_id: visit&.id)),
@@ -56,6 +68,7 @@ class PlacesController < ApplicationController
       end
     else
       respond_to do |format|
+        format.html { render :new, status: :unprocessable_content }
         format.turbo_stream do
           render turbo_stream: stream_flash(:error, @place.errors.full_messages.join(', '))
         end
@@ -70,13 +83,16 @@ class PlacesController < ApplicationController
       @place = current_user.places.includes(:tags, :active_visits).find(@place.id)
 
       respond_to do |format|
+        format.html do
+          redirect_to place_path(@place, place_list_context), notice: I18n.t('controllers.places.updated'),
+                                                            status: :see_other
+        end
         format.turbo_stream do
           streams = [turbo_stream.replace('place-creation-data', html: place_data_element(updated: true))]
           streams.unshift(drawer_stream) if drawer_request?
           streams << stream_flash(:success, I18n.t('controllers.places.updated'))
           render turbo_stream: streams
         end
-        format.html { redirect_to place_url(@place), notice: I18n.t('controllers.places.updated'), status: :see_other }
       end
     else
       prepare_drawer
@@ -85,7 +101,7 @@ class PlacesController < ApplicationController
           render turbo_stream: [drawer_stream, stream_flash(:error, @place.errors.full_messages.join(', '))],
                  status: :unprocessable_content
         end
-        format.html { render :show, status: :unprocessable_content }
+        format.html { render :edit, status: :unprocessable_content }
       end
     end
   end
@@ -120,7 +136,7 @@ class PlacesController < ApplicationController
         stream_flash(:success, message)
       ]
     else
-      redirect_to places_url(page: params[:page]), notice: message, status: :see_other
+      redirect_to places_url(place_list_context), notice: message, status: :see_other
     end
   end
 
@@ -128,7 +144,7 @@ class PlacesController < ApplicationController
     @place.update!(source: :manual, name_locked_at: (Time.current unless @place.name == Place::DEFAULT_NAME))
     @place.adopt!
 
-    redirect_to places_url(filter: params[:filter], page: params[:page]),
+    redirect_to places_url(place_list_context),
                 notice: I18n.t('controllers.places.updated'), status: :see_other
   end
 
@@ -179,6 +195,10 @@ class PlacesController < ApplicationController
   end
 
   private
+
+  def place_list_context
+    place_list_params
+  end
 
   def set_place
     @place = current_user.places.find(params[:id])
