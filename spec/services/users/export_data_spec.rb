@@ -130,6 +130,31 @@ RSpec.describe Users::ExportData, type: :service do
         end
       end
 
+      it 'exports the stored Pro-only settings of a Lite user' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update!(plan: :lite, settings: {
+                       'route_color' => '#123456',
+                       'maps_maplibre_tiles_url' => 'https://tiles.example.test/{z}/{x}/{y}.png',
+                       'globe_projection' => true,
+                       'enabled_map_layers' => %w[Tracks Heatmap Hexagons],
+                       'maps' => { 'distance_unit' => 'mi', 'hidden_tile_categories' => %w[poi] }
+                     })
+        expect(user.plan_restricted?).to be(true)
+
+        result = service.export
+
+        Zip::File.open_buffer(result.file.download) do |zip_file|
+          exported = JSON.parse(zip_file.read('settings.jsonl'))
+          expect(exported).to include(
+            'route_color' => '#123456',
+            'maps_maplibre_tiles_url' => 'https://tiles.example.test/{z}/{x}/{y}.png',
+            'globe_projection' => true,
+            'enabled_map_layers' => %w[Tracks Heatmap Hexagons],
+            'maps' => { 'distance_unit' => 'mi', 'hidden_tile_categories' => %w[poi] }
+          )
+        end
+      end
+
       it 'marks the export as completed' do
         result = service.export
 

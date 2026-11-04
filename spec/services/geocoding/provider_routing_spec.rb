@@ -107,7 +107,12 @@ end
 # :user, so reverting DIRECT_SOURCES to `config.source == :user` would leave the
 # suite green while the button silently returned [] forever.
 RSpec.describe Geocoding::Search, '.with_config source handling' do
-  before { use_real_geocoding_lookups }
+  # The routing examples above geocode the same coordinates; a cached answer
+  # would satisfy this lookup without any request.
+  before do
+    use_real_geocoding_lookups
+    allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
+  end
 
   let(:config) do
     Geocoding::Config.new(source: :stored, provider: :photon, host: 'stored.example.com', use_https: false)

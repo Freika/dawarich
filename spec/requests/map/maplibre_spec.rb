@@ -7,6 +7,14 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
   before { sign_in user }
 
+  it 'hands the map the layers the server gates for Lite' do
+    get map_v2_path
+
+    map = Nokogiri::HTML(response.body).at_css('[data-maps--maplibre-gated-layers-value]')
+    expect(JSON.parse(map['data-maps--maplibre-gated-layers-value']))
+      .to eq(Users::PlanSettingsGate::GATED_MAP_LAYERS)
+  end
+
   it 'renders the place editor only inside the left map panel' do
     get map_v2_path
 

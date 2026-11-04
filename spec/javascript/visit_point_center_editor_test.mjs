@@ -19,6 +19,9 @@ const source = (
   )
 const context = {
   Controller: class {},
+  VisitFormDraft: class {
+    open() {}
+  },
   document: { querySelector: () => null },
   setTimeout: () => {},
   translate: (key) => key,

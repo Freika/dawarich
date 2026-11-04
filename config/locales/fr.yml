@@ -2251,6 +2251,7 @@ fr:
       buildings: Bâtiments
       railways: Chemins de fer
       boundaries: Limites
+      detail_layers_zoom_hint: "Les bâtiments et les voies ferrées n’apparaissent qu’en zoomant au niveau de la ville."
       theme_aria_label: "Thème %{theme}"
       background: Arrière-plan
       motorway_roads: Autoroutes
@@ -2480,11 +2481,11 @@ fr:
           Photoprism sous Bibliothèque
         airtrail_integration: Intégration AirTrail
         airtrail_url: URL AirTrail
-        the_base_url_of_your_airtrail_instance_your_flights_are: L'adresse de base
-          de votre instance AirTrail. Vos vols sont affichés en arcs sur la carte.
+        the_base_url_of_your_airtrail_instance_your_flights_are: 'L''adresse de base de votre instance AirTrail. Vos vols sont affichés sur la carte.'
         airtrail_api_key: Clé API AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Créez une clé
           API dans AirTrail sous Paramètres → Sécurité.
+        airtrail_recorded_flight_tracks_need_airtrail_3_13: 'Les vols dont la trace est enregistrée dans AirTrail sont dessinés le long de cette trace, les autres en arcs. Les traces nécessitent AirTrail 3.13 ou une version ultérieure et une clé API avec le droit tracks.read.'
         teslamate_integration: Intégration TeslaMateApi
         teslamate_url: URL TeslaMateApi
         the_base_url_of_your_teslamateapi_instance: L'adresse de base de votre instance TeslaMateApi.
@@ -5285,6 +5286,9 @@ fr:
       failed_to_load_area_details: Échec du chargement des détails de zone
       point_deleted_successfully: Point supprimé avec succès
       failed_to_delete_point: Échec de suppression du point
+      mark_point_valid: Marquer comme correct
+      point_marked_valid: Point marqué comme correct
+      failed_to_mark_point_valid: Impossible de marquer le point comme correct
       deleting_area: Suppression de la zone...
       area_deleted_successfully: Zone supprimée avec succès
       failed_to_delete_area: Échec de suppression d'aire
@@ -5436,6 +5440,7 @@ fr:
       filter_by_tag: FILTRER PAR ÉTIQUETTE
       no_tags: Aucune étiquette créée pour l'instant
       none_found: Aucun lieu trouvé
+      forward_search_unavailable: "Votre serveur Photon ne prend en charge que le géocodage inverse, la recherche textuelle ne peut donc pas trouver de nouveaux lieux. Les lieux enregistrés restent trouvables par leur nom."
       open_for_suggestions: Ouvrir la fenêtre pour charger les suggestions proches
       show_all: Afficher tous les lieux
       untagged: Lieux non étiquetés
@@ -5456,6 +5461,9 @@ fr:
       creating_help: Sélection d'un mois de suivi de Berlin et d'un week-end à Prague.
         Cela prend environ une seconde.
     visits:
+      place: "Lieu"
+      choose_place: "Choisir un lieu"
+      multiple_stays: "Plusieurs séjours ont été trouvés. Le plus récent a été utilisé."
       add_new: Ajouter une nouvelle visite
       create_new: Créer un nouveau lieu de visite
       create: Créer une visite
@@ -5574,7 +5582,9 @@ fr:
       locations_failed: Échec de la recherche des emplacements. Veuillez réessayer.
     settings:
       transportation_recalculation_completed: Calcul de mode de transport terminé !
-      confirm_reset: Rétablir tous les paramètres par défaut ? La page sera rechargée.
+      confirm_reset: "Rétablir l'apparence de la carte par défaut ? Les paramètres des modes de transport et du filtrage sont conservés. La page sera rechargée."
+      load_failed: "Les paramètres de la carte n'ont pas pu être chargés. Les modifications ne seront pas enregistrées avant le rechargement de la page."
+      reset_failed: "Impossible de réinitialiser l'apparence de la carte. Veuillez réessayer."
       confirm_globe_reload: La vue globe nécessite un rechargement de la page pour
         prendre effet. Recharger maintenant ?
       changed_fields: 'Modifiés : %{fields}'

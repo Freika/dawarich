@@ -18,6 +18,7 @@ import {
   PRINT_PRODUCTS,
   printProductFor,
 } from "poster_studio/data/print_products"
+import { detailLayersOutOfRange } from "poster_studio/data/protomaps_schema"
 import { MapPageProvider } from "poster_studio/data/providers"
 import {
   extendTokens,
@@ -78,6 +79,7 @@ export default class extends Controller {
     "coordsToggle",
     "statsToggle",
     "fontSelect",
+    "detailLayersHint",
     "trackOpacity",
     "trackOpacityLabel",
     "trackWidth",
@@ -222,11 +224,15 @@ export default class extends Controller {
       bounds,
     })
     this.previewMap.on("move", () => this.redrawOverlay())
-    this.previewMap.on("moveend", () => this.syncSaveAvailability())
+    this.previewMap.on("moveend", () => {
+      this.syncSaveAvailability()
+      this.syncDetailLayersHint()
+    })
     this.previewMap.on("idle", () => this.updateBackdrop())
     this.previewMap.once("load", () => {
       this.redrawOverlay()
       this.syncSaveAvailability()
+      this.syncDetailLayersHint()
     })
   }
 
@@ -497,9 +503,18 @@ export default class extends Controller {
     this.element.querySelectorAll("[data-layer-category]").forEach((toggle) => {
       if (!toggle.checked) this.hidden.add(toggle.dataset.layerCategory)
     })
+    this.syncDetailLayersHint()
     this.trackOpacityLabelTarget.textContent = `${this.trackOpacityTarget.value}%`
     this.trackWidthLabelTarget.textContent = `${this.trackWidthTarget.value}%`
     this.scheduleRestyle()
+  }
+
+  syncDetailLayersHint() {
+    if (!this.hasDetailLayersHintTarget || !this.previewMap) return
+    this.detailLayersHintTarget.hidden = !detailLayersOutOfRange(
+      this.previewMap.getZoom(),
+      this.hidden,
+    )
   }
 
   trackOpacityValue() {
