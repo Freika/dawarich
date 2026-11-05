@@ -5,6 +5,8 @@ import { ReplayPhotoLayer } from "maps_maplibre/layers/replay_photo_layer"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ReplayPhotoIndex } from "maps_maplibre/managers/replay_photo_index"
 
+const KM_PER_MILE = 1.609344
+
 export class ReplayPanel {
   constructor(opts) {
     this.c = opts.controller
@@ -20,6 +22,7 @@ export class ReplayPanel {
     this.onDaySync = opts.onDaySync || null
     this.onPlayStateChange = opts.onPlayStateChange || null
     this._getPhotos = opts.getPhotos || null
+    this._distanceUnit = opts.distanceUnit || (() => "km")
     this._onReplayPhotosActive = opts.onReplayPhotosActive || (() => {})
     this._replayPhotoLayer = null
     this._photoIndex = null
@@ -390,12 +393,13 @@ export class ReplayPanel {
     if (velocity !== null && velocity !== undefined && velocity !== "") {
       const speedMs = parseFloat(velocity)
       if (!Number.isNaN(speedMs) && speedMs > 0) {
-        this.c.replaySpeedDisplayTarget.textContent = translate(
-          "replay.speed",
-          {
-            speed: Math.round(speedMs * 3.6),
-          },
-        )
+        const kmh = speedMs * 3.6
+        this.c.replaySpeedDisplayTarget.textContent =
+          this._distanceUnit() === "mi"
+            ? translate("replay.speed_mph", {
+                speed: Math.round(kmh / KM_PER_MILE),
+              })
+            : translate("replay.speed", { speed: Math.round(kmh) })
         return
       }
     }
