@@ -159,5 +159,22 @@ RSpec.describe '/api/v1/tracks/:track_id/segments', type: :request do
       expect(response).to have_http_status(:not_found)
       expect(other_segment.reload.transportation_mode).to eq('walking')
     end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        # update_column bypasses the activate callback that resets plan to :pro
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 write_api_restricted and leaves the segment alone' do
+        patch api_v1_track_segment_url(track, first_segment),
+              params: { transportation_mode: 'driving' }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:forbidden)
+        expect(json['error']).to eq('write_api_restricted')
+        expect(first_segment.reload.transportation_mode).to eq('cycling')
+      end
+    end
   end
 end

@@ -6283,6 +6283,26 @@ paths:
                 - message
         '404':
           description: segment not found
+        '401':
+          description: unauthorized
+        '403':
+          description: 'write_api_restricted: the user is on the Lite plan of Dawarich
+            Cloud'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: write_api_restricted
+                  message:
+                    type: string
+                  upgrade_url:
+                    type: string
+                required:
+                - error
+                - message
       requestBody:
         content:
           application/json:

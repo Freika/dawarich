@@ -136,6 +136,36 @@ describe 'Track Segments API', type: :request do
 
         run_test!
       end
+
+      response '401', 'unauthorized' do
+        let(:Authorization) { 'Bearer invalid-token' }
+        let(:body) { { transportation_mode: 'driving' } }
+
+        run_test!
+      end
+
+      response '403', 'write_api_restricted: the user is on the Lite plan of Dawarich Cloud' do
+        let(:Authorization) { "Bearer #{api_key}" }
+        let(:body) { { transportation_mode: 'driving' } }
+
+        schema type: :object,
+               properties: {
+                 error: { type: :string, example: 'write_api_restricted' },
+                 message: { type: :string },
+                 upgrade_url: { type: :string }
+               },
+               required: %w[error message]
+
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+          # update_column bypasses the activate callback that resets plan to :pro
+          user.update_column(:plan, User.plans[:lite])
+        end
+
+        run_test! do |response|
+          expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
+        end
+      end
     end
   end
 end
