@@ -33,12 +33,12 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         allow(Geocoder).to receive(:search).and_return([mock_geocoded_place])
       end
 
-      it 'fetches geocoded places' do
+      it 'asks the geocoder for the nearest feature only' do
         service.call
 
         expect(Geocoder).to have_received(:search).with(
           [place.lat, place.lon],
-          limit: 10,
+          limit: 1,
           distance_sort: true,
           radius: 1,
           units: :km
@@ -63,38 +63,6 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         end
       end
 
-      context 'when a sibling place has a locked name' do
-        let(:sibling) do
-          create(:place, user: place.user, name: 'Sibling I named', name_locked_at: 1.day.ago,
-                         geodata: { 'properties' => { 'osm_id' => 99_999 } })
-        end
-
-        let(:sibling_geocoded_place) do
-          double(
-            data: {
-              'geometry' => { 'coordinates' => [13.0948638, 54.2905245] },
-              'properties' => {
-                'osm_id' => 99_999, 'name' => 'Photon Override', 'osm_value' => 'cafe',
-                'city' => 'Hamburg', 'country' => 'Germany'
-              }
-            }
-          )
-        end
-
-        before do
-          sibling
-          allow(Geocoder).to receive(:search).and_return([mock_geocoded_place, sibling_geocoded_place])
-        end
-
-        it 'keeps the locked sibling name through the bulk upsert' do
-          expect { service.call }.not_to(change { sibling.reload.name })
-        end
-
-        it 'still refreshes the locked sibling city' do
-          expect { service.call }.to change { sibling.reload.city }.to('Hamburg')
-        end
-      end
-
       it 'sets reverse_geocoded_at timestamp' do
         expect { service.call }.to change { place.reload.reverse_geocoded_at }
           .from(nil)
@@ -107,7 +75,9 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
           .to('photon')
       end
 
-      context 'with multiple geocoded places' do
+      # Some providers (Nominatim) ignore the limit, so the service must cope
+      # with extra results either way.
+      context 'when the geocoder returns other nearby features too' do
         let(:second_mock_place) do
           double(
             data: {
@@ -129,58 +99,29 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
           allow(Geocoder).to receive(:search).and_return([mock_geocoded_place, second_mock_place])
         end
 
-        it 'creates new places for additional geocoded results' do
-          # Force place creation before counting
-          place # This triggers the let(:place) lazy loading
-          initial_count = Place.count
-          service.call
-          final_count = Place.count
+        it 'does not save them as places' do
+          place
 
-          expect(final_count - initial_count).to eq(1)
-        end
-
-        it 'updates the original place and creates others' do
-          service.call
-
-          created_place = Place.where.not(id: place.id).first
-          expect(created_place.name).to include('Second Place')
-          expect(created_place.city).to eq('Hamburg')
-        end
-      end
-
-      context 'with existing places in database' do
-        let!(:existing_place) { create(:place, :with_geodata, user: place.user) }
-
-        before do
-          # Mock geocoded place with same OSM ID as existing place
-          existing_osm_id = existing_place.geodata.dig('properties', 'osm_id')
-          mock_with_existing_osm = double(
-            data: {
-              'geometry' => { 'coordinates' => [13.0948638, 54.2905245] },
-              'properties' => {
-                'osm_id' => existing_osm_id,
-                'name' => 'Updated Name',
-                'osm_value' => 'restaurant',
-                'city' => 'Updated City',
-                'country' => 'Updated Country'
-              }
-            }
-          )
-
-          allow(Geocoder).to receive(:search).and_return([mock_geocoded_place, mock_with_existing_osm])
-        end
-
-        it 'updates existing places instead of creating duplicates' do
-          place # Force place creation
           expect { service.call }.not_to(change { Place.count })
         end
 
-        it 'updates the existing place attributes' do
+        it 'updates the place from the nearest feature' do
           service.call
 
-          existing_place.reload
-          expect(existing_place.name).to include('Updated Name')
-          expect(existing_place.city).to eq('Updated City')
+          expect(place.reload.name).to include('Test Place')
+          expect(place.city).to eq('Berlin')
+        end
+
+        context 'when one of them matches an existing place' do
+          let!(:existing_place) do
+            create(:place, user: place.user, name: 'Corner Cafe', city: 'Rostock',
+                           geodata: { 'properties' => { 'osm_id' => 67_890 } })
+          end
+
+          it 'leaves that place unchanged' do
+            expect { service.call }
+              .not_to(change { existing_place.reload.slice(:name, :city, :source, :geodata, :updated_at) })
+          end
         end
       end
 
@@ -194,27 +135,9 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
           expect { service.call }.not_to(change { place.reload.updated_at })
         end
 
-        it 'still processes other places' do
-          place # Force place creation
-          expect { service.call }.to change { Place.count }.by(1)
-        end
-      end
-
-      context 'when no additional places are returned' do
-        before do
-          allow(Geocoder).to receive(:search).and_return([mock_geocoded_place])
-        end
-
-        it 'only updates the original place' do
+        it 'does not create places from the other results' do
           place # Force place creation
           expect { service.call }.not_to(change { Place.count })
-        end
-
-        it 'returns early when osm_ids is empty' do
-          # This tests the early return when osm_ids.empty?
-          service.call
-
-          expect(Geocoder).to have_received(:search).once
         end
       end
     end
@@ -334,219 +257,11 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
       end
     end
 
-    describe '#extract_osm_ids' do
-      it 'extracts OSM IDs from places' do
-        places = [
-          double(data: { 'properties' => { 'osm_id' => 123 } }),
-          double(data: { 'properties' => { 'osm_id' => 456 } })
-        ]
-
-        result = service.send(:extract_osm_ids, places)
-        expect(result).to eq(%w[123 456])
-      end
-    end
-
     describe '#build_point_coordinates' do
       it 'builds POINT geometry string' do
         coordinates = [13.0948638, 54.2905245]
         result = service.send(:build_point_coordinates, coordinates)
         expect(result).to eq('POINT(13.0948638 54.2905245)')
-      end
-    end
-
-    describe '#find_existing_places' do
-      let!(:existing_place1) { create(:place, :with_geodata, user: place.user) }
-      let!(:existing_place2) do
-        create(:place, user: place.user, geodata: {
-                 'properties' => { 'osm_id' => 999 }
-               })
-      end
-
-      it 'finds existing places by OSM IDs' do
-        osm_id1 = existing_place1.geodata.dig('properties', 'osm_id').to_s
-        osm_ids = [osm_id1, '999']
-
-        result = service.send(:find_existing_places, osm_ids)
-
-        expect(result.keys).to contain_exactly(osm_id1, '999')
-        expect(result[osm_id1]).to eq(existing_place1)
-        expect(result['999']).to eq(existing_place2)
-      end
-
-      it 'returns empty hash when no matches found' do
-        result = service.send(:find_existing_places, ['nonexistent'])
-        expect(result).to eq({})
-      end
-    end
-
-    describe '#find_place' do
-      let(:existing_places) { { '123' => create(:place) } }
-      let(:place_data) do
-        {
-          'properties' => { 'osm_id' => 123 },
-          'geometry' => { 'coordinates' => [13.1, 54.3] }
-        }
-      end
-
-      context 'when place exists' do
-        it 'returns existing place' do
-          result = service.send(:find_place, place_data, existing_places)
-          expect(result).to eq(existing_places['123'])
-        end
-      end
-
-      context 'when place does not exist' do
-        let(:place_data) do
-          {
-            'properties' => { 'osm_id' => 999 },
-            'geometry' => { 'coordinates' => [13.1, 54.3] }
-          }
-        end
-
-        it 'creates new place with coordinates' do
-          result = service.send(:find_place, place_data, existing_places)
-
-          expect(result).to be_a(Place)
-          expect(result.latitude).to eq(54.3)
-          expect(result.longitude).to eq(13.1)
-          expect(result.lonlat.to_s).to eq('POINT (13.1 54.3)')
-        end
-      end
-    end
-
-    describe '#populate_place_attributes' do
-      let(:test_place) { Place.new }
-      let(:data) do
-        {
-          'properties' => {
-            'name' => 'Test Place',
-            'osm_value' => 'restaurant',
-            'city' => 'Berlin',
-            'country' => 'Germany'
-          },
-          'geometry' => { 'coordinates' => [13.1, 54.3] }
-        }
-      end
-
-      it 'populates all place attributes' do
-        place # Ensure place exists
-        service.send(:populate_place_attributes, test_place, data)
-
-        expect(test_place.name).to include('Test Place')
-        expect(test_place.city).to eq('Berlin')
-        expect(test_place.country).to eq('Germany')
-        expect(test_place.geodata).to eq(data)
-        expect(test_place.source).to eq('photon')
-      end
-
-      it 'sets lonlat when nil' do
-        place # Ensure place exists
-        service.send(:populate_place_attributes, test_place, data)
-        expect(test_place.lonlat.to_s).to eq('POINT (13.1 54.3)')
-      end
-
-      it 'does not override existing lonlat' do
-        place # Ensure place exists
-        test_place.lonlat = 'POINT(10.0 50.0)'
-        service.send(:populate_place_attributes, test_place, data)
-        expect(test_place.lonlat.to_s).to eq('POINT (10.0 50.0)')
-      end
-    end
-
-    describe '#prepare_places_for_bulk_operations' do
-      let(:new_place_data) do
-        double(
-          data: {
-            'properties' => { 'osm_id' => 999 },
-            'geometry' => { 'coordinates' => [13.1, 54.3] }
-          }
-        )
-      end
-      let(:existing_place) { create(:place, :with_geodata) }
-      let(:existing_place_data) do
-        double(
-          data: {
-            'properties' => { 'osm_id' => existing_place.geodata.dig('properties', 'osm_id') },
-            'geometry' => { 'coordinates' => [13.2, 54.4] }
-          }
-        )
-      end
-
-      it 'separates places into create and update arrays' do
-        existing_places = { existing_place.geodata.dig('properties', 'osm_id').to_s => existing_place }
-        places = [new_place_data, existing_place_data]
-
-        places_to_create, places_to_update = service.send(:prepare_places_for_bulk_operations, places, existing_places)
-
-        expect(places_to_create.length).to eq(1)
-        expect(places_to_update.length).to eq(1)
-        expect(places_to_update.first).to eq(existing_place)
-        expect(places_to_create.first).to be_a(Place)
-        expect(places_to_create.first.persisted?).to be(false)
-      end
-    end
-
-    describe '#save_places' do
-      it 'saves new places when places_to_create is present' do
-        place # Ensure place exists
-        new_place = build(:place, user: create(:user))
-        places_to_create = [new_place]
-        places_to_update = []
-
-        expect { service.send(:save_places, places_to_create, places_to_update) }
-          .to change { Place.count }.by(1)
-      end
-
-      it 'saves updated places when places_to_update is present' do
-        existing_place = create(:place, name: 'Old Name')
-        existing_place.name = 'New Name'
-        places_to_create = []
-        places_to_update = [existing_place]
-
-        service.send(:save_places, places_to_create, places_to_update)
-
-        expect(existing_place.reload.name).to eq('New Name')
-      end
-
-      it 'orders bulk updates by primary key' do
-        first_place = create(:place)
-        second_place = create(:place)
-        allow(Place).to receive(:upsert_all)
-
-        service.send(:save_places, [], [second_place, first_place])
-
-        expect(Place).to have_received(:upsert_all)
-          .with(satisfy { |attributes| attributes.pluck(:id) == [first_place.id, second_place.id] }, unique_by: :id)
-      end
-
-      it 'handles empty arrays gracefully' do
-        expect { service.send(:save_places, [], []) }.not_to raise_error
-      end
-
-      context 'when a deadlock occurs' do
-        let(:new_place) { build(:place, user: create(:user)) }
-
-        it 'retries on ActiveRecord::Deadlocked and succeeds' do
-          call_count = 0
-          allow(Place).to receive(:insert_all).and_wrap_original do |method, *args|
-            call_count += 1
-            raise ActiveRecord::Deadlocked, 'deadlock detected' if call_count == 1
-
-            method.call(*args)
-          end
-          allow(service).to receive(:sleep)
-
-          expect { service.send(:save_places, [new_place], []) }.to change { Place.count }.by(1)
-          expect(service).to have_received(:sleep).with(0.1).once
-        end
-
-        it 'raises after exhausting retries' do
-          allow(Place).to receive(:insert_all).and_raise(ActiveRecord::Deadlocked, 'deadlock detected')
-          allow(service).to receive(:sleep)
-
-          expect { service.send(:save_places, [new_place], []) }.to raise_error(ActiveRecord::Deadlocked)
-          expect(service).to have_received(:sleep).exactly(3).times
-        end
       end
     end
   end
@@ -589,84 +304,6 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
       it 'reports the exception' do
         service.call
         expect(ExceptionReporter).to have_received(:call)
-      end
-    end
-
-    context 'when place data is malformed' do
-      let(:malformed_place) do
-        double(
-          data: {
-            'geometry' => {
-              'coordinates' => %w[invalid coordinates]
-            },
-            'properties' => {
-              'osm_id' => nil
-            }
-          }
-        )
-      end
-
-      before do
-        allow(Geocoder).to receive(:search).and_return([mock_geocoded_place, malformed_place])
-      end
-
-      it 'handles malformed data gracefully' do
-        # With bulk operations using insert_all, validation errors are bypassed
-        # Malformed data will be inserted but may cause issues at the database level
-        place # Force place creation
-        expect { service.call }.not_to raise_error
-      end
-    end
-
-    context 'when using bulk operations' do
-      let(:second_geocoded_place) do
-        double(
-          data: {
-            'geometry' => { 'coordinates' => [14.0, 55.0] },
-            'properties' => {
-              'osm_id' => 99_999,
-              'name' => 'Another Place',
-              'osm_value' => 'shop'
-            }
-          }
-        )
-      end
-
-      it 'uses bulk operations for performance' do
-        place # Force place creation first
-
-        allow(Geocoder).to receive(:search).and_return([mock_geocoded_place, second_geocoded_place])
-        # With insert_all, we expect the operation to succeed even with potential validation issues
-        # since bulk operations bypass ActiveRecord validations for performance
-
-        expect { service.call }.to change { Place.count }.by(1)
-      end
-    end
-
-    context 'when database constraint violations occur' do
-      let(:duplicate_place) { create(:place, :with_geodata) }
-      let(:duplicate_data) do
-        double(
-          data: {
-            'geometry' => { 'coordinates' => [13.1, 54.3] },
-            'properties' => {
-              'osm_id' => duplicate_place.geodata.dig('properties', 'osm_id'),
-              'name' => 'Duplicate'
-            }
-          }
-        )
-      end
-
-      before do
-        allow(Geocoder).to receive(:search).and_return([mock_geocoded_place, duplicate_data])
-        # Simulate the place not being found in existing_places due to race condition
-        allow(service).to receive(:find_existing_places).and_return({})
-      end
-
-      it 'handles potential race conditions gracefully' do
-        # The service should handle cases where a place might be created
-        # between the existence check and the actual creation
-        expect { service.call }.not_to raise_error
       end
     end
 
@@ -727,13 +364,9 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         expect(place.country).to eq('Germany')
       end
 
-      it 'creates additional places from Nominatim results' do
+      it 'does not create places from the other Nominatim results' do
         place # Force creation
-        expect { service.call }.to change { Place.count }.by(1)
-
-        created_place = Place.where.not(id: place.id).first
-        expect(created_place.name).to include('Nice Cafe')
-        expect(created_place.city).to eq('Hamburg')
+        expect { service.call }.not_to(change { Place.count })
       end
 
       it 'extracts coordinates from lat/lon fields' do
@@ -792,48 +425,15 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
       end
 
       before do
-        allow(Geocoder).to receive(:search).and_return([mock_geocoded_place, minimal_place])
+        allow(Geocoder).to receive(:search).and_return([minimal_place])
       end
 
       it 'handles missing properties gracefully' do
         expect { service.call }.not_to raise_error
       end
 
-      it 'creates place with available data' do
-        place # Force place creation
-        expect { service.call }.to change { Place.count }.by(1)
-
-        created_place = Place.where.not(id: place.id).first
-        expect(created_place.latitude).to eq(54.0)
-        expect(created_place.longitude).to eq(13.0)
-      end
-    end
-
-    context 'when lonlat is already present on existing place' do
-      let!(:existing_place) do
-        create(:place, :with_geodata, lonlat: 'POINT(10.0 50.0)', latitude: 50.0, longitude: 10.0)
-      end
-      let(:mock_data) do
-        double(
-          data: {
-            'geometry' => { 'coordinates' => [15.0, 55.0] },
-            'properties' => {
-              'osm_id' => existing_place.geodata.dig('properties', 'osm_id'),
-              'name' => 'Updated Name'
-            }
-          }
-        )
-      end
-
-      before do
-        allow(Geocoder).to receive(:search).and_return([mock_geocoded_place, mock_data])
-      end
-
-      it 'does not override existing coordinates when updating geodata' do
-        service.call
-
-        existing_place.reload
-        expect(existing_place.lonlat.to_s).to eq('POINT (10.0 50.0)')
+      it 'still marks the place as geocoded' do
+        expect { service.call }.to change { place.reload.reverse_geocoded_at }.from(nil)
       end
     end
   end

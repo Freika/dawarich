@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Looking up the address of a place no longer saves up to 9 nearby features, such as neighbouring houses, the street and the postcode, as extra Places with no visits. They no longer come back after you merge or delete them. Places already created this way stay until you delete them. Visit place suggestions are unaffected, because they are looked up live. (#3999)
+
 ## [1.22.0] - 2026-11-04, Berlin
 
 ### Added

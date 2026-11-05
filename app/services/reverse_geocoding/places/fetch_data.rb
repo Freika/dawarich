@@ -14,19 +14,11 @@ class ReverseGeocoding::Places::FetchData
       return
     end
 
-    places = geocoder_places
-    first_place = places.shift
-    update_place(first_place)
-
-    osm_ids = extract_osm_ids(places)
-
-    return if osm_ids.empty?
-
-    existing_places = find_existing_places(osm_ids)
-
-    places_to_create, places_to_update = prepare_places_for_bulk_operations(places, existing_places)
-
-    save_places(places_to_create, places_to_update)
+    # Only the nearest feature is used. Other nearby features are not saved as
+    # places: they had no visit, so they cluttered the Places list and Possible
+    # Duplicates, and came back after every merge. The visit place picker
+    # (Places::NearbySearch) fetches its candidates live.
+    update_place(geocoder_places.first)
   end
 
   private
@@ -51,23 +43,6 @@ class ReverseGeocoding::Places::FetchData
 
     place.machine_named = true
     place.update!(attributes)
-  end
-
-  def find_place(place_data, existing_places)
-    osm_id = place_data['properties']['osm_id'].to_s
-
-    existing_place = existing_places[osm_id]
-
-    return existing_place if existing_place.present?
-
-    coordinates = place_data['geometry']['coordinates']
-
-    Place.new(
-      user_id: place.user_id,
-      lonlat: build_point_coordinates(coordinates),
-      latitude: coordinates[1].to_f.round(5),
-      longitude: coordinates[0].to_f.round(5)
-    )
   end
 
   def place_name(data)
@@ -101,59 +76,14 @@ class ReverseGeocoding::Places::FetchData
     value.blank? || %w[yes no].include?(value.downcase)
   end
 
-  def extract_osm_ids(places)
-    places.map { |p| normalize_geocoder_data(p.data).dig('properties', 'osm_id').to_s }
-  end
-
-  def find_existing_places(osm_ids)
-    Place.where("geodata->'properties'->>'osm_id' IN (?)", osm_ids)
-         .where(user_id: place.user_id)
-         .index_by { |p| p.geodata.dig('properties', 'osm_id').to_s }
-         .compact
-  end
-
-  def prepare_places_for_bulk_operations(places, existing_places)
-    places_to_create = []
-    places_to_update = []
-
-    places.each do |reverse_geocoded_place|
-      data = normalize_geocoder_data(reverse_geocoded_place.data)
-      new_place = find_place(data, existing_places)
-
-      populate_place_attributes(new_place, data)
-
-      if new_place.persisted?
-        places_to_update << new_place
-      else
-        places_to_create << new_place
-      end
-    end
-
-    [places_to_create, places_to_update]
-  end
-
-  def populate_place_attributes(place, data)
-    unless place.name_locked?
-      place.name = place_name(data)
-      place.source = :photon unless place.gpx_waypoint?
-    end
-
-    place.city = data['properties']['city']
-    place.country = data['properties']['country']
-    place.geodata = geodata_for(place, data)
-
-    return if place.lonlat.present?
-
-    place.lonlat = build_point_coordinates(data['geometry']['coordinates'])
-  end
-
   # Written by the enhanced-import writers and keyed on by find_by_external_id
   # and the partial unique index; a reverse-geocode must never erase them.
   IDENTITY_KEYS = %w[external_place_id semantic_type].freeze
-  # The only provider properties this app reads back: find_existing_places
-  # matches siblings on osm_id, and the possible_places payload exposes all
-  # four. They are kept even when the operator opted out of storing geodata,
-  # because dropping them would break place dedup rather than protect privacy.
+  # The only provider properties this app reads back: the possible_places
+  # payload exposes all four, and matches the visit's current place against
+  # the live suggestions on osm_id. They are kept even when the operator opted
+  # out of storing geodata, because dropping them would break that dedup
+  # rather than protect privacy.
   INDEXED_PROPERTY_KEYS = %w[osm_id osm_type osm_key osm_value].freeze
 
   def geodata_for(place, data)
@@ -161,61 +91,6 @@ class ReverseGeocoding::Places::FetchData
     return data.merge(identity) if DawarichSettings.store_geodata?
 
     identity.merge('properties' => (data['properties'] || {}).slice(*INDEXED_PROPERTY_KEYS).compact)
-  end
-
-  DEADLOCK_MAX_RETRIES = 3
-
-  def save_places(places_to_create, places_to_update)
-    if places_to_create.any?
-      place_attributes = places_to_create.uniq { |p| p.geodata&.dig('properties', 'osm_id') }.map do |sibling|
-        {
-          user_id: sibling.user_id,
-          name: sibling.name,
-          latitude: sibling.latitude,
-          longitude: sibling.longitude,
-          lonlat: sibling.lonlat,
-          city: sibling.city,
-          country: sibling.country,
-          geodata: sibling.geodata,
-          source: sibling.source,
-          created_at: Time.current,
-          updated_at: Time.current
-        }
-      end
-      with_deadlock_retry { Place.insert_all(place_attributes) }
-    end
-
-    return unless places_to_update.any?
-
-    update_attributes = places_to_update.uniq(&:id).sort_by(&:id).map do |place|
-      {
-        id: place.id,
-        user_id: place.user_id,
-        name: place.name,
-        latitude: place.latitude,
-        longitude: place.longitude,
-        lonlat: place.lonlat,
-        city: place.city,
-        country: place.country,
-        geodata: place.geodata,
-        source: place.source,
-        updated_at: Time.current
-      }
-    end
-    with_deadlock_retry { Place.upsert_all(update_attributes, unique_by: :id) }
-  end
-
-  def with_deadlock_retry
-    retries = 0
-    begin
-      yield
-    rescue ActiveRecord::Deadlocked => e
-      retries += 1
-      raise e if retries > DEADLOCK_MAX_RETRIES
-
-      sleep(0.1 * retries)
-      retry
-    end
   end
 
   def build_point_coordinates(coordinates)
@@ -226,7 +101,7 @@ class ReverseGeocoding::Places::FetchData
     Geocoding::Search.call(
       user: place.user_id,
       query: [place.lat, place.lon],
-      limit: 10,
+      limit: 1,
       distance_sort: true,
       radius: 1,
       units: :km
