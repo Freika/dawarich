@@ -26,10 +26,11 @@ RSpec.describe 'Release schema replay' do
      TrackCollectionTimezoneVersion, ActivateRequestedExploration].map(&:new)
   end
 
+  # Rails 8.1.4 dumps columns in table order, and a rebuilt table appends them in migration order.
   def schema_dump
     stream = StringIO.new
     ActiveRecord::SchemaDumper.dump(ApplicationRecord.connection_pool, stream)
-    stream.string
+    stream.string.gsub(/(?:^    t\.\S+ .*\n)+/) { |columns| columns.lines.sort.join }
   end
 
   def activation_time(user)

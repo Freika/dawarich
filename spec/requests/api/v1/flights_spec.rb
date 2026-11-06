@@ -17,6 +17,15 @@ RSpec.describe 'Api::V1::Flights', type: :request do
     expect(body['features'].size).to eq(1)
   end
 
+  it 'returns the recorded track of a flight that has one' do
+    track = [[13.493, 52.351], [9.0, 51.5], [2.547, 49.009]]
+    create(:flight, user: user, track_coordinates: track)
+
+    get '/api/v1/flights', params: { api_key: user.api_key }
+
+    expect(response.parsed_body['features'].first['geometry']['coordinates']).to eq(track)
+  end
+
   it 'rejects unauthenticated requests' do
     get '/api/v1/flights'
     expect(response).to have_http_status(:unauthorized)

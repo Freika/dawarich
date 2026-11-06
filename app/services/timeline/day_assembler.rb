@@ -21,7 +21,7 @@ module Timeline
     # the day chips — a 200 m jog across a parking lot is not a story.
     CHIP_MIN_DISTANCE = 0.5
 
-    def initialize(user, start_at:, end_at:, distance_unit: 'km', privacy_zone_masker: nil)
+    def initialize(user, start_at:, end_at:, privacy_zone_masker:, distance_unit: 'km')
       @user = user
       @privacy_zone_masker = privacy_zone_masker
       @start_at = start_at.present? ? Time.zone.parse(start_at) : nil
@@ -44,6 +44,7 @@ module Timeline
       @visit_point_centers = Visits::PointCenters.new(user, visit_ids: ids,
                                                           privacy_zone_masker: @privacy_zone_masker).call
       @visit_point_counts = Point.where(visit_id: visits.map(&:id)).group(:visit_id).count
+      @local_timezones = Timezones::Lookup.call(local_zone_coordinates(visits, tracks))
 
       days = group_by_day(visits, tracks)
       build_days(days)
@@ -69,6 +70,20 @@ module Timeline
           .where('start_at <= ? AND end_at >= ?', end_at, start_at)
           .without_phantom_stationary(PHANTOM_STATIONARY_DISTANCE_M)
           .order(start_at: :asc)
+    end
+
+    def local_zone_coordinates(visits, tracks)
+      coordinates = visits.to_h { |visit| [[:visit, visit.id], visit_location(visit)] }
+      tracks.each { |track| coordinates[[:track, track.id]] = journey_start(track) }
+      coordinates
+    end
+
+    def journey_start(track)
+      start = track.original_path&.start_point
+      return unless start
+      return if @privacy_zone_masker&.in_zone?(start.x, start.y)
+
+      [start.x, start.y]
     end
 
     # Two grouped sums over the whole window's segments: per-track moving
@@ -176,6 +191,7 @@ module Timeline
         speed_unit: speed_unit_label,
         elevation_gain: track.elevation_gain,
         elevation_loss: track.elevation_loss,
+        local_timezone: @local_timezones&.dig([:track, track.id]),
         continuation_of_date: continuation ? start_day.to_s : nil,
         day_distance: continuation ? convert_distance(track.distance.to_f * day_share) : nil,
         day_duration: continuation ? (track.duration.to_f * day_share).round : nil,

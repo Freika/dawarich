@@ -22,6 +22,11 @@ class Family::LocationSharingController < ApplicationController
         current_user.reload
         streams = [
           turbo_stream.replace(
+            "family-member-#{current_user.id}",
+            partial: 'families/member_row',
+            locals: { member: current_user, location: nil, pending_requests: {} }
+          ),
+          turbo_stream.replace(
             "location-sharing-#{current_user.id}",
             partial: 'families/location_sharing_toggle',
             locals: { member: current_user }

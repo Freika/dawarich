@@ -7,8 +7,13 @@ module Points
     class ArchiveJob < ApplicationJob
       queue_as :archival
 
+      # Reported by the rescue below; retrying cannot help until the key is set.
+      discard_on Encryption::KeyNotConfigured
+
       def perform
         return unless ENV['ARCHIVE_RAW_DATA'] == 'true'
+
+        Encryption.ensure_key_configured!
 
         User.find_each do |user|
           ArchiveUserJob.perform_later(user.id)

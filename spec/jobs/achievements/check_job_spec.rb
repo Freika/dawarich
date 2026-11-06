@@ -46,6 +46,17 @@ RSpec.describe Achievements::CheckJob do
     expect(checker).to have_received(:call)
   end
 
+  it 'discards a cancelled check and keeps the pending timestamps for the next run' do
+    with_current_progress
+    described_class.defer(user.id, oldest_timestamp: 123)
+    checker = instance_double(Achievements::RegionSetChecker)
+    allow(checker).to receive(:call).and_raise(ActiveRecord::QueryCanceled, 'statement timeout')
+    allow(Achievements::RegionSetChecker).to receive(:new).and_return(checker)
+
+    expect { described_class.perform_now(user.id) }.not_to raise_error
+    expect(described_class.pending_timestamps(user.id)).to eq([123])
+  end
+
   it 'skips users who turned achievements off and releases the debounce lock' do
     user.update!(settings: { 'achievements_enabled' => false })
     allow(Achievements::RegionSetChecker).to receive(:new)

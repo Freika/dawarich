@@ -2,7 +2,7 @@
 
 module Maps
   class HexagonRequestHandler
-    def initialize(params:, user: nil, stat: nil, start_date: nil, end_date: nil, privacy_zone_masker: nil)
+    def initialize(params:, privacy_zone_masker:, user: nil, stat: nil, start_date: nil, end_date: nil)
       @params = params
       @privacy_zone_masker = privacy_zone_masker
       @user = user

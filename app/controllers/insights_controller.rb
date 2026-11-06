@@ -14,7 +14,8 @@ class InsightsController < ApplicationController
     @year_locked = year_locked?
 
     load_year_stats
-    return if @year_locked
+    @has_insight_data = current_user.scoped_points.exists? || @year_stats.where('distance > 0').exists?
+    return if @year_locked || !@has_insight_data
 
     load_year_totals
     load_activity_heatmap
@@ -30,7 +31,8 @@ class InsightsController < ApplicationController
     @year_locked = year_locked?
 
     load_year_stats
-    return if @year_locked || current_user.plan_restricted?
+    @has_insight_data = current_user.scoped_points.exists? || @year_stats.where('distance > 0').exists?
+    return if @year_locked || current_user.plan_restricted? || !@has_insight_data
 
     load_year_totals
     load_comparison_data if @previous_year_stats&.any?

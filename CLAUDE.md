@@ -391,8 +391,10 @@ Even in these cases, wrap the integration in a Stimulus controller and connect i
 
 9. **Privacy Zones on the map**: Every map read is masked through `Maps::PrivacyZoneMasker` (`app/services/maps/privacy_zone_masker.rb`):
    - Vector tile endpoints, the fog endpoint (`/api/v1/maps/hexagons/fog`, map-only) and the shared monthly stats reads (`/api/v1/maps/hexagons` and `/bounds` with a `uuid`) always mask; other JSON read endpoints mask when the request carries `mask_privacy_zones=true`, which `ApiClient` adds for every map read.
+   - An API map read calls `map_read_masker` (`ApiController`) unconditionally: it is the real masker when the request is masked and `Maps::PrivacyZoneMasker.none` otherwise. An always-masked endpoint overrides `map_read_masked?` (tiles via `TileCacheable`, fog in the hexagons controller). Web controllers use `current_privacy_zone_masker`.
+   - Services that read map data take a required `privacy_zone_masker:`; a caller that reads unmasked on purpose passes `Maps::PrivacyZoneMasker.none`, so the choice is visible and a forgotten masker raises `ArgumentError`.
    - A new map read endpoint must mask the same way and get a case in `spec/requests/api/v1/privacy_zone_masking_spec.rb`; a new map read in JS must send the flag (`spec/javascript/map_reads_privacy_flag_test.mjs` fails otherwise).
-   - Tiles and other HTTP-cached responses must include `PrivacyZoneMasker#fingerprint` in their cache key, so an edited zone never serves a stale response.
+   - Tiles and other HTTP-cached responses must include `map_read_masker.fingerprint` in their cache key, so an edited zone never serves a stale response.
    - Exports, stats and editing tools (area selection, the track editor) read unmasked data on purpose.
 
 ### Route Drawing Implementation (Critical)

@@ -9,6 +9,7 @@
      data-maps--maplibre-end-date-value="<%= @end_at.iso8601 %>"
      data-maps--maplibre-timezone-value="<%= current_user.timezone_iana %>"
      data-maps--maplibre-user-plan-value="<%= current_user.effective_plan %>"
+     data-maps--maplibre-gated-layers-value="<%= Users::PlanSettingsGate::GATED_MAP_LAYERS.to_json %>"
      data-maps--maplibre-data-window-start-value="<%= current_user.entitlements.data_window_start&.iso8601 %>"
      data-maps--maplibre-import-id-value="<%= @import_id %>"
      data-maps--maplibre-privacy-zones-fingerprint-value="<%= privacy_zones_fingerprint %>"
@@ -21,6 +22,10 @@
      data-maps--maplibre-realtime-live-mode-value="<%= current_user.safe_settings.live_map_enabled %>"
      data-family-members-features-value="<%= current_user_features.to_json %>"
      style="width: 100%; height: 100%; position: relative;">
+
+  <p class="hidden absolute bottom-10 left-2 z-10 max-w-[calc(100%-1rem)] rounded bg-base-100/90 px-2 py-1 text-xs text-base-content/60 pointer-events-none"
+     role="status" aria-live="polite" data-testid="realtime-status"
+     data-maps--maplibre-realtime-target="connectionStatus"></p>
 
   <!-- WebGL error (hidden by default, shown if WebGL unavailable) -->
   <%= render 'map/maplibre/webgl_error' %>

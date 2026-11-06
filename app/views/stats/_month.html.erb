@@ -4,7 +4,7 @@
   <div class="hero-overlay bg-opacity-60"></div>
   <div class="hero-content text-center relative w-full">
     <div class="max-w-md mt-5">
-      <h1 class="text-4xl font-bold flex items-center justify-center gap-2">
+      <h1 class="text-4xl font-medium flex items-center justify-center gap-2 tracking-tight">
         <%= icon month_icon(stat) %> <%= l(Date.new(year, month, 1), format: :month_year) %>
       </h1>
       <p class="py-4"><%= t('.monthly_digest') %></p>
@@ -52,16 +52,16 @@
       <%= icon 'map-pin-plus' %> <%= t('.countries_visited') %>
     </div>
     <div class="stat-value text-accent">
-      <%= countries_visited(stat) %>
+      <%= !reverse_geocoding_enabled_for?(current_user) && countries_visited(stat).zero? ? t('ux_p2.insights.unresolved') : countries_visited(stat) %>
     </div>
     <div class="stat-desc">
-      <%= x_than_previous_countries_visited(stat, previous_stat) %>
+      <%= x_than_previous_countries_visited(stat, previous_stat) if reverse_geocoding_enabled_for?(current_user) || countries_visited(stat).positive? %>
     </div>
   </div>
 </div>
 
 <!-- Map Summary - Full Width -->
-<div class="card bg-base-100 shadow-xl mb-8"
+<div class="card bg-base-100 mb-8"
      data-controller="stat-page"
      data-api-key="<%= current_user.api_key %>"
      data-year="<%= year %>"
@@ -95,33 +95,11 @@
     </div>
 
     <!-- Map Stats -->
-    <!--div class="stats grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-      <div class="stat">
-        <div class="stat-title text-xs">Most visited</div>
-        <div class="stat-value text-sm">Downtown Area</div>
-        <div class="stat-desc text-xs">42 visits</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title text-xs">Longest trip</div>
-        <div class="stat-value text-sm">156km</div>
-        <div class="stat-desc text-xs">Jan 15th</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title text-xs">Total points</div>
-        <div class="stat-value text-sm">2,847</div>
-        <div class="stat-desc text-xs">tracked locations</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title text-xs">Coverage area</div>
-        <div class="stat-value text-sm">45km²</div>
-        <div class="stat-desc text-xs">explored</div>
-      </div>
-    </div-->
   </div>
 </div>
 
 <!-- Daily Activity Chart -->
-<div class="card bg-base-100 shadow-xl mb-8">
+<div class="card bg-base-100 mb-8">
   <div class="card-body">
     <h2 class="card-title">
       <%= icon 'activity' %> <%= t('.daily_activity') %>
@@ -165,59 +143,9 @@
   </div>
 </div>
 
-<!-- Top Destinations -->
-<!--div class="card bg-base-100 shadow-xl mb-8">
-  <div class="card-body">
-    <h2 class="card-title">
-      <%= icon 'trophy' %> Top Destinations
-    </h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="flex items-center space-x-4 p-4 bg-base-200 rounded-lg">
-        <div class="text-2xl">
-          <%= icon 'building' %>
-        </div>
-        <div class="flex-1">
-          <div class="font-bold">Downtown Office</div>
-          <div class="text-sm opacity-70">42 visits • 8.5 hrs</div>
-        </div>
-        <div class="badge badge-primary">1st</div>
-      </div>
-      <div class="flex items-center space-x-4 p-4 bg-base-200 rounded-lg">
-        <div class="text-2xl">
-          <%= icon 'house' %>
-        </div>
-        <div class="flex-1">
-          <div class="font-bold">Home Area</div>
-          <div class="text-sm opacity-70">31 visits • 156 hrs</div>
-        </div>
-        <div class="badge badge-secondary">2nd</div>
-      </div>
-      <div class="flex items-center space-x-4 p-4 bg-base-200 rounded-lg">
-        <div class="text-2xl">
-          <%= icon 'shopping-cart' %>
-        </div>
-        <div class="flex-1">
-          <div class="font-bold">Shopping District</div>
-          <div class="text-sm opacity-70">18 visits • 3.2 hrs</div>
-        </div>
-        <div class="badge badge-accent">3rd</div>
-      </div>
-      <div class="flex items-center space-x-4 p-4 bg-base-200 rounded-lg">
-        <div class="text-2xl">
-          <%= icon 'plane' %>
-        </div>
-        <div class="flex-1">
-          <div class="font-bold">Airport</div>
-          <div class="text-sm opacity-70">4 visits • 2.1 hrs</div>
-        </div>
-        <div class="badge badge-neutral">4th</div>
-      </div>
-    </div>
-  </div>
-</div-->
 
 <!-- Countries & Cities -->
-<div class="card bg-base-100 shadow-xl mb-8">
+<div class="card bg-base-100 mb-8">
   <div class="card-body">
     <h2 class="card-title">
       <%= icon 'globe' %> <%= t('.countries_cities') %>
@@ -248,7 +176,7 @@
         <% end %>
       <% else %>
         <div class="text-center text-gray-500">
-          <p><%= t('.no_location_data_available_for_this_month') %></p>
+          <%= render 'shared/unresolved_locations' %>
         </div>
       <% end %>
     </div>
@@ -266,60 +194,6 @@
   </div>
 </div>
 
-<!-- Month Highlights -->
-<!--div class="card bg-gradient-to-br from-primary to-secondary text-primary-content shadow-xl">
-  <div class="card-body">
-    <h2 class="card-title text-white">
-      <%= icon 'camera' %> Month Highlights
-    </h2>
-
-    <div class="stats grid grid-cols-2 md:grid-cols-4 gap-4 my-4">
-      <div class="stat">
-        <div class="stat-title text-white opacity-70">Photos taken</div>
-        <div class="stat-value text-white">127</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title text-white opacity-70">Longest trip</div>
-        <div class="stat-value text-white">156km</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title text-white opacity-70">New areas</div>
-        <div class="stat-value text-white">5</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title text-white opacity-70">Travel time</div>
-        <div class="stat-value text-white">28.5h</div>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
-      <div class="flex items-center space-x-2">
-        <span class="text-white"><%= icon 'flame' %> Walking:</span>
-        <span class="font-bold text-white">45km</span>
-      </div>
-      <div class="flex items-center space-x-2">
-        <span class="text-white"><%= icon 'bus' %> Public transport:</span>
-        <span class="font-bold text-white">12km</span>
-      </div>
-      <div class="flex items-center space-x-2">
-        <span class="text-white"><%= icon 'car' %> Driving:</span>
-        <span class="font-bold text-white">1,190km</span>
-      </div>
-    </div>
-
-    <div class="alert bg-white bg-opacity-10 border-white border-opacity-20">
-      <div>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        <div class="text-white">
-          <h3 class="font-bold">
-            <%= icon 'lightbulb' %> Monthly Insights
-          </h3>
-          <p class="text-sm">You explored 3 new neighborhoods this month and visited your favorite coffee shop 15 times - that's every other day! ☕</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</div-->
 
 <!-- Action Buttons -->
 <div class="flex flex-wrap gap-4 mt-8 justify-center">

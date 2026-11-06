@@ -3,14 +3,15 @@
 module Visits
   # Finds visits in a selected area on the map
   class Finder
-    def initialize(user, params)
+    def initialize(user, params, privacy_zone_masker:)
       @user = user
       @params = params
+      @privacy_zone_masker = privacy_zone_masker
     end
 
     def call
       if area_selected?
-        Visits::FindWithinBoundingBox.new(user, params).call
+        Visits::FindWithinBoundingBox.new(user, params, privacy_zone_masker: @privacy_zone_masker).call
       else
         Visits::FindInTime.new(user, params).call
       end

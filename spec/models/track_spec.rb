@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Track, type: :model do
   describe '.segment_points_in_sql' do
-    let(:user) { create(:user) }
+    let(:user) { create(:user, settings: { 'visit_min_duration_minutes' => 60 }) }
     let(:base_time) { Time.utc(2025, 2, 10, 18).to_i }
 
     [12, 24].each do |stop_intervals|

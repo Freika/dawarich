@@ -16,7 +16,8 @@ class SharedLinkContext
   end
 
   def show_photos?
-    settings['show_photos'] == true
+    # External photo libraries cannot be attributed to an individual import.
+    settings['show_photos'] == true && !shared_link.timeline_import_scoped?
   end
 
   def show_stats?

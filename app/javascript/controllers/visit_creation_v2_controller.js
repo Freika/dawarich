@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
+import { VisitFormDraft } from "maps_maplibre/components/visit_form_draft"
 
 /**
  * Controller for visit creation modal in Maps V2
@@ -16,6 +17,9 @@ export default class extends Controller {
     "latitudeInput",
     "longitudeInput",
     "submitButton",
+    "placeIdInput",
+    "placeName",
+    "placeSearch",
   ]
 
   static values = {
@@ -39,7 +43,12 @@ export default class extends Controller {
   /**
    * Open the modal with coordinates
    */
-  open(lat, lng, mapController) {
+  open(lat, lng, mapController, draft = null) {
+    this.draftForm?.close()
+    lat = draft?.lat ?? lat
+    lng = draft?.lng ?? lng
+    this.nameInputTarget.value = draft?.name || ""
+    this.nameInputTarget.required = true
     this.editingVisitId = null
     this.mapController = mapController
     this.latitudeInputTarget.value = lat
@@ -57,22 +66,33 @@ export default class extends Controller {
     const now = new Date()
     const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
 
-    this.startTimeInputTarget.value = this.formatDateTime(now)
-    this.endTimeInputTarget.value = this.formatDateTime(oneHourLater)
+    this.startTimeInputTarget.value = this.formatDateTime(
+      draft?.startedAt ? new Date(draft.startedAt) : now,
+    )
+    this.endTimeInputTarget.value = this.formatDateTime(
+      draft?.endedAt ? new Date(draft.endedAt) : oneHourLater,
+    )
 
     // Show modal
-    this.modalTarget.classList.add("modal-open")
+    this.modalTarget.showModal()
 
     // Focus on name input
-    setTimeout(() => this.nameInputTarget.focus(), 100)
+    requestAnimationFrame(() => {
+      if (this.hasModalTarget && this.modalTarget.open)
+        this.nameInputTarget.focus()
+    })
 
     // Add marker to map
     this.addMarker(lat, lng)
+    this.draftForm = new VisitFormDraft(this)
+    this.draftForm.open(
+      draft?.placeId ? { id: draft.placeId, name: draft.name } : null,
+    )
   }
 
   openForEdit(visit) {
+    this.draftForm?.close()
     this.editingVisitId = visit.id
-
     // Set modal title and button for editing
     if (this.hasModalTitleTarget) {
       this.modalTitleTarget.textContent = translate("visits.edit")
@@ -80,15 +100,15 @@ export default class extends Controller {
     if (this.hasSubmitButtonTarget) {
       this.submitButtonTarget.textContent = translate("visits.update")
     }
-
     const location = [visit.place, visit.area, visit.center, visit].find(
       (candidate) =>
         candidate?.latitude != null && candidate?.longitude != null,
     )
-    this.nameInputTarget.value = visit.name || ""
+    // `name` is the display name; only a custom name belongs in the field.
+    this.nameInputTarget.value = visit.custom_name || ""
+    this.nameInputTarget.required = false
     this.latitudeInputTarget.value = location?.latitude ?? ""
     this.longitudeInputTarget.value = location?.longitude ?? ""
-
     // Convert timestamps to datetime-local format
     this.startTimeInputTarget.value = this.formatDateTime(
       new Date(visit.started_at),
@@ -96,12 +116,14 @@ export default class extends Controller {
     this.endTimeInputTarget.value = this.formatDateTime(
       new Date(visit.ended_at),
     )
-
     // Show modal
-    this.modalTarget.classList.add("modal-open")
+    this.modalTarget.showModal()
 
     // Focus on name input
-    setTimeout(() => this.nameInputTarget.focus(), 100)
+    requestAnimationFrame(() => {
+      if (this.hasModalTarget && this.modalTarget.open)
+        this.nameInputTarget.focus()
+    })
 
     // Try to get map controller from the maps--maplibre controller
     const mapElement = document.querySelector(
@@ -114,24 +136,28 @@ export default class extends Controller {
         "maps--maplibre",
       )
     }
-
     // Add marker to map
     if (location) this.addMarker(location.latitude, location.longitude)
+    this.draftForm = new VisitFormDraft(this)
+    this.draftForm.open(visit.place)
+  }
+
+  togglePlaceSearch() {
+    this.draftForm?.search.toggle()
   }
 
   /**
    * Close the modal
    */
   close() {
+    this.draftForm?.close()
     // Hide modal
-    this.modalTarget.classList.remove("modal-open")
+    this.modalTarget.close()
 
     // Reset form
     this.formTarget.reset()
-
     // Reset editing state
     this.editingVisitId = null
-
     // Remove marker
     this.removeMarker()
   }
@@ -141,11 +167,8 @@ export default class extends Controller {
    */
   async submit(event) {
     event.preventDefault()
-
     const isEdit = this.editingVisitId !== null
-
     const formData = new FormData(this.formTarget)
-
     const visitData = {
       visit: {
         name: formData.get("name"),
@@ -154,15 +177,16 @@ export default class extends Controller {
         latitude: parseFloat(formData.get("latitude")),
         longitude: parseFloat(formData.get("longitude")),
         status: "confirmed",
+        ...(formData.get("place_id")
+          ? { place_id: formData.get("place_id") }
+          : {}),
       },
     }
-
     try {
       const url = isEdit
         ? `/api/v1/visits/${this.editingVisitId}`
         : "/api/v1/visits"
       const method = isEdit ? "PATCH" : "POST"
-
       const response = await fetch(url, {
         method: method,
         headers: {
@@ -173,25 +197,20 @@ export default class extends Controller {
         },
         body: JSON.stringify(visitData),
       })
-
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(
           errorData.error || `Failed to ${isEdit ? "update" : "create"} visit`,
         )
       }
-
       const visit = await response.json()
-
       // Show success message
       this.showToast(
         `Visit ${isEdit ? "updated" : "created"} successfully`,
         "success",
       )
-
       // Close modal
       this.close()
-
       // Dispatch event to notify map controller
       const eventName = isEdit ? "visit:updated" : "visit:created"
       document.dispatchEvent(
@@ -216,16 +235,13 @@ export default class extends Controller {
    */
   addMarker(lat, lng) {
     if (!this.mapController) return
-
     // Remove existing marker if any
     this.removeMarker()
-
     // Create marker element
     const el = document.createElement("div")
     el.className = "visit-creation-marker"
     el.innerHTML = "📍"
     el.style.fontSize = "30px"
-
     // Use maplibregl if available (from mapController)
     const maplibregl = window.maplibregl
     if (maplibregl) {
@@ -249,6 +265,7 @@ export default class extends Controller {
    * Clean up resources
    */
   cleanup() {
+    this.draftForm?.close()
     this.removeMarker()
   }
 

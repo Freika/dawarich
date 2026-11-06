@@ -266,7 +266,7 @@ export class PhotosLayer extends BaseLayer {
     // Add or update markers and legs
     for (const [id, feature] of visibleFeatures) {
       const offset = offsets.get(id)
-      const origin = feature.geometry.coordinates
+      const origin = this._originalCoordinates(feature)
 
       if (this.markerCache.has(id)) {
         if (offset) {
@@ -290,6 +290,31 @@ export class PhotosLayer extends BaseLayer {
   }
 
   /**
+   * Tiled source features carry Web Mercator geometry, clamped to ±85.05°
+   * latitude. The globe can show the poles, so read the photo's real position
+   * from the layer data there; the flat map keeps the clamped position, which
+   * stays inside the Mercator world.
+   */
+  _originalCoordinates(feature) {
+    if (this.map.getProjection?.()?.type !== "globe") {
+      return feature.geometry.coordinates
+    }
+    if (!this._coordinatesById || this._coordinatesData !== this.data) {
+      this._coordinatesData = this.data
+      this._coordinatesById = new Map(
+        (this.data?.features ?? []).map((f) => [
+          f.properties?.id,
+          f.geometry.coordinates,
+        ]),
+      )
+    }
+    return (
+      this._coordinatesById.get(feature.properties?.id) ??
+      feature.geometry.coordinates
+    )
+  }
+
+  /**
    * Group nearby features and compute offset positions so markers don't overlap.
    * Uses a spiral layout that scales well for large groups (60+ photos).
    * Returns a Map of featureId -> [offsetLng, offsetLat] for features that need moving.
@@ -301,7 +326,7 @@ export class PhotosLayer extends BaseLayer {
     // Convert each feature to screen coordinates for proximity grouping
     const entries = []
     for (const [id, feature] of visibleFeatures) {
-      const [lng, lat] = feature.geometry.coordinates
+      const [lng, lat] = this._originalCoordinates(feature)
       const point = this.map.project([lng, lat])
       entries.push({ id, lng, lat, px: point.x, py: point.y })
     }
@@ -529,7 +554,7 @@ export class PhotosLayer extends BaseLayer {
       type,
       source,
     } = feature.properties
-    const [lng, lat] = feature.geometry.coordinates
+    const [lng, lat] = this._originalCoordinates(feature)
 
     const takenDate = taken_at
       ? formatTimestamp(taken_at, this.timezone)

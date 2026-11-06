@@ -19,7 +19,7 @@ RSpec.describe Maps::FogHexagons do
                         created_at: Time.current, updated_at: Time.current }])
   end
 
-  def result(masker = nil)
+  def result(masker = Maps::PrivacyZoneMasker.none)
     described_class.new(user: user, start_date: from, end_date: to, privacy_zone_masker: masker).call
   end
 
@@ -70,13 +70,13 @@ RSpec.describe Maps::FogHexagons do
     old_id = result['metadata']['snapshot_id']
     point(timestamp: from + 1.day, lon: 13.4)
     Exploration::Rebuild.new(user).call
-    pinned = described_class.new(user: user, start_date: from, end_date: to, snapshot_id: old_id).call
+    pinned = described_class.new(user: user, start_date: from, end_date: to, snapshot_id: old_id, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
     expect(pinned['metadata']).to include('snapshot_id' => old_id, 'status' => 'ready', 'pinned' => true)
     expect(pinned['h3_indexes'].size).to eq(1)
     expect(result['h3_indexes'].size).to eq(2)
     other = create(:user)
     expect do
-      described_class.new(user: other, start_date: from, end_date: to, snapshot_id: old_id).call
+      described_class.new(user: other, start_date: from, end_date: to, snapshot_id: old_id, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
     end.to raise_error(ActiveRecord::RecordNotFound)
   end
 

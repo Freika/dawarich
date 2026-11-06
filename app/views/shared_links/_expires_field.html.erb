@@ -1,7 +1,16 @@
-<%# Locals: f (form builder) %>
+<%# Locals: f (form builder), share (optional active link) %>
+<% field_id = local_assigns[:field_id] || "share-expiry-#{local_assigns[:share]&.id}" %>
 <div class="form-control mt-4">
-  <label class="label"><span class="label-text"><%= t('.expires_optional') %></span></label>
-  <%= f.date_field :expires_at, class: 'input input-bordered', min: Date.current.tomorrow, value: 7.days.from_now.to_date %>
-  <span class="label-text-alt mt-1"><%= t('.stays_active_through_the_end_of_the_day_before_the') %></span>
-  <span class="label-text-alt"><%= t('.defaults_to_one_week_from_today_leave_blank_for_a') %></span>
+  <% if local_assigns[:exact] %>
+    <%= f.label :expires_at, t('ux_p2.sharing.exact_expiry'), class: 'label label-text', for: field_id %>
+    <%= f.datetime_local_field :expires_at, id: field_id, class: 'input input-bordered', include_seconds: true, step: 1,
+                               value: share.expires_at&.in_time_zone(current_user.timezone_iana)&.strftime('%Y-%m-%dT%H:%M:%S') %>
+    <p class="label-text-alt mt-1"><%= t('ux_p2.sharing.exact_expiry_hint', timezone: current_user.timezone_iana) %></p>
+  <% else %>
+    <%= f.label :expires_at, t('.expires_optional'), class: 'label label-text', for: field_id %>
+    <%= f.date_field :expires_at, class: 'input input-bordered', id: field_id, min: Date.current.tomorrow,
+                     value: 7.days.from_now.to_date %>
+    <span class="label-text-alt mt-1"><%= t('.stays_active_through_the_end_of_the_day_before_the') %></span>
+    <span class="label-text-alt"><%= t('.defaults_to_one_week_from_today_leave_blank_for_a') %></span>
+  <% end %>
 </div>

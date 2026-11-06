@@ -13,7 +13,7 @@ module Map
         start_at: parsed_start_at.iso8601,
         end_at: parsed_end_at.iso8601,
         distance_unit: current_user.safe_settings.distance_unit,
-        privacy_zone_masker: Maps::PrivacyZoneMasker.new(current_user)
+        privacy_zone_masker: current_privacy_zone_masker
       ).call
       @distance_unit = current_user.safe_settings.distance_unit
       # The day the frame was asked to render. Lets the empty state still show

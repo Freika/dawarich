@@ -4701,6 +4701,43 @@ paths:
                   description: Array of point IDs to delete
               required:
               - point_ids
+  "/api/v1/points/{id}/mark_valid":
+    patch:
+      summary: Marks a point flagged as an anomaly as correct
+      tags:
+      - Points
+      description: Clears the anomaly flag and keeps the anomaly filter from flagging
+        the point again, including after re-evaluating past data. The point rejoins
+        a neighbouring track when one is close.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Point ID
+        schema:
+          type: integer
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: point marked as correct
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  anomaly:
+                    type: boolean
+        '404':
+          description: point not found
+        '401':
+          description: unauthorized
   "/api/v1/points/reapply_anomaly_filter":
     post:
       summary: Re-evaluates anomaly flags for all of the user's points
@@ -5412,6 +5449,47 @@ paths:
                     description: Error message if recalculation failed
         '401':
           description: unauthorized
+  "/api/v1/settings/appearance":
+    delete:
+      summary: Resets map appearance settings to their defaults
+      tags:
+      - Settings
+      description: Deletes the stored map look settings (style, tiles, colours, layers,
+        globe, fog drawing, POI filters) so they fall back to the defaults of a fresh
+        account. Pass keys[] to reset only some of them. Data rules such as transportation
+        modes are not touched.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: keys[]
+        in: query
+        items:
+          type: string
+        required: false
+        description: Appearance settings to reset; defaults to all of them
+        schema:
+          type: array
+      responses:
+        '200':
+          description: appearance reset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings:
+                    type: object
+                    description: Effective settings after the reset
+                  status:
+                    type: string
+        '422':
+          description: unknown appearance setting
+        '401':
+          description: unauthorized
   "/api/v1/stats":
     get:
       summary: Retrieves all stats
@@ -5671,8 +5749,11 @@ paths:
           type: string
       tags:
       - Timeline
-      description: Returns day-by-day timeline data including visits, tracks, and
-        photos for the authenticated user. Maximum date range is 31 days.
+      description: 'Returns day-by-day timeline data including visits, tracks, and
+        photos for the authenticated user. Maximum date range is 31 days. Each visit
+        and journey entry carries local_timezone: the IANA time zone of the visit
+        location or of the journey start (null when unknown), for showing its times
+        as local time there.'
       responses:
         '200':
           description: timeline data found

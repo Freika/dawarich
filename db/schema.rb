@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_28_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -185,6 +185,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_200000) do
     t.bigint "distance", default: 0, null: false
     t.jsonb "first_time_visits", default: {}
     t.bigint "flight_distance", default: 0, null: false
+    t.integer "generation_status", default: 0, null: false
     t.integer "month"
     t.jsonb "monthly_distances", default: {}
     t.integer "period_type", default: 0, null: false
@@ -305,6 +306,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_200000) do
     t.text "error_message"
     t.integer "file_format", default: 0
     t.integer "file_type", default: 0, null: false
+    t.bigint "import_id"
+    t.boolean "import_scope_unavailable", default: false, null: false
     t.string "name", null: false
     t.datetime "processing_started_at"
     t.datetime "start_at"
@@ -393,6 +396,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_200000) do
     t.float "to_lat"
     t.float "to_lon"
     t.string "to_name"
+    t.jsonb "track_coordinates"
+    t.datetime "track_updated_at"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id", "departure_time"], name: "index_flights_on_user_id_and_departure_time"
@@ -692,6 +697,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_200000) do
     t.integer "altitude"
     t.decimal "altitude_decimal", precision: 10, scale: 2
     t.boolean "anomaly"
+    t.boolean "anomaly_override", default: false, null: false
     t.integer "battery"
     t.integer "battery_status"
     t.string "bssid"
@@ -869,6 +875,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_200000) do
     t.index ["privacy_radius_meters"], name: "index_tags_on_privacy_radius_meters", where: "(privacy_radius_meters IS NOT NULL)"
     t.index ["user_id", "name"], name: "index_tags_on_user_id_and_name", unique: true
     t.index ["user_id"], name: "index_tags_on_user_id"
+  end
+
+  create_table "timezones", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.geometry "geom", limit: {srid: 4326, type: "geometry"}, null: false
+    t.string "tzid", null: false
+    t.datetime "updated_at", null: false
+    t.index ["geom"], name: "index_timezones_on_geom", using: :gist
   end
 
   create_table "track_revisions", force: :cascade do |t|

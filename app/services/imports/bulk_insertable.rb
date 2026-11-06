@@ -43,6 +43,13 @@ module Imports
       0
     end
 
+    def fill_missing_velocities
+      filled = Points::VelocityFiller.new(import.id).call
+      return if filled.updated.zero?
+
+      Points::TileEpoch.bump_range(import.user_id, filled.first_timestamp, filled.last_timestamp)
+    end
+
     # Memoised across batches: one import usually carries a single
     # device/importer combo, so the resolver's cache turns the whole run into
     # one lookup instead of one per batch.

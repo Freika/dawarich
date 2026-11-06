@@ -129,12 +129,12 @@ RSpec.describe 'Continuous tracking ends tracks at overnight stops' do
     end
   end
 
-  it 'keeps a stop shorter than the threshold inside one track in bulk and realtime generation' do
-    bulk_user = short_stop_user(30)
+  it 'keeps a stop shorter than the threshold and a visit inside one track in bulk and realtime generation' do
+    bulk_user = short_stop_user(30, visit_minutes: 15)
     bulk_feed = short_stop_rows(10).map { |minute, lon| create_short_stop_point(bulk_user, minute, lon) }
     process_bulk(bulk_user, bulk_feed)
 
-    realtime_feed = feed_in_realtime(short_stop_user(30), short_stop_rows(10))
+    realtime_feed = feed_in_realtime(short_stop_user(30, visit_minutes: 15), short_stop_rows(10))
 
     expect(bulk_feed.last.reload.track_id).to be_present
     expect(bulk_feed.last.track_id).to eq(bulk_feed.first.reload.track_id)
@@ -142,8 +142,9 @@ RSpec.describe 'Continuous tracking ends tracks at overnight stops' do
     expect(realtime_feed[-10].track_id).to eq(realtime_feed.first.reload.track_id)
   end
 
-  def short_stop_user(threshold)
-    create(:user, settings: { 'minutes_between_routes' => threshold, 'meters_between_routes' => 500 })
+  def short_stop_user(threshold, visit_minutes: 5)
+    create(:user, settings: { 'minutes_between_routes' => threshold, 'meters_between_routes' => 500,
+                              'visit_min_duration_minutes' => visit_minutes })
   end
 
   # Thirty minutes of walking, a stop at the last walking position reported every

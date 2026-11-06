@@ -3,6 +3,9 @@
 <% insights_cache_key = [current_user.id, "insights", I18n.locale, @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit, Current.date_time_preferences.cache_key] %>
 
 <%= turbo_frame_tag "insights_details" do %>
+  <% if !@has_insight_data && !@year_locked %>
+    <%= render 'empty_state' %>
+  <% else %>
   <!-- Two Column Layout -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
     <!-- Left Column -->
@@ -56,4 +59,5 @@
       <%= render 'movement_wellness' %>
     <% end %>
   <% end %>
+<% end %>
 <% end %>

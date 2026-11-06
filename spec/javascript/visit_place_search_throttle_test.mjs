@@ -165,3 +165,29 @@ test("a skipped lookup answered after the panel closed is not retried", async ()
 
   assert.deepEqual(requests, ["burger king"])
 })
+
+test("a reverse-only geocoder shows why text search found nothing new, keeping saved places", async () => {
+  const search = buildSearch("bakery")
+  responses = [
+    {
+      places: [
+        { id: 7, name: "Corner Bakery", latitude: 52.514, longitude: 13.3373 },
+      ],
+      forward_search_unavailable: true,
+    },
+  ]
+
+  await search.fetchResults("bakery")
+
+  assert.match(search.list.innerHTML, /Corner Bakery/)
+  assert.match(search.list.innerHTML, /places\.forward_search_unavailable/)
+})
+
+test("a normal lookup shows no reverse-only notice", async () => {
+  const search = buildSearch("bakery")
+  responses = [{ places: [burgerKing], forward_search_unavailable: false }]
+
+  await search.fetchResults("bakery")
+
+  assert.doesNotMatch(search.list.innerHTML, /forward_search_unavailable/)
+})

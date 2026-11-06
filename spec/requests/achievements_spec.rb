@@ -13,6 +13,17 @@ RSpec.describe 'Achievements' do
         create(:achievement_progress, user:, achievement_key: 'exploration', state: { 'earned' => earned })
       end
 
+      it 'lists personal collections apart from the thematic group in the sidebar' do
+        get achievements_path
+
+        nav = Nokogiri::HTML(response.body).at_css('nav.ach-side--desktop')
+        items = nav.css('.ach-side-group, .ach-side-link').map { |node| node.text.squish }
+        personal = items.index(I18n.t('achievements.collections.title'))
+        themes = items.index(I18n.t('achievements.ui.themes'))
+
+        expect(personal).to be < themes
+      end
+
       it 'renders continents rather than every set' do
         exploration('DE-BY' => '2026-07-01T10:00:00Z', 'DE' => '2026-07-01T10:00:00Z')
 

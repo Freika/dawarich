@@ -46,6 +46,12 @@ module Points
       verified_at.present?
     end
 
+    # The attachment row survives when the storage object itself is lost, so
+    # ask the storage service before relying on this archive as the only copy.
+    def file_stored?
+      file.attached? && file.blob.service.exist?(file.key)
+    end
+
     def count_mismatch?
       return false if metadata.blank?
 

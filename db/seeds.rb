@@ -40,6 +40,12 @@ if Country.none?
   end
 end
 
+if Timezone.none?
+  Rails.logger.debug 'Creating time zones...'
+
+  Timezones::LoadBoundaries.call_safely('Seeds')
+end
+
 if defined?(Region) && Region.none?
   Rails.logger.debug 'Creating regions...'
 

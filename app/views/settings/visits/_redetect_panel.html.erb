@@ -1,8 +1,8 @@
 <% cooldown_active = current_user.visits_redetected_at.present? && current_user.visits_redetected_at > 1.hour.ago %>
 
-<div class="card bg-base-200 shadow-xl">
+<div class="card bg-base-200">
   <div class="card-body">
-    <h3 class="text-xl font-bold"><%= t('.re_run_detection_on_full_history') %></h3>
+    <h3 class="text-lg font-medium"><%= t('.re_run_detection_on_full_history') %></h3>
     <p class="text-sm opacity-80">
       <%= t('.replaces_all_suggested_visits_across_your_entire_history_with_fresh') %>
     </p>
@@ -13,7 +13,7 @@
     <%= button_to visits_redetections_path,
                   method: :post,
                   data: { turbo_confirm: t('.replace_all_suggested_visits_across_your_full_history_confirmed_visits') },
-                  class: "btn btn-warning #{'btn-disabled' if cooldown_active}",
+                  class: "btn #{'btn-disabled' if cooldown_active}",
                   disabled: cooldown_active do %>
       <%= t('.re_run_detection_on_full_history') %>
     <% end %>

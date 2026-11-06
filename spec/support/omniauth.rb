@@ -103,5 +103,8 @@ RSpec.configure do |config|
     OmniAuth.config.mock_auth[:github] = nil
     OmniAuth.config.mock_auth[:google_oauth2] = nil
     OmniAuth.config.mock_auth[:openid_connect] = nil
+    # env_config is app-global, so a stubbed callback hash would otherwise
+    # leak into later requests and make a plain GET look like an OAuth sign-in.
+    Rails.application.env_config.delete('omniauth.auth')
   end
 end

@@ -1,9 +1,17 @@
 <% content_for :title, @place.name %>
 
 <div class="place-page max-w-2xl mx-auto my-6 min-w-0">
-  <%= link_to places_path, class: 'btn btn-ghost btn-sm mb-6' do %>
-    <%= icon 'arrow-left', class: 'w-4 h-4' %> <%= t('places.polish.back_to_places') %>
-  <% end %>
+  <div class="flex flex-wrap gap-2 mb-6">
+    <%= link_to places_path(place_list_context), class: 'btn btn-ghost btn-sm', data: { testid: 'back-to-places' } do %>
+      <%= icon 'arrow-left', class: 'w-4 h-4' %> <%= t('places.polish.back_to_places') %>
+    <% end %>
+    <%= link_to t('ux_p2.places.edit'), edit_place_path(@place, place_list_context), class: 'btn btn-primary btn-sm' %>
+  </div>
+  <div data-controller="place-location" data-place-location-latitude-value="<%= @place.lat %>" data-place-location-longitude-value="<%= @place.lon %>"
+       data-place-location-tiles-url-value="<%= current_user.safe_settings.maps_maplibre_tiles_url %>" data-place-location-tiles-fallback-value="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>">
+    <div class="h-64 rounded-xl overflow-hidden" data-place-location-target="map"></div>
+    <p class="text-sm my-2"><%= @place.lat.round(6) %>, <%= @place.lon.round(6) %> · <%= t('ux_p2.places.radius') %>: <%= @place.visit_radius %> m</p>
+  </div>
   <%= turbo_frame_tag 'place-drawer' do %>
     <%= render 'drawer', place: @place, recent_visits: @recent_visits %>
   <% end %>

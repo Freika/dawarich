@@ -211,6 +211,7 @@ class Tracks::BoundaryDetector
                   (track_start_time - candidate_end).abs <= time_window
       next if !ranges_overlap && separated_by_stationary_stop?(track, candidate)
       next if !ranges_overlap && separated_by_handoff?(track, candidate)
+      next if day_boundary.crosses?([track_start_time, candidate_start].min, [track_end_time, candidate_end].max)
 
       contained = (candidate_start <= track_start_time && candidate_end >= track_end_time) ||
                   (track_start_time <= candidate_start && track_end_time >= candidate_end)
@@ -231,7 +232,7 @@ class Tracks::BoundaryDetector
   def separated_by_stationary_stop?(track, candidate)
     later = candidate.start_at > track.start_at ? candidate : track
 
-    Tracks::StationaryStops.departure?(later, time_threshold_minutes.to_i * 60, stationary_radius_meters)
+    Tracks::StationaryStops.departure?(later, stop_thresholds, stationary_radius_meters)
   end
 
   def separated_by_handoff?(track, candidate)
@@ -352,8 +353,16 @@ class Tracks::BoundaryDetector
                .max_by { |track| track.end_at - track.start_at }
   end
 
+  # Destroying the others nullifies their points, which bumps point revisions.
+  # Touching every track first bumps the track revisions of all their months
+  # before that, in the order chunks building a new track take them, so
+  # concurrent chunks of one user cannot deadlock. The ranges stay as they
+  # are, so the keeper cannot collide with an other's range on the unique index.
+  # update_all bumps lock_version, so the keeper is locked and reloaded after.
   def extend_kept_track(keeper, others)
-    keeper.with_lock(requires_new: true) do
+    keeper.transaction(requires_new: true) do
+      Track.where(id: [keeper, *others].map(&:id)).update_all(updated_at: Time.current)
+      keeper.lock!
       points = Point.where(track_id: others.map(&:id)).order(:id).lock.to_a
       SharedLink.where(resource_type: SharedLink.resource_types[:track], resource_id: others.map(&:id))
                 .update_all(resource_id: keeper.id)
@@ -384,5 +393,13 @@ class Tracks::BoundaryDetector
 
   def stationary_radius_meters
     @stationary_radius_meters ||= Tracks::StationaryStops.radius_for(user)
+  end
+
+  def stop_thresholds
+    @stop_thresholds ||= Tracks::StationaryStops.thresholds_for(user, time_threshold_minutes * 60)
+  end
+
+  def day_boundary
+    @day_boundary ||= Tracks::DayBoundary.new(user)
   end
 end

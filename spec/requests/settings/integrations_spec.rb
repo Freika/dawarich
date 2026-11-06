@@ -331,7 +331,7 @@ RSpec.describe 'Settings::Integrations', type: :request do
       get settings_integrations_path(service: 'teslamate')
 
       expect(response.body).to include('name="settings[teslamate_url]"')
-      expect(response.body).to include('TeslaMateApi Integration')
+      expect(response.body).to include('TeslaMateApi integration')
       expect(response.body).to include('https://github.com/tobiasehlert/teslamateapi#how-to-run-it')
       expect(response.body).to include('man-in-the-middle attacks')
     end

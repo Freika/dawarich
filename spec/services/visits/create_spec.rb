@@ -77,6 +77,31 @@ RSpec.describe Visits::Create do
       end
     end
 
+    context 'when manually creating another visit near an existing Place' do
+      let!(:nearby) { create(:place, user: user, name: 'Existing cafe', latitude: 52.5203, longitude: 13.405) }
+      let!(:previous) do
+        create(:visit, user: user, place: nearby, started_at: '2023-11-30T10:00:00Z',
+                       ended_at: '2023-11-30T12:00:00Z', status: :confirmed)
+      end
+
+      it 'creates a second visit at the nearby Place and preserves the Visit Name' do
+        service = described_class.new(user, valid_params)
+
+        expect { service.call }.to change { user.visits.count }.by(1).and change { Place.count }.by(0)
+        expect(service.visit).to have_attributes(place: nearby, name: 'Test Visit',
+                                                 started_at: Time.zone.parse(valid_params[:started_at]))
+        expect(nearby.reload.name).to eq('Existing cafe')
+      end
+
+      it 'uses an explicitly chosen different Place instead of the nearby Place' do
+        chosen = create(:place, user: user, name: 'Chosen Place', latitude: 53, longitude: 14)
+        service = described_class.new(user, valid_params.merge(place_id: chosen.id))
+
+        expect { service.call }.to change { user.visits.count }.by(1).and change { Place.count }.by(0)
+        expect(service.visit).to have_attributes(place: chosen, name: 'Test Visit')
+      end
+    end
+
     context 'when a Place is supplied without a Visit Name' do
       let(:place) { create(:place, user: user, name: 'Cafe', latitude: 52.52, longitude: 13.405) }
 
@@ -93,6 +118,32 @@ RSpec.describe Visits::Create do
         service.call
 
         expect(service.visit.reload.location_label).to eq('Cafe')
+      end
+    end
+
+    context 'when a Visit Name echoes an existing Place name' do
+      let(:place) { create(:place, user: user, name: 'Cafe', latitude: 52.52, longitude: 13.405) }
+
+      it 'clears an echoed supplied Place name but keeps a different Visit Name' do
+        service = described_class.new(user, valid_params.merge(place_id: place.id, name: place.name))
+        service.call
+
+        expect(service.visit.reload).to have_attributes(name: nil, display_name: 'Cafe')
+        place.update!(name: 'Corner Cafe')
+        expect(service.visit.reload.display_name).to eq('Corner Cafe')
+
+        custom = described_class.new(user, valid_params.merge(place_id: place.id, name: 'Lunch',
+                                                              started_at: '2023-12-01T11:00:00Z'))
+        custom.call
+        expect(custom.visit.reload.name).to eq('Lunch')
+      end
+
+      it 'clears an echoed nearby Place name when no explicit Place is supplied' do
+        create(:visit, user: user, place: place)
+        service = described_class.new(user, valid_params.merge(name: place.name))
+        service.call
+
+        expect(service.visit.reload).to have_attributes(place: place, name: nil, display_name: 'Cafe')
       end
     end
 

@@ -42,3 +42,9 @@ https://dawarich.app/docs/self-hosting/environment-variables/#switching-an-exist
 EOF
   fi
 }
+
+# gosu sets HOME=/ for a PUID/PGID that has no /etc/passwd entry, and Bundler
+# then warns on every start that `/` is not writable (#3917).
+ensure_writable_home() {
+  [ -w "${HOME:-/}" ] || export HOME="$APP_PATH/tmp"
+}
