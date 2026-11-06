@@ -6,8 +6,9 @@ class Api::V1::PointsController < ApiController
   BULK_DESTROY_MAX = 5_000
   MAX_PER_PAGE = 10_000
 
-  before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy reapply_anomaly_filter]
-  before_action :require_write_api!, only: %i[update destroy bulk_destroy reapply_anomaly_filter]
+  before_action :authenticate_active_api_user!,
+                only: %i[create update destroy bulk_destroy reapply_anomaly_filter mark_valid]
+  before_action :require_write_api!, only: %i[update destroy bulk_destroy reapply_anomaly_filter mark_valid]
   before_action :validate_points_limit, only: %i[create]
 
   def index
@@ -31,7 +32,7 @@ class Api::V1::PointsController < ApiController
              .where(timestamp: start_at..query_end)
 
     points = points.where(import_id: params[:import_id]) if params[:import_id].present?
-    points = privacy_zone_masker.mask_points(points) if mask_privacy_zones?
+    points = map_read_masker.mask_points(points)
 
     if params[:min_longitude].present? && params[:max_longitude].present? &&
        params[:min_latitude].present? && params[:max_latitude].present?
@@ -161,6 +162,12 @@ class Api::V1::PointsController < ApiController
            status: :ok
   end
 
+  def mark_valid
+    point = Points::MarkValid.call(user: current_api_user, point_id: params[:id])
+
+    render json: point_serializer.new(point).call
+  end
+
   def reapply_anomaly_filter
     pending_key = "anomaly_backfill_pending:#{current_api_user.id}"
     if Rails.cache.read(pending_key)
@@ -220,7 +227,7 @@ class Api::V1::PointsController < ApiController
       params[:min_longitude], params[:max_longitude],
       params[:min_latitude], params[:max_latitude],
       max_timestamp, count, max_updated,
-      (privacy_zone_masker.fingerprint if mask_privacy_zones?)
+      map_read_masker.fingerprint
     ]
   end
 

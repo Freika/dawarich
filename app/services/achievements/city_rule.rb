@@ -4,14 +4,14 @@ module Achievements
   class CityRule
     THRESHOLDS = [1, 5, 10, 25].freeze
 
-    def self.call(user, selection, snapshot, privacy_zone_masker: nil)
+    def self.call(user, selection, snapshot, privacy_zone_masker:)
       raise ArgumentError, 'Snapshot belongs to another user' unless snapshot.user_id == user.id
 
       territory = Exploration::Territory.find_by(dataset_id: snapshot.dataset_id,
                                                  code: selection.territory_code, kind: 'city')
       return unless territory
 
-      privacy = privacy_zone_masker&.any? ? "AND NOT #{privacy_zone_masker.touches_sql('cells.geom')}" : ''
+      privacy = privacy_zone_masker.any? ? "AND NOT #{privacy_zone_masker.touches_sql('cells.geom')}" : ''
       rows = ApplicationRecord.connection.select_rows(<<~SQL)
         SELECT o.first_timestamp,(c.areas->>'#{territory.id}')::float AS area,o.point_id
         FROM exploration_openings o JOIN exploration_cell_coverages c

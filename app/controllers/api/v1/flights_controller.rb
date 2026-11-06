@@ -8,10 +8,10 @@ class Api::V1::FlightsController < ApiController
     flights = apply_date_filter(flights)
     flights = flights.order(:departure_time).limit(MAX_FLIGHTS)
 
-    render json: {
-      type: 'FeatureCollection',
-      features: flights.map { |flight| Api::FlightSerializer.new(flight).call }
-    }
+    geojson = { type: 'FeatureCollection', features: flights.map { |flight| Api::FlightSerializer.new(flight).call } }
+    geojson = map_read_masker.mask_track_features(geojson)
+
+    render json: geojson
   end
 
   private

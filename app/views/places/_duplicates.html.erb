@@ -1,11 +1,11 @@
 <div class="min-w-0">
-  <h1 class="text-2xl font-bold min-w-0 mb-3"><%= t('places.management.duplicates') %></h1>
+  <h1 class="text-2xl font-medium min-w-0 mb-3 tracking-tight"><%= t('places.management.duplicates') %></h1>
   <p class="mb-4"><%= t('places.management.duplicates_description') %></p>
   <%= link_to t('places.index.all_places'), places_path, class: 'btn btn-sm h-auto py-2 mb-4' %>
   <% if clusters.empty? %><p class="p-6 bg-base-200 rounded-box"><%= t('places.management.no_duplicates') %></p><% end %>
   <% clusters.each_with_index do |cluster, index| %>
     <section class="p-4 mb-4 bg-base-200 rounded-box min-w-0" data-testid="duplicate-cluster">
-      <h2 class="text-lg font-bold mb-2 tabular-nums min-w-0"><%= t('places.management.cluster', number: index + 1) %></h2>
+      <h2 class="text-lg font-medium mb-2 tabular-nums min-w-0"><%= t('places.management.cluster', number: index + 1) %></h2>
       <p class="text-sm mb-3"><%= t('places.management.distance_reference', name: cluster.survivor.name) %></p>
       <div class="overflow-x-auto max-w-full">
         <table class="table">

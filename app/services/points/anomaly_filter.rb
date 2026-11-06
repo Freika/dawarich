@@ -63,6 +63,22 @@ class Points::AnomalyFilter
   # hours spans any GPS dropout inside a tracked day without reaching into a
   # neighbouring coarse-only era.
   SENTINEL_PRECISE_NEIGHBOR_SECONDS = 6 * 60 * 60
+  # An idle phone on network positioning (most often Android) sometimes
+  # reports a fix from a distant cell tower and is home again on the next fix.
+  # Any tracker is judged, not only the Android no-motion signature: OwnTracks
+  # leaves those fields out of network fixes. Each leg looks like driving, so
+  # only the shape condemns it — and the shape is kept narrow because a real
+  # short errand looks similar. The fix must be coarse (PRECISE_FIX_METERS), it
+  # must be the only fix away, its neighbours from the same tracker must each
+  # be at most TOWER_JUMP_MAX_LEG_SECONDS from it and agree with each other on
+  # where the stay is, and it must land between TOWER_JUMP_MIN_METERS and
+  # MIN_EXCURSION_METERS from both — beyond that contradicts_stay? owns it —
+  # and further than TOWER_JUMP_ACCURACY_MULTIPLE radii, so a cell fix whose
+  # own radius almost reaches home is left alone.
+  TOWER_JUMP_MAX_LEG_SECONDS = 15 * 60
+  TOWER_JUMP_RETURN_METERS = 500
+  TOWER_JUMP_MIN_METERS = 1_000
+  TOWER_JUMP_ACCURACY_MULTIPLE = 3
   # Where a visit report keeps its departure date. motion_data first: raw_data
   # is emptied by archival, and a flag that cannot be re-derived would silently
   # return on the next reset re-run. Both values are untrusted client strings,
@@ -95,6 +111,7 @@ class Points::AnomalyFilter
     count += filter_by_accuracy
     count += filter_visit_reports
     count += filter_sentinel_fixes
+    count += filter_tower_jumps
     count += filter_by_speed
     # Anomalies are excluded from vector tiles, so flipping the flag changes
     # tile content without a point write. Bump only the window's years — this
@@ -231,17 +248,66 @@ class Points::AnomalyFilter
     flag_anomalies(relation)
   end
 
+  # Tower-jump pass: see TOWER_JUMP_MAX_LEG_SECONDS. Like the sentinel pass it
+  # re-judges the recent past, because the fix back home that condemns a jump
+  # arrives in the batch after it. Chunked by month like the speed pass, so a
+  # large import never sorts its whole history at once.
+  def filter_tower_jumps
+    count = 0
+
+    each_monthly_chunk do |chunk_start, chunk_end|
+      count += flag_anomalies(Point.where(id: tower_jump_ids(chunk_start, chunk_end)))
+    end
+
+    count
+  end
+
+  def tower_jump_ids(chunk_start, chunk_end)
+    sql = <<~SQL.squish
+      WITH stream AS (
+        SELECT id, timestamp, accuracy, lonlat::geography AS here,
+               LAG(lonlat::geography) OVER per_device AS before,
+               LAG(timestamp) OVER per_device AS before_at,
+               LEAD(lonlat::geography) OVER per_device AS after,
+               LEAD(timestamp) OVER per_device AS after_at
+        FROM points
+        WHERE user_id = :user_id AND anomaly IS NOT TRUE
+          AND timestamp BETWEEN :stream_from AND :stream_to
+        WINDOW per_device AS (PARTITION BY COALESCE(tracker_id, '') ORDER BY timestamp, id)
+      )
+      SELECT id FROM stream
+      WHERE timestamp BETWEEN :judged_from AND :judged_to
+        AND accuracy > :coarse
+        AND timestamp - before_at <= :leg AND after_at - timestamp <= :leg
+        AND ST_DWithin(before, after, :return_meters)
+        AND ST_Distance(here, before) > GREATEST(:min_meters, accuracy * :multiple)
+        AND ST_Distance(here, after) > GREATEST(:min_meters, accuracy * :multiple)
+        AND ST_Distance(here, before) <= :max_meters
+        AND ST_Distance(here, after) <= :max_meters
+    SQL
+
+    leg = TOWER_JUMP_MAX_LEG_SECONDS
+    Point.connection.select_values(
+      Point.sanitize_sql(
+        [sql, { user_id: @user_id, stream_from: chunk_start - (2 * leg), stream_to: chunk_end + leg,
+                judged_from: chunk_start - leg, judged_to: chunk_end, coarse: PRECISE_FIX_METERS,
+                leg: leg, return_meters: TOWER_JUMP_RETURN_METERS, min_meters: TOWER_JUMP_MIN_METERS,
+                multiple: TOWER_JUMP_ACCURACY_MULTIPLE, max_meters: MIN_EXCURSION_METERS }]
+      )
+    )
+  end
+
   # A flagged point leaves its track in the same UPDATE: recalculation reads
   # track.points, so a stale track_id would keep feeding the leap back into
   # the geometry it exists to fix. The rows are collected across passes and
   # their tracks and months rebuilt once, at the end of the run.
   def flag_anomalies(relation, extra_set = nil)
-    flagged = relation.pluck(:id, :track_id, :timestamp)
+    flagged = relation.where(anomaly_override: false).pluck(:id, :track_id, :timestamp)
     return 0 if flagged.empty?
 
     set_clause = 'anomaly = TRUE, track_id = NULL, updated_at = NOW()'
     set_clause = "#{set_clause}, #{extra_set}" if extra_set
-    Point.where(id: flagged.map(&:first)).update_all(set_clause)
+    Point.where(id: flagged.map(&:first), anomaly_override: false).update_all(set_clause)
 
     @flagged_for_rebuild.concat(flagged)
 

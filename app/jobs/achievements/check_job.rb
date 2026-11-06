@@ -4,6 +4,12 @@ module Achievements
   class CheckJob < ApplicationJob
     queue_as :achievements
 
+    # A dwell query past PlannedRows::STATEMENT_TIMEOUT would time out again on retry.
+    # Pending timestamps stay queued for the next scheduled check.
+    discard_on ActiveRecord::QueryCanceled do |job, error|
+      Rails.logger.warn("Achievements::CheckJob discarded for user #{job.arguments.first}: #{error.class}")
+    end
+
     DEBOUNCE_DELAY = 1.minute
     LOCK_TTL = 1.hour
     PENDING_TTL = 3.days

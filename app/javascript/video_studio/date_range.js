@@ -141,3 +141,16 @@ export function formatDateTimeRange(start, end, timeZone) {
 
   return [...new Set(labels)].join(" – ")
 }
+
+// Calendar dates in the owner's zone, independent of the browser's zone and DST.
+export function calendarPresetRange(preset, now = new Date(), timeZone) {
+  const today = toLocalDateTimeInput(now, timeZone).slice(0, 10)
+  const start = new Date(`${today}T12:00:00Z`)
+  if (preset === "week") start.setUTCDate(start.getUTCDate() - 6)
+  else if (preset === "month") start.setUTCMonth(start.getUTCMonth() - 1)
+  else if (preset !== "today") return null
+  return {
+    start: `${start.toISOString().slice(0, 10)}T00:00`,
+    end: `${today}T23:59`,
+  }
+}

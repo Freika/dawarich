@@ -1,7 +1,7 @@
-<div id="changelog-consent-setting" class="card bg-base-200 shadow-xl">
-  <div class="card-body">
-    <h2 class="text-2xl font-bold mb-4 flex items-center">
-      <%= icon 'bell', class: "text-primary mr-2" %> <%= t('.what_s_new_notices') %>
+<div id="changelog-consent-setting" class="card bg-base-200">
+  <div class="card-body p-4 sm:p-8">
+    <h2 class="text-lg font-medium mb-3 flex items-center gap-2">
+      <%= icon 'bell', class: 'w-4 h-4 text-base-content/60' %> <%= t('.what_s_new_notices') %>
     </h2>
     <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
       <% if current_user.changelog_consent_granted? %>
@@ -20,7 +20,7 @@
         </p>
         <%= button_to t('.turn_on_notices'), changelog_consent_path,
               method: :patch, params: { decision: "granted" },
-              class: "btn btn-primary btn-sm",
+              class: "btn btn-sm",
               form: { data: { turbo_stream: true } } %>
       <% end %>
     </div>

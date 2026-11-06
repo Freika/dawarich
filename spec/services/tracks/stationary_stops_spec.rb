@@ -24,6 +24,26 @@ RSpec.describe Tracks::StationaryStops do
     end
   end
 
+  describe '.thresholds_for' do
+    def thresholds(settings)
+      described_class.thresholds_for(build(:user, settings: settings))
+    end
+
+    it 'adds the visit minimum when it is shorter than the route gap' do
+      expect(thresholds('minutes_between_routes' => 30, 'visit_min_duration_minutes' => 10)).to eq([1800, 600])
+    end
+
+    it 'never goes below five minutes' do
+      expect(thresholds('minutes_between_routes' => 30, 'visit_min_duration_minutes' => 1)).to eq([1800, 300])
+    end
+
+    it 'keeps only the route gap when visits need longer' do
+      expect(thresholds('minutes_between_routes' => 30, 'visit_min_duration_minutes' => 45)).to eq([1800])
+      expect(thresholds('minutes_between_routes' => 3, 'visit_min_duration_minutes' => 1)).to eq([180])
+      expect(thresholds('minutes_between_routes' => 5, 'visit_min_duration_minutes' => 1)).to eq([300])
+    end
+  end
+
   describe '.break_indexes' do
     let(:threshold_seconds) { 10 * 60 }
 

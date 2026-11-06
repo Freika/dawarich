@@ -14,7 +14,7 @@ export class FogLayer {
     this.visible = options.visible !== undefined ? options.visible : false
     this.canvas = null
     this.ctx = null
-    this.clearRadius = options.clearRadius || 1000 // meters
+    this.clearRadius = options.clearRadius // meters
     this.mode = options.mode === "hexagons" ? "hexagons" : "points"
     this.api = options.api || null
     this.controller = options.controller || null

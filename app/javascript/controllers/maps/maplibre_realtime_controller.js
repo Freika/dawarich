@@ -6,13 +6,14 @@ import { pointMatchesActiveDateRange } from "maps_maplibre/utils/realtime_date_f
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
 const LIVE_REFRESH_DELAY_MS = 1000
+const CONNECTION_PROBLEM_DELAY_MS = 10000
 
 /**
  * Real-time controller
  * Manages ActionCable connection and real-time updates
  */
 export default class extends Controller {
-  static targets = ["liveModeToggle"]
+  static targets = ["liveModeToggle", "connectionStatus"]
 
   static values = {
     enabled: { type: Boolean, default: true },
@@ -28,7 +29,7 @@ export default class extends Controller {
       this.connectedChannels = new Set()
       this.liveModeEnabled = this.liveModeValue
 
-      setTimeout(() => {
+      this.channelSetupTimer = setTimeout(() => {
         try {
           this.setupChannels()
         } catch (error) {
@@ -49,6 +50,8 @@ export default class extends Controller {
   }
 
   disconnect() {
+    clearTimeout(this.channelSetupTimer)
+    clearTimeout(this.connectionProblemTimer)
     clearTimeout(this.liveRefreshTimer)
     this.liveRefreshTimer = null
     this.channels?.unsubscribeAll()
@@ -98,23 +101,19 @@ export default class extends Controller {
    */
   handleConnected(channelName) {
     this.connectedChannels.add(channelName)
-
-    if (this.connectedChannels.size === 1) {
-      Toast.success(translate("messages.connected_to_real_time_updates"))
-      this.updateConnectionIndicator(true)
-    }
+    clearTimeout(this.connectionProblemTimer)
+    this.connectionProblemTimer = null
+    this.updateConnectionIndicator(true)
   }
 
-  /**
-   * Handle disconnection
-   */
   handleDisconnected(channelName) {
     this.connectedChannels.delete(channelName)
-
-    if (this.connectedChannels.size === 0) {
-      Toast.warning(translate("messages.disconnected_from_real_time_updates"))
-      this.updateConnectionIndicator(false)
-    }
+    if (this.connectedChannels.size > 0 || this.connectionProblemTimer) return
+    this.connectionProblemTimer = setTimeout(() => {
+      this.connectionProblemTimer = null
+      if (this.connectedChannels.size === 0)
+        this.updateConnectionIndicator(false)
+    }, CONNECTION_PROBLEM_DELAY_MS)
   }
 
   /**
@@ -318,8 +317,14 @@ export default class extends Controller {
     })
   }
 
-  /**
-   * Update connection indicator (no-op, badge removed)
-   */
-  updateConnectionIndicator(_connected) {}
+  updateConnectionIndicator(connected) {
+    if (!this.hasConnectionStatusTarget) return
+    const indicator = this.connectionStatusTarget
+    indicator.textContent = translate(
+      connected ? "ux_p3.realtime.connected" : "ux_p3.realtime.disconnected",
+    )
+    indicator.dataset.state = connected ? "connected" : "disconnected"
+    indicator.classList.toggle("text-warning", !connected)
+    indicator.classList.remove("hidden")
+  }
 }

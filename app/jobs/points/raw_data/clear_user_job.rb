@@ -30,10 +30,7 @@ module Points
       private
 
       def clear_user(user)
-        verified_archive_ids = Points::RawDataArchive
-                               .where(user_id: user.id)
-                               .where(verified_at: ..COOLING_PERIOD.ago)
-                               .pluck(:id)
+        verified_archive_ids = clearable_archives(user).select { |archive| stored?(archive) }.map(&:id)
 
         return if verified_archive_ids.empty?
 
@@ -58,6 +55,27 @@ module Points
 
         Yabeda.dawarich_archive.operations_total.increment({ operation: 'clear', status: 'success' })
         Yabeda.dawarich_archive.points_total.increment({ operation: 'removed' }, by: total)
+      end
+
+      # Only archives that still hold uncleared points, so the storage check
+      # below costs one request per archive that is about to become the only copy.
+      def clearable_archives(user)
+        uncleared = Point.where(user_id: user.id, raw_data_archived: true)
+                         .where.not(raw_data: {})
+                         .select(:raw_data_archive_id)
+
+        Points::RawDataArchive.where(user_id: user.id, id: uncleared)
+                              .where(verified_at: ..COOLING_PERIOD.ago)
+      end
+
+      def stored?(archive)
+        return true if archive.file_stored?
+
+        ExceptionReporter.call(
+          StandardError.new("Archive #{archive.id} file is missing from storage"),
+          "Archive #{archive.id} file is missing from storage; not clearing its points"
+        )
+        false
       end
     end
   end

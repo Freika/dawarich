@@ -11,11 +11,9 @@ module Visits
                   'ST_Contains(ST_MakeEnvelope(?, ?, ?, ?, 4326), ' \
                   'ST_SetSRID(ST_MakePoint(areas.longitude, areas.latitude), 4326))'
 
-    def initialize(user, params)
+    def initialize(user, params, privacy_zone_masker:)
       @user = user
-      if ActiveModel::Type::Boolean.new.cast(params[:mask_privacy_zones])
-        @privacy_zone_masker = Maps::PrivacyZoneMasker.new(user)
-      end
+      @privacy_zone_masker = privacy_zone_masker
       @sw_lat = params[:sw_lat].to_f
       @sw_lng = params[:sw_lng].to_f
       @ne_lat = params[:ne_lat].to_f

@@ -215,6 +215,24 @@ RSpec.describe 'Privacy zone masking on map read endpoints', type: :request do
     end
   end
 
+  describe 'flights' do
+    let!(:flight) do
+      create(:flight, user: user, from_lon: 13.40, from_lat: 52.444, to_lon: 2.547, to_lat: 49.009,
+                      track_coordinates: [[13.40, 52.444], [13.50, 52.444], [13.60, 52.444], [2.547, 49.009]])
+    end
+
+    it 'cuts a recorded flight track at the zone only with the flag' do
+      get '/api/v1/flights', params: masked, headers: headers
+      masked_geometry = json['features'].first['geometry']
+
+      get '/api/v1/flights', headers: headers
+
+      expect(masked_geometry['type']).to eq('MultiLineString')
+      expect(vertices(masked_geometry).map { |lon, lat| distance_to_zone(lon, lat) }.min).to be >= zone_radius
+      expect(json['features'].first['geometry']['coordinates']).to eq(flight.track_coordinates)
+    end
+  end
+
   describe 'location search' do
     before do
       create(:point, user: user, lonlat: "POINT(#{zone_lon} #{zone_lat})", timestamp: 2.hours.ago.to_i)
@@ -256,6 +274,24 @@ RSpec.describe 'Privacy zone masking on map read endpoints', type: :request do
 
       expect(masked_min_lng).to be > 13.6
       expect(json['min_lng']).to be < 13.6
+    end
+  end
+
+  describe 'fog' do
+    it 'drops cells in the zone without needing the flag' do
+      dataset = Exploration::Dataset.create!(version: 'fog-privacy-test', completed_at: Time.current)
+      allow(Exploration::Geography).to receive_messages(current: dataset, install!: dataset)
+      Point.insert_all!([[zone_lon, zone_lat], [13.700, 52.600]].map do |lon, lat|
+        { user_id: user.id, timestamp: Time.utc(2024, 6, 10).to_i, lonlat: "POINT(#{lon} #{lat})",
+          created_at: Time.current, updated_at: Time.current }
+      end)
+      Exploration::Rebuild.new(user).call
+
+      get '/api/v1/maps/hexagons/fog',
+          params: { start_date: '2024-06-01T00:00:00Z', end_date: '2024-06-30T23:59:59Z' }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(json['h3_indexes']).to eq([Exploration::CellGeometry.id(52.600, 13.700)])
     end
   end
 

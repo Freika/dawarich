@@ -59,6 +59,33 @@ RSpec.describe Points::RawData::Encryption do
     end
   end
 
+  describe 'ARCHIVE_ENCRYPTION_KEY' do
+    around do |example|
+      original = ENV.fetch('ARCHIVE_ENCRYPTION_KEY', nil)
+      example.run
+    ensure
+      ENV['ARCHIVE_ENCRYPTION_KEY'] = original
+    end
+
+    it 'refuses to encrypt in production when the key is not set' do
+      ENV['ARCHIVE_ENCRYPTION_KEY'] = nil
+      allow(Rails).to receive(:env).and_return(ActiveSupport::EnvironmentInquirer.new('production'))
+
+      expect { described_class.encrypt('data') }.to raise_error(described_class::KeyNotConfigured)
+    end
+
+    it 'keeps archives written with the SECRET_KEY_BASE-derived key readable after a key is set' do
+      ENV['ARCHIVE_ENCRYPTION_KEY'] = nil
+      legacy = described_class.encrypt('legacy data')
+
+      ENV['ARCHIVE_ENCRYPTION_KEY'] = 'a freshly generated key'
+      described_class.reset!
+
+      expect(described_class.decrypt(legacy)).to eq('legacy data')
+      expect(described_class.decrypt(described_class.encrypt('new data'))).to eq('new data')
+    end
+  end
+
   describe '.decrypt_if_needed' do
     let(:plaintext_gzip) do
       io = StringIO.new

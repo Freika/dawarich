@@ -73,7 +73,7 @@ class Api::V1::Maps::HexagonsController < ApiController
     end_date = parse_fog_date!(:end_date)
 
     result = Maps::FogHexagons.new(user: current_api_user, start_date:, end_date:,
-                                   privacy_zone_masker:, snapshot_id: params[:snapshot_id]).call
+                                   privacy_zone_masker: map_read_masker, snapshot_id: params[:snapshot_id]).call
 
     render json: result
   rescue ActiveRecord::RecordNotFound
@@ -112,10 +112,13 @@ class Api::V1::Maps::HexagonsController < ApiController
     }
   end
 
-  def hexagon_privacy_zone_masker(context)
-    return Maps::PrivacyZoneMasker.new(context[:user]) if context[:stat]
+  # Fog is map-only, so it always masks.
+  def map_read_masked?
+    action_name == 'fog' || super
+  end
 
-    privacy_zone_masker if mask_privacy_zones?
+  def hexagon_privacy_zone_masker(context)
+    context[:stat] ? Maps::PrivacyZoneMasker.new(context[:user]) : map_read_masker
   end
 
   def resolve_authenticated_context

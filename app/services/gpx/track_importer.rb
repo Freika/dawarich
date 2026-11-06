@@ -38,6 +38,7 @@ class Gpx::TrackImporter
       batch = []
     end
     flush(batch) unless batch.empty?
+    fill_missing_velocities
     record_element_counts(handler)
   ensure
     cleanup_temp_file

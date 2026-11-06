@@ -1,0 +1,16 @@
+<% if @integration_result && @integration_result['service'] == @service %>
+  <% outcome = @integration_result['outcome'] %>
+  <div class="rounded-box border border-base-content/20 bg-base-200 p-4 mb-4 max-w-3xl"
+       role="status" data-testid="integration-result" data-outcome="<%= outcome %>">
+    <p class="font-medium"><%= t("ux_p3.integrations.#{outcome}") %></p>
+    <% if outcome.end_with?('failed') %>
+      <p class="mt-2 text-sm text-base-content/70"><%= t("ux_p3.integrations.reasons.#{@integration_result['reason']}", default: t('ux_p3.integrations.reasons.check_settings')) %></p>
+      <p class="mt-1 text-sm"><%= t('ux_p3.integrations.retry') %></p>
+    <% end %>
+  </div>
+<% end %>
+<% unless @service == 'trek' %>
+  <p class="mb-3 text-sm text-base-content/70" data-testid="integration-saved-status">
+    <%= t("ux_p3.integrations.status.#{@statuses.status(@service) || 'untested'}") %>
+  </p>
+<% end %>

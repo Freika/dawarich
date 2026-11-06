@@ -77,3 +77,63 @@ test("the Visit picker renders only canonical Place rows", () => {
   assert.match(search.list.innerHTML, /data-select-place/)
   assert.doesNotMatch(search.list.innerHTML, /data-select-area/)
 })
+
+test("form picker selection reports a saved Place without patching a Visit", async () => {
+  let selected
+  const search = new context.VisitPlaceSearch(null, 52.52, 13.405, {}, null, {
+    onSelect: (place) => {
+      selected = place
+    },
+  })
+  search.patchVisit = () => {
+    throw new Error("must not PATCH")
+  }
+  const place = { id: 7, name: "Cafe", latitude: 53, longitude: 14 }
+  await search.selectPlace(place)
+  assert.equal(selected, place)
+})
+
+test("form picker lists saved Places without immediate Place creation", () => {
+  const search = new context.VisitPlaceSearch(null, 52.52, 13.405, {}, null, {
+    onSelect() {},
+  })
+  search.list = {
+    innerHTML: "",
+    querySelectorAll: () => [],
+    querySelector: () => null,
+  }
+  search.render(
+    [
+      { name: "External", latitude: 52, longitude: 13 },
+      { id: 3, name: "Saved", latitude: 52, longitude: 13 },
+    ],
+    "new name",
+  )
+  assert.doesNotMatch(search.list.innerHTML, /External|data-create-place/)
+  assert.match(search.list.innerHTML, /Saved/)
+})
+
+test("Enter in the form picker search prevents implicit form submission", () => {
+  const input = new EventTarget()
+  input.focus = () => {}
+  const search = new context.VisitPlaceSearch(
+    null,
+    52,
+    13,
+    {
+      querySelector: () => input,
+    },
+    null,
+    { onSelect() {} },
+  )
+  search.fetchResults = () => {}
+  search.openPanel()
+  const enter = new Event("keydown", { cancelable: true })
+  Object.defineProperty(enter, "key", { value: "Enter" })
+  input.dispatchEvent(enter)
+  assert.equal(enter.defaultPrevented, true)
+  const letter = new Event("keydown", { cancelable: true })
+  Object.defineProperty(letter, "key", { value: "a" })
+  input.dispatchEvent(letter)
+  assert.equal(letter.defaultPrevented, false)
+})

@@ -1,7 +1,7 @@
 <% content_for :title, t('.user_email', email: @user.email) %>
 
 <div class="min-h-content w-full my-5">
-  <h1 class="text-3xl font-bold mb-6"><%= t('.user_details') %></h1>
+  <h1 class="text-3xl font-medium mb-6 tracking-tight"><%= t('.user_details') %></h1>
   <%= render 'settings/navigation' %>
 
   <div class="flex flex-col w-full my-10">
@@ -9,7 +9,7 @@
       <!-- User Header -->
       <div class="flex items-center justify-between">
         <div>
-          <h2 class="text-2xl font-bold"><%= @user.email %></h2>
+          <h2 class="text-2xl font-medium"><%= @user.email %></h2>
           <div class="flex gap-2 mt-2">
             <% if @user.admin? %>
               <span class="badge badge-primary"><%= t('.admin') %></span>
@@ -122,7 +122,7 @@
               <%= button_to t('.regenerate_api_key'),
                     regenerate_api_key_settings_user_path(@user),
                     method: :post,
-                    class: 'btn btn-warning btn-sm',
+                    class: 'btn btn-sm',
                     data: { turbo_confirm: t('.are_you_sure_this_will_invalidate_the_current_api_key') } %>
             </div>
           </div>

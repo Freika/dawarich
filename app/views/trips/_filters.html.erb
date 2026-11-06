@@ -1,4 +1,4 @@
-<% label_class = 'text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1 block' %>
+<% label_class = 'text-xs font-medium text-base-content/60 mb-1 block' %>
 <div class="border border-base-300 rounded-xl bg-base-200/50 p-4 mb-5">
   <%= form_with url: trips_path, method: :get, data: { controller: 'auto-submit', turbo_action: 'advance', action: 'pointerdown->auto-submit#notePointer' },
                 class: 'flex flex-wrap items-end gap-3', html: { role: 'search' } do |f| %>
@@ -49,7 +49,7 @@
     <% end %>
 
     <div class="flex gap-2">
-      <%= f.submit t('.apply'), name: nil, class: 'btn btn-primary btn-sm' %>
+      <%= f.submit t('.apply'), name: nil, class: 'btn btn-sm border-base-content/15 bg-base-100' %>
       <% if filters.active? || filters.sort != Trips::IndexQuery::DEFAULT_SORT %>
         <%= link_to t('.reset'), trips_path, class: 'btn btn-sm' %>
       <% end %>

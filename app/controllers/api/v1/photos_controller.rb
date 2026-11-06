@@ -36,7 +36,7 @@ class Api::V1::PhotosController < ApiController
   private
 
   def map_photos(photos)
-    mask_privacy_zones? ? privacy_zone_masker.mask_photos(photos) : photos
+    map_read_masker.mask_photos(photos)
   end
 
   def render_source_failure

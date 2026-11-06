@@ -45,7 +45,7 @@ module Api
           else @places.map_visible(current_api_user)
           end
 
-        @places = privacy_zone_masker.mask_places(@places) if mask_privacy_zones?
+        @places = map_read_masker.mask_places(@places)
 
         # Support pagination (defaults to page 1 with all results if no page param)
         page = params[:page].presence || 1
@@ -165,7 +165,11 @@ module Api
           user: current_api_user, latitude: lat, longitude: lon, radius: radius, query: query
         ).call
 
-        render json: { places: places, areas: areas, throttled: external_search.throttled? }
+        forward_search_unavailable = external_search.is_a?(Places::Search) &&
+                                     external_search.forward_search_unavailable?
+
+        render json: { places: places, areas: areas, throttled: external_search.throttled?,
+                       forward_search_unavailable: forward_search_unavailable }
       end
 
       private

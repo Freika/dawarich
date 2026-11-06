@@ -1,0 +1,54 @@
+{
+  "stored": {
+    "enabled_map_layers": ["Tracks", "Heatmap", "Hexagons", "Fog of War"],
+    "globe_projection": true,
+    "maps_maplibre_style": "custom",
+    "maps_maplibre_custom_theme": {
+      "base": "blueprint",
+      "tokens": { "bg": "#111111" }
+    },
+    "maps_maplibre_tiles_url": "https://tiles.example/{z}/{x}/{y}.png",
+    "maps_maplibre_tiles_fallback": true,
+    "track_color": "#123456",
+    "route_color": "#654321",
+    "immich_url": "https://immich.example",
+    "immich_api_key": "stored-key",
+    "maps": {
+      "distance_unit": "mi",
+      "hidden_tile_categories": ["roads"],
+      "disabled_poi_groups": ["food"]
+    }
+  },
+  "lite_reads": {
+    "enabled_map_layers": ["Tracks"],
+    "globe_projection": false,
+    "maps_maplibre_style": "light",
+    "maps": { "distance_unit": "mi" },
+    "distance_unit": "mi",
+    "immich_url": "https://immich.example",
+    "immich_api_key": "stored-key"
+  },
+  "lite_reads_default": [
+    "maps_maplibre_custom_theme",
+    "maps_maplibre_tiles_url",
+    "maps_maplibre_tiles_fallback",
+    "track_color",
+    "route_color"
+  ],
+  "lite_write": {
+    "incoming": {
+      "enabled_map_layers": ["Tracks", "Heatmap"],
+      "globe_projection": true,
+      "track_color": "#000000",
+      "maps_maplibre_style": "custom",
+      "immich_url": "https://other.example",
+      "maps": { "distance_unit": "km", "hidden_tile_categories": [] },
+      "fog_of_war_mode": "points"
+    },
+    "applied": {
+      "enabled_map_layers": ["Tracks", "Heatmap", "Hexagons", "Fog of War"],
+      "maps": { "distance_unit": "km" },
+      "fog_of_war_mode": "points"
+    }
+  }
+}

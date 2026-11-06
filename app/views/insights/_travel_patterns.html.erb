@@ -1,8 +1,8 @@
 <!-- When Do You Travel Card -->
 <div class="card bg-base-200">
   <div class="card-body p-5">
-    <h2 class="card-title text-lg flex items-center gap-2">
-      <%= icon 'clock', class: 'w-5 h-5 text-primary' %>
+    <h2 class="card-title text-lg font-medium flex items-center gap-2">
+      <%= icon 'clock', class: 'w-4 h-4 text-base-content/60' %>
       <%= t('.when_do_you_travel') %>
     </h2>
 
@@ -11,12 +11,13 @@
       <div class="text-sm font-medium mb-2"><%= t('.time_of_day_distribution') %></div>
       <div class="space-y-1">
         <% time_labels = { 'night' => '00-06', 'morning' => '06-12', 'afternoon' => '12-18', 'evening' => '18-24' } %>
+        <% peak_period = @time_of_day.select { |_, v| v.to_i.positive? }.max_by { |_, v| v.to_i }&.first %>
         <% %w[night morning afternoon evening].each do |period| %>
           <div class="flex items-center gap-2 text-xs">
-            <span class="w-12 text-base-content/60"><%= time_labels[period] %></span>
-            <progress class="progress progress-info flex-1 h-2"
+            <span class="w-12 tabular-nums text-base-content/60"><%= time_labels[period] %></span>
+            <progress class="progress <%= 'progress-primary' if period == peak_period %> flex-1 h-2"
                       value="<%= @time_of_day[period] || 0 %>" max="100"></progress>
-            <span class="w-8 text-right text-base-content/60"><%= @time_of_day[period] || 0 %>%</span>
+            <span class="w-8 text-right tabular-nums text-base-content/60"><%= @time_of_day[period] || 0 %>%</span>
           </div>
         <% end %>
       </div>
@@ -30,11 +31,11 @@
           <% max_distance = @day_of_week.max.to_f %>
           <% distance_unit = current_user.safe_settings.distance_unit %>
           <% weekday_strip(@day_of_week).each do |day_name, distance_meters| %>
-            <% opacity = max_distance.positive? ? (0.4 + (distance_meters / max_distance) * 0.6).round(2) : 0.4 %>
+            <% peak_day = max_distance.positive? && distance_meters == max_distance %>
             <% converted_distance = Stat.convert_distance(distance_meters, distance_unit) %>
-            <div class="flex-1 bg-info text-info-content rounded text-center py-1" style="opacity: <%= opacity %>">
+            <div class="flex-1 min-w-0 rounded text-center py-1 <%= peak_day ? 'bg-primary text-primary-content' : 'bg-base-300' %>">
               <div class="text-xs font-medium"><%= day_name %></div>
-              <div class="text-xs"><%= number_to_human(converted_distance, precision: 0, significant: false, units: { unit: '', thousand: 'k', million: 'M' }) %></div>
+              <div class="text-xs tabular-nums"><%= number_to_human(converted_distance, precision: 0, significant: false, units: { unit: '', thousand: 'k', million: 'M' }) %></div>
             </div>
           <% end %>
         </div>
@@ -42,13 +43,13 @@
       <div>
         <div class="text-sm font-medium mb-2"><%= t('.seasonality') %></div>
         <div class="space-y-1 text-sm">
-          <% season_colors = { 'winter' => 'info', 'spring' => 'success', 'summer' => 'warning', 'fall' => 'error' } %>
+          <% peak_season = @seasonality.select { |_, v| v.to_i.positive? }.max_by { |_, v| v.to_i }&.first %>
           <% %w[winter spring summer fall].each do |season| %>
             <div class="flex items-center gap-2">
               <span class="w-14 capitalize"><%= t("services.insights.travel_insight_generator.seasons.#{season}") %></span>
-              <progress class="progress progress-<%= season_colors[season] %> flex-1 h-2"
+              <progress class="progress <%= 'progress-primary' if season == peak_season %> flex-1 h-2"
                         value="<%= @seasonality[season] || 0 %>" max="100"></progress>
-              <span class="w-10 text-right text-base-content/60"><%= @seasonality[season] || 0 %>%</span>
+              <span class="w-10 text-right tabular-nums text-base-content/60"><%= @seasonality[season] || 0 %>%</span>
             </div>
           <% end %>
         </div>
@@ -60,11 +61,11 @@
 <!-- Insight Callout -->
 <% insight_text = generate_travel_insight(@time_of_day, @day_of_week, @seasonality) %>
 <% if insight_text.present? %>
-  <div class="alert bg-warning/20 border border-warning/30">
+  <div class="rounded-box border border-base-content/10 bg-base-200 p-4">
     <div class="flex items-start gap-3">
-      <%= icon 'lightbulb', class: 'w-5 h-5 text-warning' %>
+      <%= icon 'lightbulb', class: 'w-4 h-4 mt-0.5 shrink-0 text-base-content/60' %>
       <div>
-        <h3 class="font-bold text-warning"><%= t('.insight') %></h3>
+        <h3 class="font-medium"><%= t('.insight') %></h3>
         <div class="text-sm"><%= insight_text %></div>
       </div>
     </div>

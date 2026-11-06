@@ -1,6 +1,11 @@
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import {
+  prefillVisitFromClick,
+  selectionVisitDraft,
+  warnMultipleStays,
+} from "maps_maplibre/utils/visit_draft_flow"
 
 /**
  * Manages visits-related operations for Maps V2
@@ -343,6 +348,12 @@ export class VisitsManager {
    */
   startCreateVisit() {
     this.disarmCreateVisit()
+    const draft = selectionVisitDraft(this.controller)
+    if (draft) {
+      this.openVisitCreationModal(draft.lat, draft.lng, draft)
+      warnMultipleStays(draft)
+      return
+    }
 
     this.controller.map.getCanvas().style.cursor = "crosshair"
     Toast.info(translate("messages.click_on_the_map_to_place_a_visit_esc_to"))
@@ -350,7 +361,8 @@ export class VisitsManager {
     this.handleCreateVisitClick = (e) => {
       const { lng, lat } = e.lngLat
       this.disarmCreateVisit()
-      this.openVisitCreationModal(lat, lng)
+      const form = this.openVisitCreationModal(lat, lng)
+      prefillVisitFromClick(this.controller, form, lat, lng)
     }
 
     this.handleCreateVisitEscape = (e) => {
@@ -382,7 +394,7 @@ export class VisitsManager {
   /**
    * Open visit creation modal
    */
-  openVisitCreationModal(lat, lng) {
+  openVisitCreationModal(lat, lng, draft = null) {
     const modalElement = document.querySelector(
       '[data-controller="visit-creation-v2"]',
     )
@@ -399,7 +411,8 @@ export class VisitsManager {
       )
 
     if (controller) {
-      controller.open(lat, lng, this.controller)
+      controller.open(lat, lng, this.controller, draft)
+      return controller
     } else {
       Toast.error(translate("messages.visit_creation_controller_not_available"))
     }

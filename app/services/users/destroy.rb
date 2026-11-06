@@ -14,10 +14,13 @@ class Users::Destroy
     cancel_scheduled_jobs
 
     Users::DataLock.with_exclusive(user_id) do
-      # Purge ActiveStorage attachments before delete_all (which bypasses callbacks)
-      purge_attachments_for('Import', user.imports)
-      purge_attachments_for('Export', user.exports)
-      purge_attachments_for('Points::RawDataArchive', user.raw_data_archives)
+      # delete_all bypasses attachment callbacks, so capture the owners now and
+      # purge only after commit: a rolled-back deletion must keep its files.
+      attachment_owner_ids = {
+        'Import' => user.imports.pluck(:id),
+        'Export' => user.exports.pluck(:id),
+        'Points::RawDataArchive' => user.raw_data_archives.pluck(:id)
+      }
 
       ActiveRecord::Base.transaction do
         # Validate inside transaction to prevent TOCTOU race
@@ -99,6 +102,8 @@ class Users::Destroy
         # Hard delete the user (bypasses soft-delete, skips callbacks)
         user.delete
       end
+
+      attachment_owner_ids.each { |record_type, record_ids| purge_attachments_for(record_type, record_ids) }
     end
 
     Rails.logger.info "User #{user_id} (#{user_email}) and all associated data deleted"
@@ -137,9 +142,9 @@ class Users::Destroy
     ExceptionReporter.call(e, 'Failed to cancel scheduled jobs during user deletion')
   end
 
-  def purge_attachments_for(record_type, relation)
+  def purge_attachments_for(record_type, record_ids)
     ActiveStorage::Attachment
-      .where(record_type: record_type, record_id: relation.select(:id))
+      .where(record_type: record_type, record_id: record_ids)
       .find_each(&:purge)
   rescue StandardError => e
     Rails.logger.warn "Failed to purge #{record_type} attachments: #{e.message}"

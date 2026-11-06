@@ -6,7 +6,7 @@
     <div class="hero-overlay bg-opacity-60"></div>
     <div class="hero-content text-center py-8">
       <div class="max-w-lg">
-        <h1 class="text-4xl font-bold flex items-center justify-center gap-2">
+        <h1 class="text-4xl font-medium flex items-center justify-center gap-2 tracking-tight">
           <%= icon month_icon(@stat) %> <%= l(Date.new(@year, @month, 1), format: :month_year) %>
         </h1>
         <p class="pt-6 pb-2"><%= t('.monthly_digest') %></p>
@@ -51,7 +51,7 @@
   </div>
 
   <!-- Map Summary - Hexagon View -->
-  <div class="card bg-base-100 shadow-xl mb-8">
+  <div class="card bg-base-100 mb-8">
     <div class="card-body p-0">
       <!-- Map Controls -->
       <div class="p-4 border-b border-base-300 bg-base-50">
@@ -87,7 +87,7 @@
   </div>
 
   <!-- Daily Activity Chart -->
-  <div class="card bg-base-100 shadow-xl mb-8">
+  <div class="card bg-base-100 mb-8">
     <div class="card-body">
       <h2 class="card-title">
         <%= icon 'trending-up' %> <%= t('.daily_activity') %>
@@ -131,7 +131,7 @@
   </div>
 
   <!-- Countries & Cities - General Info Only -->
-  <div class="card bg-base-100 shadow-xl mb-8">
+  <div class="card bg-base-100 mb-8">
     <div class="card-body">
       <h2 class="card-title">
         <%= icon 'earth' %> <%= t('.countries_cities') %>

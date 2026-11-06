@@ -14,6 +14,11 @@ module Maps
       @circles = circles
     end
 
+    # Masks nothing: for reads that show unmasked data on purpose.
+    def self.none
+      new(nil, circles: [])
+    end
+
     delegate :any?, to: :circles
 
     def mask_points(relation)

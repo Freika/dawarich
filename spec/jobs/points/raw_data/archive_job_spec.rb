@@ -31,6 +31,23 @@ RSpec.describe Points::RawData::ArchiveJob, type: :job do
       end
     end
 
+    context 'when ARCHIVE_ENCRYPTION_KEY is missing in production' do
+      before do
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('ARCHIVE_ENCRYPTION_KEY', nil).and_return(nil)
+        allow(Rails).to receive(:env).and_return(ActiveSupport::EnvironmentInquirer.new('production'))
+      end
+
+      it 'reports the missing key and enqueues nothing' do
+        create(:user)
+        allow(ExceptionReporter).to receive(:call)
+
+        expect { described_class.perform_now }.not_to have_enqueued_job(Points::RawData::ArchiveUserJob)
+        expect(ExceptionReporter).to have_received(:call)
+          .with(instance_of(Points::RawData::Encryption::KeyNotConfigured), anything)
+      end
+    end
+
     context 'when an error occurs' do
       before do
         allow(User).to receive(:find_each).and_raise(StandardError, 'DB error')

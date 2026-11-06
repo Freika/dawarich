@@ -1,7 +1,7 @@
 <% ctx = SharedLinkContext.new(link) %>
 <% unit = link.user.safe_settings.distance_unit %>
 <section class="container mx-auto px-4 py-6">
-  <h1 class="text-3xl font-bold mb-2"><%= track_share_label(resource, unit) %></h1>
+  <h1 class="text-3xl font-medium mb-2 tracking-tight"><%= track_share_label(resource, unit) %></h1>
 
   <% if ctx.show_route? %>
     <div id="shared-trip-map"

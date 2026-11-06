@@ -1,12 +1,12 @@
 <% content_for :title, t('.year_year_in_review', year: @digest.year) %>
 <%= render 'shared/chartkick_scripts' %>
 
-<div class="max-w-xl mx-auto my-5">
+<div class="w-full min-w-0 max-w-xl mx-auto my-5">
   <!-- Header -->
   <div class="hero text-white rounded-lg shadow-lg mb-8" style="background: linear-gradient(135deg, #0f766e, #0284c7);">
     <div class="hero-content text-center py-12 relative w-full">
       <div class="max-w-lg">
-        <h1 class="text-4xl font-bold"><%= t('.year_year_in_review', year: @digest.year) %></h1>
+        <h1 class="text-4xl font-medium tracking-tight"><%= t('.year_year_in_review', year: @digest.year) %></h1>
         <p class="py-4"><%= t('.your_journey_by_the_numbers') %></p>
         <button class="btn btn-outline btn-sm text-neutral border-neutral hover:bg-white hover:text-primary"
                 onclick="sharing_modal.showModal()">
@@ -17,7 +17,7 @@
   </div>
 
   <!-- Distance Card -->
-  <div class="card bg-base-200 shadow-xl mb-8">
+  <div class="card bg-base-200 mb-8">
     <div class="card-body text-center items-center">
       <div class="stat-title flex items-center gap-2">
         <%= icon 'map' %> <%= t('.distance_traveled') %>
@@ -60,7 +60,7 @@
   <% if @full_digest %>
     <!-- First Time Visits (Pro / self-hosted only) -->
     <% if @digest.first_time_countries.any? || @digest.first_time_cities.any? %>
-      <div class="card bg-base-200 shadow-xl mb-8">
+      <div class="card bg-base-200 mb-8">
         <div class="card-body text-center items-center">
           <h2 class="card-title">
             <%= icon 'star' %> <%= t('.first_time_visits') %>
@@ -71,7 +71,7 @@
               <h3 class="font-semibold mb-2"><%= t('.new_countries') %></h3>
               <div class="flex flex-wrap gap-2 justify-center">
                 <% @digest.first_time_countries.each do |country| %>
-                  <span class="badge badge-success badge-lg"><%= country %></span>
+                  <span class="badge badge-ghost badge-lg"><%= country %></span>
                 <% end %>
               </div>
             </div>
@@ -96,7 +96,7 @@
 
     <!-- Monthly Distance Chart (Pro / self-hosted only) -->
     <% if @digest.monthly_distances.present? %>
-      <div class="card bg-base-200 shadow-xl mb-8">
+      <div class="card bg-base-200 mb-8">
         <div class="card-body text-center items-center">
           <h2 class="card-title">
             <%= icon 'activity' %> <%= t('.your_year_month_by_month') %>
@@ -124,7 +124,7 @@
 
     <!-- Top Countries by Time Spent (Pro / self-hosted only) -->
     <% if @digest.top_countries_by_time.any? %>
-      <div class="card bg-base-200 shadow-xl mb-8">
+      <div class="card bg-base-200 mb-8">
         <div class="card-body text-center items-center">
           <h2 class="card-title">
             <%= icon 'map-pin' %> <%= t('.where_you_spent_the_most_time') %>
@@ -133,7 +133,7 @@
             <% @digest.top_countries_by_time.take(5).each_with_index do |country, index| %>
               <div class="flex justify-between items-center p-3 bg-base-100 rounded-lg">
                 <div class="flex items-center gap-3">
-                  <span class="badge badge-lg <%= ['badge-primary', 'badge-secondary', 'badge-accent', 'badge-info', 'badge-success'][index] %>">
+                  <span class="badge badge-lg badge-ghost">
                     <%= index + 1 %>
                   </span>
                   <span class="font-semibold">
@@ -163,7 +163,7 @@
     <% end %>
 
     <!-- All Countries & Cities (Pro / self-hosted only) -->
-    <div class="card bg-base-200 shadow-xl mb-8">
+    <div class="card bg-base-200 mb-8">
       <div class="card-body text-center items-center">
         <h2 class="card-title">
           <%= icon 'earth' %> <%= t('.countries_cities') %>
@@ -192,7 +192,7 @@
     </div>
 
     <!-- All-Time Stats Footer (Pro / self-hosted only) -->
-    <div class="card bg-slate-800 text-white shadow-xl mb-8">
+    <div class="card bg-slate-800 text-white mb-8">
       <div class="card-body text-center items-center">
         <h2 class="card-title text-white">
           <%= icon 'trophy' %> <%= t('.all_time_stats') %>
@@ -215,7 +215,7 @@
     </div>
   <% else %>
     <!-- Upgrade Prompt (Lite users only) -->
-    <div class="card bg-base-200 shadow-xl mb-8 border border-primary/20">
+    <div class="card bg-base-200 mb-8 border border-primary/20">
       <div class="card-body text-center items-center">
         <h2 class="card-title">
           <%= icon 'sparkles' %> <%= t('.want_more_insights') %>
@@ -255,7 +255,7 @@
       <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
     </form>
 
-    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+    <h3 class="font-medium text-lg mb-4 flex items-center gap-2">
       <%= icon 'link' %> <%= t('.sharing_settings') %>
     </h3>
 
@@ -313,7 +313,7 @@
       <div class="alert alert-info mb-4">
         <%= icon 'info' %>
         <div>
-          <h3 class="font-bold"><%= t('.privacy_protection') %></h3>
+          <h3 class="font-medium"><%= t('.privacy_protection') %></h3>
           <div class="text-sm">
             <%= t('.exact_coordinates_are_hidden') %><br>
             <%= t('.personal_information_is_not_included') %>

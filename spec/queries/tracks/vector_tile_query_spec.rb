@@ -36,7 +36,7 @@ RSpec.describe Tracks::VectorTileQuery do
   def feature_rows(z:, x:, y:, scope: user.tracks, clip_points_scope: nil, clip_import_id: nil,
                    clip_start_at: nil, clip_end_at: nil)
     described_class.new(scope:, z:, x:, y:, clip_points_scope:, clip_import_id:,
-                        clip_start_at:, clip_end_at:).feature_rows
+                        clip_start_at:, clip_end_at:, privacy_zone_masker: Maps::PrivacyZoneMasker.none).feature_rows
   end
   # rubocop:enable Naming/MethodParameterName
 
@@ -215,11 +215,11 @@ RSpec.describe Tracks::VectorTileQuery do
 
   describe 'coordinate validation and timeout' do
     it 'raises on invalid tile coordinates' do
-      expect { described_class.new(scope: user.tracks, z: -1, x: 0, y: 0).call }
+      expect { described_class.new(scope: user.tracks, z: -1, x: 0, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call }
         .to raise_error(Tracks::VectorTileQuery::InvalidTileCoordinatesError)
-      expect { described_class.new(scope: user.tracks, z: 2, x: 4, y: 0).call }
+      expect { described_class.new(scope: user.tracks, z: 2, x: 4, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call }
         .to raise_error(Tracks::VectorTileQuery::InvalidTileCoordinatesError)
-      expect { described_class.new(scope: user.tracks, z: 'abc', x: 0, y: 0).call }
+      expect { described_class.new(scope: user.tracks, z: 'abc', x: 0, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call }
         .to raise_error(Tracks::VectorTileQuery::InvalidTileCoordinatesError)
     end
 
@@ -230,7 +230,7 @@ RSpec.describe Tracks::VectorTileQuery do
       slow_scope = user.tracks.where('(SELECT pg_sleep(0.3)) IS NOT NULL')
 
       expect do
-        described_class.new(scope: slow_scope, z: 10, x: 512, y: 511).call
+        described_class.new(scope: slow_scope, z: 10, x: 512, y: 511, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end.to raise_error(ActiveRecord::QueryCanceled)
     end
   end
@@ -285,7 +285,7 @@ RSpec.describe Tracks::VectorTileQuery do
     it 'reports feature_count and an unreachable limit' do
       create_track_at([[10, 10], [500, 500]])
 
-      result = described_class.new(scope: user.tracks, z: 10, x: 512, y: 511).call
+      result = described_class.new(scope: user.tracks, z: 10, x: 512, y: 511, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
 
       expect(result.feature_count).to eq(1)
       expect(result.limit).to eq(Tracks::VectorTileQuery::TRACKS_PER_TILE_LIMIT)

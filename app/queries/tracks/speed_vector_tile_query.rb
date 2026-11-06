@@ -120,7 +120,7 @@ class Tracks::SpeedVectorTileQuery < Tracks::VectorTileQuery
   end
 
   def point_scope_sql
-    @points_scope.except(:select, :order, :includes, :preload, :eager_load)
+    @points_scope.route_observations.except(:select, :order, :includes, :preload, :eager_load)
                  .where.not(lonlat: nil)
                  .select(:id, :track_id, :timestamp, :lonlat, :import_id).to_sql
   end

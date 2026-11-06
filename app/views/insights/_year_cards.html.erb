@@ -5,7 +5,7 @@
 <% geocoding = reverse_geocoding_enabled_for?(current_user) %>
 
 <section class="mb-6" aria-labelledby="insights-years-title">
-  <h2 id="insights-years-title" class="text-xl font-bold mb-3"><%= t('.title') %></h2>
+  <h2 id="insights-years-title" class="text-lg font-medium mb-3"><%= t('.title') %></h2>
   <div class="grid grid-cols-1 gap-4 <%= 'lg:grid-cols-2' if @stats_by_year.size + @locked_years.size > 1 %>">
     <% @stats_by_year.each do |year, stats| %>
       <% cache [current_user.id, 'insights_year_card', I18n.locale, year, stats.map(&:updated_at).max, distance_unit, geocoding, map_years.include?(year), map_style, Current.date_time_preferences.cache_key], expires_in: 24.hours do %>
@@ -21,16 +21,16 @@
           <% end %>
           <div class="card-body p-5 gap-3">
             <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <h3 class="text-2xl font-bold">
-                <%= link_to year, insights_path(year: year), class: "link link-hover text-#{header_colors[year % header_colors.size]}" %>
+              <h3 class="text-2xl font-medium tabular-nums">
+                <%= link_to year, insights_path(year: year), class: "link link-hover" %>
               </h3>
-              <span class="text-lg font-semibold tabular-nums">
+              <span class="text-lg font-medium tabular-nums">
                 <%= number_with_delimiter year_distance_stat(@year_distances[year], current_user).round %> <%= distance_unit %>
               </span>
             </div>
             <% flown = stats.sum(&:flight_distance) %>
             <% if flown.positive? && flown <= @year_distances[year].sum { _1[1] } %>
-              <p class="flex items-center gap-1 text-sm text-info" data-testid="insights-year-flown">
+              <p class="flex items-center gap-1 text-sm text-base-content/60" data-testid="insights-year-flown">
                 <%= icon 'plane', class: 'w-4 h-4 shrink-0' %>
                 <span class="min-w-0"><%= t('.flown', distance: "#{number_with_delimiter Stat.convert_distance(flown, distance_unit).round} #{distance_unit}") %></span>
               </p>
@@ -61,11 +61,11 @@
               <input type="checkbox" id="<%= location_data[:modal_id] %>" class="modal-toggle" />
               <div class="modal" role="dialog">
                 <div class="modal-box max-w-3xl">
-                  <h3 class="text-lg font-bold mb-4"><%= t('stats.index.countries_and_cities_visited_in') %> <%= location_data[:year] %></h3>
+                  <h3 class="text-lg font-medium mb-4"><%= t('stats.index.countries_and_cities_visited_in') %> <%= location_data[:year] %></h3>
                   <div class="max-h-96 overflow-y-auto">
                     <% location_data[:grouped_by_country].each do |country, cities| %>
                       <div class="mb-4">
-                        <h4 class="font-bold"><span class="mr-2"><%= country_flag(country) %></span><%= country %></h4>
+                        <h4 class="font-medium"><span class="mr-2"><%= country_flag(country) %></span><%= country %></h4>
                         <% if cities.any? %>
                           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pl-4">
                             <% cities.each do |city| %>

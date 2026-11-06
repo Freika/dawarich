@@ -18,11 +18,9 @@
 }
 
 .timeline-rail__section-label {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: oklch(var(--bc) / 0.55);
+  font-size: 11px;
+  font-weight: 500;
+  color: oklch(var(--bc) / 0.6);
 }
 
 .timeline-rail__section-header {
@@ -33,11 +31,9 @@
 }
 
 .timeline-rail__section-link {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: oklch(var(--p));
+  color: oklch(var(--bc) / 0.6);
   text-decoration: none;
 }
 

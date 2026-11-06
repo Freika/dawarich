@@ -64,6 +64,18 @@ RSpec.describe 'Api::V1::Timeline', type: :request do
         expect(entries[1]['type']).to eq('journey')
       end
 
+      it 'names the time zone of each visit and journey start' do
+        Timezone.create!(tzid: 'Europe/Berlin', geom: 'SRID=4326;POLYGON((6 47, 15 47, 15 55, 6 55, 6 47))')
+        Timezone.create!(tzid: 'America/New_York', geom: 'SRID=4326;POLYGON((-80 38, -70 38, -70 45, -80 45, -80 38))')
+
+        get '/api/v1/timeline', params: params, headers: auth_headers
+
+        entries = JSON.parse(response.body)['days'].first['entries']
+        expect(entries.to_h { |entry| [entry['type'], entry['local_timezone']] })
+          .to eq('visit' => 'Europe/Berlin', 'journey' => 'America/New_York')
+        expect(Time.iso8601(entries.first['started_at'])).to eq(visit.started_at)
+      end
+
       it 'respects date range params' do
         get '/api/v1/timeline', params: {
           start_at: (day - 10.days).iso8601,
