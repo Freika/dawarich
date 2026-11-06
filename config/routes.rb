@@ -147,7 +147,7 @@ Rails.application.routes.draw do
     end
   end
   resources :areas, only: %i[create update]
-  resources :places, only: %i[index show destroy create update] do
+  resources :places, only: %i[index show new edit destroy create update] do
     member do
       patch :confirm
       post :merge
@@ -178,7 +178,7 @@ Rails.application.routes.draw do
 
   namespace :share_links do
     resource :hub, only: :show, controller: 'hubs'
-    resources :shares, only: [] do
+    resources :shares, only: %i[edit update] do
       member { patch :revoke }
     end
     resource :timeline, only: %i[new create destroy], controller: 'timelines' do
@@ -342,6 +342,7 @@ Rails.application.routes.draw do
       get   'ready', to: 'health#ready'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
+      delete 'settings/appearance', to: 'settings#reset_appearance'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
       get   'settings/mobile', to: 'settings/mobile#show'
       patch 'settings/mobile', to: 'settings/mobile#update'
@@ -383,6 +384,7 @@ Rails.application.routes.draw do
       end
       resources :points, only: %i[index create update destroy] do
         resource :position, only: :update, controller: 'points/positions'
+        patch :mark_valid, on: :member
         collection do
           delete :bulk_destroy
           post :reapply_anomaly_filter

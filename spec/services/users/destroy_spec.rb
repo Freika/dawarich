@@ -449,6 +449,16 @@ RSpec.describe Users::Destroy do
           expect(Family::Membership.where(family_id: family.id).count).to eq(2)
         end
 
+        it 'keeps archive files when deletion is aborted' do
+          archive = create(:points_raw_data_archive, user: user)
+          blob = archive.file.blob
+
+          expect { service.call }.to raise_error(ActiveRecord::RecordInvalid)
+
+          expect(ActiveStorage::Blob.exists?(blob.id)).to be true
+          expect(blob.service.exist?(blob.key)).to be true
+        end
+
         it 'logs the validation failure' do
           allow(Rails.logger).to receive(:warn)
 

@@ -78,6 +78,7 @@ class Tracks::Merger
   private
 
   def invalid_merge?
-    @older_track.nil? || @newer_track.nil? || @older_track.id == @newer_track.id
+    @older_track.nil? || @newer_track.nil? || @older_track.id == @newer_track.id ||
+      Tracks::DayBoundary.new(user).crosses?(@older_track.start_at, @newer_track.end_at)
   end
 end

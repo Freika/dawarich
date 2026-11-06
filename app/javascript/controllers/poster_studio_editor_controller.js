@@ -18,6 +18,7 @@ import {
   PRINT_PRODUCTS,
   printProductFor,
 } from "poster_studio/data/print_products"
+import { detailLayersOutOfRange } from "poster_studio/data/protomaps_schema"
 import { MapPageProvider } from "poster_studio/data/providers"
 import {
   extendTokens,
@@ -37,6 +38,11 @@ import {
   fitFrame,
   trackBounds,
 } from "poster_studio/ui/preview"
+import {
+  calendarPresetRange,
+  selectableDateTimeRange,
+  toLocalDateTimeInput,
+} from "video_studio/date_range"
 import Flash from "./flash_controller"
 
 const RESTYLE_DEBOUNCE_MS = 150
@@ -50,10 +56,6 @@ const SIDECAR_DISTANCE_FACTOR = 1.5
 // "outside the frame" even while visible. The upper bound stays finite to keep
 // degenerate whole-globe requests off the sidecar.
 const SIDECAR_DISTANCE_RANGE = [500, 5_000_000]
-function toLocalInput(date) {
-  const pad = (n) => String(n).padStart(2, "0")
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
 
 // Full-screen WYSIWYG poster editor: a live MapLibre map inside a
 // poster-shaped frame, restyled by the same buildPosterStyle the export
@@ -78,6 +80,7 @@ export default class extends Controller {
     "coordsToggle",
     "statsToggle",
     "fontSelect",
+    "detailLayersHint",
     "trackOpacity",
     "trackOpacityLabel",
     "trackWidth",
@@ -222,11 +225,15 @@ export default class extends Controller {
       bounds,
     })
     this.previewMap.on("move", () => this.redrawOverlay())
-    this.previewMap.on("moveend", () => this.syncSaveAvailability())
+    this.previewMap.on("moveend", () => {
+      this.syncSaveAvailability()
+      this.syncDetailLayersHint()
+    })
     this.previewMap.on("idle", () => this.updateBackdrop())
     this.previewMap.once("load", () => {
       this.redrawOverlay()
       this.syncSaveAvailability()
+      this.syncDetailLayersHint()
     })
   }
 
@@ -497,9 +504,18 @@ export default class extends Controller {
     this.element.querySelectorAll("[data-layer-category]").forEach((toggle) => {
       if (!toggle.checked) this.hidden.add(toggle.dataset.layerCategory)
     })
+    this.syncDetailLayersHint()
     this.trackOpacityLabelTarget.textContent = `${this.trackOpacityTarget.value}%`
     this.trackWidthLabelTarget.textContent = `${this.trackWidthTarget.value}%`
     this.scheduleRestyle()
+  }
+
+  syncDetailLayersHint() {
+    if (!this.hasDetailLayersHintTarget || !this.previewMap) return
+    this.detailLayersHintTarget.hidden = !detailLayersOutOfRange(
+      this.previewMap.getZoom(),
+      this.hidden,
+    )
   }
 
   trackOpacityValue() {
@@ -516,8 +532,14 @@ export default class extends Controller {
     if (!this.hasDateStartTarget || !this.hasDateEndTarget) return
     const { startAt, endAt } = this.provider.dateRange()
     if (!startAt) return
-    this.dateStartTarget.value = toLocalInput(new Date(startAt))
-    this.dateEndTarget.value = toLocalInput(new Date(endAt))
+    this.dateStartTarget.value = toLocalDateTimeInput(
+      startAt,
+      this.provider.timeZone?.(),
+    )
+    this.dateEndTarget.value = toLocalDateTimeInput(
+      endAt,
+      this.provider.timeZone?.(),
+    )
   }
 
   // SPA date change delegated to the provider — the studio never closes.
@@ -526,13 +548,26 @@ export default class extends Controller {
     const start = this.dateStartTarget.value
     const end = this.dateEndTarget.value
     if (!start || !end) return
+    const range = selectableDateTimeRange(
+      start,
+      end,
+      this.provider.timeZone?.(),
+    )
+    if (!range) {
+      this.dateEndTarget.setCustomValidity(
+        translate("datetime.start_before_end"),
+      )
+      this.dateEndTarget.reportValidity()
+      return
+    }
+    this.dateEndTarget.setCustomValidity("")
 
     const subtitleWasAuto =
       this.subtitleInputTarget.value === this.dateRangeLabel()
     this.setLoadBusy(true)
     this.setStatus(translate("poster.loading_tracks"))
     try {
-      await this.provider.applyDates(start, end)
+      await this.provider.applyDates(range.start, range.end)
       await this.provider.ensureTrackLoaded()
 
       if (subtitleWasAuto)
@@ -559,21 +594,14 @@ export default class extends Controller {
   }
 
   presetRange(event) {
-    const now = new Date()
-    const start = new Date(now)
-    switch (event.currentTarget.dataset.range) {
-      case "today":
-        start.setHours(0, 0, 0, 0)
-        break
-      case "week":
-        start.setDate(start.getDate() - 7)
-        break
-      case "month":
-        start.setMonth(start.getMonth() - 1)
-        break
-    }
-    this.dateStartTarget.value = toLocalInput(start)
-    this.dateEndTarget.value = toLocalInput(now)
+    const range = calendarPresetRange(
+      event.currentTarget.dataset.range,
+      new Date(),
+      this.provider.timeZone?.(),
+    )
+    if (!range) return
+    this.dateStartTarget.value = range.start
+    this.dateEndTarget.value = range.end
     this.applyDates()
   }
 

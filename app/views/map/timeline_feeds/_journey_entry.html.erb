@@ -12,7 +12,11 @@
     day_distance = entry[:day_distance] || entry[:distance]
     distance_text = day_distance > 0 ? "#{day_distance} #{entry[:distance_unit]} of #{entry[:distance]} #{entry[:distance_unit]}" : nil
   else
-    leg_time = l(Time.zone.parse(entry[:started_at]), format: :hour_minute)
+    leg_start = Time.zone.parse(entry[:started_at])
+    leg_time = l(leg_start, format: :hour_minute)
+    # The zone is where the journey starts, so a continuation row, which
+    # shows the arrival, gets no local time.
+    local_time = timeline_local_time(entry, leg_start)
     moving = entry[:moving_duration].to_i
     # When dwell dominates the track span (short ride, long stand), the span
     # duration misleads — show the time actually spent moving instead.
@@ -59,6 +63,10 @@
       <% end %>
       <span class="journey-leg__sep"><%= t('.middot') %></span>
       <span><%= duration %></span>
+      <% if local_time %>
+        <span class="journey-leg__sep"><%= t('.middot') %></span>
+        <span class="timeline-local-time" title="<%= entry[:local_timezone] %>"><%= local_time %></span>
+      <% end %>
     </div>
     <% if track_id %>
       <%= icon 'chevron-down', class: 'journey-leg__chevron track-info-chevron' %>

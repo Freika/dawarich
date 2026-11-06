@@ -42,7 +42,7 @@ module Calculateable
   private
 
   def path_coordinates
-    points.order(:timestamp).pluck(:lonlat)
+    points.route_observations.order(:timestamp).pluck(:lonlat)
   end
 
   def set_path_attributes(updated_path)
@@ -52,7 +52,7 @@ module Calculateable
 
   def calculate_distance_from_coordinates
     # Always calculate in meters for consistent storage
-    Point.total_distance(points.order(:timestamp), :m)
+    Point.total_distance(points.route_observations.order(:timestamp), :m)
   end
 
   def convert_distance_for_storage(calculated_distance_meters)

@@ -27,7 +27,7 @@ module Api
           start_at: params[:start_at],
           end_at: params[:end_at],
           distance_unit: unit,
-          privacy_zone_masker: (privacy_zone_masker if mask_privacy_zones?)
+          privacy_zone_masker: map_read_masker
         ).call
 
         render json: { days: days }

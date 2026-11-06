@@ -44,6 +44,7 @@ export default class extends Controller {
     endDate: String,
     timezone: String,
     userPlan: { type: String, default: "pro" },
+    gatedLayers: { type: Array, default: [] },
     dataWindowStart: { type: String, default: "" },
     upgradeUrl: { type: String, default: "" },
     importId: { type: String, default: "" },
@@ -165,10 +166,7 @@ export default class extends Controller {
     // Initialize API and settings
     SettingsManager.initialize(this.apiKeyValue)
     this.settingsController = new SettingsController(this)
-    await this.settingsController.loadSettings()
-    this.settings = this.settingsController.settings
-    this.settings.timezone = this.timezoneValue
-    if (this.hasExplorationBoundsValue) this.settings.fogEnabled = true
+    await this.loadViewSettings()
 
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
@@ -408,6 +406,16 @@ export default class extends Controller {
   /**
    * Initialize MapLibre map
    */
+  async loadViewSettings() {
+    await this.settingsController.loadSettings()
+    // A city card opens the map with fog on for this view only; the copy
+    // keeps the forced layer out of the stored settings.
+    this.settings = this.hasExplorationBoundsValue
+      ? { ...this.settingsController.settings, fogEnabled: true }
+      : this.settingsController.settings
+    this.settings.timezone = this.timezoneValue
+  }
+
   async initializeMap() {
     syncSidebarLayout(this.settingsPanelTarget, this.containerTarget, true)
     // Reopen at the user's last viewport instead of the zoomed-out globe.
@@ -688,6 +696,15 @@ export default class extends Controller {
   toggleSettings() {
     if (this.hasSettingsPanelTarget) {
       const isOpening = !this.settingsPanelTarget.classList.contains("open")
+      if (isOpening) {
+        this.settingsPanelTrigger = document.activeElement
+      } else if (this.settingsPanelTarget.contains(document.activeElement)) {
+        const trigger = this.settingsPanelTrigger?.isConnected
+          ? this.settingsPanelTrigger
+          : document.querySelector('[data-testid="map-button-timeline"]')
+        trigger?.focus()
+      }
+      this.settingsPanelTarget.inert = !isOpening
       this.settingsPanelTarget.classList.toggle("open")
 
       // Shrink/expand map container
@@ -1750,6 +1767,21 @@ export default class extends Controller {
       Toast.success(translate("messages.point_deleted_successfully"))
     } catch (_error) {
       Toast.error(translate("messages.failed_to_delete_point"))
+    }
+  }
+
+  /** Mark an anomaly as correct, then reload anomalies, points and tracks. */
+  async markPointValid(event) {
+    try {
+      await this.api.markPointValid(event.currentTarget.dataset.id)
+      this.mapDataManager?.invalidatePoints()
+      this.layerManager.getLayer("points-mvt")?.refresh()
+      this.layerManager.getLayer("tracks-mvt")?.refresh()
+      this.layerVisibilityManager.refreshAnomalies({ enabled: true })
+      this.closeInfo()
+      Toast.success(translate("messages.point_marked_valid"))
+    } catch (_error) {
+      Toast.error(translate("messages.failed_to_mark_point_valid"))
     }
   }
 

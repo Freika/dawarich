@@ -31,7 +31,7 @@
       <% { 'countries_visited' => current_user.countries_visited, 'cities_visited' => current_user.cities_visited }.each do |id, names| %>
         <dialog id="<%= id %>" class="modal">
           <div class="modal-box">
-            <h3 class="font-bold text-lg mb-3"><%= t("stats.reverse_geocoding_stats.#{id}") %></h3>
+            <h3 class="font-medium text-lg mb-3"><%= t("stats.reverse_geocoding_stats.#{id}") %></h3>
             <ul class="space-y-1">
               <% names.each do |name| %>
                 <li><%= name %></li>

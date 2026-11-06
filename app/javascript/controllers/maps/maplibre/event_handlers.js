@@ -166,7 +166,23 @@ export class EventHandlers {
     if (!anomaliesLayer) return
 
     const content = anomaliesLayer.buildPopupContent(feature.properties)
-    this.controller.showInfo(translate("messages.anomaly_point"), content)
+    const pointId = feature.properties.id
+    const actions = pointId
+      ? [
+          {
+            type: "button",
+            handler: "markPointValid",
+            id: pointId,
+            entityType: "point",
+            label: translate("messages.mark_point_valid"),
+          },
+        ]
+      : []
+    this.controller.showInfo(
+      translate("messages.anomaly_point"),
+      content,
+      actions,
+    )
   }
 
   handleEditablePointClick(e) {

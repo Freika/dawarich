@@ -225,6 +225,14 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
       expect(entry).not_to include('editable_name', 'place_id', 'suggested_places')
     end
 
+    it 'names the time zone of the place' do
+      Timezone.create!(tzid: 'Europe/Berlin', geom: 'SRID=4326;POLYGON((6 47, 15 47, 15 55, 6 55, 6 47))')
+
+      entry = timeline.dig('result', 'structuredContent', 'days', 0, 'entries', 0)
+
+      expect(entry).to include('local_timezone' => 'Europe/Berlin')
+    end
+
     it 'includes the Visit Radius of the visit place' do
       place.update!(visit_radius: 120)
 

@@ -1,6 +1,12 @@
 <%# Timeline create form. Locals: resource (nil), paths, close_path %>
 <%= form_with model: SharedLink.new, url: paths[:create], method: :post,
               data: { turbo_frame: "share-link-modal" } do |f| %>
+  <% if @shared_link&.timeline_import_scoped? %>
+    <%= f.hidden_field :import_id, value: @shared_link.settings['import_id'] %>
+    <p class="alert text-sm mb-4" data-testid="timeline-import-scope">
+      <%= t('shared_links.timeline_scope.only_import', name: @shared_link.timeline_import&.name || t('shared_links.timeline_scope.unavailable')) %>
+    </p>
+  <% end %>
   <div class="grid grid-cols-2 gap-3">
     <div class="form-control">
       <label class="label"><span class="label-text"><%= t('.start_date') %></span></label>
@@ -24,9 +30,10 @@
     <span class="label-text-alt mt-1"><%= t('.leave_blank_to_share_without_a_phrase_or_use_the') %></span>
   </div>
 
-  <%= render 'shared_links/expires_field', f: f %>
+  <%= render 'shared_links/expires_field', f: f, field_id: 'timeline-share-expiry' %>
   <%= render 'shared_links/privacy_zones_note' %>
 
+  <% unless @shared_link&.timeline_import_scoped? %>
   <div class="form-control mt-4">
     <label class="label cursor-pointer">
       <span class="label-text"><%= t('.show_photos') %></span>
@@ -34,6 +41,8 @@
       <%= check_box_tag 'shared_link[settings][show_photos]', '1', false, class: 'checkbox' %>
     </label>
   </div>
+
+  <% end %>
 
   <% if @shared_link&.errors&.any? %>
     <div class="alert alert-error mt-4 text-sm">

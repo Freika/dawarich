@@ -17,11 +17,20 @@ export default class extends Controller {
     userTrial: Boolean,
     importsCount: Number,
     demoDataUrl: String,
+    demoDescription: String,
     hasDemoData: Boolean,
     userId: Number,
   }
 
   connect() {
+    if (
+      new URLSearchParams(window.location.search).get("onboarding") ===
+        "track" &&
+      this.hasModalTarget
+    ) {
+      this.modalTarget.showModal()
+      this.showTrack()
+    }
     // Auto-open is gated to the map page (auto=true is set only by the map
     // layout's render). Other pages still render the dialog for the navbar's
     // manual "Getting started" trigger, but never pop it open on load.
@@ -129,7 +138,7 @@ export default class extends Controller {
           <span class="loading loading-spinner loading-md text-accent"></span>
           <div>
             <h4 class="text-lg font-semibold">${translate("demo.creating")}</h4>
-            <p class="text-sm opacity-70">${translate("demo.creating_help")}</p>
+            <p class="text-sm opacity-70">${this.demoDescriptionValue}</p>
           </div>
         </div>
       </div>

@@ -16,7 +16,7 @@ RSpec.describe Tracks::VectorTileQuery do
         statements << sql
         observed << connection.select_value('SHOW jit') if sql.match?(/\A\s*WITH /)
       end
-      options = { scope: Track.none, z: 10, x: 512, y: 511 }
+      options = { scope: Track.none, z: 10, x: 512, y: 511, privacy_zone_masker: Maps::PrivacyZoneMasker.none }
       options[:points_scope] = Point.none if query_class == Tracks::SpeedVectorTileQuery
 
       connection.transaction do

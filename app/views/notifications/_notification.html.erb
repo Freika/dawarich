@@ -1,14 +1,20 @@
 <% show_content = local_assigns.fetch(:show_content, params[:action] == 'show') %>
 <div role="<%= notification.kind %>" class="<%= notification.kind %> shadow-lg p-5 flex justify-between items-center mb-4 rounded-lg bg-base-200" id="<%= dom_id(notification, show_content ? :detail : nil) %>">
   <div class="flex-1 min-w-0 [overflow-wrap:anywhere]">
-    <h3 class="font-bold text-xl">
+    <h3 class="font-medium text-xl">
       <%= link_to notification.title, notification, class: "link hover:no-underline #{notification_link_color(notification)}" %>
     </h3>
     <div class="text-sm text-gray-500"><%= t('common.time_ago', time: relative_distance_in_words(notification.created_at)) %></div>
 
     <% if show_content %>
       <div class="mt-2">
-        <%= sanitize notification.content %>
+        <% if notification.error? && notification.content.to_s.include?('stacktrace:') %>
+          <% message, diagnostic = notification.content.split('stacktrace:', 2) %>
+          <%= sanitize message %>
+          <details class="mt-3"><summary class="cursor-pointer"><%= t('ux_p2.import.technical_details') %></summary><pre class="whitespace-pre-wrap text-xs mt-2"><%= diagnostic %></pre></details>
+        <% else %>
+          <%= sanitize notification.content %>
+        <% end %>
 
         <% if notification.error? %>
           <div class="mt-2">

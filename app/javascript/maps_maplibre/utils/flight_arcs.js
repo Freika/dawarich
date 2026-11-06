@@ -1,7 +1,7 @@
 /**
  * Great-circle interpolation for flight geometries. The flights API delivers
- * each flight as a 2-point LineString; these helpers replace it with a smooth
- * arc so long-haul flights follow the spherical shortest path.
+ * a flight as a 2-point LineString, or as its recorded track when AirTrail has
+ * one; 2-point lines become a smooth arc along the spherical shortest path.
  */
 
 const MERCATOR_MAX_LATITUDE = 85.0511287798
@@ -66,13 +66,14 @@ export function greatCircleCoordinates(start, end) {
   }
 
   const steps = Math.min(128, Math.max(16, Math.round(toDeg(delta) * 2)))
-  const coords = slerp(start, end, delta, steps)
+  return unwrapLongitudes(slerp(start, end, delta, steps))
+}
 
+function unwrapLongitudes(coords) {
   for (let i = 1; i < coords.length; i++) {
     while (coords[i][0] - coords[i - 1][0] > 180) coords[i][0] -= 360
     while (coords[i][0] - coords[i - 1][0] < -180) coords[i][0] += 360
   }
-
   return coords
 }
 
@@ -122,7 +123,9 @@ export function greatCircleLines(coordinates) {
 }
 
 /**
- * Replace each flight's 2-point LineString with a great-circle arc.
+ * Replace each flight's 2-point LineString with a great-circle arc and unwrap
+ * longer recorded tracks, including tracks cut by privacy zones, across the
+ * antimeridian.
  * Features with missing or degenerate geometry pass through untouched.
  * @param {Object} featureCollection
  * @returns {Object}
@@ -135,9 +138,25 @@ export function arcifyFlights(featureCollection) {
     features: featureCollection.features.map((feature) => {
       const coords = feature.geometry?.coordinates
       if (
+        feature.geometry?.type === "MultiLineString" &&
+        Array.isArray(coords)
+      ) {
+        return {
+          ...feature,
+          geometry: {
+            ...feature.geometry,
+            coordinates: coords.map((line) =>
+              line.length === 2
+                ? greatCircleCoordinates(line[0], line[1])
+                : unwrapLongitudes(line.map((coord) => [...coord])),
+            ),
+          },
+        }
+      }
+      if (
         feature.geometry?.type !== "LineString" ||
         !Array.isArray(coords) ||
-        coords.length !== 2 ||
+        coords.length < 2 ||
         coords.some(
           (c) => !Array.isArray(c) || c.some((v) => typeof v !== "number"),
         )
@@ -149,7 +168,10 @@ export function arcifyFlights(featureCollection) {
         ...feature,
         geometry: {
           ...feature.geometry,
-          coordinates: greatCircleCoordinates(coords[0], coords[1]),
+          coordinates:
+            coords.length === 2
+              ? greatCircleCoordinates(coords[0], coords[1])
+              : unwrapLongitudes(coords.map((coord) => [...coord])),
         },
       }
     }),

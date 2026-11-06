@@ -7,7 +7,7 @@ import {
 } from "maps_maplibre/utils/basemap_url"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import {
-  LAYER_COLOR_DEFAULTS,
+  LAYER_NAME_MAP,
   SettingsManager,
 } from "maps_maplibre/utils/settings_manager"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
@@ -43,6 +43,9 @@ export class SettingsController {
   async loadSettings() {
     this.settings = await SettingsManager.sync()
     this.controller.settings = this.settings
+    if (!SettingsManager.loaded) {
+      Toast.error(translate("settings.load_failed"))
+    }
 
     // Update dataLoader with new settings
     if (this.controller.dataLoader) {
@@ -76,13 +79,11 @@ export class SettingsController {
       anomaliesToggle: "anomaliesEnabled",
     }
 
-    // Gated layer toggles that Lite users cannot persist
-    const gatedToggles = new Set([
-      "heatmapToggle",
-      "hexagonsToggle",
-      "fogToggle",
-      "scratchToggle",
-      "pointsEditToggle",
+    // The server decides which layers Lite users cannot persist; point
+    // editing is off because Lite has no write API.
+    const gatedSettingKeys = new Set([
+      ...controller.gatedLayersValue.map((layer) => LAYER_NAME_MAP[layer]),
+      "pointDraggingEnabled",
     ])
 
     Object.entries(toggleMap).forEach(([targetName, settingKey]) => {
@@ -91,7 +92,7 @@ export class SettingsController {
       if (controller[hasTarget]) {
         // Force gated layers off for Lite users on page load
         if (
-          gatedToggles.has(targetName) &&
+          gatedSettingKeys.has(settingKey) &&
           isGatedPlan(controller.userPlanValue)
         ) {
           controller[target].checked = false
@@ -143,13 +144,7 @@ export class SettingsController {
         : "none"
     }
 
-    // Sync layer color pickers
-    Object.entries(LAYER_COLOR_DEFAULTS).forEach(([key, fallback]) => {
-      const color = this.settings[key] || fallback
-      const input = controller.element.querySelector(`input[name="${key}"]`)
-      if (input) input.value = color
-      this.syncLayerColorLabel(key, color)
-    })
+    this.syncTrackColorPicker(this.settings.trackColor)
 
     // Sync distance unit radio
     const distanceUnitInput = controller.element.querySelector(
@@ -198,7 +193,7 @@ export class SettingsController {
 
     // Sync fog of war mode radio
     const fogModeInput = controller.element.querySelector(
-      `input[name="fogOfWarMode"][value="${this.settings.fogOfWarMode || "points"}"]`,
+      `input[name="fogOfWarMode"][value="${this.settings.fogOfWarMode}"]`,
     )
     if (fogModeInput) {
       fogModeInput.checked = true
@@ -209,7 +204,7 @@ export class SettingsController {
       'input[name="fogOfWarRadius"]',
     )
     if (fogRadiusInput) {
-      fogRadiusInput.value = this.settings.fogOfWarRadius || 1000
+      fogRadiusInput.value = this.settings.fogOfWarRadius
       if (controller.hasFogRadiusValueTarget) {
         controller.fogRadiusValueTarget.textContent = `${fogRadiusInput.value}m`
       }
@@ -219,7 +214,7 @@ export class SettingsController {
       'input[name="fogOfWarThreshold"]',
     )
     if (fogThresholdInput) {
-      fogThresholdInput.value = this.settings.fogOfWarThreshold || 1
+      fogThresholdInput.value = this.settings.fogOfWarThreshold
       if (controller.hasFogThresholdValueTarget) {
         controller.fogThresholdValueTarget.textContent = fogThresholdInput.value
       }
@@ -228,6 +223,14 @@ export class SettingsController {
     for (const name of ["metersBetweenRoutes", "minutesBetweenRoutes"]) {
       const input = controller.element.querySelector(`input[name="${name}"]`)
       if (input) input.value = this.settings[name]
+    }
+
+    const splitTracksAtMidnightToggle = controller.element.querySelector(
+      'input[name="splitTracksAtMidnight"]',
+    )
+    if (splitTracksAtMidnightToggle) {
+      splitTracksAtMidnightToggle.checked =
+        this.settings.splitTracksAtMidnight === true
     }
 
     // Sync city statistics settings
@@ -740,12 +743,16 @@ export class SettingsController {
   }
 
   /**
-   * Reset settings to defaults
+   * Restore the map appearance to the server defaults, then reload
    */
-  resetSettings() {
-    if (confirm(translate("settings.confirm_reset"))) {
-      SettingsManager.resetToDefaults()
+  async resetSettings() {
+    if (!confirm(translate("settings.confirm_reset"))) return
+
+    this.cancelLayerColorSaves()
+    if (await SettingsManager.resetToDefaults()) {
       window.location.reload()
+    } else {
+      Toast.error(translate("settings.reset_failed"))
     }
   }
 
@@ -783,7 +790,7 @@ export class SettingsController {
   /**
    * Update route opacity in real-time
    */
-  async updateFogMode(event) {
+  async updateFogMode(_event) {
     const mode = "hexagons"
 
     const fogLayer = this.layerManager.getLayer("fog")
@@ -836,19 +843,25 @@ export class SettingsController {
     this.scheduleLayerColorSave("trackColor", color)
   }
 
-  resetLayerColors() {
-    Object.values(this.layerColorTimers || {}).forEach(clearTimeout)
-    this.layerColorTimers = {}
+  async resetLayerColors() {
+    this.cancelLayerColorSaves()
 
-    Object.entries(LAYER_COLOR_DEFAULTS).forEach(([key, color]) => {
-      const input = this.controller.element.querySelector(
-        `input[name="${key}"]`,
-      )
-      if (input) input.value = color
-      this.syncLayerColorLabel(key, color)
-    })
-    SettingsManager.updateSettings(LAYER_COLOR_DEFAULTS)
-    this.applyTrackColor(LAYER_COLOR_DEFAULTS.trackColor)
+    const settings = await SettingsManager.resetToDefaults(["track_color"])
+    if (!settings) {
+      Toast.error(translate("settings.reset_failed"))
+      return
+    }
+    this.settings.trackColor = settings.trackColor
+    this.syncTrackColorPicker(settings.trackColor)
+    this.applyTrackColor(settings.trackColor)
+  }
+
+  syncTrackColorPicker(color) {
+    const input = this.controller.element.querySelector(
+      'input[name="trackColor"]',
+    )
+    if (input && color) input.value = color
+    this.syncLayerColorLabel("trackColor", color)
   }
 
   applyTrackColor(color) {
@@ -877,7 +890,13 @@ export class SettingsController {
     const label = this.controller.element.querySelector(
       `[data-layer-color-value="${key}"]`,
     )
-    if (label) label.textContent = color.toUpperCase()
+    if (label && color) label.textContent = color.toUpperCase()
+  }
+
+  // A pending save landing after a reset would restore the old colour.
+  cancelLayerColorSaves() {
+    Object.values(this.layerColorTimers || {}).forEach(clearTimeout)
+    this.layerColorTimers = {}
   }
 
   scheduleLayerColorSave(key, color) {
@@ -1016,6 +1035,7 @@ export class SettingsController {
     const settings = {
       metersBetweenRoutes: parseInt(formData.get("metersBetweenRoutes"), 10),
       minutesBetweenRoutes: parseInt(formData.get("minutesBetweenRoutes"), 10),
+      splitTracksAtMidnight: formData.get("splitTracksAtMidnight") === "on",
       minMinutesSpentInCity: parseInt(
         formData.get("minMinutesSpentInCity"),
         10,
@@ -1037,10 +1057,7 @@ export class SettingsController {
     // Apply settings to current map (may trigger loadMapData)
     await this.applySettingsToMap(settings)
 
-    // Save to backend
-    for (const [key, value] of Object.entries(settings)) {
-      await SettingsManager.updateSetting(key, value)
-    }
+    await SettingsManager.updateSettings(settings)
 
     this.controller.rangeStatistics?.refresh()
     document.dispatchEvent(

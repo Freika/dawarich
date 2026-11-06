@@ -106,15 +106,18 @@ export default class extends Controller {
     if (this.hasSubmitButtonTarget)
       this.submitButtonTarget.value = translate("places.create")
 
-    this.modalTarget.classList.add("modal-open")
-    this.nameInputTarget.focus()
+    this.modalTarget.showModal()
+    requestAnimationFrame(() => {
+      if (this.hasModalTarget && this.modalTarget.open)
+        this.nameInputTarget.focus()
+    })
 
     // Load nearby places via Turbo Frame
     this.loadNearbyFrame(latitude, longitude)
   }
 
   close() {
-    this.modalTarget.classList.remove("modal-open")
+    this.modalTarget.close()
     this.formTarget.reset()
 
     // Reset nearby frame

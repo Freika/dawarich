@@ -10,7 +10,7 @@
   <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] xl:grid-cols-[minmax(0,1fr)_28rem]">
     <section class="card bg-base-200 min-w-0">
       <div class="card-body p-5 sm:p-6">
-        <h2 class="text-2xl font-bold"><%= t("#{s}.events") %></h2>
+        <h2 class="text-xl font-medium"><%= t("#{s}.events") %></h2>
 
         <%= form_with url: settings_geofencing_path, method: :get,
                       class: 'grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap' do %>
@@ -44,7 +44,7 @@
         <% else %>
           <div class="mt-2">
             <% @events.group_by { |event| event.occurred_at.in_time_zone.to_date }.each do |day, events| %>
-              <h3 class="mt-5 mb-1 text-[10px] font-bold uppercase tracking-[0.05em] text-base-content/60">
+              <h3 class="mt-5 mb-1 text-xs font-medium text-base-content/60">
                 <%= l(day, format: :medium) %>
               </h3>
               <ul>
@@ -60,7 +60,7 @@
                         <%= icon(entered ? 'log-in' : 'log-out',
                                  class: "mt-0.5 w-4 h-4 shrink-0 #{entered ? 'text-secondary' : 'text-base-content/50'}") %>
                         <span class="min-w-0 [overflow-wrap:anywhere]">
-                          <span class="font-semibold"><%= t("#{s}.event_types.#{event.event_type}") %></span>
+                          <span class="font-medium"><%= t("#{s}.event_types.#{event.event_type}") %></span>
                           <%= event.display_place_name %>
                         </span>
                       </div>
@@ -85,7 +85,7 @@
 
     <aside class="card bg-base-200">
       <div class="card-body p-5 sm:p-6">
-        <h2 class="text-2xl font-bold"><%= t("#{s}.webhooks") %></h2>
+        <h2 class="text-xl font-medium"><%= t("#{s}.webhooks") %></h2>
 
         <% if @webhooks_allowed %>
           <div id="webhook-secret"></div>
@@ -108,7 +108,7 @@
           </details>
         <% else %>
           <div data-testid="webhooks-upgrade" class="flex flex-col items-start gap-3">
-            <h3 class="text-lg font-semibold"><%= t("#{s}.upgrade_title") %></h3>
+            <h3 class="text-lg font-medium"><%= t("#{s}.upgrade_title") %></h3>
             <p class="text-sm text-base-content/70 max-w-md"><%= t("#{s}.upgrade_text") %></p>
             <a href="<%= upgrade_url(utm_medium: 'settings', utm_content: 'geofencing') %>" class="btn btn-primary btn-sm">
               <%= t("#{s}.upgrade") %>
@@ -119,7 +119,7 @@
               <% @webhooks.each do |webhook| %>
                 <div id="<%= dom_id(webhook) %>" data-testid="webhook" class="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div class="min-w-0">
-                    <div class="font-semibold"><%= webhook.name %></div>
+                    <div class="font-medium"><%= webhook.name %></div>
                     <div class="text-sm text-base-content/60 [overflow-wrap:anywhere]"><%= webhook.url %></div>
                   </div>
                   <%= button_to t('settings.webhooks.webhook.delete'), settings_webhook_path(webhook), method: :delete,

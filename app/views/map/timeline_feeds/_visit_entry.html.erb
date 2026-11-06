@@ -1,6 +1,9 @@
 <% times = visit_entry_times(entry); all_day = visit_entry_all_day?(entry) %>
 <% coords = [entry[:place], entry[:area], entry[:suggested_places]&.first, entry[:center]].compact.find { |c| c[:lat] && c[:lng] } %>
 <% name_parts = visit_entry_name_parts(entry) %>
+<%# A continuation row starts at the account's midnight, which says nothing
+    about the clock at the place. %>
+<% local_time = timeline_local_time(entry, times[:start_at]) unless all_day || entry[:continuation_of_date] %>
 <%# A visit renders the same regardless of detection status — showing it is
     asserting it. The only affordance is Edit: rename, re-attach a place,
     or delete. data-status stays for API/JS compatibility. %>
@@ -12,7 +15,7 @@
     data-testid="visit-row"
     tabindex="0"
     role="button"
-    aria-label="<%= visit_entry_display_name(entry) %> · <%= times[:start_label] %>"
+    aria-label="<%= visit_entry_display_name(entry) %> · <%= times[:start_label] %><%= " · #{local_time}" if local_time %>"
     data-action="click->timeline-feed#selectVisit keydown.enter->timeline-feed#selectVisit keydown.space->timeline-feed#selectVisit mouseenter->timeline-feed#entryHover mouseleave->timeline-feed#entryUnhover"
     data-entry-type="visit"
     data-started-at="<%= entry[:started_at] %>"
@@ -57,6 +60,9 @@
     <div class="visit-row__meta">
       <% if name_parts[:secondary] %>
         <span class="visit-row__address"><%= name_parts[:secondary] %></span>
+      <% end %>
+      <% if local_time %>
+        <span class="timeline-local-time" title="<%= entry[:local_timezone] %>"><%= local_time %></span>
       <% end %>
       <span class="visit-row__points"><%= entry[:point_count] %> <%= t('.pts') %></span>
       <% Array(entry[:tags]).each do |t| %>

@@ -89,7 +89,8 @@ module Perf
     end
 
     def measure_track_tile(user, zoom, x, y)
-      query = Tracks::VectorTileQuery.new(scope: user.tracks, z: zoom, x: x, y: y)
+      query = Tracks::VectorTileQuery.new(scope: user.tracks, z: zoom, x: x, y: y,
+                                          privacy_zone_masker: Maps::PrivacyZoneMasker.none)
       query.call
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       result = query.call

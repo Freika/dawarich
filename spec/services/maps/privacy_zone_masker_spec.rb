@@ -20,6 +20,27 @@ RSpec.describe Maps::PrivacyZoneMasker do
     "ST_GeomFromText('LINESTRING(#{coords.map { |c| c.join(' ') }.join(', ')})', 4326)"
   end
 
+  describe '.none' do
+    let(:masker) { described_class.none }
+
+    before { make_zone(lat: 52.52, lon: 13.40) }
+
+    it 'masks nothing even when the user has zones' do
+      inside = create(:point, user: user, lonlat: 'POINT(13.40 52.52)')
+
+      expect(masker.any?).to be(false)
+      expect(masker.mask_points(user.points)).to contain_exactly(inside)
+      expect(masker.in_zone?(13.40, 52.52)).to be(false)
+      expect(masker.in_zone_place_ids).to eq([])
+    end
+
+    it 'has no fingerprint and no zones, also near a tile' do
+      expect(masker.fingerprint).to be_nil
+      expect(masker.zones).to eq([])
+      expect(masker.near_tile(10, 550, 335).zones).to eq([])
+    end
+  end
+
   describe '#any?' do
     it 'is false when the user has no privacy zones' do
       expect(described_class.new(user).any?).to be(false)

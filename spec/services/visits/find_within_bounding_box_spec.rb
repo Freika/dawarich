@@ -93,7 +93,7 @@ RSpec.describe Visits::FindWithinBoundingBox do
       }
     end
 
-    subject(:result) { described_class.new(user, params).call }
+    subject(:result) { described_class.new(user, params, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call }
 
     it 'returns visits within the specified bounding box' do
       expect(result).to include(visit_inside_1, visit_inside_2)

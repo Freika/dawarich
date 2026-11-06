@@ -509,6 +509,7 @@ export default class extends Controller {
     if (!day) return
     const open = day.classList.toggle("timeline-day--show-lowconf")
     button.setAttribute("aria-expanded", String(open))
+    this.applyVisibility()
   }
 
   deselectVisit() {
@@ -609,31 +610,50 @@ export default class extends Controller {
     const query = this.readSearchQuery()
     const activeTags = this.readActiveTags()
 
-    const rows = this.visitListFrameTarget.querySelectorAll("[data-status]")
-    let visibleCount = 0
-    for (const row of rows) {
-      const tokens = row.dataset.searchTokens || ""
-      const statusOk = filter[row.dataset.status] !== false
-      const searchOk = !query || tokens.includes(query)
-      const tagsOk =
-        activeTags.length === 0 || activeTags.some((t) => tokens.includes(t))
-      const hidden = !(statusOk && searchOk && tagsOk)
-      row.classList.toggle("visit-row--hidden", hidden)
-      if (!hidden) visibleCount += 1
-    }
-
-    // Show the "no matches — clear filters" helper only when the day has at
-    // least one visit but active search/filter/tags hide them all. Prevents
-    // the confusing state where the day header says "N visits" but the list
-    // appears empty.
     const filtersActive =
       query.length > 0 ||
       activeTags.length > 0 ||
       Object.values(filter).some((v) => v === false)
-    const shouldShowHelper =
-      rows.length > 0 && visibleCount === 0 && filtersActive
-    for (const el of this.emptyFilteredTargets) {
-      el.classList.toggle("hidden", !shouldShowHelper)
+
+    for (const day of this.visitListFrameTarget.querySelectorAll(
+      ".timeline-day",
+    )) {
+      const rows = day.querySelectorAll(".visit-row[data-status]")
+      let visibleCount = 0
+      // Searching includes the normally collapsed low-confidence stops.
+      day.classList.toggle("timeline-day--filtering", filtersActive)
+      for (const row of rows) {
+        const tokens = row.dataset.searchTokens || ""
+        const statusOk = filter[row.dataset.status] !== false
+        const searchOk = !query || tokens.includes(query)
+        const tagsOk =
+          activeTags.length === 0 || activeTags.some((t) => tokens.includes(t))
+        const hidden = !(statusOk && searchOk && tagsOk)
+        row.classList.toggle("visit-row--hidden", hidden)
+        const collapsed =
+          !filtersActive &&
+          row.classList.contains("visit-row--lowconf") &&
+          !day.classList.contains("timeline-day--show-lowconf")
+        if (!hidden && !collapsed) visibleCount += 1
+      }
+      const count = day.querySelector("[data-timeline-visit-count]")
+      if (count) {
+        count.textContent = translate(
+          filtersActive || visibleCount !== rows.length
+            ? "ux_p3.timeline.filtered_count"
+            : "ux_p3.timeline.visit_count",
+          { count: visibleCount, total: rows.length },
+        )
+      }
+      day
+        .querySelector("[data-timeline-filter-scope]")
+        ?.classList.toggle("hidden", !filtersActive)
+      day
+        .querySelector('[data-timeline-feed-target="emptyFiltered"]')
+        ?.classList.toggle(
+          "hidden",
+          !(rows.length > 0 && visibleCount === 0 && filtersActive),
+        )
     }
   }
 

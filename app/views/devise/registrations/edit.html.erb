@@ -3,12 +3,12 @@
 <div class="w-full min-w-0 my-5">
   <div class="mx-auto w-full max-w-7xl space-y-6">
     <div>
-      <h1 class="text-3xl font-bold sm:text-4xl"><%= t('.account_settings') %></h1>
+      <h1 class="text-3xl font-medium sm:text-4xl tracking-tight"><%= t('.account_settings') %></h1>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start">
       <div class="order-1 space-y-6 lg:sticky lg:top-6">
-        <div class="card bg-base-100 shadow-xl">
+        <div class="card bg-base-100">
           <div class="card-body gap-5 p-5 sm:p-6">
             <div>
               <h2 class="card-title text-2xl"><%= t('.profile') %></h2>
@@ -87,7 +87,7 @@
 
         <dialog id="import_modal" class="modal">
           <div class="modal-box">
-            <h3 class="mb-4 text-lg font-bold"><%= t('.import_your_data') %></h3>
+            <h3 class="mb-4 text-lg font-medium"><%= t('.import_your_data') %></h3>
             <p class="mb-4 text-sm text-base-content/70"><%= t('.upload_a_zip_file_containing_your_exported_dawarich_data_to') %></p>
 
             <%= form_with url: import_settings_users_path, method: :post, multipart: true, class: 'space-y-4', data: {
@@ -136,7 +136,7 @@
         <% if current_user.trial? || !DawarichSettings.self_hosted? %>
           <div class="grid gap-4 lg:grid-cols-2">
             <% if current_user.trial? %>
-              <div class="card bg-base-100 shadow-xl">
+              <div class="card bg-base-100">
                 <div class="card-body p-5 sm:p-6">
                   <h2 class="card-title text-xl"><%= t('.trial_status') %></h2>
                   <p class="text-sm text-base-content/70"><%= t('.your_trial_period_ends_at') %> <span class="font-medium text-base-content"><%= human_datetime current_user.active_until, current_user.safe_settings.timezone %></span>.</p>
@@ -144,7 +144,7 @@
                     <% if current_user.auto_converting_trial? %>
                       <%= link_to t('.manage_subscription'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary btn-sm glass' %>
                     <% else %>
-                      <%= link_to t('.subscribe'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-success btn-sm glass' %>
+                      <%= link_to t('.subscribe'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary btn-sm' %>
                     <% end %>
                   </div>
                 </div>
@@ -152,7 +152,7 @@
             <% end %>
 
             <% if !DawarichSettings.self_hosted? %>
-              <div class="card bg-base-100 shadow-xl">
+              <div class="card bg-base-100">
                 <div class="card-body p-5 sm:p-6">
                   <h2 class="card-title text-xl"><%= t('.plan_usage') %></h2>
                   <%= render 'devise/registrations/points_usage' %>
@@ -162,7 +162,7 @@
           </div>
 
           <% if !DawarichSettings.self_hosted? && !current_user.trial? %>
-            <div class="card bg-base-100 shadow-xl">
+            <div class="card bg-base-100">
               <div class="card-body p-5 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
@@ -187,7 +187,7 @@
           <% end %>
         <% end %>
 
-        <div class="card bg-base-100 shadow-xl">
+        <div class="card bg-base-100">
           <div class="card-body p-5 sm:p-6">
             <div class="max-w-3xl">
               <h2 class="card-title text-2xl"><%= t('.api_access') %></h2>
@@ -197,7 +197,7 @@
           </div>
         </div>
 
-        <div class="card bg-base-100 shadow-xl">
+        <div class="card bg-base-100">
           <div class="card-body gap-5 p-5 sm:p-6">
             <div>
               <h2 class="card-title text-2xl"><%= t('.data_tools') %></h2>
@@ -222,7 +222,7 @@
 
             <dialog id="delete_account_modal" class="modal" onclose="this.querySelector('.modal-box form')?.reset()">
               <div class="modal-box">
-                <h3 class="mb-4 text-lg font-bold"><%= t('.delete_your_account') %></h3>
+                <h3 class="mb-4 text-lg font-medium"><%= t('.delete_your_account') %></h3>
                 <% if DawarichSettings.self_hosted? %>
                   <p class="mb-4 text-sm text-base-content/70"><%= t('.this_is_permanent_and_removes_all_your_data_this_cannot') %></p>
                 <% else %>

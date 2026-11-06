@@ -49,14 +49,14 @@ RSpec.describe '/insights', type: :request do
           expect(response.status).to eq(200)
         end
 
-        it 'puts the selected year before the previous year and colors both bars' do
+        it 'puts the selected year before the previous year and keeps the previous bar neutral' do
           create(:stat, user:, year: Time.current.year - 1, month: 1, distance: 80_000)
 
           get details_insights_url(year: Time.current.year.to_s)
 
           rows = Nokogiri::HTML(response.body).css('[data-comparison-metric="distance"]')
           expect(rows.map { |row| row['data-comparison-year'] }).to eq(%w[current previous])
-          expect(rows.last.at_css('[data-comparison-bar]')['class']).to include('bg-warning')
+          expect(rows.last.at_css('[data-comparison-bar]')['class']).to include('bg-base-content/30')
         end
 
         it 'renders unnamed confirmed visits under their displayed Place name' do
