@@ -231,6 +231,11 @@ class ReverseGeocoding::Places::FetchData
       radius: 1,
       units: :km
     )
+  rescue Geocoding::Cooldown::Active
+    # The provider's refusal was reported when it started the cooldown; the
+    # place keeps its current name instead of reporting every skip.
+    Rails.logger.info("Reverse geocoding skipped for place #{place.id}: provider is over its limit")
+    []
   rescue StandardError => e
     Rails.logger.error("Reverse geocoding error for place #{place.id}: #{e.message}")
     ExceptionReporter.call(e)

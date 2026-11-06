@@ -33,6 +33,20 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         allow(Geocoder).to receive(:search).and_return([mock_geocoded_place])
       end
 
+      context 'when an earlier over-limit refusal is still cooling down' do
+        before do
+          allow(ExceptionReporter).to receive(:call)
+          Geocoding::Cooldown.start(Geocoding::Config.resolved_config)
+        end
+
+        it 'keeps the place as it is without asking the provider or reporting the skip' do
+          expect { service.call }.not_to(change { place.reload.attributes })
+
+          expect(Geocoder).not_to have_received(:search)
+          expect(ExceptionReporter).not_to have_received(:call)
+        end
+      end
+
       it 'fetches geocoded places' do
         service.call
 
