@@ -4,6 +4,10 @@ module InsightsHelper
   include CountryFlagHelper
   include WeekStartHelper
 
+  def unresolved_location_count?(count)
+    count.to_i.zero? && !reverse_geocoding_enabled_for?(current_user)
+  end
+
   def monthly_digest_title(digest)
     return I18n.t('helpers.insights.monthly_digest') unless digest
 

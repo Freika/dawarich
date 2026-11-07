@@ -68,6 +68,7 @@
   "route_opacity": 0.6,
   "speed_color_scale": "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
   "speed_colored_routes": false,
+  "split_tracks_at_midnight": false,
   "time_format": "auto",
   "time_threshold_minutes": 30,
   "track_color": "#6366F1",

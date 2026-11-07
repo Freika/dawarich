@@ -5,7 +5,7 @@
         <div class="flex items-center gap-3">
           <%= integration_icon('trek', css: 'size-6') %>
           <div>
-            <h2 class="text-xl font-semibold"><%= t('.title') %></h2>
+            <h2 class="text-lg font-medium"><%= t('.title') %></h2>
             <p class="text-sm text-base-content/60"><%= t('.subtitle') %></p>
           </div>
         </div>
@@ -49,7 +49,7 @@
       <div class="card-body gap-4">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 class="font-semibold"><%= source.base_url %></h3>
+            <h3 class="font-medium"><%= source.base_url %></h3>
             <p class="text-sm text-base-content/60">
             <% if source.importing? %>
               <%= t('.importing_trips') %>
@@ -72,7 +72,7 @@
         </div>
         <div class="flex flex-wrap gap-2">
           <% if source.active? && !source.importing? %>
-            <%= link_to t('.choose_trips'), select_trips_settings_trek_source_path(source), class: 'btn btn-primary btn-sm' %>
+            <%= link_to t('.choose_trips'), select_trips_settings_trek_source_path(source), class: 'btn btn-sm' %>
             <%= button_to t('.sync_now'), sync_settings_trek_source_path(source), method: :post, class: 'btn btn-outline btn-sm' %>
           <% elsif source.disabled? %>
             <%= link_to t('.reconnect'), '#trek-source-form', class: 'btn btn-outline btn-sm' %>

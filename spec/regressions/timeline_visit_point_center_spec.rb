@@ -17,7 +17,7 @@ RSpec.describe 'Timeline coordinates for visits without a place', type: :request
   end
 
   def assembler
-    Timeline::DayAssembler.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+    Timeline::DayAssembler.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none)
   end
 
   it 'carries the existing point-derived center without assigning a place' do

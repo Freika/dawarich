@@ -190,6 +190,23 @@ module TimelineHelper
     }
   end
 
+  # The time at the place itself, shown only where its clock reads
+  # differently from the account's at that moment, with the date when the
+  # place is already on another day.
+  def timeline_local_time(entry, time)
+    zone = ActiveSupport::TimeZone[entry[:local_timezone].to_s]
+    return unless zone
+
+    local = time.in_time_zone(zone)
+    account = time.in_time_zone
+    return if local.utc_offset == account.utc_offset
+
+    clock = I18n.l(local, format: :hour_minute)
+    return t('helpers.timeline.local_time', time: clock) if local.to_date == account.to_date
+
+    t('helpers.timeline.local_time_on_date', date: I18n.l(local.to_date, format: :short_month_day), time: clock)
+  end
+
   def visit_entry_status(entry)
     entry[:status].presence || 'confirmed'
   end

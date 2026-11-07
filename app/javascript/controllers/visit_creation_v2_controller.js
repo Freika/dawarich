@@ -74,9 +74,14 @@ export default class extends Controller {
     )
 
     // Show modal
-    this.modalTarget.classList.add("modal-open")
+    this.modalTarget.showModal()
+
     // Focus on name input
-    setTimeout(() => this.nameInputTarget.focus(), 100)
+    requestAnimationFrame(() => {
+      if (this.hasModalTarget && this.modalTarget.open)
+        this.nameInputTarget.focus()
+    })
+
     // Add marker to map
     this.addMarker(lat, lng)
     this.draftForm = new VisitFormDraft(this)
@@ -112,9 +117,14 @@ export default class extends Controller {
       new Date(visit.ended_at),
     )
     // Show modal
-    this.modalTarget.classList.add("modal-open")
+    this.modalTarget.showModal()
+
     // Focus on name input
-    setTimeout(() => this.nameInputTarget.focus(), 100)
+    requestAnimationFrame(() => {
+      if (this.hasModalTarget && this.modalTarget.open)
+        this.nameInputTarget.focus()
+    })
+
     // Try to get map controller from the maps--maplibre controller
     const mapElement = document.querySelector(
       '[data-controller*="maps--maplibre"]',
@@ -142,7 +152,8 @@ export default class extends Controller {
   close() {
     this.draftForm?.close()
     // Hide modal
-    this.modalTarget.classList.remove("modal-open")
+    this.modalTarget.close()
+
     // Reset form
     this.formTarget.reset()
     // Reset editing state

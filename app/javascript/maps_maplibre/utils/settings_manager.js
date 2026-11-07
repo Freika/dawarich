@@ -28,6 +28,7 @@ const BOOLEAN_SETTINGS = [
   "gpsFilteringEnabled",
   "gpsAccuracyFilterEnabled",
   "pointDraggingEnabled",
+  "splitTracksAtMidnight",
   "globeProjection",
   "speedColoredRoutes",
   "liveMapEnabled",
@@ -50,6 +51,7 @@ export const BACKEND_SETTINGS_MAP = {
   speedColorScale: "speed_color_scale",
   metersBetweenRoutes: "meters_between_routes",
   minutesBetweenRoutes: "minutes_between_routes",
+  splitTracksAtMidnight: "split_tracks_at_midnight",
   minMinutesSpentInCity: "min_minutes_spent_in_city",
   gpsFilteringEnabled: "gps_filtering_enabled",
   gpsAccuracyFilterEnabled: "gps_accuracy_filter_enabled",
@@ -251,7 +253,10 @@ export class SettingsManager {
               value = Boolean(value)
             } else if (frontendKey === "liveMapEnabled") {
               value = Boolean(value)
-            } else if (frontendKey === "pointDraggingEnabled") {
+            } else if (
+              frontendKey === "pointDraggingEnabled" ||
+              frontendKey === "splitTracksAtMidnight"
+            ) {
               value = Boolean(value)
             }
 

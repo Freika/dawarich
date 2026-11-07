@@ -2,9 +2,9 @@
 
 module LocationSearch
   class PointFinder
-    def initialize(user, params = {})
+    def initialize(user, params, privacy_zone_masker:)
       @user = user
-      @privacy_zone_masker = params[:privacy_zone_masker]
+      @privacy_zone_masker = privacy_zone_masker
       @latitude = params[:latitude]
       @longitude = params[:longitude]
       @limit = params[:limit] || 50
@@ -80,7 +80,7 @@ module LocationSearch
     end
 
     def visible_points(points)
-      return points unless @privacy_zone_masker&.any?
+      return points unless @privacy_zone_masker.any?
 
       points.reject { |point| @privacy_zone_masker.in_zone?(point[:coordinates][1], point[:coordinates][0]) }
     end

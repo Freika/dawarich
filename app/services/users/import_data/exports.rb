@@ -60,7 +60,12 @@ class Users::ImportData::Exports
 
   def create_export_record(export_data)
     export_attributes = prepare_export_attributes(export_data)
-    user.exports.create!(export_attributes)
+    record = user.exports.new(export_attributes)
+    if record.created? || record.processing?
+      record.assign_attributes(status: :failed, error_message: I18n.t('ux_p2.exports.restored_incomplete'))
+    end
+    record.save!
+    record
   end
 
   def prepare_export_attributes(export_data)
@@ -69,8 +74,29 @@ class Users::ImportData::Exports
       'original_filename',
       'file_size',
       'content_type',
-      'file_error'
-    ).merge(user: user)
+      'file_error',
+      'import_id',
+      'import_scope',
+      'import_scope_unavailable',
+      'skip_background_processing'
+    ).merge(restored_import_scope(export_data)).merge(user: user, skip_background_processing: true)
+  end
+
+  # Numeric database IDs from an archive are never portable or authoritative.
+  # Match the same identity used by Imports restore; missing/legacy scopes stay closed.
+  def restored_import_scope(data)
+    scope = data['import_scope']
+    scoped = data.key?('import_scope') || data['import_id'].present? || data['import_scope_unavailable'] == true
+    return { import_id: nil, import_scope_unavailable: false } unless scoped
+
+    reference = scope['reference'] if scope.is_a?(Hash)
+    if reference.is_a?(Hash) && reference['name'].is_a?(String) && reference['name'].present? &&
+       reference['created_at'].is_a?(String) && reference['created_at'].present? && reference.key?('source') &&
+       (reference['source'].nil? || Import.sources.key?(reference['source']))
+      matches = user.imports.where(reference.slice('name', 'source', 'created_at')).limit(2).to_a
+      return { import_id: matches.first.id, import_scope_unavailable: false } if matches.one?
+    end
+    { import_id: nil, import_scope_unavailable: true }
   end
 
   def restore_export_file(export_record, export_data)

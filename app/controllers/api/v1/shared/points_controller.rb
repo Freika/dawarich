@@ -26,7 +26,7 @@ module Api
         private
 
         def route_hidden?
-          !ctx.show_route? && (link.family_only? || %i[track trip].include?(link.resource_type.to_sym))
+          !ctx.show_route? && !link.live?
         end
 
         def route_points
@@ -75,7 +75,14 @@ module Api
             range = timeline_epoch_range
             return [] if range.nil?
 
-            outside_privacy_zones(link.user.points.not_anomaly.where(timestamp: range).order(:timestamp))
+            points = link.user.points.not_anomaly.where(timestamp: range)
+            if link.timeline_import_scoped?
+              import = link.timeline_import
+              return [] unless import
+
+              points = points.where(import_id: import.id)
+            end
+            outside_privacy_zones(points.order(:timestamp))
           else
             []
           end

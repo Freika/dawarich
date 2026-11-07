@@ -44,6 +44,15 @@ class Point < ApplicationRecord
   scope :visited, -> { where.not(visit_id: nil) }
   scope :not_visited, -> { where(visit_id: nil) }
   scope :complete, -> { where.not(timestamp: nil).where.not(lonlat: nil) }
+  # Native presence observations retain real coordinates/time for visits, but are
+  # not movement vertices. Do not classify all sensor-reported still fixes this way.
+  ROUTE_OBSERVATION_SQL = "COALESCE(points.motion_data->>'action', '') <> 'stationary_presence'"
+  scope :route_observations, -> { where(ROUTE_OBSERVATION_SQL) }
+
+  def stationary_presence?
+    has_attribute?(:motion_data) && motion_data&.fetch('action', nil) == 'stationary_presence'
+  end
+
   scope :not_anomaly, -> { where(anomaly: [false, nil]) }
   scope :not_flyover, -> { where(CountriesAndCities.not_flyover_sql) }
   scope :anomaly, -> { where(anomaly: true) }

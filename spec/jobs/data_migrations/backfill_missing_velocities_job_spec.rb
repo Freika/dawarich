@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe DataMigrations::BackfillKmlVelocitiesJob, type: :job do
+RSpec.describe DataMigrations::BackfillMissingVelocitiesJob, type: :job do
   let(:user) { create(:user) }
   let(:start_time) { Time.utc(2024, 1, 15) }
   # Invented South Pacific fixes: two moving legs of about 940 km/h between stops.
@@ -11,7 +11,7 @@ RSpec.describe DataMigrations::BackfillKmlVelocitiesJob, type: :job do
      [80, -138, 'Overflownland'], [90, -136, 'Arrivalland'], [150, -136, 'Arrivalland']]
   end
 
-  def kml_import(velocity: '0.0', source: 'kml', day: 0, fixes: samples)
+  def flight_import(velocity: '0.0', source: 'kml', day: 0, fixes: samples)
     import = create(:import, user:, source:, skip_background_processing: true)
     fixes.each do |minute, longitude, country|
       create(:point, user:, import:, velocity:, timestamp: (start_time + day.days + minute.minutes).to_i,
@@ -29,23 +29,27 @@ RSpec.describe DataMigrations::BackfillKmlVelocitiesJob, type: :job do
     import.points.order(:timestamp).map { |point| (point.velocity.to_f * 3.6).round }
   end
 
-  it 'queues one backfill per KML import' do
-    kml = kml_import
-    kml_import(source: 'gpx', day: 1)
+  it 'queues one backfill per KML, GPX and GeoJSON import' do
+    imports = %w[kml gpx geojson].each_with_index.map { |source, day| flight_import(source:, day:) }
+    flight_import(source: 'owntracks', day: 3)
 
-    expect { described_class.perform_now }.to have_enqueued_job(described_class).with(kml.id).exactly(:once)
+    expect { described_class.perform_now }.to have_enqueued_job(described_class).exactly(3).times
+    imports.each { |import| expect(described_class).to have_been_enqueued.with(import.id) }
   end
 
-  it 'derives airborne speeds for points stored without one' do
-    import = kml_import
+  missing_speeds = { 'KML' => ['kml', '0.0'], 'GPX' => ['gpx', nil], 'GeoJSON' => ['geojson', '0.0'] }
+  missing_speeds.each do |format, (source, missing)|
+    it "derives airborne speeds for #{format} points stored without one" do
+      import = flight_import(source:, velocity: missing)
 
-    described_class.perform_now(import.id)
+      described_class.perform_now(import.id)
 
-    expect(speeds_kmh(import)).to match([0, 0, be > 500, be > 500, 0, 0])
+      expect(speeds_kmh(import)).to match([0, 0, be > 500, be > 500, 0, 0])
+    end
   end
 
   it 'recalculates the affected month, existing digests and overlapping trips' do
-    import = kml_import
+    import = flight_import
     Stats::CalculateMonth.new(user.id, 2024, 1).call
     yearly = Users::Digests::CalculateYear.new(user.id, 2024).call
     trip = create(:trip, user:, started_at: start_time, ended_at: start_time + 4.hours,
@@ -67,7 +71,7 @@ RSpec.describe DataMigrations::BackfillKmlVelocitiesJob, type: :job do
   end
 
   it 'leaves recorded speeds untouched and recalculates nothing' do
-    import = kml_import(velocity: '5.0')
+    import = flight_import(velocity: '5.0')
 
     described_class.perform_now(import.id)
 
@@ -76,14 +80,14 @@ RSpec.describe DataMigrations::BackfillKmlVelocitiesJob, type: :job do
   end
 
   it 'recalculates nothing when run again' do
-    import = kml_import
+    import = flight_import
     described_class.perform_now(import.id)
 
     expect { described_class.perform_now(import.id) }.not_to(change { user.stats.pick(:updated_at) })
   end
 
   it 'still backfills when an overlapping trip is invalid' do
-    import = kml_import
+    import = flight_import
     trip = create(:trip, user:, started_at: start_time, ended_at: start_time + 4.hours,
                          skip_calculation_enqueue: true)
     trip.update_columns(name: '')
@@ -94,7 +98,7 @@ RSpec.describe DataMigrations::BackfillKmlVelocitiesJob, type: :job do
   end
 
   it 'recalculates on a retry when the first recalculation failed' do
-    import = kml_import
+    import = flight_import
     attempts = 0
     allow(Stats::CalculateMonth).to receive(:new).and_wrap_original do |original, *args, **kwargs|
       attempts += 1
@@ -114,7 +118,7 @@ RSpec.describe DataMigrations::BackfillKmlVelocitiesJob, type: :job do
     let(:start_time) { Time.utc(2024, 1, 31, 16) }
 
     it 'recalculates the month in the user time zone' do
-      import = kml_import
+      import = flight_import
 
       described_class.perform_now(import.id)
 
@@ -124,16 +128,16 @@ RSpec.describe DataMigrations::BackfillKmlVelocitiesJob, type: :job do
 
   it 'recalculates nothing for movement below flight speed' do
     walk = [[0, -142.0, 'Homeland'], [10, -142.01, 'Homeland'], [20, -142.02, 'Homeland']]
-    import = kml_import(fixes: walk)
+    import = flight_import(fixes: walk)
 
     described_class.perform_now(import.id)
 
-    expect(speeds_kmh(import)[1]).to be_positive
+    expect(speeds_kmh(import)).to all(be_zero)
     expect(user.stats).to be_empty
   end
 
   it 'leaves imports that recorded some speeds untouched' do
-    import = kml_import
+    import = flight_import
     import.points.order(:timestamp).first.update_columns(velocity: '5.0')
 
     described_class.perform_now(import.id)
@@ -142,7 +146,7 @@ RSpec.describe DataMigrations::BackfillKmlVelocitiesJob, type: :job do
   end
 
   it 'refreshes cached map tiles' do
-    import = kml_import
+    import = flight_import
     range = [0, Time.utc(2100, 1, 1).to_i]
     before_component = Points::TileEpoch.etag_component(user.id, *range)
 

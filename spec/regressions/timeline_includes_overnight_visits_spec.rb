@@ -18,7 +18,7 @@ RSpec.describe Timeline::DayAssembler do
       days = described_class.new(
         user,
         start_at: "#{first_day}T00:00:00Z",
-        end_at: "#{last_day}T23:59:59Z"
+        end_at: "#{last_day}T23:59:59Z", privacy_zone_masker: Maps::PrivacyZoneMasker.none
       ).call
 
       expect(days).to match_array(expected_dates.map do |date|
@@ -52,7 +52,8 @@ RSpec.describe Timeline::DayAssembler do
   end
 
   it 'splits the stay time between the days it covers' do
-    days = described_class.new(user, start_at: '2026-10-20T00:00:00Z', end_at: '2026-10-22T23:59:59Z').call
+    days = described_class.new(user, start_at: '2026-10-20T00:00:00Z', end_at: '2026-10-22T23:59:59Z',
+privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
 
     expect(days.to_h { |day| [day[:date], day[:summary][:time_stationary_minutes]] })
       .to eq('2026-10-20' => 315, '2026-10-21' => 1440, '2026-10-22' => 1164)
@@ -63,13 +64,15 @@ RSpec.describe Timeline::DayAssembler do
                                     started_at: Time.utc(2026, 10, 18, 22, 0), ended_at: Time.utc(2026, 10, 19, 0, 0),
                                     duration: 120)
 
-    days = described_class.new(user, start_at: '2026-10-19T00:00:00Z', end_at: '2026-10-19T23:59:59Z').call
+    days = described_class.new(user, start_at: '2026-10-19T00:00:00Z', end_at: '2026-10-19T23:59:59Z',
+privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
 
     expect(days.flat_map { |day| day[:entries] }.pluck(:visit_id)).not_to include(midnight_visit.id)
   end
 
   it "marks the later days' rows as a continuation with that day's share of the stay" do
-    days = described_class.new(user, start_at: '2026-10-20T00:00:00Z', end_at: '2026-10-22T23:59:59Z').call
+    days = described_class.new(user, start_at: '2026-10-20T00:00:00Z', end_at: '2026-10-22T23:59:59Z',
+privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
 
     rows = days.to_h { |day| [day[:date], day[:entries].first.slice(:continuation_of_date, :day_duration)] }
     expect(rows).to eq(

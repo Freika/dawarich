@@ -512,26 +512,6 @@
   color: oklch(var(--pc));
 }
 
-.map-button-cluster__btn--create {
-  color: #22c55e;
-}
-
-.map-button-cluster__btn--create:hover {
-  background: color-mix(in oklab, #22c55e 12%, oklch(var(--b1)));
-  color: #22c55e;
-}
-
-/* When Create is the active tab, the green icon-on-blue ends up low
-   contrast. Lean into the create accent color for the active state too —
-   green background, white glyph — so the active state reads cleanly and
-   keeps the button's semantic color. Higher-specificity selector wins
-   over the generic `--active` rule above. */
-.map-button-cluster__btn--create.map-button-cluster__btn--active,
-.map-button-cluster__btn--create.map-button-cluster__btn--active:hover {
-  background: #22c55e;
-  color: white;
-}
-
 .map-button-cluster__btn--muted {
   opacity: 0.6;
 }
@@ -949,9 +929,7 @@
 .layer-options__label {
   display: block;
   margin-bottom: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: oklch(var(--bc) / 0.55);
+  font-size: 11px;
+  font-weight: 500;
+  color: oklch(var(--bc) / 0.6);
 }

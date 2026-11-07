@@ -9,7 +9,7 @@ class Api::V1::FlightsController < ApiController
     flights = flights.order(:departure_time).limit(MAX_FLIGHTS)
 
     geojson = { type: 'FeatureCollection', features: flights.map { |flight| Api::FlightSerializer.new(flight).call } }
-    geojson = privacy_zone_masker.mask_track_features(geojson) if mask_privacy_zones?
+    geojson = map_read_masker.mask_track_features(geojson)
 
     render json: geojson
   end

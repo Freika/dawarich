@@ -21,7 +21,9 @@ RSpec.describe 'Places management', type: :request do
     doc = Nokogiri::HTML(response.body)
     expect(response).to be_successful
     expect(doc.css('[data-testid="place-row"]').size).to eq(20)
-    expect(doc.at_css('a[href="/map/v2?create_place=1"]')).to be_present
+    expect(doc.at_css('a[data-testid="new-place"]')['href']).to eq(
+      new_place_path(q: 'Home', tag_ids: [tag.id], sort: 'visit_count')
+    )
     expect(doc.css('a[href]').any? { |a| a['href'].include?("tag_ids%5B%5D=#{tag.id}") }).to be(true)
     expect(doc.at_css('[role="navigation"] a')['href']).to include('q=Home', 'sort=visit_count',
                                                                    "tag_ids%5B%5D=#{tag.id}")

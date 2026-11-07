@@ -44,6 +44,7 @@ class Tracks::Recalculator
              #{altitude_sql} AS altitude
       FROM points
       WHERE track_id = ? AND anomaly IS NOT TRUE
+        AND #{Point::ROUTE_OBSERVATION_SQL}
       ORDER BY timestamp ASC, id ASC
     SQL
 

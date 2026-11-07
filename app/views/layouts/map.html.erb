@@ -49,7 +49,7 @@
 
     <% if user_signed_in? && current_user.imports.exists?(demo: true) %>
       <div id="demo-data-banner" class="fixed bottom-0 left-1/2 -translate-x-1/2 z-30 mb-[calc(1rem+env(safe-area-inset-bottom))]" data-controller="demo-banner">
-        <div class="alert alert-info shadow-lg py-1.5 px-3 flex items-center gap-1.5 rounded-lg whitespace-nowrap text-sm">
+        <div class="alert border border-base-content/10 bg-base-200 text-base-content shadow-lg py-1.5 px-3 flex items-center gap-1.5 rounded-lg whitespace-nowrap text-sm">
           <span class="font-medium" data-demo-banner-target="label"><%= t('.you_re_viewing_demo_data') %></span>
           <span data-demo-banner-target="loadingState" class="hidden">
             <span class="loading loading-spinner loading-xs text-info"></span>
@@ -64,7 +64,7 @@
                 }
               },
               data: { "demo-banner-target": "deleteButton" },
-              class: "btn btn-error btn-xs" %>
+              class: "btn btn-ghost btn-xs text-error" %>
           <button class="btn btn-ghost btn-xs btn-square" data-action="demo-banner#dismiss">
             <%= icon 'x', class: 'w-3 h-3' %>
           </button>

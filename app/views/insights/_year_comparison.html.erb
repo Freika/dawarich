@@ -1,8 +1,8 @@
 <% if @previous_year_stats.any? %>
   <div class="card bg-base-200">
     <div class="card-body p-5">
-      <h2 class="card-title text-lg flex items-center gap-2">
-        <%= icon 'git-compare', class: 'w-5 h-5 text-primary' %>
+      <h2 class="card-title text-lg font-medium flex items-center gap-2">
+        <%= icon 'git-compare', class: 'w-4 h-4 text-base-content/60' %>
         <%= t('.your_journey') %> <%= @selected_year %> <%= t('.vs') %> <%= @previous_year %>
       </h2>
 
@@ -29,7 +29,7 @@
         <div class="flex justify-between text-sm mb-1">
           <span class="font-medium"><%= t('.distance') %></span>
           <% if @distance_change != 0 %>
-            <span class="text-<%= @distance_change.positive? ? 'success' : 'warning' %>">
+            <span class="text-<%= @distance_change.positive? ? 'success' : 'base-content/60' %>">
               <%= distance_diff.positive? ? '+' : '' %><%= number_with_delimiter(distance_diff) %> <%= current_user.safe_settings.distance_unit %>
               (<%= @distance_change.positive? ? '+' : '' %><%= @distance_change %>%)
             </span>
@@ -43,7 +43,7 @@
         <div class="flex items-center gap-2 text-sm" data-comparison-metric="distance" data-comparison-year="previous">
           <span class="w-10"><%= @previous_year %></span>
           <div class="flex-1 h-3 bg-base-300 rounded-full overflow-hidden">
-            <div data-comparison-bar class="h-full rounded-full bg-warning" style="width: <%= prev_distance_pct %>%"></div>
+            <div data-comparison-bar class="h-full rounded-full bg-base-content/30" style="width: <%= prev_distance_pct %>%"></div>
           </div>
           <span class="w-24 text-right"><%= number_with_delimiter(@prev_total_distance) %> <%= current_user.safe_settings.distance_unit %></span>
         </div>
@@ -54,20 +54,20 @@
         <div class="flex justify-between text-sm mb-1">
           <span class="font-medium"><%= t('.countries') %></span>
           <% if @countries_change != 0 %>
-            <span class="text-<%= @countries_change.positive? ? 'success' : 'warning' %>">
+            <span class="text-<%= @countries_change.positive? ? 'success' : 'base-content/60' %>">
               <%= @countries_change.positive? ? '+' : '' %><%= @countries_change %>
             </span>
           <% end %>
         </div>
         <div class="flex items-center gap-2 text-sm mb-1" data-comparison-metric="countries" data-comparison-year="current">
           <span class="w-10"><%= @selected_year %></span>
-          <progress class="progress progress-secondary flex-1 h-3" value="<%= curr_countries_pct %>" max="100"></progress>
+          <progress class="progress progress-primary flex-1 h-3" value="<%= curr_countries_pct %>" max="100"></progress>
           <span class="w-24 text-right"><%= @countries_count %></span>
         </div>
         <div class="flex items-center gap-2 text-sm" data-comparison-metric="countries" data-comparison-year="previous">
           <span class="w-10"><%= @previous_year %></span>
           <div class="flex-1 h-3 bg-base-300 rounded-full overflow-hidden">
-            <div data-comparison-bar class="h-full rounded-full bg-warning" style="width: <%= prev_countries_pct %>%"></div>
+            <div data-comparison-bar class="h-full rounded-full bg-base-content/30" style="width: <%= prev_countries_pct %>%"></div>
           </div>
           <span class="w-24 text-right"><%= @prev_countries_count %></span>
         </div>
@@ -78,20 +78,20 @@
         <div class="flex justify-between text-sm mb-1">
           <span class="font-medium"><%= t('.days_traveling') %></span>
           <% if @days_change != 0 %>
-            <span class="text-<%= @days_change.positive? ? 'success' : 'warning' %>">
+            <span class="text-<%= @days_change.positive? ? 'success' : 'base-content/60' %>">
               <%= days_diff.positive? ? '+' : '' %><%= days_diff %> <%= t('.days') %><%= @days_change.positive? ? '+' : '' %><%= @days_change %>%)
             </span>
           <% end %>
         </div>
         <div class="flex items-center gap-2 text-sm mb-1" data-comparison-metric="days" data-comparison-year="current">
           <span class="w-10"><%= @selected_year %></span>
-          <progress class="progress progress-accent flex-1 h-3" value="<%= curr_days_pct %>" max="100"></progress>
+          <progress class="progress progress-primary flex-1 h-3" value="<%= curr_days_pct %>" max="100"></progress>
           <span class="w-24 text-right"><%= @days_traveling %> <%= t('.days_2') %></span>
         </div>
         <div class="flex items-center gap-2 text-sm" data-comparison-metric="days" data-comparison-year="previous">
           <span class="w-10"><%= @previous_year %></span>
           <div class="flex-1 h-3 bg-base-300 rounded-full overflow-hidden">
-            <div data-comparison-bar class="h-full rounded-full bg-warning" style="width: <%= prev_days_pct %>%"></div>
+            <div data-comparison-bar class="h-full rounded-full bg-base-content/30" style="width: <%= prev_days_pct %>%"></div>
           </div>
           <span class="w-24 text-right"><%= @prev_days_traveling %> <%= t('.days_2') %></span>
         </div>
@@ -105,7 +105,7 @@
             <div class="text-sm"><%= @selected_year %>: <span class="text-primary"><%= @biggest_month[:month] %></span> (<%= number_with_delimiter(@biggest_month[:distance]) %> <%= current_user.safe_settings.distance_unit %>)</div>
           <% end %>
           <% if @prev_biggest_month %>
-            <div class="text-sm"><%= @previous_year %>: <span class="text-warning"><%= @prev_biggest_month[:month] %></span> (<%= number_with_delimiter(@prev_biggest_month[:distance]) %> <%= current_user.safe_settings.distance_unit %>)</div>
+            <div class="text-sm"><%= @previous_year %>: <span class="text-base-content/60"><%= @prev_biggest_month[:month] %></span> (<%= number_with_delimiter(@prev_biggest_month[:distance]) %> <%= current_user.safe_settings.distance_unit %>)</div>
           <% end %>
         </div>
       <% end %>

@@ -50,7 +50,7 @@ RSpec.describe 'Imported GPX splits the surrounding low accuracy track' do
 
   def day_distance_km
     Timeline::DayAssembler.new(
-      user, start_at: started_at.beginning_of_day.iso8601, end_at: started_at.end_of_day.iso8601
+      user, start_at: started_at.beginning_of_day.iso8601, end_at: started_at.end_of_day.iso8601, privacy_zone_masker: Maps::PrivacyZoneMasker.none
     ).call.first.dig(:summary, :total_distance)
   end
 

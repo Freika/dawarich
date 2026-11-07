@@ -35,7 +35,10 @@ class Exports::Create
   attr_reader :user, :export, :start_at, :end_at, :file_format
 
   def time_framed_points
+    return user.points.none if export.import_scope_unavailable?
+
     points = user.points.where(timestamp: start_at.to_i..end_at.to_i)
+    points = points.where(import_id: export.import_id) if export.import_id.present?
 
     case file_format.to_sym
     when :gpx

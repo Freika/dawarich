@@ -2,6 +2,9 @@
 
 class Export < ApplicationRecord
   belongs_to :user
+  belongs_to :import, optional: true
+
+  attr_accessor :skip_background_processing
 
   enum :status, { created: 0, processing: 1, completed: 2, failed: 3 }
   # file_format describes the *payload* format inside the stored blob, not
@@ -12,13 +15,20 @@ class Export < ApplicationRecord
   enum :file_type, { points: 0, user_data: 1 }
 
   validates :name, presence: true
+  validate :import_belongs_to_owner, if: -> { new_record? || will_save_change_to_import_id? }
 
   has_one_attached :file
 
   before_save :set_processing_started_at, if: :status_changed_to_processing?
 
-  after_commit -> { ExportJob.perform_later(id) }, on: :create, unless: -> { user_data? || archive? }
+  after_commit -> { ExportJob.perform_later(id) }, on: :create, unless: lambda {
+    skip_background_processing || user_data? || archive?
+  }
   after_commit -> { remove_attached_file }, on: :destroy
+
+  def import_scoped?
+    import_scope_unavailable? || import_id.present?
+  end
 
   def process!
     Exports::Create.new(export: self).call
@@ -38,6 +48,12 @@ class Export < ApplicationRecord
   end
 
   private
+
+  def import_belongs_to_owner
+    return if import_id.nil? || user&.imports&.exists?(id: import_id)
+
+    errors.add(:import_id, I18n.t('ux_p2.exports.unavailable_import'))
+  end
 
   def set_processing_started_at
     self.processing_started_at = Time.current

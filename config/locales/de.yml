@@ -789,14 +789,14 @@ de:
       active_days: Aktive Tage
       countries: Länder
       cities: Städte
-      weekly_pattern: WÖCHENTLICHER ABLAUF
-      top_locations: TOP ORTE
+      weekly_pattern: Wöchentlicher Ablauf
+      top_locations: Top-Orte
       no_location_data: Keine Standortdaten
-      first_visits: ERSTE AUFENTHALTE
+      first_visits: Erste Aufenthalte
       country: Land
       city: Stadt
       no_new_places_this_month: Keine neuen Orte in diesem Monat
-      vs_previous_month: IM VERGLEICH ZUM VORMONAT
+      vs_previous_month: Im Vergleich zum Vormonat
       distance: Distanz
       countries_2: Länder
       monthly_digest: Monatlicher Überblick
@@ -805,14 +805,14 @@ de:
       title: "Strecke nach Monat"
     movement_wellness:
       movement_wellness: Bewegung & Wohlbefinden
-      active_time: AKTIVE ZEIT
+      active_time: Aktive Zeit
       walking: Gehen
       total: gesamt
       running: Laufen
       cycling: Radfahren
       driving: Fahren
       no_activity_data_available_for_this_period: Keine Aktivitätsdaten für diese Periode verfügbar
-      sedentary_vs_active: SITZEND VS AKTIV
+      sedentary_vs_active: Sitzend vs. aktiv
       in_transport: Im Transport
       stationary: Stationär
       active_movement: Aktive Bewegung
@@ -846,9 +846,9 @@ de:
         other: "Aufenthalte"
     travel_patterns:
       when_do_you_travel: Wann reist du?
-      time_of_day_distribution: TAGESZEIT
-      day_of_week: WOCHENTAG
-      seasonality: SAISONALITÄT
+      time_of_day_distribution: Tageszeit
+      day_of_week: Wochentag
+      seasonality: Saisonalität
       insight: Erkenntnis
     travel_story:
       your_travel_story: Deine Reiseerzählung
@@ -918,7 +918,7 @@ de:
       days_traveling: Tagen unterwegs
       days: Tage (
       days_2: Tage
-      biggest_month: GRÖSSTER MONAT
+      biggest_month: Größter Monat
     details:
       year_comparison: Jahresvergleich
       activity_breakdown: Aktivitätsübersicht
@@ -927,7 +927,6 @@ de:
       travel_patterns: Reisemuster
       movement_wellness: Bewegung & Wohlbefinden
     index:
-      geodata_insights_bull_powered_by_your_location_history: Geodaten-Insights • Erlebt durch deinen Standortverlauf
       activity_heatmap: Aktivitätsheatmap
       activity_streak: Aktivitätsreihe
       year_comparison: Jahresvergleich
@@ -1127,6 +1126,8 @@ de:
         track_split_time: Zeitabstand zwischen Tracks
         track_split_time_unit: 'Min.'
         track_split_time_hint: "Längere Pausen starten einen neuen Track und erlauben Reisen, die Aufzeichnung eines anderen Geräts zu verwenden. Nach einer Änderung auf den betroffenen Reiseseiten „Wiederberechnen“ wählen, um gespeicherte Routen und Entfernungen zu aktualisieren."
+        split_tracks_at_midnight: "Tracks um Mitternacht trennen"
+        split_tracks_at_midnight_hint: "Beendet jeden Track um Mitternacht in der Zeitzone aus deinen allgemeinen Einstellungen, sodass kein Track zwei Tage umfasst. Um es auf frühere Tracks anzuwenden, zuerst „Einstellungen anwenden“ und dann unten „Tracks & Statistiken neu berechnen“ drücken."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Blendet Messwerte aus, die keine echte Position darstellen können — etwa unmögliche Sprünge oder beschädigte Koordinaten. Deaktivieren, um alle Rohpunkte anzuzeigen.
         hide_inaccurate_points: "Ungenaue Punkte ausblenden"
         hide_inaccurate_points_hint: "Blendet zusätzlich Punkte aus, deren gemeldete Genauigkeit schlechter als der Schwellenwert unten ist. Hilft bei Handy-Tracking mit seitlichem Rauschen; für Google-Timeline-Importe ausgeschaltet lassen, deren grobe Punkte trotzdem auf der Straße liegen. Um es auf den Verlauf anzuwenden, zuerst „Einstellungen anwenden“ und dann „Vergangene Daten erneut prüfen“ drücken."
@@ -1871,7 +1872,7 @@ de:
         these_settings_control_how_the_app_groups_your_gps_points: Diese Einstellungen steuern, wie die App deine GPS-Punkte in Aufenthalte zu Orten gruppieren wird.
         points_within_this_radius_are_treated_as_the_same_visit: Punkte innerhalb dieses Radius werden als der gleiche Aufenthalt betrachtet. Ein Aufenthalt in diesem Radius beendet auch einen Track (mindestens 100 m). Standard 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Niedriger = mehr Aufenthalte werden vorgeschlagen, einschließlich kurzer Halte. Standard 3.
-        skip_stops_shorter_than_this_raise_to_ignore_short_drive: Übergehe Halte, die kürzer als dies sind. Erhöhe, um kurze Durchfahrten zu ignorieren; senke, um kurze Einkäufe zu erfassen. Standard 5.
+        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "Übergehe Halte, die kürzer als dies sind. Erhöhe, um kurze Durchfahrten zu ignorieren; senke, um kurze Einkäufe zu erfassen. Standard 5. Ein so langer Halt beendet auch einen Track, wenn er mindestens 5 Minuten dauert."
         visit_detection: Aufenthaltserkennung
         visit_radius_meters: Aufenthaltsradius (Meter)
         minimum_points_to_count_as_a_visit: Mindestanzahl an Punkten für einen Aufenthalt
@@ -2192,6 +2193,9 @@ de:
       unavailable: Tritt einer aktiven Familie bei, bevor du eine Reise mit Familienmitgliedern teilst.
       back_to_trips: Zurück zu den Reisen
       your_map: Deine Karte für diese Daten
+    timeline_scope:
+      only_import: Nur Punkte aus %{name} im gewählten Zeitraum werden geteilt. Fotos sind ausgeschlossen.
+      unavailable: Der gewählte Import ist nicht mehr verfügbar.
   stats:
     locked_year_card:
       available_on_pro: Verfügbar auf Pro
@@ -2968,6 +2972,8 @@ de:
       pro_badge: " Pro"
     timeline:
       unnamed: Unbenannt
+      local_time: "%{time} Ortszeit"
+      local_time_on_date: "%{date}, %{time} Ortszeit"
     datetime_formatting:
       expires_on: Verfällt am %{date}
     insights:
@@ -4764,6 +4770,17 @@ de:
       visits:
         one: "%{formatted_count} Aufenthalt"
         other: "%{formatted_count} Aufenthalte"
+    ux_p3:
+      timeline:
+        filtered_count: "%{count} von %{total} Besuchen sichtbar"
+        visit_count:
+          one: "%{count} Besuch"
+          other: "%{count} Besuche"
+      video:
+        ready: Video ist bereit — MP4 · %{size} MB.
+      realtime:
+        connected: Live-Verbindung aktiv
+        disconnected: Live-Updates pausiert. Neue Positionen können verspätet sein; Verbindung wird wiederhergestellt.
   battery_statuses:
     unknown: unbekannt
     unplugged: nicht angeschlossen
@@ -4787,3 +4804,112 @@ de:
     meridiem:
       am: AM
       pm: PM
+  ux_p2:
+    exports:
+      source: 'Quelle: %{name}'
+      restored_incomplete: Dieser Export war in der Sicherung unvollständig. Erstelle unter Punkte einen neuen Export.
+      unavailable_source: Nicht verfügbare Quelle (Auswahl bleibt erhalten)
+      removed_import: Gelöschter Import (Auswahl bleibt erhalten)
+      unavailable_import: Der gewählte Import ist nicht mehr verfügbar.
+    sharing:
+      exact_expiry: Genauer Ablauf (optional)
+      exact_expiry_hint: 'Zeitzone: %{timezone}. Leer lassen für keinen Ablauf.'
+      invalid_expiry: Wähle ein gültiges Ablaufdatum.
+      no_expiry: Kein Ablauf
+      expires: Zugriff endet
+      period: Geteilter Zeitraum
+      included: Enthalten
+      excluded: Ausgeschlossen
+      edit_access: Zugriff bearbeiten
+      preview: Ansicht der Empfänger öffnen
+      url_unchanged: Änderungen gelten für diesen Link. URL, Empfänger und ausgewählte Daten bleiben gleich.
+      cancel: Abbrechen
+      save: Zugriff speichern
+      sections:
+        show_route: Routenkarte
+        show_stats: Statistiken
+        show_days: Aufschlüsselung nach Tagen
+        show_day_notes: Tagesnotizen
+        show_description: Beschreibung
+        show_photos: Fotos
+    import:
+      technical_details: Technische Details
+      failed: Import fehlgeschlagen
+      format_error: Das Dateiformat konnte nicht gelesen werden. Prüfe, ob die Datei gültig ist und ein unterstütztes Format hat.
+      failed_reason: Der Import konnte nicht abgeschlossen werden. Du kannst die Datei erneut hochladen; schlägt es wieder fehl, gib beim Melden des Problems die Referenz unten an.
+      reference: 'Import-Referenz: #%{id}. Technische Details stehen in den Server-Logs.'
+      open: Import und Wiederherstellungsoptionen öffnen
+      upload_another: Weitere Datei hochladen
+      supported_formats: Unterstützte Formate
+      notification_html: Import &quot;%{name}&quot; fehlgeschlagen. %{reason} %{link}
+    digest:
+      queued: In der Warteschlange. Dein Jahresrückblick erscheint hier automatisch.
+      calculating: Dein Jahresrückblick wird berechnet. Diese Seite aktualisiert sich automatisch.
+      failed: Erstellung fehlgeschlagen. Dein Standortverlauf ist sicher; versuche es erneut.
+      retry: Erstellung wiederholen
+      working: Rückblick wird vorbereitet
+    places:
+      add: Ort hinzufügen
+      save: Ort speichern
+      search: Orte suchen
+      tag: Tags
+      all_tags: Alle Tags
+      sort: Sortieren nach
+      sort_name: Name
+      sort_recent_visit: Letzter Besuch
+      sort_newest: Zuletzt erstellt
+      no_matches: Keine passenden Orte. Versuche eine andere Suche oder füge einen Ort hinzu.
+      pick_coordinates: Klicke auf die Karte oder gib Koordinaten ein, um den Ort festzulegen. Du kannst die Markierung verschieben, um ihn anzupassen.
+      latitude: Breitengrad
+      longitude: Längengrad
+      name: Name
+      note: Notiz
+      back: Zurück zu den Orten
+      edit: Ort bearbeiten
+      more_actions: 'Weitere Aktionen: zusammenführen oder löschen'
+      radius: Besuchsradius (Meter)
+    points:
+      select: Punkt auswählen, aufgezeichnet am %{time}
+    insights:
+      empty_title: Deine Reisen erscheinen hier
+      empty_help: Importiere deinen Standortverlauf oder verbinde einen Tracker, um erste Distanzen, Karten und Reiseeinblicke zu erhalten.
+      import: Verlauf importieren
+      connect: Tracker verbinden
+      unresolved: Noch nicht ermittelt
+      names_pending: Länder- und Städtenamen wurden noch nicht ermittelt. Koordinaten, Karten und Distanz können trotzdem verfügbar sein.
+      configure: Geokodierung einrichten
+      ask_admin: Deine Administration kann die Geokodierung einrichten, um Länder- und Städtenamen zu ermitteln.
+    settings:
+      sections: Einstellungsbereich
+    nav:
+      notifications: Benachrichtigungen
+      previous_day: Vorheriger Tag
+      next_day: Nächster Tag
+    demo:
+      description: Erkunde einen Monat mit Standortdaten aus Berlin und eine Wochenendreise nach Prag. Demopunkte, Besuche und Orte sind markiert und können jederzeit entfernt werden.
+  ux_p3:
+    timeline:
+      filter_scope: Besuchsfilter sind aktiv. Bewegung und nicht erfasste Zeiträume bleiben sichtbar.
+    video:
+      download: Video herunterladen
+    integrations:
+      save_and_test: Speichern und testen
+      test: Ohne Speichern testen
+      save: Ohne Test speichern
+      saved_untested: Einstellungen gespeichert. Es wurde kein Verbindungstest ausgeführt.
+      tested_ok: Verbindung bestätigt. Änderungen wurden nicht gespeichert.
+      tested_failed: Verbindung fehlgeschlagen. Änderungen wurden nicht gespeichert.
+      saved_ok: Einstellungen gespeichert und Verbindung bestätigt.
+      saved_failed: Einstellungen gespeichert, aber die Verbindung ist fehlgeschlagen.
+      validation_failed: Bitte URL und Pflichtfelder prüfen. Einstellungen wurden nicht gespeichert.
+      retry: Felder prüfen und Verbindung erneut testen.
+      reasons:
+        unreachable: Dienst nicht erreichbar. Adresse, Port und Netzwerkzugriff von Dawarich prüfen.
+        certificate: TLS-Zertifikat konnte nicht bestätigt werden. Serverzertifikat prüfen.
+        credentials: Zugriff verweigert. API-Schlüssel und Berechtigungen prüfen.
+        missing_fields: Dienst-URL und Zugangsdaten eingeben.
+        check_settings: Dienst hat die Verbindung nicht akzeptiert. URL, Zugangsdaten und Berechtigungen prüfen.
+      status:
+        connected: 'Gespeicherte Verbindung: letzter Test erfolgreich.'
+        failed: 'Gespeicherte Verbindung: letzter Test fehlgeschlagen.'
+        untested: 'Gespeicherte Verbindung: nicht getestet.'

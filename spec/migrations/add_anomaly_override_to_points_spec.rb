@@ -26,7 +26,7 @@ RSpec.describe AddAnomalyOverrideToPoints do
     migration.migrate(:up)
     Point.reset_column_information
 
-    expect(connection.column_exists?(:points, :anomaly_override, :boolean, null: false, default: false)).to be(true)
+    expect(connection.column_exists?(:points, :anomaly_override, :boolean, null: false, default: 'false')).to be(true)
     expect(point.reload).to have_attributes(anomaly: true, anomaly_override: false)
   end
 
@@ -34,7 +34,7 @@ RSpec.describe AddAnomalyOverrideToPoints do
     migration.migrate(:up)
 
     expect { migration.migrate(:up) }.not_to raise_error
-    expect(connection.column_exists?(:points, :anomaly_override, :boolean, null: false, default: false)).to be(true)
+    expect(connection.column_exists?(:points, :anomaly_override, :boolean, null: false, default: 'false')).to be(true)
   end
 
   it 'rolls back cleanly when the column is already gone' do

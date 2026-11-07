@@ -789,14 +789,14 @@ es:
       active_days: Días activos
       countries: Países
       cities: Ciudades
-      weekly_pattern: PATRÓN SEMANAL
-      top_locations: LUGARES MÁS VISITADOS
+      weekly_pattern: Patrón semanal
+      top_locations: Lugares más visitados
       no_location_data: No hay datos de ubicación
-      first_visits: PRIMERAS VISITAS
+      first_visits: Primeras visitas
       country: País
       city: Ciudad
       no_new_places_this_month: No has visitado nuevos lugares este mes
-      vs_previous_month: VS. MES ANTERIOR
+      vs_previous_month: Vs. mes anterior
       distance: distancia
       countries_2: países
       monthly_digest: Resumen mensual
@@ -805,14 +805,14 @@ es:
       title: "Distancia por mes"
     movement_wellness:
       movement_wellness: Movimiento y bienestar
-      active_time: TIEMPO ACTIVO
+      active_time: Tiempo activo
       walking: A pie
       total: total
       running: Carrera
       cycling: Ciclismo
       driving: Conducir
       no_activity_data_available_for_this_period: No hay datos de actividad disponibles para este período
-      sedentary_vs_active: SEDENTARIO VS ACTIVO
+      sedentary_vs_active: Sedentario vs activo
       in_transport: En transporte
       stationary: Sin desplazamiento
       active_movement: Movimiento activo
@@ -824,15 +824,15 @@ es:
       available_on_pro: Disponible en Pro
       upgrade_to_pro: Actualizar a Pro
     stats_row:
-      total_distance: DISTANCIA TOTAL
+      total_distance: Distancia total
       all_tracked_history: Toda la historia rastreada
       vs: vs
       in: en
       this_year: este año
-      countries: PAÍSES
+      countries: Países
       new_vs: nuevos vs
-      cities: CIUDADES
-      days_traveling: DÍAS DE VIAJE
+      cities: Ciudades
+      days_traveling: Días de viaje
       active_days_this_year: Días activos este año
       no_stats_data_available: No hay datos de estadísticas disponibles
       stats_are_calculated_from_your_tracked_points: ". Las estadísticas se calculan a partir de tus puntos rastreados."
@@ -846,9 +846,9 @@ es:
         other: "visitas"
     travel_patterns:
       when_do_you_travel: "¿Cuándo viajas tú?"
-      time_of_day_distribution: DISTRIBUCIÓN HORARIA
-      day_of_week: DÍA DE LA SEMANA
-      seasonality: ESTACIONALIDAD
+      time_of_day_distribution: Distribución horaria
+      day_of_week: Día de la semana
+      seasonality: Estacionalidad
       insight: Insight
     travel_story:
       your_travel_story: Tu historia de viajes
@@ -913,12 +913,12 @@ es:
     year_comparison:
       your_journey: 'Tu viaje: '
       vs: vs
-      distance: DISTANCIA
-      countries: PAÍSES
-      days_traveling: DÍAS DE VIAJE
+      distance: Distancia
+      countries: Países
+      days_traveling: Días de viaje
       days: días (
       days_2: días
-      biggest_month: MEJOR MES
+      biggest_month: Mejor mes
     details:
       year_comparison: Comparación anual
       activity_breakdown: Desglose de actividad
@@ -927,7 +927,6 @@ es:
       travel_patterns: Patrones de viaje
       movement_wellness: Movimiento y bienestar
     index:
-      geodata_insights_bull_powered_by_your_location_history: Insights geográficas • Propulsado por tu historia de ubicación
       activity_heatmap: Calor de Actividad
       activity_streak: Racha de actividad
       year_comparison: Comparación anual
@@ -1127,6 +1126,8 @@ es:
         track_split_time: Tiempo entre trayectos
         track_split_time_unit: min
         track_split_time_hint: "Los intervalos más largos inician un trayecto nuevo y permiten usar la grabación de otro dispositivo en los viajes. Tras cambiar este valor, pulsa «Recalcular» en cada viaje afectado para actualizar la ruta y la distancia guardadas."
+        split_tracks_at_midnight: "Dividir trayectos a medianoche"
+        split_tracks_at_midnight_hint: "Termina cada trayecto a medianoche en la zona horaria de tus ajustes generales, para que ningún trayecto abarque dos días. Para aplicarlo a los trayectos anteriores, pulsa primero «Aplicar configuración» y después «Recalcular trayectos y estadísticas» abajo."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Ocultar lecturas que no pueden ser una posición real — saltos imposibles, coordenadas rotas. Desactiva para ver cada punto bruto.
         hide_inaccurate_points: "Ocultar puntos imprecisos"
         hide_inaccurate_points_hint: "Oculta también los puntos cuya precisión informada es peor que el umbral de abajo. Ayuda con el seguimiento del móvil que añade ruido lateral; déjalo desactivado para importaciones de Google Timeline, cuyos puntos aproximados siguen sobre la carretera. Para aplicarlo a tu historial, pulsa primero «Aplicar configuración» y después «Re-evaluar datos pasados»."
@@ -1871,7 +1872,7 @@ es:
         these_settings_control_how_the_app_groups_your_gps_points: Estos ajustes controlan cómo el app agrupa tus puntos GPS en visitas a lugares.
         points_within_this_radius_are_treated_as_the_same_visit: Puntos dentro de este radio se tratan como la misma visita. Una estancia dentro de este radio también cierra un trayecto (como mínimo 100 m). Por defecto 100.
         lower_more_visits_suggested_including_brief_stops_default_3: Menos = más visitas sugeridas, incluyendo paradas breves. Por defecto 3.
-        skip_stops_shorter_than_this_raise_to_ignore_short_drive: Ignora paradas más cortas que esto. Aumenta para ignorar paseos cortos; baja para capturar erratas breves. Por defecto 5.
+        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "Ignora paradas más cortas que esto. Aumenta para ignorar paseos cortos; baja para capturar recados breves. Por defecto 5. Una parada así de larga también termina un trayecto si dura al menos 5 minutos."
         visit_detection: Deteción de visitas
         visit_radius_meters: Radio de visita (metros)
         minimum_points_to_count_as_a_visit: Puntos mínimos para contar como una visita
@@ -2192,6 +2193,9 @@ es:
       unavailable: Únete a una familia activa antes de compartir un viaje con sus miembros.
       back_to_trips: Volver a los viajes
       your_map: Tu mapa para estas fechas
+    timeline_scope:
+      only_import: Solo se compartirán los puntos de %{name} del periodo seleccionado. Las fotos quedan excluidas.
+      unavailable: La importación seleccionada ya no está disponible.
   stats:
     locked_year_card:
       available_on_pro: Disponible en Pro
@@ -2913,6 +2917,8 @@ es:
       pro_badge: " Pro"
     timeline:
       unnamed: Sin nombre
+      local_time: "%{time} hora local"
+      local_time_on_date: "%{date}, %{time} hora local"
     datetime_formatting:
       expires_on: Vence el %{date}
     insights:
@@ -4708,6 +4714,17 @@ es:
       visits:
         one: "%{formatted_count} visita"
         other: "%{formatted_count} visitas"
+    ux_p3:
+      timeline:
+        filtered_count: Mostrando %{count} de %{total} visitas
+        visit_count:
+          one: "%{count} visita"
+          other: "%{count} visitas"
+      video:
+        ready: Tu vídeo está listo — MP4 · %{size} MB.
+      realtime:
+        connected: Actualizaciones en directo conectadas
+        disconnected: Actualizaciones en directo en pausa. Las nuevas posiciones pueden retrasarse; reconectando automáticamente.
   battery_statuses:
     unknown: desconocido
     unplugged: desconectado
@@ -4731,3 +4748,112 @@ es:
     meridiem:
       am: a. m.
       pm: p. m.
+  ux_p2:
+    exports:
+      source: 'Origen: %{name}'
+      restored_incomplete: Esta exportación estaba sin terminar en la copia de seguridad. Crea una nueva exportación desde Puntos.
+      unavailable_source: Origen no disponible (se conserva el alcance)
+      removed_import: Importación eliminada (se conserva el alcance)
+      unavailable_import: La importación seleccionada ya no está disponible.
+    sharing:
+      exact_expiry: Caducidad exacta (opcional)
+      exact_expiry_hint: 'Zona horaria: %{timezone}. Déjalo en blanco para que no caduque.'
+      invalid_expiry: Elige una fecha de caducidad válida.
+      no_expiry: Sin caducidad
+      expires: El acceso termina
+      period: Periodo compartido
+      included: Incluido
+      excluded: Excluido
+      edit_access: Editar acceso
+      preview: Abrir la vista del destinatario
+      url_unchanged: Los cambios se aplican a este enlace. Su URL, su audiencia y los datos seleccionados no cambian.
+      cancel: Cancelar
+      save: Guardar acceso
+      sections:
+        show_route: Mapa de la ruta
+        show_stats: Estadísticas
+        show_days: Desglose por días
+        show_day_notes: Notas del día
+        show_description: Descripción
+        show_photos: Fotos
+    import:
+      technical_details: Detalles técnicos
+      failed: La importación falló
+      format_error: No se pudo leer el formato del archivo. Comprueba que el archivo es válido y usa un formato compatible.
+      failed_reason: La importación no pudo terminar. Puedes volver a subir el archivo; si vuelve a fallar, indica la referencia de abajo al informar del problema.
+      reference: 'Referencia de la importación: #%{id}. Los detalles técnicos están en los registros del servidor.'
+      open: Abrir la importación y las opciones de recuperación
+      upload_another: Subir otro archivo
+      supported_formats: Formatos compatibles
+      notification_html: La importación &quot;%{name}&quot; falló. %{reason} %{link}
+    digest:
+      queued: En cola. Tu resumen anual aparecerá aquí automáticamente.
+      calculating: Calculando tu resumen anual. Esta página se actualiza automáticamente.
+      failed: La generación falló. Tu historial de ubicaciones está a salvo; inténtalo de nuevo.
+      retry: Reintentar la generación
+      working: Preparando el resumen
+    places:
+      add: Añadir lugar
+      save: Guardar lugar
+      search: Buscar lugares
+      tag: Etiquetas
+      all_tags: Todas las etiquetas
+      sort: Ordenar por
+      sort_name: Nombre
+      sort_recent_visit: Visita más reciente
+      sort_newest: Creados recientemente
+      no_matches: No hay lugares que coincidan. Prueba otra búsqueda o añade un lugar.
+      pick_coordinates: Haz clic en el mapa o introduce coordenadas para elegir este lugar. Puedes arrastrar el marcador para ajustarlo.
+      latitude: Latitud
+      longitude: Longitud
+      name: Nombre
+      note: Nota
+      back: Volver a los lugares
+      edit: Editar lugar
+      more_actions: 'Más acciones: combinar o eliminar'
+      radius: Radio de visita (metros)
+    points:
+      select: Seleccionar el punto registrado el %{time}
+    insights:
+      empty_title: Tus viajes aparecerán aquí
+      empty_help: Importa tu historial de ubicaciones o conecta un rastreador para obtener tus primeras distancias, mapas y estadísticas de viaje.
+      import: Importar historial
+      connect: Conectar un rastreador
+      unresolved: Aún sin identificar
+      names_pending: Todavía no se han identificado los nombres de países y ciudades. Las coordenadas, los mapas y la distancia pueden estar disponibles igualmente.
+      configure: Configurar la geocodificación
+      ask_admin: Tu administrador puede configurar la geocodificación para identificar los nombres de países y ciudades.
+    settings:
+      sections: Sección de ajustes
+    nav:
+      notifications: Notificaciones
+      previous_day: Día anterior
+      next_day: Día siguiente
+    demo:
+      description: Explora un mes de ubicaciones en Berlín y un viaje de fin de semana a Praga. Los puntos, visitas y lugares de demostración están identificados y se pueden eliminar en cualquier momento.
+  ux_p3:
+    timeline:
+      filter_scope: Los filtros de visitas están activos. Los desplazamientos y los intervalos sin seguimiento siguen visibles.
+    integrations:
+      saved_untested: Configuración guardada. No se ha probado la conexión.
+      tested_ok: Conexión verificada. Los cambios no se han guardado.
+      tested_failed: La conexión falló. Los cambios no se han guardado.
+      saved_ok: Configuración guardada y conexión verificada.
+      saved_failed: Configuración guardada, pero la conexión falló.
+      validation_failed: No se pudo usar la configuración. Comprueba la URL y los campos obligatorios.
+      retry: Revisa los campos de abajo y vuelve a probar la conexión.
+      reasons:
+        unreachable: No se pudo acceder al servicio. Comprueba su dirección, el puerto y el acceso de red desde Dawarich.
+        certificate: No se pudo verificar el certificado TLS. Comprueba el certificado del servidor.
+        credentials: Acceso denegado. Comprueba la clave de API y sus permisos.
+        missing_fields: Introduce la URL del servicio y las credenciales obligatorias.
+        check_settings: El servicio no aceptó la conexión. Comprueba la URL, las credenciales y los permisos necesarios.
+      status:
+        connected: 'Conexión guardada: la última prueba fue correcta.'
+        failed: 'Conexión guardada: la última prueba falló.'
+        untested: 'Conexión guardada: sin probar.'
+      save_and_test: Guardar y probar la conexión
+      test: Probar sin guardar
+      save: Guardar sin probar
+    video:
+      download: Descargar vídeo

@@ -4,7 +4,7 @@ module Maps
   # Fog and city cards read the same immutable all-history opening ledger.
   # A date range marks first discoveries; it never closes older cells.
   class FogHexagons
-    def initialize(user:, start_date:, end_date:, privacy_zone_masker: nil, snapshot_id: nil)
+    def initialize(user:, start_date:, end_date:, privacy_zone_masker:, snapshot_id: nil)
       @user = user
       @start_date = start_date
       @end_date = end_date
@@ -28,7 +28,7 @@ module Maps
                  'ready'
                end
       relation = snapshot ? Exploration::Opening.where(snapshot_id: snapshot.id) : Exploration::Opening.none
-      if @masker&.any?
+      if @masker.any?
         relation = relation.joins('JOIN exploration_cells ON exploration_cells.id=exploration_openings.cell_id')
                            .where("NOT #{@masker.touches_sql('exploration_cells.geom')}")
       end

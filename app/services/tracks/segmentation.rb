@@ -13,8 +13,9 @@
 #
 # Segmentation criteria:
 # - Time threshold: Gap longer than X minutes indicates a new track
-# - Stationary stop: Staying within the visit radius of one place for longer than X minutes
+# - Stationary stop: Staying within the visit radius of one place for as long as a visit
 #   ends a track (see Tracks::StationaryStops)
+# - Local midnight: Ends a track when the user splits tracks at midnight (see Tracks::DayBoundary)
 # - Minimum segment size: Segments must have at least 2 points to form a track
 #
 # ❗️ Frontend Parity (see CLAUDE.md "Route Drawing Implementation")
@@ -77,13 +78,14 @@ module Tracks::Segmentation
   def long_stationary_breaks(points)
     samples = points.map { |point| [point.timestamp, point.lonlat&.x, point.lonlat&.y] }
 
-    Tracks::StationaryStops.break_indexes(samples, time_threshold_minutes.to_i * 60, stationary_radius_meters)
+    Tracks::StationaryStops.break_indexes(samples, stop_thresholds, stationary_radius_meters)
   end
 
   def should_start_new_segment?(current_point, previous_point)
     return false if previous_point.nil?
 
-    time_gap_exceeded?(current_point.timestamp, previous_point.timestamp)
+    time_gap_exceeded?(current_point.timestamp, previous_point.timestamp) ||
+      day_boundary&.crosses?(previous_point.timestamp, current_point.timestamp)
   end
 
   def time_gap_exceeded?(current_timestamp, previous_timestamp)
@@ -95,6 +97,14 @@ module Tracks::Segmentation
 
   def stationary_radius_meters
     Tracks::StationaryStops::DEFAULT_RADIUS_METERS
+  end
+
+  def stop_thresholds
+    time_threshold_minutes.to_i * 60
+  end
+
+  def day_boundary
+    nil
   end
 
   def time_threshold_minutes

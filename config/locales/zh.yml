@@ -884,7 +884,6 @@ zh:
       travel_patterns: 旅行模式
       movement_wellness: 运动与健康
     index:
-      geodata_insights_bull_powered_by_your_location_history: 地理数据洞察 • 基于您的位置历史记录
       total_distance: 总距离
       countries: 国家/地区
       cities: 城市
@@ -1083,6 +1082,8 @@ zh:
         track_split_time: 轨迹之间的时间间隔
         track_split_time_unit: 分钟
         track_split_time_hint: "超过此间隔会开始新轨迹，并允许行程使用另一台设备的记录。修改后，请在受影响的行程页面点击“重新计算”，以更新已保存的路线和距离。"
+        split_tracks_at_midnight: "在午夜拆分轨迹"
+        split_tracks_at_midnight_hint: "按常规设置中的时区在午夜结束每条轨迹，使轨迹不会跨越两天。如需应用到以往的轨迹，请先点击“应用设置”，再点击下方的“重新计算轨迹和统计数据”。"
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: 隐藏不可能为真实位置的读数 — 如不可能的跳跃、损坏的坐标。禁用后显示每个原始轨迹点。
         hide_inaccurate_points: "隐藏不精确的点"
         hide_inaccurate_points_hint: "同时隐藏报告精度低于下方阈值的点。适用于会产生横向噪声的手机追踪；对 Google 时间轴导入请保持关闭，其粗略的点仍然落在道路上。如需应用到历史记录，请先点击“应用设置”，再点击“重新评估过去的数据”。"
@@ -1842,7 +1843,7 @@ zh:
         these_settings_control_how_the_app_groups_your_gps_points: 这些设置控制应用如何将 GPS 轨迹点分组为到访记录。
         points_within_this_radius_are_treated_as_the_same_visit: 此半径内的轨迹点会被视为同一次到访。在此半径内停留也会结束一条轨迹（至少 100 米）。默认值为 100。
         lower_more_visits_suggested_including_brief_stops_default_3: 数值越低，建议的到访记录越多（包括短暂停留）。默认值为 3。
-        skip_stops_shorter_than_this_raise_to_ignore_short_drive: 跳过短于此时间的停留。调高可忽略短暂路过；调低可捕捉短暂的办事停留。默认值为 5。
+        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "跳过短于此时间的停留。调高可忽略短暂路过；调低可捕捉短暂的办事停留。默认值为 5。达到此时长且至少 5 分钟的停留也会结束一条轨迹。"
         visit_detection: 到访检测
         visit_radius_meters: 到访半径（米）
         minimum_points_to_count_as_a_visit: 计为一次到访所需的最少轨迹点数
@@ -2211,6 +2212,9 @@ zh:
       unavailable: 请先加入一个有效的家庭，再与家庭成员共享行程。
       back_to_trips: 返回行程列表
       your_map: 这些日期的个人地图
+    timeline_scope:
+      only_import: 仅分享所选时间段内来自 %{name} 的点。不包含照片。
+      unavailable: 所选导入已不可用。
   stats:
     locked_year_card:
       available_on_pro: 在 Pro 上可用
@@ -2957,6 +2961,8 @@ zh:
       pro_badge: Pro
     timeline:
       unnamed: 未命名
+      local_time: "当地时间 %{time}"
+      local_time_on_date: "当地时间 %{date} %{time}"
     datetime_formatting:
       expires_on: 于 %{date} 到期
     insights:
@@ -4767,6 +4773,17 @@ zh:
         of_total: 占总计
         tagline: 私人位置历史
         travelled_over: 历时 %{days} 天
+    ux_p3:
+      timeline:
+        filtered_count: 显示 %{total} 次访问中的 %{count} 次
+        visit_count:
+          one: "%{count} 次访问"
+          other: "%{count} 次访问"
+      video:
+        ready: 视频已就绪 — MP4 · %{size} MB。
+      realtime:
+        connected: 实时更新已连接
+        disconnected: 实时更新已暂停。新位置可能会延迟，正在自动重新连接。
   battery_statuses:
     unknown: 未知
     unplugged: 已拔出
@@ -4846,3 +4863,112 @@ zh:
     meridiem:
       am: 上午
       pm: 下午
+  ux_p2:
+    exports:
+      source: 来源：%{name}
+      restored_incomplete: 此导出在备份中尚未完成。请在“点”页面创建新的导出。
+      unavailable_source: 来源不可用（范围已保留）
+      removed_import: 导入已删除（范围已保留）
+      unavailable_import: 所选导入已不可用。
+    sharing:
+      exact_expiry: 精确到期时间（可选）
+      exact_expiry_hint: 时区：%{timezone}。留空则永不过期。
+      invalid_expiry: 请选择有效的到期日期。
+      no_expiry: 永不过期
+      expires: 访问结束时间
+      period: 分享的时间段
+      included: 已包含
+      excluded: 已排除
+      edit_access: 编辑访问权限
+      preview: 打开接收者视图
+      url_unchanged: 更改将应用于此链接。其 URL、受众和所选数据保持不变。
+      cancel: 取消
+      save: 保存访问设置
+      sections:
+        show_route: 路线地图
+        show_stats: 统计
+        show_days: 按天明细
+        show_day_notes: 每日笔记
+        show_description: 描述
+        show_photos: 照片
+    import:
+      technical_details: 技术详情
+      failed: 导入失败
+      format_error: 无法读取文件格式。请检查文件是否有效并使用受支持的格式。
+      failed_reason: 导入未能完成。你可以重新上传该文件；如果再次失败，请在报告问题时提供下方的参考编号。
+      reference: 导入参考编号：#%{id}。技术详情可在服务器日志中查看。
+      open: 打开导入和恢复选项
+      upload_another: 上传其他文件
+      supported_formats: 支持的格式
+      notification_html: 导入 &quot;%{name}&quot; 失败。%{reason} %{link}
+    digest:
+      queued: 已排队。你的年度总结将自动显示在这里。
+      calculating: 正在计算你的年度总结。此页面会自动更新。
+      failed: 生成失败。你的位置历史是安全的，请重试。
+      retry: 重新生成
+      working: 正在准备总结
+    places:
+      add: 添加地点
+      save: 保存地点
+      search: 搜索地点
+      tag: 标签
+      all_tags: 所有标签
+      sort: 排序方式
+      sort_name: 名称
+      sort_recent_visit: 最近访问
+      sort_newest: 最近创建
+      no_matches: 没有匹配的地点。请尝试其他搜索或添加地点。
+      pick_coordinates: 点击地图或输入坐标来选择此地点。你可以拖动标记进行调整。
+      latitude: 纬度
+      longitude: 经度
+      name: 名称
+      note: 备注
+      back: 返回地点列表
+      edit: 编辑地点
+      more_actions: 更多操作：合并或删除
+      radius: 访问半径（米）
+    points:
+      select: 选择记录于 %{time} 的点
+    insights:
+      empty_title: 你的旅程将显示在这里
+      empty_help: 导入位置历史或连接追踪器，即可获得你的首批距离、地图和旅行洞察。
+      import: 导入历史
+      connect: 连接追踪器
+      unresolved: 尚未识别
+      names_pending: 国家和城市名称尚未识别。坐标、地图和距离仍可能可用。
+      configure: 配置地理编码
+      ask_admin: 你的管理员可以配置地理编码来识别国家和城市名称。
+    settings:
+      sections: 设置分类
+    nav:
+      notifications: 通知
+      previous_day: 前一天
+      next_day: 后一天
+    demo:
+      description: 探索一个月的柏林位置记录和一次前往布拉格的周末旅行。演示点、访问和地点均有标记，可随时移除。
+  ux_p3:
+    timeline:
+      filter_scope: 访问筛选已启用。移动和未追踪的时间段仍然可见。
+    integrations:
+      saved_untested: 设置已保存。未进行连接测试。
+      tested_ok: 连接已验证。更改尚未保存。
+      tested_failed: 连接失败。更改尚未保存。
+      saved_ok: 设置已保存，连接已验证。
+      saved_failed: 设置已保存，但连接失败。
+      validation_failed: 无法使用这些设置。请检查 URL 和必填字段。
+      retry: 请检查下方字段，然后再次测试连接。
+      reasons:
+        unreachable: 无法访问该服务。请检查其地址、端口以及 Dawarich 的网络访问。
+        certificate: 无法验证 TLS 证书。请检查服务器证书。
+        credentials: 访问被拒绝。请检查 API 密钥及其权限。
+        missing_fields: 请输入服务 URL 和必需的凭据。
+        check_settings: 服务未接受连接。请检查 URL、凭据和所需权限。
+      status:
+        connected: 已保存的连接：上次测试成功。
+        failed: 已保存的连接：上次测试失败。
+        untested: 已保存的连接：尚未测试。
+      save_and_test: 保存并测试连接
+      test: 测试但不保存
+      save: 保存但不测试
+    video:
+      download: 下载视频
