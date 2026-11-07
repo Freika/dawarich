@@ -328,6 +328,21 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     end
   end
 
+  context 'when an earlier over-limit refusal is still cooling down' do
+    before do
+      allow(ExceptionReporter).to receive(:call)
+      Geocoding::Cooldown.start(Geocoding::Config.resolved_config)
+    end
+
+    it 'leaves the point ungeocoded without asking the provider or reporting the skip' do
+      expect { fetch_data }.not_to raise_error
+
+      expect(Geocoder).not_to have_received(:search)
+      expect(point.reload.reverse_geocoded_at).to be_nil
+      expect(ExceptionReporter).not_to have_received(:call)
+    end
+  end
+
   context 'when the geocoder provider is temporarily unavailable' do
     before do
       allow(ExceptionReporter).to receive(:call)

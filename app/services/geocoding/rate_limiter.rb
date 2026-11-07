@@ -20,21 +20,32 @@ module Geocoding
   # thread may sleep. When the next free slot is further away than that, the
   # slot is left untouched for callers that can wait, the block is skipped and
   # throttle returns nil.
+  #
+  # A provider that refuses a lookup as over its limit starts a
+  # Geocoding::Cooldown. Until it ends, no lookup goes out: an interactive
+  # caller gets nil, as for a busy slot, and any other caller gets
+  # Geocoding::Cooldown::Active.
   class RateLimiter
     MUTEX = Mutex.new
     MAX_INTERACTIVE_WAIT = 1.0
 
     class << self
-      def throttle(config, max_wait: nil)
+      def throttle(config, max_wait: nil, &)
+        return cooling_down(config, max_wait) if Cooldown.active?(config)
+
         wait = reserve(config, max_wait)
         if wait.nil?
           Rails.logger.info("[Geocoding::RateLimiter] Skipping #{config.provider} lookup: wait exceeds #{max_wait}s")
           return
         end
 
-        sleep(wait) if wait.positive?
+        if wait.positive?
+          sleep(wait)
+          # The lookup this one queued behind may have been refused meanwhile.
+          return cooling_down(config, max_wait) if Cooldown.active?(config)
+        end
 
-        yield
+        lookup(config, &)
       end
 
       def reset!
@@ -51,6 +62,24 @@ module Geocoding
       end
 
       private
+
+      def lookup(config)
+        result = yield
+        Cooldown.clear(config)
+        result
+      rescue Geocoder::OverQueryLimitError
+        Cooldown.start(config)
+        raise
+      end
+
+      def cooling_down(config, max_wait)
+        if max_wait
+          Rails.logger.info("[Geocoding::RateLimiter] Skipping #{config.provider} lookup: provider is over its limit")
+          return
+        end
+
+        raise Cooldown::Active, "#{Providers.name(config.provider)} is over its limit; lookups are paused"
+      end
 
       def reserve(config, max_wait)
         rate = config.rps
