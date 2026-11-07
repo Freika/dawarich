@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Points of a fast flight that stay on the route are no longer hidden as anomalies when the plane flies faster than 1,000 km/h over the ground, for example with a strong tailwind. Fixes that jump off the route or move faster than 2,500 km/h are still flagged. Points flagged earlier come back after you press Re-evaluate past data in the map settings. (#3988)
+
 ## [1.22.0] - 2026-11-07, Berlin
 
 ### ⚠️ Upgrade notes
