@@ -94,7 +94,9 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
       result = rpc('tools/list')
       tools = result.dig('result', 'tools')
 
-      expect(tools.pluck('name')).to contain_exactly('get_timeline', 'get_latest_location', 'search_visits')
+      expect(tools.pluck('name')).to contain_exactly(
+        'get_timeline', 'get_latest_location', 'search_visits', 'get_travel_stats', 'get_places_visited'
+      )
       expect(tools).to all(include('annotations' => include(
         'readOnlyHint' => true,
         'destructiveHint' => false,
@@ -119,7 +121,9 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
     {
       'get_timeline' => { start_at: '2025-01-15', end_at: '2025-01-15' },
       'get_latest_location' => {},
-      'search_visits' => { query: 'home' }
+      'search_visits' => { query: 'home' },
+      'get_travel_stats' => {},
+      'get_places_visited' => { year: 2025 }
     }.each do |tool_name, arguments|
       it "returns a tool error for an unknown #{tool_name} argument" do
         result = call_tool(tool_name, arguments.merge(timezone: 'UTC'))
@@ -465,6 +469,85 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
 
     it 'rejects queries shorter than two characters' do
       expect(search(query: 'L')['isError']).to be(true)
+    end
+  end
+
+  describe 'stats tools' do
+    def toponym(country, *cities)
+      rows = cities.map { |name, minutes| { 'city' => name, 'points' => minutes * 2, 'stayed_for' => minutes } }
+
+      { 'country' => country, 'cities' => rows }
+    end
+
+    before do
+      create(:stat, user: user, year: 2024, month: 7, distance: 1_200_000, flight_distance: 900_000,
+                    toponyms: [toponym('Greece', ['Athens', 2_000], ['Thessaloniki', 300]),
+                               toponym('Bulgaria', ['Plovdiv', 500])])
+      create(:stat, user: user, year: 2024, month: 8, distance: 300_000, flight_distance: 0,
+                    toponyms: [toponym('Bulgaria', ['Plovdiv', 9_000], ['Varna', 1_500]), toponym(nil)])
+      create(:stat, user: user, year: 2025, month: 1, distance: 50_000, flight_distance: 0,
+                    toponyms: [toponym('Bulgaria', ['Sofia', 600])])
+      create(:stat, user: create(:user), year: 2024, month: 7, distance: 9_999_000,
+                    toponyms: [toponym('Japan', ['Tokyo', 9_999])])
+    end
+
+    describe 'get_travel_stats' do
+      it 'returns one row per year with the whole history as the total' do
+        result = call_tool('get_travel_stats', {}).fetch('result')
+        stats = result.fetch('structuredContent')
+
+        expect(result['isError']).to be(false)
+        expect(stats).to include('distance_unit' => 'km', 'year' => nil)
+        expect(stats['total']).to eq('distance' => 1_550.0, 'flight_distance' => 900.0,
+                                     'countries' => %w[Bulgaria Greece], 'cities_count' => 5)
+        expected_periods = [
+          { 'year' => 2024, 'month' => nil, 'distance' => 1_500.0, 'flight_distance' => 900.0,
+            'countries' => %w[Bulgaria Greece], 'cities_count' => 4 },
+          { 'year' => 2025, 'month' => nil, 'distance' => 50.0, 'flight_distance' => 0.0,
+            'countries' => %w[Bulgaria], 'cities_count' => 1 }
+        ]
+        expect(stats['periods']).to eq(expected_periods)
+      end
+
+      it 'breaks a year down by month in the requested unit' do
+        stats = call_tool('get_travel_stats', { year: 2024, distance_unit: 'mi' }).dig('result', 'structuredContent')
+
+        expect(stats['distance_unit']).to eq('mi')
+        expect(stats['total']['distance']).to eq(932.1)
+        months = stats['periods'].map { |row| row.values_at('month', 'distance', 'countries') }
+        expect(months).to eq([[7, 745.6, %w[Bulgaria Greece]], [8, 186.4, %w[Bulgaria]]])
+      end
+
+      it 'returns empty periods for a year without stats' do
+        stats = call_tool('get_travel_stats', { year: 2019 }).dig('result', 'structuredContent')
+
+        expect(stats['periods']).to eq([])
+        expect(stats['total']).to include('distance' => 0.0, 'countries' => [])
+      end
+    end
+
+    describe 'get_places_visited' do
+      it 'adds up time per city across the year, longest first' do
+        countries = call_tool('get_places_visited', { year: 2024 }).dig('result', 'structuredContent', 'countries')
+
+        expect(countries.pluck('name', 'minutes')).to eq([['Bulgaria', 11_000], ['Greece', 2_300]])
+        expect(countries.first['cities']).to eq(
+          [{ 'name' => 'Plovdiv', 'minutes' => 9_500, 'points' => 19_000 },
+           { 'name' => 'Varna', 'minutes' => 1_500, 'points' => 3_000 }]
+        )
+      end
+
+      it 'limits the result to one month' do
+        result = call_tool('get_places_visited', { year: 2024, month: 7 }).dig('result', 'structuredContent')
+
+        expect(result).to include('year' => 2024, 'month' => 7)
+        expect(result['countries'].pluck('name')).to eq(%w[Greece Bulgaria])
+        expect(result['countries'].last['cities'].pluck('name', 'minutes')).to eq([['Plovdiv', 500]])
+      end
+
+      it 'requires a year' do
+        expect(call_tool('get_places_visited', {}).dig('result', 'isError')).to be(true)
+      end
     end
   end
 

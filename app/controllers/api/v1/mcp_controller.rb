@@ -3,7 +3,10 @@
 module Api
   module V1
     class McpController < ApiController
-      TOOLS = [McpTools::GetTimeline, McpTools::GetLatestLocation, McpTools::SearchVisits].freeze
+      TOOLS = [
+        McpTools::GetTimeline, McpTools::GetLatestLocation, McpTools::SearchVisits,
+        McpTools::GetTravelStats, McpTools::GetPlacesVisited
+      ].freeze
 
       before_action :require_pro_api!
 
