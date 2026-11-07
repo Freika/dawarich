@@ -1,9 +1,9 @@
 <% if resource.errors.any? %>
   <div id="error_explanation" class="alert alert-error mb-4" data-turbo-cache="false">
     <%= icon 'circle-x' %>
-    <div class="font-bold mb-4 flex items-center gap-2">
+    <div class="font-medium mb-4 flex items-center gap-2">
       <div>
-        <h3 class="font-bold">
+        <h3 class="font-medium">
           <%= I18n.t("errors.messages.not_saved",
                      count: resource.errors.count,
                      resource: resource.class.model_name.human.downcase)

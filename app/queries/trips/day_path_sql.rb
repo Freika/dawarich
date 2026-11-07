@@ -44,7 +44,7 @@ module Trips
     private
 
     def points_sql
-      @points_scope.except(:select, :order, :includes, :preload, :eager_load)
+      @points_scope.route_observations.except(:select, :order, :includes, :preload, :eager_load)
                    .where.not(lonlat: nil)
                    .select('points.id, points.timestamp, points.lonlat, points.track_id')
                    .to_sql

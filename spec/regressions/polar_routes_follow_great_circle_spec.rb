@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Polar routes follow the great circle' do
   it 'renders a sparse polar track through its spherical midpoint instead of along a latitude parallel' do
     track = create(:track, original_path: 'LINESTRING(40 82, 140 82)', dominant_mode: :flying)
-    rows = Tracks::VectorTileQuery.new(scope: Track.where(id: track.id), z: 0, x: 0, y: 0).feature_rows
+    rows = Tracks::VectorTileQuery.new(scope: Track.where(id: track.id), z: 0, x: 0, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).feature_rows
     expect(rows.map { |row| row['id'].to_i }).to eq([track.id])
 
     radians = Math::PI / 180
@@ -27,7 +27,7 @@ RSpec.describe 'Polar routes follow the great circle' do
   it 'serves a sparse polar track in the tiles its arc crosses but its chord misses' do
     track = create(:track, original_path: 'LINESTRING(40 82, 140 82)', dominant_mode: :flying)
 
-    rows = Tracks::VectorTileQuery.new(scope: Track.where(id: track.id), z: 4, x: 11, y: 0).feature_rows
+    rows = Tracks::VectorTileQuery.new(scope: Track.where(id: track.id), z: 4, x: 11, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).feature_rows
 
     expect(rows.map { |row| row['id'].to_i }).to eq([track.id])
   end
@@ -54,7 +54,8 @@ RSpec.describe 'Polar routes follow the great circle' do
       create(:point, user:, track:, longitude:, latitude: 82, timestamp: start_at.to_i + offset)
     end
 
-    rows = Tracks::SpeedVectorTileQuery.new(scope: user.tracks, points_scope: user.points, z: 8, x: 192, y: 1)
+    rows = Tracks::SpeedVectorTileQuery.new(scope: user.tracks, points_scope: user.points, z: 8, x: 192, y: 1,
+                                            privacy_zone_masker: Maps::PrivacyZoneMasker.none)
                                        .feature_rows
 
     expect(rows.map { |row| row['id'].to_i }.uniq).to eq([track.id])
@@ -63,7 +64,7 @@ RSpec.describe 'Polar routes follow the great circle' do
   it 'treats a fast track with an undetected mode as a flight' do
     track = create(:track, original_path: 'LINESTRING(40 82, 140 82)', dominant_mode: :unknown, avg_speed: 600)
 
-    rows = Tracks::VectorTileQuery.new(scope: Track.where(id: track.id), z: 4, x: 11, y: 0).feature_rows
+    rows = Tracks::VectorTileQuery.new(scope: Track.where(id: track.id), z: 4, x: 11, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).feature_rows
 
     expect(rows.map { |row| row['id'].to_i }).to eq([track.id])
   end
@@ -71,7 +72,7 @@ RSpec.describe 'Polar routes follow the great circle' do
   it 'keeps chord-only tile selection for sparse tracks that are not flights' do
     track = create(:track, original_path: 'LINESTRING(40 82, 140 82)', dominant_mode: :driving, avg_speed: 60)
 
-    rows = Tracks::VectorTileQuery.new(scope: Track.where(id: track.id), z: 4, x: 11, y: 0).feature_rows
+    rows = Tracks::VectorTileQuery.new(scope: Track.where(id: track.id), z: 4, x: 11, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).feature_rows
 
     expect(rows).to be_empty
   end

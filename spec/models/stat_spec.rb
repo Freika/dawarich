@@ -156,7 +156,7 @@ RSpec.describe Stat, type: :model do
         end
 
         it 'returns correct bounding box for points within the month' do
-          result = stat.calculate_data_bounds
+          result = stat.calculate_data_bounds(privacy_zone_masker: Maps::PrivacyZoneMasker.none)
 
           expect(result).to be_a(Hash)
           expect(result[:min_lat]).to eq(40.6)
@@ -178,7 +178,7 @@ RSpec.describe Stat, type: :model do
           end
 
           it 'only includes points from the stat user' do
-            result = stat.calculate_data_bounds
+            result = stat.calculate_data_bounds(privacy_zone_masker: Maps::PrivacyZoneMasker.none)
 
             expect(result[:min_lat]).to eq(40.6)
             expect(result[:max_lat]).to eq(40.8)
@@ -201,7 +201,7 @@ RSpec.describe Stat, type: :model do
           end
 
           it 'returns bounds with same min and max values' do
-            result = single_point_stat.calculate_data_bounds
+            result = single_point_stat.calculate_data_bounds(privacy_zone_masker: Maps::PrivacyZoneMasker.none)
 
             expect(result[:min_lat]).to eq(45.5)
             expect(result[:max_lat]).to eq(45.5)
@@ -229,7 +229,7 @@ RSpec.describe Stat, type: :model do
           end
 
           it 'handles extreme coordinate values correctly' do
-            result = edge_stat.calculate_data_bounds
+            result = edge_stat.calculate_data_bounds(privacy_zone_masker: Maps::PrivacyZoneMasker.none)
 
             expect(result[:min_lat]).to eq(-90.0)
             expect(result[:max_lat]).to eq(90.0)
@@ -245,7 +245,7 @@ RSpec.describe Stat, type: :model do
         let(:empty_stat) { create(:stat, year: 2024, month: 10, user: empty_user) }
 
         it 'returns nil' do
-          result = empty_stat.calculate_data_bounds
+          result = empty_stat.calculate_data_bounds(privacy_zone_masker: Maps::PrivacyZoneMasker.none)
 
           expect(result).to be_nil
         end
@@ -269,7 +269,7 @@ RSpec.describe Stat, type: :model do
         end
 
         it 'returns nil when no points exist in the month' do
-          result = empty_month_stat.calculate_data_bounds
+          result = empty_month_stat.calculate_data_bounds(privacy_zone_masker: Maps::PrivacyZoneMasker.none)
 
           expect(result).to be_nil
         end

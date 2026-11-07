@@ -110,6 +110,16 @@ class Import < ApplicationRecord
     additional_data_extraction.fetch('counts', {}).transform_keys(&:to_sym)
   end
 
+  # Portable identity shared by source files and source-scoped export metadata.
+  def backup_reference
+    as_json(only: %w[name source]).merge('created_at' => created_at.iso8601(6))
+  end
+
+  def failure_summary
+    key = error_message.to_s.match?(/detect.*format|unsupported|parse|json/i) ? 'format_error' : 'failed_reason'
+    I18n.t("ux_p2.import.#{key}")
+  end
+
   def extraction_error_message
     additional_data_extraction['error_message']
   end

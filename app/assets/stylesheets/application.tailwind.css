@@ -239,10 +239,10 @@ a.card:hover {
   --raise-ring: oklch(var(--p) / 0.5);
 }
 
-/* A closed modal never animates. Firefox can style the page once before the
-   stylesheet lands; the hidden modals are then visible, and DaisyUI's 200ms
-   fade would play them out on every load. Opening still fades in. */
+/* Closed modals must leave the rendering, focus and accessibility trees.
+   Opacity alone leaves their controls in the keyboard tab order. */
 .modal:not(.modal-open, [open], :target, .modal-toggle:checked + .modal) {
+  display: none;
   transition: none;
 }
 
@@ -480,4 +480,76 @@ html.dark em-emoji-picker {
    shrinkable rule above instead of this one, which cannot shrink. */
 .page-header-row > :last-child:not(:first-child) {
   flex: 0 0 auto;
+}
+
+/* 7. A page whose root carries .min-h-content fills the space between the
+      navbar and the footer (.layout-content is a flex column in
+      layouts/application). */
+.layout-content > :has(> .min-h-content) {
+  flex-grow: 1;
+}
+
+/* 8. @tailwindcss/forms paints every checkbox white, which DaisyUI's
+      .checkbox never overrides while unchecked. Keep it on the surface. */
+.checkbox:not(:checked):not(:indeterminate) {
+  background-color: transparent;
+}
+
+/* Keep point time and selection visible without a sideways scroll on phones. */
+@media (max-width: 767px) {
+  .points-responsive-table,
+  .points-responsive-table tbody {
+    display: block;
+    width: 100%;
+  }
+  .points-responsive-table thead {
+    display: block;
+  }
+  .points-responsive-table thead tr {
+    display: flex;
+    align-items: center;
+  }
+  .points-responsive-table thead th {
+    display: none;
+  }
+  .points-responsive-table thead th:first-child,
+  .points-responsive-table thead th:last-child {
+    display: block;
+    width: auto;
+  }
+  .points-responsive-table tbody tr {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    padding: 12px 8px;
+    border-top: 1px solid oklch(var(--bc) / 0.12);
+  }
+  .points-responsive-table td {
+    grid-column: 2;
+    padding: 3px 8px;
+    width: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+  .points-responsive-table td[data-point-column="select"] {
+    grid-column: 1;
+    grid-row: 1 / span 4;
+    padding: 5px 0;
+  }
+  .points-responsive-table td[data-point-column="recorded"] {
+    grid-row: 1;
+    font-weight: 600;
+  }
+  .points-responsive-table td[data-point-column="coordinates"] {
+    grid-row: 2;
+    font-size: 12px;
+  }
+  .points-responsive-table td[data-point-column="speed"] {
+    grid-row: 3;
+    font-size: 12px;
+  }
+  .points-responsive-table td[data-point-column="address"] {
+    grid-row: 4;
+    font-size: 12px;
+  }
 }

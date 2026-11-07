@@ -80,7 +80,7 @@ class Api::V1::SettingsController < ApiController
   def settings_params
     permitted = params.require(:settings).permit(
       :timezone, :date_format, :time_format, :first_day_of_week,
-      :meters_between_routes, :minutes_between_routes, :fog_of_war_meters,
+      :meters_between_routes, :minutes_between_routes, :split_tracks_at_midnight, :fog_of_war_meters,
       :time_threshold_minutes, :merge_threshold_minutes, :route_opacity,
       :route_color, :track_color,
       :preferred_map_layer, :points_rendering_mode, :live_map_enabled,

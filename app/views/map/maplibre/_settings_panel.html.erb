@@ -10,6 +10,7 @@
     panel element. %>
 <% timeline_panel_open = params[:panel] == 'timeline' %>
 <div id="map-settings-panel"
+     <%= "inert" unless timeline_panel_open %>
      data-turbo-permanent
      class="map-control-panel<%= ' open timeline-expanded' if timeline_panel_open %>"
      data-maps--maplibre-target="settingsPanel"
@@ -165,7 +166,7 @@
                        value="untagged"
                        class="checkbox checkbox-xs hidden peer"
                        data-action="change->maps--maplibre#filterPlacesByTags">
-                <span class="badge badge-sm badge-outline transition-all peer-checked:scale-105"
+                <span class="badge badge-sm badge-outline transition-colors"
                       style="border-color: #94a3b8; color: #94a3b8;"
                       data-checked-style="background-color: #94a3b8; color: white;">
                   <%= t('.untagged') %>
@@ -179,7 +180,7 @@
                          value="<%= tag.id %>"
                          class="checkbox checkbox-xs hidden peer"
                          data-action="change->maps--maplibre#filterPlacesByTags">
-                  <span class="badge badge-sm badge-outline transition-all peer-checked:scale-105"
+                  <span class="badge badge-sm badge-outline transition-colors"
                         style="border-color: <%= tag.color %>; color: <%= tag.color %>;"
                         data-checked-style="background-color: <%= tag.color %>; color: white;">
                     <%= tag.icon %> #<%= tag.name %>
@@ -265,7 +266,7 @@
                     <div class="grid grid-cols-6 gap-1.5 mt-1">
                       <% Array(@poster_themes).each do |theme| %>
                         <button type="button"
-                                class="w-full overflow-hidden rounded-md border border-base-300 ring-primary ring-offset-base-100 transition hover:scale-105 focus:outline-none focus-visible:ring-2"
+                                class="w-full overflow-hidden rounded-md border border-base-300 ring-primary ring-offset-base-100 transition-colors hover:border-base-content/40 focus:outline-none focus-visible:ring-2"
                                 style="height: 32px; background-image: url('<%= asset_path("poster_themes/#{theme['key']}.webp") %>'); background-size: cover; background-position: center;"
                                 title="<%= theme['name'] %>"
                                 aria-label="<%= t('.theme_aria_label', theme: theme['name']) %>"
@@ -350,7 +351,7 @@
                       data-action="click->speed-color-editor#open"><%= t('.edit_speed_colors') %></button>
               <dialog class="modal" data-speed-color-editor-target="modal" aria-labelledby="track-speed-color-title">
                 <div class="modal-box">
-                  <h3 id="track-speed-color-title" class="font-bold text-lg"><%= t('javascript.speed_gradient.title') %></h3>
+                  <h3 id="track-speed-color-title" class="font-medium text-lg"><%= t('javascript.speed_gradient.title') %></h3>
                   <p class="label"><%= t('javascript.speed_gradient.color_stops') %></p>
                   <div class="space-y-2" data-speed-color-editor-target="stopsList"></div>
                   <button type="button" class="btn btn-sm btn-ghost mt-2"
@@ -553,6 +554,16 @@
                   <span class="text-base-content/60"><%= t('.track_split_time_unit') %></span>
                 </label>
                 <p class="text-xs text-base-content/60 mt-1"><%= t('.track_split_time_hint') %></p>
+              </div>
+
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                  <input type="checkbox"
+                         name="splitTracksAtMidnight"
+                         class="toggle toggle-primary" />
+                  <span class="label-text font-medium"><%= t('.split_tracks_at_midnight') %></span>
+                </label>
+                <p class="text-xs text-base-content/60 mt-1"><%= t('.split_tracks_at_midnight_hint') %></p>
               </div>
 
               <button type="button"

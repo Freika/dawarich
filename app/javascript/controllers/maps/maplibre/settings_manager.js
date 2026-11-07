@@ -225,6 +225,14 @@ export class SettingsController {
       if (input) input.value = this.settings[name]
     }
 
+    const splitTracksAtMidnightToggle = controller.element.querySelector(
+      'input[name="splitTracksAtMidnight"]',
+    )
+    if (splitTracksAtMidnightToggle) {
+      splitTracksAtMidnightToggle.checked =
+        this.settings.splitTracksAtMidnight === true
+    }
+
     // Sync city statistics settings
     const minMinutesInput = controller.element.querySelector(
       'input[name="minMinutesSpentInCity"]',
@@ -1027,6 +1035,7 @@ export class SettingsController {
     const settings = {
       metersBetweenRoutes: parseInt(formData.get("metersBetweenRoutes"), 10),
       minutesBetweenRoutes: parseInt(formData.get("minutesBetweenRoutes"), 10),
+      splitTracksAtMidnight: formData.get("splitTracksAtMidnight") === "on",
       minMinutesSpentInCity: parseInt(
         formData.get("minMinutesSpentInCity"),
         10,

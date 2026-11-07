@@ -9,7 +9,7 @@ class Stats::DailyDistanceQuery
   TELEPORT_METERS = Points::AnomalyFilter::TELEPORT_METERS
 
   def initialize(monthly_points, timespan, timezone = nil, minutes_between_routes: nil, user_id: nil)
-    @monthly_points = monthly_points
+    @monthly_points = monthly_points.route_observations
     @user_id = user_id
     @timespan = timespan
     @timezone = validate_timezone(timezone)

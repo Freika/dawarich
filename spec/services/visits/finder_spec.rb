@@ -20,19 +20,19 @@ RSpec.describe Visits::Finder do
       it 'delegates to FindWithinBoundingBox service' do
         bounding_box_finder = instance_double(Visits::FindWithinBoundingBox)
         expect(Visits::FindWithinBoundingBox).to receive(:new)
-          .with(user, area_params)
+          .with(user, area_params, privacy_zone_masker: kind_of(Maps::PrivacyZoneMasker))
           .and_return(bounding_box_finder)
 
         expect(bounding_box_finder).to receive(:call)
 
-        described_class.new(user, area_params).call
+        described_class.new(user, area_params, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'does not call FindInTime service' do
         expect(Visits::FindWithinBoundingBox).to receive(:new).and_call_original
         expect(Visits::FindInTime).not_to receive(:new)
 
-        described_class.new(user, area_params).call
+        described_class.new(user, area_params, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
     end
 
@@ -52,14 +52,14 @@ RSpec.describe Visits::Finder do
 
         expect(time_finder).to receive(:call)
 
-        described_class.new(user, time_params).call
+        described_class.new(user, time_params, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
 
       it 'does not call FindWithinBoundingBox service' do
         expect(Visits::FindInTime).to receive(:new).and_call_original
         expect(Visits::FindWithinBoundingBox).not_to receive(:new)
 
-        described_class.new(user, time_params).call
+        described_class.new(user, time_params, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
     end
 
@@ -80,7 +80,7 @@ RSpec.describe Visits::Finder do
 
         expect(time_finder).to receive(:call)
 
-        described_class.new(user, incomplete_params).call
+        described_class.new(user, incomplete_params, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
     end
 
@@ -100,13 +100,13 @@ RSpec.describe Visits::Finder do
       it 'prioritizes area search over time search' do
         bounding_box_finder = instance_double(Visits::FindWithinBoundingBox)
         expect(Visits::FindWithinBoundingBox).to receive(:new)
-          .with(user, combined_params)
+          .with(user, combined_params, privacy_zone_masker: kind_of(Maps::PrivacyZoneMasker))
           .and_return(bounding_box_finder)
 
         expect(bounding_box_finder).to receive(:call)
         expect(Visits::FindInTime).not_to receive(:new)
 
-        described_class.new(user, combined_params).call
+        described_class.new(user, combined_params, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
     end
 
@@ -127,7 +127,7 @@ RSpec.describe Visits::Finder do
         expect(Visits::FindInTime).to receive(:new).and_call_original
         expect(Visits::FindWithinBoundingBox).not_to receive(:new)
 
-        described_class.new(user, params).call
+        described_class.new(user, params, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end
     end
 
@@ -140,7 +140,10 @@ RSpec.describe Visits::Finder do
           expect(Visits::FindInTime).to receive(:new).and_raise(ArgumentError)
           expect(Visits::FindWithinBoundingBox).not_to receive(:new)
 
-          expect { described_class.new(user, empty_params).call }.to raise_error(ArgumentError)
+          expect do
+            described_class.new(user, empty_params,
+                                privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
+          end.to raise_error(ArgumentError)
         end
       end
 
@@ -148,7 +151,10 @@ RSpec.describe Visits::Finder do
         let(:nil_params) { nil }
 
         it 'raises an error' do
-          expect { described_class.new(user, nil_params).call }.to raise_error(NoMethodError)
+          expect do
+            described_class.new(user, nil_params,
+                                privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
+          end.to raise_error(NoMethodError)
         end
       end
     end

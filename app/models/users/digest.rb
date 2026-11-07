@@ -17,6 +17,24 @@ class Users::Digest < ApplicationRecord
 
   before_create :generate_sharing_uuid
 
+  enum :generation_status, { ready: 0, queued: 1, calculating: 2, failed: 3 }, prefix: :generation
+
+  def self.for_year_generation(user, year)
+    user.with_lock do
+      digest = user.digests.yearly.find_or_initialize_by(year: year)
+      digest.update!(generation_status: :calculating)
+      digest
+    end
+  end
+
+  # Sidekiq loses in-flight jobs on SIGKILL, so a generation that never
+  # reported back stops blocking a new request after this window.
+  GENERATION_STALE_AFTER = 6.hours
+
+  def generation_pending?
+    (generation_queued? || generation_calculating?) && updated_at > GENERATION_STALE_AFTER.ago
+  end
+
   enum :period_type, { monthly: 0, yearly: 1 }
 
   # Versioned by updated_at, so a recalculated digest never reads a stale entry.

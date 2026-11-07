@@ -119,7 +119,7 @@ class Trip < ApplicationRecord
 
   def day_stats(timezone, points_scope: primary_device_points)
     day_expr = "(to_timestamp(points.timestamp) AT TIME ZONE #{self.class.connection.quote(timezone)})::date"
-    rows = points_scope.reorder(nil).group(Arel.sql(day_expr)).pluck(
+    rows = points_scope.route_observations.reorder(nil).group(Arel.sql(day_expr)).pluck(
       Arel.sql(day_expr),
       Arel.sql('MIN(points.timestamp)'),
       Arel.sql('MAX(points.timestamp)'),

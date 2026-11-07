@@ -277,6 +277,24 @@ RSpec.describe 'Privacy zone masking on map read endpoints', type: :request do
     end
   end
 
+  describe 'fog' do
+    it 'drops cells in the zone without needing the flag' do
+      dataset = Exploration::Dataset.create!(version: 'fog-privacy-test', completed_at: Time.current)
+      allow(Exploration::Geography).to receive_messages(current: dataset, install!: dataset)
+      Point.insert_all!([[zone_lon, zone_lat], [13.700, 52.600]].map do |lon, lat|
+        { user_id: user.id, timestamp: Time.utc(2024, 6, 10).to_i, lonlat: "POINT(#{lon} #{lat})",
+          created_at: Time.current, updated_at: Time.current }
+      end)
+      Exploration::Rebuild.new(user).call
+
+      get '/api/v1/maps/hexagons/fog',
+          params: { start_date: '2024-06-01T00:00:00Z', end_date: '2024-06-30T23:59:59Z' }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(json['h3_indexes']).to eq([Exploration::CellGeometry.id(52.600, 13.700)])
+    end
+  end
+
   describe 'shared monthly stats' do
     let(:zone_cell) { H3.to_string(H3.from_geo_coordinates([zone_lat, zone_lon], 8)) }
     let(:far_cell) { H3.to_string(H3.from_geo_coordinates([52.600, 13.700], 8)) }

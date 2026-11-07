@@ -4,7 +4,7 @@
                 data: { turbo_frame: "_top", action: "share-link-modal#close" }, aria: { label: t('.close') } do %>
       ✕
     <% end %>
-    <h3 class="font-bold text-lg mb-4"><%= t('.share') %></h3>
+    <h3 class="font-medium text-lg mb-4"><%= t('.share') %></h3>
 
     <div id="share-hub-body">
       <%= render 'share_links/hubs/body', hub: hub, active_tab: active_tab, errors: local_assigns[:errors] %>

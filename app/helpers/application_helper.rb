@@ -2,7 +2,9 @@
 
 module ApplicationHelper
   def javascript_translations
-    translations = I18n.t('javascript', default: {}).merge(
+    base = I18n.t('javascript', locale: I18n.default_locale, default: {})
+    translations = base.deep_merge(I18n.t('javascript', default: {}))
+    translations = translations.merge(
       transportation_modes: I18n.t('transportation_modes', default: {}),
       visit_statuses: I18n.t('visit_statuses', default: {}),
       battery_statuses: I18n.t('battery_statuses', default: {}),

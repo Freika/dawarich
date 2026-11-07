@@ -38,6 +38,28 @@ RSpec.describe Points::RawData::Clearer do
       expect(Point.where(user: user).pluck(:raw_data)).to all(eq({}))
     end
 
+    it 'does not clear points when the archive file is missing from storage' do
+      archive.file.blob.service.delete(archive.file.key)
+
+      clearer.clear_specific_archive(archive.id)
+
+      expect(Point.where(user: user).pluck(:raw_data)).to all(eq({ 'lon' => 13.4, 'lat' => 52.5 }))
+    end
+
+    it 'does not clear a point that was re-linked to another archive mid-run' do
+      archive_id = archive.id
+      other_archive = create(:points_raw_data_archive, user: user, year: 2020, month: 1)
+      moved = points.first
+      allow(clearer).to receive(:clear_points_in_batches).and_wrap_original do |method, *args|
+        moved.update_columns(raw_data_archive_id: other_archive.id)
+        method.call(*args)
+      end
+
+      clearer.clear_specific_archive(archive_id)
+
+      expect(moved.reload.raw_data).to eq({ 'lon' => 13.4, 'lat' => 52.5 })
+    end
+
     it 'does not clear unverified archive' do
       # Create unverified archive
       archiver = Points::RawData::Archiver.new

@@ -1,5 +1,5 @@
 <%
-  q = { hub: 1, start_date: hub.default_start_date.iso8601, end_date: hub.default_end_date.iso8601 }
+  q = { hub: 1, start_date: hub.default_start_date.iso8601, end_date: hub.default_end_date.iso8601, import_id: hub.import_id }
   live_paths = {
     create:            share_links_live_path(q),
     revoke:            revoke_share_links_live_path(q),

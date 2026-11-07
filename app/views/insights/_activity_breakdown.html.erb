@@ -1,8 +1,8 @@
 <!-- Activity Breakdown Card -->
 <div class="card bg-base-200">
   <div class="card-body p-5">
-    <h2 class="card-title text-lg flex items-center gap-2">
-      <%= icon 'activity', class: 'w-5 h-5 text-primary' %>
+    <h2 class="card-title text-lg font-medium flex items-center gap-2">
+      <%= icon 'activity', class: 'w-4 h-4 text-base-content/60' %>
       <%= t('.activity_breakdown') %>
     </h2>
 
@@ -31,19 +31,19 @@
           <%= t('.no_activity_data_available_for_this_period') %>
         </div>
       <% else %>
-        <% sorted_activities.each do |mode, data| %>
+        <% sorted_activities.each_with_index do |(mode, data), index| %>
           <% config = activity_config[mode] || { icon: 'circle', label: t("transportation_modes.#{mode}", default: t('transportation_modes.unknown')) } %>
           <div class="flex items-center gap-3">
             <div class="w-6 flex justify-center text-base-content/70">
               <%= icon config[:icon], class: 'w-4 h-4' %>
             </div>
             <span class="w-20 text-sm"><%= config[:label] %></span>
-            <progress class="progress progress-info flex-1 h-2"
+            <progress class="progress <%= 'progress-primary' if index.zero? %> flex-1 h-2"
                       value="<%= data['percentage'] %>" max="100"></progress>
             <span class="w-16 text-right text-sm text-base-content/60">
               <%= format_duration_short(data['duration']) %>
             </span>
-            <span class="w-10 text-right text-sm font-medium">
+            <span class="w-10 text-right text-sm font-medium tabular-nums">
               <%= data['percentage'] %>%
             </span>
           </div>

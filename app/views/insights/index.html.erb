@@ -35,6 +35,8 @@
       </div>
       <%= render 'pro_locked_card', title: t('.movement_wellness'), utm_content: 'movement_wellness' %>
     <% end %>
+  <% elsif !@has_insight_data %>
+    <%= render 'empty_state' %>
   <% else %>
     <%= render 'stats_row' %>
 
@@ -66,8 +68,4 @@
     <% end %>
   <% end %>
 
-  <!-- Footer -->
-  <div class="text-center text-sm text-base-content/50 py-4">
-    <%= t('.geodata_insights_bull_powered_by_your_location_history') %>
-  </div>
 </div>

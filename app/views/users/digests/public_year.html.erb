@@ -5,7 +5,7 @@
   <div class="hero text-white rounded-lg shadow-lg mb-8" style="background: linear-gradient(135deg, #0f766e, #0284c7);">
     <div class="hero-content text-center py-12">
       <div class="max-w-lg">
-        <h1 class="text-4xl font-bold"><%= t('.year_year_in_review', year: @digest.year) %></h1>
+        <h1 class="text-4xl font-medium tracking-tight"><%= t('.year_year_in_review', year: @digest.year) %></h1>
         <p class="py-4"><%= t('.your_journey_by_the_numbers') %></p>
       </div>
     </div>
@@ -39,7 +39,7 @@
   <% if @full_digest %>
     <!-- First Time Visits (Pro / self-hosted only) -->
     <% if @digest.first_time_countries.any? || @digest.first_time_cities.any? %>
-      <div class="card bg-base-100 shadow-xl mb-8">
+      <div class="card bg-base-100 mb-8">
         <div class="card-body text-center items-center">
           <h2 class="card-title">
             <%= icon 'star' %> <%= t('.first_time_visits') %>
@@ -50,7 +50,7 @@
               <h3 class="font-semibold mb-2"><%= t('.new_countries') %></h3>
               <div class="flex flex-wrap gap-2 justify-center">
                 <% @digest.first_time_countries.each do |country| %>
-                  <span class="badge badge-success badge-lg"><%= country %></span>
+                  <span class="badge badge-ghost badge-lg"><%= country %></span>
                 <% end %>
               </div>
             </div>
@@ -75,7 +75,7 @@
 
     <!-- Monthly Distance Chart (Pro / self-hosted only) -->
     <% if @digest.monthly_distances.present? %>
-      <div class="card bg-base-100 shadow-xl mb-8">
+      <div class="card bg-base-100 mb-8">
         <div class="card-body text-center items-center">
           <h2 class="card-title">
             <%= icon 'activity' %> <%= t('.year_by_month') %>
@@ -103,7 +103,7 @@
 
     <!-- Top Countries by Time Spent (Pro / self-hosted only) -->
     <% if @digest.top_countries_by_time.any? %>
-      <div class="card bg-base-100 shadow-xl mb-8">
+      <div class="card bg-base-100 mb-8">
         <div class="card-body text-center items-center">
           <h2 class="card-title">
             <%= icon 'map-pin' %> <%= t('.where_they_spent_the_most_time') %>
@@ -124,7 +124,7 @@
     <% end %>
 
     <!-- Countries & Cities (Pro / self-hosted only) -->
-    <div class="card bg-base-100 shadow-xl mb-8">
+    <div class="card bg-base-100 mb-8">
       <div class="card-body text-center items-center">
         <h2 class="card-title">
           <%= icon 'earth' %> <%= t('.countries_cities') %>
@@ -161,7 +161,7 @@
     </div>
 
     <!-- All-Time Stats (Pro / self-hosted only) -->
-    <div class="card bg-slate-800 text-white shadow-xl mb-8">
+    <div class="card bg-slate-800 text-white mb-8">
       <div class="card-body text-center items-center">
         <h2 class="card-title text-white">
           <%= icon 'trophy' %> <%= t('.all_time_stats') %>

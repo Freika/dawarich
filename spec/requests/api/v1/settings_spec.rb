@@ -102,6 +102,14 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(user.reload.safe_settings.gps_accuracy_filter_enabled?).to be true
       end
 
+      it 'updates split_tracks_at_midnight' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { split_tracks_at_midnight: true } }
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body['settings']).to include('split_tracks_at_midnight' => true)
+        expect(user.reload.safe_settings.split_tracks_at_midnight?).to be true
+      end
+
       it 'updates points_tiled_rendering' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { points_tiled_rendering: true } }
 

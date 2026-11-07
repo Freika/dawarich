@@ -304,6 +304,7 @@ test("Track generation thresholds load and persist with their existing backend k
         settings: {
           meters_between_routes: 1200,
           minutes_between_routes: 45,
+          split_tracks_at_midnight: true,
         },
       }),
     }
@@ -314,9 +315,11 @@ test("Track generation thresholds load and persist with their existing backend k
     const loaded = await SettingsManager.loadFromBackend()
     assert.equal(loaded.metersBetweenRoutes, 1200)
     assert.equal(loaded.minutesBetweenRoutes, 45)
+    assert.equal(loaded.splitTracksAtMidnight, true)
     await SettingsManager.saveToBackend(loaded)
     assert.equal(saved.meters_between_routes, "1200")
     assert.equal(saved.minutes_between_routes, "45")
+    assert.equal(saved.split_tracks_at_midnight, true)
   } finally {
     globalThis.fetch = originalFetch
   }

@@ -6,6 +6,7 @@ class Api::V1::HealthController < ApiController
   skip_after_action :set_rate_limit_headers, only: :ready
 
   def index
+    response.set_header('X-Dawarich-Stationary-Presence', '1')
     render json: { status: 'ok' }
   end
 

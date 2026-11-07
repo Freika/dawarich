@@ -51,6 +51,7 @@ export default class extends Controller {
     "status",
     "progressBar",
     "renderButton",
+    "downloadButton",
     "saveButton",
     "cancelButton",
     "nameInput",
@@ -767,15 +768,21 @@ export default class extends Controller {
   }
 
   showResult(blob) {
+    if (this.resultUrl) URL.revokeObjectURL(this.resultUrl)
     this.blob = blob
     this.resultUrl = URL.createObjectURL(blob)
+    this.downloadButtonTarget.href = this.resultUrl
+    this.downloadButtonTarget.download = `${(this.nameInputTarget.value || "route-video").replace(/[^\p{L}\p{N} _-]/gu, "").slice(0, 100) || "route-video"}.mp4`
+    this.downloadButtonTarget.classList.remove("hidden")
+    this.renderButtonTarget.classList.replace("btn-primary", "btn-ghost")
     this.resultTarget.src = this.resultUrl
     this.resultTarget.classList.remove("hidden")
     // The result already carries its own burnt-in HUD; leaving the preview
     // overlay up would double it.
     this.hideHudPreview()
     this.saveButtonTarget.disabled = false
-    this.statusTarget.textContent = translate("video.ready", {
+    this.saveButtonTarget.classList.remove("hidden")
+    this.statusTarget.textContent = translate("ux_p3.video.ready", {
       size: (blob.size / (1024 * 1024)).toFixed(1),
     })
   }
@@ -784,10 +791,14 @@ export default class extends Controller {
     if (this.resultUrl) URL.revokeObjectURL(this.resultUrl)
     this.resultUrl = null
     this.blob = null
+    this.downloadButtonTarget.removeAttribute("href")
+    this.downloadButtonTarget.classList.add("hidden")
+    this.renderButtonTarget.classList.replace("btn-ghost", "btn-primary")
     this.resultTarget.removeAttribute("src")
     this.resultTarget.classList.add("hidden")
     this.drawHudPreview()
     this.saveButtonTarget.disabled = true
+    this.saveButtonTarget.classList.add("hidden")
     this.showProgress(0, null)
   }
 

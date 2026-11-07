@@ -358,6 +358,19 @@
           </div>
           <p class="min-h-4 text-xs opacity-70" aria-live="polite" data-video-studio-target="status"></p>
 
+          <a class="btn btn-primary btn-sm w-full hidden" download
+             data-video-studio-target="downloadButton" data-testid="video-download">
+            <%= icon 'download', class: 'h-4 w-4' %>
+            <%= t('ux_p3.video.download') %>
+          </a>
+          <button type="button" class="btn btn-outline btn-sm w-full gap-1 hidden" disabled
+                  data-video-studio-target="saveButton"
+                  data-action="video-studio#save"
+                  data-testid="video-save"
+                  title="<%= t('.keep_this_video_in_your_gallery') %>">
+            <%= icon 'camera', class: 'h-3.5 w-3.5' %>
+            <%= t('.save_to_gallery') %>
+          </button>
           <button type="button" class="btn btn-primary btn-sm w-full"
                   data-video-studio-target="renderButton"
                   data-action="video-studio#render"
@@ -368,14 +381,7 @@
           <button type="button" class="btn btn-ghost btn-xs w-full gap-1 opacity-70 hidden"
                   data-video-studio-target="cancelButton"
                   data-action="video-studio#cancel"><%= t('.cancel') %></button>
-          <button type="button" class="btn btn-ghost btn-xs w-full gap-1 opacity-70" disabled
-                  data-video-studio-target="saveButton"
-                  data-action="video-studio#save"
-                  data-testid="video-save"
-                  title="<%= t('.keep_this_video_in_your_gallery') %>">
-            <%= icon 'camera', class: 'h-3.5 w-3.5' %>
-            <%= t('.save_to_gallery') %>
-          </button>
+
         </div>
       </aside>
     </div>

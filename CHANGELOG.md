@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.22.0] - 2026-11-07, Berlin
+
+### ⚠️ Upgrade notes
+
+- With `ARCHIVE_RAW_DATA=true`, set `ARCHIVE_ENCRYPTION_KEY` before upgrading: without it, production stops archiving raw data and only logs an error. On an instance that already has archives, use the current `SECRET_KEY_BASE` value; otherwise generate a key with `bin/rails secret`. Keep the key safe, because cleared raw data cannot be recovered without it.
+
+### Added
+
+- Split Tracks at midnight in your timezone with a new option in the map's Track generation settings, so a night at home with your phone still reporting no longer joins several days into one Track. It is off by default; press Recalculate tracks & stats to apply it to existing Tracks. (#3306)
+- The Timeline also shows the local time of a visit, or of a journey's start, when the place is in a different time zone than your account, for example "19:30 local" next to a Kansas visit for an account in Berlin. Days are still split by your account's time zone. The API and the MCP `get_timeline` tool return the place's time zone as `local_timezone`. Time zone boundaries come from timezone-boundary-builder (© OpenStreetMap contributors, ODbL) and load during the database migration; without them, times stay in the account's time zone as before. (#3886)
+
+### Changed
+
+- Bumped Rails to 8.1.4.1 to close the security advisories fixed in that release, including GHSA-f3w6-w445-fwh9 (arbitrary file read and write in Active Storage image analysis). Self-hosters get the fixes by upgrading.
+- A stop long enough to count as a visit (5 minutes by default, never less) now ends a Track, even when it is shorter than the time gap between Tracks. The Timeline shows separate journeys before and after such a visit instead of one journey across it, and position noise during a stay no longer cuts it into short Tracks. Press Recalculate tracks & stats to apply it to existing Tracks. (#3454)
+- The interface is restyled with quieter colours and sentence-case labels across the app.
+
+### Fixed
+
+- Points recorded shortly after a route ended are attached to that route again instead of failing while tracks were generated in parallel. Merging a route that has a shared link or corrected segments no longer fails the same way.
+- GPS filtering now hides a single imprecise network point that jumps to a distant cell tower and back while the phone stays put, such as an Android phone idle at home that reports one fix across a bay. To check your existing history, press "Re-evaluate past data" in the map settings under GPS Noise Filtering. (#3892)
+- Stationary presence reported by the mobile tracker remains available for visits and raw history without adding zigzags or distance to routes, trips, or recalculated statistics.
+- Countries you only flew over no longer count when the flight comes from a GPX or GeoJSON file without speed data either, including files imported earlier: speed is worked out from the time and distance between points. In a GeoJSON file without a speed field, points no longer get a speed of 0. (#3900)
+- Keep public timeline links and filtered exports limited to their selected import, including queued exports and restored backups. Shared links show their source, time range and expiry and let owners edit access settings.
+- Preserve the selected timezone when saving settings and loading Poster Studio dates. Poster controls and downloads now fit narrow screens, and closed map dialogs no longer receive keyboard focus.
+- Show digest generation progress and retries without marking completed reports as failed when email delivery cannot be queued. Make MP4 downloads, integration save/test outcomes and timeline filter counts easier to follow.
+- Improve import recovery, family sharing feedback, first-use guidance, mobile navigation, point lists, Places forms and empty analytics.
+- Raw data archival no longer clears points whose archive file has gone missing, and account exports now include raw data that was already archived and cleared from the database.
+- A failed import shows its error on the import page again on self-hosted instances, and a Year-End Digest whose generation was interrupted can be requested again after six hours.
+
 ## [1.21.0] - 2026-11-03, Berlin
 
 ### ⚠️ Upgrade notes

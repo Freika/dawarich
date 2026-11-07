@@ -12,15 +12,18 @@ class Immich::ConnectionTester
   end
 
   def call
-    return { success: false, error: I18n.t('services.immich.connection_tester.immich_url_is_missing') } if url.blank?
+    if url.blank?
+      return { success: false, reason: 'missing_fields',
+error: I18n.t('services.immich.connection_tester.immich_url_is_missing') }
+    end
     if api_key.blank?
-      return { success: false,
+      return { success: false, reason: 'missing_fields',
 error: I18n.t('services.immich.connection_tester.immich_api_key_is_missing') }
     end
 
     test_connection
   rescue *Photos::ConnectionErrors::HANDLED => e
-    { success: false,
+    { success: false, reason: e.is_a?(OpenSSL::SSL::SSLError) ? 'certificate' : 'unreachable',
 error: I18n.t('services.immich.connection_tester.immich_connection_failed_message', message: e.message) }
   end
 
@@ -29,7 +32,7 @@ error: I18n.t('services.immich.connection_tester.immich_connection_failed_messag
   def test_connection
     response = search_metadata
     unless response.success?
-      return { success: false,
+      return { success: false, reason: response.code.to_i.in?([401, 403]) ? 'credentials' : 'check_settings',
 error: I18n.t('services.immich.connection_tester.immich_connection_failed_code',
               code: response.code) }
     end
@@ -81,11 +84,11 @@ message: I18n.t('services.immich.connection_tester.immich_connection_verified') 
     end
 
     if missing_asset_view_permission?(response)
-      return { success: false,
+      return { success: false, reason: response.code.to_i.in?([401, 403]) ? 'credentials' : 'check_settings',
 error: I18n.t('services.immich.connection_tester.immich_api_key_missing_permission_asset_view') }
     end
 
-    { success: false,
+    { success: false, reason: response.code.to_i.in?([401, 403]) ? 'credentials' : 'check_settings',
 error: I18n.t('services.immich.connection_tester.immich_thumbnail_check_failed_code', code: response.code) }
   end
 

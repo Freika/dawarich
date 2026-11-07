@@ -24,6 +24,7 @@ function buildEditor() {
     AbortController,
     URLSearchParams,
     setTimeout() {},
+    requestAnimationFrame: () => 0,
     translate: (key) => key,
     document: { querySelector: () => null, dispatchEvent() {} },
     CustomEvent: class {},
@@ -81,7 +82,7 @@ function buildEditor() {
   }
   editor.placeNameTarget = {}
   editor.placeSearchTarget = {}
-  editor.modalTarget = { classList: { add() {} } }
+  editor.modalTarget = { classList: { add() {} }, showModal() {}, close() {} }
   editor.timezoneValue = "UTC"
   editor.addMarker = () => {}
   editor.showToast = () => {}

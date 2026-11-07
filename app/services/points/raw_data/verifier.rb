@@ -102,40 +102,35 @@ module Points
       end
 
       def download_and_verify_content(archive)
-        unless archive.file.attached?
-          return { success: false,
-error: I18n.t('services.points.raw_data.verifier.file_not_attached') }
-        end
+        return failure(:file_not_attached) unless archive.file.attached?
 
         begin
           raw_content = archive.file.blob.download
+        rescue ActiveStorage::FileNotFoundError
+          # A lost object will not come back on retry, so it is an integrity failure.
+          return failure(:file_not_attached)
         rescue StandardError => e
           # Only I/O errors get the download_failed label — it exempts the
           # archive from the verified_at unset, so decrypt/integrity errors
           # must never be classified here.
-          return { success: false,
-error: I18n.t('services.points.raw_data.verifier.file_download_failed_message', message: e.message) }
+          return failure(:file_download_failed_message, message: e.message)
         end
 
-        if raw_content.bytesize.zero?
-          return { success: false,
-error: I18n.t('services.points.raw_data.verifier.file_is_empty') }
-        end
+        return failure(:file_is_empty) if raw_content.bytesize.zero?
 
         verify_content_integrity(raw_content, archive)
       rescue StandardError => e
-        { success: false,
-error: I18n.t('services.points.raw_data.verifier.decryption_failed_message', message: e.message) }
+        failure(:decryption_failed_message, message: e.message)
+      end
+
+      def failure(key, **args)
+        { success: false, error: I18n.t("services.points.raw_data.verifier.#{key}", **args) }
       end
 
       def verify_content_integrity(raw_content, archive)
         stored_checksum = archive.metadata&.dig('content_checksum')
-        if stored_checksum.present?
-          actual_checksum = Digest::SHA256.hexdigest(raw_content)
-          if actual_checksum != stored_checksum
-            return { success: false,
-error: I18n.t('services.points.raw_data.verifier.content_checksum_mismatch') }
-          end
+        if stored_checksum.present? && Digest::SHA256.hexdigest(raw_content) != stored_checksum
+          return failure(:content_checksum_mismatch)
         end
 
         compressed_content = Encryption.decrypt_if_needed(raw_content, archive)

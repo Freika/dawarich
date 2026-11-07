@@ -25,7 +25,8 @@ RSpec.describe 'Observed nature and geographic achievements' do
   end
 
   def observe(**options)
-    Achievements::ObservedTime.new(user, dataset: dataset, **options).call
+    Achievements::ObservedTime.new(user, dataset: dataset, privacy_zone_masker: Maps::PrivacyZoneMasker.none,
+                                         **options).call
   end
 
   it 'requires thirty observed park minutes, unions devices, and records the historic qualifying instant' do

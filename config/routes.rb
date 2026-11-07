@@ -147,7 +147,7 @@ Rails.application.routes.draw do
     end
   end
   resources :areas, only: %i[create update]
-  resources :places, only: %i[index show destroy create update] do
+  resources :places, only: %i[index show new edit destroy create update] do
     member do
       patch :confirm
       post :merge
@@ -178,7 +178,7 @@ Rails.application.routes.draw do
 
   namespace :share_links do
     resource :hub, only: :show, controller: 'hubs'
-    resources :shares, only: [] do
+    resources :shares, only: %i[edit update] do
       member { patch :revoke }
     end
     resource :timeline, only: %i[new create destroy], controller: 'timelines' do

@@ -1,5 +1,5 @@
 <%= link_to trip, class: "block group" do %>
-  <div class="border border-base-300 rounded-xl overflow-hidden transition-all duration-200 hover:border-primary/30 hover:-translate-y-1 hover:shadow-lg"
+  <div class="border border-base-300 rounded-xl overflow-hidden transition-colors duration-150 hover:border-base-content/30"
        data-trip-id="<%= trip.id %>" id="trip-<%= trip.id %>">
 
     <%# Map thumbnail %>
@@ -36,7 +36,7 @@
 
     <%# Card body %>
     <div class="px-4 py-3">
-      <h3 class="font-semibold text-base group-hover:text-primary transition-colors truncate" data-testid="trip-card-name"><%= trip.name %></h3>
+      <h3 class="font-medium text-base truncate" data-testid="trip-card-name"><%= trip.name %></h3>
       <p class="text-xs text-base-content/50 mt-0.5">
         <%= human_date(trip.started_at) %> <%= t('.ndash') %> <%= human_date(trip.ended_at) %>
       </p>
@@ -51,7 +51,7 @@
               <%= t('.country_count', count: trip.visited_countries.count) %>
             </span>
           <% end %>
-          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">
+          <span class="text-xs tabular-nums text-base-content/50">
             <%= t('.day_count', count: [((trip.ended_at - trip.started_at) / 1.day).ceil, 1].max) %>
           </span>
         </div>

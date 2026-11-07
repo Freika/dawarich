@@ -3,7 +3,7 @@
 
 <section class="card bg-base-200 mb-6" aria-labelledby="insights-months-title">
   <div class="card-body p-5 gap-4">
-    <h2 id="insights-months-title" class="text-xl font-bold"><%= t('.title') %></h2>
+    <h2 id="insights-months-title" class="text-lg font-medium"><%= t('.title') %></h2>
 
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
       <% @month_distances.each.with_index(1) do |(month_name, distance), month| %>
