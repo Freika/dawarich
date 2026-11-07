@@ -10,7 +10,7 @@ class Countries::VisitedQuery
 
   def call
     rows = relation.distinct.pluck(:country_id, :country_name, :country)
-    countries = Country.where(id: rows.filter_map(&:first).uniq).index_by(&:id)
+    countries = Country.without_geom.where(id: rows.filter_map(&:first).uniq).index_by(&:id)
 
     visited = rows.filter_map do |country_id, country_name, legacy_country|
       country = countries[country_id]
