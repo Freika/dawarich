@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.22.0] - 2026-11-04, Berlin
 
+### ⚠️ Upgrade notes
+
+- With `ARCHIVE_RAW_DATA=true`, set `ARCHIVE_ENCRYPTION_KEY` before upgrading: without it, production stops archiving raw data and only logs an error. On an instance that already has archives, use the current `SECRET_KEY_BASE` value; otherwise generate a key with `bin/rails secret`. Keep the key safe, because cleared raw data cannot be recovered without it.
+
 ### Added
 
 - Split Tracks at midnight in your timezone with a new option in the map's Track generation settings, so a night at home with your phone still reporting no longer joins several days into one Track. It is off by default; press Recalculate tracks & stats to apply it to existing Tracks. (#3306)
@@ -27,6 +31,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Preserve the selected timezone when saving settings and loading Poster Studio dates. Poster controls and downloads now fit narrow screens, and closed map dialogs no longer receive keyboard focus.
 - Show digest generation progress and retries without marking completed reports as failed when email delivery cannot be queued. Make MP4 downloads, integration save/test outcomes and timeline filter counts easier to follow.
 - Improve import recovery, family sharing feedback, first-use guidance, mobile navigation, point lists, Places forms and empty analytics.
+- Raw data archival no longer clears points whose archive file has gone missing, and account exports now include raw data that was already archived and cleared from the database.
+- A failed import shows its error on the import page again on self-hosted instances, and a Year-End Digest whose generation was interrupted can be requested again after six hours.
 
 ## [1.21.0] - 2026-11-03, Berlin
 
