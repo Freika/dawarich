@@ -68,7 +68,7 @@ RSpec.describe 'Curated places keep their manual source through reverse geocodin
     end
   end
 
-  describe 'sibling places returned by the same lookup' do
+  describe 'other places returned by the same lookup' do
     let(:place) { create(:place, user: user, name: Place::DEFAULT_NAME, source: :photon) }
     let(:sibling_payload) do
       {
@@ -87,7 +87,7 @@ RSpec.describe 'Curated places keep their manual source through reverse geocodin
       allow(Geocoder).to receive(:search).and_return([geocoded_place, double(data: sibling_payload)])
     end
 
-    it 'does not downgrade a curated sibling' do
+    it 'does not downgrade a curated place nearby' do
       sibling = create(
         :place,
         user: user,
