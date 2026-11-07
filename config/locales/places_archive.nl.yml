@@ -1,0 +1,8 @@
+nl:
+  places:
+    archive:
+      badge: "Gearchiveerd"
+      archive: "Archief"
+      unarchive: "Uit archief halen"
+      hint: "Bevat bevestigde bezoeken en privacymaskering; er worden geen nieuwe bezoeken toegewezen en geofencing wordt gepauzeerd zolang het archief actief is."
+      show_on_map: "Gearchiveerde plaatsen weergeven"

@@ -1,0 +1,67 @@
+# Additional translations at https://github.com/heartcombo/devise/wiki/I18n
+
+nl:
+  devise:
+    confirmations:
+      confirmed: "Je e-mailadres is succesvol bevestigd."
+      send_instructions: "Binnen enkele minuten ontvang je een e-mail met instructies om je e-mailadres te bevestigen."
+      send_paranoid_instructions: "Als je e-mailadres in onze database staat, ontvang je binnen enkele minuten een e-mail met instructies om je e-mailadres te bevestigen."
+    failure:
+      already_authenticated: "Je bent al ingelogd."
+      inactive: "Je account is nog niet geactiveerd."
+      invalid: "Ongeldige %{authentication_keys} of wachtwoord."
+      locked: "Je account is geblokkeerd."
+      last_attempt: "Je hebt nog één poging voordat je account wordt geblokkeerd."
+      not_found_in_database: "Ongeldige %{authentication_keys} of wachtwoord."
+      timeout: "Je sessie is verlopen. Meld je opnieuw aan om door te gaan."
+      unauthenticated: "Je moet inloggen of je aanmelden voordat je verder kunt gaan."
+      unconfirmed: "Je moet je e-mailadres bevestigen voordat je verder kunt gaan."
+      deleted: "Je account is verwijderd."
+    mailer:
+      confirmation_instructions:
+        subject: "Instructies voor de bevestiging"
+      reset_password_instructions:
+        subject: "Instructies voor het opnieuw instellen van het wachtwoord"
+      unlock_instructions:
+        subject: "Ontgrendelingsinstructies"
+      email_changed:
+        subject: "E-mailadres gewijzigd"
+      password_change:
+        subject: "Wachtwoord gewijzigd"
+    omniauth_callbacks:
+      failure: 'Je kon niet worden geauthenticeerd via %{kind} vanwege "%{reason}".'
+      success: "De authenticatie via het %{kind}-account is gelukt."
+    passwords:
+      no_token: "Je kunt deze pagina niet openen als je niet via een e-mail voor het opnieuw instellen van je wachtwoord bent doorgestuurd. Als je wel via zo’n e-mail bent doorgestuurd, zorg er dan voor dat je de volledige URL hebt gebruikt die daarin stond vermeld."
+      send_instructions: "Je ontvangt binnen enkele minuten een e-mail met instructies voor het opnieuw instellen van je wachtwoord."
+      send_paranoid_instructions: "Als uw e-mailadres in onze database staat, ontvangt u binnen enkele minuten een link om uw wachtwoord te herstellen op uw e-mailadres."
+      updated: "Je wachtwoord is succesvol gewijzigd. Je bent nu ingelogd."
+      updated_not_active: "Je wachtwoord is succesvol gewijzigd."
+    registrations:
+      destroyed: "Je account staat gepland om te worden verwijderd. Tot ziens!"
+      cannot_delete: "Je kunt je account niet verwijderen zolang je deel uitmaakt van een gezin met andere leden."
+      signed_up: "Welkom! Je hebt je succesvol aangemeld."
+      signed_up_but_inactive: "Je hebt je succesvol aangemeld. We konden je echter niet inloggen omdat je account nog niet is geactiveerd."
+      signed_up_but_locked: "Je hebt je succesvol aangemeld. We konden je echter niet inloggen omdat je account is geblokkeerd."
+      signed_up_but_unconfirmed: "Er is een bericht met een bevestigingslink naar je e-mailadres verzonden. Klik op de link om je account te activeren."
+      update_needs_confirmation: "Je hebt je account succesvol bijgewerkt, maar we moeten je nieuwe e-mailadres nog verifiëren. Controleer je e-mail en klik op de bevestigingslink om je nieuwe e-mailadres te bevestigen."
+      updated: "Uw account is succesvol bijgewerkt."
+      updated_but_not_signed_in: "Je account is succesvol bijgewerkt, maar aangezien je wachtwoord is gewijzigd, moet je je opnieuw aanmelden."
+    sessions:
+      signed_in: "Je bent succesvol ingelogd."
+      signed_out: "Je bent succesvol uitgelogd."
+      already_signed_out: "Je bent al uitgelogd."
+    unlocks:
+      send_instructions: "Je ontvangt binnen enkele minuten een e-mail met instructies om je account te ontgrendelen."
+      send_paranoid_instructions: "Als je account bestaat, ontvang je binnen enkele minuten een e-mail met instructies om het te ontgrendelen."
+      unlocked: "Je account is succesvol ontgrendeld. Log in om verder te gaan."
+  errors:
+    messages:
+      already_confirmed: "was al bevestigd. Probeer in te loggen."
+      confirmation_period_expired: "moet binnen %{period} worden bevestigd; vraag een nieuwe aan"
+      expired: "is verlopen, vraag een nieuwe aan"
+      not_found: "niet gevonden"
+      not_locked: "was niet vergrendeld"
+      not_saved:
+        one: "Door 1 fout kon deze %{resource} niet worden opgeslagen:"
+        other: "Door %{count} fouten kon deze %{resource} niet worden opgeslagen:"

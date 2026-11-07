@@ -1,0 +1,28 @@
+nl:
+  places:
+    polish:
+      selected: "geselecteerd"
+      details: "Details"
+      location: "Locatie"
+      notifications: "Notificaties"
+      visits: "Bezoeken"
+      manage: "Beheren"
+      total_time: "Totale tijd"
+      avg_dwell: "Gem verblijftijd"
+      statistics: "Statistieken"
+      merge_duplicate: "Duplicaten samenvoegen"
+      back_to_places: "Terug naar plaatsen"
+      clear: "Wissen"
+    inline_tags:
+      new_tag: "Nieuwe tag"
+      name: "Tagnaam"
+      emoji: "Emoji (optioneel)"
+      create: "Tag aanmaken"
+    drawer:
+      hidden_by_tag: "Verborgen door tag %{name}, %{radius} m"
+      geofence_events: "Recente geofence-events"
+      no_geofence_events: "Er zijn nog geen aankomst- of vertrekgebeurtenissen."
+      geofence_disabled: "Schakel meldingen bij binnenkomst en vertrek in om gebeurtenissen voor deze locatie vast te leggen."
+  javascript:
+    map_info:
+      geofence_boundary: "Geofence-grens"
