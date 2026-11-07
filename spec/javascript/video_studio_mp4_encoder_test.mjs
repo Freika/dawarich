@@ -9,9 +9,20 @@ const source = await readFile(
   new URL("../../app/javascript/video_studio/mp4_encoder.js", import.meta.url),
   "utf8",
 )
+const avccSource = (
+  await readFile(
+    new URL("../../app/javascript/video_studio/avcc.js", import.meta.url),
+    "utf8",
+  )
+).replace(/^export /gm, "")
 const prelude = `
+${avccSource}
 class ArrayBufferTarget { constructor() { this.buffer = new ArrayBuffer(8) } }
-class Muxer { addVideoChunk() {} finalize() {} }
+class Muxer {
+  addVideoChunk(chunk, meta) { globalThis.__muxerCalls.push({ chunk, meta }) }
+  finalize() {}
+}
+globalThis.__muxerCalls = []
 async function pickSupportedCodec() {
   return { config: { codec: "avc1.42001f" }, muxerCodec: "avc" }
 }
@@ -48,8 +59,9 @@ function fakeVideoEncoder() {
 
   // A plain factory rather than a class: `new` on a function that returns an
   // object hands back that object, and a constructor may not return one.
-  function FakeVideoEncoder({ error }) {
+  function FakeVideoEncoder({ output, error }) {
     raiseError = error
+    codec.output = output
     return codec
   }
   FakeVideoEncoder.isConfigSupported = async () => ({ supported: true })
@@ -157,4 +169,50 @@ test("runtime probe rejects a codec whose first encode throws", async () => {
   assert.equal(supported, false)
   assert.equal(frameClosed, true)
   assert.equal(encoderClosed, true)
+})
+
+const fromHex = (value) =>
+  Uint8Array.from(value.trim().split(/\s+/), (byte) =>
+    Number.parseInt(byte, 16),
+  )
+const toHex = (bytes) =>
+  Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(" ")
+
+const BROKEN_AVCC = fromHex(`
+  01 64 00 28 03 01 00 1b
+  67 67 64 00 28 ac 2c ac 04 40 3c 79 78
+  40 00 00 03 00 40 00 00 0f 03 68 22 11 4e
+  01 00 05 68 68 ce 3c 30
+`)
+const FIXED_AVCC = fromHex(`
+  01 64 00 28 ff e1 00 1a
+  67 64 00 28 ac 2c ac 04 40 3c 79 78
+  40 00 00 03 00 40 00 00 0f 03 68 22 11 4e
+  01 00 04 68 ce 3c 30
+`)
+
+test("repairs Firefox's duplicated avcC headers before muxing", async () => {
+  globalThis.__muxerCalls.length = 0
+  const { fake } = await backpressuredEncoder()
+
+  fake.codec.output({}, { decoderConfig: { description: BROKEN_AVCC } })
+
+  assert.equal(globalThis.__muxerCalls.length, 1)
+  assert.equal(
+    toHex(globalThis.__muxerCalls[0].meta.decoderConfig.description),
+    toHex(FIXED_AVCC),
+  )
+})
+
+test("passes a canonical avcC through untouched", async () => {
+  globalThis.__muxerCalls.length = 0
+  const { fake } = await backpressuredEncoder()
+
+  fake.codec.output({}, { decoderConfig: { description: FIXED_AVCC } })
+
+  assert.equal(globalThis.__muxerCalls.length, 1)
+  assert.equal(
+    globalThis.__muxerCalls[0].meta.decoderConfig.description,
+    FIXED_AVCC,
+  )
 })

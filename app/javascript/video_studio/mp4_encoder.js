@@ -1,6 +1,7 @@
 // WebCodecs → mp4-muxer wrapper. Encodes composited canvas frames into an
 // in-memory MP4. Browser-only: callers gate on isVideoExportSupported().
 import { ArrayBufferTarget, Muxer } from "mp4-muxer"
+import { sanitizeAvcC } from "video_studio/avcc"
 import { pickSupportedCodec } from "video_studio/codec_negotiation"
 
 const KEYFRAME_INTERVAL_SEC = 2
@@ -77,7 +78,24 @@ export async function createMp4Encoder({ width, height, fps }) {
   }
 
   const encoder = new VideoEncoder({
-    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+    output: (chunk, meta) => {
+      // Firefox on Windows and Linux hands us an avcC whose SPS/PPS repeat
+      // their NAL header byte; strict players reject the resulting MP4. Fix
+      // the description before mp4-muxer writes it into the sample entry.
+      if (picked.muxerCodec === "avc" && meta?.decoderConfig?.description) {
+        const sanitized = sanitizeAvcC(meta.decoderConfig.description)
+        if (sanitized) {
+          meta = {
+            ...meta,
+            decoderConfig: {
+              ...meta.decoderConfig,
+              description: sanitized,
+            },
+          }
+        }
+      }
+      muxer.addVideoChunk(chunk, meta)
+    },
     error: (error) => {
       encodeError = error
       wake()
