@@ -159,13 +159,13 @@ RSpec.describe 'Users::Registrations Partnero attribution', type: :request do
   end
 
   describe 'the tracking snippet on Cloud' do
-    it 'loads PartneroJS for the configured program' do
+    it 'hands the configured program to the consent script instead of loading PartneroJS' do
       stub_const('ENV', ENV.to_hash.merge('PARTNERO_PROGRAM_ID' => 'PROG123'))
 
       get new_user_registration_path
 
-      expect(response.body).to include('app.partnero.com/js/universal.js')
-      expect(response.body).to include("po('program', \"PROG123\", 'load')")
+      expect(response.body).to include('data-partnero-id="PROG123"')
+      expect(response.body).not_to include('app.partnero.com/js/universal.js')
     end
 
     it 'stays off until a program is configured, so no third-party call is made' do
