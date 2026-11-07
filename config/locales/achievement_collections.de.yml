@@ -19,10 +19,10 @@ de:
         sind ausgeschlossen. Der Zeitraum hebt Erstentdeckungen hervor, ältere Zellen
         bleiben offen.
       cities: Stadterkundung
-      city_catalog_note: Der erste Grenzkatalog umfasst Berlin, Hamburg und Dresden.
-        Es gelten administrative Landgrenzen einschließlich Wäldern und Außenbezirken.
-        Weitere Städte benötigen eine versionierte Katalogaktualisierung; fehlende
-        Grenzen werden nie durch Kreise ersetzt.
+      city_catalog_note: Der Grenzkatalog umfasst Berlin, Hamburg, Dresden und 27 Städte
+        in Bulgarien. Es gelten administrative Landgrenzen einschließlich Wäldern und
+        Außenbezirken. Weitere Städte benötigen eine versionierte Katalogaktualisierung;
+        fehlende Grenzen werden nie durch Kreise ersetzt.
       catalog_preparing: Der Grenzkatalog für Städte und Parks wird im Hintergrund
         vorbereitet.
       city_progress: "%{percent}% · %{area} km² geöffnet"
@@ -55,8 +55,9 @@ de:
       regions_progress: "%{count}/%{target} Gebiete"
       observed_time: "%{minutes} beobachtete Minuten"
       nature_catalog_note: Dieser Pilotkatalog enthält die Nationalparks Harz, Sächsische
-        Schweiz und Eifel. Er ist eine kuratierte regionale Auswahl, keine vollständige
-        Liste. Weitere Parks benötigen eine versionierte Katalogaktualisierung.
+        Schweiz und Eifel in Deutschland sowie Rila, Pirin und Zentralbalkan in
+        Bulgarien. Er ist eine kuratierte regionale Auswahl, keine vollständige Liste.
+        Weitere Parks benötigen eine versionierte Katalogaktualisierung.
       public_privacy_note: Öffentlicher Fortschritt schließt Beobachtungen in Privatzonen
         aus und kann niedriger sein als dein privater Fortschritt. Öffentliche Seiten und Bilder sind pausiert, während Änderungen an Grenzen, Zeitzonen oder Privatzonen übernommen werden.
       milestones:

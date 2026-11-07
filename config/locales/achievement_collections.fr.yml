@@ -19,10 +19,10 @@ fr:
         vols sont exclus. La période choisie met en évidence les premières découvertes
         sans fermer les anciennes cellules.
       cities: Exploration urbaine
-      city_catalog_note: Le premier catalogue couvre Berlin, Hambourg et Dresde. Les
-        limites terrestres administratives incluent forêts et périphéries. Les autres
-        villes nécessitent une mise à jour versionnée ; aucune limite manquante n’est
-        remplacée par un cercle.
+      city_catalog_note: Le catalogue couvre Berlin, Hambourg, Dresde et 27 villes
+        de Bulgarie. Les limites terrestres administratives incluent forêts et
+        périphéries. Les autres villes nécessitent une mise à jour versionnée ;
+        aucune limite manquante n’est remplacée par un cercle.
       catalog_preparing: Le catalogue des limites des villes et parcs est en préparation
         en arrière-plan.
       city_progress: "%{percent}% · %{area} km² découverts"
@@ -54,9 +54,10 @@ fr:
       parks_progress: 'Parcs nationaux : %{count} · prochain palier %{target}'
       regions_progress: "%{count}/%{target} régions"
       observed_time: "%{minutes} minutes observées"
-      nature_catalog_note: Ce catalogue pilote inclut les parcs nationaux du Harz,
-        de la Suisse saxonne et de l’Eifel. Cette sélection régionale n’est pas exhaustive.
-        Tout ajout nécessite une mise à jour versionnée.
+      nature_catalog_note: Ce catalogue pilote inclut les parcs nationaux du Harz, de la
+        Suisse saxonne et de l’Eifel en Allemagne, ainsi que ceux de Rila, du Pirin et du
+        Balkan central en Bulgarie. Cette sélection régionale n’est pas exhaustive. Tout
+        ajout nécessite une mise à jour versionnée.
       public_privacy_note: La progression publique exclut les observations dans les
         zones privées et peut être inférieure à votre progression privée. Les pages et images publiques sont suspendues pendant l’application de changements de limites, de fuseau horaire ou de zones privées.
       milestones:

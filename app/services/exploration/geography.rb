@@ -5,7 +5,7 @@ require 'digest'
 
 module Exploration
   class Geography
-    VERSION = 'natural-earth-5.1.2-collections-20261028-v1'
+    VERSION = 'natural-earth-5.1.2-collections-20261101-v1'
     METADATA = {
       source: 'Natural Earth 1:10m', release: '5.1.2',
       attribution: 'Natural Earth · public domain',

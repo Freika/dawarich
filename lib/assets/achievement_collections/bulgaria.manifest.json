@@ -1,0 +1,185 @@
+{
+  "version": "bulgaria-20261101-v1",
+  "features": [
+    {
+      "code": "city_osm_relation_4283101",
+      "osm_id": 4283101,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_13477567",
+      "osm_id": 13477567,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_1955801",
+      "osm_id": 1955801,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_18971477",
+      "osm_id": 18971477,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_12629299",
+      "osm_id": 12629299,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_1947830",
+      "osm_id": 1947830,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_1922478",
+      "osm_id": 1922478,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_12996399",
+      "osm_id": 12996399,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_13476884",
+      "osm_id": 13476884,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_1978290",
+      "osm_id": 1978290,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_1947828",
+      "osm_id": 1947828,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_4767886",
+      "osm_id": 4767886,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_1947814",
+      "osm_id": 1947814,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_1978204",
+      "osm_id": 1978204,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_17402816",
+      "osm_id": 17402816,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_1922257",
+      "osm_id": 1922257,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_17363266",
+      "osm_id": 17363266,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_1974016",
+      "osm_id": 1974016,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_20743144",
+      "osm_id": 20743144,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_1952401",
+      "osm_id": 1952401,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_17788693",
+      "osm_id": 17788693,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_1916938",
+      "osm_id": 1916938,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_13265756",
+      "osm_id": 13265756,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_13431110",
+      "osm_id": 13431110,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_1922476",
+      "osm_id": 1922476,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_12999667",
+      "osm_id": 12999667,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "city_osm_relation_1974021",
+      "osm_id": 1974021,
+      "kind": "city",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "park_osm_relation_1417776",
+      "osm_id": 1417776,
+      "kind": "park",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "park_osm_relation_14392475",
+      "osm_id": 14392475,
+      "kind": "park",
+      "timezone": "Europe/Sofia"
+    },
+    {
+      "code": "park_osm_relation_1404501",
+      "osm_id": 1404501,
+      "kind": "park",
+      "timezone": "Europe/Sofia"
+    }
+  ]
+}
