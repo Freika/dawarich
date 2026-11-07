@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Collect the Balkans achievement set by visiting Albania, Bosnia and Herzegovina, Bulgaria, Croatia, Greece, Montenegro, North Macedonia and Serbia. It works like the Benelux, Baltics and Scandinavia sets, and existing location history counts automatically.
+
 ## [1.22.0] - 2026-11-04, Berlin
 
 ### ⚠️ Upgrade notes

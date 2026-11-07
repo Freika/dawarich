@@ -9,7 +9,7 @@ RSpec.describe Achievements::Registry do
     it 'builds a definition per continent, country and world tier' do
       kinds = described_class.all.group_by(&:kind).transform_values(&:size)
 
-      expect(kinds).to eq('continent' => 6, 'country' => 238, 'region_set' => 3, 'thematic_set' => 3)
+      expect(kinds).to eq('continent' => 6, 'country' => 238, 'region_set' => 3, 'thematic_set' => 4)
     end
 
     it 'derives keys from continent names and ISO codes' do
@@ -126,6 +126,15 @@ RSpec.describe Achievements::Registry do
       expect(scandinavia.region_codes).to eq(%w[DK NO SE])
       expect(scandinavia.target).to eq(3)
       expect(scandinavia.level).to eq(:country)
+    end
+
+    it 'defines the Balkans as the eight countries with a country card' do
+      balkans = described_class.find('thematic_balkans_v1')
+
+      expect(balkans).to be_thematic
+      expect(balkans.region_codes).to eq(%w[AL BA BG HR GR ME MK RS])
+      expect(balkans.target).to eq(8)
+      expect(balkans.region_codes.map { |code| described_class.find("country_#{code.downcase}") }).to all(be_present)
     end
   end
 

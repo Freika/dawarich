@@ -69,6 +69,7 @@ pl:
         thematic_benelux_v1: "Beneluks"
         thematic_baltics_v1: "Kraje bałtyckie"
         thematic_scandinavia_v1: "Skandynawia"
+        thematic_balkans_v1: "Bałkany"
       explorer_name: "Odkrywca: %{place}"
       description:
         thematic_set: "Spędź czas we wszystkich %{count} krajach kolekcji %{place}."

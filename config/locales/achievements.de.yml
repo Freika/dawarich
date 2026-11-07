@@ -65,6 +65,7 @@ de:
         thematic_benelux_v1: "Benelux"
         thematic_baltics_v1: "Baltikum"
         thematic_scandinavia_v1: "Skandinavien"
+        thematic_balkans_v1: "Balkan"
       explorer_name: "%{place}-Entdecker"
       description:
         thematic_set: "Verbringe Zeit in allen %{count} Ländern von %{place}."

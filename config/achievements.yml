@@ -93,6 +93,28 @@ thematic_scandinavia_v1:
       lon: 16.0
       zoom: 3.0
 
+thematic_balkans_v1:
+  kind: thematic_set
+  name: Balkans
+  continent: Europe
+  regions:
+    AL: Albania
+    BA: Bosnia and Herzegovina
+    BG: Bulgaria
+    HR: Croatia
+    GR: Greece
+    ME: Montenegro
+    MK: North Macedonia
+    RS: Serbia
+  card:
+    rarity: Epic
+    description: Spend time in Albania, Bosnia and Herzegovina, Bulgaria, Croatia, Greece, Montenegro, North Macedonia and Serbia.
+    place: Balkans
+    art:
+      lat: 41.8
+      lon: 21.0
+      zoom: 3.6
+
 border_hopper:
   kind: region_set
   name: Border Hopper
