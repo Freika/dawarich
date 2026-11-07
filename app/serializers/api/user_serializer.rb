@@ -15,7 +15,7 @@ class Api::UserSerializer
         updated_at: user.updated_at,
         settings: settings
       },
-      features: DawarichSettings.features_for(user)
+      features: DawarichSettings.features_for(user).merge(achievements: true)
     }
 
     data.merge!(subscription: subscription) unless DawarichSettings.self_hosted?
