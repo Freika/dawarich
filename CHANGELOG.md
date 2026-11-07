@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Visit detection retries up to three times when it deadlocks with an import running for the same user, so a single deadlock no longer drops a day of visit suggestions or a month of full-history re-detection. #4002
+
 ## [1.22.0] - 2026-11-07, Berlin
 
 ### ⚠️ Upgrade notes
