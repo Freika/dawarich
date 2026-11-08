@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Navbar menus open one at a time and close on an outside click or Escape. Thanks @Strazdonis! (#4005)
 - Replay shows speed in mph when your distance unit is miles, on the map and on trip pages. Thanks @mja00!
 - Reverse geocoding no longer reads full country borders from the database, which cuts its database traffic.
 - Route videos of long, dense tracks no longer show frames of an older route under the moving marker: each frame now waits for the map to finish drawing, so these exports can take longer and need the tab to stay visible. Exports in Firefox no longer lose frames when its encoder reorders them. (#4007)
