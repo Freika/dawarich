@@ -165,6 +165,64 @@ RSpec.describe Geocoding::RateLimiter do
     end
   end
 
+  describe 'over-limit refusals' do
+    let(:komoot) { config_for('photon.komoot.io') }
+
+    def refuse
+      described_class.throttle(komoot) { raise Geocoder::OverQueryLimitError }
+    end
+
+    def refuse_quietly
+      refuse
+    rescue Geocoder::OverQueryLimitError
+      nil
+    end
+
+    it "passes the provider's refusal on to the caller" do
+      expect { refuse }.to raise_error(Geocoder::OverQueryLimitError)
+    end
+
+    it 'pauses further lookups to that provider' do
+      refuse_quietly
+      lookups = 0
+
+      expect { described_class.throttle(komoot) { lookups += 1 } }.to raise_error(Geocoding::Cooldown::Active)
+      expect(lookups).to eq(0)
+    end
+
+    it 'tells an interactive caller the provider is busy instead of raising' do
+      refuse_quietly
+
+      expect(described_class.throttle(komoot, max_wait: 1.0) { :never }).to be_nil
+    end
+
+    it 'does not send a lookup that was queued behind the refused one' do
+      allow(described_class).to receive(:sleep) { Geocoding::Cooldown.start(komoot) }
+      described_class.throttle(komoot) { :ok }
+      lookups = 0
+
+      expect { described_class.throttle(komoot) { lookups += 1 } }.to raise_error(Geocoding::Cooldown::Active)
+      expect(lookups).to eq(0)
+    end
+
+    it 'keeps other providers going' do
+      refuse_quietly
+
+      expect(described_class.throttle(config_for('photon.example.com', rps: 10)) { :ok }).to eq(:ok)
+    end
+
+    it 'pauses for the base duration again once the provider has answered' do
+      stub_const('Geocoding::Cooldown::BASE_DURATION', 1.second)
+      refuse_quietly
+      Kernel.sleep(1.1)
+      described_class.throttle(komoot) { :ok }
+
+      refuse_quietly
+
+      expect(Geocoding::Cooldown.remaining(komoot)).to eq(1)
+    end
+  end
+
   describe 'concurrent workers' do
     it 'hands every thread its own slot instead of letting two share one' do
       waits = Queue.new

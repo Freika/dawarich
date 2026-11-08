@@ -83,6 +83,11 @@ class ReverseGeocoding::Points::FetchData
     end
   rescue ActiveRecord::StaleObjectError
     raise
+  rescue Geocoding::Cooldown::Active
+    # The provider's refusal was reported when it started the cooldown; the
+    # point stays ungeocoded for the run that resumes the backlog when the
+    # cooldown ends, instead of reporting every point skipped meanwhile.
+    Rails.logger.info("Reverse geocoding skipped for point #{point.id}: provider is over its limit")
   rescue StandardError => e
     Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
     ExceptionReporter.call(e)
