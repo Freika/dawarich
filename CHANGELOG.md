@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- PostgreSQL no longer logs a duplicate key error on `achievement_collection_states` every five minutes. #4006, #4002
 - Visit detection retries up to three times when it deadlocks with an import running for the same user, so a single deadlock no longer drops a day of visit suggestions or a month of full-history re-detection. #4002
 
 ## [1.22.0] - 2026-11-07, Berlin
