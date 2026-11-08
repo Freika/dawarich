@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Reverse geocoding no longer reads full country borders from the database, which cuts its database traffic.
 - Route videos of long, dense tracks no longer show frames of an older route under the moving marker: each frame now waits for the map to finish drawing, so these exports can take longer and need the tab to stay visible. Exports in Firefox no longer lose frames when its encoder reorders them. (#4007)
 - Points of a fast flight that stay on the route are no longer hidden as anomalies when the plane flies faster than 1,000 km/h over the ground, for example with a strong tailwind. Fixes that jump off the route or move faster than 2,500 km/h are still flagged. Points flagged earlier come back after you press Re-evaluate past data in the map settings. (#3988)
 - PostgreSQL no longer logs a duplicate key error on `achievement_collection_states` every five minutes. #4006, #4002

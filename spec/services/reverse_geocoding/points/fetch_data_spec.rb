@@ -56,6 +56,20 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     it 'trusts the ISO code over the name' do
       expect { fetch_data }.to change { point.reload.country_id }.from(nil).to(germany.id)
     end
+
+    # A country border runs up to ~2 MB; reading it once per geocoded point
+    # saturated the database uplink.
+    it 'looks the country up without loading its border geometry' do
+      country_queries = []
+      collect = lambda do |*, payload|
+        country_queries << payload[:sql] if payload[:sql].match?(/FROM "countries"/)
+      end
+
+      ActiveSupport::Notifications.subscribed(collect, 'sql.active_record') { fetch_data }
+
+      expect(country_queries).to include(/"name" = /, /"iso_a2" = /)
+      expect(country_queries.grep(/SELECT "countries"\.\*/)).to be_empty
+    end
   end
 
   context 'when neither the code nor any name variant resolves' do
