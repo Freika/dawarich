@@ -83,9 +83,26 @@ class ReverseGeocoding::Points::FetchData
     end
   rescue ActiveRecord::StaleObjectError
     raise
+  rescue Geocoding::Cooldown::Active
+    # The provider's refusal was reported when it started the cooldown; the
+    # point stays ungeocoded for the run that resumes the backlog when the
+    # cooldown ends, instead of reporting every point skipped meanwhile.
+    Rails.logger.info("Reverse geocoding skipped for point #{point.id}: provider is over its limit")
+    remember_forced_lookup
+  rescue Geocoder::OverQueryLimitError => e
+    Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
+    ExceptionReporter.call(e)
+    remember_forced_lookup
   rescue StandardError => e
     Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
     ExceptionReporter.call(e)
+  end
+
+  # A forced lookup targets a point the backlog scan cannot see, and a force
+  # re-run can cover millions of them, so the point is left alone and the resume
+  # job picks the run up from here. An ungeocoded point is already in the backlog.
+  def remember_forced_lookup
+    Points::ResumeReverseGeocodingJob.remember_forced_run(point.user_id, point.id) if @force && point.reverse_geocoded?
   end
 
   def invalidate_point_tiles
