@@ -67,6 +67,7 @@ export default class extends Controller {
   static values = {
     apiKey: String,
     timezone: String,
+    distanceUnit: { type: String, default: "km" },
     startedAt: String,
     endedAt: String,
     tripId: Number,
