@@ -46,8 +46,8 @@
           <section class="card bg-base-200" <%= "data-digest-pending=#{digest.year}" if digest.generation_pending? %>>
             <div class="card-body" role="status">
               <h2 class="card-title"><%= digest.year %></h2>
-              <p><%= t("ux_p2.digest.#{digest.generation_status}") %></p>
-              <% if digest.generation_failed? %>
+              <p><%= t("ux_p2.digest.#{digest.generation_pending? ? digest.generation_status : 'failed'}") %></p>
+              <% unless digest.generation_pending? %>
                 <%= button_to t('ux_p2.digest.retry'), users_digests_path(year: digest.year), class: 'btn btn-primary btn-sm', data: { turbo_frame: 'digest-list' } %>
               <% else %>
                 <progress class="progress progress-primary w-56" aria-label="<%= t('ux_p2.digest.working') %>"></progress>

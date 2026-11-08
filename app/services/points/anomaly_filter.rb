@@ -35,6 +35,15 @@ class Points::AnomalyFilter
   # leg then reads as ordinary air travel while the round trip needs hundreds of
   # extra km/h. Well above any road or rail speed, well below a plausible flight.
   MAX_DETOUR_SPEED_KMH = 300
+  # Airliners pass 1000 km/h over the ground in a jet stream, so two fast legs
+  # alone do not condemn a run: a fix that leaves the route adds a detour, which
+  # the detour test catches. Only legs faster than any aircraft a phone rides in
+  # still convict on their own.
+  # ponytail: at cruise speed a sideways error up to about three quarters of a
+  # leg (some 15 km on fixes a minute apart) stays below the detour ceiling and
+  # is kept; a speed-scaled ceiling would catch it if that ever matters more
+  # than keeping real flights.
+  MAX_CRUISE_SPEED_KMH = 2_500
   # A stale fix can sit hours from its neighbours, where the round trip it
   # implies is slow enough to be physically possible and no speed test can
   # condemn it. What condemns it is the shape: the fixes either side are the
@@ -417,7 +426,7 @@ class Points::AnomalyFilter
 
         next if run.any? { |point| displaced.include?(point.id) }
         next unless suspicious_boundary?(run, speeds_by_point, threshold)
-        unless both_legs_impossible?(run, speeds_by_point, threshold) ||
+        unless (both_legs_impossible?(run, speeds_by_point, threshold) && !cruise_speed?(run, speeds_by_point)) ||
                detour_speed(run, previous_point, next_point) > detour_ceiling ||
                contradicts_stay?(run, previous_point, next_point)
           next
@@ -478,15 +487,23 @@ class Points::AnomalyFilter
       distance_meters(anchor, point) <= FROZEN_FIX_EXTENT_METERS
   end
 
-  # Impossible on both sides convicts on its own: nothing legitimate arrives and
-  # departs faster than any aircraft. This catches excursions with no detour to
-  # measure — a straight-line hop where the timestamps themselves are wrong.
+  # Impossible on both sides: this catches excursions with no detour to measure,
+  # a straight-line hop where the timestamps themselves are wrong. A displaced
+  # run also needs a leg above MAX_CRUISE_SPEED_KMH to convict on this alone
+  # (cruise_speed?), so a hop slower than that passes like a real flight.
   def both_legs_impossible?(run, speeds_by_point, threshold)
     entry_speed = speeds_by_point.dig(run.first.id, :incoming)
     exit_speed  = speeds_by_point.dig(run.last.id, :outgoing)
     return false if entry_speed.nil? || exit_speed.nil?
 
     entry_speed > threshold && exit_speed > threshold
+  end
+
+  def cruise_speed?(run, speeds_by_point)
+    entry_speed = speeds_by_point.dig(run.first.id, :incoming)
+    exit_speed  = speeds_by_point.dig(run.last.id, :outgoing)
+
+    [entry_speed, exit_speed].max <= MAX_CRUISE_SPEED_KMH / 3.6
   end
 
   def detour_ceiling = MAX_DETOUR_SPEED_KMH / 3.6

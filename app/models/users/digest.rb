@@ -27,8 +27,12 @@ class Users::Digest < ApplicationRecord
     end
   end
 
+  # Sidekiq loses in-flight jobs on SIGKILL, so a generation that never
+  # reported back stops blocking a new request after this window.
+  GENERATION_STALE_AFTER = 6.hours
+
   def generation_pending?
-    generation_queued? || generation_calculating?
+    (generation_queued? || generation_calculating?) && updated_at > GENERATION_STALE_AFTER.ago
   end
 
   enum :period_type, { monthly: 0, yearly: 1 }
