@@ -348,6 +348,44 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     end
   end
 
+  context 'when an earlier over-limit refusal is still cooling down' do
+    before do
+      allow(ExceptionReporter).to receive(:call)
+      Geocoding::Cooldown.start(Geocoding::Config.resolved_config)
+    end
+
+    it 'leaves the point ungeocoded without asking the provider or reporting the skip' do
+      expect { fetch_data }.not_to raise_error
+
+      expect(Geocoder).not_to have_received(:search)
+      expect(point.reload.reverse_geocoded_at).to be_nil
+      expect(ExceptionReporter).not_to have_received(:call)
+    end
+
+    it 'leaves an already geocoded point as it is when a forced lookup is skipped' do
+      geocoded_at = 1.day.ago.change(usec: 0)
+      point.update_columns(reverse_geocoded_at: geocoded_at)
+
+      described_class.new(point.id, force: true).call
+
+      expect(point.reload.reverse_geocoded_at).to eq(geocoded_at)
+    end
+  end
+
+  context 'when the provider refuses a forced lookup as over its limit' do
+    before do
+      allow(ExceptionReporter).to receive(:call)
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::OverQueryLimitError)
+      point.update_columns(reverse_geocoded_at: 1.day.ago.change(usec: 0))
+    end
+
+    it 'leaves the point as it is and still reports the refusal' do
+      expect { described_class.new(point.id, force: true).call }.not_to(change { point.reload.reverse_geocoded_at })
+
+      expect(ExceptionReporter).to have_received(:call)
+    end
+  end
+
   context 'when the geocoder provider is temporarily unavailable' do
     before do
       allow(ExceptionReporter).to receive(:call)

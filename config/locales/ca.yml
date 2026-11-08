@@ -30,6 +30,7 @@ ca:
           komoot_warning: "photon.komoot.io és una instància pública compartida amb límits de peticions estrictes. Les peticions es limiten a una per segon i la geocodificació massiva serà lenta. Considera allotjar la teva pròpia instància de Photon."
           https_locked: "L'HTTPS sempre està activat per a aquest amfitrió."
           legacy_user_settings: "Alguns usuaris havien configurat la seva pròpia geocodificació abans que es traslladés aquí. La seva configuració no s'ha conservat perquè no tots els usuaris en tenien o eren diferents. Configura un proveïdor a sota per tornar a activar la geocodificació per a tothom."
+          paused: "Les consultes estan aturades durant %{minutes} min perquè el proveïdor les ha rebutjat per superar el seu límit."
         providers:
           photon: "Geocodificador de codi obert. Fes servir un servidor allotjat o el teu."
           geoapify: "Servei allotjat. Necessita una clau d'API."
@@ -66,6 +67,7 @@ ca:
         empty: "El proveïdor ha respost, però no ha retornat cap resultat per a les coordenades de prova."
         failure: "La prova ha fallat: %{error}"
         rate_limited: "El límit de peticions del proveïdor està ocupat ara mateix; torna-ho a provar d'aquí a un moment."
+        paused: "El proveïdor ha rebutjat les consultes per superar el seu límit. Continuaran aturades %{seconds} s més, així que no s'ha enviat cap prova."
   activerecord:
     errors:
       models:

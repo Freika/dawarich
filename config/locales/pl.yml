@@ -30,6 +30,7 @@ pl:
           komoot_warning: "photon.komoot.io to współdzielona instancja publiczna ze ścisłymi limitami zapytań. Zapytania są ograniczone do jednego na sekundę, a masowe geokodowanie będzie powolne. Rozważ uruchomienie własnej instancji Photon."
           https_locked: "Dla tego hosta HTTPS jest zawsze włączony."
           legacy_user_settings: "Niektórzy użytkownicy skonfigurowali własne geokodowanie, zanim zostało przeniesione tutaj. Ich ustawienia nie zostały przeniesione, ponieważ nie każdy użytkownik je miał albo się różniły. Skonfiguruj dostawcę poniżej, aby ponownie włączyć geokodowanie dla wszystkich."
+          paused: "Zapytania są wstrzymane na %{minutes} min, ponieważ dostawca odrzucił je z powodu przekroczenia limitu."
         providers:
           photon: "Otwartoźródłowy geokoder. Użyj hostowanego serwera albo własnego."
           geoapify: "Usługa hostowana. Wymaga klucza API."
@@ -66,6 +67,7 @@ pl:
         empty: "Dostawca odpowiedział, ale nie zwrócił wyników dla testowych współrzędnych."
         failure: "Test nie powiódł się: %{error}"
         rate_limited: "Limit zapytań dostawcy jest w tej chwili wyczerpany — spróbuj ponownie za chwilę."
+        paused: "Dostawca odrzucił zapytania z powodu przekroczenia limitu. Pozostaną wstrzymane jeszcze przez %{seconds} s, więc test nie został wysłany."
   activerecord:
     errors:
       models:

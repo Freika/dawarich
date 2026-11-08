@@ -30,6 +30,7 @@ de:
           komoot_warning: "photon.komoot.io ist ein gemeinsam genutzter öffentlicher Server mit strengen Limits. Anfragen werden auf eine pro Sekunde gedrosselt, Massen-Geokodierung ist daher langsam. Erwäge, eine eigene Photon-Instanz zu betreiben."
           https_locked: "Für diesen Host ist HTTPS immer aktiv."
           legacy_user_settings: "Einige Nutzer hatten die Geokodierung selbst eingerichtet, bevor sie hierher verschoben wurde. Ihre Einstellungen wurden nicht übernommen, weil nicht alle Nutzer eine hatten oder sie sich unterschieden. Richte unten einen Anbieter ein, um die Geokodierung für alle wieder einzuschalten."
+          paused: "Abfragen pausieren %{minutes} Min., weil der Anbieter sie wegen seines Limits abgelehnt hat."
         providers:
           photon: "Open-Source-Geocoder. Nutze einen gehosteten Server oder betreibe deinen eigenen."
           geoapify: "Gehosteter Dienst. Benötigt einen API-Schlüssel."
@@ -66,6 +67,7 @@ de:
         empty: "Der Anbieter hat geantwortet, aber keine Ergebnisse für die Testkoordinaten geliefert."
         failure: "Test fehlgeschlagen: %{error}"
         rate_limited: "Das Anfragelimit des Anbieters ist gerade ausgeschöpft. Versuche es gleich noch einmal."
+        paused: "Der Anbieter hat Abfragen wegen seines Limits abgelehnt. Sie pausieren noch %{seconds} s, deshalb wurde kein Test gesendet."
   route_videos:
     route_video:
       download: "MP4 herunterladen"
