@@ -61,6 +61,32 @@ RSpec.describe Geocoding::Cooldown do
 
       expect(described_class.start(komoot)).to eq(1)
     end
+
+    it 'keeps counting refusals when a lookup succeeds during the pause' do
+      described_class.start(komoot)
+      described_class.clear(komoot)
+      after_cooldown
+
+      expect(described_class.start(komoot)).to eq(2)
+    end
+
+    it 'remembers a refusal until the provider answers again' do
+      expect(described_class.unanswered_refusal?(komoot)).to be false
+
+      described_class.start(komoot)
+      after_cooldown
+      expect(described_class.unanswered_refusal?(komoot)).to be true
+
+      described_class.clear(komoot)
+      expect(described_class.unanswered_refusal?(komoot)).to be false
+    end
+  end
+
+  it 'adds a small margin to the time left when a dropped lookup asks how long to wait' do
+    described_class.start(komoot)
+
+    expect(described_class.retry_after(komoot))
+      .to be_within(1).of(described_class::BASE_DURATION.to_i + described_class::RETRY_MARGIN.to_i)
   end
 
   it 'keeps a cooldown to the provider that refused' do

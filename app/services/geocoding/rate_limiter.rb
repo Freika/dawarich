@@ -65,11 +65,21 @@ module Geocoding
 
       def lookup(config)
         result = yield
-        Cooldown.clear(config)
+        if provider_answered?(result)
+          Cooldown.clear(config)
+          Points::ResumeReverseGeocodingJob.renew_forced_runs
+        end
         result
       rescue Geocoder::OverQueryLimitError
         Cooldown.start(config)
         raise
+      end
+
+      # Geocoder serves repeated coordinates from its cache without asking the
+      # provider, and an empty result cannot be told apart from a cached one.
+      def provider_answered?(result)
+        first = Array(result).first
+        first.respond_to?(:cache_hit) && first.cache_hit == false
       end
 
       def cooling_down(config, max_wait)

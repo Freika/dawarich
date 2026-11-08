@@ -12,11 +12,11 @@ module Geocoding
   # the rest of a nightly backlog is still sent, one refused request per second.
   #
   # The first refusal pauses lookups for BASE_DURATION. Each further refusal
-  # that follows a pause doubles it, up to MAX_DURATION, and a lookup that
-  # succeeds resets the sequence. The state lives in Redis, keyed by the same
-  # bucket as the rate limiter, so the web server and every Sidekiq process
-  # pause together, and switching to another provider or API key is not held
-  # back by the old one's refusals.
+  # that follows a pause doubles it, up to MAX_DURATION, and a lookup the
+  # provider itself answers resets the sequence. The state lives in Redis, keyed
+  # by the same bucket as the rate limiter, so the web server and every Sidekiq
+  # process pause together, and switching to another provider or API key is not
+  # held back by the old one's refusals.
   module Cooldown
     # Raised instead of a lookup while a cooldown is running. It is an
     # OverQueryLimitError, so callers handle it the way they handle the
@@ -27,6 +27,8 @@ module Geocoding
     MAX_DURATION = 1.hour
     # How long a run of refusals is remembered once lookups stop altogether.
     STRIKES_TTL = 1.day
+    # Lets a retry land just after the cooldown key has expired.
+    RETRY_MARGIN = 2.seconds
     KEY_PREFIX = 'geocoding:cooldown'
 
     # Starts a cooldown unless one is already running, in one step, so the
@@ -39,6 +41,13 @@ module Geocoding
       local seconds = math.min(tonumber(ARGV[1]) * 2 ^ (strikes - 1), tonumber(ARGV[2]))
       redis.call('SET', KEYS[1], strikes, 'EX', seconds)
       return seconds
+    LUA
+
+    # A success that lands during a cooldown was sent before the refusal, so it
+    # says nothing about whether the limit has lifted.
+    CLEAR_SCRIPT = <<~LUA
+      if redis.call('EXISTS', KEYS[1]) == 0 then redis.call('DEL', KEYS[2]) end
+      return 0
     LUA
 
     class << self
@@ -54,6 +63,31 @@ module Geocoding
 
       def active?(config)
         remaining(config).present?
+      end
+
+      # True from a refusal until the provider itself answers a lookup, which
+      # outlasts the cooldown: a cached answer leaves this set.
+      def unanswered_refusal?(config)
+        Sidekiq.redis { |redis| redis.call('EXISTS', strikes_key(config)) } == 1
+      rescue StandardError => e
+        Rails.logger.warn("[Geocoding::Cooldown] Could not read the refusals: #{e.message}")
+        false
+      end
+
+      # How long a lookup dropped because of a cooldown should wait to retry.
+      def retry_after(config)
+        (remaining(config) || 0) + RETRY_MARGIN.to_i
+      end
+
+      # A place retries on its own after the wait, so without this every repeat
+      # lookup during a long refusal would add a retry that renews itself. The
+      # claim lasts exactly the wait, so the retry can claim again if it is
+      # refused. Fails open: a duplicate retry beats losing the only one.
+      def claim_retry(key, wait)
+        Sidekiq.redis { |redis| redis.call('SET', "#{KEY_PREFIX}:retry:#{key}", '1', 'NX', 'EX', wait) }.present?
+      rescue StandardError => e
+        Rails.logger.warn("[Geocoding::Cooldown] Could not claim a retry: #{e.message}")
+        true
       end
 
       # Returns the length of the cooldown it started, in seconds, or 0 when
@@ -78,7 +112,7 @@ module Geocoding
       # Called after a lookup the provider answered: the limit has lifted, so
       # the next refusal starts again from BASE_DURATION.
       def clear(config)
-        Sidekiq.redis { |redis| redis.call('DEL', strikes_key(config)) }
+        Sidekiq.redis { |redis| redis.call('EVAL', CLEAR_SCRIPT, 2, active_key(config), strikes_key(config)) }
       rescue StandardError => e
         Rails.logger.warn("[Geocoding::Cooldown] Could not clear the cooldown: #{e.message}")
       end

@@ -215,11 +215,85 @@ RSpec.describe Geocoding::RateLimiter do
       stub_const('Geocoding::Cooldown::BASE_DURATION', 1.second)
       refuse_quietly
       Kernel.sleep(1.1)
-      described_class.throttle(komoot) { :ok }
+      described_class.throttle(komoot) { [double(cache_hit: false)] }
 
       refuse_quietly
 
       expect(Geocoding::Cooldown.remaining(komoot)).to eq(1)
+    end
+
+    it 'keeps doubling the pause when the answer only came from the cache' do
+      stub_const('Geocoding::Cooldown::BASE_DURATION', 1.second)
+      refuse_quietly
+      Kernel.sleep(1.1)
+      described_class.throttle(komoot) { [double(cache_hit: true)] }
+
+      refuse_quietly
+
+      expect(Geocoding::Cooldown.remaining(komoot)).to eq(2)
+    end
+
+    it 'keeps doubling the pause after a lookup that found nothing' do
+      stub_const('Geocoding::Cooldown::BASE_DURATION', 1.second)
+      refuse_quietly
+      Kernel.sleep(1.1)
+      described_class.throttle(komoot) { [] }
+
+      refuse_quietly
+
+      expect(Geocoding::Cooldown.remaining(komoot)).to eq(2)
+    end
+
+    it 'ignores a success that lands after another lookup was refused' do
+      described_class.throttle(komoot) do
+        Geocoding::Cooldown.start(komoot)
+        [double(cache_hit: false)]
+      end
+
+      expect(Geocoding::Cooldown.unanswered_refusal?(komoot)).to be true
+    end
+  end
+
+  describe 'a lookup that reaches the real provider' do
+    let(:coordinates) { [rand(10.0..60.0).round(6), rand(10.0..60.0).round(6)] }
+    let(:provider_request) { a_request(:get, %r{photon\.test\.example\.com/reverse}) }
+
+    def lookup
+      Geocoding::Search.with_config(config: stored_photon, query: coordinates, limit: 1)
+    end
+
+    let(:stored_photon) do
+      Geocoding::Config.new(source: :stored, provider: :photon, host: 'photon.test.example.com')
+    end
+
+    def wait_out_a_refusal
+      Geocoding::Cooldown.start(stored_photon)
+      Kernel.sleep(1.1)
+    end
+
+    before do
+      use_real_geocoding_lookups
+      stub_const('Geocoding::Cooldown::BASE_DURATION', 1.second)
+      stub_request(:get, %r{photon\.test\.example\.com/reverse}).to_return(
+        status: 200,
+        headers: { 'Content-Type' => 'application/json' },
+        body: {
+          type: 'FeatureCollection',
+          features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: coordinates.reverse },
+                       properties: { name: 'Somewhere', city: 'Town', country: 'Land' } }]
+        }.to_json
+      )
+    end
+
+    it 'counts the answer from the provider but not its cached repeat' do
+      wait_out_a_refusal
+      expect(lookup).to be_present
+      expect(Geocoding::Cooldown.unanswered_refusal?(stored_photon)).to be false
+
+      wait_out_a_refusal
+      expect(lookup).to be_present
+      expect(Geocoding::Cooldown.unanswered_refusal?(stored_photon)).to be true
+      expect(provider_request).to have_been_made.once
     end
   end
 
