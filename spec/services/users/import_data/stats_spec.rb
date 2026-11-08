@@ -48,7 +48,7 @@ RSpec.describe Users::ImportData::Stats, type: :service do
           distance: 456
         )
         expect(jan_stats.daily_distance).to eq([[1, 15.2], [2, 23.5], [3, 18.1]])
-        expect(jan_stats.toponyms).to eq([{ 'country' => 'United States', 'cities' => [{ 'city' => 'New York' }] }])
+        expect(jan_stats[:toponyms]).to eq([{ 'country' => 'United States', 'cities' => [{ 'city' => 'New York' }] }])
 
         feb_stats = user.stats.find_by(year: 2024, month: 2)
         expect(feb_stats).to have_attributes(

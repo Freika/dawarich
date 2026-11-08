@@ -199,6 +199,109 @@ RSpec.describe Residency::DayCounter do
       end
     end
 
+    context 'when points carry aliased spellings of the same country' do
+      # Geocoded points store the OSM name ("United States") while points
+      # resolved against the countries table store the Natural Earth name
+      # ("United States of America"). They are the same country and must be
+      # counted together, otherwise one country is split across two rows and
+      # can fall below the 183-day residency threshold.
+      before do
+        [1, 2, 3].each do |day|
+          create(:point,
+                 user:,
+                 country_name: 'United States',
+                 timestamp: Time.zone.local(2025, 1, day, 12, 0).to_i)
+        end
+
+        create(:point,
+               user:,
+               country_name: 'United States of America',
+               timestamp: Time.zone.local(2025, 1, 4, 12, 0).to_i)
+      end
+
+      it 'reports a single country' do
+        expect(result[:countries].map { |c| c[:country_name] }).to eq(['United States of America'])
+      end
+
+      it 'sums days across both spellings' do
+        expect(result[:countries].first[:days]).to eq(4)
+      end
+
+      it 'resolves each day to the canonical country name' do
+        expect(result[:daily_countries].values.uniq).to eq(['United States of America'])
+      end
+    end
+
+    context 'when one country is stored under different names' do
+      let(:noon) { Time.zone.local(2025, 3, 1, 12, 0).to_i }
+
+      it 'counts a day holding both spellings once' do
+        create(:point, user:, country_name: 'United States', timestamp: noon)
+        create(:point, user:, country_name: 'United States of America', timestamp: noon + 1.hour.to_i)
+
+        expect(result[:countries].map { |c| [c[:country_name], c[:days]] })
+          .to eq([['United States of America', 1]])
+        expect(result[:total_tracked_days]).to eq(1)
+      end
+
+      it 'reaches the residency threshold with 100 days under each spelling' do
+        (0...200).each do |offset|
+          create(:point, user:, country_name: offset < 100 ? 'United States' : 'United States of America',
+                         timestamp: noon + offset.days.to_i)
+        end
+
+        country = result[:countries].sole
+        expect(country).to include(days: 200, threshold_warning: true)
+      end
+
+      it 'groups by the linked country before looking at the stored text' do
+        germany = create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')
+        create(:point, user:, country_name: 'Deutschland', timestamp: noon).update_columns(country_id: germany.id)
+        create(:point, user:, country_name: 'Germany', timestamp: noon + 1.day.to_i)
+
+        expect(result[:countries].map { |c| [c[:country_name], c[:days]] }).to eq([['Germany', 2]])
+      end
+
+      it 'passes a name it does not know through unchanged' do
+        create(:point, user:, country_name: 'Atlantis', timestamp: noon)
+
+        expect(result[:countries].sole).to include(country_name: 'Atlantis', iso_a2: nil, flag: nil)
+      end
+
+      it 'leaves points without a country name out' do
+        create(:point, user:, country_name: nil, timestamp: noon)
+
+        expect(result[:countries]).to eq([])
+      end
+
+      it 'keeps a flown-over country out under its aliased spelling' do
+        create(:point, user:, country_name: 'United States', velocity: 250, timestamp: noon)
+        create(:point, user:, country_name: 'France', timestamp: noon + 1.day.to_i)
+
+        expect(result[:countries].map { |c| c[:country_name] }).to eq(['France'])
+      end
+
+      {
+        'Tanzania' => ['United Republic of Tanzania', 'TZ', 'TZA'],
+        'Cape Verde' => ['Cabo Verde', 'CV', 'CPV'],
+        'Saint Barthélemy' => ['Saint Barthelemy', 'BL', 'BLM'],
+        'Congo-Kinshasa' => ['Democratic Republic of the Congo', 'CD', 'COD'],
+        'São Tomé and Príncipe' => ['São Tomé and Principe', 'ST', 'STP'],
+        'Eswatini' => %w[eSwatini SZ SWZ]
+      }.each do |spelling, (seeded_name, iso_a2, iso_a3)|
+        it "shows the code and flag of #{seeded_name}" do
+          create(:country, name: seeded_name, iso_a2:, iso_a3:)
+          create(:point, user:, country_name: spelling, timestamp: noon)
+
+          expect(result[:countries].sole).to include(
+            country_name: seeded_name,
+            iso_a2:,
+            flag: Countries::IsoCodeMapper.country_flag(iso_a2)
+          )
+        end
+      end
+    end
+
     context 'when points have blank country_name' do
       before do
         create(:point, user:, country_name: '', timestamp: Time.zone.local(2025, 1, 1, 12, 0).to_i)
