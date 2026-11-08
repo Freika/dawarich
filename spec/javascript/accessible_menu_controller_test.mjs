@@ -14,26 +14,32 @@ const source = (
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(`class Controller {}\n${source}\n//# sourceURL=accessible_menu_controller.js`).toString("base64")}`
 const { default: AccessibleMenuController } = await import(moduleUrl)
 
-// Listeners run in the order they were added, as in the browser.
+// Listeners run in the order they were added, capture before bubble, and a
+// listener is removed only with the capture flag it was added with, as in the
+// browser.
 function fakeDocument() {
   const listeners = new Map()
-  const dispatch = (type, event) => {
-    for (const listener of [...(listeners.get(type) || [])]) listener(event)
+  const phase = (type, options) => `${type}:${options?.capture === true}`
+  const dispatch = (key, event) => {
+    for (const listener of [...(listeners.get(key) || [])]) listener(event)
   }
   return {
     activeElement: null,
-    addEventListener(type, listener) {
-      if (!listeners.has(type)) listeners.set(type, new Set())
-      listeners.get(type).add(listener)
+    addEventListener(type, listener, options) {
+      const key = phase(type, options)
+      if (!listeners.has(key)) listeners.set(key, new Set())
+      listeners.get(key).add(listener)
     },
-    removeEventListener(type, listener) {
-      listeners.get(type)?.delete(listener)
+    removeEventListener(type, listener, options) {
+      listeners.get(phase(type, options))?.delete(listener)
     },
-    click(target) {
-      dispatch("click", { target })
+    click(target, { propagationStopped = false } = {}) {
+      dispatch("click:true", { target })
+      if (!propagationStopped) dispatch("click:false", { target })
     },
-    press(key) {
-      dispatch("keydown", { key })
+    press(key, { defaultPrevented = false } = {}) {
+      dispatch("keydown:true", { key, defaultPrevented })
+      dispatch("keydown:false", { key, defaultPrevented })
     },
   }
 }
@@ -98,6 +104,16 @@ test("closes an open menu when a click lands outside it", () => {
   assert.equal(navMenu.summary.attributes["aria-expanded"], "false")
 })
 
+test("closes when the clicked element stops the click reaching document", () => {
+  globalThis.document = fakeDocument()
+  const navMenu = menu()
+  navMenu.open = true
+
+  document.click({}, { propagationStopped: true })
+
+  assert.equal(navMenu.open, false)
+})
+
 test("stays open for clicks inside the menu", () => {
   globalThis.document = fakeDocument()
   const navMenu = menu()
@@ -131,6 +147,18 @@ test("does not take focus when Escape is pressed elsewhere on the page", () => {
   document.press("Escape")
 
   assert.equal(navMenu.open, false)
+  assert.equal(navMenu.summary.focused, 0)
+})
+
+test("leaves the menu alone when another overlay already handled Escape", () => {
+  globalThis.document = fakeDocument()
+  const navMenu = menu()
+  navMenu.open = true
+  document.activeElement = navMenu.item
+
+  document.press("Escape", { defaultPrevented: true })
+
+  assert.equal(navMenu.open, true)
   assert.equal(navMenu.summary.focused, 0)
 })
 

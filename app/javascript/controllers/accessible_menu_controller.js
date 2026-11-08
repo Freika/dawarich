@@ -19,7 +19,11 @@ export default class extends Controller {
     // Listen only while open. The toggle event fires after the click that
     // opened the menu has finished, so that click cannot close it again.
     if (this.element.open) {
-      document.addEventListener("click", this.closeOnOutsideClick)
+      // Capture, because map markers and popups stop their clicks before
+      // they reach document.
+      document.addEventListener("click", this.closeOnOutsideClick, {
+        capture: true,
+      })
       document.addEventListener("keydown", this.closeOnEscape)
     } else {
       this.stopListening()
@@ -33,7 +37,7 @@ export default class extends Controller {
   }
 
   closeOnEscape(event) {
-    if (event.key !== "Escape") return
+    if (event.key !== "Escape" || event.defaultPrevented) return
     // An open submenu closes first; the next Escape closes this menu.
     if (this.element.querySelector("details[open]")) return
 
@@ -43,7 +47,9 @@ export default class extends Controller {
   }
 
   stopListening() {
-    document.removeEventListener("click", this.closeOnOutsideClick)
+    document.removeEventListener("click", this.closeOnOutsideClick, {
+      capture: true,
+    })
     document.removeEventListener("keydown", this.closeOnEscape)
   }
 
