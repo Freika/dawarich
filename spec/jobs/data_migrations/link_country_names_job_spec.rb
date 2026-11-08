@@ -1,0 +1,111 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe DataMigrations::LinkCountryNamesJob, type: :job do
+  include ActiveJob::TestHelper
+
+  let(:user) { create(:user) }
+  let!(:germany) { create(:country, name: 'Germany') }
+  let!(:france) { create(:country, name: 'France', iso_a2: 'FR', iso_a3: 'FRA') }
+
+  # update_columns, because the factory and its callbacks would link the row
+  # and every example would pass without the job touching anything.
+  def point_named(name, country_id:, owner: user)
+    create(:point, user: owner).tap { |p| p.update_columns(country_name: name, country: nil, country_id: country_id) }
+  end
+
+  def run_backfill
+    perform_enqueued_jobs { described_class.perform_later }
+  end
+
+  it 'links a localized name to the country its linked rows carry' do
+    point_named('Deutschland', country_id: germany.id)
+    unlinked = point_named('Deutschland', country_id: nil)
+
+    run_backfill
+
+    expect(unlinked.reload.country_id).to eq(germany.id)
+  end
+
+  it "uses other users' linked rows, so an account with no linked history is covered" do
+    point_named('Deutschland', country_id: germany.id, owner: create(:user))
+    unlinked = point_named('Deutschland', country_id: nil)
+
+    run_backfill
+
+    expect(unlinked.reload.country_id).to eq(germany.id)
+  end
+
+  it 'gathers the evidence across batches' do
+    stub_const("#{described_class}::BATCH_SIZE", 1)
+    point_named('Deutschland', country_id: germany.id)
+    unlinked = point_named('Deutschland', country_id: nil)
+
+    run_backfill
+
+    expect(unlinked.reload.country_id).to eq(germany.id)
+  end
+
+  it 'leaves a name unlinked when its linked rows disagree' do
+    point_named('Ambiguland', country_id: germany.id)
+    point_named('Ambiguland', country_id: france.id)
+    unlinked = point_named('Ambiguland', country_id: nil)
+
+    run_backfill
+
+    expect(unlinked.reload.country_id).to be_nil
+  end
+
+  it 'tolerates a stray mismatch once a name points almost entirely at one country' do
+    stub_const("#{described_class}::MIN_SHARE", 0.75)
+    3.times { point_named('Deutschland', country_id: germany.id) }
+    point_named('Deutschland', country_id: france.id)
+    unlinked = point_named('Deutschland', country_id: nil)
+
+    run_backfill
+
+    expect(unlinked.reload.country_id).to eq(germany.id)
+  end
+
+  it 'does not touch a name with no linked rows' do
+    unlinked = point_named('Atlantis', country_id: nil)
+
+    run_backfill
+
+    expect(unlinked.reload.country_id).to be_nil
+  end
+
+  it 'never relinks a row that already has a country' do
+    point_named('Deutschland', country_id: germany.id)
+    linked = point_named('Deutschland', country_id: france.id)
+    point_named('Deutschland', country_id: germany.id)
+    stub_const("#{described_class}::MIN_SHARE", 0.6)
+
+    run_backfill
+
+    expect(linked.reload.country_id).to eq(france.id)
+  end
+
+  it 'leaves seed names to the name backfill, even when a linked row disagrees' do
+    point_named('Germany', country_id: france.id)
+    unlinked = point_named('Germany', country_id: nil)
+
+    run_backfill
+
+    expect(unlinked.reload.country_id).to be_nil
+  end
+
+  it 'never treats a blank name as evidence' do
+    point_named('', country_id: germany.id)
+    unlinked = point_named('', country_id: nil)
+
+    run_backfill
+
+    expect(unlinked.reload.country_id).to be_nil
+  end
+
+  it 'does nothing on an instance with no points' do
+    expect { perform_enqueued_jobs { described_class.perform_later } }.not_to raise_error
+  end
+end
