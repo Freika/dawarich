@@ -101,6 +101,19 @@ class Users::Digest < ApplicationRecord
     )
   end
 
+  # A digest stored before the names were unified can hold one country twice.
+  def toponyms
+    Countries::NameAliases.merge_toponyms(super)
+  end
+
+  def first_time_visits
+    merge_stored_countries(super) { |names| names.map { |name| Countries::NameAliases.canonical(name) }.uniq }
+  end
+
+  def time_spent_by_location
+    merge_stored_countries(super) { |rows| Countries::NameAliases.merge_minutes(rows) }
+  end
+
   def countries_count
     return 0 unless toponyms.is_a?(Array)
 
@@ -254,6 +267,12 @@ class Users::Digest < ApplicationRecord
   end
 
   private
+
+  def merge_stored_countries(summary)
+    return summary unless summary.is_a?(Hash) && summary['countries'].is_a?(Array)
+
+    summary.merge('countries' => yield(summary['countries']))
+  end
 
   def generate_sharing_uuid
     self.sharing_uuid ||= SecureRandom.uuid

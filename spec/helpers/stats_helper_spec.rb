@@ -48,7 +48,7 @@ RSpec.describe StatsHelper, type: :helper do
 
   describe '#collect_countries_and_cities (private)' do
     let!(:tanzania) do
-      Country.find_or_create_by!(name: 'Tanzania') do |c|
+      Country.find_or_create_by!(name: 'United Republic of Tanzania') do |c|
         c.iso_a2 = 'TZ'
         c.iso_a3 = 'TZA'
         c.geom = 'MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)))'
@@ -63,7 +63,7 @@ RSpec.describe StatsHelper, type: :helper do
                  { 'country' => 'Tanzania', 'cities' => [{ 'city' => 'Dar es Salaam' }] }
                ]),
         create(:stat, user: user, year: 2025, month: 2, toponyms: [
-                 { 'country' => 'Tanzania', 'cities' => [{ 'city' => 'Arusha' }] }
+                 { 'country' => 'United Republic of Tanzania', 'cities' => [{ 'city' => 'Arusha' }] }
                ])
       ]
     end
@@ -71,8 +71,21 @@ RSpec.describe StatsHelper, type: :helper do
     it 'deduplicates countries with canonical names' do
       countries, cities = helper.send(:collect_countries_and_cities, stats)
 
-      expect(countries).to eq(['Tanzania'])
+      expect(countries).to eq(['United Republic of Tanzania'])
       expect(cities).to contain_exactly('Dar es Salaam', 'Arusha')
+    end
+  end
+
+  describe '#normalize_country_name for aliased spellings' do
+    let!(:usa) { create(:country, name: 'United States of America', iso_a2: 'US', iso_a3: 'USA') }
+
+    it 'uses the same canonical name as the rest of the app' do
+      expect(helper.send(:normalize_country_name, 'United States')).to eq('United States of America')
+      expect(helper.send(:normalize_country_name, 'United States of America')).to eq('United States of America')
+    end
+
+    it 'brings a name only the ISO list knows onto that canonical name' do
+      expect(helper.send(:normalize_country_name, 'USA')).to eq('United States of America')
     end
   end
 

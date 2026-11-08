@@ -46,9 +46,9 @@
           <%= trip.distance_in_unit(current_user.safe_settings.distance_unit).round %> <%= current_user.safe_settings.distance_unit %>
         </span>
         <div class="flex items-center gap-2">
-          <% if trip.visited_countries.any? %>
+          <% if trip.canonical_visited_countries.any? %>
             <span class="text-xs text-base-content/50">
-              <%= t('.country_count', count: trip.visited_countries.count) %>
+              <%= t('.country_count', count: trip.canonical_visited_countries.count) %>
             </span>
           <% end %>
           <span class="text-xs tabular-nums text-base-content/50">

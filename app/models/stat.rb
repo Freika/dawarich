@@ -163,7 +163,7 @@ class Stat < ApplicationRecord
 
     report_malformed_toponyms(raw, sanitized) if raw.present? && raw != sanitized
 
-    sanitized
+    Countries::NameAliases.merge_toponyms(sanitized)
   end
 
   def report_malformed_toponyms(raw, sanitized)

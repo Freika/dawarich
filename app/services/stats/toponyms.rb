@@ -39,7 +39,7 @@ module Stats
       @flight_points = 0
       return if point[:country_name].blank?
 
-      country = @country_names[point[:country_id]] || point[:country_name]
+      country = @country_names[point[:country_id]] || Countries::NameAliases.canonical(point[:country_name])
       @countries[country] ||= {}
       return if point[:city].blank?
 

@@ -24,7 +24,7 @@ module Trips
         jsonb_typeof(trips.visited_countries) = 'array'
         AND EXISTS (
           SELECT 1 FROM jsonb_array_elements_text(trips.visited_countries) AS visited(country)
-          WHERE visited.country ILIKE :pattern
+          WHERE visited.country ILIKE :pattern OR visited.country = ANY(ARRAY[:spellings]::text[])
         )
       )
       OR EXISTS (
@@ -100,6 +100,8 @@ module Trips
           .where("jsonb_typeof(trips.visited_countries) = 'array'")
           .distinct
           .pluck(Arel.sql('jsonb_array_elements_text(trips.visited_countries)'))
+          .map { |country| Countries::NameAliases.canonical(country) }
+          .uniq
           .sort_by(&:downcase)
     end
 
@@ -118,13 +120,13 @@ module Trips
         sort: SORTS.key?(params[:sort]) ? params[:sort] : DEFAULT_SORT,
         year:,
         month:,
-        country: params[:country].to_s.delete("\0").strip.presence
+        country: Countries::NameAliases.canonical(params[:country].to_s.delete("\0").strip.presence)
       )
     end
 
     def search(scope)
       pattern = "%#{ActiveRecord::Base.sanitize_sql_like(filters.q)}%"
-      scope.where(SEARCH_SQL, pattern:)
+      scope.where(SEARCH_SQL, pattern:, spellings: Countries::NameAliases.spellings_containing(filters.q))
     end
 
     def within_period(scope)
@@ -135,7 +137,8 @@ module Trips
 
     def visiting(scope)
       scope.where("jsonb_typeof(trips.visited_countries) = 'array'")
-           .where('trips.visited_countries @> ?::jsonb', [filters.country].to_json)
+           .where('trips.visited_countries ?| ARRAY[:spellings]::text[]',
+                  spellings: Countries::NameAliases.spellings(filters.country))
     end
 
     def time_zone
