@@ -30,7 +30,6 @@ pl:
           komoot_warning: "photon.komoot.io to współdzielona instancja publiczna ze ścisłymi limitami zapytań. Zapytania są ograniczone do jednego na sekundę, a masowe geokodowanie będzie powolne. Rozważ uruchomienie własnej instancji Photon."
           https_locked: "Dla tego hosta HTTPS jest zawsze włączony."
           legacy_user_settings: "Niektórzy użytkownicy skonfigurowali własne geokodowanie, zanim zostało przeniesione tutaj. Ich ustawienia nie zostały przeniesione, ponieważ nie każdy użytkownik je miał albo się różniły. Skonfiguruj dostawcę poniżej, aby ponownie włączyć geokodowanie dla wszystkich."
-          paused: "Zapytania są wstrzymane na %{minutes} min, ponieważ dostawca odrzucił je z powodu przekroczenia limitu."
         providers:
           photon: "Otwartoźródłowy geokoder. Użyj hostowanego serwera albo własnego."
           geoapify: "Usługa hostowana. Wymaga klucza API."
@@ -67,7 +66,6 @@ pl:
         empty: "Dostawca odpowiedział, ale nie zwrócił wyników dla testowych współrzędnych."
         failure: "Test nie powiódł się: %{error}"
         rate_limited: "Limit zapytań dostawcy jest w tej chwili wyczerpany — spróbuj ponownie za chwilę."
-        paused: "Dostawca odrzucił zapytania z powodu przekroczenia limitu. Pozostaną wstrzymane jeszcze przez %{seconds} s, więc test nie został wysłany."
   activerecord:
     errors:
       models:
@@ -2068,6 +2066,7 @@ pl:
       done: Gotowe
     links:
       live:
+        last_known: "Ostatnia znana"
         live: "● Na żywo"
         connecting: Łączenie…
       missing_resource:
@@ -2128,6 +2127,14 @@ pl:
     privacy_zones_note:
       text: "Twoje strefy prywatności pozostają ukryte w tym linku. Każdy ukryty obszar jest przesunięty względem miejsca, więc nikt nie ustali, gdzie ono jest."
       manage: "Strefy prywatności"
+    live_freshness_field:
+      label: "Pokazuj ostatnią znaną lokalizację przez"
+      hint: "Gdy urządzenie przestanie wysyłać dane, każdy, kto otworzy link, nadal zobaczy Twoją ostatnią znaną lokalizację przez ten czas."
+      windows:
+        s900: "15 minut"
+        s3600: "1 godzinę"
+        s21600: "6 godzin"
+        s86400: "24 godziny"
     expires_field:
       expires_optional: Wygasa (opcjonalnie)
       stays_active_through_the_end_of_the_day_before_the: Pozostaje aktywny do końca dnia poprzedzającego wybraną datę.
@@ -2159,7 +2166,7 @@ pl:
         many: "%{count} wyświetleń"
         other: "%{count} wyświetlenia"
     modal_live_create_form:
-      current_location_in_real_time: bieżąca lokalizacja w czasie rzeczywistym
+      latest_known_location: "ostatnią znaną lokalizację"
       this_shares_your_location_with_anyone_html: To udostępnia Twoją %{location} każdemu, kto ma link, aż do wygaśnięcia lub unieważnienia.
       magic_phrase_optional: Tajna fraza (opcjonalnie)
       leave_blank_to_share_without_a_phrase_or_use_the: Zostaw puste, aby udostępniać bez frazy, albo użyj wygenerowanej automatycznie.
@@ -3699,6 +3706,7 @@ pl:
     shared_link:
       is_required_for_this_resource_type: jest wymagane dla tego typu zasobu
       must_be_blank_for_this_resource_type: musi być puste dla tego typu zasobu
+      live_freshness_not_allowed: "musi wynosić 15 minut, 1 godzinę, 6 godzin lub 24 godziny"
       must_be_in_the_future: musi wskazywać przyszłość
       must_include_start_date_and_end_date_for_timeline_shares: musi zawierać start_date i end_date dla udostępnień osi czasu
       start_date_and_end_date_must_be_parseable_as_dates: start_date i end_date muszą dać się odczytać jako daty

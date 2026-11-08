@@ -212,6 +212,86 @@ RSpec.describe 'Api::V1::Shared::Points', type: :request do
       get "/api/v1/shared/#{link.id}/points"
       expect(JSON.parse(response.body)).to eq([])
     end
+
+    context 'with a per-link freshness window' do
+      include ActiveSupport::Testing::TimeHelpers
+
+      let(:link) { create(:shared_link, :live, user: owner, settings: { 'live_freshness_seconds' => 3600 }) }
+
+      it 'keeps a point visible while it is inside the longer window' do
+        create(:point, user: owner, timestamp: 30.minutes.ago.to_i, latitude: 60.0, longitude: 10.0)
+
+        get "/api/v1/shared/#{link.id}/points"
+
+        body = JSON.parse(response.body)
+        expect(body.size).to eq(1)
+        expect(body.first[1]).to be_within(0.0001).of(60.0)
+      end
+
+      it 'hides a point once it is older than the longer window' do
+        create(:point, user: owner, timestamp: 2.hours.ago.to_i, latitude: 60.0, longitude: 10.0)
+
+        get "/api/v1/shared/#{link.id}/points"
+
+        expect(JSON.parse(response.body)).to eq([])
+      end
+
+      it 'shows a point exactly at the edge of the window and hides it one second later' do
+        freeze_time do
+          create(:point, user: owner, timestamp: Time.current.to_i - 3600, latitude: 60.0, longitude: 10.0)
+
+          get "/api/v1/shared/#{link.id}/points"
+          expect(JSON.parse(response.body).size).to eq(1)
+
+          travel 1.second
+          get "/api/v1/shared/#{link.id}/points"
+          expect(JSON.parse(response.body)).to eq([])
+        end
+      end
+
+      it 'keeps a stale but allowed point hidden inside a privacy zone' do
+        create(:point, user: owner, timestamp: 30.minutes.ago.to_i, latitude: 52.0, longitude: 13.0)
+        home = create(:place, user: owner, latitude: 52.0, longitude: 13.0)
+        tag = create(:tag, user: owner, privacy_radius_meters: 500)
+        create(:tagging, tag: tag, taggable: home)
+
+        get "/api/v1/shared/#{link.id}/points"
+
+        expect(JSON.parse(response.body)).to eq([])
+      end
+
+      context 'when the link never chose a window' do
+        before { link.update_columns(settings: { 'show_photos' => false }) }
+
+        it 'shows a point newer than 15 minutes' do
+          create(:point, user: owner, timestamp: 14.minutes.ago.to_i, latitude: 60.0, longitude: 10.0)
+
+          get "/api/v1/shared/#{link.id}/points"
+
+          expect(JSON.parse(response.body).size).to eq(1)
+        end
+
+        it 'hides a point older than 15 minutes' do
+          create(:point, user: owner, timestamp: 16.minutes.ago.to_i, latitude: 60.0, longitude: 10.0)
+
+          get "/api/v1/shared/#{link.id}/points"
+
+          expect(JSON.parse(response.body)).to eq([])
+        end
+      end
+
+      [999_999, 'banana', true, nil].each do |bad_value|
+        it "falls back to 15 minutes when the stored window is #{bad_value.inspect}" do
+          link.update_columns(settings: { 'live_freshness_seconds' => bad_value })
+          create(:point, user: owner, timestamp: 30.minutes.ago.to_i, latitude: 60.0, longitude: 10.0)
+
+          get "/api/v1/shared/#{link.id}/points"
+
+          expect(response).to have_http_status(:ok)
+          expect(JSON.parse(response.body)).to eq([])
+        end
+      end
+    end
   end
 
   context 'for a timeline share' do

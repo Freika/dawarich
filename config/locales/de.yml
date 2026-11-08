@@ -30,7 +30,6 @@ de:
           komoot_warning: "photon.komoot.io ist ein gemeinsam genutzter öffentlicher Server mit strengen Limits. Anfragen werden auf eine pro Sekunde gedrosselt, Massen-Geokodierung ist daher langsam. Erwäge, eine eigene Photon-Instanz zu betreiben."
           https_locked: "Für diesen Host ist HTTPS immer aktiv."
           legacy_user_settings: "Einige Nutzer hatten die Geokodierung selbst eingerichtet, bevor sie hierher verschoben wurde. Ihre Einstellungen wurden nicht übernommen, weil nicht alle Nutzer eine hatten oder sie sich unterschieden. Richte unten einen Anbieter ein, um die Geokodierung für alle wieder einzuschalten."
-          paused: "Abfragen pausieren %{minutes} Min., weil der Anbieter sie wegen seines Limits abgelehnt hat."
         providers:
           photon: "Open-Source-Geocoder. Nutze einen gehosteten Server oder betreibe deinen eigenen."
           geoapify: "Gehosteter Dienst. Benötigt einen API-Schlüssel."
@@ -67,7 +66,6 @@ de:
         empty: "Der Anbieter hat geantwortet, aber keine Ergebnisse für die Testkoordinaten geliefert."
         failure: "Test fehlgeschlagen: %{error}"
         rate_limited: "Das Anfragelimit des Anbieters ist gerade ausgeschöpft. Versuche es gleich noch einmal."
-        paused: "Der Anbieter hat Abfragen wegen seines Limits abgelehnt. Sie pausieren noch %{seconds} s, deshalb wurde kein Test gesendet."
   route_videos:
     route_video:
       download: "MP4 herunterladen"
@@ -2055,6 +2053,7 @@ de:
       done: Fertig
     links:
       live:
+        last_known: "Zuletzt bekannt"
         live: "● Live"
         connecting: Verbinden…
       missing_resource:
@@ -2115,6 +2114,14 @@ de:
     privacy_zones_note:
       text: "Deine Privatsphäre-Zonen bleiben bei diesem Link verborgen. Jeder verborgene Bereich ist vom Ort versetzt, sodass niemand erkennen kann, wo der Ort liegt."
       manage: "Privatsphäre-Zonen"
+    live_freshness_field:
+      label: "Letzte bekannte Position sichtbar lassen für"
+      hint: "Wenn dein Gerät keine Daten mehr sendet, kann jeder, der den Link öffnet, deine letzte bekannte Position noch so lange sehen."
+      windows:
+        s900: "15 Minuten"
+        s3600: "1 Stunde"
+        s21600: "6 Stunden"
+        s86400: "24 Stunden"
     expires_field:
       expires_optional: Verfällt (optional)
       stays_active_through_the_end_of_the_day_before_the: Aktiv bis zum Ende des Tages vor dem ausgewählten Datum.
@@ -2145,7 +2152,7 @@ de:
         other: "%{count} Ansichten"
     modal_live_create_form:
       this_shares_your: Dies teilt deine
-      current_location_in_real_time: aktuelle Position in Echtzeit
+      latest_known_location: "deine letzte bekannte Position"
       with_anyone_who_has_the_link_until_it_expires_or: mit jedem, der den Link hat, bis er abläuft oder du ihn widerrufst.
       magic_phrase_optional: Magische Phrase (optional)
       leave_blank_to_share_without_a_phrase_or_use_the: Lass es leer, um ohne Phrase zu teilen, oder verwende die automatisch generierte.
@@ -3646,6 +3653,7 @@ de:
     shared_link:
       is_required_for_this_resource_type: ist für dieses Ressourcentyp erforderlich
       must_be_blank_for_this_resource_type: muss leer sein für diesen Ressourcentyp
+      live_freshness_not_allowed: "muss 15 Minuten, 1 Stunde, 6 Stunden oder 24 Stunden sein"
       must_be_in_the_future: muss in der Zukunft liegen
       must_include_start_date_and_end_date_for_timeline_shares: muss start_date und end_date enthalten für Zeitleistenteilen
       start_date_and_end_date_must_be_parseable_as_dates: start_date und end_date müssen als Datum parsierbar sein

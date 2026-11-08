@@ -66,7 +66,7 @@ module ShareLinks
           resource_id:   @share.resource_id,
           name:          @share.name,
           magic_phrase:  @share.magic_phrase,
-          settings:      @share.settings,
+          settings:      regenerated_settings,
           expires_at:    (@share.expires_at if @share.expires_at&.future?)
         )
         broadcast_live_share_ended(@share)
@@ -121,6 +121,13 @@ module ShareLinks
     def revoke_existing_active_shares!
       active_share_scope.active.find_each { |share| broadcast_live_share_ended(share) }
       active_share_scope.active.update_all(revoked_at: Time.current)
+    end
+
+    # A copied link is validated as new, so a bad stored window must not reach it.
+    def regenerated_settings
+      return @share.settings unless @share.live?
+
+      @share.settings.merge(SharedLink::LIVE_FRESHNESS_KEY => @share.live_freshness_seconds)
     end
 
     def extracted_settings
