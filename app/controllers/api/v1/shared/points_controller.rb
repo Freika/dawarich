@@ -5,10 +5,6 @@ module Api
     module Shared
       class PointsController < BaseController
         MAX_POINTS = 10_000
-        # Configurable so distance-based location trackers (e.g. GPSlogger)
-        # that go quiet while stationary don't make a live share link say
-        # "location unknown" just because no point arrived in the last 15min.
-        LIVE_FRESHNESS_SECONDS = ENV.fetch('LIVE_SHARE_FRESHNESS_SECONDS', 15 * 60).to_i
 
         def index
           return render(json: []) if route_hidden?
@@ -42,9 +38,9 @@ module Api
           outside_privacy_zones(points)
         end
 
-        # Current-position-only: the user's latest fresh point, privacy-masked.
-        # Returns [] when there is no point, it is stale (user offline), or it
-        # falls inside a privacy zone.
+        # Current-position-only: the user's latest point, privacy-masked.
+        # Returns [] when there is no point, it is older than the window chosen
+        # for this link, or it falls inside a privacy zone.
         def live_points
           row = link.user.points.not_anomaly.order(timestamp: :desc).limit(1).pick(
             Arel.sql('ST_X(lonlat::geometry)'),
@@ -54,7 +50,7 @@ module Api
           return [] if row.nil?
 
           lon, lat, ts = row
-          return [] if Time.current.to_i - ts.to_i > LIVE_FRESHNESS_SECONDS
+          return [] if Time.current.to_i - ts.to_i > link.live_freshness_seconds
 
           point = SharedLinks::LivePoint.new(link.user, lat: lat, lon: lon, timestamp: ts).call
           return [] if point[:masked]

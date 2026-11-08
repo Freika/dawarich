@@ -1,0 +1,9 @@
+<%# Locals: share (optional live link being edited) %>
+<% selected = local_assigns[:share]&.live_freshness_seconds || SharedLink::DEFAULT_LIVE_FRESHNESS %>
+<div class="form-control mt-4">
+  <%= label_tag 'live-share-freshness', t('.label'), class: 'label label-text' %>
+  <%= select_tag "shared_link[settings][#{SharedLink::LIVE_FRESHNESS_KEY}]",
+                 options_for_select(SharedLink::LIVE_FRESHNESS_WINDOWS.map { |window| [t(".windows.s#{window}"), window] }, selected),
+                 id: 'live-share-freshness', class: 'select select-bordered' %>
+  <span class="label-text-alt mt-1"><%= t('.hint') %></span>
+</div>
