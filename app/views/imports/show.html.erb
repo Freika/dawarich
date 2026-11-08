@@ -14,6 +14,9 @@
         <h2 class="font-bold"><%= t('ux_p2.import.failed') %></h2>
         <p class="my-2"><%= @import.failure_summary %></p>
         <p class="text-sm mb-3"><%= t('ux_p2.import.reference', id: @import.id) %></p>
+        <% if DawarichSettings.self_hosted? && @import.error_message.present? %>
+          <details class="mb-3"><summary class="cursor-pointer"><%= t('ux_p2.import.technical_details') %></summary><pre class="whitespace-pre-wrap [overflow-wrap:anywhere] text-xs mt-2 max-h-48 overflow-auto"><%= @import.error_message %></pre></details>
+        <% end %>
         <%= link_to t('ux_p2.import.upload_another'), new_import_path, class: 'btn btn-primary btn-sm' %>
         <%= link_to t('ux_p2.import.supported_formats'), new_import_path(anchor: 'supported-formats'), class: 'btn btn-outline btn-sm' %>
       </section>

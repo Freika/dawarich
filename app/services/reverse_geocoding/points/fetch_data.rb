@@ -103,7 +103,7 @@ class ReverseGeocoding::Points::FetchData
 
     country = Country.matching_name(response.country)
     country = nil if code.present? && country&.iso_a2 != code.upcase
-    country ||= Country.find_by(iso_a2: code.upcase) if code.present?
+    country ||= Country.without_geom.find_by(iso_a2: code.upcase) if code.present?
 
     if country.nil?
       Rails.logger.warn(

@@ -9,8 +9,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Replay shows speed in mph when your distance unit is miles, on the map and on trip pages. Thanks @mja00!
+- Reverse geocoding no longer reads full country borders from the database, which cuts its database traffic.
+- Route videos of long, dense tracks no longer show frames of an older route under the moving marker: each frame now waits for the map to finish drawing, so these exports can take longer and need the tab to stay visible. Exports in Firefox no longer lose frames when its encoder reorders them. (#4007)
+- Points of a fast flight that stay on the route are no longer hidden as anomalies when the plane flies faster than 1,000 km/h over the ground, for example with a strong tailwind. Fixes that jump off the route or move faster than 2,500 km/h are still flagged. Points flagged earlier come back after you press Re-evaluate past data in the map settings. (#3988)
+- PostgreSQL no longer logs a duplicate key error on `achievement_collection_states` every five minutes. #4006, #4002
+- Visit detection retries up to three times when it deadlocks with an import running for the same user, so a single deadlock no longer drops a day of visit suggestions or a month of full-history re-detection. #4002
 
-## [1.22.0] - 2026-11-04, Berlin
+## [1.22.0] - 2026-11-07, Berlin
+
+### ⚠️ Upgrade notes
+
+- With `ARCHIVE_RAW_DATA=true`, set `ARCHIVE_ENCRYPTION_KEY` before upgrading: without it, production stops archiving raw data and only logs an error. On an instance that already has archives, use the current `SECRET_KEY_BASE` value; otherwise generate a key with `bin/rails secret`. Keep the key safe, because cleared raw data cannot be recovered without it.
 
 ### Added
 
@@ -33,6 +42,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Preserve the selected timezone when saving settings and loading Poster Studio dates. Poster controls and downloads now fit narrow screens, and closed map dialogs no longer receive keyboard focus.
 - Show digest generation progress and retries without marking completed reports as failed when email delivery cannot be queued. Make MP4 downloads, integration save/test outcomes and timeline filter counts easier to follow.
 - Improve import recovery, family sharing feedback, first-use guidance, mobile navigation, point lists, Places forms and empty analytics.
+- Raw data archival no longer clears points whose archive file has gone missing, and account exports now include raw data that was already archived and cleared from the database.
+- A failed import shows its error on the import page again on self-hosted instances, and a Year-End Digest whose generation was interrupted can be requested again after six hours.
 
 ## [1.21.0] - 2026-11-03, Berlin
 

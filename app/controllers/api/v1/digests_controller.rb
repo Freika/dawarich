@@ -47,7 +47,9 @@ class Api::V1::DigestsController < ApiController
 
   def available_years_for_generation
     tracked_years = current_api_user.scoped_stats.select(:year).distinct.pluck(:year)
-    existing_digests = current_api_user.digests.yearly.where.not(generation_status: :failed).pluck(:year)
+    existing_digests = current_api_user.digests.yearly.select(:id, :year, :generation_status, :updated_at)
+                                       .select { |digest| digest.generation_ready? || digest.generation_pending? }
+                                       .map(&:year)
 
     (tracked_years - existing_digests - [Time.current.year]).sort.reverse
   end
