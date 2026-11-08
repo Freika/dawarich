@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Points of a fast flight that stay on the route are no longer hidden as anomalies when the plane flies faster than 1,000 km/h over the ground, for example with a strong tailwind. Fixes that jump off the route or move faster than 2,500 km/h are still flagged. Points flagged earlier come back after you press Re-evaluate past data in the map settings. (#3988)
 - PostgreSQL no longer logs a duplicate key error on `achievement_collection_states` every five minutes. #4006, #4002
 - Visit detection retries up to three times when it deadlocks with an import running for the same user, so a single deadlock no longer drops a day of visit suggestions or a month of full-history re-detection. #4002
 
