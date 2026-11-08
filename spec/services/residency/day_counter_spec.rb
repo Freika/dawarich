@@ -199,6 +199,39 @@ RSpec.describe Residency::DayCounter do
       end
     end
 
+    context 'when points carry aliased spellings of the same country' do
+      # Geocoded points store the OSM name ("United States") while points
+      # resolved against the countries table store the Natural Earth name
+      # ("United States of America"). They are the same country and must be
+      # counted together, otherwise one country is split across two rows and
+      # can fall below the 183-day residency threshold.
+      before do
+        [1, 2, 3].each do |day|
+          create(:point,
+                 user:,
+                 country_name: 'United States',
+                 timestamp: Time.zone.local(2025, 1, day, 12, 0).to_i)
+        end
+
+        create(:point,
+               user:,
+               country_name: 'United States of America',
+               timestamp: Time.zone.local(2025, 1, 4, 12, 0).to_i)
+      end
+
+      it 'reports a single country' do
+        expect(result[:countries].map { |c| c[:country_name] }).to eq(['United States of America'])
+      end
+
+      it 'sums days across both spellings' do
+        expect(result[:countries].first[:days]).to eq(4)
+      end
+
+      it 'resolves each day to the canonical country name' do
+        expect(result[:daily_countries].values.uniq).to eq(['United States of America'])
+      end
+    end
+
     context 'when points have blank country_name' do
       before do
         create(:point, user:, country_name: '', timestamp: Time.zone.local(2025, 1, 1, 12, 0).to_i)
