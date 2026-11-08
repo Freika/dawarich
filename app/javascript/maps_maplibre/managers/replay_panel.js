@@ -264,7 +264,7 @@ export class ReplayPanel {
       )
       if (pointTime) {
         const date = new Date(pointTime)
-        const pointMinute = date.getHours() * 60 + date.getMinutes()
+        const pointMinute = this.replayManager.minuteOfDay(date)
         if (pointMinute >= minute) {
           targetIndex = i
           break
@@ -516,7 +516,7 @@ export class ReplayPanel {
       )
       if (pointTime) {
         const date = new Date(pointTime)
-        if (date.getHours() * 60 + date.getMinutes() >= currentMinute) {
+        if (this.replayManager.minuteOfDay(date) >= currentMinute) {
           this.replayPointIndex = i
           break
         }
@@ -668,7 +668,7 @@ export class ReplayPanel {
       )
       if (pointTime) {
         const date = new Date(pointTime)
-        const minute = date.getHours() * 60 + date.getMinutes()
+        const minute = this.replayManager.minuteOfDay(date)
         this.c.replayScrubberTarget.value = minute
         this.updateTimeDisplay(minute, false)
       }

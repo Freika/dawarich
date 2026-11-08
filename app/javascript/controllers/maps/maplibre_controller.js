@@ -1894,11 +1894,9 @@ export default class extends Controller {
     await this.replayPanel.ensureOpen()
     if (!this.replayPanel.manager?.hasData()) return
 
-    const targetDay = `${trackDate.getFullYear()}-${String(trackDate.getMonth() + 1).padStart(2, "0")}-${String(trackDate.getDate()).padStart(2, "0")}`
-    this.replayPanel.goToDay(targetDay)
-
-    const startMinute = trackDate.getHours() * 60 + trackDate.getMinutes()
-    this.replayPanel.setMinute(startMinute)
+    const { manager } = this.replayPanel
+    this.replayPanel.goToDay(manager.dayKey(trackDate))
+    this.replayPanel.setMinute(manager.minuteOfDay(trackDate))
     this.replayPanel.startPlayback()
   }
 

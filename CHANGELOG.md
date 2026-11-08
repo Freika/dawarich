@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Replay playback follows the timezone from Settings instead of the browser's. Thanks @joshuanianji! (#3811)
 - Navbar menus open one at a time and close on an outside click or Escape. Thanks @Strazdonis! (#4005)
 - Replay shows speed in mph when your distance unit is miles, on the map and on trip pages. Thanks @mja00!
 - Reverse geocoding no longer reads full country borders from the database, which cuts its database traffic.

@@ -7,6 +7,8 @@ import { formatDate, formatTime, translate } from "i18n"
 export class ReplayManager {
   constructor(options = {}) {
     this.timezone = options.timezone || "UTC"
+    this._formatter = null
+    this._formatterTimeZone = null
     this.points = []
     this.pointsByDay = {} // { '2025-01-15': [point1, ...] }
     this.availableDays = [] // ['2025-01-15', '2025-01-16']
@@ -375,6 +377,26 @@ export class ReplayManager {
   }
 
   /**
+   * Get minute of day (0-1439) for a Date in the configured timezone
+   * @param {Date} date
+   * @returns {number|null}
+   */
+  minuteOfDay(date) {
+    const parts = this._getDateParts(date)
+    return parts ? parts.hour * 60 + parts.minute : null
+  }
+
+  /**
+   * Get the day key (like '2025-01-15') for a Date in the configured timezone
+   * @param {Date} date
+   * @returns {string|null}
+   */
+  dayKey(date) {
+    const parts = this._getDateParts(date)
+    return parts ? this._formatDayKey(parts) : null
+  }
+
+  /**
    * Cycle to previous point in multi-point minute
    */
   cyclePrev() {
@@ -565,29 +587,8 @@ export class ReplayManager {
   _getDateParts(date) {
     if (!date || Number.isNaN(date.getTime())) return null
 
-    try {
-      const formatter = new Intl.DateTimeFormat("en-US", {
-        timeZone: this.timezone || "UTC",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23",
-      })
-      const parts = formatter.formatToParts(date).reduce((acc, p) => {
-        if (p.type !== "literal") acc[p.type] = p.value
-        return acc
-      }, {})
-
-      return {
-        year: parseInt(parts.year, 10),
-        month: parseInt(parts.month, 10),
-        day: parseInt(parts.day, 10),
-        hour: parseInt(parts.hour, 10),
-        minute: parseInt(parts.minute, 10),
-      }
-    } catch (_err) {
+    const formatter = this._dateFormatter()
+    if (!formatter) {
       return {
         year: date.getFullYear(),
         month: date.getMonth() + 1,
@@ -596,6 +597,45 @@ export class ReplayManager {
         minute: date.getMinutes(),
       }
     }
+
+    const parts = formatter.formatToParts(date).reduce((acc, p) => {
+      if (p.type !== "literal") acc[p.type] = p.value
+      return acc
+    }, {})
+
+    return {
+      year: parseInt(parts.year, 10),
+      month: parseInt(parts.month, 10),
+      day: parseInt(parts.day, 10),
+      hour: parseInt(parts.hour, 10),
+      minute: parseInt(parts.minute, 10),
+    }
+  }
+
+  /**
+   * Formatter for the configured timezone, rebuilt only when the timezone
+   * changes. Null when the timezone string is invalid.
+   * @private
+   */
+  _dateFormatter() {
+    const timeZone = this.timezone || "UTC"
+    if (this._formatterTimeZone === timeZone) return this._formatter
+
+    this._formatterTimeZone = timeZone
+    try {
+      this._formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      })
+    } catch (_err) {
+      this._formatter = null
+    }
+    return this._formatter
   }
 
   /**
