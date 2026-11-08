@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Reverse geocoding no longer reads full country borders from the database, which cuts its database traffic.
+
 ## [1.22.0] - 2026-11-04, Berlin
 
 ### Added

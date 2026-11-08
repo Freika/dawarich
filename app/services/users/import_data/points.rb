@@ -152,7 +152,7 @@ class Users::ImportData::Points
     logger.debug "Loaded #{user.imports.size} imports with #{@imports_lookup.size} lookup keys"
 
     @countries_lookup = {}
-    Country.all.find_each do |country|
+    Country.without_geom.find_each do |country|
       @countries_lookup[[country.name, country.iso_a2, country.iso_a3]] = country
       @countries_lookup[country.name] = country
     end
