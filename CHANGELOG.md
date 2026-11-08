@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- PostgreSQL no longer logs a duplicate key error on `achievement_collection_states` every five minutes. #4006, #4002
+
 ## [1.22.0] - 2026-11-07, Berlin
 
 ### ⚠️ Upgrade notes

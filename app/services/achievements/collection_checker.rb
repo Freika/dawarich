@@ -9,7 +9,7 @@ module Achievements
 
     def call
       CollectionState.with_advisory_lock("achievement-collections-#{@user.id}", timeout_seconds: 0) do
-        @state = CollectionState.create_or_find_by!(user_id: @user.id)
+        @state = CollectionState.for_user!(@user.id)
         Selection.where(user: @user).includes(:place).order(:id).each { |selection| resolve_timezone(selection) }
         @selection_signature = selection_signature
         if @user.achievement_city_selections.exists?
