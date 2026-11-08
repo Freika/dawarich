@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Route videos of long, dense tracks no longer show frames of an older route under the moving marker: each frame now waits for the map to finish drawing, so these exports can take longer and need the tab to stay visible. Exports in Firefox no longer lose frames when its encoder reorders them. (#4007)
+
 ## [1.22.0] - 2026-11-07, Berlin
 
 ### ⚠️ Upgrade notes
