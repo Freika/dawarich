@@ -31,6 +31,7 @@ fr:
           komoot_warning: "photon.komoot.io est un serveur public partagé aux limites strictes. Les requêtes sont limitées à une par seconde, le géocodage en masse sera donc lent. Envisagez d'héberger votre propre instance Photon."
           https_locked: "HTTPS est toujours activé pour cet hôte."
           legacy_user_settings: "Certains utilisateurs avaient configuré leur propre géocodage avant son déplacement ici. Leurs réglages n'ont pas été repris, car tous les utilisateurs n'en avaient pas ou ils différaient. Configurez un fournisseur ci-dessous pour réactiver le géocodage pour tout le monde."
+          paused: "Les requêtes sont en pause pendant %{minutes} min, car le fournisseur les a refusées pour dépassement de sa limite."
         providers:
           photon: "Géocodeur open source. Utilisez un serveur hébergé ou le vôtre."
           geoapify: "Service hébergé. Nécessite une clé d'API."
@@ -67,6 +68,7 @@ fr:
         empty: "Le fournisseur a répondu, mais n'a renvoyé aucun résultat pour les coordonnées de test."
         failure: "Échec du test : %{error}"
         rate_limited: "La limite de requêtes du fournisseur est atteinte pour le moment. Réessayez dans un instant."
+        paused: "Le fournisseur a refusé les requêtes pour dépassement de sa limite. Elles restent en pause encore %{seconds} s, aucun test n'a donc été envoyé."
   route_videos:
     route_video:
       download: "Télécharger le MP4"

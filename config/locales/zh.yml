@@ -32,6 +32,7 @@ zh:
           komoot_warning: "photon.komoot.io 是一个共享的公共实例，速率限制严格。请求被限制为每秒一次，批量地理编码会很慢。建议自行托管 Photon 实例。"
           https_locked: "此主机始终使用 HTTPS。"
           legacy_user_settings: "部分用户在地理编码移至此处之前设置了自己的地理编码。由于并非每位用户都有设置，或各自的设置不同，这些设置没有被迁移。请在下方设置提供商，为所有人重新开启地理编码。"
+          paused: "提供商因超出限额拒绝了查询，查询还将暂停 %{minutes} 分钟。"
         providers:
           photon: "开源地理编码器。可使用托管服务器，也可自行部署。"
           geoapify: "托管服务。需要 API 密钥。"
@@ -68,6 +69,7 @@ zh:
         empty: "提供商已响应，但测试坐标没有返回结果。"
         failure: "测试失败：%{error}"
         rate_limited: "提供商的速率限制当前繁忙——请稍后再试。"
+        paused: "提供商因超出限额拒绝了查询。查询还将暂停 %{seconds} 秒，因此未发送测试。"
   auth:
     account_links:
       challenge:

@@ -231,10 +231,28 @@ class ReverseGeocoding::Places::FetchData
       radius: 1,
       units: :km
     )
+  rescue Geocoding::Cooldown::Active
+    # The provider's refusal was reported when it started the cooldown; the
+    # place keeps its current name instead of reporting every skip.
+    Rails.logger.info("Reverse geocoding skipped for place #{place.id}: provider is over its limit")
+    retry_after_cooldown
+    []
+  rescue Geocoder::OverQueryLimitError => e
+    Rails.logger.error("Reverse geocoding error for place #{place.id}: #{e.message}")
+    ExceptionReporter.call(e)
+    retry_after_cooldown
+    []
   rescue StandardError => e
     Rails.logger.error("Reverse geocoding error for place #{place.id}: #{e.message}")
     ExceptionReporter.call(e)
     []
+  end
+
+  def retry_after_cooldown
+    wait = Geocoding::Cooldown.retry_after(Geocoding::Config.for(place.user_id))
+    return unless Geocoding::Cooldown.claim_retry("place:#{place.id}", wait)
+
+    ReverseGeocodingJob.set(wait: wait).perform_later('place', place.id)
   end
 
   # Keep existing GeoJSON metadata intact. Flat responses use the shared

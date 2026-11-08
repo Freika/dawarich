@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- When a geocoding provider refuses lookups for being over its limit, Dawarich pauses them, shows the pause on the admin settings page and picks the backlog up afterwards, instead of sending every remaining point into the same refusal. Thanks @Strazdonis! (#4004)
 - Replay playback follows the timezone from Settings instead of the browser's. Thanks @joshuanianji! (#3811)
 - Navbar menus open one at a time and close on an outside click or Escape. Thanks @Strazdonis! (#4005)
 - Replay shows speed in mph when your distance unit is miles, on the map and on trip pages. Thanks @mja00!
