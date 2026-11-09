@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### ⚠️ Upgrade notes
+
+- A new production install no longer creates its first account with the published default password. Set `INITIAL_ADMIN_PASSWORD` (and, if you like, `INITIAL_ADMIN_EMAIL`) before the first start; otherwise Dawarich generates a password and writes it to the log once. Existing installs are not affected.
+
+### Security
+
+Fixes for issues found in a security audit. Operators should upgrade.
+
+- Signing in with Google, GitHub or OIDC now asks for the 2FA code on accounts that have 2FA turned on, instead of signing straight in. Resetting a password no longer signs these accounts in either: they go back to the sign-in page.
+- Replacing a 2FA setup that is already on now requires the current password.
+- Failed logins through the API now count toward account lockout, the same as on the web.
+- Opening a sign-up link with an import ticket while signed in no longer adds that import to your account.
+- Importing an account archive now ignores record IDs inside the archive, so a crafted archive cannot point its points at someone else's imports, visits or tracks. Account exports no longer include details of an import or visit that belongs to another user.
+- Account archives are now parsed as plain JSON, so a crafted line can no longer create Ruby objects during import.
+- Family location sharing now hides points inside each member's Privacy Zones, both for the latest location and for history.
+- Immich, Photoprism, AirTrail and TeslaMate URLs now go through the same address checks however the settings are saved, and the IPv6 address `::` is now always blocked. Photo thumbnails no longer follow redirects.
+- `/metrics` now refuses requests with empty credentials while `METRICS_USERNAME` or `METRICS_PASSWORD` is unset.
+- API rate limits now also count an `api_key` sent in a JSON body.
+- ZIP and KMZ imports now stop as soon as the extracted data passes `ZIP_MAX_EXTRACTED_SIZE`, instead of reading a whole oversized entry first.
+
 ### Fixed
 
 - One country no longer splits across residency, stats, digests and trips, and country names now follow the standard list, for example "United States of America". Thanks @whallil! (#3879)
