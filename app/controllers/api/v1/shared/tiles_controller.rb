@@ -25,7 +25,7 @@ module Api
           return head :no_content if tile.blank?
 
           send_data tile, type: 'application/vnd.mapbox-vector-tile', disposition: 'inline'
-        rescue ::Trips::RoutesTileQuery::InvalidTileCoordinatesError
+        rescue TileCoordinates::InvalidTileCoordinatesError
           force_uncacheable_response
           render json: { error: 'Invalid tile coordinates' }, status: :bad_request
         rescue ActiveRecord::QueryCanceled
