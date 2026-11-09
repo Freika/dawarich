@@ -43,6 +43,7 @@ test("an aggregate MVT Point zooms instead of opening an editor", () => {
       getZoom: () => 8,
     },
     {
+      timelineBridge: {},
       layerManager: {
         getLayer: () => ({ justDragged: false }),
       },
@@ -83,6 +84,7 @@ test("a merged tile marker zooms without selecting its representative", () => {
       getMaxZoom: () => 22,
     },
     {
+      timelineBridge: {},
       layerManager: { getLayer: () => null },
     },
   )
@@ -127,6 +129,7 @@ test("overlapping points at maximum zoom show no point actions", () => {
       },
     },
     {
+      timelineBridge: {},
       layerManager: { getLayer: () => null },
       showInfo: (...args) => infos.push(args),
     },
@@ -174,6 +177,7 @@ function loadSegmentsHarness(fetchedFeature, pointTileRange = undefined) {
           return fetchedFeature
         },
       },
+      timelineBridge: {},
       layerManager: {
         pointTileRange,
         getLayer: (name) => (name === "tracks" ? tracksLayer : null),
@@ -308,6 +312,7 @@ test("clearing a point-only selection restores its editor and leaves info open",
     setPaintProperty: (...args) => paint.push(args),
   }
   const controller = {
+    timelineBridge: {},
     layerManager: {
       getLayer: (name) => (name === "map-editor" ? editor : null),
     },
@@ -396,8 +401,10 @@ test("clearing a point selection keeps a highlighted day dimmed", () => {
       setPaintProperty: (...args) => paints.push(args),
     },
     {
-      _highlightedDay: "2026-03-14",
-      _applyDayHighlight: (day) => reapplied.push(day),
+      timelineBridge: {
+        highlightedDay: "2026-03-14",
+        applyDayHighlight: (day) => reapplied.push(day),
+      },
     },
   )
 
@@ -414,7 +421,7 @@ test("clearing a point selection with no highlighted day restores opacity", () =
       getLayer: () => true,
       setPaintProperty: (...args) => paints.push(args),
     },
-    {},
+    { timelineBridge: {} },
   )
 
   handlers._restoreMainPointsOpacity()

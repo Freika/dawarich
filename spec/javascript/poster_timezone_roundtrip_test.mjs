@@ -116,7 +116,7 @@ async function exercise(initial, zone) {
     loadMapData: async () => {
       network.push({ start_at: map.startDateValue, end_at: map.endDateValue })
     },
-    _clearDayHighlight() {},
+    timelineBridge: { clearDayHighlight() {} },
     refreshTimelineFeedIfActive() {},
     familyManager: { debouncedLoadHistory() {} },
   })

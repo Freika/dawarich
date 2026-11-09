@@ -590,8 +590,9 @@ export class EventHandlers {
    * Undo the dimming of a point selection, keeping a highlighted day dimmed.
    */
   _restoreMainPointsOpacity() {
-    if (this.controller._highlightedDay) {
-      this.controller._applyDayHighlight(this.controller._highlightedDay)
+    const { highlightedDay } = this.controller.timelineBridge
+    if (highlightedDay) {
+      this.controller.timelineBridge.applyDayHighlight(highlightedDay)
     } else {
       this._setMainPointsOpacity(1.0)
     }

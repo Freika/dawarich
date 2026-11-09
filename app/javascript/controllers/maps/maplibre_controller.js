@@ -18,7 +18,6 @@ import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { syncSidebarLayout } from "maps_maplibre/utils/sidebar_layout"
 import { setPrivacyZonesFingerprint } from "maps_maplibre/utils/tile_freshness"
-import { timeOverlapOpacityExpr } from "maps_maplibre/utils/time_overlap"
 import { AreaSelectionManager } from "./maplibre/area_selection_manager"
 import { consumeCreatePlaceLink } from "./maplibre/create_place_link"
 import { DataLoader } from "./maplibre/data_loader"
@@ -32,6 +31,7 @@ import { MapDataManager } from "./maplibre/map_data_manager"
 import { MapInitializer } from "./maplibre/map_initializer"
 import { PlacesManager } from "./maplibre/places_manager"
 import { SettingsController } from "./maplibre/settings_manager"
+import { TimelineMapBridge } from "./maplibre/timeline_map_bridge"
 import { VisitsManager } from "./maplibre/visits_manager"
 
 /**
@@ -165,6 +165,7 @@ export default class extends Controller {
     // Initialize API and settings
     SettingsManager.initialize(this.apiKeyValue)
     this.familyManager = new FamilyManager(this)
+    this.timelineBridge = new TimelineMapBridge(this)
     this.settingsController = new SettingsController(this)
     await this.loadViewSettings()
 
@@ -216,47 +217,7 @@ export default class extends Controller {
       this.boundHandleTabChanged,
     )
 
-    // Listen for day-expanded/collapsed events from the timeline-feed Stimulus controller
-    this.boundHandleDayExpanded = this.handleDayExpanded.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:day-expanded",
-      this.boundHandleDayExpanded,
-    )
-    this.boundHandleDayCollapsed = this.handleDayCollapsed.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:day-collapsed",
-      this.boundHandleDayCollapsed,
-    )
-
-    // Listen for entry hover/unhover events from the timeline-feed controller
-    this.boundHandleEntryHover = this.handleEntryHover.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:entry-hover",
-      this.boundHandleEntryHover,
-    )
-    this.boundHandleEntryUnhover = this.handleEntryUnhover.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:entry-unhover",
-      this.boundHandleEntryUnhover,
-    )
-
-    // Listen for entry click/deselect events from the timeline-feed controller
-    this.boundHandleEntryClick = this.handleEntryClick.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:entry-click",
-      this.boundHandleEntryClick,
-    )
-    this.boundHandleEntryDeselect = this.handleEntryDeselect.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:entry-deselect",
-      this.boundHandleEntryDeselect,
-    )
+    this.timelineBridge.connect(this.cleanup)
 
     this.timelineSegmentHover = new TimelineSegmentHover(this, () =>
       SettingsManager.getSetting("tracksEnabled"),
@@ -515,7 +476,7 @@ export default class extends Controller {
     this.endDateValue = endDate
 
     this.layerManager.getLayer("map-editor")?.close()
-    this._clearDayHighlight()
+    this.timelineBridge.clearDayHighlight()
     this.loadMapData()
     this.refreshTimelineFeedIfActive()
     this.familyManager.debouncedLoadHistory()
@@ -553,7 +514,7 @@ export default class extends Controller {
     this.endDateValue = end
 
     this.layerManager.getLayer("map-editor")?.close()
-    this._clearDayHighlight?.()
+    this.timelineBridge.clearDayHighlight()
     await this.loadMapData({ fitBounds })
     if (anomaliesVisible(SettingsManager.getSettings())) {
       this.layerVisibilityManager.refreshAnomalies({ enabled: true })
@@ -719,9 +680,9 @@ export default class extends Controller {
     const { tab } = event.detail
     if (tab === "timeline-feed") {
       this.loadTimelineFeed()
-    } else if (this._highlightedDay) {
+    } else if (this.timelineBridge.highlightedDay) {
       // Leaving timeline-feed tab — restore full opacity
-      this._clearDayHighlight()
+      this.timelineBridge.clearDayHighlight()
     }
   }
 
@@ -757,460 +718,6 @@ export default class extends Controller {
       this.timelineFeedContainerTarget.removeAttribute("src")
       this.loadTimelineFeed()
     }
-  }
-
-  /**
-   * Handle day-expanded events from the timeline-feed controller.
-   * Fits the map to the day's bounding box and dims non-matching features.
-   */
-  handleDayExpanded(event) {
-    const { bounds, day } = event.detail
-    if (!this.map) return
-
-    if (bounds) {
-      const { sw_lat, sw_lng, ne_lat, ne_lng } = bounds
-      this.map.fitBounds(
-        [
-          [sw_lng, sw_lat],
-          [ne_lng, ne_lat],
-        ],
-        { padding: 60, maxZoom: 15, duration: 800 },
-      )
-    }
-
-    if (day) {
-      this._applyDayHighlight(day)
-      this._showDayVisits(day)
-    }
-  }
-
-  /**
-   * Handle day-collapsed events — restore full opacity on all layers.
-   */
-  handleDayCollapsed() {
-    this._clearDayHighlight()
-  }
-
-  /**
-   * Dim non-matching features for the selected day.
-   * Tile-backed Tracks and Points use Unix timestamps (seconds);
-   * visits use ISO 8601 strings (lexicographically sortable).
-   * @param {string} day - Date string "YYYY-MM-DD"
-   * @private
-   */
-  _applyDayHighlight(day) {
-    if (!this.map) return
-
-    this._highlightedDay = day
-    const DIM = 0.04
-
-    // Compute day boundaries as Unix seconds
-    const dayStart = new Date(`${day}T00:00:00`).getTime() / 1000
-    const dayEnd = new Date(`${day}T23:59:59`).getTime() / 1000
-
-    // ISO boundaries for visit layers (lexicographic comparison)
-    const isoStart = `${day}T00:00:00`
-    const isoEnd = `${day}T23:59:59`
-
-    const trackExpr = timeOverlapOpacityExpr(
-      "start_timestamp",
-      "end_timestamp",
-      dayStart,
-      dayEnd,
-      1,
-      DIM,
-    )
-    this._safeSetPaint("tracks-mvt", "line-opacity", trackExpr)
-
-    // Points: timestamp is Unix seconds
-    const pointExpr = timeOverlapOpacityExpr(
-      "timestamp",
-      "max_timestamp",
-      dayStart,
-      dayEnd,
-      1,
-      DIM,
-    )
-    this._safeSetPaint("points-mvt", "circle-opacity", pointExpr)
-    this._safeSetPaint("points-mvt", "circle-stroke-opacity", pointExpr)
-
-    // Visits: started_at is ISO 8601 string
-    const visitExpr = this._dayRangeExpr(
-      "started_at",
-      isoStart,
-      isoEnd,
-      0.9,
-      DIM,
-    )
-    this._safeSetPaint("visits", "circle-opacity", visitExpr)
-    this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
-
-    // Visit labels
-    this.layerManager.getLayer("visits")?.setLabelOpacity((f) => {
-      const startedAt = f.properties.started_at
-      return startedAt >= isoStart && startedAt < isoEnd ? 1 : DIM
-    })
-  }
-
-  /**
-   * Restore default opacity on all layers.
-   * @private
-   */
-  _clearDayHighlight() {
-    if (!this.map) return
-
-    this._highlightedDay = null
-    this._hideDayVisits()
-    this._safeSetPaint("tracks-mvt", "line-opacity", 1)
-    this._safeSetPaint("points-mvt", "circle-opacity", 1)
-    this._safeSetPaint("points-mvt", "circle-stroke-opacity", 1)
-    this._safeSetPaint("visits", "circle-opacity", 0.9)
-    this._safeSetPaint("visits", "circle-stroke-opacity", 1)
-    this.layerManager.getLayer("visits")?.setLabelOpacity(null)
-  }
-
-  /**
-   * Handle entry-hover events from the timeline feed.
-   * Highlights the matching route/visit on the map by dimming everything else.
-   */
-  handleEntryHover(event) {
-    const { entryType, startedAt, endedAt, visitId } = event.detail
-    if (!this.map || !startedAt || !endedAt) return
-
-    this._entryHighlightActive = true
-
-    const DIM = 0.08
-    const startUnix = new Date(startedAt).getTime() / 1000
-    const endUnix = new Date(endedAt).getTime() / 1000
-    const trackExpr = timeOverlapOpacityExpr(
-      "start_timestamp",
-      "end_timestamp",
-      startUnix,
-      endUnix,
-      1,
-      DIM,
-    )
-    this._safeSetPaint("tracks-mvt", "line-opacity", trackExpr)
-
-    // Points: timestamp is Unix seconds
-    const pointExpr = timeOverlapOpacityExpr(
-      "timestamp",
-      "max_timestamp",
-      startUnix,
-      endUnix,
-      1,
-      DIM,
-    )
-    this._safeSetPaint("points-mvt", "circle-opacity", pointExpr)
-    this._safeSetPaint("points-mvt", "circle-stroke-opacity", pointExpr)
-
-    // Visits:
-    //   - Visit hover  → only the hovered visit stays full opacity; others are
-    //     dimmed so the on-map dot the rail row points to is unambiguous.
-    //   - Journey hover → no visit is the focus, so all visits fade nearly out;
-    //     the eye lands on the highlighted track instead.
-    if (entryType === "visit") {
-      // Match by visit id rather than by ISO `started_at` range — the
-      // API returns timestamps with milliseconds (`...:00.000Z`) while
-      // DayAssembler renders the row attribute with second precision
-      // (`...:00Z`). Lexicographic comparison fails the equality check
-      // and dims the hovered visit along with the others.
-      const visitExpr = [
-        "case",
-        ["==", ["get", "id"], Number(visitId)],
-        1,
-        0.15,
-      ]
-      this._safeSetPaint("visits", "circle-opacity", visitExpr)
-      this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
-      this.layerManager
-        .getLayer("visits")
-        ?.setLabelOpacity((f) =>
-          f.properties.id === Number(visitId) ? 1 : 0.15,
-        )
-    } else {
-      const VISITS_NEARLY_INVISIBLE = 0.05
-      this._safeSetPaint("visits", "circle-opacity", VISITS_NEARLY_INVISIBLE)
-      this._safeSetPaint(
-        "visits",
-        "circle-stroke-opacity",
-        VISITS_NEARLY_INVISIBLE,
-      )
-      this.layerManager
-        .getLayer("visits")
-        ?.setLabelOpacity(() => VISITS_NEARLY_INVISIBLE)
-    }
-  }
-
-  /**
-   * Handle entry-unhover events — restore to day highlight or default opacity.
-   */
-  handleEntryUnhover() {
-    if (!this.map) return
-    this._entryHighlightActive = false
-
-    this._removeHoverPopup()
-
-    // Clear track hover highlight unless a track is click-selected
-    if (this._hoverHighlightedTrack && !this._timelineSelectedTrack) {
-      const tracksLayer = this.layerManager.getLayer("tracks")
-      if (tracksLayer?.setSelectedTrack) {
-        tracksLayer.setSelectedTrack(null)
-      }
-      this._hoverHighlightedTrack = false
-    }
-
-    if (this._highlightedDay) {
-      // Restore day-level highlight
-      this._applyDayHighlight(this._highlightedDay)
-    } else {
-      this._clearDayHighlight()
-    }
-  }
-
-  /**
-   * Handle entry-click events from the timeline feed (journey card opened).
-   * Zooms to the track and applies the selection highlight.
-   */
-  async handleEntryClick(event) {
-    const { trackId, startedAt } = event.detail
-    if (!this.map) return
-
-    const selectionVersion = (this._timelineSelectionVersion || 0) + 1
-    this._timelineSelectionVersion = selectionVersion
-    let feature = this._findTrackFeature(trackId, startedAt)
-    if (!feature && trackId) {
-      try {
-        feature = await this.api.fetchTrackWithSegments(trackId, {
-          ...this.layerManager?.pointTileRange,
-        })
-      } catch (error) {
-        console.warn(`[Map] Failed to load timeline track ${trackId}:`, error)
-        return
-      }
-    }
-    if (selectionVersion !== this._timelineSelectionVersion) return
-    if (!feature) return
-
-    // Zoom to track bounding box
-    const geometry = feature.geometry
-    const coords =
-      geometry?.type === "MultiLineString"
-        ? geometry.coordinates.flat()
-        : geometry?.coordinates
-    if (coords?.length > 0) {
-      let minLng = Infinity
-      let minLat = Infinity
-      let maxLng = -Infinity
-      let maxLat = -Infinity
-      for (const [lng, lat] of coords) {
-        if (lng < minLng) minLng = lng
-        if (lat < minLat) minLat = lat
-        if (lng > maxLng) maxLng = lng
-        if (lat > maxLat) maxLat = lat
-      }
-      this.map.fitBounds(
-        [
-          [minLng, minLat],
-          [maxLng, maxLat],
-        ],
-        { padding: 60, maxZoom: 15, duration: 800 },
-      )
-    }
-
-    // Apply track selection highlight
-    const tracksLayer = this.layerManager.getLayer("tracks")
-    if (tracksLayer?.setSelectedTrack) {
-      const preserveSegments =
-        tracksLayer.segmentsActive === true &&
-        String(tracksLayer.selectedFeature?.properties?.id) === String(trackId)
-      tracksLayer.setSelectedTrack(feature, { preserveSegments })
-      this._timelineSelectedTrack = true
-      this._hoverHighlightedTrack = false
-    }
-  }
-
-  /**
-   * Handle entry-deselect events from the timeline feed (journey card closed).
-   * Clears track selection and restores day highlight if active.
-   */
-  handleEntryDeselect() {
-    if (!this.map) return
-    this._timelineSelectionVersion = (this._timelineSelectionVersion || 0) + 1
-
-    const tracksLayer = this.layerManager.getLayer("tracks")
-    if (tracksLayer?.setSelectedTrack) {
-      tracksLayer.setSelectedTrack(null)
-    }
-    this._timelineSelectedTrack = false
-    this._hoverHighlightedTrack = false
-
-    // Restore day-level highlight or default opacity
-    if (this._highlightedDay) {
-      this._applyDayHighlight(this._highlightedDay)
-    } else {
-      this._clearDayHighlight()
-    }
-  }
-
-  /**
-   * Build a MapLibre expression: full opacity if property is within [start, end], dim otherwise.
-   * @private
-   */
-  _dayRangeExpr(property, rangeStart, rangeEnd, fullOpacity, dimOpacity) {
-    return [
-      "case",
-      [
-        "all",
-        ["has", property],
-        [">=", ["get", property], rangeStart],
-        ["<=", ["get", property], rangeEnd],
-      ],
-      fullOpacity,
-      dimOpacity,
-    ]
-  }
-
-  /**
-   * Safely set a paint property on a MapLibre layer (no-op if layer doesn't exist).
-   * @private
-   */
-  _safeSetPaint(layerId, property, value) {
-    if (
-      layerId === "points-mvt" &&
-      ["circle-opacity", "circle-stroke-opacity"].includes(property)
-    ) {
-      const pointsLayer = this.layerManager?.getLayer("points-mvt")
-      if (pointsLayer?.setCircleOpacity) {
-        pointsLayer.setCircleOpacity(property, value)
-        return
-      }
-    }
-    if (this.map.getLayer(layerId)) {
-      this.map.setPaintProperty(layerId, property, value)
-    }
-  }
-
-  _removeHoverPopup() {
-    if (this._hoverPopup) {
-      this._hoverPopup.remove()
-      this._hoverPopup = null
-    }
-  }
-
-  /**
-   * Show visit markers for the given day, even if the Visits layer is globally disabled.
-   * @param {string} day - Date string "YYYY-MM-DD"
-   * @private
-   */
-  async _showDayVisits(day) {
-    const visitsLayer = this.layerManager?.getLayer("visits")
-    if (!visitsLayer) return
-
-    const wasHidden = !visitsLayer.visible
-
-    // Clear any hover popup from previous day
-    this._removeHoverPopup()
-
-    // Get visits for this day
-    let dayVisits = []
-    if (this.filterManager?.allVisits?.length > 0) {
-      dayVisits = this.filterManager.allVisits.filter((v) => {
-        const visitDay = v.started_at?.substring(0, 10)
-        return visitDay === day
-      })
-    } else {
-      try {
-        dayVisits = await this.api.fetchVisits({
-          start_at: `${day}T00:00:00`,
-          end_at: `${day}T23:59:59`,
-        })
-      } catch {
-        return
-      }
-    }
-
-    if (dayVisits.length === 0) return
-
-    // Store override state for restoration (only on first override)
-    if (!this._visitsOverride) {
-      this._visitsOverride = {
-        wasHidden,
-        previousData: visitsLayer.data || {
-          type: "FeatureCollection",
-          features: [],
-        },
-      }
-    }
-
-    // Update the visits source with the day's visits and show the layer
-    const geoJSON = this.dataLoader.visitsToGeoJSON(dayVisits)
-    visitsLayer.update(geoJSON)
-    visitsLayer.show()
-  }
-
-  /**
-   * Restore the visits layer to its previous state after day collapse.
-   * @private
-   */
-  _hideDayVisits() {
-    if (!this._visitsOverride) return
-
-    const visitsLayer = this.layerManager?.getLayer("visits")
-    if (!visitsLayer) {
-      this._visitsOverride = null
-      return
-    }
-
-    if (this._visitsOverride.wasHidden) {
-      visitsLayer.update(this._visitsOverride.previousData)
-      visitsLayer.hide()
-    }
-
-    this._visitsOverride = null
-  }
-
-  /**
-   * Find a track feature from the tracks source by ID or start time.
-   * @param {string} trackId - Track ID (primary match)
-   * @param {string} startedAt - ISO start time (fallback match)
-   * @returns {Object|null} GeoJSON feature or null
-   * @private
-   */
-  _findTrackFeature(trackId, startedAt) {
-    const tracksLayer = this.layerManager?.getLayer("tracks")
-    if (!tracksLayer) return null
-
-    const selected = tracksLayer.selectedFeature
-    if (
-      selected &&
-      !selected.sourceLayer &&
-      ((trackId && String(selected.properties?.id) === String(trackId)) ||
-        (startedAt && selected.properties?.start_at === startedAt))
-    ) {
-      return selected
-    }
-
-    const sourceData = tracksLayer.data
-    if (!sourceData?.features) return null
-
-    // Primary: match by track ID
-    if (trackId) {
-      const byId = sourceData.features.find(
-        (f) => String(f.properties?.id) === String(trackId),
-      )
-      if (byId) return byId
-    }
-
-    // Fallback: match by start_at time
-    if (startedAt) {
-      return (
-        sourceData.features.find((f) => f.properties?.start_at === startedAt) ||
-        null
-      )
-    }
-
-    return null
   }
 
   // Settings Controller methods
