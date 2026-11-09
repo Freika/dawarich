@@ -134,11 +134,11 @@ RSpec.describe Immich::EnrichPhotos, 'request safety' do
     result[:errors].first[:error]
   end
 
-  it 'says what went wrong when the connection fails, not which class reported it' do
-    stub_request(:put, 'http://immich.app/api/assets/uuid-1').to_raise(Errno::ECONNREFUSED)
+  it 'names the underlying network failure, never its message, which can echo a credential' do
+    stub_request(:put, 'http://immich.app/api/assets/uuid-1').to_raise(Errno::ECONNREFUSED.new('token=abc'))
 
-    expect(error_for).to include('Connection refused')
-    expect(error_for).not_to include('Transport')
+    expect(error_for).to include('Errno::ECONNREFUSED')
+    expect(error_for).not_to include('token=abc', 'Transport')
   end
 
   it 'says that the host does not resolve' do
