@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rexml/document'
+require 'nokogiri'
 require 'zip'
 
 class Kml::Importer
@@ -18,8 +19,7 @@ class Kml::Importer
   end
 
   def call
-    doc = load_and_parse_kml_document
-    points_data = extract_all_points(doc)
+    points_data = extract_all_points
 
     return if points_data.empty?
 
@@ -29,16 +29,29 @@ class Kml::Importer
 
   private
 
-  def load_and_parse_kml_document
-    file_content = load_kml_content
-    REXML::Document.new(escape_raw_ampersands(file_content))
+  # A REXML DOM of the whole file amplifies memory ~450x, so a small compressed
+  # KML that expands to the disk cap OOM-kills the worker. Stream the document
+  # instead and parse one <Placemark>/<gx:Track> subtree at a time, reusing the
+  # existing per-element extractors. Placemarks first, then gx:Tracks, to keep
+  # the point order (and therefore batching) identical to the DOM version.
+  def extract_all_points
+    xml = escape_raw_ampersands(load_kml_content)
+
+    (stream_elements(xml, 'Placemark') { |root| parse_placemark(root) } +
+     stream_elements(xml, 'gx:Track')  { |root| parse_gx_track(root) }).compact
   end
 
-  def extract_all_points(doc)
-    points_data = []
-    points_data.concat(extract_points_from_placemarks(doc))
-    points_data.concat(extract_points_from_gx_tracks(doc))
-    points_data.compact
+  def stream_elements(xml, element_name)
+    points = []
+    reader = Nokogiri::XML::Reader(xml)
+    reader.each do |node|
+      next unless node.node_type == Nokogiri::XML::Reader::TYPE_ELEMENT && node.name == element_name
+
+      # outer_xml carries inherited namespace declarations, so the gx: prefix
+      # still resolves when the fragment is parsed on its own.
+      points.concat(yield(REXML::Document.new(node.outer_xml).root))
+    end
+    points
   end
 
   def save_points_in_batches(points_data)
@@ -46,22 +59,6 @@ class Kml::Importer
       inserted = bulk_insert_points(batch)
       broadcast_import_progress(import, inserted)
     end
-  end
-
-  def extract_points_from_placemarks(doc)
-    points = []
-    REXML::XPath.each(doc, '//Placemark') do |placemark|
-      points.concat(parse_placemark(placemark))
-    end
-    points
-  end
-
-  def extract_points_from_gx_tracks(doc)
-    points = []
-    REXML::XPath.each(doc, '//gx:Track') do |track|
-      points.concat(parse_gx_track(track))
-    end
-    points
   end
 
   def load_kml_content
