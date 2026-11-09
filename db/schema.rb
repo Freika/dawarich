@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_10_090100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -440,6 +440,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
     t.index ["created_at"], name: "index_geofence_events_synthetic_on_created_at", where: "synthetic"
     t.index ["place_id", "occurred_at"], name: "index_geofence_events_on_place_id_and_occurred_at", order: { occurred_at: :desc }
     t.index ["user_id", "occurred_at"], name: "index_geofence_events_on_user_id_and_occurred_at", order: { occurred_at: :desc }
+  end
+
+  create_table "homes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "place_id", null: false
+    t.date "started_on"
+    t.date "ended_on"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["place_id"], name: "index_homes_on_place_id"
+    t.index ["user_id"], name: "index_homes_on_user_id"
+    t.check_constraint "ended_on IS NULL OR started_on IS NULL OR ended_on >= started_on", name: "homes_end_not_before_start"
   end
 
   create_table "imports", force: :cascade do |t|
@@ -1152,6 +1164,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
   add_foreign_key "flights", "users"
   add_foreign_key "geofence_events", "places", on_delete: :nullify
   add_foreign_key "geofence_events", "users", on_delete: :cascade
+  add_foreign_key "homes", "places", on_delete: :cascade
+  add_foreign_key "homes", "users"
   add_foreign_key "legacy_area_place_mappings", "areas", on_delete: :cascade
   add_foreign_key "legacy_area_place_mappings", "places", on_delete: :cascade
   add_foreign_key "notes", "users"

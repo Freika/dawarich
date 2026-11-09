@@ -27,6 +27,7 @@ module Places
         merge_tags
         merge_timeline_notes
         merge_legacy_mappings
+        merge_homes
         Achievements::MergeSelections.call(survivor, duplicate)
         geofence = merge_geofence
 
@@ -107,6 +108,10 @@ module Places
 
     def merge_legacy_mappings
       LegacyAreaPlaceMapping.where(place_id: duplicate.id).update_all(place_id: survivor.id)
+    end
+
+    def merge_homes
+      Home.where(place_id: duplicate.id).update_all(place_id: survivor.id, updated_at: Time.current)
     end
 
     def merge_geofence

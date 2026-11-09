@@ -38,6 +38,7 @@ class User < ApplicationRecord
   has_many :visits,         dependent: :destroy
   has_many :visited_places, through: :visits, source: :place
   has_many :places,         dependent: :destroy
+  has_many :homes,          dependent: :destroy
   has_many :tags,           dependent: :destroy
   has_many :service_settings, dependent: :destroy
   has_many :trips, dependent: :destroy

@@ -66,6 +66,12 @@ RSpec.describe Places::Merge do
     expect(survivor.note).to eq("Keep this\n\nAlso keep this")
   end
 
+  it 'keeps the Home of the merged place on the survivor' do
+    home = create(:home, user:, place: duplicate, started_on: Date.new(2020, 1, 1))
+    described_class.new(user:, survivor:, duplicate:).call
+    expect(home.reload.place).to eq(survivor)
+  end
+
   it 'keeps a same-day note as a standalone note when the merged text would be too long' do
     noted_at = Time.zone.parse('2026-09-01 12:00')
     survivor_body = 'a' * 6_000
