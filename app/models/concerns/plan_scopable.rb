@@ -6,7 +6,7 @@ module PlanScopable
   delegate :effective_plan, :full_access?, :inherited_family_access?, :data_window_start, to: :entitlements
 
   def entitlements
-    @entitlements ||= Entitlements.for(self)
+    @entitlements ||= Entitlements.new(self)
   end
 
   def plan_restricted?

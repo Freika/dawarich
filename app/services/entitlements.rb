@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 class Entitlements
-  def self.for(user)
-    new(user)
-  end
-
   def initialize(user)
     @user = user
   end
@@ -34,22 +30,6 @@ class Entitlements
 
   def restricted?
     !full_access?
-  end
-
-  def write_api?
-    full_access?
-  end
-
-  def pro_api?
-    full_access?
-  end
-
-  def integrations?
-    full_access?
-  end
-
-  def public_sharing?
-    full_access?
   end
 
   def families?

@@ -65,7 +65,7 @@ class ApiController < ApplicationController
 
   def require_pro_api!
     return unless current_api_user # auth already handled by authenticate_api_key
-    return if current_api_user.entitlements.pro_api?
+    return if current_api_user.full_access?
 
     render json: {
       error: 'pro_plan_required',
@@ -76,7 +76,7 @@ class ApiController < ApplicationController
 
   def require_write_api!
     return unless current_api_user # auth already handled by authenticate_api_key
-    return if current_api_user.entitlements.write_api?
+    return if current_api_user.full_access?
 
     render json: {
       error: 'write_api_restricted',

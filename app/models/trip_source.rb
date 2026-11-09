@@ -28,7 +28,7 @@ class TripSource < ApplicationRecord
   end
 
   def sync_allowed?
-    DawarichSettings.self_hosted? || user.full_access?
+    user.full_access?
   end
 
   private
