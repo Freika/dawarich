@@ -19,6 +19,20 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       )
     end
 
+    it 'says an integration is configured without returning its API key' do
+      user.update!(settings: user.settings.merge('immich_url' => 'https://immich.example.com',
+                                                 'immich_api_key' => 'secret-immich-key',
+                                                 'photoprism_url' => 'https://photoprism.example.com'))
+
+      get "/api/v1/settings?api_key=#{api_key}"
+
+      settings = response.parsed_body['settings']
+      expect(settings).to include('immich_url' => 'https://immich.example.com', 'immich_configured' => true,
+                                  'photoprism_configured' => false, 'airtrail_configured' => false)
+      expect(settings.keys).not_to include('immich_api_key', 'photoprism_api_key', 'airtrail_api_key')
+      expect(response.body).not_to include('secret-immich-key')
+    end
+
     it 'returns custom timezone when set' do
       user.settings['timezone'] = 'America/New_York'
       user.save!
@@ -30,6 +44,18 @@ RSpec.describe 'Api::V1::Settings', type: :request do
   end
 
   describe 'PATCH /update' do
+    it 'stores an integration API key and leaves it out of the response' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { immich_url: 'https://immich.example.com', immich_api_key: 'secret-immich-key' } }
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.settings['immich_api_key']).to eq('secret-immich-key')
+      expect(response.parsed_body['settings']).to include('immich_configured' => true)
+      expect(response.body).not_to include('secret-immich-key')
+    end
+
     context 'with valid request' do
       it 'returns http success' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { route_opacity: 0.3 } }

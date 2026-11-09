@@ -115,6 +115,8 @@ class Users::SafeSettings
     @settings = Users::PlanSettingsGate.visible(@settings) if lite?
   end
 
+  # Integration API keys are deliberately absent: this hash is the settings
+  # API response, and a key must not be readable back through the API.
   def config
     {
       fog_of_war_meters: fog_of_war_meters,
@@ -124,11 +126,11 @@ class Users::SafeSettings
       live_map_enabled: live_map_enabled,
       track_color: track_color,
       immich_url: immich_url,
-      immich_api_key: immich_api_key,
+      immich_configured: immich_url.present? && immich_api_key.present?,
       photoprism_url: photoprism_url,
-      photoprism_api_key: photoprism_api_key,
+      photoprism_configured: photoprism_url.present? && photoprism_api_key.present?,
       airtrail_url: airtrail_url,
-      airtrail_api_key: airtrail_api_key,
+      airtrail_configured: airtrail_url.present? && airtrail_api_key.present?,
       maps: maps,
       distance_unit: distance_unit,
       visits_suggestions_enabled: visits_suggestions_enabled?,

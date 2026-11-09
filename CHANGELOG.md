@@ -25,6 +25,7 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - Requests to Immich, Photoprism, AirTrail, TeslaMate and TREK now check the server address again on every request and connect to the address that was checked (unless a proxy is configured), so a DNS answer cannot change in between. They also no longer follow redirects: if your integration URL redirects (for example from `http://` to `https://`), save the final URL in Settings → Integrations. Photo thumbnails now time out after 10 seconds instead of up to 60.
 - A "skip SSL verification" value saved by a very old version as the text `0` no longer turns certificate checks off for Immich and Photoprism.
 - TREK requests now use `HTTP_PROXY` and `NO_PROXY` like the other integrations.
+- **Breaking for API clients:** `GET /api/v1/settings` no longer returns `immich_api_key`, `photoprism_api_key` or `airtrail_api_key`, so an API key cannot be used to read third-party credentials back. It returns `immich_configured`, `photoprism_configured` and `airtrail_configured` (true when both the URL and the key are stored) instead. Saving the keys through `PATCH /api/v1/settings` works as before.
 - `/metrics` now refuses requests with empty credentials while `METRICS_USERNAME` or `METRICS_PASSWORD` is unset.
 - API rate limits now also count an `api_key` sent in a JSON body.
 - ZIP and KMZ imports now stop as soon as the extracted data passes `ZIP_MAX_EXTRACTED_SIZE`, instead of reading a whole oversized entry first.

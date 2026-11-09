@@ -218,13 +218,10 @@ describe 'Settings API', type: :request do
                        example: 'https://immich.example.com',
                        description: 'Immich server URL for photo integration'
                      },
-                     immich_api_key: {
-                       oneOf: [
-                         { type: :string },
-                         { type: :null }
-                       ],
-                       example: 'your-immich-api-key',
-                       description: 'API key for Immich photo service'
+                     immich_configured: {
+                       type: :boolean,
+                       example: true,
+                       description: 'Whether an Immich URL and API key are both stored. The key is never returned.'
                      },
                      photoprism_url: {
                        oneOf: [
@@ -234,13 +231,10 @@ describe 'Settings API', type: :request do
                        example: 'https://photoprism.example.com',
                        description: 'PhotoPrism server URL for photo integration'
                      },
-                     photoprism_api_key: {
-                       oneOf: [
-                         { type: :string },
-                         { type: :null }
-                       ],
-                       example: 'your-photoprism-api-key',
-                       description: 'API key for PhotoPrism photo service'
+                     photoprism_configured: {
+                       type: :boolean,
+                       example: false,
+                       description: 'Whether a PhotoPrism URL and API key are both stored. The key is never returned.'
                      },
                      fog_of_war_threshold: {
                        oneOf: [
