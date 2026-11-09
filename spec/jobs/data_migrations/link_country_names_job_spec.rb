@@ -105,6 +105,45 @@ RSpec.describe DataMigrations::LinkCountryNamesJob, type: :job do
     expect(unlinked.reload.country_id).to be_nil
   end
 
+  it 'links a name that contains SQL placeholder or quote characters' do
+    point_named("C?te d'Ivoire", country_id: germany.id)
+    unlinked = point_named("C?te d'Ivoire", country_id: nil)
+
+    run_backfill
+
+    expect(unlinked.reload.country_id).to eq(germany.id)
+  end
+
+  it 'links a row that only carries the legacy country column' do
+    point_named('Deutschland', country_id: germany.id)
+    legacy = create(:point, user:)
+    legacy.update_columns(country_name: nil, country: 'Deutschland', country_id: nil)
+
+    run_backfill
+
+    expect(legacy.reload.country_id).to eq(germany.id)
+  end
+
+  it 'halves the batch and retries the same cursor when a batch is aborted' do
+    point_named('Deutschland', country_id: germany.id)
+    allow(Point).to receive(:where).and_call_original
+    allow(Point).to receive(:where).with(id: anything).and_raise(ActiveRecord::QueryCanceled)
+    start_id = Point.minimum(:id)
+
+    expect { described_class.perform_now('tally', start_id, {}) }.to \
+      have_enqueued_job(described_class).with('tally', start_id, {}, described_class::BATCH_SIZE / 2)
+  end
+
+  it 'hands the smallest batch to the retry machinery instead of shrinking forever' do
+    point_named('Deutschland', country_id: germany.id)
+    allow(Point).to receive(:where).and_call_original
+    allow(Point).to receive(:where).with(id: anything).and_raise(ActiveRecord::QueryCanceled)
+    start_id = Point.minimum(:id)
+
+    expect { described_class.perform_now('tally', start_id, {}, described_class::MIN_BATCH_SIZE) }.to \
+      have_enqueued_job(described_class).with('tally', start_id, {}, described_class::MIN_BATCH_SIZE)
+  end
+
   it 'does nothing on an instance with no points' do
     expect { perform_enqueued_jobs { described_class.perform_later } }.not_to raise_error
   end

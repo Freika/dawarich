@@ -54,6 +54,12 @@ class DataMigrations::BackfillPointCountryIdJob < ApplicationJob
 
     if max_id.nil? || end_id >= max_id
       Rails.logger.info("[BackfillPointCountryId] completed at id #{end_id}")
+      # Runs after, not alongside: it learns each localized name from the rows
+      # this walk has just linked, and both walks would contend for the same rows.
+      # Same gate as the migrations, so Dawarich Cloud still starts it by hand.
+      if DataMigrations::AddPointDimensionColumnsJob.backfill_allowed?
+        DataMigrations::LinkCountryNamesJob.set(wait: PAUSE).perform_later
+      end
       return
     end
 

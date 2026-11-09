@@ -6,6 +6,12 @@ class EnqueueCountryNameLinks < ActiveRecord::Migration[8.0]
   # Same gate as the earlier country backfills: self-hosted only, honouring the
   # opt-out variable; Dawarich Cloud runs the job by hand. It only writes rows
   # whose country_id is still NULL and whose name a linked row explains.
+  #
+  # An empty point_sources means the dimension chain has not run yet; its
+  # country backfill starts this job when it finishes. An upgrade that also
+  # queues country backfills (each chains a run) links more than once, the
+  # first run early: accepted, because a run only fills NULLs and the last one
+  # sees all the evidence.
   def up
     return unless DataMigrations::AddPointDimensionColumnsJob.backfill_allowed?
     return unless select_value('SELECT EXISTS (SELECT 1 FROM point_sources)')

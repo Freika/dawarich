@@ -11,6 +11,8 @@ class DataMigrations::LinkCountryNamesJob < ApplicationJob
   queue_as :data_migrations
 
   BATCH_SIZE = 50_000
+  # Floor for the halving below, as in BackfillPointCountryIdJob.
+  MIN_BATCH_SIZE = 5_000
   PAUSE = 5.seconds
   LOCK_TIMEOUT = '2s'
   STATEMENT_TIMEOUT = '5min'
@@ -27,21 +29,35 @@ class DataMigrations::LinkCountryNamesJob < ApplicationJob
     )
   end
 
-  def perform(phase = 'tally', start_id = nil, data = {})
+  def perform(phase = 'tally', start_id = nil, data = {}, batch_size = BATCH_SIZE)
     start_id ||= Point.minimum(:id)
     return if start_id.nil?
 
-    end_id = start_id + BATCH_SIZE - 1
+    end_id = start_id + batch_size - 1
     data = tally(start_id, end_id, data) if phase == 'tally'
     link(start_id, end_id, data) if phase == 'link'
 
-    if end_id < Point.maximum(:id).to_i
+    max_id = Point.maximum(:id).to_i
+    Rails.logger.info("[LinkCountryNames] #{phase} at id #{end_id} of #{max_id}")
+
+    if end_id < max_id
       self.class.set(wait: PAUSE).perform_later(phase, end_id + 1, data)
     elsif phase == 'tally'
       start_linking(data)
     else
       Rails.logger.info("[LinkCountryNames] completed at id #{end_id}")
     end
+  # A statement_timeout is usually size, not luck: halve and retry from the same
+  # cursor, and only the smallest batch reaches retry_on. The bounded block
+  # raises before tally merges anything, so data is still the pre-batch tally.
+  rescue ActiveRecord::QueryAborted => e
+    raise if batch_size / 2 < MIN_BATCH_SIZE
+
+    Rails.logger.warn(
+      "[LinkCountryNames] #{phase} batch #{start_id}..#{end_id} aborted (#{e.class}); " \
+      "retrying from id #{start_id} at half size #{batch_size / 2}"
+    )
+    self.class.set(wait: PAUSE).perform_later(phase, start_id, data, batch_size / 2)
   end
 
   private
@@ -75,6 +91,8 @@ class DataMigrations::LinkCountryNamesJob < ApplicationJob
   end
 
   # COALESCE mirrors BackfillPointCountryIdJob: country_name superseded country.
+  # Everything is quoted or cast by hand: sanitize_sql_array would read a "?"
+  # inside a quoted name as a bind placeholder.
   def link(start_id, end_id, links)
     return if links.empty?
 
@@ -82,11 +100,11 @@ class DataMigrations::LinkCountryNamesJob < ApplicationJob
     values = links.map { |name, country_id| "(#{connection.quote(name)}, #{Integer(country_id)})" }.join(', ')
 
     linked = bounded do
-      connection.update(ActiveRecord::Base.sanitize_sql_array([<<~SQL.squish, start_id, end_id]))
+      connection.update(<<~SQL.squish)
         UPDATE points p
         SET country_id = links.country_id
         FROM (VALUES #{values}) AS links(name, country_id)
-        WHERE p.id BETWEEN ? AND ?
+        WHERE p.id BETWEEN #{Integer(start_id)} AND #{Integer(end_id)}
           AND p.country_id IS NULL
           AND links.name = COALESCE(p.country_name, p.country)
       SQL
