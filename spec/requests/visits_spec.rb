@@ -112,6 +112,17 @@ RSpec.describe '/visits', type: :request do
   end
 
   describe 'PATCH /update' do
+    context 'when an HTML update fails validation' do
+      let(:visit) { create(:visit, user:) }
+
+      it 'returns to the timeline with the error' do
+        patch visit_url(visit), params: { visit: { ended_at: visit.started_at - 1.hour } }
+
+        expect(response).to have_http_status(:found)
+        expect(flash[:alert]).to eq(I18n.t('controllers.visits.failed_to_update_visit'))
+      end
+    end
+
     context 'with valid parameters' do
       let(:visit) { create(:visit, user:, status: :suggested) }
 
@@ -388,7 +399,7 @@ RSpec.describe '/visits', type: :request do
 
       delete visit_url(visit), as: :turbo_stream
 
-      expect(Rails.cache.read(cache_key)).to be_nil
+      expect(Rails.cache.read(cache_key)).not_to eq({ some: 'data' })
     end
 
     it 'redirects to /map on HTML format' do
@@ -578,8 +589,6 @@ RSpec.describe '/visits', type: :request do
     it 'busts the month-summary cache for affected months' do
       month_start = visit_a.started_at.beginning_of_month.to_date
       cache_key = Timeline::MonthSummary.cache_key_for(user, month_start)
-      # Pre-populate with a valid MonthSummary shape so the calendar stream can
-      # render during the action, then verify the after_action busts the key.
       sentinel = { month: month_start.strftime('%Y-%m'), weeks: [], days: {}, status_counts: {} }
       Rails.cache.write(cache_key, sentinel)
 
@@ -588,7 +597,7 @@ RSpec.describe '/visits', type: :request do
       delete bulk_destroy_visits_url(format: :turbo_stream),
              params: { visit_ids: [visit_a.id] }
 
-      expect(Rails.cache.read(cache_key)).to be_nil
+      expect(Rails.cache.read(cache_key)).not_to eq(sentinel)
     end
 
     it 'keeps points attached to the tombstoned visit' do

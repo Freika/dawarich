@@ -175,11 +175,8 @@ class Visit < ApplicationRecord
   def bust_timeline_month_summary_cache
     return unless user
 
-    tz = user.timezone_or_utc
     spans = [[started_at, ended_at], [started_at_before_last_save, ended_at_before_last_save]]
-
-    spans.select(&:first).flat_map { |from, to| Timeline::MonthSummary.months_spanning(from, to, tz) }
-         .uniq.each { |month_start| Rails.cache.delete(Timeline::MonthSummary.cache_key_for(user, month_start)) }
+    Timeline::MonthSummary.expire(user, spans)
   rescue StandardError => e
     Rails.logger.warn("[Visit##{id}] timeline month cache bust failed: #{e.class}: #{e.message}")
   end

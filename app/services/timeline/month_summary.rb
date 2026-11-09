@@ -53,6 +53,13 @@ module Timeline
       months
     end
 
+    # Forgets the cached calendar of every month the [from, to] spans touch.
+    def self.expire(user, spans)
+      timezone = user.timezone_or_utc
+      spans.select(&:first).flat_map { |from, to| months_spanning(from, to, timezone) }
+           .uniq.each { |month| Rails.cache.delete(cache_key_for(user, month)) }
+    end
+
     def self.normalize_month(date)
       if date.is_a?(String)
         Date.parse("#{date}-01")
