@@ -27,6 +27,10 @@ class Note < ApplicationRecord
   scope :for_trip_day, ->(trip, date) { where(attachable: trip).where('CAST(noted_at AS date) = ?', date) }
   scope :for_date, ->(date) { where('CAST(noted_at AS date) = ?', date) }
   scope :in_date_range, ->(start_at, end_at) { where(noted_at: start_at..end_at) }
+  scope :within_bounds, lambda { |min_lon, min_lat, max_lon, max_lat|
+    where('notes.lonlat && ST_MakeEnvelope(?, ?, ?, ?, 4326)::geography',
+          min_lon.to_f, min_lat.to_f, max_lon.to_f, max_lat.to_f)
+  }
   scope :ordered, -> { order(noted_at: :desc) }
   scope :for_user, ->(user) { where(user: user) }
 
@@ -39,8 +43,12 @@ class Note < ApplicationRecord
     source_digest.present? && source_digest == self.class.body_digest(body)
   end
 
+  # An attached note is pinned to a calendar day of its attachable and stored at
+  # noon UTC. A map note describes a moment, so its day is the user's local day.
   def date
-    noted_at&.utc&.to_date
+    return noted_at&.utc&.to_date if attachable_id.present? || user.nil?
+
+    noted_at&.in_time_zone(user.safe_settings.timezone)&.to_date
   end
 
   def date=(val)

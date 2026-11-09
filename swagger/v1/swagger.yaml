@@ -2823,6 +2823,64 @@ paths:
         description: Set to "true" to return only standalone notes
         schema:
           type: string
+      - name: start_at
+        in: query
+        format: date-time
+        required: false
+        description: Return notes describing a moment at or after this time
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        format: date-time
+        required: false
+        description: Return notes describing a moment at or before this time
+        schema:
+          type: string
+      - name: min_lon
+        in: query
+        required: false
+        description: Bounding box west edge. All four bounds are required for the
+          box to apply
+        schema:
+          type: number
+      - name: min_lat
+        in: query
+        required: false
+        description: Bounding box south edge
+        schema:
+          type: number
+      - name: max_lon
+        in: query
+        required: false
+        description: Bounding box east edge
+        schema:
+          type: number
+      - name: max_lat
+        in: query
+        required: false
+        description: Bounding box north edge
+        schema:
+          type: number
+      - name: page
+        in: query
+        required: false
+        description: Page number. Without it the whole list is returned. With it the
+          response carries X-Current-Page and X-Total-Pages headers
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: Notes per page, 100 by default, 500 at most
+        schema:
+          type: integer
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out notes located inside a privacy zone
+        schema:
+          type: boolean
       responses:
         '200':
           description: notes found

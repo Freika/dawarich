@@ -29,6 +29,13 @@ module Maps
       mask_relation(relation, 'places.lonlat')
     end
 
+    # A note without a location has nothing to hide.
+    def mask_notes(relation)
+      return relation unless any?
+
+      relation.where("notes.lonlat IS NULL OR NOT #{within_sql('notes.lonlat')}")
+    end
+
     def in_zone_place_ids
       return [] unless any?
 
