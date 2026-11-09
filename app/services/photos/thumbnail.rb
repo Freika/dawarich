@@ -64,6 +64,6 @@ class Photos::Thumbnail
   end
 
   def escape(segment)
-    ERB::Util.url_encode(segment.to_s)
+    Integrations::Transport.path_segment(segment)
   end
 end

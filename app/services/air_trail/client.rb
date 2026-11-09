@@ -67,7 +67,9 @@ module AirTrail
 
       parse_body(response)
     rescue Integrations::Transport::Error => e
-      raise Error.new(e.message, status: e.status)
+      # No status, also for a refused redirect: callers treat a status as an
+      # answer about one resource and anything else as a failed connection.
+      raise Error, e.message
     end
 
     def parse_body(response)

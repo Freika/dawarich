@@ -48,7 +48,7 @@ class Immich::EnrichPhotos
 
   def update_asset(asset)
     response = Integrations::Transport.request(
-      :put, "#{immich_url}/api/assets/#{ERB::Util.url_encode(asset['immich_asset_id'])}",
+      :put, "#{immich_url}/api/assets/#{Integrations::Transport.path_segment(asset['immich_asset_id'])}",
       headers:, body: { latitude: asset['latitude'], longitude: asset['longitude'] }.to_json,
       skip_ssl_verification: user.safe_settings.immich_skip_ssl_verification
     )

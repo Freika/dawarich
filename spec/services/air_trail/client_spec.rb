@@ -40,12 +40,16 @@ RSpec.describe AirTrail::Client do
       expect(request).not_to have_been_requested
     end
 
-    it 'does not follow a redirect and keeps its status' do
+    # No status: a refused redirect is a connection-level failure, so the track
+    # sync stops instead of skipping flight after flight (it skips on a status).
+    it 'does not follow a redirect and reports it like a failed connection' do
       stub_request(:get, 'https://airtrail.example/api/flight/list?scope=mine')
         .to_return(status: 301, headers: { 'Location' => 'https://elsewhere.example/' })
       followed = stub_request(:get, 'https://elsewhere.example/')
 
-      expect { client.flights }.to raise_error(AirTrail::Client::Error) { |error| expect(error.status).to eq(301) }
+      expect { client.flights }.to raise_error(AirTrail::Client::Error, /redirect/) { |error|
+        expect(error.status).to be_nil
+      }
       expect(followed).not_to have_been_requested
     end
 

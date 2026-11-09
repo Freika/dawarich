@@ -15,6 +15,16 @@ RSpec.describe TeslaMate::Client do
     expect(a_request(:get, "#{base_url}/api/v1/cars")).to have_been_made.twice
   end
 
+  it 'retries a timeout' do
+    stub_request(:get, "#{base_url}/api/v1/cars")
+      .to_timeout
+      .then
+      .to_return(status: 200, body: { data: { cars: [] } }.to_json)
+
+    expect(described_class.new(base_url).cars).to eq([])
+    expect(a_request(:get, "#{base_url}/api/v1/cars")).to have_been_made.twice
+  end
+
   it 'honors a one-attempt request budget' do
     request = stub_request(:get, "#{base_url}/api/v1/cars").to_raise(Errno::ECONNRESET)
 

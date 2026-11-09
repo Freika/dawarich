@@ -56,7 +56,7 @@ message: I18n.t('services.immich.connection_tester.immich_connection_verified') 
 
   def test_thumbnail_access(asset_id)
     response = Integrations::Transport.request(
-      :get, "#{url}/api/assets/#{ERB::Util.url_encode(asset_id)}/thumbnail?size=preview",
+      :get, "#{url}/api/assets/#{Integrations::Transport.path_segment(asset_id)}/thumbnail?size=preview",
       headers: { 'x-api-key' => api_key, 'accept' => 'application/octet-stream' },
       skip_ssl_verification:
     )

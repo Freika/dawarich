@@ -15,7 +15,7 @@ class Immich::VerifyEnrichment
   def confirmed?(asset)
     headers = { 'x-api-key' => @user.safe_settings.immich_api_key, 'accept' => 'application/json' }
     response = Integrations::Transport.request(
-      :get, "#{@user.safe_settings.immich_url}/api/assets/#{ERB::Util.url_encode(asset['immich_asset_id'])}",
+      :get, "#{@user.safe_settings.immich_url}/api/assets/#{Integrations::Transport.path_segment(asset['immich_asset_id'])}",
       headers:, skip_ssl_verification: @user.safe_settings.immich_skip_ssl_verification, timeout: 5
     )
     return false unless response.success?
