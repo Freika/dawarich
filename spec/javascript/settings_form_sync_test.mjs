@@ -33,8 +33,10 @@ function formHarness(settings, controllerExtras = {}) {
     settings,
     syncPointsEditAvailability() {},
     syncTrackColorPicker() {},
-    syncTilesFallbackAvailability() {},
-    syncStyleDependentToggles() {},
+    style: {
+      syncTilesFallbackAvailability() {},
+      syncStyleDependentToggles() {},
+    },
     getDistanceUnit: () => "mi",
     transportation: { syncTransportationSettings() {} },
   }

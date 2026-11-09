@@ -81,7 +81,7 @@ export function syncSettingsForm(manager) {
   const tilesUrl = input("vectorTilesUrl")
   if (tilesUrl) tilesUrl.value = settings.vectorTilesUrl || ""
   setChecked("tilesFallback", settings.tilesFallback === true)
-  manager.syncTilesFallbackAvailability()
+  manager.style.syncTilesFallbackAvailability()
 
   // Setting .value doesn't fire "change", so the map-theme-editor controller
   // is told separately; it shows the custom colour block for the style.
@@ -89,7 +89,7 @@ export function syncSettingsForm(manager) {
   if (mapStyleSelect) {
     const style = settings.mapStyle || "light"
     mapStyleSelect.value = style
-    manager.syncStyleDependentToggles(style)
+    manager.style.syncStyleDependentToggles(style)
     document.dispatchEvent(
       new CustomEvent("map-style:synced", { detail: { style } }),
     )

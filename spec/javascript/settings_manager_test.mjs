@@ -248,6 +248,13 @@ async function loadSettingsController(settingsManager, overrides = {}) {
   )
   const stripImports = (code) =>
     code.replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
+  const styleSource = await readFile(
+    new URL(
+      "../../app/javascript/controllers/maps/maplibre/map_style_settings.js",
+      import.meta.url,
+    ),
+    "utf8",
+  )
   const formSyncSource = await readFile(
     new URL(
       "../../app/javascript/controllers/maps/maplibre/settings_form_sync.js",
@@ -255,7 +262,10 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     ),
     "utf8",
   )
-  const withoutImports = `${stripImports(formSyncSource).replace(/^export /gm, "")}\n${stripImports(controllerSource)}`
+  const withoutImports = [styleSource, formSyncSource]
+    .map((code) => stripImports(code).replace(/^export /gm, ""))
+    .concat(stripImports(controllerSource))
+    .join("\n")
   globalThis.__settingsManagerTestDouble = settingsManager
   globalThis.__settingsManagerToast = overrides.Toast ?? {
     error() {},
@@ -565,8 +575,8 @@ async function styleSwapController({ getMapStyle } = {}) {
     settings: {},
     loadMapData: () => restored.push("loadMapData"),
   })
-  controller.restoreGlobeProjection = () => {}
-  return controller
+  controller.style.restoreGlobeProjection = () => {}
+  return controller.style
 }
 
 let toasts = []

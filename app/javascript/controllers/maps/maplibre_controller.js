@@ -568,7 +568,7 @@ export default class extends ReplayHost {
 
   // Settings Controller methods
   updateMapStyle(event) {
-    return this.settingsController.updateMapStyle(event)
+    return this.settingsController.style.updateMapStyle(event)
   }
   applyMapStyle(styleName) {
     return this.settingsController.applyMapStyle(styleName)
@@ -577,19 +577,19 @@ export default class extends ReplayHost {
     return this.settingsController.resetSettings()
   }
   toggleTileCategory(event) {
-    return this.settingsController.toggleTileCategory(event)
+    return this.settingsController.style.toggleTileCategory(event)
   }
   togglePoiGroup(event) {
-    return this.settingsController.togglePoiGroup(event)
+    return this.settingsController.style.togglePoiGroup(event)
   }
   updateDistanceUnit(event) {
     return this.settingsController.updateDistanceUnit(event)
   }
   updateVectorTilesUrl(event) {
-    return this.settingsController.updateVectorTilesUrl(event)
+    return this.settingsController.style.updateVectorTilesUrl(event)
   }
   updateTilesFallback(event) {
-    return this.settingsController.updateTilesFallback(event)
+    return this.settingsController.style.updateTilesFallback(event)
   }
   updateTrackColor(event) {
     return this.settingsController.updateTrackColor(event)
@@ -619,7 +619,7 @@ export default class extends ReplayHost {
     return this.settingsController.recalculateUserData()
   }
   toggleGlobe(event) {
-    return this.settingsController.toggleGlobe(event)
+    return this.settingsController.style.toggleGlobe(event)
   }
   markTransportationSettingsDirty(event) {
     return this.settingsController.transportation.markTransportationSettingsDirty(

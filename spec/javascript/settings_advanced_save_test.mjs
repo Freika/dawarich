@@ -21,6 +21,8 @@ const LAYER_NAME_MAP = {}
 const basemapUrlFor = () => null
 const SettingsManager = globalThis.__settingsManagerStub
 const TransportationSettings = class { syncTransportationSettings() {} }
+const MapStyleSettings = class {}
+const syncSettingsForm = () => {}
 const applyGlobeProjection = () => {}
 const globeEnabled = () => false
 `
