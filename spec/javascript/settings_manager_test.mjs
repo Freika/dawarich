@@ -139,6 +139,24 @@ test("reset can be limited to some appearance settings", async () => {
   }
 })
 
+test("a settings object loaded earlier sees a reset", async () => {
+  const loaded = { trackColor: "#111111", photosEnabled: true }
+  SettingsManager.cachedSettings = loaded
+  const fetchStub = stubFetch(() => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ settings: { track_color: "#6366F1" } }),
+  }))
+
+  try {
+    SettingsManager.apiKey = "key"
+    await SettingsManager.resetToDefaults(["track_color"])
+    assert.equal(loaded.trackColor, "#6366F1")
+  } finally {
+    fetchStub.restore()
+  }
+})
+
 test("a failed reset reports no settings", async () => {
   const fetchStub = stubFetch(() => jsonResponse({}, false))
   try {

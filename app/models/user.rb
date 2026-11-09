@@ -4,6 +4,7 @@ class User < ApplicationRecord
   include UserFamily
   include Omniauthable
   include PlanScopable
+  include VisitedPlaces
   include SoftDeletable # introduces default_scope and soft-delete methods
 
   # Per-record opt-out for the auto-trial / auto-activate after_commit hooks.
@@ -217,26 +218,6 @@ class User < ApplicationRecord
     changelog_consent.nil?
   end
 
-  def countries_visited
-    Rails.cache.fetch(Cache::UserKeys.countries_visited(id), expires_in: 1.day) do
-      countries_visited_uncached
-    end
-  end
-
-  def cities_visited
-    Rails.cache.fetch(Cache::UserKeys.cities_visited(id), expires_in: 1.day) do
-      cities_visited_uncached
-    end
-  end
-
-  def total_countries
-    countries_visited.size
-  end
-
-  def total_cities
-    cities_visited.size
-  end
-
   def total_reverse_geocoded_points
     StatsQuery.new(self).points_stats[:geocoded]
   end
@@ -345,50 +326,6 @@ class User < ApplicationRecord
     raw = timezone.presence || Time.zone.name
     tz = ActiveSupport::TimeZone[raw] if raw
     tz ? tz.tzinfo.name : 'Etc/UTC'
-  end
-
-  # Aggregate countries from all stats' toponyms
-  # Includes countries even when no city meets the minimum stay threshold
-  def countries_visited_uncached
-    countries = Set.new
-
-    stats.select(:id, :toponyms).find_each do |stat|
-      toponyms = stat.toponyms
-      next unless toponyms.is_a?(Array)
-
-      toponyms.each do |toponym|
-        next unless toponym.is_a?(Hash)
-        next if toponym['country'].blank?
-
-        countries.add(toponym['country'])
-      end
-    end
-
-    countries.to_a.sort
-  end
-
-  # Aggregate cities from all stats' toponyms
-  # This respects min_minutes_spent_in_city since toponyms are already filtered
-  def cities_visited_uncached
-    cities = Set.new
-
-    stats.select(:id, :toponyms).find_each do |stat|
-      toponyms = stat.toponyms
-      next unless toponyms.is_a?(Array)
-
-      toponyms.each do |toponym|
-        next unless toponym.is_a?(Hash)
-        next unless toponym['cities'].is_a?(Array)
-
-        toponym['cities'].each do |city|
-          next unless city.is_a?(Hash)
-
-          cities.add(city['city']) if city['city'].present?
-        end
-      end
-    end
-
-    cities.to_a.sort
   end
 
   def supporter?
