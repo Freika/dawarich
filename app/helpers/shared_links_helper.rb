@@ -57,8 +57,8 @@ module SharedLinksHelper
   def shared_link_sections(share)
     keys = case share.resource_type
            when 'trip' then %w[show_route show_stats show_days show_day_notes show_description show_photos]
-           when 'track' then %w[show_route show_stats show_photos]
-           when 'timeline' then %w[show_route show_photos]
+           when 'track' then %w[show_route show_stats show_photos show_map_notes]
+           when 'timeline' then %w[show_route show_photos show_map_notes]
            when 'live' then %w[show_route]
            else []
            end

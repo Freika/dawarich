@@ -44,3 +44,14 @@ zh:
   shared:
     navbar:
       notes: 笔记
+    links:
+      map_notes:
+        notes: 笔记
+  shared_links:
+    map_notes_toggle:
+      label: 显示我的地图笔记
+      hint: 只显示这段时间内笔记的文字和时间，不显示写下笔记的位置。你之后为这段时间补写的笔记也会显示。
+  ux_p2:
+    sharing:
+      sections:
+        show_map_notes: 地图笔记

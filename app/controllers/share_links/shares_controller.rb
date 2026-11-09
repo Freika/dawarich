@@ -56,7 +56,8 @@ module ShareLinks
     private
 
     def share_setting_keys
-      %i[show_photos show_stats show_route show_countries show_description show_days show_day_notes]
+      %i[show_photos show_stats show_route show_countries show_description show_days show_day_notes
+         show_map_notes]
     end
 
     def live_freshness_setting

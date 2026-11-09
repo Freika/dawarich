@@ -134,7 +134,8 @@ module ShareLinks
       raw = params.fetch(:shared_link, {})[:settings]
       return {} if raw.blank?
 
-      keys = %i[show_photos show_stats show_route show_countries show_description show_days show_day_notes]
+      keys = %i[show_photos show_stats show_route show_countries show_description show_days show_day_notes
+                show_map_notes]
       permitted = raw.respond_to?(:permit) ? raw.permit(*keys) : raw.slice(*keys.map(&:to_s))
       permitted.to_h.transform_values { |v| ActiveModel::Type::Boolean.new.cast(v) }
     end

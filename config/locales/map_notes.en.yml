@@ -44,3 +44,14 @@ en:
   shared:
     navbar:
       notes: Notes
+    links:
+      map_notes:
+        notes: Notes
+  shared_links:
+    map_notes_toggle:
+      label: Show my map notes
+      hint: Shows the text and time of notes about this period, not where they were written. Notes you write later about this period will appear too.
+  ux_p2:
+    sharing:
+      sections:
+        show_map_notes: Map notes

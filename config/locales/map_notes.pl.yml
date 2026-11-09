@@ -44,3 +44,14 @@ pl:
   shared:
     navbar:
       notes: Notatki
+    links:
+      map_notes:
+        notes: Notatki
+  shared_links:
+    map_notes_toggle:
+      label: Pokaż moje notatki z mapy
+      hint: Pokazuje treść i czas notatek z tego okresu, bez miejsca, w którym je napisano. Notatki dopisane później do tego okresu również się pojawią.
+  ux_p2:
+    sharing:
+      sections:
+        show_map_notes: Notatki z mapy

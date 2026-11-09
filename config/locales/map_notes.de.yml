@@ -44,3 +44,14 @@ de:
   shared:
     navbar:
       notes: Notizen
+    links:
+      map_notes:
+        notes: Notizen
+  shared_links:
+    map_notes_toggle:
+      label: Meine Kartennotizen zeigen
+      hint: Zeigt Text und Zeit der Notizen zu diesem Zeitraum, nicht den Ort, an dem sie geschrieben wurden. Notizen, die du später zu diesem Zeitraum schreibst, erscheinen ebenfalls.
+  ux_p2:
+    sharing:
+      sections:
+        show_map_notes: Kartennotizen

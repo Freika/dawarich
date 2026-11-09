@@ -44,3 +44,14 @@ fr:
   shared:
     navbar:
       notes: Notes
+    links:
+      map_notes:
+        notes: Notes
+  shared_links:
+    map_notes_toggle:
+      label: Afficher mes notes de carte
+      hint: Affiche le texte et l'heure des notes sur cette période, pas l'endroit où elles ont été écrites. Les notes que vous écrirez plus tard sur cette période apparaîtront aussi.
+  ux_p2:
+    sharing:
+      sections:
+        show_map_notes: Notes de carte

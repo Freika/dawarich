@@ -1,0 +1,19 @@
+<%# locals: (link:) %>
+<%# The text and time of each note only: where a note was written is never sent. %>
+<% notes = SharedLinks::MapNotes.new(link).call.to_a %>
+<% if notes.any? %>
+  <% zone = link.user.timezone_iana %>
+  <section class="mt-6" aria-labelledby="shared-notes-title" data-testid="shared-notes">
+    <h2 class="text-xl font-medium mb-3" id="shared-notes-title"><%= t('.notes') %></h2>
+    <ul class="space-y-3">
+      <% notes.each do |note| %>
+        <li class="border border-base-300 rounded-xl p-4 min-w-0" data-testid="shared-note">
+          <time class="block text-sm text-base-content/60 mb-1" datetime="<%= note.noted_at.iso8601 %>">
+            <%= l(note.noted_at.in_time_zone(zone), format: :long) %>
+          </time>
+          <p class="whitespace-pre-line [overflow-wrap:anywhere]" data-testid="shared-note-body"><%= note.body %></p>
+        </li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>
