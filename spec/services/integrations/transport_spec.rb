@@ -135,6 +135,20 @@ RSpec.describe Integrations::Transport do
       expect(received.scan('POST /items').size).to eq(1)
     end
 
+    it 'splits the connect timeout across the addresses, so several dead ones cannot multiply the wait' do
+      stub_host_addresses('many.test', '203.0.113.1', '203.0.113.2', '203.0.113.3', '203.0.113.4')
+      stub_request(:get, 'http://many.test/').to_return(json_ok)
+      connect_timeouts = []
+      allow(Net::HTTP).to receive(:new).and_wrap_original do |original, *args|
+        original.call(*args).tap { |http| connect_timeouts << http }
+      end
+
+      described_class.request(:get, 'http://many.test/', timeout: 10)
+
+      expect(connect_timeouts.last.open_timeout).to eq(2.5)
+      expect(connect_timeouts.last.read_timeout).to eq(10)
+    end
+
     it 'falls back to the next address when the first refuses the connection' do
       with_local_server do |port|
         stub_host_addresses('dual.test', '::1', '127.0.0.1')
@@ -182,6 +196,14 @@ RSpec.describe Integrations::Transport do
 
   describe 'responses' do
     before { stub_host_addresses('api.test', '203.0.113.5') }
+
+    it 'names the scheme of the redirect target, so an http to https redirect is recognisable' do
+      stub_request(:get, 'http://api.test/old').to_return(status: 301,
+                                                          headers: { 'Location' => 'https://api.test/old' })
+
+      expect { described_class.request(:get, 'http://api.test/old') }
+        .to raise_error(described_class::Error, %r{redirect to https://api\.test })
+    end
 
     it 'refuses a redirect and names where it pointed' do
       stub_request(:get, 'http://api.test/old')

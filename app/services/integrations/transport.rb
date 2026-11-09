@@ -133,9 +133,15 @@ module Integrations
       # Behind a proxy the target is resolved by the proxy, so there is nothing to pin.
       return connection(uri).tap(&:start) if connection(uri).proxy?
 
+      # The connect timeout is shared between the addresses, so a host with
+      # several dead records cannot multiply the wait.
+      connect_timeout = @timeout.to_f / addresses.size
       last_error = nil
       addresses.each do |address|
-        return connection(uri).tap { |http| http.ipaddr = address }.tap(&:start)
+        http = connection(uri)
+        http.ipaddr = address
+        http.open_timeout = connect_timeout
+        return http.tap(&:start)
       rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, Errno::EADDRNOTAVAIL,
              Net::OpenTimeout => e
         last_error = e
@@ -168,7 +174,8 @@ module Integrations
 
     def refuse_redirect(response)
       target = begin
-        URI.parse(response['location'].to_s).host
+        location = URI.parse(response['location'].to_s)
+        "#{location.scheme}://#{location.host}" if location.host
       rescue URI::InvalidURIError
         nil
       end
