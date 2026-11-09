@@ -27,7 +27,7 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - `/metrics` now refuses requests with empty credentials while `METRICS_USERNAME` or `METRICS_PASSWORD` is unset.
 - API rate limits now also count an `api_key` sent in a JSON body.
 - ZIP and KMZ imports now stop as soon as the extracted data passes `ZIP_MAX_EXTRACTED_SIZE`, instead of reading a whole oversized entry first.
-- KML imports are parsed as a stream instead of building a full in-memory document, and JSON/TCX imports refuse files larger than `IMPORT_MAX_PARSE_BYTES` (512 MiB by default), so a small compressed upload can no longer expand to gigabytes and exhaust the import worker's memory.
+- KML imports are parsed as a stream instead of building a whole-file document, and oversized imports are refused before they are read into memory: KML above `KML_MAX_PARSE_BYTES` (64 MiB by default) and JSON/TCX above `IMPORT_MAX_PARSE_BYTES` (512 MiB by default). A small compressed upload can no longer expand to gigabytes and exhaust the import worker's memory.
 
 ### Fixed
 

@@ -8,6 +8,8 @@ module Imports
     # file into memory and build a full object graph. A small compressed upload
     # can expand to the 2 GiB disk cap and OOM-kill the worker, so bound the
     # in-memory size here. Configurable for operators with larger workers.
+    # Measured: a 256 MiB JSON parses to ~690 MiB with Oj, so 512 MiB stays well
+    # within a default 4 GiB worker.
     DEFAULT_MAX_PARSE_BYTES = 512.megabytes
 
     private
@@ -36,12 +38,14 @@ module Imports
       scrub_to_utf8(content)
     end
 
-    def enforce_parse_limit!(bytes)
-      max = ENV.fetch('IMPORT_MAX_PARSE_BYTES', DEFAULT_MAX_PARSE_BYTES).to_i
+    # `limit`/`env_var` let a parser with a different memory profile (KML, whose
+    # DOM amplifies far more than Oj) pass its own, lower bound.
+    def enforce_parse_limit!(bytes, limit = DEFAULT_MAX_PARSE_BYTES, env_var: 'IMPORT_MAX_PARSE_BYTES')
+      max = ENV.fetch(env_var, limit).to_i
       return if bytes <= max
 
       raise Imports::FileTooLarge,
-            "import file is #{bytes} bytes (max #{max}); raise IMPORT_MAX_PARSE_BYTES to allow it"
+            "import file is #{bytes} bytes (max #{max}); raise #{env_var} to allow it"
     end
 
     # Returns a local file path, downloading from storage if needed.
