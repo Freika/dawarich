@@ -964,10 +964,7 @@ export default class extends Controller {
       this.layerManager.getLayer("map-editor")?.close()
       this.layerManager.getLayer("points-mvt")?.refresh()
       this.layerManager.getLayer("tracks-mvt")?.refresh()
-      this.layerManager
-        .getLayer("scratch")
-        ?.update()
-        .catch(() => {})
+      this.layerManager.getLayer("scratch")?.retryMembership()
       this.closeInfo()
       Toast.success(translate("messages.point_deleted_successfully"))
     } catch (_error) {

@@ -76,11 +76,7 @@ export class ScratchLayer extends VectorTileLayer {
       await this.update()
     } catch (error) {
       if (this.onMembershipError) this.onMembershipError(error)
-      else
-        console.warn(
-          "Failed to refresh visited countries after a point move:",
-          error,
-        )
+      else console.warn("Failed to refresh visited countries:", error)
     }
   }
 
@@ -103,10 +99,6 @@ export class ScratchLayer extends VectorTileLayer {
     this.remove()
     await this.add(undefined, beforeId)
     this.setVisibility(wasVisible)
-  }
-
-  _isTileFailure() {
-    return true
   }
 
   getSourceConfig() {

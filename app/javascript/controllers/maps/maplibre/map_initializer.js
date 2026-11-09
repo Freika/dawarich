@@ -95,6 +95,7 @@ export class MapInitializer {
           hiddenTileCategories,
           disabledPoiGroups,
           customTheme,
+          tilesFallback,
         })
         map.setStyle(fallbackStyle, { diff: false })
       }

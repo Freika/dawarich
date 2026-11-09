@@ -305,3 +305,38 @@ test("hard mutations reject stale fallback snapshots without a retry limit", asy
   realtime.disconnect()
   assert.equal(manager.lastLoadedData.points[0].longitude, 3)
 })
+
+const { ScratchLayer } = await import("maps_maplibre/layers/scratch_layer")
+
+function failingScratch(errors) {
+  return new ScratchLayer(
+    { getLayer: () => false },
+    {
+      historyScope: () => ({ startAt: "2024-06-01", endAt: "2024-06-30" }),
+      apiClient: {
+        fetchVisitedCountries: async () => {
+          throw new Error("offline")
+        },
+      },
+      onMembershipError: (error) => errors.push(error.message),
+    },
+  )
+}
+
+test("a failed scratch refresh after a point edit reaches the layer's error handler", async () => {
+  const errors = []
+  const scratch = failingScratch(errors)
+  const maps = mapController(async () => result())
+  maps.api = { deletePoint: async () => {} }
+  maps.layerManager = {
+    getLayer: (id) => (id === "scratch" ? scratch : null),
+  }
+  const realtime = new RealtimeController()
+  Object.defineProperty(realtime, "mapsV2Controller", { value: maps })
+
+  await maps.deletePoint(7)
+  realtime.refreshLiveLayers()
+  await new Promise(setImmediate)
+
+  assert.deepEqual(errors, ["offline", "offline"])
+})

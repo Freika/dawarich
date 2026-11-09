@@ -49,6 +49,11 @@ test("a failed PMTiles source episode is reported once and can use a fresh archi
   })
 
   layer._watchTileErrors()
+  handlers.get("error")({
+    sourceId: "scratch-source",
+    error: { name: "AbortError" },
+  })
+  assert.equal(failures, 0, "an aborted tile request is not a failure")
   handlers.get("error")({ sourceId: "scratch-source" })
   handlers.get("error")({ sourceId: "scratch-source" })
   assert.equal(failures, 1)
