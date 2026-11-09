@@ -65,8 +65,6 @@ export default class extends Controller {
     "visitsSearch",
     "placesFilters",
     "enableAllPlaceTagsToggle",
-    "fogRadiusValue",
-    "fogThresholdValue",
     "minMinutesInCityValue",
     "gpsFilteringToggle",
     "gpsAccuracyThresholdValue",
@@ -1262,12 +1260,6 @@ export default class extends Controller {
   updateGpsAccuracyThresholdDisplay(event) {
     return this.settingsController.updateGpsAccuracyThresholdDisplay(event)
   }
-  updateFogRadiusDisplay(event) {
-    return this.settingsController.updateFogRadiusDisplay(event)
-  }
-  updateFogThresholdDisplay(event) {
-    return this.settingsController.updateFogThresholdDisplay(event)
-  }
   updateMinMinutesInCityDisplay(event) {
     return this.settingsController.updateMinMinutesInCityDisplay(event)
   }
@@ -1350,10 +1342,6 @@ export default class extends Controller {
   toggleHexagons(event) {
     return this.layerVisibilityManager.toggleHexagons(event)
   }
-  updateFogMode(event) {
-    return this.settingsController.updateFogMode(event)
-  }
-
   toggleFog(event) {
     return this.layerVisibilityManager.toggleFog(event)
   }

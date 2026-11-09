@@ -108,17 +108,11 @@ export class LayerVisibilityManager {
     const fogLayer = this.layerManager.getLayer("fog")
 
     const showFog = async () => {
-      if (fogLayer?.mode === "hexagons") {
-        fogLayer.toggle(true)
-        return
-      }
-      this.layerManager.getLayer("points-mvt")?.setSourceKeepAlive(true)
-      if (fogLayer) fogLayer.toggle(true)
+      fogLayer?.toggle(true)
     }
 
     const hideFog = () => {
-      if (fogLayer) fogLayer.toggle(false)
-      this.layerManager.getLayer("points-mvt")?.setSourceKeepAlive(false)
+      fogLayer?.toggle(false)
     }
 
     const intercepted = gatedToggle({
@@ -367,11 +361,6 @@ export class LayerVisibilityManager {
     this.layerManager
       .getLayer("tracks-mvt")
       ?.setEnabled(settings.tracksEnabled === true)
-    const fogTiled = false
-    this.layerManager.getLayer("fog")?.setTiledSource(fogTiled)
-    this.layerManager
-      .getLayer("points-mvt")
-      ?.setSourceKeepAlive(fogTiled && Boolean(settings.fogEnabled))
     this.controller.settingsController?.syncPointsEditAvailability()
   }
 

@@ -152,12 +152,9 @@ export class MapDataManager {
           })
       }
 
-      // 8. Reload fog hexagons if fog is visible in hexagon mode — same
-      // reasoning: they own their own fetch pipeline.
-      const fogLayer = this.layerManager.getLayer("fog")
-      if (fogLayer?.visible && fogLayer.mode === "hexagons") {
-        fogLayer.reloadHexagons()
-      }
+      // 8. Reload fog hexagons if fog is visible — same reasoning: they own
+      // their own fetch pipeline.
+      this.layerManager.getLayer("fog")?.reloadHexagons()
 
       return data
     } catch (error) {

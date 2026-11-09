@@ -169,26 +169,6 @@ test("low-zoom aggregates are flight-masked only when their full time span overl
   assert.equal(evaluate(filter, { timestamp: 80, max_timestamp: 180 }), true)
 })
 
-test("fog keep-alive restores the active day opacity after Points are toggled", () => {
-  const paint = []
-  const layer = new PointsMvtLayer({
-    getLayer: () => true,
-    setLayoutProperty() {},
-    setPaintProperty: (_id, property, value) => paint.push({ property, value }),
-  })
-  layer.setSourceKeepAlive(true)
-  const dayExpression = ["case", true, 1, 0.04]
-  layer.setCircleOpacity("circle-opacity", dayExpression)
-  layer.setVisibility(false)
-  layer.setCircleOpacity("circle-opacity", ["case", false, 1, 0.04])
-  assert.equal(paint.at(-1).value, 0)
-  layer.setVisibility(true)
-  assert.deepEqual(
-    paint.findLast(({ property }) => property === "circle-opacity").value,
-    ["case", false, 1, 0.04],
-  )
-})
-
 test("tile URLs carry no raw api key under any input combination", () => {
   const cases = [
     {},

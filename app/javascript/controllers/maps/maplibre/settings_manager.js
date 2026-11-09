@@ -191,35 +191,6 @@ export class SettingsController {
         : this.settings.globeProjection || false
     }
 
-    // Sync fog of war mode radio
-    const fogModeInput = controller.element.querySelector(
-      `input[name="fogOfWarMode"][value="${this.settings.fogOfWarMode}"]`,
-    )
-    if (fogModeInput) {
-      fogModeInput.checked = true
-    }
-
-    // Sync fog of war settings
-    const fogRadiusInput = controller.element.querySelector(
-      'input[name="fogOfWarRadius"]',
-    )
-    if (fogRadiusInput) {
-      fogRadiusInput.value = this.settings.fogOfWarRadius
-      if (controller.hasFogRadiusValueTarget) {
-        controller.fogRadiusValueTarget.textContent = `${fogRadiusInput.value}m`
-      }
-    }
-
-    const fogThresholdInput = controller.element.querySelector(
-      'input[name="fogOfWarThreshold"]',
-    )
-    if (fogThresholdInput) {
-      fogThresholdInput.value = this.settings.fogOfWarThreshold
-      if (controller.hasFogThresholdValueTarget) {
-        controller.fogThresholdValueTarget.textContent = fogThresholdInput.value
-      }
-    }
-
     for (const name of ["metersBetweenRoutes", "minutesBetweenRoutes"]) {
       const input = controller.element.querySelector(`input[name="${name}"]`)
       if (input) input.value = this.settings[name]
@@ -787,21 +758,6 @@ export class SettingsController {
     }
   }
 
-  /**
-   * Update route opacity in real-time
-   */
-  async updateFogMode(_event) {
-    const mode = "hexagons"
-
-    const fogLayer = this.layerManager.getLayer("fog")
-    if (fogLayer) {
-      fogLayer.setMode(mode)
-    }
-
-    await SettingsManager.updateSetting("fogOfWarMode", mode)
-    await this.controller.layerVisibilityManager?.reapplyPointsRenderer()
-  }
-
   togglePointsEditing(event) {
     const enabled = event.target.checked
 
@@ -1055,7 +1011,6 @@ export class SettingsController {
     }
 
     // Apply settings to current map (may trigger loadMapData)
-    await this.applySettingsToMap(settings)
 
     await SettingsManager.updateSettings(settings)
 
@@ -1067,41 +1022,7 @@ export class SettingsController {
     Toast.success(translate("messages.settings_updated_successfully"))
   }
 
-  /**
-   * Apply settings to map without reload
-   */
-  async applySettingsToMap(settings) {
-    // Update fog of war settings
-    if (
-      settings.fogOfWarRadius !== undefined ||
-      settings.fogOfWarThreshold !== undefined
-    ) {
-      const fogLayer = this.layerManager.getLayer("fog")
-      if (fogLayer) {
-        if (settings.fogOfWarRadius) {
-          fogLayer.clearRadius = settings.fogOfWarRadius
-        }
-        // Redraw fog layer if it has data and is visible
-        if (fogLayer.visible && fogLayer.data) {
-          await fogLayer.update(fogLayer.data)
-        }
-      }
-    }
-  }
-
   // Display value update methods
-  updateFogRadiusDisplay(event) {
-    if (this.controller.hasFogRadiusValueTarget) {
-      this.controller.fogRadiusValueTarget.textContent = `${event.target.value}m`
-    }
-  }
-
-  updateFogThresholdDisplay(event) {
-    if (this.controller.hasFogThresholdValueTarget) {
-      this.controller.fogThresholdValueTarget.textContent = event.target.value
-    }
-  }
-
   updateGpsAccuracyThresholdDisplay(event) {
     if (this.controller.hasGpsAccuracyThresholdValueTarget) {
       this.controller.gpsAccuracyThresholdValueTarget.textContent = `${event.target.value}m`

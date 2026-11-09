@@ -74,7 +74,7 @@ export class LayerManager {
     this.layers.photosLayer?.raiseAbove("points-mvt")
     this._addRecentPointLayer()
     this._addReplayMarkerLayer()
-    this._addFogLayer(EMPTY_GEOJSON)
+    this._addFogLayer()
     // Membership may scan a large history. The blank-filter Scratch source
     // attaches below the overlays when ready, without holding up tile layers.
     void this._addScratchLayer()
@@ -498,26 +498,17 @@ export class LayerManager {
     }
   }
 
-  _addFogLayer(pointsGeoJSON) {
-    const tiledFog = false
+  _addFogLayer() {
     // Always create fog layer for backward compatibility
     if (!this.layers.fogLayer) {
       this.layers.fogLayer = new FogLayer(this.map, {
-        clearRadius: this.settings.fogOfWarRadius,
         visible: this.settings.fogEnabled || false,
-        mode: "hexagons",
         api: this.api,
         controller: this.controller,
-        tiledSource: tiledFog,
       })
-      this.layers.fogLayer.add(pointsGeoJSON)
+      this.layers.fogLayer.add()
     } else {
-      this.layers.fogLayer.update(pointsGeoJSON)
-    }
-    // Tiled fog reads the points MVT source — keep it loading even when the
-    // Points toggle is off (paint-based hiding, see PointsMvtLayer).
-    if (tiledFog && this.settings.fogEnabled) {
-      this.layers.pointsMvtLayer?.setSourceKeepAlive(true)
+      this.layers.fogLayer.update()
     }
   }
 }

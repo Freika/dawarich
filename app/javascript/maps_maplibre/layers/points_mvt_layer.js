@@ -127,56 +127,15 @@ export class PointsMvtLayer extends BaseLayer {
     )
   }
 
-  // ⛔ MapLibre loads NO tiles for a source whose layers are all layout-hidden
-  // (Style.update marks it unused and SourceCache evicts). Tiled fog reads
-  // this source via querySourceFeatures, so while fog depends on it the circle
-  // layer hides via PAINT (opacity 0) — isHidden() keys on layout visibility,
-  // keeping the source used and its tiles loading.
-  setSourceKeepAlive(keepAlive) {
-    this.sourceKeepAlive = keepAlive === true
-    this.setVisibility(this.visible)
-  }
-
   setCircleOpacity(property, value) {
     this._visibleCirclePaint[property] = value
-    if (!this._paintHidden && this.map.getLayer(this.id)) {
+    if (this.map.getLayer(this.id)) {
       this.map.setPaintProperty?.(this.id, property, value)
     }
   }
 
   _applyLayerVisibility(layerId, visible) {
     if (!this.map.getLayer(layerId)) return
-
-    if (layerId === this.id && !visible && this.sourceKeepAlive) {
-      this.map.setLayoutProperty(layerId, "visibility", "visible")
-      this.map.setPaintProperty?.(layerId, "circle-opacity", 0)
-      this.map.setPaintProperty?.(layerId, "circle-stroke-opacity", 0)
-      // Radius AND stroke width to 0: the circle hit test uses radius plus
-      // stroke width, and queryRenderedFeatures ignores paint opacity — a
-      // merely-transparent layer stays clickable and cursor-reactive.
-      this.map.setPaintProperty?.(layerId, "circle-radius", 0)
-      this.map.setPaintProperty?.(layerId, "circle-stroke-width", 0)
-      this._paintHidden = true
-      return
-    }
-    if (layerId === this.id && this._paintHidden) {
-      for (const [property, value] of Object.entries(
-        this._visibleCirclePaint,
-      )) {
-        this.map.setPaintProperty?.(layerId, property, value)
-      }
-      this.map.setPaintProperty?.(
-        layerId,
-        "circle-radius",
-        PointsMvtLayer.CIRCLE_RADIUS,
-      )
-      this.map.setPaintProperty?.(
-        layerId,
-        "circle-stroke-width",
-        PointsMvtLayer.CIRCLE_STROKE_WIDTH,
-      )
-      this._paintHidden = false
-    }
 
     this.map.setLayoutProperty(
       layerId,
@@ -238,11 +197,19 @@ export class PointsMvtLayer extends BaseLayer {
           "heatmap-weight": [
             "case",
             ["has", "dwell"],
-            ["/", ["get", "dwell"], PointsMvtLayer.HEATMAP_DWELL_REFERENCE_SECONDS],
+            [
+              "/",
+              ["get", "dwell"],
+              PointsMvtLayer.HEATMAP_DWELL_REFERENCE_SECONDS,
+            ],
             [
               "min",
               1,
-              ["+", 0.2, ["*", 0.094, ["ln", ["coalesce", ["get", "count"], 1]]]],
+              [
+                "+",
+                0.2,
+                ["*", 0.094, ["ln", ["coalesce", ["get", "count"], 1]]],
+              ],
             ],
           ],
         },
