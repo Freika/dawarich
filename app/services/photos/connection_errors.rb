@@ -38,11 +38,15 @@ module Photos
       retryable?(error) || error.is_a?(Integrations::Transport::Error)
     end
 
-    # What a user-facing message should say. A transport error already carries
-    # a readable message (the redirect hint, the DNS text); for anything else
-    # the class name is the most specific thing available.
+    # What a user-facing message may say. Text written by this app (the
+    # redirect hint, a refused or unresolvable address) is shown as it is.
+    # Text from the network stack or the remote server is not: it can echo a
+    # credential, so only the class of the failure is named.
     def self.describe(error)
-      error.is_a?(Integrations::Transport::Error) ? error.message : error.class.name
+      return error.class.name unless error.is_a?(Integrations::Transport::Error)
+      return error.message if error.cause.nil? || error.cause.is_a?(UrlValidatable::BlockedUrlError)
+
+      error.cause.class.name
     end
   end
 end
