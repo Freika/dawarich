@@ -67,8 +67,14 @@ test("GPS-only tile history fits the map from bounded metadata", async () => {
       getLayer: () => null,
     },
     filterManager: { setAllVisits() {} },
-    showProgress() {},
-    hideProgress() {},
+    loadingBadge: {
+      show() {},
+      hide() {},
+      start() {},
+      finish() {},
+      update() {},
+      dismissIfIncomplete() {},
+    },
     hasProgressBadgeTarget: false,
   }
   const manager = new MapDataManager(controller)
@@ -132,8 +138,14 @@ test("history bounds take precedence over a distant visit", async () => {
       getLayer: () => null,
     },
     filterManager: { setAllVisits() {} },
-    showProgress() {},
-    hideProgress() {},
+    loadingBadge: {
+      show() {},
+      hide() {},
+      start() {},
+      finish() {},
+      update() {},
+      dismissIfIncomplete() {},
+    },
     hasProgressBadgeTarget: false,
   }
   const manager = new MapDataManager(controller)
@@ -192,8 +204,14 @@ test("flight mask uses the just-loaded range, including on first load", async ()
       getLayer: (name) => layers[name],
     },
     filterManager: { setAllVisits() {} },
-    showProgress() {},
-    hideProgress() {},
+    loadingBadge: {
+      show() {},
+      hide() {},
+      start() {},
+      finish() {},
+      update() {},
+      dismissIfIncomplete() {},
+    },
     hasProgressBadgeTarget: false,
   }
   const manager = new MapDataManager(controller)
@@ -251,8 +269,14 @@ test("late history bounds cannot refit an older date range", async () => {
     },
     layerManager: { updatePointTileRange() {}, getLayer: () => null },
     filterManager: { setAllVisits() {} },
-    showProgress() {},
-    hideProgress() {},
+    loadingBadge: {
+      show() {},
+      hide() {},
+      start() {},
+      finish() {},
+      update() {},
+      dismissIfIncomplete() {},
+    },
     hasProgressBadgeTarget: false,
   }
   const manager = new MapDataManager(controller)
@@ -302,9 +326,12 @@ test("late range callbacks cannot replace the current layers, replay data or pro
       getLayer: (name) => layers[name],
     },
     filterManager: { setAllVisits: (value) => visits.push(value) },
-    updateLoadingCounts: (value) => progress.push(value),
-    showProgress() {},
-    hideProgress() {},
+    loadingBadge: {
+      show() {},
+      hide() {},
+      dismissIfIncomplete() {},
+      update: (value) => progress.push(value),
+    },
     hasProgressBadgeTarget: false,
   }
   const manager = new MapDataManager(controller)

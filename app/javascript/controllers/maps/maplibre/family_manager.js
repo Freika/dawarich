@@ -20,11 +20,7 @@ export class FamilyManager {
 
   async loadMembers() {
     try {
-      this.controller.showProgress()
-      this.controller.updateLoadingCounts({
-        counts: { family: 0 },
-        isComplete: false,
-      })
+      this.controller.loadingBadge.start("family")
 
       const response = await fetch("/api/v1/families/locations", {
         headers: {
@@ -37,10 +33,7 @@ export class FamilyManager {
       if (!response.ok) {
         if (response.status === 403) {
           Toast.info(translate("messages.family_feature_not_available"))
-          this.controller.updateLoadingCounts({
-            counts: { family: 0 },
-            isComplete: true,
-          })
+          this.controller.loadingBadge.finish("family", 0)
           return
         }
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -57,10 +50,7 @@ export class FamilyManager {
 
       // Update family count in badge
       this.memberCount = locations.length
-      this.controller.updateLoadingCounts({
-        counts: { family: locations.length },
-        isComplete: true,
-      })
+      this.controller.loadingBadge.finish("family", locations.length)
 
       // Render family members list
       this.renderMembersList(locations)

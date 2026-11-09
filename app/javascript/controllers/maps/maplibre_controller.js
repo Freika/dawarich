@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { formatNumber, translate } from "i18n"
+import { translate } from "i18n"
 import { deletePlace } from "maps_maplibre/components/place_actions"
 import { RangeStatistics } from "maps_maplibre/components/range_statistics"
 import { Toast } from "maps_maplibre/components/toast"
@@ -27,6 +27,7 @@ import { FamilyManager } from "./maplibre/family_manager"
 import { FilterManager } from "./maplibre/filter_manager"
 import { LayerManager } from "./maplibre/layer_manager"
 import { LayerVisibilityManager } from "./maplibre/layer_visibility_manager"
+import { LoadingBadge } from "./maplibre/loading_badge"
 import { MapDataManager } from "./maplibre/map_data_manager"
 import { MapInitializer } from "./maplibre/map_initializer"
 import { PlacesManager } from "./maplibre/places_manager"
@@ -165,6 +166,7 @@ export default class extends Controller {
     // Initialize API and settings
     SettingsManager.initialize(this.apiKeyValue)
     this.familyManager = new FamilyManager(this)
+    this.loadingBadge = new LoadingBadge(this)
     this.timelineBridge = new TimelineMapBridge(this)
     this.settingsController = new SettingsController(this)
     await this.loadViewSettings()
@@ -540,103 +542,6 @@ export default class extends Controller {
       startValue,
       endValue,
       treatEndAsOpen: Boolean(unchanged && this.defaultDateRange.reachesNow),
-    }
-  }
-
-  /**
-   * Show loading progress badge
-   */
-  showProgress() {
-    this._lastSourceCount = 0
-    if (this.hasProgressBadgeTarget) {
-      this.progressBadgeTarget.classList.remove("complete", "pop")
-      this.progressBadgeTarget.classList.add("visible")
-    }
-    if (this.hasProgressBadgeTextTarget) {
-      this.progressBadgeTextTarget.textContent = translate("common.loading")
-    }
-  }
-
-  /**
-   * Hide loading progress badge with fade-out
-   */
-  hideProgress() {
-    if (!this.hasProgressBadgeTarget) return
-    const badge = this.progressBadgeTarget
-    badge.classList.remove("visible")
-  }
-
-  /**
-   * Show loading indicator (alias for showProgress)
-   */
-  showLoading() {
-    this.showProgress()
-  }
-
-  hideLoading() {
-    this.hideProgress()
-  }
-
-  /**
-   * Update loading counts badge
-   */
-  updateLoadingCounts({ counts, isComplete }) {
-    this._lastLoadingCounts = counts
-    this._renderLoadingBadge(isComplete)
-  }
-
-  /**
-   * Render the loading badge text from current counts
-   * @private
-   */
-  _renderLoadingBadge(isComplete = false) {
-    if (!this.hasProgressBadgeTextTarget) return
-
-    const counts = this._lastLoadingCounts || {}
-    const parts = []
-    for (const [source, count] of Object.entries(counts)) {
-      parts.push(
-        translate(`loading_sources.${source}`, {
-          count,
-          formatted_count: formatNumber(count),
-        }),
-      )
-    }
-
-    // Append family count if family layer is enabled
-    if (this.settings?.familyEnabled && counts.family === undefined) {
-      const familyCount = this.familyManager.memberCount
-      parts.push(
-        translate("loading_sources.family", {
-          count: familyCount,
-          formatted_count: formatNumber(familyCount),
-        }),
-      )
-    }
-
-    // Detect when a new data source appears and trigger a pop animation
-    const sourceCount = parts.length
-    if (
-      this.hasProgressBadgeTarget &&
-      sourceCount > (this._lastSourceCount || 0)
-    ) {
-      const badge = this.progressBadgeTarget
-      badge.classList.remove("pop")
-      // Force reflow so re-adding the class restarts the animation
-      void badge.offsetWidth
-      badge.classList.add("pop")
-    }
-    this._lastSourceCount = sourceCount
-
-    this.progressBadgeTextTarget.textContent =
-      parts.length > 0 ? parts.join(" \u00B7 ") : translate("common.loading")
-
-    if (isComplete) {
-      if (this.hasProgressBadgeTarget) {
-        this.progressBadgeTarget.classList.add("complete")
-      }
-      this._lastSourceCount = 0
-      setTimeout(() => this.hideProgress(), 1200)
     }
   }
 

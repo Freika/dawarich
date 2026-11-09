@@ -70,9 +70,14 @@ function buildManager(map) {
     },
     filterManager: { setAllVisits: () => {} },
     eventHandlers: new Proxy({}, { get: () => () => {} }),
-    showProgress: () => {},
-    hideProgress: () => {},
-    updateLoadingCounts: () => {},
+    loadingBadge: {
+      show() {},
+      hide() {},
+      start() {},
+      finish() {},
+      update() {},
+      dismissIfIncomplete() {},
+    },
     hasProgressBadgeTarget: false,
     userPlanValue: "pro",
   }

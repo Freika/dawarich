@@ -44,9 +44,14 @@ function mapController(fetchPointsData) {
   Object.assign(controller, {
     dataLoader: { fetchPointsData },
     layerManager: { getLayer: () => null },
-    showProgress() {},
-    hideProgress() {},
-    updateLoadingCounts() {},
+    loadingBadge: {
+      show() {},
+      hide() {},
+      start() {},
+      finish() {},
+      update() {},
+      dismissIfIncomplete() {},
+    },
     closeInfo() {},
   })
   controller.mapDataManager = new MapDataManager(controller)
@@ -165,7 +170,7 @@ test("an invalidated failed points request clears its loading indicator", async 
         rejectLoad = reject
       }),
   )
-  maps.hideProgress = () => {
+  maps.loadingBadge.hide = () => {
     hidden += 1
   }
   const loading = maps.mapDataManager.ensurePointsLoaded()

@@ -26,11 +26,7 @@ export class PlacesManager extends PlacesTagFilters {
 
         // Show progress badge if layer has no data yet (initial load)
         if (!placesLayer.data?.features?.length) {
-          this.controller.showProgress()
-          this.controller.updateLoadingCounts({
-            counts: { places: 0 },
-            isComplete: false,
-          })
+          this.controller.loadingBadge.start("places")
 
           await this.initializePlaceTagFilters()
 
@@ -38,10 +34,7 @@ export class PlacesManager extends PlacesTagFilters {
             placesLayer.data?.features?.filter(
               (feature) => feature.properties?.featureKind === "center",
             ).length || 0
-          this.controller.updateLoadingCounts({
-            counts: { places: loadedPlaces },
-            isComplete: true,
-          })
+          this.controller.loadingBadge.finish("places", loadedPlaces)
         } else {
           this.initializePlaceTagFilters()
         }

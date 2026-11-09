@@ -55,7 +55,7 @@ export class MapDataManager {
     performanceMonitor.mark("load-map-data")
 
     if (showLoading) {
-      this.controller.showProgress()
+      this.controller.loadingBadge.show()
     }
 
     // Hoisted out of `try` so the `finally` block can await background
@@ -95,7 +95,7 @@ export class MapDataManager {
         viewportBounds,
         onUpdate: showLoading
           ? (info) => {
-              if (isCurrent()) this.controller.updateLoadingCounts(info)
+              if (isCurrent()) this.controller.loadingBadge.update(info)
             }
           : null,
         onLayerData: (source, geoJSON) => {
@@ -157,7 +157,7 @@ export class MapDataManager {
       if (!isCurrent()) return null
       console.error("[MapDataManager] Failed to load map data:", error)
       if (showLoading) {
-        this.controller.hideProgress()
+        this.controller.loadingBadge.hide()
       }
       Toast.error(
         translate("messages.failed_to_load_location_data_please_try_again"),
@@ -182,19 +182,8 @@ export class MapDataManager {
       // Safety net: if the counter didn't complete (e.g. no sources expected,
       // or the user has every layer disabled), ensure the badge is dismissed
       // after a short delay so it doesn't linger forever.
-      if (
-        isCurrent() &&
-        showLoading &&
-        this.controller.hasProgressBadgeTarget
-      ) {
-        const badge = this.controller.progressBadgeTarget
-        if (
-          badge.classList.contains("visible") &&
-          !badge.classList.contains("complete")
-        ) {
-          badge.classList.add("complete")
-          setTimeout(() => this.controller.hideProgress(), 800)
-        }
+      if (isCurrent() && showLoading) {
+        this.controller.loadingBadge.dismissIfIncomplete()
       }
     }
   }
@@ -243,11 +232,7 @@ export class MapDataManager {
       loadGeneration === this._loadGeneration &&
       pointsGeneration === this._pointsGeneration
     try {
-      this.controller.showProgress()
-      this.controller.updateLoadingCounts({
-        counts: { points: 0 },
-        isComplete: false,
-      })
+      this.controller.loadingBadge.start("points")
 
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const arrivalGeneration = this._pointsArrivalGeneration
@@ -265,10 +250,7 @@ export class MapDataManager {
         this.lastLoadedData.pointsGeoJSON = pointsGeoJSON
         this._pointsStale = stale
 
-        this.controller.updateLoadingCounts({
-          counts: { points: points.length },
-          isComplete: true,
-        })
+        this.controller.loadingBadge.finish("points", points.length)
         return
       }
     } finally {
@@ -277,7 +259,7 @@ export class MapDataManager {
         (pointsGeneration === this._pointsGeneration ||
           !this._pointsLoadPromise)
       )
-        this.controller.hideProgress()
+        this.controller.loadingBadge.hide()
     }
   }
 

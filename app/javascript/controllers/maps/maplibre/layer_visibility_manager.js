@@ -246,11 +246,7 @@ export class LayerVisibilityManager {
           photosLayer.show()
         } else {
           // Fetch photos from backend
-          this.controller.showProgress()
-          this.controller.updateLoadingCounts({
-            counts: { photos: 0 },
-            isComplete: false,
-          })
+          this.controller.loadingBadge.start("photos")
 
           const dataLoader = this.controller.dataLoader
           const photos = await dataLoader.fetchPhotosWithTimeout(
@@ -259,10 +255,7 @@ export class LayerVisibilityManager {
           )
           const photosGeoJSON = dataLoader.photosToGeoJSON(photos)
 
-          this.controller.updateLoadingCounts({
-            counts: { photos: photos.length },
-            isComplete: true,
-          })
+          this.controller.loadingBadge.finish("photos", photos.length)
 
           await this.layerManager._addPhotosLayer(photosGeoJSON)
 
@@ -384,11 +377,7 @@ export class LayerVisibilityManager {
     }
 
     const fetchId = ++this._anomaliesFetchId
-    this.controller.showProgress()
-    this.controller.updateLoadingCounts({
-      counts: { anomalies: 0 },
-      isComplete: false,
-    })
+    this.controller.loadingBadge.start("anomalies")
 
     try {
       const startDate = this.controller.startDateValue
@@ -400,20 +389,14 @@ export class LayerVisibilityManager {
 
       if (fetchId !== this._anomaliesFetchId) return
 
-      this.controller.updateLoadingCounts({
-        counts: { anomalies: geoJSON.features.length },
-        isComplete: true,
-      })
+      this.controller.loadingBadge.finish("anomalies", geoJSON.features.length)
 
       anomaliesLayer.update(geoJSON)
       anomaliesLayer.show()
     } catch (error) {
       if (fetchId !== this._anomaliesFetchId) return
       console.error("Failed to refresh anomalies layer:", error)
-      this.controller.updateLoadingCounts({
-        counts: { anomalies: 0 },
-        isComplete: true,
-      })
+      this.controller.loadingBadge.finish("anomalies", 0)
       Toast.error(translate("messages.failed_to_load_anomalies"))
     }
   }

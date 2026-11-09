@@ -1427,9 +1427,14 @@ test("point moves, undo and redo refresh exact points for replay", async () => {
   let revision = 2
   const controller = {
     map: fakeMap(),
-    showProgress() {},
-    hideProgress() {},
-    updateLoadingCounts() {},
+    loadingBadge: {
+      show() {},
+      hide() {},
+      start() {},
+      finish() {},
+      update() {},
+      dismissIfIncomplete() {},
+    },
     dataLoader: {
       fetchPointsData: async () => ({
         points: [point(7, position.longitude, position.latitude, revision)],
