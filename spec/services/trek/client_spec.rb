@@ -8,7 +8,6 @@ RSpec.describe Trek::Client do
       TripSource,
       base_url: 'https://trek.example.test',
       api_key: 'trek_test_key',
-      resolved_base_url_ip!: '93.184.216.34',
       skip_ssl_verification: false
     )
   end
@@ -20,10 +19,31 @@ RSpec.describe Trek::Client do
       .with(headers: { 'Authorization' => 'Bearer trek_test_key', 'Accept' => 'application/json' })
       .to_return(status: 200, body: { trips: [{ id: 12, title: 'Tuscany' }] }.to_json)
 
-    expect(Net::HTTP).to receive(:new).with('trek.example.test', 443, nil).and_call_original
-
     expect(client.trips).to eq([{ 'id' => 12, 'title' => 'Tuscany' }])
-    expect(source).to have_received(:resolved_base_url_ip!)
+  end
+
+  it 'refuses a base URL that resolves to a blocked address without sending a request' do
+    stub_host_addresses('trek.example.test', '169.254.169.254')
+    request = stub_request(:get, 'https://trek.example.test/api/v1/trips')
+
+    expect { client.trips }.to raise_error(Trek::Client::Error, /TREK URL was rejected/)
+    expect(request).not_to have_been_requested
+  end
+
+  it 'reports a host that does not resolve as a rejected URL' do
+    stub_unresolvable_host('trek.example.test')
+
+    expect { client.trips }.to raise_error(Trek::Client::Error, /TREK URL was rejected: .*resolve/i)
+  end
+
+  it 'reports a redirect as a failed request and keeps its status' do
+    stub_request(:get, 'https://trek.example.test/api/v1/trips')
+      .to_return(status: 302, headers: { 'Location' => 'https://elsewhere.test/' })
+
+    expect { client.trips }
+      .to raise_error(Trek::Client::Error, 'TREK request failed with HTTP 302') { |error|
+        expect(error.status).to eq(302)
+      }
   end
 
   describe 'certificate verification' do
@@ -88,14 +108,14 @@ RSpec.describe Trek::Client do
   end
 
   it 'connects to a bracketed IPv6 base URL by its bare address' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
     ipv6_source = instance_double(TripSource, base_url: 'http://[fd00::5]:3000', api_key: 'trek_test_key',
-                                              resolved_base_url_ip!: 'fd00::5')
-    stub_request(:get, 'http://[fd00::5]:3000/api/v1/trips')
-      .to_return(status: 200, body: { trips: [] }.to_json)
-
-    expect(Net::HTTP).to receive(:new).with('fd00::5', 3000, nil).and_call_original
+                                              skip_ssl_verification: false)
+    request = stub_request(:get, 'http://[fd00::5]:3000/api/v1/trips')
+              .to_return(status: 200, body: { trips: [] }.to_json)
 
     expect(described_class.new(ipv6_source).trips).to eq([])
+    expect(request).to have_been_requested
   end
 
   it 'turns a non-success response into an error that retains the status' do
