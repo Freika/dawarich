@@ -129,11 +129,29 @@ RSpec.describe Immich::EnrichPhotos, 'request safety' do
     expect(request).to have_been_requested
   end
 
-  it 'names the underlying failure, not the transport, when the connection fails' do
+  def error_for(asset_id = 'uuid-1')
+    result = described_class.new(user, [{ 'immich_asset_id' => asset_id, 'latitude' => 1.0, 'longitude' => 2.0 }]).call
+    result[:errors].first[:error]
+  end
+
+  it 'says what went wrong when the connection fails, not which class reported it' do
     stub_request(:put, 'http://immich.app/api/assets/uuid-1').to_raise(Errno::ECONNREFUSED)
 
-    result = described_class.new(user, [{ 'immich_asset_id' => 'uuid-1', 'latitude' => 1.0, 'longitude' => 2.0 }]).call
+    expect(error_for).to include('Connection refused')
+    expect(error_for).not_to include('Transport')
+  end
 
-    expect(result[:errors].first[:error]).to include('Errno::ECONNREFUSED')
+  it 'says that the host does not resolve' do
+    stub_unresolvable_host('immich.app')
+
+    expect(error_for).to match(/resolve/i)
+    expect(error_for).not_to include('BlockedUrlError')
+  end
+
+  it 'passes on the redirect hint' do
+    stub_request(:put, 'http://immich.app/api/assets/uuid-1')
+      .to_return(status: 301, headers: { 'Location' => 'https://immich.app/api/assets/uuid-1' })
+
+    expect(error_for).to include('https://immich.app', 'final URL')
   end
 end

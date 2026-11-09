@@ -63,7 +63,7 @@ class Immich::EnrichPhotos
   rescue *Photos::ConnectionErrors::HANDLED => e
     { success: false,
       error: I18n.t('services.immich.connection_tester.immich_connection_failed_message',
-                    message: Photos::ConnectionErrors.cause_name(e)) }
+                    message: Photos::ConnectionErrors.describe(e)) }
   end
 
   def immich_url

@@ -31,11 +31,18 @@ module Photos
         (error.is_a?(Integrations::Transport::Error) && error.certificate?)
     end
 
-    # The class a user-facing message should name: what actually went wrong,
-    # not the transport that reported it.
-    def self.cause_name(error)
-      underlying = error.is_a?(Integrations::Transport::Error) ? error.cause : nil
-      (underlying || error).class.name
+    # Worth raising to a caller that asked for connection errors: a failure a
+    # retry may fix, or one the transport refused outright (redirect, blocked
+    # address), which the user has to hear about.
+    def self.reportable?(error)
+      retryable?(error) || error.is_a?(Integrations::Transport::Error)
+    end
+
+    # What a user-facing message should say. A transport error already carries
+    # a readable message (the redirect hint, the DNS text); for anything else
+    # the class name is the most specific thing available.
+    def self.describe(error)
+      error.is_a?(Integrations::Transport::Error) ? error.message : error.class.name
     end
   end
 end

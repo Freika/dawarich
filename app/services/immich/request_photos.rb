@@ -60,7 +60,7 @@ class Immich::RequestPhotos
     data.flatten.reject { |photo| photo['isArchived'] == true || photo['visibility'] == 'archive' }
   rescue *Photos::ConnectionErrors::HANDLED => e
     Rails.logger.error("Immich photo fetch failed: #{e.message}")
-    raise if @raise_on_connection_error && Photos::ConnectionErrors.retryable?(e)
+    raise if @raise_on_connection_error && Photos::ConnectionErrors.reportable?(e)
 
     nil
   end
