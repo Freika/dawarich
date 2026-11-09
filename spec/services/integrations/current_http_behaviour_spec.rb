@@ -35,19 +35,6 @@ RSpec.describe 'Integration HTTP behaviour before the transport' do
     end
   end
 
-  describe 'a redirect answer' do
-    it 'is followed by a GET client (AirTrail)' do
-      stub_request(:get, 'http://airtrail.lan/api/flight/list?scope=mine')
-        .to_return(status: 302, headers: { 'Location' => 'http://airtrail.lan/final' })
-      final = stub_request(:get, 'http://airtrail.lan/final')
-              .to_return(status: 200, body: { success: true, flights: [] }.to_json)
-
-      AirTrail::Client.new('http://airtrail.lan', 'key').flights
-
-      expect(final).to have_been_requested
-    end
-  end
-
   describe 'the response object' do
     it 'has an Integer code and case-insensitive headers' do
       stub_request(:get, 'http://airtrail.lan/probe')

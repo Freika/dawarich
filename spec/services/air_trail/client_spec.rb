@@ -32,6 +32,23 @@ RSpec.describe AirTrail::Client do
       expect { client.flights }.to raise_error(AirTrail::Client::Error)
     end
 
+    it 'refuses a URL that resolves to a blocked address without sending a request' do
+      stub_host_addresses('airtrail.example', '169.254.169.254')
+      request = stub_request(:get, 'https://airtrail.example/api/flight/list?scope=mine')
+
+      expect { client.flights }.to raise_error(AirTrail::Client::Error)
+      expect(request).not_to have_been_requested
+    end
+
+    it 'does not follow a redirect and keeps its status' do
+      stub_request(:get, 'https://airtrail.example/api/flight/list?scope=mine')
+        .to_return(status: 301, headers: { 'Location' => 'https://elsewhere.example/' })
+      followed = stub_request(:get, 'https://elsewhere.example/')
+
+      expect { client.flights }.to raise_error(AirTrail::Client::Error) { |error| expect(error.status).to eq(301) }
+      expect(followed).not_to have_been_requested
+    end
+
     it 'raises AirTrail::Client::Error when the connection is refused' do
       stub_request(:get, 'https://airtrail.example/api/flight/list?scope=mine')
         .to_raise(Errno::ECONNREFUSED)
