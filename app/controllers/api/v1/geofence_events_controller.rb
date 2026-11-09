@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::GeofenceEventsController < ApiController
+  include SafeTimestampParser
+
   before_action :authenticate_active_api_user!
 
   def index
@@ -16,17 +18,11 @@ class Api::V1::GeofenceEventsController < ApiController
   private
 
   def within_dates(events)
-    start_at = parse_date(params[:start_at])&.beginning_of_day
-    end_at = parse_date(params[:end_at])&.end_of_day
+    start_at = parse_time_param(params[:start_at])&.beginning_of_day
+    end_at = parse_time_param(params[:end_at])&.end_of_day
     events = events.where(occurred_at: start_at..) if start_at
     events = events.where(occurred_at: ..end_at) if end_at
     events
-  end
-
-  def parse_date(value)
-    Time.zone.parse(value.to_s) if value.present?
-  rescue ArgumentError
-    nil
   end
 
   def per_page

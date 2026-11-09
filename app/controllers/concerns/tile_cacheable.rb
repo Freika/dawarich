@@ -110,32 +110,10 @@ module TileCacheable
   end
 
   def cacheable_start_at
-    @cacheable_start_at ||= parse_cacheable_timestamp(params[:start_at])
+    @cacheable_start_at ||= strict_timestamp(params[:start_at])
   end
 
   def cacheable_end_at
-    @cacheable_end_at ||= parse_cacheable_timestamp(params[:end_at])
-  end
-
-  # Stricter than safe_timestamp, which substitutes "now" for garbage — fine
-  # for querying, poison for an ETag (content would drift under a constant key).
-  def parse_cacheable_timestamp(value)
-    return nil if value.blank?
-    return clamp_timestamp(value.to_i) if value.match?(/\A\d+\z/)
-
-    parsed = Time.zone.parse(value)
-    return nil if parsed.nil?
-    # Time.zone.parse yields year-2000 epoch for unparseable strings
-    return nil if parsed.year == 2000 && !value.include?('2000')
-
-    clamp_timestamp(parsed.to_i)
-  rescue ArgumentError, TypeError
-    nil
-  end
-
-  # Same bounds and zone semantics as SafeTimestampParser — keeps the ETag
-  # window identical to the query window and caps TileEpoch's year-key fan-out.
-  def clamp_timestamp(value)
-    value.clamp(Time.zone.parse('1970-01-01').to_i, Time.zone.parse('2100-01-01').to_i)
+    @cacheable_end_at ||= strict_timestamp(params[:end_at])
   end
 end
