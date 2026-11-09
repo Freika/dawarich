@@ -113,14 +113,22 @@ export class LayerManager {
     // MVT track fragments carry the same id property; the click flow fetches
     // the full geometry by id, so a clipped fragment is a valid entry point.
     subscribe("click", "tracks-mvt", handlers.handleTrackClick)
-    subscribe("mouseenter", "tracks-mvt", () => {
-      this.map.getCanvas().style.cursor = "pointer"
-    })
-    subscribe("mouseleave", "tracks-mvt", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
 
-    // Cursor change on hover
+    const setCursor = (cursor) => {
+      this.map.getCanvas().style.cursor = cursor
+    }
+    for (const layerId of [
+      "tracks-mvt",
+      "visits",
+      "photos",
+      "places",
+      "places-radius-outline",
+      "anomalies",
+    ]) {
+      subscribe("mouseenter", layerId, () => setCursor("pointer"))
+      subscribe("mouseleave", layerId, () => setCursor(""))
+    }
+
     // mousemove, not mouseenter: single points and merged cells sit side by side
     // in this layer, and mouseenter fires only on entering the layer as a whole.
     subscribe("mousemove", "points-mvt", (e) => {
@@ -133,48 +141,14 @@ export class LayerManager {
           this.map.getZoom() >= (this.map.getMaxZoom?.() ?? 22)
             ? "pointer"
             : "zoom-in"
-      this.map.getCanvas().style.cursor = cursor
+      setCursor(cursor)
     })
-    subscribe("mouseleave", "points-mvt", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
+    subscribe("mouseleave", "points-mvt", () => setCursor(""))
     subscribe("mousemove", "track-points", (e) => {
       const properties = e.features?.[0]?.properties
-      this.map.getCanvas().style.cursor = handlers.canDragPoint?.(properties)
-        ? "grab"
-        : "pointer"
+      setCursor(handlers.canDragPoint?.(properties) ? "grab" : "pointer")
     })
-    subscribe("mouseleave", "track-points", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
-    subscribe("mouseenter", "visits", () => {
-      this.map.getCanvas().style.cursor = "pointer"
-    })
-    subscribe("mouseleave", "visits", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
-    subscribe("mouseenter", "photos", () => {
-      this.map.getCanvas().style.cursor = "pointer"
-    })
-    subscribe("mouseleave", "photos", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
-    const placeLayers = ["places", "places-radius-outline"]
-    placeLayers.forEach((layerId) => {
-      subscribe("mouseenter", layerId, () => {
-        this.map.getCanvas().style.cursor = "pointer"
-      })
-      subscribe("mouseleave", layerId, () => {
-        this.map.getCanvas().style.cursor = ""
-      })
-    })
-    // Anomalies cursor handlers
-    subscribe("mouseenter", "anomalies", () => {
-      this.map.getCanvas().style.cursor = "pointer"
-    })
-    subscribe("mouseleave", "anomalies", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
+    subscribe("mouseleave", "track-points", () => setCursor(""))
     // Map-level click clears the focused track selection.
     subscribe("click", (e) => {
       // Track points are part of a selected track — clicking them should not clear the selection
@@ -267,6 +241,20 @@ export class LayerManager {
 
   // Private methods for individual layer management
 
+  /** Build the layer on first use, otherwise hand it the new data. */
+  _addOrUpdate(key, create, data) {
+    if (this.layers[key]) return this.layers[key].update(data)
+    this.layers[key] = create()
+    return this.layers[key].add(data)
+  }
+
+  /** Build a layer that starts empty and is filled by its own owner. */
+  _addOnce(key, create) {
+    if (this.layers[key]) return
+    this.layers[key] = create()
+    this.layers[key].add({ type: "FeatureCollection", features: [] })
+  }
+
   async _addScratchLayer() {
     const styleGeneration = this._styleGeneration
     try {
@@ -327,37 +315,37 @@ export class LayerManager {
   }
 
   _addTracksLayer(tracksGeoJSON) {
-    if (!this.layers.tracksLayer) {
-      this.layers.tracksLayer = new TracksLayer(this.map, {
-        visible: this.settings.tracksEnabled || false,
-      })
-      this.layers.tracksLayer.add(tracksGeoJSON)
-    } else {
-      this.layers.tracksLayer.update(tracksGeoJSON)
-    }
+    this._addOrUpdate(
+      "tracksLayer",
+      () =>
+        new TracksLayer(this.map, {
+          visible: this.settings.tracksEnabled || false,
+        }),
+      tracksGeoJSON,
+    )
   }
 
   _addFlightsLayer(flightsGeoJSON) {
-    if (!this.layers.flightsLayer) {
-      this.layers.flightsLayer = new FlightsLayer(this.map, {
-        visible: this.settings.flightsEnabled || false,
-        style: this.settings.mapStyle || "light",
-      })
-      this.layers.flightsLayer.add(flightsGeoJSON)
-    } else {
-      this.layers.flightsLayer.update(flightsGeoJSON)
-    }
+    this._addOrUpdate(
+      "flightsLayer",
+      () =>
+        new FlightsLayer(this.map, {
+          visible: this.settings.flightsEnabled || false,
+          style: this.settings.mapStyle || "light",
+        }),
+      flightsGeoJSON,
+    )
   }
 
   _addVisitsLayer(visitsGeoJSON) {
-    if (!this.layers.visitsLayer) {
-      this.layers.visitsLayer = new VisitsLayer(this.map, {
-        visible: this.settings.visitsEnabled || false,
-      })
-      this.layers.visitsLayer.add(visitsGeoJSON)
-    } else {
-      this.layers.visitsLayer.update(visitsGeoJSON)
-    }
+    this._addOrUpdate(
+      "visitsLayer",
+      () =>
+        new VisitsLayer(this.map, {
+          visible: this.settings.visitsEnabled || false,
+        }),
+      visitsGeoJSON,
+    )
   }
 
   _addPlacesLayer(placesGeoJSON) {
@@ -377,38 +365,37 @@ export class LayerManager {
   }
 
   async _addPhotosLayer(photosGeoJSON) {
-    if (!this.layers.photosLayer) {
-      this.layers.photosLayer = new PhotosLayer(this.map, {
-        visible: this.settings.photosEnabled || false,
-        timezone: this.settings.timezone,
-      })
-      await this.layers.photosLayer.add(photosGeoJSON)
-    } else {
-      await this.layers.photosLayer.update(photosGeoJSON)
-    }
+    await this._addOrUpdate(
+      "photosLayer",
+      () =>
+        new PhotosLayer(this.map, {
+          visible: this.settings.photosEnabled || false,
+          timezone: this.settings.timezone,
+        }),
+      photosGeoJSON,
+    )
   }
 
   _addFamilyLayer() {
-    if (!this.layers.familyLayer) {
-      this.layers.familyLayer = new FamilyLayer(this.map, {
-        visible: this.settings.familyEnabled || false,
-      })
-      this.layers.familyLayer.add({ type: "FeatureCollection", features: [] })
-    }
+    this._addOnce(
+      "familyLayer",
+      () =>
+        new FamilyLayer(this.map, {
+          visible: this.settings.familyEnabled || false,
+        }),
+    )
   }
 
   _addAnomaliesLayer() {
-    if (!this.layers.anomaliesLayer) {
-      this.layers.anomaliesLayer = new AnomaliesLayer(this.map, {
-        visible: false,
-        apiClient: this.api,
-        timezone: this.settings.timezone,
-      })
-      this.layers.anomaliesLayer.add({
-        type: "FeatureCollection",
-        features: [],
-      })
-    }
+    this._addOnce(
+      "anomaliesLayer",
+      () =>
+        new AnomaliesLayer(this.map, {
+          visible: false,
+          apiClient: this.api,
+          timezone: this.settings.timezone,
+        }),
+    )
   }
 
   // Tile-backed canonical Tracks layer; added below points so circles stay on
@@ -487,15 +474,11 @@ export class LayerManager {
   }
 
   _addReplayMarkerLayer() {
-    if (!this.layers.replayMarkerLayer) {
-      this.layers.replayMarkerLayer = new ReplayMarkerLayer(this.map, {
-        visible: false, // Initially hidden, shown when replay is active
-      })
-      this.layers.replayMarkerLayer.add({
-        type: "FeatureCollection",
-        features: [],
-      })
-    }
+    // Hidden until a replay starts.
+    this._addOnce(
+      "replayMarkerLayer",
+      () => new ReplayMarkerLayer(this.map, { visible: false }),
+    )
   }
 
   _addFogLayer() {
