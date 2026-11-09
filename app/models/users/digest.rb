@@ -4,6 +4,9 @@ class Users::Digest < ApplicationRecord
   self.table_name = 'digests'
 
   include DistanceConvertible
+  include PubliclyShareable
+
+  DEFAULT_SHARING_EXPIRATION = '24h'
 
   EARTH_CIRCUMFERENCE_KM = 40_075
   MOON_DISTANCE_KM = 384_400
@@ -40,65 +43,6 @@ class Users::Digest < ApplicationRecord
   # Versioned by updated_at, so a recalculated digest never reads a stale entry.
   def insights_cache_key
     "insights/yearly_digest/#{user_id}/#{year}/#{updated_at.to_i}"
-  end
-
-  def sharing_enabled?
-    sharing_settings.try(:[], 'enabled') == true
-  end
-
-  def sharing_expired?
-    expiration = sharing_settings.try(:[], 'expiration')
-    return false if expiration.blank?
-
-    expires_at_value = sharing_settings.try(:[], 'expires_at')
-    return true if expires_at_value.blank?
-
-    expires_at = begin
-      Time.zone.parse(expires_at_value)
-    rescue StandardError
-      nil
-    end
-
-    expires_at.present? ? Time.current > expires_at : true
-  end
-
-  def public_accessible?
-    sharing_enabled? && !sharing_expired?
-  end
-
-  def generate_new_sharing_uuid!
-    update!(sharing_uuid: SecureRandom.uuid)
-  end
-
-  def enable_sharing!(expiration: '24h')
-    expiration = '24h' unless %w[1h 12h 24h 1w 1m].include?(expiration)
-
-    expires_at = case expiration
-                 when '1h' then 1.hour.from_now
-                 when '12h' then 12.hours.from_now
-                 when '24h' then 24.hours.from_now
-                 when '1w' then 1.week.from_now
-                 when '1m' then 1.month.from_now
-                 end
-
-    update!(
-      sharing_settings: {
-        'enabled' => true,
-        'expiration' => expiration,
-        'expires_at' => expires_at.iso8601
-      },
-      sharing_uuid: sharing_uuid || SecureRandom.uuid
-    )
-  end
-
-  def disable_sharing!
-    update!(
-      sharing_settings: {
-        'enabled' => false,
-        'expiration' => nil,
-        'expires_at' => nil
-      }
-    )
   end
 
   def countries_count
