@@ -13,7 +13,6 @@ class Tracks::SessionManager
     @session_id = session_id || SecureRandom.uuid
   end
 
-  # Create a new session
   def create_session(metadata = {})
     session_data = {
       'status' => 'pending',
@@ -47,7 +46,6 @@ class Tracks::SessionManager
     true
   end
 
-  # Get session data
   def get_session_data
     data = Rails.cache.read(cache_key)
     return nil unless data
@@ -72,7 +70,6 @@ class Tracks::SessionManager
     )
   end
 
-  # Increment completed chunks
   def increment_completed_chunks
     return false unless session_exists?
 
@@ -97,7 +94,6 @@ class Tracks::SessionManager
     true
   end
 
-  # Increment tracks created
   def increment_tracks_created(count = 1)
     return false unless session_exists?
 
