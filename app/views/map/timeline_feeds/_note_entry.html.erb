@@ -1,0 +1,10 @@
+<%# locals: (entry:) %>
+<%# A map note the user wrote, shown at the moment it describes. The link loads
+    the edit form into the map note dialog's turbo frame. %>
+<li class="timeline-entry timeline-entry--note" data-entry-type="note" data-note-id="<%= entry[:note_id] %>">
+  <%= link_to edit_note_path(entry[:note_id]), class: 'note-leg', data: { turbo_frame: 'map-note-form' } do %>
+    <span class="note-leg__time"><%= l(Time.zone.parse(entry[:noted_at]), format: :hour_minute) %></span>
+    <span class="note-leg__rail-col" aria-hidden="true"><%= icon 'square-pen', class: 'note-leg__icon' %></span>
+    <span class="note-leg__body"><%= entry[:body] %></span>
+  <% end %>
+</li>

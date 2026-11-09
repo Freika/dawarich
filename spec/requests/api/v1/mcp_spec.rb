@@ -221,6 +221,20 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
       expect(entry).not_to include('editable_name', 'place_id', 'suggested_places')
     end
 
+    it 'carries the map notes and the facts line of the day' do
+      create(:note, user: user, body: 'Rain started here', noted_at: day + 11.hours, latitude: 52.5, longitude: 13.4)
+
+      result = timeline
+      first_day = result.dig('result', 'structuredContent', 'days', 0)
+
+      expect(result.dig('result', 'isError')).to be(false)
+      expect(first_day['notes']).to contain_exactly(
+        include('body' => 'Rain started here', 'latitude' => 52.5, 'longitude' => 13.4)
+      )
+      expect(first_day['notes'].first.keys).not_to include('note_id')
+      expect(first_day.dig('summary', 'facts')).to eq('Home')
+    end
+
     it 'names the time zone of the place' do
       Timezone.create!(tzid: 'Europe/Berlin', geom: 'SRID=4326;POLYGON((6 47, 15 47, 15 55, 6 55, 6 47))')
 

@@ -136,6 +136,21 @@ module TimelineHelper
     end
   end
 
+  # The day's rows: visits, journeys and gaps, with each map note slotted in at
+  # the moment it describes. Notes join after gaps are measured, so a note
+  # never splits or hides an untracked stretch.
+  def timeline_rows(day)
+    rows = timeline_entries_with_gaps(day[:entries])
+
+    Array(day[:notes]).each do |note|
+      noted_at = Time.iso8601(note[:noted_at])
+      index = rows.index { |row| Time.iso8601((row[:started_at] || row[:noted_at]).to_s) > noted_at }
+      rows.insert(index || rows.size, note.merge(type: 'note'))
+    end
+
+    rows
+  end
+
   def timeline_gap_min_minutes
     return TIMELINE_GAP_MIN_MINUTES if current_user&.visits_redetected_at
 

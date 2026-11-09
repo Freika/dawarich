@@ -3,6 +3,7 @@
 module Timeline
   class DayAssembler
     include VisitEntries
+    include NoteEntries
     include DayBounds
 
     # Hard cap on the requested window. The UI consumes day-by-day; ranges
@@ -35,8 +36,9 @@ module Timeline
 
       visits = fetch_visits
       tracks = fetch_tracks
+      notes = fetch_notes
 
-      return [] if visits.empty? && tracks.empty?
+      return [] if visits.empty? && tracks.empty? && notes.empty?
 
       @segment_stats = load_segment_stats(tracks)
 
@@ -46,7 +48,7 @@ module Timeline
       @visit_point_counts = Point.where(visit_id: visits.map(&:id)).group(:visit_id).count
       @local_timezones = Timezones::Lookup.call(local_zone_coordinates(visits, tracks))
 
-      days = group_by_day(visits, tracks)
+      days = group_by_day(visits, tracks, notes)
       build_days(days)
     end
 
@@ -104,7 +106,7 @@ module Timeline
       }
     end
 
-    def group_by_day(visits, tracks)
+    def group_by_day(visits, tracks, notes)
       Time.use_zone(timezone) do
         grouped = {}
         window = start_at.in_time_zone.to_date..end_at.in_time_zone.to_date
@@ -131,12 +133,19 @@ module Timeline
           end
         end
 
+        notes.each do |note|
+          day_key = note.noted_at.in_time_zone.to_date
+          next unless window.cover?(day_key)
+
+          (grouped[day_key] ||= empty_day_bucket)[:notes] << note
+        end
+
         grouped.sort_by(&:first)
       end
     end
 
     def empty_day_bucket
-      { visits: [], tracks: [], originating_tracks: [], track_shares: {}, visit_shares: {} }
+      { visits: [], tracks: [], originating_tracks: [], track_shares: {}, visit_shares: {}, notes: [] }
     end
 
     def build_days(days)
@@ -145,11 +154,13 @@ module Timeline
 
     def build_day(date, data)
       entries = interleave(date, data, data[:track_shares])
+      summary = build_summary(data[:visits], data[:tracks], data[:track_shares], data[:visit_shares])
       {
         date: date.to_s,
-        summary: build_summary(data[:visits], data[:tracks], data[:track_shares], data[:visit_shares]),
+        summary: summary.merge(facts: facts_line(data[:visits], summary[:total_distance])),
         bounds: build_bounds(data[:visits], data[:originating_tracks]),
-        entries: entries
+        entries: entries,
+        notes: data[:notes].map { |note| build_note_entry(note) }
       }
     end
 

@@ -3,7 +3,9 @@
           data-action="cancel->map-note#close" data-testid="map-note-modal">
     <div class="modal-box max-w-lg min-w-0">
       <h3 class="font-medium text-lg mb-4" id="map-note-title"><%= t('.map_note') %></h3>
-      <turbo-frame id="map-note-form" data-map-note-target="frame"></turbo-frame>
+      <%# Any link that targets this frame opens the dialog once its form has loaded. %>
+      <turbo-frame id="map-note-form" data-map-note-target="frame"
+                   data-action="turbo:frame-load->map-note#show"></turbo-frame>
     </div>
     <div class="modal-backdrop" data-action="click->map-note#close"></div>
   </dialog>

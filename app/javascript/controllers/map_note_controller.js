@@ -33,6 +33,10 @@ export default class extends Controller {
   open(url) {
     this.frameTarget.innerHTML = ""
     this.frameTarget.src = url
+    this.show()
+  }
+
+  show() {
     if (!this.modalTarget.open) this.modalTarget.showModal()
   }
 

@@ -1,5 +1,6 @@
 <%
   entries = Array(day[:entries])
+  rows = timeline_rows(day)
   moving_minutes = day[:summary][:time_moving_minutes].to_i
   distance_unit  = day[:summary][:distance_unit]
   mode_distances = day[:summary][:mode_distances] || {}
@@ -19,6 +20,12 @@
       <% end %>
     </div>
   </div>
+
+  <%# Where the day went, in the names of its places. Generated from the
+      visits, so it is absent on a day that only has notes. %>
+  <% if day[:summary][:facts].present? %>
+    <p class="timeline-day-facts"><%= day[:summary][:facts] %></p>
+  <% end %>
 
   <%# One summary line for the whole day: how you moved, and for how long.
       Total distance, visit count, and the moving/stationary bar were all
@@ -44,10 +51,12 @@
 
   <%= render partial: 'map/timeline_feeds/selection_bar', locals: { date: day[:date] } %>
 
-  <% if entries.present? %>
+  <% if rows.present? %>
     <ol class="timeline-entries">
-      <% timeline_entries_with_gaps(entries).each do |entry| %>
+      <% rows.each do |entry| %>
         <% case entry[:type] %>
+        <% when 'note' %>
+          <%= render partial: 'map/timeline_feeds/note_entry', locals: { entry: entry } %>
         <% when 'visit' %>
           <%= render partial: 'map/timeline_feeds/visit_entry', locals: { entry: entry, day: day } %>
         <% when 'gap' %>

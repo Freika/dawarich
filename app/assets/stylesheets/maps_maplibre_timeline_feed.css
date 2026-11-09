@@ -1293,3 +1293,62 @@
   color: oklch(var(--bc) / 0.8);
   border-style: solid;
 }
+
+/* ── Day facts line: the places of the day, in order ── */
+.timeline-day-facts {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  color: var(--tl-text-2);
+  overflow-wrap: anywhere;
+}
+
+/* ── Map note: the user's own words, at the moment they describe ── */
+.timeline-entry--note {
+  display: block;
+  padding: 0;
+}
+
+/* Same columns as a journey leg, so the note's time and text line up with
+   every other row. Top-aligned: a note is often several lines long. */
+.note-leg {
+  display: grid;
+  grid-template-columns: var(--tl-time-col) var(--tl-rail-col) minmax(0, 1fr);
+  gap: var(--tl-col-gap);
+  align-items: start;
+  padding: 0.4rem var(--tl-pad-x);
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.note-leg:hover,
+.note-leg:focus-visible {
+  background: oklch(var(--bc) / 0.05);
+}
+
+.note-leg__time {
+  text-align: right;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--tl-text-2);
+  padding-top: 0.15rem;
+}
+
+.note-leg__rail-col {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.1rem;
+}
+
+.note-leg__icon {
+  width: 14px;
+  height: 14px;
+  color: #f59e0b;
+}
+
+.note-leg__body {
+  min-width: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

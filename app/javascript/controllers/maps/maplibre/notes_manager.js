@@ -33,10 +33,15 @@ export class NotesManager {
       if (this.controller.hasNotesToggleTarget) {
         this.controller.notesToggleTarget.checked = true
       }
+      this.onChanged()
+    }
+    // The open day lists its notes, so it follows every change too.
+    this.onChanged = () => {
       this.reload()
+      this.controller.refreshTimelineFeedIfActive?.()
     }
     document.addEventListener("note:saved", this.onSaved)
-    document.addEventListener("note:deleted", this.reload)
+    document.addEventListener("note:deleted", this.onChanged)
   }
 
   setEnabled(enabled) {
@@ -144,7 +149,7 @@ export class NotesManager {
   destroy() {
     this.disarm()
     document.removeEventListener("note:saved", this.onSaved)
-    document.removeEventListener("note:deleted", this.reload)
+    document.removeEventListener("note:deleted", this.onChanged)
     this.map?.off("click", "notes", this.onNoteClick)
     this.map?.off("styledata", this.onStyleData)
   }
