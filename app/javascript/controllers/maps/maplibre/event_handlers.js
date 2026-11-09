@@ -2,11 +2,7 @@ import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { PointDragGesture } from "maps_maplibre/editing/point_drag_gesture"
-import {
-  formatDistance,
-  formatSpeed,
-  minutesToDaysHoursMinutes,
-} from "maps_maplibre/utils/format_helpers"
+import { formatSpeed } from "maps_maplibre/utils/format_helpers"
 import {
   escapeHtml,
   formatTimestamp,
