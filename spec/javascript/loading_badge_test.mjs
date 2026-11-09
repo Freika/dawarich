@@ -15,6 +15,22 @@ function classes() {
   }
 }
 
+// CI's Node 18.17 has no t.mock.timers; collect the badge's timeouts instead.
+function fakeTimers(t) {
+  const pending = []
+  t.mock.method(globalThis, "setTimeout", (fn, ms) => {
+    pending.push({ fn, ms })
+  })
+  return {
+    tick(ms) {
+      for (const timer of pending.splice(0)) {
+        if (timer.ms <= ms) timer.fn()
+        else pending.push({ ...timer, ms: timer.ms - ms })
+      }
+    },
+  }
+}
+
 function badgeHarness(controllerExtras = {}) {
   const badge = { classList: classes(), offsetWidth: 0 }
   const text = { textContent: "" }
@@ -29,7 +45,7 @@ function badgeHarness(controllerExtras = {}) {
 }
 
 test("a source that finishes marks the badge complete and hides it", (t) => {
-  t.mock.timers.enable({ apis: ["setTimeout"] })
+  const timers = fakeTimers(t)
   const { loading, badge, text } = badgeHarness()
 
   loading.start("points")
@@ -38,30 +54,30 @@ test("a source that finishes marks the badge complete and hides it", (t) => {
 
   loading.finish("points", 12)
   assert.equal(badge.classList.contains("complete"), true)
-  t.mock.timers.tick(1200)
+  timers.tick(1200)
   assert.equal(badge.classList.contains("visible"), false)
 })
 
 test("a badge no source completed is dismissed after a short delay", (t) => {
-  t.mock.timers.enable({ apis: ["setTimeout"] })
+  const timers = fakeTimers(t)
   const { loading, badge } = badgeHarness()
 
   loading.show()
   loading.dismissIfIncomplete()
-  t.mock.timers.tick(799)
+  timers.tick(799)
   assert.equal(badge.classList.contains("visible"), true)
-  t.mock.timers.tick(1)
+  timers.tick(1)
   assert.equal(badge.classList.contains("visible"), false)
 })
 
 test("a completed badge is left to its own fade", (t) => {
-  t.mock.timers.enable({ apis: ["setTimeout"] })
+  const timers = fakeTimers(t)
   const { loading, badge } = badgeHarness()
 
   loading.start("visits")
   loading.finish("visits", 3)
   loading.dismissIfIncomplete()
-  t.mock.timers.tick(800)
+  timers.tick(800)
   assert.equal(badge.classList.contains("visible"), true)
 })
 
