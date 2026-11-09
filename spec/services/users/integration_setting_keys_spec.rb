@@ -23,6 +23,14 @@ RSpec.describe Users::IntegrationSettingKeys do
       expect(described_class.without_credentials('http://user:pa ss@immich.lan/')).to eq('http://immich.lan/')
     end
 
+    it 'removes credentials from a URL saved without a scheme' do
+      expect(described_class.without_credentials('user:pass@immich.lan')).to eq('immich.lan')
+    end
+
+    it 'removes credentials when the password itself contains @' do
+      expect(described_class.without_credentials('http://user:p@ss@immich.lan/')).to eq('http://immich.lan/')
+    end
+
     it 'passes through nil and non-strings' do
       expect(described_class.without_credentials(nil)).to be_nil
       expect(described_class.without_credentials(42)).to eq(42)
@@ -42,6 +50,10 @@ RSpec.describe Users::IntegrationSettingKeys do
         'teslamate_username' => 'proxy', 'maps_maplibre_tiles_url' => 'https://k:v@tiles.example/{z}/{x}/{y}.png'
       )
     end
+  end
+
+  it 'has every secret covered by the JSON settings log filter' do
+    expect(SENSITIVE_SETTINGS_KEYS).to match_array(described_class::SECRETS)
   end
 
   describe '.connection_key?' do

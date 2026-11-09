@@ -216,7 +216,7 @@ describe 'Settings API', type: :request do
                          { type: :null }
                        ],
                        example: 'https://immich.example.com',
-                       description: 'Immich server URL for photo integration'
+                       description: 'Immich server URL, returned without any user:password@ part'
                      },
                      immich_configured: {
                        type: :boolean,
@@ -229,12 +229,25 @@ describe 'Settings API', type: :request do
                          { type: :null }
                        ],
                        example: 'https://photoprism.example.com',
-                       description: 'PhotoPrism server URL for photo integration'
+                       description: 'PhotoPrism server URL, returned without any user:password@ part'
                      },
                      photoprism_configured: {
                        type: :boolean,
                        example: false,
                        description: 'Whether a PhotoPrism URL and API key are both stored. The key is never returned.'
+                     },
+                     airtrail_url: {
+                       oneOf: [
+                         { type: :string },
+                         { type: :null }
+                       ],
+                       example: 'https://airtrail.example.com',
+                       description: 'AirTrail server URL, returned without any user:password@ part'
+                     },
+                     airtrail_configured: {
+                       type: :boolean,
+                       example: false,
+                       description: 'Whether an AirTrail URL and API key are both stored. The key is never returned.'
                      },
                      fog_of_war_threshold: {
                        oneOf: [

@@ -44,6 +44,52 @@ RSpec.describe 'Api::V1::Settings', type: :request do
   end
 
   describe 'PATCH /update' do
+    describe 'changing an integration URL' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        user.update!(settings: user.settings.merge('immich_url' => 'https://gate:secret@immich.example.com',
+                                                   'immich_api_key' => 'stored-immich-key',
+                                                   'immich_connection_status' => 'ok'))
+      end
+
+      def patch_settings(settings)
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: settings }
+        user.reload.settings
+      end
+
+      it 'forgets the stored key, so it cannot be sent to the new host' do
+        settings = patch_settings(immich_url: 'https://elsewhere.example.com')
+
+        expect(response).to have_http_status(:ok)
+        expect(settings).to include('immich_url' => 'https://elsewhere.example.com', 'immich_api_key' => nil,
+                                    'immich_connection_status' => nil)
+        expect(response.parsed_body['settings']).to include('immich_configured' => false)
+      end
+
+      it 'keeps a key that arrives together with the new URL' do
+        settings = patch_settings(immich_url: 'https://elsewhere.example.com', immich_api_key: 'new-key')
+
+        expect(settings).to include('immich_url' => 'https://elsewhere.example.com', 'immich_api_key' => 'new-key')
+      end
+
+      it 'keeps the stored credentials when a client writes back the URL it read' do
+        get "/api/v1/settings?api_key=#{api_key}"
+        read_back = response.parsed_body['settings']['immich_url']
+
+        settings = patch_settings(immich_url: read_back, route_opacity: 0.4)
+
+        expect(read_back).to eq('https://immich.example.com')
+        expect(settings).to include('immich_url' => 'https://gate:secret@immich.example.com',
+                                    'immich_api_key' => 'stored-immich-key', 'immich_connection_status' => 'ok')
+      end
+
+      it 'leaves the key alone when another setting changes' do
+        settings = patch_settings(route_opacity: 0.4)
+
+        expect(settings).to include('immich_api_key' => 'stored-immich-key')
+      end
+    end
+
     it 'stores an integration API key and leaves it out of the response' do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
 

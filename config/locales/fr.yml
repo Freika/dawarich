@@ -626,9 +626,7 @@ fr:
         current_password: Mot de passe actuel
         required_to_confirm_your_changes: "(obligatoire pour confirmer vos modifications)"
         import_your_data: Importer vos données
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: Téléversez une
-          archive ZIP contenant vos données exportées depuis Dawarich pour restaurer vos
-          points, vos trajets et vos paramètres.
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "Téléversez une archive ZIP contenant vos données exportées depuis Dawarich pour restaurer vos points, vos trajets et vos paramètres. Les connexions aux intégrations (Immich, Photoprism, AirTrail, TeslaMate) ne sont pas restaurées ; reconnectez-les dans Paramètres → Intégrations."
         select_zip_archive: Sélectionner une archive ZIP
         file_will_be_uploaded_directly_to_storage_please_be_patient: Le fichier sera
           téléversé directement vers le stockage. Veuillez patienter pendant le téléversement.
