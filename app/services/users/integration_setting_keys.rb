@@ -15,5 +15,26 @@ module Users
     def self.connection_key?(key)
       key.to_s.start_with?(*PREFIXES)
     end
+
+    # A self-hosted integration URL may carry basic-auth credentials
+    # (http://user:pass@host). They are a secret like the API key.
+    def self.without_credentials(url)
+      return url unless url.is_a?(String) && url.include?('@')
+
+      uri = URI.parse(url)
+      # In this order: URI refuses a password without a user.
+      uri.password = nil
+      uri.user = nil
+      uri.to_s
+    rescue URI::InvalidURIError
+      url
+    end
+
+    # Settings safe to write to an archive: no secret keys, no credentials in URLs.
+    def self.redact(settings)
+      settings.except(*SECRETS).to_h do |key, value|
+        [key, connection_key?(key) && key.to_s.end_with?('_url') ? without_credentials(value) : value]
+      end
+    end
   end
 end

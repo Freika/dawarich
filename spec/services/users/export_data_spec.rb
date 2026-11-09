@@ -136,7 +136,8 @@ RSpec.describe Users::ExportData, type: :service do
                        'photoprism_url' => 'https://photoprism.example.test', 'photoprism_api_key' => 'prism-secret',
                        'airtrail_url' => 'https://airtrail.example.test', 'airtrail_api_key' => 'airtrail-secret',
                        'teslamate_url' => 'https://teslamate.example.test', 'teslamate_username' => 'proxy',
-                       'teslamate_password' => 'tesla-secret', 'teslamate_api_token' => 'tesla-token'
+                       'teslamate_password' => 'tesla-secret', 'teslamate_api_token' => 'tesla-token',
+                       'teslamate_last_synced_url' => 'https://basic:url-secret@teslamate.example.test'
                      })
 
         result = service.export
@@ -147,7 +148,8 @@ RSpec.describe Users::ExportData, type: :service do
 
           expect(exported.keys).not_to include('immich_api_key', 'photoprism_api_key', 'airtrail_api_key',
                                                'teslamate_password', 'teslamate_api_token')
-          %w[immich-secret prism-secret airtrail-secret tesla-secret tesla-token].each do |secret|
+          expect(exported['teslamate_last_synced_url']).to eq('https://teslamate.example.test')
+          %w[immich-secret prism-secret airtrail-secret tesla-secret tesla-token url-secret].each do |secret|
             expect(raw).not_to include(secret)
           end
           expect(exported).to include('immich_url' => 'https://immich.example.test',

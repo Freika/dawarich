@@ -1048,6 +1048,19 @@ RSpec.describe Users::SafeSettings do
       expect(config).to include(immich_configured: true, photoprism_configured: false, airtrail_configured: true)
     end
 
+    it 'leaves credentials embedded in an integration URL out of the API settings' do
+      config = described_class.new({ 'immich_url' => 'http://proxyuser:proxypass@immich.lan:2283/base' }).api_config
+
+      expect(config[:immich_url]).to eq('http://immich.lan:2283/base')
+      expect(config.to_json).not_to include('proxypass')
+    end
+
+    it 'still gives server-side code the stored URL with its credentials' do
+      settings = described_class.new({ 'immich_url' => 'http://proxyuser:proxypass@immich.lan' })
+
+      expect(settings.immich_url).to eq('http://proxyuser:proxypass@immich.lan')
+    end
+
     it 'still gives server-side code the stored key' do
       expect(described_class.new(stored).immich_api_key).to eq('immich-key')
     end

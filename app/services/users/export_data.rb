@@ -143,8 +143,7 @@ class Users::ExportData
     File.open(settings_path, 'w') do |file|
       # Unmasked: the export must carry the stored Pro-only settings of a Lite user.
       # Integration secrets stay out of the archive; the URLs still record what was connected.
-      settings = Users::SafeSettings.new(user.settings).settings.except(*Users::IntegrationSettingKeys::SECRETS)
-      file.puts(settings.to_json)
+      file.puts(Users::IntegrationSettingKeys.redact(Users::SafeSettings.new(user.settings).settings).to_json)
     end
     Rails.logger.info 'Exported settings'
   end
