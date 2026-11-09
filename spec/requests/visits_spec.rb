@@ -11,7 +11,7 @@ RSpec.describe '/visits', type: :request do
 
   describe 'GET /visits (retired)' do
     it 'no longer routes to VisitsController#index' do
-      expect { get '/visits' }.not_to raise_error
+      get '/visits'
       # The retired route now redirects (see visits_redirect_spec).
       expect(response).not_to have_http_status(:ok)
     end
@@ -572,7 +572,7 @@ RSpec.describe '/visits', type: :request do
       delete bulk_destroy_visits_url(format: :turbo_stream), params: { visit_ids: [] }
 
       expect(response).to have_http_status(:unprocessable_content)
-      expect { visit_a.reload }.not_to raise_error
+      expect(visit_a.reload.deleted_at).to be_nil
     end
 
     it 'rejects when an id belongs to another user' do
@@ -582,8 +582,8 @@ RSpec.describe '/visits', type: :request do
              params: { visit_ids: [visit_a.id, other_user_visit.id] }
 
       expect(response).to have_http_status(:not_found)
-      expect { visit_a.reload }.not_to raise_error
-      expect { other_user_visit.reload }.not_to raise_error
+      expect(visit_a.reload.deleted_at).to be_nil
+      expect(other_user_visit.reload.deleted_at).to be_nil
     end
 
     it 'busts the month-summary cache for affected months' do
@@ -631,8 +631,8 @@ RSpec.describe '/visits', type: :request do
 
       expect(response).to have_http_status(:not_found)
       expect(response.body).to include('Lite plan')
-      expect { old_visit.reload }.not_to raise_error
-      expect { visit_a.reload }.not_to raise_error
+      expect(old_visit.reload.deleted_at).to be_nil
+      expect(visit_a.reload.deleted_at).to be_nil
     end
 
     it 'busts caches for every month touched when the deletion spans months' do
@@ -713,7 +713,7 @@ RSpec.describe '/visits', type: :request do
         delete bulk_destroy_visits_url(format: :turbo_stream),
                params: { date: Time.zone.today.to_s, source_status: 'suggested' }
 
-        expect { other_visit.reload }.not_to raise_error
+        expect(other_visit.reload.deleted_at).to be_nil
       end
 
       it 'returns unprocessable when no visits match date + source_status' do

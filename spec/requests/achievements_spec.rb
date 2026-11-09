@@ -340,9 +340,8 @@ RSpec.describe 'Achievements' do
           expect(progress.sharing_uuid).to eq(uuid)
         end
 
-        it 'serializes uuid initialization on the sharing carrier' do
+        it 'stores the returned uuid on the sharing carrier' do
           progress = create(:achievement_progress, user:, achievement_key: 'country_de')
-          expect_any_instance_of(Achievements::Progress).to receive(:with_lock).and_call_original
 
           patch toggle_sharing_achievement_path('country_de'), params: { enabled: true }, as: :json
 

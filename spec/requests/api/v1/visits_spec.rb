@@ -536,16 +536,11 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
 
       it 'merges the specified visits' do
-        # Mock the service to avoid dealing with complex merging logic in the test
-        merge_service = instance_double(Visits::MergeService)
-        merged_visit = create(:visit, user: user)
-
-        expect(Visits::MergeService).to receive(:new).with(kind_of(ActiveRecord::Relation)).and_return(merge_service)
-        expect(merge_service).to receive(:call).and_return(merged_visit)
-
         post '/api/v1/visits/merge', params: valid_merge_params, headers: auth_headers
 
         expect(response).to have_http_status(:ok)
+        expect(Visit.exists?(visit1.id)).to be(false)
+        expect(visit2.reload.ended_at).to eq(visit1.ended_at)
       end
     end
 
@@ -575,11 +570,8 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
 
       it 'returns an error when the merge fails' do
-        merge_service = instance_double(Visits::MergeService)
-
-        expect(Visits::MergeService).to receive(:new).with(kind_of(ActiveRecord::Relation)).and_return(merge_service)
-        expect(merge_service).to receive(:call).and_return(nil)
-        expect(merge_service).to receive(:errors).and_return(['Failed to merge visits'])
+        merge_service = instance_double(Visits::MergeService, call: nil, errors: ['Failed to merge visits'])
+        allow(Visits::MergeService).to receive(:new).and_return(merge_service)
 
         post '/api/v1/visits/merge', params: { visit_ids: [visit1.id, visit2.id] }, headers: auth_headers
 
@@ -594,7 +586,6 @@ RSpec.describe 'Api::V1::Visits', type: :request do
     let!(:visit1) { create(:visit, user: user, status: 'suggested') }
     let!(:visit2) { create(:visit, user: user, status: 'suggested') }
     let!(:other_user_visit) { create(:visit, user: other_user, status: 'suggested') }
-    let(:bulk_update_service) { instance_double(Visits::BulkUpdate) }
 
     context 'with valid parameters' do
       let(:valid_update_params) do
@@ -605,16 +596,13 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
 
       it 'updates the status of specified visits' do
-        expect(Visits::BulkUpdate).to receive(:new)
-          .with(user, kind_of(Array), 'confirmed')
-          .and_return(bulk_update_service)
-        expect(bulk_update_service).to receive(:call).and_return({ count: 2 })
-
         post '/api/v1/visits/bulk_update', params: valid_update_params, headers: auth_headers
 
         expect(response).to have_http_status(:ok)
         json_response = JSON.parse(response.body)
         expect(json_response['updated_count']).to eq(2)
+        expect([visit1.reload.status, visit2.reload.status]).to all(eq('confirmed'))
+        expect(other_user_visit.reload.status).to eq('suggested')
       end
     end
 
@@ -627,17 +615,11 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
 
       it 'returns an error when the update fails' do
-        expect(Visits::BulkUpdate).to receive(:new)
-          .with(user, kind_of(Array), 'invalid_status')
-          .and_return(bulk_update_service)
-        expect(bulk_update_service).to receive(:call).and_return(nil)
-        expect(bulk_update_service).to receive(:errors).and_return(['Invalid status'])
-
         post '/api/v1/visits/bulk_update', params: invalid_update_params, headers: auth_headers
 
         expect(response).to have_http_status(:unprocessable_content)
         json_response = JSON.parse(response.body)
-        expect(json_response['error']).to include('Invalid status')
+        expect(json_response['error']).to eq(I18n.t('services.visits.bulk_update.invalid_status'))
       end
     end
   end

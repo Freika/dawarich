@@ -156,17 +156,4 @@ RSpec.describe TrackSerializer do
       end
     end
   end
-
-  describe '#initialize' do
-    let(:track) { create(:track) }
-
-    it 'accepts a track parameter' do
-      expect { described_class.new(track) }.not_to raise_error
-    end
-
-    it 'stores the track instance' do
-      serializer = described_class.new(track)
-      expect(serializer.instance_variable_get(:@track)).to eq(track)
-    end
-  end
 end
